@@ -1,0 +1,11 @@
+# finder.
+.DS_Store
+
+# python.
+__pycache__
+
+# pithy.
+_build
+_misc
+gh-pages
+todo.txt
