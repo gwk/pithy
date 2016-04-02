@@ -4,5 +4,6 @@ from functools import singledispatch
 
 from .fs import *
 from .io import *
+from .plus_encode import *
 from .task import *
 from .util import *
