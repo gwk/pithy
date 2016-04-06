@@ -213,10 +213,3 @@ def raiseS(*items, E=Exception):
 
 def raiseF(fmt, *items, E=Exception):
   raise E(fmt.format(*items))
-
-
-def req_type(object, class_info):
-  if not isinstance(object, class_info):
-    raise TypeError('expected type: {}; actual type: {};\n  object: {}'.format(
-      class_info, type(object), repr(object)))
-

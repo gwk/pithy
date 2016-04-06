@@ -12,7 +12,7 @@ def is_path_abs(path):
 
 def norm_path(path):
   'normalize the path according to system convention.'
-  return _path.norm(path)
+  return _path.normpath(path)
 
 def path_common_prefix(*paths):
   'return the common prefix of a sequence of paths.'
@@ -73,7 +73,8 @@ def split_stem_ext(path):
 
 def abs_path(path): return _path.abspath(path)
 
-def path_exists(path): return _path.exists(path)
+def abs_or_norm_path(path, make_abs):
+  return abs_path(path) if make_abs else norm_path(path)
 
 def expand_user(path): return _path.expanduser(path)
 
@@ -93,6 +94,8 @@ def make_dir(path): return _os.mkdir(path)
 
 def make_dirs(path, mode=0o777, exist_ok=True): return _os.makedirs(path, mode, exist_ok)
 
+def path_exists(path): return _path.exists(path)
+
 def remove_file(path): return _os.remove(path)
 
 def remove_file_if_exists(path):
@@ -103,16 +106,17 @@ def remove_dir(path): return _os.rmdir(path)
 
 def remove_dirs(path): return _os.removedirs(path)
 
-
 def current_dir(): return abs_path('.')
 
 def parent_dir(): return abs_path('..')
 
-def time_access(path): return _os.stat(path).st_atime
+def change_dir(path): _os.chdir(path)
 
-def time_mod(path): return _os.stat(path).st_mtime
+def file_time_access(path): return _os.stat(path).st_atime
 
-def time_meta_change(path): return _os.stat(path).st_ctime
+def file_time_mod(path): return _os.stat(path).st_mtime
+
+def file_time_meta_change(path): return _os.stat(path).st_ctime
 
 def is_file_not_link(path): return is_file(path) and not is_link(path)
 
@@ -141,54 +145,83 @@ def move_file(path, dest, overwrite=False):
   _os.rename(path, dest)
 
 
+def read_from_path(path):
+  with open(path) as f:
+    return f.read()
+
 def write_to_path(path, string):
   with open(path, 'w') as f:
     f.write(string)
 
 
-def _walk_all_paths_rec(path_pairs, yield_files, yield_dirs, exts, hidden):
-  'yield paths; dir path are distinguished by trailing slash.'
-  for dir, name, in path_pairs:
-    path = _path.join(dir, name)
-    is_dir = _path.isdir(path)
-    if not hidden and name.startswith('.') and name != '.':
+def _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths):
+  sub_dirs = []
+  files = []
+  names = list_dir(dir_path)
+  for name in names:
+    if not include_hidden and name.startswith('.'):
       continue
-    if is_dir:
-      if yield_dirs:
-        yield path + '/'
-      subs = ((path, n) for n in _os.listdir(path))
-      yield from _walk_all_paths_rec(subs, yield_files, yield_dirs, exts, hidden)
-    else: # file.
-      if yield_files and (exts is None or _path.splitext(name)[1] in exts):
-        yield path
+    path = path_join(dir_path, name)
+    if is_dir(path):
+      sub_dirs.append(path)
+    elif file_exts is None or path_ext(name) in file_exts:
+      files.append(path if files_as_paths else name)
+  yield (dir_path + '/', files)
+  for sub_dir in sub_dirs:
+    yield from _walk_dirs_and_files(sub_dir, include_hidden, file_exts, files_as_paths)
 
 
-def walk_all_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, exts=None,
-  hidden=False):
+def walk_dirs_and_files(*dir_paths, make_abs=False, include_hidden=False, file_exts=None,
+  files_as_paths=False):
+  '''
+  yield (dir_path, files) pairs.
+  files is an array of either names (default) or paths, depending on the files_as_paths option.
+  '''
+  assert not isinstance(file_exts, str) # exts should be a sequence of strings.
+  assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
+
+  for raw_path in dir_paths:
+    dir_path = abs_or_norm_path(raw_path, make_abs)
+    yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
+
+
+def _walk_paths_rec(dir_path, yield_files, yield_dirs, include_hidden, file_exts):
+  'yield paths; directory paths are distinguished by trailing slash.'
+  if yield_dirs:
+    yield dir_path + '/'
+  names = list_dir(dir_path)
+  for name in names:
+    if not include_hidden and name.startswith('.'):
+      continue
+    path = path_join(dir_path, name)
+    if is_dir(path):
+      yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
+    elif yield_files and (file_exts is None or path_ext(name) in file_exts):
+      yield path
+
+def walk_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, include_hidden=False,
+  file_exts=None):
   '''
   generate file and/or dir paths,
-  after optionally filtering by file extension and/or hidden names (leading dot).
+  optionally filtering hidden names and/or by file extension.
   '''
-  assert not isinstance(exts, str) # exts should be a sequence of strings.
-  assert exts is None or all(e.startswith('.') for e in exts) # all extensions should begin with a dot.
+  assert not isinstance(file_exts, str) # exts should be a sequence of strings.
+  assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
 
-  def norm_path(p):
-    while p.endswith('/'):
-      p = p[:-1]
-    return _path.abspath(p) if make_abs else p
-
-  norm_paths = sorted(norm_path(p) for p in paths)
-  path_pairs = tuple(_path.split(p) for p in norm_paths)
-  return _walk_all_paths_rec(path_pairs, yield_files, yield_dirs, exts, hidden)
+  for raw_path in paths:
+    path = abs_or_norm_path(raw_path, make_abs)
+    if is_dir(path):
+      yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
+    elif yield_files and (file_exts is None or path_ext(name) in file_exts):
+      yield p
 
 
-def walk_all_files(*paths, make_abs=False, exts=None, hidden=False):
-  return walk_all_paths(*paths, make_abs=make_abs, yield_files=True, yield_dirs=False,
-    exts=exts, hidden=hidden)
+def walk_all_files(*paths, make_abs=False, include_hidden=False, file_exts=None):
+  return walk_paths(*paths, make_abs=make_abs, yield_files=True, yield_dirs=False,
+    include_hidden=include_hidden, file_exts=file_exts)
 
 
-def walk_all_dirs(*paths, make_abs=False, exts=None, hidden=False):
-  return walk_all_paths(*paths, make_abs=make_abs, yield_files=False, yield_dirs=True,
-    exts=exts, hidden=hidden)
-
+def walk_all_dirs(*paths, make_abs=False, include_hidden=False, file_exts=None):
+  return walk_paths(*paths, make_abs=make_abs, yield_files=False, yield_dirs=True,
+    include_hidden=include_hidden, file_exts=file_exts)
 

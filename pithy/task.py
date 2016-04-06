@@ -41,8 +41,8 @@ def run_cmd(cmd, cwd, stdin, out, err, env, exp):
   run a command and return (exit_code, std_out, std_err).
   the underlying Subprocess shell option is not supported
   because the rules regarding splitting strings are complex.
-  user code is made clearer by just specifying the complete sh command,
-  which is always split by shlex.split.
+  user code is made clearer by just specifying the complete shell command;
+  arrays are used as is, while strings are split by shlex.split.
   '''
   if isinstance(cmd, str):
     cmd = _shlex.split(cmd)

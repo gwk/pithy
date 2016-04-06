@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-def plural_s(len):
-  return '' if len == 1 else 's'
+def plural_s(count):
+  return '' if count == 1 else 's'
 
 
 def set_defaults(d, defaults):
