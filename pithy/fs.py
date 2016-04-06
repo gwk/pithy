@@ -2,6 +2,7 @@
 
 import os as _os
 import os.path as _path
+from itertools import zip_longest as _zip_longest
 
 
 # paths.
@@ -34,11 +35,30 @@ def path_name(path):
   "return the name portion of a path (possibly including an extension), e.g. 'dir/name'."
   return _path.basename(path)
 
+def path_range(start_path, end_path):
+  'yield a sequence of paths from start_path (inclusive) to end_path (exclusive).'
+  start = path_split(start_path)
+  end = path_split(end_path)
+  accum = []
+  for s, e in _zip_longest(start, end):
+    if s:
+      if s != e:
+        raise ValueError('paths diverge: start {!r}; end: {!r}'.format(s, e))
+    else:
+      yield path_join(*accum)
+    accum.append(e)
+
 def path_rel_to(base, path):
   'return the path relative to the base, raising an exception the path does not have that base.'
   if not path.startswith(base):
     raise ValueError('path expected to have prefix: {}; actual: {}'.format(base, path))
   return path[len(base):]
+
+def path_split(path):
+  np = norm_path(path)
+  if np == '/': return ['/']
+  assert not np.endswith('/')
+  return [comp or '/' for comp in np.split(_os.sep)]
 
 def path_stem(path):
   'the path without the file extension; the stem may span multiple directories.'
@@ -89,6 +109,8 @@ def is_mount(path): return _path.ismount(path)
 def link_exists(path): return _path.lexists(path)
 
 def list_dir(path): return _os.listdir(path)
+
+def list_dir_paths(path): return [path_join(path, name) for name in list_dir(path)]
 
 def make_dir(path): return _os.mkdir(path)
 
@@ -225,3 +247,12 @@ def walk_all_dirs(*paths, make_abs=False, include_hidden=False, file_exts=None):
   return walk_paths(*paths, make_abs=make_abs, yield_files=False, yield_dirs=True,
     include_hidden=include_hidden, file_exts=file_exts)
 
+
+def walk_dirs_up(path):
+  ap = abs_path(path)
+  dir_path = ap if is_dir(ap) else path_dir(ap)
+  while True:
+    yield dir_path
+    if dir_path == '/':
+      break
+    dir_path = path_dir(dir_path)
