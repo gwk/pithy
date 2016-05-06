@@ -13,14 +13,6 @@ def fmt_template(template, **substitutions):
   return t.substitute(substitutions)
 
 
-pretty_formatter = _pp.PrettyPrinter(stream=None, indent=2)
-
-# return a formatted string representing item
-def pretty_format(item):
-  'return a pretty formatted string.'
-  return pretty_formatter.pformat(item)
-
-
 # basic printing.
 
 def writeZ(file, *items, sep='', end=''):
@@ -83,14 +75,14 @@ def writeTFL(file, template_fmt, *items, **keyed_items):
   writeFL(file, fmt, *items, **keyed_items)
 
 
-def writeP(file, *items, label=None):
+def writeP(file, *items, label=None, indent=2, **opts):
   'pretty print to file.'
   if label is not None:
     file.write(label)
     file.write (': ')
-  for i in items:
-    file.write(pretty_format(i))
-    file.write('\n')
+  for item in items:
+    _pp.pprint(item, stream=file, indent=indent, **opts)
+    #file.write('\n')
 
 
 # std out.
@@ -131,9 +123,9 @@ def outFL(fmt, *items, **keyed_items):
   "write the formatted string to std out; end='\\n'."
   writeFL(stdout, fmt, *items, **keyed_items)
 
-def outP(*items, label=None):
+def outP(*items, label=None, **opts):
   'pretty print to std out.'
-  writeP(stdout, *items, label=label)
+  writeP(stdout, *items, label=label, **opts)
 
 
 # std err.
@@ -174,9 +166,9 @@ def errFL(fmt, *items, **keyed_items):
   "write the formatted string to std err; end='\\n'."
   writeFL(stderr, fmt, *items, **keyed_items)
 
-def errP(*items, label=None):
+def errP(*items, label=None, **opts):
   'pretty print to std err.'
-  writeP(stderr, *items, label=label)
+  writeP(stderr, *items, label=label, **opts)
 
 
 # errors.
