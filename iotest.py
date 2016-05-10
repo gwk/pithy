@@ -4,8 +4,6 @@
 
 import argparse
 import ast
-import collections
-import copy as _copy
 import os
 import re
 import shlex
@@ -487,4 +485,4 @@ file_expectation_fns = {
 
 
 if __name__ == '__main__':
-  sys.exit(main())
+  exit(main())
