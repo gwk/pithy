@@ -4,7 +4,7 @@ Dedicated to the public domain under CC0: https://creativecommons.org/publicdoma
 
 Pithy is a small library of python utilities. Many of the functions are simple wrappers around standard library functions, but named to make scripts read more concisely. There are several families of functions with abbreviation conventions, e.g. errZ, errL, errSL, errLL all print to stderr, but with different `sep` and `end` values. Similarly, there is a family of 'run' functions for spawning subprocesses and then checking or returning various combinations of exit status code, stdout, and stderr.
 
-The result is that code may look a bit more cryptic to new readers, but it becomes much easier to write clear, concise code that handles boring details like stdout versus stderr and error checking/reporting minutiae correctly.
+The result is that code may look a bit more cryptic or less traditional, but is made more correct and concise by handling boring details like stdout versus stderr and error checking/reporting minutiae correctly.
 
 The project is hosted at 'https://github.com/gwk/pithy'.
 
