@@ -8,4 +8,5 @@ __pycache__
 _build
 _misc
 gh-pages
+iotest.egg-info
 todo.txt
