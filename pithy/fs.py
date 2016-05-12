@@ -2,6 +2,8 @@
 
 import os as _os
 import os.path as _path
+import shutil as _shutil
+
 from itertools import zip_longest as _zip_longest
 
 
@@ -95,6 +97,9 @@ def abs_path(path): return _path.abspath(path)
 
 def abs_or_norm_path(path, make_abs):
   return abs_path(path) if make_abs else norm_path(path)
+
+def copy_file(src, dst, follow_symlinks=True):
+  _shutil.copy(src, dst, follow_symlinks=follow_symlinks)
 
 def expand_user(path): return _path.expanduser(path)
 
