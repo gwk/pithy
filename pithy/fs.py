@@ -145,6 +145,8 @@ def file_time_mod(path): return _os.stat(path).st_mtime
 
 def file_time_meta_change(path): return _os.stat(path).st_ctime
 
+def file_size(path): return _os.stat(path).st_size
+
 def is_file_not_link(path): return is_file(path) and not is_link(path)
 
 def is_dir_not_link(path): return is_dir(path) and not is_link(path)
