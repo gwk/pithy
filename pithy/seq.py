@@ -38,3 +38,13 @@ def grouped_sorted_seq(seq, predicate):
   if group:
     groups.append(group)
   return groups
+
+def zip_neighbors(seq, length=2):
+  assert length > 0
+  buffer = []
+  for el in seq:
+    buffer.append(el)
+    if len(buffer) == length:
+      yield tuple(buffer)
+      del buffer[0]
+
