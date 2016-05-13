@@ -2,7 +2,7 @@
 
 from collections import defaultdict, Counter
 from functools import singledispatch
-from sys import exit
+from sys import stderr, stdout
 
 from .fs import *
 from .io import *
