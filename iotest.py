@@ -8,10 +8,10 @@ import os
 import re
 import shlex
 import signal
-import string as _string
 import subprocess
 import sys
 
+from string import Template
 from pithy import *
 
 
@@ -263,7 +263,7 @@ class Case:
     default_to_env('PYTHONPATH')
 
     def expand_str(val):
-      t = _string.Template(val)
+      t = Template(val)
       return t.safe_substitute(**env)
 
     def expand(val):
