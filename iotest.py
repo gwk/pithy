@@ -86,6 +86,8 @@ class Ctx:
 
 
 def find_proj_dir():
+  'find the project root directory, as denoted by the presence of the special file .project-root.'
+  # TODO: support relying on .gitignore, .git, or similar?
   for path in walk_dirs_up('.'):
     for name in list_dir(path):
       if name == '.project-root':
@@ -94,6 +96,7 @@ def find_proj_dir():
 
 
 def collect_proto(ctx, end_dir_path):
+  'assemble the prototype test case information from files named `_default.*`.'
   proto = None
   for dir_path in path_range(ctx.proj_dir, abs_path(end_dir_path)):
     file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem(name) == '_default']
@@ -102,6 +105,7 @@ def collect_proto(ctx, end_dir_path):
 
 
 def collect_cases(ctx, cases, proto, dir_path):
+  'find all test cases within the specified directory.'
   sub_dirs = []
   file_paths = []
   names = list_dir(dir_path)
@@ -171,9 +175,9 @@ class Case:
     self.skip = None
 
     try:
-      # read in all info specific to this case.
+      # read in all file info specific to this case.
       for path in sorted(file_paths, key=lambda p: '' if p.endswith('.iot') else p):
-        # sorting simply ensures that the .iot file gets added first,
+        # sorting with custom key fn simply ensures that the .iot file gets added first,
         # for clarity when conflicts arise.
         self.add_file(path)
       # copy any defaults; if the key already exists, it is a conflict error.
