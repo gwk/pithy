@@ -299,7 +299,7 @@ class Case:
       else:
         mode = val[0]
         val_str = val[1]
-        exp = FileExpectation(path, mode, expand_str(val_str))
+        exp = FileExpectation(path_join(self.test_dir, path), mode, expand_str(val_str))
       self.test_expectations.append(exp)
 
     add_exp('err', self.err or '')
@@ -440,9 +440,9 @@ def check_file_exp(ctx, exp):
   if file_expectation_fns[exp.mode](exp.val, act_val):
     return True
   outFL('output file {!r} does not {} expected value:', exp.path, exp.mode)
-  for line in exp.val.split('\n'):
+  for line in exp.val.splitlines():
     outL('\x1B[0;34m', line, '\x1B[0m') # blue text.
-  if not line.endswith('\n'):
+  if exp.val and not exp.val.endswith('\n'):
     outL('(missing final newline)')
   if exp.mode == 'equal': # show a diff.
     path_expected = exp.path + '-expected'
@@ -451,12 +451,13 @@ def check_file_exp(ctx, exp):
     outSL(*cmd)
     runC(cmd, exp=None)
   else:
-    outSL('cat', path)
-    with open(path) as f:
+    outSL('cat', exp.path)
+    with open(exp.path) as f:
+      line = None
       for line in f:
         l = line.rstrip('\n')
         outL('\x1B[0;41m', l, '\x1B[0m') # red background.
-      if not line.endswith('\n'):
+      if line is not None and not line.endswith('\n'):
         outL('(missing final newline)')
   outSL('-' * bar_width)
   return False
