@@ -349,9 +349,13 @@ def try_case(ctx, case):
   try:
     ok = run_case(ctx, case)
   except Exception as e:
-    errFL('ERROR: could not run test case: {};\n  exception: {!r}', case.stem, e)
-    if str(e) == '[Errno 8] Exec format error':
-      errFL("  note: is the test script missing its hash-bang line? e.g. '#!/usr/bin/env sh'")
+    s = str(e)
+    errFL('ERROR: could not run test case: {};\n  exception: {}', case.stem, e)
+    if s == '[Errno 8] Exec format error':
+      errFL("  note: is the test script missing its hash-bang line? e.g. '#!/usr/bin/env [INTERPRETER]'")
+    elif s == '[Errno 13] Permission denied':
+      errFL("  note: is the test script executable permission not set?\n"
+        "  possible fix: `chmod +x {}`", case.test_cmd[0])
     case.describe()
     if ctx.dbg: raise
     ctx.fail_fast()
