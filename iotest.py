@@ -127,7 +127,7 @@ def collect_cases(ctx, cases, proto, dir_path):
 def create_default_case(ctx, proto, stem, file_paths):
   if not file_paths:
     return proto
-  default = Case(ctx.results_dir, stem, file_paths, proto, ctx.dbg)
+  default = Case(ctx, stem, file_paths, proto)
   if default.broken: ctx.fail_fast()
   return default
 
@@ -140,7 +140,7 @@ def create_cases(ctx, cases, proto, dir_path, file_paths):
   # cases.
   for (stem, paths) in sorted(groups.items()):
     if stem == default_stem or not is_case_implied(paths): continue
-    case = Case(ctx.results_dir, stem, paths, default, ctx.dbg)
+    case = Case(ctx, stem, paths, default)
     if case.broken: ctx.fail_fast()
     cases.append(case)
   return default
@@ -154,10 +154,10 @@ def is_case_implied(paths):
 class Case:
   'Case represents a single test case, or a default.'
 
-  def __init__(self, results_dir, stem, file_paths, proto, dbg):
+  def __init__(self, ctx, stem, file_paths, proto):
     self.stem = stem # path stem to this test case.
     self.name = path_name(stem)
-    self.test_dir = path_join(results_dir, stem)
+    self.test_dir = path_join(ctx.results_dir, stem)
     # derived properties.
     self.test_info_paths = [] # the files that comprise the test case.
     self.dflt_src_path = None
@@ -187,12 +187,12 @@ class Case:
           if val is None: continue
           self.add_val_for_key(key, val)
       # do all additional computations now, so as to fail as quickly as possible.
-      self.derive_info()
+      self.derive_info(ctx)
 
     except Exception as e:
       errFL('ERROR: broken test case: {};\n  exception: {!r}', stem, e)
       self.describe()
-      if dbg: raise
+      if ctx.dbg: raise
       self.broken = True
 
 
@@ -246,7 +246,7 @@ class Case:
     self.add_val_for_key(key, val)
 
 
-  def derive_info(self):
+  def derive_info(self, ctx):
     if self.name == '_default': return # do not process prototype cases.
 
     self.test_env = {}
@@ -257,7 +257,7 @@ class Case:
         raiseF('specified env contains reserved key: {}', key)
     env['NAME'] = self.name
     env['SRC'] = str(self.dflt_src_path) # may be 'None' or 'Ellipsis'.
-    env['ROOT'] = abs_path('.') # NOTE: this assumes that tests will always be run from project root.
+    env['PROJ'] = abs_path(ctx.proj_dir)
 
     def default_to_env(key):
       if key not in env and key in os.environ:
