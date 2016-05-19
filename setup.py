@@ -22,6 +22,7 @@ setup(
   url='https://github.com/gwk/iotest',
   description='iotest is a small tool for testing programs based on input and output.',
   long_description=long_description,
+  install_requires=['pithy'],
   py_modules=['iotest'],
   entry_points = {'console_scripts': ['iotest=iotest:main']},
   keywords=['testing'],
