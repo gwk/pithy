@@ -153,11 +153,11 @@ def is_dir_not_link(path): return is_dir(path) and not is_link(path)
 
 
 def remove_dir_contents(path):
-  if _path.islink(path): raiseS(OSError, 'remove_dir_contents received symlink:', path)
+  if _path.islink(path): raise OSError('remove_dir_contents received symlink: ' + path)
   l = _os.listdir(path)
   for n in l:
     p = _path.join(path, n)
-    if _path.isdir(p):
+    if _path.isdir(p) and not _path.islink(p):
       remove_dir_tree(p)
     else:
       _os.remove(p)
