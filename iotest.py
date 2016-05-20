@@ -387,14 +387,14 @@ def run_case(ctx, case):
   if ctx.dbg: errSL('input path:', in_path)
 
   code_ok = run_cmd(ctx,
-    cmd = case.test_cmd,
-    cwd = case.test_dir,
-    env = case.test_env,
-    in_path = in_path,
-    out_path = path_join(case.test_dir, 'out'),
-    err_path = path_join(case.test_dir, 'err'),
-    timeout = case.timeout or dflt_timeout,
-    exp_code = case.code or (1 if case.err else 0))
+    cmd=case.test_cmd,
+    cwd=case.test_dir,
+    env=case.test_env,
+    in_path=in_path,
+    out_path=path_join(case.test_dir, 'out'),
+    err_path=path_join(case.test_dir, 'err'),
+    timeout=(case.timeout or dflt_timeout),
+    exp_code=(case.code or (1 if case.err else 0)))
 
   # use a list comprehension to ensure that we always report all failed expectations.
   exps_ok = all([check_file_exp(ctx, exp) for exp in case.test_expectations])
