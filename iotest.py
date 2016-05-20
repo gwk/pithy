@@ -283,7 +283,11 @@ class Case:
     args = expand(self.args)
 
     if self.cmd:
-      self.test_cmd = expand(self.cmd) + (args or [self.dflt_src_path])
+      self.test_cmd = expand(self.cmd)
+      if args:
+        self.test_cmd += args
+      elif self.dflt_src_path not in (None, Ellipsis):
+        self.test_cmd += [self.dflt_src_path]
     elif self.dflt_src_path:
       self.test_cmd = [self.dflt_src_path] + (args or [])
     else:
