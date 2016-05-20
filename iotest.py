@@ -190,7 +190,7 @@ class Case:
       self.derive_info(ctx)
 
     except Exception as e:
-      errFL('ERROR: broken test case: {};\n  exception: {!r}', stem, e)
+      errFL('ERROR: broken test case: {};\n  exception: {}', stem, e)
       self.describe()
       if ctx.dbg: raise
       self.broken = True
@@ -356,7 +356,6 @@ def try_case(ctx, case):
     elif s == '[Errno 13] Permission denied':
       errFL("  note: is the test script executable permission not set?\n"
         "  possible fix: `chmod +x {}`", case.test_cmd[0])
-    case.describe()
     if ctx.dbg: raise
     ctx.fail_fast()
     ok = False
