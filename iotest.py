@@ -170,6 +170,7 @@ class Case:
     self.err = None # expected stderr.
     self.files = None # additional file expectations.
     self.in_ = None # stdin as text.
+    self.links = None # symlinks to be made into the test directory; written as a dict.
     self.out = None # expected stdout.
     self.timeout = None 
     self.skip = None
@@ -324,7 +325,13 @@ def validate_files_dict(key, val):
       raiseF('key: {}: file key is a standard file', key)
     validate_expectation(k, v)
 
-case_key_validators = {
+def validate_links_dict(key, val):
+  for src, dst in val.items():
+    if src.find('..') != -1: raiseF("key: {}: link source contains '..': {}", key, src)
+    if dst.find('..') != -1: raiseF("key: {}: link destination contains '..': {}", key, dst)
+
+
+case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list, None),
   'cmd':      ('string or list of strings', is_str_or_list, None),
   'code':     ('int',                       is_int,         None),
@@ -332,6 +339,7 @@ case_key_validators = {
   'err':      ('string or pair of strings', is_str_or_pair, validate_expectation),
   'files':    ('dict',                      is_dict,        validate_files_dict),
   'in_':      ('str',                       is_str,         None),
+  'links':    ('dict of strings',           is_dict_of_str, validate_links_dict),
   'out':      ('string or pair of strings', is_str_or_pair, validate_expectation),
   'skip':     ('bool',                      is_bool,        None),
   'timeout':  ('positive int',              is_pos_int,     None),
@@ -379,6 +387,12 @@ def run_case(ctx, case):
   else:
     make_dirs(case.test_dir)
   
+  if case.links is not None:
+    for link_path, dst_path in case.links.items():
+      link = path_join(case.test_dir, link_path)
+      dst = path_join(ctx.proj_dir, dst_path)
+      os.symlink(dst, link)
+
   if case.in_ is not None:
     in_path = path_join(case.test_dir, 'in')
     write_to_path(in_path, case.in_)
