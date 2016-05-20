@@ -28,7 +28,7 @@ def main():
   arg_parser.add_argument('paths', nargs='*', help='test directories to search.')
   args = arg_parser.parse_args()
   
-  if args.dbg: errL("DEBUG")
+  if args.dbg: errL('iotest: DEBUG MODE ON.')
 
   proj_dir = find_proj_dir()
   results_dir = path_join(proj_dir, dflt_results_dir)
