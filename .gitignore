@@ -1,0 +1,10 @@
+# python.
+*.pyc
+
+# osx.
+.DS_Store
+
+# pat.
+_build/
+_misc/
+pat.egg-info
