@@ -86,13 +86,18 @@ class Ctx:
 
 
 def find_proj_dir():
-  'find the project root directory, as denoted by the presence of the special file .project-root.'
+  '''
+  find the project root directory,
+  as denoted by the presence of a file/directory named any of the following:
+  - .git
+  - .project-root
+  '''
   # TODO: support relying on .gitignore, .git, or similar?
   for path in walk_dirs_up('.'):
     for name in list_dir(path):
-      if name == '.project-root':
+      if name in ('.git', '.project-root'):
         return path
-  fail("could not find .project-root in current directory or its parents.")
+  fail("could not find .git or .project-root in current directory or its parents.")
 
 
 def collect_proto(ctx, end_dir_path):
