@@ -31,7 +31,18 @@ def main_diff(args):
   f_a = args.original
   f_b = args.modified
   f_out = args.destination
-  lines = list(ndiff(f_a.readlines(), f_b.readlines()))
+  min_context = args.min_context
+
+  if min_context < 1: failF('min-context value must be positive.')
+
+  a_lines = f_a.readlines()
+  b_lines = f_b.readlines()
+  lines = list(ndiff(a_lines, b_lines))
+
+  if a_lines and not a_lines[-1].endswith('\n'):
+    failF('{}:{} original document is missing final newline (not yet supported).')
+  if b_lines and not b_lines[-1].endswith('\n'):
+    failF('{}:{} modified document is missing final newline (not yet supported).')
 
   # first, find hunk ranges and identical lines.
   bare_line_indices = defaultdict(set)
@@ -66,7 +77,7 @@ def main_diff(args):
     # algorithm begins with the set of indices for instances of start line.
     # we walk backwards, gathering lines of context, until hunk is unambiguous.
     i = hunk_end - 1 # start with last line.
-    start_max = hunk_start - args.min_context # always iterate at least to this index.
+    start_max = hunk_start - min_context # always iterate at least to this index.
     matching_indices = set() # track all locations that match thus far.
     last_line = lines[i]
     has_context = False
@@ -94,11 +105,12 @@ def main_diff(args):
 
     if i == 0:
       f_out.write('\n$\n') # add first separator line and start-of-file symbol line.
-    elif prev_end < i: # not merged with pervious hunk.
+    elif prev_end < i: # not merged with previous hunk; separate with blank line.
       f_out.write('\n')
 
     for j in range(i, hunk_end):
       line = lines[j]
+      assert line.endswith('\n') # TODO: deal with final missing newline in original and modified.
       if line[0] == ' ':
         f_out.write('|')
         f_out.write(line[1:])
@@ -112,33 +124,69 @@ def main_apply(args):
   f_patch = args.patch
   f_out = args.destination
 
+  def patch_failF(line_num, fmt, *items):
+    failF('{}:{}: ' + fmt, f_patch.name, line_num + 1, *items)
+
   version_line = f_patch.readline()
-  src_line = f_patch.readline().rstrip()
+  src_line = f_patch.readline()
   patch_lines = f_patch.readlines()
 
   m = version_re.fullmatch(version_line)
   if not m:
-    failF('first line should specify pat version matching pattern: {!r}\n  found: {!r}',
+    patch_failF(0, 'first line should specify pat version matching pattern: {!r}\n  found: {!r}',
       version_re.pattern, version_line)
-  version = int(m.group(1))
-  if version != pat_version: failF('unsupported version number: {}', version)
+  version = m.group(1)
+  if version != pat_version: patch_failF(0, 'unsupported version number: {}', version)
 
   if not src_line:
-    failF('patch file does not specify a source path')
+    patch_failF(1, 'patch file does not specify a source path')
   src_path = src_line.rstrip()
 
   try:
    f_src = open(src_path)
   except FileNotFoundError:
-    failF('could not open source path specified by patch: {!r}', src_path)
+    patch_failF(1, 'could not open source path specified by patch: {!r}', src_path)
 
   src_lines = f_src.readlines()
-  apply_lines(patch_lines, src_lines, f_out)
 
-
-def apply_lines(patch_lines, src_lines, f_out):
   src_line_indices = defaultdict(set)
-  pass
+  for i, src_line in enumerate(src_lines):
+    src_line_indices[src_line].add(i)
+
+  len_src = len(src_lines)
+  si = 0 # source index.
+  def src_line(): return src_lines[si]
+
+  for pi, patch_line in enumerate(patch_lines):
+    if patch_line == '\n':
+      continue
+    prefix = patch_line[0]
+    line = patch_line[2:]
+    if prefix == '#':
+      pass
+    elif prefix == '$':
+      if si != 0:
+        patch_failF(pi, 'patch start symbol `$` may only occur at beginning of patch.')
+      continue
+    elif prefix in '|-':
+      si_start = si
+      while si < len_src and src_line() != line:
+        f_out.write(src_line())
+        si += 1
+      if si == len_src:
+        patch_failF(pi, 'patch context line does not match in source line range: {}-{}\n{}',
+          si_start + 1, si + 1, patch_line)
+      if prefix == '|':
+        f_out.write(src_line())
+      si += 1
+    elif prefix == '+':
+      f_out.write(line)
+    else:
+      patch_failF(pi, 'bad patch line prefix: {!r}',  prefix)
+
+  while si < len_src:
+    f_out.write(src_line())
+    si += 1
 
 
 def main():
