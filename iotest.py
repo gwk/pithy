@@ -82,7 +82,7 @@ class Ctx:
 
   def fail_fast(self):
     if self.should_fail_fast:
-      fail('stopping after error (-fail-fast).')
+      fail('iotest: stopping after error (-fail-fast).')
 
 
 def find_proj_dir():
@@ -97,7 +97,7 @@ def find_proj_dir():
     for name in list_dir(path):
       if name in ('.git', '.project-root'):
         return path
-  fail("could not find .git or .project-root in current directory or its parents.")
+  fail("iotest: could not find .git or .project-root in current directory or its parents.")
 
 
 def collect_proto(ctx, end_dir_path):
@@ -201,8 +201,9 @@ class Case:
       self.derive_info(ctx)
 
     except Exception as e:
-      errFL('ERROR: broken test case: {};\n  exception: {}', stem, e)
+      errFL('WARNING: broken test case: {};\n  exception: {}', stem, e)
       self.describe()
+      errL()
       if ctx.dbg: raise
       self.broken = True
 
@@ -413,6 +414,7 @@ def try_case(ctx, case):
   if not ok:
     outL('=' * bar_width, '\n')
   if ctx.dbg: errL()
+  if not ok: ctx.fail_fast()
   return ok
 
 
