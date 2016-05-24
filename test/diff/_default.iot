@@ -1,3 +1,4 @@
 {
   'cmd': '$PROJ/pat/pat0.py diff',
+  'out-path': 'test/$NAME.pat',
 }
