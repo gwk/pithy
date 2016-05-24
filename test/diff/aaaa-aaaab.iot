@@ -1,3 +1,4 @@
 {
   'args': ['test/aaaa.txt', 'test/aaaab.txt'],
+  'out-path': 'test/aaaa-aaaab.pat'
 }

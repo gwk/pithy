@@ -1,3 +1,4 @@
 {
   'args': ['test/empty.txt', 'test/empty.txt'],
+  'out-path': 'test/empty-empty.pat'
 }
