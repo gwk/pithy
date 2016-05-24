@@ -172,11 +172,15 @@ class Case:
     self.cmd = None # command with which to invoke the test.
     self.code = None # the expected exit code.
     self.env = None # environment variables.
-    self.err = None # expected stderr.
+    self.err_mode = None # comparison mode for stderr expectation.
+    self.err_path = None # file path for stderr expectation.
+    self.err_val = None # stderr expectation value (mutually exclusive with err_path).
     self.files = None # additional file expectations.
     self.in_ = None # stdin as text.
     self.links = None # symlinks to be made into the test directory; written as a dict.
-    self.out = None # expected stdout.
+    self.out_mode = None # comparison mode for stdout expectation.
+    self.out_path = None # file path for stdout expectation.
+    self.out_val = None # stdout expectation value (mutually exclusive with out_path).
     self.timeout = None 
     self.skip = None
 
@@ -186,7 +190,8 @@ class Case:
         # sorting with custom key fn simply ensures that the .iot file gets added first,
         # for clarity when conflicts arise.
         self.add_file(path)
-      # copy any defaults; if the key already exists, it is a conflict error.
+      # copy any defaults; if the key already exists, it will be a conflict error.
+      # TODO: would it make more sense to put this step above the case files?
       if proto is not None:
         for key in case_key_validators:
           val = proto.__dict__[key]
@@ -222,7 +227,7 @@ class Case:
   def add_std_file(self, path, key):
     self.test_info_paths.append(path)
     text = read_from_path(path)
-    self.add_val_for_key(key, text)
+    self.add_val_for_key(key + '_val', text)
 
 
   def add_iot_file(self, path):
@@ -243,8 +248,11 @@ class Case:
 
 
   def add_iot_val_for_key(self, iot_key, val):
-    key = ('in_' if iot_key == 'in' else iot_key)
-    msg, predicate, validator_fn = case_key_validators[key]
+    key = ('in_' if iot_key == 'in' else iot_key.replace('-', '_'))
+    try:
+      msg, predicate, validator_fn = case_key_validators[key]
+    except KeyError:
+      raiseF('invalid key in .iot file: {!r}', key)
     if not predicate(val):
       raiseF('key: {}: expected value of type: {}; received: {!r}', iot_key, msg, val)
     if validator_fn:
@@ -303,32 +311,40 @@ class Case:
 
     self.test_expectations = []
 
-    def add_exp(path, val):
-      if is_str(val):
-        exp = FileExpectation(path_join(self.test_dir, path), 'equal', expand_str(val))
-      else:
-        mode = val[0]
-        val_str = val[1]
-        exp = FileExpectation(path_join(self.test_dir, path), mode, expand_str(val_str))
+    def add_std_exp(name, mode, path, val):
+      info = {}
+      if mode is not None: info['mode'] = mode
+      if path is not None: info['path'] = path
+      if val is not None: info['val'] = val
+      exp = FileExpectation(name, info, expand_str)
       self.test_expectations.append(exp)
 
-    add_exp('err', self.err or '')
-    add_exp('out', self.out or '')
-    for k, v in self.files or []:
-      add_exp(k, v)
+    add_std_exp('err', self.err_mode, self.err_path, self.err_val)
+    add_std_exp('out', self.out_mode, self.out_path, self.out_val)
+
+    for path, info in self.files or []:
+      exp = FileExpectation(path, info, expand_str)
+      self.test_expectations.append(exp)
 
 
-def validate_expectation(key, val):
-  if is_str(val): return
-  mode = val[0]
+
+def validate_exp_mode(key, mode):
   if mode not in file_expectation_fns:
     raiseF('key: {}: invalid file expectation mode: {}', key, mode)
 
+def validate_exp_dict(key, val):
+  if not is_dict(val):
+    raiseF('file expectation: {}: value must be a dictionary.', key)
+  for k in val:
+    if k not in ('mode', 'path', 'val'):
+      raiseF('file expectation: {}: invalid expectation property: {}', key, k)
+
 def validate_files_dict(key, val):
-  for k, v in val:
+  for k, exp_dict in val:
     if k == 'out' or k == 'err':
-      raiseF('key: {}: file key is a standard file', key)
-    validate_expectation(k, v)
+      raiseF('key: {}: {}: use the standard properties instead ({}-mode, {}-path, {}-val).',
+        key, k, k, k, k)
+    validate_exp_dict(k, v)
 
 def validate_links_dict(key, val):
   for src, dst in val.items():
@@ -341,22 +357,40 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'cmd':      ('string or list of strings', is_str_or_list, None),
   'code':     ('int',                       is_int,         None),
   'env':      ('dict of strings',           is_dict_of_str, None),
-  'err':      ('string or pair of strings', is_str_or_pair, validate_expectation),
+  'err_mode': ('str',                       is_str,         validate_exp_mode),
+  'err_path': ('str',                       is_str,         None),
+  'err_val':  ('str',                       is_str,         None),
   'files':    ('dict',                      is_dict,        validate_files_dict),
   'in_':      ('str',                       is_str,         None),
   'links':    ('dict of strings',           is_dict_of_str, validate_links_dict),
-  'out':      ('string or pair of strings', is_str_or_pair, validate_expectation),
+  'out_mode': ('str',                       is_str,         validate_exp_mode),
+  'out_path': ('str',                       is_str,         None),
+  'out_val':  ('str',                       is_str,         None),
   'skip':     ('bool',                      is_bool,        None),
   'timeout':  ('positive int',              is_pos_int,     None),
 }
 
 
 class FileExpectation:
-  def __init__(self, path, mode, val):
-    assert mode in file_expectation_fns
+
+  def __init__(self, path, info, expand_str_fn):
+    if path.find('..') != -1:
+      raiseF("file expectation {}: cannot contain '..'", path)
     self.path = path
-    self.mode = mode
-    self.val = val
+
+    self.mode = info.get('mode', 'equal')
+    validate_exp_mode(path, self.mode)
+
+    try:
+      exp_path = info['path']
+    except KeyError:
+      val = info.get('val', '')
+    else:
+      if 'val' in info:
+        raiseF('file expectation {}: cannot specify both `path` and `val` properties', path)
+      exp_path_expanded = expand_str_fn(exp_path)
+      val = read_from_path(exp_path_expanded)
+    self.val = expand_str_fn(val)
 
   def __repr__(self):
     return 'FileExpectation({!r}, {!r}, {!r})'.format(self.path, self.mode, self.val)
@@ -405,6 +439,11 @@ def run_case(ctx, case):
     in_path = '/dev/null'
   if ctx.dbg: errSL('input path:', in_path)
 
+  if case.code is None:
+    exp_code = 1 if case.err_val else 0
+  else:
+    exp_code = case.code
+
   code_ok = run_cmd(ctx,
     cmd=case.test_cmd,
     cwd=case.test_dir,
@@ -413,10 +452,10 @@ def run_case(ctx, case):
     out_path=path_join(case.test_dir, 'out'),
     err_path=path_join(case.test_dir, 'err'),
     timeout=(case.timeout or dflt_timeout),
-    exp_code=(case.code or (1 if case.err else 0)))
+    exp_code=exp_code)
 
   # use a list comprehension to ensure that we always report all failed expectations.
-  exps_ok = all([check_file_exp(ctx, exp) for exp in case.test_expectations])
+  exps_ok = all([check_file_exp(ctx, case.test_dir, exp) for exp in case.test_expectations])
   return code_ok and exps_ok
 
 
@@ -451,34 +490,35 @@ def run_cmd(ctx, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
     return True
 
 
-def check_file_exp(ctx, exp):
+def check_file_exp(ctx, test_dir, exp):
   'return True if expectation is met.'
   if ctx.dbg: errFL('check_file_exp: {}', exp)
+  path = path_join(test_dir, exp.path)
   try:
-    with open(exp.path) as f:
+    with open(path) as f:
       act_val = f.read()
   except Exception as e:
-    outFL('ERROR: could not read test output file: {}\n  exception: {!r}', exp.path, e)
+    outFL('ERROR: could not read test output file: {}\n  exception: {!r}', path, e)
     if ctx.dbg: raise
     ctx.fail_fast()
     outSL('-' * bar_width)
     return False
   if file_expectation_fns[exp.mode](exp.val, act_val):
     return True
-  outFL('output file {!r} does not {} expected value:', exp.path, exp.mode)
+  outFL('output file {!r} does not {} expected value:', path, exp.mode)
   for line in exp.val.splitlines():
     outL('\x1B[0;34m', line, '\x1B[0m') # blue text.
   if exp.val and not exp.val.endswith('\n'):
     outL('(missing final newline)')
   if exp.mode == 'equal': # show a diff.
-    path_expected = exp.path + '-expected'
+    path_expected = path + '-expected'
     write_to_path(path_expected, exp.val)
-    cmd = diff_cmd + [path_expected, exp.path]
+    cmd = diff_cmd + [path_expected, path]
     outSL(*cmd)
     runC(cmd, exp=None)
   else:
-    outSL('cat', exp.path)
-    with open(exp.path) as f:
+    outSL('cat', path)
+    with open(path) as f:
       line = None
       for line in f:
         l = line.rstrip('\n')
