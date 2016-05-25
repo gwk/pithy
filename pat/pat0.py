@@ -189,6 +189,13 @@ def main_apply(args):
     si += 1
 
 
+def pat_dependencies(src_path, src_file, dir_names):
+  version_line = src_file.readline()
+  orig_line = src_file.readline()
+  orig_path = orig_line.strip()
+  return [orig_path]
+
+
 def main():
   # cannot get argparse to do quite what i want, so using two parsers for now.
   parser = ArgumentParser(prog='pat', description='create or apply a .pat patch file.')
@@ -230,7 +237,7 @@ def main():
   args.handler(args)
 
 
-__all__ = ['main']
+__all__ = ['pat_dependencies', 'main']
 
 
 if __name__ == '__main__':
