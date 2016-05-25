@@ -104,7 +104,7 @@ def main_diff(args):
     assert (i == 0) or (has_context and (i in matching_indices))
 
     if i == 0:
-      f_out.write('\n$\n') # add first separator line and start-of-file symbol line.
+      f_out.write('\n|^\n') # add first separator line and start-of-file symbol line.
     elif prev_end < i: # not merged with previous hunk; separate with blank line.
       f_out.write('\n')
 
@@ -160,14 +160,14 @@ def main_apply(args):
   for pi, patch_line in enumerate(patch_lines):
     if patch_line == '\n':
       continue
+    if patch_line == '|^\n':
+      if si != 0:
+        patch_failF(pi, 'patch start-of-file symbol `|^` may only occur at beginning of patch.')
+      continue
     prefix = patch_line[0]
     line = patch_line[2:]
     if prefix == '#':
       pass
-    elif prefix == '$':
-      if si != 0:
-        patch_failF(pi, 'patch start symbol `$` may only occur at beginning of patch.')
-      continue
     elif prefix in '|-':
       si_start = si
       while si < len_src and src_line() != line:
