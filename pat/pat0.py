@@ -202,8 +202,8 @@ def main():
   parser.epilog = "for help with a specific command, pass '-h' to that command."
 
   subs = parser.add_subparsers()
-  subs.required = True
-  subs.dest = 'command'
+  subs.required = True # unofficial workaround.
+  subs.dest = 'command' # this is necessary to make `required` above work.
 
   sub_diff = subs.add_parser('diff',
     help='create .pat style diff between two existing source files.')
