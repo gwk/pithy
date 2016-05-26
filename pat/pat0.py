@@ -28,20 +28,23 @@ def failF(fmt, *items):
 
 def main_diff(args):
   'diff command entry point.'
-  f_a = args.original
-  f_b = args.modified
+  original = args.original
+  modified = args.modified
   f_out = args.destination
   min_context = args.min_context
 
   if min_context < 1: failF('min-context value must be positive.')
 
-  a_lines = f_a.readlines()
-  b_lines = f_b.readlines()
-  lines = list(ndiff(a_lines, b_lines))
+  if original.name.find('..') != -1:
+    failF("original path cannot contain '..': {!r}", original.name)
 
-  if a_lines and not a_lines[-1].endswith('\n'):
+  o_lines = original.readlines()
+  m_lines = modified.readlines()
+  lines = list(ndiff(o_lines, m_lines))
+
+  if o_lines and not o_lines[-1].endswith('\n'):
     failF('{}:{} original document is missing final newline (not yet supported).')
-  if b_lines and not b_lines[-1].endswith('\n'):
+  if m_lines and not m_lines[-1].endswith('\n'):
     failF('{}:{} modified document is missing final newline (not yet supported).')
 
   # first, find hunk ranges and identical lines.
@@ -119,6 +122,22 @@ def main_diff(args):
     prev_end = hunk_end
 
 
+def open_orig_path(path):
+  try:
+   return open(path)
+  except FileNotFoundError:
+    pass
+  if not path.startswith('/') and not path.startswith('_build/'):
+    build_path = '_build/' + path
+    try:
+      return open(build_path)
+    except FileNotFoundError:
+      patch_failF(1, 'could not open source path specified by patch: {!r}\n'
+        '  also could not open corresponding build path: {!r}', path, build_path)
+  else:
+    patch_failF(1, 'could not open source path specified by patch: {!r}', path)
+
+
 def main_apply(args):
   'apply command entry point.'
   f_patch = args.patch
@@ -128,7 +147,7 @@ def main_apply(args):
     failF('{}:{}: ' + fmt, f_patch.name, line_num + 1, *items)
 
   version_line = f_patch.readline()
-  src_line = f_patch.readline()
+  orig_line = f_patch.readline()
   patch_lines = f_patch.readlines()
 
   m = version_re.fullmatch(version_line)
@@ -138,30 +157,30 @@ def main_apply(args):
   version = m.group(1)
   if version != pat_version: patch_failF(0, 'unsupported version number: {}', version)
 
-  if not src_line:
-    patch_failF(1, 'patch file does not specify a source path')
-  src_path = src_line.rstrip()
+  if not orig_line:
+    patch_failF(1, 'patch file does not specify an original path')
+  orig_path = orig_line.rstrip()
 
-  try:
-   f_src = open(src_path)
-  except FileNotFoundError:
-    patch_failF(1, 'could not open source path specified by patch: {!r}', src_path)
+  if orig_path.find('..') != -1:
+    failF("original path cannot contain '..': {!r}", orig_path)
 
-  src_lines = f_src.readlines()
+  f_orig = open_orig_path(orig_path)
 
-  src_line_indices = defaultdict(set)
-  for i, src_line in enumerate(src_lines):
-    src_line_indices[src_line].add(i)
+  orig_lines = f_orig.readlines()
 
-  len_src = len(src_lines)
-  si = 0 # source index.
-  def src_line(): return src_lines[si]
+  orig_line_indices = defaultdict(set)
+  for i, orig_line in enumerate(orig_lines):
+    orig_line_indices[orig_line].add(i)
+
+  len_orig = len(orig_lines)
+  orig_index = 0
+  def orig_line(): return orig_lines[orig_index]
 
   for pi, patch_line in enumerate(patch_lines):
     if patch_line == '\n':
       continue
     if patch_line == '|^\n':
-      if si != 0:
+      if orig_index != 0:
         patch_failF(pi, 'patch start-of-file symbol `|^` may only occur at beginning of patch.')
       continue
     prefix = patch_line[0]
@@ -169,24 +188,24 @@ def main_apply(args):
     if prefix == '#':
       pass
     elif prefix in '|-':
-      si_start = si
-      while si < len_src and src_line() != line:
-        f_out.write(src_line())
-        si += 1
-      if si == len_src:
+      orig_index_start = orig_index
+      while orig_index < len_orig and orig_line() != line:
+        f_out.write(orig_line())
+        orig_index += 1
+      if orig_index == len_orig:
         patch_failF(pi, 'patch context line does not match in source line range: {}-{}\n{}',
-          si_start + 1, si + 1, patch_line)
+          orig_index_start + 1, orig_index + 1, patch_line)
       if prefix == '|':
-        f_out.write(src_line())
-      si += 1
+        f_out.write(orig_line())
+      orig_index += 1
     elif prefix == '+':
       f_out.write(line)
     else:
       patch_failF(pi, 'bad patch line prefix: {!r}',  prefix)
 
-  while si < len_src:
-    f_out.write(src_line())
-    si += 1
+  while orig_index < len_orig:
+    f_out.write(orig_line())
+    orig_index += 1
 
 
 def pat_dependencies(src_path, src_file, dir_names):
