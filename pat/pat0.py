@@ -69,7 +69,11 @@ def main_diff(args):
     hunk_ranges.append((hunk_start, len(lines)))
   
   f_out.write('pat v' + pat_version + '\n')
-  f_out.write(args.original.name + '\n')
+
+  orig_path_clean = args.original.name
+  if orig_path_clean.startswith('_build/'):
+    orig_path_clean = orig_path_clean[len('_build/'):]
+  f_out.write(orig_pth_clean + '\n')
 
   # emit hunks with enough context lines to disambiguate identical lines.
   prev_end = 0
