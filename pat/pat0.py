@@ -219,7 +219,7 @@ def main():
   sub_diff.add_argument('destination', nargs='?', type=FileType('w'), default='-',
     help='output path (defaults to stdout)')
   
-  sub_diff.add_argument('-min-context', type=int, default=1,
+  sub_diff.add_argument('-min-context', type=int, default=3,
     help='minimum number of lines of context to show before each hunk.')
 
   sub_apply = subs.add_parser('apply',
