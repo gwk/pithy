@@ -166,7 +166,7 @@ def main_apply(args):
   orig_path = orig_line.rstrip()
 
   if orig_path.find('..') != -1:
-    failF("original path cannot contain '..': {!r}", orig_path)
+    patch_failF(1, "original path cannot contain '..': {!r}", orig_path)
 
   f_orig = open_orig_path(orig_path)
 
@@ -180,7 +180,7 @@ def main_apply(args):
   orig_index = 0
   def orig_line(): return orig_lines[orig_index]
 
-  for pi, patch_line in enumerate(patch_lines):
+  for pi, patch_line in enumerate(patch_lines, 2): # advance two lines.
     if patch_line == '\n':
       continue
     if patch_line == '|^\n':
@@ -216,6 +216,8 @@ def pat_dependencies(src_path, src_file, dir_names):
   version_line = src_file.readline()
   orig_line = src_file.readline()
   orig_path = orig_line.strip()
+  if not orig_path:
+    failF('pat_dependencies: {}:2: line specifying original path is missing or empty.', src_path)
   return [orig_path]
 
 
