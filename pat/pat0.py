@@ -72,6 +72,7 @@ def main_diff(args):
   # where each hunk is a pair of (match, diff).
   # however actually materializing the diff is not necessary;
   # we simply get the match at the start, or synthesize an empty one as appropriate.
+  has_start_symbol = False
   i, j, n = matches[0]
   match_iter = iter(matches)
   if i == 0 and j == 0: # real match at start.
@@ -84,6 +85,7 @@ def main_diff(args):
   for i1, j1, n1 in match_iter:
     di = i + n # beginning of diff for o.
     dj = j + n # beginning of diff for m.
+    if di == len(o_lines) and dj == len(m_lines): break # no diff.
     # calculate how much context we need for this hunk to be ambiguous.
     # this includes the lines subtracted from the original in the calculation.
     # start with the last deleted line of the current diff in o.
@@ -100,7 +102,8 @@ def main_diff(args):
         break
     ci = max(i, min(ci, di - min_context))
     #errFL('* ci:{}', ci)
-    if ci == 0:
+    if ci == 0 and not has_start_symbol:
+      has_start_symbol = True
       write('\n|^\n') # add first separator line and start-of-file symbol line.
     elif i < ci: # not merged with previous hunk; separate with blank line.
       write('\n')

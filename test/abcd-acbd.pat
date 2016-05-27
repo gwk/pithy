@@ -6,4 +6,3 @@ test/abcd.txt
 + c
 | b
 - c
-| d

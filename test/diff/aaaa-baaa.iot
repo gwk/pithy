@@ -1,0 +1,4 @@
+{
+  'desc': 'unlike git diff, pat does not show this as a single grouped edit (unfortunate).',
+  'args': ['test/aaaa.txt', 'test/baaa.txt'],
+}
