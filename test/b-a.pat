@@ -1,5 +1,6 @@
 pat v0
-test/empty.txt
+test/b.txt
 
 |^
+- b
 + a

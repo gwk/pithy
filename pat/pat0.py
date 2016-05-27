@@ -6,7 +6,7 @@ import sys
 
 from argparse import ArgumentParser, FileType
 from collections import defaultdict
-from difflib import ndiff
+from difflib import SequenceMatcher
 
 
 pat_version = '0'
@@ -40,90 +40,80 @@ def main_diff(args):
 
   o_lines = original.readlines()
   m_lines = modified.readlines()
-  lines = list(ndiff(o_lines, m_lines))
 
   if o_lines and not o_lines[-1].endswith('\n'):
     failF('{}:{} original document is missing final newline (not yet supported).')
   if m_lines and not m_lines[-1].endswith('\n'):
     failF('{}:{} modified document is missing final newline (not yet supported).')
 
-  # first, find hunk ranges and identical lines.
-  bare_line_indices = defaultdict(set)
-  hunk_ranges = []
-  in_hunk = False
-  hunk_start = -1
-  for i, line in enumerate(lines):
-    prefix = line[0]
-    if line[0] in (' ', '-'): # the line is in the original document.
-      bare_line = line[2:] # strip off the diff prefix character and space.
-      bare_line_indices[bare_line].add(i)
-    if in_hunk:
-      if prefix == ' ':
-        in_hunk = False
-        hunk_ranges.append((hunk_start, i))
-    else:
-      if prefix != ' ':
-        in_hunk = True
-        hunk_start = i
-  if in_hunk:
-    hunk_ranges.append((hunk_start, len(lines)))
-  
-  f_out.write('pat v' + pat_version + '\n')
+  def write(line): f_out.write(line)
+
+  write('pat v' + pat_version + '\n')
 
   orig_path_clean = args.original.name
   if orig_path_clean.startswith('_build/'):
     orig_path_clean = orig_path_clean[len('_build/'):]
-  f_out.write(orig_pth_clean + '\n')
+  write(orig_path_clean + '\n')
 
-  # emit hunks with enough context lines to disambiguate identical lines.
-  prev_end = 0
-  for hunk_start, hunk_end in hunk_ranges:
-    assert hunk_start < hunk_end
-    #print('HUNK', hunk_start, hunk_end, file=sys.stderr)
-    # walk back through the hunk and continue until the sequence of lines is unique.
-    # algorithm begins with the set of indices for instances of start line.
-    # we walk backwards, gathering lines of context, until hunk is unambiguous.
-    i = hunk_end - 1 # start with last line.
-    start_max = hunk_start - min_context # always iterate at least to this index.
-    matching_indices = set() # track all locations that match thus far.
-    last_line = lines[i]
-    has_context = False
-    if last_line[0] == '-':
-      has_context = True
-      matching_indices = bare_line_indices[last_line[2:]]
-    while i > prev_end and (len(matching_indices) != 1 or i > start_max):
-      # once we hit the previous end, the hunks simply merge.
-      # otherwise, if we have multiple indices,
-      # then the match is ambiguous and we need more context.
-      i -= 1
-      line = lines[i]
-      prefix = line[0]
-      if prefix in (' ', '-'): # line is in source document.
-        line_indices = bare_line_indices[line[2:]]
-        if has_context: # matching has already begun.
-          # find all instances of line that precede the indices in the matching set.
-          prevs = { max(0, j - 1) for j in matching_indices }
-          matching_indices = line_indices.union(prevs)
-        else:
-          has_context = True
-          matching_indices = line_indices
+  line_indices = defaultdict(set) # maps line contents to line numbers.
+  for i, line in enumerate(o_lines):
+    line_indices[line].add(i)
 
-    assert (i == 0) or (has_context and (i in matching_indices))
+  matches = SequenceMatcher(None, o_lines, m_lines).get_matching_blocks()
+  # returns triples of form (i, j, n); o_lines[i:i+n] == m_lines[j:j+n].
+  # matches are monotonically increasing in i and j.
+  # the last match is a sentinal with (len(o_lines), len(m_lines), 0).
+  # it is the only match with n == 0.
+  # for non-sentinel adjacent matches (i, j, n) and (i1, j1, n1),
+  # then i+n != i1 or j+n != j1, or both.
+  # in other words, adjacent matches always describe non-adjacent equal blocks.
 
-    if i == 0:
-      f_out.write('\n|^\n') # add first separator line and start-of-file symbol line.
-    elif prev_end < i: # not merged with previous hunk; separate with blank line.
-      f_out.write('\n')
+  # conceptually, we turn the sequence of matches into a sequence of hunks,
+  # where each hunk is a pair of (match, diff).
+  # however actually materializing the diff is not necessary;
+  # we simply get the match at the start, or synthesize an empty one as appropriate.
+  i, j, n = matches[0]
+  match_iter = iter(matches)
+  if i == 0 and j == 0: # real match at start.
+    if n == len(o_lines) and n == len(m_lines): # o and m are identical.
+      return # avoids outputting a trailing newline.
+    next(match_iter) # advance.
+  else: # need a dummy match to start the first hunk.
+    i, j, n = (0, 0, 0)
 
-    for j in range(i, hunk_end):
-      line = lines[j]
-      assert line.endswith('\n') # TODO: deal with final missing newline in original and modified.
-      if line[0] == ' ':
-        f_out.write('|')
-        f_out.write(line[1:])
-      else:
-        f_out.write(line)
-    prev_end = hunk_end
+  for i1, j1, n1 in match_iter:
+    di = i + n # beginning of diff for o.
+    dj = j + n # beginning of diff for m.
+    # calculate how much context we need for this hunk to be ambiguous.
+    # this includes the lines subtracted from the original in the calculation.
+    # start with the last deleted line of the current diff in o.
+    ci = i1 - 1
+    matching_indices = line_indices[o_lines[ci]] if (ci >= 0) else set()
+    # iterate back through the first line of context.
+    #errFL('\ni:{}-{}-{} j:{}-{}-{} ci:{} mi:{}', i, di, i1, j, dj, j1, ci, matching_indices)
+    for ci in range(ci - 1, i - 1, -1):
+      decr_indices = { j - 1 for j in matching_indices } # step all candidates backwards.
+      curr_indices = line_indices[o_lines[ci]]
+      matching_indices = decr_indices.intersection(curr_indices)
+      #errFL('  ci: {}; decr:{} curr:{} mi:{}', ci, decr_indices, curr_indices, matching_indices)
+      if len(matching_indices) == 1:
+        break
+    ci = max(i, min(ci, di - min_context))
+    #errFL('* ci:{}', ci)
+    if ci == 0:
+      write('\n|^\n') # add first separator line and start-of-file symbol line.
+    elif i < ci: # not merged with previous hunk; separate with blank line.
+      write('\n')
+    # output context and diff.
+    for o in range(ci, di):
+      write('| ' + o_lines[o]) # write context lines.
+    for o in range(di, i1):
+      write('- ' + o_lines[o]) # remove lines from original.
+    for m in range(dj, j1):
+      write('+ ' + m_lines[m]) # add lines from modified.
+    i = i1
+    j = j1
+    n = n1
 
 
 def open_orig_path(path):

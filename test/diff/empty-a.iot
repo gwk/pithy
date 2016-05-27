@@ -1,3 +1,0 @@
-{
-  'args': ['test/empty.txt', 'test/a.txt'],
-}

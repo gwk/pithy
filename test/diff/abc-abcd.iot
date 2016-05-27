@@ -1,3 +1,4 @@
 {
+  'desc': 'leading context is sufficient but reaches start; outputs start symbol.',
   'args': ['test/abc.txt', 'test/abcd.txt'],
 }

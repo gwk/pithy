@@ -1,0 +1,4 @@
+{
+  'desc': 'leading context is sufficient; no start symbol.',
+  'args': ['test/abcd.txt', 'test/abcde.txt'],
+}

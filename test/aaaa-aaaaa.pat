@@ -6,4 +6,4 @@ test/aaaa.txt
 | a
 | a
 | a
-+ b
++ a

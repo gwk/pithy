@@ -1,0 +1,3 @@
+{
+  'args': ['test/z.txt', 'test/z.txt'],
+}

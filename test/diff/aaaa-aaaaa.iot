@@ -1,0 +1,4 @@
+{
+  'desc': 'leading context is ambiguous; must output start symbol.',
+  'args': ['test/aaaa.txt', 'test/aaaaa.txt'],
+}
