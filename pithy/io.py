@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import json as _json
 import pprint as _pp
 import string as _string
 import sys as _sys
@@ -85,6 +86,16 @@ def writeP(file, *items, label=None, indent=2, **opts):
     #file.write('\n')
 
 
+def write_json(file, *items, indent=2, sort_keys=True, end='\n'):
+  # TODO: remaining options with sensible defaults.
+  for item in items:
+    if not isinstance(item, (dict, list, tuple, str, int, float, bool, type(None))):
+      item = tuple(item) # attempt to convert the object to a sequence.
+    _json.dump(item, file, indent=indent, sort_keys=sort_keys)
+    if end:
+      stdout.write(end)
+
+
 # std out.
 
 def outZ(*items, sep='', end=''):
@@ -126,6 +137,9 @@ def outFL(fmt, *items, **keyed_items):
 def outP(*items, label=None, **opts):
   'pretty print to std out.'
   writeP(stdout, *items, label=label, **opts)
+
+def out_json(*items, indent=2, sort_keys=True, end='\n'):
+  write_json(stdout, *items, indent=indent, sort_keys=sort_keys, end=end)
 
 
 # std err.
@@ -169,6 +183,9 @@ def errFL(fmt, *items, **keyed_items):
 def errP(*items, label=None, **opts):
   'pretty print to std err.'
   writeP(stderr, *items, label=label, **opts)
+
+def err_json(*items, indent=2, sort_keys=True, end='\n'):
+  write_json(stderr, *items, indent=indent, sort_keys=sort_keys, end=end)
 
 
 # errors.
