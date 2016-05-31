@@ -20,7 +20,11 @@ def writeZ(file, *items, sep='', end=''):
   "write items to file; default sep='', end=''."
   print(*items, sep=sep, end=end, file=file)
 
-def writeS(file, *items):
+def writeS(file, *items, sep=''):
+  "write items to file; sep='', end=' '."
+  print(*items, sep=sep, end=' ', file=file)
+
+def writeSZ(file, *items):
   "write items to file; sep=' ', end=''."
   print(*items, sep=' ', end='', file=file)
 
@@ -102,9 +106,13 @@ def outZ(*items, sep='', end=''):
   "write items to std out; sep='', end=''."
   print(*items, sep=sep, end=end)
 
-def outS(*items):
+def outS(*items, sep=''):
+  "write items to std out; sep='', end=' '."
+  print(*items, sep=sep, end=' ')
+
+def outSZ(*items):
   "write items to std out; sep=' ', end=''."
-  print(*items, end='')
+  print(*items, sep=' ', end='')
 
 def outSS(*items):
   "write items to std out; sep=' ', end=' '."
@@ -148,7 +156,11 @@ def errZ(*items, sep='', end=''):
   "write items to std err; default sep='', end=''."
   print(*items, sep=sep, end=end, file=stderr)
 
-def errS(*items):
+def errS(*items, sep=''):
+  "write items to std err; sep='', end=' '."
+  print(*items, sep=sep, end=' ', file=stderr)
+
+def errSZ(*items):
   "write items to std err; sep=' ', end=''."
   print(*items, sep=' ', end='', file=stderr)
 
