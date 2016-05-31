@@ -4,7 +4,7 @@ def plural_s(count):
   return '' if count == 1 else 's'
 
 
-def set_defaults(d, defaults):
+def set_defaults(d: dict, defaults: dict):
   for k, v in defaults.items():
     d.setdefault(k, v)
   return d
