@@ -22,7 +22,7 @@ def bindings_matching(prefix=None, type=None, strip_prefix=True, frame='<module>
     if bindings is None:
       raise ValueError('call stack does not contain a matching frame: {}'.format(frame))
   else:
-    raise ValueError("frame parameter must be either an int (depth; immediate caller is 1), "
+    raise TypeError("frame parameter must be either an int (depth; immediate caller is 1), "
       "or a string (the name of the target frame's function, or '<module>', the default).")
   pairs = []
   for name, value in bindings.items():
@@ -39,13 +39,13 @@ def bindings_matching(prefix=None, type=None, strip_prefix=True, frame='<module>
 def dispatcher_for_names(prefix=None, default=None):
   assert prefix
   bindings = dict(bindings_matching(prefix=prefix, type=FunctionType, frame='<module>'))
-  def dispatch_fn(name, *args):
+  def dispatch_fn(name, *args, **kwargs):
     try:
       fn = bindings[name]
     except KeyError:
       if default is None: raise
       fn = bindings[default]
-    return fn(*args)
+    return fn(*args, **kwargs)
 
   return dispatch_fn
 
