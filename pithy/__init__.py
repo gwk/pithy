@@ -3,7 +3,7 @@
 from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from functools import singledispatch
-from sys import stderr, stdout
+from sys import argv, stderr, stdout
 
 from .fs import *
 from .io import *
