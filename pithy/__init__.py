@@ -7,7 +7,6 @@ from sys import argv, stderr, stdout
 
 from .fs import *
 from .io import *
-from .plus_encode import *
 from .seq import *
 from .task import *
 from .type_util import *
