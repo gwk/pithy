@@ -253,16 +253,43 @@ def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder):
   write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls)
 
 
-def err_progress_iter(iterator, label=None, suffix='', frequency=100):
+def err_progress_iter(iterator, label=None, suffix='', frequency=0.1):
+  if not frequency:
+    return iterator
+
   if label is None:
     label = str(iterator)
-  if suffix != '':
-    suffix = ' ' + str(suffix)
-  for i, el in enumerate(iterator):
-    if i % frequency == 0:
-      errZ('\r', label, ': ', i, suffix, '…')
-    yield el
-  errL('\r', label, ': ', i, suffix, '.')
+  pre = '\r' + label + ': '
+  post = ' ' + suffix + '…' if suffix else '…'
+  final = ' ' + suffix + '.' if suffix else '.'
+
+  if isinstance(frequency, float):
+    from time import time
+    def err_progress_gen():
+      prev_t = time()
+      step = 1
+      next_i = step
+      for i, el in enumerate(iterator):
+        if i == next_i:
+          print(pre + str(i) + post, end='', file=stderr)
+          t = time()
+          d = t - prev_t
+          step = max(1, int(step * frequency / d))
+          prev_t = t
+          next_i = i + step
+        yield el
+      print(pre + str(i) + final, file=stderr)
+
+
+  else:
+    def err_progress_gen():
+      for i, el in enumerate(iterator):
+        if i % frequency == 0:
+          print(pre + str(i) + post, end='', file=stderr)
+        yield el
+      print(pre + str(i) + final, file=stderr)
+
+  return err_progress_gen()
 
 
 # errors.
