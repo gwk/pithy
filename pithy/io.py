@@ -253,6 +253,18 @@ def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder):
   write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls)
 
 
+def err_progress_iter(iterator, label=None, suffix='', frequency=100):
+  if label is None:
+    label = str(iterator)
+  if suffix != '':
+    suffix = ' ' + str(suffix)
+  for i, el in enumerate(iterator):
+    if i % frequency == 0:
+      errZ('\r', label, ': ', i, suffix, '…')
+    yield el
+  errL('\r', label, ': ', i, suffix, '.')
+
+
 # errors.
 
 def fail(*items, sep=''):
