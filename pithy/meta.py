@@ -36,15 +36,20 @@ def bindings_matching(prefix=None, type=None, strip_prefix=True, frame='<module>
   return pairs
 
 
-def dispatcher_for_names(prefix=None, default=None):
+def dispatcher_for_names(prefix=None, default_name=None, default_fn=None):
   assert prefix
   bindings = dict(bindings_matching(prefix=prefix, type=FunctionType, frame='<module>'))
+  if default_name is not None:
+    if default_fn is not None:
+      raise ValueError('default_name and default_fn cannot both be specified.')
+    default_fn = bindings[default]
+  
   def dispatch_fn(name, *args, **kwargs):
     try:
       fn = bindings[name]
     except KeyError:
-      if default is None: raise
-      fn = bindings[default]
+      if default_fn is None: raise
+      fn = default_fn
     return fn(*args, **kwargs)
 
   return dispatch_fn
