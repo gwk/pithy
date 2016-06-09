@@ -48,3 +48,22 @@ def zip_neighbors(seq, length=2):
       yield tuple(buffer)
       del buffer[0]
 
+
+class IterBuffer():
+  
+  def __init__(self, iterator):
+    self.iterator = iterator
+    self.buffer = []
+
+  def __iter__(self): return self
+
+  def __next__(self):
+    try:
+      return self.buffer.pop()
+    except IndexError: pass
+    return next(self.iterator)
+
+  def push(self, item):
+    self.buffer.append(item)
+
+
