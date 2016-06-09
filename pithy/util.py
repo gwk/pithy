@@ -10,19 +10,21 @@ def set_defaults(d: dict, defaults: dict):
   return d
 
 
-def memoize(sentinal):
+def memoize(sentinal=Ellipsis):
   '''
   recursive function memoization decorator.
   results will be memoized by a key that is the tuple of all arguments.
   the sentinal is inserted into the dictionary before the call.
   thus, if the function recurses with identical arguments the sentinal will be returned to the inner calls.
   '''
-  def _memoize(fn):
-    class MemoDictRec(dict):
+  if callable(sentinal):
+    raise ValueError('sentinal is callable, but should be a simple marker value; did you mean `@memoize()`?')
 
+  def _memoize(fn):
+
+    class MemoDictRec(dict):
       def __call__(self, *args):
         return self[args]
-
       def __missing__(self, args):
         self[args] = sentinal
         res = fn(*args)
@@ -30,5 +32,5 @@ def memoize(sentinal):
         return res
 
     return MemoDictRec()
-  return _memoize
 
+  return _memoize
