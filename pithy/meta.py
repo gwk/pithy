@@ -55,6 +55,12 @@ def dispatcher_for_names(prefix=None, default_name=None, default_fn=None):
   return dispatch_fn
 
 
+def rename(obj, name):
+  obj.__name__ = name
+  obj.__qualname__ = name
+  return obj
+
+
 def main_file_path():
   import __main__
   return __main__.__file__
