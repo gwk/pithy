@@ -253,7 +253,7 @@ def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder):
   write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls)
 
 
-def err_progress_iter(iterator, label=None, suffix='', frequency=0.1):
+def err_progress(iterator, label='progress', suffix='', frequency=0.1):
   if not frequency:
     return iterator
 
@@ -271,7 +271,7 @@ def err_progress_iter(iterator, label=None, suffix='', frequency=0.1):
       next_i = step
       for i, el in enumerate(iterator):
         if i == next_i:
-          print(pre + str(i) + post, end='', file=stderr)
+          print(pre + str(i) + post, end='', file=stderr, flush=True)
           t = time()
           d = t - prev_t
           step = max(1, int(step * frequency / d))
@@ -285,7 +285,7 @@ def err_progress_iter(iterator, label=None, suffix='', frequency=0.1):
     def err_progress_gen():
       for i, el in enumerate(iterator):
         if i % frequency == 0:
-          print(pre + str(i) + post, end='', file=stderr)
+          print(pre + str(i) + post, end='', file=stderr, flush=True)
         yield el
       print(pre + str(i) + final, file=stderr)
 
