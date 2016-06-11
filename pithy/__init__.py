@@ -3,8 +3,10 @@
 from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from functools import singledispatch
+from itertools import chain, islice
 from sys import argv, stderr, stdout
 
+from .dicts import *
 from .fs import *
 from .io import *
 from .seq import *
