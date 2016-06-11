@@ -4,7 +4,6 @@ import json as _json
 import json.decoder as _json_dec
 import json.encoder as _json_enc
 
-import pickle as _pickle
 import pprint as _pp
 import string as _string
 import sys as _sys
@@ -151,10 +150,6 @@ def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder):
     _json.dump(item, file, indent=indent, sort_keys=sort, cls=cls)
     if end:
       stdout.write(end)
-
-
-def write_pickle(file, obj):
-  _pickle.dump(obj, file, protocol=_pickle.HIGHEST_PROTOCOL)
 
 
 # std out.
