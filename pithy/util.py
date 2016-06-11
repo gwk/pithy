@@ -1,5 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from itertools import islice
+
+
+def islice_from(seq, start):
+  return islice(seq, start, len(seq))
+
+
 def plural_s(count):
   return '' if count == 1 else 's'
 
