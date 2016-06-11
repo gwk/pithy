@@ -171,6 +171,7 @@ class Case:
     self.args = None # arguments to follow the file under test.
     self.cmd = None # command with which to invoke the test.
     self.code = None # the expected exit code.
+    self.desc = None # description.
     self.env = None # environment variables.
     self.err_mode = None # comparison mode for stderr expectation.
     self.err_path = None # file path for stderr expectation.
@@ -357,6 +358,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list, None),
   'cmd':      ('string or list of strings', is_str_or_list, None),
   'code':     ('int',                       is_int,         None),
+  'desc':     ('str',                       is_str,         None),
   'env':      ('dict of strings',           is_dict_of_str, None),
   'err_mode': ('str',                       is_str,         validate_exp_mode),
   'err_path': ('str',                       is_str,         None),
@@ -412,6 +414,7 @@ def try_case(ctx, case):
     ctx.fail_fast()
     ok = False
   if not ok:
+    if case.desc: outSL('description:', case.desc)
     outL('=' * bar_width, '\n')
   if ctx.dbg: errL()
   if not ok: ctx.fail_fast()
