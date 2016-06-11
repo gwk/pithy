@@ -24,10 +24,7 @@ class JsonEncoder(_json.JSONEncoder):
     try:
       return obj._asdict()
     except AttributeError: pass
-    try:
-        return list(obj)
-    except TypeError: pass
-    return _json.JSONEncoder.default(self, obj) # raises TypeError.
+    return list(obj)
 
   def iterencode(self, o, _one_shot=False):
     '''
@@ -330,11 +327,11 @@ def raiseF(fmt, *items, E=Exception):
 # input.
 
 
-def _mk_record_types_hook(record_types):
-  if not record_types: return None
+def _mk_json_types_hook(types):
+  if not types: return None
 
-  type_map = { frozenset(t._fields) : t for t in record_types }
-  if len(type_map) < len(record_types):
+  type_map = { frozenset(t._fields) : t for t in types }
+  if len(type_map) < len(types):
     # TODO: find all offending pairs.
     raise ValueError('provided record types are ambiguous (identical field name sets).')
 
@@ -348,23 +345,23 @@ def _mk_record_types_hook(record_types):
   return _read_json_object_hook
 
 
-def read_json(str_or_file, record_types=()):
+def read_json(str_or_file, types=()):
   '''
   read json from either a string or file.
-  if record_types is a non-empty sequence,
+  if types is a non-empty sequence,
   then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
   '''
-  hook = _mk_record_types_hook(record_types)
+  hook = _mk_json_types_hook(types)
   if isinstance(str_or_file, str):
     return _json.loads(str_or_file, object_hook=hook)
   else:
     return _json.load(str_or_file, object_hook=hook)
 
 
-def read_jsons(str_or_file, record_types=()):
-  hook = _mk_record_types_hook(record_types)
+def read_jsons(str_or_file, types=()):
+  hook = _mk_json_types_hook(types)
   if isinstance(str_or_file, str):
     string = str_or_file
   else:
@@ -373,7 +370,10 @@ def read_jsons(str_or_file, record_types=()):
   decoder = _json.JSONDecoder(object_hook=hook)
   ws_re = _json_dec.WHITESPACE
 
-  def read_jsons_gen(): # prevents delayed evaluation of read on file, which could get closed by a context manager.
+  # create generator as inner function,
+  # so that the file read above gets executed before returning the iterator.
+  # otherwise the file might get closed on closed prematurely by a context manager.
+  def read_jsons_gen():
     idx = ws_re.match(string, 0).end()
     while idx < len(string):
       obj, end = decoder.raw_decode(string, idx)
