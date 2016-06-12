@@ -1,5 +1,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+
+def seq_from_index(seq, start_index):
+  it = iter(seq)
+  c = start_index
+  while c > 0:
+    try:
+      next(it)
+      c -= 1
+    except StopIteration:
+      break
+  return it
+
+
 def grouped_seq(seq, key_fn):
   '''
   group the elements of the sequence by applying a function to each object that returns a key.
