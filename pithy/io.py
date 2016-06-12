@@ -255,8 +255,8 @@ def err_progress(iterator, label='progress', suffix='', frequency=0.1):
 
   if label is None:
     label = str(iterator)
-  pre = '\r' + label + ': '
-  post = ' ' + suffix + '…' if suffix else '…'
+  pre = '\r◊ ' + label + ': '
+  post = (suffix and ' ' + suffix) + '…'
   final = ' ' + suffix + '.' if suffix else '.'
 
   if isinstance(frequency, float):
