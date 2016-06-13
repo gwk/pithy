@@ -250,13 +250,15 @@ def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder):
 
 
 def err_progress(iterator, label='progress', suffix='', frequency=0.1):
-  if not frequency:
+  if not frequency or not stderr.isatty():
     return iterator
+
+  from pithy.ansi import ERASE_LINE
 
   if label is None:
     label = str(iterator)
-  pre = '\r◊ ' + label + ': '
-  post = (suffix and ' ' + suffix) + '…'
+  pre = '◊ ' + label + ': '
+  post = (suffix and ' ' + suffix) + '…\r'
   final = ' ' + suffix + '.' if suffix else '.'
 
   if isinstance(frequency, float):
@@ -268,6 +270,7 @@ def err_progress(iterator, label='progress', suffix='', frequency=0.1):
       for i, el in enumerate(iterator):
         if i == next_i:
           print(pre + str(i) + post, end='', file=stderr, flush=True)
+          print(ERASE_LINE, end='', file=stderr, flush=False)
           t = time()
           d = t - prev_t
           step = max(1, int(step * frequency / d))
@@ -282,6 +285,7 @@ def err_progress(iterator, label='progress', suffix='', frequency=0.1):
       for i, el in enumerate(iterator):
         if i % frequency == 0:
           print(pre + str(i) + post, end='', file=stderr, flush=True)
+          print(ERASE_LINE, end='', file=stderr, flush=False)
         yield el
       print(pre + str(i) + final, file=stderr)
 
