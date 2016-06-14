@@ -29,7 +29,7 @@ def grouped_seq(seq, key_fn):
     group.append(el)
   return groups
 
-def grouped_sorted_seq(seq, predicate):
+def grouped_sorted_seq(seq, comparison):
   '''
   group the elements of the sorted sequence by applying a comparison predicate
   to each successive pair of elements, creating a new group when the comparison fails.
@@ -43,11 +43,12 @@ def grouped_sorted_seq(seq, predicate):
   group = [first]
   prev = first
   for el in it:
-    if predicate(prev, el):
+    if comparison(prev, el):
       group.append(el)
     else:
       groups.append(group)
       group = [el]
+    prev = el
   if group:
     groups.append(group)
   return groups
