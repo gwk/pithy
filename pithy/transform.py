@@ -170,7 +170,7 @@ class Transformer:
     stages = self.stages
     DropItem = self.DropItem
 
-    errFL('transform stages: {}.', ', '.join(self.stage_names))
+    errFL('◊ transform stages: {}.', ', '.join(self.stage_names))
 
     for item in err_progress(self.seq, 'transform', 'items', frequency=self.progress_frequency):
       try:
@@ -184,5 +184,5 @@ class Transformer:
 
     for i, (name, count) in enumerate(zip(self.stage_names, self.counts)):
       if count == -1: count = '-'
-      errFL('  {:0{width}}-{}: {}', i, name, count, width=self.log_index_width)
+      errFL('◊   {:0{width}}-{}: {}', i, name, count, width=self.log_index_width)
 
