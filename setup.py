@@ -24,7 +24,7 @@ setup(
   author_email='george.w.king@gmail.com',
   url='https://github.com/gwk/pithy',
   description='Pithy is a collection of utilities for scripting in Python 3.',
-  long_description=readme,
+  long_description=long_description,
   packages=['pithy'],
   keywords=['scripting', 'testing', 'utilities'],
   classifiers=[ # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
