@@ -172,8 +172,10 @@ class Case:
     self.broken = proto.broken if (proto is not None) else False
     # configurable properties.
     self.args = None # arguments to follow the file under test.
-    self.cmd = None # command with which to invoke the test.
+    self.cmd = None # command string/list with which to invoke the test.
     self.code = None # the expected exit code.
+    self.compile = None # the optional compile command string/list.
+    self.compile_timeout = None
     self.desc = None # description.
     self.env = None # environment variables.
     self.err_mode = None # comparison mode for stderr expectation.
@@ -279,9 +281,11 @@ class Case:
     for key in ('NAME', 'SRC', 'ROOT'):
       if key in env:
         raiseF('specified env contains reserved key: {}', key)
+    env['BUILD'] = ctx.build_dir
     env['NAME'] = self.name
-    env['SRC'] = str(self.dflt_src_path) # may be 'None' or 'Ellipsis'.
     env['PROJ'] = abs_path(ctx.proj_dir)
+    env['SRC'] = str(self.dflt_src_path) # may be 'None' or 'Ellipsis'.
+    env['STEM'] = self.stem
 
     def default_to_env(key):
       if key not in env and key in os.environ:
@@ -306,12 +310,19 @@ class Case:
 
     args = expand(self.args)
 
+    if self.compile:
+      self.compile_cmd = expand(self.compile)
+    else:
+      self.compile_cmd = None
+
     if self.cmd:
       self.test_cmd = expand(self.cmd)
       if args:
         self.test_cmd += args
       elif self.dflt_src_path not in (None, Ellipsis):
         self.test_cmd += [self.dflt_src_path]
+    elif self.compile_cmd:
+      self.test_cmd = ['./' + self.name] + (args or [])
     elif self.dflt_src_path:
       self.test_cmd = [self.dflt_src_path] + (args or [])
     else:
@@ -366,6 +377,8 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list, None),
   'cmd':      ('string or list of strings', is_str_or_list, None),
   'code':     ('int',                       is_int,         None),
+  'compile':  ('string or list of strings', is_str_or_list, None),
+  'compile_timeout': ('positive int',       is_pos_int,     None),
   'desc':     ('str',                       is_str,         None),
   'env':      ('dict of strings',           is_dict_of_str, None),
   'err_mode': ('str',                       is_str,         validate_exp_mode),
@@ -449,6 +462,25 @@ def run_case(ctx, case):
       dst = path_join(ctx.proj_dir, dst_path)
       os.symlink(dst, link)
 
+  if case.compile_cmd is not None:
+    compile_out_path = path_join(case.test_dir, 'compile-out')
+    compile_err_path = path_join(case.test_dir, 'compile-err')
+    compile_ok = run_cmd(ctx,
+      label='compile',
+      cmd=case.compile_cmd,
+      cwd=case.test_dir,
+      env=case.test_env,
+      in_path='/dev/null',
+      out_path=compile_out_path,
+      err_path=compile_err_path,
+      timeout=(case.compile_timeout or dflt_timeout),
+      exp_code=0)
+    if not compile_ok:
+      outL('compile failed.')
+      cat_file(compile_out_path)
+      cat_file(compile_err_path)
+      return False
+
   if case.in_ is not None:
     in_path = path_join(case.test_dir, 'in')
     write_to_path(in_path, case.in_)
@@ -462,6 +494,7 @@ def run_case(ctx, case):
     exp_code = case.code
 
   code_ok = run_cmd(ctx,
+    label='test',
     cmd=case.test_cmd,
     cwd=case.test_dir,
     env=case.test_env,
@@ -476,7 +509,7 @@ def run_case(ctx, case):
   return code_ok and exps_ok
 
 
-def run_cmd(ctx, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
+def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
   # print verbose command info formatted as shell commands for manual repro.
   if ctx.dbg:
     errSL('cwd:', cwd)
@@ -502,7 +535,7 @@ def run_cmd(ctx, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
       outFL('process timed out ({} sec) and was killed', timeout)
       return False
     if code != exp_code:
-      outFL('process returned code: {}; expected {}', code, exp_code)
+      outFL('{} process returned code: {}; expected {}', label, code, exp_code)
       return False
     return True
 
@@ -534,19 +567,23 @@ def check_file_exp(ctx, test_dir, exp):
     outSL(*cmd)
     runC(cmd, exp=None)
   else:
-    outSL('cat', path)
-    with open(path) as f:
-      line = None
-      for line in f:
-        l = line.rstrip('\n')
-        outL('\x1B[0;41m', l, '\x1B[0m') # red background.
-      if line is not None and not line.endswith('\n'):
-        outL('(missing final newline)')
+    cat_file(path)
   outSL('-' * bar_width)
   return False
 
 
 diff_cmd = 'git diff --histogram --no-index --no-prefix --no-renames --exit-code --color'.split()
+
+
+def cat_file(path):
+  outSL('cat', path)
+  with open(path) as f:
+    line = None
+    for line in f:
+      l = line.rstrip('\n')
+      outL('\x1B[0;41m', l, '\x1B[0m') # red background.
+    if line is not None and not line.endswith('\n'):
+        outL('(missing final newline)')
 
 
 # file expectation functions.
