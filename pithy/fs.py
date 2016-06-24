@@ -245,12 +245,12 @@ def walk_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, includ
       yield p
 
 
-def walk_all_files(*paths, make_abs=False, include_hidden=False, file_exts=None):
+def walk_files(*paths, make_abs=False, include_hidden=False, file_exts=None):
   return walk_paths(*paths, make_abs=make_abs, yield_files=True, yield_dirs=False,
     include_hidden=include_hidden, file_exts=file_exts)
 
 
-def walk_all_dirs(*paths, make_abs=False, include_hidden=False, file_exts=None):
+def walk_dirs(*paths, make_abs=False, include_hidden=False, file_exts=None):
   return walk_paths(*paths, make_abs=make_abs, yield_files=False, yield_dirs=True,
     include_hidden=include_hidden, file_exts=file_exts)
 
