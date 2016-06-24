@@ -231,7 +231,7 @@ class Case:
     elif ext == '.out': self.add_std_file(path, 'out')
     elif ext == '.err': self.add_std_file(path, 'err')
     elif self.dflt_src_path is None:
-      self.dflt_src_path = abs_path(path)
+      self.dflt_src_path = path
     else:
       self.dflt_src_path = Ellipsis
 
@@ -324,7 +324,7 @@ class Case:
     elif self.compile_cmd:
       self.test_cmd = ['./' + self.name] + (args or [])
     elif self.dflt_src_path:
-      self.test_cmd = [self.dflt_src_path] + (args or [])
+      self.test_cmd = [abs_path(self.dflt_src_path)] + (args or [])
     else:
       raiseS('no cmd specified and no default source path found')
     
