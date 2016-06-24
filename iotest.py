@@ -16,7 +16,7 @@ from pithy import *
 
 
 bar_width = 64
-dflt_results_dir = '_build'
+dflt_build_dir = '_build'
 dflt_timeout = 4
 
 
@@ -31,8 +31,8 @@ def main():
   if args.dbg: errL('iotest: DEBUG MODE ON.')
 
   proj_dir = find_proj_dir()
-  results_dir = path_join(proj_dir, dflt_results_dir)
-  ctx = Ctx(args.parse_only, args.fail_fast, args.dbg, args.paths, proj_dir, results_dir)
+  build_dir = path_join(proj_dir, dflt_build_dir)
+  ctx = Ctx(args.parse_only, args.fail_fast, args.dbg, args.paths, proj_dir, build_dir)
 
   cases = []
 
@@ -72,13 +72,13 @@ def main():
 class Ctx:
   'Ctx is the global test context, holding configuration options.'
 
-  def __init__(self, parse_only, fail_fast, dbg, paths, proj_dir, results_dir):
+  def __init__(self, parse_only, fail_fast, dbg, paths, proj_dir, build_dir):
     self.parse_only = parse_only
     self.should_fail_fast = fail_fast or dbg
     self.dbg = dbg
     self.top_paths = paths
     self.proj_dir = proj_dir
-    self.results_dir = results_dir
+    self.build_dir = build_dir
 
   def fail_fast(self):
     if self.should_fail_fast:
@@ -162,7 +162,7 @@ class Case:
   def __init__(self, ctx, stem, file_paths, proto):
     self.stem = stem # path stem to this test case.
     self.name = path_name(stem)
-    self.test_dir = path_join(ctx.results_dir, stem)
+    self.test_dir = path_join(ctx.build_dir, stem)
     # derived properties.
     self.test_info_paths = [] # the files that comprise the test case.
     self.dflt_src_path = None
