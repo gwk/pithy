@@ -213,8 +213,13 @@ class Case:
 
 
   def describe(self):
+    def stable_repr(val):
+      if is_dict(val):
+        return '{{{}}}'.format(', '.join('{!r}:{!r}'.format(*p) for p in sorted(val.items())))
+      return repr(val)
+
     items = sorted(self.__dict__.items())
-    errLSSL('Case:', *('{}: {}'.format(k, repr(v)) for k, v in items))
+    errLSSL('Case:', *('{}: {}'.format(k, stable_repr(v)) for k, v in items))
 
 
   def add_file(self, path):
