@@ -37,7 +37,10 @@ def main():
   cases = []
 
   for raw_path in ctx.top_paths:
-    # TODO: allow passing single test cases. collect_cases could take a stem to filter on.
+    if not path_exists(raw_path):
+      failF('iotest: {!r}: path argument does not exist.', raw_path)
+    if not is_dir(raw_path):
+      failF('iotest: {!r}: path argument must be a directory.', raw_path)
     dir_path = norm_path(raw_path) + '/'
     if dir_path.find('..') != -1:
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
