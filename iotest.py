@@ -435,7 +435,11 @@ def run_case(ctx, case):
 
   # set up directory.
   if path_exists(case.test_dir):
-    remove_dir_contents(case.test_dir)
+    try:
+      remove_dir_contents(case.test_dir)
+    except NotADirectoryError:
+      failF('error: {}: test directory already exists as a file; please remove it and try again.',
+       case.test_dir)
   else:
     make_dirs(case.test_dir)
   
