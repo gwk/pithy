@@ -1,7 +1,22 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 
-def set_defaults(d: dict, defaults: dict):
+def dict_put(d: dict, k, v):
+  if k in d:
+    raise KeyError('dictionary already contains key {!r}'.format(k))
+  d[k] = v
+
+
+def dict_append(d: dict, k, v):
+  d.setdefault(k, []).append(v)
+
+
+def dict_extend(d: dict, k, v):
+  d.setdefault(k, []).extend(v)
+
+
+
+def dict_set_defaults(d: dict, defaults: dict):
   for k, v in defaults.items():
     d.setdefault(k, v)
   return d
