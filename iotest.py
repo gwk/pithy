@@ -65,11 +65,10 @@ def main():
   count = len(cases)
   if not any([broken_count, skipped_count, failed_count]):
     outFL('TESTS PASSED: {}.', count)
-    return 0
   else:
     outFL('TESTS FOUND: {}; IGNORED: {}; SKIPPED: {}; FAILED: {}.',
       count, broken_count, skipped_count, failed_count)
-    return 1
+    exit(1)
 
 
 class Ctx:
@@ -609,5 +608,4 @@ file_expectation_fns = {
 }
 
 
-if __name__ == '__main__':
-  exit(main())
+if __name__ == '__main__': main()
