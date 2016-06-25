@@ -66,7 +66,7 @@ def main():
   if not any([broken_count, skipped_count, failed_count]):
     outFL('TESTS PASSED: {}.', count)
   else:
-    outFL('TESTS FOUND: {}; IGNORED: {}; SKIPPED: {}; FAILED: {}.',
+    outFL('TESTS FOUND: {}; BROKEN: {}; SKIPPED: {}; FAILED: {}.',
       count, broken_count, skipped_count, failed_count)
     exit(1)
 
@@ -348,6 +348,9 @@ class Case:
 
 
 
+def is_int_or_ellipsis(val):
+  return val is Ellipsis or is_int(val)
+
 def validate_exp_mode(key, mode):
   if mode not in file_expectation_fns:
     raiseF('key: {}: invalid file expectation mode: {}', key, mode)
@@ -373,24 +376,24 @@ def validate_links_dict(key, val):
 
 
 case_key_validators = { # key => msg, validator_predicate, validator_fn.
-  'args':     ('string or list of strings', is_str_or_list, None),
-  'cmd':      ('string or list of strings', is_str_or_list, None),
-  'code':     ('int',                       is_int,         None),
-  'compile':  ('string or list of strings', is_str_or_list, None),
-  'compile_timeout': ('positive int',       is_pos_int,     None),
-  'desc':     ('str',                       is_str,         None),
-  'env':      ('dict of strings',           is_dict_of_str, None),
-  'err_mode': ('str',                       is_str,         validate_exp_mode),
-  'err_path': ('str',                       is_str,         None),
-  'err_val':  ('str',                       is_str,         None),
-  'files':    ('dict',                      is_dict,        validate_files_dict),
-  'in_':      ('str',                       is_str,         None),
-  'links':    ('dict of strings',           is_dict_of_str, validate_links_dict),
-  'out_mode': ('str',                       is_str,         validate_exp_mode),
-  'out_path': ('str',                       is_str,         None),
-  'out_val':  ('str',                       is_str,         None),
-  'skip':     ('bool',                      is_bool,        None),
-  'timeout':  ('positive int',              is_pos_int,     None),
+  'args':     ('string or list of strings', is_str_or_list,     None),
+  'cmd':      ('string or list of strings', is_str_or_list,     None),
+  'code':     ('int or `...`',              is_int_or_ellipsis, None),
+  'compile':  ('string or list of strings', is_str_or_list,     None),
+  'compile_timeout': ('positive int',       is_pos_int,         None),
+  'desc':     ('str',                       is_str,             None),
+  'env':      ('dict of strings',           is_dict_of_str,     None),
+  'err_mode': ('str',                       is_str,             validate_exp_mode),
+  'err_path': ('str',                       is_str,             None),
+  'err_val':  ('str',                       is_str,             None),
+  'files':    ('dict',                      is_dict,            validate_files_dict),
+  'in_':      ('str',                       is_str,             None),
+  'links':    ('dict of strings',           is_dict_of_str,     validate_links_dict),
+  'out_mode': ('str',                       is_str,             validate_exp_mode),
+  'out_path': ('str',                       is_str,             None),
+  'out_val':  ('str',                       is_str,             None),
+  'skip':     ('bool',                      is_bool,            None),
+  'timeout':  ('positive int',              is_pos_int,         None),
 }
 
 
@@ -423,13 +426,7 @@ def try_case(ctx, case):
   try:
     ok = run_case(ctx, case)
   except Exception as e:
-    s = str(e)
     errFL('ERROR: could not run test case: {};\n  exception: {}', case.stem, e)
-    if s == '[Errno 8] Exec format error':
-      errFL("  note: is the test script missing its hash-bang line? e.g. '#!/usr/bin/env [INTERPRETER]'")
-    elif s == '[Errno 13] Permission denied':
-      errFL("  note: is the test script executable permission not set?\n"
-        "  possible fix: `chmod +x {}`", case.test_cmd[0])
     if ctx.dbg: raise
     ctx.fail_fast()
     ok = False
@@ -481,6 +478,8 @@ def run_case(ctx, case):
       return False
 
   if case.in_ is not None:
+    # TODO: if specified as a .in file, just read from that location,
+    # instead of reading/writing text from/to disk.
     in_path = path_join(case.test_dir, 'in')
     write_to_path(in_path, case.in_)
   else:
@@ -509,34 +508,27 @@ def run_case(ctx, case):
 
 
 def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
-  # print verbose command info formatted as shell commands for manual repro.
   if ctx.dbg:
-    errSL('cwd:', cwd)
-    errSL('cmd:', *(cmd + ['<{} # 1>{} 2>{}'.format(in_path, out_path, err_path)]))
-    errSL('env:', *['{}={};'.format(*p) for p in sorted(env.items())])
+    errSL(label, 'cwd:', cwd)
+    errSL(label, 'cmd:', *(cmd + ['<{} # 1>{} 2>{}'.format(in_path, out_path, err_path)]))
 
   with open(in_path, 'r') as i, open(out_path, 'w') as o, open(err_path, 'w') as e:
-    proc = subprocess.Popen(cmd, cwd=cwd, env=env, stdin=i, stdout=o, stderr=e)
-    # timeout alarm handler.
-    # since signal handlers carry reentrancy concerns, do not do any IO within the handler.
-    timed_out = False
-    def alarm_handler(signum, current_stack_frame):
-      nonlocal timed_out
-      timed_out = True
-      proc.kill()
-
-    signal.signal(signal.SIGALRM, alarm_handler) # set handler.
-    signal.alarm(timeout) # set alarm.
-    code = proc.wait() # wait for process to complete; TODO: change to communicate() for stdin support.
-    signal.alarm(0) # disable alarm.
-    
-    if timed_out:
-      outFL('process timed out ({} sec) and was killed', timeout)
-      return False
-    if code != exp_code:
-      outFL('{} process returned code: {}; expected {}', label, code, exp_code)
-      return False
-    return True
+    try:
+      run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
+    except ProcessTimeout:
+      outFL('{} process timed out ({} sec) and was killed.', label, timeout)
+    except ProcessExpectation as e:
+      outFL('{} process was expected to return code: {}; actual code: {}.', label, e.exp, e.act)
+    except PermissionError:
+      outFL('{} process permission error; is the test script executable permission not set?\n'
+        '  possible fix: `chmod +x {}`', label, cmd[0])
+    except OSError as e:
+      outFL('{} process OS error {}: {}.', label, e.errno, e.strerror)
+      if e.strerror == 'Exec format error':
+        outFL('  note: is the test script missing its hash-bang line? e.g. `#!/usr/bin/env [INTERPRETER]`')
+    else:
+      return True
+    return False
 
 
 def check_file_exp(ctx, test_dir, exp):
@@ -564,14 +556,14 @@ def check_file_exp(ctx, test_dir, exp):
     write_to_path(path_expected, exp.val)
     cmd = diff_cmd + [path_expected, path]
     outSL(*cmd)
-    runC(cmd, exp=None)
+    run(cmd, exp=None)
   else:
     cat_file(path)
   outSL('-' * bar_width)
   return False
 
 
-diff_cmd = 'git diff --histogram --no-index --no-prefix --no-renames --exit-code --color'.split()
+diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram'.split()
 
 
 def cat_file(path):
