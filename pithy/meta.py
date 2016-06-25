@@ -12,18 +12,18 @@ def bindings_matching(prefix=None, type=None, strip_prefix=True, frame='<module>
   '''
   stack = inspect.stack()
   if isinstance(frame, int):
-    bindings = stack[depth].frame.f_globals
+    info = stack[frame]
   elif isinstance(frame, str):
-    bindings = None
-    for frame_info in stack:
-      if frame_info.function == frame:
-        bindings = frame_info.frame.f_globals
+    info = None
+    for info in stack:
+      if info.function == frame:
         break
-    if bindings is None:
+    if info is None:
       raise ValueError('call stack does not contain a matching frame: {}'.format(frame))
   else:
     raise TypeError("frame parameter must be either an int (depth; immediate caller is 1), "
       "or a string (the name of the target frame's function, or '<module>', the default).")
+  bindings = info.frame.f_locals
   pairs = []
   for name, value in bindings.items():
     if all((
