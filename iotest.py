@@ -276,10 +276,6 @@ class Case:
 
     self.test_env = {}
     env = self.test_env # local alias for convenience.
-    env.update(self.env or {})
-    for key in ('NAME', 'SRC', 'ROOT'):
-      if key in env:
-        raiseF('specified env contains reserved key: {}', key)
     env['BUILD'] = ctx.build_dir
     env['NAME'] = self.name
     env['PROJ'] = abs_path(ctx.proj_dir)
@@ -307,13 +303,22 @@ class Case:
         return shlex.split(expand_str(val))
       return [expand_str(v) for v in val]
 
-    args = expand(self.args)
+    # add the case env one item at a time.
+    # sorted because we want expansion to be deterministic;
+    # TODO: should probably expand everything with just the builtins;
+    # otherwise would need some dependency resolution between vars.
+    if self.env:
+      for key, val in sorted(self.env.items()):
+        if key in env:
+          raiseF('specified env contains reserved key: {}', key)
+        env[key] = expand_str(val)
 
     if self.compile:
       self.compile_cmd = expand(self.compile)
     else:
       self.compile_cmd = None
 
+    args = expand(self.args)
     if self.cmd:
       self.test_cmd = expand(self.cmd)
       if args:
