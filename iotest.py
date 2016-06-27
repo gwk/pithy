@@ -466,7 +466,7 @@ def run_case(ctx, case):
   if case.compile_cmd is not None:
     compile_out_path = path_join(case.test_dir, 'compile-out')
     compile_err_path = path_join(case.test_dir, 'compile-err')
-    compile_ok = run_cmd(ctx,
+    status = run_cmd(ctx,
       label='compile',
       cmd=case.compile_cmd,
       cwd=case.test_dir,
@@ -476,10 +476,11 @@ def run_case(ctx, case):
       err_path=compile_err_path,
       timeout=(case.compile_timeout or dflt_timeout),
       exp_code=0)
-    if not compile_ok:
+    if not status:
       outL('compile failed.')
-      cat_file(compile_out_path)
-      cat_file(compile_err_path)
+      if status is not None:
+        cat_file(compile_out_path)
+        cat_file(compile_err_path)
       return False
 
   if case.in_ is not None:
@@ -496,7 +497,7 @@ def run_case(ctx, case):
   else:
     exp_code = case.code
 
-  code_ok = run_cmd(ctx,
+  status = run_cmd(ctx,
     label='test',
     cmd=case.test_cmd,
     cwd=case.test_dir,
@@ -506,13 +507,17 @@ def run_case(ctx, case):
     err_path=path_join(case.test_dir, 'err'),
     timeout=(case.timeout or dflt_timeout),
     exp_code=exp_code)
-
+  
+  if status is None:
+    return False
+  
   # use a list comprehension to ensure that we always report all failed expectations.
   exps_ok = all([check_file_exp(ctx, case.test_dir, exp) for exp in case.test_expectations])
-  return code_ok and exps_ok
+  return status and exps_ok
 
 
 def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
+  'returns True for success, False for failure, and None for abort.'
   if ctx.dbg:
     errSL(label, 'cwd:', cwd)
     errSL(label, 'cmd:', *(cmd + ['<{} # 1>{} 2>{}'.format(in_path, out_path, err_path)]))
@@ -520,20 +525,24 @@ def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp
   with open(in_path, 'r') as i, open(out_path, 'w') as o, open(err_path, 'w') as e:
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
-    except ProcessTimeout:
-      outFL('{} process timed out ({} sec) and was killed.', label, timeout)
-    except ProcessExpectation as e:
-      outFL('{} process was expected to return code: {}; actual code: {}.', label, e.exp, e.act)
     except PermissionError:
       outFL('{} process permission error; is the test script executable permission not set?\n'
         '  possible fix: `chmod +x {}`', label, cmd[0])
+      return None
     except OSError as e:
       outFL('{} process OS error {}: {}.', label, e.errno, e.strerror)
       if e.strerror == 'Exec format error':
         outFL('  note: is the test script missing its hash-bang line? e.g. `#!/usr/bin/env [INTERPRETER]`')
+      return None
+    except ProcessTimeout:
+      outFL('{} process timed out ({} sec) and was killed.', label, timeout)
+      return None
+    except ProcessExpectation as e:
+      outFL('{} process was expected to return code: {}; actual code: {}.', label, e.exp, e.act)
+      return False
     else:
       return True
-    return False
+    assert False # protect against missing return above.
 
 
 def check_file_exp(ctx, test_dir, exp):
