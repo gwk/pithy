@@ -97,7 +97,7 @@ def run(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None, e
   code = proc.returncode
   if exp is None:
     pass
-  if exp is Ellipsis:
+  elif exp is Ellipsis:
     if code == 0:
       raise ProcessExpectation(cmd, '!= 0', code)
   else:
