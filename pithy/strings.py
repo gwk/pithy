@@ -1,6 +1,22 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 
+def string_contains(string, query):
+  return string.find(query) != -1
+
+
+def iter_excluding_str(seq):
+  '''
+  often we want to treat handle all iterables in a particular way, except for str.
+  there are two common reasons why:
+  because str should be treated as an atom/leaf value in a nested structure,
+  or because the fact that elements of a str are of type str themselves,
+  which makes naive type-based recursion over sequences impossible.
+  ''' 
+  if isinstance(seq, str): raise TypeError('iter_excluding_str explictly treats str as non-iterable type')
+  return iter(seq) # raises TypeError for non-iterables.
+
+
 def plural_s(count):
   return '' if count == 1 else 's'
 
