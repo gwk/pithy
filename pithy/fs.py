@@ -241,7 +241,9 @@ def walk_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, includ
     path = abs_or_norm_path(raw_path, make_abs)
     if is_dir(path):
       yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
-    elif yield_files and (file_exts is None or path_ext(name) in file_exts):
+    elif not path_exists(path):
+      raise FileNotFoundError(path)
+    elif yield_files and (file_exts is None or path_ext(path) in file_exts):
       yield p
 
 
