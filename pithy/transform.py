@@ -136,7 +136,7 @@ class Transformer:
     self._add_stage(name, edit_fn)
 
 
-  def conv(self, fn):
+  def convert(self, fn):
     '''
     add a conversion stage.
     the decorated function should convert the input item to an output item.
@@ -164,7 +164,7 @@ class Transformer:
 
     if not self.stages:
       errFL('Transformer: WARNING: no transform functions found; '
-        "transformation stage functions must be decorated with the transformer's conv/drop/edit/flag properties.")
+        "transformation stage functions must be decorated with the transformer's convert/drop/edit/flag properties.")
 
     # create local bindings to avoid attribute lookups in the loop.
     stages = self.stages
