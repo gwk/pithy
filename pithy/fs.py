@@ -9,6 +9,13 @@ from itertools import zip_longest as _zip_longest
 
 # paths.
 
+def executable_path():
+  import __main__
+  return _path.realpath(__main__.__file__)
+
+def executable_dir():
+  return _path.dirname(executable_real_path())
+
 def is_path_abs(path):
   'return true if the path is an absolute path.'
   return _path.isabs(path)
