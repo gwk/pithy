@@ -328,6 +328,18 @@ def raiseF(fmt, *items, E=Exception):
   raise E(fmt.format(*items))
 
 
+# convenience read/write.
+
+def read_from_path(path):
+  with open(path) as f:
+    return f.read()
+
+
+def write_to_path(path, string):
+  with open(path, 'w') as f:
+    f.write(string)
+
+
 # input.
 
 

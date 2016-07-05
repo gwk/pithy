@@ -181,15 +181,6 @@ def move_file(path, dest, overwrite=False):
   _os.rename(path, dest)
 
 
-def read_from_path(path):
-  with open(path) as f:
-    return f.read()
-
-def write_to_path(path, string):
-  with open(path, 'w') as f:
-    f.write(string)
-
-
 def _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths):
   sub_dirs = []
   files = []
