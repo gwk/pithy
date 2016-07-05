@@ -361,28 +361,20 @@ def _mk_json_types_hook(types):
   return _read_json_object_hook
 
 
-def read_json(str_or_file, types=()):
+def parse_json(string, types=()):
   '''
-  read json from either a string or file.
+  parse json from a string.
   if types is a non-empty sequence,
   then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
   '''
   hook = _mk_json_types_hook(types)
-  if isinstance(str_or_file, str):
-    return _json.loads(str_or_file, object_hook=hook)
-  else:
-    return _json.load(str_or_file, object_hook=hook)
+  return _json.loads(string, object_hook=hook)
 
 
-def read_jsons(str_or_file, types=()):
+def parse_jsons(string, types=()):
   hook = _mk_json_types_hook(types)
-  if isinstance(str_or_file, str):
-    string = str_or_file
-  else:
-    string = str_or_file.read()
-
   decoder = _json.JSONDecoder(object_hook=hook)
   ws_re = _json_dec.WHITESPACE
 
@@ -399,3 +391,17 @@ def read_jsons(str_or_file, types=()):
   return read_jsons_gen()
 
 
+def read_json(file, types=()):
+  '''
+  read json from a file.
+  if types is a non-empty sequence,
+  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
+  based on field name sets.
+  The sets of field names must be unambiguous for all provided record types.
+  '''
+  hook = _mk_json_types_hook(types)
+  return _json.load(file, object_hook=hook)
+
+
+def read_jsons(file, types=()):
+  return parse_jsons(file.read(), types=types)
