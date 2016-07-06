@@ -242,7 +242,7 @@ def walk_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, includ
     elif not path_exists(path):
       raise FileNotFoundError(path)
     elif yield_files and (file_exts is None or path_ext(path) in file_exts):
-      yield p
+      yield path
 
 
 def walk_files(*paths, make_abs=False, include_hidden=False, file_exts=None):
