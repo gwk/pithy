@@ -8,6 +8,7 @@ from sys import argv, stderr, stdout
 
 from .dicts import *
 from .fs import *
+from .immutable import *
 from .io import *
 from .seq import *
 from .strings import *
