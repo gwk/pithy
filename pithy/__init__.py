@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
+
 from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from functools import lru_cache, partial, partialmethod, reduce, singledispatch
