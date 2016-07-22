@@ -5,6 +5,35 @@ def string_contains(string, query):
   return string.find(query) != -1
 
 
+def strip_prefix(string, prefix, req=True):
+  'remove the prefix if it exists.'
+  if string.startswith(prefix):
+    return string[len(prefix):]
+  elif req:
+    raise ValueError(string)
+  return string
+
+
+def strip_suffix(string, suffix, req=True):
+  'remove the suffix if it exists.'
+  if string.endswith(suffix):
+    return string[:len(suffix)]
+  elif req:
+    raise ValueError(string)
+  return string
+
+
+def strip_first_prefix(string, prefixes, req=True):
+  for p in prefixes:
+    try:
+      return strip_prefix(string, p, req=True)
+    except ValueError:
+      continue
+  if req:
+    raise ValueError(string)
+  return string
+
+
 def iter_excluding_str(seq):
   '''
   Often we want to handle all iterables in a particular way, except for str.
