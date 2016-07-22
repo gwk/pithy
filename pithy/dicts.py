@@ -15,7 +15,6 @@ def dict_extend(d: dict, k, v):
   d.setdefault(k, []).extend(v)
 
 
-
 def dict_set_defaults(d: dict, defaults: dict):
   for k, v in defaults.items():
     d.setdefault(k, v)
