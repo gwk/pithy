@@ -108,6 +108,14 @@ def abs_or_norm_path(path, make_abs):
 def copy_file(src, dst, follow_symlinks=True):
   _shutil.copy(src, dst, follow_symlinks=follow_symlinks)
 
+def copy_dir_tree(src, dst, follow_symlinks=True, preserve_metadata=True, ignore_dangling_symlinks=False):
+  _shutil.copytree(src, dst,
+    symlinks=(not follow_symlinks),
+    ignore=None,
+    copy_function=(_shutil.copy2 if preserve_metadata else _shutil.copy),
+    ignore_dangling_symlinks=ignore_dangling_symlinks)
+
+
 def expand_user(path): return _path.expanduser(path)
 
 def is_dir(path): return _path.isdir(path)
