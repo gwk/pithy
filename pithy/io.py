@@ -28,6 +28,7 @@ class JsonEncoder(_json.JSONEncoder):
 
   def iterencode(self, o, _one_shot=False):
     '''
+    Derived from Python/Lib/json/encoder.py.
     custom iterencode always avoids using c_make_encoder,
     and passes hacked isinstance to _make_iterencode.'
     '''
@@ -41,7 +42,7 @@ class JsonEncoder(_json.JSONEncoder):
       _encoder = _json_enc.encode_basestring
 
     def floatstr(o, allow_nan=self.allow_nan,
-      _repr=_json_enc.FLOAT_REPR, _inf=_json_enc.INFINITY, _neginf=-_json_enc.INFINITY):
+      _repr=float.__repr__, _inf=_json_enc.INFINITY, _neginf=-_json_enc.INFINITY):
       if o != o:
         text = 'NaN'
       elif o == _inf:
@@ -61,9 +62,9 @@ class JsonEncoder(_json.JSONEncoder):
       return isinstance(obj, type) and not hasattr(obj, '_asdict')
 
     _iterencode = _json_enc._make_iterencode(
-        markers, self.default, _encoder, self.indent, floatstr,
-        self.key_separator, self.item_separator, self.sort_keys,
-        self.skipkeys, _one_shot, isinstance=isinstance_hacked)
+      markers, self.default, _encoder, self.indent, floatstr,
+      self.key_separator, self.item_separator, self.sort_keys,
+      self.skipkeys, _one_shot, isinstance=isinstance_hacked)
     return _iterencode(o, 0)
 
 
