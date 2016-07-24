@@ -46,6 +46,7 @@ def path_name(path):
 
 def path_range(start_path, end_path):
   'yield a sequence of paths from start_path (inclusive) to end_path (exclusive).'
+  # TODO: more descriptive name.
   start = path_split(start_path)
   end = path_split(end_path)
   accum = []
@@ -97,6 +98,9 @@ def split_stem_ext(path):
   '''
   return _path.splitext(path)
 
+def append_path_stem_suffix(path, suffix):
+  stem, ext = split_stem_ext(path)
+  return stem + suffix + ext
 
 # file system.
 
