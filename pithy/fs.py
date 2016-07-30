@@ -10,42 +10,44 @@ from itertools import zip_longest as _zip_longest
 # paths.
 
 def executable_path():
+  'Return an executable path.'
   import __main__
   return _path.realpath(__main__.__file__)
 
 def executable_dir():
+  'Return an excutable directory.'
   return _path.dirname(executable_real_path())
 
 def is_path_abs(path):
-  'return true if the path is an absolute path.'
+  'Return true if the path is an absolute path.'
   return _path.isabs(path)
 
 def norm_path(path):
-  'normalize the path according to system convention.'
+  'Normalize the path according to system convention.'
   return _path.normpath(path)
 
 def path_common_prefix(*paths):
-  'return the common prefix of a sequence of paths.'
+  'Return the common prefix of a sequence of paths.'
   return _path.commonprefix(paths)
 
 def path_dir(path):
-  "return the dir portion of a path (possibly empty), e.g. 'dir/name'."
+  "Return the dir portion of a path (possibly empty), e.g. 'dir/name'."
   return _path.dirname(path)
 
 def path_dir_or_dot(path):
-  "return the dir portion of a path, e.g. 'dir/name', or '.' in the case of no path."
+  "Return the dir portion of a path, e.g. 'dir/name', or '.' in the case of no path."
   return path_dir(path) or '.'
 
 def path_join(*items):
-  'join the path with the system path separator.'
+  'Join the path with the system path separator.'
   return _path.join(*items)
 
 def path_name(path):
-  "return the name portion of a path (possibly including an extension), e.g. 'dir/name'."
+  "Return the name portion of a path (possibly including an extension), e.g. 'dir/name'."
   return _path.basename(path)
 
 def path_range(start_path, end_path):
-  'yield a sequence of paths from start_path (inclusive) to end_path (exclusive).'
+  'Yield a sequence of paths from start_path (inclusive) to end_path (exclusive).'
   # TODO: more descriptive name.
   start = path_split(start_path)
   end = path_split(end_path)
@@ -59,7 +61,7 @@ def path_range(start_path, end_path):
     accum.append(e)
 
 def path_rel_to(base, path):
-  'return the path relative to the base, raising an exception the path does not have that base.'
+  'Return the path relative to the base, raising an exception the path does not have that base.'
   if not path.startswith(base):
     raise ValueError('path expected to have prefix: {}; actual: {}'.format(base, path))
   return path[len(base):]
@@ -71,34 +73,35 @@ def path_split(path):
   return [comp or '/' for comp in np.split(_os.sep)]
 
 def path_stem(path):
-  'the path without the file extension; the stem may span multiple directories.'
+  'The path without the file extension; the stem may span multiple directories.'
   return split_stem_ext(path)[0]
 
 def path_ext(path):
-  'the file extension of the path.'
+  'The file extension of the path.'
   return split_stem_ext(path)[1]
 
 def path_name_stem(path):
-  'the file name without extension; the name stem will not span directories.'
+  'The file name without extension; the name stem will not span directories.'
   return path_stem(path_name(path))
 
 def split_dir_name(path):
-  "split the path into dir and name (possibly including an extension) components, e.g. 'dir/name'."
+  "Split the path into dir and name (possibly including an extension) components, e.g. 'dir/name'."
   return _path.split(path)
 
 def split_dir_stem_ext(path):
-  'split the path into a (dir, stem, ext) triple.'
+  'Split the path into a (dir, stem, ext) triple.'
   dir, name = split_dir_name(path)
   stem, ext = split_stem_ext(name)
   return dir, stem, ext
 
 def split_stem_ext(path):
   '''
-  split the path into stem (possibly spanning directories) and extension components, e.g. 'stem.ext'.
+  Split the path into stem (possibly spanning directories) and extension components, e.g. 'stem.ext'.
   '''
   return _path.splitext(path)
 
 def append_path_stem_suffix(path, suffix):
+  'Append suffix to the path stem.'
   stem, ext = split_stem_ext(path)
   return stem + suffix + ext
 
@@ -107,12 +110,15 @@ def append_path_stem_suffix(path, suffix):
 def abs_path(path): return _path.abspath(path)
 
 def abs_or_norm_path(path, make_abs):
+  'Returns the absolute path if make_abs is True, if make_abs is False, returns a normalized path.'
   return abs_path(path) if make_abs else norm_path(path)
 
 def copy_file(src, dst, follow_symlinks=True):
+  'Copies file from source to destination.'
   _shutil.copy(src, dst, follow_symlinks=follow_symlinks)
 
 def copy_dir_tree(src, dst, follow_symlinks=True, preserve_metadata=True, ignore_dangling_symlinks=False):
+  'Copies a directory tree.'
   _shutil.copytree(src, dst,
     symlinks=(not follow_symlinks),
     ignore=None,

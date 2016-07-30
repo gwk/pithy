@@ -2,6 +2,7 @@
 
 
 def seq_from_index(seq, start_index):
+  'Returns an iterator for the sequence that skips elements up to the start_index.'
   it = iter(seq)
   c = start_index
   while c > 0:
@@ -15,7 +16,7 @@ def seq_from_index(seq, start_index):
 
 def grouped_seq(seq, key_fn):
   '''
-  group the elements of the sequence by applying a function to each object that returns a key.
+  Group the elements of the sequence by applying a function to each object that returns a key.
   returns a dictionary of arrays.
   '''
   groups = {}
@@ -31,7 +32,7 @@ def grouped_seq(seq, key_fn):
 
 def grouped_sorted_seq(seq, comparison):
   '''
-  group the elements of the sorted sequence by applying a comparison predicate
+  Group the elements of the sorted sequence by applying a comparison predicate
   to each successive pair of elements, creating a new group when the comparison fails.
   '''
   it = iter(seq)
@@ -54,6 +55,7 @@ def grouped_sorted_seq(seq, comparison):
   return groups
 
 def zip_neighbors(seq, length=2):
+  'Yield tuples of the specified length (default = 2), consisting of adjacent elements in sequence.'
   assert length > 0
   buffer = []
   for el in seq:
@@ -64,7 +66,11 @@ def zip_neighbors(seq, length=2):
 
 
 class IterBuffer():
-  
+  '''
+  Iterable object that buffers another iterator.
+  Call push() to push an item into the buffer;
+  this will be returned on the subsequent call to next().
+  '''
   def __init__(self, iterator):
     self.iterator = iterator
     self.buffer = []

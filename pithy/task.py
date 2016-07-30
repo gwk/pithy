@@ -6,6 +6,7 @@ from subprocess import PIPE as _pipe, Popen as _Popen
 
 
 class ProcessExpectation(Exception):
+  "Class to handle the expected code and the returned code from a command('cmd')."
   def __init__(self, cmd, exp, act):
     super().__init__('process was expected to return code {}; actual code: {}'.format(
       exp, act))
@@ -14,17 +15,20 @@ class ProcessExpectation(Exception):
     self.act = act
 
 class ProcessTimeout(Exception):
+  "Class to handle a process timeout command('cmd')."
   def __init__(self, cmd, timeout):
     super().__init__('process timed out after {} seconds and was killed', timeout)
     self.cmd = cmd
     self.timeout = timeout
 
 def _decode(s):
+  "Decode s using 'utf-8'"
   return s if s is None else s.decode('utf-8')
 
 
 _dev_null_file = None
 def dev_null():
+  'Opens and returns a _dev_null_file if _dev_null_file does not exist.'
   global _dev_null_file
   if _dev_null_file is None:
     _dev_null_file = open('/dev/null', 'r+b')
@@ -33,22 +37,22 @@ def dev_null():
 
 def run(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None, exp=0):
   '''
-  run a command and return (exit_code, std_out, std_err).
-  cmd: str or list of str.
-  cwd: str path.
-  stdin: str, bytes, open binary file (including value of dev_null()).
-  out, err: open binary file or _pipe special.
-  env: dict of str.
-  timeout: numeric or None.
-  exp: expected exit code can be None (accept any value), an integer code,
+  Run a command and return (exit_code, std_out, std_err).
+  Cmd: str or list of str.
+  Cwd: str path.
+  Stdin: str, bytes, open binary file (including value of dev_null()).
+  Out, err: open binary file or _pipe special.
+  Env: dict of str.
+  Timeout: numeric or None.
+  Exp: expected exit code can be None (accept any value), an integer code,
     or `...` (Ellipsis) to indicate any nonzero code.
 
   The special ellipsis notation is used because a bool expectation is confusing;
   nonzero implies True in Python, but False in Unix.
 
-  the underlying Subprocess shell option is not supported
+  The underlying Subprocess shell option is not supported
   because the rules regarding splitting strings are complex.
-  user code is made clearer by just specifying the complete shell command;
+  User code is made clearer by just specifying the complete shell command;
   lists are used as is, while strings are split by shlex.split.
   '''
 
@@ -108,7 +112,7 @@ def run(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None, e
 
 
 def runC(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None):
-  'run a command and return exit code; optional out and err.'
+  'Run a command and return exit code; optional out and err.'
   assert out is not _pipe
   assert err is not _pipe
   c, o, e = run(cmd, cwd, stdin, out, err, env, timeout, exp=None)
@@ -118,7 +122,7 @@ def runC(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None):
 
 
 def runCO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None):
-  'run a command and return exit code, std out; optional err.'
+  'Run a command and return exit code, std out; optional err.'
   assert err is not _pipe
   c, o, e = run(cmd, cwd, stdin, _pipe, err, env, timeout, exp=None)
   assert e is None
@@ -126,7 +130,7 @@ def runCO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None):
 
 
 def runCE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None):
-  'run a command and return exit code, std err; optional out.'
+  'Run a command and return exit code, std err; optional out.'
   assert out is not _pipe
   c, o, e = run(cmd, cwd, stdin, out, _pipe, env, timeout, exp=None)
   assert o is None
@@ -134,13 +138,13 @@ def runCE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None):
 
 
 def runOE(cmd, cwd=None, stdin=None, env=None, timeout=None, exp=0):
-  'run a command and return (stdout, stderr) as strings; optional exp.'
+  'Run a command and return (stdout, stderr) as strings; optional exp.'
   c, o, e = run(cmd, cwd, stdin, _pipe, _pipe, env, timeout, exp)
   return o, e
 
 
 def runO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None, exp=0):
-  'run a command and return stdout as a string; optional err and exp.'
+  'Run a command and return stdout as a string; optional err and exp.'
   assert err is not _pipe
   c, o, e = run(cmd, cwd, stdin, _pipe, err, env, timeout, exp)
   assert e is None
@@ -148,7 +152,7 @@ def runO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None, exp=0):
 
 
 def runE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None, exp=0):
-  'run a command and return stderr as a string; optional out and exp.'
+  'Run a command and return stderr as a string; optional out and exp.'
   assert out is not _pipe
   c, o, e = run(cmd, cwd, stdin, out, _pipe, env, timeout, exp)
   assert o is None

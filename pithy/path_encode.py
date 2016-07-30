@@ -6,13 +6,13 @@ import urllib.parse as _parse
 
 def _path_encode_byte(b):
   '''
-  path encoding is similar to url percent encoding, but uses '+' as the escape character.
-  it is used to create convenient file system paths out of urls.
-  just like url encoding, letters, digits, and the characters '_.-' are left unescaped.
-  additionally, '%' characters are not escaped, to make prior url encoding more readable,
+  Path encoding is similar to url percent encoding, but uses '+' as the escape character.
+  It is used to create convenient file system paths out of urls.
+  Just like url encoding, letters, digits, and the characters '_.-' are left unescaped.
+  Additionally, '%' characters are not escaped, to make prior url encoding more readable,
   and '/' is translated to '|' which makes the results more legible.
-  note that '|' is encoded, so the encoding is unambiguous.
-  all other bytes are encoded as "+XX", where XX is the capitalized hexadecimal byte value.
+  Note that '|' is encoded, so the encoding is unambiguous.
+  All other bytes are encoded as "+XX", where XX is the capitalized hexadecimal byte value.
 
   ascii notes:
   0x25: '%'
@@ -39,11 +39,13 @@ _path_encode_table = tuple(_path_encode_byte(b) for b in range(0xff))
 
 
 def path_encode(string):
+  'Encode string into a path.'
   utf8 = string.encode()
   return ''.join(_path_encode_table[b] for b in utf8)
 
 
 def path_for_url(url):
+  'Return a path encoded from a url.'
   parts = _parse.urlsplit(url) # returns five-element namedtuple.
   name = path_encode(''.join((parts.path, parts.query, parts.fragment)))
   return _os_path.join(parts.scheme, path_encode(parts.netloc), name)
