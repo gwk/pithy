@@ -70,67 +70,67 @@ class JsonEncoder(_json.JSONEncoder):
 
 # basic printing.
 
-def writeZ(file, *items, sep='', end=''):
+def writeZ(file, *items, sep='', end='', flush=False):
   "write items to file; default sep='', end=''."
-  print(*items, sep=sep, end=end, file=file)
+  print(*items, sep=sep, end=end, file=file, flush=False)
 
-def writeS(file, *items, sep=''):
+def writeS(file, *items, sep='', flush=False):
   "write items to file; sep='', end=' '."
-  print(*items, sep=sep, end=' ', file=file)
+  print(*items, sep=sep, end=' ', file=file, flush=flush)
 
-def writeSZ(file, *items):
+def writeSZ(file, *items, flush=False):
   "write items to file; sep=' ', end=''."
-  print(*items, sep=' ', end='', file=file)
+  print(*items, sep=' ', end='', file=file, flush=flush)
 
-def writeSS(file, *items):
+def writeSS(file, *items, flush=False):
   "write items to file; sep=' ', end=''."
-  print(*items, sep=' ', end=' ', file=file)
+  print(*items, sep=' ', end=' ', file=file, flush=flush)
 
-def writeL(file, *items, sep=''):
+def writeL(file, *items, sep='', flush=False):
   "write items to file; sep='', end='\\n'."
-  print(*items, sep=sep, end='\n', file=file)
+  print(*items, sep=sep, end='\n', file=file, flush=flush)
 
-def writeSL(file, *items):
+def writeSL(file, *items, flush=False):
   "write items to file; sep=' ', end='\\n'."
-  print(*items, sep=' ', end='\n', file=file)
+  print(*items, sep=' ', end='\n', file=file, flush=flush)
 
-def writeLL(file, *items):
+def writeLL(file, *items, flush=False):
   "write items to file; sep='\\n', end='\\n'."
-  print(*items, sep='\n', end='\n', file=file)
+  print(*items, sep='\n', end='\n', file=file, flush=flush)
 
-def writeLSSL(file, *items):
+def writeLSSL(file, *items, flush=False):
   "write items to file; sep='\\n  ', end='\\n'."
-  print(*items, sep='\n  ', end='\n', file=file)
+  print(*items, sep='\n  ', end='\n', file=file, flush=flush)
 
 
 # format printing.
 
-def writeF(file, fmt, *items, **keyed_items):
+def writeF(file, fmt, *items, flush=False, **keyed_items):
   "write the formatted string to file; end=''."
-  print(fmt.format(*items, **keyed_items), end='', file=file)
+  print(fmt.format(*items, **keyed_items), end='', file=file, flush=flush)
 
-def writeFL(file, fmt, *items, **keyed_items):
+def writeFL(file, fmt, *items, flush=False, **keyed_items):
   "write the formatted string to file; end='\\n'."
-  print(fmt.format(*items, **keyed_items), end='\n', file=file)
+  print(fmt.format(*items, **keyed_items), end='\n', file=file, flush=flush)
 
 
 # templated format printing.
 
-def writeTF(file, template_fmt, *items, **keyed_items):
+def writeTF(file, template_fmt, *items, flush=False, **keyed_items):
   """
   expand the format string with keyed_items, then format the string; end=''.
   useful for constructing dynamic format strings.
   """
   fmt = fmt_template(template_fmt, **keyed_items)
-  writeF(file, fmt, *items, **keyed_items)
+  writeF(file, fmt, *items, flush=flush, **keyed_items)
 
-def writeTFL(file, template_fmt, *items, **keyed_items):
+def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
   """
   expand the format string template with keyed_items, then format the string; end='\\n'
   useful for constructing dynamic format strings.
   """
   fmt = fmt_template(template_fmt, **keyed_items)
-  writeFL(file, fmt, *items, **keyed_items)
+  writeFL(file, fmt, *items, flush=flush, **keyed_items)
 
 
 def writeP(file, *items, label=None, indent=2, **opts):
@@ -142,112 +142,112 @@ def writeP(file, *items, label=None, indent=2, **opts):
     _pp.pprint(item, stream=file, indent=indent, **opts)
 
 
-def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder):
+def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
   # TODO: remaining options with sensible defaults.
   for item in items:
     _json.dump(item, file, indent=indent, sort_keys=sort, cls=cls)
     if end:
-      file.write(end)
+      file.write(end, flush=flush)
 
 
 # std out.
 
-def outZ(*items, sep='', end=''):
+def outZ(*items, sep='', end='', flush=False):
   "write items to std out; sep='', end=''."
-  print(*items, sep=sep, end=end)
+  print(*items, sep=sep, end=end, flush=flush)
 
-def outS(*items, sep=''):
+def outS(*items, sep='', flush=False):
   "write items to std out; sep='', end=' '."
-  print(*items, sep=sep, end=' ')
+  print(*items, sep=sep, end=' ', flush=flush)
 
-def outSZ(*items):
+def outSZ(*items, flush=False):
   "write items to std out; sep=' ', end=''."
-  print(*items, sep=' ', end='')
+  print(*items, sep=' ', end='', flush=flush)
 
-def outSS(*items):
+def outSS(*items, flush=False):
   "write items to std out; sep=' ', end=' '."
-  print(*items, end=' ')
+  print(*items, end=' ', flush=flush)
 
-def outL(*items, sep=''):
+def outL(*items, sep='', flush=False):
   "write items to std out; sep='', end='\\n'."
-  print(*items, sep=sep)
+  print(*items, sep=sep, flush=flush)
 
-def outSL(*items):
+def outSL(*items, flush=False):
   "write items to std out; sep=' ', end='\\n'."
-  print(*items)
+  print(*items, flush=flush)
 
-def outLL(*items):
+def outLL(*items, flush=False):
   "write items to std out; sep='\\n', end='\\n'."
-  print(*items, sep='\n')
+  print(*items, sep='\n', flush=flush)
 
-def outLSSL(*items):
+def outLSSL(*items, flush=False):
   "write items to std out; sep='\\n  ', end='\\n'."
-  print(*items, sep='\n  ')
+  print(*items, sep='\n  ', flush=flush)
 
-def outF(fmt, *items, **keyed_items):
+def outF(fmt, *items, flush=False, **keyed_items):
   "write the formatted string to std out; end=''."
-  writeF(stdout, fmt, *items, **keyed_items)
+  writeF(stdout, fmt, *items, flush=flush, **keyed_items)
 
-def outFL(fmt, *items, **keyed_items):
+def outFL(fmt, *items, flush=False, **keyed_items):
   "write the formatted string to std out; end='\\n'."
-  writeFL(stdout, fmt, *items, **keyed_items)
+  writeFL(stdout, fmt, *items, flush=flush, **keyed_items)
 
-def outP(*items, label=None, **opts):
+def outP(*items, label=None, flush=False, **opts):
   'pretty print to std out.'
   writeP(stdout, *items, label=label, **opts)
 
-def out_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder):
-  write_json(stdout, *items, indent=indent, sort=sort, end=end, cls=cls)
+def out_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
+  write_json(stdout, *items, indent=indent, sort=sort, end=end, cls=cls, flush=flush)
 
 
 # std err.
 
-def errZ(*items, sep='', end=''):
+def errZ(*items, sep='', end='', flush=False):
   "write items to std err; default sep='', end=''."
-  print(*items, sep=sep, end=end, file=stderr)
+  print(*items, sep=sep, end=end, file=stderr, flush=flush)
 
-def errS(*items, sep=''):
+def errS(*items, sep='', flush=False):
   "write items to std err; sep='', end=' '."
-  print(*items, sep=sep, end=' ', file=stderr)
+  print(*items, sep=sep, end=' ', file=stderr, flush=flush)
 
-def errSZ(*items):
+def errSZ(*items, flush=False):
   "write items to std err; sep=' ', end=''."
-  print(*items, sep=' ', end='', file=stderr)
+  print(*items, sep=' ', end='', file=stderr, flush=flush)
 
-def errSS(*items):
+def errSS(*items, flush=False):
   "write items to std err; sep=' ', end=''."
-  print(*items, sep=' ', end=' ', file=stderr)
+  print(*items, sep=' ', end=' ', file=stderr, flush=flush)
 
-def errL(*items, sep=''):
+def errL(*items, sep='', flush=False):
   "write items to std err; sep='', end='\\n'."
-  print(*items, sep=sep, end='\n', file=stderr)
+  print(*items, sep=sep, end='\n', file=stderr, flush=flush)
 
-def errSL(*items):
+def errSL(*items, flush=False):
   "write items to std err; sep=' ', end='\\n'."
-  print(*items, sep=' ', end='\n', file=stderr)
+  print(*items, sep=' ', end='\n', file=stderr, flush=flush)
 
-def errLL(*items):
+def errLL(*items, flush=False):
   "write items to std err; sep='\\n', end='\\n'."
-  print(*items, sep='\n', end='\n', file=stderr)
+  print(*items, sep='\n', end='\n', file=stderr, flush=flush)
 
-def errLSSL(*items):
+def errLSSL(*items, flush=False):
   "write items to std err; sep='\\n  ', end='\\n'."
-  print(*items, sep='\n  ', end='\n', file=stderr)
+  print(*items, sep='\n  ', end='\n', file=stderr, flush=flush)
 
-def errF(fmt, *items, **keyed_items):
+def errF(fmt, *items, flush=False, **keyed_items):
   "write the formatted string to std err; end=''."
-  writeF(stderr, fmt, *items, **keyed_items)
+  writeF(stderr, fmt, *items, flush=flush, **keyed_items)
 
-def errFL(fmt, *items, **keyed_items):
+def errFL(fmt, *items, flush=False, **keyed_items):
   "write the formatted string to std err; end='\\n'."
-  writeFL(stderr, fmt, *items, **keyed_items)
+  writeFL(stderr, fmt, *items, flush=flush, **keyed_items)
 
 def errP(*items, label=None, **opts):
   'pretty print to std err.'
   writeP(stderr, *items, label=label, **opts)
 
-def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder):
-  write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls)
+def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
+  write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls, flush=flush)
 
 
 def err_progress(iterator, label='progress', suffix='', frequency=0.1):
