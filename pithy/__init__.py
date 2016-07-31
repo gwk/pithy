@@ -5,6 +5,7 @@ import re
 from collections import Counter, defaultdict, namedtuple
 from enum import Enum
 from functools import lru_cache, partial, partialmethod, reduce, singledispatch
+from importlib import reload
 from itertools import chain, dropwhile, filterfalse, groupby, islice, repeat, takewhile, tee, zip_longest
 from sys import argv, stderr, stdout
 
