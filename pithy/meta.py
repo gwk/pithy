@@ -3,7 +3,7 @@ import inspect
 from types import FunctionType
 
 
-def bindings_matching(prefix=None, type=None, strip_prefix=True, frame='<module>'):
+def bindings_matching(prefix=None, val_type=None, strip_prefix=True, frame='<module>'):
   '''
   return (name, value) pairs of bindings from the specified frame, 
   that match the specified prefix and type filters.
@@ -28,7 +28,7 @@ def bindings_matching(prefix=None, type=None, strip_prefix=True, frame='<module>
   for name, value in bindings.items():
     if all((
       prefix is None or name.startswith(prefix),
-      type is None or isinstance(value, type),
+      val_type is None or isinstance(value, val_type),
     )):
       if prefix and strip_prefix:
         name = name[len(prefix):]
@@ -36,9 +36,11 @@ def bindings_matching(prefix=None, type=None, strip_prefix=True, frame='<module>
   return pairs
 
 
-def dispatcher_for_names(prefix=None, default_name=None, default_fn=None):
+def dispatcher_for_names(prefix=None, default_name=None, default_fn=None, **renames):
   assert prefix
-  bindings = dict(bindings_matching(prefix=prefix, type=FunctionType, frame='<module>'))
+  bindings = { renames.get(name, name) : fn
+    for name, fn in bindings_matching(prefix=prefix, val_type=FunctionType, frame='<module>') }
+
   if default_name is not None:
     if default_fn is not None:
       raise ValueError('default_name and default_fn cannot both be specified.')
