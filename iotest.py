@@ -10,6 +10,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import time
 
 from string import Template
 from pithy import *
@@ -21,6 +22,7 @@ dflt_timeout = 4
 
 
 def main():
+  start_time = time.time()
   arg_parser = argparse.ArgumentParser(description='iotest: a simple file-based test harness.')
   arg_parser.add_argument('-parse-only', action='store_true', help='parse test cases and exit.'),
   arg_parser.add_argument('-fail-fast',  action='store_true', help='exit on first error; implied by -dbg.'),
@@ -56,6 +58,8 @@ def main():
       broken_count += 1
     elif case.skip:
       skipped_count += 1
+    elif ctx.parse_only:
+      continue
     else:
       ok = try_case(ctx, case)
       if not ok:
@@ -63,11 +67,13 @@ def main():
 
   outL('\n', '#' * bar_width)
   count = len(cases)
+  total_time = time.time() - start_time
   if not any([broken_count, skipped_count, failed_count]):
-    outFL('TESTS PASSED: {}.', count)
+    outFL('TESTS {}: {}. Total time: {:.2f} sec.',
+     'PARSED' if ctx.parse_only else 'PASSED', count, total_time)
   else:
-    outFL('TESTS FOUND: {}; BROKEN: {}; SKIPPED: {}; FAILED: {}.',
-      count, broken_count, skipped_count, failed_count)
+    outFL('TESTS FOUND: {}; BROKEN: {}; SKIPPED: {}; FAILED: {}. Total time: {:.2f} sec.',
+      count, broken_count, skipped_count, failed_count, total_time)
     exit(1)
 
 
@@ -444,14 +450,17 @@ def try_case(ctx, case):
 
 
 def run_case(ctx, case):
-  outSL('executing:', case.stem)
-  if ctx.dbg: case.describe()
+  outSZ('executing:', case.stem, ' ' * (53 - len(case.stem)), flush=True)
+  if ctx.dbg:
+    outL()
+    case.describe()
 
   # set up directory.
   if path_exists(case.test_dir):
     try:
       remove_dir_contents(case.test_dir)
     except NotADirectoryError:
+      outL()
       failF('error: {}: test directory already exists as a file; please remove it and try again.',
        case.test_dir)
   else:
@@ -463,9 +472,11 @@ def run_case(ctx, case):
       dst = path_join(ctx.proj_dir, dst_path)
       os.symlink(dst, link)
 
+  compile_time = 0
   if case.compile_cmd is not None:
     compile_out_path = path_join(case.test_dir, 'compile-out')
     compile_err_path = path_join(case.test_dir, 'compile-err')
+    compile_time_start = time.time()
     status = run_cmd(ctx,
       label='compile',
       cmd=case.compile_cmd,
@@ -476,9 +487,10 @@ def run_case(ctx, case):
       err_path=compile_err_path,
       timeout=(case.compile_timeout or dflt_timeout),
       exp_code=0)
+    compile_time = time.time() - compile_time_start
     if not status:
-      outL('compile failed.')
-      if status is not None:
+      outL('\ncompile failed.')
+      if status is not None: # not aborted; output is interesting.
         cat_file(compile_out_path)
         cat_file(compile_err_path)
       return False
@@ -497,6 +509,7 @@ def run_case(ctx, case):
   else:
     exp_code = case.code
 
+  test_time_start = time.time()
   status = run_cmd(ctx,
     label='test',
     cmd=case.test_cmd,
@@ -507,7 +520,12 @@ def run_case(ctx, case):
     err_path=path_join(case.test_dir, 'err'),
     timeout=(case.timeout or dflt_timeout),
     exp_code=exp_code)
-  
+  test_time = time.time() - test_time_start
+
+  if compile_time:
+    outF(' compiled in {:.2f} sec;', test_time)
+  outFL(' ran in {:.2f} sec.', test_time)
+
   if status is None:
     return False
   
