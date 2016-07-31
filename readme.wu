@@ -1,0 +1,46 @@
+writeup v0
+Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+
+# utest
+
+utest is a tiny library for unit testing in Python. It is available via pip for easy distribution. Alternatively, the module can be freely copied into a project. utest has no dependencies beyond the Python standard library.
+
+utest currently only supports Python 3; pull requests to support Python 2 as well are welcome.
+
+
+# License
+
+utest dedicated to the public domain. It is written and maintained by George King.
+
+
+# Installation
+$ pip3 install utest
+
+# Usage
+
+Tests are written as standalone scripts that call the utest functions `utest` and `utest_exc`. Typical invocations look like this:
+| utest(expected_value, fn_to_test, arg0, arg1, kw2=arg2, ...) 
+| utest_exc(expected_exception, fn_to_test, arg0, arg1, kw2=arg2, ...)
+
+The `utest` function takes as arguments an expected return value, followed by a function to test and any number of positional and keyword arguments. The function is called with the provided arguments inside of a try/except block, and the return value is compared to the expected value.
+
+The 'utest_exc' function is similar, except that the expectation is that the function under test raise an exception. Note that because Python does not implement value equality for exceptions, `utest_exc` implements its own exception comparison. Currently this compares types and the `args` property of the expected and actual exceptions. Improvements to this comparison may prove to be necessary, as various exception types may set attributes that are not represented in args.
+
+When an expectation is not met, utest prints a message to stderr, and increments the failure count. When the process exits, if failures have occured, then an `atexit` handler set by the utest module prints a summary message and forces a hard exit with status 1. (Note that as of Python 3.5.2, `atexit` suppresses SystemExit exceptions raised in handlers, which is unfortunate because it means that utest must use _exit to return a status code of 1, thereby bypassing any lower atexit handlers. If your unit tests require other `atexit` handlers to run, then make sure to include `utest` at the very top of the `__main__` file of your test process).
+
+See the unit tests for more examples.
+
+
+# Testing utest
+
+utest is itself tested using iotest, a process-based integration test harness. iotest is also available via pip:
+$ pip3 install iotest
+
+To run the tests:
+$ iotest test/
+
+
+# Issues
+
+Please file issues to the github repository: github.com/gwk/utest.
