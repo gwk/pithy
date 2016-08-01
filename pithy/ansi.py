@@ -60,17 +60,17 @@ ansi_ctrl_seq_re = _re.compile(r'\x1B\[.*?[hHJKlmsu]')
 
 
 def ansi_ctrl_seq(c, *args):
-  'format a control sequence string for command character `c` and arguments.'
+  'Format a control sequence string for command character `c` and arguments.'
   return '{}{}{}'.format(CSI, ';'.join(str(a) for a in args), c)
 
 
 def strip_ansi_ctrl_seq(text):
-  'strip control sequences from a string.'
+  'Strip control sequences from a string.'
   return ansi_ctrl_seq_re.sub('', text)
 
 
 def len_strip_ansi_ctrl_seq(s):
-  'calculate the length of string if control sequences were stripped.'
+  'Calculate the length of string if control sequences were stripped.'
   l = len(s)
   for m in ansi_ctrl_seq_re.finditer(s):
     l -= m.end() - m.start()

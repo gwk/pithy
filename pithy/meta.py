@@ -5,9 +5,9 @@ from types import FunctionType
 
 def bindings_matching(prefix=None, val_type=None, strip_prefix=True, frame='<module>'):
   '''
-  return (name, value) pairs of bindings from the specified frame, 
+  Return (name, value) pairs of bindings from the specified frame, 
   that match the specified prefix and type filters.
-  frame must be either an int (depth; immediate caller is 1),
+  Frame must be either an int (depth; immediate caller is 1),
   or a string (the name of the target frame's function, or '<module>', the default).
   '''
   stack = inspect.stack()
@@ -37,6 +37,7 @@ def bindings_matching(prefix=None, val_type=None, strip_prefix=True, frame='<mod
 
 
 def dispatcher_for_names(prefix=None, default_name=None, default_fn=None, **renames):
+  'Creates a dispatcher function for functions starting with prefix.'
   assert prefix
   bindings = { renames.get(name, name) : fn
     for name, fn in bindings_matching(prefix=prefix, val_type=FunctionType, frame='<module>') }
@@ -58,11 +59,13 @@ def dispatcher_for_names(prefix=None, default_name=None, default_fn=None, **rena
 
 
 def rename(obj, name):
+  'Returns a renamed object.'
   obj.__name__ = name
   obj.__qualname__ = name
   return obj
 
 
 def main_file_path():
+  'Returns the main file path.'
   import __main__
   return __main__.__file__

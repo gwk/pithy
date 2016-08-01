@@ -12,7 +12,7 @@ from sys import stdout, stderr
 
 
 def fmt_template(template, **substitutions):
-  'render a template using $ syntax.'
+  'Render a template using $ syntax.'
   t = _string.Template(template)
   return t.substitute(substitutions)
 
@@ -29,7 +29,7 @@ class JsonEncoder(_json.JSONEncoder):
   def iterencode(self, o, _one_shot=False):
     '''
     Derived from Python/Lib/json/encoder.py.
-    custom iterencode always avoids using c_make_encoder,
+    Custom iterencode always avoids using c_make_encoder,
     and passes hacked isinstance to _make_iterencode.'
     '''
     if self.check_circular:
@@ -58,7 +58,7 @@ class JsonEncoder(_json.JSONEncoder):
       return text
 
     def isinstance_hacked(obj, type):
-      'prevent namedtuple types from being recognized as tuples, so that default is invoked.'
+      'Prevent namedtuple types from being recognized as tuples, so that default is invoked.'
       return isinstance(obj, type) and not hasattr(obj, '_asdict')
 
     _iterencode = _json_enc._make_iterencode(
@@ -71,46 +71,46 @@ class JsonEncoder(_json.JSONEncoder):
 # basic printing.
 
 def writeZ(file, *items, sep='', end='', flush=False):
-  "write items to file; default sep='', end=''."
+  "Write `items` to file; default sep='', end=''."
   print(*items, sep=sep, end=end, file=file, flush=False)
 
 def writeS(file, *items, sep='', flush=False):
-  "write items to file; sep='', end=' '."
+  "Write `items` to file; sep='', end=' '."
   print(*items, sep=sep, end=' ', file=file, flush=flush)
 
 def writeSZ(file, *items, flush=False):
-  "write items to file; sep=' ', end=''."
+  "Write `items` to file; sep=' ', end=''."
   print(*items, sep=' ', end='', file=file, flush=flush)
 
 def writeSS(file, *items, flush=False):
-  "write items to file; sep=' ', end=''."
+  "Write `items` to file; sep=' ', end=''."
   print(*items, sep=' ', end=' ', file=file, flush=flush)
 
 def writeL(file, *items, sep='', flush=False):
-  "write items to file; sep='', end='\\n'."
+  "Write `items` to file; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=file, flush=flush)
 
 def writeSL(file, *items, flush=False):
-  "write items to file; sep=' ', end='\\n'."
+  "Write `items` to file; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=file, flush=flush)
 
 def writeLL(file, *items, flush=False):
-  "write items to file; sep='\\n', end='\\n'."
+  "Write `items` to file; sep='\\n', end='\\n'."
   print(*items, sep='\n', end='\n', file=file, flush=flush)
 
 def writeLSSL(file, *items, flush=False):
-  "write items to file; sep='\\n  ', end='\\n'."
+  "Write `items` to file; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=file, flush=flush)
 
 
 # format printing.
 
 def writeF(file, fmt, *items, flush=False, **keyed_items):
-  "write the formatted string to file; end=''."
+  "Write the formatted `items` to file; end=''."
   print(fmt.format(*items, **keyed_items), end='', file=file, flush=flush)
 
 def writeFL(file, fmt, *items, flush=False, **keyed_items):
-  "write the formatted string to file; end='\\n'."
+  "Write the formatted `items` to file; end='\\n'."
   print(fmt.format(*items, **keyed_items), end='\n', file=file, flush=flush)
 
 
@@ -118,23 +118,23 @@ def writeFL(file, fmt, *items, flush=False, **keyed_items):
 
 def writeTF(file, template_fmt, *items, flush=False, **keyed_items):
   """
-  expand the format string with keyed_items, then format the string; end=''.
-  useful for constructing dynamic format strings.
+  Expand the format string with keyed_items, then format the string; end=''.
+  Useful for constructing dynamic format strings.
   """
   fmt = fmt_template(template_fmt, **keyed_items)
   writeF(file, fmt, *items, flush=flush, **keyed_items)
 
 def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
   """
-  expand the format string template with keyed_items, then format the string; end='\\n'
-  useful for constructing dynamic format strings.
+  Expand the format string template with keyed_items, then format the string; end='\\n'
+  Useful for constructing dynamic format strings.
   """
   fmt = fmt_template(template_fmt, **keyed_items)
   writeFL(file, fmt, *items, flush=flush, **keyed_items)
 
 
 def writeP(file, *items, label=None, indent=2, **opts):
-  'pretty print to file.'
+  'Pretty print to file.'
   if label is not None:
     file.write(label)
     file.write (': ')
@@ -143,6 +143,7 @@ def writeP(file, *items, label=None, indent=2, **opts):
 
 
 def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
+  'Write `items` as json to file.'
   # TODO: remaining options with sensible defaults.
   for item in items:
     _json.dump(item, file, indent=indent, sort_keys=sort, cls=cls)
@@ -153,47 +154,47 @@ def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder, flu
 # std out.
 
 def outZ(*items, sep='', end='', flush=False):
-  "write items to std out; sep='', end=''."
+  "Write `items` to std out; sep='', end=''."
   print(*items, sep=sep, end=end, flush=flush)
 
 def outS(*items, sep='', flush=False):
-  "write items to std out; sep='', end=' '."
+  "Write `items` to std out; sep='', end=' '."
   print(*items, sep=sep, end=' ', flush=flush)
 
 def outSZ(*items, flush=False):
-  "write items to std out; sep=' ', end=''."
+  "Write `items` to std out; sep=' ', end=''."
   print(*items, sep=' ', end='', flush=flush)
 
 def outSS(*items, flush=False):
-  "write items to std out; sep=' ', end=' '."
+  "Write `items` to std out; sep=' ', end=' '."
   print(*items, end=' ', flush=flush)
 
 def outL(*items, sep='', flush=False):
-  "write items to std out; sep='', end='\\n'."
+  "Write `items` to std out; sep='', end='\\n'."
   print(*items, sep=sep, flush=flush)
 
 def outSL(*items, flush=False):
-  "write items to std out; sep=' ', end='\\n'."
+  "Write `items` to std out; sep=' ', end='\\n'."
   print(*items, flush=flush)
 
 def outLL(*items, flush=False):
-  "write items to std out; sep='\\n', end='\\n'."
+  "Write `items` to std out; sep='\\n', end='\\n'."
   print(*items, sep='\n', flush=flush)
 
 def outLSSL(*items, flush=False):
-  "write items to std out; sep='\\n  ', end='\\n'."
+  "Write `items` to std out; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', flush=flush)
 
 def outF(fmt, *items, flush=False, **keyed_items):
-  "write the formatted string to std out; end=''."
+  "Write the formatted string to std out; end=''."
   writeF(stdout, fmt, *items, flush=flush, **keyed_items)
 
 def outFL(fmt, *items, flush=False, **keyed_items):
-  "write the formatted string to std out; end='\\n'."
+  "Write the formatted string to std out; end='\\n'."
   writeFL(stdout, fmt, *items, flush=flush, **keyed_items)
 
 def outP(*items, label=None, flush=False, **opts):
-  'pretty print to std out.'
+  'Pretty print to std out.'
   writeP(stdout, *items, label=label, **opts)
 
 def out_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
@@ -203,54 +204,59 @@ def out_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False
 # std err.
 
 def errZ(*items, sep='', end='', flush=False):
-  "write items to std err; default sep='', end=''."
+  "Write items to std err; default sep='', end=''."
   print(*items, sep=sep, end=end, file=stderr, flush=flush)
 
 def errS(*items, sep='', flush=False):
-  "write items to std err; sep='', end=' '."
+  "Write items to std err; sep='', end=' '."
   print(*items, sep=sep, end=' ', file=stderr, flush=flush)
 
 def errSZ(*items, flush=False):
-  "write items to std err; sep=' ', end=''."
+  "Write items to std err; sep=' ', end=''."
   print(*items, sep=' ', end='', file=stderr, flush=flush)
 
 def errSS(*items, flush=False):
-  "write items to std err; sep=' ', end=''."
+  "Write items to std err; sep=' ', end=''."
   print(*items, sep=' ', end=' ', file=stderr, flush=flush)
 
 def errL(*items, sep='', flush=False):
-  "write items to std err; sep='', end='\\n'."
+  "Write items to std err; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=stderr, flush=flush)
 
 def errSL(*items, flush=False):
-  "write items to std err; sep=' ', end='\\n'."
+  "Write items to std err; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=stderr, flush=flush)
 
 def errLL(*items, flush=False):
-  "write items to std err; sep='\\n', end='\\n'."
+  "Write items to std err; sep='\\n', end='\\n'."
   print(*items, sep='\n', end='\n', file=stderr, flush=flush)
 
 def errLSSL(*items, flush=False):
-  "write items to std err; sep='\\n  ', end='\\n'."
+  "Write items to std err; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=stderr, flush=flush)
 
 def errF(fmt, *items, flush=False, **keyed_items):
-  "write the formatted string to std err; end=''."
+  "Write the formatted string to std err; end=''."
   writeF(stderr, fmt, *items, flush=flush, **keyed_items)
 
 def errFL(fmt, *items, flush=False, **keyed_items):
-  "write the formatted string to std err; end='\\n'."
+  "Write the formatted string to std err; end='\\n'."
   writeFL(stderr, fmt, *items, flush=flush, **keyed_items)
 
 def errP(*items, label=None, **opts):
-  'pretty print to std err.'
+  'Pretty print to std err.'
   writeP(stderr, *items, label=label, **opts)
 
 def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
+  'Write items as json to std err.'
   write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls, flush=flush)
 
 
 def err_progress(iterator, label='progress', suffix='', frequency=0.1):
+  '''
+  For interactive terminals, return a generator that yields the elements of iterator
+  and displays a progress indicator on std err.
+  '''
   if not frequency or not stderr.isatty():
     return iterator
 
@@ -296,27 +302,33 @@ def err_progress(iterator, label='progress', suffix='', frequency=0.1):
 # errors.
 
 def fail(*items, sep=''):
+  'Write `items` to std err and exit.'
   errZ(*items, sep=sep, end='\n')
   _sys.exit(1)
 
 def failS(*items): 
+  "Write `items` to std err with sep =' ', and exit."
   fail(*items, sep=' ')
 
 def failL(*items):
+  "Write `items` to std err with sep ='\n', and exit."
   fail(*items, sep='\n')
 
 def failF(fmt, *items, **keyed_items):
+  'Writes `items` to std err with a formatted err, and exit.'
   fail(fmt.format(*items, **keyed_items))
 
 
 def check(condition, *items, sep=''):
-  'if condition is False, fail with the provided message items.'
+  'If `condition` is False, fail with `items`.'
   if not condition: fail(*items, sep=sep)
 
 def checkS(condition, *items):
+  "If `condition` is False, fail with `items` and a sep=' '."
   if not condition: failS(*items)
 
 def checkF(condition, fmt, *items, **keyed_items):
+  'If `condition` is False, fail with `items` with a formatted err.'
   if not condition: failF(fmt, *items, **keyed_items)
 
 
@@ -332,11 +344,13 @@ def raiseF(fmt, *items, E=Exception):
 # convenience read/write.
 
 def read_from_path(path):
+  'Read text that the file at `path` contains.'
   with open(path) as f:
     return f.read()
 
 
 def write_to_path(path, string):
+  'Writes `string` to file at `path`.'
   with open(path, 'w') as f:
     f.write(string)
 
@@ -345,6 +359,10 @@ def write_to_path(path, string):
 
 
 def _mk_json_types_hook(types):
+  '''
+  Provide a hook function that creates custom objects from json.
+  Types is a mapping from frozensets of json keys to type constructors.
+  '''
   if not types: return None
 
   type_map = { frozenset(t._fields) : t for t in types }
@@ -364,8 +382,8 @@ def _mk_json_types_hook(types):
 
 def parse_json(string, types=()):
   '''
-  parse json from a string.
-  if types is a non-empty sequence,
+  Parse json from `string`.
+  If `types` is a non-empty sequence,
   then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
@@ -375,6 +393,13 @@ def parse_json(string, types=()):
 
 
 def parse_jsons(string, types=()):
+  '''
+  Parse multiple json objects from `string`.
+  If `types` is a non-empty sequence,
+  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
+  based on field name sets.
+  The sets of field names must be unambiguous for all provided record types.
+  '''
   hook = _mk_json_types_hook(types)
   decoder = _json.JSONDecoder(object_hook=hook)
   ws_re = _json_dec.WHITESPACE
@@ -394,8 +419,8 @@ def parse_jsons(string, types=()):
 
 def read_json(file, types=()):
   '''
-  read json from a file.
-  if types is a non-empty sequence,
+  Read json from `file`.
+  If `types` is a non-empty sequence,
   then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
