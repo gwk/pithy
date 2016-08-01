@@ -72,7 +72,7 @@ class JsonEncoder(_json.JSONEncoder):
 
 def writeZ(file, *items, sep='', end='', flush=False):
   "Write `items` to file; default sep='', end=''."
-  print(*items, sep=sep, end=end, file=file, flush=False)
+  print(*items, sep=sep, end=end, file=file, flush=flush)
 
 def writeS(file, *items, sep='', flush=False):
   "Write `items` to file; sep='', end=' '."
