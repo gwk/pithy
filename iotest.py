@@ -544,11 +544,11 @@ def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
     except PermissionError:
-      outFL('{} process permission error; is the test script executable permission not set?\n'
+      outFL('\n{} process permission error; is the test script executable permission not set?\n'
         '  possible fix: `chmod +x {}`', label, cmd[0])
       return None
     except OSError as e:
-      outFL('{} process OS error {}: {}.', label, e.errno, e.strerror)
+      outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
       if e.strerror == 'Exec format error':
         outFL('  note: is the test script missing its hash-bang line? e.g. `#!/usr/bin/env [INTERPRETER]`')
       elif e.strerror.startswith('No such file or directory:') and path_exists(cmd[0]):
@@ -556,10 +556,10 @@ def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp
         outFL("  (this error is usually issued due to mispelling of '#!/usr/bin/env ...')")
       return None
     except ProcessTimeout:
-      outFL('{} process timed out ({} sec) and was killed.', label, timeout)
+      outFL('\n{} process timed out ({} sec) and was killed.', label, timeout)
       return None
     except ProcessExpectation as e:
-      outFL('{} process was expected to return code: {}; actual code: {}.', label, e.exp, e.act)
+      outFL('\n{} process was expected to return code: {}; actual code: {}.', label, e.exp, e.act)
       return False
     else:
       return True
@@ -574,14 +574,14 @@ def check_file_exp(ctx, test_dir, exp):
     with open(path) as f:
       act_val = f.read()
   except Exception as e:
-    outFL('ERROR: could not read test output file: {}\n  exception: {!r}', path, e)
+    outFL('\nERROR: could not read test output file: {}\n  exception: {!r}', path, e)
     if ctx.dbg: raise
     ctx.fail_fast()
     outSL('-' * bar_width)
     return False
   if file_expectation_fns[exp.mode](exp.val, act_val):
     return True
-  outFL('output file {!r} does not {} expected value:', path, exp.mode)
+  outFL('\noutput file {!r} does not {} expected value:', path, exp.mode)
   for line in exp.val.splitlines():
     outL('\x1B[0;34m', line, '\x1B[0m') # blue text.
   if exp.val and not exp.val.endswith('\n'):
