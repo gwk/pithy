@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+# TODO: rename to something less common.
 
 def seq_from_index(seq, start_index):
   'Returns an iterator for the sequence that skips elements up to the start_index.'
