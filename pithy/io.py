@@ -342,11 +342,15 @@ def raiseF(fmt, *items, E=Exception):
 
 
 # convenience read/write.
-
-def read_from_path(path):
+_read_from_path_default_val = object()
+def read_from_path(path, default=_read_from_path_default_val):
   'Read text that the file at `path` contains.'
-  with open(path) as f:
-    return f.read()
+  try:
+    with open(path) as f:
+      return f.read()
+  except FileNotFoundError as e:
+    if default is _read_from_path_default_val: raise
+    return default
 
 
 def write_to_path(path, string):
