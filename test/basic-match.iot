@@ -1,0 +1,17 @@
+{
+  'args': ['test/basic.legs', '-match',
+    'a',
+    'bd',
+    'bcd',
+    'eg',
+    'efg',
+    'effg',
+    'h',
+    'hh',
+    'ij',
+    'k',
+    'l',
+    '',
+  ],
+  'links': {'test': 'test'},
+}
