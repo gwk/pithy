@@ -6,8 +6,8 @@ def string_contains(string, query):
   return string.find(query) != -1
 
 
-def strip_prefix(string, prefix, req=True):
-  'Remove the prefix if it exists, or raise ValueError.'
+def clip_prefix(string, prefix, req=True):
+  'Remove `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):
     return string[len(prefix):]
   elif req:
@@ -15,20 +15,21 @@ def strip_prefix(string, prefix, req=True):
   return string
 
 
-def strip_suffix(string, suffix, req=True):
-  'Remove the suffix if it exists, or raise ValueError.'
+def  clip_suffix(string, suffix, req=True):
+  'Remove `suffix`if it is present, or raise ValueError, unless `req` is False.'
+  if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
-    return string[:len(suffix)]
+    return string[:-len(suffix)]
   elif req:
     raise ValueError(string)
   return string
 
 
-def strip_first_prefix(string, prefixes, req=True):
-  'Remove the first prefix from string found in a list of prefixes.'
+def clip_first_prefix(string, prefixes, req=True):
+  'Remove the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
   for p in prefixes:
     try:
-      return strip_prefix(string, p, req=True)
+      return clip_prefix(string, p, req=True)
     except ValueError:
       continue
   if req:
@@ -52,13 +53,6 @@ def iter_excluding_str(seq):
 def plural_s(count):
   "Return an 's' or '' depending on the count, for use in english language formatted strings."
   return '' if count == 1 else 's'
-
-
-def  clip_suffix(string, suffix):
-  'Return the string with the suffix removed if it is present, or raise ValueError.'
-  if len(suffix) == 0: return string # need this case because string[:-0] == ''.
-  if not string.endswith(suffix): raise ValueError(string, suffix)
-  return string[:-len(suffix)]
 
 
 _byte_count_dec_magnitudes = [
