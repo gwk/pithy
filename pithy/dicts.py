@@ -4,7 +4,7 @@
 def dict_put(d: dict, k, v):
   'Put a new key and value in the dictionary, raises err KeyError if the key already exists.'
   if k in d:
-    raise KeyError('dictionary already contains key {!r}'.format(k))
+    raise KeyError(k)
   d[k] = v
 
 
