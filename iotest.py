@@ -68,13 +68,15 @@ def main():
   outL('\n', '#' * bar_width)
   count = len(cases)
   total_time = time.time() - start_time
-  if not any([broken_count, skipped_count, failed_count]):
-    outFL('TESTS {}: {}. Total time: {:.2f} sec.',
-     'PARSED' if ctx.parse_only else 'PASSED', count, total_time)
+  if any([broken_count, skipped_count, failed_count]):
+    msg = 'TESTS FOUND: {}; BROKEN: {}; SKIPPED: {}; FAILED: {}.'.format(
+      count, broken_count, skipped_count, failed_count)
+    code = 1
   else:
-    outFL('TESTS FOUND: {}; BROKEN: {}; SKIPPED: {}; FAILED: {}. Total time: {:.2f} sec.',
-      count, broken_count, skipped_count, failed_count, total_time)
-    exit(1)
+    msg = 'TESTS {}: {}'.format('PARSED' if ctx.parse_only else 'PASSED', count)
+    code = 0
+  outFL('{:{bar_width}} {:.2f} sec.', msg, total_time, bar_width=bar_width)
+  exit(code)
 
 
 class Ctx:
@@ -450,7 +452,7 @@ def try_case(ctx, case):
 
 
 def run_case(ctx, case):
-  outSZ('executing:', case.stem, ' ' * (53 - len(case.stem)), flush=True)
+  outF('{:{bar_width}}', case.stem, flush=True, bar_width=bar_width)
   if ctx.dbg:
     outL()
     case.describe()
@@ -522,9 +524,8 @@ def run_case(ctx, case):
     exp_code=exp_code)
   test_time = time.time() - test_time_start
 
-  if compile_time:
-    outF(' compiled in {:.2f} sec;', test_time)
-  outFL(' ran in {:.2f} sec.', test_time)
+  compile_msg = '; compile: {:.2f}'.format(compile_time) if compile_time else ''
+  outFL(' {:.2f} sec{}.', test_time, compile_msg)
 
   if status is None:
     return False
