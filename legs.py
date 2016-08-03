@@ -5,9 +5,9 @@
 import re
 
 from argparse import ArgumentParser
+from itertools import count
 from pithy import *
 from pithy.collection_utils import freeze
-from pithy.lists import list_push_index
 
 
 def main():
@@ -284,8 +284,8 @@ class Char(Rule):
 
 
 def genNFA(rules):
-  nodes = []
-  def mk_node(): return list_push_index(nodes)
+  indexer = iter(count())
+  def mk_node(): return next(indexer)
   start = mk_node()
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
