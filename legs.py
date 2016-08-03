@@ -347,22 +347,6 @@ class FA:
         errFL('    {} -> {}', chars_desc(chars), state_desc(dstState))
 
 
-class DFA(FA):
-  'Deterministic Finite Automata.'
-
-  def advance(self, state, char):
-    return self.transitions[state][char]
-
-  def match(self, input, startState=None):
-    if is_str(input):
-      input = input.encode()
-    state = startState or self.startState
-    for char in input:
-      try: state = self.advance(state, char)
-      except KeyError: return None
-    return self.matchNodeNames.get(state, None)
-
-
 class NFA(FA):
   'Nondeterministic Finite Automata.'
 
@@ -456,6 +440,22 @@ class NFA(FA):
       if name not in allNames:
         failF('NFA rule is missing from DFA: {}', name)
     return DFA(transitions=transitions, matchNodeNames=matchNodeNames, startState=startState)
+
+
+class DFA(FA):
+  'Deterministic Finite Automata.'
+
+  def advance(self, state, char):
+    return self.transitions[state][char]
+
+  def match(self, input, startState=None):
+    if is_str(input):
+      input = input.encode()
+    state = startState or self.startState
+    for char in input:
+      try: state = self.advance(state, char)
+      except KeyError: return None
+    return self.matchNodeNames.get(state, None)
 
 
 def state_desc(state):
