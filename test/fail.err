@@ -18,3 +18,7 @@ utest failure: raise_unexpected
   expected exception: Exception('expected',)
   raised exception: Exception('unexpected',)
 
+utest failure: utest_val fail test
+  expected value: True
+  returned value: False
+
