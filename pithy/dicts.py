@@ -31,6 +31,15 @@ def dict_set_defaults(d: dict, defaults: dict):
   return d
 
 
+def dict_filter_map(d: dict, seq):
+  'Map the values of `seq` through the dictionary, dropping any elements not in the dictionary.'  
+  for el in seq:
+    try:
+      yield d[el]
+    except KeyError:
+      pass
+
+
 class DefaultByKeyDict(dict):
   '''
   Subclass of Dict, similar to defaultdict.
