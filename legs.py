@@ -333,8 +333,9 @@ class FA:
 
   def describe(self):
     errFL('{}:', type(self).__name__)
-    errLSSL(' matchNodeNames:',
-     *('{}: {}'.format(state_desc(node), name) for node, name in sorted(self.matchNodeNames.items())))
+    errL(' matchNodeNames:')
+    for node, name in sorted(self.matchNodeNames.items(), key=lambda p: p[1]):
+      errFL('  {}: {}', state_desc(node), name)
     errL(' transitions:')
     for srcNode, d in sorted(self.transitions.items()):
       errFL('  {}:', state_desc(srcNode))
