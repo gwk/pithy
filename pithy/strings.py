@@ -77,6 +77,7 @@ def format_byte_count_dec(count, precision=2, abbreviated=True, small_ints=True)
   for abbrev, full in _byte_count_dec_magnitudes:
     if count < 1000: break
     count /= 1000
-  return fmt.format(count, abbrev if abbreviated else plural_s(full), precision=precision)
+  word = abbrev if abbreviated else full + plural_s(count)
+  return fmt.format(count, word, precision=precision)
 
 
