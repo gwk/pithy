@@ -1,0 +1,12 @@
+# finder.
+.DS_Store
+
+# python.
+__pycache__
+
+# swift.
+.build
+
+# legs.
+_build
+_misc
