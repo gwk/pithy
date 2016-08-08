@@ -10,3 +10,4 @@ __pycache__
 # legs.
 _build
 _misc
+legs.egg-info

@@ -1,5 +1,7 @@
 {
+  'cmd': '$PROJ/legs/__init__.py',
   'args': ['test/basic.legs', '-match',
+    ' ',
     'a',
     'bd',
     'bcd',
@@ -13,5 +15,4 @@
     'l',
     '',
   ],
-  'links': {'test': 'test'},
 }

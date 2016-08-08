@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# derived from http://www-bcf.usc.edu/~breichar/teaching/2011cs360/NFAtoDFA.py.
+# NFA/DFA implementation derived from http://www-bcf.usc.edu/~breichar/teaching/2011cs360/NFAtoDFA.py.
 
 import re
 
@@ -8,15 +9,17 @@ from argparse import ArgumentParser
 from itertools import count
 from pithy import *
 from pithy.collection_utils import freeze
+from legs.swift import output_swift
 
 
 def main():
-  
   parser = ArgumentParser()
   parser.add_argument('rules_path')
   parser.add_argument('-dbg', action='store_true')
   parser.add_argument('-match', nargs='+')
-  parser.add_argument('-output', nargs='?')
+  parser.add_argument('-output')
+  parser.add_argument('-test')
+  parser.add_argument('-license', default='NO LICENSE SPECIFIED')
   args = parser.parse_args()
   dbg = args.dbg
   
@@ -37,45 +40,52 @@ def main():
       errL(m)
     exit(1)
   
-  dfa = nfa.genDFA()
+  dfa = genDFA(nfa)
   if dbg:
     dfa.describe()
   
   if args.match is not None:
     for string in args.match:
-      if dbg: errFL('matching: {!r}', string)
-      nfa_matches = nfa.match(string)
-      dfa_match = dfa.match(string)
-      len_dfa = 1 if dfa_match else 0
-      if len(nfa_matches) != len_dfa or (dfa_match and dfa_match not in nfa_matches):
-        failF('inconsistent match results: NFA: {}; DFA: {}.', nfa_matches, dfa_match)
-      outFL('match: {!r} -{} {}', string,
-        *(('>', dfa_match) if dfa_match else ('-', 'none')))
+      match_string(nfa, dfa, string)
 
-  elif args.output is not None:
-    dfa.output(args.output)
+  if args.output is not None:
+    output(dfa=dfa, rules_path=args.rules_path, path=args.output, test_path=args.test, license=args.license)
 
+
+def match_string(nfa, dfa, string):
+  'Test `nfa` and `dfa` against each other by attempting to match `string`.'
+  nfa_matches = nfa.match(string)
+  dfa_match = dfa.match(string)
+  len_dfa = 1 if dfa_match else 0
+  outFL('match: {!r} {} {}', string, *(('->', dfa_match) if dfa_match else ('--', 'none')))
+  if len(nfa_matches) != len_dfa or (dfa_match and dfa_match not in nfa_matches):
+    failF('DFA result is inconsistent with NFA: {}.', nfa_matches)
 
 
 def compile_rules(path):
+  'Compile the rules given in the legs file at `path`.'
   rules = []
   for line_num, line in enumerate(open(path)):
     line = line.rstrip()
     if not line or line.startswith('#'): continue
-    pos = (path, line_num, 1, line)
     colon_match = re.search(': *', line)
     if colon_match:
       name = line[:colon_match.start()].strip()
       start_col = colon_match.end()
-    else:
-      name = line.strip()
+    else: # derive a name from the rule; meant for convenience while testing.
+      name = re.sub('\W+', '_', line.strip())
+      if name[0].isdigit():
+        name = '_' + name
       start_col = 0
+    if name == 'invalid':
+      parse_failF((path, line_num, 1, line), 'rule name is reserved: {!r}.', name)
     rule = parse_rule_pattern(path, name, line_num, start_col=start_col, pattern=line)
     rules.append(rule)
   return rules
 
 
 def parse_rule_pattern(path, name, line_num, start_col, pattern):
+  'Parse a single pattern and return a Rule object.'
   parser_stack = [PatternParser((path, line_num, 0, pattern), isParenParser=False)]
   # stack of parsers, one for each open nesting syntactic element '(', etc.
   escape = False
@@ -109,11 +119,13 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern):
 
 
 def parse_failF(pos, fmt, *items):
+  'Print a formatted parsing failure to std err and exit.'
   path, line, col, contents = pos
   failF('{}:{}:{}: ' + fmt + '\n{}\n{}^', path, line + 1, col + 1, *items, contents, ' ' * col)
 
-def chr_ranges(*pairs):
-  points = frozenset().union(*(range(p[0], p[1] + 1) for p in pairs))
+def chr_ranges(*intervals):
+  "Return a `bytes` object containing the range of characters denoted by `pairs`, e.g. `b'AZ'`."
+  points = frozenset().union(*(range(i, j + 1) for i, j in intervals))
   return bytes(sorted(points))
 
 
@@ -129,6 +141,7 @@ escape_char_sets.update((c, c.encode()) for c in '[]{}()\\')
 
 #for k, v in escape_char_sets.items():
 #  errFL('{}: {!r}', k, v)
+
 
 class PatternParser:
 
@@ -175,7 +188,6 @@ class PatternParser:
 
     def receive(self, result):
       self.seq.append(result)
-
 
 
 class CharsetParser():
@@ -284,17 +296,89 @@ class Char(Rule):
 
 
 def genNFA(rules):
+  '''
+  Generate an NFA from `rules`.
+  The NFA can be used to match against an argument string,
+  but cannot produce a token stream directly.
+  The 'invalid' node is always added at index 1, and is always unreachable.
+  See genDFA for more details about 'invalid'. 
+  '''
   indexer = iter(count())
   def mk_node(): return next(indexer)
-  start = mk_node()
+  start = mk_node() # always 0.
+  invalidNode = mk_node() # always 1.
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
+  dict_put(matchNodeNames, invalidNode, 'invalid')
   for rule in rules:
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
     assert rule.name
     dict_put(matchNodeNames, matchNode, rule.name)
-  return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames)
+  return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, startState=frozenset({0}))
+
+
+def genDFA(nfa):
+  '''  
+  A DFA node/state is a set of NFA nodes;
+  we use sorted tuples as the actual node objects so that sorting nodes is stable.
+  (frozenset implements `<` to always return False).
+  A DFA has a node/state for every reachable subset of nodes in its corresponding NFA.
+  In the worst case, there will be an exponential increase in number of nodes.
+  As in the NFA, the 'invalid' node remains unreachable,
+  but we explicitly add transitions from 'invalid' to itself,
+  for all characters that are not transitions out of the 'start' state.
+  This allows the generated lexer code to use simpler switch default clauses.
+  For each state, the lexer switches on the current byte.
+  If the switch defaults:
+  * for match states, emit a token, set state to 'start', and call step on the byte again.
+  * for nonmatch states:
+    * if a match state was previously visited, emit a token up to that position.
+    * regardless, advance to 'invalid'.
+  Because 'invalid' is a match state, this emits 'invalid' tokens correctly,
+  without additional handling.
+  '''
+
+  def mk_node(nfa_nodes): return tuple(sorted(nfa_nodes))
+
+  transitions = defaultdict(dict)
+  startState = mk_node(nfa.expandStateViaEmpties(nfa.startState))
+  invalidState = mk_node({1}) 
+  alphabet = nfa.alphabet
+  remainingStates = {startState}
+  while remainingStates:
+    state = remainingStates.pop()
+    d = transitions[state] # unlike NFA, DFA dictionary contains all valid states as keys.
+    for char in alphabet:
+      dstState = mk_node(nfa.advance(state, char))
+      #errFL('GENDFA {} -- {} -> {}', state_desc(state), char_descriptions[char], state_desc(dstState))
+      if not dstState: continue # do not add empty sets for brevity.
+      d[char] = dstState
+      if dstState not in transitions:
+        remainingStates.add(dstState)
+
+  # explicitly add 'invalid', which is otherwise not reachable.
+  # 'invalid' transitions to itself for all characters that do not transition from 'start'. 
+  assert invalidState not in transitions
+  invalidDict = transitions[invalidState] # invalidState is always inserted into transitions.
+  invalidChars = set(range(0x100)) - set(transitions[startState])
+  for c in invalidChars:
+    invalidDict[c] = invalidState
+  
+  # generate matchNodeNames.
+  matchNodeNames = {}
+  for state in transitions:
+    for nfaNode, name, in nfa.matchNodeNames.items():
+      if nfaNode in state:
+        #errSL('GEN-DFA matchNodeNames', name, nfaNode, '->', state_desc(state))
+        dict_put(matchNodeNames, state, name)
+
+  # validate.
+  allNames = set(matchNodeNames.values())
+  for name in nfa.matchNodeNames.values():
+    if name not in allNames:
+      failF('Rule is not reachable in DFA: {}', name)
+  return DFA(transitions=transitions, matchNodeNames=matchNodeNames, startState=startState)
 
 
 class FA:
@@ -303,13 +387,13 @@ class FA:
   Terminology:
   Node: a discrete position in the automaton graph.
     This is traditionally referred to as a 'state'.
-    For NFAs, nodes are integers; for DFAs, they are frozensets of integers.
+    For NFAs, nodes are integers; for DFAs, they are tuples (sorted sets) of integers.
   State: the state value at a given moment while matching an input string against an automaton.
     For DFAs, states are equivalent to nodes.
     For NFAs, the state of the matching algorithm is a set of states;
       traditionally this is referred to as "simulating the NFA",
       or the NFA being "in multiple states at once".
-    Thus, states are frozensets of integers for both subclasses.
+    Thus, states are conceptually sets of integers for both subclasses.
   We make the node/state distinction here so that the code and documentation can be more precise,
   at the cost of being less traditional.
   '''
@@ -318,11 +402,6 @@ class FA:
     self.transitions = transitions
     self.matchNodeNames = matchNodeNames
     self.startState = startState
-    # validate transitions.
-    for charToStateDict in self.allCharToStateDicts:
-      for state in charToStateDict.values():
-        assert isinstance(state, frozenset)
-        assert all(isinstance(i, int) for i in state)
 
   @property
   def allCharToStateDicts(self): return self.transitions.values()
@@ -348,13 +427,10 @@ class FA:
 
 
 class NFA(FA):
-  'Nondeterministic Finite Automata.'
+  'Nondeterministic Finite Automaton.'
 
   class TrivialRuleError(Exception): pass
 
-  def __init__(self, transitions, matchNodeNames):
-    super().__init__(transitions, matchNodeNames, startState=frozenset({0}))
-  
   def validate(self):
     start = self.expandStateViaEmpties(self.startState)
     msgs = []
@@ -407,43 +483,9 @@ class NFA(FA):
   @property
   def allNodes(self): return self.allSrcNodes | self.allDstNodes
 
-  def genDFA(self):
-    '''  
-    A DFA node/state is a frozenset of NFA nodes.
-    A DFA has a node/state for every reachable subset of nodes in its corresponding NFA.
-    In the worst case, there will be an exponential increase in number of nodes.
-    '''
-    transitions = defaultdict(dict)
-    startState = frozenset(self.expandStateViaEmpties(self.startState))
-    alphabet = self.alphabet
-    remainingStates = {startState}
-    completedStates = set()
-    while remainingStates:
-      state = remainingStates.pop()
-      completedStates.add(state)
-      for char in alphabet:
-        dstState = frozenset(self.advance(state, char))
-        #errFL('GENDFA {} -- {} -> {}', state_desc(state), char_descriptions[char], state_desc(dstState))
-        if not dstState: continue
-        transitions[state][char] = dstState
-        if dstState not in completedStates: 
-          remainingStates.add(dstState)
-    matchNodeNames = {}
-    for state in completedStates:
-      for nfaNode, name, in self.matchNodeNames.items():
-        if nfaNode in state:
-          #errSL('GEN-DFA matchNodeNames', name, nfaNode, '->', state_desc(state))
-          dict_put(matchNodeNames, state, name)
-    allNames = set(matchNodeNames.values())
-    # validate.
-    for name in self.matchNodeNames.values():
-      if name not in allNames:
-        failF('NFA rule is missing from DFA: {}', name)
-    return DFA(transitions=transitions, matchNodeNames=matchNodeNames, startState=startState)
-
 
 class DFA(FA):
-  'Deterministic Finite Automata.'
+  'Deterministic Finite Automaton.'
 
   def advance(self, state, char):
     return self.transitions[state][char]
@@ -458,12 +500,24 @@ class DFA(FA):
     return self.matchNodeNames.get(state, None)
 
 
+def output(dfa, rules_path, path, test_path, license):
+  dir, stem, ext = split_dir_stem_ext(path)
+  supported_exts = ['.swift']
+  if ext not in supported_exts:
+    failF('output path has unknown extension {!r}; supported extensions are: {}.',
+      ext, ', '.join(supported_exts))
+  if ext == '.swift':
+    output_swift(dfa=dfa, rules_path=rules_path, path=path, test_path=test_path,
+      license=license, stem=stem, state_desc=state_desc)
+
+
 def state_desc(state):
   if is_int(state): return str(state)
-  return ' '.join(str(i) for i in sorted(state))
+  return '-'.join(str(i) for i in sorted(state))
 
 def chars_desc(chars):
   return ' '.join(char_descriptions[c] for c in sorted(chars))
+
 
 char_descriptions = {i : '{:02x}'.format(i) for i in range(0x100)} 
 
@@ -482,5 +536,4 @@ char_descriptions.update({
 char_descriptions.update((i, chr(i)) for i in range(ord('!'), 0x7f))
 
 
-if __name__ == "__main__":
-  main()
+if __name__ == "__main__": main()

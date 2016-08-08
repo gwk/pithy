@@ -1,0 +1,27 @@
+{
+  'compile': [
+    '$PROJ/legs/__init__.py test/basic.legs -output basic.swift -test main.swift',
+    'swiftc basic.swift main.swift -o basic-swift',
+  ],
+  'args': [
+    '',
+    ' ',
+    'a',
+    'bd',
+    'bcd',
+    'eg',
+    'efg',
+    'effg',
+    'h',
+    'hh',
+    'ij',
+    'k',
+    'l',
+    'kl',
+    'a bd bcd eg efg effg',
+    'h hh ij k l',
+    'x',
+    'ax',
+    'efx',
+  ],
+}
