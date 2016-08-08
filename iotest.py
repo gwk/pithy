@@ -181,7 +181,7 @@ class Case:
     self.args = None # arguments to follow the file under test.
     self.cmd = None # command string/list with which to invoke the test.
     self.code = None # the expected exit code.
-    self.compile = None # the optional compile command string/list.
+    self.compile = None # the optional list of compile commands, each a string or list of strings.
     self.compile_timeout = None
     self.desc = None # description.
     self.env = None # environment variables.
@@ -273,7 +273,7 @@ class Case:
     except KeyError:
       raiseF('invalid key in .iot file: {!r}', key)
     if not predicate(val):
-      raiseF('key: {}: expected value of type: {}; received: {!r}', iot_key, msg, val)
+      raiseF('key: {!r}: expected value of type: {}; received: {!r}', iot_key, msg, val)
     if validator_fn:
       validator_fn(key, val)
     self.add_val_for_key(key, val)
@@ -302,15 +302,20 @@ class Case:
       return t.safe_substitute(**env)
 
     def expand(val):
-      if not val:
+      if val is None:
         return []
       if is_str(val):
         # note: plain strings are expanded first, then split.
         # this behavior matches that of shell commands more closely than split-then-expand,
         # but introduces all the confusion of shell quoting.
         return shlex.split(expand_str(val))
-      return [expand_str(v) for v in val]
-
+      if is_list(val):
+        return [expand_str(el) for el in val]
+      raise ValueError(val)
+    
+    def expand_compile_cmds(val):
+      return [expand(el) for el in val]
+    
     # add the case env one item at a time.
     # sorted because we want expansion to be deterministic;
     # TODO: should probably expand everything with just the builtins;
@@ -322,9 +327,9 @@ class Case:
         env[key] = expand_str(val)
 
     if self.compile:
-      self.compile_cmd = expand(self.compile)
+      self.compile_cmds = expand_compile_cmds(self.compile)
     else:
-      self.compile_cmd = None
+      self.compile_cmds = []
 
     args = expand(self.args)
     if self.cmd:
@@ -333,7 +338,7 @@ class Case:
         self.test_cmd += args
       elif self.dflt_src_path not in (None, Ellipsis):
         self.test_cmd += [self.dflt_src_path]
-    elif self.compile_cmd:
+    elif self.compile_cmds:
       self.test_cmd = ['./' + self.name] + (args or [])
     elif self.dflt_src_path:
       self.test_cmd = [abs_path(self.dflt_src_path)] + (args or [])
@@ -364,6 +369,9 @@ class Case:
 def is_int_or_ellipsis(val):
   return val is Ellipsis or is_int(val)
 
+def is_compile_cmd(val):
+  return is_list(val) and all(is_str_or_list(el) for el in val)
+
 def validate_exp_mode(key, mode):
   if mode not in file_expectation_fns:
     raiseF('key: {}: invalid file expectation mode: {}', key, mode)
@@ -392,7 +400,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list,     None),
   'cmd':      ('string or list of strings', is_str_or_list,     None),
   'code':     ('int or `...`',              is_int_or_ellipsis, None),
-  'compile':  ('string or list of strings', is_str_or_list,     None),
+  'compile':  ('list of (str | list of str)', is_compile_cmd,   None),
   'compile_timeout': ('positive int',       is_pos_int,         None),
   'desc':     ('str',                       is_str,             None),
   'env':      ('dict of strings',           is_dict_of_str,     None),
@@ -475,13 +483,13 @@ def run_case(ctx, case):
       os.symlink(dst, link)
 
   compile_time = 0
-  if case.compile_cmd is not None:
-    compile_out_path = path_join(case.test_dir, 'compile-out')
-    compile_err_path = path_join(case.test_dir, 'compile-err')
-    compile_time_start = time.time()
+  compile_time_start = time.time()
+  for i, compile_cmd in enumerate(case.compile_cmds):
+    compile_out_path = path_join(case.test_dir, 'compile-out-{:02}'.format(i))
+    compile_err_path = path_join(case.test_dir, 'compile-err-{:02}'.format(i))
     status = run_cmd(ctx,
       label='compile',
-      cmd=case.compile_cmd,
+      cmd=compile_cmd,
       cwd=case.test_dir,
       env=case.test_env,
       in_path='/dev/null',
