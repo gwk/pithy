@@ -224,6 +224,7 @@ class Rule:
       for sub in subs: assert isinstance(sub, Rule)
     elif subs is None:
       assert isinstance(chars, bytes)
+      if not chars: parse_failF(pos, 'empty character set.')
     else: failF('chars and subs are mutually exclusive.')
     self.name = None
     self.pos = pos
@@ -234,7 +235,7 @@ class Rule:
     _, line, col, _ = self.pos
     n = self.name + ' ' if self.name else ''
     errF('{}{}{}:{}:{}:', '  ' * depth, n, type(self).__name__, line + 1, col + 1)
-    if self.chars:
+    if self.chars is not None:
       errL(' ', self.chars)
     else:
       errL()
