@@ -4,17 +4,10 @@ import json as _json
 import json.decoder as _json_dec
 import json.encoder as _json_enc
 
-import pprint as _pp
-import string as _string
-import sys as _sys
-
+from pprint import pprint
 from sys import stdout, stderr
 
-
-def fmt_template(template, **substitutions):
-  'Render a template using $ syntax.'
-  t = _string.Template(template)
-  return t.substitute(substitutions)
+from .strings import render_template
 
 
 class JsonEncoder(_json.JSONEncoder):
@@ -121,7 +114,7 @@ def writeTF(file, template_fmt, *items, flush=False, **keyed_items):
   Expand the format string with keyed_items, then format the string; end=''.
   Useful for constructing dynamic format strings.
   """
-  fmt = fmt_template(template_fmt, **keyed_items)
+  fmt = render_template(template_fmt, **keyed_items)
   writeF(file, fmt, *items, flush=flush, **keyed_items)
 
 def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
@@ -129,7 +122,7 @@ def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
   Expand the format string template with keyed_items, then format the string; end='\\n'
   Useful for constructing dynamic format strings.
   """
-  fmt = fmt_template(template_fmt, **keyed_items)
+  fmt = render_template(template_fmt, **keyed_items)
   writeFL(file, fmt, *items, flush=flush, **keyed_items)
 
 
@@ -139,7 +132,7 @@ def writeP(file, *items, label=None, indent=2, **opts):
     file.write(label)
     file.write (': ')
   for item in items:
-    _pp.pprint(item, stream=file, indent=indent, **opts)
+    pprint(item, stream=file, indent=indent, **opts)
 
 
 def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
@@ -304,7 +297,7 @@ def err_progress(iterator, label='progress', suffix='', frequency=0.1):
 def fail(*items, sep=''):
   'Write `items` to std err and exit.'
   errZ(*items, sep=sep, end='\n')
-  _sys.exit(1)
+  exit(1)
 
 def failS(*items): 
   "Write `items` to std err with sep =' ', and exit."

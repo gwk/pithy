@@ -1,5 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from string import Template
+
+
+def render_template(template, **substitutions):
+  'Render a template using $ syntax.'
+  t = Template(template)
+  return t.substitute(substitutions)
+
 
 def string_contains(string, query):
   'Return True if string contains query.'
