@@ -27,7 +27,7 @@ def main():
   arg_parser.add_argument('-parse-only', action='store_true', help='parse test cases and exit.'),
   arg_parser.add_argument('-fail-fast',  action='store_true', help='exit on first error; implied by -dbg.'),
   arg_parser.add_argument('-dbg', action='store_true', help='debug mode: print extra info; implies -fast).'),
-  arg_parser.add_argument('paths', nargs='*', help='test directories to search.')
+  arg_parser.add_argument('paths', nargs='*', default=['test'], help='test directories to search.')
   args = arg_parser.parse_args()
   
   if args.dbg: errL('iotest: DEBUG MODE ON.')
