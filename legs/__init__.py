@@ -303,105 +303,123 @@ def genNFA(rules):
   The 'invalid' node is always added at index 1, and is always unreachable.
   See genDFA for more details about 'invalid'. 
   '''
+
   indexer = iter(count())
   def mk_node(): return next(indexer)
+
   start = mk_node() # always 0.
-  invalidNode = mk_node() # always 1.
+  invalid = mk_node() # always 1. not used; simply reserving the number for clarity.
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
-  dict_put(matchNodeNames, invalidNode, 'invalid')
+  dict_put(matchNodeNames, invalid, 'invalid')
   for rule in rules:
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
     assert rule.name
     dict_put(matchNodeNames, matchNode, rule.name)
-  return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, startState=frozenset({0}))
+  return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames)
 
 
 def genDFA(nfa):
   '''  
-  A DFA node/state is a set of NFA nodes;
-  we use sorted tuples as the actual node objects so that sorting nodes is stable.
-  (frozenset implements `<` to always return False).
-  A DFA has a node/state for every reachable subset of nodes in its corresponding NFA.
+  A DFA node is equivalent to a set of NFA nodes.
+  A DFA a node for every reachable subset of nodes in the corresponding NFA.
   In the worst case, there will be an exponential increase in number of nodes.
-  As in the NFA, the 'invalid' node remains unreachable,
+  
+  As in the NFA, the 'invalid' node is unreachable,
   but we explicitly add transitions from 'invalid' to itself,
   for all characters that are not transitions out of the 'start' state.
   This allows the generated lexer code to use simpler switch default clauses.
   For each state, the lexer switches on the current byte.
-  If the switch defaults:
-  * for match states, emit a token, set state to 'start', and call step on the byte again.
-  * for nonmatch states:
-    * if a match state was previously visited, emit a token up to that position.
-    * regardless, advance to 'invalid'.
-  Because 'invalid' is a match state, this emits 'invalid' tokens correctly,
-  without additional handling.
+  If the switch defaults, we flush any pending token (as set by the last match state), and then:
+  * for match states, perform the start transition as if we were at the start state.
+  * for nonmatch states: advance to `invalid`.
+  `invalid` is itself a match state, so once a valid character is encountered,
+  the lexer emits an 'invalid' token and resets.
   '''
 
-  def mk_node(nfa_nodes): return tuple(sorted(nfa_nodes))
+  indexer = iter(count())
+  def mk_node(): return next(indexer)
+
+  nfa_states_to_dfa_nodes = defaultdict(mk_node)
+  start = frozenset(nfa.expandStateViaEmpties({0}))
+  invalid = frozenset({1}) # no need to expand as `invalid` is never reachable.
+  start_node = nfa_states_to_dfa_nodes[start]
+  invalid_node = nfa_states_to_dfa_nodes[invalid]
 
   transitions = defaultdict(dict)
-  startState = mk_node(nfa.expandStateViaEmpties(nfa.startState))
-  invalidState = mk_node({1}) 
   alphabet = nfa.alphabet
-  remainingStates = {startState}
-  while remainingStates:
-    state = remainingStates.pop()
-    d = transitions[state] # unlike NFA, DFA dictionary contains all valid states as keys.
+  remaining = {start}
+  while remaining:
+    state = remaining.pop()
+    node = nfa_states_to_dfa_nodes[state]
+    d = transitions[node] # unlike NFA, DFA dictionary contains all valid states as keys.
     for char in alphabet:
-      dstState = mk_node(nfa.advance(state, char))
-      #errFL('GENDFA {} -- {} -> {}', state_desc(state), char_descriptions[char], state_desc(dstState))
-      if not dstState: continue # do not add empty sets for brevity.
-      d[char] = dstState
-      if dstState not in transitions:
-        remainingStates.add(dstState)
+      dst_state = frozenset(nfa.advance(state, char))
+      if not dst_state: continue # do not add empty sets for brevity.
+      dst_node = nfa_states_to_dfa_nodes[dst_state]
+      d[char] = dst_node
+      if dst_node not in transitions:
+        remaining.add(dst_state)
 
-  # explicitly add 'invalid', which is otherwise not reachable.
-  # 'invalid' transitions to itself for all characters that do not transition from 'start'. 
-  assert invalidState not in transitions
-  invalidDict = transitions[invalidState] # invalidState is always inserted into transitions.
-  invalidChars = set(range(0x100)) - set(transitions[startState])
-  for c in invalidChars:
-    invalidDict[c] = invalidState
+  # explicitly add `invalid`, which is otherwise not reachable.
+  # `invalid` transitions to itself for all characters that do not transition from `start`. 
+  assert invalid_node not in transitions
+  invalid_dict = transitions[invalid_node]
+  invalid_chars = set(range(0x100)) - set(transitions[start_node])
+  for c in invalid_chars:
+    invalid_dict[c] = invalid_node
   
   # generate matchNodeNames.
   matchNodeNames = {}
-  for state in transitions:
+  for state, node in sorted(nfa_states_to_dfa_nodes.items()):
     for nfaNode, name, in nfa.matchNodeNames.items():
       if nfaNode in state:
-        #errSL('GEN-DFA matchNodeNames', name, nfaNode, '->', state_desc(state))
-        dict_put(matchNodeNames, state, name)
+        if node in matchNodeNames:
+          failF('Rules are ambiguous: {}, {}.', name, matchNodeNames[node])
+        matchNodeNames[node] = name
 
   # validate.
   allNames = set(matchNodeNames.values())
   for name in nfa.matchNodeNames.values():
     if name not in allNames:
       failF('Rule is not reachable in DFA: {}', name)
-  return DFA(transitions=transitions, matchNodeNames=matchNodeNames, startState=startState)
+  return DFA(transitions=transitions, matchNodeNames=matchNodeNames)
 
 
 class FA:
   '''
   Finite Automaton abstract base class.
+
   Terminology:
-  Node: a discrete position in the automaton graph.
+  Node: a discrete position in the automaton graph, represented as an integer.
     This is traditionally referred to as a 'state'.
-    For NFAs, nodes are integers; for DFAs, they are tuples (sorted sets) of integers.
-  State: the state value at a given moment while matching an input string against an automaton.
-    For DFAs, states are equivalent to nodes.
-    For NFAs, the state of the matching algorithm is a set of states;
+  State: the state of the algorithm while matching an input string against an automaton.
+    For DFAs, the state is the current node.
+    For NFAs, the state is a set of nodes;
       traditionally this is referred to as "simulating the NFA",
       or the NFA being "in multiple states at once".
-    Thus, states are conceptually sets of integers for both subclasses.
   We make the node/state distinction here so that the code and documentation can be more precise,
   at the cost of being less traditional.
+
+  An automaton consists of two parts:
+  * transitions: dictionary of node to dictionary of character to destination.
+    * for DFAs, the destination is a single node.
+    * for NFAs, the destination is a set of nodes, representing a subset of the next state.
+  * matchNodeNames: the set of nodes that represent a match, and the corresponding name for each.
+
+  The starting state is always 0 for DFAs, and {0} for NFAs.
+  Additionally, 1 and {1} are always the respective invalid states.
+  When matching fails, the FA transitions to `invalid`,
+  where it will continue matching all characters that are not a transition from `initial`.
+  This allows the FA to produce a stream of tokens that completely span any input string.
+
+  `empty` is a reserved state (-1) that represents a nondeterministic jump between NFA nodes. 
   '''
 
-  def __init__(self, transitions, matchNodeNames, startState):
+  def __init__(self, transitions, matchNodeNames):
     self.transitions = transitions
     self.matchNodeNames = matchNodeNames
-    self.startState = startState
 
   @property
   def allCharToStateDicts(self): return self.transitions.values()
@@ -410,29 +428,42 @@ class FA:
   def alphabet(self):
     return set().union(*(d.keys() for d in self.allCharToStateDicts)) - {empty}
 
+  @property
+  def allSrcNodes(self): return set(self.transitions.keys())
+
+  @property
+  def allDstNodes(self):
+    s = set()
+    for d in self.allCharToStateDicts:
+      s.update(*d.values())
+    return s
+
+  @property
+  def allNodes(self): return self.allSrcNodes | self.allDstNodes
+
+  @property
+  def matchNodes(self): return set(self.matchNodeNames.keys())
+
   def describe(self):
     errFL('{}:', type(self).__name__)
     errL(' matchNodeNames:')
     for node, name in sorted(self.matchNodeNames.items(), key=lambda p: p[1]):
-      errFL('  {}: {}', state_desc(node), name)
+      errFL('  {}: {}', node, name)
     errL(' transitions:')
-    for srcNode, d in sorted(self.transitions.items()):
-      errFL('  {}:', state_desc(srcNode))
-      dstStateChars = defaultdict(set)
-      for char, dstState in d.items():
-        t = tuple(sorted(dstState))
-        dstStateChars[t].add(char)
-      for dstState, chars in sorted(dstStateChars.items(), key=lambda p: p[1]):
-        errFL('    {} -> {}', chars_desc(chars), state_desc(dstState))
+    for src, d in sorted(self.transitions.items()):
+      errFL('  {}:', src)
+      dstChars = defaultdict(set)
+      for char, dst in d.items():
+        dstChars[dst].add(char)
+      for dst, chars in sorted(dstChars.items(), key=lambda p: p[1]):
+        errFL('    {} -> {}', chars_desc(chars), dst)
 
 
 class NFA(FA):
   'Nondeterministic Finite Automaton.'
 
-  class TrivialRuleError(Exception): pass
-
   def validate(self):
-    start = self.expandStateViaEmpties(self.startState)
+    start = self.expandStateViaEmpties({0})
     msgs = []
     for node, name in sorted(self.matchNodeNames.items()):
       if node in start:
@@ -447,10 +478,10 @@ class NFA(FA):
       else: nextState.update(dstNodes)
     return self.expandStateViaEmpties(nextState)
 
-  def match(self, input, startState=None):
+  def match(self, input, start=frozenset({0})):
     if is_str(input):
       input = input.encode()
-    state = startState or self.startState
+    state = start
     state = self.expandStateViaEmpties(state)
     for char in input:
       #errF('NFA {} {} -> ', state_desc(state), char_descriptions[char]) 
@@ -470,19 +501,6 @@ class NFA(FA):
       remaining.update(novel)
     return expanded
 
-  @property
-  def allSrcNodes(self): return set(self.transitions.keys())
-
-  @property
-  def allDstNodes(self):
-    s = set()
-    for d in self.allCharToStateDicts:
-      s.update(*d.values())
-    return s
-
-  @property
-  def allNodes(self): return self.allSrcNodes | self.allDstNodes
-
 
 class DFA(FA):
   'Deterministic Finite Automaton.'
@@ -490,14 +508,14 @@ class DFA(FA):
   def advance(self, state, char):
     return self.transitions[state][char]
 
-  def match(self, input, startState=None):
+  def match(self, input, start=0):
     if is_str(input):
       input = input.encode()
-    state = startState or self.startState
+    state = start
     for char in input:
       try: state = self.advance(state, char)
       except KeyError: return None
-    return self.matchNodeNames.get(state, None)
+    return self.matchNodeNames.get(state)
 
 
 def output(dfa, rules_path, path, test_path, license):

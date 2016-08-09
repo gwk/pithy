@@ -199,14 +199,10 @@ def output_swift(dfa, rules_path, path, test_path, license, stem, state_desc):
   token_kind_case_defs = ['  case {}'.format(kind) for kind in token_kinds]
   token_kind_case_descriptions = ['    case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
   dfa_nodes = sorted(dfa.transitions.keys())
-  dfa_nodes_to_states = { n : i for i, n in enumerate(dfa_nodes) }
 
   def finish_case(node, name):
-    template = '      case ${state}: tokenKind = .${name} // DFA node: ${node_desc}.'
-    return render_template(template,
-      name=name,
-      node_desc=state_desc(node),
-      state=dfa_nodes_to_states[node])
+    template = '      case ${node}: tokenKind = .${name}'
+    return render_template(template, name=name, node=node)
   
   finish_cases = [finish_case(node, name) for node, name in sorted(dfa.matchNodeNames.items())]
   
@@ -228,7 +224,7 @@ def output_swift(dfa, rules_path, path, test_path, license, stem, state_desc):
 
   def byte_case(chars, dst):
     template = '      case ${chars}: state = ${dst}'
-    return render_template(template, chars=', '.join(byte_case_ranges(chars)), dst=dfa_nodes_to_states[dst])
+    return render_template(template, chars=', '.join(byte_case_ranges(chars)), dst=dst)
   
   def byte_cases(node):
     dst_chars = defaultdict(list)
@@ -249,24 +245,22 @@ ${byte_cases}
     return render_template(template, byte_cases=byte_cases(node))
 
   def state_case(node):
-    state = dfa_nodes_to_states[node]
     kind = dfa.matchNodeNames.get(node)
     if kind:
       match_code = render_template('      tokenEnd = pos; tokenKind = .${kind}\n', kind=kind)
     else:
       match_code = ''
     template = '''\
-    case ${state}: // DFA node: ${node_desc}.
+    case ${node}:
 ${match_code}${transition_code}
 '''
     return render_template(template,
       match_code=match_code,
-      node_desc=state_desc(node),
-      state=state,
+      node=node,
       transition_code=transition_code(node),
     )
   
-  start_byte_cases = [byte_cases(dfa_nodes[0])]
+  start_byte_cases = [byte_cases(0)]
   state_cases = [state_case(node) for node in dfa_nodes[1:]]
   Name = stem.capitalize()
 
