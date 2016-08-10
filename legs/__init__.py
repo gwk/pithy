@@ -6,9 +6,16 @@
 import re
 
 from argparse import ArgumentParser
+from collections import defaultdict
 from itertools import count
-from pithy import *
+
 from pithy.collection_utils import freeze
+from pithy.dicts import dict_filter_map, dict_put
+from pithy.fs import split_dir_stem_ext
+from pithy.io import errF, errFL, errL, failF, outFL
+from pithy.seq import group_seq_by_index
+from pithy.type_util import is_str
+
 from legs.swift import output_swift
 
 
