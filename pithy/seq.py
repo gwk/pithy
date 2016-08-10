@@ -21,11 +21,9 @@ def seq_from_index(seq, start_index):
   it = iter(seq)
   c = start_index
   while c > 0:
-    try:
-      next(it)
-      c -= 1
-    except StopIteration:
-      break
+    try: next(it)
+    except StopIteration: break
+    c -= 1
   return it
 
 
