@@ -2,6 +2,20 @@
 
 # TODO: rename to something less common.
 
+class DefaultList(list):
+  'A subclass of `list` that adds default elements produced by a factory function when an out-of-bounds element is accessed.'
+  def __init__(self, factory, seq=[], len=0):
+    super().__init__(seq)
+    self.factory = factory
+    for i in range(0, len):
+      self.append(self.factory())
+
+  def __getitem__(self, index):
+    while len(self) <= index:
+      self.append(self.factory())
+    return super().__getitem__(index)
+
+
 def seq_from_index(seq, start_index):
   'Returns an iterator for the sequence that skips elements up to the start_index.'
   it = iter(seq)
@@ -13,6 +27,15 @@ def seq_from_index(seq, start_index):
     except StopIteration:
       break
   return it
+
+
+def group_seq_by_index(seq, index, len=0):
+  l = DefaultList(list, len=len)
+  for el in seq:
+    i = int(index(el))
+    if i < 0: raise IndexError(i)
+    l[i].append(el)
+  return l
 
 
 def grouped_seq(seq, key_fn):
