@@ -343,7 +343,7 @@ def genDFA(nfa):
   def mk_node(): return next(indexer)
 
   nfa_states_to_dfa_nodes = defaultdict(mk_node)
-  start = frozenset(nfa.expandStateViaEmpties({0}))
+  start = frozenset(nfa.advanceEmpties({0}))
   invalid = frozenset({1}) # no need to expand as `invalid` is never reachable.
   start_node = nfa_states_to_dfa_nodes[start]
   invalid_node = nfa_states_to_dfa_nodes[invalid]
@@ -427,23 +427,23 @@ class FA:
 
   @property
   def alphabet(self):
-    return set().union(*(d.keys() for d in self.allCharToStateDicts)) - {empty}
+    return frozenset().union(*(d.keys() for d in self.allCharToStateDicts)) - {empty}
 
   @property
-  def allSrcNodes(self): return set(self.transitions.keys())
+  def allSrcNodes(self): return frozenset(self.transitions.keys())
 
   @property
   def allDstNodes(self):
     s = set()
     for d in self.allCharToStateDicts:
       s.update(*d.values())
-    return s
+    return frozenset(s)
 
   @property
   def allNodes(self): return self.allSrcNodes | self.allDstNodes
 
   @property
-  def matchNodes(self): return set(self.matchNodeNames.keys())
+  def matchNodes(self): return frozenset(self.matchNodeNames.keys())
 
   def describe(self):
     errFL('{}:', type(self).__name__)
@@ -464,7 +464,7 @@ class NFA(FA):
   'Nondeterministic Finite Automaton.'
 
   def validate(self):
-    start = self.expandStateViaEmpties({0})
+    start = self.advanceEmpties({0})
     msgs = []
     for node, name in sorted(self.matchNodeNames.items()):
       if node in start:
@@ -477,20 +477,19 @@ class NFA(FA):
       try: dstNodes = self.transitions[node][char]
       except KeyError: pass
       else: nextState.update(dstNodes)
-    return self.expandStateViaEmpties(nextState)
+    return self.advanceEmpties(nextState)
 
   def match(self, input, start=frozenset({0})):
     if is_str(input):
       input = input.encode()
-    state = start
-    state = self.expandStateViaEmpties(state)
+    state = self.advanceEmpties(start)
     for char in input:
       #errF('NFA {} {} -> ', state_desc(state), char_descriptions[char]) 
       state = self.advance(state, char)
       #errL(state_desc(state))
-    return set(dict_filter_map(self.matchNodeNames, state))
+    return frozenset(dict_filter_map(self.matchNodeNames, state))
 
-  def expandStateViaEmpties(self, state):
+  def advanceEmpties(self, state):
     remaining = set(state)
     expanded = set()
     while remaining:
@@ -500,7 +499,7 @@ class NFA(FA):
       except KeyError: continue
       novel = dstNodes - expanded
       remaining.update(novel)
-    return expanded
+    return frozenset(expanded)
 
 
 class DFA(FA):
