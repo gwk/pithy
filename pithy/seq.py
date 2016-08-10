@@ -76,8 +76,8 @@ def grouped_sorted_seq(seq, comparison):
     groups.append(group)
   return groups
 
-def zip_neighbors(seq, length=2):
-  'Yield tuples of the specified length (default = 2), consisting of adjacent elements in sequence.'
+def windowed(seq, length=2):
+  'Yield tuples of the specified length (default 2), consisting of adjacent elements in sequence.'
   assert length > 0
   buffer = []
   for el in seq:
