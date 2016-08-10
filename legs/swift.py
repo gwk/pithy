@@ -11,11 +11,11 @@ import Foundation
 
 
 public enum ${Name}TokenKind: CustomStringConvertible {
-${token_kind_case_defs}
+  ${token_kind_case_defs}
 
   public var description: String {
     switch self {
-${token_kind_case_descriptions}
+    ${token_kind_case_descriptions}
     }
   }
 }
@@ -93,7 +93,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     if tokenPos < pos {
       tokenEnd = pos
       switch state {
-${finish_cases}
+      ${finish_cases}
       default: tokenKind = .invalid
       }
       return Token(pos: tokenPos, end: tokenEnd, kind: tokenKind!)
@@ -102,16 +102,24 @@ ${finish_cases}
     }
   }
 
-  private mutating func startTransition(byte: Byte) -> Token? {
+  @inline(__always)
+  public mutating func step(byte: Byte) -> Token? {
+    top: switch state {
+    case 0: break
+    ${state_cases}
+    default: fatalError("lexer is in impossible state: \(state)")
+    }
+    // start.
     let token = flushToken()
     tokenPos = pos
     switch byte {
-${start_byte_cases}
+    ${start_byte_cases}
     default: state = 1 // transition to invalid.
     }
     return token
   }
 
+  @inline(__always)
   private mutating func flushToken() -> Token? {
     if let tokenKind = self.tokenKind {
       assert(tokenPos < tokenEnd, "empty token; pos: \(tokenPos); kind: \(tokenKind).")
@@ -120,15 +128,6 @@ ${start_byte_cases}
     } else {
       return nil
     }
-  }
-
-  public mutating func step(byte: Byte) -> Token? {
-    switch state {
-    case 0: return startTransition(byte: byte)
-${state_cases}
-    default: fatalError("lexer is in impossible state: \(state)")
-    }
-    return nil
   }
 }
 '''
@@ -196,12 +195,12 @@ def swift_repr(string):
 def output_swift(dfa, rules_path, path, test_path, license, stem):
   
   token_kinds = [name for node, name in sorted(dfa.matchNodeNames.items())]
-  token_kind_case_defs = ['  case {}'.format(kind) for kind in token_kinds]
-  token_kind_case_descriptions = ['    case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
+  token_kind_case_defs = ['case {}'.format(kind) for kind in token_kinds]
+  token_kind_case_descriptions = ['case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
   dfa_nodes = sorted(dfa.transitions.keys())
 
   def finish_case(node, name):
-    template = '      case ${node}: tokenKind = .${name}'
+    template = 'case ${node}: tokenKind = .${name}'
     return render_template(template, name=name, node=node)
   
   finish_cases = [finish_case(node, name) for node, name in sorted(dfa.matchNodeNames.items())]
@@ -222,27 +221,32 @@ def output_swift(dfa, rules_path, path, test_path, license, stem):
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
     return [fmt(*r) for r in ranges]
 
-  def byte_case(chars, dst):
-    template = '      case ${chars}: state = ${dst}'
-    return render_template(template, chars=', '.join(byte_case_ranges(chars)), dst=dst)
+  def byte_case(chars, dst, suffix):
+    template = 'case ${chars}: state = ${dst}${suffix}'
+    return render_template(template,
+      chars=', '.join(byte_case_ranges(chars)),
+      dst=dst,
+      suffix=suffix)
   
-  def byte_cases(node):
+  def byte_cases(node, suffix, indent):
     dst_chars = defaultdict(list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
-    return '\n'.join(byte_case(chars, dst) for dst, chars in sorted(dst_chars.items(), key=lambda p: p[1]))
+    dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
+    cases = [byte_case(chars, dst, suffix) for dst, chars in dst_chars_sorted]
+    return ('\n' + (' ' * indent)).join(cases)
   
   def transition_code(node):
     # TODO: condense cases into ranges and tuple patterns.
     d = dfa.transitions[node]
     if not d:
-      return '      return startTransition(byte: byte)'
+      return '      break'
     template = '''\
       switch byte {
-${byte_cases}
-      default: return startTransition(byte: byte)
+      ${byte_cases}
+      default: break top
       }'''
-    return render_template(template, byte_cases=byte_cases(node))
+    return render_template(template, byte_cases=byte_cases(node, suffix='; return nil', indent=6))
 
   def state_case(node):
     kind = dfa.matchNodeNames.get(node)
@@ -260,7 +264,7 @@ ${match_code}${transition_code}
       transition_code=transition_code(node),
     )
   
-  start_byte_cases = [byte_cases(0)]
+  start_byte_cases = [byte_cases(0, suffix='', indent=4)]
   state_cases = [state_case(node) for node in dfa_nodes[1:]]
   Name = stem.capitalize()
 
