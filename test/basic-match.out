@@ -11,3 +11,17 @@ match: 'ij' -> ij
 match: 'k' -> k_l
 match: 'l' -> k_l
 match: '' -- none
+match: 'aa' -- none
+match: 'ab' -- none
+match: 'b' -- none
+match: 'bb' -- none
+match: 'bccd' -- none
+match: 'e' -- none
+match: 'ef' -- none
+match: 'g' -- none
+match: 'ah' -- none
+match: 'ha' -- none
+match: 'i' -- none
+match: 'j' -- none
+match: 'ija' -- none
+match: 'kl' -- none

@@ -193,7 +193,7 @@ def swift_repr(string):
   return '"{}"'.format(''.join(swift_escape_literal_char(c) for c in string))
 
 
-def output_swift(dfa, rules_path, path, test_path, license, stem, state_desc):
+def output_swift(dfa, rules_path, path, test_path, license, stem):
   
   token_kinds = [name for node, name in sorted(dfa.matchNodeNames.items())]
   token_kind_case_defs = ['  case {}'.format(kind) for kind in token_kinds]

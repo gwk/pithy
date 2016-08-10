@@ -30,9 +30,7 @@ def main():
     errL()
 
   nfa = genNFA(rules)
-  if dbg:
-    nfa.describe()
-    errL()
+  if dbg: nfa.describe()
   
   msgs = nfa.validate()
   if msgs:
@@ -40,26 +38,33 @@ def main():
       errL(m)
     exit(1)
   
-  dfa = genDFA(nfa)
-  if dbg:
-    dfa.describe()
+  fat_dfa = genDFA(nfa)
+  if dbg: fat_dfa.describe('Fat DFA')
+  
+  min_dfa = minimizeDFA(fat_dfa)
+  if dbg: min_dfa.describe('Min DFA')
   
   if args.match is not None:
     for string in args.match:
-      match_string(nfa, dfa, string)
+      match_string(nfa, fat_dfa, min_dfa, string)
 
   if args.output is not None:
-    output(dfa=dfa, rules_path=args.rules_path, path=args.output, test_path=args.test, license=args.license)
+    output(dfa=min_dfa, rules_path=args.rules_path, path=args.output, test_path=args.test, license=args.license)
 
 
-def match_string(nfa, dfa, string):
-  'Test `nfa` and `dfa` against each other by attempting to match `string`.'
+def match_string(nfa, fat_dfa, min_dfa, string):
+  'Test `nfa`, `min_dfa`, and `dfa` against each other by attempting to match `string`.'
   nfa_matches = nfa.match(string)
-  dfa_match = dfa.match(string)
-  len_dfa = 1 if dfa_match else 0
-  outFL('match: {!r} {} {}', string, *(('->', dfa_match) if dfa_match else ('--', 'none')))
-  if len(nfa_matches) != len_dfa or (dfa_match and dfa_match not in nfa_matches):
-    failF('DFA result is inconsistent with NFA: {}.', nfa_matches)
+  if len(nfa_matches) > 1:
+    failF('match: {!r}: NFA matched multiple rules: {}', string, nfa_matches)
+  nfa_match = list(nfa_matches)[0] if nfa_matches else None
+  fat_dfa_match = fat_dfa.match(string)
+  if fat_dfa_match != nfa_match:
+    failF('match: {!r} inconsistent match: NFA: {}; fat DFA: {}.', string, nfa_match, fat_dfa_match)
+  min_dfa_match = min_dfa.match(string)
+  if min_dfa_match != nfa_match:
+    failF('match: {!r} inconsistent match: NFA: {}; min DFA: {}.', string, nfa_match, min_dfa_match)  
+  outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'none')))
 
 
 def compile_rules(path):
@@ -313,11 +318,13 @@ def genNFA(rules):
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
   dict_put(matchNodeNames, invalid, 'invalid')
-  for rule in rules:
+  for rule in sorted(rules, key=lambda rule: rule.name):
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
     assert rule.name
-    dict_put(matchNodeNames, matchNode, rule.name)
+    if rule.name in matchNodeNames:
+      failF('duplicate rule name: {!r}', rule.name)
+    matchNodeNames[matchNode] = rule.name
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames)
 
 
@@ -385,7 +392,64 @@ def genDFA(nfa):
   for name in nfa.matchNodeNames.values():
     if name not in allNames:
       failF('Rule is not reachable in DFA: {}', name)
-  return DFA(transitions=transitions, matchNodeNames=matchNodeNames)
+  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames)
+
+
+
+def minimizeDFA(dfa):
+  # sources:
+  # http://www.cs.sun.ac.za/rw711/resources/dfa-minimization.pdf.
+  # https://en.wikipedia.org/wiki/DFA_minimization.
+  # Note: this implementation of Hopcroft DFA minimization does not use the 'partition refinement' data structure.
+  # As a result I expect that its time complexity is suboptimal.
+  alphabet = dfa.alphabet
+  # start with a rough partition; match nodes are all distinct from each other,
+  # and non-match nodes form an additional distinct set.
+  nonMatchNodes = dfa.allNodes - dfa.matchNodes
+  partitions = {nonMatchNodes} | {frozenset({n}) for n in dfa.matchNodes}
+  remaining = set(partitions) # set of distinguishing sets used in refinement.
+  while remaining:
+    a = remaining.pop() # a partition.
+    for char in alphabet:
+      for b in list(partitions): # split `b`; does transition from `b` via `char` lead to a node in `a`?
+        # note: this splitting operation is where the 'partition refinement' structure is supposed to be used for speed.
+        refinement = ([], [])
+        for node in b:
+          index = int(dfa.transitions[node].get(char) in a) # None is never in `a`, so `get` does what we want.
+          refinement[index].append(node)
+        if not all(refinement): continue # no real refinement; all in one or the other.
+        refinement_sets = [frozenset(p) for p in refinement]
+        partitions.remove(b)
+        partitions.update(refinement_sets)
+        if b in remaining:
+          remaining.remove(b)
+          remaining.update(refinement_sets)
+        else:
+          # crucial detail for performance:
+          # we only need one half of the split to distinguish all partitions;
+          # choosing the smaller of the two guarantees low time complexity.
+          remaining.add(min(refinement_sets, key=len))
+
+  mapping = {}
+  for new_node, part in enumerate(sorted(sorted(p) for p in partitions)):
+    for old_node in part:
+      mapping[old_node] = new_node
+
+  transitions = defaultdict(dict)
+  for old_node, old_d in dfa.transitions.items():
+    new_d = transitions[mapping[old_node]]
+    for char, old_dst in old_d.items():
+      new_dst = mapping[old_dst]
+      try:
+        existing = new_d[char]
+        if existing != new_dst:
+          failF('inconsistency in minimized DFA: src state: {}->{}; char: {!r};' +
+            'dst state: {}->{} != ?->{}', old_node, new_node, char, old_dst, new_dst, existing)
+      except KeyError:
+        new_d[char] = new_dst
+
+  matchNodeNames = { mapping[old] : name for old, name in dfa.matchNodeNames.items() }
+  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames)
 
 
 class FA:
@@ -433,35 +497,37 @@ class FA:
   def allSrcNodes(self): return frozenset(self.transitions.keys())
 
   @property
-  def allDstNodes(self):
-    s = set()
-    for d in self.allCharToStateDicts:
-      s.update(*d.values())
-    return frozenset(s)
-
-  @property
   def allNodes(self): return self.allSrcNodes | self.allDstNodes
 
   @property
   def matchNodes(self): return frozenset(self.matchNodeNames.keys())
 
-  def describe(self):
-    errFL('{}:', type(self).__name__)
+  def describe(self, label=None):
+    errFL('{}:', label or type(self).__name__)
     errL(' matchNodeNames:')
-    for node, name in sorted(self.matchNodeNames.items(), key=lambda p: p[1]):
+    for node, name in sorted(self.matchNodeNames.items()):
       errFL('  {}: {}', node, name)
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
       errFL('  {}:', src)
-      dstChars = defaultdict(set)
+      dst_chars = defaultdict(set)
       for char, dst in d.items():
-        dstChars[dst].add(char)
-      for dst, chars in sorted(dstChars.items(), key=lambda p: p[1]):
+        dst_chars[dst].add(char)
+      dst_sorted_chars = [(dst, sorted(chars)) for (dst, chars) in dst_chars.items()]
+      for dst, chars in sorted(dst_sorted_chars, key=lambda p: p[1]):
         errFL('    {} -> {}', chars_desc(chars), dst)
+    errL()
 
 
 class NFA(FA):
   'Nondeterministic Finite Automaton.'
+
+  @property
+  def allDstNodes(self):
+    s = set()
+    for d in self.allCharToStateDicts:
+      s.update(*d.values())
+    return frozenset(s)
 
   def validate(self):
     start = self.advanceEmpties({0})
@@ -483,10 +549,10 @@ class NFA(FA):
     if is_str(input):
       input = input.encode()
     state = self.advanceEmpties(start)
+    #errFL('NFA start: {}', state)
     for char in input:
-      #errF('NFA {} {} -> ', state_desc(state), char_descriptions[char]) 
       state = self.advance(state, char)
-      #errL(state_desc(state))
+      #errFL('NFA step: {} -> {}', bytes([char]), state)
     return frozenset(dict_filter_map(self.matchNodeNames, state))
 
   def advanceEmpties(self, state):
@@ -504,6 +570,13 @@ class NFA(FA):
 
 class DFA(FA):
   'Deterministic Finite Automaton.'
+
+  @property
+  def allDstNodes(self):
+    s = set()
+    for d in self.allCharToStateDicts:
+      s.update(d.values())
+    return frozenset(s)
 
   def advance(self, state, char):
     return self.transitions[state][char]
@@ -526,12 +599,8 @@ def output(dfa, rules_path, path, test_path, license):
       ext, ', '.join(supported_exts))
   if ext == '.swift':
     output_swift(dfa=dfa, rules_path=rules_path, path=path, test_path=test_path,
-      license=license, stem=stem, state_desc=state_desc)
+      license=license, stem=stem)
 
-
-def state_desc(state):
-  if is_int(state): return str(state)
-  return '-'.join(str(i) for i in sorted(state))
 
 def chars_desc(chars):
   return ' '.join(char_descriptions[c] for c in sorted(chars))
