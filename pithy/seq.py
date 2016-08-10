@@ -36,19 +36,19 @@ def group_seq_by_index(seq, index, len=0):
   return l
 
 
-def grouped_seq(seq, key_fn):
+def grouped_seq(seq, key):
   '''
-  Group the elements of the sequence by applying a function to each object that returns a key.
+  Group the elements of the sequence by applying a function `key` that returns a group key for each element.
   returns a dictionary of arrays.
   '''
   groups = {}
   for el in seq:
-    key = key_fn(el)
+    k = key(el)
     try:
-      group = groups[key]
+      group = groups[k]
     except KeyError:
       group = []
-      groups[key] = group
+      groups[k] = group
     group.append(el)
   return groups
 
