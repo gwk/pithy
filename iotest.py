@@ -40,15 +40,19 @@ def main():
 
   for raw_path in ctx.top_paths:
     if not path_exists(raw_path):
-      failF('iotest: {!r}: path argument does not exist.', raw_path)
-    if not is_dir(raw_path):
-      failF('iotest: {!r}: path argument must be a directory.', raw_path)
-    dir_path = norm_path(raw_path) + '/'
-    if dir_path.find('..') != -1:
+      failF('iotest: {!r}: argument path does not exist.', raw_path)
+    path = normalize_path(raw_path)
+    if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
-      raiseS("test directory path cannot contain '..':", dir_path)
+      raiseS("test path cannot contain '..':", path)
+    if is_dir(path):
+      dir_path = path + '/'
+      specified_name_stem = None
+    else:
+      dir_path = path_dir(path) + '/'
+      specified_name_stem = path_name_stem(path)
     proto = collect_proto(ctx, dir_path)
-    collect_cases(ctx, cases, proto, dir_path)
+    collect_cases(ctx, cases, proto, dir_path, specified_name_stem)
 
   broken_count = 0
   skipped_count = 0
@@ -111,7 +115,12 @@ def find_proj_dir():
 
 
 def collect_proto(ctx, end_dir_path):
-  'assemble the prototype test case information from files named `_default.*`.'
+  '''
+  Assemble the prototype test case information from files named `_default.*`,
+  starting at the project root and traversing through successive child directories
+  to `end_dir_path`.
+  This function is necessary to collect complete prototypes for a specified subdirectory.
+  '''
   proto = None
   for dir_path in path_range(ctx.proj_dir, abs_path(end_dir_path)):
     file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem(name) == '_default']
@@ -119,8 +128,9 @@ def collect_proto(ctx, end_dir_path):
   return proto
 
 
-def collect_cases(ctx, cases, proto, dir_path):
+def collect_cases(ctx, cases, proto, dir_path, specified_name_stem):
   'find all test cases within the specified directory.'
+  collect_dirs = (specified_name_stem is None)
   sub_dirs = []
   file_paths = []
   names = list_dir(dir_path)
@@ -128,15 +138,17 @@ def collect_cases(ctx, cases, proto, dir_path):
     if name.startswith('.'): # ignore hidden files.
       continue
     path = path_join(dir_path, name)
-    if is_dir(path):
-      sub_dirs.append(path + '/')
-    else:
+    if collect_dirs:
+      if is_dir(path):
+        sub_dirs.append(path + '/')
+      else:
+        file_paths.append(path)
+    elif path_stem(name) in('_default', specified_name_stem):
       file_paths.append(path)
-
   default = create_cases(ctx, cases, proto, dir_path, file_paths)
-
-  for sub_dir in sub_dirs:
-    collect_cases(ctx, cases, default, sub_dir)
+  if collect_dirs:
+    for sub_dir in sub_dirs:
+      collect_cases(ctx, cases, default, sub_dir, specified_name_stem)
 
 
 def create_default_case(ctx, proto, stem, file_paths):
