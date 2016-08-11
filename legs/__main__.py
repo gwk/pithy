@@ -77,7 +77,10 @@ def match_string(nfa, fat_dfa, min_dfa, string):
 def compile_rules(path):
   'Compile the rules given in the legs file at `path`.'
   rules = []
-  for line_num, line in enumerate(open(path)):
+  try: f = open(path)
+  except FileNotFoundError:
+    failF('legs error: no such rule file: {!r}', path)
+  for line_num, line in enumerate(f):
     line = line.rstrip()
     if not line or line.startswith('#'): continue
     colon_match = re.search(': *', line)
