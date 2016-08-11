@@ -22,7 +22,7 @@ def is_path_abs(path):
   'Return true if the path is an absolute path.'
   return _path.isabs(path)
 
-def norm_path(path):
+def normalize_path(path):
   'Normalize the path according to system convention.'
   return _path.normpath(path)
 
@@ -67,7 +67,7 @@ def path_rel_to(base, path):
   return path[len(base):]
 
 def path_split(path):
-  np = norm_path(path)
+  np = normalize_path(path)
   if np == '/': return ['/']
   assert not np.endswith('/')
   return [comp or '/' for comp in np.split(_os.sep)]
@@ -109,9 +109,9 @@ def append_path_stem_suffix(path, suffix):
 
 def abs_path(path): return _path.abspath(path)
 
-def abs_or_norm_path(path, make_abs):
+def abs_or_normalize_path(path, make_abs):
   'Returns the absolute path if make_abs is True, if make_abs is False, returns a normalized path.'
-  return abs_path(path) if make_abs else norm_path(path)
+  return abs_path(path) if make_abs else normalize_path(path)
 
 def copy_file(src, dst, follow_symlinks=True):
   'Copies file from source to destination.'
@@ -226,7 +226,7 @@ def walk_dirs_and_files(*dir_paths, make_abs=False, include_hidden=False, file_e
   assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
 
   for raw_path in dir_paths:
-    dir_path = abs_or_norm_path(raw_path, make_abs)
+    dir_path = abs_or_normalize_path(raw_path, make_abs)
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
 
 
@@ -254,7 +254,7 @@ def walk_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, includ
   assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
 
   for raw_path in paths:
-    path = abs_or_norm_path(raw_path, make_abs)
+    path = abs_or_normalize_path(raw_path, make_abs)
     if is_dir(path):
       yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
     elif not path_exists(path):
