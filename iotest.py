@@ -148,7 +148,7 @@ def create_default_case(ctx, proto, stem, file_paths):
 
 
 def create_cases(ctx, cases, proto, dir_path, file_paths):
-  groups = grouped_seq(file_paths, path_stem)
+  groups = fan_seq_by_key(file_paths, key=path_stem)
   # default.
   default_stem = dir_path + '_default'
   default = create_default_case(ctx, proto, default_stem, groups.get(default_stem))
