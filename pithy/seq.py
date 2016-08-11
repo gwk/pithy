@@ -2,8 +2,10 @@
 
 # TODO: rename to something less common.
 
+
 class DefaultList(list):
   'A subclass of `list` that adds default elements produced by a factory function when an out-of-bounds element is accessed.'
+
   def __init__(self, factory, seq=[], len=0):
     super().__init__(seq)
     self.factory = factory
@@ -14,6 +16,9 @@ class DefaultList(list):
     while len(self) <= index:
       self.append(self.factory())
     return super().__getitem__(index)
+
+  def __repr__(self):
+    return '{}({}, {})'.format(type(self).__qualname__, self.factory, super().__repr__())
 
 
 def seq_from_index(seq, start_index):
