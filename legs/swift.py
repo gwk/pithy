@@ -1,7 +1,105 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
+
 from collections import defaultdict
 from pithy.strings import render_template
+
+
+def output_swift(dfa, rules_path, path, test_path, license, stem):
+  
+  token_kinds = [name for node, name in sorted(dfa.matchNodeNames.items())]
+  token_kind_case_defs = ['case {}'.format(kind) for kind in token_kinds]
+  token_kind_case_descriptions = ['case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
+  dfa_nodes = sorted(dfa.transitions.keys())
+
+  def finish_case(node, name):
+    template = 'case ${node}: tokenKind = .${name}'
+    return render_template(template, name=name, node=node)
+  
+  finish_cases = [finish_case(node, name) for node, name in sorted(dfa.matchNodeNames.items())]
+  
+  def byte_case_ranges(chars):
+    ranges = []
+    for char in chars:
+      if not ranges:
+        ranges.append((char, char))
+      else:
+        low, prev = ranges[-1]
+        if prev + 1 == char:
+          ranges[-1] = (low, char)
+        else:
+          ranges.append((char, char))
+    def fmt(l, h):
+      if l == h: return hex(l)
+      return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
+    return [fmt(*r) for r in ranges]
+
+  def byte_case(chars, dst, suffix):
+    template = 'case ${chars}: state = ${dst}${suffix}'
+    return render_template(template,
+      chars=', '.join(byte_case_ranges(chars)),
+      dst=dst,
+      suffix=suffix)
+  
+  def byte_cases(node, suffix, indent):
+    dst_chars = defaultdict(list)
+    for char, dst in sorted(dfa.transitions[node].items()):
+      dst_chars[dst].append(char)
+    dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
+    cases = [byte_case(chars, dst, suffix) for dst, chars in dst_chars_sorted]
+    return ('\n' + (' ' * indent)).join(cases)
+  
+  def transition_code(node):
+    # TODO: condense cases into ranges and tuple patterns.
+    d = dfa.transitions[node]
+    if not d:
+      return '      break'
+    template = '''\
+      switch byte {
+      ${byte_cases}
+      default: break top
+      }'''
+    return render_template(template, byte_cases=byte_cases(node, suffix='; return nil', indent=6))
+
+  def state_case(node):
+    kind = dfa.matchNodeNames.get(node)
+    if kind:
+      match_code = render_template('      tokenEnd = pos; tokenKind = .${kind}\n', kind=kind)
+    else:
+      match_code = ''
+    template = '''\
+    case ${node}:
+${match_code}${transition_code}
+'''
+    return render_template(template,
+      match_code=match_code,
+      node=node,
+      transition_code=transition_code(node),
+    )
+  
+  start_byte_cases = [byte_cases(0, suffix='', indent=4)]
+  state_cases = [state_case(node) for node in dfa_nodes[1:]]
+  Name = stem.capitalize()
+
+  src = render_template(template,
+    finish_cases='\n'.join(finish_cases),
+    license=license,
+    Name=Name,
+    path=path,
+    rules_path=rules_path,
+    start_byte_cases='\n'.join(start_byte_cases),
+    state_cases='\n'.join(state_cases),
+    token_kind_case_defs='\n'.join(token_kind_case_defs),
+    token_kind_case_descriptions='\n'.join(token_kind_case_descriptions),
+    )
+  with open(path, 'w') as f:
+    f.write(src)
+
+  if test_path:
+    src = render_template(test_template, Name=Name)
+    with open(test_path, 'w') as f:
+      f.write(src)
 
 
 template = r'''// ${license}.
@@ -190,100 +288,4 @@ def swift_escape_literal_char(c):
 
 def swift_repr(string):
   return '"{}"'.format(''.join(swift_escape_literal_char(c) for c in string))
-
-
-def output_swift(dfa, rules_path, path, test_path, license, stem):
-  
-  token_kinds = [name for node, name in sorted(dfa.matchNodeNames.items())]
-  token_kind_case_defs = ['case {}'.format(kind) for kind in token_kinds]
-  token_kind_case_descriptions = ['case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
-  dfa_nodes = sorted(dfa.transitions.keys())
-
-  def finish_case(node, name):
-    template = 'case ${node}: tokenKind = .${name}'
-    return render_template(template, name=name, node=node)
-  
-  finish_cases = [finish_case(node, name) for node, name in sorted(dfa.matchNodeNames.items())]
-  
-  def byte_case_ranges(chars):
-    ranges = []
-    for char in chars:
-      if not ranges:
-        ranges.append((char, char))
-      else:
-        low, prev = ranges[-1]
-        if prev + 1 == char:
-          ranges[-1] = (low, char)
-        else:
-          ranges.append((char, char))
-    def fmt(l, h):
-      if l == h: return hex(l)
-      return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
-    return [fmt(*r) for r in ranges]
-
-  def byte_case(chars, dst, suffix):
-    template = 'case ${chars}: state = ${dst}${suffix}'
-    return render_template(template,
-      chars=', '.join(byte_case_ranges(chars)),
-      dst=dst,
-      suffix=suffix)
-  
-  def byte_cases(node, suffix, indent):
-    dst_chars = defaultdict(list)
-    for char, dst in sorted(dfa.transitions[node].items()):
-      dst_chars[dst].append(char)
-    dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
-    cases = [byte_case(chars, dst, suffix) for dst, chars in dst_chars_sorted]
-    return ('\n' + (' ' * indent)).join(cases)
-  
-  def transition_code(node):
-    # TODO: condense cases into ranges and tuple patterns.
-    d = dfa.transitions[node]
-    if not d:
-      return '      break'
-    template = '''\
-      switch byte {
-      ${byte_cases}
-      default: break top
-      }'''
-    return render_template(template, byte_cases=byte_cases(node, suffix='; return nil', indent=6))
-
-  def state_case(node):
-    kind = dfa.matchNodeNames.get(node)
-    if kind:
-      match_code = render_template('      tokenEnd = pos; tokenKind = .${kind}\n', kind=kind)
-    else:
-      match_code = ''
-    template = '''\
-    case ${node}:
-${match_code}${transition_code}
-'''
-    return render_template(template,
-      match_code=match_code,
-      node=node,
-      transition_code=transition_code(node),
-    )
-  
-  start_byte_cases = [byte_cases(0, suffix='', indent=4)]
-  state_cases = [state_case(node) for node in dfa_nodes[1:]]
-  Name = stem.capitalize()
-
-  src = render_template(template,
-    finish_cases='\n'.join(finish_cases),
-    license=license,
-    Name=Name,
-    path=path,
-    rules_path=rules_path,
-    start_byte_cases='\n'.join(start_byte_cases),
-    state_cases='\n'.join(state_cases),
-    token_kind_case_defs='\n'.join(token_kind_case_defs),
-    token_kind_case_descriptions='\n'.join(token_kind_case_descriptions),
-    )
-  with open(path, 'w') as f:
-    f.write(src)
-
-  if test_path:
-    src = render_template(test_template, Name=Name)
-    with open(test_path, 'w') as f:
-      f.write(src)
 
