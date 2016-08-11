@@ -11,7 +11,7 @@ from itertools import count
 
 from pithy.collection_utils import freeze
 from pithy.dicts import dict_filter_map, dict_put
-from pithy.fs import split_dir_stem_ext
+from pithy.fs import path_ext, path_name_stem
 from pithy.io import errF, errFL, errL, failF, outFL
 from pithy.seq import group_seq_by_index
 from pithy.type_util import is_str
@@ -599,14 +599,15 @@ class DFA(FA):
 
 
 def output(dfa, rules_path, path, test_path, license):
-  dir, stem, ext = split_dir_stem_ext(path)
+  name = path_name_stem(rules_path)
+  ext = path_ext(path)
   supported_exts = ['.swift']
   if ext not in supported_exts:
     failF('output path has unknown extension {!r}; supported extensions are: {}.',
       ext, ', '.join(supported_exts))
   if ext == '.swift':
     output_swift(dfa=dfa, rules_path=rules_path, path=path, test_path=test_path,
-      license=license, stem=stem)
+      license=license, name=name)
 
 
 def chars_desc(chars):
