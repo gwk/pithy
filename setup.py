@@ -23,7 +23,7 @@ setup(
   description='A lexical analyzer generator.',
   long_description=long_description,
   install_requires=['pithy'],
-  entry_points = {'console_scripts': ['legs=legs:main']},
+  entry_points = {'console_scripts': ['legs=legs.__main__:main']},
   keywords=['testing'],
   classifiers=[ # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     'Development Status :: 3 - Alpha',

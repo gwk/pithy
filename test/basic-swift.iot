@@ -1,7 +1,7 @@
 {
   'compile': [
-    '$PROJ/legs/__init__.py test/basic.legs -output basic.swift -test main.swift',
-    'swiftc basic.swift main.swift -o basic-swift',
+    '$PROJ/legs/__main__.py test/basic.legs -output $NAME.swift -test main.swift',
+    'swiftc $NAME.swift main.swift -o $NAME',
   ],
   'args': [
     ' ',
