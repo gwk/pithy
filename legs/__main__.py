@@ -504,6 +504,10 @@ class FA:
   def allSrcNodes(self): return frozenset(self.transitions.keys())
 
   @property
+  def allDstNodes(self):
+    return frozenset().union(*(self.dstNodes(node) for node in self.allSrcNodes))
+  
+  @property
   def allNodes(self): return self.allSrcNodes | self.allDstNodes
 
   @property
@@ -529,12 +533,8 @@ class FA:
 class NFA(FA):
   'Nondeterministic Finite Automaton.'
 
-  @property
-  def allDstNodes(self):
-    s = set()
-    for d in self.allCharToStateDicts:
-      s.update(*d.values())
-    return frozenset(s)
+  def dstNodes(self, node):
+    return frozenset().union(*self.transitions[node].values())
 
   def validate(self):
     start = self.advanceEmpties({0})
@@ -578,12 +578,8 @@ class NFA(FA):
 class DFA(FA):
   'Deterministic Finite Automaton.'
 
-  @property
-  def allDstNodes(self):
-    s = set()
-    for d in self.allCharToStateDicts:
-      s.update(d.values())
-    return frozenset(s)
+  def dstNodes(self, node):
+    return frozenset(self.transitions[node].values())
 
   def advance(self, state, char):
     return self.transitions[state][char]
