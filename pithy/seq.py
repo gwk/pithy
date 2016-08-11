@@ -32,18 +32,36 @@ def seq_from_index(seq, start_index):
   return it
 
 
-def group_seq_by_index(seq, index, len=0):
-  l = DefaultList(list, len=len)
+def fan_seq_by_index(seq, index, min_len=0):
+  '''
+  Fan out `seq` into a list of lists, with a minimum length of `min_len`,
+  according to the index returned by applying `index` to each element.
+  '''
+  l = []
+  while len(l) < min_len:
+    l.append([])
   for el in seq:
     i = int(index(el))
     if i < 0: raise IndexError(i)
+    while len(l) <= i:
+      l.append([])
     l[i].append(el)
   return l
 
 
-def grouped_seq(seq, key):
+def fan_seq_by_pred(seq, pred):
+  'Fan out `seq` into a pair of lists by applying `pred` to each element.'
+  fan = ([], [])
+  for el in seq:
+    i = int(pred(el))
+    if i < 0: raise IndexError(i)
+    fan[i].append(el)
+  return fan
+
+
+def fan_seq_by_key(seq, key):
   '''
-  Group the elements of the sequence by applying a function `key` that returns a group key for each element.
+  Fan out `seq` into a dictionary by applying a function `key` that returns a group key for each element.
   returns a dictionary of arrays.
   '''
   groups = {}
@@ -57,8 +75,10 @@ def grouped_seq(seq, key):
     group.append(el)
   return groups
 
-def grouped_sorted_seq(seq, comparison):
+def fan_sorted_seq_by_comp(seq, comparison):
   '''
+  Fan out `seq`, which must already be sorted,
+  by applying the `comparison` predicate to each consecutive pair of elements. 
   Group the elements of the sorted sequence by applying a comparison predicate
   to each successive pair of elements, creating a new group when the comparison fails.
   '''
@@ -81,8 +101,8 @@ def grouped_sorted_seq(seq, comparison):
     groups.append(group)
   return groups
 
-def windowed(seq, length=2):
-  'Yield tuples of the specified length (default 2), consisting of adjacent elements in sequence.'
+def window_seq(seq, width=2):
+  'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
   assert length > 0
   buffer = []
   for el in seq:
