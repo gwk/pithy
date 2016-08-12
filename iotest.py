@@ -626,13 +626,14 @@ def check_file_exp(ctx, test_dir, exp):
 diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram'.split()
 
 
-def cat_file(path):
+def cat_file(path, limit=-1):
   outSL('cat', path)
   with open(path) as f:
     line = None
-    for line in f:
+    for i, line in enumerate(f, 1):
       l = line.rstrip('\n')
       outL('\x1B[0;41m', l, '\x1B[0m') # red background.
+      if i == limit: return
     if line is not None and not line.endswith('\n'):
         outL('(missing final newline)')
 
