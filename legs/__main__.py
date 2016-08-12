@@ -13,7 +13,7 @@ from pithy.collection_utils import freeze
 from pithy.dicts import dict_filter_map, dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.io import errF, errFL, errL, failF, outFL
-from pithy.seq import group_seq_by_index
+from pithy.seq import fan_seq_by_pred
 from pithy.type_util import is_str
 
 from legs.swift import output_swift
@@ -423,10 +423,8 @@ def minimizeDFA(dfa):
     for char in alphabet:
       for b in list(partitions): # split `b`; does transition from `b` via `char` lead to a node in `a`?
         # note: this splitting operation is where the 'partition refinement' structure is supposed to be used for speed.
-        refinement = ([], [])
-        for node in b:
-          index = int(dfa.transitions[node].get(char) in a) # None is never in `a`, so `get` does what we want.
-          refinement[index].append(node)
+        refinement = fan_seq_by_pred(b, pred=lambda node: (dfa.transitions[node].get(char) in a))
+        # None is never in `a`, so `get` does what we want.
         if not all(refinement): continue # no real refinement; all in one or the other.
         refinement_sets = [frozenset(p) for p in refinement]
         partitions.remove(b)
