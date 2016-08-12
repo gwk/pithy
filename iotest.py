@@ -572,9 +572,13 @@ def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp
       outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
       if e.strerror == 'Exec format error':
         outFL('  note: is the test script missing its hash-bang line? e.g. `#!/usr/bin/env [INTERPRETER]`')
-      elif e.strerror.startswith('No such file or directory:') and path_exists(cmd[0]):
-        outFL('  note: the test command actually does exist; is the hash-bang line mispelled?')
-        outFL("  (this error is usually issued due to mispelling of '#!/usr/bin/env ...')")
+      elif e.strerror.startswith('No such file or directory:') and path_exists(path_join(cwd, cmd[0])):
+        outFL('  note: the test command does actually exist.')
+        if not path_dir(cmd[0]):
+          outL("  note: command is missing a leading './'")
+        else:
+          outFL('  note: is the hash-bang line mispelled?')
+          outFL("  (this error is usually issued due to mispelling of '#!/usr/bin/env ...')")
       return None
     except ProcessTimeout:
       outFL('\n{} process timed out ({} sec) and was killed.', label, timeout)
