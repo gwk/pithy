@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import utest, utest_exc
-from pithy.dicts import *
+from pithy.dict_utils import *
 
 utest({'k': 0}, dict_put, {}, 'k', 0)
 utest_exc(KeyError('k'), dict_put, {'k': 0}, 'k', 1)
