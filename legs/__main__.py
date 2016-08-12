@@ -25,7 +25,7 @@ def main():
   parser.add_argument('-dbg', action='store_true')
   parser.add_argument('-match', nargs='+')
   parser.add_argument('-output')
-  parser.add_argument('-test')
+  parser.add_argument('-test', action='store_true')
   parser.add_argument('-license', default='NO LICENSE SPECIFIED')
   args = parser.parse_args()
   dbg = args.dbg
@@ -56,7 +56,7 @@ def main():
       match_string(nfa, fat_dfa, min_dfa, string)
 
   if args.output is not None:
-    output(dfa=min_dfa, rules_path=args.rules_path, path=args.output, test_path=args.test, license=args.license)
+    output(dfa=min_dfa, rules_path=args.rules_path, path=args.output, test=args.test, license=args.license)
 
 
 def match_string(nfa, fat_dfa, min_dfa, string):
@@ -415,8 +415,7 @@ def minimizeDFA(dfa):
   alphabet = dfa.alphabet
   # start with a rough partition; match nodes are all distinct from each other,
   # and non-match nodes form an additional distinct set.
-  nonMatchNodes = dfa.allNodes - dfa.matchNodes
-  partitions = {nonMatchNodes} | {frozenset({n}) for n in dfa.matchNodes}
+  partitions = {dfa.nonMatchNodes} | {frozenset({n}) for n in dfa.matchNodes}
   remaining = set(partitions) # set of distinguishing sets used in refinement.
   while remaining:
     a = remaining.pop() # a partition.
@@ -514,6 +513,22 @@ class FA:
   @property
   def matchNodes(self): return frozenset(self.matchNodeNames.keys())
 
+  @property
+  def nonMatchNodes(self): return self.allNodes - self.matchNodes
+
+  @property
+  def preMatchNodes(self):
+    matchNodes = self.matchNodes
+    nodes = set()
+    remaining = {0}
+    while remaining:
+      node = remaining.pop()
+      assert node not in nodes
+      if node in matchNodes: continue
+      nodes.add(node)
+      remaining.update(self.dstNodes(node) - nodes)
+    return frozenset(nodes)
+
   def describe(self, label=None):
     errFL('{}:', label or type(self).__name__)
     errL(' matchNodeNames:')
@@ -595,7 +610,7 @@ class DFA(FA):
     return self.matchNodeNames.get(state)
 
 
-def output(dfa, rules_path, path, test_path, license):
+def output(dfa, rules_path, path, test, license):
   name = path_name_stem(rules_path)
   ext = path_ext(path)
   supported_exts = ['.swift']
@@ -603,8 +618,7 @@ def output(dfa, rules_path, path, test_path, license):
     failF('output path has unknown extension {!r}; supported extensions are: {}.',
       ext, ', '.join(supported_exts))
   if ext == '.swift':
-    output_swift(dfa=dfa, rules_path=rules_path, path=path, test_path=test_path,
-      license=license, name=name)
+    output_swift(dfa=dfa, rules_path=rules_path, path=path, test=test, license=license, name=name)
 
 
 def chars_desc(chars):

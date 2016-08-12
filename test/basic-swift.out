@@ -49,10 +49,10 @@ invalid:1-2
 invalid:0-1
 
 "bb":
-invalid:1-2
+invalid:0-2
 
 "bccd":
-invalid:2-4
+invalid:0-4
 
 "e":
 invalid:0-1

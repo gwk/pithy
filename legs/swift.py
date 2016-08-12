@@ -3,22 +3,18 @@
 import re
 
 from collections import defaultdict
+from pithy.fs import add_file_execute_permissions
 from pithy.strings import render_template
 
 
-def output_swift(dfa, rules_path, path, test_path, license, name):
-  
+def output_swift(dfa, rules_path, path, test, license, name):
+  preMatchNodes = dfa.preMatchNodes
+
   token_kinds = [name for node, name in sorted(dfa.matchNodeNames.items())]
   token_kind_case_defs = ['case {}'.format(kind) for kind in token_kinds]
   token_kind_case_descriptions = ['case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
   dfa_nodes = sorted(dfa.transitions.keys())
 
-  def finish_case(node, name):
-    template = 'case ${node}: tokenKind = .${name}'
-    return render_template(template, name=name, node=node)
-  
-  finish_cases = [finish_case(node, name) for node, name in sorted(dfa.matchNodeNames.items())]
-  
   def byte_case_ranges(chars):
     ranges = []
     for char in chars:
@@ -35,71 +31,84 @@ def output_swift(dfa, rules_path, path, test_path, license, name):
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
     return [fmt(*r) for r in ranges]
 
-  def byte_case(chars, dst, suffix):
-    template = 'case ${chars}: state = ${dst}${suffix}'
-    return render_template(template,
+  def byte_case(chars, dst, returns):
+    return 'case {chars}: state = {dst}{suffix}'.format(
       chars=', '.join(byte_case_ranges(chars)),
       dst=dst,
-      suffix=suffix)
+      suffix='; return nil' if returns else '')
   
-  def byte_cases(node, suffix, indent):
+  def byte_cases(node, returns):
     dst_chars = defaultdict(list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
-    cases = [byte_case(chars, dst, suffix) for dst, chars in dst_chars_sorted]
-    return ('\n' + (' ' * indent)).join(cases)
+    return [byte_case(chars, dst, returns) for dst, chars in dst_chars_sorted]
   
   def transition_code(node):
     # TODO: condense cases into ranges and tuple patterns.
     d = dfa.transitions[node]
-    if not d:
-      return '      break'
-    template = '''\
+    is_pre_match = node in preMatchNodes
+    if not d: # no transitions; omit the switch and unconditionally take the default action.
+      if is_pre_match:
+        return '\n      state = 1; return nil'
+      else:
+        return '\n      break'
+    # has transitions; need an inner switch.
+    return render_template('''
       switch byte {
       ${byte_cases}
-      default: break top
-      }'''
-    return render_template(template, byte_cases=byte_cases(node, suffix='; return nil', indent=6))
+      default: ${default_action}
+      }''',
+      byte_cases='\n      '.join(byte_cases(node, returns=True)),
+      default_action='state = 1; return nil' if is_pre_match else 'break top')
 
   def state_case(node):
     kind = dfa.matchNodeNames.get(node)
+    update_pos_code = ''
+    update_kind_code = ''
     if kind:
-      match_code = render_template('      tokenEnd = pos; tokenKind = .${kind}\n', kind=kind)
+      update_pos_code = '\n      tokenEnd = pos'
+      if node == 1:
+        update_kind_code = '; assert(tokenKind == .invalid)'
+      else:
+        update_kind_code = '; tokenKind = .{}'.format(kind)
     else:
       match_code = ''
-    template = '''\
-    case ${node}:
-${match_code}${transition_code}
-'''
-    return render_template(template,
-      match_code=match_code,
+    return 'case {node}:{update_pos_code}{update_kind_code}{transition_code}'.format(
       node=node,
-      transition_code=transition_code(node),
-    )
-  
-  start_byte_cases = [byte_cases(0, suffix='', indent=4)]
+      update_pos_code=update_pos_code,
+      update_kind_code=update_kind_code,
+      transition_code=transition_code(node))
+
   state_cases = [state_case(node) for node in dfa_nodes[1:]]
   Name = name.capitalize()
 
-  src = render_template(template,
-    finish_cases='\n'.join(finish_cases),
-    license=license,
-    Name=Name,
-    path=path,
-    rules_path=rules_path,
-    start_byte_cases='\n'.join(start_byte_cases),
-    state_cases='\n'.join(state_cases),
-    token_kind_case_defs='\n'.join(token_kind_case_defs),
-    token_kind_case_descriptions='\n'.join(token_kind_case_descriptions),
-    )
-  with open(path, 'w') as f:
-    f.write(src)
+  def finish_case(node):
+    return 'case {node}: tokenEnd = pos; tokenKind = .{kind}'.format(
+      node=node, kind=dfa.matchNodeNames[node])
 
-  if test_path:
-    src = render_template(test_template, Name=Name)
-    with open(test_path, 'w') as f:
-      f.write(src)
+  finish_cases = [finish_case(node) for node in dfa.matchNodes]
+
+  with open(path, 'w') as f:
+    if test:
+      f.write('#!/usr/bin/env swift\n')
+    src = render_template(template,
+      finish_cases='\n      '.join(finish_cases),
+      license=license,
+      Name=Name,
+      path=path,
+      rules_path=rules_path,
+      restart_byte_cases='\n    '.join(byte_cases(0, returns=False)),
+      start_byte_cases='\n      '.join(byte_cases(0, returns=True)),
+      state_cases='\n\n    '.join(state_cases),
+      token_kind_case_defs='\n  '.join(token_kind_case_defs),
+      token_kind_case_descriptions='\n    '.join(token_kind_case_descriptions),
+    )
+    f.write(src)
+    if test:
+      test_src = render_template(test_template, Name=Name)
+      f.write(test_src)
+      add_file_execute_permissions(f.fileno())
 
 
 template = r'''// ${license}.
@@ -169,63 +178,67 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   private var pos: Int = 0
   private var tokenPos: Int = 0
   private var tokenEnd: Int = 0
-  private var tokenKind: TokenKind? = nil
+  private var tokenKind: TokenKind = .invalid
 
   public init(name: String, data: Data) {
     self.source = Source(name: name, data: data)
   }
 
   public mutating func next() -> Token? {
-    if isFinished {
-      return nil
-    }
     while pos < source.data.count {
       let token = step(byte: source.data[pos])
       pos += 1
-      if let token = token {
+      if token != nil {
         return token
       }
     }
-    // flush final token.
-    isFinished = true
     if tokenPos < pos {
-      tokenEnd = pos
+      // update tokenEnd to pos for all match states.
       switch state {
       ${finish_cases}
-      default: tokenKind = .invalid
+      default: break
       }
-      return Token(pos: tokenPos, end: tokenEnd, kind: tokenKind!)
-    } else {
-      return nil
+      // flush any pending token, possibly backtracking.
+      state = 0 // reset state in case we backtrack.
+      return flushToken()
     }
+    return nil
   }
 
   @inline(__always)
   public mutating func step(byte: Byte) -> Token? {
     top: switch state {
-    case 0: break
+
     ${state_cases}
+
+    case 0: // start state.
+      switch byte {
+      ${start_byte_cases}
+      default: assert(tokenKind == .invalid); return nil
+      }
     default: fatalError("lexer is in impossible state: \(state)")
     }
-    // start.
+
+    // restart.
     let token = flushToken()
-    tokenPos = pos
     switch byte {
-    ${start_byte_cases}
+    ${restart_byte_cases}
     default: state = 1 // transition to invalid.
     }
     return token
   }
 
   @inline(__always)
-  private mutating func flushToken() -> Token? {
-    if let tokenKind = self.tokenKind {
-      assert(tokenPos < tokenEnd, "empty token; pos: \(tokenPos); kind: \(tokenKind).")
-      self.tokenKind = nil
-      return Token(pos: tokenPos, end: tokenEnd, kind: tokenKind)
-    } else {
-      return nil
-    }
+  private mutating func flushToken() -> Token {
+    let tPos = self.tokenPos
+    let end = self.tokenEnd > 0 ? self.tokenEnd : self.pos
+    let kind = self.tokenKind
+    assert(tPos < end, "empty token; pos: \(tPos); kind: \(kind)")
+    self.tokenKind = .invalid
+    self.tokenPos = end
+    self.tokenEnd = 0
+    self.pos = end // backtrack to last match position. can take quadratic time for pathological rule sets.
+    return Token(pos: tPos, end: end, kind: kind)
   }
 }
 '''
