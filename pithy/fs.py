@@ -3,6 +3,7 @@
 import os as _os
 import os.path as _path
 import shutil as _shutil
+import stat as _stat
 
 from itertools import zip_longest as _zip_longest
 
@@ -172,10 +173,16 @@ def file_time_meta_change(path): return _os.stat(path).st_ctime
 
 def file_size(path): return _os.stat(path).st_size
 
+def file_permissions(path): return _os.stat(path).st_mode
+
 def is_file_not_link(path): return is_file(path) and not is_link(path)
 
 def is_dir_not_link(path): return is_dir(path) and not is_link(path)
 
+def add_file_execute_permissions(path):
+  old_perms = file_permissions(path)
+  new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
+  _os.chmod(path, new_perms)
 
 def remove_dir_contents(path):
   if _path.islink(path): raise OSError('remove_dir_contents received symlink: ' + path)
