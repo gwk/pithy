@@ -20,7 +20,7 @@ from legs.swift import output_swift
 
 
 def main():
-  parser = ArgumentParser()
+  parser = ArgumentParser(prog='legs')
   parser.add_argument('rules_path')
   parser.add_argument('-dbg', action='store_true')
   parser.add_argument('-match', nargs='+')
