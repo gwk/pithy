@@ -2,31 +2,45 @@
 
 
 def dict_put(d: dict, k, v):
-  'Put a new key and value in the dictionary, raises err KeyError if the key already exists.'
+  '''
+  Put a new key and value in the dictionary, or raise err KeyError if the key already exists.
+  Returns the dictionary.
+  '''
   if k in d:
     raise KeyError(k)
   d[k] = v
+  return d
 
 
-def dict_append(d: dict, k, v):
+def dict_list_append(d: dict, k, v):
   '''
   Append a value to the list stored under the specified key in the dictionary.
-  If the list does not exist, an empty one will be inserted.
+  If the key is not present, an empty list is first inserted.
+  Returns the dictionary.
   '''
   d.setdefault(k, []).append(v)
+  return d
 
 
-def dict_extend(d: dict, k, v):
+def dict_list_extend(d: dict, k, v):
   '''
   Extend a value on the list stored under the specified key in the dictionary.
-  If the list does not exist, an empty one will be inserted.
+  If the key is not present, an empty list is first inserted.
+  Returns the dictionary.
   '''
   d.setdefault(k, []).extend(v)
+  return d
 
 
 def dict_set_defaults(d: dict, defaults: dict):
-  'Create a new dictionary with the keys and their values as defaults from the existing dictionary "defaults".'
-  for k, v in defaults.items():
+  '''
+  Call setdefault on the dictionary for each item in `defaults`,
+  which can be either dictionary-like object implementing `items()` or a sequence of pairs.
+  Returns the dictionary.
+  '''
+  try: it = defaults.items()
+  except AttributeError: it = defaults
+  for k, v in it:
     d.setdefault(k, v)
   return d
 
