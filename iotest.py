@@ -516,7 +516,7 @@ def run_case(ctx, case):
       exp_code=0)
     compile_time = time.time() - compile_time_start
     if not status:
-      outL('\ncompile failed.')
+      outFL('\ncompile step {} failed: `{}`', i, shell_cmd_str(compile_cmd))
       if status is not None: # not aborted; output is interesting.
         cat_file(compile_out_path)
         cat_file(compile_err_path)
@@ -548,6 +548,8 @@ def run_case(ctx, case):
     timeout=(case.timeout or dflt_timeout),
     exp_code=exp_code)
   test_time = time.time() - test_time_start
+  if not status:
+    outFL('test command failed: `{}`', shell_cmd_str(case.test_cmd))
 
   compile_msg = '; compile: {:.2f}'.format(compile_time) if compile_time else ''
   outFL(' {:.2f} sec{}.', test_time, compile_msg)
@@ -562,24 +564,27 @@ def run_case(ctx, case):
 
 def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
   'returns True for success, False for failure, and None for abort.'
+  cmd_path = path_join(cwd, cmd[0])
   if ctx.dbg:
+    cmd_str = '{} <{} # 1>{} 2>{}'.format(shell_cmd_str(cmd),
+      shlex.quote(in_path), shlex.quote(out_path), shlex.quote(err_path))
     errSL(label, 'cwd:', cwd)
-    errSL(label, 'cmd:', *(cmd + ['<{} # 1>{} 2>{}'.format(in_path, out_path, err_path)]))
+    errSL(label, 'cmd:', cmd_str)
 
   with open(in_path, 'r') as i, open(out_path, 'w') as o, open(err_path, 'w') as e:
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
     except PermissionError:
       outFL('\n{} process permission error; is the test script executable permission not set?\n'
-        '  possible fix: `chmod +x {}`', label, cmd[0])
+        '  possible fix: `chmod +x {}`', label, shlex.quote(cmd_path))
       return None
     except OSError as e:
       outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
       if e.strerror == 'Exec format error':
         outFL('  note: is the test script missing its hash-bang line? e.g. `#!/usr/bin/env [INTERPRETER]`')
-      elif e.strerror.startswith('No such file or directory:') and path_exists(path_join(cwd, cmd[0])):
+      elif e.strerror.startswith('No such file or directory:') and path_exists(cmd_path):
         outFL('  note: the test command does actually exist.')
-        if not path_dir(cmd[0]):
+        if not path_dir(cmd_path):
           outL("  note: command is missing a leading './'")
         else:
           outFL('  note: is the hash-bang line mispelled?')
@@ -665,5 +670,7 @@ file_expectation_fns = {
   'ignore'  : compare_ignore,
 }
 
+
+def shell_cmd_str(cmd): return ' '.join(shlex.quote(word) for word in cmd)
 
 if __name__ == '__main__': main()
