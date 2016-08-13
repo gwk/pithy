@@ -16,7 +16,7 @@ from string import Template
 
 from pithy.io import errFL, errL, errLSSL, errSL, outF, outFL, outL, outSL, read_from_path, write_to_path
 from pithy.strings import string_contains
-from pithy.fs import abs_path, is_dir, list_dir, make_dirs, normalize_path, path_exists, path_ext, path_join, path_name, path_range, path_stem, remove_dir_contents, walk_dirs_up
+from pithy.fs import abs_path, is_dir, list_dir, make_dirs, normalize_path, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_range, path_stem, remove_dir_contents, walk_dirs_up
 from pithy.seq import fan_seq_by_key
 from pithy.task import ProcessExpectation, ProcessTimeout, run
 from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_str, is_str_or_list, req_type
