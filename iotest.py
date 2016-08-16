@@ -50,7 +50,7 @@ def main():
     path = normalize_path(raw_path)
     if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
-      raiseS("test path cannot contain '..':", path)
+      raiseF("test path cannot contain '..': {}", path)
     if is_dir(path):
       dir_path = path + '/'
       specified_name_stem = None
@@ -374,7 +374,7 @@ class Case:
     elif self.dflt_src_path:
       self.test_cmd = [abs_path(self.dflt_src_path)] + (args or [])
     else:
-      raiseS('no cmd specified and no default source path found')
+      raiseF('no cmd specified and no default source path found.')
 
     self.coverage_targets = expand(self.coverage)
 
