@@ -32,6 +32,21 @@ def seq_from_index(seq, start_index):
   return it
 
 
+def seq_int_intervals(seq):
+  it = iter(seq)
+  try: first = next(it)
+  except StopIteration: return
+  interval = (first, first)
+  for i in it:
+    l, h = interval
+    if h + 1 == i:
+      interval = (l, i)
+    else:
+      yield interval
+      interval = (i, i)
+  yield interval
+
+
 def fan_seq_by_index(seq, index, min_len=0):
   '''
   Fan out `seq` into a list of lists, with a minimum length of `min_len`,
