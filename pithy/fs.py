@@ -27,6 +27,10 @@ def normalize_path(path):
   'Normalize the path according to system convention.'
   return _path.normpath(path)
 
+def rel_path(path, start='.'):
+  'Return a path relative to start, or the current directory.'
+  return _path.relpath(path, start)
+
 def path_common_prefix(*paths):
   'Return the common prefix of a sequence of paths.'
   return _path.commonprefix(paths)
