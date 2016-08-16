@@ -327,6 +327,9 @@ def checkF(condition, fmt, *items, **keyed_items):
 
 # exceptions.
 
+def raiseZ(*items, sep='', E=Exception):
+  raise E(''.join(items))
+
 def raiseS(*items, E=Exception):
   raise E(' '.join(items))
 
