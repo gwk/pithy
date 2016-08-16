@@ -326,6 +326,7 @@ class Case:
 
     default_to_env('PATH')
     default_to_env('PYTHONPATH')
+    default_to_env('SDKROOT')
 
     def expand_str(val):
       t = Template(val)
