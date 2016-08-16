@@ -9,14 +9,16 @@ import re
 import shlex
 import signal
 import subprocess
-import sys
 import time
 
 from string import Template
+from sys import stdout, stderr
 
-from pithy.io import errFL, errL, errLSSL, errSL, fail, failF, outF, outFL, outL, outSL, read_from_path, write_to_path
+from pithy.ansi import RST, TXT_B, TXT_R
+from pithy.immutable import Immutable
+from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, write_to_path, writeLSSL
 from pithy.strings import string_contains
-from pithy.fs import abs_path, is_dir, is_python3_file, list_dir, make_dirs, normalize_path, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_range, path_stem, remove_dir_contents, walk_dirs_up
+from pithy.fs import abs_path, is_dir, is_python3_file, list_dir, make_dirs, normalize_path, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_range, path_stem, rel_path, remove_dir_contents, walk_dirs_up
 from pithy.seq import fan_seq_by_key
 from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
 from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_str, is_str_or_list, req_type
@@ -29,8 +31,11 @@ coverage_name = '_coverage.cove'
 def main():
   start_time = time.time()
   arg_parser = argparse.ArgumentParser(description='iotest: a simple file-based test harness.')
+  arg_parser.add_argument('-build-dir')
   arg_parser.add_argument('-parse-only', action='store_true', help='parse test cases and exit.')
   arg_parser.add_argument('-coverage', action='store_true', help='use cove to trace test coverage.')
+  arg_parser.add_argument('-no-coverage-report', action='store_true', help='do not report coverage.')
+  arg_parser.add_argument('-no-times', action='store_true', help='do not report test times.')
   arg_parser.add_argument('-fail-fast',  action='store_true', help='exit on first error; implied by -dbg.')
   arg_parser.add_argument('-dbg', action='store_true', help='debug mode: print extra info; implies -fast).')
   arg_parser.add_argument('paths', nargs='*', default=['test'], help='test directories to search.')
@@ -38,19 +43,37 @@ def main():
 
   if args.dbg: errL('iotest: DEBUG MODE ON.')
 
+  if not args.coverage and args.no_coverage_report:
+    failF('iotest error: `-no-coverage-report` is only valid in combination with `-coverage`.')
+
   proj_dir = find_proj_dir()
-  build_dir = path_join(proj_dir, dflt_build_dir)
-  ctx = Ctx(args.parse_only, args.coverage, args.fail_fast, args.dbg, args.paths, proj_dir, build_dir)
+  build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
+
+  if args.fail_fast or args.dbg:
+    def fail_fast(): fail('iotest: stopping after error (-fail-fast).')
+  else:
+    def fail_fast(): pass
+
+  ctx = Immutable(
+    build_dir=build_dir,
+    coverage=args.coverage,
+    dbg=args.dbg,
+    fail_fast=fail_fast,
+    parse_only=args.parse_only,
+    proj_dir=proj_dir,
+    show_times=(not args.no_times),
+    top_paths=args.paths,
+  )
 
   cases = []
 
   for raw_path in ctx.top_paths:
     if not path_exists(raw_path):
-      failF('iotest: {!r}: argument path does not exist.', raw_path)
+      failF('iotest: argument path does not exist: {!r}.', raw_path)
     path = normalize_path(raw_path)
     if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
-      raiseF("test path cannot contain '..': {}", path)
+      failF("iotest: argument path cannot contain '..': {!r}.", path)
     if is_dir(path):
       dir_path = path + '/'
       specified_name_stem = None
@@ -83,30 +106,16 @@ def main():
       count, broken_count, skipped_count, failed_count)
     code = 1
   else:
-    msg = 'TESTS {}: {}'.format('PARSED' if ctx.parse_only else 'PASSED', count)
+    msg = 'TESTS {}: {}.'.format('PARSED' if ctx.parse_only else 'PASSED', count)
     code = 0
-  outFL('{:{bar_width}} {:.2f} sec.', msg, total_time, bar_width=bar_width)
-  if args.coverage:
+  if ctx.show_times:
+    outFL('{:{bar_width}} {:.2f} sec.', msg, total_time, bar_width=bar_width)
+  else:
+    outL(msg)
+  if args.coverage and not args.no_coverage_report:
     report_coverage(ctx, cases)
   else:
     exit(code)
-
-
-class Ctx:
-  'Ctx is the global test context, holding configuration options.'
-
-  def __init__(self, parse_only, coverage, fail_fast, dbg, paths, proj_dir, build_dir):
-    self.parse_only = parse_only
-    self.coverage = coverage
-    self.should_fail_fast = fail_fast or dbg
-    self.dbg = dbg
-    self.top_paths = paths
-    self.proj_dir = proj_dir
-    self.build_dir = build_dir
-
-  def fail_fast(self):
-    if self.should_fail_fast:
-      fail('iotest: stopping after error (-fail-fast).')
 
 
 def find_proj_dir():
@@ -195,6 +204,9 @@ def report_coverage(ctx, cases):
   exit(runC(cmd))
 
 
+class IotParseError(Exception): pass
+
+
 class Case:
   'Case represents a single test case, or a default.'
 
@@ -244,21 +256,25 @@ class Case:
       self.derive_info(ctx)
 
     except Exception as e:
-      errFL('WARNING: broken test case: {};\n  exception: {}', stem, e)
-      self.describe()
-      errL()
+      outFL('WARNING: broken test case: {}', stem)
+      outFL('  exception: {}: {}.', type(e).__name__, e)
+      # not sure if it makes sense to describe cases for some exceptions;
+      # for now, just carve out the ones for which it is definitely useless.
+      if not isinstance(e, IotParseError):
+        self.describe(stdout)
+        outL()
       if ctx.dbg: raise
       self.broken = True
 
 
-  def describe(self):
+  def describe(self, file):
     def stable_repr(val):
       if is_dict(val):
         return '{{{}}}'.format(', '.join('{!r}:{!r}'.format(*p) for p in sorted(val.items())))
       return repr(val)
 
     items = sorted(self.__dict__.items())
-    errLSSL('Case:', *('{}: {}'.format(k, stable_repr(v)) for k, v in items))
+    writeLSSL(file, 'Case:', *('{}: {}'.format(k, stable_repr(v)) for k, v in items))
 
 
   def add_file(self, path):
@@ -284,7 +300,13 @@ class Case:
     text = read_from_path(path)
     if not text or text.isspace():
       return
-    info = ast.literal_eval(text)
+    try:
+      info = ast.literal_eval(text)
+    except ValueError as e:
+      msg = str(e)
+      if msg.startswith('malformed node or string:'): # omit the repr garbage containing address.
+        msg = 'malformed node or string in .iot file: {!r}'.format(path)
+      raise IotParseError(msg) from e
     req_type(info, dict)
     for kv in info.items():
       self.add_iot_val_for_key(*kv)
@@ -374,7 +396,7 @@ class Case:
     elif self.dflt_src_path:
       self.test_cmd = [abs_path(self.dflt_src_path)] + (args or [])
     else:
-      raiseF('no cmd specified and no default source path found.')
+      raiseF('no `cmd` specified and no default source path found')
 
     self.coverage_targets = expand(self.coverage)
 
@@ -458,10 +480,8 @@ class FileExpectation:
     if path.find('..') != -1:
       raiseF("file expectation {}: cannot contain '..'", path)
     self.path = path
-
     self.mode = info.get('mode', 'equal')
     validate_exp_mode(path, self.mode)
-
     try:
       exp_path = info['path']
     except KeyError:
@@ -472,6 +492,12 @@ class FileExpectation:
       exp_path_expanded = expand_str_fn(exp_path)
       val = read_from_path(exp_path_expanded)
     self.val = expand_str_fn(val)
+    if self.mode == 'match':
+      try:
+        re.compile(self.val)
+      except Exception as e:
+        raise ValueError('test expectation: {!r};\n  pattern is invalid regex: {!r}\n  {}'.format(
+          path, self.val, e)) from e
 
   def __repr__(self):
     return 'FileExpectation({!r}, {!r}, {!r})'.format(self.path, self.mode, self.val)
@@ -481,7 +507,9 @@ def try_case(ctx, case):
   try:
     ok = run_case(ctx, case)
   except Exception as e:
-    errFL('ERROR: could not run test case: {};\n  exception: {}', case.stem, e)
+    t = type(e)
+    errFL('ERROR: could not run test case: {};\n  exception: {}.{}: {}',
+      case.stem, t.__module__, t.__qualname__, e)
     if ctx.dbg: raise
     ctx.fail_fast()
     ok = False
@@ -494,10 +522,10 @@ def try_case(ctx, case):
 
 
 def run_case(ctx, case):
-  outF('{:{bar_width}}', case.stem, flush=True, bar_width=bar_width)
+  outF('{:{bar_width}}', case.stem, flush=True, bar_width=(bar_width if ctx.show_times else 1))
   if ctx.dbg:
-    outL()
-    case.describe()
+    errL()
+    case.describe(stderr)
 
   # set up directory.
   if path_exists(case.test_dir):
@@ -536,8 +564,8 @@ def run_case(ctx, case):
     if not status:
       outFL('\ncompile step {} failed: `{}`', i, shell_cmd_str(compile_cmd))
       if status is not None: # not aborted; output is interesting.
-        cat_file(compile_out_path)
-        cat_file(compile_err_path)
+        cat_file(compile_out_path, color=TXT_R)
+        cat_file(compile_err_path, color=TXT_R)
       return False
 
   if case.in_ is not None:
@@ -569,10 +597,13 @@ def run_case(ctx, case):
   test_time = time.time() - test_time_start
   if not status:
     outFL('test command failed: `{}`', shell_cmd_str(case.test_cmd))
-
-  compile_msg = '; compile: {:.2f}'.format(compile_time) if compile_time else ''
-  outFL(' {:.2f} sec{}.', test_time, compile_msg)
-
+  
+  if ctx.show_times:
+    compile_time_msg = '; compile: {:.2f}'.format(compile_time) if compile_time else ''
+    outFL(' {:.2f} sec{}.', test_time, compile_time_msg)
+  else:
+    outL()
+  
   if status is None:
     return False
   
@@ -585,9 +616,11 @@ def run_cmd(ctx, label, coverage_targets, cmd, cwd, env, in_path, out_path, err_
   'returns True for success, False for failure, and None for abort.'
   cmd_head = cmd[0]
   if ctx.coverage and is_python3_file(cmd_head): # interpose the coverage harness.
-    cove_cmd = ['cove']
+    cove_cmd = ['cove', '-output', coverage_name]
     if coverage_targets:
-      cove_cmd += ['-output', coverage_name, '-targets'] + coverage_targets + ['--']
+      cove_cmd += ['-targets'] + coverage_targets + ['--']
+    else:
+      cove_cmd.append('--')
     cmd = cove_cmd + cmd
     cmd_path = None # for now, do not offer possible test fixes while in coverage mode.
   else:  # calculate path to the command as an aid for debugging test cases.
@@ -649,19 +682,14 @@ def check_file_exp(ctx, test_dir, exp):
     return False
   if file_expectation_fns[exp.mode](exp.val, act_val):
     return True
-  outFL('\noutput file {!r} does not {} expected value:', path, exp.mode)
-  for line in exp.val.splitlines():
-    outL('\x1B[0;34m', line, '\x1B[0m') # blue text.
-  if exp.val and not exp.val.endswith('\n'):
-    outL('(missing final newline)')
+  outFL('\noutput file does not {} expection. actual value:', exp.mode)
+  cat_file(path, color=TXT_B)
   if exp.mode == 'equal': # show a diff.
     path_expected = path + '-expected'
     write_to_path(path_expected, exp.val)
     cmd = diff_cmd + [path_expected, path]
     outSL(*cmd)
     run(cmd, exp=None)
-  else:
-    cat_file(path)
   outSL('-' * bar_width)
   return False
 
@@ -669,13 +697,14 @@ def check_file_exp(ctx, test_dir, exp):
 diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram'.split()
 
 
-def cat_file(path, limit=-1):
-  outSL('cat', path)
+def cat_file(path, color='', limit=-1):
+  outSL('cat', rel_path(path))
+  rst = RST if color else ''
   with open(path) as f:
     line = None
     for i, line in enumerate(f, 1):
       l = line.rstrip('\n')
-      outL('\x1B[0;41m', l, '\x1B[0m') # red background.
+      outL(color, l, rst)
       if i == limit: return
     if line is not None and not line.endswith('\n'):
         outL('(missing final newline)')

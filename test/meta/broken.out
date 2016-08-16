@@ -1,0 +1,5 @@
+WARNING: broken test case: test-meta/broken
+  exception: IotParseError: malformed node or string in .iot file: 'test-meta/broken.iot'.
+
+################################################################
+TESTS FOUND: 1; BROKEN: 1; SKIPPED: 0; FAILED: 0.

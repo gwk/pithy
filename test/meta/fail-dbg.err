@@ -1,0 +1,41 @@
+iotest: DEBUG MODE ON.
+
+Case:
+  args: None
+  broken: False
+  cmd: 'false'
+  code: None
+  compile: None
+  compile_cmds: \[\]
+  compile_timeout: None
+  coverage: None
+  coverage_targets: \[\]
+  desc: None
+  dflt_src_path: None
+  env: None
+  err_mode: None
+  err_path: None
+  err_val: None
+  files: None
+  in_: None
+  links: None
+  name: 'fail-dbg'
+  out_mode: None
+  out_path: None
+  out_val: None
+  skip: None
+  stem: 'test-meta/fail-dbg'
+  test_cmd: \['false'\]
+  test_dir: '/Users/gwk/work/iotest/_build/test-meta/fail-dbg'
+  test_env: .+
+  test_expectations: .+
+  test_in: None
+  test_info_paths: \['test-meta/fail-dbg.iot'\]
+  timeout: None
+input path: /dev/null
+test cwd: .+/iotest/_build/test-meta/fail-dbg
+test cmd: false </dev/null # 1>.+/iotest/_build/test-meta/fail-dbg/out 2>.+/iotest/_build/test-meta/fail-dbg/err
+check_file_exp: .+
+check_file_exp: .+
+
+iotest: stopping after error \(-fail-fast\).

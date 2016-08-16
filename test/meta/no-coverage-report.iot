@@ -1,0 +1,4 @@
+{
+  'cmd': '$PROJ/iotest.py -no-coverage-report',
+  'err_val': 'iotest error: `-no-coverage-report` is only valid in combination with `-coverage`.\n',
+}

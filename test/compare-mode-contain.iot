@@ -1,0 +1,5 @@
+{
+  'cmd': 'echo std output contains `query`.',
+  'out_mode': 'contain',
+  'out_val': 'query',
+}

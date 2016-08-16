@@ -9,7 +9,7 @@ clean:
 	rm -rf _build/*
 
 cov:
-	cove iotest.py
+	test-meta/meta-coverage.sh
 
 test:
 	./iotest.py test

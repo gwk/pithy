@@ -1,5 +1,3 @@
-# expect clean compile from local test script called compile.*
-
 {
   'compile' : ['test/compile.py'],
   'links' : {'test' : 'test'},
