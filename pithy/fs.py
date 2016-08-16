@@ -179,6 +179,23 @@ def is_file_not_link(path): return is_file(path) and not is_link(path)
 
 def is_dir_not_link(path): return is_dir(path) and not is_link(path)
 
+
+def is_python3_file(path, always_read=False):
+  '''
+  heuristics to decide if a file is a python script.
+  TODO: support zip archives.
+  '''
+  if not always_read:
+    ext = path_ext(path)
+    if ext: return ext == '.py'
+  try:
+    with open(path, 'rb') as f:
+      expected = b'#!/usr/bin/env python3\n'
+      head = f.read(len(expected))
+      return head == expected
+  except FileNotFoundError: return False
+
+
 def add_file_execute_permissions(path):
   old_perms = file_permissions(path)
   new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
