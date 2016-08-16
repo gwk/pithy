@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "command": "iotest",
+  "command": "make",
   "isShellCommand": false,
   "args": [],
   "showOutput": "always"

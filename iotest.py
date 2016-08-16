@@ -14,32 +14,33 @@ import time
 
 from string import Template
 
-from pithy.io import errFL, errL, errLSSL, errSL, outF, outFL, outL, outSL, read_from_path, write_to_path
+from pithy.io import errFL, errL, errLSSL, errSL, fail, failF, outF, outFL, outL, outSL, read_from_path, write_to_path
 from pithy.strings import string_contains
-from pithy.fs import abs_path, is_dir, list_dir, make_dirs, normalize_path, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_range, path_stem, remove_dir_contents, walk_dirs_up
+from pithy.fs import abs_path, is_dir, is_python3_file, list_dir, make_dirs, normalize_path, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_range, path_stem, remove_dir_contents, walk_dirs_up
 from pithy.seq import fan_seq_by_key
-from pithy.task import ProcessExpectation, ProcessTimeout, run
+from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
 from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_str, is_str_or_list, req_type
 
 bar_width = 64
 dflt_build_dir = '_build'
 dflt_timeout = 4
-
+coverage_name = '_coverage.cove'
 
 def main():
   start_time = time.time()
   arg_parser = argparse.ArgumentParser(description='iotest: a simple file-based test harness.')
-  arg_parser.add_argument('-parse-only', action='store_true', help='parse test cases and exit.'),
-  arg_parser.add_argument('-fail-fast',  action='store_true', help='exit on first error; implied by -dbg.'),
-  arg_parser.add_argument('-dbg', action='store_true', help='debug mode: print extra info; implies -fast).'),
+  arg_parser.add_argument('-parse-only', action='store_true', help='parse test cases and exit.')
+  arg_parser.add_argument('-coverage', action='store_true', help='use cove to trace test coverage.')
+  arg_parser.add_argument('-fail-fast',  action='store_true', help='exit on first error; implied by -dbg.')
+  arg_parser.add_argument('-dbg', action='store_true', help='debug mode: print extra info; implies -fast).')
   arg_parser.add_argument('paths', nargs='*', default=['test'], help='test directories to search.')
   args = arg_parser.parse_args()
-  
+
   if args.dbg: errL('iotest: DEBUG MODE ON.')
 
   proj_dir = find_proj_dir()
   build_dir = path_join(proj_dir, dflt_build_dir)
-  ctx = Ctx(args.parse_only, args.fail_fast, args.dbg, args.paths, proj_dir, build_dir)
+  ctx = Ctx(args.parse_only, args.coverage, args.fail_fast, args.dbg, args.paths, proj_dir, build_dir)
 
   cases = []
 
@@ -85,14 +86,18 @@ def main():
     msg = 'TESTS {}: {}'.format('PARSED' if ctx.parse_only else 'PASSED', count)
     code = 0
   outFL('{:{bar_width}} {:.2f} sec.', msg, total_time, bar_width=bar_width)
-  exit(code)
+  if args.coverage:
+    report_coverage(ctx, cases)
+  else:
+    exit(code)
 
 
 class Ctx:
   'Ctx is the global test context, holding configuration options.'
 
-  def __init__(self, parse_only, fail_fast, dbg, paths, proj_dir, build_dir):
+  def __init__(self, parse_only, coverage, fail_fast, dbg, paths, proj_dir, build_dir):
     self.parse_only = parse_only
+    self.coverage = coverage
     self.should_fail_fast = fail_fast or dbg
     self.dbg = dbg
     self.top_paths = paths
@@ -183,6 +188,13 @@ def is_case_implied(paths):
   return any(path_ext(p) in ('.iot', '.out', '.err') for p in paths)
 
 
+def report_coverage(ctx, cases):
+  paths = [path_join(case.test_dir, coverage_name) for case in cases]
+  cmd = ['cove', '-coalesce'] + paths
+  if ctx.dbg: errSL('#', *cmd)
+  exit(runC(cmd))
+
+
 class Case:
   'Case represents a single test case, or a default.'
 
@@ -197,6 +209,7 @@ class Case:
     # configurable properties.
     self.args = None # arguments to follow the file under test.
     self.cmd = None # command string/list with which to invoke the test.
+    self.coverage = None # list of string/list of names to include in code coverage analysis.
     self.code = None # the expected exit code.
     self.compile = None # the optional list of compile commands, each a string or list of strings.
     self.compile_timeout = None
@@ -347,7 +360,7 @@ class Case:
       self.compile_cmds = expand_compile_cmds(self.compile)
     else:
       self.compile_cmds = []
-
+    
     args = expand(self.args)
     if self.cmd:
       self.test_cmd = expand(self.cmd)
@@ -361,7 +374,9 @@ class Case:
       self.test_cmd = [abs_path(self.dflt_src_path)] + (args or [])
     else:
       raiseS('no cmd specified and no default source path found')
-    
+
+    self.coverage_targets = expand(self.coverage)
+
     self.test_in = expand_str(self.in_) if self.in_ is not None else None
 
     self.test_expectations = []
@@ -419,6 +434,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'code':     ('int or `...`',              is_int_or_ellipsis, None),
   'compile':  ('list of (str | list of str)', is_compile_cmd,   None),
   'compile_timeout': ('positive int',       is_pos_int,         None),
+  'coverage': ('string or list of strings', is_str_or_list,     None),
   'desc':     ('str',                       is_str,             None),
   'env':      ('dict of strings',           is_dict_of_str,     None),
   'err_mode': ('str',                       is_str,             validate_exp_mode),
@@ -506,6 +522,7 @@ def run_case(ctx, case):
     compile_err_path = path_join(case.test_dir, 'compile-err-{:02}'.format(i))
     status = run_cmd(ctx,
       label='compile',
+      coverage_targets=case.coverage_targets,
       cmd=compile_cmd,
       cwd=case.test_dir,
       env=case.test_env,
@@ -539,6 +556,7 @@ def run_case(ctx, case):
   test_time_start = time.time()
   status = run_cmd(ctx,
     label='test',
+    coverage_targets=case.coverage_targets,
     cmd=case.test_cmd,
     cwd=case.test_dir,
     env=case.test_env,
@@ -562,9 +580,23 @@ def run_case(ctx, case):
   return status and exps_ok
 
 
-def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
+def run_cmd(ctx, label, coverage_targets, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
   'returns True for success, False for failure, and None for abort.'
-  cmd_path = path_join(cwd, cmd[0])
+  cmd_head = cmd[0]
+  if ctx.coverage and is_python3_file(cmd_head): # interpose the coverage harness.
+    cove_cmd = ['cove']
+    if coverage_targets:
+      cove_cmd += ['-output', coverage_name, '-targets'] + coverage_targets + ['--']
+    cmd = cove_cmd + cmd
+    cmd_path = None # for now, do not offer possible test fixes while in coverage mode.
+  else:  # calculate path to the command as an aid for debugging test cases.
+    cmd_dir = path_dir(cmd_head)
+    if not cmd_dir: # command is a name, presumably a name on the PATH (or else a mistake).
+      cmd_path = None
+    elif cmd_dir.startswith('/'): # command is an absolute path.
+      cmd_path = cmd_head
+    else: # command refers to a local executable.
+      cmd_path = path_join(cwd, cmd_head)
   if ctx.dbg:
     cmd_str = '{} <{} # 1>{} 2>{}'.format(shell_cmd_str(cmd),
       shlex.quote(in_path), shlex.quote(out_path), shlex.quote(err_path))
@@ -575,14 +607,14 @@ def run_cmd(ctx, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
     except PermissionError:
-      outFL('\n{} process permission error; is the test script executable permission not set?\n'
-        '  possible fix: `chmod +x {}`', label, shlex.quote(cmd_path))
+      outFL('\n{} process permission error; is the test script executable permission not set?')
+      if cmd_path: outFL('  possible fix: `chmod +x {}`', label, shlex.quote(cmd_path))
       return None
     except OSError as e:
       outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
       if e.strerror == 'Exec format error':
         outFL('  note: is the test script missing its hash-bang line? e.g. `#!/usr/bin/env [INTERPRETER]`')
-      elif e.strerror.startswith('No such file or directory:') and path_exists(cmd_path):
+      elif e.strerror.startswith('No such file or directory:') and cmd_path and path_exists(cmd_path):
         outFL('  note: the test command does actually exist.')
         if not path_dir(cmd_path):
           outL("  note: command is missing a leading './'")
