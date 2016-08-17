@@ -313,8 +313,10 @@ class Case:
 
 
   def add_val_for_key(self, key, val):
-    if self.__dict__[key] is not None:
-      raiseF('key has conflicting values: {}', key)
+    existing = self.__dict__[key]
+    if existing is not None:
+      raiseF('conflicting values for key: {!r};\n  existing: {!r};\n  incoming: {!r}',
+        key, existing, val)
     self.__dict__[key] = val
 
 
@@ -508,7 +510,7 @@ def try_case(ctx, case):
     ok = run_case(ctx, case)
   except Exception as e:
     t = type(e)
-    errFL('ERROR: could not run test case: {};\n  exception: {}.{}: {}',
+    errFL('\nERROR: could not run test case: {};\n  exception: {}.{}: {}',
       case.stem, t.__module__, t.__qualname__, e)
     if ctx.dbg: raise
     ctx.fail_fast()
@@ -641,8 +643,8 @@ def run_cmd(ctx, label, coverage_targets, cmd, cwd, env, in_path, out_path, err_
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
     except PermissionError:
-      outFL('\n{} process permission error; is the test script executable permission not set?')
-      if cmd_path: outFL('  possible fix: `chmod +x {}`', label, shlex.quote(cmd_path))
+      outFL('\n{} process permission error; is the test script executable permission not set?', label)
+      if cmd_path: outFL('  possible fix: `chmod +x {}`', shlex.quote(cmd_path))
       return None
     except OSError as e:
       outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
@@ -654,7 +656,7 @@ def run_cmd(ctx, label, coverage_targets, cmd, cwd, env, in_path, out_path, err_
           outL("  note: command is missing a leading './'")
         else:
           outFL('  note: is the hash-bang line mispelled?')
-          outFL("  (this error is usually issued due to mispelling of '#!/usr/bin/env ...')")
+          outFL("  (this error is sometimes issued due to mispelling of '#!/usr/bin/env ...')")
       return None
     except ProcessTimeout:
       outFL('\n{} process timed out ({} sec) and was killed.', label, timeout)
