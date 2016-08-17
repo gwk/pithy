@@ -338,16 +338,26 @@ def raiseF(fmt, *items, E=Exception):
 
 
 # convenience read/write.
-_read_from_path_default_val = object()
-def read_from_path(path, default=_read_from_path_default_val):
-  'Read text that the file at `path` contains.'
+
+_no_default = object()
+
+def read_from_path(path, default=_no_default):
+  'Read all text from file at `path`.'
   try:
     with open(path) as f:
       return f.read()
-  except FileNotFoundError as e:
-    if default is _read_from_path_default_val: raise
+  except (FileNotFoundError, IsADirectoryError):
+    if default is _no_default: raise
     return default
 
+def read_first_line_from_path(path, default=_no_default):
+  'Read first line of text from file at `path`.'
+  try:
+    with open(path) as f:
+      return f.readline()
+  except (FileNotFoundError, IsADirectoryError):
+    if default is _no_default: raise
+    return default
 
 def write_to_path(path, string):
   'Writes `string` to file at `path`.'
