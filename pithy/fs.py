@@ -11,12 +11,12 @@ from itertools import zip_longest as _zip_longest
 # paths.
 
 def executable_path():
-  'Return an executable path.'
+  'Return the path to this executable.'
   import __main__
   return _path.realpath(__main__.__file__)
 
 def executable_dir():
-  'Return an excutable directory.'
+  'Return the parent directory of this excutable.'
   return _path.dirname(executable_real_path())
 
 def is_path_abs(path):
@@ -28,7 +28,7 @@ def normalize_path(path):
   return _path.normpath(path)
 
 def rel_path(path, start='.'):
-  'Return a path relative to start, or the current directory.'
+  'Return a path relative to start, defaulting to the current directory.'
   return _path.relpath(path, start)
 
 def path_common_prefix(*paths):
