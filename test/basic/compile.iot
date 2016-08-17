@@ -1,5 +1,5 @@
 {
-  'compile' : ['test/compile.py'],
+  'compile' : ['test/basic/compile.py'],
   'links' : {'test' : 'test'},
   'out_val': 'output from compiled script.\n',
 }

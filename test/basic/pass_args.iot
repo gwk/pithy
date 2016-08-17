@@ -3,11 +3,6 @@
 {
   'args' : '0 "std out" "std err"',
   'code' : 0,
-  'out_val' : '''\
-std out
-''',
-
-  'err_val' : '''\
-std err
-'''
+  'out_val' : 'std out\n',
+  'err_val' : 'std err\n',
 }
