@@ -16,9 +16,9 @@ from sys import stdout, stderr
 
 from pithy.ansi import RST, TXT_B, TXT_R
 from pithy.immutable import Immutable
-from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, write_to_path, writeLSSL
+from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, read_first_line_from_path, write_to_path, writeLSSL
 from pithy.strings import string_contains
-from pithy.fs import abs_path, is_dir, is_python3_file, list_dir, make_dirs, normalize_path, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_range, path_stem, rel_path, remove_dir_contents, walk_dirs_up
+from pithy.fs import abs_path, is_dir, is_python3_file, list_dir, make_dirs, normalize_path, path_descendants, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, find_project_dir, rel_path, remove_dir_contents, walk_dirs_up
 from pithy.seq import fan_seq_by_key
 from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
 from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_str, is_str_or_list, req_type
@@ -46,7 +46,7 @@ def main():
   if not args.coverage and args.no_coverage_report:
     failF('iotest error: `-no-coverage-report` is only valid in combination with `-coverage`.')
 
-  proj_dir = find_proj_dir()
+  proj_dir = find_project_dir()
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
 
   if args.fail_fast or args.dbg:
@@ -118,30 +118,17 @@ def main():
     exit(code)
 
 
-def find_proj_dir():
-  '''
-  find the project root directory,
-  as denoted by the presence of a file/directory named any of the following:
-  - .git
-  - .project-root
-  '''
-  # TODO: support relying on .gitignore, .git, or similar?
-  for path in walk_dirs_up('.'):
-    for name in list_dir(path):
-      if name in ('.git', '.project-root'):
-        return path
   fail("iotest: could not find .git or .project-root in current directory or its parents.")
 
 
 def collect_proto(ctx, end_dir_path):
   '''
   Assemble the prototype test case information from files named `_default.*`,
-  starting at the project root and traversing through successive child directories
-  to `end_dir_path`.
+  starting at the project root and traversing successive child directories up to `end_dir_path`.
   This function is necessary to collect complete prototypes for a specified subdirectory.
   '''
   proto = None
-  for dir_path in path_range(ctx.proj_dir, abs_path(end_dir_path)):
+  for dir_path in path_descendants(ctx.proj_dir, abs_path(end_dir_path), include_end=False):
     file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem(name) == '_default']
     proto = create_default_case(ctx, proto, path_join(dir_path, '_default'), file_paths)
   return proto
@@ -617,22 +604,20 @@ def run_case(ctx, case):
 def run_cmd(ctx, label, coverage_targets, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
   'returns True for success, False for failure, and None for abort.'
   cmd_head = cmd[0]
-  if ctx.coverage and is_python3_file(cmd_head): # interpose the coverage harness.
+  is_cmd_installed = not path_dir(cmd_head) # command is a name, presumably a name on the PATH (or else a mistake).
+  if ctx.coverage and not is_cmd_installed and is_python3_file(cmd_head): # interpose the coverage harness.
     cove_cmd = ['cove', '-output', coverage_name]
     if coverage_targets:
       cove_cmd += ['-targets'] + coverage_targets + ['--']
     else:
       cove_cmd.append('--')
     cmd = cove_cmd + cmd
-    cmd_path = None # for now, do not offer possible test fixes while in coverage mode.
-  else:  # calculate path to the command as an aid for debugging test cases.
-    cmd_dir = path_dir(cmd_head)
-    if not cmd_dir: # command is a name, presumably a name on the PATH (or else a mistake).
-      cmd_path = None
-    elif cmd_dir.startswith('/'): # command is an absolute path.
-      cmd_path = cmd_head
-    else: # command refers to a local executable.
-      cmd_path = path_join(cwd, cmd_head)
+    msg_cmd = None # do not offer possible test fixes while in coverage mode.
+  elif is_cmd_installed:
+    msg_cmd = None
+  else: # command is a path, either local or absolute.
+    msg_cmd = path_rel_to_current_or_abs(cmd_head)
+
   if ctx.dbg:
     cmd_str = '{} <{} # 1>{} 2>{}'.format(shell_cmd_str(cmd),
       shlex.quote(in_path), shlex.quote(out_path), shlex.quote(err_path))
@@ -643,20 +628,25 @@ def run_cmd(ctx, label, coverage_targets, cmd, cwd, env, in_path, out_path, err_
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
     except PermissionError:
-      outFL('\n{} process permission error; is the test script executable permission not set?', label)
-      if cmd_path: outFL('  possible fix: `chmod +x {}`', shlex.quote(cmd_path))
+      outFL('\n{} process permission error; make sure that you have proper ownership and permissions to execute set.', label)
+      if msg_cmd: outFL('possible fix: `chmod +x {}`', shlex.quote(msg_cmd))
       return None
     except OSError as e:
-      outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
+      first_line = read_first_line_from_path(cmd_head, default=None)
       if e.strerror == 'Exec format error':
-        outFL('  note: is the test script missing its hash-bang line? e.g. `#!/usr/bin/env [INTERPRETER]`')
-      elif e.strerror.startswith('No such file or directory:') and cmd_path and path_exists(cmd_path):
-        outFL('  note: the test command does actually exist.')
-        if not path_dir(cmd_path):
-          outL("  note: command is missing a leading './'")
+        outFL('\n{} process file format is not executable.', label)
+        if msg_cmd and first_line is not None and not first_line.startswith('#!'):
+          outFL('note: the test script does not start with a hash-bang line, e.g. `#!/usr/bin/env [INTERPRETER]`.')
+      elif e.strerror.startswith('No such file or directory:'):
+        if first_line is None: # really does not exist.
+          outFL('\n{} command path does not exist: {}', label, (msg_cmd or cmd_head))
+        elif is_cmd_installed: # exists but not referred to as a path.
+          outFL("\n{} command path exists but is missing a leading './'.", label)
         else:
-          outFL('  note: is the hash-bang line mispelled?')
-          outFL("  (this error is sometimes issued due to mispelling of '#!/usr/bin/env ...')")
+          outFL('\n{} command path exists but failed, possibly due to a bad hashbang line.', label)
+          outFL('first line: {!r}', first_line.rstrip('\n'))
+      else:
+        outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
       return None
     except ProcessTimeout:
       outFL('\n{} process timed out ({} sec) and was killed.', label, timeout)

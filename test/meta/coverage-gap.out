@@ -1,0 +1,13 @@
+test-meta/coverage-gap
+cove report:
+
+test-meta/coverage-gap.py:
+   1  #!/usr/bin/env python3
+   2  
+   3  def f():
+   4!   return None
+test-meta/coverage-gap.py: 4 lines; 2 traceable: 1 untraced.
+
+
+################################################################
+TESTS PASSED: 1.
