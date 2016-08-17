@@ -112,7 +112,9 @@ def append_path_stem_suffix(path, suffix):
 
 # file system.
 
-def abs_path(path): return _path.abspath(path)
+def abs_path(path):
+  'Return the absolute path corresponding to `path`.'
+  return _path.abspath(path)
 
 def abs_or_normalize_path(path, make_abs):
   'Returns the absolute path if make_abs is True, if make_abs is False, returns a normalized path.'
