@@ -1,3 +1,8 @@
 {
-  'coverage': ['__main__', 'pithy.*']
+  'coverage': [
+    '__main__',
+    'pithy.dict_utils',
+    'pithy.strings',
+    'pithy.util',
+  ]
 }
