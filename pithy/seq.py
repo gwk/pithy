@@ -39,7 +39,10 @@ def seq_int_intervals(seq):
   interval = (first, first)
   for i in it:
     l, h = interval
-    if h + 1 == i:
+    if i < h:
+      raise ValueError('seq_int_intervals requires monotonically increasing elements')
+    if i == h: continue
+    if i == h + 1:
       interval = (l, i)
     else:
       yield interval
