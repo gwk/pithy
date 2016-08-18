@@ -3,13 +3,16 @@
 .PHONY: clean default develop dist upload
 
 # first target is the default.
-default: dist
+default: cov
 
 _build/sdist:
 	./setup.py sdist
 
 clean:
 	rm -rf _build/*
+
+cov:
+	iotest -fail-fast -coverage
 
 develop: dist
 	pip3 install -e .
