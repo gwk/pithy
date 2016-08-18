@@ -3,6 +3,7 @@
 from utest import utest, utest_exc
 from pithy.strings import *
 
+utest('abc', render_template, 'a${y}c', y='b')
 
 utest(True, string_contains, '', '') # strange, but simply the behavior of string.find.
 utest(True, string_contains, 'a', '')
