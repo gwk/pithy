@@ -711,7 +711,7 @@ def check_file_exp(ctx, test_dir, exp):
   return False
 
 
-diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram'.split()
+diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram --ws-error-highlight=old,new'.split()
 
 
 def cat_file(path, color='', limit=-1):
