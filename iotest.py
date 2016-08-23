@@ -21,7 +21,7 @@ from pithy.strings import string_contains
 from pithy.fs import abs_path, is_dir, is_python3_file, list_dir, make_dirs, normalize_path, path_descendants, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, find_project_dir, rel_path, remove_dir_contents, walk_dirs_up
 from pithy.seq import fan_seq_by_key
 from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
-from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_str, is_str_or_list, req_type
+from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
 bar_width = 64
 dflt_build_dir = '_build'
@@ -205,6 +205,11 @@ class Case:
     self.test_info_paths = [] # the files that comprise the test case.
     self.dflt_src_path = None
     self.broken = proto.broken if (proto is not None) else False
+    self.test_cmd = None
+    self.test_env = None
+    self.test_in = None
+    self.test_expectations = None
+    self.test_links = None # sequence of (link-name, path) pairs.
     # configurable properties.
     self.args = None # arguments to follow the file under test.
     self.cmd = None # command string/list with which to invoke the test.
@@ -339,6 +344,17 @@ class Case:
     default_to_env('PYTHONPATH')
     default_to_env('SDKROOT')
 
+    if self.links is None:
+      self.test_links = []
+    elif is_str(self.links):
+      self.test_links = [(self.links, self.links)]
+    elif is_set(self.links):
+      self.test_links = [(n, n) for n in self.links]
+    elif is_dict(self.links):
+      self.test_links = [(k, v) for k, v in self.links.items()]
+    else:
+      raise ValueError(self.links)
+
     def expand_str(val):
       t = Template(val)
       return t.safe_substitute(**env)
@@ -416,6 +432,9 @@ def is_int_or_ellipsis(val):
 def is_compile_cmd(val):
   return is_list(val) and all(is_str_or_list(el) for el in val)
 
+def is_valid_links(val):
+  return is_str(val) or is_set_of_str(val) or is_dict_of_str(val)
+
 def validate_exp_mode(key, mode):
   if mode not in file_expectation_fns:
     raiseF('key: {}: invalid file expectation mode: {}', key, mode)
@@ -435,7 +454,14 @@ def validate_files_dict(key, val):
     validate_exp_dict(k, v)
 
 def validate_links_dict(key, val):
-  for src, dst in val.items():
+  if is_str(val):
+    items = [(val, val)]
+  elif is_set(val):
+    items = [(p, p) for p in val]
+  elif is_dict(val):
+    items = val.items()
+  else: raise AssertionError('`validate_links_dict` types inconsistent with `is_valid_links`.')
+  for src, dst in items:
     if src.find('..') != -1: raiseF("key: {}: link source contains '..': {}", key, src)
     if dst.find('..') != -1: raiseF("key: {}: link destination contains '..': {}", key, dst)
 
@@ -454,7 +480,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'err_val':  ('str',                       is_str,             None),
   'files':    ('dict',                      is_dict,            validate_files_dict),
   'in_':      ('str',                       is_str,             None),
-  'links':    ('dict of strings',           is_dict_of_str,     validate_links_dict),
+  'links':    ('string or (dict | set) of strings', is_valid_links, validate_links_dict),
   'out_mode': ('str',                       is_str,             validate_exp_mode),
   'out_path': ('str',                       is_str,             None),
   'out_val':  ('str',                       is_str,             None),
@@ -527,11 +553,10 @@ def run_case(ctx, case):
   else:
     make_dirs(case.test_dir)
   
-  if case.links is not None:
-    for link_path, dst_path in case.links.items():
-      link = path_join(case.test_dir, link_path)
-      dst = path_join(ctx.proj_dir, dst_path)
-      os.symlink(dst, link)
+  for link_path, dst_path in case.test_links:
+    link = path_join(case.test_dir, link_path)
+    dst = path_join(ctx.proj_dir, dst_path)
+    os.symlink(dst, link)
 
   compile_time = 0
   compile_time_start = time.time()
