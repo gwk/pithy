@@ -11,6 +11,7 @@ import signal
 import subprocess
 import time
 
+from itertools import zip_longest
 from string import Template
 from sys import stdout, stderr
 
@@ -508,11 +509,35 @@ class FileExpectation:
       val = read_from_path(exp_path_expanded)
     self.val = expand_str_fn(val)
     if self.mode == 'match':
-      try:
-        re.compile(self.val)
-      except Exception as e:
-        raise ValueError('test expectation: {!r};\n  pattern is invalid regex: {!r}\n  {}'.format(
-          path, self.val, e)) from e
+      self.match_pattern_pairs = self.compile_match_lines(self.val)
+    else:
+      self.match_pattern_pairs = None
+    self.match_error = None
+
+
+  def compile_match_lines(self, text):
+    return [self.compile_match_line(i, line) for i, line in enumerate(text.splitlines(True), 1)]
+
+
+  def compile_match_line(self, i, line):
+    prefix = line[:2]
+    contents = line[2:]
+    valid_prefixes = ('|', '|\n', '| ', '~', '~\n', '~ ')
+    if prefix not in valid_prefixes:
+      raise ValueError("test expectation: {!r};\nmatch line {}: must begin with one of: {}\n{!r}".format(
+        self.path, i, ', '.join(repr(p) for p in valid_prefixes), line))
+    if prefix.endswith('\n'):
+      # these two cases exist to be lenient about empty lines,
+      # where otherwise the pattern line would consist of the symbol and a single space.
+      # since trailing space is highlighted by `git diff` and often considered bad style,
+      # we allow it to be omitted, since there is no loss of generality for the patterns.
+      contents = '\n'
+    try:
+      return (line, re.compile(contents if prefix == '~ ' else re.escape(contents)))
+    except Exception as e:
+      raise ValueError('test expectation: {!r};\nmatch line {}: pattern is invalid regex:\n{!r}\n{}'.format(
+        self.path, i, contents, e)) from e
+
 
   def __repr__(self):
     return 'FileExpectation({!r}, {!r}, {!r})'.format(self.path, self.mode, self.val)
@@ -697,9 +722,9 @@ def check_file_exp(ctx, test_dir, exp):
     ctx.fail_fast()
     outSL('-' * bar_width)
     return False
-  if file_expectation_fns[exp.mode](exp.val, act_val):
+  if file_expectation_fns[exp.mode](exp, act_val):
     return True
-  outFL('\noutput file does not {} expection. actual value:', exp.mode)
+  outFL('\noutput file does not {} expectation. actual value:', exp.mode)
   cat_file(path, color=TXT_B)
   if exp.mode == 'equal': # show a diff.
     path_expected = path + '-expected'
@@ -707,6 +732,11 @@ def check_file_exp(ctx, test_dir, exp):
     cmd = diff_cmd + [rel_path(path_expected), rel_path(path)]
     outSL(*cmd)
     run(cmd, exp=None)
+  elif exp.mode == 'match':
+    act_lines = act_val.splitlines(True)
+    i, exp_pattern, act_line = exp.match_error
+    outFL('match failed at line {}:\npattern:   {!r}\nactual text: {!r}',
+      i, exp_pattern, act_line)
   outSL('-' * bar_width)
   return False
 
@@ -730,13 +760,24 @@ def cat_file(path, color='', limit=-1):
 # file expectation functions.
 
 def compare_equal(exp, val):
-  return exp == val
+  return exp.val == val
 
 def compare_contain(exp, val):
-  return val.find(exp) != -1
+  return val.find(exp.val) != -1
 
 def compare_match(exp, val):
-  return re.fullmatch(exp, val)
+  pairs = exp.match_pattern_pairs # pairs of pattern, regex.
+  lines = val.splitlines(True)
+  for i, (pair, line) in enumerate(zip_longest(pairs, lines), 1):
+    if pair is None:
+      exp.match_error = (i, None, line)
+      return False
+    (pattern, regex) = pair
+    if line is None or not regex.fullmatch(line):
+      exp.match_error = (i, pattern, line)
+      return False
+  return True
+
 
 def compare_ignore(exp, val):
   return True

@@ -1,6 +1,5 @@
 {
   'cmd': '$PROJ/iotest.py -no-times -dbg test-meta/fail-dbg.iot',
   'links': {'test-meta' : 'test-meta'},
-  'out-mode': 'match',
   'err-mode': 'match', 
 }
