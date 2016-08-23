@@ -724,7 +724,7 @@ def cat_file(path, color='', limit=-1):
       outL(color, l, rst)
       if i == limit: return
     if line is not None and not line.endswith('\n'):
-        outL('(missing final newline)')
+      outL('(missing final newline)')
 
 
 # file expectation functions.
