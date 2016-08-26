@@ -60,7 +60,7 @@ def main():
 
 
 def match_string(nfa, fat_dfa, min_dfa, string):
-  'Test `nfa`, `min_dfa`, and `dfa` against each other by attempting to match `string`.'
+  'Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.'
   nfa_matches = nfa.match(string)
   if len(nfa_matches) > 1:
     failF('match: {!r}: NFA matched multiple rules: {}', string, nfa_matches)
