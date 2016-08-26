@@ -252,7 +252,7 @@ func repr(_ string: String) -> String {
   var r = "\""
   for char in string.unicodeScalars {
     switch char {
-    case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(char)
+    case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char))
     case "\0": r.append("\\0")
     case "\\": r.append("\\\\")
     case "\t": r.append("\\t")
@@ -275,7 +275,7 @@ func test(index: Int, arg: String) {
   }
 }
 
-for (i, arg) in Process.arguments.enumerated() {
+for (i, arg) in CommandLine.arguments.enumerated() {
   if i == 0 { continue }
   test(index: i, arg: arg)
 }
