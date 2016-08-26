@@ -160,49 +160,49 @@ escape_char_sets.update((c, c.encode()) for c in '[]{}()\\')
 
 class PatternParser:
 
-    def __init__(self, pos, isParenParser):
-      self.pos = pos
-      self.terminator = ')' if isParenParser else None
-      self.choices = []
-      self.seq = []
-      self.seq_pos = pos
+  def __init__(self, pos, isParenParser):
+    self.pos = pos
+    self.terminator = ')' if isParenParser else None
+    self.choices = []
+    self.seq = []
+    self.seq_pos = pos
 
-    def parse(self, pos, c):
-      if c == '(':
-        return PatternParser(pos, isParenParser=True)
-      elif c == '[':
-        return CharsetParser(pos)
-      elif c == '|':
-        self.flush_seq(pos)
-      elif c == '?': self.quantity(pos, c, Opt)
-      elif c == '*': self.quantity(pos, c, Star)
-      elif c == '+': self.quantity(pos, c, Plus)
-      else:
-        self.seq.append(Char(pos, chars=bytes([ord(c)])))
+  def parse(self, pos, c):
+    if c == '(':
+      return PatternParser(pos, isParenParser=True)
+    elif c == '[':
+      return CharsetParser(pos)
+    elif c == '|':
+      self.flush_seq(pos)
+    elif c == '?': self.quantity(pos, c, Opt)
+    elif c == '*': self.quantity(pos, c, Star)
+    elif c == '+': self.quantity(pos, c, Plus)
+    else:
+      self.seq.append(Char(pos, chars=bytes([ord(c)])))
 
-    def parse_escaped(self, pos, chars):
-      self.seq.append(Char(pos, chars=chars))
+  def parse_escaped(self, pos, chars):
+    self.seq.append(Char(pos, chars=chars))
 
-    def finish(self):
-      self.flush_seq(pos=None)
-      choices = self.choices
-      return choices[0] if len(choices) == 1 else Choice(self.pos, subs=tuple(choices))
+  def finish(self):
+    self.flush_seq(pos=None)
+    choices = self.choices
+    return choices[0] if len(choices) == 1 else Choice(self.pos, subs=tuple(choices))
 
-    def flush_seq(self, pos):
-      seq = self.seq
-      if not seq: parse_failF(self.seq_pos, 'empty sequence.')
-      rule = seq[0] if len(seq) == 1 else Seq(self.seq_pos, subs=tuple(seq))
-      self.choices.append(rule)
-      self.seq = []
-      self.seq_pos = pos
+  def flush_seq(self, pos):
+    seq = self.seq
+    if not seq: parse_failF(self.seq_pos, 'empty sequence.')
+    rule = seq[0] if len(seq) == 1 else Seq(self.seq_pos, subs=tuple(seq))
+    self.choices.append(rule)
+    self.seq = []
+    self.seq_pos = pos
 
-    def quantity(self, pos, char, T):
-      try: el = self.seq.pop()
-      except IndexError: parse_failF(pos, "'{}' does not follow any pattern.", char)
-      else: self.seq.append(T(pos, subs=(el,)))
+  def quantity(self, pos, char, T):
+    try: el = self.seq.pop()
+    except IndexError: parse_failF(pos, "'{}' does not follow any pattern.", char)
+    else: self.seq.append(T(pos, subs=(el,)))
 
-    def receive(self, result):
-      self.seq.append(result)
+  def receive(self, result):
+    self.seq.append(result)
 
 
 class CharsetParser():
