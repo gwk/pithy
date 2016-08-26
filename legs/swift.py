@@ -36,14 +36,14 @@ def output_swift(dfa, rules_path, path, test, license, name):
       chars=', '.join(byte_case_ranges(chars)),
       dst=dst,
       suffix='; return nil' if returns else '')
-  
+
   def byte_cases(node, returns):
     dst_chars = defaultdict(list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
     return [byte_case(chars, dst, returns) for dst, chars in dst_chars_sorted]
-  
+
   def transition_code(node):
     # TODO: condense cases into ranges and tuple patterns.
     d = dfa.transitions[node]

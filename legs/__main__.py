@@ -29,7 +29,7 @@ def main():
   parser.add_argument('-license', default='NO LICENSE SPECIFIED')
   args = parser.parse_args()
   dbg = args.dbg
-  
+
   rules = compile_rules(args.rules_path)
   if dbg:
     for rule in rules:
@@ -38,19 +38,19 @@ def main():
 
   nfa = genNFA(rules)
   if dbg: nfa.describe()
-  
+
   msgs = nfa.validate()
   if msgs:
     for m in msgs:
       errL(m)
     exit(1)
-  
+
   fat_dfa = genDFA(nfa)
   if dbg: fat_dfa.describe('Fat DFA')
-  
+
   min_dfa = minimizeDFA(fat_dfa)
   if dbg: min_dfa.describe('Min DFA')
-  
+
   if args.match is not None:
     for string in args.match:
       match_string(nfa, fat_dfa, min_dfa, string)
@@ -70,7 +70,7 @@ def match_string(nfa, fat_dfa, min_dfa, string):
     failF('match: {!r} inconsistent match: NFA: {}; fat DFA: {}.', string, nfa_match, fat_dfa_match)
   min_dfa_match = min_dfa.match(string)
   if min_dfa_match != nfa_match:
-    failF('match: {!r} inconsistent match: NFA: {}; min DFA: {}.', string, nfa_match, min_dfa_match)  
+    failF('match: {!r} inconsistent match: NFA: {}; min DFA: {}.', string, nfa_match, min_dfa_match)
   outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'none')))
 
 
@@ -127,7 +127,7 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern):
         parser_stack.append(child)
   parser = parser_stack.pop()
   if parser_stack:
-    parse_failF((path, line_num, col_num + 1, pattern), 'expected terminator: {!r}', parser.terminator) 
+    parse_failF((path, line_num, col_num + 1, pattern), 'expected terminator: {!r}', parser.terminator)
   rule = parser.finish()
   rule.name = name
   return rule
@@ -166,7 +166,7 @@ class PatternParser:
       self.choices = []
       self.seq = []
       self.seq_pos = pos
-    
+
     def parse(self, pos, c):
       if c == '(':
         return PatternParser(pos, isParenParser=True)
@@ -179,10 +179,10 @@ class PatternParser:
       elif c == '+': self.quantity(pos, c, Plus)
       else:
         self.seq.append(Char(pos, chars=bytes([ord(c)])))
-    
+
     def parse_escaped(self, pos, chars):
       self.seq.append(Char(pos, chars=chars))
-    
+
     def finish(self):
       self.flush_seq(pos=None)
       choices = self.choices
@@ -213,7 +213,7 @@ class CharsetParser():
     self.chars = set()
     self.fresh = True
     self.invert = False
-  
+
   def parse(self, pos, c):
     if self.fresh:
       self.fresh = False
@@ -223,8 +223,8 @@ class CharsetParser():
     self.chars.add(ord(c))
 
   def parse_escaped(self, pos, escaped_chars):
-    self.chars.update(escaped_chars)  
-  
+    self.chars.update(escaped_chars)
+
   def finish(self):
     chars = set(range(256)) - self.chars if self.invert else self.chars
     return Char(self.pos, chars=bytes(sorted(chars)))
@@ -317,7 +317,7 @@ def genNFA(rules):
   The NFA can be used to match against an argument string,
   but cannot produce a token stream directly.
   The 'invalid' node is always added at index 1, and is always unreachable.
-  See genDFA for more details about 'invalid'. 
+  See genDFA for more details about 'invalid'.
   '''
 
   indexer = iter(count())
@@ -339,11 +339,11 @@ def genNFA(rules):
 
 
 def genDFA(nfa):
-  '''  
+  '''
   A DFA node is equivalent to a set of NFA nodes.
   A DFA a node for every reachable subset of nodes in the corresponding NFA.
   In the worst case, there will be an exponential increase in number of nodes.
-  
+
   As in the NFA, the 'invalid' node is unreachable,
   but we explicitly add transitions from 'invalid' to itself,
   for all characters that are not transitions out of the 'start' state.
@@ -381,13 +381,13 @@ def genDFA(nfa):
         remaining.add(dst_state)
 
   # explicitly add `invalid`, which is otherwise not reachable.
-  # `invalid` transitions to itself for all characters that do not transition from `start`. 
+  # `invalid` transitions to itself for all characters that do not transition from `start`.
   assert invalid_node not in transitions
   invalid_dict = transitions[invalid_node]
   invalid_chars = set(range(0x100)) - set(transitions[start_node])
   for c in invalid_chars:
     invalid_dict[c] = invalid_node
-  
+
   # generate matchNodeNames.
   matchNodeNames = {}
   for state, node in sorted(nfa_states_to_dfa_nodes.items()):
@@ -486,7 +486,7 @@ class FA:
   where it will continue matching all characters that are not a transition from `initial`.
   This allows the FA to produce a stream of tokens that completely span any input string.
 
-  `empty` is a reserved state (-1) that represents a nondeterministic jump between NFA nodes. 
+  `empty` is a reserved state (-1) that represents a nondeterministic jump between NFA nodes.
   '''
 
   def __init__(self, transitions, matchNodeNames):
@@ -506,7 +506,7 @@ class FA:
   @property
   def allDstNodes(self):
     return frozenset().union(*(self.dstNodes(node) for node in self.allSrcNodes))
-  
+
   @property
   def allNodes(self): return self.allSrcNodes | self.allDstNodes
 
@@ -559,7 +559,7 @@ class NFA(FA):
       if node in start:
         msgs.append('error: rule is trivially matched from start: {}.'.format(name))
     return msgs
-  
+
   def advance(self, state, char):
     nextState = set()
     for node in state:
@@ -625,7 +625,7 @@ def chars_desc(chars):
   return ' '.join(char_descriptions[c] for c in sorted(chars))
 
 
-char_descriptions = {i : '{:02x}'.format(i) for i in range(0x100)} 
+char_descriptions = {i : '{:02x}'.format(i) for i in range(0x100)}
 
 char_descriptions.update({
   -1: 'Ø',
