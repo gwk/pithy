@@ -101,7 +101,7 @@ def compile_rules(path):
 
 def parse_rule_pattern(path, name, line_num, start_col, pattern):
   'Parse a single pattern and return a Rule object.'
-  parser_stack = [PatternParser((path, line_num, 0, pattern), isParenParser=False)]
+  parser_stack = [PatternParser((path, line_num, 0, pattern))]
   # stack of parsers, one for each open nesting syntactic element '(', etc.
   escape = False
   for col_num, c in enumerate(pattern):
@@ -160,16 +160,16 @@ escape_char_sets.update((c, c.encode()) for c in '[]{}()\\')
 
 class PatternParser:
 
-  def __init__(self, pos, isParenParser):
+  def __init__(self, pos, terminator=None):
     self.pos = pos
-    self.terminator = ')' if isParenParser else None
+    self.terminator = terminator
     self.choices = []
     self.seq = []
     self.seq_pos = pos
 
   def parse(self, pos, c):
     if c == '(':
-      return PatternParser(pos, isParenParser=True)
+      return PatternParser(pos, terminator=')')
     elif c == '[':
       return CharsetParser(pos)
     elif c == '|':
