@@ -10,7 +10,7 @@ from collections import defaultdict
 from itertools import count
 
 from pithy.collection_utils import freeze
-from pithy.dicts import dict_filter_map, dict_put
+from pithy.dict_utils import dict_filter_map, dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.io import errF, errFL, errL, failF, outFL
 from pithy.seq import fan_seq_by_pred
