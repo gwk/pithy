@@ -63,7 +63,7 @@ def match_string(nfa, fat_dfa, min_dfa, string):
   'Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.'
   nfa_matches = nfa.match(string)
   if len(nfa_matches) > 1:
-    failF('match: {!r}: NFA matched multiple rules: {}', string, nfa_matches)
+    failF('match: {!r}: NFA matched multiple rules: {}.', string, ', '.join(sorted(nfa_matches)))
   nfa_match = list(nfa_matches)[0] if nfa_matches else None
   fat_dfa_match = fat_dfa.match(string)
   if fat_dfa_match != nfa_match:
@@ -394,16 +394,20 @@ def genDFA(nfa):
 
   # generate matchNodeNames.
   matchNodeNames = {}
-  for state, node in sorted(nfa_states_to_dfa_nodes.items()):
-    for nfaNode, name, in nfa.matchNodeNames.items():
-      if nfaNode in state:
-        if node in matchNodeNames:
-          failF('Rules are ambiguous: {}, {}.', name, matchNodeNames[node])
-        matchNodeNames[node] = name
+  ambiguous = False
+  nfaMatchNodeNames = sorted(nfa.matchNodeNames.items())
+  for nfa_state, dfa_node in sorted(nfa_states_to_dfa_nodes.items()):
+    for nfa_node, name in nfaMatchNodeNames:
+      if nfa_node in nfa_state:
+        if dfa_node in matchNodeNames:
+          errFL('Rules are ambiguous: {}, {}.', name, matchNodeNames[dfa_node])
+          ambiguous = True
+        matchNodeNames[dfa_node] = name
+  if ambiguous: exit(1)
 
   # validate.
   allNames = set(matchNodeNames.values())
-  for name in nfa.matchNodeNames.values():
+  for name in sorted(nfa.matchNodeNames.values()):
     if name not in allNames:
       failF('Rule is not reachable in DFA: {}', name)
   return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames)
