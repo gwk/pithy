@@ -345,7 +345,7 @@ def genNFA(rules):
 def genDFA(nfa):
   '''
   A DFA node is equivalent to a set of NFA nodes.
-  A DFA a node for every reachable subset of nodes in the corresponding NFA.
+  A DFA has a node for every reachable subset of nodes in the corresponding NFA.
   In the worst case, there will be an exponential increase in number of nodes.
 
   As in the NFA, the 'invalid' node is unreachable,
@@ -375,7 +375,7 @@ def genDFA(nfa):
   while remaining:
     state = remaining.pop()
     node = nfa_states_to_dfa_nodes[state]
-    d = transitions[node] # unlike NFA, DFA dictionary contains all valid states as keys.
+    d = transitions[node] # unlike NFA, DFA dictionary contains all valid nodes/states as keys.
     for char in alphabet:
       dst_state = frozenset(nfa.advance(state, char))
       if not dst_state: continue # do not add empty sets for brevity.
@@ -395,9 +395,9 @@ def genDFA(nfa):
   # generate matchNodeNames.
   matchNodeNames = {}
   ambiguous = False
-  nfaMatchNodeNames = sorted(nfa.matchNodeNames.items())
+  nfa_match_node_names = sorted(nfa.matchNodeNames.items())
   for nfa_state, dfa_node in sorted(nfa_states_to_dfa_nodes.items()):
-    for nfa_node, name in nfaMatchNodeNames:
+    for nfa_node, name in nfa_match_node_names:
       if nfa_node in nfa_state:
         if dfa_node in matchNodeNames:
           errFL('Rules are ambiguous: {}, {}.', name, matchNodeNames[dfa_node])
@@ -411,7 +411,6 @@ def genDFA(nfa):
     if name not in allNames:
       failF('Rule is not reachable in DFA: {}', name)
   return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames)
-
 
 
 def minimizeDFA(dfa):
