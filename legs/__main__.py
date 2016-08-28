@@ -156,7 +156,7 @@ escape_char_sets = {
   't': b'\t',
   '_': b' ', # nonstandard space escape.
 }
-escape_char_sets.update((c, c.encode()) for c in '[]{}()\\')
+escape_char_sets.update((c, c.encode()) for c in '\\|?*+()[]')
 
 #for k, v in escape_char_sets.items():
 #  errFL('{}: {!r}', k, v)
