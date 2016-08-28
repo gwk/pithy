@@ -352,10 +352,10 @@ def genDFA(nfa):
   but we explicitly add transitions from 'invalid' to itself,
   for all characters that are not transitions out of the 'start' state.
   This allows the generated lexer code to use simpler switch default clauses.
+
   For each state, the lexer switches on the current byte.
-  If the switch defaults, we flush any pending token (as set by the last match state), and then:
-  * for match states, perform the start transition as if we were at the start state.
-  * for nonmatch states: advance to `invalid`.
+  If the switch defaults, it flushes the pending token (either invalid or the last match),
+  and then performs the start transition as if we were at the start state.
   `invalid` is itself a match state, so once a valid character is encountered,
   the lexer emits an 'invalid' token and resets.
   '''
