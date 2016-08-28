@@ -82,24 +82,28 @@ def compile_rules(path):
     failF('legs error: no such rule file: {!r}', path)
   for line_num, line in enumerate(f):
     line = line.rstrip()
+    esc_char = '\\' # default.
     if not line or line.startswith('#'): continue
     colon_match = re.search(': *', line)
-    if colon_match:
+    if colon_match: # name is specified explicitly.
       name = line[:colon_match.start()].strip()
       start_col = colon_match.end()
-    else: # derive a name from the rule; meant for convenience while testing.
+      if name[-3:-1] == ' \\': # custom escape char.
+        esc_char = name[-1]
+        name = name[:-3]
+    else: # no name; derive a name from the rule; convenient for keyword tokens and testing.
       name = re.sub('\W+', '_', line.strip())
       if name[0].isdigit():
         name = '_' + name
       start_col = 0
     if name == 'invalid':
       parse_failF((path, line_num, 1, line), 'rule name is reserved: {!r}.', name)
-    rule = parse_rule_pattern(path, name, line_num, start_col=start_col, pattern=line)
+    rule = parse_rule_pattern(path, name, line_num, start_col=start_col, pattern=line, esc_char=esc_char)
     rules.append(rule)
   return rules
 
 
-def parse_rule_pattern(path, name, line_num, start_col, pattern):
+def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
   'Parse a single pattern and return a Rule object.'
   parser_stack = [PatternParser((path, line_num, 0, pattern))]
   # stack of parsers, one for each open nesting syntactic element '(', etc.
@@ -113,7 +117,7 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern):
       try: escaped_chars = escape_char_sets[c]
       except KeyError: parse_failF(pos, 'invalid escaped character: {!r}', c)
       else: parser.parse_escaped(pos, escaped_chars)
-    elif c == '\\':
+    elif c == esc_char:
       escape = True
     elif c == ' ':
       continue
