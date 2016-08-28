@@ -71,7 +71,7 @@ def match_string(nfa, fat_dfa, min_dfa, string):
   min_dfa_match = min_dfa.match(string)
   if min_dfa_match != nfa_match:
     failF('match: {!r} inconsistent match: NFA: {}; min DFA: {}.', string, nfa_match, min_dfa_match)
-  outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'none')))
+  outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'invalid')))
 
 
 def compile_rules(path):
