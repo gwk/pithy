@@ -378,7 +378,7 @@ def genDFA(nfa):
     d = transitions[node] # unlike NFA, DFA dictionary contains all valid nodes/states as keys.
     for char in alphabet:
       dst_state = frozenset(nfa.advance(state, char))
-      if not dst_state: continue # do not add empty sets for brevity.
+      if not dst_state: continue # do not add empty sets.
       dst_node = nfa_states_to_dfa_nodes[dst_state]
       d[char] = dst_node
       if dst_node not in transitions:
@@ -428,8 +428,9 @@ def minimizeDFA(dfa):
     a = remaining.pop() # a partition.
     for char in alphabet:
       for b in list(partitions): # split `b`; does transition from `b` via `char` lead to a node in `a`?
-        # note: this splitting operation is where the 'partition refinement' structure is supposed to be used for speed.
         refinement = fan_seq_by_pred(b, pred=lambda node: (dfa.transitions[node].get(char) in a))
+        # note: this splitting operation is where the 'partition refinement' structure is supposed to be used for speed.
+        # using cProfile we can see that fan_seq_by_pred takes most the running time for a real-world lexer.
         # None is never in `a`, so `get` does what we want.
         if not all(refinement): continue # no real refinement; all in one or the other.
         refinement_sets = [frozenset(p) for p in refinement]
