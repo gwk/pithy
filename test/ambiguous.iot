@@ -1,4 +1,0 @@
-{
-  'cmd': '$PROJ/legs/__main__.py',
-  'err_val': 'Rules are ambiguous: a2, a1.\n',
-}

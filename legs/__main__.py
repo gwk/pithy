@@ -13,7 +13,7 @@ from pithy.collection_utils import freeze
 from pithy.dict_utils import dict_filter_map, dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.io import errF, errFL, errL, failF, outFL
-from pithy.seq import fan_seq_by_pred
+from pithy.seq import fan_seq_by_pred, seq_first
 from pithy.type_util import is_str
 
 from legs.swift import output_swift
@@ -257,18 +257,23 @@ class Rule:
     if self.chars is not None:
       errL(' ', self.chars)
     else:
-      errL()
+      errL(' (F)' if self.isFinite else ' (I)')
       for sub in self.subs:
         sub.describe(depth + 1)
 
+  @property
+  def isLiteral(self): return False
+
 
 class Choice(Rule):
+
   def genNFA(self, mk_node, transitions, start, end):
     for choice in self.subs:
       choice.genNFA(mk_node, transitions, start, end)
 
 
 class Seq(Rule):
+
   def genNFA(self, mk_node, transitions, start, end):
     subs = self.subs
     last_idx = len(subs) - 1
@@ -278,6 +283,9 @@ class Seq(Rule):
       el.genNFA(mk_node, transitions, prev, next_)
       prev = next_
 
+  @property
+  def isLiteral(self): return all(sub.isLiteral for sub in self.subs)
+
 
 class Quantity(Rule):
   @property
@@ -285,12 +293,14 @@ class Quantity(Rule):
 
 
 class Opt(Quantity):
+
   def genNFA(self, mk_node, transitions, start, end):
     transitions[start][empty].add(end)
     self.sub.genNFA(mk_node, transitions, start, end)
 
 
 class Star(Quantity):
+
   def genNFA(self, mk_node, transitions, start, end):
     branch = mk_node()
     transitions[start][empty].add(branch)
@@ -299,6 +309,7 @@ class Star(Quantity):
 
 
 class Plus(Quantity):
+
   def genNFA(self, mk_node, transitions, start, end):
     pre = mk_node()
     post = mk_node()
@@ -309,10 +320,14 @@ class Plus(Quantity):
 
 
 class Char(Rule):
+
   def genNFA(self, mk_node, transitions, start, end):
     d = transitions[start]
     for char in self.chars:
       d[char].add(end)
+
+  @property
+  def isLiteral(self): return True
 
 
 def genNFA(rules):
@@ -339,7 +354,8 @@ def genNFA(rules):
     if rule.name in matchNodeNames:
       failF('duplicate rule name: {!r}', rule.name)
     matchNodeNames[matchNode] = rule.name
-  return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames)
+  literalRuleNames = frozenset(rule.name for rule in rules if rule.isLiteral)
+  return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRuleNames=literalRuleNames)
 
 
 def genDFA(nfa):
@@ -393,24 +409,27 @@ def genDFA(nfa):
     invalid_dict[c] = invalid_node
 
   # generate matchNodeNames.
-  matchNodeNames = {}
-  ambiguous = False
-  nfa_match_node_names = sorted(nfa.matchNodeNames.items())
-  for nfa_state, dfa_node in sorted(nfa_states_to_dfa_nodes.items()):
-    for nfa_node, name in nfa_match_node_names:
-      if nfa_node in nfa_state:
-        if dfa_node in matchNodeNames:
-          errFL('Rules are ambiguous: {}, {}.', name, matchNodeNames[dfa_node])
-          ambiguous = True
-        matchNodeNames[dfa_node] = name
-  if ambiguous: exit(1)
-
+  all_node_names = defaultdict(set)
+  for nfa_state, dfa_node in nfa_states_to_dfa_nodes.items():
+    for nfa_node in nfa_state:
+      try: name = nfa.matchNodeNames[nfa_node]
+      except KeyError: continue
+      all_node_names[dfa_node].add(name)
+  # prefer literal rules.
+  preferred_node_names = { node : (frozenset(n for n in names if n in nfa.literalRuleNames) or frozenset(names))
+    for node, names in all_node_names.items() }
+  # check for ambiguous rules.
+  ambiguous_name_groups = { tuple(sorted(names)) for names in preferred_node_names.values() if len(names) != 1 }
+  if ambiguous_name_groups:
+    for group in sorted(ambiguous_name_groups):
+      errFL('Rules are ambiguous: {}.', ', '.join(group))
+    exit(1)
+  # create final dictionary.
+  matchNodeNames = { node : seq_first(names) for node, names in preferred_node_names.items() }
   # validate.
-  allNames = set(matchNodeNames.values())
-  for name in sorted(nfa.matchNodeNames.values()):
-    if name not in allNames:
-      failF('Rule is not reachable in DFA: {}', name)
-  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames)
+  assert set(matchNodeNames.values()) == set(nfa.matchNodeNames.values())
+
+  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames, literalRuleNames=nfa.literalRuleNames)
 
 
 def minimizeDFA(dfa):
@@ -464,7 +483,7 @@ def minimizeDFA(dfa):
         new_d[char] = new_dst
 
   matchNodeNames = { mapping[old] : name for old, name in dfa.matchNodeNames.items() }
-  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames)
+  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames, literalRuleNames=dfa.literalRuleNames)
 
 
 class FA:
@@ -497,9 +516,10 @@ class FA:
   `empty` is a reserved state (-1) that represents a nondeterministic jump between NFA nodes.
   '''
 
-  def __init__(self, transitions, matchNodeNames):
+  def __init__(self, transitions, matchNodeNames, literalRuleNames):
     self.transitions = transitions
     self.matchNodeNames = matchNodeNames
+    self.literalRuleNames = literalRuleNames
 
   @property
   def allCharToStateDicts(self): return self.transitions.values()
@@ -519,6 +539,9 @@ class FA:
   def allNodes(self): return self.allSrcNodes | self.allDstNodes
 
   @property
+  def terminalNodes(self): return frozenset(n for n in self.allNodes if not self.transitions.get(n))
+
+  @property
   def matchNodes(self): return frozenset(self.matchNodeNames.keys())
 
   @property
@@ -536,6 +559,9 @@ class FA:
       nodes.add(node)
       remaining.update(self.dstNodes(node) - nodes)
     return frozenset(nodes)
+
+  @property
+  def ruleNames(self): return frozenset(self.matchNodeNames.values())
 
   def describe(self, label=None):
     errFL('{}:', label or type(self).__name__)
@@ -584,7 +610,9 @@ class NFA(FA):
     for char in input:
       state = self.advance(state, char)
       #errFL('NFA step: {} -> {}', bytes([char]), state)
-    return frozenset(dict_filter_map(self.matchNodeNames, state))
+    all_matches = frozenset(dict_filter_map(self.matchNodeNames, state))
+    literal_matches = frozenset(n for n in all_matches if n in self.literalRuleNames)
+    return literal_matches or all_matches
 
   def advanceEmpties(self, state):
     remaining = set(state)
