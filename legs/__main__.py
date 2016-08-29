@@ -244,7 +244,7 @@ class Rule:
     elif subs is None:
       assert isinstance(chars, bytes)
       if not chars: parse_failF(pos, 'empty character set.')
-    else: failF('chars and subs are mutually exclusive.')
+    else: raise AssertionError('chars and subs are mutually exclusive.')
     self.name = None
     self.pos = pos
     self.chars = chars
