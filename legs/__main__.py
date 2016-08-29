@@ -182,10 +182,10 @@ class PatternParser:
     elif c == '*': self.quantity(pos, c, Star)
     elif c == '+': self.quantity(pos, c, Plus)
     else:
-      self.seq.append(Char(pos, chars=bytes([ord(c)])))
+      self.seq.append(Charset(pos, chars=bytes([ord(c)])))
 
   def parse_escaped(self, pos, chars):
-    self.seq.append(Char(pos, chars=chars))
+    self.seq.append(Charset(pos, chars=chars))
 
   def finish(self):
     self.flush_seq(pos=None)
@@ -231,35 +231,30 @@ class CharsetParser():
 
   def finish(self):
     chars = set(range(256)) - self.chars if self.invert else self.chars
-    return Char(self.pos, chars=bytes(sorted(chars)))
+    return Charset(self.pos, chars=bytes(sorted(chars)))
 
 
 empty = -1
 
 class Rule:
-  def __init__(self, pos, chars=None, subs=None):
-    if chars is None:
+  def __init__(self, pos, subs=None):
+    if subs is not None:
       assert isinstance(subs, tuple)
       for sub in subs: assert isinstance(sub, Rule)
-    elif subs is None:
-      assert isinstance(chars, bytes)
-      if not chars: parse_failF(pos, 'empty character set.')
-    else: raise AssertionError('chars and subs are mutually exclusive.')
     self.name = None
     self.pos = pos
-    self.chars = chars
     self.subs = subs
 
   def describe(self, depth=0):
     _, line, col, _ = self.pos
     n = self.name + ' ' if self.name else ''
-    errF('{}{}{}:{}:{}:', '  ' * depth, n, type(self).__name__, line + 1, col + 1)
-    if self.chars is not None:
-      errL(' ', self.chars)
-    else:
-      errL(' (F)' if self.isFinite else ' (I)')
+    errFL('{}{}{}:{}:{}:{}', '  ' * depth, n, type(self).__name__, line + 1, col + 1, self.inlineDescription)
+    if self.subs:
       for sub in self.subs:
         sub.describe(depth + 1)
+
+  @property
+  def inlineDescription(self): return ''
 
   @property
   def isLiteral(self): return False
@@ -319,7 +314,14 @@ class Plus(Quantity):
     self.sub.genNFA(mk_node, transitions, pre, post)
 
 
-class Char(Rule):
+class Charset(Rule):
+
+  def __init__(self, pos, chars):
+    assert isinstance(chars, bytes)
+    if not chars: parse_failF(pos, 'empty character set.')
+
+    super().__init__(pos=pos)
+    self.chars = chars
 
   def genNFA(self, mk_node, transitions, start, end):
     d = transitions[start]
@@ -328,6 +330,9 @@ class Char(Rule):
 
   @property
   def isLiteral(self): return True
+
+  @property
+  def inlineDescription(self): return ' {!r}'.format(self.chars)
 
 
 def genNFA(rules):
