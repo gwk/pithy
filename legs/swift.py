@@ -10,7 +10,7 @@ from pithy.strings import render_template
 def output_swift(dfa, rules_path, path, test, license, name):
   preMatchNodes = dfa.preMatchNodes
 
-  token_kinds = [name for node, name in sorted(dfa.matchNodeNames.items())]
+  token_kinds = sorted(dfa.ruleNames)
   token_kind_case_defs = ['case {}'.format(kind) for kind in token_kinds]
   token_kind_case_descriptions = ['case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
   dfa_nodes = sorted(dfa.transitions.keys())
