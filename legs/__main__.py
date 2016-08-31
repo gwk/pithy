@@ -119,8 +119,10 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
       else: parser.parse_escaped(pos, escaped_chars)
     elif c == esc_char:
       escape = True
-    elif c == ' ':
+    elif c.isspace():
       continue
+    elif not c.isprintable():
+      parse_failF(pos, 'invalid non-printing character: {!r}'. c)
     elif c == parser.terminator:
       parser_stack.pop()
       parent = parser_stack[-1]
