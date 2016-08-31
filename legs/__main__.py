@@ -273,12 +273,9 @@ class Seq(Rule):
 
   def genNFA(self, mk_node, transitions, start, end):
     subs = self.subs
-    last_idx = len(subs) - 1
-    prev = start
-    for i, el in enumerate(subs):
-      next_ = end if (i == last_idx) else mk_node()
-      el.genNFA(mk_node, transitions, prev, next_)
-      prev = next_
+    intermediates = [mk_node() for i in range(1, len(subs))]
+    for sub, src, dst in zip(subs, [start] + intermediates, intermediates + [end]):
+      sub.genNFA(mk_node, transitions, src, dst)
 
   @property
   def isLiteral(self): return all(sub.isLiteral for sub in self.subs)
