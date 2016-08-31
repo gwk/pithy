@@ -1,0 +1,3 @@
+test/errors/dangling.legs:1:1: dangling escape: '\\'
+a\
+^

@@ -84,10 +84,10 @@ def compile_rules(path):
     line = line.rstrip()
     esc_char = '\\' # default.
     if not line or line.startswith('#'): continue
-    colon_match = re.search(': *', line)
-    if colon_match: # name is specified explicitly.
-      name = line[:colon_match.start()].strip()
-      start_col = colon_match.end()
+    colon_col = line.find(':')
+    if colon_col != -1: # name is specified explicitly.
+      name = line[:colon_col].strip()
+      start_col = colon_col + 1
       if name[-3:-1] == ' \\': # custom escape char.
         esc_char = name[-1]
         name = name[:-3]
@@ -119,6 +119,7 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
       else: parser.parse_escaped(pos, escaped_chars)
     elif c == esc_char:
       escape = True
+    elif c == '#': break
     elif c.isspace():
       continue
     elif not c.isprintable():
@@ -131,6 +132,8 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
       child = parser.parse(pos, c)
       if child:
         parser_stack.append(child)
+  if escape:
+    parse_failF((path, line_num, col_num - 1, pattern), 'dangling escape: {!r}', esc_char)
   parser = parser_stack.pop()
   if parser_stack:
     parse_failF((path, line_num, col_num + 1, pattern), 'expected terminator: {!r}', parser.terminator)
@@ -158,7 +161,7 @@ escape_char_sets = {
   't': '\t',
   '_': ' ', # nonstandard space escape.
 }
-escape_char_sets.update((c, c) for c in '\\|?*+()[]')
+escape_char_sets.update((c, c) for c in '\\|?*+()[]#')
 
 #for k, v in escape_char_sets.items():
 #  errFL('{}: {!r}', k, v)
