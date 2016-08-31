@@ -356,7 +356,7 @@ def genNFA(rules):
   def mk_node(): return next(indexer)
 
   start = mk_node() # always 0.
-  invalid = mk_node() # always 1. not used; simply reserving the number for clarity.
+  invalid = mk_node() # Always 1. Not used in the NFA; simply reserving the number for clarity.
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
   dict_put(matchNodeNames, invalid, 'invalid')
