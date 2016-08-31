@@ -144,21 +144,21 @@ def parse_failF(pos, fmt, *items):
   path, line, col, contents = pos
   failF('{}:{}:{}: ' + fmt + '\n{}\n{}^', path, line + 1, col + 1, *items, contents, ' ' * col)
 
-def chr_ranges(*intervals):
-  "Return a `bytes` object containing the range of characters denoted by `pairs`, e.g. `b'AZ'`."
-  points = frozenset().union(*(range(i, j + 1) for i, j in intervals))
-  return bytes(sorted(points))
 
+def char_intervals(*intervals):
+  "Return a `str` object containing the specified range of characters denoted by each character pair."
+  points = frozenset().union(*(range(ord(i), ord(j) + 1) for i, j in intervals))
+  return ''.join(chr(p) for p in sorted(points))
 
 escape_char_sets = {
-  'd': chr_ranges(b'09'),
-  'l': chr_ranges(b'az', b'AZ'), # nonstandard 'letter' escape.
-  'w': chr_ranges(b'az', b'AZ', b'09'),
-  'n': b'\n',
-  't': b'\t',
-  '_': b' ', # nonstandard space escape.
+  'd': char_intervals('09'),
+  'l': char_intervals('az', 'AZ'), # nonstandard 'letter' escape.
+  'w': char_intervals('az', 'AZ', '09'),
+  'n': '\n',
+  't': '\t',
+  '_': ' ', # nonstandard space escape.
 }
-escape_char_sets.update((c, c.encode()) for c in '\\|?*+()[]')
+escape_char_sets.update((c, c) for c in '\\|?*+()[]')
 
 #for k, v in escape_char_sets.items():
 #  errFL('{}: {!r}', k, v)
@@ -184,7 +184,7 @@ class PatternParser:
     elif c == '*': self.quantity(pos, c, Star)
     elif c == '+': self.quantity(pos, c, Plus)
     else:
-      self.seq.append(Charset(pos, chars=bytes([ord(c)])))
+      self.seq.append(Charset(pos, chars=c))
 
   def parse_escaped(self, pos, chars):
     self.seq.append(Charset(pos, chars=chars))
@@ -226,14 +226,21 @@ class CharsetParser():
       if c == '^':
         self.invert = True
         return
-    self.chars.add(ord(c))
+    if self.invert and len(c.encode()) != 1:
+      parse_failF(pos, 'non-ASCII character cannot be used within an inverted character set: {!r}.', c)
+    if c in self.chars:
+      parse_failF(pos, 'repeated character in set: {!r}.', c)
+    self.chars.add(c)
 
   def parse_escaped(self, pos, escaped_chars):
     self.chars.update(escaped_chars)
 
   def finish(self):
-    chars = set(range(256)) - self.chars if self.invert else self.chars
-    return Charset(self.pos, chars=bytes(sorted(chars)))
+    if self.invert:
+      chars = set(chr(i) for i in range(256)) - self.chars
+    else:
+      chars = self.chars
+    return Charset(self.pos, chars=''.join(sorted(chars)))
 
 
 empty = -1
@@ -316,16 +323,18 @@ class Plus(Quantity):
 class Charset(Rule):
 
   def __init__(self, pos, chars):
-    assert isinstance(chars, bytes)
-    if not chars: parse_failF(pos, 'empty character set.')
-
     super().__init__(pos=pos)
+    assert isinstance(chars, str)
+    if not chars: parse_failF(pos, 'empty character set.')
     self.chars = chars
 
   def genNFA(self, mk_node, transitions, start, end):
-    d = transitions[start]
     for char in self.chars:
-      d[char].add(end)
+      assert isinstance(char, str)
+      bytes_ = char.encode()
+      intermediates = [mk_node() for i in range(1, len(bytes_))]
+      for byte, src, dst in zip(bytes_, [start] + intermediates, intermediates + [end]):
+        transitions[src][byte].add(dst)
 
   @property
   def isLiteral(self): return True
