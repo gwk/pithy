@@ -1,0 +1,3 @@
+test/errors/empty-charset.legs:1:4: empty character set.
+u: []
+   ^
