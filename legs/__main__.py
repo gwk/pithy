@@ -106,7 +106,7 @@ def compile_rules(path):
 def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
   'Parse a single pattern and return a Rule object.'
   parser_stack = [PatternParser((path, line_num, 0, pattern))]
-  # stack of parsers, one for each open nesting syntactic element '(', etc.
+  # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
   escape = False
   for col_num, c in enumerate(pattern):
     if col_num < start_col: continue
