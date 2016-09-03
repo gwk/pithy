@@ -269,19 +269,11 @@ public struct ${Name}Source {
 }
 
 
-public struct ${Name}SourceLoc {
-  public var pos: Int
-  public var line: Int
-  public var column: Int
-}
-
-
 public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
   public typealias TokenKind = ${Name}TokenKind
   public typealias Token = ${Name}Token
   public typealias Source = ${Name}Source
-  public typealias SourceLoc = ${Name}SourceLoc
 
   public typealias Element = Token
   public typealias Iterator = ${Name}Lexer
