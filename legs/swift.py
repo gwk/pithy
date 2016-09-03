@@ -148,16 +148,27 @@ public struct ${Name}Token: CustomStringConvertible {
 }
 
 
-public struct ${Name}Source {
+public class ${Name}Source: CustomStringConvertible {
 
   public let name: String
   public let data: Data
-  public var newlinePositions: [Int]
+  public fileprivate(set) var newlinePositions: [Int] = []
 
-  public init(name: String, data: Data, newlinePositions: [Int] = []) {
+  public init(name: String, data: Data) {
     self.name = name
     self.data = data
-    self.newlinePositions = newlinePositions
+  }
+
+  public var description: String {
+    return "${Name}Source(name: \(name), data: \(data))"
+  }
+
+  public func lex() -> ${Name}Lexer {
+    return ${Name}Lexer(source: self)
+  }
+
+  public var tokens: [${Name}Token] {
+    return Array(lex())
   }
 
   public func lineIndex(pos: Int) -> Int {
@@ -171,8 +182,8 @@ public struct ${Name}Source {
   }
 
   public func lineRange(pos: Int) -> CountableRange<Int> {
-   // returns the range in `data` for the line containing `pos`;
-   // always excludes newline for consistency.
+   // returns the range in `data` for the line containing `pos`,
+   // including the terminating newline character if it is present.
     var start = pos
     while start > 0 {
       let i = start - 1
@@ -181,8 +192,9 @@ public struct ${Name}Source {
     }
     var end = pos
     while end < data.count {
-      if data[end] == 0x0a { break }
+      let i = end
       end += 1
+      if data[i] == 0x0a { break }
     }
     return start..<end
   }
@@ -238,7 +250,30 @@ public struct ${Name}Source {
     return (col >= 0) ? String(col + 1) : "?"
   }
 
-  public func diagnostic(pos: Int, end: Int? = nil, prefix: String, msg: String) -> String {
+  public func diagnostic(token: ${Name}Token, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true)
+   -> String {
+    return diagnostic(pos: token.pos, end: token.end, prefix: prefix, msg: msg, showMissingFinalNewline: showMissingFinalNewline)
+  }
+
+  public func diagnostic(pos: Int, end: Int? = nil, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true)
+   -> String {
+
+    func diagLine(_ line: String, _ returnSymbol: Bool) -> String {
+      if line.hasSuffix("\n") {
+        if returnSymbol {
+          var s = line
+          s.remove(at: s.index(before: s.endIndex))
+          return s + "\u{23CE}\n"
+        } else {
+          return line
+        }
+      } else if showMissingFinalNewline {
+        return line + "\u{23CE}\u{0353}\n"
+      } else {
+        return line + "\n"
+      }
+    }
+
     let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
     let lineNum = lineIndex(pos: pos) + 1
     let range = lineRange(pos: pos)
@@ -249,21 +284,24 @@ public struct ${Name}Source {
         if pos < end { // multiple columns.
           let endCol = getColumn(line: line, lineStart: range.startIndex, pos: end)
           let under = underline(col: col, endCol: endCol)
-          return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(line)\n  \(under)\n"
+          let retSym = (end == range.endIndex)
+          return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(diagLine(line, retSym))  \(under)\n"
         } // else: single line, single column case below.
       } else { // multiline.
         let endLineNum = lineIndex(pos: end) + 1
         let endLineRange = lineRange(pos: end)
         let (_, endLine, endCol) = getLineAndColumn(range: endLineRange, pos: end)
+        let endRetSym = (end == endLineRange.endIndex)
         let (under, endUnder) = underlines(col: col, lineLength: line.characters.count, endCol: endCol)
         let a = "\(common)--\(endLineNum):\(colString(endCol)):\(msgSpace)\(msg)\n"
-        let b = "  \(line)\n  \(under)…\n"
-        let c = "  \(endLine)\n …\(endUnder)\n"
+        let b = "  \(diagLine(line, true))  \(under)…\n"
+        let c = "  \(diagLine(endLine, endRetSym)) …\(endUnder)\n"
         return "\(a)\(b)\(c)"
       }
     }
     // single line, single column.
-    return "\(common):\(msgSpace)\(msg)\n  \(line)\n  \(underline(col: col))\n"
+    let retSym = (pos == range.endIndex - 1)
+    return "\(common):\(msgSpace)\(msg)\n  \(diagLine(line, retSym))  \(underline(col: col))\n"
   }
 }
 
@@ -273,7 +311,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   public typealias Element = ${Name}Token
   public typealias Iterator = ${Name}Lexer
 
-  public var source: ${Name}Source
+  public private(set) var source: ${Name}Source
 
   private var isFinished = false
   private var state: UInt = 0
@@ -282,8 +320,8 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   private var tokenEnd: Int = 0
   private var tokenKind: ${Name}TokenKind = .invalid
 
-  public init(name: String, data: Data) {
-    self.source = ${Name}Source(name: name, data: data)
+  public init(source: ${Name}Source) {
+    self.source = source
   }
 
   public mutating func next() -> ${Name}Token? {
@@ -312,7 +350,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   }
 
   @inline(__always)
-  public mutating func step(byte: UInt8) -> ${Name}Token? {
+  private mutating func step(byte: UInt8) -> ${Name}Token? {
     top: switch state {
 
     ${state_cases}
@@ -376,9 +414,10 @@ func test(index: Int, arg: String) {
   let name = "arg\(index)"
   print("\n\(name): \(repr(arg))")
   let data = Data(arg.utf8)
-  let lexer = ${Name}Lexer(name: name, data: data)
-  for token in lexer {
-    let d = lexer.source.diagnostic(pos: token.pos, end: token.end, prefix: "token", msg: token.kind.description)
+  let source = ${Name}Source(name: name, data: data)
+  for token in source.lex() {
+    let d = source.diagnostic(token: token, prefix: "token", msg: token.kind.description,
+      showMissingFinalNewline: false)
     print(d, terminator: "")
   }
 }
