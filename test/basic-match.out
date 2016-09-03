@@ -1,15 +1,15 @@
-match: ' ' -> s
+match: ' ' -> space
 match: 'a' -> a
-match: 'bd' -> bc_d
-match: 'bcd' -> bc_d
-match: 'eg' -> ef_g
-match: 'efg' -> ef_g
-match: 'effg' -> ef_g
-match: 'h' -> h_
-match: 'hh' -> h_
+match: 'bd' -> b_c_opt_d
+match: 'bcd' -> b_c_opt_d
+match: 'eg' -> e_f_star_g
+match: 'efg' -> e_f_star_g
+match: 'effg' -> e_f_star_g
+match: 'h' -> h_plus
+match: 'hh' -> h_plus
 match: 'ij' -> ij
-match: 'k' -> k_l
-match: 'l' -> k_l
+match: 'k' -> k_or_l
+match: 'l' -> k_or_l
 match: '' -- invalid
 match: 'aa' -- invalid
 match: 'ab' -- invalid

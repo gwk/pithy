@@ -1,7 +1,7 @@
-s: \_
+space: \_
 a
-bc?d
-ef*g
-h+
+b_c_opt_d: bc?d
+e_f_star_g: ef*g
+h_plus: h+
 ij
-k|l
+k_or_l: k|l

@@ -2,6 +2,7 @@
   'compile': ['$PROJ/legs/__main__.py test/basic.legs -test -output $NAME.swift'],
   'cmd': './$NAME.swift',
   'args': [
+    # single token matches; same as in basic-match.iot.
     ' ',
     'a',
     'bd',
@@ -14,6 +15,7 @@
     'ij',
     'k',
     'l',
+    # not single token matches; same as in basic-match.iot.
     '',
     'aa',
     'ab',
@@ -29,6 +31,7 @@
     'j',
     'ija',
     'kl',
+    # multiple-token tests.
     'a bd bcd eg efg effg',
     'h hh ij k l',
     'xx',

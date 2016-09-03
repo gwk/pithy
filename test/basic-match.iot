@@ -1,6 +1,7 @@
 {
   'cmd': '$PROJ/legs/__main__.py',
   'args': ['test/basic.legs', '-match',
+    # match.
     ' ',
     'a',
     'bd',
@@ -13,6 +14,7 @@
     'ij',
     'k',
     'l',
+    # no match.
     '',
     'aa',
     'ab',

@@ -9,10 +9,19 @@ from pithy.strings import render_template
 
 def output_swift(dfa, rules_path, path, test, license, name):
   preMatchNodes = dfa.preMatchNodes
+  rule_name_kinds = { name : swift_safe_sym(name) for name in dfa.ruleNames }
+  token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(rule_name_kinds.values())]
 
-  token_kinds = sorted(dfa.ruleNames)
-  token_kind_case_defs = ['case {}'.format(kind) for kind in token_kinds]
-  token_kind_case_descriptions = ['case .{}: return {}'.format(name, swift_repr(name)) for name in token_kinds]
+  def rule_desc(name):
+    try:
+      literal = dfa.literalRules[name]
+      if all((c.isprintable() and not c.isspace()) for c in literal):
+        return '"`{}`"'.format(literal)
+    except KeyError: pass
+    return swift_repr(name)
+
+  token_kind_case_descs = ['case .{}: return {}'.format(kind, rule_desc(name)) for name, kind in rule_name_kinds.items()]
+
   dfa_nodes = sorted(dfa.transitions.keys())
 
   def byte_case_ranges(chars):
@@ -63,14 +72,15 @@ def output_swift(dfa, rules_path, path, test, license, name):
       default_action='state = 1; return nil' if is_pre_match else 'break top')
 
   def state_case(node):
-    kind = dfa.matchNodeNames.get(node)
+    name = dfa.matchNodeNames.get(node)
     update_pos_code = ''
     update_kind_code = ''
-    if kind:
+    if name:
       update_pos_code = '\n      tokenEnd = pos'
       if node == 1:
         update_kind_code = '; assert(tokenKind == .invalid)'
       else:
+        kind = rule_name_kinds[name]
         update_kind_code = '; tokenKind = .{}'.format(kind)
     else:
       match_code = ''
@@ -85,11 +95,11 @@ def output_swift(dfa, rules_path, path, test, license, name):
 
   def finish_case(node):
     return 'case {node}: tokenEnd = pos; tokenKind = .{kind}'.format(
-      node=node, kind=dfa.matchNodeNames[node])
+      node=node, kind=rule_name_kinds[dfa.matchNodeNames[node]])
 
   finish_cases = [finish_case(node) for node in dfa.matchNodes]
 
-  with open(path, 'w') as f:
+  with open(path, 'w', encoding='utf8') as f:
     if test:
       f.write('#!/usr/bin/env swift\n')
     src = render_template(template,
@@ -102,7 +112,7 @@ def output_swift(dfa, rules_path, path, test, license, name):
       start_byte_cases='\n      '.join(byte_cases(0, returns=True)),
       state_cases='\n\n    '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
-      token_kind_case_descriptions='\n    '.join(token_kind_case_descriptions),
+      token_kind_case_descs='\n    '.join(token_kind_case_descs),
     )
     f.write(src)
     if test:
@@ -122,7 +132,7 @@ public enum ${Name}TokenKind: CustomStringConvertible {
 
   public var description: String {
     switch self {
-    ${token_kind_case_descriptions}
+    ${token_kind_case_descs}
     }
   }
 }
@@ -143,12 +153,118 @@ public struct ${Name}Source {
 
   public let name: String
   public let data: Data
-  public var lineIndexes: [Int]
+  public var newlinePositions: [Int]
 
-  public init(name: String, data: Data, lineIndexes: [Int] = []) {
+  public init(name: String, data: Data, newlinePositions: [Int] = []) {
     self.name = name
     self.data = data
-    self.lineIndexes = lineIndexes
+    self.newlinePositions = newlinePositions
+  }
+
+  public func lineIndex(pos: Int) -> Int {
+    // TODO: use binary search.
+    for (index, newlinePos) in newlinePositions.enumerated() {
+      if pos <= newlinePos { // newlines are considered to be the last character of a line.
+        return index
+      }
+    }
+    return newlinePositions.count
+  }
+
+  public func lineRange(pos: Int) -> CountableRange<Int> {
+   // returns the range in `data` for the line containing `pos`;
+   // always excludes newline for consistency.
+    var start = pos
+    while start > 0 {
+      let i = start - 1
+      if data[i] == 0x0a { break }
+      start = i
+    }
+    var end = pos
+    while end < data.count {
+      if data[end] == 0x0a { break }
+      end += 1
+    }
+    return start..<end
+  }
+
+  public func getColumn(line: String, lineStart: Int, pos: Int) -> Int {
+    let utf8 = line.utf8
+    let utf8Index = utf8.index(utf8.startIndex, offsetBy: pos - lineStart)
+    if let charIndex = String.Index(utf8Index, within: line) {
+        return line.distance(from: line.startIndex, to: charIndex)
+    } else {
+      return -1
+    }
+  }
+
+  public func getLineAndColumn(range: CountableRange<Int>, pos: Int) -> (Bool, String, Int) {
+    if let line = String(bytes: data[range], encoding: .utf8) {
+      return (true, line, getColumn(line: line, lineStart: range.startIndex, pos: pos))
+    } else {
+      // TODO: this should return a best-effort representation if unicode decoding fails.
+      return (false, "?", -1)
+    }
+  }
+
+  public func underline(col: Int, endCol: Int = -1) -> String {
+    if col < 0 { return "" }
+    let indent = String(repeating: " ", count: col)
+    if col < endCol {
+      return indent + String(repeating: "~", count: endCol - col)
+    } else {
+      return indent + "^"
+    }
+  }
+
+  public func underlines(col: Int, lineLength: Int, endCol: Int) -> (String, String) {
+    // for two distinct lines, return start and end underlines.
+    let startLine, endLine: String
+    if col < 0 {
+      startLine = ""
+    } else {
+      let spaces = String(repeating: " ", count: col)
+      let squigs = String(repeating: "~", count: lineLength - col)
+      startLine = spaces + squigs
+    }
+    if endCol < 0 {
+      endLine = ""
+    } else {
+      endLine = String(repeating: "~", count: endCol)
+    }
+    return (startLine, endLine)
+  }
+
+  private func colString(_ col: Int) -> String {
+    return (col >= 0) ? String(col + 1) : "?"
+  }
+
+  public func diagnostic(pos: Int, end: Int? = nil, prefix: String, msg: String) -> String {
+    let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
+    let lineNum = lineIndex(pos: pos) + 1
+    let range = lineRange(pos: pos)
+    let (_, line, col) = getLineAndColumn(range: range, pos: pos)
+    let common = "\(prefix): \(name):\(lineNum):\(colString(col))"
+    if let end = end {
+      if end <= range.endIndex { // single line.
+        if pos < end { // multiple columns.
+          let endCol = getColumn(line: line, lineStart: range.startIndex, pos: end)
+          let under = underline(col: col, endCol: endCol)
+          return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(line)\n  \(under)\n"
+        } // else: single line, single column case below.
+      } else { // multiline.
+        let endLineNum = lineIndex(pos: end) + 1
+        let endLineRange = lineRange(pos: end)
+        let (_, endLine, endCol) = getLineAndColumn(range: endLineRange, pos: end)
+        let (under, endUnder) = underlines(col: col, lineLength: line.characters.count, endCol: endCol)
+        let a = "\(common)--\(endLineNum):\(colString(endCol)):\(msgSpace)\(msg)\n"
+        let b = "  \(line)\n  \(under)…\n"
+        let c = "  \(endLine)\n …\(endUnder)\n"
+        return "\(a)\(b)\(c)"
+      }
+    }
+    // single line, single column.
+    return "\(common):\(msgSpace)\(msg)\n  \(line)\n  \(underline(col: col))\n"
   }
 }
 
@@ -171,7 +287,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   public typealias Iterator = ${Name}Lexer
   public typealias Byte = UInt8
 
-  public let source: Source
+  public var source: Source
 
   private var isFinished = false
   private var state: UInt = 0
@@ -186,6 +302,10 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
   public mutating func next() -> Token? {
     while pos < source.data.count {
+      let byte = source.data[pos]
+      if byte == 0x0a {
+        source.newlinePositions.append(pos)
+      }
       let token = step(byte: source.data[pos])
       pos += 1
       if token != nil {
@@ -267,11 +387,13 @@ func repr(_ string: String) -> String {
 }
 
 func test(index: Int, arg: String) {
-  print("\n", repr(arg), separator: "", terminator: ":\n")
+  let name = "arg\(index)"
+  print("\n\(name): \(repr(arg))")
   let data = Data(arg.utf8)
-  let lexer = ${Name}Lexer(name: String(index), data: data)
+  let lexer = ${Name}Lexer(name: name, data: data)
   for token in lexer {
-    print(token, separator: "")
+    let d = lexer.source.diagnostic(pos: token.pos, end: token.end, prefix: "token", msg: token.kind.description)
+    print(d, terminator: "")
   }
 }
 
@@ -302,3 +424,16 @@ def swift_escape_literal_char(c):
 def swift_repr(string):
   return '"{}"'.format(''.join(swift_escape_literal_char(c) for c in string))
 
+
+swift_reserved_syms = {
+  'as',
+  'class',
+  'enum',
+  'if',
+  'in',
+  'is',
+  'struct',
+} # TODO: complete this list.
+
+def swift_safe_sym(name):
+  return name + ('_' if name in swift_reserved_syms else '')
