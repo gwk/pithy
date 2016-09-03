@@ -110,7 +110,7 @@ def output_swift(dfa, rules_path, path, test, license, name):
       rules_path=rules_path,
       restart_byte_cases='\n    '.join(byte_cases(0, returns=False)),
       start_byte_cases='\n      '.join(byte_cases(0, returns=True)),
-      state_cases='\n\n    '.join(state_cases),
+      state_cases='\n    '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
       token_kind_case_descs='\n    '.join(token_kind_case_descs),
     )
