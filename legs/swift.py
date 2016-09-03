@@ -7,7 +7,7 @@ from pithy.fs import add_file_execute_permissions
 from pithy.strings import render_template
 
 
-def output_swift(dfa, rules_path, path, test, license, name):
+def output_swift(dfa, rules_path, path, test, type_prefix, license):
   preMatchNodes = dfa.preMatchNodes
   rule_name_kinds = { name : swift_safe_sym(name) for name in dfa.ruleNames }
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(rule_name_kinds.values())]
@@ -91,7 +91,6 @@ def output_swift(dfa, rules_path, path, test, license, name):
       transition_code=transition_code(node))
 
   state_cases = [state_case(node) for node in dfa_nodes[1:]]
-  Name = name.capitalize()
 
   def finish_case(node):
     return 'case {node}: tokenEnd = pos; tokenKind = .{kind}'.format(
@@ -105,7 +104,7 @@ def output_swift(dfa, rules_path, path, test, license, name):
     src = render_template(template,
       finish_cases='\n      '.join(finish_cases),
       license=license,
-      Name=Name,
+      Name=type_prefix,
       path=path,
       rules_path=rules_path,
       restart_byte_cases='\n    '.join(byte_cases(0, returns=False)),
@@ -116,7 +115,7 @@ def output_swift(dfa, rules_path, path, test, license, name):
     )
     f.write(src)
     if test:
-      test_src = render_template(test_template, Name=Name)
+      test_src = render_template(test_template, Name=type_prefix)
       f.write(test_src)
       add_file_execute_permissions(f.fileno())
 
@@ -271,28 +270,23 @@ public struct ${Name}Source {
 
 public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
-  public typealias TokenKind = ${Name}TokenKind
-  public typealias Token = ${Name}Token
-  public typealias Source = ${Name}Source
-
-  public typealias Element = Token
+  public typealias Element = ${Name}Token
   public typealias Iterator = ${Name}Lexer
-  public typealias Byte = UInt8
 
-  public var source: Source
+  public var source: ${Name}Source
 
   private var isFinished = false
   private var state: UInt = 0
   private var pos: Int = 0
   private var tokenPos: Int = 0
   private var tokenEnd: Int = 0
-  private var tokenKind: TokenKind = .invalid
+  private var tokenKind: ${Name}TokenKind = .invalid
 
   public init(name: String, data: Data) {
-    self.source = Source(name: name, data: data)
+    self.source = ${Name}Source(name: name, data: data)
   }
 
-  public mutating func next() -> Token? {
+  public mutating func next() -> ${Name}Token? {
     while pos < source.data.count {
       let byte = source.data[pos]
       if byte == 0x0a {
@@ -318,7 +312,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   }
 
   @inline(__always)
-  public mutating func step(byte: Byte) -> Token? {
+  public mutating func step(byte: UInt8) -> ${Name}Token? {
     top: switch state {
 
     ${state_cases}
@@ -341,7 +335,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   }
 
   @inline(__always)
-  private mutating func flushToken() -> Token {
+  private mutating func flushToken() -> ${Name}Token {
     let tPos = self.tokenPos
     let end = self.tokenEnd > 0 ? self.tokenEnd : self.pos
     let kind = self.tokenKind
@@ -350,7 +344,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     self.tokenPos = end
     self.tokenEnd = 0
     self.pos = end // backtrack to last match position. can take quadratic time for pathological rule sets.
-    return Token(pos: tPos, end: end, kind: kind)
+    return ${Name}Token(pos: tPos, end: end, kind: kind)
   }
 }
 '''

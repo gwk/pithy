@@ -26,6 +26,7 @@ def main():
   parser.add_argument('-match', nargs='+')
   parser.add_argument('-output')
   parser.add_argument('-test', action='store_true')
+  parser.add_argument('-type-prefix', default='')
   parser.add_argument('-license', default='NO LICENSE SPECIFIED')
   args = parser.parse_args()
   dbg = args.dbg
@@ -56,7 +57,8 @@ def main():
       match_string(nfa, fat_dfa, min_dfa, string)
 
   if args.output is not None:
-    output(dfa=min_dfa, rules_path=args.rules_path, path=args.output, test=args.test, license=args.license)
+    output(dfa=min_dfa, rules_path=args.rules_path, path=args.output, test=args.test,
+      type_prefix=args.type_prefix, license=args.license)
 
 
 def match_string(nfa, fat_dfa, min_dfa, string):
@@ -676,7 +678,7 @@ class DFA(FA):
     return self.matchNodeNames.get(state)
 
 
-def output(dfa, rules_path, path, test, license):
+def output(dfa, rules_path, path, test, type_prefix, license):
   name = path_name_stem(rules_path)
   ext = path_ext(path)
   supported_exts = ['.swift']
@@ -684,7 +686,8 @@ def output(dfa, rules_path, path, test, license):
     failF('output path has unknown extension {!r}; supported extensions are: {}.',
       ext, ', '.join(supported_exts))
   if ext == '.swift':
-    output_swift(dfa=dfa, rules_path=rules_path, path=path, test=test, license=license, name=name)
+    output_swift(dfa=dfa, rules_path=rules_path, path=path, test=test,
+     type_prefix=type_prefix, license=license)
 
 
 def chars_desc(chars):
