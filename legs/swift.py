@@ -138,9 +138,9 @@ public enum ${Name}TokenKind: CustomStringConvertible {
 
 
 public struct ${Name}Token: CustomStringConvertible {
-  let pos: Int
-  let end: Int
-  let kind: ${Name}TokenKind
+  public let pos: Int
+  public let end: Int
+  public let kind: ${Name}TokenKind
 
   public var description: String {
     return "\(kind):\(pos)-\(end)"
