@@ -108,6 +108,7 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
   parser_stack = [PatternParser((path, line_num, 0, pattern))]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
   escape = False
+  end_col = len(pattern)
   for col_num, c in enumerate(pattern):
     if col_num < start_col: continue
     pos = (path, line_num, col_num, pattern)
@@ -119,7 +120,9 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
       else: parser.parse_escaped(pos, escaped_chars)
     elif c == esc_char:
       escape = True
-    elif c == '#': break
+    elif c == '#':
+      end_col = col_num
+      break
     elif c.isspace():
       continue
     elif not c.isprintable():
@@ -139,6 +142,7 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
     parse_failF((path, line_num, col_num + 1, pattern), 'expected terminator: {!r}', parser.terminator)
   rule = parser.finish()
   rule.name = name
+  rule.pattern = pattern[start_col:end_col].strip()
   return rule
 
 
@@ -253,9 +257,10 @@ class Rule:
     if subs is not None:
       assert isinstance(subs, tuple)
       for sub in subs: assert isinstance(sub, Rule)
-    self.name = None
     self.pos = pos
     self.subs = subs
+    self.name = None
+    self.pattern = None
 
   def describe(self, depth=0):
     _, line, col, _ = self.pos
