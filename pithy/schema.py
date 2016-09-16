@@ -12,7 +12,7 @@ from collections import defaultdict, namedtuple
 # A schema represents the aggregate of values occurring at a structural position in some data.
 # atoms is a set of atom values.
 # seqs is a defaultdict mapping all of the occurring element types to schemas.
-# (this means that all sequence types are lumped together). 
+# (this means that all sequence types are lumped together).
 # dicts is a defaultdict mapping occurring keys to a defaultdict of occurring value types to schemas.
 # (all dict classes are lumped together).
 Schema = namedtuple('Schema', 'atoms seqs dicts')
@@ -52,7 +52,7 @@ def write_schema(f, schema, summary=False, depth=0):
 
   def put(*items, indent=indent, end='\n'):
     print(indent, *items, sep='', end=end, file=f)
-  
+
   def put_types(label, symbol, types: dict):
     inline = (len(types) == 1)
     if label is not None:

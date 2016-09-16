@@ -96,7 +96,7 @@ def fan_seq_by_key(seq, key):
 def fan_sorted_seq_by_comp(seq, comparison):
   '''
   Fan out `seq`, which must already be sorted,
-  by applying the `comparison` predicate to each consecutive pair of elements. 
+  by applying the `comparison` predicate to each consecutive pair of elements.
   Group the elements of the sorted sequence by applying a comparison predicate
   to each successive pair of elements, creating a new group when the comparison fails.
   '''

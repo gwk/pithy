@@ -299,7 +299,7 @@ def fail(*items, sep=''):
   errZ(*items, sep=sep, end='\n')
   exit(1)
 
-def failS(*items): 
+def failS(*items):
   "Write `items` to std err with sep =' ', and exit."
   fail(*items, sep=' ')
 
