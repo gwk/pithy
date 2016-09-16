@@ -229,7 +229,7 @@ class Case:
     self.out_mode = None # comparison mode for stdout expectation.
     self.out_path = None # file path for stdout expectation.
     self.out_val = None # stdout expectation value (mutually exclusive with out_path).
-    self.timeout = None 
+    self.timeout = None
     self.skip = None
 
     try:
@@ -371,10 +371,10 @@ class Case:
       if is_list(val):
         return [expand_str(el) for el in val]
       raise ValueError(val)
-    
+
     def expand_compile_cmds(val):
       return [expand(el) for el in val]
-    
+
     # add the case env one item at a time.
     # sorted because we want expansion to be deterministic;
     # TODO: should probably expand everything with just the builtins;
@@ -389,7 +389,7 @@ class Case:
       self.compile_cmds = expand_compile_cmds(self.compile)
     else:
       self.compile_cmds = []
-    
+
     args = expand(self.args)
     if self.cmd:
       self.test_cmd = expand(self.cmd)
@@ -577,7 +577,7 @@ def run_case(ctx, case):
        case.test_dir)
   else:
     make_dirs(case.test_dir)
-  
+
   for link_path, dst_path in case.test_links:
     link = path_join(case.test_dir, link_path)
     dst = path_join(ctx.proj_dir, dst_path)
@@ -636,16 +636,16 @@ def run_case(ctx, case):
   test_time = time.time() - test_time_start
   if not status:
     outFL('test command failed: `{}`', shell_cmd_str(case.test_cmd))
-  
+
   if ctx.show_times:
     compile_time_msg = '; compile: {:.2f}'.format(compile_time) if compile_time else ''
     outFL(' {:.2f} sec{}.', test_time, compile_time_msg)
   else:
     outL()
-  
+
   if status is None:
     return False
-  
+
   # use a list comprehension to ensure that we always report all failed expectations.
   exps_ok = all([check_file_exp(ctx, case.test_dir, exp) for exp in case.test_expectations])
   return status and exps_ok
