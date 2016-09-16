@@ -18,7 +18,7 @@ from sys import stdout, stderr
 from pithy.ansi import RST, TXT_B, TXT_R
 from pithy.immutable import Immutable
 from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, read_first_line_from_path, write_to_path, writeLSSL
-from pithy.strings import string_contains
+from pithy.string_utils import string_contains
 from pithy.fs import abs_path, is_dir, is_python3_file, list_dir, make_dirs, normalize_path, path_descendants, path_dir, path_exists, path_ext, path_join, path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, find_project_dir, rel_path, remove_dir_contents, walk_dirs_up
 from pithy.seq import fan_seq_by_key
 from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
