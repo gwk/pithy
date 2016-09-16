@@ -141,7 +141,9 @@ def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder, flu
   for item in items:
     _json.dump(item, file, indent=indent, sort_keys=sort, cls=cls)
     if end:
-      file.write(end, flush=flush)
+      file.write(end)
+  if flush:
+    file.flush()
 
 
 # std out.
