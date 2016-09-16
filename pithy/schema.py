@@ -4,9 +4,9 @@
 generate a schema for an object tree.
 '''
 
-from sys import stdout, stderr
-from pithy.strings import iter_excluding_str
 from collections import defaultdict, namedtuple
+from sys import stdout, stderr
+from .string_utils import iter_excluding_str
 
 
 # A schema represents the aggregate of values occurring at a structural position in some data.

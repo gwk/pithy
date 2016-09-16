@@ -2,7 +2,7 @@
   'coverage': [
     '__main__',
     'pithy.dict_utils',
-    'pithy.strings',
+    'pithy.string_utils',
     'pithy.util',
   ]
 }

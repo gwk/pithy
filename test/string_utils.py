@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import utest, utest_exc
-from pithy.strings import *
+from pithy.string_utils import *
 
 utest('abc', render_template, 'a${y}c', y='b')
 

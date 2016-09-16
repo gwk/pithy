@@ -7,7 +7,7 @@ import json.encoder as _json_enc
 from pprint import pprint
 from sys import stdout, stderr
 
-from .strings import render_template
+from .string_utils import render_template
 
 
 class JsonEncoder(_json.JSONEncoder):
