@@ -4,7 +4,7 @@ import re
 
 from collections import defaultdict
 from pithy.fs import add_file_execute_permissions
-from pithy.strings import render_template
+from pithy.string_utils import render_template
 
 
 def output_swift(dfa, rules_path, path, test, type_prefix, license):
