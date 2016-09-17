@@ -21,6 +21,11 @@ class DefaultList(list):
     return '{}({}, {})'.format(type(self).__qualname__, self.factory, super().__repr__())
 
 
+def seq_first(seq):
+  for el in seq: return el
+  raise ValueError('empty sequence')
+
+
 def seq_from_index(seq, start_index):
   'Returns an iterator for the sequence that skips elements up to the start_index.'
   it = iter(seq)
