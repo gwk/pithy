@@ -138,7 +138,7 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
       if child:
         parser_stack.append(child)
   if escape:
-    parse_failF((path, line_num, col_num - 1, pattern), 'dangling escape: {!r}', esc_char)
+    parse_failF((path, line_num, col_num, pattern), 'dangling escape: {!r}', esc_char)
   parser = parser_stack.pop()
   if parser_stack:
     parse_failF((path, line_num, col_num + 1, pattern), 'expected terminator: {!r}', parser.terminator)
