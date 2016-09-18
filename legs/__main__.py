@@ -31,7 +31,7 @@ def main():
   args = parser.parse_args()
   dbg = args.dbg
 
-  rules = compile_rules(args.rules_path)
+  rules, mode_transitions = compile_rules(args.rules_path)
   if dbg:
     for rule in rules:
       rule.describe()
@@ -76,59 +76,87 @@ def match_string(nfa, fat_dfa, min_dfa, string):
   outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'invalid')))
 
 
+rule_re = re.compile(r'''(?x)
+\s* (?: # ignore leading space.
+| (?P<comment> \# .*)
+| (?P<l_name> [\w.]+ ) \s+ -> \s+ (?P<r_name> [\w.]+ ) # mode transition.
+| (?P<name> [\w.]+ ) (?P<esc>\s+\\.)? \s* : \s* (?P<named_pattern> .*)
+| (?P<unnamed_pattern> .+) # must come last due to wildcard.
+) \s* # ignore trailing space.
+''')
+
 def compile_rules(path):
   'Compile the rules given in the legs file at `path`.'
   rules = []
+  mode_transitions = []
   try: f = open(path)
   except FileNotFoundError:
     failF('legs error: no such rule file: {!r}', path)
   for line_num, line in enumerate(f):
-    line = line.rstrip()
-    esc_char = '\\' # default.
-    if not line or line.startswith('#'): continue
-    colon_col = line.find(':')
-    if colon_col != -1: # name is specified explicitly.
-      name = line[:colon_col].strip()
-      start_col = colon_col + 1
-      if name[-3:-1] == ' \\': # custom escape char.
-        esc_char = name[-1]
-        name = name[:-3]
-    else: # no name; derive a name from the rule; convenient for keyword tokens and testing.
-      name = re.sub('\W+', '_', line.strip())
-      if name[0].isdigit():
-        name = '_' + name
-      start_col = 0
-    if name == 'invalid':
-      parse_failF((path, line_num, 1, line), 'rule name is reserved: {!r}.', name)
-    rule = parse_rule_pattern(path, name, line_num, start_col=start_col, pattern=line, esc_char=esc_char)
-    rules.append(rule)
-  return rules
+    line = line.rstrip() # always strip newline so that missing final newline is consistent.
+    if not line: continue
+    line_info = (path, line_num, line)
+    m = rule_re.fullmatch(line)
+    if m.group('comment'): continue
+    if m.group('l_name'): # mode transition.
+      mode_transitions.append(parse_mode_transition(line_info, m))
+    else:
+      rules.append(compile_rule(line_info, m))
+  return rules, mode_transitions
 
 
-def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
+def parse_mode_transition(line_info, match):
+  return (
+    parse_name(line_info, match, 'l_name'),
+    parse_name(line_info, match, 'r_name'))
+
+def parse_name(line_info, match, key):
+  return match.group(key)
+
+def compile_rule(line_info, match):
+  esc_char = '\\' # default.
+  name = match.group('name')
+  if name: # name is specified explicitly.
+    esc = match.group('esc')
+    if esc: # custom escape char.
+      esc_char = esc[-1] # capture group begins with spaces and backslash.
+    key = 'named_pattern'
+  else:
+    key = 'unnamed_pattern'
+  pattern = match.group(key)
+  start_col = match.start(key)
+  if not name: # no name; derive a name from the pattern; convenient for keyword tokens and testing.
+    name = re.sub('\W+', '_', pattern.strip())
+    if name[0].isdigit():
+      name = '_' + name
+  if name == 'invalid':
+    fail_parse((line_info, 0), 'rule name is reserved: {!r}.', name)
+  return parse_rule_pattern(line_info=line_info, name=name, pattern=pattern, start_col=start_col, esc_char=esc_char)
+
+
+def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
   'Parse a single pattern and return a Rule object.'
-  parser_stack = [PatternParser((path, line_num, 0, pattern))]
+  parser_stack = [PatternParser((line_info, start_col))]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
   escape = False
   end_col = len(pattern)
-  for col_num, c in enumerate(pattern):
-    if col_num < start_col: continue
-    pos = (path, line_num, col_num, pattern)
+  for col, c in enumerate(pattern, start_col):
+    pos = (line_info, col)
     parser = parser_stack[-1]
     if escape:
       escape = False
       try: escaped_chars = escape_char_sets[c]
-      except KeyError: parse_failF(pos, 'invalid escaped character: {!r}', c)
+      except KeyError: fail_parse(pos, 'invalid escaped character: {!r}', c)
       else: parser.parse_escaped(pos, escaped_chars)
     elif c == esc_char:
       escape = True
     elif c == '#':
-      end_col = col_num
+      end_col = col
       break
     elif c.isspace():
       continue
     elif not c.isprintable():
-      parse_failF(pos, 'invalid non-printing character: {!r}'. c)
+      fail_parse(pos, 'invalid non-printing character: {!r}'. c)
     elif c == parser.terminator:
       parser_stack.pop()
       parent = parser_stack[-1]
@@ -138,20 +166,21 @@ def parse_rule_pattern(path, name, line_num, start_col, pattern, esc_char):
       if child:
         parser_stack.append(child)
   if escape:
-    parse_failF((path, line_num, col_num, pattern), 'dangling escape: {!r}', esc_char)
+    fail_parse(pos, 'dangling escape: {!r}', esc_char)
   parser = parser_stack.pop()
   if parser_stack:
-    parse_failF((path, line_num, col_num + 1, pattern), 'expected terminator: {!r}', parser.terminator)
+    fail_parse((line_info, end_col), 'expected terminator: {!r}', parser.terminator)
   rule = parser.finish()
   rule.name = name
   rule.pattern = pattern[start_col:end_col].strip()
   return rule
 
 
-def parse_failF(pos, fmt, *items):
+def fail_parse(pos, fmt, *items):
   'Print a formatted parsing failure to std err and exit.'
-  path, line, col, contents = pos
-  failF('{}:{}:{}: ' + fmt + '\n{}\n{}^', path, line + 1, col + 1, *items, contents, ' ' * col)
+  (line_info, col) = pos
+  (path, line_num, line_text) = line_info
+  failF('{}:{}:{}: ' + fmt + '\n{}\n{}^', path, line_num + 1, col + 1, *items, line_text, ' ' * col)
 
 
 def char_intervals(*intervals):
@@ -205,7 +234,7 @@ class PatternParser:
 
   def flush_seq(self, pos):
     seq = self.seq
-    if not seq: parse_failF(self.seq_pos, 'empty sequence.')
+    if not seq: fail_parse(self.seq_pos, 'empty sequence.')
     rule = seq[0] if len(seq) == 1 else Seq(self.seq_pos, subs=tuple(seq))
     self.choices.append(rule)
     self.seq = []
@@ -213,7 +242,7 @@ class PatternParser:
 
   def quantity(self, pos, char, T):
     try: el = self.seq.pop()
-    except IndexError: parse_failF(pos, "'{}' does not follow any pattern.", char)
+    except IndexError: fail_parse(pos, "'{}' does not follow any pattern.", char)
     else: self.seq.append(T(pos, subs=(el,)))
 
   def receive(self, result):
@@ -236,9 +265,9 @@ class CharsetParser():
         self.invert = True
         return
     if self.invert and len(c.encode()) != 1:
-      parse_failF(pos, 'non-ASCII character cannot be used within an inverted character set: {!r}.', c)
+      fail_parse(pos, 'non-ASCII character cannot be used within an inverted character set: {!r}.', c)
     if c in self.chars:
-      parse_failF(pos, 'repeated character in set: {!r}.', c)
+      fail_parse(pos, 'repeated character in set: {!r}.', c)
     self.chars.add(c)
 
   def parse_escaped(self, pos, escaped_chars):
@@ -265,9 +294,9 @@ class Rule:
     self.pattern = None
 
   def describe(self, depth=0):
-    _, line, col, _ = self.pos
+    (_, line_num, _), col = self.pos
     n = self.name + ' ' if self.name else ''
-    errFL('{}{}{}:{}:{}:{}', '  ' * depth, n, type(self).__name__, line + 1, col + 1, self.inlineDescription)
+    errFL('{}{}{}:{}:{}:{}', '  ' * depth, n, type(self).__name__, line_num + 1, col + 1, self.inlineDescription)
     if self.subs:
       for sub in self.subs:
         sub.describe(depth + 1)
@@ -341,7 +370,7 @@ class Charset(Rule):
   def __init__(self, pos, chars):
     super().__init__(pos=pos)
     assert isinstance(chars, str)
-    if not chars: parse_failF(pos, 'empty character set.')
+    if not chars: fail_parse(pos, 'empty character set.')
     self.chars = chars
 
   def genNFA(self, mk_node, transitions, start, end):
