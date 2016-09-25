@@ -499,7 +499,7 @@ def minimizeDFA(dfa):
   # http://www.cs.sun.ac.za/rw711/resources/dfa-minimization.pdf.
   # https://en.wikipedia.org/wiki/DFA_minimization.
   # Note: this implementation of Hopcroft DFA minimization does not use the 'partition refinement' data structure.
-  # As a result I expect that its time complexity is suboptimal.
+  # As a result it is noticeably slow.
   alphabet = dfa.alphabet
   # start with a rough partition; match nodes are all distinct from each other,
   # and non-match nodes form an additional distinct set.
@@ -510,9 +510,10 @@ def minimizeDFA(dfa):
     for char in alphabet:
       for b in list(partitions): # split `b`; does transition from `b` via `char` lead to a node in `a`?
         refinement = fan_seq_by_pred(b, pred=lambda node: (dfa.transitions[node].get(char) in a))
+        # None is never in `a`, so `get` does what we want.
         # note: this splitting operation is where the 'partition refinement' structure is supposed to be used for speed.
         # using cProfile we can see that fan_seq_by_pred takes most the running time for a real-world lexer.
-        # None is never in `a`, so `get` does what we want.
+        # TODO: fix this performance bottleneck.
         if not all(refinement): continue # no real refinement; all in one or the other.
         refinement_sets = [frozenset(p) for p in refinement]
         partitions.remove(b)
