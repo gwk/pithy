@@ -275,7 +275,8 @@ class CharsetParser():
 
   def finish(self):
     if self.invert:
-      chars = set(chr(i) for i in range(256)) - self.chars
+      chars = set(chr(i) for i in range(0x80)) - self.chars
+      # TODO: support non-ascii?
     else:
       chars = self.chars
     return Charset(self.pos, chars=''.join(sorted(chars)))
