@@ -67,6 +67,7 @@ def main():
     proj_dir=proj_dir,
     show_times=(not args.no_times),
     top_paths=args.paths,
+    coverage_cases=[],
   )
 
   cases = []
@@ -117,7 +118,7 @@ def main():
   else:
     outL(msg)
   if args.coverage and not args.no_coverage_report:
-    report_coverage(ctx, cases)
+    report_coverage(ctx)
   else:
     exit(code)
 
@@ -185,8 +186,10 @@ def is_case_implied(paths):
   return any(path_ext(p) in ('.iot', '.out', '.err') for p in paths)
 
 
-def report_coverage(ctx, cases):
-  paths = [path_join(case.test_dir, coverage_name) for case in cases]
+def report_coverage(ctx):
+  paths = [path_join(case.test_dir, coverage_name) for case in ctx.coverage_cases]
+  if not paths:
+    exit('No tests eligible for coverage.')
   cmd = ['cove', '-coalesce'] + paths
   if ctx.dbg: errSL('#', *cmd)
   exit(runC(cmd))
@@ -589,8 +592,8 @@ def run_case(ctx, case):
     compile_out_path = path_join(case.test_dir, 'compile-out-{:02}'.format(i))
     compile_err_path = path_join(case.test_dir, 'compile-err-{:02}'.format(i))
     status = run_cmd(ctx,
+      case=case,
       label='compile',
-      coverage_targets=case.coverage_targets,
       cmd=compile_cmd,
       cwd=case.test_dir,
       env=case.test_env,
@@ -623,8 +626,8 @@ def run_case(ctx, case):
 
   test_time_start = time.time()
   status = run_cmd(ctx,
+    case=case,
     label='test',
-    coverage_targets=case.coverage_targets,
     cmd=case.test_cmd,
     cwd=case.test_dir,
     env=case.test_env,
@@ -651,13 +654,14 @@ def run_case(ctx, case):
   return status and exps_ok
 
 
-def run_cmd(ctx, label, coverage_targets, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
+def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
   'returns True for success, False for failure, and None for abort.'
   cmd_head = cmd[0]
   is_cmd_installed = not path_dir(cmd_head) # command is a name, presumably a name on the PATH (or else a mistake).
   if ctx.coverage and not is_cmd_installed and is_python3_file(cmd_head): # interpose the coverage harness.
+    ctx.coverage_cases.append(case)
     cove_cmd = ['cove', '-output', coverage_name]
-    if coverage_targets:
+    if case.coverage_targets:
       cove_cmd += ['-targets'] + coverage_targets + ['--']
     else:
       cove_cmd.append('--')
