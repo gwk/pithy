@@ -48,6 +48,9 @@ def main():
     failF('iotest error: `-no-coverage-report` is only valid in combination with `-coverage`.')
 
   proj_dir = find_project_dir()
+  if proj_dir is None:
+    fail("iotest: could not find .git or .project-root in current directory or its parents.")
+
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
 
   if args.fail_fast or args.dbg:
@@ -117,9 +120,6 @@ def main():
     report_coverage(ctx, cases)
   else:
     exit(code)
-
-
-  fail("iotest: could not find .git or .project-root in current directory or its parents.")
 
 
 def collect_proto(ctx, end_dir_path):
