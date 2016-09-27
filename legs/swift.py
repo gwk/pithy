@@ -330,7 +330,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
       if byte == 0x0a {
         source.newlinePositions.append(pos)
       }
-      let token = step(byte: source.data[pos])
+      let token = step(byte: byte)
       pos += 1
       if token != nil {
         return token
