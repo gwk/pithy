@@ -79,7 +79,7 @@ def match_string(nfa, fat_dfa, min_dfa, string):
 rule_re = re.compile(r'''(?x)
 \s* (?: # ignore leading space.
 | (?P<comment> \# .*)
-| (?P<l_name> [\w.]+ ) \s+ -> \s+ (?P<r_name> [\w.]+ ) # mode transition.
+| (?P<l_name> [\w.]+ ) \s+ -> \s+ (?P<r_name> [^\#\s]+ ) # mode transition.
 | (?P<name> [\w.]+ ) (?P<esc>\s+\\.)? \s* : \s* (?P<named_pattern> .*)
 | (?P<unnamed_pattern> .+) # must come last due to wildcard.
 ) \s* # ignore trailing space.
