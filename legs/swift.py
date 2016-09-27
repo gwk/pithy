@@ -381,7 +381,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     self.tokenKind = .invalid
     self.tokenPos = end
     self.tokenEnd = 0
-    self.pos = end // backtrack to last match position. can take quadratic time for pathological rule sets.
+    self.pos = end // backtrack to last match position. can take quadratic time for pathological rule/input cases.
     return ${Name}Token(pos: tPos, end: end, kind: kind)
   }
 }
