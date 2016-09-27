@@ -394,18 +394,19 @@ class Charset(Rule):
 
 def genNFA(rules):
   '''
-  Generate an NFA from `rules`.
+  Generate an NFA.
   The NFA can be used to match against an argument string,
   but cannot produce a token stream directly.
-  The 'invalid' node is always added at index 1, and is always unreachable.
-  See genDFA for more details about 'invalid'.
+  The 'invalid' node is always unreachable,
+  and reserved for later use by the derived DFA.
   '''
 
   indexer = iter(count())
   def mk_node(): return next(indexer)
 
-  start = mk_node() # always 0.
-  invalid = mk_node() # Always 1. Not used in the NFA; simply reserving the number for clarity.
+  start = mk_node() # always 0; see genDFA.
+  invalid = mk_node() # always 1; see genDFA.
+
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
   dict_put(matchNodeNames, invalid, 'invalid')
@@ -426,16 +427,18 @@ def genDFA(nfa):
   A DFA has a node for every reachable subset of nodes in the corresponding NFA.
   In the worst case, there will be an exponential increase in number of nodes.
 
-  As in the NFA, the 'invalid' node is unreachable,
+  Each 'invalid' node is unreachable from its start node,
   but we explicitly add transitions from 'invalid' to itself,
   for all characters that are not transitions out of the 'start' state.
-  This allows the generated lexer code to use simpler switch default clauses.
+  This allows the generated lexer code to use switch default cases to enter the invalid states,
+  and then continue consuming invalid characters until a start character is reached.
 
   For each state, the lexer switches on the current byte.
   If the switch defaults, it flushes the pending token (either invalid or the last match),
-  and then performs the start transition as if we were at the start state.
-  `invalid` is itself a match state, so once a valid character is encountered,
-  the lexer emits an 'invalid' token and resets.
+  and then performs the start transition as if it were at the start state.
+  `invalid` is itself a match state;
+  when in the invalid state, the lexer remains there until a valid character is encountered,
+  at which point it emits an 'invalid' token and restarts.
   '''
 
   indexer = iter(count())
@@ -443,7 +446,7 @@ def genDFA(nfa):
 
   nfa_states_to_dfa_nodes = defaultdict(mk_node)
   start = frozenset(nfa.advanceEmpties({0}))
-  invalid = frozenset({1}) # no need to expand as `invalid` is never reachable.
+  invalid = frozenset({1}) # no need to advanceEmpties as `invalid` is unreachable in the nfa.
   start_node = nfa_states_to_dfa_nodes[start]
   invalid_node = nfa_states_to_dfa_nodes[invalid]
 
@@ -462,8 +465,8 @@ def genDFA(nfa):
       if dst_node not in transitions:
         remaining.add(dst_state)
 
-  # explicitly add `invalid`, which is otherwise not reachable.
-  # `invalid` transitions to itself for all characters that do not transition from `start`.
+  # explicitly add `invalid_node`, which is otherwise not reachable.
+  # `invalid_node` transitions to itself for all characters that do not transition from `start_node`.
   assert invalid_node not in transitions
   invalid_dict = transitions[invalid_node]
   invalid_chars = set(range(0x100)) - set(transitions[start_node])
