@@ -16,7 +16,7 @@ def output_swift(dfa, rules_path, path, test, type_prefix, license):
     try:
       literal = dfa.literalRules[name]
       if all((c.isprintable() and not c.isspace()) for c in literal):
-        return '"`{}`"'.format(literal)
+        return '"`{}`"'.format(swift_esc_str(literal))
     except KeyError: pass
     return swift_repr(name)
 
@@ -446,8 +446,11 @@ def swift_escape_literal_char(c):
     return c
   return '\\u{{{:x}}}'.format(ord(c))
 
+def swift_esc_str(string):
+  return ''.join(swift_escape_literal_char(c) for c in string)
+
 def swift_repr(string):
-  return '"{}"'.format(''.join(swift_escape_literal_char(c) for c in string))
+  return '"{}"'.format(swift_esc_str(string))
 
 
 swift_reserved_syms = {
@@ -512,4 +515,9 @@ swift_reserved_syms = {
 }
 
 def swift_safe_sym(name):
-  return name + ('_' if name in swift_reserved_syms else '')
+  name = re.sub(r'[^\w]', '_', name)
+  if name[0].isdigit():
+    name = '_' + name
+  if name in swift_reserved_syms:
+    name += '_'
+  return name
