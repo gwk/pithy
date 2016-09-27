@@ -7,13 +7,14 @@ import re
 
 from argparse import ArgumentParser
 from collections import defaultdict
-from itertools import count
+from itertools import chain, count
 
 from pithy.collection_utils import freeze
 from pithy.dict_utils import dict_filter_map, dict_put
 from pithy.fs import path_ext, path_name_stem
-from pithy.io import errF, errFL, errL, failF, outFL
-from pithy.seq import fan_seq_by_pred, seq_first
+from pithy.immutable import Immutable
+from pithy.io import errF, errFL, errL, errSL, errLL, failF, outFL
+from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_first
 from pithy.type_util import is_str
 
 from legs.swift import output_swift
@@ -24,6 +25,7 @@ def main():
   parser.add_argument('rules_path')
   parser.add_argument('-dbg', action='store_true')
   parser.add_argument('-match', nargs='+')
+  parser.add_argument('-mode', default=None)
   parser.add_argument('-output')
   parser.add_argument('-test', action='store_true')
   parser.add_argument('-type-prefix', default='')
@@ -31,33 +33,55 @@ def main():
   args = parser.parse_args()
   dbg = args.dbg
 
-  rules, mode_transitions = compile_rules(args.rules_path)
-  if dbg:
-    for rule in rules:
-      rule.describe()
-    errL()
+  is_match_specified = args.match is not None
+  is_mode_specified = args.mode is not None
+  target_mode = args.mode or 'main'
+  if not is_match_specified and is_mode_specified:
+    failF('`-mode` option only valid with `-match`.')
 
-  nfa = genNFA(rules)
-  if dbg: nfa.describe()
+  mode_rules, mode_transitions = compile_rules(args.rules_path)
 
-  msgs = nfa.validate()
-  if msgs:
-    for m in msgs:
-      errL(m)
-    exit(1)
+  mode_dfa_pairs = []
+  for mode, rules in sorted(mode_rules.items()):
+    if is_match_specified and mode != target_mode:
+      continue
+    if dbg:
+      errSL('\nmode:', mode)
+      for rule in rules:
+        rule.describe()
+      errL()
+    nfa = genNFA(mode, rules)
+    if dbg: nfa.describe()
 
-  fat_dfa = genDFA(nfa)
-  if dbg: fat_dfa.describe('Fat DFA')
+    msgs = nfa.validate()
+    if msgs:
+      errLL(*msgs)
+      exit(1)
 
-  min_dfa = minimizeDFA(fat_dfa)
-  if dbg: min_dfa.describe('Min DFA')
+    fat_dfa = genDFA(nfa)
+    if dbg: fat_dfa.describe('Fat DFA')
 
-  if args.match is not None:
-    for string in args.match:
-      match_string(nfa, fat_dfa, min_dfa, string)
+    min_dfa = minimizeDFA(fat_dfa)
+    if dbg: min_dfa.describe('Min DFA')
+    mode_dfa_pairs.append((mode, min_dfa))
 
+    if is_match_specified and mode == target_mode:
+      for string in args.match:
+        match_string(nfa, fat_dfa, min_dfa, string)
+      exit()
+
+    if dbg: errL('----')
+
+  if is_match_specified: failF('bad mode: {!r}', target_mode)
+
+  if dbg and mode_transitions:
+    errSL('\nmode transitions:')
+    for t in mode_transitions:
+      errL(t)
+
+  dfa, modes = combine_dfas(mode_dfa_pairs)
   if args.output is not None:
-    output(dfa=min_dfa, rules_path=args.rules_path, path=args.output, test=args.test,
+    output(dfa=dfa, modes=modes, mode_transitions=mode_transitions, rules_path=args.rules_path, path=args.output, test=args.test,
       type_prefix=args.type_prefix, license=args.license)
 
 
@@ -88,7 +112,8 @@ rule_re = re.compile(r'''(?x)
 def compile_rules(path):
   'Compile the rules given in the legs file at `path`.'
   rules = []
-  mode_transitions = []
+  mode_transitions = {}
+  rule_names = set()
   try: f = open(path)
   except FileNotFoundError:
     failF('legs error: no such rule file: {!r}', path)
@@ -99,19 +124,41 @@ def compile_rules(path):
     m = rule_re.fullmatch(line)
     if m.group('comment'): continue
     if m.group('l_name'): # mode transition.
-      mode_transitions.append(parse_mode_transition(line_info, m))
+      ((src_mode, src_name), dst_mode_name) = parse_mode_transition(line_info, m)
+      if src_name in mode_transitions:
+        fail_parse((line_info, 0), 'duplicate transition source: {!r}', src_name)
+      mode_transitions[src_name] = dst_mode_name
     else:
-      rules.append(compile_rule(line_info, m))
-  return rules, mode_transitions
+      rule = compile_rule(line_info, m)
+      if rule.name in rule_names:
+        fail_parse((line_info, 0), 'duplicate rule name: {!r}', rule.name)
+      rule_names.add(rule.name)
+      rules.append(rule)
+  return fan_seq_by_key(rules, lambda rule: rule.mode), mode_transitions
 
 
 def parse_mode_transition(line_info, match):
   return (
-    parse_name(line_info, match, 'l_name'),
-    parse_name(line_info, match, 'r_name'))
+    parse_mode_and_name(line_info, match, 'l_name'),
+    parse_mode_and_name(line_info, match, 'r_name'))
 
-def parse_name(line_info, match, key):
-  return match.group(key)
+def parse_mode_and_name(line_info, match, key):
+  name = match.group(key)
+  match = re.match(r'[a-z]\w*(\.\w+)?', name)
+  end = match.end() if match else 0
+  if end < len(name):
+    fail_parse((line_info, end), 'invalid name.')
+  return (mode_for_name(name), simplify_name(name))
+
+
+def simplify_name(name):
+  return name.replace('.', '_')
+
+
+def mode_for_name(name):
+  match = re.match(r'([^.]+)\.', name)
+  return match.group(1) if match else 'main'
+
 
 def compile_rule(line_info, match):
   esc_char = '\\' # default.
@@ -171,7 +218,8 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
   if parser_stack:
     fail_parse((line_info, end_col), 'expected terminator: {!r}', parser.terminator)
   rule = parser.finish()
-  rule.name = name
+  rule.name = simplify_name(name)
+  rule.mode = mode_for_name(name)
   rule.pattern = pattern[start_col:end_col].strip()
   return rule
 
@@ -292,6 +340,7 @@ class Rule:
     self.pos = pos
     self.subs = subs
     self.name = None
+    self.mode = None
     self.pattern = None
 
   def describe(self, depth=0):
@@ -392,7 +441,7 @@ class Charset(Rule):
   def inlineDescription(self): return ' {!r}'.format(self.chars)
 
 
-def genNFA(rules):
+def genNFA(mode, rules):
   '''
   Generate an NFA.
   The NFA can be used to match against an argument string,
@@ -409,14 +458,13 @@ def genNFA(rules):
 
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
-  dict_put(matchNodeNames, invalid, 'invalid')
+  mode_prefix = '' if (mode == 'main') else mode + '_'
+  dict_put(matchNodeNames, invalid, mode_prefix + 'invalid')
   for rule in sorted(rules, key=lambda rule: rule.name):
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
     assert rule.name
-    if rule.name in matchNodeNames:
-      failF('duplicate rule name: {!r}', rule.name)
-    matchNodeNames[matchNode] = rule.name
+    dict_put(matchNodeNames, matchNode, rule.name)
   literalRules = { rule.name : rule.literalPattern for rule in rules if rule.isLiteral }
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
@@ -712,7 +760,25 @@ class DFA(FA):
     return self.matchNodeNames.get(state)
 
 
-def output(dfa, rules_path, path, test, type_prefix, license):
+
+def combine_dfas(mode_dfa_pairs):
+  indexer = iter(count())
+  def mk_node(): return next(indexer)
+  transitions = {}
+  matchNodeNames = {}
+  literalRules = set()
+  modes = []
+  for mode, dfa in mode_dfa_pairs:
+    m = { node : mk_node() for node in sorted(dfa.allNodes) } # mapping `m` preserves existing order.
+    modes.append(Immutable(name=mode or 'main', start=m[0], invalid=m[1]))
+    def remap_trans_dict(d): return { c : m[dst] for c, dst in d.items() }
+    transitions.update((m[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
+    matchNodeNames.update((m[node], name) for node, name in sorted(dfa.matchNodeNames.items()))
+    literalRules.update(dfa.literalRules)
+  return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=dfa.literalRules), modes)
+
+
+def output(dfa, modes, mode_transitions, rules_path, path, test, type_prefix, license):
   name = path_name_stem(rules_path)
   ext = path_ext(path)
   supported_exts = ['.swift']
@@ -720,8 +786,8 @@ def output(dfa, rules_path, path, test, type_prefix, license):
     failF('output path has unknown extension {!r}; supported extensions are: {}.',
       ext, ', '.join(supported_exts))
   if ext == '.swift':
-    output_swift(dfa=dfa, rules_path=rules_path, path=path, test=test,
-     type_prefix=type_prefix, license=license)
+    output_swift(dfa=dfa, modes=modes, mode_transitions=mode_transitions, rules_path=rules_path, path=path, test=test,
+      type_prefix=type_prefix, license=license)
 
 
 def chars_desc(chars):

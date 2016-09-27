@@ -7,7 +7,8 @@ from pithy.fs import add_file_execute_permissions
 from pithy.string_utils import render_template
 
 
-def output_swift(dfa, rules_path, path, test, type_prefix, license):
+def output_swift(dfa, modes, mode_transitions, rules_path, path, test, type_prefix, license):
+  has_modes = len(modes) > 1
   preMatchNodes = dfa.preMatchNodes
   rule_name_kinds = { name : swift_safe_sym(name) for name in dfa.ruleNames }
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(rule_name_kinds.values())]
@@ -19,6 +20,11 @@ def output_swift(dfa, rules_path, path, test, type_prefix, license):
         return '"`{}`"'.format(swift_esc_str(literal))
     except KeyError: pass
     return swift_repr(name)
+
+  if has_modes:
+    mode_stack_decl = render_template('private var stack: [(${Name}TokenKind, Int)] = []', Name=type_prefix)
+  else:
+    mode_stack_decl = ''
 
   token_kind_case_descs = ['case .{}: return {}'.format(kind, rule_desc(name)) for name, kind in rule_name_kinds.items()]
 
@@ -104,6 +110,7 @@ def output_swift(dfa, rules_path, path, test, type_prefix, license):
     src = render_template(template,
       finish_cases='\n      '.join(finish_cases),
       license=license,
+      mode_stack_decl=mode_stack_decl,
       Name=type_prefix,
       path=path,
       rules_path=rules_path,
@@ -315,6 +322,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
   private var isFinished = false
   private var state: UInt = 0
+  ${mode_stack_decl}
   private var pos: Int = 0
   private var tokenPos: Int = 0
   private var tokenEnd: Int = 0
