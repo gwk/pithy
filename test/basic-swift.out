@@ -83,14 +83,20 @@ token: arg16:1:1-2: invalid
   ~
 
 arg17: "bb"
-token: arg17:1:1-3: invalid
+token: arg17:1:1-2: invalid
   bb
-  ~~
+  ~
+token: arg17:1:2-3: invalid
+  bb
+   ~
 
 arg18: "bccd"
-token: arg18:1:1-5: invalid
+token: arg18:1:1-3: invalid
   bccd
-  ~~~~
+  ~~
+token: arg18:1:3-5: invalid
+  bccd
+    ~~
 
 arg19: "e"
 token: arg19:1:1-2: invalid

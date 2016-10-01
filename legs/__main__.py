@@ -79,10 +79,10 @@ def main():
     for t in mode_transitions:
       errL(t)
 
-  dfa, modes = combine_dfas(mode_dfa_pairs)
+  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
   if args.output is not None:
-    output(dfa=dfa, modes=modes, mode_transitions=mode_transitions, rules_path=args.rules_path, path=args.output, test=args.test,
-      type_prefix=args.type_prefix, license=args.license)
+    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions,
+      rules_path=args.rules_path, path=args.output, test=args.test, type_prefix=args.type_prefix, license=args.license)
 
 
 def match_string(nfa, fat_dfa, min_dfa, string):
@@ -458,8 +458,8 @@ def genNFA(mode, rules):
 
   matchNodeNames = {}
   transitions = defaultdict(lambda: defaultdict(set))
-  mode_prefix = '' if (mode == 'main') else mode + '_'
-  dict_put(matchNodeNames, invalid, mode_prefix + 'invalid')
+  invalid_name = 'invalid' if (mode == 'main') else mode + '_invalid'
+  dict_put(matchNodeNames, invalid, invalid_name)
   for rule in sorted(rules, key=lambda rule: rule.name):
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
@@ -766,19 +766,22 @@ def combine_dfas(mode_dfa_pairs):
   def mk_node(): return next(indexer)
   transitions = {}
   matchNodeNames = {}
-  literalRules = set()
+  literalRules = {}
   modes = []
-  for mode, dfa in mode_dfa_pairs:
-    m = { node : mk_node() for node in sorted(dfa.allNodes) } # mapping `m` preserves existing order.
-    modes.append(Immutable(name=mode or 'main', start=m[0], invalid=m[1]))
-    def remap_trans_dict(d): return { c : m[dst] for c, dst in d.items() }
-    transitions.update((m[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
-    matchNodeNames.update((m[node], name) for node, name in sorted(dfa.matchNodeNames.items()))
+  node_modes = {}
+  for mode_name, dfa in mode_dfa_pairs:
+    remap = { node : mk_node() for node in sorted(dfa.allNodes) } # preserves existing order of dfa nodes.
+    mode = Immutable(name=mode_name, start=remap[0], invalid=remap[1], invalid_name=dfa.matchNodeNames[1])
+    modes.append(mode)
+    node_modes.update((node, mode) for node in remap.values())
+    def remap_trans_dict(d): return { c : remap[dst] for c, dst in d.items() }
+    transitions.update((remap[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
+    matchNodeNames.update((remap[node], name) for node, name in sorted(dfa.matchNodeNames.items()))
     literalRules.update(dfa.literalRules)
-  return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=dfa.literalRules), modes)
+  return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=literalRules), modes, node_modes)
 
 
-def output(dfa, modes, mode_transitions, rules_path, path, test, type_prefix, license):
+def output(dfa, modes, node_modes, mode_transitions, rules_path, path, test, type_prefix, license):
   name = path_name_stem(rules_path)
   ext = path_ext(path)
   supported_exts = ['.swift']
@@ -786,8 +789,8 @@ def output(dfa, modes, mode_transitions, rules_path, path, test, type_prefix, li
     failF('output path has unknown extension {!r}; supported extensions are: {}.',
       ext, ', '.join(supported_exts))
   if ext == '.swift':
-    output_swift(dfa=dfa, modes=modes, mode_transitions=mode_transitions, rules_path=rules_path, path=path, test=test,
-      type_prefix=type_prefix, license=license)
+    output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions,
+      rules_path=rules_path, path=path, test=test, type_prefix=type_prefix, license=license)
 
 
 def chars_desc(chars):
