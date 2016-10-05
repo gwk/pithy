@@ -52,7 +52,7 @@ def iter_excluding_str(seq):
   * because str should be treated as an atom/leaf value in a nested structure;
   * because the fact that elements of a str are themselves strings,
     which makes naive type-based recursion over sequences impossible.
-  ''' 
+  '''
   if isinstance(seq, str):
     raise TypeError('iter_excluding_str explictly treats str as non-iterable type')
   return iter(seq) # raises TypeError for non-iterables.
@@ -61,6 +61,15 @@ def iter_excluding_str(seq):
 def plural_s(count):
   "Return an 's' or '' depending on the count, for use in english language formatted strings."
   return '' if count == 1 else 's'
+
+
+def format_nonempty(fmt, string):
+  'format `string` into `format` unless `string` is empty.'
+  return '' if (string == '') else fmt.format(string)
+
+def prefix_nonempty(prefix, string):
+  'prepend `prefix` to `string` unless `string` is empty.'
+  return '' if (string == '') else (prefix + string)
 
 
 _byte_count_dec_magnitudes = [
