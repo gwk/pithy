@@ -13,7 +13,7 @@ from pithy.collection_utils import freeze
 from pithy.dict_utils import dict_filter_map, dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
-from pithy.io import errF, errFL, errL, errSL, errLL, failF, outFL
+from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
 from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_first
 from pithy.string_utils import prefix_nonempty
 from pithy.type_util import is_str
@@ -84,6 +84,11 @@ def main():
 
     if dbg: errL('----')
 
+    postMatchNodes = min_dfa.postMatchNodes
+    if postMatchNodes:
+      if not dbg: min_dfa.describe('Minimized DFA')
+      failS('error: minimized DFA contains post-match nodes:', *sorted(postMatchNodes))
+
   if is_match_specified: failF('bad mode: {!r}', target_mode)
 
   if dbg and mode_transitions:
@@ -133,10 +138,10 @@ def compile_rules(path, lines):
     m = rule_re.fullmatch(line)
     if m.group('comment'): continue
     if m.group('l_name'): # mode transition.
-      ((src_mode, src_name), dst_mode_name) = parse_mode_transition(line_info, m)
-      if src_name in mode_transitions:
-        fail_parse((line_info, 0), 'duplicate transition source: {!r}', src_name)
-      mode_transitions[src_name] = dst_mode_name
+      (src_pair, dst_pair) = parse_mode_transition(line_info, m)
+      if src_pair in mode_transitions:
+        fail_parse((line_info, 0), 'duplicate transition parent name: {!r}', src_pair[1])
+      mode_transitions[src_pair] = dst_pair
     else:
       rule = compile_rule(line_info, m)
       if rule.name in rule_names:
@@ -684,6 +689,20 @@ class FA:
     return frozenset(nodes)
 
   @property
+  def postMatchNodes(self):
+    matchNodes = self.matchNodes
+    nodes = set()
+    remaining = set(matchNodes)
+    while remaining:
+      node = remaining.pop()
+      for dst in self.dstNodes(node):
+        if dst not in matchNodes and dst not in nodes:
+          nodes.add(dst)
+          remaining.add(dst)
+    return frozenset(nodes)
+
+
+  @property
   def ruleNames(self): return frozenset(self.matchNodeNames.values())
 
   def describe(self, label=None):
@@ -778,7 +797,7 @@ def combine_dfas(mode_dfa_pairs):
   literalRules = {}
   modes = []
   node_modes = {}
-  for mode_name, dfa in mode_dfa_pairs:
+  for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
     remap = { node : mk_node() for node in sorted(dfa.allNodes) } # preserves existing order of dfa nodes.
     mode = Immutable(name=mode_name, start=remap[0], invalid=remap[1], invalid_name=dfa.matchNodeNames[1])
     modes.append(mode)

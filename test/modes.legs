@@ -1,0 +1,30 @@
+space: \_+
+sym: \w+
+comment_open: /\*
+sq: '
+dq: "
+paren_open: \(
+paren_close: \)
+
+comment.close: \*/
+comment.contents: [^*/]+
+comment.star: \*
+comment.slash: /
+comment.open_nested: /\*
+
+lit.sq: '
+lit.dq: "
+lit.backslash: \\
+lit.escape: \\[^]
+lit.contents: [^'"\\]+
+lit.interpolate_open: \\ \(
+
+paren_open -> paren_close
+lit.interpolate_open -> paren_close
+
+comment_open -> comment.close
+comment.open_nested -> comment.close
+
+sq -> lit.sq
+dq -> lit.dq
+

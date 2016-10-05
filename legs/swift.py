@@ -10,9 +10,10 @@ from pithy.string_utils import render_template
 
 def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, test, type_prefix, license):
   has_modes = len(modes) > 1
+  modes_by_name = { mode.name : mode for mode in modes }
+  pop_names = { name for mode, name in mode_transitions.values() }
+  parent_names_to_transition_pairs = { kv[0][1] : kv for kv in mode_transitions.items() }
   preMatchNodes = dfa.preMatchNodes
-  nonMatchNodes = dfa.nonMatchNodes
-  postMatchNodes = nonMatchNodes - preMatchNodes
   rule_name_kinds = { name : swift_safe_sym(name) for name in dfa.ruleNames }
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(rule_name_kinds.values())]
   start_nodes = { mode.start for mode in modes }
@@ -26,7 +27,8 @@ def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, tes
     return swift_repr(name)
 
   if has_modes:
-    mode_stack_decl = render_template('private var stack: [(${Name}TokenKind, Int)] = []', Name=type_prefix)
+    mode_stack_decl = render_template('  private var stack: [(childKind: ${Name}TokenKind, parentState: UInt)] = []',
+      Name=type_prefix)
   else:
     mode_stack_decl = ''
 
@@ -63,52 +65,79 @@ def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, tes
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
     return [byte_case(chars, dst, returns) for dst, chars in dst_chars_sorted]
 
+  def mode_pop_clause(kind, else_code):
+    return render_template('''\
+if let last = stack.last, last.childKind == .${kind} {
+  _ = stack.popLast()
+  restart(state: last.parentState)
+} else {
+  ${else_code}
+}''',
+      kind=kind,
+      else_code=else_code)
+
+  def mode_push_clause(parent_pair, child_pair):
+    parent_mode_name, parent_name = parent_pair
+    child_mode_name, child_name = child_pair
+    return render_template('''\
+stack.append((childKind: .${child_kind}, parentState: ${parent_state}))
+start_${child_mode_name}()''',
+      child_kind=rule_name_kinds[child_name],
+      parent_state=modes_by_name[parent_mode_name].start,
+      child_mode_name=child_mode_name)
+
   def transition_code(node):
-    # TODO: condense cases into ranges and tuple patterns.
-    mode = node_modes[node]
-    dst_mode_name = mode_transitions.get(mode.name, mode.name)
+    rule_name = dfa.matchNodeNames.get(node, 'invalid')
+    kind = rule_name_kinds[rule_name]
+    restart_code = 'start_{mode}()'.format(mode=node_modes[node].name)
+    if has_modes:
+      # if this a transition push node, replace restart code.
+      try: pairs = parent_names_to_transition_pairs[rule_name]
+      except KeyError: pass
+      else: restart_code = mode_push_clause(*pairs)
+      # if this is a pop node, pop code comes first.
+      # we currently allow a node to be both pop and push but this is questionable.
+      if rule_name in pop_names:
+        restart_code = mode_pop_clause(kind, else_code=restart_code)
+    default = '''\
+{restart_code}
+return flushToken(kind: .{kind})'''.format(
+      restart_code=restart_code,
+      kind=kind)
     d = dfa.transitions[node]
-    default = 'let token = flushToken(); start_{name}(byte: {byte}); return token'.format(
-      byte=('source.data[pos]' if node in postMatchNodes else 'byte'),
-      name=dst_mode_name)
     if not d: # no transitions; omit the switch and unconditionally take the default action.
-      return default
+      return default.replace('\n', '\n      ')
     # has transitions; need an inner switch.
+    # TODO: condense cases into ranges and tuple patterns.
     return render_template('''switch byte {
       ${byte_cases}
-      default: ${default}
+      default:
+        ${default}
       }''',
       byte_cases='\n      '.join(byte_cases(node, returns=True)),
-      default=default)
+      default=default.replace('\n', '\n        '))
 
   def state_case(node):
     mode = node_modes[node]
     if node in start_nodes:
-      return 'case {node}: start_{mode.name}(byte: byte); return nil'.format(mode=mode, node=node)
+      return 'case {node}: start_{mode.name}(); return nil'.format(mode=mode, node=node)
     name = dfa.matchNodeNames.get(node)
     if name:
-      kind = rule_name_kinds[name]
-      update_code = 'tokenEnd = pos; tokenKind = .{}'.format(kind)
-      desc = 'match'
+      desc = name
     elif node in preMatchNodes:
-      update_code = 'tokenEnd = pos; tokenKind = .{}'.format(mode.invalid_name)
-      desc = 'pre-match'
-    else: # post-match.
-      update_code = '// do not advance tokenEnd; backtrack on default case.'
-      desc = 'post-match'
-    return '''case {node}: // {mode.name} {desc}.
-      {update_code}
+      desc = mode.name + ' pre-match'
+    else:
+      desc = mode.name + ' post-match'
+    return '''case {node}: // {desc}.
       {transition_code}'''.format(
       desc=desc,
-      mode=mode,
       node=node,
-      update_code=update_code,
       transition_code=transition_code(node))
 
   state_cases = [state_case(node) for node in dfa_nodes]
 
   def start_fn(mode):
-    return render_template('''func start_${name}(byte: UInt8) {
+    return render_template('''func start_${name}() {
       switch byte {
       ${cases}
       default: state = ${invalid}
@@ -120,27 +149,21 @@ def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, tes
 
   start_fns = [start_fn(mode) for mode in modes]
 
-  def finish_case(node):
-    mode = node_modes[node]
-    name = dfa.matchNodeNames.get(node, mode.invalid_name)
-    kind=rule_name_kinds[name]
-    return 'case {node}: {update}state = {start}'.format(
-      node=node,
-      update=('' if node in postMatchNodes else 'tokenEnd = pos; tokenKind = .{}; '.format(kind)),
-      start=mode.start)
+  def restart_case(mode):
+    return 'case {mode.start}: start_{mode.name}()'.format(mode=mode)
 
-  finish_cases = [finish_case(node) for node in sorted(dfa.allNodes)]
+  restart_cases = [restart_case(mode) for mode in modes]
 
   with open(path, 'w', encoding='utf8') as f:
     if test:
       f.write('#!/usr/bin/env swift\n')
     src = render_template(template,
-      finish_cases='\n      '.join(finish_cases),
       license=license,
       mode_stack_decl=mode_stack_decl,
       Name=type_prefix,
       path=path,
       rules_path=rules_path,
+      restart_cases='\n      '.join(restart_cases) if has_modes else '',
       start_fns='\n    '.join(start_fns),
       state_cases='\n    '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
@@ -356,11 +379,9 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
   private var isFinished = false
   private var state: UInt = 0
-  ${mode_stack_decl}
+${mode_stack_decl}
   private var pos: Int = 0
   private var tokenPos: Int = 0
-  private var tokenEnd: Int = 0
-  private var tokenKind: ${Name}TokenKind = .invalid
 
   public init(source: ${Name}Source) {
     self.source = source
@@ -372,7 +393,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
       if byte == 0x0a {
         source.newlinePositions.append(pos)
       }
-      let token = step(byte: byte)
+      let token = step(byte: UInt16(byte))
       pos += 1
       if token != nil {
         return token
@@ -380,36 +401,35 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     }
     // text exhausted.
     if tokenPos < pos { // one or more tokens need to be flushed.
-      switch state {
-      ${finish_cases}
-      default: break
-      }
-      // flush any pending token, backtracking if we are in a post-match state.
-      return flushToken()
+      return step(byte: 0x100) // pass a 'byte' value that always defaults; may backtrack.
     }
     return nil
   }
 
   @inline(__always)
-  private mutating func step(byte: UInt8) -> ${Name}Token? {
+  private mutating func step(byte: UInt16) -> ${Name}Token? {
 
     ${start_fns}
+
+    func restart(state: UInt) {
+      switch state {
+      ${restart_cases}
+      default: fatalError("step.restart: invalid state: \(state)")
+      }
+    }
+
+    func flushToken(kind: ${Name}TokenKind) -> ${Name}Token {
+      let token = ${Name}Token(pos: self.tokenPos, end: pos, kind: kind)
+      self.tokenPos = pos
+      return token
+    }
 
     switch state {
 
     ${state_cases}
 
-    default: fatalError("lexer is in impossible state: \(state)")
+    default: fatalError("step: lexer is in impossible state: \(state)")
     }
-  }
-
-  private mutating func flushToken() -> ${Name}Token {
-    let end = self.tokenEnd
-    let token = ${Name}Token(pos: self.tokenPos, end: end, kind: self.tokenKind)
-    self.pos = end // backtrack to last match position. can take quadratic time for pathological rule/input cases.
-    self.tokenPos = end
-    self.tokenEnd = 0 // set purely for the Token init (pos < end) assertion. TODO: wrap in configuration guard.
-    return token
   }
 }
 '''
