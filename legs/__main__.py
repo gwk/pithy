@@ -15,6 +15,7 @@ from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, outFL
 from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_first
+from pithy.string_utils import prefix_nonempty
 from pithy.type_util import is_str
 
 from legs.swift import output_swift
@@ -692,13 +693,13 @@ class FA:
       errFL('  {}: {}', node, name)
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
-      errFL('  {}:', src)
+      errFL('  {}:{}', src, prefix_nonempty(' ', self.matchNodeNames.get(src, '')))
       dst_chars = defaultdict(set)
       for char, dst in d.items():
         dst_chars[dst].add(char)
       dst_sorted_chars = [(dst, sorted(chars)) for (dst, chars) in dst_chars.items()]
       for dst, chars in sorted(dst_sorted_chars, key=lambda p: p[1]):
-        errFL('    {} -> {}', chars_desc(chars), dst)
+        errFL('    {} -> {}{}', chars_desc(chars), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
 
 
