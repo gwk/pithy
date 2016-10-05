@@ -22,7 +22,8 @@ from legs.swift import output_swift
 
 def main():
   parser = ArgumentParser(prog='legs')
-  parser.add_argument('rules_path')
+  parser.add_argument('rules_path', nargs='?')
+  parser.add_argument('-patterns', nargs='+')
   parser.add_argument('-dbg', action='store_true')
   parser.add_argument('-match', nargs='+')
   parser.add_argument('-mode', default=None)
@@ -39,7 +40,17 @@ def main():
   if not is_match_specified and is_mode_specified:
     failF('`-mode` option only valid with `-match`.')
 
-  mode_rules, mode_transitions = compile_rules(args.rules_path)
+  if (args.rules_path is None) and args.patterns:
+    path = '<patterns>'
+    lines = args.patterns
+  elif (args.rules_path is not None) and not args.patterns:
+    path = args.rules_path
+    try: lines = open(path)
+    except FileNotFoundError:
+      failF('legs error: no such rule file: {!r}', path)
+  else:
+    failF('`must specify either `rules_path` or `-pattern`.')
+  mode_rules, mode_transitions = compile_rules(path, lines)
 
   mode_dfa_pairs = []
   for mode, rules in sorted(mode_rules.items()):
@@ -109,15 +120,12 @@ rule_re = re.compile(r'''(?x)
 ) \s* # ignore trailing space.
 ''')
 
-def compile_rules(path):
-  'Compile the rules given in the legs file at `path`.'
+def compile_rules(path, lines):
+  'Compile the rules given in `lines`.'
   rules = []
   mode_transitions = {}
   rule_names = set()
-  try: f = open(path)
-  except FileNotFoundError:
-    failF('legs error: no such rule file: {!r}', path)
-  for line_num, line in enumerate(f):
+  for line_num, line in enumerate(lines):
     line = line.rstrip() # always strip newline so that missing final newline is consistent.
     if not line: continue
     line_info = (path, line_num, line)
