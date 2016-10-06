@@ -152,7 +152,16 @@ return flushToken(kind: .{kind})'''.format(
   def restart_case(mode):
     return 'case {mode.start}: start_{mode.name}()'.format(mode=mode)
 
-  restart_cases = [restart_case(mode) for mode in modes]
+  if has_modes:
+    restart_cases = [restart_case(mode) for mode in modes]
+    start_fns.append(render_template('''func restart(state: UInt) {
+      switch state {
+      ${restart_cases}
+      default: fatalError("step.restart: invalid state: \(state)")
+      }
+    }''',
+      restart_cases='\n      '.join(restart_cases) if has_modes else ''))
+
 
   with open(path, 'w', encoding='utf8') as f:
     if test:
@@ -163,7 +172,6 @@ return flushToken(kind: .{kind})'''.format(
       Name=type_prefix,
       path=path,
       rules_path=rules_path,
-      restart_cases='\n      '.join(restart_cases) if has_modes else '',
       start_fns='\n    '.join(start_fns),
       state_cases='\n    '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
@@ -410,13 +418,6 @@ ${mode_stack_decl}
   private mutating func step(byte: UInt16) -> ${Name}Token? {
 
     ${start_fns}
-
-    func restart(state: UInt) {
-      switch state {
-      ${restart_cases}
-      default: fatalError("step.restart: invalid state: \(state)")
-      }
-    }
 
     func flushToken(kind: ${Name}TokenKind) -> ${Name}Token {
       let token = ${Name}Token(pos: self.tokenPos, end: pos, kind: kind)
