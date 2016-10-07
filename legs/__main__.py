@@ -252,10 +252,11 @@ def char_intervals(*intervals):
 
 escape_char_sets = {
   'd': char_intervals('09'),
-  'l': char_intervals('az', 'AZ'), # nonstandard 'letter' escape.
+  'l': char_intervals('az', 'AZ'), # nonstandard 'letter' set.
   'w': char_intervals('az', 'AZ', '09'),
   'n': '\n',
   't': '\t',
+  'x': char_intervals('09', 'af', 'AF'), # nonstandard hex digit set.
   '_': ' ', # nonstandard space escape.
 }
 escape_char_sets.update((c, c) for c in '\\|?*+()[]#')
