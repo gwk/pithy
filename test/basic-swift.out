@@ -73,25 +73,25 @@ arg15: "ab"
 token: arg15:1:1-2: `a`
   ab
   ~
-token: arg15:1:2-3: invalid
+token: arg15:1:2-3: incomplete
   ab
    ~
 
 arg16: "b"
-token: arg16:1:1-2: invalid
+token: arg16:1:1-2: incomplete
   b
   ~
 
 arg17: "bb"
-token: arg17:1:1-2: invalid
+token: arg17:1:1-2: incomplete
   bb
   ~
-token: arg17:1:2-3: invalid
+token: arg17:1:2-3: incomplete
   bb
    ~
 
 arg18: "bccd"
-token: arg18:1:1-3: invalid
+token: arg18:1:1-3: incomplete
   bccd
   ~~
 token: arg18:1:3-5: invalid
@@ -99,12 +99,12 @@ token: arg18:1:3-5: invalid
     ~~
 
 arg19: "e"
-token: arg19:1:1-2: invalid
+token: arg19:1:1-2: incomplete
   e
   ~
 
 arg20: "ef"
-token: arg20:1:1-3: invalid
+token: arg20:1:1-3: incomplete
   ef
   ~~
 
@@ -130,7 +130,7 @@ token: arg23:1:2-3: `a`
    ~
 
 arg24: "i"
-token: arg24:1:1-2: invalid
+token: arg24:1:1-2: incomplete
   i
   ~
 

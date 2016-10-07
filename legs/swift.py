@@ -15,7 +15,7 @@ def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, tes
   pop_names = { name for mode, name in mode_transitions.values() }
   parent_names_to_transition_pairs = { kv[0][1] : kv for kv in mode_transitions.items() }
   preMatchNodes = dfa.preMatchNodes
-  rule_name_kinds = { name : swift_safe_sym(name) for name in dfa.ruleNames }
+  rule_name_kinds = { name : swift_safe_sym(name) for name in chain(dfa.ruleNames, (mode.incomplete_name for mode in modes)) }
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(rule_name_kinds.values())]
   start_nodes = { mode.start for mode in modes }
 
@@ -33,7 +33,7 @@ def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, tes
   else:
     mode_stack_decl = ''
 
-  token_kind_case_descs = ['case .{}: return {}'.format(kind, rule_desc(name)) for name, kind in rule_name_kinds.items()]
+  token_kind_case_descs = ['case .{}: return {}'.format(kind, rule_desc(name)) for name, kind in sorted(rule_name_kinds.items())]
 
   dfa_nodes = sorted(dfa.transitions.keys())
 
@@ -78,7 +78,8 @@ start_${child_mode_name}()''',
       child_mode_name=child_mode_name)
 
   def transition_code(node):
-    rule_name = dfa.matchNodeNames.get(node, 'invalid')
+    mode = node_modes[node]
+    rule_name = dfa.matchNodeNames.get(node, mode.incomplete_name)
     kind = rule_name_kinds[rule_name]
     restart_code = 'start_{mode}()'.format(mode=node_modes[node].name)
     if has_modes:

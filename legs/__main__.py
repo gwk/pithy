@@ -114,7 +114,7 @@ def match_string(nfa, fat_dfa, min_dfa, string):
   min_dfa_match = min_dfa.match(string)
   if min_dfa_match != nfa_match:
     failF('match: {!r} inconsistent match: NFA: {}; min DFA: {}.', string, nfa_match, min_dfa_match)
-  outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'invalid')))
+  outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'incomplete')))
 
 
 rule_re = re.compile(r'''(?x)
@@ -190,7 +190,7 @@ def compile_rule(line_info, match):
     name = re.sub('\W+', '_', pattern.strip())
     if name[0].isdigit():
       name = '_' + name
-  if name == 'invalid':
+  if name in ('invalid', 'incomplete'):
     fail_parse((line_info, 0), 'rule name is reserved: {!r}.', name)
   return parse_rule_pattern(line_info=line_info, name=name, pattern=pattern, start_col=start_col, esc_char=esc_char)
 
@@ -458,11 +458,10 @@ class Charset(Rule):
 
 def genNFA(mode, rules):
   '''
-  Generate an NFA.
+  Generate an NFA from a set of rules.
   The NFA can be used to match against an argument string,
   but cannot produce a token stream directly.
-  The 'invalid' node is always unreachable,
-  and reserved for later use by the derived DFA.
+  The `invalid` node is unreachable, and reserved for later use by the derived DFA.
   '''
 
   indexer = iter(count())
@@ -471,10 +470,9 @@ def genNFA(mode, rules):
   start = mk_node() # always 0; see genDFA.
   invalid = mk_node() # always 1; see genDFA.
 
-  matchNodeNames = {}
+  matchNodeNames = { invalid: ('invalid' if (mode == 'main') else mode + '_invalid') }
+
   transitions = defaultdict(lambda: defaultdict(set))
-  invalid_name = 'invalid' if (mode == 'main') else mode + '_invalid'
-  dict_put(matchNodeNames, invalid, invalid_name)
   for rule in sorted(rules, key=lambda rule: rule.name):
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
@@ -486,22 +484,30 @@ def genNFA(mode, rules):
 
 def genDFA(nfa):
   '''
-  A DFA node is equivalent to a set of NFA nodes.
+  Generate a DFA from an NFA.
+
+  Internally, a DFA node is equivalent to a set of NFA nodes.
+  Note that this is easily confused with an NFA state (also a set of NFA nodes).
   A DFA has a node for every reachable subset of nodes in the corresponding NFA.
   In the worst case, there will be an exponential increase in number of nodes.
 
-  Each 'invalid' node is unreachable from its start node,
-  but we explicitly add transitions from 'invalid' to itself,
-  for all characters that are not transitions out of the 'start' state.
-  This allows the generated lexer code to use switch default cases to enter the invalid states,
-  and then continue consuming invalid characters until a start character is reached.
+  Unlike the NFA, the DFA's operational state is just a single node value.
 
-  For each state, the lexer switches on the current byte.
-  If the switch defaults, it flushes the pending token (either invalid or the last match),
-  and then performs the start transition as if it were at the start state.
-  `invalid` is itself a match state;
-  when in the invalid state, the lexer remains there until a valid character is encountered,
-  at which point it emits an 'invalid' token and restarts.
+  For each DFA node, there is a mapping from byte values to destination nodes.
+  Generating a lexer from a DFA is straightforward:
+  switch on the current state, and then for each node, switch on the current byte.
+  If the switch defaults, flush the pending token (either the matching kind or `incomplete`),
+  and then performs the start transition.
+
+  The `start` node is a special case; its default clause transitions to the `invalid` state.
+  `invalid` is a match state which transitions to itself for all characters that are not valid start characters.
+  `incomplete` is not itself a state, but rather a token kind distinct from `invalid`,
+  indicating a token that began to match but then defaulted before reaching a match state.
+  This distinction is important for error reporting;
+  lexical errors are found at the ends of `incomplete` nodes and the starts of `invalid` nodes.
+
+  Note that the `invalid` node is not reachable from `start` in the DFA;
+  we rely on the generated lexer to default into the invalid state.
   '''
 
   indexer = iter(count())
@@ -528,7 +534,7 @@ def genDFA(nfa):
       if dst_node not in transitions:
         remaining.add(dst_state)
 
-  # explicitly add `invalid_node`, which is otherwise not reachable.
+  # explicitly add transitions from `invalid_node`, which is otherwise not reachable.
   # `invalid_node` transitions to itself for all characters that do not transition from `start_node`.
   assert invalid_node not in transitions
   invalid_dict = transitions[invalid_node]
@@ -537,7 +543,9 @@ def genDFA(nfa):
     invalid_dict[c] = invalid_node
 
   # generate matchNodeNames.
-  all_node_names = defaultdict(set)
+  # nodes may match more than one rule when the rules overlap.
+  # we prefer 'literal' rules over others, but otherwise overlaps are treated as ambiguity errors.
+  all_node_names = defaultdict(set) # nodes to sets of names.
   for nfa_state, dfa_node in nfa_states_to_dfa_nodes.items():
     for nfa_node in nfa_state:
       try: name = nfa.matchNodeNames[nfa_node]
@@ -561,11 +569,14 @@ def genDFA(nfa):
 
 
 def minimizeDFA(dfa):
-  # sources:
-  # http://www.cs.sun.ac.za/rw711/resources/dfa-minimization.pdf.
-  # https://en.wikipedia.org/wiki/DFA_minimization.
-  # Note: this implementation of Hopcroft DFA minimization does not use the 'partition refinement' data structure.
-  # As a result it is noticeably slow.
+  '''
+  Optimize a DFA by coalescing redundant states.
+  sources:
+  * http://www.cs.sun.ac.za/rw711/resources/dfa-minimization.pdf.
+  * https://en.wikipedia.org/wiki/DFA_minimization.
+  Note: this implementation of Hopcroft DFA minimization does not yet use the 'partition refinement' data structure.
+  As a result it is noticeably slow.
+  '''
   alphabet = dfa.alphabet
   # start with a rough partition; match nodes are all distinct from each other,
   # and non-match nodes form an additional distinct set.
@@ -800,7 +811,9 @@ def combine_dfas(mode_dfa_pairs):
   node_modes = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
     remap = { node : mk_node() for node in sorted(dfa.allNodes) } # preserves existing order of dfa nodes.
-    mode = Immutable(name=mode_name, start=remap[0], invalid=remap[1], invalid_name=dfa.matchNodeNames[1])
+    incomplete_name = 'incomplete' if (mode_name == 'main') else mode_name + '_incomplete'
+    mode = Immutable(name=mode_name, start=remap[0], invalid=remap[1],
+      invalid_name=dfa.matchNodeNames[1], incomplete_name=incomplete_name)
     modes.append(mode)
     node_modes.update((node, mode) for node in remap.values())
     def remap_trans_dict(d): return { c : remap[dst] for c, dst in d.items() }
