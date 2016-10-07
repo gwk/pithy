@@ -6,6 +6,7 @@ from collections import defaultdict
 from itertools import chain
 from pithy.fs import add_file_execute_permissions
 from pithy.string_utils import render_template
+from pithy.seq import seq_int_intervals
 
 
 def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, test, type_prefix, license):
@@ -36,25 +37,15 @@ def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, tes
 
   dfa_nodes = sorted(dfa.transitions.keys())
 
-  def byte_case_ranges(chars):
-    ranges = []
-    for char in chars:
-      if not ranges:
-        ranges.append((char, char))
-      else:
-        low, prev = ranges[-1]
-        if prev + 1 == char:
-          ranges[-1] = (low, char)
-        else:
-          ranges.append((char, char))
+  def byte_case_patterns(chars):
     def fmt(l, h):
       if l == h: return hex(l)
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
-    return [fmt(*r) for r in ranges]
+    return [fmt(*r) for r in seq_int_intervals(chars)]
 
   def byte_case(chars, dst, returns):
     return 'case {chars}: state = {dst}{suffix}'.format(
-      chars=', '.join(byte_case_ranges(chars)),
+      chars=', '.join(byte_case_patterns(chars)),
       dst=dst,
       suffix='; return nil' if returns else '')
 
