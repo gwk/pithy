@@ -14,7 +14,7 @@ from pithy.dict_utils import dict_filter_map, dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
-from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_first
+from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_first, seq_int_intervals
 from pithy.string_utils import prefix_nonempty
 from pithy.type_util import is_str
 
@@ -718,7 +718,7 @@ class FA:
         dst_chars[dst].add(char)
       dst_sorted_chars = [(dst, sorted(chars)) for (dst, chars) in dst_chars.items()]
       for dst, chars in sorted(dst_sorted_chars, key=lambda p: p[1]):
-        errFL('    {} -> {}{}', chars_desc(chars), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
+        errFL('    {} ==> {}{}', chars_desc(chars), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
 
 
@@ -821,8 +821,12 @@ def output(dfa, modes, node_modes, mode_transitions, rules_path, path, test, typ
       rules_path=rules_path, path=path, test=test, type_prefix=type_prefix, license=license)
 
 
+def char_interval_desc(l, h):
+  if l == h: return char_descriptions[l]
+  return '{}-{}'.format(char_descriptions[l], char_descriptions[h])
+
 def chars_desc(chars):
-  return ' '.join(char_descriptions[c] for c in sorted(chars))
+  return ' '.join(char_interval_desc(*p) for p in seq_int_intervals(sorted(chars)))
 
 
 char_descriptions = {i : '{:02x}'.format(i) for i in range(0x100)}
