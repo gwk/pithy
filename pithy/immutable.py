@@ -10,7 +10,7 @@ class Immutable(object):
 
   def __setattr__(self, name, val):
     'write-once check before normal setattr.'
-    assert not hasattr(self, name)
+    if hasattr(self, name): raise ValueError(self) # Immutable attribute cannot be mutated.
     object.__setattr__(self, name, val)
 
   def __delattr__(self, name):
