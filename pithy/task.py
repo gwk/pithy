@@ -36,14 +36,14 @@ def dev_null():
   return _dev_null_file
 
 
-def run(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None, exp=0):
+def run(cmd, cwd=None, env=None, stdin=None, out=None, err=None, timeout=None, exp=0):
   '''
   Run a command and return (exit_code, std_out, std_err).
   Cmd: str or list of str.
   Cwd: str path.
+  Env: dict of str.
   Stdin: str, bytes, open binary file (including value of dev_null()).
   Out, err: open binary file or _pipe special.
-  Env: dict of str.
   Timeout: numeric or None.
   Exp: expected exit code can be None (accept any value), an integer code,
     or `...` (Ellipsis) to indicate any nonzero code.
@@ -116,7 +116,7 @@ def runC(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None):
   'Run a command and return exit code; optional out and err.'
   assert out is not _pipe
   assert err is not _pipe
-  c, o, e = run(cmd, cwd, stdin, out, err, env, timeout, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, exp=None)
   assert o is None
   assert e is None
   return c
@@ -125,7 +125,7 @@ def runC(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None):
 def runCO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None):
   'Run a command and return exit code, std out; optional err.'
   assert err is not _pipe
-  c, o, e = run(cmd, cwd, stdin, _pipe, err, env, timeout, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=None)
   assert e is None
   return c, o
 
@@ -133,21 +133,21 @@ def runCO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None):
 def runCE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None):
   'Run a command and return exit code, std err; optional out.'
   assert out is not _pipe
-  c, o, e = run(cmd, cwd, stdin, out, _pipe, env, timeout, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=None)
   assert o is None
   return c, e
 
 
 def runOE(cmd, cwd=None, stdin=None, env=None, timeout=None, exp=0):
   'Run a command and return (stdout, stderr) as strings; optional exp.'
-  c, o, e = run(cmd, cwd, stdin, _pipe, _pipe, env, timeout, exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, exp=exp)
   return o, e
 
 
 def runO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None, exp=0):
   'Run a command and return stdout as a string; optional err and exp.'
   assert err is not _pipe
-  c, o, e = run(cmd, cwd, stdin, _pipe, err, env, timeout, exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=exp)
   assert e is None
   return o
 
@@ -155,7 +155,7 @@ def runO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None, exp=0):
 def runE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None, exp=0):
   'Run a command and return stderr as a string; optional out and exp.'
   assert out is not _pipe
-  c, o, e = run(cmd, cwd, stdin, out, _pipe, env, timeout, exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=exp)
   assert o is None
   return e
 
