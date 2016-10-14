@@ -37,7 +37,8 @@ def seq_from_index(seq, start_index):
   return it
 
 
-def seq_int_intervals(seq):
+def seq_int_closed_intervals(seq):
+  'Given a sequence of integers, yield a sequence of closed intervals.'
   it = iter(seq)
   try: first = next(it)
   except StopIteration: return
@@ -45,7 +46,7 @@ def seq_int_intervals(seq):
   for i in it:
     l, h = interval
     if i < h:
-      raise ValueError('seq_int_intervals requires monotonically increasing elements')
+      raise ValueError('seq_int_closed_intervals requires monotonically increasing elements')
     if i == h: continue
     if i == h + 1:
       interval = (l, i)
