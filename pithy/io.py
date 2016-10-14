@@ -418,7 +418,7 @@ def parse_jsons(string, types=()):
 
   # create generator as inner function,
   # so that the file read above gets executed before returning the iterator.
-  # otherwise the file might get closed on closed prematurely by a context manager.
+  # otherwise the file might get closed prematurely by a context manager.
   def read_jsons_gen():
     idx = ws_re.match(string, 0).end()
     while idx < len(string):
