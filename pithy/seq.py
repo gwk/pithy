@@ -56,6 +56,31 @@ def seq_int_closed_intervals(seq):
   yield interval
 
 
+def seq_int_ranges(seq):
+  'Given a mixed sequence of ints, int ranges, and int pairs, yield a sequence of range pair tuples.' 
+
+  def pair_for_el(el):
+    if isinstance(el, range): return (el.start, el.stop)
+    if isinstance(el, int): return (el, el + 1)
+    if not isinstance(el, tuple) or len(el) != 2: raise ValueError(el)
+    return el
+
+  it = iter(seq)
+  try: low, end = pair_for_el(next(it))
+  except StopIteration: return
+  for el in it:
+    l, e = pair_for_el(el)
+    if e < l: raise ValueError(el)
+    if l < end: raise ValueError('seq_int_ranges requires monotonically increasing elements', end, l)
+    if l == end:
+      end = e
+    else:
+      yield (low, end)
+      low = l
+      end = e
+  yield (low, end)
+
+
 def fan_seq_by_index(seq, index, min_len=0):
   '''
   Fan out `seq` into a list of lists, with a minimum length of `min_len`,
