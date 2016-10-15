@@ -416,17 +416,11 @@ def parse_jsons(string, types=()):
   decoder = _json.JSONDecoder(object_hook=hook)
   ws_re = _json_dec.WHITESPACE
 
-  # create generator as inner function,
-  # so that the file read above gets executed before returning the iterator.
-  # otherwise the file might get closed prematurely by a context manager.
-  def read_jsons_gen():
-    idx = ws_re.match(string, 0).end()
-    while idx < len(string):
-      obj, end = decoder.raw_decode(string, idx)
-      yield obj
-      idx = ws_re.match(string, end).end()
-
-  return read_jsons_gen()
+  idx = ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.
+  while idx < len(string):
+    obj, end = decoder.raw_decode(string, idx)
+    yield obj
+    idx = ws_re.match(string, end).end()
 
 
 def read_json(file, types=()):
@@ -442,4 +436,9 @@ def read_json(file, types=()):
 
 
 def read_jsons(file, types=()):
+  # TODO: it seems like we ought to be able to stream the file into the parser,
+  # but JSONDecoder requires the entire string for a single JSON segment.
+  # Therefore in order to stream we would need to read into a buffer,
+  # count nesting tokens, identify object boundaries and create substrings to pass to the decoder.
+  # For now just read the whole thing at once.
   return parse_jsons(file.read(), types=types)
