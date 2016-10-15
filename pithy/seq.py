@@ -2,6 +2,8 @@
 
 # TODO: rename to something less common.
 
+from collections import defaultdict
+
 
 class DefaultList(list):
   'A subclass of `list` that adds default elements produced by a factory function when an out-of-bounds element is accessed.'
@@ -159,6 +161,24 @@ def window_seq(seq, width=2):
     if len(buffer) == length:
       yield tuple(buffer)
       del buffer[0]
+
+
+def seq_prefix_tree(seq_set, index=0, terminator=None):
+  'Make a nested mapping indicating shared prefixes from a set of sequences.'
+  d = {}
+  subsets = defaultdict(list)
+  # partition the sequences by leading element.
+  for seq in seq_set:
+    l = len(seq)
+    assert l >= index
+    if l  == index: # handle the terminal case immediately.
+      d[terminator] = None
+    else:
+      subsets[seq[index]].append(seq)
+  # recurse for each partition.
+  for el, subset in subsets.items():
+    d[el] = seq_prefix_tree(subset, index=index + 1, terminator=terminator)
+  return d
 
 
 class IterBuffer():
