@@ -59,7 +59,7 @@ def seq_int_closed_intervals(seq):
 
 
 def seq_int_ranges(seq):
-  'Given a mixed sequence of ints, int ranges, and int pairs, yield a sequence of range pair tuples.' 
+  'Given a mixed sequence of ints, int ranges, and int pairs, yield a sequence of range pair tuples.'
 
   def pair_for_el(el):
     if isinstance(el, range): return (el.start, el.stop)
@@ -126,6 +126,7 @@ def fan_seq_by_key(seq, key):
     group.append(el)
   return groups
 
+
 def fan_sorted_seq_by_comp(seq, comparison):
   '''
   Fan out `seq`, which must already be sorted,
@@ -151,6 +152,7 @@ def fan_sorted_seq_by_comp(seq, comparison):
   if group:
     groups.append(group)
   return groups
+
 
 def window_seq(seq, width=2):
   'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
