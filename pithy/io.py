@@ -373,7 +373,8 @@ def write_to_path(path, string):
 def _mk_json_types_hook(types):
   '''
   Provide a hook function that creates custom objects from json.
-  Types is a mapping from frozensets of json keys to type constructors.
+  `types` is a sequence of type objects, each of which must have a `_fields` property.
+  NamedTuple instances are compatible.
   '''
   if not types: return None
 
