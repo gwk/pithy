@@ -1,64 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import json as _json
-import json.decoder as _json_dec
-import json.encoder as _json_enc
-
 from pprint import pprint
 from sys import stdout, stderr
 
 from .string_utils import render_template
-
-
-class JsonEncoder(_json.JSONEncoder):
-  'More useful JSON encoder that handles all sequence types and treats named tuples as objects.'
-
-  def default(self, obj):
-    try:
-      return obj._asdict()
-    except AttributeError: pass
-    return list(obj)
-
-  def iterencode(self, o, _one_shot=False):
-    '''
-    Derived from Python/Lib/json/encoder.py.
-    Custom iterencode always avoids using c_make_encoder,
-    and passes hacked isinstance to _make_iterencode.'
-    '''
-    if self.check_circular:
-      markers = {}
-    else:
-      markers = None
-    if self.ensure_ascii:
-      _encoder = _json_enc.encode_basestring_ascii
-    else:
-      _encoder = _json_enc.encode_basestring
-
-    def floatstr(o, allow_nan=self.allow_nan,
-      _repr=float.__repr__, _inf=_json_enc.INFINITY, _neginf=-_json_enc.INFINITY):
-      if o != o:
-        text = 'NaN'
-      elif o == _inf:
-        text = 'Infinity'
-      elif o == _neginf:
-        text = '-Infinity'
-      else:
-        return _repr(o)
-      if not allow_nan:
-        raise ValueError(
-          "Out of range float values are not JSON compliant: " +
-          repr(o))
-      return text
-
-    def isinstance_hacked(obj, type):
-      'Prevent namedtuple types from being recognized as tuples, so that default is invoked.'
-      return isinstance(obj, type) and not hasattr(obj, '_asdict')
-
-    _iterencode = _json_enc._make_iterencode(
-      markers, self.default, _encoder, self.indent, floatstr,
-      self.key_separator, self.item_separator, self.sort_keys,
-      self.skipkeys, _one_shot, isinstance=isinstance_hacked)
-    return _iterencode(o, 0)
 
 
 # basic printing.
@@ -135,17 +80,6 @@ def writeP(file, *items, label=None, indent=2, **opts):
     pprint(item, stream=file, indent=indent, **opts)
 
 
-def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
-  'Write `items` as json to file.'
-  # TODO: remaining options with sensible defaults.
-  for item in items:
-    _json.dump(item, file, indent=indent, sort_keys=sort, cls=cls)
-    if end:
-      file.write(end)
-  if flush:
-    file.flush()
-
-
 # std out.
 
 def outZ(*items, sep='', end='', flush=False):
@@ -191,9 +125,6 @@ def outFL(fmt, *items, flush=False, **keyed_items):
 def outP(*items, label=None, flush=False, **opts):
   'Pretty print to std out.'
   writeP(stdout, *items, label=label, **opts)
-
-def out_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
-  write_json(stdout, *items, indent=indent, sort=sort, end=end, cls=cls, flush=flush)
 
 
 # std err.
@@ -241,10 +172,6 @@ def errFL(fmt, *items, flush=False, **keyed_items):
 def errP(*items, label=None, **opts):
   'Pretty print to std err.'
   writeP(stderr, *items, label=label, **opts)
-
-def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
-  'Write items as json to std err.'
-  write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls, flush=flush)
 
 
 def err_progress(iterator, label='progress', suffix='', frequency=0.1):
@@ -366,80 +293,3 @@ def write_to_path(path, string):
   with open(path, 'w') as f:
     f.write(string)
 
-
-# input.
-
-
-def _mk_json_types_hook(types):
-  '''
-  Provide a hook function that creates custom objects from json.
-  `types` is a sequence of type objects, each of which must have a `_fields` property.
-  NamedTuple instances are compatible.
-  '''
-  if not types: return None
-
-  type_map = { frozenset(t._fields) : t for t in types }
-  if len(type_map) < len(types):
-    # TODO: find all offending pairs.
-    raise ValueError('provided record types are ambiguous (identical field name sets).')
-
-  def _read_json_object_hook(d):
-    keys = frozenset(d.keys())
-    try:
-      record_type = type_map[keys]
-    except KeyError: return d
-    return record_type(**d)
-
-  return _read_json_object_hook
-
-
-def parse_json(string, types=()):
-  '''
-  Parse json from `string`.
-  If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
-  based on field name sets.
-  The sets of field names must be unambiguous for all provided record types.
-  '''
-  hook = _mk_json_types_hook(types)
-  return _json.loads(string, object_hook=hook)
-
-
-def parse_jsons(string, types=()):
-  '''
-  Parse multiple json objects from `string`.
-  If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
-  based on field name sets.
-  The sets of field names must be unambiguous for all provided record types.
-  '''
-  hook = _mk_json_types_hook(types)
-  decoder = _json.JSONDecoder(object_hook=hook)
-  ws_re = _json_dec.WHITESPACE
-
-  idx = ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.
-  while idx < len(string):
-    obj, end = decoder.raw_decode(string, idx)
-    yield obj
-    idx = ws_re.match(string, end).end()
-
-
-def read_json(file, types=()):
-  '''
-  Read json from `file`.
-  If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
-  based on field name sets.
-  The sets of field names must be unambiguous for all provided record types.
-  '''
-  hook = _mk_json_types_hook(types)
-  return _json.load(file, object_hook=hook)
-
-
-def read_jsons(file, types=()):
-  # TODO: it seems like we ought to be able to stream the file into the parser,
-  # but JSONDecoder requires the entire string for a single JSON segment.
-  # Therefore in order to stream we would need to read into a buffer,
-  # count nesting tokens, identify object boundaries and create substrings to pass to the decoder.
-  # For now just read the whole thing at once.
-  return parse_jsons(file.read(), types=types)
