@@ -80,7 +80,7 @@ class Transformer:
       return item
 
     self._add_stage(name, edit_fn)
-  
+
 
   def drop(self, fn):
     '''
@@ -98,7 +98,7 @@ class Transformer:
         log_fn('- {!r}\n', item)
         raise DropItem
       return item
-    
+
     self._add_stage(name, drop_fn)
 
 
@@ -132,7 +132,7 @@ class Transformer:
       if edited != item:
         log_fn('- {!r}\n+ {!r}\n', item, edited)
       return edited
-    
+
     self._add_stage(name, edit_fn)
 
 
@@ -159,7 +159,7 @@ class Transformer:
 
     self._add_stage(fn.__name__, put_fn)
 
-  
+
   def run(self):
 
     if not self.stages:
