@@ -680,7 +680,7 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
 
   with open(in_path, 'r') as i, open(out_path, 'w') as o, open(err_path, 'w') as e:
     try:
-      run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, exp=exp_code)
+      run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, timeout=timeout, exp=exp_code)
     except PermissionError:
       outFL('\n{} process permission error; make sure that you have proper ownership and permissions to execute set.', label)
       if msg_cmd: outFL('possible fix: `chmod +x {}`', shlex.quote(msg_cmd))
