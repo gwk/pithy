@@ -6,40 +6,48 @@ import json.decoder as _json_dec
 from sys import stdout
 
 
-class JsonEncoder(_json.JSONEncoder):
-  'JSONEncoder subclass that handles all sequence types.'
-
-  def default(self, obj):
-    try: return obj._asdict()
-    except AttributeError: pass
-    return list(obj)
-
-
-def write_json(file, *items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
-  'Write `items` as json to file.'
-  # TODO: remaining options with sensible defaults.
+def write_json(file, *items, default=list, sort=True, indent=2, end='\n', flush=False, **kwargs):
+  'Write each item in `items` as json to file.'
   for item in items:
-    _json.dump(item, file, indent=indent, sort_keys=sort, cls=cls)
+    _json.dump(item, file, indent=indent, default=default, sort_keys=sort, **kwargs)
     if end:
       file.write(end)
   if flush:
     file.flush()
 
 
-def err_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
+def err_json(*items, default=list, sort=True, indent=2, end='\n', flush=False, **kwargs):
   'Write items as json to std err.'
-  write_json(stderr, *items, indent=indent, sort=sort, end=end, cls=cls, flush=flush)
+  write_json(stderr, *items, default=default, sort=sort, indent=indent, **kwargs)
 
 
-def out_json(*items, indent=2, sort=True, end='\n', cls=JsonEncoder, flush=False):
-  write_json(stdout, *items, indent=indent, sort=sort, end=end, cls=cls, flush=flush)
+def out_json(*items, default=list, sort=True, indent=2, end='\n', flush=False, **kwargs):
+  write_json(stdout, *items, default=default, sort=sort, indent=indent, **kwargs)
 
+
+def write_jsonl(file, *items, default=list, sort=True, flush=False, **kwargs):
+  'Write each item in `items` as jsonl to file.'
+  for item in items:
+    _json.dump(item, file, indent=None, default=default, sort_keys=sort, **kwargs)
+    file.write('\n')
+  if flush:
+    file.flush()
+
+
+def err_jsonl(*items, default=list, sort=True, flush=False, **kwargs):
+  'Write items as jsonl to std err.'
+  write_jsonl(stderr, *items, default=default, sort=sort, flush=flush, **kwargs)
+
+
+def out_jsonl(*items, default=list, sort=True, flush=False, **kwargs):
+  'Write items as jsonl to std out.'
+  write_jsonl(stdout, *items, default=default, sort=sort, flush=flush, **kwargs)
 
 
 # input.
 
 
-def _mk_json_types_hook(types):
+def _mk_hook(types):
   '''
   Provide a hook function that creates custom objects from json.
   `types` is a sequence of type objects, each of which must have a `_fields` property.
@@ -62,6 +70,13 @@ def _mk_json_types_hook(types):
   return _read_json_object_hook
 
 
+def _mk_decoder(types):
+  return _json.JSONDecoder(object_hook=_mk_hook(types))
+
+
+_ws_re = _json_dec.WHITESPACE
+
+
 def parse_json(string, types=()):
   '''
   Parse json from `string`.
@@ -70,27 +85,7 @@ def parse_json(string, types=()):
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
   '''
-  hook = _mk_json_types_hook(types)
-  return _json.loads(string, object_hook=hook)
-
-
-def parse_jsons(string, types=()):
-  '''
-  Parse multiple json objects from `string`.
-  If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
-  based on field name sets.
-  The sets of field names must be unambiguous for all provided record types.
-  '''
-  hook = _mk_json_types_hook(types)
-  decoder = _json.JSONDecoder(object_hook=hook)
-  ws_re = _json_dec.WHITESPACE
-
-  idx = ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.
-  while idx < len(string):
-    obj, end = decoder.raw_decode(string, idx)
-    yield obj
-    idx = ws_re.match(string, end).end()
+  return _json.loads(string, object_hook=_mk_hook(types))
 
 
 def load_json(file, types=()):
@@ -101,8 +96,23 @@ def load_json(file, types=()):
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
   '''
-  hook = _mk_json_types_hook(types)
-  return _json.load(file, object_hook=hook)
+  return _json.load(file, object_hook=_mk_hook(types))
+
+
+def parse_jsons(string, types=()):
+  '''
+  Parse multiple json objects from `string`.
+  If `types` is a non-empty sequence,
+  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
+  based on field name sets.
+  The sets of field names must be unambiguous for all provided record types.
+  '''
+  decoder = _mk_decoder(types)
+  idx = _ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.
+  while idx < len(string):
+    obj, end = decoder.raw_decode(string, idx)
+    yield obj
+    idx = _ws_re.match(string, end).end()
 
 
 def load_jsons(file, types=()):
@@ -113,3 +123,13 @@ def load_jsons(file, types=()):
   # identify object boundaries and create substrings to pass to the decoder.
   # For now just read the whole thing at once.
   return parse_jsons(file.read(), types=types)
+
+
+def parse_jsonl(string, types=()):
+  hook = _mk_hook(types)
+  return (_json.loads(line, object_hook=hook) for line in string.splitlines())
+
+
+def load_jsonl(file, types=()):
+  hook = _mk_hook(types)
+  return (_json.loads(line, object_hook=hook) for line in file)
