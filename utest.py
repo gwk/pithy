@@ -29,7 +29,7 @@ def utest(exp, fn, *args, **kwargs):
     exc = e
   else:
     if exp == ret: return
-  log_failure('value', exp, ret, exc, fn.__qualname__, args, kwargs)
+  log_failure('value', exp=exp, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
 
 
 def utest_exc(exp_exc, fn, *args, **kwargs):
@@ -46,7 +46,7 @@ def utest_exc(exp_exc, fn, *args, **kwargs):
     if exceptions_eq(exp_exc, e): return
     ret = None
     exc = e
-  log_failure('exception', exp_exc, ret, exc, fn.__qualname__, args, kwargs)
+  log_failure('exception', exp=exp_exc, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
 
 
 def utest_val(exp_val, act_val, name):
@@ -57,7 +57,7 @@ def utest_val(exp_val, act_val, name):
   test_count += 1
   if exp_val == act_val:
     return
-  log_failure('value', exp_val, act_val, None, name, (), {})
+  log_failure('value', exp=exp_val, ret=act_val, exc=None, name=name, args=(), kwargs={})
 
 
 def log_failure(exp_prefix, exp, ret, exc, name, args, kwargs):
