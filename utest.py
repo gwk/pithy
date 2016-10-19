@@ -111,7 +111,7 @@ def exceptions_eq(a, b):
 
 @atexit.register
 def report():
-  'At process exit, if any test failures occured, print a summary message and cause process to exit with status code 1.'
+  'At process exit, if any test failures occured, print a summary message and force process to exit with status code 1.'
   from os import _exit
   if failure_count > 0:
     print('\nutest ran: {}; failed: {}'.format(test_count, failure_count), file=stderr)
