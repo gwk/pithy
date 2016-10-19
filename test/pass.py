@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_exc, utest_val
+from utest import *
+
 
 utest(True, lambda: True)
+utest(True, lambda b: b, True)
 
+def raise_expected(): raise Exception('expected')
 
-def raise_expected():
-  raise Exception("expected")
+utest_exc(Exception('expected'), raise_expected)
 
-utest_exc(Exception("expected"), raise_expected)
-
+utest_seq([0], range, 1)
 
 utest_val(True, True, 'boolean test')
 utest_val(1,1, 'int test')

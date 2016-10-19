@@ -18,14 +18,15 @@ utest failure: raise_unexpected
   expected exception: Exception('expected',)
   raised exception: Exception('unexpected',)
 
-utest failure: gen
-  arg 0=[1]
-  expected sequence: [1, 2]
-  returned sequence: [1]
+utest failure: range
+  arg 0=0
+  expected sequence: [0]
+  returned sequence: []
 
 utest failure: <lambda>
-  expected sequence: [1, 2]
-  returned value: 1
+  expected sequence: [0]
+  returned value: 0
+  raised exception: TypeError("'int' object is not iterable",)
 
 utest failure: 'utest_val fail test'
   expected value: True

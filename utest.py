@@ -21,15 +21,12 @@ def utest(exp, fn, *args, **kwargs):
   '''
   global test_count
   test_count += 1
-  try:
-    ret = fn(*args, **kwargs)
-    exc = None
-  except BaseException as e:
-    ret = None
-    exc = e
+  try: ret = fn(*args, **kwargs)
+  except BaseException as exc:
+    log_failure(exp_label='value', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
   else:
-    if exp == ret: return
-  log_failure(exp_label='value', exp=exp, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
+    if exp != ret:
+      log_failure(exp_label='value', exp=exp, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
 def utest_exc(exp_exc, fn, *args, **kwargs):
@@ -39,14 +36,12 @@ def utest_exc(exp_exc, fn, *args, **kwargs):
   '''
   global test_count
   test_count += 1
-  try:
-    ret = fn(*args, **kwargs)
-    exc = None
-  except BaseException as e:
-    if exceptions_eq(exp_exc, e): return
-    ret = None
-    exc = e
-  log_failure(exp_label='exception', exp=exp_exc, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
+  try: ret = fn(*args, **kwargs)
+  except BaseException as exc:
+    if not exceptions_eq(exp_exc, exc):
+      log_failure(exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
+  else:
+    log_failure(exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
 def utest_seq(exp_seq, fn, *args, **kwargs):
@@ -60,32 +55,32 @@ def utest_seq(exp_seq, fn, *args, **kwargs):
   exp = list(exp_seq) # convert to a list for referential isolation and consistent string repr.
   try:
     ret_seq = fn(*args, **kwargs)
-  except BaseException as e:
-    log_failure(exp_label='sequence', exp=exp, exc=e, name=fn.__qualname__, args=args, kwargs=kwargs)
+  except BaseException as exc:
+    log_failure(exp_label='sequence', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
     return
   try:
     ret = list(ret_seq)
-  except BaseException as e:
-    log_failure(exp_label='sequence', exp=exp, ret=ret_seq, name=fn.__qualname__, args=args, kwargs=kwargs)
+  except BaseException as exc:
+    log_failure(exp_label='sequence', exp=exp, ret_label='value', ret=ret_seq, exc=exc, subj=fn, args=args, kwargs=kwargs)
     return
-  if exp == ret: return
-  log_failure(exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, name=fn.__qualname__, args=args, kwargs=kwargs)
+  if exp != ret:
+    log_failure(exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_val(exp_val, act_val, name):
+def utest_val(exp_val, act_val, desc):
   '''
   Log a test failure if `exp_val` does not equal `act_val`.
   '''
   global test_count
   test_count += 1
-  if exp_val == act_val:
-    return
-  log_failure(exp_label='value', exp=exp_val, ret=act_val, exc=None, name=repr(name))
+  if exp_val != act_val:
+    log_failure(exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def log_failure(exp_label, exp, ret_label='value', ret=None, exc=None, name=None, args=(), kwargs={}):
+def log_failure(exp_label, exp, ret_label=None, ret=None, exc=None, subj=None, args=(), kwargs={}):
   global failure_count
-  assert name is not None
+  assert subj is not None
+  name = subj if isinstance(subj, str) else subj.__qualname__
   failure_count += 1
   msg_lines = ['utest failure: ' + name]
   def msg(fmt, *items): msg_lines.append(('  ' + fmt).format(*items))
@@ -94,9 +89,9 @@ def log_failure(exp_label, exp, ret_label='value', ret=None, exc=None, name=None
   for name, val, in sorted(kwargs.items()):
     msg('arg {}={!r}', name, val)
   msg('expected {}: {!r}', exp_label, exp)
-  if exc is None: # unexpected value.
+  if ret_label: # unexpected value.
     msg('returned {}: {!r}', ret_label, ret)
-  else: # unexpected exception.
+  if exc is not None: # unexpected exception.
     msg('raised exception: {!r}', exc)
   print(*msg_lines, sep='\n', end='\n\n', file=stderr)
 
