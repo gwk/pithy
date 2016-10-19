@@ -29,6 +29,7 @@ def main():
   parser.add_argument('-match', nargs='+')
   parser.add_argument('-mode', default=None)
   parser.add_argument('-output')
+  parser.add_argument('-stats', action='store_true')
   parser.add_argument('-test', action='store_true')
   parser.add_argument('-type-prefix', default='')
   parser.add_argument('-license', default='NO LICENSE SPECIFIED')
@@ -64,6 +65,7 @@ def main():
       errL()
     nfa = genNFA(mode, rules)
     if dbg: nfa.describe()
+    if dbg or args.stats: nfa.describe_stats()
 
     msgs = nfa.validate()
     if msgs:
@@ -72,9 +74,11 @@ def main():
 
     fat_dfa = genDFA(nfa)
     if dbg: fat_dfa.describe('Fat DFA')
+    if dbg or args.stats: fat_dfa.describe_stats('Fat DFA')
 
     min_dfa = minimizeDFA(fat_dfa)
     if dbg: min_dfa.describe('Min DFA')
+    if dbg or args.stats: min_dfa.describe_stats('Min DFA')
     mode_dfa_pairs.append((mode, min_dfa))
 
     if is_match_specified and mode == target_mode:
@@ -732,6 +736,14 @@ class FA:
       for dst, chars in sorted(dst_sorted_chars, key=lambda p: p[1]):
         errFL('    {} ==> {}{}', chars_desc(chars), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
+
+  def describe_stats(self, label=None):
+    errFL('{}:', label or type(self).__name__)
+    errFL('  matchNodeNames: {}', len(self.matchNodeNames))
+    errFL('  nodes: {}', len(self.transitions))
+    errFL('  transitions: {}', sum(len(d) for d in self.transitions.values()))
+    errL()
+
 
 
 class NFA(FA):
