@@ -14,9 +14,11 @@ from pithy.dict_utils import dict_filter_map, dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
-from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_first, seq_int_intervals
+from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_prefix_tree, seq_first, seq_int_closed_intervals
 from pithy.string_utils import prefix_nonempty
 from pithy.type_util import is_str
+
+from unico import all_plane_ranges
 
 from legs.swift import output_swift
 
@@ -90,8 +92,7 @@ def main():
 
     postMatchNodes = min_dfa.postMatchNodes
     if postMatchNodes:
-      if not dbg: min_dfa.describe('Minimized DFA')
-      failS('error: minimized DFA contains post-match nodes:', *sorted(postMatchNodes))
+      errSL('note: minimized DFA contains post-match nodes:', *sorted(postMatchNodes))
 
   if is_match_specified: failF('bad mode: {!r}', target_mode)
 
@@ -289,10 +290,10 @@ class PatternParser:
     elif c == '*': self.quantity(pos, c, Star)
     elif c == '+': self.quantity(pos, c, Plus)
     else:
-      self.seq.append(Charset(pos, chars=c))
+      self.seq.append(Charset(pos, codes=[ord(c)]))
 
   def parse_escaped(self, pos, chars):
-    self.seq.append(Charset(pos, chars=chars))
+    self.seq.append(Charset(pos, codes=[ord(c) for c in chars]))
 
   def finish(self):
     self.flush_seq(pos=None)
@@ -321,9 +322,15 @@ class CharsetParser():
   def __init__(self, pos):
     self.pos = pos
     self.terminator = ']'
-    self.chars = set()
+    self.codes = set()
     self.fresh = True
     self.invert = False
+
+  def add_char(self, pos, c):
+    code = ord(c)
+    if code in self.codes:
+      fail_parse(pos, 'repeated character in set: {!r}.', c)
+    self.codes.add(code)
 
   def parse(self, pos, c):
     if self.fresh:
@@ -331,22 +338,15 @@ class CharsetParser():
       if c == '^':
         self.invert = True
         return
-    if self.invert and len(c.encode()) != 1:
-      fail_parse(pos, 'non-ASCII character cannot be used within an inverted character set: {!r}.', c)
-    if c in self.chars:
-      fail_parse(pos, 'repeated character in set: {!r}.', c)
-    self.chars.add(c)
+    self.add_char(pos, c)
 
   def parse_escaped(self, pos, escaped_chars):
-    self.chars.update(escaped_chars)
+    for c in escaped_chars:
+      self.add_char(pos, c)
 
   def finish(self):
-    if self.invert:
-      chars = set(chr(i) for i in range(0x80)) - self.chars
-      # TODO: support non-ascii?
-    else:
-      chars = self.chars
-    return Charset(self.pos, chars=''.join(sorted(chars)))
+    codes = (all_unicode_points - self.codes) if self.invert else self.codes
+    return Charset(self.pos, codes=sorted(codes))
 
 
 empty = -1
@@ -436,28 +436,34 @@ class Plus(Quantity):
 
 class Charset(Rule):
 
-  def __init__(self, pos, chars):
+  def __init__(self, pos, codes):
     super().__init__(pos=pos)
-    assert isinstance(chars, str)
-    if not chars: fail_parse(pos, 'empty character set.')
-    self.chars = chars
+    assert isinstance(codes, list)
+    if not codes: fail_parse(pos, 'empty character set.')
+    self.codes = codes
 
   def genNFA(self, mk_node, transitions, start, end):
-    for char in self.chars:
-      assert isinstance(char, str)
-      bytes_ = char.encode()
-      intermediates = [mk_node() for i in range(1, len(bytes_))]
-      for byte, src, dst in zip(bytes_, [start] + intermediates, intermediates + [end]):
-        transitions[src][byte].add(dst)
+
+    def walk(seq_map, node):
+      for byte, sub_map in seq_map.items():
+        if byte is None: continue # handled by parent frame of `walk`.
+        if None in sub_map:
+          transitions[node][byte].add(end)
+          if len(sub_map) == 1: continue # no need to recurse.
+        next_node = mk_node()
+        transitions[node][byte].add(next_node)
+        walk(sub_map, next_node)
+
+    walk(seq_prefix_tree(chr(code).encode() for code in self.codes), start)
 
   @property
-  def isLiteral(self): return len(self.chars) == 1
+  def isLiteral(self): return len(self.codes) == 1
 
   @property
-  def literalPattern(self): return self.chars
+  def literalPattern(self): return chr(seq_first(self.codes))
 
   @property
-  def inlineDescription(self): return ' {!r}'.format(self.chars)
+  def inlineDescription(self): return ' ' + codes_desc(self.codes)
 
 
 def genNFA(mode, rules):
@@ -717,7 +723,6 @@ class FA:
           remaining.add(dst)
     return frozenset(nodes)
 
-
   @property
   def ruleNames(self): return frozenset(self.matchNodeNames.values())
 
@@ -734,7 +739,7 @@ class FA:
         dst_chars[dst].add(char)
       dst_sorted_chars = [(dst, sorted(chars)) for (dst, chars) in dst_chars.items()]
       for dst, chars in sorted(dst_sorted_chars, key=lambda p: p[1]):
-        errFL('    {} ==> {}{}', chars_desc(chars), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
+        errFL('    {} ==> {}{}', codes_desc(chars), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
 
   def describe_stats(self, label=None):
@@ -847,17 +852,23 @@ def output(dfa, modes, node_modes, mode_transitions, rules_path, path, test, typ
       rules_path=rules_path, path=path, test=test, type_prefix=type_prefix, license=license)
 
 
-def char_interval_desc(l, h):
-  if l == h: return char_descriptions[l]
-  return '{}-{}'.format(char_descriptions[l], char_descriptions[h])
-
-def chars_desc(chars):
-  return ' '.join(char_interval_desc(*p) for p in seq_int_intervals(sorted(chars)))
+all_unicode_points = frozenset(chain.from_iterable(range(*r) for r in all_plane_ranges))
 
 
-char_descriptions = {i : '{:02x}'.format(i) for i in range(0x100)}
+def codes_desc(codes):
+  return ' '.join(codes_interval_desc(*p) for p in seq_int_closed_intervals(sorted(codes)))
 
-char_descriptions.update({
+def codes_interval_desc(l, h):
+  if l == h: return code_desc(l)
+  return '{}-{}'.format(code_desc(l), code_desc(h))
+
+def code_desc(c):
+  try: return code_descriptions[c]
+  except KeyError: return '{:02x}'.format(c)
+
+code_descriptions = {c : '{:02x}'.format(c) for c in range(0x100)}
+
+code_descriptions.update({
   -1: 'Ø',
   ord('\a'): '\\a',
   ord('\b'): '\\b',
@@ -869,7 +880,7 @@ char_descriptions.update({
   ord(' '): '\_',
 })
 
-char_descriptions.update((i, chr(i)) for i in range(ord('!'), 0x7f))
+code_descriptions.update((i, chr(i)) for i in range(ord('!'), 0x7f))
 
 
 if __name__ == "__main__": main()
