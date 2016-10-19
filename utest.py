@@ -102,9 +102,11 @@ def log_failure(exp_label, exp, ret_label='value', ret=None, exc=None, name=None
 
 
 def exceptions_eq(a, b):
-  'Compare two exceptions; since Python exceptions do not implement value equality; we do our best here.'
-  if type(a) != type(b): return False
-  return a.args == b.args
+  '''
+  Compare two exceptions for approximate value equality.
+  Since Python exceptions do not implement value equality; we do our best here.
+  '''
+  return type(a) == type(b) and a.args == b.args
 
 
 @atexit.register
