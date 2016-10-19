@@ -7,7 +7,7 @@ import atexit
 from sys import stderr
 
 
-__all__ = ['utest', 'utest_exc', 'utest_val']
+__all__ = ['utest', 'utest_exc', 'utest_seq', 'utest_val']
 
 
 test_count = 0
@@ -29,7 +29,7 @@ def utest(exp, fn, *args, **kwargs):
     exc = e
   else:
     if exp == ret: return
-  log_failure('value', exp=exp, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
+  log_failure(exp_label='value', exp=exp, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
 
 
 def utest_exc(exp_exc, fn, *args, **kwargs):
@@ -46,7 +46,30 @@ def utest_exc(exp_exc, fn, *args, **kwargs):
     if exceptions_eq(exp_exc, e): return
     ret = None
     exc = e
-  log_failure('exception', exp=exp_exc, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
+  log_failure(exp_label='exception', exp=exp_exc, ret=ret, exc=exc, name=fn.__qualname__, args=args, kwargs=kwargs)
+
+
+def utest_seq(exp_seq, fn, *args, **kwargs):
+  '''
+  Invoke `fn` with `args` and `kwargs`,
+  and log a test failure if an exception is raised
+  or items of the returned seqence value does not equal the items of `exp`.
+  '''
+  global test_count
+  test_count += 1
+  exp = list(exp_seq) # convert to a list for referential isolation and consistent string repr.
+  try:
+    ret_seq = fn(*args, **kwargs)
+  except BaseException as e:
+    log_failure(exp_label='sequence', exp=exp, exc=e, name=fn.__qualname__, args=args, kwargs=kwargs)
+    return
+  try:
+    ret = list(ret_seq)
+  except BaseException as e:
+    log_failure(exp_label='sequence', exp=exp, ret=ret_seq, name=fn.__qualname__, args=args, kwargs=kwargs)
+    return
+  if exp == ret: return
+  log_failure(exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, name=fn.__qualname__, args=args, kwargs=kwargs)
 
 
 def utest_val(exp_val, act_val, name):
@@ -57,11 +80,12 @@ def utest_val(exp_val, act_val, name):
   test_count += 1
   if exp_val == act_val:
     return
-  log_failure('value', exp=exp_val, ret=act_val, exc=None, name=name, args=(), kwargs={})
+  log_failure(exp_label='value', exp=exp_val, ret=act_val, exc=None, name=repr(name))
 
 
-def log_failure(exp_prefix, exp, ret, exc, name, args, kwargs):
+def log_failure(exp_label, exp, ret_label='value', ret=None, exc=None, name=None, args=(), kwargs={}):
   global failure_count
+  assert name is not None
   failure_count += 1
   msg_lines = ['utest failure: ' + name]
   def msg(fmt, *items): msg_lines.append(('  ' + fmt).format(*items))
@@ -69,9 +93,9 @@ def log_failure(exp_prefix, exp, ret, exc, name, args, kwargs):
     msg('arg {}={!r}', i, el)
   for name, val, in sorted(kwargs.items()):
     msg('arg {}={!r}', name, val)
-  msg('expected {}: {!r}', exp_prefix, exp)
+  msg('expected {}: {!r}', exp_label, exp)
   if exc is None: # unexpected value.
-    msg('returned value: {!r}', ret)
+    msg('returned {}: {!r}', ret_label, ret)
   else: # unexpected exception.
     msg('raised exception: {!r}', exc)
   print(*msg_lines, sep='\n', end='\n\n', file=stderr)

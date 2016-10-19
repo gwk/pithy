@@ -18,7 +18,16 @@ utest failure: raise_unexpected
   expected exception: Exception('expected',)
   raised exception: Exception('unexpected',)
 
-utest failure: utest_val fail test
+utest failure: gen
+  arg 0=[1]
+  expected sequence: [1, 2]
+  returned sequence: [1]
+
+utest failure: <lambda>
+  expected sequence: [1, 2]
+  returned value: 1
+
+utest failure: 'utest_val fail test'
   expected value: True
   returned value: False
 
