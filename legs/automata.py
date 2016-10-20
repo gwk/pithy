@@ -29,7 +29,7 @@ class FA:
   at the cost of being less traditional.
 
   An automaton consists of two parts:
-  * transitions: dictionary of node to dictionary of character to destination.
+  * transitions: dictionary of source node to (dictionary of byte to destination node).
     * for DFAs, the destination is a single node.
     * for NFAs, the destination is a set of nodes, representing a subset of the next state.
   * matchNodeNames: the set of nodes that represent a match, and the corresponding name for each.
@@ -37,7 +37,7 @@ class FA:
   The starting state is always 0 for DFAs, and {0} for NFAs.
   Additionally, 1 and {1} are always the respective invalid states.
   When matching fails, the FA transitions to `invalid`,
-  where it will continue matching all characters that are not a transition from `initial`.
+  where it will continue matching all bytes that are not a transition from `initial`.
   This allows the FA to produce a stream of tokens that completely span any input string.
 
   `empty_symbol` is a reserved value (-1 is not part of the byte alphabet)
@@ -50,11 +50,11 @@ class FA:
     self.literalRules = literalRules
 
   @property
-  def allCharToStateDicts(self): return self.transitions.values()
+  def allBytetoStateDicts(self): return self.transitions.values()
 
   @property
   def alphabet(self):
-    return frozenset().union(*(d.keys() for d in self.allCharToStateDicts)) - {empty_symbol}
+    return frozenset().union(*(d.keys() for d in self.allBytetoStateDicts)) - {empty_symbol}
 
   @property
   def allSrcNodes(self): return frozenset(self.transitions.keys())
@@ -112,12 +112,12 @@ class FA:
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
       errFL('  {}:{}', src, prefix_nonempty(' ', self.matchNodeNames.get(src, '')))
-      dst_chars = defaultdict(set)
-      for char, dst in d.items():
-        dst_chars[dst].add(char)
-      dst_sorted_chars = [(dst, sorted(chars)) for (dst, chars) in dst_chars.items()]
-      for dst, chars in sorted(dst_sorted_chars, key=lambda p: p[1]):
-        errFL('    {} ==> {}{}', codes_desc(chars), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
+      dst_bytes = defaultdict(set)
+      for byte, dst in d.items():
+        dst_bytes[dst].add(byte)
+      dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
+      for dst, byte_set in sorted(dst_sorted_bytes, key=lambda p: p[1]):
+        errFL('    {} ==> {}{}', codes_desc(byte_set), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
 
   def describe_stats(self, label=None):
@@ -143,22 +143,22 @@ class NFA(FA):
         msgs.append('error: rule is trivially matched from start: {}.'.format(name))
     return msgs
 
-  def advance(self, state, char):
+  def advance(self, state, byte):
     nextState = set()
     for node in state:
-      try: dstNodes = self.transitions[node][char]
+      try: dstNodes = self.transitions[node][byte]
       except KeyError: pass
       else: nextState.update(dstNodes)
     return self.advanceEmpties(nextState)
 
-  def match(self, input, start=frozenset({0})):
-    if is_str(input):
-      input = input.encode()
+  def match(self, text, start=frozenset({0})):
+    if is_str(text):
+      text = text.encode()
     state = self.advanceEmpties(start)
     #errFL('NFA start: {}', state)
-    for char in input:
-      state = self.advance(state, char)
-      #errFL('NFA step: {} -> {}', bytes([char]), state)
+    for byte in text:
+      state = self.advance(state, byte)
+      #errFL('NFA step: {} -> {}', bytes([byte]), state)
     all_matches = frozenset(dict_filter_map(self.matchNodeNames, state))
     literal_matches = frozenset(n for n in all_matches if n in self.literalRules)
     return literal_matches or all_matches
@@ -183,15 +183,15 @@ class DFA(FA):
   def dstNodes(self, node):
     return frozenset(self.transitions[node].values())
 
-  def advance(self, state, char):
-    return self.transitions[state][char]
+  def advance(self, state, byte):
+    return self.transitions[state][byte]
 
-  def match(self, input, start=0):
-    if is_str(input):
-      input = input.encode()
+  def match(self, text, start=0):
+    if is_str(text):
+      text = text.encode()
     state = start
-    for char in input:
-      try: state = self.advance(state, char)
+    for byte in text:
+      try: state = self.advance(state, byte)
       except KeyError: return None
     return self.matchNodeNames.get(state)
 
