@@ -195,7 +195,7 @@ def compile_rule(line_info, match):
     if name[0].isdigit():
       name = '_' + name
   if name in ('invalid', 'incomplete'):
-    fail_parse((line_info, 0), 'rule name is reserved: {!r}.', name)
+    fail_parse((line_info, 0), 'rule name is reserved: {!r}', name)
   return parse_rule_pattern(line_info=line_info, name=name, pattern=pattern, start_col=start_col, esc_char=esc_char)
 
 
@@ -328,7 +328,7 @@ class CharsetParser():
   def add_char(self, pos, c):
     code = ord(c)
     if code in self.codes:
-      fail_parse(pos, 'repeated character in set: {!r}.', c)
+      fail_parse(pos, 'repeated character in set: {!r}', c)
     self.codes.add(code)
 
   def parse(self, pos, c):
