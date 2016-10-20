@@ -627,8 +627,8 @@ def minimizeDFA(dfa):
       try:
         existing = new_d[char]
         if existing != new_dst:
-          failF('inconsistency in minimized DFA: src state: {}->{}; char: {!r};' +
-            'dst state: {}->{} != ?->{}', old_node, new_node, char, old_dst, new_dst, existing)
+          failF('inconsistency in minimized DFA: src state: {}->{}; char: {!r}; dst state: {}->{} != ?->{}',
+            old_node, new_node, char, old_dst, new_dst, existing)
       except KeyError:
         new_d[char] = new_dst
 
