@@ -1,6 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 
+from typing import Mapping, Sequence, Union
+
 def dict_put(d: dict, k, v):
   '''
   Put a new key and value in the dictionary, or raise err KeyError if the key already exists.
@@ -32,13 +34,13 @@ def dict_list_extend(d: dict, k, v):
   return d
 
 
-def dict_set_defaults(d: dict, defaults: dict):
+def dict_set_defaults(d: dict, defaults: Union[Mapping, Sequence]):
   '''
   Call setdefault on the dictionary for each item in `defaults`,
   which can be either dictionary-like object implementing `items()` or a sequence of pairs.
   Returns the dictionary.
   '''
-  try: it = defaults.items()
+  try: it = defaults.items() # type: ignore.
   except AttributeError: it = defaults
   for k, v in it:
     d.setdefault(k, v)
@@ -46,7 +48,7 @@ def dict_set_defaults(d: dict, defaults: dict):
 
 
 def dict_filter_map(d: dict, seq):
-  'Map the values of `seq` through the dictionary, dropping any elements not in the dictionary.'  
+  'Map the values of `seq` through the dictionary, dropping any elements not in the dictionary.'
   for el in seq:
     try:
       yield d[el]

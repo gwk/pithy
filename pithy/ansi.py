@@ -51,6 +51,7 @@ CSI n T: Scroll whole page down by n (default 1) lines. New lines are added at t
 import re as _re
 
 from sys import stderr, stdout
+from typing import Any
 
 is_err_tty = stderr.isatty
 is_out_tty = stdout.isatty
@@ -64,17 +65,17 @@ CSI = '\x1B['
 ansi_ctrl_seq_re = _re.compile(r'\x1B\[.*?[hHJKlmsu]')
 
 
-def ansi_ctrl_seq(c, *args, on=True):
+def ansi_ctrl_seq(c: str, *args: Any, on=True) -> str:
   'Format a control sequence string for command character `c` and arguments.'
   return '{}{}{}'.format(CSI, ';'.join(str(a) for a in args), c) if on else ''
 
 
-def strip_ansi_ctrl_seq(text):
+def strip_ansi_ctrl_seq(text: str) -> str:
   'Strip control sequences from a string.'
   return ansi_ctrl_seq_re.sub('', text)
 
 
-def len_strip_ansi_ctrl_seq(s):
+def len_strip_ansi_ctrl_seq(s: str) -> int:
   'Calculate the length of string if control sequences were stripped.'
   l = len(s)
   for m in ansi_ctrl_seq_re.finditer(s):
@@ -82,7 +83,7 @@ def len_strip_ansi_ctrl_seq(s):
   return l
 
 
-def ansi_sgr(*seq, on=True):
+def ansi_sgr(*seq: Any, on=True) -> str:
   'Select Graphic Rendition control sequence string.'
   return ansi_ctrl_seq('m', *seq, on=on)
 
@@ -142,7 +143,7 @@ ALT_ENTER = ansi_ctrl_seq('?1049h')
 ALT_EXIT  = ansi_ctrl_seq('?1049l')
 
 
-def ansi_term_pos(x, y):
+def ansi_term_pos(x: int, y: int):
   '''
   position the cursor using 0-indexed x, y integer coordinates.
   (supposedly the 'f' suffix does the same thing).
@@ -150,7 +151,7 @@ def ansi_term_pos(x, y):
   return ansi_ctrl_seq('H', y + 1, x + 1)
 
 
-def ansi_show_cursor(show_cursor):
+def ansi_show_cursor(show_cursor: Any) -> str:
   return CURSOR_SHOW if ansi_show_cursor else CURSOR_HIDE
 
 

@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import json as _json
-import json.decoder as _json_dec
+import json.decoder as _json_dec # type: ignore
 
 from sys import stdout
 

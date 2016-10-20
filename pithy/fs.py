@@ -17,7 +17,7 @@ class MixedAbsoluteAndRelativePathsError(Exception): pass
 
 def executable_path():
   'Return the path to this executable.'
-  import __main__
+  import __main__ # type: ignore
   return _path.realpath(__main__.__file__)
 
 def executable_dir():

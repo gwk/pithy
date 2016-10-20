@@ -5,7 +5,7 @@ from types import FunctionType
 
 def bindings_matching(prefix=None, val_type=None, strip_prefix=True, frame='<module>'):
   '''
-  Return (name, value) pairs of bindings from the specified frame, 
+  Return (name, value) pairs of bindings from the specified frame,
   that match the specified prefix and type filters.
   Frame must be either an int (depth; immediate caller is 1),
   or a string (the name of the target frame's function, or '<module>', the default).
@@ -46,7 +46,7 @@ def dispatcher_for_names(prefix=None, default_name=None, default_fn=None, **rena
     if default_fn is not None:
       raise ValueError('default_name and default_fn cannot both be specified.')
     default_fn = bindings[default]
-  
+
   def dispatch_fn(name, *args, **kwargs):
     try:
       fn = bindings[name]
@@ -67,5 +67,5 @@ def rename(obj, name):
 
 def main_file_path():
   'Returns the main file path.'
-  import __main__
+  import __main__ # type: ignore
   return __main__.__file__
