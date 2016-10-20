@@ -129,7 +129,6 @@ rule_re = re.compile(r'''(?x)
 | (?P<name> [\w.]+ ) (?P<esc>\s+\\.)? \s* : \s* (?P<named_pattern> .*)
 | (?P<unnamed_pattern> .+) # must come last due to wildcard.
 )
-\s* # ignore trailing space.
 ''')
 
 def compile_rules(path, lines):
