@@ -584,38 +584,63 @@ def minimizeDFA(dfa):
   sources:
   * http://www.cs.sun.ac.za/rw711/resources/dfa-minimization.pdf.
   * https://en.wikipedia.org/wiki/DFA_minimization.
-  Note: this implementation of Hopcroft DFA minimization does not yet use the 'partition refinement' data structure.
-  As a result it is noticeably slow.
+  * https://www.ics.uci.edu/~eppstein/PADS/PartitionRefinement.py
   '''
   alphabet = dfa.alphabet
   # start with a rough partition; match nodes are all distinct from each other,
   # and non-match nodes form an additional distinct set.
-  partitions = {dfa.nonMatchNodes} | {frozenset({n}) for n in dfa.matchNodes}
-  remaining = set(partitions) # set of distinguishing sets used in refinement.
+  init_sets = [{n} for n in dfa.matchNodes] + [set(dfa.nonMatchNodes)]
+
+  sets = { id(s): s for s in init_sets }
+  partition = { n: s for s in sets.values() for n in s }
+
+  rev_transitions = defaultdict(lambda: defaultdict(set))
+  for src, d in dfa.transitions.items():
+    for char, dst in d.items():
+      rev_transitions[dst][char].add(src)
+
+  def refine(refining_set):
+    '''
+    Given refining set B,
+    Refine each set A in the partition to a pair of sets: A & B and A - B.
+    Return a list of pairs for each changed set;
+    one of these is a new set, the other is the mutated original.
+    '''
+    part_sets_to_intersections = defaultdict(set)
+    set_pairs = []
+    for node in refining_set:
+      s = partition[node]
+      part_sets_to_intersections[id(s)].add(node)
+    for id_s, intersection in part_sets_to_intersections.items():
+      s = sets[id_s]
+      if intersection != s:
+        sets[id(intersection)] = intersection
+        for x in intersection:
+          partition[x] = intersection
+        s -= intersection
+        set_pairs.append((intersection, s))
+    return set_pairs
+
+  remaining = list(init_sets) # distinguishing sets used to refine the partition.
   while remaining:
     a = remaining.pop() # a partition.
     for char in alphabet:
-      for b in list(partitions): # split `b`; does transition from `b` via `char` lead to a node in `a`?
-        refinement = fan_seq_by_pred(b, pred=lambda node: (dfa.transitions[node].get(char) in a))
-        # None is never in `a`, so `get` does what we want.
-        # note: this splitting operation is where the 'partition refinement' structure is supposed to be used for speed.
-        # using cProfile we can see that fan_seq_by_pred takes most the running time for a real-world lexer.
-        # TODO: fix this performance bottleneck.
-        if not all(refinement): continue # no real refinement; all in one or the other.
-        refinement_sets = [frozenset(p) for p in refinement]
-        partitions.remove(b)
-        partitions.update(refinement_sets)
-        if b in remaining:
-          remaining.remove(b)
-          remaining.update(refinement_sets)
-        else:
-          # crucial detail for performance:
-          # we only need one half of the split to distinguish all partitions;
-          # choosing the smaller of the two guarantees low time complexity.
-          remaining.add(min(refinement_sets, key=len))
+      # find all nodes `m` that transition via `char` to any node `n` in `a`.
+      dsts = set(chain.from_iterable(rev_transitions[node][char] for node in a))
+      #dsts_brute = [node for node in partition if dfa.transitions[node].get(char) in a] # brute force version is slow.
+      #assert set(dsts_brute) == dsts
+      len_dsts = len(dsts)
+      if len_dsts == 0 or len_dsts == len(partition): continue # no refinement.
+      for new, old in refine(dsts):
+        if len(new) < len(old): # prefer new.
+          if new not in remaining: remaining.append(new)
+          elif old not in remaining: remaining.append(old)
+        else: # prefer old.
+          if old not in remaining: remaining.append(old)
+          elif new not in remaining: remaining.append(new)
 
   mapping = {}
-  for new_node, part in enumerate(sorted(sorted(p) for p in partitions)):
+  for new_node, part in enumerate(sorted(sorted(p) for p in partition.values())):
     for old_node in part:
       mapping[old_node] = new_node
 
