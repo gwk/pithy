@@ -15,7 +15,7 @@ from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
 from pithy.seq import fan_seq_by_key, fan_seq_by_pred, seq_prefix_tree, seq_first, seq_int_closed_intervals
-from pithy.string_utils import prefix_nonempty
+from pithy.string_utils import plural_s, prefix_nonempty
 from pithy.type_util import is_str
 
 from unico import all_plane_ranges
@@ -90,9 +90,9 @@ def main():
 
     if dbg: errL('----')
 
-    postMatchNodes = min_dfa.postMatchNodes
-    if postMatchNodes:
-      errSL('note: minimized DFA contains post-match nodes:', *sorted(postMatchNodes))
+    post_matches = len(min_dfa.postMatchNodes)
+    if post_matches:
+      errFL('note: `{}`: minimized DFA contains {} post-match node{}', mode, post_matches, plural_s(post_matches))
 
   if is_match_specified: failF('bad mode: {!r}', target_mode)
 
