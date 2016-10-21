@@ -219,7 +219,7 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
     elif c == '#':
       end_col = col
       break
-    elif c.isspace():
+    elif c == ' ':
       continue
     elif not c.isprintable():
       fail_parse(pos, 'invalid non-printing character: {!r}'. c)
