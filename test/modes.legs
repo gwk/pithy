@@ -1,5 +1,5 @@
-space: \_+
-sym: \w+
+space: \s+
+sym: $Ascii_Letter+
 comment_open: /\*
 sq: '
 dq: "

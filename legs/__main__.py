@@ -295,13 +295,9 @@ def ranges_for_char(char):
   return ((code, code + 1),)
 
 escape_charsets = {
-  'd': ranges_from_strings('09'),
-  'l': ranges_from_strings('az', 'AZ'), # nonstandard 'letter' set.
-  'w': ranges_from_strings('09', 'AZ', 'az'),
-  'x': ranges_from_strings('09', 'AF', 'af'), # nonstandard hex digit set.
   'n': ranges_for_char('\n'),
+  's': ranges_for_char(' '), # nonstandard space escape.
   't': ranges_for_char('\t'),
-  '_': ranges_for_char(' '), # nonstandard space escape.
 }
 escape_charsets.update((c, ranges_for_char(c)) for c in '\\#|$?*+()[]&-^')
 

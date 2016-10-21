@@ -1,4 +1,4 @@
-space: \_
+space: \s
 a
 b_c_opt_d: bc?d
 e_f_star_g: ef*g
