@@ -17,6 +17,8 @@ def is_dict(val): return isinstance(val, dict)
 
 def is_tuple(val): return isinstance(val, tuple)
 
+def is_pair(val): return isinstance(val, tuple) and len(val) == 2
+
 def is_int_or_bool(val): return is_int(val) or is_bol(val)
 
 def is_list_of_str(val): return is_list(val) and all(is_str(el) for el in val)
@@ -27,7 +29,10 @@ def is_dict_of_str(val):
   return is_dict(val) and all(is_str(k) and is_str(v) for (k, v) in val.items())
 
 def is_pair_of_str(val):
-  return is_tuple(val) and len(val) == 2 and is_str(val[0]) and is_str(val[1])
+  return is_pair(val) and is_str(val[0]) and is_str(val[1])
+
+def is_pair_of_int(val):
+  return is_pair(val) and is_int(val[0]) and is_int(val[1])
 
 def is_str_or_list(val): return is_str(val) or is_list_of_str(val)
 
