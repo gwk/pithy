@@ -2,8 +2,23 @@
 
 from pithy.io import errFL, errL, errSL, errLL
 from pithy.seq import seq_prefix_tree, seq_first
+from pithy.type_util import is_pair_of_int
+from unico import codes_for_ranges
 
 from .automata import empty_symbol
+from .codepoints import codes_desc
+
+
+__all__ = [
+  'Charset',
+  'Choice',
+  'Opt',
+  'Plus',
+  'Quantity',
+  'Rule',
+  'Seq',
+  'Star',
+]
 
 
 class Rule:
@@ -91,11 +106,12 @@ class Plus(Quantity):
 
 class Charset(Rule):
 
-  def __init__(self, pos, codes):
+  def __init__(self, pos, ranges):
     super().__init__(pos=pos)
-    assert isinstance(codes, list)
-    assert codes
-    self.codes = codes
+    assert isinstance(ranges, tuple)
+    assert all(is_pair_of_int(p) for p in ranges)
+    assert ranges
+    self.ranges = ranges
 
   def genNFA(self, mk_node, transitions, start, end):
 
@@ -109,15 +125,15 @@ class Charset(Rule):
         transitions[node][byte].add(next_node)
         walk(sub_map, next_node)
 
-    walk(seq_prefix_tree(chr(code).encode() for code in self.codes), start)
+    walk(seq_prefix_tree(chr(code).encode() for code in codes_for_ranges(self.ranges)), start)
 
   @property
-  def isLiteral(self): return len(self.codes) == 1
+  def isLiteral(self): return len(self.ranges) == 1
 
   @property
-  def literalPattern(self): return chr(seq_first(self.codes))
+  def literalPattern(self): return chr(self.ranges[0][0])
 
   @property
-  def inlineDescription(self): return ' ' + codes_desc(self.codes)
+  def inlineDescription(self): return ' ' + codes_desc(self.ranges)
 
 

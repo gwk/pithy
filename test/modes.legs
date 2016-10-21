@@ -7,7 +7,7 @@ paren_open: \(
 paren_close: \)
 
 comment.close: \*/
-comment.contents: [^*/]+
+comment.contents: [$Ascii - */]+
 comment.star: \*
 comment.slash: /
 comment.open_nested: /\*
@@ -15,8 +15,8 @@ comment.open_nested: /\*
 lit.sq: '
 lit.dq: "
 lit.backslash: \\
-lit.escape: \\[^]
-lit.contents: [^'"\\]+
+lit.contents: [$Ascii - '"\\]+
+lit.escape: \\ [ $Ascii - ( ]
 lit.interpolate_open: \\ \(
 
 paren_open -> paren_close

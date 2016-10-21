@@ -12,12 +12,14 @@ from pithy.dict_utils import dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
-from pithy.seq import fan_seq_by_key, seq_int_closed_intervals
+from pithy.seq import fan_seq_by_key
 from pithy.string_utils import plural_s, prefix_nonempty
 
-from unico import all_plane_ranges
+from unico import codes_for_ranges, ranges_for_codes
+from unico.charsets import unicode_charsets
 
 from legs.automata import NFA, DFA, empty_symbol, genDFA, minimizeDFA
+from legs.codepoints import codes_desc
 from legs.rules import *
 from legs.swift import output_swift
 
@@ -200,27 +202,57 @@ def compile_rule(line_info, match):
   return parse_rule_pattern(line_info=line_info, name=name, pattern=pattern, start_col=start_col, esc_char=esc_char)
 
 
+_name_re = re.compile(r'\w')
+
 def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
   'Parse a single pattern and return a Rule object.'
+  line = line_info[2]
   parser_stack = [PatternParser((line_info, start_col))]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
   escape = False
-  end_col = len(pattern)
+  end_col = len(line)
+  name_pos = None # position of name currently being parsed or None.
+
+  def flush_name(col):
+    nonlocal name_pos
+    # column indices are into line, not pattern.
+    s = name_pos[1] + 1 # omit leading `$`.
+    name = line[s:col]
+    try: charset = unicode_charsets[name]
+    except KeyError: fail_parse(name_pos, 'unknown charset name: {!r}', name)
+    parser_stack[-1].parse_charset(name_pos, charset)
+    name_pos = None
+
   for col, c in enumerate(pattern, start_col):
     pos = (line_info, col)
     parser = parser_stack[-1]
+
     if escape:
       escape = False
-      try: escaped_chars = escape_char_sets[c]
+      try: charset = escape_charsets[c]
       except KeyError: fail_parse(pos, 'invalid escaped character: {!r}', c)
-      else: parser.parse_escaped(pos, escaped_chars)
-    elif c == esc_char:
+      else: parser.parse_charset(pos, charset)
+      continue
+
+    if name_pos is not None:
+      if _name_re.match(c):
+        continue
+      elif c in ' #)]?*+':
+        flush_name(col) # then proceed to regular parsing below.
+      elif c in '\\$([&-^':
+        fail_parse(pos, 'name must be terminated with a space character for readability.')
+      else:
+        fail_parse(pos, 'invalid name character: {!r}', c)
+
+    if c == esc_char:
       escape = True
     elif c == '#':
       end_col = col
       break
     elif c == ' ':
       continue
+    elif c == '$':
+      name_pos = pos
     elif not c.isprintable():
       fail_parse(pos, 'invalid non-printing character: {!r}'. c)
     elif c == parser.terminator:
@@ -231,15 +263,19 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
       child = parser.parse(pos, c)
       if child:
         parser_stack.append(child)
+
   if escape:
     fail_parse(pos, 'dangling escape: {!r}', esc_char)
+  if name_pos is not None:
+    flush_name(end_col)
+
   parser = parser_stack.pop()
   if parser_stack:
     fail_parse((line_info, end_col), 'expected terminator: {!r}', parser.terminator)
   rule = parser.finish()
   rule.name = simplify_name(name)
   rule.mode = mode_for_name(name)
-  rule.pattern = pattern[start_col:end_col].strip()
+  rule.pattern = pattern
   return rule
 
 
@@ -250,24 +286,28 @@ def fail_parse(pos, fmt, *items):
   failF('{}:{}:{}: ' + fmt + '\n{}\n{}^', path, line_num + 1, col + 1, *items, line_text, ' ' * col)
 
 
-def char_intervals(*intervals):
+def ranges_from_strings(*interval_strings):
   "Return a `str` object containing the specified range of characters denoted by each character pair."
-  points = frozenset().union(*(range(ord(i), ord(j) + 1) for i, j in intervals))
-  return ''.join(chr(p) for p in sorted(points))
+  return tuple((ord(start), ord(last) + 1) for start, last in interval_strings)
 
-escape_char_sets = {
-  'd': char_intervals('09'),
-  'l': char_intervals('az', 'AZ'), # nonstandard 'letter' set.
-  'w': char_intervals('az', 'AZ', '09'),
-  'n': '\n',
-  't': '\t',
-  'x': char_intervals('09', 'af', 'AF'), # nonstandard hex digit set.
-  '_': ' ', # nonstandard space escape.
+def ranges_for_char(char):
+  code = ord(char)
+  return ((code, code + 1),)
+
+escape_charsets = {
+  'd': ranges_from_strings('09'),
+  'l': ranges_from_strings('az', 'AZ'), # nonstandard 'letter' set.
+  'w': ranges_from_strings('09', 'AZ', 'az'),
+  'x': ranges_from_strings('09', 'AF', 'af'), # nonstandard hex digit set.
+  'n': ranges_for_char('\n'),
+  't': ranges_for_char('\t'),
+  '_': ranges_for_char(' '), # nonstandard space escape.
 }
-escape_char_sets.update((c, c) for c in '\\|?*+()[]#')
+escape_charsets.update((c, ranges_for_char(c)) for c in '\\#|$?*+()[]&-^')
 
-#for k, v in escape_char_sets.items():
-#  errFL('{}: {!r}', k, v)
+if False:
+  for k, v in sorted(escape_charsets.items()):
+    errFL('{}: {!r}', k, v)
 
 
 class PatternParser:
@@ -279,21 +319,21 @@ class PatternParser:
     self.seq = []
     self.seq_pos = pos
 
-  def parse(self, pos, c):
-    if c == '(':
+  def parse(self, pos, char):
+    if char == '(':
       return PatternParser(pos, terminator=')')
-    elif c == '[':
+    elif char == '[':
       return CharsetParser(pos)
-    elif c == '|':
+    elif char == '|':
       self.flush_seq(pos)
-    elif c == '?': self.quantity(pos, c, Opt)
-    elif c == '*': self.quantity(pos, c, Star)
-    elif c == '+': self.quantity(pos, c, Plus)
+    elif char == '?': self.quantity(pos, char, Opt)
+    elif char == '*': self.quantity(pos, char, Star)
+    elif char == '+': self.quantity(pos, char, Plus)
     else:
-      self.seq.append(Charset(pos, codes=[ord(c)]))
+      self.seq.append(Charset(pos, ranges=ranges_for_char(char)))
 
-  def parse_escaped(self, pos, chars):
-    self.seq.append(Charset(pos, codes=[ord(c) for c in chars]))
+  def parse_charset(self, pos, charset):
+    self.seq.append(Charset(pos, ranges=charset))
 
   def finish(self):
     self.flush_seq(pos=None)
@@ -318,36 +358,87 @@ class PatternParser:
 
 
 class CharsetParser():
+  '''
+  The Legs character set syntax is different from traditional regular expressions.
+  * `[...]` introduces a nested character set.
+  * `&` binary operator: set intersection.
+  * `-` binary operator: set difference.
+  * `^` binary operator: set symmetric difference.
+  Multiple intersection operators can be chained together,
+  but if a difference or set difference operator is used,
+  it must be the only operator to appear witihin the character set;
+  more complex expressions must be explicitly grouped.
+  Thus, the set expression syntax has no operator precedence or associativity.
+  '''
 
   def __init__(self, pos):
     self.pos = pos
     self.terminator = ']'
     self.codes = set()
-    self.fresh = True
-    self.invert = False
+    self.codes_left = None  # left operand to current operator.
+    self.operator = None # current operator waiting to finish parsing right side.
+    self.operator_pos = None
+    self.parsed_op = False
+    self.parsed_diff_op = False
 
-  def add_char(self, pos, c):
-    code = ord(c)
+  def add_code(self, pos, code):
     if code in self.codes:
-      fail_parse(pos, 'repeated character in set: {!r}', c)
+      fail_parse(pos, 'repeated character in set: {!r}', ord(code))
     self.codes.add(code)
 
-  def parse(self, pos, c):
-    if self.fresh:
-      self.fresh = False
-      if c == '^':
-        self.invert = True
-        return
-    self.add_char(pos, c)
+  def flush_left(self):
+    if not self.codes:
+      fail_parse(self.operator_pos or 0, 'empty charset.')
+    op = self.operator
+    if op is None: # first operator encountered.
+      assert self.codes_left is None
+      self.codes_left = self.codes
+    elif op == '&': self.codes_left &= self.codes
+    elif op == '-': self.codes_left -= self.codes
+    elif op == '^': self.codes_left ^= self.codes
+    else: raise ValueError(op) # internal error.
+    self.codes = set()
 
-  def parse_escaped(self, pos, escaped_chars):
-    for c in escaped_chars:
-      self.add_char(pos, c)
+  def push_operator(self, pos, op):
+    self.flush_left()
+    is_diff_op = self.operator in ('-', '^')
+    if self.parsed_diff_op or (self.parsed_op and is_diff_op):
+      fail_parse(pos, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`', op)
+    self.parsed_op = True
+    self.parsed_diff_op |= is_diff_op
+    self.operator = op
+    self.operator_pos = pos
+
+  def parse(self, pos, char):
+    if char == '[':
+      return CharsetParser(pos)
+    elif char in '&-^':
+      self.push_operator(pos, char)
+    else:
+      self.add_code(pos, ord(char))
+
+  def parse_charset(self, pos, charset):
+    for code in codes_for_ranges(charset):
+      self.add_code(pos, code)
+
+  def parse_name(self, pos, name):
+    assert self.current_name_pos is not None
+    assert self.current_name_chars is not None
+    if not self.current_name_chars:
+      fail_parse(self.current_name_pos, 'empty charset name.')
+    name = ''.join(self.current_name_chars)
+    try: named_charset = unicode_charsets[name]
+    except KeyError: fail_parse(self.current_name_pos, 'unknown charset name.')
+    self.codes.update(codes_for_ranges(named_charset))
+    self.current_name_pos = None
+    self.current_name_chars = None
+
 
   def finish(self):
-    codes = (all_unicode_points - self.codes) if self.invert else self.codes
+    if self.operator: self.flush_left()
+    codes = self.codes_left or self.codes
     if not codes: fail_parse(self.pos, 'empty character set.')
-    return Charset(self.pos, codes=sorted(codes))
+    return Charset(self.pos, ranges=tuple(ranges_for_codes(sorted(codes))))
 
 
 def genNFA(mode, rules):
@@ -408,37 +499,6 @@ def output(dfa, modes, node_modes, mode_transitions, rules_path, path, test, typ
   if ext == '.swift':
     output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions,
       rules_path=rules_path, path=path, test=test, type_prefix=type_prefix, license=license)
-
-
-all_unicode_points = frozenset(chain.from_iterable(range(*r) for r in all_plane_ranges))
-
-
-def codes_desc(codes):
-  return ' '.join(codes_interval_desc(*p) for p in seq_int_closed_intervals(sorted(codes)))
-
-def codes_interval_desc(l, h):
-  if l == h: return code_desc(l)
-  return '{}-{}'.format(code_desc(l), code_desc(h))
-
-def code_desc(c):
-  try: return code_descriptions[c]
-  except KeyError: return '{:02x}'.format(c)
-
-code_descriptions = {c : '{:02x}'.format(c) for c in range(0x100)}
-
-code_descriptions.update({
-  -1: 'Ø',
-  ord('\a'): '\\a',
-  ord('\b'): '\\b',
-  ord('\t'): '\\t',
-  ord('\n'): '\\n',
-  ord('\v'): '\\v',
-  ord('\f'): '\\f',
-  ord('\r'): '\\r',
-  ord(' '): '\_',
-})
-
-code_descriptions.update((i, chr(i)) for i in range(ord('!'), 0x7f))
 
 
 if __name__ == "__main__": main()

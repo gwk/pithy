@@ -8,6 +8,18 @@ from pithy.io import errFL, errL, failF
 from pithy.seq import seq_first
 from pithy.type_util import is_str
 
+from .codepoints import codes_desc
+
+
+__all__ = [
+  'DFA',
+  'FA',
+  'NFA',
+  'empty_symbol',
+  'genDFA',
+  'minimizeDFA',
+]
+
 
 empty_symbol = -1 # not a legitimate byte value.
 

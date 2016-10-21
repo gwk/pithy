@@ -1,6 +1,5 @@
 {
   'compile': ['$PROJ/legs/__main__.py test/modes.legs -test -output $NAME.swift'],
-  'compile_timeout': 120,
   'cmd': './$NAME.swift',
   'args': [
     'a (bc def) g',
