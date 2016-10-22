@@ -1,16 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-generate a schema for an object tree.
+Generate and print informative schemas from sets of example object trees.
 '''
 
-from collections import defaultdict, namedtuple
-from sys import stdout, stderr
+from collections import Counter, defaultdict, namedtuple
 from .string_utils import iter_excluding_str
 
 
 # A schema represents the aggregate of values occurring at a structural position in some data.
-# atoms is a set of atom values.
+# atoms is a Counter of atom values.
 # seqs is a defaultdict mapping all of the occurring element types to schemas.
 # (this means that all sequence types are lumped together).
 # dicts is a defaultdict mapping occurring keys to a defaultdict of occurring value types to schemas.
@@ -18,10 +17,11 @@ from .string_utils import iter_excluding_str
 Schema = namedtuple('Schema', 'atoms seqs dicts')
 
 def _mk_schema():
-  return Schema(atoms=set(), seqs=defaultdict(_mk_schema), dicts=defaultdict(_dd_of_schemas))
+  return Schema(atoms=Counter(), seqs=defaultdict(_mk_schema), dicts=defaultdict(_dd_of_schemas))
 
 def _dd_of_schemas():
   return defaultdict(_mk_schema)
+
 
 def _compile_schema(node, schema):
   if isinstance(node, dict):
@@ -32,7 +32,7 @@ def _compile_schema(node, schema):
     try:
       it = iter_excluding_str(node) # will raise TypeError if str or not iterable.
     except TypeError: # n is an atom.
-      schema.atoms.add(node)
+      schema.atoms[node] += 1
     else: # n is iterable.
       # iterable schemas have one layer: the node element type.
       for el in it:
@@ -40,6 +40,18 @@ def _compile_schema(node, schema):
 
 
 def compile_schema(*nodes, schema=None):
+  '''
+  Generate or update a `Schema` from one or more example objects.
+  Each object (JSON or similar generic collections) is explored
+  and type information about constituent dictionary, sequence, and atom values is saved.
+
+  Each node of the schema represents a level of the aggregate structure.
+  `Schema` objects consist of:
+  * atoms: a Counter of all atoms (non-Dict, non-sequence) "leaf" values.
+  * seqs: a mapping from types to element schemas.
+  * dicts: a two-level mapping from keys to types to value schemas.
+  '''
+
   if schema is None:
     schema = _mk_schema()
   for node in nodes:
@@ -47,35 +59,60 @@ def compile_schema(*nodes, schema=None):
   return schema
 
 
-def write_schema(f, schema, summary=False, depth=0):
-  indent = '  ' * depth
+def _unique_el(counter):
+  'Return the first element of the counter whose count is 1.'
+  for k, c in counter.items():
+    if c == 1: return k
+  raise ValueError(counter)
 
-  def put(*items, indent=indent, end='\n'):
-    print(indent, *items, sep='', end=end, file=f)
 
-  def put_types(label, symbol, types: dict):
-    inline = (len(types) == 1)
-    if label is not None:
-      put(label, end=(' ' if inline else '\n'))
-    elif inline: # need the indentation.
-      put(end='')
-    for t, v, in sorted(types.items(), key=lambda item: item[0].__name__):
-      put(symbol, t.__name__, indent=('' if inline else indent))
-      write_schema(f, v, summary=summary, depth=depth+1)
+def _write_schema(f, schema, count_atoms, inline, indent, root):
+  '''
+  Note: _write_schema expects its caller to not have emitted a trailing newline.
+  This allows it to decide whether or not to inline monomorphic type information.
+  '''
+
+  def put(*items):
+    print(*items, sep='', end='', file=f)
+
+  def put_types(prefix, symbol, subindent, types: dict):
+    for t, subschema, in sorted(types.items(), key=lambda item: item[0].__name__):
+      put(prefix, symbol, t.__name__)
+      _write_schema(f, subschema, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
 
   if not any(schema): # should only happen for root; other schemas are created on demand.
-    put('empty')
+    put(indent, 'empty')
     return
-  if schema.atoms and not summary:
-    put(repr(schema.atoms))
+  if count_atoms and schema.atoms:
+    repeated_atoms = sorted(((c, v) for v, c in schema.atoms.items() if c > 1), reverse=True)
+    unique_count = len(schema.atoms) - len(repeated_atoms)
+    for c, v in repeated_atoms:
+      put(indent, '#', c, ' ', repr(v))
+    if unique_count > 1:
+      put(indent, '+', unique_count)
+    elif unique_count == 1: # find the unique element.
+      put(indent, '#1 ', _unique_el(schema.atoms))
   if schema.seqs:
-    put_types(label=None, symbol='-', types=schema.seqs)
+    if inline and len(schema.seqs) == 1 and not schema.atoms and not schema.dicts:
+      prefix = ('' if root else ' ')
+    else:
+      prefix = indent
+    put_types(prefix=prefix, symbol='* ', subindent=(indent + '| '), types=schema.seqs)
   if schema.dicts:
     for k, types in sorted(schema.dicts.items()):
-      put_types(label=repr(k), symbol='+', types=types)
+      put(indent, repr(k))
+      # Inlining for dictionaries is simpler, because we can always inline after the key we just emitted.
+      prefix = ' ' if (inline and len(types) == 1) else indent
+      put_types(prefix=prefix, symbol=': ', subindent=(indent + '. '), types=types)
 
-def out_schema(schema, summary=False):
-  write_schema(stdout, schema, summary=summary)
 
-def err_schema(schema, summary=False):
-  write_schema(stderr, schema, summary=summary)
+def write_schema(f, schema, count_atoms=False, inline=True, indent='', end='\n'):
+  '''
+  Write `schema` to file `f`.
+  If `count_atoms` is true, then histograms of atom values are emitted.
+  If `inline` is false, then monomorphic type names are never inlined,
+  resulting in longer but more regular output.
+  '''
+  _write_schema(f, schema=schema, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
+  f.write(end)
+
