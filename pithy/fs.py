@@ -277,7 +277,9 @@ def walk_dirs_and_files(*dir_paths, make_abs=False, include_hidden=False, file_e
   yield (dir_path, files) pairs.
   files is an array of either names (default) or paths, depending on the files_as_paths option.
   '''
-  assert not isinstance(file_exts, str) # exts should be a sequence of strings.
+  if isinstance(file_exts, str):
+    file_exts = (file_exts,)
+
   assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
 
   for raw_path in dir_paths:
@@ -305,7 +307,9 @@ def walk_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, includ
   generate file and/or dir paths,
   optionally filtering hidden names and/or by file extension.
   '''
-  assert not isinstance(file_exts, str) # exts should be a sequence of strings.
+  if isinstance(file_exts, str):
+    file_exts = (file_exts,)
+
   assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
 
   for raw_path in paths:
