@@ -3,7 +3,7 @@
 from pprint import pprint
 from sys import stdout, stderr
 
-from .string_utils import render_template
+from .string_utils import render_template as _render_template
 
 
 # basic printing.
@@ -59,7 +59,7 @@ def writeTF(file, template_fmt, *items, flush=False, **keyed_items):
   Expand the format string with keyed_items, then format the string; end=''.
   Useful for constructing dynamic format strings.
   """
-  fmt = render_template(template_fmt, **keyed_items)
+  fmt = _render_template(template_fmt, **keyed_items)
   writeF(file, fmt, *items, flush=flush, **keyed_items)
 
 def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
@@ -67,7 +67,7 @@ def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
   Expand the format string template with keyed_items, then format the string; end='\\n'
   Useful for constructing dynamic format strings.
   """
-  fmt = render_template(template_fmt, **keyed_items)
+  fmt = _render_template(template_fmt, **keyed_items)
   writeFL(file, fmt, *items, flush=flush, **keyed_items)
 
 
