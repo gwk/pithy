@@ -170,9 +170,18 @@ def is_mount(path): return _path.ismount(path)
 
 def link_exists(path): return _path.lexists(path)
 
-def list_dir(path): return _os.listdir(path)
 
-def list_dir_paths(path): return [path_join(path, name) for name in list_dir(path)]
+def list_dir(path, exts=None):
+  exts = normalize_exts(exts)
+  names = _os.listdir(path)
+  if exts is None: return names
+  if isinstance(exts, str): exts = (ext,)
+  return [name for name in names if path_ext(name) in exts]
+
+
+def list_dir_paths(path, exts=None):
+  return [path_join(path, name) for name in list_dir(path, exts=exts)]
+
 
 def make_dir(path): return _os.mkdir(path)
 
