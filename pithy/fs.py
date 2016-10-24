@@ -254,6 +254,16 @@ def move_file(path, dest, overwrite=False):
   _os.rename(path, dest)
 
 
+def normalize_exts(exts):
+  if exts is None: return exts
+  if isinstance(exts, str):
+    exts = (exts,)
+  for ext in exts:
+    if not isinstance(ext, str): raise TypeError(ext)
+    if ext and not ext.startswith('.'): raise ValueError(ext)
+  return exts
+
+
 def _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths):
   sub_dirs = []
   files = []
@@ -277,11 +287,7 @@ def walk_dirs_and_files(*dir_paths, make_abs=False, include_hidden=False, file_e
   yield (dir_path, files) pairs.
   files is an array of either names (default) or paths, depending on the files_as_paths option.
   '''
-  if isinstance(file_exts, str):
-    file_exts = (file_exts,)
-
-  assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
-
+  file_exts = normalize_exts(file_exts)
   for raw_path in dir_paths:
     dir_path = abs_or_normalize_path(raw_path, make_abs)
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
@@ -307,11 +313,7 @@ def walk_paths(*paths, make_abs=False, yield_files=True, yield_dirs=True, includ
   generate file and/or dir paths,
   optionally filtering hidden names and/or by file extension.
   '''
-  if isinstance(file_exts, str):
-    file_exts = (file_exts,)
-
-  assert file_exts is None or all(e.startswith('.') for e in file_exts) # all extensions should begin with a dot.
-
+  file_exts = normalize_exts(file_exts)
   for raw_path in paths:
     path = abs_or_normalize_path(raw_path, make_abs)
     if is_dir(path):
