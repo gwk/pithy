@@ -9,21 +9,51 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 
 
+__all__ = ['pat_dependencies', 'main']
+
+
 pat_version = '0'
 
-# version pattern is applied to the first line of documents;
-# programs processing input strings may or may not check for a version as appropriate.
-version_re = re.compile(r'pat v(\d+)\n')
 
-def errF(fmt, *items):
-  print(fmt.format(*items), end='', file=sys.stderr)
+def main():
+  # I cannot get argparse to do quite what I want, so using two parsers for now.
+  parser = ArgumentParser(prog='pat', description='create or apply a .pat patch file.')
+  parser.epilog = "for help with a specific command, pass '-h' to that command."
 
-def errFL(fmt, *items):
-  print(fmt.format(*items), file=sys.stderr)
+  subs = parser.add_subparsers()
+  subs.required = True # unofficial workaround.
+  subs.dest = 'command' # this is necessary to make `required` above work.
 
-def failF(fmt, *items):
-  errFL('pat error: ' + fmt, *items)
-  sys.exit(1)
+  sub_diff = subs.add_parser('diff',
+    help='create .pat style diff between two existing source files.')
+
+  sub_diff.set_defaults(handler=main_diff)
+
+  sub_diff.add_argument('original', type=FileType('r'),
+    help='source file to use as the basis (left/minus side) of the patch.')
+
+  sub_diff.add_argument('modified', type=FileType('r'),
+    help='source file to use as the modification (right/plus side) from which to calculate the patch.')
+
+  sub_diff.add_argument('destination', nargs='?', type=FileType('w'), default='-',
+    help='output path (defaults to stdout)')
+
+  sub_diff.add_argument('-min-context', type=int, default=3,
+    help='minimum number of lines of context to show before each hunk.')
+
+  sub_apply = subs.add_parser('apply',
+    help='apply a .pat patch file to an existing, matching source file.')
+
+  sub_apply.set_defaults(handler=main_apply)
+
+  sub_apply.add_argument('patch', type=FileType('r'),
+    help='input .pat path to apply')
+
+  sub_apply.add_argument('destination', nargs='?', type=FileType('w'), default='-',
+    help='output path (defaults to stdout)')
+
+  args = parser.parse_args()
+  args.handler(args)
 
 
 def main_diff(args):
@@ -135,6 +165,10 @@ def open_orig_path(path):
     patch_failF(1, 'could not open source path specified by patch: {!r}', path)
 
 
+# version pattern is applied to the first line of documents;
+# programs processing input strings may or may not check for a version as appropriate.
+version_re = re.compile(r'pat v(\d+)\n')
+
 def main_apply(args):
   'apply command entry point.'
   f_patch = args.patch
@@ -206,6 +240,11 @@ def main_apply(args):
 
 
 def pat_dependencies(src_path, src_file, dir_names):
+  '''
+  Return a list of dependencies;
+  `dir_names` is an ignored parameter provided by muck.
+  A .pat file always has a single dependency: the source file it patches.
+  '''
   version_line = src_file.readline()
   orig_line = src_file.readline()
   orig_path = orig_line.strip()
@@ -214,49 +253,15 @@ def pat_dependencies(src_path, src_file, dir_names):
   return [orig_path]
 
 
-def main():
-  # cannot get argparse to do quite what i want, so using two parsers for now.
-  parser = ArgumentParser(prog='pat', description='create or apply a .pat patch file.')
-  parser.epilog = "for help with a specific command, pass '-h' to that command."
+def errF(fmt, *items):
+  print(fmt.format(*items), end='', file=sys.stderr)
 
-  subs = parser.add_subparsers()
-  subs.required = True # unofficial workaround.
-  subs.dest = 'command' # this is necessary to make `required` above work.
+def errFL(fmt, *items):
+  print(fmt.format(*items), file=sys.stderr)
 
-  sub_diff = subs.add_parser('diff',
-    help='create .pat style diff between two existing source files.')
-  
-  sub_diff.set_defaults(handler=main_diff)
-  
-  sub_diff.add_argument('original', type=FileType('r'),
-    help='source file to use as the basis (left/minus side) of the patch.')
-
-  sub_diff.add_argument('modified', type=FileType('r'),
-    help='source file to use as the modification (right/plus side) from which to calculate the patch.')
-  
-  sub_diff.add_argument('destination', nargs='?', type=FileType('w'), default='-',
-    help='output path (defaults to stdout)')
-  
-  sub_diff.add_argument('-min-context', type=int, default=3,
-    help='minimum number of lines of context to show before each hunk.')
-
-  sub_apply = subs.add_parser('apply',
-    help='apply a .pat patch file to an existing, matching source file.')
-  
-  sub_apply.set_defaults(handler=main_apply)
-  
-  sub_apply.add_argument('patch', type=FileType('r'),
-    help='input .pat path to apply')
-  
-  sub_apply.add_argument('destination', nargs='?', type=FileType('w'), default='-',
-    help='output path (defaults to stdout)')
-
-  args = parser.parse_args()
-  args.handler(args)
+def failF(fmt, *items):
+  errFL('pat error: ' + fmt, *items)
+  sys.exit(1)
 
 
-__all__ = ['pat_dependencies', 'main']
-
-
-if __name__ == '__main__':
-  main()
+if __name__ == '__main__': main()
