@@ -89,7 +89,7 @@ def main_diff(args):
   for i, line in enumerate(o_lines):
     line_indices[line].add(i)
 
-  matches = SequenceMatcher(None, o_lines, m_lines).get_matching_blocks()
+  matches = diff_lines(o_lines, m_lines)
   # returns triples of form (i, j, n); o_lines[i:i+n] == m_lines[j:j+n].
   # matches are monotonically increasing in i and j.
   # the last match is a sentinal with (len(o_lines), len(m_lines), 0).
@@ -147,6 +147,10 @@ def main_diff(args):
     i = i1
     j = j1
     n = n1
+
+
+def diff_lines(o_lines, m_lines):
+  return SequenceMatcher(None, o_lines, m_lines).get_matching_blocks()
 
 
 def open_orig_path(path):
