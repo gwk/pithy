@@ -1,6 +1,12 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
 '''
 simple bar charts with unicode block chars.
 '''
+
+from enum import Enum
+from typing import Mapping, Optional
+
 
 # Horizontal block chars.
 full_block = '\u2588'
@@ -17,7 +23,7 @@ blocks = (
 )
 
 
-def bar_str(ratio, width, pad_right=False):
+def bar_str(ratio: float, width: float, pad_right=False) -> str:
   'create a string of block characters for the given ratio and width.'
   if ratio > 1:
     return '*' * width
@@ -32,63 +38,72 @@ def bar_str(ratio, width, pad_right=False):
   return '{}{}{}'.format(solid, fraction, pad)
 
 
-def chart(name, val, ratio, name_width, val_width, bar_width, suffix=None):
+def chart(name: str, val: float, ratio: float, name_width: int, val_width: int, bar_width: int, suffix: Optional[str] = None):
   'create a string for a single line of a chart.'
   bar = bar_str(ratio=ratio, width=bar_width, pad_right=bool(suffix))
   return '  {name:<{name_width}} : {val:>{val_width}}  {ratio:.3f} {bar}{suffix}'.format(
     name=name, name_width=name_width, val=val, val_width=val_width, ratio=ratio, bar=bar, suffix=suffix)
 
 
-( ChartModeNormalized,
-  ChartModeTotal,
-  ChartModeCumulative,
-  ChartModeRatio,
-) = range(4)
+class ChartMode(Enum):
+  '''
+  Rendering modes:
+
+  normalized: Scale the values so that the longest bar (greater than zero) spans the full width of the chart.
+
+  total: Scale the values so that the sum of all the bars would span the full width of the chart.
+
+  cumulative: Each value is summed with all previous values, and scaled by the sum of all values.
+
+  ratio: each value is a pair of values. Values with zero denominator are ignored; positive ratios are scaled to the width of the chart.
+  '''
+  normalized, total, cumulative, ratio = range(4)
 
 
-def chart_map(m, mode=ChartModeNormalized, threshold=0, sort_by_val=False, width=64):
+def chart_map(m: Mapping, mode:ChartMode=ChartMode.normalized, threshold=0, sort_by_val=False, width=64):
   '''
   create a chart from a map, where values are either integers or pairs of integers
-  (for ChartModeRatio).
+  (for ChartMode.ratio).
   threshold is a minimum denominator count for ratios, and a minimum ratio otherwise.
   '''
 
    # rows are of form (sortKey, name, val, ratio). key can be of any type; name and val must be strings.
   rows = []
+  total = 0
+  cum = 0
+  max_val = 0
 
-  if m and mode in (ChartModeTotal, ChartModeCumulative):
+  if m and mode in (ChartMode.total, ChartMode.cumulative):
     total = sum(m.values())
-    if mode is ChartModeCumulative:
-      cum = 0
 
-  elif m and mode is ChartModeNormalized:
+  elif m and mode is ChartMode.normalized:
     max_val = max(m.values())
     if max_val <= 0:
       max_val = 1 # hack to prevent divide by zero.
 
   for k, v in sorted(m.items()):
 
-    if mode is ChartModeNormalized:
+    if mode is ChartMode.normalized:
       r = v / max_val
       if r < threshold:
         continue
       val = '{:,}'.format(v)
 
-    elif mode is ChartModeTotal:
+    elif mode is ChartMode.total:
       r = v / max(total, 1)
       if r < threshold:
         continue
       val = '{:,}'.format(v)
 
-    elif mode is ChartModeCumulative:
+    elif mode is ChartMode.cumulative:
       cum += v
       r = cum / total
       if r > 1 - threshold:
         continue
       val = '{:,}'.format(cum)
 
-    elif mode is ChartModeRatio:
-      if v[0] == 0 or v[1] < threshold:
+    elif mode is ChartMode.ratio:
+      if v[0] < threshold or v[1] <= 0:
         continue
       r = v[0] / v[1]
       val = '{:,}/{:,}'.format(*v)
@@ -106,14 +121,18 @@ def chart_map(m, mode=ChartModeNormalized, threshold=0, sort_by_val=False, width
   name_width = max(len(r[1]) for r in rows)
   val_width  = max(len(r[2]) for r in rows)
 
-  lines = [chart(n, v, r, name_width=name_width, val_width=val_width, bar_width=width, suffix='\n') for sk, n, v, r in rows]
+  lines = [chart(n, v, r, name_width=name_width, val_width=val_width, bar_width=width, suffix='\n')
+    for sk, n, v, r in rows]
 
   return ''.join(lines)
 
 
 
 if __name__ == '__main__':
-  for mode in (ChartModeNormalized, ChartModeTotal, ChartModeCumulative):
+  for mode in (ChartMode.normalized, ChartMode.total, ChartMode.cumulative):
     m = { i : i for i in range(16) }
     print('mode:', mode)
     print(chart_map(m, mode=mode))
+
+  print('mode:', ChartMode.ratio)
+  print(chart_map({ i: (i - 1, i) for i in range(16) }, mode=ChartMode.ratio))
