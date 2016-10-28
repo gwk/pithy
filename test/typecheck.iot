@@ -1,0 +1,4 @@
+{
+  'cmd': 'mypy --strict-optional pithy',
+  'links': 'pithy',
+}
