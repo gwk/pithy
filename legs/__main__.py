@@ -223,6 +223,7 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
     parser_stack[-1].parse_charset(name_pos, charset)
     name_pos = None
 
+  pos = (line_info, start_col)
   for col, c in enumerate(pattern, start_col):
     pos = (line_info, col)
     parser = parser_stack[-1]
@@ -258,7 +259,7 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
     elif c == parser.terminator:
       parser_stack.pop()
       parent = parser_stack[-1]
-      parent.receive(parser.finish())
+      parent.receive(parser.finish(pos))
     else:
       child = parser.parse(pos, c)
       if child:
@@ -272,7 +273,7 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
   parser = parser_stack.pop()
   if parser_stack:
     fail_parse((line_info, end_col), 'expected terminator: {!r}', parser.terminator)
-  rule = parser.finish()
+  rule = parser.finish(pos)
   rule.name = simplify_name(name)
   rule.mode = mode_for_name(name)
   rule.pattern = pattern
@@ -331,8 +332,8 @@ class PatternParser:
   def parse_charset(self, pos, charset):
     self.seq.append(Charset(pos, ranges=charset))
 
-  def finish(self):
-    self.flush_seq(pos=None)
+  def finish(self, pos):
+    self.flush_seq(pos)
     choices = self.choices
     return choices[0] if len(choices) == 1 else Choice(self.pos, subs=tuple(choices))
 
@@ -382,9 +383,9 @@ class CharsetParser():
       fail_parse(pos, 'repeated character in set: {!r}', ord(code))
     self.codes.add(code)
 
-  def flush_left(self):
+  def flush_left(self, pos, msg_context):
     if not self.codes:
-      fail_parse(self.operator_pos or 0, 'empty charset.')
+      fail_parse(pos, 'empty charset preceding {}', msg_context)
     op = self.operator
     if op is None: # first operator encountered.
       assert self.codes_left is None
@@ -396,7 +397,7 @@ class CharsetParser():
     self.codes = set()
 
   def push_operator(self, pos, op):
-    self.flush_left()
+    self.flush_left(pos, msg_context='operator')
     is_diff_op = self.operator in ('-', '^')
     if self.parsed_diff_op or (self.parsed_op and is_diff_op):
       fail_parse(pos, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`', op)
@@ -430,8 +431,8 @@ class CharsetParser():
     self.current_name_chars = None
 
 
-  def finish(self):
-    if self.operator: self.flush_left()
+  def finish(self, pos):
+    if self.operator: self.flush_left(pos, msg_context='terminator')
     codes = self.codes_left or self.codes
     if not codes: fail_parse(self.pos, 'empty character set.')
     return Charset(self.pos, ranges=tuple(ranges_for_codes(sorted(codes))))
