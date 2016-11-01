@@ -209,6 +209,16 @@ public struct ${Name}Token: CustomStringConvertible {
   public var description: String {
     return "\(kind):\(pos)-\(end)"
   }
+
+  public var range: CountableRange<Int> {
+    return pos..<end
+  }
+
+  public func subRange(from: Int, beforeEnd: Int = 0) -> CountableRange<Int> {
+    assert(from >= 0)
+    assert(beforeEnd >= 0)
+    return (pos + from)..<(end - beforeEnd)
+  }
 }
 
 
@@ -233,6 +243,10 @@ public class ${Name}Source: CustomStringConvertible {
 
   public var tokens: [${Name}Token] {
     return Array(lex())
+  }
+
+  func stringFor(token: ${Name}Token) -> String {
+    return String(bytes: data[token.range], encoding: .utf8)!
   }
 
   public func lineIndex(pos: Int) -> Int {
