@@ -12,7 +12,7 @@ from pithy.dict_utils import dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
-from pithy.seq import fan_seq_by_key
+from pithy.seq import fan_seq_by_key, group_seq_by_heads, HeadlessMode
 from pithy.string_utils import plural_s, prefix_nonempty
 
 from unico import codes_for_ranges, ranges_for_codes
@@ -55,7 +55,7 @@ def main():
       failF('legs error: no such rule file: {!r}', path)
   else:
     failF('`must specify either `rules_path` or `-pattern`.')
-  mode_rules, mode_transitions = parse_rules(path, lines)
+  mode_rules, mode_transitions = parse_legs(path, lines)
 
   mode_dfa_pairs = []
   for mode, rules in sorted(mode_rules.items()):
@@ -129,36 +129,46 @@ rule_re = re.compile(r'''(?x)
   (?P<comment> \# .*)
 | (?P<l_name> [\w.]+ ) \s+ -> \s+ (?P<r_name> [^\#\s]+ ) # mode transition.
 | (?P<name> [\w.]+ ) (?P<esc>\s+\\.)? \s* : \s* (?P<named_pattern> .*)
+| (?P<tail> \| .*)
 | (?P<unnamed_pattern> .+) # must come last due to wildcard.
 )
 ''')
 
-def parse_rules(path, lines):
-  '''
-  Parse the rules given in `lines`,
-  returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
-  '''
-  rules = []
-  mode_transitions = {}
-  rule_names = set()
+
+def match_lines(path, lines):
   for line_num, line in enumerate(lines):
     line = line.rstrip() # always strip newline so that missing final newline is consistent.
     if not line: continue
+    match = rule_re.fullmatch(line)
+    if match.group('comment'): continue
     line_info = (path, line_num, line)
-    m = rule_re.fullmatch(line)
-    if m.group('comment'): continue
+    yield (line_info, match)
+
+
+def group_matches(matches):
+  return group_seq_by_heads(matches, is_head=lambda p: not p[1].group('tail'), headless=HeadlessMode.keep)
+
+
+def parse_legs(path, lines):
+  '''
+  Parse the legs source given in `lines`,
+  returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
+  '''
+  rules = {}
+  mode_transitions = {}
+  for group in group_matches(match_lines(path, lines)):
+    line_info, m = group[0]
     if m.group('l_name'): # mode transition.
       (src_pair, dst_pair) = parse_mode_transition(line_info, m)
       if src_pair in mode_transitions:
         fail_parse((line_info, 0), 'duplicate transition parent name: {!r}', src_pair[1])
       mode_transitions[src_pair] = dst_pair
     else:
-      rule = parse_rule(line_info, m)
-      if rule.name in rule_names:
+      rule = parse_rule(group)
+      if rule.name in rules:
         fail_parse((line_info, 0), 'duplicate rule name: {!r}', rule.name)
-      rule_names.add(rule.name)
-      rules.append(rule)
-  return fan_seq_by_key(rules, lambda rule: rule.mode), mode_transitions
+      rules[rule.name] = rule
+  return fan_seq_by_key(rules.values(), lambda rule: rule.mode), mode_transitions
 
 
 def parse_mode_transition(line_info, match):
@@ -184,18 +194,19 @@ def mode_for_name(name):
   return match.group(1) if match else 'main'
 
 
-def parse_rule(line_info, match):
-  esc_char = '\\' # default.
+def parse_rule(group):
+  line_info, match = group[0]
   name = match.group('name')
+  start_col = 0
+  esc_char = '\\' # default.
   if name: # name is specified explicitly.
+    start_col = match.start('named_pattern')
     esc = match.group('esc')
     if esc: # custom escape char.
       esc_char = esc[-1] # capture group begins with spaces and backslash.
-    key = 'named_pattern'
+    pattern = match.group('named_pattern')
   else:
-    key = 'unnamed_pattern'
-  pattern = match.group(key)
-  start_col = match.start(key)
+    pattern = match.group('unnamed_pattern')
   if not name: # no name; derive a name from the pattern; convenient for keyword tokens and testing.
     name = re.sub('\W+', '_', pattern.strip())
     if name[0].isdigit():
