@@ -55,7 +55,7 @@ def main():
       failF('legs error: no such rule file: {!r}', path)
   else:
     failF('`must specify either `rules_path` or `-pattern`.')
-  mode_rules, mode_transitions = compile_rules(path, lines)
+  mode_rules, mode_transitions = parse_rules(path, lines)
 
   mode_dfa_pairs = []
   for mode, rules in sorted(mode_rules.items()):
@@ -133,8 +133,11 @@ rule_re = re.compile(r'''(?x)
 )
 ''')
 
-def compile_rules(path, lines):
-  'Compile the rules given in `lines`.'
+def parse_rules(path, lines):
+  '''
+  Parse the rules given in `lines`,
+  returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
+  '''
   rules = []
   mode_transitions = {}
   rule_names = set()
@@ -150,7 +153,7 @@ def compile_rules(path, lines):
         fail_parse((line_info, 0), 'duplicate transition parent name: {!r}', src_pair[1])
       mode_transitions[src_pair] = dst_pair
     else:
-      rule = compile_rule(line_info, m)
+      rule = parse_rule(line_info, m)
       if rule.name in rule_names:
         fail_parse((line_info, 0), 'duplicate rule name: {!r}', rule.name)
       rule_names.add(rule.name)
@@ -181,7 +184,7 @@ def mode_for_name(name):
   return match.group(1) if match else 'main'
 
 
-def compile_rule(line_info, match):
+def parse_rule(line_info, match):
   esc_char = '\\' # default.
   name = match.group('name')
   if name: # name is specified explicitly.
