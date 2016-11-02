@@ -7,7 +7,13 @@ import atexit
 from sys import stderr
 
 
-__all__ = ['utest', 'utest_exc', 'utest_seq', 'utest_val']
+__all__ = [
+  'utest',
+  'utest_exc',
+  'utest_seq',
+  'utest_seq_exc',
+  'utest_val'
+]
 
 
 test_count = 0
@@ -16,8 +22,8 @@ failure_count = 0
 
 def utest(exp, fn, *args, **kwargs):
   '''
-  Invoke `fn` with `args` and `kwargs`,
-  and log a test failure if an exception is raised or the returned value does not equal `exp`.
+  Invoke `fn` with `args` and `kwargs`.
+  Log a test failure if an exception is raised or the returned value does not equal `exp`.
   '''
   global test_count
   test_count += 1
@@ -31,8 +37,8 @@ def utest(exp, fn, *args, **kwargs):
 
 def utest_exc(exp_exc, fn, *args, **kwargs):
   '''
-  Invoke `fn` with `args` and `kwargs`,
-  and log a test failure if an exception is not raised or the raised exception type and args not match `exp_exc`.
+  Invoke `fn` with `args` and `kwargs`.
+  Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
   '''
   global test_count
   test_count += 1
@@ -46,9 +52,9 @@ def utest_exc(exp_exc, fn, *args, **kwargs):
 
 def utest_seq(exp_seq, fn, *args, **kwargs):
   '''
-  Invoke `fn` with `args` and `kwargs`,
-  and log a test failure if an exception is raised
-  or items of the returned seqence value does not equal the items of `exp`.
+  Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
+  Log a test failure if an exception is raised,
+  or if any items of the returned seqence do not equal the items of `exp`.
   '''
   global test_count
   test_count += 1
@@ -65,6 +71,24 @@ def utest_seq(exp_seq, fn, *args, **kwargs):
     return
   if exp != ret:
     log_failure(exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
+
+
+def utest_seq_exc(exp_exc, fn, *args, **kwargs):
+  '''
+  Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
+  Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
+  '''
+  global test_count
+  test_count += 1
+  try:
+    ret_seq = fn(*args, **kwargs)
+    ret = list(ret_seq)
+  except BaseException as exc:
+    if not exceptions_eq(exp_exc, exc):
+      log_failure(exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
+  else:
+    log_failure(exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
+
 
 
 def utest_val(exp_val, act_val, desc):
