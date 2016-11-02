@@ -128,7 +128,7 @@ rule_re = re.compile(r'''(?x)
 (?:
   (?P<comment> \# .*)
 | (?P<transition> % \s+ (?P<l_name> [\w.]+ ) \s+ (?P<r_name> [\w.]+ ) )
-| (?P<name> [\w.]+ ) (?P<esc>\s+\\.)? \s* : \s* (?P<named_pattern> .*)
+| (?P<name> [\w.]+ ) \s* : \s* (?P<named_pattern> .*)
 | (?P<tail> \| .*)
 | (?P<unnamed_pattern> .+) # must come last due to wildcard.
 )
@@ -198,12 +198,8 @@ def parse_rule(group):
   line_info, match = group[0]
   name = match.group('name')
   start_col = 0
-  esc_char = '\\' # default.
   if name: # name is specified explicitly.
     start_col = match.start('named_pattern')
-    esc = match.group('esc')
-    if esc: # custom escape char.
-      esc_char = esc[-1] # capture group begins with spaces and backslash.
     pattern = match.group('named_pattern')
   else:
     pattern = match.group('unnamed_pattern')
@@ -213,12 +209,12 @@ def parse_rule(group):
       name = '_' + name
   if name in ('invalid', 'incomplete'):
     fail_parse((line_info, 0), 'rule name is reserved: {!r}', name)
-  return parse_rule_pattern(line_info=line_info, name=name, pattern=pattern, start_col=start_col, esc_char=esc_char)
+  return parse_rule_pattern(line_info=line_info, name=name, pattern=pattern, start_col=start_col)
 
 
 _name_re = re.compile(r'\w')
 
-def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
+def parse_rule_pattern(line_info, name, pattern, start_col):
   'Parse a single pattern and return a Rule object.'
   line = line_info[2]
   parser_stack = [PatternParser((line_info, start_col))]
@@ -259,7 +255,7 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
       else:
         fail_parse(pos, 'invalid name character: {!r}', c)
 
-    if c == esc_char:
+    if c == '\\':
       escape = True
     elif c == '#':
       end_col = col
@@ -280,7 +276,7 @@ def parse_rule_pattern(line_info, name, pattern, start_col, esc_char):
         parser_stack.append(child)
 
   if escape:
-    fail_parse(pos, 'dangling escape: {!r}', esc_char)
+    fail_parse(pos, 'dangling escape character')
   if name_pos is not None:
     flush_name(end_col)
 
