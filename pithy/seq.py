@@ -3,10 +3,15 @@
 # TODO: rename to something less common.
 
 from collections import defaultdict
+from enum import Enum
+from typing import Iterable
 
 
 class DefaultList(list):
-  'A subclass of `list` that adds default elements produced by a factory function when an out-of-bounds element is accessed.'
+  '''
+  A subclass of `list` that adds default elements produced by a factory function
+  when an out-of-bounds element is accessed.
+  '''
 
   def __init__(self, factory, seq=[], len=0):
     super().__init__(seq)
@@ -128,6 +133,7 @@ def fan_seq_by_key(seq, key):
 
 
 def fan_sorted_seq_by_comp(seq, comparison):
+  # TODO: rename group.
   '''
   Fan out `seq`, which must already be sorted,
   by applying the `comparison` predicate to each consecutive pair of elements.
@@ -152,6 +158,38 @@ def fan_sorted_seq_by_comp(seq, comparison):
   if group:
     groups.append(group)
   return groups
+
+
+class HeadlessMode(Enum):
+  error, drop, keep = range(3)
+
+
+def group_seq_by_heads(seq: Iterable, is_head, headless=HeadlessMode.error):
+  it = iter(seq)
+  group = []
+  while True: # consume all headless (leading tail) tokens.
+    try: el = next(it)
+    except StopIteration:
+      if group: yield group
+      return
+    if is_head(el):
+      if group:
+        yield group
+        group = []
+      group.append(el)
+      break
+    else: # leading tail element.
+      if headless == HeadlessMode.error: raise ValueError(el)
+      if headless == headless.drop: continue
+      if headless == headless.keep: group.append(el)
+      else: raise TypeError(headless)
+  for el in it:
+    if is_head(el):
+      yield group
+      group = [el]
+    else:
+      group.append(el)
+  if group: yield group
 
 
 def window_seq(seq, width=2):
