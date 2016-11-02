@@ -127,7 +127,7 @@ rule_re = re.compile(r'''(?x)
 \s* # ignore leading space.
 (?:
   (?P<comment> \# .*)
-| (?P<l_name> [\w.]+ ) \s+ -> \s+ (?P<r_name> [^\#\s]+ ) # mode transition.
+| (?P<transition> % \s+ (?P<l_name> [\w.]+ ) \s+ (?P<r_name> [\w.]+ ) )
 | (?P<name> [\w.]+ ) (?P<esc>\s+\\.)? \s* : \s* (?P<named_pattern> .*)
 | (?P<tail> \| .*)
 | (?P<unnamed_pattern> .+) # must come last due to wildcard.
@@ -158,7 +158,7 @@ def parse_legs(path, lines):
   mode_transitions = {}
   for group in group_matches(match_lines(path, lines)):
     line_info, m = group[0]
-    if m.group('l_name'): # mode transition.
+    if m.group('transition'): # mode transition.
       (src_pair, dst_pair) = parse_mode_transition(line_info, m)
       if src_pair in mode_transitions:
         fail_parse((line_info, 0), 'duplicate transition parent name: {!r}', src_pair[1])

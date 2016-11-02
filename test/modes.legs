@@ -19,12 +19,11 @@ lit.contents: [$Ascii - '"\\]+
 lit.escape: \\ [ $Ascii - ( ]
 lit.interpolate_open: \\ \(
 
-paren_open -> paren_close
-lit.interpolate_open -> paren_close
+% paren_open paren_close
+% lit.interpolate_open paren_close
 
-comment_open -> comment.close
-comment.open_nested -> comment.close
+% comment_open comment.close
+% comment.open_nested comment.close
 
-sq -> lit.sq
-dq -> lit.dq
-
+% sq lit.sq
+% dq lit.dq
