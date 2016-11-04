@@ -127,7 +127,7 @@ rule_re = re.compile(r'''(?x)
 \s* # ignore leading space.
 (?:
   (?P<comment> \# .*)
-| (?P<transition> % \s+ (?P<l_name> [\w.]+ ) \s+ (?P<r_name> [\w.]+ ) )
+| (?P<transition> % \s+ (?P<l_name> [\w.]+ ) \s+ (?P<r_name> [\w.]+ ) \s* (\#.*)?)
 | (?P<name> [\w.]+ ) \s* : \s* (?P<named_pattern> .*)
 | (?P<tail> \| .*)
 | (?P<unnamed_pattern> .+) # must come last due to wildcard.

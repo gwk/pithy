@@ -19,7 +19,7 @@ lit.contents: [$Ascii - '"\\]+
 lit.escape: \\ [ $Ascii - ( ]
 lit.interpolate_open: \\ \(
 
-% paren_open paren_close
+% paren_open paren_close # push child main ctx so that lit ctx does not get prematurely popped.
 % lit.interpolate_open paren_close
 
 % comment_open comment.close
