@@ -98,8 +98,8 @@ def main():
 
   if dbg and mode_transitions:
     errSL('\nmode transitions:')
-    for t in mode_transitions:
-      errL(t)
+    for a, b in mode_transitions:
+      errSL('  %', a, b)
 
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
   if args.output is not None:
