@@ -28,17 +28,15 @@ class Rule:
       for sub in subs: assert isinstance(sub, Rule)
     self.pos = pos
     self.subs = subs
-    self.name = None
-    self.mode = None
     self.pattern = None
 
-  def describe(self, depth=0):
+  def describe(self, name, depth=0):
     (_, line_num, _), col = self.pos
-    n = self.name + ' ' if self.name else ''
+    n = name + ' ' if name else ''
     errFL('{}{}{}:{}:{}:{}', '  ' * depth, n, type(self).__name__, line_num + 1, col + 1, self.inlineDescription)
     if self.subs:
       for sub in self.subs:
-        sub.describe(depth + 1)
+        sub.describe(name=None, depth=depth+1)
 
   @property
   def inlineDescription(self): return ''

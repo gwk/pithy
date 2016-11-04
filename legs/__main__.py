@@ -54,18 +54,18 @@ def main():
       failF('legs error: no such rule file: {!r}', path)
   else:
     failF('`must specify either `rules_path` or `-pattern`.')
-  mode_rules, mode_transitions = parse_legs(path, lines)
+  mode_named_rules, mode_transitions = parse_legs(path, lines)
 
   mode_dfa_pairs = []
-  for mode, rules in sorted(mode_rules.items()):
+  for mode, named_rules in sorted(mode_named_rules.items()):
     if is_match_specified and mode != target_mode:
       continue
     if dbg:
       errSL('\nmode:', mode)
-      for rule in rules:
-        rule.describe()
+      for name, rule in named_rules:
+        rule.describe(name=name)
       errL()
-    nfa = genNFA(mode, rules)
+    nfa = genNFA(mode, named_rules)
     if dbg: nfa.describe()
     if dbg or args.stats: nfa.describe_stats('NFA Stats')
 
@@ -126,8 +126,8 @@ rule_re = re.compile(r'''(?x)
 \s* # ignore leading space.
 (?:
   (?P<comment> \# .*)
-| (?P<transition> % \s+ (?P<l_name> [\w.]+ ) \s+ (?P<r_name> [\w.]+ ) \s* (\#.*)?)
-| (?P<name> [\w.]+ ) \s* : \s* (?P<named_pattern> .*)
+| % \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#.*)?
+| (?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<named_pattern> .*)
 | (?P<tail> \| .*)
 | (?P<unnamed_pattern> .+) # must come last due to wildcard.
 )
@@ -153,44 +153,45 @@ def parse_legs(path, lines):
   Parse the legs source given in `lines`,
   returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
   '''
-  rules = {}
+  rules = {} # keyed by name.
+  simple_names = {}
   mode_transitions = {}
   for group in group_matches(match_lines(path, lines)):
     line_info, m = group[0]
-    if m.group('transition'): # mode transition.
+    if m.group('l_name'): # mode transition.
       (src_pair, dst_pair) = parse_mode_transition(line_info, m)
       if src_pair in mode_transitions:
         fail_parse((line_info, 0), 'duplicate transition parent name: {!r}', src_pair[1])
       mode_transitions[src_pair] = dst_pair
     else:
-      rule = parse_rule(group)
-      if rule.name in rules:
-        fail_parse((line_info, 0), 'duplicate rule name: {!r}', rule.name)
-      rules[rule.name] = rule
-  return fan_seq_by_key(rules.values(), lambda rule: rule.mode), mode_transitions
+      name, rule = parse_rule(group)
+      if name in rules:
+        fail_parse((line_info, 0), 'duplicate rule name: {!r}', name)
+      simple = simplify_name(name)
+      if simple in simple_names:
+        fail_parse((line_info, 0), 'rule name collides when simplified: {!r}', simple_names[simple])
+      rules[name] = rule
+      simple_names[simple] = name
+  return fan_seq_by_key(rules.items(), lambda item: mode_for_name(item[0])), mode_transitions
 
 
 def parse_mode_transition(line_info, match):
   return (
-    parse_mode_and_name(line_info, match, 'l_name'),
-    parse_mode_and_name(line_info, match, 'r_name'))
+    mode_and_name(match.group('l_name')),
+    mode_and_name(match.group('r_name')))
 
-def parse_mode_and_name(line_info, match, key):
-  name = match.group(key)
-  match = re.match(r'[a-z]\w*(\.\w+)?', name)
-  end = match.end() if match else 0
-  if end < len(name):
-    fail_parse((line_info, end), 'invalid name.')
-  return (mode_for_name(name), simplify_name(name))
+
+def mode_and_name(name):
+  return mode_for_name(name), name
+
+
+def mode_for_name(name):
+  mode, _, _ = name.rpartition('.')
+  return (mode or 'main')
 
 
 def simplify_name(name):
   return name.replace('.', '_')
-
-
-def mode_for_name(name):
-  match = re.match(r'([^.]+)\.', name)
-  return match.group(1) if match else 'main'
 
 
 def parse_rule(group):
@@ -208,12 +209,12 @@ def parse_rule(group):
       name = '_' + name
   if name in ('invalid', 'incomplete'):
     fail_parse((line_info, 0), 'rule name is reserved: {!r}', name)
-  return parse_rule_pattern(line_info=line_info, name=name, pattern=pattern, start_col=start_col)
+  return name, parse_rule_pattern(line_info=line_info, pattern=pattern, start_col=start_col)
 
 
 _name_re = re.compile(r'\w')
 
-def parse_rule_pattern(line_info, name, pattern, start_col):
+def parse_rule_pattern(line_info, pattern, start_col):
   'Parse a single pattern and return a Rule object.'
   line = line_info[2]
   parser_stack = [PatternParser((line_info, start_col))]
@@ -283,8 +284,6 @@ def parse_rule_pattern(line_info, name, pattern, start_col):
   if parser_stack:
     fail_parse((line_info, end_col), 'expected terminator: {!r}', parser.terminator)
   rule = parser.finish(pos)
-  rule.name = simplify_name(name)
-  rule.mode = mode_for_name(name)
   rule.pattern = pattern
   return rule
 
@@ -447,7 +446,7 @@ class CharsetParser():
     return Charset(self.pos, ranges=tuple(ranges_for_codes(sorted(codes))))
 
 
-def genNFA(mode, rules):
+def genNFA(mode, named_rules):
   '''
   Generate an NFA from a set of rules.
   The NFA can be used to match against an argument string,
@@ -464,12 +463,11 @@ def genNFA(mode, rules):
   matchNodeNames = { invalid: ('invalid' if (mode == 'main') else mode + '_invalid') }
 
   transitions = defaultdict(lambda: defaultdict(set))
-  for rule in sorted(rules, key=lambda rule: rule.name):
+  for name, rule in sorted(named_rules):
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
-    assert rule.name
-    dict_put(matchNodeNames, matchNode, rule.name)
-  literalRules = { rule.name : rule.literalPattern for rule in rules if rule.isLiteral }
+    dict_put(matchNodeNames, matchNode, name)
+  literalRules = { name : rule.literalPattern for name, rule in named_rules if rule.isLiteral }
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
 
