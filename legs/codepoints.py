@@ -8,14 +8,15 @@ __all__ = [
 ]
 
 
-def codes_desc(codes):
-  return ' '.join(codes_interval_desc(*p) for p in seq_int_closed_intervals(sorted(codes)))
+def codes_desc(code_ranges):
+  return ' '.join(codes_range_desc(*p) for p in code_ranges)
 
-def codes_interval_desc(l, h):
-  if l == h: return code_desc(l)
+def codes_range_desc(l, h):
+  if l + 1 == h: return code_desc(l)
   return '{}-{}'.format(code_desc(l), code_desc(h))
 
 def code_desc(c):
+  assert isinstance(c, int)
   try: return code_descriptions[c]
   except KeyError: return '{:02x}'.format(c)
 

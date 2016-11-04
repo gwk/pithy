@@ -5,7 +5,8 @@ from itertools import chain, count
 
 from pithy.dict_utils import dict_filter_map
 from pithy.io import errFL, errL, failF
-from pithy.seq import seq_first
+from pithy.seq import seq_first, seq_int_ranges
+from pithy.string_utils import prefix_nonempty
 from pithy.type_util import is_str
 
 from .codepoints import codes_desc
@@ -128,8 +129,10 @@ class FA:
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
-      for dst, byte_set in sorted(dst_sorted_bytes, key=lambda p: p[1]):
-        errFL('    {} ==> {}{}', codes_desc(byte_set), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
+      for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
+        byte_ranges = seq_int_ranges(bytes_list)
+        errFL('    {} ==> {}{}',
+          codes_desc(byte_ranges), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
 
   def describe_stats(self, label=None):

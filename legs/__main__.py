@@ -13,13 +13,12 @@ from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
 from pithy.seq import fan_seq_by_key, group_seq_by_heads, HeadlessMode
-from pithy.string_utils import plural_s, prefix_nonempty
+from pithy.string_utils import plural_s
 
 from unico import codes_for_ranges, ranges_for_codes
 from unico.charsets import unicode_charsets
 
 from legs.automata import NFA, DFA, empty_symbol, genDFA, minimizeDFA
-from legs.codepoints import codes_desc
 from legs.rules import *
 from legs.swift import output_swift
 
@@ -68,7 +67,7 @@ def main():
       errL()
     nfa = genNFA(mode, rules)
     if dbg: nfa.describe()
-    if dbg or args.stats: nfa.describe_stats()
+    if dbg or args.stats: nfa.describe_stats('NFA Stats')
 
     msgs = nfa.validate()
     if msgs:
@@ -77,11 +76,11 @@ def main():
 
     fat_dfa = genDFA(nfa)
     if dbg: fat_dfa.describe('Fat DFA')
-    if dbg or args.stats: fat_dfa.describe_stats('Fat DFA')
+    if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
 
     min_dfa = minimizeDFA(fat_dfa)
     if dbg: min_dfa.describe('Min DFA')
-    if dbg or args.stats: min_dfa.describe_stats('Min DFA')
+    if dbg or args.stats: min_dfa.describe_stats('Min DFA Stats')
     mode_dfa_pairs.append((mode, min_dfa))
 
     if is_match_specified and mode == target_mode:
