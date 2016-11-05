@@ -10,7 +10,7 @@ Examples of such languages include HTML
 (by treating the attributes in an opening tag as an opaque part of the token)
 and Lisp-style S-Expressions.
 The leaves of the syntax tree are simply strings;
-the branches are TagTree instances, which are subclasses of List.
+the branches are TagTree instances, which are subclasses of tuple.
 '''
 
 import re
