@@ -127,9 +127,9 @@ rule_re = re.compile(r'''(?x)
 (?:
   (?P<comment> \# .*)
 | % \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#.*)?
-| (?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<named_pattern> .*)
+| (?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<pattern> .*)
+| (?P<symbol> \w+ )
 | (?P<tail> \| .*)
-| (?P<unnamed_pattern> .+) # must come last due to wildcard.
 )
 ''')
 
@@ -138,9 +138,11 @@ def match_lines(path, lines):
   for line_num, line in enumerate(lines):
     line = line.rstrip() # always strip newline so that missing final newline is consistent.
     if not line: continue
-    match = rule_re.fullmatch(line)
-    if match.group('comment'): continue
     line_info = (path, line_num, line)
+    match = rule_re.fullmatch(line)
+    if not match:
+      fail_parse((line_info, 0), 'invalid line: neither rule nor mode transition.')
+    if match.group('comment'): continue
     yield (line_info, match)
 
 
@@ -165,6 +167,8 @@ def parse_legs(path, lines):
       mode_transitions[src_pair] = dst_pair
     else:
       name, rule = parse_rule(group)
+      if name in ('invalid', 'incomplete'):
+        fail_parse((line_info, 0), 'rule name is reserved: {!r}', name)
       if name in rules:
         fail_parse((line_info, 0), 'duplicate rule name: {!r}', name)
       rules[name] = rule
@@ -198,18 +202,15 @@ def simplified_names(name):
 def parse_rule(group):
   line_info, match = group[0]
   name = match.group('name')
-  start_col = 0
-  if name: # name is specified explicitly.
-    start_col = match.start('named_pattern')
-    pattern = match.group('named_pattern')
+  if name: # named pattern.
+    start_col = match.start('pattern')
+    pattern = match.group('pattern')
   else:
-    pattern = match.group('unnamed_pattern')
-  if not name: # no name; derive a name from the pattern; convenient for keyword tokens and testing.
-    name = re.sub('\W+', '_', pattern.strip())
-    if name[0].isdigit():
-      name = '_' + name
-  if name in ('invalid', 'incomplete'):
-    fail_parse((line_info, 0), 'rule name is reserved: {!r}', name)
+    symbol = match.group('symbol')
+    assert symbol
+    name = symbol
+    start_col = match.start('symbol')
+    pattern = symbol
   return name, parse_rule_pattern(line_info=line_info, pattern=pattern, start_col=start_col)
 
 
