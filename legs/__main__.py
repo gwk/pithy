@@ -167,11 +167,11 @@ def parse_legs(path, lines):
       name, rule = parse_rule(group)
       if name in rules:
         fail_parse((line_info, 0), 'duplicate rule name: {!r}', name)
-      simple = simplify_name(name)
-      if simple in simple_names:
-        fail_parse((line_info, 0), 'rule name collides when simplified: {!r}', simple_names[simple])
       rules[name] = rule
-      simple_names[simple] = name
+      for simple in simplified_names(name):
+        if simple in simple_names:
+          fail_parse((line_info, 0), 'rule name collides when simplified: {!r}', simple_names[simple])
+        simple_names[simple] = name
   return fan_seq_by_key(rules.items(), lambda item: mode_for_name(item[0])), mode_transitions
 
 
@@ -190,8 +190,9 @@ def mode_for_name(name):
   return (mode or 'main')
 
 
-def simplify_name(name):
-  return name.replace('.', '_')
+def simplified_names(name):
+  n = name.lower()
+  return { n.replace('.', '_'), n.replace('.', '') }
 
 
 def parse_rule(group):
