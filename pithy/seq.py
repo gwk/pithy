@@ -49,6 +49,8 @@ def seq_int_closed_intervals(seq):
   it = iter(seq)
   try: first = next(it)
   except StopIteration: return
+  if not isinstance(first, int):
+    raise TypeError('seq_int_closed_intervals requires a sequence of int elements; received first element: {!r}', first)
   interval = (first, first)
   for i in it:
     l, h = interval
