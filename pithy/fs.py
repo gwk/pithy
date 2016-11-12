@@ -205,6 +205,8 @@ def parent_dir(): return abs_path('..')
 
 def change_dir(path): _os.chdir(path)
 
+def file_inode(path): return _os.stat(path).st_ino
+
 def file_time_access(path): return _os.stat(path).st_atime
 
 def file_time_mod(path): return _os.stat(path).st_mtime
