@@ -388,9 +388,14 @@ def find_project_dir(start_dir='.', top=None, include_top=False, project_signifi
   - .project-root
   By default, stops before reaching the user's home directory.
   '''
+  start_dir = abs_path(start_dir)
   if top is None:
     top = home_dir()
-  for path in walk_dirs_up(abs_path(start_dir), top=top, include_top=include_top):
+    if not start_dir.startswith(top):
+      top = '/'
+  else:
+    top = abs_path(top)
+  for path in walk_dirs_up(start_dir, top=top, include_top=include_top):
     for name in list_dir(path):
       if name in project_signifiers:
         return path
