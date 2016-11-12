@@ -259,10 +259,10 @@ def remove_dir_tree(path):
   _os.rmdir(path)
 
 
-def move_file(path, dest, overwrite=False):
-  if path_exists(dest) and not overwrite:
-    raise OSError('destination path already exists: '.format(dest))
-  _os.rename(path, dest)
+def move_file(path, to, overwrite=False):
+  if path_exists(to) and not overwrite:
+    raise OSError('destination path already exists: {}'.format(to))
+  _os.rename(path, to)
 
 
 def normalize_exts(exts):
