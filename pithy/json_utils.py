@@ -3,10 +3,17 @@
 import json as _json
 import json.decoder as _json_dec # type: ignore
 
+from datetime import datetime
 from sys import stdout
 
 
-def write_json(file, *items, default=list, sort=True, indent=2, end='\n', flush=False, **kwargs):
+def json_encode_default(obj):
+  try: return list(obj) # try to convert sequences first.
+  except TypeError: pass
+  return str(obj) # convert to string as last resort.
+
+
+def write_json(file, *items, default=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs):
   'Write each item in `items` as json to file.'
   for item in items:
     _json.dump(item, file, indent=indent, default=default, sort_keys=sort, **kwargs)
@@ -16,16 +23,16 @@ def write_json(file, *items, default=list, sort=True, indent=2, end='\n', flush=
     file.flush()
 
 
-def err_json(*items, default=list, sort=True, indent=2, end='\n', flush=False, **kwargs):
+def err_json(*items, default=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs):
   'Write items as json to std err.'
   write_json(stderr, *items, default=default, sort=sort, indent=indent, **kwargs)
 
 
-def out_json(*items, default=list, sort=True, indent=2, end='\n', flush=False, **kwargs):
+def out_json(*items, default=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs):
   write_json(stdout, *items, default=default, sort=sort, indent=indent, **kwargs)
 
 
-def write_jsonl(file, *items, default=list, sort=True, flush=False, **kwargs):
+def write_jsonl(file, *items, default=json_encode_default, sort=True, flush=False, **kwargs):
   'Write each item in `items` as jsonl to file.'
   for item in items:
     _json.dump(item, file, indent=None, default=default, sort_keys=sort, **kwargs)
@@ -34,12 +41,12 @@ def write_jsonl(file, *items, default=list, sort=True, flush=False, **kwargs):
     file.flush()
 
 
-def err_jsonl(*items, default=list, sort=True, flush=False, **kwargs):
+def err_jsonl(*items, default=json_encode_default, sort=True, flush=False, **kwargs):
   'Write items as jsonl to std err.'
   write_jsonl(stderr, *items, default=default, sort=sort, flush=flush, **kwargs)
 
 
-def out_jsonl(*items, default=list, sort=True, flush=False, **kwargs):
+def out_jsonl(*items, default=json_encode_default, sort=True, flush=False, **kwargs):
   'Write items as jsonl to std out.'
   write_jsonl(stdout, *items, default=default, sort=sort, flush=flush, **kwargs)
 
