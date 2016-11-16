@@ -260,9 +260,9 @@ def remove_dir_tree(path):
 
 
 def move_file(path, to, overwrite=False):
-  if path_exists(to) and not overwrite:
+  if not overwrite and path_exists(to):
     raise OSError('destination path already exists: {}'.format(to))
-  _os.rename(path, to)
+  _os.replace(path, to)
 
 
 def normalize_exts(exts):
