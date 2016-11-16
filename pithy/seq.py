@@ -223,25 +223,69 @@ def seq_prefix_tree(seq_set, index=0, terminator=None):
   return d
 
 
+_raise = object()
+
 class IterBuffer():
   '''
-  Iterable object that buffers another iterator.
+  Iterable object that buffers an iterable.
   Call push() to push an item into the buffer;
   this will be returned on the subsequent call to next().
   '''
-  def __init__(self, iterator):
-    self.iterator = iterator
+  def __init__(self, iterable):
+    self.iterator = iter(iterable)
     self.buffer = []
 
   def __iter__(self): return self
 
   def __next__(self):
-    try:
-      return self.buffer.pop()
+    try: return self.buffer.pop()
     except IndexError: pass
     return next(self.iterator)
 
   def push(self, item):
     self.buffer.append(item)
 
+  def take(self, count):
+    return [next(self) for _ in count]
 
+
+  def take_while(self, predicate):
+    for el in self:
+      if predicate(el):
+        yield el
+      else:
+        self.buffer.append(el)
+        break
+
+
+  def drop_while(self, predicate):
+    for el in self:
+      if not predicate(el):
+        self.buffer.append(el)
+        break
+
+
+  def peek(self, default=_raise):
+    try: return self.buffer[-1]
+    except IndexError: pass
+    try: el = next(self.iterator)
+    except StopIteration:
+      if default is _raise: raise
+      else: return default
+    self.buffer.append(el)
+    return el
+
+  def peeks(self, count):
+    if count <= len(self.buffer):
+      return reversed(self.buffer[-count:])
+    tokens = []
+    for _ in range(count):
+      try: tokens.append(self.next())
+      except StopIteration: break
+    self.buffer.extend(reversed(tokens))
+    return tokens
+
+  def live(self):
+    try: self.peek()
+    except StopIteration: return False
+    else: return True
