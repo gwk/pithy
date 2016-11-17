@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pprint import pprint
-from sys import stdout, stderr
+from sys import argv, stdout, stderr
 
 from .string_utils import render_template as _render_template
 
