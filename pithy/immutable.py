@@ -15,3 +15,6 @@ class Immutable(object):
 
   def __delattr__(self, name):
     raise ValueError(self)
+
+  def __getitem__(self, key):
+    return getattr(self, key)
