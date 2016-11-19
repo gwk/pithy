@@ -67,5 +67,5 @@ def rename(obj, name):
 
 def main_file_path():
   'Returns the main file path.'
-  import __main__ # type: ignore
+  import __main__ # type: ignore.
   return __main__.__file__

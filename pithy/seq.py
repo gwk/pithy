@@ -4,7 +4,7 @@
 
 from collections import defaultdict
 from enum import Enum
-from typing import Iterable
+from typing import Callable, Iterable
 
 
 class DefaultList(list):
@@ -166,9 +166,9 @@ class HeadlessMode(Enum):
   error, drop, keep = range(3)
 
 
-def group_seq_by_heads(seq: Iterable, is_head, headless=HeadlessMode.error):
+def group_seq_by_heads(seq: Iterable, is_head: Callable, headless=HeadlessMode.error) -> Iterable:
   it = iter(seq)
-  group = []
+  group = [] # type: ignore.
   while True: # consume all headless (leading tail) tokens.
     try: el = next(it)
     except StopIteration:
