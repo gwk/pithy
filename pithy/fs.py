@@ -171,16 +171,17 @@ def is_mount(path): return _path.ismount(path)
 def link_exists(path): return _path.lexists(path)
 
 
-def list_dir(path, exts=None):
+def list_dir(path, exts=None, hidden=False):
   exts = normalize_exts(exts)
   names = _os.listdir(path)
-  if exts is None: return names
-  if isinstance(exts, str): exts = (ext,)
-  return [name for name in names if path_ext(name) in exts]
+  if exts is None and hidden: return names
+  if isinstance(exts, str): exts = (exts,)
+  return [n for n in names if (
+    (exts is None or path_ext(n) in exts) and (hidden or not n.startswith('.')))]
 
 
-def list_dir_paths(path, exts=None):
-  return [path_join(path, name) for name in list_dir(path, exts=exts)]
+def list_dir_paths(path, exts=None, hidden=False):
+  return [path_join(path, name) for name in list_dir(path, exts=exts, hidden=hidden)]
 
 
 def make_dir(path): return _os.mkdir(path)
@@ -287,10 +288,8 @@ def normalize_exts(exts):
 def _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths):
   sub_dirs = []
   files = []
-  names = list_dir(dir_path)
+  names = list_dir(dir_path, hidden=include_hidden)
   for name in names:
-    if not include_hidden and name.startswith('.'):
-      continue
     path = path_join(dir_path, name)
     if is_dir(path):
       sub_dirs.append(path)
@@ -317,10 +316,8 @@ def _walk_paths_rec(dir_path, yield_files, yield_dirs, include_hidden, file_exts
   'yield paths; directory paths are distinguished by trailing slash.'
   if yield_dirs:
     yield dir_path + '/'
-  names = list_dir(dir_path)
+  names = list_dir(dir_path, hidden=include_hidden)
   for name in names:
-    if not include_hidden and name.startswith('.'):
-      continue
     path = path_join(dir_path, name)
     if is_dir(path):
       yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
@@ -407,7 +404,7 @@ def find_project_dir(start_dir='.', top=None, include_top=False, project_signifi
   else:
     top = abs_path(top)
   for path in walk_dirs_up(start_dir, top=top, include_top=include_top):
-    for name in list_dir(path):
+    for name in list_dir(path, hidden=True):
       if name in project_signifiers:
         return path
   return None
