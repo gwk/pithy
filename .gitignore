@@ -4,10 +4,10 @@
 .DS_Store
 
 # Python.
-__pycache__
-*.egg-info
+__pycache__/
+*.egg-info/
 
 # Project.
-_build
-_misc
-gh-pages
+_build/
+_misc/
+gh-pages/
