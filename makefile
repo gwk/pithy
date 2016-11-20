@@ -1,12 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+# $@: The file name of the target of the rule.
+# $<: The name of the first prerequisite.
+# $^: The names of all the prerequisites, with spaces between them.
+
+
 .PHONY: clean default develop dist upload
 
-# first target is the default.
-default: cov
-
-_build/sdist:
-	./setup.py sdist
+# First target of a makefile is the default.
+_default: test
 
 clean:
 	rm -rf _build/*
@@ -14,13 +16,20 @@ clean:
 cov:
 	iotest -fail-fast -coverage
 
-develop: dist
+pip-develop:
 	pip3 install -e .
 
-dist: _build/sdist	
-
-uninstall:
+pip-uninstall:
 	pip3 uninstall --yes pithy
 
-upload: dist
+pypi-dist:
+	./setup.py sdist
+
+pypi-register:
+	./setup.py sdist register
+
+pypi-upload: pypi-dist
 	./setup.py sdist upload
+
+test:
+	iotest -fail-fast
