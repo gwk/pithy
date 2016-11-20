@@ -2,10 +2,10 @@
 
 import csv
 from sys import stdout
-from typing import Any, Iterable, Sequence, TypeVar
-# from typing.io import TextIOBase # mypy 0.46 chokes.
+from typing import Any, Iterable, Sequence, TextIO, TypeVar
 
-def write_csv(f: Any, header: Sequence[str], rows: Iterable[Sequence]) -> None:
+
+def write_csv(f: TextIO, header: Sequence[str], rows: Iterable[Sequence]) -> None:
   w = csv.writer(f)
   w.writerow(header)
   w.writerows(rows)
