@@ -5,6 +5,7 @@ simple bar charts with unicode block chars.
 '''
 
 from enum import Enum
+from math import log2
 from typing import Mapping, Optional
 
 
@@ -51,13 +52,15 @@ class ChartMode(Enum):
 
   normalized: Scale the values so that the longest bar (greater than zero) spans the full width of the chart.
 
+  log2: using the log of each value, normalize the bars.
+
   total: Scale the values so that the sum of all the bars would span the full width of the chart.
 
   cumulative: Each value is summed with all previous values, and scaled by the sum of all values.
 
   ratio: each value is a pair of values. Values with zero denominator are ignored; positive ratios are scaled to the width of the chart.
   '''
-  normalized, total, cumulative, ratio = range(4)
+  normalized, log2, total, cumulative, ratio = range(5)
 
 
 def chart_map(m: Mapping, mode:ChartMode=ChartMode.normalized, threshold=0, sort_by_val=False, width=64):
@@ -71,7 +74,9 @@ def chart_map(m: Mapping, mode:ChartMode=ChartMode.normalized, threshold=0, sort
   rows = []
   total = 0
   cum = 0
+  min_val = 0
   max_val = 0
+  rng = 0
 
   if m and mode in (ChartMode.total, ChartMode.cumulative):
     total = sum(m.values())
@@ -81,10 +86,22 @@ def chart_map(m: Mapping, mode:ChartMode=ChartMode.normalized, threshold=0, sort
     if max_val <= 0:
       max_val = 1 # hack to prevent divide by zero.
 
+  elif m and mode is ChartMode.log2:
+    min_val = log2(min(m.values()))
+    max_val = log2(max(m.values()))
+    rng = max_val - min_val
+    if rng <= 0: raise ValueError(min_val)
+
   for k, v in sorted(m.items()):
 
     if mode is ChartMode.normalized:
       r = v / max_val
+      if r < threshold:
+        continue
+      val = '{:,}'.format(v)
+
+    elif mode is ChartMode.log2:
+      r = (log2(v) - min_val) / rng
       if r < threshold:
         continue
       val = '{:,}'.format(v)
