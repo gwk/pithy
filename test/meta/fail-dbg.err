@@ -39,4 +39,14 @@
 | check_file_exp: FileExpectation('err', 'equal', '')
 | check_file_exp: FileExpectation('out', 'equal', '')
 |
-| iotest: stopping after error (-fail-fast).
+|
+| Traceback (most recent call last):
+~   File ".+/iotest/iotest.py", line 810, in <module>
+|     if __name__ == '__main__': main()
+~   File ".+/iotest/iotest.py", line 108, in main
+|     ok = try_case(ctx, case)
+~   File ".+/iotest/iotest.py", line 571, in try_case
+|     if not ok: ctx.fail_fast()
+~   File ".+/iotest/iotest.py", line 61, in fail_fast
+|     raise Exception('iotest: stopping after error (-dbg).') from e
+| Exception: iotest: stopping after error (-dbg).

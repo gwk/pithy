@@ -55,10 +55,14 @@ def main():
 
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
 
-  if args.fail_fast or args.dbg:
-    def fail_fast(): fail('iotest: stopping after error (-fail-fast).')
+  if args.dbg:
+    def fail_fast(e=None):
+      errL()
+      raise Exception('iotest: stopping after error (-dbg).') from e
+  elif args.fail_fast:
+    def fail_fast(e=None): fail('iotest: stopping after error (-fail-fast).')
   else:
-    def fail_fast(): pass
+    def fail_fast(e=None): pass
 
   ctx = Immutable(
     build_dir=build_dir,
@@ -261,7 +265,7 @@ class Case:
       if not isinstance(e, IotParseError):
         self.describe(stdout)
         outL()
-      if ctx.dbg: raise
+      ctx.fail_fast(e)
       self.broken = True
 
 
@@ -553,10 +557,9 @@ def try_case(ctx, case):
     ok = run_case(ctx, case)
   except Exception as e:
     t = type(e)
-    errFL('\nERROR: could not run test case: {};\n  exception: {}.{}: {}',
+    errFL('\nERROR: could not run test case: {}.\n  exception: {}.{}: {}',
       case.stem, t.__module__, t.__qualname__, e)
-    if ctx.dbg: raise
-    ctx.fail_fast()
+    ctx.fail_fast(e)
     ok = False
   if not ok:
     if case.desc: outSL('description:', case.desc)
@@ -724,8 +727,7 @@ def check_file_exp(ctx, test_dir, exp):
       act_val = f.read()
   except Exception as e:
     outFL('\nERROR: could not read test output file: {}\n  exception: {!r}', path, e)
-    if ctx.dbg: raise
-    ctx.fail_fast()
+    ctx.fail_fast(e)
     outSL('-' * bar_width)
     return False
   if file_expectation_fns[exp.mode](exp, act_val):
