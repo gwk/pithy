@@ -734,6 +734,9 @@ def check_file_exp(ctx, test_dir, exp):
     return True
   outFL('\noutput file does not {} expectation. actual value:', exp.mode)
   cat_file(path, color=TXT_B)
+  if not exp.val:
+    outFL('Expected empty file.')
+    return False
   if exp.mode == 'equal': # show a diff.
     path_expected = path + '-expected'
     write_to_path(path_expected, exp.val)
