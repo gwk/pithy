@@ -15,7 +15,7 @@ from itertools import zip_longest
 from string import Template
 from sys import stdout, stderr
 
-from pithy.ansi import RST, TXT_B, TXT_R
+from pithy.ansi import RST, TXT_B, TXT_D, TXT_R
 from pithy.immutable import Immutable
 from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, read_first_line_from_path, write_to_path, writeLSSL
 from pithy.string_utils import string_contains
@@ -753,7 +753,7 @@ diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram
 
 
 def cat_file(path, color='', limit=-1):
-  outSL('cat', rel_path(path))
+  outL(TXT_D, 'cat ', rel_path(path), RST)
   rst = RST if color else ''
   with open(path) as f:
     line = None
