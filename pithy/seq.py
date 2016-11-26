@@ -205,6 +205,16 @@ def window_seq(seq, width=2):
       del buffer[0]
 
 
+def window_seq_pairs(seq, tail=None):
+  it = iter(seq)
+  try: head = next(it)
+  except StopIteration: return
+  for el in it:
+    yield (head, el)
+    head = el
+  yield (head, tail)
+
+
 def seq_prefix_tree(seq_set, index=0, terminator=None):
   'Make a nested mapping indicating shared prefixes from a set of sequences.'
   d = {}
