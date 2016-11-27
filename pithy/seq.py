@@ -246,7 +246,7 @@ class IterBuffer():
     self.buffer.append(item)
 
   def take(self, count):
-    return [next(self) for _ in count]
+    return [next(self) for _ in range(count)]
 
 
   def take_while(self, predicate):
