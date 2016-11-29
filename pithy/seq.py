@@ -241,22 +241,39 @@ class IterBuffer():
   Call push() to push an item into the buffer;
   this will be returned on the subsequent call to next().
   '''
+
+
   def __init__(self, iterable):
     self.iterator = iter(iterable)
     self.buffer = []
 
+
+  def __repr__(self):
+    return 'IterBuffer({!r}, buffer={!r})'.format(self.iterator, self.buffer)
+
+
   def __iter__(self): return self
+
 
   def __next__(self):
     try: return self.buffer.pop()
     except IndexError: pass
     return next(self.iterator)
 
+
   def push(self, item):
     self.buffer.append(item)
 
-  def take(self, count):
-    return [next(self) for _ in range(count)]
+
+  def peek(self, default=_raise):
+    try: return self.buffer[-1]
+    except IndexError: pass
+    try: el = next(self.iterator)
+    except StopIteration:
+      if default is _raise: raise
+      else: return default
+    self.buffer.append(el)
+    return el
 
 
   def take_while(self, predicate):
@@ -275,27 +292,39 @@ class IterBuffer():
         break
 
 
-  def peek(self, default=_raise):
-    try: return self.buffer[-1]
-    except IndexError: pass
-    try: el = next(self.iterator)
-    except StopIteration:
-      if default is _raise: raise
-      else: return default
-    self.buffer.append(el)
-    return el
+  def peek_while(self, predicate):
+    els = list(self.take_while(predicate))
+    self.buffer.extend(reversed(els))
+    return els
 
-  def peeks(self, count):
-    if count <= len(self.buffer):
-      return reversed(self.buffer[-count:])
-    tokens = []
+
+  def take(self, count, short=False, default=_raise):
+    els = []
     for _ in range(count):
-      try: tokens.append(self.next())
-      except StopIteration: break
-    self.buffer.extend(reversed(tokens))
-    return tokens
+      try: els.append(next(self))
+      except StopIteration:
+        if short: break
+        if default is _raise: raise
+        els.append(default)
+    return els
 
-  def live(self):
+
+  def peeks(self, count, short=False, default=_raise):
+    if 0 < count <= len(self.buffer):
+      return reversed(self.buffer[-count:])
+    els = []
+    for _ in range(count):
+      try: els.append(self.next())
+      except StopIteration:
+        if short: break
+        if default is _raise: raise
+        els.append(default)
+    self.buffer.extend(reversed(els))
+    return els
+
+
+  @property
+  def is_live(self):
     try: self.peek()
     except StopIteration: return False
     else: return True
