@@ -18,3 +18,6 @@ class Immutable(object):
 
   def __getitem__(self, key):
     return getattr(self, key)
+
+  def __repr__(self):
+    return 'Immutable({})'.format(', '.join('{}={!r}'.format(k, v) for k, v in sorted(self.__dict__.items())))
