@@ -213,7 +213,7 @@ class Case:
     self.test_dir = path_join(ctx.build_dir, stem)
     # derived properties.
     self.test_info_paths = [] # the files that comprise the test case.
-    self.dflt_src_path = None
+    self.dflt_src_paths = []
     self.broken = proto.broken if (proto is not None) else False
     self.test_cmd = None
     self.test_env = None
@@ -285,10 +285,7 @@ class Case:
     elif ext == '.in':  self.add_std_file(path, 'in_')
     elif ext == '.out': self.add_std_file(path, 'out')
     elif ext == '.err': self.add_std_file(path, 'err')
-    elif self.dflt_src_path is None:
-      self.dflt_src_path = path
-    else:
-      self.dflt_src_path = Ellipsis
+    else: self.dflt_src_paths.append(path)
 
 
   def add_std_file(self, path, key):
@@ -343,7 +340,7 @@ class Case:
     env['BUILD'] = ctx.build_dir
     env['NAME'] = self.name
     env['PROJ'] = abs_path(ctx.proj_dir)
-    env['SRC'] = str(self.dflt_src_path) # may be 'None' or 'Ellipsis'.
+    env['SRC'] = self.dflt_src_paths[0] if len(self.dflt_src_paths) == 1 else 'NONE'
     env['STEM'] = self.stem
 
     def default_to_env(key):
@@ -404,14 +401,17 @@ class Case:
       self.test_cmd = expand(self.cmd)
       if args:
         self.test_cmd += args
-      elif self.dflt_src_path not in (None, Ellipsis):
-        self.test_cmd += [self.dflt_src_path]
+      elif len(self.dflt_src_paths) == 1:
+        self.test_cmd += self.dflt_src_paths
     elif self.compile_cmds:
       self.test_cmd = ['./' + self.name] + (args or [])
-    elif self.dflt_src_path:
-      self.test_cmd = [abs_path(self.dflt_src_path)] + (args or [])
-    else:
+    elif len(self.dflt_src_paths) > 1:
+      raiseF('no `cmd` specified and multiple default source paths found: {}', self.dflt_src_paths)
+    elif len(self.dflt_src_paths) < 1:
       raiseF('no `cmd` specified and no default source path found')
+    else:
+      dflt_path = self.dflt_src_paths[0]
+      self.test_cmd = [abs_path(dflt_path)] + (args or [])
 
     self.coverage_targets = expand(self.coverage)
 

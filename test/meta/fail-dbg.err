@@ -11,7 +11,7 @@
 |   coverage: None
 |   coverage_targets: []
 |   desc: None
-|   dflt_src_path: None
+|   dflt_src_paths: []
 |   env: None
 |   err_mode: None
 |   err_path: None
@@ -27,7 +27,7 @@
 |   stem: 'test-meta/fail-dbg'
 |   test_cmd: ['false']
 ~   test_dir: '.+/iotest/_build/test-meta/fail-dbg'
-~   test_env: {'BUILD':'.+/iotest/_build', 'NAME':'fail-dbg', 'PATH':'.+', 'PROJ':'.+/iotest', 'SRC':'None', 'STEM':'test-meta/fail-dbg'}
+~   test_env: {'BUILD':'.+/iotest/_build', 'NAME':'fail-dbg', 'PATH':'.+', 'PROJ':'.+/iotest', 'SRC':'NONE', 'STEM':'test-meta/fail-dbg'}
 |   test_expectations: [FileExpectation('err', 'equal', ''), FileExpectation('out', 'equal', '')]
 |   test_in: None
 |   test_info_paths: ['test-meta/fail-dbg.iot']
