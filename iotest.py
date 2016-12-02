@@ -307,7 +307,7 @@ class Case:
     except ValueError as e:
       msg = str(e)
       if msg.startswith('malformed node or string:'): # omit the repr garbage containing address.
-        msg = 'malformed node or string in .iot file: {!r}'.format(path)
+        msg = 'malformed .iot file: {!r}'.format(path)
       raise IotParseError(msg) from e
     req_type(info, dict)
     for kv in info.items():
@@ -430,7 +430,7 @@ class Case:
     add_std_exp('err', self.err_mode, self.err_path, self.err_val)
     add_std_exp('out', self.out_mode, self.out_path, self.out_val)
 
-    for path, info in self.files or []:
+    for path, info in (self.files or {}).items():
       exp = FileExpectation(path, info, expand_str)
       self.test_expectations.append(exp)
 
@@ -456,12 +456,15 @@ def validate_exp_dict(key, val):
     if k not in ('mode', 'path', 'val'):
       raiseF('file expectation: {}: invalid expectation property: {}', key, k)
 
+
 def validate_files_dict(key, val):
-  for k, exp_dict in val:
-    if k == 'out' or k == 'err':
-      raiseF('key: {}: {}: use the standard properties instead ({}-mode, {}-path, {}-val).',
+  if not is_dict(val):
+    raiseF('file expectation: {}: value must be a dictionary.', key)
+  for k, exp_dict in val.items():
+    if k in ('out', 'err'):
+      raiseF('key: {}: {}: use the standard properties instead ({}_mode, {}_path, {}_val).',
         key, k, k, k, k)
-    validate_exp_dict(k, v)
+    validate_exp_dict(k, exp_dict)
 
 def validate_links_dict(key, val):
   if is_str(val):
