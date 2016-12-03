@@ -17,7 +17,7 @@ import re
 
 from itertools import chain, islice
 from pithy.ansi import TXT_R, TXT_Y, RST_TXT
-from pithy.seq import IterBuffer
+from .buffer import Buffer
 
 
 class TagRule():
