@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any
+from typing import Any, Tuple, Union
 
 
 # type predicates.
@@ -43,7 +43,7 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and val > 0
 
 
-def req_type(object: Any, class_info):
+def req_type(object: Any, class_info: Union[type, Tuple[type, ...]]) -> None:
   if not isinstance(object, class_info):
     raise TypeError('expected type: {}; actual type: {};\n  object: {}'.format(
       class_info, type(object), repr(object)))
