@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
 import json as _json
-import json.decoder as _json_dec # type: ignore
 
 from datetime import datetime
 from sys import stderr, stdout
@@ -65,13 +65,13 @@ def out_jsonl(*items: Any, default: JsonDefaulter=json_encode_default, sort=True
 # input.
 
 
-def _mk_hook(types: Sequence) -> Callable[[Dict[Any, Any]], Any]:
+def _mk_hook(types: Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
   '''
   Provide a hook function that creates custom objects from json.
   `types` is a sequence of type objects, each of which must have a `_fields` property.
   NamedTuple instances are compatible.
   '''
-  if not types: return None # type: ignore
+  if not types: return None
 
   type_map = { frozenset(t._fields) : t for t in types }
   if len(type_map) < len(types):
@@ -92,7 +92,7 @@ def _mk_decoder(types: Sequence) -> _json.JSONDecoder:
   return _json.JSONDecoder(object_hook=_mk_hook(types))
 
 
-_ws_re = _json_dec.WHITESPACE
+_ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
 
 
 def parse_json(string: str, types: Sequence[type]=()) -> Json:
@@ -128,7 +128,7 @@ def parse_jsons(string: str, types: Sequence[type]=()) -> Iterable[Json]:
   decoder = _mk_decoder(types)
   idx = _ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.
   while idx < len(string):
-    obj, end = decoder.raw_decode(string, idx) # type: ignore
+    obj, end = decoder.raw_decode(string, idx)
     yield obj
     idx = _ws_re.match(string, end).end()
 
