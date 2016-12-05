@@ -39,7 +39,7 @@ def bar_str(ratio: float, width: float, pad_right=False) -> str:
   return '{}{}{}'.format(solid, fraction, pad)
 
 
-def chart(name: str, val: float, ratio: float, name_width: int, val_width: int, bar_width: int, suffix: Optional[str] = None):
+def chart(name: str, val: float, ratio: float, name_width: int, val_width: int, bar_width: int, suffix: str=None):
   'create a string for a single line of a chart.'
   bar = bar_str(ratio=ratio, width=bar_width, pad_right=bool(suffix))
   return '  {name:<{name_width}} : {val:>{val_width}}  {ratio:.3f} {bar}{suffix}'.format(
