@@ -152,7 +152,7 @@ def copy_file(src: str, dst: str, follow_symlinks=True) -> None:
 
 def copy_dir_tree(src: str, dst: str, follow_symlinks=True, preserve_metadata=True, ignore_dangling_symlinks=False) -> None:
   'Copies a directory tree.'
-  _shutil.copytree(src, dst, # type: ignore
+  _shutil.copytree(src, dst,
     symlinks=(not follow_symlinks),
     ignore=None,
     copy_function=(_shutil.copy2 if preserve_metadata else _shutil.copy),
