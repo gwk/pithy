@@ -6,7 +6,7 @@ from typing import Any, Iterable, Sequence, TextIO, TypeVar
 
 
 def write_csv(f: TextIO, header: Sequence[str], rows: Iterable[Sequence]) -> None:
-  w = csv.writer(f)
+  w = csv.writer(f) # type: ignore
   w.writerow(header)
   w.writerows(rows)
 
