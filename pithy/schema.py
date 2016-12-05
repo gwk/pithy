@@ -5,25 +5,33 @@ Generate and print informative schemas from sets of example object trees.
 '''
 
 from collections import Counter, defaultdict, namedtuple
+from typing import Any, Hashable, NamedTuple, TextIO
 from .string_utils import iter_excluding_str
 
 
-# A schema represents the aggregate of values occurring at a structural position in some data.
-# atoms is a Counter of atom values.
-# seqs is a defaultdict mapping all of the occurring element types to schemas.
-# (this means that all sequence types are lumped together).
-# dicts is a defaultdict mapping occurring keys to a defaultdict of occurring value types to schemas.
-# (all dict classes are lumped together).
-Schema = namedtuple('Schema', 'atoms seqs dicts')
+# TODO: mypy does not yet support NamedTuple docstrings.
+'''
+A schema represents the aggregate of values occurring at a structural position in some data.
+atoms: counts atom values.
+seqs: maps all of the occurring element types to schemas.
+dicts: maps occurring keys to a defaultdict of occurring value types to schemas.
+All sequence types are lumped together.
+All dict classes are lumped together.
+'''
+class Schema(NamedTuple):
+  atoms: Counter
+  seqs: defaultdict
+  dicts: defaultdict
 
-def _mk_schema():
+
+def _mk_schema() -> Schema:
   return Schema(atoms=Counter(), seqs=defaultdict(_mk_schema), dicts=defaultdict(_dd_of_schemas))
 
-def _dd_of_schemas():
+def _dd_of_schemas() -> defaultdict:
   return defaultdict(_mk_schema)
 
 
-def _compile_schema(node, schema):
+def _compile_schema(node: Any, schema: Schema) -> Schema:
   if isinstance(node, dict):
     # dict schemas have two layers: node key and node val type.
     for k, v in node.items():
@@ -39,7 +47,7 @@ def _compile_schema(node, schema):
         _compile_schema(el, schema.seqs[type(el)])
 
 
-def compile_schema(*nodes, schema=None):
+def compile_schema(*nodes: Any, schema: Schema=None) -> Schema:
   '''
   Generate or update a `Schema` from one or more example objects.
   Each object (JSON or similar generic collections) is explored
@@ -51,7 +59,6 @@ def compile_schema(*nodes, schema=None):
   * seqs: a mapping from types to element schemas.
   * dicts: a two-level mapping from keys to types to value schemas.
   '''
-
   if schema is None:
     schema = _mk_schema()
   for node in nodes:
@@ -59,23 +66,23 @@ def compile_schema(*nodes, schema=None):
   return schema
 
 
-def _unique_el(counter):
+def _unique_el(counter: Counter) -> Hashable:
   'Return the first element of the counter whose count is 1.'
   for k, c in counter.items():
     if c == 1: return k
   raise ValueError(counter)
 
 
-def _write_schema(f, schema, count_atoms, inline, indent, root):
+def _write_schema(f: TextIO, schema: Schema, count_atoms: bool, inline: bool, indent: str, root: bool) -> None:
   '''
   Note: _write_schema expects its caller to not have emitted a trailing newline.
   This allows it to decide whether or not to inline monomorphic type information.
   '''
 
-  def put(*items):
+  def put(*items: Any):
     print(*items, sep='', end='', file=f)
 
-  def put_types(prefix, symbol, subindent, types: dict):
+  def put_types(prefix: str, symbol: str, subindent: str, types: dict):
     for t, subschema, in sorted(types.items(), key=lambda item: item[0].__name__):
       put(prefix, symbol, t.__name__)
       _write_schema(f, subschema, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
@@ -106,7 +113,7 @@ def _write_schema(f, schema, count_atoms, inline, indent, root):
       put_types(prefix=prefix, symbol=': ', subindent=(indent + '. '), types=types)
 
 
-def write_schema(f, schema, count_atoms=False, inline=True, indent='', end='\n'):
+def write_schema(f: TextIO, schema: Schema, count_atoms=False, inline=True, indent='', end='\n') -> None:
   '''
   Write `schema` to file `f`.
   If `count_atoms` is true, then histograms of atom values are emitted.
