@@ -18,7 +18,7 @@ class MixedAbsoluteAndRelativePathsError(Exception): pass
 
 def executable_path() -> str:
   'Return the path to this executable.'
-  import __main__ # type: ignore
+  import __main__ # type: ignore # mypy bug?
   return _path.realpath(__main__.__file__)
 
 def executable_dir() -> str:
@@ -147,7 +147,7 @@ def path_rel_to_current_or_abs(path: str, dot=False) -> str:
 
 def copy_file(src: str, dst: str, follow_symlinks=True) -> None:
   'Copies file from source to destination.'
-  _shutil.copy(src, dst, follow_symlinks=follow_symlinks) # type: ignore
+  _shutil.copy(src, dst, follow_symlinks=follow_symlinks) # type: ignore # mypy bug regarding `*` parameter?
 
 
 def copy_dir_tree(src: str, dst: str, follow_symlinks=True, preserve_metadata=True, ignore_dangling_symlinks=False) -> None:

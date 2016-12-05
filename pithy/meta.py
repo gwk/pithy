@@ -73,5 +73,5 @@ def rename(obj: A, name: str) -> A:
 
 def main_file_path() -> str:
   'Returns the main file path.'
-  import __main__ # type: ignore
+  import __main__ # type: ignore # mypy bug?
   return __main__.__file__
