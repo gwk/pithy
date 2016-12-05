@@ -2,20 +2,23 @@
 
 from decimal import Decimal
 from string import Template
+from typing import Any, Iterable, Iterator, Sequence, TypeVar
+
+T = TypeVar('T')
 
 
-def render_template(template, **substitutions):
+def render_template(template: str, **substitutions: Any) -> str:
   'Render a template using $ syntax.'
   t = Template(template)
   return t.substitute(substitutions)
 
 
-def string_contains(string, query):
+def string_contains(string: str, query: str) -> bool:
   'Return True if string contains query.'
   return string.find(query) != -1
 
 
-def clip_prefix(string, prefix, req=True):
+def clip_prefix(string: str, prefix: str, req=True) -> str:
   'Remove `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):
     return string[len(prefix):]
@@ -24,7 +27,7 @@ def clip_prefix(string, prefix, req=True):
   return string
 
 
-def  clip_suffix(string, suffix, req=True):
+def  clip_suffix(string: str, suffix: str, req=True) -> str:
   'Remove `suffix`if it is present, or raise ValueError, unless `req` is False.'
   if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
@@ -34,7 +37,7 @@ def  clip_suffix(string, suffix, req=True):
   return string
 
 
-def clip_first_prefix(string, prefixes, req=True):
+def clip_first_prefix(string: str, prefixes: Sequence[str], req=True) -> str:
   'Remove the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
   for p in prefixes:
     try:
@@ -46,7 +49,7 @@ def clip_first_prefix(string, prefixes, req=True):
   return string
 
 
-def iter_excluding_str(seq):
+def iter_excluding_str(iterable: Iterable[T]) -> Iterator[T]:
   '''
   Often we want to handle all iterables in a particular way, except for str.
   There are two common reasons why:
@@ -54,9 +57,9 @@ def iter_excluding_str(seq):
   * because the fact that elements of a str are themselves strings,
     which makes naive type-based recursion over sequences impossible.
   '''
-  if isinstance(seq, str):
+  if isinstance(iterable, str):
     raise TypeError('iter_excluding_str explictly treats str as non-iterable type')
-  return iter(seq) # raises TypeError for non-iterables.
+  return iter(iterable) # raises TypeError for non-iterables.
 
 
 def pluralize(count: int, name: str, plural=None, spec='') -> str:
@@ -70,11 +73,11 @@ def pluralize(count: int, name: str, plural=None, spec='') -> str:
   return '{count:{spec}} {n}'.format(count=count, spec=spec, n=n)
 
 
-def format_nonempty(fmt, string):
+def format_nonempty(fmt: str, string: str) -> str:
   'format `string` into `format` unless `string` is empty.'
   return '' if (string == '') else fmt.format(string)
 
-def prefix_nonempty(prefix, string):
+def prefix_nonempty(prefix: str, string: str) -> str:
   'prepend `prefix` to `string` unless `string` is empty.'
   return '' if (string == '') else (prefix + string)
 
