@@ -4,11 +4,17 @@ import signal
 import shlex as _shlex
 
 from subprocess import PIPE as _pipe, Popen as _Popen
+from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
+
+
+Env = Dict[str, str]
+Input = Union[None, str, bytes, BinaryIO]
+Output = Optional[str] # TODO: support binary output.
 
 
 class ProcessExpectation(Exception):
   "Class to handle the expected code and the returned code from a command('cmd')."
-  def __init__(self, cmd, exp, act):
+  def __init__(self, cmd: List[str], exp: Any, act: int) -> None:
     super().__init__('process was expected to return code {}; actual code: {}'.format(
       exp, act))
     self.cmd = cmd
@@ -17,26 +23,27 @@ class ProcessExpectation(Exception):
 
 class ProcessTimeout(Exception):
   "Class to handle a process timeout command('cmd')."
-  def __init__(self, cmd, timeout):
+  def __init__(self, cmd: List[str], timeout: int) -> None:
     super().__init__('process timed out after {} seconds and was killed', timeout)
     self.cmd = cmd
     self.timeout = timeout
 
-def _decode(s):
+
+def _decode(s: Optional[bytes]) -> Output:
   "Decode s using 'utf-8'"
   return s if s is None else s.decode('utf-8')
 
 
 _dev_null_file = None
-def dev_null():
+def dev_null() -> BinaryIO:
   'Opens and returns a _dev_null_file if _dev_null_file does not exist.'
   global _dev_null_file
   if _dev_null_file is None:
-    _dev_null_file = open('/dev/null', 'r+b')
-  return _dev_null_file
+    _dev_null_file = open('/dev/null', 'b+')
+  return _dev_null_file # type: ignore
 
 
-def run(cmd, cwd=None, env=None, stdin=None, out=None, err=None, timeout=None, exp=0):
+def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, timeout: int=None, exp=0) -> Tuple[int, Output, Output]:
   '''
   Run a command and return (exit_code, std_out, std_err).
   Cmd: str or list of str.
@@ -44,7 +51,7 @@ def run(cmd, cwd=None, env=None, stdin=None, out=None, err=None, timeout=None, e
   Env: dict of str.
   Stdin: str, bytes, open binary file (including value of dev_null()).
   Out, err: open binary file or _pipe special.
-  Timeout: numeric or None.
+  Timeout: int or None.
   Exp: expected exit code can be None (accept any value), an integer code,
     or `...` (Ellipsis) to indicate any nonzero code.
 
@@ -60,6 +67,7 @@ def run(cmd, cwd=None, env=None, stdin=None, out=None, err=None, timeout=None, e
   if isinstance(cmd, str):
     cmd = _shlex.split(cmd)
 
+  input_bytes: Union[None, bytes]
   if isinstance(stdin, str):
     f_in = _pipe
     input_bytes = stdin.encode('utf-8')
@@ -92,7 +100,7 @@ def run(cmd, cwd=None, env=None, stdin=None, out=None, err=None, timeout=None, e
     signal.signal(signal.SIGALRM, alarm_handler) # set handler.
     signal.alarm(timeout) # set alarm.
 
-  p_out, p_err = proc.communicate(input_bytes) # waits for process to complete.
+  p_out, p_err = proc.communicate(input_bytes) # type: ignore # waits for process to complete.
 
   if timeout is not None:
     signal.alarm(0) # disable alarm.
@@ -112,7 +120,7 @@ def run(cmd, cwd=None, env=None, stdin=None, out=None, err=None, timeout=None, e
   return code, _decode(p_out), _decode(p_err)
 
 
-def runC(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None):
+def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, env: Env=None, timeout: int=None) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not _pipe
   assert err is not _pipe
@@ -122,7 +130,7 @@ def runC(cmd, cwd=None, stdin=None, out=None, err=None, env=None, timeout=None):
   return c
 
 
-def runCO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None):
+def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None, timeout: int=None) -> Tuple[int, Output]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=None)
@@ -130,7 +138,7 @@ def runCO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None):
   return c, o
 
 
-def runCE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None):
+def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None, timeout: int=None) -> Tuple[int, Output]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=None)
@@ -138,13 +146,13 @@ def runCE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None):
   return c, e
 
 
-def runOE(cmd, cwd=None, stdin=None, env=None, timeout=None, exp=0):
+def runOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None, timeout: int=None, exp=0) -> Tuple[Output, Output]:
   'Run a command and return (stdout, stderr) as strings; optional exp.'
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, exp=exp)
   return o, e
 
 
-def runO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None, exp=0):
+def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None, timeout: int=None, exp=0) -> Output:
   'Run a command and return stdout as a string; optional err and exp.'
   assert err is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=exp)
@@ -152,7 +160,7 @@ def runO(cmd, cwd=None, stdin=None, err=None, env=None, timeout=None, exp=0):
   return o
 
 
-def runE(cmd, cwd=None, stdin=None, out=None, env=None, timeout=None, exp=0):
+def runE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None, timeout: int=None, exp=0) -> Output:
   'Run a command and return stderr as a string; optional out and exp.'
   assert out is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=exp)
