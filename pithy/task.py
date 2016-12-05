@@ -100,7 +100,7 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
     signal.signal(signal.SIGALRM, alarm_handler) # set handler.
     signal.alarm(timeout) # set alarm.
 
-  p_out, p_err = proc.communicate(input_bytes) # type: ignore # waits for process to complete.
+  p_out, p_err = proc.communicate(input_bytes) # waits for process to complete.
 
   if timeout is not None:
     signal.alarm(0) # disable alarm.
