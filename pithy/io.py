@@ -2,59 +2,61 @@
 
 from pprint import pprint
 from sys import argv, stdout, stderr
+from typing import Any, Iterable, Iterator, TextIO, TypeVar
 
 from .string_utils import render_template as _render_template
 
+T = TypeVar('T')
 
 # basic printing.
 
-def writeZ(file, *items, sep='', end='', flush=False):
+def writeZ(file: TextIO, *items: Any, sep='', end='', flush=False) -> None:
   "Write `items` to file; default sep='', end=''."
   print(*items, sep=sep, end=end, file=file, flush=flush)
 
-def writeS(file, *items, sep='', flush=False):
+def writeS(file: TextIO, *items: Any, sep='', flush=False) -> None:
   "Write `items` to file; sep='', end=' '."
   print(*items, sep=sep, end=' ', file=file, flush=flush)
 
-def writeSZ(file, *items, flush=False):
+def writeSZ(file: TextIO, *items: Any, flush=False) -> None:
   "Write `items` to file; sep=' ', end=''."
   print(*items, sep=' ', end='', file=file, flush=flush)
 
-def writeSS(file, *items, flush=False):
+def writeSS(file: TextIO, *items: Any, flush=False) -> None:
   "Write `items` to file; sep=' ', end=''."
   print(*items, sep=' ', end=' ', file=file, flush=flush)
 
-def writeL(file, *items, sep='', flush=False):
+def writeL(file: TextIO, *items: Any, sep='', flush=False) -> None:
   "Write `items` to file; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=file, flush=flush)
 
-def writeSL(file, *items, flush=False):
+def writeSL(file: TextIO, *items: Any, flush=False) -> None:
   "Write `items` to file; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=file, flush=flush)
 
-def writeLL(file, *items, flush=False):
+def writeLL(file: TextIO, *items: Any, flush=False) -> None:
   "Write `items` to file; sep='\\n', end='\\n'."
   print(*items, sep='\n', end='\n', file=file, flush=flush)
 
-def writeLSSL(file, *items, flush=False):
+def writeLSSL(file: TextIO, *items: Any, flush=False) -> None:
   "Write `items` to file; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=file, flush=flush)
 
 
 # format printing.
 
-def writeF(file, fmt, *items, flush=False, **keyed_items):
+def writeF(file: TextIO, fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
   "Write the formatted `items` to file; end=''."
   print(fmt.format(*items, **keyed_items), end='', file=file, flush=flush)
 
-def writeFL(file, fmt, *items, flush=False, **keyed_items):
+def writeFL(file: TextIO, fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
   "Write the formatted `items` to file; end='\\n'."
   print(fmt.format(*items, **keyed_items), end='\n', file=file, flush=flush)
 
 
 # templated format printing.
 
-def writeTF(file, template_fmt, *items, flush=False, **keyed_items):
+def writeTF(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items: Any) -> None:
   """
   Expand the format string with keyed_items, then format the string; end=''.
   Useful for constructing dynamic format strings.
@@ -62,7 +64,7 @@ def writeTF(file, template_fmt, *items, flush=False, **keyed_items):
   fmt = _render_template(template_fmt, **keyed_items)
   writeF(file, fmt, *items, flush=flush, **keyed_items)
 
-def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
+def writeTFL(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items: Any) -> None:
   """
   Expand the format string template with keyed_items, then format the string; end='\\n'
   Useful for constructing dynamic format strings.
@@ -71,7 +73,7 @@ def writeTFL(file, template_fmt, *items, flush=False, **keyed_items):
   writeFL(file, fmt, *items, flush=flush, **keyed_items)
 
 
-def writeP(file, *items, label=None, indent=2, **opts):
+def writeP(file: TextIO, *items: Any, label=None, indent=2, **opts: Any) -> None:
   'Pretty print to file.'
   if label is not None:
     file.write(label)
@@ -82,121 +84,121 @@ def writeP(file, *items, label=None, indent=2, **opts):
 
 # std out.
 
-def outZ(*items, sep='', end='', flush=False):
+def outZ(*items: Any, sep='', end='', flush=False) -> None:
   "Write `items` to std out; sep='', end=''."
   print(*items, sep=sep, end=end, flush=flush)
 
-def outS(*items, sep='', flush=False):
+def outS(*items: Any, sep='', flush=False) -> None:
   "Write `items` to std out; sep='', end=' '."
   print(*items, sep=sep, end=' ', flush=flush)
 
-def outSZ(*items, flush=False):
+def outSZ(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep=' ', end=''."
   print(*items, sep=' ', end='', flush=flush)
 
-def outSS(*items, flush=False):
+def outSS(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep=' ', end=' '."
   print(*items, end=' ', flush=flush)
 
-def outL(*items, sep='', flush=False):
+def outL(*items: Any, sep='', flush=False) -> None:
   "Write `items` to std out; sep='', end='\\n'."
   print(*items, sep=sep, flush=flush)
 
-def outSL(*items, flush=False):
+def outSL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep=' ', end='\\n'."
   print(*items, flush=flush)
 
-def outLL(*items, flush=False):
+def outLL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep='\\n', end='\\n'."
   print(*items, sep='\n', flush=flush)
 
-def outLSSL(*items, flush=False):
+def outLSSL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', flush=flush)
 
-def outF(fmt, *items, flush=False, **keyed_items):
+def outF(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
   "Write the formatted string to std out; end=''."
   writeF(stdout, fmt, *items, flush=flush, **keyed_items)
 
-def outFL(fmt, *items, flush=False, **keyed_items):
+def outFL(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
   "Write the formatted string to std out; end='\\n'."
   writeFL(stdout, fmt, *items, flush=flush, **keyed_items)
 
-def outP(*items, label=None, flush=False, **opts):
+def outP(*items: Any, label=None, flush=False, **opts: Any) -> None:
   'Pretty print to std out.'
   writeP(stdout, *items, label=label, **opts)
 
 
 # std err.
 
-def errZ(*items, sep='', end='', flush=False):
+def errZ(*items: Any, sep='', end='', flush=False) -> None:
   "Write items to std err; default sep='', end=''."
   print(*items, sep=sep, end=end, file=stderr, flush=flush)
 
-def errS(*items, sep='', flush=False):
+def errS(*items: Any, sep='', flush=False) -> None:
   "Write items to std err; sep='', end=' '."
   print(*items, sep=sep, end=' ', file=stderr, flush=flush)
 
-def errSZ(*items, flush=False):
+def errSZ(*items: Any, flush=False) -> None:
   "Write items to std err; sep=' ', end=''."
   print(*items, sep=' ', end='', file=stderr, flush=flush)
 
-def errSS(*items, flush=False):
+def errSS(*items: Any, flush=False) -> None:
   "Write items to std err; sep=' ', end=''."
   print(*items, sep=' ', end=' ', file=stderr, flush=flush)
 
-def errL(*items, sep='', flush=False):
+def errL(*items: Any, sep='', flush=False) -> None:
   "Write items to std err; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=stderr, flush=flush)
 
-def errSL(*items, flush=False):
+def errSL(*items: Any, flush=False) -> None:
   "Write items to std err; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=stderr, flush=flush)
 
-def errLL(*items, flush=False):
+def errLL(*items: Any, flush=False) -> None:
   "Write items to std err; sep='\\n', end='\\n'."
   print(*items, sep='\n', end='\n', file=stderr, flush=flush)
 
-def errLSSL(*items, flush=False):
+def errLSSL(*items: Any, flush=False) -> None:
   "Write items to std err; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=stderr, flush=flush)
 
-def errF(fmt, *items, flush=False, **keyed_items):
+def errF(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
   "Write the formatted string to std err; end=''."
   writeF(stderr, fmt, *items, flush=flush, **keyed_items)
 
-def errFL(fmt, *items, flush=False, **keyed_items):
+def errFL(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
   "Write the formatted string to std err; end='\\n'."
   writeFL(stderr, fmt, *items, flush=flush, **keyed_items)
 
-def errP(*items, label=None, **opts):
+def errP(*items: Any, label=None, **opts) -> None:
   'Pretty print to std err.'
   writeP(stderr, *items, label=label, **opts)
 
 
-def err_progress(iterator, label='progress', suffix='', frequency=0.1):
+def err_progress(iterable: Iterable[T], label='progress', suffix='', frequency=0.1) -> Iterator[T]:
   '''
-  For interactive terminals, return a generator that yields the elements of iterator
+  For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.
   '''
   if not frequency or not stderr.isatty():
-    return iterator
+    return iter(iterable)
 
-  from pithy.ansi import ERASE_LINE
+  from .ansi import ERASE_LINE
 
   if label is None:
-    label = str(iterator)
+    label = str(iterable)
   pre = '◊ ' + label + ': '
   post = (suffix and ' ' + suffix) + '…\r'
   final = ' ' + suffix + '.' if suffix else '.'
 
   if isinstance(frequency, float):
     from time import time
-    def err_progress_gen():
+    def err_progress_gen() -> Iterator[T]:
       prev_t = time()
       step = 1
       next_i = step
-      for i, el in enumerate(iterator):
+      for i, el in enumerate(iterable):
         if i == next_i:
           print(pre + str(i) + post, end='', file=stderr, flush=True)
           print(ERASE_LINE, end='', file=stderr, flush=False)
@@ -210,8 +212,8 @@ def err_progress(iterator, label='progress', suffix='', frequency=0.1):
 
 
   else:
-    def err_progress_gen():
-      for i, el in enumerate(iterator):
+    def err_progress_gen() -> Iterator[T]:
+      for i, el in enumerate(iterable):
         if i % frequency == 0:
           print(pre + str(i) + post, end='', file=stderr, flush=True)
           print(ERASE_LINE, end='', file=stderr, flush=False)
@@ -223,46 +225,46 @@ def err_progress(iterator, label='progress', suffix='', frequency=0.1):
 
 # errors.
 
-def fail(*items, sep=''):
+def fail(*items: Any, sep='') -> None:
   'Write `items` to std err and exit.'
   errZ(*items, sep=sep, end='\n')
   exit(1)
 
-def failS(*items):
+def failS(*items: Any) -> None:
   "Write `items` to std err with sep =' ', and exit."
   fail(*items, sep=' ')
 
-def failL(*items):
+def failL(*items: Any) -> None:
   "Write `items` to std err with sep ='\n', and exit."
   fail(*items, sep='\n')
 
-def failF(fmt, *items, **keyed_items):
+def failF(fmt: str, *items: Any, **keyed_items: Any) -> None:
   'Writes `items` to std err with a formatted err, and exit.'
   fail(fmt.format(*items, **keyed_items))
 
 
-def check(condition, *items, sep=''):
+def check(condition: bool, *items: Any, sep='') -> None:
   'If `condition` is False, fail with `items`.'
   if not condition: fail(*items, sep=sep)
 
-def checkS(condition, *items):
+def checkS(condition: bool, *items: Any) -> None:
   "If `condition` is False, fail with `items` and a sep=' '."
   if not condition: failS(*items)
 
-def checkF(condition, fmt, *items, **keyed_items):
+def checkF(condition: bool, fmt: str, *items: Any, **keyed_items: Any) -> None:
   'If `condition` is False, fail with `items` with a formatted err.'
   if not condition: failF(fmt, *items, **keyed_items)
 
 
 # exceptions.
 
-def raiseZ(*items, sep='', E=Exception):
+def raiseZ(*items: Any, sep='', E=type) -> None:
   raise E(''.join(items))
 
-def raiseS(*items, E=Exception):
+def raiseS(*items: Any, E=type) -> None:
   raise E(' '.join(items))
 
-def raiseF(fmt, *items, E=Exception):
+def raiseF(fmt: str, *items: Any, E=type) -> None:
   raise E(fmt.format(*items))
 
 
@@ -270,7 +272,7 @@ def raiseF(fmt, *items, E=Exception):
 
 _no_default = object()
 
-def read_from_path(path, default=_no_default):
+def read_from_path(path: str, default=_no_default) -> str:
   'Read all text from file at `path`.'
   try:
     with open(path) as f:
@@ -279,7 +281,7 @@ def read_from_path(path, default=_no_default):
     if default is _no_default: raise
     return default
 
-def read_first_line_from_path(path, default=_no_default):
+def read_first_line_from_path(path: str, default=_no_default) -> str:
   'Read first line of text from file at `path`.'
   try:
     with open(path) as f:
@@ -288,7 +290,7 @@ def read_first_line_from_path(path, default=_no_default):
     if default is _no_default: raise
     return default
 
-def write_to_path(path, string):
+def write_to_path(path: str, string) -> None:
   'Writes `string` to file at `path`.'
   with open(path, 'w') as f:
     f.write(string)
