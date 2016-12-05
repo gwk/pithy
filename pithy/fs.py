@@ -6,7 +6,8 @@ import shutil as _shutil
 import stat as _stat
 
 from itertools import zip_longest as _zip_longest
-from typing import AbstractSet, Iterable, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import AbstractSet, Iterable, Iterator, List, Optional, Tuple
+
 
 class NotAPathError(Exception): pass
 class PathIsNotDescendantError(Exception): pass
