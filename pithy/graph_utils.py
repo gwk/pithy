@@ -4,9 +4,15 @@ import re
 
 from html import escape as html_escape
 from sys import stdout
+from typing import Callable, Iterable, MutableSet, TextIO, Tuple, TypeVar, Union
 
 
-def visit_nodes(start_nodes, visitor):
+T = TypeVar('T')
+
+Name = Union[int, float, str]
+
+
+def visit_nodes(start_nodes: Iterable[T], visitor: Callable[[T], Iterable[T]]) -> MutableSet[T]:
   '''
   Starting with `start_nodes`, call `visitor` with each node.
   `visitor` should return discovered nodes to be visited.
@@ -29,7 +35,7 @@ def visit_nodes(start_nodes, visitor):
 dot_bare_id_re = re.compile(r'[_a-zA-Z][_a-zA-Z0-9]*')
 dot_keywords = frozenset({'node', 'edge', 'graph', 'digraph', 'subgraph', 'strict'})
 
-def dot_id_quote(name):
+def dot_id_quote(name: Name) -> str:
   '''
   Properly quote an identifier.
   The DOT language has a facility for double-quoted strings, but the escape semantics are flawed,
@@ -40,7 +46,9 @@ def dot_id_quote(name):
   return name if dot_bare_id_re.fullmatch(name) and name not in dot_keywords else '<{}>'.format(html_escape(name))
 
 
-def write_dot_digraph_adjacency_contents(f, adjacency):
+AdjacencyIterable = Iterable[Tuple[Name, Iterable[Name]]]
+
+def write_dot_digraph_adjacency_contents(f: TextIO, adjacency: AdjacencyIterable) -> None:
   for src, dsts in adjacency:
     src_quoted = dot_id_quote(src)
     f.write('  {} -> {{'.format(src_quoted))
@@ -50,7 +58,7 @@ def write_dot_digraph_adjacency_contents(f, adjacency):
     f.write(' };\n')
 
 
-def write_dot_digraph_adjacency(f, adjacency, label=None):
+def write_dot_digraph_adjacency(f: TextIO, adjacency: AdjacencyIterable, label: str=None) -> None:
   if label is None:
     f.write('strict digraph {')
   else:
@@ -61,5 +69,5 @@ def write_dot_digraph_adjacency(f, adjacency, label=None):
   f.write('}\n')
 
 
-def out_dot_digraph_adjacency(adjacency, label=None):
+def out_dot_digraph_adjacency(adjacency: AdjacencyIterable, label: str=None) -> None:
   write_dot_digraph_adjacency(stdout, adjacency=adjacency, label=label)
