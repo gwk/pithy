@@ -4,7 +4,7 @@ import os.path as _os_path
 import urllib.parse as _parse
 
 
-def _path_encode_byte(b):
+def _path_encode_byte(b: int) -> str:
   '''
   Path encoding is similar to url percent encoding, but uses '+' as the escape character.
   It is used to create convenient file system paths out of urls.
@@ -34,17 +34,17 @@ def _path_encode_byte(b):
     return '|'
   else:
     return '+{:2X}'.format(b)
- 
+
 _path_encode_table = tuple(_path_encode_byte(b) for b in range(0xff))
 
 
-def path_encode(string):
+def path_encode(string: str) -> str:
   'Encode string into a path.'
   utf8 = string.encode()
   return ''.join(_path_encode_table[b] for b in utf8)
 
 
-def path_for_url(url):
+def path_for_url(url: str) -> str:
   'Return a path encoded from a url.'
   parts = _parse.urlsplit(url) # returns five-element namedtuple.
   name = path_encode(''.join((parts.path, parts.query, parts.fragment)))
