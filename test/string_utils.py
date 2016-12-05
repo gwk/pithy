@@ -23,29 +23,45 @@ utest('-rest', clip_first_prefix, 'firstprefix-rest', ['firstprefix','first'])
 utest('firstprefix-rest', clip_first_prefix, 'firstprefix-rest', ['notpresent','notpresenteither'], req=False)
 utest_exc(ValueError('firstprefix-rest'), clip_first_prefix, 'firstprefix-rest', ['notpresent','notpresenteither'])
 
-utest('', plural_s, 1)
-utest('s', plural_s, 9)
+utest('-1 things',  pluralize, -1, 'thing')
+utest('0 things',   pluralize,  0, 'thing')
+utest('1 thing',    pluralize,  1, 'thing')
+utest('2 things',   pluralize,  2, 'thing')
+utest(' 0 oxen',    pluralize,  0, 'ox', 'oxen', spec=' ')
+utest(' 1 ox',      pluralize,  1, 'ox', 'oxen', spec=' ')
 
 utest('rest-', clip_suffix, 'rest-suffix', 'suffix')
 utest_exc(ValueError('rest-suffix'), clip_suffix, 'rest-suffix', 'notpresent')
 
-format_test_vals = [
-  ('999 B', '999 bytes', '999.0000 B', '999.00 B', 999),
-  ('1000.00 kB', '1000.00 kilobytes', '999.9990 kB', '1000.00 kB',  999999),
-  ('1000.00 MB', '1000.00 megabytes', '1000.0000 MB', '1000.00 MB', 999999999),
-  ('1000.00 GB', '1000.00 gigabytes', '1000.0000 GB', '1000.00 GB', 999999999999),
-  ('1000.00 TB', '1000.00 terabytes', '1000.0000 TB', '1000.00 TB', 999999999999999),
-  ('100.00 PB', '100.00 petabytes', '100.0000 PB', '100.00 PB',     99999999999999999),
-  ('100.00 EB', '100.00 exabytes', '100.0000 EB', '100.00 EB',      99999999999999999999),
-  ('100.00 ZB', '100.00 zettabytes', '100.0000 ZB', '100.00 ZB',    99999999999999999999999),
-  ('100.00 YB', '100.00 yottabytes', '100.0000 YB', '100.00 YB',    99999999999999999999999999)
+format_byte_count_test_vals = [
+  ('1 B',         '1 byte',             1),
+  ('1.000 kB',    '1.000 kilobytes',    1000),
+  ('1.000 MB',    '1.000 megabytes',    1000000),
+  ('1.000 GB',    '1.000 gigabytes',    999999500),
+  ('1.000 TB',    '1.000 terabytes',    999999500000),
+  ('1.000 PB',    '1.000 petabytes',    999999500000000),
+  ('1.000 EB',    '1.000 exabytes',     999999500000000000),
+  ('1.000 ZB',    '1.000 zettabytes',   999999500000000000000),
+  ('1.000 YB',    '1.000 yottabytes',   999999500000000000000000),
+  ('999 B',       '999 bytes',          999),
+  ('999.999 kB',  '999.999 kilobytes',  999999),
+  ('999.999 MB',  '999.999 megabytes',  999999499),
+  ('999.999 GB',  '999.999 gigabytes',  999999499999),
+  ('999.999 TB',  '999.999 terabytes',  999999499999999),
+  ('999.999 PB',  '999.999 petabytes',  999999499999999999),
+  ('999.999 EB',  '999.999 exabytes',   999999499999999999999),
+  ('999.999 ZB',  '999.999 zettabytes', 999999499999999999999999),
+  ('999.999 YB',  '999.999 yottabytes', 999999499999999999999999999),
 ]
 
-for (exp_abbrev, exp_non_abbrev, exp_precision, exp_small_ints, test_count) in format_test_vals:
-  utest(exp_abbrev, format_byte_count_dec, test_count)
-  utest(exp_precision, format_byte_count_dec, test_count, precision=4, small_ints=False)
-  utest(exp_non_abbrev, format_byte_count_dec, test_count, abbreviated=False)
-  utest(exp_small_ints, format_byte_count_dec, test_count, small_ints=False)
+for (exp_abbr, exp_full, count) in format_byte_count_test_vals:
+  utest(exp_abbr, format_byte_count, count)
+  utest(exp_full, format_byte_count, count, abbr=False)
+
+# pluralization special case for zero precision.
+utest('1 kilobyte',  format_byte_count, 1499, prec=0, abbr=False)
+utest('2 kilobytes', format_byte_count, 1500, prec=0, abbr=False)
+
 
 def iter_excluding_str_test(val):
   'iter_excluding_str returns an iterator, this is testable.'

@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from decimal import Decimal
 from string import Template
 
 
@@ -58,9 +59,15 @@ def iter_excluding_str(seq):
   return iter(seq) # raises TypeError for non-iterables.
 
 
-def plural_s(count):
-  "Return an 's' or '' depending on the count, for use in english language formatted strings."
-  return '' if count == 1 else 's'
+def pluralize(count: int, name: str, plural=None, spec='') -> str:
+  'Return a string of format "{count} {name}s", with optional custom plural form and format spec.'
+  if count == 1:
+    n = name
+  elif plural is None:
+    n = name + 's'
+  else:
+    n = plural
+  return '{count:{spec}} {n}'.format(count=count, spec=spec, n=n)
 
 
 def format_nonempty(fmt, string):
@@ -84,17 +91,23 @@ _byte_count_dec_magnitudes = [
   ('YB', 'yottabyte'),
 ]
 
-def format_byte_count_dec(count, precision=2, abbreviated=True, small_ints=True):
+def format_byte_count(count: int, prec=3, abbr=True) -> str:
   "Format a string for the given number of bytes, using the largest appropriate prefix (e.g. 'kB')"
-  if small_ints and count < 1000:
-    fmt = '{} {}'
-  else:
-    fmt = '{:.{precision}f} {}'
-    count = float(count)
+  count = int(count)
+  if count < 1000:
+    if abbr: return '{:d} B'.format(count)
+    else: return pluralize(count, 'byte')
+  c = Decimal(count)
   for abbrev, full in _byte_count_dec_magnitudes:
-    if count < 1000: break
-    count /= 1000
-  word = abbrev if abbreviated else full + plural_s(count)
-  return fmt.format(count, word, precision=precision)
-
+    if c < 999: break
+    if c < 1000: # must make sure that c will not round up.
+      shift = 10**prec
+      if round(c * shift) < 1000 * shift: break
+    c /= 1000
+  if prec == 0 and not abbr:
+    return pluralize(round(c), full)
+  # with precision > 0, always pluralize the full names, even if all the digits are zero.
+  s = '' if abbr else 's'
+  label = abbrev if abbr else full
+  return '{c:.{prec}f} {label}{s}'.format(c=c, prec=prec, label=label, s=s)
 
