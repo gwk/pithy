@@ -39,7 +39,7 @@ def rel_path(path: str, start='.') -> str:
 
 def path_common_prefix(*paths: str) -> str:
   'Return the common path prefix for a sequence of paths.'
-  try: return _path.commonpath(paths) # type: ignore
+  try: return _path.commonpath(paths)
   except ValueError: # we want a more specific exception.
     raise MixedAbsoluteAndRelativePathsError(paths) from None
 
