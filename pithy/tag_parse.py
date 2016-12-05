@@ -16,12 +16,16 @@ the branches are TagTree instances, which are subclasses of tuple.
 import re
 
 from itertools import chain, islice
-from pithy.ansi import TXT_R, TXT_Y, RST_TXT
+from typing import Callable, Iterable, Iterator, Sequence, Tuple, Union
+from .ansi import TXT_R, TXT_Y, RST_TXT
 from .buffer import Buffer
 
 
+Node = Union[str, 'TagTree'] # TODO: move code.
+
+
 class TagRule():
-  def __init__(self, open_pattern, close_pattern, open_close_tokens_match_fn=None):
+  def __init__(self, open_pattern: str, close_pattern: str, open_close_tokens_match_fn: Callable=None) -> None:
     self.open_pattern = open_pattern
     self.close_pattern = close_pattern
     self.open_close_tokens_match_fn = open_close_tokens_match_fn
@@ -29,7 +33,7 @@ class TagRule():
 
 class TagParser():
 
-  def __init__(self, leaf_patterns, tag_rules):
+  def __init__(self, leaf_patterns: Sequence[str], tag_rules: Sequence[TagRule]) -> None:
     # parser works by wrapping each start and end pattern in a capture group.
     # the group itself is not used,
     # but the match group index indicates which open or close pattern matched.
@@ -41,12 +45,13 @@ class TagParser():
     self.last_open_index = len(tag_rules)
 
 
-  def _parse(self, leaf_replacements, text, match_stream, pos, depth, subs, close_pred, parent_close_pred):
+  def _parse(self, leaf_replacements: Dict[str, str], text: str, match_stream: Buffer[re.Match],
+    pos: int, depth: int, subs: List, close_pred: Callable, parent_close_pred: Callable) -> Tuple['TagTree', int]:
 
-    def append_leaf(leaf):
+    def append_leaf(leaf: str) -> None:
       subs.append(leaf_replacements.get(leaf, leaf))
 
-    def flush_leaf(pos, end_index):
+    def flush_leaf(pos: int, end_index: int) -> None:
       leaf_text = text[pos:end_index]
       if leaf_text:
         append_leaf(leaf_text)
@@ -81,8 +86,8 @@ class TagParser():
     return TagTreeRoot(*subs) if depth == 0 else TagTreeUnterminated(*subs), len(text)
 
 
-  def parse(self, text, leaf_replacements=None):
-    match_stream = IterBuffer(self.lexer.finditer(text))
+  def parse(self, text: str, leaf_replacements: Dict[str, str]=None) -> Node:
+    match_stream = Buffer(self.lexer.finditer(text))
     res, pos = self._parse(leaf_replacements or {}, text, match_stream, pos=0, depth=0,
       subs=[], close_pred=lambda i, t: False, parent_close_pred=lambda i, t: False)
     return res
@@ -95,17 +100,17 @@ class TagTree(tuple):
   The str() value of the node is equal to the original text.
   '''
 
-  def __new__(cls, *args):
+  def __new__(cls, *args: Node) -> TagTree:
     assert all(isinstance(el, (str, TagTree)) for el in args)
-    return super().__new__(cls, args)
+    return super().__new__(cls, args) # type: ignore
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return '{}({})'.format(type(self).__name__, ', '.join(repr(el) for el in self))
 
-  def __str__(self):
+  def __str__(self) -> str:
     return ''.join(self.walk_all())
 
-  def __getitem__(self, key):
+  def __getitem__(self, key) -> Node: # type: ignore
     if isinstance(key, slice):
       return type(self)(super().__getitem__(key)) # create a TagTree as the slice.
     return super().__getitem__(key)
@@ -115,20 +120,20 @@ class TagTree(tuple):
   ansi_reset = ''
 
   @property
-  def is_flawed(self):
+  def is_flawed(self) -> bool:
     return isinstance(self, TagTreeFlawed) or self.has_flawed_els
 
   @property
-  def has_flawed_els(self):
+  def has_flawed_els(self) -> bool:
     return any(isinstance(el, TagTree) and el.is_flawed for el in self)
 
   @property
-  def contents(self):
+  def contents(self) -> Iterable[Node]:
     if len(self) < 2: raise ValueError('bad TagTree: {!r}'.format(self))
     return islice(self, 1, len(self) - 1) # omit start and end tag.
 
 
-  def walk_all(self):
+  def walk_all(self) -> Iterator[str]:
     for el in self:
       if isinstance(el, str):
         yield el
@@ -136,7 +141,7 @@ class TagTree(tuple):
         yield from el.walk_all()
 
 
-  def walk_contents(self):
+  def walk_contents(self) -> Iterator[str]:
     for el in self.contents:
       if isinstance(el, str):
         yield el
@@ -144,7 +149,7 @@ class TagTree(tuple):
         yield from el.walk_contents()
 
 
-  def walk_branches(self, should_enter_tag_fn=lambda tag: True):
+  def walk_branches(self, should_enter_tag_fn=lambda tag: True) -> Iterator[TagTree]:
     for el in self:
       if isinstance(el, TagTree):
         yield el
@@ -152,7 +157,7 @@ class TagTree(tuple):
           yield from el.walk_branches(should_enter_tag_fn=should_enter_tag_fn)
 
 
-  def _structured_desc(self, res, depth):
+  def _structured_desc(self, res: List[str], depth: int) -> None:
     'multiline indented description helper.'
     if self.ansi_color: res.append(self.ansi_color)
     res.append(self.class_label)
@@ -171,17 +176,18 @@ class TagTree(tuple):
         el._structured_desc(res, d)
         spacer = nest_spacer
 
-  def structured_desc(self, depth=0):
-    res = []
+  def structured_desc(self, depth=0) -> str:
+    res: List[str] = []
     self._structured_desc(res, depth)
     return ''.join(res)
 
 
 class TagTreeRoot(TagTree):
   class_label = 'Root'
+
   @property
-  def contents(self):
-    return self # no tags at root level.
+  def contents(self) -> Sequence[TagTree]:
+    return (self,) # no tags at root level.
 
 
 class TagTreeFlawed(TagTree):
@@ -196,12 +202,12 @@ class TagTreeUnexpected(TagTreeFlawed):
   ansi_color = TXT_R
   ansi_reset = RST_TXT
 
-  def __new__(cls, *args):
+  def __new__(cls, *args) -> TagTree:
     assert len(args) == 1
     return super().__new__(cls, *args)
 
   @property
-  def contents(self):
+  def contents(self) -> Sequence[TagTree]:
     assert len(self) == 1
     return ()
 
@@ -214,5 +220,5 @@ class TagTreeUnterminated(TagTreeFlawed):
   ansi_reset = RST_TXT
 
   @property
-  def contents(self):
+  def contents(self) -> Iterable[TagTree]:
     return islice(self, 1, len(self)) # omit the start tag only.
