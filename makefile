@@ -5,7 +5,7 @@
 # $^: The names of all the prerequisites, with spaces between them.
 
 
-.PHONY: clean default develop dist upload
+.PHONY: _default clean cov pip-develop pypi-dist pypi-register pypi-upload test typecheck
 
 # First target of a makefile is the default.
 _default: test
@@ -33,3 +33,6 @@ pypi-upload: pypi-dist
 
 test:
 	iotest -fail-fast
+
+typecheck:
+	mypy pithy
