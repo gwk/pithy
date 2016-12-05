@@ -9,7 +9,7 @@ ANSI Select Graphics Rendition (SGR) sequences.
 RST: reset
 
 BOLD: bold
-UNDERLINE: underline
+ULINE: underline
 BLINK: blink
 INVERT: invert
 TXT: color text
@@ -91,7 +91,7 @@ def ansi_sgr(*seq: Any, on=True) -> str:
 # reset command strings.
 ( RST, RST_ERR, RST_OUT,
   RST_BOLD, RST_BOLD_ERR, RST_BOLD_OUT,
-  RST_UNDERLINE, RST_UNDERLINE_ERR, RST_UNDERLINE_OUT,
+  RST_ULINE, RST_ULINE_ERR, RST_ULINE_OUT,
   RST_BLINK, RST_BLINK_ERR, RST_BLINK_OUT,
   RST_INVERT, RST_INVERT_ERR, RST_INVERT_OUT,
   RST_TXT, RST_TXT_ERR, RST_TXT_OUT,
@@ -102,7 +102,7 @@ def ansi_sgr(*seq: Any, on=True) -> str:
 
 # effect command strings.
 ( BOLD, BOLD_ERR, BOLD_OUT,
-  UNDERLINE, UNDERLINE_ERR, UNDERLINE_OUT,
+  ULINE, ULINE_ERR, ULINE_OUT,
   BLINK, BLINK_ERR, BLINK_OUT,
   INVERT, INVERT_ERR, INVERT_OUT
 ) = (ansi_sgr(i, on=on)
