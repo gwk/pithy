@@ -1,19 +1,30 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import json as _json
-import json.decoder as _json_dec # type: ignore.
+import json.decoder as _json_dec # type: ignore
 
 from datetime import datetime
-from sys import stdout
+from sys import stderr, stdout
+from typing import Any, Callable, Dict, Iterable, Hashable, List, Optional, Sequence, TextIO, Union
 
 
-def json_encode_default(obj):
+JsonAny = Any # TODO: remove this once recursive types work.
+JsonList = List[JsonAny]
+JsonDict = Dict[Hashable, JsonAny]
+JsonDictIn = Dict[str, Any]
+
+Json = Union[None, int, float, str, bool, JsonList, JsonDict]
+
+JsonDefaulter = Callable[[Any], Json]
+
+
+def json_encode_default(obj: Any) -> Json:
   try: return list(obj) # try to convert sequences first.
   except TypeError: pass
   return str(obj) # convert to string as last resort.
 
 
-def write_json(file, *items, default=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs):
+def write_json(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   'Write each item in `items` as json to file.'
   for item in items:
     _json.dump(item, file, indent=indent, default=default, sort_keys=sort, **kwargs)
@@ -23,16 +34,16 @@ def write_json(file, *items, default=json_encode_default, sort=True, indent=2, e
     file.flush()
 
 
-def err_json(*items, default=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs):
+def err_json(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   'Write items as json to std err.'
   write_json(stderr, *items, default=default, sort=sort, indent=indent, **kwargs)
 
 
-def out_json(*items, default=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs):
+def out_json(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   write_json(stdout, *items, default=default, sort=sort, indent=indent, **kwargs)
 
 
-def write_jsonl(file, *items, default=json_encode_default, sort=True, flush=False, **kwargs):
+def write_jsonl(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
   'Write each item in `items` as jsonl to file.'
   for item in items:
     _json.dump(item, file, indent=None, default=default, sort_keys=sort, **kwargs)
@@ -41,12 +52,12 @@ def write_jsonl(file, *items, default=json_encode_default, sort=True, flush=Fals
     file.flush()
 
 
-def err_jsonl(*items, default=json_encode_default, sort=True, flush=False, **kwargs):
+def err_jsonl(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
   'Write items as jsonl to std err.'
   write_jsonl(stderr, *items, default=default, sort=sort, flush=flush, **kwargs)
 
 
-def out_jsonl(*items, default=json_encode_default, sort=True, flush=False, **kwargs):
+def out_jsonl(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
   'Write items as jsonl to std out.'
   write_jsonl(stdout, *items, default=default, sort=sort, flush=flush, **kwargs)
 
@@ -54,13 +65,13 @@ def out_jsonl(*items, default=json_encode_default, sort=True, flush=False, **kwa
 # input.
 
 
-def _mk_hook(types):
+def _mk_hook(types: Sequence) -> Callable[[Dict[Any, Any]], Any]:
   '''
   Provide a hook function that creates custom objects from json.
   `types` is a sequence of type objects, each of which must have a `_fields` property.
   NamedTuple instances are compatible.
   '''
-  if not types: return None
+  if not types: return None # type: ignore
 
   type_map = { frozenset(t._fields) : t for t in types }
   if len(type_map) < len(types):
@@ -77,14 +88,14 @@ def _mk_hook(types):
   return _read_json_object_hook
 
 
-def _mk_decoder(types):
+def _mk_decoder(types: Sequence) -> _json.JSONDecoder:
   return _json.JSONDecoder(object_hook=_mk_hook(types))
 
 
 _ws_re = _json_dec.WHITESPACE
 
 
-def parse_json(string, types=()):
+def parse_json(string: str, types: Sequence[type]=()) -> Json:
   '''
   Parse json from `string`.
   If `types` is a non-empty sequence,
@@ -95,7 +106,7 @@ def parse_json(string, types=()):
   return _json.loads(string, object_hook=_mk_hook(types))
 
 
-def load_json(file, types=()):
+def load_json(file: TextIO, types: Sequence[type]=()) -> Json:
   '''
   Read json from `file`.
   If `types` is a non-empty sequence,
@@ -106,7 +117,7 @@ def load_json(file, types=()):
   return _json.load(file, object_hook=_mk_hook(types))
 
 
-def parse_jsons(string, types=()):
+def parse_jsons(string: str, types: Sequence[type]=()) -> Iterable[Json]:
   '''
   Parse multiple json objects from `string`.
   If `types` is a non-empty sequence,
@@ -117,12 +128,12 @@ def parse_jsons(string, types=()):
   decoder = _mk_decoder(types)
   idx = _ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.
   while idx < len(string):
-    obj, end = decoder.raw_decode(string, idx)
+    obj, end = decoder.raw_decode(string, idx) # type: ignore
     yield obj
     idx = _ws_re.match(string, end).end()
 
 
-def load_jsons(file, types=()):
+def load_jsons(file: TextIO, types: Sequence[type]=()) -> Iterable[Json]:
   # TODO: it seems like we ought to be able to stream the file into the parser,
   # but JSONDecoder requires the entire string for a single JSON segment.
   # Therefore in order to stream we would need to read into a buffer,
@@ -132,11 +143,11 @@ def load_jsons(file, types=()):
   return parse_jsons(file.read(), types=types)
 
 
-def parse_jsonl(string, types=()):
+def parse_jsonl(string: str, types: Sequence[type]=()) -> Iterable[Json]:
   hook = _mk_hook(types)
   return (_json.loads(line, object_hook=hook) for line in string.splitlines())
 
 
-def load_jsonl(file, types=()):
+def load_jsonl(file: TextIO, types: Sequence[type]=()) -> Iterable[Json]:
   hook = _mk_hook(types)
   return (_json.loads(line, object_hook=hook) for line in file)
