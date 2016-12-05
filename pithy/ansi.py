@@ -143,7 +143,7 @@ ALT_ENTER = ansi_ctrl_seq('?1049h')
 ALT_EXIT  = ansi_ctrl_seq('?1049l')
 
 
-def ansi_term_pos(x: int, y: int):
+def ansi_term_pos(x: int, y: int) -> str:
   '''
   position the cursor using 0-indexed x, y integer coordinates.
   (supposedly the 'f' suffix does the same thing).
