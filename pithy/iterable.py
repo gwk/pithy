@@ -159,9 +159,9 @@ class OnHeadless(Enum):
   error, drop, keep = range(3)
 
 
-def group_seq_by_heads(seq: Iterable[T], is_head: Callable[[T], bool], headless=OnHeadless.error) -> Iterable[T]:
+def group_seq_by_heads(seq: Iterable[T], is_head: Callable[[T], bool], headless=OnHeadless.error) -> Iterable[List[T]]:
   it = iter(seq)
-  group = [] # type: ignore
+  group: List[T] = []
   while True: # consume all headless (leading tail) tokens.
     try: el = next(it)
     except StopIteration:
