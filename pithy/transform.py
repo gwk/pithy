@@ -38,7 +38,7 @@ class Transformer(Generic[T]):
     self.log_files: List[TextIO] = []
 
 
-  def __enter__(self) -> Transformer[T]:
+  def __enter__(self):
     return self
 
 
