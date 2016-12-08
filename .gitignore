@@ -1,13 +1,13 @@
-# finder.
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Finder.
 .DS_Store
 
-# python.
-__pycache__
+# Python.
+__pycache__/
+*.egg-info/
 
-# swift.
-.build
-
-# legs.
-_build
-_misc
-legs.egg-info
+# Project.
+_build/
+_misc/
+gh-pages/
