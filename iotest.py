@@ -57,7 +57,7 @@ def main():
 
   if args.dbg:
     def fail_fast(e=None):
-      errL()
+      errL('\nfail_fast:')
       raise Exception('iotest: stopping after error (-dbg).') from e
   elif args.fail_fast:
     def fail_fast(e=None): fail('iotest: stopping after error (-fail-fast).')
@@ -567,7 +567,6 @@ def try_case(ctx, case):
   if not ok:
     if case.desc: outSL('description:', case.desc)
     outL('=' * bar_width, '\n')
-  if ctx.dbg: errL()
   if not ok: ctx.fail_fast()
   return ok
 
