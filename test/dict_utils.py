@@ -25,4 +25,4 @@ def DefaultByKeyDict_test(factory, test_keys):
     d[k]
   return d
 
-utest({0: 0, 1: 1}, DefaultByKeyDict_test, lambda k: k, [0, 1])
+utest({0: 0, 1: 1}, DefaultByKeyDict_test, lambda k: k, test_keys=[0, 1])
