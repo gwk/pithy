@@ -669,7 +669,7 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
     ctx.coverage_cases.append(case)
     cove_cmd = ['cove', '-output', coverage_name]
     if case.coverage_targets:
-      cove_cmd += ['-targets'] + coverage_targets + ['--']
+      cove_cmd += ['-targets'] + case.coverage_targets + ['--']
     else:
       cove_cmd.append('--')
     cmd = cove_cmd + cmd
