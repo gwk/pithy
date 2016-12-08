@@ -56,24 +56,24 @@ class Buffer(Generic[T], Iterator[T]):
     return el
 
 
-  def take_while(self, predicate: Callable[[T], bool]) -> Iterator[T]:
+  def take_while(self, pred: Callable[[T], bool]) -> Iterator[T]:
     for el in self:
-      if predicate(el):
+      if pred(el):
         yield el
       else:
         self.buffer.append(el)
         break
 
 
-  def drop_while(self, predicate: Callable[[T], bool]) -> None:
+  def drop_while(self, pred: Callable[[T], bool]) -> None:
     for el in self:
-      if not predicate(el):
+      if not pred(el):
         self.buffer.append(el)
         break
 
 
-  def peek_while(self, predicate: Callable[[T], bool]) -> List[T]:
-    els = list(self.take_while(predicate))
+  def peek_while(self, pred: Callable[[T], bool]) -> List[T]:
+    els = list(self.take_while(pred))
     self.buffer.extend(reversed(els))
     return els
 
