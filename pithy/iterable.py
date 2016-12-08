@@ -35,18 +35,18 @@ def iter_from(iterable: Iterable[T], start) -> Iterator[T]:
   return it
 
 
-def seq_int_closed_intervals(iterable: Iterable[int]) -> Iterable[Tuple[int, int]]:
+def closed_int_intervals(iterable: Iterable[int]) -> Iterable[Tuple[int, int]]:
   'Given `iterable` of integers, yield a sequence of closed intervals.'
   it = iter(iterable)
   try: first = next(it)
   except StopIteration: return
   if not isinstance(first, int):
-    raise TypeError('seq_int_closed_intervals requires a sequence of int elements; received first element: {!r}', first)
+    raise TypeError('closed_int_intervals requires a sequence of int elements; received first element: {!r}', first)
   interval = (first, first)
   for i in it:
     l, h = interval
     if i < h:
-      raise ValueError('seq_int_closed_intervals requires monotonically increasing elements')
+      raise ValueError('closed_int_intervals requires monotonically increasing elements')
     if i == h: continue
     if i == h + 1:
       interval = (l, i)
@@ -57,7 +57,7 @@ def seq_int_closed_intervals(iterable: Iterable[int]) -> Iterable[Tuple[int, int
 
 
 _RangeTypes = Union[int, range, Tuple[int, int]]
-def seq_int_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int]]:
+def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int]]:
   'Given `iterable`, yield range pair tuples.'
 
   def pair_for_el(el: _RangeTypes) -> Tuple[int, int]:
@@ -82,7 +82,7 @@ def seq_int_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int]]
   yield (low, end)
 
 
-def fan_seq_by_index(iterable: Iterable[T], index: Callable[[T], int], min_len=0) -> List[List[T]]:
+def fan_by_index_fn(iterable: Iterable[T], index: Callable[[T], int], min_len=0) -> List[List[T]]:
   '''
   Fan out `iterable` into a list of lists, with a minimum length of `min_len`,
   according to the index returned by applying `index` to each element.
@@ -99,8 +99,8 @@ def fan_seq_by_index(iterable: Iterable[T], index: Callable[[T], int], min_len=0
   return l
 
 
-def fan_seq_by_pred(iterable: Iterable[T], pred: Callable[[T], bool]) -> Tuple[List[T], List[T]]:
-  'Fan out `seq` into a pair of lists by applying `pred` to each element.'
+def fan_by_pred(iterable: Iterable[T], pred: Callable[[T], bool]) -> Tuple[List[T], List[T]]:
+  'Fan out `iterable` into a pair of lists by applying `pred` to each element.'
   fan: Tuple[List[T], List[T]] = ([], [])
   for el in iterable:
     if pred(el):
@@ -110,9 +110,9 @@ def fan_seq_by_pred(iterable: Iterable[T], pred: Callable[[T], bool]) -> Tuple[L
   return fan
 
 
-def fan_seq_by_key(iterable: Iterable[T], key: Callable[[T], K]) -> Dict[K, List[T]]:
+def fan_by_key_fn(iterable: Iterable[T], key: Callable[[T], K]) -> Dict[K, List[T]]:
   '''
-  Fan out `seq` into a dictionary by applying a function `key` that returns a group key for each element.
+  Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element.
   returns a dictionary of lists.
   '''
   groups: Dict[K, List[T]] = {}
@@ -127,13 +127,14 @@ def fan_seq_by_key(iterable: Iterable[T], key: Callable[[T], K]) -> Dict[K, List
   return groups
 
 
-def fan_sorted_seq_by_cmp(iterable: Iterable[T], cmp: Callable[[T, T], bool]) -> List[List[T]]:
+def group_sorted_by_cmp(iterable: Iterable[T], cmp: Callable[[T, T], bool]) -> List[List[T]]:
   '''
-  Fan out `seq`, which must already be sorted,
+  Group elements `iterable`, which must already be sorted,
   by applying the `comparison` predicate to each consecutive pair of elements.
-  Group the elements of the sorted sequence by applying a comparison predicate
-  to each successive pair of elements, creating a new group when the comparison fails.
+  Consecutive elements for which the predicate returns truthy will be grouped together;
+  a group is yielded whenever comparison fails.
   '''
+  # TODO: convert to generator.
   it = iter(iterable)
   try:
     first = next(it)
@@ -159,8 +160,12 @@ class OnHeadless(Enum):
   error, drop, keep = range(3)
 
 
-def group_seq_by_heads(seq: Iterable[T], is_head: Callable[[T], bool], headless=OnHeadless.error) -> Iterable[List[T]]:
-  it = iter(seq)
+def group_by_heads(iterable: Iterable[T], is_head: Callable[[T], bool], headless=OnHeadless.error) -> Iterable[List[T]]:
+  '''
+  Group elements of `iterable` by creating a new group every time the `is_head` predicate evaluates to true.
+  If the first element of the
+  '''
+  it = iter(iterable)
   group: List[T] = []
   while True: # consume all headless (leading tail) tokens.
     try: el = next(it)
@@ -187,19 +192,19 @@ def group_seq_by_heads(seq: Iterable[T], is_head: Callable[[T], bool], headless=
   if group: yield group
 
 
-def window_seq(seq: Iterable[T], width=2) -> Iterator[Tuple[T, ...]]:
+def window_iter(iterable: Iterable[T], width=2) -> Iterator[Tuple[T, ...]]:
   'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
   assert width > 0
   buffer = []
-  for el in seq:
+  for el in iterable:
     buffer.append(el)
     if len(buffer) == width:
       yield tuple(buffer)
       del buffer[0]
 
 
-def window_seq_pairs(seq, tail=None) -> Iterator[Tuple[T, T]]:
-  it = iter(seq)
+def window_pairs(iterable, tail=None) -> Iterator[Tuple[T, T]]:
+  it = iter(iterable)
   try: head = next(it)
   except StopIteration: return
   for el in it:
@@ -208,7 +213,7 @@ def window_seq_pairs(seq, tail=None) -> Iterator[Tuple[T, T]]:
   yield (head, tail)
 
 
-def seq_prefix_tree(iterables: Iterable[Sequence[T]], index=0, terminator=None) -> Dict:
+def prefix_tree(iterables: Iterable[Sequence[T]], index=0, terminator=None) -> Dict:
   'Make a nested mapping indicating shared prefixes of `iterables`.'
   d: Dict = {}
   subsets: DefaultDict = defaultdict(list)
@@ -222,6 +227,6 @@ def seq_prefix_tree(iterables: Iterable[Sequence[T]], index=0, terminator=None) 
       subsets[seq[index]].append(seq)
   # recurse for each partition.
   for el, subset in subsets.items():
-    d[el] = seq_prefix_tree(subset, index=index + 1, terminator=terminator)
+    d[el] = prefix_tree(subset, index=index + 1, terminator=terminator)
   return d
 
