@@ -1,32 +1,28 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# setuptools setup script.
-# users should install with: `$ pip3 install utest`
-# developers can make a local install with: `$ pip3 install -e .`
-# upload to pypi test server with: `$ python3 setup.py sdist upload -r pypitest`
-# upload to pypi prod server with: `$ python3 setup.py sdist upload`
-
 from setuptools import setup
 
 
-long_description = '''\
-utest is a tiny unit testing library for python.
-'''
+name = 'utest'
 
 setup(
-  name='utest',
-  license='CC0',
+  name=name,
   version='0.0.0',
+  license='CC0',
   author='George King',
   author_email='george.w.king@gmail.com',
-  url='https://github.com/gwk/iotest',
-  description='utest is a tiny unit testing library for python.',
-  long_description=long_description,
-  install_requires=[],
-  py_modules=['utest'],
-  entry_points = {'console_scripts': []},
-  keywords=['testing'],
-  classifiers=[ # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
+  url='https://github.com/gwk/' + name,
+  description='utest is a tiny unit testing library for Python.',
+  long_description=open('readme.wu').read(),
+  py_modules=[name],
+  entry_points = {'console_scripts': [
+  ]},
+  install_requires=[
+  ],
+  keywords=[
+    'testing',
+  ],
+  classifiers=[ # See https://pypi.python.org/pypi?%3Aaction=list_classifiers.
     'Development Status :: 4 - Beta',
     'Environment :: Console',
     'Intended Audience :: Developers',
