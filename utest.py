@@ -4,6 +4,8 @@ utest is a tiny unit testing library.
 
 
 import atexit
+import inspect
+from os.path import basename as _basename
 from sys import stderr
 
 
@@ -91,9 +93,10 @@ def utest_seq_exc(exp_exc, fn, *args, **kwargs):
 
 
 
-def utest_val(exp_val, act_val, desc):
+def utest_val(exp_val, act_val, desc='<value>'):
   '''
   Log a test failure if `exp_val` does not equal `act_val`.
+  Describe the test with the optional `desc`.
   '''
   global test_count
   test_count += 1
@@ -104,9 +107,12 @@ def utest_val(exp_val, act_val, desc):
 def log_failure(exp_label, exp, ret_label=None, ret=None, exc=None, subj=None, args=(), kwargs={}):
   global failure_count
   assert subj is not None
-  name = subj if isinstance(subj, str) else subj.__qualname__
   failure_count += 1
-  msg_lines = ['utest failure: ' + name]
+  frame_record = inspect.stack()[2] # caller of caller.
+  frame = frame_record[0]
+  info = inspect.getframeinfo(frame)
+  name = subj if isinstance(subj, str) else subj.__qualname__
+  msg_lines = ['{}:{}: utest failure: {}'.format(_basename(info.filename), info.lineno, name)]
   def msg(fmt, *items): msg_lines.append(('  ' + fmt).format(*items))
   for i, el in enumerate(args):
     msg('arg {}={!r}', i, el)
