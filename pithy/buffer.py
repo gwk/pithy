@@ -34,6 +34,13 @@ class Buffer(Generic[T], Iterator[T]):
     return next(self.iterator)
 
 
+  @property
+  def is_live(self) -> bool:
+    try: self.peek()
+    except StopIteration: return False
+    else: return True
+
+
   def push(self, item: T) -> None:
     self.buffer.append(item)
 
@@ -94,10 +101,3 @@ class Buffer(Generic[T], Iterator[T]):
         els.append(default)
     self.buffer.extend(reversed(els))
     return els
-
-
-  @property
-  def is_live(self) -> bool:
-    try: self.peek()
-    except StopIteration: return False
-    else: return True
