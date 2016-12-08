@@ -17,7 +17,7 @@ BG: color background
 
 K: black
 W: white
-D: dark gray
+D: dim gray
 R: red
 G: green
 Y: yellow
@@ -119,7 +119,7 @@ TXT_D_OUT, TXT_R_OUT, TXT_G_OUT, TXT_Y_OUT, TXT_B_OUT, TXT_M_OUT, TXT_C_OUT, TXT
   (c if is_out_tty else '') for c in  ansi_txt_primaries)
 
 
-# color background: dark gray, red, green, yellow, blue, magenta, cyan, light gray
+# color background: dark gray, red, green, yellow, blue, magenta, cyan, light gray.
 ansi_bg_primary_indices = range(40, 48)
 ansi_bg_primaries = tuple(ansi_sgr(i) for i in ansi_bg_primary_indices)
 BG_D, BG_R, BG_G, BG_Y, BG_B, BG_M, BG_C, BG_L = ansi_bg_primaries
