@@ -78,7 +78,7 @@ class Buffer(Generic[T], Iterator[T]):
     return els
 
 
-  def take(self, count, short=False, default: Union[T, _Sentinel]=_Sentinel()) -> List[T]:
+  def take(self, count: int, short=False, default: Union[T, _Sentinel]=_Sentinel()) -> List[T]:
     els = []
     for _ in range(count):
       try: els.append(next(self))
