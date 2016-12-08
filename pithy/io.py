@@ -2,9 +2,9 @@
 
 from pprint import pprint
 from sys import argv, stdout, stderr
+from string import Template
 from typing import Any, Iterable, Iterator, TextIO, TypeVar
 
-from .string_utils import render_template as _render_template
 
 T = TypeVar('T')
 
@@ -61,7 +61,7 @@ def writeTF(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items:
   Expand the format string with keyed_items, then format the string; end=''.
   Useful for constructing dynamic format strings.
   """
-  fmt = _render_template(template_fmt, **keyed_items)
+  fmt = Template(template_fmt).substitute(**keyed_items)
   writeF(file, fmt, *items, flush=flush, **keyed_items)
 
 def writeTFL(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items: Any) -> None:
@@ -69,7 +69,7 @@ def writeTFL(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items
   Expand the format string template with keyed_items, then format the string; end='\\n'
   Useful for constructing dynamic format strings.
   """
-  fmt = _render_template(template_fmt, **keyed_items)
+  fmt = Template(template_fmt).substitute(**keyed_items)
   writeFL(file, fmt, *items, flush=flush, **keyed_items)
 
 
