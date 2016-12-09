@@ -10,18 +10,17 @@ utest(True, string_contains, 'a', '')
 utest(True, string_contains, 'a', 'a')
 utest(False, string_contains, '', 'a')
 
-utest('-rest', clip_prefix, 'prefix-rest', 'prefix')
-utest('prefix-rest', clip_prefix, 'prefix-rest', 'notpresent', req=False)
-utest_exc(ValueError('prefix-rest'), clip_prefix, 'prefix-rest', 'notpresent')
+utest('-body', clip_prefix, 'prefix-body', 'prefix')
+utest('prefix-body', clip_prefix, 'prefix-body', 'missing', req=False)
+utest_exc(ValueError('prefix-body'), clip_prefix, 'prefix-body', 'missing')
 
-utest('rest-', clip_suffix, 'rest-suffix', 'suffix')
-utest('rest-suffix', clip_suffix, 'rest-suffix', 'notpresent', req=False)
-utest_exc(ValueError('rest-suffix'), clip_suffix, 'rest-suffix', 'notpresent')
-# What is the difference between this and clip definition wise, and why does it work like this
+utest('body-', clip_suffix, 'body-suffix', 'suffix')
+utest('body-suffix', clip_suffix, 'body-suffix', 'Z', req=False)
+utest_exc(ValueError('body-suffix'), clip_suffix, 'body-suffix', 'missing')
 
-utest('-rest', clip_first_prefix, 'firstprefix-rest', ['firstprefix','first'])
-utest('firstprefix-rest', clip_first_prefix, 'firstprefix-rest', ['notpresent','notpresenteither'], req=False)
-utest_exc(ValueError('firstprefix-rest'), clip_first_prefix, 'firstprefix-rest', ['notpresent','notpresenteither'])
+utest('-body', clip_first_prefix, 'prefix-body', ['miss0', 'prefix', 'miss1'])
+utest('prefix-body', clip_first_prefix, 'prefix-body', ['miss0', 'miss1'], req=False)
+utest_exc(ValueError('prefix-body'), clip_first_prefix, 'prefix-body', ['miss0', 'miss1'])
 
 
 def iter_excluding_str_test(val):
@@ -41,8 +40,12 @@ utest('2 things',   pluralize,  2, 'thing')
 utest(' 0 oxen',    pluralize,  0, 'ox', 'oxen', spec=' ')
 utest(' 1 ox',      pluralize,  1, 'ox', 'oxen', spec=' ')
 
-utest('rest-', clip_suffix, 'rest-suffix', 'suffix')
-utest_exc(ValueError('rest-suffix'), clip_suffix, 'rest-suffix', 'notpresent')
+utest('',     format_nonempty, '({})', '')
+utest('(A)',  format_nonempty, '({})', 'A')
+
+utest('',     prefix_nonempty,  '#', '')
+utest('#1',  prefix_nonempty,   '#', '1')
+
 
 format_byte_count_test_vals = [
   ('1 B',         '1 byte',             1),
