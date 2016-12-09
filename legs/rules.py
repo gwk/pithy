@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.io import errFL, errL, errSL, errLL
-from pithy.seq import seq_prefix_tree, seq_first
+from pithy.iterable import prefix_tree
 from pithy.type_util import is_pair_of_int
 from unico import codes_for_ranges
 
@@ -123,7 +123,7 @@ class Charset(Rule):
         transitions[node][byte].add(next_node)
         walk(sub_map, next_node)
 
-    walk(seq_prefix_tree(chr(code).encode() for code in codes_for_ranges(self.ranges)), start)
+    walk(prefix_tree(chr(code).encode() for code in codes_for_ranges(self.ranges)), start)
 
   @property
   def isLiteral(self): return len(self.ranges) == 1

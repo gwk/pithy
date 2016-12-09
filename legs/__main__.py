@@ -7,13 +7,13 @@ from argparse import ArgumentParser
 from collections import defaultdict
 from itertools import chain, count
 
-from pithy.collection_utils import freeze
+from pithy.collection import freeze
 from pithy.dict_utils import dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
 from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
-from pithy.seq import fan_seq_by_key, group_seq_by_heads, HeadlessMode
-from pithy.string_utils import plural_s
+from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
+from pithy.string_utils import pluralize
 
 from unico import codes_for_ranges, ranges_for_codes
 from unico.charsets import unicode_charsets
@@ -92,7 +92,7 @@ def main():
 
     post_matches = len(min_dfa.postMatchNodes)
     if post_matches:
-      errFL('note: `{}`: minimized DFA contains {} post-match node{}', mode, post_matches, plural_s(post_matches))
+      errFL('note: `{}`: minimized DFA contains {}', mode, pluralize(post_matches, 'post-match node'))
 
   if is_match_specified: failF('bad mode: {!r}', target_mode)
 
@@ -147,7 +147,7 @@ def match_lines(path, lines):
 
 
 def group_matches(matches):
-  return group_seq_by_heads(matches, is_head=lambda p: not p[1].group('tail'), headless=HeadlessMode.keep)
+  return group_by_heads(matches, is_head=lambda p: not p[1].group('tail'), headless=OnHeadless.keep)
 
 
 def parse_legs(path, lines):
@@ -176,7 +176,7 @@ def parse_legs(path, lines):
         if simple in simple_names:
           fail_parse((line_info, 0), 'rule name collides when simplified: {!r}', simple_names[simple])
         simple_names[simple] = name
-  return fan_seq_by_key(rules.items(), lambda item: mode_for_name(item[0])), mode_transitions
+  return fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0])), mode_transitions
 
 
 def parse_mode_transition(line_info, match):

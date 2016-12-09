@@ -5,7 +5,7 @@ from itertools import chain, count
 
 from pithy.dict_utils import dict_filter_map
 from pithy.io import errFL, errL, failF
-from pithy.seq import seq_first, seq_int_ranges
+from pithy.iterable import first_el, int_tuple_ranges
 from pithy.string_utils import prefix_nonempty
 from pithy.type_util import is_str
 
@@ -291,7 +291,7 @@ def genDFA(nfa):
       errFL('Rules are ambiguous: {}.', ', '.join(group))
     exit(1)
   # create final dictionary.
-  matchNodeNames = { node : seq_first(names) for node, names in preferred_node_names.items() }
+  matchNodeNames = { node : first_el(names) for node, names in preferred_node_names.items() }
   # validate.
   assert set(matchNodeNames.values()) == set(nfa.matchNodeNames.values())
 

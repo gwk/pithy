@@ -6,7 +6,7 @@ from collections import defaultdict
 from itertools import chain
 from pithy.fs import add_file_execute_permissions
 from pithy.string_utils import render_template
-from pithy.seq import seq_int_closed_intervals
+from pithy.iterable import closed_int_intervals
 
 
 def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, test, type_prefix, license):
@@ -42,7 +42,7 @@ def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, tes
     def fmt(l, h):
       if l == h: return hex(l)
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
-    return [fmt(*r) for r in seq_int_closed_intervals(chars)]
+    return [fmt(*r) for r in closed_int_intervals(chars)]
 
   def byte_case(chars, dst, returns):
     return 'case {chars}: state = {dst}{suffix}'.format(

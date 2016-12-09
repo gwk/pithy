@@ -1,7 +1,5 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.seq import seq_int_closed_intervals
-
 
 __all__ = [
   'codes_desc',
