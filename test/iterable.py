@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from operator import eq
 from utest import *
 from pithy.iterable import *
 
@@ -27,18 +28,18 @@ utest_seq([(0,0), (2,3), (5,7)], closed_int_intervals, [0, 2,3, 5,6,7])
 utest_seq([], int_tuple_ranges, [])
 utest_seq([(0,1), (2,4), (5,9), (10,11)], int_tuple_ranges, [0, (2,4), range(5,7), (7,8), 8, 10])
 
-utest([], fan_by_index_fn, [], index=lambda el: el)
+utest([], fan_by_index_fn, [], index=int)
 utest([[], [1]], fan_by_index_fn, [1], index=lambda el: el, min_len=2)
 utest([[0, 1, 2]], fan_by_index_fn, range(3), index=lambda el: 0)
 
-utest(([], []), fan_by_pred, [], pred=lambda el: el)
+utest(([], []), fan_by_pred, [], pred=int)
 utest(([0], [1, 2]), fan_by_pred, [0, 1, 2], pred=lambda el: el)
 
-utest({}, fan_by_key_fn, [], key=lambda el: el)
+utest({}, fan_by_key_fn, [], key=int)
 utest({False: [0], True: [1, 2]}, fan_by_key_fn, range(3), key=lambda el: bool(el))
 
-utest_seq([], group_sorted_by_cmp, [], cmp=lambda a, b: a == b)
-utest_seq([[0], [1, 1], [2]], group_sorted_by_cmp, (0, 1, 1, 2), cmp=lambda a, b: a == b)
+utest_seq([], group_sorted_by_cmp, [], cmp=eq)
+utest_seq([[0], [1, 1], [2]], group_sorted_by_cmp, (0, 1, 1, 2), cmp=eq)
 
 utest_seq_exc(ValueError(0), group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x % 2)
 
