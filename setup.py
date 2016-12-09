@@ -19,7 +19,11 @@ setup(
     'legs=legs.__main__:main'
   ]},
   install_requires=[
-    'pithy'
+    'pithy',
+    'unico',
+  ],
+  tests_require=[
+    'iotest',
   ],
   keywords=[
     'testing'
