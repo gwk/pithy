@@ -23,6 +23,17 @@ utest('-rest', clip_first_prefix, 'firstprefix-rest', ['firstprefix','first'])
 utest('firstprefix-rest', clip_first_prefix, 'firstprefix-rest', ['notpresent','notpresenteither'], req=False)
 utest_exc(ValueError('firstprefix-rest'), clip_first_prefix, 'firstprefix-rest', ['notpresent','notpresenteither'])
 
+
+def iter_excluding_str_test(val):
+  'iter_excluding_str returns an iterator, this is testable.'
+  try: it = iter_excluding_str(val)
+  except TypeError: return ('atom:', val)
+  else: return ('collection:', *val)
+
+utest(('atom:', 'string'), iter_excluding_str_test, 'string')
+utest(('collection:', 1, 2, 3), iter_excluding_str_test, [1,2,3])
+
+
 utest('-1 things',  pluralize, -1, 'thing')
 utest('0 things',   pluralize,  0, 'thing')
 utest('1 thing',    pluralize,  1, 'thing')
@@ -61,14 +72,3 @@ for (exp_abbr, exp_full, count) in format_byte_count_test_vals:
 # pluralization special case for zero precision.
 utest('1 kilobyte',  format_byte_count, 1499, prec=0, abbr=False)
 utest('2 kilobytes', format_byte_count, 1500, prec=0, abbr=False)
-
-
-def iter_excluding_str_test(val):
-  'iter_excluding_str returns an iterator, this is testable.'
-  try: it = iter_excluding_str(val)
-  except TypeError: return ('atom:', val)
-  else: return ('collection:', *val)
-
-utest(('atom:', 'string'), iter_excluding_str_test, 'string')
-utest(('collection:', 1, 2, 3), iter_excluding_str_test, [1,2,3])
-
