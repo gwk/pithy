@@ -246,10 +246,6 @@ public class ${Name}Source: CustomStringConvertible {
     return Array(lex())
   }
 
-  func stringFor(token: ${Name}Token) -> String {
-    return String(bytes: data[token.range], encoding: .utf8)!
-  }
-
   public func lineIndex(pos: Int) -> Int {
     // TODO: use binary search.
     for (index, newlinePos) in newlinePositions.enumerated() {
@@ -381,6 +377,10 @@ public class ${Name}Source: CustomStringConvertible {
     // single line, single column.
     let retSym = (pos == range.endIndex - 1)
     return "\(common):\(msgSpace)\(msg)\n  \(diagLine(line, retSym))  \(underline(col: col))\n"
+  }
+
+  func stringFor(token: ${Name}Token) -> String {
+    return String(bytes: data[token.range], encoding: .utf8)!
   }
 }
 
