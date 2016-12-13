@@ -22,7 +22,7 @@ def next_week(date_: date) -> date:
   return date_ + timedelta(days=7)
 
 
-def days_range(start: date, end: date, step=int) -> Iterator[date]:
+def days_range(start: date, end: date, step: int=1) -> Iterator[date]:
   d = start
   while d < end:
     yield d
