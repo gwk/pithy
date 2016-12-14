@@ -234,7 +234,7 @@ class Case:
     self.err_val = None # stderr expectation value (mutually exclusive with err_path).
     self.files = None # additional file expectations.
     self.in_ = None # stdin as text.
-    self.links = None # symlinks to be made into the test directory; written as a dict.
+    self.links = None # symlinks to be made into the test directory; written as a str, set or dict.
     self.out_mode = None # comparison mode for stdout expectation.
     self.out_path = None # file path for stdout expectation.
     self.out_val = None # stdout expectation value (mutually exclusive with out_path).
