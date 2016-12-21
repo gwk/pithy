@@ -102,6 +102,7 @@ def main():
       broken_count += 1
     elif case.skip:
       skipped_count += 1
+      outFL('{:{bar_width}} SKIPPED.', case.stem, bar_width=bar_width)
     elif ctx.parse_only:
       continue
     else:
