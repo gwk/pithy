@@ -1,5 +1,5 @@
 {
-  'compile': ['$PROJ/legs/__main__.py test/$NAME.legs -test -output $NAME.swift'],
+  'compile': ['$PROJ/legs/__main__.py $STEM.legs -test -output $NAME.swift'],
   'cmd': './$NAME.swift',
   'args': [
     'a b ab aab',
