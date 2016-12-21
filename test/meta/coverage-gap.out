@@ -6,7 +6,7 @@ __main__: test-meta/coverage-gap.py:
 [30m   2 [0m  [0m
 [30m   3 [0m  def f():[0m
 [30m   4 [31m!   return None[0m
-__main__: test-meta/coverage-gap.py: 4 lines; 2 traceable; 0 IGNORED but covered; 1 NOT COVERED.
+__main__: test-meta/coverage-gap.py: 4 lines; 2 traceable; 0 ignored; 0 IGNORED but covered; 1 NOT COVERED.
 
 
 ################################################################
