@@ -176,7 +176,9 @@ def parse_legs(path, lines):
         if simple in simple_names:
           fail_parse((line_info, 0), 'rule name collides when simplified: {!r}', simple_names[simple])
         simple_names[simple] = name
-  return fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0])), mode_transitions
+  mode_named_rules = fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0]))
+  mode_named_rules.setdefault('main', [])
+  return (mode_named_rules, mode_transitions)
 
 
 def parse_mode_transition(line_info, match):

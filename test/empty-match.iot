@@ -1,0 +1,7 @@
+{
+  'cmd': '$PROJ/legs/__main__.py',
+  'args': ['test/empty.legs', '-match',
+    'a b c',
+    'abc def',
+  ],
+}

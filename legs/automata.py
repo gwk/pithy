@@ -63,6 +63,10 @@ class FA:
     self.literalRules = literalRules
 
   @property
+  def isEmpty(self):
+    return not self.transitions
+
+  @property
   def allBytetoStateDicts(self): return self.transitions.values()
 
   @property
@@ -90,6 +94,8 @@ class FA:
 
   @property
   def preMatchNodes(self):
+    if self.isEmpty:
+      return frozenset() # empty.
     matchNodes = self.matchNodes
     nodes = set()
     remaining = {0}

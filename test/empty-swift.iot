@@ -1,0 +1,8 @@
+{
+  'compile': ['$PROJ/legs/__main__.py test/empty.legs -test -output $NAME.swift'],
+  'cmd': './$NAME.swift',
+  'args': [
+    'a b c',
+    'abc def',
+  ],
+}
