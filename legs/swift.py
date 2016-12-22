@@ -9,7 +9,10 @@ from pithy.string_utils import render_template
 from pithy.iterable import closed_int_intervals
 
 
-def output_swift(dfa, modes, node_modes, mode_transitions, rules_path, path, test, type_prefix, license):
+def output_swift(dfa, modes, node_modes, mode_transitions, args):
+  rules_path = args.rules_path
+  path = args.output
+  type_prefix = args.type_prefix
   has_modes = len(modes) > 1
   modes_by_name = { mode.name : mode for mode in modes }
   pop_names = { name for mode, name in mode_transitions.values() }
@@ -157,10 +160,10 @@ return flushToken(kind: .{kind})'''.format(
 
 
   with open(path, 'w', encoding='utf8') as f:
-    if test:
+    if args.test:
       f.write('#!/usr/bin/env swift\n')
     src = render_template(template,
-      license=license,
+      license=args.license,
       mode_stack_decl=mode_stack_decl,
       Name=type_prefix,
       path=path,
@@ -171,7 +174,7 @@ return flushToken(kind: .{kind})'''.format(
       token_kind_case_descs='\n    '.join(token_kind_case_descs),
     )
     f.write(src)
-    if test:
+    if args.test:
       test_src = render_template(test_template, Name=type_prefix)
       f.write(test_src)
       add_file_execute_permissions(f.fileno())

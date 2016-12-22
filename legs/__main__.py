@@ -11,7 +11,7 @@ from pithy.collection import freeze
 from pithy.dict_utils import dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
-from pithy.io import errF, errFL, errL, errSL, errLL, failF, failS, outFL
+from pithy.io import checkF, errF, errFL, errL, errSL, errLL, failF, failS, outFL
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.string_utils import pluralize
 
@@ -31,6 +31,7 @@ def main():
   parser.add_argument('-match', nargs='+')
   parser.add_argument('-mode', default=None)
   parser.add_argument('-output')
+  parser.add_argument('-language', default=None)
   parser.add_argument('-stats', action='store_true')
   parser.add_argument('-test', action='store_true')
   parser.add_argument('-type-prefix', default='')
@@ -43,6 +44,15 @@ def main():
   target_mode = args.mode or 'main'
   if not is_match_specified and is_mode_specified:
     failF('`-mode` option only valid with `-match`.')
+
+  if args.language is not None:
+    ext = '.' + args.languageext
+    checkF(ext in supported_exts, 'unknown language {!r}; supported extensions are: {}.', args.language, supported_exts)
+  elif args.output:
+    ext = path_ext(args.output)
+    checkF(ext in supported_exts, 'unknown output extension {!r}; supported extensions are: {}.', ext, supported_exts)
+  else:
+    ext = None
 
   if (args.rules_path is None) and args.patterns:
     path = '<patterns>'
@@ -102,9 +112,11 @@ def main():
       errSL('  %', a, b)
 
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
-  if args.output is not None:
-    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions,
-      rules_path=args.rules_path, path=args.output, test=args.test, type_prefix=args.type_prefix, license=args.license)
+  if ext:
+    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, ext=ext, args=args)
+
+
+supported_exts = ['.swift']
 
 
 def match_string(nfa, fat_dfa, min_dfa, string):
@@ -502,16 +514,15 @@ def combine_dfas(mode_dfa_pairs):
   return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=literalRules), modes, node_modes)
 
 
-def output(dfa, modes, node_modes, mode_transitions, rules_path, path, test, type_prefix, license):
-  name = path_name_stem(rules_path)
-  ext = path_ext(path)
-  supported_exts = ['.swift']
+def output(dfa, modes, node_modes, mode_transitions, ext, args):
+
   if ext not in supported_exts:
     failF('output path has unknown extension {!r}; supported extensions are: {}.',
       ext, ', '.join(supported_exts))
   if ext == '.swift':
-    output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions,
-      rules_path=rules_path, path=path, test=test, type_prefix=type_prefix, license=license)
+    output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, args=args)
+  else:
+    raise Exception('output type not implemented: {}'.format(ext))
 
 
 if __name__ == "__main__": main()
