@@ -258,13 +258,13 @@ def checkF(condition: bool, fmt: str, *items: Any, **keyed_items: Any) -> None:
 
 # exceptions.
 
-def raiseZ(*items: Any, sep='', E=type) -> None:
+def raiseZ(*items: Any, sep='', E: type=Exception) -> None:
   raise E(''.join(items))
 
-def raiseS(*items: Any, E=type) -> None:
+def raiseS(*items: Any, E: type=Exception) -> None:
   raise E(' '.join(items))
 
-def raiseF(fmt: str, *items: Any, E=type) -> None:
+def raiseF(fmt: str, *items: Any, E: type=Exception) -> None:
   raise E(fmt.format(*items))
 
 
