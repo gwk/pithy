@@ -225,6 +225,12 @@ public struct ${Name}Token: CustomStringConvertible {
 
 public class ${Name}Source: CustomStringConvertible {
 
+  enum Err: Error {
+    case TokenKind(token: ${Name}Token, msg: String)
+    case Overflow(token: ${Name}Token)
+    case Negative(token: ${Name}Token)
+  }
+
   public let name: String
   public let data: Data
   public fileprivate(set) var newlinePositions: [Int] = []
@@ -382,6 +388,105 @@ public class ${Name}Source: CustomStringConvertible {
   func stringFor(token: ${Name}Token) -> String {
     return String(bytes: data[token.range], encoding: .utf8)!
   }
+
+  func parseDigits(token: ${Name}Token, from: Int, base: UInt64) throws -> UInt64 {
+    var val: UInt64 = 0
+    for byte in data[token.subRange(from: from)] {
+      let digit = UInt64(valueForHexDigit(byte: byte)!)
+      let v = (val &* base) &+ digit
+      if v < val { throw Err.Overflow(token: token) }
+      val = v
+    }
+    return val
+  }
+
+  func parseSignedDigits(token: ${Name}Token, from: Int, base: UInt64, negative: Bool) throws -> Int64 {
+    let uns = try parseDigits(token: token, from: from, base: base)
+    if negative {
+      if uns <= UInt64(Int64.max) {
+        return Int64(uns) * -1
+      } else if uns == UInt64(Int64.max) + 1 {
+        // Assuming that max + 1 == -min, we need this special case to avoid overflow during conversion.
+        return Int64.min
+      } else {
+        throw Err.Overflow(token: token)
+      }
+    } else { // positive.
+      if uns <= UInt64(Int64.max) {
+        return Int64(uns)
+      } else {
+        throw Err.Overflow(token: token)
+      }
+    }
+  }
+
+  func parseDouble(token: ${Name}Token, from: Int, base: Double) -> Double {
+    let bytes = data[token.subRange(from: from)]
+    var sign: Double = 1
+    var digitsOffset = from
+    if bytes[0] == ucb("-") {
+      digitsOffset += 1
+      sign = -1
+    } else if bytes[0] == ucb("+") {
+      digitsOffset += 1
+    }
+    var val: Double = 0
+    var fraction: Double = 0
+    for byte in bytes.suffix(digitsOffset) {
+      if byte == ucb(".") {
+        assert(fraction == 0) // expect only one dot in token.
+        fraction = 1
+      } else {
+        let digit = Double(valueForHexDigit(byte: byte)!)
+        if fraction == 0 {
+          val = (val * base) + digit
+        } else {
+          fraction /= Double(base)
+          val += digit * fraction
+        }
+      }
+    }
+    return sign * val
+  }
+
+  func encodeToUtf8Fast(into array: inout [UInt8], code: UInt32) {
+    let end: UInt32 = 0x110000
+    let surrogates = UInt32(0xD800)...UInt32(0xE000)
+    //let replacementBytes = [0xef, 0xbf, 0xbd] // U+FFD.
+    if code < 0x80 {
+      array.append(UInt8(code))
+    } else if code < 0x800 {
+      array.append(UInt8(0b110_00000 | ((code >> 6))))
+      array.append(UInt8(0b10_000000 | ((code >> 0)  & 0b111111)))
+    } else if code < 0x10000 {
+      assert(!surrogates.contains(code))
+      array.append(UInt8(0b1110_0000 | ((code >> 12))))
+      array.append(UInt8(0b10_000000 | ((code >>  6) & 0b111111)))
+      array.append(UInt8(0b10_000000 | ((code >>  0) & 0b111111)))
+    } else {
+      assert(code < end)
+      array.append(UInt8(0b11110_000 | ((code >> 18))))
+      array.append(UInt8(0b10_000000 | ((code >> 12) & 0b111111)))
+      array.append(UInt8(0b10_000000 | ((code >>  6) & 0b111111)))
+      array.append(UInt8(0b10_000000 | ((code >>  0) & 0b111111)))
+    }
+  }
+
+  func valueForHexDigit(byte: UInt8) -> UInt32? {
+    let code = UInt32(byte)
+    switch code {
+      case ucv("0")..<ucv("9"): return code      - ucv("0")
+      case ucv("A")..<ucv("F"): return code + 10 - ucv("A")
+      case ucv("a")..<ucv("f"): return code + 10 - ucv("a")
+      default: return nil
+    }
+  }
+
+  @inline(__always)
+  func ucv(_ s: UnicodeScalar) -> UInt32 { return s.value }
+
+  @inline(__always)
+  func ucb(_ s: UnicodeScalar) -> UInt8 { return UInt8(s.value) }
 }
 
 

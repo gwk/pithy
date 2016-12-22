@@ -1,0 +1,14 @@
+{
+  'skip': True,
+  'compile': ['$PROJ/legs/__main__.py $STEM.legs -test -output $NAME.swift'],
+  'cmd': './$NAME.swift',
+  'args': [
+    'a (bc def) g',
+    '/* comment "contents" () / *. */',
+    "'single quoted.' \"double quoted.\"",
+    '/* nested /* comment. */ */',
+    "'sq \(a) interpolated.'",
+    '"dq \(a) interpolated."',
+    "'sq \(nested \"interpolated \(a)\").'",
+  ],
+}
