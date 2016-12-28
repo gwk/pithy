@@ -14,7 +14,8 @@ __all__ = [
   'utest_exc',
   'utest_seq',
   'utest_seq_exc',
-  'utest_val'
+  'utest_val',
+  'usymmetric',
 ]
 
 
@@ -22,7 +23,7 @@ _utest_test_count = 0
 _utest_failure_count = 0
 
 
-def utest(exp, fn, *args, **kwargs):
+def utest(exp, fn, *args, _utest_depth=0, **kwargs):
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is raised or the returned value does not equal `exp`.
@@ -31,13 +32,13 @@ def utest(exp, fn, *args, **kwargs):
   _utest_test_count += 1
   try: ret = fn(*args, **kwargs)
   except BaseException as exc:
-    _utest_failure(exp_label='value', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='value', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
   else:
     if exp != ret:
-      _utest_failure(exp_label='value', exp=exp, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
+      _utest_failure(_utest_depth, exp_label='value', exp=exp, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_exc(exp_exc, fn, *args, **kwargs):
+def utest_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -47,12 +48,12 @@ def utest_exc(exp_exc, fn, *args, **kwargs):
   try: ret = fn(*args, **kwargs)
   except BaseException as exc:
     if not exceptions_eq(exp_exc, exc):
-      _utest_failure(exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
+      _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
   else:
-    _utest_failure(exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq(exp_seq, fn, *args, **kwargs):
+def utest_seq(exp_seq, fn, *args, _utest_depth=0, **kwargs):
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is raised,
@@ -64,18 +65,18 @@ def utest_seq(exp_seq, fn, *args, **kwargs):
   try:
     ret_seq = fn(*args, **kwargs)
   except BaseException as exc:
-    _utest_failure(exp_label='sequence', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='sequence', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
     return
   try:
     ret = list(ret_seq)
   except BaseException as exc:
-    _utest_failure(exp_label='sequence', exp=exp, ret_label='value', ret=ret_seq, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='value', ret=ret_seq, exc=exc, subj=fn, args=args, kwargs=kwargs)
     return
   if exp != ret:
-    _utest_failure(exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq_exc(exp_exc, fn, *args, **kwargs):
+def utest_seq_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -87,9 +88,9 @@ def utest_seq_exc(exp_exc, fn, *args, **kwargs):
     ret = list(ret_seq)
   except BaseException as exc:
     if not exceptions_eq(exp_exc, exc):
-      _utest_failure(exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
+      _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
   else:
-    _utest_failure(exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
 
@@ -101,14 +102,26 @@ def utest_val(exp_val, act_val, desc='<value>'):
   global _utest_test_count
   _utest_test_count += 1
   if exp_val != act_val:
-    _utest_failure(exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
+    _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def _utest_failure(exp_label, exp, ret_label=None, ret=None, exc=None, subj=None, args=(), kwargs={}):
+def usymmetric(test_fn, exp, fn, *args, _utest_depth=0, **kwargs):
+  '''
+  Apply `test_fn` to the provided arguments,
+  then again to the same arguments but with the last two positional parameters swapped.
+  '''
+  head = args[:-2]
+  argA, argB = args[-2:]
+  args_swapped = head + (argB, argA)
+  test_fn(exp, fn, *args, _utest_depth=_utest_depth+1, **kwargs)
+  test_fn(exp, fn, *args_swapped, _utest_depth=_utest_depth+1, **kwargs)
+
+
+def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, subj=None, args=(), kwargs={}):
   global _utest_failure_count
   assert subj is not None
   _utest_failure_count += 1
-  frame_record = _inspect.stack()[2] # caller of caller.
+  frame_record = _inspect.stack()[2 + depth] # caller of caller.
   frame = frame_record[0]
   info = _inspect.getframeinfo(frame)
   name = subj if isinstance(subj, str) else subj.__qualname__
