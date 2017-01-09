@@ -177,8 +177,7 @@ def link_exists(path: str) -> bool: return _path.lexists(path)
 def list_dir(path: str, exts: Iterable[str]=(), hidden=False) -> List[str]:
   exts = normalize_exts(exts)
   names = _os.listdir(path)
-  if exts is None and hidden: return names
-  if isinstance(exts, str): exts = (exts,)
+  if not exts and hidden: return names # no filtering necessary.
   return [n for n in names if (
     (not exts or path_ext(n) in exts) and (hidden or not n.startswith('.')))]
 
@@ -279,6 +278,7 @@ def move_file(path: str, to: str, overwrite=False) -> None:
 
 
 def normalize_exts(exts: Iterable[str]) -> AbstractSet[str]:
+  if isinstance(exts, str): raise TypeError(exts)
   for ext in exts:
     if not isinstance(ext, str): raise TypeError(ext)
     if ext and not ext.startswith('.'): raise ValueError(ext)
