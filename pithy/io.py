@@ -184,7 +184,7 @@ def err_progress(iterable: Iterable[T], label='progress', suffix='', frequency=0
   if not frequency or not stderr.isatty():
     return iter(iterable)
 
-  from .ansi import ERASE_LINE
+  ERASE_LINE = '\x1b[2K'
 
   if label is None:
     label = str(iterable)
