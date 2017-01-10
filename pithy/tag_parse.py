@@ -14,12 +14,14 @@ the branches are TagTree instances, which are subclasses of tuple.
 '''
 
 import re
+import typing
 
-from itertools import chain, islice
-from typing import Callable, Iterable, Iterator, Sequence, Tuple, Union
+from itertools import chain
+from typing import Callable, Dict, Iterable, Iterator, List, Sequence, Tuple, Union
 from .ansi import TXT_R, TXT_Y, RST_TXT
 from .buffer import Buffer
 
+Match = typing.re.Match
 
 Node = Union[str, 'TagTree'] # TODO: move code.
 
@@ -45,7 +47,7 @@ class TagParser():
     self.last_open_index = len(tag_rules)
 
 
-  def _parse(self, leaf_replacements: Dict[str, str], text: str, match_stream: Buffer[re.Match],
+  def _parse(self, leaf_replacements: Dict[str, str], text: str, match_stream: Buffer[Match],
     pos: int, depth: int, subs: List, close_pred: Callable, parent_close_pred: Callable) -> Tuple['TagTree', int]:
 
     def append_leaf(leaf: str) -> None:
@@ -100,8 +102,9 @@ class TagTree(tuple):
   The str() value of the node is equal to the original text.
   '''
 
-  def __new__(cls, *args: Node) -> TagTree:
-    assert all(isinstance(el, (str, TagTree)) for el in args)
+  def __new__(cls, *args: Node) -> 'TagTree':
+    for el in args:
+      if not isinstance(el, (str, TagTree)): raise ValueError(el)
     return super().__new__(cls, args) # type: ignore
 
   def __repr__(self) -> str:
@@ -112,7 +115,7 @@ class TagTree(tuple):
 
   def __getitem__(self, key) -> Node: # type: ignore
     if isinstance(key, slice):
-      return type(self)(super().__getitem__(key)) # create a TagTree as the slice.
+      return type(self)(*super().__getitem__(key)) # create a TagTree as the slice.
     return super().__getitem__(key)
 
   class_label = 'Tag'
@@ -130,7 +133,7 @@ class TagTree(tuple):
   @property
   def contents(self) -> Iterable[Node]:
     if len(self) < 2: raise ValueError('bad TagTree: {!r}'.format(self))
-    return islice(self, 1, len(self) - 1) # omit start and end tag.
+    return self[1:len(self)-1] # omit start and end tag.
 
 
   def walk_all(self) -> Iterator[str]:
@@ -149,7 +152,7 @@ class TagTree(tuple):
         yield from el.walk_contents()
 
 
-  def walk_branches(self, should_enter_tag_fn=lambda tag: True) -> Iterator[TagTree]:
+  def walk_branches(self, should_enter_tag_fn=lambda tag: True) -> Iterator['TagTree']:
     for el in self:
       if isinstance(el, TagTree):
         yield el
@@ -187,7 +190,7 @@ class TagTreeRoot(TagTree):
 
   @property
   def contents(self) -> Sequence[TagTree]:
-    return (self,) # no tags at root level.
+    return self[:] # no tags at root level.
 
 
 class TagTreeFlawed(TagTree):
@@ -221,4 +224,4 @@ class TagTreeUnterminated(TagTreeFlawed):
 
   @property
   def contents(self) -> Iterable[TagTree]:
-    return islice(self, 1, len(self)) # omit the start tag only.
+    return self[1:len(self)] # omit the start tag only.
