@@ -220,7 +220,7 @@ class Case:
     self.test_env = None
     self.test_in = None
     self.test_expectations = None
-    self.test_links = None # sequence of (link-name, path) pairs.
+    self.test_links = None # sequence of (orig-name, link-name) pairs.
     # configurable properties.
     self.args = None # arguments to follow the file under test.
     self.cmd = None # command string/list with which to invoke the test.
@@ -366,9 +366,9 @@ class Case:
     elif is_str(self.links):
       self.test_links = [(self.links, self.links)]
     elif is_set(self.links):
-      self.test_links = [(n, n) for n in self.links]
+      self.test_links = sorted((n, n) for n in self.links)
     elif is_dict(self.links):
-      self.test_links = [(k, v) for k, v in self.links.items()]
+      self.test_links = sorted(self.links.items())
     else:
       raise ValueError(self.links)
 
@@ -484,9 +484,9 @@ def validate_links_dict(key, val):
   elif is_dict(val):
     items = val.items()
   else: raise AssertionError('`validate_links_dict` types inconsistent with `is_valid_links`.')
-  for src, dst in items:
-    if src.find('..') != -1: raiseF("key: {}: link source contains '..': {}", key, src)
-    if dst.find('..') != -1: raiseF("key: {}: link destination contains '..': {}", key, dst)
+  for orig, link in items:
+    if orig.find('..') != -1: raiseF("key: {}: link original contains '..': {}", key, src)
+    if link.find('..') != -1: raiseF("key: {}: link location contains '..': {}", key, dst)
 
 
 case_key_validators = { # key => msg, validator_predicate, validator_fn.
@@ -598,10 +598,11 @@ def run_case(ctx, case):
   else:
     make_dirs(case.test_dir)
 
-  for link_path, dst_path in case.test_links:
-    link = path_join(case.test_dir, link_path)
-    dst = path_join(ctx.proj_dir, dst_path)
-    os.symlink(dst, link)
+  for orig, link in case.test_links:
+    orig_path = path_join(ctx.proj_dir, orig)
+    link_path = path_join(case.test_dir, link)
+    # TODO: make parent dirs for link_path?
+    os.symlink(orig_path, link_path)
 
   compile_time = 0
   compile_time_start = time.time()

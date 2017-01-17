@@ -1,4 +1,4 @@
 {
   'compile' : ['test-meta/compile-fail.py'],
-  'links' : {'test-meta' : 'test-meta'}
+  'links' : {'test-meta'},
 }

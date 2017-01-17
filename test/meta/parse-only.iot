@@ -1,4 +1,4 @@
 {
   'cmd': '$PROJ/iotest.py -no-times -parse-only test-meta/parse-only.iot',
-  'links' : {'test-meta' : 'test-meta'},
+  'links' : {'test-meta'},
 }

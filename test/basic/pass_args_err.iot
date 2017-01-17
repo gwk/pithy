@@ -2,7 +2,7 @@
 
 {
   'cmd' : 'test/basic/pass_args.py',
-  'links' : {'test' : 'test' },
+  'links' : {'test'},
   'args' : ['1', 'std out', 'std err'],
   'code' : 1,
   'out_val' : 'std out\n',

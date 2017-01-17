@@ -1,4 +1,4 @@
 {
   'cmd': '$PROJ/iotest.py -no-times -coverage test-meta/coverage-gap.iot',
-  'links' : {'test-meta' : 'test-meta'},
+  'links' : {'test-meta'},
 }
