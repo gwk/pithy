@@ -6,7 +6,7 @@ import shutil as _shutil
 import stat as _stat
 
 from itertools import zip_longest as _zip_longest
-from typing import AbstractSet, Iterable, Iterator, List, Optional, Tuple
+from typing import AbstractSet, Iterable, Iterator, List, Optional, TextIO, Tuple
 
 
 class NotAPathError(Exception): pass
@@ -233,6 +233,7 @@ def is_file_not_link(path: str) -> bool: return is_file(path) and not is_link(pa
 
 def is_dir_not_link(path: str) -> bool: return is_dir(path) and not is_link(path)
 
+def is_node_not_link(path: str) -> bool: return path_exists(path) and not is_link(path)
 
 def is_python3_file(path: str, always_read=False) -> bool:
   '''
@@ -283,6 +284,17 @@ def normalize_exts(exts: Iterable[str]) -> AbstractSet[str]:
     if not isinstance(ext, str): raise TypeError(ext)
     if ext and not ext.startswith('.'): raise ValueError(ext)
   return frozenset(exts)
+
+
+class PathAlreadyExists(Exception): pass
+
+def open_new(path: str, make_parent_dirs: bool=True) -> TextIO:
+  if path_exists(path):
+    raise PathAlreadyExists(path)
+  if make_parent_dirs:
+    dirs = path_dir(path)
+    if dirs: make_dirs(dirs)
+  return open(path, 'w')
 
 
 def _walk_dirs_and_files(dir_path: str, include_hidden: bool, file_exts: AbstractSet[str], files_as_paths: bool) -> Iterator[Tuple[str, List[str]]]:
