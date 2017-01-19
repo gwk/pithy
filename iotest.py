@@ -380,19 +380,6 @@ class Case:
     default_to_env('PYTHONPATH')
     default_to_env('SDKROOT')
 
-    if not self.is_isolated and self.links:
-      raiseF("non-isolated tests ('dir' specified) cannot also specify 'links'")
-    if self.links is None:
-      self.test_links = []
-    elif is_str(self.links):
-      self.test_links = [(self.links, path_name(self.links))]
-    elif is_set(self.links):
-      self.test_links = sorted((n, path_name(n)) for n in self.links)
-    elif is_dict(self.links):
-      self.test_links = sorted(self.links.items())
-    else:
-      raise ValueError(self.links)
-
     def expand_str(val):
       t = Template(val)
       return t.safe_substitute(**env)
@@ -440,6 +427,20 @@ class Case:
     else:
       dflt_path = self.dflt_src_paths[0]
       self.test_cmd = [abs_path(dflt_path)] + (args or [])
+
+    if not self.is_isolated and self.links:
+      raiseF("non-isolated tests ('dir' specified) cannot also specify 'links'")
+    if self.links is None:
+      self.test_links = []
+    elif is_str(self.links):
+      link = expand_str(self.links)
+      self.test_links = [(link, path_name(link))]
+    elif is_set(self.links):
+      self.test_links = sorted((n, path_name(n)) for n in map(expand_str, self.links))
+    elif is_dict(self.links):
+      self.test_links = sorted((expand_str(orig), expand_str(link)) for orig, link in self.links.items())
+    else:
+      raise ValueError(self.links)
 
     self.coverage_targets = expand(self.coverage)
 
