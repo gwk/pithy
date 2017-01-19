@@ -594,7 +594,7 @@ def try_case(ctx, case):
     ok = run_case(ctx, case)
   except Exception as e:
     t = type(e)
-    errFL('\nERROR: could not run test case: {}.\n  exception: {}.{}: {}',
+    outFL('\nERROR: could not run test case: {}.\n  exception: {}.{}: {}',
       case.stem, t.__module__, t.__qualname__, e)
     ctx.fail_fast(e)
     ok = False
