@@ -13,7 +13,7 @@ cove -output _build/meta.cove -- iotest.py -coverage -no-coverage-report -fail-f
 # We only want the ones that cover iotest.
 # Tests to exclude:
 #   test-meta/coverage-gap.
-iotest_cove_files=$(find _build -name '*.cove' | grep -v coverage-gap)
+iotest_cove_files=$(find _build -name '*.cove' | grep -v test-meta/coverage-gap)
 
 set +x
 # Display coverage for those .cove files.
