@@ -29,7 +29,7 @@
 |   test_cmd: ['false']
 ~   test_dir: '.+/iotest/_build/test-meta/fail-dbg'
 |   test_dir_suffix: None
-~   test_env: {'BUILD':'.+/iotest/_build', 'NAME':'fail-dbg', 'PATH':'.+', 'PROJ':'.+/iotest', 'SRC':'NONE', 'STEM':'test-meta/fail-dbg'}
+~   test_env: {'BUILD':'.+/iotest/_build', 'LANG':'en_US.UTF-8', 'NAME':'fail-dbg', 'PATH':'.+', 'PROJ':'.+/iotest', 'SRC':'NONE', 'STEM':'test-meta/fail-dbg'}
 |   test_expectations: [FileExpectation('err', 'equal', ''), FileExpectation('out', 'equal', '')]
 |   test_in: None
 |   test_info_paths: ['test-meta/fail-dbg.iot']
