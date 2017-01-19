@@ -406,10 +406,7 @@ class Case:
           raiseF('specified env contains reserved key: {}', key)
         env[key] = expand_str(val)
 
-    if self.compile:
-      self.compile_cmds = [expand(cmd) for cmd in self.compile]
-    else:
-      self.compile_cmds = []
+    self.compile_cmds = [expand(cmd) for cmd in self.compile] if self.compile else []
 
     args = expand(self.args)
     if self.cmd:
