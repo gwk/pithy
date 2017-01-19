@@ -288,13 +288,13 @@ def normalize_exts(exts: Iterable[str]) -> AbstractSet[str]:
 
 class PathAlreadyExists(Exception): pass
 
-def open_new(path: str, make_parent_dirs: bool=True) -> TextIO:
+def open_new(path: str, make_parent_dirs: bool=True, **open_args) -> TextIO:
   if path_exists(path):
     raise PathAlreadyExists(path)
   if make_parent_dirs:
     dirs = path_dir(path)
     if dirs: make_dirs(dirs)
-  return open(path, 'w')
+  return open(path, 'w', **open_args)
 
 
 def _walk_dirs_and_files(dir_path: str, include_hidden: bool, file_exts: AbstractSet[str], files_as_paths: bool) -> Iterator[Tuple[str, List[str]]]:
