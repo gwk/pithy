@@ -216,6 +216,7 @@ class Case:
     self.test_info_paths = [] # the files that comprise the test case.
     self.dflt_src_paths = []
     self.broken = proto.broken if (proto is not None) else False
+    self.coverage_targets = None
     self.test_dir = None
     self.test_dir_suffix = None
     self.test_cmd = None
