@@ -409,9 +409,6 @@ class Case:
         return [expand_str(el) for el in val]
       raise ValueError(val)
 
-    def expand_compile_cmds(val):
-      return [expand(el) for el in val]
-
     # add the case env one item at a time.
     # sorted because we want expansion to be deterministic;
     # TODO: should probably expand everything with just the builtins;
@@ -423,7 +420,7 @@ class Case:
         env[key] = expand_str(val)
 
     if self.compile:
-      self.compile_cmds = expand_compile_cmds(self.compile)
+      self.compile_cmds = [expand(cmd) for cmd in self.compile]
     else:
       self.compile_cmds = []
 
