@@ -35,8 +35,8 @@ def main():
   sub_diff.add_argument('modified', type=FileType('r'),
     help='source file to use as the modification (right/plus side) from which to calculate the patch.')
 
-  sub_diff.add_argument('destination', nargs='?', type=FileType('w'), default='-',
-    help='output path (defaults to stdout)')
+  sub_diff.add_argument('patch', nargs='?', type=FileType('w'), default='-',
+    help='output .pat path (defaults to stdout)')
 
   sub_diff.add_argument('-min-context', type=int, default=3,
     help='minimum number of lines of context to show before each hunk.')
@@ -60,7 +60,7 @@ def main_diff(args):
   'diff command entry point.'
   original = args.original
   modified = args.modified
-  f_out = args.destination
+  f_out = args.patch
   min_context = args.min_context
 
   if min_context < 1: failF('min-context value must be positive.')
