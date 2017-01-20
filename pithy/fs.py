@@ -297,6 +297,9 @@ def open_new(path: str, make_parent_dirs: bool=True, **open_args) -> TextIO:
   return open(path, 'w', **open_args)
 
 
+read_link = _os.readlink
+
+
 def _walk_dirs_and_files(dir_path: str, include_hidden: bool, file_exts: AbstractSet[str], files_as_paths: bool) -> Iterator[Tuple[str, List[str]]]:
   sub_dirs = []
   files = []
