@@ -412,11 +412,7 @@ class Case:
 
     args = expand(self.args)
     if self.cmd:
-      self.test_cmd = expand(self.cmd)
-      if args:
-        self.test_cmd += args
-      elif len(self.dflt_src_paths) == 1:
-        self.test_cmd += self.dflt_src_paths
+      self.test_cmd = expand(self.cmd) + (args or [])
     elif self.compile_cmds:
       self.test_cmd = ['./' + self.name] + (args or [])
     elif len(self.dflt_src_paths) > 1:
