@@ -16,7 +16,6 @@ pat_version = '0'
 
 
 def main():
-  # I cannot get argparse to do quite what I want, so using two parsers for now.
   parser = ArgumentParser(prog='pat', description='create or apply a .pat patch file.')
   parser.epilog = "for help with a specific command, pass '-h' to that command."
 
@@ -25,31 +24,32 @@ def main():
   subs.dest = 'command' # this is necessary to make `required` above work.
 
   sub_diff = subs.add_parser('diff',
-    help='create .pat style diff between two existing source files.')
+    help='[original] [modified] [out]?: create .pat style diff between [original] and [modified], writing it to [out] or stdout.')
 
   sub_diff.set_defaults(handler=main_diff)
 
   sub_diff.add_argument('original', type=FileType('r'),
-    help='source file to use as the basis (left/minus side) of the patch.')
+    help='source file to use as the original (left/minus) side of the patch.')
 
   sub_diff.add_argument('modified', type=FileType('r'),
-    help='source file to use as the modification (right/plus side) from which to calculate the patch.')
+    help='source file to use as the modified (right/plus) side of the patch.')
 
-  sub_diff.add_argument('patch', nargs='?', type=FileType('w'), default='-',
-    help='output .pat path (defaults to stdout)')
+  sub_diff.add_argument('out', nargs='?', type=FileType('w'), default='-',
+    help='output path (defaults to stdout)')
 
   sub_diff.add_argument('-min-context', type=int, default=3,
     help='minimum number of lines of context to show before each hunk.')
 
+
   sub_apply = subs.add_parser('apply',
-    help='apply a .pat patch file to an existing, matching source file.')
+    help='[patch] [out]?: apply a [patch] to the source file specified in that patch, and write it to [out] or stdout.')
 
   sub_apply.set_defaults(handler=main_apply)
 
   sub_apply.add_argument('patch', type=FileType('r'),
     help='input .pat path to apply')
 
-  sub_apply.add_argument('destination', nargs='?', type=FileType('w'), default='-',
+  sub_apply.add_argument('out', nargs='?', type=FileType('w'), default='-',
     help='output path (defaults to stdout)')
 
   args = parser.parse_args()
@@ -60,7 +60,7 @@ def main_diff(args):
   'diff command entry point.'
   original = args.original
   modified = args.modified
-  f_out = args.patch
+  f_out = args.out
   min_context = args.min_context
 
   if min_context < 1: failF('min-context value must be positive.')
@@ -176,7 +176,7 @@ version_re = re.compile(r'pat v(\d+)\n')
 def main_apply(args):
   'apply command entry point.'
   f_patch = args.patch
-  f_out = args.destination
+  f_out = args.out
 
   def patch_failF(line_num, fmt, *items):
     failF('{}:{}: ' + fmt, f_patch.name, line_num + 1, *items)
