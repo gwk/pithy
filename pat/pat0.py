@@ -7,6 +7,8 @@ import sys
 from argparse import ArgumentParser, FileType
 from collections import defaultdict
 from difflib import SequenceMatcher
+from os.path import isfile as is_file, exists as path_exists
+from shutil import copyfile
 
 
 __all__ = ['pat_dependencies', 'main']
@@ -22,6 +24,22 @@ def main():
   subs = parser.add_subparsers()
   subs.required = True # unofficial workaround.
   subs.dest = 'command' # this is necessary to make `required` above work.
+
+
+  sub_create = subs.add_parser('create',
+    help='[original] [modified] [patch]: create an empty .pat file at [patch] referencing [original], and copy [original] to [modified].')
+
+  sub_create.set_defaults(handler=main_create)
+
+  sub_create.add_argument('original',
+    help='source file to use as the original (left/minus) side of the patch.')
+
+  sub_create.add_argument('modified',
+    help='path at which to copy the modified (right/plus) side of the patch; must not exist.')
+
+  sub_create.add_argument('patch',
+    help='path at which to create the new empty .pat file; must not exist.')
+
 
   sub_diff = subs.add_parser('diff',
     help='[original] [modified] [out]?: create .pat style diff between [original] and [modified], writing it to [out] or stdout.')
@@ -54,6 +72,20 @@ def main():
 
   args = parser.parse_args()
   args.handler(args)
+
+
+def main_create(args):
+  'create command entry point.'
+  original = args.original
+  modified = args.modified
+  patch = args.patch
+  if not is_file(original): exit("pat create error: 'original' is not an existing file: " + original)
+  if path_exists(modified): exit("pat create error: 'modified' file already exists: " + modified)
+  if path_exists(patch):    exit("pat create error: 'patch' file already exists: " + patch)
+  with open(patch, 'w') as f:
+    f.write('pat v' + pat_version + '\n')
+    f.write(original + '\n')
+  copyfile(original, modified)
 
 
 def main_diff(args):
