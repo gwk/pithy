@@ -1,4 +1,4 @@
 {
   'cmd': '$PROJ/iotest.py nonexistant.iot',
-  'err_val': "iotest: argument path does not exist: 'nonexistant.iot'.\n"
+  'err_val': "iotest error: argument path does not exist: 'nonexistant.iot'.\n"
 }

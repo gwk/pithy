@@ -51,7 +51,7 @@ def main():
 
   proj_dir = find_project_dir()
   if proj_dir is None:
-    fail("iotest: could not find .git or .project-root in current directory or its parents.")
+    fail("iotest error: could not find .git or .project-root in current directory or its parents.")
 
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
 
@@ -80,11 +80,11 @@ def main():
 
   for raw_path in ctx.top_paths:
     if not path_exists(raw_path):
-      failF('iotest: argument path does not exist: {!r}.', raw_path)
+      failF('iotest error: argument path does not exist: {!r}.', raw_path)
     path = normalize_path(raw_path)
     if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
-      failF("iotest: argument path cannot contain '..': {!r}.", path)
+      failF("iotest error: argument path cannot contain '..': {!r}.", path)
     if is_dir(path):
       dir_path = path + '/'
       specified_name_stem = None
@@ -593,7 +593,7 @@ def try_case(ctx, case):
     ok = run_case(ctx, case)
   except Exception as e:
     t = type(e)
-    outFL('\nERROR: could not run test case: {}.\n  exception: {}.{}: {}',
+    outFL('\niotest: could not run test case: {}.\n  exception: {}.{}: {}',
       case.stem, t.__module__, t.__qualname__, e)
     ctx.fail_fast(e)
     ok = False
@@ -613,7 +613,7 @@ def run_case(ctx, case):
   # set up directory.
   if path_exists(case.test_dir):
     if not is_dir(case.test_dir): # could be a symlink; do not want to remove contents of link destination.
-      failF('error: test directory already exists as a non-directory: {}', case.test_dir)
+      raiseF('test directory already exists as a non-directory: {}', case.test_dir)
     if case.is_isolated:
       remove_dir_contents(case.test_dir)
       # otherwise this test is assumed to depend on state from previous tests.
@@ -624,9 +624,9 @@ def run_case(ctx, case):
     orig_path = path_join(ctx.proj_dir, orig)
     link_path = path_join(case.test_dir, link)
     if path_dir(link):
-      failF('symlink is a path: {}', link) # TODO: make parent dirs for link_path?
+      raiseF('symlink is a path: {}', link) # TODO: make parent dirs for link_path?
     if is_node_not_link(link_path): # do not allow symlinks to overwrite previous contents in test dir.
-      failF('non-symlink already exists at desired symlink path: {}', link_path)
+      raiseF('non-symlink already exists at desired symlink path: {}', link_path)
     os.symlink(orig_path, link_path)
 
   compile_time = 0
@@ -759,7 +759,7 @@ def check_file_exp(ctx, test_dir, exp):
     with open(path) as f:
       act_val = f.read()
   except Exception as e:
-    outFL('\nERROR: could not read test output file: {}\n  exception: {!r}', path, e)
+    outFL('\niotest: could not read test output file: {}\n  exception: {!r}', path, e)
     ctx.fail_fast(e)
     outSL('-' * bar_width)
     return False
