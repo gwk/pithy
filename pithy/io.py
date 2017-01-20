@@ -295,3 +295,10 @@ def write_to_path(path: str, string) -> None:
   with open(path, 'w') as f:
     f.write(string)
 
+
+# misc.
+
+def clip_newlines(iterable: Iterable[str]) -> Iterable[str]:
+  for line in iterable:
+    yield line.rstrip('\n')
+
