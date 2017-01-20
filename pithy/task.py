@@ -4,6 +4,7 @@ import signal
 import shlex as _shlex
 
 from subprocess import PIPE as _pipe, Popen as _Popen
+from sys import stderr, stdout
 from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 
@@ -77,6 +78,11 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
   else:
     f_in = stdin # presume None, _pipe, or file, which includes dev_null().
     input_bytes = None
+
+  # flushing std file descriptors guarantees consistent behavior between console and iotest;
+  # otherwise we see that parent output appears after child output when run under iotest only.
+  stderr.flush()
+  stdout.flush()
 
   proc = _Popen(
     cmd,
