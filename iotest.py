@@ -21,7 +21,7 @@ from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, 
 from pithy.string_utils import string_contains
 from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python3_file, list_dir, open_new, make_dirs, normalize_path,
   path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join,
-  path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, walk_dirs_up)
+  path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, walk_dirs_up)
 from pithy.iterable import fan_by_key_fn
 from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
 from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
@@ -616,6 +616,9 @@ def run_case(ctx, case):
       raiseF('test directory already exists as a non-directory: {}', case.test_dir)
     if case.is_isolated:
       remove_dir_contents(case.test_dir)
+    else: # remove just the known outputs.
+      for std_path in [path_join(case.test_dir, case.std_name(n)) for n in ('err', 'out')]:
+        remove_file_if_exists(std_path)
       # otherwise this test is assumed to depend on state from previous tests.
   else:
     make_dirs(case.test_dir)
