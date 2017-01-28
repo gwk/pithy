@@ -60,6 +60,7 @@ def path_name(path: str) -> str:
   return _path.basename(path)
 
 def path_split(path: str) -> List[str]:
+  # TODO: rename to path_comps?
   np = normalize_path(path)
   if np == '/': return ['/']
   assert not np.endswith('/')
