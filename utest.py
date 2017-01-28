@@ -1,12 +1,16 @@
 '''
 utest is a tiny unit testing library.
+
+Set the UTEST_SHOW_EXC environment variable to truthful to print unexpected exception tracebacks.
 '''
 
 
 import atexit as _atexit
 import inspect as _inspect
 from os.path import basename as _basename
+from os import environ as _environ
 from sys import stderr as _stderr
+from traceback import print_exception as _print_exception
 
 
 __all__ = [
@@ -136,6 +140,8 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
     msg('returned {}: {!r}', ret_label, ret)
   if exc is not None: # unexpected exception.
     msg('raised exception: {!r}', exc)
+    if _environ.get('UTEST_SHOW_EXC'):
+      _print_exception(etype=type(exc), value=exc, tb=exc.__traceback__)
   print(*msg_lines, sep='\n', end='\n\n', file=_stderr)
 
 
