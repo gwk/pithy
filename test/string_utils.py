@@ -75,3 +75,17 @@ for (exp_abbr, exp_full, count) in format_byte_count_test_vals:
 # pluralization special case for zero precision.
 utest('1 kilobyte',  format_byte_count, 1499, prec=0, abbr=False)
 utest('2 kilobytes', format_byte_count, 1500, prec=0, abbr=False)
+
+
+utest((0, 0), line_col_0, '', 0)
+utest((0, 0), line_col_0, 'a\nb\n', 0)
+utest((0, 1), line_col_0, 'a\nb\n', 1)
+utest((1, 0), line_col_0, 'a\nb\n', 2)
+utest((1, 1), line_col_0, 'a\nb\n', 3)
+utest((2, 0), line_col_0, 'a\nb\n', 4)
+
+utest_exc(IndexError(-1), line_col_0, '', -1)
+utest_exc(IndexError(1), line_col_0, '', 1)
+utest_exc(IndexError(2), line_col_0, 'a', 2)
+
+utest((1, 1), line_col_1, '', 0)

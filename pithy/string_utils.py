@@ -1,8 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'String utilities.'
+
+import re
 from decimal import Decimal
 from string import Template
-from typing import Any, Iterable, Iterator, Sequence, TypeVar
+from typing import re as Re, Any, Iterable, Iterator, Sequence, Tuple, TypeVar
 
 T = TypeVar('T')
 
@@ -113,4 +116,16 @@ def format_byte_count(count: int, prec=3, abbr=True) -> str:
   s = '' if abbr else 's'
   label = abbrev if abbr else full
   return '{c:.{prec}f} {label}{s}'.format(c=c, prec=prec, label=label, s=s)
+
+
+def line_col_0(string: str, pos: int) -> Tuple[int, int]:
+  if pos < 0 or pos > len(string): raise IndexError(pos)
+  line = string.count('\n', 0, pos) # number of newlines preceeding pos.
+  last_line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
+  return (line, pos - last_line_start)
+
+
+def line_col_1(string: str, pos: int) -> Tuple[int, int]:
+  l, c = line_col_0(string, pos)
+  return (l + 1, c + 1)
 
