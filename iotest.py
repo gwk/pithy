@@ -260,6 +260,7 @@ class Case:
     self.err_val = None # stderr expectation value (mutually exclusive with err_path).
     self.files = None # additional file expectations.
     self.in_ = None # stdin as text.
+    self.interpreter = None # interpreter to prepend to cmd.
     self.links = None # symlinks to be made into the test directory; written as a str, set or dict.
     self.out_mode = None # comparison mode for stdout expectation.
     self.out_path = None # file path for stdout expectation.
@@ -445,19 +446,31 @@ class Case:
 
     self.compile_cmds = [expand(cmd) for cmd in self.compile] if self.compile else []
 
-    args = expand(self.args) or []
+    cmd = []
+    if self.interpreter:
+      cmd += expand(self.interpreter)
+
     if self.cmd:
-      self.test_cmd = expand(self.cmd) + args
+      cmd += expand(self.cmd)
     elif self.compile_cmds:
-      self.test_cmd = ['./' + self.name] + args
+      cmd += ['./' + self.name]
     elif len(self.dflt_src_paths) > 1:
       raiseF('no `cmd` specified and multiple default source paths found: {}', self.dflt_src_paths)
     elif len(self.dflt_src_paths) < 1:
       raiseF('no `cmd` specified and no default source path found')
     else:
       dflt_path = self.dflt_src_paths[0]
-      a = args or list(self.test_wild_args.get(dflt_path, ()))
-      self.test_cmd = [abs_path(dflt_path)] + a
+      if not cmd: # only make path absolute if it is arg0.
+        dflt_path = abs_path(dflt_path)
+      cmd += [dflt_path]
+      if self.args is None:
+        wild_args = list(self.test_wild_args.get(dflt_path, ()))
+        cmd += wild_args
+
+    if self.args:
+      cmd += expand(self.args) or []
+
+    self.test_cmd = cmd
 
     if not self.is_isolated and self.links:
       raiseF("non-isolated tests ('dir' specified) cannot also specify 'links'")
@@ -558,6 +571,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'err_val':  ('str',                       is_str,             None),
   'files':    ('dict',                      is_dict,            validate_files_dict),
   'in_':      ('str',                       is_str,             None),
+  'interpreter': ('string or list of strings', is_str_or_list,  None),
   'links':    ('string or (dict | set) of strings', is_valid_links, validate_links_dict),
   'out_mode': ('str',                       is_str,             validate_exp_mode),
   'out_path': ('str',                       is_str,             None),

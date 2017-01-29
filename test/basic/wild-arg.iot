@@ -1,0 +1,6 @@
+# the following stems have their own concrete iot files and do not use this case:
+{
+  'code': 0,
+  'env': {'TEST_WILD' : 'env: wild-arg'},
+  'args': ['ARG'],
+}

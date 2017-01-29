@@ -8,6 +8,8 @@ _, arg = argv
 env_val = environ['TEST_WILD']
 if arg == '':
   assert env_val == 'env: wild-'
+elif arg == 'ARG': # arg value specified by wild-arg.iot args, overriding format match.
+  assert env_val == 'env: wild-arg'
 elif arg == 'iot':
   assert env_val == 'env: wild-iot'
 else:
