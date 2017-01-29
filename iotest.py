@@ -19,10 +19,11 @@ from pithy.ansi import RST, TXT_B, TXT_D, TXT_R
 from pithy.immutable import Immutable
 from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, read_first_line_from_path, write_to_path, writeLSSL
 from pithy.string_utils import string_contains
+from pithy.format import FormatError, format_to_re
 from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python3_file, list_dir, open_new, make_dirs, normalize_path,
   path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join,
   path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, walk_dirs_up)
-from pithy.iterable import fan_by_key_fn
+from pithy.iterable import fan_by_key_fn, fan_by_pred
 from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
 from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
@@ -169,28 +170,46 @@ def collect_cases(ctx, cases, proto, dir_path, specified_name_stem):
 def create_proto_case(ctx, proto, stem, file_paths):
   if not file_paths:
     return proto
-  default = Case(ctx, stem, file_paths, proto)
+  default = Case(ctx, proto, stem, file_paths, wild_paths_to_re=[], wild_paths_used=set())
   if default.broken: ctx.fail_fast()
   return default
 
 
 def create_cases(ctx, cases, parent_proto, dir_path, file_paths):
-  groups = fan_by_key_fn(file_paths, key=path_stem)
+  # wild paths are those whose name contain a '{', which are interpreted as python format strings.
+  regular_paths, wild_paths = fan_by_pred(file_paths, pred=lambda p: '{' in p)
+  wild_paths_to_re = dict(filter(None, map(compile_wild_path_re, wild_paths)))
+  wild_paths_used = set()
+  groups = fan_by_key_fn(regular_paths, key=path_stem)
   # default.
   default_stem = dir_path + '_default'
   proto = create_proto_case(ctx, parent_proto, default_stem, groups.get(default_stem))
   # cases.
-  for (stem, paths) in sorted(groups.items()):
+  for (stem, paths) in sorted(p for p in groups.items() if p[0] is not None):
     if stem == default_stem or not is_case_implied(paths): continue
-    case = Case(ctx, stem, paths, proto)
+    case = Case(ctx, proto, stem, paths, wild_paths_to_re, wild_paths_used)
     if case.broken: ctx.fail_fast()
     cases.append(case)
+  # check that all wild paths are used by some case.
+  for path in wild_paths:
+    if path not in wild_paths_used:
+      outL(f'iotest note: wildcard file path was never used: {path}')
   return proto
 
 
+def compile_wild_path_re(path):
+  try: return (path, format_to_re(path_stem(path), error_prefix='  NOTE', path='<path string>'))
+  except FormatError as e:
+    outL(f'iotest WARNING: invalid format path will be ignored: {path}')
+    outL(e)
+    return None
+
+
+implied_case_exts = ('.iot', '.out', '.err')
+
 def is_case_implied(paths):
   'one of the standard test file extensions must be present to imply a test case.'
-  return any(path_ext(p) in ('.iot', '.out', '.err') for p in paths)
+  return any(path_ext(p) in implied_case_exts for p in paths)
 
 
 def report_coverage(ctx):
@@ -209,10 +228,11 @@ class IotParseError(Exception): pass
 class Case:
   'Case represents a single test case, or a default.'
 
-  def __init__(self, ctx, stem, file_paths, proto):
+  def __init__(self, ctx, proto, stem, file_paths, wild_paths_to_re, wild_paths_used):
     self.stem = stem # path stem to this test case.
     self.name = path_name(stem)
     # derived properties.
+    self.test_info_exts = set()
     self.test_info_paths = [] # the files that comprise the test case.
     self.dflt_src_paths = []
     self.broken = proto.broken if (proto is not None) else False
@@ -224,6 +244,7 @@ class Case:
     self.test_in = None
     self.test_expectations = None
     self.test_links = None # sequence of (orig-name, link-name) pairs.
+    self.test_wild_args = {} # the match groups that resulted from applying the regex.
     # configurable properties.
     self.args = None # arguments to follow the file under test.
     self.cmd = None # command string/list with which to invoke the test.
@@ -243,15 +264,27 @@ class Case:
     self.out_mode = None # comparison mode for stdout expectation.
     self.out_path = None # file path for stdout expectation.
     self.out_val = None # stdout expectation value (mutually exclusive with out_path).
-    self.timeout = None
     self.skip = None
+    self.timeout = None
+
+    def sorted_iot_first(paths):
+      # Ensure that .iot files get added first, for clarity when conflicts arise.
+      return sorted(paths, key=lambda p: '' if p.endswith('.iot') else p)
 
     try:
       # read in all file info specific to this case.
-      for path in sorted(file_paths, key=lambda p: '' if p.endswith('.iot') else p):
-        # sorting with custom key fn simply ensures that the .iot file gets added first,
-        # for clarity when conflicts arise.
+      for path in sorted_iot_first(file_paths):
         self.add_file(path)
+      for wild_path in sorted_iot_first(wild_paths_to_re):
+        ext = path_ext(wild_path)
+        if ext in self.test_info_exts: continue
+        wild_re = wild_paths_to_re[wild_path]
+        m = wild_re.fullmatch(stem)
+        if m:
+          self.add_file(wild_path)
+          self.test_wild_args[wild_path] = m.groups()
+          wild_paths_used.add(wild_path)
+
       # copy any defaults; if the key already exists, it will be a conflict error.
       # TODO: would it make more sense to put this step above the case files?
       if proto is not None:
@@ -307,17 +340,19 @@ class Case:
     elif ext == '.in':  self.add_std_file(path, 'in_')
     elif ext == '.out': self.add_std_file(path, 'out')
     elif ext == '.err': self.add_std_file(path, 'err')
-    else: self.dflt_src_paths.append(path)
+    else:
+      self.dflt_src_paths.append(path)
+      return # other extensions are not part of info collections.
+    self.test_info_paths.append(path)
+    self.test_info_exts.add(ext)
 
 
   def add_std_file(self, path, key):
-    self.test_info_paths.append(path)
     text = read_from_path(path)
     self.add_val_for_key(key + '_val', text)
 
 
   def add_iot_file(self, path):
-    self.test_info_paths.append(path)
     text = read_from_path(path)
     if not text or text.isspace():
       return
@@ -410,18 +445,19 @@ class Case:
 
     self.compile_cmds = [expand(cmd) for cmd in self.compile] if self.compile else []
 
-    args = expand(self.args)
+    args = expand(self.args) or []
     if self.cmd:
-      self.test_cmd = expand(self.cmd) + (args or [])
+      self.test_cmd = expand(self.cmd) + args
     elif self.compile_cmds:
-      self.test_cmd = ['./' + self.name] + (args or [])
+      self.test_cmd = ['./' + self.name] + args
     elif len(self.dflt_src_paths) > 1:
       raiseF('no `cmd` specified and multiple default source paths found: {}', self.dflt_src_paths)
     elif len(self.dflt_src_paths) < 1:
       raiseF('no `cmd` specified and no default source path found')
     else:
       dflt_path = self.dflt_src_paths[0]
-      self.test_cmd = [abs_path(dflt_path)] + (args or [])
+      a = args or list(self.test_wild_args.get(dflt_path, ()))
+      self.test_cmd = [abs_path(dflt_path)] + a
 
     if not self.is_isolated and self.links:
       raiseF("non-isolated tests ('dir' specified) cannot also specify 'links'")

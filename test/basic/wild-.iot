@@ -1,0 +1,5 @@
+{
+  'desc': 'tests that format paths can match empties.',
+  'code': 0,
+  'env': {'TEST_WILD' : 'env: wild-'},
+}
