@@ -139,7 +139,7 @@ def collect_proto(ctx, end_dir_path):
   proto = None
   for dir_path in path_descendants(ctx.proj_dir, abs_path(end_dir_path), include_end=False):
     file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem(name) == '_default']
-    proto = create_default_case(ctx, proto, path_join(dir_path, '_default'), file_paths)
+    proto = create_proto_case(ctx, proto, path_join(dir_path, '_default'), file_paths)
   return proto
 
 
@@ -166,7 +166,7 @@ def collect_cases(ctx, cases, proto, dir_path, specified_name_stem):
       collect_cases(ctx, cases, default, sub_dir, specified_name_stem)
 
 
-def create_default_case(ctx, proto, stem, file_paths):
+def create_proto_case(ctx, proto, stem, file_paths):
   if not file_paths:
     return proto
   default = Case(ctx, stem, file_paths, proto)
@@ -174,18 +174,18 @@ def create_default_case(ctx, proto, stem, file_paths):
   return default
 
 
-def create_cases(ctx, cases, proto, dir_path, file_paths):
+def create_cases(ctx, cases, parent_proto, dir_path, file_paths):
   groups = fan_by_key_fn(file_paths, key=path_stem)
   # default.
   default_stem = dir_path + '_default'
-  default = create_default_case(ctx, proto, default_stem, groups.get(default_stem))
+  proto = create_proto_case(ctx, parent_proto, default_stem, groups.get(default_stem))
   # cases.
   for (stem, paths) in sorted(groups.items()):
     if stem == default_stem or not is_case_implied(paths): continue
-    case = Case(ctx, stem, paths, default)
+    case = Case(ctx, stem, paths, proto)
     if case.broken: ctx.fail_fast()
     cases.append(case)
-  return default
+  return proto
 
 
 def is_case_implied(paths):
