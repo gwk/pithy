@@ -261,6 +261,7 @@ class Case:
     self.files = None # additional file expectations.
     self.in_ = None # stdin as text.
     self.interpreter = None # interpreter to prepend to cmd.
+    self.interpreter_args = None # interpreter args.
     self.links = None # symlinks to be made into the test directory; written as a str, set or dict.
     self.out_mode = None # comparison mode for stdout expectation.
     self.out_path = None # file path for stdout expectation.
@@ -449,6 +450,8 @@ class Case:
     cmd = []
     if self.interpreter:
       cmd += expand(self.interpreter)
+    if self.interpreter_args:
+      cmd += expand(self.interpreter_args)
 
     if self.cmd:
       cmd += expand(self.cmd)
@@ -570,6 +573,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'files':    ('dict',                      is_dict,            validate_files_dict),
   'in_':      ('str',                       is_str,             None),
   'interpreter': ('string or list of strings', is_str_or_list,  None),
+  'interpreter_args': ('string or list of strings', is_str_or_list,  None),
   'links':    ('string or (dict | set) of strings', is_valid_links, validate_links_dict),
   'out_mode': ('str',                       is_str,             validate_exp_mode),
   'out_path': ('str',                       is_str,             None),

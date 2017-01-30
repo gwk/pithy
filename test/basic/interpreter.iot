@@ -1,3 +1,12 @@
 {
-  'interpreter': 'python3'
+  'desc': '''
+Specify the python interpreter, and arbitary special flag that we can test for.
+we choose -x: skip first line of source, allowing use of non-Unix forms of #!cmd.
+interpreter.py checks that -x was received by the interpreter and not the script,
+and also checks that it did receive 'arg1'.
+''',
+  'interpreter': 'python3',
+  'interpreter_args': '-x',
+  'args' : 'arg1',
+  'links': 'test',
 }
