@@ -655,9 +655,10 @@ def try_case(ctx, case):
 
 
 def run_case(ctx, case):
+  if ctx.dbg: errL()
   outF('{:{bar_width}}', case.stem, flush=True, bar_width=(bar_width if ctx.show_times else 1))
   if ctx.dbg:
-    errL()
+    outL() # terminate previous line.
     case.describe(stderr)
 
   # set up directory.
