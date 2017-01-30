@@ -460,9 +460,7 @@ class Case:
       raiseF('no `cmd` specified and no default source path found')
     else:
       dflt_path = self.dflt_src_paths[0]
-      if not cmd: # only make path absolute if it is arg0.
-        dflt_path = abs_path(dflt_path)
-      cmd += [dflt_path]
+      cmd.append(dflt_path if cmd else abs_path(dflt_path)) # use relative path if case has an interpreter.
       if self.args is None:
         wild_args = list(self.test_wild_args.get(dflt_path, ()))
         cmd += wild_args

@@ -1,5 +1,6 @@
 {
-  'desc': 'tests that format paths can match empties.',
+  'desc': '''tests that format paths can match empties.
+note that this iot file is not itself a format path, but the default python source is.''',
   'code': 0,
   'env': {'TEST_WILD' : 'env: wild-'},
 }
