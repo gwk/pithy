@@ -209,7 +209,9 @@ implied_case_exts = ('.iot', '.out', '.err')
 
 def is_case_implied(paths):
   'one of the standard test file extensions must be present to imply a test case.'
-  return any(path_ext(p) in implied_case_exts for p in paths)
+  for p in paths:
+    if path_ext(p) in implied_case_exts: return True
+  return False
 
 
 def report_coverage(ctx):
