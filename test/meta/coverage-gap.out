@@ -6,8 +6,9 @@ TESTS PASSED: 1.
 cove report:
 
 __main__: test-meta/coverage-gap.py:
-[30m   1 [0m  #!/usr/bin/env python3[0m
-[30m   2 [0m  [0m
+[30m   1 [37m  #!/usr/bin/env python3[0m
+[30m   2 [37m  [0m
 [30m   3 [0m  def f():[0m
 [30m   4 [31m!   return None[0m
-__main__: test-meta/coverage-gap.py: 4 lines; 2 traceable; 0 ignored; 0 IGNORED but covered; 1 NOT COVERED.
+
+__main__: test-meta/coverage-gap.py: 4 lines; [37m2 trivial[0m; 2 traceable; 1 covered; 0 relaxed; 0 ignored; 0 ignored but covered; [31m1 not covered[0m.
