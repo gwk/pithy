@@ -139,7 +139,7 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
   if ret_label: # unexpected value.
     msg('returned {}: {!r}', ret_label, ret)
   if exc is not None: # unexpected exception.
-    msg('raised exception: {!r}', exc)
+    msg('raised exception:   {!r}', exc)
     if _environ.get('UTEST_SHOW_EXC'):
       _print_exception(etype=type(exc), value=exc, tb=exc.__traceback__)
   print(*msg_lines, sep='\n', end='\n\n', file=_stderr)
