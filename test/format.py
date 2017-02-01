@@ -5,6 +5,9 @@ from pithy.format import *
 
 utest(re.compile(r'a\-(.*)\-(.*)\.txt'), format_to_re, 'a-{}-{n:{w}}.txt')
 
+utest(re.compile(r'(\d+)'), format_to_re, '{:d}')
+
+
 utest_exc(FormatError("error: <str>:1:1: invalid format character: '{'"),
   format_to_re, '{')
 
