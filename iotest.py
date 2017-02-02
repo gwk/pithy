@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# © 2015 George King.
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import argparse
