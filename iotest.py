@@ -79,20 +79,20 @@ def main():
   cases = []
 
   for raw_path in ctx.top_paths:
-    if not path_exists(raw_path):
-      failF('iotest error: argument path does not exist: {!r}.', raw_path)
     path = normalize_path(raw_path)
     if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
       failF("iotest error: argument path cannot contain '..': {!r}.", path)
     if is_dir(path):
       dir_path = path + '/'
-      specified_name_stem = None
+      specified_name_prefix = None
     else:
       dir_path = path_dir_or_dot(path) + '/'
-      specified_name_stem = path_name_stem(path)
+      if not is_dir(dir_path):
+        failF('iotest error: argument path directory does not exist: {!r}.', dir_path)
+      specified_name_prefix = path_name_stem(path)
     proto = collect_proto(ctx, dir_path)
-    collect_cases(ctx, cases, proto, dir_path, specified_name_stem)
+    collect_cases(ctx, cases, proto, dir_path, specified_name_prefix)
 
   broken_count = 0
   skipped_count = 0
@@ -143,12 +143,13 @@ def collect_proto(ctx, end_dir_path):
   return proto
 
 
-def collect_cases(ctx, cases, proto, dir_path, specified_name_stem):
+def collect_cases(ctx, cases, proto, dir_path, specified_name_prefix):
   'find all test cases within the specified directory.'
-  collect_dirs = (specified_name_stem is None)
+  collect_dirs = (specified_name_prefix is None)
   sub_dirs = []
   file_paths = []
   names = list_dir(dir_path)
+  trivial = []
   for name in names:
     if name.startswith('.'): # ignore hidden files.
       continue
@@ -158,12 +159,18 @@ def collect_cases(ctx, cases, proto, dir_path, specified_name_stem):
         sub_dirs.append(path + '/')
       else:
         file_paths.append(path)
-    elif path_stem(name) in('_default', specified_name_stem):
-      file_paths.append(path)
+    else:
+      stem = path_stem(name)
+      if stem == '_default':
+        trivial = [path]
+      if stem == '_default' or stem.startswith(specified_name_prefix):
+        file_paths.append(path)
   default = create_cases(ctx, cases, proto, dir_path, file_paths)
   if collect_dirs:
     for sub_dir in sub_dirs:
-      collect_cases(ctx, cases, default, sub_dir, specified_name_stem)
+      collect_cases(ctx, cases, default, sub_dir, None)
+  elif file_paths == trivial:
+    failF('iotest error: argument path does not match any files: {!r}.', dir_path + specified_name_prefix)
 
 
 def create_proto_case(ctx, proto, stem, file_paths):
