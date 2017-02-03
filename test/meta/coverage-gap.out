@@ -1,15 +1,16 @@
-test-meta/coverage-gap
-
-################################################################
-TESTS PASSED: 1.
-
-----------------
-Coverage Report:
-
-__main__: test-meta/coverage-gap.py:
-   1   #!/usr/bin/env python3
-   2
-   3   def f():
-   4 !   return None
-
-__main__: test-meta/coverage-gap.py: 4 lines; 2 trivial; 2 traceable; 1 covered; 0 relaxed; 0 ignored; 0 ignored but covered; 1 not covered.
+| test-meta/coverage-gap
+|
+| ################################################################
+| TESTS PASSED: 1.
+|
+~ # cove -coalesce .*
+| ----------------
+| Coverage Report:
+|
+| __main__: test-meta/coverage-gap.py:
+|    1   #!/usr/bin/env python3
+|    2
+|    3   def f():
+|    4 !   return None
+|
+| __main__: test-meta/coverage-gap.py: 4 lines; 2 trivial; 2 traceable; 1 covered; 0 relaxed; 0 ignored; 0 ignored but covered; 1 not covered.
