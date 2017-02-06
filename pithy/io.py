@@ -281,11 +281,15 @@ def read_from_path(path: str, default=_no_default) -> str:
     if default is _no_default: raise
     return default
 
-def read_first_line_from_path(path: str, default=_no_default) -> str:
-  'Read first line of text from file at `path`.'
+def read_line_from_path(path: str, line0=0, keep_end=False, default=_no_default) -> str:
+  'Read a single line of text from file at `path`.'
   try:
     with open(path) as f:
-      return f.readline()
+      for i, line in enumerate(f):
+        if i == line0:
+          return line if keep_end else line.rstrip('\n')
+      if default is _no_default: raise IndexError(line0)
+      return default
   except (FileNotFoundError, IsADirectoryError):
     if default is _no_default: raise
     return default
