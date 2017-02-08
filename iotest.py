@@ -198,7 +198,7 @@ def create_cases(ctx, cases, parent_proto, dir_path, file_paths):
     cases.append(case)
   # check that all wild paths are used by some case.
   for path in wild_paths:
-    if path not in wild_paths_used:
+    if path_ext(path) in implied_case_exts and path not in wild_paths_used:
       outL(f'iotest note: wildcard file path was never used: {path}')
   return proto
 
