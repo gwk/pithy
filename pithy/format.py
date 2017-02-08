@@ -39,6 +39,22 @@ spec_type_pat = {
 }
 
 
+def has_formatter(string: str) -> bool:
+  'Returns True if `string` contains a format pattern.'
+  for match in fmt_re.finditer(string):
+    if match.group(1) is not None:
+      return True
+  return False
+
+
+def count_formatters(string: str) -> int:
+  count = 0
+  for match in fmt_re.finditer(string):
+    if match.group(1) is not None:
+      count += 1
+  return count
+
+
 def format_to_re(fmt: str, error_prefix='error', path='<str>') -> str:
   'translate a format string into a regular expression pattern.'
   pos = 0
