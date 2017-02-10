@@ -16,7 +16,7 @@ from sys import stdout, stderr
 
 from pithy.ansi import RST, TXT_B, TXT_D, TXT_R
 from pithy.immutable import Immutable
-from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, read_first_line_from_path, write_to_path, writeLSSL
+from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, read_line_from_path, write_to_path, writeLSSL
 from pithy.string_utils import string_contains
 from pithy.format import FormatError, format_to_re
 from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python3_file, list_dir, open_new, make_dirs, normalize_path,
@@ -787,7 +787,7 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
       if msg_cmd: outFL('possible fix: `chmod +x {}`', shlex.quote(msg_cmd))
       return None
     except OSError as e:
-      first_line = read_first_line_from_path(cmd_head, default=None)
+      first_line = read_line_from_path(cmd_head, default=None)
       if e.strerror == 'Exec format error':
         outFL('\n{} process file format is not executable.', label)
         if msg_cmd and first_line is not None and not first_line.startswith('#!'):
