@@ -1,7 +1,20 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_exc
+from utest import *
 from pithy.format import *
+
+utest(False, has_formatter, '')
+utest(False, has_formatter, 'a')
+utest(False, has_formatter, '{{}}')
+utest(False, has_formatter, '{')
+utest(False, has_formatter, '}')
+utest(True, has_formatter, '{}')
+utest(True, has_formatter, 'a {i!r:2d}')
+
+utest(0, count_formatters, 'a b')
+utest(2, count_formatters, 'a {i} b {} c')
+
+utest_seq([('', None, None), ('a', 'r', '2d')], parse_formatters, '{} {a!r:2d}')
 
 utest(re.compile(r'a\-(.*)\-(.*)\.txt'), format_to_re, 'a-{}-{n:{w}}.txt')
 

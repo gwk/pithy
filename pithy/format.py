@@ -10,10 +10,10 @@ class FormatError(Exception): pass
 
 fmt_re = re.compile(r'''(?x:
 \{
-  ((?: # capture group 1 is the entire format contents.
-    [^{}]
-    | (?: \{ [^{}]* \} ) # allow a single level of nested formatters;
-  )*)
+        (?P<name> [^{}!:]* )
+  (?: ! (?P<conv> [ars] ) )?
+  (?: : (?P<spec> (?: [^{}] | \{ [^{}]* \} )* ) )?
+  #^ for the spec, we allow a single level of nested formatters.
 \}
 | \{\{
 | \}\}
@@ -42,17 +42,24 @@ spec_type_pat = {
 def has_formatter(string: str) -> bool:
   'Returns True if `string` contains a format pattern.'
   for match in fmt_re.finditer(string):
-    if match.group(1) is not None:
+    if match.group('name') is not None:
       return True
   return False
 
 
-def count_formatters(string: str) -> int:
+def count_formatters(fmt: str) -> int:
   count = 0
-  for match in fmt_re.finditer(string):
-    if match.group(1) is not None:
+  for match in fmt_re.finditer(fmt):
+    if match.group('name') is not None:
       count += 1
   return count
+
+
+def parse_formatters(fmt: str) -> Iterable[Re.Match]:
+  for match in fmt_re.finditer(fmt):
+    fmt_text = match.group(1)
+    if fmt_text is not None:
+      yield match.group('name', 'conv', 'spec')
 
 
 def format_to_re(fmt: str, error_prefix='error', path='<str>') -> str:
@@ -72,15 +79,13 @@ def format_to_re(fmt: str, error_prefix='error', path='<str>') -> str:
     if match.start() != pos: raise exc()
     pos = match.end()
     text = match.group()
-    fmt_text = match.group(1)
-    if fmt_text is not None: # this chunk is a format.
-      colon_pos = fmt_text.find(':')
-      if colon_pos == -1: # no format spec.
+    if match.group('name') is not None: # this chunk is a format.
+      spec = match.group('spec')
+      if not spec:
         pat = '.*'
       else:
-        spec_text = fmt_text[colon_pos + 1:]
-        spec_match = fmt_spec_re.fullmatch(spec_text)
-        if not spec_match: raise exc(f'invalid format spec: {spec_text!r}')
+        spec_match = fmt_spec_re.fullmatch(spec)
+        if not spec_match: raise exc(f'invalid format spec: {spec!r}')
         fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
         if type_:
