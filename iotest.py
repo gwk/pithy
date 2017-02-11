@@ -819,8 +819,10 @@ def check_file_exp(ctx, test_dir, exp):
   'return True if expectation is met.'
   if ctx.dbg: errFL('check_file_exp: {}', exp)
   path = path_join(test_dir, exp.path)
+  # TODO: support binary files by getting read mode from test case.
+  # Expected read mode could alse be indicated by using a bytes value for the expectation.
   try:
-    with open(path) as f:
+    with open(path, errors='replace') as f:
       act_val = f.read()
   except Exception as e:
     outFL('\niotest: could not read test output file: {}\n  exception: {!r}', path, e)
