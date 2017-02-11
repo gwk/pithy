@@ -425,6 +425,7 @@ class Case:
       if key not in env and key in os.environ:
         env[key] = os.environ[key]
 
+    default_to_env('HOME') # otherwise git fails with "error: Could not expand include path '~/.gitcinclude'".
     default_to_env('LANG') # necessary to make std file handles unicode-aware.
     default_to_env('PATH')
     default_to_env('PYTHONPATH')
