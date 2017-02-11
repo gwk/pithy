@@ -2,4 +2,5 @@
   'cmd': '$PROJ/iotest.py -no-times -coverage test-meta/$NAME.iot',
   'links' : {'test-meta'},
   'out_mode': 'match',
+  'err_mode': 'ignore',
 }
