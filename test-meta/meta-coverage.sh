@@ -1,6 +1,10 @@
 
 set -e
 set -x
+
+# Remove any old cove files.
+find _build -name '*.cove' | xargs rm
+
 # Run the basic test suite under cove.
 cove -output _build/basic.cove -- iotest.py -fail-fast test/basic
 
