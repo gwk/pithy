@@ -1,0 +1,5 @@
+{
+  'cmd' : 'true',
+  'out_mode': 'match',
+  'out_val': '| expectation.\n',
+}

@@ -1,0 +1,13 @@
+test-meta/compare-match-empty-out
+
+output file does not match expectation. actual value:
+[30mcat ../../../test-meta/compare-match-empty-out/out[0m
+match failed at line 1:
+pattern:   '| expectation.\n'
+actual text: None
+----------------------------------------------------------------
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; BROKEN: 0; SKIPPED: 0; FAILED: 1.

@@ -1,0 +1,14 @@
+test-meta/compare-match-fail
+
+output file does not match expectation. actual value:
+[30mcat ../../../test-meta/compare-match-fail/out[0m
+[34mactual.[0m
+match failed at line 1:
+pattern:   '| expected.\n'
+actual text: 'actual.\n'
+----------------------------------------------------------------
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; BROKEN: 0; SKIPPED: 0; FAILED: 1.

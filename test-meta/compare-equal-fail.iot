@@ -1,0 +1,4 @@
+{
+  'cmd' : 'echo actual.',
+  'out_val': 'expected.\n',
+}

@@ -1,0 +1,11 @@
+test-meta/compare-contain-fail
+
+output file does not contain expectation. actual value:
+[30mcat ../../../test-meta/compare-contain-fail/out[0m
+[34mactual.[0m
+----------------------------------------------------------------
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; BROKEN: 0; SKIPPED: 0; FAILED: 1.

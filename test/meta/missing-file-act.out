@@ -1,0 +1,10 @@
+| test-meta/missing-file-act
+|
+~ iotest: could not read test output file: .+/iotest/_build/test-meta/missing-file-act/nonexistant.txt
+|   exception: FileNotFoundError(2, 'No such file or directory')
+| ----------------------------------------------------------------
+| ================================================================
+|
+|
+| ################################################################
+| TESTS FOUND: 1; BROKEN: 0; SKIPPED: 0; FAILED: 1.

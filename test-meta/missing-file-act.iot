@@ -1,0 +1,8 @@
+{
+  'cmd': 'true',
+  'files': {
+    'nonexistant.txt' : {
+      'path': 'test-meta/missing-file-act-exp.txt'
+    }
+  }
+}

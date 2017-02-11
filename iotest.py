@@ -856,15 +856,15 @@ diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram
 
 def cat_file(path, color='', limit=-1):
   outL(TXT_D, 'cat ', rel_path(path), RST)
-  rst = RST if color else ''
+  rst = RST if color else '' #no-cov!
   with open(path) as f:
     line = None
     for i, line in enumerate(f, 1):
       l = line.rstrip('\n')
       outL(color, l, rst)
-      if i == limit: return
+      if i == limit: return #no-cov!
     if line is not None and not line.endswith('\n'):
-      outL('(missing final newline)')
+      outL('(missing final newline)') #no-cov!
 
 
 # file expectation functions.
