@@ -1,5 +1,5 @@
 {
-  'cmd': '$PROJ/iotest.py -no-times test-meta/compile-fail.iot',
+  'cmd': '$PROJ/iotest.py -no-times test-meta/$NAME.iot',
   'links' : {'test-meta'},
   'code': 1,
 }

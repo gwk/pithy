@@ -1,5 +1,5 @@
 {
-  'cmd': '$PROJ/iotest.py -no-times -coverage test-meta/coverage-gap.iot',
+  'cmd': '$PROJ/iotest.py -no-times -coverage test-meta/$NAME.iot',
   'links' : {'test-meta'},
   'out_mode': 'match',
 }
