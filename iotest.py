@@ -206,10 +206,10 @@ def create_cases(ctx, cases, parent_proto, dir_path, file_paths):
 
 
 def compile_wild_path_re(path):
-  try: return (path, format_to_re(path_stem(path), error_prefix='  NOTE', path='<path string>'))
+  try: return (path, format_to_re(path_stem(path)))
   except FormatError as e:
     outL(f'iotest WARNING: invalid format path will be ignored: {path}')
-    outL(e)
+    outL('  NOTE: ', e)
     return None
 
 
