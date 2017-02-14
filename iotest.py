@@ -467,7 +467,10 @@ class Case:
     if self.interpreter:
       cmd += expand(self.interpreter)
     if self.interpreter_args:
+      if not self.interpreter: raise Exception('interpreter_args specified without interpreter')
       cmd += expand(self.interpreter_args)
+
+    self.test_links = []
 
     if self.cmd:
       cmd += expand(self.cmd)
@@ -479,7 +482,10 @@ class Case:
       raiseF('no `cmd` specified and no default source path found')
     else:
       dflt_path = self.dflt_src_paths[0]
-      cmd.append(dflt_path if cmd else abs_path(dflt_path)) # use relative path if case has an interpreter.
+      dflt_name = path_name(dflt_path)
+      self.test_links.append((dflt_path, dflt_name))
+      prefix = '' if cmd else './'
+      cmd.append(prefix + dflt_name)
       if self.args is None:
         wild_args = list(self.test_wild_args.get(dflt_path, ()))
         cmd += wild_args
@@ -491,16 +497,14 @@ class Case:
 
     if not self.is_isolated and self.links:
       raiseF("non-isolated tests ('dir' specified) cannot also specify 'links'")
-    if self.links is None:
-      self.test_links = []
     elif is_str(self.links):
       link = expand_str(self.links)
-      self.test_links = [(link, path_name(link))]
+      self.test_links += [(link, path_name(link))]
     elif is_set(self.links):
-      self.test_links = sorted((n, path_name(n)) for n in map(expand_str, self.links))
+      self.test_links += sorted((n, path_name(n)) for n in map(expand_str, self.links))
     elif is_dict(self.links):
-      self.test_links = sorted((expand_str(orig), expand_str(link)) for orig, link in self.links.items())
-    else:
+      self.test_links += sorted((expand_str(orig), expand_str(link)) for orig, link in self.links.items())
+    elif self.links is not None:
       raise ValueError(self.links)
 
     self.coverage_targets = expand(self.coverage)
