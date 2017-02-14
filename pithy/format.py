@@ -96,7 +96,9 @@ def format_to_re(fmt: str) -> str:
           except KeyError as e: raise exc(match, f'spec type {type_!r} not implemented') from e
         else:
           pat = '.*'
-      return '(' + pat + ')'
+      name = match.group('name')
+      if name: return f'(?P<{name}>{pat})'
+      else: return f'({pat})'
     text = match.group()
     if text == '{{': return '\{'
     if text == '}}': return '\}'
