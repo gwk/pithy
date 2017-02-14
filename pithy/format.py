@@ -4,17 +4,17 @@
 
 import re
 from .string_utils import line_col_1
-from typing import AnyStr, Iterable, re as Re
+from typing import Any, AnyStr, Iterable, re as Re
 
 class FormatError(Exception): pass
 
 fmt_re = re.compile(r'''(?x:
-\{
+(?P<formatter>\{
         (?P<name> [^{}!:]* )
   (?: ! (?P<conv> [ars] ) )?
   (?: : (?P<spec> (?: [^{}] | \{ [^{}]* \} )* ) )?
   #^ for the spec, we allow a single level of nested formatters.
-\}
+\})
 | \{\{
 | \}\}
 | [^{}]+
@@ -41,62 +41,80 @@ spec_type_pat = {
 
 def has_formatter(string: str) -> bool:
   'Returns True if `string` contains a format pattern.'
-  for match in fmt_re.finditer(string):
-    if match.group('name') is not None:
+  for match in gen_format_matches(string):
+    if match.group('formatter'):
       return True
   return False
 
 
 def count_formatters(fmt: str) -> int:
   count = 0
-  for match in fmt_re.finditer(fmt):
-    if match.group('name') is not None:
+  for match in gen_format_matches(fmt):
+    if match.group('formatter'):
       count += 1
   return count
 
 
 def parse_formatters(fmt: str) -> Iterable[Re.Match]:
-  for match in fmt_re.finditer(fmt):
+  for match in gen_format_matches(fmt):
     fmt_text = match.group(1)
     if fmt_text is not None:
       yield match.group('name', 'conv', 'spec')
 
 
-def format_to_re(fmt: str, error_prefix='error', path='<str>') -> str:
+def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
+  args_it = iter(args)
+  def format_frag(match):
+    formatter = match.group('formatter')
+    if formatter:
+      name = match.group('name')
+      if name:
+        try: return formatter.format(**kwargs)
+        except KeyError: return formatter
+      else:
+        try: return formatter.format(next(args_it), **kwargs)
+        except (StopIteration, KeyError): return formatter
+    return match.group()
+  return ''.join(format_frag(m) for m in gen_format_matches(fmt))
+
+
+def format_to_re(fmt: str) -> str:
   'translate a format string into a regular expression pattern.'
-  pos = 0
-  chunks = []
-
-  def exc(msg=None):
-    prefix = error_prefix + ' ' if error_prefix else ''
-    line, col = line_col_1(fmt, pos)
-    if not msg:
-      c = fmt[pos]
-      msg = f'invalid format character: {c!r}'
-    return FormatError(f'{error_prefix}: {path}:{line}:{col}: {msg}')
-
-  for match in fmt_re.finditer(fmt):
-    if match.start() != pos: raise exc()
-    pos = match.end()
-    text = match.group()
-    if match.group('name') is not None: # this chunk is a format.
+  def pattern_from(match: Re.Match) -> Iterable[str]:
+    def exc(msg): return _exc(fmt, match.start(), msg)
+    if match.group('formatter'):
       spec = match.group('spec')
       if not spec:
         pat = '.*'
       else:
         spec_match = fmt_spec_re.fullmatch(spec)
-        if not spec_match: raise exc(f'invalid format spec: {spec!r}')
+        if not spec_match: raise exc(match, f'invalid format spec: {spec!r}')
         fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
         if type_:
           try: pat = spec_type_pat[type_] + '+'
-          except KeyError as e: raise exc(f'spec type {type_!r} not implemented')
+          except KeyError as e: raise exc(match, f'spec type {type_!r} not implemented') from e
         else:
           pat = '.*'
-      pattern = '(' + pat + ')'
-    elif text == '{{': pattern = '\{'
-    elif text == '}}': pattern = '\}'
-    else: pattern = re.escape(text)
-    chunks.append(pattern)
+      return '(' + pat + ')'
+    text = match.group()
+    if text == '{{': return '\{'
+    if text == '}}': return '\}'
+    return re.escape(text)
+  return re.compile(''.join(pattern_from(m) for m in gen_format_matches(fmt)))
+
+
+def gen_format_matches(fmt: str) -> Iterable[str]:
+  pos = 0
+  def exc(): return _exc(fmt, pos, f'invalid format character: {fmt[pos]!r}')
+  for match in fmt_re.finditer(fmt):
+    if match.start() != pos: raise exc()
+    pos = match.end()
+    yield match
   if pos != len(fmt): raise exc()
-  return re.compile(''.join(chunks))
+
+
+def _exc(fmt, pos, msg):
+  line, col = line_col_1(fmt, pos)
+  return FormatError(f'<str>:{line}:{col}: {msg}')
+
