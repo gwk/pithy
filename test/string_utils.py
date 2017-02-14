@@ -43,8 +43,11 @@ utest(' 1 ox',      pluralize,  1, 'ox', 'oxen', spec=' ')
 utest('',     format_nonempty, '({})', '')
 utest('(A)',  format_nonempty, '({})', 'A')
 
-utest('',     prefix_nonempty,  '#', '')
-utest('#1',  prefix_nonempty,   '#', '1')
+utest('',   prepend_to_nonempty,  '#', '')
+utest('#1', prepend_to_nonempty,  '#', '1')
+
+utest('',   append_to_nonempty, '', '')
+utest('1:', append_to_nonempty, '1', ':')
 
 
 format_byte_count_test_vals = [

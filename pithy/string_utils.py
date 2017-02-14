@@ -80,9 +80,13 @@ def format_nonempty(fmt: str, string: str) -> str:
   'format `string` into `format` unless `string` is empty.'
   return '' if (string == '') else fmt.format(string)
 
-def prefix_nonempty(prefix: str, string: str) -> str:
+def prepend_to_nonempty(prefix: str, string: str) -> str:
   'prepend `prefix` to `string` unless `string` is empty.'
   return '' if (string == '') else (prefix + string)
+
+def append_to_nonempty(string: str, suffix: str) -> str:
+  'append `prefix` to `string` unless `string` is empty.'
+  return '' if (string == '') else (string + suffix)
 
 
 _byte_count_dec_magnitudes = [
