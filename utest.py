@@ -8,7 +8,6 @@ Set the UTEST_SHOW_EXC environment variable to truthful to print unexpected exce
 import atexit as _atexit
 import inspect as _inspect
 from os.path import basename as _basename
-from os import environ as _environ
 from sys import stderr as _stderr
 from traceback import print_exception as _print_exception
 
@@ -129,20 +128,18 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
   frame = frame_record[0]
   info = _inspect.getframeinfo(frame)
   name = subj if isinstance(subj, str) else subj.__qualname__
-  msg_lines = ['{}:{}: utest failure: {}'.format(_basename(info.filename), info.lineno, name)]
-  def msg(fmt, *items): msg_lines.append(('  ' + fmt).format(*items))
+  _errL(f'{_basename(info.filename)}:{info.lineno}: utest failure: {name}')
   for i, el in enumerate(args):
-    msg('arg {}={!r}', i, el)
+    _errL(f'  arg {i}={el!r}')
   for name, val, in sorted(kwargs.items()):
-    msg('arg {}={!r}', name, val)
-  msg('expected {}: {!r}', exp_label, exp)
+    _errL(f'  arg {name}={val!r}')
+  _errL(f'  expected {exp_label}: {exp!r}')
   if ret_label: # unexpected value.
-    msg('returned {}: {!r}', ret_label, ret)
+    _errL(f'  returned {ret_label}: {ret!r}')
   if exc is not None: # unexpected exception.
-    msg('raised exception:   {!r}', exc)
-    if _environ.get('UTEST_SHOW_EXC'):
-      _print_exception(etype=type(exc), value=exc, tb=exc.__traceback__)
-  print(*msg_lines, sep='\n', end='\n\n', file=_stderr)
+    _errL(f'  raised exception:   {exc!r}')
+    _print_exception(etype=type(exc), value=exc, tb=exc.__traceback__, file=_stderr)
+  _errL()
 
 
 def exceptions_eq(a, b):
@@ -153,11 +150,15 @@ def exceptions_eq(a, b):
   return type(a) == type(b) and a.args == b.args
 
 
+def _errL(*items): print(*items, sep='', file=_stderr)
+
+
 @_atexit.register
 def report():
   'At process exit, if any test failures occured, print a summary message and force process to exit with status code 1.'
   from os import _exit
   if _utest_failure_count > 0:
-    print('\nutest ran: {}; failed: {}'.format(_utest_test_count, _utest_failure_count), file=_stderr)
+    _errL(f'\nutest ran: {_utest_test_count}; failed: {_utest_failure_count}')
+    _stderr.flush()
     _exit(1) # raising SystemExit has no effect in an atexit handler as of 3.5.2.
 
