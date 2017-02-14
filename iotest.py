@@ -94,6 +94,8 @@ def main():
     proto = collect_proto(ctx, dir_path)
     collect_cases(ctx, cases, proto, dir_path, specified_name_prefix)
 
+  cases.sort()
+
   broken_count = 0
   skipped_count = 0
   failed_count = 0
@@ -317,6 +319,8 @@ class Case:
         outL()
       ctx.fail_fast(e)
       self.broken = True
+
+  def __lt__(self, other): return self.stem < other.stem
 
   @property
   def is_isolated(self): return self.dir is None
