@@ -286,6 +286,13 @@ class Case:
       return sorted(paths, key=lambda p: '' if p.endswith('.iot') else p)
 
     try:
+      # copy any defaults; if the key already exists, it will be a conflict error.
+      if proto is not None:
+        for key in case_key_validators:
+          val = proto.__dict__[key]
+          if val is None: continue
+          self.add_val_for_key(key, val)
+
       # read in all file info specific to this case.
       for path in sorted_iot_first(file_paths):
         self.add_file(path)
@@ -298,14 +305,6 @@ class Case:
           self.add_file(wild_path)
           self.test_wild_args[wild_path] = m.groups()
           wild_paths_used.add(wild_path)
-
-      # copy any defaults; if the key already exists, it will be a conflict error.
-      # TODO: would it make more sense to put this step above the case files?
-      if proto is not None:
-        for key in case_key_validators:
-          val = proto.__dict__[key]
-          if val is None: continue
-          self.add_val_for_key(key, val)
       # do all additional computations now, so as to fail as quickly as possible.
       self.derive_info(ctx)
 
@@ -388,8 +387,7 @@ class Case:
   def add_val_for_key(self, key, val):
     existing = self.__dict__[key]
     if existing is not None:
-      raiseF('conflicting values for key: {!r};\n  existing: {!r};\n  incoming: {!r}',
-        key, existing, val)
+      raise Exception(f'conflicting values for key: {key!r};\n  existing: {existing!r};\n  incoming: {val!r}')
     self.__dict__[key] = val
 
 
