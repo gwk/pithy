@@ -3,7 +3,7 @@ test-meta/coverage-gap
 ################################################################
 TESTS PASSED: 1.
 
-# cove -coalesce _build/test-meta/coverage-gap/_coverage.cove
+# coven -coalesce _build/test-meta/coverage-gap/_.coven
 ----------------
 Coverage Report:
 
