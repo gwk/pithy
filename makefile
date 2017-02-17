@@ -5,10 +5,10 @@
 # $^: The names of all the prerequisites, with spaces between them.
 
 
-.PHONY: _default clean cov pip-develop pip-uninstall pypi-dist pypi-register pypi-upload test
+.PHONY: _default clean cov pip-develop pip-uninstall pypi-dist pypi-upload test
 
 # First target of a makefile is the default.
-_default: cov
+_default: test
 
 clean:
 	rm -rf _build/*
@@ -23,13 +23,10 @@ pip-uninstall:
 	pip3 uninstall --yes pithy
 
 pypi-dist:
-	./setup.py sdist
+	python3 setup.py sdist
 
-pypi-register:
-	./setup.py sdist register
-
-pypi-upload: pypi-dist
-	./setup.py sdist upload
+pypi-upload:
+	python3 setup.py sdist upload
 
 test:
 	./iotest.py -fail-fast
