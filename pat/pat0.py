@@ -111,11 +111,7 @@ def main_diff(args):
   def write(line): f_out.write(line)
 
   write('pat v' + pat_version + '\n')
-
-  orig_path_clean = args.original.name
-  if orig_path_clean.startswith('_build/'):
-    orig_path_clean = orig_path_clean[len('_build/'):]
-  write(orig_path_clean + '\n')
+  write(args.original.name + '\n')
 
   line_indices = defaultdict(set) # maps line contents to line numbers.
   for i, line in enumerate(o_lines):
@@ -189,15 +185,6 @@ def open_orig_path(path):
   try:
    return open(path)
   except FileNotFoundError:
-    pass
-  if not path.startswith('/') and not path.startswith('_build/'):
-    build_path = '_build/' + path
-    try:
-      return open(build_path)
-    except FileNotFoundError:
-      patch_failF(1, 'could not open source path specified by patch: {!r}\n'
-        '  also could not open corresponding build path: {!r}', path, build_path)
-  else:
     patch_failF(1, 'could not open source path specified by patch: {!r}', path)
 
 
