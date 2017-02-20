@@ -191,13 +191,15 @@ def make_dir(path: str) -> None: return _os.mkdir(path)
 
 def make_dirs(path: str, mode=0o777, exist_ok=True) -> None: return _os.makedirs(path, mode, exist_ok)
 
-def make_link(src: str, dst: str, absolute=False, allow_nonexistent=False) -> None:
+def make_link(src: str, dst: str, absolute=False, allow_nonexistent=False, make_dirs=False) -> None:
   if not allow_nonexistent and not is_file(src):
     raise FileNotFoundError(src)
   if absolute:
     _src = abs_path(src)
   else:
     _src = rel_path(src, start=path_dir(dst))
+  if make_dirs:
+    _os.makedirs(path_dir(dst), exist_ok=True)
   return _os.symlink(_src, dst)
 
 def path_exists(path: str) -> bool: return _path.exists(path)
