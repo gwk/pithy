@@ -34,8 +34,12 @@ fmt_spec_re = re.compile(r'''(?x:
 
 fmt_spec_dynamic_re = re.compile(r':[^}]\{')
 
-spec_type_pat = {
+spec_type_pats = {
   'd': r'\d'
+}
+
+spec_types = {
+  'd': int
 }
 
 
@@ -57,9 +61,19 @@ def count_formatters(fmt: str) -> int:
 
 def parse_formatters(fmt: str) -> Iterable[Re.Match]:
   for match in gen_format_matches(fmt):
-    fmt_text = match.group(1)
-    if fmt_text is not None:
-      yield match.group('name', 'conv', 'spec')
+    formatter = match.group('formatter')
+    if formatter is not None:
+      value_type = str
+      name, conv, spec = match.group('name', 'conv', 'spec')
+      if spec:
+        spec_match = fmt_spec_re.fullmatch(spec)
+        if not spec_match: raise exc(match, f'invalid format spec: {spec!r}')
+        fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
+          'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
+        if type_:
+          try: value_type = spec_types[type_]
+          except KeyError as e: raise exc(match, f'spec type {type_!r} not implemented') from e
+      yield (name, conv, spec, value_type)
 
 
 def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
@@ -92,7 +106,7 @@ def format_to_re(fmt: str) -> str:
         fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
         if type_:
-          try: pat = spec_type_pat[type_] + '+'
+          try: pat = spec_type_pats[type_] + '+'
           except KeyError as e: raise exc(match, f'spec type {type_!r} not implemented') from e
         else:
           pat = '.*'

@@ -15,7 +15,7 @@ utest_exc(FormatError("<str>:1:1: invalid format character: '}'"), has_formatter
 utest(0, count_formatters, 'a b')
 utest(2, count_formatters, 'a {i} b {} c')
 
-utest_seq([('', None, None), ('a', 'r', '2d')], parse_formatters, '{} {a!r:2d}')
+utest_seq([('', None, None, str), ('a', 'r', '2d', int)], parse_formatters, '{} {a!r:2d}')
 
 utest('0 {i} {} J', format_partial, '{} {i} {} {j}', 0, j='J')
 
