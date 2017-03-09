@@ -16,7 +16,7 @@ from sys import stdout, stderr
 
 from pithy.ansi import RST, TXT_B, TXT_D, TXT_R
 from pithy.immutable import Immutable
-from pithy.io import errFL, errL, errSL, fail, failF, outF, outFL, outL, outSL, raiseF, read_from_path, read_line_from_path, write_to_path, writeLSSL
+from pithy.io import errL, errSL, outL, outSL, outZ, read_from_path, read_line_from_path, write_to_path, writeLSSL
 from pithy.string_utils import string_contains
 from pithy.format import FormatError, format_to_re
 from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python3_file, list_dir, open_new, make_dirs, normalize_path,
@@ -47,11 +47,11 @@ def main():
   if args.dbg: errL('iotest: DEBUG MODE ON.')
 
   if not args.coverage and args.no_coverage_report:
-    failF('iotest error: `-no-coverage-report` is only valid in combination with `-coverage`.')
+    exit('iotest error: `-no-coverage-report` is only valid in combination with `-coverage`.')
 
   proj_dir = find_project_dir()
   if proj_dir is None:
-    fail("iotest error: could not find .git or .project-root in current directory or its parents.")
+    exit("iotest error: could not find .git or .project-root in current directory or its parents.")
 
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
 
@@ -60,7 +60,7 @@ def main():
       errL('\nfail_fast:')
       raise Exception('iotest: stopping after error (-dbg).') from e
   elif args.fail_fast:
-    def fail_fast(e=None): fail('iotest: stopping after error (-fail-fast).')
+    def fail_fast(e=None): exit('iotest: stopping after error (-fail-fast).')
   else:
     def fail_fast(e=None): pass
 
@@ -82,14 +82,14 @@ def main():
     path = normalize_path(raw_path)
     if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
-      failF("iotest error: argument path cannot contain '..': {!r}.", path)
+      exit(f"iotest error: argument path cannot contain '..': {path!r}.")
     if is_dir(path):
       dir_path = path + '/'
       specified_name_prefix = None
     else:
       dir_path = path_dir_or_dot(path) + '/'
       if not is_dir(dir_path):
-        failF('iotest error: argument path directory does not exist: {!r}.', dir_path)
+        exit('iotest error: argument path directory does not exist: {dir_path!r}.')
       specified_name_prefix = path_name_stem(path)
     proto = collect_proto(ctx, dir_path)
     collect_cases(ctx, cases, proto, dir_path, specified_name_prefix)
@@ -104,7 +104,7 @@ def main():
       broken_count += 1
     elif case.skip:
       skipped_count += 1
-      outFL('{:{bar_width}} SKIPPED.', case.stem, bar_width=bar_width)
+      outL(f'{case.stem:{bar_width}} SKIPPED.')
     elif ctx.parse_only:
       continue
     else:
@@ -123,7 +123,7 @@ def main():
     msg = 'TESTS {}: {}.'.format('PARSED' if ctx.parse_only else 'PASSED', count)
     code = 0
   if ctx.show_times:
-    outFL('{:{bar_width}} {:.2f} sec.', msg, total_time, bar_width=bar_width)
+    outL(f'{msg:{bar_width}} {total_time:.2f} sec.')
   else:
     outL(msg)
   if args.coverage and not args.no_coverage_report:
@@ -172,7 +172,8 @@ def collect_cases(ctx, cases, proto, dir_path, specified_name_prefix):
     for sub_dir in sub_dirs:
       collect_cases(ctx, cases, default, sub_dir, None)
   elif file_paths == trivial:
-    failF('iotest error: argument path does not match any files: {!r}.', dir_path + specified_name_prefix)
+    p = dir_path + specified_name_prefix
+    exit(f'iotest error: argument path does not match any files: {p!r}.')
 
 
 def create_proto_case(ctx, proto, stem, file_paths):
@@ -309,8 +310,8 @@ class Case:
       self.derive_info(ctx)
 
     except Exception as e:
-      outFL('WARNING: broken test case: {}', stem)
-      outFL('  exception: {}: {}.', type(e).__name__, e)
+      outL(f'WARNING: broken test case: {stem}')
+      outL(f'  exception: {type(e).__name__}: {e}.')
       # not sure if it makes sense to describe cases for some exceptions;
       # for now, just carve out the ones for which it is definitely useless.
       if not isinstance(e, IotParseError):
@@ -659,8 +660,7 @@ def try_case(ctx, case):
     ok = run_case(ctx, case)
   except Exception as e:
     t = type(e)
-    outFL('\niotest: could not run test case: {}.\n  exception: {}.{}: {}',
-      case.stem, t.__module__, t.__qualname__, e)
+    outL(f'\niotest: could not run test case: {case.stem}.\n  exception: {t.__module__}.{t.__qualname__}: {e}')
     ctx.fail_fast(e)
     ok = False
   if not ok:
@@ -672,7 +672,8 @@ def try_case(ctx, case):
 
 def run_case(ctx, case):
   if ctx.dbg: errL()
-  outF('{:{bar_width}}', case.stem, flush=True, bar_width=(bar_width if ctx.show_times else 1))
+  _bar_width = (bar_width if ctx.show_times else 1)
+  outZ(f'{case.stem:{_bar_width}}', flush=True)
   if ctx.dbg:
     outL() # terminate previous line.
     case.describe(stderr)
@@ -717,7 +718,7 @@ def run_case(ctx, case):
       exp_code=0)
     compile_time = time.time() - compile_time_start
     if not status:
-      outFL('\ncompile step {} failed: `{}`', i, shell_cmd_str(compile_cmd))
+      outL(f'\ncompile step {i} failed: `{shell_cmd_str(compile_cmd)}`')
       if status is not None: # not aborted; output is interesting.
         cat_file(compile_out_path, color=TXT_R)
         cat_file(compile_err_path, color=TXT_R)
@@ -751,11 +752,11 @@ def run_case(ctx, case):
     exp_code=exp_code)
   test_time = time.time() - test_time_start
   if not status:
-    outFL('test command failed: `{}`', shell_cmd_str(case.test_cmd))
+    outL(f'test command failed: `{shell_cmd_str(case.test_cmd)}`')
 
   if ctx.show_times:
-    compile_time_msg = '; compile: {:.2f}'.format(compile_time) if compile_time else ''
-    outFL(' {:.2f} sec{}.', test_time, compile_time_msg)
+    compile_time_msg = f'; compile: {compile_time:.2f}' if compile_time else ''
+    outL(f' {test_time:.2f} sec{compile_time_msg}.')
   else:
     outL()
 
@@ -790,31 +791,31 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, timeout=timeout, exp=exp_code)
     except PermissionError:
-      outFL('\n{} process permission error; make sure that you have proper ownership and permissions to execute set.', label)
-      if msg_cmd: outFL('possible fix: `chmod +x {}`', shlex.quote(msg_cmd))
+      outL(f'\n{label} process permission error; make sure that you have proper ownership and permissions to execute set.')
+      if msg_cmd: outL(f'possible fix `chmod +x {shlex.quote(msg_cmd)}`')
       return None
     except OSError as e:
       first_line = read_line_from_path(cmd_head, default=None)
       if e.strerror == 'Exec format error':
-        outFL('\n{} process file format is not executable.', label)
+        outL(f'\n{label} process file format is not executable.')
         if msg_cmd and first_line is not None and not first_line.startswith('#!'):
-          outFL('note: the test script does not start with a hash-bang line, e.g. `#!/usr/bin/env [INTERPRETER]`.')
+          outL('note: the test script does not start with a hash-bang line, e.g. `#!/usr/bin/env [INTERPRETER]`.')
       elif e.strerror.startswith('No such file or directory:'):
         if first_line is None: # really does not exist.
-          outFL('\n{} command path does not exist: {}', label, (msg_cmd or cmd_head))
+          outL(f'\n{label} command path does not exist: {(msg_cmd or cmd_head)}')
         elif is_cmd_installed: # exists but not referred to as a path.
-          outFL("\n{} command path exists but is missing a leading './'.", label)
+          outL(f"\n{label} command path exists but is missing a leading './'.")
         else:
-          outFL('\n{} command path exists but failed, possibly due to a bad hashbang line.', label)
-          outFL('first line: {!r}', first_line.rstrip('\n'))
+          outL(f'\n{label} command path exists but failed, possibly due to a bad hashbang line.')
+          outSL('first line:', repr(first_line.rstrip('\n')))
       else:
-        outFL('\n{} process OS error {}: {}.', label, e.errno, e.strerror)
+        outL(f'\n{label} process OS error {e.errno}: {e.strerror}.')
       return None
     except ProcessTimeout:
-      outFL('\n{} process timed out ({} sec) and was killed.', label, timeout)
+      outL(f'\n{label} process timed out ({timeout} sec) and was killed.')
       return None
     except ProcessExpectation as e:
-      outFL('\n{} process was expected to return code: {}; actual code: {}.', label, e.exp, e.act)
+      outL(f'\n{label} process was expected to return code: {e.exp}; actual code: {e.act}.')
       return False
     else:
       return True
@@ -823,7 +824,7 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
 
 def check_file_exp(ctx, test_dir, exp):
   'return True if expectation is met.'
-  if ctx.dbg: errFL('check_file_exp: {}', exp)
+  if ctx.dbg: errL(f'check_file_exp: {exp}')
   path = path_join(test_dir, exp.path)
   # TODO: support binary files by getting read mode from test case.
   # Expected read mode could alse be indicated by using a bytes value for the expectation.
@@ -831,16 +832,16 @@ def check_file_exp(ctx, test_dir, exp):
     with open(path, errors='replace') as f:
       act_val = f.read()
   except Exception as e:
-    outFL('\niotest: could not read test output file: {}\n  exception: {!r}', path, e)
+    outL(f'\niotest: could not read test output file: {path}\n  exception: {e!r}')
     ctx.fail_fast(e)
     outSL('-' * bar_width)
     return False
   if file_expectation_fns[exp.mode](exp, act_val):
     return True
-  outFL('\noutput file does not {} expectation. actual value:', exp.mode)
+  outL(f'\noutput file does not {exp.mode} expectation. actual value:')
   cat_file(path, color=TXT_B)
   if not exp.val:
-    outFL('Expected empty file.')
+    outL('Expected empty file.')
     return False
   if exp.mode == 'equal': # show a diff.
     path_expected = path + '-expected'
@@ -851,8 +852,7 @@ def check_file_exp(ctx, test_dir, exp):
   elif exp.mode == 'match':
     act_lines = act_val.splitlines(True)
     i, exp_pattern, act_line = exp.match_error
-    outFL('match failed at line {}:\npattern:   {!r}\nactual text: {!r}',
-      i, exp_pattern, act_line)
+    outL(f'match failed at line {i}:\npattern:   {exp_pattern!r}\nactual text: {act_line!r}')
   outSL('-' * bar_width)
   return False
 
