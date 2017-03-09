@@ -3,7 +3,7 @@ from enum import Enum
 from typing import cast, Any, Callable, Generic, Iterable, List, TextIO, TypeVar
 
 from .fs import path_ext, path_join, path_stem
-from .io import errFL, err_progress, writeFL
+from .io import errL, err_progress, writeL
 
 
 T = TypeVar('T')
@@ -60,8 +60,7 @@ class Transformer(Generic[T]):
   def _mk_log_fn(self, mode: str, name: str, ext: str) -> Callable[..., None]:
     'create a dedicated log file and logging function for use by a particular stage.'
     index = len(self.stages)
-    path = '{}{:0{width}}-{}-{}{}'.format(self.log_stem, index, mode, name, ext,
-      width=self.log_index_width)
+    path = f'{self.log_stem}{index:0{self.log_index_width}}-{mode}-{name}{ext}'
     f = cast(TextIO, open(path, 'w'))
     self.log_files.append(f)
 
@@ -69,9 +68,9 @@ class Transformer(Generic[T]):
     assert len(counts) == index
     counts.append(0)
 
-    def log_fn(fmt: str, *items: Any) -> None:
+    def log_fn(*items: Any) -> None:
       counts[index] += 1
-      writeFL(f, fmt, *items)
+      writeL(*items)
 
     return log_fn
 
@@ -87,7 +86,7 @@ class Transformer(Generic[T]):
 
     def flag_fn(item: I) -> I:
       if pred(item):
-        log_fn('{!r}\n', item)
+        log_fn(f'{item!r}\n')
       return item
 
     self._add_stage(name, flag_fn)
@@ -105,7 +104,7 @@ class Transformer(Generic[T]):
 
     def drop_fn(item: I) -> I:
       if pred(item):
-        log_fn('- {!r}\n', item)
+        log_fn(f'- {item!r}\n')
         raise _DropItem
       return item
 
@@ -140,7 +139,7 @@ class Transformer(Generic[T]):
     def edit_fn(item: I) -> O:
       edited = fn(item)
       if edited != item:
-        log_fn('- {!r}\n+ {!r}\n', item, edited)
+        log_fn(f'- {item!r}\n+ {edited!r}\n')
       return edited
 
     self._add_stage(name, edit_fn)
@@ -173,13 +172,13 @@ class Transformer(Generic[T]):
   def run(self) -> None:
 
     if not self.stages:
-      errFL('Transformer: WARNING: no transform functions found; '
+      errL('Transformer: WARNING: no transform functions found; '
         "transformation stage functions must be decorated with the transformer's convert/drop/edit/flag properties.")
 
     # create local bindings to avoid attribute lookups in the loop.
     stages = self.stages
 
-    errFL('◊ transform stages: {}.', ', '.join(self.stage_names))
+    errL(f'◊ transform stages: {", ".join(self.stage_names)}.')
 
     for item in err_progress(self.iterable, 'transform', 'items', frequency=self.progress_frequency):
       try:
@@ -193,5 +192,6 @@ class Transformer(Generic[T]):
 
     for i, (name, count) in enumerate(zip(self.stage_names, self.counts)):
       c = '-' if count == -1 else count
-      errFL('◊   {:0{width}}-{}: {}', i, name, c, width=self.log_index_width)
+      width = self.log_index_width
+      errL('◊   {i:0{width}}-{name}: {c}')
 

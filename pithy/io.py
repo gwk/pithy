@@ -43,17 +43,6 @@ def writeLSSL(file: TextIO, *items: Any, flush=False) -> None:
   print(*items, sep='\n  ', end='\n', file=file, flush=flush)
 
 
-# format printing.
-
-def writeF(file: TextIO, fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
-  "Write the formatted `items` to file; end=''."
-  print(fmt.format(*items, **keyed_items), end='', file=file, flush=flush)
-
-def writeFL(file: TextIO, fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
-  "Write the formatted `items` to file; end='\\n'."
-  print(fmt.format(*items, **keyed_items), end='\n', file=file, flush=flush)
-
-
 # templated format printing.
 
 def writeTF(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items: Any) -> None:
@@ -116,14 +105,6 @@ def outLSSL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', flush=flush)
 
-def outF(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
-  "Write the formatted string to std out; end=''."
-  writeF(stdout, fmt, *items, flush=flush, **keyed_items)
-
-def outFL(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
-  "Write the formatted string to std out; end='\\n'."
-  writeFL(stdout, fmt, *items, flush=flush, **keyed_items)
-
 def outP(*items: Any, label=None, flush=False, **opts: Any) -> None:
   'Pretty print to std out.'
   writeP(stdout, *items, label=label, **opts)
@@ -162,14 +143,6 @@ def errLL(*items: Any, flush=False) -> None:
 def errLSSL(*items: Any, flush=False) -> None:
   "Write items to std err; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=stderr, flush=flush)
-
-def errF(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
-  "Write the formatted string to std err; end=''."
-  writeF(stderr, fmt, *items, flush=flush, **keyed_items)
-
-def errFL(fmt: str, *items: Any, flush=False, **keyed_items: Any) -> None:
-  "Write the formatted string to std err; end='\\n'."
-  writeFL(stderr, fmt, *items, flush=flush, **keyed_items)
 
 def errP(*items: Any, label=None, **opts) -> None:
   'Pretty print to std err.'
@@ -221,51 +194,6 @@ def err_progress(iterable: Iterable[T], label='progress', suffix='', frequency=0
       print(pre + str(i) + final, file=stderr)
 
   return err_progress_gen()
-
-
-# errors.
-
-def fail(*items: Any, sep='') -> None:
-  'Write `items` to std err and exit.'
-  errZ(*items, sep=sep, end='\n')
-  exit(1)
-
-def failS(*items: Any) -> None:
-  "Write `items` to std err with sep =' ', and exit."
-  fail(*items, sep=' ')
-
-def failL(*items: Any) -> None:
-  "Write `items` to std err with sep ='\n', and exit."
-  fail(*items, sep='\n')
-
-def failF(fmt: str, *items: Any, **keyed_items: Any) -> None:
-  'Writes `items` to std err with a formatted err, and exit.'
-  fail(fmt.format(*items, **keyed_items))
-
-
-def check(condition: bool, *items: Any, sep='') -> None:
-  'If `condition` is False, fail with `items`.'
-  if not condition: fail(*items, sep=sep)
-
-def checkS(condition: bool, *items: Any) -> None:
-  "If `condition` is False, fail with `items` and a sep=' '."
-  if not condition: failS(*items)
-
-def checkF(condition: bool, fmt: str, *items: Any, **keyed_items: Any) -> None:
-  'If `condition` is False, fail with `items` with a formatted err.'
-  if not condition: failF(fmt, *items, **keyed_items)
-
-
-# exceptions.
-
-def raiseZ(*items: Any, sep='', E: type=Exception) -> None:
-  raise E(''.join(items))
-
-def raiseS(*items: Any, E: type=Exception) -> None:
-  raise E(' '.join(items))
-
-def raiseF(fmt: str, *items: Any, E: type=Exception) -> None:
-  raise E(fmt.format(*items))
 
 
 # convenience read/write.
