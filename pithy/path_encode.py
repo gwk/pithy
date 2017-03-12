@@ -10,8 +10,8 @@ def _path_encode_byte(b: int) -> str:
   It is used to create convenient file system paths out of urls.
   Just like url encoding, letters, digits, and the characters '_.-' are left unescaped.
   Additionally, '%' characters are not escaped, to make prior url encoding more readable,
-  and '/' is translated to '|' which makes the results more legible.
-  Note that '|' is encoded, so the encoding is unambiguous.
+  and '/' is translated to '\\' which makes the results more legible.
+  Note that '\\' is itself encoded, so the encoding is unambiguous.
   All other bytes are encoded as "+XX", where XX is the capitalized hexadecimal byte value.
 
   ascii notes:
@@ -31,7 +31,7 @@ def _path_encode_byte(b: int) -> str:
     b in (0x25, 0x2d, 0x2e, 0x5f):
     return chr(b)
   elif b == 0x2f:
-    return '|'
+    return '\\'
   else:
     return '+{:2X}'.format(b)
 
