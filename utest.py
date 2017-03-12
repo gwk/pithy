@@ -50,7 +50,7 @@ def utest_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
   _utest_test_count += 1
   try: ret = fn(*args, **kwargs)
   except BaseException as exc:
-    if not exceptions_eq(exp_exc, exc):
+    if not _compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
   else:
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
@@ -90,7 +90,7 @@ def utest_seq_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
     ret_seq = fn(*args, **kwargs)
     ret = list(ret_seq)
   except BaseException as exc:
-    if not exceptions_eq(exp_exc, exc):
+    if not _compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
   else:
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
@@ -127,7 +127,8 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
   frame_record = _inspect.stack()[2 + depth] # caller of caller.
   frame = frame_record[0]
   info = _inspect.getframeinfo(frame)
-  name = subj if isinstance(subj, str) else subj.__qualname__
+  try: name = subj.__qualname__
+  except AttributeError: name = str(subj)
   _errL(f'{_basename(info.filename)}:{info.lineno}: utest failure: {name}')
   for i, el in enumerate(args):
     _errL(f'  arg {i}={el!r}')
@@ -142,19 +143,24 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
   _errL()
 
 
-def exceptions_eq(a, b):
+def _compare_exceptions(exp, act):
   '''
   Compare two exceptions for approximate value equality.
-  Since Python exceptions do not implement value equality; we do our best here.
+  Since Python exceptions do not implement value equality, we offer several methods of comparison:
+  * if `exp` is a string, then compare it to the repr of `act`.
+  * if `exp` is a type, then test if `act` is an instance of `exp`.
+  * otherwise, compare the types and args of `act` (which must be an exception instance) to `exp`.
   '''
-  return type(a) == type(b) and a.args == b.args
+  if isinstance(exp, str): return exp == repr(act)
+  if isinstance(exp, type): return isinstance(act, exp)
+  return type(exp) == type(act) and exp.args == act.args
 
 
 def _errL(*items): print(*items, sep='', file=_stderr)
 
 
 @_atexit.register
-def report():
+def report(): #!cov-ignore - the call to _exit kills coven before it records anything.
   'At process exit, if any test failures occured, print a summary message and force process to exit with status code 1.'
   from os import _exit
   if _utest_failure_count > 0:

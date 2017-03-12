@@ -30,3 +30,11 @@ usymmetric(utest_exc, ValueError("invalid literal for int() with base 10: 'a'"),
 def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
 usymmetric(utest, 7, a_plus_bc, 1, 2, 3)
 usymmetric(utest_exc, ValueError("invalid literal for int() with base 10: 'a'"), a_plus_bc, 1, 'a', 'a')
+
+
+def raise_exc(arg):
+  raise Exception(arg)
+
+utest_exc('Exception(0,)', raise_exc, 0)
+utest_exc(Exception, raise_exc, 0)
+utest_exc(Exception(0), raise_exc, 0)
