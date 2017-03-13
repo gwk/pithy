@@ -12,10 +12,12 @@ utest(False, string_contains, '', 'a')
 
 utest('-body', clip_prefix, 'prefix-body', 'prefix')
 utest('prefix-body', clip_prefix, 'prefix-body', 'missing', req=False)
+utest('body', clip_prefix, 'body', '')
 utest_exc(ValueError('prefix-body'), clip_prefix, 'prefix-body', 'missing')
 
 utest('body-', clip_suffix, 'body-suffix', 'suffix')
 utest('body-suffix', clip_suffix, 'body-suffix', 'Z', req=False)
+utest('body', clip_suffix, 'body', '')
 utest_exc(ValueError('body-suffix'), clip_suffix, 'body-suffix', 'missing')
 
 utest('-body', clip_first_prefix, 'prefix-body', ['miss0', 'prefix', 'miss1'])
