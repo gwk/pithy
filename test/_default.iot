@@ -1,7 +1,11 @@
 {
   'coverage': [
     '__main__',
+    'pithy.buffer',
     'pithy.dict_utils',
+    'pithy.format',
+    'pithy.iterable',
+    'pithy.lex',
     'pithy.string_utils',
     'pithy.util',
   ]
