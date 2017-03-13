@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from operator import eq
 from utest import *
+from operator import eq
 from pithy.iterable import *
 
 
