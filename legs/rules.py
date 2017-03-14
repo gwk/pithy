@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.io import errFL, errL, errSL, errLL
+from pithy.io import errL, errSL, errLL
 from pithy.iterable import prefix_tree
 from pithy.type_util import is_pair_of_int
 from unico import codes_for_ranges
@@ -33,7 +33,7 @@ class Rule:
   def describe(self, name, depth=0):
     (_, line_num, _), col = self.pos
     n = name + ' ' if name else ''
-    errFL('{}{}{}:{}:{}:{}', '  ' * depth, n, type(self).__name__, line_num + 1, col + 1, self.inlineDescription)
+    errL('  ' * depth, n, type(self).__name__, ':', line_num + 1, ':', col + 1, ':', self.inlineDescription)
     if self.subs:
       for sub in self.subs:
         sub.describe(name=None, depth=depth+1)

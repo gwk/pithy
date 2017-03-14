@@ -11,7 +11,7 @@ from pithy.collection import freeze
 from pithy.dict_utils import dict_put
 from pithy.fs import path_ext, path_name_stem
 from pithy.immutable import Immutable
-from pithy.io import checkF, errF, errFL, errL, errSL, errLL, failF, failS, outFL
+from pithy.io import errL, errSL, errLL, outL
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.string_utils import pluralize
 
@@ -43,14 +43,16 @@ def main():
   is_mode_specified = args.mode is not None
   target_mode = args.mode or 'main'
   if not is_match_specified and is_mode_specified:
-    failF('`-mode` option only valid with `-match`.')
+    exit('`-mode` option only valid with `-match`.')
 
   if args.language is not None:
     ext = '.' + args.languageext
-    checkF(ext in supported_exts, 'unknown language {!r}; supported extensions are: {}.', args.language, supported_exts)
+    if ext not in supported_exts:
+      exit(f'unknown language {args.language!r}; supported extensions are: {supported_exts}.')
   elif args.output:
     ext = path_ext(args.output)
-    checkF(ext in supported_exts, 'unknown output extension {!r}; supported extensions are: {}.', ext, supported_exts)
+    if ext not in supported_exts:
+      exit(f'unknown output extension {ext!r}; supported extensions are: {supported_exts}.')
   else:
     ext = None
 
@@ -61,9 +63,9 @@ def main():
     path = args.rules_path
     try: lines = open(path)
     except FileNotFoundError:
-      failF('legs error: no such rule file: {!r}', path)
+      exit(f'legs error: no such rule file: {path!r}')
   else:
-    failF('`must specify either `rules_path` or `-pattern`.')
+    exit('`must specify either `rules_path` or `-pattern`.')
   mode_named_rules, mode_transitions = parse_legs(path, lines)
 
   mode_dfa_pairs = []
@@ -102,9 +104,9 @@ def main():
 
     post_matches = len(min_dfa.postMatchNodes)
     if post_matches:
-      errFL('note: `{}`: minimized DFA contains {}', mode, pluralize(post_matches, 'post-match node'))
+      errSL(f'note: `{mode}`: minimized DFA contains', pluralize(post_matches, "post-match node"))
 
-  if is_match_specified: failF('bad mode: {!r}', target_mode)
+  if is_match_specified: exit(f'bad mode: {target_mode!r}')
 
   if dbg and mode_transitions:
     errSL('\nmode transitions:')
@@ -123,15 +125,18 @@ def match_string(nfa, fat_dfa, min_dfa, string):
   'Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.'
   nfa_matches = nfa.match(string)
   if len(nfa_matches) > 1:
-    failF('match: {!r}: NFA matched multiple rules: {}.', string, ', '.join(sorted(nfa_matches)))
+    exit(f'match: {string!r}: NFA matched multiple rules: {", ".join(sorted(nfa_matches))}.')
   nfa_match = list(nfa_matches)[0] if nfa_matches else None
   fat_dfa_match = fat_dfa.match(string)
   if fat_dfa_match != nfa_match:
-    failF('match: {!r} inconsistent match: NFA: {}; fat DFA: {}.', string, nfa_match, fat_dfa_match)
+    exit(f'match: {string!r} inconsistent match: NFA: {nfa_match}; fat DFA: {fat_dfa_match}.')
   min_dfa_match = min_dfa.match(string)
   if min_dfa_match != nfa_match:
-    failF('match: {!r} inconsistent match: NFA: {}; min DFA: {}.', string, nfa_match, min_dfa_match)
-  outFL('match: {!r} {} {}', string, *(('->', nfa_match) if nfa_match else ('--', 'incomplete')))
+    exit(f'match: {string!r} inconsistent match: NFA: {nfa_match}; min DFA: {min_dfa_match}.')
+  if nfa_match:
+    outL(f'match: {string!r} -> {nfa_match}')
+  else:
+    outL(f'match: {string!r} -- incomplete')
 
 
 rule_re = re.compile(r'''(?x)
@@ -175,18 +180,18 @@ def parse_legs(path, lines):
     if m.group('l_name'): # mode transition.
       (src_pair, dst_pair) = parse_mode_transition(line_info, m)
       if src_pair in mode_transitions:
-        fail_parse((line_info, 0), 'duplicate transition parent name: {!r}', src_pair[1])
+        fail_parse((line_info, 0), f'duplicate transition parent name: {src_pair[1]!r}')
       mode_transitions[src_pair] = dst_pair
     else:
       name, rule = parse_rule(group)
       if name in ('invalid', 'incomplete'):
-        fail_parse((line_info, 0), 'rule name is reserved: {!r}', name)
+        fail_parse((line_info, 0), f'rule name is reserved: {name!r}')
       if name in rules:
-        fail_parse((line_info, 0), 'duplicate rule name: {!r}', name)
+        fail_parse((line_info, 0), f'duplicate rule name: {name!r}')
       rules[name] = rule
       for simple in simplified_names(name):
         if simple in simple_names:
-          fail_parse((line_info, 0), 'rule name collides when simplified: {!r}', simple_names[simple])
+          fail_parse((line_info, 0), f'rule name collides when simplified: {simple_names[simple]!r}')
         simple_names[simple] = name
   mode_named_rules = fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0]))
   mode_named_rules.setdefault('main', [])
@@ -240,7 +245,7 @@ def parse_rule_pattern(group, start_col):
     s = name_pos[1] + 1 # omit leading `$`.
     name = line[s:col]
     try: charset = unicode_charsets[name]
-    except KeyError: fail_parse(name_pos, 'unknown charset name: {!r}', name)
+    except KeyError: fail_parse(name_pos, f'unknown charset name: {name!r}')
     parser_stack[-1].parse_charset(name_pos, charset)
     name_pos = None
 
@@ -260,7 +265,7 @@ def parse_rule_pattern(group, start_col):
       if escape:
         escape = False
         try: charset = escape_charsets[c]
-        except KeyError: fail_parse(pos, 'invalid escaped character: {!r}', c)
+        except KeyError: fail_parse(pos, f'invalid escaped character: {c!r}')
         else: parser.parse_charset(pos, charset)
         continue
 
@@ -272,7 +277,7 @@ def parse_rule_pattern(group, start_col):
         elif c in '\\$([&-^':
           fail_parse(pos, 'name must be terminated with a space character for readability.')
         else:
-          fail_parse(pos, 'invalid name character: {!r}', c)
+          fail_parse(pos, f'invalid name character: {c!r}')
 
       if c == '\\':
         escape = True
@@ -284,7 +289,7 @@ def parse_rule_pattern(group, start_col):
       elif c == '$':
         name_pos = pos
       elif not c.isprintable():
-        fail_parse(pos, 'invalid non-printing character: {!r}'. c)
+        fail_parse(pos, f'invalid non-printing character: {c!r}')
       elif c == parser.terminator:
         parser_stack.pop()
         parent = parser_stack[-1]
@@ -303,17 +308,18 @@ def parse_rule_pattern(group, start_col):
 
   parser = parser_stack.pop()
   if parser_stack:
-    fail_parse((line_info, end_col), 'expected terminator: {!r}', parser.terminator)
+    fail_parse((line_info, end_col), f'expected terminator: {parser.terminator!r}')
   rule = parser.finish(pos)
   rule.pattern = ' '.join(patterns)
   return rule
 
 
-def fail_parse(pos, fmt, *items):
+def fail_parse(pos, *items):
   'Print a formatted parsing failure to std err and exit.'
   (line_info, col) = pos
   (path, line_num, line_text) = line_info
-  failF('{}:{}:{}: ' + fmt + '\n{}\n{}^', path, line_num + 1, col + 1, *items, line_text, ' ' * col)
+  indent = ' ' * col
+  exit(f'{path}:{line_num+1}:{col+1}: ' + ''.join(items) + f'\n{line_text}\n{indent}^')
 
 
 def ranges_from_strings(*interval_strings):
@@ -333,7 +339,7 @@ escape_charsets.update((c, ranges_for_char(c)) for c in '\\#|$?*+()[]&-^')
 
 if False:
   for k, v in sorted(escape_charsets.items()):
-    errFL('{}: {!r}', k, v)
+    errL(f'{k}: {v!r}')
 
 
 class PatternParser:
@@ -376,7 +382,7 @@ class PatternParser:
 
   def quantity(self, pos, char, T):
     try: el = self.seq.pop()
-    except IndexError: fail_parse(pos, "'{}' does not follow any pattern.", char)
+    except IndexError: fail_parse(pos, f"'{char}' does not follow any pattern.")
     else: self.seq.append(T(pos, subs=(el,)))
 
   def receive(self, result):
@@ -409,12 +415,12 @@ class CharsetParser():
 
   def add_code(self, pos, code):
     if code in self.codes:
-      fail_parse(pos, 'repeated character in set: {!r}', ord(code))
+      fail_parse(pos, f'repeated character in set: {ord(code)!r}')
     self.codes.add(code)
 
   def flush_left(self, pos, msg_context):
     if not self.codes:
-      fail_parse(pos, 'empty charset preceding {}', msg_context)
+      fail_parse(pos, 'empty charset preceding ', msg_context)
     op = self.operator
     if op is None: # first operator encountered.
       assert self.codes_left is None
@@ -429,7 +435,7 @@ class CharsetParser():
     self.flush_left(pos, msg_context='operator')
     is_diff_op = self.operator in ('-', '^')
     if self.parsed_diff_op or (self.parsed_op and is_diff_op):
-      fail_parse(pos, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`', op)
+      fail_parse(pos, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`: ', op)
     self.parsed_op = True
     self.parsed_diff_op |= is_diff_op
     self.operator = op
@@ -517,8 +523,7 @@ def combine_dfas(mode_dfa_pairs):
 def output(dfa, modes, node_modes, mode_transitions, ext, args):
 
   if ext not in supported_exts:
-    failF('output path has unknown extension {!r}; supported extensions are: {}.',
-      ext, ', '.join(supported_exts))
+    exit(f'output path has unknown extension {ext!r}; supported extensions are: {", ".join(supported_exts)}.')
   if ext == '.swift':
     output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, args=args)
   else:

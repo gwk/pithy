@@ -4,9 +4,9 @@ from collections import defaultdict
 from itertools import chain, count
 
 from pithy.dict_utils import dict_filter_map
-from pithy.io import errFL, errL, failF
+from pithy.io import errL, errSL
 from pithy.iterable import first_el, int_tuple_ranges
-from pithy.string_utils import prefix_nonempty
+from pithy.string_utils import prepend_to_nonempty
 from pithy.type_util import is_str
 
 from .codepoints import codes_desc
@@ -124,28 +124,27 @@ class FA:
   def ruleNames(self): return frozenset(self.matchNodeNames.values())
 
   def describe(self, label=None):
-    errFL('{}:', label or type(self).__name__)
+    errL(label or type(self).__name__, ':')
     errL(' matchNodeNames:')
     for node, name in sorted(self.matchNodeNames.items()):
-      errFL('  {}: {}', node, name)
+      errL(f'  {node}: {name}')
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
-      errFL('  {}:{}', src, prefix_nonempty(' ', self.matchNodeNames.get(src, '')))
+      errL(f'  {src}:{prepend_to_nonempty(" ", self.matchNodeNames.get(src, ""))}')
       dst_bytes = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
       for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
         byte_ranges = seq_int_ranges(bytes_list)
-        errFL('    {} ==> {}{}',
-          codes_desc(byte_ranges), dst, prefix_nonempty(': ', self.matchNodeNames.get(dst, '')))
+        errL('    ', codes_desc(byte_ranges), ' ==> ', dst, prepend_to_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
 
   def describe_stats(self, label=None):
-    errFL('{}:', label or type(self).__name__)
-    errFL('  matchNodeNames: {}', len(self.matchNodeNames))
-    errFL('  nodes: {}', len(self.transitions))
-    errFL('  transitions: {}', sum(len(d) for d in self.transitions.values()))
+    errL(label or type(self).__name__, ':')
+    errSL('  matchNodeNames:', len(self.matchNodeNames))
+    errSL('  nodes:', len(self.transitions))
+    errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
 
 
@@ -176,10 +175,10 @@ class NFA(FA):
     if is_str(text):
       text = text.encode()
     state = self.advanceEmpties(start)
-    #errFL('NFA start: {}', state)
+    #errSL('NFA start:', state)
     for byte in text:
       state = self.advance(state, byte)
-      #errFL('NFA step: {} -> {}', bytes([byte]), state)
+      #errL(f'NFA step: {bytes([byte])} -> {state}')
     all_matches = frozenset(dict_filter_map(self.matchNodeNames, state))
     literal_matches = frozenset(n for n in all_matches if n in self.literalRules)
     return literal_matches or all_matches
@@ -294,7 +293,7 @@ def genDFA(nfa):
   ambiguous_name_groups = { tuple(sorted(names)) for names in preferred_node_names.values() if len(names) != 1 }
   if ambiguous_name_groups:
     for group in sorted(ambiguous_name_groups):
-      errFL('Rules are ambiguous: {}.', ', '.join(group))
+      errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
   # create final dictionary.
   matchNodeNames = { node : first_el(names) for node, names in preferred_node_names.items() }
@@ -378,8 +377,7 @@ def minimizeDFA(dfa):
       try:
         existing = new_d[char]
         if existing != new_dst:
-          failF('inconsistency in minimized DFA: src state: {}->{}; char: {!r}; dst state: {}->{} != ?->{}',
-            old_node, new_node, char, old_dst, new_dst, existing)
+          exit(f'inconsistency in minimized DFA: src state: {old_node}->{new_node}; char: {char!r}; dst state: {old_dst}->{new_dst} != ?->{existing}')
       except KeyError:
         new_d[char] = new_dst
 
