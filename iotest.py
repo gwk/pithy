@@ -844,7 +844,7 @@ def check_file_exp(ctx, test_dir, exp):
     outL('Expected empty file.')
     return False
   if exp.mode == 'equal': # show a diff.
-    path_expected = path + '-expected'
+    path_expected = path + '.expected'
     write_to_path(path_expected, exp.val)
     cmd = diff_cmd + [rel_path(path_expected), rel_path(path)]
     outSL(*cmd)
