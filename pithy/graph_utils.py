@@ -43,7 +43,7 @@ def dot_id_quote(name: Name) -> str:
   Since XML escaping is also allowed, we just use that approach instead.
   '''
   if isinstance(name, (int, float)): return str(name)
-  return name if dot_bare_id_re.fullmatch(name) and name not in dot_keywords else '<{}>'.format(html_escape(name))
+  return name if dot_bare_id_re.fullmatch(name) and name not in dot_keywords else f'<{html_escape(name)}>')
 
 
 AdjacencyIterable = Iterable[Tuple[Name, Iterable[Name]]]
@@ -51,7 +51,7 @@ AdjacencyIterable = Iterable[Tuple[Name, Iterable[Name]]]
 def write_dot_digraph_adjacency_contents(f: TextIO, adjacency: AdjacencyIterable) -> None:
   for src, dsts in adjacency:
     src_quoted = dot_id_quote(src)
-    f.write('  {} -> {{'.format(src_quoted))
+    f.write(f'  {src_quoted} -> {{')
     for dst in sorted(dsts):
       f.write(' ')
       f.write(dot_id_quote(dst))
@@ -62,9 +62,8 @@ def write_dot_digraph_adjacency(f: TextIO, adjacency: AdjacencyIterable, label: 
   if label is None:
     f.write('strict digraph {')
   else:
-    label_quoted = dot_id_quote(label)
-    f.write('strict digraph {} {{\n'.format(label_quoted))
-    f.write('  label={};\n'.format(dot_id_quote(label)))
+    f.write(f'strict digraph {dot_id_quote(label)} {{\n')
+    f.write(f'  label={dot_id_quote(label)};\n')
   write_dot_digraph_adjacency_contents(f, adjacency)
   f.write('}\n')
 
