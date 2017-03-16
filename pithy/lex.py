@@ -24,7 +24,7 @@ class LexError(Exception): pass
 
 class LexDefinitionError(Exception): pass
 
-inv_re = re.compile(r'.+') # used to match all characters that did not otherwise match.
+inv_re = re.compile(r'.+', flags=re.DOTALL) # used to match all characters that did not otherwise match.
 
 
 class Lexer:
@@ -55,6 +55,7 @@ class Lexer:
     else: # no invalid token; will raise on invalid input.
       cls._inv_member = None
       pattern_members = members
+    if not pattern_members: raise LexDefinitionError('Lexer subclass must define at least one member')
     pattern = '|'.join(f'(?P<{m._name_}>{m._value_})' for m in pattern_members)
     cls._regex = re.compile(pattern)
 
