@@ -43,7 +43,7 @@ def dot_id_quote(name: Name) -> str:
   Since XML escaping is also allowed, we just use that approach instead.
   '''
   if isinstance(name, (int, float)): return str(name)
-  return name if dot_bare_id_re.fullmatch(name) and name not in dot_keywords else f'<{html_escape(name)}>')
+  return name if (dot_bare_id_re.fullmatch(name) and name not in dot_keywords) else f'<{html_escape(name)}>'
 
 
 AdjacencyIterable = Iterable[Tuple[Name, Iterable[Name]]]
@@ -58,15 +58,25 @@ def write_dot_digraph_adjacency_contents(f: TextIO, adjacency: AdjacencyIterable
     f.write(' };\n')
 
 
-def write_dot_digraph_adjacency(f: TextIO, adjacency: AdjacencyIterable, label: str=None) -> None:
+def write_dot_digraph_adjacency(f: TextIO, adjacency: AdjacencyIterable, **kwargs) -> None:
+  label = kwargs.get('label')
   if label is None:
     f.write('strict digraph {')
   else:
     f.write(f'strict digraph {dot_id_quote(label)} {{\n')
-    f.write(f'  label={dot_id_quote(label)};\n')
+  for k, v in kwargs.items():
+    validator = graph_prop_validators[k]
+    if not validator(v): raise ValueError(f'value for {k} failed validation: {v!r}')
+    f.write(f'  {k}={dot_id_quote(v)};\n')
   write_dot_digraph_adjacency_contents(f, adjacency)
   f.write('}\n')
 
 
-def out_dot_digraph_adjacency(adjacency: AdjacencyIterable, label: str=None) -> None:
-  write_dot_digraph_adjacency(stdout, adjacency=adjacency, label=label)
+def out_dot_digraph_adjacency(adjacency: AdjacencyIterable, **kwargs) -> None:
+  write_dot_digraph_adjacency(stdout, adjacency=adjacency, **kwargs)
+
+
+graph_prop_validators = {
+  'label': lambda v: isinstance(v, str),
+  'rankdir': lambda v: (v in {'TB', 'BT', 'LR', 'RL'}),
+}
