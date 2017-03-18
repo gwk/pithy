@@ -24,7 +24,7 @@ class LexError(Exception): pass
 
 class LexDefinitionError(Exception): pass
 
-inv_re = re.compile(r'.+', flags=re.DOTALL) # used to match all characters that did not otherwise match.
+inv_re = re.compile(r'(?s).+') # used to match all characters that did not otherwise match.
 
 
 class Lexer:

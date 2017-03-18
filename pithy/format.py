@@ -8,7 +8,7 @@ from typing import Any, AnyStr, Iterable, re as Re
 
 class FormatError(Exception): pass
 
-fmt_re = re.compile(r'''(?x:
+fmt_re = re.compile(r'''(?x)
 (?P<formatter>\{
         (?P<name> [^{}!:]* )
   (?: ! (?P<conv> [ars] ) )?
@@ -18,10 +18,10 @@ fmt_re = re.compile(r'''(?x:
 | \{\{
 | \}\}
 | [^{}]+
-)''')
+''')
 
 # translated from "6.1.3.1. Format Specification Mini-Language".
-fmt_spec_re = re.compile(r'''(?x:
+fmt_spec_re = re.compile(r'''(?x)
 (?: (?P<fill> . )? (?P<align> [<>=^]) )?
 (?P<sign> [-+\ ] )?
 (?P<alt> \# )?
@@ -30,7 +30,7 @@ fmt_spec_re = re.compile(r'''(?x:
 (?P<grouping> [_,] )?
 (?: \. (?P<precision> \d+ | \{ [^{}]* \} ) )? # note: nested format.
 (?P<type> [bcdeEfFgGnosxX%] )?
-)''')
+''')
 
 fmt_spec_dynamic_re = re.compile(r':[^}]\{')
 
