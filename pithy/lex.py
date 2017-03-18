@@ -17,7 +17,7 @@ Caveats:
 
 import re
 from enum import Enum
-from typing import AnyStr, Iterable, re as Re, Tuple
+from typing import Any, AnyStr, Iterable, re as Re, Tuple
 
 
 class LexError(Exception): pass
@@ -61,18 +61,20 @@ class Lexer:
 
 
   @classmethod
-  def lex(cls, string: AnyStr) -> Iterable[Tuple['Lexer', Re.Match]]:
+  def lex(cls, string: AnyStr, drop: Iterable[Any]=()) -> Iterable[Tuple['Lexer', Re.Match]]:
     if not cls._regex: cls._compile()
     def lex_gen():
+      drop_inv = (cls._inv_member in drop)
       prev_end = 0
       def lex_inv(pos):
         inv_match = inv_re.match(string, prev_end, pos) # create a real match object.
-        assert inv_match is not None
-        if cls._inv_member: return (cls._inv_member, inv_match)
-        else: raise LexError(inv_match)
+        if cls._inv_member:
+          return None if drop_inv else (cls._inv_member, inv_match)
+        raise LexError(inv_match)
       for match in cls._regex.finditer(string):
         if prev_end < match.start(): yield lex_inv(match.start())
-        yield (cls.__members__[match.lastgroup], match)
+        kind = cls.__members__[match.lastgroup]
+        yield None if kind in drop else (kind, match)
         prev_end = match.end()
       if prev_end < len(string): yield lex_inv(len(string))
-    return lex_gen()
+    return filter(None, lex_gen())

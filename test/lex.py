@@ -6,8 +6,8 @@ from enum import Enum
 from pithy.lex import *
 
 
-def test_lexer(lexer, string):
-  for token, match in lexer.lex(string):
+def test_lexer(lexer, string, **kwargs):
+  for token, match in lexer.lex(string, **kwargs):
     yield token, match.group()
 
 
@@ -18,6 +18,9 @@ class Numbers(Lexer, Enum):
 
 utest_seq([(Numbers.Num, '1'), (Numbers.Space, ' '), (Numbers.Num, '20'), (Numbers.Line, '\n')],
   test_lexer, Numbers, '1 20\n')
+
+utest_seq([(Numbers.Num, '1'), (Numbers.Num, '20')],
+  test_lexer, Numbers, '1 20\n', drop=(Numbers.Line, Numbers.Space))
 
 utest_seq_exc("LexError(<_sre.SRE_Match object; span=(2, 3), match='x'>,)", test_lexer, Numbers, '1 x 2')
 utest_seq_exc("LexError(<_sre.SRE_Match object; span=(4, 5), match='x'>,)", test_lexer, Numbers, '1 2 x')
