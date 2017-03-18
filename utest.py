@@ -132,7 +132,7 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
   _errL(f'{_basename(info.filename)}:{info.lineno}: utest failure: {name}')
   for i, el in enumerate(args):
     _errL(f'  arg {i}={el!r}')
-  for name, val, in sorted(kwargs.items()):
+  for name, val, in kwargs.items():
     _errL(f'  arg {name}={val!r}')
   _errL(f'  expected {exp_label}: {exp!r}')
   if ret_label: # unexpected value.
