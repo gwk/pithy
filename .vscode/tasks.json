@@ -1,0 +1,18 @@
+{
+  "version": "0.1.0",
+  "command": ".vscode/run.sh",
+  "echoCommand": false,
+  "isShellCommand": false,
+  "showOutput": "always",
+  "tasks": [
+    { "taskName": "test",
+      "args": ["make", "test"],
+      "isTestCommand": true,
+      "suppressTaskName": true
+    },
+    { "taskName": "typecheck",
+      "args": ["make", "typecheck"],
+      "suppressTaskName": true
+    }
+  ]
+}
