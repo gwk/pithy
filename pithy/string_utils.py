@@ -125,7 +125,7 @@ def format_byte_count(count: int, prec=3, abbr=True) -> str:
 def line_col_0(string: str, pos: int) -> Tuple[int, int]:
   if pos < 0 or pos > len(string): raise IndexError(pos)
   line = string.count('\n', 0, pos) # number of newlines preceeding pos.
-  last_line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
+  last_line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match; `+ 1` just happens to work perfectly as is.
   return (line, pos - last_line_start)
 
 
