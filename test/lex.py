@@ -20,7 +20,7 @@ utest_seq([(Numbers.Num, '1'), (Numbers.Space, ' '), (Numbers.Num, '20'), (Numbe
   test_lexer, Numbers, '1 20\n')
 
 utest_seq([(Numbers.Num, '1'), (Numbers.Num, '20')],
-  test_lexer, Numbers, '1 20\n', drop=(Numbers.Line, Numbers.Space))
+  test_lexer, Numbers, '1 20\n', drop={Numbers.Line, Numbers.Space})
 
 utest_seq_exc("LexError(<_sre.SRE_Match object; span=(2, 3), match='x'>,)", test_lexer, Numbers, '1 x 2')
 utest_seq_exc("LexError(<_sre.SRE_Match object; span=(4, 5), match='x'>,)", test_lexer, Numbers, '1 2 x')
@@ -32,6 +32,36 @@ class Words(Lexer, Enum):
 
 utest_seq([(Words.Inv, '!'), (Words.Word, 'a'), (Words.Inv, ' '), (Words.Word, 'b2'), (Words.Inv, '.')],
   test_lexer, Words, '!a b2.')
+
+utest_seq([(Words.Word, 'a'), (Words.Word, 'b2')],
+  test_lexer, Words, '!a b2.', drop={Words.Inv})
+
+
+tokens = list(Words.lex('1a b\n2c d', drop={Words.Inv}))
+
+utest('''\
+TEST:1:1: Word
+1a b
+~~\
+''', msg_for_match, tokens[0][1], prefix='TEST', msg=tokens[0][1].lastgroup)
+
+utest('''\
+TEST:1:4: Word
+1a b
+   ~\
+''', msg_for_match, tokens[1][1], prefix='TEST', msg=tokens[1][1].lastgroup)
+
+utest('''\
+TEST:2:1: Word
+2c d
+~~\
+''', msg_for_match, tokens[2][1], prefix='TEST', msg=tokens[2][1].lastgroup)
+
+utest('''\
+TEST:2:4: Word
+2c d
+   ~\
+''', msg_for_match, tokens[3][1], prefix='TEST', msg=tokens[3][1].lastgroup)
 
 
 class NoneErrorLexer(Lexer, Enum):

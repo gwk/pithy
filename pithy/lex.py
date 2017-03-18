@@ -84,3 +84,17 @@ class Lexer:
         prev_end = end
       if prev_end < len(string): yield lex_inv(len(string))
     return filter(None, lex_gen()) if drop else lex_gen()
+
+
+def msg_for_match(match: Re.Match, prefix: str, msg: str) -> str:
+  string = match.string
+  pos, end = match.span()
+  line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
+  line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
+  line_end = string.find('\n', pos)
+  if line_end == -1: line_end = len(string)
+  line = string[line_start:line_end]
+  col = pos - line_start
+  indent = ' ' * col
+  underline = '~' * (min(end - pos, len(line))) or '^'
+  return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{line}\n{indent}{underline}'
