@@ -10,9 +10,12 @@ Subclass Lexer and Enum to create a concrete lexer.
 |   Num = r'\d+'
 
 Caveats:
-* If one pattern specifies a flag, all patterns are affected.
-  * maybe require all flags at the beginning?
-  * or hack in a @setFlags decorator or class function?
+* If one pattern specifies a global flag, e.g. `(?x)`, all patterns are affected.
+  Python 3.6 supports localized flag, e.g. `(?x: ...)`.
+* A rule that matches zero-length strings, e.g. r'^' is defined to raise an exception.
+  Otherwise it would match but the character immediately following would be skipped.
+  This is the behavior of the underlying finditer,
+  and there does not appear to be a way to advance without using multiple regexes.
 '''
 
 import re
@@ -72,9 +75,12 @@ class Lexer:
           return None if drop_inv else (cls._inv_member, inv_match)
         raise LexError(inv_match)
       for match in cls._regex.finditer(string):
-        if prev_end < match.start(): yield lex_inv(match.start())
+        start, end = match.span()
+        if prev_end < start: yield lex_inv(start)
+        if start == end:
+          raise LexDefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.')
         kind = cls.__members__[match.lastgroup]
         yield None if kind in drop else (kind, match)
-        prev_end = match.end()
+        prev_end = end
       if prev_end < len(string): yield lex_inv(len(string))
-    return filter(None, lex_gen())
+    return filter(None, lex_gen()) if drop else lex_gen()
