@@ -114,14 +114,21 @@ def main():
 
   outL('\n', '#' * bar_width)
   count = len(cases)
-  total_time = time.time() - start_time
-  if any([broken_count, skipped_count, failed_count]):
-    msg = 'TESTS FOUND: {}; BROKEN: {}; SKIPPED: {}; FAILED: {}.'.format(
-      count, broken_count, skipped_count, failed_count)
-    code = 1
+  if ctx.parse_only:
+    if broken_count:
+      msg = f'TESTS FOUND: {count}; BROKEN: {broken_count}.'
+      code = 1
+    else:
+      msg = f'TESTS PARSED: {count}.'
+      code = 0
   else:
-    msg = 'TESTS {}: {}.'.format('PARSED' if ctx.parse_only else 'PASSED', count)
-    code = 0
+    if any([broken_count, failed_count]):
+      msg = f'TESTS FOUND: {count}; BROKEN: {broken_count}; SKIPPED: {skipped_count}; FAILED: {failed_count}.'
+      code = 1
+    else:
+      msg = f'TESTS FOUND: {count}; SKIPPED: {skipped_count}; PASSED: {count - skipped_count}.'
+      code = 0
+  total_time = time.time() - start_time
   if ctx.show_times:
     outL(f'{msg:{bar_width}} {total_time:.2f} sec.')
   else:
