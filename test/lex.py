@@ -2,89 +2,95 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from utest import *
-from enum import Enum
 from pithy.lex import *
 
 
-def test_lexer(lexer, string, **kwargs):
-  for token, match in lexer.lex(string, **kwargs):
-    yield token, match.group()
+# Lexer.
+
+def test_lex(lexer, string, **kwargs):
+  for match in lexer.lex(string, **kwargs):
+    yield match.lastgroup, match.group()
 
 
-class Numbers(Lexer, Enum):
-  Line = r'\n'
-  Space = r' +'
-  Num = r'\d+'
+num_lexer = Lexer(
+  line  = r'\n',
+  space = r' +',
+  num   = r'\d+',
+)
 
-utest_seq([(Numbers.Num, '1'), (Numbers.Space, ' '), (Numbers.Num, '20'), (Numbers.Line, '\n')],
-  test_lexer, Numbers, '1 20\n')
+utest_seq([('num', '1'), ('space', ' '), ('num', '20'), ('line', '\n')],
+  test_lex, num_lexer, '1 20\n')
 
-utest_seq([(Numbers.Num, '1'), (Numbers.Num, '20')],
-  test_lexer, Numbers, '1 20\n', drop={Numbers.Line, Numbers.Space})
+utest_seq([('num', '1'), ('num', '20')],
+  test_lex, num_lexer, '1 20\n', drop={'line', 'space'})
 
-utest_seq_exc("LexError(<_sre.SRE_Match object; span=(2, 3), match='x'>,)", test_lexer, Numbers, '1 x 2')
-utest_seq_exc("LexError(<_sre.SRE_Match object; span=(4, 5), match='x'>,)", test_lexer, Numbers, '1 2 x')
-
-
-class Words(Lexer, Enum):
-  Inv = None
-  Word = r'\w+'
-
-utest_seq([(Words.Inv, '!'), (Words.Word, 'a'), (Words.Inv, ' '), (Words.Word, 'b2'), (Words.Inv, '.')],
-  test_lexer, Words, '!a b2.')
-
-utest_seq([(Words.Word, 'a'), (Words.Word, 'b2')],
-  test_lexer, Words, '!a b2.', drop={Words.Inv})
+utest_seq_exc("LexError(<_sre.SRE_Match object; span=(2, 3), match='x'>,)", test_lex, num_lexer, '1 x 2')
+utest_seq_exc("LexError(<_sre.SRE_Match object; span=(4, 5), match='x'>,)", test_lex, num_lexer, '1 2 x')
 
 
-tokens = list(Words.lex('1a b\n2c d', drop={Words.Inv}))
+word_lexer = Lexer(
+  inv = None,
+  word = r'\w+',
+)
+
+utest_seq([('inv', '!'), ('word', 'a'), ('inv', ' '), ('word', 'b2'), ('inv', '.')],
+  test_lex, word_lexer, '!a b2.')
+
+utest_seq([('word', 'a'), ('word', 'b2')],
+  test_lex, word_lexer, '!a b2.', drop={'inv'})
+
+
+utest_exc(LexDefinitionError("member 1 'inv' value is None (only the first member may be None, to signify the invalid token)"),
+  Lexer, num=r'\d+', inv=None)
+
+utest_exc(LexDefinitionError("member 0 'num' value must be a string; found 0"),
+  Lexer, num=0)
+
+utest_exc(LexDefinitionError("member 0 'star' pattern is invalid: *"),
+  Lexer, star='*')
+
+utest_exc(LexDefinitionError("member 1 'b' pattern contains a conflicting capture group name: 'a'"),
+  Lexer, a='a', b='(?P<a>b)')
+
+utest_exc(LexDefinitionError('Lexer instance must define at least one pattern'), Lexer)
+utest_exc(LexDefinitionError('Lexer instance must define at least one pattern'), Lexer, inv=None)
+
+utest_seq_exc(LexDefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.'),
+  Lexer(caret='^', a='a').lex, 'a')
+
+
+# msg_for_match.
+
+tokens = list(word_lexer.lex('1a b\n2c d', drop={'inv'})) # note missing final newline.
 
 utest('''\
-TEST:1:1: Word
+PRE:1:1: word
 1a b
 ~~\
-''', msg_for_match, tokens[0][1], prefix='TEST', msg=tokens[0][1].lastgroup)
+''', msg_for_match, tokens[0], prefix='PRE', msg=tokens[0].lastgroup)
 
 utest('''\
-TEST:1:4: Word
+PRE:1:4: word
 1a b
    ~\
-''', msg_for_match, tokens[1][1], prefix='TEST', msg=tokens[1][1].lastgroup)
+''', msg_for_match, tokens[1], prefix='PRE', msg=tokens[1].lastgroup)
 
 utest('''\
-TEST:2:1: Word
+PRE:2:1: word
 2c d
 ~~\
-''', msg_for_match, tokens[2][1], prefix='TEST', msg=tokens[2][1].lastgroup)
+''', msg_for_match, tokens[2], prefix='PRE', msg=tokens[2].lastgroup)
 
 utest('''\
-TEST:2:4: Word
+PRE:2:4: word
 2c d
    ~\
-''', msg_for_match, tokens[3][1], prefix='TEST', msg=tokens[3][1].lastgroup)
+''', msg_for_match, tokens[3], prefix='PRE', msg=tokens[3].lastgroup)
 
-
-class NoneErrorLexer(Lexer, Enum):
-  Num = r'\d+'
-  Inv = None
-utest_exc(LexDefinitionError("member 1 'Inv' value is None (only member 0 may be signify the invalid token)"),
-  NoneErrorLexer.lex, '')
-
-class NonStringErrorLexer(Lexer, Enum):
-  Num = 0
-utest_exc(LexDefinitionError("member 0 'Num' value must be a string; found 0"),
-  NonStringErrorLexer.lex, '')
-
-class ParenErrorLexer(Lexer, Enum):
-  Star = '*'
-utest_exc(LexDefinitionError("member 0 'Star' pattern is invalid: *"),
-  ParenErrorLexer.lex, '')
-
-class GroupNameErrorLexer(Lexer, Enum):
-  A = 'a'
-  B = '(?P<A>a)'
-utest_exc(LexDefinitionError("member 1 'B' pattern contains a conflicting capture group name: 'A'"),
-  GroupNameErrorLexer.lex, '')
-
-
+# test the caret underline for zero-length matches.
+utest('''\
+PRE:1:1: MSG
+abc
+^\
+''', msg_for_match, re.match('^', 'abc'), prefix='PRE', msg='MSG')
 
