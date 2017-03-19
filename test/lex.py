@@ -40,22 +40,22 @@ utest_seq([('word', 'a'), ('word', 'b2')],
   test_lex, word_lexer, '!a b2.', drop={'inv'})
 
 
-utest_exc(LexDefinitionError("member 1 'inv' value is None (only the first member may be None, to signify the invalid token)"),
+utest_exc(Lexer.DefinitionError("member 1 'inv' value is None (only the first member may be None, to signify the invalid token)"),
   Lexer, num=r'\d+', inv=None)
 
-utest_exc(LexDefinitionError("member 0 'num' value must be a string; found 0"),
+utest_exc(Lexer.DefinitionError("member 0 'num' value must be a string; found 0"),
   Lexer, num=0)
 
-utest_exc(LexDefinitionError("member 0 'star' pattern is invalid: *"),
+utest_exc(Lexer.DefinitionError("member 0 'star' pattern is invalid: *"),
   Lexer, star='*')
 
-utest_exc(LexDefinitionError("member 1 'b' pattern contains a conflicting capture group name: 'a'"),
+utest_exc(Lexer.DefinitionError("member 1 'b' pattern contains a conflicting capture group name: 'a'"),
   Lexer, a='a', b='(?P<a>b)')
 
-utest_exc(LexDefinitionError('Lexer instance must define at least one pattern'), Lexer)
-utest_exc(LexDefinitionError('Lexer instance must define at least one pattern'), Lexer, inv=None)
+utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer)
+utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, inv=None)
 
-utest_seq_exc(LexDefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.'),
+utest_seq_exc(Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.'),
   Lexer(caret='^', a='a').lex, 'a')
 
 

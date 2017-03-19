@@ -11,7 +11,6 @@ from typing import Any, AnyStr, Iterable, re as Re, Tuple
 
 class LexError(Exception): pass
 
-class LexDefinitionError(Exception): pass
 
 
 
@@ -28,24 +27,26 @@ class Lexer:
     for the next iteration only.
   '''
 
+  class DefinitionError(Exception): pass
+
   def __init__(self, **members):
     self.members = members
     self.inv_name = None
     patterns = []
     for i, (n, v) in enumerate(members.items()):
       if v is None:
-        if i: raise LexDefinitionError(f'member {i} {n!r} value is None (only the first member may be None, to signify the invalid token)')
+        if i: raise Lexer.DefinitionError(f'member {i} {n!r} value is None (only the first member may be None, to signify the invalid token)')
         self.inv_name = n
         continue
       if not isinstance(v, str): # TODO: also support bytes.
-        raise LexDefinitionError(f'member {i} {n!r} value must be a string; found {v!r}')
+        raise Lexer.DefinitionError(f'member {i} {n!r} value must be a string; found {v!r}')
       try: r = re.compile(v) # compile each expression by itself to improve error clarity.
-      except Exception as e: raise LexDefinitionError(f'member {i} {n!r} pattern is invalid: {v}') from e
+      except Exception as e: raise Lexer.DefinitionError(f'member {i} {n!r} pattern is invalid: {v}') from e
       for group_name in r.groupindex:
         if group_name in members:
-          raise LexDefinitionError(f'member {i} {n!r} pattern contains a conflicting capture group name: {group_name!r}')
+          raise Lexer.DefinitionError(f'member {i} {n!r} pattern contains a conflicting capture group name: {group_name!r}')
       patterns.append((n, v))
-    if not patterns: raise LexDefinitionError('Lexer instance must define at least one pattern')
+    if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
     pattern = '|'.join(f'(?P<{n}>{v})' for n, v in patterns)
     self.regex = re.compile(pattern)
     self.inv_re = re.compile(f'(?s)(?P<{self.inv_name}>.+)' if self.inv_name else '(?s).+')
@@ -69,7 +70,7 @@ class Lexer:
         if prev_end < start:
           yield lex_inv(start)
         if start == end:
-          raise LexDefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.')
+          raise Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.')
         yield None if (match.lastgroup in drop) else match
         prev_end = end
     return filter(None, lex_gen()) if drop else lex_gen()
