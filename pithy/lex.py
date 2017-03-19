@@ -60,14 +60,18 @@ class Lexer:
         if self.inv_name:
           return None if drop_inv else inv_match
         raise LexError(inv_match)
-      for match in self.regex.finditer(string):
+      while prev_end < len(string):
+        match = self.regex.search(string, prev_end)
+        if not match:
+          yield lex_inv(len(string))
+          break
         start, end = match.span()
-        if prev_end < start: yield lex_inv(start)
+        if prev_end < start:
+          yield lex_inv(start)
         if start == end:
           raise LexDefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.')
         yield None if (match.lastgroup in drop) else match
         prev_end = end
-      if prev_end < len(string): yield lex_inv(len(string))
     return filter(None, lex_gen()) if drop else lex_gen()
 
 
