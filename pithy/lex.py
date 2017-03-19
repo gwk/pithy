@@ -51,7 +51,7 @@ class Lexer:
     self.inv_re = re.compile(f'(?s)(?P<{self.inv_name}>.+)' if self.inv_name else '(?s).+')
 
 
-  def lex(self, string: AnyStr, drop: Iterable[Any]=()) -> Iterable[Tuple['Lexer', Re.Match]]:
+  def lex(self, string: AnyStr, drop: Iterable[str]=()) -> Iterable[Re.Match]:
     def lex_gen():
       drop_inv = (self.inv_name in drop)
       prev_end = 0
