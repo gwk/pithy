@@ -100,44 +100,42 @@ _name_re = re.compile(r'\w')
 def parse_rule_pattern(line_info, match, start_col):
   'Parse a pattern and return a Rule object.'
   _, _, line = line_info
-  parser_stack = [PatternParser((line_info, start_col))]
+  parser_stack = [PatternParser(col=start_col)]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
 
-  def flush_name(col):
-    nonlocal name_pos
-    s = name_pos[1] + 1 # omit leading `$`.
-    name = line[s:col]
+  def flush_name(line_info, end):
+    nonlocal name_col
+    start = name_col + 1 # omit leading `$`.
+    name = line[start:end]
     try: charset = unicode_charsets[name]
-    except KeyError: fail_parse(name_pos, f'unknown charset name: {name!r}')
-    parser_stack[-1].parse_charset(pos, charset=charset)
-    name_pos = None
+    except KeyError: fail_parse(line_info, name_col, f'unknown charset name: {name!r}')
+    parser_stack[-1].parse_charset(line_info, name_col, charset=charset)
+    name_col = None
 
-  pos = (line_info, start_col)
   escape = False
   end_col = len(line)
-  name_pos = None # position of name currently being parsed or None.
+  name_col = None # position of name currently being parsed or None.
 
   for col, c in enumerate(line):
     if col < start_col: continue
-    pos = (line_info, col)
     parser = parser_stack[-1]
 
     if escape:
       escape = False
       try: charset = escape_charsets[c]
-      except KeyError: fail_parse(pos, f'invalid escaped character: {c!r}')
-      else: parser.parse_charset(pos, charset)
+      except KeyError: fail_parse(line_info, col, f'invalid escaped character: {c!r}')
+      else: parser.parse_charset(line_info, col, charset)
       continue
 
-    if name_pos is not None:
+    if name_col is not None:
       if _name_re.match(c):
         continue
       elif c in ' #)]?*+':
-        flush_name(col) # then proceed to regular parsing below.
+        flush_name(line_info, col) # then proceed to regular parsing below.
       elif c in '\\$([&-^':
-        fail_parse(pos, 'name must be terminated with a space character for readability.')
+        fail_parse(line_info, col, 'name must be terminated with a space character for readability.')
       else:
-        fail_parse(pos, f'invalid name character: {c!r}')
+        fail_parse(line_info, col, f'invalid name character: {c!r}')
 
     if c == '\\':
       escape = True
@@ -147,36 +145,35 @@ def parse_rule_pattern(line_info, match, start_col):
     elif c == ' ':
       continue
     elif c == '$':
-      name_pos = pos
+      name_col = col
     elif not c.isprintable():
-      fail_parse(pos, f'invalid non-printing character: {c!r}')
+      fail_parse(line_info, col, f'invalid non-printing character: {c!r}')
     elif c == parser.terminator:
       parser_stack.pop()
       parent = parser_stack[-1]
-      parent.receive(parser.finish(pos))
+      parent.receive(parser.finish(line_info, col))
     else:
-      child = parser.parse(pos, c)
+      child = parser.parse(line_info, col, c)
       if child:
         parser_stack.append(child)
 
   if escape:
-    fail_parse(pos, 'dangling escape character')
-  if name_pos is not None:
-    flush_name(end_col)
+    fail_parse(line_info, col, 'dangling escape character')
+  if name_col is not None:
+    flush_name(line_info, end_col)
 
   parser = parser_stack.pop()
   if parser_stack:
-    fail_parse((line_info, end_col), f'expected terminator: {parser.terminator!r}')
-  rule = parser.finish(pos)
+    fail_parse(line_info, end_col, f'expected terminator: {parser.terminator!r}')
+  rule = parser.finish(line_info, col)
   rule.pattern = line[start_col:end_col]
   return rule
 
 
-def fake_tok(pos): return (pos[0][1], pos[1])
+def fake_tok(line_info, col): return (line_info[1], col)
 
-def fail_parse(pos, *items):
+def fail_parse(line_info, col, *items):
   'Print a formatted parsing failure to std err and exit.'
-  (line_info, col) = pos
   (path, line_num, line_text) = line_info
   indent = ' ' * col
   exit(f'{path}:{line_num+1}:{col+1}: ' + ''.join(items) + f'\n{line_text}\n{indent}^')
@@ -204,46 +201,46 @@ if False:
 
 class PatternParser:
 
-  def __init__(self, pos, terminator=None):
-    self.pos = pos
+  def __init__(self, col, terminator=None):
+    self.col = col
     self.terminator = terminator
     self.choices = []
     self.seq = []
-    self.seq_pos = pos
+    self.seq_col = col
 
-  def parse(self, pos, char):
+  def parse(self, line_info, col, char):
     if char == '(':
-      return PatternParser(pos, terminator=')')
+      return PatternParser(col=col, terminator=')')
     elif char == '[':
-      return CharsetParser(pos)
+      return CharsetParser(col=col)
     elif char == '|':
-      self.flush_seq(pos)
-    elif char == '?': self.quantity(pos, char, Opt)
-    elif char == '*': self.quantity(pos, char, Star)
-    elif char == '+': self.quantity(pos, char, Plus)
+      self.flush_seq(line_info, col)
+    elif char == '?': self.quantity(line_info, col, char, Opt)
+    elif char == '*': self.quantity(line_info, col, char, Star)
+    elif char == '+': self.quantity(line_info, col, char, Plus)
     else:
-      self.seq.append(Charset(pos, ranges=ranges_for_char(char)))
+      self.seq.append(Charset(token=fake_tok(line_info, col), ranges=ranges_for_char(char)))
 
-  def parse_charset(self, pos, charset):
-    self.seq.append(Charset(pos, ranges=charset))
+  def parse_charset(self, line_info, col, charset):
+    self.seq.append(Charset(token=fake_tok(line_info, col), ranges=charset))
 
-  def finish(self, pos):
-    self.flush_seq(pos)
+  def finish(self, line_info, col):
+    self.flush_seq(line_info, col)
     choices = self.choices
-    return choices[0] if len(choices) == 1 else Choice(token=fake_tok(self.pos), subs=tuple(choices))
+    return choices[0] if len(choices) == 1 else Choice(token=fake_tok(line_info, self.col), subs=tuple(choices))
 
-  def flush_seq(self, pos):
+  def flush_seq(self, line_info, col):
     seq = self.seq
-    if not seq: fail_parse(self.seq_pos, 'empty sequence.')
-    rule = seq[0] if len(seq) == 1 else Seq(token=fake_tok(self.seq_pos), subs=tuple(seq))
+    if not seq: fail_parse(line_info, self.seq_col, 'empty sequence.')
+    rule = seq[0] if len(seq) == 1 else Seq(token=fake_tok(line_info, self.seq_col), subs=tuple(seq))
     self.choices.append(rule)
     self.seq = []
-    self.seq_pos = pos
+    self.seq_col = col
 
-  def quantity(self, pos, char, T):
+  def quantity(self, line_info, col, char, T):
     try: el = self.seq.pop()
-    except IndexError: fail_parse(pos, f"'{char}' does not follow any pattern.")
-    else: self.seq.append(T(token=fake_tok(pos), subs=(el,)))
+    except IndexError: fail_parse(line_info, col, f"'{char}' does not follow any pattern.")
+    else: self.seq.append(T(token=fake_tok(line_info, col), subs=(el,)))
 
   def receive(self, result):
     self.seq.append(result)
@@ -263,24 +260,23 @@ class CharsetParser():
   Thus, the set expression syntax has no operator precedence or associativity.
   '''
 
-  def __init__(self, pos):
-    self.pos = pos
+  def __init__(self, col):
+    self.col = col
     self.terminator = ']'
     self.codes = set()
     self.codes_left = None  # left operand to current operator.
     self.operator = None # current operator waiting to finish parsing right side.
-    self.operator_pos = None
     self.parsed_op = False
     self.parsed_diff_op = False
 
-  def add_code(self, pos, code):
+  def add_code(self, line_info, col, code):
     if code in self.codes:
-      fail_parse(pos, f'repeated character in set: {ord(code)!r}')
+      fail_parse(line_info, col, f'repeated character in set: {ord(code)!r}')
     self.codes.add(code)
 
-  def flush_left(self, pos, msg_context):
+  def flush_left(self, line_info, col, msg_context):
     if not self.codes:
-      fail_parse(pos, 'empty charset preceding ', msg_context)
+      fail_parse(line_info, col, 'empty charset preceding ', msg_context)
     op = self.operator
     if op is None: # first operator encountered.
       assert self.codes_left is None
@@ -291,42 +287,41 @@ class CharsetParser():
     else: raise ValueError(op) # internal error.
     self.codes = set()
 
-  def push_operator(self, pos, op):
-    self.flush_left(pos, msg_context='operator')
+  def push_operator(self, line_info, col, op):
+    self.flush_left(line_info, col, msg_context='operator')
     is_diff_op = self.operator in ('-', '^')
     if self.parsed_diff_op or (self.parsed_op and is_diff_op):
-      fail_parse(pos, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`: ', op)
+      fail_parse(line_info, col, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`: ', op)
     self.parsed_op = True
     self.parsed_diff_op |= is_diff_op
     self.operator = op
-    self.operator_pos = pos
 
-  def parse(self, pos, char):
+  def parse(self, line_info, col, char):
     if char == '[':
-      return CharsetParser(pos)
+      return CharsetParser(line_info, col)
     elif char in '&-^':
-      self.push_operator(pos, char)
+      self.push_operator(line_info, col, char)
     else:
-      self.add_code(pos, ord(char))
+      self.add_code(line_info, col, ord(char))
 
-  def parse_charset(self, pos, charset):
+  def parse_charset(self, line_info, col, charset):
     for code in codes_for_ranges(charset):
-      self.add_code(pos, code)
+      self.add_code(line_info, col, code)
 
-  def parse_name(self, pos, name):
-    assert self.current_name_pos is not None
+  def parse_name(self, line_info, col, name):
+    assert self.current_name_col is not None
     assert self.current_name_chars is not None
     if not self.current_name_chars:
-      fail_parse(self.current_name_pos, 'empty charset name.')
+      fail_parse(line_info, self.current_name_col, 'empty charset name.')
     name = ''.join(self.current_name_chars)
     try: named_charset = unicode_charsets[name]
-    except KeyError: fail_parse(self.current_name_pos, 'unknown charset name.')
+    except KeyError: fail_parse(line_info, self.current_name_col, 'unknown charset name.')
     self.codes.update(codes_for_ranges(named_charset))
-    self.current_name_pos = None
+    self.current_name_col = None
     self.current_name_chars = None
 
-  def finish(self, pos):
-    if self.operator: self.flush_left(pos, msg_context='terminator')
+  def finish(self, line_info, col):
+    if self.operator: self.flush_left(line_info, col, msg_context='terminator')
     codes = self.codes_left or self.codes
-    if not codes: fail_parse(self.pos, 'empty character set.')
-    return Charset(self.pos, ranges=tuple(ranges_for_codes(sorted(codes))))
+    if not codes: fail_parse(line_info, self.col, 'empty character set.')
+    return Charset(token=fake_tok(line_info, self.col), ranges=tuple(ranges_for_codes(sorted(codes))))
