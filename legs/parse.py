@@ -109,7 +109,7 @@ def parse_rule_pattern(line_info, match, start_col):
     name = line[s:col]
     try: charset = unicode_charsets[name]
     except KeyError: fail_parse(name_pos, f'unknown charset name: {name!r}')
-    parser_stack[-1].parse_charset(name_pos, charset)
+    parser_stack[-1].parse_charset(pos, charset=charset)
     name_pos = None
 
   pos = (line_info, start_col)
@@ -172,6 +172,8 @@ def parse_rule_pattern(line_info, match, start_col):
   return rule
 
 
+def fake_tok(pos): return (pos[0][1], pos[1])
+
 def fail_parse(pos, *items):
   'Print a formatted parsing failure to std err and exit.'
   (line_info, col) = pos
@@ -228,12 +230,12 @@ class PatternParser:
   def finish(self, pos):
     self.flush_seq(pos)
     choices = self.choices
-    return choices[0] if len(choices) == 1 else Choice(self.pos, subs=tuple(choices))
+    return choices[0] if len(choices) == 1 else Choice(token=fake_tok(self.pos), subs=tuple(choices))
 
   def flush_seq(self, pos):
     seq = self.seq
     if not seq: fail_parse(self.seq_pos, 'empty sequence.')
-    rule = seq[0] if len(seq) == 1 else Seq(self.seq_pos, subs=tuple(seq))
+    rule = seq[0] if len(seq) == 1 else Seq(token=fake_tok(self.seq_pos), subs=tuple(seq))
     self.choices.append(rule)
     self.seq = []
     self.seq_pos = pos
@@ -241,7 +243,7 @@ class PatternParser:
   def quantity(self, pos, char, T):
     try: el = self.seq.pop()
     except IndexError: fail_parse(pos, f"'{char}' does not follow any pattern.")
-    else: self.seq.append(T(pos, subs=(el,)))
+    else: self.seq.append(T(token=fake_tok(pos), subs=(el,)))
 
   def receive(self, result):
     self.seq.append(result)

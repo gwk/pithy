@@ -22,18 +22,18 @@ __all__ = [
 
 
 class Rule:
-  def __init__(self, pos, subs=None):
+  def __init__(self, token, subs=None):
     if subs is not None:
       assert isinstance(subs, tuple)
       for sub in subs: assert isinstance(sub, Rule)
-    self.pos = pos
+    self.token = token
     self.subs = subs
     self.pattern = None
 
   def describe(self, name, depth=0):
-    (_, line_num, _), col = self.pos
+    line0, col0 = self.token
     n = name + ' ' if name else ''
-    errL('  ' * depth, n, type(self).__name__, ':', line_num + 1, ':', col + 1, ':', self.inlineDescription)
+    errL('  ' * depth, n, type(self).__name__, ':', line0 + 1, ':', col0 + 1, ':', self.inlineDescription)
     if self.subs:
       for sub in self.subs:
         sub.describe(name=None, depth=depth+1)
@@ -104,8 +104,8 @@ class Plus(Quantity):
 
 class Charset(Rule):
 
-  def __init__(self, pos, ranges):
-    super().__init__(pos=pos)
+  def __init__(self, token, ranges):
+    super().__init__(token=token)
     assert isinstance(ranges, tuple)
     assert all(is_pair_of_int(p) for p in ranges)
     assert ranges
