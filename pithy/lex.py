@@ -66,13 +66,11 @@ class Lexer:
     _pos = pos if pos >= 0 else len(string) + pos
     _end = len(string) if end is None else (end if end >= 0 else len(string) + end)
     def lex_gen():
-      drop_inv = (self.inv_name in drop)
       pos = _pos
       end = _end
       def lex_inv(end):
         inv_match = self.inv_re.match(string, pos, end) # create a real match object.
-        if self.inv_name:
-          return None if drop_inv else inv_match
+        if self.inv_name: return inv_match
         raise LexError(inv_match)
       while pos < end:
         match = self.regex.search(string, pos)
@@ -85,9 +83,9 @@ class Lexer:
         if s == e:
           raise Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.\n'
             f'  kind: {match.lastgroup}; match: {match}')
-        yield None if (match.lastgroup in drop) else match
+        yield match
         pos = e
-    return filter(None, lex_gen()) if drop else lex_gen()
+    return filter((lambda token: token.lastgroup not in drop), lex_gen()) if drop else lex_gen()
 
 
 class ModeLexer:
