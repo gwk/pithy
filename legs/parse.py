@@ -3,6 +3,7 @@
 import re
 
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
+from pithy.lex import *
 
 from unico import codes_for_ranges, ranges_for_codes
 from unico.charsets import unicode_charsets
@@ -25,12 +26,11 @@ def match_lines(path, lines):
   for line_num, line in enumerate(lines):
     line = line.rstrip() # always strip newline so that missing final newline is consistent.
     if not line: continue
-    line_info = (path, line_num, line)
     match = rule_re.fullmatch(line)
     if not match:
-      fail_parse((line_info, 0), 'invalid line: neither rule nor mode transition.')
+      fail_parse((path, match), 0, 'invalid line: neither rule nor mode transition.')
     if match.group('comment'): continue
-    yield (line_info, match)
+    yield match
 
 
 def parse_legs(path, lines):
@@ -41,29 +41,30 @@ def parse_legs(path, lines):
   rules = {} # keyed by name.
   simple_names = {}
   mode_transitions = {}
-  for line_info, match in match_lines(path, lines):
+  for match in match_lines(path, lines):
+    line_info = (path, match)
     if match.group('l_name'): # mode transition.
-      (src_pair, dst_pair) = parse_mode_transition(line_info, match)
+      (src_pair, dst_pair) = parse_mode_transition(match)
       if src_pair in mode_transitions:
-        fail_parse((line_info, 0), f'duplicate transition parent name: {src_pair[1]!r}')
+        fail_parse(line_info, 0, f'duplicate transition parent name: {src_pair[1]!r}')
       mode_transitions[src_pair] = dst_pair
     else:
-      name, rule = parse_rule(line_info, match)
+      name, rule = parse_rule(path, match)
       if name in ('invalid', 'incomplete'):
-        fail_parse((line_info, 0), f'rule name is reserved: {name!r}')
+        fail_parse(line_info, 0, f'rule name is reserved: {name!r}')
       if name in rules:
-        fail_parse((line_info, 0), f'duplicate rule name: {name!r}')
+        fail_parse(line_info, 0, f'duplicate rule name: {name!r}')
       rules[name] = rule
       for simple in simplified_names(name):
         if simple in simple_names:
-          fail_parse((line_info, 0), f'rule name collides when simplified: {simple_names[simple]!r}')
+          fail_parse(line_info, 0, f'rule name collides when simplified: {simple_names[simple]!r}')
         simple_names[simple] = name
   mode_named_rules = fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0]))
   mode_named_rules.setdefault('main', [])
   return (mode_named_rules, mode_transitions)
 
 
-def parse_mode_transition(line_info, match):
+def parse_mode_transition(match):
   return (
     mode_and_name(match.group('l_name')),
     mode_and_name(match.group('r_name')))
@@ -83,7 +84,7 @@ def simplified_names(name):
   return { n.replace('.', '_'), n.replace('.', '') }
 
 
-def parse_rule(line_info, match):
+def parse_rule(path, match):
   name = match.group('name')
   if name: # named pattern.
     start_col = match.start('pattern')
@@ -92,14 +93,15 @@ def parse_rule(line_info, match):
     assert symbol
     name = symbol
     start_col = match.start('symbol')
-  return name, parse_rule_pattern(line_info, match, start_col=start_col)
+  return name, parse_rule_pattern(path, match, start_col=start_col)
 
 
 _name_re = re.compile(r'\w')
 
-def parse_rule_pattern(line_info, match, start_col):
+def parse_rule_pattern(path, match, start_col):
   'Parse a pattern and return a Rule object.'
-  _, _, line = line_info
+  line = match.string
+  line_info = (path, match)
   parser_stack = [PatternParser(col=start_col)]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
 
@@ -174,9 +176,9 @@ def fake_tok(line_info, col): return (line_info[1], col)
 
 def fail_parse(line_info, col, *items):
   'Print a formatted parsing failure to std err and exit.'
-  (path, line_num, line_text) = line_info
-  indent = ' ' * col
-  exit(f'{path}:{line_num+1}:{col+1}: ' + ''.join(items) + f'\n{line_text}\n{indent}^')
+  (path, match) = line_info
+  pos = match.start() + col
+  exit(msg_for_match(match, prefix=path, msg=''.join(items), pos=pos, end=pos))
 
 
 def ranges_from_strings(*interval_strings):
