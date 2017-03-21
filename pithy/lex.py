@@ -12,8 +12,6 @@ from typing import re as Re, Any, AnyStr, Iterable, Optional, Tuple
 class LexError(Exception): pass
 
 
-
-
 class Lexer:
   '''
   Caveats:
@@ -29,16 +27,16 @@ class Lexer:
 
   class DefinitionError(Exception): pass
 
-  def __init__(self, _lexer_global_flags='', **members):
-    for flag in _lexer_global_flags:
+  def __init__(self, flags='', patterns=dict()):
+    for flag in flags:
       if flag not in 'aiLmsux':
         raise Lexer.DefinitionError(f'invalid global regex flag: {flag}')
-    flags_pattern = f'(?{_lexer_global_flags})' if _lexer_global_flags else ''
-    is_extended = 'x' in _lexer_global_flags
-    self.members = members
+    flags_pattern = f'(?{flags})' if flags else ''
+    is_extended = 'x' in flags
+    self.patterns = patterns
     self.inv_name = None
-    patterns = []
-    for i, (n, v) in enumerate(members.items()):
+    pattern_strs = []
+    for i, (n, v) in enumerate(patterns.items()):
       if v is None:
         if i: raise Lexer.DefinitionError(f'member {i} {n!r} value is None (only the first member may be None, to signify the invalid token)')
         self.inv_name = n
@@ -49,17 +47,17 @@ class Lexer:
       try: r = re.compile(pattern) # compile each expression by itself to improve error clarity.
       except Exception as e:
         lines = [f'member {i} {n!r} pattern is invalid: {pattern}']
-        if _lexer_global_flags: lines.append(f'global flags: {_lexer_global_flags!r}')
+        if flags: lines.append(f'global flags: {flags!r}')
         if is_extended and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comment s are  breaks lexer')
         msg = '\n  note: '.join(lines)
         raise Lexer.DefinitionError(msg) from e
       for group_name in r.groupindex:
-        if group_name in members and group_name != n:
+        if group_name in patterns and group_name != n:
           raise Lexer.DefinitionError(f'member {i} {n!r} pattern contains a conflicting capture group name: {group_name!r}')
-      patterns.append(pattern)
-    if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
-    choice_sep = '\n| ' if 'x' in _lexer_global_flags else '|'
-    pattern = choice_sep.join(patterns)
+      pattern_strs.append(pattern)
+    if not pattern_strs: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
+    choice_sep = '\n| ' if 'x' in flags else '|'
+    pattern = choice_sep.join(pattern_strs)
     self.regex = re.compile(pattern)
     self.inv_re = re.compile(f'(?s)(?P<{self.inv_name}>.+)' if self.inv_name else '(?s).+')
 
@@ -85,7 +83,8 @@ class Lexer:
         if pos < s:
           yield lex_inv(s)
         if s == e:
-          raise Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.')
+          raise Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.\n'
+            f'  kind: {match.lastgroup}; match: {match}')
         yield None if (match.lastgroup in drop) else match
         pos = e
     return filter(None, lex_gen()) if drop else lex_gen()
@@ -100,7 +99,7 @@ class ModeLexer:
     self.lexers = lexers
     names_to_lexers = {}
     for lexer in lexers:
-      for name in lexer.members:
+      for name in lexer.patterns:
         if name in names_to_lexers:
           raise ModeLexer.DefinitionError(f'duplicate member name: {name}')
         names_to_lexers[name] = lexer
@@ -132,9 +131,13 @@ class ModeLexer:
           break
 
 
-def msg_for_match(match: Re.Match, prefix: str, msg: str) -> str:
+def msg_for_match(match: Re.Match, prefix: str, msg: str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
   string = match.string
-  pos, end = match.span()
+  p, e = match.span()
+  if pos is None: pos = p
+  else: assert pos >= p
+  if end is None: end = e
+  else: assert end <= e
   line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
   line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
   line_end = string.find('\n', pos)
@@ -144,3 +147,10 @@ def msg_for_match(match: Re.Match, prefix: str, msg: str) -> str:
   indent = ' ' * col
   underline = '~' * (min(end - pos, len(line))) or '^'
   return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{line}\n{indent}{underline}'
+
+
+def line_col_0_for_match(match: Re.Match) -> Tuple[int, int]:
+  pos = match.start()
+  line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
+  line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
+  return (line_num, pos - line_start)

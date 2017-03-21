@@ -12,11 +12,11 @@ def test_lex(lexer, string, **kwargs):
     yield match.lastgroup, match.group()
 
 
-num_lexer = Lexer(
+num_lexer = Lexer(patterns=dict(
   line  = r'\n',
   space = r' +',
   num   = r'\d+',
-)
+))
 
 utest_seq([('num', '1'), ('space', ' '), ('num', '20'), ('line', '\n')],
   test_lex, num_lexer, '1 20\n')
@@ -28,10 +28,10 @@ utest_seq_exc("LexError(<_sre.SRE_Match object; span=(2, 3), match='x'>,)", test
 utest_seq_exc("LexError(<_sre.SRE_Match object; span=(4, 5), match='x'>,)", test_lex, num_lexer, '1 2 x')
 
 
-word_lexer = Lexer(
+word_lexer = Lexer(patterns=dict(
   inv = None,
   word = r'\w+',
-)
+))
 
 utest_seq([('inv', '!'), ('word', 'a'), ('inv', ' '), ('word', 'b2'), ('inv', '.')],
   test_lex, word_lexer, '!a b2.')
@@ -41,22 +41,24 @@ utest_seq([('word', 'a'), ('word', 'b2')],
 
 
 utest_exc(Lexer.DefinitionError("member 1 'inv' value is None (only the first member may be None, to signify the invalid token)"),
-  Lexer, num=r'\d+', inv=None)
+  Lexer, patterns=dict(num=r'\d+', inv=None))
 
 utest_exc(Lexer.DefinitionError("member 0 'num' value must be a string; found 0"),
-  Lexer, num=0)
+  Lexer, patterns=dict(num=0))
 
-utest_exc(Lexer.DefinitionError("member 0 'star' pattern is invalid: *"),
-  Lexer, star='*')
+utest_exc(Lexer.DefinitionError("member 0 'star' pattern is invalid: (?P<star>*)"),
+  Lexer, patterns=dict(star='*'))
 
 utest_exc(Lexer.DefinitionError("member 1 'b' pattern contains a conflicting capture group name: 'a'"),
-  Lexer, a='a', b='(?P<a>b)')
+  Lexer, patterns=dict(a='a', b='(?P<a>b)'))
 
 utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer)
-utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, inv=None)
+utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, patterns=dict(inv=None))
 
-utest_seq_exc(Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.'),
-  Lexer(caret='^', a='a').lex, 'a')
+utest_seq_exc(Lexer.DefinitionError(
+  "Zero-length patterns are disallowed, because they cause the following character to be skipped.\n"
+  "  kind: caret; match: <_sre.SRE_Match object; span=(0, 0), match=''>"),
+  Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
 
 
 # msg_for_match.
