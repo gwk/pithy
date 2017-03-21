@@ -13,10 +13,12 @@ from legs.rules import *
 
 
 lexer = Lexer('x',
-  comment     = r'\s* \# [^\n]* \n?',
-  transition  = r'\s* % \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#[^\n]*)? \n?',
-  rule        = r'\s* (?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<pattern> [^\n]*) \n?',
-  symbol      = r'\s* (?P<sym_name>\w+) \n?',
+  line        = r'\n',
+  space       = r'\ +',
+  comment     = r'\# [^\n]*',
+  transition  = r'% \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#[^\n]*)?',
+  rule        = r'(?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<pattern> [^\n]*)',
+  symbol      = r'\w+',
 )
 
 
@@ -28,7 +30,7 @@ def parse_legs(path, src):
   rules = {} # keyed by name.
   simple_names = {}
   mode_transitions = {}
-  for match in lexer.lex(src, drop={'comment'}):
+  for match in lexer.lex(src, drop={'line', 'space', 'comment'}):
     line_info = (path, match)
     if match.lastgroup == 'transition':
       (src_pair, dst_pair) = parse_mode_transition(match)
@@ -77,8 +79,8 @@ def parse_rule(path, match):
     span = match.span('pattern')
   else:
     assert match.lastgroup == 'symbol'
-    name = match['sym_name']
-    span = match.span('sym_name')
+    name = match['symbol']
+    span = match.span('symbol')
   return name, parse_rule_pattern(path, match=match, span=span)
 
 
