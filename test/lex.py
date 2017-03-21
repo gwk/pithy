@@ -28,8 +28,7 @@ utest_seq_exc("LexError(<_sre.SRE_Match object; span=(2, 3), match='x'>,)", test
 utest_seq_exc("LexError(<_sre.SRE_Match object; span=(4, 5), match='x'>,)", test_lex, num_lexer, '1 2 x')
 
 
-word_lexer = Lexer(patterns=dict(
-  inv = None,
+word_lexer = Lexer(invalid='inv', patterns=dict(
   word = r'\w+',
 ))
 
@@ -39,9 +38,6 @@ utest_seq([('inv', '!'), ('word', 'a'), ('inv', ' '), ('word', 'b2'), ('inv', '.
 utest_seq([('word', 'a'), ('word', 'b2')],
   test_lex, word_lexer, '!a b2.', drop={'inv'})
 
-
-utest_exc(Lexer.DefinitionError("member 1 'inv' value is None (only the first member may be None, to signify the invalid token)"),
-  Lexer, patterns=dict(num=r'\d+', inv=None))
 
 utest_exc(Lexer.DefinitionError("member 0 'num' value must be a string; found 0"),
   Lexer, patterns=dict(num=0))
@@ -53,7 +49,6 @@ utest_exc(Lexer.DefinitionError("member 1 'b' pattern contains a conflicting cap
   Lexer, patterns=dict(a='a', b='(?P<a>b)'))
 
 utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer)
-utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, patterns=dict(inv=None))
 
 utest_seq_exc(Lexer.DefinitionError(
   "Zero-length patterns are disallowed, because they cause the following character to be skipped.\n"
