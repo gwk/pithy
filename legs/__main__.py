@@ -54,14 +54,15 @@ def main():
   if (args.rules_path is None) and args.patterns:
     path = '<patterns>'
     lines = args.patterns
+    src = '\n'.join(args.patterns)
   elif (args.rules_path is not None) and not args.patterns:
     path = args.rules_path
-    try: lines = open(path)
+    try: lines = src = open(path).read()
     except FileNotFoundError:
       exit(f'legs error: no such rule file: {path!r}')
   else:
-    exit('`must specify either `rules_path` or `-pattern`.')
-  mode_named_rules, mode_transitions = parse_legs(path, lines)
+    exit('`must specify either `rules_path` or `-patterns`.')
+  mode_named_rules, mode_transitions = parse_legs(path, src)
 
   mode_dfa_pairs = []
   for mode, named_rules in sorted(mode_named_rules.items()):

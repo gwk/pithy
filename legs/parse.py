@@ -4,6 +4,7 @@ import re
 
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.lex import *
+from pithy.io import *
 
 from unico import codes_for_ranges, ranges_for_codes
 from unico.charsets import unicode_charsets
@@ -11,39 +12,25 @@ from unico.charsets import unicode_charsets
 from legs.rules import *
 
 
-rule_re = re.compile(r'''(?x)
-\s* # ignore leading space.
-(?:
-  (?P<comment> \# .*)
-| % \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#.*)?
-| (?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<pattern> .*)
-| (?P<symbol> \w+ )
+lexer = Lexer('x',
+  comment     = r'\s* \# [^\n]* \n?',
+  transition  = r'\s* % \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#[^\n]*)? \n?',
+  rule        = r'\s* (?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<pattern> [^\n]*) \n?',
+  symbol      = r'\s* (?P<sym_name>\w+) \n?',
 )
-''')
 
 
-def match_lines(path, lines):
-  for line_num, line in enumerate(lines):
-    line = line.rstrip() # always strip newline so that missing final newline is consistent.
-    if not line: continue
-    match = rule_re.fullmatch(line)
-    if not match:
-      fail_parse((path, match), 0, 'invalid line: neither rule nor mode transition.')
-    if match.group('comment'): continue
-    yield match
-
-
-def parse_legs(path, lines):
+def parse_legs(path, src):
   '''
-  Parse the legs source given in `lines`,
+  Parse the legs source given in `src`,
   returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
   '''
   rules = {} # keyed by name.
   simple_names = {}
   mode_transitions = {}
-  for match in match_lines(path, lines):
+  for match in lexer.lex(src, drop={'comment'}):
     line_info = (path, match)
-    if match.group('l_name'): # mode transition.
+    if match.lastgroup == 'transition':
       (src_pair, dst_pair) = parse_mode_transition(match)
       if src_pair in mode_transitions:
         fail_parse(line_info, 0, f'duplicate transition parent name: {src_pair[1]!r}')
@@ -85,40 +72,39 @@ def simplified_names(name):
 
 
 def parse_rule(path, match):
-  name = match.group('name')
-  if name: # named pattern.
-    start_col = match.start('pattern')
+  if match.lastgroup == 'rule':
+    name = match['name']
+    span = match.span('pattern')
   else:
-    symbol = match.group('symbol')
-    assert symbol
-    name = symbol
-    start_col = match.start('symbol')
-  return name, parse_rule_pattern(path, match, start_col=start_col)
+    assert match.lastgroup == 'symbol'
+    name = match['sym_name']
+    span = match.span('sym_name')
+  return name, parse_rule_pattern(path, match=match, span=span)
 
 
 _name_re = re.compile(r'\w')
 
-def parse_rule_pattern(path, match, start_col):
+def parse_rule_pattern(path, match, span):
   'Parse a pattern and return a Rule object.'
-  line = match.string
   line_info = (path, match)
+  start_col, end_col = span
   parser_stack = [PatternParser(col=start_col)]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
 
+  name_col = None # position of name currently being parsed or None.
   def flush_name(line_info, end):
     nonlocal name_col
     start = name_col + 1 # omit leading `$`.
-    name = line[start:end]
+    name = match.string[start:end]
     try: charset = unicode_charsets[name]
     except KeyError: fail_parse(line_info, name_col, f'unknown charset name: {name!r}')
     parser_stack[-1].parse_charset(line_info, name_col, charset=charset)
     name_col = None
 
   escape = False
-  end_col = len(line)
-  name_col = None # position of name currently being parsed or None.
 
-  for col, c in enumerate(line):
+  for col in range(start_col, end_col):
+    c = match.string[col]
     if col < start_col: continue
     parser = parser_stack[-1]
 
@@ -168,7 +154,7 @@ def parse_rule_pattern(path, match, start_col):
   if parser_stack:
     fail_parse(line_info, end_col, f'expected terminator: {parser.terminator!r}')
   rule = parser.finish(line_info, col)
-  rule.pattern = line[start_col:end_col]
+  rule.pattern = match.string[start_col:end_col]
   return rule
 
 
