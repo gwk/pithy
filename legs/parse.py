@@ -17,7 +17,6 @@ rule_re = re.compile(r'''(?x)
 | % \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#.*)?
 | (?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<pattern> .*)
 | (?P<symbol> \w+ )
-| (?P<tail> \| .*)
 )
 ''')
 
@@ -34,10 +33,6 @@ def match_lines(path, lines):
     yield (line_info, match)
 
 
-def group_matches(matches):
-  return group_by_heads(matches, is_head=lambda p: not p[1].group('tail'), headless=OnHeadless.keep)
-
-
 def parse_legs(path, lines):
   '''
   Parse the legs source given in `lines`,
@@ -46,15 +41,14 @@ def parse_legs(path, lines):
   rules = {} # keyed by name.
   simple_names = {}
   mode_transitions = {}
-  for group in group_matches(match_lines(path, lines)):
-    line_info, m = group[0]
-    if m.group('l_name'): # mode transition.
-      (src_pair, dst_pair) = parse_mode_transition(line_info, m)
+  for line_info, match in match_lines(path, lines):
+    if match.group('l_name'): # mode transition.
+      (src_pair, dst_pair) = parse_mode_transition(line_info, match)
       if src_pair in mode_transitions:
         fail_parse((line_info, 0), f'duplicate transition parent name: {src_pair[1]!r}')
       mode_transitions[src_pair] = dst_pair
     else:
-      name, rule = parse_rule(group)
+      name, rule = parse_rule(line_info, match)
       if name in ('invalid', 'incomplete'):
         fail_parse((line_info, 0), f'rule name is reserved: {name!r}')
       if name in rules:
@@ -89,8 +83,7 @@ def simplified_names(name):
   return { n.replace('.', '_'), n.replace('.', '') }
 
 
-def parse_rule(group):
-  line_info, match = group[0]
+def parse_rule(line_info, match):
   name = match.group('name')
   if name: # named pattern.
     start_col = match.start('pattern')
@@ -99,20 +92,19 @@ def parse_rule(group):
     assert symbol
     name = symbol
     start_col = match.start('symbol')
-  return name, parse_rule_pattern(group, start_col=start_col)
+  return name, parse_rule_pattern(line_info, match, start_col=start_col)
 
 
 _name_re = re.compile(r'\w')
 
-def parse_rule_pattern(group, start_col):
+def parse_rule_pattern(line_info, match, start_col):
   'Parse a pattern and return a Rule object.'
-  line_info, match = group[0]
   _, _, line = line_info
   parser_stack = [PatternParser((line_info, start_col))]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
 
   def flush_name(col):
-    nonlocal line, name_pos
+    nonlocal name_pos
     s = name_pos[1] + 1 # omit leading `$`.
     name = line[s:col]
     try: charset = unicode_charsets[name]
@@ -120,68 +112,63 @@ def parse_rule_pattern(group, start_col):
     parser_stack[-1].parse_charset(name_pos, charset)
     name_pos = None
 
-  patterns = []
-  for line_info, match in group:
-    _, _, line = line_info
-    pos = (line_info, start_col)
-    escape = False
-    end_col = len(line)
-    name_pos = None # position of name currently being parsed or None.
+  pos = (line_info, start_col)
+  escape = False
+  end_col = len(line)
+  name_pos = None # position of name currently being parsed or None.
 
-    for col, c in enumerate(line):
-      if col < start_col: continue
-      pos = (line_info, col)
-      parser = parser_stack[-1]
-
-      if escape:
-        escape = False
-        try: charset = escape_charsets[c]
-        except KeyError: fail_parse(pos, f'invalid escaped character: {c!r}')
-        else: parser.parse_charset(pos, charset)
-        continue
-
-      if name_pos is not None:
-        if _name_re.match(c):
-          continue
-        elif c in ' #)]?*+':
-          flush_name(col) # then proceed to regular parsing below.
-        elif c in '\\$([&-^':
-          fail_parse(pos, 'name must be terminated with a space character for readability.')
-        else:
-          fail_parse(pos, f'invalid name character: {c!r}')
-
-      if c == '\\':
-        escape = True
-      elif c == '#':
-        end_col = col
-        break
-      elif c == ' ':
-        continue
-      elif c == '$':
-        name_pos = pos
-      elif not c.isprintable():
-        fail_parse(pos, f'invalid non-printing character: {c!r}')
-      elif c == parser.terminator:
-        parser_stack.pop()
-        parent = parser_stack[-1]
-        parent.receive(parser.finish(pos))
-      else:
-        child = parser.parse(pos, c)
-        if child:
-          parser_stack.append(child)
+  for col, c in enumerate(line):
+    if col < start_col: continue
+    pos = (line_info, col)
+    parser = parser_stack[-1]
 
     if escape:
-      fail_parse(pos, 'dangling escape character')
+      escape = False
+      try: charset = escape_charsets[c]
+      except KeyError: fail_parse(pos, f'invalid escaped character: {c!r}')
+      else: parser.parse_charset(pos, charset)
+      continue
+
     if name_pos is not None:
-      flush_name(end_col)
-    patterns.append(line[start_col:end_col])
-    start_col = 0
+      if _name_re.match(c):
+        continue
+      elif c in ' #)]?*+':
+        flush_name(col) # then proceed to regular parsing below.
+      elif c in '\\$([&-^':
+        fail_parse(pos, 'name must be terminated with a space character for readability.')
+      else:
+        fail_parse(pos, f'invalid name character: {c!r}')
+
+    if c == '\\':
+      escape = True
+    elif c == '#':
+      end_col = col
+      break
+    elif c == ' ':
+      continue
+    elif c == '$':
+      name_pos = pos
+    elif not c.isprintable():
+      fail_parse(pos, f'invalid non-printing character: {c!r}')
+    elif c == parser.terminator:
+      parser_stack.pop()
+      parent = parser_stack[-1]
+      parent.receive(parser.finish(pos))
+    else:
+      child = parser.parse(pos, c)
+      if child:
+        parser_stack.append(child)
+
+  if escape:
+    fail_parse(pos, 'dangling escape character')
+  if name_pos is not None:
+    flush_name(end_col)
 
   parser = parser_stack.pop()
   if parser_stack:
     fail_parse((line_info, end_col), f'expected terminator: {parser.terminator!r}')
   rule = parser.finish(pos)
-  rule.pattern = ' '.join(patterns)
+  rule.pattern = line[start_col:end_col]
   return rule
 
 

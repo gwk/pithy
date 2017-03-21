@@ -5,5 +5,4 @@ e_f_star_g: ef*g
 h_plus: h+
 ij
 
-k_or_l: k
-| l
+k_or_l: k | l
