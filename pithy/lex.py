@@ -60,10 +60,20 @@ class Lexer:
         if not self.main: self.main = mode
         if mode in patterns:
           raise Lexer.DefinitionError(f'mode name conflicts with pattern name: {mode!r}')
+        expanded = set()
         for name in names:
-          if name not in patterns:
-            raise Lexer.DefinitionError(f'mode {mode!r} includes nonexistant pattern: {name!r}')
-        self.modes[mode] = frozenset(names)
+          if re.fullmatch(r'\w+', name):
+            if name in patterns: expanded.add(name)
+            else: raise Lexer.DefinitionError(f'mode {mode!r} includes nonexistant pattern: {name!r}')
+          else:
+            try:
+              matching = {p for p in self.patterns if re.fullmatch(name, p)}
+            except Exception:
+              raise Lexer.DefinitionError(f'mode {mode!r} includes invalid wildcard pattern regex: {name}')
+            if not matching:
+              raise Lexer.DefinitionError(f'mode {mode!r} wildcard pattern regex does not match any patterns: {name}')
+            expanded.update(matching)
+        self.modes[mode] = frozenset(expanded)
     else:
       self.modes = { 'main' : frozenset(self.patterns) }
       self.main = 'main'
