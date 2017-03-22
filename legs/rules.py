@@ -18,6 +18,7 @@ __all__ = [
   'Rule',
   'Seq',
   'Star',
+  'ranges_for_char',
 ]
 
 
@@ -66,6 +67,11 @@ class Seq(Rule):
 
   @property
   def literalPattern(self): return ''.join(sub.literalPattern for sub in self.subs)
+
+  @classmethod
+  def for_subs(cls, subs):
+    s = tuple(subs)
+    return s[0] if len(s) == 1 else cls(subs=s)
 
 
 class Quantity(Rule):
@@ -132,4 +138,12 @@ class Charset(Rule):
   @property
   def inlineDescription(self): return ' ' + codes_desc(self.ranges)
 
+  @classmethod
+  def for_char(cls, char):
+    return cls(ranges=ranges_for_char(char))
+
+
+def ranges_for_char(char):
+  code = ord(char)
+  return ((code, code + 1),)
 

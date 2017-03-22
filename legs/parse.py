@@ -126,10 +126,12 @@ def parse_rule(path, sym_token, buffer):
   if buffer.peek().lastgroup == 'colon': # named rule.
     next(buffer)
     pattern_token = consume(path, buffer, 'pat', 'rule')
+    consume(path, buffer, 'line', 'rule')
+    return parse_rule_pattern(path, token=pattern_token)
   else:
-    pattern_token = sym_token
-  consume(path, buffer, 'line', 'rule')
-  return parse_rule_pattern(path, token=pattern_token)
+    consume(path, buffer, 'line', 'rule')
+    text = sym_token[0]
+    return Seq.for_subs(Charset.for_char(c) for c in text)
 
 
 _name_re = re.compile(r'\w')
@@ -222,10 +224,6 @@ def ranges_from_strings(*interval_strings):
   "Return a `str` object containing the specified range of characters denoted by each character pair."
   return tuple((ord(start), ord(last) + 1) for start, last in interval_strings)
 
-def ranges_for_char(char):
-  code = ord(char)
-  return ((code, code + 1),)
-
 escape_charsets = {
   'n': ranges_for_char('\n'),
   's': ranges_for_char(' '), # nonstandard space escape.
@@ -271,7 +269,7 @@ class PatternParser:
   def flush_seq(self, line_info, pos):
     seq = self.seq
     if not seq: fail_parse(line_info, 'empty sequence.', pos=self.seq_pos)
-    rule = seq[0] if len(seq) == 1 else Seq(subs=tuple(seq))
+    rule = Seq.for_subs(seq)
     self.choices.append(rule)
     self.seq = []
     self.seq_pos = pos
