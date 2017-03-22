@@ -258,20 +258,20 @@ class PatternParser:
     elif char == '*': self.quantity(line_info, pos, char, Star)
     elif char == '+': self.quantity(line_info, pos, char, Plus)
     else:
-      self.seq.append(Charset(token=fake_tok(line_info, pos), ranges=ranges_for_char(char)))
+      self.seq.append(Charset(ranges=ranges_for_char(char)))
 
   def parse_charset(self, line_info, pos, charset):
-    self.seq.append(Charset(token=fake_tok(line_info, pos), ranges=charset))
+    self.seq.append(Charset(ranges=charset))
 
   def finish(self, line_info, pos):
     self.flush_seq(line_info, pos)
     choices = self.choices
-    return choices[0] if len(choices) == 1 else Choice(token=fake_tok(line_info, self.pos), subs=tuple(choices))
+    return choices[0] if len(choices) == 1 else Choice(subs=tuple(choices))
 
   def flush_seq(self, line_info, pos):
     seq = self.seq
     if not seq: fail_parse(line_info, 'empty sequence.', pos=self.seq_pos)
-    rule = seq[0] if len(seq) == 1 else Seq(token=fake_tok(line_info, self.seq_pos), subs=tuple(seq))
+    rule = seq[0] if len(seq) == 1 else Seq(subs=tuple(seq))
     self.choices.append(rule)
     self.seq = []
     self.seq_pos = pos
@@ -279,7 +279,7 @@ class PatternParser:
   def quantity(self, line_info, pos, char, T):
     try: el = self.seq.pop()
     except IndexError: fail_parse(line_info, f"'{char}' does not follow any pattern.", pos=pos)
-    else: self.seq.append(T(token=fake_tok(line_info, pos), subs=(el,)))
+    else: self.seq.append(T(subs=(el,)))
 
   def receive(self, result):
     self.seq.append(result)
@@ -363,4 +363,4 @@ class CharsetParser():
     if self.operator: self.flush_left(line_info, pos, msg_context='terminator')
     codes = self.codes_left or self.codes
     if not codes: fail_parse(line_info, 'empty character set.', pos=self.pos)
-    return Charset(token=fake_tok(line_info, self.pos), ranges=tuple(ranges_for_codes(sorted(codes))))
+    return Charset(ranges=tuple(ranges_for_codes(sorted(codes))))
