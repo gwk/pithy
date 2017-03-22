@@ -3,6 +3,7 @@
 import re
 
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
+from pithy.buffer import Buffer
 from pithy.lex import *
 from pithy.io import *
 
@@ -13,13 +14,43 @@ from legs.rules import *
 
 
 lexer = Lexer('x',
-  line        = r'\n',
-  space       = r'\ +',
-  comment     = r'\# [^\n]*',
-  transition  = r'% \s+ (?P<l_name> \w+ (\.\w+)? ) \s+ (?P<r_name> \w+ (\.\w+)? ) \s* (\#[^\n]*)?',
-  rule        = r'(?P<name> \w+ (\.\w+)? ) \s* : \s* (?P<pattern> [^\n]*)',
-  symbol      = r'\w+',
+  patterns=dict(
+    line    = r'\n',
+    space   = r'\ +',
+    comment = r'\# [^\n]*',
+    sym     = r'\w+(?:\.\w+)?',
+    colon   = r':',
+    percent = r'%',
+    pat     = r'[^\n]*',
+  ),
+  modes=dict(
+    main={
+      'line',
+      'space',
+      'comment',
+      'sym',
+      'colon',
+      'percent'
+    },
+    pattern={
+      'line',
+      'pat',
+    }
+  ),
+  transitions={
+    ('main', 'colon') : ('pattern', 'line')
+  }
 )
+
+kind_descs = {
+  'line'    : 'terminating newline',
+  'space'   : 'space',
+  'comment' : 'comment',
+  'sym'     : 'symbol',
+  'colon'   : '`:`',
+  'percent' : '`%`',
+  'pat'     : 'pattern',
+}
 
 
 def parse_legs(path, src):
@@ -30,36 +61,53 @@ def parse_legs(path, src):
   rules = {} # keyed by name.
   simple_names = {}
   mode_transitions = {}
-  for match in lexer.lex(src, drop={'line', 'space', 'comment'}):
-    line_info = (path, match)
-    if match.lastgroup == 'transition':
-      (src_pair, dst_pair) = parse_mode_transition(match)
+  buffer = Buffer(lexer.lex(src, drop={'space', 'comment'}))
+  for token in buffer:
+    line_info = (path, token)
+    kind = token.lastgroup
+    if kind == 'line':
+      continue
+    if kind == 'percent':
+      (src_pair, dst_pair) = parse_mode_transition(path, buffer)
       if src_pair in mode_transitions:
-        fail_parse(line_info, 0, f'duplicate transition parent name: {src_pair[1]!r}')
+        fail_parse(line_info, f'duplicate transition parent name: {src_pair[1]!r}')
       mode_transitions[src_pair] = dst_pair
-    else:
-      name, rule = parse_rule(path, match)
+    elif kind == 'sym':
+      name = token[0]
+      rule = parse_rule(path, token, buffer)
       if name in ('invalid', 'incomplete'):
-        fail_parse(line_info, 0, f'rule name is reserved: {name!r}')
+        fail_parse(line_info, f'rule name is reserved: {name!r}')
       if name in rules:
-        fail_parse(line_info, 0, f'duplicate rule name: {name!r}')
+        fail_parse(line_info, f'duplicate rule name: {name!r}')
       rules[name] = rule
       for simple in simplified_names(name):
         if simple in simple_names:
-          fail_parse(line_info, 0, f'rule name collides when simplified: {simple_names[simple]!r}')
+          fail_parse(line_info, f'rule name collides when simplified: {simple_names[simple]!r}')
         simple_names[simple] = name
+    else:
+      fail_parse(path, token, f'expected transition or rule.')
   mode_named_rules = fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0]))
   mode_named_rules.setdefault('main', [])
   return (mode_named_rules, mode_transitions)
 
 
-def parse_mode_transition(match):
-  return (
-    mode_and_name(match.group('l_name')),
-    mode_and_name(match.group('r_name')))
+
+def consume(path, buffer, kind, subj):
+  token = next(buffer)
+  act = token.lastgroup
+  if act != kind: fail_parse((path, token), f'{subj} expected {kind_descs[kind]}; received {kind_descs[act]}.')
+  return token
 
 
-def mode_and_name(name):
+def parse_mode_transition(path, buffer):
+  l = mode_and_name(consume(path, buffer, 'sym', 'transition entry'))
+  r = mode_and_name(consume(path, buffer, 'sym', 'transition exit'))
+  consume(path, buffer, 'line', 'transition')
+  return (l, r)
+
+
+def mode_and_name(token):
+  name = token[0]
   return mode_for_name(name), name
 
 
@@ -73,23 +121,23 @@ def simplified_names(name):
   return { n.replace('.', '_'), n.replace('.', '') }
 
 
-def parse_rule(path, match):
-  if match.lastgroup == 'rule':
-    name = match['name']
-    span = match.span('pattern')
+def parse_rule(path, sym_token, buffer):
+  assert sym_token.lastgroup == 'sym'
+  if buffer.peek().lastgroup == 'colon': # named rule.
+    next(buffer)
+    pattern_token = consume(path, buffer, 'pat', 'rule')
   else:
-    assert match.lastgroup == 'symbol'
-    name = match['symbol']
-    span = match.span('symbol')
-  return name, parse_rule_pattern(path, match=match, span=span)
+    pattern_token = sym_token
+  consume(path, buffer, 'line', 'rule')
+  return parse_rule_pattern(path, token=pattern_token)
 
 
 _name_re = re.compile(r'\w')
 
-def parse_rule_pattern(path, match, span):
+def parse_rule_pattern(path, token):
   'Parse a pattern and return a Rule object.'
-  line_info = (path, match)
-  start_pos, end_pos = span
+  line_info = (path, token)
+  start_pos, end_pos = token.span()
   parser_stack = [PatternParser(pos=start_pos)]
   # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
 
@@ -97,23 +145,25 @@ def parse_rule_pattern(path, match, span):
   def flush_name(line_info, end):
     nonlocal name_pos
     start = name_pos + 1 # omit leading `$`.
-    name = match.string[start:end]
+    name = token.string[start:end]
     try: charset = unicode_charsets[name]
-    except KeyError: fail_parse(line_info, name_pos, f'unknown charset name: {name!r}')
+    except KeyError: fail_parse(line_info, f'unknown charset name: {name!r}', pos=name_pos)
     parser_stack[-1].parse_charset(line_info, name_pos, charset=charset)
     name_pos = None
 
   escape = False
 
   for pos in range(start_pos, end_pos):
-    c = match.string[pos]
+    c = token.string[pos]
     if pos < start_pos: continue
     parser = parser_stack[-1]
+
+    def _fail(msg): fail_parse(line_info, msg, pos=pos)
 
     if escape:
       escape = False
       try: charset = escape_charsets[c]
-      except KeyError: fail_parse(line_info, pos, f'invalid escaped character: {c!r}')
+      except KeyError: _fail(f'invalid escaped character: {c!r}')
       else: parser.parse_charset(line_info, pos, charset)
       continue
 
@@ -123,9 +173,9 @@ def parse_rule_pattern(path, match, span):
       elif c in ' #)]?*+':
         flush_name(line_info, pos) # then proceed to regular parsing below.
       elif c in '\\$([&-^':
-        fail_parse(line_info, pos, 'name must be terminated with a space character for readability.')
+        _fail('name must be terminated with a space character for readability.')
       else:
-        fail_parse(line_info, pos, f'invalid name character: {c!r}')
+        _fail(f'invalid name character: {c!r}')
 
     if c == '\\':
       escape = True
@@ -137,7 +187,7 @@ def parse_rule_pattern(path, match, span):
     elif c == '$':
       name_pos = pos
     elif not c.isprintable():
-      fail_parse(line_info, pos, f'invalid non-printing character: {c!r}')
+      _fail(f'invalid non-printing character: {c!r}')
     elif c == parser.terminator:
       parser_stack.pop()
       parent = parser_stack[-1]
@@ -148,25 +198,24 @@ def parse_rule_pattern(path, match, span):
         parser_stack.append(child)
 
   if escape:
-    fail_parse(line_info, pos, 'dangling escape character')
+    fail_parse(line_info, 'dangling escape character', pos=pos)
   if name_pos is not None:
     flush_name(line_info, end_pos)
 
   parser = parser_stack.pop()
   if parser_stack:
-    fail_parse(line_info, end_pos, f'expected terminator: {parser.terminator!r}')
+    fail_parse(line_info, f'expected terminator: {parser.terminator!r}', pos=end_pos)
   rule = parser.finish(line_info, pos)
-  rule.pattern = match.string[start_pos:end_pos]
+  rule.pattern = token[0]
   return rule
 
 
 def fake_tok(line_info, pos): return (line_info[1], pos)
 
-def fail_parse(line_info, pos, *items):
+def fail_parse(line_info, *items, pos=None):
   'Print a formatted parsing failure to std err and exit.'
-  (path, match) = line_info
-  pos = match.start() + pos
-  exit(msg_for_match(match, prefix=path, msg=''.join(items), pos=pos, end=pos))
+  (path, token) = line_info
+  exit(msg_for_match(token, prefix=path, msg=''.join(items), pos=pos, end=pos))
 
 
 def ranges_from_strings(*interval_strings):
@@ -221,7 +270,7 @@ class PatternParser:
 
   def flush_seq(self, line_info, pos):
     seq = self.seq
-    if not seq: fail_parse(line_info, self.seq_pos, 'empty sequence.')
+    if not seq: fail_parse(line_info, 'empty sequence.', pos=self.seq_pos)
     rule = seq[0] if len(seq) == 1 else Seq(token=fake_tok(line_info, self.seq_pos), subs=tuple(seq))
     self.choices.append(rule)
     self.seq = []
@@ -229,7 +278,7 @@ class PatternParser:
 
   def quantity(self, line_info, pos, char, T):
     try: el = self.seq.pop()
-    except IndexError: fail_parse(line_info, pos, f"'{char}' does not follow any pattern.")
+    except IndexError: fail_parse(line_info, f"'{char}' does not follow any pattern.", pos=pos)
     else: self.seq.append(T(token=fake_tok(line_info, pos), subs=(el,)))
 
   def receive(self, result):
@@ -261,12 +310,12 @@ class CharsetParser():
 
   def add_code(self, line_info, pos, code):
     if code in self.codes:
-      fail_parse(line_info, pos, f'repeated character in set: {ord(code)!r}')
+      fail_parse(line_info, f'repeated character in set: {ord(code)!r}', pos=pos)
     self.codes.add(code)
 
   def flush_left(self, line_info, pos, msg_context):
     if not self.codes:
-      fail_parse(line_info, pos, 'empty charset preceding ', msg_context)
+      fail_parse(line_info, 'empty charset preceding ', msg_context, pos=pos)
     op = self.operator
     if op is None: # first operator encountered.
       assert self.codes_left is None
@@ -281,7 +330,7 @@ class CharsetParser():
     self.flush_left(line_info, pos, msg_context='operator')
     is_diff_op = self.operator in ('-', '^')
     if self.parsed_diff_op or (self.parsed_op and is_diff_op):
-      fail_parse(line_info, pos, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`: ', op)
+      fail_parse(line_info, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`: ', op, pos=pos)
     self.parsed_op = True
     self.parsed_diff_op |= is_diff_op
     self.operator = op
@@ -302,10 +351,10 @@ class CharsetParser():
     assert self.current_name_pos is not None
     assert self.current_name_chars is not None
     if not self.current_name_chars:
-      fail_parse(line_info, self.current_name_pos, 'empty charset name.')
+      fail_parse(line_info, 'empty charset name.', pos=self.current_name_pos)
     name = ''.join(self.current_name_chars)
     try: named_charset = unicode_charsets[name]
-    except KeyError: fail_parse(line_info, self.current_name_pos, 'unknown charset name.')
+    except KeyError: fail_parse(line_info, 'unknown charset name.', pos=pos)
     self.codes.update(codes_for_ranges(named_charset))
     self.current_name_pos = None
     self.current_name_chars = None
@@ -313,5 +362,5 @@ class CharsetParser():
   def finish(self, line_info, pos):
     if self.operator: self.flush_left(line_info, pos, msg_context='terminator')
     codes = self.codes_left or self.codes
-    if not codes: fail_parse(line_info, self.pos, 'empty character set.')
+    if not codes: fail_parse(line_info, 'empty character set.', pos=self.pos)
     return Charset(token=fake_tok(line_info, self.pos), ranges=tuple(ranges_for_codes(sorted(codes))))
