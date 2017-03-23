@@ -96,44 +96,42 @@ class Lexer:
     self.inv_re = re.compile(f'(?s)(?P<{self.invalid}>.+)' if self.invalid else '(?s).+')
 
 
-  def lex_mode(self, regex: Re.Pattern, string: AnyStr, pos=0, end: Optional[int]=None, drop: Iterable[str]=()) -> Iterable[Re.Match]:
-    _pos = pos if pos >= 0 else len(string) + pos
-    _end = len(string) if end is None else (end if end >= 0 else len(string) + end)
-    def lex_mode_gen():
-      pos = _pos
-      end = _end
-      def lex_inv(end):
-        inv_match = self.inv_re.match(string, pos, end) # create a real match object.
-        if self.invalid: return inv_match
-        raise LexError(inv_match)
-      while pos < end:
-        match = regex.search(string, pos)
-        if not match:
-          yield lex_inv(end)
-          break
-        s, e = match.span()
-        if pos < s:
-          yield lex_inv(s)
-        if s == e:
-          raise Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.\n'
-            f'  kind: {match.lastgroup}; match: {match}')
-        yield match
-        pos = e
-    return filter((lambda token: token.lastgroup not in drop), lex_mode_gen()) if drop else lex_mode_gen()
+  def _lex_mode(self, regex: Re.Pattern, string: AnyStr, pos: int, end: int) -> Iterable[Re.Match]:
+    def lex_inv(end):
+      inv_match = self.inv_re.match(string, pos, end) # create a real match object.
+      if self.invalid: return inv_match
+      raise LexError(inv_match)
+    while pos < end:
+      match = regex.search(string, pos)
+      if not match:
+        yield lex_inv(end)
+        break
+      s, e = match.span()
+      if pos < s:
+        yield lex_inv(s)
+      if s == e:
+        raise Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.\n'
+          f'  kind: {match.lastgroup}; match: {match}')
+      yield match
+      pos = e
 
 
-  def lex(self, string: AnyStr, pos=0, end: Optional[int]=None, drop: Iterable[str]=()) -> Iterable[Re.Match]:
-    _pos = pos if pos >= 0 else len(string) + pos
-    _end = len(string) if end is None else (end if end >= 0 else len(string) + end)
+  def lex(self, string: AnyStr, pos: int=0, end: Optional[int]=None, drop: Iterable[str]=()) -> Iterable[Re.Match]:
+    if pos < 0:
+      pos = len(string) + pos
+    if end is None:
+      end = len(string)
+    elif end < 0:
+      end = len(string) + end
     def lex_gen():
-      pos = _pos
-      end = _end
+      p = pos
+      e = end
       stack = [(self.main, '')]
-      while pos < end:
+      while p < e:
         mode, exit_name = stack[-1]
         regex = self.regexes[mode]
-        for token in self.lex_mode(regex, string, pos=pos, end=end):
-          pos = token.end()
+        for token in self._lex_mode(regex, string, pos=p, end=e):
+          p = token.end()
           yield token
           if token.lastgroup == exit_name:
             stack.pop()
