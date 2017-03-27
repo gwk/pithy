@@ -136,7 +136,7 @@ class FA:
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
       for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
-        byte_ranges = seq_int_ranges(bytes_list)
+        byte_ranges = int_tuple_ranges(bytes_list)
         errL('    ', codes_desc(byte_ranges), ' ==> ', dst, prepend_to_nonempty(': ', self.matchNodeNames.get(dst, '')))
     errL()
 

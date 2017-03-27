@@ -29,7 +29,7 @@ code_descriptions.update({
   ord('\v'): '\\v',
   ord('\f'): '\\f',
   ord('\r'): '\\r',
-  ord(' '): '\_',
+  ord(' '): '\\s',
 })
 
 code_descriptions.update((i, chr(i)) for i in range(ord('!'), 0x7f))

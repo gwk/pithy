@@ -76,7 +76,6 @@ def main():
     nfa = genNFA(mode, named_rules)
     if dbg: nfa.describe()
     if dbg or args.stats: nfa.describe_stats('NFA Stats')
-
     msgs = nfa.validate()
     if msgs:
       errLL(*msgs)

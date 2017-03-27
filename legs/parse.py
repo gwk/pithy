@@ -13,7 +13,7 @@ from unico.charsets import unicode_charsets
 from legs.rules import *
 
 
-lexer = Lexer('x',
+lexer = Lexer(flags='x', invalid='inv',
   patterns=dict(
     line    = r'\n',
     space   = r'\ +',
@@ -21,7 +21,23 @@ lexer = Lexer('x',
     sym     = r'\w+(?:\.\w+)?',
     colon   = r':',
     percent = r'%',
-    pat     = r'[^\n]*',
+
+    pat_brckt_o = r'\[',
+    pat_brckt_c = r'\]',
+    #pat_brace_o = r'\{',
+    #pat_brace_c = r'\}',
+    pat_paren_o = r'\(',
+    pat_paren_c = r'\)',
+    pat_bar     = r'\|',
+    pat_opt     = r'\?',
+    pat_star    = r'\*',
+    pat_plus    = r'\+',
+    pat_amp     = '&',
+    pat_dash    = '-',
+    pat_caret   = r'\^',
+    pat_ref     = r'\$\w*',
+    pat_esc     = r'\\.',
+    pat_char    = r'[^\\\n]',
   ),
   modes=dict(
     main={
@@ -34,7 +50,8 @@ lexer = Lexer('x',
     },
     pattern={
       'line',
-      'pat',
+      'space',
+      'pat_.*',
     }
   ),
   transitions={
@@ -43,14 +60,15 @@ lexer = Lexer('x',
 )
 
 kind_descs = {
+  'inv'     : 'invalid',
   'line'    : 'terminating newline',
-  'space'   : 'space',
-  'comment' : 'comment',
   'sym'     : 'symbol',
   'colon'   : '`:`',
   'percent' : '`%`',
   'pat'     : 'pattern',
 }
+
+def desc_kind(kind): return kind_descs.get(kind, kind)
 
 
 def parse_legs(path, src):
@@ -95,7 +113,7 @@ def parse_legs(path, src):
 def consume(path, buffer, kind, subj):
   token = next(buffer)
   act = token.lastgroup
-  if act != kind: fail_parse((path, token), f'{subj} expected {kind_descs[kind]}; received {kind_descs[act]}.')
+  if act != kind: fail_parse((path, token), f'{subj} expected {desc_kind(kind)}; received {desc_kind(act)}.')
   return token
 
 
@@ -125,165 +143,59 @@ def parse_rule(path, sym_token, buffer):
   assert sym_token.lastgroup == 'sym'
   if buffer.peek().lastgroup == 'colon': # named rule.
     next(buffer)
-    pattern_token = consume(path, buffer, 'pat', 'rule')
-    consume(path, buffer, 'line', 'rule')
-    return parse_rule_pattern(path, token=pattern_token)
+    return parse_rule_pattern(path, buffer, terminator='line')
   else:
     consume(path, buffer, 'line', 'rule')
     text = sym_token[0]
     return Seq.for_subs(Charset.for_char(c) for c in text)
 
 
-_name_re = re.compile(r'\w')
-
-def parse_rule_pattern(path, token):
-  'Parse a pattern and return a Rule object.'
-  line_info = (path, token)
-  start_pos, end_pos = token.span()
-  parser_stack = [PatternParser(pos=start_pos)]
-  # stack of parsers, one for each open nesting syntactic element: root, '(…)', or '[…]'.
-
-  name_pos = None # position of name currently being parsed or None.
-  def flush_name(line_info, end):
-    nonlocal name_pos
-    start = name_pos + 1 # omit leading `$`.
-    name = token.string[start:end]
-    try: charset = unicode_charsets[name]
-    except KeyError: fail_parse(line_info, f'unknown charset name: {name!r}', pos=name_pos)
-    parser_stack[-1].parse_charset(line_info, name_pos, charset=charset)
-    name_pos = None
-
-  escape = False
-
-  for pos in range(start_pos, end_pos):
-    c = token.string[pos]
-    if pos < start_pos: continue
-    parser = parser_stack[-1]
-
-    def _fail(msg): fail_parse(line_info, msg, pos=pos)
-
-    if escape:
-      escape = False
-      try: charset = escape_charsets[c]
-      except KeyError: _fail(f'invalid escaped character: {c!r}')
-      else: parser.parse_charset(line_info, pos, charset)
-      continue
-
-    if name_pos is not None:
-      if _name_re.match(c):
-        continue
-      elif c in ' #)]?*+':
-        flush_name(line_info, pos) # then proceed to regular parsing below.
-      elif c in '\\$([&-^':
-        _fail('name must be terminated with a space character for readability.')
-      else:
-        _fail(f'invalid name character: {c!r}')
-
-    if c == '\\':
-      escape = True
-    elif c == '#':
-      end_pos = pos
-      break
-    elif c == ' ':
-      continue
-    elif c == '$':
-      name_pos = pos
-    elif not c.isprintable():
-      _fail(f'invalid non-printing character: {c!r}')
-    elif c == parser.terminator:
-      parser_stack.pop()
-      parent = parser_stack[-1]
-      parent.receive(parser.finish(line_info, pos))
-    else:
-      child = parser.parse(line_info, pos, c)
-      if child:
-        parser_stack.append(child)
-
-  if escape:
-    fail_parse(line_info, 'dangling escape character', pos=pos)
-  if name_pos is not None:
-    flush_name(line_info, end_pos)
-
-  parser = parser_stack.pop()
-  if parser_stack:
-    fail_parse(line_info, f'expected terminator: {parser.terminator!r}', pos=end_pos)
-  rule = parser.finish(line_info, pos)
-  rule.pattern = token[0]
-  return rule
+def parse_rule_pattern(path, buffer, terminator):
+  # 'Parse a pattern and return a Rule object.'
+  els = []
+  def finish(): return Seq.for_subs(els)
+  for token in buffer:
+    kind = token.lastgroup
+    def _fail(msg): fail_parse((path, token), msg)
+    def quantity(rule_type):
+      if not els: _fail('quantity operator must be preceded by a pattern')
+      els[-1] = rule_type(subs=(els[-1],))
+    if kind == terminator: return finish()
+    elif kind == 'pat_paren_o': els.append(parse_rule_pattern(path, buffer, terminator='pat_paren_c'))
+    elif kind == 'pat_brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(parse_charset(path, buffer, token)))))
+    elif kind == 'pat_bar': return parse_choice(path, buffer, left=finish(), terminator=terminator)
+    elif kind == 'pat_opt':   quantity(Opt)
+    elif kind == 'pat_star':  quantity(Star)
+    elif kind == 'pat_plus':  quantity(Plus)
+    elif kind == 'pat_esc': els.append(Charset(ranges=ranges_for_code(parse_esc(path, token))))
+    elif kind == 'pat_ref': els.append(Charset(ranges=parse_ref(path, token)))
+    elif kind in ('pat_amp', 'pat_dash', 'pat_caret', 'pat_char'):
+      els.append(Charset.for_char(token[0]))
+    elif kind == 'inv': _fail(f'invalid pattern token')
+    else: _fail(f'unexpected pattern token: {desc_kind(kind)}')
+  return finish()
 
 
-def fake_tok(line_info, pos): return (line_info[1], pos)
-
-def fail_parse(line_info, *items, pos=None):
-  'Print a formatted parsing failure to std err and exit.'
-  (path, token) = line_info
-  exit(msg_for_match(token, prefix=path, msg=''.join(items), pos=pos, end=pos))
+def parse_choice(path, buffer, left, terminator):
+  return Choice(subs=(left, parse_rule_pattern(path, buffer, terminator=terminator)))
 
 
-def ranges_from_strings(*interval_strings):
-  "Return a `str` object containing the specified range of characters denoted by each character pair."
-  return tuple((ord(start), ord(last) + 1) for start, last in interval_strings)
-
-escape_charsets = {
-  'n': ranges_for_char('\n'),
-  's': ranges_for_char(' '), # nonstandard space escape.
-  't': ranges_for_char('\t'),
-}
-escape_charsets.update((c, ranges_for_char(c)) for c in '\\#|$?*+()[]&-^')
-
-if False:
-  for k, v in sorted(escape_charsets.items()):
-    errL(f'{k}: {v!r}')
+def parse_esc(path, token):
+  char = token[0][1]
+  try: code = escape_codes[char]
+  except KeyError: fail_parse((path, token), f'invalid escaped character: {char!r}')
+  return code
 
 
-class PatternParser:
-
-  def __init__(self, pos, terminator=None):
-    self.pos = pos
-    self.terminator = terminator
-    self.choices = []
-    self.seq = []
-    self.seq_pos = pos
-
-  def parse(self, line_info, pos, char):
-    if char == '(':
-      return PatternParser(pos=pos, terminator=')')
-    elif char == '[':
-      return CharsetParser(pos=pos)
-    elif char == '|':
-      self.flush_seq(line_info, pos)
-    elif char == '?': self.quantity(line_info, pos, char, Opt)
-    elif char == '*': self.quantity(line_info, pos, char, Star)
-    elif char == '+': self.quantity(line_info, pos, char, Plus)
-    else:
-      self.seq.append(Charset(ranges=ranges_for_char(char)))
-
-  def parse_charset(self, line_info, pos, charset):
-    self.seq.append(Charset(ranges=charset))
-
-  def finish(self, line_info, pos):
-    self.flush_seq(line_info, pos)
-    choices = self.choices
-    return choices[0] if len(choices) == 1 else Choice(subs=tuple(choices))
-
-  def flush_seq(self, line_info, pos):
-    seq = self.seq
-    if not seq: fail_parse(line_info, 'empty sequence.', pos=self.seq_pos)
-    rule = Seq.for_subs(seq)
-    self.choices.append(rule)
-    self.seq = []
-    self.seq_pos = pos
-
-  def quantity(self, line_info, pos, char, T):
-    try: el = self.seq.pop()
-    except IndexError: fail_parse(line_info, f"'{char}' does not follow any pattern.", pos=pos)
-    else: self.seq.append(T(subs=(el,)))
-
-  def receive(self, result):
-    self.seq.append(result)
+def ranges_for_code(code): return ((code, code+1),)
 
 
-class CharsetParser():
+def parse_ref(path, token):
+  try: return unicode_charsets[token[0][1:]]
+  except KeyError: fail_parse((path, token), 'unknown charset name.')
+
+
+def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
   '''
   The Legs character set syntax is different from traditional regular expressions.
   * `[...]` introduces a nested character set.
@@ -292,73 +204,71 @@ class CharsetParser():
   * `^` binary operator: set symmetric difference.
   Multiple intersection operators can be chained together,
   but if a difference or set difference operator is used,
-  it must be the only operator to appear witihin the character set;
+  it must be the only operator to appear within the character set;
   more complex expressions must be explicitly grouped.
   Thus, the set expression syntax has no operator precedence or associativity.
   '''
+  codes = set()
 
-  def __init__(self, pos):
-    self.pos = pos
-    self.terminator = ']'
-    self.codes = set()
-    self.codes_left = None  # left operand to current operator.
-    self.operator = None # current operator waiting to finish parsing right side.
-    self.parsed_op = False
-    self.parsed_diff_op = False
+  def add_code(token, code):
+    if code in codes:
+      fail_parse((path, token), f'repeated character in set: {code!r}')
+    codes.add(code)
 
-  def add_code(self, line_info, pos, code):
-    if code in self.codes:
-      fail_parse(line_info, f'repeated character in set: {ord(code)!r}', pos=pos)
-    self.codes.add(code)
+  def apply_op(token, is_diff_op):
+    if not codes:
+      fail_parse((path, token), f'empty charset preceding operator')
+    if is_diff or (is_right and is_diff_op):
+      fail_parse((path, token), f'compound set expressions containing `-` or `^` operators must be grouped with `[...]`')
+    return parse_charset(path, buffer, token, is_right=True, is_diff=is_diff_op)
 
-  def flush_left(self, line_info, pos, msg_context):
-    if not self.codes:
-      fail_parse(line_info, 'empty charset preceding ', msg_context, pos=pos)
-    op = self.operator
-    if op is None: # first operator encountered.
-      assert self.codes_left is None
-      self.codes_left = self.codes
-    elif op == '&': self.codes_left &= self.codes
-    elif op == '-': self.codes_left -= self.codes
-    elif op == '^': self.codes_left ^= self.codes
-    else: raise ValueError(op) # internal error.
-    self.codes = set()
+  def finish():
+      if not codes: fail_parse((path, start_token), 'empty character set.')
+      return codes
 
-  def push_operator(self, line_info, pos, op):
-    self.flush_left(line_info, pos, msg_context='operator')
-    is_diff_op = self.operator in ('-', '^')
-    if self.parsed_diff_op or (self.parsed_op and is_diff_op):
-      fail_parse(line_info, 'compound set expressions containing `-` or `^` operators must be grouped with `[...]`: ', op, pos=pos)
-    self.parsed_op = True
-    self.parsed_diff_op |= is_diff_op
-    self.operator = op
+  for token in buffer:
+    kind = token.lastgroup
+    if kind == 'pat_brckt_c':
+      return finish()
+    if kind == 'pat_brckt_o':
+      for code in parse_charset(path, buffer):
+        add_code(token, code)
+    elif kind == 'pat_ref':
+      for code in codes_for_ranges(parse_ref(path, token)):
+        add_code(token, code)
+    elif kind == 'pat_amp':
+      codes.intersection_update(apply_op(token, is_diff_op=False))
+      return finish()
+    elif kind == 'pat_dash':
+      codes.difference_update(apply_op(token, is_diff_op=True))
+      return finish()
+    elif kind == 'pat_caret':
+      codes.symmetric_difference_update(apply_op(token, is_diff_op=True))
+      return finish()
+    elif kind == 'pat_esc':
+      add_code(token, parse_esc(path, token))
+    elif kind in ('pat_char', 'pat_bar', 'pat_opt', 'pat_star', 'pat_plus', 'pat_paren_o', 'pat_paren_c'):
+      add_code(token, ord(token[0]))
+    elif kind == 'inv': _fail(f'invalid pattern token')
+    else: fail_parse((path, token), f'unexpected charset token: {desc_kind(kind)}')
+  fail_parse((path, start_token), 'unterminated charset.')
 
-  def parse(self, line_info, pos, char):
-    if char == '[':
-      return CharsetParser(line_info, pos)
-    elif char in '&-^':
-      self.push_operator(line_info, pos, char)
-    else:
-      self.add_code(line_info, pos, ord(char))
 
-  def parse_charset(self, line_info, pos, charset):
-    for code in codes_for_ranges(charset):
-      self.add_code(line_info, pos, code)
 
-  def parse_name(self, line_info, pos, name):
-    assert self.current_name_pos is not None
-    assert self.current_name_chars is not None
-    if not self.current_name_chars:
-      fail_parse(line_info, 'empty charset name.', pos=self.current_name_pos)
-    name = ''.join(self.current_name_chars)
-    try: named_charset = unicode_charsets[name]
-    except KeyError: fail_parse(line_info, 'unknown charset name.', pos=pos)
-    self.codes.update(codes_for_ranges(named_charset))
-    self.current_name_pos = None
-    self.current_name_chars = None
+def fail_parse(line_info, msg):
+  'Print a formatted parsing failure to std err and exit.'
+  (path, token) = line_info
+  exit(msg_for_match(token, prefix=path, msg=msg))
 
-  def finish(self, line_info, pos):
-    if self.operator: self.flush_left(line_info, pos, msg_context='terminator')
-    codes = self.codes_left or self.codes
-    if not codes: fail_parse(line_info, 'empty character set.', pos=self.pos)
-    return Charset(ranges=tuple(ranges_for_codes(sorted(codes))))
+
+escape_codes = {
+  'n': ord('\n'),
+  's': ord(' '), # nonstandard space escape.
+  't': ord('\t'),
+}
+escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^')
+
+if False:
+  for k, v in sorted(escape_codes.items()):
+    errL(f'{k}: {v!r}')
+

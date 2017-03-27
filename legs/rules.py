@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.io import errL, errSL, errLL
+from pithy.io import errL, errSL
 from pithy.iterable import prefix_tree
 from pithy.type_util import is_pair_of_int
 from unico import codes_for_ranges
@@ -18,7 +18,6 @@ __all__ = [
   'Rule',
   'Seq',
   'Star',
-  'ranges_for_char',
 ]
 
 
@@ -28,7 +27,8 @@ class Rule:
       assert isinstance(subs, tuple)
       for sub in subs: assert isinstance(sub, Rule)
     self.subs = subs
-    self.pattern = None
+
+  def __repr__(self): return f'{type(self).__name__}({self.subs})'
 
   def describe(self, name, depth=0):
     n = name + ' ' if name else ''
@@ -115,6 +115,8 @@ class Charset(Rule):
     assert ranges
     self.ranges = ranges
 
+  def __repr__(self): return f'{type(self).__name__}({self.inlineDescription})'
+
   def genNFA(self, mk_node, transitions, start, end):
 
     def walk(seq_map, node):
@@ -140,10 +142,5 @@ class Charset(Rule):
 
   @classmethod
   def for_char(cls, char):
-    return cls(ranges=ranges_for_char(char))
-
-
-def ranges_for_char(char):
-  code = ord(char)
-  return ((code, code + 1),)
-
+    code = ord(char)
+    return cls(ranges=((code, code + 1),))
