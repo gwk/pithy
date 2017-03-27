@@ -6,7 +6,7 @@ Simple lexing using python regular expressions.
 
 
 import re
-from typing import re as Re, Any, AnyStr, Iterable, Optional, Tuple
+from typing import cast, Any, AnyStr, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
 
 
 class LexError(Exception): pass
@@ -35,7 +35,7 @@ class Lexer:
 
     # validate patterns.
     if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
-    self.patterns = {}
+    self.patterns: Dict[str, str] = {}
     for i, (n, v) in enumerate(patterns.items()):
       if not isinstance(v, str): # TODO: also support bytes.
         raise Lexer.DefinitionError(f'member {i} {n!r} value must be a string; found {v!r}')
@@ -53,11 +53,11 @@ class Lexer:
       self.patterns[n] = pattern
 
     # validate modes.
-    self.modes = {}
-    self.main = None
+    self.modes: Dict[str, FrozenSet[str]] = {}
+    main = None
     if modes:
       for mode, names in modes.items():
-        if not self.main: self.main = mode
+        if not main: main = mode
         if mode in patterns:
           raise Lexer.DefinitionError(f'mode name conflicts with pattern name: {mode!r}')
         expanded = set()
@@ -76,9 +76,10 @@ class Lexer:
         self.modes[mode] = frozenset(expanded)
     else:
       self.modes = { 'main' : frozenset(self.patterns) }
-      self.main = 'main'
+      main = 'main'
     # validate transitions.
-    self.transitions = {}
+    self.main: str = main
+    self.transitions: Dict[Tuple[str, str], Tuple[str, str]] = {}
     for (parent_mode, enter), (child_mode, leave) in transitions.items():
       if parent_mode not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {parent_mode!r}')
       if child_mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {child_mode!r}')
@@ -87,7 +88,7 @@ class Lexer:
       self.transitions[(parent_mode, enter)] = (child_mode, leave)
 
     choice_sep = '\n| ' if 'x' in flags else '|'
-    def compile_mode(mode, pattern_names):
+    def compile_mode(mode: str, pattern_names: FrozenSet[str]) -> Pattern:
       return re.compile(choice_sep.join(pattern for name, pattern in self.patterns.items() if name in pattern_names))
       #^ note: iterate over self.patterns.items (not pattern_names) because the dict preserves the original pattern order.
 
@@ -96,8 +97,8 @@ class Lexer:
     self.inv_re = re.compile(f'(?s)(?P<{self.invalid}>.+)' if self.invalid else '(?s).+')
 
 
-  def _lex_mode(self, regex: Re.Pattern, string: AnyStr, pos: int, end: int) -> Iterable[Re.Match]:
-    def lex_inv(end):
+  def _lex_mode(self, regex: Pattern, string: str, pos: int, end: int) -> Iterable[Match]:
+    def lex_inv(end: int) -> Match:
       inv_match = self.inv_re.match(string, pos, end) # create a real match object.
       if self.invalid: return inv_match
       raise LexError(inv_match)
@@ -116,17 +117,18 @@ class Lexer:
       pos = e
 
 
-  def lex(self, string: AnyStr, pos: int=0, end: Optional[int]=None, drop: Iterable[str]=()) -> Iterable[Re.Match]:
+  def lex(self, string: str, pos: int=0, end: Optional[int]=None, drop: Iterable[str]=()) -> Iterable[Match]:
     if pos < 0:
       pos = len(string) + pos
     if end is None:
       end = len(string)
     elif end < 0:
       end = len(string) + end
-    def lex_gen():
+    _e: int = end # typing hack.
+    def lex_gen() -> Iterable[Match]:
       p = pos
-      e = end
-      stack = [(self.main, '')]
+      e = _e
+      stack: List[Tuple[str, str]] = [(self.main, '')]
       while p < e:
         mode, exit_name = stack[-1]
         regex = self.regexes[mode]
@@ -144,7 +146,7 @@ class Lexer:
     return filter((lambda token: token.lastgroup not in drop), lex_gen()) if drop else lex_gen()
 
 
-def msg_for_match(match: Re.Match, prefix: str, msg: str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
+def msg_for_match(match: Match, prefix: str, msg: str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
   string = match.string
   p, e = match.span()
   if pos is None: pos = p
@@ -162,7 +164,8 @@ def msg_for_match(match: Re.Match, prefix: str, msg: str, pos:Optional[int]=None
   return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{line}\n{indent}{underline}'
 
 
-def line_col_0_for_match(match: Re.Match) -> Tuple[int, int]:
+def line_col_0_for_match(match: Match) -> Tuple[int, int]:
+  string = match.string
   pos = match.start()
   line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
   line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.

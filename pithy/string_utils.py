@@ -5,7 +5,8 @@
 import re
 from decimal import Decimal
 from string import Template
-from typing import re as Re, Any, Iterable, Iterator, Sequence, Tuple, TypeVar
+from typing import Any, Iterable, Iterator, Sequence, Tuple, TypeVar
+
 
 T = TypeVar('T')
 

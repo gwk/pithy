@@ -51,7 +51,8 @@ def writeTF(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items:
   Useful for constructing dynamic format strings.
   """
   fmt = Template(template_fmt).substitute(**keyed_items)
-  writeF(file, fmt, *items, flush=flush, **keyed_items)
+  print(fmt.format(*items, **keyed_items, end='', file=file, flush=flush))
+
 
 def writeTFL(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items: Any) -> None:
   """
@@ -59,7 +60,7 @@ def writeTFL(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items
   Useful for constructing dynamic format strings.
   """
   fmt = Template(template_fmt).substitute(**keyed_items)
-  writeFL(file, fmt, *items, flush=flush, **keyed_items)
+  print(fmt.format(*items, **keyed_items, file=file, flush=flush))
 
 
 def writeP(file: TextIO, *items: Any, label=None, indent=2, **opts: Any) -> None:

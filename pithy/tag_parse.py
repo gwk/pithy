@@ -17,11 +17,10 @@ import re
 import typing
 
 from itertools import chain
-from typing import Callable, Dict, Iterable, Iterator, List, Sequence, Tuple, Union
+from typing import Callable, Dict, Match, Iterable, Iterator, List, Sequence, Tuple, Union
 from .ansi import TXT_R, TXT_Y, RST_TXT
 from .buffer import Buffer
 
-Match = typing.re.Match
 
 Node = Union[str, 'TagTree'] # TODO: move code.
 
@@ -189,7 +188,7 @@ class TagTreeRoot(TagTree):
   class_label = 'Root'
 
   @property
-  def contents(self) -> Sequence[TagTree]:
+  def contents(self) -> Sequence[Node]:
     return self[:] # no tags at root level.
 
 
@@ -210,7 +209,7 @@ class TagTreeUnexpected(TagTreeFlawed):
     return super().__new__(cls, *args)
 
   @property
-  def contents(self) -> Sequence[TagTree]:
+  def contents(self) -> Sequence[Node]:
     assert len(self) == 1
     return ()
 
@@ -223,5 +222,5 @@ class TagTreeUnterminated(TagTreeFlawed):
   ansi_reset = RST_TXT
 
   @property
-  def contents(self) -> Iterable[TagTree]:
+  def contents(self) -> Iterable[Node]:
     return self[1:len(self)] # omit the start tag only.

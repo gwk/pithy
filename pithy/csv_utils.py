@@ -2,7 +2,10 @@
 
 import csv
 from sys import stdout
-from typing import Any, Iterable, Sequence, TextIO, TypeVar
+from typing import Any, Iterable, Iterator, Sequence, TextIO, TypeVar
+
+
+T = TypeVar('T')
 
 
 def write_csv(f: TextIO, header: Sequence[str], rows: Iterable[Sequence]) -> None:
@@ -15,6 +18,7 @@ def out_csv(header: Sequence[str], rows: Iterable[Sequence]) -> None:
   write_csv(f=stdout, header=header, rows=rows)
 
 
-def drop1(reader: Iterable) -> Iterable:
-  next(reader)
-  return reader
+def drop1(reader: Iterable[T]) -> Iterator[T]:
+  it = iter(reader)
+  next(it)
+  return it

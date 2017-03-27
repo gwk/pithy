@@ -31,7 +31,7 @@ def _dd_of_schemas() -> defaultdict:
   return defaultdict(_mk_schema)
 
 
-def _compile_schema(node: Any, schema: Schema) -> Schema:
+def _compile_schema(node: Any, schema: Schema):
   if isinstance(node, dict):
     # dict schemas have two layers: node key and node val type.
     for k, v in node.items():

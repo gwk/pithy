@@ -4,7 +4,7 @@ import re
 
 from html import escape as html_escape
 from sys import stdout
-from typing import Callable, Iterable, MutableSet, TextIO, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, MutableSet, TextIO, Tuple, TypeVar, Union
 
 
 T = TypeVar('T')
@@ -76,7 +76,7 @@ def out_dot_digraph_adjacency(adjacency: AdjacencyIterable, **kwargs) -> None:
   write_dot_digraph_adjacency(stdout, adjacency=adjacency, **kwargs)
 
 
-graph_prop_validators = {
+graph_prop_validators: Dict[str, Callable[[Any], bool]] = {
   'label': lambda v: isinstance(v, str),
   'rankdir': lambda v: (v in {'TB', 'BT', 'LR', 'RL'}),
 }

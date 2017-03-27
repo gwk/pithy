@@ -5,7 +5,7 @@ import shlex as _shlex
 
 from subprocess import PIPE as _pipe, Popen as _Popen
 from sys import stderr, stdout
-from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
+from typing import cast, Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 
 Env = Dict[str, str]
@@ -40,8 +40,8 @@ def dev_null() -> BinaryIO:
   'Opens and returns a _dev_null_file if _dev_null_file does not exist.'
   global _dev_null_file
   if _dev_null_file is None:
-    _dev_null_file = open('/dev/null', 'b+')
-  return _dev_null_file # type: ignore
+    _dev_null_file = cast(BinaryIO, open('/dev/null', 'b+'))
+  return _dev_null_file
 
 
 def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, timeout: int=None, exp=0) -> Tuple[int, Output, Output]:

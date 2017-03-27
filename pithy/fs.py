@@ -6,7 +6,7 @@ import shutil as _shutil
 import stat as _stat
 
 from itertools import zip_longest as _zip_longest
-from typing import AbstractSet, Iterable, Iterator, List, Optional, TextIO, Tuple
+from typing import AbstractSet, Any, IO, Iterable, Iterator, List, Optional, TextIO, Tuple
 
 
 class NotAPathError(Exception): pass
@@ -18,7 +18,7 @@ class MixedAbsoluteAndRelativePathsError(Exception): pass
 
 def executable_path() -> str:
   'Return the path to this executable.'
-  import __main__ # type: ignore # mypy bug?
+  import __main__ # type: ignore # mypy bug.
   return _path.realpath(__main__.__file__)
 
 def executable_dir() -> str:
@@ -148,7 +148,7 @@ def path_rel_to_current_or_abs(path: str, dot=False) -> str:
 
 def copy_file(src: str, dst: str, follow_symlinks=True) -> None:
   'Copies file from source to destination.'
-  _shutil.copy(src, dst, follow_symlinks=follow_symlinks) # type: ignore # mypy bug regarding `*` parameter?
+  _shutil.copy(src, dst, follow_symlinks=follow_symlinks)
 
 
 def copy_dir_tree(src: str, dst: str, follow_symlinks=True, preserve_metadata=True, ignore_dangling_symlinks=False) -> None:
@@ -291,7 +291,7 @@ def normalize_exts(exts: Iterable[str]) -> AbstractSet[str]:
 
 class PathAlreadyExists(Exception): pass
 
-def open_new(path: str, make_parent_dirs: bool=True, **open_args) -> TextIO:
+def open_new(path: str, make_parent_dirs: bool=True, **open_args) -> IO[Any]:
   if path_exists(path):
     raise PathAlreadyExists(path)
   if make_parent_dirs:

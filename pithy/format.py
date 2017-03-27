@@ -4,7 +4,7 @@
 
 import re
 from .string_utils import line_col_1
-from typing import Any, AnyStr, Iterable, re as Re
+from typing import Any, AnyStr, Iterable, Match, Pattern, Tuple
 
 class FormatError(Exception): pass
 
@@ -59,26 +59,26 @@ def count_formatters(fmt: str) -> int:
   return count
 
 
-def parse_formatters(fmt: str) -> Iterable[Re.Match]:
+def parse_formatters(fmt: str) -> Iterable[Tuple[str, str, str, type]]:
   for match in gen_format_matches(fmt):
     formatter = match.group('formatter')
     if formatter is not None:
-      value_type = str
+      value_type: type = str
       name, conv, spec = match.group('name', 'conv', 'spec')
       if spec:
         spec_match = fmt_spec_re.fullmatch(spec)
-        if not spec_match: raise exc(match, f'invalid format spec: {spec!r}')
+        if not spec_match: raise _exc(fmt, match.start(), f'invalid format spec: {spec!r}')
         fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
         if type_:
           try: value_type = spec_types[type_]
-          except KeyError as e: raise exc(match, f'spec type {type_!r} not implemented') from e
+          except KeyError as e: raise _exc(fmt, match.start(), f'spec type {type_!r} not implemented') from e
       yield (name, conv, spec, value_type)
 
 
 def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
   args_it = iter(args)
-  def format_frag(match):
+  def format_frag(match: Match) -> str:
     formatter = match.group('formatter')
     if formatter:
       name = match.group('name')
@@ -92,22 +92,22 @@ def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
   return ''.join(format_frag(m) for m in gen_format_matches(fmt))
 
 
-def format_to_re(fmt: str) -> str:
+def format_to_re(fmt: str) -> Pattern[str]:
   'translate a format string into a regular expression pattern.'
-  def pattern_from(match: Re.Match) -> Iterable[str]:
-    def exc(msg): return _exc(fmt, match.start(), msg)
+  def pattern_from(match: Match) -> str:
+    def exc(msg: str) -> FormatError: return _exc(fmt, match.start(), msg)
     if match.group('formatter'):
       spec = match.group('spec')
       if not spec:
         pat = '.*'
       else:
         spec_match = fmt_spec_re.fullmatch(spec)
-        if not spec_match: raise exc(match, f'invalid format spec: {spec!r}')
+        if not spec_match: raise exc(f'invalid format spec: {spec!r}')
         fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
         if type_:
           try: pat = spec_type_pats[type_] + '+'
-          except KeyError as e: raise exc(match, f'spec type {type_!r} not implemented') from e
+          except KeyError as e: raise exc(f'spec type {type_!r} not implemented') from e
         else:
           pat = '.*'
       name = match.group('name')
@@ -120,9 +120,9 @@ def format_to_re(fmt: str) -> str:
   return re.compile(''.join(pattern_from(m) for m in gen_format_matches(fmt)))
 
 
-def gen_format_matches(fmt: str) -> Iterable[str]:
+def gen_format_matches(fmt: str) -> Iterable[Match]:
   pos = 0
-  def exc(): return _exc(fmt, pos, f'invalid format character: {fmt[pos]!r}')
+  def exc() -> FormatError: return _exc(fmt, pos, f'invalid format character: {fmt[pos]!r}')
   for match in fmt_re.finditer(fmt):
     if match.start() != pos: raise exc()
     pos = match.end()
@@ -130,7 +130,7 @@ def gen_format_matches(fmt: str) -> Iterable[str]:
   if pos != len(fmt): raise exc()
 
 
-def _exc(fmt, pos, msg):
+def _exc(fmt: str, pos: int, msg: str) -> FormatError:
   line, col = line_col_1(fmt, pos)
   return FormatError(f'<str>:{line}:{col}: {msg}')
 
