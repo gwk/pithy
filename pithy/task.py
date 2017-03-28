@@ -14,7 +14,7 @@ Output = Optional[str] # TODO: support binary output.
 
 
 class ProcessExpectation(Exception):
-  "Class to handle the expected code and the returned code from a command('cmd')."
+  'Exception to handle the expected code and the returned code from a command.'
   def __init__(self, cmd: List[str], exp: Any, act: int) -> None:
     super().__init__('process was expected to return code {}; actual code: {}'.format(
       exp, act))
@@ -23,7 +23,7 @@ class ProcessExpectation(Exception):
     self.act = act
 
 class ProcessTimeout(Exception):
-  "Class to handle a process timeout command('cmd')."
+  'Exception to handle a process timeout command.'
   def __init__(self, cmd: List[str], timeout: int) -> None:
     super().__init__('process timed out after {} seconds and was killed', timeout)
     self.cmd = cmd
@@ -31,13 +31,13 @@ class ProcessTimeout(Exception):
 
 
 def _decode(s: Optional[bytes]) -> Output:
-  "Decode s using 'utf-8'"
+  'Decode optional utf-8 bytes from a subprocess.'
   return s if s is None else s.decode('utf-8')
 
 
 _dev_null_file = None
 def dev_null() -> BinaryIO:
-  'Opens and returns a _dev_null_file if _dev_null_file does not exist.'
+  'Return the global "/dev/null" file binary read/write file.'
   global _dev_null_file
   if _dev_null_file is None:
     _dev_null_file = cast(BinaryIO, open('/dev/null', 'b+'))
@@ -153,13 +153,13 @@ def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, 
 
 
 def runOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None, timeout: int=None, exp=0) -> Tuple[Output, Output]:
-  'Run a command and return (stdout, stderr) as strings; optional exp.'
+  'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, exp=exp)
   return o, e
 
 
 def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None, timeout: int=None, exp=0) -> Output:
-  'Run a command and return stdout as a string; optional err and exp.'
+  'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=exp)
   assert e is None
@@ -167,7 +167,7 @@ def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, e
 
 
 def runE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None, timeout: int=None, exp=0) -> Output:
-  'Run a command and return stderr as a string; optional out and exp.'
+  'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=exp)
   assert o is None
