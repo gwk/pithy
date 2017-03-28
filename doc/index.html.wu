@@ -1,0 +1,62 @@
+writeup v0
+Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Pithy
+
+Pithy is a small library of Python 3.6 utilities. The various modules are mostly independent of each other.
+
+The project is hosted at 'https://github.com/gwk/pithy'.
+
+* <https://github.com/gwk/pithy/blob/master/pithy/ansi.py ansi> Ansi console control strings for colors and other terminal IO.
+* <https://github.com/gwk/pithy/blob/master/pithy/buffer.py buffer> Buffer is an iterable class that lets you peek at and push back elements. Useful for parsing.
+* <https://github.com/gwk/pithy/blob/master/pithy/collection.py collection> Collection utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/csv_utils.py csv_utils> CSV (comma-separated-value table files) utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/date.py data> Date and time utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/defaultlist.py defaultlist> DefaultList is a list subclass, analogous to `defaultdict`.
+* <https://github.com/gwk/pithy/blob/master/pithy/format.py format> Python format string parsing utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/fs.py fs> File system utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/graph_utils.py graph_utils> Graph (as in network, not chart) utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/immutable.py immutable> Immutable object utilitise.
+* <https://github.com/gwk/pithy/blob/master/pithy/io.py io> IO utilites, including shorthand functions for printing to stdout and stderr.
+* <https://github.com/gwk/pithy/blob/master/pithy/iterable.py iterable> Iterable utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/json_utils.py json_utils> JSON, JSONL (per-line JSON), and JSONS (concatenated/streamable JSON) utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/lex.py lex> Easily create robust lexers from regular expressions.
+* <https://github.com/gwk/pithy/blob/master/pithy/meta.py meta> Python metaprogramming tools (it's a slippery slope!).
+* <https://github.com/gwk/pithy/blob/master/pithy/path_encode.py path_encode> Like urlencode, for creating sensible filesystem paths.
+* <https://github.com/gwk/pithy/blob/master/pithy/schema.py schema> Compute the common structure for a collection of data examples.
+* <https://github.com/gwk/pithy/blob/master/pithy/sentinel.py sentinel> Even sillier than NPM's left-pad.
+* <https://github.com/gwk/pithy/blob/master/pithy/sequence.py sequence> Sequence utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/string_utils.py string_utils> String utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/tag_parse.py tag_parse> Simplistic parser for simple structural languages defined by start/end tags.
+* <https://github.com/gwk/pithy/blob/master/pithy/task.py task> Subprocess utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/transform.py transform> Transformer creates a pipeline of functional stages for an input stream, through which each record is transformed and notable transformations are logged.
+* <https://github.com/gwk/pithy/blob/master/pithy/type_util.py type_util> Type utilities.
+* <https://github.com/gwk/pithy/blob/master/pithy/util.py util> Miscellaneous utilities.
+
+
+# License
+
+This project is dedicated to the public domain under the Creative Commons CC0 dedication: <https://creativecommons.org/publicdomain/zero/1.0/>. I chose this license because I believe that the potential usefulness of the code is increased by reducing the legal burden around using it to zero. You are free to copy, alter and integrate individual functions or modules into your project as you see fit.
+
+Although no attribution is required, attribution and feedback are very much appreciated.
+
+
+# Installation
+
+| $ pip3 install pithy
+
+
+# Development
+
+Alternatively, you can check out the pithy project and use pip to install it in 'develop' mode as follows:
+| $ cd ~/work # or wherever you prefer to keep projects.
+| $ git clone git@github.com:gwk/pithy.git
+| $ pip3 install -e pithy
+
+This method tells python to find the module at the specified  directory (in this case "pithy", where we checked out the repo).
+Changes to the code will be immediately visible to the python3 installation, with no need for reinstallation.
+
+
+# Issues
+
+Please file issues to the github repository.

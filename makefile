@@ -5,16 +5,20 @@
 # $^: The names of all the prerequisites, with spaces between them.
 
 
-.PHONY: _default clean cov pip-develop pip-uninstall pypi-dist pypi-upload test typecheck
+.PHONY: _default clean cov docs pip-develop pip-uninstall pypi-dist pypi-upload test typecheck
 
 # First target of a makefile is the default.
-_default: test
+_default: test typecheck
 
 clean:
 	rm -rf _build/*
 
 cov:
 	iotest -fail-fast -coverage
+
+docs:
+	(cd doc && muck -build-dir=../docs)
+	writeup -bare -section Muck doc/index.html.wu readme.md
 
 pip-develop:
 	pip3 install -e .
