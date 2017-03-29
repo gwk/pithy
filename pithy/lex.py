@@ -6,7 +6,7 @@ Simple lexing using python regular expressions.
 
 
 import re
-from typing import cast, Any, AnyStr, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
+from typing import Any, AnyStr, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
 
 
 class LexError(Exception): pass

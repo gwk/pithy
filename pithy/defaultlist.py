@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import cast, Callable, Generic, Iterable, TypeVar, Union
+from typing import Callable, Generic, Iterable, TypeVar, Union
 
 
 T = TypeVar('T')
@@ -19,7 +19,10 @@ class DefaultList(list, Generic[T]):
       self.append(self.factory())
 
   def __getitem__(self, index: Union[int, slice]):
-    end = cast(int, index.stop) if isinstance(index, slice) else index
+    if isinstance(index, slice):
+      end = 0 if index.stop is None else index.stop
+    else:
+      end = index
     while len(self) <= end:
       self.append(self.factory())
     return super().__getitem__(index)

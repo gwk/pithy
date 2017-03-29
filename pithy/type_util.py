@@ -40,7 +40,7 @@ def is_str_or_list(val: Any) -> bool: return is_str(val) or is_list_of_str(val)
 
 def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 
-def is_pos_int(val: Any) -> bool: return is_int(val) and val > 0
+def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
 def req_type(object: Any, class_info: Union[type, Tuple[type, ...]]) -> None:

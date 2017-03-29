@@ -115,7 +115,7 @@ class TagTree(tuple):
   def __getitem__(self, key) -> Node: # type: ignore
     if isinstance(key, slice):
       return type(self)(*super().__getitem__(key)) # create a TagTree as the slice.
-    return super().__getitem__(key)
+    return super().__getitem__(key) # type: ignore
 
   class_label = 'Tag'
   ansi_color = ''

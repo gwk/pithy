@@ -5,9 +5,10 @@ Generate and print informative schemas from sets of example object trees.
 '''
 
 from collections import Counter, defaultdict, namedtuple
-from typing import Any, Hashable, NamedTuple, TextIO
+from typing import Any, Hashable, NamedTuple, TextIO, TypeVar
 from .string_utils import iter_excluding_str
 
+K = TypeVar('K')
 
 # TODO: mypy does not yet support NamedTuple docstrings.
 '''
@@ -66,7 +67,7 @@ def compile_schema(*nodes: Any, schema: Schema=None) -> Schema:
   return schema
 
 
-def _unique_el(counter: Counter) -> Hashable:
+def _unique_el(counter: Counter) -> Any:
   'Return the first element of the counter whose count is 1.'
   for k, c in counter.items():
     if c == 1: return k

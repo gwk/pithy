@@ -78,7 +78,7 @@ def parse_formatters(fmt: str) -> Iterable[Tuple[str, str, str, type]]:
 
 def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
   args_it = iter(args)
-  def format_frag(match: Match) -> str:
+  def format_frag(match: Match[str]) -> str:
     formatter = match.group('formatter')
     if formatter:
       name = match.group('name')
@@ -94,7 +94,7 @@ def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
 
 def format_to_re(fmt: str) -> Pattern[str]:
   'translate a format string into a regular expression pattern.'
-  def pattern_from(match: Match) -> str:
+  def pattern_from(match: Match[str]) -> str:
     def exc(msg: str) -> FormatError: return _exc(fmt, match.start(), msg)
     if match.group('formatter'):
       spec = match.group('spec')

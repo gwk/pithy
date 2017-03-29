@@ -19,7 +19,8 @@ class MixedAbsoluteAndRelativePathsError(Exception): pass
 def executable_path() -> str:
   'Return the path to this executable.'
   import __main__ # type: ignore # mypy bug.
-  return _path.realpath(__main__.__file__)
+  path: str = __main__.__file__
+  return _path.realpath(path)
 
 def executable_dir() -> str:
   'Return the parent directory of this excutable.'
@@ -33,7 +34,7 @@ def normalize_path(path: str) -> str:
   'Normalize `path` according to system convention.'
   return _path.normpath(path)
 
-def rel_path(path: str, start='.') -> str:
+def rel_path(path: str, start: str='.') -> str:
   'Return a version of `path` relative to `start`, defaulting to the current directory.'
   return _path.relpath(path, start)
 
@@ -250,7 +251,7 @@ def is_python3_file(path: str, always_read=False) -> bool:
     with open(path, 'rb') as f:
       expected = b'#!/usr/bin/env python3\n'
       head = f.read(len(expected))
-      return head == expected
+      return bool(head == expected)
   except (FileNotFoundError, IsADirectoryError): return False
 
 

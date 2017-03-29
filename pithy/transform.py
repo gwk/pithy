@@ -140,7 +140,7 @@ class Transformer(Generic[T]):
       edited = fn(item)
       if edited != item:
         log_fn(f'- {item!r}\n+ {edited!r}\n')
-      return edited
+      return edited # type: ignore
 
     self._add_stage(name, edit_fn)
 

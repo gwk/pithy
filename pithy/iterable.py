@@ -5,7 +5,7 @@ from collections import defaultdict
 from enum import Enum
 from itertools import tee
 from operator import le
-from typing import cast, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Sequence, Tuple, TypeVar, Union
+from typing import Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Sequence, Tuple, TypeVar, Union
 
 T = TypeVar('T')
 K = TypeVar('K', bound=Hashable)
