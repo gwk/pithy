@@ -148,6 +148,6 @@ def parse_jsonl(string: str, types: Sequence[type]=()) -> Iterable[Json]:
   return (_json.loads(line, object_hook=hook) for line in string.splitlines())
 
 
-def load_jsonl(file: TextIO, types: Sequence[type]=()) -> Iterable[Json]:
+def load_jsonl(stream: Iterable[str], types: Sequence[type]=()) -> Iterable[Json]:
   hook = _mk_hook(types)
-  return (_json.loads(line, object_hook=hook) for line in file)
+  return (_json.loads(line, object_hook=hook) for line in stream)
