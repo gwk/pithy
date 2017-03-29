@@ -78,7 +78,7 @@ def _mk_hook(types: Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
     # TODO: find all offending pairs.
     raise ValueError('provided record types are ambiguous (identical field name sets).')
 
-  def _read_json_object_hook(d):
+  def _read_json_object_hook(d: Dict) -> Any:
     keys = frozenset(d.keys())
     try:
       record_type = type_map[keys]
