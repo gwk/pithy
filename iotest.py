@@ -23,7 +23,7 @@ from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_p
   path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join,
   path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, walk_dirs_up)
 from pithy.iterable import fan_by_key_fn, fan_by_pred
-from pithy.task import ProcessExpectation, ProcessTimeout, run, runC
+from pithy.task import TaskUnexpectedExit, TaskTimeout, run, runC
 from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
 bar_width = 64
@@ -817,10 +817,10 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
       else:
         outL(f'\n{label} process OS error {e.errno}: {e.strerror}.')
       return None
-    except ProcessTimeout:
+    except TaskTimeout:
       outL(f'\n{label} process timed out ({timeout} sec) and was killed.')
       return None
-    except ProcessExpectation as e:
+    except TaskUnexpectedExit as e:
       outL(f'\n{label} process was expected to return code: {e.exp}; actual code: {e.act}.')
       return False
     else:
