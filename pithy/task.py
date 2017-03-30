@@ -3,13 +3,13 @@
 import signal
 import shlex as _shlex
 
-from subprocess import PIPE as _pipe, Popen as _Popen
+from subprocess import DEVNULL, PIPE as _pipe, Popen as _Popen
 from sys import stderr, stdout
 from typing import cast, Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 
 Env = Dict[str, str]
-Input = Union[None, str, bytes, BinaryIO]
+Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; could also be raw file descriptor?
 Output = Optional[str] # TODO: support binary output.
 
 
@@ -22,6 +22,7 @@ class ProcessExpectation(Exception):
     self.exp = exp
     self.act = act
 
+
 class ProcessTimeout(Exception):
   'Exception to handle a process timeout command.'
   def __init__(self, cmd: List[str], timeout: int) -> None:
@@ -33,15 +34,6 @@ class ProcessTimeout(Exception):
 def _decode(s: Optional[bytes]) -> Output:
   'Decode optional utf-8 bytes from a subprocess.'
   return s if s is None else s.decode('utf-8')
-
-
-_dev_null_file = None
-def dev_null() -> BinaryIO:
-  'Return the global "/dev/null" file binary read/write file.'
-  global _dev_null_file
-  if _dev_null_file is None:
-    _dev_null_file = cast(BinaryIO, open('/dev/null', 'b+'))
-  return _dev_null_file
 
 
 def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, timeout: int=None, exp=0) -> Tuple[int, Output, Output]:
@@ -76,7 +68,7 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
     f_in = _pipe
     input_bytes = stdin
   else:
-    f_in = stdin # presume None, _pipe, or file, which includes dev_null().
+    f_in = stdin # presume None, _pipe, file, or DEVNULL.
     input_bytes = None
 
   # flushing std file descriptors guarantees consistent behavior between console and iotest;
