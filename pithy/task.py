@@ -48,7 +48,7 @@ def _decode(s: Optional[bytes]) -> Output:
 
 
 def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
- timeout: int=None, exp: TaskCodeExpectation=0) -> Tuple[int, Output, Output]:
+ timeout: int=0, exp: TaskCodeExpectation=0) -> Tuple[int, Output, Output]:
   '''
   Run a command and return (exit_code, std_out, std_err).
 
@@ -57,6 +57,9 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
   User code is made clearer by just specifying the complete shell command;
   lists are used as is, while strings are split by shlex.split.
   '''
+
+  if not (isinstance(timeout, int) and timeout >= 0):
+    raise Exception(f'timeout argument must be a nonnegative int; received: {timeout!r}')
 
   if isinstance(cmd, str):
     cmd = _shlex.split(cmd)
@@ -88,21 +91,28 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
   )
 
   # timeout alarm handler.
+  # Note: Popen now provides its own timeout mechanism, based on select.
+  # However, the CPython implementation of communicate() has an optimized path that is only used
+  # when the timeout feature is not used.
+  # The tradeoff between that implementation and this alarm-based one should be examined further.
   timed_out = False
-  if timeout is not None:
+  if timeout > 0:
+    prev = signal.getsignal(signal.SIGALRM)
+    if prev is not signal.SIG_DFL:
+      raise Exception(f'task.run encountered previously installed signal handler: {prev}')
     def alarm_handler(signum, current_stack_frame):
-      # since signal handlers carry reentrancy concerns, do not do any IO within the handler.
+      # since signal handlers carry reentrancy concerns; do not do any IO within the handler.
       nonlocal timed_out
       timed_out = True
       proc.kill()
-
     signal.signal(signal.SIGALRM, alarm_handler) # set handler.
     signal.alarm(timeout) # set alarm.
 
   p_out, p_err = proc.communicate(input_bytes) # waits for process to complete.
 
-  if timeout is not None:
+  if timeout > 0:
     signal.alarm(0) # disable alarm.
+    signal.signal(signal.SIGALRM, signal.SIG_DFL) # uninstall handler.
     if timed_out:
       raise TaskTimeout(cmd, timeout)
 
@@ -120,7 +130,7 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
 
 
 def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, env: Env=None,
- timeout: int=None) -> int:
+ timeout: int=0) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not _pipe
   assert err is not _pipe
@@ -131,7 +141,7 @@ def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, e
 
 
 def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
- timeout: int=None) -> Tuple[int, Output]:
+ timeout: int=0) -> Tuple[int, Output]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=None)
@@ -140,7 +150,7 @@ def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, 
 
 
 def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
- timeout: int=None) -> Tuple[int, Output]:
+ timeout: int=0) -> Tuple[int, Output]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=None)
@@ -149,14 +159,14 @@ def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, 
 
 
 def runOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None,
- timeout: int=None, exp: TaskCodeExpectation=0) -> Tuple[Output, Output]:
+ timeout: int=0, exp: TaskCodeExpectation=0) -> Tuple[Output, Output]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, exp=exp)
   return o, e
 
 
 def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
- timeout: int=None, exp: TaskCodeExpectation=0) -> Output:
+ timeout: int=0, exp: TaskCodeExpectation=0) -> Output:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=exp)
@@ -165,7 +175,7 @@ def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, e
 
 
 def runE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
- timeout: int=None, exp: TaskCodeExpectation=0) -> Output:
+ timeout: int=0, exp: TaskCodeExpectation=0) -> Output:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=exp)
