@@ -13,18 +13,29 @@ Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; coul
 Output = Optional[str] # TODO: support binary output.
 
 
-class ProcessExpectation(Exception):
-  'Exception to handle the expected code and the returned code from a command.'
-  def __init__(self, cmd: List[str], exp: Any, act: int) -> None:
-    super().__init__('process was expected to return code {}; actual code: {}'.format(
-      exp, act))
+class NonzeroCodeExpectation:
+  '''
+  Type for a special marker value NONZERO, which matches any nonzero process exit code.
+  '''
+  def __repr__(self): return 'NONZERO'
+
+NONZERO = NonzeroCodeExpectation()
+
+
+TaskCodeExpectation = Union[None, int, NonzeroCodeExpectation]
+
+
+class TaskUnexpectedExit(Exception):
+  'Exception indicating that a subprocess exit code did not match the code expectation.'
+  def __init__(self, cmd: List[str], exp: TaskCodeExpectation, act: int) -> None:
+    super().__init__(f'process was expected to exit with code {exp}; actual code: {act}')
     self.cmd = cmd
     self.exp = exp
     self.act = act
 
 
-class ProcessTimeout(Exception):
-  'Exception to handle a process timeout command.'
+class TaskTimeout(Exception):
+  'Exception indictaing that a subprocess task exceeded its specified time limit.'
   def __init__(self, cmd: List[str], timeout: int) -> None:
     super().__init__('process timed out after {} seconds and was killed', timeout)
     self.cmd = cmd
@@ -36,20 +47,10 @@ def _decode(s: Optional[bytes]) -> Output:
   return s if s is None else s.decode('utf-8')
 
 
-def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, timeout: int=None, exp=0) -> Tuple[int, Output, Output]:
+def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
+ timeout: int=None, exp: TaskCodeExpectation=0) -> Tuple[int, Output, Output]:
   '''
   Run a command and return (exit_code, std_out, std_err).
-  Cmd: str or list of str.
-  Cwd: str path.
-  Env: dict of str.
-  Stdin: str, bytes, open binary file (including value of dev_null()).
-  Out, err: open binary file or _pipe special.
-  Timeout: int or None.
-  Exp: expected exit code can be None (accept any value), an integer code,
-    or `...` (Ellipsis) to indicate any nonzero code.
-
-  The special ellipsis notation is used because a bool expectation is confusing;
-  nonzero implies True in Python, but False in Unix.
 
   The underlying Subprocess shell option is not supported
   because the rules regarding splitting strings are complex.
@@ -103,22 +104,23 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
   if timeout is not None:
     signal.alarm(0) # disable alarm.
     if timed_out:
-      raise ProcessTimeout(cmd, timeout)
+      raise TaskTimeout(cmd, timeout)
 
   code = proc.returncode
   if exp is None:
     pass
-  elif exp is Ellipsis:
+  elif isinstance(exp, NonzeroCodeExpectation):
     if code == 0:
-      raise ProcessExpectation(cmd, '!= 0', code)
+      raise TaskUnexpectedExit(cmd, NONZERO, code)
   else:
     if code != exp: # otherwise expect exact numeric code.
-      raise ProcessExpectation(cmd, exp, code)
+      raise TaskUnexpectedExit(cmd, exp, code)
 
   return code, _decode(p_out), _decode(p_err)
 
 
-def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, env: Env=None, timeout: int=None) -> int:
+def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, env: Env=None,
+ timeout: int=None) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not _pipe
   assert err is not _pipe
@@ -128,7 +130,8 @@ def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, e
   return c
 
 
-def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None, timeout: int=None) -> Tuple[int, Output]:
+def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
+ timeout: int=None) -> Tuple[int, Output]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=None)
@@ -136,7 +139,8 @@ def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, 
   return c, o
 
 
-def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None, timeout: int=None) -> Tuple[int, Output]:
+def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
+ timeout: int=None) -> Tuple[int, Output]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=None)
@@ -144,13 +148,15 @@ def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, 
   return c, e
 
 
-def runOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None, timeout: int=None, exp=0) -> Tuple[Output, Output]:
+def runOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None,
+ timeout: int=None, exp: TaskCodeExpectation=0) -> Tuple[Output, Output]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, exp=exp)
   return o, e
 
 
-def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None, timeout: int=None, exp=0) -> Output:
+def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
+ timeout: int=None, exp: TaskCodeExpectation=0) -> Output:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=exp)
@@ -158,7 +164,8 @@ def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, e
   return o
 
 
-def runE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None, timeout: int=None, exp=0) -> Output:
+def runE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
+ timeout: int=None, exp: TaskCodeExpectation=0) -> Output:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not _pipe
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=exp)
