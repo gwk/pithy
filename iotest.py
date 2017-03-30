@@ -402,11 +402,11 @@ class Case:
   def add_iot_val_for_key(self, iot_key, val):
     key = ('in_' if iot_key == 'in' else iot_key.replace('-', '_'))
     try:
-      msg, predicate, validator_fn = case_key_validators[key]
+      exp_desc, predicate, validator_fn = case_key_validators[key]
     except KeyError:
-      raiseF('invalid key in .iot file: {!r}', key)
+      raise Exception(f'invalid key in .iot file: {iot_key!r}')
     if not predicate(val):
-      raiseF('key: {!r}: expected value of type: {}; received: {!r}', iot_key, msg, val)
+      raise Exception(f'key: {iot_key!r}: expected value of type: {exp_desc}; received: {val!r}')
     if validator_fn:
       validator_fn(key, val)
     self.add_val_for_key(key, val)
@@ -416,7 +416,7 @@ class Case:
     if self.name == '_default': return # do not process prototype cases.
 
     if self.dir and not self.stem.startswith(self.dir):
-      raiseF("test directory specified in 'dir' is not a case stem prefix: {!r}", self.dir)
+      raise Exception(f"test directory specified in 'dir' is not a case stem prefix: {self.dir!r}")
     self.test_dir = path_join(ctx.build_dir, self.dir or self.stem)
     if self.dir:
       self.test_dir_suffix = self.stem[len(self.dir):].strip('/')
@@ -464,7 +464,7 @@ class Case:
     if self.env:
       for key, val in sorted(self.env.items()):
         if key in env:
-          raiseF('specified env contains reserved key: {}', key)
+          raise Exception(f'specified env contains reserved key: {key}')
         env[key] = expand_str(val)
 
     self.compile_cmds = [expand(cmd) for cmd in self.compile] if self.compile else []
@@ -483,9 +483,9 @@ class Case:
     elif self.compile_cmds:
       cmd += ['./' + self.name]
     elif len(self.dflt_src_paths) > 1:
-      raiseF('no `cmd` specified and multiple default source paths found: {}', self.dflt_src_paths)
+      raise Exception(f'no `cmd` specified and multiple default source paths found: {self.dflt_src_paths}')
     elif len(self.dflt_src_paths) < 1:
-      raiseF('no `cmd` specified and no default source path found')
+      raise Exception('no `cmd` specified and no default source path found')
     else:
       dflt_path = self.dflt_src_paths[0]
       dflt_name = path_name(dflt_path)
@@ -502,7 +502,7 @@ class Case:
     self.test_cmd = cmd
 
     if not self.is_isolated and self.links:
-      raiseF("non-isolated tests ('dir' specified) cannot also specify 'links'")
+      raise Exception("non-isolated tests ('dir' specified) cannot also specify 'links'")
     elif is_str(self.links):
       link = expand_str(self.links)
       self.test_links += [(link, path_name(link))]
@@ -546,28 +546,27 @@ def is_valid_links(val):
   return is_str(val) or is_set_of_str(val) or is_dict_of_str(val)
 
 def validate_dir(key, dir):
-  if not dir: raiseF('key: {}: custom directory is empty: {!r}', key, dir)
-  if '.' in dir: raiseF("key: {}: custom directory cannot contain '.': {!r}", key, dir)
+  if not dir: raise Exception(f'key: {key}: custom directory is empty: {dir!r}')
+  if '.' in dir: raise Exception(f"key: {key}: custom directory cannot contain '.': {dir!r}")
 
 def validate_exp_mode(key, mode):
   if mode not in file_expectation_fns:
-    raiseF('key: {}: invalid file expectation mode: {}', key, mode)
+    raise Exception(f'key: {key}: invalid file expectation mode: {mode}')
 
 def validate_exp_dict(key, val):
   if not is_dict(val):
-    raiseF('file expectation: {}: value must be a dictionary.', key)
+    raise Exception(f'file expectation: {key}: value must be a dictionary.')
   for k in val:
     if k not in ('mode', 'path', 'val'):
-      raiseF('file expectation: {}: invalid expectation property: {}', key, k)
+      raise Exception(f'file expectation: {key}: invalid expectation property: {k}')
 
 
 def validate_files_dict(key, val):
   if not is_dict(val):
-    raiseF('file expectation: {}: value must be a dictionary.', key)
+    raise Exception(f'file expectation: {key}: value must be a dictionary.')
   for k, exp_dict in val.items():
     if k in ('out', 'err'):
-      raiseF('key: {}: {}: use the standard properties instead ({}_mode, {}_path, {}_val).',
-        key, k, k, k, k)
+      raise Exception(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val).')
     validate_exp_dict(k, exp_dict)
 
 def validate_links_dict(key, val):
@@ -579,8 +578,8 @@ def validate_links_dict(key, val):
     items = val.items()
   else: raise AssertionError('`validate_links_dict` types inconsistent with `is_valid_links`.')
   for orig, link in items:
-    if orig.find('..') != -1: raiseF("key: {}: link original contains '..': {}", key, src)
-    if link.find('..') != -1: raiseF("key: {}: link location contains '..': {}", key, dst)
+    if orig.find('..') != -1: raise Exception(f"key: {key}: link original contains '..': {src}")
+    if link.find('..') != -1: raise Exception(f"key: {key}: link location contains '..': {dst}")
 
 
 case_key_validators = { # key => msg, validator_predicate, validator_fn.
@@ -613,7 +612,7 @@ class FileExpectation:
 
   def __init__(self, path, info, expand_str_fn):
     if path.find('..') != -1:
-      raiseF("file expectation {}: cannot contain '..'", path)
+      raise Exception(f"file expectation {path}: cannot contain '..'")
     self.path = path
     self.mode = info.get('mode', 'equal')
     validate_exp_mode(path, self.mode)
@@ -623,7 +622,7 @@ class FileExpectation:
       val = info.get('val', '')
     else:
       if 'val' in info:
-        raiseF('file expectation {}: cannot specify both `path` and `val` properties', path)
+        raise Exception(f'file expectation {path}: cannot specify both `path` and `val` properties')
       exp_path_expanded = expand_str_fn(exp_path)
       val = read_from_path(exp_path_expanded)
     self.val = expand_str_fn(val)
@@ -688,7 +687,7 @@ def run_case(ctx, case):
   # set up directory.
   if path_exists(case.test_dir):
     if not is_dir(case.test_dir): # could be a symlink; do not want to remove contents of link destination.
-      raiseF('test directory already exists as a non-directory: {}', case.test_dir)
+      raise Exception(f'test directory already exists as a non-directory: {case.test_dir}')
     if case.is_isolated:
       remove_dir_contents(case.test_dir)
     else: # remove just the known outputs.
@@ -702,9 +701,9 @@ def run_case(ctx, case):
     orig_path = path_join(ctx.proj_dir, orig)
     link_path = path_join(case.test_dir, link)
     if path_dir(link):
-      raiseF('symlink is a path: {}', link) # TODO: make parent dirs for link_path?
+      raise Exception(f'symlink is a path: {link}') # TODO: make parent dirs for link_path?
     if is_node_not_link(link_path): # do not allow symlinks to overwrite previous contents in test dir.
-      raiseF('non-symlink already exists at desired symlink path: {}', link_path)
+      raise Exception(f'non-symlink already exists at desired symlink path: {link_path}')
     os.symlink(orig_path, link_path)
 
   compile_time = 0
