@@ -4,13 +4,14 @@ import shlex as _shlex
 
 from subprocess import DEVNULL, PIPE as _pipe, Popen as _Popen
 from sys import stderr, stdout
-from typing import cast, Any, BinaryIO, Dict, List, Optional, Tuple, Union
+from typing import cast, Any, BinaryIO, Dict, IO, List, Optional, Sequence, Tuple, Union
 from .alarm import AlarmManager, Timeout
 
 
 Env = Dict[str, str]
 Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; could also be raw file descriptor?
 Output = Optional[str] # TODO: support binary output.
+File = Union[int, IO]
 
 
 class NonzeroCodeExpectation:
@@ -39,7 +40,8 @@ def _decode(s: Optional[bytes]) -> Output:
   return s if s is None else s.decode('utf-8')
 
 
-def launch(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None) -> Tuple[_Popen, Optional[bytes]]:
+def launch(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, files: Sequence[File]=()) \
+ -> Tuple[_Popen, Optional[bytes]]:
   '''
   Launch a subprocess, returning the subprocess.Popen object and the optional input bytes.
 
@@ -63,6 +65,8 @@ def launch(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out:
     f_in = stdin # presume None, _pipe, file, or DEVNULL.
     input_bytes = None
 
+  fds = [f if isinstance(f, int) else f.fileno for f in files]
+
   # flushing std file descriptors guarantees consistent behavior between console and iotest;
   # otherwise we see that parent output appears after child output when run under iotest only.
   stderr.flush()
@@ -75,7 +79,8 @@ def launch(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out:
     stdout=out,
     stderr=err,
     shell=False,
-    env=env
+    env=env,
+    pass_fds=fds,
   )
   return proc, input_bytes
 
@@ -96,11 +101,11 @@ def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[
 
 
 def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
- timeout: int=0, exp: TaskCodeExpectation=0) -> Tuple[int, Output, Output]:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Tuple[int, Output, Output]:
   '''
   Run a command and return (exit_code, std_out, std_err).
   '''
-  proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err)
+  proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files)
   code, out_bytes, err_bytes = communicate(proc, input_bytes, timeout)
 
   if exp is None:
@@ -117,55 +122,55 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
 
 
 def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, env: Env=None,
- timeout: int=0) -> int:
+ timeout: int=0, files: Sequence[File]=()) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not _pipe
   assert err is not _pipe
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, files=files, exp=None)
   assert o is None
   assert e is None
   return c
 
 
 def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
- timeout: int=0) -> Tuple[int, Output]:
+ timeout: int=0, files: Sequence[File]=()) -> Tuple[int, Output]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not _pipe
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, files=files, exp=None)
   assert e is None
   return c, o
 
 
 def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
- timeout: int=0) -> Tuple[int, Output]:
+ timeout: int=0, files: Sequence[File]=()) -> Tuple[int, Output]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not _pipe
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, files=files, exp=None)
   assert o is None
   return c, e
 
 
 def runOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None,
- timeout: int=0, exp: TaskCodeExpectation=0) -> Tuple[Output, Output]:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Tuple[Output, Output]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, exp=exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, files=files, exp=exp)
   return o, e
 
 
 def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
- timeout: int=0, exp: TaskCodeExpectation=0) -> Output:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Output:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not _pipe
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, exp=exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=err, timeout=timeout, files=files, exp=exp)
   assert e is None
   return o
 
 
 def runE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
- timeout: int=0, exp: TaskCodeExpectation=0) -> Output:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Output:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not _pipe
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, exp=exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=_pipe, timeout=timeout, files=files, exp=exp)
   assert o is None
   return e
 
