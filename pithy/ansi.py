@@ -53,8 +53,8 @@ import re as _re
 from sys import stderr, stdout
 from typing import Any
 
-is_err_tty = stderr.isatty
-is_out_tty = stdout.isatty
+is_err_tty = stderr.isatty()
+is_out_tty = stdout.isatty()
 
 
 # ANSI control sequence indicator.
@@ -114,9 +114,9 @@ ansi_txt_primary_indices = range(30, 38)
 ansi_txt_primaries = tuple(ansi_sgr(i) for i in ansi_txt_primary_indices)
 TXT_D, TXT_R, TXT_G, TXT_Y, TXT_B, TXT_M, TXT_C, TXT_L = ansi_txt_primaries
 TXT_D_ERR, TXT_R_ERR, TXT_G_ERR, TXT_Y_ERR, TXT_B_ERR, TXT_M_ERR, TXT_C_ERR, TXT_L_ERR = (
-  (c if is_err_tty else '') for c in  ansi_txt_primaries)
+  (c if is_err_tty else '') for c in ansi_txt_primaries)
 TXT_D_OUT, TXT_R_OUT, TXT_G_OUT, TXT_Y_OUT, TXT_B_OUT, TXT_M_OUT, TXT_C_OUT, TXT_L_OUT = (
-  (c if is_out_tty else '') for c in  ansi_txt_primaries)
+  (c if is_out_tty else '') for c in ansi_txt_primaries)
 
 
 # color background: dark gray, red, green, yellow, blue, magenta, cyan, light gray.
