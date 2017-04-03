@@ -75,6 +75,17 @@ def path_ext(path: str) -> str:
   'The file extension of the path.'
   return split_stem_ext(path)[1]
 
+def path_exts(path: str) -> Tuple[str, ...]:
+  exts = []
+  while True:
+    path, ext = split_stem_ext(path)
+    if not ext: break
+    exts.append(ext)
+  return tuple(exts)
+
+def path_compound_ext(path: str) -> str:
+  return ''.join(path_exts(path))
+
 def path_name_stem(path: str) -> str:
   'The file name without extension; the name stem will not span directories.'
   return path_stem(path_name(path))
