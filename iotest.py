@@ -74,7 +74,7 @@ def main():
     coverage_cases=[],
   )
 
-  cases = []
+  cases_dict = {}
 
   for raw_path in ctx.top_paths:
     path = normalize_path(raw_path)
@@ -90,9 +90,9 @@ def main():
         exit('iotest error: argument path directory does not exist: {dir_path!r}.')
       specified_name_prefix = path_name_stem(path)
     proto = collect_proto(ctx, dir_path)
-    collect_cases(ctx, cases, proto, dir_path, specified_name_prefix)
+    collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix)
 
-  cases.sort()
+  cases = sorted(cases_dict.values())
 
   broken_count = 0
   skipped_count = 0
@@ -150,7 +150,7 @@ def collect_proto(ctx, end_dir_path):
   return proto
 
 
-def collect_cases(ctx, cases, proto, dir_path, specified_name_prefix):
+def collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix):
   'find all test cases within the specified directory.'
   collect_dirs = (specified_name_prefix is None)
   sub_dirs = []
@@ -172,10 +172,10 @@ def collect_cases(ctx, cases, proto, dir_path, specified_name_prefix):
         trivial = [path]
       if stem == '_default' or stem.startswith(specified_name_prefix):
         file_paths.append(path)
-  default = create_cases(ctx, cases, proto, dir_path, file_paths)
+  default = create_cases(ctx, cases_dict, proto, dir_path, file_paths)
   if collect_dirs:
     for sub_dir in sub_dirs:
-      collect_cases(ctx, cases, default, sub_dir, None)
+      collect_cases(ctx, cases_dict, default, sub_dir, None)
   elif file_paths == trivial:
     p = dir_path + specified_name_prefix
     exit(f'iotest error: argument path does not match any files: {p!r}.')
@@ -189,7 +189,7 @@ def create_proto_case(ctx, proto, stem, file_paths):
   return default
 
 
-def create_cases(ctx, cases, parent_proto, dir_path, file_paths):
+def create_cases(ctx, cases_dict, parent_proto, dir_path, file_paths):
   # wild paths are those whose name contain a '{', which are interpreted as python format strings.
   regular_paths, wild_paths = fan_by_pred(file_paths, pred=lambda p: '{' in p)
   wild_paths_to_re = dict(filter(None, map(compile_wild_path_re, wild_paths)))
@@ -200,10 +200,13 @@ def create_cases(ctx, cases, parent_proto, dir_path, file_paths):
   proto = create_proto_case(ctx, parent_proto, default_stem, groups.get(default_stem))
   # cases.
   for (stem, paths) in sorted(p for p in groups.items() if p[0] is not None):
+    if stem in cases_dict:
+      errL(f'iotest note: repeated case stem: {stem}')
+      continue
     if stem == default_stem or not is_case_implied(paths): continue
     case = Case(ctx, proto, stem, paths, wild_paths_to_re, wild_paths_used)
     if case.broken: ctx.fail_fast()
-    cases.append(case)
+    cases_dict[stem] = case
   # check that all wild paths are used by some case.
   for path in wild_paths:
     if path_ext(path) in implied_case_exts and path not in wild_paths_used:
