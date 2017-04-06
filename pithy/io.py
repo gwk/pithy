@@ -150,7 +150,7 @@ def errP(*items: Any, label=None, **opts) -> None:
   writeP(stderr, *items, label=label, **opts)
 
 
-def err_progress(iterable: Iterable[T], label='progress', suffix='', frequency=0.1) -> Iterator[T]:
+def err_progress(iterable: Iterable[T], label='progress', final='', suffix='', frequency=0.1) -> Iterator[T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.
@@ -162,9 +162,9 @@ def err_progress(iterable: Iterable[T], label='progress', suffix='', frequency=0
 
   if label is None:
     label = str(iterable)
-  pre = '◊ ' + label + ': '
+  pre = f'◊ {label}: '
   post = (suffix and ' ' + suffix) + '…\r'
-  final = ' ' + suffix + '.' if suffix else '.'
+  final_str = f' {final}.' if final else '.'
 
   if isinstance(frequency, float):
     from time import time
@@ -172,9 +172,10 @@ def err_progress(iterable: Iterable[T], label='progress', suffix='', frequency=0
       prev_t = time()
       step = 1
       next_i = step
+      i = -1
       for i, el in enumerate(iterable):
         if i == next_i:
-          print(pre + str(i) + post, end='', file=stderr, flush=True)
+          print(f'{pre}{i}{post}', end='', file=stderr, flush=True)
           print(ERASE_LINE, end='', file=stderr, flush=False)
           t = time()
           d = t - prev_t
@@ -182,7 +183,7 @@ def err_progress(iterable: Iterable[T], label='progress', suffix='', frequency=0
           prev_t = t
           next_i = i + step
         yield el
-      print(pre + str(i) + final, file=stderr)
+      print(f'{pre}{i+1}{final_str}', file=stderr)
 
 
   else:
