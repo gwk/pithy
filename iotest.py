@@ -295,23 +295,22 @@ class Case:
       return sorted(paths, key=lambda p: '' if p.endswith('.iot') else p)
 
     try:
-      # copy any defaults; if the key already exists, it will be a conflict error.
       if proto is not None:
         for key in case_key_validators:
           val = proto.__dict__[key]
           if val is None: continue
-          self.add_val_for_key(key, val)
+          self.add_val_for_key(ctx, key, val)
 
       # read in all file info specific to this case.
       for path in sorted_iot_first(file_paths):
-        self.add_file(path)
+        self.add_file(ctx, path)
       for wild_path in sorted_iot_first(wild_paths_to_re):
         ext = path_ext(wild_path)
         if ext in self.test_info_exts: continue
         wild_re = wild_paths_to_re[wild_path]
         m = wild_re.fullmatch(stem)
         if m:
-          self.add_file(wild_path)
+          self.add_file(ctx, wild_path)
           self.test_wild_args[wild_path] = m.groups()
           wild_paths_used.add(wild_path)
       # do all additional computations now, so as to fail as quickly as possible.
@@ -327,6 +326,8 @@ class Case:
         outL()
       ctx.fail_fast(e)
       self.broken = True
+
+  def __repr__(self): return f'Case(stem={self.stem!r}, ...)'
 
   def __lt__(self, other): return self.stem < other.stem
 
@@ -359,12 +360,12 @@ class Case:
     writeLSSL(file, 'Case:', *('{}: {}'.format(k, stable_repr(v)) for k, v in items))
 
 
-  def add_file(self, path):
+  def add_file(self, ctx, path):
     ext = path_ext(path)
-    if ext == '.iot':   self.add_iot_file(path)
-    elif ext == '.in':  self.add_std_file(path, 'in_')
-    elif ext == '.out': self.add_std_file(path, 'out')
-    elif ext == '.err': self.add_std_file(path, 'err')
+    if ext == '.iot':   self.add_iot_file(ctx, path)
+    elif ext == '.in':  self.add_std_file(ctx, path, 'in_')
+    elif ext == '.out': self.add_std_file(ctx, path, 'out')
+    elif ext == '.err': self.add_std_file(ctx, path, 'err')
     else:
       self.dflt_src_paths.append(path)
       return # other extensions are not part of info collections.
@@ -372,12 +373,12 @@ class Case:
     self.test_info_exts.add(ext)
 
 
-  def add_std_file(self, path, key):
+  def add_std_file(self, ctx, path, key):
     text = read_from_path(path)
-    self.add_val_for_key(key + '_val', text)
+    self.add_val_for_key(ctx, key + '_val', text)
 
 
-  def add_iot_file(self, path):
+  def add_iot_file(self, ctx, path):
     text = read_from_path(path)
     if not text or text.isspace():
       return
@@ -390,17 +391,18 @@ class Case:
       raise IotParseError(msg) from e
     req_type(info, dict)
     for kv in info.items():
-      self.add_iot_val_for_key(*kv)
+      self.add_iot_val_for_key(ctx, *kv)
 
 
-  def add_val_for_key(self, key, val):
-    existing = self.__dict__[key]
-    if existing is not None:
-      raise Exception(f'conflicting values for key: {key!r};\n  existing: {existing!r};\n  incoming: {val!r}')
+  def add_val_for_key(self, ctx, key, val):
+    if ctx.dbg:
+      existing = self.__dict__[key]
+      if existing is not None:
+        errL(f'note: {self.stem}: overriding value for key: {key!r};\n  existing: {existing!r};\n  incoming: {val!r}')
     self.__dict__[key] = val
 
 
-  def add_iot_val_for_key(self, iot_key, val):
+  def add_iot_val_for_key(self, ctx, iot_key, val):
     key = ('in_' if iot_key == 'in' else iot_key.replace('-', '_'))
     try:
       exp_desc, predicate, validator_fn = case_key_validators[key]
@@ -410,7 +412,7 @@ class Case:
       raise Exception(f'key: {iot_key!r}: expected value of type: {exp_desc}; received: {val!r}')
     if validator_fn:
       validator_fn(key, val)
-    self.add_val_for_key(key, val)
+    self.add_val_for_key(ctx, key, val)
 
 
   def derive_info(self, ctx):
