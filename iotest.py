@@ -74,7 +74,7 @@ def main():
     coverage_cases=[],
   )
 
-  cases_dict = {}
+  cases_dict = {} # keyed by actual path stem, as opposed to logical contraction of 'd/_' to 'd'.
 
   for raw_path in ctx.top_paths:
     path = normalize_path(raw_path)
@@ -93,6 +93,12 @@ def main():
     collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix)
 
   cases = sorted(cases_dict.values())
+  # check that there are no overlapping logical stems.
+  logical_stems = set()
+  for case in cases:
+    if case.stem in logical_stems:
+      exit(f'iotest error: repeated logical stem: {case.stem}')
+    logical_stems.add(case.stem)
 
   broken_count = 0
   skipped_count = 0
@@ -250,8 +256,8 @@ class Case:
   'Case represents a single test case, or a default.'
 
   def __init__(self, ctx, proto, stem, file_paths, wild_paths_to_re, wild_paths_used):
-    self.stem = stem # path stem to this test case.
-    self.name = path_name(stem)
+    self.stem = path_dir(stem) if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
+    self.name = path_name(self.stem)
     # derived properties.
     self.test_info_exts = set()
     self.test_info_paths = [] # the files that comprise the test case.
@@ -259,7 +265,6 @@ class Case:
     self.broken = proto.broken if (proto is not None) else False
     self.coverage_targets = None
     self.test_dir = None
-    self.test_dir_suffix = None
     self.test_cmd = None
     self.test_env = None
     self.test_in = None
@@ -274,7 +279,6 @@ class Case:
     self.compile = None # the optional list of compile commands, each a string or list of strings.
     self.compile_timeout = None
     self.desc = None # description.
-    self.dir = None # optional directory that allows multiple tests to be run over same directory contents.
     self.env = None # environment variables.
     self.err_mode = None # comparison mode for stderr expectation.
     self.err_path = None # file path for stderr expectation.
@@ -283,6 +287,7 @@ class Case:
     self.in_ = None # stdin as text.
     self.interpreter = None # interpreter to prepend to cmd.
     self.interpreter_args = None # interpreter args.
+    self.lead = None # specifies a 'lead' test; allows multiple tests to be run over same directory contents.
     self.links = None # symlinks to be made into the test directory; written as a str, set or dict.
     self.out_mode = None # comparison mode for stdout expectation.
     self.out_path = None # file path for stdout expectation.
@@ -332,10 +337,7 @@ class Case:
   def __lt__(self, other): return self.stem < other.stem
 
   @property
-  def is_isolated(self): return self.dir is None
-
-  def std_name(self, std):
-    return std if self.is_isolated else '{}.{}'.format(self.test_dir_suffix, std)
+  def is_lead(self): return self.lead is None or self.lead == self.stem
 
   @property
   def coverage_path(self):
@@ -349,6 +351,8 @@ class Case:
       coven_cmd += ['-targets'] + self.coverage_targets
     coven_cmd.append('--')
     return coven_cmd
+
+  def std_name(self, std: str) -> str: return f'{self.name}.{std}'
 
   def describe(self, file):
     def stable_repr(val):
@@ -417,15 +421,15 @@ class Case:
 
   def derive_info(self, ctx):
     if self.name == '_default': return # do not process prototype cases.
-
-    if self.dir and not self.stem.startswith(self.dir):
-      raise Exception(f"test directory specified in 'dir' is not a case stem prefix: {self.dir!r}")
-    self.test_dir = path_join(ctx.build_dir, self.dir or self.stem)
-    if self.dir:
-      self.test_dir_suffix = self.stem[len(self.dir):].strip('/')
-    else:
-      self.test_dir_suffix = None
-
+    if self.lead is None: # simple, isolated test.
+      rel_dir = self.stem
+    elif self.lead == self.stem: # this test is the leader.
+      rel_dir = path_dir(self.stem)
+    else: # this test is a follower.
+      rel_dir = path_dir(self.stem)
+      if path_dir(self.lead) != rel_dir:
+        raise Exception(f'test specifies lead test in different directory: {rel_dir} != {path_dir(self.lead)}')
+    self.test_dir = path_join(ctx.build_dir, rel_dir)
     self.test_env = {}
     env = self.test_env # local alias for convenience.
     env['BUILD'] = ctx.build_dir
@@ -504,8 +508,8 @@ class Case:
 
     self.test_cmd = cmd
 
-    if not self.is_isolated and self.links:
-      raise Exception("non-isolated tests ('dir' specified) cannot also specify 'links'")
+    if not self.is_lead and self.links:
+      raise Exception("non-lead tests ('lead' specified and not equal to stem) cannot also specify 'links'")
     elif is_str(self.links):
       link = expand_str(self.links)
       self.test_links += [(link, path_name(link))]
@@ -548,9 +552,9 @@ def is_compile_cmd(val):
 def is_valid_links(val):
   return is_str(val) or is_set_of_str(val) or is_dict_of_str(val)
 
-def validate_dir(key, dir):
-  if not dir: raise Exception(f'key: {key}: custom directory is empty: {dir!r}')
-  if '.' in dir: raise Exception(f"key: {key}: custom directory cannot contain '.': {dir!r}")
+def validate_path(key, path):
+  if not path: raise Exception(f'key: {key}: path is empty: {path!r}')
+  if '.' in path: raise Exception(f"key: {key}: path cannot contain '.': {path!r}")
 
 def validate_exp_mode(key, mode):
   if mode not in file_expectation_fns:
@@ -592,7 +596,6 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'compile':  ('list of (str | list of str)', is_compile_cmd,   None),
   'compile_timeout': ('positive int',       is_pos_int,         None),
   'coverage': ('string or list of strings', is_str_or_list,     None),
-  'dir':      ('str',                       is_str,             validate_dir),
   'desc':     ('str',                       is_str,             None),
   'env':      ('dict of strings',           is_dict_of_str,     None),
   'err_mode': ('str',                       is_str,             validate_exp_mode),
@@ -602,6 +605,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'in_':      ('str',                       is_str,             None),
   'interpreter': ('string or list of strings', is_str_or_list,  None),
   'interpreter_args': ('string or list of strings', is_str_or_list,  None),
+  'lead':     ('str',                       is_str,             None),
   'links':    ('string or (dict | set) of strings', is_valid_links, validate_links_dict),
   'out_mode': ('str',                       is_str,             validate_exp_mode),
   'out_path': ('str',                       is_str,             None),
@@ -691,12 +695,12 @@ def run_case(ctx, case):
   if path_exists(case.test_dir):
     if not is_dir(case.test_dir): # could be a symlink; do not want to remove contents of link destination.
       raise Exception(f'test directory already exists as a non-directory: {case.test_dir}')
-    if case.is_isolated:
+    if case.is_lead:
       remove_dir_contents(case.test_dir)
-    else: # remove just the known outputs.
+    else:
+      # remove just the known outputs; test is assumed to depend on state from previous tests.
       for std_path in [path_join(case.test_dir, case.std_name(n)) for n in ('err', 'out')]:
         remove_file_if_exists(std_path)
-      # otherwise this test is assumed to depend on state from previous tests.
   else:
     make_dirs(case.test_dir)
 

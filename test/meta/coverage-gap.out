@@ -3,7 +3,7 @@ test-meta/coverage-gap
 ################################################################
 TESTS FOUND: 1; SKIPPED: 0; PASSED: 1.
 
-# coven -coalesce _build/test-meta/coverage-gap/_.coven
+# coven -coalesce _build/test-meta/coverage-gap/coverage-gap._.coven
 ----------------
 Coverage Report:
 

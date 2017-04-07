@@ -2,9 +2,9 @@ test-meta/compile-fail
 compile process was expected to return code: 0; actual code: 1.
 
 compile step 0 failed: `test-meta/compile-fail.py`
-[30mcat ../../../test-meta/compile-fail/compile-out-00[0m
+[30mcat ../../../test-meta/compile-fail/compile-fail.compile-out-00[0m
 [31mcompile-fail: std out.[0m
-[30mcat ../../../test-meta/compile-fail/compile-err-00[0m
+[30mcat ../../../test-meta/compile-fail/compile-fail.compile-err-00[0m
 [31mcompile-fail: error.[0m
 ================================================================
 
