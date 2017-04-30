@@ -4,6 +4,7 @@ import os as _os
 import os.path as _path
 import shutil as _shutil
 import stat as _stat
+import time as _time
 
 from itertools import zip_longest as _zip_longest
 from typing import AbstractSet, Any, IO, Iterable, Iterator, List, Optional, TextIO, Tuple
@@ -264,6 +265,15 @@ def is_python3_file(path: str, always_read=False) -> bool:
       head = f.read(len(expected))
       return bool(head == expected)
   except (FileNotFoundError, IsADirectoryError): return False
+
+
+def set_file_time_mod(path: str, mtime: Optional[float]) -> None:
+  '''
+  Update the access and modification times of the file at `path`.
+  The access time is always updated to the current time;
+  `mtime` defaults to the current time.
+  '''
+  _os.utime(path, None if mtime is None else (_time.time(), mtime))
 
 
 def add_file_execute_permissions(path: str) -> None:
