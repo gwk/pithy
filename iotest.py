@@ -860,7 +860,7 @@ def check_file_exp(ctx, test_dir, exp):
     path_expected = path + '.expected'
     write_to_path(path_expected, exp.val)
     cmd = diff_cmd + [rel_path(path_expected), rel_path(path)]
-    outSL(*cmd)
+    outL(TXT_D, ' '.join(cmd), RST)
     run(cmd, exp=None)
   elif exp.mode == 'match':
     act_lines = act_val.splitlines(True)
