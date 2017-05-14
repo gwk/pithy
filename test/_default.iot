@@ -1,4 +1,5 @@
 {
+  'env': {'PYTHONPATH': '$PROJ'},
   'coverage': [
     '__main__',
     'pithy.buffer',
