@@ -15,13 +15,23 @@ JsonDictIn = Dict[str, Any]
 
 Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 
-JsonDefaulter = Callable[[Any], Json]
+JsonDefaulter = Callable[[Any], Any]
 
 
-def json_encode_default(obj: Any) -> Json:
+def json_encode_default(obj: Any) -> Any:
   try: return list(obj) # try to convert sequences first.
   except TypeError: pass
   return str(obj) # convert to string as last resort.
+
+
+def json_encode_with_asdict(obj: Any) -> Any:
+  '''
+  JsonEncoder default function that first tries to invoke the `_asdict` method on `obj`.
+  This is supported by namedtuple, NamedTuple, and pithy.immutbale.Immutable.
+  '''
+  try: return obj._asdict()
+  except AttributeError: pass
+  return json_encode_default(obj)
 
 
 def write_json(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:

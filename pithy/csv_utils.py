@@ -17,7 +17,7 @@ def load_csv(file: TextIO,
  quoting:Optional[int]=None,
  skipinitialspace:Optional[bool]=None,
  strict:Optional[bool]=None,
- header:Union[None, bool, Tuple[str, ...]]=None) -> Iterator[Sequence[str]]:
+ header:Union[None, bool, Sequence[str]]=None) -> Iterator[Sequence[str]]:
   opts = { k : v for (k, v) in [
     ('dialect', dialect),
     ('delimiter', delimiter),
@@ -29,14 +29,12 @@ def load_csv(file: TextIO,
     ('strict', strict),
     ] if v is not None }
   reader = cast(Iterator[Sequence], csv.reader(file, dialect, **opts)) # type: ignore
-  if isinstance(header, bool):
+  if header is None or isinstance(header, bool):
     if header: next(reader) # simply discard.
-  elif isinstance(header, (tuple, list)): # match expected against actual.
+  else: # match expected against actual.
     row = next(reader)
     if row != list(header):
       raise ValueError(f'load_csv expected header:\n{header}\nreceived:\n{row}')
-  else:
-    assert header is None
   return reader
 
 

@@ -21,3 +21,6 @@ class Immutable(object):
 
   def __repr__(self):
     return 'Immutable({})'.format(', '.join('{}={!r}'.format(k, v) for k, v in sorted(self.__dict__.items())))
+
+  def _asdict(self):
+    return dict(self.__dict__)
