@@ -235,3 +235,7 @@ def clip_newlines(iterable: Iterable[str]) -> Iterable[str]:
   for line in iterable:
     yield line.rstrip('\n')
 
+
+def assert_eq(a: Any, b: Any):
+  if a != b:
+    raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
