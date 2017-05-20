@@ -4,7 +4,9 @@
 class Immutable(object):
   'Base class for immutable objects with write-once attribute behavior.'
 
-  def __init__(self, **kw):
+  def __init__(self, *pairs, **kw):
+    for k, v in pairs:
+      setattr(self, k, v)
     for k, v in kw.items():
       setattr(self, k, v)
 
