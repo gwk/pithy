@@ -25,3 +25,14 @@ def memoize(sentinal=Ellipsis):
     return MemoDictRec()
 
   return _memoize
+
+
+class lazy_property(object):
+
+  def __init__(self, acc_fn):
+    self.acc_fn = acc_fn
+
+  def __get__(self, obj, cls):
+    val = self.acc_fn(obj)
+    setattr(obj, self.acc_fn.__name__, val)
+    return val
