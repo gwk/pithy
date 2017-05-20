@@ -24,7 +24,7 @@ def first_el(iterable: Iterable[T]) -> T:
   raise ValueError('empty iterable')
 
 
-def iter_from(iterable: Iterable[T], start) -> Iterator[T]:
+def iter_from(iterable: Iterable[T], start: int) -> Iterator[T]:
   'Return an iterator over `iterable` that skips elements up to `start` index.'
   it = iter(iterable)
   c = start
