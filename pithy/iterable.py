@@ -5,7 +5,7 @@ from collections import defaultdict
 from enum import Enum
 from itertools import tee
 from operator import le
-from typing import Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Sequence, Tuple, TypeVar, Union
 
 T = TypeVar('T')
 K = TypeVar('K', bound=Hashable)
@@ -33,6 +33,13 @@ def iter_from(iterable: Iterable[T], start: int) -> Iterator[T]:
     except StopIteration: break
     c -= 1
   return it
+
+
+def count_by_pred(iterable: Iterable[T], pred: Callable[[T], Any]) -> int:
+  count = 0
+  for el in iterable:
+    if pred(el): count += 1
+  return count
 
 
 def closed_int_intervals(iterable: Iterable[int]) -> Iterable[Tuple[int, int]]:
