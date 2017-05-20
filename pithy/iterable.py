@@ -35,6 +35,17 @@ def iter_from(iterable: Iterable[T], start: int) -> Iterator[T]:
   return it
 
 
+def min_max(iterable: Iterable[T]) -> Tuple[T, T]:
+  it = iter(iterable)
+  first = next(it)
+  l = first
+  h = first
+  for el in it:
+    if el < l: l = el
+    if el > h: h = el
+  return (l, h)
+
+
 def count_by_pred(iterable: Iterable[T], pred: Callable[[T], Any]) -> int:
   count = 0
   for el in iterable:
