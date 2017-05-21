@@ -51,7 +51,7 @@ class ArchiveMember:
   def __lt__(self, other: Any) -> bool:
     if isinstance(other, ArchiveMember):
       return self.name < other.name
-    raise TypeError(self, other)
+    raise TypeError(f"'<' not supported between {self!r} and {other!}")
 
 
 class ArchiveFile(ArchiveMember):
