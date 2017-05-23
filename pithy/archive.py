@@ -114,6 +114,6 @@ _ext_handlers = {
   '.bz2' : _TarHandler,
   '.gz'  : _TarHandler,
   '.tar' : _TarHandler,
-  '.xz', : _TarHandler,
+  '.xz'  : _TarHandler,
   '.zip' : _ZipHandler,
 }
