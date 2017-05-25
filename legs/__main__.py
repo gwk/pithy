@@ -53,11 +53,10 @@ def main():
 
   if (args.rules_path is None) and args.patterns:
     path = '<patterns>'
-    lines = args.patterns
     src = '\n'.join(args.patterns)
   elif (args.rules_path is not None) and not args.patterns:
     path = args.rules_path
-    try: lines = src = open(path).read()
+    try: src = open(path).read()
     except FileNotFoundError:
       exit(f'legs error: no such rule file: {path!r}')
   else:
