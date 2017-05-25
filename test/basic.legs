@@ -1,3 +1,5 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
 space: \s
 a
 b_c_opt_d: bc?d

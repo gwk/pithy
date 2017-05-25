@@ -79,7 +79,12 @@ def parse_legs(path, src):
   rules = {} # keyed by name.
   simple_names = {}
   mode_transitions = {}
-  buffer = Buffer(lexer.lex(src, drop={'space', 'comment'}))
+  tokens = list(lexer.lex(src, drop={'space'}))
+  if tokens and tokens[0].lastgroup == 'comment':
+    license = tokens[0].group().strip('# ')
+  else:
+    license = 'NO LICENSE SPECIFIED.'
+  buffer = Buffer([t for t in tokens if t.lastgroup != 'comment'])
   for token in buffer:
     line_info = (path, token)
     kind = token.lastgroup
@@ -106,7 +111,7 @@ def parse_legs(path, src):
       fail_parse(path, token, f'expected transition or rule.')
   mode_named_rules = fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0]))
   mode_named_rules.setdefault('main', [])
-  return (mode_named_rules, mode_transitions)
+  return (license, mode_named_rules, mode_transitions)
 
 
 

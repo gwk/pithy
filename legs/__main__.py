@@ -30,7 +30,6 @@ def main():
   parser.add_argument('-stats', action='store_true')
   parser.add_argument('-test', action='store_true')
   parser.add_argument('-type-prefix', default='')
-  parser.add_argument('-license', default='NO LICENSE SPECIFIED')
   args = parser.parse_args()
   dbg = args.dbg
 
@@ -61,7 +60,7 @@ def main():
       exit(f'legs error: no such rule file: {path!r}')
   else:
     exit('`must specify either `rules_path` or `-patterns`.')
-  mode_named_rules, mode_transitions = parse_legs(path, src)
+  license, mode_named_rules, mode_transitions = parse_legs(path, src)
 
   mode_dfa_pairs = []
   for mode, named_rules in sorted(mode_named_rules.items()):
@@ -109,7 +108,7 @@ def main():
 
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
   if ext:
-    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, ext=ext, args=args)
+    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, ext=ext, license=license, args=args)
 
 
 supported_exts = ['.swift']
@@ -180,12 +179,12 @@ def combine_dfas(mode_dfa_pairs):
   return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=literalRules), modes, node_modes)
 
 
-def output(dfa, modes, node_modes, mode_transitions, ext, args):
+def output(dfa, modes, node_modes, mode_transitions, ext, license, args):
 
   if ext not in supported_exts:
     exit(f'output path has unknown extension {ext!r}; supported extensions are: {", ".join(supported_exts)}.')
   if ext == '.swift':
-    output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, args=args)
+    output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, license=license, args=args)
   else:
     raise Exception('output type not implemented: {}'.format(ext))
 
