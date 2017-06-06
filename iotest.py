@@ -444,6 +444,7 @@ class Case:
 
     default_to_env('HOME') # otherwise git fails with "error: Could not expand include path '~/.gitcinclude'".
     default_to_env('LANG') # necessary to make std file handles unicode-aware.
+    default_to_env('NODE_PATH')
     default_to_env('PATH')
     default_to_env('PYTHONPATH')
     default_to_env('SDKROOT')
