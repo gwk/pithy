@@ -1,23 +1,21 @@
 {
-  "version": "0.1.0",
-  "command": ".vscode/run.sh",
+  "version": "2.0.0",
+  "command": ".vscode/run-args.sh",
   "echoCommand": false,
   "isShellCommand": false,
   "showOutput": "always",
+  "suppressTaskName": true,
   "tasks": [
     { "taskName": "typecheck-file",
       "args": ["mypy", "${relativeFile}"],
-      "isBuildCommand": true,
-      "suppressTaskName": true
+      "isBuildCommand": true
     },
     { "taskName": "typecheck",
-      "args": ["make", "typecheck"],
-      "suppressTaskName": true
+      "args": ["make", "typecheck"]
     },
     { "taskName": "test",
       "args": ["make", "test"],
-      "isTestCommand": true,
-      "suppressTaskName": true
+      "isTestCommand": true
     }
   ]
 }

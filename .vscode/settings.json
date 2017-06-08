@@ -1,6 +1,6 @@
 {
   "search.exclude": {
     "_build": true,
-    "_misc": true,
+    "_misc": true
   }
 }

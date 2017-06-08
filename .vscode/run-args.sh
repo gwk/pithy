@@ -1,8 +1,6 @@
 #!/bin/sh
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# Hack around vscode's lame task runner. Simply runs the argument vector.
+# Run the argument list as a command and then print a confirmation.
 
-set -e
-"$@"
-echo "done: $@"
+"$@" && echo "done: $@"
