@@ -1,6 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Tuple, Union
+from abc import ABCMeta, abstractmethod
+from typing import Any, Tuple, TypeVar, Union
+
+
+class Comparable(metaclass=ABCMeta):
+  # taken from https://www.python.org/dev/peps/pep-0484/.
+  @abstractmethod
+  def __lt__(self, other: Any) -> bool: ...
 
 
 # type predicates.

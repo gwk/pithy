@@ -6,9 +6,12 @@ from enum import Enum
 from itertools import tee
 from operator import le
 from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Sequence, Tuple, TypeVar, Union
+from .type_util import Comparable
+
 
 T = TypeVar('T')
 K = TypeVar('K', bound=Hashable)
+C = TypeVar('C', bound=Comparable)
 
 
 def is_sorted(iterable: Iterable, cmp=le) -> bool:
@@ -35,14 +38,14 @@ def iter_from(iterable: Iterable[T], start: int) -> Iterator[T]:
   return it
 
 
-def min_max(iterable: Iterable[T]) -> Tuple[T, T]:
+def min_max(iterable: Iterable[C]) -> Tuple[C, C]:
   it = iter(iterable)
   first = next(it)
   l = first
   h = first
   for el in it:
     if el < l: l = el
-    if el > h: h = el
+    if h < el: h = el
   return (l, h)
 
 
