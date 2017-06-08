@@ -1,6 +1,6 @@
 from collections import Counter
 from enum import Enum
-from typing import cast, Any, Callable, Generic, Iterable, List, TextIO, TypeVar
+from typing import Any, Callable, Generic, Iterable, List, TextIO, TypeVar
 
 from .fs import path_ext, path_join, path_stem
 from .io import errL, err_progress, writeL
@@ -61,7 +61,7 @@ class Transformer(Generic[T]):
     'create a dedicated log file and logging function for use by a particular stage.'
     index = len(self.stages)
     path = f'{self.log_stem}{index:0{self.log_index_width}}-{mode}-{name}{ext}'
-    f = cast(TextIO, open(path, 'w'))
+    f = open(path, 'w')
     self.log_files.append(f)
 
     counts = self.counts

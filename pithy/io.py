@@ -3,7 +3,7 @@
 from pprint import pprint
 from sys import argv, stdout, stderr
 from string import Template
-from typing import cast, Any, Iterable, Iterator, TextIO, TypeVar, Union
+from typing import Any, Iterable, Iterator, TextIO, TypeVar, Union
 
 
 T = TypeVar('T')
@@ -204,7 +204,7 @@ def err_progress(iterable: Iterable[T], label='progress', final='', suffix='', f
 def read_from_path(path: str, default: str=None) -> str:
   'Read all text from file at `path`.'
   try:
-    with cast(TextIO, open(path)) as f:
+    with open(path) as f:
       return f.read()
   except (FileNotFoundError, IsADirectoryError):
     if default is None: raise
@@ -213,7 +213,7 @@ def read_from_path(path: str, default: str=None) -> str:
 def read_line_from_path(path: str, line0=0, keep_end=False, default: str=None) -> str:
   'Read a single line of text from file at `path`.'
   try:
-    with cast(TextIO, open(path)) as f:
+    with open(path) as f:
       for i, line in enumerate(f):
         if i == line0:
           return line if keep_end else line.rstrip('\n')
