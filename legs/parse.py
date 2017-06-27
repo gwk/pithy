@@ -80,6 +80,7 @@ def parse_legs(path, src):
   simple_names = {}
   mode_transitions = {}
   tokens = list(lexer.lex(src, drop={'space'}))
+  # If first token (first line) is a comment, assume it is the license.
   if tokens and tokens[0].lastgroup == 'comment':
     license = tokens[0].group().strip('# ')
   else:
@@ -105,7 +106,7 @@ def parse_legs(path, src):
       rules[name] = rule
       for simple in simplified_names(name):
         if simple in simple_names:
-          fail_parse(line_info, f'rule name collides when simplified: {simple_names[simple]!r}')
+          fail_parse(line_info, f'rule name collides when simplified; previous rule: {simple_names[simple]!r}')
         simple_names[simple] = name
     else:
       fail_parse(path, token, f'expected transition or rule.')
