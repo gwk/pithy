@@ -132,7 +132,10 @@ class Charset(Rule):
     walk(prefix_tree(chr(code).encode() for code in codes_for_ranges(self.ranges)), start)
 
   @property
-  def isLiteral(self): return len(self.ranges) == 1
+  def isLiteral(self):
+    if len(self.ranges) != 1: return False
+    s, e = self.ranges[0]
+    return e - s == 1
 
   @property
   def literalPattern(self): return chr(self.ranges[0][0])
