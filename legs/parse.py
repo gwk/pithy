@@ -123,9 +123,9 @@ def consume(path, buffer, kind, subj):
 
 
 def parse_mode_transition(path, buffer):
-  l = mode_and_name(consume(path, buffer, 'sym', 'transition entry'))
-  r = mode_and_name(consume(path, buffer, 'sym', 'transition exit'))
-  consume(path, buffer, 'line', 'transition')
+  l = mode_and_name(consume(path, buffer, kind='sym', subj='transition entry'))
+  r = mode_and_name(consume(path, buffer, kind='sym', subj='transition exit'))
+  consume(path, buffer, kind='line', subj='transition')
   return (l, r)
 
 
@@ -150,7 +150,7 @@ def parse_rule(path, sym_token, buffer):
     next(buffer)
     return parse_rule_pattern(path, buffer, terminator='line')
   else:
-    consume(path, buffer, 'line', 'rule')
+    consume(path, buffer, kind='line', subj='unnamed rule')
     text = sym_token[0]
     return Seq.for_subs(Charset.for_char(c) for c in text)
 
@@ -208,7 +208,7 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
   * `-` binary operator: set difference.
   * `^` binary operator: set symmetric difference.
   Multiple intersection operators can be chained together,
-  but if a difference or set difference operator is used,
+  but if a difference or symmetric difference operator is used,
   it must be the only operator to appear within the character set;
   more complex expressions must be explicitly grouped.
   Thus, the set expression syntax has no operator precedence or associativity.
