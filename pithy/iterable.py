@@ -5,13 +5,14 @@ from collections import defaultdict
 from enum import Enum
 from itertools import tee
 from operator import le
-from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Optional, Sequence, Tuple, TypeVar, Union
 from .type_util import Comparable
 
 
 T = TypeVar('T')
 K = TypeVar('K', bound=Hashable)
 C = TypeVar('C', bound=Comparable)
+CK = TypeVar('CK', bound=Comparable)
 
 
 def is_sorted(iterable: Iterable, cmp=le) -> bool:
@@ -38,14 +39,24 @@ def iter_from(iterable: Iterable[T], start: int) -> Iterator[T]:
   return it
 
 
-def min_max(iterable: Iterable[C]) -> Tuple[C, C]:
+def identity(x: T) -> T: return x
+
+
+def extent(iterable: Iterable[C], key: Callable[[C], CK]=identity, default: Optional[C]=None) -> Tuple[C, C]:
   it = iter(iterable)
-  first = next(it)
+  first = next(it) if default is None else next(it, default)
   l = first
   h = first
+  kl = key(l)
+  kh = key(h)
   for el in it:
-    if el < l: l = el
-    if h < el: h = el
+    k = key(el)
+    if k < kl:
+      l = el
+      kl = k
+    if kh < k:
+      h = el
+      kh = k
   return (l, h)
 
 
