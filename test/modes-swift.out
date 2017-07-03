@@ -28,7 +28,7 @@ token: arg1:1:12-13: sym
   a (bc def) g
              ~
 
-arg2: "/* comment "contents" () / *. */"
+arg2: "/* comment \"contents\" () / *. */"
 token: arg2:1:1-3: `/*`
   /* comment "contents" () / *. */
   ~~
@@ -51,7 +51,7 @@ token: arg2:1:31-33: `*/`
   /* comment "contents" () / *. */
                                 ~~
 
-arg3: "'single quoted.' "double quoted.""
+arg3: "'single quoted.' \"double quoted.\""
 token: arg3:1:1-2: `'`
   'single quoted.' "double quoted."
   ~
@@ -97,7 +97,7 @@ token: arg4:1:26-28: `*/`
   /* nested /* comment. */ */
                            ~~
 
-arg5: "'sq \(a) interpolated.'"
+arg5: "'sq \\(a) interpolated.'"
 token: arg5:1:1-2: `'`
   'sq \(a) interpolated.'
   ~
@@ -120,7 +120,7 @@ token: arg5:1:23-24: `'`
   'sq \(a) interpolated.'
                         ~
 
-arg6: ""dq \(a) interpolated.""
+arg6: "\"dq \\(a) interpolated.\""
 token: arg6:1:1-2: `"`
   "dq \(a) interpolated."
   ~
@@ -143,7 +143,7 @@ token: arg6:1:23-24: `"`
   "dq \(a) interpolated."
                         ~
 
-arg7: "'sq \(nested "interpolated \(a)").'"
+arg7: "'sq \\(nested \"interpolated \\(a)\").'"
 token: arg7:1:1-2: `'`
   'sq \(nested "interpolated \(a)").'
   ~

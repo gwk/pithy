@@ -552,19 +552,17 @@ ${mode_stack_decl}
 test_template = r'''
 // test main.
 
-import Foundation
-
 func repr(_ string: String) -> String {
   var r = "\""
   for char in string.unicodeScalars {
     switch char {
+    case "\\": r.append("\\\\")
+    case "\"": r.append("\\\"")
     case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char))
     case "\0": r.append("\\0")
-    case "\\": r.append("\\\\")
     case "\t": r.append("\\t")
     case "\n": r.append("\\n")
     case "\r": r.append("\\r")
-    case "\"": r.append("\\\"")
     default: r.append("\\{\(String(char.value, radix: 16, uppercase: false))}")
     }
   }
