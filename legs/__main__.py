@@ -40,7 +40,7 @@ def main():
     exit('`-mode` option only valid with `-match`.')
 
   if args.language is not None:
-    ext = '.' + args.languageext
+    ext = '.' + args.language
     if ext not in supported_exts:
       exit(f'unknown language {args.language!r}; supported extensions are: {supported_exts}.')
   elif args.output:
