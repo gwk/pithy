@@ -87,26 +87,25 @@ def parse_legs(path, src):
     license = 'NO LICENSE SPECIFIED.'
   buffer = Buffer([t for t in tokens if t.lastgroup != 'comment'])
   for token in buffer:
-    line_info = (path, token)
     kind = token.lastgroup
     if kind == 'line':
       continue
     if kind == 'percent':
       (src_pair, dst_pair) = parse_mode_transition(path, buffer)
       if src_pair in mode_transitions:
-        fail_parse(line_info, f'duplicate transition parent name: {src_pair[1]!r}')
+        fail_parse(path, token, f'duplicate transition parent name: {src_pair[1]!r}')
       mode_transitions[src_pair] = dst_pair
     elif kind == 'sym':
       name = token[0]
       rule = parse_rule(path, token, buffer)
       if name in ('invalid', 'incomplete'):
-        fail_parse(line_info, f'rule name is reserved: {name!r}')
+        fail_parse(path, token, f'rule name is reserved: {name!r}')
       if name in rules:
-        fail_parse(line_info, f'duplicate rule name: {name!r}')
+        fail_parse(path, token, f'duplicate rule name: {name!r}')
       rules[name] = rule
       for simple in simplified_names(name):
         if simple in simple_names:
-          fail_parse(line_info, f'rule name collides when simplified; previous rule: {simple_names[simple]!r}')
+          fail_parse(path, token, f'rule name collides when simplified; previous rule: {simple_names[simple]!r}')
         simple_names[simple] = name
     else:
       fail_parse(path, token, f'expected transition or rule.')
@@ -162,7 +161,7 @@ def parse_rule_pattern(path, buffer, terminator):
   def finish(): return Seq.for_subs(els)
   for token in buffer:
     kind = token.lastgroup
-    def _fail(msg): fail_parse((path, token), msg)
+    def _fail(msg): fail_parse(path, token, msg)
     def quantity(rule_type):
       if not els: _fail('quantity operator must be preceded by a pattern')
       els[-1] = rule_type(subs=(els[-1],))
@@ -189,7 +188,7 @@ def parse_choice(path, buffer, left, terminator):
 def parse_esc(path, token):
   char = token[0][1]
   try: code = escape_codes[char]
-  except KeyError: fail_parse((path, token), f'invalid escaped character: {char!r}')
+  except KeyError: fail_parse(path, token, f'invalid escaped character: {char!r}')
   return code
 
 
@@ -198,7 +197,7 @@ def ranges_for_code(code): return ((code, code+1),)
 
 def parse_ref(path, token):
   try: return unicode_charsets[token[0][1:]]
-  except KeyError: fail_parse((path, token), 'unknown charset name.')
+  except KeyError: fail_parse(path, token, 'unknown charset name.')
 
 
 def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
@@ -218,18 +217,18 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
 
   def add_code(token, code):
     if code in codes:
-      fail_parse((path, token), f'repeated character in set: {code!r}')
+      fail_parse(path, token, f'repeated character in set: {code!r}')
     codes.add(code)
 
   def apply_op(token, is_diff_op):
     if not codes:
-      fail_parse((path, token), f'empty charset preceding operator')
+      fail_parse(path, token, f'empty charset preceding operator')
     if is_diff or (is_right and is_diff_op):
-      fail_parse((path, token), f'compound set expressions containing `-` or `^` operators must be grouped with `[...]`')
+      fail_parse(path, token, f'compound set expressions containing `-` or `^` operators must be grouped with `[...]`')
     return parse_charset(path, buffer, token, is_right=True, is_diff=is_diff_op)
 
   def finish():
-      if not codes: fail_parse((path, start_token), 'empty character set.')
+      if not codes: fail_parse(path, start_token, 'empty character set.')
       return codes
 
   for token in buffer:
@@ -256,14 +255,13 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
     elif kind in ('pat_char', 'pat_bar', 'pat_opt', 'pat_star', 'pat_plus', 'pat_paren_o', 'pat_paren_c'):
       add_code(token, ord(token[0]))
     elif kind == 'inv': _fail(f'invalid pattern token')
-    else: fail_parse((path, token), f'unexpected charset token: {desc_kind(kind)}')
-  fail_parse((path, start_token), 'unterminated charset.')
+    else: fail_parse(path, token, f'unexpected charset token: {desc_kind(kind)}')
+  fail_parse(path, start_token, 'unterminated charset.')
 
 
 
-def fail_parse(line_info, msg):
+def fail_parse(path, token, msg):
   'Print a formatted parsing failure to std err and exit.'
-  (path, token) = line_info
   exit(msg_for_match(token, prefix=path, msg=msg))
 
 
