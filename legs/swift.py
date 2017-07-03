@@ -227,10 +227,8 @@ public struct ${Name}Token: CustomStringConvertible {
 
 public class ${Name}Source: CustomStringConvertible {
 
-  enum Err: Error {
-    case TokenKind(token: ${Name}Token, msg: String)
-    case Overflow(token: ${Name}Token)
-    case Negative(token: ${Name}Token)
+  public enum Err: Error {
+    case overflow(token: ${Name}Token)
   }
 
   public let name: String
@@ -387,22 +385,25 @@ public class ${Name}Source: CustomStringConvertible {
     return "\(common):\(msgSpace)\(msg)\n  \(diagLine(line, retSym))  \(underline(col: col))\n"
   }
 
-  func stringFor(token: ${Name}Token) -> String {
+  public func stringFor(token: ${Name}Token) -> String {
     return String(bytes: data[token.range], encoding: .utf8)!
   }
 
-  func parseDigits(token: ${Name}Token, from: Int, base: UInt64) throws -> UInt64 {
+  public func parseDigits(token: ${Name}Token, from: Int, base: Int) throws -> UInt64 {
+    let baseU64 = UInt64(base)
     var val: UInt64 = 0
-    for byte in data[token.subRange(from: from)] {
-      let digit = UInt64(valueForHexDigit(byte: byte)!)
-      let v = (val &* base) &+ digit
-      if v < val { throw Err.Overflow(token: token) }
-      val = v
+    for i in token.subRange(from: from) {
+      let byte = data[i]
+      if let digit = valueForHexDigit(byte: byte) {
+        let v = (val &* baseU64) &+ UInt64(digit)
+        if v < val { throw Err.overflow(token: token) }
+        val = v
+      } // else skip digit.
     }
     return val
   }
 
-  func parseSignedDigits(token: ${Name}Token, from: Int, base: UInt64, negative: Bool) throws -> Int64 {
+  public func parseSignedDigits(token: ${Name}Token, from: Int, base: Int, negative: Bool) throws -> Int64 {
     let uns = try parseDigits(token: token, from: from, base: base)
     if negative {
       if uns <= UInt64(Int64.max) {
@@ -411,18 +412,18 @@ public class ${Name}Source: CustomStringConvertible {
         // Assuming that max + 1 == -min, we need this special case to avoid overflow during conversion.
         return Int64.min
       } else {
-        throw Err.Overflow(token: token)
+        throw Err.overflow(token: token)
       }
     } else { // positive.
       if uns <= UInt64(Int64.max) {
         return Int64(uns)
       } else {
-        throw Err.Overflow(token: token)
+        throw Err.overflow(token: token)
       }
     }
   }
 
-  func parseDouble(token: ${Name}Token, from: Int, base: Double) -> Double {
+  public func parseDouble(token: ${Name}Token, from: Int, base: Double) -> Double {
     let bytes = data[token.subRange(from: from)]
     var sign: Double = 1
     var digitsOffset = from
@@ -451,7 +452,17 @@ public class ${Name}Source: CustomStringConvertible {
     return sign * val
   }
 
-  func encodeToUtf8Fast(into array: inout [UInt8], code: UInt32) {
+  public func valueForHexDigit(byte: UInt8) -> UInt32? {
+    let code = UInt32(byte)
+    switch code {
+      case ucv("0")...ucv("9"): return code      - ucv("0")
+      case ucv("A")...ucv("F"): return code + 10 - ucv("A")
+      case ucv("a")...ucv("f"): return code + 10 - ucv("a")
+      default: return nil
+    }
+  }
+
+  public func encodeToUtf8Fast(into array: inout [UInt8], code: UInt32) {
     let end: UInt32 = 0x110000
     let surrogates = UInt32(0xD800)...UInt32(0xE000)
     //let replacementBytes = [0xef, 0xbf, 0xbd] // U+FFD.
@@ -474,21 +485,11 @@ public class ${Name}Source: CustomStringConvertible {
     }
   }
 
-  func valueForHexDigit(byte: UInt8) -> UInt32? {
-    let code = UInt32(byte)
-    switch code {
-      case ucv("0")..<ucv("9"): return code      - ucv("0")
-      case ucv("A")..<ucv("F"): return code + 10 - ucv("A")
-      case ucv("a")..<ucv("f"): return code + 10 - ucv("a")
-      default: return nil
-    }
-  }
+  @inline(__always)
+  private func ucv(_ s: UnicodeScalar) -> UInt32 { return s.value }
 
   @inline(__always)
-  func ucv(_ s: UnicodeScalar) -> UInt32 { return s.value }
-
-  @inline(__always)
-  func ucb(_ s: UnicodeScalar) -> UInt8 { return UInt8(s.value) }
+  private func ucb(_ s: UnicodeScalar) -> UInt8 { return UInt8(s.value) }
 }
 
 
@@ -552,27 +553,29 @@ ${mode_stack_decl}
 test_template = r'''
 // test main.
 
-func repr(_ string: String) -> String {
-  var r = "\""
-  for char in string.unicodeScalars {
-    switch char {
-    case "\\": r.append("\\\\")
-    case "\"": r.append("\\\"")
-    case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char))
-    case "\0": r.append("\\0")
-    case "\t": r.append("\\t")
-    case "\n": r.append("\\n")
-    case "\r": r.append("\\r")
-    default: r.append("\\{\(String(char.value, radix: 16, uppercase: false))}")
+extension String {
+  var repr: String {
+    var r = "\""
+    for char in unicodeScalars {
+      switch char {
+      case "\\": r.append("\\\\")
+      case "\"": r.append("\\\"")
+      case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char))
+      case "\0": r.append("\\0")
+      case "\t": r.append("\\t")
+      case "\n": r.append("\\n")
+      case "\r": r.append("\\r")
+      default: r.append("\\{\(String(char.value, radix: 16, uppercase: false))}")
+      }
     }
+    r.append("\"")
+    return r
   }
-  r.append("\"")
-  return r
 }
 
 func test(index: Int, arg: String) {
   let name = "arg\(index)"
-  print("\n\(name): \(repr(arg))")
+  print("\n\(name): \(arg.repr)")
   let data = Data(arg.utf8)
   let source = ${Name}Source(name: name, data: data)
   for token in source.lex() {

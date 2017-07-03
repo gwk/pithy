@@ -1,14 +1,12 @@
 {
-  'skip': True,
-  'compile': ['$PROJ/legs/__main__.py $STEM.legs -test -output $NAME.swift'],
-  'cmd': './$NAME.swift',
+  'compile': [
+    '$PROJ/legs/__main__.py test/parsing.legs -output parsing-lex.swift',
+    'swiftc parsing-lex.swift test/parsing.swift test/main.swift -o parsing',
+  ],
+  'cmd': './parsing',
   'args': [
-    'a (bc def) g',
-    '/* comment "contents" () / *. */',
-    "'single quoted.' \"double quoted.\"",
-    '/* nested /* comment. */ */',
-    "'sq \(a) interpolated.'",
-    '"dq \(a) interpolated."',
-    "'sq \(nested \"interpolated \(a)\").'",
+    '10 0b10 0q10 0o10 0d10 0x10',
+    '0x__ffff_ffff_ffff_ffff',
+    '0x1_0000_0000_0000_0000',
   ],
 }

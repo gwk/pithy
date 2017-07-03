@@ -1,0 +1,9 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+space: \s+
+num: [$Dec _]+
+bin:  0b [$Bin _]+
+quat: 0q [$Quat _]+
+oct:  0o [$Oct _]+
+dec:  0d [$Dec _]+
+hex:  0x [$Hex _]+

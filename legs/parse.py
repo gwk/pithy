@@ -237,7 +237,7 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
     if kind == 'pat_brckt_c':
       return finish()
     if kind == 'pat_brckt_o':
-      for code in parse_charset(path, buffer):
+      for code in parse_charset(path, buffer, token):
         add_code(token, code)
     elif kind == 'pat_ref':
       for code in codes_for_ranges(parse_ref(path, token)):
