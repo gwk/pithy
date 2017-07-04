@@ -232,16 +232,16 @@ public class ${Name}Source: CustomStringConvertible {
   }
 
   public let name: String
-  public let data: Data
+  public let text: [UInt8]
   public fileprivate(set) var newlinePositions: [Int] = []
 
-  public init(name: String, data: Data) {
+  public init(name: String, text: [UInt8]) {
     self.name = name
-    self.data = data
+    self.text = text
   }
 
   public var description: String {
-    return "${Name}Source(name: \(name), data: \(data))"
+    return "${Name}Source(\(name))"
   }
 
   public func lex() -> ${Name}Lexer {
@@ -263,19 +263,19 @@ public class ${Name}Source: CustomStringConvertible {
   }
 
   public func lineRange(pos: Int) -> CountableRange<Int> {
-   // returns the range in `data` for the line containing `pos`,
+   // returns the range in `text` for the line containing `pos`,
    // including the terminating newline character if it is present.
     var start = pos
     while start > 0 {
       let i = start - 1
-      if data[i] == 0x0a { break }
+      if text[i] == 0x0a { break }
       start = i
     }
     var end = pos
-    while end < data.count {
+    while end < text.count {
       let i = end
       end += 1
-      if data[i] == 0x0a { break }
+      if text[i] == 0x0a { break }
     }
     return start..<end
   }
@@ -291,7 +291,7 @@ public class ${Name}Source: CustomStringConvertible {
   }
 
   public func getLineAndColumn(range: CountableRange<Int>, pos: Int) -> (Bool, String, Int) {
-    if let line = String(bytes: data[range], encoding: .utf8) {
+    if let line = String(bytes: text[range], encoding: .utf8) {
       return (true, line, getColumn(line: line, lineStart: range.startIndex, pos: pos))
     } else {
       // TODO: this should return a best-effort representation if unicode decoding fails.
@@ -386,14 +386,14 @@ public class ${Name}Source: CustomStringConvertible {
   }
 
   public func stringFor(token: ${Name}Token) -> String {
-    return String(bytes: data[token.range], encoding: .utf8)!
+    return String(bytes: text[token.range], encoding: .utf8)!
   }
 
   public func parseDigits(token: ${Name}Token, from: Int, base: Int) throws -> UInt64 {
     let baseU64 = UInt64(base)
     var val: UInt64 = 0
     for i in token.subRange(from: from) {
-      let byte = data[i]
+      let byte = text[i]
       if let digit = valueForHexDigit(byte: byte) {
         let v = (val &* baseU64) &+ UInt64(digit)
         if v < val { throw Err.overflow(token: token) }
@@ -424,7 +424,7 @@ public class ${Name}Source: CustomStringConvertible {
   }
 
   public func parseDouble(token: ${Name}Token, from: Int, base: Double) -> Double {
-    let bytes = data[token.subRange(from: from)]
+    let bytes = text[token.subRange(from: from)]
     var sign: Double = 1
     var digitsOffset = from
     if bytes[0] == ucb("-") {
@@ -498,7 +498,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   public typealias Element = ${Name}Token
   public typealias Iterator = ${Name}Lexer
 
-  public private(set) var source: ${Name}Source
+  public let source: ${Name}Source
 
   private var isFinished = false
   private var state: UInt = 0
@@ -511,8 +511,8 @@ ${mode_stack_decl}
   }
 
   public mutating func next() -> ${Name}Token? {
-    while pos < source.data.count {
-      let byte = source.data[pos]
+    while pos < source.text.count {
+      let byte = source.text[pos]
       if byte == 0x0a {
         source.newlinePositions.append(pos)
       }
@@ -576,8 +576,8 @@ extension String {
 func test(index: Int, arg: String) {
   let name = "arg\(index)"
   print("\n\(name): \(arg.repr)")
-  let data = Data(arg.utf8)
-  let source = ${Name}Source(name: name, data: data)
+  let text = Array(arg.utf8)
+  let source = ${Name}Source(name: name, text: text)
   for token in source.lex() {
     let d = source.diagnostic(token: token, prefix: "token", msg: token.kind.description,
       showMissingFinalNewline: false)

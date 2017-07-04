@@ -14,8 +14,8 @@ func main() {
 func test(index: Int, arg: String) {
   let name = "arg\(index)"
   print("\n\(name): \(arg.repr)")
-  let data = Data(arg.utf8)
-  let source = Source(name: name, data: data)
+  let text = [UInt8](arg.utf8)
+  let source = Source(name: name, text: text)
   for token in source.lex() {
     let base: Int
     var from = 2 // "0_" prefix is the common case.
