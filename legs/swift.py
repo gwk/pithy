@@ -339,17 +339,17 @@ public class ${Name}Source: CustomStringConvertible {
   public func diagnostic(pos: Int, end: Int? = nil, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true)
    -> String {
 
-    func diagLine(_ line: String, _ returnSymbol: Bool) -> String {
+    func diagLine(_ line: String, _ showReturnSymbol: Bool) -> String {
       if line.hasSuffix("\n") {
-        if returnSymbol {
+        if showReturnSymbol {
           var s = line
           s.remove(at: s.index(before: s.endIndex))
-          return s + "\u{23CE}\n"
+          return s + "\u{23CE}\n" // RETURN SYMBOL.
         } else {
           return line
         }
       } else if showMissingFinalNewline {
-        return line + "\u{23CE}\u{0353}\n"
+        return line + "\u{23CE}\u{0353}\n" // RETURN SYMBOL, COMBINING X BELOW.
       } else {
         return line + "\n"
       }
@@ -365,8 +365,8 @@ public class ${Name}Source: CustomStringConvertible {
         if pos < end { // multiple columns.
           let endCol = getColumn(line: line, lineStart: range.startIndex, pos: end)
           let under = underline(col: col, endCol: endCol)
-          let retSym = (end == range.endIndex)
-          return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(diagLine(line, retSym))  \(under)\n"
+          let showRetSym = (end == lineEnd)
+          return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(diagLine(line, showRetSym))  \(under)\n"
         } // else: single line, single column case below.
       } else { // multiline.
         let endLineNum = lineIndex(pos: end) + 1
@@ -381,8 +381,8 @@ public class ${Name}Source: CustomStringConvertible {
       }
     }
     // single line, single column.
-    let retSym = (pos == range.endIndex - 1)
-    return "\(common):\(msgSpace)\(msg)\n  \(diagLine(line, retSym))  \(underline(col: col))\n"
+    let showRetSym = (pos == lineEnd - 1)
+    return "\(common):\(msgSpace)\(msg)\n  \(diagLine(line, showRetSym))  \(underline(col: col))\n"
   }
 
   public func stringFor(token: ${Name}Token) -> String {
@@ -524,7 +524,7 @@ ${mode_stack_decl}
     }
     // text exhausted.
     if tokenPos < pos { // one or more tokens need to be flushed.
-      return step(byte: 0x100) // pass a 'byte' value that always defaults; may backtrack.
+      return step(byte: 0x100) // pass an impossible 'byte' value that always defaults; may backtrack.
     }
     return nil
   }
