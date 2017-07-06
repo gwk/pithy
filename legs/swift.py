@@ -199,19 +199,25 @@ public enum ${Name}TokenKind: CustomStringConvertible {
 public struct ${Name}Token: CustomStringConvertible {
   public let pos: Int
   public let end: Int
+  public let linePos: Int
+  public let lineIdx: Int
   public let kind: ${Name}TokenKind
 
-  public init(pos: Int, end: Int, kind: ${Name}TokenKind) {
+  public init(pos: Int, end: Int, linePos: Int, lineIdx: Int, kind: ${Name}TokenKind) {
     assert(pos >= 0, "bad token pos: \(pos); kind: \(kind)")
     assert(pos < end, "bad token range: \(pos):\(end); kind: \(kind)")
     self.pos = pos
     self.end = end
+    self.linePos = linePos
+    self.lineIdx = lineIdx
     self.kind = kind
   }
 
   public var description: String {
     return "\(kind):\(pos)-\(end)"
   }
+
+  public var colOff: Int { return pos - linePos }
 
   public var range: CountableRange<Int> {
     return pos..<end
@@ -252,7 +258,7 @@ public class ${Name}Source: CustomStringConvertible {
     return Array(lex())
   }
 
-  public func lineIndex(pos: Int) -> Int {
+  public func getLineIndex(pos: Int) -> Int {
     // TODO: use binary search.
     for (index, newlinePos) in newlinePositions.enumerated() {
       if pos <= newlinePos { // newlines are considered to be the last character of a line.
@@ -262,27 +268,30 @@ public class ${Name}Source: CustomStringConvertible {
     return newlinePositions.count
   }
 
-  public func lineRange(pos: Int) -> CountableRange<Int> {
-   // returns the range in `text` for the line containing `pos`,
-   // including the terminating newline character if it is present.
+  public func getLineStart(pos: Int) -> Int {
     var start = pos
     while start > 0 {
       let i = start - 1
       if text[i] == 0x0a { break }
       start = i
     }
+    return start
+  }
+
+  public func getLineEnd(pos: Int) -> Int {
+   // Include the terminating newline character if it is present.
     var end = pos
     while end < text.count {
       let i = end
       end += 1
       if text[i] == 0x0a { break }
     }
-    return start..<end
+    return end
   }
 
-  public func getColumn(line: String, lineStart: Int, pos: Int) -> Int {
+  public func getVisColumn(line: String, colOff: Int) -> Int {
     let utf8 = line.utf8
-    let utf8Index = utf8.index(utf8.startIndex, offsetBy: pos - lineStart)
+    let utf8Index = utf8.index(utf8.startIndex, offsetBy: colOff)
     if let charIndex = String.Index(utf8Index, within: line) {
         return line.distance(from: line.startIndex, to: charIndex)
     } else {
@@ -290,9 +299,9 @@ public class ${Name}Source: CustomStringConvertible {
     }
   }
 
-  public func getLineAndColumn(range: CountableRange<Int>, pos: Int) -> (Bool, String, Int) {
-    if let line = String(bytes: text[range], encoding: .utf8) {
-      return (true, line, getColumn(line: line, lineStart: range.startIndex, pos: pos))
+  public func getLineAndVisColumn(lineRange: CountableRange<Int>, pos: Int) -> (Bool, String, Int) {
+    if let line = String(bytes: text[lineRange], encoding: .utf8) {
+      return (true, line, getVisColumn(line: line, colOff: pos - lineRange.startIndex))
     } else {
       // TODO: this should return a best-effort representation if unicode decoding fails.
       return (false, "?", -1)
@@ -333,11 +342,12 @@ public class ${Name}Source: CustomStringConvertible {
 
   public func diagnostic(token: ${Name}Token, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true)
    -> String {
-    return diagnostic(pos: token.pos, end: token.end, prefix: prefix, msg: msg, showMissingFinalNewline: showMissingFinalNewline)
+    return diagnostic(pos: token.pos, end: token.end, linePos: token.linePos, lineIdx: token.lineIdx,
+      prefix: prefix, msg: msg, showMissingFinalNewline: showMissingFinalNewline)
   }
 
-  public func diagnostic(pos: Int, end: Int? = nil, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true)
-   -> String {
+  public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, prefix: String, msg: String = "",
+   showMissingFinalNewline: Bool = true) -> String {
 
     func diagLine(_ line: String, _ showReturnSymbol: Bool) -> String {
       if line.hasSuffix("\n") {
@@ -356,22 +366,19 @@ public class ${Name}Source: CustomStringConvertible {
     }
 
     let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
-    let lineNum = lineIndex(pos: pos) + 1
-    let range = lineRange(pos: pos)
-    let (_, line, col) = getLineAndColumn(range: range, pos: pos)
-    let common = "\(prefix): \(name):\(lineNum):\(colString(col))"
+    let lineEnd = getLineEnd(pos: pos)
+    let (_, line, col) = getLineAndVisColumn(lineRange: linePos..<lineEnd, pos: pos)
+    let common = "\(prefix): \(name):\(lineIdx+1):\(colString(col))"
     if let end = end {
-      if end <= range.endIndex { // single line.
-        if pos < end { // multiple columns.
-          let endCol = getColumn(line: line, lineStart: range.startIndex, pos: end)
-          let under = underline(col: col, endCol: endCol)
-          let showRetSym = (end == lineEnd)
-          return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(diagLine(line, showRetSym))  \(under)\n"
-        } // else: single line, single column case below.
+      if end <= lineEnd { // single line.
+        let endCol = getVisColumn(line: line, colOff: end - linePos)
+        let under = underline(col: col, endCol: endCol)
+        let showRetSym = (end == lineEnd)
+        return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(diagLine(line, showRetSym))  \(under)\n"
       } else { // multiline.
-        let endLineNum = lineIndex(pos: end) + 1
-        let endLineRange = lineRange(pos: end)
-        let (_, endLine, endCol) = getLineAndColumn(range: endLineRange, pos: end)
+        let endLineNum = getLineIndex(pos: end) + 1
+        let endLineRange = getLineStart(pos: end)..<getLineEnd(pos: end)
+        let (_, endLine, endCol) = getLineAndVisColumn(lineRange: endLineRange, pos: end)
         let endRetSym = (end == endLineRange.endIndex)
         let (under, endUnder) = underlines(col: col, lineLength: line.characters.count, endCol: endCol)
         let a = "\(common)--\(endLineNum):\(colString(endCol)):\(msgSpace)\(msg)\n"
@@ -380,7 +387,7 @@ public class ${Name}Source: CustomStringConvertible {
         return "\(a)\(b)\(c)"
       }
     }
-    // single line, single column.
+    // single line, zero width column.
     let showRetSym = (pos == lineEnd - 1)
     return "\(common):\(msgSpace)\(msg)\n  \(diagLine(line, showRetSym))  \(underline(col: col))\n"
   }
@@ -505,6 +512,8 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 ${mode_stack_decl}
   private var pos: Int = 0
   private var tokenPos: Int = 0
+  private var tokenLinePos: Int = 0
+  private var tokenLineIdx: Int = 0
 
   public init(source: ${Name}Source) {
     self.source = source
@@ -535,8 +544,10 @@ ${mode_stack_decl}
     ${start_fns}
 
     func flushToken(kind: ${Name}TokenKind) -> ${Name}Token {
-      let token = ${Name}Token(pos: self.tokenPos, end: pos, kind: kind)
+      let token = ${Name}Token(pos: self.tokenPos, end: pos, linePos: self.tokenLinePos, lineIdx: self.tokenLineIdx, kind: kind)
       self.tokenPos = pos
+      self.tokenLinePos = (source.newlinePositions.last ?? -1) + 1
+      self.tokenLineIdx = source.newlinePositions.count
       return token
     }
 
