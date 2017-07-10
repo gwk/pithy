@@ -342,6 +342,17 @@ public class ${Name}Source: CustomStringConvertible {
       prefix: prefix, msg: msg, showMissingFinalNewline: showMissingFinalNewline)
   }
 
+  public func diagnostic(endPos: Int, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true) -> String {
+    let lineIdx = newlinePositions.count
+    let linePos: Int
+    if let newlinePos = newlinePositions.last {
+      linePos = newlinePos + 1
+    } else {
+      linePos = 0
+    }
+    return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, prefix: prefix, msg: msg)
+  }
+
   public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, prefix: String, msg: String = "",
    showMissingFinalNewline: Bool = true) -> String {
 
