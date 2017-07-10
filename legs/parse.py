@@ -220,7 +220,7 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
       fail_parse(path, token, f'repeated character in set: {code!r}')
     codes.add(code)
 
-  def apply_op(token, is_diff_op):
+  def parse_right(token, is_diff_op):
     if not codes:
       fail_parse(path, token, f'empty charset preceding operator')
     if is_diff or (is_right and is_diff_op):
@@ -242,13 +242,13 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
       for code in codes_for_ranges(parse_ref(path, token)):
         add_code(token, code)
     elif kind == 'pat_amp':
-      codes.intersection_update(apply_op(token, is_diff_op=False))
+      codes.intersection_update(parse_right(token, is_diff_op=False))
       return finish()
     elif kind == 'pat_dash':
-      codes.difference_update(apply_op(token, is_diff_op=True))
+      codes.difference_update(parse_right(token, is_diff_op=True))
       return finish()
     elif kind == 'pat_caret':
-      codes.symmetric_difference_update(apply_op(token, is_diff_op=True))
+      codes.symmetric_difference_update(parse_right(token, is_diff_op=True))
       return finish()
     elif kind == 'pat_esc':
       add_code(token, parse_esc(path, token))
