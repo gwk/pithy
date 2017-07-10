@@ -403,6 +403,41 @@ public class ${Name}Source: CustomStringConvertible {
     return String(bytes: text[token.range], encoding: .utf8)!
   }
 
+  public func parseSignedNumber(token: ${Name}Token) throws -> Int64 {
+    let negative: Bool
+    let base: Int
+    var offset: Int
+    (negative, offset) = parseSign(token: token)
+    (base, offset) = parseBasePrefix(token: token, offset: offset)
+    return try parseSignedDigits(token: token, from: offset, base: base, negative: negative)
+  }
+
+  public func parseSign(token: ${Name}Token) -> (negative: Bool, offset: Int) {
+    switch text[token.pos] {
+    case 0x2b: return (false, 1)  // '+'
+    case 0x2d: return (true, 1)   // '-'
+    default: return (false, 0)
+    }
+  }
+
+  public func parseBasePrefix(token: ${Name}Token, offset: Int) -> (base: Int, offset: Int) {
+    let pos = token.pos + offset
+    if text[pos] != 0x30 { // '0'
+      return (base: 10, offset: offset)
+    }
+    let base: Int
+    switch text[pos + 1] { // byte.
+    case 0x62: base = 2 // 'b'
+    case 0x64: base = 10 // 'd'
+    case 0x6f: base = 8 // 'o'
+    case 0x71: base = 4 // 'q'
+    case 0x78: base = 16 // 'x'
+    default: return (base: 10, offset: offset)
+    }
+    return (base: base, offset: offset + 2)
+  }
+
+
   public func parseDigits(token: ${Name}Token, from: Int, base: Int) throws -> UInt64 {
     let baseU64 = UInt64(base)
     var val: UInt64 = 0
