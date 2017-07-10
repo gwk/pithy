@@ -167,7 +167,7 @@ def parse_rule_pattern(path, buffer, terminator):
       els[-1] = rule_type(subs=(els[-1],))
     if kind == terminator: return finish()
     elif kind == 'pat_paren_o': els.append(parse_rule_pattern(path, buffer, terminator='pat_paren_c'))
-    elif kind == 'pat_brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(parse_charset(path, buffer, token)))))
+    elif kind == 'pat_brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(sorted(parse_charset(path, buffer, token))))))
     elif kind == 'pat_bar': return parse_choice(path, buffer, left=finish(), terminator=terminator)
     elif kind == 'pat_opt':   quantity(Opt)
     elif kind == 'pat_star':  quantity(Star)
