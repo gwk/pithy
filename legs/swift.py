@@ -254,10 +254,6 @@ public class ${Name}Source: CustomStringConvertible {
     return ${Name}Lexer(source: self)
   }
 
-  public var tokens: [${Name}Token] {
-    return Array(lex())
-  }
-
   public func getLineIndex(pos: Int) -> Int {
     // TODO: use binary search.
     for (index, newlinePos) in newlinePositions.enumerated() {
