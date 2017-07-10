@@ -1,0 +1,37 @@
+{
+  "name": "plumage",
+  "displayName": "plumage",
+  "description": "Problem matchers for various languages.",
+  "version": "1.0.0",
+  "publisher": "gwk",
+  "engines": {
+    "vscode": "^1.0.0"
+  },
+  "categories": ["Languages"],
+  "contributes": {
+    "problemMatchers": [
+      { "name": "plumage-mypy",
+        "fileLocation": "relative",
+        "pattern": [
+          { "regexp": "([^:]*):(\\d+):(\\d+):(.+)",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "message": 4
+          }
+        ]
+      },
+      { "name": "plumage-swift",
+        "fileLocation": "absolute",
+        "pattern": [
+          { "regexp": "([^:]*):(\\d+):(\\d+):(.+)",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "message": 4
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+writeup v0
+Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+
+# Plumage
+
+Plumage is set of command line utilities that color build output.
+The goal is to make reading through errors a little easier.
+
+
+# Swift
+
+You can use swift-plumage as part of a build script like so:
+
+| set -e
+| set -o pipefail
+| swift_plumage=$(which swift-plumage || echo cat) # optional.
+| swift build --build-path=_build "$@" 2>&1 | "$swift_plumage" | less
+
+Note that the use of `less` to page the error output is optional.
+
+
+# TODO
+
+Change swift-plumage to run `swift build` as a subprocess, and obviate the need for a shell script as described above.
