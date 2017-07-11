@@ -1,21 +1,30 @@
 {
   "version": "2.0.0",
-  "command": ".vscode/run-args.sh",
   "echoCommand": false,
-  "isShellCommand": false,
-  "showOutput": "always",
+  "type": "process",
+  "presentation": {},
   "suppressTaskName": true,
   "tasks": [
-    { "taskName": "typecheck-file",
-      "args": ["mypy", "${relativeFile}"],
-      "isBuildCommand": true
+    {
+      "taskName": "typecheck-current",
+      "command": "mypy-plumage",
+      "args": ["${relativeFile}"],
+      "group": {"kind": "build", "isDefault": true},
+      "problemMatcher": "$plumage-mypy"
     },
-    { "taskName": "typecheck",
-      "args": ["make", "typecheck"]
+    {
+      "taskName": "typecheck",
+      "command": "mypy-plumage",
+      "args": ["pithy"],
+      "group": "build",
+      "problemMatcher": "$plumage-mypy"
     },
-    { "taskName": "test",
-      "args": ["make", "test"],
-      "isTestCommand": true
+    {
+      "taskName": "test and typecheck",
+      "command": "make",
+      "args": [],
+      "group": {"kind": "test", "isDefault": true},
+      "problemMatcher": "$plumage-mypy"
     }
   ]
 }

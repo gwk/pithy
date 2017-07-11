@@ -36,4 +36,4 @@ test:
 	iotest -fail-fast
 
 typecheck:
-	mypy pithy
+	mypy-plumage pithy
