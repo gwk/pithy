@@ -17,13 +17,31 @@ ViewBox = Union[None, Tuple[Num, Num], Tuple[Num, Num, Num, Num], Tuple[Tuple[Nu
 
 class SvgWriter:
 
+  class Tree:
+
+    def __init__(self, writer:'SvgWriter', tag:str) -> None:
+      self.writer = writer
+      self.tag = tag
+
+    def __enter__(self) -> None:
+      self.writer._stack.append((id(self), self.tag)) # use id to avoid ref cycle.
+      return None
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+      exp = self.writer._stack.pop()
+      act = (id(self), self.tag)
+      if act != exp:
+        raise Exception(f'SvgWriter top-of-stack {exp} does not match context: {act}')
+      self.writer.write(f'</{self.tag}')
+
+
   def __init__(self, w:Num=None, h:Num=None, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, file_or_path:FileOrPath=stdout) -> None:
     self._stack: List[Tuple[int, str]] = []
     if isinstance(file_or_path, str):
       self.file = open(file_or_path, 'w')
     else:
       self.file = file_or_path
-    if w is None and h is None:
+    if w is None or h is None:
       self.viewport = ''
     else:
       assert w > 0
@@ -34,8 +52,8 @@ class SvgWriter:
     else:
       if vx is None: vx = 0
       if vy is None: vy = 0
-      assert vw > 0
-      assert vh > 0
+      assert vw is not None and vw > 0
+      assert vh is not None and vh > 0
       self.viewBox = f' viewBox="{vx} {vy} {vw} {vh}"'
 
   def __del__(self) -> None:
@@ -61,17 +79,17 @@ class SvgWriter:
     return len(self._stack)
 
 
-  def write(self, *items):
+  def write(self, *items: Any) -> None:
     print('  ' * self.indent, *items, sep='', file=self.file)
 
 
-  def leaf(self, tag:str, **attrs):
+  def leaf(self, tag:str, **attrs: Any) -> None:
     self.write(f'<{tag}{_fmt_attrs(attrs)}/>')
 
 
-  def tree(self, tag:str, **attrs) -> 'Tree':
-    self.writer.write(f'<{tag}{_fmt_attrs(attrs)}>')
-    return Tree(writer=self, tag=tag)
+  def tree(self, tag:str, **attrs: Any) -> SvgWriter.Tree:
+    self.write(f'<{tag}{_fmt_attrs(attrs)}>')
+    return SvgWriter.Tree(writer=self, tag=tag)
 
 
   def circle(self, pos:Tuple[Num, Num]=None, x:Num=None, y:Num=None, r:Num=None, **attrs) -> None:
@@ -85,23 +103,6 @@ class SvgWriter:
 
   def rect(self, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs) -> None:
     self.leaf('rect', x=x, y=y, width=w, height=h, **attrs)
-
-  class Tree:
-
-    def __init__(self, writer:'SvgWriter', tag:str) -> None:
-      self.writer = writer
-      self.tag = tag
-
-    def __enter__(self) -> None:
-      self.writer._stack.append((id(self), self.tag)) # use id to avoid ref cycle.
-      return None
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-      exp = self.writer._stack.pop()
-      act = (id(self), self.tag)
-      if act != exp:
-        raise Exception(f'SvgWriter top-of-stack {exp} does not match context: {act}')
-      self.writer.write(f'</{self.tag}')
 
 
 def _fmt_attrs(attrs: Dict[str, Any]) -> str:

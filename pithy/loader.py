@@ -97,11 +97,11 @@ def load_archive(f: BinaryIO, single_name=None, single_ext=None, **kwargs:Any) -
     else:
       if not file.name.endswith(single_ext): continue
     return load(file, ext=single_ext, **kwargs)
-  raise LookupError(f'load_archive: could not find specified single_{"name" if match_exact else "ext"} in archive: {single_name!r}; archive.file_names: {archive.file_names}')
+  raise LookupError(f'load_archive: could not find specified {"single_name" if match_exact else "single_ext"} in archive: {single_name!r}; archive.file_names: {archive.file_names}')
 
 
 def load_csv(file: IO, **kwargs) -> Iterator[Sequence[str]]:
-  from .csv_utils import load_csv
+  from .csv_utils import load_csv # type: ignore
   return load_csv(file, **kwargs)
 
 
@@ -112,7 +112,7 @@ def load_gz(f: BinaryIO, sub_ext=None, **kwargs:Any) -> Any:
   if sub_ext == '.tar': # load_archive handles compressed stream faster internally.
     return load_archive(f, **kwargs)
   from gzip import GzipFile
-  g = GzipFile(mode='rb', fileobj=f)
+  g = GzipFile(mode='rb', fileobj=f) # type: ignore # typeshed bug: GzipFile is untyped.
   g.name = stem # strip off '.gz' for secondary dispatch by `load`.
   return load(g, ext=sub_ext, **kwargs)
 
@@ -123,16 +123,16 @@ def load_txt(f: TextIO, clip_ends=False) -> Iterable[str]:
 
 
 def load_json(file: IO, **kwargs) -> Any:
-  from .json_utils import load_json
-  return load_json(file, **kwargs)
+  from .json_utils import load_json # type: ignore
+  return load_json(cast(TextIO, file), **kwargs)
 
 def load_jsonl(file: IO, **kwargs) -> Any:
-  from .json_utils import load_jsonl
-  return load_jsonl(file, **kwargs)
+  from .json_utils import load_jsonl # type: ignore
+  return load_jsonl(cast(TextIO, file), **kwargs)
 
 def load_jsons(file: IO, **kwargs) -> Any:
-  from .json_utils import load_jsons
-  return load_jsons(file, **kwargs)
+  from .json_utils import load_jsons # type: ignore
+  return load_jsons(cast(TextIO, file), **kwargs)
 
 
 def load_xls(file: BinaryIO) -> Any:

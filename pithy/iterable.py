@@ -39,24 +39,28 @@ def iter_from(iterable: Iterable[T], start: int) -> Iterator[T]:
   return it
 
 
-def identity(x: T) -> T: return x
-
-
-def extent(iterable: Iterable[C], key: Callable[[C], CK]=identity, default: Optional[C]=None) -> Tuple[C, C]:
+def extent(iterable: Iterable[C], key: Callable[[C], CK]=None, default: Optional[C]=None) -> Tuple[C, C]:
   it = iter(iterable)
   first = next(it) if default is None else next(it, default)
   l = first
   h = first
-  kl = key(l)
-  kh = key(h)
-  for el in it:
-    k = key(el)
-    if k < kl:
-      l = el
-      kl = k
-    if kh < k:
-      h = el
-      kh = k
+  if key is None:
+    for el in it:
+      if el < l:
+        l = el
+      if h < el:
+        h = el
+  else:
+    kl = key(l)
+    kh = key(h)
+    for el in it:
+      k = key(el)
+      if k < kl:
+        l = el
+        kl = k
+      if kh < k:
+        h = el
+        kh = k
   return (l, h)
 
 
