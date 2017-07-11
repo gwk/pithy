@@ -18,7 +18,7 @@ ViewBox = Union[None, Tuple[Num, Num], Tuple[Num, Num, Num, Num], Tuple[Tuple[Nu
 class SvgWriter:
 
   def __init__(self, w:Num=None, h:Num=None, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, file_or_path:FileOrPath=stdout) -> None:
-    self._stack = []
+    self._stack: List[Tuple[int, str]] = []
     if isinstance(file_or_path, str):
       self.file = open(file_or_path, 'w')
     else:

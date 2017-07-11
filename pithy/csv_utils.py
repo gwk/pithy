@@ -28,7 +28,7 @@ def load_csv(file: TextIO,
     ('skipinitialspace', skipinitialspace),
     ('strict', strict),
     ] if v is not None }
-  reader = cast(Iterator[Sequence], csv.reader(file, dialect, **opts)) # type: ignore
+  reader = cast(Iterator[Sequence], csv.reader(file, dialect, **opts))
   if header is None or isinstance(header, bool):
     if header: next(reader) # simply discard.
   else: # match expected against actual.
@@ -39,7 +39,7 @@ def load_csv(file: TextIO,
 
 
 def write_csv(f: TextIO, header: Optional[Sequence[str]], rows: Iterable[Sequence]) -> None:
-  w = csv.writer(f) # type: ignore # not annotated in typeshed.
+  w = csv.writer(f)
   if header is not None: w.writerow(header)
   w.writerows(rows)
 
