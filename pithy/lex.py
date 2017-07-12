@@ -6,7 +6,7 @@ Simple lexing using python regular expressions.
 
 
 import re
-from typing import Any, AnyStr, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
+from typing import Any, AnyStr, Container, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
 
 
 class LexError(Exception): pass
@@ -44,7 +44,7 @@ class Lexer:
       except Exception as e:
         lines = [f'member {i} {n!r} pattern is invalid: {pattern}']
         if flags: lines.append(f'global flags: {flags!r}')
-        if is_extended and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comment s are  breaks lexer')
+        if is_extended and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comments break lexer')
         msg = '\n  note: '.join(lines)
         raise Lexer.DefinitionError(msg) from e
       for group_name in r.groupindex:
@@ -116,8 +116,24 @@ class Lexer:
       yield match
       pos = e
 
+  def _lex_gen(self, stack: List[Tuple[str, str]], string: str, p: int, e: int, drop: Container[str]) -> Iterable[Match]:
+    while p < e:
+      mode, exit_name = stack[-1]
+      regex = self.regexes[mode]
+      for token in self._lex_mode(regex, string, pos=p, end=e):
+        p = token.end()
+        if not drop or token.lastgroup not in drop:
+          yield token
+        if token.lastgroup == exit_name:
+          stack.pop()
+          break
+        try: frame = self.transitions[(mode, token.lastgroup)]
+        except KeyError: pass
+        else:
+          stack.append(frame)
+          break
 
-  def lex(self, string: str, pos: int=0, end: Optional[int]=None, drop: Iterable[str]=()) -> Iterable[Match]:
+  def lex(self, string: str, pos: int=0, end: Optional[int]=None, drop: Container[str]=()) -> Iterable[Match]:
     if pos < 0:
       pos = len(string) + pos
     if end is None:
@@ -125,25 +141,13 @@ class Lexer:
     elif end < 0:
       end = len(string) + end
     _e: int = end # typing hack.
-    def lex_gen() -> Iterable[Match]:
-      p = pos
-      e = _e
-      stack: List[Tuple[str, str]] = [(self.main, '')]
-      while p < e:
-        mode, exit_name = stack[-1]
-        regex = self.regexes[mode]
-        for token in self._lex_mode(regex, string, pos=p, end=e):
-          p = token.end()
-          yield token
-          if token.lastgroup == exit_name:
-            stack.pop()
-            break
-          try: frame = self.transitions[(mode, token.lastgroup)]
-          except KeyError: pass
-          else:
-            stack.append(frame)
-            break
-    return filter((lambda token: token.lastgroup not in drop), lex_gen()) if drop else lex_gen()
+    return self._lex_gen([(self.main, '')], string, pos, _e, drop)
+
+
+  def lex_stream(self, stream: Iterable[str], drop: Container[str]=()) -> Iterable[Match]:
+    stack: List[Tuple[str, str]] = [(self.main, '')]
+    for string in stream:
+      yield from self._lex_gen(stack, string, 0, len(string), drop)
 
 
 def msg_for_match(match: Match, prefix: str, msg: str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
