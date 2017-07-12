@@ -22,7 +22,7 @@ class Immutable(object):
     return getattr(self, key)
 
   def __repr__(self):
-    return 'Immutable({})'.format(', '.join('{}={!r}'.format(k, v) for k, v in sorted(self.__dict__.items())))
+    return 'Immutable({})'.format(', '.join('{}={!r}'.format(k, v) for k, v in sorted(vars(self).items())))
 
   def _asdict(self):
-    return dict(self.__dict__)
+    return dict(vars(self))
