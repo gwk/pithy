@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pprint import pprint
-from sys import argv, stdout, stderr
+from sys import argv, stdin, stdout, stderr
 from string import Template
 from typing import Any, Iterable, Iterator, TextIO, TypeVar, Union
 
