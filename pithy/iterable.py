@@ -199,7 +199,7 @@ class OnHeadless(Enum):
 def group_by_heads(iterable: Iterable[T], is_head: Callable[[T], bool], headless=OnHeadless.error) -> Iterable[List[T]]:
   '''
   Group elements of `iterable` by creating a new group every time the `is_head` predicate evaluates to true.
-  If the first element of the
+  If the first element of the stream is not a head, the behavior is specified by `headless`.
   '''
   it = iter(iterable)
   group: List[T] = []
