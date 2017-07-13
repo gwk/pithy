@@ -3,6 +3,7 @@
 from functools import total_ordering
 from io import BytesIO, TextIOBase, TextIOWrapper
 from typing import *
+from typing import BinaryIO
 from tarfile import TarFile
 from zipfile import ZipFile, BadZipFile
 from .fs import path_ext
@@ -45,7 +46,7 @@ class ArchiveMember:
   def __repr__(self) -> str:
     return f'{self.__class__.__name__}({self.archive}, {self.name!r})'
 
-  def __lt__(self, other: Any) -> Union[bool, NotImplemented]:
+  def __lt__(self, other: Any) -> Union[bool, type(NotImplemented)]:
     if isinstance(other, ArchiveMember):
       return self.name < other.name
     return NotImplemented
@@ -123,7 +124,7 @@ class _ZipHandler(_Handler):
   def files(self, archive:Archive) -> Iterable[ArchiveFile]:
     for name in self.file_names:
       if name.endswith('/'): continue # directory.
-      def opener() -> BinaryIO: return cast(BinaryIO, self.zip.open(name, 'rb')) # mypy bug: BinaryIO and IO[bytes] should be equivalent.
+      def opener() -> BinaryIO: return cast(BinaryIO, self.zip.open(name, 'r')) # mypy bug: BinaryIO and IO[bytes] should be equivalent.
       yield ArchiveFile(archive=archive, name=name, opener=opener)
 
   @property
