@@ -101,3 +101,9 @@ class Buffer(Generic[T], Iterator[T]):
         els.append(default)
     self.buffer.extend(reversed(els))
     return els
+
+
+  def expect(self, pred: Callable[[T], bool]) -> T:
+    el = next(self)
+    if pred(el): return el
+    raise ValueError(el)
