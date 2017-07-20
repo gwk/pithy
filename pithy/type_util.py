@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, GenericMeta, Tuple, TypeVar, Union
+from typing import *
 
 
 class Comparable(metaclass=ABCMeta):
@@ -58,7 +58,7 @@ def is_a(obj: Any, expected: Union[type, Tuple[type, ...]]) -> bool:
   desc = str(expected)
   generic = desc.partition('[')[0]
   if generic == 'typing.Union':
-    for member_type in expected.__args__:
+    for member_type in expected.__args__: # type: ignore
       if is_a(obj, member_type): return True
     return False
   try: rtt = runtime_generic_type_prefixes[generic]
@@ -66,7 +66,7 @@ def is_a(obj: Any, expected: Union[type, Tuple[type, ...]]) -> bool:
   else: return isinstance(obj, rtt) # approximate; best effort.
   return isinstance(obj, expected)
 
-runtime_generic_type_prefixes = {
+runtime_generic_type_prefixes: Dict[str, type] = {
   'typing.List' : list,
   'typing.Set' : set,
   'typing.Dict' : dict,
