@@ -163,7 +163,7 @@ def msg_for_match(match: Match, prefix: str, msg: str, pos:Optional[int]=None, e
   if line_end == -1: line_end = len(string)
   line = string[line_start:line_end]
   col = pos - line_start
-  indent = ' ' * col
+  indent = ' ' * (col + line.count('\t', 0, col) * 7) # assume tabs render as 8 spaces on console.
   underline = '~' * (min(end - pos, len(line))) or '^'
   return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{line}\n{indent}{underline}'
 
