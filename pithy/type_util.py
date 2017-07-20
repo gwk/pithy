@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple, TypeVar, Union
+from typing import Any, GenericMeta, Tuple, TypeVar, Union
 
 
 class Comparable(metaclass=ABCMeta):
@@ -50,7 +50,30 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
-def req_type(object: Any, class_info: Union[type, Tuple[type, ...]]) -> None:
-  if not isinstance(object, class_info):
-    raise TypeError('expected type: {}; actual type: {};\n  object: {}'.format(
-      class_info, type(object), repr(object)))
+def is_a(obj: Any, expected: Union[type, Tuple[type, ...]]) -> bool:
+  '''
+  Python's typing objects are explicitly disallowed from being used in isinstance.
+  We work around this as best we can, relying on the descriptions of generic types.
+  '''
+  desc = str(expected)
+  generic = desc.partition('[')[0]
+  if generic == 'typing.Union':
+    for member_type in expected.__args__:
+      if is_a(obj, member_type): return True
+    return False
+  try: rtt = runtime_generic_type_prefixes[generic]
+  except KeyError: pass
+  else: return isinstance(obj, rtt) # approximate; best effort.
+  return isinstance(obj, expected)
+
+runtime_generic_type_prefixes = {
+  'typing.List' : list,
+  'typing.Set' : set,
+  'typing.Dict' : dict,
+  # TODO: complete.
+}
+
+
+def req_type(obj: Any, expected: Union[type, Tuple[type, ...]]) -> None:
+  if not is_a(obj, expected):
+    raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')
