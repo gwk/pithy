@@ -26,7 +26,7 @@ setup(
     'iotest',
   ],
   keywords=[
-    'testing'
+    'lexer', 'lexing', 'token', 'tokenize', 'regular expressions', 'unicode',
   ],
   classifiers=[ # See https://pypi.python.org/pypi?%3Aaction=list_classifiers.
     'Development Status :: 3 - Alpha',
