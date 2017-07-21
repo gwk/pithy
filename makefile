@@ -30,3 +30,6 @@ pypi-upload: pypi-dist
 
 test:
 	iotest -fail-fast
+
+typecheck:
+	mypy-plumage legs
