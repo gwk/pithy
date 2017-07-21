@@ -7,13 +7,17 @@ import stat as _stat
 import time as _time
 
 from itertools import zip_longest as _zip_longest
-from typing import AbstractSet, Any, IO, Iterable, Iterator, List, Optional, TextIO, Tuple
+from typing import AbstractSet, Any, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
 
+
+PathLike = _os.PathLike
+PathOrFd = Union[PathLike, int]
 
 class NotAPathError(Exception): pass
 class PathIsNotDescendantError(Exception): pass
 class PathHasNoDirError(Exception): pass
 class MixedAbsoluteAndRelativePathsError(Exception): pass
+
 
 # paths.
 
@@ -243,7 +247,7 @@ def file_time_meta_change(path: str) -> float: return _os.stat(path).st_ctime
 
 def file_size(path: str) -> int: return _os.stat(path).st_size
 
-def file_permissions(path: str) -> int: return _os.stat(path).st_mode
+def file_permissions(path: PathOrFd) -> int: return _os.stat(path).st_mode # type: ignore # typeshed bug.
 
 def is_file_not_link(path: str) -> bool: return is_file(path) and not is_link(path)
 
@@ -276,10 +280,10 @@ def set_file_time_mod(path: str, mtime: Optional[float]) -> None:
   _os.utime(path, None if mtime is None else (_time.time(), mtime))
 
 
-def add_file_execute_permissions(path: str) -> None:
+def add_file_execute_permissions(path: PathOrFd) -> None:
   old_perms = file_permissions(path)
   new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
-  _os.chmod(path, new_perms)
+  _os.chmod(path, new_perms) # type: ignore # typeshed bug: does not support fd path.
 
 def remove_dir_contents(path: str) -> None:
   if _path.islink(path): raise OSError('remove_dir_contents received symlink: ' + path)
