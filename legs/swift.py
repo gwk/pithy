@@ -2,14 +2,16 @@
 
 import re
 
-from collections import defaultdict
+from argparse import Namespace
 from itertools import chain
+from typing import *
 from pithy.fs import add_file_execute_permissions
 from pithy.string_utils import render_template
 from pithy.iterable import closed_int_intervals
+from .automata import DFA, Mode, ModeTransitions
 
 
-def output_swift(dfa, modes, node_modes, mode_transitions, license, args):
+def output_swift(dfa: DFA, modes: List[Mode], node_modes: Dict[int, Mode], mode_transitions: ModeTransitions, license: str, args: Namespace):
   path = args.output
   type_prefix = args.type_prefix
   has_modes = len(modes) > 1
@@ -22,7 +24,7 @@ def output_swift(dfa, modes, node_modes, mode_transitions, license, args):
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(kinds.values())]
   start_nodes = { mode.start for mode in modes }
 
-  def rule_desc(name):
+  def rule_desc(name: str) -> str:
     try:
       literal = dfa.literalRules[name]
       if all((c.isprintable() and not c.isspace()) for c in literal):
@@ -40,26 +42,26 @@ def output_swift(dfa, modes, node_modes, mode_transitions, license, args):
 
   dfa_nodes = sorted(dfa.transitions.keys())
 
-  def byte_case_patterns(chars):
-    def fmt(l, h):
+  def byte_case_patterns(chars: List[int]) -> List[str]:
+    def fmt(l: int, h: int) -> str:
       if l == h: return hex(l)
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
     return [fmt(*r) for r in closed_int_intervals(chars)]
 
-  def byte_case(chars, dst, returns):
+  def byte_case(chars, dst: int, returns: bool) -> str:
     return 'case {chars}: state = {dst}{suffix}'.format(
       chars=', '.join(byte_case_patterns(chars)),
       dst=dst,
       suffix='; return nil' if returns else '')
 
-  def byte_cases(node, returns):
-    dst_chars = defaultdict(list)
+  def byte_cases(node: int, returns: bool) -> List[str]:
+    dst_chars: DefaultDict[int, List[int]] = DefaultDict(list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
     return [byte_case(chars, dst, returns) for dst, chars in dst_chars_sorted]
 
-  def mode_pop_clause(kind, else_code):
+  def mode_pop_clause(kind: str, else_code: str) -> str:
     return render_template('''\
 if let last = stack.last, last.childKind == .${kind} {
   _ = stack.popLast()
@@ -70,7 +72,7 @@ if let last = stack.last, last.childKind == .${kind} {
       kind=kind,
       else_code=else_code)
 
-  def mode_push_clause(parent_pair, child_pair):
+  def mode_push_clause(parent_pair: Tuple[str, str], child_pair: Tuple[str, str]) -> str:
     parent_mode_name, parent_name = parent_pair
     child_mode_name, child_name = child_pair
     return render_template('''\
@@ -80,7 +82,7 @@ start_${child_mode_name}()''',
       parent_state=modes_by_name[parent_mode_name].start,
       child_mode_name=child_mode_name)
 
-  def transition_code(node):
+  def transition_code(node: int) -> str:
     mode = node_modes[node]
     rule_name = dfa.matchNodeNames.get(node, mode.incomplete_name)
     kind = kinds[rule_name]
@@ -112,7 +114,7 @@ return flushToken(kind: .{kind})'''.format(
       byte_cases='\n      '.join(byte_cases(node, returns=True)),
       default=default.replace('\n', '\n        '))
 
-  def state_case(node):
+  def state_case(node: int) -> str:
     mode = node_modes[node]
     if node in start_nodes:
       return 'case {node}: start_{mode.name}(); return nil'.format(mode=mode, node=node)
@@ -131,7 +133,7 @@ return flushToken(kind: .{kind})'''.format(
 
   state_cases = [state_case(node) for node in dfa_nodes]
 
-  def start_fn(mode):
+  def start_fn(mode: Mode) -> str:
     return render_template('''func start_${name}() {
       switch byte {
       ${cases}
@@ -144,8 +146,8 @@ return flushToken(kind: .{kind})'''.format(
 
   start_fns = [start_fn(mode) for mode in modes]
 
-  def restart_case(mode):
-    return 'case {mode.start}: start_{mode.name}()'.format(mode=mode)
+  def restart_case(mode: Mode) -> str:
+    return f'case {mode.start}: start_{mode.name}()'
 
   if has_modes:
     restart_cases = [restart_case(mode) for mode in modes]
@@ -645,7 +647,7 @@ for (i, arg) in CommandLine.arguments.enumerated() {
 '''
 
 
-swift_escapes = {
+swift_escapes: Dict[str, str] = {
   '\0' : '\\0',
   '\\' : '\\\\',
   '\t' : '\\t',
@@ -654,7 +656,7 @@ swift_escapes = {
   '"'  : '\\"',
 }
 
-def swift_escape_literal_char(c):
+def swift_escape_literal_char(c: str) -> str:
   try:
     return swift_escapes[c]
   except KeyError: pass
@@ -662,10 +664,10 @@ def swift_escape_literal_char(c):
     return c
   return '\\u{{{:x}}}'.format(ord(c))
 
-def swift_esc_str(string):
+def swift_esc_str(string: str) -> str:
   return ''.join(swift_escape_literal_char(c) for c in string)
 
-def swift_repr(string):
+def swift_repr(string: str) -> str:
   return '"{}"'.format(swift_esc_str(string))
 
 
@@ -729,7 +731,7 @@ swift_reserved_syms = {
   '_',
 }
 
-def swift_safe_sym(name):
+def swift_safe_sym(name: str) -> str:
   name = re.sub(r'[^\w]', '_', name)
   if name[0].isdigit():
     name = '_' + name

@@ -2,15 +2,20 @@
 
 import re
 
+from typing import *
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.buffer import Buffer
 from pithy.lex import *
 from pithy.io import *
 
-from unico import codes_for_ranges, ranges_for_codes
+from unico import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
 from unico.charsets import unicode_charsets
 
-from legs.rules import *
+from .rules import *
+from .automata import ModeTransitions
+
+
+Token = Match[str]
 
 
 lexer = Lexer(flags='x', invalid='inv',
@@ -68,19 +73,20 @@ kind_descs = {
   'pat'     : 'pattern',
 }
 
-def desc_kind(kind): return kind_descs.get(kind, kind)
+def desc_kind(kind: str) -> str: return kind_descs.get(kind, kind)
 
 
-def parse_legs(path, src):
+def parse_legs(path: str, src: str) -> Tuple[str, Dict[str, List[Tuple[str, Rule]]], ModeTransitions]:
   '''
   Parse the legs source given in `src`,
   returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
   '''
-  rules = {} # keyed by name.
-  simple_names = {}
-  mode_transitions = {}
+  rules: Dict[str, Rule] = {} # keyed by name.
+  simple_names: Dict[str, str] = {}
+  mode_transitions: ModeTransitions = {}
   tokens = list(lexer.lex(src, drop={'space'}))
   # If first token (first line) is a comment, assume it is the license.
+  license: str
   if tokens and tokens[0].lastgroup == 'comment':
     license = tokens[0].group().strip('# ')
   else:
@@ -109,42 +115,42 @@ def parse_legs(path, src):
         simple_names[simple] = name
     else:
       fail_parse(path, token, f'expected transition or rule.')
-  mode_named_rules = fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0]))
+  mode_named_rules = fan_by_key_fn(rules.items(), key=lambda item: mode_for_name(item[0])) # type: ignore # mypy bug?
   mode_named_rules.setdefault('main', [])
   return (license, mode_named_rules, mode_transitions)
 
 
 
-def consume(path, buffer, kind, subj):
-  token = next(buffer)
+def consume(path: str, buffer: Buffer[Token], kind: str, subj: str) -> Token:
+  token: Token = next(buffer)
   act = token.lastgroup
-  if act != kind: fail_parse((path, token), f'{subj} expected {desc_kind(kind)}; received {desc_kind(act)}.')
+  if act != kind: fail_parse(path, token, f'{subj} expected {desc_kind(kind)}; received {desc_kind(act)}.')
   return token
 
 
-def parse_mode_transition(path, buffer):
+def parse_mode_transition(path: str, buffer: Buffer[Token]) -> Tuple[Tuple[str, str], Tuple[str, str]]:
   l = mode_and_name(consume(path, buffer, kind='sym', subj='transition entry'))
   r = mode_and_name(consume(path, buffer, kind='sym', subj='transition exit'))
   consume(path, buffer, kind='line', subj='transition')
   return (l, r)
 
 
-def mode_and_name(token):
+def mode_and_name(token: Token) -> Tuple[str, str]:
   name = token[0]
-  return mode_for_name(name), name
+  return (mode_for_name(name), name)
 
 
-def mode_for_name(name):
+def mode_for_name(name: str) -> str:
   mode, _, _ = name.rpartition('.')
   return (mode or 'main')
 
 
-def simplified_names(name):
+def simplified_names(name: str) -> Set[str]:
   n = name.lower()
-  return { n.replace('.', '_'), n.replace('.', '') }
+  return {n.replace('.', '_'), n.replace('.', '')}
 
 
-def parse_rule(path, sym_token, buffer):
+def parse_rule(path: str, sym_token: Token, buffer: Buffer[Token]) -> Rule:
   assert sym_token.lastgroup == 'sym'
   if buffer.peek().lastgroup == 'colon': # named rule.
     next(buffer)
@@ -155,14 +161,14 @@ def parse_rule(path, sym_token, buffer):
     return Seq.for_subs(Charset.for_char(c) for c in text)
 
 
-def parse_rule_pattern(path, buffer, terminator):
+def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rule:
   # 'Parse a pattern and return a Rule object.'
-  els = []
-  def finish(): return Seq.for_subs(els)
+  els: List[Rule] = []
+  def finish() -> Rule: return Seq.for_subs(els)
   for token in buffer:
     kind = token.lastgroup
-    def _fail(msg): fail_parse(path, token, msg)
-    def quantity(rule_type):
+    def _fail(msg) -> 'NoReturn': fail_parse(path, token, msg)
+    def quantity(rule_type: Type[Rule]) -> None:
       if not els: _fail('quantity operator must be preceded by a pattern')
       els[-1] = rule_type(subs=(els[-1],))
     if kind == terminator: return finish()
@@ -181,26 +187,26 @@ def parse_rule_pattern(path, buffer, terminator):
   return finish()
 
 
-def parse_choice(path, buffer, left, terminator):
+def parse_choice(path: str, buffer: Buffer[Token], left: Rule, terminator: str) -> Rule:
   return Choice(subs=(left, parse_rule_pattern(path, buffer, terminator=terminator)))
 
 
-def parse_esc(path, token):
+def parse_esc(path: str, token: Token) -> int:
   char = token[0][1]
   try: code = escape_codes[char]
   except KeyError: fail_parse(path, token, f'invalid escaped character: {char!r}')
   return code
 
 
-def ranges_for_code(code): return ((code, code+1),)
+def ranges_for_code(code: int) -> CodeRanges: return ((code, code+1),)
 
 
-def parse_ref(path, token):
+def parse_ref(path: str, token: Token) -> CodeRanges:
   try: return unicode_charsets[token[0][1:]]
   except KeyError: fail_parse(path, token, 'unknown charset name.')
 
 
-def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
+def parse_charset(path: str, buffer: Buffer[Token], start_token: Token, is_right=False, is_diff=False) -> Set[int]:
   '''
   The Legs character set syntax is different from traditional regular expressions.
   * `[...]` introduces a nested character set.
@@ -213,21 +219,21 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
   more complex expressions must be explicitly grouped.
   Thus, the set expression syntax has no operator precedence or associativity.
   '''
-  codes = set()
+  codes: Set[int] = set()
 
-  def add_code(token, code):
+  def add_code(token: Token, code: int) -> None:
     if code in codes:
       fail_parse(path, token, f'repeated character in set: {code!r}')
     codes.add(code)
 
-  def parse_right(token, is_diff_op):
+  def parse_right(token: Token, is_diff_op: bool) -> Set[int]:
     if not codes:
       fail_parse(path, token, f'empty charset preceding operator')
     if is_diff or (is_right and is_diff_op):
       fail_parse(path, token, f'compound set expressions containing `-` or `^` operators must be grouped with `[...]`')
     return parse_charset(path, buffer, token, is_right=True, is_diff=is_diff_op)
 
-  def finish():
+  def finish() -> Set[int]:
       if not codes: fail_parse(path, start_token, 'empty character set.')
       return codes
 
@@ -254,18 +260,18 @@ def parse_charset(path, buffer, start_token, is_right=False, is_diff=False):
       add_code(token, parse_esc(path, token))
     elif kind in ('pat_char', 'pat_bar', 'pat_opt', 'pat_star', 'pat_plus', 'pat_paren_o', 'pat_paren_c'):
       add_code(token, ord(token[0]))
-    elif kind == 'inv': _fail(f'invalid pattern token')
+    elif kind == 'inv': fail_parse(path, token, 'invalid pattern token')
     else: fail_parse(path, token, f'unexpected charset token: {desc_kind(kind)}')
   fail_parse(path, start_token, 'unterminated charset.')
 
 
 
-def fail_parse(path, token, msg):
+def fail_parse(path: str, token: Token, msg: str) -> 'NoReturn':
   'Print a formatted parsing failure to std err and exit.'
   exit(msg_for_match(token, prefix=path, msg=msg))
 
 
-escape_codes = {
+escape_codes: Dict[str, int] = {
   'n': ord('\n'),
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),
