@@ -8,13 +8,14 @@ from typing import *
 
 from pithy.collection import freeze
 from pithy.dict_utils import dict_put
-from pithy.fs import path_ext, path_name_stem
+from pithy.fs import path_ext
 from pithy.io import errL, errSL, errLL, outL
-from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.string_utils import pluralize
 
+from legs.defs import Mode, ModeTransitions
 from legs.parse import parse_legs
-from legs.automata import Mode, ModeTransitions, NFA, DFA, empty_symbol, genDFA, minimizeDFA
+from legs.dfa import DFA, DfaTransitions, minimizeDFA
+from legs.nfa import NFA, genDFA
 from legs.rules import NfaMutableTransitions, Rule
 from legs.swift import output_swift
 
@@ -133,7 +134,7 @@ def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
     outL(f'match: {string!r} -- incomplete')
 
 
-def genNFA(mode: str, named_rules: Dict[str, Rule]) -> NFA:
+def genNFA(mode: str, named_rules: Iterable[Tuple[str, Rule]]) -> NFA:
   '''
   Generate an NFA from a set of rules.
   The NFA can be used to match against an argument string,
@@ -147,13 +148,13 @@ def genNFA(mode: str, named_rules: Dict[str, Rule]) -> NFA:
   start = mk_node() # always 0; see genDFA.
   invalid = mk_node() # always 1; see genDFA.
 
-  matchNodeNames = { invalid: ('invalid' if (mode == 'main') else mode + '_invalid') }
+  matchNodeNames: Dict[int, str] = { invalid: ('invalid' if (mode == 'main') else mode + '_invalid') }
 
   transitions: NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for name, rule in sorted(named_rules):
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
-    dict_put(matchNodeNames, matchNode, name)
+    dict_put(matchNodeNames, matchNode, name) # type: ignore # mypy bug?
   literalRules = { name : rule.literalPattern for name, rule in named_rules if rule.isLiteral }
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
@@ -161,11 +162,11 @@ def genNFA(mode: str, named_rules: Dict[str, Rule]) -> NFA:
 def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]]) -> Tuple[DFA, List[Mode], Dict[int, Mode]]:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
-  transitions: Dict[int, int] = {}
+  transitions: DfaTransitions = {}
   matchNodeNames: Dict[int, str] = {}
   literalRules: Dict[str, str] = {}
-  modes = []
-  node_modes = {}
+  modes: List[Mode] = []
+  node_modes: Dict[int, Mode] = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
     remap = { node : mk_node() for node in sorted(dfa.allNodes) } # preserves existing order of dfa nodes.
     incomplete_name = 'incomplete' if (mode_name == 'main') else mode_name + '_incomplete'

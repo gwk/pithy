@@ -6,7 +6,7 @@ from pithy.iterable import prefix_tree
 from pithy.type_util import is_pair_of_int
 from unico import CodeRanges, codes_for_ranges
 
-from .automata import MkNode, empty_symbol
+from .dfa import empty_symbol
 from .codepoints import codes_desc
 
 
@@ -22,6 +22,8 @@ __all__ = [
   'NfaMutableTransitions',
 ]
 
+
+MkNode = Callable[[], int]
 
 NfaMutableTransitions = DefaultDict[int, DefaultDict[int, Set[int]]]
 

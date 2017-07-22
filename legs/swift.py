@@ -8,7 +8,9 @@ from typing import *
 from pithy.fs import add_file_execute_permissions
 from pithy.string_utils import render_template
 from pithy.iterable import closed_int_intervals
-from .automata import DFA, Mode, ModeTransitions
+
+from .defs import Mode, ModeTransitions
+from .dfa import DFA
 
 
 def output_swift(dfa: DFA, modes: List[Mode], node_modes: Dict[int, Mode], mode_transitions: ModeTransitions, license: str, args: Namespace):

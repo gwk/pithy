@@ -3,7 +3,7 @@
 import re
 
 from typing import *
-from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
+from pithy.iterable import fan_by_key_fn
 from pithy.buffer import Buffer
 from pithy.lex import *
 from pithy.io import *
@@ -12,7 +12,7 @@ from unico import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
 from unico.charsets import unicode_charsets
 
 from .rules import *
-from .automata import ModeTransitions
+from .defs import ModeTransitions
 
 
 Token = Match[str]
