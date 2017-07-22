@@ -8,7 +8,7 @@ T = TypeVar('T')
 class _Sentinel: pass
 
 
-class Buffer(Generic[T], Iterator[T]):
+class Buffer(Iterator[T]):
   '''
   Iterable object that buffers an iterable.
   Call push() to push an item into the buffer;

@@ -257,7 +257,11 @@ def window_pairs(iterable, tail=None) -> Iterator[Tuple[T, T]]:
   yield (head, tail)
 
 
-def prefix_tree(iterables: Iterable[Sequence[T]], index=0, terminator=None) -> Dict:
+KTerminator = TypeVar('KTerminator', bound=Hashable)
+PrefixTree = Dict[Union[K, KTerminator], Optional[Dict]] # mypy cannot handle recursive types.
+
+
+def prefix_tree(iterables: Iterable[Sequence[K]], index=0, terminator=None) -> PrefixTree:
   'Make a nested mapping indicating shared prefixes of `iterables`.'
   d: Dict = {}
   subsets: DefaultDict = defaultdict(list)

@@ -6,7 +6,7 @@ Simple lexing using python regular expressions.
 
 
 import re
-from typing import Any, AnyStr, Container, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
+from typing import Any, Container, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
 
 
 class LexError(Exception): pass
@@ -23,7 +23,7 @@ class Lexer:
 
   class DefinitionError(Exception): pass
 
-  def __init__(self, flags='', invalid=None, patterns=dict(), modes=dict(), transitions=dict()):
+  def __init__(self, flags='', invalid=None, patterns=dict(), modes=dict(), transitions=dict()) -> None:
     self.invalid = invalid
 
     # validate flags.
@@ -78,6 +78,7 @@ class Lexer:
       self.modes = { 'main' : frozenset(self.patterns) }
       main = 'main'
     # validate transitions.
+    assert main is not None
     self.main: str = main
     self.transitions: Dict[Tuple[str, str], Tuple[str, str]] = {}
     for (parent_mode, enter), (child_mode, leave) in transitions.items():
