@@ -17,8 +17,6 @@ utest({'k': [0, 1, 2]}, dict_list_extend, {'k': [0]}, 'k', [1, 2])
 utest({'k': 0, 'l': 2}, dict_set_defaults, {'k': 0}, {'k': 1, 'l': 2})
 utest({'k': 0, 'l': 2}, dict_set_defaults, {'k': 0}, [('k', 1), ('l', 2)])
 
-utest_seq([-1, -3], dict_filter_map, {1: -1, 3: -3}, [0, 1, 2, 3])
-
 def DefaultByKeyDict_test(factory, test_keys):
   d = DefaultByKeyDict(factory)
   for k in test_keys:

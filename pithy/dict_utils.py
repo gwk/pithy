@@ -56,15 +56,6 @@ def dict_set_defaults(d: MutableMapping[K, V], defaults: Union[Mapping[K, V], It
   return d
 
 
-def dict_filter_map(d: MutableMapping[K, V], seq: Sequence[K]) -> Iterable[V]:
-  'Map the values of `seq` through the dictionary, dropping any elements not in the dictionary.'
-  for el in seq:
-    try:
-      yield d[el]
-    except KeyError:
-      pass
-
-
 class DefaultByKeyDict(dict): # TODO: typing.
   '''
   Subclass of Dict, similar to defaultdict.

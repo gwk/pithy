@@ -5,12 +5,13 @@ from collections import defaultdict
 from enum import Enum
 from itertools import tee
 from operator import le
-from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 from .type_util import Comparable
 
 
 T = TypeVar('T')
 K = TypeVar('K', bound=Hashable)
+V = TypeVar('V')
 C = TypeVar('C', bound=Comparable)
 CK = TypeVar('CK', bound=Comparable)
 
@@ -116,6 +117,13 @@ def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int
       low = l
       end = e
   yield (low, end)
+
+
+def filtermap_with_mapping(iterable: Iterable[K], mapping: Mapping[K, V]) -> Iterable[V]:
+  'Map the values of `iterable` through the mapping, dropping any elements not in the mapping.'
+  for el in iterable:
+    try: yield mapping[el]
+    except KeyError: pass
 
 
 def fan_by_index_fn(iterable: Iterable[T], index: Callable[[T], int], min_len=0) -> List[List[T]]:
