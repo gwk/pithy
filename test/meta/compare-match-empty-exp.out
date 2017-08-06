@@ -1,8 +1,8 @@
 test-meta/compare-match-empty-exp
 
 output file does not match expectation. actual value:
-[30mcat ../../../test-meta/compare-match-empty-exp/compare-match-empty-exp.out[0m
-[34mactual.[0m
+cat ../../../test-meta/compare-match-empty-exp/compare-match-empty-exp.out
+actual.
 Expected empty file.
 ================================================================
 

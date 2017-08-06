@@ -1,8 +1,8 @@
 test-meta/compare-contain-fail
 
 output file does not contain expectation. actual value:
-[30mcat ../../../test-meta/compare-contain-fail/compare-contain-fail.out[0m
-[34mactual.[0m
+cat ../../../test-meta/compare-contain-fail/compare-contain-fail.out
+actual.
 ----------------------------------------------------------------
 ================================================================
 

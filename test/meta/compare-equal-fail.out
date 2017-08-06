@@ -1,8 +1,8 @@
 test-meta/compare-equal-fail
 
 output file does not equal expectation. actual value:
-[30mcat ../../../test-meta/compare-equal-fail/compare-equal-fail.out[0m
-[34mactual.[0m
+cat ../../../test-meta/compare-equal-fail/compare-equal-fail.out
+actual.
 git diff --no-index --no-prefix --no-renames --exit-code --histogram --ws-error-highlight=old,new ../../../test-meta/compare-equal-fail/compare-equal-fail.out.expected ../../../test-meta/compare-equal-fail/compare-equal-fail.out
 diff --git ../../../test-meta/compare-equal-fail/compare-equal-fail.out.expected ../../../test-meta/compare-equal-fail/compare-equal-fail.out
 index d2a4c92..9091bb0 100644

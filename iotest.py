@@ -12,7 +12,7 @@ from itertools import zip_longest
 from string import Template
 from sys import stdout, stderr
 
-from pithy.ansi import RST, TXT_B, TXT_D, TXT_R
+from pithy.ansi import RST_OUT, TXT_B_OUT, TXT_D_OUT, TXT_R_OUT
 from pithy.immutable import Immutable
 from pithy.io import errL, errSL, outL, outSL, outZ, read_from_path, read_line_from_path, write_to_path, writeLSSL
 from pithy.string_utils import string_contains
@@ -734,8 +734,8 @@ def run_case(ctx, case):
     if not status:
       outL(f'\ncompile step {i} failed: `{shell_cmd_str(compile_cmd)}`')
       if status is not None: # not aborted; output is interesting.
-        cat_file(compile_out_path, color=TXT_R)
-        cat_file(compile_err_path, color=TXT_R)
+        cat_file(compile_out_path, color=TXT_R_OUT)
+        cat_file(compile_err_path, color=TXT_R_OUT)
       return False
 
   if case.in_ is not None:
@@ -853,7 +853,7 @@ def check_file_exp(ctx, test_dir, exp):
   if file_expectation_fns[exp.mode](exp, act_val):
     return True
   outL(f'\noutput file does not {exp.mode} expectation. actual value:')
-  cat_file(path, color=TXT_B)
+  cat_file(path, color=TXT_B_OUT)
   if not exp.val:
     outL('Expected empty file.')
     return False
@@ -861,7 +861,7 @@ def check_file_exp(ctx, test_dir, exp):
     path_expected = path + '.expected'
     write_to_path(path_expected, exp.val)
     cmd = diff_cmd + [rel_path(path_expected), rel_path(path)]
-    outL(TXT_D, ' '.join(cmd), RST)
+    outL(TXT_D_OUT, ' '.join(cmd), RST_OUT)
     run(cmd, exp=None)
   elif exp.mode == 'match':
     act_lines = act_val.splitlines(True)
@@ -874,14 +874,13 @@ def check_file_exp(ctx, test_dir, exp):
 diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram --ws-error-highlight=old,new'.split()
 
 
-def cat_file(path, color='', limit=-1):
-  outL(TXT_D, 'cat ', rel_path(path), RST)
-  rst = RST if color else '' #!cov-ignore.
+def cat_file(path, color, limit=-1):
+  outL(TXT_D_OUT, 'cat ', rel_path(path), RST_OUT)
   with open(path) as f:
     line = None
     for i, line in enumerate(f, 1):
       l = line.rstrip('\n')
-      outL(color, l, rst)
+      outL(color, l, RST_OUT)
       if i == limit: return #!cov-ignore.
     if line is not None and not line.endswith('\n'):
       outL('(missing final newline)') #!cov-ignore.
