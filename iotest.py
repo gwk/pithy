@@ -437,6 +437,7 @@ class Case:
     env['PROJ'] = abs_path(ctx.proj_dir)
     env['SRC'] = self.dflt_src_paths[0] if len(self.dflt_src_paths) == 1 else 'NONE'
     env['STEM'] = self.stem
+    env['DIR'] = path_dir(self.stem)
 
     def default_to_env(key):
       if key not in env and key in os.environ:
