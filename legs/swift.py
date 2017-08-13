@@ -169,7 +169,6 @@ return flushToken(kind: .{kind})'''.format(
       license=license,
       mode_stack_decl=mode_stack_decl,
       Name=type_prefix,
-      path=path,
       rules_path=args.rules_path,
       start_fns='\n    '.join(start_fns),
       state_cases='\n    '.join(state_cases),
