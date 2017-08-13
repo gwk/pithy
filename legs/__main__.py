@@ -16,8 +16,9 @@ from legs.defs import Mode, ModeTransitions
 from legs.parse import parse_legs
 from legs.dfa import DFA, DfaTransitions, minimizeDFA
 from legs.nfa import NFA, genDFA
-from legs.rules import NfaMutableTransitions, Rule
+from legs.rules import ModeNamedRules, NfaMutableTransitions, Rule
 from legs.swift import output_swift
+from legs.python import output_python
 
 
 def main() -> None:
@@ -27,7 +28,7 @@ def main() -> None:
   parser.add_argument('-dbg', action='store_true')
   parser.add_argument('-match', nargs='+')
   parser.add_argument('-mode', default=None)
-  parser.add_argument('-output')
+  parser.add_argument('-output', default=None)
   parser.add_argument('-language', default=None)
   parser.add_argument('-stats', action='store_true')
   parser.add_argument('-test', action='store_true')
@@ -110,10 +111,7 @@ def main() -> None:
 
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
   if ext:
-    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, ext=ext, license=license, args=args)
-
-
-supported_exts = ['.swift']
+    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_named_rules=mode_named_rules, mode_transitions=mode_transitions, ext=ext, license=license, args=args)
 
 
 def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
@@ -181,11 +179,15 @@ def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]]) -> Tuple[DFA, List[M
   return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=literalRules), modes, node_modes)
 
 
-def output(dfa: DFA, modes: List[Mode], node_modes: Dict[int, Mode], mode_transitions: ModeTransitions, ext: str, license: str, args: Namespace):
+supported_exts = ['.py', '.swift']
 
-  if ext not in supported_exts:
-    exit(f'output path has unknown extension {ext!r}; supported extensions are: {", ".join(supported_exts)}.')
-  if ext == '.swift':
+
+def output(dfa: DFA, modes: List[Mode], node_modes: Dict[int, Mode],
+ mode_named_rules: ModeNamedRules, mode_transitions: ModeTransitions, ext: str, license: str, args: Namespace):
+
+  if ext == '.py':
+    output_python(mode_named_rules=mode_named_rules, mode_transitions=mode_transitions, license=license, args=args)
+  elif ext == '.swift':
     output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, license=license, args=args)
   else:
     raise Exception('output type not implemented: {}'.format(ext))
