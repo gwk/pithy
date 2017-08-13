@@ -18,9 +18,9 @@ from .defs import ModeTransitions
 Token = Match[str]
 
 
-lexer = Lexer(flags='x', invalid='inv',
+lexer = Lexer(flags='x', invalid='invalid',
   patterns=dict(
-    line    = r'\n',
+    newline = r'\n',
     space   = r'\ +',
     comment = r'\# [^\n]*',
     sym     = r'\w+(?:\.\w+)?',
@@ -46,7 +46,7 @@ lexer = Lexer(flags='x', invalid='inv',
   ),
   modes=dict(
     main={
-      'line',
+      'newline',
       'space',
       'comment',
       'sym',
@@ -54,19 +54,17 @@ lexer = Lexer(flags='x', invalid='inv',
       'percent'
     },
     pattern={
-      'line',
+      'newline',
       'space',
       'pat_.*',
     }
   ),
   transitions={
-    ('main', 'colon') : ('pattern', 'line')
+    ('main', 'colon') : ('pattern', 'newline')
   }
 )
 
 kind_descs = {
-  'inv'     : 'invalid',
-  'line'    : 'terminating newline',
   'sym'     : 'symbol',
   'colon'   : '`:`',
   'percent' : '`%`',
@@ -94,7 +92,7 @@ def parse_legs(path: str, src: str) -> Tuple[str, Dict[str, List[Tuple[str, Rule
   buffer = Buffer([t for t in tokens if t.lastgroup != 'comment'])
   for token in buffer:
     kind = token.lastgroup
-    if kind == 'line':
+    if kind == 'newline':
       continue
     if kind == 'percent':
       (src_pair, dst_pair) = parse_mode_transition(path, buffer)
@@ -131,7 +129,7 @@ def consume(path: str, buffer: Buffer[Token], kind: str, subj: str) -> Token:
 def parse_mode_transition(path: str, buffer: Buffer[Token]) -> Tuple[Tuple[str, str], Tuple[str, str]]:
   l = mode_and_name(consume(path, buffer, kind='sym', subj='transition entry'))
   r = mode_and_name(consume(path, buffer, kind='sym', subj='transition exit'))
-  consume(path, buffer, kind='line', subj='transition')
+  consume(path, buffer, kind='newline', subj='transition')
   return (l, r)
 
 
@@ -154,9 +152,9 @@ def parse_rule(path: str, sym_token: Token, buffer: Buffer[Token]) -> Rule:
   assert sym_token.lastgroup == 'sym'
   if buffer.peek().lastgroup == 'colon': # named rule.
     next(buffer)
-    return parse_rule_pattern(path, buffer, terminator='line')
+    return parse_rule_pattern(path, buffer, terminator='newline')
   else:
-    consume(path, buffer, kind='line', subj='unnamed rule')
+    consume(path, buffer, kind='newline', subj='unnamed rule')
     text = sym_token[0]
     return Seq.for_subs(Charset.for_char(c) for c in text)
 
@@ -182,7 +180,7 @@ def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rul
     elif kind == 'pat_ref': els.append(Charset(ranges=parse_ref(path, token)))
     elif kind in ('pat_amp', 'pat_dash', 'pat_caret', 'pat_char'):
       els.append(Charset.for_char(token[0]))
-    elif kind == 'inv': _fail(f'invalid pattern token')
+    elif kind == 'invalid': _fail(f'invalid pattern token')
     else: _fail(f'unexpected pattern token: {desc_kind(kind)}')
   return finish()
 
@@ -260,7 +258,7 @@ def parse_charset(path: str, buffer: Buffer[Token], start_token: Token, is_right
       add_code(token, parse_esc(path, token))
     elif kind in ('pat_char', 'pat_bar', 'pat_opt', 'pat_star', 'pat_plus', 'pat_paren_o', 'pat_paren_c'):
       add_code(token, ord(token[0]))
-    elif kind == 'inv': fail_parse(path, token, 'invalid pattern token')
+    elif kind == 'invalid': fail_parse(path, token, 'invalid pattern token')
     else: fail_parse(path, token, f'unexpected charset token: {desc_kind(kind)}')
   fail_parse(path, start_token, 'unterminated charset.')
 
