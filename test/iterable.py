@@ -49,6 +49,16 @@ utest_seq([[1, 2], [3, 4]], group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x
 
 utest_seq([[0], [1, 2], [3, 4]], group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x % 2, headless=OnHeadless.keep)
 
+def is_zero(i): return i == 0
+def is_one(i): return i == 1
+
+utest_seq([], split_by_preds, [], is_zero)
+utest_seq([(False, [0, 0])], split_by_preds, [0, 0], is_zero, is_one)
+utest_seq([(True, [0, 1])], split_by_preds, [0, 1], is_zero, is_one)
+
+utest_seq([(False, [0]), (True, [0, 1]), (False, [0])],
+  split_by_preds, [0, 0, 1, 0], is_zero, is_one)
+
 utest_seq([], window_iter, [])
 utest_seq([(0,1), (1,2), (2,3)], window_iter, range(4))
 utest_seq([(0,1,2), (1,2,3)], window_iter, range(4), width=3)

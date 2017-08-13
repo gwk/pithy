@@ -236,6 +236,27 @@ def group_by_heads(iterable: Iterable[T], is_head: Callable[[T], bool], headless
   if group: yield group
 
 
+def split_by_preds(iterable: Iterable[T], *preds: Callable[[T], bool]) -> Iterable[Tuple[bool, List[T]]]:
+  '''
+  Split the sequence whenever the sequence of predicates has consecutively matched.
+  Each yielded chunk is a pair (is_split_seq, seq).
+  '''
+  if not preds: raise ValueError('split_by_preds requires at least one predicate')
+  l = len(preds)
+  buffer: List[T] = []
+  for el in iterable:
+    buffer.append(el)
+    if len(buffer) >= l:
+      tail = buffer[-l:]
+      if all(p(e) for p, e in zip(preds, tail)):
+        if len(buffer) > l:
+          yield (False, buffer[:-l])
+        yield (True, tail)
+        buffer.clear()
+  if buffer:
+    yield (False, buffer)
+
+
 def window_iter(iterable: Iterable[T], width=2) -> Iterator[Tuple[T, ...]]:
   'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
   assert width > 0
