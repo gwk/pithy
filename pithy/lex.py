@@ -7,6 +7,7 @@ Simple lexing using python regular expressions.
 
 import re
 from typing import Any, Container, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
+from mypy_extensions import NoReturn
 
 
 class LexError(Exception): pass
@@ -151,7 +152,13 @@ class Lexer:
       yield from self._lex_gen(stack, string, 0, len(string), drop)
 
 
+def fail_parse(path: str, token: Match, msg: str) -> NoReturn:
+  'Print a formatted parsing failure to std err and exit.'
+  exit(msg_for_match(token, prefix=path, msg=msg))
+
+
 def msg_for_match(match: Match, prefix: str, msg: str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
+  'Return a formatted parser error message.'
   string = match.string
   p, e = match.span()
   if pos is None: pos = p
@@ -170,6 +177,7 @@ def msg_for_match(match: Match, prefix: str, msg: str, pos:Optional[int]=None, e
 
 
 def line_col_0_for_match(match: Match) -> Tuple[int, int]:
+  'Return a pair of 0-indexed line and column numbers for a token (Match object).'
   string = match.string
   pos = match.start()
   line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
