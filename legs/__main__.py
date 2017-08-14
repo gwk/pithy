@@ -71,6 +71,8 @@ def main() -> None:
       rule.describe(name=name)
     errL()
 
+  target_requires_dfa = is_match_specified or (ext not in { '.py' })
+
   mode_dfa_pairs = []
   for mode, rule_names in sorted(mode_rule_names.items()):
     if is_match_specified and mode != target_mode: continue
@@ -83,9 +85,12 @@ def main() -> None:
       errLL(*msgs)
       exit(1)
 
+    # Always generate the fat DFA, which checks for ambiguous rules.
     fat_dfa = genDFA(nfa)
     if dbg: fat_dfa.describe('Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
+
+    if not target_requires_dfa: continue # Skip expensive minimization step.
 
     min_dfa = minimizeDFA(fat_dfa)
     if dbg: min_dfa.describe('Min DFA')
@@ -105,11 +110,13 @@ def main() -> None:
 
   if is_match_specified: exit(f'bad mode: {target_mode!r}')
 
+  if ext == '.py':
+    output_python(patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions, license=license, args=args)
+    return
+
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
   if dbg: dfa.describe('Combined DFA')
 
-  if ext == '.py':
-    output_python(patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions, license=license, args=args)
   elif ext == '.swift':
     output_swift(modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes, license=license, args=args)
   elif ext:
