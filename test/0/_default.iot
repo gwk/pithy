@@ -1,0 +1,5 @@
+{
+  'compile': ['$PROJ/legs/__main__.py test/$NAME.legs -test -output $NAME.swift'],
+  'cmd': './$NAME.swift',
+  'timeout': 8, # swift compiler and interpreter can take a long time to start.
+}

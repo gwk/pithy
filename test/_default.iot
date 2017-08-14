@@ -1,4 +1,3 @@
 {
   'links': {'test'},
-  'timeout': 8,
 }

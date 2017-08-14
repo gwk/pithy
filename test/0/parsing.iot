@@ -1,6 +1,6 @@
 {
   'compile': [
-    '$PROJ/legs/__main__.py $STEM.legs -output parsing-lex.swift',
+    '$PROJ/legs/__main__.py test/parsing.legs -output parsing-lex.swift',
     'swiftc parsing-lex.swift $STEM.swift test/main.swift -o parsing',
   ],
   'cmd': './parsing',

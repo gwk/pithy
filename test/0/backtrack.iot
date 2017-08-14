@@ -1,0 +1,6 @@
+{
+  'args': [
+    'a b ab aab',
+    'aa aaa',
+  ],
+}

@@ -1,6 +1,4 @@
 {
-  'compile': ['$PROJ/legs/__main__.py test/modes.legs -test -output $NAME.swift'],
-  'cmd': './$NAME.swift',
   'args': [
     'a (bc def) g',
     '/* comment "contents" () / *. */',
