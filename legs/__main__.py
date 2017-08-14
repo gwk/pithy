@@ -42,16 +42,14 @@ def main() -> None:
   if not is_match_specified and is_mode_specified:
     exit('`-mode` option only valid with `-match`.')
 
-  if args.language is not None:
-    ext = '.' + args.language
-    if ext not in supported_exts:
-      exit(f'unknown language {args.language!r}; supported extensions are: {supported_exts}.')
-  elif args.output:
+  lang = args.language
+  if not lang and args.output:
     ext = path_ext(args.output)
-    if ext not in supported_exts:
-      exit(f'unknown output extension {ext!r}; supported extensions are: {supported_exts}.')
-  else:
-    ext = None
+    try: lang = ext_langs[ext]
+    except KeyError:
+      exit(f'unsupported output extension {ext!r}; supported extensions are: {sorted(ext_langs)}.')
+  if lang and lang not in supported_langs:
+      exit(f'unknown language {lang!r}; supported languages are: {sorted(supported_langs)}.')
 
   if (args.rules_path is None) and args.patterns:
     path = '<patterns>'
@@ -71,7 +69,7 @@ def main() -> None:
       rule.describe(name=name)
     errL()
 
-  target_requires_dfa = is_match_specified or (ext not in { '.py' })
+  lang_requires_dfa = is_match_specified or (lang in { 'swift' })
 
   mode_dfa_pairs = []
   for mode, rule_names in sorted(mode_rule_names.items()):
@@ -90,7 +88,7 @@ def main() -> None:
     if dbg: fat_dfa.describe('Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
 
-    if not target_requires_dfa: continue # Skip expensive minimization step.
+    if not lang_requires_dfa: continue # Skip expensive minimization step.
 
     min_dfa = minimizeDFA(fat_dfa)
     if dbg: min_dfa.describe('Min DFA')
@@ -110,17 +108,17 @@ def main() -> None:
 
   if is_match_specified: exit(f'bad mode: {target_mode!r}')
 
-  if ext == '.py':
+  if lang == 'python3':
     output_python(patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions, license=license, args=args)
     return
 
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
   if dbg: dfa.describe('Combined DFA')
 
-  elif ext == '.swift':
+  elif lang == 'swift':
     output_swift(modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes, license=license, args=args)
-  elif ext:
-    raise Exception(f'output format not implemented: {ext!r}')
+  elif lang:
+    raise Exception(f'output language not implemented: {lang!r}')
 
 
 def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
@@ -188,7 +186,12 @@ def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dic
   return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=literalRules), modes, node_modes)
 
 
-supported_exts = ['.py', '.swift']
+ext_langs = {
+  '.swift' : 'swift',
+  '.py' : 'python3',
+}
+
+supported_langs = {'python3', 'swift'}
 
 
 if __name__ == "__main__": main()
