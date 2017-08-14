@@ -16,7 +16,7 @@ from legs.defs import Mode, ModeTransitions
 from legs.parse import parse_legs
 from legs.dfa import DFA, DfaTransitions, minimizeDFA
 from legs.nfa import NFA, genDFA
-from legs.rules import ModeNamedRules, NfaMutableTransitions, Rule
+from legs.rules import NfaMutableTransitions, Rule
 from legs.swift import output_swift
 from legs.python import output_python
 
@@ -63,20 +63,21 @@ def main() -> None:
       exit(f'legs error: no such rule file: {path!r}')
   else:
     exit('`must specify either `rules_path` or `-patterns`.')
-  license, mode_named_rules, mode_transitions = parse_legs(path, src)
+  license, patterns, mode_rule_names, transitions = parse_legs(path, src)
+
+  if dbg:
+    errSL('\nPatterns:')
+    for name, rule in patterns.items():
+      rule.describe(name=name)
+    errL()
 
   mode_dfa_pairs = []
-  for mode, named_rules in sorted(mode_named_rules.items()):
-    if is_match_specified and mode != target_mode:
-      continue
-    if dbg:
-      errSL('\nmode:', mode)
-      for name, rule in named_rules:
-        rule.describe(name=name)
-      errL()
-    nfa = genNFA(mode, named_rules)
-    if dbg: nfa.describe()
-    if dbg or args.stats: nfa.describe_stats('NFA Stats')
+  for mode, rule_names in sorted(mode_rule_names.items()):
+    if is_match_specified and mode != target_mode: continue
+    named_rules = sorted((name, patterns[name]) for name in rule_names)
+    nfa = genNFA(mode, named_rules=named_rules)
+    if dbg: nfa.describe(f'{mode} NFA')
+    if dbg or args.stats: nfa.describe_stats(f'{mode} NFA Stats')
     msgs = nfa.validate()
     if msgs:
       errLL(*msgs)
@@ -104,14 +105,15 @@ def main() -> None:
 
   if is_match_specified: exit(f'bad mode: {target_mode!r}')
 
-  if dbg and mode_transitions:
-    errSL('\nmode transitions:')
-    for a, b in mode_transitions:
-      errSL('  %', a, b)
+  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
+  if dbg: dfa.describe('Combined DFA')
 
-  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
-  if ext:
-    output(dfa=dfa, modes=modes, node_modes=node_modes, mode_named_rules=mode_named_rules, mode_transitions=mode_transitions, ext=ext, license=license, args=args)
+  if ext == '.py':
+    output_python(patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions, license=license, args=args)
+  elif ext == '.swift':
+    output_swift(modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes, license=license, args=args)
+  elif ext:
+    raise Exception(f'output format not implemented: {ext!r}')
 
 
 def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
@@ -132,7 +134,7 @@ def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
     outL(f'match: {string!r} -- incomplete')
 
 
-def genNFA(mode: str, named_rules: Iterable[Tuple[str, Rule]]) -> NFA:
+def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   '''
   Generate an NFA from a set of rules.
   The NFA can be used to match against an argument string,
@@ -149,7 +151,7 @@ def genNFA(mode: str, named_rules: Iterable[Tuple[str, Rule]]) -> NFA:
   matchNodeNames: Dict[int, str] = { invalid: ('invalid' if (mode == 'main') else mode + '_invalid') }
 
   transitions: NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
-  for name, rule in sorted(named_rules):
+  for name, rule in named_rules:
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
     dict_put(matchNodeNames, matchNode, name) # type: ignore # mypy bug?
@@ -157,7 +159,7 @@ def genNFA(mode: str, named_rules: Iterable[Tuple[str, Rule]]) -> NFA:
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
 
-def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]]) -> Tuple[DFA, List[Mode], Dict[int, Mode]]:
+def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dict[str, List[str]]) -> Tuple[DFA, List[Mode], Dict[int, Mode]]:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
   transitions: DfaTransitions = {}
@@ -180,17 +182,6 @@ def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]]) -> Tuple[DFA, List[M
 
 
 supported_exts = ['.py', '.swift']
-
-
-def output(dfa: DFA, modes: List[Mode], node_modes: Dict[int, Mode],
- mode_named_rules: ModeNamedRules, mode_transitions: ModeTransitions, ext: str, license: str, args: Namespace):
-
-  if ext == '.py':
-    output_python(mode_named_rules=mode_named_rules, mode_transitions=mode_transitions, license=license, args=args)
-  elif ext == '.swift':
-    output_swift(dfa=dfa, modes=modes, node_modes=node_modes, mode_transitions=mode_transitions, license=license, args=args)
-  else:
-    raise Exception('output type not implemented: {}'.format(ext))
 
 
 if __name__ == "__main__": main()

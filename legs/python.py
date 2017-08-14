@@ -9,20 +9,22 @@ from pithy.io import *
 from pithy.string_utils import render_template
 
 from .defs import ModeTransitions
-from .rules import ModeNamedRules
+from .rules import Rule
 
-def output_python(mode_named_rules: ModeNamedRules, mode_transitions: ModeTransitions, license: str, args: Namespace):
+
+def output_python(patterns: Dict[str, Rule], mode_rule_names: Dict[str, List[str]], transitions: ModeTransitions, license: str, args: Namespace):
   path = args.output
-  patterns: List[str] = []
-  modes: List[str] = []
-  for mode, named_rules in sorted(mode_named_rules.items()):
-    names_str = ''.join(f'\n      {n!r},' for n, _ in named_rules)
-    modes.append(f'\n    {mode}={{{names_str}}}')
-    for name, rule in named_rules:
-      pattern = rule.genRegex(flavor='py')
-      patterns.append(f"\n    {name}=r'{pattern}',")
+  py_patterns: List[str] = []
+  for name, rule in patterns.items():
+    py_pattern = rule.genRegex(flavor='py')
+    py_patterns.append(f"\n    {name}=r'{py_pattern}',")
 
-  transitions: List[str] = [f'\n    ({a}, {b}) : ({c}, {d})' for (a, b), (c, d) in mode_transitions.items()]
+  py_modes: List[str] = []
+  for mode, rule_names in sorted(mode_rule_names.items()):
+    names_str = ''.join(f'\n      {n!r},' for n in rule_names)
+    py_modes.append(f'\n    {mode}={{{names_str}}}')
+
+  py_transitions: List[str] = [f'\n    ({a}, {b}) : ({c}, {d})' for (a, b), (c, d) in transitions.items()]
 
   with open(path, 'w', encoding='utf8') as f:
     if args.test:
@@ -30,9 +32,9 @@ def output_python(mode_named_rules: ModeNamedRules, mode_transitions: ModeTransi
     src = render_template(template,
       license=license,
       rules_path=args.rules_path,
-      patterns=''.join(patterns),
-      modes=''.join(modes),
-      transitions=''.join(transitions),
+      patterns=''.join(py_patterns),
+      modes=''.join(py_modes),
+      transitions=''.join(py_transitions),
     )
     f.write(src)
     if args.test:

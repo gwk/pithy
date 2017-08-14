@@ -1,31 +1,37 @@
-# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+// Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Patterns.
 
 space: \s+
 sym: $Ascii_Letter+
-comment_open: /\*
 sq: '
 dq: "
 paren_open: \(
 paren_close: \)
 
-comment.close: \*/
-comment.contents: [$Ascii - */]+
-comment.star: \*
-comment.slash: /
-comment.open_nested: /\*
+comment_open: /\*
+comment_close: \*/
+comment_contents: [$Ascii - */]+
+comment_star: \*
+comment_slash: /
 
-lit.sq: '
-lit.dq: "
-lit.backslash: \\
-lit.contents: [$Ascii - '"\\]+
-lit.escape: \\ [ $Ascii - ( ]
-lit.interpolate_open: \\ \(
+backslash: \\
+lit_contents: [$Ascii - '"\\]+
+lit_escape: \\ [ $Ascii - ( ]
+lit_interpolate: \\ \(
 
-% paren_open paren_close # push child main ctx so that lit ctx does not get prematurely popped.
-% lit.interpolate_open paren_close
+# Modes.
 
-% comment_open comment.close
-% comment.open_nested comment.close
+main: space sym comment_open sq dq paren_open paren_close
+comment: comment_open comment_close comment_contents comment_star comment_slash comment_open
+lit: sq dq backslash lit_contents lit_escape lit_interpolate
 
-% sq lit.sq
-% dq lit.dq
+# Transitions.
+main  paren_open      : main paren_close // must push child main ctx so that a lit ctx does not get prematurely popped.
+lit   lit_interpolate : main paren_close
+
+main    comment_open : comment comment_close
+comment comment_open : comment comment_close
+
+main sq : lit sq
+main dq : lit dq

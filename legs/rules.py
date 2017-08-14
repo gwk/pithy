@@ -26,7 +26,6 @@ __all__ = [
 MkNode = Callable[[], int]
 
 NfaMutableTransitions = DefaultDict[int, DefaultDict[int, Set[int]]]
-ModeNamedRules = Dict[str, List[Tuple[str, 'Rule']]]
 
 
 class Rule:

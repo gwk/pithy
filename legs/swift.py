@@ -13,7 +13,7 @@ from .defs import Mode, ModeTransitions
 from .dfa import DFA
 
 
-def output_swift(dfa: DFA, modes: List[Mode], node_modes: Dict[int, Mode], mode_transitions: ModeTransitions, license: str, args: Namespace):
+def output_swift(modes: List[Mode], mode_transitions: ModeTransitions, dfa: DFA, node_modes: Dict[int, Mode], license: str, args: Namespace):
   path = args.output
   type_prefix = args.type_prefix
   has_modes = len(modes) > 1
