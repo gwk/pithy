@@ -12,8 +12,7 @@ from .defs import ModeTransitions
 from .rules import Rule
 
 
-def output_python(patterns: Dict[str, Rule], mode_rule_names: Dict[str, List[str]], transitions: ModeTransitions, license: str, args: Namespace):
-  path = args.output
+def output_python3(path: str, patterns: Dict[str, Rule], mode_rule_names: Dict[str, List[str]], transitions: ModeTransitions, license: str, args: Namespace):
   py_patterns: List[str] = []
   for name, rule in patterns.items():
     py_pattern = rule.genRegex(flavor='py')
@@ -31,7 +30,7 @@ def output_python(patterns: Dict[str, Rule], mode_rule_names: Dict[str, List[str
       f.write('#!/usr/bin/env python3\n')
     src = render_template(template,
       license=license,
-      rules_path=args.rules_path,
+      rules_path=args.path,
       patterns=''.join(py_patterns),
       modes=''.join(py_modes),
       transitions=''.join(py_transitions),

@@ -1,6 +1,8 @@
 {
-  'args': [
+  'args': ['-test',
     'a b ab aab',
     'aa aaa',
   ],
+  'code': 0,
+  'err-val': 'note: `main`: minimized DFA contains 1 post-match node.\n',
 }

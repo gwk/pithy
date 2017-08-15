@@ -1,5 +1,5 @@
 {
-  'args': [
+  'args': ['-test',
     # single token matches; same as in basic-match.iot.
     ' ',
     'a',

@@ -13,8 +13,9 @@ from .defs import Mode, ModeTransitions
 from .dfa import DFA
 
 
-def output_swift(modes: List[Mode], mode_transitions: ModeTransitions, dfa: DFA, node_modes: Dict[int, Mode], license: str, args: Namespace):
-  path = args.output
+def output_swift(path: str, modes: List[Mode], mode_transitions: ModeTransitions, dfa: DFA, node_modes: Dict[int, Mode],
+  license: str, args: Namespace) -> None:
+
   type_prefix = args.type_prefix
   has_modes = len(modes) > 1
   modes_by_name = { mode.name : mode for mode in modes }
@@ -169,7 +170,7 @@ return flushToken(kind: .{kind})'''.format(
       license=license,
       mode_stack_decl=mode_stack_decl,
       Name=type_prefix,
-      rules_path=args.rules_path,
+      rules_path=args.path,
       start_fns='\n    '.join(start_fns),
       state_cases='\n    '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),

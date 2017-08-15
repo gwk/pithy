@@ -1,5 +1,5 @@
 {
-  'args': [
+  'args': ['-test',
     'a (bc def) g',
     '/* comment "contents" () / *. */',
     "'single quoted.' \"double quoted.\"",
