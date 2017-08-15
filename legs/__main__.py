@@ -123,7 +123,7 @@ def main() -> None:
   if 'python3' in langs:
     path = args.output + ('.py' if args.test else '')
     output_python3(path, patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions, license=license, args=args)
-    if args.test: test_cmds.append(['./' + path] + args.test)
+    if args.test: test_cmds.append(['python3', path] + args.test)
 
   if not requires_dfa: return
 
@@ -133,7 +133,7 @@ def main() -> None:
   if 'swift' in langs:
     path = args.output + ('.swift' if args.test else '')
     output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes, license=license, args=args)
-    if args.test: test_cmds.append(['./' + path] + args.test)
+    if args.test: test_cmds.append(['swift', path] + args.test)
 
   if args.test:
     # For each language, run against the specified match arguments, and capture output.

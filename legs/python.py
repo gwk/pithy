@@ -26,8 +26,6 @@ def output_python3(path: str, patterns: Dict[str, Rule], mode_rule_names: Dict[s
   py_transitions: List[str] = [f'\n    ({a}, {b}) : ({c}, {d})' for (a, b), (c, d) in transitions.items()]
 
   with open(path, 'w', encoding='utf8') as f:
-    if args.test:
-      f.write('#!/usr/bin/env python3\n')
     src = render_template(template,
       license=license,
       rules_path=args.path,
@@ -39,7 +37,6 @@ def output_python3(path: str, patterns: Dict[str, Rule], mode_rule_names: Dict[s
     if args.test:
       test_src = render_template(test_template)
       f.write(test_src)
-      add_file_execute_permissions(f.fileno())
 
 
 template = r'''# ${license}
@@ -57,6 +54,7 @@ lexer = Lexer(
 
 
 test_template = r'''
+
 def main() -> None:
   from sys import argv
   for i, arg in enumerate(argv):

@@ -164,8 +164,6 @@ return flushToken(kind: .{kind})'''.format(
 
 
   with open(path, 'w', encoding='utf8') as f:
-    if args.test:
-      f.write('#!/usr/bin/env swift\n')
     src = render_template(template,
       license=license,
       mode_stack_decl=mode_stack_decl,
@@ -180,7 +178,6 @@ return flushToken(kind: .{kind})'''.format(
     if args.test:
       test_src = render_template(test_template, Name=type_prefix)
       f.write(test_src)
-      add_file_execute_permissions(f.fileno())
 
 
 template = r'''// ${license}
