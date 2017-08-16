@@ -1,236 +1,236 @@
 
-arg1: " "
-token: arg1:1:1-2: space
-   
-  ~
+arg1: ' '
+arg1:1:1-2: space
+ 
+~
 
-arg2: "a"
-token: arg2:1:1-2: `a`
-  a
-  ~
+arg2: 'a'
+arg2:1:1-2: `a`
+a
+~
 
-arg3: "bd"
-token: arg3:1:1-3: b_c_opt_d
-  bd
+arg3: 'bd'
+arg3:1:1-3: b_c_opt_d
+bd
+~~
+
+arg4: 'bcd'
+arg4:1:1-4: b_c_opt_d
+bcd
+~~~
+
+arg5: 'eg'
+arg5:1:1-3: e_f_star_g
+eg
+~~
+
+arg6: 'efg'
+arg6:1:1-4: e_f_star_g
+efg
+~~~
+
+arg7: 'effg'
+arg7:1:1-5: e_f_star_g
+effg
+~~~~
+
+arg8: 'h'
+arg8:1:1-2: h_plus
+h
+~
+
+arg9: 'hh'
+arg9:1:1-3: h_plus
+hh
+~~
+
+arg10: 'ij'
+arg10:1:1-3: `ij`
+ij
+~~
+
+arg11: 'k'
+arg11:1:1-2: k_or_l
+k
+~
+
+arg12: 'l'
+arg12:1:1-2: k_or_l
+l
+~
+
+arg13: ''
+
+arg14: 'aa'
+arg14:1:1-2: `a`
+aa
+~
+arg14:1:2-3: `a`
+aa
+ ~
+
+arg15: 'ab'
+arg15:1:1-2: `a`
+ab
+~
+arg15:1:2-3: incomplete
+ab
+ ~
+
+arg16: 'b'
+arg16:1:1-2: incomplete
+b
+~
+
+arg17: 'bb'
+arg17:1:1-2: incomplete
+bb
+~
+arg17:1:2-3: incomplete
+bb
+ ~
+
+arg18: 'bccd'
+arg18:1:1-3: incomplete
+bccd
+~~
+arg18:1:3-5: invalid
+bccd
   ~~
 
-arg4: "bcd"
-token: arg4:1:1-4: b_c_opt_d
-  bcd
-  ~~~
+arg19: 'e'
+arg19:1:1-2: incomplete
+e
+~
 
-arg5: "eg"
-token: arg5:1:1-3: e_f_star_g
-  eg
+arg20: 'ef'
+arg20:1:1-3: incomplete
+ef
+~~
+
+arg21: 'g'
+arg21:1:1-2: invalid
+g
+~
+
+arg22: 'ah'
+arg22:1:1-2: `a`
+ah
+~
+arg22:1:2-3: h_plus
+ah
+ ~
+
+arg23: 'ha'
+arg23:1:1-2: h_plus
+ha
+~
+arg23:1:2-3: `a`
+ha
+ ~
+
+arg24: 'i'
+arg24:1:1-2: incomplete
+i
+~
+
+arg25: 'j'
+arg25:1:1-2: invalid
+j
+~
+
+arg26: 'ija'
+arg26:1:1-3: `ij`
+ija
+~~
+arg26:1:3-4: `a`
+ija
+  ~
+
+arg27: 'kl'
+arg27:1:1-2: k_or_l
+kl
+~
+arg27:1:2-3: k_or_l
+kl
+ ~
+
+arg28: 'a bd bcd eg efg effg'
+arg28:1:1-2: `a`
+a bd bcd eg efg effg
+~
+arg28:1:2-3: space
+a bd bcd eg efg effg
+ ~
+arg28:1:3-5: b_c_opt_d
+a bd bcd eg efg effg
   ~~
-
-arg6: "efg"
-token: arg6:1:1-4: e_f_star_g
-  efg
-  ~~~
-
-arg7: "effg"
-token: arg7:1:1-5: e_f_star_g
-  effg
-  ~~~~
-
-arg8: "h"
-token: arg8:1:1-2: h_plus
-  h
-  ~
-
-arg9: "hh"
-token: arg9:1:1-3: h_plus
-  hh
-  ~~
-
-arg10: "ij"
-token: arg10:1:1-3: `ij`
-  ij
-  ~~
-
-arg11: "k"
-token: arg11:1:1-2: k_or_l
-  k
-  ~
-
-arg12: "l"
-token: arg12:1:1-2: k_or_l
-  l
-  ~
-
-arg13: ""
-
-arg14: "aa"
-token: arg14:1:1-2: `a`
-  aa
-  ~
-token: arg14:1:2-3: `a`
-  aa
-   ~
-
-arg15: "ab"
-token: arg15:1:1-2: `a`
-  ab
-  ~
-token: arg15:1:2-3: incomplete
-  ab
-   ~
-
-arg16: "b"
-token: arg16:1:1-2: incomplete
-  b
-  ~
-
-arg17: "bb"
-token: arg17:1:1-2: incomplete
-  bb
-  ~
-token: arg17:1:2-3: incomplete
-  bb
-   ~
-
-arg18: "bccd"
-token: arg18:1:1-3: incomplete
-  bccd
-  ~~
-token: arg18:1:3-5: invalid
-  bccd
-    ~~
-
-arg19: "e"
-token: arg19:1:1-2: incomplete
-  e
-  ~
-
-arg20: "ef"
-token: arg20:1:1-3: incomplete
-  ef
-  ~~
-
-arg21: "g"
-token: arg21:1:1-2: invalid
-  g
-  ~
-
-arg22: "ah"
-token: arg22:1:1-2: `a`
-  ah
-  ~
-token: arg22:1:2-3: h_plus
-  ah
-   ~
-
-arg23: "ha"
-token: arg23:1:1-2: h_plus
-  ha
-  ~
-token: arg23:1:2-3: `a`
-  ha
-   ~
-
-arg24: "i"
-token: arg24:1:1-2: incomplete
-  i
-  ~
-
-arg25: "j"
-token: arg25:1:1-2: invalid
-  j
-  ~
-
-arg26: "ija"
-token: arg26:1:1-3: `ij`
-  ija
-  ~~
-token: arg26:1:3-4: `a`
-  ija
+arg28:1:5-6: space
+a bd bcd eg efg effg
     ~
-
-arg27: "kl"
-token: arg27:1:1-2: k_or_l
-  kl
-  ~
-token: arg27:1:2-3: k_or_l
-  kl
-   ~
-
-arg28: "a bd bcd eg efg effg"
-token: arg28:1:1-2: `a`
-  a bd bcd eg efg effg
-  ~
-token: arg28:1:2-3: space
-  a bd bcd eg efg effg
-   ~
-token: arg28:1:3-5: b_c_opt_d
-  a bd bcd eg efg effg
-    ~~
-token: arg28:1:5-6: space
-  a bd bcd eg efg effg
-      ~
-token: arg28:1:6-9: b_c_opt_d
-  a bd bcd eg efg effg
-       ~~~
-token: arg28:1:9-10: space
-  a bd bcd eg efg effg
-          ~
-token: arg28:1:10-12: e_f_star_g
-  a bd bcd eg efg effg
-           ~~
-token: arg28:1:12-13: space
-  a bd bcd eg efg effg
-             ~
-token: arg28:1:13-16: e_f_star_g
-  a bd bcd eg efg effg
-              ~~~
-token: arg28:1:16-17: space
-  a bd bcd eg efg effg
-                 ~
-token: arg28:1:17-21: e_f_star_g
-  a bd bcd eg efg effg
-                  ~~~~
-
-arg29: "h hh ij k l"
-token: arg29:1:1-2: h_plus
-  h hh ij k l
-  ~
-token: arg29:1:2-3: space
-  h hh ij k l
-   ~
-token: arg29:1:3-5: h_plus
-  h hh ij k l
-    ~~
-token: arg29:1:5-6: space
-  h hh ij k l
-      ~
-token: arg29:1:6-8: `ij`
-  h hh ij k l
-       ~~
-token: arg29:1:8-9: space
-  h hh ij k l
-         ~
-token: arg29:1:9-10: k_or_l
-  h hh ij k l
-          ~
-token: arg29:1:10-11: space
-  h hh ij k l
+arg28:1:6-9: b_c_opt_d
+a bd bcd eg efg effg
+     ~~~
+arg28:1:9-10: space
+a bd bcd eg efg effg
+        ~
+arg28:1:10-12: e_f_star_g
+a bd bcd eg efg effg
+         ~~
+arg28:1:12-13: space
+a bd bcd eg efg effg
            ~
-token: arg29:1:11-12: k_or_l
-  h hh ij k l
-            ~
+arg28:1:13-16: e_f_star_g
+a bd bcd eg efg effg
+            ~~~
+arg28:1:16-17: space
+a bd bcd eg efg effg
+               ~
+arg28:1:17-21: e_f_star_g
+a bd bcd eg efg effg
+                ~~~~
 
-arg30: "xx"
-token: arg30:1:1-3: invalid
-  xx
+arg29: 'h hh ij k l'
+arg29:1:1-2: h_plus
+h hh ij k l
+~
+arg29:1:2-3: space
+h hh ij k l
+ ~
+arg29:1:3-5: h_plus
+h hh ij k l
   ~~
-
-arg31: "axa"
-token: arg31:1:1-2: `a`
-  axa
-  ~
-token: arg31:1:2-3: invalid
-  axa
-   ~
-token: arg31:1:3-4: `a`
-  axa
+arg29:1:5-6: space
+h hh ij k l
     ~
+arg29:1:6-8: `ij`
+h hh ij k l
+     ~~
+arg29:1:8-9: space
+h hh ij k l
+       ~
+arg29:1:9-10: k_or_l
+h hh ij k l
+        ~
+arg29:1:10-11: space
+h hh ij k l
+         ~
+arg29:1:11-12: k_or_l
+h hh ij k l
+          ~
+
+arg30: 'xx'
+arg30:1:1-3: invalid
+xx
+~~
+
+arg31: 'axa'
+arg31:1:1-2: `a`
+axa
+~
+arg31:1:2-3: invalid
+axa
+ ~
+arg31:1:3-4: `a`
+axa
+  ~

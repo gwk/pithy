@@ -54,6 +54,14 @@ class Rule:
   @property
   def literalPattern(self) -> str: raise AssertionError('not a literal rule: {}'.format(self))
 
+  @property
+  def literalDesc(self) -> Optional[str]:
+    if not self.isLiteral: return None
+    p = self.literalPattern
+    if not all(0x21 <= ord(char) <= 0x7E for char in p): return None
+    s = p.replace('\\', '\\\\').replace('`', '\\`')
+    return f'`{s}`'
+
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
     raise NotImplementedError
 

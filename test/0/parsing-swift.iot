@@ -1,4 +1,5 @@
 {
+  'timeout': 8,
   'compile': [
     '$PROJ/legs/__main__.py test/0/parsing.legs -output parsing-lex.swift',
     'swiftc parsing-lex.swift test/0/parsing.swift test/main.swift -o parsing',

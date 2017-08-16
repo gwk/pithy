@@ -1,34 +1,34 @@
 
-arg1: "a b ab aab"
-token: arg1:1:1-2: `a`
-  a b ab aab
+arg1: 'a b ab aab'
+arg1:1:1-2: `a`
+a b ab aab
+~
+arg1:1:2-3: space
+a b ab aab
+ ~
+arg1:1:3-4: a_star_b
+a b ab aab
   ~
-token: arg1:1:2-3: space
-  a b ab aab
+arg1:1:4-5: space
+a b ab aab
    ~
-token: arg1:1:3-4: a_star_b
-  a b ab aab
-    ~
-token: arg1:1:4-5: space
-  a b ab aab
-     ~
-token: arg1:1:5-7: a_star_b
-  a b ab aab
-      ~~
-token: arg1:1:7-8: space
-  a b ab aab
-        ~
-token: arg1:1:8-11: a_star_b
-  a b ab aab
-         ~~~
+arg1:1:5-7: a_star_b
+a b ab aab
+    ~~
+arg1:1:7-8: space
+a b ab aab
+      ~
+arg1:1:8-11: a_star_b
+a b ab aab
+       ~~~
 
-arg2: "aa aaa"
-token: arg2:1:1-3: incomplete
-  aa aaa
-  ~~
-token: arg2:1:3-4: space
-  aa aaa
-    ~
-token: arg2:1:4-7: incomplete
-  aa aaa
-     ~~~
+arg2: 'aa aaa'
+arg2:1:1-3: incomplete
+aa aaa
+~~
+arg2:1:3-4: space
+aa aaa
+  ~
+arg2:1:4-7: incomplete
+aa aaa
+   ~~~

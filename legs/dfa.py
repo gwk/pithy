@@ -53,7 +53,7 @@ empty_symbol = -1 # not a legitimate byte value.
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, transitions: DfaTransitions, matchNodeNames: Dict[int, str], literalRules: Dict[str, str]) -> None:
+  def __init__(self, transitions: DfaTransitions, matchNodeNames: Dict[int, str], literalRules: Set[str]) -> None:
     self.transitions = transitions
     self.matchNodeNames = matchNodeNames
     self.literalRules = literalRules

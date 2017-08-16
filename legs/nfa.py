@@ -25,7 +25,7 @@ NfaTransitions = Dict[int, NfaStateTransitions]
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, transitions: NfaTransitions, matchNodeNames: Dict[int, str], literalRules: Dict[str, str]) -> None:
+  def __init__(self, transitions: NfaTransitions, matchNodeNames: Dict[int, str], literalRules: Set[str]) -> None:
     self.transitions = transitions
     self.matchNodeNames = matchNodeNames
     self.literalRules = literalRules

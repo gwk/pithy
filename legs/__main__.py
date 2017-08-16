@@ -9,7 +9,7 @@ from typing import *
 from pithy.collection import freeze
 from pithy.dict_utils import dict_put
 from pithy.fs import path_ext
-from pithy.io import errL, errSL, errLL, outL, outSL, outZ
+from pithy.io import errL, errSL, errLL, errZ, outL, outZ
 from pithy.string_utils import pluralize
 from pithy.task import runCO
 
@@ -53,6 +53,7 @@ def main() -> None:
     langs = {args.language}
   elif args.test:
     langs = set(supported_langs)
+    langs = {'swift'} # TEMPORARY.
   elif args.output:
     ext = path_ext(args.output)
     try: langs = {ext_langs[ext]}
@@ -119,10 +120,15 @@ def main() -> None:
 
   if args.match: exit(f'bad mode: {match_mode!r}')
 
+  rule_descs = { name : rule.literalDesc or name for name, rule in patterns.items() }
+  rule_descs['invalid'] = 'invalid'
+  rule_descs['incomplete'] = 'incomplete'
+
   test_cmds = []
   if 'python3' in langs:
     path = args.output + ('.py' if args.test else '')
-    output_python3(path, patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions, license=license, args=args)
+    output_python3(path, patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions,
+      rule_descs=rule_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if not requires_dfa: return
@@ -132,23 +138,33 @@ def main() -> None:
 
   if 'swift' in langs:
     path = args.output + ('.swift' if args.test else '')
-    output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes, license=license, args=args)
+    output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes,
+      rule_descs=rule_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
   if args.test:
     # For each language, run against the specified match arguments, and capture output.
     # If all of the tests have identical output, then print it; otherwise print each output.
+    from difflib import ndiff
+    from shlex import quote as sh_quote
+    def quote(cmd: List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
     first_out = None
     status = 0
     for cmd in test_cmds:
-      if args.dbg: errL('\nrunning test:', cmd)
+      if args.dbg: errL('\nrunning test:', quote(cmd))
       code, out = runCO(cmd)
+      if code != 0:
+        errSL('test failed:', quote(cmd))
+        outZ(out)
+        exit(1)
       if first_out is None:
         first_out = out
         outZ(first_out)
       elif out != first_out:
-        outSL(*cmd)
-        outZ(out)
+        errL('test outputs differ:')
+        errSL('-$', quote(test_cmds[0]))
+        errSL('+$', quote(cmd))
+        errLL(*ndiff(first_out.split('\n'), out.split('\n')))
         status = 1
     exit(status)
 
@@ -185,14 +201,14 @@ def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   start = mk_node() # always 0; see genDFA.
   invalid = mk_node() # always 1; see genDFA.
 
-  matchNodeNames: Dict[int, str] = { invalid: ('invalid' if (mode == 'main') else mode + '_invalid') }
+  matchNodeNames: Dict[int, str] = { invalid: 'invalid' }
 
   transitions: NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for name, rule in named_rules:
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
     dict_put(matchNodeNames, matchNode, name) # type: ignore # mypy bug?
-  literalRules = { name : rule.literalPattern for name, rule in named_rules if rule.isLiteral }
+  literalRules = { name for name, rule in named_rules if rule.isLiteral }
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
 
@@ -201,14 +217,12 @@ def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dic
   def mk_node() -> int: return next(indexer)
   transitions: DfaTransitions = {}
   matchNodeNames: Dict[int, str] = {}
-  literalRules: Dict[str, str] = {}
+  literalRules: Set[str] = set()
   modes: List[Mode] = []
   node_modes: Dict[int, Mode] = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
     remap = { node : mk_node() for node in sorted(dfa.allNodes) } # preserves existing order of dfa nodes.
-    incomplete_name = 'incomplete' if (mode_name == 'main') else mode_name + '_incomplete'
-    mode = Mode(name=mode_name, start=remap[0], invalid=remap[1],
-      invalid_name=dfa.matchNodeNames[1], incomplete_name=incomplete_name)
+    mode = Mode(name=mode_name, start=remap[0], invalid=remap[1])
     modes.append(mode)
     node_modes.update((node, mode) for node in remap.values())
     def remap_trans_dict(d: Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }

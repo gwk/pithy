@@ -13,7 +13,7 @@ func main() {
 
 func test(index: Int, arg: String) {
   let name = "arg\(index)"
-  print("\n\(name): \(arg.repr)")
+  print("\n\(name): \(ployRepr(arg))")
   let text = [UInt8](arg.utf8)
   let source = Source(name: name, text: text)
   for token in source.lex() {
@@ -36,28 +36,25 @@ func test(index: Int, arg: String) {
     } catch let e {
       msg = "error: \(e)"
     }
-    let d = source.diagnostic(token: token, prefix: "token", msg: msg, showMissingFinalNewline: false)
+    let d = source.diagnostic(token: token, msg: msg, showMissingFinalNewline: false)
     print(d, terminator: "")
   }
 }
 
-
-extension String {
-  var repr: String {
-    var r = "\""
-    for char in unicodeScalars {
-      switch char {
-      case "\\": r.append("\\\\")
-      case "\"": r.append("\\\"")
-      case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char))
-      case "\0": r.append("\\0")
-      case "\t": r.append("\\t")
-      case "\n": r.append("\\n")
-      case "\r": r.append("\\r")
-      default: r.append("\\{\(String(char.value, radix: 16, uppercase: false))}")
-      }
+func ployRepr(_ string: String) -> String {
+  var r = "'"
+  for char in string.unicodeScalars {
+    switch char {
+    case "\\": r.append("\\\\")
+    case "'": r.append("\\'")
+    case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char)) // must come after excluded chars above.
+    case "\0": r.append("\\0")
+    case "\t": r.append("\\t")
+    case "\n": r.append("\\n")
+    case "\r": r.append("\\r")
+    default: r.append("\\\(String(char.value, radix: 16, uppercase: false));")
     }
-    r.append("\"")
-    return r
   }
+  r.append("'")
+  return r
 }

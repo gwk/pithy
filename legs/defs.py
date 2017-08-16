@@ -7,8 +7,5 @@ class Mode(NamedTuple):
   name: str
   start: int
   invalid: int
-  invalid_name: str
-  incomplete_name: str
-
 
 ModeTransitions = Dict[Tuple[str, str], Tuple[str, str]]

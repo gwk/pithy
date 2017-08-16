@@ -14,7 +14,7 @@ from .dfa import DFA
 
 
 def output_swift(path: str, modes: List[Mode], mode_transitions: ModeTransitions, dfa: DFA, node_modes: Dict[int, Mode],
-  license: str, args: Namespace) -> None:
+  rule_descs: Dict[str, str], license: str, args: Namespace) -> None:
 
   type_prefix = args.type_prefix
   has_modes = len(modes) > 1
@@ -22,18 +22,13 @@ def output_swift(path: str, modes: List[Mode], mode_transitions: ModeTransitions
   pop_names = { name for mode, name in mode_transitions.values() }
   parent_names_to_transition_pairs = { kv[0][1] : kv for kv in mode_transitions.items() }
   preMatchNodes = dfa.preMatchNodes
-  kinds = { name : swift_safe_sym(name) for name in chain(dfa.ruleNames, (mode.incomplete_name for mode in modes)) }
+  kinds = { name : swift_safe_sym(name) for name in dfa.ruleNames }
+  kinds['incomplete'] = 'incomplete'
   assert len(kinds) == len(set(kinds.values()))
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(kinds.values())]
   start_nodes = { mode.start for mode in modes }
 
-  def rule_desc(name: str) -> str:
-    try:
-      literal = dfa.literalRules[name]
-      if all((c.isprintable() and not c.isspace()) for c in literal):
-        return '"`{}`"'.format(swift_esc_str(literal))
-    except KeyError: pass
-    return swift_repr(kinds[name])
+  def rule_desc(name: str) -> str: return swift_repr(rule_descs[name])
 
   if has_modes:
     mode_stack_decl = render_template('  private var stack: [(childKind: ${Name}TokenKind, parentState: UInt)] = []',
@@ -87,7 +82,7 @@ start_${child_mode_name}()''',
 
   def transition_code(node: int) -> str:
     mode = node_modes[node]
-    rule_name = dfa.matchNodeNames.get(node, mode.incomplete_name)
+    rule_name = dfa.matchNodeNames.get(node, 'incomplete')
     kind = kinds[rule_name]
     restart_code = 'start_{mode}()'.format(mode=node_modes[node].name)
     if has_modes:
@@ -305,7 +300,7 @@ public class ${Name}Source: CustomStringConvertible {
     }
   }
 
-  public func underline(col: Int, endCol: Int = -1) -> String {
+  public func underline(col: Int, endCol: Int = -1) -> String { // TODO: pass line and replace non-tabs with spacse.
     if col < 0 { return "" }
     let indent = String(repeating: " ", count: col)
     if col < endCol {
@@ -337,13 +332,13 @@ public class ${Name}Source: CustomStringConvertible {
     return (col >= 0) ? String(col + 1) : "?"
   }
 
-  public func diagnostic(token: ${Name}Token, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true)
+  public func diagnostic(token: ${Name}Token, prefix: String = "", msg: String = "", showMissingFinalNewline: Bool = true)
    -> String {
     return diagnostic(pos: token.pos, end: token.end, linePos: token.linePos, lineIdx: token.lineIdx,
       prefix: prefix, msg: msg, showMissingFinalNewline: showMissingFinalNewline)
   }
 
-  public func diagnostic(endPos: Int, prefix: String, msg: String = "", showMissingFinalNewline: Bool = true) -> String {
+  public func diagnostic(endPos: Int, prefix: String = "", msg: String = "", showMissingFinalNewline: Bool = true) -> String {
     let lineIdx = newlinePositions.count
     let linePos: Int
     if let newlinePos = newlinePositions.last {
@@ -354,7 +349,7 @@ public class ${Name}Source: CustomStringConvertible {
     return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, prefix: prefix, msg: msg)
   }
 
-  public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, prefix: String, msg: String = "",
+  public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, prefix: String = "", msg: String = "",
    showMissingFinalNewline: Bool = true) -> String {
 
     func diagLine(_ line: String, _ showReturnSymbol: Bool) -> String {
@@ -376,13 +371,14 @@ public class ${Name}Source: CustomStringConvertible {
     let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
     let lineEnd = getLineEnd(pos: pos)
     let (_, line, col) = getLineAndVisColumn(lineRange: linePos..<lineEnd, pos: pos)
-    let common = "\(prefix): \(name):\(lineIdx+1):\(colString(col))"
+    let prefix_colon = prefix.isEmpty ? "" : prefix + ": "
+    let common = "\(prefix_colon)\(name):\(lineIdx+1):\(colString(col))"
     if let end = end {
       if end <= lineEnd { // single line.
         let endCol = getVisColumn(line: line, colOff: end - linePos)
         let under = underline(col: col, endCol: endCol)
         let showRetSym = (end == lineEnd)
-        return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n  \(diagLine(line, showRetSym))  \(under)\n"
+        return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n\(diagLine(line, showRetSym))\(under)\n"
       } else { // multiline.
         let endLineNum = getLineIndex(pos: end) + 1
         let endLineRange = getLineStart(pos: end)..<getLineEnd(pos: end)
@@ -390,14 +386,14 @@ public class ${Name}Source: CustomStringConvertible {
         let endRetSym = (end == endLineRange.endIndex)
         let (under, endUnder) = underlines(col: col, lineLength: line.characters.count, endCol: endCol)
         let a = "\(common)--\(endLineNum):\(colString(endCol)):\(msgSpace)\(msg)\n"
-        let b = "  \(diagLine(line, true))  \(under)…\n"
-        let c = "  \(diagLine(endLine, endRetSym)) …\(endUnder)\n"
+        let b = "\(diagLine(line, true))\(under)…\n"
+        let c = "\(diagLine(endLine, endRetSym))\(endUnder)\n"
         return "\(a)\(b)\(c)"
       }
+    } else { // single line, zero width column.
+      let showRetSym = (pos == lineEnd - 1)
+      return "\(common):\(msgSpace)\(msg)\n\(diagLine(line, showRetSym))\(underline(col: col))\n"
     }
-    // single line, zero width column.
-    let showRetSym = (pos == lineEnd - 1)
-    return "\(common):\(msgSpace)\(msg)\n  \(diagLine(line, showRetSym))  \(underline(col: col))\n"
   }
 
   public func stringFor(token: ${Name}Token) -> String {
@@ -605,38 +601,37 @@ ${mode_stack_decl}
 '''
 
 test_template = r'''
-// test main.
 
-extension String {
-  var repr: String {
-    var r = "\""
-    for char in unicodeScalars {
-      switch char {
-      case "\\": r.append("\\\\")
-      case "\"": r.append("\\\"")
-      case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char))
-      case "\0": r.append("\\0")
-      case "\t": r.append("\\t")
-      case "\n": r.append("\\n")
-      case "\r": r.append("\\r")
-      default: r.append("\\{\(String(char.value, radix: 16, uppercase: false))}")
-      }
-    }
-    r.append("\"")
-    return r
-  }
-}
+// Legs test main.
 
 func test(index: Int, arg: String) {
   let name = "arg\(index)"
-  print("\n\(name): \(arg.repr)")
+  print("\n\(name): \(ployRepr(arg))")
   let text = Array(arg.utf8)
   let source = ${Name}Source(name: name, text: text)
   for token in source.lex() {
-    let d = source.diagnostic(token: token, prefix: "token", msg: token.kind.description,
+    let d = source.diagnostic(token: token, msg: token.kind.description,
       showMissingFinalNewline: false)
     print(d, terminator: "")
   }
+}
+
+func ployRepr(_ string: String) -> String {
+  var r = "'"
+  for char in string.unicodeScalars {
+    switch char {
+    case "\\": r.append("\\\\")
+    case "'": r.append("\\'")
+    case UnicodeScalar(0x20)...UnicodeScalar(0x7E): r.append(String(char)) // must come after excluded chars above.
+    case "\0": r.append("\\0")
+    case "\t": r.append("\\t")
+    case "\n": r.append("\\n")
+    case "\r": r.append("\\r")
+    default: r.append("\\\(String(char.value, radix: 16, uppercase: false));")
+    }
+  }
+  r.append("'")
+  return r
 }
 
 for (i, arg) in CommandLine.arguments.enumerated() {
