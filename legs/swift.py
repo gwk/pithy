@@ -610,9 +610,29 @@ func test(index: Int, arg: String) {
   let text = Array(arg.utf8)
   let source = ${Name}Source(name: name, text: text)
   for token in source.lex() {
-    let d = source.diagnostic(token: token, msg: token.kind.description,
-      showMissingFinalNewline: false)
-    print(d, terminator: "")
+    var from = 2 // "0_" prefix is the common case.
+    let base: Int?
+    switch token.kind.description {
+    case "num":   base = 10; from = 0
+    case "bin":   base = 2
+    case "quat":  base = 4
+    case "oct":   base = 8
+    case "dec":   base = 10
+    case "hex":   base = 16
+    default:      base = nil
+    }
+    var msg: String = "error"
+    if let base = base {
+      do {
+        let val = try source.parseDigits(token: token, from: from, base: base)
+        msg = "\(token.kind): \(val)"
+      } catch let e {
+        msg = "error: \(e)"
+      }
+    } else {
+      msg = token.kind.description
+    }
+    print(source.diagnostic(token: token, msg: msg, showMissingFinalNewline: false), terminator: "")
   }
 }
 
