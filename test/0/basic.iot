@@ -1,20 +1,7 @@
 {
   'args': ['-test',
-    # single token matches; same as in basic-match.iot.
-    ' ',
-    'a',
-    'bd',
-    'bcd',
-    'eg',
-    'efg',
-    'effg',
-    'h',
-    'hh',
-    'ij',
-    'k',
-    'l',
-    # not single token matches; same as in basic-match.iot.
     '',
+    'a bd bcd eg efg effg h hh ij k l', # similar to test/0/match/basic.iot.
     'aa',
     'ab',
     'b',
@@ -29,9 +16,6 @@
     'j',
     'ija',
     'kl',
-    # multiple-token tests.
-    'a bd bcd eg efg effg',
-    'h hh ij k l',
     'xx',
     'axa',
   ],
