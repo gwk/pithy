@@ -3,6 +3,7 @@
 import re
 import json as _json
 
+from json.decoder import JSONDecodeError
 from datetime import datetime
 from sys import stderr, stdout
 from typing import Any, Callable, Dict, Iterable, Hashable, List, Optional, Sequence, TextIO, Union
