@@ -1,5 +1,6 @@
 {
-  'args': ['-test',
+  'args': [
+    '-test',
     'a b c',
     'abc def',
   ],

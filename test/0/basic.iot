@@ -1,5 +1,6 @@
 {
-  'args': ['-test',
+  'args': [
+    '-test',
     '',
     'a bd bcd eg efg effg h hh ij k l', # similar to test/0/match/basic.iot.
     'aa',
