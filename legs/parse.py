@@ -26,22 +26,22 @@ lexer = Lexer(flags='x', invalid='invalid', patterns=dict(
   comment = r'//[^\n]*',
   sym     = r'\w+(?:\w+)?',
   colon   = r':',
-  pat_brckt_o = r'\[',
-  pat_brckt_c = r'\]',
-  #pat_brace_o = r'\{',
-  #pat_brace_c = r'\}',
-  pat_paren_o = r'\(',
-  pat_paren_c = r'\)',
-  pat_bar     = r'\|',
-  pat_opt     = r'\?',
-  pat_star    = r'\*',
-  pat_plus    = r'\+',
-  pat_amp     = '&',
-  pat_dash    = '-',
-  pat_caret   = r'\^',
-  pat_ref     = r'\$\w*',
-  pat_esc     = r'\\[^\n]', # TODO: list escapable characters.
-  pat_char    = r'[^\\\n]',
+  brckt_o = r'\[',
+  brckt_c = r'\]',
+  #brace_o = r'\{',
+  #brace_c = r'\}',
+  paren_o = r'\(',
+  paren_c = r'\)',
+  bar     = r'\|',
+  qmark   = r'\?',
+  star    = r'\*',
+  plus    = r'\+',
+  amp     = '&',
+  dash    = '-',
+  caret   = r'\^',
+  ref     = r'\$\w*',
+  esc     = r'\\[^\n]', # TODO: list escapable characters.
+  char    = r'[^\\\n]',
 ))
 
 kind_descs = {
@@ -178,16 +178,16 @@ def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rul
       if not els: _fail('quantity operator must be preceded by a pattern.')
       els[-1] = rule_type(subs=(els[-1],))
     if kind == terminator: return finish()
-    elif kind == 'pat_paren_o': els.append(parse_rule_pattern(path, buffer, terminator='pat_paren_c'))
-    elif kind == 'pat_brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(sorted(parse_charset(path, buffer, token))))))
-    elif kind == 'pat_bar': return parse_choice(path, buffer, left=finish(), terminator=terminator)
-    elif kind == 'pat_opt':   quantity(Opt)
-    elif kind == 'pat_star':  quantity(Star)
-    elif kind == 'pat_plus':  quantity(Plus)
-    elif kind == 'pat_esc': els.append(Charset(ranges=ranges_for_code(parse_esc(path, token))))
-    elif kind == 'pat_ref': els.append(Charset(ranges=parse_ref(path, token)))
+    elif kind == 'paren_o': els.append(parse_rule_pattern(path, buffer, terminator='paren_c'))
+    elif kind == 'brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(sorted(parse_charset(path, buffer, token))))))
+    elif kind == 'bar': return parse_choice(path, buffer, left=finish(), terminator=terminator)
+    elif kind == 'qmark':   quantity(Opt)
+    elif kind == 'star':  quantity(Star)
+    elif kind == 'plus':  quantity(Plus)
+    elif kind == 'esc': els.append(Charset(ranges=ranges_for_code(parse_esc(path, token))))
+    elif kind == 'ref': els.append(Charset(ranges=parse_ref(path, token)))
     elif kind == 'sym': els.extend(Charset.for_char(c) for c in token[0])
-    elif kind in ('pat_amp', 'pat_dash', 'pat_caret', 'pat_char'):
+    elif kind in ('colon', 'amp', 'dash', 'caret', 'char'):
       els.append(Charset.for_char(token[0]))
     elif kind == 'invalid': _fail('invalid pattern token.')
     else: _fail(f'unexpected pattern token: {desc_kind(kind)}.')
@@ -246,29 +246,29 @@ def parse_charset(path: str, buffer: Buffer[Token], start_token: Token, is_right
 
   for token in buffer:
     kind = token.lastgroup
-    if kind == 'pat_brckt_c':
+    if kind == 'brckt_c':
       return finish()
-    if kind == 'pat_brckt_o':
+    if kind == 'brckt_o':
       for code in parse_charset(path, buffer, token):
         add_code(token, code)
-    elif kind == 'pat_ref':
+    elif kind == 'ref':
       for code in codes_for_ranges(parse_ref(path, token)):
         add_code(token, code)
-    elif kind == 'pat_amp':
+    elif kind == 'amp':
       codes.intersection_update(parse_right(token, is_diff_op=False))
       return finish()
-    elif kind == 'pat_dash':
+    elif kind == 'dash':
       codes.difference_update(parse_right(token, is_diff_op=True))
       return finish()
-    elif kind == 'pat_caret':
+    elif kind == 'caret':
       codes.symmetric_difference_update(parse_right(token, is_diff_op=True))
       return finish()
-    elif kind == 'pat_esc':
+    elif kind == 'esc':
       add_code(token, parse_esc(path, token))
     elif kind == 'sym':
       for char in token[0]:
         add_code(token, ord(char))
-    elif kind in ('pat_char', 'pat_bar', 'pat_opt', 'pat_star', 'pat_plus', 'pat_paren_o', 'pat_paren_c'):
+    elif kind in ('char', 'colon', 'bar', 'qmark', 'star', 'plus', 'paren_o', 'paren_c'):
       add_code(token, ord(token[0]))
     elif kind == 'invalid': fail_parse(path, token, 'invalid pattern token.')
     else: fail_parse(path, token, f'unexpected charset token: {desc_kind(kind)}.')
@@ -300,7 +300,7 @@ escape_codes: Dict[str, int] = {
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),
 }
-escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^')
+escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:')
 
 if False:
   for k, v in sorted(escape_codes.items()):
