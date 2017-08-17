@@ -348,6 +348,8 @@ public class ${Name}Source: CustomStringConvertible {
       }
     }()
 
+    let srcBar = srcLine.isEmpty ? "|" : "| "
+
     // Note: this relies on swift slices using indices of parent collections.
     // TODO: make this work for line-by-line lexing.
 
@@ -379,7 +381,7 @@ public class ${Name}Source: CustomStringConvertible {
     let col = (pos < end) ? "\(colStr(pos))-\(colStr(end))" : colStr(pos)
 
     let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
-    return "\(prefix_colon)\(name):\(lineIdx+1):\(col):\(msgSpace)\(msg)\n\(srcLine)\n\(underline)\n"
+    return "\(prefix_colon)\(name):\(lineIdx+1):\(col):\(msgSpace)\(msg)\n\(srcBar)\(srcLine)\n  \(underline)\n"
   }
 
   public func stringFor(token: ${Name}Token) -> String? {
