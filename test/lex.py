@@ -62,32 +62,32 @@ tokens = list(word_lexer.lex('1a b\n2c d', drop={'inv'})) # note missing final n
 
 utest('''\
 PRE:1:1: word
-1a b
-~~\
+| 1a b
+  ~~\
 ''', msg_for_match, tokens[0], prefix='PRE', msg=tokens[0].lastgroup)
 
 utest('''\
 PRE:1:4: word
-1a b
-   ~\
+| 1a b
+     ~\
 ''', msg_for_match, tokens[1], prefix='PRE', msg=tokens[1].lastgroup)
 
 utest('''\
 PRE:2:1: word
-2c d
-~~\
+| 2c d
+  ~~\
 ''', msg_for_match, tokens[2], prefix='PRE', msg=tokens[2].lastgroup)
 
 utest('''\
 PRE:2:4: word
-2c d
-   ~\
+| 2c d
+     ~\
 ''', msg_for_match, tokens[3], prefix='PRE', msg=tokens[3].lastgroup)
 
 # test the caret underline for zero-length matches.
 utest('''\
 PRE:1:1: MSG
-abc
-^\
+| abc
+  ^\
 ''', msg_for_match, re.match('^', 'abc'), prefix='PRE', msg='MSG')
 
