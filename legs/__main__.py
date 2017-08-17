@@ -47,6 +47,7 @@ def main() -> None:
   if args.match and args.language: exit('`-match` and `-language` are mutually exclusive.')
   if args.match and args.test: exit('`-match` and `-test` are mutually exclusive.')
 
+  langs: Set[str]
   if args.language:
     if args.language not in supported_langs:
       exit(f'unknown language {args.language!r}; supported languages are: {sorted(supported_langs)}.')
@@ -83,7 +84,7 @@ def main() -> None:
 
   requires_dfa = args.match or langs.intersection(dfa_langs)
 
-  mode_dfa_pairs = []
+  mode_dfa_pairs: List[Tuple[str, DFA]] = []
   for mode, rule_names in sorted(mode_rule_names.items()):
     if args.match and mode != match_mode: continue
     named_rules = sorted((name, patterns[name]) for name in rule_names)
@@ -124,7 +125,7 @@ def main() -> None:
   rule_descs['invalid'] = 'invalid'
   rule_descs['incomplete'] = 'incomplete'
 
-  test_cmds = []
+  test_cmds: List[List[str]] = []
   if 'python3' in langs:
     path = args.output + ('.py' if args.test else '')
     output_python3(path, patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions,
@@ -212,7 +213,8 @@ def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
 
-def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dict[str, List[str]]) -> Tuple[DFA, List[Mode], Dict[int, Mode]]:
+def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dict[str, List[str]]) \
+ -> Tuple[DFA, List[Mode], Dict[int, Mode]]:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
   transitions: DfaTransitions = {}
