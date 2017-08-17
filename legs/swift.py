@@ -281,64 +281,13 @@ public class ${Name}Source: CustomStringConvertible {
     return end
   }
 
-  public func getVisColumn(line: String, colOff: Int) -> Int {
-    let utf8 = line.utf8
-    let utf8Index = utf8.index(utf8.startIndex, offsetBy: colOff)
-    if let charIndex = String.Index(utf8Index, within: line) {
-        return line.distance(from: line.startIndex, to: charIndex)
-    } else {
-      return -1
-    }
-  }
-
-  public func getLineAndVisColumn(lineRange: CountableRange<Int>, pos: Int) -> (Bool, String, Int) {
-    if let line = String(bytes: text[lineRange], encoding: .utf8) {
-      return (true, line, getVisColumn(line: line, colOff: pos - lineRange.startIndex))
-    } else {
-      // TODO: this should return a best-effort representation if unicode decoding fails.
-      return (false, "?", -1)
-    }
-  }
-
-  public func underline(col: Int, endCol: Int = -1) -> String { // TODO: pass line and replace non-tabs with spacse.
-    if col < 0 { return "" }
-    let indent = String(repeating: " ", count: col)
-    if col < endCol {
-      return indent + String(repeating: "~", count: endCol - col)
-    } else {
-      return indent + "^"
-    }
-  }
-
-  public func underlines(col: Int, lineLength: Int, endCol: Int) -> (String, String) {
-    // for two distinct lines, return start and end underlines.
-    let startLine, endLine: String
-    if col < 0 {
-      startLine = ""
-    } else {
-      let spaces = String(repeating: " ", count: col)
-      let squigs = String(repeating: "~", count: lineLength - col)
-      startLine = spaces + squigs
-    }
-    if endCol < 0 {
-      endLine = ""
-    } else {
-      endLine = String(repeating: "~", count: endCol)
-    }
-    return (startLine, endLine)
-  }
-
-  private func colString(_ col: Int) -> String {
-    return (col >= 0) ? String(col + 1) : "?"
-  }
-
-  public func diagnostic(token: ${Name}Token, prefix: String = "", msg: String = "", showMissingFinalNewline: Bool = true)
-   -> String {
+  public func diagnostic(token: ${Name}Token, prefix: String = "", msg: String = "", showMissingNewline: Bool = true) -> String {
     return diagnostic(pos: token.pos, end: token.end, linePos: token.linePos, lineIdx: token.lineIdx,
-      prefix: prefix, msg: msg, showMissingFinalNewline: showMissingFinalNewline)
+      prefix: prefix, msg: msg, showMissingNewline: showMissingNewline)
   }
 
-  public func diagnostic(endPos: Int, prefix: String = "", msg: String = "", showMissingFinalNewline: Bool = true) -> String {
+  public func diagnostic(endPos: Int, prefix: String = "", msg: String = "", showMissingNewline: Bool = true) -> String {
+    // TODO: fix this.
     let lineIdx = newlinePositions.count
     let linePos: Int
     if let newlinePos = newlinePositions.last {
@@ -346,58 +295,95 @@ public class ${Name}Source: CustomStringConvertible {
     } else {
       linePos = 0
     }
-    return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, prefix: prefix, msg: msg)
+    return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx,
+      prefix: prefix, msg: msg, showMissingNewline: showMissingNewline)
   }
 
   public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, prefix: String = "", msg: String = "",
-   showMissingFinalNewline: Bool = true) -> String {
+   showMissingNewline: Bool = true) -> String {
 
-    func diagLine(_ line: String, _ showReturnSymbol: Bool) -> String {
-      if line.hasSuffix("\n") {
-        if showReturnSymbol {
-          var s = line
-          s.remove(at: s.index(before: s.endIndex))
-          return s + "\u{23CE}\n" // RETURN SYMBOL.
-        } else {
-          return line
-        }
-      } else if showMissingFinalNewline {
-        return line + "\u{23CE}\u{0353}\n" // RETURN SYMBOL, COMBINING X BELOW.
-      } else {
-        return line + "\n"
-      }
-    }
-
-    let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
+    let end = end ?? -1
     let lineEnd = getLineEnd(pos: pos)
-    let (_, line, col) = getLineAndVisColumn(lineRange: linePos..<lineEnd, pos: pos)
-    let prefix_colon = prefix.isEmpty ? "" : prefix + ": "
-    let common = "\(prefix_colon)\(name):\(lineIdx+1):\(colString(col))"
-    if let end = end {
-      if end <= lineEnd { // single line.
-        let endCol = getVisColumn(line: line, colOff: end - linePos)
-        let under = underline(col: col, endCol: endCol)
-        let showRetSym = (end == lineEnd)
-        return "\(common)-\(colString(endCol)):\(msgSpace)\(msg)\n\(diagLine(line, showRetSym))\(under)\n"
-      } else { // multiline.
-        let endLineNum = getLineIndex(pos: end) + 1
-        let endLineRange = getLineStart(pos: end)..<getLineEnd(pos: end)
-        let (_, endLine, endCol) = getLineAndVisColumn(lineRange: endLineRange, pos: end)
-        let endRetSym = (end == endLineRange.endIndex)
-        let (under, endUnder) = underlines(col: col, lineLength: line.characters.count, endCol: endCol)
-        let a = "\(common)--\(endLineNum):\(colString(endCol)):\(msgSpace)\(msg)\n"
-        let b = "\(diagLine(line, true))\(under)…\n"
-        let c = "\(diagLine(endLine, endRetSym))\(endUnder)\n"
-        return "\(a)\(b)\(c)"
-      }
-    } else { // single line, zero width column.
-      let showRetSym = (pos == lineEnd - 1)
-      return "\(common):\(msgSpace)\(msg)\n\(diagLine(line, showRetSym))\(underline(col: col))\n"
+    if end <= lineEnd { // single line.
+      return diagnostic(pos: pos, end: end, linePos: linePos, lineIdx: lineIdx, lineBytes: text[linePos..<lineEnd],
+        prefix: prefix, msg: msg, showMissingNewline: showMissingNewline)
+    } else { // multiline.
+      let endLineIdx = getLineIndex(pos: end)
+      let endLineRange = getLineStart(pos: end)..<getLineEnd(pos: end)
+      return (
+        diagnostic(pos: pos, end: lineEnd, linePos: linePos, lineIdx: lineIdx, lineBytes: text[linePos..<lineEnd],
+          prefix: prefix, msg: msg, showMissingNewline: showMissingNewline) +
+        diagnostic(pos: endLineRange.startIndex, end: end, linePos: endLineRange.startIndex, lineIdx: endLineIdx, lineBytes: text[endLineRange],
+          prefix: "", msg: "ending here", showMissingNewline: showMissingNewline))
     }
   }
 
-  public func stringFor(token: ${Name}Token) -> String {
-    return String(bytes: text[token.range], encoding: .utf8)!
+  public func diagnostic(pos: Int, end: Int, linePos: Int, lineIdx: Int, lineBytes: ArraySlice<UInt8>,
+   prefix: String, msg: String, showMissingNewline: Bool = true) -> String {
+
+    let tab = UInt8(0x09)
+    let newline = UInt8(0x0a)
+    let space = UInt8(0x20)
+    let caret = UInt8(0x5E)
+    let tilde = UInt8(0x7E)
+
+    let lineEnd = linePos + lineBytes.count
+
+    func decode(_ bytes: ArraySlice<UInt8>) -> String {
+      return String(bytes: bytes, encoding: .utf8) ?? String(bytes: bytes, encoding: .ascii)!
+    }
+
+    let srcLine = { () -> String in
+      if lineBytes.last == newline {
+        let s = decode(lineBytes[lineBytes.startIndex..<lineBytes.endIndex - 1])
+        if end == lineEnd {
+          return s + "\u{23CE}" // RETURN SYMBOL.
+        } else {
+          return s
+        }
+      } else if showMissingNewline {
+        return decode(lineBytes) + "\u{23CE}\u{0353}" // RETURN SYMBOL, COMBINING X BELOW.
+      } else {
+        return decode(lineBytes)
+      }
+    }()
+
+    // Note: this relies on swift slices using indices of parent collections.
+    // TODO: make this work for line-by-line lexing.
+
+    // TODO: for each Character, decide appropriate single/wide/double/tab spacing.
+    // Alternatively, just use ANSI underlining.
+    var underBytes = [UInt8]()
+    for byte in lineBytes[..<pos] {
+      underBytes.append(byte == tab ? tab : space)
+    }
+    if pos >= end {
+      underBytes.append(caret)
+    } else {
+      for _ in pos..<end {
+        underBytes.append(tilde)
+      }
+    }
+    let underline = String(bytes: underBytes, encoding: .utf8)!
+
+    let prefix_colon = prefix.isEmpty ? "" : prefix + ": "
+
+    func colStr(_ pos: Int) -> String {
+      if let s = String(bytes: lineBytes[..<pos], encoding: .utf8) {
+        return String(s.count + 1)
+      } else {
+        return "?"
+      }
+    }
+
+    let col = (pos < end) ? "\(colStr(pos))-\(colStr(end))" : colStr(pos)
+
+    let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
+    return "\(prefix_colon)\(name):\(lineIdx+1):\(col):\(msgSpace)\(msg)\n\(srcLine)\n\(underline)\n"
+  }
+
+  public func stringFor(token: ${Name}Token) -> String? {
+    return String(bytes: text[token.range], encoding: .utf8)
   }
 
   public func parseSignedNumber(token: ${Name}Token) throws -> Int64 {
@@ -632,7 +618,7 @@ func test(index: Int, arg: String) {
     } else {
       msg = token.kind.description
     }
-    print(source.diagnostic(token: token, msg: msg, showMissingFinalNewline: false), terminator: "")
+    print(source.diagnostic(token: token, msg: msg, showMissingNewline: false), terminator: "")
   }
 }
 
