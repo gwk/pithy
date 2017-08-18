@@ -134,16 +134,15 @@ def main() -> None:
       rule_descs=rule_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
-  if not requires_dfa: return
+  if requires_dfa:
+    dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
+    if dbg: dfa.describe('Combined DFA')
 
-  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
-  if dbg: dfa.describe('Combined DFA')
-
-  if 'swift' in langs:
-    path = args.output + ('.swift' if args.test else '')
-    output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes,
-      rule_descs=rule_descs, license=license, args=args)
-    if args.test: test_cmds.append(['swift', path] + args.test)
+    if 'swift' in langs:
+      path = args.output + ('.swift' if args.test else '')
+      output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes,
+        rule_descs=rule_descs, license=license, args=args)
+      if args.test: test_cmds.append(['swift', path] + args.test)
 
   if args.test:
     # For each language, run against the specified match arguments, and capture output.
@@ -151,21 +150,23 @@ def main() -> None:
     from difflib import ndiff
     from shlex import quote as sh_quote
     def quote(cmd: List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
+    first_cmd = None
     first_out = None
     status = 0
-    for cmd in test_cmds:
+    for cmd in reversed(test_cmds): # TODO: make simulation first and remove 'reversed' hack.
       if args.dbg: errL('\nrunning test:', quote(cmd))
       code, out = runCO(cmd)
       if code != 0:
         errSL('test failed:', quote(cmd))
         outZ(out)
         exit(1)
-      if first_out is None:
+      if first_cmd is None:
+        first_cmd = cmd
         first_out = out
         outZ(first_out)
       elif out != first_out:
         errL('test outputs differ:')
-        errSL('-$', quote(test_cmds[0]))
+        errSL('-$', quote(first_cmd))
         errSL('+$', quote(cmd))
         errLL(*ndiff(first_out.split('\n'), out.split('\n')))
         status = 1
