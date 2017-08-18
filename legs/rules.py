@@ -6,7 +6,7 @@ from pithy.iterable import prefix_tree
 from pithy.type_util import is_pair_of_int
 from unico import CodeRange, CodeRanges, codes_for_ranges
 
-from .dfa import empty_symbol
+from .nfa import empty_symbol
 from .codepoints import codes_desc
 
 

@@ -26,9 +26,6 @@ Additionally, 1 and {1} are always the respective invalid states.
 When matching fails, the FA transitions to `invalid`,
 where it will continue matching all bytes that are not a transition from `initial`.
 This allows the FA to produce a stream of tokens that completely span any input string.
-
-`empty_symbol` is a reserved value (-1 is not part of the byte alphabet)
-that represents a nondeterministic jump between NFA nodes.
 '''
 
 from collections import defaultdict
@@ -45,9 +42,6 @@ from .codepoints import codes_desc
 DfaState = int
 DfaStateTransitions = Dict[int, DfaState]
 DfaTransitions = Dict[int, DfaStateTransitions]
-
-empty_symbol = -1 # not a legitimate byte value.
-
 
 
 class DFA:
@@ -69,7 +63,6 @@ class DFA:
   def alphabet(self) -> FrozenSet[int]:
     a: Set[int] = set()
     a.update(*(d.keys() for d in self.allByteToStateDicts))
-    a.discard(empty_symbol)
     return cast(FrozenSet[int], frozenset(a)) # mypy bug.
 
   @property

@@ -3,6 +3,9 @@
 '''
 Nondeterministic Finite Automata.
 See the documentation in dfa.py for more.
+
+`empty_symbol` is a reserved value (-1 is not part of the byte alphabet)
+that represents a nondeterministic jump between NFA nodes.
 '''
 
 from collections import defaultdict
@@ -14,12 +17,15 @@ from pithy.iterable import filtermap_with_mapping, first_el, int_tuple_ranges
 from pithy.string_utils import prepend_to_nonempty
 
 from .codepoints import codes_desc
-from .dfa import DFA, empty_symbol
+from .dfa import DFA
 
 
 NfaState = FrozenSet[int]
 NfaStateTransitions = Dict[int, NfaState]
 NfaTransitions = Dict[int, NfaStateTransitions]
+
+
+empty_symbol = -1 # not a legitimate byte value.
 
 
 class NFA:
