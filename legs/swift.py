@@ -368,7 +368,7 @@ public class ${Name}Source: CustomStringConvertible {
     }
     let underline = String(bytes: underBytes, encoding: .utf8)!
 
-    let prefix_colon = prefix.isEmpty ? "" : prefix + ": "
+    let prefixColon = prefix.isEmpty ? "" : prefix + ": "
 
     func colStr(_ pos: Int) -> String {
       if let s = String(bytes: lineBytes[..<pos], encoding: .utf8) {
@@ -381,7 +381,7 @@ public class ${Name}Source: CustomStringConvertible {
     let col = (pos < end) ? "\(colStr(pos))-\(colStr(end))" : colStr(pos)
 
     let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
-    return "\(prefix_colon)\(name):\(lineIdx+1):\(col):\(msgSpace)\(msg)\n\(srcBar)\(srcLine)\n  \(underline)\n"
+    return "\(prefixColon)\(name):\(lineIdx+1):\(col):\(msgSpace)\(msg)\n\(srcBar)\(srcLine)\n  \(underline)\n"
   }
 
   public func stringFor(token: ${Name}Token) -> String? {
