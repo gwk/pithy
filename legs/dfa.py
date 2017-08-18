@@ -147,6 +147,7 @@ class DFA:
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
+
   def dstNodes(self, node: int) -> FrozenSet[int]:
     return frozenset(self.transitions[node].values())
 
