@@ -147,9 +147,9 @@ class DFA:
   def advance(self, state: int, byte: int) -> int:
     return self.transitions[state][byte]
 
-  def match(self, text: str, start: int=0) -> Optional[str]:
+  def match(self, text: str, start_state: int=0) -> Optional[str]:
     text_bytes = text.encode('utf8')
-    state = start
+    state = start_state
     for byte in text_bytes:
       try: state = self.advance(state, byte)
       except KeyError: return None
