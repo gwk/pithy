@@ -47,6 +47,8 @@ def main() -> None:
   if args.match and args.language: exit('`-match` and `-language` are mutually exclusive.')
   if args.match and args.test: exit('`-match` and `-test` are mutually exclusive.')
 
+  if args.test and not args.output: exit('`-test` requires `-output`.')
+
   langs: Set[str]
   if args.language:
     if args.language not in supported_langs:
