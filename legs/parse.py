@@ -164,19 +164,19 @@ def parse_rule(path: str, sym_token: Token, buffer: Buffer[Token]) -> Rule:
   else:
     consume(path, buffer, kind='newline', subj='literal symbol rule')
     text = sym_token[0]
-    return Seq.for_subs(Charset.for_char(c) for c in text)
+    return Seq.of_iter(Charset.for_char(c) for c in text)
 
 
 def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rule:
   'Parse a pattern and return a Rule object.'
   els: List[Rule] = []
-  def finish() -> Rule: return Seq.for_subs(els)
+  def finish() -> Rule: return Seq.of_iter(els)
   for token in buffer:
     kind = token.lastgroup
     def _fail(msg) -> 'NoReturn': fail_parse(path, token, msg)
     def quantity(rule_type: Type[Rule]) -> None:
       if not els: _fail('quantity operator must be preceded by a pattern.')
-      els[-1] = rule_type(subs=(els[-1],))
+      els[-1] = rule_type(els[-1])
     if kind == terminator: return finish()
     elif kind == 'paren_o': els.append(parse_rule_pattern(path, buffer, terminator='paren_c'))
     elif kind == 'brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(sorted(parse_charset(path, buffer, token))))))
@@ -195,7 +195,7 @@ def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rul
 
 
 def parse_choice(path: str, buffer: Buffer[Token], left: Rule, terminator: str) -> Rule:
-  return Choice(subs=(left, parse_rule_pattern(path, buffer, terminator=terminator)))
+  return Choice(left, parse_rule_pattern(path, buffer, terminator=terminator))
 
 
 def parse_esc(path: str, token: Token) -> int:

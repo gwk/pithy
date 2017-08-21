@@ -20,6 +20,8 @@ __all__ = [
   'Seq',
   'Star',
   'NfaMutableTransitions',
+  'empty_choice',
+  'empty_seq',
 ]
 
 
@@ -28,21 +30,16 @@ MkNode = Callable[[], int]
 NfaMutableTransitions = DefaultDict[int, DefaultDict[int, Set[int]]]
 
 
-class Rule:
+class Rule(tuple):
 
   precedence: int = -1
 
-  def __init__(self, subs: Tuple['Rule', ...]=()) -> None:
-    assert isinstance(subs, tuple)
-    for sub in subs: assert isinstance(sub, Rule)
-    self.subs = subs
-
-  def __repr__(self) -> str: return f'{type(self).__name__}({self.subs})'
+  def __repr__(self) -> str: return f'{type(self).__name__}{super().__repr__()}'
 
   def describe(self, name: Optional[str], depth=0) -> None:
     n = name + ' ' if name else ''
     errL('  ' * depth, n, type(self).__name__, ':', self.inlineDescription)
-    for sub in self.subs:
+    for sub in self:
       sub.describe(name=None, depth=depth+1)
 
   @property
@@ -72,57 +69,80 @@ class Rule:
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
 
+  def __or__(self, r: 'Rule') -> 'Rule':
+    tl = type(self)
+    tr = type(r)
+    if tl.precedence > tr.precedence: return r | self
+    if tl is Choice:
+      if tr is Choice: return Choice(*self, *r) # type: ignore
+      return Choice(*self, r) # type: ignore
+    return Choice(self, r) # type: ignore
 
-class Choice(Rule):
+
+class CompoundRule(Rule):
+  def __new__(cls, *subs: Rule):
+    for sub in subs:
+      if not isinstance(sub, Rule):
+        raise ValueError(f'{self.__class__.__name__} received non-Rule sub: {sub}')
+    return tuple.__new__(cls, subs) # type: ignore
+
+
+class Choice(CompoundRule):
 
   precedence = 1
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
-    for choice in self.subs:
-      choice.genNFA(mk_node, transitions, start, end)
+    for sub in self:
+      sub.genNFA(mk_node, transitions, start, end)
 
   def genRegex(self, flavor: str) -> str:
-    sub_patterns = [sub.genRegexSub(flavor=flavor, precedence=self.precedence) for sub in self.subs]
+    sub_patterns = [sub.genRegexSub(flavor=flavor, precedence=self.precedence) for sub in self]
     return '|'.join(sub_patterns)
 
 
-class Seq(Rule):
+class Seq(CompoundRule):
 
   precedence = 2
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
-    subs = self.subs
-    intermediates = [mk_node() for i in range(1, len(subs))]
-    for sub, src, dst in zip(subs, [start] + intermediates, intermediates + [end]):
+    intermediates = [mk_node() for i in range(1, len(self))]
+    for sub, src, dst in zip(self, [start] + intermediates, intermediates + [end]):
       sub.genNFA(mk_node, transitions, src, dst)
 
   def genRegex(self, flavor: str) -> str:
-    sub_patterns = [sub.genRegexSub(flavor=flavor, precedence=self.precedence) for sub in self.subs]
+    sub_patterns = [sub.genRegexSub(flavor=flavor, precedence=self.precedence) for sub in self]
     return ''.join(sub_patterns)
 
   @property
-  def isLiteral(self): return all(sub.isLiteral for sub in self.subs)
+  def isLiteral(self): return all(sub.isLiteral for sub in self)
 
   @property
-  def literalPattern(self): return ''.join(sub.literalPattern for sub in self.subs)
+  def literalPattern(self): return ''.join(sub.literalPattern for sub in self)
 
-  @classmethod
-  def for_subs(cls, subs: Iterable[Rule]) -> Rule:
-    s = tuple(subs)
-    return s[0] if len(s) == 1 else cls(subs=s)
+  @staticmethod
+  def of(*subs: Rule) -> Rule:
+    for sub in subs:
+      assert isinstance(sub, Rule), sub
+    return subs[0] if len(subs) == 1 else Seq(*subs)
+
+  @staticmethod
+  def of_iter(subs: Iterable[Rule]) -> Rule:
+    return Seq.of(*subs)
 
 
-class Quantity(Rule):
+class Quantity(CompoundRule):
 
   precedence = 3
   operator: str = ''
 
-  @property
-  def sub(self) -> Rule: return self.subs[0]
+  def __new__(cls, *subs):
+    if len(subs) != 1:
+      raise ValueError(f'{self.__class__.__name__} expcets single sub; received: {subs}')
+    return tuple.__new__(cls, subs) # type: ignore
 
   def genRegex(self, flavor: str) -> str:
-    sub_pattern = self.sub.genRegexSub(flavor=flavor, precedence=self.precedence)
-    return sub_pattern + self.operator
+    sub_pattern = self[0].genRegexSub(flavor=flavor, precedence=self.precedence)
+    return sub_pattern + self.operator # type: ignore
 
 
 class Opt(Quantity):
@@ -131,7 +151,7 @@ class Opt(Quantity):
 
   def genNFA(self, mk_node, transitions: NfaMutableTransitions, start: int, end: int) -> None:
     transitions[start][empty_symbol].add(end)
-    self.sub.genNFA(mk_node, transitions, start, end)
+    self[0].genNFA(mk_node, transitions, start, end)
 
 
 class Star(Quantity):
@@ -142,7 +162,12 @@ class Star(Quantity):
     branch = mk_node()
     transitions[start][empty_symbol].add(branch)
     transitions[branch][empty_symbol].add(end)
-    self.sub.genNFA(mk_node, transitions, branch, branch)
+    self[0].genNFA(mk_node, transitions, branch, branch)
+
+  @staticmethod
+  def of(rule: Rule) -> Rule:
+    if isinstance(rule, (Plus, Star)): return rule
+    return Star(rule)
 
 
 class Plus(Quantity):
@@ -155,12 +180,19 @@ class Plus(Quantity):
     transitions[start][empty_symbol].add(pre)
     transitions[post][empty_symbol].add(end)
     transitions[post][empty_symbol].add(pre)
-    self.sub.genNFA(mk_node, transitions, pre, post)
+    self[0].genNFA(mk_node, transitions, pre, post)
 
 
 class Charset(Rule):
 
   precedence = 4
+
+  def __new__(cls, ranges):
+    for r in ranges:
+      if not isinstance(r, tuple):
+        raise ValueError(f'{self.__class__.__name__} received non-tuple range: {r}')
+    return tuple.__new__(cls, ranges) # type: ignore
+
 
   def __init__(self, ranges: CodeRanges) -> None:
     super().__init__()
@@ -212,6 +244,11 @@ class Charset(Rule):
     code = ord(char)
     return cls(ranges=((code, code + 1),))
 
+  @classmethod
+  def for_code(cls: Type['Charset'], code: int) -> 'Charset':
+    return cls(ranges=((code, code + 1),))
+
+
 
 def pattern_for_code(code: int, flavor: str) -> str:
   if 0x30 <= code <= 0x39 or 0x41 <= code <= 0x5A or 0x61 <= code <= 0x7A: # ASCII alphanumeric.
@@ -224,3 +261,6 @@ def pattern_for_code(code: int, flavor: str) -> str:
 def pattern_for_code_range(code_range: CodeRange, flavor: str) -> str:
   s, e = code_range
   return f'{pattern_for_code(s, flavor)}-{pattern_for_code(e - 1, flavor)}'
+
+empty_choice = Choice()
+empty_seq = Seq()
