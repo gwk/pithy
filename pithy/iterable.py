@@ -98,7 +98,7 @@ def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int
   'Given `iterable`, yield range pair tuples.'
 
   def pair_for_el(el: _RangeTypes) -> Tuple[int, int]:
-    if isinstance(el, range): return (el.start, el.stop) # type: ignore # mypy bug: "range" has no attribute "start"
+    if isinstance(el, range): return (el.start, el.stop)
     if isinstance(el, int): return (el, el + 1)
     if not isinstance(el, tuple) or len(el) != 2: raise ValueError(el)
     return el
