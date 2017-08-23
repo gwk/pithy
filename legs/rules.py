@@ -78,6 +78,10 @@ class Rule(tuple):
       return Choice(*self, r)
     return Choice(self, r)
 
+  def __lt__(self, r: Any) -> bool:
+    if not isinstance(r, Rule): return NotImplemented
+    return self.precedence < r.precedence or self.precedence == r.precedence and tuple.__lt__(self, r)
+
 
 class Choice(Rule):
 
