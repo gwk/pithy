@@ -91,7 +91,7 @@ def main() -> None:
     if args.match and mode != match_mode: continue
     named_rules = sorted((name, patterns[name]) for name in rule_names)
     nfa = genNFA(mode, named_rules=named_rules)
-    if dbg: nfa.describe(f'{mode} NFA')
+    if dbg: nfa.describe(f'{mode}: NFA')
     if dbg or args.stats: nfa.describe_stats(f'{mode} NFA Stats')
     msgs = nfa.validate()
     if msgs:
@@ -100,13 +100,13 @@ def main() -> None:
 
     # Always generate the fat DFA, which checks for ambiguous rules.
     fat_dfa = genDFA(nfa)
-    if dbg: fat_dfa.describe('Fat DFA')
+    if dbg: fat_dfa.describe(f'{mode}: Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
 
     if not requires_dfa: continue # Skip expensive minimization step.
 
     min_dfa = minimizeDFA(fat_dfa)
-    if dbg: min_dfa.describe('Min DFA')
+    if dbg: min_dfa.describe(f'{mode}: Min DFA')
     if dbg or args.stats: min_dfa.describe_stats('Min DFA Stats')
     mode_dfa_pairs.append((mode, min_dfa))
 
