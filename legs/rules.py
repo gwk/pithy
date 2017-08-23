@@ -43,7 +43,7 @@ class Rule(tuple):
       sub.describe(name=None, depth=depth+1)
 
   @property
-  def inlineDescription(self) -> str: return ''
+  def inlineDescription(self) -> str: return '' if self else ' Ø'
 
   @property
   def isLiteral(self) -> bool: return False
@@ -79,17 +79,15 @@ class Rule(tuple):
     return Choice(self, r) # type: ignore
 
 
-class CompoundRule(Rule):
+class Choice(Rule):
+
+  precedence = 1
+
   def __new__(cls, *subs: Rule):
     for sub in subs:
       if not isinstance(sub, Rule):
         raise ValueError(f'{self.__class__.__name__} received non-Rule sub: {sub}')
-    return tuple.__new__(cls, subs) # type: ignore
-
-
-class Choice(CompoundRule):
-
-  precedence = 1
+    return tuple.__new__(cls, sorted(set(subs))) # type: ignore
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
     for sub in self:
@@ -100,9 +98,15 @@ class Choice(CompoundRule):
     return '|'.join(sub_patterns)
 
 
-class Seq(CompoundRule):
+class Seq(Rule):
 
   precedence = 2
+
+  def __new__(cls, *subs: Rule):
+    for sub in subs:
+      if not isinstance(sub, Rule):
+        raise ValueError(f'{self.__class__.__name__} received non-Rule sub: {sub}')
+    return tuple.__new__(cls, subs) # type: ignore
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
     intermediates = [mk_node() for i in range(1, len(self))]
@@ -130,7 +134,7 @@ class Seq(CompoundRule):
     return Seq.of(*subs)
 
 
-class Quantity(CompoundRule):
+class Quantity(Rule):
 
   precedence = 3
   operator: str = ''
@@ -138,6 +142,8 @@ class Quantity(CompoundRule):
   def __new__(cls, *subs):
     if len(subs) != 1:
       raise ValueError(f'{self.__class__.__name__} expcets single sub; received: {subs}')
+    if not isinstance(subs[0], Rule):
+      raise ValueError(f'{self.__class__.__name__} received non-Rule sub: {subs[0]}')
     return tuple.__new__(cls, subs) # type: ignore
 
   def genRegex(self, flavor: str) -> str:
@@ -202,6 +208,11 @@ class Charset(Rule):
     self.ranges = ranges
 
   def __repr__(self) -> str: return f'{type(self).__name__}({self.inlineDescription})'
+
+
+  def describe(self, name: Optional[str], depth=0) -> None:
+    n = name + ' ' if name else ''
+    errL('  ' * depth, n, type(self).__name__, ':', self.inlineDescription)
 
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
