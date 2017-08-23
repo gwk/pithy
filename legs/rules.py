@@ -74,19 +74,21 @@ class Rule(tuple):
     tr = type(r)
     if tl.precedence > tr.precedence: return r | self
     if tl is Choice:
-      if tr is Choice: return Choice(*self, *r) # type: ignore
-      return Choice(*self, r) # type: ignore
-    return Choice(self, r) # type: ignore
+      if tr is Choice: return Choice(*self, *r)
+      return Choice(*self, r)
+    return Choice(self, r)
 
 
 class Choice(Rule):
 
   precedence = 1
 
+  def __init__(cls, *subs: Rule) -> None: pass # for mypy only.
+
   def __new__(cls, *subs: Rule):
     for sub in subs:
       if not isinstance(sub, Rule):
-        raise ValueError(f'{self.__class__.__name__} received non-Rule sub: {sub}')
+        raise ValueError(f'{cls.__name__} received non-Rule sub: {sub}')
     return tuple.__new__(cls, sorted(set(subs))) # type: ignore
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
@@ -102,10 +104,12 @@ class Seq(Rule):
 
   precedence = 2
 
+  def __init__(cls, *subs: Rule) -> None: pass # for mypy only.
+
   def __new__(cls, *subs: Rule):
     for sub in subs:
       if not isinstance(sub, Rule):
-        raise ValueError(f'{self.__class__.__name__} received non-Rule sub: {sub}')
+        raise ValueError(f'{cls.__name__} received non-Rule sub: {sub}')
     return tuple.__new__(cls, subs) # type: ignore
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
@@ -139,11 +143,13 @@ class Quantity(Rule):
   precedence = 3
   operator: str = ''
 
+  def __init__(cls, sub: Rule) -> None: pass # for mypy only.
+
   def __new__(cls, *subs):
     if len(subs) != 1:
-      raise ValueError(f'{self.__class__.__name__} expcets single sub; received: {subs}')
+      raise ValueError(f'{cls.__name__} expcets single sub; received: {subs}')
     if not isinstance(subs[0], Rule):
-      raise ValueError(f'{self.__class__.__name__} received non-Rule sub: {subs[0]}')
+      raise ValueError(f'{cls.__name__} received non-Rule sub: {subs[0]}')
     return tuple.__new__(cls, subs) # type: ignore
 
   def genRegex(self, flavor: str) -> str:
@@ -196,7 +202,7 @@ class Charset(Rule):
   def __new__(cls, ranges):
     for r in ranges:
       if not isinstance(r, tuple):
-        raise ValueError(f'{self.__class__.__name__} received non-tuple range: {r}')
+        raise ValueError(f'{cls.__name__} received non-tuple range: {r}')
     return tuple.__new__(cls, ranges) # type: ignore
 
 
