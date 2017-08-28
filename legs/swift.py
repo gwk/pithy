@@ -281,12 +281,12 @@ public class ${Name}Source: CustomStringConvertible {
     return end
   }
 
-  public func diagnostic(token: ${Name}Token, prefix: String = "", msg: String = "", showMissingNewline: Bool = true) -> String {
+  public func diagnostic(token: ${Name}Token, msg: String = "", showMissingNewline: Bool = true) -> String {
     return diagnostic(pos: token.pos, end: token.end, linePos: token.linePos, lineIdx: token.lineIdx,
-      prefix: prefix, msg: msg, showMissingNewline: showMissingNewline)
+      msg: msg, showMissingNewline: showMissingNewline)
   }
 
-  public func diagnostic(endPos: Int, prefix: String = "", msg: String = "", showMissingNewline: Bool = true) -> String {
+  public func diagnostic(endPos: Int, msg: String = "", showMissingNewline: Bool = true) -> String {
     // TODO: fix this.
     let lineIdx = newlinePositions.count
     let linePos: Int
@@ -295,31 +295,29 @@ public class ${Name}Source: CustomStringConvertible {
     } else {
       linePos = 0
     }
-    return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx,
-      prefix: prefix, msg: msg, showMissingNewline: showMissingNewline)
+    return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, msg: msg, showMissingNewline: showMissingNewline)
   }
 
-  public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, prefix: String = "", msg: String = "",
-   showMissingNewline: Bool = true) -> String {
+  public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, msg: String = "", showMissingNewline: Bool = true) -> String {
 
     let end = end ?? -1
     let lineEnd = getLineEnd(pos: pos)
     if end <= lineEnd { // single line.
       return diagnostic(pos: pos, end: end, linePos: linePos, lineIdx: lineIdx, lineBytes: text[linePos..<lineEnd],
-        prefix: prefix, msg: msg, showMissingNewline: showMissingNewline)
+        msg: msg, showMissingNewline: showMissingNewline)
     } else { // multiline.
       let endLineIdx = getLineIndex(pos: end)
       let endLineRange = getLineStart(pos: end)..<getLineEnd(pos: end)
       return (
         diagnostic(pos: pos, end: lineEnd, linePos: linePos, lineIdx: lineIdx, lineBytes: text[linePos..<lineEnd],
-          prefix: prefix, msg: msg, showMissingNewline: showMissingNewline) +
+          msg: msg, showMissingNewline: showMissingNewline) +
         diagnostic(pos: endLineRange.startIndex, end: end, linePos: endLineRange.startIndex, lineIdx: endLineIdx, lineBytes: text[endLineRange],
-          prefix: "", msg: "ending here", showMissingNewline: showMissingNewline))
+          msg: "ending here", showMissingNewline: showMissingNewline))
     }
   }
 
   public func diagnostic(pos: Int, end: Int, linePos: Int, lineIdx: Int, lineBytes: ArraySlice<UInt8>,
-   prefix: String, msg: String, showMissingNewline: Bool = true) -> String {
+   msg: String, showMissingNewline: Bool = true) -> String {
 
     let tab = UInt8(0x09)
     let newline = UInt8(0x0a)
@@ -368,8 +366,6 @@ public class ${Name}Source: CustomStringConvertible {
     }
     let underline = String(bytes: underBytes, encoding: .utf8)!
 
-    let prefixColon = prefix.isEmpty ? "" : prefix + ": "
-
     func colStr(_ pos: Int) -> String {
       if let s = String(bytes: lineBytes[..<pos], encoding: .utf8) {
         return String(s.count + 1)
@@ -381,7 +377,7 @@ public class ${Name}Source: CustomStringConvertible {
     let col = (pos < end) ? "\(colStr(pos))-\(colStr(end))" : colStr(pos)
 
     let msgSpace = (msg.isEmpty || msg.hasPrefix("\n")) ? "" : " "
-    return "\(prefixColon)\(name):\(lineIdx+1):\(col):\(msgSpace)\(msg)\n\(srcBar)\(srcLine)\n  \(underline)\n"
+    return "\(name):\(lineIdx+1):\(col):\(msgSpace)\(msg)\n\(srcBar)\(srcLine)\n  \(underline)\n"
   }
 
   public func stringFor(token: ${Name}Token) -> String? {

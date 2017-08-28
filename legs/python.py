@@ -78,37 +78,36 @@ class ${Name}Source:
     line_end = self.text.find('\n', pos)
     return len(self.text) if line_end == -1 else line_end
 
-  def diagnostic_for_token(self, token: ${Name}Token, prefix: str = '', msg: str = '', show_missing_newline: bool = True) -> str:
+  def diagnostic_for_token(self, token: ${Name}Token, msg: str = '', show_missing_newline: bool = True) -> str:
     pos = token.start()
     end = token.end()
     line_pos = self.get_line_start(pos)
     line_idx = self.text.count('\n', 0, pos) # number of newlines preceeding pos.
-    return self.diagnostic_for_pos(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg, show_missing_newline=show_missing_newline)
+    return self.diagnostic_for_pos(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, msg=msg, show_missing_newline=show_missing_newline)
 
-  #def diagnostic_for_end(string: str, end: int, prefix: str = '', msg: str = '', show_missing_newline: bool = true) -> str:
+  #def diagnostic_for_end(string: str, end: int, msg: str = '', show_missing_newline: bool = true) -> str:
   #  lineIdx = self.newlinePositions.count # TODO
   #  newlinePos = newlinePositions.last
   #  linePos = 0 if newlinePos is None else newlinePos + 1
-  #  return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, prefix: prefix, msg: msg)
+  #  return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, msg: msg)
 
-  def diagnostic_for_pos(self, pos: int, end: int, line_pos: int, line_idx: int, prefix: str = '', msg: str = '',
-    show_missing_newline: bool = True) -> str:
+  def diagnostic_for_pos(self, pos: int, end: int, line_pos: int, line_idx: int, msg: str = '', show_missing_newline: bool = True) -> str:
 
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
       return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, line_str=self.text[line_pos:line_end],
-        prefix=prefix, msg=msg, show_missing_newline=show_missing_newline)
+        msg=msg, show_missing_newline=show_missing_newline)
     else: # multiline.
       end_line_idx = self.get_line_index(pos)
       end_line_pos = self.get_line_start(end)
       end_line_end = self.get_line_end(end)
       return (
         self._diagnostic(pos=pos, end=line_end, line_pos=line_pos, line_idx=line_idx, line_str=self.text[line_pos:line_end],
-          prefix=prefix, msg=msg, show_missing_newline=show_missing_newline) +
+          msg=msg, show_missing_newline=show_missing_newline) +
         self._diagnostic(pos=end_line_pos, end=end, line_pos=end_line_pos, line_idx=end_line_idx, line_str=self.text[end_line_pos:end_line_end],
-          prefix=prefix, msg=msg, show_missing_newline=show_missing_newline))
+          msg=msg, show_missing_newline=show_missing_newline))
 
-  def _diagnostic(self, pos: int, end: int, line_pos: int, line_idx: int, line_str: str, prefix: str, msg: str, show_missing_newline: bool) -> str:
+  def _diagnostic(self, pos: int, end: int, line_pos: int, line_idx: int, line_str: str, msg: str, show_missing_newline: bool) -> str:
 
     tab = '\t'
     newline = '\n'
@@ -144,15 +143,13 @@ class ${Name}Source:
         under_chars.append(tilde)
     underline = ''.join(under_chars)
 
-    prefix_colon = (prefix + ': ') if prefix else ''
-
     def col_str(pos: int) -> str:
       return (pos - line_pos) + 1
 
     col = f'{col_str(pos)}-{col_str(end)}' if pos < end else col_str(pos)
 
     msg_space = "" if (not msg or msg.startswith('\n')) else " "
-    return f'{prefix_colon}{self.name}:{line_idx+1}:{col}:{msg_space}{msg}\n{src_bar}{src_line}\n  {underline}\n'
+    return f'{self.name}:{line_idx+1}:{col}:{msg_space}{msg}\n{src_bar}{src_line}\n  {underline}\n'
 
 
 class ${Name}Lexer:
