@@ -117,6 +117,9 @@ class Seq(Rule):
     return tuple.__new__(cls, subs) # type: ignore
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
+    if not self:
+      transitions[start][empty_symbol].add(end)
+      return
     intermediates = [mk_node() for i in range(1, len(self))]
     for sub, src, dst in zip(self, [start] + intermediates, intermediates + [end]):
       sub.genNFA(mk_node, transitions, src, dst)
