@@ -286,21 +286,28 @@ public class ${Name}Source: CustomStringConvertible {
       msg: msg, showMissingNewline: showMissingNewline)
   }
 
-  public func diagnostic(endPos: Int, msg: String = "", showMissingNewline: Bool = true) -> String {
-    // TODO: fix this.
-    let lineIdx = newlinePositions.count
+  public func diagnosticAtEnd(msg: String = "", showMissingNewline: Bool = true) -> String {
+    let lastPos = text.count - 1
     let linePos: Int
+    let lineIdx: Int
     if let newlinePos = newlinePositions.last {
-      linePos = newlinePos + 1
+      if newlinePos == lastPos { // terminating newline.
+        linePos = getLineStart(pos: newlinePos)
+        lineIdx = newlinePositions.count - 1
+      } else { // no terminating newline.
+        linePos = newlinePos + 1
+        lineIdx = newlinePositions.count
+      }
     } else {
       linePos = 0
+      lineIdx = 0
     }
-    return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, msg: msg, showMissingNewline: showMissingNewline)
+    return diagnostic(pos: lastPos, linePos: linePos, lineIdx: lineIdx, msg: msg, showMissingNewline: showMissingNewline)
   }
 
   public func diagnostic(pos: Int, end: Int? = nil, linePos: Int, lineIdx: Int, msg: String = "", showMissingNewline: Bool = true) -> String {
 
-    let end = end ?? -1
+    let end = end ?? pos
     let lineEnd = getLineEnd(pos: pos)
     if end <= lineEnd { // single line.
       return diagnostic(pos: pos, end: end, linePos: linePos, lineIdx: lineIdx, lineBytes: text[linePos..<lineEnd],
@@ -319,6 +326,11 @@ public class ${Name}Source: CustomStringConvertible {
   public func diagnostic(pos: Int, end: Int, linePos: Int, lineIdx: Int, lineBytes: ArraySlice<UInt8>,
    msg: String, showMissingNewline: Bool = true) -> String {
 
+    assert(pos >= 0)
+    assert(pos <= end)
+    assert(linePos <= pos)
+    assert(end <= linePos + lineBytes.count)
+
     let tab = UInt8(0x09)
     let newline = UInt8(0x0a)
     let space = UInt8(0x20)
@@ -333,8 +345,9 @@ public class ${Name}Source: CustomStringConvertible {
 
     let srcLine = { () -> String in
       if lineBytes.last == newline {
-        let s = decode(lineBytes[lineBytes.startIndex..<lineBytes.endIndex - 1])
-        if end == lineEnd {
+        let lastIndex = lineBytes.endIndex - 1
+        let s = decode(lineBytes[lineBytes.startIndex..<lastIndex])
+        if pos == lastIndex || end == lineEnd {
           return s + "\u{23CE}" // RETURN SYMBOL.
         } else {
           return s

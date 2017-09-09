@@ -85,14 +85,26 @@ class ${Name}Source:
     line_idx = self.text.count('\n', 0, pos) # number of newlines preceeding pos.
     return self.diagnostic_for_pos(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, msg=msg, show_missing_newline=show_missing_newline)
 
-  #def diagnostic_for_end(string: str, end: int, msg: str = '', show_missing_newline: bool = true) -> str:
-  #  lineIdx = self.newlinePositions.count # TODO
-  #  newlinePos = newlinePositions.last
-  #  linePos = 0 if newlinePos is None else newlinePos + 1
-  #  return diagnostic(pos: endPos, linePos: linePos, lineIdx: lineIdx, msg: msg)
+  def diagnostic_at_end(self, msg: str = '', show_missing_newline: bool = true) -> str:
+    last_pos = len(self.text) - 1
+    line_pos: Int
+    line_idx: Int
+    newline_pos = self.text.rfind('\n')
+    if newline_pos >= 0: #
+      if newline_pos == last_pos: # terminating newline.
+        line_pos = self.get_line_start(pos: newline_pos)
+        line_idx = self.text.count('\n', 0, newline_pos) # number of newlines preceeding newline_pos.
+      else: # no terminating newline.
+        line_pos = newline_pos + 1
+        line_idx = len(newline_positions)
+    else:
+      line_pos = 0
+      line_idx = 0
+    return self.diagnostic(pos=last_pos, line_pos=line_pos, line_idx=line_idx, msg=msg)
 
-  def diagnostic_for_pos(self, pos: int, end: int, line_pos: int, line_idx: int, msg: str = '', show_missing_newline: bool = True) -> str:
+  def diagnostic_for_pos(self, pos: int, end: int = None, line_pos: int, line_idx: int, msg: str = '', show_missing_newline: bool = True) -> str:
 
+    if end is None: end = pos
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
       return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, line_str=self.text[line_pos:line_end],
@@ -109,6 +121,11 @@ class ${Name}Source:
 
   def _diagnostic(self, pos: int, end: int, line_pos: int, line_idx: int, line_str: str, msg: str, show_missing_newline: bool) -> str:
 
+    assert pos >= 0
+    assert pos <= end
+    assert line_pos <= pos
+    assert end <= line_pos + len(line_str)
+
     tab = '\t'
     newline = '\n'
     space = ' '
@@ -121,8 +138,9 @@ class ${Name}Source:
 
     src_line: str
     if line_str[-1] == newline:
+      last_idx = len(line_str) - 1
       s = line_str[:-1]
-      if end == line_end:
+      if pos == last_idx or end == line_end:
         src_line = s + "\u23CE" # RETURN SYMBOL.
       else:
         src_line = s
