@@ -300,7 +300,7 @@ escape_codes: Dict[str, int] = {
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),
 }
-escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:')
+escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/')
 
 if False:
   for k, v in sorted(escape_codes.items()):
