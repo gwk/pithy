@@ -82,7 +82,7 @@ start_${child_mode_name}()''',
 
   def transition_code(node: int) -> str:
     mode = node_modes[node]
-    rule_name = dfa.matchNodeNames.get(node, 'incomplete')
+    rule_name = dfa.matchName(node) or 'incomplete'
     kind = kinds[rule_name]
     restart_code = 'start_{mode}()'.format(mode=node_modes[node].name)
     if has_modes:
@@ -116,7 +116,7 @@ return flushToken(kind: .{kind})'''.format(
     mode = node_modes[node]
     if node in start_nodes:
       return 'case {node}: start_{mode.name}(); return nil'.format(mode=mode, node=node)
-    name = dfa.matchNodeNames.get(node)
+    name = dfa.matchName(node)
     if name:
       desc = name
     elif node in preMatchNodes:

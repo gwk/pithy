@@ -13,7 +13,7 @@ from itertools import count
 from typing import *
 
 from pithy.io import errL, errSL
-from pithy.iterable import filtermap_with_mapping, first_el, int_tuple_ranges
+from pithy.iterable import filtermap_with_mapping, int_tuple_ranges
 from pithy.string_utils import prepend_to_nonempty
 
 from .codepoints import codes_desc
@@ -100,9 +100,6 @@ class NFA:
           remaining.add(dst)
     return frozenset(nodes)
 
-  @property
-  def ruleNames(self) -> FrozenSet[str]: return frozenset(self.matchNodeNames.values())
-
   def describe(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
     errL(' matchNodeNames:')
@@ -122,7 +119,7 @@ class NFA:
 
   def describe_stats(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
-    errSL('  matchNodeNames:', len(self.matchNodeNames))
+    errSL('  match nodes:', len(self.matchNodeNames))
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
@@ -254,10 +251,7 @@ def genDFA(nfa: NFA) -> DFA:
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
   # create final dictionary.
-  matchNodeNames = { node : first_el(names) for node, names in preferred_node_names.items() }
-  # validate.
-  assert set(matchNodeNames.values()) == set(nfa.matchNodeNames.values())
-
-  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames, literalRules=nfa.literalRules)
+  matchNodeNameSets = { node : frozenset(names) for node, names in preferred_node_names.items() }
+  return DFA(transitions=dict(transitions), matchNodeNameSets=matchNodeNameSets, literalRules=nfa.literalRules)
 
 

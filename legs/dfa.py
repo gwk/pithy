@@ -19,7 +19,7 @@ An automaton consists of two parts:
 * transitions: dictionary of source node to (dictionary of byte to destination).
   * for DFAs, the destination is a single node.
   * for NFAs, the destination is a set of nodes, representing a subset of the next state.
-* matchNodeNames: the set of nodes that represent a match, and the corresponding name for each.
+* matchNodeNameSets: dictionary of nodes that represent a match to the set of corresponding rule names.
 
 The starting state is always 0 for DFAs, and {0} for NFAs.
 Additionally, 1 and {1} are always the respective invalid states.
@@ -33,7 +33,7 @@ from itertools import chain
 from typing import *
 
 from pithy.io import errL, errSL
-from pithy.iterable import int_tuple_ranges
+from pithy.iterable import first_el, int_tuple_ranges
 from pithy.string_utils import prepend_to_nonempty
 
 from .codepoints import codes_desc
@@ -47,9 +47,9 @@ DfaTransitions = Dict[int, DfaStateTransitions]
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, transitions: DfaTransitions, matchNodeNames: Dict[int, str], literalRules: Set[str]) -> None:
+  def __init__(self, transitions: DfaTransitions, matchNodeNameSets: Dict[int, FrozenSet[str]], literalRules: Set[str]) -> None:
     self.transitions = transitions
-    self.matchNodeNames = matchNodeNames
+    self.matchNodeNameSets = matchNodeNameSets
     self.literalRules = literalRules
 
   @property
@@ -81,7 +81,7 @@ class DFA:
   def terminalNodes(self) -> FrozenSet[int]: return frozenset(n for n in self.allNodes if not self.transitions.get(n))
 
   @property
-  def matchNodes(self) -> FrozenSet[int]: return frozenset(self.matchNodeNames.keys())
+  def matchNodes(self) -> FrozenSet[int]: return frozenset(self.matchNodeNameSets.keys())
 
   @property
   def nonMatchNodes(self) -> FrozenSet[int]: return self.allNodes - self.matchNodes
@@ -115,28 +115,28 @@ class DFA:
     return frozenset(nodes)
 
   @property
-  def ruleNames(self) -> FrozenSet[str]: return frozenset(self.matchNodeNames.values())
+  def ruleNames(self) -> FrozenSet[str]: return frozenset().union(*self.matchNodeNameSets.values()) # type: ignore
 
   def describe(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
-    errL(' matchNodeNames:')
-    for node, name in sorted(self.matchNodeNames.items()):
-      errL(f'  {node}: {name}')
+    errL(' matchNodeNameSets:')
+    for node, names in sorted(self.matchNodeNameSets.items()):
+      errSL(f'  {node}:', *sorted(names))
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
-      errL(f'  {src}:{prepend_to_nonempty(" ", self.matchNodeNames.get(src, ""))}')
+      errSL(f'  {src}:', *sorted(self.matchNames(src)))
       dst_bytes: DefaultDict[int, Set[int]]  = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
       for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
         byte_ranges = int_tuple_ranges(bytes_list)
-        errL('    ', codes_desc(byte_ranges), ' ==> ', dst, prepend_to_nonempty(': ', self.matchNodeNames.get(dst, '')))
+        errSL(f'    {codes_desc(byte_ranges)} ==> {dst}', *sorted(self.matchNames(dst)))
     errL()
 
   def describe_stats(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
-    errSL('  matchNodeNames:', len(self.matchNodeNames))
+    errSL('  match nodes:', len(self.matchNodeNameSets))
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
@@ -147,14 +147,21 @@ class DFA:
   def advance(self, state: int, byte: int) -> int:
     return self.transitions[state][byte]
 
-  def match(self, text: str, start_state: int=0) -> Optional[str]:
+  def match(self, text: str, start_state: int=0) -> FrozenSet[str]:
     text_bytes = text.encode('utf8')
     state = start_state
     for byte in text_bytes:
       try: state = self.advance(state, byte)
-      except KeyError: return None
-    return self.matchNodeNames.get(state)
+      except KeyError: return frozenset()
+    return self.matchNames(state)
 
+  def matchNames(self, node: int) -> FrozenSet[str]:
+    try: return self.matchNodeNameSets[node]
+    except KeyError: return frozenset()
+
+  def matchName(self, node: int) -> Optional[str]:
+    try: return first_el(self.matchNodeNameSets[node])
+    except KeyError: return None
 
 
 def minimizeDFA(dfa: DFA) -> DFA:
@@ -235,6 +242,6 @@ def minimizeDFA(dfa: DFA) -> DFA:
       except KeyError:
         new_d[char] = new_dst
 
-  matchNodeNames = { mapping[old] : name for old, name in dfa.matchNodeNames.items() }
-  return DFA(transitions=dict(transitions), matchNodeNames=matchNodeNames, literalRules=dfa.literalRules)
+  matchNodeNameSets = { mapping[old] : names for old, names in dfa.matchNodeNameSets.items() }
+  return DFA(transitions=dict(transitions), matchNodeNameSets=matchNodeNameSets, literalRules=dfa.literalRules)
 

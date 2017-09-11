@@ -10,6 +10,7 @@ from pithy.collection import freeze
 from pithy.dict_utils import dict_put
 from pithy.fs import path_ext
 from pithy.io import errL, errSL, errLL, errZ, outL, outZ
+from pithy.iterable import first_el
 from pithy.string_utils import pluralize
 from pithy.task import runCO
 
@@ -176,17 +177,15 @@ def main() -> None:
 def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
   'Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.'
   nfa_matches = nfa.match(string)
-  if len(nfa_matches) > 1:
-    exit(f'match: {string!r}: NFA matched multiple rules: {", ".join(sorted(nfa_matches))}.')
-  nfa_match = list(nfa_matches)[0] if nfa_matches else None
-  fat_dfa_match = fat_dfa.match(string)
-  if fat_dfa_match != nfa_match:
-    exit(f'match: {string!r} inconsistent match: NFA: {nfa_match}; fat DFA: {fat_dfa_match}.')
-  min_dfa_match = min_dfa.match(string)
-  if min_dfa_match != nfa_match:
-    exit(f'match: {string!r} inconsistent match: NFA: {nfa_match}; min DFA: {min_dfa_match}.')
-  if nfa_match:
-    outL(f'match: {string!r} -> {nfa_match}')
+  fat_dfa_matches = fat_dfa.match(string)
+  if fat_dfa_matches != nfa_matches:
+    exit(f'match: {string!r} inconsistent matches: NFA: {nfa_matches}; fat DFA: {fat_dfa_matches}.')
+  min_dfa_matches = min_dfa.match(string)
+  if not (min_dfa_matches <= nfa_matches):
+    exit(f'match: {string!r} inconsistent matches: NFA: {nfa_matches}; min DFA: {min_dfa_matches}.')
+  assert len(min_dfa_matches) < 2, min_dfa_matches
+  if min_dfa_matches:
+    outL(f'match: {string!r} -> {first_el(min_dfa_matches)}')
   else:
     outL(f'match: {string!r} -- incomplete')
 
@@ -221,7 +220,7 @@ def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dic
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
   transitions: DfaTransitions = {}
-  matchNodeNames: Dict[int, str] = {}
+  matchNodeNameSets: Dict[int, FrozenSet[str]] = {}
   literalRules: Set[str] = set()
   modes: List[Mode] = []
   node_modes: Dict[int, Mode] = {}
@@ -232,9 +231,9 @@ def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dic
     node_modes.update((node, mode) for node in remap.values())
     def remap_trans_dict(d: Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }
     transitions.update((remap[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
-    matchNodeNames.update((remap[node], name) for node, name in sorted(dfa.matchNodeNames.items()))
+    matchNodeNameSets.update((remap[node], names) for node, names in sorted(dfa.matchNodeNameSets.items()))
     literalRules.update(dfa.literalRules)
-  return (DFA(transitions=transitions, matchNodeNames=matchNodeNames, literalRules=literalRules), modes, node_modes)
+  return (DFA(transitions=transitions, matchNodeNameSets=matchNodeNameSets, literalRules=literalRules), modes, node_modes)
 
 
 ext_langs = {
