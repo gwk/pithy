@@ -1,0 +1,22 @@
+{
+  "name": "legs",
+  "displayName": "legs",
+  "description": "Legs grammar support.",
+  "version": "1.0.0",
+  "publisher": "gwk",
+  "engines": {"vscode": "^1.0.0"},
+  "categories": ["Languages"],
+  "contributes": {
+    "languages": [
+      { "id": "legs",
+        "extensions": [".legs"]
+      }
+    ],
+    "grammars": [
+      { "language": "legs",
+        "scopeName": "source.legs",
+        "path": "./syntaxes/legs.json"
+      }
+    ]
+  }
+}

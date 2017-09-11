@@ -14,13 +14,14 @@ from pithy.iterable import first_el
 from pithy.string_utils import pluralize
 from pithy.task import runCO
 
-from legs.defs import Mode, ModeTransitions
-from legs.parse import parse_legs
-from legs.dfa import DFA, DfaTransitions, minimizeDFA
-from legs.nfa import NFA, genDFA
-from legs.rules import NfaMutableTransitions, Rule
-from legs.swift import output_swift
-from legs.python import output_python3
+from .defs import Mode, ModeTransitions
+from .parse import parse_legs
+from .dfa import DFA, DfaTransitions, minimizeDFA
+from .nfa import NFA, genDFA
+from .rules import NfaMutableTransitions, Rule
+from .swift import output_swift
+from .python import output_python3
+from .vscode import output_vscode
 
 
 def main() -> None:
@@ -33,6 +34,10 @@ def main() -> None:
   parser.add_argument('-output', default=None, help='Path to output generated source.')
   parser.add_argument('-language', default=None, help='Generated source target language.')
   parser.add_argument('-stats', action='store_true', help='Print statistics about the generated automata.')
+  parser.add_argument('-syntax-name', help='Syntax readable name for syntax definitions.')
+  parser.add_argument('-syntax-scope', help='Syntax scope name for textmate-style syntax definitions.')
+  parser.add_argument('-syntax-exts', nargs='*', help='Extensions list for syntax definitions.')
+
   parser.add_argument('-test', nargs='+',
     help='Generate testing source code for the specified language or else all supported languages;'
     ' run each test lexer on the specified arguments.')
@@ -140,6 +145,11 @@ def main() -> None:
       rule_descs=rule_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
+  if 'vscode' in langs:
+    path = args.output
+    output_vscode(path, patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions,
+      rule_descs=rule_descs, license=license, args=args)
+
   if args.test:
     # For each language, run against the specified match arguments, and capture output.
     # If all of the tests have identical output, then print it; otherwise print each output.
@@ -236,8 +246,6 @@ ext_langs = {
   '.py' : 'python3',
 }
 
-supported_langs = {'python3', 'swift'}
-
-dfa_langs = {'swift'} # languages which require the combined dfa.
+supported_langs = {'python3', 'swift', 'vscode'}
 
 if __name__ == "__main__": main()

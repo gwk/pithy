@@ -246,8 +246,10 @@ class Charset(Rule):
 
   def genRegex(self, flavor: str) -> str:
     ranges = self.ranges
-    if len(ranges) == 1 and ranges[0][0] + 1 == ranges[0][1]: # single character.
-      return pattern_for_code(ranges[0][0], flavor)
+    if len(ranges) == 1:
+      r = ranges[0]
+      if r[0] + 1 == r[1]: # single character.
+        return pattern_for_code(r[0], flavor)
     p = ''.join(pattern_for_code_range(r, flavor) for r in ranges)
     return f'[{p}]'
 
@@ -275,8 +277,8 @@ class Charset(Rule):
 
 
 def pattern_for_code(code: int, flavor: str) -> str:
-  if 0x30 <= code <= 0x39 or 0x41 <= code <= 0x5A or 0x61 <= code <= 0x7A: # ASCII alphanumeric.
-    return chr(code)
+  if 0x30 <= code <= 0x39 or 0x41 <= code <= 0x5A or 0x61 <= code <= 0x7A or code == 0x5F:
+    return chr(code) # ASCII alphanumeric or underscore.
   if code < 0x100: return f'\\x{code:02x}'
   if code < 0x10000: return f'\\u{code:04x}'
   return f'\\U{code:08x}'
@@ -284,6 +286,7 @@ def pattern_for_code(code: int, flavor: str) -> str:
 
 def pattern_for_code_range(code_range: CodeRange, flavor: str) -> str:
   s, e = code_range
+  if s + 1 == e: return pattern_for_code(s, flavor)
   return f'{pattern_for_code(s, flavor)}-{pattern_for_code(e - 1, flavor)}'
 
 empty_choice = Choice()

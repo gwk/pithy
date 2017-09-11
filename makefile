@@ -16,6 +16,9 @@ clean:
 cov:
 	iotest -fail-fast -coverage
 
+install-vscode: vscode-ext/syntaxes/legs.json
+	vscode-ext/install-vscode-ext.sh
+
 pip-develop:
 	pip3 install -e .
 
@@ -33,3 +36,6 @@ test:
 
 typecheck:
 	mypy-plumage legs
+
+vscode-ext/syntaxes/legs.json: legs.legs
+	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -language vscode -output $@
