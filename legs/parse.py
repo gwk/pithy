@@ -24,7 +24,7 @@ lexer = Lexer(flags='x', invalid='invalid', patterns=dict(
   section = r'\#\ *([Pp]atterns|[Mm]odes|[Tt]ransitions)[^\n]*',
   section_invalid = r'\#[^\n]*',
   comment = r'//[^\n]*',
-  sym     = r'\w+(?:\w+)?',
+  sym     = r'\w+',
   colon   = r':',
   brckt_o = r'\[',
   brckt_c = r'\]',
