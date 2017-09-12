@@ -1,0 +1,3 @@
+{
+    'cmd': '$PROJ/legs/__main__.py $STEM.legs',
+}

@@ -197,7 +197,7 @@ def genDFA(nfa: NFA) -> DFA:
   lexical errors are found at the ends of `incomplete` nodes and the starts of `invalid` nodes.
 
   Note that the `invalid` node is not reachable from `start` in the DFA;
-  we rely on the generated lexer to default into the invalid state.
+  the generated lexer explicitly defaults into the invalid state.
   '''
 
   indexer = iter(count())
@@ -232,26 +232,15 @@ def genDFA(nfa: NFA) -> DFA:
   for c in invalid_chars:
     invalid_dict[c] = invalid_node
 
-  # generate matchNodeNames.
-  # nodes may match more than one rule when the rules overlap.
-  # we prefer 'literal' rules over others, but otherwise overlaps are treated as ambiguity errors.
-  all_node_names: DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of names.
+  # Generate matchNodeNameSets.
+  node_names: DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of names.
   for nfa_state, dfa_node in nfa_states_to_dfa_nodes.items():
     for nfa_node in nfa_state:
       try: name = nfa.matchNodeNames[nfa_node]
       except KeyError: continue
-      all_node_names[dfa_node].add(name)
-  # prefer literal rules.
-  preferred_node_names = { node : (frozenset(n for n in names if n in nfa.literalRules) or frozenset(names))
-    for node, names in all_node_names.items() }
-  # check for ambiguous rules.
-  ambiguous_name_groups = { tuple(sorted(names)) for names in preferred_node_names.values() if len(names) != 1 }
-  if ambiguous_name_groups:
-    for group in sorted(ambiguous_name_groups):
-      errL('Rules are ambiguous: ', ', '.join(group), '.')
-    exit(1)
-  # create final dictionary.
-  matchNodeNameSets = { node : frozenset(names) for node, names in preferred_node_names.items() }
+      node_names[dfa_node].add(name)
+  matchNodeNameSets = { node : frozenset(names) for node, names in node_names.items() }
+
   return DFA(transitions=dict(transitions), matchNodeNameSets=matchNodeNameSets, literalRules=nfa.literalRules)
 
 

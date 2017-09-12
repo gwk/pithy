@@ -171,7 +171,11 @@ def minimizeDFA(dfa: DFA) -> DFA:
   * http://www.cs.sun.ac.za/rw711/resources/dfa-minimization.pdf.
   * https://en.wikipedia.org/wiki/DFA_minimization.
   * https://www.ics.uci.edu/~eppstein/PADS/PartitionRefinement.py
+
+  Additionally, reduce nodes that match more than one rule where possible,
+  or issue errors if not.
   '''
+
   alphabet = dfa.alphabet
   # start with a rough partition; match nodes are all distinct from each other,
   # and non-match nodes form an additional distinct set.
@@ -242,6 +246,36 @@ def minimizeDFA(dfa: DFA) -> DFA:
       except KeyError:
         new_d[char] = new_dst
 
-  matchNodeNameSets = { mapping[old] : names for old, names in dfa.matchNodeNameSets.items() }
+  # Nodes may match more than one rule when the rules overlap.
+  # If the set of match nodes for a rule is a superset another rule, ignore it;
+  # otherwise intersections are treated as ambiguity errors.
+
+  node_names = { mapping[old] : set(names) for old, names in dfa.matchNodeNameSets.items() }
+
+  name_nodes: DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
+  for node, names in node_names.items():
+    for name in names:
+      name_nodes[name].add(node)
+
+  for name, nodes in name_nodes.items():
+    for node in tuple(nodes):
+      names = node_names[node]
+      assert names
+      if len(names) == 1: continue # unambiguous.
+      for other_name in names:
+        if other_name == name: continue
+        other_nodes = name_nodes[other_name]
+        if other_nodes < nodes: # this rule is a superset of other; it should not match.
+          node_names[node].remove(name)
+          break
+
+  # check for ambiguous rules.
+  ambiguous_name_groups = { tuple(sorted(names)) for names in node_names.values() if len(names) != 1 }
+  if ambiguous_name_groups:
+    for group in sorted(ambiguous_name_groups):
+      errL('Rules are ambiguous: ', ', '.join(group), '.')
+    exit(1)
+
+  matchNodeNameSets = { node : frozenset(names) for node, names in node_names.items() }
   return DFA(transitions=dict(transitions), matchNodeNameSets=matchNodeNameSets, literalRules=dfa.literalRules)
 

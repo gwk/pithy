@@ -85,8 +85,6 @@ def main() -> None:
       rule.describe(name=name)
     errL()
 
-  requires_dfa = args.match or langs.intersection(dfa_langs)
-
   mode_dfa_pairs: List[Tuple[str, DFA]] = []
   for mode, rule_names in sorted(mode_rule_names.items()):
     if args.match and mode != match_mode: continue
@@ -103,8 +101,6 @@ def main() -> None:
     fat_dfa = genDFA(nfa)
     if dbg: fat_dfa.describe(f'{mode}: Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
-
-    if not requires_dfa: continue # Skip expensive minimization step.
 
     min_dfa = minimizeDFA(fat_dfa)
     if dbg: min_dfa.describe(f'{mode}: Min DFA')
@@ -135,15 +131,14 @@ def main() -> None:
       rule_descs=rule_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
-  if requires_dfa:
-    dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
-    if dbg: dfa.describe('Combined DFA')
+  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
+  if dbg: dfa.describe('Combined DFA')
 
-    if 'swift' in langs:
-      path = args.output + ('.swift' if args.test else '')
-      output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes,
-        rule_descs=rule_descs, license=license, args=args)
-      if args.test: test_cmds.append(['swift', path] + args.test)
+  if 'swift' in langs:
+    path = args.output + ('.swift' if args.test else '')
+    output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes,
+      rule_descs=rule_descs, license=license, args=args)
+    if args.test: test_cmds.append(['swift', path] + args.test)
 
   if args.test:
     # For each language, run against the specified match arguments, and capture output.
