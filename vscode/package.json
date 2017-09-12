@@ -13,7 +13,7 @@
       { "name": "plumage-mypy",
         "fileLocation": "relative",
         "pattern": [
-          { "regexp": "([^:]*):(\\d+):(\\d+):(.+)",
+          { "regexp": "([^:]+):(\\d+):(\\d+): ?(.+)",
             "file": 1,
             "line": 2,
             "column": 3,
@@ -24,7 +24,7 @@
       { "name": "plumage-swift",
         "fileLocation": "absolute",
         "pattern": [
-          { "regexp": "([^:]*):(\\d+):(\\d+):(.+)",
+          { "regexp": "([^:]+):(\\d+):(\\d+): ?(.*)",
             "file": 1,
             "line": 2,
             "column": 3,
