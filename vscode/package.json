@@ -22,7 +22,7 @@
         ]
       },
       { "name": "plumage-swift",
-        "fileLocation": "absolute",
+        "fileLocation": "relative",
         "pattern": [
           { "regexp": "([^:]+):(\\d+):(\\d+): ?(.*)",
             "file": 1,

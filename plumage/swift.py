@@ -3,6 +3,7 @@
 
 from pithy.ansi import *
 from pithy.io import *
+from pithy.fs import path_rel_to_current_or_abs
 from pithy.iterable import group_by_heads
 from pithy.lex import Lexer
 from sys import stdin
@@ -10,7 +11,10 @@ from sys import stdin
 
 def main():
     for token in lex_group_deduplicate():
-      s = token[0]
+      if token.lastgroup == 'path':
+        s = path_rel_to_current_or_abs(token[0])
+      else:
+        s = token[0]
       try: color = colors[token.lastgroup]
       except KeyError: outZ(s)
       else: outZ(color, s, RST)
