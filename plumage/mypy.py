@@ -5,7 +5,6 @@ from pithy.ansi import *
 from pithy.io import *
 from pithy.lex import Lexer
 from pithy.task import runCO
-from sys import stdin
 
 
 def main():

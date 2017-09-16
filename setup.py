@@ -18,6 +18,7 @@ setup(
   entry_points = {'console_scripts': [
     'swift-plumage=plumage.swift:main',
     'mypy-plumage=plumage.mypy:main',
+    'tsc-plumage=plumage.tsc:main',
   ]},
   install_requires=[
     'pithy'
@@ -25,6 +26,7 @@ setup(
   keywords=[
     'mypy',
     'swift',
+    'typescript',
   ],
   classifiers=[ # See https://pypi.python.org/pypi?%3Aaction=list_classifiers.
     'Development Status :: 4 - Beta',
