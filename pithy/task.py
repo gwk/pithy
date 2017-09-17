@@ -7,7 +7,7 @@ from sys import stderr, stdout
 from typing import cast, Any, BinaryIO, Dict, IO, List, Optional, Sequence, Tuple, Union
 from .alarm import AlarmManager, Timeout
 
-
+Cmd = Union[str, List[str]]
 Env = Dict[str, str]
 Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; could also be raw file descriptor?
 File = Union[int, IO]
@@ -27,7 +27,7 @@ TaskCodeExpectation = Union[None, int, NonzeroCodeExpectation]
 
 class TaskUnexpectedExit(Exception):
   'Exception indicating that a subprocess exit code did not match the code expectation.'
-  def __init__(self, cmd: List[str], exp: TaskCodeExpectation, act: int) -> None:
+  def __init__(self, cmd: Cmd, exp: TaskCodeExpectation, act: int) -> None:
     super().__init__(f'process was expected to exit with code {exp}; actual code: {act}')
     self.cmd = cmd
     self.exp = exp
@@ -35,7 +35,7 @@ class TaskUnexpectedExit(Exception):
 
 
 
-def launch(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, files: Sequence[File]=()) \
+def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, files: Sequence[File]=()) \
  -> Tuple[_Popen, Optional[bytes]]:
   '''
   Launch a subprocess, returning the subprocess.Popen object and the optional input bytes.
@@ -44,6 +44,9 @@ def launch(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out:
   because the rules regarding splitting strings are complex.
   User code is made clearer by just specifying the complete shell command;
   lists are used as is, while strings are split by shlex.split.
+
+  TODO: Popen supports both text and binary files; we should too.
+  TODO: support bufsize parameter.
   '''
 
   if isinstance(cmd, str):
@@ -95,7 +98,7 @@ def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[
   return proc.returncode, b'' if out_bytes is None else out_bytes, b'' if err_bytes is None else err_bytes
 
 
-def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
+def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Tuple[int, str, str]:
   '''
   Run a command and return (exit_code, std_out, std_err).
@@ -116,13 +119,13 @@ def run(cmd: List[str], cwd: str=None, env: Env=None, stdin: Input=None, out: Bi
 
 
 
-def runCOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None,
+def runCOE(cmd: Cmd, cwd: str=None, stdin: Input=None, env: Env=None,
  timeout: int=0, files: Sequence[File]=()) -> Tuple[int, str, str]:
   'Run a command and return exit code, std out, std err.'
   return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, files=files, exp=None)
 
 
-def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, env: Env=None,
+def runC(cmd: Cmd, cwd: str=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None, env: Env=None,
  timeout: int=0, files: Sequence[File]=()) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not _pipe
@@ -133,7 +136,7 @@ def runC(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, e
   return c
 
 
-def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
+def runCO(cmd: Cmd, cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
  timeout: int=0, files: Sequence[File]=()) -> Tuple[int, str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not _pipe
@@ -142,7 +145,7 @@ def runCO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, 
   return c, o
 
 
-def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
+def runCE(cmd: Cmd, cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
  timeout: int=0, files: Sequence[File]=()) -> Tuple[int, str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not _pipe
@@ -151,14 +154,14 @@ def runCE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, 
   return c, e
 
 
-def runOE(cmd: List[str], cwd: str=None, stdin: Input=None, env: Env=None,
+def runOE(cmd: Cmd, cwd: str=None, stdin: Input=None, env: Env=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=_pipe, err=_pipe, timeout=timeout, files=files, exp=exp)
   return o, e
 
 
-def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
+def runO(cmd: Cmd, cwd: str=None, stdin: Input=None, err: BinaryIO=None, env: Env=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not _pipe
@@ -167,7 +170,7 @@ def runO(cmd: List[str], cwd: str=None, stdin: Input=None, err: BinaryIO=None, e
   return o
 
 
-def runE(cmd: List[str], cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
+def runE(cmd: Cmd, cwd: str=None, stdin: Input=None, out: BinaryIO=None, env: Env=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not _pipe
