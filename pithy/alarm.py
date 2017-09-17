@@ -5,7 +5,7 @@ from typing import Callable
 
 
 class Timeout(Exception):
-  'Exception indictaing that an AlarmManager timed out.'
+  'Exception indicating that an AlarmManager timed out.'
 
 
 class AlarmManager:
