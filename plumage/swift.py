@@ -10,7 +10,7 @@ from sys import stdin
 
 
 def main():
-    for token in lex_group_deduplicate():
+    for token in lex_groups():
       if token.lastgroup == 'path':
         s = path_rel_to_current_or_abs(token[0])
       else:
@@ -21,25 +21,29 @@ def main():
       stdout.flush()
 
 
-def lex_group_deduplicate():
-  '''
-  `swift build` currently has concurrency issues where it can report the same error multiple times.
-  We deduplicate them here by grouping tokens into multiline messages.
-  '''
-  token_stream = lexer.lex_stream(read_stdin_lines())
-  group_strings = set() # strings for token groups to be deduplicated.
-  for group in group_by_heads(token_stream, is_head=is_token_head):
-    s = ''.join(g[0] for g in group)
-    if s not in group_strings:
-      group_strings.add(s)
+def lex_groups():
+  it = lexer.lex_stream(read_stdin_lines())
+  for token in it:
+    yield token
+    if is_token_head(token): break
+
+  group = []
+
+  for token in it:
+    if is_token_head(token):
       yield from group
+      del group[:]
+      yield token
+    else:
+      group.append(token)
+  yield from group
 
 
 def read_stdin_lines():
   '''
   Read stdin iteratively using readline.
   This reads incrementally when stdin is connected to a pipe,
-  whereas using the file's iterator appears to block.
+  whereas using the file's iterator blocks.
   '''
   while True:
     line = stdin.readline()
