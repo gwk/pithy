@@ -268,7 +268,7 @@ def window_iter(iterable: Iterable[T], width=2) -> Iterator[Tuple[T, ...]]:
       del buffer[0]
 
 
-def window_pairs(iterable, tail=None) -> Iterator[Tuple[T, T]]:
+def window_pairs(iterable: Iterable[T], tail: Optional[T]=None) -> Iterator[Tuple[T, Optional[T]]]:
   it = iter(iterable)
   try: head = next(it)
   except StopIteration: return
