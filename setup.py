@@ -16,6 +16,7 @@ setup(
   long_description=open('readme.wu').read(),
   packages=[name],
   entry_points = {'console_scripts': [
+    'build-mac-app=plumage.build_mac_app:main',
     'swift-plumage=plumage.swift:main',
     'mypy-plumage=plumage.mypy:main',
     'tsc-plumage=plumage.tsc:main',
