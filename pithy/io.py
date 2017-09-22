@@ -239,3 +239,9 @@ def clip_newlines(iterable: Iterable[str]) -> Iterable[str]:
 def assert_eq(a: Any, b: Any):
   if a != b:
     raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
+
+
+def tee_to_err(iterable: Iterable[T], msg: str = 'tee_to_stderr') -> Iterator[T]:
+  for el in iterable:
+    errL(msg, ': ', repr(el))
+    yield el
