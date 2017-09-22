@@ -53,6 +53,14 @@ def clip_first_prefix(string: str, prefixes: Sequence[str], req=True) -> str:
   return string
 
 
+def find_and_clip_suffix(string: str, suffix: str, req=True) -> str:
+  idx = string.find(suffix)
+  if idx == -1:
+    if req: raise ValueError(string)
+    else: return string
+  return string[:idx]
+
+
 def iter_excluding_str(iterable: Iterable[T]) -> Iterator[T]:
   '''
   Often we want to handle all iterables in a particular way, except for str.
