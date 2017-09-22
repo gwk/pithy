@@ -15,6 +15,9 @@ class DuplexPipe:
   def __init__(self) -> None:
     self._files: List[File] = list(os.pipe() + os.pipe())
 
+  def __del__(self):
+    for i in range(4): self.close(i)
+
   def __enter__(self): return self
 
   def __exit__(self, exc_type, exc_value, traceback) -> None:
