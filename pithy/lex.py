@@ -6,7 +6,7 @@ Simple lexing using python regular expressions.
 
 
 import re
-from typing import Any, Container, Dict, FrozenSet, Iterable, List, Match, Optional, Pattern, Tuple
+from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, Match, Optional, Pattern, Tuple
 from mypy_extensions import NoReturn
 
 
@@ -81,13 +81,16 @@ class Lexer:
     # validate transitions.
     assert main is not None
     self.main: str = main
-    self.transitions: Dict[Tuple[str, str], Tuple[str, str]] = {}
-    for (parent_mode, enter), (child_mode, leave) in transitions.items():
+    self.transitions: Dict[Tuple[str, str], Tuple[str, FrozenSet[str]]] = {}
+    for (parent_mode, enter), (child_mode, leaves) in transitions.items():
       if parent_mode not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {parent_mode!r}')
       if child_mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {child_mode!r}')
       if enter not in patterns: raise Lexer.DefinitionError(f'unknown mode enter pattern: {enter!r}')
-      if leave not in patterns: raise Lexer.DefinitionError(f'unknown mode leave pattern: {leave!r}')
-      self.transitions[(parent_mode, enter)] = (child_mode, leave)
+      if isinstance(leaves, str):
+        leaves = {leaves}
+      for leave in leaves:
+        if leave not in patterns: raise Lexer.DefinitionError(f'unknown mode leave pattern: {leave!r}')
+      self.transitions[(parent_mode, enter)] = (child_mode, frozenset(leaves))
 
     choice_sep = '\n| ' if 'x' in flags else '|'
     def compile_mode(mode: str, pattern_names: FrozenSet[str]) -> Pattern:
@@ -99,7 +102,7 @@ class Lexer:
     self.inv_re = re.compile(f'(?s)(?P<{self.invalid}>.+)' if self.invalid else '(?s).+')
 
 
-  def _lex_mode(self, regex: Pattern, string: str, pos: int, end: int) -> Iterable[Match]:
+  def _lex_mode(self, regex: Pattern, string: str, pos: int, end: int) -> Iterator[Match]:
     def lex_inv(end: int) -> Match:
       inv_match = self.inv_re.match(string, pos, end) # create a real match object.
       if self.invalid: return inv_match
@@ -118,15 +121,15 @@ class Lexer:
       yield match
       pos = e
 
-  def _lex_gen(self, stack: List[Tuple[str, str]], string: str, p: int, e: int, drop: Container[str]) -> Iterable[Match]:
+  def _lex_gen(self, stack: List[Tuple[str, FrozenSet[str]]], string: str, p: int, e: int, drop: Container[str]) -> Iterator[Match]:
     while p < e:
-      mode, exit_name = stack[-1]
+      mode, exit_names = stack[-1]
       regex = self.regexes[mode]
       for token in self._lex_mode(regex, string, pos=p, end=e):
         p = token.end()
         if not drop or token.lastgroup not in drop:
           yield token
-        if token.lastgroup == exit_name:
+        if token.lastgroup in exit_names:
           stack.pop()
           break
         try: frame = self.transitions[(mode, token.lastgroup)]
@@ -135,7 +138,7 @@ class Lexer:
           stack.append(frame)
           break
 
-  def lex(self, string: str, pos: int=0, end: Optional[int]=None, drop: Container[str]=()) -> Iterable[Match]:
+  def lex(self, string: str, pos: int=0, end: Optional[int]=None, drop: Container[str]=()) -> Iterator[Match]:
     if pos < 0:
       pos = len(string) + pos
     if end is None:
@@ -143,13 +146,14 @@ class Lexer:
     elif end < 0:
       end = len(string) + end
     _e: int = end # typing hack.
-    return self._lex_gen([(self.main, '')], string, pos, _e, drop)
+    return self._lex_gen([(self.main, frozenset())], string, pos, _e, drop)
 
 
-  def lex_stream(self, stream: Iterable[str], drop: Container[str]=()) -> Iterable[Match]:
-    stack: List[Tuple[str, str]] = [(self.main, '')]
+  def lex_stream(self, stream: Iterable[str], drop: Container[str]=()) -> Iterator[Match]:
+    stack: List[Tuple[str, FrozenSet[str]]] = [(self.main, frozenset())]
     for string in stream:
-      yield from self._lex_gen(stack, string, 0, len(string), drop)
+      if string:
+        yield from self._lex_gen(stack, string, 0, len(string), drop)
 
 
 def fail_parse(path: str, token: Match, msg: str) -> NoReturn:
