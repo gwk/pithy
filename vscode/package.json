@@ -1,7 +1,7 @@
 {
-  "name": "plumage",
-  "displayName": "plumage",
-  "description": "Problem matchers for various languages.",
+  "name": "craft",
+  "displayName": "craft",
+  "description": "Build tool problem matchers.",
   "version": "1.0.0",
   "publisher": "gwk",
   "engines": {
@@ -10,7 +10,7 @@
   "categories": ["Languages"],
   "contributes": {
     "problemMatchers": [
-      { "name": "plumage-mypy",
+      { "name": "craft-mypy",
         "fileLocation": "relative",
         "pattern": [
           { "regexp": "([^:]+):(\\d+):(\\d+): ?(.+)",
@@ -21,7 +21,7 @@
           }
         ]
       },
-      { "name": "plumage-swift",
+      { "name": "craft-swift",
         "fileLocation": "relative",
         "pattern": [
           { "regexp": "([^:]+):(\\d+):(\\d+): ?(.*)",
@@ -32,7 +32,7 @@
           }
         ]
       },
-      { "name": "plumage-tsc",
+      { "name": "craft-tsc",
         "fileLocation": "relative",
         "pattern": [
           { "regexp": "([^:]+):(\\d+):(\\d+): ?(.+)",

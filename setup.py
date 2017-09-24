@@ -3,7 +3,7 @@
 from setuptools import setup
 
 
-name = 'plumage'
+name = 'craft'
 
 setup(
   name=name,
@@ -12,19 +12,21 @@ setup(
   author='George King',
   author_email='george.w.king@gmail.com',
   url='https://github.com/gwk/' + name,
-  description='Plumage is set of command line utilities that color build output.',
+  description='Craft is a build system.',
   long_description=open('readme.wu').read(),
   packages=[name],
   entry_points = {'console_scripts': [
-    'build-mac-app=plumage.build_mac_app:main',
-    'swift-plumage=plumage.swift:main',
-    'mypy-plumage=plumage.mypy:main',
-    'tsc-plumage=plumage.tsc:main',
+    'craft-mac-app=craft.mac_app:main',
+    'craft-swift=craft.swift:main',
+    'craft-mypy=craft.mypy:main',
+    'craft-tsc=craft.tsc:main',
   ]},
   install_requires=[
     'pithy'
   ],
   keywords=[
+    'build',
+    'build system',
     'mypy',
     'swift',
     'typescript',

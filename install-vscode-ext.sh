@@ -3,7 +3,7 @@
 
 set -eux
 
-VSCODE_EXT="$HOME/.vscode-insiders/extensions/plumage"
+VSCODE_EXT="$HOME/.vscode-insiders/extensions/craft"
 
 rm -rf "$VSCODE_EXT"
 mkdir -p "$VSCODE_EXT"
