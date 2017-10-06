@@ -11,54 +11,41 @@ from pithy.io import *
 from pithy.fs import copy_file, path_exists, make_dirs
 from pithy.string_utils import find_and_clip_suffix
 from pithy.task import *
+from craft import *
 
 
 def main():
   arg_parser = ArgumentParser(description='Build Mac Swift apps using the Swift Package Manager (without Xcode).')
-  arg_parser.add_argument('-build-path', default='_build')
-  arg_parser.add_argument('-name', required=True)
-  arg_parser.add_argument('-identifier', required=True)
-  arg_parser.add_argument('-copyright', required=True)
-  arg_parser.add_argument('-deployment-target', required=True)
-  arg_parser.add_argument('-sources', nargs='*', required=True)
-  arg_parser.add_argument('-frameworks', nargs='*', required=True)
   args = arg_parser.parse_args()
 
-  # TODO: all options should be written in json/config file.
+  conf = load_craft_config()
+  package = update_swift_package_json(conf)
 
-  try: build(args)
+  try: build(args, conf, package)
   except TaskUnexpectedExit as e: exit(e.act)
 
 
-def build(args):
-  build_path = args.build_path
-  deployment_target = args.deployment_target
-  name = args.name
-  sources = args.sources
-
-  if not re.fullmatch(r'\d+\.\d+', deployment_target):
-    exit(f"error: deployment target should be macOS 'MAJOR.MINOR' number; received {deployment_target!r}")
+def build(args, conf, package):
+  build_dir = conf.build_dir
+  sources = conf.sources
 
   for source in sources:
     if not path_exists(source):
-      exit(f'error: source does not exist: {source!r}')
+      exit(f'craft error: source does not exist: {source!r}')
 
-  c, dev_dir = runCO('xcode-select --print-path')
-  if c: exit("error: 'xcode-select --print-path' failed.")
-  dev_dir = dev_dir.rstrip('\n')
+  c, dev_dir_line = runCO('xcode-select --print-path')
+  if c: exit("craft error: 'xcode-select --print-path' failed.")
+  dev_dir = dev_dir_line.rstrip('\n')
 
   sdk_dir = f'{dev_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk' # The versioned SDK just links to the unversioned one.
   swift_libs_dir = f'{dev_dir}/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx'
-  mode_path = f'{build_path}/debug' # TODO: support other configurations.
-
-  target_triple = 'x86_64-apple-macosx' + deployment_target
+  mode_dir = f'{build_dir}/debug' # TODO: support other modes/configurations.
 
   # Build program.
-  build_cmd = ['swift-plumage', '-build-path', build_path, '-target-triple', target_triple, '-product', name]
-  run(build_cmd)
+  run(['craft-swift'])
 
   # Bundle paths.
-  bundle_path = f'{mode_path}/{name}.app'
+  bundle_path = f'{mode_dir}/{conf.product_name}.app'
   contents_path = bundle_path + '/Contents'
   frameworks_path = contents_path + '/Frameworks'
   macos_path = contents_path + '/MacOS'
@@ -69,13 +56,13 @@ def build(args):
     make_dirs(path)
 
   # Copy executable.
-  exe_src = f'{build_path}/debug/{name}'
-  exe_path = f'{macos_path}/{name}'
+  exe_src = f'{mode_dir}/{conf.product_name}'
+  exe_path = f'{macos_path}/{conf.product_name}'
   copy_file(exe_src, exe_path)
 
   # Compile image assets.
-  img_deps_path = f'{mode_path}/image-deps.txt'
-  img_info_path = f'{mode_path}/icon.plist'
+  img_deps_path = f'{mode_dir}/image-deps.txt'
+  img_info_path = f'{mode_dir}/icon.plist'
   actool_cmd = [ 'xcrun', 'actool',
     '--output-format', 'human-readable-text',
     #'--notices',
@@ -85,7 +72,7 @@ def build(args):
     '--app-icon', 'AppIcon',
     '--enable-on-demand-resources', 'NO',
     '--target-device', 'mac',
-    '--minimum-deployment-target', deployment_target,
+    '--minimum-deployment-target', conf.target_macOS,
     '--platform', 'macosx',
     '--product-type', 'com.apple.product-type.application',
     '--compile', resources_path,
@@ -101,18 +88,16 @@ def build(args):
   plist_path = f'{contents_path}/Info.plist'
   with open(plist_path, 'wb') as f:
     gen_plist(f,
-      EXECUTABLE_NAME=name,
-      PRODUCT_BUNDLE_IDENTIFIER=args.identifier,
-      PRODUCT_NAME=name,
-      MACOSX_DEPLOYMENT_TARGET=deployment_target,
-      copyright=args.copyright,
+      EXECUTABLE_NAME=conf.product_name,
+      PRODUCT_BUNDLE_IDENTIFIER=conf.product_identifier,
+      PRODUCT_NAME=conf.product_name,
+      MACOSX_DEPLOYMENT_TARGET=conf.target_macOS,
+      copyright=conf.copyright,
       principle_class='NSApplication',
       **img_info)
 
   # Find swift source paths.
-  swift_imports_path = f'{mode_path}/{name}-swift-imports.txt'
-  find_cmd = ['find', '-s'] + sources + ['-name', '*.swift']
-  swift_source_paths = list(filter(None, runO(find_cmd).split('\n'))) # TODO: use run_gen.
+  swift_source_paths = sorted(walk_files(*sources, file_exts=['.swift']))
 
   # Detect swift imports.
   egrep_cmd = ['egrep', '--no-filename', '--only-matching', r'\s*import .*'] + swift_source_paths

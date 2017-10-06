@@ -6,7 +6,7 @@ from setuptools import setup
 name = 'craft'
 
 setup(
-  name=name,
+  name='craft-tools',
   version='0.0.0',
   license='CC0',
   author='George King',
@@ -17,8 +17,9 @@ setup(
   packages=[name],
   entry_points = {'console_scripts': [
     'craft-mac-app=craft.mac_app:main',
+    'craft-py-check=craft.py_check:main',
     'craft-swift=craft.swift:main',
-    'craft-mypy=craft.mypy:main',
+    'craft-swift-utest=craft.swift_utest:main',
     'craft-tsc=craft.tsc:main',
   ]},
   install_requires=[

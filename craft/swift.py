@@ -4,31 +4,34 @@
 import re
 from argparse import ArgumentParser
 from itertools import chain
+from json import loads as parse_json
 from typing import *
 from pithy.ansi import *
 from pithy.io import *
-from pithy.fs import path_rel_to_current_or_abs
+from pithy.fs import *
 from pithy.iterable import group_by_heads, OnHeadless
 from pithy.lex import Lexer
-from pithy.task import run_gen, TaskUnexpectedExit
+from pithy.task import TaskUnexpectedExit, run_gen, runCO
+from craft import *
 
 
 def main():
   arg_parser = ArgumentParser(description='Swift compiler wrapper.')
-  arg_parser.add_argument('-build-path', default='_build')
-  arg_parser.add_argument('-target-triple', default='x86_64-apple-macosx10.13')
   arg_parser.add_argument('-product', default=None)
   arg_parser.add_argument('-target', default=None)
-  arg_parser.add_argument('-test', action='store_true')
+  arg_parser.add_argument('-xctest', action='store_true')
   arg_parser.add_argument('args', nargs='*')
   args = arg_parser.parse_args()
 
-  sub_cmd = 'test' if args.test else 'build'
-  cmd = ['swift', sub_cmd, '--build-path', args.build_path, '-Xswiftc=-target', '-Xswiftc=' + args.target_triple]
+  conf = load_craft_config()
+
+  sub_cmd = 'test' if args.xctest else 'build'
+  cmd = ['swift', sub_cmd, '--package-path='+conf.project_dir, '--build-path='+conf.build_dir,
+    '-Xswiftc=-target', '-Xswiftc='+conf.target_triple_macOS]
   if args.product: cmd.extend(['--product', args.product])
   if args.target: cmd.extend(['--target', args.target])
   cmd.extend(args.args)
-  errSL(*cmd)
+  errSL(TXT_D, *cmd, RST)
 
   exit_code = 0
   def run_cmd():
