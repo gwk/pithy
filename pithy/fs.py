@@ -355,14 +355,15 @@ read_link = _os.readlink
 def _walk_dirs_and_files(dir_path: str, include_hidden: bool, file_exts: AbstractSet[str], files_as_paths: bool) -> Iterator[Tuple[str, List[str]]]:
   sub_dirs = []
   files = []
+  assert dir_path.endswith('/')
   names = list_dir(dir_path, hidden=include_hidden)
   for name in names:
-    path = path_join(dir_path, name)
+    path = dir_path + name
     if is_dir(path):
-      sub_dirs.append(path)
+      sub_dirs.append(path + '/')
     elif not file_exts or path_ext(name) in file_exts:
       files.append(path if files_as_paths else name)
-  yield (dir_path + '/', files)
+  yield (dir_path, files)
   for sub_dir in sub_dirs:
     yield from _walk_dirs_and_files(sub_dir, include_hidden, file_exts, files_as_paths)
 
@@ -376,18 +377,20 @@ def walk_dirs_and_files(*dir_paths: Path, make_abs=False, include_hidden=False, 
   file_exts = normalize_exts(file_exts)
   for raw_path in dir_paths:
     dir_path = abs_or_normalize_path(raw_path, make_abs)
+    if not dir_path.endswith('/'): dir_path += '/'
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
 
 
 def _walk_paths_rec(dir_path: str, yield_files: bool, yield_dirs: bool, include_hidden: bool, file_exts: AbstractSet[str]) -> Iterator[str]:
   'yield paths; directory paths are distinguished by trailing slash.'
+  assert dir_path.endswith('/')
   if yield_dirs:
-    yield dir_path + '/'
+    yield dir_path
   names = list_dir(dir_path, hidden=include_hidden)
   for name in names:
     path = path_join(dir_path, name)
     if is_dir(path):
-      yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
+      yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
     elif yield_files and (not file_exts or path_ext(name) in file_exts):
       yield path
 
@@ -400,7 +403,7 @@ def walk_paths(*paths: Path, make_abs=False, yield_files=True, yield_dirs=True, 
   '''
   file_exts = normalize_exts(file_exts)
   for raw_path in paths:
-    path = abs_or_normalize_path(raw_path, make_abs)
+    path = abs_or_normalize_path(raw_path, make_abs) + '/'
     if is_dir(path):
       yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
     elif not path_exists(path):
