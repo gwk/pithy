@@ -7,11 +7,12 @@ import stat as _stat
 import time as _time
 
 from itertools import zip_longest as _zip_longest
-from typing import AbstractSet, Any, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
+from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
+from typing.re import Pattern # type: ignore
 
 
-PathLike = _os.PathLike
-PathOrFd = Union[PathLike, int]
+Path = Union[str, _os.PathLike]
+PathOrFd = Union[Path, int]
 
 class NotAPathError(Exception): pass
 class PathIsNotDescendantError(Exception): pass
@@ -20,6 +21,14 @@ class MixedAbsoluteAndRelativePathsError(Exception): pass
 
 
 # paths.
+
+def _str_for(path: Path) -> str:
+  if isinstance(path, str): return path
+  p = path.__fspath__()
+  if isinstance(path, str): return p
+  assert isinstance(p, bytes)
+  return p.decode()
+
 
 def executable_path() -> str:
   'Return the path to this executable.'
@@ -31,56 +40,60 @@ def executable_dir() -> str:
   'Return the parent directory of this excutable.'
   return _path.dirname(executable_path())
 
-def is_path_abs(path: str) -> bool:
+def is_path_abs(path: Path) -> bool:
   'Return true if `path` is an absolute path.'
   return _path.isabs(path)
 
-def normalize_path(path: str) -> str:
+def is_sub_path(path: Path) -> bool:
+  'Return true if `path` is a relative path that does not refer to parent directories.'
+  return not is_path_abs(path) and '..' not in path_split(path)
+
+def normalize_path(path: Path) -> str:
   'Normalize `path` according to system convention.'
-  return _path.normpath(path)
+  return _path.normpath(_str_for(path))
 
-def rel_path(path: str, start: str='.') -> str:
-  'Return a version of `path` relative to `start`, defaulting to the current directory.'
-  return _path.relpath(path, start)
+def rel_path(path: Path, start: Path='.') -> str:
+  'Return a version of `path` relative to `start`, which defaults to the current directory.'
+  return _path.relpath(_str_for(path), _str_for(start))
 
-def path_common_prefix(*paths: str) -> str:
+def path_common_prefix(*paths: Path) -> str:
   'Return the common path prefix for a sequence of paths.'
-  try: return _path.commonpath(paths)
+  try: return _path.commonpath([_str_for(p) for p in paths])
   except ValueError: # we want a more specific exception.
     raise MixedAbsoluteAndRelativePathsError(paths) from None
 
-def path_dir(path: str) -> str:
+def path_dir(path: Path) -> str:
   "Return the dir portion of `path` (possibly empty), e.g. 'dir/name'."
-  return _path.dirname(path)
+  return _path.dirname(_str_for(path))
 
-def path_dir_or_dot(path: str) -> str:
+def path_dir_or_dot(path: Path) -> str:
   "Return the dir portion of a path, e.g. 'dir/name', or '.' in the case of no path."
   return path_dir(path) or '.'
 
-def path_join(first: str, *additional: str) -> str:
+def path_join(first: Path, *additional: Path) -> str:
   'Join the path with the system path separator.'
-  return _path.join(first, *additional)
+  return _path.join(_str_for(first), *[_str_for(p) for p in additional])
 
-def path_name(path: str) -> str:
+def path_name(path: Path) -> str:
   "Return the name portion of a path (possibly including an extension), e.g. 'dir/name'."
-  return _path.basename(path)
+  return _path.basename(_str_for(path))
 
-def path_split(path: str) -> List[str]:
+def path_split(path: Path) -> List[str]:
   # TODO: rename to path_comps?
   np = normalize_path(path)
   if np == '/': return ['/']
   assert not np.endswith('/')
   return [comp or '/' for comp in np.split(_os.sep)]
 
-def path_stem(path: str) -> str:
+def path_stem(path: Path) -> str:
   'The path without the file extension; the stem may span multiple directories.'
   return split_stem_ext(path)[0]
 
-def path_ext(path: str) -> str:
+def path_ext(path: Path) -> str:
   'The file extension of the path.'
   return split_stem_ext(path)[1]
 
-def path_exts(path: str) -> Tuple[str, ...]:
+def path_exts(path: Path) -> Tuple[str, ...]:
   exts = []
   while True:
     path, ext = split_stem_ext(path)
@@ -88,30 +101,30 @@ def path_exts(path: str) -> Tuple[str, ...]:
     exts.append(ext)
   return tuple(exts)
 
-def path_compound_ext(path: str) -> str:
+def path_compound_ext(path: Path) -> str:
   return ''.join(path_exts(path))
 
-def path_name_stem(path: str) -> str:
+def path_name_stem(path: Path) -> str:
   'The file name without extension; the name stem will not span directories.'
   return path_stem(path_name(path))
 
-def split_dir_name(path: str) -> Tuple[str, str]:
+def split_dir_name(path: Path) -> Tuple[str, str]:
   "Split the path into dir and name (possibly including an extension) components, e.g. 'dir/name'."
   return _path.split(path)
 
-def split_dir_stem_ext(path: str) -> Tuple[str, str, str]:
+def split_dir_stem_ext(path: Path) -> Tuple[str, str, str]:
   'Split the path into a (dir, stem, ext) triple.'
   dir, name = split_dir_name(path)
   stem, ext = split_stem_ext(name)
   return dir, stem, ext
 
-def split_stem_ext(path: str) -> Tuple[str, str]:
+def split_stem_ext(path: Path) -> Tuple[str, str]:
   '''
   Split the path into stem (possibly spanning directories) and extension components, e.g. 'stem.ext'.
   '''
-  return _path.splitext(path)
+  return _path.splitext(_str_for(path))
 
-def append_path_stem_suffix(path: str, suffix: str) -> str:
+def append_path_stem_suffix(path: Path, suffix: str) -> str:
   'Append suffix to the path stem.'
   # TODO: rename to insert_path_stem_suffix?
   stem, ext = split_stem_ext(path)
@@ -119,16 +132,16 @@ def append_path_stem_suffix(path: str, suffix: str) -> str:
 
 # file system.
 
-def abs_path(path: str) -> str:
+def abs_path(path: Path) -> str:
   'Return the absolute path corresponding to `path`.'
-  return _path.abspath(path)
+  return _path.abspath(_str_for(path))
 
-def abs_or_normalize_path(path: str, make_abs: bool) -> str:
+def abs_or_normalize_path(path: Path, make_abs: bool) -> str:
   'Returns the absolute path if make_abs is True, if make_abs is False, returns a normalized path.'
   return abs_path(path) if make_abs else normalize_path(path)
 
 
-def path_rel_to_ancestor(path: str, ancestor: str, dot=False) -> str:
+def path_rel_to_ancestor(path: Path, ancestor: str, dot=False) -> str:
   '''
   Return the path relative to `ancestor`.
   If `path` is not descended from `ancestor`,raise PathIsNotDescendantError.
@@ -145,7 +158,7 @@ def path_rel_to_ancestor(path: str, ancestor: str, dot=False) -> str:
   raise PathIsNotDescendantError(path, ancestor)
 
 
-def path_rel_to_ancestor_or_abs(path: str, ancestor: str, dot=False) -> str:
+def path_rel_to_ancestor_or_abs(path: Path, ancestor: str, dot=False) -> str:
   '''
   Return the path relative to `ancestor` if `path` is a descendant,
   or else the corresponding absolute path.
@@ -159,7 +172,7 @@ def path_rel_to_ancestor_or_abs(path: str, ancestor: str, dot=False) -> str:
     return ap
 
 
-def path_rel_to_current_or_abs(path: str, dot=False) -> str:
+def path_rel_to_current_or_abs(path: Path, dot=False) -> str:
   return path_rel_to_ancestor_or_abs(path, current_dir(), dot=dot)
 
 
@@ -177,38 +190,38 @@ def copy_dir_tree(src: str, dst: str, follow_symlinks=True, preserve_metadata=Tr
     ignore_dangling_symlinks=ignore_dangling_symlinks)
 
 
-def expand_user(path: str) -> str: return _path.expanduser(path)
+def expand_user(path: Path) -> str: return _path.expanduser(_str_for(path))
 
 def home_dir() -> str: return _path.expanduser('~')
 
-def is_dir(path: str) -> bool: return _path.isdir(path)
+def is_dir(path: Path) -> bool: return _path.isdir(path)
 
-def is_file(path: str) -> bool: return _path.isfile(path)
+def is_file(path: Path) -> bool: return _path.isfile(path)
 
-def is_link(path: str) -> bool: return _path.islink(path)
+def is_link(path: Path) -> bool: return _path.islink(path)
 
-def is_mount(path: str) -> bool: return _path.ismount(path)
+def is_mount(path: Path) -> bool: return _path.ismount(path)
 
-def link_exists(path: str) -> bool: return _path.lexists(path)
+def link_exists(path: Path) -> bool: return _path.lexists(path)
 
 
-def list_dir(path: str, exts: Iterable[str]=(), hidden=False) -> List[str]:
+def list_dir(path: PathOrFd, exts: Iterable[str]=(), hidden=False) -> List[str]:
   exts = normalize_exts(exts)
-  names = _os.listdir(path)
+  names = _os.listdir(path) # type: ignore # https://github.com/python/typeshed/issues/1653
   if not exts and hidden: return names # no filtering necessary.
   return [n for n in names if (
     (not exts or path_ext(n) in exts) and (hidden or not n.startswith('.')))]
 
 
-def list_dir_paths(path: str, exts: Iterable[str]=(), hidden=False) -> List[str]:
+def list_dir_paths(path: Path, exts: Iterable[str]=(), hidden=False) -> List[str]:
   return [path_join(path, name) for name in list_dir(path, exts=exts, hidden=hidden)]
 
 
-def make_dir(path: str) -> None: return _os.mkdir(path)
+def make_dir(path: Path) -> None: return _os.mkdir(path)
 
-def make_dirs(path: str, mode=0o777, exist_ok=True) -> None: return _os.makedirs(path, mode, exist_ok)
+def make_dirs(path: Path, mode=0o777, exist_ok=True) -> None: return _os.makedirs(path, mode, exist_ok)
 
-def make_link(src: str, dst: str, absolute=False, allow_nonexistent=False, make_dirs=False) -> None:
+def make_link(src: Path, dst: Path, absolute=False, allow_nonexistent=False, make_dirs=False) -> None:
   if not allow_nonexistent and not is_file(src):
     raise FileNotFoundError(src)
   if absolute:
@@ -219,43 +232,44 @@ def make_link(src: str, dst: str, absolute=False, allow_nonexistent=False, make_
     _os.makedirs(path_dir(dst), exist_ok=True)
   return _os.symlink(_src, dst)
 
-def path_exists(path: str) -> bool: return _path.exists(path)
+def path_exists(path: Path) -> bool: return _path.exists(path)
 
-def remove_file(path: str) -> None: _os.remove(path)
+def remove_file(path: Path) -> None: _os.remove(path)
 
-def remove_file_if_exists(path: str) -> None:
+def remove_file_if_exists(path: Path) -> None:
   if is_file(path):
     remove_file(path)
 
-def remove_dir(path: str) -> None: _os.rmdir(path)
+def remove_dir(path: Path) -> None: _os.rmdir(path)
 
-def remove_dirs(path: str) -> None: _os.removedirs(path)
+def remove_dirs(path: Path) -> None: _os.removedirs(path)
 
 def current_dir() -> str: return abs_path('.')
 
 def parent_dir() -> str: return abs_path('..')
 
-def change_dir(path: str) -> None: _os.chdir(path)
+def change_dir(path: PathOrFd) -> None: _os.chdir(path) # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def file_inode(path: str) -> int: return _os.stat(path).st_ino
+def file_inode(path: PathOrFd) -> int: return _os.stat(path).st_ino # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def file_time_access(path: str) -> float: return _os.stat(path).st_atime
+def file_time_access(path: PathOrFd) -> float: return _os.stat(path).st_atime # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def file_time_mod(path: str) -> float: return _os.stat(path).st_mtime
+def file_time_mod(path: PathOrFd) -> float: return _os.stat(path).st_mtime # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def file_time_meta_change(path: str) -> float: return _os.stat(path).st_ctime
+def file_time_meta_change(path: PathOrFd) -> float: return _os.stat(path).st_ctime # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def file_size(path: str) -> int: return _os.stat(path).st_size
+def file_size(path: PathOrFd) -> int: return _os.stat(path).st_size # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def file_permissions(path: PathOrFd) -> int: return _os.stat(path).st_mode # type: ignore # typeshed bug.
+def file_permissions(path: PathOrFd) -> int: return _os.stat(path).st_mode # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def is_file_not_link(path: str) -> bool: return is_file(path) and not is_link(path)
+def is_file_not_link(path: Path) -> bool: return is_file(path) and not is_link(path)
 
-def is_dir_not_link(path: str) -> bool: return is_dir(path) and not is_link(path)
+def is_dir_not_link(path: Path) -> bool: return is_dir(path) and not is_link(path)
 
-def is_node_not_link(path: str) -> bool: return path_exists(path) and not is_link(path)
+def is_node_not_link(path: Path) -> bool: return path_exists(path) and not is_link(path)
 
-def is_python3_file(path: str, always_read=False) -> bool:
+
+def is_python3_file(path: Path, always_read=False) -> bool:
   '''
   heuristics to decide if a file is a python script.
   TODO: support zip archives.
@@ -271,23 +285,23 @@ def is_python3_file(path: str, always_read=False) -> bool:
   except (FileNotFoundError, IsADirectoryError): return False
 
 
-def set_file_time_mod(path: str, mtime: Optional[float]) -> None:
+def set_file_time_mod(path: PathOrFd, mtime: Optional[float]) -> None:
   '''
   Update the access and modification times of the file at `path`.
   The access time is always updated to the current time;
   `mtime` defaults to the current time.
   '''
-  _os.utime(path, None if mtime is None else (_time.time(), mtime))
+  _os.utime(path, None if mtime is None else (_time.time(), mtime)) # type: ignore # https://github.com/python/typeshed/issues/1653
 
 
 def add_file_execute_permissions(path: PathOrFd) -> None:
   old_perms = file_permissions(path)
   new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
-  _os.chmod(path, new_perms) # type: ignore # typeshed bug: does not support fd path.
+  _os.chmod(path, new_perms) # type: ignore # https://github.com/python/typeshed/issues/1653
 
-def remove_dir_contents(path: str) -> None:
-  if _path.islink(path): raise OSError('remove_dir_contents received symlink: ' + path)
-  l = _os.listdir(path)
+def remove_dir_contents(path: Path) -> None:
+  if _path.islink(_str_for(path)): raise OSError(f'remove_dir_contents received symlink: {path}')
+  l = _os.listdir(path) # type: ignore # https://github.com/python/typeshed/issues/1653
   for n in l:
     p = path_join(path, n)
     if _path.isdir(p) and not _path.islink(p):
@@ -296,12 +310,12 @@ def remove_dir_contents(path: str) -> None:
       _os.remove(p)
 
 
-def remove_dir_tree(path: str) -> None:
+def remove_dir_tree(path: Path) -> None:
   remove_dir_contents(path)
   _os.rmdir(path)
 
 
-def move_file(path: str, to: str, overwrite=False) -> None:
+def move_file(path: Path, to: str, overwrite=False) -> None:
   if not overwrite and path_exists(to):
     raise OSError('destination path already exists: {}'.format(to))
   _os.replace(path, to)
@@ -317,7 +331,7 @@ def normalize_exts(exts: Iterable[str]) -> AbstractSet[str]:
 
 class PathAlreadyExists(Exception): pass
 
-def open_new(path: str, make_parent_dirs: bool=True, **open_args) -> IO[Any]:
+def open_new(path: Path, make_parent_dirs: bool=True, **open_args) -> IO[Any]:
   if path_exists(path):
     raise PathAlreadyExists(path)
   if make_parent_dirs:
@@ -344,7 +358,7 @@ def _walk_dirs_and_files(dir_path: str, include_hidden: bool, file_exts: Abstrac
     yield from _walk_dirs_and_files(sub_dir, include_hidden, file_exts, files_as_paths)
 
 
-def walk_dirs_and_files(*dir_paths: str, make_abs=False, include_hidden=False, file_exts=Iterable[str],
+def walk_dirs_and_files(*dir_paths: Path, make_abs=False, include_hidden=False, file_exts: Iterable[str]=(),
   files_as_paths=False) -> Iterator[Tuple[str, List[str]]]:
   '''
   yield (dir_path, files) pairs.
@@ -369,7 +383,7 @@ def _walk_paths_rec(dir_path: str, yield_files: bool, yield_dirs: bool, include_
       yield path
 
 
-def walk_paths(*paths: str, make_abs=False, yield_files=True, yield_dirs=True, include_hidden=False,
+def walk_paths(*paths: Path, make_abs=False, yield_files=True, yield_dirs=True, include_hidden=False,
   file_exts: Iterable[str]=()) -> Iterator[str]:
   '''
   generate file and/or dir paths,
@@ -386,20 +400,21 @@ def walk_paths(*paths: str, make_abs=False, yield_files=True, yield_dirs=True, i
       yield path
 
 
-def walk_files(*paths: str, make_abs=False, include_hidden=False, file_exts: Iterable[str]=()) -> Iterator[str]:
+def walk_files(*paths: Path, make_abs=False, include_hidden=False, file_exts: Iterable[str]=()) -> Iterator[str]:
   return walk_paths(*paths, make_abs=make_abs, yield_files=True, yield_dirs=False,
     include_hidden=include_hidden, file_exts=file_exts)
 
 
-def walk_dirs(*paths: str, make_abs=False, include_hidden=False, file_exts: Iterable[str]=()) -> Iterator[str]:
+def walk_dirs(*paths: Path, make_abs=False, include_hidden=False, file_exts: Iterable[str]=()) -> Iterator[str]:
   return walk_paths(*paths, make_abs=make_abs, yield_files=False, yield_dirs=True,
     include_hidden=include_hidden, file_exts=file_exts)
 
 
-def path_descendants(start_path: str, end_path: str, include_start=True, include_end=True) -> Tuple[str, ...]:
+def path_descendants(start_path: Path, end_path: Path, include_start=True, include_end=True) -> Tuple[str, ...]:
   '''
   Return a tuple of paths from `start_path` to `end_path`.
   By default, `include_start` and `include_end` are both True.
+  TODO: normalize paths, and deal with '..' case.
   '''
   prefix = path_split(start_path)
   comps = path_split(end_path)
@@ -407,7 +422,7 @@ def path_descendants(start_path: str, end_path: str, include_start=True, include
   if not comps: raise NotAPathError(end_path)
   if prefix == comps:
     if include_start or include_end:
-      return (start_path,)
+      return (_str_for(start_path),)
     return ()
   if prefix != comps[:len(prefix)]:
     raise PathIsNotDescendantError(end_path, start_path)
@@ -416,7 +431,7 @@ def path_descendants(start_path: str, end_path: str, include_start=True, include
   return tuple(path_join(*comps[:i]) for i in range(start_i, end_i))
 
 
-def walk_dirs_up(path: str, top: str, include_top=True) -> Iterable[str]:
+def walk_dirs_up(path: Path, top: Path, include_top=True) -> Iterable[str]:
   if is_path_abs(path) ^ is_path_abs(top):
     raise MixedAbsoluteAndRelativePathsError((path, top))
   if is_dir(path):
