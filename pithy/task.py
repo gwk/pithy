@@ -56,6 +56,7 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
     cmd = _shlex.split(cmd)
 
   input_bytes: Optional[bytes]
+  f_in: Input
   if isinstance(stdin, str):
     f_in = PIPE
     input_bytes = stdin.encode('utf-8')
@@ -201,7 +202,7 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
     raise
 
 
-def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
+def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Tuple[int, str, str]:
   '''
   Run a command and return (exit_code, std_out, std_err).
