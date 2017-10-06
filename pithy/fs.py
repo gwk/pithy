@@ -2,6 +2,7 @@
 
 import os as _os
 import os.path as _path
+import re as _re
 import shutil as _shutil
 import stat as _stat
 import time as _time
@@ -455,19 +456,23 @@ def walk_dirs_up(path: Path, top: Path, include_top=True) -> Iterable[str]:
   return reversed(path_descendants(top, dir_path))
 
 
-default_project_signifiers = frozenset({
-    '.git',
-    '.project-root',
-})
+default_project_signifiers: Tuple[str, ...] = (
+  '.git',
+  '.project-root',
+  'Package.swift',
+  'setup.py',
+  r'.+\.craft',
+)
 
-def find_project_dir(start_dir='.', top=None, include_top=False, project_signifiers=default_project_signifiers) -> Optional[str]:
+def find_project_dir(start_dir: Path='.', top: Optional[Path]=None, include_top=False,
+ project_signifiers: Iterable[str]=default_project_signifiers) -> Optional[str]:
   '''
-  find a project root directory, as denoted by the presence of a file/directory in `project_signifiers`,
-  which defaults to:
-  - .git
-  - .project-root
+  find a project root directory, as denoted by the presence of a file/directory in `project_signifiers`.
   By default, stops before reaching the user's home directory.
+  If a signifier string contains any of '?*+^$[]', then it is treated as a regular expression.
+  See default_project_signifiers.
   '''
+  signifier_re = _re.compile('|'.join(f'({p if any(q in p for q in "?*+^$[]") else _re.escape(p)})' for p in project_signifiers))
   start_dir = abs_path(start_dir)
   if top is None:
     top = home_dir()
@@ -477,6 +482,6 @@ def find_project_dir(start_dir='.', top=None, include_top=False, project_signifi
     top = abs_path(top)
   for path in walk_dirs_up(start_dir, top=top, include_top=include_top):
     for name in list_dir(path, hidden=True):
-      if name in project_signifiers:
+      if signifier_re.fullmatch(name):
         return path
   return None
