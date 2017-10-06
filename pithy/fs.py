@@ -330,7 +330,7 @@ def move_file(path: Path, to: str, overwrite=False) -> None:
   _os.replace(path, to)
 
 
-def normalize_exts(exts: Iterable[str]) -> AbstractSet[str]:
+def normalize_exts(exts: Iterable[str]) -> FrozenSet[str]:
   if isinstance(exts, str): raise TypeError(exts)
   for ext in exts:
     if not isinstance(ext, str): raise TypeError(ext)
