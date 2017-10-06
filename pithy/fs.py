@@ -256,6 +256,10 @@ def file_time_access(path: PathOrFd) -> float: return _os.stat(path).st_atime # 
 
 def file_time_mod(path: PathOrFd) -> float: return _os.stat(path).st_mtime # type: ignore # https://github.com/python/typeshed/issues/1653
 
+def file_time_mod_or_zero(path: str) -> float:
+  try: return file_time_mod(path)
+  except FileNotFoundError: return 0
+
 def file_time_meta_change(path: PathOrFd) -> float: return _os.stat(path).st_ctime # type: ignore # https://github.com/python/typeshed/issues/1653
 
 def file_size(path: PathOrFd) -> int: return _os.stat(path).st_size # type: ignore # https://github.com/python/typeshed/issues/1653
@@ -283,6 +287,10 @@ def is_python3_file(path: Path, always_read=False) -> bool:
       head = f.read(len(expected))
       return bool(head == expected)
   except (FileNotFoundError, IsADirectoryError): return False
+
+
+def product_needs_update(product=PathOrFd, source=PathOrFd) -> bool:
+  return file_time_mod_or_zero(product) <= file_time_mod(source)
 
 
 def set_file_time_mod(path: PathOrFd, mtime: Optional[float]) -> None:
