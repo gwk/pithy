@@ -273,17 +273,18 @@ def is_dir_not_link(path: Path) -> bool: return is_dir(path) and not is_link(pat
 def is_node_not_link(path: Path) -> bool: return path_exists(path) and not is_link(path)
 
 
-def is_python3_file(path: Path, always_read=False) -> bool:
+def is_python_file(path: Path, always_read=False) -> bool:
   '''
-  heuristics to decide if a file is a python script.
-  TODO: support zip archives.
+  Guess if a file is a python file, based first on path extension, or if that is not present on shebang line.
+  TODO: support more than just '#!/usr/bin/env python'
+  TODO: support zip archives?
   '''
   if not always_read:
     ext = path_ext(path)
     if ext: return ext == '.py'
   try:
     with open(path, 'rb') as f:
-      expected = b'#!/usr/bin/env python3\n'
+      expected = b'#!/usr/bin/env python'
       head = f.read(len(expected))
       return bool(head == expected)
   except (FileNotFoundError, IsADirectoryError): return False
