@@ -10,29 +10,7 @@
   "categories": ["Languages"],
   "contributes": {
     "problemMatchers": [
-      { "name": "craft-mypy",
-        "fileLocation": "relative",
-        "pattern": [
-          { "regexp": "([^:]+):(\\d+):(\\d+): ?(.+)",
-            "file": 1,
-            "line": 2,
-            "column": 3,
-            "message": 4
-          }
-        ]
-      },
-      { "name": "craft-swift",
-        "fileLocation": "relative",
-        "pattern": [
-          { "regexp": "([^:]+):(\\d+):(\\d+): ?(.*)",
-            "file": 1,
-            "line": 2,
-            "column": 3,
-            "message": 4
-          }
-        ]
-      },
-      { "name": "craft-tsc",
+      { "name": "craft",
         "fileLocation": "relative",
         "pattern": [
           { "regexp": "([^:]+):(\\d+):(\\d+): ?(.+)",

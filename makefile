@@ -36,4 +36,4 @@ test:
 	iotest -fail-fast
 
 typecheck:
-	craft-mypy craft
+	craft-py-check craft
