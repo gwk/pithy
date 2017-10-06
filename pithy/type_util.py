@@ -4,6 +4,8 @@ from abc import ABCMeta, abstractmethod
 from typing import *
 
 
+T = TypeVar('T')
+
 class Comparable(metaclass=ABCMeta):
   # taken from https://www.python.org/dev/peps/pep-0484/.
   @abstractmethod
@@ -74,6 +76,7 @@ runtime_generic_type_prefixes: Dict[str, type] = {
 }
 
 
-def req_type(obj: Any, expected: Union[type, Tuple[type, ...]]) -> None:
+def req_type(obj: T, expected: Union[type, Tuple[type, ...]]) -> T:
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')
+  return obj
