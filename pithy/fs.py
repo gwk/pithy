@@ -249,23 +249,23 @@ def current_dir() -> str: return abs_path('.')
 
 def parent_dir() -> str: return abs_path('..')
 
-def change_dir(path: PathOrFd) -> None: _os.chdir(path) # type: ignore # https://github.com/python/typeshed/issues/1653
+def change_dir(path: PathOrFd) -> None: _os.chdir(path)
 
-def file_inode(path: PathOrFd) -> int: return _os.stat(path).st_ino # type: ignore # https://github.com/python/typeshed/issues/1653
+def file_inode(path: PathOrFd) -> int: return _os.stat(path).st_ino
 
-def file_time_access(path: PathOrFd) -> float: return _os.stat(path).st_atime # type: ignore # https://github.com/python/typeshed/issues/1653
+def file_time_access(path: PathOrFd) -> float: return _os.stat(path).st_atime
 
-def file_time_mod(path: PathOrFd) -> float: return _os.stat(path).st_mtime # type: ignore # https://github.com/python/typeshed/issues/1653
+def file_time_mod(path: PathOrFd) -> float: return _os.stat(path).st_mtime
 
 def file_time_mod_or_zero(path: str) -> float:
   try: return file_time_mod(path)
   except FileNotFoundError: return 0
 
-def file_time_meta_change(path: PathOrFd) -> float: return _os.stat(path).st_ctime # type: ignore # https://github.com/python/typeshed/issues/1653
+def file_time_meta_change(path: PathOrFd) -> float: return _os.stat(path).st_ctime
 
-def file_size(path: PathOrFd) -> int: return _os.stat(path).st_size # type: ignore # https://github.com/python/typeshed/issues/1653
+def file_size(path: PathOrFd) -> int: return _os.stat(path).st_size
 
-def file_permissions(path: PathOrFd) -> int: return _os.stat(path).st_mode # type: ignore # https://github.com/python/typeshed/issues/1653
+def file_permissions(path: PathOrFd) -> int: return _os.stat(path).st_mode
 
 def is_file_not_link(path: Path) -> bool: return is_file(path) and not is_link(path)
 
@@ -301,13 +301,13 @@ def set_file_time_mod(path: PathOrFd, mtime: Optional[float]) -> None:
   The access time is always updated to the current time;
   `mtime` defaults to the current time.
   '''
-  _os.utime(path, None if mtime is None else (_time.time(), mtime)) # type: ignore # https://github.com/python/typeshed/issues/1653
+  _os.utime(path, None if mtime is None else (_time.time(), mtime))
 
 
 def add_file_execute_permissions(path: PathOrFd) -> None:
   old_perms = file_permissions(path)
   new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
-  _os.chmod(path, new_perms) # type: ignore # https://github.com/python/typeshed/issues/1653
+  _os.chmod(path, new_perms)
 
 def remove_dir_contents(path: Path) -> None:
   if _path.islink(_str_for(path)): raise OSError(f'remove_dir_contents received symlink: {path}')
