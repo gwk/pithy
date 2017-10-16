@@ -2,17 +2,21 @@
 
 '''
 SVG writer.
-TODO: proper xml escaping.
 '''
 
 from sys import stdout
+from html import escape as html_escape
+
 from typing import *
 from typing import TextIO
 
 
 FileOrPath = Union[TextIO, str]
+Dim = Union[int, float, str]
 Num = Union[int, float]
-ViewBox = Union[None, Tuple[Num, Num], Tuple[Num, Num, Num, Num], Tuple[Tuple[Num, Num], Tuple[Num, Num]]]
+Point = Tuple[Num, Num]
+
+ViewBox = Union[None, Point, Tuple[Num, Num, Num, Num], Tuple[Point, Point]] # TODO: currently unused.
 
 
 class SvgWriter:
@@ -32,10 +36,10 @@ class SvgWriter:
       act = (id(self), self.tag)
       if act != exp:
         raise Exception(f'SvgWriter top-of-stack {exp} does not match context: {act}')
-      self.writer.write(f'</{self.tag}')
+      self.writer.write(f'</{self.tag}>')
 
 
-  def __init__(self, w:Num=None, h:Num=None, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, file_or_path:FileOrPath=stdout) -> None:
+  def __init__(self, w:Dim=None, h:Dim=None, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, file_or_path:FileOrPath=stdout) -> None:
     self._stack: List[Tuple[int, str]] = []
     if isinstance(file_or_path, str):
       self.file = open(file_or_path, 'w')
@@ -44,8 +48,6 @@ class SvgWriter:
     if w is None or h is None:
       self.viewport = ''
     else:
-      assert w > 0
-      assert h > 0
       self.viewport = f' width="{w}" height="{h}"'
     if vx is None and vy is None and vw is None and vh is None:
       self.viewBox = ''
@@ -56,13 +58,12 @@ class SvgWriter:
       assert vh is not None and vh > 0
       self.viewBox = f' viewBox="{vx} {vy} {vw} {vh}"'
 
+
   def __del__(self) -> None:
     if self._stack:
       raise Exception(f'SvgWriter finalized before tag stack was popped; did you forget to use a `with` context?')
 
   def __enter__(self) -> 'SvgWriter':
-    # TODO: xlink? 'xmlns:xlink="http://www.w3.org/1999/xlink"'
-    vb = ''
     self.write(f'<svg xmlns="http://www.w3.org/2000/svg"{self.viewport}{self.viewBox}>')
     return self
 
@@ -78,38 +79,104 @@ class SvgWriter:
   def indent(self) -> int:
     return len(self._stack)
 
-
   def write(self, *items: Any) -> None:
     print('  ' * self.indent, *items, sep='', file=self.file)
-
 
   def leaf(self, tag:str, **attrs: Any) -> None:
     self.write(f'<{tag}{_fmt_attrs(attrs)}/>')
 
+  def leafText(self, tag:str, text:str, **attrs: Any) -> None:
+    self.write(f'<{tag}{_fmt_attrs(attrs)}>{_esc(text)}</{tag}>')
 
-  def tree(self, tag:str, **attrs: Any) -> SvgWriter.Tree:
+  def tree(self, tag:str, **attrs: Any) -> 'SvgWriter.Tree':
     self.write(f'<{tag}{_fmt_attrs(attrs)}>')
     return SvgWriter.Tree(writer=self, tag=tag)
 
 
-  def circle(self, pos:Tuple[Num, Num]=None, x:Num=None, y:Num=None, r:Num=None, **attrs) -> None:
+  def circle(self, pos:Point=None, x:Num=None, y:Num=None, r:Num=None, **attrs) -> None:
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
-    assert r is not None
-    self.leaf('circle', cx=x, cy=y, r=r, **attrs)
+    _opt_attrs(attrs, ('cx', x), ('cy', y), ('r', r))
+    self.leaf('circle', **attrs)
 
 
-  def rect(self, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs) -> None:
-    self.leaf('rect', x=x, y=y, width=w, height=h, **attrs)
+  def defs(self) -> 'SvgWriter.Tree':
+    return self.tree('defs')
+
+
+  def g(self, **attrs) -> 'SvgWriter.Tree':
+    return self.tree('g', **attrs)
+
+
+  def line(self, src: Point, dst: Point, **attrs) -> None:
+    _opt_attrs(attrs,
+      ('x1', src[0]),
+      ('y1', src[1]),
+      ('x2', dst[0]),
+      ('y2', dst[1]))
+    self.leaf('line', **attrs)
+
+
+  def marker(self, id:str, w:Num=None, h:Num=None, x:Num=None, y:Num=None, markerUnits='strokeWidth', orient:str='auto', **attrs) -> 'SvgWriter.Tree':
+    assert w is not None
+    assert h is not None
+    assert x is not None
+    assert y is not None
+    return self.tree('marker', id=id, markerWidth=w, markerHeight=h, refX=x, refY=y, markerUnits=markerUnits, orient=orient, **attrs)
+
+
+  def path(self, *commands, **attrs) -> None:
+    assert 'd' not in attrs
+    d = ' '.join(commands)
+    self.leaf('path', d=d, **attrs)
+
+
+  def rect(self, x:Num=None, y:Num=None, w:Num=None, h:Num=None, rx:Num=None, ry:Num=None, **attrs) -> None:
+    _opt_attrs(attrs,
+      ('x', x),
+      ('y', y),
+      ('width', w),
+      ('height', h),
+      ('rx', rx),
+      ('ry', ry))
+    self.leaf('rect', **attrs)
+
+
+  def style(self, text: str, **attrs,) -> None:
+    self.leafText('style', text.strip(), **attrs)
+
+
+  def symbol(self, id: str, **attrs) -> None:
+    return self.leaf('symbol', id=id, **attrs)
+
+
+  def text(self, x:Num=None, y:Num=None, text=None, **attrs) -> None:
+    _opt_attrs(attrs, ('x', x), ('y', y))
+    self.leafText('text', text, **attrs)
+
+
+def _esc(val: Any) -> str: return html_escape(str(val))
+
+def _opt_attrs(attrs: Dict[str, Any], *pairs: Tuple[str, Optional[Num]]) -> None:
+  for k, v in pairs:
+    if v is None: continue
+    attrs[k] = v
 
 
 def _fmt_attrs(attrs: Dict[str, Any]) -> str:
+  if not attrs: return ''
   for k in [k for k, v in attrs.items() if v is None]:
     attrs[k] = 'none'
-  if not attrs: return ''
   try: cls = attrs.pop('class_')
   except KeyError: pass
   else: attrs['class'] = cls
-  return ' ' + ' '.join(f'{k}="{v}"' for k, v in attrs.items())
+  return ' ' + ' '.join(f'{_esc(k.replace("_", "-"))}="{_esc(v)}"' for k, v in attrs.items())
+
+
+valid_units = frozenset({'em', 'ex', 'px', 'pt', 'pc', 'cm', 'mm', '%', ''})
+
+def _validate_unit(unit: str):
+  if unit not in valid_units:
+    raise Exception(f'Invalid SVG unit: {unit!r}; should be one of {sorted(valid_units)}')
