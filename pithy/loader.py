@@ -112,7 +112,7 @@ def load_gz(f: BinaryIO, sub_ext=None, **kwargs:Any) -> Any:
   if sub_ext == '.tar': # load_archive handles compressed stream faster internally.
     return load_archive(f, **kwargs)
   from gzip import GzipFile
-  g = GzipFile(mode='rb', fileobj=f) # type: ignore # typeshed bug: GzipFile is untyped.
+  g = GzipFile(mode='rb', fileobj=f)
   g.name = stem # strip off '.gz' for secondary dispatch by `load`.
   return load(g, ext=sub_ext, **kwargs)
 
