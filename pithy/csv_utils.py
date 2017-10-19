@@ -28,13 +28,14 @@ def load_csv(file: TextIO,
     ('skipinitialspace', skipinitialspace),
     ('strict', strict),
     ] if v is not None }
-  reader = cast(Iterator[Sequence], csv.reader(file, dialect, **opts))
+  reader = cast(Iterator[Sequence[str]], csv.reader(file, dialect, **opts))
   if header is None or isinstance(header, bool):
     if header: next(reader) # simply discard.
   else: # match expected against actual.
     row = next(reader)
-    if row != list(header):
-      raise ValueError(f'load_csv expected header:\n{header}\nreceived:\n{row}')
+    list_header = list(header)
+    if row != list_header:
+      raise ValueError(f'load_csv expected header:\n{list_header}\nreceived:\n{row}')
   return reader
 
 
