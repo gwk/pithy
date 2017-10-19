@@ -273,6 +273,8 @@ def is_dir_not_link(path: Path) -> bool: return is_dir(path) and not is_link(pat
 
 def is_node_not_link(path: Path) -> bool: return path_exists(path) and not is_link(path)
 
+def is_file_executable_by_owner(path: Path) -> bool: return bool(file_permissions(path) & _stat.S_IXUSR)
+
 
 def is_python_file(path: Path, always_read=False) -> bool:
   '''
