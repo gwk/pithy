@@ -186,7 +186,7 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
     if recv: _os.close(recv)
     if send: _os.close(send)
     time_rem = timeout - (_time.time() - time_start)
-    code = proc.wait(timeout=time_rem)
+    code = proc.wait(timeout=(time_rem if timeout > 0 else None))
     if exp is None:
       pass
     elif isinstance(exp, NonzeroCodeExpectation):
