@@ -35,7 +35,7 @@ test:
 	iotest -fail-fast
 
 typecheck:
-	mypy-plumage legs
+	craft-py-check legs
 
 vscode-ext/syntaxes/legs.json: legs.legs
 	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -language vscode -output $@

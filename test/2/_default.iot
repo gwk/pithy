@@ -1,3 +1,3 @@
 {
-  'interpreter': '$PROJ/legs/__main__.py',
+  'interpreter': 'legs',
 }
