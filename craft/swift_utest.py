@@ -56,7 +56,14 @@ def main():
 
   ok = True
   for path in args.test_paths:
-    for src_path in walk_files(rel_path(path), file_exts=['.swift']):
+    path = rel_path(path)
+    if path.startswith('src/'):
+      # This is a hack to make unit testing in VSCode easier
+      # TODO: generalize to the project source directories, rather than hardcoded 'src'.
+      test_path = replace_first_dir(path, 'test/')
+      errL(f'craft-swift-utest: assuming {path} -> {test_path}')
+      path = test_path
+    for src_path in walk_files(path, file_exts=['.swift']):
       try: module = source_modules[src_path]
       except KeyError: errL(f'warning: no module source found for utest: {src_path}')
       ok &= run_utest(src_path=src_path, module=module, conf=conf, debug_dir=debug_dir, sdk_dir=sdk_dir, fw_dir=fw_dir, module_cache_dir=module_cache_dir)
