@@ -406,9 +406,9 @@ def walk_paths(*paths: Path, make_abs=False, yield_files=True, yield_dirs=True, 
   '''
   file_exts = normalize_exts(file_exts)
   for raw_path in paths:
-    path = abs_or_normalize_path(raw_path, make_abs) + '/'
+    path = abs_or_normalize_path(raw_path, make_abs)
     if is_dir(path):
-      yield from _walk_paths_rec(path, yield_files, yield_dirs, include_hidden, file_exts)
+      yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
     elif not path_exists(path):
       raise FileNotFoundError(path)
     elif yield_files and (not file_exts or path_ext(path) in file_exts):
