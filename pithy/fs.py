@@ -109,6 +109,12 @@ def path_name_stem(path: Path) -> str:
   'The file name without extension; the name stem will not span directories.'
   return path_stem(path_name(path))
 
+def replace_first_dir(path: Path, replacement: str) -> str:
+  parts = path_split(path)
+  if not parts: raise Exception('replace_first_dir: path is empty')
+  parts[0] = replacement
+  return path_join(*parts)
+
 def split_dir_name(path: Path) -> Tuple[str, str]:
   "Split the path into dir and name (possibly including an extension) components, e.g. 'dir/name'."
   return _path.split(path)
