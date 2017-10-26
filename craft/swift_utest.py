@@ -86,7 +86,7 @@ def run_utest(src_path, module, conf, debug_dir, sdk_dir, fw_dir, module_cache_d
   with open(main_path, 'w') as f:
     f.write(f'@testable import {module.name}\n\n')
     for sym in swiftdeps['provides-top-level']:
-      if sym.startswith('test'): f.write(f'{sym}()')
+      if sym.startswith('test'): f.write(f'{sym}()\n')
 
   cmd = [
     'swiftc',
