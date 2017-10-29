@@ -25,12 +25,13 @@ def load_craft_config():
 
   try: project_dir = os.environ[CRAFT_PROJECT_DIR]
   except KeyError:
-    project_dir = rel_path(find_project_dir(project_signifiers=[r'.+\.craft', *default_project_signifiers]))
+    project_dir = rel_path(find_project_dir())
+    if project_dir is None: exit(f'craft error: could not identify project directory.')
     os.environ[CRAFT_PROJECT_DIR] = project_dir
 
   try: config_path = os.environ[CRAFT_CONFIG_PATH]
   except KeyError:
-    names = list_dir(project_dir, exts=['.craft'])
+    names = [n for n in list_dir(project_dir) if path_name_stem(n) == 'craft']
     if not names: exit(f'craft error: no craft file in project dir: {project_dir!r}')
     if len(names) > 1: exit(f'craft error: multiple craft files in project dir: {project_dir!r}; {", ".join(names)}')
     config_path = normalize_path(path_join(project_dir, names[0]))
@@ -62,6 +63,7 @@ def load_craft_config():
 def parse_craft(path):
   try: f = open(path)
   except FileNotFoundError: exit(f'craft error: craft file does not exist: {path!r}')
+  if path_ext(path) != '.yaml': exit(f'craft error: caft file must be a `.yaml` file.') # TODO: relax this restriction.
   with f: d = yaml.load(f)
   for k, v in d.items():
     if k in craft_nonconfigurable_keys: exit(f'craft error: key is not configurable: {k!r}')
