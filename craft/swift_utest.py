@@ -90,9 +90,12 @@ def run_utest(src_path, module, conf, debug_dir, sdk_dir, fw_dir, module_cache_d
   main_path = f'{test_dir}/main.swift'
   exe_path = f'{test_dir}/{name}'
   swiftdeps = yaml.load(open(swiftdeps_path))
+  top_level_syms = swiftdeps['provides-top-level']
+  if top_level_syms is None: return True
+
   with open(main_path, 'w') as f:
     f.write(f'@testable import {module.name}\n\n')
-    for sym in swiftdeps['provides-top-level']:
+    for sym in top_level_syms:
       if sym.startswith('test'): f.write(f'{sym}()\n')
 
   cmd = [
