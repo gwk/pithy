@@ -468,8 +468,8 @@ default_project_signifiers: Tuple[str, ...] = (
   '.git',
   '.project-root',
   'Package.swift',
+  'craft.yaml',
   'setup.py',
-  r'.+\.craft',
 )
 
 def find_project_dir(start_dir: Path='.', top: Optional[Path]=None, include_top=False,
