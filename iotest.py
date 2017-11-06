@@ -846,10 +846,12 @@ def check_file_exp(ctx, test_dir, exp):
   try:
     with open(path, errors='replace') as f:
       act_val = f.read()
+  except FileNotFoundError as e:
+    outL(f'\niotest: test did not output expected file: {path}')
+    return False
   except Exception as e:
     outL(f'\niotest: could not read test output file: {path}\n  exception: {e!r}')
     ctx.fail_fast(e)
-    outSL('-' * bar_width)
     return False
   if file_expectation_fns[exp.mode](exp, act_val):
     return True
