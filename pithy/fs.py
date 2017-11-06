@@ -144,14 +144,14 @@ def abs_path(path: Path) -> str:
   return _path.abspath(_str_for(path))
 
 def abs_or_normalize_path(path: Path, make_abs: bool) -> str:
-  'Returns the absolute path if make_abs is True, if make_abs is False, returns a normalized path.'
+  'Return the absolute path if make_abs is True. If make_abs is False, return a normalized path.'
   return abs_path(path) if make_abs else normalize_path(path)
 
 
 def path_rel_to_ancestor(path: Path, ancestor: str, dot=False) -> str:
   '''
   Return the path relative to `ancestor`.
-  If `path` is not descended from `ancestor`,raise PathIsNotDescendantError.
+  If `path` is not descended from `ancestor`, raise PathIsNotDescendantError.
   If `path` and `ancestor` are equivalent (path component-wise),
    then return '.' if dot is True, or else raise PathIsNotDescendantError.
   '''
