@@ -9,9 +9,10 @@ from collections import defaultdict
 from difflib import SequenceMatcher
 from os.path import isfile as is_file, exists as path_exists
 from shutil import copyfile
+from typing import TextIO
 
 
-__all__ = ['pat_dependencies', 'main']
+__all__ = ['pat_dependency', 'main']
 
 
 pat_version = '0'
@@ -262,18 +263,17 @@ def main_apply(args):
     orig_index += 1
 
 
-def pat_dependencies(src_path, src_file, dir_names):
+def pat_dependency(src_path: str, src_file: TextIO) -> str:
   '''
-  Return a list of dependencies;
-  `dir_names` is an ignored parameter provided by muck.
+  Return a list of dependencies.
   A .pat file always has a single dependency: the source file it patches.
   '''
   version_line = src_file.readline()
   orig_line = src_file.readline()
   orig_path = orig_line.strip()
   if not orig_path:
-    failF('pat_dependencies: {}:2: line specifying original path is missing or empty.', src_path)
-  return [orig_path]
+    failF('pat error: {}:2:1: line specifying original path is missing or empty.', src_path)
+  return orig_path
 
 
 def errF(fmt, *items):
