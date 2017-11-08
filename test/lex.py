@@ -24,8 +24,8 @@ utest_seq([('num', '1'), ('space', ' '), ('num', '20'), ('line', '\n')],
 utest_seq([('num', '1'), ('num', '20')],
   test_lex, num_lexer, '1 20\n', drop={'line', 'space'})
 
-utest_seq_exc("LexError(<_sre.SRE_Match object; span=(2, 3), match='x'>,)", test_lex, num_lexer, '1 x 2')
-utest_seq_exc("LexError(<_sre.SRE_Match object; span=(4, 5), match='x'>,)", test_lex, num_lexer, '1 2 x')
+utest_seq_exc("LexError(<re.Match object; span=(2, 3), match='x'>,)", test_lex, num_lexer, '1 x 2')
+utest_seq_exc("LexError(<re.Match object; span=(4, 5), match='x'>,)", test_lex, num_lexer, '1 2 x')
 
 
 word_lexer = Lexer(invalid='inv', patterns=dict(
@@ -52,7 +52,7 @@ utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern
 
 utest_seq_exc(Lexer.DefinitionError(
   "Zero-length patterns are disallowed, because they cause the following character to be skipped.\n"
-  "  kind: caret; match: <_sre.SRE_Match object; span=(0, 0), match=''>"),
+  "  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
   Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
 
 
