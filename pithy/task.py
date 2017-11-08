@@ -10,7 +10,7 @@ from sys import stderr, stdout
 from typing import cast, Any, AnyStr, BinaryIO, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
 from .alarm import AlarmManager, Timeout
 
-Cmd = Union[str, List[str]]
+Cmd = Union[str, Sequence[str]]
 Env = Dict[str, str]
 Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; could also be raw file descriptor?
 File = Union[int, IO]
