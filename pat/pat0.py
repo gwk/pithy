@@ -4,12 +4,12 @@
 import re
 import sys
 
-from argparse import ArgumentParser, FileType
+from argparse import ArgumentParser, FileType, Namespace
 from collections import defaultdict
 from difflib import SequenceMatcher
 from os.path import isfile as is_file, exists as path_exists
 from shutil import copyfile
-from typing import TextIO
+from typing import Any, DefaultDict, List, Set, NoReturn, TextIO, Tuple, cast
 
 
 __all__ = ['pat_dependency', 'main']
@@ -18,13 +18,13 @@ __all__ = ['pat_dependency', 'main']
 pat_version = '0'
 
 
-def main():
+def main() -> None:
   parser = ArgumentParser(prog='pat', description='create or apply a .pat patch file.')
-  parser.epilog = "for help with a specific command, pass '-h' to that command."
+  parser.epilog = "for help with a specific command, pass '-h' to that command." # type: ignore
 
   subs = parser.add_subparsers()
-  subs.required = True # unofficial workaround.
-  subs.dest = 'command' # this is necessary to make `required` above work.
+  subs.required = True # type: ignore # unofficial workaround.
+  subs.dest = 'command' # type: ignore # this is necessary to make `required` above work.
 
 
   sub_create = subs.add_parser('create',
@@ -75,7 +75,7 @@ def main():
   args.handler(args)
 
 
-def main_create(args):
+def main_create(args: Namespace) -> None:
   'create command entry point.'
   original = args.original
   modified = args.modified
@@ -89,7 +89,7 @@ def main_create(args):
   copyfile(original, modified)
 
 
-def main_diff(args):
+def main_diff(args) -> None:
   'diff command entry point.'
   original = args.original
   modified = args.modified
@@ -109,12 +109,12 @@ def main_diff(args):
   if m_lines and not m_lines[-1].endswith('\n'):
     failF('{}:{} modified document is missing final newline (not yet supported).')
 
-  def write(line): f_out.write(line)
+  def write(line: str) -> None: f_out.write(line)
 
   write('pat v' + pat_version + '\n')
   write(args.original.name + '\n')
 
-  line_indices = defaultdict(set) # maps line contents to line numbers.
+  line_indices: DefaultDict[str, Set[int]] = defaultdict(set) # maps line contents to line numbers.
   for i, line in enumerate(o_lines):
     line_indices[line].add(i)
 
@@ -178,31 +178,25 @@ def main_diff(args):
     n = n1
 
 
-def diff_lines(o_lines, m_lines):
-  return SequenceMatcher(None, o_lines, m_lines).get_matching_blocks()
+def diff_lines(o_lines, m_lines) -> List[Tuple[int, int, int]]:
+  return SequenceMatcher(None, o_lines, m_lines).get_matching_blocks() # type: ignore
 
-
-def open_orig_path(path):
-  try:
-   return open(path)
-  except FileNotFoundError:
-    patch_failF(1, 'could not open source path specified by patch: {!r}', path)
 
 
 # version pattern is applied to the first line of documents;
 # programs processing input strings may or may not check for a version as appropriate.
 version_re = re.compile(r'pat v(\d+)\n')
 
-def main_apply(args):
+def main_apply(args) -> None:
   'apply command entry point.'
   f_patch = args.patch
   f_out = args.out
 
-  def patch_failF(line_num, fmt, *items):
+  def patch_failF(line_num, fmt, *items) -> NoReturn:
     failF('{}:{}: ' + fmt, f_patch.name, line_num + 1, *items)
 
   version_line = f_patch.readline()
-  orig_line = f_patch.readline()
+  orig_path_line = f_patch.readline()
   patch_lines = f_patch.readlines()
 
   m = version_re.fullmatch(version_line)
@@ -212,24 +206,25 @@ def main_apply(args):
   version = m.group(1)
   if version != pat_version: patch_failF(0, 'unsupported version number: {}', version)
 
-  if not orig_line:
+  if not orig_path_line:
     patch_failF(1, 'patch file does not specify an original path')
-  orig_path = orig_line.rstrip()
+  orig_path = orig_path_line.rstrip()
 
   if orig_path.find('..') != -1:
     patch_failF(1, "original path cannot contain '..': {!r}", orig_path)
 
-  f_orig = open_orig_path(orig_path)
+  try: f_orig = open(orig_path)
+  except FileNotFoundError: patch_failF(1, 'could not open source path specified by patch: {!r}', orig_path)
 
   orig_lines = f_orig.readlines()
 
-  orig_line_indices = defaultdict(set)
-  for i, orig_line in enumerate(orig_lines):
-    orig_line_indices[orig_line].add(i)
+  orig_line_indices: DefaultDict[str, Set[int]] = defaultdict(set)
+  for i, line in enumerate(orig_lines):
+    orig_line_indices[line].add(i)
 
   len_orig = len(orig_lines)
   orig_index = 0
-  def orig_line(): return orig_lines[orig_index]
+  def orig_line() -> str: return orig_lines[orig_index]
 
   for pi, patch_line in enumerate(patch_lines, 2): # advance two lines.
     if patch_line == '\n':
@@ -276,13 +271,13 @@ def pat_dependency(src_path: str, src_file: TextIO) -> str:
   return orig_path
 
 
-def errF(fmt, *items):
+def errF(fmt: str, *items: Any) -> None:
   print(fmt.format(*items), end='', file=sys.stderr)
 
-def errFL(fmt, *items):
+def errFL(fmt: str, *items: Any) -> None:
   print(fmt.format(*items), file=sys.stderr)
 
-def failF(fmt, *items):
+def failF(fmt: str, *items: Any) -> NoReturn:
   errFL('pat error: ' + fmt, *items)
   sys.exit(1)
 

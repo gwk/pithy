@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "echoCommand": false,
+  "type": "process",
+  "presentation": {},
+  "tasks": [
+    {
+      "label": "typecheck-current",
+      "command": "craft-py-check",
+      "args": ["${relativeFile}"],
+      "group": {"kind": "build", "isDefault": true},
+      "problemMatcher": "$craft"
+    },
+    {
+      "label": "typecheck",
+      "command": "craft-py-check",
+      "args": ["pat"],
+      "group": "build",
+      "problemMatcher": "$craft"
+    }
+  ]
+}
