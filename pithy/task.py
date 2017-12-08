@@ -28,7 +28,7 @@ NONZERO = NonzeroCodeExpectation()
 TaskCodeExpectation = Union[None, int, NonzeroCodeExpectation]
 
 
-class TaskUnexpectedExit(Exception):
+class UnexpectedExit(Exception):
   'Exception indicating that a subprocess exit code did not match the code expectation.'
   def __init__(self, cmd: Cmd, exp: TaskCodeExpectation, act: int) -> None:
     super().__init__(f'process was expected to exit with code {exp}; actual code: {act}')
@@ -191,10 +191,10 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
       pass
     elif isinstance(exp, NonzeroCodeExpectation):
       if code == 0:
-        raise TaskUnexpectedExit(cmd=cmd, exp=NONZERO, act=code)
+        raise UnexpectedExit(cmd=cmd, exp=NONZERO, act=code)
     else:
       if code != exp: # otherwise expect exact numeric code.
-        raise TaskUnexpectedExit(cmd=cmd, exp=exp, act=code)
+        raise UnexpectedExit(cmd=cmd, exp=exp, act=code)
     return code # generator will raise StopIteration(code).
   except BaseException:
     proc.kill()
@@ -214,10 +214,10 @@ def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=Non
     pass
   elif isinstance(exp, NonzeroCodeExpectation):
     if code == 0:
-      raise TaskUnexpectedExit(cmd, NONZERO, code)
+      raise UnexpectedExit(cmd, NONZERO, code)
   else:
     if code != exp: # otherwise expect exact numeric code.
-      raise TaskUnexpectedExit(cmd, exp, code)
+      raise UnexpectedExit(cmd, exp, code)
 
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
 
