@@ -16,6 +16,7 @@ setup(
   long_description=open('readme.wu').read(),
   packages=[name],
   entry_points = {'console_scripts': [
+    'craft-docs=craft.docs:main',
     'craft-mac-app=craft.mac_app:main',
     'craft-py-check=craft.py_check:main',
     'craft-swift=craft.swift:main',
