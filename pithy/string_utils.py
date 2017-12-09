@@ -41,6 +41,25 @@ def  clip_suffix(string: str, suffix: str, req=True) -> str:
   return string
 
 
+def replace_prefix(string: str, prefix: str, replacement: str, req=True) -> str:
+  'Replace `prefix` if it is present, or raise ValueError, unless `req` is False.'
+  if string.startswith(prefix):
+    return replacement + string[len(prefix):]
+  elif req:
+    raise ValueError(string)
+  return string
+
+
+def replace_suffix(string: str, suffix: str, replacement: str, req=True) -> str:
+  'Replace `suffix`if it is present, or raise ValueError, unless `req` is False.'
+  if len(suffix) == 0: return string # need this case because string[:-0] == ''.
+  if string.endswith(suffix):
+    return string[:-len(suffix)] + replacement
+  elif req:
+    raise ValueError(string)
+  return string
+
+
 def clip_first_prefix(string: str, prefixes: Sequence[str], req=True) -> str:
   'Remove the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
   for p in prefixes:
