@@ -6,9 +6,8 @@ SVG writer.
 
 from sys import stdout
 from html import escape as html_escape
-
-from typing import *
-from typing import TextIO
+from types import TracebackType
+from typing import Any, ContextManager, Dict, List, Optional, TextIO, Tuple, Type, Union
 
 
 FileOrPath = Union[TextIO, str]
@@ -19,7 +18,7 @@ Point = Tuple[Num, Num]
 ViewBox = Union[None, Point, Tuple[Num, Num, Num, Num], Tuple[Point, Point]] # TODO: currently unused.
 
 
-class SvgWriter:
+class SvgWriter(ContextManager):
 
   class Tree:
 
@@ -31,7 +30,8 @@ class SvgWriter:
       self.writer._stack.append((id(self), self.tag)) # use id to avoid ref cycle.
       return None
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
+    traceback: Optional[TracebackType]) -> None:
       exp = self.writer._stack.pop()
       act = (id(self), self.tag)
       if act != exp:
@@ -63,9 +63,11 @@ class SvgWriter:
     if self._stack:
       raise Exception(f'SvgWriter finalized before tag stack was popped; did you forget to use a `with` context?')
 
+
   def __enter__(self) -> 'SvgWriter':
     self.write(f'<svg xmlns="http://www.w3.org/2000/svg"{self.viewport}{self.viewBox}>')
     return self
+
 
   def __exit__(self, exc_type, exc_val, exc_tb) -> None:
     if exc_type is not None: return # propagate exception.
@@ -79,14 +81,18 @@ class SvgWriter:
   def indent(self) -> int:
     return len(self._stack)
 
+
   def write(self, *items: Any) -> None:
     print('  ' * self.indent, *items, sep='', file=self.file)
+
 
   def leaf(self, tag:str, **attrs: Any) -> None:
     self.write(f'<{tag}{_fmt_attrs(attrs)}/>')
 
+
   def leafText(self, tag:str, text:str, **attrs: Any) -> None:
     self.write(f'<{tag}{_fmt_attrs(attrs)}>{_esc(text)}</{tag}>')
+
 
   def tree(self, tag:str, **attrs: Any) -> 'SvgWriter.Tree':
     self.write(f'<{tag}{_fmt_attrs(attrs)}>')
@@ -158,6 +164,7 @@ class SvgWriter:
 
 
 def _esc(val: Any) -> str: return html_escape(str(val))
+
 
 def _opt_attrs(attrs: Dict[str, Any], *pairs: Tuple[str, Optional[Num]]) -> None:
   for k, v in pairs:

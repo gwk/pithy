@@ -5,7 +5,8 @@
 import csv
 import collections
 from sys import stdout
-from typing import cast, Any, Iterable, Iterator, Optional, Sequence, TextIO, Tuple, TypeVar, Union
+from types import TracebackType
+from typing import cast, Any, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
 
 
 def load_csv(file: TextIO,
@@ -42,7 +43,7 @@ def out_csv(header: Optional[Sequence[str]], rows: Iterable[Sequence]) -> None:
   write_csv(f=stdout, header=header, rows=rows)
 
 
-class CSVFileReader(collections.abc.Iterable):
+class CSVFileReader(Iterable, ContextManager):
 
   def __init__(self, file: TextIO,
    dialect:Optional[str]=None,
@@ -84,5 +85,6 @@ class CSVFileReader(collections.abc.Iterable):
   def __enter__(self) -> 'CSVFileReader':
     return self
 
-  def __exit__(self, exc_type, exc_value, traceback) -> None:
+  def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
+   traceback: Optional[TracebackType]) -> None:
     self.file.close()

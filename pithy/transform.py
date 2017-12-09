@@ -1,6 +1,7 @@
 from collections import Counter
 from enum import Enum
-from typing import Any, Callable, Generic, Iterable, List, TextIO, TypeVar
+from types import TracebackType
+from typing import Any, Callable, ContextManager, Generic, Iterable, List, Optional, TextIO, Type, TypeVar
 
 from .fs import path_ext, path_join, path_stem
 from .io import errL, err_progress, writeL
@@ -18,7 +19,7 @@ class _DropItem(Exception):
   'Exception signals the Transformer to immediately drop the current item and continue to the next one.'
 
 
-class Transformer(Generic[T]):
+class Transformer(Generic[T], ContextManager):
   '''
   A data transformation pipeline.
   '''
@@ -38,11 +39,8 @@ class Transformer(Generic[T]):
     self.log_files: List[TextIO] = []
 
 
-  def __enter__(self):
-    return self
-
-
-  def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+  def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
+   traceback: Optional[TracebackType]) -> None:
     if exc_type: return
     self.run()
 

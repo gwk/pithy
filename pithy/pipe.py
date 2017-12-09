@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from typing import *
-from typing import IO
+from types import TracebackType
+from typing import IO, ContextManager, List, Optional, Tuple, Type, Union
 
 File = Union[None, int, IO]
 
@@ -10,7 +10,7 @@ File = Union[None, int, IO]
 FR, FW, BR, BW = range(4)
 
 
-class DuplexPipe:
+class DuplexPipe(ContextManager):
 
   def __init__(self) -> None:
     self._files: List[File] = list(os.pipe() + os.pipe())
@@ -18,9 +18,8 @@ class DuplexPipe:
   def __del__(self):
     for i in range(4): self.close(i)
 
-  def __enter__(self): return self
-
-  def __exit__(self, exc_type, exc_value, traceback) -> None:
+  def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
+   traceback: Optional[TracebackType]) -> None:
     for i in range(4): self.close(i)
 
   def close(self, index: int) -> None:

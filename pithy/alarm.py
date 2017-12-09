@@ -1,14 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import signal
-from typing import Callable
+from types import TracebackType
+from typing import Callable, ContextManager, Optional, Type
 
 
 class Timeout(Exception):
   'Exception indicating that an AlarmManager timed out.'
 
 
-class AlarmManager:
+class AlarmManager(ContextManager):
 
   def __init__(self, timeout: int, msg:str='alarm timed out after {timeout} seconds', on_signal: Callable[[], None]=None) -> None:
     if not isinstance(timeout, int): raise TypeError(f'timeout must be an int; received: {timeout!r}')
@@ -34,7 +35,8 @@ class AlarmManager:
     signal.alarm(self.timeout) # set alarm.
 
 
-  def __exit__(self, exc_type, exc_value, traceback) -> None:
+  def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
+   traceback: Optional[TracebackType]) -> None:
     if not self.timeout: return None
     signal.alarm(0) # disable alarm.
     signal.signal(signal.SIGALRM, signal.SIG_DFL) # uninstall handler.
