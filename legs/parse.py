@@ -158,13 +158,15 @@ def parse_transitions(path: str, buffer: Buffer[Token], patterns: Container[str]
 
 def parse_rule(path: str, sym_token: Token, buffer: Buffer[Token]) -> Rule:
   assert sym_token.lastgroup == 'sym'
-  if buffer.peek().lastgroup == 'colon': # named rule.
-    next(buffer)
-    return parse_rule_pattern(path, buffer, terminator='newline')
+  try: next_token = buffer.peek()
+  except StopIteration: pass
   else:
-    consume(path, buffer, kind='newline', subj='literal symbol rule')
-    text = sym_token[0]
-    return Seq.of_iter(Charset.for_char(c) for c in text)
+    if next_token.lastgroup != 'newline': # named rule.
+      consume(path, buffer, kind='colon', subj='rule')
+      return parse_rule_pattern(path, buffer, terminator='newline')
+  # literal symbol rule.
+  text = sym_token[0]
+  return Seq.of_iter(Charset.for_char(c) for c in text)
 
 
 def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rule:
