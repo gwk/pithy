@@ -1,10 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import shlex as _shlex
 import os as _os
 import time as _time
 
 from selectors import PollSelector as _PollSelector, EVENT_READ, EVENT_WRITE
+from shlex import split as sh_split, quote as sh_quote
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from typing import cast, Any, AnyStr, BinaryIO, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
@@ -29,31 +29,32 @@ TaskCodeExpectation = Union[None, int, NonzeroCodeExpectation]
 
 class UnexpectedExit(Exception):
   'Exception indicating that a subprocess exit code did not match the code expectation.'
-  def __init__(self, cmd: Cmd, exp: TaskCodeExpectation, act: int) -> None:
-    super().__init__(f'process was expected to exit with code {exp}; actual code: {act}')
+  def __init__(self, msg: str, cmd: Tuple[str, ...], exp: TaskCodeExpectation, act: int) -> None:
+    super().__init__(msg)
     self.cmd = cmd
     self.exp = exp
     self.act = act
 
 
-
 def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, files: Sequence[File]=()) \
- -> Tuple[_Popen, Optional[bytes]]:
+ -> Tuple[Tuple[str, ...], _Popen, Optional[bytes]]:
   '''
-  Launch a subprocess, returning the subprocess.Popen object and the optional input bytes.
+  Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
   The underlying Subprocess shell option is not supported
   because the rules regarding splitting strings are complex.
-  User code is made clearer by just specifying the complete shell command;
-  lists are used as is, while strings are split by shlex.split.
+  User code is made clearer by just specifying the complete shell command.
+
+  If `cmd` is a list, it is used as is. If `cmd` is a string it is split by shlex.split.
 
   TODO: Popen supports both text and binary files; we should too.
   TODO: support bufsize parameter.
   '''
 
   if isinstance(cmd, str):
-    cmd = _shlex.split(cmd)
-
+    cmd = tuple(sh_split(cmd))
+  else:
+    cmd = tuple(cmd)
   input_bytes: Optional[bytes]
   f_in: Input
   if isinstance(stdin, str):
@@ -83,7 +84,7 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
     env=env,
     pass_fds=fds,
   )
-  return proc, input_bytes
+  return cmd, proc, input_bytes
 
 
 def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[int, bytes, bytes]:
@@ -102,7 +103,7 @@ def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[
 
 
 def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, exp: TaskCodeExpectation=0,
- as_lines=True, as_text=True, merge_err=False) -> Iterator[AnyStr]:
+ as_lines=True, as_text=True, merge_err=False, exits=False, exit_msg:Optional[str]=None) -> Iterator[AnyStr]:
   send: Optional[int] = None
   recv: Optional[int] = None
   if stdin == PIPE:
@@ -114,7 +115,7 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
     if recv is not None: _os.close(recv)
 
   try:
-    proc, _ = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=(out if merge_err else None))
+    cmd, proc, _ = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=(out if merge_err else None))
     if send: _os.close(stdin)
     if recv: _os.close(out)
 
@@ -186,14 +187,7 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
     if send: _os.close(send)
     time_rem = timeout - (_time.time() - time_start)
     code = proc.wait(timeout=(time_rem if timeout > 0 else None))
-    if exp is None:
-      pass
-    elif isinstance(exp, NonzeroCodeExpectation):
-      if code == 0:
-        raise UnexpectedExit(cmd=cmd, exp=NONZERO, act=code)
-    else:
-      if code != exp: # otherwise expect exact numeric code.
-        raise UnexpectedExit(cmd=cmd, exp=exp, act=code)
+    _check_exp(cmd, exp, code, exits, exit_msg)
     return code # generator will raise StopIteration(code).
   except BaseException:
     proc.kill()
@@ -202,23 +196,30 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
 
 
 def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Tuple[int, str, str]:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, exits=False, exit_msg:Optional[str]=None) \
+ -> Tuple[int, str, str]:
   '''
   Run a command and return (exit_code, std_out, std_err).
   '''
-  proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files)
+  cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files)
   code, out_bytes, err_bytes = communicate(proc, input_bytes, timeout)
-
-  if exp is None:
-    pass
-  elif isinstance(exp, NonzeroCodeExpectation):
-    if code == 0:
-      raise UnexpectedExit(cmd, NONZERO, code)
-  else:
-    if code != exp: # otherwise expect exact numeric code.
-      raise UnexpectedExit(cmd, exp, code)
-
+  _check_exp(cmd, exp, code, exits, exit_msg)
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
+
+
+def _check_exp(cmd: Tuple[str, ...], exp: TaskCodeExpectation, code: int, exits: bool, exit_msg: Optional[str]) -> None:
+  if exp is None: return
+  elif isinstance(exp, NonzeroCodeExpectation):
+    if code != 0: return
+    exp_desc = 'expected task to fail but it exited cleanly'
+  else:
+    if code == exp: return
+    exp_desc = 'task failed' if exp == 0 else f'expected task to exit with code {exp}, but received {code}'
+  if exits: exit(f'{exp_desc}; command: `{fmt_cmd(cmd)}`' if exit_msg is None else exit_msg)
+  raise UnexpectedExit(exp_desc, cmd, exp, code)
+
+
+def fmt_cmd(cmd: Sequence[str]) -> str: return ' '.join(sh_quote(word) for word in cmd)
 
 
 def runCOE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None,
