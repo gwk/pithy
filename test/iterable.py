@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from utest import *
-from operator import eq
 from pithy.iterable import *
+from operator import eq
 
 
 utest(True, is_sorted, [])
