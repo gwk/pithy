@@ -10,6 +10,7 @@ from sys import stderr, stdout
 from typing import cast, Any, AnyStr, BinaryIO, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
 from .alarm import AlarmManager, Timeout
 
+
 Cmd = Union[str, Sequence[str]]
 Env = Dict[str, str]
 Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; could also be raw file descriptor?
@@ -17,9 +18,7 @@ File = Union[int, IO]
 
 
 class NonzeroCodeExpectation:
-  '''
-  Type for a special marker value NONZERO, which matches any nonzero process exit code.
-  '''
+  'Type for a special marker value NONZERO, which matches any nonzero process exit code.'
   def __repr__(self): return 'NONZERO'
 
 NONZERO = NonzeroCodeExpectation()
