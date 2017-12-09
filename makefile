@@ -17,8 +17,7 @@ cov:
 	iotest -fail-fast -coverage
 
 docs:
-	(cd doc && muck -build-dir=../docs)
-	writeup -bare -section Muck doc/index.html.wu readme.md
+	craft-docs
 
 pip-develop:
 	pip3 install -e .

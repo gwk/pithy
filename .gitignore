@@ -11,5 +11,4 @@ __pycache__/
 _build/
 _misc/
 docs/_muck
-docs/*.wu
 todo.txt

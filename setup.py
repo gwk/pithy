@@ -24,8 +24,6 @@ setup(
     'License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication',
     'Programming Language :: Python :: 3 :: Only',
     'Topic :: Software Development',
-    'Topic :: Software Development :: Build Tools',
-    'Topic :: Software Development :: Testing',
     'Topic :: Utilities',
   ],
 )
