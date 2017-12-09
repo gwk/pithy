@@ -145,12 +145,11 @@ class NFA:
       else: nextState.update(dstNodes)
     return self.advanceEmpties(frozenset(nextState))
 
-  def match(self, text: Union[str, bytes], start_state: NfaState=frozenset({0})) -> FrozenSet[str]:
-    if isinstance(text, str):
-      text = text.encode()
-    state = self.advanceEmpties(start_state)
-    #errSL('NFA start_state:', state)
-    for byte in text:
+  def match(self, text: str) -> FrozenSet[str]:
+    text_bytes = text.encode('utf8')
+    state = self.advanceEmpties(frozenset({0}))
+    #errSL('NFA start:', state)
+    for byte in text_bytes:
       state = self.advance(state, byte)
       #errL(f'NFA step: {bytes([byte])} -> {state}')
     s: Iterable[str] = filtermap_with_mapping(state, self.matchNodeNames)
