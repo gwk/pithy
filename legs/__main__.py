@@ -184,11 +184,11 @@ def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
   nfa_matches = nfa.match(string)
   fat_dfa_matches = fat_dfa.match(string)
   if fat_dfa_matches != nfa_matches:
-    exit(f'match: {string!r} inconsistent matches: NFA: {nfa_matches}; fat DFA: {fat_dfa_matches}.')
+    exit(f'match: {string!r}; inconsistent matches: NFA: {nfa_matches}; fat DFA: {fat_dfa_matches}.')
   min_dfa_matches = min_dfa.match(string)
   if not (min_dfa_matches <= nfa_matches):
-    exit(f'match: {string!r} inconsistent matches: NFA: {nfa_matches}; min DFA: {min_dfa_matches}.')
-  assert len(min_dfa_matches) < 2, min_dfa_matches
+    exit(f'match: {string!r}; inconsistent matches: NFA: {nfa_matches}; min DFA: {min_dfa_matches}.')
+  assert len(min_dfa_matches) <= 1, min_dfa_matches
   if min_dfa_matches:
     outL(f'match: {string!r} -> {first_el(min_dfa_matches)}')
   else:
