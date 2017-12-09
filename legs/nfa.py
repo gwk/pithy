@@ -153,7 +153,7 @@ class NFA:
     for byte in text:
       state = self.advance(state, byte)
       #errL(f'NFA step: {bytes([byte])} -> {state}')
-    s: Iterable[str] = filtermap_with_mapping(state, self.matchNodeNames) # type: ignore # mypy bug?
+    s: Iterable[str] = filtermap_with_mapping(state, self.matchNodeNames)
     all_matches: FrozenSet[str] = frozenset(s)
     literal_matches = frozenset(n for n in all_matches if n in self.literalRules)
     return literal_matches or all_matches

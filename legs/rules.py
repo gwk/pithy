@@ -241,7 +241,7 @@ class Charset(Rule):
         transitions[node][byte].add(next_node)
         walk(sub_map, next_node)
 
-    walk(prefix_tree(chr(code).encode() for code in codes_for_ranges(self.ranges)), start) # type: ignore # mypy bug?
+    walk(prefix_tree(chr(code).encode() for code in codes_for_ranges(self.ranges)), start)
 
 
   def genRegex(self, flavor: str) -> str:

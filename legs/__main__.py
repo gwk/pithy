@@ -215,7 +215,7 @@ def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   for name, rule in named_rules:
     matchNode = mk_node()
     rule.genNFA(mk_node, transitions, start, matchNode)
-    dict_put(matchNodeNames, matchNode, name) # type: ignore # mypy bug?
+    dict_put(matchNodeNames, matchNode, name)
   literalRules = { name for name, rule in named_rules if rule.isLiteral }
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
