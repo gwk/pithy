@@ -15,14 +15,14 @@ from sys import stdout, stderr
 from pithy.ansi import RST_OUT, TXT_B_OUT, TXT_D_OUT, TXT_R_OUT
 from pithy.immutable import Immutable
 from pithy.io import errL, errSL, outL, outSL, outZ, read_from_path, read_line_from_path, write_to_path, writeLSSL
-from pithy.string_utils import string_contains
+from pithy.string import string_contains
 from pithy.format import FormatError, format_to_re
 from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python_file, list_dir, open_new, make_dirs, normalize_path,
   path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join,
   path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, walk_dirs_up)
 from pithy.iterable import fan_by_key_fn, fan_by_pred
 from pithy.task import UnexpectedExit, Timeout, run, runC
-from pithy.type_util import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
+from pithy.types import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
 bar_width = 64
 dflt_build_dir = '_build'
