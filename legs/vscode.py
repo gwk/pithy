@@ -5,8 +5,8 @@ import re
 from argparse import Namespace
 from typing import *
 from pithy.io import *
-from pithy.json_utils import write_json
-from pithy.string_utils import render_template
+from pithy.json import write_json
+from pithy.string import render_template
 from .defs import ModeTransitions
 from .rules import Rule
 

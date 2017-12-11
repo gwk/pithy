@@ -7,7 +7,7 @@ from pprint import pformat
 from typing import *
 from pithy.fs import add_file_execute_permissions
 from pithy.io import *
-from pithy.string_utils import render_template
+from pithy.string import render_template
 from .defs import ModeTransitions
 from .rules import Rule
 

@@ -6,7 +6,7 @@ from argparse import Namespace
 from itertools import chain
 from typing import *
 from pithy.fs import add_file_execute_permissions
-from pithy.string_utils import render_template
+from pithy.string import render_template
 from pithy.iterable import closed_int_intervals
 
 from .defs import Mode, ModeTransitions

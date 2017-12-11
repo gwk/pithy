@@ -14,7 +14,7 @@ from typing import *
 
 from pithy.io import errL, errSL
 from pithy.iterable import filtermap_with_mapping, int_tuple_ranges
-from pithy.string_utils import prepend_to_nonempty
+from pithy.string import prepend_to_nonempty
 
 from .codepoints import codes_desc
 from .dfa import DFA

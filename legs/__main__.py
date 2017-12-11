@@ -7,11 +7,11 @@ from itertools import chain, count
 from typing import *
 
 from pithy.collection import freeze
-from pithy.dict_utils import dict_put
+from pithy.dict import dict_put
 from pithy.fs import path_ext
 from pithy.io import errL, errSL, errLL, errZ, outL, outZ
 from pithy.iterable import first_el
-from pithy.string_utils import pluralize
+from pithy.string import pluralize
 from pithy.task import runCO
 
 from .defs import Mode, ModeTransitions
