@@ -5,7 +5,7 @@ import re
 from pithy.ansi import *
 from pithy.fs import *
 from pithy.io import *
-from pithy.string_utils import *
+from pithy.string import *
 from pithy.task import *
 
 

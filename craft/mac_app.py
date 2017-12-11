@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from pithy.ansi import *
 from pithy.io import *
 from pithy.fs import copy_file, path_exists, make_dirs
-from pithy.string_utils import find_and_clip_suffix
+from pithy.string import find_and_clip_suffix
 from pithy.task import *
 from craft import *
 

@@ -8,11 +8,11 @@ import yaml
 from argparse import ArgumentParser
 from typing import *
 from pithy.ansi import *
-from pithy.dict_utils import dict_set_defaults
+from pithy.dict import dict_set_defaults
 from pithy.io import *
 from pithy.fs import *
-from pithy.json_utils import load_json, parse_json, write_json
-from pithy.string_utils import find_and_clip_suffix
+from pithy.json import load_json, parse_json, write_json
+from pithy.string import find_and_clip_suffix
 from pithy.task import *
 
 
