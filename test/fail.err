@@ -8,7 +8,7 @@
 |
 | fail.py:9: utest failure: raise_unexpected
 |   expected value: True
-|   raised exception:   Exception('unexpected',)
+|   raised exception:   Exception('unexpected')
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 36, in utest
 |     try: ret = fn(*args, **kwargs)
@@ -17,12 +17,12 @@
 | Exception: unexpected
 |
 | fail.py:11: utest failure: <lambda>
-|   expected exception: Exception('expected',)
+|   expected exception: Exception('expected')
 |   returned value: True
 |
 | fail.py:12: utest failure: raise_unexpected
-|   expected exception: Exception('expected',)
-|   raised exception:   Exception('unexpected',)
+|   expected exception: Exception('expected')
+|   raised exception:   Exception('unexpected')
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 51, in utest_exc
 |     try: ret = fn(*args, **kwargs)
@@ -32,7 +32,7 @@
 |
 | fail.py:14: utest failure: raise_unexpected
 |   expected sequence: [0]
-|   raised exception:   Exception('unexpected',)
+|   raised exception:   Exception('unexpected')
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 69, in utest_seq
 |     ret_seq = fn(*args, **kwargs)
@@ -48,7 +48,7 @@
 | fail.py:16: utest failure: <lambda>
 |   expected sequence: [0]
 |   returned value: 0
-|   raised exception:   TypeError("'int' object is not iterable",)
+|   raised exception:   TypeError("'int' object is not iterable")
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 74, in utest_seq
 |     ret = list(ret_seq)
@@ -56,12 +56,12 @@
 |
 | fail.py:18: utest failure: range
 |   arg 0=1
-|   expected exception: Exception('expected',)
+|   expected exception: Exception('expected')
 |   returned sequence: [0]
 |
 | fail.py:19: utest failure: <lambda>
-|   expected exception: Exception('expected',)
-|   raised exception:   TypeError("'int' object is not iterable",)
+|   expected exception: Exception('expected')
+|   raised exception:   TypeError("'int' object is not iterable")
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 91, in utest_seq_exc
 |     ret = list(ret_seq)
@@ -69,8 +69,8 @@
 |
 | fail.py:26: utest failure: yield_then_raise
 |   arg 0=1
-|   expected exception: Exception('expected',)
-|   raised exception:   Exception('unexpected',)
+|   expected exception: Exception('expected')
+|   raised exception:   Exception('unexpected')
 | Traceback (most recent call last):
 |   File "/Users/gwk/work/utest/utest.py", line 91, in utest_seq_exc
 |     ret = list(ret_seq)
@@ -97,8 +97,8 @@
 | fail.py:33: utest failure: add
 |   arg 0='a'
 |   arg 1='a'
-|   expected exception: Exception('expected',)
-|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'",)
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 51, in utest_exc
 |     try: ret = fn(*args, **kwargs)
@@ -109,8 +109,8 @@
 | fail.py:33: utest failure: add
 |   arg 0='a'
 |   arg 1='a'
-|   expected exception: Exception('expected',)
-|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'",)
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 51, in utest_exc
 |     try: ret = fn(*args, **kwargs)
@@ -136,8 +136,8 @@
 |   arg 0=1
 |   arg 1='a'
 |   arg 2='a'
-|   expected exception: Exception('expected',)
-|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'",)
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 51, in utest_exc
 |     try: ret = fn(*args, **kwargs)
@@ -149,8 +149,8 @@
 |   arg 0=1
 |   arg 1='a'
 |   arg 2='a'
-|   expected exception: Exception('expected',)
-|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'",)
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
 ~   File ".+/utest/utest.py", line 51, in utest_exc
 |     try: ret = fn(*args, **kwargs)

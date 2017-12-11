@@ -35,6 +35,6 @@ usymmetric(utest_exc, ValueError("invalid literal for int() with base 10: 'a'"),
 def raise_exc(arg):
   raise Exception(arg)
 
-utest_exc('Exception(0,)', raise_exc, 0)
+utest_exc('Exception(0)', raise_exc, 0)
 utest_exc(Exception, raise_exc, 0)
 utest_exc(Exception(0), raise_exc, 0)
