@@ -1,8 +1,8 @@
 | fail.py:8: utest failure: <lambda>
-|   arg 0=0
-|   arg 1=1
-|   arg x='x'
-|   arg y='y'
+|   arg 0 = 0
+|   arg 1 = 1
+|   arg x = 'x'
+|   arg y = 'y'
 |   expected value: True
 |   returned value: False
 |
@@ -41,7 +41,7 @@
 | Exception: unexpected
 |
 | fail.py:15: utest failure: range
-|   arg 0=0
+|   arg 0 = 0
 |   expected sequence: [0]
 |   returned sequence: []
 |
@@ -55,7 +55,7 @@
 | TypeError: 'int' object is not iterable
 |
 | fail.py:18: utest failure: range
-|   arg 0=1
+|   arg 0 = 1
 |   expected exception: Exception('expected')
 |   returned sequence: [0]
 |
@@ -68,7 +68,7 @@
 | TypeError: 'int' object is not iterable
 |
 | fail.py:26: utest failure: yield_then_raise
-|   arg 0=1
+|   arg 0 = 1
 |   expected exception: Exception('expected')
 |   raised exception:   Exception('unexpected')
 | Traceback (most recent call last):
@@ -83,20 +83,20 @@
 |   returned value: False
 |
 | fail.py:32: utest failure: add
-|   arg 0=1
-|   arg 1=2
+|   arg 0 = 1
+|   arg 1 = 2
 |   expected value: 0
 |   returned value: 3
 |
 | fail.py:32: utest failure: add
-|   arg 0=2
-|   arg 1=1
+|   arg 0 = 2
+|   arg 1 = 1
 |   expected value: 0
 |   returned value: 3
 |
 | fail.py:33: utest failure: add
-|   arg 0='a'
-|   arg 1='a'
+|   arg 0 = 'a'
+|   arg 1 = 'a'
 |   expected exception: Exception('expected')
 |   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
@@ -107,8 +107,8 @@
 | ValueError: invalid literal for int() with base 10: 'a'
 |
 | fail.py:33: utest failure: add
-|   arg 0='a'
-|   arg 1='a'
+|   arg 0 = 'a'
+|   arg 1 = 'a'
 |   expected exception: Exception('expected')
 |   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
@@ -119,23 +119,23 @@
 | ValueError: invalid literal for int() with base 10: 'a'
 |
 | fail.py:36: utest failure: a_plus_bc
-|   arg 0=1
-|   arg 1=2
-|   arg 2=3
+|   arg 0 = 1
+|   arg 1 = 2
+|   arg 2 = 3
 |   expected value: 0
 |   returned value: 7
 |
 | fail.py:36: utest failure: a_plus_bc
-|   arg 0=1
-|   arg 1=3
-|   arg 2=2
+|   arg 0 = 1
+|   arg 1 = 3
+|   arg 2 = 2
 |   expected value: 0
 |   returned value: 7
 |
 | fail.py:37: utest failure: a_plus_bc
-|   arg 0=1
-|   arg 1='a'
-|   arg 2='a'
+|   arg 0 = 1
+|   arg 1 = 'a'
+|   arg 2 = 'a'
 |   expected exception: Exception('expected')
 |   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
@@ -146,9 +146,9 @@
 | ValueError: invalid literal for int() with base 10: 'a'
 |
 | fail.py:37: utest failure: a_plus_bc
-|   arg 0=1
-|   arg 1='a'
-|   arg 2='a'
+|   arg 0 = 1
+|   arg 1 = 'a'
+|   arg 2 = 'a'
 |   expected exception: Exception('expected')
 |   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
 | Traceback (most recent call last):
