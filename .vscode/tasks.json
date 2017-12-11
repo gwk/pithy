@@ -5,25 +5,25 @@
   "presentation": {},
   "tasks": [
     {
-      "taskName": "typecheck-current",
-      "command": "mypy-plumage",
+      "label": "typecheck-current",
+      "command": "craft-py-check",
       "args": ["${relativeFile}"],
       "group": {"kind": "build", "isDefault": true},
-      "problemMatcher": "$plumage-mypy"
+      "problemMatcher": "$craft"
     },
     {
-      "taskName": "typecheck",
-      "command": "mypy-plumage",
-      "args": ["legs"],
+      "label": "typecheck",
+      "command": "craft-py-check",
+      "args": ["legs", "legs_base"],
       "group": "build",
-      "problemMatcher": "$plumage-mypy"
+      "problemMatcher": "$craft"
     },
     {
-      "taskName": "test and typecheck",
+      "label": "test and typecheck",
       "command": "make",
       "args": [],
       "group": {"kind": "test", "isDefault": true},
-      "problemMatcher": "$plumage-mypy"
+      "problemMatcher": "$craft"
     }
   ]
 }
