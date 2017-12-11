@@ -24,8 +24,8 @@ utest_seq([('num', '1'), ('space', ' '), ('num', '20'), ('line', '\n')],
 utest_seq([('num', '1'), ('num', '20')],
   test_lex, num_lexer, '1 20\n', drop={'line', 'space'})
 
-utest_seq_exc("LexError(<re.Match object; span=(2, 3), match='x'>,)", test_lex, num_lexer, '1 x 2')
-utest_seq_exc("LexError(<re.Match object; span=(4, 5), match='x'>,)", test_lex, num_lexer, '1 2 x')
+utest_seq_exc("LexError(<re.Match object; span=(2, 3), match='x'>)", test_lex, num_lexer, '1 x 2')
+utest_seq_exc("LexError(<re.Match object; span=(4, 5), match='x'>)", test_lex, num_lexer, '1 2 x')
 
 
 word_lexer = Lexer(invalid='inv', patterns=dict(
