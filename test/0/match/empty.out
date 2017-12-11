@@ -1,2 +1,2 @@
-match: 'a b c' -- incomplete
-match: 'abc def' -- incomplete
+match: 'a b c' -- <none>
+match: 'abc def' -- <none>

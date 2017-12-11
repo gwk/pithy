@@ -192,7 +192,7 @@ def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
   if min_dfa_matches:
     outL(f'match: {string!r} -> {first_el(min_dfa_matches)}')
   else:
-    outL(f'match: {string!r} -- incomplete')
+    outL(f'match: {string!r} -- <none>')
 
 
 def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
