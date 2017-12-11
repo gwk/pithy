@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import *
-from pithy.csv_utils import *
+from pithy.csv import *
 
 
 header = ['id', 'name']

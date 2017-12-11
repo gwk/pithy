@@ -101,7 +101,7 @@ def load_archive(f: BinaryIO, single_name=None, single_ext=None, **kwargs:Any) -
 
 
 def load_csv(file: IO, **kwargs) -> Iterator[Sequence[str]]:
-  from .csv_utils import load_csv # type: ignore
+  from .csv import load_csv # type: ignore
   return load_csv(file, **kwargs)
 
 
@@ -123,15 +123,15 @@ def load_txt(f: TextIO, clip_ends=False) -> Iterable[str]:
 
 
 def load_json(file: IO, **kwargs) -> Any:
-  from .json_utils import load_json # type: ignore
+  from .json import load_json # type: ignore
   return load_json(cast(TextIO, file), **kwargs)
 
 def load_jsonl(file: IO, **kwargs) -> Any:
-  from .json_utils import load_jsonl # type: ignore
+  from .json import load_jsonl # type: ignore
   return load_jsonl(cast(TextIO, file), **kwargs)
 
 def load_jsons(file: IO, **kwargs) -> Any:
-  from .json_utils import load_jsons # type: ignore
+  from .json import load_jsons # type: ignore
   return load_jsons(cast(TextIO, file), **kwargs)
 
 

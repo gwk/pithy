@@ -6,7 +6,7 @@ Generate and print informative schemas from sets of example object trees.
 
 from collections import Counter, defaultdict, namedtuple
 from typing import Any, Hashable, NamedTuple, TextIO, TypeVar
-from .string_utils import iter_excluding_str
+from .string import iter_excluding_str
 
 K = TypeVar('K')
 

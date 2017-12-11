@@ -3,7 +3,7 @@
 'Simple lexing.'
 
 import re
-from .string_utils import line_col_1
+from .string import line_col_1
 from typing import Any, AnyStr, Iterable, Match, Pattern, Tuple
 
 class FormatError(Exception): pass

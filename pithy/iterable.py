@@ -6,7 +6,7 @@ from enum import Enum
 from itertools import tee
 from operator import le
 from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
-from .type_util import Comparable
+from .types import Comparable
 
 
 T = TypeVar('T')

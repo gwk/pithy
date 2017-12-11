@@ -3,12 +3,12 @@
   'coverage': [
     '__main__',
     'pithy.buffer',
-    'pithy.csv_utils',
-    'pithy.dict_utils',
+    'pithy.csv',
+    'pithy.dict',
     'pithy.format',
     'pithy.iterable',
     'pithy.lex',
-    'pithy.string_utils',
+    'pithy.string',
     'pithy.util',
   ]
 }

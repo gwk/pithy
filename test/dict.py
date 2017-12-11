@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import *
-from pithy.dict_utils import *
+from pithy.dict import *
 
 
 utest({'k': 0}, dict_put, {}, 'k', 0)
