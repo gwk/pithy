@@ -211,12 +211,15 @@ def genDFA(nfa: NFA) -> DFA:
       if dst_node not in transitions:
         remaining.add(dst_state)
 
-  # explicitly add transitions from `invalid_node`, which is otherwise not reachable.
-  # `invalid_node` transitions to itself for all characters that do not transition from `start_node`.
+  # explicitly add transitions to and from `invalid`, which is otherwise not reachable.
+  # `start` transitions to `invalid` for all bytes not yet covered.
+  # `invalid` transitions to itself for those same bytes.
   assert invalid_node not in transitions
+  start_dict = transitions[start_node]
   invalid_dict = transitions[invalid_node]
-  invalid_chars = set(range(0x100)) - set(transitions[start_node])
-  for c in invalid_chars:
+  invalid_start_chars = set(range(0x100)) - set(start_dict)
+  for c in invalid_start_chars:
+    start_dict[c] = invalid_node
     invalid_dict[c] = invalid_node
 
   # Generate matchNodeNameSets.

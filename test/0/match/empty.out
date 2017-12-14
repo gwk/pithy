@@ -1,2 +1,3 @@
-match: 'a b c' -- <none>
-match: 'abc def' -- <none>
+match: '' -- <none>
+match: 'a' -> invalid
+match: 'ab' -> invalid
