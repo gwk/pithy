@@ -15,7 +15,11 @@ setup(
   description='A lexical analyzer generator.',
   long_description=open('readme.wu').read(),
   packages=[name],
-  entry_points = {'console_scripts': [
+  package_data={'legs': [
+    'swift_base.swift'
+  ]},
+  modules=['legs_base'],
+  entry_points={'console_scripts': [
     'legs=legs.__main__:main'
   ]},
   install_requires=[

@@ -77,8 +77,7 @@ def main() -> None:
       exit(f'unknown language {args.language!r}; supported languages are: {sorted(supported_langs)}.')
     langs = {args.language}
   elif args.test:
-    langs = set(supported_langs)
-    langs = {'swift'} # TEMPORARY.
+    langs = test_langs
   elif args.output:
     ext = path_ext(args.output)
     try: langs = {ext_langs[ext]}
@@ -109,6 +108,7 @@ def main() -> None:
   mode_dfa_pairs: List[Tuple[str, DFA]] = []
   for mode, rule_names in sorted(mode_rule_names.items()):
     if args.match and mode != match_mode: continue
+
     named_rules = sorted((name, patterns[name]) for name in rule_names)
     nfa = genNFA(mode, named_rules=named_rules)
     if dbg: nfa.describe(f'{mode}: NFA')
@@ -118,7 +118,6 @@ def main() -> None:
       errLL(*msgs)
       exit(1)
 
-    # Always generate the fat DFA, which checks for ambiguous rules.
     fat_dfa = genDFA(nfa)
     if dbg: fat_dfa.describe(f'{mode}: Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
@@ -145,19 +144,27 @@ def main() -> None:
   rule_descs['invalid'] = 'invalid'
   rule_descs['incomplete'] = 'incomplete'
 
-  test_cmds: List[List[str]] = []
-  if 'python3' in langs:
-    path = args.output + ('.py' if args.test else '')
-    output_python3(path, patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions,
-      rule_descs=rule_descs, license=license, args=args)
-    if args.test: test_cmds.append(['python3', path] + args.test)
-
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
   if dbg: dfa.describe('Combined DFA')
 
+  test_cmds: List[List[str]] = []
+
+  mode_transitions: DefaultDict[int, Dict[str, Tuple[int, str]]] = defaultdict(dict)
+  # mode_transitions maps parent_start : (parent_kind : (child_start, child_kind)).
+  for (parent_mode_name, parent_kind), (child_mode_name, child_kind) in transitions.items():
+    parent_start = modes[parent_mode_name].start
+    child_start = modes[child_mode_name].start
+    mode_transitions[parent_start][parent_kind] = (child_start, child_kind)
+
+  if 'python3' in langs:
+    path = args.output + ('.py' if args.test else '')
+    output_python3(path, mode_transitions=mode_transitions, dfa=dfa,
+      rule_descs=rule_descs, license=license, args=args)
+    if args.test: test_cmds.append(['python3', path] + args.test)
+
   if 'swift' in langs:
     path = args.output + ('.swift' if args.test else '')
-    output_swift(path, modes=modes, mode_transitions=transitions, dfa=dfa, node_modes=node_modes,
+    output_swift(path, mode_transitions=mode_transitions, dfa=dfa, node_modes=node_modes,
       rule_descs=rule_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
@@ -175,7 +182,7 @@ def main() -> None:
     first_cmd = None
     first_out = None
     status = 0
-    for cmd in reversed(test_cmds): # TODO: make simulation first and remove 'reversed' hack.
+    for cmd in test_cmds:
       if args.dbg: errL('\nrunning test:', quote(cmd))
       code, out = runCO(cmd)
       if code != 0:
@@ -190,7 +197,7 @@ def main() -> None:
         errL('test outputs differ:')
         errSL('-$', quote(first_cmd))
         errSL('+$', quote(cmd))
-        errLL(*ndiff(first_out.split('\n'), out.split('\n')))
+        errZ(*ndiff(first_out.splitlines(keepends=True), out.splitlines(keepends=True)))
         status = 1
     exit(status)
 
@@ -245,18 +252,18 @@ def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
 
 
 def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dict[str, List[str]]) \
- -> Tuple[DFA, List[Mode], Dict[int, Mode]]:
+ -> Tuple[DFA, Dict[str, Mode], Dict[int, Mode]]:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
   transitions: DfaTransitions = {}
   matchNodeNameSets: Dict[int, FrozenSet[str]] = {}
   literalRules: Set[str] = set()
-  modes: List[Mode] = []
+  modes: Dict[str, Mode] = {}
   node_modes: Dict[int, Mode] = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
     remap = { node : mk_node() for node in sorted(dfa.allNodes) } # preserves existing order of dfa nodes.
     mode = Mode(name=mode_name, start=remap[0], invalid=remap[1])
-    modes.append(mode)
+    modes[mode_name] = mode
     node_modes.update((node, mode) for node in remap.values())
     def remap_trans_dict(d: Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }
     transitions.update((remap[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
@@ -271,5 +278,7 @@ ext_langs = {
 }
 
 supported_langs = {'python3', 'swift', 'vscode'}
+test_langs = {'python3', 'swift'}
+
 
 if __name__ == "__main__": main()

@@ -250,7 +250,7 @@ def minimizeDFA(dfa: DFA) -> DFA:
         new_d[char] = new_dst
 
   # Nodes may match more than one rule when the rules overlap.
-  # If the set of match nodes for a rule is a superset another rule, ignore it;
+  # If the set of match nodes for a rule is a superset of another rule, ignore it;
   # otherwise intersections are treated as ambiguity errors.
 
   node_names = { mapping[old] : set(names) for old, names in dfa.matchNodeNameSets.items() }
