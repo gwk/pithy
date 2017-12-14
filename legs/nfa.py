@@ -175,7 +175,7 @@ def genDFA(nfa: NFA) -> DFA:
   '''
   Generate a DFA from an NFA.
 
-  Internally, a DFA node is equivalent to a set of NFA nodes.
+  Conceptually, a DFA node is equivalent to a set of NFA nodes.
   Note that this is easily confused with an NFA state (also a set of NFA nodes).
   A DFA has a node for every reachable subset of nodes in the corresponding NFA.
   In the worst case, there will be an exponential increase in number of nodes.
@@ -183,20 +183,8 @@ def genDFA(nfa: NFA) -> DFA:
   Unlike the NFA, the DFA's operational state is just a single node value.
 
   For each DFA node, there is a mapping from byte values to destination nodes.
-  Generating a lexer from a DFA is straightforward:
-  switch on the current state, and then for each node, switch on the current byte.
-  If the switch defaults, flush the pending token (either the matching kind or `incomplete`),
-  and then performs the start transition.
-
-  The `start` node is a special case; its default clause transitions to the `invalid` state.
-  `invalid` is a match state which transitions to itself for all characters that are not valid start characters.
-  `incomplete` is not itself a state, but rather a token kind distinct from `invalid`,
-  indicating a token that began to match but then defaulted before reaching a match state.
-  This distinction is important for error reporting;
-  lexical errors are found at the ends of `incomplete` nodes and the starts of `invalid` nodes.
-
-  Note that the `invalid` node is not reachable from `start` in the DFA;
-  the generated lexer explicitly defaults into the invalid state.
+  Conceputally, generating a lexer from a DFA is straightforward:
+  switch on the current state, and then switch on the current byte.
   '''
 
   indexer = iter(count())

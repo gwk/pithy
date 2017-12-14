@@ -19,13 +19,16 @@ An automaton consists of two parts:
 * transitions: dictionary of source node to (dictionary of byte to destination).
   * for DFAs, the destination is a single node.
   * for NFAs, the destination is a set of nodes, representing a subset of the next state.
-* matchNodeNameSets: dictionary of nodes that represent a match to the set of corresponding rule names.
+* matchNodeNameSets: dictionary of nodes mapping matching nodes to the set of corresponding rule names.
 
 The starting state is always 0 for DFAs, and {0} for NFAs.
 Additionally, 1 and {1} are always the respective invalid states.
-When matching fails, the FA transitions to `invalid`,
-where it will continue matching all bytes that are not a transition from `initial`.
-This allows the FA to produce a stream of tokens that completely span any input string.
+
+For all bytes that do not naturally transition out of `start`,
+artificial transitions are added from `start` to `invalid`,
+and `invalid` transitions to itself for all bytes that are not a transition from `start`.
+This trick allows the FA to always progress from the start state,
+thus producing a stream of tokens that completely span any input string.
 '''
 
 from collections import defaultdict
