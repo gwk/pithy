@@ -37,7 +37,8 @@ class UnexpectedExit(Exception):
     self.act = act
 
 
-def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, files: Sequence[File]=()) \
+def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, files: Sequence[File]=(),
+ note_cmd=False) \
  -> Tuple[Tuple[str, ...], _Popen, Optional[bytes]]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
@@ -52,6 +53,7 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
   TODO: support bufsize parameter.
   '''
 
+  if note_cmd: print('cmd:', fmt_cmd(cmd), file=stderr)
   if isinstance(cmd, str):
     cmd = tuple(sh_split(cmd))
   else:
@@ -207,13 +209,13 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
     raise
 
 
-def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, exits=False, exit_msg:Optional[str]=None) \
+def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, timeout: int=0,
+ files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits=False, exit_msg:Optional[str]=None) \
  -> Tuple[int, str, str]:
   '''
   Run a command and return (exit_code, std_out, std_err).
   '''
-  cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files)
+  cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd)
   code, out_bytes, err_bytes = communicate(proc, input_bytes, timeout)
   _check_exp(cmd, exp, code, exits, exit_msg)
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
@@ -235,61 +237,61 @@ def fmt_cmd(cmd: Sequence[str]) -> str: return ' '.join(sh_quote(word) for word 
 
 
 def runCOE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None,
- timeout: int=0, files: Sequence[File]=()) -> Tuple[int, str, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> Tuple[int, str, str]:
   'Run a command and return exit code, std out, std err.'
-  return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=None)
+  return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
 
 
 def runC(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=()) -> int:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not PIPE
   assert err is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, files=files, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
   assert e == ''
   assert o == ''
   return c
 
 
 def runCO(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, err: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=()) -> Tuple[int, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> Tuple[int, str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
   assert e == '', repr(e)
   return c, o
 
 
 def runCE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=()) -> Tuple[int, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> Tuple[int, str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=None)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
   assert o == ''
   return c, e
 
 
 def runOE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> Tuple[str, str]:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False) -> Tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=exp, note_cmd=note_cmd)
   return o, e
 
 
 def runO(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, err: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> str:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=exp, note_cmd=note_cmd)
   assert e == ''
   return o
 
 
 def runE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0) -> str:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=exp)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=exp, note_cmd=note_cmd)
   assert o ==  ''
   return e
 
