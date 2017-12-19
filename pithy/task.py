@@ -3,6 +3,7 @@
 import os as _os
 import time as _time
 
+from os.path import exists as path_exists, dirname
 from selectors import PollSelector as _PollSelector, EVENT_READ, EVENT_WRITE
 from shlex import split as sh_split, quote as sh_quote
 from subprocess import DEVNULL, PIPE, Popen as _Popen
@@ -74,17 +75,28 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
   stderr.flush()
   stdout.flush()
 
-  proc = _Popen(
-    cmd,
-    cwd=cwd,
-    stdin=f_in,
-    stdout=out,
-    stderr=err,
-    shell=False,
-    env=env,
-    pass_fds=fds,
-  )
+  try:
+    proc = _Popen(
+      cmd,
+      cwd=cwd,
+      stdin=f_in,
+      stdout=out,
+      stderr=err,
+      shell=False,
+      env=env,
+      pass_fds=fds,
+    )
+  except FileNotFoundError as e:
+    path = e.filename
+    if not path_exists(path): raise # original exception makes sense.
+    if path == cast(Tuple[str], cmd)[0]:
+      if not dirname(path):
+        raise LocalExeInvokedByNameError(path) from e
+    raise
   return cmd, proc, input_bytes
+
+
+class LocalExeInvokedByNameError(Exception): pass
 
 
 def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[int, bytes, bytes]:
