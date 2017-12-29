@@ -319,7 +319,7 @@ def add_file_execute_permissions(path: PathOrFd) -> None:
   _os.chmod(path, new_perms)
 
 def remove_dir_contents(path: Path) -> None:
-  if _path.islink(_str_for(path)): raise OSError(f'remove_dir_contents received symlink: {path}')
+  if _path.islink(_str_for(path)): raise Exception(f'remove_dir_contents received symlink: {path}')
   l = _os.listdir(path) # type: ignore # https://github.com/python/typeshed/issues/1653
   for n in l:
     p = path_join(path, n)
@@ -336,7 +336,7 @@ def remove_dir_tree(path: Path) -> None:
 
 def move_file(path: Path, to: str, overwrite=False) -> None:
   if not overwrite and path_exists(to):
-    raise OSError('destination path already exists: {}'.format(to))
+    raise Exception('destination path already exists: {}'.format(to))
   _os.replace(path, to)
 
 
