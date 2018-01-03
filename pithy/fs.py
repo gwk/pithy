@@ -228,7 +228,8 @@ def make_dir(path: Path) -> None: return _os.mkdir(path)
 
 def make_dirs(path: Path, mode=0o777, exist_ok=True) -> None: return _os.makedirs(path, mode, exist_ok)
 
-def make_link(src: Path, dst: Path, absolute=False, allow_nonexistent=False, make_dirs=False) -> None:
+def make_link(src: Path, dst: Path, absolute=False, allow_nonexistent=False, make_dirs=False, perms:Optional[int]=None) -> None:
+  if perms is not None: raise NotImplementedError # TODO
   if not allow_nonexistent and not is_file(src):
     raise FileNotFoundError(src)
   if absolute:
