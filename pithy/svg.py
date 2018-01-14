@@ -86,16 +86,21 @@ class SvgWriter(ContextManager):
     print('  ' * self.indent, *items, sep='', file=self.file)
 
 
-  def leaf(self, tag:str, **attrs: Any) -> None:
-    self.write(f'<{tag}{_fmt_attrs(attrs)}/>')
+  def leaf(self, tag:str, title:str=None, **attrs: Any) -> None:
+    if title is None:
+      self.write(f'<{tag}{_fmt_attrs(attrs)}/>')
+    else:
+      self.leafText(tag, text='', title=title, **attrs)
 
 
-  def leafText(self, tag:str, text:str, **attrs: Any) -> None:
-    self.write(f'<{tag}{_fmt_attrs(attrs)}>{_esc(text)}</{tag}>')
+  def leafText(self, tag:str, text:str, title:str=None, **attrs: Any) -> None:
+    title_code = '' if title is None else f'<title>{_esc(title)}</title>'
+    self.write(f'<{tag}{_fmt_attrs(attrs)}>{title_code}{_esc(text)}</{tag}>')
 
 
-  def tree(self, tag:str, **attrs: Any) -> 'SvgWriter.Tree':
-    self.write(f'<{tag}{_fmt_attrs(attrs)}>')
+  def tree(self, tag:str, title:str=None, **attrs: Any) -> 'SvgWriter.Tree':
+    title_code = '' if title is None else f'<title>{_esc(title)}</title>'
+    self.write(f'<{tag}{_fmt_attrs(attrs)}>{title_code}')
     return SvgWriter.Tree(writer=self, tag=tag)
 
 
