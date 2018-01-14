@@ -251,6 +251,8 @@ def make_link(src: Path, dst: Path, absolute=False, allow_nonexistent=False, mak
 
 def path_exists(path: Path) -> bool: return _path.exists(path)
 
+def real_path(path: Path) -> str: return _path.realpath(_str_for(path))
+
 def remove_file(path: Path) -> None: _os.remove(path)
 
 def remove_file_if_exists(path: Path) -> None:
