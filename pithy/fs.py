@@ -49,7 +49,7 @@ def is_sub_path(path: Path) -> bool:
   'Return true if `path` is a relative path that does not refer to parent directories.'
   return not is_path_abs(path) and '..' not in path_split(path)
 
-def normalize_path(path: Path) -> str:
+def norm_path(path: Path) -> str:
   'Normalize `path` according to system convention.'
   return _path.normpath(_str_for(path))
 
@@ -81,7 +81,7 @@ def path_name(path: Path) -> str:
 
 def path_split(path: Path) -> List[str]:
   # TODO: rename to path_comps?
-  np = normalize_path(path)
+  np = norm_path(path)
   if np == '/': return ['/']
   assert not np.endswith('/')
   return [comp or '/' for comp in np.split(_os.sep)]
@@ -143,9 +143,9 @@ def abs_path(path: Path) -> str:
   'Return the absolute path corresponding to `path`.'
   return _path.abspath(_str_for(path))
 
-def abs_or_normalize_path(path: Path, make_abs: bool) -> str:
+def abs_or_norm_path(path: Path, make_abs: bool) -> str:
   'Return the absolute path if make_abs is True. If make_abs is False, return a normalized path.'
-  return abs_path(path) if make_abs else normalize_path(path)
+  return abs_path(path) if make_abs else norm_path(path)
 
 
 def path_rel_to_ancestor(path: Path, ancestor: str, dot=False) -> str:
@@ -386,7 +386,7 @@ def walk_dirs_and_files(*dir_paths: Path, make_abs=False, include_hidden=False, 
   '''
   file_exts = normalize_exts(file_exts)
   for raw_path in dir_paths:
-    dir_path = abs_or_normalize_path(raw_path, make_abs)
+    dir_path = abs_or_norm_path(raw_path, make_abs)
     if not dir_path.endswith('/'): dir_path += '/'
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
 
@@ -413,7 +413,7 @@ def walk_paths(*paths: Path, make_abs=False, yield_files=True, yield_dirs=True, 
   '''
   file_exts = normalize_exts(file_exts)
   for raw_path in paths:
-    path = abs_or_normalize_path(raw_path, make_abs)
+    path = abs_or_norm_path(raw_path, make_abs)
     if is_dir(path):
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
     elif not path_exists(path):
