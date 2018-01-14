@@ -6,6 +6,7 @@ SVG writer.
 
 from sys import stdout
 from html import escape as html_escape
+from itertools import chain
 from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, TextIO, Tuple, Type, Union
 
@@ -109,7 +110,7 @@ class SvgWriter(ContextManager):
       assert x is None
       assert y is None
       x, y = pos
-    _opt_attrs(attrs, ('cx', x), ('cy', y), ('r', r))
+    _opt_attrs(attrs, cx=x, cy=y, r=r)
     self.leaf('circle', **attrs)
 
 
@@ -121,12 +122,8 @@ class SvgWriter(ContextManager):
     return self.tree('g', **attrs)
 
 
-  def line(self, src: Point, dst: Point, **attrs) -> None:
-    _opt_attrs(attrs,
-      ('x1', src[0]),
-      ('y1', src[1]),
-      ('x2', dst[0]),
-      ('y2', dst[1]))
+  def line(self, a: Point, b: Point, **attrs) -> None:
+    _opt_attrs(attrs, x1=a[0], y1=a[1], x2=b[0], y2=b[1])
     self.leaf('line', **attrs)
 
 
@@ -144,14 +141,16 @@ class SvgWriter(ContextManager):
     self.leaf('path', d=d, **attrs)
 
 
-  def rect(self, x:Num=None, y:Num=None, w:Num=None, h:Num=None, rx:Num=None, ry:Num=None, **attrs) -> None:
-    _opt_attrs(attrs,
-      ('x', x),
-      ('y', y),
-      ('width', w),
-      ('height', h),
-      ('rx', rx),
-      ('ry', ry))
+  def rect(self, pos:Point=None, x:Num=None, y:Num=None, size:Point=None, w:Num=None, h:Num=None, rx:Num=None, ry:Num=None, **attrs) -> None:
+    if pos is not None:
+      assert x is None
+      assert y is None
+      x, y = pos
+    if size is not None:
+      assert w is None
+      assert h is None
+      w, h = size
+    _opt_attrs(attrs, x=x, y=y, width=w, height=h, rx=rx, ry=ry)
     self.leaf('rect', **attrs)
 
 
@@ -163,16 +162,20 @@ class SvgWriter(ContextManager):
     return self.leaf('symbol', id=id, **attrs)
 
 
-  def text(self, x:Num=None, y:Num=None, text=None, **attrs) -> None:
-    _opt_attrs(attrs, ('x', x), ('y', y))
+  def text(self, pos:Point=None, x:Num=None, y:Num=None, text=None, **attrs) -> None:
+    if pos is not None:
+      assert x is None
+      assert y is None
+      x, y = pos
+    _opt_attrs(attrs, x=x, y=y)
     self.leafText('text', text, **attrs)
 
 
 def _esc(val: Any) -> str: return html_escape(str(val))
 
 
-def _opt_attrs(attrs: Dict[str, Any], *pairs: Tuple[str, Optional[Num]]) -> None:
-  for k, v in pairs:
+def _opt_attrs(attrs: Dict[str, Any], *pairs: Tuple[str, Any], **items:Any) -> None:
+  for k, v in chain(pairs, items.items()):
     if v is None: continue
     attrs[k] = v
 
