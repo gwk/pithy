@@ -17,7 +17,7 @@ from pithy.immutable import Immutable
 from pithy.io import errL, errSL, outL, outSL, outZ, read_from_path, read_line_from_path, write_to_path, writeLSSL
 from pithy.string import string_contains
 from pithy.format import FormatError, format_to_re
-from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python_file, list_dir, open_new, make_dirs, normalize_path,
+from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python_file, list_dir, open_new, make_dirs, norm_path,
   path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join,
   path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, walk_dirs_up)
 from pithy.iterable import fan_by_key_fn, fan_by_pred
@@ -77,7 +77,7 @@ def main():
   cases_dict = {} # keyed by actual path stem, as opposed to logical contraction of 'd/_' to 'd'.
 
   for raw_path in ctx.top_paths:
-    path = normalize_path(raw_path)
+    path = norm_path(raw_path)
     if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
       exit(f"iotest error: argument path cannot contain '..': {path!r}.")
