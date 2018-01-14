@@ -11,6 +11,8 @@ from itertools import zip_longest as _zip_longest
 from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
 from typing.re import Pattern # type: ignore
 
+from pithy.clonefile import clone
+
 
 Path = Union[str, _os.PathLike]
 PathOrFd = Union[Path, int]
@@ -191,18 +193,24 @@ def path_rel_to_current_or_abs(path: Path, dot=False) -> str:
   return path_rel_to_ancestor_or_abs(path, current_dir(), dot=dot)
 
 
-def copy_file(src: str, dst: str, follow_symlinks=True) -> None:
-  'Copies file from source to destination.'
-  _shutil.copy(src, dst, follow_symlinks=follow_symlinks)
+def copy_path(src: str, dst: str, overwrite=True, follow_symlinks=True, preserve_owner=True) -> None:
+  if overwrite and path_exists(dst):
+    remove_path(dst)
+  clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=copy_eagerly)
 
 
-def copy_dir_tree(src: str, dst: str, follow_symlinks=True, preserve_metadata=True, ignore_dangling_symlinks=False) -> None:
-  'Copies a directory tree.'
-  _shutil.copytree(src, dst,
-    symlinks=(not follow_symlinks),
-    ignore=None,
-    copy_function=(_shutil.copy2 if preserve_metadata else _shutil.copy),
-    ignore_dangling_symlinks=ignore_dangling_symlinks)
+def copy_eagerly(src: str, dst: str, follow_symlinks=True, preserve_owner=True) -> None:
+  # TODO: implementation that more precisely matches semantics of APFS clonefile.
+  # TODO: test on other platforms, figure out appropriate cross platform semantics. In particular, look at BTRFS and ZFS.
+  _shutil.copytree(src=src, dst=dst)
+
+
+def clone_or_hardlink(src: str, dst: str, follow_symlinks=True, preserve_owner=True) -> None:
+  clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=None) # TODO
+
+
+def clone_or_symlink(src: str, dst: str, follow_symlinks=True, preserve_owner=True) -> None:
+  clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=None) # TODO
 
 
 def expand_user(path: Path) -> str: return _path.expanduser(_str_for(path))
@@ -331,20 +339,20 @@ def add_file_execute_permissions(path: PathOrFd) -> None:
   new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
   _os.chmod(path, new_perms)
 
+
 def remove_dir_contents(path: Path) -> None:
-  if _path.islink(_str_for(path)): raise Exception(f'remove_dir_contents received symlink: {path}')
-  l = _os.listdir(path) # type: ignore # https://github.com/python/typeshed/issues/1653
-  for n in l:
-    p = path_join(path, n)
-    if _path.isdir(p) and not _path.islink(p):
-      remove_dir_tree(p)
-    else:
-      _os.remove(p)
+  for n in _os.listdir(path): # type: ignore # https://github.com/python/typeshed/issues/1653
+    remove_path(path_join(path, n))
 
 
 def remove_dir(path: Path) -> None:
   remove_dir_contents(path)
   _os.rmdir(path)
+
+
+def remove_path(path: Path) -> None:
+  if is_dir_not_link(path): remove_dir(path)
+  else: remove_file(path)
 
 
 def move_file(path: Path, to: str, overwrite=False) -> None:
