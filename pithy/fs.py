@@ -342,7 +342,7 @@ def remove_dir_contents(path: Path) -> None:
       _os.remove(p)
 
 
-def remove_dir_tree(path: Path) -> None:
+def remove_dir(path: Path) -> None:
   remove_dir_contents(path)
   _os.rmdir(path)
 
