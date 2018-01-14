@@ -66,7 +66,7 @@ class SvgWriter(ContextManager):
 
 
   def __enter__(self) -> 'SvgWriter':
-    self.write(f'<svg xmlns="http://www.w3.org/2000/svg"{self.viewport}{self.viewBox}>')
+    self.write(f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" {self.viewport}{self.viewBox}>')
     return self
 
 
@@ -120,6 +120,19 @@ class SvgWriter(ContextManager):
 
   def g(self, **attrs) -> 'SvgWriter.Tree':
     return self.tree('g', **attrs)
+
+
+  def image(self, pos:Point=None, x:Num=None, y:Num=None, size:Point=None, w:Num=None, h:Num=None, **attrs) -> None:
+    if pos is not None:
+      assert x is None
+      assert y is None
+      x, y = pos
+    if size is not None:
+      assert w is None
+      assert h is None
+      w, h = size
+    _opt_attrs(attrs, x=x, y=y, width=w, height=h)
+    self.leaf('image', **attrs)
 
 
   def line(self, a: Point, b: Point, **attrs) -> None:
@@ -182,13 +195,19 @@ def _opt_attrs(attrs: Dict[str, Any], *pairs: Tuple[str, Any], **items:Any) -> N
 
 def _fmt_attrs(attrs: Dict[str, Any]) -> str:
   if not attrs: return ''
-  for k in [k for k, v in attrs.items() if v is None]:
-    attrs[k] = 'none'
-  try: cls = attrs.pop('class_')
-  except KeyError: pass
-  else: attrs['class'] = cls
-  return ' ' + ' '.join(f'{_esc(k.replace("_", "-"))}="{_esc(v)}"' for k, v in attrs.items())
+  parts: List[str] = []
+  for k, v in attrs.items():
+    if v is None:
+      v = 'none'
+    else:
+      v = _replaced_attrs.get(k, v)
+    parts.append(f' {_esc(k.replace("_", "-"))}="{_esc(v)}"')
+  return ''.join(parts)
 
+_replaced_attrs = {
+  'class_' : 'class',
+  'href': 'xlink:href', # safari Version 11.0.3 (13604.5.3) requires this, even though xlink is deprecated in svg 2 standard.
+}
 
 valid_units = frozenset({'em', 'ex', 'px', 'pt', 'pc', 'cm', 'mm', '%', ''})
 
