@@ -222,7 +222,8 @@ def link_exists(path: Path) -> bool: return _path.lexists(path)
 
 def list_dir(path: PathOrFd, exts: Iterable[str]=(), hidden=False) -> List[str]:
   exts = normalize_exts(exts)
-  names = _os.listdir(path) # type: ignore # https://github.com/python/typeshed/issues/1653
+  names = sorted(_os.listdir(path)) # type: ignore # https://github.com/python/typeshed/issues/1653
+  #^ Sort became necessary at some point, presumably for APFS.
   if not exts and hidden: return names # no filtering necessary.
   return [n for n in names if (
     (not exts or path_ext(n) in exts) and (hidden or not n.startswith('.')))]
