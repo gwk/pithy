@@ -8,8 +8,8 @@ import re
 from argparse import ArgumentParser
 from pithy.ansi import *
 from pithy.io import *
-from pithy.fs import copy_file, path_exists, make_dirs
-from pithy.string import find_and_clip_suffix
+from pithy.fs import copy_path, path_exists, make_dirs
+from pithy.string import find_and_clip_suffix, replace_prefix
 from pithy.task import *
 from craft import *
 
@@ -21,8 +21,7 @@ def main():
   conf = load_craft_config()
   package = update_swift_package_json(conf)
 
-  try: build(args, conf, package)
-  except TaskUnexpectedExit as e: exit(e.act)
+  build(args, conf, package)
 
 
 def build(args, conf, package):
@@ -33,16 +32,15 @@ def build(args, conf, package):
     if not path_exists(source):
       exit(f'craft error: source does not exist: {source!r}')
 
-  c, dev_dir_line = runCO('xcode-select --print-path')
-  if c: exit("craft error: 'xcode-select --print-path' failed.")
-  dev_dir = dev_dir_line.rstrip('\n')
+  dev_dir = find_dev_dir()
 
   sdk_dir = f'{dev_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk' # The versioned SDK just links to the unversioned one.
+  #swift_libs_dir = f'{conf.xcode_toolchain_dir}/lib/swift/macosx'
   swift_libs_dir = f'{dev_dir}/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx'
   mode_dir = f'{build_dir}/debug' # TODO: support other modes/configurations.
 
   # Build program.
-  run(['craft-swift'])
+  run(['craft-swift'], exits=1)
 
   # Bundle paths.
   bundle_path = f'{mode_dir}/{conf.product_name}.app'
@@ -57,8 +55,8 @@ def build(args, conf, package):
 
   # Copy executable.
   exe_src = f'{mode_dir}/{conf.product_name}'
-  exe_path = f'{macos_path}/{conf.product_name}'
-  copy_file(exe_src, exe_path)
+  exe_dst = f'{macos_path}/{conf.product_name}'
+  copy_path(exe_src, exe_dst)
 
   # Compile image assets.
   img_deps_path = f'{mode_dir}/image-deps.txt'
@@ -78,7 +76,7 @@ def build(args, conf, package):
     '--compile', resources_path,
     'images.xcassets']
 
-  _ = runO(actool_cmd) # output is not helpful.
+  _ = runO(actool_cmd, exits=True) # output is not helpful.
   img_deps = open(img_deps_path).read()
   img_info = plistlib.load(open(img_info_path, 'rb'))
   #errL('img_deps:\n', img_deps, '\n')
@@ -115,15 +113,28 @@ def build(args, conf, package):
       src_path = f'{swift_libs_dir}/{lib_name}'
       dst_path = f'{frameworks_path}/{lib_name}'
       if not path_exists(dst_path):
-        copy_file(src_path, dst_path)
+        copy_path(src_path, dst_path)
     else:
       pass
       #errSL('note: ignoring unknown import:', import_name)
 
   # Copy frameworks.
 
+  # Copy resources.
+  for res_root, dst_root in conf.resources.items():
+    build_dst_root = path_join(build_dir, dst_root)
+    for res_path in walk_files(res_root):
+      dst_path = norm_path(replace_prefix(res_path, prefix=res_root, replacement=build_dst_root))
+      res_mtime = file_time_mod(res_path)
+      dst_mtime = file_time_mod_or_zero(dst_path)
+      if res_mtime == dst_mtime: continue
+      outSL(res_path, '->', dst_path)
+      if res_mtime < dst_mtime: exit(f'resource build copy was subsequently modified: {dst_path}')
+      make_dirs(path_dir(dst_path))
+      copy_path(res_path, dst_path)
+
   # Touch the bundle.
-  run(['touch', '-c', bundle_path])
+  run(['touch', '-c', bundle_path], exits=True)
 
   # TODO: register with launch services?
 

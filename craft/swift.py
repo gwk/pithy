@@ -11,7 +11,7 @@ from pithy.io import *
 from pithy.fs import *
 from pithy.iterable import group_by_heads, OnHeadless
 from pithy.lex import Lexer
-from pithy.task import TaskUnexpectedExit, run_gen, runCO
+from pithy.task import run_gen
 from craft import *
 
 
@@ -26,6 +26,8 @@ def main():
   conf = load_craft_config()
 
   sub_cmd = 'test' if args.xctest else 'build'
+  errL(f'swift compiler: {conf.swift_path}')
+
   cmd = ['swift', sub_cmd, '--package-path='+conf.project_dir, '--build-path='+conf.build_dir,
     '-Xswiftc=-target', '-Xswiftc='+conf.target_triple_macOS]
   if args.product: cmd.extend(['--product', args.product])
@@ -33,13 +35,7 @@ def main():
   cmd.extend(args.args)
   errSL(TXT_D, *cmd, RST)
 
-  exit_code = 0
-  def run_cmd():
-    nonlocal exit_code
-    try: yield from run_gen(cmd, merge_err=True)
-    except TaskUnexpectedExit as e: exit_code = e.act
-
-  for token in lex_deduplicate_reorder(run_cmd()):
+  for token in lex_deduplicate_reorder(run_gen(cmd, merge_err=True, exits=True)):
     if token.lastgroup in diag_kinds:
       path_abs, pos, msg = diag_re.fullmatch(token[0]).groups()
       path = path_rel_to_current_or_abs(path_abs)
@@ -51,7 +47,6 @@ def main():
       except KeyError: outZ(s)
       else: outZ(color, s, RST)
     stdout.flush()
-  exit(exit_code)
 
 
 def lex_deduplicate_reorder(swift_output_stream):

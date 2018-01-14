@@ -11,7 +11,7 @@ from pithy.io import *
 from pithy.fs import *
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.lex import Lexer
-from pithy.task import TaskUnexpectedExit, run_gen, runCO
+from pithy.task import run, run_gen
 from craft import *
 
 
@@ -25,8 +25,7 @@ def main():
 
   conf = load_craft_config()
 
-  c = runC(['craft-swift'])
-  if c: exit(c)
+  run(['craft-swift'], exits=True)
 
   dev_dir = conf.xcode_dev_dir
   sdk_dir = f'{dev_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk' # The versioned SDK just links to the unversioned one. # TODO: dedup with mac_app.
@@ -117,8 +116,8 @@ def run_utest(src_path, module, conf, debug_dir, sdk_dir, fw_dir, module_cache_d
     main_path,
   ]
   #errSL('CMD', cmd)
-  run(cmd)
-  c = runC(exe_path)
-  return (c == 0)
+  if runC(cmd) != 0: return False
+  return runC(exe_path) == 0
+
 
 if __name__ == '__main__': main()
