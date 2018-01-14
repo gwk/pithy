@@ -71,6 +71,14 @@ def path_dir_or_dot(path: Path) -> str:
   "Return the dir portion of a path, e.g. 'dir/name', or '.' in the case of no path."
   return path_dir(path) or '.'
 
+def path_for_cmd(cmd: str) -> Optional[str]:
+  for dir in _os.get_exec_path():
+    try: entries = _os.scandir(dir)
+    except FileNotFoundError: continue # directory in PATH might not exist.
+    for entry in entries:
+      if entry.name == cmd and entry.is_file: return path_join(dir, cmd)
+  return None
+
 def path_join(first: Path, *additional: Path) -> str:
   'Join the path with the system path separator.'
   return _path.join(_str_for(first), *[_str_for(p) for p in additional])
