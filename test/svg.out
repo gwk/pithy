@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"  width="800" height="800" viewBox="0 0 800 800">
+<rect x="0" y="0" width="800" height="800"/>
+<rect stroke="red" fill="none" x="2" y="2" width="796" height="796"/>
+<circle fill="white" cx="400" cy="400" r="399"/>
+<line stroke="green" x1="0" y1="0" x2="800" y2="800"/>
+</svg>
