@@ -259,9 +259,9 @@ def remove_file_if_exists(path: Path) -> None:
   if is_file(path):
     remove_file(path)
 
-def remove_dir(path: Path) -> None: _os.rmdir(path)
+def remove_empty_dir(path: Path) -> None: _os.rmdir(path)
 
-def remove_dirs(path: Path) -> None: _os.removedirs(path)
+def remove_empty_dirs(path: Path) -> None: _os.removedirs(path)
 
 def current_dir() -> str: return abs_path('.')
 
