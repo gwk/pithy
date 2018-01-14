@@ -39,7 +39,7 @@ class SvgWriter(ContextManager):
       self.writer.write(f'</{self.tag}>')
 
 
-  def __init__(self, w:Dim=None, h:Dim=None, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, file_or_path:FileOrPath=stdout) -> None:
+  def __init__(self, file_or_path:FileOrPath=stdout, w:Dim=None, h:Dim=None, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None) -> None:
     self._stack: List[Tuple[int, str]] = []
     if isinstance(file_or_path, str):
       self.file = open(file_or_path, 'w')
