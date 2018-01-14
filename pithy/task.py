@@ -16,6 +16,7 @@ Cmd = Union[str, Sequence[str]]
 Env = Dict[str, str]
 Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; could also be raw file descriptor?
 File = Union[int, IO]
+ExitOpt = Union[bool, int, str]
 
 
 class NonzeroCodeExpectation:
@@ -117,7 +118,7 @@ def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[
 
 
 def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, exp: TaskCodeExpectation=0,
- as_lines=True, as_text=True, merge_err=False, exits=False, exit_msg:Optional[str]=None) -> Iterator[AnyStr]:
+ as_lines=True, as_text=True, merge_err=False, exits:ExitOpt=False) -> Iterator[AnyStr]:
   send: Optional[int] = None
   recv: Optional[int] = None
   if stdin == PIPE:
@@ -201,7 +202,7 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
     if send: _os.close(send)
     time_rem = timeout - (_time.time() - time_start)
     code = proc.wait(timeout=(time_rem if timeout > 0 else None))
-    _check_exp(cmd, exp, code, exits, exit_msg)
+    _check_exp(cmd, exp, code, exits)
     return code # generator will raise StopIteration(code).
   except BaseException:
     proc.kill()
@@ -210,18 +211,17 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
 
 
 def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, timeout: int=0,
- files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits=False, exit_msg:Optional[str]=None) \
- -> Tuple[int, str, str]:
+ files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> Tuple[int, str, str]:
   '''
   Run a command and return (exit_code, std_out, std_err).
   '''
   cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd)
   code, out_bytes, err_bytes = communicate(proc, input_bytes, timeout)
-  _check_exp(cmd, exp, code, exits, exit_msg)
+  _check_exp(cmd, exp, code, exits)
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
 
 
-def _check_exp(cmd: Tuple[str, ...], exp: TaskCodeExpectation, code: int, exits: bool, exit_msg: Optional[str]) -> None:
+def _check_exp(cmd: Tuple[str, ...], exp: TaskCodeExpectation, code: int, exits:ExitOpt) -> None:
   if exp is None: return
   elif isinstance(exp, NonzeroCodeExpectation):
     if code != 0: return
@@ -229,7 +229,7 @@ def _check_exp(cmd: Tuple[str, ...], exp: TaskCodeExpectation, code: int, exits:
   else:
     if code == exp: return
     exp_desc = 'task failed' if exp == 0 else f'expected task to exit with code {exp}, but received {code}'
-  if exits: exit(f'{exp_desc}; command: `{fmt_cmd(cmd)}`' if exit_msg is None else exit_msg)
+  if exits != False: exit(exits if isinstance(exits, str) else f'{exp_desc}; command: `{fmt_cmd(cmd)}`')
   raise UnexpectedExit(exp_desc, cmd, exp, code)
 
 
@@ -272,26 +272,29 @@ def runCE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: Binary
 
 
 def runOE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False) -> Tuple[str, str]:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> Tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=exp, note_cmd=note_cmd)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE,
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, exits=exits)
   return o, e
 
 
 def runO(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, err: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False) -> str:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=exp, note_cmd=note_cmd)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err,
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, exits=exits)
   assert e == ''
   return o
 
 
 def runE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False) -> str:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=exp, note_cmd=note_cmd)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE,
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, exits=exits)
   assert o ==  ''
   return e
 
