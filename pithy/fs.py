@@ -269,6 +269,8 @@ def parent_dir() -> str: return abs_path('..')
 
 def change_dir(path: PathOrFd) -> None: _os.chdir(path)
 
+def file_stat(path: PathOrFd) -> _os.stat_result: return _os.stat(path)
+
 def file_inode(path: PathOrFd) -> int: return _os.stat(path).st_ino
 
 def file_time_access(path: PathOrFd) -> float: return _os.stat(path).st_atime
