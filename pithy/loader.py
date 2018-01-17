@@ -135,6 +135,12 @@ def load_jsons(file: IO, **kwargs) -> Any:
   return load_jsons(cast(TextIO, file), **kwargs)
 
 
+def load_pyl(file: IO, **kwargs) -> Any:
+  'Load a python literal AST file (Python equivalent of JSON).'
+  from ast import literal_eval
+  return literal_eval(file.read())
+
+
 def load_xls(file: BinaryIO) -> Any:
   from xlrd import open_workbook # type: ignore
   # Unfortunately load_xls will not take an open file handle.
@@ -152,6 +158,7 @@ add_loader('.gz',     load_gz,      _dflt=True, encoding=None)
 add_loader('.json',   load_json,    _dflt=True)
 add_loader('.jsonl',  load_jsonl,   _dflt=True)
 add_loader('.jsons',  load_jsons,   _dflt=True)
+add_loader('.pyl',    load_pyl,    _dflt=True)
 add_loader('.tar',    load_archive, _dflt=True, encoding=None)
 add_loader('.txt',    load_txt,     _dflt=True)
 add_loader('.xls',    load_xls,     _dflt=True, encoding=None)
