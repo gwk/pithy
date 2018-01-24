@@ -11,11 +11,8 @@ from itertools import zip_longest as _zip_longest
 from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
 from typing.re import Pattern # type: ignore
 
-from pithy.clonefile import clone
-
-
-Path = Union[str, _os.PathLike]
-PathOrFd = Union[Path, int]
+from .clonefile import clone
+from .filestatus import FileStatus, Path, PathOrFd
 
 class NotAPathError(Exception): pass
 class PathIsNotDescendantError(Exception): pass
