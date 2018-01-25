@@ -117,6 +117,40 @@ def append_to_nonempty(string: str, suffix: str) -> str:
   return '' if (string == '') else (string + suffix)
 
 
+def b32(val: int) -> str:
+  if not isinstance(val, int): raise TypeError
+  chars = []
+  if val == 0: return '0'
+  neg = (val < 0)
+  if neg: val = -val
+  while val > 0:
+    digit = val & 0x1f # low five bits.
+    val >>= 5
+    chars.append(chr((0x30 if digit < 10 else 0x37) + digit))
+  if neg: chars.append('-')
+  return ''.join(reversed(chars))
+
+
+def le32(val: bytes) -> str:
+  bit_pos = 0
+  bit_len = len(val) * 8
+  last_idx = len(val) - 1
+  chars = []
+  while bit_pos < bit_len:
+    idx = bit_pos // 8
+    bit_off = bit_pos % 8
+    byte0 = val[idx]
+    digit = (byte0 >> bit_off) & 0x1f
+    #print(bit_pos, idx, bit_off, byte0, digit)
+    if bit_off >= 4 and idx < last_idx:
+      byte1 = val[idx+1]
+      digit += (byte1 << (8-bit_off)) & 0x1f
+      #print(' ', byte1, digit)
+    chars.append(chr((0x30 if digit < 10 else 0x37) + digit))
+    bit_pos += 5
+  return ''.join(chars)
+
+
 _byte_count_dec_magnitudes = [
   ('B',  'byte'),
   ('kB', 'kilobyte'),

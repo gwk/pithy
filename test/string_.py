@@ -51,6 +51,29 @@ utest('#1', prepend_to_nonempty,  '#', '1')
 utest('',   append_to_nonempty, '', '')
 utest('1:', append_to_nonempty, '1', ':')
 
+utest('0', b32, 0)
+utest('-1', b32, -1)
+utest('1', b32, 1)
+utest('9', b32, 9)
+utest('A', b32, 10)
+utest('V', b32, 31)
+utest('10', b32, 32)
+
+utest('',   le32, b'')
+utest('00', le32, b'\x00')
+utest('10', le32, b'\x01')
+utest('90', le32, b'\x09')
+utest('A0', le32, b'\x0a')
+utest('F0', le32, b'\x0f')
+utest('G0', le32, b'\x10')
+utest('V0', le32, b'\x1f')
+utest('01', le32, b'\x20')
+utest('11', le32, b'\x21')
+utest('U7', le32, b'\xfe')
+utest('V7', le32, b'\xff')
+utest('VVVVVVVF', le32, b'\xff\xff\xff\xff\x7f')
+utest('VVVVVVVV', le32, b'\xff\xff\xff\xff\xff')
+
 
 format_byte_count_test_vals = [
   ('1 B',         '1 byte',             1),
