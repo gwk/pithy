@@ -38,13 +38,15 @@ def load(file_or_path: Any, ext:str=None, **kwargs) -> Any:
       ext = path_ext(path)
 
   loader = _loaders[ext]
+
+  # Construct args for `open`.
   open_args = dict(loader.open_args)
   for k in tuple(open_args):
     try: v = kwargs[k]
     except KeyError: pass
-    else:
+    else: # this arg is meant for `open`, not `load`.
       open_args[k] = v
-      del kwargs[k] # this arg goes to open, not load. safe because kwargs is local.
+      del kwargs[k] # Safe to delete because kwargs is local.
 
   if is_file:
     file = file_or_path
@@ -61,6 +63,7 @@ def add_loader(ext: str, _fn: LoadFn, buffering=-1, encoding='UTF-8', errors=Non
   '''
   Register a loader function, which will be called by `muck.load` for matching `ext`.
   `buffering`, `encoding`, `errors`, and `newline` are all passed on to `open` when it is called by `load`.
+  `_dflt` is used to mark the default loaders as such so that they can be overridden without triggering an error.
   '''
   if not ext.startswith('.'):
     raise ValueError(f"file extension does not start with '.': {ext!r}")
@@ -108,12 +111,12 @@ def load_gz(f: BinaryIO, sub_ext=None, **kwargs:Any) -> Any:
   stem = path_stem(f.name)
   if sub_ext is None:
     sub_ext = path_ext(stem)
-  if sub_ext == '.tar': # load_archive handles compressed stream faster internally.
+  if sub_ext == '.tar': # load_archive handles compressed stream faster.
     return load_archive(f, **kwargs)
   from gzip import GzipFile
-  g = GzipFile(mode='rb', fileobj=f)
-  g.name = stem # strip off '.gz' for secondary dispatch by `load`.
-  return load(g, ext=sub_ext, **kwargs)
+  df = GzipFile(mode='rb', fileobj=f)
+  df.name = stem # strip off '.gz' for secondary dispatch by `load`.
+  return load(df, ext=sub_ext, **kwargs)
 
 
 def load_json(file: IO, **kwargs) -> Any:
