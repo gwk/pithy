@@ -117,11 +117,6 @@ def load_gz(f: BinaryIO, sub_ext=None, **kwargs:Any) -> Any:
   return load(g, ext=sub_ext, **kwargs)
 
 
-def load_txt(f: TextIO, clip_ends=False) -> Iterable[str]:
-  if clip_ends: return (line.rstrip('\n\r') for line in f)
-  return f
-
-
 def load_json(file: IO, **kwargs) -> Any:
   from .json import load_json # type: ignore
   return load_json(cast(TextIO, file), **kwargs)
@@ -139,6 +134,11 @@ def load_pyl(file: IO, **kwargs) -> Any:
   'Load a python literal AST file (Python equivalent of JSON).'
   from ast import literal_eval
   return literal_eval(file.read())
+
+
+def load_txt(f: TextIO, clip_ends=False) -> Iterable[str]:
+  if clip_ends: return (line.rstrip('\n\r') for line in f)
+  return f
 
 
 def load_xls(file: BinaryIO) -> Any:
