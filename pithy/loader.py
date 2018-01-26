@@ -87,7 +87,7 @@ def load_archive(f: BinaryIO, single_name=None, single_ext=None, **kwargs:Any) -
   archive = Archive(f)
   if single_name is None and single_ext is None:
     if kwargs:
-      raise ValueError('load_archive: `single_name` not specified; no other options should be set')
+      raise ValueError('load_archive: `single_name` or `single_ext` not specified; no other options should be set')
     return archive
   # load single file.
   match_exact = (single_name is not None)
