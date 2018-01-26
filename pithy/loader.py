@@ -4,7 +4,7 @@
 File open/load dispatch by file extension.
 '''
 
-from io import TextIOWrapper, open as _std_open
+from io import TextIOWrapper
 from typing import *
 from typing import IO, TextIO, BinaryIO
 
@@ -12,11 +12,10 @@ from .io import stderr, errL, errSL
 from .fs import path_ext, path_stem
 
 
-OpenFn = Callable[..., IO]
 LoadFn = Callable[..., Any]
 
 
-def load(file_or_path: Any, open:OpenFn=open, ext:str=None, **kwargs) -> Any:
+def load(file_or_path: Any, ext:str=None, **kwargs) -> Any:
   '''
   Select an appropriate loader based on the file extension, or `ext` if specified.
 
