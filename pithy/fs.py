@@ -83,7 +83,7 @@ def path_join(first: Path, *additional: Path) -> str:
   return _path.join(_str_for(first), *[_str_for(p) for p in additional])
 
 def path_name(path: Path) -> str:
-  "Return the name portion of a path (possibly including an extension), e.g. 'dir/name'."
+  "Return the name portion of a path (possibly including an extension); the 'basename' in Unix terminology."
   return _path.basename(_str_for(path))
 
 def path_split(path: Path) -> List[str]:
@@ -230,8 +230,7 @@ def list_dir(path: PathOrFd, exts: Iterable[str]=(), hidden=False) -> List[str]:
   names = sorted(_os.listdir(path)) # type: ignore # https://github.com/python/typeshed/issues/1653
   #^ Sort became necessary at some point, presumably for APFS.
   if not exts and hidden: return names # no filtering necessary.
-  return [n for n in names if (
-    (not exts or path_ext(n) in exts) and (hidden or not n.startswith('.')))]
+  return [n for n in names if name_has_any_ext(n, exts) and (hidden or not n.startswith('.'))]
 
 
 def list_dir_paths(path: Path, exts: Iterable[str]=(), hidden=False) -> List[str]:
@@ -366,6 +365,17 @@ def normalize_exts(exts: Iterable[str]) -> FrozenSet[str]:
   return frozenset(exts)
 
 
+def name_has_any_ext(name: str, exts: FrozenSet[str]) -> bool:
+  '''
+  Returns True if `exts` is empty or any element of `exts` is a strict suffix of `path`.
+  '''
+  if name == '': raise ValueError(name) # Poorly defined for the empty string.
+  if not exts: return True
+  for ext in exts:
+    if name != ext and name.endswith(ext): return True
+  return False
+
+
 class PathAlreadyExists(Exception): pass
 
 def open_new(path: Path, make_parent_dirs: bool=True, **open_args) -> IO[Any]:
@@ -380,16 +390,15 @@ def open_new(path: Path, make_parent_dirs: bool=True, **open_args) -> IO[Any]:
 read_link = _os.readlink
 
 
-def _walk_dirs_and_files(dir_path: str, include_hidden: bool, file_exts: AbstractSet[str], files_as_paths: bool) -> Iterator[Tuple[str, List[str]]]:
+def _walk_dirs_and_files(dir_path: str, include_hidden: bool, file_exts: FrozenSet[str], files_as_paths: bool) -> Iterator[Tuple[str, List[str]]]:
   sub_dirs = []
   files = []
   assert dir_path.endswith('/')
-  names = list_dir(dir_path, hidden=include_hidden)
-  for name in names:
+  for name in list_dir(dir_path, hidden=include_hidden):
     path = dir_path + name
     if is_dir(path):
       sub_dirs.append(path + '/')
-    elif not file_exts or path_ext(name) in file_exts:
+    elif name_has_any_ext(name, file_exts):
       files.append(path if files_as_paths else name)
   yield (dir_path, files)
   for sub_dir in sub_dirs:
@@ -409,17 +418,16 @@ def walk_dirs_and_files(*dir_paths: Path, make_abs=False, include_hidden=False, 
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
 
 
-def _walk_paths_rec(dir_path: str, yield_files: bool, yield_dirs: bool, include_hidden: bool, file_exts: AbstractSet[str]) -> Iterator[str]:
+def _walk_paths_rec(dir_path: str, yield_files: bool, yield_dirs: bool, include_hidden: bool, file_exts: FrozenSet[str]) -> Iterator[str]:
   'yield paths; directory paths are distinguished by trailing slash.'
   assert dir_path.endswith('/')
   if yield_dirs:
     yield dir_path
-  names = list_dir(dir_path, hidden=include_hidden)
-  for name in names:
+  for name in list_dir(dir_path, hidden=include_hidden):
     path = path_join(dir_path, name)
     if is_dir(path):
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
-    elif yield_files and (not file_exts or path_ext(name) in file_exts):
+    elif yield_files and name_has_any_ext(name, file_exts):
       yield path
 
 
@@ -436,7 +444,7 @@ def walk_paths(*paths: Path, make_abs=False, yield_files=True, yield_dirs=True, 
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
     elif not path_exists(path):
       raise FileNotFoundError(path)
-    elif yield_files and (not file_exts or path_ext(path) in file_exts):
+    elif yield_files and name_has_any_ext(path_name(path), file_exts):
       yield path
 
 
