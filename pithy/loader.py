@@ -50,16 +50,20 @@ def load(file_or_path: Any, ext:str=None, **kwargs) -> Any:
 
   if is_file:
     file = file_or_path
-    if open_args['encoding'] is not None and not hasattr(file, 'encoding'): # want text but have binary file.
-      del open_args['buffering'] # TextIOWrapper does not support this argument.
-      file = TextIOWrapper(file, **open_args)
+    if hasattr(file, 'encoding'): # Have text file.
+      if 'b' in open_args['mode']: # Want binary file.
+        raise Exception(f'loader: expected binary file, but received text file: {file}')
+    else: # Have binary file.
+      if open_args['encoding'] is not None: # Want text file.
+        del open_args['buffering'] # TextIOWrapper does not support this argument.
+        file = TextIOWrapper(file, **open_args)
   else:
     file = open(file_or_path, **open_args)
 
   return loader.fn(file, **kwargs)
 
 
-def add_loader(ext: str, _fn: LoadFn, buffering=-1, encoding='UTF-8', errors=None, newline=None, _dflt=False) -> None:
+def add_loader(ext: str, _fn: LoadFn, mode='r', buffering=-1, encoding=None, errors=None, newline=None, _dflt=False) -> None:
   '''
   Register a loader function, which will be called by `muck.load` for matching `ext`.
   `buffering`, `encoding`, `errors`, and `newline` are all passed on to `open` when it is called by `load`.
@@ -72,7 +76,7 @@ def add_loader(ext: str, _fn: LoadFn, buffering=-1, encoding='UTF-8', errors=Non
     except KeyError: pass
     else: raise Exception(f'add_loader: extension previously registered: {ext!r}; loader: {prev_loader!r}')
   _loaders[ext] = Loader(ext=ext, fn=_fn, open_args=(
-    ('buffering', buffering), ('encoding', encoding), ('errors', errors), ('newline', newline)))
+    ('mode', mode), ('buffering', buffering), ('encoding', encoding), ('errors', errors), ('newline', newline)))
 
 
 class Loader(NamedTuple):
@@ -154,15 +158,29 @@ def load_xls(file: BinaryIO) -> Any:
   return open_workbook(filename=None, logfile=stderr, file_contents=file.read())
 
 
-add_loader('.css',    load_txt,     _dflt=True)
-add_loader('.csv',    load_csv,     _dflt=True, newline='') # newline specified as per footnote in csv module.
-add_loader('.gz',     load_gz,      _dflt=True, encoding=None)
-add_loader('.json',   load_json,    _dflt=True)
-add_loader('.jsonl',  load_jsonl,   _dflt=True)
-add_loader('.jsons',  load_jsons,   _dflt=True)
-add_loader('.pyl',    load_pyl,    _dflt=True)
-add_loader('.tar',    load_archive, _dflt=True, encoding=None)
-add_loader('.txt',    load_txt,     _dflt=True)
-add_loader('.xls',    load_xls,     _dflt=True, encoding=None)
-add_loader('.zip',    load_archive, _dflt=True, encoding=None)
+def load_xz(f: BinaryIO, sub_ext=None, **kwargs:Any) -> Any:
+  stem = path_stem(f.name)
+  if sub_ext is None:
+    sub_ext = path_ext(stem)
+  if sub_ext == '.tar': # load_archive handles compressed stream faster internally.
+    return load_archive(f, **kwargs)
+  from lzma import LZMAFile # type: ignore
+  df = LZMAFile(f)
+  df.name = stem # strip off '.xz' for secondary dispatch by `load`.
+  return load(df, ext=sub_ext, **kwargs)
+
+
+
+add_loader('.css',    load_txt,     _dflt=True, mode='r')
+add_loader('.csv',    load_csv,     _dflt=True, mode='r', newline='') # newline specified as per footnote in csv module.
+add_loader('.gz',     load_gz,      _dflt=True, mode='rb')
+add_loader('.json',   load_json,    _dflt=True, mode='r')
+add_loader('.jsonl',  load_jsonl,   _dflt=True, mode='r')
+add_loader('.jsons',  load_jsons,   _dflt=True, mode='r')
+add_loader('.pyl',    load_pyl,     _dflt=True, mode='r')
+add_loader('.tar',    load_archive, _dflt=True, mode='rb')
+add_loader('.txt',    load_txt,     _dflt=True, mode='r')
+add_loader('.xls',    load_xls,     _dflt=True, mode='rb')
+add_loader('.xz',     load_xz,      _dflt=True, mode='rb')
+add_loader('.zip',    load_archive, _dflt=True, mode='rb')
 
