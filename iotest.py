@@ -249,7 +249,9 @@ def report_coverage(ctx):
   exit(runC(cmd))
 
 
-class IotParseError(Exception): pass
+class TestCaseError(Exception): pass
+
+class IotParseError(TestCaseError): pass
 
 
 class Case:
@@ -410,10 +412,10 @@ class Case:
     key = ('in_' if iot_key == 'in' else iot_key.replace('-', '_'))
     try:
       exp_desc, predicate, validator_fn = case_key_validators[key]
-    except KeyError:
-      raise Exception(f'invalid key in .iot file: {iot_key!r}')
+    except KeyError as e:
+      raise TestCaseError(f'invalid key in .iot file: {iot_key!r}') from e
     if not predicate(val):
-      raise Exception(f'key: {iot_key!r}: expected value of type: {exp_desc}; received: {val!r}')
+      raise TestCaseError(f'key: {iot_key!r}: expected value of type: {exp_desc}; received: {val!r}')
     if validator_fn:
       validator_fn(key, val)
     self.add_val_for_key(ctx, key, val)
@@ -428,7 +430,7 @@ class Case:
     else: # this test is a follower.
       rel_dir = path_dir(self.stem)
       if path_dir(self.lead) != rel_dir:
-        raise Exception(f'test specifies lead test in different directory: {rel_dir} != {path_dir(self.lead)}')
+        raise TestCaseError(f'test specifies lead test in different directory: {rel_dir} != {path_dir(self.lead)}')
     self.test_dir = path_join(ctx.build_dir, rel_dir)
     self.test_env = {}
     env = self.test_env # local alias for convenience.
@@ -464,7 +466,7 @@ class Case:
         return shlex.split(expand_str(val))
       if is_list(val):
         return [expand_str(el) for el in val]
-      raise ValueError(val)
+      raise TestCaseError(f'expand received unexpected value: {val}')
 
     # add the case env one item at a time.
     # sorted because we want expansion to be deterministic;
@@ -473,7 +475,7 @@ class Case:
     if self.env:
       for key, val in sorted(self.env.items()):
         if key in env:
-          raise Exception(f'specified env contains reserved key: {key}')
+          raise TestCaseError(f'specified env contains reserved key: {key}')
         env[key] = expand_str(val)
 
     self.compile_cmds = [expand(cmd) for cmd in self.compile] if self.compile else []
@@ -482,7 +484,7 @@ class Case:
     if self.interpreter:
       cmd += expand(self.interpreter)
     if self.interpreter_args:
-      if not self.interpreter: raise Exception('interpreter_args specified without interpreter')
+      if not self.interpreter: raise TestCaseError('interpreter_args specified without interpreter')
       cmd += expand(self.interpreter_args)
 
     self.test_links = []
@@ -492,9 +494,9 @@ class Case:
     elif self.compile_cmds:
       cmd += ['./' + self.name]
     elif len(self.dflt_src_paths) > 1:
-      raise Exception(f'no `cmd` specified and multiple default source paths found: {self.dflt_src_paths}')
+      raise TestCaseError(f'no `cmd` specified and multiple default source paths found: {self.dflt_src_paths}')
     elif len(self.dflt_src_paths) < 1:
-      raise Exception('no `cmd` specified and no default source path found')
+      raise TestCaseError('no `cmd` specified and no default source path found')
     else:
       dflt_path = self.dflt_src_paths[0]
       dflt_name = path_name(dflt_path)
@@ -511,7 +513,7 @@ class Case:
     self.test_cmd = cmd
 
     if not self.is_lead and self.links:
-      raise Exception("non-lead tests ('lead' specified and not equal to stem) cannot also specify 'links'")
+      raise TestCaseError("non-lead tests ('lead' specified and not equal to stem) cannot also specify 'links'")
     elif is_str(self.links):
       link = expand_str(self.links)
       self.test_links += [(link, path_name(link))]
@@ -520,7 +522,7 @@ class Case:
     elif is_dict(self.links):
       self.test_links += sorted((expand_str(orig), expand_str(link)) for orig, link in self.links.items())
     elif self.links is not None:
-      raise ValueError(self.links)
+      raise TestCaseError(self.links)
 
     self.coverage_targets = expand(self.coverage)
 
@@ -555,27 +557,27 @@ def is_valid_links(val):
   return is_str(val) or is_set_of_str(val) or is_dict_of_str(val)
 
 def validate_path(key, path):
-  if not path: raise Exception(f'key: {key}: path is empty: {path!r}')
-  if '.' in path: raise Exception(f"key: {key}: path cannot contain '.': {path!r}")
+  if not path: raise TestCaseError(f'key: {key}: path is empty: {path!r}')
+  if '.' in path: raise TestCaseError(f"key: {key}: path cannot contain '.': {path!r}")
 
 def validate_exp_mode(key, mode):
   if mode not in file_expectation_fns:
-    raise Exception(f'key: {key}: invalid file expectation mode: {mode}')
+    raise TestCaseError(f'key: {key}: invalid file expectation mode: {mode}')
 
 def validate_exp_dict(key, val):
   if not is_dict(val):
-    raise Exception(f'file expectation: {key}: value must be a dictionary.')
+    raise TestCaseError(f'file expectation: {key}: value must be a dictionary.')
   for k in val:
     if k not in ('mode', 'path', 'val'):
-      raise Exception(f'file expectation: {key}: invalid expectation property: {k}')
+      raise TestCaseError(f'file expectation: {key}: invalid expectation property: {k}')
 
 
 def validate_files_dict(key, val):
   if not is_dict(val):
-    raise Exception(f'file expectation: {key}: value must be a dictionary.')
+    raise TestCaseError(f'file expectation: {key}: value must be a dictionary.')
   for k, exp_dict in val.items():
     if k in ('out', 'err'):
-      raise Exception(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val).')
+      raise TestCaseError(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val).')
     validate_exp_dict(k, exp_dict)
 
 def validate_links_dict(key, val):
@@ -587,8 +589,8 @@ def validate_links_dict(key, val):
     items = val.items()
   else: raise AssertionError('`validate_links_dict` types inconsistent with `is_valid_links`.')
   for orig, link in items:
-    if orig.find('..') != -1: raise Exception(f"key: {key}: link original contains '..': {src}")
-    if link.find('..') != -1: raise Exception(f"key: {key}: link location contains '..': {dst}")
+    if orig.find('..') != -1: raise TestCaseError(f"key: {key}: link original contains '..': {src}")
+    if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {dst}")
 
 
 case_key_validators = { # key => msg, validator_predicate, validator_fn.
@@ -621,7 +623,7 @@ class FileExpectation:
 
   def __init__(self, path, info, expand_str_fn):
     if path.find('..') != -1:
-      raise Exception(f"file expectation {path}: cannot contain '..'")
+      raise TestCaseError(f"file expectation {path}: cannot contain '..'")
     self.path = path
     self.mode = info.get('mode', 'equal')
     validate_exp_mode(path, self.mode)
@@ -631,7 +633,7 @@ class FileExpectation:
       val = info.get('val', '')
     else:
       if 'val' in info:
-        raise Exception(f'file expectation {path}: cannot specify both `path` and `val` properties')
+        raise TestCaseError(f'file expectation {path}: cannot specify both `path` and `val` properties')
       exp_path_expanded = expand_str_fn(exp_path)
       val = read_from_path(exp_path_expanded)
     self.val = expand_str_fn(val)
@@ -651,7 +653,7 @@ class FileExpectation:
     contents = line[2:]
     valid_prefixes = ('|', '|\n', '| ', '~', '~\n', '~ ')
     if prefix not in valid_prefixes:
-      raise ValueError("test expectation: {!r};\nmatch line {}: must begin with one of: {}\n{!r}".format(
+      raise TestCaseError("test expectation: {!r};\nmatch line {}: must begin with one of: {}\n{!r}".format(
         self.path, i, ', '.join(repr(p) for p in valid_prefixes), line))
     if prefix.endswith('\n'):
       # these two cases exist to be lenient about empty lines,
@@ -662,7 +664,7 @@ class FileExpectation:
     try:
       return (line, re.compile(contents if prefix == '~ ' else re.escape(contents)))
     except Exception as e:
-      raise ValueError('test expectation: {!r};\nmatch line {}: pattern is invalid regex:\n{!r}\n{}'.format(
+      raise TestCaseError('test expectation: {!r};\nmatch line {}: pattern is invalid regex:\n{!r}\n{}'.format(
         self.path, i, contents, e)) from e
 
 
@@ -673,7 +675,7 @@ class FileExpectation:
 def try_case(ctx, case):
   try:
     ok = run_case(ctx, case)
-  except Exception as e:
+  except TestCaseError as e:
     t = type(e)
     outL(f'\niotest: could not run test case: {case.stem}.\n  exception: {t.__module__}.{t.__qualname__}: {e}')
     ctx.fail_fast(e)
