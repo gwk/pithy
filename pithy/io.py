@@ -219,7 +219,7 @@ def read_line_from_path(path: str, line0=0, keep_end=False, default: str=None) -
           return line if keep_end else line.rstrip('\n')
       if default is None: raise IndexError(line0)
       return default
-  except (FileNotFoundError, IsADirectoryError):
+  except (FileNotFoundError, IsADirectoryError, PermissionError, UnicodeDecodeError):
     if default is None: raise
     return default
 
