@@ -1,7 +1,7 @@
-test-meta/compare-match-empty-exp
+test-meta/1/compare-match-empty-exp
 
 output file does not match expectation. actual value:
-cat ../../../test-meta/compare-match-empty-exp/compare-match-empty-exp.out
+cat _b/test-meta/1/compare-match-empty-exp/compare-match-empty-exp.out
 actual.
 Expected empty file.
 ================================================================

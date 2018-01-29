@@ -1,6 +1,6 @@
-| test-meta/missing-file-act
+| test-meta/1/missing-file-act
 |
-~ iotest: test did not output expected file: .+/iotest/_build/test-meta/missing-file-act/nonexistant.txt
+~ iotest: test did not output expected file: .+/iotest/_build/test-meta/1/missing-file-act/nonexistant.txt
 | ================================================================
 |
 |

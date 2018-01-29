@@ -855,8 +855,9 @@ def check_file_exp(ctx, test_dir, exp):
     return False
   if file_expectation_fns[exp.mode](exp, act_val):
     return True
-  outL(f'\noutput file does not {exp.mode} expectation. actual value:')
-  cat_file(path, color=TXT_B_OUT)
+  is_empty = not act_val
+  outL(f'\noutput file does not {exp.mode} expectation. actual value:', (" ''" if is_empty else ''))
+  if not is_empty: cat_file(path, color=TXT_B_OUT)
   if not exp.val:
     outL('Expected empty file.')
     return False

@@ -2,7 +2,6 @@
   'compile': [
     'touch .project-root',
   ],
-  'cmd': '$PROJ/iotest.py -no-times -coverage test-meta/$NAME.iot',
-  'links' : {'test-meta'},
+  'cmd': '$PROJ/iotest.py -no-times -coverage test-meta/1/$NAME.iot',
   'err_mode': 'ignore', # allow the coverage tool to print debug info without spoiling this test.
 }

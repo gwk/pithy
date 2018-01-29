@@ -1,0 +1,4 @@
+{
+  'cmd': '$PROJ/iotest.py -no-times test-meta/1/$NAME.iot',
+  'code': 1,
+}

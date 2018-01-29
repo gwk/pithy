@@ -1,8 +1,9 @@
-test-meta/compare-contain-fail
+test-meta/1/compare-match-empty-out
 
-output file does not contain expectation. actual value:
-cat ../../../test-meta/compare-contain-fail/compare-contain-fail.out
-actual.
+output file does not match expectation. actual value: ''
+match failed at line 1:
+pattern:   '| expectation.\n'
+actual text: None
 ----------------------------------------------------------------
 ================================================================
 

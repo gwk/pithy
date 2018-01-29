@@ -1,4 +1,0 @@
-{
-  'cmd': '$PROJ/iotest.py -no-times test-meta/$NAME.iot',
-  'links' : {'test-meta'},
-}
