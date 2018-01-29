@@ -12,7 +12,8 @@ from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Op
 from typing.re import Pattern # type: ignore
 
 from .clonefile import clone
-from .filestatus import FileStatus, Path, PathOrFd
+from .filestatus import FileStatus, Path, PathOrFd, file_status
+
 
 class NotAPathError(Exception): pass
 class PathIsNotDescendantError(Exception): pass

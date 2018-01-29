@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from os import PathLike, stat as _stat, stat_result as StatResult
+from os import DirEntry, PathLike, stat as _stat, stat_result as StatResult
 from stat import *
-from typing import NamedTuple, Union
+from typing import Optional, NamedTuple, Union
 
 
 Path = Union[str, PathLike]
@@ -31,13 +31,14 @@ class FileStatus(NamedTuple):
   mode: int
   mtime: float
   mtime_ns: int
+  path: str
   perms: int
   size: int
   type: int
   user_id: int
 
   @staticmethod
-  def from_stat_result(stat_result: StatResult) -> 'FileStatus':
+  def from_stat_result(path: str, stat_result: StatResult) -> 'FileStatus':
     s = stat_result
     mode = s.st_mode
     return FileStatus(
@@ -56,14 +57,15 @@ class FileStatus(NamedTuple):
       mode=mode,
       mtime=s.st_mtime,
       mtime_ns=s.st_mtime_ns,
+      path=path,
       perms=S_IMODE(mode),
       size=s.st_size,
       type=S_IFMT(mode),
       user_id=s.st_uid)
 
   @classmethod
-  def of(class_, path_or_fd: PathOrFd) -> 'FileStatus':
-    return class_.from_stat_result(_stat(path_or_fd))
+  def from_dir_entry(class_, entry: DirEntry, follow_symlinks=True) -> Optional['FileStatus']:
+    return class_.from_stat_result(entry.path, entry.stat(follow_symlinks=follow_symlinks)) # type: ignore
 
 
   # File type tests derived from Python's stat.py.
@@ -163,6 +165,27 @@ class FileStatus(NamedTuple):
   @property
   def mode_str(self) -> str:
     return f'{self.type_char} {self.perms_string}'
+
+
+def file_status(path_or_fd: PathOrFd, follow_symlinks=True) -> Optional[FileStatus]:
+  try: s = _stat(path_or_fd, follow_symlinks=follow_symlinks)
+  except FileNotFoundError: return None
+  path = '' if isinstance(path_or_fd, int) else str(path_or_fd)
+  return FileStatus.from_stat_result(path, s)
+
+
+
+def dir_entry_type_char(entry: DirEntry) -> str:
+  '''
+  Return a single uppercase letter string denoting the file type of the DirEntry.
+  Because DirEntry does not expose the complete `stat` type field,
+  this is limited to `D`, `F`, `L`, or `U` for other/unknown type,
+  and thus is not necessarily equal to the letter obtained from `FileStatus.type_char`.
+  '''
+  if entry.is_symlink(): return 'L'
+  if entry.is_dir(): return 'D'
+  if entry.is_file(): return 'F'
+  return 'U'
 
 
 _type_chars = {
