@@ -790,11 +790,11 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
   if ctx.coverage and not is_cmd_installed and is_python_file(cmd_head): # interpose the coverage harness.
     ctx.coverage_cases.append(case)
     cmd = case.coven_cmd_prefix + cmd
-    msg_cmd = None # do not offer possible test fixes while in coverage mode.
+    cmd_path = None # do not offer possible test fixes while in coverage mode.
   elif is_cmd_installed:
-    msg_cmd = None
+    cmd_path = None
   else: # command is a path, either local or absolute.
-    msg_cmd = path_rel_to_current_or_abs(cmd_head)
+    cmd_path = path_rel_to_current_or_abs(cmd_head)
 
   if ctx.dbg:
     cmd_str = '{} <{} # 1>{} 2>{}'.format(shell_cmd_str(cmd),
@@ -807,17 +807,17 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, timeout=timeout, exp=exp_code)
     except PermissionError:
       outL(f'\n{label} process permission error; make sure that you have proper ownership and permissions to execute set.')
-      if msg_cmd: outL(f'possible fix `chmod +x {shlex.quote(msg_cmd)}`')
+      if cmd_path: outL(f'possible fix `chmod +x {shlex.quote(cmd_path)}`')
       return None
     except OSError as e:
       first_line = read_line_from_path(cmd_head, default=None)
       if e.strerror == 'Exec format error':
         outL(f'\n{label} process file format is not executable.')
-        if msg_cmd and first_line is not None and not first_line.startswith('#!'):
+        if cmd_path and first_line is not None and not first_line.startswith('#!'):
           outL('note: the test script does not start with a hash-bang line, e.g. `#!/usr/bin/env [INTERPRETER]`.')
       elif e.strerror.startswith('No such file or directory:'):
         if first_line is None: # really does not exist.
-          outL(f'\n{label} command path does not exist: {(msg_cmd or cmd_head)}')
+          outL(f'\n{label} command path does not exist: {(cmd_path or cmd_head)}')
         elif is_cmd_installed: # exists but not referred to as a path.
           outL(f"\n{label} command path exists but is missing a leading './'.")
         else:
