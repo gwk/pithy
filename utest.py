@@ -7,7 +7,7 @@ Set the UTEST_SHOW_EXC environment variable to truthful to print unexpected exce
 
 import atexit as _atexit
 import inspect as _inspect
-from os.path import basename as _basename
+from os.path import relpath as _rel_path
 from sys import stderr as _stderr
 from traceback import print_exception as _print_exception
 
@@ -129,7 +129,9 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
   info = _inspect.getframeinfo(frame)
   try: name = subj.__qualname__
   except AttributeError: name = str(subj)
-  _errL(f'{_basename(info.filename)}:{info.lineno}: utest failure: {name}')
+  path = _rel_path(info.filename)
+  if '/' not in path: path = f'./{path}'
+  _errL(f'\n{path}:{info.lineno}: utest failure: {name}')
   for i, el in enumerate(args):
     _errL(f'  arg {i} = {el!r}')
   for name, val, in kwargs.items():
@@ -141,6 +143,7 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
     _errL(f'  raised exception:   {exc!r}')
     for i, arg in enumerate(exc.args):
       _errL(f'    exc arg {i}: {arg!r}')
+    _errL()
     _print_exception(etype=type(exc), value=exc, tb=exc.__traceback__, file=_stderr)
   _errL()
 
