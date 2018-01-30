@@ -1,0 +1,9 @@
+test-meta/1/cmd-missing-leading-dot
+test process launch failed; file exists but invocation is missing a leading `./`.
+test command failed: `script.py`
+
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; BROKEN: 0; SKIPPED: 0; FAILED: 1.

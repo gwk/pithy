@@ -1,0 +1,3 @@
+{
+  'cmd': ['nonexistent-installed-cmd'],
+}

@@ -17,11 +17,9 @@ from pithy.immutable import Immutable
 from pithy.io import errL, errSL, outL, outSL, outZ, read_from_path, read_line_from_path, write_to_path, writeLSSL
 from pithy.string import string_contains
 from pithy.format import FormatError, format_to_re
-from pithy.fs import (abs_path, find_project_dir, is_dir, is_node_not_link, is_python_file, list_dir, open_new, make_dirs, norm_path,
-  path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join,
-  path_name, path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, walk_dirs_up)
+from pithy.fs import *
 from pithy.iterable import fan_by_key_fn, fan_by_pred
-from pithy.task import UnexpectedExit, Timeout, run, runC
+from pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
 from pithy.types import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
 bar_width = 64
@@ -788,15 +786,12 @@ def run_case(ctx, case):
 def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
   'returns True for success, False for failure, and None for abort.'
   cmd_head = cmd[0]
+  cmd_path = path_rel_to_current_or_abs(cmd_head) # For diagnostics.
   is_cmd_installed = not path_dir(cmd_head) # command is a name, presumably a name on the PATH (or else a mistake).
+
   if ctx.coverage and not is_cmd_installed and is_python_file(cmd_head): # interpose the coverage harness.
     ctx.coverage_cases.append(case)
     cmd = case.coven_cmd_prefix + cmd
-    cmd_path = None # do not offer possible test fixes while in coverage mode.
-  elif is_cmd_installed:
-    cmd_path = None
-  else: # command is a path, either local or absolute.
-    cmd_path = path_rel_to_current_or_abs(cmd_head)
 
   if ctx.dbg:
     cmd_str = '{} <{} # 1>{} 2>{}'.format(shell_cmd_str(cmd),
@@ -807,36 +802,21 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
   with open(in_path, 'r') as i, open_new(out_path) as o, open_new(err_path) as e:
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, timeout=timeout, exp=exp_code)
-    except PermissionError:
-      outL(f'\n{label} process permission error; make sure that you have proper ownership and permissions to execute set.')
-      if cmd_path: outL(f'possible fix `chmod +x {shlex.quote(cmd_path)}`')
-      return None
-    except OSError as e:
-      first_line = read_line_from_path(cmd_head, default=None)
-      if e.strerror == 'Exec format error':
-        outL(f'\n{label} process file format is not executable.')
-        if cmd_path and first_line is not None and not first_line.startswith('#!'):
-          outL('note: the test script does not start with a hash-bang line, e.g. `#!/usr/bin/env [INTERPRETER]`.')
-      elif e.strerror.startswith('No such file or directory:'):
-        if first_line is None: # really does not exist.
-          outL(f'\n{label} command path does not exist: {(cmd_path or cmd_head)}')
-        elif is_cmd_installed: # exists but not referred to as a path.
-          outL(f"\n{label} command path exists but is missing a leading './'.")
-        else:
-          outL(f'\n{label} command path exists but failed, possibly due to a bad hashbang line.')
-          outSL('first line:', repr(first_line.rstrip('\n')))
-      else:
-        outL(f'\n{label} process OS error {e.errno}: {e.strerror}.')
-      return None
-    except Timeout:
-      outL(f'\n{label} process timed out ({timeout} sec) and was killed.')
-      return None
+      return True
     except UnexpectedExit as e:
       outL(f'\n{label} process was expected to return code: {e.exp}; actual code: {e.act}.')
       return False
-    else:
-      return True
-    assert False # protect against missing return above.
+    except TaskLaunchError as e:
+      outL(f'\n{label} process launch failed; {e.diagnosis}')
+#        outL(f'note: is the command installed?')
+#          outL(f'note: command path refers to a {status.type_desc}.')
+#          outL(f'note: permission error; make sure that you have set proper ownership and executable permissions.')
+#          outL(f'note: possible fix: `chmod +x {shlex.quote(cmd_path)}`')
+#        outL('note: test script does not start with a hash-bang line, e.g. `#!/usr/bin/env [INTERPRETER]`.')
+#       outL(f'note: test script has a hash-bang line; is it mistyped?')
+    except Timeout:
+      outL(f'\n{label} process timed out ({timeout} sec) and was killed.')
+    return None
 
 
 def check_file_exp(ctx, test_dir, exp):

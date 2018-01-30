@@ -1,0 +1,9 @@
+test-meta/1/cmd-path-is-dir
+test process launch failed; invocation path refers to a non-file.
+test command failed: `./.`
+
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; BROKEN: 0; SKIPPED: 0; FAILED: 1.
