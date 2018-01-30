@@ -24,9 +24,8 @@ class MixedAbsoluteAndRelativePathsError(Exception): pass
 # paths.
 
 def _str_for(path: Path) -> str:
-  if isinstance(path, str): return path
-  p = path.__fspath__()
-  if isinstance(path, str): return p
+  p = _os.fspath(path)
+  if isinstance(p, str): return p
   assert isinstance(p, bytes)
   return p.decode()
 
