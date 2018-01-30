@@ -3,7 +3,8 @@
 import os as _os
 import time as _time
 
-from os.path import exists as path_exists, dirname
+from os import R_OK, X_OK, access as _access, supports_effective_ids as _supports_effective_ids
+from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file
 from selectors import PollSelector as _PollSelector, EVENT_READ, EVENT_WRITE
 from shlex import split as sh_split, quote as sh_quote
 from subprocess import DEVNULL, PIPE, Popen as _Popen
@@ -27,15 +28,6 @@ NONZERO = NonzeroCodeExpectation()
 
 
 TaskCodeExpectation = Union[None, int, NonzeroCodeExpectation]
-
-
-class UnexpectedExit(Exception):
-  'Exception indicating that a subprocess exit code did not match the code expectation.'
-  def __init__(self, msg: str, cmd: Tuple[str, ...], exp: TaskCodeExpectation, act: int) -> None:
-    super().__init__(msg)
-    self.cmd = cmd
-    self.exp = exp
-    self.act = act
 
 
 def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, files: Sequence[File]=(),
@@ -71,6 +63,8 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
     f_in = stdin # presume None, PIPE, file, or DEVNULL.
     input_bytes = None
 
+  path = cast(Tuple[str, ...], cmd)[0] # For exception handling below.
+
   fds = [f if isinstance(f, int) else f.fileno for f in files]
 
   # flushing std file descriptors guarantees consistent behavior between console and iotest;
@@ -89,17 +83,38 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
       env=env,
       pass_fds=fds,
     )
-  except FileNotFoundError as e:
-    path = e.filename
-    if not path_exists(path): raise # original exception makes sense.
-    if path == cast(Tuple[str], cmd)[0]:
-      if not dirname(path):
-        raise LocalExeInvokedByNameError(path) from e
-    raise
-  return cmd, proc, input_bytes
+    return cmd, proc, input_bytes
+
+  # _Popen may raise FileNotFoundError, PermissionError, or OSError.
+  # The distinction is more confusing than helpful; therefore we handle them all as OSError.
+  except OSError as e:
+    _diagnose_launch_error(path, e) # Raises a more specific exception or else return.
+    raise TaskLaunchError(path) from e # Default.
 
 
-class LocalExeInvokedByNameError(Exception): pass
+def _diagnose_launch_error(path: str, e: OSError) -> None:
+  if e.filename != path: return # No further diagnosis.
+  is_installed_cmd = not _dir_name(path)
+  if is_installed_cmd:
+    if _path_exists(path): raise TaskFileInvokedAsInstalledCommand(path) from e
+    else: raise TaskInstalledCommandNotFound(path) from e
+
+  if not _path_exists(path): raise TaskFileNotFound(path) from e
+  if not _is_file(path): raise TaskNotAFile(path) from e
+  if not _is_permitted(path, X_OK): raise TaskFileNotExecutable(path) from e
+
+  bad_format = (e.strerror == 'Exec format error')
+  if bad_format and not _is_permitted(path, R_OK): raise TaskFileNotReadable(path) from e # Read bit is necessary for scripts.
+
+  if bad_format or isinstance(e, FileNotFoundError): # the 'file not found' might actually be due to mistyped hashbang, confusingly.
+    try: # Heuristic to diagnose bad hashbang lines.
+      with open(path, 'rb') as f:
+        lead_bytes = f.read(256) # Realistically a hashbang line should not be longer than this.
+        line, newline, _ = lead_bytes.partition(b'\n')
+        if line and (not newline or b'\0' in line): raise TaskFileBinaryIllFormed(path, line) from e # TODO: diagnose further?
+        if not line.startswith(b'#!'): raise TaskFileHashBangMissing(path, line) from e
+        raise TaskFileHashBangIllFormed(path, line) from e
+    except (OSError, IOError): pass # open or read failed; raise the original exception.
 
 
 def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[int, bytes, bytes]:
@@ -298,3 +313,131 @@ def runE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryI
   assert o ==  ''
   return e
 
+
+def _is_permitted(path: str, mode: int) -> bool:
+  return _access(path, mode, effective_ids=(_access in _supports_effective_ids))
+
+
+# Exceptions.
+
+
+class UnexpectedExit(Exception):
+  'Exception indicating that a subprocess exit code did not match the code expectation.'
+  def __init__(self, msg: str, cmd: Tuple[str, ...], exp: TaskCodeExpectation, act: int) -> None:
+    super().__init__(msg)
+    self.cmd = cmd
+    self.exp = exp
+    self.act = act
+
+
+class TaskLaunchError(Exception):
+  '''
+  Exception indicating that `task.launch` failed
+  `launch` attempts to diagnose failures and raises TaskLaunchError or subclass from the original.
+  '''
+
+  path: str
+
+  @property
+  def diagnosis(self) -> str: raise NotImplementedError
+
+
+class TaskFileBinaryIllFormed(TaskLaunchError):
+
+  def __init__(self, path: str, first_line: bytes) -> None:
+    super().__init__(path, first_line)
+    self.path = path
+    self.first_line = first_line
+
+  @property
+  def diagnosis(self) -> str:
+    return f'file appears to be a binary; perhaps it is corrupt or the wrong format? first line: {_try_decode_repr(self.first_line)}'
+
+
+class TaskFileInvokedAsInstalledCommand(TaskLaunchError):
+
+  def __init__(self, path: str) -> None:
+    super().__init__(path)
+    self.path = path
+
+  @property
+  def diagnosis(self) -> str: return 'file exists but invocation is missing a leading `./`.'
+
+
+class TaskFileHashBangMissing(TaskLaunchError):
+
+  def __init__(self, path: str, first_line: bytes) -> None:
+    super().__init__(path, first_line)
+    self.path = path
+    self.first_line = first_line
+
+  @property
+  def diagnosis(self) -> str:
+    return f'script is missing hashbang line (`#!...`); first line: {_try_decode_repr(self.first_line)}'
+
+
+class TaskFileHashBangIllFormed(TaskLaunchError):
+
+  def __init__(self, path: str, first_line: bytes) -> None:
+    super().__init__(path, first_line)
+    self.path = path
+    self.first_line = first_line
+
+  @property
+  def diagnosis(self) -> str:
+    return f'script hashbang line may be ill-formed; first line: {_try_decode_repr(self.first_line)}'
+
+
+class TaskFileNotExecutable(TaskLaunchError):
+
+  def __init__(self, path: str) -> None:
+    super().__init__(path)
+    self.path = path
+
+  @property
+  def diagnosis(self) -> str: return 'file is not executable.'
+
+
+class TaskFileNotFound(TaskLaunchError):
+
+  def __init__(self, path: str) -> None:
+    super().__init__(path)
+    self.path = path
+
+  @property
+  def diagnosis(self) -> str: return 'file was not found.'
+
+
+class TaskFileNotReadable(TaskLaunchError):
+
+  def __init__(self, path: str) -> None:
+    super().__init__(path)
+    self.path = path
+
+  @property
+  def diagnosis(self) -> str: return 'file is not readable.'
+
+
+class TaskInstalledCommandNotFound(TaskLaunchError):
+
+  def __init__(self, path: str) -> None:
+    super().__init__(path)
+    self.path = path
+
+  @property
+  def diagnosis(self) -> str: return 'installed command was not found.'
+
+
+class TaskNotAFile(TaskLaunchError):
+
+  def __init__(self, path: str) -> None:
+    super().__init__(path)
+    self.path = path
+
+  @property
+  def diagnosis(self) -> str: return 'invocation path refers to a non-file.'
+
+
+def _try_decode_repr(b: bytes) -> str:
+  try: return repr(b.decode())
+  except UnicodeError: return repr(b)
