@@ -15,10 +15,12 @@ from .clonefile import clone
 from .filestatus import FileStatus, Path, PathOrFd, file_status
 
 
-class NotAPathError(Exception): pass
-class PathIsNotDescendantError(Exception): pass
-class PathHasNoDirError(Exception): pass
 class MixedAbsoluteAndRelativePathsError(Exception): pass
+class NotAPathError(Exception): pass
+class PathAlreadyExists(Exception): pass
+class PathHasNoDirError(Exception): pass
+class PathIsNotDescendantError(Exception): pass
+
 
 
 # paths.
@@ -375,8 +377,6 @@ def name_has_any_ext(name: str, exts: FrozenSet[str]) -> bool:
     if name != ext and name.endswith(ext): return True
   return False
 
-
-class PathAlreadyExists(Exception): pass
 
 def open_new(path: Path, make_parent_dirs: bool=True, **open_args) -> IO[Any]:
   if path_exists(path):
