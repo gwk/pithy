@@ -387,6 +387,12 @@ def open_new(path: Path, make_parent_dirs: bool=True, **open_args) -> IO[Any]:
   return open(path, 'w', **open_args)
 
 
+def touch_path(path: Path, mode=0o666) -> None:
+  fd = _os.open(path, flags=_os.O_CREAT|_os.O_APPEND, mode=mode)
+  try: _os.utime(fd)
+  finally: _os.close(fd)
+
+
 read_link = _os.readlink
 
 
