@@ -1,12 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from os import DirEntry, PathLike, stat as _stat, stat_result as StatResult
+from os import DirEntry, stat as _stat, stat_result as StatResult
 from stat import *
 from typing import Optional, NamedTuple, Union
-
-
-Path = Union[str, PathLike]
-PathOrFd = Union[Path, int]
+from .path import Path, PathOrFd
 
 
 class FileStatus(NamedTuple):
