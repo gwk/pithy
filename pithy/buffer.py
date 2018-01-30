@@ -1,11 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from typing import Callable, Generic, Iterable, Iterator, List, TypeVar, Union
+from .default import Raise
 
 
 T = TypeVar('T')
-
-class _Sentinel: pass
 
 
 class Buffer(Iterator[T]):
@@ -45,12 +44,12 @@ class Buffer(Iterator[T]):
     self.buffer.append(item)
 
 
-  def peek(self, default: Union[T, _Sentinel]=_Sentinel()) -> T:
+  def peek(self, default: Union[T, Raise]=Raise._) -> T:
     try: return self.buffer[-1]
     except IndexError: pass
     try: el = next(self.iterator)
     except StopIteration:
-      if isinstance(default, _Sentinel): raise
+      if isinstance(default, Raise): raise
       else: return default
     self.buffer.append(el)
     return el
@@ -78,18 +77,18 @@ class Buffer(Iterator[T]):
     return els
 
 
-  def take(self, count: int, short=False, default: Union[T, _Sentinel]=_Sentinel()) -> List[T]:
+  def take(self, count: int, short=False, default: Union[T, Raise]=Raise._) -> List[T]:
     els = []
     for _ in range(count):
       try: els.append(next(self))
       except StopIteration:
         if short: break
-        if isinstance(default, _Sentinel): raise
+        if isinstance(default, Raise): raise
         els.append(default)
     return els
 
 
-  def peeks(self, count: int, short=False, default: Union[T, _Sentinel]=_Sentinel()) -> List[T]:
+  def peeks(self, count: int, short=False, default: Union[T, Raise]=Raise._) -> List[T]:
     if 0 < count <= len(self.buffer):
       return list(reversed(self.buffer[-count:]))
     els = []
@@ -97,7 +96,7 @@ class Buffer(Iterator[T]):
       try: els.append(next(self))
       except StopIteration:
         if short: break
-        if isinstance(default, _Sentinel): raise
+        if isinstance(default, Raise): raise
         els.append(default)
     self.buffer.extend(reversed(els))
     return els
