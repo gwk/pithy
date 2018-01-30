@@ -139,6 +139,8 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
     _errL(f'  returned {ret_label}: {ret!r}')
   if exc is not None: # unexpected exception.
     _errL(f'  raised exception:   {exc!r}')
+    for i, arg in enumerate(exc.args):
+      _errL(f'    exc arg {i}: {arg!r}')
     _print_exception(etype=type(exc), value=exc, tb=exc.__traceback__, file=_stderr)
   _errL()
 
