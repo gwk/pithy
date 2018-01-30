@@ -26,7 +26,7 @@ class PathIsNotDescendantError(Exception): pass
 
 # paths.
 
-def _str_for(path: Path) -> str:
+def str_path(path: Path) -> str:
   p = _os.fspath(path)
   if isinstance(p, str): return p
   assert isinstance(p, bytes)
@@ -53,21 +53,21 @@ def is_sub_path(path: Path) -> bool:
 
 def norm_path(path: Path) -> str:
   'Normalize `path` according to system convention.'
-  return _path.normpath(_str_for(path))
+  return _path.normpath(str_path(path))
 
 def rel_path(path: Path, start: Path='.') -> str:
   'Return a version of `path` relative to `start`, which defaults to the current directory.'
-  return _path.relpath(_str_for(path), _str_for(start))
+  return _path.relpath(str_path(path), str_path(start))
 
 def path_common_prefix(*paths: Path) -> str:
   'Return the common path prefix for a sequence of paths.'
-  try: return _path.commonpath([_str_for(p) for p in paths])
+  try: return _path.commonpath([str_path(p) for p in paths])
   except ValueError: # we want a more specific exception.
     raise MixedAbsoluteAndRelativePathsError(paths) from None
 
 def path_dir(path: Path) -> str:
   "Return the dir portion of `path` (possibly empty), e.g. 'dir/name'."
-  return _path.dirname(_str_for(path))
+  return _path.dirname(str_path(path))
 
 def path_dir_or_dot(path: Path) -> str:
   "Return the dir portion of a path, e.g. 'dir/name', or '.' in the case of no path."
@@ -83,11 +83,11 @@ def path_for_cmd(cmd: str) -> Optional[str]:
 
 def path_join(first: Path, *additional: Path) -> str:
   'Join the path with the system path separator.'
-  return _path.join(_str_for(first), *[_str_for(p) for p in additional])
+  return _path.join(str_path(first), *[str_path(p) for p in additional])
 
 def path_name(path: Path) -> str:
   "Return the name portion of a path (possibly including an extension); the 'basename' in Unix terminology."
-  return _path.basename(_str_for(path))
+  return _path.basename(str_path(path))
 
 def path_split(path: Path) -> List[str]:
   # TODO: rename to path_comps?
@@ -139,7 +139,7 @@ def split_stem_ext(path: Path) -> Tuple[str, str]:
   '''
   Split the path into stem (possibly spanning directories) and extension components, e.g. 'stem.ext'.
   '''
-  return _path.splitext(_str_for(path))
+  return _path.splitext(str_path(path))
 
 def append_path_stem_suffix(path: Path, suffix: str) -> str:
   'Append suffix to the path stem.'
@@ -151,7 +151,7 @@ def append_path_stem_suffix(path: Path, suffix: str) -> str:
 
 def abs_path(path: Path) -> str:
   'Return the absolute path corresponding to `path`.'
-  return _path.abspath(_str_for(path))
+  return _path.abspath(str_path(path))
 
 def abs_or_norm_path(path: Path, make_abs: bool) -> str:
   'Return the absolute path if make_abs is True. If make_abs is False, return a normalized path.'
@@ -213,7 +213,7 @@ def clone_or_symlink(src: str, dst: str, follow_symlinks=True, preserve_owner=Tr
   clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=None) # TODO
 
 
-def expand_user(path: Path) -> str: return _path.expanduser(_str_for(path))
+def expand_user(path: Path) -> str: return _path.expanduser(str_path(path))
 
 def home_dir() -> str: return _path.expanduser('~')
 
@@ -265,7 +265,7 @@ def make_link(src: Path, dst: Path, absolute=False, allow_nonexistent=False, mak
 
 def path_exists(path: Path) -> bool: return _path.exists(path)
 
-def real_path(path: Path) -> str: return _path.realpath(_str_for(path))
+def real_path(path: Path) -> str: return _path.realpath(str_path(path))
 
 def remove_file(path: Path) -> None: _os.remove(path)
 
@@ -484,7 +484,7 @@ def path_descendants(start_path: Path, end_path: Path, include_start=True, inclu
   if not comps: raise NotAPathError(end_path)
   if prefix == comps:
     if include_start or include_end:
-      return (_str_for(start_path),)
+      return (str_path(start_path),)
     return ()
   if prefix != comps[:len(prefix)]:
     raise PathIsNotDescendantError(end_path, start_path)
