@@ -8,6 +8,7 @@ import stat as _stat
 import time as _time
 
 from itertools import zip_longest as _zip_longest
+from os import DirEntry
 from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
 from typing.re import Pattern # type: ignore
 
@@ -230,13 +231,20 @@ def link_exists(path: Path) -> bool: return _path.lexists(path)
 def list_dir(path: PathOrFd, exts: Iterable[str]=(), hidden=False) -> List[str]:
   exts = normalize_exts(exts)
   names = sorted(_os.listdir(path)) # type: ignore # https://github.com/python/typeshed/issues/1653
-  #^ Sort became necessary at some point, presumably for APFS.
+  #^ Sort is necessary for some file systems, e.g. APFS.
   if not exts and hidden: return names # no filtering necessary.
   return [n for n in names if name_has_any_ext(n, exts) and (hidden or not n.startswith('.'))]
 
 
 def list_dir_paths(path: Path, exts: Iterable[str]=(), hidden=False) -> List[str]:
   return [path_join(path, name) for name in list_dir(path, exts=exts, hidden=hidden)]
+
+
+def scan_dir(path: Path, exts: Iterable[str]=(), hidden=False) -> List[DirEntry]:
+  exts = normalize_exts(exts)
+  entries = sorted(_os.scandir(path), key=lambda e: e.name)
+  if not exts and hidden: return entries
+  return [e for e in entries if name_has_any_ext(e.name, exts) and (hidden or not e.name.startswith('.'))]
 
 
 def make_dir(path: Path) -> None: return _os.mkdir(path)
