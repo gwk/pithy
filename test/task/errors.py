@@ -10,30 +10,44 @@ utest_exc(TaskInstalledCommandNotFound('nonexistent'), run, 'nonexistent')
 
 utest_exc(TaskFileNotFound('./nonexistent'), run, './nonexistent')
 
-with open('empty.txt', 'w'): pass
-
-utest_exc(TaskFileInvokedAsInstalledCommand('empty.txt'), run, 'empty.txt')
 
 make_dir('dir')
+make_link(src='dir', dst='dir.link')
 utest_exc(TaskNotAFile('./dir'), run, './dir')
+utest_exc(TaskNotAFile('./dir.link'), run, './dir.link')
 
-utest_exc(TaskFileNotExecutable('./empty.txt'), run, './empty.txt')
 
-chmod('./empty.txt', 0o100)
-utest_exc(TaskFileNotReadable('./empty.txt'), run, './empty.txt')
+touch_path('empty.py')
+make_link('empty.py', 'empty.link')
 
-chmod('./empty.txt', 0o700)
-utest_exc(TaskFileHashBangMissing('./empty.txt', b''), run, './empty.txt')
+utest_exc(TaskFileInvokedAsInstalledCommand('empty.py'), run, 'empty.py')
+utest_exc(TaskFileInvokedAsInstalledCommand('empty.link'), run, 'empty.link')
 
-with open('./hashbang-missing.py', 'w') as f:
+utest_exc(TaskFileNotExecutable('./empty.py'), run, './empty.py')
+utest_exc(TaskFileNotExecutable('./empty.link'), run, './empty.link')
+
+chmod('empty.py', 0o100)
+utest_exc(TaskFileNotReadable('./empty.py'), run, './empty.py')
+utest_exc(TaskFileNotReadable('./empty.link'), run, './empty.link')
+
+# TODO: test effect of changing permissions on link.
+
+chmod('empty.py', 0o700)
+utest_exc(TaskFileHashBangMissing('./empty.py', b''), run, './empty.py')
+utest_exc(TaskFileHashBangMissing('./empty.link', b''), run, './empty.link')
+
+with open('hashbang-missing.py', 'w') as f:
   f.write('xyz\n')
-chmod('./hashbang-missing.py', 0o700)
+make_link('hashbang-missing.py', 'hashbang-missing.link')
+chmod('hashbang-missing.py', 0o700)
 
 utest_exc(TaskFileHashBangMissing('./hashbang-missing.py', b'xyz'), run, './hashbang-missing.py')
+utest_exc(TaskFileHashBangMissing('./hashbang-missing.link', b'xyz'), run, './hashbang-missing.link')
 
 with open('./hashbang-ill-formed.py', 'w') as f:
   f.write('#!xyz\n')
 chmod('./hashbang-ill-formed.py', 0o700)
+make_link('hashbang-ill-formed.py', 'hashbang-ill-formed.link')
 
-assert is_file('./hashbang-ill-formed.py')
 utest_exc(TaskFileHashBangIllFormed('./hashbang-ill-formed.py', b'#!xyz'), run, './hashbang-ill-formed.py')
+utest_exc(TaskFileHashBangIllFormed('./hashbang-ill-formed.link', b'#!xyz'), run, './hashbang-ill-formed.link')
