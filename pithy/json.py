@@ -47,11 +47,11 @@ def write_json(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_def
 
 def err_json(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   'Write items as json to std err.'
-  write_json(stderr, *items, default=default, sort=sort, indent=indent, **kwargs)
+  write_json(stderr, *items, default=default, sort=sort, indent=indent, end=end, flush=flush, **kwargs)
 
 
 def out_json(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
-  write_json(stdout, *items, default=default, sort=sort, indent=indent, **kwargs)
+  write_json(stdout, *items, default=default, sort=sort, indent=indent, end=end, flush=flush, **kwargs)
 
 
 def write_jsonl(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
@@ -59,8 +59,7 @@ def write_jsonl(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_de
   for item in items:
     _json.dump(item, file, indent=None, default=default, sort_keys=sort, **kwargs)
     file.write('\n')
-  if flush:
-    file.flush()
+    if flush: file.flush()
 
 
 def err_jsonl(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
