@@ -128,6 +128,16 @@ def load_json(file: TextIO, types: Sequence[type]=()) -> Any:
   return _json.load(file, object_hook=_mk_hook(types))
 
 
+def parse_jsonl(string: str, types: Sequence[type]=()) -> Iterable[Any]:
+  hook = _mk_hook(types)
+  return (_json.loads(line, object_hook=hook) for line in string.splitlines())
+
+
+def load_jsonl(stream: Iterable[str], types: Sequence[type]=()) -> Iterable[Any]:
+  hook = _mk_hook(types)
+  return (_json.loads(line, object_hook=hook) for line in stream)
+
+
 def parse_jsons(string: str, types: Sequence[type]=()) -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
@@ -152,13 +162,3 @@ def load_jsons(file: TextIO, types: Sequence[type]=()) -> Iterable[Any]:
   # identify object boundaries and create substrings to pass to the decoder.
   # For now just read the whole thing at once.
   return parse_jsons(file.read(), types=types)
-
-
-def parse_jsonl(string: str, types: Sequence[type]=()) -> Iterable[Any]:
-  hook = _mk_hook(types)
-  return (_json.loads(line, object_hook=hook) for line in string.splitlines())
-
-
-def load_jsonl(stream: Iterable[str], types: Sequence[type]=()) -> Iterable[Any]:
-  hook = _mk_hook(types)
-  return (_json.loads(line, object_hook=hook) for line in stream)
