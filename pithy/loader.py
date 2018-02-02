@@ -142,6 +142,12 @@ def load_pyl(file: IO, **kwargs) -> Any:
   return literal_eval(file.read())
 
 
+def load_sqlite(file: IO, **kwargs) -> Any:
+  from pithy.sqlite import Connection
+  path = file.name # TODO: Figure out if this is sufficient.
+  return Connection(f'file:{path}?mode=ro', uri=True, **kwargs) # type: ignore # Open in read-only mode.
+
+
 def load_txt(f: TextIO, clip_ends=False) -> Iterable[str]:
   if clip_ends: return (line.rstrip('\n\r') for line in f)
   return f
@@ -171,16 +177,18 @@ def load_xz(f: BinaryIO, sub_ext=None, **kwargs:Any) -> Any:
 
 
 
-add_loader('.css',    load_txt,     _dflt=True, mode='r')
-add_loader('.csv',    load_csv,     _dflt=True, mode='r', newline='') # newline specified as per footnote in csv module.
-add_loader('.gz',     load_gz,      _dflt=True, mode='rb')
-add_loader('.json',   load_json,    _dflt=True, mode='r')
-add_loader('.jsonl',  load_jsonl,   _dflt=True, mode='r')
-add_loader('.jsons',  load_jsons,   _dflt=True, mode='r')
-add_loader('.pyl',    load_pyl,     _dflt=True, mode='r')
-add_loader('.tar',    load_archive, _dflt=True, mode='rb')
-add_loader('.txt',    load_txt,     _dflt=True, mode='r')
-add_loader('.xls',    load_xls,     _dflt=True, mode='rb')
-add_loader('.xz',     load_xz,      _dflt=True, mode='rb')
-add_loader('.zip',    load_archive, _dflt=True, mode='rb')
+add_loader('.css',      load_txt,     _dflt=True, mode='r')
+add_loader('.csv',      load_csv,     _dflt=True, mode='r', newline='') # newline specified as per footnote in csv module.
+add_loader('.gz',       load_gz,      _dflt=True, mode='rb')
+add_loader('.json',     load_json,    _dflt=True, mode='r')
+add_loader('.jsonl',    load_jsonl,   _dflt=True, mode='r')
+add_loader('.jsons',    load_jsons,   _dflt=True, mode='r')
+add_loader('.pyl',      load_pyl,     _dflt=True, mode='r')
+add_loader('.sqlite',   load_sqlite,  _dflt=True, mode='rb')
+add_loader('.sqlite3',  load_sqlite,  _dflt=True, mode='rb')
+add_loader('.tar',      load_archive, _dflt=True, mode='rb')
+add_loader('.txt',      load_txt,     _dflt=True, mode='r')
+add_loader('.xls',      load_xls,     _dflt=True, mode='rb')
+add_loader('.xz',       load_xz,      _dflt=True, mode='rb')
+add_loader('.zip',      load_archive, _dflt=True, mode='rb')
 
