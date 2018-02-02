@@ -20,10 +20,10 @@ f(0, 2)
 utest_val([(0, 1), (0, 2)], f_args, desc='@memoize call history')
 
 
-def test_memo_sentinal_usage_exc():
+def test_memo_sentinel_usage_exc():
   @memoize #!cov-ignore.
   def f(): pass #!cov-ignore.
 
 
-utest_exc(ValueError('sentinal is callable, but should be a simple marker value; did you mean `@memoize()`?'),
-  test_memo_sentinal_usage_exc)
+utest_exc(ValueError('sentinel is callable, but should be a simple marker value; did you mean `@memoize()`?'),
+  test_memo_sentinel_usage_exc)

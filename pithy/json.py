@@ -6,7 +6,15 @@ import json as _json
 from json.decoder import JSONDecodeError
 from datetime import datetime
 from sys import stderr, stdout
-from typing import Any, Callable, Dict, Iterable, Hashable, List, Optional, Sequence, TextIO, Union
+from typing import Any, Callable, Dict, FrozenSet, Iterable, Hashable, List, Optional, Sequence, TextIO, Union
+from .util import all_slots
+
+try:
+  from dataclasses import asdict, dataclass, fields, is_dataclass # type: ignore
+except ImportError: # Continue to support python3.6.
+  def asdict(obj: Any) -> dict: raise TypeError('dataclasses are not available in this version of Python')
+  def fields(obj: Any) -> tuple: raise TypeError('dataclasses are not available in this version of Python')
+  def is_dataclass(obj: Any) -> bool: return False
 
 
 JsonAny = Any # TODO: remove this once recursive types work.
@@ -20,29 +28,39 @@ JsonDefaulter = Callable[[Any], Any]
 
 
 def json_encode_default(obj: Any) -> Any:
-  try: return list(obj) # try to convert sequences first.
+  '''
+  Note: it is not possible to encode namedtuple as dict using a `default` function such as this,
+  because the namedtuple gets converted to a list without ever calling `default`.
+  '''
+  try: it = iter(obj) # Try to convert to a sequence first.
   except TypeError: pass
+  else: return list(it)
+
+  if is_dataclass(obj): return asdict(obj)
+
+  if hasattr(obj, '__slots__'):
+    slots = all_slots(type(obj))
+    slots = slots.union(getattr(obj, '__dict__', ())) # Slots classes may also have backing dicts.
+    return {a: getattr(obj, a) for a in slots}
+
+  try: d = obj.__dict__ # Treat other classes as dicts by default.
+  except AttributeError: pass
+  else: return {k:v for k,v in d.items() if not k.startswith('_')}
+
   return str(obj) # convert to string as last resort.
 
 
-def json_encode_with_asdict(obj: Any) -> Any:
-  '''
-  JsonEncoder default function that first tries to invoke the `_asdict` method on `obj`.
-  This is supported by namedtuple, NamedTuple, and pithy.immutbale.Immutable.
-  '''
-  try: return obj._asdict()
-  except AttributeError: pass
-  return json_encode_default(obj)
+def render_json(item: Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, **kwargs) -> str:
+  'Render `item` as a json string.'
+  return _json.dumps(item, indent=indent, default=default, sort_keys=sort, **kwargs)
 
 
 def write_json(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   'Write each item in `items` as json to file.'
   for item in items:
     _json.dump(item, file, indent=indent, default=default, sort_keys=sort, **kwargs)
-    if end:
-      file.write(end)
-  if flush:
-    file.flush()
+    if end: file.write(end)
+    if flush: file.flush()
 
 
 def err_json(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
@@ -75,15 +93,25 @@ def out_jsonl(*items: Any, default: JsonDefaulter=json_encode_default, sort=True
 # input.
 
 
+def _hook_type_keys(type) -> FrozenSet[str]:
+  if is_dataclass(type): return frozenset(f.name for f in fields(type))
+
+  try: return frozenset(type._fields) # namedtuple or similar.
+  except AttributeError: pass
+
+  slots = all_slots(type)
+  if slots: return frozenset(slots)
+  else: raise TypeError(f'JSON decode type must be either a dataclass, namedtuple, or define `__slots__`: {type}')
+
+
 def _mk_hook(types: Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
   '''
   Provide a hook function that creates custom objects from json.
-  `types` is a sequence of type objects, each of which must have a `_fields` property.
-  NamedTuple instances are compatible.
+  `types` is a sequence of type objects, each of which must be a dataclass or NamedTuple.
   '''
   if not types: return None
 
-  type_map = { frozenset(t._fields) : t for t in types }
+  type_map = { _hook_type_keys(t) : t for t in types }
   if len(type_map) < len(types):
     # TODO: find all offending pairs.
     raise ValueError('provided record types are ambiguous (identical field name sets).')
@@ -141,9 +169,7 @@ def parse_jsons(string: str, types: Sequence[type]=()) -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
   If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
-  based on field name sets.
-  The sets of field names must be unambiguous for all provided record types.
+  then an object hook is passed to the decoder transforms JSON objects into matching dataclass types.
   '''
   decoder = _mk_decoder(types)
   idx = _ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.

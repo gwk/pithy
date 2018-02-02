@@ -1,28 +1,31 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from typing import Callable, FrozenSet, Iterable, Set, Type, cast
 
-def memoize(sentinal=Ellipsis):
+
+def memoize(sentinel=Ellipsis) -> Callable:
   '''
   recursive function memoization decorator.
   results will be memoized by a key that is the tuple of all arguments.
-  the sentinal is inserted into the dictionary before the call.
-  thus, if the function recurses with identical arguments the sentinal will be returned to the inner calls.
+  the sentinel is inserted into the dictionary before the call.
+  thus, if the function recurses with identical arguments the sentinel will be returned to the inner calls.
   '''
-  if callable(sentinal):
-    raise ValueError('sentinal is callable, but should be a simple marker value; did you mean `@memoize()`?')
+  if callable(sentinel):
+    raise ValueError('sentinel is callable, but should be a simple marker value; did you mean `@memoize()`?')
 
   def _memoize(fn):
 
-    class MemoDictRec(dict):
+    class MemoDict(dict):
+      def __repr__(self) -> str: return f'@memoize({sentinel}){fn}'
       def __call__(self, *args):
         return self[args]
       def __missing__(self, args):
-        self[args] = sentinal
+        self[args] = sentinel
         res = fn(*args)
         self[args] = res
         return res
 
-    return MemoDictRec()
+    return MemoDict()
 
   return _memoize
 
@@ -36,3 +39,22 @@ class lazy_property(object):
     val = self.acc_fn(obj)
     setattr(obj, self.acc_fn.__name__, val)
     return val
+
+
+@memoize()
+def all_slots(type: Type) -> FrozenSet[str]:
+  '''
+  Subclasses of slots classes may define their own slots,
+  which hold just the additions to the parent class.
+  Therefore we need to iterate over the inheritance chain to get all slot names.
+  We use __mro__ here, and hope for the best regarding multiple inheritance.
+  '''
+  slots: Set[str] = set()
+  for t in type.__mro__:
+    try: s = t.__slots__
+    except AttributeError: break
+    else:
+      if isinstance(s, str): slots.add(s) # single slot.
+      else:
+        slots.update(cast(Iterable[str], s)) # mypy bug: __slots__ cannot be None.
+  return frozenset(slots)
