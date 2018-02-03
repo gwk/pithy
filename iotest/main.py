@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import argparse
@@ -907,5 +906,3 @@ file_expectation_fns = {
 
 
 def shell_cmd_str(cmd): return ' '.join(shlex.quote(word) for word in cmd)
-
-if __name__ == '__main__': main()

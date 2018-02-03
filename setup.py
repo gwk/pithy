@@ -13,13 +13,10 @@ setup(
   url='https://github.com/gwk/' + name,
   description='iotest is a small tool for testing programs based on input and output.',
   long_description=open('readme.wu').read(),
-  py_modules=[name],
+  packages=[name],
   entry_points = {'console_scripts': [
-    'iotest=iotest:main'
+    'iotest=iotest.main:main'
   ]},
-  install_requires=[
-    'pithy'
-  ],
   keywords=[
     'testing'
   ],

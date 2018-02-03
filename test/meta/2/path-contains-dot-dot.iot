@@ -1,4 +1,4 @@
 {
-  'cmd': '$PROJ/iotest.py ..',
+  'cmd': '$PROJ/iotest/__main__.py ..',
   'err_val': "iotest error: argument path cannot contain '..': '..'.\n"
 }

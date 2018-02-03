@@ -1,4 +1,4 @@
 {
-  'cmd': '$PROJ/iotest.py -build-dir _b -no-times test-meta/1/$NAME.iot',
+  'cmd': '$PROJ/iotest/__main__.py -build-dir _b -no-times test-meta/1/$NAME.iot',
   'links' : {'test-meta'},
 }

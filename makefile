@@ -29,4 +29,4 @@ pypi-upload:
 	python3 setup.py sdist upload
 
 test:
-	./iotest.py -fail-fast
+	./iotest/__main__.py -fail-fast

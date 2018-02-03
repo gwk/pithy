@@ -1,4 +1,4 @@
 {
-  'cmd': '$PROJ/iotest.py nonexistant.iot',
+  'cmd': '$PROJ/iotest/__main__.py nonexistant.iot',
   'err_val': "iotest error: argument path does not match any files: './nonexistant'.\n"
 }

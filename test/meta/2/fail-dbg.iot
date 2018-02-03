@@ -1,5 +1,5 @@
 {
-  'cmd': '$PROJ/iotest.py -build-dir _b -no-times test-meta/2/$NAME.iot -dbg',
+  'cmd': '$PROJ/iotest/__main__.py -build-dir _b -no-times test-meta/2/$NAME.iot -dbg',
   'code': 1,
   'links': {'test-meta'},
   'err-mode': 'ignore',
