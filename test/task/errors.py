@@ -12,13 +12,13 @@ utest_exc(TaskFileNotFound('./nonexistent'), run, './nonexistent')
 
 
 make_dir('dir')
-make_link(src='dir', dst='dir.link')
+make_link(orig='dir', link='dir.link')
 utest_exc(TaskNotAFile('./dir'), run, './dir')
 utest_exc(TaskNotAFile('./dir.link'), run, './dir.link')
 
 
 touch_path('empty.py')
-make_link('empty.py', 'empty.link')
+make_link(orig='empty.py', link='empty.link')
 
 utest_exc(TaskFileInvokedAsInstalledCommand('empty.py'), run, 'empty.py')
 utest_exc(TaskFileInvokedAsInstalledCommand('empty.link'), run, 'empty.link')
