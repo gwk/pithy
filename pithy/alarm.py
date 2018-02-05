@@ -20,13 +20,13 @@ class AlarmManager(ContextManager):
     self.timed_out = False
 
 
-  def __enter__(self):
+  def __enter__(self) -> None:
     if not self.timeout: return
     prev = signal.getsignal(signal.SIGALRM)
     if prev is not signal.SIG_DFL:
       raise Exception(f'task.run encountered previously installed signal handler: {prev}')
 
-    def alarm_handler(signum, current_stack_frame):
+    def alarm_handler(signum, current_stack_frame) -> None:
       # since signal handlers carry reentrancy concerns; do not do any IO within the handler.
       self.timed_out = True
       if self.on_signal: self.on_signal() # callback must respect reentrancy limitations.
