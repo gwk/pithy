@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from typing import Callable, Generic, Iterable, Iterator, List, TypeVar, Union
-from .default import Raise
+from .default import Raise, RaiseOr
 
 
 T = TypeVar('T')
@@ -44,7 +44,7 @@ class Buffer(Iterator[T]):
     self.buffer.append(item)
 
 
-  def peek(self, default: Union[T, Raise]=Raise._) -> T:
+  def peek(self, default: RaiseOr[T]=Raise._) -> T:
     try: return self.buffer[-1]
     except IndexError: pass
     try: el = next(self.iterator)
@@ -77,7 +77,7 @@ class Buffer(Iterator[T]):
     return els
 
 
-  def take(self, count: int, short=False, default: Union[T, Raise]=Raise._) -> List[T]:
+  def take(self, count: int, short=False, default: RaiseOr[T]=Raise._) -> List[T]:
     els = []
     for _ in range(count):
       try: els.append(next(self))
@@ -88,7 +88,7 @@ class Buffer(Iterator[T]):
     return els
 
 
-  def peeks(self, count: int, short=False, default: Union[T, Raise]=Raise._) -> List[T]:
+  def peeks(self, count: int, short=False, default: RaiseOr[T]=Raise._) -> List[T]:
     if 0 < count <= len(self.buffer):
       return list(reversed(self.buffer[-count:]))
     els = []

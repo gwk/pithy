@@ -1,6 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from enum import Enum
+from typing import TypeVar, Union
+
+
+T = TypeVar('T')
 
 
 class Default(Enum):
@@ -20,3 +24,6 @@ class Raise(Enum):
   but suggests that the default behavior is to raise an exception.
   '''
   _ = 0
+
+
+RaiseOr = Union[Raise, T]
