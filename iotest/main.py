@@ -10,9 +10,9 @@ import time
 from itertools import zip_longest
 from string import Template
 from sys import stdout, stderr
+from typing import *
 
 from .pithy.ansi import RST_OUT, TXT_B_OUT, TXT_D_OUT, TXT_R_OUT
-from .pithy.immutable import Immutable
 from .pithy.io import errL, errSL, outL, outSL, outZ, read_from_path, read_line_from_path, write_to_path, writeLSSL
 from .pithy.string import string_contains
 from .pithy.format import FormatError, format_to_re
@@ -21,12 +21,13 @@ from .pithy.iterable import fan_by_key_fn, fan_by_pred
 from .pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
 from .pithy.types import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
+
 bar_width = 64
 dflt_build_dir = '_build'
 dflt_timeout = 4
 coverage_name = '_.coven'
 
-def main():
+def main() -> None:
   start_time = time.time()
   arg_parser = argparse.ArgumentParser(description='iotest: a simple file-based test harness.')
   arg_parser.add_argument('-build-dir')
@@ -51,15 +52,15 @@ def main():
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
 
   if args.dbg:
-    def fail_fast(e=None):
+    def fail_fast(e:Exception=None) -> None:
       errL('\nfail_fast:')
       raise Exception('iotest: stopping after error (-dbg).') from e
   elif args.fail_fast:
-    def fail_fast(e=None): exit('iotest: stopping after error (-fail-fast).')
+    def fail_fast(e:Exception=None) -> None: exit('iotest: stopping after error (-fail-fast).')
   else:
-    def fail_fast(e=None): pass
+    def fail_fast(e:Exception=None) -> None: pass
 
-  ctx = Immutable(
+  ctx = Ctx(
     build_dir=build_dir,
     coverage=args.coverage,
     dbg=args.dbg,
@@ -67,11 +68,9 @@ def main():
     parse_only=args.parse_only,
     proj_dir=proj_dir,
     show_times=(not args.no_times),
-    top_paths=args.paths,
-    coverage_cases=[],
-  )
+    top_paths=tuple(args.paths))
 
-  cases_dict = {} # keyed by actual path stem, as opposed to logical contraction of 'd/_' to 'd'.
+  cases_dict: Dict[str, Case] = {} # keyed by actual path stem, as opposed to logical contraction of 'd/_' to 'd'.
 
   for raw_path in ctx.top_paths:
     path = norm_path(raw_path)
@@ -91,7 +90,7 @@ def main():
 
   cases = sorted(cases_dict.values())
   # check that there are no overlapping logical stems.
-  logical_stems = set()
+  logical_stems: Set[str] = set()
   for case in cases:
     if case.stem in logical_stems:
       exit(f'iotest error: repeated logical stem: {case.stem}')
@@ -140,7 +139,19 @@ def main():
     exit(code)
 
 
-def collect_proto(ctx, end_dir_path):
+class Ctx(NamedTuple):
+  build_dir: str
+  coverage: bool
+  dbg: bool
+  fail_fast: Callable[..., None]
+  parse_only: bool
+  proj_dir: str
+  show_times: bool
+  top_paths: Tuple[str, ...]
+  coverage_cases: List['Case'] = []
+
+
+def collect_proto(ctx: Ctx, end_dir_path: str) -> Optional['Case']:
   '''
   Assemble the prototype test case information from files named `_default.*`,
   starting at the project root and traversing successive child directories up to `end_dir_path`.
@@ -153,21 +164,20 @@ def collect_proto(ctx, end_dir_path):
   return proto
 
 
-def collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix):
+def collect_cases(ctx:Ctx, cases_dict:Dict[str, 'Case'], proto: Optional['Case'], dir_path: str, specified_name_prefix: Optional[str]) -> None:
   '''
   Recursively find all test cases within the directory tree rooted at `dir_path`,
   and collect them into `cases_dict`.
   '''
-  collect_dirs = (specified_name_prefix is None)
   sub_dirs = []
   file_paths = []
   names = list_dir(dir_path)
-  trivial = []
+  trivial: List[str] = []
   for name in names:
     if name.startswith('.'): # ignore hidden files.
       continue
     path = path_join(dir_path, name)
-    if collect_dirs:
+    if specified_name_prefix is None: # collect dirs.
       if is_dir(path):
         sub_dirs.append(path + '/')
       else:
@@ -179,7 +189,7 @@ def collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix):
       if stem == '_default' or stem.startswith(specified_name_prefix):
         file_paths.append(path)
   default = create_cases(ctx, cases_dict, proto, dir_path, file_paths)
-  if collect_dirs:
+  if specified_name_prefix is None: # collect dirs.
     for sub_dir in sub_dirs:
       collect_cases(ctx, cases_dict, default, sub_dir, None)
   elif file_paths == trivial:
@@ -187,23 +197,23 @@ def collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix):
     exit(f'iotest error: argument path does not match any files: {p!r}.')
 
 
-def create_proto_case(ctx, proto, stem, file_paths):
+def create_proto_case(ctx:Ctx, proto: Optional['Case'], stem: str, file_paths: List[str]) -> Optional['Case']:
   if not file_paths:
     return proto
-  default = Case(ctx, proto, stem, file_paths, wild_paths_to_re=[], wild_paths_used=set())
+  default = Case(ctx, proto, stem, file_paths, wild_paths_to_re={}, wild_paths_used=set())
   if default.broken: ctx.fail_fast()
   return default
 
 
-def create_cases(ctx, cases_dict, parent_proto, dir_path, file_paths):
+def create_cases(ctx:Ctx, cases_dict:Dict[str, 'Case'], parent_proto: Optional['Case'], dir_path: str, file_paths: List[str]) -> Optional['Case']:
   # wild paths are those whose name contain a '{', which are interpreted as python format strings.
   regular_paths, wild_paths = fan_by_pred(file_paths, pred=lambda p: '{' in p)
-  wild_paths_to_re = dict(filter(None, map(compile_wild_path_re, wild_paths)))
-  wild_paths_used = set()
+  wild_paths_to_re: Dict[str, Pattern[str]] = dict(filter(None, map(compile_wild_path_re, wild_paths)))
+  wild_paths_used: Set[str] = set()
   groups = fan_by_key_fn(regular_paths, key=path_stem)
   # default.
   default_stem = dir_path + '_default'
-  proto = create_proto_case(ctx, parent_proto, default_stem, groups.get(default_stem))
+  proto = create_proto_case(ctx, parent_proto, default_stem, groups.get(default_stem, []))
   # cases.
   for (stem, paths) in sorted(p for p in groups.items() if p[0] is not None):
     if stem in cases_dict:
@@ -220,7 +230,7 @@ def create_cases(ctx, cases_dict, parent_proto, dir_path, file_paths):
   return proto
 
 
-def compile_wild_path_re(path):
+def compile_wild_path_re(path: str) -> Optional[Tuple[str, Pattern[str]]]:
   try: return (path, format_to_re(path_stem(path)))
   except FormatError as e:
     outL(f'iotest WARNING: invalid format path will be ignored: {path}')
@@ -230,17 +240,17 @@ def compile_wild_path_re(path):
 
 implied_case_exts = ('.iot', '.out', '.err')
 
-def is_case_implied(paths):
+def is_case_implied(paths: Iterable[str]) -> bool:
   'one of the standard test file extensions must be present to imply a test case.'
   for p in paths:
     if path_ext(p) in implied_case_exts: return True
   return False
 
 
-def report_coverage(ctx):
+def report_coverage(ctx: Ctx) -> None:
   if not ctx.coverage_cases:
     exit('No coverage generated by tests.')
-  def cov_path(case):
+  def cov_path(case: 'Case') -> str:
     return path_rel_to_current_or_abs(path_join(case.test_dir, case.coverage_path))
   cmd = ['coven', '-coalesce'] + [cov_path(case) for case in ctx.coverage_cases]
   outL()
@@ -257,47 +267,48 @@ class IotParseError(TestCaseError): pass
 class Case:
   'Case represents a single test case, or a default.'
 
-  def __init__(self, ctx, proto, stem, file_paths, wild_paths_to_re, wild_paths_used):
-    self.stem = path_dir(stem) if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
-    self.name = path_name(self.stem)
+  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, file_paths: List[str], wild_paths_to_re: Dict[str, Pattern[str]],
+   wild_paths_used: Set[str]) -> None:
+    self.stem: str = path_dir(stem) if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
+    self.name: str = path_name(self.stem)
     # derived properties.
-    self.test_info_exts = set()
-    self.test_info_paths = [] # the files that comprise the test case.
-    self.dflt_src_paths = []
-    self.broken = proto.broken if (proto is not None) else False
-    self.coverage_targets = None
-    self.test_dir = None
-    self.test_cmd = None
-    self.test_env = None
-    self.test_in = None
-    self.test_expectations = None
-    self.test_links = None # sequence of (orig-name, link-name) pairs.
-    self.test_wild_args = {} # the match groups that resulted from applying the regex.
+    self.test_info_exts: Set[str] = set()
+    self.test_info_paths: List[str] = [] # the files that comprise the test case.
+    self.dflt_src_paths: List[str] = []
+    self.broken: bool = proto.broken if (proto is not None) else False
+    self.coverage_targets: List[str] = []
+    self.test_dir: str = ''
+    self.test_cmd: List[str] = []
+    self.test_env: Dict[str, str] = {}
+    self.test_in: Optional[str] = None
+    self.test_expectations: List[FileExpectation] = []
+    self.test_links: List[Tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
+    self.test_wild_args: Dict[str, Tuple[str, ...]] = {} # the match groups that resulted from applying the regex.
     # configurable properties.
-    self.args = None # arguments to follow the file under test.
-    self.cmd = None # command string/list with which to invoke the test.
-    self.coverage = None # list of string/list of names to include in code coverage analysis.
-    self.code = None # the expected exit code.
-    self.compile = None # the optional list of compile commands, each a string or list of strings.
-    self.compile_timeout = None
-    self.desc = None # description.
-    self.env = None # environment variables.
-    self.err_mode = None # comparison mode for stderr expectation.
-    self.err_path = None # file path for stderr expectation.
-    self.err_val = None # stderr expectation value (mutually exclusive with err_path).
-    self.files = None # additional file expectations.
-    self.in_ = None # stdin as text.
-    self.interpreter = None # interpreter to prepend to cmd.
-    self.interpreter_args = None # interpreter args.
-    self.lead = None # specifies a 'lead' test; allows multiple tests to be run over same directory contents.
-    self.links = None # symlinks to be made into the test directory; written as a str, set or dict.
-    self.out_mode = None # comparison mode for stdout expectation.
-    self.out_path = None # file path for stdout expectation.
-    self.out_val = None # stdout expectation value (mutually exclusive with out_path).
-    self.skip = None
-    self.timeout = None
+    self.args: Optional[List[str]] = None # arguments to follow the file under test.
+    self.cmd: Optional[List[str]] = None # command string/list with which to invoke the test.
+    self.coverage: Optional[List[str]] = None # list of names to include in code coverage analysis.
+    self.code: Optional[int] = None # the expected exit code.
+    self.compile: Optional[List[Any]] = None # the optional list of compile commands, each a string or list of strings.
+    self.compile_timeout: Optional[int] = None
+    self.desc: Optional[str] = None # description.
+    self.env: Optional[Dict[str, str]] = None # environment variables.
+    self.err_mode: Optional[str] = None # comparison mode for stderr expectation.
+    self.err_path: Optional[str] = None # file path for stderr expectation.
+    self.err_val: Optional[str] = None # stderr expectation value (mutually exclusive with err_path).
+    self.files: Optional[Dict[str, Dict[str, str]]] = None # additional file expectations.
+    self.in_: Optional[str] = None # stdin as text.
+    self.interpreter: Optional[str] = None # interpreter to prepend to cmd.
+    self.interpreter_args: Optional[List[str]] = None # interpreter args.
+    self.lead: Optional[str] = None # specifies a 'lead' test; allows multiple tests to be run over same directory contents.
+    self.links: Union[None, Set[str], Dict[str, str]] = None # symlinks to be made into the test directory; written as a str, set or dict.
+    self.out_mode: Optional[str] = None # comparison mode for stdout expectation.
+    self.out_path: Optional[str] = None # file path for stdout expectation.
+    self.out_val: Optional[str] = None # stdout expectation value (mutually exclusive with out_path).
+    self.skip: Optional[str] = None
+    self.timeout: Optional[int] = None
 
-    def sorted_iot_first(paths):
+    def sorted_iot_first(paths: Iterable[str]) -> List[str]:
       # Ensure that .iot files get added first, for clarity when conflicts arise.
       return sorted(paths, key=lambda p: '' if p.endswith('.iot') else p)
 
@@ -334,20 +345,20 @@ class Case:
       ctx.fail_fast(e)
       self.broken = True
 
-  def __repr__(self): return f'Case(stem={self.stem!r}, ...)'
+  def __repr__(self) -> str: return f'Case(stem={self.stem!r}, ...)'
 
-  def __lt__(self, other): return self.stem < other.stem
-
-  @property
-  def is_lead(self): return self.lead is None or self.lead == self.stem
+  def __lt__(self, other: 'Case') -> bool: return self.stem < other.stem
 
   @property
-  def coverage_path(self):
+  def is_lead(self) -> bool: return self.lead is None or self.lead == self.stem
+
+  @property
+  def coverage_path(self) -> str:
     'Returned path is relative to self.test_dir.'
     return self.std_name(coverage_name)
 
   @property
-  def coven_cmd_prefix(self):
+  def coven_cmd_prefix(self) -> List[str]:
     coven_cmd = ['coven', '-output', self.coverage_path]
     if self.coverage_targets:
       coven_cmd += ['-targets'] + self.coverage_targets
@@ -356,8 +367,8 @@ class Case:
 
   def std_name(self, std: str) -> str: return f'{self.name}.{std}'
 
-  def describe(self, file):
-    def stable_repr(val):
+  def describe(self, file) -> None:
+    def stable_repr(val) -> str:
       if is_dict(val):
         return '{{{}}}'.format(', '.join('{!r}:{!r}'.format(*p) for p in sorted(val.items())))
       return repr(val)
@@ -366,7 +377,7 @@ class Case:
     writeLSSL(file, 'Case:', *('{}: {}'.format(k, stable_repr(v)) for k, v in items))
 
 
-  def add_file(self, ctx, path):
+  def add_file(self, ctx:Ctx, path: str) -> None:
     ext = path_ext(path)
     if ext == '.iot':   self.add_iot_file(ctx, path)
     elif ext == '.in':  self.add_std_file(ctx, path, 'in_')
@@ -379,12 +390,12 @@ class Case:
     self.test_info_exts.add(ext)
 
 
-  def add_std_file(self, ctx, path, key):
+  def add_std_file(self, ctx:Ctx, path: str, key: str) -> None:
     text = read_from_path(path)
     self.add_val_for_key(ctx, key + '_val', text)
 
 
-  def add_iot_file(self, ctx, path):
+  def add_iot_file(self, ctx:Ctx, path: str) -> None:
     text = read_from_path(path)
     if not text or text.isspace():
       return
@@ -400,7 +411,7 @@ class Case:
       self.add_iot_val_for_key(ctx, *kv)
 
 
-  def add_val_for_key(self, ctx, key, val):
+  def add_val_for_key(self, ctx:Ctx, key: str, val: Any) -> None:
     if ctx.dbg:
       existing = self.__dict__[key]
       if existing is not None:
@@ -408,7 +419,7 @@ class Case:
     self.__dict__[key] = val
 
 
-  def add_iot_val_for_key(self, ctx, iot_key, val):
+  def add_iot_val_for_key(self, ctx:Ctx, iot_key: str, val: Any) -> None:
     key = ('in_' if iot_key == 'in' else iot_key.replace('-', '_'))
     try:
       exp_desc, predicate, validator_fn = case_key_validators[key]
@@ -421,7 +432,7 @@ class Case:
     self.add_val_for_key(ctx, key, val)
 
 
-  def derive_info(self, ctx):
+  def derive_info(self, ctx: Ctx) -> None:
     if self.name == '_default': return # do not process prototype cases.
     if self.lead is None: # simple, isolated test.
       rel_dir = self.stem
@@ -432,7 +443,6 @@ class Case:
       if path_dir(self.lead) != rel_dir:
         raise TestCaseError(f'test specifies lead test in different directory: {rel_dir} != {path_dir(self.lead)}')
     self.test_dir = path_join(ctx.build_dir, rel_dir)
-    self.test_env = {}
     env = self.test_env # local alias for convenience.
     env['BUILD'] = ctx.build_dir
     env['NAME'] = self.name
@@ -441,7 +451,7 @@ class Case:
     env['STEM'] = self.stem
     env['DIR'] = path_dir(self.stem)
 
-    def default_to_env(key):
+    def default_to_env(key: str) -> None:
       if key not in env and key in os.environ:
         env[key] = os.environ[key]
 
@@ -452,11 +462,11 @@ class Case:
     default_to_env('PYTHONPATH')
     default_to_env('SDKROOT')
 
-    def expand_str(val):
+    def expand_str(val: Any) -> str:
       t = Template(val)
-      return t.safe_substitute(**env)
+      return t.safe_substitute(env)
 
-    def expand(val):
+    def expand(val: Any) -> List[str]:
       if val is None:
         return []
       if is_str(val):
@@ -480,16 +490,14 @@ class Case:
 
     self.compile_cmds = [expand(cmd) for cmd in self.compile] if self.compile else []
 
-    cmd = []
+    cmd: List[str] = []
     if self.interpreter:
       cmd += expand(self.interpreter)
     if self.interpreter_args:
       if not self.interpreter: raise TestCaseError('interpreter_args specified without interpreter')
       cmd += expand(self.interpreter_args)
 
-    self.test_links = []
-
-    if self.cmd:
+    if self.cmd is not None:
       cmd += expand(self.cmd)
     elif self.compile_cmds:
       cmd += ['./' + self.name]
@@ -514,12 +522,12 @@ class Case:
 
     if not self.is_lead and self.links:
       raise TestCaseError("non-lead tests ('lead' specified and not equal to stem) cannot also specify 'links'")
-    elif is_str(self.links):
+    elif isinstance(self.links, str):
       link = expand_str(self.links)
       self.test_links += [(link, path_name(link))]
-    elif is_set(self.links):
+    elif isinstance(self.links, set):
       self.test_links += sorted((n, path_name(n)) for n in map(expand_str, self.links))
-    elif is_dict(self.links):
+    elif isinstance(self.links, dict):
       self.test_links += sorted((expand_str(orig), expand_str(link)) for orig, link in self.links.items())
     elif self.links is not None:
       raise TestCaseError(self.links)
@@ -528,9 +536,7 @@ class Case:
 
     self.test_in = expand_str(self.in_) if self.in_ is not None else None
 
-    self.test_expectations = []
-
-    def add_std_exp(name, mode, path, val):
+    def add_std_exp(name:str, mode:Optional[str], path:Optional[str], val:Optional[str]) -> None:
       info = {}
       if mode is not None: info['mode'] = mode
       if path is not None: info['path'] = path
@@ -547,24 +553,24 @@ class Case:
 
 
 
-def is_int_or_ellipsis(val):
+def is_int_or_ellipsis(val: Any) -> bool:
   return val is Ellipsis or is_int(val)
 
-def is_compile_cmd(val):
+def is_compile_cmd(val: Any) -> bool:
   return is_list(val) and all(is_str_or_list(el) for el in val)
 
-def is_valid_links(val):
+def is_valid_links(val: Any) -> bool:
   return is_str(val) or is_set_of_str(val) or is_dict_of_str(val)
 
-def validate_path(key, path):
+def validate_path(key: str, path: Any) -> None:
   if not path: raise TestCaseError(f'key: {key}: path is empty: {path!r}')
   if '.' in path: raise TestCaseError(f"key: {key}: path cannot contain '.': {path!r}")
 
-def validate_exp_mode(key, mode):
+def validate_exp_mode(key: str, mode: str) -> None:
   if mode not in file_expectation_fns:
     raise TestCaseError(f'key: {key}: invalid file expectation mode: {mode}')
 
-def validate_exp_dict(key, val):
+def validate_exp_dict(key: str, val: Any) -> None:
   if not is_dict(val):
     raise TestCaseError(f'file expectation: {key}: value must be a dictionary.')
   for k in val:
@@ -572,7 +578,7 @@ def validate_exp_dict(key, val):
       raise TestCaseError(f'file expectation: {key}: invalid expectation property: {k}')
 
 
-def validate_files_dict(key, val):
+def validate_files_dict(key: str, val: Any) -> None:
   if not is_dict(val):
     raise TestCaseError(f'file expectation: {key}: value must be a dictionary.')
   for k, exp_dict in val.items():
@@ -580,7 +586,7 @@ def validate_files_dict(key, val):
       raise TestCaseError(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val).')
     validate_exp_dict(k, exp_dict)
 
-def validate_links_dict(key, val):
+def validate_links_dict(key: str, val: Any) -> None:
   if is_str(val):
     items = [(val, val)]
   elif is_set(val):
@@ -589,8 +595,8 @@ def validate_links_dict(key, val):
     items = val.items()
   else: raise AssertionError('`validate_links_dict` types inconsistent with `is_valid_links`.')
   for orig, link in items:
-    if orig.find('..') != -1: raise TestCaseError(f"key: {key}: link original contains '..': {src}")
-    if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {dst}")
+    if orig.find('..') != -1: raise TestCaseError(f"key: {key}: link original contains '..': {orig}")
+    if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {link}")
 
 
 case_key_validators = { # key => msg, validator_predicate, validator_fn.
@@ -621,7 +627,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
 
 class FileExpectation:
 
-  def __init__(self, path, info, expand_str_fn):
+  def __init__(self, path: str, info: Dict[str, str], expand_str_fn: Callable) -> None:
     if path.find('..') != -1:
       raise TestCaseError(f"file expectation {path}: cannot contain '..'")
     self.path = path
@@ -640,15 +646,15 @@ class FileExpectation:
     if self.mode == 'match':
       self.match_pattern_pairs = self.compile_match_lines(self.val)
     else:
-      self.match_pattern_pairs = None
-    self.match_error = None
+      self.match_pattern_pairs = []
+    self.match_error: Optional[Tuple[int, Optional[Pattern], str]] = None
 
 
-  def compile_match_lines(self, text):
+  def compile_match_lines(self, text: str) -> List[Tuple[str, Pattern]]:
     return [self.compile_match_line(i, line) for i, line in enumerate(text.splitlines(True), 1)]
 
 
-  def compile_match_line(self, i, line):
+  def compile_match_line(self, i: int, line: str) -> Tuple[str, Pattern]:
     prefix = line[:2]
     contents = line[2:]
     valid_prefixes = ('|', '|\n', '| ', '~', '~\n', '~ ')
@@ -668,11 +674,11 @@ class FileExpectation:
         self.path, i, contents, e)) from e
 
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'FileExpectation({!r}, {!r}, {!r})'.format(self.path, self.mode, self.val)
 
 
-def try_case(ctx, case):
+def try_case(ctx:Ctx, case: Case) -> bool:
   try:
     ok = run_case(ctx, case)
   except TestCaseError as e:
@@ -687,7 +693,7 @@ def try_case(ctx, case):
   return ok
 
 
-def run_case(ctx, case):
+def run_case(ctx:Ctx, case: Case) -> bool:
   if ctx.dbg: errL()
   _bar_width = (bar_width if ctx.show_times else 1)
   outZ(f'{case.stem:{_bar_width}}', flush=True)
@@ -717,7 +723,7 @@ def run_case(ctx, case):
       raise Exception(f'non-symlink already exists at desired symlink path: {link_path}')
     os.symlink(orig_path, link_path)
 
-  compile_time = 0
+  compile_time = 0.0
   compile_time_start = time.time()
   for i, compile_cmd in enumerate(case.compile_cmds):
     compile_out_path = path_join(case.test_dir, case.std_name('compile-out-{:02}'.format(i)))
@@ -785,7 +791,7 @@ def run_case(ctx, case):
   return status and exps_ok
 
 
-def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeout, exp_code):
+def run_cmd(ctx:Ctx, case: Case, label: str, cmd: List[str], cwd: str, env: Dict[str, str], in_path: str, out_path: str, err_path: str, timeout: int, exp_code: int) -> Optional[bool]:
   'returns True for success, False for failure, and None for abort.'
   cmd_head = cmd[0]
   cmd_path = path_rel_to_current_or_abs(cmd_head) # For diagnostics.
@@ -801,7 +807,7 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
     errSL(label, 'cwd:', cwd)
     errSL(label, 'cmd:', cmd_str)
 
-  with open(in_path, 'r') as i, open_new(out_path) as o, open_new(err_path) as e:
+  with open(in_path, 'rb') as i, open_new(out_path) as o, open_new(err_path) as e:
     try:
       run(cmd, cwd=cwd, env=env, stdin=i, out=o, err=e, timeout=timeout, exp=exp_code)
       return True
@@ -821,7 +827,7 @@ def run_cmd(ctx, case, label, cmd, cwd, env, in_path, out_path, err_path, timeou
     return None
 
 
-def check_file_exp(ctx, test_dir, exp):
+def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
   'return True if expectation is met.'
   if ctx.dbg: errL(f'check_file_exp: {exp}')
   path = path_join(test_dir, exp.path)
@@ -853,6 +859,7 @@ def check_file_exp(ctx, test_dir, exp):
     run(cmd, exp=None)
   elif exp.mode == 'match':
     act_lines = act_val.splitlines(True)
+    assert exp.match_error is not None
     i, exp_pattern, act_line = exp.match_error
     outL(f'match failed at line {i}:\npattern:   {exp_pattern!r}\nactual text: {act_line!r}')
   outSL('-' * bar_width)
@@ -862,7 +869,7 @@ def check_file_exp(ctx, test_dir, exp):
 diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram --ws-error-highlight=old,new'.split()
 
 
-def cat_file(path, color, limit=-1):
+def cat_file(path: str, color: str, limit=-1) -> None:
   outL(TXT_D_OUT, 'cat ', rel_path(path), RST_OUT)
   with open(path) as f:
     line = None
@@ -876,16 +883,15 @@ def cat_file(path, color, limit=-1):
 
 # file expectation functions.
 
-def compare_equal(exp, val):
-  return exp.val == val
+def compare_equal(exp: FileExpectation, val: str) -> bool:
+  return exp.val == val # type: ignore
 
-def compare_contain(exp, val):
+def compare_contain(exp: FileExpectation, val: str) -> bool:
   return val.find(exp.val) != -1
 
-def compare_match(exp, val):
-  pairs = exp.match_pattern_pairs # pairs of pattern, regex.
-  lines = val.splitlines(True)
-  for i, (pair, line) in enumerate(zip_longest(pairs, lines), 1):
+def compare_match(exp: FileExpectation, val: str) -> bool:
+  lines: List[str] = val.splitlines(True)
+  for i, (pair, line) in enumerate(zip_longest(exp.match_pattern_pairs, lines), 1):
     if pair is None:
       exp.match_error = (i, None, line)
       return False
@@ -896,7 +902,7 @@ def compare_match(exp, val):
   return True
 
 
-def compare_ignore(exp, val):
+def compare_ignore(exp: FileExpectation, val: str) -> bool:
   return True
 
 
@@ -908,4 +914,4 @@ file_expectation_fns = {
 }
 
 
-def shell_cmd_str(cmd): return ' '.join(shlex.quote(word) for word in cmd)
+def shell_cmd_str(cmd: List[str]) -> str: return ' '.join(shlex.quote(word) for word in cmd)
