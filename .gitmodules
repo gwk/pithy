@@ -1,3 +1,3 @@
 [submodule "pithy"]
 	path = pithy
-	url = https://github.com/gwk/pithy.git
+	url = git@github.com:gwk/pithy.git
