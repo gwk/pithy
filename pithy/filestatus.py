@@ -164,7 +164,7 @@ class FileStatus(NamedTuple):
     return f'{self.type_char} {self.perms_string}'
 
 
-def file_status(path_or_fd: PathOrFd, follow_symlinks=True) -> Optional[FileStatus]:
+def file_status(path_or_fd:PathOrFd, follow_symlinks:bool=True) -> Optional[FileStatus]:
   try: s = _stat(path_or_fd, follow_symlinks=follow_symlinks)
   except FileNotFoundError: return None
   path = '' if isinstance(path_or_fd, int) else str(path_or_fd)

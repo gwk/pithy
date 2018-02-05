@@ -65,7 +65,7 @@ CSI = '\x1B['
 ansi_ctrl_seq_re = _re.compile(r'\x1B\[.*?[hHJKlmsu]')
 
 
-def ansi_ctrl_seq(c: str, *args: Any, on=True) -> str:
+def ansi_ctrl_seq(c:str, *args:Any, on:bool=True) -> str:
   'Format a control sequence string for command character `c` and arguments.'
   return '{}{}{}'.format(CSI, ';'.join(str(a) for a in args), c) if on else ''
 
@@ -83,7 +83,7 @@ def len_strip_ansi_ctrl_seq(s: str) -> int:
   return l
 
 
-def ansi_sgr(*seq: Any, on=True) -> str:
+def ansi_sgr(*seq:Any, on:bool=True) -> str:
   'Select Graphic Rendition control sequence string.'
   return ansi_ctrl_seq('m', *seq, on=on)
 
