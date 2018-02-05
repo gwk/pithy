@@ -29,7 +29,6 @@ from os.path import (
   splitext as _splitext,
 )
 from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
-from typing.re import Pattern # type: ignore
 
 
 Path = Union[str, PathLike]
