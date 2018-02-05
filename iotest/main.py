@@ -154,7 +154,10 @@ def collect_proto(ctx, end_dir_path):
 
 
 def collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix):
-  'find all test cases within the specified directory.'
+  '''
+  Recursively find all test cases within the directory tree rooted at `dir_path`,
+  and collect them into `cases_dict`.
+  '''
   collect_dirs = (specified_name_prefix is None)
   sub_dirs = []
   file_paths = []
