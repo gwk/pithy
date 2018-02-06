@@ -191,7 +191,7 @@ def remove_file(path:Path) -> None: _os.remove(path)
 
 
 def remove_file_if_exists(path:Path) -> None:
-  if is_file(path):
+  if path_exists(path):
     remove_file(path)
 
 
@@ -203,6 +203,11 @@ def remove_empty_dirs(path:Path) -> None: _os.removedirs(path)
 def remove_path(path:Path) -> None:
   if is_dir_not_link(path): remove_dir(path)
   else: remove_file(path)
+
+
+def remove_path_if_exists(path:Path) -> None:
+  if path_exists(path):
+    remove_path(path)
 
 
 def scan_dir(path:Path, exts:Iterable[str]=(), hidden=False) -> List[DirEntry]:
