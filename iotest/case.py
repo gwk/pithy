@@ -133,7 +133,7 @@ class Case:
           if val is None: continue
           self.add_val_for_key(ctx, key, val)
 
-      # read in all file info specific to this case.
+      # Read in all files that define this case.
       for path in sorted_iot_first(file_paths):
         self.add_file(ctx, path)
       for wild_path in sorted_iot_first(wild_paths_to_re):
