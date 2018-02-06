@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from os import DirEntry, stat as _stat, stat_result as StatResult
+from os.path import exists as _exists, isdir as _isdir, isfile as _isfile, islink as _islink, ismount as _ismount, lexists as _lexists
 from stat import *
 from typing import Optional, NamedTuple, Union
 from .path import Path, PathOrFd
@@ -164,14 +165,6 @@ class FileStatus(NamedTuple):
     return f'{self.type_char} {self.perms_string}'
 
 
-def file_status(path_or_fd:PathOrFd, follow_symlinks:bool=True) -> Optional[FileStatus]:
-  try: s = _stat(path_or_fd, follow_symlinks=follow_symlinks)
-  except FileNotFoundError: return None
-  path = '' if isinstance(path_or_fd, int) else str(path_or_fd)
-  return FileStatus.from_stat_result(path, s)
-
-
-
 def dir_entry_type_char(entry: DirEntry) -> str:
   '''
   Return a single uppercase letter string denoting the file type of the DirEntry.
@@ -183,6 +176,53 @@ def dir_entry_type_char(entry: DirEntry) -> str:
   if entry.is_dir(): return 'D'
   if entry.is_file(): return 'F'
   return 'U'
+
+
+def file_inode(path:PathOrFd) -> int: return _stat(path).st_ino
+
+def file_permissions(path:PathOrFd) -> int: return _stat(path).st_mode
+
+def file_size(path:PathOrFd) -> int: return _stat(path).st_size
+
+def file_stat(path:PathOrFd) -> StatResult: return _stat(path)
+
+
+def file_status(path_or_fd:PathOrFd, follow_symlinks:bool=True) -> Optional[FileStatus]:
+  try: s = _stat(path_or_fd, follow_symlinks=follow_symlinks)
+  except FileNotFoundError: return None
+  path = '' if isinstance(path_or_fd, int) else str(path_or_fd)
+  return FileStatus.from_stat_result(path, s)
+
+
+def file_time_access(path:PathOrFd) -> float: return _stat(path).st_atime
+
+def file_time_mod(path:PathOrFd) -> float: return _stat(path).st_mtime
+
+def file_time_mod_or_zero(path:str) -> float:
+  try: return file_time_mod(path)
+  except FileNotFoundError: return 0
+
+def file_time_meta_change(path:PathOrFd) -> float: return _stat(path).st_ctime
+
+def is_dir(path:Path) -> bool: return _isdir(path)
+
+def is_dir_not_link(path:Path) -> bool: return is_dir(path) and not is_link(path)
+
+def is_file(path:Path) -> bool: return _isfile(path)
+
+def is_file_executable_by_owner(path:Path) -> bool: return bool(file_permissions(path) & S_IXUSR)
+
+def is_file_not_link(path:Path) -> bool: return is_file(path) and not is_link(path)
+
+def is_link(path:Path) -> bool: return _islink(path)
+
+def is_mount(path:Path) -> bool: return _ismount(path)
+
+def is_node_not_link(path:Path) -> bool: return path_exists(path) and not is_link(path)
+
+def link_exists(path:Path) -> bool: return _lexists(path) # TODO: rename?
+
+def path_exists(path:Path) -> bool: return _exists(path)
 
 
 _type_chars = {
@@ -221,5 +261,3 @@ _perm_chars = (
     (S_IWOTH, 'w'),
     (S_IXOTH, 'x'))),
 )
-
-
