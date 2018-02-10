@@ -19,9 +19,7 @@ except ImportError: # Continue to support python3.6.
 
 JsonAny = Any # TODO: remove this once recursive types work.
 JsonList = List[JsonAny]
-JsonDict = Dict[Hashable, JsonAny]
-JsonDictIn = Dict[str, Any]
-
+JsonDict = Dict[str, JsonAny]
 Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 
 JsonDefaulter = Callable[[Any], Any]
