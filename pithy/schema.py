@@ -5,21 +5,21 @@ Generate and print informative schemas from sets of example object trees.
 '''
 
 from collections import Counter, defaultdict, namedtuple
-from typing import Any, Hashable, NamedTuple, TextIO, TypeVar
+from typing import Any, Hashable, NamedTuple, Optional, TextIO, TypeVar
 from .string import iter_excluding_str
+
 
 K = TypeVar('K')
 
-# TODO: mypy does not yet support NamedTuple docstrings.
-'''
-A schema represents the aggregate of values occurring at a structural position in some data.
-atoms: counts atom values.
-seqs: maps all of the occurring element types to schemas.
-dicts: maps occurring keys to a defaultdict of occurring value types to schemas.
-All sequence types are lumped together.
-All dict classes are lumped together.
-'''
 class Schema(NamedTuple):
+  '''
+  A schema represents the aggregate of values occurring at a structural position in some data.
+  atoms: counts atom values.
+  seqs: maps all of the occurring element types to schemas.
+  dicts: maps occurring keys to a defaultdict of occurring value types to schemas.
+  All sequence types are lumped together.
+  All dict classes are lumped together.
+  '''
   atoms: Counter
   seqs: defaultdict
   dicts: defaultdict
@@ -114,13 +114,16 @@ def _write_schema(f: TextIO, schema: Schema, count_atoms: bool, inline: bool, in
       put_types(prefix=prefix, symbol=': ', subindent=(indent + '. '), types=types)
 
 
-def write_schema(f: TextIO, schema: Schema, count_atoms=False, inline=True, indent='', end='\n') -> None:
+def write_schema(f: TextIO, schema: Optional[Schema]=None, count_atoms=False, inline=True, indent='', end='\n') -> None:
   '''
   Write `schema` to file `f`.
   If `count_atoms` is true, then histograms of atom values are emitted.
   If `inline` is false, then monomorphic type names are never inlined,
   resulting in longer but more regular output.
   '''
-  _write_schema(f, schema=schema, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
+  if schema is None:
+    f.write(indent + 'empty')
+  else:
+    _write_schema(f, schema=schema, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
   f.write(end)
 
