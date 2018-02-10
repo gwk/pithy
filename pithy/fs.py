@@ -285,11 +285,15 @@ def walk_files(*paths:Path, make_abs=False, include_hidden=False, file_exts:Iter
 def walk_paths(*paths:Path, make_abs=False, yield_files=True, yield_dirs=True, include_hidden=False,
   file_exts:Iterable[str]=()) -> Iterator[str]:
   '''
-  generate file and/or dir paths,
-  optionally filtering hidden names and/or by file extension.
+  Generate file and/or dir paths, optionally filtering hidden names and/or by file extension.
+  Treats `-` as a special symbol for stdin, and returns it unaltered and unfiltered as a special case.
   '''
   file_exts = normalize_exts(file_exts)
   for raw_path in paths:
+    #TODO: option for turning this special handling of `-` off.
+    if yield_files and raw_path == '-': # Special case to indicate stdin.
+      yield '-'
+      continue
     path = abs_or_norm_path(raw_path, make_abs)
     if is_dir(path):
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
