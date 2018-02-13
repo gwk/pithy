@@ -201,7 +201,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   groups = fan_by_key_fn(regular_paths, key=path_stem)
   # default.
   default_stem = dir_path + '_default'
-  proto = create_proto_case(ctx, parent_proto, default_stem, groups.get(default_stem, []))
+  proto = create_proto_case(ctx, proto=parent_proto, stem=default_stem, file_paths=groups.get(default_stem, []))
   # cases.
   for (stem, paths) in sorted(p for p in groups.items() if p[0] is not None):
     if stem in cases_dict:
