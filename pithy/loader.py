@@ -143,7 +143,7 @@ def load_pyl(file: IO, **kwargs) -> Any:
 
 
 def load_sqlite(file: IO, **kwargs) -> Any:
-  from pithy.sqlite import Connection
+  from .sqlite import Connection
   path = file.name # TODO: Figure out if this is sufficient.
   return Connection(f'file:{path}?mode=ro', uri=True, **kwargs) # type: ignore # Open in read-only mode.
 
