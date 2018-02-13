@@ -143,7 +143,7 @@ class Case:
         m = wild_re.fullmatch(stem)
         if m:
           self.add_file(ctx, wild_path)
-          self.test_wild_args[wild_path] = m.groups()
+          self.test_wild_args[wild_path] = cast(Tuple[str, ...], m.groups())
           wild_paths_used.add(wild_path)
       # do all additional computations now, so as to fail as quickly as possible.
       self.derive_info(ctx)
