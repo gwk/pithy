@@ -203,7 +203,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   default_stem = dir_path + '_default'
   proto = create_proto_case(ctx, proto=parent_proto, stem=default_stem, file_paths=groups.get(default_stem, []))
   # cases.
-  for (stem, paths) in sorted(p for p in groups.items() if p[0] is not None):
+  for (stem, paths) in sorted(groups.items()):
     if stem in cases_dict:
       errL(f'iotest note: repeated case stem: {stem}')
       continue
