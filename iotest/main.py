@@ -194,7 +194,21 @@ def create_proto_case(ctx:Ctx, proto: Optional[Case], stem: str, file_paths: Lis
 
 
 def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Case], dir_path: str, file_paths: List[str]) -> Optional[Case]:
-  # wild paths are those whose name contain a '{', which are interpreted as python format strings.
+  '''
+  Create Case objects from the paths in the given directory.
+  Each case is defined by the collection of file paths that share a common stem (which implies the case name)
+  and have one of the designated test case extensions.
+
+  ## Multicases (NOT YET IMPLEMENTED!)
+  A `.iot` file may contain a single case definition, or alternatively a list of definitions.
+  A list implies a series of tests which are consecutively named `<stem>.<index>`.
+
+  ## Parameterized files
+  A case file may contain `{` (indicating a python format string) and will then be interpreted as a parameterized name
+  that applies over multiple cases.
+  Each case must have one non-parameterized contributing file; otherwise there is no way to infer its existence.
+  '''
+  # Note: "wild" as written in the code means parameterized paths.
   regular_paths, wild_paths = fan_by_pred(file_paths, pred=lambda p: '{' in p)
   wild_paths_to_re: Dict[str, Pattern[str]] = dict(filter(None, map(compile_wild_path_re, wild_paths)))
   wild_paths_used: Set[str] = set()
