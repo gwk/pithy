@@ -162,8 +162,6 @@ def collect_cases(ctx:Ctx, cases_dict:Dict[str, Case], proto: Optional[Case], di
   names = list_dir(dir_path)
   trivial: List[str] = [] # Either empty, or contains just the default case stem.
   for name in names:
-    if name.startswith('.'): # ignore hidden files.
-      continue
     path = path_join(dir_path, name)
     if specified_name_prefix is None: # collect dirs.
       if is_dir(path):
