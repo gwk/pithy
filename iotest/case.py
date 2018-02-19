@@ -24,7 +24,6 @@ class TestCaseError(Exception): pass
 class IotParseError(TestCaseError): pass
 
 
-
 class FileExpectation:
 
   def __init__(self, path: str, info: Dict[str, str], expand_str_fn: Callable) -> None:
