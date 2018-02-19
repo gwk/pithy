@@ -180,10 +180,11 @@ class Case:
 
   def std_name(self, std: str) -> str: return f'{self.name}.{std}'
 
-  def describe(self, file) -> None:
-    def stable_repr(val) -> str:
+
+  def describe(self, file: TextIO) -> None:
+    def stable_repr(val: Any) -> str:
       if is_dict(val):
-        return '{{{}}}'.format(', '.join('{!r}:{!r}'.format(*p) for p in sorted(val.items())))
+        return '{{{}}}'.format(', '.join(f'{k!r}:{v!r}' for k, v in sorted(val.items()))) # sort dict representations. TODO: factor out.
       return repr(val)
 
     items = sorted(self.__dict__.items())
