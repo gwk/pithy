@@ -88,7 +88,6 @@ class Case:
     self.test_info_exts: Set[str] = set()
     self.test_info_paths: List[str] = [] # the files that comprise the test case.
     self.dflt_src_paths: List[str] = []
-    self.broken: bool = proto.broken if (proto is not None) else False
     self.coverage_targets: List[str] = []
     self.test_dir: str = ''
     self.test_cmd: List[str] = []
@@ -148,15 +147,15 @@ class Case:
       self.derive_info(ctx)
 
     except Exception as e:
-      outL(f'WARNING: broken test case: {stem}')
+      outL(f'iotest error: broken test case: {stem}')
       outL(f'  exception: {type(e).__name__}: {e}.')
       # not sure if it makes sense to describe cases for some exceptions;
       # for now, just carve out the ones for which it is definitely useless.
       if not isinstance(e, IotParseError):
         self.describe(stdout)
         outL()
-      ctx.fail_fast(e)
-      self.broken = True
+      exit(1)
+
 
   def __repr__(self) -> str: return f'Case(stem={self.stem!r}, ...)'
 

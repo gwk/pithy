@@ -96,38 +96,31 @@ def main() -> None:
       exit(f'iotest error: repeated logical stem: {case.stem}')
     logical_stems.add(case.stem)
 
-  broken_count = 0
+  count = len(cases)
+  if ctx.parse_only:
+    outL(f'TESTS PARSED: {count}.')
+    exit()
+
+
   skipped_count = 0
   failed_count = 0
   for case in cases:
-    if case.broken:
-      broken_count += 1
-    elif case.skip:
+    if case.skip:
       skipped_count += 1
       outL(f'{case.stem:{bar_width}} SKIPPED.')
-    elif ctx.parse_only:
-      continue
     else:
       ok = try_case(ctx, coverage_cases, case)
       if not ok:
         failed_count += 1
 
   outL('\n', '#' * bar_width)
-  count = len(cases)
-  if ctx.parse_only:
-    if broken_count:
-      msg = f'TESTS FOUND: {count}; BROKEN: {broken_count}.'
-      code = 1
-    else:
-      msg = f'TESTS PARSED: {count}.'
-      code = 0
+
+  if failed_count:
+    msg = f'TESTS FOUND: {count}; SKIPPED: {skipped_count}; FAILED: {failed_count}.'
+    code = 1
   else:
-    if any([broken_count, failed_count]):
-      msg = f'TESTS FOUND: {count}; BROKEN: {broken_count}; SKIPPED: {skipped_count}; FAILED: {failed_count}.'
-      code = 1
-    else:
-      msg = f'TESTS FOUND: {count}; SKIPPED: {skipped_count}; PASSED: {count - skipped_count}.'
-      code = 0
+    msg = f'TESTS FOUND: {count}; SKIPPED: {skipped_count}; PASSED: {count - skipped_count}.'
+    code = 0
   total_time = time.time() - start_time
   if ctx.show_times:
     outL(f'{msg:{bar_width}} {total_time:.2f} sec.')
@@ -186,9 +179,7 @@ def collect_cases(ctx:Ctx, cases_dict:Dict[str, Case], proto: Optional[Case], di
 def create_proto_case(ctx:Ctx, proto: Optional[Case], stem: str, file_paths: List[str]) -> Optional[Case]:
   if not file_paths:
     return proto
-  default = Case(ctx, proto, stem, file_paths, wild_paths_to_re={}, wild_paths_used=set())
-  if default.broken: ctx.fail_fast()
-  return default
+  return Case(ctx, proto, stem, file_paths, wild_paths_to_re={}, wild_paths_used=set())
 
 
 def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Case], dir_path: str, file_paths: List[str]) -> Optional[Case]:
@@ -221,7 +212,6 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
       continue
     if stem == default_stem or not is_case_implied(paths): continue
     case = Case(ctx, proto, stem, paths, wild_paths_to_re, wild_paths_used)
-    if case.broken: ctx.fail_fast()
     cases_dict[stem] = case
   # check that all wild paths are used by some case.
   for path in wild_paths:

@@ -6,4 +6,4 @@ test command failed: `sleep 10`
 
 
 ################################################################
-TESTS FOUND: 1; BROKEN: 0; SKIPPED: 0; FAILED: 1.
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.
