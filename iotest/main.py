@@ -4,11 +4,14 @@ import argparse
 import shlex
 import time
 
+from ast import literal_eval
+from collections import defaultdict
 from sys import stdout, stderr
 from typing import *
 
 from .pithy.ansi import RST_OUT, TXT_B_OUT, TXT_D_OUT, TXT_R_OUT
-from .pithy.io import errL, errSL, outL, outSL, outZ, read_from_path, read_line_from_path, write_to_path, writeLSSL
+from .pithy.dict import dict_fan_by_key_pred
+from .pithy.io import *
 from .pithy.string import string_contains
 from .pithy.format import FormatError, format_to_re
 from .pithy.fs import *
@@ -16,7 +19,7 @@ from .pithy.iterable import fan_by_key_fn, fan_by_pred
 from .pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
 from .pithy.types import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
-from .case import Case, FileExpectation, TestCaseError, file_expectation_fns
+from .case import Case, FileExpectation, ParConfig, TestCaseError, file_expectation_fns
 from .ctx import Ctx
 
 
@@ -136,12 +139,13 @@ def collect_proto(ctx: Ctx, end_dir_path: str) -> Optional[Case]:
   '''
   Assemble the prototype test case information from files named `_default.*`,
   starting at the project root and traversing successive child directories up to `end_dir_path`.
-  This function is necessary to collect complete prototypes for a specified subdirectory.
   '''
   proto = None
   for dir_path in path_descendants(ctx.proj_dir, abs_path(end_dir_path), include_end=False):
     file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem(name) == '_default']
-    proto = create_proto_case(ctx, proto, path_join(dir_path, '_default'), file_paths)
+    cases_dict: Dict[str, Case] = {}
+    proto = create_cases(ctx, cases_dict, proto, dir_path, file_paths)
+    assert not cases_dict, cases_dict
   return proto
 
 
@@ -159,27 +163,27 @@ def collect_cases(ctx:Ctx, cases_dict:Dict[str, Case], proto: Optional[Case], di
     if specified_name_prefix is None: # collect dirs.
       if is_dir(path):
         sub_dirs.append(path + '/')
-      else:
+      elif path_ext(name):
         file_paths.append(path)
-    else:
+    else: # Look for specified_name_prefix; do not collect dirs.
       stem = path_stem(name)
       if stem == '_default':
         trivial = [path]
       if stem == '_default' or stem.startswith(specified_name_prefix):
         file_paths.append(path)
-  default = create_cases(ctx, cases_dict, proto, dir_path, file_paths)
+  sub_proto = create_cases(ctx, cases_dict, proto, dir_path, file_paths)
   if specified_name_prefix is None: # collect dirs.
     for sub_dir in sub_dirs:
-      collect_cases(ctx, cases_dict, default, sub_dir, None)
+      collect_cases(ctx, cases_dict, sub_proto, sub_dir, None)
   elif file_paths == trivial:
     p = dir_path + specified_name_prefix
     exit(f'iotest error: argument path does not match any files: {p!r}.')
 
 
-def create_proto_case(ctx:Ctx, proto: Optional[Case], stem: str, file_paths: List[str]) -> Optional[Case]:
-  if not file_paths:
+def create_proto_case(ctx:Ctx, proto: Optional[Case], stem: str, config: Dict) -> Optional[Case]:
+  if not config:
     return proto
-  return Case(ctx, proto, stem, file_paths, wild_paths_to_re={}, wild_paths_used=set())
+  return Case(ctx, proto=proto, stem=stem, config=config, par_configs=[], par_stems_used=set())
 
 
 def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Case], dir_path: str, file_paths: List[str]) -> Optional[Case]:
@@ -188,7 +192,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   Each case is defined by the collection of file paths that share a common stem (which implies the case name)
   and have one of the designated test case extensions.
 
-  ## Multicases (NOT YET IMPLEMENTED!)
+  ## Multicases
   A `.iot` file may contain a single case definition, or alternatively a list of definitions.
   A list implies a series of tests which are consecutively named `<stem>.<index>`.
 
@@ -197,38 +201,92 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   that applies over multiple cases.
   Each case must have one non-parameterized contributing file; otherwise there is no way to infer its existence.
   '''
-  # Note: "wild" as written in the code means parameterized paths.
-  regular_paths, wild_paths = fan_by_pred(file_paths, pred=lambda p: '{' in p)
-  wild_paths_to_re: Dict[str, Pattern[str]] = dict(filter(None, map(compile_wild_path_re, wild_paths)))
-  wild_paths_used: Set[str] = set()
-  groups = fan_by_key_fn(regular_paths, key=path_stem)
+
+  configs: DefaultDict[str, Dict] = defaultdict(lambda: dict(test_info_paths=set()))
+  val_paths, iot_paths = fan_by_pred(file_paths, pred=lambda p: path_ext(p) == '.iot')
+  for path in iot_paths:
+    stem = path_stem(path)
+    if '.' in stem: exit(f"iotest error: .iot path cannot contain '.': {path!r}.")
+    add_iot_configs(configs=configs, stem=stem, path=path)
+  for path in val_paths:
+    stem, ext = split_stem_ext(path)
+    if ext in implied_case_exts:
+      add_std_val(config=configs[stem], path=path)
+    else:
+      configs[stem].setdefault('.dflt_src_paths', []).append(path)
+
+  case_configs, par_configs_dicts = dict_fan_by_key_pred(configs, pred=lambda stem: '{' in stem)
+
+  par_configs: List[ParConfig] = [ParConfig(stem=s, pattern=compile_par_stem_re(s), config=c) for s, c in par_configs_dicts.items()]
+  par_stems_used: Set[str] = set()
+
   # default.
-  default_stem = dir_path + '_default'
-  proto = create_proto_case(ctx, proto=parent_proto, stem=default_stem, file_paths=groups.get(default_stem, []))
+  default_stem = path_join(dir_path, '_default')
+  proto = create_proto_case(ctx, proto=parent_proto, stem=default_stem, config=case_configs.get(default_stem, {}))
   # cases.
-  for (stem, paths) in sorted(groups.items()):
-    if stem in cases_dict:
-      errL(f'iotest note: repeated case stem: {stem}')
-      continue
-    if stem == default_stem or not is_case_implied(paths): continue
-    case = Case(ctx, proto, stem, paths, wild_paths_to_re, wild_paths_used)
+  for stem, config in sorted(case_configs.items()):
+    assert stem not in cases_dict
+    if stem == default_stem: continue
+    if '.test_info_paths' not in config: continue # Not a real case; found only non-test files.
+    case = Case(ctx, proto, stem, config, par_configs, par_stems_used)
     cases_dict[stem] = case
-  # check that all wild paths are used by some case.
-  for path in wild_paths:
-    if path_ext(path) in implied_case_exts and path not in wild_paths_used:
-      outL(f'iotest note: wildcard file path was never used: {path}')
+  # check that all par paths are used by some case.
+  for par_config in par_configs:
+    if par_config.stem not in par_stems_used:
+      outL(f'iotest note: parameterized case template was never used: {stem}')
   return proto
 
 
-def compile_wild_path_re(path: str) -> Optional[Tuple[str, Pattern[str]]]:
-  try: return (path, format_to_re(path_stem(path)))
+def add_iot_configs(configs: Dict, stem: str, path: str) -> None:
+  text = read_from_path(path)
+  if not text or text.isspace():
+    configs[stem].setdefault('.test_info_paths', set()).add(path)
+    return
+
+  try: val = literal_eval(text)
+  except (SyntaxError, ValueError) as e:
+    s = str(e)
+    if s.startswith('malformed node or string:'): # omit the repr garbage containing object address.
+      msg = f'malformed .iot file: {path!r}'
+    else:
+      msg = f'malformed .iot file: {path!r}\n  exception: {s}'
+    exit(f'iotest error: {stem}: {msg}')
+    return
+
+  if isinstance(val, dict):
+    configs[stem].setdefault('.test_info_paths', set()).add(path)
+    configs[stem].update(val)
+  elif isinstance(val, list):
+    if path_name(stem) == '_default':
+      exit(f'iotest error: default case cannot specify a multicase (list of subcases): {path!r}')
+    for i, el in enumerate(val):
+      sub = f'{stem}.{i}'
+      if isinstance(el, dict):
+        configs[sub].setdefault('.test_info_paths', set()).add(path)
+        configs[sub].update(el)
+      else:
+        exit(f'iotest error: {stem}: subcase {el} iot contents is not a dictionary: {path!r}')
+  else:
+    exit(f'iotest error: {stem}: case iot contents is not a dictionary: {path!r}')
+
+
+def add_std_val(config: Dict, path: str) -> None:
+  ext = path_ext(path)
+  val = read_from_path(path)
+  if ext in config: # TODO: this check should occur in add_iot_configs.
+    exit(f'iotest error: {path}: test case configuration contains reserved key: {ext!r}')
+  assert ext != '.iot'
+  config.setdefault('.test_info_paths', set()).add(path)
+  config[ext] = val
+
+
+def compile_par_stem_re(stem: str) -> Pattern[str]:
+  try: return format_to_re(stem)
   except FormatError as e:
-    outL(f'iotest WARNING: invalid format path will be ignored: {path}')
-    outL('  NOTE: ', e)
-    return None
+    exit(f'iotest error: invalid parameterized case stem: {stem}\n  {e}')
 
 
-implied_case_exts = ('.iot', '.out', '.err')
+implied_case_exts = frozenset({'.iot', '.out', '.err'})
 
 def is_case_implied(paths: Iterable[str]) -> bool:
   'one of the standard test file extensions must be present to imply a test case.'

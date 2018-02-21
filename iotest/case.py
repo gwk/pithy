@@ -11,7 +11,7 @@ from typing import *
 
 from .pithy.fs import *
 from .pithy.io import *
-from .pithy.types import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
+from .pithy.types import * # type: ignore
 
 from .ctx import Ctx
 
@@ -77,16 +77,24 @@ class FileExpectation:
     return 'FileExpectation({!r}, {!r}, {!r})'.format(self.path, self.mode, self.val)
 
 
+class ParConfig(NamedTuple):
+  '''
+  Parameterized case configuration data.
+  '''
+  stem: str
+  pattern: Pattern[str]
+  config: Dict
+
+
 class Case:
   'Case represents a single test case, or a default.'
 
-  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, file_paths: List[str], wild_paths_to_re: Dict[str, Pattern[str]],
-   wild_paths_used: Set[str]) -> None:
+  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: Dict, par_configs: List[ParConfig],
+   par_stems_used: Set[str]) -> None:
     self.stem: str = path_dir(stem) if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
     self.name: str = path_name(self.stem)
     # derived properties.
-    self.test_info_exts: Set[str] = set()
-    self.test_info_paths: List[str] = [] # the files that comprise the test case.
+    self.test_info_paths: Set[str] = set() # the files that comprise the test case.
     self.dflt_src_paths: List[str] = []
     self.coverage_targets: List[str] = []
     self.test_dir: str = ''
@@ -95,7 +103,7 @@ class Case:
     self.test_in: Optional[str] = None
     self.test_expectations: List[FileExpectation] = []
     self.test_links: List[Tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
-    self.test_wild_args: Dict[str, Tuple[str, ...]] = {} # the match groups that resulted from applying the regex.
+    self.test_par_args: Dict[str, Tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
     # configurable properties.
     self.args: Optional[List[str]] = None # arguments to follow the file under test.
     self.cmd: Optional[List[str]] = None # command string/list with which to invoke the test.
@@ -120,29 +128,22 @@ class Case:
     self.skip: Optional[str] = None
     self.timeout: Optional[int] = None
 
-    def sorted_iot_first(paths: Iterable[str]) -> List[str]:
-      # Ensure that .iot files get added first, for clarity when conflicts arise.
-      return sorted(paths, key=lambda p: '' if p.endswith('.iot') else p)
-
     try:
       if proto is not None:
         for key in case_key_validators:
-          val = proto.__dict__[key]
-          if val is None: continue
-          self.add_val_for_key(ctx, key, val)
+          setattr(self, key, getattr(proto, key))
 
-      # Read in all files that define this case.
-      for path in sorted_iot_first(file_paths):
-        self.add_file(ctx, path)
-      for wild_path in sorted_iot_first(wild_paths_to_re):
-        ext = path_ext(wild_path)
-        if ext in self.test_info_exts: continue
-        wild_re = wild_paths_to_re[wild_path]
-        m = wild_re.fullmatch(stem)
-        if m:
-          self.add_file(ctx, wild_path)
-          self.test_wild_args[wild_path] = cast(Tuple[str, ...], m.groups())
-          wild_paths_used.add(wild_path)
+      for par_stem, par_re, par_config in par_configs:
+        m = par_re.fullmatch(stem)
+        if not m: continue
+        for key, val in par_config.items():
+          self.add_val_for_key(ctx, key, val)
+        self.test_par_args[par_stem] = cast(Tuple[str, ...], m.groups()) # Save the strings matching the parameters to use as arguments.
+        par_stems_used.add(par_stem) # Mark this parameterized config as used.
+
+      for key, val in config.items():
+        self.add_val_for_key(ctx, key, val)
+
       # do all additional computations now, so as to fail as quickly as possible.
       self.derive_info(ctx)
 
@@ -190,59 +191,22 @@ class Case:
     writeLSSL(file, 'Case:', *('{}: {}'.format(k, stable_repr(v)) for k, v in items))
 
 
-  def add_file(self, ctx:Ctx, path: str) -> None:
-    ext = path_ext(path)
-    if ext == '.iot':   self.add_iot_file(ctx, path)
-    elif ext == '.in':  self.add_std_file(ctx, path, 'in_')
-    elif ext == '.out': self.add_std_file(ctx, path, 'out')
-    elif ext == '.err': self.add_std_file(ctx, path, 'err')
-    else:
-      self.dflt_src_paths.append(path)
-      return # other extensions are not part of info collections.
-    self.test_info_paths.append(path)
-    self.test_info_exts.add(ext)
-
-
-  def add_std_file(self, ctx:Ctx, path: str, key: str) -> None:
-    text = read_from_path(path)
-    self.add_val_for_key(ctx, key + '_val', text)
-
-
-  def add_iot_file(self, ctx:Ctx, path: str) -> None:
-    text = read_from_path(path)
-    if not text or text.isspace():
-      return
+  def add_val_for_key(self, ctx:Ctx, key:str, val:Any) -> None:
+    try: name = iot_key_subs[key]
+    except KeyError: name = key.replace('-', '_')
     try:
-      info = ast.literal_eval(text)
-    except ValueError as e:
-      msg = str(e)
-      if msg.startswith('malformed node or string:'): # omit the repr garbage containing address.
-        msg = 'malformed .iot file: {!r}'.format(path)
-      raise IotParseError(msg) from e
-    req_type(info, dict)
-    for kv in info.items():
-      self.add_iot_val_for_key(ctx, *kv)
-
-
-  def add_val_for_key(self, ctx:Ctx, key: str, val: Any) -> None:
-    if ctx.dbg:
-      existing = self.__dict__[key]
-      if existing is not None:
-        errL(f'note: {self.stem}: overriding value for key: {key!r};\n  existing: {existing!r};\n  incoming: {val!r}')
-    self.__dict__[key] = val
-
-
-  def add_iot_val_for_key(self, ctx:Ctx, iot_key: str, val: Any) -> None:
-    key = ('in_' if iot_key == 'in' else iot_key.replace('-', '_'))
-    try:
-      exp_desc, predicate, validator_fn = case_key_validators[key]
+      exp_desc, predicate, validator_fn = case_key_validators[name]
     except KeyError as e:
-      raise TestCaseError(f'invalid key in .iot file: {iot_key!r}') from e
+      raise TestCaseError(f'invalid config key: {key!r}') from e
     if not predicate(val):
-      raise TestCaseError(f'key: {iot_key!r}: expected value of type: {exp_desc}; received: {val!r}')
+      raise TestCaseError(f'key: {key!r}: expected value of type: {exp_desc}; received: {val!r}')
     if validator_fn:
-      validator_fn(key, val)
-    self.add_val_for_key(ctx, key, val)
+      validator_fn(name, val)
+    if ctx.dbg:
+      existing = getattr(self, name)
+      if existing is not None and existing != val:
+        errL(f'note: {self.stem}: overriding value for key: {name!r};\n  existing: {existing!r}\n  incoming: {val!r}')
+    setattr(self, name, val)
 
 
   def derive_info(self, ctx: Ctx) -> None:
@@ -325,8 +289,8 @@ class Case:
       prefix = '' if cmd else './'
       cmd.append(prefix + dflt_name)
       if self.args is None:
-        wild_args = list(self.test_wild_args.get(dflt_path, ()))
-        cmd += wild_args
+        par_args = list(self.test_par_args.get(path_stem(dflt_path), ()))
+        cmd += par_args
 
     if self.args:
       cmd += expand(self.args) or []
@@ -364,6 +328,15 @@ class Case:
       exp = FileExpectation(path, info, expand_str)
       self.test_expectations.append(exp)
 
+
+iot_key_subs = {
+  '.in' : 'in_',
+  '.err' : 'err_val',
+  '.out' : 'out_val',
+  '.dflt_src_paths' : 'dflt_src_paths',
+  '.test_info_paths' : 'test_info_paths',
+  'in' : 'in_',
+}
 
 def is_int_or_ellipsis(val: Any) -> bool:
   return val is Ellipsis or is_int(val)
@@ -419,6 +392,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'compile_timeout': ('positive int',       is_pos_int,         None),
   'coverage': ('string or list of strings', is_str_or_list,     None),
   'desc':     ('str',                       is_str,             None),
+  'dflt_src_paths': ('list of str',         is_list_of_str,     None),
   'env':      ('dict of strings',           is_dict_of_str,     None),
   'err_mode': ('str',                       is_str,             validate_exp_mode),
   'err_path': ('str',                       is_str,             None),
@@ -433,6 +407,7 @@ case_key_validators = { # key => msg, validator_predicate, validator_fn.
   'out_path': ('str',                       is_str,             None),
   'out_val':  ('str',                       is_str,             None),
   'skip':     ('bool',                      is_bool,            None),
+  'test_info_paths': ('set of str',         is_set_of_str,      None),
   'timeout':  ('positive int',              is_pos_int,         None),
 }
 

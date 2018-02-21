@@ -25,5 +25,3 @@ elif arg == 'err':
 
 print(out, file=stdout)
 print(err, file=stderr)
-
-if arg == 'iot': exit(1)

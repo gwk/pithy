@@ -1,2 +1,0 @@
-iotest error: broken test case: test-meta/1/broken
-  exception: IotParseError: malformed .iot file: 'test-meta/1/broken.iot'.
