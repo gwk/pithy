@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Dict, Hashable, Iterable, List, Mapping, MutableMapping, MutableSequence, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Hashable, Iterable, List, Mapping, MutableMapping, MutableSequence, Sequence, Tuple, TypeVar, Union
 
 
 K = TypeVar('K', bound=Hashable)
@@ -54,6 +54,17 @@ def dict_set_defaults(d: MutableMapping[K, V], defaults: Union[Mapping[K, V], It
   for k, v in it:
     d.setdefault(k, v)
   return d
+
+
+def dict_fan_by_key_pred(d: Mapping[K, V], pred: Callable[[K], bool]) -> Tuple[Dict[K, V], Dict[K, V]]:
+  'Fan out `d` into a pair of dictionaries by applying `pred` to each key in `d`.'
+  fan: Tuple[Dict[K, V], Dict[K, V]] = ({}, {})
+  for k, v in d.items():
+    if pred(k):
+      fan[1][k] = v
+    else:
+      fan[0][k] = v
+  return fan
 
 
 class DefaultByKeyDict(dict): # TODO: typing.
