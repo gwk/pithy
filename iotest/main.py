@@ -333,7 +333,7 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
   # set up directory.
   if path_exists(case.test_dir):
     if not is_dir(case.test_dir): # could be a symlink; do not want to remove contents of link destination.
-      raise Exception(f'test directory already exists as a non-directory: {case.test_dir}')
+      raise TestCaseError(f'test directory already exists as a non-directory: {case.test_dir}')
     if case.is_lead:
       remove_dir_contents(case.test_dir)
     else:
@@ -347,10 +347,12 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
     orig_path = path_join(ctx.proj_dir, orig)
     link_path = path_join(case.test_dir, link)
     if path_dir(link):
-      raise Exception(f'symlink is a path: {link}') # TODO: make parent dirs for link_path?
+      raise TestCaseError(f'symlink is a path: {link}') # TODO: make parent dirs for link_path?
     if is_node_not_link(link_path): # do not allow symlinks to overwrite previous contents in test dir.
-      raise Exception(f'non-symlink already exists at desired symlink path: {link_path}')
-    make_link(orig=orig_path, link=link_path)
+      raise TestCaseError(f'non-symlink already exists at desired symlink path: {link_path}')
+    try: make_link(orig=orig_path, link=link_path)
+    except FileNotFoundError as e: raise TestCaseError(f'link original source does not exist: {orig_path}') from e
+
 
   compile_time = 0.0
   compile_time_start = time.time()
