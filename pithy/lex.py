@@ -103,8 +103,9 @@ class Lexer:
 
 
   def _lex_mode(self, regex: Pattern, string: str, pos: int, end: int) -> Iterator[Match]:
-    def lex_inv(end: int) -> Match:
+    def lex_inv(end: int) -> Match[str]:
       inv_match = self.inv_re.match(string, pos, end) # create a real match object.
+      assert inv_match is not None
       if self.invalid: return inv_match
       raise LexError(inv_match)
     while pos < end:

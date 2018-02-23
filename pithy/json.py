@@ -171,11 +171,16 @@ def parse_jsons(string: str, types: Sequence[type]=()) -> Iterable[Any]:
   then an object hook is passed to the decoder transforms JSON objects into matching dataclass types.
   '''
   decoder = _mk_decoder(types)
-  idx = _ws_re.match(string, 0).end() # must consume leading whitespace for the decoder.
+  m = _ws_re.match(string, 0)
+  assert m is not None
+  idx = m.end() # must consume leading whitespace for the decoder.
+
   while idx < len(string):
     obj, end = decoder.raw_decode(string, idx)
     yield obj
-    idx = _ws_re.match(string, end).end()
+    m = _ws_re.match(string, end)
+    assert m is not None
+    idx = m.end()
 
 
 def load_jsons(file: TextIO, types: Sequence[type]=()) -> Iterable[Any]:
