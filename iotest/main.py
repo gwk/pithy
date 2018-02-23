@@ -17,7 +17,6 @@ from .pithy.format import FormatError, format_to_re
 from .pithy.fs import *
 from .pithy.iterable import fan_by_key_fn, fan_by_pred
 from .pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
-from .pithy.types import is_bool, is_dict_of_str, is_dict, is_int, is_list, is_pos_int, is_set, is_set_of_str, is_str, is_str_or_list, req_type
 
 from .case import Case, FileExpectation, ParConfig, TestCaseError, file_expectation_fns
 from .ctx import Ctx
@@ -449,12 +448,6 @@ def run_cmd(ctx:Ctx, coverage_cases: Optional[List[Case]], case: Case, label: st
       return False
     except TaskLaunchError as e:
       outL(f'\n{label} process launch failed; {e.diagnosis}')
-#        outL(f'note: is the command installed?')
-#          outL(f'note: command path refers to a {status.type_desc}.')
-#          outL(f'note: permission error; make sure that you have set proper ownership and executable permissions.')
-#          outL(f'note: possible fix: `chmod +x {shlex.quote(cmd_path)}`')
-#        outL('note: test script does not start with a hash-bang line, e.g. `#!/usr/bin/env [INTERPRETER]`.')
-#       outL(f'note: test script has a hash-bang line; is it mistyped?')
     except Timeout:
       outL(f'\n{label} process timed out ({timeout} sec) and was killed.')
     return None
