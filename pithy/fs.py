@@ -105,6 +105,10 @@ def is_python_file(path:Path, always_read=False) -> bool:
 
 
 def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden=False) -> List[str]:
+  '''
+  Return a list of the names in the directory at `path`,
+  optionally filtering by extensions in `exts`, and the `hidden` flag (defaults to False, excluding names beginning with '.').
+  '''
   exts = normalize_exts(exts)
   names = sorted(_os.listdir(path)) # type: ignore # https://github.com/python/typeshed/issues/1653
   #^ Sort is necessary for some file systems, e.g. APFS.
