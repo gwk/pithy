@@ -113,8 +113,10 @@ def ansi_sgr(*seq:Any, on:bool=True) -> str:
 ansi_txt_primary_indices = range(30, 38)
 ansi_txt_primaries = tuple(ansi_sgr(i) for i in ansi_txt_primary_indices)
 TXT_D, TXT_R, TXT_G, TXT_Y, TXT_B, TXT_M, TXT_C, TXT_L = ansi_txt_primaries
+
 TXT_D_ERR, TXT_R_ERR, TXT_G_ERR, TXT_Y_ERR, TXT_B_ERR, TXT_M_ERR, TXT_C_ERR, TXT_L_ERR = (
   (c if is_err_tty else '') for c in ansi_txt_primaries)
+
 TXT_D_OUT, TXT_R_OUT, TXT_G_OUT, TXT_Y_OUT, TXT_B_OUT, TXT_M_OUT, TXT_C_OUT, TXT_L_OUT = (
   (c if is_out_tty else '') for c in ansi_txt_primaries)
 
@@ -123,8 +125,10 @@ TXT_D_OUT, TXT_R_OUT, TXT_G_OUT, TXT_Y_OUT, TXT_B_OUT, TXT_M_OUT, TXT_C_OUT, TXT
 ansi_bg_primary_indices = range(40, 48)
 ansi_bg_primaries = tuple(ansi_sgr(i) for i in ansi_bg_primary_indices)
 BG_D, BG_R, BG_G, BG_Y, BG_B, BG_M, BG_C, BG_L = ansi_bg_primaries
+
 BG_D_ERR, BG_R_ERR, BG_G_ERR, BG_Y_ERR, BG_B_ERR, BG_M_ERR, BG_C_ERR, BG_L_ERR = (
   (c if is_err_tty else '') for c in  ansi_bg_primaries)
+
 BG_D_OUT, BG_R_OUT, BG_G_OUT, BG_Y_OUT, BG_B_OUT, BG_M_OUT, BG_C_OUT, BG_L_OUT = (
   (c if is_out_tty else '') for c in  ansi_bg_primaries)
 
