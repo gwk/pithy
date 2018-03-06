@@ -8,14 +8,7 @@ from datetime import datetime
 from sys import stderr, stdout, version_info
 from typing import Any, Callable, Dict, FrozenSet, Iterable, Hashable, List, Optional, Sequence, TextIO, Union
 from .util import all_slots
-
-
-if version_info >= (3,7):
-  from dataclasses import asdict, dataclass, fields, is_dataclass # type: ignore
-else:
-  def asdict(obj: Any) -> dict: raise TypeError('dataclasses are not available in this version of Python')
-  def fields(obj: Any) -> tuple: raise TypeError('dataclasses are not available in this version of Python')
-  def is_dataclass(obj: Any) -> bool: return False
+from .dataclasses import asdict, dataclass, fields, is_dataclass
 
 
 JsonAny = Any # TODO: remove this once recursive types work.
