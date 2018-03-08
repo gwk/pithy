@@ -182,13 +182,13 @@ def real_path(path:Path) -> str: return _realpath(str_path(path))
 
 
 def remove_dir(path:Path) -> None:
-  remove_dir_contents(path)
+  remove_dir_contents(path, hidden=True)
   _os.rmdir(path)
 
 
-def remove_dir_contents(path:Path) -> None:
-  for n in _os.listdir(path): # type: ignore # https://github.com/python/typeshed/issues/1653
-    remove_path(path_join(path, n))
+def remove_dir_contents(path:Path, hidden=False) -> None:
+  for n in list_dir_paths(path, hidden=hidden):
+    remove_path(n)
 
 
 def remove_file(path:Path) -> None: _os.remove(path)
