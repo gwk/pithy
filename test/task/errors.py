@@ -33,21 +33,21 @@ utest_exc(TaskFileNotReadable('./empty.link'), run, './empty.link')
 # TODO: test effect of changing permissions on link.
 
 chmod('empty.py', 0o700)
-utest_exc(TaskFileHashBangMissing('./empty.py', b''), run, './empty.py')
-utest_exc(TaskFileHashBangMissing('./empty.link', b''), run, './empty.link')
+utest_exc(TaskFileHashbangMissing('./empty.py', b''), run, './empty.py')
+utest_exc(TaskFileHashbangMissing('./empty.link', b''), run, './empty.link')
 
 with open('hashbang-missing.py', 'w') as f:
   f.write('xyz\n')
 make_link('hashbang-missing.py', 'hashbang-missing.link')
 chmod('hashbang-missing.py', 0o700)
 
-utest_exc(TaskFileHashBangMissing('./hashbang-missing.py', b'xyz'), run, './hashbang-missing.py')
-utest_exc(TaskFileHashBangMissing('./hashbang-missing.link', b'xyz'), run, './hashbang-missing.link')
+utest_exc(TaskFileHashbangMissing('./hashbang-missing.py', b'xyz'), run, './hashbang-missing.py')
+utest_exc(TaskFileHashbangMissing('./hashbang-missing.link', b'xyz'), run, './hashbang-missing.link')
 
 with open('./hashbang-ill-formed.py', 'w') as f:
   f.write('#!xyz\n')
 chmod('./hashbang-ill-formed.py', 0o700)
 make_link('hashbang-ill-formed.py', 'hashbang-ill-formed.link')
 
-utest_exc(TaskFileHashBangIllFormed('./hashbang-ill-formed.py', b'#!xyz'), run, './hashbang-ill-formed.py')
-utest_exc(TaskFileHashBangIllFormed('./hashbang-ill-formed.link', b'#!xyz'), run, './hashbang-ill-formed.link')
+utest_exc(TaskFileHashbangIllFormed('./hashbang-ill-formed.py', b'#!xyz'), run, './hashbang-ill-formed.py')
+utest_exc(TaskFileHashbangIllFormed('./hashbang-ill-formed.link', b'#!xyz'), run, './hashbang-ill-formed.link')

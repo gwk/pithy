@@ -112,8 +112,8 @@ def _diagnose_launch_error(path: str, e: OSError) -> None:
         lead_bytes = f.read(256) # Realistically a hashbang line should not be longer than this.
         line, newline, _ = lead_bytes.partition(b'\n')
         if line and (not newline or b'\0' in line): raise TaskFileBinaryIllFormed(path, line) from e # TODO: diagnose further?
-        if not line.startswith(b'#!'): raise TaskFileHashBangMissing(path, line) from e
-        raise TaskFileHashBangIllFormed(path, line) from e
+        if not line.startswith(b'#!'): raise TaskFileHashbangMissing(path, line) from e
+        raise TaskFileHashbangIllFormed(path, line) from e
     except (OSError, IOError): pass # open or read failed; raise the original exception.
 
 
@@ -364,7 +364,7 @@ class TaskFileInvokedAsInstalledCommand(TaskLaunchError):
   def diagnosis(self) -> str: return 'file exists but invocation is missing a leading `./`.'
 
 
-class TaskFileHashBangMissing(TaskLaunchError):
+class TaskFileHashbangMissing(TaskLaunchError):
 
   def __init__(self, path: str, first_line: bytes) -> None:
     super().__init__(path, first_line)
@@ -376,7 +376,7 @@ class TaskFileHashBangMissing(TaskLaunchError):
     return f'script is missing hashbang line (`#!...`); first line: {_try_decode_repr(self.first_line)}'
 
 
-class TaskFileHashBangIllFormed(TaskLaunchError):
+class TaskFileHashbangIllFormed(TaskLaunchError):
 
   def __init__(self, path: str, first_line: bytes) -> None:
     super().__init__(path, first_line)
