@@ -51,3 +51,8 @@ make_link('hashbang-ill-formed.py', 'hashbang-ill-formed.link')
 
 utest_exc(TaskFileHashbangIllFormed('./hashbang-ill-formed.py', b'#!xyz'), run, './hashbang-ill-formed.py')
 utest_exc(TaskFileHashbangIllFormed('./hashbang-ill-formed.link', b'#!xyz'), run, './hashbang-ill-formed.link')
+
+# Test interaction between parent process cwd and task cwd.
+touch_path('dir/empty.py')
+utest_exc(TaskFileNotExecutable('dir/empty.py'), run, 'dir/empty.py')
+utest_exc(TaskFileInvokedAsInstalledCommand('dir/empty.py'), run, 'empty.py', cwd='dir')

@@ -4,7 +4,7 @@ import os as _os
 import time as _time
 
 from os import R_OK, X_OK, access as _access, supports_effective_ids as _supports_effective_ids
-from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file
+from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file, join as _path_join
 from selectors import PollSelector as _PollSelector, EVENT_READ, EVENT_WRITE
 from shlex import split as sh_split, quote as sh_quote
 from subprocess import DEVNULL, PIPE, Popen as _Popen
@@ -63,8 +63,6 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
     f_in = stdin # presume None, PIPE, file, or DEVNULL.
     input_bytes = None
 
-  path = cast(Tuple[str, ...], cmd)[0] # For exception handling below.
-
   fds = [f if isinstance(f, int) else f.fileno for f in files]
 
   # flushing std file descriptors guarantees consistent behavior between console and iotest;
@@ -88,14 +86,15 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
   # _Popen may raise FileNotFoundError, PermissionError, or OSError.
   # The distinction is more confusing than helpful; therefore we handle them all as OSError.
   except OSError as e:
-    _diagnose_launch_error(path, e) # Raises a more specific exception or else return.
-    raise TaskLaunchError(path) from e # Default.
+    cmd_path = cast(Tuple[str, ...], cmd)[0] # The path as seen by the command.
+    path = cmd_path if cwd is None else _path_join(cwd, cmd_path) # The path relative to the parent cwd, or absolute.
+    # TODO: If absolute, try to make path relative to parent cwd.
+    if e.filename == cmd_path: _diagnose_launch_error(path, cmd_path, e) # Raises a more specific exception or else return.
+    raise TaskLaunchUndiagnosedError(path) from e # Default.
 
 
-def _diagnose_launch_error(path: str, e: OSError) -> None:
-  if e.filename != path: return # No further diagnosis.
-  is_installed_cmd = not _dir_name(path)
-  if is_installed_cmd:
+def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
+  if not _dir_name(cmd_path): # invoked as installed command.
     if _path_exists(path): raise TaskFileInvokedAsInstalledCommand(path) from e
     else: raise TaskInstalledCommandNotFound(path) from e
 
@@ -106,7 +105,8 @@ def _diagnose_launch_error(path: str, e: OSError) -> None:
   bad_format = (e.strerror == 'Exec format error')
   if bad_format and not _is_permitted(path, R_OK): raise TaskFileNotReadable(path) from e # Read bit is necessary for scripts.
 
-  if bad_format or isinstance(e, FileNotFoundError): # the 'file not found' might actually be due to mistyped hashbang, confusingly.
+  if bad_format or isinstance(e, FileNotFoundError):
+    # The 'file not found' exception might actually be due to mistyped hashbang, confusingly.
     try: # Heuristic to diagnose bad hashbang lines.
       with open(path, 'rb') as f:
         lead_bytes = f.read(256) # Realistically a hashbang line should not be longer than this.
@@ -114,7 +114,8 @@ def _diagnose_launch_error(path: str, e: OSError) -> None:
         if line and (not newline or b'\0' in line): raise TaskFileBinaryIllFormed(path, line) from e # TODO: diagnose further?
         if not line.startswith(b'#!'): raise TaskFileHashbangMissing(path, line) from e
         raise TaskFileHashbangIllFormed(path, line) from e
-    except (OSError, IOError): pass # open or read failed; raise the original exception.
+    except (OSError, IOError):
+      raise TaskLaunchError(path) from e # open or read failed; raise the original exception.
 
 
 def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[int, bytes, bytes]:
@@ -332,14 +333,29 @@ class UnexpectedExit(Exception):
 
 class TaskLaunchError(Exception):
   '''
-  Exception indicating that `task.launch` failed
-  `launch` attempts to diagnose failures and raises TaskLaunchError or subclass from the original.
+  Exception indicating that `task.launch` failed.
+  `launch` attempts to diagnose failures and raises a subclass of TaskLaunchError from the original.
   '''
 
   path: str
 
   @property
-  def diagnosis(self) -> str: raise NotImplementedError
+  def diagnosis(self) -> str:
+    return f'task launch failed.'
+
+
+class TaskLaunchUndiagnosedError(TaskLaunchError):
+  '''
+  Undiagnosed launch error.
+  '''
+
+  def __init__(self, path: str) -> None:
+    super().__init__(path)
+    self.path = path
+
+  @property
+  def diagnosis(self) -> str:
+    return f'task launch failed (undiagnosed).'
 
 
 class TaskFileBinaryIllFormed(TaskLaunchError):
