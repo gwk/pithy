@@ -3,6 +3,7 @@
 from utest import *
 from pithy.format import *
 
+
 utest(False, has_formatter, '')
 utest(False, has_formatter, 'a')
 utest(False, has_formatter, '{{}}')
