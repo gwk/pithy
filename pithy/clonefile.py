@@ -15,7 +15,7 @@ __all__ = ['clone_path', 'volume_supports_clone']
 libSystem = CDLL('libSystem.dylib', use_errno=True)
 
 clonefile = libSystem.clonefile # (UnsafePointer<Int8>!, UnsafePointer<Int8>!, UInt32) -> Int32
-clonefile.argtypes = [c_char_p, c_char_p, c_uint]
+clonefile.argtypes = (c_char_p, c_char_p, c_uint)
 clonefile.restype = c_int
 
 CLONE_NOFOLLOW = 1 # Int32
