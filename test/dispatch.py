@@ -15,6 +15,9 @@ class C():
   @describe
   def _(self, item:str) -> None: return f'str: {item}'
 
+  describe = describe.method()
+
+
   class measure(MethodDispatch): pass
 
   @measure
@@ -23,9 +26,11 @@ class C():
   @measure
   def _(self, item:str) -> None: return len(item)
 
+  measure = measure.method()
+
 
 c = C()
-utest('int: 0', c.describe.dispatch, c, 0)
-utest('str: a', c.describe.dispatch, c, 'a')
-utest(0, c.measure.dispatch, c, 0)
-utest(3, c.measure.dispatch, c, 'abc')
+utest('int: 0', c.describe, 0)
+utest('str: a', c.describe, 'a')
+utest(0, c.measure, 0)
+utest(3, c.measure, 'abc')
