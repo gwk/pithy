@@ -86,6 +86,7 @@ def parse_craft(path):
 
 
 def update_swift_package_json(config) -> Any:
+  make_dirs(config.build_dir)
   src = 'Package.swift'
   dst = f'{config.build_dir}/swift-package.json'
   if product_needs_update(dst, source=src):
