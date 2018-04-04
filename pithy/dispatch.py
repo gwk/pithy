@@ -1,73 +1,71 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import inspect
-from typing import Any, Callable, Dict
+from collections import defaultdict
+from functools import wraps, _find_impl # type: ignore
+from weakref import WeakKeyDictionary
+from typing import Any, Callable, DefaultDict, Dict
 
 
 class DispatchTypeError(TypeError): pass
 
-class MethodDispatch:
+
+# module_name -> method_name -> arg_type.
+_registries: DefaultDict[str, DefaultDict[str, Dict[type, Callable]]] = defaultdict(lambda: defaultdict(dict))
+
+def dispatched(method: Callable) -> Callable:
   '''
-  Create a single dispatch method family that dispatches on the type of the first argument.
-  Note that the implementation currently dispatches on exact types only.
-  TODO: MRO resolution as in singledispatch.
+  Decorator for instance methods to dispatch on first arg (after self).
+  Uses the same MRO resolution algorithm as functools.singledispatch.
 
   Usage:
   | class C():
-  |   class describe(MethodDispatch): pass
   |
-  |  @describe
-  |  def _(self, item:int) -> None: print(f'int: {item}')
+  |  @dispatched
+  |  def describe(self, item:int) -> None: print(f'int: {item}')
   |
-  |  @describe
-  |  def _(self, item:str) -> None: print(f'str: {item}')
-  |
-  |  describe = describe.method() # Rebind the name from the decorator to the method descriptor.
+  |  @dispatched
+  |  def describe(self, item:str) -> None: print(f'str: {item}')
 
-
-  References:
-  * https://stackoverflow.com/questions/24601722/how-can-i-use-functools-singledispatch-with-instance-methods
-  * https://medium.com/@vadimpushtaev/decorator-inside-python-class-1e74d23107f6.
-  TODO: better typing.
+  TODO: poison registration mechanism after first call to prevent subtle MRO/caching errors.
   '''
+  assert method.__closure__ is None # type: ignore # Method cannot be a closure.
+  registry = _registries[method.__module__][method.__name__]
+  sig = inspect.signature(method)
+  pars = list(sig.parameters.values())
+  par_self = pars[0]
+  par_arg = pars[1]
+  assert par_self.name == 'self'
+  t = par_arg.annotation
+  assert isinstance(t, type)
+  if t in registry:
+    a = _source_loc(registry[t])
+    b = _source_loc(method)
+    raise DispatchTypeError(f'`dispatched` methods collide on argument type:\n{a}\n{b}')
+  registry[t] = method
 
-  class Descriptor:
-    '''
-    The descriptor gives us object-oriented method binding for both class and instance property access.
-    '''
-    def __init__(self, methods):
-      self.methods = methods
-
-    def __get__(self, instance, owner):
-      methods = self.methods
-      if instance is None:
-        def dispatch(instance, arg, *args, **kwargs):
-          try: method = methods[type(arg)]
-          except KeyError as e: raise DispatchTypeError(type(arg)) from e
-          return method(instance, arg, *args, **kwargs)
-      else:
-        def dispatch(arg, *args, **kwargs):
-          try: method = methods[type(arg)]
-          except KeyError as e: raise DispatchTypeError(type(arg)) from e
-          return method(instance, arg, *args, **kwargs)
-      return dispatch
+  dispatch_cache: Dict[type, Callable] = {}
+  @wraps(method)
+  def dispatch(self, arg, *args, **kwargs):
+    method = _dispatch(type(arg), registry, dispatch_cache)
+    return method(self, arg, *args, **kwargs)
+  return dispatch
 
 
-  def __new__(cls, method: Callable):
-    try: methods: Dict[type, Callable] = cls.methods # type: ignore
-    except AttributeError:
-      methods = {}
-      cls.methods = methods
-    sig = inspect.signature(method)
-    pars = list(sig.parameters.values())
-    par_self = pars[0]
-    par_node = pars[1]
-    assert par_self.name == 'self'
-    methods[par_node.annotation] = method
+def _source_loc(function: Callable) -> str:
+  code = function.__code__
+  return f'{code.co_filename}:{code.co_firstlineno}'
 
-  @classmethod
-  def method(self):
-    '''
-    Create the descriptor that gives us the final appropriate dispatching method object.
-    '''
-    return self.Descriptor(self.methods)
+
+def _dispatch(cls: type, registry: Dict[type, Callable], dispatch_cache: Dict[type, Callable]) -> Callable:
+  try: return dispatch_cache[cls]
+  except KeyError: pass
+  try:
+    m = dispatch_cache[cls] = registry[cls]
+    return m
+  except KeyError: pass
+  try: m = _find_impl(cls, registry)
+  except RuntimeError as e: raise DispatchTypeError(cls) from e
+  if m is None: raise DispatchTypeError(cls)
+  dispatch_cache[cls] = m
+  return m

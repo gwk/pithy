@@ -7,26 +7,17 @@ from pithy.dispatch import *
 
 class C():
 
-  class describe(MethodDispatch): pass
+  @dispatched
+  def describe(self, item:int) -> None: return f'int: {item}'
 
-  @describe
-  def _(self, item:int) -> None: return f'int: {item}'
+  @dispatched
+  def describe(self, item:str) -> None: return f'str: {item}'
 
-  @describe
-  def _(self, item:str) -> None: return f'str: {item}'
+  @dispatched
+  def measure(self, item:int) -> None: return item
 
-  describe = describe.method()
-
-
-  class measure(MethodDispatch): pass
-
-  @measure
-  def _(self, item:int) -> None: return item
-
-  @measure
-  def _(self, item:str) -> None: return len(item)
-
-  measure = measure.method()
+  @dispatched
+  def measure(self, item:str) -> None: return len(item)
 
 
 c = C()
