@@ -20,7 +20,7 @@ _Generator = type(_g())
 class OmitNode(Exception): pass
 
 
-def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _VisitResult:
+def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _R:
   '''
   The `visit` function takes these parameters:
   * node: the current node.
@@ -28,7 +28,9 @@ def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _Vis
   * results: the transformed children.
   `visit` should return either a single result node or else a generator of results; in the latter case the results are flattened with those of the node's siblings.
   '''
-  return _transform_tree(root, get_children, visit, ())
+  res = _transform_tree(root, get_children, visit, ())
+  if isinstance(res, _Generator): raise ValueError(res)
+  else: return res # type: ignore
 
 
 def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_VisitFn, stack:_Stack) -> _VisitResult:
