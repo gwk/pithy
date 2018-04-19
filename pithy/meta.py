@@ -6,7 +6,7 @@ from types import FunctionType
 from typing import Any, Callable, List, Optional, Tuple, TypeVar
 
 
-def bindings_matching(prefix: str=None, val_type: type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
+def bindings_matching(prefix:str=None, val_type:type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
   '''
   Return (name, value) pairs of bindings from the specified frame,
   that match the specified prefix and type filters.
@@ -40,7 +40,7 @@ def bindings_matching(prefix: str=None, val_type: type=None, strip_prefix=True, 
   return pairs
 
 
-def dispatcher_for_names(prefix: str=None, default_name: str=None, default_fn: Callable=None, **renames) -> Callable:
+def dispatcher_for_names(prefix:str=None, default_name:str=None, default_fn:Callable=None, **renames:str) -> Callable:
   'Creates a dispatcher function for functions starting with prefix.'
   assert prefix
   bindings = { renames.get(name, name) : fn
@@ -64,7 +64,7 @@ def dispatcher_for_names(prefix: str=None, default_name: str=None, default_fn: C
 
 A = TypeVar('A', bound=Any)
 
-def rename(obj: A, name: str) -> A:
+def rename(obj:A, name:str) -> A:
   'Returns a renamed object.'
   obj.__name__ = name
   obj.__qualname__ = name
