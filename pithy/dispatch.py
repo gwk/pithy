@@ -11,7 +11,7 @@ class DispatchTypeError(TypeError): pass
 
 
 # module_name -> method_name -> arg_type.
-_registries: DefaultDict[str, DefaultDict[str, Dict[type, Callable]]] = defaultdict(lambda: defaultdict(dict))
+_dispatched_registries: DefaultDict[str, DefaultDict[str, Dict[type, Callable]]] = defaultdict(lambda: defaultdict(dict))
 
 def dispatched(method: Callable) -> Callable:
   '''
@@ -28,16 +28,18 @@ def dispatched(method: Callable) -> Callable:
   |  def describe(self, item:str) -> None: print(f'str: {item}')
 
   TODO: poison registration mechanism after first call to prevent subtle MRO/caching errors.
+  TODO: detect method vs plain function?
   '''
   assert method.__closure__ is None # type: ignore # Method cannot be a closure.
-  registry = _registries[method.__module__][method.__name__]
+  registry = _dispatched_registries[method.__module__][method.__name__]
   sig = inspect.signature(method)
   pars = list(sig.parameters.values())
   par_self = pars[0]
   par_arg = pars[1]
   assert par_self.name == 'self'
   t = par_arg.annotation
-  assert isinstance(t, type)
+  if not isinstance(t, type):
+    raise TypeError(f'`dispatched` requires type annotation to be a runtime type: {t}')
   if t in registry:
     a = _source_loc(registry[t])
     b = _source_loc(method)
@@ -58,6 +60,9 @@ def _source_loc(function: Callable) -> str:
 
 
 def _dispatch(cls: type, registry: Dict[type, Callable], dispatch_cache: Dict[type, Callable]) -> Callable:
+  '''
+  Dispatch using functools.singledispatch algorithm.
+  '''
   try: return dispatch_cache[cls]
   except KeyError: pass
   try:
