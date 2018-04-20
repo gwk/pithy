@@ -10,7 +10,7 @@ from .path import Path, PathOrFd
 class FileStatus(NamedTuple):
   '''
   Reinterpretation of standard stat_result:
-  * nicer names for the dfields;
+  * nicer names for the fields;
   * omits atime and atime_ns (which are not useful due to modern `noatime` semantics);
   * splits `mode` into `type` and `perms` fields.
   '''
