@@ -133,7 +133,8 @@ def make_link(orig:Path, link:Path, absolute=False, allow_nonexistent=False, mak
   else:
     _orig = rel_path(orig, start=path_dir(link))
   if make_dirs:
-    _os.makedirs(path_dir(link), exist_ok=True)
+    link_dir = path_dir(link)
+    if link_dir: _os.makedirs(link_dir, exist_ok=True)
   return _os.symlink(_orig, link)
 
 
