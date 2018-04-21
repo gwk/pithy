@@ -39,7 +39,7 @@ def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_VisitFn, stack:
   if children:
     child_stack = (*stack, node)
     for child in children:
-      try: r = _transform_tree(child, get_children, visit, stack)
+      try: r = _transform_tree(child, get_children, visit, child_stack)
       except OmitNode: continue
       if isinstance(r, _Generator):
         results.extend(r)

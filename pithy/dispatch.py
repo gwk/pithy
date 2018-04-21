@@ -4,9 +4,11 @@ import inspect
 from collections import defaultdict
 from functools import wraps, _find_impl # type: ignore
 from weakref import WeakKeyDictionary
-from typing import Any, Callable, DefaultDict, Dict
+from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple
+from .default import Raise
 
 
+class DispatchKeyError(KeyError): pass
 class DispatchTypeError(TypeError): pass
 
 
@@ -74,3 +76,60 @@ def _dispatch(cls: type, registry: Dict[type, Callable], dispatch_cache: Dict[ty
   if m is None: raise DispatchTypeError(cls)
   dispatch_cache[cls] = m
   return m
+
+
+# module_name -> method_name -> (dispatcher_method, key).
+_keyed_dispatch_registries: DefaultDict[str, Dict[str, Tuple[Callable, Dict[Any, Callable]]]] = defaultdict(dict)
+
+def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Raise._) -> Callable[[Callable], Callable]:
+  'Decorator to register a method as the dispatched method for the specified key.'
+
+  if key_fn is not None: # register new dispatcher name with default implementation.
+    assert key is Raise._
+    assert key_fn.__closure__ is None # type: ignore
+    def dflt_decorator(dflt_method:Callable)->Callable:
+      assert dflt_method.__closure__ is None # type: ignore # Method cannot be a closure.
+      # Check that the method looks appropriate.
+      sig = inspect.signature(dflt_method)
+      pars = list(sig.parameters.values())
+      assert len(pars) >= 2, f'`keyed_dispatch dflt_method requires at least `self` and one additional parameter.'
+      par_self = pars[0]
+      assert par_self.name == 'self'
+      # Check for collision.
+      module_registry = _keyed_dispatch_registries[dflt_method.__module__]
+      name = dflt_method.__name__
+      if name in module_registry:
+        suffix = '' if callable(key_fn) else '; did you mean `@keyed_dispatch(key=...)`?'
+        raise DispatchKeyError(f'`keyed_dispatch` collision on method name: {name}{suffix}')
+      # Register.
+      method_registry: Dict[Any, Callable] = {}
+      # Create and return dispatcher method.
+      @wraps(dflt_method)
+      def dispatch(self, arg, *args, **kwargs):
+        f = method_registry.get(key_fn(arg), dflt_method) # type: ignore
+        return f(self, arg, *args, **kwargs)
+      module_registry[name] = (dispatch, method_registry)
+      return dispatch
+    return dflt_decorator
+
+  else: # register implementation for key.
+    assert key is not Raise._
+    def decorator(method:Callable) -> Callable:
+      assert method.__closure__ is None # type: ignore # Method cannot be a closure.
+      # Check that the method looks appropriate.
+      sig = inspect.signature(method)
+      pars = list(sig.parameters.values())
+      assert len(pars) >= 2, f'`keyed_dispatch method requires at least `self` and one additional parameter.'
+      par_self = pars[0]
+      assert par_self.name == 'self'
+      # Check for collision.
+      name = method.__name__
+      module_registry = _keyed_dispatch_registries[method.__module__]
+      try: dispatch, method_registry = module_registry[name]
+      except KeyError as e:
+        raise DispatchKeyError(f'`keyed_dispatch` method name was not previously registered: {name}') from e
+      if key in method_registry:
+        raise DispatchKeyError(f'`keyed_dispatch` collision on key: {key}') # TODO: show previous implementation.
+      method_registry[key] = method
+      return dispatch
+    return decorator

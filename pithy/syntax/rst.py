@@ -1,89 +1,130 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Iterator, List, Tuple
+import re
+from typing import Iterable, Iterator, List, Optional, Tuple, Union
 from ..dataclasses import dataclass
 from ..dispatch import dispatched
-from ..tree import transform_tree
+from ..io import errL, errSL
+from ..tree import transform_tree, OmitNode
 from . import Syntax
 
-import docutils.frontend as _frontend # type: ignore
-import docutils.nodes as _nodes
-from docutils.nodes import Node, Text # type: ignore
+from docutils import frontend as _frontend # type: ignore
+from docutils import nodes as _nodes
+from docutils.nodes import Node as Node, Text # type: ignore
 from docutils.utils import new_document as _new_document # type: ignore
 from docutils.parsers.rst import Parser as _RstParser # type: ignore
 
 
-def parse(path:str, text:str) -> Syntax:
+def parse_rst(path:str, text:str) -> Syntax:
   parser = _RstParser()
   settings = _frontend.OptionParser(components=(_RstParser,)).get_default_values()
   document = _new_document(path, settings=settings)
   parser.parse(text, document)
-  ctx = Ctx(path=path, text=text, lines=text.split('\n'))
-  return transform_tree(document, _get_children, ctx.visit)
+  ctx = _Ctx(path=path, text=text, lines=text.splitlines(keepends=True)) # type: ignore
+  return transform_tree(document, _get_children, ctx.visit) # type: ignore
 
 
 @dataclass
-class RefTarget:
-  ref: _nodes.reference
-  target: _nodes.target
+class Ref:
+  text: Syntax
+  target: Optional[Syntax]
 
-  @property
-  def children(self):
-    yield from self.ref.children
-    yield from self.target.children
+  def __iter__(self):
+    yield self.text
+    if self.target: yield self.target
 
 
-def _get_children(node:Node) -> Iterator[Node]:
-  it = iter(node.children)
-  for c in it:
-    if isinstance(c, _nodes.reference):
-      n = next(it)
-      if isinstance(n, _nodes.target):
-        yield RefTarget(c, n)
-      else:
-        yield c
-        yield n
-    else:
-      yield c
+def _get_children(node:Node) -> Iterable[Node]:
+  return node.children # type: ignore
 
 
 @dataclass
-class Ctx:
+class _Ctx:
   path: str
   text: str
   lines: List[str]
-  text_line: int = 0
-  text_col: int = 0
+  line: int = 0
+  col: int = 0
+
+  @property
+  def curr_line_text(self) -> str: return self.lines[self.line]
+
+  def match_text(self, text:str, skip_leading:bool, label:str, raises=False) -> Syntax.Pos:
+    'Match a single line of text, advancing self.line and self.col.'
+    if skip_leading:
+      while rst_syntax_re.fullmatch(self.curr_line_text, self.col):
+        #errL(f'SKIPPED: {self.curr_line_text[self.col:]!r}')
+        self.line += 1
+        self.col = 0
+    line = self.line
+    col = self.curr_line_text.find(text, self.col)
+    if col == -1:
+      if raises: raise ValueError(text)
+      errL(Syntax.diagnostic(self.path, line=self.line, col=self.col,
+        msg=f'warning: {label} not matched: {text!r}\n  {self.curr_line_text!r}'))
+      col = self.col # better than nothing.
+      end_col = -1
+    else: # matched.
+      end_col = col+len(text)
+      if text.endswith('\n'):
+        self.line +=1
+        self.col = 0
+      else:
+        self.col = end_col
+      #errL(f'MATCHED: {self.line}:{self.col}: {text!r}')
+    return Syntax.Pos(line=line, col=col, end_line=self.line, end_col=end_col)
+
 
   @dispatched
   def visit(self, node:Node, stack:Tuple[Node, ...], children:List[Node]) -> Syntax:
-    pos = Syntax.Pos(line=(-1 if node.line is None else node.line-1), enclosed=(c.pos for c in children))
-    return Syntax(path=self.path, pos=pos, kind=kind_for(node), text='', children=children)
+    'Default visitor.'
+    pos = Syntax.Pos(line=(-1 if node.line is None else node.line-1), enclosed=children)
+    return Syntax(path=self.path, pos=pos, kind=_kind_for(node), content=children)
 
-  @dispatched
+
+  @dispatched # type: ignore
   def visit(self, node:Text, stack:Tuple[Node, ...], children:List[Node]) -> Syntax:
+    'Text visitor. Determines line/col position post-hoc, which docutils does not provide.'
+    assert node.line is None # Text never has line number.
     text = node.astext()
-    if self.text_line >= 0: # No missing text yet; attempt to find line and column of this text.
-      while self.text_line < len(self.lines):
-        line_text = self.lines[self.text_line]
-        col = line_text.find(text[0], self.text_col) # Questionable: search for first character only.
-        if col >= 0:
-          self.text_col = col
-          break
-        else:
-          self.text_line += 1
-          self.text_col = 0
-      if self.text_line == len(self.lines): # not found.
-        errL(f'warning: text matching failed: {node}')
-        self.text_line = -1
-        self.text_col = -1
-    pos = Syntax.Pos(line=self.text_line, col=self.text_col)
-    return Syntax(path=self.path, pos=pos, kind=kind_for(node), text=text, children=())
-
-  @dispatched
-  def visit(self, node:RefTarget, stack:Tuple[Node, ...], children:List[Node]) -> Syntax:
-    pos = Syntax.Pos(enclosed=(c.pos for c in children))
-    return Syntax(path=self.path, pos=pos, kind=kind_for(node), text='', children=children)
+    text_lines = text.splitlines(keepends=True)
+    if len(text_lines) == 1:
+      pos = self.match_text(text, skip_leading=True, label='text')
+      return Syntax(path=self.path, pos=pos, kind='text', content=text)
+    # multiline text blocks.
+    children = []
+    for i, text_line in enumerate(text_lines):
+      is_lead = not i
+      label = 'lead multiline text' if is_lead else 'tail multiline text'
+      pos = self.match_text(text_line, skip_leading=is_lead, label=label)
+      children.append(Syntax(path=self.path, pos=pos, kind='text', content=text_line))
+    pos = Syntax.Pos(enclosed=children)
+    return Syntax(path=self.path, pos=pos, kind='lines', content=tuple(children))
 
 
-def kind_for(node:Node) -> str: return type(node).__name__
+  @dispatched # type: ignore
+  def visit(self, node:_nodes.reference, stack:Tuple[Node, ...], children:List[Node]) -> Syntax:
+    assert len(children) == 1
+    text = children[0]
+    assert isinstance(text, Syntax)
+    attrs = node.attributes
+    uri = attrs.get('refuri')
+    target = None
+    if uri:
+      try: pos = self.match_text(uri, skip_leading=True, label='ref uri', raises=True)
+      except ValueError: pass # might have been extracted from the text.
+      else: target = Syntax(path=self.path, pos=pos, kind='target', content=uri)
+    pos = Syntax.Pos(enclosed=(text, target))
+    content = Ref(text=text, target=target)
+    return Syntax(path=self.path, pos=pos, kind='ref', content=content)
+
+
+  @dispatched # type: ignore
+  def visit(self, node:_nodes.target, stack:Tuple[Node, ...], children:List[Node]) -> None: # type: ignore
+    raise OmitNode
+
+
+rst_syntax_re = re.compile(r'[~=\s\-_<>`:]*') # matches lines that are only markup syntax and not content.
+
+
+def _kind_for(node:Node) -> str: return type(node).__name__
