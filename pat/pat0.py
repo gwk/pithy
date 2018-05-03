@@ -121,7 +121,7 @@ def main_diff(args) -> None:
   matches = diff_lines(o_lines, m_lines)
   # returns triples of form (i, j, n); o_lines[i:i+n] == m_lines[j:j+n].
   # matches are monotonically increasing in i and j.
-  # the last match is a sentinal with (len(o_lines), len(m_lines), 0).
+  # the last match is a sentinel with (len(o_lines), len(m_lines), 0).
   # it is the only match with n == 0.
   # for non-sentinel adjacent matches (i, j, n) and (i1, j1, n1),
   # then i+n != i1 or j+n != j1, or both.
