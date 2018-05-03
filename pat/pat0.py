@@ -20,11 +20,11 @@ pat_version = '0'
 
 def main() -> None:
   parser = ArgumentParser(prog='pat', description='create or apply a .pat patch file.')
-  parser.epilog = "for help with a specific command, pass '-h' to that command." # type: ignore
+  parser.epilog = "for help with a specific command, pass '-h' to that command."
 
   subs = parser.add_subparsers()
-  subs.required = True # type: ignore # unofficial workaround.
-  subs.dest = 'command' # type: ignore # this is necessary to make `required` above work.
+  subs.required = True
+  subs.dest = 'command'
 
 
   sub_create = subs.add_parser('create',
