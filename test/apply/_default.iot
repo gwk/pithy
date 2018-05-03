@@ -1,4 +1,4 @@
 {
-  'cmd': '$PROJ/pat/pat0.py apply',
+  'cmd': 'pat apply',
   'args': ['test/$NAME.pat'],
 }

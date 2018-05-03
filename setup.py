@@ -25,7 +25,7 @@ setup(
   install_requires=[],
   packages=['pat'],
   entry_points = { 'console_scripts': [
-    'pat=pat:main',
+    'pat=pat.__main__:main',
   ]},
   keywords=['pat', 'diff', 'patch'],
   classifiers=[ # See https://pypi.python.org/pypi?%3Aaction=list_classifiers

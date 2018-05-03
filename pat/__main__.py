@@ -9,7 +9,9 @@ from difflib import SequenceMatcher
 from os.path import isfile as is_file, exists as path_exists
 from shutil import copyfile
 from sys import stderr
-from typing import Any, DefaultDict, List, Set, NoReturn, TextIO, Tuple, cast
+from typing import DefaultDict, List, Set, NoReturn, Tuple, cast
+
+from . import *
 
 
 __all__ = ['pat_dependency', 'main']
@@ -252,30 +254,6 @@ def main_apply(args) -> None:
   while orig_index < len_orig:
     f_out.write(orig_line())
     orig_index += 1
-
-
-def pat_dependency(src_path: str, src_file: TextIO) -> str:
-  '''
-  Return a list of dependencies.
-  A .pat file always has a single dependency: the source file it patches.
-  '''
-  version_line = src_file.readline()
-  orig_line = src_file.readline()
-  orig_path = orig_line.strip()
-  if not orig_path:
-    failF('pat error: {}:2:1: line specifying original path is missing or empty.', src_path)
-  return orig_path
-
-
-def errF(fmt: str, *items: Any) -> None:
-  print(fmt.format(*items), end='', file=stderr)
-
-def errFL(fmt: str, *items: Any) -> None:
-  print(fmt.format(*items), file=stderr)
-
-def failF(fmt: str, *items: Any) -> NoReturn:
-  errFL('pat error: ' + fmt, *items)
-  exit(1)
 
 
 if __name__ == '__main__': main()
