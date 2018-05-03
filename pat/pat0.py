@@ -127,10 +127,6 @@ def main_diff(args) -> None:
   # then i+n != i1 or j+n != j1, or both.
   # in other words, adjacent matches always describe non-adjacent equal blocks.
 
-  # conceptually, we turn the sequence of matches into a sequence of hunks,
-  # where each hunk is a pair of (match, diff).
-  # however actually materializing the diff is not necessary;
-  # we simply get the match at the start, or synthesize an empty one as appropriate.
   has_start_symbol = False
   i, j, n = matches[0]
   match_iter = iter(matches)
