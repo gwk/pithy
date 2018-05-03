@@ -145,7 +145,7 @@ def main_diff(args) -> None:
     di = i + n # beginning of diff for o.
     dj = j + n # beginning of diff for m.
     if di == len(o_lines) and dj == len(m_lines): break # no diff.
-    # calculate how much context we need for this hunk to be ambiguous.
+    # calculate how much context we need for this hunk to be unambiguous.
     # this includes the lines subtracted from the original in the calculation.
     # start with the last deleted line of the current diff in o.
     ci = i1 - 1
