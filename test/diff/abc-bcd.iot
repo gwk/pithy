@@ -1,0 +1,3 @@
+{
+  'args': ['test/abc.txt', 'test/bcd.txt'],
+}
