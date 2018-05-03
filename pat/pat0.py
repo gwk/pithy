@@ -2,13 +2,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-import sys
 
 from argparse import ArgumentParser, FileType, Namespace
 from collections import defaultdict
 from difflib import SequenceMatcher
 from os.path import isfile as is_file, exists as path_exists
 from shutil import copyfile
+from sys import stderr
 from typing import Any, DefaultDict, List, Set, NoReturn, TextIO, Tuple, cast
 
 
@@ -268,14 +268,14 @@ def pat_dependency(src_path: str, src_file: TextIO) -> str:
 
 
 def errF(fmt: str, *items: Any) -> None:
-  print(fmt.format(*items), end='', file=sys.stderr)
+  print(fmt.format(*items), end='', file=stderr)
 
 def errFL(fmt: str, *items: Any) -> None:
-  print(fmt.format(*items), file=sys.stderr)
+  print(fmt.format(*items), file=stderr)
 
 def failF(fmt: str, *items: Any) -> NoReturn:
   errFL('pat error: ' + fmt, *items)
-  sys.exit(1)
+  exit(1)
 
 
 if __name__ == '__main__': main()
