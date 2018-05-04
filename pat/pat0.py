@@ -109,7 +109,7 @@ def main_diff(args) -> None:
   if m_lines and not m_lines[-1].endswith('\n'):
     failF('{}:{} modified document is missing final newline (not yet supported).')
 
-  def write(line: str) -> None: f_out.write(line)
+  write = f_out.write
 
   write('pat v' + pat_version + '\n')
   write(args.original.name + '\n')
