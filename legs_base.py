@@ -26,9 +26,14 @@ class Source:
     return len(self.newline_positions)
 
   def get_line_start(self, pos: int) -> int:
-    return self.text.rfind(b'\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
+    'Return the character index for the start of the line containing `pos`.'
+    return self.text.rfind(b'\n', 0, pos) + 1 # rfind returns -1 for no match, so just add one.
 
   def get_line_end(self, pos: int) -> int:
+    '''
+    Return the character index for the end of the line containing `pos`;
+    a newline is considered the final character of a line.
+    '''
     line_end = self.text.find(b'\n', pos)
     return len(self.text) if line_end == -1 else line_end
 
