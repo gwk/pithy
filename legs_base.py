@@ -35,10 +35,11 @@ class Source:
     a newline is considered the final character of a line.
     '''
     line_end = self.text.find(b'\n', pos)
-    return len(self.text) if line_end == -1 else line_end
+    return len(self.text) if line_end == -1 else line_end + 1
 
 
   def get_line_str(self, pos: int, end: int) -> str:
+    assert pos < end, (pos, end)
     line_bytes = self.text[pos:end]
     try: return line_bytes.decode('utf8')
     except UnicodeDecodeError: return repr(line_bytes) # TODO: improve messaging around decode errors.
