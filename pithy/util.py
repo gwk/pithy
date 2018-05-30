@@ -3,17 +3,15 @@
 from typing import Callable, FrozenSet, Iterable, Set, Type, cast
 
 
-def memoize(sentinel=Ellipsis) -> Callable:
+def memoize(_fn:Callable=None, sentinel=Ellipsis) -> Callable:
   '''
   recursive function memoization decorator.
   results will be memoized by a key that is the tuple of all arguments.
   the sentinel is inserted into the dictionary before the call.
   thus, if the function recurses with identical arguments the sentinel will be returned to the inner calls.
   '''
-  if callable(sentinel):
-    raise ValueError('sentinel is callable, but should be a simple marker value; did you mean `@memoize()`?')
 
-  def _memoize(fn):
+  def _memoize(fn:Callable) -> Callable:
 
     class MemoDict(dict):
       def __repr__(self) -> str: return f'@memoize({sentinel}){fn}'
@@ -27,7 +25,10 @@ def memoize(sentinel=Ellipsis) -> Callable:
 
     return MemoDict()
 
-  return _memoize
+  if _fn is None: # called parens.
+    return _memoize
+  else: # called without parens.
+    return _memoize(_fn)
 
 
 class lazy_property(object):

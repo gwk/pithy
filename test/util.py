@@ -19,11 +19,7 @@ f(0, 2)
 
 utest_val([(0, 1), (0, 2)], f_args, desc='@memoize call history')
 
+@memoize # test that memoize decorator also works without parens.
+def f(x): return x
 
-def test_memo_sentinel_usage_exc():
-  @memoize #!cov-ignore.
-  def f(): pass #!cov-ignore.
-
-
-utest_exc(ValueError('sentinel is callable, but should be a simple marker value; did you mean `@memoize()`?'),
-  test_memo_sentinel_usage_exc)
+utest(0, f, 0)
