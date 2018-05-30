@@ -169,7 +169,7 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
       recv_ready = None
       send_ready = None
       if send or recv:
-        for key, flags in sel.select(time_rem): # type: ignore
+        for key, flags in sel.select(time_rem):
           if key.fd is recv: recv_ready = flags
           elif key.fd is send: send_ready = flags
           else: raise Exception(f'Task: received unknown selector key: {key}')

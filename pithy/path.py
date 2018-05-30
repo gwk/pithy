@@ -93,7 +93,7 @@ def parent_dir() -> str: return abs_path('..')
 
 def path_common_prefix(*paths: Path) -> str:
   'Return the common path prefix for a sequence of paths.'
-  try: return _commonpath([str_path(p) for p in paths])
+  try: return _commonpath([str_path(p) for p in paths]) # type: ignore
   except ValueError: # we want a more specific exception.
     raise MixedAbsoluteAndRelativePathsError(paths) from None
 
@@ -233,7 +233,7 @@ def replace_first_dir(path: Path, replacement: str) -> str:
 
 def split_dir_name(path: Path) -> Tuple[str, str]:
   "Split the path into dir and name (possibly including an extension) components, e.g. 'dir/name'."
-  return _split(path)
+  return _split(str_path(path))
 
 
 def split_dir_stem_ext(path: Path) -> Tuple[str, str, str]:
