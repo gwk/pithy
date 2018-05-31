@@ -1,10 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import ABCMeta, abstractmethod
+from collections import Counter as _Counter
 from typing import *
 
 
 T = TypeVar('T')
+
+NoneType = type(None)
+Opt = Optional
+
 
 class Comparable(metaclass=ABCMeta):
   # taken from https://www.python.org/dev/peps/pep-0484/.
@@ -12,7 +17,52 @@ class Comparable(metaclass=ABCMeta):
   def __lt__(self, other: Any) -> bool: ...
 
 
-# type predicates.
+def is_a(val:Any, Type:Any) -> bool:
+  '''
+  Test if `val` is of `Type`. Unlike `isinstance`,
+  this function works with generic static types.
+  '''
+  try: return isinstance(val, Type)
+  except TypeError as e:
+    if e.args[0] != 'Subscripted generics cannot be used with class and instance checks': raise
+  RTT = Type.__origin__ # runtime type.
+  args = Type.__args__
+  try:
+    predicate = _generic_type_predicates[RTT]
+  except KeyError: # Not specialized.
+    if issubclass(RTT, dict): # Two parameters.
+      if issubclass(RTT, _Counter): # Counter only has one type parameter.
+        K = args[0]
+        V = int # Note that Counters can have non-int values inserted.
+      else:
+        K, V = args
+      return isinstance(val, RTT) and all(is_a(k, K) and is_a(v, V) for (k, v) in val.items())
+    elif len(args) == 1: # Assume T is a single-parameter generic container.
+      E = args[0]
+      return isinstance(val, RTT) and all(is_a(el, E) for el in val)
+    else:
+      raise TypeError(f'{Type} is not a single-parameter generic type; origin type: {RTT}')
+  else: # Specialized.
+    # Union is an extra strange case, because the origin type is not a runtime type either.
+    return (RTT is Union or isinstance(val, RTT)) and predicate(val, args)
+
+
+_Args = Tuple[Any, ...]
+
+def _is_a_Tuple(v:Any, args:_Args) -> bool:
+  if len(args) == 2 and args[1] is Ellipsis:
+    E = args[0]
+    return all(is_a(el, E) for el in v)
+  else:
+    return len(v) == len(args) and all(is_a(el, E) for (el, E) in zip(v, args))
+
+_generic_type_predicates: Dict[Any, Callable[[Any, _Args], bool]] = {
+  tuple: _is_a_Tuple,
+  Union: lambda v, args: any(is_a(v, Member) for Member in args),
+}
+
+
+# Convenience type predicates.
 
 def is_bool(val: Any) -> bool: return isinstance(val, bool)
 
@@ -57,31 +107,8 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
-def is_a(obj: Any, expected: Union[type, Tuple[type, ...]]) -> bool:
-  '''
-  Python's typing objects are explicitly disallowed from being used in isinstance.
-  We work around this as best we can, relying on the descriptions of generic types.
-  '''
-  desc = str(expected)
-  generic = desc.partition('[')[0]
-  if generic == 'typing.Union':
-    for member_type in expected.__args__: # type: ignore
-      if is_a(obj, member_type): return True
-    return False
-  try: rtt = runtime_generic_type_prefixes[generic]
-  except KeyError: pass
-  else: return isinstance(obj, rtt) # approximate; best effort.
-  return isinstance(obj, expected)
-
-runtime_generic_type_prefixes: Dict[str, type] = {
-  'typing.List' : list,
-  'typing.Set' : set,
-  'typing.Dict' : dict,
-  # TODO: complete.
-}
-
-
 def req_type(obj: T, expected: Union[type, Tuple[type, ...]]) -> T:
+  'Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.'
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')
   return obj
