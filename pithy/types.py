@@ -16,34 +16,39 @@ class Comparable(metaclass=ABCMeta):
 
 def is_bool(val: Any) -> bool: return isinstance(val, bool)
 
+def is_float(val: Any) -> bool: return isinstance(val, float)
+
 def is_int(val: Any) -> bool: return isinstance(val, int)
 
 def is_str(val: Any) -> bool: return isinstance(val, str)
 
-def is_list(val: Any) -> bool: return isinstance(val, list)
+def is_list(val: Any, of:Optional[type]=None) -> bool:
+  return isinstance(val, list) and (of is None or all(isinstance(el, of) for el in val))
 
-def is_set(val: Any) -> bool: return isinstance(val, set)
+def is_set(val: Any, of:Optional[type]=None) -> bool:
+  return isinstance(val, set) and (of is None or all(isinstance(el, of) for el in val))
 
-def is_dict(val: Any) -> bool: return isinstance(val, dict)
+def is_dict(val: Any, of:Optional[type]=None) -> bool:
+  return isinstance(val, dict) and (of is None or all(isinstance(el, of) for el in val))
 
-def is_tuple(val: Any) -> bool: return isinstance(val, tuple)
+def is_tuple(val: Any, of:Optional[type]=None, length:Optional[int]=None) -> bool:
+  return isinstance(val, tuple) and (length is None or length == len(val)) and (of is None or all(isinstance(el, of) for el in val))
 
-def is_pair(val: Any) -> bool: return isinstance(val, tuple) and len(val) == 2
+def is_int_or_bool(val: Any) -> bool: return isinstance(val, (int, bool))
 
-def is_int_or_bool(val: Any) -> bool: return is_int(val) or is_bool(val)
+def is_list_of_str(val: Any) -> bool: return isinstance(val, list) and all(isinstance(el, str) for el in val)
 
-def is_list_of_str(val: Any) -> bool: return is_list(val) and all(is_str(el) for el in val)
+def is_set_of_str(val: Any) -> bool: return isinstance(val, set) and all(isinstance(el, str) for el in val)
 
-def is_set_of_str(val: Any) -> bool: return is_set(val) and all(is_str(el) for el in val)
+def is_tuple_of_str(val: Any, length:Optional[int]=None) -> bool:
+  return is_tuple(val, of=str, length=length)
 
 def is_dict_of_str(val: Any) -> bool:
-  return is_dict(val) and all(is_str(k) and is_str(v) for (k, v) in val.items())
+  return isinstance(val, dict) and all(isinstance(k, str) and isinstance(v, str) for (k, v) in val.items())
 
-def is_pair_of_str(val: Any) -> bool:
-  return is_pair(val) and is_str(val[0]) and is_str(val[1])
+def is_pair_of_str(val: Any) -> bool: return is_tuple(val, of=str, length=2)
 
-def is_pair_of_int(val: Any) -> bool:
-  return is_pair(val) and is_int(val[0]) and is_int(val[1])
+def is_pair_of_int(val: Any) -> bool: return is_tuple(val, of=int, length=2)
 
 def is_str_or_list(val: Any) -> bool: return is_str(val) or is_list_of_str(val)
 
