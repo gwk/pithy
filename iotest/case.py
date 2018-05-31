@@ -384,7 +384,8 @@ def validate_links_dict(key: str, val: Any) -> None:
     if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {link}")
 
 
-case_key_validators = { # key => msg, validator_predicate, validator_fn.
+case_key_validators: Dict[str, Tuple[str, Callable[[Any], bool], Optional[Callable[[str, Any], None]]]] = {
+  # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list,     None),
   'cmd':      ('string or list of strings', is_str_or_list,     None),
   'code':     ('int or `...`',              is_int_or_ellipsis, None),
