@@ -150,11 +150,12 @@ def errP(*items: Any, label=None, **opts) -> None:
   writeP(stderr, *items, label=label, **opts)
 
 
-def err_progress(iterable: Iterable[T], label='progress', final='', suffix='', frequency=0.1) -> Iterator[T]:
+def err_progress(iterable: Iterable[T], label='progress', suffix='', final_suffix='', frequency:Union[float, int]=0.1) -> Iterator[T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.
   '''
+  assert frequency >= 0
   if not frequency or not stderr.isatty():
     return iter(iterable)
 
@@ -162,9 +163,9 @@ def err_progress(iterable: Iterable[T], label='progress', final='', suffix='', f
 
   if label is None:
     label = str(iterable)
-  pre = f'◊ {label}: '
-  post = (suffix and ' ' + suffix) + '…\r'
-  final_str = f' {final}.' if final else '.'
+  pre = f'{ERASE_LINE}\r◊ {label}: '
+  post = (suffix and ' ' + suffix) + '…'
+  final = f' {final_suffix}.' if final_suffix else '.'
 
   if isinstance(frequency, float):
     from time import time
@@ -176,14 +177,13 @@ def err_progress(iterable: Iterable[T], label='progress', final='', suffix='', f
       for i, el in enumerate(iterable):
         if i == next_i:
           print(f'{pre}{i}{post}', end='', file=stderr, flush=True)
-          print(ERASE_LINE, end='', file=stderr, flush=False)
           t = time()
           d = t - prev_t
           step = max(1, int(step * frequency / d))
           prev_t = t
           next_i = i + step
         yield el
-      print(f'{pre}{i+1}{final_str}', file=stderr)
+      print(f'{pre}{i+1}{final}', file=stderr)
 
 
   else:
@@ -191,7 +191,6 @@ def err_progress(iterable: Iterable[T], label='progress', final='', suffix='', f
       for i, el in enumerate(iterable):
         if i % frequency == 0:
           print(pre + str(i) + post, end='', file=stderr, flush=True)
-          print(ERASE_LINE, end='', file=stderr, flush=False)
         yield el
       print(pre + str(i) + final, file=stderr)
 
