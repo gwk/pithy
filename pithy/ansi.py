@@ -133,6 +133,15 @@ BG_D_OUT, BG_R_OUT, BG_G_OUT, BG_Y_OUT, BG_B_OUT, BG_M_OUT, BG_C_OUT, BG_L_OUT =
   (c if is_out_tty else '') for c in  ansi_bg_primaries)
 
 
+def ansi_cursor_pos(x:int, y:int) -> None:
+  '''
+  Position the cursor.
+  Supposedly the 'f' suffix does the same thing.
+  x and y parameters are zero based.
+  '''
+  return ansi_ctrl_seq('H', y + 1, x + 1)
+
+
 ERASE_LINE_F, ERASE_LINE_B, ERASE_LINE = (ansi_ctrl_seq('K', i) for i in range(3))
 
 CLEAR_SCREEN_F, CLEAR_SCREEN_B, CLEAR_SCREEN = (ansi_ctrl_seq('J', i) for i in range(3))
@@ -141,7 +150,7 @@ CURSOR_SAVE     = ansi_ctrl_seq('s')
 CURSOR_RESTORE  = ansi_ctrl_seq('u')
 CURSOR_HIDE     = ansi_ctrl_seq('?25l')
 CURSOR_SHOW     = ansi_ctrl_seq('?25h')
-CURSOR_REPORT   = ansi_ctrl_seq('6n') # not sure how to interpret the results.
+CURSOR_REPORT   = ansi_ctrl_seq('6n') # '\x1B[{x};{y}R' appears as if typed into the terminal.
 
 ALT_ENTER = ansi_ctrl_seq('?1049h')
 ALT_EXIT  = ansi_ctrl_seq('?1049l')
