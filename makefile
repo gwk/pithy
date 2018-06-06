@@ -5,7 +5,7 @@
 # $^: The names of all the prerequisites, with spaces between them.
 
 
-.PHONY: _default clean cov docs pip-develop pip-uninstall pypi-dist pypi-upload test typecheck
+.PHONY: _default clean cov docs pip-develop pip-uninstall pypi-dist pypi-upload test test-diff test-diff-pairs typecheck
 
 # First target of a makefile is the default.
 _default: test typecheck
@@ -36,3 +36,11 @@ test:
 
 typecheck:
 	craft-py-check pithy
+
+
+test-diff:
+	test-diff/test.py
+
+test-diff-data:
+	rm -rf _build/test-diff/*
+	test-diff/collect-diff-examples.py ../pithy ../quilt
