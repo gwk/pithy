@@ -6,25 +6,28 @@
   "suppressTaskName": true,
   "tasks": [
     {
-      "taskName": "typecheck-current",
+      "label": "typecheck-current",
       "command": "craft-py-check",
       "args": ["${relativeFile}"],
       "group": {"kind": "build", "isDefault": true},
-      "problemMatcher": "$craft"
+      "problemMatcher": "$craft",
+      "presentation": {"showReuseMessage": false},
     },
     {
-      "taskName": "typecheck",
+      "label": "typecheck",
       "command": "craft-py-check",
       "args": ["pithy"],
       "group": "build",
-      "problemMatcher": "$craft"
+      "problemMatcher": "$craft",
+      "presentation": {"showReuseMessage": false},
     },
     {
-      "taskName": "test and typecheck",
+      "label": "test and typecheck",
       "command": "make",
       "args": [],
       "group": {"kind": "test", "isDefault": true},
-      "problemMatcher": "$craft"
+      "problemMatcher": "$craft",
+      "presentation": {"showReuseMessage": false},
     }
   ]
 }
