@@ -94,6 +94,7 @@ class Case:
     self.stem: str = path_dir(stem) if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
     self.name: str = path_name(self.stem)
     # derived properties.
+    self.multi_index: Optional[int] = None
     self.test_info_paths: Set[str] = set() # the files that comprise the test case.
     self.dflt_src_paths: List[str] = []
     self.coverage_targets: List[str] = []
@@ -120,7 +121,6 @@ class Case:
     self.in_: Optional[str] = None # stdin as text.
     self.interpreter: Optional[str] = None # interpreter to prepend to cmd.
     self.interpreter_args: Optional[List[str]] = None # interpreter args.
-    self.lead: Optional[str] = None # specifies a 'lead' test; allows multiple tests to be run over same directory contents.
     self.links: Union[None, Set[str], Dict[str, str]] = None # symlinks to be made into the test directory; written as a str, set or dict.
     self.out_mode: Optional[str] = None # comparison mode for stdout expectation.
     self.out_path: Optional[str] = None # file path for stdout expectation.
@@ -161,9 +161,6 @@ class Case:
   def __repr__(self) -> str: return f'Case(stem={self.stem!r}, ...)'
 
   def __lt__(self, other: 'Case') -> bool: return self.stem < other.stem
-
-  @property
-  def is_lead(self) -> bool: return self.lead is None or self.lead == self.stem
 
   @property
   def coverage_path(self) -> str:
@@ -211,14 +208,8 @@ class Case:
 
   def derive_info(self, ctx: Ctx) -> None:
     if self.name == '_default': return # do not process prototype cases.
-    if self.lead is None: # simple, isolated test.
-      rel_dir = self.stem
-    elif self.lead == self.stem: # this test is the leader.
-      rel_dir = path_dir(self.stem)
-    else: # this test is a follower.
-      rel_dir = path_dir(self.stem)
-      if path_dir(self.lead) != rel_dir:
-        raise TestCaseError(f'test specifies lead test in different directory: {rel_dir} != {path_dir(self.lead)}')
+    rel_dir, _, multi_index = self.stem.partition('.')
+    self.multi_index = int(multi_index) if multi_index else None
     self.test_dir = path_join(ctx.build_dir, rel_dir)
     env = self.test_env # local alias for convenience.
     env['BUILD'] = ctx.build_dir
@@ -297,8 +288,8 @@ class Case:
 
     self.test_cmd = cmd
 
-    if not self.is_lead and self.links:
-      raise TestCaseError("non-lead tests ('lead' specified and not equal to stem) cannot also specify 'links'")
+    if self.multi_index and self.links:
+      raise TestCaseError("non-lead subcase of a multicase cannot specify 'links'")
     elif isinstance(self.links, str):
       link = expand_str(self.links)
       self.test_links += [(link, path_name(link))]
@@ -402,7 +393,6 @@ case_key_validators: Dict[str, Tuple[str, Callable[[Any], bool], Optional[Callab
   'in_':      ('str',                       is_str,             None),
   'interpreter': ('string or list of strings', is_str_or_list,  None),
   'interpreter_args': ('string or list of strings', is_str_or_list,  None),
-  'lead':     ('str',                       is_str,             None),
   'links':    ('string or (dict | set) of strings', is_valid_links, validate_links_dict),
   'out_mode': ('str',                       is_str,             validate_exp_mode),
   'out_path': ('str',                       is_str,             None),

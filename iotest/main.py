@@ -205,7 +205,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   val_paths, iot_paths = fan_by_pred(file_paths, pred=lambda p: path_ext(p) == '.iot')
   for path in iot_paths:
     stem = path_stem(path)
-    if '.' in stem: exit(f"iotest error: .iot path cannot contain '.': {path!r}.")
+    if '.' in stem: exit(f"iotest error: .iot name cannot contain '.': {path!r}.")
     add_iot_configs(configs=configs, stem=stem, path=path)
   for path in val_paths:
     stem, ext = split_stem_ext(path)
@@ -259,7 +259,7 @@ def add_iot_configs(configs: Dict, stem: str, path: str) -> None:
     if path_name(stem) == '_default':
       exit(f'iotest error: default case cannot specify a multicase (list of subcases): {path!r}')
     for i, el in enumerate(val):
-      sub = f'{stem}.{i}'
+      sub = f'{stem}.{i}' # Synthesize the subcase stem from the file stem and the index.
       if isinstance(el, dict):
         configs[sub].setdefault('.test_info_paths', set()).add(path)
         configs[sub].update(el)
@@ -333,7 +333,7 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
   if path_exists(case.test_dir):
     if not is_dir(case.test_dir): # could be a symlink; do not want to remove contents of link destination.
       raise TestCaseError(f'test directory already exists as a non-directory: {case.test_dir}')
-    if case.is_lead:
+    if not case.multi_index: # None or 0 (lead subcase of a multicase).
       remove_dir_contents(case.test_dir)
     else:
       # remove just the known outputs; test is assumed to depend on state from previous tests.
