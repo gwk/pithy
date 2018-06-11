@@ -133,7 +133,7 @@ BG_D_OUT, BG_R_OUT, BG_G_OUT, BG_Y_OUT, BG_B_OUT, BG_M_OUT, BG_C_OUT, BG_L_OUT =
   (c if is_out_tty else '') for c in  ansi_bg_primaries)
 
 
-def ansi_cursor_pos(x:int, y:int) -> None:
+def ansi_cursor_pos(x:int, y:int) -> str:
   '''
   Position the cursor.
   Supposedly the 'f' suffix does the same thing.
