@@ -204,12 +204,10 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   configs: DefaultDict[str, Dict] = defaultdict(lambda: dict(test_info_paths=set()))
   val_paths, iot_paths = fan_by_pred(file_paths, pred=lambda p: path_ext(p) == '.iot')
   for path in iot_paths:
-    stem = path_stem(path)
-    if '.' in stem: exit(f"iotest error: .iot name cannot contain '.': {path!r}.")
-    add_iot_configs(configs=configs, stem=stem, path=path)
+    add_iot_configs(configs=configs, path=path)
   for path in val_paths:
-    stem, ext = split_stem_ext(path)
-    if ext in implied_case_exts:
+    stem = case_stem_for_path(path)
+    if path_ext(path) in implied_case_exts:
       add_std_val(config=configs[stem], path=path)
     else:
       configs[stem].setdefault('.dflt_src_paths', []).append(path)
@@ -236,7 +234,17 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   return proto
 
 
-def add_iot_configs(configs: Dict, stem: str, path: str) -> None:
+def case_stem_for_path(path:str) -> str:
+  stem = path_stem(path)
+  dir, name = split_dir_name(stem)
+  if name == '_': return dir
+  if name.isnumeric(): return f'{dir}.{name}' # Synthesize subcase stem.
+  return stem
+
+
+def add_iot_configs(configs: Dict, path: str) -> None:
+  stem = case_stem_for_path(path)
+  if '.' in stem: exit(f"iotest error: .iot name cannot contain '.': {path!r}.")
   text = read_from_path(path)
   if not text or text.isspace():
     configs[stem].setdefault('.test_info_paths', set()).add(path)
@@ -259,7 +267,7 @@ def add_iot_configs(configs: Dict, stem: str, path: str) -> None:
     if path_name(stem) == '_default':
       exit(f'iotest error: default case cannot specify a multicase (list of subcases): {path!r}')
     for i, el in enumerate(val):
-      sub = f'{stem}.{i}' # Synthesize the subcase stem from the file stem and the index.
+      sub = f'{stem}.{i}' # Synthesize the subcase stem from the multicase stem and the index.
       if isinstance(el, dict):
         configs[sub].setdefault('.test_info_paths', set()).add(path)
         configs[sub].update(el)
