@@ -201,7 +201,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   Each case must have one non-parameterized contributing file; otherwise there is no way to infer its existence.
   '''
 
-  configs: DefaultDict[str, Dict] = defaultdict(lambda: dict(test_info_paths=set()))
+  configs: DefaultDict[str, Dict] = defaultdict(dict)
   val_paths, iot_paths = fan_by_pred(file_paths, pred=lambda p: path_ext(p) == '.iot')
   for path in iot_paths:
     add_iot_configs(configs=configs, path=path)
