@@ -229,8 +229,9 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
     cases_dict[stem] = case
   # check that all par paths are used by some case.
   for par_config in par_configs:
-    if par_config.stem not in par_stems_used:
-      outL(f'iotest note: parameterized case template was never used: {stem}')
+    if par_config.stem not in par_stems_used and par_config.config.get('.test_info_paths'):
+      outL(f'iotest note: parameterized case template was never used: {par_config.stem}')
+      outL(par_config.config)
   return proto
 
 
