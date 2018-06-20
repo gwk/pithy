@@ -20,8 +20,15 @@ ViewBox = Union[None, Point, Tuple[Num, Num, Num, Num], Tuple[Point, Point]] # T
 
 
 class SvgWriter(ContextManager):
+  '''
+  SvgWriter is a ContextManager class that outputs SVG code to a file (stdout by default).
+  It maintains a stack of Tree objects that guarantee proper XML tree structure.
+  '''
 
   class Tree:
+    '''
+    A Tree represents non-leaf node of the SVG tree.
+    '''
 
     def __init__(self, writer:'SvgWriter', tag:str) -> None:
       self.writer = writer
@@ -88,6 +95,7 @@ class SvgWriter(ContextManager):
 
 
   def leaf(self, tag:str, title:str=None, **attrs: Any) -> None:
+    'Output a non-nesting SVG element.'
     if title is None:
       self.write(f'<{tag}{_fmt_attrs(attrs)}/>')
     else:
@@ -95,17 +103,21 @@ class SvgWriter(ContextManager):
 
 
   def leafText(self, tag:str, text:str, title:str=None, **attrs: Any) -> None:
+    'Output a non-nesting SVG element that contains text between the open and close tags.'
     title_code = '' if title is None else f'<title>{_esc(title)}</title>'
     self.write(f'<{tag}{_fmt_attrs(attrs)}>{title_code}{_esc(text)}</{tag}>')
 
 
   def tree(self, tag:str, title:str=None, **attrs: Any) -> 'SvgWriter.Tree':
+    'Create an SvgWriter.Tree for use in a `with` context to represent a nesting SVG element.'
     title_code = '' if title is None else f'<title>{_esc(title)}</title>'
     self.write(f'<{tag}{_fmt_attrs(attrs)}>{title_code}')
     return SvgWriter.Tree(writer=self, tag=tag)
 
+  # SVG Elements.
 
   def circle(self, pos:Point=None, x:Num=None, y:Num=None, r:Num=None, **attrs) -> None:
+    'Output an SVG `circle` element.'
     if pos is not None:
       assert x is None
       assert y is None
@@ -115,14 +127,17 @@ class SvgWriter(ContextManager):
 
 
   def defs(self) -> 'SvgWriter.Tree':
+    'Output an SVG `defs` element.'
     return self.tree('defs')
 
 
   def g(self, **attrs) -> 'SvgWriter.Tree':
+    'Create an SVG `g` element for use in a context manager.'
     return self.tree('g', **attrs)
 
 
   def image(self, pos:Point=None, x:Num=None, y:Num=None, size:Point=None, w:Num=None, h:Num=None, **attrs) -> None:
+    'Output an SVG `defs` element.'
     if pos is not None:
       assert x is None
       assert y is None
@@ -136,11 +151,14 @@ class SvgWriter(ContextManager):
 
 
   def line(self, a: Point, b: Point, **attrs) -> None:
+    'Output an SVG `defs` element.'
     _opt_attrs(attrs, x1=a[0], y1=a[1], x2=b[0], y2=b[1])
     self.leaf('line', **attrs)
 
 
-  def marker(self, id:str, w:Num=None, h:Num=None, x:Num=None, y:Num=None, markerUnits='strokeWidth', orient:str='auto', **attrs) -> 'SvgWriter.Tree':
+  def marker(self, id:str, w:Num=None, h:Num=None, x:Num=None, y:Num=None, markerUnits='strokeWidth', orient:str='auto',
+   **attrs) -> 'SvgWriter.Tree':
+    'Output an SVG `marker` element.'
     assert w is not None
     assert h is not None
     assert x is not None
@@ -149,12 +167,14 @@ class SvgWriter(ContextManager):
 
 
   def path(self, *commands, **attrs) -> None:
+    'Output an SVG `path` element.'
     assert 'd' not in attrs
     d = ' '.join(commands)
     self.leaf('path', d=d, **attrs)
 
 
   def rect(self, pos:Point=None, x:Num=None, y:Num=None, size:Point=None, w:Num=None, h:Num=None, rx:Num=None, ry:Num=None, **attrs) -> None:
+    'Output an SVG `rect` element.'
     if pos is not None:
       assert x is None
       assert y is None
@@ -168,14 +188,17 @@ class SvgWriter(ContextManager):
 
 
   def style(self, text: str, **attrs,) -> None:
+    'Output an SVG `style` element.'
     self.leafText('style', text.strip(), **attrs)
 
 
   def symbol(self, id: str, **attrs) -> None:
+    'Output an SVG `symol` element.'
     return self.leaf('symbol', id=id, **attrs)
 
 
   def text(self, pos:Point=None, x:Num=None, y:Num=None, text=None, **attrs) -> None:
+    'Output an SVG `text` element.'
     if pos is not None:
       assert x is None
       assert y is None
@@ -184,16 +207,20 @@ class SvgWriter(ContextManager):
     self.leafText('text', text, **attrs)
 
 
-def _esc(val: Any) -> str: return html_escape(str(val))
+def _esc(val: Any) -> str:
+  'HTML-escape the string representation of `val`.'
+  return html_escape(str(val))
 
 
 def _opt_attrs(attrs: Dict[str, Any], *pairs: Tuple[str, Any], **items:Any) -> None:
+  'Add the items in `*pairs` and `**items` attrs, excluding any None values.'
   for k, v in chain(pairs, items.items()):
     if v is None: continue
     attrs[k] = v
 
 
 def _fmt_attrs(attrs: Dict[str, Any]) -> str:
+  'Format the `attrs` dict into XML key-value attributes.'
   if not attrs: return ''
   parts: List[str] = []
   for k, v in attrs.items():
@@ -212,5 +239,6 @@ _replaced_attrs = {
 valid_units = frozenset({'em', 'ex', 'px', 'pt', 'pc', 'cm', 'mm', '%', ''})
 
 def _validate_unit(unit: str):
+  'Ensure that `unit` is a valid unit string.'
   if unit not in valid_units:
     raise Exception(f'Invalid SVG unit: {unit!r}; should be one of {sorted(valid_units)}')
