@@ -227,7 +227,7 @@ def _fmt_attrs(attrs: Dict[str, Any]) -> str:
     if v is None:
       v = 'none'
     else:
-      v = _replaced_attrs.get(k, v)
+      k = _replaced_attrs.get(k, k)
     parts.append(f' {_esc(k.replace("_", "-"))}="{_esc(v)}"')
   return ''.join(parts)
 
