@@ -157,13 +157,14 @@ class SvgWriter(ContextManager):
 
 
   def marker(self, id:str, w:Num=None, h:Num=None, x:Num=None, y:Num=None, markerUnits='strokeWidth', orient:str='auto',
-   **attrs) -> 'SvgWriter.Tree':
+   vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs) -> 'SvgWriter.Tree':
     'Output an SVG `marker` element.'
     assert w is not None
     assert h is not None
     assert x is not None
     assert y is not None
-    return self.tree('marker', id=id, markerWidth=w, markerHeight=h, refX=x, refY=y, markerUnits=markerUnits, orient=orient, **attrs)
+    _opt_attrs(attrs, markerWidth=w, markerHeight=h, refX=x, refY=y, markerUnits=markerUnits, orient=orient)
+    return self.tree('marker', id=id,viewBox=f'{vx} {vy} {vw} {vh}', **attrs)
 
 
   def path(self, *commands, **attrs) -> None:
@@ -187,14 +188,14 @@ class SvgWriter(ContextManager):
     self.leaf('rect', **attrs)
 
 
-  def style(self, text: str, **attrs,) -> None:
+  def style(self, text:str, **attrs,) -> None:
     'Output an SVG `style` element.'
     self.leafText('style', text.strip(), **attrs)
 
 
-  def symbol(self, id: str, **attrs) -> None:
-    'Output an SVG `symol` element.'
-    return self.leaf('symbol', id=id, **attrs)
+  def symbol(self, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs) -> 'SvgWriter.Tree':
+    'Output an SVG `symbol` element.'
+    return self.tree('symbol', id=id, viewBox=f'{vx} {vy} {vw} {vh}', **attrs)
 
 
   def text(self, pos:Point=None, x:Num=None, y:Num=None, text=None, **attrs) -> None:
@@ -206,6 +207,14 @@ class SvgWriter(ContextManager):
     _opt_attrs(attrs, x=x, y=y)
     self.leafText('text', text, **attrs)
 
+  def use(self, id:str, pos:Point=None, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs) -> None:
+    'Use a previously defined symbol'
+    if pos is not None:
+      assert x is None
+      assert y is None
+      x, y = pos
+    _opt_attrs(attrs, x=x, y=y, width=w, height=h)
+    return self.leaf('use', href=id, **attrs)
 
 def _esc(val: Any) -> str:
   'HTML-escape the string representation of `val`.'
