@@ -15,6 +15,7 @@ FileOrPath = Union[TextIO, str]
 Dim = Union[int, float, str]
 Num = Union[int, float]
 Point = Tuple[Num, Num]
+PathCommand = Tuple
 
 ViewBox = Union[None, Point, Tuple[Num, Num, Num, Num], Tuple[Point, Point]] # TODO: currently unused.
 
@@ -167,11 +168,18 @@ class SvgWriter(ContextManager):
     return self.tree('marker', id=id,viewBox=f'{vx} {vy} {vw} {vh}', **attrs)
 
 
-  def path(self, *commands, **attrs) -> None:
+  def path(self, *commands:PathCommand, **attrs:Any) -> None:
     'Output an SVG `path` element.'
     assert 'd' not in attrs
-    d = ' '.join(commands)
-    self.leaf('path', d=d, **attrs)
+    cmd_strs:List[str] = []
+    for c in commands:
+      try: code = c[0]
+      except IndexError: continue
+      try: exp_len = path_command_lens[code]
+      except KeyError as e: raise Exception(f'bad path command code: {c!r}') from e
+      if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
+      cmd_strs.append(code + ','.join(str(x) for x in c[1:]))
+    self.leaf('path', d=' '.join(cmd_strs), **attrs)
 
 
   def rect(self, pos:Point=None, x:Num=None, y:Num=None, size:Point=None, w:Num=None, h:Num=None, rx:Num=None, ry:Num=None, **attrs) -> None:
@@ -243,6 +251,16 @@ def _fmt_attrs(attrs: Dict[str, Any]) -> str:
 _replaced_attrs = {
   'class_' : 'class',
   'href': 'xlink:href', # safari Version 11.0.3 (13604.5.3) requires this, even though xlink is deprecated in svg 2 standard.
+}
+
+path_command_lens = {
+  'A' : 7,
+  'M' : 2,
+  'm' : 2,
+  'L' : 2,
+  'l' : 2,
+  'Z' : 0,
+  'z' : 0
 }
 
 valid_units = frozenset({'em', 'ex', 'px', 'pt', 'pc', 'cm', 'mm', '%', ''})

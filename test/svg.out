@@ -6,7 +6,7 @@
 <line stroke="green" x1="0" y1="0" x2="800" y2="800"/>
 <text style="fill: red;" x="30" y="30">test text</text>
 <g>
-  <path d="M 10 30 A 20,20 0,0,1 50,30" fill="none" stroke="black"/>
+  <path d="M10,30 A20,20,0,0,1,50,30" fill="none" stroke="black"/>
   <image xlink:href="test.png" x="50" y="50" width="50" height="50"/>
 </g>
 <symbol id="testSymbol" viewBox="0 0 80 80">
