@@ -181,6 +181,13 @@ class SvgWriter(ContextManager):
       cmd_strs.append(code + ','.join(str(x) for x in c[1:]))
     self.leaf('path', d=' '.join(cmd_strs), **attrs)
 
+  def polyline(self, *points:Tuple, **attrs:Any) -> None:
+    point_strs:List[str] = []
+    assert 'points' not in attrs
+    for p in points:
+      if len(p) < 2: raise Exception(f'bad point for polyline: {p}')
+      point_strs.append(f'{p[0]},{p[1]}')
+    self.leaf('polyline', points=' '.join(point_strs), **attrs)
 
   def rect(self, pos:Point=None, x:Num=None, y:Num=None, size:Point=None, w:Num=None, h:Num=None, rx:Num=None, ry:Num=None, **attrs) -> None:
     'Output an SVG `rect` element.'

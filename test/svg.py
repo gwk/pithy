@@ -23,3 +23,5 @@ with SvgWriter(stdout, w=800, h=800, vx=0, vy=0, vw=800, vh=800) as svg:
 
   with svg.marker(id='dot', w=5, h=5, x=5, y=5, vx=0, vy=0, vw=10, vh=10):
     svg.circle(x=400, y=400, r=399, fill='white')
+
+  svg.polyline((0,0), (10,10), (20,10), style='fill:none;stroke:black;stroke-width:3')
