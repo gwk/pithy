@@ -38,7 +38,6 @@ test:
 typecheck:
 	craft-py-check pithy
 
-
 test-diff:
 	test-diff/test.py
 

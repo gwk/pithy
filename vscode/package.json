@@ -1,0 +1,26 @@
+{
+  "name": "craft",
+  "displayName": "craft",
+  "description": "Build tool problem matchers.",
+  "version": "1.0.0",
+  "publisher": "gwk",
+  "engines": {
+    "vscode": "^1.0.0"
+  },
+  "categories": ["Languages"],
+  "contributes": {
+    "problemMatchers": [
+      { "name": "craft",
+        "fileLocation": "relative",
+        "pattern": [
+          { "regexp": "([^:]+):(\\d+):(\\d+): ?(.+)",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "message": 4
+          }
+        ]
+      }
+    ]
+  }
+}

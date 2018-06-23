@@ -1,0 +1,9 @@
+writeup v0
+Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+
+# Craft
+
+Craft is a build system.
+
+Currently it provides a set of command line utilities that clean up and colorize output.

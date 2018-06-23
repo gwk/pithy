@@ -12,9 +12,9 @@ from typing import Optional
 from itertools import chain
 
 
-package_roots = ['pithy', 'writeup']
+package_roots = ['craft', 'pithy']
 modules = ['utest']
-bin_src_dirs = ['pithy/bin']
+bin_src_dirs = ['craft/bin', 'pithy/bin']
 
 def errSL(*items): print(*items, file=stderr)
 
