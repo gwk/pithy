@@ -9,6 +9,7 @@ from setuptools.command.develop import develop
 from setuptools.command.install import install
 from pprint import pprint
 from typing import Optional
+from itertools import chain
 
 
 package_roots = ['pithy', 'writeup']
@@ -66,15 +67,22 @@ main()
 
 
 def discover_packages():
+  bad_names = []
   missing_inits = []
   for root in package_roots:
     for dir_path, dir_names, file_names in walk_path(root):
       dir_names[:] = filter(lambda n: n != '__pycache__', dir_names)
       yield dir_path
+      for name in chain(dir_names, file_names):
+        if '-' in name: bad_names.append(path_join(dir_path, name))
       if '__init__.py' not in file_names:
         missing_inits.append(path_join(dir_path, '__init__.py'))
-  if missing_inits:
-    exit(f'missing package files:\n' + '\n'.join(missing_inits))
+
+  if bad_names: errSL(f'bad module names:\n' + '\n'.join(sorted(bad_names)))
+  if missing_inits: errSL(f'missing package files:\n' + '\n'.join(sorted(missing_inits)))
+  if bad_names or missing_inits: exit(1)
+
+
 
 packages = list(discover_packages())
 print('packages:', *packages)
