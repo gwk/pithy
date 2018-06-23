@@ -3,7 +3,6 @@
   "echoCommand": false,
   "type": "process",
   "presentation": {},
-  "suppressTaskName": true,
   "tasks": [
     {
       "label": "typecheck-current",
