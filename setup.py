@@ -13,6 +13,7 @@ from itertools import chain
 
 
 package_roots = ['pithy', 'writeup']
+modules = ['utest']
 bin_src_dirs = ['pithy/bin']
 
 def errSL(*items): print(*items, file=stderr)
@@ -93,5 +94,6 @@ setup(
     'develop': Develop,
     'install': Install,
   },
-  packages=packages
+  packages=packages,
+  py_modules=modules,
 )
