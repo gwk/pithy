@@ -1,0 +1,4 @@
+{
+  'cmd': 'pat diff',
+  'out-path': 'test/pat/fixtures/$NAME.pat',
+}

@@ -1,0 +1,4 @@
+{
+  'cmd': 'pat apply',
+  'args': ['fixtures/$NAME.pat'],
+}

@@ -1,0 +1,3 @@
+{
+  'args': ['fixtures/abcd.txt', 'fixtures/acbd.txt'],
+}
