@@ -1,0 +1,4 @@
+{
+  'cmd': "writeup a a",
+  'err_val': "source path and destination path cannot be the same path: 'a'\n",
+}

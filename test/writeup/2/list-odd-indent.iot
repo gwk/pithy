@@ -1,0 +1,9 @@
+{
+  'cmd': "writeup",
+  'in': '''\
+writeup v0
+
+* A.
+ * single space indent.
+''',
+}

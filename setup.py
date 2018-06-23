@@ -11,6 +11,7 @@ from pprint import pprint
 from typing import Optional
 
 
+package_roots = ['pithy', 'writeup']
 bin_src_dirs = ['pithy/bin']
 
 def errSL(*items): print(*items, file=stderr)
@@ -66,7 +67,7 @@ main()
 
 def discover_packages():
   missing_inits = []
-  for root in ['pithy']:
+  for root in package_roots:
     for dir_path, dir_names, file_names in walk_path(root):
       dir_names[:] = filter(lambda n: n != '__pycache__', dir_names)
       yield dir_path

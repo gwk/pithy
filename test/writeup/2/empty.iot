@@ -1,0 +1,5 @@
+{
+  'interpreter': 'writeup',
+  'err_val': 'destination path cannot be empty string.\n',
+  'links': 'test',
+}

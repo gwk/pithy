@@ -1,0 +1,82 @@
+<section class="S1" id="s0">
+  <h1 id="h0">Title</h1>
+</section>
+<section class="S1" id="s1">
+  <h1 id="h1">Section 1</h1>
+  <p>
+    Paragraph 1 line 1.
+  <br />
+    Paragraph 1 line 2.
+  <br />
+    <code class="inline">code&nbsp;span</code>. <b>bold text</b>. <span style="color:red">span style red</span>.
+  </p>
+  <p>
+    Paragraph 2.
+  </p>
+  <p>
+    List:
+  </p>
+  <ul class="L1">
+    <li>A</li>
+    <li>
+      <p>
+        B
+      </p>
+      <ul class="L2">
+        <li>B1</li>
+        <li>B2</li>
+      </ul>
+    </li>
+    <li>C</li>
+  </ul>
+  <p>
+    Post-list.
+  </p>
+  <section class="S2" id="s1.1">
+    <h2 id="h1.1">Section 1.1</h2>
+    <p>
+      Line 2.
+    <br />
+      Line 3.
+    </p>
+  </section>
+</section>
+<section class="S1" id="s2">
+  <h1 id="h2">Section 2: Quote</h1>
+  <blockquote>
+    <section class="S1" id="q1s0">
+      <h1 id="h0">Header</h1>
+      <p>
+        Text.
+      <br />
+        List:
+      </p>
+      <ul class="L1">
+        <li>
+          <p>
+            A
+          </p>
+          <ul class="L2">
+            <li>B</li>
+          </ul>
+        </li>
+      </ul>
+      <blockquote>
+        <p>
+          Double quote.
+        </p>
+      </blockquote>
+<div class="code-block">
+<code class="line">Quoted code.</code>
+</div>
+    </section>
+  </blockquote>
+</section>
+<section class="S1" id="s3">
+  <h1 id="h3">Section 3: Code</h1>
+<div class="code-block">
+<code class="line"># Header 1</code>
+<code class="line">Line 1.</code>
+<code class="line">Line 2. `code span`.</code>
+</div>
+</section>

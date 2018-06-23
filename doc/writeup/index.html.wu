@@ -1,0 +1,141 @@
+
+# Writeup
+
+Writeup is a text markup format that translates to HTML5. It is similar to Markdown in spirit, but not equivalent. Some differences:
+* Writeup documents can embed the contents of other files, with sensible default styling.
+* Writeup has unambiguous character escape syntaxes.
+* The output HTML document is organized into hierarchical sections.
+* An optional lightweight presentation mode (implemented with embedded JavaScript) makes Writeup useful for simple technical slide decks.
+* A required syntax version at the top of every Writeup document allows the format to evolve while preserving the ability to render older documents exactly as originally intended.
+* Special handling of copyright/license header lines.
+* Integration with <https://gwk.github.io/muck Muck>, a build tool for data projects.
+
+The project is hosted at <https://github.com/gwk/writeup>, with documentation at <https://gwk.github.io/writeup>.
+
+## License
+
+All of the source code and documentation is dedicated to the public domain under CC0: <https://creativecommons.org/.publicdomain/zero/1.0/>.
+
+
+# Usage
+
+Writeup can take 0, 1 or 2 arguments, defaulting to `stdout` and `stdin` as follows:
+| $ writeup <in >out
+| $ writeup file.wu > out
+| $ writeup file.wu file.html
+
+Here is the builtin help documentation:
+<embed: writeup-help.txt>
+
+
+# Format
+
+Writeup documents consist of:
+* An initial required version line: `writeup v0`.
+* Optional consecutive copyright/license lines at the beginning of the document, followed by a blank line. Recognized prefixes are:
+  * `©`
+  * `Copyright`
+  * `Dedicated to the public domain`
+* Blank lines, containing only whitespace characters.
+* Header lines, beginning with one or more `#` (hash) characters.
+* List lines, beginning with zero or more pairs of spaces, followed by a `*` (dash) character.
+* Code lines, prefixed with a `|` (pipe / vertical-bar) character.
+* Quote lines, prefixed with a `>` (greater-than) character.
+* Text lines, which are any lines that don't match any of the above criteria.
+
+These are translated as follows:
+* Line breaks are inserted between text lines.
+* Groups of consecutive lines are grouped into paragraphs.
+* A blank separates text lines into paragraphs.
+* A header line denotes a section with a header whose numerical level is indicated by the number of hash symbols.
+  * Sections are translated into nested `<section>` elements, containing the appropriate `<h1>` through `<h6>` header elements.
+  * Sections can be nested arbitrarily deeply, but beyond 6 levels will all produce `h6` tags, the maximum supported by HTML5.
+
+There is also support for inline markup:
+* Inline code is quoted with backticks like so: `\`…\``
+  * Literal backticks and backslashes within an inline code span are written by escaping with a backslash: `\\\`` and `\\\\`.
+* A generic span syntax also exists: `<tag: …>`, where the tag can be one of the following:
+  * `b`: bold text: `<b: bold text>` → <b: bold text>.
+  * `embed`: embed content from an external file.
+  * `link`, `http`, `https`, `mailto` all specify a link:
+    * If the link is followed by a space and additional words of text, then the text becomes the visible link text.
+    * Example: `<https://github.com/gwk/writeup>` → <https://github.com/gwk/writeup>
+    * Example: `<https://github.com/gwk/writeup writeup>` → <https://github.com/gwk/writeup writeup>
+    * if the tag is `link`, then the link is a relative link and is treated by Muck as a project dependency.
+  * `span`: a generic HTML span with arbitrary options (syntax is a work in progress).
+* More inline markup features need to be added!
+  * italics, strikethrough, edit additions and deletions, etc.
+
+## Comparison to Markdown
+
+Writeup differs from Github Flavored Markdown (GFD) substantially. Here are some of the more obvious points:
+* Writeup headers create a hierarchical structure of `<section>` blocks in the document; Markdown has a flat structure.
+* By default the output HTML contains CSS, Javascript, and class attributes in order to stand alone; the Github markup system purposefully strips such content out of documents.
+* Writeup does not support:
+  * Italics with `*`, bold with `**`, both with `_`, or strikethrough with `~~`.
+  * Markdown link syntax `[http://…](name…)`.
+  * Fenced codeblocks with `\`\`\``.
+  * Tables.
+  * Task lists.
+  * Domain-specific features like @mentions.
+* Some other features that have not yet been implemented:
+  * Syntax highlighting.
+  * Ordered lists.
+
+## A note about GitHub Readme files
+GitHub supports several markup formats for project readmes, via <https://github.com/github/markup>; Writeup is not yet one of them. However
+
+# Versioning
+
+All Writeup documents require a version line at the beginning of the document, like this:
+| writeup v0
+
+Writeup is currently experimental, and the only version number supported is 0. Once the format is reasonably stable, then it will be promoted to v1. From then on, if the format changes, implementations should either recognize and respect or else reject older documents.
+
+Text snippets submitted to a program using Writeup as a library can omit the version number; it is then the responsibility of the program to track the format version as necessary.
+
+## Adoption
+If you start using Writeup seriously please let me know and I will bump the version number to 1.
+
+## Paging
+Writeup HTML contains Javascript that facilitates paging across primary and secondary sections using the left and right arrow keys.
+
+## Presentation Mode
+Writeup HTML files contain CSS and Javascript for both normal and presentation modes. Press `p` in the browser to toggle between modes. Presentation mode simply adds styling to the primary and secondary sections to render them at the full window height; in conjunction with the paging mechanism this lets you use Writeup documents as simple slide decks.
+
+
+# Implementation
+
+Writeup is currently implemented as a Python 3.6 script, depending only on the standard library.
+
+
+# Examples
+
+Sections and text:
+| # Header 1
+| line 1
+| * A
+| * B
+|   * B1
+|   * B2
+| * C
+| ## Header 2
+| line 2
+| Line 3
+
+Becomes:
+> # Header 1
+> line 1
+> * A
+> * B
+>   * B1
+>   * B2
+> * C
+> ## Header 2
+> line 2
+> Line 3
+
+
+# Credits
+
+By George King.

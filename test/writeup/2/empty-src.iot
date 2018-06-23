@@ -1,0 +1,5 @@
+{
+  'cmd': "writeup ''",
+  'err_val': 'source path cannot be empty string.\n',
+
+}

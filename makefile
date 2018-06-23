@@ -25,6 +25,7 @@ pip-develop:
 pip-uninstall:
 	pip3 uninstall --yes pithy
 
+# Note: upload to pypi test server with: `$ python3 setup.py sdist upload -r pypitest`
 pypi-dist:
 	python3 setup.py sdist
 
@@ -35,7 +36,7 @@ test:
 	iotest -fail-fast
 
 typecheck:
-	craft-py-check pithy
+	craft-py-check pithy writeup
 
 
 test-diff:
