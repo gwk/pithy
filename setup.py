@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from sys import stderr
-from os import chmod, getcwd, listdir
+from os import chmod, getcwd, listdir, walk as walk_path
 from os.path import join as path_join, splitext as split_ext
 from setuptools import setup
 from distutils.command.build_scripts import build_scripts
@@ -47,7 +47,7 @@ def gen_bins(*, bin_dst_dir:str) -> None:
   for src_dir in bin_src_dirs:
     for name in listdir(src_dir):
       stem, ext = split_ext(name)
-      if stem.startswith('.') or ext != '.py': continue
+      if stem[0] in '._' or ext != '.py': continue
       path = path_join(bin_dst_dir, stem.replace('_', '-')) # Omit extension from bin name.
       module = path_join(src_dir, stem).replace('/', '.')
       errSL(f'generating script for {module}: {path}')
@@ -63,10 +63,26 @@ from {module} import main
 main()
 '''
 
+
+def discover_packages():
+  missing_inits = []
+  for root in ['pithy']:
+    for dir_path, dir_names, file_names in walk_path(root):
+      dir_names[:] = filter(lambda n: n != '__pycache__', dir_names)
+      yield dir_path
+      if '__init__.py' not in file_names:
+        missing_inits.append(path_join(dir_path, '__init__.py'))
+  if missing_inits:
+    exit(f'missing package files:\n' + '\n'.join(missing_inits))
+
+packages = list(discover_packages())
+print('packages:', *packages)
+
 setup(
   cmdclass={
     'build_scripts': BuildScripts,
     'develop': Develop,
     'install': Install,
   },
+  packages=packages
 )
