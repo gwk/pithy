@@ -9,14 +9,14 @@ from collections import defaultdict
 from sys import stdout, stderr
 from typing import *
 
-from .pithy.ansi import RST_OUT, TXT_B_OUT, TXT_D_OUT, TXT_R_OUT
-from .pithy.dict import dict_fan_by_key_pred
-from .pithy.io import *
-from .pithy.string import string_contains
-from .pithy.format import FormatError, format_to_re
-from .pithy.fs import *
-from .pithy.iterable import fan_by_key_fn, fan_by_pred
-from .pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
+from pithy.ansi import RST_OUT, TXT_B_OUT, TXT_D_OUT, TXT_R_OUT
+from pithy.dict import dict_fan_by_key_pred
+from pithy.io import *
+from pithy.string import string_contains
+from pithy.format import FormatError, format_to_re
+from pithy.fs import *
+from pithy.iterable import fan_by_key_fn, fan_by_pred
+from pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
 
 from .case import Case, FileExpectation, ParConfig, TestCaseError, file_expectation_fns
 from .ctx import Ctx
@@ -355,7 +355,7 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
     orig_path = path_join(ctx.proj_dir, orig)
     link_path = path_join(case.test_dir, link)
     if path_dir(link):
-      raise TestCaseError(f'symlink is a path: {link}') # TODO: make parent dirs for link_path?
+      raise TestCaseError(f'symlink must be a name, not a path: {link}') # TODO: make parent dirs for link_path?
     if is_node_not_link(link_path): # do not allow symlinks to overwrite previous contents in test dir.
       raise TestCaseError(f'non-symlink already exists at desired symlink path: {link_path}')
     try: make_link(orig=orig_path, link=link_path)

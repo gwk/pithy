@@ -9,9 +9,9 @@ from itertools import zip_longest
 from string import Template
 from typing import *
 
-from .pithy.fs import *
-from .pithy.io import *
-from .pithy.types import * # type: ignore
+from pithy.fs import *
+from pithy.io import *
+from pithy.types import * # type: ignore
 
 from .ctx import Ctx
 
