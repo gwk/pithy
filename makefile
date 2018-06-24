@@ -36,7 +36,7 @@ test:
 	iotest -fail-fast
 
 typecheck:
-	craft-py-check pithy
+	craft-py-check pithy utest.py
 
 test-diff:
 	test-diff/test.py
