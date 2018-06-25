@@ -1,0 +1,5 @@
+{
+  'desc': 'The user creates `script.py` and intends to run it but forgets the leading `./`.',
+  'compile': ['touch script.py'],
+  'code': 1,
+}

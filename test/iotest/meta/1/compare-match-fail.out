@@ -1,0 +1,14 @@
+test-meta/1/compare-match-fail
+
+output file does not match expectation. actual value:
+cat _b/test-meta/1/compare-match-fail/compare-match-fail.out
+actual.
+match failed at line 1:
+pattern:   '| expected.\n'
+actual text: 'actual.\n'
+----------------------------------------------------------------
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.

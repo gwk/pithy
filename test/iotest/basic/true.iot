@@ -1,0 +1,5 @@
+# clean run of true command.
+
+{
+  'cmd' : 'true',
+}

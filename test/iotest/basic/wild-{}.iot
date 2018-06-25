@@ -1,0 +1,11 @@
+# the following cases default to matching this wildcard stem:
+#   wild-err
+#   wild-out
+
+# the following stems have their own concrete iot files and do not use this case:
+#  wild-iot
+
+{
+  'code': 0,
+  'env': {'TEST_WILD' : 'env: wild-{}'},
+}

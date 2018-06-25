@@ -1,0 +1,4 @@
+{
+  'cmd': 'iotest ..',
+  'err_val': "iotest error: argument path cannot contain '..': '..'.\n"
+}

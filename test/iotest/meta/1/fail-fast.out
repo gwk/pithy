@@ -1,0 +1,6 @@
+test-meta/1/fail-fast
+test process was expected to return code: 0; actual code: 1.
+test command failed: `false`
+
+================================================================
+

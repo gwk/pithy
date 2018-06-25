@@ -1,0 +1,9 @@
+test-meta/1/cmd-path-nonexistent
+test process launch failed; file was not found.
+test command failed: `./nonexistent`
+
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.

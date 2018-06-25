@@ -1,0 +1,4 @@
+{
+  'cmd': 'echo ignored std output.',
+  'out_mode': 'ignore',
+}

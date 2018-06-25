@@ -1,0 +1,6 @@
+# expect error exit code from false command.
+
+{
+  'cmd'   : 'false',
+  'code'  : 1,
+}

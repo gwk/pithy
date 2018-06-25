@@ -1,0 +1,12 @@
+test-meta/1/compare-match-empty-out
+
+output file does not match expectation. actual value: ''
+match failed at line 1:
+pattern:   '| expectation.\n'
+actual text: None
+----------------------------------------------------------------
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.

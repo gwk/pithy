@@ -18,6 +18,7 @@ cov:
 
 docs:
 	craft-docs
+	test-meta/meta-coverage.sh
 
 pip-develop:
 	pip3 install -e .
@@ -36,7 +37,7 @@ test:
 	iotest -fail-fast
 
 typecheck:
-	craft-py-check pithy utest.py
+	craft-py-check craft iotest pithy utest.py
 
 test-diff:
 	test-diff/test.py

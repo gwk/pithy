@@ -1,0 +1,7 @@
+test-meta/2/fail-dbg
+
+test process was expected to return code: 0; actual code: 1.
+test command failed: `false`
+
+================================================================
+

@@ -1,0 +1,4 @@
+{
+  'cmd': 'iotest -no-times test-meta/1/$NAME.iot',
+  'code': 1,
+}

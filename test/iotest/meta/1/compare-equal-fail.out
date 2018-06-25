@@ -1,0 +1,19 @@
+test-meta/1/compare-equal-fail
+
+output file does not equal expectation. actual value:
+cat _b/test-meta/1/compare-equal-fail/compare-equal-fail.out
+actual.
+git diff --no-index --no-prefix --no-renames --exit-code --histogram --ws-error-highlight=old,new _b/test-meta/1/compare-equal-fail/compare-equal-fail.out.expected _b/test-meta/1/compare-equal-fail/compare-equal-fail.out
+diff --git _b/test-meta/1/compare-equal-fail/compare-equal-fail.out.expected _b/test-meta/1/compare-equal-fail/compare-equal-fail.out
+index d2a4c92..9091bb0 100644
+--- _b/test-meta/1/compare-equal-fail/compare-equal-fail.out.expected
++++ _b/test-meta/1/compare-equal-fail/compare-equal-fail.out
+@@ -1 +1 @@
+-expected.
++actual.
+----------------------------------------------------------------
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.

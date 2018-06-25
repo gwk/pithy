@@ -1,0 +1,5 @@
+[ { 'cmd' : 'true'},
+  { 'cmd' : 'false',
+    'code'  : 1 }
+]
+

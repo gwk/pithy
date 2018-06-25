@@ -1,0 +1,4 @@
+{
+  'compile': ['touch script.py'],
+  'cmd': 'script.py',
+}

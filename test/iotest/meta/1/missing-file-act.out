@@ -1,0 +1,8 @@
+| test-meta/1/missing-file-act
+|
+~ iotest: test did not output expected file: .+/_build/test-meta/1/missing-file-act/nonexistant.txt
+| ================================================================
+|
+|
+| ################################################################
+| TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.

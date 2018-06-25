@@ -1,0 +1,10 @@
+# run pass_args, expecting error exit, std out and std err.
+
+{
+  'cmd' : 'test/iotest/basic/pass_args.py',
+  'links' : {'test'},
+  'args' : ['1', 'std out', 'std err'],
+  'code' : 1,
+  'out_val' : 'std out\n',
+  'err_val' : 'std err\n',
+}

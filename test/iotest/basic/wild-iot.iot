@@ -1,0 +1,4 @@
+{
+  # note: leave code unspecified; inherited from wild-{}.iot.
+  'env': {'TEST_WILD' : 'env: wild-iot'},
+}

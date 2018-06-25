@@ -1,0 +1,8 @@
+# run pass_args, expecting clean exit, std out and std err.
+
+{
+  'args' : '0 "std out" "std err"',
+  'code' : 0,
+  'out_val' : 'std out\n',
+  'err_val' : 'std err\n',
+}

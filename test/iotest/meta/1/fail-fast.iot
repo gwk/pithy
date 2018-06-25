@@ -1,0 +1,3 @@
+{
+  'cmd': 'iotest -no-times -fail-fast test-meta/1/$NAME.iot',
+}

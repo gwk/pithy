@@ -1,0 +1,9 @@
+test-meta/1/timeout
+test process timed out (1 sec) and was killed.
+test command failed: `sleep 10`
+
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.

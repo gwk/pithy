@@ -1,0 +1,11 @@
+test-meta/1/compare-match-empty-exp
+
+output file does not match expectation. actual value:
+cat _b/test-meta/1/compare-match-empty-exp/compare-match-empty-exp.out
+actual.
+Expected empty file.
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.

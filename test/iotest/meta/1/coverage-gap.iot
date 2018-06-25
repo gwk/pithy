@@ -1,0 +1,7 @@
+{
+  'compile': [
+    'touch .project-root',
+  ],
+  'cmd': 'iotest -no-times -coverage test-meta/1/$NAME.iot',
+  'err_mode': 'ignore', # allow the coverage tool to print debug info without spoiling this test.
+}

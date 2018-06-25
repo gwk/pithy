@@ -1,0 +1,11 @@
+test-meta/1/compare-contain-fail
+
+output file does not contain expectation. actual value:
+cat _b/test-meta/1/compare-contain-fail/compare-contain-fail.out
+actual.
+----------------------------------------------------------------
+================================================================
+
+
+################################################################
+TESTS FOUND: 1; SKIPPED: 0; FAILED: 1.
