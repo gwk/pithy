@@ -5,10 +5,16 @@ from pithy.ansi import *
 from pithy.io import *
 from pithy.lex import Lexer
 from pithy.task import runCO
+from argparse import ArgumentParser
 
 
-def main():
-  c, o = runCO(['mypy', *argv[1:]])
+def main() -> None:
+  arg_parser = ArgumentParser(description='Run mypy, format and colorize output.')
+  arg_parser.add_argument('-print-ok', action='store_true')
+  arg_parser.add_argument('roots', nargs='+')
+  args = arg_parser.parse_args()
+
+  c, o = runCO(['mypy', *args.roots])
   for token in lexer.lex(o):
     s = token[0]
     kind = token.lastgroup
@@ -18,7 +24,8 @@ def main():
     except KeyError: outZ(s)
     else: outZ(color, s, RST)
     stdout.flush()
-
+  if c == 0 and args.print_ok: print('ok.')
+  exit(c)
 
 lexer = Lexer(invalid='invalid', patterns=dict(
   newline   = r'\n',
