@@ -41,7 +41,7 @@ def dispatched(method: Callable) -> Callable:
   assert par_self.name == 'self'
   t = par_arg.annotation
   if not isinstance(t, type):
-    raise TypeError(f'`dispatched` requires type annotation to be a runtime type: {t}')
+    raise TypeError(f'`dispatched` requires type annotation to be a runtime type: {t}') # TODO: allow generics by using __origin__.
   if t in registry:
     a = _source_loc(registry[t])
     b = _source_loc(method)
