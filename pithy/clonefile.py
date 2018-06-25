@@ -6,17 +6,21 @@ from os import strerror
 from os.path import dirname, isdir
 from shutil import copytree
 from typing import Callable, Optional
+import sys
 
 
 __all__ = ['clone_path', 'volume_supports_clone']
 
-# TODO: macOS only guard.
 
-libSystem = CDLL('libSystem.dylib', use_errno=True)
+if sys.platform == 'darwin':
+  libSystem = CDLL('libSystem.dylib', use_errno=True)
+  clonefile = libSystem.clonefile # (UnsafePointer<Int8>!, UnsafePointer<Int8>!, UInt32) -> Int32
+  clonefile.argtypes = (c_char_p, c_char_p, c_uint)
+  clonefile.restype = c_int
+else:
+  def clonefile(src:str, dst:str, flags:int) -> int:
+    raise Exception(f'clonefile is not available on this platform: {sys.platform}')
 
-clonefile = libSystem.clonefile # (UnsafePointer<Int8>!, UnsafePointer<Int8>!, UInt32) -> Int32
-clonefile.argtypes = (c_char_p, c_char_p, c_uint)
-clonefile.restype = c_int
 
 CLONE_NOFOLLOW = 1 # Int32
 CLONE_NOOWNERCOPY = 2 # Int32
