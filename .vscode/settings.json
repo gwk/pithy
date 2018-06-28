@@ -2,5 +2,6 @@
   "search.exclude": {
     "_build": true,
     "_misc": true
-  }
+  },
+  "cSpell.enabled": false
 }
