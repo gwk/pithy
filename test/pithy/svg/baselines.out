@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800">
+<line stroke="#E0E0E0" x1="0" y1="50" x2="500" y2="50"/>
+<text alignment-baseline="none" style="font-size: 24px; background-color: blue" x="0" y="50">None</text>
+<line stroke="#E0E0E0" x1="0" y1="100" x2="500" y2="100"/>
+<text alignment-baseline="after-edge" style="font-size: 24px; background-color: blue" x="0" y="100">after-edge</text>
+<line stroke="#E0E0E0" x1="0" y1="150" x2="500" y2="150"/>
+<text alignment-baseline="alphabetic" style="font-size: 24px; background-color: blue" x="0" y="150">alphabetic</text>
+<line stroke="#E0E0E0" x1="0" y1="200" x2="500" y2="200"/>
+<text alignment-baseline="auto" style="font-size: 24px; background-color: blue" x="0" y="200">auto</text>
+<line stroke="#E0E0E0" x1="0" y1="250" x2="500" y2="250"/>
+<text alignment-baseline="baseline" style="font-size: 24px; background-color: blue" x="0" y="250">baseline</text>
+<line stroke="#E0E0E0" x1="0" y1="300" x2="500" y2="300"/>
+<text alignment-baseline="before-edge" style="font-size: 24px; background-color: blue" x="0" y="300">before-edge</text>
+<line stroke="#E0E0E0" x1="0" y1="350" x2="500" y2="350"/>
+<text alignment-baseline="central" style="font-size: 24px; background-color: blue" x="0" y="350">central</text>
+<line stroke="#E0E0E0" x1="0" y1="400" x2="500" y2="400"/>
+<text alignment-baseline="hanging" style="font-size: 24px; background-color: blue" x="0" y="400">hanging</text>
+<line stroke="#E0E0E0" x1="0" y1="450" x2="500" y2="450"/>
+<text alignment-baseline="ideographic" style="font-size: 24px; background-color: blue" x="0" y="450">ideographic</text>
+<line stroke="#E0E0E0" x1="0" y1="500" x2="500" y2="500"/>
+<text alignment-baseline="inherit" style="font-size: 24px; background-color: blue" x="0" y="500">inherit</text>
+<line stroke="#E0E0E0" x1="0" y1="550" x2="500" y2="550"/>
+<text alignment-baseline="mathematical" style="font-size: 24px; background-color: blue" x="0" y="550">mathematical</text>
+<line stroke="#E0E0E0" x1="0" y1="600" x2="500" y2="600"/>
+<text alignment-baseline="middle" style="font-size: 24px; background-color: blue" x="0" y="600">middle</text>
+<line stroke="#E0E0E0" x1="0" y1="650" x2="500" y2="650"/>
+<text alignment-baseline="text-after-edge" style="font-size: 24px; background-color: blue" x="0" y="650">text-after-edge</text>
+<line stroke="#E0E0E0" x1="0" y1="700" x2="500" y2="700"/>
+<text alignment-baseline="text-before-edge" style="font-size: 24px; background-color: blue" x="0" y="700">text-before-edge</text>
+</svg>
