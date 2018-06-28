@@ -3,8 +3,10 @@
 from functools import partial
 from ..http.server import HTTPServer, HTTPRequestHandler
 from ..task import run
+from typing import *
 
-def main():
+
+def main() -> None:
 
   from argparse import ArgumentParser
 
@@ -26,7 +28,7 @@ def main():
     'apple-touch-icon-precomposed.png',
   }
 
-  server = HTTPServer(address, partial(HTTPRequestHandler, directory=root))
+  server = HTTPServer(address, cast(type, partial(HTTPRequestHandler, directory=root)))
 
   # note: the way we tell the OS to open the URL in the browser is a rather suspicious hack:
   # the `open` command returns and then we launch the web server,

@@ -9,7 +9,7 @@ from pithy.string import *
 from pithy.task import *
 
 
-def main():
+def main() -> None:
   run('muck doc/index.html', exits=True)
   remove_dir_contents('docs/')
   # TODO: would be better to have muck tells us what all of the data dependencies are.

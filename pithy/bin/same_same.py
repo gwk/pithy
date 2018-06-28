@@ -172,7 +172,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
   # This approach simplifies the token diffing process so that it is a reasonably
   # straightforward comparison of a rem block to an add block.
 
-  def chunk_key(line:DiffLine) -> Tuple[int, bool]:
+  def chunk_key(line:DiffLine) -> Tuple[bool, int, bool]:
     return (line.is_src, line.chunk_idx, (line.old_num in old_moved_nums or line.new_num in new_moved_nums))
 
   for ((is_src, chunk_idx, is_moved), _chunk) in groupby(lines, key=chunk_key):
@@ -358,7 +358,7 @@ assert not strange_char_pat.match(' ')
 strange_char_ords = chain(range(0, 0x09+1), range(0x0B, 0x1F+1), range(0x7F, 0x7F+1),
   range(0x80, 0x9F+1), range(0xA0, 0xA0+1), range(0xAD, 0xAD+1))
 assert ord(' ') not in strange_char_ords
-strange_char_names = { i : '\\x{:02x}'.format(i) for i in strange_char_ords }
+strange_char_names = { chr(i) : '\\x{:02x}'.format(i) for i in strange_char_ords }
 strange_char_names.update({
   '\0' : '\\0',
   '\a' : '\\a',

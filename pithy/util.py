@@ -57,5 +57,5 @@ def all_slots(type: Type) -> FrozenSet[str]:
     else:
       if isinstance(s, str): slots.add(s) # single slot.
       else:
-        slots.update(cast(Iterable[str], s)) # mypy bug: __slots__ cannot be None.
+        slots.update(s)
   return frozenset(slots)

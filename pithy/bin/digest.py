@@ -8,6 +8,8 @@ import hashlib
 from pithy.io import errSL
 from pithy.string import le32
 from sys import argv, stderr
+from hashlib import _Hash
+from typing import Callable, Union
 
 
 hash_classes = {
@@ -20,7 +22,7 @@ hash_classes = {
 }
 
 
-def main():
+def main() -> None:
   hash_name = argv[1]
   in_paths = argv[2:]
 
@@ -37,7 +39,7 @@ def main():
     digest(hash_class, path, path_width)
 
 
-def digest(hash_class, path, path_width):
+def digest(hash_class: Callable[[],_Hash], path:str, path_width:int) -> None:
   hash_chunk_size = 1 << 16
   #^ a quick timing experiment suggested that chunk sizes larger than this are not faster.
   try: f = open(path, 'rb')

@@ -14,7 +14,7 @@ from pithy.task import *
 from craft import *
 
 
-def main():
+def main() -> None:
   arg_parser = ArgumentParser(description='Build Mac Swift apps using the Swift Package Manager (without Xcode).')
   args = arg_parser.parse_args()
 

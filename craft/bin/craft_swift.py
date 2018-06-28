@@ -15,7 +15,7 @@ from pithy.task import run_gen
 from craft import *
 
 
-def main():
+def main() -> None:
   arg_parser = ArgumentParser(description='Swift compiler wrapper.')
   arg_parser.add_argument('-product', default=None)
   arg_parser.add_argument('-target', default=None)

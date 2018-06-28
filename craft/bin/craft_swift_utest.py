@@ -15,7 +15,7 @@ from pithy.task import run, run_gen
 from craft import *
 
 
-def main():
+def main() -> None:
   arg_parser = ArgumentParser(description='Swift unit test tool.')
   arg_parser.add_argument('test_paths', nargs='*')
   args = arg_parser.parse_args()

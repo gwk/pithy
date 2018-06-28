@@ -8,7 +8,8 @@ from argparse import ArgumentParser
 from sys import stderr
 from pithy.fs import file_inode, split_stem_ext, move_file, walk_files
 
-def main():
+
+def main() -> None:
   parser = ArgumentParser(description='Lower case file extensions.')
   parser.add_argument('paths', nargs='+', help='Paths to explore.')
   args = parser.parse_args()

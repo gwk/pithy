@@ -13,7 +13,7 @@ from pithy.fs import walk_files
 from pithy.schema import compile_schema, write_schema
 
 
-def main():
+def main() -> None:
   parser = ArgumentParser(description='Count lines of source code.')
   parser.add_argument('-count-atoms', action='store_true')
   parser.add_argument('paths', nargs='*', default=['-'], help='Directories to explore.')

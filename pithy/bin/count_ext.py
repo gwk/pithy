@@ -18,13 +18,15 @@ import os
 from argparse import ArgumentParser
 from collections import defaultdict
 from pithy.fs import path_ext, walk_files
+from typing import *
 
-def main():
+
+def main() -> None:
   parser = ArgumentParser(description='Count lines of source code.')
   parser.add_argument('paths', nargs='+', help='Directories to explore.')
   args = parser.parse_args()
 
-  ext_counts = defaultdict(int)
+  ext_counts:DefaultDict[str,int] = defaultdict(int)
 
   for path in walk_files(*args.paths):
     ext = path_ext(path)

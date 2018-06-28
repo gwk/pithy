@@ -5,16 +5,16 @@ from time import time as now
 
 
 class Clock:
-  def __init__(self, name:str):
+  def __init__(self, name:str) -> None:
     self.name = name
     self.times = [(now(), 'start')]
 
-  def split(self, label:str):
+  def split(self, label:str) -> None:
     t = now()
     print(f'clock: {self.name}: {label}: {t - self.times[-1][0]:.04f}', file=stderr)
     self.times.append((t, label))
 
 
-  def total(self):
+  def total(self) -> None:
     t = now()
     print(f'clock: {self.name}: TOTAL: {t - self.times[0][0]:.04f}', file=stderr)

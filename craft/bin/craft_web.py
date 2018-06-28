@@ -12,7 +12,7 @@ from pithy.task import runCO
 from craft import *
 
 
-def main():
+def main() -> None:
   conf = load_craft_config()
   build_dir = conf.build_dir
   tsc_build_dir = f'{build_dir}/_ts'

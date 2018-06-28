@@ -110,7 +110,7 @@ def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden=False) -> List[str]:
   optionally filtering by extensions in `exts`, and the `hidden` flag (defaults to False, excluding names beginning with '.').
   '''
   exts = normalize_exts(exts)
-  names = sorted(_os.listdir(path)) # type: ignore # https://github.com/python/typeshed/issues/1653
+  names = sorted(_os.listdir(path))
   #^ Sort is necessary for some file systems, e.g. APFS.
   if not exts and hidden: return names # no filtering necessary.
   return [n for n in names if name_has_any_ext(n, exts) and (hidden or not n.startswith('.'))]
@@ -172,7 +172,7 @@ def open_new(path:Path, make_parent_dirs:bool=True, **open_args) -> IO[Any]:
   return open(path, 'w', **open_args)
 
 
-def product_needs_update(product=PathOrFd, source=PathOrFd) -> bool:
+def product_needs_update(product=PathOrFd, source=PathOrFd) -> bool: # type: ignore
   return file_time_mod_or_zero(product) <= file_time_mod(source)
 
 
