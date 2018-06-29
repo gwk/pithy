@@ -10,7 +10,7 @@ from html import escape as html_escape
 from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable
 from .num import Num, NumRange
-from .xml import FileOrPath, XmlSubtree, XmlWriter, add_opt_attrs, esc_attr, esc_text, fmt_xml_attrs
+from .xml import XmlWriter, add_opt_attrs, esc_attr, esc_text, fmt_xml_attrs
 
 
 Dim = Union[int, float, str]
@@ -24,14 +24,13 @@ ViewBox = Union[None, Vec, Tuple[Num, Num, Num, Num], Tuple[Vec, Vec]] # TODO: c
 class SvgWriter(XmlWriter):
   '''
   SvgWriter is a ContextManager class that outputs SVG code to a file (stdout by default).
-  It maintains a stack of Tree objects that guarantee proper XML tree structure.
+  Like its parent class XmlWriter, it uses the __enter__ and __exit__ methods to automatically output open and close tags.
   '''
 
 
-  def __init__(self, file_or_path:FileOrPath=stdout, w:Dim=None, h:Dim=None,
+  def __init__(self, file:TextIO=stdout, w:Dim=None, h:Dim=None,
    vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None) -> None:
-    super().__init__(tag='svg', file_or_path=file_or_path, xmlns="http://www.w3.org/2000/svg")
-    assert self._stack == []
+    super().__init__(tag='svg', file=file, xmlns="http://www.w3.org/2000/svg")
     self.w = w
     self.h = h
     if w is None and h is None:
@@ -39,8 +38,8 @@ class SvgWriter(XmlWriter):
     else:
       assert w is not None
       assert h is not None
-      self.attrs['width'] = w # type: ignore
-      self.attrs['height'] = h # type: ignore
+      self.attrs['width'] = w
+      self.attrs['height'] = h
       #self.viewport = f' width="{w}" height="{h}"'
     self.viewBox = fmt_viewBox(vx, vy, vw, vh)
     self.vx = vx
@@ -71,9 +70,9 @@ class SvgWriter(XmlWriter):
     super().leaf_text(tag, attrs=attrs, text=text)
 
 
-  def subtree(self, tag:str, attrs:Dict[str,Any], children:Sequence[str]=()) -> 'XmlSubtree':
+  def sub(self, tag:str, attrs:Dict[str,Any], children:Sequence[str]=()) -> XmlWriter:
     '''
-    Create an XmlSubtree for use in a `with` context to represent a nesting XML element.
+    Create a child XmlWriter for use in a `with` context to represent a nesting XML element.
     'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
     '''
     try: title = attrs.pop('title')
@@ -81,7 +80,7 @@ class SvgWriter(XmlWriter):
     else:
       del attrs
       children = (self.title(title), *children)
-    return super().subtree(tag, attrs, children)
+    return super().sub(tag, attrs, children)
 
 
   # SVG Elements.
@@ -100,15 +99,15 @@ class SvgWriter(XmlWriter):
     self.leaf('circle', attrs)
 
 
-  def defs(self, **attrs) -> 'XmlSubtree':
+  def defs(self, **attrs) -> XmlWriter:
     'Output an SVG `defs` element.'
-    return self.subtree('defs', attrs)
+    return self.sub('defs', attrs)
 
 
-  def g(self, *transforms:str, **attrs) -> 'XmlSubtree':
+  def g(self, *transforms:str, **attrs) -> XmlWriter:
     'Create an SVG `g` element for use in a context manager.'
     add_opt_attrs(attrs, transform=(' '.join(transforms) if transforms else None))
-    return self.subtree('g', attrs)
+    return self.sub('g', attrs)
 
 
   def image(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs) -> None:
@@ -144,7 +143,7 @@ class SvgWriter(XmlWriter):
 
   def marker(self, id:str, pos:Vec=None, size:Vec=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
    vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None,
-   markerUnits='strokeWidth', orient:str='auto', **attrs) -> 'XmlSubtree':
+   markerUnits='strokeWidth', orient:str='auto', **attrs) -> XmlWriter:
     'Output an SVG `marker` element.'
     if pos is not None:
       assert x is None
@@ -159,7 +158,7 @@ class SvgWriter(XmlWriter):
         w = h = size
     add_opt_attrs(attrs, id=id, refX=x, refY=y, markerWidth=w, markerHeight=h, viewBox=fmt_viewBox(vx, vy, vw, vh),
       markerUnits=markerUnits, orient=orient)
-    return self.subtree('marker', attrs=attrs)
+    return self.sub('marker', attrs=attrs)
 
 
   def path(self, commands:Iterable[PathCommand], **attrs:Any) -> None:
@@ -216,7 +215,7 @@ class SvgWriter(XmlWriter):
     self.leaf_text('style', attrs, text.strip())
 
 
-  def symbol(self, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs) -> 'XmlSubtree':
+  def symbol(self, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs) -> XmlWriter:
     'Output an SVG `symbol` element.'
     if vx is None: vx = 0
     if vy is None: vy = 0
@@ -224,7 +223,7 @@ class SvgWriter(XmlWriter):
     assert vw >= 0 # type: ignore
     assert vh >= 0 # type: ignore
     add_opt_attrs(attrs, id=id, viewBox=f'{vx} {vy} {vw} {vh}')
-    return self.subtree('symbol', attrs)
+    return self.sub('symbol', attrs)
 
 
   def text(self, pos:Vec=None, x:Num=None, y:Num=None, text=None, **attrs) -> None:
