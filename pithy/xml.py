@@ -12,6 +12,9 @@ from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union
 
 
+XmlAttrs = Optional[Dict[str,Any]]
+
+
 class XmlWriter(ContextManager):
   '''
   XmlWriter is a ContextManager class that outputs XML text to a file (stdout by default).
@@ -24,7 +27,7 @@ class XmlWriter(ContextManager):
     ENTERED = 1
     EXITED = 2
 
-  def __init__(self, tag:str, file:TextIO=stdout, attrs:Dict[str,Any]=None, children:Sequence[str]=(),
+  def __init__(self, tag:str, file:TextIO=stdout, attrs:XmlAttrs=None, children:Sequence[str]=(),
    *attr_pairs:Tuple[str, str], **extra_attrs:Any) -> None:
     '''
     `attrs` is provided as a named parameter to avoid excessive copying of attributes into kwargs dicts.
@@ -62,30 +65,31 @@ class XmlWriter(ContextManager):
     print(*items, sep='', file=self.file)
 
 
-  def leaf(self, tag:str, attrs:Dict[str,Any]) -> None:
+  def leaf(self, tag:str, attrs:XmlAttrs) -> None:
     self.write(f'<{tag}{fmt_xml_attrs(attrs)}/>')
 
 
-  def leaf_text(self, tag:str, attrs:Dict[str,Any], text:str) -> None:
+  def leaf_text(self, tag:str, attrs:XmlAttrs, text:str) -> None:
     'Output a non-nesting XML element that contains text between the open and close tags.'
-    self.write(f'<{tag}{fmt_xml_attrs(attrs)}>{esc_text(text)}</{tag}>')
+    self.write(f'<{tag}{fmt_xml_attrs(attrs)}>{esc_xml_text(text)}</{tag}>')
 
 
-  def sub(self, tag:str, attrs:Dict[str,Any], children:Sequence[str]=()) -> 'XmlWriter':
+  def sub(self, tag:str, attrs:XmlAttrs, children:Sequence[str]=()) -> 'XmlWriter':
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
     return XmlWriter(file=self.file, tag=tag, attrs=attrs, children=children)
 
 
 
-def add_opt_attrs(attrs:Dict[str, Any], *pairs:Tuple[str, Any], **items:Any) -> None:
+def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> None:
   'Add the items in `*pairs` and `**items` attrs, excluding any None values.'
+
   for k, v in chain(pairs, items.items()):
     if v is None: continue
     assert k not in attrs, k
     attrs[k] = v
 
 
-def fmt_xml_attrs(attrs:Optional[Dict[str, Any]]) -> str:
+def fmt_xml_attrs(attrs:XmlAttrs) -> str:
   'Format the `attrs` dict into XML key-value attributes.'
   if not attrs: return ''
   parts: List[str] = []
@@ -94,16 +98,16 @@ def fmt_xml_attrs(attrs:Optional[Dict[str, Any]]) -> str:
       v = 'none'
     else:
       k = _replaced_attrs.get(k, k)
-    parts.append(f' {esc_attr(k.replace("_", "-"))}="{esc_attr(v)}"')
+    parts.append(f' {esc_xml_attr(k.replace("_", "-"))}="{esc_xml_attr(v)}"')
   return ''.join(parts)
 
 
-def esc_text(val:Any) -> str:
+def esc_xml_text(val:Any) -> str:
   'HTML-escape the string representation of `val`.'
   return html_escape(str(val), quote=False)
 
 
-def esc_attr(val:Any) -> str:
+def esc_xml_attr(val:Any) -> str:
   'HTML-escape the string representation of `val`, including quote characters.'
   return html_escape(str(val), quote=True)
 

@@ -10,7 +10,7 @@ from html import escape as html_escape
 from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable
 from .num import Num, NumRange
-from .xml import XmlWriter, add_opt_attrs, esc_attr, esc_text, fmt_xml_attrs
+from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text, fmt_xml_attrs
 
 
 Dim = Union[int, float, str]
@@ -48,45 +48,47 @@ class SvgWriter(XmlWriter):
     self.vh = vh
 
 
-  def leaf(self, tag:str, attrs:Dict[str,Any]) -> None:
+  def leaf(self, tag:str, attrs:XmlAttrs) -> None:
     '''
     Output a non-nesting SVG element.
     'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
     '''
-    if 'title' in attrs: self.leaf_text(tag, attrs, text='')
+    if attrs and 'title' in attrs: self.leaf_text(tag, attrs, text='')
     else: super().leaf(tag, attrs)
 
 
-  def leaf_text(self, tag:str, attrs:Dict[str,Any], text:str) -> None:
+  def leaf_text(self, tag:str, attrs:XmlAttrs, text:str) -> None:
     '''
     Output a non-nesting XML element that contains text between the open and close tags.
     'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
     '''
-    try: title = attrs.pop('title')
-    except KeyError: pass
-    else:
-      self.write(f'<{tag}{fmt_xml_attrs(attrs)}>{self.title(title)}{esc_text(text)}</{tag}>')
-      return
+    if attrs:
+      try: title = attrs.pop('title')
+      except KeyError: pass
+      else:
+        self.write(f'<{tag}{fmt_xml_attrs(attrs)}>{self.title(title)}{esc_xml_text(text)}</{tag}>')
+        return
     super().leaf_text(tag, attrs=attrs, text=text)
 
 
-  def sub(self, tag:str, attrs:Dict[str,Any], children:Sequence[str]=()) -> XmlWriter:
+  def sub(self, tag:str, attrs:XmlAttrs, children:Sequence[str]=()) -> XmlWriter:
     '''
     Create a child XmlWriter for use in a `with` context to represent a nesting XML element.
     'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
     '''
-    try: title = attrs.pop('title')
-    except KeyError: pass
-    else:
-      del attrs
-      children = (self.title(title), *children)
+    if attrs:
+      try: title = attrs.pop('title')
+      except KeyError: pass
+      else:
+        del attrs
+        children = (self.title(title), *children)
     return super().sub(tag, attrs, children)
 
 
   # SVG Elements.
 
   def title(self, title:Optional[str]) -> str:
-    return '' if title is None else f'<title>{esc_text(title)}</title>'
+    return '' if title is None else f'<title>{esc_xml_text(title)}</title>'
 
 
   def circle(self, pos:Vec=None, r:Num=None, *, x:Num=None, y:Num=None, **attrs) -> None:
@@ -187,7 +189,7 @@ class SvgWriter(XmlWriter):
     self.leaf('polyline', attrs)
 
 
-  def rect(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None, **attrs) -> None:
+  def rect(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None, **attrs:Any) -> None:
     'Output an SVG `rect` element.'
     if pos is not None:
       assert x is None
