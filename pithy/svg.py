@@ -143,7 +143,7 @@ class SvgWriter(XmlWriter):
     self.leaf('line', attrs)
 
 
-  def marker(self, id:str, pos:Vec=None, size:Vec=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
+  def marker(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
    vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None,
    markerUnits='strokeWidth', orient:str='auto', **attrs) -> XmlWriter:
     'Output an SVG `marker` element.'

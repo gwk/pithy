@@ -9,8 +9,10 @@ from itertools import chain
 from sys import stdout
 from html import escape as html_escape
 from types import TracebackType
-from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union
+from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
 
+
+_Self = TypeVar('_Self', bound='XmlWriter')
 
 XmlAttrs = Optional[Dict[str,Any]]
 
@@ -44,7 +46,7 @@ class XmlWriter(ContextManager):
     self.status = XmlWriter.Status.INITED
 
 
-  def __enter__(self) -> 'XmlWriter':
+  def __enter__(self:_Self) -> _Self:
     self.write(f'<{self.tag}{fmt_xml_attrs(self.attrs)}>')
     # Print before updating status to get proper indentation.
     self.status = XmlWriter.Status.ENTERED
