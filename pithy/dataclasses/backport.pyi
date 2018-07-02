@@ -1,25 +1,22 @@
-from typing import overload, Any, Callable, Dict, Generic, Iterable, Mapping, Optional, Tuple, Type, TypeVar, Union
+from typing import overload, Any, Callable, Dict, Generic, Iterable, List, Mapping, Optional, Tuple, Type, TypeVar, Union
 
 
 _T = TypeVar('_T')
 
-_DictType = TypeVar('_DictType', bound = dict)
-_TupleType = TypeVar('_TupleType', bound = tuple)
-
 class _MISSING_TYPE: ...
+MISSING: _MISSING_TYPE
 
-class _InitVarMeta(type): ...
+def asdict(obj: Any, *, dict_factory: Callable[[List[Tuple[str, Any]]], _T] = ...) -> _T: ...
 
-def asdict(obj: Any, *, dict_factory: _DictType = ...) -> _DictType: ...
+def astuple(obj: Any, *, tuple_factory: Callable[[List[Any]], _T] = ...) -> _T: ...
 
-def astuple(obj: Any, *, tuple_factory: _TupleType = ...) -> _TupleType: ...
 
 @overload
 def dataclass(_cls: Type[_T]) -> Type[_T]: ...
 
 @overload
-def dataclass(*, init: bool = ..., repr: bool = ..., eq: bool = ...,
-  order: bool = ..., hash: Optional[bool] = ..., frozen: bool = ...) -> Callable[[Type[_T]], Type[_T]]: ...
+def dataclass(*, init: bool = ..., repr: bool = ..., eq: bool = ..., order: bool = ...,
+    unsafe_hash: bool = ..., frozen: bool = ...) -> Callable[[Type[_T]], Type[_T]]: ...
 
 
 class Field(Generic[_T]):
@@ -34,20 +31,34 @@ class Field(Generic[_T]):
     metadata: Optional[Mapping[str, Any]]
 
 
-def field(*, default: Union[_T, _MISSING_TYPE] = ..., default_factory: Union[Callable[[], _T], _MISSING_TYPE] = ...,
+# NOTE: Actual return type is 'Field[_T]', but we want to help type checkers
+# to understand the magic that happens at runtime.
+@overload  # `default` and `default_factory` are optional and mutually exclusive.
+def field(*, default: _T,
     init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,
-    metadata: Optional[Mapping[str, Any]] = ...) -> Field: ...
+    metadata: Optional[Mapping[str, Any]] = ...) -> _T: ...
 
-def fields(class_or_instance: Type) -> Tuple[Field, ...]: ...
+@overload
+def field(*, default_factory: Callable[[], _T],
+    init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,
+    metadata: Optional[Mapping[str, Any]] = ...) -> _T: ...
+
+@overload
+def field(*,
+    init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,
+    metadata: Optional[Mapping[str, Any]] = ...) -> Any: ...
+
+
+def fields(class_or_instance: Any) -> Tuple[Field[Any], ...]: ...
 
 def is_dataclass(obj: Any) -> bool: ...
 
 class FrozenInstanceError(AttributeError): ...
 
-class InitVar(metaclass=_InitVarMeta): ...
+class InitVar(Generic[_T]): ...
 
-def make_dataclass(cls_name: str, fields: Iterable[Union[str, Tuple[str, type], Tuple[str, type, Field]]], *,
-    bases: Tuple[type, ...] = ..., namespace: Dict[str, Any] = ...,
+def make_dataclass(cls_name: str, fields: Iterable[Union[str, Tuple[str, type], Tuple[str, type, Field[Any]]]], *,
+    bases: Tuple[type, ...] = ..., namespace: Optional[Dict[str, Any]] = ...,
     init: bool = ..., repr: bool = ..., eq: bool = ..., order: bool = ..., hash: bool = ..., frozen: bool = ...): ...
 
 def replace(obj: _T, **changes: Any) -> _T: ...

@@ -3,6 +3,8 @@
 try:
   from dataclasses import * # type: ignore
 except ImportError:
+  import typing
+  typing._GenericAlias = ... # type: ignore # hack 3.6.
   from .backport import * # copied from cpython/Lib/dataclasses.py.
 
 # copied from cpython/Lib/dataclasses.py.
