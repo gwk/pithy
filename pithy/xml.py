@@ -5,9 +5,9 @@ XML tools.
 '''
 
 from enum import Enum
-from itertools import chain
-from sys import stdout
 from html import escape as html_escape
+from io import StringIO
+from itertools import chain
 from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
 
@@ -29,7 +29,7 @@ class XmlWriter(ContextManager):
     ENTERED = 1
     EXITED = 2
 
-  def __init__(self, tag:str, file:TextIO=stdout, attrs:XmlAttrs=None, children:Sequence[str]=(),
+  def __init__(self, tag:str, file:TextIO=None, attrs:XmlAttrs=None, children:Sequence[str]=(),
    *attr_pairs:Tuple[str, str], **extra_attrs:Any) -> None:
     '''
     `attrs` is provided as a named parameter to avoid excessive copying of attributes into kwargs dicts.
@@ -37,7 +37,7 @@ class XmlWriter(ContextManager):
     `attr_pairs` is provided to allow for XML attribute names that cannot be mapped from python identifiers, e.g. 'xlink:href'.
     `children` allows the initializer to create child elements that will are buffered until context entry.
     '''
-    self.file = file
+    self.file = file or StringIO()
     self.tag = tag
     self.attrs = {} if attrs is None else attrs
     self.attrs.update(attr_pairs)
@@ -62,9 +62,14 @@ class XmlWriter(ContextManager):
     self.write(f'</{self.tag}>')
     return None
 
+  @property
+  def string(self):
+    if not isinstance(self.file, StringIO):
+      raise TypeError(f'{self} cannot get string value for non-StringIO backing file: {self.file}')
+    return self.file.getvalue()
 
-  def write(self, *items:Any) -> None:
-    print(*items, sep='', file=self.file)
+  def write(self, *items:Any, sep='') -> None:
+    print(*items, sep=sep, file=self.file)
 
 
   def leaf(self, tag:str, attrs:XmlAttrs) -> None:

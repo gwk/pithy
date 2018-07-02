@@ -5,12 +5,11 @@ SVG writer.
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from sys import stdout
+from .num import Num, NumRange
+from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text, fmt_xml_attrs
 from html import escape as html_escape
 from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable
-from .num import Num, NumRange
-from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text, fmt_xml_attrs
 
 
 Dim = Union[int, float, str]
@@ -28,7 +27,7 @@ class SvgWriter(XmlWriter):
   '''
 
 
-  def __init__(self, file:TextIO=stdout, w:Dim=None, h:Dim=None,
+  def __init__(self, file:TextIO=None, w:Dim=None, h:Dim=None,
    vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None) -> None:
     super().__init__(tag='svg', file=file, xmlns="http://www.w3.org/2000/svg")
     self.w = w

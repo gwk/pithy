@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from pithy.svg import *
+from sys import stdout
 
 w = 512
 h = 1024
