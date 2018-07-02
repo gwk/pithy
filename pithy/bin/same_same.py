@@ -137,6 +137,16 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
       if n > 0:
         assert n > new_num
         new_num = n
+    elif kind == 'diff': # Not the best way to parse paths, because paths with spaces are ambiguous.
+      paths = match['diff_paths'].split(' ') # Split into words, then guess at old and new split as best we can.
+      i = len(paths) // 2 # Assume that both sides have the same number of spaces between them.
+      # Note: if this does not prove sufficient for file renames we could try to find a split that matches either head or tail.
+      old_path = ' '.join(paths[:i])
+      new_path = ' '.join(paths[i:])
+    elif kind == 'old': old_path = vscode_path(match['old_path'].rstrip('\t'))
+    elif kind == 'new': new_path = vscode_path(match['new_path'].rstrip('\t')) # Not sure why this trailing tab appears.
+    # These lines are a better way to parse the paths, but are not always present (particularly when one side is /dev/null).
+    # Since they come after the diff line, they will overwrite the previous guess.
     elif kind == 'old': old_path = vscode_path(match['old_path'].rstrip('\t'))
     elif kind == 'new': new_path = vscode_path(match['new_path'].rstrip('\t')) # Not sure why this trailing tab appears.
 
@@ -211,12 +221,21 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
       elif kind == 'meta':
         print(C_MODE, new_path, ':', RST, ' ', line.rich_text, sep='')
       elif kind in dropped_kinds:
-        if interactive: # cannot drop lines, becasue interactive mode slices the diff by line counts.
+        if interactive: # Cannot drop lines, because interactive mode slices the diff by line counts.
           print(C_DROPPED, line.plain_text, RST, sep='')
       elif kind in pass_kinds:
         print(line.rich_text)
       else:
         raise Exception('unhandled kind: {}\n{!r}'.format(kind, text))
+
+
+dropped_kinds = {
+  'idx', 'old', 'new'
+}
+
+pass_kinds = {
+  'empty', 'other'
+}
 
 
 def insert_unique_line(d:Dict[str, Optional[int]], line:str, idx:int) -> None:
@@ -289,15 +308,6 @@ def highlight_strange_chars(string:str) -> str:
     string)
 
 
-dropped_kinds = {
-  'idx', 'old', 'new'
-}
-
-pass_kinds = {
-  'empty', 'other'
-}
-
-
 sgr_pat = re.compile(r'\x1B\[[0-9;]*m')
 
 graph_pat = re.compile(r'(?x) [ /\*\|\\]*') # space is treated as literal inside of brackets, even in extended mode.
@@ -308,7 +318,7 @@ diff_pat = re.compile(r'''(?x)
 | (?P<commit>   commit\ [0-9a-z]{40} )
 | (?P<author>   Author: )
 | (?P<date>     Date:   )
-| (?P<diff>     diff\ --git )
+| (?P<diff>     diff\ --git\ (?P<diff_paths>.+) )
 | (?P<idx>      index   )
 | (?P<old>      ---     \ (?P<old_path>.+) )
 | (?P<new>      \+\+\+  \ (?P<new_path>.+) )
