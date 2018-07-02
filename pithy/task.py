@@ -106,10 +106,10 @@ def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
   if bad_format and not _is_permitted(path, R_OK): raise TaskFileNotReadable(path) from e # Read bit is necessary for scripts.
 
   if bad_format or isinstance(e, FileNotFoundError):
-    # The 'file not found' exception might actually be due to mistyped hashbang, confusingly.
-    try: # Heuristic to diagnose bad hashbang lines.
+    # The 'file not found' exception might actually be due to mistyped shebang, confusingly.
+    try: # Heuristic to diagnose bad shebang lines.
       with open(path, 'rb') as f:
-        lead_bytes = f.read(256) # Realistically a hashbang line should not be longer than this.
+        lead_bytes = f.read(256) # Realistically a shebang line should not be longer than this.
         line, newline, _ = lead_bytes.partition(b'\n')
         if line and (not newline or b'\0' in line): raise TaskFileBinaryIllFormed(path, line) from e # TODO: diagnose further?
         if not line.startswith(b'#!'): raise TaskFileHashbangMissing(path, line) from e
@@ -389,7 +389,7 @@ class TaskFileHashbangMissing(TaskLaunchError):
 
   @property
   def diagnosis(self) -> str:
-    return f'script is missing hashbang line (`#!...`); first line: {_try_decode_repr(self.first_line)}'
+    return f'script is missing shebang line (`#!...`); first line: {_try_decode_repr(self.first_line)}'
 
 
 class TaskFileHashbangIllFormed(TaskLaunchError):
@@ -401,7 +401,7 @@ class TaskFileHashbangIllFormed(TaskLaunchError):
 
   @property
   def diagnosis(self) -> str:
-    return f'script hashbang line may be ill-formed; first line: {_try_decode_repr(self.first_line)}'
+    return f'script shebang line may be ill-formed; first line: {_try_decode_repr(self.first_line)}'
 
 
 class TaskFileNotExecutable(TaskLaunchError):
