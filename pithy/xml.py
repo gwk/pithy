@@ -29,29 +29,26 @@ class XmlWriter(ContextManager):
     ENTERED = 1
     EXITED = 2
 
-  def __init__(self, tag:str, file:TextIO=None, attrs:XmlAttrs=None, children:Sequence[str]=(),
-   *attr_pairs:Tuple[str, str], **extra_attrs:Any) -> None:
+  replaced_attrs = {
+    'class_' : 'class',
+  }
+
+  def __init__(self, tag:str, file:TextIO=None, attrs:XmlAttrs=None, **extra_attrs:Any) -> None:
     '''
-    `attrs` is provided as a named parameter to avoid excessive copying of attributes into kwargs dicts.
-    However, `extra_attrs` kwargs is also supported for convenience;
-    `attr_pairs` is provided to allow for XML attribute names that cannot be mapped from python identifiers, e.g. 'xlink:href'.
-    `children` allows the initializer to create child elements that will are buffered until context entry.
+    `attrs` is provided as a named parameter to avoid excessive copying of attributes into kwargs dicts,
+    and to support XML attributes that contain non-identifier characters.
+    The `extra_attrs` kwargs is also provided for convenience.
     '''
     self.file = file or StringIO()
     self.tag = tag
     self.attrs = {} if attrs is None else attrs
-    self.attrs.update(attr_pairs)
     self.attrs.update(extra_attrs)
-    self.children = children
     self.status = XmlWriter.Status.INITED
+    self.write(f'<{self.tag}{self.fmt_attrs(self.attrs)}>')
 
 
   def __enter__(self:_Self) -> _Self:
-    self.write(f'<{self.tag}{fmt_xml_attrs(self.attrs)}>')
-    # Print before updating status to get proper indentation.
     self.status = XmlWriter.Status.ENTERED
-    for child in self.children:
-      self.write(child)
     return self
 
 
@@ -61,6 +58,20 @@ class XmlWriter(ContextManager):
     self.status = XmlWriter.Status.EXITED
     self.write(f'</{self.tag}>')
     return None
+
+
+  def fmt_attrs(self, attrs:XmlAttrs) -> str:
+    'Format the `attrs` dict into XML key-value attributes.'
+    if not attrs: return ''
+    parts: List[str] = []
+    for k, v in attrs.items():
+      if v is None:
+        v = 'none'
+      else:
+        k = self.replaced_attrs.get(k, k)
+      parts.append(f' {esc_xml_attr(k.replace("_", "-"))}="{esc_xml_attr(v)}"')
+    return ''.join(parts)
+
 
   @property
   def string(self):
@@ -73,17 +84,17 @@ class XmlWriter(ContextManager):
 
 
   def leaf(self, tag:str, attrs:XmlAttrs) -> None:
-    self.write(f'<{tag}{fmt_xml_attrs(attrs)}/>')
+    self.write(f'<{tag}{self.fmt_attrs(attrs)}/>')
 
 
   def leaf_text(self, tag:str, attrs:XmlAttrs, text:str) -> None:
     'Output a non-nesting XML element that contains text between the open and close tags.'
-    self.write(f'<{tag}{fmt_xml_attrs(attrs)}>{esc_xml_text(text)}</{tag}>')
+    self.write(f'<{tag}{self.fmt_attrs(attrs)}>{esc_xml_text(text)}</{tag}>')
 
 
-  def sub(self, tag:str, attrs:XmlAttrs, children:Sequence[str]=()) -> 'XmlWriter':
+  def sub(self, tag:str, attrs:XmlAttrs) -> 'XmlWriter':
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
-    return XmlWriter(file=self.file, tag=tag, attrs=attrs, children=children)
+    return XmlWriter(file=self.file, tag=tag, attrs=attrs)
 
 
 
@@ -96,19 +107,6 @@ def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> N
     attrs[k] = v
 
 
-def fmt_xml_attrs(attrs:XmlAttrs) -> str:
-  'Format the `attrs` dict into XML key-value attributes.'
-  if not attrs: return ''
-  parts: List[str] = []
-  for k, v in attrs.items():
-    if v is None:
-      v = 'none'
-    else:
-      k = _replaced_attrs.get(k, k)
-    parts.append(f' {esc_xml_attr(k.replace("_", "-"))}="{esc_xml_attr(v)}"')
-  return ''.join(parts)
-
-
 def esc_xml_text(val:Any) -> str:
   'HTML-escape the string representation of `val`.'
   return html_escape(str(val), quote=False)
@@ -118,8 +116,3 @@ def esc_xml_attr(val:Any) -> str:
   'HTML-escape the string representation of `val`, including quote characters.'
   return html_escape(str(val), quote=True)
 
-
-_replaced_attrs = {
-  'class_' : 'class',
-  'href': 'xlink:href', # safari Version 11.1.1 requires this, even though xlink is deprecated in svg 2 standard.
-}

@@ -6,7 +6,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 '''
 
 from .num import Num, NumRange
-from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text, fmt_xml_attrs
+from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from html import escape as html_escape
 from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable
@@ -26,25 +26,30 @@ class SvgWriter(XmlWriter):
   Like its parent class XmlWriter, it uses the __enter__ and __exit__ methods to automatically output open and close tags.
   '''
 
+  replaced_attrs = {
+    'href': 'xlink:href', # safari Version 11.1.1 requires this, even though xlink is deprecated in svg 2 standard.
+    **XmlWriter.replaced_attrs,
+  }
 
-  def __init__(self, file:TextIO=None, w:Dim=None, h:Dim=None,
-   vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None) -> None:
-    super().__init__(tag='svg', file=file, xmlns="http://www.w3.org/2000/svg")
+
+  def __init__(self, file:TextIO=None, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
+   vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> None:
+    self.x = x
+    self.y = y
     self.w = w
     self.h = h
-    if w is None and h is None:
-      self.viewport = ''
-    else:
-      assert w is not None
-      assert h is not None
-      self.attrs['width'] = w
-      self.attrs['height'] = h
-      #self.viewport = f' width="{w}" height="{h}"'
-    self.viewBox = fmt_viewBox(vx, vy, vw, vh)
     self.vx = vx
     self.vy = vy
     self.vw = vw
     self.vh = vh
+    self.viewBox = fmt_viewBox(vx, vy, vw, vh)
+    attrs = { # Put the xml nonsense up front.
+      'xmlns': 'http://www.w3.org/2000/svg',
+      'xmlns:xlink': 'http://www.w3.org/1999/xlink', # Safari does not yet support SVG 2.
+      **attrs
+    }
+    add_opt_attrs(attrs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
+    super().__init__(tag='svg', file=file, attrs=attrs)
 
 
   def leaf(self, tag:str, attrs:XmlAttrs) -> None:
@@ -65,23 +70,25 @@ class SvgWriter(XmlWriter):
       try: title = attrs.pop('title')
       except KeyError: pass
       else:
-        self.write(f'<{tag}{fmt_xml_attrs(attrs)}>{self.title(title)}{esc_xml_text(text)}</{tag}>')
+        self.write(f'<{tag}{self.fmt_attrs(attrs)}>{self.title(title)}{esc_xml_text(text)}</{tag}>')
         return
     super().leaf_text(tag, attrs=attrs, text=text)
 
 
-  def sub(self, tag:str, attrs:XmlAttrs, children:Sequence[str]=()) -> XmlWriter:
+  def sub(self, tag:str, attrs:XmlAttrs) -> XmlWriter:
     '''
     Create a child XmlWriter for use in a `with` context to represent a nesting XML element.
     'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
     '''
+    title_el = ''
     if attrs:
       try: title = attrs.pop('title')
       except KeyError: pass
       else:
-        del attrs
-        children = (self.title(title), *children)
-    return super().sub(tag, attrs, children)
+        title_el = self.title(title)
+    s = super().sub(tag, attrs=attrs)
+    if title_el: self.write(title_el)
+    return s
 
 
   # SVG Elements.
@@ -100,12 +107,12 @@ class SvgWriter(XmlWriter):
     self.leaf('circle', attrs)
 
 
-  def defs(self, **attrs) -> XmlWriter:
+  def defs(self, **attrs:Any) -> XmlWriter:
     'Output an SVG `defs` element.'
     return self.sub('defs', attrs)
 
 
-  def g(self, *transforms:str, **attrs) -> XmlWriter:
+  def g(self, *transforms:str, **attrs:Any) -> XmlWriter:
     'Create an SVG `g` element for use in a context manager.'
     add_opt_attrs(attrs, transform=(' '.join(transforms) if transforms else None))
     return self.sub('g', attrs)
@@ -144,7 +151,7 @@ class SvgWriter(XmlWriter):
 
   def marker(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
    vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None,
-   markerUnits='strokeWidth', orient:str='auto', **attrs) -> XmlWriter:
+   markerUnits='strokeWidth', orient:str='auto', **attrs:Any) -> XmlWriter:
     'Output an SVG `marker` element.'
     if pos is not None:
       assert x is None
@@ -216,7 +223,7 @@ class SvgWriter(XmlWriter):
     self.leaf_text('style', attrs, text.strip())
 
 
-  def symbol(self, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs) -> XmlWriter:
+  def symbol(self, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> XmlWriter:
     'Output an SVG `symbol` element.'
     if vx is None: vx = 0
     if vy is None: vy = 0
@@ -258,7 +265,7 @@ class SvgWriter(XmlWriter):
   # High level.
 
   def grid(self, pos:Vec=None, size:VecOrNum=None, *, step:VecOrNum=16,
-   x:Num=0, y:Num=0, w:Num=256, h:Num=256, **attrs):
+   x:Num=0, y:Num=0, w:Num=256, h:Num=256, **attrs:Any) -> None:
     # TODO: axis transformers (e.g. log-log).
     assert step is not None
     if isinstance(step, tuple):
@@ -303,9 +310,9 @@ def _validate_unit(unit: str):
     raise Exception(f'Invalid SVG unit: {unit!r}; should be one of {sorted(valid_units)}')
 
 
-def fmt_viewBox(vx:Optional[Num], vy:Optional[Num], vw:Optional[Num], vh:Optional[Num]) -> str:
+def fmt_viewBox(vx:Optional[Num], vy:Optional[Num], vw:Optional[Num], vh:Optional[Num]) -> Optional[str]:
   if vx is None and vy is None and vw is None and vh is None:
-    return ''
+    return None
   else:
     if vx is None: vx = 0
     if vy is None: vy = 0

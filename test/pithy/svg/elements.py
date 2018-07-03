@@ -34,11 +34,13 @@ with SvgWriter(stdout, w=w, h=h) as svg:
   y += 48
 
   svg.text(x=0, y=y, text='TEXT')
-  y += 32
+  y += 16
 
-  svg.image((0, y), (16,16), href='missing.png')
-  svg.image(x=32, y=y, w=16, h=16, href='missing.png')
-  y += 32
+  img_base64 = 'data:image/png;base64,R0lGODdhBAAEAIAAAAAAAP///yH5BAQAAAAALAAAAAAEAAQAAAIFRHxnuAUAOw=='
+
+  svg.image((0, y), (16,16), href=img_base64)
+  svg.image(x=32, y=y, w=32, h=32, href=img_base64)
+  y += 48
 
   with svg.g(translate(y=y)):
     with svg.symbol(id='sym', vw=32, vh=32):
