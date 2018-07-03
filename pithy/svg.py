@@ -9,7 +9,7 @@ from .num import Num, NumRange
 from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from html import escape as html_escape
 from types import TracebackType
-from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable
+from typing import Any, ContextManager, Dict, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable
 
 
 Dim = Union[int, float, str]
@@ -262,10 +262,11 @@ class SvgWriter(XmlWriter):
     add_opt_attrs(attrs, href=id, x=x, y=y, width=w, height=h)
     return self.leaf('use', attrs)
 
+
   # High level.
 
-  def grid(self, pos:Vec=None, size:VecOrNum=None, *, step:VecOrNum=16,
-   x:Num=0, y:Num=0, w:Num=256, h:Num=256, **attrs:Any) -> None:
+  def grid(self, pos:Vec=None, size:VecOrNum=None, *,
+   x:Num=0, y:Num=0, w:Num=256, h:Num=256, step:VecOrNum=16, off:Vec=(0, 0), r:VecOrNum=None, **attrs:Any) -> None:
     # TODO: axis transformers (e.g. log-log).
     assert step is not None
     if isinstance(step, tuple):
@@ -279,12 +280,22 @@ class SvgWriter(XmlWriter):
         w, h = size
       else:
         w = h = size
-    class_ = attrs.pop('classs_', 'grid')
+    x = float(x)
+    y = float(y)
+    w = float(w)
+    h = float(h)
+    off_x, off_y = off
+    if off_x <= 0: off_x = sx
+    if off_y <= 0: off_y = sy
+    x_start = x + off_x
+    y_start = y + off_y
+    x_end = x + w
+    y_end = y + h
+    class_ = attrs.pop('class_', 'grid')
     with self.g(class_=class_, **attrs):
-      r = x + w # type: ignore
-      b = y + h # type: ignore
-      for tick in NumRange(x, r+1, sx): self.line((tick, y), (tick, b)) # Vertical lines.
-      for tick in NumRange(y, b+1, sy): self.line((x, tick), (r, tick)) # Horizontal lines.
+      self.rect(class_=class_+'-border', x=x, y=y, w=w, h=h, r=r)
+      for tick in NumRange(x_start, x_end, sx): self.line((tick, y), (tick, y_end)) # Vertical lines.
+      for tick in NumRange(y_start, y_end, sy): self.line((x, tick), (x_end, tick)) # Horizontal lines.
 
 
 def scale(x:Num=1, y:Num=1) -> str: return f'scale({x},{y})'

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" stroke="black" fill="white" stroke-width="2" width="1024" height="1024">
+<g class="grid">
+<title>snap=False</title>
+<rect class="grid-border" x="5.0" y="5.0" width="40.0" height="40.0" rx="4" ry="4"/>
+<line x1="15.0" y1="5.0" x2="15.0" y2="45.0"/>
+<line x1="25.0" y1="5.0" x2="25.0" y2="45.0"/>
+<line x1="35.0" y1="5.0" x2="35.0" y2="45.0"/>
+<line x1="5.0" y1="15.0" x2="45.0" y2="15.0"/>
+<line x1="5.0" y1="25.0" x2="45.0" y2="25.0"/>
+<line x1="5.0" y1="35.0" x2="45.0" y2="35.0"/>
+</g>
+<g class="grid">
+<title>snap=True</title>
+<rect class="grid-border" x="55.0" y="5.0" width="40.0" height="40.0" rx="4" ry="4"/>
+<line x1="60.0" y1="5.0" x2="60.0" y2="45.0"/>
+<line x1="70.0" y1="5.0" x2="70.0" y2="45.0"/>
+<line x1="80.0" y1="5.0" x2="80.0" y2="45.0"/>
+<line x1="90.0" y1="5.0" x2="90.0" y2="45.0"/>
+<line x1="55.0" y1="10.0" x2="95.0" y2="10.0"/>
+<line x1="55.0" y1="20.0" x2="95.0" y2="20.0"/>
+<line x1="55.0" y1="30.0" x2="95.0" y2="30.0"/>
+<line x1="55.0" y1="40.0" x2="95.0" y2="40.0"/>
+</g>
+</svg>
