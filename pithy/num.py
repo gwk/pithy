@@ -22,7 +22,7 @@ class NumRange(Sequence[Num]):
   step:Num
   _len:int
 
-  def __init__(self, start:Num, stop:Num=None, step:Num=1) -> None:
+  def __init__(self, start:Num, stop:Num=None, step:Num=1, *, closed=False) -> None:
     if stop is None: # Imitate `range`; `start` is actually `stop`.
       _set_attr(self, 'start', 0)
       _set_attr(self, 'stop', start)
@@ -30,9 +30,10 @@ class NumRange(Sequence[Num]):
       _set_attr(self, 'start', start)
       _set_attr(self, 'stop', stop)
     _set_attr(self, 'step', step)
+    _set_attr(self, 'closed', closed)
     dist = max(0, self.stop - self.start)
     steps = dist / step
-    extra = 1 if steps % 1 else 0
+    extra = 1 if (closed or steps % 1) else 0
     _set_attr(self, '_len', int(steps) + extra)
 
   def __len__(self):

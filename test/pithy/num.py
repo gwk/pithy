@@ -13,3 +13,4 @@ utest_val(4, r[-1])
 
 utest_seq([0.0, 1.5, 3.0, 4.5], NumRange, 0, 6, 1.5)
 
+utest_seq([0.0, 1.5, 3.0, 4.5, 6.0], NumRange, 0, 6, 1.5, closed=True)
