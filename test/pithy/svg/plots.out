@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" stroke="black" fill="white" stroke-width="1" width="1000" height="1000">
+<g class="plot" transform="translate(5,5)">
+<g class="grid">
+<rect class="grid-border" x="0" y="0" width="400" height="200"/>
+<line x1="100" y1="0" x2="100" y2="200"/>
+<line x1="200" y1="0" x2="200" y2="200"/>
+<line x1="300" y1="0" x2="300" y2="200"/>
+<line x1="0" y1="25" x2="400" y2="25"/>
+<line x1="0" y1="50" x2="400" y2="50"/>
+<line x1="0" y1="75" x2="400" y2="75"/>
+<line x1="0" y1="100" x2="400" y2="100"/>
+<line x1="0" y1="125" x2="400" y2="125"/>
+<line x1="0" y1="150" x2="400" y2="150"/>
+<line x1="0" y1="175" x2="400" y2="175"/>
+</g>
+<polyline class="series" fill="none" id="identity" points="0,100 25,93.8 50,87.5 75,81.2 100,75 125,68.8 150,62.5 175,56.2 200,50 225,43.8 250,37.5 275,31.2 300,25 325,18.8 350,12.5 375,6.2 400,0"/>
+<polyline class="series" fill="none" id="sin" points="0,100 25,61.7 50,29.3 75,7.6 100,0 125,7.6 150,29.3 175,61.7 200,100 225,138.3 250,170.7 275,192.4 300,200 325,192.4 350,170.7 375,138.3 400,100"/>
+</g>
+</svg>

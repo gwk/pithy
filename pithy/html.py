@@ -10,6 +10,7 @@ from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable, cast
 from .num import Num, NumRange
 from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text, _Self
+from .svg import *
 
 
 Dim = Union[int, float, str]
@@ -33,29 +34,35 @@ class HtmlWriter(XmlWriter):
     self.write('<!DOCTYPE html>')
     return super().__enter__()
 
+  def body(self, **attrs:Any) -> XmlWriter:
+    return self.sub('body', attrs=attrs)
+
   def br(self) -> None: self.leaf('br', attrs=None)
 
-  def head(self, **attrs) -> XmlWriter:
-    return self.sub('head', attrs=attrs)
+  def div(self, **attrs:Any) -> XmlWriter: return self.sub('div', attrs=attrs)
 
-  def h1(self, text:str, **attrs) -> None: self.leaf_text('h1', attrs=attrs, text=text)
-  def h2(self, text:str, **attrs) -> None: self.leaf_text('h2', attrs=attrs, text=text)
-  def h3(self, text:str, **attrs) -> None: self.leaf_text('h3', attrs=attrs, text=text)
-  def h4(self, text:str, **attrs) -> None: self.leaf_text('h4', attrs=attrs, text=text)
-  def h5(self, text:str, **attrs) -> None: self.leaf_text('h5', attrs=attrs, text=text)
-  def h6(self, text:str, **attrs) -> None: self.leaf_text('h6', attrs=attrs, text=text)
+  def head(self, **attrs:Any) -> XmlWriter: return self.sub('head', attrs=attrs)
+
+  def h1(self, text:str, **attrs:Any) -> None: self.leaf_text('h1', attrs=attrs, text=text)
+  def h2(self, text:str, **attrs:Any) -> None: self.leaf_text('h2', attrs=attrs, text=text)
+  def h3(self, text:str, **attrs:Any) -> None: self.leaf_text('h3', attrs=attrs, text=text)
+  def h4(self, text:str, **attrs:Any) -> None: self.leaf_text('h4', attrs=attrs, text=text)
+  def h5(self, text:str, **attrs:Any) -> None: self.leaf_text('h5', attrs=attrs, text=text)
+  def h6(self, text:str, **attrs:Any) -> None: self.leaf_text('h6', attrs=attrs, text=text)
 
   def hr(self) -> None: self.leaf('hr', attrs=None)
 
-  def title(self, title:str, **attrs) -> None:
-    self.leaf_text('title', attrs=attrs, text=title)
+  def meta(self, **attrs:Any) -> XmlWriter: return self.sub('meta', attrs=attrs)
 
-  def style(self, *styles:str, **attrs) -> None:
+  def p(self, **attrs:Any) -> XmlWriter: return self.sub('p', attrs=attrs)
+
+  def style(self, *styles:str, **attrs:Any) -> None:
     self.leaf_text('style', attrs=attrs, text='\n'.join(styles))
 
-  def meta(self, **attrs) -> XmlWriter:
-    return self.sub('meta', attrs=attrs)
+  def svg(self, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
+   vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> SvgWriter:
+    return SvgWriter(file=self.file, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh, **attrs)
 
-  def body(self, **attrs) -> XmlWriter:
-    return self.sub('body', attrs=attrs)
+  def title(self, title:str, **attrs:Any) -> None:
+    self.leaf_text('title', attrs=attrs, text=title)
 
