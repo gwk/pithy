@@ -27,7 +27,7 @@ class HtmlWriter(XmlWriter):
   '''
 
   def __init__(self, file:TextIO=None, attrs:XmlAttrs=None, **extra_attrs:Any) -> None:
-    super().__init__(tag='html', file=file, attrs=attrs, **extra_attrs) # type: ignore
+    super().__init__(tag='html', file=file, attrs=attrs, **extra_attrs)
 
   def __enter__(self:_Self) -> _Self:
     self.write('<!DOCTYPE html>')
