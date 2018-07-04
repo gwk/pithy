@@ -1,9 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, FrozenSet, Iterable, Set, Type, cast
+from typing import Any, Callable, FrozenSet, Iterable, Set, Type, cast
 
 
-def memoize(_fn:Callable=None, sentinel=Ellipsis) -> Callable:
+def memoize(_fn:Callable=None, sentinel:Any=Ellipsis) -> Callable:
   '''
   recursive function memoization decorator.
   results will be memoized by a key that is the tuple of all arguments.
@@ -15,9 +15,8 @@ def memoize(_fn:Callable=None, sentinel=Ellipsis) -> Callable:
 
     class MemoDict(dict):
       def __repr__(self) -> str: return f'@memoize({sentinel}){fn}'
-      def __call__(self, *args):
-        return self[args]
-      def __missing__(self, args):
+      def __call__(self, *args:Any) -> Any: return self[args]
+      def __missing__(self, args:Any) -> Any:
         self[args] = sentinel
         res = fn(*args)
         self[args] = res
@@ -33,10 +32,10 @@ def memoize(_fn:Callable=None, sentinel=Ellipsis) -> Callable:
 
 class lazy_property(object):
 
-  def __init__(self, acc_fn):
+  def __init__(self, acc_fn:Callable) -> None:
     self.acc_fn = acc_fn
 
-  def __get__(self, obj, cls):
+  def __get__(self, obj:Any, cls:Type) -> Any:
     val = self.acc_fn(obj)
     setattr(obj, self.acc_fn.__name__, val)
     return val

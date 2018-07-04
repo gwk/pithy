@@ -170,9 +170,9 @@ def load_xz(f: BinaryIO, sub_ext=None, **kwargs:Any) -> Any:
     sub_ext = path_ext(stem)
   if sub_ext == '.tar': # load_archive handles compressed stream faster internally.
     return load_archive(f, **kwargs)
-  from lzma import LZMAFile # type: ignore
+  from lzma import LZMAFile
   df = LZMAFile(f)
-  df.name = stem # strip off '.xz' for secondary dispatch by `load`. TODO: loader should not rely on this hack.
+  df.name = stem # type: ignore # strip off '.xz' for secondary dispatch by `load`. TODO: loader should not rely on this hack.
   return load(df, ext=sub_ext, **kwargs)
 
 

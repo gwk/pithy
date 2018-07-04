@@ -74,7 +74,7 @@ class XmlWriter(ContextManager):
 
 
   @property
-  def string(self):
+  def string(self) -> str:
     if not isinstance(self.file, StringIO):
       raise TypeError(f'{self} cannot get string value for non-StringIO backing file: {self.file}')
     return self.file.getvalue()
