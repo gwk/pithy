@@ -377,7 +377,6 @@ class LineSeries(XYSeries):
 
 
 
-
 class Plot(SvgBase):
 
   def __init__(self, file:TextIO, pos:Vec=(0,0), size:Vec=(512,1024),
@@ -422,7 +421,10 @@ class Plot(SvgBase):
         step_x, step_y = grid_step
       else:
         step_x = step_y = grid_step
-      self.grid(pos=(0,0), size=(data_w*scale_x, data_h*scale_y), step=(step_x*scale_x, step_y*scale_y))
+      grid_w = data_w*scale_x
+      grid_h = data_h*scale_y
+      self.grid(pos=(0,0), size=(grid_w, grid_h), step=(step_x*scale_x, step_y*scale_y),
+        transform=f'{scale(1,-1)} {translate(0, -grid_h)}')
 
     for s in series:
       s.render(self, transform)
