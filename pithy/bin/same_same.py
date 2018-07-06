@@ -2,9 +2,9 @@
 
 import re
 from argparse import ArgumentParser
-from difflib import SequenceMatcher
 from itertools import chain, groupby
 from os import environ
+from pithy.diff import calc_diff
 from sys import stderr, stdout
 from typing import *
 from typing import Match
@@ -249,24 +249,20 @@ def add_token_diffs(rem_lines:List[DiffLine], add_lines:List[DiffLine]) -> None:
   # Get lists of tokens for the entire chunk.
   r_tokens = tokenize_difflines(rem_lines)
   a_tokens = tokenize_difflines(add_lines)
-  m = SequenceMatcher(isjunk=is_token_junk, a=r_tokens, b=a_tokens, autojunk=True)
   r_frags:List[List[str]] = [[] for _ in rem_lines] # Accumulate highlighted tokens.
   a_frags:List[List[str]] = [[] for _ in add_lines]
-  r_line_idx = 0 # Step through the accumulators.
+  r_line_idx = 0 # Indices into the above accumulator lists.
   a_line_idx = 0
-  r_d = 0 # Token index of previous/next diff.
-  a_d = 0
   # TODO: r_lit, a_lit flags could slightly reduce emission of color sequences.
-  blocks = m.get_matching_blocks() # last block is the sentinel: (len(a), len(b), 0).
-  for r_p, a_p, l in m.get_matching_blocks():
+  for r_r, r_a in calc_diff(r_tokens, a_tokens):
+    if r_r and r_a:
+      # Do not highlight the matching tokens.
+      r_line_idx = append_frags(r_frags, r_tokens, r_line_idx, r_r, C_RST_TOKEN)
+      a_line_idx = append_frags(a_frags, a_tokens, a_line_idx, r_a, C_RST_TOKEN)
     # Highlight the differing tokens.
-    r_line_idx = append_frags(r_frags, r_tokens, r_line_idx, r_d, r_p, C_REM_TOKEN)
-    a_line_idx = append_frags(a_frags, a_tokens, a_line_idx, a_d, a_p, C_ADD_TOKEN)
-    r_d = r_p+l # update to end of match / beginning of next diff.
-    a_d = a_p+l
-    # Do not highlight the matching tokens.
-    r_line_idx = append_frags(r_frags, r_tokens, r_line_idx, r_p, r_d, C_RST_TOKEN)
-    a_line_idx = append_frags(a_frags, a_tokens, a_line_idx, a_p, a_d, C_RST_TOKEN)
+    elif r_r: r_line_idx = append_frags(r_frags, r_tokens, r_line_idx, r_r, C_REM_TOKEN)
+    elif r_a: a_line_idx = append_frags(a_frags, a_tokens, a_line_idx, r_a, C_ADD_TOKEN)
+  # Update the mutable lines lists.
   for rem_line, frags in zip(rem_lines, r_frags):
     rem_line.text = ''.join(frags)
   for add_line, frags in zip(add_lines, a_frags):
@@ -290,8 +286,8 @@ def is_token_junk(token:str) -> bool:
   return token.isspace() and token != '\n'
 
 
-def append_frags(frags:List[List[str]], tokens:List[str], line_idx:int, pos:int, end:int, highlight:str) -> int:
-  for frag in tokens[pos:end]:
+def append_frags(frags:List[List[str]], tokens:List[str], line_idx:int, rng:range, highlight:str) -> int:
+  for frag in tokens[rng.start:rng.stop]:
     if frag == '\n':
       line_idx += 1
     else:
