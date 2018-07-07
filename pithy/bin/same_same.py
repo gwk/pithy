@@ -364,8 +364,8 @@ diff_pat = re.compile(r'''(?x)
 
 
 token_pat = re.compile(r'''(?x)
-  \w[\w\d]* # Symbol token.
-| \d+ # Number token.
+  (?:(?!_)\w)+ # Word characters, excluding underscores.
+| \d+ # Numbers.
 | \ + # Spaces; distinct from other whitespace.
 | \t+ # Tabs; distinct from other whitespace.
 | \s+ # Other whitespace.
