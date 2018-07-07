@@ -205,10 +205,10 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
         print(text)
       elif kind == 'rem':
         m = C_REM_MOVED if line.old_num in old_moved_nums else ''
-        print(C_REM_LINE, m, text, C_END, sep='')
+        print(m, text, C_END, sep='')
       elif kind == 'add':
         m = C_ADD_MOVED if line.new_num in new_moved_nums else ''
-        print(C_ADD_LINE, m, text, C_END, sep='')
+        print(m, text, C_END, sep='')
       elif kind == 'loc':
         new_num = match['new_num']
         snippet = match['parent_snippet']
@@ -246,27 +246,64 @@ def insert_unique_line(d:Dict[str, Optional[int]], line:str, idx:int) -> None:
 
 def add_token_diffs(rem_lines:List[DiffLine], add_lines:List[DiffLine]) -> None:
   'Rewrite DiffLine.text values to include per-token diff highlighting.'
-  # Get lists of tokens for the entire chunk.
-  r_tokens = tokenize_difflines(rem_lines)
-  a_tokens = tokenize_difflines(add_lines)
-  r_frags:List[List[str]] = [[] for _ in rem_lines] # Accumulate highlighted tokens.
-  a_frags:List[List[str]] = [[] for _ in add_lines]
-  r_line_idx = 0 # Indices into the above accumulator lists.
-  a_line_idx = 0
-  # TODO: r_lit, a_lit flags could slightly reduce emission of color sequences.
-  for r_r, r_a in calc_diff(r_tokens, a_tokens):
+  r = HighlightState(lines=rem_lines, tokens=tokenize_difflines(rem_lines), ctx=C_REM_CTX, space=C_REM_SPACE, token=C_REM_TOKEN)
+  a = HighlightState(lines=add_lines, tokens=tokenize_difflines(add_lines), ctx=C_ADD_CTX, space=C_ADD_SPACE, token=C_ADD_TOKEN)
+  for r_r, r_a in calc_diff(r.tokens, a.tokens):
     if r_r and r_a:
       # Do not highlight the matching tokens.
-      r_line_idx = append_frags(r_frags, r_tokens, r_line_idx, r_r, C_RST_TOKEN)
-      a_line_idx = append_frags(a_frags, a_tokens, a_line_idx, r_a, C_RST_TOKEN)
+      r.highlight_frags(r_r, is_ctx=True)
+      a.highlight_frags(r_a, is_ctx=True)
     # Highlight the differing tokens.
-    elif r_r: r_line_idx = append_frags(r_frags, r_tokens, r_line_idx, r_r, C_REM_TOKEN)
-    elif r_a: a_line_idx = append_frags(a_frags, a_tokens, a_line_idx, r_a, C_ADD_TOKEN)
+    elif r_r: r.highlight_frags(r_r, is_ctx=False)
+    elif r_a: a.highlight_frags(r_a, is_ctx=False)
   # Update the mutable lines lists.
-  for rem_line, frags in zip(rem_lines, r_frags):
-    rem_line.text = ''.join(frags)
-  for add_line, frags in zip(add_lines, a_frags):
-    add_line.text = ''.join(frags)
+  r.update_lines()
+  a.update_lines()
+
+
+H_START, H_CTX, H_SPACE, H_TOKEN = range(4)
+
+class HighlightState:
+
+  def __init__(self, lines:List[DiffLine], tokens:List[str], ctx:str, space:str, token:str) -> None:
+    self.lines = lines
+    self.tokens = tokens
+    self.ctx = ctx # Context highlight.
+    self.space = space # Significant space highlight.
+    self.token = token # Token highlighter.
+    self.state = H_START
+    self.line_idx = 0
+    self.frags:List[List[str]] = [[] for _ in lines]
+
+  def highlight_frags(self, rng:range, is_ctx:bool) -> int:
+    for frag in self.tokens[rng.start:rng.stop]:
+      line_frags = self.frags[self.line_idx]
+      if frag == '\n':
+        if self.state != H_CTX:
+          line_frags.append(self.ctx) # When combined with C_END, this highlights to end of line.
+        self.state = H_START
+        self.line_idx += 1
+      else:
+        if is_ctx:
+          if self.state != H_CTX:
+            self.state = H_CTX
+            line_frags.append(self.ctx)
+        elif frag.isspace():
+          if self.state == H_START: # Don't highlight spaces at the start of lines.
+            self.state = H_TOKEN
+            line_frags.append(self.token)
+          elif self.state == H_CTX:
+            self.state = H_SPACE
+            line_frags.append(self.space)
+        else:
+          if self.state != H_TOKEN:
+            self.state = H_TOKEN
+            line_frags.append(self.token)
+        line_frags.append(highlight_strange_chars(frag))
+
+  def update_lines(self) -> None:
+    for line, line_frags in zip(self.lines, self.frags):
+      line.text = ''.join(line_frags)
 
 
 def tokenize_difflines(lines:List[DiffLine]) -> List[str]:
@@ -284,17 +321,6 @@ def is_token_junk(token:str) -> bool:
   This forces the diff algorithm to respect line breaks but not get distracted aligning to whitespace.
   '''
   return token.isspace() and token != '\n'
-
-
-def append_frags(frags:List[List[str]], tokens:List[str], line_idx:int, rng:range, highlight:str) -> int:
-  for frag in tokens[rng.start:rng.stop]:
-    if frag == '\n':
-      line_idx += 1
-    else:
-      line_frags = frags[line_idx]
-      line_frags.append(highlight)
-      line_frags.append(highlight_strange_chars(frag))
-  return line_idx
 
 
 def highlight_strange_chars(string:str) -> str:
@@ -429,19 +455,26 @@ C_UNKNOWN = sgr(BG, rgb6(5, 0, 5))
 C_SNIPPET = sgr(TXT, gray26(22))
 C_DROPPED = sgr(TXT, gray26(10))
 
-C_REM_LINE = sgr(BG, rgb6(1, 0, 0))
-C_ADD_LINE = sgr(BG, rgb6(0, 1, 0))
-C_REM_MOVED = sgr(TXT, rgb6(4, 2, 0))
-C_ADD_MOVED = sgr(TXT, rgb6(2, 4, 0))
-C_REM_TOKEN = sgr(TXT, rgb6(5, 2, 3), BOLD)
-C_ADD_TOKEN = sgr(TXT, rgb6(2, 5, 3), BOLD)
+REM_BG = rgb6(1, 0, 0)
+ADD_BG = rgb6(0, 1, 0)
+
+C_REM_MOVED = sgr(BG, REM_BG, TXT, rgb6(4, 2, 0)) # Move detected.
+C_ADD_MOVED = sgr(BG, ADD_BG, TXT, rgb6(2, 4, 0))
+
+# Token highlighting.
+C_REM_CTX = sgr(BG, REM_BG, RST_TXT, RST_BOLD)
+C_ADD_CTX = sgr(BG, ADD_BG, RST_TXT, RST_BOLD)
+C_REM_SPACE = sgr(BG, rgb6(3, 0, 0), RST_TXT, BOLD) # Change to space.
+C_ADD_SPACE = sgr(BG, rgb6(0, 3, 0), RST_TXT, BOLD)
+C_REM_TOKEN = sgr(BG, REM_BG, TXT, rgb6(5, 2, 3), BOLD)
+C_ADD_TOKEN = sgr(BG, ADD_BG, TXT, rgb6(2, 5, 3), BOLD)
 
 C_RST_TOKEN = sgr(RST_TXT, RST_BOLD)
 
 C_STRANGE = sgr(INVERT)
 C_RST_STRANGE = sgr(RST_INVERT)
 
-C_END = ERASE_LINE_F + RST
+C_END = ERASE_LINE_F + RST # Erase-line fills the background color to the end of line.
 
 
 def vscode_path(path:str) -> str:
