@@ -430,6 +430,12 @@ class Plot(SvgBase):
       self.grid(pos=(0,0), size=(grid_w, grid_h), step=(step_x*scale_x, step_y*scale_y),
         transform=f'{scale(1,-1)} {translate(0, -grid_h)}')
 
+    if min_y <= 0 and max_y >= 0: # Draw x axis.
+      self.line(transform((0, min_y)), transform((0, max_y)), class_='axis', id='x-axis')
+    if min_x <= 0 and max_x >= 0: # Draw y axis.
+      self.line(transform((min_x, 0)), transform((max_x, 0)), class_='axis', id='y-axis')
+
+
     for s in series:
       s.render(self, transform)
 
