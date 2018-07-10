@@ -19,6 +19,8 @@ PathCommand = Tuple
 
 ViewBox = Union[None, Vec, Tuple[Num, Num, Num, Num], Tuple[Vec, Vec]] # TODO: currently unused.
 
+PointTransform = Callable[[Tuple], Vec]
+
 
 class SvgBase(XmlWriter):
 
@@ -317,12 +319,12 @@ class SvgWriter(SvgBase):
 
 # Plots.
 
+Plotter = Callable[[SvgBase, PointTransform, Tuple], None]
 
-def circle_plotter(r:Num=1, **attrs:Any) -> Callable[[SvgBase, Vec, Tuple], None]:
+def circle_plotter(r:Num=1, **attrs:Any) -> Plotter:
   attrs.setdefault('class_', 'series')
-  def plotter(svg:SvgBase, loc:Vec, point:Tuple) -> None:
-    title = point[2] if len(point) > 2 else None
-    svg.circle(loc, r=r, title=title)
+  def plotter(svg:SvgBase, transform:PointTransform, point:Tuple) -> None:
+    svg.circle(transform(point), r=r, title=', '.join(str(f) for f in point))
   return plotter
 
 
@@ -330,16 +332,17 @@ class PlotSeries:
 
   bounds:Optional[Tuple[Vec, Vec]] = None # Overridden by subclasses.
 
-  def render(self, svg:SvgBase, transform:Callable[[Tuple], Vec]) -> None: raise NotImplementedError
+  def render(self, svg:SvgBase, transform:PointTransform) -> None: raise NotImplementedError
 
 
 
 class XYSeries(PlotSeries):
 
-  def __init__(self, name:str, points:Sequence[Tuple], plotter:Optional[Callable[[SvgBase, Vec, Tuple], None]]=circle_plotter()) -> None:
+  def __init__(self, name:str, points:Sequence[Tuple], plotter:Optional[Plotter]=circle_plotter(), **attrs:Any) -> None:
     self.name = name
     self.points = list(points) # TODO: clamp points to visible range, possibly plus margin.
     self.plotter = plotter
+    self.attrs = attrs
     self.bounds = None
     if self.points:
       x, y = self.points[0][:2]
@@ -357,24 +360,24 @@ class XYSeries(PlotSeries):
       self.bounds = ((min_x, min_y), (max_x, max_y))
 
 
-  def render(self, svg:SvgBase, transform:Callable[[Tuple], Vec]) -> None:
-    if self.plotter is None: return
-    for p in self.points: self.plotter(svg, transform(p), p)
+  def render(self, svg:SvgBase, transform:PointTransform) -> None:
+    assert self.plotter is not None
+    with svg.g(**self.attrs):
+      for p in self.points: self.plotter(svg, transform, p)
 
 
 class LineSeries(XYSeries):
 
-  def __init__(self, name:str, points:Sequence[Tuple], plotter:Callable[[SvgBase, Vec, Tuple], None]=None, **attrs:Any) -> None:
-    self.attrs = attrs
-    super().__init__(name=name, points=points, plotter=plotter)
+  def __init__(self, name:str, points:Sequence[Tuple], plotter:Plotter=None, **attrs:Any) -> None:
+    super().__init__(name=name, points=points, plotter=plotter, **attrs)
 
 
-  def render(self, svg:SvgBase, transform:Callable[[Tuple], Vec]) -> None:
-    svg.polyline(points=(transform(p) for p in self.points), class_='series', fill='none', id=self.name, **self.attrs)
-    # TODO: option to fill polylines.
-    if self.plotter is not None:
-      super().render(svg, transform)
-
+  def render(self, svg:SvgBase, transform:PointTransform) -> None:
+    with svg.g(**self.attrs):
+      svg.polyline(points=(transform(p) for p in self.points), class_='series', fill='none', id=self.name)
+      # TODO: option to fill polylines.
+      if self.plotter is not None:
+        for p in self.points: self.plotter(svg, transform, p)
 
 
 class Plot(SvgBase):
