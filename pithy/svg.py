@@ -271,9 +271,9 @@ class SvgBase(XmlWriter):
     y_end = y + h
     class_ = attrs.setdefault('class_', 'grid')
     with self.g(**attrs):
-      self.rect(class_=class_+'-border', x=x, y=y, w=w, h=h, r=r)
       for tick in NumRange(x_start, x_end, sx): self.line((tick, y), (tick, y_end)) # Vertical lines.
       for tick in NumRange(y_start, y_end, sy): self.line((x, tick), (x_end, tick)) # Horizontal lines.
+      self.rect(class_=class_+'-border', x=x, y=y, w=w, h=h, r=r, fill='none')
 
 
   def plot(self, pos:Vec=(0,0), size:Vec=(512,1024), *, series:Sequence['PlotSeries'],
