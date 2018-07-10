@@ -343,6 +343,7 @@ class XYSeries(PlotSeries):
     self.points = list(points) # TODO: clamp points to visible range, possibly plus margin.
     self.plotter = plotter
     attrs.setdefault('id', name)
+    attrs.setdefault('class_', 'series')
     self.attrs = attrs
     self.bounds = None
     if self.points:
@@ -375,7 +376,7 @@ class LineSeries(XYSeries):
 
   def render(self, svg:SvgBase, transform:PointTransform) -> None:
     with svg.g(**self.attrs):
-      svg.polyline(points=(transform(p) for p in self.points), class_='series', fill='none')
+      svg.polyline(points=(transform(p) for p in self.points), fill='none')
       # TODO: option to fill polylines.
       if self.plotter is not None:
         for p in self.points: self.plotter(svg, transform, p)
