@@ -449,7 +449,6 @@ class Plot(SvgBase):
     if min_x <= 0 and max_x >= 0: # Draw y axis.
       self.line(transform((min_x, 0)), transform((max_x, 0)), class_='axis', id='y-axis')
 
-
     for s in series:
       s.render(self, transform)
 
