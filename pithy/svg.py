@@ -393,6 +393,9 @@ class Plot(SvgBase):
     attrs['transform'] = translate(*pos)
     super().__init__(tag='g', file=file, attrs=attrs)
 
+    self.pos = pos
+    self.size = size
+
     # Determine bounds.
     expand_min_x = min_x is None
     expand_max_x = max_x is None
@@ -412,14 +415,22 @@ class Plot(SvgBase):
     if max_x is None or max_x <= min_x: max_x = min_x + 1
     if max_y is None or max_y <= min_y: max_y = min_y + 1
 
+    self.min_x = min_x
+    self.max_x = max_x
+    self.min_y = min_y
+    self.max_y = max_y
+
     data_w = max_x - min_x
     data_h = max_y - min_y
+    self.data_w = data_w
+    self.data_h = data_h
 
     scale_x = size[0] / data_w
     scale_y = size[1] / data_h
+    self.scale = (scale_x, scale_y)
 
     def transform(point:tuple) -> Vec:
-      return (round((point[0]-min_x) * scale_x, 1), round((data_h - (point[1]-min_y)) * scale_y, 1))
+      return ((point[0]-min_x) * scale_x, (data_h - (point[1]-min_y)) * scale_y)
 
     if grid_step is not None:
       if isinstance(grid_step, tuple):
@@ -430,6 +441,8 @@ class Plot(SvgBase):
       grid_h = data_h*scale_y
       self.grid(pos=(0,0), size=(grid_w, grid_h), step=(step_x*scale_x, step_y*scale_y),
         transform=f'{scale(1,-1)} {translate(0, -grid_h)}')
+
+    self.transform = transform
 
     if min_y <= 0 and max_y >= 0: # Draw x axis.
       self.line(transform((0, min_y)), transform((0, max_y)), class_='axis', id='x-axis')
