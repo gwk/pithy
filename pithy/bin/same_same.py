@@ -275,7 +275,7 @@ class HighlightState:
     self.line_idx = 0
     self.frags:List[List[str]] = [[] for _ in lines]
 
-  def highlight_frags(self, rng:range, is_ctx:bool) -> int:
+  def highlight_frags(self, rng:range, is_ctx:bool) -> None:
     for frag in self.tokens[rng.start:rng.stop]:
       line_frags = self.frags[self.line_idx]
       if frag == '\n':
