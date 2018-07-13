@@ -63,6 +63,28 @@ class HtmlWriter(XmlWriter):
    vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> SvgWriter:
     return SvgWriter(file=self.file, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh, **attrs)
 
+  # Tables.
+
+  # TODO: return XmlWriter subclasses that enforce correct permitted parent/child structures.
+
+  def table(self, **attrs:Any) -> XmlWriter: return self.sub('table', attrs=attrs)
+
+  def caption(self, **attrs:Any) -> XmlWriter: return self.sub('caption', attrs=attrs)
+
+  def thead(self, **attrs:Any) -> XmlWriter: return self.sub('thead', attrs=attrs)
+
+  def tfoot(self, **attrs:Any) -> XmlWriter: return self.sub('tfoot', attrs=attrs)
+
+  def td(self, **attrs:Any) -> XmlWriter: return self.sub('td', attrs=attrs)
+
+  def th(self, **attrs:Any) -> XmlWriter: return self.sub('th', attrs=attrs)
+
+  def tr(self, *data:Any, **attrs:Any) -> XmlWriter:
+    s = self.sub('tr', attrs=attrs)
+    for d in data:
+      with self.td(): self.write(d)
+    return s
+
   def title(self, title:str, **attrs:Any) -> None:
     self.leaf_text('title', attrs=attrs, text=title)
 
