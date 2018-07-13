@@ -31,7 +31,7 @@ class HtmlWriter(XmlWriter):
     super().__init__(tag='html', file=file, attrs=attrs, **extra_attrs)
 
   def __enter__(self:_Self) -> _Self:
-    self.write('<!DOCTYPE html>')
+    self.write_raw('<!DOCTYPE html>')
     return super().__enter__()
 
   def body(self, **attrs:Any) -> XmlWriter:

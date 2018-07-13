@@ -48,7 +48,7 @@ class SvgBase(XmlWriter):
       try: title = attrs.pop('title')
       except KeyError: pass
       else:
-        self.write(f'<{tag}{self.fmt_attrs(attrs)}>{self._render_title(title)}{esc_xml_text(text)}</{tag}>')
+        self.write_raw(f'<{tag}{self.fmt_attrs(attrs)}>{self._render_title(title)}{esc_xml_text(text)}</{tag}>')
         return
     super().leaf_text(tag, attrs=attrs, text=text)
 
@@ -65,7 +65,7 @@ class SvgBase(XmlWriter):
       else:
         title_el = self._render_title(title)
     s = super().sub(tag, attrs=attrs)
-    if title_el: self.write(title_el)
+    if title_el: self.write_raw(title_el)
     return s
 
 

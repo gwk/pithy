@@ -24,11 +24,6 @@ class XmlWriter(ContextManager):
   XmlWriter can be subclassed to provide convenient Python APIs; see pithy.html and pithy.svg.
   '''
 
-  class Status(Enum):
-    INITED = 0
-    ENTERED = 1
-    EXITED = 2
-
   replaced_attrs = {
     'class_' : 'class',
   }
@@ -43,23 +38,25 @@ class XmlWriter(ContextManager):
     self.tag = tag
     self.attrs = {} if attrs is None else attrs
     self.attrs.update(extra_attrs)
-    self.status = XmlWriter.Status.INITED
-    self.write(f'<{self.tag}{self.fmt_attrs(self.attrs)}>')
+    self.context_depth = 0
+    self.closed = False
+    self.write_raw(f'<{self.tag}{self.fmt_attrs(self.attrs)}>')
 
 
   def __enter__(self:_Self) -> _Self:
-    self.status = XmlWriter.Status.ENTERED
+    if self.closed: raise Exception(f'XmlWriter is already closed: {self}')
+    self.context_depth += 1
     return self
+
+
+  def __del__(self:_Self) -> None:
+    if not self.closed: raise Exception(f'XmlWriter is not closed: {self}')
 
 
   def __exit__(self, exc_type:Optional[Type[BaseException]], exc_value:Optional[BaseException],
    traceback: Optional[TracebackType]) -> None:
-    if exc_type is not None: return None # Propagate exception by returning falsy.
-    EXITED = XmlWriter.Status.EXITED
-    if self.status != EXITED:
-      self.status = XmlWriter.Status.EXITED
-      self.write(f'</{self.tag}>')
-    return None
+   self.context_depth -= 1
+   if not self.context_depth: self.close()
 
 
   def fmt_attrs(self, attrs:XmlAttrs) -> str:
@@ -81,28 +78,40 @@ class XmlWriter(ContextManager):
       raise TypeError(f'{self} cannot get string value for non-StringIO backing file: {self.file}')
     return self.file.getvalue()
 
-  def write(self, *items:Any, sep='') -> None:
+
+  def close(self) -> None:
+    if not self.closed:
+      self.write_raw(f'</{self.tag}>')
+      self.closed = True
+
+
+  def write_raw(self, *items:Any, sep='') -> None:
+    assert not self.closed
     print(*items, sep=sep, file=self.file)
 
 
   def leaf(self, tag:str, attrs:XmlAttrs) -> None:
-    self.write(f'<{tag}{self.fmt_attrs(attrs)}/>')
+    self.write_raw(f'<{tag}{self.fmt_attrs(attrs)}/>')
 
 
   def leaf_text(self, tag:str, attrs:XmlAttrs, text:str) -> None:
     'Output a non-nesting XML element that contains text between the open and close tags.'
-    self.write(f'<{tag}{self.fmt_attrs(attrs)}>{esc_xml_text(text)}</{tag}>')
+    self.write_raw(f'<{tag}{self.fmt_attrs(attrs)}>{esc_xml_text(text)}</{tag}>')
 
 
   def sub(self, tag:str, attrs:XmlAttrs) -> 'XmlWriter':
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
+    assert not self.closed
     return XmlWriter(file=self.file, tag=tag, attrs=attrs)
 
+
+  def write(self, *items:Any) -> None:
+    for item in items:
+      self.write_raw(esc_xml_text(item))
 
 
 def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> None:
   'Add the items in `*pairs` and `**items` attrs, excluding any None values.'
-
   for k, v in chain(pairs, items.items()):
     if v is None: continue
     assert k not in attrs, k
