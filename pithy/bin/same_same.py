@@ -6,8 +6,7 @@ from itertools import chain, groupby
 from os import environ
 from pithy.diff import calc_diff
 from sys import stderr, stdout
-from typing import *
-from typing import Match
+from typing import Any, Dict, List, Match, Optional, Set, Tuple
 
 
 class DiffLine:
