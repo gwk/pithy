@@ -269,6 +269,7 @@ def window_iter(iterable: Iterable[T], width=2) -> Iterator[Tuple[T, ...]]:
 
 
 def window_pairs(iterable: Iterable[T], tail: Optional[T]=None) -> Iterator[Tuple[T, Optional[T]]]:
+  'Yield pairs of adjacent elements in `seq`, including a final pair consisting of the last element and `tail`.'
   it = iter(iterable)
   try: head = next(it)
   except StopIteration: return
