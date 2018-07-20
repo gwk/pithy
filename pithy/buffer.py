@@ -24,6 +24,12 @@ class Buffer(Iterator[T]):
     return 'IterBuffer({!r}, buffer={!r})'.format(self.iterator, self.buffer)
 
 
+  def __bool__(self) -> bool:
+    try: self.peek()
+    except StopIteration: return False
+    else: return True
+
+
   def __iter__(self) -> Iterator[T]: return self
 
 
@@ -31,13 +37,6 @@ class Buffer(Iterator[T]):
     try: return self.buffer.pop()
     except IndexError: pass
     return next(self.iterator)
-
-
-  @property
-  def is_live(self) -> bool:
-    try: self.peek()
-    except StopIteration: return False
-    else: return True
 
 
   def push(self, item: T) -> None:

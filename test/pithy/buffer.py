@@ -10,7 +10,7 @@ utest_seq([0, 1, 2], Buffer, range(3))
 
 b = Buffer(range(4))
 
-utest_val(True, b.is_live)
+utest_val(True, bool(b))
 utest(0, next, b)
 
 b.push(-1)
@@ -18,15 +18,15 @@ utest(-1, b.peek)
 b.push(-2)
 utest(-2, b.peek)
 utest(-2, next, b)
-utest_val(True, b.is_live)
+utest_val(True, bool(b))
 utest(-1, next, b)
 
-utest_val(True, b.is_live)
+utest_val(True, bool(b))
 utest(1, b.peek)
 utest(1, next, b)
 
 utest([2, 3], list, b)
-utest_val(False, b.is_live)
+utest_val(False, bool(b))
 utest(None, b.peek, default=None)
 utest_exc(StopIteration(), next, b)
 
