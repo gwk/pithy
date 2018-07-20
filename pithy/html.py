@@ -82,7 +82,9 @@ class HtmlWriter(XmlWriter):
   def tr(self, *cell_contents:Any, **attrs:Any) -> XmlWriter:
     s = self.sub('tr', attrs=attrs)
     for c in cell_contents:
-      if isinstance(c, TH):
+      if isinstance(c, TD):
+        with self.td(**c.attrs): self.write(c.contents)
+      elif isinstance(c, TH):
         with self.th(**c.attrs): self.write(c.contents)
       else:
         with self.td(): self.write(c)
@@ -97,6 +99,11 @@ class HtmlWriter(XmlWriter):
   def title(self, title:str, **attrs:Any) -> None:
     self.leaf_text('title', attrs=attrs, text=title)
 
+
+class TD:
+  def __init__(self, contents:Any, **attrs:Any) -> None:
+    self.contents = contents
+    self.attrs = attrs
 
 class TH:
   def __init__(self, contents:Any, **attrs:Any) -> None:
