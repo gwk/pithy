@@ -305,8 +305,8 @@ class SvgWriter(SvgBase):
     self.h = h
     self.vx = vx
     self.vy = vy
-    self.vw = vw
-    self.vh = vh
+    self.vw = vw or 0
+    self.vh = vh or 0
     self.viewBox = fmt_viewBox(vx, vy, vw, vh)
     attrs = { # Put the xml nonsense up front.
       'xmlns': 'http://www.w3.org/2000/svg',
