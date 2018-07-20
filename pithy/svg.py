@@ -277,8 +277,13 @@ class SvgBase(XmlWriter):
 
 
   def plot(self, pos:Vec=(0,0), size:Vec=(512,1024), *, series:Sequence['PlotSeries'],
-   min_x=None, max_x=None, min_y=None, max_y=None, r:VecOrNum=None, grid_step:VecOrNum=None, **attrs:Any) -> 'Plot':
-    return Plot(file=self.file, pos=pos, size=size, series=series, min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y, r=r, grid_step=grid_step, **attrs)
+   min_x=None, max_x=None, min_y=None, max_y=None,
+   visible_x0=False, visible_y0=False, symmetric_x=False, symmetric_y=False, symmetric_xy=False,
+   r:VecOrNum=None, grid_step:VecOrNum=None, **attrs:Any) -> 'Plot':
+    return Plot(file=self.file, pos=pos, size=size, series=series,
+     min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y,
+     visible_x0=visible_x0, visible_y0=visible_y0, symmetric_x=symmetric_x, symmetric_y=symmetric_y, symmetric_xy=symmetric_xy,
+     r=r, grid_step=grid_step, **attrs)
 
 
 class SvgWriter(SvgBase):
@@ -387,6 +392,7 @@ class Plot(SvgBase):
   def __init__(self, file:TextIO, pos:Vec=(0,0), size:Vec=(512,1024),
    *, series:Sequence[PlotSeries],
    min_x=None, max_x=None, min_y=None, max_y=None,
+   visible_x0=False, visible_y0=False, symmetric_x=False, symmetric_y=False, symmetric_xy=False,
    r:VecOrNum=None, grid_step:VecOrNum=None, **attrs:Any) -> None:
 
     attrs.setdefault('class_', 'plot')
@@ -415,6 +421,24 @@ class Plot(SvgBase):
     if max_x is None or max_x <= min_x: max_x = min_x + 1
     if max_y is None or max_y <= min_y: max_y = min_y + 1
 
+    if visible_x0:
+      if min_x > 0: min_x = 0
+      elif max_x < 0: max_x = 0
+    if visible_y0:
+      if min_y > 0: min_y = 0
+      elif max_y < 0: max_y = 0
+
+    if symmetric_xy:
+      max_x = max_y = max(max_x, -min_x, max_y, -min_y)
+      min_x = min_y = -max_x
+    else:
+      if symmetric_x:
+        max_x = max(max_x, -min_x)
+        min_x = -max_x
+      if symmetric_y:
+        max_y = max(max_y, -min_y)
+        min_y = -max_y
+
     self.min_x = min_x
     self.max_x = max_x
     self.min_y = min_y
@@ -439,7 +463,9 @@ class Plot(SvgBase):
         step_x = step_y = grid_step
       grid_w = data_w*scale_x
       grid_h = data_h*scale_y
-      self.grid(pos=(0,0), size=(grid_w, grid_h), step=(step_x*scale_x, step_y*scale_y),
+      off_x = scale_x * (step_x - min_x % step_x)
+      off_y = scale_y * (step_y - min_y % step_y)
+      self.grid(pos=(0,0), off=(off_x, off_y), size=(grid_w, grid_h), step=(step_x*scale_x, step_y*scale_y),
         transform=f'{scale(1,-1)} {translate(0, -grid_h)}')
 
     self.transform = transform
