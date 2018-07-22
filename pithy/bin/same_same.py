@@ -306,9 +306,9 @@ class HighlightState:
 def tokenize_difflines(lines:List[DiffLine]) -> List[str]:
   'Convert the list of line texts into a single list of tokens, including newline tokens.'
   tokens:List[str] = []
-  for i, line in enumerate(lines):
-    if i: tokens.append('\n')
+  for line in lines:
     tokens.extend(m[0] for m in token_pat.finditer(line.text))
+    tokens.append('\n')
   return tokens
 
 
