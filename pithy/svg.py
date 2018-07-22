@@ -212,13 +212,14 @@ class SvgBase(XmlWriter):
     return self.sub('symbol', attrs)
 
 
-  def text(self, pos:Vec=None, *, x:Num=None, y:Num=None, text=None, **attrs:Any) -> None:
+  def text(self, pos:Vec=None, *, x:Num=None, y:Num=None, text:str=None, alignment_baseline:str=None, **attrs:Any) -> None:
     'Output an SVG `text` element.'
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
-    add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y))
+    if alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
+    add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
     self.leaf_text('text', attrs, text)
 
 
@@ -393,14 +394,30 @@ class Plot(SvgBase):
    *, series:Sequence[PlotSeries],
    min_x=None, max_x=None, min_y=None, max_y=None,
    visible_x0=False, visible_y0=False, symmetric_x=False, symmetric_y=False, symmetric_xy=False,
-   r:VecOrNum=None, grid_step:VecOrNum=None, **attrs:Any) -> None:
-
-    attrs.setdefault('class_', 'plot')
-    attrs['transform'] = translate(*pos)
-    super().__init__(tag='g', file=file, attrs=attrs)
+   r:VecOrNum=None, grid_step:VecOrNum=None,
+   title:str=None, title_h:float=0.0,
+   **attrs:Any) -> None:
 
     self.pos = pos
     self.size = size
+    self.series = series
+    self.visible_x0 = visible_x0
+    self.visible_y0 = visible_y0
+    self.symmetric_x = symmetric_x
+    self.symmetric_y = symmetric_y
+    self.symmetric_xy = symmetric_xy
+    self.r = r
+    self.grid_step = grid_step
+
+    self.title = title
+    if title is None:
+      self.title_h = 0.0
+    elif title_h == 0.0: raise ValueError('Plot.title_h must be positive')
+    else:
+      self.title_h = title_h
+
+    self.w = size[0]
+    self.h = size[1] + self.title_h
 
     # Determine bounds.
     expand_min_x = min_x is None
@@ -456,6 +473,19 @@ class Plot(SvgBase):
     def transform(point:tuple) -> Vec:
       return ((point[0]-min_x) * scale_x, (data_h - (point[1]-min_y)) * scale_y)
 
+    self.transform = transform
+
+    y = self.title_h
+    # Initialize as `g` element.
+    attrs.setdefault('class_', 'plot')
+    attrs['transform'] = translate(pos[0], pos[1] + y)
+    super().__init__(tag='g', file=file, attrs=attrs)
+
+    # Title.
+    if self.title is not None:
+      self.text((0, -y), text=self.title, class_='title', text_anchor='left', alignment_baseline='hanging')
+
+    # Grid.
     if grid_step is not None:
       if isinstance(grid_step, tuple):
         step_x, step_y = grid_step
@@ -465,16 +495,16 @@ class Plot(SvgBase):
       grid_h = data_h*scale_y
       off_x = scale_x * (step_x - min_x % step_x)
       off_y = scale_y * (step_y - min_y % step_y)
-      self.grid(pos=(0,0), off=(off_x, off_y), size=(grid_w, grid_h), step=(step_x*scale_x, step_y*scale_y),
+      self.grid(pos=(0, 0), size=(grid_w, grid_h), step=(step_x*scale_x, step_y*scale_y), off=(off_x, off_y), r=r,
         transform=f'{scale(1,-1)} {translate(0, -grid_h)}')
 
-    self.transform = transform
-
+    # Axes.
     if min_y <= 0 and max_y >= 0: # Draw x axis.
       self.line(transform((0, min_y)), transform((0, max_y)), class_='axis', id='x-axis')
     if min_x <= 0 and max_x >= 0: # Draw y axis.
       self.line(transform((min_x, 0)), transform((max_x, 0)), class_='axis', id='y-axis')
 
+    # Series.
     for s in series:
       s.render(self, transform)
 
@@ -533,7 +563,7 @@ def fmt_num(n:Optional[Num]) -> Optional[str]:
   return str(n)
 
 
-baselines = {
+alignment_baselines = {
   'after-edge',
   'alphabetic',
   'auto',
