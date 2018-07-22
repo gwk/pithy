@@ -245,14 +245,12 @@ def insert_unique_line(d:Dict[str, Optional[int]], line:str, idx:int) -> None:
 
 def add_token_diffs(rem_lines:List[DiffLine], add_lines:List[DiffLine]) -> None:
   'Rewrite DiffLine.text values to include per-token diff highlighting.'
-  r = HighlightState(lines=rem_lines, tokens=tokenize_difflines(rem_lines), ctx=C_REM_CTX, space=C_REM_SPACE, token=C_REM_TOKEN)
-  a = HighlightState(lines=add_lines, tokens=tokenize_difflines(add_lines), ctx=C_ADD_CTX, space=C_ADD_SPACE, token=C_ADD_TOKEN)
+  r = HighlightState(lines=rem_lines, tokens=tokenize_difflines(rem_lines), hl_ctx=C_REM_CTX, hl_space=C_REM_SPACE, hl_token=C_REM_TOKEN)
+  a = HighlightState(lines=add_lines, tokens=tokenize_difflines(add_lines), hl_ctx=C_ADD_CTX, hl_space=C_ADD_SPACE, hl_token=C_ADD_TOKEN)
   for r_r, r_a in calc_diff(r.tokens, a.tokens):
-    if r_r and r_a:
-      # Do not highlight the matching tokens.
+    if r_r and r_a: # Matching tokens; highlight as context.
       r.highlight_frags(r_r, is_ctx=True)
       a.highlight_frags(r_a, is_ctx=True)
-    # Highlight the differing tokens.
     elif r_r: r.highlight_frags(r_r, is_ctx=False)
     elif r_a: a.highlight_frags(r_a, is_ctx=False)
   # Update the mutable lines lists.
@@ -264,12 +262,12 @@ H_START, H_CTX, H_SPACE, H_TOKEN = range(4)
 
 class HighlightState:
 
-  def __init__(self, lines:List[DiffLine], tokens:List[str], ctx:str, space:str, token:str) -> None:
+  def __init__(self, lines:List[DiffLine], tokens:List[str], hl_ctx:str, hl_space:str, hl_token:str) -> None:
     self.lines = lines
     self.tokens = tokens
-    self.ctx = ctx # Context highlight.
-    self.space = space # Significant space highlight.
-    self.token = token # Token highlighter.
+    self.hl_ctx = hl_ctx # Context highlight.
+    self.hl_space = hl_space # Significant space highlight.
+    self.hl_token = hl_token # Token highlighter.
     self.state = H_START
     self.line_idx = 0
     self.frags:List[List[str]] = [[] for _ in lines]
@@ -279,25 +277,25 @@ class HighlightState:
       line_frags = self.frags[self.line_idx]
       if frag == '\n':
         if self.state != H_CTX:
-          line_frags.append(self.ctx) # When combined with C_END, this highlights to end of line.
+          line_frags.append(self.hl_ctx) # When combined with C_END, this highlights to end of line.
         self.state = H_START
         self.line_idx += 1
       else:
         if is_ctx:
           if self.state != H_CTX:
             self.state = H_CTX
-            line_frags.append(self.ctx)
+            line_frags.append(self.hl_ctx)
         elif frag.isspace():
           if self.state == H_START: # Don't highlight spaces at the start of lines.
             self.state = H_TOKEN
-            line_frags.append(self.token)
+            line_frags.append(self.hl_token)
           elif self.state == H_CTX:
             self.state = H_SPACE
-            line_frags.append(self.space)
+            line_frags.append(self.hl_space)
         else:
           if self.state != H_TOKEN:
             self.state = H_TOKEN
-            line_frags.append(self.token)
+            line_frags.append(self.hl_token)
         line_frags.append(highlight_strange_chars(frag))
 
   def update_lines(self) -> None:
