@@ -4,7 +4,7 @@ from typing import *
 from pithy.io import errL, errSL
 from pithy.iterable import prefix_tree
 from pithy.types import is_pair_of_int
-from unico import CodeRange, CodeRanges, codes_for_ranges
+from .unico import CodeRange, CodeRanges, codes_for_ranges
 
 from .nfa import empty_symbol
 from .codepoints import codes_desc

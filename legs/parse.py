@@ -8,8 +8,8 @@ from pithy.buffer import Buffer
 from pithy.lex import *
 from pithy.io import *
 
-from unico import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
-from unico.charsets import unicode_charsets
+from .unico import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
+from .charsets import unicode_charsets
 
 from .rules import *
 from .defs import ModeTransitions

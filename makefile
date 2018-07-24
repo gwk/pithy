@@ -10,11 +10,20 @@
 # First target of a makefile is the default.
 _default: test typecheck
 
+build: \
+	legs/data_09_00.py
+
 clean:
 	rm -rf _build/*
 
+clean-data:
+	rm legs/data_*.py
+
 cov:
 	iotest -fail-fast -coverage
+
+legs/data_09_00.py: gen-data.py
+	./$^ data_09_00 > $@
 
 install-vscode: vscode-ext/syntaxes/legs.json
 	vscode-ext/install-vscode-ext.sh
@@ -31,10 +40,10 @@ pypi-dist:
 pypi-upload: pypi-dist
 	python3 setup.py sdist upload
 
-test:
+test: build
 	iotest -fail-fast
 
-typecheck:
+typecheck: build
 	craft-py-check legs
 
 vscode-ext/syntaxes/legs.json: legs.legs
