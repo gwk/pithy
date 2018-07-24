@@ -149,15 +149,15 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
     loop: while pos < source.text.count {
       let byte = source.text[pos]
-      if byte == 0x0a {
-        source.newlinePositions.append(pos)
-      }
 
       switch state {
 
       ${state_cases}
 
       default: fatalError("${Name}Lexer.next: impossible state: \(state)")
+      }
+      if byte == 0x0a {
+        source.newlinePositions.append(pos)
       }
       pos += 1
     }
