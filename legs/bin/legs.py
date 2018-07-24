@@ -14,14 +14,14 @@ from pithy.iterable import first_el
 from pithy.string import pluralize
 from pithy.task import runCO
 
-from .defs import Mode, ModeTransitions
-from .parse import parse_legs
-from .dfa import DFA, DfaTransitions, minimizeDFA
-from .nfa import NFA, genDFA
-from .rules import NfaMutableTransitions, Rule
-from .swift import output_swift
-from .python import output_python3
-from .vscode import output_vscode
+from ..defs import Mode, ModeTransitions
+from ..parse import parse_legs
+from ..dfa import DFA, DfaTransitions, minimizeDFA
+from ..nfa import NFA, genDFA
+from ..rules import NfaMutableTransitions, Rule
+from ..swift import output_swift
+from ..python import output_python3
+from ..vscode import output_vscode
 
 
 description = '''
