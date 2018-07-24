@@ -47,7 +47,7 @@ public class Source: CustomStringConvertible {
 
   public let name: String
   public let text: [UInt8]
-  public fileprivate(set) var newlinePositions: [Int] = []
+  public var newlinePositions: [Int] = []
 
   public init(name: String, text: [UInt8]) {
     self.name = name
