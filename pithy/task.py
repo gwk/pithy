@@ -86,7 +86,7 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
   # _Popen may raise FileNotFoundError, PermissionError, or OSError.
   # The distinction is more confusing than helpful; therefore we handle them all as OSError.
   except OSError as e:
-    cmd_path = cast(Tuple[str, ...], cmd)[0] # The path as seen by the command.
+    cmd_path = cmd[0] # The path as seen by the command.
     path = cmd_path if cwd is None else _path_join(cwd, cmd_path) # The path relative to the parent cwd, or absolute.
     # TODO: If absolute, try to make path relative to parent cwd.
     if e.filename == cmd_path: _diagnose_launch_error(path, cmd_path, e) # Raises a more specific exception or else return.
