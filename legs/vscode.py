@@ -3,7 +3,7 @@
 import re
 
 from argparse import Namespace
-from typing import *
+from typing import Dict, List
 from pithy.io import *
 from pithy.json import write_json
 from pithy.string import render_template

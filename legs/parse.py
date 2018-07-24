@@ -2,7 +2,7 @@
 
 import re
 
-from typing import *
+from typing import Dict, List, Set, Match, Type
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.buffer import Buffer
 from pithy.lex import *

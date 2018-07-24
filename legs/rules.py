@@ -93,7 +93,7 @@ class Choice(Rule):
     for sub in subs:
       if not isinstance(sub, Rule):
         raise ValueError(f'{cls.__name__} received non-Rule sub: {sub}')
-    return tuple.__new__(cls, sorted(set(subs))) # type: ignore
+    return tuple.__new__(cls, sorted(set(subs)))
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
     for sub in self:
@@ -114,7 +114,7 @@ class Seq(Rule):
     for sub in subs:
       if not isinstance(sub, Rule):
         raise ValueError(f'{cls.__name__} received non-Rule sub: {sub}')
-    return tuple.__new__(cls, subs) # type: ignore
+    return tuple.__new__(cls, subs)
 
   def genNFA(self, mk_node: MkNode, transitions: NfaMutableTransitions, start: int, end: int) -> None:
     if not self:
@@ -157,7 +157,7 @@ class Quantity(Rule):
       raise ValueError(f'{cls.__name__} expcets single sub; received: {subs}')
     if not isinstance(subs[0], Rule):
       raise ValueError(f'{cls.__name__} received non-Rule sub: {subs[0]}')
-    return tuple.__new__(cls, subs) # type: ignore
+    return tuple.__new__(cls, subs)
 
   def genRegex(self, flavor: str) -> str:
     sub_pattern = self[0].genRegexSub(flavor=flavor, precedence=self.precedence)
@@ -210,7 +210,7 @@ class Charset(Rule):
     for r in ranges:
       if not isinstance(r, tuple):
         raise ValueError(f'{cls.__name__} received non-tuple range: {r}')
-    return tuple.__new__(cls, ranges) # type: ignore
+    return tuple.__new__(cls, ranges)
 
 
   def __init__(self, ranges: CodeRanges) -> None:

@@ -5,7 +5,7 @@ import re
 from argparse import Namespace
 from importlib.util import find_spec as find_module_spec
 from itertools import chain
-from typing import *
+from typing import Any, DefaultDict, Dict, List, Tuple, cast
 from pithy.fs import add_file_execute_permissions, path_dir, path_join
 from pithy.string import render_template
 from pithy.iterable import closed_int_intervals
@@ -98,7 +98,9 @@ def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str
     f.write(src)
     if args.test:
       # Append the base source because `swift` will only interpret a single file.
-      pkg_dir_path = path_dir(cast(str, find_module_spec('legs').origin))
+      spec = find_module_spec('legs')
+      assert spec is not None
+      pkg_dir_path = path_dir(cast(str, spec.origin))
       legs_base_path = path_join(pkg_dir_path, 'legs_base.swift')
       legs_base_contents = open(legs_base_path).read()
       f.write(legs_base_contents)

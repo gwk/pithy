@@ -5,7 +5,7 @@ import re
 from argparse import Namespace
 from collections import defaultdict
 from pprint import pformat
-from typing import *
+from typing import Dict, Tuple
 from pithy.fs import add_file_execute_permissions
 from pithy.io import *
 from pithy.string import render_template
@@ -40,7 +40,7 @@ def output_python3(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, s
 
 
 def fmt_obj(object: Any) -> str:
-  return pformat(object, indent=2, width=128, compact=True) # type: ignore # typeshed annotation is missing `compact`.
+  return pformat(object, indent=2, width=128, compact=True)
 
 
 template = r'''# ${license}

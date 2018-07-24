@@ -44,7 +44,7 @@ test: build
 	iotest -fail-fast
 
 typecheck: build
-	craft-py-check legs
+	craft-py-check legs -deps pithy
 
 vscode-ext/syntaxes/legs.json: legs.legs
 	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -language vscode -output $@
