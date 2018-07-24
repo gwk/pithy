@@ -1,19 +1,49 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from importlib.util import find_spec as find_module_spec
 from pithy.ansi import *
 from pithy.io import *
+from pithy.path import path_name, path_dir
 from pithy.lex import Lexer
 from pithy.task import runCO
 from argparse import ArgumentParser
+from os import environ
 
 
 def main() -> None:
   arg_parser = ArgumentParser(description='Run mypy, format and colorize output.')
   arg_parser.add_argument('-print-ok', action='store_true')
   arg_parser.add_argument('roots', nargs='+')
+  arg_parser.add_argument('-deps', nargs='+', default=[])
+  arg_parser.add_argument('-paths', nargs='+', default=[])
   args = arg_parser.parse_args()
 
-  c, o = runCO(['mypy', *args.roots])
+  env = environ.copy()
+  existing_path = env.get('MYPYPATH')
+  mypy_path = {existing_path} if existing_path else set()
+
+  for dep in args.deps:
+    spec = find_module_spec(dep)
+    if spec is None:
+      errL(f'warning: could not find dependency: {dep!r}')
+      continue
+    while spec.parent != dep:
+      s = find_module_spec(spec.parent)
+      assert s is not None and s != spec
+      spec = s
+    path = spec.origin
+    assert path_name(path) == '__init__.py'
+    search_path = path_dir(path_dir(path))
+    mypy_path.add(search_path)
+
+  for p in args.paths:
+    if ':' in p: exit(f'bad `-path` argument: {p!r}')
+  mypy_path.update(args.paths)
+
+  if mypy_path:
+    env['MYPYPATH'] = ':'.join(mypy_path)
+
+  c, o = runCO(['mypy', *args.roots], env=env)
   for token in lexer.lex(o):
     s = token[0]
     kind = token.lastgroup
