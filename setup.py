@@ -1,15 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from sys import stderr
+from distutils.command.build_scripts import build_scripts
+from itertools import chain
 from os import chmod, getcwd, listdir, walk as walk_path
 from os.path import join as path_join, splitext as split_ext
+from pprint import pprint
 from setuptools import setup
-from distutils.command.build_scripts import build_scripts
 from setuptools.command.develop import develop
 from setuptools.command.install import install
-from pprint import pprint
-from typing import Optional
-from itertools import chain
+from sys import stderr
 
 
 package_roots = ['craft', 'iotest', 'pithy']
@@ -72,8 +71,8 @@ def discover_packages():
   missing_inits = []
   for root in package_roots:
     for dir_path, dir_names, file_names in walk_path(root):
-      dir_names[:] = filter(lambda n: n != '__pycache__', dir_names)
       yield dir_path
+      dir_names[:] = filter(lambda n: n != '__pycache__', dir_names)
       for name in chain(dir_names, file_names):
         if '-' in name: bad_names.append(path_join(dir_path, name))
       if '__init__.py' not in file_names:
