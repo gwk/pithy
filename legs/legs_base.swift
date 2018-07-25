@@ -89,8 +89,8 @@ public class Source: CustomStringConvertible {
     return end
   }
 
-  public func diagnostic<TokenKind>(token: Token<TokenKind>, msg: String = "", showMissingNewline: Bool = true) -> String {
-    return diagnostic(pos: token.pos, end: token.end, linePos: token.linePos, lineIdx: token.lineIdx,
+  public func diagnostic<TokenKind>(token: Token<TokenKind>, pos: Int? = nil, msg: String = "", showMissingNewline: Bool = true) -> String {
+    return diagnostic(pos: pos ?? (token.pos), end: pos ?? (token.end), linePos: token.linePos, lineIdx: token.lineIdx,
       msg: msg, showMissingNewline: showMissingNewline)
   }
 
