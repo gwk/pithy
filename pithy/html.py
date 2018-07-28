@@ -60,7 +60,7 @@ class HtmlWriter(XmlWriter):
     self.leaf_text('style', attrs=attrs, text='\n'.join(styles))
 
   def svg(self, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> SvgWriter:
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, **attrs:Any) -> SvgWriter:
     return SvgWriter(file=self.file, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh, **attrs)
 
   # Forms.

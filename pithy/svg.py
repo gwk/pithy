@@ -19,8 +19,6 @@ F2 = Tuple[float, float]
 F2OrF = Union[F2, float]
 PathCommand = Tuple
 
-ViewBox = Union[None, Vec, Tuple[Num, Num, Num, Num], Tuple[Vec, Vec]] # TODO: currently unused.
-
 PointTransform = Callable[[Tuple], Vec]
 
 
@@ -127,7 +125,7 @@ class SvgBase(XmlWriter):
 
 
   def marker(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None,
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None,
    markerUnits='strokeWidth', orient:str='auto', **attrs:Any) -> XmlWriter:
     'Output an SVG `marker` element.'
     if pos is not None:
@@ -272,7 +270,7 @@ class SvgWriter(SvgBase):
   Like its parent class XmlWriter, it uses the __enter__ and __exit__ methods to automatically output open and close tags.
   '''
   def __init__(self, file:TextIO=None, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> None:
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, **attrs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -290,8 +288,8 @@ class SvgWriter(SvgBase):
     self.h = h
     self.vx = vx
     self.vy = vy
-    self.vw = vw or 0
-    self.vh = vh or 0
+    self.vw = vw
+    self.vh = vh
     self.viewBox = fmt_viewBox(vx, vy, vw, vh)
     attrs = { # Put the xml nonsense up front.
       'xmlns': 'http://www.w3.org/2000/svg',
@@ -519,7 +517,7 @@ def _validate_unit(unit: str):
 
 
 def fmt_viewBox(vx:Optional[Num], vy:Optional[Num], vw:Optional[Num], vh:Optional[Num]) -> Optional[str]:
-  if vx is None and vy is None and vw is None and vh is None:
+  if vw is None and vh is None:
     return None
   else:
     if vx is None: vx = 0
