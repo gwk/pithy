@@ -209,7 +209,7 @@ class SvgBase(XmlWriter):
       assert x is None
       assert y is None
       x, y = pos
-    if alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
+    if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
     assert text is not None
     self.leaf_text('text', attrs, text)
