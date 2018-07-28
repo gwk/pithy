@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="1024">
 <g stroke="#E0E0E0" fill="white" stroke-width="0.5" class="grid">
-<rect class="grid-border" x="0" y="0" width="512" height="1024"/>
 <line x1="16" y1="0" x2="16" y2="1024"/>
 <line x1="32" y1="0" x2="32" y2="1024"/>
 <line x1="48" y1="0" x2="48" y2="1024"/>
@@ -95,6 +94,7 @@
 <line x1="0" y1="976" x2="512" y2="976"/>
 <line x1="0" y1="992" x2="512" y2="992"/>
 <line x1="0" y1="1008" x2="512" y2="1008"/>
+<rect class="grid-border" fill="none" x="0" y="0" width="512" height="1024"/>
 </g>
 <g transform="translate(0,0)">
 <rect x="0" y="0" width="64" height="32" rx="8" ry="8"><title>rect0</title></rect>
