@@ -5,10 +5,12 @@
 # $^: The names of all the prerequisites, with spaces between them.
 
 
-.PHONY: _default clean cov docs pip-develop pip-uninstall pypi-dist pypi-upload test test-diff test-diff-pairs typecheck
+.PHONY: _default _phony clean cov docs pip-develop pip-uninstall pypi-dist pypi-upload test test-diff test-diff-pairs typecheck
 
 # First target of a makefile is the default.
 _default: test typecheck
+
+_phony:
 
 clean:
 	rm -rf _build/*
@@ -35,6 +37,9 @@ pypi-upload:
 
 test:
 	iotest -fail-fast
+
+test/%: _phony
+	iotest -fail-fast $@
 
 typecheck:
 	craft-py-check iotest pithy
