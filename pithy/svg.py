@@ -15,6 +15,8 @@ from typing import Any, Callable, ContextManager, Dict, Iterator, List, Optional
 Dim = Union[int, float, str]
 Vec = Tuple[Num, Num]
 VecOrNum = Union[Vec, Num]
+F2 = Tuple[float, float]
+F2OrF = Union[F2, float]
 PathCommand = Tuple
 
 ViewBox = Union[None, Vec, Tuple[Num, Num, Num, Num], Tuple[Vec, Vec]] # TODO: currently unused.
@@ -105,10 +107,7 @@ class SvgBase(XmlWriter):
     if size is not None:
       assert w is None
       assert h is None
-      if isinstance(size, tuple):
-        w, h = size
-      else:
-        w = h = size
+      w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
     self.leaf('image', attrs)
 
@@ -138,10 +137,7 @@ class SvgBase(XmlWriter):
     if size is not None:
       assert w is None
       assert h is None
-      if isinstance(size, tuple):
-        w, h = size
-      else:
-        w = h = size
+      w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, id=id, refX=fmt_num(x), refY=fmt_num(y), markerWidth=fmt_num(w), markerHeight=fmt_num(h),
       viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
     return self.sub('marker', attrs=attrs)
@@ -182,10 +178,7 @@ class SvgBase(XmlWriter):
     if size is not None:
       assert w is None
       assert h is None
-      if isinstance(size, tuple):
-        w, h = size
-      else:
-        w = h = size
+      w, h = unpack_VecOrNum(size)
     rx:Optional[Num]
     ry:Optional[Num]
     if isinstance(r, tuple):
@@ -235,43 +228,28 @@ class SvgBase(XmlWriter):
     if size is not None:
       assert w is None
       assert h is None
-      if isinstance(size, tuple):
-        w, h = size
-      else:
-        w = h = size
+      w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, href=id, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
     return self.leaf('use', attrs)
 
 
   # High level.
 
-  def grid(self, pos:Vec=None, size:VecOrNum=None, *,
-   x:Num=0, y:Num=0, w:Num=256, h:Num=256, step:VecOrNum=16, off:Vec=(0, 0), r:VecOrNum=None, **attrs:Any) -> None:
+  def grid(self, pos:Vec=(0,0), size:VecOrNum=(256,256), *,
+   step:VecOrNum=16, off:Vec=(0, 0), r:VecOrNum=None, **attrs:Any) -> None:
     # TODO: per-axis log-transform option.
-    assert step is not None
-    if isinstance(step, tuple):
-      sx, sy = step
-    else:
-      sx = sy = step
-    if pos is not None:
-      x, y = pos
-    if size is not None:
-      if isinstance(size, tuple):
-        w, h = size
-      else:
-        w = h = size
-    x = float(x)
-    y = float(y)
-    w = float(w)
-    h = float(h)
-    off_x, off_y = off
-    if off_x <= 0: off_x = sx
-    if off_y <= 0: off_y = sy
+    x, y = f2_for_vec(pos)
+    w, h = unpack_VecOrNum(size)
+    sx, sy = unpack_VecOrNum(step)
+    off_x, off_y = f2_for_vec(off)
+    if off_x <= 0: off_x = sx # Do not emit line at 0, because that is handled by border.
+    if off_y <= 0: off_y = sy # Do not emit line at 0, because that is handled by border.
     x_start = x + off_x
     y_start = y + off_y
     x_end = x + w
     y_end = y + h
     class_ = attrs.setdefault('class_', 'grid')
+    # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
     with self.g(**attrs):
       for tick in NumRange(x_start, x_end, sx): self.line((tick, y), (tick, y_end)) # Vertical lines.
       for tick in NumRange(y_start, y_end, sy): self.line((x, tick), (x_end, tick)) # Horizontal lines.
@@ -562,6 +540,20 @@ def fmt_num(n:Optional[Num]) -> Optional[str]:
     i = int(n)
     if i == n: return str(i)
   return str(n)
+
+
+def f2_for_vec(v:Vec) -> F2:
+  x, y = v
+  return (float(x), float(y))
+
+
+def unpack_VecOrNum(vn:VecOrNum) -> Tuple[float, float]:
+  if isinstance(vn, tuple):
+    x, y = vn
+    return float(x), float(y)
+  else:
+    s = float(vn)
+    return (s, s)
 
 
 alignment_baselines = {
