@@ -346,6 +346,7 @@ class XYSeries(PlotSeries):
 
 
   def render(self, svg:SvgBase, transform:PointTransform) -> None:
+    # TODO: collect and return out-of-bounds points.
     assert self.plotter is not None
     with svg.g(**self.attrs):
       for p in self.points: self.plotter(svg, transform, p)
@@ -533,6 +534,7 @@ def fmt_num(n:Num) -> str: ...
 def fmt_num(n:Optional[Num]) -> Optional[str]: ...
 
 def fmt_num(n:Optional[Num]) -> Optional[str]:
+  'Remove trailing ".0" from floats that can be represented as integers.'
   if n is None: return None
   if isinstance(n, float):
     i = int(n)
