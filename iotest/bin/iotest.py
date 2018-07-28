@@ -501,7 +501,7 @@ def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
   return False
 
 
-diff_cmd = 'git diff --no-index --no-prefix --no-renames --exit-code --histogram --ws-error-highlight=old,new'.split()
+diff_cmd = 'git diff --exit-code --no-index --no-prefix --no-renames --histogram --color=auto --ws-error-highlight=old,new'.split()
 
 
 def cat_file(path: str, color: str, limit=-1) -> None:
