@@ -3,7 +3,6 @@
 import re
 from sys import stdin
 from argparse import ArgumentParser
-from html.parser import HTMLParser
 from typing import *
 from base64 import b64encode
 
