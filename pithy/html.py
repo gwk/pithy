@@ -28,11 +28,8 @@ class HtmlWriter(XmlWriter):
   '''
 
   def __init__(self, file:TextIO=None, attrs:XmlAttrs=None, **extra_attrs:Any) -> None:
-    super().__init__(tag='html', file=file, attrs=attrs, **extra_attrs)
-
-  def __enter__(self:_Self) -> _Self:
     self.write_raw('<!DOCTYPE html>')
-    return super().__enter__()
+    super().__init__(tag='html', file=file, attrs=attrs, **extra_attrs)
 
   def body(self, **attrs:Any) -> XmlWriter:
     return self.sub('body', attrs=attrs)
