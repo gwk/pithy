@@ -135,7 +135,7 @@ class XmlWriter(ContextManager):
     self.write_unescaped(*(esc_xml_text(item) for item in items), sep=sep, end=end)
 
 
-  def leaf(self, tag:str, attrs:XmlAttrs) -> None:
+  def leaf(self, tag:str, *, attrs:XmlAttrs) -> None:
     self.write_unescaped(f'<{tag}{self.fmt_attrs(attrs)}/>')
 
 

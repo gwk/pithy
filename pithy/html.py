@@ -60,8 +60,8 @@ class HtmlWriter(XmlWriter):
       raise Exception(f'bad HTML <input> type: {attrs.get("type")}')
     return self.leaf('input', attrs=attrs)
 
-  def label(self, *children:Any, **attrs:Any) -> 'Input':
-    return self.child(Input, children=children, attrs=attrs)
+  def label(self, *children:Any, **attrs:Any) -> 'Label':
+    return self.child(Label, children=children, attrs=attrs)
 
   # Tables.
 
@@ -140,6 +140,9 @@ class Form(HtmlWriter):
 
 class Input(HtmlWriter):
   tag = 'input'
+
+class Label(HtmlWriter):
+  tag = 'label'
 
 class Table(HtmlWriter):
   tag = 'table'
