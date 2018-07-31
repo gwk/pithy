@@ -3,7 +3,7 @@
 from pithy.svg import *
 from sys import stdout
 
-with SvgWriter(stdout, w=800, h=800) as svg:
+with Svg(stdout, w=800, h=800) as svg:
   for i, b in enumerate([None] + sorted(alignment_baselines), 1):
     y = i * 50
     svg.line((0, y), (500, y), stroke='#E0E0E0')

@@ -9,10 +9,11 @@ from html import escape as html_escape
 from io import StringIO
 from itertools import chain
 from types import TracebackType
-from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, ContextManager, Dict, Iterable, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
+from .io import errSL
 
 
-_Self = TypeVar('_Self', bound='XmlWriter')
+_XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
 
 XmlAttrs = Optional[Dict[str,Any]]
 
@@ -28,48 +29,47 @@ class XmlWriter(ContextManager):
     'class_' : 'class',
   }
 
-  def __init__(self, tag:str, file:TextIO=None, attrs:XmlAttrs=None, **extra_attrs:Any) -> None:
+  can_auto_close_tags = True # Allows "void" or "self-closing" elements, e.g. <TAG />. False for HTML.
+  tag:str = '' # Subclasses can specify a tag.
+
+  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     '''
-    `attrs` is provided as a named parameter to avoid excessive copying of attributes into kwargs dicts,
-    and to support XML attributes that contain non-identifier characters.
-    The `extra_attrs` kwargs is also provided for convenience.
+    `children` and `attrs` are provided as named parameters to avoid excessive copying into `args` and `kwargs`.
+    `attrs` also allows for XML attributes that contain non-identifier characters.
     '''
     self.file = file or StringIO()
-    self.tag = tag
-    self.attrs = {} if attrs is None else attrs
-    self.attrs.update(extra_attrs)
+    self.tag = tag or type(self).tag
+    if not self.tag: raise Exception(f'{type(self)}: neither type-level tag nor argument tag specified')
     self.context_depth = 0
-    self.closed = False
-    self.write_raw(f'<{self.tag}{self.fmt_attrs(self.attrs)}>')
+    self.is_closed = False
+    self.open_child: Optional['XmlWriter'] = None
 
-
-  def __enter__(self:_Self) -> _Self:
-    if self.closed: raise Exception(f'XmlWriter is already closed: {self}')
-    self.context_depth += 1
-    return self
-
-
-  def __del__(self:_Self) -> None:
-    if not self.closed: raise Exception(f'XmlWriter is not closed: {self}')
-
-
-  def __exit__(self, exc_type:Optional[Type[BaseException]], exc_value:Optional[BaseException],
-   traceback: Optional[TracebackType]) -> None:
-   self.context_depth -= 1
-   if not self.context_depth: self.close()
-
-
-  def fmt_attrs(self, attrs:XmlAttrs) -> str:
-    'Format the `attrs` dict into XML key-value attributes.'
-    if not attrs: return ''
-    parts: List[str] = []
-    for k, v in attrs.items():
-      if v is None:
-        v = 'none'
+    # An Ellipsis indicates that the children should be printed one per line,
+    # and that the element should not be immediately closed.
+    has_ellipsis = False
+    child_strs = []
+    for child in chain(children, args):
+      if child is Ellipsis:
+        has_ellipsis = True
+        continue
+      if isinstance(child, XmlWriter):
+        child.close()
+        child_strs.append(child.string.rstrip('\n'))
       else:
-        k = self.replaced_attrs.get(k, k)
-      parts.append(f' {esc_xml_attr(k.replace("_", "-"))}="{esc_xml_attr(v)}"')
-    return ''.join(parts)
+        child_strs.append(esc_xml_text(child))
+
+    # If there is the possibility of self-closing the tag, then leave open tag incomplete.
+    self.is_open_tag_incomplete = self.can_auto_close_tags and not (child_strs or has_ellipsis)
+    close_now = (child_strs and not has_ellipsis)
+
+    bracket = ('' if self.is_open_tag_incomplete else '>')
+    print(f'<{self.tag}{self.fmt_attrs(attrs, kwargs)}{bracket}',
+      *child_strs,
+      sep=('\n' if has_ellipsis else ''),
+      end=('' if self.is_open_tag_incomplete or close_now else '\n'),
+      file=self.file)
+
+    if close_now: self.close()
 
 
   @property
@@ -79,35 +79,94 @@ class XmlWriter(ContextManager):
     return self.file.getvalue()
 
 
+  def __repr__(self) -> str:
+    return f'{self.__class__.__name__}({self.tag!r})'
+
+
+  def __del__(self:_XmlWriter) -> None:
+    if not getattr(self, 'is_closed', True): # If attribute is missing, then __init__ raised and we do not need to warn here.
+      errSL('WARNING: XmlWriter was deleted but not closed:', self)
+
+
+  def __enter__(self:_XmlWriter) -> _XmlWriter:
+    if self.is_closed: raise Exception(f'XmlWriter is already closed: {self}')
+    self.context_depth += 1
+    return self
+
+
+  def __exit__(self, exc_type:Optional[Type[BaseException]], exc_value:Optional[BaseException],
+   traceback: Optional[TracebackType]) -> None:
+   self.context_depth -= 1
+   if not self.context_depth: self.close()
+
+
+  def complete_open_tag(self) -> None:
+    if self.is_open_tag_incomplete:
+      print('>', file=self.file)
+      self.is_open_tag_incomplete = False
+
+
+  def check_open_child(self) -> None:
+    if self.open_child is not None:
+      if not self.open_child.is_closed: raise Exception(f'{self}: previously opened child {self.open_child} was not closed')
+      self.open_child = None
+
+
   def close(self) -> None:
-    if not self.closed:
-      self.write_raw(f'</{self.tag}>')
-      self.closed = True
+    if not self.is_closed:
+      self.check_open_child()
+      if self.is_open_tag_incomplete: # Self-closing element.
+        print('/>', file=self.file)
+        self.is_open_tag_incomplete = False
+      else:
+        print(f'</{self.tag}>', file=self.file)
+      self.is_closed = True
 
 
-  def write_raw(self, *items:Any, sep='') -> None:
-    assert not self.closed
-    print(*items, sep=sep, file=self.file)
+  def write_unescaped(self, *items:Any, sep='', end='\n') -> None:
+    assert not self.is_closed
+    if not items: return
+    self.check_open_child()
+    self.complete_open_tag()
+    print(*items, sep=sep, end=end, file=self.file)
+
+
+  def write(self, *items:Any, sep='', end='\n') -> None:
+    self.write_unescaped(*(esc_xml_text(item) for item in items), sep=sep, end=end)
 
 
   def leaf(self, tag:str, attrs:XmlAttrs) -> None:
-    self.write_raw(f'<{tag}{self.fmt_attrs(attrs)}/>')
+    self.write_unescaped(f'<{tag}{self.fmt_attrs(attrs)}/>')
 
 
-  def leaf_text(self, tag:str, attrs:XmlAttrs, text:str) -> None:
-    'Output a non-nesting XML element that contains text between the open and close tags.'
-    self.write_raw(f'<{tag}{self.fmt_attrs(attrs)}>{esc_xml_text(text)}</{tag}>')
-
-
-  def sub(self, tag:str, attrs:XmlAttrs) -> 'XmlWriter':
+  def child(self, child_class:Type[_XmlWriter], *args:Any, children:Iterable[Any]=(), tag:str=None, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
-    assert not self.closed
-    return XmlWriter(file=self.file, tag=tag, attrs=attrs)
+    assert not self.is_closed
+    self.check_open_child()
+    self.complete_open_tag()
+    self.open_child = child_class(*args, tag=tag, file=self.file, attrs=attrs, children=children, **kwargs)
+    return self.open_child
 
 
-  def write(self, *items:Any) -> None:
-    for item in items:
-      self.write_raw(esc_xml_text(item))
+  def fmt_attrs(self, attrs:XmlAttrs, kwarg_attrs:XmlAttrs=None) -> str:
+    'Format the `attrs` dict into XML key-value attributes.'
+    if not attrs and not kwarg_attrs: return ''
+
+    items: Iterable[Tuple[str, Any]]
+    if attrs and kwarg_attrs: items = chain(attrs.items(), kwarg_attrs.items())
+    elif attrs: items = attrs.items()
+    else:
+      assert kwarg_attrs is not None
+      items = kwarg_attrs.items()
+
+    parts: List[str] = []
+    for k, v in items:
+      if v is None:
+        v = 'none'
+      else:
+        k = self.replaced_attrs.get(k, k)
+      parts.append(f' {esc_xml_attr(k.replace("_", "-"))}="{esc_xml_attr(v)}"')
+    return ''.join(parts)
 
 
 def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> None:

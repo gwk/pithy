@@ -9,7 +9,7 @@ from html import escape as html_escape
 from types import TracebackType
 from typing import Any, ContextManager, Dict, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable, cast
 from .num import Num, NumRange
-from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text, _Self
+from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text, _XmlWriter
 from .svg import *
 
 
@@ -27,105 +27,143 @@ class HtmlWriter(XmlWriter):
   Like its parent class XmlWriter, it uses the __enter__ and __exit__ methods to automatically output open and close tags.
   '''
 
-  def __init__(self, file:TextIO=None, attrs:XmlAttrs=None, **extra_attrs:Any) -> None:
-    self.write_raw('<!DOCTYPE html>')
-    super().__init__(tag='html', file=file, attrs=attrs, **extra_attrs)
-
-  def body(self, **attrs:Any) -> XmlWriter:
-    return self.sub('body', attrs=attrs)
+  can_auto_close_tags = False # Unlike XML, HTML5 dictates that each tag type either be self-closing or not.
 
   def br(self) -> None: self.leaf('br', attrs=None)
 
-  def div(self, **attrs:Any) -> XmlWriter: return self.sub('div', attrs=attrs)
+  def div(self, *children:Any, **attrs:Any) -> 'Div': return self.child(Div, children=children, attrs=attrs)
 
-  def head(self, **attrs:Any) -> XmlWriter: return self.sub('head', attrs=attrs)
-
-  def h1(self, text:str, **attrs:Any) -> None: self.leaf_text('h1', attrs=attrs, text=text)
-  def h2(self, text:str, **attrs:Any) -> None: self.leaf_text('h2', attrs=attrs, text=text)
-  def h3(self, text:str, **attrs:Any) -> None: self.leaf_text('h3', attrs=attrs, text=text)
-  def h4(self, text:str, **attrs:Any) -> None: self.leaf_text('h4', attrs=attrs, text=text)
-  def h5(self, text:str, **attrs:Any) -> None: self.leaf_text('h5', attrs=attrs, text=text)
-  def h6(self, text:str, **attrs:Any) -> None: self.leaf_text('h6', attrs=attrs, text=text)
+  def h1(self, *children:Any, **attrs:Any) -> 'H1': return self.child(H1, children=children, attrs=attrs)
+  def h2(self, *children:Any, **attrs:Any) -> 'H2': return self.child(H2, children=children, attrs=attrs)
+  def h3(self, *children:Any, **attrs:Any) -> 'H3': return self.child(H3, children=children, attrs=attrs)
+  def h4(self, *children:Any, **attrs:Any) -> 'H4': return self.child(H4, children=children, attrs=attrs)
+  def h5(self, *children:Any, **attrs:Any) -> 'H5': return self.child(H5, children=children, attrs=attrs)
+  def h6(self, *children:Any, **attrs:Any) -> 'H6': return self.child(H6, children=children, attrs=attrs)
 
   def hr(self) -> None: self.leaf('hr', attrs=None)
 
-  def meta(self, **attrs:Any) -> XmlWriter: return self.sub('meta', attrs=attrs)
+  def meta(self, *children:Any, **attrs:Any) -> 'Meta': return self.child(Meta, children=children, attrs=attrs)
 
-  def p(self, **attrs:Any) -> XmlWriter: return self.sub('p', attrs=attrs)
+  def p(self, *children:Any, **attrs:Any) -> 'P': return self.child(P, children=children, attrs=attrs)
 
-  def style(self, *styles:str, **attrs:Any) -> None:
-    self.leaf_text('style', attrs=attrs, text='\n'.join(styles))
+  def style(self, *children:Any, **attrs:Any) -> 'Style': return self.child(Style, children=children, attrs=attrs)
 
-  def svg(self, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, **attrs:Any) -> SvgWriter:
-    return SvgWriter(file=self.file, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh, **attrs)
+  def svg(self, *children:Any, **kwargs:Any) -> Svg:
+    return self.child(Svg, children=children, **kwargs)
 
   # Forms.
 
-  def form(self, **attrs:Any) -> XmlWriter: return self.sub('form', attrs=attrs)
+  def form(self, *children:Any, **attrs:Any) -> 'Form': return self.child(Form, children=children, attrs=attrs)
 
-  def input(self, type:str, **attrs:Any) -> None:
-    assert type in form_input_types
-    attrs['type'] = type
+  def input(self, **attrs:Any) -> None:
+    if attrs.get('type') not in form_input_types:
+      raise Exception(f'bad HTML <input> type: {attrs.get("type")}')
     return self.leaf('input', attrs=attrs)
 
-  def input_submit(self, **attrs:Any) -> None:
-    attrs['type'] = 'submit'
-    return self.leaf('input', attrs=attrs)
-
-  def input_text(self, **attrs:Any) -> None:
-    attrs['type'] = 'text'
-    return self.leaf('input', attrs=attrs)
-
-  def label(self, text:str, **attrs:Any) -> None:
-    return self.leaf_text('label', text=text, attrs=attrs)
+  def label(self, *children:Any, **attrs:Any) -> 'Input':
+    return self.child(Input, children=children, attrs=attrs)
 
   # Tables.
 
   # TODO: return XmlWriter subclasses that enforce correct permitted parent/child structures.
 
-  def table(self, **attrs:Any) -> XmlWriter: return self.sub('table', attrs=attrs)
+  def table(self, *children:Any, **attrs:Any) -> 'Table': return self.child(Table, children=children, attrs=attrs)
 
-  def caption(self, **attrs:Any) -> XmlWriter: return self.sub('caption', attrs=attrs)
+  def caption(self, *children:Any, **attrs:Any) -> 'Caption': return self.child(Caption, children=children, attrs=attrs)
 
-  def thead(self, **attrs:Any) -> XmlWriter: return self.sub('thead', attrs=attrs)
+  def thead(self, *children:Any, **attrs:Any) -> 'THead': return self.child(THead, children=children, attrs=attrs)
 
-  def tfoot(self, **attrs:Any) -> XmlWriter: return self.sub('tfoot', attrs=attrs)
+  def tfoot(self, *children:Any, **attrs:Any) -> 'TFoot': return self.child(TFoot, children=children, attrs=attrs)
 
-  def td(self, **attrs:Any) -> XmlWriter: return self.sub('td', attrs=attrs)
+  def td(self, *children:Any, **attrs:Any) -> 'TD': return self.child(TD, children=children, attrs=attrs)
 
-  def th(self, **attrs:Any) -> XmlWriter: return self.sub('th', attrs=attrs)
+  def th(self, *children:Any, **attrs:Any) -> 'TH': return self.child(TH, children=children, attrs=attrs)
 
-  def tr(self, *cell_contents:Any, **attrs:Any) -> XmlWriter:
-    s = self.sub('tr', attrs=attrs)
-    for c in cell_contents:
-      if isinstance(c, TD):
-        with self.td(**c.attrs): self.write(c.contents)
-      elif isinstance(c, TH):
-        with self.th(**c.attrs): self.write(c.contents)
-      else:
-        with self.td(): self.write(c)
-    return s
+  def tr(self, *children:Any, **attrs:Any) -> 'TR': return self.child(TR, children=children, attrs=attrs)
 
-  def tr_th(self, *header_contents:Any, **attrs:Any) -> XmlWriter:
-    s = self.sub('tr', attrs=attrs)
-    for c in header_contents:
-      with self.th(): self.write(c)
-    return s
-
-  def title(self, title:str, **attrs:Any) -> None:
-    self.leaf_text('title', attrs=attrs, text=title)
+  def title(self, *children:Any, **attrs:Any) -> 'Title': return self.child(Title, children=children, attrs=attrs)
 
 
-class TD:
-  def __init__(self, contents:Any, **attrs:Any) -> None:
-    self.contents = contents
-    self.attrs = attrs
+class Html(HtmlWriter):
+  tag = 'html'
 
-class TH:
-  def __init__(self, contents:Any, **attrs:Any) -> None:
-    self.contents = contents
-    self.attrs = attrs
+  def body(self, *children:Any, **attrs:Any) -> 'Body': return self.child(Body, children=children, attrs=attrs)
+
+  def head(self, *children:Any, **attrs:Any) -> 'Head': return self.child(Head, children=children, attrs=attrs)
+
+
+class HtmlDoc(Html):
+  "Html root document. Outputs '<!DOCTYPE html>' prior to the element tree."
+  def __init__(self, file:TextIO=None, attrs:XmlAttrs=None) -> None:
+    self.write_unescaped('<!DOCTYPE html>')
+    super().__init__(tag='html', file=file, attrs=attrs)
+
+
+class Body(HtmlWriter):
+  tag = 'body'
+
+class Div(HtmlWriter):
+  tag = 'div'
+
+class Head(HtmlWriter):
+  tag = 'head'
+
+class H1(HtmlWriter):
+  tag = 'h1'
+
+class H2(HtmlWriter):
+  tag='h2'
+
+class H3(HtmlWriter):
+  tag = 'h3'
+
+class H4(HtmlWriter):
+  tag = 'h4'
+
+class H5(HtmlWriter):
+  tag = 'h5'
+
+class H6(HtmlWriter):
+  tag = 'h6'
+
+class Meta(HtmlWriter):
+  tag = 'meta'
+
+class P(HtmlWriter):
+  tag = 'p'
+
+class Style(HtmlWriter):
+  tag = 'style'
+
+class Form(HtmlWriter):
+  tag = 'form'
+
+class Input(HtmlWriter):
+  tag = 'input'
+
+class Table(HtmlWriter):
+  tag = 'table'
+
+class Caption(HtmlWriter):
+  tag = 'caption'
+
+class THead(HtmlWriter):
+  tag = 'thead'
+
+class TFoot(HtmlWriter):
+  tag = 'tfoot'
+
+class TD(HtmlWriter):
+  tag = 'td'
+
+class TH(HtmlWriter):
+  tag = 'th'
+
+class TR(HtmlWriter):
+  tag = 'tr'
+
+class Title(HtmlWriter):
+  tag = 'title'
 
 
 form_input_types = frozenset({

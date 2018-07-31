@@ -24,78 +24,46 @@ PointTransform = Callable[[Tuple], F2]
 Tick = Union[bool, Callable[[float], Any]]
 
 
-class SvgBase(XmlWriter):
+class SvgWriter(XmlWriter):
 
   replaced_attrs = {
     'href': 'xlink:href', # safari Version 11.1.1 requires this, even though xlink is deprecated in svg 2 standard.
     **XmlWriter.replaced_attrs,
   }
 
-
-  def leaf(self, tag:str, attrs:XmlAttrs) -> None:
-    '''
-    Output a non-nesting SVG element.
-    'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
-    '''
-    if attrs and 'title' in attrs: self.leaf_text(tag, attrs, text='')
-    else: super().leaf(tag, attrs)
-
-
-  def leaf_text(self, tag:str, attrs:XmlAttrs, text:str) -> None:
-    '''
-    Output a non-nesting XML element that contains text between the open and close tags.
-    'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
-    '''
+  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+    '`title` attribute gets converted into a child element (renders in browsers as a tooltip).'
     if attrs:
       try: title = attrs.pop('title')
       except KeyError: pass
       else:
-        self.write_raw(f'<{tag}{self.fmt_attrs(attrs)}>{self._render_title(title)}{esc_xml_text(text)}</{tag}>')
-        return
-    super().leaf_text(tag, attrs=attrs, text=text)
-
-
-  def sub(self, tag:str, attrs:XmlAttrs) -> XmlWriter:
-    '''
-    Create a child XmlWriter for use in a `with` context to represent a nesting XML element.
-    'title' is treated as a special attribute that is translated into a <title> child element and rendered as a tooltip.
-    '''
-    title_el = ''
-    if attrs:
-      try: title = attrs.pop('title')
-      except KeyError: pass
-      else:
-        title_el = self._render_title(title)
-    s = super().sub(tag, attrs=attrs)
-    if title_el: self.write_raw(title_el)
-    return s
+        tail_children = tuple(children) or (Ellipsis,)
+        children = (SvgTitle(children=(str(title),)), *tail_children)
+    super().__init__(*args, children=children, tag=tag, file=file, attrs=attrs, **kwargs)
 
 
   # SVG Elements.
 
-  def _render_title(self, title:Optional[str]) -> str:
-    return '' if title is None else f'<title>{esc_xml_text(title)}</title>'
 
-
-  def circle(self, pos:Vec=None, r:Num=None, *, x:Num=None, y:Num=None, **attrs:Any) -> None:
+  def circle(self, pos:Vec=None, r:Num=None, x:Num=None, y:Num=None, **attrs:Any) -> None:
     'Output an SVG `circle` element.'
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
     add_opt_attrs(attrs, cx=fmt_num(x), cy=fmt_num(y), r=fmt_num(r))
-    self.leaf('circle', attrs)
+    self.child(SvgWriter, tag='circle', attrs=attrs).close()
 
 
-  def defs(self, **attrs:Any) -> XmlWriter:
+  def defs(self, **attrs:Any) -> 'SvgWriter':
     'Output an SVG `defs` element.'
-    return self.sub('defs', attrs)
+    return self.child(SvgWriter, tag='defs', attrs=attrs)
 
 
-  def g(self, *transforms:str, **attrs:Any) -> XmlWriter:
+  def g(self, *transforms:str, **attrs:Any) -> 'SvgWriter':
     'Create an SVG `g` element for use in a context manager.'
     add_opt_attrs(attrs, transform=(' '.join(transforms) if transforms else None))
-    return self.sub('g', attrs)
+    return self.child(SvgWriter, tag='g', attrs=attrs)
 
 
   def image(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> None:
@@ -109,7 +77,7 @@ class SvgBase(XmlWriter):
       assert h is None
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    self.leaf('image', attrs)
+    self.child(SvgWriter, tag='image', attrs=attrs).close()
 
 
   def line(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None, **attrs:Any) -> None:
@@ -123,7 +91,7 @@ class SvgBase(XmlWriter):
       assert y2 is None
       x2, y2 = b
     add_opt_attrs(attrs, x1=fmt_num(x1), y1=fmt_num(y1), x2=fmt_num(x2), y2=fmt_num(y2))
-    self.leaf('line', attrs)
+    self.child(SvgWriter, tag='line', attrs=attrs).close()
 
 
   def marker(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
@@ -140,7 +108,7 @@ class SvgBase(XmlWriter):
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, id=id, refX=fmt_num(x), refY=fmt_num(y), markerWidth=fmt_num(w), markerHeight=fmt_num(h),
       viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
-    return self.sub('marker', attrs=attrs)
+    return self.child(SvgWriter, tag='marker', attrs=attrs)
 
 
   def path(self, commands:Iterable[PathCommand], **attrs:Any) -> None:
@@ -156,7 +124,7 @@ class SvgBase(XmlWriter):
       cmd_strs.append(code + ','.join(fmt_num(n) for n in c[1:]))
     assert 'd' not in attrs
     attrs['d'] = ' '.join(cmd_strs)
-    self.leaf('path', attrs)
+    self.child(SvgWriter, tag='path', attrs=attrs).close()
 
 
   def polyline(self, points:Iterable[Vec], **attrs:Any) -> None:
@@ -166,7 +134,7 @@ class SvgBase(XmlWriter):
       if len(p) < 2: raise Exception(f'bad point for polyline: {p}')
       point_strs.append(f'{fmt_num(p[0])},{fmt_num(p[1])}')
     attrs['points'] = ' '.join(point_strs)
-    self.leaf('polyline', attrs)
+    self.child(SvgWriter, tag='polyline', attrs=attrs).close()
 
 
   def rect(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None, **attrs:Any) -> None:
@@ -186,15 +154,15 @@ class SvgBase(XmlWriter):
     else:
       rx = ry = r
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h), rx=fmt_num(rx), ry=fmt_num(ry))
-    self.leaf('rect', attrs)
+    self.child(SvgWriter, tag='rect', attrs=attrs).close()
 
 
-  def style(self, text:str, **attrs,) -> None:
+  def style(self, *text:str, **attrs,) -> None:
     'Output an SVG `style` element.'
-    self.leaf_text('style', attrs, text.strip())
+    self.child(SvgWriter, tag='style', attrs=attrs, children=text).close()
 
 
-  def symbol(self, id:str, *, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> XmlWriter:
+  def symbol(self, id:str, *, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> 'SvgWriter':
     'Output an SVG `symbol` element.'
     if vx is None: vx = 0
     if vy is None: vy = 0
@@ -202,19 +170,19 @@ class SvgBase(XmlWriter):
     assert vw >= 0 # type: ignore
     assert vh >= 0 # type: ignore
     add_opt_attrs(attrs, id=id, viewBox=f'{vx} {vy} {vw} {vh}')
-    return self.sub('symbol', attrs)
+    return self.child(SvgWriter, tag='symbol', attrs=attrs)
 
 
-  def text(self, pos:Vec=None, *, x:Num=None, y:Num=None, text:str=None, alignment_baseline:str=None, **attrs:Any) -> None:
+  def text(self, pos:Vec=None, *, x:Num=None, y:Num=None, alignment_baseline:str=None, text:str=None, **attrs:Any) -> None:
     'Output an SVG `text` element.'
+    assert text is not None
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
     if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
-    assert text is not None
-    self.leaf_text('text', attrs=attrs, text=text)
+    self.child(SvgWriter, tag='text', attrs=attrs, children=[text]).close()
 
 
   def use(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> None:
@@ -230,7 +198,7 @@ class SvgBase(XmlWriter):
       assert h is None
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, href=id, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    return self.leaf('use', attrs)
+    self.child(SvgWriter, tag='use', attrs=attrs).close()
 
 
   # High level.
@@ -250,10 +218,10 @@ class SvgBase(XmlWriter):
     y_end = y + h
     class_ = attrs.setdefault('class_', 'grid')
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
-    with self.g(**attrs):
-      for tick in NumRange(x_start, x_end, sx): self.line((tick, y), (tick, y_end)) # Vertical lines.
-      for tick in NumRange(y_start, y_end, sy): self.line((x, tick), (x_end, tick)) # Horizontal lines.
-      self.rect(class_=class_+'-border', x=x, y=y, w=w, h=h, r=corner_radius, fill='none')
+    with self.g(**attrs) as g:
+      for tick in NumRange(x_start, x_end, sx): g.line((tick, y), (tick, y_end)) # Vertical lines.
+      for tick in NumRange(y_start, y_end, sy): g.line((x, tick), (x_end, tick)) # Horizontal lines.
+      g.rect(class_=class_+'-border', x=x, y=y, w=w, h=h, r=corner_radius, fill='none')
 
 
   def plot(self, pos:Vec=(0,0), size:Vec=(512,1024),
@@ -269,7 +237,9 @@ class SvgBase(XmlWriter):
    tick_x:Tick=False, tick_y:Tick=False,
    dbg=False,
    **attrs:Any) -> 'Plot':
-    return Plot(file=self.file, pos=pos, size=size, series=series,
+
+    return self.child(Plot, attrs=attrs,
+      pos=pos, size=size, series=series,
       title=title,
       title_h=title_h,
       tick_h=tick_h, tick_w=tick_w,
@@ -280,15 +250,17 @@ class SvgBase(XmlWriter):
       tick_step=tick_step,
       tick_x=tick_x,
       tick_y=tick_y,
-      dbg=dbg,
-      **attrs)
+      dbg=dbg)
 
 
-class SvgWriter(SvgBase):
+class Svg(SvgWriter):
   '''
-  SvgWriter is a ContextManager class that outputs SVG code to a file (stdout by default).
+  Svg is a ContextManager class that outputs SVG code to a file (stdout by default).
   Like its parent class XmlWriter, it uses the __enter__ and __exit__ methods to automatically output open and close tags.
   '''
+
+  tag = 'svg'
+
   def __init__(self, file:TextIO=None, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
    vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, **attrs:Any) -> None:
     if pos is not None:
@@ -317,16 +289,17 @@ class SvgWriter(SvgBase):
       **attrs
     }
     add_opt_attrs(attrs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
-    super().__init__(tag='svg', file=file, attrs=attrs)
+    assert not isinstance(file, str)
+    super().__init__(file=file, attrs=attrs)
 
 
 # Plots.
 
-Plotter = Callable[[SvgBase, PointTransform, Tuple], None]
+Plotter = Callable[[SvgWriter, PointTransform, Tuple], None]
 
 def circle_plotter(r:Num=1, **attrs:Any) -> Plotter:
   attrs.setdefault('class_', 'series')
-  def plotter(svg:SvgBase, transform:PointTransform, point:Tuple) -> None:
+  def plotter(svg:SvgWriter, transform:PointTransform, point:Tuple) -> None:
     svg.circle(transform(point), r=r, title=', '.join(str(f) for f in point))
   return plotter
 
@@ -335,7 +308,7 @@ class PlotSeries:
 
   bounds:Optional[Tuple[Vec, Vec]] = None # Overridden by subclasses.
 
-  def render(self, svg:SvgBase, transform:PointTransform) -> None: raise NotImplementedError
+  def render(self, svg:SvgWriter, transform:PointTransform) -> None: raise NotImplementedError
 
 
 
@@ -363,11 +336,11 @@ class XYSeries(PlotSeries):
       self.bounds = ((min_x, min_y), (max_x, max_y))
 
 
-  def render(self, svg:SvgBase, transform:PointTransform) -> None:
+  def render(self, svg:SvgWriter, transform:PointTransform) -> None:
     # TODO: collect and return out-of-bounds points.
     assert self.plotter is not None
-    with svg.g(**self.attrs):
-      for p in self.points: self.plotter(svg, transform, p)
+    with svg.g(**self.attrs) as g:
+      for p in self.points: self.plotter(g, transform, p)
 
 
 class LineSeries(XYSeries):
@@ -376,18 +349,21 @@ class LineSeries(XYSeries):
     super().__init__(name=name, points=points, plotter=plotter, **attrs)
 
 
-  def render(self, svg:SvgBase, transform:PointTransform) -> None:
-    with svg.g(**self.attrs):
-      svg.polyline(points=(transform(p) for p in self.points), fill='none')
+  def render(self, svg:SvgWriter, transform:PointTransform) -> None:
+    with svg.g(**self.attrs) as g:
+      g.polyline(points=(transform(p) for p in self.points), fill='none')
       # TODO: option to fill polylines.
       if self.plotter is not None:
-        for p in self.points: self.plotter(svg, transform, p)
+        for p in self.points: self.plotter(g, transform, p)
 
 
-class Plot(SvgBase):
+class Plot(SvgWriter):
 
-  def __init__(self, file:TextIO, pos:Vec=(0,0), size:Vec=(512,1024),
-   *, series:Sequence[PlotSeries],
+  tag = 'g'
+
+  def __init__(self, *, tag:str, file:TextIO, attrs:XmlAttrs=None, children:Iterable[Any],
+   pos:Vec=(0,0), size:Vec=(512,1024),
+   series:Sequence[PlotSeries],
    title:str=None,
    title_h:Num=0,
    tick_h:Num=0, tick_w:Num=0,
@@ -397,14 +373,14 @@ class Plot(SvgBase):
    grid_step:VecOrNum=5,
    tick_step:VecOrNum=10,
    tick_x:Tick=False, tick_y:Tick=False,
-   dbg=False,
-   **attrs:Any) -> None:
+   dbg=False) -> None:
 
+    attrs = attrs or {}
     pos = f2_for_vec(pos)
     # Initialize as `g` element.
     attrs.setdefault('class_', 'plot')
     attrs['transform'] = translate(*pos)
-    super().__init__(tag='g', file=file, attrs=attrs)
+    super().__init__(tag=tag, file=file, attrs=attrs)
 
     title_h = float(title_h)
 
@@ -529,14 +505,14 @@ class Plot(SvgBase):
       g_start_x = (min_x//gsx + 1) * gsx # Skip line index 0 because it is always <= low border.
       g_start_y = (min_y//gsy + 1) * gsy # Skip line index 0 because it is always <= low border.
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
-    with self.g(class_='grid'):
-      for g in NumRange(g_start_x, max_x, gsx): # X axis.
-        gx = transform_x(g)
-        self.line((gx, grid_y), (gx, grid_b)) # Vertical lines.
-      for g in NumRange(g_start_y, max_y, gsy):
-        gy = transform_y(g)
-        self.line((grid_x, gy), (grid_r, gy)) # Horizontal lines.
-      self.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
+    with self.g(class_='grid') as g:
+      for gx in NumRange(g_start_x, max_x, gsx): # X axis.
+        tgx = transform_x(gx)
+        g.line((tgx, grid_y), (tgx, grid_b)) # Vertical lines.
+      for gy in NumRange(g_start_y, max_y, gsy):
+        tgy = transform_y(gy)
+        g.line((grid_x, tgy), (grid_r, tgy)) # Horizontal lines.
+      g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
 
     # Axes.
     if min_y <= 0 and max_y >= 0: # Draw X axis.
@@ -554,7 +530,7 @@ class Plot(SvgBase):
     txi, txr = divmod(min_x, tsx)
     tyi, tyr = divmod(min_y, tsy)
     t_start_x = txi*tsx + (txr and tsx)
-    t_start_y = tyi*tsx + (tyr and tsy)
+    t_start_y = tyi*tsy + (tyr and tsy)
 
     if tick_x:
       if not callable(tick_x): tick_x = str
@@ -574,6 +550,11 @@ class Plot(SvgBase):
     for s in series:
       s.render(self, transform)
 
+
+# Elements.
+
+class SvgTitle(SvgWriter):
+  tag = 'title'
 
 
 # Transforms.
