@@ -5,14 +5,28 @@
 
 # format is:
 
-# 12:00 begin
-# 18:30 change tasks
-# 24:00 end = 12:00
+# (YYYY-)?MM-DD
+# 12:00 begin some task.
+# 18:30 change tasks.
+# 24:00 end the task = 12:00.
+# +$100 cost of materials.
+# -$100 a payment.
 
 import os
 import re
 from argparse import ArgumentParser
+from dataclasses import dataclass
 from pithy.io import *
+from typing import List, Optional
+
+
+@dataclass
+class Day:
+  day: str
+  minutes: int = 0
+
+  def __str__(self) -> str:
+    return '{}: {:>2}:{:02}'.format(self.day, *divmod(self.minutes, 60))
 
 
 def main():
@@ -24,7 +38,7 @@ def main():
   path = args.timesheet
   hourly_rate = args.rate
 
-
+  days:List[Day] = []
   start_minutes = None
   end_minutes   = None
   total_minutes = 0
@@ -39,29 +53,43 @@ def main():
   for line in f:
     l = line.rstrip('\n')
     outZ(f'{l:64}')
-    time_match = time_re.match(line)
 
+    day_match = day_re.match(line)
+    if day_match:
+      outL('(day)')
+      if start_minutes is not None or end_minutes is not None:
+        exit(f'timesheet error: previous day is missing end time.')
+      days.append(Day(day_match[0]))
+      continue
+
+    time_match = time_re.match(line)
     if time_match:
       m = minutes(time_match)
       if start_minutes is None: start_minutes = m
-      else: end_minutes = m
+      else: end_minutes = m # Cumulative from last start.
       outZ(f'|{m:4} ')
 
     subtotal_match = subtotal_re.search(line)
-
     if subtotal_match:
+      if not time_match:
+        outL()
+        exit(f'timesheet error: subtotal line does not specify a time.')
       if start_minutes is None or end_minutes is None:
         outL()
-        exit(f'ERROR: subtotal line has invalid time.')
+        exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
       sub_minutes = end_minutes - start_minutes
-      total_minutes += sub_minutes
-      start_minutes = None
-      end_minutes = None
       m = minutes(subtotal_match)
       outZ(f'= {sub_minutes:4}m')
       if m != sub_minutes:
         outZ(f' *** found: {m}; calculated: {sub_minutes}')
         valid = False
+      if sub_minutes <= 0:
+        outL()
+        exit(f'timesheet error: subtototal is negative')
+      days[-1].minutes += sub_minutes
+      total_minutes += sub_minutes
+      start_minutes = None
+      end_minutes = None
 
     money_match = money_re.match(line)
     if money_match:
@@ -86,21 +114,25 @@ def main():
     hourly_string = ''
 
   outL()
+  outL(f'DAYS:')
+  for day in days: outL(day)
+
+  outL()
   outL(f'TOTAL HOURS:   {hours:2}:{rem_minutes:02}{hourly_string}')
   outL(f'TOTAL EXPENSE: ${total_expense:,.2f}')
   outL(f'TOTAL PAYMENT: ${total_payment:,.2f}')
   outL(f'TOTAL:         ${total:,.2f}')
 
   if not valid:
-    outL('*** INVALID ***')
+    exit('*** INVALID ***')
 
 
 def minutes(match):
   return int(match.group(1)) * 60 + int(match.group(2))
 
-
-time_re     = re.compile(r'(\d{2}):(\d{2}) ')
-subtotal_re = re.compile(r'= (\d{1,2}):(\d{2})')
+day_re      = re.compile(r'(?:(\d\d\d\d)-)?(\d\d)-(\d\d)')
+time_re     = re.compile(r'(\d\d):(\d\d) ')
+subtotal_re = re.compile(r'= (\d{1,2}):(\d\d)')
 money_re    = re.compile(r'([+-])\s*\$(\d+)(\.?\d*)')
 
 
