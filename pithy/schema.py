@@ -74,19 +74,19 @@ def _unique_el(counter: Counter) -> Any:
   raise ValueError(counter)
 
 
-def _write_schema(f: TextIO, schema: Schema, count_atoms: bool, inline: bool, indent: str, root: bool) -> None:
+def _write_schema(file: TextIO, schema: Schema, count_atoms: bool, inline: bool, indent: str, root: bool) -> None:
   '''
   Note: _write_schema expects its caller to not have emitted a trailing newline.
   This allows it to decide whether or not to inline monomorphic type information.
   '''
 
   def put(*items: Any):
-    print(*items, sep='', end='', file=f)
+    print(*items, sep='', end='', file=file)
 
   def put_types(prefix: str, symbol: str, subindent: str, types: dict):
     for t, subschema, in sorted(types.items(), key=lambda item: item[0].__name__):
       put(prefix, symbol, t.__name__)
-      _write_schema(f, subschema, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
+      _write_schema(file, subschema, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
 
   if not any(schema): # should only happen for root; other schemas are created on demand.
     put(indent, 'empty')
@@ -114,16 +114,16 @@ def _write_schema(f: TextIO, schema: Schema, count_atoms: bool, inline: bool, in
       put_types(prefix=prefix, symbol=': ', subindent=(indent + '. '), types=types)
 
 
-def write_schema(f: TextIO, schema: Optional[Schema]=None, count_atoms=False, inline=True, indent='', end='\n') -> None:
+def write_schema(file: TextIO, schema: Optional[Schema]=None, count_atoms=False, inline=True, indent='', end='\n') -> None:
   '''
-  Write `schema` to file `f`.
+  Write `schema` to file `file`.
   If `count_atoms` is true, then histograms of atom values are emitted.
   If `inline` is false, then monomorphic type names are never inlined,
   resulting in longer but more regular output.
   '''
   if schema is None:
-    f.write(indent + 'empty')
+    file.write(indent + 'empty')
   else:
-    _write_schema(f, schema=schema, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
-  f.write(end)
+    _write_schema(file, schema=schema, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
+  file.write(end)
 
