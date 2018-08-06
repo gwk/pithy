@@ -475,10 +475,10 @@ class Plot(SvgWriter):
       'Translate a point to appear coincident with the data space.'
       x = float(point[0])
       y = float(point[1])
-      return (grid_x + scale_x*(x-min_x), grid_y + scale_y*(data_h - (y-min_y))) # type: ignore
+      return (round(grid_x + scale_x*(x-min_x), 1), round(grid_y + scale_y*(data_h - (y-min_y)), 1)) # type: ignore
 
-    def transform_x(x:Num) -> float: return grid_x + scale_x*(float(x) - min_x) # type: ignore
-    def transform_y(y:Num) -> float: return grid_y + scale_y*(data_h - (float(y)-min_y)) # type: ignore
+    def transform_x(x:Num) -> float: return round(grid_x + scale_x*(float(x) - min_x), 1) # type: ignore
+    def transform_y(y:Num) -> float: return round(grid_y + scale_y*(data_h - (float(y)-min_y)), 1) # type: ignore
 
     self.transform = transform
     self.transform_x = transform_x
