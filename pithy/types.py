@@ -2,10 +2,10 @@
 
 from abc import ABCMeta, abstractmethod
 from collections import Counter as _Counter
-from typing import *
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 NoneType = type(None)
 Opt = Optional
@@ -37,7 +37,7 @@ def is_a(val:Any, Type:Any) -> bool:
       else:
         K, V = args
       return isinstance(val, RTT) and all(is_a(k, K) and is_a(v, V) for (k, v) in val.items())
-    elif len(args) == 1: # Assume T is a single-parameter generic container.
+    elif len(args) == 1: # Assume `Type` is a single-parameter generic container.
       E = args[0]
       return isinstance(val, RTT) and all(is_a(el, E) for el in val)
     else:
@@ -107,7 +107,7 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
-def req_type(obj: T, expected: Union[type, Tuple[type, ...]]) -> T:
+def req_type(obj: _T, expected: Union[type, Tuple[type, ...]]) -> _T:
   'Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.'
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')

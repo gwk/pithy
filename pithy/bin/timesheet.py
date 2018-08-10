@@ -17,7 +17,7 @@ import re
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pithy.io import *
-from typing import List, Optional
+from typing import List, Match, Optional
 
 
 @dataclass
@@ -29,7 +29,7 @@ class Day:
     return '{}: {:>2}:{:02}'.format(self.day, *divmod(self.minutes, 60))
 
 
-def main():
+def main() -> None:
   parser = ArgumentParser(description='Validate timesheets.')
   parser.add_argument('timesheet', nargs='?', default='timesheet.txt')
   parser.add_argument('-rate', type=int, default=0)
@@ -41,9 +41,9 @@ def main():
   days:List[Day] = []
   start_minutes = None
   end_minutes   = None
-  total_minutes = 0
-  total_payment = 0
-  total_expense = 0
+  total_minutes = 0.0
+  total_payment = 0.0
+  total_expense = 0.0
 
   valid = True
 
@@ -127,7 +127,7 @@ def main():
     exit('*** INVALID ***')
 
 
-def minutes(match):
+def minutes(match:Match) -> int:
   return int(match.group(1)) * 60 + int(match.group(2))
 
 day_re      = re.compile(r'(?:(\d\d\d\d)-)?(\d\d)-(\d\d)')

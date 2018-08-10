@@ -7,11 +7,11 @@ import shlex
 
 from itertools import zip_longest
 from string import Template
-from typing import * # type: ignore
+from typing import Callable, Dict, Set, cast
 
 from pithy.fs import *
 from pithy.io import *
-from pithy.types import * # type: ignore
+from pithy.types import *
 
 from .ctx import Ctx
 
