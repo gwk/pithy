@@ -516,11 +516,11 @@ class Plot(SvgWriter):
 
     # Axes.
     if min_y <= 0 and max_y >= 0: # Draw X axis.
-      x0 = transform_x(0)
-      self.line((x0, grid_y), (x0, grid_b), class_='axis', id='x-axis')
-    if min_x <= 0 and max_x >= 0: # Draw Y axis.
       y0 = transform_y(0)
-      self.line((grid_x, y0), (grid_r, y0), class_='axis', id='y-axis')
+      self.line((grid_x, y0), (grid_r, y0), class_='axis', id='x-axis')
+    if min_x <= 0 and max_x >= 0: # Draw Y axis.
+      x0 = transform_x(0)
+      self.line((x0, grid_y), (x0, grid_b), class_='axis', id='y-axis')
 
     # Ticks.
     dbg_rect((grid_x, grid_b), (grid_w, tick_h), fill='#088') # X axis ticks.
