@@ -40,6 +40,15 @@ def iter_from(iterable: Iterable[T], start: int) -> Iterator[T]:
   return it
 
 
+def iter_unique(iterable: Iterable[T]) -> Iterator[T]:
+  prev:Any = object()
+  for el in iterable:
+    if el != prev:
+      yield el
+      prev = el
+
+
+
 def extent(iterable: Iterable[C], key: Callable[[C], CK]=None, default: Optional[C]=None) -> Tuple[C, C]:
   it = iter(iterable)
   first = next(it) if default is None else next(it, default)

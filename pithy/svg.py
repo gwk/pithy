@@ -5,6 +5,7 @@ SVG writer.
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
+from .iterable import iter_unique
 from .num import Num, NumRange
 from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from html import escape as html_escape
@@ -356,7 +357,7 @@ class LineSeries(XYSeries):
 
   def render(self, plot:'Plot') -> None:
     with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
-      g.polyline(points=(plot.transform(p) for p in self.points), fill='none')
+      g.polyline(points=iter_unique(plot.transform(p) for p in self.points), fill='none')
       # TODO: option to fill polylines.
       if self.plotter is not None:
         for p in self.points: self.plotter(g, plot.transform, p)
