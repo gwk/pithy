@@ -55,6 +55,11 @@ class SvgWriter(XmlWriter):
     self.child(SvgWriter, tag='circle', attrs=attrs).close()
 
 
+  def clipPath(self, **attrs:Any) -> 'SvgWriter':
+    'Output an SVG `clipPath` element.'
+    return self.child(SvgWriter, tag='clipPath', attrs=attrs)
+
+
   def defs(self, **attrs:Any) -> 'SvgWriter':
     'Output an SVG `defs` element.'
     return self.child(SvgWriter, tag='defs', attrs=attrs)
@@ -308,7 +313,7 @@ class PlotSeries:
 
   bounds:Optional[Tuple[Vec, Vec]] = None # Overridden by subclasses.
 
-  def render(self, svg:SvgWriter, transform:PointTransform) -> None: raise NotImplementedError
+  def render(self, plot:'Plot') -> None: raise NotImplementedError
 
 
 
@@ -336,11 +341,11 @@ class XYSeries(PlotSeries):
       self.bounds = ((min_x, min_y), (max_x, max_y))
 
 
-  def render(self, svg:SvgWriter, transform:PointTransform) -> None:
+  def render(self, plot:'Plot') -> None:
     # TODO: collect and return out-of-bounds points.
     assert self.plotter is not None
-    with svg.g(**self.attrs) as g:
-      for p in self.points: self.plotter(g, transform, p)
+    with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
+      for p in self.points: self.plotter(g, plot.transform, p)
 
 
 class LineSeries(XYSeries):
@@ -349,12 +354,12 @@ class LineSeries(XYSeries):
     super().__init__(name=name, points=points, plotter=plotter, **attrs)
 
 
-  def render(self, svg:SvgWriter, transform:PointTransform) -> None:
-    with svg.g(**self.attrs) as g:
-      g.polyline(points=(transform(p) for p in self.points), fill='none')
+  def render(self, plot:'Plot') -> None:
+    with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
+      g.polyline(points=(plot.transform(p) for p in self.points), fill='none')
       # TODO: option to fill polylines.
       if self.plotter is not None:
-        for p in self.points: self.plotter(g, transform, p)
+        for p in self.points: self.plotter(g, plot.transform, p)
 
 
 class Plot(SvgWriter):
@@ -514,6 +519,11 @@ class Plot(SvgWriter):
         g.line((grid_x, tgy), (grid_r, tgy)) # Horizontal lines.
       g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
 
+    # Clip.
+    with self.clipPath(id='plot-clip') as clipPath:
+      clipPath.rect(pos=grid_pos, size=grid_size, r=corner_radius)
+    self.plot_clip_path = 'url(#plot-clip)'
+
     # Axes.
     if min_y <= 0 and max_y >= 0: # Draw X axis.
       y0 = transform_y(0)
@@ -548,7 +558,7 @@ class Plot(SvgWriter):
 
     # Series.
     for s in series:
-      s.render(self, transform)
+      s.render(self)
 
 
 # Elements.

@@ -2,51 +2,54 @@
 <g class="plot" transform="translate(5,5)">
 <text class="title" text-anchor="left" x="32" y="6" alignment-baseline="middle">Identity and Sin</text>
 <g class="grid">
-<line x1="123.75" y1="12" x2="123.75" y2="187"/>
+<line x1="123.8" y1="12" x2="123.8" y2="187"/>
 <line x1="215.5" y1="12" x2="215.5" y2="187"/>
-<line x1="307.25" y1="12" x2="307.25" y2="187"/>
-<line x1="32" y1="165.125" x2="399" y2="165.125"/>
-<line x1="32" y1="143.25" x2="399" y2="143.25"/>
-<line x1="32" y1="121.375" x2="399" y2="121.375"/>
+<line x1="307.2" y1="12" x2="307.2" y2="187"/>
+<line x1="32" y1="165.1" x2="399" y2="165.1"/>
+<line x1="32" y1="143.2" x2="399" y2="143.2"/>
+<line x1="32" y1="121.4" x2="399" y2="121.4"/>
 <line x1="32" y1="99.5" x2="399" y2="99.5"/>
-<line x1="32" y1="77.625" x2="399" y2="77.625"/>
-<line x1="32" y1="55.75" x2="399" y2="55.75"/>
-<line x1="32" y1="33.875" x2="399" y2="33.875"/>
+<line x1="32" y1="77.6" x2="399" y2="77.6"/>
+<line x1="32" y1="55.8" x2="399" y2="55.8"/>
+<line x1="32" y1="33.9" x2="399" y2="33.9"/>
 <rect class="grid-border" fill="none" x="32" y="12" width="367" height="175"/>
 </g>
-<line class="axis" id="x-axis" x1="32" y1="12" x2="32" y2="187"/>
-<line class="axis" id="y-axis" x1="32" y1="99.5" x2="399" y2="99.5"/>
+<clipPath id="plot-clip">
+<rect x="32" y="12" width="367" height="175"/>
+</clipPath>
+<line class="axis" id="x-axis" x1="32" y1="99.5" x2="399" y2="99.5"/>
+<line class="axis" id="y-axis" x1="32" y1="12" x2="32" y2="187"/>
 <line class="tick" x1="32" y1="187" x2="32" y2="189"/>
 <text class="tick" x="33" y="189" alignment-baseline="hanging">0.0</text>
-<line class="tick" x1="123.75" y1="187" x2="123.75" y2="189"/>
-<text class="tick" x="124.75" y="189" alignment-baseline="hanging">0.25</text>
+<line class="tick" x1="123.8" y1="187" x2="123.8" y2="189"/>
+<text class="tick" x="124.8" y="189" alignment-baseline="hanging">0.25</text>
 <line class="tick" x1="215.5" y1="187" x2="215.5" y2="189"/>
 <text class="tick" x="216.5" y="189" alignment-baseline="hanging">0.5</text>
-<line class="tick" x1="307.25" y1="187" x2="307.25" y2="189"/>
-<text class="tick" x="308.25" y="189" alignment-baseline="hanging">0.75</text>
+<line class="tick" x1="307.2" y1="187" x2="307.2" y2="189"/>
+<text class="tick" x="308.2" y="189" alignment-baseline="hanging">0.75</text>
 <line class="tick" x1="30" y1="187" x2="32" y2="187"/>
 <text class="tick" text-anchor="end" x="29" y="187" alignment-baseline="middle">-1.0</text>
-<line class="tick" x1="30" y1="165.125" x2="32" y2="165.125"/>
-<text class="tick" text-anchor="end" x="29" y="165.125" alignment-baseline="middle">-0.75</text>
-<line class="tick" x1="30" y1="143.25" x2="32" y2="143.25"/>
-<text class="tick" text-anchor="end" x="29" y="143.25" alignment-baseline="middle">-0.5</text>
-<line class="tick" x1="30" y1="121.375" x2="32" y2="121.375"/>
-<text class="tick" text-anchor="end" x="29" y="121.375" alignment-baseline="middle">-0.25</text>
+<line class="tick" x1="30" y1="165.1" x2="32" y2="165.1"/>
+<text class="tick" text-anchor="end" x="29" y="165.1" alignment-baseline="middle">-0.75</text>
+<line class="tick" x1="30" y1="143.2" x2="32" y2="143.2"/>
+<text class="tick" text-anchor="end" x="29" y="143.2" alignment-baseline="middle">-0.5</text>
+<line class="tick" x1="30" y1="121.4" x2="32" y2="121.4"/>
+<text class="tick" text-anchor="end" x="29" y="121.4" alignment-baseline="middle">-0.25</text>
 <line class="tick" x1="30" y1="99.5" x2="32" y2="99.5"/>
 <text class="tick" text-anchor="end" x="29" y="99.5" alignment-baseline="middle">0.0</text>
-<line class="tick" x1="30" y1="77.625" x2="32" y2="77.625"/>
-<text class="tick" text-anchor="end" x="29" y="77.625" alignment-baseline="middle">0.25</text>
-<line class="tick" x1="30" y1="55.75" x2="32" y2="55.75"/>
-<text class="tick" text-anchor="end" x="29" y="55.75" alignment-baseline="middle">0.5</text>
-<line class="tick" x1="30" y1="33.875" x2="32" y2="33.875"/>
-<text class="tick" text-anchor="end" x="29" y="33.875" alignment-baseline="middle">0.75</text>
+<line class="tick" x1="30" y1="77.6" x2="32" y2="77.6"/>
+<text class="tick" text-anchor="end" x="29" y="77.6" alignment-baseline="middle">0.25</text>
+<line class="tick" x1="30" y1="55.8" x2="32" y2="55.8"/>
+<text class="tick" text-anchor="end" x="29" y="55.8" alignment-baseline="middle">0.5</text>
+<line class="tick" x1="30" y1="33.9" x2="32" y2="33.9"/>
+<text class="tick" text-anchor="end" x="29" y="33.9" alignment-baseline="middle">0.75</text>
 <line class="tick" x1="30" y1="12" x2="32" y2="12"/>
 <text class="tick" text-anchor="end" x="29" y="12" alignment-baseline="middle">1.0</text>
-<g id="identity" class="series">
-<polyline fill="none" points="32,99.5 54.9375,94.03125 77.875,88.5625 100.8125,83.09375 123.75,77.625 146.6875,72.15625 169.625,66.6875 192.5625,61.21875 215.5,55.75 238.4375,50.28125 261.375,44.8125 284.3125,39.34375 307.25,33.875 330.1875,28.40625 353.125,22.9375 376.0625,17.46875 399,12"/>
+<g clip-path="url(#plot-clip)" id="identity" class="series">
+<polyline fill="none" points="32,99.5 54.9,94 77.9,88.6 100.8,83.1 123.8,77.6 146.7,72.2 169.6,66.7 192.6,61.2 215.5,55.8 238.4,50.3 261.4,44.8 284.3,39.3 307.2,33.9 330.2,28.4 353.1,22.9 376.1,17.5 399,12"/>
 </g>
-<g id="sin" class="series">
-<polyline fill="none" points="32,99.5 54.9375,66.01519966805463 77.875,37.628156646177096 100.8125,18.66054090526241 123.75,12 146.6875,18.66054090526241 169.625,37.628156646177096 192.5625,66.01519966805463 215.5,99.49999999999999 238.4375,132.98480033194534 261.375,161.3718433538229 284.3125,180.33945909473758 307.25,187 330.1875,180.33945909473758 353.125,161.37184335382292 376.0625,132.98480033194542 399,99.50000000000001"/>
+<g clip-path="url(#plot-clip)" id="sin" class="series">
+<polyline fill="none" points="32,99.5 54.9,66 77.9,37.6 100.8,18.7 123.8,12 146.7,18.7 169.6,37.6 192.6,66 215.5,99.5 238.4,133 261.4,161.4 284.3,180.3 307.2,187 330.2,180.3 353.1,161.4 376.1,133 399,99.5"/>
 </g>
 </g>
 </svg>
