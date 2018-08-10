@@ -10,6 +10,7 @@ import inspect as _inspect
 from os.path import relpath as _rel_path
 from sys import stderr as _stderr
 from traceback import print_exception as _print_exception
+from typing import Any, Callable, Dict, Iterable, Tuple
 
 
 __all__ = [
@@ -26,7 +27,7 @@ _utest_test_count = 0
 _utest_failure_count = 0
 
 
-def utest(exp, fn, *args, _utest_depth=0, **kwargs):
+def utest(exp:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is raised or the returned value does not equal `exp`.
@@ -41,7 +42,7 @@ def utest(exp, fn, *args, _utest_depth=0, **kwargs):
       _utest_failure(_utest_depth, exp_label='value', exp=exp, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
+def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -56,7 +57,7 @@ def utest_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq(exp_seq, fn, *args, _utest_depth=0, **kwargs):
+def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is raised,
@@ -79,7 +80,7 @@ def utest_seq(exp_seq, fn, *args, _utest_depth=0, **kwargs):
     _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
+def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -97,7 +98,7 @@ def utest_seq_exc(exp_exc, fn, *args, _utest_depth=0, **kwargs):
 
 
 
-def utest_val(exp_val, act_val, desc='<value>'):
+def utest_val(exp_val:Any, act_val:Any, desc='<value>') -> None:
   '''
   Log a test failure if `exp_val` does not equal `act_val`.
   Describe the test with the optional `desc`.
@@ -108,7 +109,7 @@ def utest_val(exp_val, act_val, desc='<value>'):
     _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def usymmetric(test_fn, exp, fn, *args, _utest_depth=0, **kwargs):
+def usymmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Apply `test_fn` to the provided arguments,
   then again to the same arguments but with the last two positional parameters swapped.
@@ -120,7 +121,8 @@ def usymmetric(test_fn, exp, fn, *args, _utest_depth=0, **kwargs):
   test_fn(exp, fn, *args_swapped, _utest_depth=_utest_depth+1, **kwargs)
 
 
-def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, subj=None, args=(), kwargs={}):
+def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str=None, ret:Any=None, exc:Any=None, subj:Any=None,
+ args:Tuple[Any,...]=(), kwargs:Dict[str,Any]={}) -> None:
   global _utest_failure_count
   assert subj is not None
   _utest_failure_count += 1
@@ -148,7 +150,7 @@ def _utest_failure(depth, exp_label, exp, ret_label=None, ret=None, exc=None, su
   _errL()
 
 
-def _compare_exceptions(exp, act):
+def _compare_exceptions(exp:Any, act:Any) -> bool:
   '''
   Compare two exceptions for approximate value equality.
   Since Python exceptions do not implement value equality, we offer several methods of comparison:
@@ -161,11 +163,11 @@ def _compare_exceptions(exp, act):
   return type(exp) == type(act) and exp.args == act.args
 
 
-def _errL(*items): print(*items, sep='', file=_stderr)
+def _errL(*items:Any) -> None: print(*items, sep='', file=_stderr)
 
 
 @_atexit.register
-def report(): #!cov-ignore - the call to _exit kills coven before it records anything.
+def report() -> None: #!cov-ignore - the call to _exit kills coven before it records anything.
   'At process exit, if any test failures occured, print a summary message and force process to exit with status code 1.'
   from os import _exit
   if _utest_failure_count > 0:

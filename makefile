@@ -42,7 +42,7 @@ test/%: _phony
 	iotest -fail-fast $@
 
 typecheck:
-	craft-py-check iotest pithy
+	craft-py-check iotest pithy utest.py
 
 test-diff:
 	test-diff/test.py

@@ -14,7 +14,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 36, in utest
+~   File ".+/utest.py", line \d+, in utest
 |     try: ret = fn(*args, **kwargs)
 |   File "./fail.py", line 6, in raise_unexpected
 |     def raise_unexpected(): raise Exception('unexpected')
@@ -32,7 +32,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 51, in utest_exc
+~   File ".+/utest.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |   File "./fail.py", line 6, in raise_unexpected
 |     def raise_unexpected(): raise Exception('unexpected')
@@ -45,7 +45,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 69, in utest_seq
+~   File ".+/utest.py", line \d+, in utest_seq
 |     ret_seq = fn(*args, **kwargs)
 |   File "./fail.py", line 6, in raise_unexpected
 |     def raise_unexpected(): raise Exception('unexpected')
@@ -65,7 +65,7 @@
 |     exc arg 0: "'int' object is not iterable"
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 74, in utest_seq
+~   File ".+/utest.py", line \d+, in utest_seq
 |     ret = list(ret_seq)
 | TypeError: 'int' object is not iterable
 |
@@ -82,7 +82,7 @@
 |     exc arg 0: "'int' object is not iterable"
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 91, in utest_seq_exc
+~   File ".+/utest.py", line \d+, in utest_seq_exc
 |     ret = list(ret_seq)
 | TypeError: 'int' object is not iterable
 |
@@ -94,7 +94,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 91, in utest_seq_exc
+~   File ".+/utest.py", line \d+, in utest_seq_exc
 |     ret = list(ret_seq)
 |   File "./fail.py", line 24, in yield_then_raise
 |     raise Exception('unexpected')
@@ -128,7 +128,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 51, in utest_exc
+~   File ".+/utest.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |   File "./fail.py", line 31, in add
 |     def add(a, b): return int(a) + int(b)
@@ -143,7 +143,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 51, in utest_exc
+~   File ".+/utest.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |   File "./fail.py", line 31, in add
 |     def add(a, b): return int(a) + int(b)
@@ -175,7 +175,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 51, in utest_exc
+~   File ".+/utest.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |   File "./fail.py", line 35, in a_plus_bc
 |     def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
@@ -191,7 +191,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/utest.py", line 51, in utest_exc
+~   File ".+/utest.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |   File "./fail.py", line 35, in a_plus_bc
 |     def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
