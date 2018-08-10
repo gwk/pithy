@@ -7,9 +7,9 @@ XML tools.
 from enum import Enum
 from html import escape as html_escape
 from io import StringIO
-from itertools import chain
+from itertools import chain, count
 from types import TracebackType
-from typing import Any, ContextManager, Dict, Iterable, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, ContextManager, Dict, Iterable, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
 from .io import errSL
 
 
@@ -17,6 +17,7 @@ _XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
 
 XmlAttrs = Optional[Dict[str,Any]]
 
+_Counter = Iterator[int]
 
 class XmlWriter(ContextManager):
   '''
@@ -32,7 +33,9 @@ class XmlWriter(ContextManager):
   can_auto_close_tags = True # Allows "void" or "self-closing" elements, e.g. <TAG />. False for HTML.
   tag:str = '' # Subclasses can specify a tag.
 
-  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None,
+    _id_counter:_Counter=None, _class_counter:_Counter=None,
+   **kwargs:Any) -> None:
     '''
     `children` and `attrs` are provided as named parameters to avoid excessive copying into `args` and `kwargs`.
     `attrs` also allows for XML attributes that contain non-identifier characters.
@@ -42,7 +45,9 @@ class XmlWriter(ContextManager):
     if not self.tag: raise Exception(f'{type(self)}: neither type-level tag nor argument tag specified')
     self.context_depth = 0
     self.is_closed = False
-    self.open_child: Optional['XmlWriter'] = None
+    self.open_child:Optional['XmlWriter'] = None
+    self._id_counter:_Counter = _id_counter or count()
+    self._class_counter:_Counter = _class_counter or count()
 
     # An Ellipsis indicates that the children should be printed one per line,
     # and that the element should not be immediately closed.
@@ -58,7 +63,7 @@ class XmlWriter(ContextManager):
       else:
         child_strs.append(esc_xml_text(child))
 
-    # If there is the possibility of self-closing the tag, then leave open tag incomplete.
+    # If there is the possibility of self-closing the element, then leave the open-tag incomplete.
     self.is_open_tag_incomplete = self.can_auto_close_tags and not (child_strs or has_ellipsis)
     close_now = (child_strs and not has_ellipsis)
 
@@ -144,7 +149,8 @@ class XmlWriter(ContextManager):
     assert not self.is_closed
     self.check_open_child()
     self.complete_open_tag()
-    self.open_child = child_class(*args, tag=tag, file=self.file, attrs=attrs, children=children, **kwargs)
+    self.open_child = child_class(*args, tag=tag, file=self.file, attrs=attrs, children=children,
+     _id_counter=self._id_counter, _class_counter=self._class_counter, **kwargs)
     return self.open_child
 
 
@@ -167,6 +173,17 @@ class XmlWriter(ContextManager):
         k = self.replaced_attrs.get(k, k)
       parts.append(f' {esc_xml_attr(k.replace("_", "-"))}="{esc_xml_attr(v)}"')
     return ''.join(parts)
+
+
+  def gen_id(self) -> str:
+    if self._id_counter is None:
+      self._id_counter = count()
+    return f'_id{next(self._id_counter)}'
+
+  def gen_class(self) -> str:
+    if self._class_counter is None:
+      self._class_counter = count()
+    return f'_class{next(self._class_counter)}'
 
 
 def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> None:

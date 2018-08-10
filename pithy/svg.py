@@ -7,7 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from .iterable import iter_unique
 from .num import Num, NumRange
-from .xml import XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
+from .xml import _Counter, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from html import escape as html_escape
 from types import TracebackType
 from typing import Any, Callable, ContextManager, Dict, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable, overload
@@ -32,7 +32,8 @@ class SvgWriter(XmlWriter):
     **XmlWriter.replaced_attrs,
   }
 
-  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None,
+   _id_counter:_Counter=None, _class_counter:_Counter=None, **kwargs:Any) -> None:
     '`title` attribute gets converted into a child element (renders in browsers as a tooltip).'
     if attrs:
       try: title = attrs.pop('title')
@@ -40,7 +41,8 @@ class SvgWriter(XmlWriter):
       else:
         tail_children = tuple(children) or (Ellipsis,)
         children = (SvgTitle(children=(str(title),)), *tail_children)
-    super().__init__(*args, children=children, tag=tag, file=file, attrs=attrs, **kwargs)
+    super().__init__(*args, children=children, tag=tag, file=file, attrs=attrs,
+      _id_counter=_id_counter, _class_counter=_class_counter, **kwargs)
 
 
   # SVG Elements.
@@ -268,7 +270,8 @@ class Svg(SvgWriter):
   tag = 'svg'
 
   def __init__(self, file:TextIO=None, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, **attrs:Any) -> None:
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None,
+   _id_counter:_Counter=None, _class_counter:_Counter=None, **attrs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -296,7 +299,7 @@ class Svg(SvgWriter):
     }
     add_opt_attrs(attrs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
     assert not isinstance(file, str)
-    super().__init__(file=file, attrs=attrs)
+    super().__init__(file=file, attrs=attrs, _id_counter=_id_counter, _class_counter=_class_counter)
 
 
 # Plots.
@@ -379,14 +382,15 @@ class Plot(SvgWriter):
    grid_step:VecOrNum=5,
    tick_step:VecOrNum=10,
    tick_x:Tick=False, tick_y:Tick=False,
-   dbg=False) -> None:
+   dbg=False,
+   _id_counter:_Counter=None, _class_counter:_Counter=None) -> None:
 
     attrs = attrs or {}
     pos = f2_for_vec(pos)
     # Initialize as `g` element.
     attrs.setdefault('class_', 'plot')
     attrs['transform'] = translate(*pos)
-    super().__init__(tag=tag, file=file, attrs=attrs)
+    super().__init__(tag=tag, file=file, attrs=attrs, _id_counter=_id_counter, _class_counter=_class_counter)
 
     title_h = float(title_h)
 
@@ -521,9 +525,10 @@ class Plot(SvgWriter):
       g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
 
     # Clip.
-    with self.clipPath(id='plot-clip') as clipPath:
+    clip_path_id = self.gen_id()
+    self.plot_clip_path = f'url(#{clip_path_id})'
+    with self.clipPath(id=clip_path_id) as clipPath:
       clipPath.rect(pos=grid_pos, size=grid_size, r=corner_radius)
-    self.plot_clip_path = 'url(#plot-clip)'
 
     # Axes.
     if min_y <= 0 and max_y >= 0: # Draw X axis.
