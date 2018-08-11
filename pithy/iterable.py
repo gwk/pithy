@@ -245,6 +245,19 @@ def group_by_heads(iterable: Iterable[T], is_head: Callable[[T], bool], headless
   if group: yield group
 
 
+def split_els(iterable:Iterable[T], split=Callable[[T], Optional[Tuple[T, T]]]) -> Iterator[T]:
+  '''
+  Repeatedly split the current element using the `split` function until it returns None.
+  '''
+  for el in iterable:
+    r = split(el)
+    while r is not None:
+      head, el = r
+      yield head
+      r = split(el)
+    yield el
+
+
 def split_by_preds(iterable: Iterable[T], *preds: Callable[[T], bool]) -> Iterable[Tuple[bool, List[T]]]:
   '''
   Split the sequence whenever the sequence of predicates has consecutively matched.

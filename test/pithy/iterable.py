@@ -49,6 +49,21 @@ utest_seq([[1, 2], [3, 4]], group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x
 
 utest_seq([[0], [1, 2], [3, 4]], group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x % 2, headless=OnHeadless.keep)
 
+
+F2 = Tuple[float, float]
+def split_pair(pair:F2) -> Optional[Tuple[F2, F2]]:
+  s, e = pair
+  assert s <= e
+  si = int(s)
+  m = float(si + 1)
+  if e <= m: return None
+  return ((s, m), (m, e))
+
+
+utest_seq([(0.0, 0.1), (0.9, 1.0), (1.9, 2.0), (2.0, 2.1), (2.9, 3.0), (3.0, 4.0), (4.0, 4.1)],
+  split_els, [(0.0, 0.1), (0.9, 1.0), (1.9, 2.1), (2.9, 4.1)], split=split_pair)
+
+
 def is_zero(i): return i == 0
 def is_one(i): return i == 1
 
