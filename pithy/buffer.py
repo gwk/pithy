@@ -39,8 +39,8 @@ class Buffer(Iterator[T]):
     return next(self.iterator)
 
 
-  def push(self, item: T) -> None:
-    self.buffer.append(item)
+  def push(self, el:T) -> None:
+    self.buffer.append(el)
 
 
   def peek(self, default: RaiseOr[T]=Raise._) -> T:
