@@ -3,17 +3,17 @@
 from typing import Callable, Generic, Iterable, TypeVar, Union
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 
-class DefaultList(list, Generic[T]):
+class DefaultList(list, Generic[_T]):
   '''
   A subclass of `list` that adds default elements produced by a factory function
   when an out-of-bounds element is accessed.
   The factory function takes the array index as a its sole parameter.
   '''
 
-  def __init__(self, factory: Callable[[int], T], iterable: Iterable[T]=(), fill_length=0) -> None:
+  def __init__(self, factory: Callable[[int], _T], iterable: Iterable[_T]=(), fill_length=0) -> None:
     super().__init__(iterable)
     self.factory = factory
     for i in range(fill_length):

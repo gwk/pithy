@@ -9,26 +9,26 @@ from .fs import path_ext, path_join, path_stem
 from .io import errL, err_progress, writeL
 
 
-T = TypeVar('T')
-I = TypeVar('I')
-O = TypeVar('O')
-Stage = Callable[[I], O]
-Pred = Callable[[I], bool]
-Put = Callable[[I], None]
+_T = TypeVar('_T')
+_I = TypeVar('_I')
+_O = TypeVar('_O')
+Stage = Callable[[_I], _O]
+Pred = Callable[[_I], bool]
+Put = Callable[[_I], None]
 
 
 class _DropItem(Exception):
   'Exception signals the Transformer to immediately drop the current item and continue to the next one.'
 
 
-class Transformer(Generic[T], ContextManager):
+class Transformer(Generic[_T], ContextManager):
   '''
   A data transformation pipeline.
   '''
 
 
 
-  def __init__(self, iterable: Iterable[T], log_stem='_build/', log_index_width=2, progress_frequency=0.1) -> None:
+  def __init__(self, iterable: Iterable[_T], log_stem='_build/', log_index_width=2, progress_frequency=0.1) -> None:
 
     self.iterable = iterable
     self.log_stem = log_stem
@@ -84,7 +84,7 @@ class Transformer(Generic[T], ContextManager):
     name = pred.__name__
     log_fn = self._mk_log_fn('flag', name, '.txt')
 
-    def flag_fn(item: I) -> I:
+    def flag_fn(item: _I) -> _I:
       if pred(item):
         log_fn(f'{item!r}\n')
       return item
@@ -102,7 +102,7 @@ class Transformer(Generic[T], ContextManager):
     name = pred.__name__
     log_fn = self._mk_log_fn('drop', name, '.diff')
 
-    def drop_fn(item: I) -> I:
+    def drop_fn(item: _I) -> _I:
       if pred(item):
         log_fn(f'- {item!r}\n')
         raise _DropItem
@@ -119,7 +119,7 @@ class Transformer(Generic[T], ContextManager):
     no logging is performed.
     '''
 
-    def keep_fn(item: I) -> I:
+    def keep_fn(item: _I) -> _I:
       if pred(item):
         return item
       raise _DropItem
@@ -136,7 +136,7 @@ class Transformer(Generic[T], ContextManager):
     name = fn.__name__
     log_fn = self._mk_log_fn('edit', name, '.diff')
 
-    def edit_fn(item: I) -> O:
+    def edit_fn(item: _I) -> _O:
       edited = fn(item)
       if edited != item:
         log_fn(f'- {item!r}\n+ {edited!r}\n')
@@ -162,7 +162,7 @@ class Transformer(Generic[T], ContextManager):
     this is handled by the decorator wrapper.
     no logging is performed.
     '''
-    def put_fn(item: I) -> I:
+    def put_fn(item: _I) -> _I:
       fn(item)
       return item
 

@@ -4,7 +4,7 @@ from enum import Enum
 from typing import TypeVar, Union
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 
 class Default(Enum):
@@ -26,4 +26,4 @@ class Raise(Enum):
   _ = 0
 
 
-RaiseOr = Union[Raise, T]
+RaiseOr = Union[Raise, _T]

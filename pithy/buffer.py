@@ -4,10 +4,10 @@ from typing import Callable, Generic, Iterable, Iterator, List, TypeVar, Union
 from .default import Raise, RaiseOr
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 
-class Buffer(Iterator[T]):
+class Buffer(Iterator[_T]):
   '''
   Iterable object that buffers an iterable.
   Call push() to push an item into the buffer;
@@ -15,9 +15,9 @@ class Buffer(Iterator[T]):
   '''
 
 
-  def __init__(self, iterable: Iterable[T]) -> None:
+  def __init__(self, iterable: Iterable[_T]) -> None:
     self.iterator = iter(iterable)
-    self.buffer: List[T] = []
+    self.buffer: List[_T] = []
 
 
   def __repr__(self) -> str:
@@ -30,20 +30,20 @@ class Buffer(Iterator[T]):
     else: return True
 
 
-  def __iter__(self) -> Iterator[T]: return self
+  def __iter__(self) -> Iterator[_T]: return self
 
 
-  def __next__(self) -> T:
+  def __next__(self) -> _T:
     try: return self.buffer.pop()
     except IndexError: pass
     return next(self.iterator)
 
 
-  def push(self, el:T) -> None:
+  def push(self, el:_T) -> None:
     self.buffer.append(el)
 
 
-  def peek(self, default: RaiseOr[T]=Raise._) -> T:
+  def peek(self, default: RaiseOr[_T]=Raise._) -> _T:
     try: return self.buffer[-1]
     except IndexError: pass
     try: el = next(self.iterator)
@@ -54,7 +54,7 @@ class Buffer(Iterator[T]):
     return el
 
 
-  def take_while(self, pred: Callable[[T], bool]) -> Iterator[T]:
+  def take_while(self, pred: Callable[[_T], bool]) -> Iterator[_T]:
     for el in self:
       if pred(el):
         yield el
@@ -63,20 +63,20 @@ class Buffer(Iterator[T]):
         break
 
 
-  def drop_while(self, pred: Callable[[T], bool]) -> None:
+  def drop_while(self, pred: Callable[[_T], bool]) -> None:
     for el in self:
       if not pred(el):
         self.buffer.append(el)
         break
 
 
-  def peek_while(self, pred: Callable[[T], bool]) -> List[T]:
+  def peek_while(self, pred: Callable[[_T], bool]) -> List[_T]:
     els = list(self.take_while(pred))
     self.buffer.extend(reversed(els))
     return els
 
 
-  def take(self, count: int, short=False, default: RaiseOr[T]=Raise._) -> List[T]:
+  def take(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> List[_T]:
     els = []
     for _ in range(count):
       try: els.append(next(self))
@@ -87,7 +87,7 @@ class Buffer(Iterator[T]):
     return els
 
 
-  def peeks(self, count: int, short=False, default: RaiseOr[T]=Raise._) -> List[T]:
+  def peeks(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> List[_T]:
     if 0 < count <= len(self.buffer):
       return list(reversed(self.buffer[-count:]))
     els = []
@@ -101,7 +101,7 @@ class Buffer(Iterator[T]):
     return els
 
 
-  def expect(self, pred: Callable[[T], bool]) -> T:
+  def expect(self, pred: Callable[[_T], bool]) -> _T:
     el = next(self)
     if pred(el): return el
     raise ValueError(el)

@@ -8,7 +8,7 @@ from string import Template
 from typing import Any, Iterable, Iterator, Sequence, Tuple, TypeVar
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 
 def render_template(template: str, **substitutions: Any) -> str:
@@ -80,7 +80,7 @@ def find_and_clip_suffix(string: str, suffix: str, req=True) -> str:
   return string[:idx]
 
 
-def iter_excluding_str(iterable: Iterable[T]) -> Iterator[T]:
+def iter_excluding_str(iterable: Iterable[_T]) -> Iterator[_T]:
   '''
   Often we want to handle all iterables in a particular way, except for str.
   There are two common reasons why:

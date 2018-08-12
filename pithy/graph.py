@@ -7,12 +7,12 @@ from sys import stdout
 from typing import Any, Callable, Dict, Iterable, MutableSet, TextIO, Tuple, TypeVar, Union
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 Name = Union[int, float, str]
 
 
-def visit_nodes(start_nodes: Iterable[T], visitor: Callable[[T], Iterable[T]]) -> MutableSet[T]:
+def visit_nodes(start_nodes: Iterable[_T], visitor: Callable[[_T], Iterable[_T]]) -> MutableSet[_T]:
   '''
   Starting with `start_nodes`, call `visitor` with each node.
   `visitor` should return discovered nodes to be visited.

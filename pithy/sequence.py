@@ -7,10 +7,10 @@ from bisect import bisect_left, bisect_right
 from typing import Sequence, TypeVar
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 
-def sorted_list_index(a: Sequence[T], x: T) -> int:
+def sorted_list_index(a: Sequence[_T], x: _T) -> int:
   '''
   Locate the leftmost value exactly equal to x.
   From stdlib bisect documentation.
@@ -21,7 +21,7 @@ def sorted_list_index(a: Sequence[T], x: T) -> int:
   raise ValueError
 
 
-def sorted_list_find_lt(a: Sequence[T], x: T) -> T:
+def sorted_list_find_lt(a: Sequence[_T], x: _T) -> _T:
   '''
   Find rightmost value less than x.
   From stdlib bisect documentation.
@@ -32,7 +32,7 @@ def sorted_list_find_lt(a: Sequence[T], x: T) -> T:
   raise ValueError
 
 
-def sorted_list_find_le(a: Sequence[T], x: T) -> T:
+def sorted_list_find_le(a: Sequence[_T], x: _T) -> _T:
   '''
   Find rightmost value less than or equal to x.
   From stdlib bisect documentation.
@@ -43,7 +43,7 @@ def sorted_list_find_le(a: Sequence[T], x: T) -> T:
   raise ValueError
 
 
-def sorted_list_find_gt(a: Sequence[T], x: T) -> T:
+def sorted_list_find_gt(a: Sequence[_T], x: _T) -> _T:
   '''
   Find leftmost value greater than x.
   From stdlib bisect documentation.
@@ -54,7 +54,7 @@ def sorted_list_find_gt(a: Sequence[T], x: T) -> T:
   raise ValueError
 
 
-def sorted_list_find_ge(a: Sequence[T], x: T) -> T:
+def sorted_list_find_ge(a: Sequence[_T], x: _T) -> _T:
   '''Find leftmost item greater than or equal to x.
   From stdlib bisect documentation.
   '''

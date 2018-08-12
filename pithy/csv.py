@@ -6,7 +6,7 @@ import csv
 import collections
 from sys import stdout
 from types import TracebackType
-from typing import cast, Any, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
+from typing import ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
 
 def load_csv(file: TextIO,

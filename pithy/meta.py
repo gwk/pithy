@@ -62,9 +62,9 @@ def dispatcher_for_names(prefix:str=None, default_name:str=None, default_fn:Call
   return dispatch_fn
 
 
-A = TypeVar('A', bound=Any)
+_A = TypeVar('_A', bound=Any)
 
-def rename(obj:A, name:str) -> A:
+def rename(obj:_A, name:str) -> _A:
   'Returns a renamed object.'
   obj.__name__ = name
   obj.__qualname__ = name

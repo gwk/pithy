@@ -6,7 +6,7 @@ from string import Template
 from typing import Any, Iterable, Iterator, TextIO, TypeVar, Union
 
 
-T = TypeVar('T')
+_T = TypeVar('_T')
 
 # basic printing.
 
@@ -150,7 +150,7 @@ def errP(*items: Any, label=None, **opts) -> None:
   writeP(stderr, *items, label=label, **opts)
 
 
-def err_progress(iterable: Iterable[T], label='progress', suffix='', final_suffix='', frequency:Union[float, int]=0.1) -> Iterator[T]:
+def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suffix='', frequency:Union[float, int]=0.1) -> Iterator[_T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.
@@ -169,7 +169,7 @@ def err_progress(iterable: Iterable[T], label='progress', suffix='', final_suffi
 
   if isinstance(frequency, float):
     from time import time
-    def err_progress_gen() -> Iterator[T]:
+    def err_progress_gen() -> Iterator[_T]:
       prev_t = time()
       step = 1
       next_i = step
@@ -187,7 +187,7 @@ def err_progress(iterable: Iterable[T], label='progress', suffix='', final_suffi
 
 
   else:
-    def err_progress_gen() -> Iterator[T]:
+    def err_progress_gen() -> Iterator[_T]:
       for i, el in enumerate(iterable):
         if i % frequency == 0:
           print(pre + str(i) + post, end='', file=stderr, flush=True)
@@ -240,7 +240,7 @@ def assert_eq(a: Any, b: Any):
     raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
 
 
-def tee_to_err(iterable: Iterable[T], msg: str = 'tee_to_stderr') -> Iterator[T]:
+def tee_to_err(iterable: Iterable[_T], msg: str = 'tee_to_stderr') -> Iterator[_T]:
   for el in iterable:
     errL(msg, ': ', repr(el))
     yield el
