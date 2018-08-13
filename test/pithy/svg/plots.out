@@ -14,7 +14,7 @@
 <line x1="32" y1="33.9" x2="399" y2="33.9"/>
 <rect class="grid-border" fill="none" x="32" y="12" width="367" height="175"/>
 </g>
-<clipPath id="plot-clip">
+<clipPath id="_id0">
 <rect x="32" y="12" width="367" height="175"/>
 </clipPath>
 <line class="axis" id="x-axis" x1="32" y1="99.5" x2="399" y2="99.5"/>
@@ -45,10 +45,10 @@
 <text class="tick" text-anchor="end" x="29" y="33.9" alignment-baseline="middle">0.75</text>
 <line class="tick" x1="30" y1="12" x2="32" y2="12"/>
 <text class="tick" text-anchor="end" x="29" y="12" alignment-baseline="middle">1.0</text>
-<g clip-path="url(#plot-clip)" id="identity" class="series">
+<g clip-path="url(#_id0)" id="identity" class="series">
 <polyline fill="none" points="32,99.5 54.9,94 77.9,88.6 100.8,83.1 123.8,77.6 146.7,72.2 169.6,66.7 192.6,61.2 215.5,55.8 238.4,50.3 261.4,44.8 284.3,39.3 307.2,33.9 330.2,28.4 353.1,22.9 376.1,17.5 399,12"/>
 </g>
-<g clip-path="url(#plot-clip)" id="sin" class="series">
+<g clip-path="url(#_id0)" id="sin" class="series">
 <polyline fill="none" points="32,99.5 54.9,66 77.9,37.6 100.8,18.7 123.8,12 146.7,18.7 169.6,37.6 192.6,66 215.5,99.5 238.4,133 261.4,161.4 284.3,180.3 307.2,187 330.2,180.3 353.1,161.4 376.1,133 399,99.5"/>
 </g>
 </g>
