@@ -237,7 +237,7 @@ class SvgWriter(XmlWriter):
    title:str=None,
    title_h:Num=0,
    tick_h:Num=0, tick_w:Num=0,
-   min_x:Num=None, max_x:Num=None, min_y:Num=None, max_y:Num=None,
+   x_min:Num=None, x_max:Num=None, y_min:Num=None, y_max:Num=None,
    visible_x0=False, visible_y0=False, symmetric_x=False, symmetric_y=False, symmetric_xy=False,
    corner_radius:VecOrNum=None,
    grid_step:VecOrNum=5,
@@ -251,7 +251,7 @@ class SvgWriter(XmlWriter):
       title=title,
       title_h=title_h,
       tick_h=tick_h, tick_w=tick_w,
-      min_x=min_x, max_x=max_x, min_y=min_y, max_y=max_y,
+      x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
       visible_x0=visible_x0, visible_y0=visible_y0, symmetric_x=symmetric_x, symmetric_y=symmetric_y, symmetric_xy=symmetric_xy,
       corner_radius=corner_radius,
       grid_step=grid_step,
@@ -333,16 +333,16 @@ class XYSeries(PlotSeries):
     self.bounds:Optional[Tuple[F2, F2]] = None
     if self.points:
       x, y = self.points[0][:2]
-      min_x = max_x = float(x)
-      min_y = max_y = float(y)
+      x_min = x_max = float(x)
+      y_min = y_max = float(y)
       for p in self.points:
         x = float(p[0])
         y = float(p[1])
-        min_x = min(min_x, x)
-        max_x = max(max_x, x)
-        min_y = min(min_y, y)
-        max_y = max(max_y, y)
-      self.bounds = ((min_x, min_y), (max_x, max_y))
+        x_min = min(x_min, x)
+        x_max = max(x_max, x)
+        y_min = min(y_min, y)
+        y_max = max(y_max, y)
+      self.bounds = ((x_min, y_min), (x_max, y_max))
 
 
   def render(self, plot:'Plot') -> None:
@@ -376,7 +376,7 @@ class Plot(SvgWriter):
    title:str=None,
    title_h:Num=0,
    tick_h:Num=0, tick_w:Num=0,
-   min_x:Num=None, max_x:Num=None, min_y:Num=None, max_y:Num=None,
+   x_min:Num=None, x_max:Num=None, y_min:Num=None, y_max:Num=None,
    visible_x0=False, visible_y0=False, symmetric_x=False, symmetric_y=False, symmetric_xy=False,
    corner_radius:VecOrNum=None,
    grid_step:VecOrNum=5,
@@ -416,55 +416,55 @@ class Plot(SvgWriter):
     self.h = size[1]
 
     # Determine bounds.
-    expand_min_x = min_x is None
-    expand_max_x = max_x is None
-    expand_min_y = min_y is None
-    expand_max_y = max_y is None
+    expand_x_min = x_min is None
+    expand_x_max = x_max is None
+    expand_y_min = y_min is None
+    expand_y_max = y_max is None
     for s in series:
       b = s.bounds
       if b is not None:
         (mnx, mny), (mxx, mxy) = b
-        if expand_min_x: min_x = mnx if (min_x is None) else min(min_x, mnx)
-        if expand_max_x: max_x = mxx if (max_x is None) else max(max_x, mxx)
-        if expand_min_y: min_y = mny if (min_y is None) else min(min_y, mny)
-        if expand_max_y: max_y = mxy if (max_y is None) else max(max_y, mxy)
+        if expand_x_min: x_min = mnx if (x_min is None) else min(x_min, mnx)
+        if expand_x_max: x_max = mxx if (x_max is None) else max(x_max, mxx)
+        if expand_y_min: y_min = mny if (y_min is None) else min(y_min, mny)
+        if expand_y_max: y_max = mxy if (y_max is None) else max(y_max, mxy)
 
-    if min_x is None: min_x = 0.0
-    if min_y is None: min_y = 0.0
-    if max_x is None or max_x <= min_x: max_x = min_x + 1.0
-    if max_y is None or max_y <= min_y: max_y = min_y + 1.0
+    if x_min is None: x_min = 0.0
+    if y_min is None: y_min = 0.0
+    if x_max is None or x_max <= x_min: x_max = x_min + 1.0
+    if y_max is None or y_max <= y_min: y_max = y_min + 1.0
 
     if visible_x0:
-      if min_x > 0.0: min_x = 0.0
-      elif max_x < 0.0: max_x = 0.0
+      if x_min > 0.0: x_min = 0.0
+      elif x_max < 0.0: x_max = 0.0
     if visible_y0:
-      if min_y > 0.0: min_y = 0.0
-      elif max_y < 0.0: max_y = 0.0
+      if y_min > 0.0: y_min = 0.0
+      elif y_max < 0.0: y_max = 0.0
 
     if symmetric_xy:
-      max_x = max_y = max(max_x, -min_x, max_y, -min_y)
-      min_x = min_y = -max_x
+      x_max = y_max = max(x_max, -x_min, y_max, -y_min)
+      x_min = y_min = -x_max
     else:
       if symmetric_x:
-        max_x = max(max_x, -min_x)
-        min_x = -max_x
+        x_max = max(x_max, -x_min)
+        x_min = -x_max
       if symmetric_y:
-        max_y = max(max_y, -min_y)
-        min_y = -max_y
+        y_max = max(y_max, -y_min)
+        y_min = -y_max
 
 
-    min_x = float(min_x)
-    max_x = float(max_x)
-    min_y = float(min_y)
-    max_y = float(max_y)
+    x_min = float(x_min)
+    x_max = float(x_max)
+    y_min = float(y_min)
+    y_max = float(y_max)
 
-    self.min_x:float = min_x
-    self.max_x:float = max_x
-    self.min_y:float = min_y
-    self.max_y:float = max_y
+    self.x_min:float = x_min
+    self.x_max:float = x_max
+    self.y_min:float = y_min
+    self.y_max:float = y_max
 
-    self.data_w = data_w = max_x - min_x
-    self.data_h = data_h = max_y - min_y
+    self.data_w = data_w = x_max - x_min
+    self.data_h = data_h = y_max - y_min
 
     self.grid_x = grid_x = tick_w
     self.grid_y = grid_y = title_h
@@ -485,10 +485,10 @@ class Plot(SvgWriter):
       'Translate a point to appear coincident with the data space.'
       x = float(point[0])
       y = float(point[1])
-      return (round(grid_x + scale_x*(x-min_x), 1), round(grid_y + scale_y*(data_h - (y-min_y)), 1)) # type: ignore
+      return (round(grid_x + scale_x*(x-x_min), 1), round(grid_y + scale_y*(data_h - (y-y_min)), 1)) # type: ignore
 
-    def transform_x(x:Num) -> float: return round(grid_x + scale_x*(float(x) - min_x), 1) # type: ignore
-    def transform_y(y:Num) -> float: return round(grid_y + scale_y*(data_h - (float(y)-min_y)), 1) # type: ignore
+    def transform_x(x:Num) -> float: return round(grid_x + scale_x*(float(x) - x_min), 1) # type: ignore
+    def transform_y(y:Num) -> float: return round(grid_y + scale_y*(data_h - (float(y)-y_min)), 1) # type: ignore
 
     self.transform = transform
     self.transform_x = transform_x
@@ -512,14 +512,14 @@ class Plot(SvgWriter):
     grid_trans = translate(grid_x, grid_y+grid_h)
     if grid_step is not None:
       gsx, gsy = unpack_VecOrNum(grid_step)
-      g_start_x = (min_x//gsx + 1) * gsx # Skip line index 0 because it is always <= low border.
-      g_start_y = (min_y//gsy + 1) * gsy # Skip line index 0 because it is always <= low border.
+      g_start_x = (x_min//gsx + 1) * gsx # Skip line index 0 because it is always <= low border.
+      g_start_y = (y_min//gsy + 1) * gsy # Skip line index 0 because it is always <= low border.
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
     with self.g(class_='grid') as g:
-      for gx in NumRange(g_start_x, max_x, gsx): # X axis.
+      for gx in NumRange(g_start_x, x_max, gsx): # X axis.
         tgx = transform_x(gx)
         g.line((tgx, grid_y), (tgx, grid_b)) # Vertical lines.
-      for gy in NumRange(g_start_y, max_y, gsy):
+      for gy in NumRange(g_start_y, y_max, gsy):
         tgy = transform_y(gy)
         g.line((grid_x, tgy), (grid_r, tgy)) # Horizontal lines.
       g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
@@ -531,10 +531,10 @@ class Plot(SvgWriter):
       clipPath.rect(pos=grid_pos, size=grid_size, r=corner_radius)
 
     # Axes.
-    if min_y <= 0 and max_y >= 0: # Draw X axis.
+    if y_min <= 0 and y_max >= 0: # Draw X axis.
       y0 = transform_y(0)
       self.line((grid_x, y0), (grid_r, y0), class_='axis', id='x-axis')
-    if min_x <= 0 and max_x >= 0: # Draw Y axis.
+    if x_min <= 0 and x_max >= 0: # Draw Y axis.
       x0 = transform_x(0)
       self.line((x0, grid_y), (x0, grid_b), class_='axis', id='y-axis')
 
@@ -543,20 +543,20 @@ class Plot(SvgWriter):
     dbg_rect((0, grid_y), (tick_w, grid_h), fill='#08F') # Y axis ticks.
 
     tsx, tsy = unpack_VecOrNum(tick_step)
-    txi, txr = divmod(min_x, tsx)
-    tyi, tyr = divmod(min_y, tsy)
+    txi, txr = divmod(x_min, tsx)
+    tyi, tyr = divmod(y_min, tsy)
     t_start_x = txi*tsx + (txr and tsx)
     t_start_y = tyi*tsy + (tyr and tsy)
 
     if tick_x:
       if not callable(tick_x): tick_x = str
-      for x in NumRange(t_start_x, max_x, step=tsx, closed=False):
+      for x in NumRange(t_start_x, x_max, step=tsx, closed=False):
         tx = transform_x(x)
         self.line((tx, grid_b), (tx, grid_b+2), class_='tick')
         self.text((tx+1, grid_b+2), class_='tick', text=tick_x(x), alignment_baseline='hanging')
     if tick_y:
       if not callable(tick_y): tick_y = str
-      for y in NumRange(t_start_y, max_y, step=tsy, closed=True):
+      for y in NumRange(t_start_y, y_max, step=tsy, closed=True):
         tx = grid_x - 2
         ty = transform_y(y)
         self.line((tx, ty), (grid_x, ty), class_='tick')
