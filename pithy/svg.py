@@ -8,7 +8,9 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 from .iterable import iter_unique
 from .num import Num, NumRange
 from .xml import _Counter, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
+from functools import reduce
 from html import escape as html_escape
+from math import floor, log10
 from types import TracebackType
 from typing import Any, Callable, ContextManager, Dict, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable, overload
 
@@ -18,11 +20,12 @@ Vec = Tuple[Num, Num]
 VecOrNum = Union[Vec, Num]
 F2 = Tuple[float, float]
 F2OrF = Union[F2, float]
+BoundsF2 = Tuple[F2, F2]
 PathCommand = Tuple
 
 PointTransform = Callable[[Tuple], F2]
 
-Tick = Union[bool, Callable[[float], Any]]
+TickFmt = Callable[[float], Any]
 
 
 class SvgWriter(XmlWriter):
@@ -232,33 +235,32 @@ class SvgWriter(XmlWriter):
       g.rect(class_=class_+'-border', x=x, y=y, w=w, h=h, r=corner_radius, fill='none')
 
 
-  def plot(self, pos:Vec=(0,0), size:Vec=(512,1024),
-   *, series:Sequence['PlotSeries'],
+  def plot(self, pos:Vec=(0,0), size:Vec=(512,1024), *,
+   x:'PlotAxis'=None, y:'PlotAxis'=None,
+   series:Sequence['PlotSeries'],
    title:str=None,
-   title_h:Num=0,
-   tick_h:Num=0, tick_w:Num=0,
-   x_min:Num=None, x_max:Num=None, y_min:Num=None, y_max:Num=None,
-   visible_x0=False, visible_y0=False, symmetric_x=False, symmetric_y=False, symmetric_xy=False,
+   title_h:Num=14,
+   axis_label_h:Num=12,
+   tick_h:Num=10,
+   tick_len:Num=4,
    corner_radius:VecOrNum=None,
-   grid_step:VecOrNum=5,
-   tick_step:VecOrNum=10,
-   tick_x:Tick=False, tick_y:Tick=False,
+   symmetric_xy=False,
    dbg=False,
    **attrs:Any) -> 'Plot':
 
     return self.child(Plot, attrs=attrs,
-      pos=pos, size=size, series=series,
+      pos=pos, size=size,
+      x=x, y=y,
+      series=series,
       title=title,
       title_h=title_h,
-      tick_h=tick_h, tick_w=tick_w,
-      x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max,
-      visible_x0=visible_x0, visible_y0=visible_y0, symmetric_x=symmetric_x, symmetric_y=symmetric_y, symmetric_xy=symmetric_xy,
+      axis_label_h=axis_label_h,
+      tick_h=tick_h,
+      tick_len=tick_len,
       corner_radius=corner_radius,
-      grid_step=grid_step,
-      tick_step=tick_step,
-      tick_x=tick_x,
-      tick_y=tick_y,
+      symmetric_xy=symmetric_xy,
       dbg=dbg)
+
 
 
 class Svg(SvgWriter):
@@ -304,7 +306,7 @@ class Svg(SvgWriter):
 
 # Plots.
 
-Plotter = Callable[[SvgWriter, PointTransform, Tuple], None]
+Plotter = Callable[[SvgWriter, PointTransform, Any], None]
 
 def circle_plotter(r:Num=1, **attrs:Any) -> Plotter:
   attrs.setdefault('class_', 'series')
@@ -313,9 +315,10 @@ def circle_plotter(r:Num=1, **attrs:Any) -> Plotter:
   return plotter
 
 
+
 class PlotSeries:
 
-  bounds:Optional[Tuple[Vec, Vec]] = None # Overridden by subclasses.
+  bounds:Optional[BoundsF2] = None # Overridden by subclasses.
 
   def render(self, plot:'Plot') -> None: raise NotImplementedError
 
@@ -352,6 +355,7 @@ class XYSeries(PlotSeries):
       for p in self.points: self.plotter(g, plot.transform, p)
 
 
+
 class LineSeries(XYSeries):
 
   def __init__(self, name:str, points:Sequence[Tuple], plotter:Plotter=None, **attrs:Any) -> None:
@@ -366,22 +370,52 @@ class LineSeries(XYSeries):
         for p in self.points: self.plotter(g, plot.transform, p)
 
 
+
+class PlotAxis:
+  def __init__(self, *,
+   length:Num=0,
+   min:Optional[Num]=None, max:Optional[Num]=None,
+   visible_origin=False,
+   symmetric=False,
+   show_grid=True, grid_step:Optional[Num]=None, grid_min:Num=16,
+   show_ticks=True, tick_step:Optional[Num]=None, tick_space:Num=1, tick_w:Num=16, tick_fmt:Optional[TickFmt]=None) -> None:
+    self.length = float(length) # For <=0 the screen length is calculated automatically.
+    self.min = min if min is None else float(min)
+    self.max = max if max is None else float(max)
+    self.visible_origin = visible_origin
+    self.symmetric = symmetric
+    self.show_grid = show_grid
+    self.grid_step:Optional[float] = grid_step if grid_step is None else float(grid_step)
+    self.grid_min = float(grid_min)
+    self.show_ticks = show_ticks
+    self.tick_step:Optional[float] = tick_step if tick_step is None else float(tick_step)
+    self.tick_space = float(tick_space)
+    self.tick_w = float(tick_w)
+    self.tick_fmt = tick_fmt
+
+  def x_axis_tick_h(self, tick_len:float, tick_h:float) -> float:
+    return (tick_len + self.tick_space + tick_h) if self.show_ticks else 0.0
+
+  def y_axis_tick_w(self, tick_len:float) -> float:
+    return (tick_len + self.tick_space + self.tick_w) if self.show_ticks else 0.0
+
+
+
 class Plot(SvgWriter):
 
   tag = 'g'
 
   def __init__(self, *, tag:str, file:TextIO, attrs:XmlAttrs=None, children:Iterable[Any],
    pos:Vec=(0,0), size:Vec=(512,1024),
+   x:PlotAxis=None, y:PlotAxis=None,
    series:Sequence[PlotSeries],
    title:str=None,
-   title_h:Num=0,
-   tick_h:Num=0, tick_w:Num=0,
-   x_min:Num=None, x_max:Num=None, y_min:Num=None, y_max:Num=None,
-   visible_x0=False, visible_y0=False, symmetric_x=False, symmetric_y=False, symmetric_xy=False,
+   title_h:Num=14,
+   axis_label_h:Num=12,
+   tick_h:Num=10,
+   tick_len:Num=4,
    corner_radius:VecOrNum=None,
-   grid_step:VecOrNum=5,
-   tick_step:VecOrNum=10,
-   tick_x:Tick=False, tick_y:Tick=False,
+   symmetric_xy=False,
    dbg=False,
    _id_counter:_Counter=None, _class_counter:_Counter=None) -> None:
 
@@ -392,96 +426,135 @@ class Plot(SvgWriter):
     attrs['transform'] = translate(*pos)
     super().__init__(tag=tag, file=file, attrs=attrs, _id_counter=_id_counter, _class_counter=_class_counter)
 
-    title_h = float(title_h)
-
     self.pos = pos
     self.size = size = f2_for_vec(size)
+    self.x = x = PlotAxis() if x is None else x
+    self.y = y = PlotAxis() if y is None else y
     self.series = series
     self.title = title
-    self.title_h = title_h = float(title_h)
-    self.tick_w = tick_w = float(tick_w)
+    self.title_h = title_h = 0.0 if title is None else float(title_h)
+    self.tick_len = tick_len = float(tick_len)
+    self.axis_label_h = axis_label_h = float(axis_label_h)
     self.tick_h = tick_h = float(tick_h)
-    self.visible_x0 = visible_x0
-    self.visible_y0 = visible_y0
-    self.symmetric_x = symmetric_x
-    self.symmetric_y = symmetric_y
-    self.symmetric_xy = symmetric_xy
     self.corner_radius = corner_radius
-    self.grid_step = grid_step = unpack_VecOrNum(grid_step)
-    self.tick_step = tick_step = unpack_VecOrNum(tick_step)
-
-    self.tick_x = tick_x
-    self.tick_y = tick_y
+    self.symmetric_xy = symmetric_xy
     self.w = size[0]
     self.h = size[1]
 
-    # Determine bounds.
-    expand_x_min = x_min is None
-    expand_x_max = x_max is None
-    expand_y_min = y_min is None
-    expand_y_max = y_max is None
-    for s in series:
-      b = s.bounds
-      if b is not None:
-        (mnx, mny), (mxx, mxy) = b
-        if expand_x_min: x_min = mnx if (x_min is None) else min(x_min, mnx)
-        if expand_x_max: x_max = mxx if (x_max is None) else max(x_max, mxx)
-        if expand_y_min: y_min = mny if (y_min is None) else min(y_min, mny)
-        if expand_y_max: y_max = mxy if (y_max is None) else max(y_max, mxy)
+    # Determine data bounds.
+    x_min:Optional[float] = x.min
+    x_max:Optional[float] = x.max
+    y_min:Optional[float] = y.min
+    y_max:Optional[float] = y.max
+    b = reduce(expand_opt_bounds, (s.bounds for s in series), None)
+    if x_min is None: x_min = 0.0 if b is None else b[0][0]
+    if y_min is None: y_min = 0.0 if b is None else b[0][1]
+    if x_max is None: x_max = x_min + 1.0 if b is None else b[1][0]
+    if y_max is None: y_max = y_min + 1.0 if b is None else b[1][1]
 
-    if x_min is None: x_min = 0.0
-    if y_min is None: y_min = 0.0
-    if x_max is None or x_max <= x_min: x_max = x_min + 1.0
-    if y_max is None or y_max <= y_min: y_max = y_min + 1.0
-
-    if visible_x0:
-      if x_min > 0.0: x_min = 0.0
+    if x.visible_origin:
+      if x_min > 0.0:   x_min = 0.0
       elif x_max < 0.0: x_max = 0.0
-    if visible_y0:
-      if y_min > 0.0: y_min = 0.0
+    if self.y.visible_origin:
+      if y_min > 0.0:   y_min = 0.0
       elif y_max < 0.0: y_max = 0.0
 
     if symmetric_xy:
       x_max = y_max = max(x_max, -x_min, y_max, -y_min)
       x_min = y_min = -x_max
     else:
-      if symmetric_x:
+      if x.symmetric:
         x_max = max(x_max, -x_min)
         x_min = -x_max
-      if symmetric_y:
+      if y.symmetric:
         y_max = max(y_max, -y_min)
         y_min = -y_max
 
-
-    x_min = float(x_min)
-    x_max = float(x_max)
-    y_min = float(y_min)
-    y_max = float(y_max)
-
-    self.x_min:float = x_min
-    self.x_max:float = x_max
-    self.y_min:float = y_min
-    self.y_max:float = y_max
+    self.x_min = x_min
+    self.x_max = x_max
+    self.y_min = y_min
+    self.y_max = y_max
 
     self.data_w = data_w = x_max - x_min
     self.data_h = data_h = y_max - y_min
+    self.data_size = data_size = (data_w, data_h)
 
-    self.grid_x = grid_x = tick_w
+    # Layout measurements.
+    self.grid_x = grid_x = 0
     self.grid_y = grid_y = title_h
     self.grid_pos = grid_pos = (grid_x, grid_y)
 
-    self.grid_w = grid_w = self.w - tick_w - 1
-    self.grid_h = grid_h = self.h - title_h - tick_h - 1
+    boundary_pad = 1 # Otherwise right/bottom can disappear.
+    x_axis_tick_h = x.x_axis_tick_h(tick_len, tick_h)
+    y_axis_tick_w = y.y_axis_tick_w(tick_len)
+    self.grid_w = grid_w = x.length or (self.w - boundary_pad - max(x.tick_w, y_axis_tick_w))
+    self.grid_h = grid_h = (y.length or (self.h - boundary_pad - x_axis_tick_h)) - title_h
     self.grid_size = grid_size = (grid_w, grid_h)
 
     self.grid_r = grid_r = grid_x + grid_w
     self.grid_b = grid_b = grid_y + grid_h
 
     self.scale_x = scale_x = grid_w / data_w
-    self.scale_x = scale_y = grid_h / data_h
+    self.scale_y = scale_y = grid_h / data_h
     self.scale = (scale_x, scale_y)
 
-    def transform(point:tuple) -> F2:
+    def choose_step(data_len:float, grid_len:float, min_screen_step:float) -> Tuple[float, int]:
+      assert data_len > 0
+      assert min_screen_step > 0
+      cram_num = max(1.0, grid_len // min_screen_step) # Maximum number of ticks that could be placed.
+      assert cram_num > 0, (cram_num, grid_len, min_screen_step)
+      cram_step = data_len / cram_num # Minimum fractional data step.
+      exp = floor(log10(cram_step))
+      step1 = float(10**exp) # Low estimate of step.
+      for mult in (1, 2, 5):
+        step = step1 * mult
+        if step >= cram_step: return step1, mult
+      return step1, 10
+
+    def calc_tick_step_and_fmt(axis:PlotAxis, data_low:float, data_len:float, grid_len:float, min_screen_step:float) -> Tuple[float, int, int, int]:
+      assert grid_len > 0
+      if axis.tick_step is not None:
+        tick_step = axis.tick_step
+        mult = 1 # Fake; just means that misaligned grid won't be fixed automatically.
+      elif min_screen_step <= 0:
+        return (0.0, 0, 0, 0)
+      else:
+        step1, mult = choose_step(data_len, grid_len, min_screen_step)
+        tick_step = step1 * mult
+      exp = floor(log10(tick_step))
+      frac_w = max(0, -exp)
+      f = '{:0.{}f}'
+      fmt_w = max(
+        len(f.format(data_low, frac_w)),
+        len(f.format(data_low+data_len, frac_w)))
+      return (tick_step, mult, fmt_w, frac_w)
+
+    def calc_grid_step(axis:PlotAxis, data_len:float, grid_len:float, tick_mult:int) -> float:
+      assert grid_len > 0
+      if axis.grid_step is not None:
+        assert axis.grid_step >= 0
+        return axis.grid_step
+      min_screen_step = axis.grid_min
+      step1, mult = choose_step(data_len, grid_len, min_screen_step)
+      if mult == 2 and tick_mult == 5: # Ticks will misalign to grid; bump grid to 2.5.
+        return step1 * 2.5
+      return step1 * mult
+
+    tick_step_x, tick_mult_x, fmt_w_x, frac_w_x = \
+    calc_tick_step_and_fmt(axis=x, data_low=x_min, data_len=data_w, grid_len=grid_w, min_screen_step=x.tick_w * 1.5)
+
+    tick_step_y, tick_mult_y, fmt_w_y, frac_w_y = \
+    calc_tick_step_and_fmt(axis=y, data_low=y_min, data_len=data_h, grid_len=grid_h, min_screen_step=tick_h * 2.0)
+
+    self.tick_step_x = tick_step_x
+    self.tick_step_y = tick_step_y
+    self.tick_fmt_x = x.tick_fmt or (lambda t: f'{t:{fmt_w_x}.{frac_w_x}f}')
+    self.tick_fmt_y = y.tick_fmt or (lambda t: f'{t:{fmt_w_y}.{frac_w_y}f}')
+
+    self.grid_step_x = grid_step_x = calc_grid_step(axis=x, data_len=data_w, grid_len=grid_w, tick_mult=tick_mult_x)
+    self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=data_h, grid_len=grid_h, tick_mult=tick_mult_y)
+
+    def transform(point:Sequence) -> F2:
       'Translate a point to appear coincident with the data space.'
       x = float(point[0])
       y = float(point[1])
@@ -495,40 +568,47 @@ class Plot(SvgWriter):
     self.transform_y = transform_y
 
     if dbg:
-      def dbg_rect(pos:Vec, size:Vec, fill:str) -> None:
-        self.rect(pos, size, stroke=None, fill=fill, opacity=0.1)
+      def dbg_rect(pos:Vec, size:Vec, stroke:str=None, fill:str=None, parent=self) -> None:
+        parent.rect(pos, size, class_='DBG', stroke=stroke, fill=fill, opacity=0.2)
     else:
-      def dbg_rect(pos:Vec, size:Vec, fill:str) -> None: pass
+      def dbg_rect(pos:Vec, size:Vec, stroke:str=None, fill:str=None, parent=self) -> None: pass
 
-    dbg_rect((0, 0), self.size, fill='#000')
+    # Contents.
+    self.style(
+      _plot_style,
+      f'text.title {{ font-size: {title_h}; }}\n',
+      f'text.axis-label {{ font-size: {axis_label_h}; }}\n',
+      f'text.tick {{ font-size: {tick_h}; }}\n',
+    )
+
+    dbg_rect((0, 0), self.size, stroke='#000')
 
     # Title.
     dbg_rect((0, 0), (self.w, title_h), fill='#F00')
 
     if self.title is not None:
-      self.text((tick_w, title_h/2), text=self.title, class_='title', text_anchor='left', alignment_baseline='middle')
+      self.text((grid_x, 0), text=self.title, class_='title')
 
-    # Grid.
-    grid_trans = translate(grid_x, grid_y+grid_h)
-    if grid_step is not None:
-      gsx, gsy = unpack_VecOrNum(grid_step)
-      g_start_x = (x_min//gsx + 1) * gsx # Skip line index 0 because it is always <= low border.
-      g_start_y = (y_min//gsy + 1) * gsy # Skip line index 0 because it is always <= low border.
-    # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
-    with self.g(class_='grid') as g:
-      for gx in NumRange(g_start_x, x_max, gsx): # X axis.
-        tgx = transform_x(gx)
-        g.line((tgx, grid_y), (tgx, grid_b)) # Vertical lines.
-      for gy in NumRange(g_start_y, y_max, gsy):
-        tgy = transform_y(gy)
-        g.line((grid_x, tgy), (grid_r, tgy)) # Horizontal lines.
-      g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
-
-    # Clip.
+    # Clip path is is defined to match grid.
     clip_path_id = self.gen_id()
     self.plot_clip_path = f'url(#{clip_path_id})'
     with self.clipPath(id=clip_path_id) as clipPath:
       clipPath.rect(pos=grid_pos, size=grid_size, r=corner_radius)
+
+    # Grid.
+    # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
+    with self.g(class_='grid') as g:
+      if x.show_grid:
+        g_start_x = (x_min//grid_step_x + 1) * grid_step_x # Skip line index 0 because it is always <= low border.
+        for gx in NumRange(g_start_x, x_max, grid_step_x): # X axis.
+          tgx = transform_x(gx)
+          g.line((tgx, grid_y), (tgx, grid_b)) # Vertical lines.
+      if y.show_grid:
+        g_start_y = (y_min//grid_step_y + 1) * grid_step_y # Skip line index 0 because it is always <= low border.
+        for gy in NumRange(g_start_y, y_max, grid_step_y):
+          tgy = transform_y(gy)
+          g.line((grid_x, tgy), (grid_r, tgy)) # Horizontal lines.
+      g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
 
     # Axes.
     if y_min <= 0 and y_max >= 0: # Draw X axis.
@@ -539,32 +619,58 @@ class Plot(SvgWriter):
       self.line((x0, grid_y), (x0, grid_b), class_='axis', id='y-axis')
 
     # Ticks.
-    dbg_rect((grid_x, grid_b), (grid_w, tick_h), fill='#088') # X axis ticks.
-    dbg_rect((0, grid_y), (tick_w, grid_h), fill='#08F') # Y axis ticks.
-
-    tsx, tsy = unpack_VecOrNum(tick_step)
-    txi, txr = divmod(x_min, tsx)
-    tyi, tyr = divmod(y_min, tsy)
-    t_start_x = txi*tsx + (txr and tsx)
-    t_start_y = tyi*tsy + (tyr and tsy)
-
-    if tick_x:
-      if not callable(tick_x): tick_x = str
-      for x in NumRange(t_start_x, x_max, step=tsx, closed=False):
-        tx = transform_x(x)
-        self.line((tx, grid_b), (tx, grid_b+2), class_='tick')
-        self.text((tx+1, grid_b+2), class_='tick', text=tick_x(x), alignment_baseline='hanging')
-    if tick_y:
-      if not callable(tick_y): tick_y = str
-      for y in NumRange(t_start_y, y_max, step=tsy, closed=True):
-        tx = grid_x - 2
-        ty = transform_y(y)
-        self.line((tx, ty), (grid_x, ty), class_='tick')
-        self.text((tx-1, ty), class_='tick', text=tick_y(y), text_anchor='end', alignment_baseline='middle')
+    if x.show_ticks:
+      with self.g(class_='tick-x') as g:
+        txi, txr = divmod(x_min, tick_step_x)
+        if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
+        t_start_x = txi*tick_step_x
+        for _x in NumRange(t_start_x, x_max, step=tick_step_x, closed=True):
+          tx = transform_x(_x)
+          ty = grid_b
+          tb = ty + tick_len
+          tty = tb + x.tick_space
+          g.line((tx, ty), (tx, tb), class_='tick')
+          dbg_rect((tx, tb), (x.tick_w, tick_h), fill='#008', parent=g)
+          g.text((tx, tty), class_='tick', text=self.tick_fmt_x(_x))
+    if y.show_ticks:
+      with self.g(class_='tick-y') as g:
+        tyi, tyr = divmod(y_min, tick_step_y)
+        if tyr > 0.1: tyi += 1 # If the remainder is visually significant, skip the first tick.
+        t_start_y = tyi*tick_step_y
+        for _y in NumRange(t_start_y, y_max, step=tick_step_y, closed=True):
+          tx = grid_r
+          tr = tx + tick_len
+          ttx = tr + y.tick_space
+          ty = transform_y(_y)
+          g.line((tx, ty), (tr, ty), class_='tick')
+          dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
+          g.text((ttx, ty), class_='tick', text=self.tick_fmt_y(_y))
 
     # Series.
     for s in series:
       s.render(self)
+
+
+_plot_style = '''
+text {
+  stroke: none;
+  fill: currentColor;
+}
+text.title {
+  text-anchor: start;
+  alignment-baseline: hanging;
+}
+g.tick-x text.tick {
+  white-space: pre;
+  text-anchor: start;
+  alignment-baseline: hanging;
+}
+g.tick-y text.tick {
+  white-space: pre;
+  text-anchor: start;
+  alignment-baseline: alphabetic;
+}
+'''
 
 
 # Elements.
@@ -616,7 +722,7 @@ def fmt_viewBox(vx:Optional[Num], vy:Optional[Num], vw:Optional[Num], vh:Optiona
 @overload
 def fmt_num(n:Num) -> str: ...
 @overload
-def fmt_num(n:Optional[Num]) -> Optional[str]: ...
+def fmt_num(n:None) -> None: ...
 
 def fmt_num(n:Optional[Num]) -> Optional[str]:
   'Remove trailing ".0" from floats that can be represented as integers.'
@@ -639,6 +745,14 @@ def unpack_VecOrNum(vn:VecOrNum) -> Tuple[float, float]:
   else:
     s = float(vn)
     return (s, s)
+
+
+def expand_opt_bounds(l:Optional[BoundsF2], r:Optional[BoundsF2]) -> Optional[BoundsF2]:
+  if l is None: return r
+  if r is None: return l
+  (llx, lly), (lhx, lhy) = l
+  (rlx, rly), (rhx, rhy) = r
+  return ((min(llx, rlx), min(lly, rly)), (max(lhx, rhx), max(lhy, rhy)))
 
 
 alignment_baselines = {
