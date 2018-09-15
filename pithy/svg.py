@@ -459,16 +459,15 @@ class Plot(SvgWriter):
       if y_min > 0.0:   y_min = 0.0
       elif y_max < 0.0: y_max = 0.0
 
+    if x.symmetric:
+      x_max = max(x_max, -x_min)
+      x_min = -x_max
+    if y.symmetric:
+      y_max = max(y_max, -y_min)
+      y_min = -y_max
     if symmetric_xy:
-      x_max = y_max = max(x_max, -x_min, y_max, -y_min)
-      x_min = y_min = -x_max
-    else:
-      if x.symmetric:
-        x_max = max(x_max, -x_min)
-        x_min = -x_max
-      if y.symmetric:
-        y_max = max(y_max, -y_min)
-        y_min = -y_max
+      x_min = y_min = min(x_min, y_min)
+      x_max = y_max = max(x_max, y_max)
 
     self.x_min = x_min
     self.x_max = x_max
