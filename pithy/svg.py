@@ -487,7 +487,7 @@ class Plot(SvgWriter):
     x_axis_tick_h = x.x_axis_tick_h(tick_len, tick_h)
     y_axis_tick_w = y.y_axis_tick_w(tick_len)
     self.grid_w = grid_w = x.length or (self.w - boundary_pad - max(x.tick_w, y_axis_tick_w))
-    self.grid_h = grid_h = (y.length or (self.h - boundary_pad - x_axis_tick_h)) - title_h
+    self.grid_h = grid_h = y.length or (self.h - boundary_pad - x_axis_tick_h - title_h)
     self.grid_size = grid_size = (grid_w, grid_h)
 
     self.grid_r = grid_r = grid_x + grid_w
