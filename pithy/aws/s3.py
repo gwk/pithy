@@ -1,14 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from boto3 import client as Client, Session # type: ignore
+from bz2 import compress as bz2_compress, decompress as bz2_expand
+from datetime import datetime as DateTime
+from gzip import compress as gz_compress, decompress as gz_expand
+from io import BytesIO
+from lzma import compress as xz_compress, decompress as xz_decompress
 from mimetypes import guess_type as guess_mime_type
 from pithy.fs import path_dir, path_join, make_dirs, file_status, walk_paths
 from typing import Any, Callable, Dict, IO, Union
-from io import BytesIO
 import os
-from gzip import compress as gz_compress, decompress as gz_expand
-from bz2 import compress as bz2_compress, decompress as bz2_expand
-from lzma import compress as xz_compress, decompress as xz_decompress
-from boto3 import client as Client, Session # type: ignore
 
 try: from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore
 except ImportError:
@@ -139,7 +140,7 @@ class S3MockClient(S3Client):
       contents.append({
         'Key': key,
         'Size': s.size,
-        'LastModified': s.mtime,
+        'LastModified': DateTime.fromtimestamp(s.mtime),
       })
     return {
       'KeyCount': len(contents),
