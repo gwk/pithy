@@ -196,6 +196,7 @@ def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> N
 
 def esc_xml_text(val:Any) -> str:
   'HTML-escape the string representation of `val`.'
+  # TODO: add options to support whitespace escaping?
   return html_escape(str(val), quote=False)
 
 
