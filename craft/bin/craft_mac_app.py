@@ -155,7 +155,7 @@ def gen_plist(dst_file, EXECUTABLE_NAME, PRODUCT_BUNDLE_IDENTIFIER, PRODUCT_NAME
     'DTPlatformBuild': '9A235', # TODO.
     'DTPlatformVersion': 'GM', # TODO.
     'DTSDKBuild': '17A360', # TODO.
-    'DTSDKName': 'macosx10.13', # TODO.
+    'DTSDKName': 'macosx10.14', # TODO.
     'DTXcode': '0900', # TODO.
     'DTXcodeBuild': '9A235', # TODO.
     'LSMinimumSystemVersion': MACOSX_DEPLOYMENT_TARGET,

@@ -103,7 +103,7 @@ def run_utest(src_path, module, conf, debug_dir, sdk_dir, fw_dir, module_cache_d
     '-I', debug_dir,
     '-L', debug_dir,
     '-module-cache-path', module_cache_dir,
-    '-swift-version', '4',
+    '-swift-version', '4.2',
     '-target', conf.target_triple_macOS,
     '-Onone',
     '-g',

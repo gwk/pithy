@@ -97,7 +97,7 @@ def update_swift_package_json(config) -> Any:
       '--driver-mode=swift',
       '-swift-version', '4',
       '-target', 'x86_64-apple-macosx10.10',
-      '-sdk', dev_dir + '/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk',
+      '-sdk', dev_dir + '/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk',
       '-I', lib_pm_4_dir,
       '-L', lib_pm_4_dir,
       '-lPackageDescription',
@@ -139,7 +139,7 @@ craft_required_keys = frozenset({
 craft_config_defaults = {
   'copyright': 'Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.',
   'build-dir': '_build',
-  'target-macOS': '10.13',
+  'target-macOS': '10.14',
 }
 
 # TODO: derive this from CraftConfig class def.
