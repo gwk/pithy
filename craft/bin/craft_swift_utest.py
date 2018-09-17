@@ -115,8 +115,13 @@ def run_utest(src_path, module, conf, debug_dir, sdk_dir, fw_dir, module_cache_d
     main_path,
   ]
   #errSL('CMD', cmd)
-  if runC(cmd) != 0: return False
-  return runC(exe_path) == 0
+  if runC(cmd) != 0:
+    errSL('utest compile failed:', *cmd)
+    return False
+  if runC(exe_path,) != 0:
+    errSL('utest failed:', exe_path)
+    return False
+  return True
 
 
 if __name__ == '__main__': main()
