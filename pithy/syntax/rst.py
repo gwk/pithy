@@ -8,11 +8,11 @@ from ..io import errL, errSL
 from ..tree import transform_tree, OmitNode
 from . import Syntax
 
-from docutils import frontend as _frontend # type: ignore
+from docutils import frontend as _frontend
 from docutils import nodes as _nodes
-from docutils.nodes import Node as Node, Text # type: ignore
-from docutils.utils import new_document as _new_document # type: ignore
-from docutils.parsers.rst import Parser as _RstParser # type: ignore
+from docutils.nodes import Node as Node, Text
+from docutils.utils import new_document as _new_document
+from docutils.parsers.rst import Parser as _RstParser
 
 
 def parse_rst(path:str, text:str) -> Syntax:
@@ -120,7 +120,7 @@ class _Ctx:
 
 
   @dispatched # type: ignore
-  def visit(self, node:_nodes.target, stack:Tuple[Node, ...], children:List[Node]) -> None: # type: ignore
+  def visit(self, node:_nodes.target, stack:Tuple[Node, ...], children:List[Node]) -> None:
     raise OmitNode
 
 
