@@ -36,7 +36,7 @@ class SvgWriter(XmlWriter):
   }
 
   def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None,
-   _id_counter:_Counter=None, _class_counter:_Counter=None, **kwargs:Any) -> None:
+   _counter:_Counter=None, **kwargs:Any) -> None:
     'A `title` attribute gets converted into a child element, which renders in browsers as a tooltip.'
     if attrs:
       try: title = attrs.pop('title')
@@ -45,7 +45,7 @@ class SvgWriter(XmlWriter):
         tail_children = tuple(children) or (Ellipsis,)
         children = (SvgTitle(children=(str(title),)), *tail_children)
     super().__init__(*args, children=children, tag=tag, file=file, attrs=attrs,
-      _id_counter=_id_counter, _class_counter=_class_counter, **kwargs)
+      _counter=_counter, **kwargs)
 
 
   # SVG Elements.
@@ -272,8 +272,7 @@ class Svg(SvgWriter):
   tag = 'svg'
 
   def __init__(self, file:TextIO=None, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None,
-   _id_counter:_Counter=None, _class_counter:_Counter=None, **attrs:Any) -> None:
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, _counter:_Counter=None, **attrs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -301,7 +300,7 @@ class Svg(SvgWriter):
     }
     add_opt_attrs(attrs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
     assert not isinstance(file, str)
-    super().__init__(file=file, attrs=attrs, _id_counter=_id_counter, _class_counter=_class_counter)
+    super().__init__(file=file, attrs=attrs, _counter=_counter)
 
 
 # Plots.
@@ -417,14 +416,14 @@ class Plot(SvgWriter):
    corner_radius:VecOrNum=None,
    symmetric_xy=False,
    dbg=False,
-   _id_counter:_Counter=None, _class_counter:_Counter=None) -> None:
+   _counter:_Counter=None) -> None:
 
     attrs = attrs or {}
     pos = f2_for_vec(pos)
     # Initialize as `g` element.
     attrs.setdefault('class_', 'plot')
     attrs['transform'] = translate(*pos)
-    super().__init__(tag=tag, file=file, attrs=attrs, _id_counter=_id_counter, _class_counter=_class_counter)
+    super().__init__(tag=tag, file=file, attrs=attrs, _counter=_counter)
 
     self.pos = pos
     self.size = size = f2_for_vec(size)

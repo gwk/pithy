@@ -17,7 +17,11 @@ _XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
 
 XmlAttrs = Optional[Dict[str,Any]]
 
-_Counter = Iterator[int]
+class _Counter:
+  def __init__(self) -> None:
+    self.id_counter = count()
+    self.class_counter = count()
+
 
 class XmlWriter(ContextManager):
   '''
@@ -30,11 +34,11 @@ class XmlWriter(ContextManager):
     'class_' : 'class',
   }
 
-  can_auto_close_tags = True # Allows "void" or "self-closing" elements, e.g. <TAG />. False for HTML.
+  can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing" ('<TAG />'). False for HTML.
   tag:str = '' # Subclasses can specify a tag.
 
   def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None,
-    _id_counter:_Counter=None, _class_counter:_Counter=None,
+    _counter:_Counter=None,
    **kwargs:Any) -> None:
     '''
     `children` and `attrs` are provided as named parameters to avoid excessive copying into `args` and `kwargs`.
@@ -46,8 +50,7 @@ class XmlWriter(ContextManager):
     self.context_depth = 0
     self.is_closed = False
     self.open_child:Optional['XmlWriter'] = None
-    self._id_counter:_Counter = _id_counter or count()
-    self._class_counter:_Counter = _class_counter or count()
+    self._counter:_Counter = _counter or _Counter()
 
     # An Ellipsis indicates that the children should be printed one per line,
     # and that the element should not be immediately closed.
@@ -149,8 +152,8 @@ class XmlWriter(ContextManager):
     assert not self.is_closed
     self.check_open_child()
     self.complete_open_tag()
-    self.open_child = child_class(*args, tag=tag, file=self.file, attrs=attrs, children=children,
-     _id_counter=self._id_counter, _class_counter=self._class_counter, **kwargs)
+    self.open_child = child_class(*args, tag=tag, file=self.file, attrs=attrs, children=children, _counter=self._counter,
+      **kwargs)
     return self.open_child
 
 
@@ -176,14 +179,10 @@ class XmlWriter(ContextManager):
 
 
   def gen_id(self) -> str:
-    if self._id_counter is None:
-      self._id_counter = count()
-    return f'_id{next(self._id_counter)}'
+    return f'_id{next(self._counter.id_counter)}'
 
   def gen_class(self) -> str:
-    if self._class_counter is None:
-      self._class_counter = count()
-    return f'_class{next(self._class_counter)}'
+    return f'_class{next(self._counter.class_counter)}'
 
 
 def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> None:
