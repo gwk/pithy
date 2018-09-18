@@ -449,8 +449,11 @@ class Plot(SvgWriter):
     b = reduce(expand_opt_bounds, (s.bounds for s in series), None)
     if x_min is None: x_min = 0.0 if b is None else b[0][0]
     if y_min is None: y_min = 0.0 if b is None else b[0][1]
-    if x_max is None: x_max = x_min + 1.0 if b is None else b[1][0]
-    if y_max is None: y_max = y_min + 1.0 if b is None else b[1][1]
+    if x_max is None: x_max = x_min if b is None else b[1][0]
+    if y_max is None: y_max = y_min if b is None else b[1][1]
+
+    if x_max <= x_min: x_max = x_min + 1.0
+    if y_max <= y_min: y_max = y_min + 1.0
 
     if x.visible_origin:
       if x_min > 0.0:   x_min = 0.0
