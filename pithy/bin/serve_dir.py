@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from argparse import ArgumentParser
 from functools import partial
 from ..http.server import HTTPServer, HTTPRequestHandler
 from ..task import run
@@ -7,8 +8,6 @@ from typing import *
 
 
 def main() -> None:
-
-  from argparse import ArgumentParser
 
   parser = ArgumentParser(description='Serve files from a directory.')
   parser.add_argument('root', default='.', nargs='?', help='Root directory to serve from')
