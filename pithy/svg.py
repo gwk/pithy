@@ -37,7 +37,7 @@ class SvgWriter(XmlWriter):
 
   def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None,
    _id_counter:_Counter=None, _class_counter:_Counter=None, **kwargs:Any) -> None:
-    '`title` attribute gets converted into a child element (renders in browsers as a tooltip).'
+    'A `title` attribute gets converted into a child element, which renders in browsers as a tooltip.'
     if attrs:
       try: title = attrs.pop('title')
       except KeyError: pass
