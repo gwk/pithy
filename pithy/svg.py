@@ -35,18 +35,16 @@ class SvgWriter(XmlWriter):
     **XmlWriter.replaced_attrs,
   }
 
-  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None,
-   _counter:_Counter=None, **kwargs:Any) -> None:
+  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, attrs:XmlAttrs=None, _counter:_Counter=None,
+   **kwargs:Any) -> None:
     'A `title` attribute gets converted into a child element, which renders in browsers as a tooltip.'
+    title:Any = None
     if attrs:
       try: title = attrs.pop('title')
       except KeyError: pass
-      else:
-        tail_children = tuple(children) or (Ellipsis,)
-        children = (SvgTitle(children=(str(title),)), *tail_children)
-    super().__init__(*args, children=children, tag=tag, file=file, attrs=attrs,
-      _counter=_counter, **kwargs)
-
+      else: title = SvgTitle(title)
+    super().__init__(*args, children=children, tag=tag, attrs=attrs, _counter=_counter, **kwargs)
+    if title: self.add(title)
 
   # SVG Elements.
 
@@ -58,7 +56,7 @@ class SvgWriter(XmlWriter):
       assert y is None
       x, y = pos
     add_opt_attrs(attrs, cx=fmt_num(x), cy=fmt_num(y), r=fmt_num(r))
-    self.child(SvgWriter, tag='circle', attrs=attrs).close()
+    self.child(SvgWriter, tag='circle', attrs=attrs)
 
 
   def clipPath(self, **attrs:Any) -> 'SvgWriter':
@@ -88,7 +86,7 @@ class SvgWriter(XmlWriter):
       assert h is None
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    self.child(SvgWriter, tag='image', attrs=attrs).close()
+    self.child(SvgWriter, tag='image', attrs=attrs)
 
 
   def line(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None, **attrs:Any) -> None:
@@ -102,7 +100,7 @@ class SvgWriter(XmlWriter):
       assert y2 is None
       x2, y2 = b
     add_opt_attrs(attrs, x1=fmt_num(x1), y1=fmt_num(y1), x2=fmt_num(x2), y2=fmt_num(y2))
-    self.child(SvgWriter, tag='line', attrs=attrs).close()
+    self.child(SvgWriter, tag='line', attrs=attrs)
 
 
   def marker(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
@@ -135,7 +133,7 @@ class SvgWriter(XmlWriter):
       cmd_strs.append(code + ','.join(fmt_num(n) for n in c[1:]))
     assert 'd' not in attrs
     attrs['d'] = ' '.join(cmd_strs)
-    self.child(SvgWriter, tag='path', attrs=attrs).close()
+    self.child(SvgWriter, tag='path', attrs=attrs)
 
 
   def polyline(self, points:Iterable[Vec], **attrs:Any) -> None:
@@ -145,7 +143,7 @@ class SvgWriter(XmlWriter):
       if len(p) < 2: raise Exception(f'bad point for polyline: {p}')
       point_strs.append(f'{fmt_num(p[0])},{fmt_num(p[1])}')
     attrs['points'] = ' '.join(point_strs)
-    self.child(SvgWriter, tag='polyline', attrs=attrs).close()
+    self.child(SvgWriter, tag='polyline', attrs=attrs)
 
 
   def rect(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None, **attrs:Any) -> None:
@@ -165,12 +163,12 @@ class SvgWriter(XmlWriter):
     else:
       rx = ry = r
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h), rx=fmt_num(rx), ry=fmt_num(ry))
-    self.child(SvgWriter, tag='rect', attrs=attrs).close()
+    self.child(SvgWriter, tag='rect', attrs=attrs)
 
 
   def style(self, *text:str, **attrs,) -> None:
     'Output an SVG `style` element.'
-    self.child(SvgWriter, tag='style', attrs=attrs, children=text).close()
+    self.child(SvgWriter, tag='style', attrs=attrs, children=text)
 
 
   def symbol(self, id:str, *, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> 'SvgWriter':
@@ -193,7 +191,7 @@ class SvgWriter(XmlWriter):
       x, y = pos
     if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
-    self.child(SvgWriter, tag='text', attrs=attrs, children=[text]).close()
+    self.child(SvgWriter, tag='text', attrs=attrs, children=[text])
 
 
   def use(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> None:
@@ -209,7 +207,7 @@ class SvgWriter(XmlWriter):
       assert h is None
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(attrs, href=id, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    self.child(SvgWriter, tag='use', attrs=attrs).close()
+    self.child(SvgWriter, tag='use', attrs=attrs)
 
 
   # High level.
@@ -271,7 +269,7 @@ class Svg(SvgWriter):
 
   tag = 'svg'
 
-  def __init__(self, file:TextIO=None, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
+  def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
    vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, _counter:_Counter=None, **attrs:Any) -> None:
     if pos is not None:
       assert x is None
@@ -299,8 +297,7 @@ class Svg(SvgWriter):
       **attrs
     }
     add_opt_attrs(attrs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
-    assert not isinstance(file, str)
-    super().__init__(file=file, attrs=attrs, _counter=_counter)
+    super().__init__(attrs=attrs, _counter=_counter)
 
 
 # Plots.
@@ -404,7 +401,7 @@ class Plot(SvgWriter):
 
   tag = 'g'
 
-  def __init__(self, *, tag:str, file:TextIO, attrs:XmlAttrs=None, children:Iterable[Any],
+  def __init__(self, *, tag:str, attrs:XmlAttrs=None, children:Iterable[Any],
    pos:Vec=(0,0), size:Vec=(512,1024),
    x:PlotAxis=None, y:PlotAxis=None,
    series:Sequence[PlotSeries],
@@ -423,7 +420,7 @@ class Plot(SvgWriter):
     # Initialize as `g` element.
     attrs.setdefault('class_', 'plot')
     attrs['transform'] = translate(*pos)
-    super().__init__(tag=tag, file=file, attrs=attrs, _counter=_counter)
+    super().__init__(tag=tag, attrs=attrs, _counter=_counter)
 
     self.pos = pos
     self.size = size = f2_for_vec(size)

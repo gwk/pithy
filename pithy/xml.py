@@ -17,7 +17,13 @@ _XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
 
 XmlAttrs = Optional[Dict[str,Any]]
 
+
+class EscapedStr(str):
+  'A `str` subclass that signifies to some receiver that it has already been properly escaped.'
+
+
 class _Counter:
+  'Internal pair of counters for XmlWriter to generate "id" and "class" attributes.'
   def __init__(self) -> None:
     self.id_counter = count()
     self.class_counter = count()
@@ -34,142 +40,89 @@ class XmlWriter(ContextManager):
     'class_' : 'class',
   }
 
-  can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing" ('<TAG />'). False for HTML.
+  can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing", for example '<TAG/>'. False for HTML.
   tag:str = '' # Subclasses can specify a tag.
 
-  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, file:TextIO=None, attrs:XmlAttrs=None,
-    _counter:_Counter=None,
-   **kwargs:Any) -> None:
+  def __init__(self, *_args:Any, children:Iterable[Any]=(), tag:str=None, prefix='', attrs:XmlAttrs=None, _counter:_Counter=None, **kwargs:Any) -> None:
     '''
-    `children` and `attrs` are provided as named parameters to avoid excessive copying into `args` and `kwargs`.
     `attrs` also allows for XML attributes that contain non-identifier characters.
     '''
-    self.file = file or StringIO()
     self.tag = tag or type(self).tag
     if not self.tag: raise Exception(f'{type(self)}: neither type-level tag nor argument tag specified')
-    self.context_depth = 0
-    self.is_closed = False
-    self.open_child:Optional['XmlWriter'] = None
+    self.prefix = prefix
+    self.children = [*_args, *children]
+    self.inline:Optional[bool] = None
+    self.attrs = kwargs
+    if attrs: self.attrs.update(attrs)
+    self._appears_inline = bool(self.children)
+    self._context_depth = 0
+    self._is_closed = False
     self._counter:_Counter = _counter or _Counter()
 
-    # An Ellipsis indicates that the children should be printed one per line,
-    # and that the element should not be immediately closed.
-    has_ellipsis = False
-    child_strs = []
-    for child in chain(children, args):
-      if child is Ellipsis:
-        has_ellipsis = True
-        continue
+
+  def write(self, file:TextIO, end='\n') -> None:
+    if self.prefix: print(self.prefix, file=file)
+    print('<', self.tag, self.fmt_attrs(self.attrs), sep='', end='', file=file)
+    if self.can_auto_close_tags and not self.children:
+      print('/>', end=end, file=file)
+      return
+    inline = self._appears_inline if (self.inline is None) else self.inline
+    child_end = ('' if inline else '\n')
+    print('>', end=child_end, file=file)
+    for child in self.children:
       if isinstance(child, XmlWriter):
-        child.close()
-        child_strs.append(child.string.rstrip('\n'))
+        child.write(end=child_end, file=file)
       else:
-        child_strs.append(esc_xml_text(child))
-
-    # If there is the possibility of self-closing the element, then leave the open-tag incomplete.
-    self.is_open_tag_incomplete = self.can_auto_close_tags and not (child_strs or has_ellipsis)
-    close_now = (child_strs and not has_ellipsis)
-
-    bracket = ('' if self.is_open_tag_incomplete else '>')
-    print(f'<{self.tag}{self.fmt_attrs(attrs, kwargs)}{bracket}',
-      *child_strs,
-      sep=('\n' if has_ellipsis else ''),
-      end=('' if self.is_open_tag_incomplete or close_now else '\n'),
-      file=self.file)
-
-    if close_now: self.close()
+        print(esc_xml_text(child), end=child_end, file=file)
+    print('</', self.tag, '>', sep='', end=end, file=file)
 
 
   @property
   def string(self) -> str:
-    if not isinstance(self.file, StringIO):
-      raise TypeError(f'{self} cannot get string value for non-StringIO backing file: {self.file}')
-    return self.file.getvalue()
+    s = StringIO()
+    self.write(file=s)
+    return s.getvalue()
 
 
   def __repr__(self) -> str:
     return f'{self.__class__.__name__}({self.tag!r})'
 
 
-  def __del__(self:_XmlWriter) -> None:
-    if not getattr(self, 'is_closed', True): # If attribute is missing, then __init__ raised and we do not need to warn here.
-      errSL('WARNING: XmlWriter was deleted but not closed:', self)
-
-
   def __enter__(self:_XmlWriter) -> _XmlWriter:
-    if self.is_closed: raise Exception(f'XmlWriter is already closed: {self}')
-    self.context_depth += 1
+    if self._is_closed: raise Exception(f'XmlWriter is already closed: {self}')
+    self._context_depth += 1
     return self
 
 
   def __exit__(self, exc_type:Optional[Type[BaseException]], exc_value:Optional[BaseException],
    traceback: Optional[TracebackType]) -> None:
-   self.context_depth -= 1
-   if not self.context_depth: self.close()
+    self._context_depth -= 1
+    if self._context_depth == 0:
+      self._is_closed = True
 
 
-  def complete_open_tag(self) -> None:
-    if self.is_open_tag_incomplete:
-      print('>', file=self.file)
-      self.is_open_tag_incomplete = False
-
-
-  def check_open_child(self) -> None:
-    if self.open_child is not None:
-      if not self.open_child.is_closed: raise Exception(f'{self}: previously opened child {self.open_child} was not closed')
-      self.open_child = None
-
-
-  def close(self) -> None:
-    if not self.is_closed:
-      self.check_open_child()
-      if self.is_open_tag_incomplete: # Self-closing element.
-        print('/>', file=self.file)
-        self.is_open_tag_incomplete = False
-      else:
-        print(f'</{self.tag}>', file=self.file)
-      self.is_closed = True
-
-
-  def write_unescaped(self, *items:Any, sep='', end='\n') -> None:
-    assert not self.is_closed
-    if not items: return
-    self.check_open_child()
-    self.complete_open_tag()
-    print(*items, sep=sep, end=end, file=self.file)
-
-
-  def write(self, *items:Any, sep='', end='\n') -> None:
-    self.write_unescaped(*(esc_xml_text(item) for item in items), sep=sep, end=end)
+  def add(self, *items:Any, sep='', end='\n') -> None:
+    if self._is_closed: raise Exception(f'XmlWriter is already closed: {self}')
+    self.children.extend(items)
 
 
   def leaf(self, tag:str, *, attrs:XmlAttrs) -> None:
-    self.write_unescaped(f'<{tag}{self.fmt_attrs(attrs)}/>')
+    self.add(EscapedStr(f'<{tag}{self.fmt_attrs(attrs)}/>'))
 
 
   def child(self, child_class:Type[_XmlWriter], *args:Any, children:Iterable[Any]=(), tag:str=None, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
-    assert not self.is_closed
-    self.check_open_child()
-    self.complete_open_tag()
-    self.open_child = child_class(*args, tag=tag, file=self.file, attrs=attrs, children=children, _counter=self._counter,
-      **kwargs)
-    return self.open_child
+    if self._is_closed: raise Exception(f'XmlWriter is already closed: {self}')
+    c = child_class(*args, tag=tag, attrs=attrs, children=children, _counter=self._counter, **kwargs)
+    self.add(c)
+    return c
 
 
-  def fmt_attrs(self, attrs:XmlAttrs, kwarg_attrs:XmlAttrs=None) -> str:
+  def fmt_attrs(self, attrs:XmlAttrs) -> str:
     'Format the `attrs` dict into XML key-value attributes.'
-    if not attrs and not kwarg_attrs: return ''
-
-    items: Iterable[Tuple[str, Any]]
-    if attrs and kwarg_attrs: items = chain(attrs.items(), kwarg_attrs.items())
-    elif attrs: items = attrs.items()
-    else:
-      assert kwarg_attrs is not None
-      items = kwarg_attrs.items()
-
+    if not attrs: return ''
     parts: List[str] = []
-    for k, v in items:
+    for k, v in attrs.items():
       if v is None:
         v = 'none'
       else:
@@ -196,10 +149,10 @@ def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> N
 def esc_xml_text(val:Any) -> str:
   'HTML-escape the string representation of `val`.'
   # TODO: add options to support whitespace escaping?
-  return html_escape(str(val), quote=False)
+  return val if isinstance(val, EscapedStr) else html_escape(str(val), quote=False)
 
 
 def esc_xml_attr(val:Any) -> str:
   'HTML-escape the string representation of `val`, including quote characters.'
-  return html_escape(str(val), quote=True)
+  return val if isinstance(val, EscapedStr) else html_escape(str(val), quote=True)
 

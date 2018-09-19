@@ -5,7 +5,7 @@ from sys import stdout
 
 w = 512
 h = 1024
-with Svg(stdout, w=w, h=h) as svg:
+with Svg(w=w, h=h) as svg:
   svg.grid(size=(w, h), stroke='#E0E0E0', fill='white', stroke_width=0.5)
 
   y = 0
@@ -55,3 +55,5 @@ with Svg(stdout, w=w, h=h) as svg:
       marker.circle((4, 4), r=4)
     g.polyline([(0,0), (16,0), (32,0)], stroke='black', marker_start="url(#dot)", marker_mid="url(#dot)", marker_end="url(#dot)")
   y += 32
+
+svg.write(stdout)

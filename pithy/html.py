@@ -93,10 +93,9 @@ class Html(HtmlWriter):
 
 
 class HtmlDoc(Html):
-  "Html root document. Outputs '<!DOCTYPE html>' prior to the element tree."
-  def __init__(self, file:TextIO=None, attrs:XmlAttrs=None) -> None:
-    self.write_unescaped('<!DOCTYPE html>')
-    super().__init__(tag='html', file=file, attrs=attrs)
+  "Html root document, with '<!DOCTYPE html>' prefix."
+  def __init__(self, attrs:XmlAttrs=None) -> None:
+    super().__init__(tag='html', prefix='<!DOCTYPE html>', attrs=attrs)
 
 
 class Body(HtmlWriter):
