@@ -87,15 +87,12 @@ class HtmlWriter(XmlWriter):
 class Html(HtmlWriter):
   tag = 'html'
 
-  def body(self, *children:Any, **attrs:Any) -> 'Body': return self.child(Body, *children, attrs=attrs)
-
-  def head(self, *children:Any, **attrs:Any) -> 'Head': return self.child(Head, *children, attrs=attrs)
-
-
-class HtmlDoc(Html):
-  "Html root document, with '<!DOCTYPE html>' prefix."
   def __init__(self, attrs:XmlAttrs=None) -> None:
-    super().__init__(tag='html', prefix='<!DOCTYPE html>', attrs=attrs)
+    super().__init__(attrs=attrs)
+    self.prefix = '<!DOCTYPE html>'
+    self.head = self.child(Head, attrs=attrs)
+    self.head.meta(charset='utf-8')
+    self.body = self.child(Body, attrs=attrs)
 
 
 class Body(HtmlWriter):
