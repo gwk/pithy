@@ -574,9 +574,9 @@ class Plot(SvgWriter):
     # Contents.
     self.style(
       _plot_style,
-      f'text.title {{ font-size: {title_h}; }}\n',
-      f'text.axis-label {{ font-size: {axis_label_h}; }}\n',
-      f'text.tick {{ font-size: {tick_h}; }}\n',
+      f'text.title {{ font-size: {title_h}px; }}\n',
+      f'text.axis-label {{ font-size: {axis_label_h}px; }}\n',
+      f'text.tick {{ font-size: {tick_h}px; }}\n',
     )
 
     dbg_rect((0, 0), self.size, stroke='#000')

@@ -19,9 +19,9 @@ g.tick-y text.tick {
   text-anchor: start;
   alignment-baseline: alphabetic;
 }
-text.title { font-size: 14.0; }
-text.axis-label { font-size: 12.0; }
-text.tick { font-size: 10.0; }
+text.title { font-size: 14.0px; }
+text.axis-label { font-size: 12.0px; }
+text.tick { font-size: 10.0px; }
 </style>
 <text class="title" x="0" y="0">Identity and Sin</text>
 <clipPath id="_id0">
