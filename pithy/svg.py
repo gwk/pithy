@@ -35,7 +35,7 @@ class SvgWriter(XmlWriter):
     **XmlWriter.replaced_attrs,
   }
 
-  def __init__(self, *args:Any, children:Iterable[Any]=(), tag:str=None, attrs:XmlAttrs=None, _counter:_Counter=None,
+  def __init__(self, *children:Any, tag:str=None, attrs:XmlAttrs=None, _counter:_Counter=None,
    **kwargs:Any) -> None:
     'A `title` attribute gets converted into a child element, which renders in browsers as a tooltip.'
     title:Any = None
@@ -43,7 +43,7 @@ class SvgWriter(XmlWriter):
       try: title = attrs.pop('title')
       except KeyError: pass
       else: title = SvgTitle(title)
-    super().__init__(*args, children=children, tag=tag, attrs=attrs, _counter=_counter, **kwargs)
+    super().__init__(*children, tag=tag, attrs=attrs, _counter=_counter, **kwargs)
     if title: self.add(title)
 
   # SVG Elements.
@@ -168,7 +168,7 @@ class SvgWriter(XmlWriter):
 
   def style(self, *text:str, **attrs,) -> None:
     'Output an SVG `style` element.'
-    self.child(SvgWriter, tag='style', attrs=attrs, children=text)
+    self.child(SvgWriter, *text, tag='style', attrs=attrs)
 
 
   def symbol(self, id:str, *, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> 'SvgWriter':
@@ -191,7 +191,7 @@ class SvgWriter(XmlWriter):
       x, y = pos
     if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
-    self.child(SvgWriter, tag='text', attrs=attrs, children=[text])
+    self.child(SvgWriter, text, tag='text', attrs=attrs)
 
 
   def use(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> None:
@@ -401,7 +401,7 @@ class Plot(SvgWriter):
 
   tag = 'g'
 
-  def __init__(self, *, tag:str, attrs:XmlAttrs=None, children:Iterable[Any],
+  def __init__(self, *children:Any, tag:str, attrs:XmlAttrs=None,
    pos:Vec=(0,0), size:Vec=(512,1024),
    x:PlotAxis=None, y:PlotAxis=None,
    series:Sequence[PlotSeries],
@@ -420,7 +420,7 @@ class Plot(SvgWriter):
     # Initialize as `g` element.
     attrs.setdefault('class_', 'plot')
     attrs['transform'] = translate(*pos)
-    super().__init__(tag=tag, attrs=attrs, _counter=_counter)
+    super().__init__(*children, tag=tag, attrs=attrs, _counter=_counter)
 
     self.pos = pos
     self.size = size = f2_for_vec(size)

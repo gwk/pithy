@@ -43,14 +43,14 @@ class XmlWriter(ContextManager):
   can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing", for example '<TAG/>'. False for HTML.
   tag:str = '' # Subclasses can specify a tag.
 
-  def __init__(self, *_args:Any, children:Iterable[Any]=(), tag:str=None, prefix='', attrs:XmlAttrs=None, _counter:_Counter=None, **kwargs:Any) -> None:
+  def __init__(self, *_children:Any, tag:str=None, prefix='', attrs:XmlAttrs=None, _counter:_Counter=None, **kwargs:Any) -> None:
     '''
     `attrs` also allows for XML attributes that contain non-identifier characters.
     '''
     self.tag = tag or type(self).tag
     if not self.tag: raise Exception(f'{type(self)}: neither type-level tag nor argument tag specified')
     self.prefix = prefix
-    self.children = [*_args, *children]
+    self.children = list(_children)
     self.inline:Optional[bool] = None
     self.attrs = kwargs
     if attrs: self.attrs.update(attrs)
@@ -110,10 +110,10 @@ class XmlWriter(ContextManager):
     self.add(EscapedStr(f'<{tag}{self.fmt_attrs(attrs)}/>'))
 
 
-  def child(self, child_class:Type[_XmlWriter], *args:Any, children:Iterable[Any]=(), tag:str=None, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
+  def child(self, child_class:Type[_XmlWriter], *children:Any, tag:str=None, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
     if self._is_closed: raise Exception(f'XmlWriter is already closed: {self}')
-    c = child_class(*args, tag=tag, attrs=attrs, children=children, _counter=self._counter, **kwargs)
+    c = child_class(*children, tag=tag, attrs=attrs, _counter=self._counter, **kwargs)
     self.add(c)
     return c
 

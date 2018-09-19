@@ -31,29 +31,29 @@ class HtmlWriter(XmlWriter):
 
   def br(self) -> None: self.leaf('br', attrs=None)
 
-  def div(self, *children:Any, **attrs:Any) -> 'Div': return self.child(Div, children=children, attrs=attrs)
+  def div(self, *children:Any, **attrs:Any) -> 'Div': return self.child(Div, *children, attrs=attrs)
 
-  def h1(self, *children:Any, **attrs:Any) -> 'H1': return self.child(H1, children=children, attrs=attrs)
-  def h2(self, *children:Any, **attrs:Any) -> 'H2': return self.child(H2, children=children, attrs=attrs)
-  def h3(self, *children:Any, **attrs:Any) -> 'H3': return self.child(H3, children=children, attrs=attrs)
-  def h4(self, *children:Any, **attrs:Any) -> 'H4': return self.child(H4, children=children, attrs=attrs)
-  def h5(self, *children:Any, **attrs:Any) -> 'H5': return self.child(H5, children=children, attrs=attrs)
-  def h6(self, *children:Any, **attrs:Any) -> 'H6': return self.child(H6, children=children, attrs=attrs)
+  def h1(self, *children:Any, **attrs:Any) -> 'H1': return self.child(H1, *children, attrs=attrs)
+  def h2(self, *children:Any, **attrs:Any) -> 'H2': return self.child(H2, *children, attrs=attrs)
+  def h3(self, *children:Any, **attrs:Any) -> 'H3': return self.child(H3, *children, attrs=attrs)
+  def h4(self, *children:Any, **attrs:Any) -> 'H4': return self.child(H4, *children, attrs=attrs)
+  def h5(self, *children:Any, **attrs:Any) -> 'H5': return self.child(H5, *children, attrs=attrs)
+  def h6(self, *children:Any, **attrs:Any) -> 'H6': return self.child(H6, *children, attrs=attrs)
 
   def hr(self) -> None: self.leaf('hr', attrs=None)
 
-  def meta(self, *children:Any, **attrs:Any) -> 'Meta': return self.child(Meta, children=children, attrs=attrs)
+  def meta(self, *children:Any, **attrs:Any) -> 'Meta': return self.child(Meta, *children, attrs=attrs)
 
-  def p(self, *children:Any, **attrs:Any) -> 'P': return self.child(P, children=children, attrs=attrs)
+  def p(self, *children:Any, **attrs:Any) -> 'P': return self.child(P, *children, attrs=attrs)
 
-  def style(self, *children:Any, **attrs:Any) -> 'Style': return self.child(Style, children=children, attrs=attrs)
+  def style(self, *children:Any, **attrs:Any) -> 'Style': return self.child(Style, *children, attrs=attrs)
 
   def svg(self, *children:Any, **kwargs:Any) -> Svg:
-    return self.child(Svg, children=children, **kwargs)
+    return self.child(Svg, *children, **kwargs)
 
   # Forms.
 
-  def form(self, *children:Any, **attrs:Any) -> 'Form': return self.child(Form, children=children, attrs=attrs)
+  def form(self, *children:Any, **attrs:Any) -> 'Form': return self.child(Form, *children, attrs=attrs)
 
   def input(self, **attrs:Any) -> None:
     if attrs.get('type') not in form_input_types:
@@ -61,35 +61,35 @@ class HtmlWriter(XmlWriter):
     return self.leaf('input', attrs=attrs)
 
   def label(self, *children:Any, **attrs:Any) -> 'Label':
-    return self.child(Label, children=children, attrs=attrs)
+    return self.child(Label, *children, attrs=attrs)
 
   # Tables.
 
   # TODO: return XmlWriter subclasses that enforce correct permitted parent/child structures.
 
-  def table(self, *children:Any, **attrs:Any) -> 'Table': return self.child(Table, children=children, attrs=attrs)
+  def table(self, *children:Any, **attrs:Any) -> 'Table': return self.child(Table, *children, attrs=attrs)
 
-  def caption(self, *children:Any, **attrs:Any) -> 'Caption': return self.child(Caption, children=children, attrs=attrs)
+  def caption(self, *children:Any, **attrs:Any) -> 'Caption': return self.child(Caption, *children, attrs=attrs)
 
-  def thead(self, *children:Any, **attrs:Any) -> 'THead': return self.child(THead, children=children, attrs=attrs)
+  def thead(self, *children:Any, **attrs:Any) -> 'THead': return self.child(THead, *children, attrs=attrs)
 
-  def tfoot(self, *children:Any, **attrs:Any) -> 'TFoot': return self.child(TFoot, children=children, attrs=attrs)
+  def tfoot(self, *children:Any, **attrs:Any) -> 'TFoot': return self.child(TFoot, *children, attrs=attrs)
 
-  def td(self, *children:Any, **attrs:Any) -> 'TD': return self.child(TD, children=children, attrs=attrs)
+  def td(self, *children:Any, **attrs:Any) -> 'TD': return self.child(TD, *children, attrs=attrs)
 
-  def th(self, *children:Any, **attrs:Any) -> 'TH': return self.child(TH, children=children, attrs=attrs)
+  def th(self, *children:Any, **attrs:Any) -> 'TH': return self.child(TH, *children, attrs=attrs)
 
-  def tr(self, *children:Any, **attrs:Any) -> 'TR': return self.child(TR, children=children, attrs=attrs)
+  def tr(self, *children:Any, **attrs:Any) -> 'TR': return self.child(TR, *children, attrs=attrs)
 
-  def title(self, *children:Any, **attrs:Any) -> 'Title': return self.child(Title, children=children, attrs=attrs)
+  def title(self, *children:Any, **attrs:Any) -> 'Title': return self.child(Title, *children, attrs=attrs)
 
 
 class Html(HtmlWriter):
   tag = 'html'
 
-  def body(self, *children:Any, **attrs:Any) -> 'Body': return self.child(Body, children=children, attrs=attrs)
+  def body(self, *children:Any, **attrs:Any) -> 'Body': return self.child(Body, *children, attrs=attrs)
 
-  def head(self, *children:Any, **attrs:Any) -> 'Head': return self.child(Head, children=children, attrs=attrs)
+  def head(self, *children:Any, **attrs:Any) -> 'Head': return self.child(Head, *children, attrs=attrs)
 
 
 class HtmlDoc(Html):
