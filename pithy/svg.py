@@ -7,7 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from .iterable import iter_unique
 from .num import Num, NumRange
-from .xml import _Counter, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
+from .xml import _Counter, EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from functools import reduce
 from html import escape as html_escape
 from math import floor, log10
