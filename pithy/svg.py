@@ -5,7 +5,7 @@ SVG writer.
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from .iterable import iter_unique
+from .iterable import iter_unique, window_pairs
 from .num import Num, NumRange
 from .xml import _Counter, EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from functools import reduce
@@ -354,14 +354,19 @@ class XYSeries(PlotSeries):
 
 class LineSeries(XYSeries):
 
-  def __init__(self, name:str, points:Sequence[Tuple], plotter:Plotter=None, **attrs:Any) -> None:
+  def __init__(self, name:str, points:Sequence[Tuple], plotter:Plotter=None, use_segments=False, **attrs:Any) -> None:
+    self.use_segments = use_segments
     super().__init__(name=name, points=points, plotter=plotter, **attrs)
 
 
   def render(self, plot:'Plot') -> None:
     with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
-      g.polyline(points=iter_unique(plot.transform(p) for p in self.points), fill='none')
-      # TODO: option to fill polylines.
+      if self.use_segments:
+        for (a, b) in window_pairs(plot.transform(p) for p in self.points):
+          g.line(a, b)
+      else:
+        g.polyline(points=iter_unique(plot.transform(p) for p in self.points), fill='none')
+        # TODO: option to fill polylines.
       if self.plotter is not None:
         for p in self.points: self.plotter(g, plot.transform, p)
 
