@@ -44,10 +44,21 @@ def copy_eagerly(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:boo
   _shutil.copytree(src=src, dst=dst)
 
 
-def copy_path(src:str, dst:str, overwrite:bool=True, follow_symlinks:bool=True, preserve_owner:bool=True) -> None:
+def copy_path(src:str, dst:str, overwrite:bool=True, create_dirs:bool=False, follow_symlinks:bool=True,
+ preserve_owner:bool=True) -> None:
   if overwrite and path_exists(dst):
     remove_path(dst)
+  if create_dirs:
+    make_dirs(path_dir(dst))
   clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=copy_eagerly)
+
+
+def copy_to_dir(src:str, dst:str,  overwrite:bool=True, create_dirs:bool=False, follow_symlinks:bool=True,
+ preserve_owner:bool=True) -> None:
+  if create_dirs:
+    make_dirs(dst)
+  return copy_path(src=src, dst=path_join(dst, path_name(src)),
+    overwrite=overwrite, create_dirs=False, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner)
 
 
 def expand_user(path:Path) -> str: return _expanduser(str_path(path))
