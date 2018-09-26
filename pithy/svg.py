@@ -136,6 +136,16 @@ class SvgWriter(XmlWriter):
     self.child(SvgWriter, tag='path', attrs=attrs)
 
 
+  def polygon(self, points:Iterable[Vec], **attrs:Any) -> None:
+    point_strs:List[str] = []
+    assert 'points' not in attrs
+    for p in points:
+      if len(p) < 2: raise Exception(f'bad point for polyline: {p}')
+      point_strs.append(f'{fmt_num(p[0])},{fmt_num(p[1])}')
+    attrs['points'] = ' '.join(point_strs)
+    self.child(SvgWriter, tag='polygon', attrs=attrs)
+
+
   def polyline(self, points:Iterable[Vec], **attrs:Any) -> None:
     point_strs:List[str] = []
     assert 'points' not in attrs
@@ -164,6 +174,11 @@ class SvgWriter(XmlWriter):
       rx = ry = r
     add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h), rx=fmt_num(rx), ry=fmt_num(ry))
     self.child(SvgWriter, tag='rect', attrs=attrs)
+
+
+  def script(self, *text:str, **attrs,) -> None:
+    'Output an SVG `script` element.'
+    self.child(SvgWriter, *text, tag='script', attrs=attrs)
 
 
   def style(self, *text:str, **attrs,) -> None:

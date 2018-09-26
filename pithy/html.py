@@ -46,6 +46,8 @@ class HtmlWriter(XmlWriter):
 
   def p(self, *children:Any, **attrs:Any) -> 'P': return self.child(P, *children, attrs=attrs)
 
+  def script(self, *children:Any, **attrs:Any) -> 'Script': return self.child(Script, *children, attrs=attrs)
+
   def style(self, *children:Any, **attrs:Any) -> 'Style': return self.child(Style, *children, attrs=attrs)
 
   def svg(self, *children:Any, **kwargs:Any) -> Svg:
@@ -124,6 +126,9 @@ class H6(HtmlWriter):
 
 class P(HtmlWriter):
   tag = 'p'
+
+class Script(HtmlWriter):
+  tag = 'script'
 
 class Style(HtmlWriter):
   tag = 'style'
