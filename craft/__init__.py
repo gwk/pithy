@@ -1,19 +1,19 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from argparse import ArgumentParser
+from pithy.ansi import *
+from pithy.dict import dict_set_defaults
+from pithy.fs import *
+from pithy.io import *
+from pithy.json import load_json, parse_json, write_json
+from pithy.string import find_and_clip_suffix
+from pithy.task import runO
+from typing import Any, AnyStr, Dict, cast
 import os
 import os.path
 import plistlib
 import re
 import yaml
-from argparse import ArgumentParser
-from typing import *
-from pithy.ansi import *
-from pithy.dict import dict_set_defaults
-from pithy.io import *
-from pithy.fs import *
-from pithy.json import load_json, parse_json, write_json
-from pithy.string import find_and_clip_suffix
-from pithy.task import *
 
 
 CRAFT_PROJECT_DIR = 'CRAFT_PROJECT_DIR'
@@ -27,8 +27,9 @@ def load_craft_config():
 
   try: project_dir = os.environ[CRAFT_PROJECT_DIR]
   except KeyError:
-    project_dir = rel_path(find_project_dir())
-    if project_dir is None: exit(f'craft error: could not identify project directory.')
+    p = find_project_dir()
+    if p is None: exit(f'craft error: could not identify project directory.')
+    project_dir = rel_path(p)
     os.environ[CRAFT_PROJECT_DIR] = project_dir
 
   try: config_path = os.environ[CRAFT_CONFIG_PATH]
@@ -40,7 +41,10 @@ def load_craft_config():
     os.environ[CRAFT_CONFIG_PATH] = config_path
 
   try: swift_path = os.environ[CRAFT_SWIFT_PATH]
-  except KeyError: swift_path = path_for_cmd('swift')
+  except KeyError:
+    p = path_for_cmd('swift')
+    if p is None: exit(f'craft error: no path to `swift` executable')
+    swift_path = p
   os.environ[CRAFT_SWIFT_PATH] = swift_path
 
   # TODO: Xcode is macOS only.
@@ -71,7 +75,7 @@ def load_craft_config():
   return c
 
 
-def parse_craft(path):
+def parse_craft(path:str) -> Dict[str,Any]:
   try: f = open(path)
   except FileNotFoundError: exit(f'craft error: craft file does not exist: {path!r}')
   if path_ext(path) != '.yaml': exit(f'craft error: caft file must be a `.yaml` file.') # TODO: relax this restriction.
@@ -82,7 +86,7 @@ def parse_craft(path):
   missing_keys = craft_required_keys.difference(d)
   if missing_keys: exit('\n  '.join([f'craft error: missing required keys in {path!r}:', *sorted(missing_keys)]))
   dict_set_defaults(d, craft_config_defaults)
-  return d
+  return cast(Dict[str,Any], d)
 
 
 def update_swift_package_json(config) -> Any:
@@ -181,16 +185,16 @@ class Private(NamedTuple):
   sym: str
 
 
-def handle_yaml_private(loader, node) -> str:
+def handle_yaml_private(loader, node) -> Private:
   return Private(sym=resolve_yaml_node(node.value))
 
 def resolve_yaml_node(node: Any) -> Any:
   if isinstance(node, yaml.Node): return resolve_yaml_node(node.value)
   if isinstance(node, list): return [resolve_yaml_node(n) for n in node]
-  if isinstance(node, dict): return {resolve_yaml_node(k): resolve_yaml_node(v) for k, v in node.value.items()}
+  if isinstance(node, dict): return {resolve_yaml_node(k): resolve_yaml_node(v) for k, v in node.items()}
   return node
 
 
 # NOTE: modifies the global default yaml Loader object.
-yaml.add_constructor('!private', handle_yaml_private)
+yaml.add_constructor('!private', handle_yaml_private) # type: ignore
 

@@ -254,7 +254,7 @@ def walk_dirs(*paths:Path, make_abs=False, include_hidden=False, file_exts:Itera
 
 
 def walk_dirs_and_files(*dir_paths:Path, make_abs=False, include_hidden=False, file_exts:Iterable[str]=(),
-  files_as_paths=False) -> Iterator[Tuple[str, List[str]]]:
+ files_as_paths=False) -> Iterator[Tuple[str, List[str]]]:
   '''
   yield (dir_path, files) pairs.
   files is an array of either names (default) or paths, depending on the files_as_paths option.
