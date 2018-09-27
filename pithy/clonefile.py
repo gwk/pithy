@@ -41,8 +41,8 @@ def clone(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True,
   elif en == ENOENT: # one of the files or intervening directories does not exist.
     dst_dir = dirname(dst)
     if dst_dir and not isdir(dst_dir): raise NotADirectoryError(dst_dir)
-    # TODO: more elaborate diagnosis.
-    raise OSError(en, strerror(en), src)
+  # TODO: more elaborate diagnosis.
+  raise OSError(en, strerror(en), src)
 
 
 def volume_supports_clone() -> bool:
