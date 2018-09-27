@@ -167,7 +167,8 @@ def name_has_any_ext(name:str, exts:FrozenSet[str]) -> bool:
 
 
 def normalize_exts(exts:Iterable[str]) -> FrozenSet[str]:
-  if isinstance(exts, str): raise TypeError(exts)
+  if isinstance(exts, str):
+    return frozenset((exts,))
   for ext in exts:
     if not isinstance(ext, str): raise TypeError(ext)
     if ext and not ext.startswith('.'): raise ValueError(ext)
