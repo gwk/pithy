@@ -23,8 +23,8 @@ ViewBox = Union[None, Vec, Tuple[Num, Num, Num, Num], Tuple[Vec, Vec]] # TODO: c
 
 class HtmlWriter(XmlWriter):
   '''
-  HtmlWriter is a ContextManager class that outputs HTML code to a file (stdout by default).
-  Like its parent class XmlWriter, it uses the __enter__ and __exit__ methods to automatically output open and close tags.
+  HtmlWriter is a ContextManager class for generating HTML.
+
   '''
 
   can_auto_close_tags = False # Unlike XML, HTML5 dictates that each tag type either be self-closing or not.

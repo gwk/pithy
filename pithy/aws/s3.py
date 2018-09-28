@@ -11,6 +11,8 @@ from pithy.fs import path_dir, path_join, make_dirs, file_status, walk_paths
 from typing import Any, Callable, Dict, IO, Union
 import os
 
+# Brotli compression is supported by major browsers and AWS.
+# Pithy tries to treat it as optional.
 try: from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore
 except ImportError:
   def br_compress(data:bytes): raise Exception('brotli module failed to import')
@@ -23,6 +25,8 @@ class S3MockError(Exception): pass
 
 def put_bytes(client:Any, data:bytes, bucket:str, key:str, compress:str=None, is_utf8_hint=False) -> None:
   content_type, content_encoding = guess_mime_type(key)
+
+  # Validate that the implied encoding appears to be the actual encoding.
   if content_type is None:
     content_type = 'application/octet-stream' # default to binary.
   if content_encoding == 'gzip':
@@ -39,6 +43,7 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, compress:str=None, is
   elif content_encoding is not None:
     raise Exception(f'unknown content-encoding: {content_encoding!r}')
 
+  # Compress as requested.
   if compress is not None:
     if content_encoding is not None:
       raise Exception(f"save_bytes: key {key!r} implies content-type {content_type!r}, but `compress` is also specified: {compress!r}")
@@ -70,7 +75,7 @@ class S3Client:
   '''
   Because boto3 generates clients dynamically,
   for now we create a fake base class for mypy to refer to.
-  In the future this will become a functioning, statically typed wrapper of the real S3 client.
+  In the future this could become a functioning, statically typed wrapper of the real S3 client.
   '''
 
   def __init__(self, bucket_paths:Dict[str,str],
@@ -97,6 +102,9 @@ class S3Client:
 
 
 class S3MockClient(S3Client):
+  '''
+  A local mock of S3 that reads and writes to a provided directory for each bucket.
+  '''
 
   def __init__(self, bucket_paths:Dict[str,str],
     aws_access_key_id:str=None,
@@ -164,6 +172,10 @@ class S3MockClient(S3Client):
 
 
 def s3_client(session:Session, **kwargs:Any) -> S3Client:
+  '''
+  Create an S3MockClient if the `S3_MOCK_CLIENT` environment variable is set;
+  otherwise return a normal s3 client.
+  '''
   if 'S3_MOCK_CLIENT' in os.environ:
     bucket_paths:Dict[str, str] = {}
     for s in os.environ['S3_MOCK_CLIENT'].split():

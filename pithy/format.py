@@ -20,7 +20,7 @@ fmt_re = re.compile(r'''(?x)
 | [^{}]+
 ''')
 
-# translated from "6.1.3.1. Format Specification Mini-Language".
+# Translated from standard docs "6.1.3.1. Format Specification Mini-Language".
 fmt_spec_re = re.compile(r'''(?x)
 (?: (?P<fill> . )? (?P<align> [<>=^]) )?
 (?P<sign> [-+\ ] )?

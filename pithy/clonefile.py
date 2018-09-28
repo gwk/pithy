@@ -28,7 +28,7 @@ CLONE_NOOWNERCOPY = 2 # Int32
 
 def clone(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True, fallback:Optional[Callable[..., None]]=None) -> None:
   '''
-  Clone a file using the file system's copy-on-write semantics if available; otherwise copy.
+  Clone a file using the file system's copy-on-write semantics if available (e.g. APFS); otherwise copy.
   '''
   flags = (0 if follow_symlinks else CLONE_NOFOLLOW) | (0 if preserve_owner else CLONE_NOOWNERCOPY)
   res = clonefile(src.encode(), dst.encode(), flags)
