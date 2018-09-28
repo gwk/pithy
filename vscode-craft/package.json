@@ -7,7 +7,7 @@
   "engines": {
     "vscode": "^1.0.0"
   },
-  "categories": ["Languages"],
+  "categories": ["Programming Languages"],
   "contributes": {
     "problemMatchers": [
       { "name": "craft",

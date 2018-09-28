@@ -204,6 +204,10 @@ def remove_dir_contents(path:Path, hidden=False) -> None:
     remove_path(n)
 
 
+def remove_dir_contents_if_exists(path:Path, hidden=False) -> None:
+  if path_exists(path): remove_dir_contents(path, hidden=hidden)
+
+
 def remove_file(path:Path) -> None: _os.remove(path)
 
 

@@ -22,6 +22,10 @@ docs:
 	craft-docs
 	test-meta/meta-coverage.sh
 
+install-vscode:
+	craft-vscode-ext -name craft -src vscode-craft
+	craft-vscode-ext -name writeup -src vscode-writeup
+
 pip-develop:
 	pip3 install -e .
 

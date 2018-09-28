@@ -1,0 +1,37 @@
+{
+  "name": "writeup",
+  "displayName": "writeup",
+  "description": "Writeup language support.",
+  "version": "1.0.0",
+  "publisher": "gwk",
+  "engines": {"vscode": "^1.0.0"},
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      { "id": "writeup",
+        "extensions": [".wu"],
+        "configuration": "./configurations/writeup.json",
+        "firstLine": "^writeup v\\d+"
+      }
+    ],
+    "grammars": [
+      { "language": "writeup",
+        "scopeName": "source.writeup",
+        "path": "./grammars/writeup.json"
+      }
+    ],
+    "problemMatchers": [
+      { "name": "writeup",
+        "fileLocation": "relative",
+        "pattern": [
+          { "regexp": "([^:]+):(\\d+):(\\d+): ?(.*)",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "message": 4
+          }
+        ]
+      }
+    ]
+  }
+}

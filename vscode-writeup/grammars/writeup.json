@@ -1,0 +1,14 @@
+{
+  "scopeName": "source.writeup",
+  "fileTypes": ["writeup"],
+  "name": "Writeup",
+  "patterns": [
+    { "name": "meta.version.writeup",
+      "match": "^writeup v\\d+" },
+
+    { "name": "entity.section.writeup",
+      "match": "^#+[^\\n]*" }
+  ],
+  "repository": {
+  }
+}
