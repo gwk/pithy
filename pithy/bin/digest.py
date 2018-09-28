@@ -4,8 +4,8 @@
 
 import base64
 import hashlib
-from pithy.io import errSL
-from pithy.string import le32
+from ..io import errSL
+from ..string import le32
 from sys import argv, stderr
 from hashlib import _Hash
 from typing import Callable, Union

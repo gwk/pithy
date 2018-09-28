@@ -9,7 +9,7 @@ from shutil import copyfile
 from sys import stderr
 from typing import DefaultDict, List, Set, NoReturn, Tuple, cast
 
-from pithy.diff import calc_diff
+from ..diff import calc_diff
 from ..pat import *
 
 

@@ -16,7 +16,7 @@ import os
 import re
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from pithy.io import *
+from ..io import *
 from typing import List, Match, Optional
 
 

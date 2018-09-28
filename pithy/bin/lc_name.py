@@ -5,7 +5,7 @@
 import os
 from argparse import ArgumentParser
 from sys import stderr
-from pithy.fs import file_inode, path_join, split_dir_name, move_file, walk_files
+from ..fs import file_inode, path_join, split_dir_name, move_file, walk_files
 
 def main() -> None:
   parser = ArgumentParser(description='Lower case file names.')

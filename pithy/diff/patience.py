@@ -3,7 +3,7 @@
 from bisect import bisect
 from typing import Dict, List, Optional, Sequence, Tuple, TypeVar
 
-from pithy.io import *
+from ..io import *
 
 
 _T = TypeVar('_T')

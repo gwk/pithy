@@ -7,7 +7,7 @@ from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from lzma import compress as xz_compress, decompress as xz_decompress
 from mimetypes import guess_type as guess_mime_type
-from pithy.fs import path_dir, path_join, make_dirs, file_status, walk_paths
+from ..fs import path_dir, path_join, make_dirs, file_status, walk_paths
 from typing import Any, Callable, Dict, IO, Union
 import os
 

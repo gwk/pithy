@@ -16,7 +16,7 @@
 import os
 from argparse import ArgumentParser
 from collections import defaultdict
-from pithy.fs import path_ext, walk_files
+from ..fs import path_ext, walk_files
 from typing import *
 
 

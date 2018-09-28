@@ -2,8 +2,8 @@
 
 import sqlite3
 from typing import *
-from pithy.io import *
-from pithy.json import Json, render_json
+from .io import *
+from .json import Json, render_json
 
 
 class SqliteError(Exception): pass

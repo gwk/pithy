@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from typing import Any, Callable, Generic, Iterable, Iterator, List, Tuple
-from pithy.dataclasses import dataclass
+from ..dataclasses import dataclass
 
 
 SyntaxStack = Tuple['Syntax', ...]
