@@ -13,7 +13,7 @@ from sys import stderr
 
 package_roots = ['craft', 'iotest', 'pithy']
 modules = ['utest']
-bin_src_dirs = ['craft/bin', 'iotest/bin', 'pithy/bin']
+bin_src_dirs = ['craft/bin', 'iotest/bin', 'pithy/bin', 'writeup/bin']
 
 def errSL(*items): print(*items, file=stderr)
 
