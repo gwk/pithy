@@ -31,6 +31,7 @@ def main() -> None:
     '-Xswiftc=-target', '-Xswiftc='+conf.target_triple_macOS]
   if args.product: cmd.extend(['--product', args.product])
   if args.target: cmd.extend(['--target', args.target])
+  cmd.extend(['-Xcc', '-D', '-Xcc', 'GL_SILENCE_DEPRECATION'])
   cmd.extend(args.args)
   errSL(TXT_D, *cmd, RST)
 
