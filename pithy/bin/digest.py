@@ -2,43 +2,67 @@
 
 'print file hashes. first argument is the format; remaining args are the paths.'
 
-import base64
-import hashlib
+from ..encodings import enc_lep62
 from ..io import errSL
-from ..string import le32
-from sys import argv, stderr
-from hashlib import _Hash
-from typing import Callable, Union
+from argparse import ArgumentParser
+from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
+from typing import Any, ByteString, Callable, List, TypeVar, Tuple, Union
+import hashlib
 
 
-hash_classes = {
-  '1'   : hashlib.sha1,
-  '224' : hashlib.sha224,
-  '256' : hashlib.sha256,
-  '384' : hashlib.sha384,
-  '512' : hashlib.sha512,
+_ByteString = TypeVar('_ByteString', ByteString, bytes, bytearray, memoryview) # Hack around the typeshed defs from base64.
+_Encoder = Callable[[_ByteString], bytes]
+
+hashes = {
+  'sha1'   : hashlib.sha1,
+  'sha224' : hashlib.sha224,
+  'sha256' : hashlib.sha256,
+  'sha384' : hashlib.sha384,
+  'sha512' : hashlib.sha512,
   'md5' : hashlib.md5,
 }
 
+hash_docs_str = ', '.join(hashes)
+
 
 def main() -> None:
-  hash_name = argv[1]
-  in_paths = argv[2:]
+  parser = ArgumentParser(description='Count lines of source code.')
+  parser.add_argument('-hash', default='sha256', help=f'Hash algorithm to use: {hash_docs_str}.')
+  parser.add_argument('-lep62', action='store_true', help='Show lep62 result (default).')
+  parser.add_argument('-b16', action='store_true', help='Show base16 result.')
+  parser.add_argument('-b32', action='store_true', help='Show base32 result.')
+  parser.add_argument('-b64', action='store_true', help='Show base64 result.')
+  parser.add_argument('-url64', action='store_true', help='Show URL-safe base64 result.')
+
+  parser.add_argument('paths', nargs='+', help='files to hash.')
+  args = parser.parse_args()
+  encoders:List[Tuple[str,_Encoder]] = []
+  if args.lep62:  encoders.append(('lep62', enc_lep62))
+  if args.b16:    encoders.append(('b16', b16encode))
+  if args.b32:    encoders.append(('b32', b32encode))
+  if args.b64:    encoders.append(('b64', b64encode))
+  if args.url64:  encoders.append(('url64', urlsafe_b64encode))
+  if not encoders:
+    encoders.append(('lep62', enc_lep62))
 
   try:
-    hash_class = hash_classes[hash_name]
+    hash_class = hashes[args.hash]
   except KeyError:
-    errSL('invalid hash name:', hash_name)
-    errSL('available hash functions:', *hash_classes)
+    errSL('invalid hash name:', args.hash)
+    errSL('available hash functions:', *hashes)
     exit(1)
 
-  path_width = min(64, max(len(p) for p in in_paths))
+  path_width = min(64, max(len(p) for p in args.paths))
 
-  for path in in_paths:
-    digest(hash_class, path, path_width)
+  for path in args.paths:
+    d = digest(hash_class, path)
+    msgs = []
+    for label, encoder in encoders:
+      msgs.append(f'{label}:{encoder(d).decode()}')
+    print(f'{args.hash} {path:{path_width}}', *msgs)
 
 
-def digest(hash_class: Callable[[],_Hash], path:str, path_width:int) -> None:
+def digest(hash_class: Callable[[],Any], path:str) -> bytes:
   hash_chunk_size = 1 << 16
   #^ a quick timing experiment suggested that chunk sizes larger than this are not faster.
   try: f = open(path, 'rb')
@@ -48,12 +72,7 @@ def digest(hash_class: Callable[[],_Hash], path:str, path_width:int) -> None:
     chunk = f.read(hash_chunk_size)
     if not chunk: break
     h.update(chunk)
-
-  d = h.digest()
-  d16 = base64.b16encode(d).decode()
-  d32 = le32(d)
-  d64 = base64.urlsafe_b64encode(d).decode()
-  print(f'{path:{path_width}} b16:{d16} le32:{d32} b64:{d64}')
+  return h.digest() # type: ignore
 
 
 if __name__ == '__main__': main()
