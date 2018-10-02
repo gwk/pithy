@@ -5,9 +5,10 @@
   "patterns": [
     { "name": "meta.version.writeup",
       "match": "^writeup v\\d+" },
-
     { "name": "entity.section.writeup",
-      "match": "^#+[^\\n]*" }
+      "match": "^#+[^\\n]*" },
+    { "name": "entity.code.writeup",
+      "match": "^\\|[^\\n]*" }
   ],
   "repository": {
   }
