@@ -20,7 +20,7 @@ def parse_rst(path:str, text:str) -> Syntax:
   settings = _frontend.OptionParser(components=(_RstParser,)).get_default_values()
   document = _new_document(path, settings=settings)
   parser.parse(text, document)
-  ctx = _Ctx(path=path, text=text, lines=text.splitlines(keepends=True)) # type: ignore
+  ctx = _Ctx(path=path, text=text, lines=text.splitlines(keepends=True))
   return transform_tree(document, _get_children, ctx.visit) # type: ignore
 
 
