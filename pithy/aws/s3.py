@@ -9,13 +9,13 @@ from ..fs import path_dir, path_join, make_dirs, file_status, walk_paths
 from typing import Any, Callable, Dict, IO, Union
 import os
 
-# Brotli compression is supported by major browsers and AWS.
-# Pithy tries to treat it as optional.
+
+# Brotli compression is supported by major browsers and AWS. Pithy treats it as optional.
+def br_compress(data:bytes) -> bytes: raise Exception('brotli module failed to import')
+def br_expand(data:bytes) -> bytes: raise Exception('brotli module failed to import')
+br_MODE_TEXT = -1
 try: from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore
-except ImportError:
-  def br_compress(data:bytes): raise Exception('brotli module failed to import')
-  def br_expand(data:bytes): raise Exception('brotli module failed to import')
-  br_MODE_TEXT = -1
+except ImportError: pass
 
 
 class S3MockError(Exception): pass
