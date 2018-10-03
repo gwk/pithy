@@ -6,28 +6,41 @@ from ..encodings import enc_lep62
 from ..io import errSL
 from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
-from typing import Any, ByteString, Callable, List, TypeVar, Tuple, Union
+from typing import Any, ByteString, Callable, Dict, List, Optional, TypeVar, Tuple, Union
 import hashlib
 
 
 _ByteString = TypeVar('_ByteString', ByteString, bytes, bytearray, memoryview) # Hack around the typeshed defs from base64.
 _Encoder = Callable[[_ByteString], bytes]
 
-hashes = {
-  'sha1'   : hashlib.sha1,
-  'sha224' : hashlib.sha224,
-  'sha256' : hashlib.sha256,
-  'sha384' : hashlib.sha384,
-  'sha512' : hashlib.sha512,
-  'md5' : hashlib.md5,
+hashes:Dict[str,Any] = {
+  'blake2b'   : hashlib.blake2b,
+  'blake2s'   : hashlib.blake2s,
+  'md5'       : hashlib.md5,
+  'sha1'      : hashlib.sha1,
+  'sha224'    : hashlib.sha224,
+  'sha256'    : hashlib.sha256,
+  'sha3_224'  : hashlib.sha3_224,
+  'sha3_256'  : hashlib.sha3_256,
+  'sha3_384'  : hashlib.sha3_384,
+  'sha3_512'  : hashlib.sha3_512,
+  'sha384'    : hashlib.sha384,
+  'sha512'    : hashlib.sha512,
+  'shake_128' : hashlib.shake_128,
+  'shake_256' : hashlib.shake_256,
 }
+
+variable_size_hashes = { 'blake2b', 'blake2s', 'shake_128', 'shake_256' }
+variable_constructor_hashes = { 'blake2b', 'blake2s' }
+variable_digest_arg_hashes = { 'shake_128', 'shake_256' }
 
 hash_docs_str = ', '.join(hashes)
 
 
 def main() -> None:
   parser = ArgumentParser(description='Count lines of source code.')
-  parser.add_argument('-hash', default='sha256', help=f'Hash algorithm to use: {hash_docs_str}.')
+  parser.add_argument('-hash', default='blake2b', help=f'Hash algorithm to use: {hash_docs_str}.')
+  parser.add_argument('-size', default=32, type=int, help='Digest size.')
   parser.add_argument('-lep62', action='store_true', help='Show lep62 result (default).')
   parser.add_argument('-b16', action='store_true', help='Show base16 result.')
   parser.add_argument('-b32', action='store_true', help='Show base32 result.')
@@ -48,31 +61,39 @@ def main() -> None:
   try:
     hash_class = hashes[args.hash]
   except KeyError:
-    errSL('invalid hash name:', args.hash)
-    errSL('available hash functions:', *hashes)
+    errSL('error: invalid hash name:', args.hash)
+    errSL('note: available hash functions:', *hashes)
     exit(1)
+
+  hash_size = args.size
+  if hash_size is None and args.hash in variable_digest_arg_hashes:
+    exit(f'error: `-size` must be specified for hash function "{args.hash}".')
+
+  size_arg = {'digest_size':args.size} if args.hash in variable_constructor_hashes else {}
 
   path_width = min(64, max(len(p) for p in args.paths))
 
   for path in args.paths:
-    d = digest(hash_class, path)
+    hasher = hash_class(**size_arg)
+    hs = hash_size if args.hash in variable_digest_arg_hashes else None
+    d = digest(hasher, path, hash_size=hs)
     msgs = []
     for label, encoder in encoders:
       msgs.append(f'{label}:{encoder(d).decode()}')
     print(f'{args.hash} {path:{path_width}}', *msgs)
 
 
-def digest(hash_class: Callable[[],Any], path:str) -> bytes:
+def digest(hasher:Any, path:str, hash_size:Optional[int]) -> bytes:
   hash_chunk_size = 1 << 16
   #^ a quick timing experiment suggested that chunk sizes larger than this are not faster.
   try: f = open(path, 'rb')
   except IsADirectoryError: exit(f'expected a file but found a directory: {path}')
-  h = hash_class()
   while True:
     chunk = f.read(hash_chunk_size)
     if not chunk: break
-    h.update(chunk)
-  return h.digest() # type: ignore
+    hasher.update(chunk)
+  if hash_size: return hasher.digest(hash_size) # type: ignore
+  else: return hasher.digest() # type: ignore
 
 
 if __name__ == '__main__': main()
