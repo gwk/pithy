@@ -6,6 +6,7 @@ from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
 from ..fs import path_dir, path_join, make_dirs, file_status, walk_paths
+from json import dumps as render_json, loads as parse_json
 from typing import Any, Callable, Dict, IO, Union
 import os
 
@@ -19,6 +20,22 @@ except ImportError: pass
 
 
 class S3MockError(Exception): pass
+
+
+def get_bytes(client:Any, bucket:str, key:str) -> bytes:
+  r = client.get_object(Bucket=bucket, Key=key)
+  body: bytes = r['Body'].read()
+  encoding = r['ResponseMetadata']['HTTPHeaders'].get('content-encoding')
+  if encoding == 'gzip': return gz_expand(body)
+  elif encoding == 'br': return br_expand(body)
+  elif encoding: raise ValueError(encoding)
+  return body
+  #text = GzipFile(None, 'rb', fileobj=BytesIO(compressed_body)).read().decode()
+  #d:Dict[str,Any] = parse_json(text)
+
+
+def get_json(client:Any, bucket:str, key:str) -> Any:
+  return parse_json(get_bytes(client=client, bucket=bucket, key=key))
 
 
 def put_bytes(client:Any, data:bytes, bucket:str, key:str, compress:str=None, is_utf8_hint=False) -> None:
@@ -58,6 +75,11 @@ compressors:Dict[str, Callable[..., Any]] = {
   'gzip' : gz_compress,
   'br': br_compress,
 }
+
+
+def put_json(client:Any, obj:Any, bucket:str, key:str, compress:str=None) -> None:
+  data = render_json(obj).encode('utf8')
+  put_bytes(client=client, data=data, bucket=bucket, key=key, compress=compress, is_utf8_hint=True)
 
 
 
