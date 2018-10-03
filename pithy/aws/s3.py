@@ -1,11 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from boto3 import client as Client, Session # type: ignore
-from bz2 import compress as bz2_compress, decompress as bz2_expand
 from datetime import datetime as DateTime
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
-from lzma import compress as xz_compress, decompress as xz_decompress
 from mimetypes import guess_type as guess_mime_type
 from ..fs import path_dir, path_join, make_dirs, file_status, walk_paths
 from typing import Any, Callable, Dict, IO, Union
@@ -32,12 +30,6 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, compress:str=None, is
   if content_encoding == 'gzip':
     if data[:2] != b'\x1F\x8B':
       raise Exception(f"save_bytes: filname implies content-type 'gzip' but data does not: {key!r}")
-  elif content_encoding == 'bzip2':
-    if data[:3] != b'BZh':
-      raise Exception(f"save_bytes: filname implies content-type 'bzip2' but data does not: {key!r}")
-  elif content_encoding == 'xz':
-    if data[:6] != b'\xF7zXZ\x00':
-      raise Exception(f"save_bytes: filname implies content-type 'xz' but data does not: {key!r}")
   elif content_encoding == 'br':
     pass # Brotli defines no magic bytes/header.
   elif content_encoding is not None:
@@ -64,9 +56,7 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, compress:str=None, is
 
 compressors:Dict[str, Callable[..., Any]] = {
   'gzip' : gz_compress,
-  'bzip2': bz2_compress,
-  'xz': xz_compress,
-  'br': br_compress, # TODO: choose the utf8 mode when we are compressing data encoded from a string.
+  'br': br_compress,
 }
 
 
