@@ -14,6 +14,7 @@ from typing import Set
 def main() -> None:
   arg_parser = ArgumentParser(description='Run mypy, format and colorize output.')
   arg_parser.add_argument('-print-ok', action='store_true')
+  arg_parser.add_argument('-python-version')
   arg_parser.add_argument('roots', nargs='+')
   arg_parser.add_argument('-deps', nargs='+', default=[])
   arg_parser.add_argument('-paths', nargs='+', default=[])
@@ -47,7 +48,8 @@ def main() -> None:
   if mypy_path:
     env['MYPYPATH'] = ':'.join(mypy_path)
 
-  c, o = runCO(['mypy', *args.roots], env=env)
+  version_flag = ['--python-version', args.python_version] if args.python_version else []
+  c, o = runCO(['mypy', *version_flag, *args.roots], env=env)
   for token in lexer.lex(o):
     s = token[0]
     kind = token.lastgroup
