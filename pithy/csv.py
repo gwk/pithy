@@ -33,13 +33,13 @@ def load_csv(file: TextIO,
     header=header)
 
 
-def write_csv(f: TextIO, header: Optional[Sequence[str]], rows: Iterable[Sequence]) -> None:
+def write_csv(f:TextIO, *, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
   w = csv.writer(f)
   if header is not None: w.writerow(header)
   w.writerows(rows)
 
 
-def out_csv(header: Optional[Sequence[str]], rows: Iterable[Sequence]) -> None:
+def out_csv(*, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
   write_csv(f=stdout, header=header, rows=rows)
 
 
