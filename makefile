@@ -48,6 +48,9 @@ test/%: _phony
 typecheck:
 	craft-py-check iotest pithy utest.py
 
+typecheck3.6:
+	craft-py-check -python-version=3.6 pithy
+
 test-diff:
 	test-diff/test.py
 
