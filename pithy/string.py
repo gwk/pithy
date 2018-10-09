@@ -146,7 +146,7 @@ def format_byte_count(count: int, prec=3, abbr=True) -> str:
   # with precision > 0, always pluralize the full names, even if all the digits are zero.
   s = '' if abbr else 's'
   label = abbrev if abbr else full
-  return '{c:.{prec}f} {label}{s}'.format(c=c, prec=prec, label=label, s=s)
+  return f'{c:.{prec}f} {label}{s}'
 
 
 def line_col_0(string: str, pos: int) -> Tuple[int, int]:
