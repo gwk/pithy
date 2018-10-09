@@ -4,6 +4,7 @@
 
 import csv
 import collections
+from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONNUMERIC, QUOTE_NONE
 from sys import stdout
 from types import TracebackType
 from typing import ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
