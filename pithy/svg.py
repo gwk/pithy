@@ -12,7 +12,8 @@ from functools import reduce
 from html import escape as html_escape
 from math import floor, log10
 from types import TracebackType
-from typing import Any, Callable, ContextManager, Dict, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, Union, Iterable, overload
+from typing import Any, Callable, ContextManager, Dict, Hashable, Iterator, List, Mapping, \
+Optional, Sequence, TextIO, Tuple, Type, Union, Iterable, overload
 
 
 Dim = Union[int, float, str]
@@ -332,6 +333,41 @@ class PlotSeries:
   bounds:Optional[BoundsF2] = None # Overridden by subclasses.
 
   def render(self, plot:'Plot') -> None: raise NotImplementedError
+
+
+
+class BarSeries(PlotSeries):
+
+  def __init__(self, name:str, points:Dict[Hashable,Any], width=1.0, plotter:Optional[Plotter]=None, **attrs:Any) -> None:
+    self.name = name
+    self.points = points
+    self.plotter = plotter
+    self.width = width
+    attrs.setdefault('id', name)
+    attrs.setdefault('class_', 'bars')
+    self.attrs = attrs
+    self.bounds:Optional[Tuple[F2, F2]] = None
+    if self.points:
+      for v in self.points.values():
+        y_min = y_max = float(v)
+        break
+      for v in self.points.values():
+        y = float(v)
+        y_min = min(y_min, y)
+        y_max = max(y_max, y)
+      self.bounds = ((0.0, 0.0), (float(len(self.points)), y_max))
+
+
+  def render(self, plot:'Plot') -> None:
+    assert self.plotter is None # TODO
+    with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
+      y0 = plot.transform_y(0)
+      w = plot.scale_x * self.width
+      for i, (k, v) in enumerate(self.points.items()):
+        p = (i+0.5, v)
+        (x_mid, y) = plot.transform(p)
+        x_low = x_mid - w*0.5
+        g.rect(x=x_low, y=y, w=w, h=y0-y, title=f'{k}: {v}')
 
 
 
