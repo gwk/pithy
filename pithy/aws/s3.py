@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from boto3 import client as Client, Session # type: ignore
+from botocore.exceptions import ClientError # type: ignore
 from datetime import datetime as DateTime
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
@@ -142,10 +143,30 @@ class S3MockClient(S3Client):
 
 
   def get_object(self, Bucket:str, Key:str) -> Dict[str,Any]:
-    with self._open(Bucket, Key, 'rb') as f:
-      return {
-        'Body': BytesIO(f.read())
-      }
+    try: f =  self._open(Bucket, Key, 'rb')
+    except FileNotFoundError as e: pass
+    else:
+      with f:
+        return {
+          'Body': BytesIO(f.read()),
+          'ResponseMetadata': {
+            'HTTPHeaders': {
+              'content-encoding': 'gzip' # TODO: apply this conditionally.
+            }
+          }
+        }
+    # Not found.
+    error_response = {
+      'Error': {
+        'Code': 'NoSuchKey',
+        'Key': Key,
+        'Message': 'The specified key does not exist.'},
+        'ResponseMetadata': {
+          'HTTPHeaders': {},
+          'HTTPStatusCode': 404,
+        }
+    }
+    raise ClientError(error_response=error_response, operation_name='GetObject')
 
 
   def list_objects_v2(self, Bucket:str) -> Dict[str,Any]:
