@@ -18,7 +18,7 @@ Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 JsonDefaulter = Callable[[Any], Any]
 
 
-def json_encode_default(obj: Any) -> Any:
+def json_encode_default(obj:Any) -> Any:
   '''
   Note: it is not possible to encode namedtuple as dict using a `default` function such as this,
   because the namedtuple gets converted to a list without ever calling `default`.
@@ -41,12 +41,12 @@ def json_encode_default(obj: Any) -> Any:
   return str(obj) # convert to string as last resort.
 
 
-def render_json(item: Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, **kwargs) -> str:
+def render_json(item:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, **kwargs) -> str:
   'Render `item` as a json string.'
   return _json.dumps(item, indent=indent, default=default, sort_keys=sort, **kwargs)
 
 
-def write_json(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
+def write_json(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   'Write each item in `items` as json to file.'
   for item in items:
     _json.dump(item, file, indent=indent, default=default, sort_keys=sort, **kwargs)
@@ -54,16 +54,16 @@ def write_json(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_def
     if flush: file.flush()
 
 
-def err_json(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
+def err_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   'Write items as json to std err.'
   write_json(stderr, *items, default=default, sort=sort, indent=indent, end=end, flush=flush, **kwargs)
 
 
-def out_json(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
+def out_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
   write_json(stdout, *items, default=default, sort=sort, indent=indent, end=end, flush=flush, **kwargs)
 
 
-def write_jsonl(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
+def write_jsonl(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
   'Write each item in `items` as jsonl to file.'
   for item in items:
     _json.dump(item, file, indent=None, default=default, sort_keys=sort, **kwargs)
@@ -71,12 +71,12 @@ def write_jsonl(file: TextIO, *items: Any, default: JsonDefaulter=json_encode_de
     if flush: file.flush()
 
 
-def err_jsonl(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
+def err_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
   'Write items as jsonl to std err.'
   write_jsonl(stderr, *items, default=default, sort=sort, flush=flush, **kwargs)
 
 
-def out_jsonl(*items: Any, default: JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
+def out_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
   'Write items as jsonl to std out.'
   write_jsonl(stdout, *items, default=default, sort=sort, flush=flush, **kwargs)
 
@@ -95,7 +95,7 @@ def _hook_type_keys(type) -> FrozenSet[str]:
   else: raise TypeError(f'JSON decode type must be either a dataclass, namedtuple, or define `__slots__`: {type}')
 
 
-def _mk_hook(types: Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
+def _mk_hook(types:Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
   '''
   Provide a hook function that creates custom objects from json.
   `types` is a sequence of type objects, each of which must be a dataclass or NamedTuple.
@@ -117,14 +117,14 @@ def _mk_hook(types: Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
   return _read_json_object_hook
 
 
-def _mk_decoder(types: Sequence) -> _json.JSONDecoder:
+def _mk_decoder(types:Sequence) -> _json.JSONDecoder:
   return _json.JSONDecoder(object_hook=_mk_hook(types))
 
 
 _ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
 
 
-def parse_json(string: str, types: Sequence[type]=()) -> Any:
+def parse_json(string:str, types:Sequence[type]=()) -> Any:
   '''
   Parse json from `string`.
   If `types` is a non-empty sequence,
@@ -135,7 +135,7 @@ def parse_json(string: str, types: Sequence[type]=()) -> Any:
   return _json.loads(string, object_hook=_mk_hook(types))
 
 
-def load_json(file: TextIO, types: Sequence[type]=()) -> Any:
+def load_json(file:TextIO, types:Sequence[type]=()) -> Any:
   '''
   Read json from `file`.
   If `types` is a non-empty sequence,
@@ -146,17 +146,17 @@ def load_json(file: TextIO, types: Sequence[type]=()) -> Any:
   return _json.load(file, object_hook=_mk_hook(types))
 
 
-def parse_jsonl(string: str, types: Sequence[type]=()) -> Iterable[Any]:
+def parse_jsonl(string:str, types:Sequence[type]=()) -> Iterable[Any]:
   hook = _mk_hook(types)
   return (_json.loads(line, object_hook=hook) for line in string.splitlines())
 
 
-def load_jsonl(stream: Iterable[str], types: Sequence[type]=()) -> Iterable[Any]:
+def load_jsonl(stream:Iterable[str], types:Sequence[type]=()) -> Iterable[Any]:
   hook = _mk_hook(types)
   return (_json.loads(line, object_hook=hook) for line in stream)
 
 
-def parse_jsons(string: str, types: Sequence[type]=()) -> Iterable[Any]:
+def parse_jsons(string:str, types:Sequence[type]=()) -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
   If `types` is a non-empty sequence,
@@ -175,7 +175,7 @@ def parse_jsons(string: str, types: Sequence[type]=()) -> Iterable[Any]:
     idx = m.end()
 
 
-def load_jsons(file: TextIO, types: Sequence[type]=()) -> Iterable[Any]:
+def load_jsons(file:TextIO, types:Sequence[type]=()) -> Iterable[Any]:
   # TODO: it seems like we ought to be able to stream the file into the parser,
   # but JSONDecoder requires the entire string for a single JSON segment.
   # Therefore in order to stream we would need to read into a buffer,
