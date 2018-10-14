@@ -5,7 +5,7 @@ import json as _json
 
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout, version_info
-from typing import Any, Callable, Dict, FrozenSet, Iterable, Hashable, List, Optional, Sequence, TextIO, Union
+from typing import Any, Callable, Dict, FrozenSet, Iterable, Hashable, List, Optional, Sequence, TextIO, Tuple, Union
 from .util import all_slots
 from .dataclasses import asdict, dataclass, fields, is_dataclass
 
@@ -41,44 +41,55 @@ def json_encode_default(obj:Any) -> Any:
   return str(obj) # convert to string as last resort.
 
 
-def render_json(item:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, **kwargs) -> str:
+_Seps = Optional[Tuple[str,str]]
+
+def render_json(item:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, **kwargs) -> str:
   'Render `item` as a json string.'
-  return _json.dumps(item, indent=indent, default=default, sort_keys=sort, **kwargs)
+  if not separators:
+    separators = (',', ': ') if indent else (',', ':')
+  return _json.dumps(item, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
 
 
-def write_json(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
+def write_json(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
   'Write each item in `items` as json to file.'
+  if not separators:
+    separators = (',', ': ') if indent else (',', ':')
   for item in items:
-    _json.dump(item, file, indent=indent, default=default, sort_keys=sort, **kwargs)
+    _json.dump(item, file, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
     if end: file.write(end)
     if flush: file.flush()
 
 
-def err_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
+def err_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
   'Write items as json to std err.'
-  write_json(stderr, *items, default=default, sort=sort, indent=indent, end=end, flush=flush, **kwargs)
+  write_json(stderr, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def out_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent=2, end='\n', flush=False, **kwargs) -> None:
-  write_json(stdout, *items, default=default, sort=sort, indent=indent, end=end, flush=flush, **kwargs)
+def out_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
+  write_json(stdout, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def write_jsonl(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
+def write_jsonl(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
   'Write each item in `items` as jsonl to file.'
+  if separators:
+    assert '\n' not in separators[0]
+    assert '\n' not in separators[1]
+  else:
+    separators = (',', ':')
   for item in items:
-    _json.dump(item, file, indent=None, default=default, sort_keys=sort, **kwargs)
+    _json.dump(item, file, indent=None, default=default, sort_keys=sort, separators=separators, **kwargs)
     file.write('\n')
     if flush: file.flush()
 
 
-def err_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
+def err_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
   'Write items as jsonl to std err.'
-  write_jsonl(stderr, *items, default=default, sort=sort, flush=flush, **kwargs)
+  write_jsonl(stderr, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 
 
-def out_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, flush=False, **kwargs) -> None:
+def out_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
   'Write items as jsonl to std out.'
-  write_jsonl(stdout, *items, default=default, sort=sort, flush=flush, **kwargs)
+  write_jsonl(stdout, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 
 
 # input.

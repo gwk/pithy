@@ -57,15 +57,15 @@ utest('"a"', render_json, 'a')
 utest('[\n  null\n]', render_json, [None])
 
 utest('[\n  0\n]', render_json, range(1))
-utest('{"x": 1}', render_json, DC(x=1), indent=None) # dataclass.
-utest('{"x": 1}', render_json, Basic(x=1), indent=None) # __dict__ only.
+utest('{"x":1}', render_json, DC(x=1), indent=None) # dataclass.
+utest('{"x":1}', render_json, Basic(x=1), indent=None) # __dict__ only.
 
 # __slots__ classes.
-utest('{"x": 1}', render_json, SlotX(x=1), indent=None)
-utest('{"x": 1, "y": 2}', render_json, SlotXY(x=1, y=2), indent=None)
-utest('{"x": 1, "y": 2, "z": 3}', render_json, SlotXYZ(x=1, y=2, z=3), indent=None)
+utest('{"x":1}', render_json, SlotX(x=1), indent=None)
+utest('{"x":1,"y":2}', render_json, SlotXY(x=1, y=2), indent=None)
+utest('{"x":1,"y":2,"z":3}', render_json, SlotXYZ(x=1, y=2, z=3), indent=None)
 
-utest('{"mro": "<method \'mro\' of \'type\' objects>"}', render_json, type, indent=None) # __dict__ of type is weird.
+utest('{"mro":"<method \'mro\' of \'type\' objects>"}', render_json, type, indent=None) # __dict__ of type is weird.
 utest('"Ellipsis"', render_json, ...) # `str` fallback.
 
 utest(DC(x=1), parse_json, '{"x":1}', types=[DC])
