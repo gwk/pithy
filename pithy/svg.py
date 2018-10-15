@@ -458,10 +458,9 @@ class PlotAxis:
 
 
 class Plot(SvgWriter):
-
   tag = 'g'
 
-  def __init__(self, *children:Any, tag:str, attrs:XmlAttrs=None,
+  def __init__(self, *children:Any, attrs:XmlAttrs=None,
    pos:Vec=(0,0), size:Vec=(512,1024),
    x:PlotAxis=None, y:PlotAxis=None,
    series:Sequence[PlotSeries],
@@ -480,7 +479,7 @@ class Plot(SvgWriter):
     # Initialize as `g` element.
     attrs.setdefault('class_', 'plot')
     attrs['transform'] = translate(*pos)
-    super().__init__(*children, tag=tag, attrs=attrs, _counter=_counter)
+    super().__init__(*children, attrs=attrs, _counter=_counter)
 
     self.pos = pos
     self.size = size = f2_for_vec(size)

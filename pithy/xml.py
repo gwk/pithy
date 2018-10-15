@@ -109,10 +109,10 @@ class XmlWriter(ContextManager):
     self.add(EscapedStr(f'<{tag}{self.fmt_attrs(attrs)}/>'))
 
 
-  def child(self, child_class:Type[_XmlWriter], *children:Any, tag:str=None, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
+  def child(self, child_class:Type[_XmlWriter], *children:Any, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
     if self._is_closed: raise Exception(f'XmlWriter is already closed: {self}')
-    c = child_class(*children, tag=tag, attrs=attrs, _counter=self._counter, **kwargs)
+    c = child_class(*children, _counter=self._counter, attrs=attrs, **kwargs)
     self.add(c)
     return c
 
