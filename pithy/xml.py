@@ -31,9 +31,8 @@ class _Counter:
 
 class XmlWriter(ContextManager):
   '''
-  XmlWriter is a ContextManager class that outputs XML text to a file (stdout by default).
-  It uses the __enter__ and __exit__ methods to automatically output open and close tags.
-  XmlWriter can be subclassed to provide convenient Python APIs; see pithy.html and pithy.svg.
+  XmlWriter is the root class for building document trees for output.
+  XmlWriter is subclassed to provide more convenient Python APIs; see pithy.html and pithy.svg.
   '''
 
   replaced_attrs = {

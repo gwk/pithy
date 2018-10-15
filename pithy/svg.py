@@ -279,8 +279,7 @@ class SvgWriter(XmlWriter):
 
 class Svg(SvgWriter):
   '''
-  Svg is a ContextManager class that outputs SVG code to a file (stdout by default).
-  Like its parent class XmlWriter, it uses the __enter__ and __exit__ methods to automatically output open and close tags.
+  Svg is an XmlWriter class that outputs SVG code.
   '''
 
   tag = 'svg'
