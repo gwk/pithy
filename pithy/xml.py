@@ -51,7 +51,7 @@ class XmlWriter(ContextManager):
     self.prefix = ''
     self.children = list(_children)
     self.inline:Optional[bool] = None
-    self.attrs = kwargs
+    self.attrs = kwargs # Guaranteed not to be referenced anywhere else, whereas attrs might be.
     if attrs: self.attrs.update(attrs)
     self._appears_inline = bool(self.children)
     self._context_depth = 0

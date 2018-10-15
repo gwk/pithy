@@ -33,56 +33,50 @@ class SvgWriter(XmlWriter):
 
   replaced_attrs = {
     'href': 'xlink:href', # safari Version 11.1.1 requires this, even though xlink is deprecated in svg 2 standard.
+    'w': 'width',
+    'h': 'height',
     **XmlWriter.replaced_attrs,
   }
 
-  def __init__(self, *children:Any, tag:str=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, *children:Any, tag:str=None, title:Any=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     'A `title` attribute gets converted into a child element, which renders in browsers as a tooltip.'
-    title:Any = None
-    if attrs:
-      try: title = attrs.pop('title')
-      except KeyError: pass
-      else: title = SvgTitle(title)
-    super().__init__(*children, tag=tag, attrs=attrs, _counter=_counter, **kwargs)
-    if title: self.add(title)
-
-  # SVG Elements.
+    super().__init__(*children, tag=tag, _counter=_counter, attrs=attrs, **kwargs)
+    if title is not None:
+      self.add(SvgTitle(title))
 
 
-  def circle(self, pos:Vec=None, r:Num=None, x:Num=None, y:Num=None, **attrs:Any) -> None:
-    'Output an SVG `circle` element.'
+# Html and Svg share these classes.
+
+class HtmlSvgWriter(XmlWriter):
+  can_auto_close_tags = False # HTML5 dictates that each tag type either be self-closing or not.
+
+class Script(XmlWriter):
+  tag = 'script'
+
+class Style(XmlWriter):
+  tag = 'style'
+
+
+# SVG leaf elements.
+
+class Circle(SvgWriter):
+  tag = 'circle'
+
+  def __init__(self, pos:Vec=None, r:Num=None, x:Num=None, y:Num=None,
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
-    add_opt_attrs(attrs, cx=fmt_num(x), cy=fmt_num(y), r=fmt_num(r))
-    self.child(SvgWriter, tag='circle', attrs=attrs)
+    add_opt_attrs(kwargs, cx=fmt_num(x), cy=fmt_num(y), r=fmt_num(r))
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
 
 
-  def clipPath(self, **attrs:Any) -> 'SvgWriter':
-    'Output an SVG `clipPath` element.'
-    return self.child(SvgWriter, tag='clipPath', attrs=attrs)
+class Image(SvgWriter):
+  tag = 'image'
 
-
-  def defs(self, **attrs:Any) -> 'SvgWriter':
-    'Output an SVG `defs` element.'
-    return self.child(SvgWriter, tag='defs', attrs=attrs)
-
-
-  def g(self, *children:Any, transform:Sequence[str]='', **attrs:Any) -> 'SvgWriter':
-    'Create an SVG `g` element for use in a context manager.'
-    t:str = ''
-    if isinstance(transform, str):
-      t = transform
-    else:
-      t = ' '.join(transform)
-    if t:
-      attrs['transform'] = t
-    return self.child(SvgWriter, tag='g', attrs=attrs)
-
-
-  def image(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> None:
-    'Output an SVG `defs` element.'
+  def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -91,12 +85,15 @@ class SvgWriter(XmlWriter):
       assert w is None
       assert h is None
       w, h = unpack_VecOrNum(size)
-    add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    self.child(SvgWriter, tag='image', attrs=attrs)
+    add_opt_attrs(kwargs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
 
 
-  def line(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None, **attrs:Any) -> None:
-    'Output an SVG `defs` element.'
+class Line(SvgWriter):
+  tag = 'line'
+
+  def __init__(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None,
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if a is not None:
       assert x1 is None
       assert y1 is None
@@ -105,30 +102,17 @@ class SvgWriter(XmlWriter):
       assert x2 is None
       assert y2 is None
       x2, y2 = b
-    add_opt_attrs(attrs, x1=fmt_num(x1), y1=fmt_num(y1), x2=fmt_num(x2), y2=fmt_num(y2))
-    self.child(SvgWriter, tag='line', attrs=attrs)
+    add_opt_attrs(kwargs, x1=fmt_num(x1), y1=fmt_num(y1), x2=fmt_num(x2), y2=fmt_num(y2))
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
 
 
-  def marker(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None,
-   markerUnits='strokeWidth', orient:str='auto', **attrs:Any) -> XmlWriter:
-    'Output an SVG `marker` element.'
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    if size is not None:
-      assert w is None
-      assert h is None
-      w, h = unpack_VecOrNum(size)
-    add_opt_attrs(attrs, id=id, refX=fmt_num(x), refY=fmt_num(y), markerWidth=fmt_num(w), markerHeight=fmt_num(h),
-      viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
-    return self.child(SvgWriter, tag='marker', attrs=attrs)
+class Path(SvgWriter):
+  tag = 'path'
 
-
-  def path(self, commands:Iterable[PathCommand], **attrs:Any) -> None:
-    'Output an SVG `path` element.'
-    assert 'd' not in attrs
+  def __init__(self, commands:Iterable[PathCommand],
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+    assert (attrs is None or 'd' not in attrs)
+    assert 'd' not in kwargs
     cmd_strs:List[str] = []
     for c in commands:
       try: code = c[0]
@@ -137,33 +121,36 @@ class SvgWriter(XmlWriter):
       except KeyError as e: raise Exception(f'bad path command code: {c!r}') from e
       if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
       cmd_strs.append(code + ','.join(fmt_num(n) for n in c[1:]))
-    assert 'd' not in attrs
-    attrs['d'] = ' '.join(cmd_strs)
-    self.child(SvgWriter, tag='path', attrs=attrs)
+    kwargs['d'] = ' '.join(cmd_strs)
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
 
 
-  def polygon(self, points:Iterable[Vec], **attrs:Any) -> None:
+class Poly(SvgWriter):
+
+  def __init__(self, points:Iterable[Vec],
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+    assert (attrs is None or 'points' not in attrs)
+    assert 'points' not in kwargs
     point_strs:List[str] = []
-    assert 'points' not in attrs
     for p in points:
-      if len(p) < 2: raise Exception(f'bad point for polyline: {p}')
+      if len(p) < 2: raise Exception(f'bad point for {self.tag}: {p}')
       point_strs.append(f'{fmt_num(p[0])},{fmt_num(p[1])}')
-    attrs['points'] = ' '.join(point_strs)
-    self.child(SvgWriter, tag='polygon', attrs=attrs)
+    kwargs['points'] = ' '.join(point_strs)
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
 
 
-  def polyline(self, points:Iterable[Vec], **attrs:Any) -> None:
-    point_strs:List[str] = []
-    assert 'points' not in attrs
-    for p in points:
-      if len(p) < 2: raise Exception(f'bad point for polyline: {p}')
-      point_strs.append(f'{fmt_num(p[0])},{fmt_num(p[1])}')
-    attrs['points'] = ' '.join(point_strs)
-    self.child(SvgWriter, tag='polyline', attrs=attrs)
+class Polygon(Poly):
+  tag = 'polygon'
+
+class Polyline(Poly):
+  tag = 'polyline'
 
 
-  def rect(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None, **attrs:Any) -> None:
-    'Output an SVG `rect` element.'
+class Rect(SvgWriter):
+  tag = 'rect'
+
+  def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None,
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -178,45 +165,29 @@ class SvgWriter(XmlWriter):
       rx, ry = r
     else:
       rx = ry = r
-    add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h), rx=fmt_num(rx), ry=fmt_num(ry))
-    self.child(SvgWriter, tag='rect', attrs=attrs)
+    add_opt_attrs(kwargs, x=fmt_num(x), y=fmt_num(y), w=fmt_num(w), h=fmt_num(h), rx=fmt_num(rx), ry=fmt_num(ry))
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
 
 
-  def script(self, *text:str, **attrs,) -> None:
-    'Output an SVG `script` element.'
-    self.child(SvgWriter, *text, tag='script', attrs=attrs)
+class Text(SvgWriter):
+  tag = 'text'
 
-
-  def style(self, *text:str, **attrs,) -> None:
-    'Output an SVG `style` element.'
-    self.child(SvgWriter, *text, tag='style', attrs=attrs)
-
-
-  def symbol(self, id:str, *, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> 'SvgWriter':
-    'Output an SVG `symbol` element.'
-    if vx is None: vx = 0
-    if vy is None: vy = 0
-    # TODO: figure out if no viewBox is legal and at all useful.
-    assert vw >= 0 # type: ignore
-    assert vh >= 0 # type: ignore
-    add_opt_attrs(attrs, id=id, viewBox=f'{vx} {vy} {vw} {vh}')
-    return self.child(SvgWriter, tag='symbol', attrs=attrs)
-
-
-  def text(self, pos:Vec=None, *, x:Num=None, y:Num=None, alignment_baseline:str=None, text:str=None, **attrs:Any) -> None:
-    'Output an SVG `text` element.'
-    assert text is not None
+  def __init__(self, *text, pos:Vec=None, x:Num=None, y:Num=None, alignment_baseline:str=None,
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
     if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
-    add_opt_attrs(attrs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
-    self.child(SvgWriter, text, tag='text', attrs=attrs)
+    add_opt_attrs(kwargs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
+    super().__init__(*text, _counter=_counter, attrs=attrs, **kwargs)
 
 
-  def use(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> None:
-    'Use a previously defined symbol'
+class Use(SvgWriter):
+  tag = 'use'
+
+  def __init__(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     assert id
     if id[0] != '#': id = '#' + id
     if pos is not None:
@@ -227,14 +198,98 @@ class SvgWriter(XmlWriter):
       assert w is None
       assert h is None
       w, h = unpack_VecOrNum(size)
-    add_opt_attrs(attrs, href=id, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    self.child(SvgWriter, tag='use', attrs=attrs)
+    add_opt_attrs(kwargs, href=id, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+
+
+
+
+class SvgBranch(SvgWriter):
+
+
+  def circle(self, pos:Vec=None, r:Num=None, x:Num=None, y:Num=None, **attrs:Any) -> Circle:
+    'Create a child `circle` element.'
+    return self.child(Circle, pos=pos, r=r, x=x, y=y, **attrs)
+
+
+  def clipPath(self, **attrs:Any) -> 'ClipPath':
+    'Create a child `clipPath` element.'
+    return self.child(ClipPath, **attrs)
+
+
+  def defs(self, **attrs:Any) -> 'Defs':
+    'Create a child `defs` element.'
+    return self.child(Defs, **attrs)
+
+
+  def g(self, transform:Iterable[str]='', **attrs:Any) -> 'G':
+    'Create an SVG `g` element for use in a context manager.'
+    return self.child(G, transform=transform, **attrs)
+
+
+  def image(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> Image:
+    'Create a child `defs` element.'
+    return self.child(Image, pos=pos, size=size, x=x, y=y, w=w, h=h, **attrs)
+
+
+  def line(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None, **attrs:Any) -> Line:
+    'Create a child `defs` element.'
+    return self.child(Line, a=a, b=b, x1=x1, y1=y1, x2=x2, y2=y2, **attrs)
+
+
+  def marker(self, *children:Any, id:str='', pos:Vec=None, size:VecOrNum=None, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, markerUnits='strokeWidth', orient:str='auto', **attrs:Any) -> 'Marker':
+    'Create a child `marker` element.'
+    return self.child(Marker, *children, id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh,
+      markerUnits=markerUnits, orient=orient, **attrs)
+
+
+  def path(self, commands:Iterable[PathCommand], **attrs:Any) -> Path:
+    'Create a child `path` element.'
+    return self.child(Path, commands=commands, **attrs)
+
+
+  def polygon(self, points:Iterable[Vec], **attrs:Any) -> Polygon:
+    return self.child(Polygon, points=points, **attrs)
+
+
+  def polyline(self, points:Iterable[Vec], **attrs:Any) -> Polyline:
+    return self.child(Polyline, points=points, **attrs)
+
+
+  def rect(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None, **attrs:Any) -> Rect:
+    return self.child(Rect, pos=pos, size=size, x=x, y=y, w=w, h=h, r=r, **attrs)
+
+
+  def script(self, *text:str, **attrs,) -> Script:
+    'Create a child `script` element.'
+    return self.child(Script, *text, **attrs)
+
+
+  def style(self, *text:str, **attrs,) -> Style:
+    'Create a child `style` element.'
+    return self.child(Style, *text, **attrs)
+
+
+  def symbol(self, *children:Any, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **attrs:Any) -> 'Symbol':
+    'Create a child `symbol` element.'
+    return self.child(Symbol, *children, id=id, vx=vx, vy=vy, vw=vw, vh=vh, **attrs)
+
+
+  def text(self, *text:Any, pos:Vec=None, x:Num=None, y:Num=None, alignment_baseline:str=None, **attrs:Any) -> Text:
+    'Create a child `text` element.'
+    return self.child(Text, *text, pos=pos, x=x, y=y, alignment_baseline=alignment_baseline, **attrs)
+
+
+  def use(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **attrs:Any) -> Use:
+    'Use a previously defined symbol'
+    return self.child(Use, id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, **attrs)
 
 
   # High level.
 
   def grid(self, pos:Vec=(0,0), size:VecOrNum=(256,256), *,
-   step:VecOrNum=16, off:Vec=(0, 0), corner_radius:VecOrNum=None, **attrs:Any) -> None:
+   step:VecOrNum=16, off:Vec=(0, 0), corner_radius:VecOrNum=None, **attrs:Any) -> 'G':
     # TODO: per-axis log-transform option.
     x, y = f2_for_vec(pos)
     w, h = unpack_VecOrNum(size)
@@ -248,10 +303,12 @@ class SvgWriter(XmlWriter):
     y_end = y + h
     class_ = attrs.setdefault('class_', 'grid')
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
-    with self.g(**attrs) as g:
+    g = self.g(**attrs)
+    with g:
       for tick in NumRange(x_start, x_end, sx): g.line((tick, y), (tick, y_end)) # Vertical lines.
       for tick in NumRange(y_start, y_end, sy): g.line((x, tick), (x_end, tick)) # Horizontal lines.
       g.rect(class_=class_+'-border', x=x, y=y, w=w, h=h, r=corner_radius, fill='none')
+    return g
 
 
   def plot(self, pos:Vec=(0,0), size:Vec=(512,1024), *,
@@ -267,7 +324,7 @@ class SvgWriter(XmlWriter):
    dbg=False,
    **attrs:Any) -> 'Plot':
 
-    return self.child(Plot, attrs=attrs,
+    return self.child(Plot,
       pos=pos, size=size,
       x=x, y=y,
       series=series,
@@ -278,11 +335,12 @@ class SvgWriter(XmlWriter):
       tick_len=tick_len,
       corner_radius=corner_radius,
       symmetric_xy=symmetric_xy,
-      dbg=dbg)
+      dbg=dbg,
+      **attrs)
 
 
 
-class Svg(SvgWriter):
+class Svg(SvgBranch):
   '''
   Svg is an XmlWriter class that outputs SVG code.
   '''
@@ -290,7 +348,7 @@ class Svg(SvgWriter):
   tag = 'svg'
 
   def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, _counter:_Counter=None, **attrs:Any) -> None:
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -311,23 +369,82 @@ class Svg(SvgWriter):
     self.vw = vw
     self.vh = vh
     self.viewBox = fmt_viewBox(vx, vy, vw, vh)
-    attrs = { # Put the xml nonsense up front.
+    kwargs = { # Put the xml nonsense up front.
       'xmlns': 'http://www.w3.org/2000/svg',
       'xmlns:xlink': 'http://www.w3.org/1999/xlink', # Safari does not yet support SVG 2.
-      **attrs
+      **kwargs
     }
-    add_opt_attrs(attrs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
-    super().__init__(attrs=attrs, _counter=_counter)
+    add_opt_attrs(kwargs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
+    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+
+
+# SVG branch elements.
+
+class ClipPath(SvgBranch):
+  tag = 'clipPath'
+
+class Defs(SvgBranch):
+  tag = 'defs'
+
+
+class G(SvgBranch):
+  tag = 'g'
+
+  def __init__(self, *children:Any, transform:Iterable[str]='',
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+    t:str = ''
+    if isinstance(transform, str):
+      t = transform
+    else:
+      t = ' '.join(transform)
+    if t:
+      kwargs['transform'] = t
+    super().__init__(*children, _counter=_counter, attrs=attrs, **kwargs)
+
+
+class Marker(SvgBranch):
+  tag = 'marker'
+
+  def __init__(self, *children:Any, id:str='', pos:Vec=None, size:VecOrNum=None, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, markerUnits='strokeWidth', orient:str='auto',
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+    if not id: raise ValueError(f'Marker requires an `id` string')
+    if pos is not None:
+      assert x is None
+      assert y is None
+      x, y = pos
+    if size is not None:
+      assert w is None
+      assert h is None
+      w, h = unpack_VecOrNum(size)
+    add_opt_attrs(kwargs, id=id, refX=fmt_num(x), refY=fmt_num(y), markerWidth=fmt_num(w), markerHeight=fmt_num(h),
+      viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
+    super().__init__(*children, _counter=_counter, attrs=attrs, **kwargs)
+
+
+class Symbol(SvgBranch):
+  tag = 'symbol'
+
+  def __init__(self, *children:Any, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None,
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+    if vx is None: vx = 0
+    if vy is None: vy = 0
+    # TODO: figure out if no viewBox is legal and at all useful.
+    assert vw >= 0 # type: ignore
+    assert vh >= 0 # type: ignore
+    add_opt_attrs(kwargs, id=id, viewBox=f'{vx} {vy} {vw} {vh}')
+    super().__init__(*children, _counter=_counter, attrs=attrs, **kwargs)
+
 
 
 # Plots.
 
-Plotter = Callable[[SvgWriter, PointTransform, Any], None]
+Plotter = Callable[[G, PointTransform, Any], None]
 
 def circle_plotter(r:Num=1, **attrs:Any) -> Plotter:
   attrs.setdefault('class_', 'series')
-  def plotter(svg:SvgWriter, transform:PointTransform, point:Tuple) -> None:
-    svg.circle(transform(point), r=r, title=', '.join(str(f) for f in point))
+  def plotter(g:G, transform:PointTransform, point:Tuple) -> None:
+    g.circle(transform(point), r=r, title=', '.join(str(f) for f in point))
   return plotter
 
 
@@ -456,11 +573,9 @@ class PlotAxis:
     return (tick_len + self.tick_space + self.tick_w) if self.show_ticks else 0.0
 
 
+class Plot(G):
 
-class Plot(SvgWriter):
-  tag = 'g'
-
-  def __init__(self, *children:Any, attrs:XmlAttrs=None,
+  def __init__(self, *children:Any,
    pos:Vec=(0,0), size:Vec=(512,1024),
    x:PlotAxis=None, y:PlotAxis=None,
    series:Sequence[PlotSeries],
@@ -472,14 +587,13 @@ class Plot(SvgWriter):
    corner_radius:VecOrNum=None,
    symmetric_xy=False,
    dbg=False,
-   _counter:_Counter=None) -> None:
+   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs) -> None:
 
     attrs = attrs or {}
     pos = f2_for_vec(pos)
     # Initialize as `g` element.
     attrs.setdefault('class_', 'plot')
-    attrs['transform'] = translate(*pos)
-    super().__init__(*children, attrs=attrs, _counter=_counter)
+    super().__init__(*children, transform=translate(*pos), _counter=_counter, attrs=attrs, **kwargs)
 
     self.pos = pos
     self.size = size = f2_for_vec(size)
@@ -644,7 +758,7 @@ class Plot(SvgWriter):
     dbg_rect((0, 0), (self.w, title_h), fill='#F00')
 
     if self.title is not None:
-      self.text((grid_x, 0), text=self.title, class_='title')
+      self.text(self.title, pos=(grid_x, 0), class_='title')
 
     # Clip path is is defined to match grid.
     clip_path_id = self.gen_id()
@@ -688,7 +802,7 @@ class Plot(SvgWriter):
           tty = tb + x.tick_space
           g.line((tx, ty), (tx, tb), class_='tick')
           dbg_rect((tx, tb), (x.tick_w, tick_h), fill='#008', parent=g)
-          g.text((tx, tty), class_='tick', text=self.tick_fmt_x(_x))
+          g.text(self.tick_fmt_x(_x), pos=(tx, tty), class_='tick')
     if y.show_ticks:
       with self.g(class_='tick-y') as g:
         tyi, tyr = divmod(y_min, tick_step_y)
@@ -701,7 +815,7 @@ class Plot(SvgWriter):
           ty = transform_y(_y)
           g.line((tx, ty), (tr, ty), class_='tick')
           dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
-          g.text((ttx, ty), class_='tick', text=self.tick_fmt_y(_y))
+          g.text(self.tick_fmt_y(_y), pos=(ttx, ty), class_='tick')
 
     # Series.
     for s in series:

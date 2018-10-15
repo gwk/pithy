@@ -33,7 +33,7 @@ with Svg(w=w, h=h) as svg:
     g.polyline([(0,0), (32,32), (64,0)], stroke='black', fill=None, title='polyline0')
   y += 48
 
-  svg.text(x=0, y=y, text='TEXT')
+  svg.text('TEXT', x=0, y=y)
   y += 16
 
   img_base64 = 'data:image/png;base64,R0lGODdhBAAEAIAAAAAAAP///yH5BAQAAAAALAAAAAAEAAQAAAIFRHxnuAUAOw=='

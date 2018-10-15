@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" stroke="black" fill="white" stroke-width="1" width="1000" height="1000">
-<g class="plot" transform="translate(5,5)">
+<g transform="translate(5,5)" class="plot">
 <style>
 text {
   stroke: none;
