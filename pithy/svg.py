@@ -70,9 +70,15 @@ class SvgWriter(XmlWriter):
     return self.child(SvgWriter, tag='defs', attrs=attrs)
 
 
-  def g(self, *transforms:str, **attrs:Any) -> 'SvgWriter':
+  def g(self, *children:Any, transform:Sequence[str]='', **attrs:Any) -> 'SvgWriter':
     'Create an SVG `g` element for use in a context manager.'
-    add_opt_attrs(attrs, transform=(' '.join(transforms) if transforms else None))
+    t:str = ''
+    if isinstance(transform, str):
+      t = transform
+    else:
+      t = ' '.join(transform)
+    if t:
+      attrs['transform'] = t
     return self.child(SvgWriter, tag='g', attrs=attrs)
 
 
