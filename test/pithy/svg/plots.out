@@ -94,11 +94,13 @@ text.tick { font-size: 10.0px; }
 <line class="tick" x1="378" y1="14" x2="382" y2="14"/>
 <text class="tick" x="383" y="14"> 1.0</text>
 </g>
-<g clip-path="url(#_id0)" id="identity" class="series">
+<g class="series" clip-path="url(#_id0)">
+<g id="identity">
 <polyline fill="none" points="0,99 23.6,93.7 47.2,88.4 70.9,83.1 94.5,77.8 118.1,72.4 141.8,67.1 165.4,61.8 189,56.5 212.6,51.2 236.2,45.9 259.9,40.6 283.5,35.2 307.1,29.9 330.8,24.6 354.4,19.3 378,14"/>
 </g>
-<g clip-path="url(#_id0)" id="sin" class="series">
+<g id="sin">
 <polyline fill="none" points="0,99 23.6,66.5 47.2,38.9 70.9,20.5 94.5,14 118.1,20.5 141.8,38.9 165.4,66.5 189,99 212.6,131.5 236.2,159.1 259.9,177.5 283.5,184 307.1,177.5 330.8,159.1 354.4,131.5 378,99"/>
+</g>
 </g>
 </g>
 </svg>

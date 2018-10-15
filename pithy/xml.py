@@ -98,6 +98,11 @@ class XmlWriter(ContextManager):
     self._context_depth -= 1
     if self._context_depth == 0:
       self._is_closed = True
+      self.on_close()
+
+
+  def on_close(self) -> None:
+    'Optional closing action for subclasses.'
 
 
   def add(self, *items:Any, sep='', end='\n') -> None:

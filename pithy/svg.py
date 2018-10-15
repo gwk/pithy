@@ -45,6 +45,10 @@ class SvgWriter(XmlWriter):
       self.add(SvgTitle(title))
 
 
+  def on_close(self) -> None:
+    self.children.sort(key=lambda el: el.attrs.get('z_index', 0))
+
+
 # Html and Svg share these classes.
 
 class HtmlSvgWriter(XmlWriter):
@@ -453,7 +457,7 @@ class PlotSeries:
 
   bounds:Optional[BoundsF2] = None # Overridden by subclasses.
 
-  def render(self, plot:'Plot') -> None: raise NotImplementedError
+  def render(self, plot:'Plot', series:G) -> None: raise NotImplementedError
 
 
 
@@ -464,8 +468,7 @@ class BarSeries(PlotSeries):
     self.points = points
     self.plotter = plotter
     self.width = width
-    attrs.setdefault('id', name)
-    attrs.setdefault('class_', 'bars')
+    attrs.setdefault('class_', name) # Use class because the attributes are applied to every bar, so `id` would not be unique.
     self.attrs = attrs
     self.bounds:Optional[Tuple[F2, F2]] = None
     if self.points:
@@ -479,17 +482,16 @@ class BarSeries(PlotSeries):
       self.bounds = ((0.0, 0.0), (float(len(self.points)), y_max))
 
 
-  def render(self, plot:'Plot') -> None:
+  def render(self, plot:'Plot', series:G) -> None:
     assert self.plotter is None # TODO
-    with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
-      y0 = plot.transform_y(0)
-      w = plot.scale_x * self.width
-      for i, (k, v) in enumerate(self.points.items()):
-        p = (i+0.5, v)
-        (x_mid, y) = plot.transform(p)
-        x_low = x_mid - w*0.5
-        g.rect(x=x_low, y=y, w=w, h=y0-y, title=f'{k}: {v}')
-
+    y0 = plot.transform_y(0)
+    w = plot.scale_x * self.width
+    # Do not place the bars in a group because we want to be able to z-index bars across multiple series.
+    for i, (k, v) in enumerate(self.points.items()):
+      p = (i+0.5, v)
+      (x_mid, y) = plot.transform(p)
+      x_low = x_mid - w*0.5
+      series.rect(x=x_low, y=y, w=w, h=y0-y, z_index=y, title=f'{k}: {v}', **self.attrs)
 
 
 class XYSeries(PlotSeries):
@@ -499,7 +501,6 @@ class XYSeries(PlotSeries):
     self.points = list(points)
     self.plotter = plotter
     attrs.setdefault('id', name)
-    attrs.setdefault('class_', 'series')
     self.attrs = attrs
     self.bounds:Optional[Tuple[F2, F2]] = None
     if self.points:
@@ -516,10 +517,10 @@ class XYSeries(PlotSeries):
       self.bounds = ((x_min, y_min), (x_max, y_max))
 
 
-  def render(self, plot:'Plot') -> None:
+  def render(self, plot:'Plot', series:G) -> None:
     # TODO: collect and return out-of-bounds points.
     assert self.plotter is not None
-    with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
+    with series.g(**self.attrs) as g:
       for p in self.points: self.plotter(g, plot.transform, p)
 
 
@@ -531,8 +532,8 @@ class LineSeries(XYSeries):
     super().__init__(name=name, points=points, plotter=plotter, **attrs)
 
 
-  def render(self, plot:'Plot') -> None:
-    with plot.g(clip_path=plot.plot_clip_path, **self.attrs) as g:
+  def render(self, plot:'Plot', series:G) -> None:
+    with series.g(**self.attrs) as g:
       if self.use_segments:
         for (a, b) in window_pairs(plot.transform(p) for p in self.points):
           g.line(a, b)
@@ -818,8 +819,9 @@ class Plot(G):
           g.text(self.tick_fmt_y(_y), pos=(ttx, ty), class_='tick')
 
     # Series.
-    for s in series:
-      s.render(self)
+    with self.g(class_='series', clip_path=self.plot_clip_path) as series_g:
+      for s in series:
+        s.render(self, series=series_g)
 
 
 _plot_style = '''
