@@ -36,8 +36,7 @@ class SvgWriter(XmlWriter):
     **XmlWriter.replaced_attrs,
   }
 
-  def __init__(self, *children:Any, tag:str=None, attrs:XmlAttrs=None, _counter:_Counter=None,
-   **kwargs:Any) -> None:
+  def __init__(self, *children:Any, tag:str=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     'A `title` attribute gets converted into a child element, which renders in browsers as a tooltip.'
     title:Any = None
     if attrs:

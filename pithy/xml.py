@@ -42,7 +42,7 @@ class XmlWriter(ContextManager):
   can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing", for example '<TAG/>'. False for HTML.
   tag:str = '' # Subclasses can specify a tag.
 
-  def __init__(self, *_children:Any, tag:str=None, attrs:XmlAttrs=None, _counter:_Counter=None, **kwargs:Any) -> None:
+  def __init__(self, *_children:Any, tag:str=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     '''
     `attrs` also allows for XML attributes that contain non-identifier characters.
     '''
