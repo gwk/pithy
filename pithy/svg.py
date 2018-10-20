@@ -463,23 +463,39 @@ class PlotSeries:
 
 class BarSeries(PlotSeries):
 
-  def __init__(self, name:str, points:Dict[Hashable,Any], width=1.0, plotter:Optional[Plotter]=None, **attrs:Any) -> None:
+  def __init__(self, name:str, points:Iterable[Tuple], numeric:bool, width=1.0, plotter:Optional[Plotter]=None, **attrs:Any) -> None:
     self.name = name
-    self.points = points
+    self.numeric = numeric
+    self.points = list(points)
     self.plotter = plotter
     self.width = width
     attrs.setdefault('class_', name) # Use class because the attributes are applied to every bar, so `id` would not be unique.
     self.attrs = attrs
     self.bounds:Optional[Tuple[F2, F2]] = None
+
+    def float_from(val:Any, label:str) -> float:
+      try: return float(val)
+      except TypeError as e: raise TypeError(f'BarSeries received non-numeric point {label}: {val!r}') from e
+
     if self.points:
-      for v in self.points.values():
-        y_min = y_max = float(v)
-        break
-      for v in self.points.values():
-        y = float(v)
+      for k, v in self.points:
+        if numeric:
+          x_min = x_max = float_from(k, 'key')
+        y_min = y_max = float_from(v, 'value')
+        break # Get first value, then iterate again.
+      for k, v in self.points:
+        if numeric:
+          x = float_from(k, 'key')
+          x_min = min(x_min, x)
+          x_max = max(x_max, x)
+        y = float_from(v, 'value')
         y_min = min(y_min, y)
         y_max = max(y_max, y)
-      self.bounds = ((0.0, 0.0), (float(len(self.points)), y_max))
+      if numeric:
+        half_w = self.width * 0.5
+        self.bounds = ((x_min - half_w, 0.0), (x_max + half_w, y_max))
+      else:
+        self.bounds = ((0.0, 0.0), (float(len(self.points)), y_max))
 
 
   def render(self, plot:'Plot', series:G) -> None:
@@ -487,16 +503,18 @@ class BarSeries(PlotSeries):
     y0 = plot.transform_y(0)
     w = plot.scale_x * self.width
     # Do not place the bars in a group because we want to be able to z-index bars across multiple series.
-    for i, (k, v) in enumerate(self.points.items()):
-      p = (i+0.5, v)
+    for i, p in enumerate(self.points):
+      if not self.numeric:
+        p = (i+0.5, p[1])
       (x_mid, y) = plot.transform(p)
       x_low = x_mid - w*0.5
-      series.rect(x=x_low, y=y, w=w, h=y0-y, z_index=y, title=f'{k}: {v}', **self.attrs)
+      assert p[1] >= 0, f'negative bar values are not yet supported: {p!r}'
+      series.rect(x=x_low, y=y, w=w, h=y0-y, z_index=y, title=f'{p[0]}: {p[1]}', **self.attrs) # TODO: Custom format of title?
 
 
 class XYSeries(PlotSeries):
 
-  def __init__(self, name:str, points:Sequence[Tuple], plotter:Optional[Plotter]=circle_plotter(), **attrs:Any) -> None:
+  def __init__(self, name:str, points:Iterable[Tuple], plotter:Optional[Plotter]=circle_plotter(), **attrs:Any) -> None:
     self.name = name
     self.points = list(points)
     self.plotter = plotter
@@ -527,7 +545,7 @@ class XYSeries(PlotSeries):
 
 class LineSeries(XYSeries):
 
-  def __init__(self, name:str, points:Sequence[Tuple], plotter:Plotter=None, use_segments=False, **attrs:Any) -> None:
+  def __init__(self, name:str, points:Iterable[Tuple], plotter:Plotter=None, use_segments=False, **attrs:Any) -> None:
     self.use_segments = use_segments
     super().__init__(name=name, points=points, plotter=plotter, **attrs)
 
