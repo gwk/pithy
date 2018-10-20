@@ -7,7 +7,7 @@ import collections
 from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONNUMERIC, QUOTE_NONE
 from sys import stdout
 from types import TracebackType
-from typing import ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
+from typing import Any, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
 
 def load_csv(file: TextIO,
@@ -19,6 +19,7 @@ def load_csv(file: TextIO,
  quoting:Optional[int]=None,
  skipinitialspace:Optional[bool]=None,
  strict:Optional[bool]=None,
+ row_type:type=None,
  header:Union[None, bool, Sequence[str]]=None) -> 'CSVFileReader':
 
   return CSVFileReader(
@@ -31,6 +32,7 @@ def load_csv(file: TextIO,
     quoting=quoting,
     skipinitialspace=skipinitialspace,
     strict=strict,
+    row_type=row_type,
     header=header)
 
 
@@ -55,6 +57,7 @@ class CSVFileReader(Iterable, ContextManager):
    quoting:Optional[int]=None,
    skipinitialspace:Optional[bool]=None,
    strict:Optional[bool]=None,
+   row_type:type=None,
    header:Union[None, bool, Sequence[str]]=None) -> None:
 
     opts = { k : v for (k, v) in [
@@ -70,6 +73,7 @@ class CSVFileReader(Iterable, ContextManager):
 
     self._reader = csv.reader(file, dialect, **opts)
     self.file = file
+    self.row_type = row_type
 
     if header is None or isinstance(header, bool):
       if header: next(self._reader) # simply discard.
@@ -80,11 +84,16 @@ class CSVFileReader(Iterable, ContextManager):
         raise ValueError(f'load_csv expected header:\n{list_header}\nreceived:\n{row}')
 
 
-  def __iter__(self) -> Iterator[Sequence[str]]:
-    return self._reader
+  def __iter__(self) -> Iterator[Any]:
+    if self.row_type is None:
+      return self._reader
+    else:
+      return (self.row_type(*r) for r in self._reader)
+
 
   def __enter__(self) -> 'CSVFileReader':
     return self
+
 
   def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
    traceback: Optional[TracebackType]) -> None:
