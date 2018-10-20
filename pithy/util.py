@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, FrozenSet, Iterable, Set, Type, cast
+from typing import Any, Callable, FrozenSet, Iterable, NamedTuple, Set, Tuple, Type, cast
 
 
 def memoize(_fn:Callable=None, sentinel:Any=Ellipsis) -> Callable:
@@ -58,3 +58,8 @@ def all_slots(type: Type) -> FrozenSet[str]:
       else:
         slots.update(s)
   return frozenset(slots)
+
+
+def nt_items(nt:NamedTuple) -> Iterable[Tuple[str,Any]]:
+  'Return an iterable that returns the (name, value) pairs of a NamedTuple.'
+  return zip(nt._fields, nt)
