@@ -676,18 +676,12 @@ class Plot(G):
     self.y.data_size = y.max - y.min
 
     # Layout measurements.
-    self.grid_x = grid_x = 0
-    self.grid_y = grid_y = title_h
-
     boundary_pad = 1 # Otherwise right/bottom can disappear.
     x_axis_tick_h = x.x_axis_tick_h(tick_len, tick_h)
     y_axis_tick_w = y.y_axis_tick_w(tick_len)
 
     self.grid_w = grid_w = x.length or (self.w - boundary_pad - max(x.tick_w, y_axis_tick_w))
     self.grid_h = grid_h = y.length or (self.h - boundary_pad - x_axis_tick_h - title_h)
-
-    self.grid_r = grid_r = grid_x + grid_w
-    self.grid_b = grid_b = grid_y + grid_h
 
     self.scale_x = scale_x = grid_w / x.data_size
     self.scale_y = scale_y = grid_h / y.data_size
@@ -748,7 +742,6 @@ class Plot(G):
     self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=y.data_size, plot_len=grid_h, tick_mult=tick_mult_y)
 
     self.data_size = data_size = (x.data_size, y.data_size)
-    self.grid_pos = grid_pos = (grid_x, grid_y)
     self.grid_size = grid_size = (grid_w, grid_h)
     self.scale = (scale_x, scale_y)
 
@@ -761,10 +754,10 @@ class Plot(G):
       'Translate a point to appear coincident with the data space.'
       px = float(point[0])
       py = float(point[1])
-      return (round(grid_x + scale_x*(px-ax.min), 1), round(grid_y + scale_y*(ay.data_size - (py-ay.min)), 1))
+      return (round(scale_x*(px-ax.min), 1), round(scale_y*(ay.data_size - (py-ay.min)), 1))
 
-    def transform_x(px:Num) -> float: return round(grid_x + scale_x*(float(px) - ax.min), 1)
-    def transform_y(py:Num) -> float: return round(grid_y + scale_y*(ay.data_size - (float(py)-ay.min)), 1)
+    def transform_x(px:Num) -> float: return round(scale_x*(float(px) - ax.min), 1)
+    def transform_y(py:Num) -> float: return round(scale_y*(ay.data_size - (float(py)-ay.min)), 1)
 
 
     self.transform = transform
@@ -791,69 +784,70 @@ class Plot(G):
     dbg_rect((0, 0), (self.w, title_h), fill='#F00')
 
     if self.title is not None:
-      self.text(self.title, pos=(grid_x, 0), class_='title')
+      self.text(self.title, pos=(0, 0), class_='title')
 
-    # Clip path is is defined to match grid.
-    clip_path_id = self.gen_id()
-    self.plot_clip_path = f'url(#{clip_path_id})'
-    with self.clipPath(id=clip_path_id) as clipPath:
-      clipPath.rect(pos=grid_pos, size=grid_size, r=corner_radius)
+    with self.g(transform=translate(0, title_h)) as area:
+      # Clip path is is defined to match grid.
+      clip_path_id = area.gen_id()
+      self.plot_clip_path = f'url(#{clip_path_id})'
+      with area.clipPath(id=clip_path_id) as clipPath:
+        clipPath.rect(size=grid_size, r=corner_radius)
 
-    # Grid.
-    # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
-    with self.g(class_='grid') as g:
-      if x.show_grid:
-        g_start_x = (x.min//grid_step_x + 1) * grid_step_x # Skip line index 0 because it is always <= low border.
-        for gx in NumRange(g_start_x, x.max, grid_step_x): # X axis.
-          tgx = transform_x(gx)
-          g.line((tgx, grid_y), (tgx, grid_b)) # Vertical lines.
-      if y.show_grid:
-        g_start_y = (y.min//grid_step_y + 1) * grid_step_y # Skip line index 0 because it is always <= low border.
-        for gy in NumRange(g_start_y, y.max, grid_step_y):
-          tgy = transform_y(gy)
-          g.line((grid_x, tgy), (grid_r, tgy)) # Horizontal lines.
-      g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
+      # Grid.
+      # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
+      with area.g(class_='grid') as g:
+        if x.show_grid:
+          g_start_x = (x.min//grid_step_x + 1) * grid_step_x # Skip line index 0 because it is always <= low border.
+          for gx in NumRange(g_start_x, x.max, grid_step_x): # X axis.
+            tgx = transform_x(gx)
+            g.line((tgx, 0), (tgx, grid_h)) # Vertical lines.
+        if y.show_grid:
+          g_start_y = (y.min//grid_step_y + 1) * grid_step_y # Skip line index 0 because it is always <= low border.
+          for gy in NumRange(g_start_y, y.max, grid_step_y):
+            tgy = transform_y(gy)
+            g.line((0, tgy), (grid_w, tgy)) # Horizontal lines.
+        g.rect(class_='grid-border', pos=(0,0), size=grid_size, r=corner_radius, fill='none')
 
-    # Axes.
-    if y.min <= 0 and y.max >= 0: # Draw X axis.
-      y0 = transform_y(0)
-      self.line((grid_x, y0), (grid_r, y0), class_='axis', id='x-axis')
-    if x.min <= 0 and x.max >= 0: # Draw Y axis.
-      x0 = transform_x(0)
-      self.line((x0, grid_y), (x0, grid_b), class_='axis', id='y-axis')
+      # Axes.
+      if y.min <= 0 and y.max >= 0: # Draw X axis.
+        y0 = transform_y(0)
+        area.line((0, y0), (grid_w, y0), class_='axis', id='x-axis')
+      if x.min <= 0 and x.max >= 0: # Draw Y axis.
+        x0 = transform_x(0)
+        area.line((x0, 0), (x0, grid_h), class_='axis', id='y-axis')
 
-    # Ticks.
-    if x.show_ticks:
-      with self.g(class_='tick-x') as g:
-        txi, txr = divmod(x.min, tick_step_x)
-        if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
-        t_start_x = txi*tick_step_x
-        for _x in NumRange(t_start_x, x.max, step=tick_step_x, closed=True):
-          tx = transform_x(_x)
-          ty = grid_b
-          tb = ty + tick_len
-          tty = tb + x.tick_space
-          g.line((tx, ty), (tx, tb), class_='tick')
-          dbg_rect((tx, tb), (x.tick_w, tick_h), fill='#008', parent=g)
-          g.text(self.tick_fmt_x(_x), pos=(tx, tty), class_='tick')
-    if y.show_ticks:
-      with self.g(class_='tick-y') as g:
-        tyi, tyr = divmod(y.min, tick_step_y)
-        if tyr > 0.1: tyi += 1 # If the remainder is visually significant, skip the first tick.
-        t_start_y = tyi*tick_step_y
-        for _y in NumRange(t_start_y, y.max, step=tick_step_y, closed=True):
-          tx = grid_r
-          tr = tx + tick_len
-          ttx = tr + y.tick_space
-          ty = transform_y(_y)
-          g.line((tx, ty), (tr, ty), class_='tick')
-          dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
-          g.text(self.tick_fmt_y(_y), pos=(ttx, ty), class_='tick')
+      # Ticks.
+      if x.show_ticks:
+        with area.g(class_='tick-x') as g:
+          txi, txr = divmod(x.min, tick_step_x)
+          if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
+          t_start_x = txi*tick_step_x
+          for _x in NumRange(t_start_x, x.max, step=tick_step_x, closed=True):
+            tx = transform_x(_x)
+            ty = grid_h
+            tb = ty + tick_len
+            tty = tb + x.tick_space
+            g.line((tx, ty), (tx, tb), class_='tick')
+            dbg_rect((tx, tb), (x.tick_w, tick_h), fill='#008', parent=g)
+            g.text(self.tick_fmt_x(_x), pos=(tx, tty), class_='tick')
+      if y.show_ticks:
+        with area.g(class_='tick-y') as g:
+          tyi, tyr = divmod(y.min, tick_step_y)
+          if tyr > 0.1: tyi += 1 # If the remainder is visually significant, skip the first tick.
+          t_start_y = tyi*tick_step_y
+          for _y in NumRange(t_start_y, y.max, step=tick_step_y, closed=True):
+            tx = grid_w
+            tr = tx + tick_len
+            ttx = tr + y.tick_space
+            ty = transform_y(_y)
+            g.line((tx, ty), (tr, ty), class_='tick')
+            dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
+            g.text(self.tick_fmt_y(_y), pos=(ttx, ty), class_='tick')
 
-    # Series.
-    with self.g(class_='series', clip_path=self.plot_clip_path) as series_g:
-      for s in series:
-        s.render(self, series=series_g)
+      # Series.
+      with area.g(class_='series', clip_path=self.plot_clip_path) as series_g:
+        for s in series:
+          s.render(self, series=series_g)
 
 
 _plot_style = '''
