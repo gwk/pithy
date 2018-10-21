@@ -592,7 +592,7 @@ class PlotAxis:
 
     # These attributes are filled in by Plot init.
     self.idx = -1
-    self.data_size = 0.0
+    self.data_len = 0.0
     self.min = 0.0
     self.max = 0.0
     self.transform = _axis_transform_dummy
@@ -672,8 +672,8 @@ class Plot(G):
       x.max = max(x.max, y.max)
       y.max = x.max
 
-    x.data_size = x.max - x.min
-    y.data_size = y.max - y.min
+    x.data_len = x.max - x.min
+    y.data_len = y.max - y.min
 
     # Layout measurements.
     boundary_pad = 1 # Otherwise right/bottom can disappear.
@@ -683,8 +683,8 @@ class Plot(G):
     self.grid_w = grid_w = x.length or (self.w - boundary_pad - max(x.tick_w, y_axis_tick_w))
     self.grid_h = grid_h = y.length or (self.h - boundary_pad - x_axis_tick_h - title_h)
 
-    self.scale_x = scale_x = grid_w / x.data_size
-    self.scale_y = scale_y = grid_h / y.data_size
+    self.scale_x = scale_x = grid_w / x.data_len
+    self.scale_y = scale_y = grid_h / y.data_len
 
     def choose_step(data_len:float, plot_len:float, min_screen_step:float) -> Tuple[float, int]:
       assert data_len > 0
@@ -728,20 +728,20 @@ class Plot(G):
       return step1 * mult
 
     tick_step_x, tick_mult_x, fmt_w_x, frac_w_x = \
-    calc_tick_step_and_fmt(axis=x, data_low=x.min, data_len=x.data_size, plot_len=grid_w, min_screen_step=x.tick_w * 1.5)
+    calc_tick_step_and_fmt(axis=x, data_low=x.min, data_len=x.data_len, plot_len=grid_w, min_screen_step=x.tick_w * 1.5)
 
     tick_step_y, tick_mult_y, fmt_w_y, frac_w_y = \
-    calc_tick_step_and_fmt(axis=y, data_low=y.min, data_len=y.data_size, plot_len=grid_h, min_screen_step=tick_h * 2.0)
+    calc_tick_step_and_fmt(axis=y, data_low=y.min, data_len=y.data_len, plot_len=grid_h, min_screen_step=tick_h * 2.0)
 
     self.tick_step_x = tick_step_x
     self.tick_step_y = tick_step_y
     self.tick_fmt_x = x.tick_fmt or (lambda t: f'{t:{fmt_w_x}.{frac_w_x}f}')
     self.tick_fmt_y = y.tick_fmt or (lambda t: f'{t:{fmt_w_y}.{frac_w_y}f}')
 
-    self.grid_step_x = grid_step_x = calc_grid_step(axis=x, data_len=x.data_size, plot_len=grid_w, tick_mult=tick_mult_x)
-    self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=y.data_size, plot_len=grid_h, tick_mult=tick_mult_y)
+    self.grid_step_x = grid_step_x = calc_grid_step(axis=x, data_len=x.data_len, plot_len=grid_w, tick_mult=tick_mult_x)
+    self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=y.data_len, plot_len=grid_h, tick_mult=tick_mult_y)
 
-    self.data_size = data_size = (x.data_size, y.data_size)
+    self.data_size = data_size = (x.data_len, y.data_len)
     self.grid_size = grid_size = (grid_w, grid_h)
     self.scale = (scale_x, scale_y)
 
@@ -754,10 +754,10 @@ class Plot(G):
       'Translate a point to appear coincident with the data space.'
       px = float(point[0])
       py = float(point[1])
-      return (round(scale_x*(px-ax.min), 1), round(scale_y*(ay.data_size - (py-ay.min)), 1))
+      return (round(scale_x*(px-ax.min), 1), round(scale_y*(ay.data_len - (py-ay.min)), 1))
 
     def x_transform(val:Num) -> float: return round(scale_x*(float(val) - ax.min), 1)
-    def y_transform(val:Num) -> float: return round(scale_y*(ay.data_size - (float(val)-ay.min)), 1)
+    def y_transform(val:Num) -> float: return round(scale_y*(ay.data_len - (float(val)-ay.min)), 1)
 
 
     self.transform = transform
