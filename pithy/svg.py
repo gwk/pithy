@@ -26,6 +26,8 @@ PathCommand = Tuple
 
 PointTransform = Callable[[Tuple], F2]
 
+def _axis_transform_dummy(val:Num) -> float: raise Exception('missing transform')
+
 TickFmt = Callable[[float], Any]
 
 
@@ -500,7 +502,7 @@ class BarSeries(PlotSeries):
 
   def render(self, plot:'Plot', series:G) -> None:
     assert self.plotter is None # TODO
-    y0 = plot.transform_y(0)
+    y0 = plot.y.transform(0)
     w = plot.scale_x * self.width
     # Do not place the bars in a group because we want to be able to z-index bars across multiple series.
     for i, p in enumerate(self.points):
@@ -588,12 +590,13 @@ class PlotAxis:
     self.tick_w = float(tick_w)
     self.tick_fmt = tick_fmt
 
-    self.idx = -1 # Overwritten.
-    self.plot_size = 0.0 # Overwritten.
-    self.data_size = 0.0 # Overwritten.
-    self.min = 0.0 # Overwritten.
-    self.max = 0.0 # Overwritten.
-
+    # These attributes are filled in by Plot init.
+    self.idx = -1
+    self.plot_size = 0.0
+    self.data_size = 0.0
+    self.min = 0.0
+    self.max = 0.0
+    self.transform = _axis_transform_dummy
 
   def calc_min_max(self, data_bounds:Optional[BoundsF2]) -> None:
     # Determine data data_bounds.
@@ -756,13 +759,13 @@ class Plot(G):
       py = float(point[1])
       return (round(scale_x*(px-ax.min), 1), round(scale_y*(ay.data_size - (py-ay.min)), 1))
 
-    def transform_x(px:Num) -> float: return round(scale_x*(float(px) - ax.min), 1)
-    def transform_y(py:Num) -> float: return round(scale_y*(ay.data_size - (float(py)-ay.min)), 1)
+    def x_transform(val:Num) -> float: return round(scale_x*(float(val) - ax.min), 1)
+    def y_transform(val:Num) -> float: return round(scale_y*(ay.data_size - (float(val)-ay.min)), 1)
 
 
     self.transform = transform
-    self.transform_x = transform_x
-    self.transform_y = transform_y
+    self.x.transform = x_transform
+    self.y.transform = y_transform
 
     if dbg:
       def dbg_rect(pos:Vec, size:Vec, stroke:str=None, fill:str=None, parent=self) -> None:
@@ -799,21 +802,21 @@ class Plot(G):
         if x.show_grid:
           g_start_x = (x.min//grid_step_x + 1) * grid_step_x # Skip line index 0 because it is always <= low border.
           for gx in NumRange(g_start_x, x.max, grid_step_x): # X axis.
-            tgx = transform_x(gx)
+            tgx = x.transform(gx)
             g.line((tgx, 0), (tgx, grid_h)) # Vertical lines.
         if y.show_grid:
           g_start_y = (y.min//grid_step_y + 1) * grid_step_y # Skip line index 0 because it is always <= low border.
           for gy in NumRange(g_start_y, y.max, grid_step_y):
-            tgy = transform_y(gy)
+            tgy = y.transform(gy)
             g.line((0, tgy), (grid_w, tgy)) # Horizontal lines.
         g.rect(class_='grid-border', pos=(0,0), size=grid_size, r=corner_radius, fill='none')
 
       # Axes.
       if y.min <= 0 and y.max >= 0: # Draw X axis.
-        y0 = transform_y(0)
+        y0 = y.transform(0)
         area.line((0, y0), (grid_w, y0), class_='axis', id='x-axis')
       if x.min <= 0 and x.max >= 0: # Draw Y axis.
-        x0 = transform_x(0)
+        x0 = x.transform(0)
         area.line((x0, 0), (x0, grid_h), class_='axis', id='y-axis')
 
       # Ticks.
@@ -823,7 +826,7 @@ class Plot(G):
           if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
           t_start_x = txi*tick_step_x
           for _x in NumRange(t_start_x, x.max, step=tick_step_x, closed=True):
-            tx = transform_x(_x)
+            tx = x.transform(_x)
             ty = grid_h
             tb = ty + tick_len
             tty = tb + x.tick_space
@@ -839,7 +842,7 @@ class Plot(G):
             tx = grid_w
             tr = tx + tick_len
             ttx = tr + y.tick_space
-            ty = transform_y(_y)
+            ty = y.transform(_y)
             g.line((tx, ty), (tr, ty), class_='tick')
             dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
             g.text(self.tick_fmt_y(_y), pos=(ttx, ty), class_='tick')
