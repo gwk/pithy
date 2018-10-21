@@ -658,13 +658,13 @@ class Plot(G):
     self.w = size[0]
     self.h = size[1]
 
-    self.x.idx = 0
-    self.y.idx = 1
+    x.idx = 0
+    y.idx = 1
 
     data_bounds = reduce(expand_opt_bounds, (s.bounds for s in series), None)
 
-    self.x.calc_min_max(data_bounds=data_bounds)
-    self.y.calc_min_max(data_bounds=data_bounds)
+    x.calc_min_max(data_bounds=data_bounds)
+    y.calc_min_max(data_bounds=data_bounds)
 
     if symmetric_xy:
       x.min = min(x.min, y.min)
@@ -672,8 +672,8 @@ class Plot(G):
       x.max = max(x.max, y.max)
       y.max = x.max
 
-    self.x.data_size = x.max - x.min
-    self.y.data_size = y.max - y.min
+    x.data_size = x.max - x.min
+    y.data_size = y.max - y.min
 
     # Layout measurements.
     boundary_pad = 1 # Otherwise right/bottom can disappear.
@@ -761,8 +761,8 @@ class Plot(G):
 
 
     self.transform = transform
-    self.x.transform = x_transform
-    self.y.transform = y_transform
+    x.transform = x_transform
+    y.transform = y_transform
 
     if dbg:
       def dbg_rect(pos:Vec, size:Vec, stroke:str=None, fill:str=None, parent=self) -> None:
