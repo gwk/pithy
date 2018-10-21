@@ -592,7 +592,6 @@ class PlotAxis:
 
     # These attributes are filled in by Plot init.
     self.idx = -1
-    self.plot_size = 0.0
     self.data_size = 0.0
     self.min = 0.0
     self.max = 0.0
@@ -661,8 +660,6 @@ class Plot(G):
 
     self.x.idx = 0
     self.y.idx = 1
-    self.x.plot_size = size[0]
-    self.y.plot_size = size[1]
 
     data_bounds = reduce(expand_opt_bounds, (s.bounds for s in series), None)
 
