@@ -688,11 +688,11 @@ class Plot(G):
     self.scale_y = scale_y = grid_h / data_h
     self.scale = (scale_x, scale_y)
 
-    def choose_step(data_len:float, grid_len:float, min_screen_step:float) -> Tuple[float, int]:
+    def choose_step(data_len:float, plot_len:float, min_screen_step:float) -> Tuple[float, int]:
       assert data_len > 0
       assert min_screen_step > 0
-      cram_num = max(1.0, grid_len // min_screen_step) # Maximum number of ticks that could be placed.
-      assert cram_num > 0, (cram_num, grid_len, min_screen_step)
+      cram_num = max(1.0, plot_len // min_screen_step) # Maximum number of ticks that could be placed.
+      assert cram_num > 0, (cram_num, plot_len, min_screen_step)
       cram_step = data_len / cram_num # Minimum fractional data step.
       exp = floor(log10(cram_step))
       step1 = float(10**exp) # Low estimate of step.
@@ -701,15 +701,15 @@ class Plot(G):
         if step >= cram_step: return step1, mult
       return step1, 10
 
-    def calc_tick_step_and_fmt(axis:PlotAxis, data_low:float, data_len:float, grid_len:float, min_screen_step:float) -> Tuple[float, int, int, int]:
-      assert grid_len > 0
+    def calc_tick_step_and_fmt(axis:PlotAxis, data_low:float, data_len:float, plot_len:float, min_screen_step:float) -> Tuple[float, int, int, int]:
+      assert plot_len > 0
       if axis.tick_step is not None:
         tick_step = axis.tick_step
         mult = 1 # Fake; just means that misaligned grid won't be fixed automatically.
       elif min_screen_step <= 0:
         return (0.0, 0, 0, 0)
       else:
-        step1, mult = choose_step(data_len, grid_len, min_screen_step)
+        step1, mult = choose_step(data_len, plot_len, min_screen_step)
         tick_step = step1 * mult
       exp = floor(log10(tick_step))
       frac_w = max(0, -exp)
@@ -719,30 +719,30 @@ class Plot(G):
         len(f.format(data_low+data_len, frac_w)))
       return (tick_step, mult, fmt_w, frac_w)
 
-    def calc_grid_step(axis:PlotAxis, data_len:float, grid_len:float, tick_mult:int) -> float:
-      assert grid_len > 0
+    def calc_grid_step(axis:PlotAxis, data_len:float, plot_len:float, tick_mult:int) -> float:
+      assert plot_len > 0
       if axis.grid_step is not None:
         assert axis.grid_step >= 0
         return axis.grid_step
       min_screen_step = axis.grid_min
-      step1, mult = choose_step(data_len, grid_len, min_screen_step)
+      step1, mult = choose_step(data_len, plot_len, min_screen_step)
       if mult == 2 and tick_mult == 5: # Ticks will misalign to grid; bump grid to 2.5.
         return step1 * 2.5
       return step1 * mult
 
     tick_step_x, tick_mult_x, fmt_w_x, frac_w_x = \
-    calc_tick_step_and_fmt(axis=x, data_low=x_min, data_len=data_w, grid_len=grid_w, min_screen_step=x.tick_w * 1.5)
+    calc_tick_step_and_fmt(axis=x, data_low=x_min, data_len=data_w, plot_len=grid_w, min_screen_step=x.tick_w * 1.5)
 
     tick_step_y, tick_mult_y, fmt_w_y, frac_w_y = \
-    calc_tick_step_and_fmt(axis=y, data_low=y_min, data_len=data_h, grid_len=grid_h, min_screen_step=tick_h * 2.0)
+    calc_tick_step_and_fmt(axis=y, data_low=y_min, data_len=data_h, plot_len=grid_h, min_screen_step=tick_h * 2.0)
 
     self.tick_step_x = tick_step_x
     self.tick_step_y = tick_step_y
     self.tick_fmt_x = x.tick_fmt or (lambda t: f'{t:{fmt_w_x}.{frac_w_x}f}')
     self.tick_fmt_y = y.tick_fmt or (lambda t: f'{t:{fmt_w_y}.{frac_w_y}f}')
 
-    self.grid_step_x = grid_step_x = calc_grid_step(axis=x, data_len=data_w, grid_len=grid_w, tick_mult=tick_mult_x)
-    self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=data_h, grid_len=grid_h, tick_mult=tick_mult_y)
+    self.grid_step_x = grid_step_x = calc_grid_step(axis=x, data_len=data_w, plot_len=grid_w, tick_mult=tick_mult_x)
+    self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=data_h, plot_len=grid_h, tick_mult=tick_mult_y)
 
     def transform(point:Sequence) -> F2:
       'Translate a point to appear coincident with the data space.'
