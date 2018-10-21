@@ -564,26 +564,53 @@ class LineSeries(XYSeries):
 
 
 class PlotAxis:
+
   def __init__(self, *,
    length:Num=0,
    min:Optional[Num]=None, max:Optional[Num]=None,
    visible_origin=False,
    symmetric=False,
-   show_grid=True, grid_step:Optional[Num]=None, grid_min:Num=16,
-   show_ticks=True, tick_step:Optional[Num]=None, tick_space:Num=1, tick_w:Num=16, tick_fmt:Optional[TickFmt]=None) -> None:
+   show_grid=True, grid_step:Num=0.0, grid_min:Num=16,
+   show_ticks=True,
+   tick_step:Num=0.0, tick_space:Num=1, tick_w:Num=16, tick_fmt:Optional[TickFmt]=None) -> None:
+
     self.length = float(length) # For <=0 the screen length is calculated automatically.
-    self.min = min if min is None else float(min)
-    self.max = max if max is None else float(max)
+    self._min = None if min is None else float(min)
+    self._max = None if max is None else float(max)
     self.visible_origin = visible_origin
     self.symmetric = symmetric
     self.show_grid = show_grid
-    self.grid_step:Optional[float] = grid_step if grid_step is None else float(grid_step)
+    self.grid_step = float(grid_step)
     self.grid_min = float(grid_min)
     self.show_ticks = show_ticks
-    self.tick_step:Optional[float] = tick_step if tick_step is None else float(tick_step)
+    self.tick_step = float(tick_step)
     self.tick_space = float(tick_space)
     self.tick_w = float(tick_w)
     self.tick_fmt = tick_fmt
+
+    self.idx = -1 # Overwritten.
+    self.plot_size = 0.0 # Overwritten.
+    self.data_size = 0.0 # Overwritten.
+    self.min = 0.0 # Overwritten.
+    self.max = 0.0 # Overwritten.
+
+
+  def calc_min_max(self, data_bounds:Optional[BoundsF2]) -> None:
+    # Determine data data_bounds.
+    _min:Optional[float] = self._min
+    _max:Optional[float] = self._max
+    if _min is None: _min = 0.0   if data_bounds is None else data_bounds[0][self.idx]
+    if _max is None: _max = _min if data_bounds is None else data_bounds[1][self.idx]
+    if _max <= _min: _max = _min + 1.0
+    if self.visible_origin:
+      if _min > 0.0:   _min = 0.0
+      elif _max < 0.0: _max = 0.0
+    if self.symmetric:
+      _max = max(_max, -_min)
+      _min = -_max
+    self.min = _min
+    self.max = _max
+
 
   def x_axis_tick_h(self, tick_len:float, tick_h:float) -> float:
     return (tick_len + self.tick_space + tick_h) if self.show_ticks else 0.0
@@ -629,64 +656,41 @@ class Plot(G):
     self.w = size[0]
     self.h = size[1]
 
-    # Determine data bounds.
-    x_min:Optional[float] = x.min
-    x_max:Optional[float] = x.max
-    y_min:Optional[float] = y.min
-    y_max:Optional[float] = y.max
-    b = reduce(expand_opt_bounds, (s.bounds for s in series), None)
-    if x_min is None: x_min = 0.0 if b is None else b[0][0]
-    if y_min is None: y_min = 0.0 if b is None else b[0][1]
-    if x_max is None: x_max = x_min if b is None else b[1][0]
-    if y_max is None: y_max = y_min if b is None else b[1][1]
+    self.x.idx = 0
+    self.y.idx = 1
+    self.x.plot_size = size[0]
+    self.y.plot_size = size[1]
 
-    if x_max <= x_min: x_max = x_min + 1.0
-    if y_max <= y_min: y_max = y_min + 1.0
+    data_bounds = reduce(expand_opt_bounds, (s.bounds for s in series), None)
 
-    if x.visible_origin:
-      if x_min > 0.0:   x_min = 0.0
-      elif x_max < 0.0: x_max = 0.0
-    if self.y.visible_origin:
-      if y_min > 0.0:   y_min = 0.0
-      elif y_max < 0.0: y_max = 0.0
+    self.x.calc_min_max(data_bounds=data_bounds)
+    self.y.calc_min_max(data_bounds=data_bounds)
 
-    if x.symmetric:
-      x_max = max(x_max, -x_min)
-      x_min = -x_max
-    if y.symmetric:
-      y_max = max(y_max, -y_min)
-      y_min = -y_max
     if symmetric_xy:
-      x_min = y_min = min(x_min, y_min)
-      x_max = y_max = max(x_max, y_max)
+      x.min = min(x.min, y.min)
+      y.min = x.min
+      x.max = max(x.max, y.max)
+      y.max = x.max
 
-    self.x_min = x_min
-    self.x_max = x_max
-    self.y_min = y_min
-    self.y_max = y_max
-
-    self.data_w = data_w = x_max - x_min
-    self.data_h = data_h = y_max - y_min
-    self.data_size = data_size = (data_w, data_h)
+    self.x.data_size = x.max - x.min
+    self.y.data_size = y.max - y.min
 
     # Layout measurements.
     self.grid_x = grid_x = 0
     self.grid_y = grid_y = title_h
-    self.grid_pos = grid_pos = (grid_x, grid_y)
 
     boundary_pad = 1 # Otherwise right/bottom can disappear.
     x_axis_tick_h = x.x_axis_tick_h(tick_len, tick_h)
     y_axis_tick_w = y.y_axis_tick_w(tick_len)
+
     self.grid_w = grid_w = x.length or (self.w - boundary_pad - max(x.tick_w, y_axis_tick_w))
     self.grid_h = grid_h = y.length or (self.h - boundary_pad - x_axis_tick_h - title_h)
-    self.grid_size = grid_size = (grid_w, grid_h)
 
     self.grid_r = grid_r = grid_x + grid_w
     self.grid_b = grid_b = grid_y + grid_h
 
-    self.scale_x = scale_x = grid_w / data_w
-    self.scale_y = scale_y = grid_h / data_h
-    self.scale = (scale_x, scale_y)
+    self.scale_x = scale_x = grid_w / x.data_size
+    self.scale_y = scale_y = grid_h / y.data_size
 
     def choose_step(data_len:float, plot_len:float, min_screen_step:float) -> Tuple[float, int]:
       assert data_len > 0
@@ -703,7 +707,7 @@ class Plot(G):
 
     def calc_tick_step_and_fmt(axis:PlotAxis, data_low:float, data_len:float, plot_len:float, min_screen_step:float) -> Tuple[float, int, int, int]:
       assert plot_len > 0
-      if axis.tick_step is not None:
+      if axis.tick_step > 0:
         tick_step = axis.tick_step
         mult = 1 # Fake; just means that misaligned grid won't be fixed automatically.
       elif min_screen_step <= 0:
@@ -721,8 +725,7 @@ class Plot(G):
 
     def calc_grid_step(axis:PlotAxis, data_len:float, plot_len:float, tick_mult:int) -> float:
       assert plot_len > 0
-      if axis.grid_step is not None:
-        assert axis.grid_step >= 0
+      if axis.grid_step > 0:
         return axis.grid_step
       min_screen_step = axis.grid_min
       step1, mult = choose_step(data_len, plot_len, min_screen_step)
@@ -731,27 +734,38 @@ class Plot(G):
       return step1 * mult
 
     tick_step_x, tick_mult_x, fmt_w_x, frac_w_x = \
-    calc_tick_step_and_fmt(axis=x, data_low=x_min, data_len=data_w, plot_len=grid_w, min_screen_step=x.tick_w * 1.5)
+    calc_tick_step_and_fmt(axis=x, data_low=x.min, data_len=x.data_size, plot_len=grid_w, min_screen_step=x.tick_w * 1.5)
 
     tick_step_y, tick_mult_y, fmt_w_y, frac_w_y = \
-    calc_tick_step_and_fmt(axis=y, data_low=y_min, data_len=data_h, plot_len=grid_h, min_screen_step=tick_h * 2.0)
+    calc_tick_step_and_fmt(axis=y, data_low=y.min, data_len=y.data_size, plot_len=grid_h, min_screen_step=tick_h * 2.0)
 
     self.tick_step_x = tick_step_x
     self.tick_step_y = tick_step_y
     self.tick_fmt_x = x.tick_fmt or (lambda t: f'{t:{fmt_w_x}.{frac_w_x}f}')
     self.tick_fmt_y = y.tick_fmt or (lambda t: f'{t:{fmt_w_y}.{frac_w_y}f}')
 
-    self.grid_step_x = grid_step_x = calc_grid_step(axis=x, data_len=data_w, plot_len=grid_w, tick_mult=tick_mult_x)
-    self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=data_h, plot_len=grid_h, tick_mult=tick_mult_y)
+    self.grid_step_x = grid_step_x = calc_grid_step(axis=x, data_len=x.data_size, plot_len=grid_w, tick_mult=tick_mult_x)
+    self.grid_step_y = grid_step_y = calc_grid_step(axis=y, data_len=y.data_size, plot_len=grid_h, tick_mult=tick_mult_y)
+
+    self.data_size = data_size = (x.data_size, y.data_size)
+    self.grid_pos = grid_pos = (grid_x, grid_y)
+    self.grid_size = grid_size = (grid_w, grid_h)
+    self.scale = (scale_x, scale_y)
+
+    assert x is not None
+    assert y is not None
+    ax = x # Hack around mypy.
+    ay = y
 
     def transform(point:Sequence) -> F2:
       'Translate a point to appear coincident with the data space.'
-      x = float(point[0])
-      y = float(point[1])
-      return (round(grid_x + scale_x*(x-x_min), 1), round(grid_y + scale_y*(data_h - (y-y_min)), 1)) # type: ignore
+      px = float(point[0])
+      py = float(point[1])
+      return (round(grid_x + scale_x*(px-ax.min), 1), round(grid_y + scale_y*(ay.data_size - (py-ay.min)), 1))
 
-    def transform_x(x:Num) -> float: return round(grid_x + scale_x*(float(x) - x_min), 1) # type: ignore
-    def transform_y(y:Num) -> float: return round(grid_y + scale_y*(data_h - (float(y)-y_min)), 1) # type: ignore
+    def transform_x(px:Num) -> float: return round(grid_x + scale_x*(float(px) - ax.min), 1)
+    def transform_y(py:Num) -> float: return round(grid_y + scale_y*(ay.data_size - (float(py)-ay.min)), 1)
+
 
     self.transform = transform
     self.transform_x = transform_x
@@ -789,32 +803,32 @@ class Plot(G):
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
     with self.g(class_='grid') as g:
       if x.show_grid:
-        g_start_x = (x_min//grid_step_x + 1) * grid_step_x # Skip line index 0 because it is always <= low border.
-        for gx in NumRange(g_start_x, x_max, grid_step_x): # X axis.
+        g_start_x = (x.min//grid_step_x + 1) * grid_step_x # Skip line index 0 because it is always <= low border.
+        for gx in NumRange(g_start_x, x.max, grid_step_x): # X axis.
           tgx = transform_x(gx)
           g.line((tgx, grid_y), (tgx, grid_b)) # Vertical lines.
       if y.show_grid:
-        g_start_y = (y_min//grid_step_y + 1) * grid_step_y # Skip line index 0 because it is always <= low border.
-        for gy in NumRange(g_start_y, y_max, grid_step_y):
+        g_start_y = (y.min//grid_step_y + 1) * grid_step_y # Skip line index 0 because it is always <= low border.
+        for gy in NumRange(g_start_y, y.max, grid_step_y):
           tgy = transform_y(gy)
           g.line((grid_x, tgy), (grid_r, tgy)) # Horizontal lines.
       g.rect(class_='grid-border', pos=grid_pos, size=grid_size, r=corner_radius, fill='none')
 
     # Axes.
-    if y_min <= 0 and y_max >= 0: # Draw X axis.
+    if y.min <= 0 and y.max >= 0: # Draw X axis.
       y0 = transform_y(0)
       self.line((grid_x, y0), (grid_r, y0), class_='axis', id='x-axis')
-    if x_min <= 0 and x_max >= 0: # Draw Y axis.
+    if x.min <= 0 and x.max >= 0: # Draw Y axis.
       x0 = transform_x(0)
       self.line((x0, grid_y), (x0, grid_b), class_='axis', id='y-axis')
 
     # Ticks.
     if x.show_ticks:
       with self.g(class_='tick-x') as g:
-        txi, txr = divmod(x_min, tick_step_x)
+        txi, txr = divmod(x.min, tick_step_x)
         if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
         t_start_x = txi*tick_step_x
-        for _x in NumRange(t_start_x, x_max, step=tick_step_x, closed=True):
+        for _x in NumRange(t_start_x, x.max, step=tick_step_x, closed=True):
           tx = transform_x(_x)
           ty = grid_b
           tb = ty + tick_len
@@ -824,10 +838,10 @@ class Plot(G):
           g.text(self.tick_fmt_x(_x), pos=(tx, tty), class_='tick')
     if y.show_ticks:
       with self.g(class_='tick-y') as g:
-        tyi, tyr = divmod(y_min, tick_step_y)
+        tyi, tyr = divmod(y.min, tick_step_y)
         if tyr > 0.1: tyi += 1 # If the remainder is visually significant, skip the first tick.
         t_start_y = tyi*tick_step_y
-        for _y in NumRange(t_start_y, y_max, step=tick_step_y, closed=True):
+        for _y in NumRange(t_start_y, y.max, step=tick_step_y, closed=True):
           tx = grid_r
           tr = tx + tick_len
           ttx = tr + y.tick_space
