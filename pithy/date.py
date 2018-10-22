@@ -4,6 +4,10 @@ from datetime import date as Date, datetime as DateTime, timedelta
 from typing import Iterator
 
 
+sec_per_min = 60
+sec_per_hour = sec_per_min * 60
+sec_per_day = sec_per_hour * 24
+
 months = ('January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December')
 
