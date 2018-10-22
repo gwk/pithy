@@ -16,7 +16,7 @@ def load_csv(file: TextIO,
  doublequote:Optional[bool]=None,
  escapechar:Optional[str]=None,
  quotechar:Optional[str]=None,
- quoting:Optional[int]=None,
+ quoting:int=QUOTE_MINIMAL,
  skipinitialspace:Optional[bool]=None,
  strict:Optional[bool]=None,
  row_type:type=None,
@@ -36,13 +36,13 @@ def load_csv(file: TextIO,
     header=header)
 
 
-def write_csv(f:TextIO, *, quoting:Optional[int]=None, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
+def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
   w = csv.writer(f, quoting=quoting)
   if header is not None: w.writerow(header)
   w.writerows(rows)
 
 
-def out_csv(*, quoting:Optional[int]=None, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
+def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
   write_csv(f=stdout, quoting=quoting, header=header, rows=rows)
 
 
