@@ -189,6 +189,11 @@ class Text(SvgWriter):
     super().__init__(*text, _counter=_counter, attrs=attrs, **kwargs)
 
 
+class TSpan(SvgWriter):
+  tag = 'tspan'
+
+
+
 class Use(SvgWriter):
   tag = 'use'
 
@@ -633,11 +638,15 @@ class PlotAxis:
     if self.tick_step > 0 and not self.tick_fmt:
       exp = floor(log10(self.tick_step))
       frac_w = max(0, -exp)
-      f = '{:0.{}f}'
       fmt_w = max(
-        len(f.format(self.min, frac_w)),
-        len(f.format(self.max, frac_w)))
-      self.tick_fmt = lambda t: f'{t:{fmt_w}.{frac_w}f}'
+        len(f'{self.min:.{frac_w}f}'),
+        len(f'{self.max:.{frac_w}f}'))
+
+      def tick_fmt(val:float) -> Any:
+        s = f'{val:.{frac_w}f}'
+        return TSpan('0'*(fmt_w-len(s)), class_='zpad'), s
+
+      self.tick_fmt = tick_fmt
 
     # Calculate grid step.
     if self.grid_step <= 0:
@@ -776,6 +785,7 @@ class Plot(G):
       f'text.title {{ font-size: {title_h}px; }}\n',
       f'text.axis-label {{ font-size: {axis_label_h}px; }}\n',
       f'text.tick {{ font-size: {tick_h}px; }}\n',
+      f'tspan.zpad {{ opacity: 0; }}\n',
     )
 
     dbg_rect((0, 0), self.size, stroke='#000')
@@ -816,6 +826,11 @@ class Plot(G):
         x0 = x.transform(0)
         area.line((x0, 0), (x0, y.length), class_='axis', id='y-axis')
 
+      def handle_rendered_tick(val:Any) -> Tuple:
+        if isinstance(val, str): return (val,)
+        try: return tuple(val)
+        except TypeError: return (val,)
+
       # Ticks.
       if x.show_ticks:
         with area.g(class_='tick-x') as g:
@@ -830,7 +845,7 @@ class Plot(G):
             g.line((tx, ty), (tx, tb), class_='tick')
             dbg_rect((tx, tb), (x.tick_w, tick_h), fill='#008', parent=g)
             assert x.tick_fmt is not None
-            g.text(x.tick_fmt(_x), pos=(tx, tty), class_='tick')
+            g.text(*handle_rendered_tick(x.tick_fmt(_x)), pos=(tx, tty), class_='tick')
       if y.show_ticks:
         with area.g(class_='tick-y') as g:
           tyi, tyr = divmod(y.min, y.tick_step)
@@ -844,7 +859,7 @@ class Plot(G):
             g.line((tx, ty), (tr, ty), class_='tick')
             dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
             assert y.tick_fmt is not None
-            g.text(y.tick_fmt(_y), pos=(ttx, ty), class_='tick')
+            g.text(*handle_rendered_tick(y.tick_fmt(_y)), pos=(ttx, ty), class_='tick')
 
       # Series.
       with area.g(class_='series', clip_path=self.plot_clip_path) as series_g:
