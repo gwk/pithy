@@ -572,9 +572,9 @@ class PlotAxis:
    min:Optional[Num]=None, max:Optional[Num]=None,
    visible_origin=False,
    symmetric=False,
-   show_grid=True, grid_step:Num=0.0, grid_min:Num=16,
-   show_ticks=True,
-   tick_step:Num=0.0, tick_space:Num=1, tick_w:Num=16, tick_fmt:Optional[TickFmt]=None) -> None:
+   show_grid=True, grid:Iterable[Num]=(), grid_step:Num=0.0, grid_min:Num=16,
+   show_ticks=True, ticks:Iterable[Num]=(), tick_step:Num=0.0, tick_space:Num=1,
+   tick_w:Num=16, tick_fmt:Optional[TickFmt]=None) -> None:
 
     self.length = float(length) # For <=0 the screen length is calculated automatically.
     self._min = None if min is None else float(min)
@@ -582,9 +582,11 @@ class PlotAxis:
     self.visible_origin = visible_origin
     self.symmetric = symmetric
     self.show_grid = show_grid
+    self.grid = list(grid)
     self.grid_step = float(grid_step)
     self.grid_min = float(grid_min)
     self.show_ticks = show_ticks
+    self.ticks = list(ticks)
     self.tick_step = float(tick_step)
     self.tick_space = float(tick_space)
     self.tick_w = float(tick_w)
@@ -644,6 +646,20 @@ class PlotAxis:
         mult = 2.5
       self.grid_step = step1 * mult
 
+    if self.ticks:
+      if not self.grid:
+        self.grid = self.ticks
+    else: # Calculate ticks.
+      ti, tr = divmod(self.min, self.tick_step)
+      if tr > 0.1: ti += 1 # If the remainder is visually significant, skip the first tick.
+      t_start = ti*self.tick_step
+      self.ticks = [t for t in NumRange(t_start, self.max, step=self.tick_step, closed=True)]
+      if not self.grid: # Calculate grid.
+        g_start = (self.min//self.grid_step + 1) * self.grid_step # Skip line index 0 because it is always <= low border.
+        self.grid = [g for g in NumRange(g_start, self.max, self.grid_step)]
+
+
+
   def choose_step(self, min_screen_step:float) -> Tuple[float, float]:
     assert self.data_len > 0
     assert min_screen_step > 0
@@ -656,6 +672,7 @@ class PlotAxis:
       step = step1 * mult
       if step >= cram_step: return step1, mult
     return step1, 10.0
+
 
 
 class Plot(G):
@@ -781,12 +798,12 @@ class Plot(G):
       with area.g(class_='grid') as g:
         if x.show_grid:
           g_start_x = (x.min//x.grid_step + 1) * x.grid_step # Skip line index 0 because it is always <= low border.
-          for gx in NumRange(g_start_x, x.max, x.grid_step): # X axis.
+          for gx in x.grid: # X axis.
             tgx = x.transform(gx)
             g.line((tgx, 0), (tgx, y.length)) # Vertical lines.
         if y.show_grid:
           g_start_y = (y.min//y.grid_step + 1) * y.grid_step # Skip line index 0 because it is always <= low border.
-          for gy in NumRange(g_start_y, y.max, y.grid_step):
+          for gy in y.grid:
             tgy = y.transform(gy)
             g.line((0, tgy), (x.length, tgy)) # Horizontal lines.
         g.rect(class_='grid-border', pos=(0,0), size=grid_size, r=corner_radius, fill='none')
@@ -805,7 +822,7 @@ class Plot(G):
           txi, txr = divmod(x.min, x.tick_step)
           if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
           t_start_x = txi*x.tick_step
-          for _x in NumRange(t_start_x, x.max, step=x.tick_step, closed=True):
+          for _x in x.ticks:
             tx = x.transform(_x)
             ty = y.length
             tb = ty + tick_len
@@ -819,7 +836,7 @@ class Plot(G):
           tyi, tyr = divmod(y.min, y.tick_step)
           if tyr > 0.1: tyi += 1 # If the remainder is visually significant, skip the first tick.
           t_start_y = tyi*y.tick_step
-          for _y in NumRange(t_start_y, y.max, step=y.tick_step, closed=True):
+          for _y in y.ticks:
             tx = x.length
             tr = tx + tick_len
             ttx = tr + y.tick_space
