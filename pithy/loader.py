@@ -16,25 +16,6 @@ FileOrPath = Union[File, str]
 LoadFn = Callable[..., Any]
 
 
-def _path_cmpd_ext(path:str) -> str:
-  start = 1 if path.startswith('.') else 0 # Account for hidden files.
-  try: idx = path.index('.', start)
-  except ValueError: return ''
-  else: return path[idx:]
-
-
-def _last_ext(cmpd_ext:str) -> str:
-  try: idx = cmpd_ext.rindex('.')
-  except ValueError: return cmpd_ext
-  else: return cmpd_ext[idx:]
-
-
-def _sub_ext(cmpd_ext:str) -> str:
-  try: idx = cmpd_ext.rindex('.')
-  except ValueError: return cmpd_ext
-  else: return cmpd_ext[:idx]
-
-
 def load(file_or_path:FileOrPath, ext:str=None, encoding:str=None, **kwargs:Any) -> Any:
   '''
   Select an appropriate loader based on the file extension, or `ext` if specified.
@@ -224,3 +205,24 @@ add_loader('.xls',      load_xls,     _dflt=True)
 add_loader('.xz',       load_xz,      _dflt=True)
 add_loader('.zip',      load_archive, _dflt=True)
 add_loader('.zst',      load_zst,     _dflt=True)
+
+
+# Compound path utilities.
+
+def _path_cmpd_ext(path:str) -> str:
+  start = 1 if path.startswith('.') else 0 # Account for hidden files.
+  try: idx = path.index('.', start)
+  except ValueError: return ''
+  else: return path[idx:]
+
+
+def _last_ext(cmpd_ext:str) -> str:
+  try: idx = cmpd_ext.rindex('.')
+  except ValueError: return cmpd_ext
+  else: return cmpd_ext[idx:]
+
+
+def _sub_ext(cmpd_ext:str) -> str:
+  try: idx = cmpd_ext.rindex('.')
+  except ValueError: return cmpd_ext
+  else: return cmpd_ext[:idx]
