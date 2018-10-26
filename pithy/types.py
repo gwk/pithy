@@ -3,6 +3,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import Counter as _Counter
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing_extensions import Protocol
 
 
 _T = TypeVar('_T')
@@ -11,10 +12,13 @@ NoneType = type(None)
 Opt = Optional
 
 
-class Comparable(metaclass=ABCMeta):
+class Comparable(Protocol):
   # taken from https://www.python.org/dev/peps/pep-0484/.
   @abstractmethod
-  def __lt__(self, other: Any) -> bool: ...
+  def __lt__(self, other:Any) -> bool: ...
+
+  @abstractmethod
+  def __eq__(self, other:Any) -> bool: ...
 
 
 def is_a(val:Any, Type:Any) -> bool:
