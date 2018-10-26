@@ -38,7 +38,13 @@ def load(file_or_path:FileOrPath, ext:str=None, encoding:str=None, **kwargs:Any)
   try: load_fn = _loaders[dispatch_ext]
   except KeyError as e:
     raise ValueError(f'load: extension {dispatch_ext!r} does not match any available loader: {file_or_path!r}') from e
-  return load_fn(file_or_path, ext=ext, **kwargs)
+  try: return load_fn(file_or_path, ext=ext, **kwargs)
+  except Exception as e:
+    raise LoaderException(f'load failed: {file_or_path!r}') from e
+
+
+class LoaderException(Exception): pass
+
 
 
 def _text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
