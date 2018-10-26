@@ -470,12 +470,15 @@ class PlotSeries:
 
 class BarSeries(PlotSeries):
 
-  def __init__(self, name:str, points:Iterable[Tuple], numeric:bool, width=1.0, plotter:Optional[Plotter]=None, **attrs:Any) -> None:
+  def __init__(self, name:str, points:Iterable[Tuple], numeric:bool, width=1.0, plotter:Optional[Plotter]=None,
+   title_fmt:Optional[Callable[[Tuple], str]]=None, **attrs:Any) -> None:
+
     self.name = name
-    self.numeric = numeric
     self.points = list(points)
-    self.plotter = plotter
+    self.numeric = numeric
     self.width = width
+    self.plotter = plotter
+    self.title_fmt = title_fmt
     attrs.setdefault('class_', name) # Use class because the attributes are applied to every bar, so `id` would not be unique.
     self.attrs = attrs
     self.bounds:Optional[Tuple[F2, F2]] = None
@@ -520,7 +523,10 @@ class BarSeries(PlotSeries):
       (x_mid, y) = plot.transform(p)
       x_low = x_mid - w*0.5
       assert p[1] >= 0, f'negative bar values are not yet supported: {p!r}'
-      series.rect(x=x_low, y=y, w=w, h=y0-y, z_index=y, title=f'{p[0]}: {p[1]}', **self.attrs) # TODO: Custom format of title?
+      kwargs:Dict[str,Any] = {}
+      if self.title_fmt:
+        kwargs['title'] = self.title_fmt(p)
+      series.rect(x=x_low, y=y, w=w, h=y0-y, z_index=y, **kwargs, **self.attrs) # TODO: Custom format of title?
 
 
 class XYSeries(PlotSeries):
