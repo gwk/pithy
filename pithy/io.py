@@ -179,14 +179,14 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
           i -= 1
           break
         if i == next_i:
-          print(f'{pre}{i}{post}', end='', file=stderr, flush=True)
+          print(f'{pre}{i:,}{post}', end='', file=stderr, flush=True)
           t = time()
           d = t - prev_t
           step = max(1, int(step * frequency / d))
           prev_t = t
           next_i = i + step
         yield el
-      print(f'{pre}{i+1}{final}', file=stderr)
+      print(f'{pre}{i+1:,}{final}', file=stderr)
 
 
   else:
