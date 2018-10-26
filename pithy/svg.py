@@ -485,17 +485,21 @@ class BarSeries(PlotSeries):
       except TypeError as e: raise TypeError(f'BarSeries received non-numeric point {label}: {val!r}') from e
 
     if self.points:
-      for k, v in self.points:
+      for p in self.points:
+        x = p[0]
+        y = p[1]
         if numeric:
-          x_min = x_max = float_from(k, 'key')
-        y_min = y_max = float_from(v, 'value')
+          x_min = x_max = float_from(x, 'key')
+        y_min = y_max = float_from(y, 'value')
         break # Get first value, then iterate again.
-      for k, v in self.points:
+      for p in self.points:
+        x = p[0]
+        y = p[1]
         if numeric:
-          x = float_from(k, 'key')
+          x = float_from(x, 'key')
           x_min = min(x_min, x)
           x_max = max(x_max, x)
-        y = float_from(v, 'value')
+        y = float_from(y, 'value')
         y_min = min(y_min, y)
         y_max = max(y_max, y)
       if numeric:
@@ -512,7 +516,7 @@ class BarSeries(PlotSeries):
     # Do not place the bars in a group because we want to be able to z-index bars across multiple series.
     for i, p in enumerate(self.points):
       if not self.numeric:
-        p = (i+0.5, p[1])
+        p = (i+0.5, p[1], p[0])
       (x_mid, y) = plot.transform(p)
       x_low = x_mid - w*0.5
       assert p[1] >= 0, f'negative bar values are not yet supported: {p!r}'
