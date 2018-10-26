@@ -63,7 +63,7 @@ class FileStatus(NamedTuple):
 
   @classmethod
   def from_dir_entry(class_, entry: DirEntry, follow_symlinks=True) -> Optional['FileStatus']:
-    return class_.from_stat_result(entry.path, entry.stat(follow_symlinks=follow_symlinks)) # type: ignore
+    return class_.from_stat_result(entry.path, entry.stat(follow_symlinks=follow_symlinks))
 
 
   # File type tests derived from Python's stat.py.
