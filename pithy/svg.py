@@ -649,11 +649,11 @@ class PlotAxis:
       exp = floor(log10(self.tick_step))
       frac_w = max(0, -exp)
       fmt_w = max(
-        len(f'{self.min:.{frac_w}f}'),
-        len(f'{self.max:.{frac_w}f}'))
+        len(f'{self.min:,.{frac_w}f}'),
+        len(f'{self.max:,.{frac_w}f}'))
 
       def tick_fmt(val:float) -> Any:
-        s = f'{val:.{frac_w}f}'
+        s = f'{val:,.{frac_w}f}'
         return TSpan('0'*(fmt_w-len(s)), class_='zpad'), s
 
       self.tick_fmt = tick_fmt
