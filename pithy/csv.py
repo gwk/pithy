@@ -7,7 +7,7 @@ import collections
 from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONNUMERIC, QUOTE_NONE
 from sys import stdout
 from types import TracebackType
-from typing import Any, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
+from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
 
 def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
@@ -30,6 +30,7 @@ def load_csv(file: TextIO,
  skipinitialspace:Optional[bool]=None,
  strict:Optional[bool]=None,
  row_type:type=None,
+ col_conv:Iterable[Callable]=(),
  header:Union[None, bool, Sequence[str]]=None) -> 'CSVFileReader':
 
   return CSVFileReader(
@@ -43,6 +44,7 @@ def load_csv(file: TextIO,
     skipinitialspace=skipinitialspace,
     strict=strict,
     row_type=row_type,
+    col_conv=col_conv,
     header=header)
 
 
@@ -58,6 +60,7 @@ class CSVFileReader(Iterable, ContextManager):
    skipinitialspace:Optional[bool]=None,
    strict:Optional[bool]=None,
    row_type:type=None,
+   col_conv:Iterable[Callable]=(),
    header:Union[None, bool, Sequence[str]]=None) -> None:
 
     opts = { k : v for (k, v) in [
@@ -74,6 +77,7 @@ class CSVFileReader(Iterable, ContextManager):
     self._reader = csv.reader(file, dialect, **opts)
     self.file = file
     self.row_type = row_type
+    self.col_conv = col_conv
 
     if header is None or isinstance(header, bool):
       if header: next(self._reader) # simply discard.
@@ -85,10 +89,16 @@ class CSVFileReader(Iterable, ContextManager):
 
 
   def __iter__(self) -> Iterator[Any]:
-    if self.row_type is None:
-      return self._reader
+    if self.col_conv:
+      if self.row_type is None:
+        return ([conv(col) for conv, col in zip(self.col_conv, row)] for row in self._reader)
+      else:
+        return (self.row_type(*(conv(col) for conv, col in zip(self.col_conv, row))) for row in self._reader)
     else:
-      return (self.row_type(*r) for r in self._reader)
+      if self.row_type is None:
+        return self._reader
+      else:
+        return (self.row_type(*row) for row in self._reader)
 
 
   def __enter__(self) -> 'CSVFileReader':
