@@ -10,6 +10,16 @@ from types import TracebackType
 from typing import Any, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
 
+def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
+  w = csv.writer(f, quoting=quoting)
+  if header is not None: w.writerow(header)
+  w.writerows(rows)
+
+
+def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
+  write_csv(f=stdout, quoting=quoting, header=header, rows=rows)
+
+
 def load_csv(file: TextIO,
  dialect:Optional[str]=None,
  delimiter:Optional[str]=None,
@@ -34,16 +44,6 @@ def load_csv(file: TextIO,
     strict=strict,
     row_type=row_type,
     header=header)
-
-
-def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
-  w = csv.writer(f, quoting=quoting)
-  if header is not None: w.writerow(header)
-  w.writerows(rows)
-
-
-def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
-  write_csv(f=stdout, quoting=quoting, header=header, rows=rows)
 
 
 class CSVFileReader(Iterable, ContextManager):
