@@ -652,9 +652,10 @@ class PlotAxis:
         len(f'{self.min:,.{frac_w}f}'),
         len(f'{self.max:,.{frac_w}f}'))
 
+      pad_str = f'{10**fmt_w:,.{frac_w}f}'[-fmt_w:] # Longer than necessary. Take pad chars from right to left.
       def tick_fmt(val:float) -> Any:
         s = f'{val:,.{frac_w}f}'
-        return TSpan('0'*(fmt_w-len(s)), class_='zpad'), s
+        return TSpan(pad_str[:-len(s)], class_='zpad'), s
 
       self.tick_fmt = tick_fmt
 
