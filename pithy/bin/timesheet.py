@@ -64,7 +64,7 @@ def main() -> None:
 
     time_match = time_re.match(line)
     if time_match:
-      m = minutes(time_match)
+      m = minutes_for(time_match)
       if start_minutes is None: start_minutes = m
       else: end_minutes = m # Cumulative from last start.
       outZ(f'|{m:4} ')
@@ -78,7 +78,7 @@ def main() -> None:
         outL()
         exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
       sub_minutes = end_minutes - start_minutes
-      m = minutes(subtotal_match)
+      m = minutes_for(subtotal_match)
       outZ(f'= {sub_minutes:4}m')
       if m != sub_minutes:
         outZ(f' *** found: {m}; calculated: {sub_minutes}')
@@ -104,8 +104,7 @@ def main() -> None:
     outL()
 
 
-  hours = total_minutes // 60
-  rem_minutes = int(total_minutes) % 60
+  hours, minutes = divmod(int(total_minutes), 60)
   time_expense = hourly_rate * total_minutes / 60
   total = time_expense + total_payment + total_expense
   if hourly_rate:
@@ -118,7 +117,7 @@ def main() -> None:
   for day in days: outL(day)
 
   outL()
-  outL(f'TOTAL HOURS:   {hours:2}:{rem_minutes:02}{hourly_string}')
+  outL(f'TOTAL HOURS:   {hours:2}:{minutes:02}{hourly_string}')
   outL(f'TOTAL EXPENSE: ${total_expense:,.2f}')
   outL(f'TOTAL PAYMENT: ${total_payment:,.2f}')
   outL(f'TOTAL:         ${total:,.2f}')
@@ -127,7 +126,7 @@ def main() -> None:
     exit('*** INVALID ***')
 
 
-def minutes(match:Match) -> int:
+def minutes_for(match:Match) -> int:
   return int(match.group(1)) * 60 + int(match.group(2))
 
 day_re      = re.compile(r'(?:(\d\d\d\d)-)?(\d\d)-(\d\d)')
