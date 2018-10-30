@@ -46,6 +46,8 @@ class HtmlWriter(XmlWriter):
 
   def p(self, *children:Any, **attrs:Any) -> 'P': return self.child(P, *children, attrs=attrs)
 
+  def span(self, *children:Any, **attrs:Any) -> 'Span': return self.child(Span, *children, attrs=attrs)
+
   def script(self, *children:Any, **attrs:Any) -> Script: return self.child(Script, *children, attrs=attrs)
 
   def style(self, *children:Any, **attrs:Any) -> Style: return self.child(Style, *children, attrs=attrs)
@@ -136,6 +138,9 @@ class Input(HtmlWriter):
 
 class Label(HtmlWriter):
   tag = 'label'
+
+class Span(HtmlWriter):
+  tag = 'span'
 
 class Table(HtmlWriter):
   tag = 'table'
