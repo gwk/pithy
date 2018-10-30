@@ -7,6 +7,7 @@ from html import escape as html_escape
 from os.path import normpath as norm_path, dirname as path_dir, exists as path_exists, join as path_join, \
 relpath as rel_path, splitext as split_ext
 from pithy.io import errSL
+from pithy.json import load_json
 from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, Sequence, Union, TextIO, Tuple, cast
 
 import pygments # type: ignore
@@ -713,7 +714,9 @@ span_re = re.compile('|'.join(p for p, _ in span_pairs))
 
 def embed(ctx: Ctx, src: SrcLine, text: str, attrs: Dict[str, str]) -> Span:
   'convert an `embed` span into html.'
-  path = ctx.add_dependency(text)
+  words = text.split()
+  path = ctx.add_dependency(words[0])
+  args = words[1:]
   if ctx.should_embed:
     try: f = open(path)
     except FileNotFoundError:
@@ -724,18 +727,18 @@ def embed(ctx: Ctx, src: SrcLine, text: str, attrs: Dict[str, str]) -> Span:
     try: embed_fn = embed_dispatch.get(ext, embed_code)
     except KeyError:
       ctx.error(src, f'embedded file has unknown extension type: {path!r}')
-    contents = tuple(embed_fn(ctx, f))
+    contents = tuple(embed_fn(ctx, src, f, args, attrs))
   else:
     contents = ()
   return EmbedSpan(text=text, attrs=attrs, path=path, contents=contents)
 
 
-def embed_css(ctx: Ctx, f: TextIO) -> List[str]:
+def embed_css(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
   css = f.read()
   return [f'<style type="text/css">{html_esc(css)}</style>']
 
 
-def embed_csv(ctx: Ctx, f: TextIO) -> List[str]:
+def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
   from csv import reader
   csv_reader = reader(f)
   it = iter(csv_reader)
@@ -756,7 +759,7 @@ def embed_csv(ctx: Ctx, f: TextIO) -> List[str]:
   return lines
 
 
-def embed_code(ctx: Ctx, f: TextIO) -> Iterator[str]:
+def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> Iterator[str]:
   lines = list(f)
   first = lines[0] if lines else ''
   lexer = pygments.lexers.guess_lexer_for_filename(f.name, first)
@@ -772,13 +775,14 @@ def render_token(ctx: Ctx, kind: pygments.token._TokenType, text: str) -> str:
   ctx.add_css(f'code.line span.{class_}', style=f'color: {color}')
   return f'<span class="{class_}">{html_esc(text)}</span>'
 
-def embed_direct(ctx: Ctx, f: TextIO) -> List[str]:
+
+def embed_direct(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
   return list(filter(None, (xml_processing_instruction_re.sub('', line.rstrip()) for line in f)))
 
 xml_processing_instruction_re = re.compile(r'<\?[^>]*>')
 
 
-def embed_html(ctx: Ctx, f: TextIO) -> List[str]:
+def embed_html(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
   src_dir = path_dir(ctx.src_path) or '.'
   lines = list(f)
   head = ''
@@ -798,11 +802,28 @@ html_doc_re = re.compile(r'''(?xi)
 ''')
 
 
-def embed_img(ctx: Ctx, f: TextIO) -> List[str]:
+def embed_img(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
   return [f'<img src={html_esc(f.name)}>']
 
 
-def embed_wu(ctx: Ctx, f: TextIO) -> List[str]:
+def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+  data = load_json(f)
+  for i, arg in enumerate(args):
+    acc = '.'.join(args[:i+1])
+    if isinstance(data, dict):
+      try: data = data[arg]
+      except KeyError: ctx.error(src, f'{f.name}:{acc}: no such key.')
+    elif isinstance(data, list):
+      try: index = int(arg)
+      except ValueError: ctx.error(src, f'{f.name}:{acc}: data is a list; key is not an index.')
+      try: data = data[index]
+      except IndexError: ctx.error(src, f'{f.name}:{acc}: data has {len(data)} items; index is out of bounds.')
+    else:
+      ctx.error(src, f'{f.name}:{acc}: data is not a collection.')
+  return [str(data)]
+
+
+def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
   embed_ctx = Ctx(
     src_path=f.name,
     quote_depth=ctx.quote_depth,
@@ -813,13 +834,16 @@ def embed_wu(ctx: Ctx, f: TextIO) -> List[str]:
   return list(embed_ctx.emit_html(depth=0))
 
 
-embed_dispatch: Dict[str, Callable[[Ctx, TextIO], Iterable[str]]] = {
+_EmbedFn = Callable[[Ctx, SrcLine, TextIO, List[str], Dict[str,str]], Iterable[str]]
+
+embed_dispatch: Dict[str, _EmbedFn] = {
   '.css'  : embed_css,
   '.csv'  : embed_csv,
+  '.json' : embed_json,
   '.wu'   : embed_wu,
 }
 
-def _add_embed(fn: Callable[[Ctx, TextIO], Iterable[str]], *exts: str) -> None:
+def _add_embed(fn:_EmbedFn, *exts: str) -> None:
   embed_dispatch.update((ext, fn) for ext in exts)
 
 _add_embed(embed_direct, '.svg')
