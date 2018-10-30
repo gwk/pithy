@@ -77,9 +77,6 @@ def writeup_dependencies(src_path: str, text_lines: Iterable[str], emit_dbg=Fals
   return sorted(ctx.dependencies)
 
 
-class Ctx: ...
-
-
 class Span:
   'A tree node of inline HTML content.'
   def __init__(self, text: str) -> None:
@@ -147,7 +144,7 @@ class GenericSpan(AttrSpan):
 
 
 class LinkSpan(AttrSpan):
-  def __init__(self, text: str, attrs: Dict[str, str], tag: str, words: List[str], ctx: Ctx, src: SrcLine) -> None:
+  def __init__(self, text: str, attrs: Dict[str, str], tag: str, words: List[str], ctx: 'Ctx', src: SrcLine) -> None:
     super().__init__(text=text, attrs=attrs)
     self.tag = tag
     if not words:
@@ -170,8 +167,8 @@ class LinkSpan(AttrSpan):
 
 class Block:
   'A tree node of block-level HTML content.'
-  def finish(self, ctx: Ctx) -> None: pass
-  def html(self, ctx: Ctx, depth: int) -> Iterable[str]: raise NotImplementedError
+  def finish(self, ctx: 'Ctx') -> None: pass
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]: raise NotImplementedError
 
 
 class Section(Block):
@@ -187,7 +184,7 @@ class Section(Block):
   @property
   def sid(self) -> str: return '.'.join(str(i) for i in self.index_path)
 
-  def html(self, ctx: Ctx, depth: int) -> Iterable[str]:
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
     sid = self.sid
     ctx.section_ids.append(sid)
     if self.section_depth <= 2: ctx.paging_ids.append(sid)
@@ -208,7 +205,7 @@ class UList(Block):
 
   def __repr__(self) -> str: return f'UList({self.list_level}, {len(self.items)} items)'
 
-  def html(self, ctx: Ctx, depth: int) -> Iterable[str]:
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
     yield indent(depth, f'<ul class="L{self.list_level}">')
     for item in self.items:
       yield from item.html(ctx, depth + 1)
@@ -222,7 +219,7 @@ class ListItem(Block):
 
   def __repr__(self) -> str: return f'ListItem({self.list_level}, {len(self.blocks)} blocks)'
 
-  def html(self, ctx: Ctx, depth: int) -> Iterable[str]:
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
     if len(self.blocks) == 1 and isinstance(self.blocks[0], Text):
       if len(self.blocks[0].lines) == 1:
         yield indent(depth, f'<li>{html_for_spans(self.blocks[0].lines[0], depth=depth)}</li>')
@@ -257,7 +254,7 @@ class Quote(LeafBlock):
     super().__init__()
     self.blocks: List[Block] = []
 
-  def finish(self, ctx: Ctx) -> None:
+  def finish(self, ctx: 'Ctx') -> None:
     quote_ctx = Ctx(
       src_path=ctx.src_path,
       quote_depth=ctx.quote_depth + 1,
@@ -269,7 +266,7 @@ class Quote(LeafBlock):
     parse(ctx=quote_ctx, src_lines=unquoted_src_lines)
     self.blocks = quote_ctx.blocks
 
-  def html(self, ctx: Ctx, depth: int) -> Iterable[str]:
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
     yield indent(depth, '<blockquote>')
     for block in self.blocks:
       yield from block.html(ctx, depth=depth + 1)
@@ -278,7 +275,7 @@ class Quote(LeafBlock):
 
 class Code(LeafBlock):
 
-  def html(self, ctx: Ctx, depth: int) -> Iterable[str]:
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
     yield '<div class="code-block">'
     for line in self.content_lines:
       content = html_esc(line)
@@ -291,10 +288,10 @@ class Text(LeafBlock):
     super().__init__()
     self.lines: List[Spans] = []
 
-  def finish(self, ctx: Ctx) -> None:
+  def finish(self, ctx: 'Ctx') -> None:
     self.lines = [parse_spans(ctx, src=src, text=text) for (src, text) in zip(self.src_lines, self.content_lines)]
 
-  def html(self, ctx: Ctx, depth: int) -> Iterable[str]:
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
     yield indent(depth, '<p>')
     for i, line in enumerate(self.lines):
       if i: yield indent(depth, '<br />')
@@ -303,7 +300,7 @@ class Text(LeafBlock):
 
 
 
-class Ctx: # type: ignore
+class Ctx:
   '''
   Parser context.
   Converts input writeup source text to output html lines and dependencies.
