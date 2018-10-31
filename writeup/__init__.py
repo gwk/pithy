@@ -141,8 +141,7 @@ class EmbedSpan(AttrSpan):
 class GenericSpan(AttrSpan):
 
   def html(self, depth: int) -> str:
-    attr_str = ' '.join(f'{html_esc_attr(k)}="{html_esc_attr(v)}"' for k, v in self.attrs.items())
-    return f"<span {attr_str}>{html_esc(self.text)}</span>"
+    return f"<span {fmt_attrs(self.attrs)}>{html_esc(self.text)}</span>"
 
 
 class LinkSpan(AttrSpan):
@@ -693,10 +692,9 @@ def parse_spans(ctx: Ctx, src: SrcLine, text: str) -> Spans:
   return tuple(spans)
 
 
-def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
-  'convert angle bracket span to html.'
-  tag, colon, post_tag_text = text.partition(':')
-  if colon is None: ctx.error(src, f'malformed span is missing colon after tag: {text!r}')
+def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> Tuple[str, Dict[str,str], List[str]]:
+  tag, colon, post_tag_text = text.lstrip().partition(':')
+  if colon is None: ctx.error(src, f'missing colon after tag: {text!r}')
 
   attrs_list = []
   body_words = []
@@ -715,16 +713,21 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
     if val.endswith(';'):
       in_body = True
       val = val[:-1]
-    if not sym_re.fullmatch(key): ctx.error(src, f'span attribute name is invalid: {word!r}')
-    if not val: ctx.error(src, f'span attribute value is empty; word: {word!r}')
+    val = val.strip()
+    if not sym_re.fullmatch(key): ctx.error(src, f'attribute name is invalid: {word!r}')
+    if not val: ctx.error(src, f'attribute value is empty; word: {word!r}')
     if val[0] in ('"', "'") and (len(val) < 2 or val[0] != val[-1]):
       ctx.error(src, 'span attribute value has mismatched quotes (possibly due to writeup doing naive splitting on whitespace);' \
         f'word: {word!r}; val: {val!r}')
     attrs_list.append((key, val))
+  return tag, dict(attrs_list), body_words
+
+
+def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
+  'convert angle bracket span to html.'
+  tag, attrs, body_words = parse_tag_attrs_body(ctx, src, text)
   if not body_words: ctx.error(src, f'span has no body (missing colon after the tag?)')
   body_text = ' '.join(body_words)
-
-  attrs = dict(attrs_list)
   if tag == 'b':
     return BoldSpan(text=body_text, attrs=attrs)
   if tag == 'embed':
@@ -921,6 +924,14 @@ def attrs_bool(attrs: Dict[str, str], key: str) -> bool:
 
 
 # HTML output.
+
+def fmt_attrs(attrs:Dict[str,str]) -> str:
+  return ' '.join(f'{html_esc_attr(attr_subs.get(k, k))}="{html_esc_attr(v)}"' for k, v in attrs.items())
+
+attr_subs = {
+  'class_' : 'class'
+}
+
 
 def html_esc(text: str) -> str:
   # TODO: check for strange characters that html will ignore.
