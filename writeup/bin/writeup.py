@@ -6,7 +6,6 @@ assert sys.version_info >= (3, 6, 0)
 import re
 
 from argparse import ArgumentParser
-from os.path import basename as path_name, splitext as split_ext
 from pithy.io import errSL
 from sys import stdin, stdout
 from typing import Tuple
@@ -76,7 +75,6 @@ def main() -> None:
     html_lines_gen = writeup(
       src_path=src_path,
       src_lines=enumerate(f_in),
-      title=split_ext(path_name(src_path))[0],
       description='', # TODO.
       author='', # TODO.
       css_lines=minify_css(css_blocks),

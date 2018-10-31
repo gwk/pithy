@@ -4,8 +4,7 @@ import re
 
 from collections import defaultdict
 from html import escape as html_escape
-from os.path import normpath as norm_path, dirname as path_dir, exists as path_exists, join as path_join, \
-relpath as rel_path, splitext as split_ext
+from pithy.fs import norm_path, path_dir, path_exists, path_ext, path_join, path_name_stem, rel_path
 from pithy.io import errSL
 from pithy.json import load_json
 from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, Sequence, Union, TextIO, Tuple, cast
@@ -22,7 +21,7 @@ __all__ = ['writeup', 'writeup_dependencies', 'default_css', 'minify_css', 'mini
 SrcLine = Tuple[int, str]
 
 
-def writeup(src_path: str, src_lines: Iterable[SrcLine], title: str, description: str, author: str,
+def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, author: str,
   css_lines: Optional[Iterator[str]], js: Optional[str], emit_doc: bool, target_section: Optional[str], emit_dbg: bool) -> Iterable[str]:
   'generate a complete html document from a writeup file (or stream of lines).'
 
@@ -34,23 +33,25 @@ def writeup(src_path: str, src_lines: Iterable[SrcLine], title: str, description
       '<!DOCTYPE html>',
       '<html>',
       '<head>',
-      '  <meta charset="utf-8" />',
-      f' <title>{title}</title>',
-      f' <meta name="description" content="{description}" />',
-      f' <meta name="author" content="{author}" />',
-      '  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=" />', # empty icon.
+      '<meta charset="utf-8" />',
+      f'<title>{ctx.title}</title>',
+      f'<meta name="description" content="{description}" />',
+      f'<meta name="author" content="{author}" />',
+      '<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=" />', # empty icon.
     ]
     if css_lines is not None:
-      yield f'  <style type="text/css">'
+      yield f'<style type="text/css">'
       yield from css_lines
       yield from ctx.render_css()
-      yield '  </style>'
+      yield '</style>'
     if js:
-      yield f'  <script type="text/javascript"> "use strict";\n{js}</script>'
+      yield f'<script type="text/javascript"> "use strict";\n{js}</script>'
+
+    yield from ctx.emit_head()
     yield '</head>'
     yield '<body id="body">'
 
-  yield from ctx.emit_html(depth=0, target_section=target_section)
+  yield from ctx.emit_body(depth=0, target_section=target_section)
   if target_section is not None and not ctx.found_target_section: exit(f'target section not found: {target_section!r}')
 
   if bool(js):
@@ -284,6 +285,60 @@ class Code(LeafBlock):
     yield '</div>'
 
 
+class LangBlock(LeafBlock):
+
+  def __init__(self) -> None:
+    super().__init__()
+    self.lang = ''
+    self.lines:List[str] = []
+
+  def finish(self, ctx: 'Ctx') -> None:
+    lang_line = self.src_lines[0]
+    lang_text = lang_line[1]
+    m = lang_re.match(lang_text)
+    if m:
+      self.lang = m[1]
+      if m.end() < len(lang_text):
+        assert lang_text.endswith('\n')
+        self.lines.append(lang_text[m.end():-1])
+    else:
+      ctx.error(self.src_lines[0], f'invalid language block: {lang_line[1]!r}.')
+
+    self.lines.extend(strip_lang_line(l[1]) for l in self.src_lines[1:])
+
+    if self.lang == 'css':
+      for line in self.lines:
+        for word in line.split():
+          ctx.head_text.append(f'<link rel="stylesheet" href="{word}">')
+    elif self.lang == 'head':
+      ctx.head_text.extend(l.strip() for l in self.lines)
+    elif self.lang == 'style':
+      ctx.head_text.extend(minify_css(self.lines))
+    elif self.lang == 'title':
+      if len(self.lines) != 1: ctx.error(self.src_lines[0], f'title block must be a single line; found {len(self.lines)}.')
+      ctx.title = self.lines[0].strip()
+    else:
+      raise NotImplementedError(self.lang)
+
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
+    if self.lang in ('css', 'head', 'style', 'title'): return # Already emitted in head_text.
+    yield from ''
+
+
+lang_re = re.compile(r'''(?x)
+% \x20
+( css
+| head
+| style
+| title
+):\s*''')
+
+
+def strip_lang_line(line:str) -> str:
+  assert line.startswith('% ') and line.endswith('\n'), repr(line)
+  return line[2:-1]
+
+
 class Text(LeafBlock):
   def __init__(self) -> None:
     super().__init__()
@@ -310,6 +365,7 @@ class Ctx:
   def __init__(self, src_path: str, should_embed: bool, is_versioned=True,
    warn_missing_final_newline=True, quote_depth=0, line_offset=0, emit_dbg=False) -> None:
     self.src_path = src_path
+    self.title = path_name_stem(src_path)
     self.should_embed = should_embed
     self.is_versioned = is_versioned
     self.warn_missing_final_newline = warn_missing_final_newline
@@ -320,6 +376,7 @@ class Ctx:
     self.project_dir = '.' # For now, assume that writeup is invoked from the project root.
     self.src_dir = path_dir(src_path) or '.'
     self.license_lines: List[str] = []
+    self.head_text: List[str] = []
     self.stack: List[Block] = [] # stack of currently open content blocks.
     self.blocks: List[Block] = [] # top level blocks.
     self.dependencies: List[str] = []
@@ -327,6 +384,7 @@ class Ctx:
     self.paging_ids: List[str] = [] # accumulated list of all paging (level 1 & 2) section ids.
     self.css: DefaultDict[str, List[str]] = defaultdict(list)
     self.found_target_section = False
+    self.title = ''
 
 
   @property
@@ -397,7 +455,10 @@ class Ctx:
       self.pop()
       assert not self.stack or isinstance(self.top, (Section, ListItem))
 
-  def emit_html(self, depth: int, target_section: Optional[str]=None) -> Iterator[str]:
+  def emit_head(self) -> Iterator[str]:
+    yield from self.head_text
+
+  def emit_body(self, depth: int, target_section: Optional[str]=None) -> Iterator[str]:
     for block in self.blocks:
       if target_section is not None:
         if not isinstance(block, Section): continue
@@ -451,11 +512,11 @@ license_re = re.compile(r'(©|Copyright|Dedicated to the public domain).*')
 # license pattern is is only applied to the first line (following the version line, if any).
 
 # line states.
-s_start, s_license, s_section, s_quote, s_code, s_text, s_blank = range(7)
+s_start, s_license, s_section, s_quote, s_code, s_lang, s_text, s_blank = range(8)
 
-state_letters = '^©SQCTB' # for debug output only.
+state_letters = '^©SQCLTB' # for debug output only.
 
-line_re = re.compile(r'''(?x:
+line_re = re.compile(r'''(?x)
 (?P<section_indents> \s* ) (?P<section_hashes>\#+) (?P<section_spaces> \s* ) (?P<section_title> .* )
 |
 (?P<indents> \s* )
@@ -463,15 +524,17 @@ line_re = re.compile(r'''(?x:
 (?:
     >  \s? (?P<quote> .* )
   | \| \s? (?P<code> .* )
+  | %  \s? (?P<lang> .* )
   | (?P<blank> \s*)
   | (?P<text> .* )
 )
-)''')
+''')
 
 line_groups_to_states = {
   'section_title' : s_section,
   'quote' : s_quote,
   'code': s_code,
+  'lang': s_lang,
   'text': s_text,
   'blank': s_blank,
 }
@@ -583,6 +646,9 @@ def writeup_line(ctx: Ctx, src: SrcLine, state: int, m: Match) -> None:
 
   elif state == s_quote:
     ctx.append_to_leaf_block(src, list_level, Quote, content=m['quote'])
+
+  elif state == s_lang:
+    ctx.append_to_leaf_block(src, list_level, LangBlock, content=m['lang'])
 
   elif state == s_text:
     ctx.append_to_leaf_block(src, list_level, Text, content=m['text'])
@@ -719,7 +785,7 @@ def embed(ctx: Ctx, src: SrcLine, text: str, attrs: Dict[str, str]) -> Span:
       ctx.error(src, f'embedded file not found: {path!r}')
     ext = attrs.get('ext')
     if not ext:
-      ext = split_ext(path)[1]
+      ext = path_ext(path)
     try: embed_fn = embed_dispatch.get(ext, embed_code)
     except KeyError:
       ctx.error(src, f'embedded file has unknown extension type: {path!r}')
@@ -827,7 +893,7 @@ def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,st
     is_versioned=True,
     should_embed=ctx.should_embed)
   parse(embed_ctx, src_lines=enumerate(f))
-  return list(embed_ctx.emit_html(depth=0))
+  return list(embed_ctx.emit_body(depth=0))
 
 
 _EmbedFn = Callable[[Ctx, SrcLine, TextIO, List[str], Dict[str,str]], Iterable[str]]
