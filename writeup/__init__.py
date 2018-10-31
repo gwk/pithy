@@ -97,7 +97,7 @@ class CodeSpan(Span):
   def html(self, depth: int) -> str:
     'convert backtick code span to html.'
     span_char_esc_fn = lambda m: m.group(0)[1:] # strip leading '\' escape.
-    text_escaped = span_code_esc_re.sub(span_char_esc_fn, self.text)
+    text_escaped = span_backtick_esc_re.sub(span_char_esc_fn, self.text)
     text_escaped_html = html_esc(text_escaped)
     text_spaced = text_escaped_html.replace(' ', '&nbsp;') # TODO: should this be breaking space for long strings?
     return f'<code class="inline">{text_spaced}</code>'
@@ -742,7 +742,7 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
 span_link_tags = { 'http', 'https', 'link', 'mailto' }
 
 
-def span_code_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
+def span_backtick_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
   return CodeSpan(text=text)
 
 
@@ -753,8 +753,8 @@ def span_code_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
 # to allow a trailing escape character, the 'EE' clause is also required.
 
 # backtick code span.
-span_code_pat = r'`((?:[^\\`]|\\`|\\\\)*)`' # finds code spans.
-span_code_esc_re = re.compile(r'\\`|\\\\') # escapes code strings.
+span_backtick_pat = r'`((?:[^\\`]|\\`|\\\\)*)`' # Backtick code spans.
+span_backtick_esc_re = re.compile(r'\\`|\\\\') # escapes code strings.
 
 # generic angle bracket span.
 span_angle_pat = r'<((?:[^\\>]|\\>|\\\\)*)>'
@@ -762,7 +762,7 @@ span_angle_esc_re = re.compile(r'\\>|\\\\') # escapes span strings.
 
 # span patterns and associated handlers.
 span_pairs = (
-  (span_code_pat, span_code_conv),
+  (span_backtick_pat, span_backtick_conv),
   (span_angle_pat, span_angle_conv),
 )
 
