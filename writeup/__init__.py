@@ -290,47 +290,58 @@ class LangBlock(LeafBlock):
     super().__init__()
     self.lang = ''
     self.lines:List[str] = []
+    self.attrs:Dict[str,str] = {}
 
   def finish(self, ctx: 'Ctx') -> None:
-    lang_line = self.src_lines[0]
-    lang_text = lang_line[1]
-    m = lang_re.match(lang_text)
-    if m:
-      self.lang = m[1]
-      if m.end() < len(lang_text):
-        assert lang_text.endswith('\n')
-        self.lines.append(lang_text[m.end():-1])
-    else:
-      ctx.error(self.src_lines[0], f'invalid language block: {lang_line[1]!r}.')
-
+    lang_src = self.src_lines[0]
+    lang_text = lang_src[1]
+    assert lang_text.startswith('%')
+    lang_text = lang_text[1:]
+    lang, attrs, words = parse_tag_attrs_body(ctx, lang_src, lang_text)
+    self.lang = lang
+    self.attrs = attrs
+    if not lang in langs:
+      ctx.error(self.src_lines[0], f'invalid language block: {lang!r}.')
+    if words:
+      self.lines.append(' '.join(words))
     self.lines.extend(strip_lang_line(l[1]) for l in self.src_lines[1:])
 
-    if self.lang == 'css':
+    num_lines = len(self.lines)
+    is_multiline = (num_lines > 1)
+
+    def check_oneline() -> None:
+      if is_multiline: ctx.error(self.src_lines[0], f'{lang} block must be a single line; found {num_lines}.')
+
+    if lang == 'css':
       for line in self.lines:
         for word in line.split():
           ctx.head_text.append(f'<link rel="stylesheet" href="{word}">')
-    elif self.lang == 'head':
+    elif lang == 'div':
+      check_oneline()
+    elif lang == 'head':
       ctx.head_text.extend(l.strip() for l in self.lines)
-    elif self.lang == 'style':
+    elif lang == 'style':
       ctx.head_text.extend(minify_css(self.lines))
-    elif self.lang == 'title':
-      if len(self.lines) != 1: ctx.error(self.src_lines[0], f'title block must be a single line; found {len(self.lines)}.')
+    elif lang == 'title':
+      check_oneline()
       ctx.title = self.lines[0].strip()
+    else:
+      raise NotImplementedError(lang)
+
+
+  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
+    if self.lang in ('css', 'head', 'style', 'title'):
+      return # Already emitted in head_text.
+    if self.lang == 'div':
+      if ctx.open_div:
+        yield '</div>'
+      yield f'<div {fmt_attrs(self.attrs)}>'
+      ctx.open_div = True
     else:
       raise NotImplementedError(self.lang)
 
-  def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
-    if self.lang in ('css', 'head', 'style', 'title'): return # Already emitted in head_text.
-    yield from ''
 
-
-lang_re = re.compile(r'''(?x)
-% \x20
-( css
-| head
-| style
-| title
-):\s*''')
+langs = frozenset({'css', 'div', 'head', 'style', 'title'})
 
 
 def strip_lang_line(line:str) -> str:
@@ -384,6 +395,7 @@ class Ctx:
     self.css: DefaultDict[str, List[str]] = defaultdict(list)
     self.found_target_section = False
     self.title = ''
+    self.open_div = False
 
 
   @property
@@ -466,6 +478,8 @@ class Ctx:
         if title != target_section and block.sid != target_section: continue
         self.found_target_section = True
       yield from block.html(ctx=self, depth=depth)
+    if self.open_div: # See LangBlock.html 'div' case.
+      yield '</div>'
 
   def add_dependency(self, dependency: str) -> str:
     assert dependency
