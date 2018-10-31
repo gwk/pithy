@@ -597,7 +597,7 @@ def writeup_line(ctx: Ctx, src: SrcLine, state: int, m: Match) -> None:
   if state == s_section:
     ctx.pop_to_list(0)
     if m['section_indents']: ctx.error(src, f'section header cannot be indented.')
-    check_whitespace(ctx, src, len_exp=1, m=m, key='section_spaces', msg_suffix='following `#`')
+    check_whitespace(ctx, src, len_exp=1, m=m, key='section_spaces', msg_suffix=' following `#`')
     section_depth = len(m['section_hashes'])
     index_path: Tuple[int, ...]
     if not ctx.stack: # first/intro case only.
