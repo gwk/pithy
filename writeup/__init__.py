@@ -734,7 +734,7 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
     return embed(ctx, src, text=body_text, attrs=attrs)
   if tag in span_link_tags:
     span = LinkSpan(text=body_text, attrs=attrs, tag=tag, words=body_words, ctx=ctx, src=src)
-    if tag == 'link':
+    if tag == 'link' and not span.link.startswith('#'):
       ctx.add_dependency(span.link)
     return span
   if tag == 'span':
