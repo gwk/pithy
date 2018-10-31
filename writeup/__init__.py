@@ -619,16 +619,12 @@ def parse_spans(ctx: Ctx, src: SrcLine, text: str) -> Spans:
     start_idx = m.start()
     flush(start_idx)
     prev_idx = m.end()
-    i = m.lastindex or 0
-    span_fn = span_fns[i]
+    i = m.lastindex
+    span_fn = span_fns[i-1] # Groups are 1-indexed, but function array is 0-indexed.
     group_text = m.group(i)
     spans.append(span_fn(ctx, src, group_text))
   flush(len(text))
   return tuple(spans)
-
-
-def span_dummy_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
-  raise Exception('unreachable')
 
 
 def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
@@ -704,7 +700,7 @@ span_pairs = (
   (span_angle_pat, span_angle_conv),
 )
 
-span_fns = (span_dummy_conv,) + tuple(f for _, f in span_pairs) # Match.group() is 1-indexed.
+span_fns = tuple(f for _, f in span_pairs)
 
 span_re = re.compile('|'.join(p for p, _ in span_pairs))
 
