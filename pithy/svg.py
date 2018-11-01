@@ -854,8 +854,8 @@ class Plot(G):
             tb = ty + tick_len
             tty = tb + x.tick_space
             g.line((tx, ty), (tx, tb), class_='tick')
-            dbg_rect((tx, tb), (x.tick_w, tick_h), fill='#008', parent=g)
             assert x.tick_fmt is not None
+            dbg_rect((tx, tty), (x.tick_w, tick_h), fill='#008', parent=g)
             g.text(*handle_rendered_tick(x.tick_fmt(_x)), pos=(tx, tty), class_='tick')
       if y.show_ticks:
         with area.g(class_='tick-y') as g:
@@ -868,8 +868,8 @@ class Plot(G):
             ttx = tr + y.tick_space
             ty = y.transform(_y)
             g.line((tx, ty), (tr, ty), class_='tick')
-            dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
             assert y.tick_fmt is not None
+            dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
             g.text(*handle_rendered_tick(y.tick_fmt(_y)), pos=(ttx, ty), class_='tick')
 
       # Series.
