@@ -325,6 +325,8 @@ class LangBlock(LeafBlock):
       check_oneline()
     elif lang == 'head':
       ctx.head_text.extend(l.strip() for l in self.lines)
+    elif lang == 'html':
+      pass
     elif lang == 'style':
       ctx.head_text.extend(minify_css(self.lines))
     elif lang == 'title':
@@ -342,11 +344,14 @@ class LangBlock(LeafBlock):
         yield '</div>'
       yield f'<div {fmt_attrs(self.attrs)}>'
       ctx.open_div = True
+    elif self.lang == 'html':
+      assert not self.attrs
+      yield from self.lines
     else:
       raise NotImplementedError(self.lang)
 
 
-langs = frozenset({'css', 'div', 'head', 'style', 'title'})
+langs = frozenset({'css', 'div', 'head', 'html', 'style', 'title'})
 
 
 def strip_lang_line(line:str) -> str:
