@@ -114,7 +114,7 @@ class AttrSpan(Span):
 
 class BoldSpan(AttrSpan):
   def html(self, depth: int) -> str:
-    return f'<b>{html_esc(self.text)}</b>'
+    return f'<b{fmt_attrs(self.attrs)}>{html_esc(self.text)}</b>'
 
 
 class EmbedSpan(AttrSpan):
@@ -141,7 +141,12 @@ class EmbedSpan(AttrSpan):
 class GenericSpan(AttrSpan):
 
   def html(self, depth: int) -> str:
-    return f"<span {fmt_attrs(self.attrs)}>{html_esc(self.text)}</span>"
+    return f"<span{fmt_attrs(self.attrs)}>{html_esc(self.text)}</span>"
+
+
+class ImgSpan(AttrSpan):
+  def html(self, depth: int) -> str:
+    return f'<img src="{html_esc_attr(self.text)}"{fmt_attrs(self.attrs)}/b>'
 
 
 class LinkSpan(AttrSpan):
@@ -163,7 +168,7 @@ class LinkSpan(AttrSpan):
     return f'{self.__class__.__name__}({self.text!r}, attrs={self.attrs}, tag={self.tag!r}, link={self.link!r}, visible={self.visible!r})'
 
   def html(self, depth: int) -> str:
-    return f'<a href="{html_esc_attr(self.link)}">{html_esc(self.visible)}</a>'
+    return f'<a href="{html_esc_attr(self.link)}"{fmt_attrs(self.attrs)}>{html_esc(self.visible)}</a>'
 
 
 class Block:
@@ -746,6 +751,8 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
     return BoldSpan(text=body_text, attrs=attrs)
   if tag == 'embed':
     return embed(ctx, src, text=body_text, attrs=attrs)
+  if tag == 'img':
+    return ImgSpan(text=body_text, attrs=attrs)
   if tag in span_link_tags:
     span = LinkSpan(text=body_text, attrs=attrs, tag=tag, words=body_words, ctx=ctx, src=src)
     if tag == 'link' and not span.link.startswith('#'):
@@ -940,7 +947,8 @@ def attrs_bool(attrs: Dict[str, str], key: str) -> bool:
 # HTML output.
 
 def fmt_attrs(attrs:Dict[str,str]) -> str:
-  return ' '.join(f'{html_esc_attr(attr_subs.get(k, k))}="{html_esc_attr(v)}"' for k, v in attrs.items())
+  if not attrs: return ''
+  return ' ' + ' '.join(f'{html_esc_attr(attr_subs.get(k, k))}="{html_esc_attr(v)}"' for k, v in attrs.items())
 
 attr_subs = {
   'class_' : 'class'
