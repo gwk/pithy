@@ -33,6 +33,8 @@ class HtmlWriter(XmlWriter):
 
   def div(self, *children:Any, **attrs:Any) -> 'Div': return self.child(Div, *children, attrs=attrs)
 
+  def img(self, *children:Any, **attrs:Any) -> 'Img': return self.child(Img, *children, attrs=attrs)
+
   def h1(self, *children:Any, **attrs:Any) -> 'H1': return self.child(H1, *children, attrs=attrs)
   def h2(self, *children:Any, **attrs:Any) -> 'H2': return self.child(H2, *children, attrs=attrs)
   def h3(self, *children:Any, **attrs:Any) -> 'H3': return self.child(H3, *children, attrs=attrs)
@@ -105,6 +107,9 @@ class Body(HtmlWriter):
 
 class Div(HtmlWriter):
   tag = 'div'
+
+class Img(HtmlWriter):
+  tag = 'img'
 
 class Head(HtmlWriter):
   tag = 'head'
