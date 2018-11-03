@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
- <title>blank</title>
- <meta name="description" content="" />
- <meta name="author" content="" />
-  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=" />
-  <style type="text/css">
+<meta charset="utf-8" />
+<title></title>
+<meta name="description" content="" />
+<meta name="author" content="" />
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=" />
+<style type="text/css">
 a { background-color: transparent; }
 a:active { outline: 0; }
 a:hover { outline: 0; }
@@ -55,8 +55,8 @@ table tr:hover td { background: #F0F0F0; }
 ul { line-height: 1.333rem; list-style-position: outside; list-style-type: disc; margin-left: 1rem; padding-left: 0.1rem; }
 @media print { @page { margin: 2cm; }
 }
-  </style>
-  <script type="text/javascript"> "use strict";
+</style>
+<script type="text/javascript"> "use strict";
 function scrollToElementId(id) {
 window.scrollTo(0, document.getElementById(id).offsetTop);
 }
