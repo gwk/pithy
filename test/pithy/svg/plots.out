@@ -19,87 +19,103 @@ g.tick-y text.tick {
   text-anchor: start;
   alignment-baseline: alphabetic;
 }
+g.legend rect {
+  fill: none;
+}
+g.legend text {
+  text-anchor: start;
+  alignment-baseline: middle;
+}
 text.title { font-size: 14.0px; }
 text.axis-label { font-size: 12.0px; }
 text.tick { font-size: 10.0px; }
+tspan.zpad { opacity: 0; }
 </style>
 <text class="title" x="0" y="0">Identity and Sin</text>
+<g transform="translate(0,14)">
 <clipPath id="_id0">
-<rect x="0" y="14" width="378" height="170"/>
+<rect width="378" height="146"/>
 </clipPath>
 <g class="grid">
-<line x1="18.9" y1="14" x2="18.9" y2="184"/>
-<line x1="37.8" y1="14" x2="37.8" y2="184"/>
-<line x1="56.7" y1="14" x2="56.7" y2="184"/>
-<line x1="75.6" y1="14" x2="75.6" y2="184"/>
-<line x1="94.5" y1="14" x2="94.5" y2="184"/>
-<line x1="113.4" y1="14" x2="113.4" y2="184"/>
-<line x1="132.3" y1="14" x2="132.3" y2="184"/>
-<line x1="151.2" y1="14" x2="151.2" y2="184"/>
-<line x1="170.1" y1="14" x2="170.1" y2="184"/>
-<line x1="189" y1="14" x2="189" y2="184"/>
-<line x1="207.9" y1="14" x2="207.9" y2="184"/>
-<line x1="226.8" y1="14" x2="226.8" y2="184"/>
-<line x1="245.7" y1="14" x2="245.7" y2="184"/>
-<line x1="264.6" y1="14" x2="264.6" y2="184"/>
-<line x1="283.5" y1="14" x2="283.5" y2="184"/>
-<line x1="302.4" y1="14" x2="302.4" y2="184"/>
-<line x1="321.3" y1="14" x2="321.3" y2="184"/>
-<line x1="340.2" y1="14" x2="340.2" y2="184"/>
-<line x1="359.1" y1="14" x2="359.1" y2="184"/>
-<line x1="0" y1="162.8" x2="378" y2="162.8"/>
-<line x1="0" y1="141.5" x2="378" y2="141.5"/>
-<line x1="0" y1="120.2" x2="378" y2="120.2"/>
-<line x1="0" y1="99" x2="378" y2="99"/>
-<line x1="0" y1="77.8" x2="378" y2="77.8"/>
-<line x1="0" y1="56.5" x2="378" y2="56.5"/>
-<line x1="0" y1="35.2" x2="378" y2="35.2"/>
-<rect class="grid-border" fill="none" x="0" y="14" width="378" height="170"/>
+<line x1="18.9" y1="0" x2="18.9" y2="146"/>
+<line x1="37.8" y1="0" x2="37.8" y2="146"/>
+<line x1="56.7" y1="0" x2="56.7" y2="146"/>
+<line x1="75.6" y1="0" x2="75.6" y2="146"/>
+<line x1="94.5" y1="0" x2="94.5" y2="146"/>
+<line x1="113.4" y1="0" x2="113.4" y2="146"/>
+<line x1="132.3" y1="0" x2="132.3" y2="146"/>
+<line x1="151.2" y1="0" x2="151.2" y2="146"/>
+<line x1="170.1" y1="0" x2="170.1" y2="146"/>
+<line x1="189" y1="0" x2="189" y2="146"/>
+<line x1="207.9" y1="0" x2="207.9" y2="146"/>
+<line x1="226.8" y1="0" x2="226.8" y2="146"/>
+<line x1="245.7" y1="0" x2="245.7" y2="146"/>
+<line x1="264.6" y1="0" x2="264.6" y2="146"/>
+<line x1="283.5" y1="0" x2="283.5" y2="146"/>
+<line x1="302.4" y1="0" x2="302.4" y2="146"/>
+<line x1="321.3" y1="0" x2="321.3" y2="146"/>
+<line x1="340.2" y1="0" x2="340.2" y2="146"/>
+<line x1="359.1" y1="0" x2="359.1" y2="146"/>
+<line x1="0" y1="109.5" x2="378" y2="109.5"/>
+<line x1="0" y1="73" x2="378" y2="73"/>
+<line x1="0" y1="36.5" x2="378" y2="36.5"/>
+<rect class="grid-border" fill="none" x="0" y="0" width="378" height="146"/>
 </g>
-<line class="axis" id="x-axis" x1="0" y1="99" x2="378" y2="99"/>
-<line class="axis" id="y-axis" x1="0" y1="14" x2="0" y2="184"/>
+<line class="axis" id="x-axis" x1="0" y1="73" x2="378" y2="73"/>
+<line class="axis" id="y-axis" x1="0" y1="0" x2="0" y2="146"/>
 <g class="tick-x">
-<line class="tick" x1="0" y1="184" x2="0" y2="188"/>
-<text class="tick" x="0" y="189">0.0</text>
-<line class="tick" x1="37.8" y1="184" x2="37.8" y2="188"/>
-<text class="tick" x="37.8" y="189">0.1</text>
-<line class="tick" x1="75.6" y1="184" x2="75.6" y2="188"/>
-<text class="tick" x="75.6" y="189">0.2</text>
-<line class="tick" x1="113.4" y1="184" x2="113.4" y2="188"/>
-<text class="tick" x="113.4" y="189">0.3</text>
-<line class="tick" x1="151.2" y1="184" x2="151.2" y2="188"/>
-<text class="tick" x="151.2" y="189">0.4</text>
-<line class="tick" x1="189" y1="184" x2="189" y2="188"/>
-<text class="tick" x="189" y="189">0.5</text>
-<line class="tick" x1="226.8" y1="184" x2="226.8" y2="188"/>
-<text class="tick" x="226.8" y="189">0.6</text>
-<line class="tick" x1="264.6" y1="184" x2="264.6" y2="188"/>
-<text class="tick" x="264.6" y="189">0.7</text>
-<line class="tick" x1="302.4" y1="184" x2="302.4" y2="188"/>
-<text class="tick" x="302.4" y="189">0.8</text>
-<line class="tick" x1="340.2" y1="184" x2="340.2" y2="188"/>
-<text class="tick" x="340.2" y="189">0.9</text>
-<line class="tick" x1="378" y1="184" x2="378" y2="188"/>
-<text class="tick" x="378" y="189">1.0</text>
+<line class="tick" x1="0" y1="146" x2="0" y2="150"/>
+<text class="tick" x="0" y="151"><tspan class="zpad"></tspan>0.0</text>
+<line class="tick" x1="37.8" y1="146" x2="37.8" y2="150"/>
+<text class="tick" x="37.8" y="151"><tspan class="zpad"></tspan>0.1</text>
+<line class="tick" x1="75.6" y1="146" x2="75.6" y2="150"/>
+<text class="tick" x="75.6" y="151"><tspan class="zpad"></tspan>0.2</text>
+<line class="tick" x1="113.4" y1="146" x2="113.4" y2="150"/>
+<text class="tick" x="113.4" y="151"><tspan class="zpad"></tspan>0.3</text>
+<line class="tick" x1="151.2" y1="146" x2="151.2" y2="150"/>
+<text class="tick" x="151.2" y="151"><tspan class="zpad"></tspan>0.4</text>
+<line class="tick" x1="189" y1="146" x2="189" y2="150"/>
+<text class="tick" x="189" y="151"><tspan class="zpad"></tspan>0.5</text>
+<line class="tick" x1="226.8" y1="146" x2="226.8" y2="150"/>
+<text class="tick" x="226.8" y="151"><tspan class="zpad"></tspan>0.6</text>
+<line class="tick" x1="264.6" y1="146" x2="264.6" y2="150"/>
+<text class="tick" x="264.6" y="151"><tspan class="zpad"></tspan>0.7</text>
+<line class="tick" x1="302.4" y1="146" x2="302.4" y2="150"/>
+<text class="tick" x="302.4" y="151"><tspan class="zpad"></tspan>0.8</text>
+<line class="tick" x1="340.2" y1="146" x2="340.2" y2="150"/>
+<text class="tick" x="340.2" y="151"><tspan class="zpad"></tspan>0.9</text>
+<line class="tick" x1="378" y1="146" x2="378" y2="150"/>
+<text class="tick" x="378" y="151"><tspan class="zpad"></tspan>1.0</text>
 </g>
 <g class="tick-y">
-<line class="tick" x1="378" y1="184" x2="382" y2="184"/>
-<text class="tick" x="383" y="184">-1.0</text>
-<line class="tick" x1="378" y1="141.5" x2="382" y2="141.5"/>
-<text class="tick" x="383" y="141.5">-0.5</text>
-<line class="tick" x1="378" y1="99" x2="382" y2="99"/>
-<text class="tick" x="383" y="99"> 0.0</text>
-<line class="tick" x1="378" y1="56.5" x2="382" y2="56.5"/>
-<text class="tick" x="383" y="56.5"> 0.5</text>
-<line class="tick" x1="378" y1="14" x2="382" y2="14"/>
-<text class="tick" x="383" y="14"> 1.0</text>
+<line class="tick" x1="378" y1="146" x2="382" y2="146"/>
+<text class="tick" x="383" y="146"><tspan class="zpad"></tspan>-1.0</text>
+<line class="tick" x1="378" y1="109.5" x2="382" y2="109.5"/>
+<text class="tick" x="383" y="109.5"><tspan class="zpad"></tspan>-0.5</text>
+<line class="tick" x1="378" y1="73" x2="382" y2="73"/>
+<text class="tick" x="383" y="73"><tspan class="zpad">0</tspan>0.0</text>
+<line class="tick" x1="378" y1="36.5" x2="382" y2="36.5"/>
+<text class="tick" x="383" y="36.5"><tspan class="zpad">0</tspan>0.5</text>
+<line class="tick" x1="378" y1="0" x2="382" y2="0"/>
+<text class="tick" x="383" y="0"><tspan class="zpad">0</tspan>1.0</text>
+</g>
+<g class="legend">
+<g id="legend-identity">
+<rect x="1" y="169" width="16" height="16"/>
+<text x="21" y="177">identity</text>
+</g>
+<g id="legend-sin">
+<rect x="129" y="169" width="16" height="16"/>
+<text x="149" y="177">sin</text>
+</g>
 </g>
 <g class="series" clip-path="url(#_id0)">
 <g id="identity">
-<polyline fill="none" points="0,99 23.6,93.7 47.2,88.4 70.9,83.1 94.5,77.8 118.1,72.4 141.8,67.1 165.4,61.8 189,56.5 212.6,51.2 236.2,45.9 259.9,40.6 283.5,35.2 307.1,29.9 330.8,24.6 354.4,19.3 378,14"/>
+<polyline fill="none" points="0,73 23.6,68.4 47.2,63.9 70.9,59.3 94.5,54.8 118.1,50.2 141.8,45.6 165.4,41.1 189,36.5 212.6,31.9 236.2,27.4 259.9,22.8 283.5,18.2 307.1,13.7 330.8,9.1 354.4,4.6 378,0"/>
 </g>
 <g id="sin">
-<polyline fill="none" points="0,99 23.6,66.5 47.2,38.9 70.9,20.5 94.5,14 118.1,20.5 141.8,38.9 165.4,66.5 189,99 212.6,131.5 236.2,159.1 259.9,177.5 283.5,184 307.1,177.5 330.8,159.1 354.4,131.5 378,99"/>
+<polyline fill="none" points="0,73 23.6,45.1 47.2,21.4 70.9,5.6 94.5,0 118.1,5.6 141.8,21.4 165.4,45.1 189,73 212.6,100.9 236.2,124.6 259.9,140.4 283.5,146 307.1,140.4 330.8,124.6 354.4,100.9 378,73"/>
+</g>
 </g>
 </g>
 </g>

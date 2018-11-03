@@ -330,6 +330,9 @@ class SvgBranch(SvgWriter):
    axis_label_h:Num=12,
    tick_h:Num=10,
    tick_len:Num=4,
+   legend_pad:Num=8,
+   legend_w:Num=128,
+   legend_h:Num=16,
    corner_radius:VecOrNum=None,
    symmetric_xy=False,
    dbg=False,
@@ -344,6 +347,9 @@ class SvgBranch(SvgWriter):
       axis_label_h=axis_label_h,
       tick_h=tick_h,
       tick_len=tick_len,
+      legend_pad=legend_pad,
+      legend_w=legend_w,
+      legend_h=legend_h,
       corner_radius=corner_radius,
       symmetric_xy=symmetric_xy,
       dbg=dbg,
@@ -462,20 +468,22 @@ def circle_plotter(r:Num=1, **attrs:Any) -> Plotter:
 
 class PlotSeries:
 
+  name:str
+  legend:str
   bounds:Optional[BoundsF2] = None # Overridden by subclasses.
 
   def render(self, plot:'Plot', series:G) -> None: raise NotImplementedError
 
 
-
 class BarSeries(PlotSeries):
 
-  def __init__(self, name:str, points:Iterable[Tuple], numeric:bool, width=1.0, plotter:Optional[Plotter]=None,
+  def __init__(self, name:str, points:Iterable[Tuple], numeric:bool, legend:str='', width=1.0, plotter:Optional[Plotter]=None,
    title_fmt:Optional[Callable[[Tuple], str]]=None, **attrs:Any) -> None:
 
     self.name = name
     self.points = list(points)
     self.numeric = numeric
+    self.legend = legend or name
     self.width = width
     self.plotter = plotter
     self.title_fmt = title_fmt
@@ -531,8 +539,9 @@ class BarSeries(PlotSeries):
 
 class XYSeries(PlotSeries):
 
-  def __init__(self, name:str, points:Iterable[Tuple], plotter:Optional[Plotter]=circle_plotter(), **attrs:Any) -> None:
+  def __init__(self, name:str, points:Iterable[Tuple], legend:str='', plotter:Optional[Plotter]=circle_plotter(), **attrs:Any) -> None:
     self.name = name
+    self.legend = legend or name
     self.points = list(points)
     self.plotter = plotter
     attrs.setdefault('id', name)
@@ -562,9 +571,9 @@ class XYSeries(PlotSeries):
 
 class LineSeries(XYSeries):
 
-  def __init__(self, name:str, points:Iterable[Tuple], plotter:Plotter=None, use_segments=False, **attrs:Any) -> None:
+  def __init__(self, name:str, points:Iterable[Tuple], legend:str='', plotter:Plotter=None, use_segments=False, **attrs:Any) -> None:
     self.use_segments = use_segments
-    super().__init__(name=name, points=points, plotter=plotter, **attrs)
+    super().__init__(name=name, points=points, legend=legend, plotter=plotter, **attrs)
 
 
   def render(self, plot:'Plot', series:G) -> None:
@@ -706,6 +715,9 @@ class Plot(G):
    axis_label_h:Num=12,
    tick_h:Num=10,
    tick_len:Num=4,
+   legend_pad:Num=8,
+   legend_w:Num=64,
+   legend_h:Num=16,
    corner_radius:VecOrNum=None,
    symmetric_xy=False,
    dbg=False,
@@ -727,6 +739,9 @@ class Plot(G):
     self.tick_len = tick_len = float(tick_len)
     self.axis_label_h = axis_label_h = float(axis_label_h)
     self.tick_h = tick_h = float(tick_h)
+    self.legend_pad = float(legend_pad)
+    self.legend_w = float(legend_w)
+    self.legend_h = float(legend_h)
     self.corner_radius = corner_radius
     self.symmetric_xy = symmetric_xy
     self.w = size[0]
@@ -756,7 +771,7 @@ class Plot(G):
       x.length = size[0] - boundary_pad - max(x.tick_w, y_total_tick_w)
     if y.length <= 0:
       x_total_tick_h = (tick_len + x.tick_space + tick_h) if x.show_ticks else 0.0
-      y.length = size[1] - boundary_pad - title_h - x_total_tick_h
+      y.length = size[1] - boundary_pad - title_h - x_total_tick_h - (legend_pad+legend_h if legend_h else 0)
 
     x.calc_layout(plot_size=size, title_h=title_h, tick_len=tick_len, tick_h=tick_h)
     y.calc_layout(plot_size=size, title_h=title_h, tick_len=tick_len, tick_h=tick_h)
@@ -872,6 +887,19 @@ class Plot(G):
             dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
             g.text(*handle_rendered_tick(y.tick_fmt(_y)), pos=(ttx, ty), class_='tick')
 
+      # Legend.
+      leg_h = self.legend_h
+      if leg_h > 0:
+        leg_y = size[1] - title_h - self.legend_h - 1
+        with area.g(class_='legend') as legend_g:
+          for i, s in enumerate(series):
+            with legend_g.g(id='legend-'+s.name) as g:
+              leg_x = 1 + self.legend_w*i
+              g.rect(pos=(leg_x, leg_y), size=(leg_h, leg_h))
+              text_x = leg_x + leg_h * 1.25
+              text_y = leg_y + leg_h * 0.5
+              g.text(s.legend, pos=(text_x, text_y))
+
       # Series.
       with area.g(class_='series', clip_path=self.plot_clip_path) as series_g:
         for s in series:
@@ -896,6 +924,13 @@ g.tick-y text.tick {
   white-space: pre;
   text-anchor: start;
   alignment-baseline: alphabetic;
+}
+g.legend rect {
+  fill: none;
+}
+g.legend text {
+  text-anchor: start;
+  alignment-baseline: middle;
 }
 '''
 
