@@ -744,7 +744,7 @@ def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> Tuple[str, Dict[str,
       ctx.error(src, 'span attribute value has mismatched quotes (possibly due to writeup doing naive splitting on whitespace);' \
         f'word: {word!r}; val: {val!r}')
     attrs_list.append((key, val))
-  return tag, dict(attrs_list), body_words
+  return tag.strip(), dict(attrs_list), body_words
 
 
 def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
