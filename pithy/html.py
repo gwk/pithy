@@ -29,6 +29,8 @@ class HtmlWriter(XmlWriter):
 
   can_auto_close_tags = False # Unlike XML, HTML5 dictates that each tag type either be self-closing or not.
 
+  def a(self, *children:Any, **attrs:Any) -> 'A': return self.child(A, *children, attrs=attrs)
+
   def br(self) -> None: self.leaf('br', attrs=None)
 
   def div(self, *children:Any, **attrs:Any) -> 'Div': return self.child(Div, *children, attrs=attrs)
@@ -100,6 +102,10 @@ class Html(HtmlWriter):
     self.head = self.child(Head, attrs=attrs)
     self.head.meta(charset='utf-8')
     self.body = self.child(Body, attrs=attrs)
+
+
+class A(HtmlWriter):
+  tag = 'a'
 
 
 class Body(HtmlWriter):
