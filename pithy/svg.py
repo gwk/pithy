@@ -812,6 +812,7 @@ class Plot(G):
       f'text.axis-label {{ font-size: {axis_label_h}px; }}\n',
       f'text.tick {{ font-size: {tick_h}px; }}\n',
       f'tspan.zpad {{ opacity: 0; }}\n',
+      f'g.legend text {{ font-size: {legend_h}px; }}\n',
     )
 
     dbg_rect((0, 0), self.size, stroke='#000')
@@ -822,88 +823,89 @@ class Plot(G):
     if self.title is not None:
       self.text(self.title, pos=(0, 0), class_='title')
 
-    with self.g(transform=translate(0, title_h)) as area:
-      # Clip path is is defined to match grid.
-      clip_path_id = area.gen_id()
-      self.plot_clip_path = f'url(#{clip_path_id})'
-      with area.clipPath(id=clip_path_id) as clipPath:
-        clipPath.rect(size=grid_size, r=corner_radius)
+    self.area = area = self.g(transform=translate(0, title_h)) # Leave area open.
 
-      # Grid.
-      # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
-      with area.g(class_='grid') as g:
-        if x.show_grid:
-          g_start_x = (x.min//x.grid_step + 1) * x.grid_step # Skip line index 0 because it is always <= low border.
-          for gx in x.grid: # X axis.
-            tgx = x.transform(gx)
-            g.line((tgx, 0), (tgx, y.length)) # Vertical lines.
-        if y.show_grid:
-          g_start_y = (y.min//y.grid_step + 1) * y.grid_step # Skip line index 0 because it is always <= low border.
-          for gy in y.grid:
-            tgy = y.transform(gy)
-            g.line((0, tgy), (x.length, tgy)) # Horizontal lines.
-        g.rect(class_='grid-border', pos=(0,0), size=grid_size, r=corner_radius, fill='none')
+    # Clip path is is defined to match grid.
+    clip_path_id = area.gen_id()
+    self.plot_clip_path = f'url(#{clip_path_id})'
+    with area.clipPath(id=clip_path_id) as clipPath:
+      clipPath.rect(size=grid_size, r=corner_radius)
 
-      # Axes.
-      if y.min <= 0 and y.max >= 0: # Draw X axis.
-        y0 = y.transform(0)
-        area.line((0, y0), (x.length, y0), class_='axis', id='x-axis')
-      if x.min <= 0 and x.max >= 0: # Draw Y axis.
-        x0 = x.transform(0)
-        area.line((x0, 0), (x0, y.length), class_='axis', id='y-axis')
+    # Grid.
+    # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
+    with area.g(class_='grid') as g:
+      if x.show_grid:
+        g_start_x = (x.min//x.grid_step + 1) * x.grid_step # Skip line index 0 because it is always <= low border.
+        for gx in x.grid: # X axis.
+          tgx = x.transform(gx)
+          g.line((tgx, 0), (tgx, y.length)) # Vertical lines.
+      if y.show_grid:
+        g_start_y = (y.min//y.grid_step + 1) * y.grid_step # Skip line index 0 because it is always <= low border.
+        for gy in y.grid:
+          tgy = y.transform(gy)
+          g.line((0, tgy), (x.length, tgy)) # Horizontal lines.
+      g.rect(class_='grid-border', pos=(0,0), size=grid_size, r=corner_radius, fill='none')
 
-      def handle_rendered_tick(val:Any) -> Tuple:
-        if isinstance(val, str): return (val,)
-        try: return tuple(val)
-        except TypeError: return (val,)
+    # Axes.
+    if y.min <= 0 and y.max >= 0: # Draw X axis.
+      y0 = y.transform(0)
+      area.line((0, y0), (x.length, y0), class_='axis', id='x-axis')
+    if x.min <= 0 and x.max >= 0: # Draw Y axis.
+      x0 = x.transform(0)
+      area.line((x0, 0), (x0, y.length), class_='axis', id='y-axis')
 
-      # Ticks.
-      if x.show_ticks:
-        with area.g(class_='tick-x') as g:
-          txi, txr = divmod(x.min, x.tick_step)
-          if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
-          t_start_x = txi*x.tick_step
-          for _x in x.ticks:
-            tx = x.transform(_x)
-            ty = y.length
-            tb = ty + tick_len
-            tty = tb + x.tick_space
-            g.line((tx, ty), (tx, tb), class_='tick')
-            assert x.tick_fmt is not None
-            dbg_rect((tx, tty), (x.tick_w, tick_h), fill='#008', parent=g)
-            g.text(*handle_rendered_tick(x.tick_fmt(_x)), pos=(tx, tty), class_='tick')
-      if y.show_ticks:
-        with area.g(class_='tick-y') as g:
-          tyi, tyr = divmod(y.min, y.tick_step)
-          if tyr > 0.1: tyi += 1 # If the remainder is visually significant, skip the first tick.
-          t_start_y = tyi*y.tick_step
-          for _y in y.ticks:
-            tx = x.length
-            tr = tx + tick_len
-            ttx = tr + y.tick_space
-            ty = y.transform(_y)
-            g.line((tx, ty), (tr, ty), class_='tick')
-            assert y.tick_fmt is not None
-            dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
-            g.text(*handle_rendered_tick(y.tick_fmt(_y)), pos=(ttx, ty), class_='tick')
+    def handle_rendered_tick(val:Any) -> Tuple:
+      if isinstance(val, str): return (val,)
+      try: return tuple(val)
+      except TypeError: return (val,)
 
-      # Legend.
-      leg_h = self.legend_h
-      if leg_h > 0:
-        leg_y = size[1] - title_h - self.legend_h - 1
-        with area.g(class_='legend') as legend_g:
-          for i, s in enumerate(series):
-            with legend_g.g(id='legend-'+s.name) as g:
-              leg_x = 1 + self.legend_w*i
-              g.rect(pos=(leg_x, leg_y), size=(leg_h, leg_h))
-              text_x = leg_x + leg_h * 1.25
-              text_y = leg_y + leg_h * 0.5
-              g.text(s.legend, pos=(text_x, text_y))
+    # Ticks.
+    if x.show_ticks:
+      with area.g(class_='tick-x') as g:
+        txi, txr = divmod(x.min, x.tick_step)
+        if txr > 0.1: txi += 1 # If the remainder is visually significant, skip the first tick.
+        t_start_x = txi*x.tick_step
+        for _x in x.ticks:
+          tx = x.transform(_x)
+          ty = y.length
+          tb = ty + tick_len
+          tty = tb + x.tick_space
+          g.line((tx, ty), (tx, tb), class_='tick')
+          assert x.tick_fmt is not None
+          dbg_rect((tx, tty), (x.tick_w, tick_h), fill='#008', parent=g)
+          g.text(*handle_rendered_tick(x.tick_fmt(_x)), pos=(tx, tty), class_='tick')
+    if y.show_ticks:
+      with area.g(class_='tick-y') as g:
+        tyi, tyr = divmod(y.min, y.tick_step)
+        if tyr > 0.1: tyi += 1 # If the remainder is visually significant, skip the first tick.
+        t_start_y = tyi*y.tick_step
+        for _y in y.ticks:
+          tx = x.length
+          tr = tx + tick_len
+          ttx = tr + y.tick_space
+          ty = y.transform(_y)
+          g.line((tx, ty), (tr, ty), class_='tick')
+          assert y.tick_fmt is not None
+          dbg_rect((ttx, ty-tick_h*0.75), (y.tick_w, tick_h), fill='#080', parent=g)
+          g.text(*handle_rendered_tick(y.tick_fmt(_y)), pos=(ttx, ty), class_='tick')
 
-      # Series.
-      with area.g(class_='series', clip_path=self.plot_clip_path) as series_g:
-        for s in series:
-          s.render(self, series=series_g)
+    # Legend.
+    leg_h = self.legend_h
+    if leg_h > 0:
+      leg_y = size[1] - title_h - self.legend_h - 1
+      with area.g(class_='legend') as legend_g:
+        for i, s in enumerate(series):
+          with legend_g.g(class_='legend-'+s.name) as g:
+            leg_x = 1 + self.legend_w*i
+            g.rect(pos=(leg_x, leg_y), size=(leg_h, leg_h), class_=s.name)
+            text_x = leg_x + leg_h * 1.25
+            text_y = leg_y + leg_h * 0.5
+            g.text(s.legend, pos=(text_x, text_y))
+
+    # Series.
+    with area.g(class_='series', clip_path=self.plot_clip_path) as series_g:
+      for s in series:
+        s.render(self, series=series_g)
 
 
 _plot_style = '''
