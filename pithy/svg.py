@@ -324,7 +324,7 @@ class SvgBranch(SvgWriter):
 
   def plot(self, pos:Vec=(0,0), size:Vec=(512,1024), *,
    x:'PlotAxis'=None, y:'PlotAxis'=None,
-   series:Sequence['PlotSeries'],
+   series:Sequence['PlotSeries']=(),
    title:str=None,
    title_h:Num=14,
    axis_label_h:Num=12,
@@ -487,7 +487,7 @@ class BarSeries(PlotSeries):
     self.width = width
     self.plotter = plotter
     self.title_fmt = title_fmt
-    attrs.setdefault('class_', name) # Use class because the attributes are applied to every bar, so `id` would not be unique.
+    attrs.setdefault('class_', name)
     self.attrs = attrs
     self.bounds:Optional[Tuple[F2, F2]] = None
 
@@ -544,7 +544,7 @@ class XYSeries(PlotSeries):
     self.legend = legend or name
     self.points = list(points)
     self.plotter = plotter
-    attrs.setdefault('id', name)
+    attrs.setdefault('class_', name)
     self.attrs = attrs
     self.bounds:Optional[Tuple[F2, F2]] = None
     if self.points:
@@ -709,7 +709,7 @@ class Plot(G):
   def __init__(self, *children:Any,
    pos:Vec=(0,0), size:Vec=(512,1024),
    x:PlotAxis=None, y:PlotAxis=None,
-   series:Sequence[PlotSeries],
+   series:Sequence[PlotSeries]=(),
    title:str=None,
    title_h:Num=14,
    axis_label_h:Num=12,
