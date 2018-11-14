@@ -368,6 +368,7 @@ class Text(LeafBlock):
     self.lines = [parse_spans(ctx, src=src, text=text) for (src, text) in zip(self.src_lines, self.content_lines)]
 
   def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
+    assert self.lines
     yield indent(depth, '<p>')
     for i, line in enumerate(self.lines):
       if i: yield indent(depth, '<br />')
