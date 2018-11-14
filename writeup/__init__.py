@@ -342,7 +342,7 @@ class LangBlock(LeafBlock):
     if self.lang == 'div':
       if ctx.open_div:
         yield '</div>'
-      yield f'<div {fmt_attrs(self.attrs)}>'
+      yield f'<div{fmt_attrs(self.attrs)}>'
       ctx.open_div = True
     elif self.lang == 'html':
       assert not self.attrs
