@@ -325,15 +325,13 @@ class LangBlock(LeafBlock):
       check_oneline()
     elif lang == 'head':
       ctx.head_text.extend(l.strip() for l in self.lines)
-    elif lang == 'html':
-      pass
+    elif lang == 'img':
+      if 'src' in self.attrs: ctx.error(self.src_lines[0], f'img cannot have `src` specified as attribute.')
     elif lang == 'style':
       ctx.head_text.extend(minify_css(self.lines))
     elif lang == 'title':
       check_oneline()
       ctx.title = self.lines[0].strip()
-    else:
-      raise NotImplementedError(lang)
 
 
   def html(self, ctx: 'Ctx', depth: int) -> Iterable[str]:
@@ -347,11 +345,15 @@ class LangBlock(LeafBlock):
     elif self.lang == 'html':
       assert not self.attrs
       yield from self.lines
+    elif self.lang == 'img':
+      for line in self.lines:
+        for word in line.split():
+          yield f'<img{fmt_attrs(self.attrs)} src={html_esc_attr(word)}/>'
     else:
       raise NotImplementedError(self.lang)
 
 
-langs = frozenset({'css', 'div', 'head', 'html', 'style', 'title'})
+langs = frozenset({'css', 'div', 'head', 'html', 'img', 'style', 'title'})
 
 
 def strip_lang_line(line:str) -> str:
