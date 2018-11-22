@@ -46,7 +46,7 @@ class HtmlWriter(XmlWriter):
 
   def hr(self) -> None: self.leaf('hr', attrs=None)
 
-  def meta(self, **attrs:Any) -> None: return self.leaf(tag='meta', attrs=attrs)
+  def meta(self, **attrs:Any) -> 'Meta': return self.child(Meta, attrs=attrs)
 
   def p(self, *children:Any, **attrs:Any) -> 'P': return self.child(P, *children, attrs=attrs)
 
@@ -107,7 +107,6 @@ class Html(HtmlWriter):
 class A(HtmlWriter):
   tag = 'a'
 
-
 class Body(HtmlWriter):
   tag = 'body'
 
@@ -149,6 +148,10 @@ class Input(HtmlWriter):
 
 class Label(HtmlWriter):
   tag = 'label'
+
+class Meta(HtmlWriter):
+  tag = 'meta'
+  is_self_closing = True
 
 class Span(HtmlWriter):
   tag = 'span'
