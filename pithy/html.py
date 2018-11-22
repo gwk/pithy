@@ -115,6 +115,7 @@ class Div(HtmlWriter):
 
 class Img(HtmlWriter):
   tag = 'img'
+  is_self_closing = True
 
 class Head(HtmlWriter):
   tag = 'head'
