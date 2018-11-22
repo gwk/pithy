@@ -18,6 +18,9 @@ Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 JsonDefaulter = Callable[[Any], Any]
 
 
+class JSONEmptyDocument(JSONDecodeError): pass
+
+
 def json_encode_default(obj:Any) -> Any:
   '''
   Note: it is not possible to encode namedtuple as dict using a `default` function such as this,
@@ -154,7 +157,13 @@ def load_json(file:TextIO, types:Sequence[type]=()) -> Any:
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
   '''
-  return _json.load(file, object_hook=_mk_hook(types))
+  try:
+    return _json.load(file, object_hook=_mk_hook(types))
+  except JSONDecodeError as e:
+    if e.pos == 0 and e.msg == 'Expecting value':
+      raise JSONEmptyDocument(msg=e.msg, doc=e.doc, pos=e.pos) from e
+    else:
+      raise
 
 
 def parse_jsonl(string:str, types:Sequence[type]=()) -> Iterable[Any]:
