@@ -642,7 +642,7 @@ class PlotAxis:
     self.max = _max
 
   def calc_layout(self, plot_size:F2, title_h:float, tick_len:float, tick_h:float) -> None:
-    assert self.length > 0
+    assert self.length > 0, self.length
     self.data_len = self.max - self.min
     self.scale = self.length / self.data_len
 
