@@ -726,7 +726,7 @@ class Plot(G):
     attrs = attrs or {}
     pos = f2_for_vec(pos)
     # Initialize as `g` element.
-    attrs.setdefault('class_', 'plot')
+    kwargs.setdefault('class_', 'plot')
     super().__init__(*children, transform=translate(*pos), _counter=_counter, attrs=attrs, **kwargs)
 
     self.pos = pos
@@ -735,7 +735,9 @@ class Plot(G):
     self.y = y = PlotAxis() if y is None else y
     self.series = series
     self.title = title
-    self.title_h = title_h = max((0.0 if title is None else float(title_h)), float(tick_h))
+    self.title_h = title_h = max(
+      (0.0 if title is None else float(title_h)),
+      (0.0 if (not y.show_ticks) else float(tick_h)))
     self.tick_len = tick_len = float(tick_len)
     self.axis_label_h = axis_label_h = float(axis_label_h)
     self.tick_h = tick_h = float(tick_h)
