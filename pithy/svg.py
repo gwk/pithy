@@ -929,9 +929,6 @@ g.tick-y text.tick {
   text-anchor: start;
   alignment-baseline: alphabetic;
 }
-g.legend rect {
-  fill: none;
-}
 g.legend text {
   text-anchor: start;
   alignment-baseline: middle;
