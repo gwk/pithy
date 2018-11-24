@@ -931,7 +931,7 @@ g.tick-y text.tick {
 }
 g.legend text {
   text-anchor: start;
-  alignment-baseline: middle;
+  alignment-baseline: central;
 }
 '''
 
