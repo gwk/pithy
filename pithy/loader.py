@@ -144,6 +144,11 @@ def load_jsons(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return load_jsons(_text_file_for(file_or_path), **kwargs)
 
 
+def load_msgpack(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
+  from .msgpack import load_msgpack as _load
+  return _load(_binary_file_for(file_or_path), **kwargs)
+
+
 def load_pyl(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   'Load a python literal AST file (Python equivalent of JSON).'
   from ast import literal_eval
@@ -202,6 +207,7 @@ add_loader('.gz',       load_gz,      _dflt=True)
 add_loader('.json',     load_json,    _dflt=True)
 add_loader('.jsonl',    load_jsonl,   _dflt=True)
 add_loader('.jsons',    load_jsons,   _dflt=True)
+add_loader('.msgpack',  load_msgpack, _dflt=True)
 add_loader('.pyl',      load_pyl,     _dflt=True)
 add_loader('.sqlite',   load_sqlite,  _dflt=True)
 add_loader('.sqlite3',  load_sqlite,  _dflt=True)
