@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" stroke="black" fill="white" stroke-width="1" width="1000" height="1000">
-<g transform="translate(5,5)" class="plot">
+<g class="plot" transform="translate(5,5)">
 <style>
 text {
   stroke: none;
@@ -19,17 +19,15 @@ g.tick-y text.tick {
   text-anchor: start;
   alignment-baseline: alphabetic;
 }
-g.legend rect {
-  fill: none;
-}
 g.legend text {
   text-anchor: start;
-  alignment-baseline: middle;
+  alignment-baseline: central;
 }
 text.title { font-size: 14.0px; }
 text.axis-label { font-size: 12.0px; }
 text.tick { font-size: 10.0px; }
 tspan.zpad { opacity: 0; }
+g.legend text { font-size: 16px; }
 </style>
 <text class="title" x="0" y="0">Identity and Sin</text>
 <g transform="translate(0,14)">
@@ -100,20 +98,20 @@ tspan.zpad { opacity: 0; }
 <text class="tick" x="383" y="0"><tspan class="zpad">0</tspan>1.0</text>
 </g>
 <g class="legend">
-<g id="legend-identity">
-<rect x="1" y="169" width="16" height="16"/>
+<g class="legend-identity">
+<rect class="identity" x="1" y="169" width="16" height="16"/>
 <text x="21" y="177">identity</text>
 </g>
-<g id="legend-sin">
-<rect x="129" y="169" width="16" height="16"/>
+<g class="legend-sin">
+<rect class="sin" x="129" y="169" width="16" height="16"/>
 <text x="149" y="177">sin</text>
 </g>
 </g>
 <g class="series" clip-path="url(#_id0)">
-<g id="identity">
+<g class="identity">
 <polyline fill="none" points="0,73 23.6,68.4 47.2,63.9 70.9,59.3 94.5,54.8 118.1,50.2 141.8,45.6 165.4,41.1 189,36.5 212.6,31.9 236.2,27.4 259.9,22.8 283.5,18.2 307.1,13.7 330.8,9.1 354.4,4.6 378,0"/>
 </g>
-<g id="sin">
+<g class="sin">
 <polyline fill="none" points="0,73 23.6,45.1 47.2,21.4 70.9,5.6 94.5,0 118.1,5.6 141.8,21.4 165.4,45.1 189,73 212.6,100.9 236.2,124.6 259.9,140.4 283.5,146 307.1,140.4 330.8,124.6 354.4,100.9 378,73"/>
 </g>
 </g>
