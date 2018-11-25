@@ -7,7 +7,7 @@ from json.decoder import JSONDecodeError
 from sys import stderr, stdout, version_info
 from typing import Any, Callable, Dict, FrozenSet, Iterable, Hashable, List, Optional, Sequence, TextIO, Tuple, Union
 from .util import all_slots
-from .dataclasses import asdict, dataclass, fields, is_dataclass
+from dataclasses import asdict, dataclass, fields, is_dataclass
 
 
 JsonAny = Any # TODO: remove this once recursive types work.

@@ -1,12 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
-from typing import Iterable, Iterator, List, Optional, Tuple, Union
-from ..dataclasses import dataclass
+from . import Syntax
 from ..dispatch import dispatched
 from ..io import errL, errSL
 from ..tree import transform_tree, OmitNode
-from . import Syntax
+from dataclasses import dataclass
+from typing import Iterable, Iterator, List, Optional, Tuple, Union
+import re
 
 from docutils import frontend as _frontend
 from docutils import nodes as _nodes
