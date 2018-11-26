@@ -67,12 +67,12 @@ def dict_fan_by_key_pred(d: Mapping[_K, _V], pred: Callable[[_K], bool]) -> Tupl
   return fan
 
 
-class DefaultByKeyDict(dict): # TODO: typing.
+class DefaultByKeyDict(Dict[_K,_V]):
   '''
-  Subclass of Dict, similar to defaultdict.
+  Subclass of Dict, similar to DefaultDict.
   When a key is missing, default_factory is called with the key as the sole argument.
   '''
-  def __init__(self, default_factory, *args, **kwargs):
+  def __init__(self, default_factory:Callable[[_K], _V], *args, **kwargs):
     self.default_factory = default_factory
     super().__init__(*args, **kwargs)
 
