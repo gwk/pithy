@@ -64,7 +64,7 @@ def main() -> None:
 
 lexer = Lexer(invalid='invalid', patterns=dict(
   newline   = r'\n',
-  location  = r'[^:\n]+:\d+:(\d+:)?',
+  location  = r'[^\n]+:\d+:(\d+:)?',
   error     = r'error:',
   warning   = r'warning:',
   note      = r'note:',
