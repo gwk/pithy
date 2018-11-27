@@ -196,7 +196,6 @@ def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from zstandard import ZstdDecompressor # type: ignore
   decompressor = ZstdDecompressor()
   d = decompressor.stream_reader(_binary_file_for(f))
-  #b = BufferedReader(d)
   return load(d, ext=_sub_ext(ext), **kwargs)
 
 
