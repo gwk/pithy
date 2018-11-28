@@ -59,6 +59,5 @@ setup(
   py_modules=['legs_base'],
   install_requires=[
     'pithy',
-    'unico',
   ],
 )
