@@ -29,6 +29,9 @@ Legs is distinguished by the following features:
 * Performance analysis of generated Swift code.
 
 
+# Incomplete Tokens
+
+
 # Column Pathology
 
 Column numbers are a common feature of compiler error messages, and text editors. However in the modern world of Unicode columns are surprisingly ill-defined. Swift defines the Character type as an "extended grapheme literal", which is meant to represent a single visual character and can be composed of arbitarily many code points. Many modern languages like Python 3 count unicode scalars (code points), while older ones like JavaScript and Objective-C count 16 bit BMP code points. Further confounding the situation is the fact that some characters are rendered as double-width, so regardless of language the notion of character offset diverges from graphical offset within an editor or an console error message.

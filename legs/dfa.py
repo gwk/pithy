@@ -56,69 +56,69 @@ class DFA:
     self.literalRules = literalRules
 
   @property
-  def isEmpty(self) -> bool:
+  def is_empty(self) -> bool:
     return not self.transitions
 
   @property
-  def allByteToStateDicts(self) -> Iterable[DfaStateTransitions]: return self.transitions.values()
+  def all_byte_to_state_dicts(self) -> Iterable[DfaStateTransitions]: return self.transitions.values()
 
   @property
   def alphabet(self) -> FrozenSet[int]:
     a: Set[int] = set()
-    a.update(*(d.keys() for d in self.allByteToStateDicts))
+    a.update(*(d.keys() for d in self.all_byte_to_state_dicts))
     return cast(FrozenSet[int], frozenset(a)) # mypy bug.
 
   @property
-  def allSrcNodes(self) -> FrozenSet[int]: return frozenset(self.transitions.keys())
+  def all_src_nodes(self) -> FrozenSet[int]: return frozenset(self.transitions.keys())
 
   @property
-  def allDstNodes(self) -> FrozenSet[int]:
+  def all_dst_nodes(self) -> FrozenSet[int]:
     s: Set[int] = set()
-    s.update(*(self.dstNodes(node) for node in self.allSrcNodes))
+    s.update(*(self.dst_nodes(node) for node in self.all_src_nodes))
     return frozenset(s)
 
   @property
-  def allNodes(self) -> FrozenSet[int]: return self.allSrcNodes | self.allDstNodes
+  def all_nodes(self) -> FrozenSet[int]: return self.all_src_nodes | self.all_dst_nodes
 
   @property
-  def terminalNodes(self) -> FrozenSet[int]: return frozenset(n for n in self.allNodes if not self.transitions.get(n))
+  def terminal_nodes(self) -> FrozenSet[int]: return frozenset(n for n in self.all_nodes if not self.transitions.get(n))
 
   @property
-  def matchNodes(self) -> FrozenSet[int]: return frozenset(self.matchNodeNameSets.keys())
+  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.matchNodeNameSets.keys())
 
   @property
-  def nonMatchNodes(self) -> FrozenSet[int]: return self.allNodes - self.matchNodes
+  def non_match_nodes(self) -> FrozenSet[int]: return self.all_nodes - self.match_nodes
 
   @property
-  def preMatchNodes(self) -> FrozenSet[int]:
-    if self.isEmpty:
+  def pre_match_nodes(self) -> FrozenSet[int]:
+    if self.is_empty:
       return frozenset() # empty.
-    matchNodes = self.matchNodes
+    match_nodes = self.match_nodes
     nodes: Set[int] = set()
     remaining = {0}
     while remaining:
       node = remaining.pop()
       assert node not in nodes
-      if node in matchNodes: continue
+      if node in match_nodes: continue
       nodes.add(node)
-      remaining.update(self.dstNodes(node) - nodes)
+      remaining.update(self.dst_nodes(node) - nodes)
     return frozenset(nodes)
 
   @property
-  def postMatchNodes(self) -> FrozenSet[int]:
-    matchNodes = self.matchNodes
+  def post_match_nodes(self) -> FrozenSet[int]:
+    match_nodes = self.match_nodes
     nodes: Set[int] = set()
-    remaining = set(matchNodes)
+    remaining = set(match_nodes)
     while remaining:
       node = remaining.pop()
-      for dst in self.dstNodes(node):
-        if dst not in matchNodes and dst not in nodes:
+      for dst in self.dst_nodes(node):
+        if dst not in match_nodes and dst not in nodes:
           nodes.add(dst)
           remaining.add(dst)
     return frozenset(nodes)
 
   @property
-  def ruleNames(self) -> FrozenSet[str]: return frozenset().union(*self.matchNodeNameSets.values()) # type: ignore
+  def rule_names(self) -> FrozenSet[str]: return frozenset().union(*self.matchNodeNameSets.values()) # type: ignore
 
   def describe(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
@@ -127,14 +127,14 @@ class DFA:
       errSL(f'  {node}:', *sorted(names))
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
-      errSL(f'  {src}:', *sorted(self.matchNames(src)))
+      errSL(f'  {src}:', *sorted(self.match_names(src)))
       dst_bytes: DefaultDict[int, Set[int]]  = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
       for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
         byte_ranges = int_tuple_ranges(bytes_list)
-        errSL(f'    {codes_desc(byte_ranges)} ==> {dst}', *sorted(self.matchNames(dst)))
+        errSL(f'    {codes_desc(byte_ranges)} ==> {dst}', *sorted(self.match_names(dst)))
     errL()
 
   def describe_stats(self, label=None) -> None:
@@ -144,7 +144,7 @@ class DFA:
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
 
-  def dstNodes(self, node: int) -> FrozenSet[int]:
+  def dst_nodes(self, node: int) -> FrozenSet[int]:
     return frozenset(self.transitions[node].values())
 
   def advance(self, state: int, byte: int) -> int:
@@ -156,18 +156,18 @@ class DFA:
     for byte in text_bytes:
       try: state = self.advance(state, byte)
       except KeyError: return frozenset()
-    return self.matchNames(state)
+    return self.match_names(state)
 
-  def matchNames(self, node: int) -> FrozenSet[str]:
+  def match_names(self, node: int) -> FrozenSet[str]:
     try: return self.matchNodeNameSets[node]
     except KeyError: return frozenset()
 
-  def matchName(self, node: int) -> Optional[str]:
+  def match_name(self, node: int) -> Optional[str]:
     try: return first_el(self.matchNodeNameSets[node])
     except KeyError: return None
 
 
-def minimizeDFA(dfa: DFA) -> DFA:
+def minimize_dfa(dfa: DFA) -> DFA:
   '''
   Optimize a DFA by coalescing redundant states.
   sources:
@@ -182,7 +182,7 @@ def minimizeDFA(dfa: DFA) -> DFA:
   alphabet = dfa.alphabet
   # start with a rough partition; match nodes are all distinct from each other,
   # and non-match nodes form an additional distinct set.
-  init_sets = [{n} for n in dfa.matchNodes] + [set(dfa.nonMatchNodes)]
+  init_sets = [{n} for n in dfa.match_nodes] + [set(dfa.non_match_nodes)]
 
   sets = { id(s): s for s in init_sets }
   partition = { n: s for s in sets.values() for n in s }

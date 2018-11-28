@@ -17,9 +17,9 @@ from .dfa import DFA
 def output_python3(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str]]], dfa: DFA,
   rule_descs: Dict[str, str], license: str, args: Namespace):
 
-  match_node_kinds = { match_node : dfa.matchName(match_node) for match_node in dfa.matchNodes}
+  match_node_kinds = { match_node : dfa.match_name(match_node) for match_node in dfa.match_nodes}
 
-  kinds = { name : py_safe_sym(name) for name in dfa.ruleNames }
+  kinds = { name : py_safe_sym(name) for name in dfa.rule_names }
   kinds['incomplete'] = 'incomplete'
   assert len(kinds) == len(set(kinds.values()))
 

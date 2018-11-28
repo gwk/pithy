@@ -17,7 +17,7 @@ from .dfa import DFA
 def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str]]], dfa: DFA,
  node_modes: Dict[int, Mode], rule_descs: Dict[str, str], license: str, args: Namespace) -> None:
 
-  kinds = { name : swift_safe_sym(name) for name in dfa.ruleNames }
+  kinds = { name : swift_safe_sym(name) for name in dfa.rule_names }
   kinds['incomplete'] = 'incomplete'
   assert len(kinds) == len(set(kinds.values()))
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(kinds.values())]
@@ -45,7 +45,7 @@ def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str
     return [fmt(*r) for r in closed_int_intervals(chars)]
 
   def byte_case(chars, dst: int) -> str:
-    rule_name = dfa.matchName(dst)
+    rule_name = dfa.match_name(dst)
     kind = None if rule_name is None else kinds.get(rule_name)
     return 'case {chars}: state = {dst}{suffix}'.format(
       chars=', '.join(byte_case_patterns(chars)),
@@ -70,10 +70,10 @@ def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str
 
   def state_case(node: int) -> str:
     mode = node_modes[node]
-    name = dfa.matchName(node)
+    name = dfa.match_name(node)
     if name:
       desc = name
-    elif node in dfa.preMatchNodes:
+    elif node in dfa.pre_match_nodes:
       desc = mode.name + ' pre-match'
     else:
       desc = mode.name + ' post-match'

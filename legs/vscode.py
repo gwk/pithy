@@ -29,7 +29,7 @@ def output_vscode(path: str, patterns: Dict[str, Rule], mode_rule_names: Dict[st
     "repository": repository,
   }
 
-  gen_patterns = {name : rule.genRegex(flavor='vscode') for name, rule in patterns.items()}
+  gen_patterns = {name : rule.gen_regex(flavor='vscode') for name, rule in patterns.items()}
 
   for mode, rule_names in mode_rule_names.items():
     mode_patterns: List[Any] = []
@@ -39,7 +39,7 @@ def output_vscode(path: str, patterns: Dict[str, Rule], mode_rule_names: Dict[st
       if mode != 'main': key = f'{mode}.{key}'
       mode_patterns.append({
         "name": key,
-        "match": rule.genRegex(flavor='vscode')})
+        "match": rule.gen_regex(flavor='vscode')})
     repository[mode] = {
       "patterns": mode_patterns,
     }

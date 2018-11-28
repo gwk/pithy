@@ -16,8 +16,8 @@ from pithy.task import runCO
 
 from ..defs import Mode, ModeTransitions
 from ..parse import parse_legs
-from ..dfa import DFA, DfaTransitions, minimizeDFA
-from ..nfa import NFA, genDFA
+from ..dfa import DFA, DfaTransitions, minimize_dfa
+from ..nfa import NFA, gen_dfa
 from ..rules import NfaMutableTransitions, Rule
 from ..swift import output_swift
 from ..python import output_python3
@@ -110,7 +110,7 @@ def main() -> None:
     if args.match and mode != match_mode: continue
 
     named_rules = sorted((name, patterns[name]) for name in rule_names)
-    nfa = genNFA(mode, named_rules=named_rules)
+    nfa = gen_nfa(mode, named_rules=named_rules)
     if dbg: nfa.describe(f'{mode}: NFA')
     if dbg or args.stats: nfa.describe_stats(f'{mode} NFA Stats')
     msgs = nfa.validate()
@@ -118,11 +118,11 @@ def main() -> None:
       errLL(*msgs)
       exit(1)
 
-    fat_dfa = genDFA(nfa)
+    fat_dfa = gen_dfa(nfa)
     if dbg: fat_dfa.describe(f'{mode}: Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
 
-    min_dfa = minimizeDFA(fat_dfa)
+    min_dfa = minimize_dfa(fat_dfa)
     if dbg: min_dfa.describe(f'{mode}: Min DFA')
     if dbg or args.stats: min_dfa.describe_stats('Min DFA Stats')
     mode_dfa_pairs.append((mode, min_dfa))
@@ -134,13 +134,13 @@ def main() -> None:
 
     if dbg: errL('----')
 
-    post_matches = len(min_dfa.postMatchNodes)
+    post_matches = len(min_dfa.post_match_nodes)
     if post_matches:
       errL(f'note: `{mode}`: minimized DFA contains ', pluralize(post_matches, "post-match node"), '.')
 
   if args.match: exit(f'bad mode: {match_mode!r}')
 
-  rule_descs = { name : rule.literalDesc or name for name, rule in patterns.items() }
+  rule_descs = { name : rule.literal_desc or name for name, rule in patterns.items() }
   rule_descs['invalid'] = 'invalid'
   rule_descs['incomplete'] = 'incomplete'
 
@@ -226,7 +226,7 @@ def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
     outL(f'match: {string!r} -- <none>')
 
 
-def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
+def gen_nfa(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   '''
   Generate an NFA from a set of rules.
   The NFA can be used to match against an argument string,
@@ -237,17 +237,17 @@ def genNFA(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
 
-  start = mk_node() # always 0; see genDFA.
-  invalid = mk_node() # always 1; see genDFA.
+  start = mk_node() # always 0; see gen_dfa.
+  invalid = mk_node() # always 1; see gen_dfa.
 
   matchNodeNames: Dict[int, str] = { invalid: 'invalid' }
 
   transitions: NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for name, rule in named_rules:
     matchNode = mk_node()
-    rule.genNFA(mk_node, transitions, start, matchNode)
+    rule.gen_nfa(mk_node, transitions, start, matchNode)
     dict_put(matchNodeNames, matchNode, name)
-  literalRules = { name for name, rule in named_rules if rule.isLiteral }
+  literalRules = { name for name, rule in named_rules if rule.is_literal }
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
 
@@ -261,7 +261,7 @@ def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dic
   modes: Dict[str, Mode] = {}
   node_modes: Dict[int, Mode] = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
-    remap = { node : mk_node() for node in sorted(dfa.allNodes) } # preserves existing order of dfa nodes.
+    remap = { node : mk_node() for node in sorted(dfa.all_nodes) } # preserves existing order of dfa nodes.
     mode = Mode(name=mode_name, start=remap[0], invalid=remap[1])
     modes[mode_name] = mode
     node_modes.update((node, mode) for node in remap.values())
