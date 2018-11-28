@@ -18,7 +18,7 @@ low_surrogates  = (0xDC00, 0xE000)
 surrogates = (high_surrogates[0], low_surrogates[1])
 
 
-planes: Tuple[CodeRanges, ...] = (
+planes:Tuple[CodeRanges, ...] = (
   ( # 0: Basic Multilingual Plane.
     # Note: the surrogates range is excluded because those code points are not legally encodable.
     (0x0000, surrogates[0]),
@@ -56,7 +56,7 @@ planes: Tuple[CodeRanges, ...] = (
   ),
 )
 
-abbreviated_planes: Dict[str, CodeRanges]  = {
+abbreviated_planes:Dict[str, CodeRanges]  = {
   'BMP': planes[0],
   'SMP': planes[1],
   'SIP': planes[2],
@@ -68,11 +68,11 @@ abbreviated_planes: Dict[str, CodeRanges]  = {
 all_plane_ranges = tuple(chain(*(planes)))
 
 
-def codes_for_ranges(seq: Iterable[CodeRange]) -> Iterable[int]:
+def codes_for_ranges(seq:Iterable[CodeRange]) -> Iterable[int]:
   return chain.from_iterable(range(*r) for r in seq)
 
 
-def ranges_for_codes(seq: Iterable[int]) -> Iterable[CodeRange]:
+def ranges_for_codes(seq:Iterable[int]) -> Iterable[CodeRange]:
   'codes must be sorted.'
   it = iter(seq)
   try: first = next(it)
@@ -90,7 +90,7 @@ def ranges_for_codes(seq: Iterable[int]) -> Iterable[CodeRange]:
   yield (low, end)
 
 
-def coalesce_sorted_ranges(seq: Iterable[CodeRange]) -> Iterable[CodeRange]:
+def coalesce_sorted_ranges(seq:Iterable[CodeRange]) -> Iterable[CodeRange]:
   it = iter(seq)
   try: low, end = next(it)
   except StopIteration: return
@@ -108,11 +108,11 @@ def coalesce_sorted_ranges(seq: Iterable[CodeRange]) -> Iterable[CodeRange]:
   yield (low, end)
 
 
-def union_sorted_ranges(*seqs: Iterable[CodeRange]) -> Iterable[CodeRange]:
+def union_sorted_ranges(*seqs:Iterable[CodeRange]) -> Iterable[CodeRange]:
   return coalesce_sorted_ranges(sorted(chain(*seqs)))
 
 
-def intersect_sorted_ranges(seq_a: Iterable[CodeRange], seq_b: Iterable[CodeRange]) -> Iterable[CodeRange]:
+def intersect_sorted_ranges(seq_a:Iterable[CodeRange], seq_b:Iterable[CodeRange]) -> Iterable[CodeRange]:
   iter_a = iter(seq_a)
   iter_b = iter(seq_b)
   try: # iteration scope.

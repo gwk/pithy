@@ -5,31 +5,31 @@ from pithy.lex import Lexer as _Lexer
 
 
 class Token(NamedTuple):
-  kind: str
-  pos: int
-  end: int
+  kind:str
+  pos:int
+  end:int
 
 
 class Source:
 
-  def __init__(self, name: str, text: bytes) -> None:
+  def __init__(self, name:str, text:bytes) -> None:
     self.name = name
     self.text = text
-    self.newline_positions: List[int] = []
+    self.newline_positions:List[int] = []
 
   def __repr__(self): return f'{self.__class__.__name__}({self.name})'
 
-  def get_line_index(self, pos: int) -> int:
+  def get_line_index(self, pos:int) -> int:
     for (index, newline_pos) in enumerate(self.newline_positions):
       if pos <= newline_pos:
         return index
     return len(self.newline_positions)
 
-  def get_line_start(self, pos: int) -> int:
+  def get_line_start(self, pos:int) -> int:
     'Return the character index for the start of the line containing `pos`.'
     return self.text.rfind(b'\n', 0, pos) + 1 # rfind returns -1 for no match, so just add one.
 
-  def get_line_end(self, pos: int) -> int:
+  def get_line_end(self, pos:int) -> int:
     '''
     Return the character index for the end of the line containing `pos`;
     a newline is considered the final character of a line.
@@ -38,14 +38,14 @@ class Source:
     return len(self.text) if line_end == -1 else line_end + 1
 
 
-  def get_line_str(self, pos: int, end: int) -> str:
+  def get_line_str(self, pos:int, end:int) -> str:
     assert pos < end, (pos, end)
     line_bytes = self.text[pos:end]
     try: return line_bytes.decode('utf8')
     except UnicodeDecodeError: return repr(line_bytes) # TODO: improve messaging around decode errors.
 
 
-  def diagnostic_for_token(self, token: Token, msg: str = '', show_missing_newline: bool = True) -> str:
+  def diagnostic_for_token(self, token:Token, msg:str = '', show_missing_newline:bool = True) -> str:
     pos = token.pos
     end = token.end
     line_pos = self.get_line_start(pos)
@@ -53,12 +53,12 @@ class Source:
     return self.diagnostic_for_pos(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, msg=msg, show_missing_newline=show_missing_newline)
 
 
-  def diagnostic_at_end(self, msg: str = '', show_missing_newline: bool = True) -> str:
+  def diagnostic_at_end(self, msg:str = '', show_missing_newline:bool = True) -> str:
     last_pos = len(self.text) - 1
-    line_pos: int
-    line_idx: int
+    line_pos:int
+    line_idx:int
     newline_pos = self.text.rfind(b'\n')
-    if newline_pos >= 0: #
+    if newline_pos >= 0:
       if newline_pos == last_pos: # terminating newline.
         line_pos = self.get_line_start(pos=newline_pos)
         line_idx = self.text.count(b'\n', 0, newline_pos) # number of newlines preceeding newline_pos.
@@ -72,7 +72,7 @@ class Source:
     return self._diagnostic(pos=last_pos, end=last_pos, line_pos=line_pos, line_idx=line_idx, line_str=line_str, msg=msg, show_missing_newline=show_missing_newline)
 
 
-  def diagnostic_for_pos(self, pos: int, end: int, line_pos: int, line_idx: int, msg: str = '', show_missing_newline: bool = True) -> str:
+  def diagnostic_for_pos(self, pos:int, end:int, line_pos:int, line_idx:int, msg:str = '', show_missing_newline:bool = True) -> str:
     if end is None: end = pos
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
@@ -89,7 +89,7 @@ class Source:
           line_str=self.get_line_str(end_line_pos, end_line_end), msg=msg, show_missing_newline=show_missing_newline))
 
 
-  def _diagnostic(self, pos: int, end: int, line_pos: int, line_idx: int, line_str: str, msg: str, show_missing_newline: bool) -> str:
+  def _diagnostic(self, pos:int, end:int, line_pos:int, line_idx:int, line_str:str, msg:str, show_missing_newline:bool) -> str:
 
     assert pos >= 0
     assert pos <= end
@@ -104,7 +104,7 @@ class Source:
 
     line_end = line_pos + len(line_str)
 
-    src_line: str
+    src_line:str
     if line_str[-1] == newline:
       last_idx = len(line_str) - 1
       s = line_str[:-1]
@@ -129,7 +129,7 @@ class Source:
         under_chars.append(tilde)
     underline = ''.join(under_chars)
 
-    def col_str(pos: int) -> str:
+    def col_str(pos:int) -> str:
       return str((pos - line_pos) + 1)
 
     col = f'{col_str(pos)}-{col_str(end)}' if pos < end else col_str(pos)
@@ -138,20 +138,20 @@ class Source:
     return f'{self.name}:{line_idx+1}:{col}:{msg_space}{msg}\n{src_bar}{src_line}\n  {underline}\n'
 
 
-  def bytes_for(self, token: Token, offset=0) -> bytes:
+  def bytes_for(self, token:Token, offset=0) -> bytes:
     return self.text[token.pos+offset:token.end]
 
   '''
-  def parse_signed_number(self, token: Token) -> Int:
-    negative: Bool
-    base: Int
-    offset: Int
-    (negative, offset) = parseSign(token: token)
-    (base, offset) = parseBasePrefix(token: token, offset: offset)
-    return try parseSignedDigits(token: token, from: offset, base: base, negative: negative)
+  def parse_signed_number(self, token:Token) -> Int:
+    negative:Bool
+    base:Int
+    offset:Int
+    (negative, offset) = parseSign(token:token)
+    (base, offset) = parseBasePrefix(token:token, offset:offset)
+    return try parseSignedDigits(token:token, from:offset, base:base, negative:negative)
   }
 
-  public func parseSign(token: Token) -> (negative: Bool, offset: Int) {
+  public func parseSign(token:Token) -> (negative:Bool, offset:Int) {
     switch text[token.pos] {
     case 0x2b: return (false, 1)  // '+'
     case 0x2d: return (true, 1)   // '-'
@@ -159,12 +159,12 @@ class Source:
     }
   }
 
-  public func parseBasePrefix(token: Token, offset: Int) -> (base: Int, offset: Int):
+  public func parseBasePrefix(token:Token, offset:Int) -> (base:Int, offset:Int):
     let pos = token.pos + offset
     if text[pos] != 0x30 { // '0'
       return (base: 10, offset: offset)
     }
-    let base: Int
+    let base:Int
     switch text[pos + 1] { // byte.
     case 0x62: base = 2 // 'b'
     case 0x64: base = 10 // 'd'
@@ -177,7 +177,7 @@ class Source:
   '''
 
 
-  def parse_digits(self, token: Token, offset: int, base: int) -> int:
+  def parse_digits(self, token:Token, offset:int, base:int) -> int:
     val = 0
     for char in self.bytes_for(token, offset=offset).decode('utf8'):
       try: v = int(char, base)
@@ -189,15 +189,15 @@ class Source:
 
 class Lexer(Iterator[Token]):
 
-  def __init__(self, source: Source) -> None:
+  def __init__(self, source:Source) -> None:
     self.source = source
-    self.stack: List[Tuple[int, Optional[str]]] = [(0, None)] # [(mode_start, pop_kind)].
+    self.stack:List[Tuple[int, Optional[str]]] = [(0, None)] # [(mode_start, pop_kind)].
     self.pos = 0
 
-  transitions: Dict[int, Dict[int, int]] = {}
-  match_node_kinds: Dict[int, str] = {}
-  mode_transitions: Dict[int, Dict[str, Tuple[int, str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
-  rule_descs: Dict[str, str] = {}
+  transitions:Dict[int, Dict[int, int]] = {}
+  match_node_kinds:Dict[int, str] = {}
+  mode_transitions:Dict[int, Dict[str, Tuple[int, str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
+  rule_descs:Dict[str, str] = {}
 
   def __iter__(self) -> Iterator[Token]: return self
 
@@ -268,9 +268,9 @@ def test_main(LexerClass) -> None:
       print(source.diagnostic_for_token(token, msg=msg, show_missing_newline=False), end='')
 
 
-def test_desc(source: Source, token: Token, kind_desc: str) -> str:
+def test_desc(source:Source, token:Token, kind_desc:str) -> str:
   off = 2 # "0_" prefix is the common case.
-  base: Optional[int]
+  base:Optional[int]
   if token.kind == 'num':     base = 10; off = 0
   elif token.kind == 'bin':   base = 2
   elif token.kind == 'quat':  base = 4

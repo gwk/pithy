@@ -4,18 +4,18 @@ from typing import Counter, Dict, List, NamedTuple, Tuple
 
 
 class UnicodeCategory(NamedTuple):
-  key: str
-  name: str
-  desc: str
-  subcategories: Tuple[str, ...]
+  key:str
+  name:str
+  desc:str
+  subcategories:Tuple[str, ...]
 
 
-def _mk_cat(key: str, name: str, desc: str) -> UnicodeCategory:
+def _mk_cat(key:str, name:str, desc:str) -> UnicodeCategory:
   subs = desc.split(' | ')
   return UnicodeCategory(key=key, name=name, desc=desc, subcategories=tuple(subs if len(subs) > 1 else []))
 
 
-unicode_categories: List[UnicodeCategory] = [ # taken directly from: http://www.unicode.org/reports/tr44/#General_Category_Values.
+unicode_categories:List[UnicodeCategory] = [ # taken directly from: http://www.unicode.org/reports/tr44/#General_Category_Values.
   _mk_cat('Lu', 'Uppercase_Letter',      'An uppercase letter'),
   _mk_cat('Ll', 'Lowercase_Letter',      'A lowercase letter'),
   _mk_cat('Lt', 'Titlecase_Letter',      'A digraphic character, with first part uppercase'),
@@ -60,7 +60,7 @@ def _aliases() -> Dict[str, UnicodeCategory]:
   aliases = { cat.key : cat for cat in unicode_categories }
   aliases.update((cat.name, cat) for cat in unicode_categories)
   # add first-word aliases wherever they are unambiguous.
-  first_word_counts: Counter[str] = Counter()
+  first_word_counts:Counter[str] = Counter()
   first_word_categories = {}
   for cat in unicode_categories:
     first = cat.name.partition('_')[0]

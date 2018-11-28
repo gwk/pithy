@@ -14,8 +14,8 @@ from .defs import Mode, ModeTransitions
 from .dfa import DFA
 
 
-def output_python3(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str]]], dfa: DFA,
-  rule_descs: Dict[str, str], license: str, args: Namespace):
+def output_python3(path:str, mode_transitions:Dict[int, Dict[str, Tuple[int, str]]], dfa:DFA,
+  rule_descs:Dict[str, str], license:str, args:Namespace):
 
   match_node_kinds = { match_node : dfa.match_name(match_node) for match_node in dfa.match_nodes}
 
@@ -39,7 +39,7 @@ def output_python3(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, s
       f.write(test_src)
 
 
-def fmt_obj(object: Any) -> str:
+def fmt_obj(object:Any) -> str:
   return pformat(object, indent=2, width=128, compact=True)
 
 
@@ -52,13 +52,13 @@ from typing import Iterator
 
 class ${Name}Lexer(Lexer):
 
-  transitions: Dict[int, Dict[int, int]] = ${transitions}
+  transitions:Dict[int, Dict[int, int]] = ${transitions}
 
-  match_node_kinds: Dict[int, str] = ${match_node_kinds}
+  match_node_kinds:Dict[int, str] = ${match_node_kinds}
 
-  rule_descs: Dict[str, str] = ${rule_descs}
+  rule_descs:Dict[str, str] = ${rule_descs}
 
-  mode_transitions: Dict[str, Dict[str, Tuple[str, str]]] = ${mode_transitions}
+  mode_transitions:Dict[str, Dict[str, Tuple[str, str]]] = ${mode_transitions}
 '''
 
 
@@ -67,7 +67,7 @@ if __name__ == '__main__': test_main(${Name}Lexer)
 '''
 
 
-def py_safe_sym(name: str) -> str:
+def py_safe_sym(name:str) -> str:
   name = re.sub(r'[^\w]', '_', name)
   if name[0].isdigit():
     name = '_' + name

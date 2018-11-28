@@ -50,7 +50,7 @@ DfaTransitions = Dict[int, DfaStateTransitions]
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, transitions: DfaTransitions, matchNodeNameSets: Dict[int, FrozenSet[str]], literalRules: Set[str]) -> None:
+  def __init__(self, transitions:DfaTransitions, matchNodeNameSets:Dict[int, FrozenSet[str]], literalRules:Set[str]) -> None:
     self.transitions = transitions
     self.matchNodeNameSets = matchNodeNameSets
     self.literalRules = literalRules
@@ -64,7 +64,7 @@ class DFA:
 
   @property
   def alphabet(self) -> FrozenSet[int]:
-    a: Set[int] = set()
+    a:Set[int] = set()
     a.update(*(d.keys() for d in self.all_byte_to_state_dicts))
     return cast(FrozenSet[int], frozenset(a)) # mypy bug.
 
@@ -73,7 +73,7 @@ class DFA:
 
   @property
   def all_dst_nodes(self) -> FrozenSet[int]:
-    s: Set[int] = set()
+    s:Set[int] = set()
     s.update(*(self.dst_nodes(node) for node in self.all_src_nodes))
     return frozenset(s)
 
@@ -94,7 +94,7 @@ class DFA:
     if self.is_empty:
       return frozenset() # empty.
     match_nodes = self.match_nodes
-    nodes: Set[int] = set()
+    nodes:Set[int] = set()
     remaining = {0}
     while remaining:
       node = remaining.pop()
@@ -107,7 +107,7 @@ class DFA:
   @property
   def post_match_nodes(self) -> FrozenSet[int]:
     match_nodes = self.match_nodes
-    nodes: Set[int] = set()
+    nodes:Set[int] = set()
     remaining = set(match_nodes)
     while remaining:
       node = remaining.pop()
@@ -128,7 +128,7 @@ class DFA:
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
       errSL(f'  {src}:', *sorted(self.match_names(src)))
-      dst_bytes: DefaultDict[int, Set[int]]  = defaultdict(set)
+      dst_bytes:DefaultDict[int, Set[int]]  = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
@@ -144,13 +144,13 @@ class DFA:
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
 
-  def dst_nodes(self, node: int) -> FrozenSet[int]:
+  def dst_nodes(self, node:int) -> FrozenSet[int]:
     return frozenset(self.transitions[node].values())
 
-  def advance(self, state: int, byte: int) -> int:
+  def advance(self, state:int, byte:int) -> int:
     return self.transitions[state][byte]
 
-  def match(self, text: str) -> FrozenSet[str]:
+  def match(self, text:str) -> FrozenSet[str]:
     text_bytes = text.encode('utf8')
     state = 0
     for byte in text_bytes:
@@ -158,16 +158,16 @@ class DFA:
       except KeyError: return frozenset()
     return self.match_names(state)
 
-  def match_names(self, node: int) -> FrozenSet[str]:
+  def match_names(self, node:int) -> FrozenSet[str]:
     try: return self.matchNodeNameSets[node]
     except KeyError: return frozenset()
 
-  def match_name(self, node: int) -> Optional[str]:
+  def match_name(self, node:int) -> Optional[str]:
     try: return first_el(self.matchNodeNameSets[node])
     except KeyError: return None
 
 
-def minimize_dfa(dfa: DFA) -> DFA:
+def minimize_dfa(dfa:DFA) -> DFA:
   '''
   Optimize a DFA by coalescing redundant states.
   sources:
@@ -187,19 +187,19 @@ def minimize_dfa(dfa: DFA) -> DFA:
   sets = { id(s): s for s in init_sets }
   partition = { n: s for s in sets.values() for n in s }
 
-  rev_transitions: DefaultDict[int, DefaultDict[int, Set[int]]] = defaultdict(lambda: defaultdict(set))
+  rev_transitions:DefaultDict[int, DefaultDict[int, Set[int]]] = defaultdict(lambda: defaultdict(set))
   for src, d in dfa.transitions.items():
     for char, dst in d.items():
       rev_transitions[dst][char].add(src)
 
-  def refine(refining_set: Set[int]) -> List[Tuple[Set[int], Set[int]]]:
+  def refine(refining_set:Set[int]) -> List[Tuple[Set[int], Set[int]]]:
     '''
     Given refining set B,
     Refine each set A in the partition to a pair of sets: A & B and A - B.
     Return a list of pairs for each changed set;
     one of these is a new set, the other is the mutated original.
     '''
-    part_sets_to_intersections: DefaultDict[int, Set[int]] = defaultdict(set)
+    part_sets_to_intersections:DefaultDict[int, Set[int]] = defaultdict(set)
     set_pairs = []
     for node in refining_set:
       s = partition[node]
@@ -237,7 +237,7 @@ def minimize_dfa(dfa: DFA) -> DFA:
     for old_node in part:
       mapping[old_node] = new_node
 
-  transitions: DefaultDict[int, Dict[int, int]] = defaultdict(dict)
+  transitions:DefaultDict[int, Dict[int, int]] = defaultdict(dict)
   for old_node, old_d in dfa.transitions.items():
     new_d = transitions[mapping[old_node]]
     for char, old_dst in old_d.items():
@@ -255,7 +255,7 @@ def minimize_dfa(dfa: DFA) -> DFA:
 
   node_names = { mapping[old] : set(names) for old, names in dfa.matchNodeNameSets.items() }
 
-  name_nodes: DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
+  name_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
   for node, names in node_names.items():
     for name in names:
       name_nodes[name].add(node)

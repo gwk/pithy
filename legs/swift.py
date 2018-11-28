@@ -14,8 +14,8 @@ from .defs import Mode, ModeTransitions
 from .dfa import DFA
 
 
-def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str]]], dfa: DFA,
- node_modes: Dict[int, Mode], rule_descs: Dict[str, str], license: str, args: Namespace) -> None:
+def output_swift(path:str, mode_transitions:Dict[int, Dict[str, Tuple[int, str]]], dfa:DFA,
+ node_modes:Dict[int, Mode], rule_descs:Dict[str, str], license:str, args:Namespace) -> None:
 
   kinds = { name : swift_safe_sym(name) for name in dfa.rule_names }
   kinds['incomplete'] = 'incomplete'
@@ -23,12 +23,12 @@ def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(kinds.values())]
 
   # Token kind descriptions.
-  def rule_desc(name: str) -> str: return swift_repr(rule_descs[name])
+  def rule_desc(name:str) -> str: return swift_repr(rule_descs[name])
   token_kind_case_descs = ['case .{}: return {}'.format(kind, rule_desc(name)) for name, kind in sorted(kinds.items())]
 
   # Mode transitions dictionary.
 
-  def swift_mode_transition(d: Dict[str, Tuple[int, str]]) -> Dict[SwiftEnum, Tuple[int, SwiftEnum]]:
+  def swift_mode_transition(d:Dict[str, Tuple[int, str]]) -> Dict[SwiftEnum, Tuple[int, SwiftEnum]]:
     return {SwiftEnum(parent_kind): (child_start, SwiftEnum(child_kind)) for parent_kind, (child_start, child_kind) in d.items()}
 
   if mode_transitions:
@@ -38,13 +38,13 @@ def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str
 
   # State cases.
 
-  def byte_case_patterns(chars: List[int]) -> List[str]:
-    def fmt(l: int, h: int) -> str:
+  def byte_case_patterns(chars:List[int]) -> List[str]:
+    def fmt(l:int, h:int) -> str:
       if l == h: return hex(l)
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
     return [fmt(*r) for r in closed_int_intervals(chars)]
 
-  def byte_case(chars, dst: int) -> str:
+  def byte_case(chars, dst:int) -> str:
     rule_name = dfa.match_name(dst)
     kind = None if rule_name is None else kinds.get(rule_name)
     return 'case {chars}: state = {dst}{suffix}'.format(
@@ -52,14 +52,14 @@ def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str
       dst=dst,
       suffix=f'; end = pos+1; kind = .{kind}' if kind else '')
 
-  def byte_cases(node: int) -> List[str]:
-    dst_chars: DefaultDict[int, List[int]] = DefaultDict(list)
+  def byte_cases(node:int) -> List[str]:
+    dst_chars:DefaultDict[int, List[int]] = DefaultDict(list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
     return [byte_case(chars, dst) for dst, chars in dst_chars_sorted]
 
-  def transition_code(node: int) -> str:
+  def transition_code(node:int) -> str:
     d = dfa.transitions[node]
     if not d: return 'break loop' # no transitions.
     return render_template('''switch byte {
@@ -68,7 +68,7 @@ def output_swift(path: str, mode_transitions: Dict[int, Dict[str, Tuple[int, str
         }''',
       byte_cases='\n        '.join(byte_cases(node)))
 
-  def state_case(node: int) -> str:
+  def state_case(node:int) -> str:
     mode = node_modes[node]
     name = dfa.match_name(node)
     if name:
@@ -235,14 +235,14 @@ for (i, arg) in CommandLine.arguments.enumerated() {
 
 
 class SwiftEnum:
-  def __init__(self, string: str) -> None:
+  def __init__(self, string:str) -> None:
     self.string = string
 
   @property
   def swift_repr(self) -> str: return '.' + self.string
 
 
-swift_escapes: Dict[str, str] = {
+swift_escapes:Dict[str, str] = {
   '\0' : '\\0',
   '\\' : '\\\\',
   '\t' : '\\t',
@@ -251,7 +251,7 @@ swift_escapes: Dict[str, str] = {
   '"'  : '\\"',
 }
 
-def swift_escape_literal_char(c: str) -> str:
+def swift_escape_literal_char(c:str) -> str:
   try:
     return swift_escapes[c]
   except KeyError: pass
@@ -259,10 +259,10 @@ def swift_escape_literal_char(c: str) -> str:
     return c
   return '\\u{{{:x}}}'.format(ord(c))
 
-def swift_esc_str(string: str) -> str:
+def swift_esc_str(string:str) -> str:
   return ''.join(swift_escape_literal_char(c) for c in string)
 
-def swift_repr(obj: Any) -> str:
+def swift_repr(obj:Any) -> str:
   if isinstance(obj, int): return repr(obj)
   if isinstance(obj, str): return '"{}"'.format(swift_esc_str(obj))
   if isinstance(obj, SwiftEnum): return obj.swift_repr
@@ -270,10 +270,10 @@ def swift_repr(obj: Any) -> str:
   if isinstance(obj, dict): return f'[{",".join(swift_repr_kv(kv) for kv in obj.items())}]'
   raise ValueError(obj)
 
-def swift_repr_kv(kv: Tuple[Any, Any]) -> str: return f'{swift_repr(kv[0])}:{swift_repr(kv[1])}'
+def swift_repr_kv(kv:Tuple[Any, Any]) -> str: return f'{swift_repr(kv[0])}:{swift_repr(kv[1])}'
 
 
-def swift_safe_sym(name: str) -> str:
+def swift_safe_sym(name:str) -> str:
   name = re.sub(r'[^\w]', '_', name)
   if name[0].isdigit():
     name = '_' + name

@@ -9,7 +9,7 @@ from .categories import unicode_categories, unicode_category_aliases
 from .data_11_00 import blocks, category_ranges
 
 
-def is_code_in_charset(code, charset: CodeRanges) -> bool:
+def is_code_in_charset(code, charset:CodeRanges) -> bool:
   p = (code, code)
   i = bisect(charset, p)
   if i < len(charset):
@@ -20,7 +20,7 @@ def is_code_in_charset(code, charset: CodeRanges) -> bool:
 
 
 def _gen_charsets() -> Dict[str, CodeRanges]:
-  charsets: Dict[str, CodeRanges] = {}
+  charsets:Dict[str, CodeRanges] = {}
 
   # categories.
   for cat in unicode_categories:
@@ -41,7 +41,7 @@ def _gen_charsets() -> Dict[str, CodeRanges]:
   for k, plane in abbreviated_planes.items():
     charsets[k] = plane
 
-  def add(name: str, abbr: str, *ranges: CodeRange) -> None:
+  def add(name:str, abbr:str, *ranges:CodeRange) -> None:
     charsets[name] = tuple(ranges)
     if abbr: charsets[abbr] = charsets[name]
 

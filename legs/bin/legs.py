@@ -71,7 +71,7 @@ def main() -> None:
 
   if args.test and not args.output: exit('`-test` requires `-output`.')
 
-  langs: Set[str]
+  langs:Set[str]
   if args.language:
     if args.language not in supported_langs:
       exit(f'unknown language {args.language!r}; supported languages are: {sorted(supported_langs)}.')
@@ -105,7 +105,7 @@ def main() -> None:
       rule.describe(name=name)
     errL()
 
-  mode_dfa_pairs: List[Tuple[str, DFA]] = []
+  mode_dfa_pairs:List[Tuple[str, DFA]] = []
   for mode, rule_names in sorted(mode_rule_names.items()):
     if args.match and mode != match_mode: continue
 
@@ -147,9 +147,9 @@ def main() -> None:
   dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
   if dbg: dfa.describe('Combined DFA')
 
-  test_cmds: List[List[str]] = []
+  test_cmds:List[List[str]] = []
 
-  mode_transitions: DefaultDict[int, Dict[str, Tuple[int, str]]] = defaultdict(dict)
+  mode_transitions:DefaultDict[int, Dict[str, Tuple[int, str]]] = defaultdict(dict)
   # mode_transitions maps parent_start : (parent_kind : (child_start, child_kind)).
   for (parent_mode_name, parent_kind), (child_mode_name, child_kind) in transitions.items():
     parent_start = modes[parent_mode_name].start
@@ -178,7 +178,7 @@ def main() -> None:
     # If all of the tests have identical output, then print it; otherwise print each output.
     from difflib import ndiff
     from shlex import quote as sh_quote
-    def quote(cmd: List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
+    def quote(cmd:List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
     first_cmd = None
     first_out = None
     status = 0
@@ -202,7 +202,7 @@ def main() -> None:
     exit(status)
 
 
-def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
+def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
   '''
   Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.
   This tricky because each is subtly different:
@@ -226,7 +226,7 @@ def match_string(nfa: NFA, fat_dfa: DFA, min_dfa: DFA, string: str) -> None:
     outL(f'match: {string!r} -- <none>')
 
 
-def gen_nfa(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
+def gen_nfa(mode:str, named_rules:List[Tuple[str, Rule]]) -> NFA:
   '''
   Generate an NFA from a set of rules.
   The NFA can be used to match against an argument string,
@@ -240,9 +240,9 @@ def gen_nfa(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   start = mk_node() # always 0; see gen_dfa.
   invalid = mk_node() # always 1; see gen_dfa.
 
-  matchNodeNames: Dict[int, str] = { invalid: 'invalid' }
+  matchNodeNames:Dict[int, str] = { invalid: 'invalid' }
 
-  transitions: NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
+  transitions:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for name, rule in named_rules:
     matchNode = mk_node()
     rule.gen_nfa(mk_node, transitions, start, matchNode)
@@ -251,21 +251,21 @@ def gen_nfa(mode: str, named_rules: List[Tuple[str, Rule]]) -> NFA:
   return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
 
 
-def combine_dfas(mode_dfa_pairs: Iterable[Tuple[str, DFA]], mode_rule_names: Dict[str, List[str]]) \
+def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_rule_names:Dict[str, List[str]]) \
  -> Tuple[DFA, Dict[str, Mode], Dict[int, Mode]]:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
-  transitions: DfaTransitions = {}
-  matchNodeNameSets: Dict[int, FrozenSet[str]] = {}
-  literalRules: Set[str] = set()
-  modes: Dict[str, Mode] = {}
-  node_modes: Dict[int, Mode] = {}
+  transitions:DfaTransitions = {}
+  matchNodeNameSets:Dict[int, FrozenSet[str]] = {}
+  literalRules:Set[str] = set()
+  modes:Dict[str, Mode] = {}
+  node_modes:Dict[int, Mode] = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
     remap = { node : mk_node() for node in sorted(dfa.all_nodes) } # preserves existing order of dfa nodes.
     mode = Mode(name=mode_name, start=remap[0], invalid=remap[1])
     modes[mode_name] = mode
     node_modes.update((node, mode) for node in remap.values())
-    def remap_trans_dict(d: Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }
+    def remap_trans_dict(d:Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }
     transitions.update((remap[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
     matchNodeNameSets.update((remap[node], names) for node, names in sorted(dfa.matchNodeNameSets.items()))
     literalRules.update(dfa.literalRules)

@@ -104,19 +104,19 @@ def parse_data(path):
 
 
 class CharInfo(NamedTuple):
-  code: int
-  name: str
-  cat: str
-  comb: str
-  bidi: str
-  decomp: str
-  decimal: str
-  digit: str
-  numeric: str
-  mirror: str
-  upper: str
-  lower: str
-  title: str
+  code:int
+  name:str
+  cat:str
+  comb:str
+  bidi:str
+  decomp:str
+  decimal:str
+  digit:str
+  numeric:str
+  mirror:str
+  upper:str
+  lower:str
+  title:str
 
 
 if __name__ == '__main__': main()

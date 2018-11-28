@@ -50,10 +50,10 @@ kind_descs = {
   'colon'   : '`:`',
 }
 
-def desc_kind(kind: str) -> str: return kind_descs.get(kind, kind)
+def desc_kind(kind:str) -> str: return kind_descs.get(kind, kind)
 
 
-def parse_legs(path: str, src: str) -> Tuple[str, Dict[str, Rule], Dict[str, List[str]], ModeTransitions]:
+def parse_legs(path:str, src:str) -> Tuple[str, Dict[str, Rule], Dict[str, List[str]], ModeTransitions]:
   '''
   Parse the legs source given in `src`,
   returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
@@ -61,7 +61,7 @@ def parse_legs(path: str, src: str) -> Tuple[str, Dict[str, Rule], Dict[str, Lis
 
   tokens_with_comments = list(lexer.lex(src, drop={'space'}))
   # If first token is a comment, assume it is the license.
-  license: str
+  license:str
   if tokens_with_comments and tokens_with_comments[0].lastgroup == 'comment':
     license = tokens_with_comments[0].group().strip('# ')
   else:
@@ -70,9 +70,9 @@ def parse_legs(path: str, src: str) -> Tuple[str, Dict[str, Rule], Dict[str, Lis
   tokens = [t for t in tokens_with_comments if t.lastgroup != 'comment']
   sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
 
-  patterns: Dict[str, Rule] = {} # keyed by rule name.
-  modes: Dict[str, List[str]] = {} # keyed by mode name.
-  transitions: ModeTransitions = {}
+  patterns:Dict[str, Rule] = {} # keyed by rule name.
+  modes:Dict[str, List[str]] = {} # keyed by mode name.
+  transitions:ModeTransitions = {}
 
   for section in sections:
     buffer = Buffer(section)
@@ -92,7 +92,7 @@ def parse_legs(path: str, src: str) -> Tuple[str, Dict[str, Rule], Dict[str, Lis
   return (license, patterns, modes, transitions)
 
 
-def parse_patterns(path: str, buffer: Buffer[Token], patterns: Dict[str, Rule]) -> None:
+def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, Rule]) -> None:
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': continue
@@ -103,7 +103,7 @@ def parse_patterns(path: str, buffer: Buffer[Token], patterns: Dict[str, Rule]) 
     patterns[name] = parse_rule(path, token, buffer)
 
 
-def parse_modes(path: str, buffer: Buffer[Token], patterns: Container[str], modes: Dict[str, List[str]]) -> None:
+def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], modes:Dict[str, List[str]]) -> None:
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': continue
@@ -115,8 +115,8 @@ def parse_modes(path: str, buffer: Buffer[Token], patterns: Container[str], mode
     modes[name] = parse_mode(path, buffer, patterns)
 
 
-def parse_mode(path: str, buffer: Buffer[Token], patterns: Container[str]) -> List[str]:
-  mode: List[str] = []
+def parse_mode(path:str, buffer:Buffer[Token], patterns:Container[str]) -> List[str]:
+  mode:List[str] = []
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': return mode
@@ -127,13 +127,13 @@ def parse_mode(path: str, buffer: Buffer[Token], patterns: Container[str]) -> Li
   return mode
 
 
-def parse_transitions(path: str, buffer: Buffer[Token], patterns: Container[str],
-  modes: Container[str], transitions: ModeTransitions) -> None:
+def parse_transitions(path:str, buffer:Buffer[Token], patterns:Container[str],
+  modes:Container[str], transitions:ModeTransitions) -> None:
 
-  def check_mode(token: Token) -> None:
+  def check_mode(token:Token) -> None:
     if token[0] not in modes: fail_parse(path, token, f'unknown mode name: {token[0]!r}.')
 
-  def check_pattern(token: Token) -> None:
+  def check_pattern(token:Token) -> None:
     if token[0] not in patterns: fail_parse(path, token, f'unknown pattern name: {token[0]!r}.')
 
   for token in buffer:
@@ -156,7 +156,7 @@ def parse_transitions(path: str, buffer: Buffer[Token], patterns: Container[str]
     transitions[l] = r
 
 
-def parse_rule(path: str, sym_token: Token, buffer: Buffer[Token]) -> Rule:
+def parse_rule(path:str, sym_token:Token, buffer:Buffer[Token]) -> Rule:
   assert sym_token.lastgroup == 'sym'
   try: next_token = buffer.peek()
   except StopIteration: pass
@@ -169,14 +169,14 @@ def parse_rule(path: str, sym_token: Token, buffer: Buffer[Token]) -> Rule:
   return Seq.of_iter(Charset.for_char(c) for c in text)
 
 
-def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rule:
+def parse_rule_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Rule:
   'Parse a pattern and return a Rule object.'
-  els: List[Rule] = []
+  els:List[Rule] = []
   def finish() -> Rule: return Seq.of_iter(els)
   for token in buffer:
     kind = token.lastgroup
     def _fail(msg) -> 'NoReturn': fail_parse(path, token, msg)
-    def quantity(rule_type: Type[Rule]) -> None:
+    def quantity(rule_type:Type[Rule]) -> None:
       if not els: _fail('quantity operator must be preceded by a pattern.')
       els[-1] = rule_type(els[-1])
     if kind == terminator: return finish()
@@ -196,26 +196,26 @@ def parse_rule_pattern(path: str, buffer: Buffer[Token], terminator: str) -> Rul
   return finish()
 
 
-def parse_choice(path: str, buffer: Buffer[Token], left: Rule, terminator: str) -> Rule:
+def parse_choice(path:str, buffer:Buffer[Token], left:Rule, terminator:str) -> Rule:
   return Choice(left, parse_rule_pattern(path, buffer, terminator=terminator))
 
 
-def parse_esc(path: str, token: Token) -> int:
+def parse_esc(path:str, token:Token) -> int:
   char = token[0][1]
   try: code = escape_codes[char]
   except KeyError: fail_parse(path, token, f'invalid escaped character: {char!r}.')
   return code
 
 
-def ranges_for_code(code: int) -> CodeRanges: return ((code, code+1),)
+def ranges_for_code(code:int) -> CodeRanges: return ((code, code+1),)
 
 
-def parse_ref(path: str, token: Token) -> CodeRanges:
+def parse_ref(path:str, token:Token) -> CodeRanges:
   try: return unicode_charsets[token[0][1:]]
   except KeyError: fail_parse(path, token, 'unknown charset name.')
 
 
-def parse_charset(path: str, buffer: Buffer[Token], start_token: Token, is_right=False, is_diff=False) -> Set[int]:
+def parse_charset(path:str, buffer:Buffer[Token], start_token:Token, is_right=False, is_diff=False) -> Set[int]:
   '''
   The Legs character set syntax is different from traditional regular expressions.
   * `[...]` introduces a nested character set.
@@ -228,14 +228,14 @@ def parse_charset(path: str, buffer: Buffer[Token], start_token: Token, is_right
   more complex expressions must be explicitly grouped.
   Thus, the set expression syntax has no operator precedence or associativity.
   '''
-  codes: Set[int] = set()
+  codes:Set[int] = set()
 
-  def add_code(token: Token, code: int) -> None:
+  def add_code(token:Token, code:int) -> None:
     if code in codes:
       fail_parse(path, token, f'repeated character in set: {code!r}.')
     codes.add(code)
 
-  def parse_right(token: Token, is_diff_op: bool) -> Set[int]:
+  def parse_right(token:Token, is_diff_op:bool) -> Set[int]:
     if not codes:
       fail_parse(path, token, f'empty charset preceding operator.')
     if is_diff or (is_right and is_diff_op):
@@ -277,14 +277,14 @@ def parse_charset(path: str, buffer: Buffer[Token], start_token: Token, is_right
   fail_parse(path, start_token, 'unterminated charset.')
 
 
-def consume(path: str, buffer: Buffer[Token], kind: str, subj: str) -> Token:
-  token: Token = next(buffer)
+def consume(path:str, buffer:Buffer[Token], kind:str, subj:str) -> Token:
+  token:Token = next(buffer)
   act = token.lastgroup
   if act != kind: fail_parse(path, token, f'{subj} expected {desc_kind(kind)}; found {desc_kind(act)}.')
   return token
 
 
-def check_is_sym(path: str, token: Token, expectation: str) -> None:
+def check_is_sym(path:str, token:Token, expectation:str) -> None:
   kind = token.lastgroup
   if kind != 'sym':
     fail_parse(path, token, f'expected {expectation}; found {desc_kind(kind)}.')
@@ -294,10 +294,10 @@ def check_is_sym(path: str, token: Token, expectation: str) -> None:
 reserved_names = { 'invalid', 'incomplete' }
 
 
-def is_section(token: Token) -> bool: return token.lastgroup == 'section'
+def is_section(token:Token) -> bool: return token.lastgroup == 'section'
 
 
-escape_codes: Dict[str, int] = {
+escape_codes:Dict[str, int] = {
   'n': ord('\n'),
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),

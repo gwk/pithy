@@ -31,7 +31,7 @@ empty_symbol = -1 # not a legitimate byte value.
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, transitions: NfaTransitions, matchNodeNames: Dict[int, str], literalRules: Set[str]) -> None:
+  def __init__(self, transitions:NfaTransitions, matchNodeNames:Dict[int, str], literalRules:Set[str]) -> None:
     self.transitions = transitions
     self.matchNodeNames = matchNodeNames
     self.literalRules = literalRules
@@ -46,7 +46,7 @@ class NFA:
 
   @property
   def alphabet(self) -> FrozenSet[int]:
-    s: Set[int] = set()
+    s:Set[int] = set()
     s.update(*(d.keys() for d in self.all_byte_to_state_dicts))
     s.discard(empty_symbol)
     return frozenset(s)
@@ -56,7 +56,7 @@ class NFA:
 
   @property
   def all_dst_nodes(self) -> FrozenSet[int]:
-    s: Set[int] = set()
+    s:Set[int] = set()
     s.update(*(self.dst_nodes(node) for node in self.all_src_nodes))
     return frozenset(s)
 
@@ -77,7 +77,7 @@ class NFA:
     if self.is_empty:
       return frozenset() # empty.
     match_nodes = self.match_nodes
-    nodes: Set[int] = set()
+    nodes:Set[int] = set()
     remaining = {0}
     while remaining:
       node = remaining.pop()
@@ -90,7 +90,7 @@ class NFA:
   @property
   def post_match_nodes(self) -> FrozenSet[int]:
     match_nodes = self.match_nodes
-    nodes: Set[int] = set()
+    nodes:Set[int] = set()
     remaining = set(match_nodes)
     while remaining:
       node = remaining.pop()
@@ -108,7 +108,7 @@ class NFA:
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
       errL(f'  {src}:{prepend_to_nonempty(" ", self.matchNodeNames.get(src, ""))}')
-      dst_bytes: DefaultDict[FrozenSet[int], Set[int]] = defaultdict(set)
+      dst_bytes:DefaultDict[FrozenSet[int], Set[int]] = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
@@ -124,8 +124,8 @@ class NFA:
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
 
-  def dst_nodes(self, node: int) -> FrozenSet[int]:
-    s: Set[int] = set()
+  def dst_nodes(self, node:int) -> FrozenSet[int]:
+    s:Set[int] = set()
     s.update(*self.transitions[node].values())
     return FrozenSet(s)
 
@@ -137,29 +137,29 @@ class NFA:
         msgs.append('error: rule is trivially matched from start: {}.'.format(name))
     return msgs
 
-  def advance(self, state: FrozenSet[int], byte: int) -> NfaState:
-    nextState: Set[int] = set()
+  def advance(self, state:FrozenSet[int], byte:int) -> NfaState:
+    nextState:Set[int] = set()
     for node in state:
       try: dst_nodes = self.transitions[node][byte]
       except KeyError: pass
       else: nextState.update(dst_nodes)
     return self.advance_empties(frozenset(nextState))
 
-  def match(self, text: str) -> FrozenSet[str]:
+  def match(self, text:str) -> FrozenSet[str]:
     text_bytes = text.encode('utf8')
     state = self.advance_empties(frozenset({0}))
     #errSL('NFA start:', state)
     for byte in text_bytes:
       state = self.advance(state, byte)
       #errL(f'NFA step: {bytes([byte])} -> {state}')
-    s: Iterable[str] = filtermap_with_mapping(state, self.matchNodeNames)
-    all_matches: FrozenSet[str] = frozenset(s)
+    s:Iterable[str] = filtermap_with_mapping(state, self.matchNodeNames)
+    all_matches:FrozenSet[str] = frozenset(s)
     literal_matches = frozenset(n for n in all_matches if n in self.literalRules)
     return literal_matches or all_matches
 
-  def advance_empties(self, state: NfaState) -> NfaState:
+  def advance_empties(self, state:NfaState) -> NfaState:
     remaining = set(state)
-    expanded: Set[int] = set()
+    expanded:Set[int] = set()
     while remaining:
       node = remaining.pop()
       expanded.add(node)
@@ -171,7 +171,7 @@ class NFA:
 
 
 
-def gen_dfa(nfa: NFA) -> DFA:
+def gen_dfa(nfa:NFA) -> DFA:
   '''
   Generate a DFA from an NFA.
 
@@ -190,13 +190,13 @@ def gen_dfa(nfa: NFA) -> DFA:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
 
-  nfa_states_to_dfa_nodes: DefaultDict[NfaState, int] = defaultdict(mk_node)
+  nfa_states_to_dfa_nodes:DefaultDict[NfaState, int] = defaultdict(mk_node)
   start = frozenset(nfa.advance_empties(frozenset({0})))
   invalid = frozenset({1}) # no need to advance_empties as `invalid` is unreachable in the nfa.
   start_node = nfa_states_to_dfa_nodes[start]
   invalid_node = nfa_states_to_dfa_nodes[invalid]
 
-  transitions: DefaultDict[int, Dict[int, int]] = defaultdict(dict)
+  transitions:DefaultDict[int, Dict[int, int]] = defaultdict(dict)
   alphabet = nfa.alphabet
   remaining = {start}
   while remaining:
@@ -223,7 +223,7 @@ def gen_dfa(nfa: NFA) -> DFA:
     invalid_dict[c] = invalid_node
 
   # Generate matchNodeNameSets.
-  node_names: DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of names.
+  node_names:DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of names.
   for nfa_state, dfa_node in nfa_states_to_dfa_nodes.items():
     for nfa_node in nfa_state:
       try: name = nfa.matchNodeNames[nfa_node]
