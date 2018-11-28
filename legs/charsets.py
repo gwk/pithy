@@ -6,7 +6,7 @@ from typing import Dict, Tuple
 
 from .unico import CodeRange, CodeRanges, abbreviated_planes, intersect_sorted_ranges, union_sorted_ranges
 from .categories import unicode_categories, unicode_category_aliases
-from .data_09_00 import blocks, category_ranges
+from .data_11_00 import blocks, category_ranges
 
 
 def is_code_in_charset(code, charset: CodeRanges) -> bool:

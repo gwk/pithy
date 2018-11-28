@@ -3,6 +3,7 @@
 # $@: The file name of the target of the rule.
 # $<: The name of the first prerequisite.
 # $^: The names of all the prerequisites, with spaces between them.
+# $*: The stem with which an implicit rule matches.
 
 
 .PHONY: _default clean cov pip-develop pip-uninstall pypi-dist pypi-register pypi-upload test typecheck
@@ -11,7 +12,9 @@
 _default: test typecheck
 
 build: \
-	legs/data_09_00.py
+	legs/data_09_00.py \
+	legs/data_10_00.py \
+	legs/data_11_00.py
 
 clean:
 	rm -rf _build/*
@@ -22,8 +25,8 @@ clean-data:
 cov:
 	iotest -fail-fast -coverage
 
-legs/data_09_00.py: gen-data.py
-	./$^ data_09_00 > $@
+legs/data_%.py: gen-data.py
+	./$^ data/$* > $@
 
 install-vscode: vscode-ext/syntaxes/legs.json
 	vscode-ext/install-vscode-ext.sh
