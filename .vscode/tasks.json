@@ -7,14 +7,14 @@
     {
       "label": "typecheck-current",
       "command": "craft-py-check",
-      "args": ["${relativeFile}"],
+      "args": ["-deps", "pithy", "-print-ok", "${relativeFile}"],
       "group": {"kind": "build", "isDefault": true},
       "problemMatcher": "$craft"
     },
     {
       "label": "typecheck",
       "command": "craft-py-check",
-      "args": ["legs", "legs_base"],
+      "args": ["-deps", "pithy", "-print-ok", "legs", "legs_base"],
       "group": "build",
       "problemMatcher": "$craft"
     },
