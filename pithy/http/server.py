@@ -15,8 +15,7 @@ from socket import getfqdn as get_fully_qualified_domain_name, timeout as Socket
 from socketserver import TCPServer, StreamRequestHandler
 from sys import exc_info
 from traceback import print_exception
-from typing import *
-from typing import BinaryIO
+from typing import Any, BinaryIO, List, Optional, Tuple, Type
 from urllib.parse import unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
 import mimetypes
 import os

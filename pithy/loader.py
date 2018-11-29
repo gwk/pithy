@@ -5,8 +5,7 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, RawIOBase, TextIOBase, TextIOWrapper
-from typing import *
-from typing import IO, Iterable, TextIO, BinaryIO
+from typing import Any, BinaryIO, Callable, Dict, IO, Iterable, Iterator, Sequence, Set, TextIO, Union
 
 from .io import stderr, errL, errSL
 from .fs import path_ext, path_stem
