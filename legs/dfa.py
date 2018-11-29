@@ -33,7 +33,7 @@ thus producing a stream of tokens that completely span any input string.
 
 from collections import defaultdict
 from itertools import chain
-from typing import *
+from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
 from pithy.io import errL, errSL
 from pithy.iterable import first_el, int_tuple_ranges

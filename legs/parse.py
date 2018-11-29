@@ -2,10 +2,10 @@
 
 import re
 
-from typing import Dict, List, Set, Match, Type
+from typing import Container, Dict, List, Set, Match, NoReturn, Tuple, Type
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.buffer import Buffer
-from pithy.lex import *
+from pithy.lex import Lexer, fail_parse
 from pithy.io import *
 
 from .unico import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes

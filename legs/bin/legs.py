@@ -4,7 +4,7 @@
 from argparse import ArgumentParser, Namespace
 from collections import defaultdict
 from itertools import chain, count
-from typing import *
+from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set, Tuple
 
 from pithy.collection import freeze
 from pithy.dict import dict_put

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import *
+from typing import Any, Callable, DefaultDict, Dict, Iterable, Optional, Set, Type, cast
 from pithy.io import errL, errSL
 from pithy.iterable import prefix_tree
 from pithy.types import is_pair_of_int

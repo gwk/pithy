@@ -10,7 +10,7 @@ that represents a nondeterministic jump between NFA nodes.
 
 from collections import defaultdict
 from itertools import count
-from typing import *
+from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set
 
 from pithy.io import errL, errSL
 from pithy.iterable import filtermap_with_mapping, int_tuple_ranges
