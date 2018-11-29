@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from sys import argv, stdin
 from ..task import run
-from typing import BinaryIO, NoReturn
+from typing import BinaryIO
 
 
 
@@ -22,7 +22,7 @@ def main() -> None:
   host, port = address
   addr_str = f'http://{host}:{port}'
 
-  f: BinaryIO
+  f:BinaryIO
   if args.path is not None:
     f = open(args.path, 'rb')
   else:
