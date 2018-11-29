@@ -19,7 +19,7 @@ An automaton consists of two parts:
 * transitions: dictionary of source node to (dictionary of byte to destination).
   * for DFAs, the destination is a single node.
   * for NFAs, the destination is a set of nodes, representing a subset of the next state.
-* matchNodeNameSets: dictionary of nodes mapping matching nodes to the set of corresponding rule names.
+* match_node_name_sets: dictionary of nodes mapping matching nodes to the set of corresponding rule names.
 
 The starting state is always 0 for DFAs, and {0} for NFAs.
 Additionally, 1 and {1} are always the respective invalid states.
@@ -50,10 +50,10 @@ DfaTransitions = Dict[int, DfaStateTransitions]
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, transitions:DfaTransitions, matchNodeNameSets:Dict[int, FrozenSet[str]], literalRules:Set[str]) -> None:
+  def __init__(self, transitions:DfaTransitions, match_node_name_sets:Dict[int, FrozenSet[str]], literal_rules:Set[str]) -> None:
     self.transitions = transitions
-    self.matchNodeNameSets = matchNodeNameSets
-    self.literalRules = literalRules
+    self.match_node_name_sets = match_node_name_sets
+    self.literal_rules = literal_rules
 
   @property
   def is_empty(self) -> bool:
@@ -84,7 +84,7 @@ class DFA:
   def terminal_nodes(self) -> FrozenSet[int]: return frozenset(n for n in self.all_nodes if not self.transitions.get(n))
 
   @property
-  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.matchNodeNameSets.keys())
+  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.match_node_name_sets.keys())
 
   @property
   def non_match_nodes(self) -> FrozenSet[int]: return self.all_nodes - self.match_nodes
@@ -118,12 +118,12 @@ class DFA:
     return frozenset(nodes)
 
   @property
-  def rule_names(self) -> FrozenSet[str]: return frozenset().union(*self.matchNodeNameSets.values()) # type: ignore
+  def rule_names(self) -> FrozenSet[str]: return frozenset().union(*self.match_node_name_sets.values()) # type: ignore
 
   def describe(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
-    errL(' matchNodeNameSets:')
-    for node, names in sorted(self.matchNodeNameSets.items()):
+    errL(' match_node_name_sets:')
+    for node, names in sorted(self.match_node_name_sets.items()):
       errSL(f'  {node}:', *sorted(names))
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
@@ -139,7 +139,7 @@ class DFA:
 
   def describe_stats(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
-    errSL('  match nodes:', len(self.matchNodeNameSets))
+    errSL('  match nodes:', len(self.match_node_name_sets))
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
@@ -159,11 +159,11 @@ class DFA:
     return self.match_names(state)
 
   def match_names(self, node:int) -> FrozenSet[str]:
-    try: return self.matchNodeNameSets[node]
+    try: return self.match_node_name_sets[node]
     except KeyError: return frozenset()
 
   def match_name(self, node:int) -> Optional[str]:
-    try: return first_el(self.matchNodeNameSets[node])
+    try: return first_el(self.match_node_name_sets[node])
     except KeyError: return None
 
 
@@ -253,7 +253,7 @@ def minimize_dfa(dfa:DFA) -> DFA:
   # If the set of match nodes for a rule is a superset of another rule, ignore it;
   # otherwise intersections are treated as ambiguity errors.
 
-  node_names = { mapping[old] : set(names) for old, names in dfa.matchNodeNameSets.items() }
+  node_names = { mapping[old] : set(names) for old, names in dfa.match_node_name_sets.items() }
 
   name_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
   for node, names in node_names.items():
@@ -279,6 +279,6 @@ def minimize_dfa(dfa:DFA) -> DFA:
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
 
-  matchNodeNameSets = { node : frozenset(names) for node, names in node_names.items() }
-  return DFA(transitions=dict(transitions), matchNodeNameSets=matchNodeNameSets, literalRules=dfa.literalRules)
+  match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
+  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, literal_rules=dfa.literal_rules)
 

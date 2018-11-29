@@ -240,15 +240,15 @@ def gen_nfa(mode:str, named_rules:List[Tuple[str, Rule]]) -> NFA:
   start = mk_node() # always 0; see gen_dfa.
   invalid = mk_node() # always 1; see gen_dfa.
 
-  matchNodeNames:Dict[int, str] = { invalid: 'invalid' }
+  match_node_names:Dict[int, str] = { invalid: 'invalid' }
 
   transitions:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for name, rule in named_rules:
-    matchNode = mk_node()
-    rule.gen_nfa(mk_node, transitions, start, matchNode)
-    dict_put(matchNodeNames, matchNode, name)
-  literalRules = { name for name, rule in named_rules if rule.is_literal }
-  return NFA(transitions=freeze(transitions), matchNodeNames=matchNodeNames, literalRules=literalRules)
+    match_node = mk_node()
+    rule.gen_nfa(mk_node, transitions, start, match_node)
+    dict_put(match_node_names, match_node, name)
+  literal_rules = { name for name, rule in named_rules if rule.is_literal }
+  return NFA(transitions=freeze(transitions), match_node_names=match_node_names, literal_rules=literal_rules)
 
 
 def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_rule_names:Dict[str, List[str]]) \
@@ -256,8 +256,8 @@ def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_rule_names:Dict[
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
   transitions:DfaTransitions = {}
-  matchNodeNameSets:Dict[int, FrozenSet[str]] = {}
-  literalRules:Set[str] = set()
+  match_node_name_sets:Dict[int, FrozenSet[str]] = {}
+  literal_rules:Set[str] = set()
   modes:Dict[str, Mode] = {}
   node_modes:Dict[int, Mode] = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
@@ -267,9 +267,9 @@ def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_rule_names:Dict[
     node_modes.update((node, mode) for node in remap.values())
     def remap_trans_dict(d:Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }
     transitions.update((remap[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
-    matchNodeNameSets.update((remap[node], names) for node, names in sorted(dfa.matchNodeNameSets.items()))
-    literalRules.update(dfa.literalRules)
-  return (DFA(transitions=transitions, matchNodeNameSets=matchNodeNameSets, literalRules=literalRules), modes, node_modes)
+    match_node_name_sets.update((remap[node], names) for node, names in sorted(dfa.match_node_name_sets.items()))
+    literal_rules.update(dfa.literal_rules)
+  return (DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, literal_rules=literal_rules), modes, node_modes)
 
 
 ext_langs = {

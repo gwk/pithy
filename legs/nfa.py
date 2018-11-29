@@ -31,10 +31,10 @@ empty_symbol = -1 # not a legitimate byte value.
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, transitions:NfaTransitions, matchNodeNames:Dict[int, str], literalRules:Set[str]) -> None:
+  def __init__(self, transitions:NfaTransitions, match_node_names:Dict[int, str], literal_rules:Set[str]) -> None:
     self.transitions = transitions
-    self.matchNodeNames = matchNodeNames
-    self.literalRules = literalRules
+    self.match_node_names = match_node_names
+    self.literal_rules = literal_rules
 
 
   @property
@@ -67,7 +67,7 @@ class NFA:
   def terminal_nodes(self) -> FrozenSet[int]: return frozenset(n for n in self.all_nodes if not self.transitions.get(n))
 
   @property
-  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.matchNodeNames.keys())
+  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.match_node_names.keys())
 
   @property
   def non_match_nodes(self) -> FrozenSet[int]: return self.all_nodes - self.match_nodes
@@ -102,12 +102,12 @@ class NFA:
 
   def describe(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
-    errL(' matchNodeNames:')
-    for node, name in sorted(self.matchNodeNames.items()):
+    errL(' match_node_names:')
+    for node, name in sorted(self.match_node_names.items()):
       errL(f'  {node}: {name}')
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
-      errL(f'  {src}:{prepend_to_nonempty(" ", self.matchNodeNames.get(src, ""))}')
+      errL(f'  {src}:{prepend_to_nonempty(" ", self.match_node_names.get(src, ""))}')
       dst_bytes:DefaultDict[FrozenSet[int], Set[int]] = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
@@ -119,7 +119,7 @@ class NFA:
 
   def describe_stats(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
-    errSL('  match nodes:', len(self.matchNodeNames))
+    errSL('  match nodes:', len(self.match_node_names))
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
@@ -132,7 +132,7 @@ class NFA:
   def validate(self) -> List[str]:
     start = self.advance_empties(frozenset({0}))
     msgs = []
-    for node, name in sorted(self.matchNodeNames.items()):
+    for node, name in sorted(self.match_node_names.items()):
       if node in start:
         msgs.append('error: rule is trivially matched from start: {}.'.format(name))
     return msgs
@@ -152,9 +152,9 @@ class NFA:
     for byte in text_bytes:
       state = self.advance(state, byte)
       #errL(f'NFA step: {bytes([byte])} -> {state}')
-    s:Iterable[str] = filtermap_with_mapping(state, self.matchNodeNames)
+    s:Iterable[str] = filtermap_with_mapping(state, self.match_node_names)
     all_matches:FrozenSet[str] = frozenset(s)
-    literal_matches = frozenset(n for n in all_matches if n in self.literalRules)
+    literal_matches = frozenset(n for n in all_matches if n in self.literal_rules)
     return literal_matches or all_matches
 
   def advance_empties(self, state:NfaState) -> NfaState:
@@ -222,15 +222,15 @@ def gen_dfa(nfa:NFA) -> DFA:
     start_dict[c] = invalid_node
     invalid_dict[c] = invalid_node
 
-  # Generate matchNodeNameSets.
+  # Generate match_node_name_sets.
   node_names:DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of names.
   for nfa_state, dfa_node in nfa_states_to_dfa_nodes.items():
     for nfa_node in nfa_state:
-      try: name = nfa.matchNodeNames[nfa_node]
+      try: name = nfa.match_node_names[nfa_node]
       except KeyError: continue
       node_names[dfa_node].add(name)
-  matchNodeNameSets = { node : frozenset(names) for node, names in node_names.items() }
+  match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
 
-  return DFA(transitions=dict(transitions), matchNodeNameSets=matchNodeNameSets, literalRules=nfa.literalRules)
+  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, literal_rules=nfa.literal_rules)
 
 
