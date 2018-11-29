@@ -16,7 +16,7 @@ __all__ = [
   'Opt',
   'Plus',
   'Quantity',
-  'Rule',
+  'Pattern',
   'Seq',
   'Star',
   'NfaMutableTransitions',
@@ -30,7 +30,7 @@ MkNode = Callable[[], int]
 NfaMutableTransitions = DefaultDict[int, DefaultDict[int, Set[int]]]
 
 
-class Rule(tuple):
+class Pattern(tuple):
 
   precedence:int = -1
 
@@ -49,7 +49,7 @@ class Rule(tuple):
   def is_literal(self) -> bool: return False
 
   @property
-  def literal_pattern(self) -> str: raise AssertionError('not a literal rule: {}'.format(self))
+  def literal_pattern(self) -> str: raise AssertionError('not a literal pattern: {}'.format(self))
 
   @property
   def literal_desc(self) -> Optional[str]:
@@ -69,7 +69,7 @@ class Rule(tuple):
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
 
-  def __or__(self, r: 'Rule') -> 'Rule':
+  def __or__(self, r: 'Pattern') -> 'Pattern':
     tl = type(self)
     tr = type(r)
     if tl.precedence > tr.precedence: return r | self
@@ -79,20 +79,20 @@ class Rule(tuple):
     return Choice(self, r)
 
   def __lt__(self, r:Any) -> bool:
-    if not isinstance(r, Rule): return NotImplemented
+    if not isinstance(r, Pattern): return NotImplemented
     return self.precedence < r.precedence or self.precedence == r.precedence and tuple.__lt__(self, r)
 
 
-class Choice(Rule):
+class Choice(Pattern):
 
   precedence = 1
 
-  def __init__(cls, *subs:Rule) -> None: pass # for mypy only.
+  def __init__(cls, *subs:Pattern) -> None: pass # for mypy only.
 
-  def __new__(cls, *subs:Rule):
+  def __new__(cls, *subs:Pattern):
     for sub in subs:
-      if not isinstance(sub, Rule):
-        raise ValueError(f'{cls.__name__} received non-Rule sub: {sub}')
+      if not isinstance(sub, Pattern):
+        raise ValueError(f'{cls.__name__} received non-Pattern sub: {sub}')
     return tuple.__new__(cls, sorted(set(subs)))
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
@@ -104,16 +104,16 @@ class Choice(Rule):
     return '|'.join(sub_patterns)
 
 
-class Seq(Rule):
+class Seq(Pattern):
 
   precedence = 2
 
-  def __init__(cls, *subs:Rule) -> None: pass # for mypy only.
+  def __init__(cls, *subs:Pattern) -> None: pass # for mypy only.
 
-  def __new__(cls, *subs:Rule):
+  def __new__(cls, *subs:Pattern):
     for sub in subs:
-      if not isinstance(sub, Rule):
-        raise ValueError(f'{cls.__name__} received non-Rule sub: {sub}')
+      if not isinstance(sub, Pattern):
+        raise ValueError(f'{cls.__name__} received non-Pattern sub: {sub}')
     return tuple.__new__(cls, subs)
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
@@ -135,28 +135,28 @@ class Seq(Rule):
   def literal_pattern(self): return ''.join(sub.literal_pattern for sub in self)
 
   @staticmethod
-  def of(*subs:Rule) -> Rule:
+  def of(*subs:Pattern) -> Pattern:
     for sub in subs:
-      assert isinstance(sub, Rule), sub
+      assert isinstance(sub, Pattern), sub
     return subs[0] if len(subs) == 1 else Seq(*subs)
 
   @staticmethod
-  def of_iter(subs:Iterable[Rule]) -> Rule:
+  def of_iter(subs:Iterable[Pattern]) -> Pattern:
     return Seq.of(*subs)
 
 
-class Quantity(Rule):
+class Quantity(Pattern):
 
   precedence = 3
   operator:str = ''
 
-  def __init__(cls, sub:Rule) -> None: pass # for mypy only.
+  def __init__(cls, sub:Pattern) -> None: pass # for mypy only.
 
   def __new__(cls, *subs):
     if len(subs) != 1:
       raise ValueError(f'{cls.__name__} expcets single sub; received: {subs}')
-    if not isinstance(subs[0], Rule):
-      raise ValueError(f'{cls.__name__} received non-Rule sub: {subs[0]}')
+    if not isinstance(subs[0], Pattern):
+      raise ValueError(f'{cls.__name__} received non-Pattern sub: {subs[0]}')
     return tuple.__new__(cls, subs)
 
   def gen_regex(self, flavor:str) -> str:
@@ -184,9 +184,9 @@ class Star(Quantity):
     self[0].gen_nfa(mk_node, transitions, branch, branch)
 
   @staticmethod
-  def of(rule:Rule) -> Rule:
-    if isinstance(rule, (Plus, Star)): return rule
-    return Star(rule)
+  def of(pattern:Pattern) -> Pattern:
+    if isinstance(pattern, (Plus, Star)): return pattern
+    return Star(pattern)
 
 
 class Plus(Quantity):
@@ -202,7 +202,7 @@ class Plus(Quantity):
     self[0].gen_nfa(mk_node, transitions, pre, post)
 
 
-class Charset(Rule):
+class Charset(Pattern):
 
   precedence = 4
 

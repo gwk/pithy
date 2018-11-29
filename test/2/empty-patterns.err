@@ -1,2 +1,2 @@
-error: rule is trivially matched from start: a_opt.
-error: rule is trivially matched from start: a_star.
+error: pattern is trivially matched from start: a_opt.
+error: pattern is trivially matched from start: a_star.

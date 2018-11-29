@@ -19,7 +19,7 @@ An automaton consists of two parts:
 * transitions: dictionary of source node to (dictionary of byte to destination).
   * for DFAs, the destination is a single node.
   * for NFAs, the destination is a set of nodes, representing a subset of the next state.
-* match_node_name_sets: dictionary of nodes mapping matching nodes to the set of corresponding rule names.
+* match_node_name_sets: dictionary of nodes mapping matching nodes to the set of corresponding pattern names.
 
 The starting state is always 0 for DFAs, and {0} for NFAs.
 Additionally, 1 and {1} are always the respective invalid states.
@@ -50,10 +50,10 @@ DfaTransitions = Dict[int, DfaStateTransitions]
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, transitions:DfaTransitions, match_node_name_sets:Dict[int, FrozenSet[str]], literal_rules:Set[str]) -> None:
+  def __init__(self, transitions:DfaTransitions, match_node_name_sets:Dict[int, FrozenSet[str]], lit_patterns:Set[str]) -> None:
     self.transitions = transitions
     self.match_node_name_sets = match_node_name_sets
-    self.literal_rules = literal_rules
+    self.lit_patterns = lit_patterns
 
   @property
   def is_empty(self) -> bool:
@@ -118,7 +118,7 @@ class DFA:
     return frozenset(nodes)
 
   @property
-  def rule_names(self) -> FrozenSet[str]: return frozenset().union(*self.match_node_name_sets.values()) # type: ignore
+  def pattern_names(self) -> FrozenSet[str]: return frozenset().union(*self.match_node_name_sets.values()) # type: ignore
 
   def describe(self, label=None) -> None:
     errL(label or type(self).__name__, ':')
@@ -175,7 +175,7 @@ def minimize_dfa(dfa:DFA) -> DFA:
   * https://en.wikipedia.org/wiki/DFA_minimization.
   * https://www.ics.uci.edu/~eppstein/PADS/PartitionRefinement.py
 
-  Additionally, reduce nodes that match more than one rule where possible,
+  Additionally, reduce nodes that match more than one pattern where possible,
   or issue errors if not.
   '''
 
@@ -249,8 +249,8 @@ def minimize_dfa(dfa:DFA) -> DFA:
       except KeyError:
         new_d[char] = new_dst
 
-  # Nodes may match more than one rule when the rules overlap.
-  # If the set of match nodes for a rule is a superset of another rule, ignore it;
+  # Nodes may match more than one pattern when the patterns overlap.
+  # If the set of match nodes for a pattern is a superset of another pattern, ignore it;
   # otherwise intersections are treated as ambiguity errors.
 
   node_names = { mapping[old] : set(names) for old, names in dfa.match_node_name_sets.items() }
@@ -268,11 +268,11 @@ def minimize_dfa(dfa:DFA) -> DFA:
       for other_name in names:
         if other_name == name: continue
         other_nodes = name_nodes[other_name]
-        if other_nodes < nodes: # this rule is a superset of other; it should not match.
+        if other_nodes < nodes: # this pattern is a superset of other; it should not match.
           node_names[node].remove(name)
           break
 
-  # check for ambiguous rules.
+  # check for ambiguous patterns.
   ambiguous_name_groups = { tuple(sorted(names)) for names in node_names.values() if len(names) != 1 }
   if ambiguous_name_groups:
     for group in sorted(ambiguous_name_groups):
@@ -280,5 +280,5 @@ def minimize_dfa(dfa:DFA) -> DFA:
     exit(1)
 
   match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
-  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, literal_rules=dfa.literal_rules)
+  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns)
 

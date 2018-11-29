@@ -8,11 +8,11 @@ from pithy.io import *
 from pithy.json import write_json
 from pithy.string import render_template
 from .defs import ModeTransitions
-from .rules import Rule
+from .patterns import Pattern
 
 
-def output_vscode(path:str, patterns:Dict[str, Rule], mode_rule_names:Dict[str, List[str]], transitions:ModeTransitions,
-  rule_descs:Dict[str, str], license:str, args:Namespace):
+def output_vscode(path:str, patterns:Dict[str, Pattern], mode_pattern_names:Dict[str, List[str]], transitions:ModeTransitions,
+  pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   if not args.syntax_name: exit('error: vscode output requires `-syntax-name` argument.')
   if not args.syntax_scope: exit('error: vscode output requires `-syntax-scope` argument.')
@@ -29,24 +29,24 @@ def output_vscode(path:str, patterns:Dict[str, Rule], mode_rule_names:Dict[str, 
     "repository": repository,
   }
 
-  gen_patterns = {name : rule.gen_regex(flavor='vscode') for name, rule in patterns.items()}
+  gen_patterns = {name : pattern.gen_regex(flavor='vscode') for name, pattern in patterns.items()}
 
-  for mode, rule_names in mode_rule_names.items():
+  for mode, pattern_names in mode_pattern_names.items():
     mode_patterns:List[Any] = []
-    for name in rule_names:
-      rule = patterns[name]
+    for name in pattern_names:
+      pattern = patterns[name]
       key = f'{name}.{scope}'
       if mode != 'main': key = f'{mode}.{key}'
       mode_patterns.append({
         "name": key,
-        "match": rule.gen_regex(flavor='vscode')})
+        "match": pattern.gen_regex(flavor='vscode')})
     repository[mode] = {
       "patterns": mode_patterns,
     }
 
   #py_modes:List[str] = []
-  #for mode, rule_names in sorted(mode_rule_names.items()):
-  #  names_str = ''.join(f'\n      {n!r},' for n in rule_names)
+  #for mode, pattern_names in sorted(mode_pattern_names.items()):
+  #  names_str = ''.join(f'\n      {n!r},' for n in pattern_names)
   #  py_modes.append(f'\n    {mode}={{{names_str}}}')
 
   #py_transitions:List[str] = [f'\n    ({a}, {b}) : ({c}, {d})' for (a, b), (c, d) in transitions.items()]

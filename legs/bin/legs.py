@@ -18,7 +18,7 @@ from ..defs import Mode, ModeTransitions
 from ..parse import parse_legs
 from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, gen_dfa
-from ..rules import NfaMutableTransitions, Rule
+from ..patterns import NfaMutableTransitions, Pattern
 from ..swift import output_swift
 from ..python import output_python3
 from ..vscode import output_vscode
@@ -29,7 +29,7 @@ Legs is a lexer generator: it takes as input a `.legs` grammar file,
 and outputs code that tokenizes text, converting a stream of characters into a stream of chunks of text called tokens.
 
 The grammar file defines the kinds of tokens and the patterns of text that they match.
-The patterns (also called rules) are similar to regular expressions but with several important differences:
+The patterns are similar to regular expressions but with several important differences:
 * character classes are specified using their Unicode names. (TODO: provide documentation)
 * the pattern language is limited to the semantics of formal regular languages.
 
@@ -93,24 +93,24 @@ def main() -> None:
     path = args.path
     try: src = open(path).read()
     except FileNotFoundError:
-      exit(f'legs error: no such rule file: {path!r}')
+      exit(f'legs error: no such pattern file: {path!r}')
   else:
     exit('`must specify either `path` or `-patterns`.')
 
-  license, patterns, mode_rule_names, transitions = parse_legs(path, src)
+  license, patterns, mode_pattern_names, transitions = parse_legs(path, src)
 
   if dbg:
     errSL('\nPatterns:')
-    for name, rule in patterns.items():
-      rule.describe(name=name)
+    for name, pattern in patterns.items():
+      pattern.describe(name=name)
     errL()
 
   mode_dfa_pairs:List[Tuple[str, DFA]] = []
-  for mode, rule_names in sorted(mode_rule_names.items()):
+  for mode, pattern_names in sorted(mode_pattern_names.items()):
     if args.match and mode != match_mode: continue
 
-    named_rules = sorted((name, patterns[name]) for name in rule_names)
-    nfa = gen_nfa(mode, named_rules=named_rules)
+    named_patterns = sorted((name, patterns[name]) for name in pattern_names)
+    nfa = gen_nfa(mode, named_patterns=named_patterns)
     if dbg: nfa.describe(f'{mode}: NFA')
     if dbg or args.stats: nfa.describe_stats(f'{mode} NFA Stats')
     msgs = nfa.validate()
@@ -140,11 +140,11 @@ def main() -> None:
 
   if args.match: exit(f'bad mode: {match_mode!r}')
 
-  rule_descs = { name : rule.literal_desc or name for name, rule in patterns.items() }
-  rule_descs['invalid'] = 'invalid'
-  rule_descs['incomplete'] = 'incomplete'
+  pattern_descs = { name : pattern.literal_desc or name for name, pattern in patterns.items() }
+  pattern_descs['invalid'] = 'invalid'
+  pattern_descs['incomplete'] = 'incomplete'
 
-  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_rule_names)
+  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_pattern_names)
   if dbg: dfa.describe('Combined DFA')
 
   test_cmds:List[List[str]] = []
@@ -159,19 +159,19 @@ def main() -> None:
   if 'python3' in langs:
     path = args.output + ('.py' if args.test else '')
     output_python3(path, mode_transitions=mode_transitions, dfa=dfa,
-      rule_descs=rule_descs, license=license, args=args)
+      pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
     path = args.output + ('.swift' if args.test else '')
     output_swift(path, mode_transitions=mode_transitions, dfa=dfa, node_modes=node_modes,
-      rule_descs=rule_descs, license=license, args=args)
+      pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
   if 'vscode' in langs:
     path = args.output
-    output_vscode(path, patterns=patterns, mode_rule_names=mode_rule_names, transitions=transitions,
-      rule_descs=rule_descs, license=license, args=args)
+    output_vscode(path, patterns=patterns, mode_pattern_names=mode_pattern_names, transitions=transitions,
+      pattern_descs=pattern_descs, license=license, args=args)
 
   if args.test:
     # For each language, run against the specified match arguments, and capture output.
@@ -226,9 +226,9 @@ def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
     outL(f'match: {string!r} -- <none>')
 
 
-def gen_nfa(mode:str, named_rules:List[Tuple[str, Rule]]) -> NFA:
+def gen_nfa(mode:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
   '''
-  Generate an NFA from a set of rules.
+  Generate an NFA from a set of patterns.
   The NFA can be used to match against an argument string,
   but cannot produce a token stream directly.
   The `invalid` node is unreachable, and reserved for later use by the derived DFA.
@@ -243,21 +243,21 @@ def gen_nfa(mode:str, named_rules:List[Tuple[str, Rule]]) -> NFA:
   match_node_names:Dict[int, str] = { invalid: 'invalid' }
 
   transitions:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
-  for name, rule in named_rules:
+  for name, pattern in named_patterns:
     match_node = mk_node()
-    rule.gen_nfa(mk_node, transitions, start, match_node)
+    pattern.gen_nfa(mk_node, transitions, start, match_node)
     dict_put(match_node_names, match_node, name)
-  literal_rules = { name for name, rule in named_rules if rule.is_literal }
-  return NFA(transitions=freeze(transitions), match_node_names=match_node_names, literal_rules=literal_rules)
+  lit_patterns = { name for name, pattern in named_patterns if pattern.is_literal }
+  return NFA(transitions=freeze(transitions), match_node_names=match_node_names, lit_patterns=lit_patterns)
 
 
-def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_rule_names:Dict[str, List[str]]) \
+def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_pattern_names:Dict[str, List[str]]) \
  -> Tuple[DFA, Dict[str, Mode], Dict[int, Mode]]:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
   transitions:DfaTransitions = {}
   match_node_name_sets:Dict[int, FrozenSet[str]] = {}
-  literal_rules:Set[str] = set()
+  lit_patterns:Set[str] = set()
   modes:Dict[str, Mode] = {}
   node_modes:Dict[int, Mode] = {}
   for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
@@ -268,8 +268,8 @@ def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_rule_names:Dict[
     def remap_trans_dict(d:Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }
     transitions.update((remap[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
     match_node_name_sets.update((remap[node], names) for node, names in sorted(dfa.match_node_name_sets.items()))
-    literal_rules.update(dfa.literal_rules)
-  return (DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, literal_rules=literal_rules), modes, node_modes)
+    lit_patterns.update(dfa.lit_patterns)
+  return (DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=lit_patterns), modes, node_modes)
 
 
 ext_langs = {

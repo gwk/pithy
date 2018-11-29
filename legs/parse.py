@@ -11,7 +11,7 @@ from pithy.io import *
 from .unico import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
 from .charsets import unicode_charsets
 
-from .rules import *
+from .patterns import *
 from .defs import ModeTransitions
 
 
@@ -53,10 +53,10 @@ kind_descs = {
 def desc_kind(kind:str) -> str: return kind_descs.get(kind, kind)
 
 
-def parse_legs(path:str, src:str) -> Tuple[str, Dict[str, Rule], Dict[str, List[str]], ModeTransitions]:
+def parse_legs(path:str, src:str) -> Tuple[str, Dict[str, Pattern], Dict[str, List[str]], ModeTransitions]:
   '''
   Parse the legs source given in `src`,
-  returning a dictionary of mode names to rule objects, and a dictionary of mode transitions.
+  returning a dictionary of mode names to pattern objects, and a dictionary of mode transitions.
   '''
 
   tokens_with_comments = list(lexer.lex(src, drop={'space'}))
@@ -70,7 +70,7 @@ def parse_legs(path:str, src:str) -> Tuple[str, Dict[str, Rule], Dict[str, List[
   tokens = [t for t in tokens_with_comments if t.lastgroup != 'comment']
   sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
 
-  patterns:Dict[str, Rule] = {} # keyed by rule name.
+  patterns:Dict[str, Pattern] = {} # keyed by pattern name.
   modes:Dict[str, List[str]] = {} # keyed by mode name.
   transitions:ModeTransitions = {}
 
@@ -92,15 +92,15 @@ def parse_legs(path:str, src:str) -> Tuple[str, Dict[str, Rule], Dict[str, List[
   return (license, patterns, modes, transitions)
 
 
-def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, Rule]) -> None:
+def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, Pattern]) -> None:
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': continue
-    check_is_sym(path, token, 'rule name symbol')
+    check_is_sym(path, token, 'pattern name symbol')
     name = token[0]
     if name in patterns:
-      fail_parse(path, token, f'duplicate rule name: {name!r}.')
-    patterns[name] = parse_rule(path, token, buffer)
+      fail_parse(path, token, f'duplicate pattern name: {name!r}.')
+    patterns[name] = parse_pattern(path, token, buffer)
 
 
 def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], modes:Dict[str, List[str]]) -> None:
@@ -120,7 +120,7 @@ def parse_mode(path:str, buffer:Buffer[Token], patterns:Container[str]) -> List[
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': return mode
-    check_is_sym(path, token, 'rule name')
+    check_is_sym(path, token, 'pattern name')
     name = token[0]
     if name not in patterns: fail_parse(path, token, f'unknown pattern name: {name!r}.')
     mode.append(name)
@@ -142,45 +142,45 @@ def parse_transitions(path:str, buffer:Buffer[Token], patterns:Container[str],
     check_is_sym(path, token, 'expected transition start mode')
     l_mode = token
     check_mode(l_mode)
-    l_rule = consume(path, buffer, kind='sym', subj='transition push rule')
-    check_pattern(l_rule)
+    l_pattern = consume(path, buffer, kind='sym', subj='transition push pattern')
+    check_pattern(l_pattern)
     consume(path, buffer, kind='colon', subj='transition declaration')
     r_mode = consume(path, buffer, kind='sym', subj='transition destination mode')
     check_mode(r_mode)
-    r_rule = consume(path, buffer, kind='sym', subj='transition pop rule')
-    check_pattern(r_rule)
+    r_pattern = consume(path, buffer, kind='sym', subj='transition pop pattern')
+    check_pattern(r_pattern)
     consume(path, buffer, kind='newline', subj='transition')
-    l = (l_mode[0], l_rule[0])
-    r = (r_mode[0], r_rule[0])
+    l = (l_mode[0], l_pattern[0])
+    r = (r_mode[0], r_pattern[0])
     if l in transitions: fail_parse(path, token, f'duplicate transition entry: {l}.')
     transitions[l] = r
 
 
-def parse_rule(path:str, sym_token:Token, buffer:Buffer[Token]) -> Rule:
+def parse_pattern(path:str, sym_token:Token, buffer:Buffer[Token]) -> Pattern:
   assert sym_token.lastgroup == 'sym'
   try: next_token = buffer.peek()
   except StopIteration: pass
   else:
-    if next_token.lastgroup != 'newline': # named rule.
-      consume(path, buffer, kind='colon', subj='rule')
-      return parse_rule_pattern(path, buffer, terminator='newline')
-  # literal symbol rule.
+    if next_token.lastgroup != 'newline': # named pattern.
+      consume(path, buffer, kind='colon', subj='pattern')
+      return parse_pattern_pattern(path, buffer, terminator='newline')
+  # literal symbol pattern.
   text = sym_token[0]
   return Seq.of_iter(Charset.for_char(c) for c in text)
 
 
-def parse_rule_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Rule:
-  'Parse a pattern and return a Rule object.'
-  els:List[Rule] = []
-  def finish() -> Rule: return Seq.of_iter(els)
+def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Pattern:
+  'Parse a pattern and return a Pattern object.'
+  els:List[Pattern] = []
+  def finish() -> Pattern: return Seq.of_iter(els)
   for token in buffer:
     kind = token.lastgroup
     def _fail(msg) -> 'NoReturn': fail_parse(path, token, msg)
-    def quantity(rule_type:Type[Rule]) -> None:
+    def quantity(pattern_type:Type[Pattern]) -> None:
       if not els: _fail('quantity operator must be preceded by a pattern.')
-      els[-1] = rule_type(els[-1])
+      els[-1] = pattern_type(els[-1])
     if kind == terminator: return finish()
-    elif kind == 'paren_o': els.append(parse_rule_pattern(path, buffer, terminator='paren_c'))
+    elif kind == 'paren_o': els.append(parse_pattern_pattern(path, buffer, terminator='paren_c'))
     elif kind == 'brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(sorted(parse_charset(path, buffer, token))))))
     elif kind == 'bar': return parse_choice(path, buffer, left=finish(), terminator=terminator)
     elif kind == 'qmark':   quantity(Opt)
@@ -196,8 +196,8 @@ def parse_rule_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Rule:
   return finish()
 
 
-def parse_choice(path:str, buffer:Buffer[Token], left:Rule, terminator:str) -> Rule:
-  return Choice(left, parse_rule_pattern(path, buffer, terminator=terminator))
+def parse_choice(path:str, buffer:Buffer[Token], left:Pattern, terminator:str) -> Pattern:
+  return Choice(left, parse_pattern_pattern(path, buffer, terminator=terminator))
 
 
 def parse_esc(path:str, token:Token) -> int:
@@ -289,7 +289,7 @@ def check_is_sym(path:str, token:Token, expectation:str) -> None:
   if kind != 'sym':
     fail_parse(path, token, f'expected {expectation}; found {desc_kind(kind)}.')
   if token[0] in reserved_names:
-    fail_parse(path, token, f'rule name is reserved: {token[0]!r}.')
+    fail_parse(path, token, f'pattern name is reserved: {token[0]!r}.')
 
 reserved_names = { 'invalid', 'incomplete' }
 

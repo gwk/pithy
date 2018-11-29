@@ -197,7 +197,7 @@ class Lexer(Iterator[Token]):
   transitions:Dict[int, Dict[int, int]] = {}
   match_node_kinds:Dict[int, str] = {}
   mode_transitions:Dict[int, Dict[str, Tuple[int, str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
-  rule_descs:Dict[str, str] = {}
+  pattern_descs:Dict[str, str] = {}
 
   def __iter__(self) -> Iterator[Token]: return self
 
@@ -263,7 +263,7 @@ def test_main(LexerClass) -> None:
     print(f'\n{name}: {ployRepr(arg)}')
     source = Source(name=name, text=arg.encode('utf8'))
     for token in LexerClass(source=source):
-      kind_desc = LexerClass.rule_descs[token.kind]
+      kind_desc = LexerClass.pattern_descs[token.kind]
       msg = test_desc(source=source, token=token, kind_desc=kind_desc)
       print(source.diagnostic_for_token(token, msg=msg, show_missing_newline=False), end='')
 

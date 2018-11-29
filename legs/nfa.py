@@ -31,10 +31,10 @@ empty_symbol = -1 # not a legitimate byte value.
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, transitions:NfaTransitions, match_node_names:Dict[int, str], literal_rules:Set[str]) -> None:
+  def __init__(self, transitions:NfaTransitions, match_node_names:Dict[int, str], lit_patterns:Set[str]) -> None:
     self.transitions = transitions
     self.match_node_names = match_node_names
-    self.literal_rules = literal_rules
+    self.lit_patterns = lit_patterns
 
 
   @property
@@ -134,7 +134,7 @@ class NFA:
     msgs = []
     for node, name in sorted(self.match_node_names.items()):
       if node in start:
-        msgs.append('error: rule is trivially matched from start: {}.'.format(name))
+        msgs.append('error: pattern is trivially matched from start: {}.'.format(name))
     return msgs
 
   def advance(self, state:FrozenSet[int], byte:int) -> NfaState:
@@ -154,7 +154,7 @@ class NFA:
       #errL(f'NFA step: {bytes([byte])} -> {state}')
     s:Iterable[str] = filtermap_with_mapping(state, self.match_node_names)
     all_matches:FrozenSet[str] = frozenset(s)
-    literal_matches = frozenset(n for n in all_matches if n in self.literal_rules)
+    literal_matches = frozenset(n for n in all_matches if n in self.lit_patterns)
     return literal_matches or all_matches
 
   def advance_empties(self, state:NfaState) -> NfaState:
@@ -231,6 +231,6 @@ def gen_dfa(nfa:NFA) -> DFA:
       node_names[dfa_node].add(name)
   match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
 
-  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, literal_rules=nfa.literal_rules)
+  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=nfa.lit_patterns)
 
 
