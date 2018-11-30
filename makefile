@@ -12,9 +12,9 @@
 _default: test typecheck
 
 build: \
-	legs/data_09_00.py \
-	legs/data_10_00.py \
-	legs/data_11_00.py
+	legs/unicode/data_09_00.py \
+	legs/unicode/data_10_00.py \
+	legs/unicode/data_11_00.py
 
 clean:
 	rm -rf _build/*

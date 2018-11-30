@@ -9,18 +9,18 @@ from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set, Tuple
 from pithy.collection import freeze
 from pithy.dict import dict_put
 from pithy.fs import path_ext
-from pithy.io import errL, errSL, errLL, errZ, outL, outZ
+from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
 from pithy.task import runCO
 
 from ..defs import Mode, ModeTransitions
-from ..parse import parse_legs
 from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, gen_dfa
+from ..parse import parse_legs
 from ..patterns import NfaMutableTransitions, Pattern
-from ..swift import output_swift
 from ..python import output_python3
+from ..swift import output_swift
 from ..vscode import output_vscode
 
 

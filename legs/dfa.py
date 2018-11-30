@@ -39,7 +39,7 @@ from pithy.io import errL, errSL
 from pithy.iterable import first_el, int_tuple_ranges
 from pithy.string import prepend_to_nonempty
 
-from .codepoints import codes_desc
+from .unicode.codepoints import codes_desc
 
 
 DfaState = int
@@ -281,4 +281,3 @@ def minimize_dfa(dfa:DFA) -> DFA:
 
   match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
   return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns)
-

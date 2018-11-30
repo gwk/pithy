@@ -1,14 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-
 from argparse import Namespace
 from importlib.util import find_spec as find_module_spec
 from itertools import chain
 from typing import Any, DefaultDict, Dict, List, Tuple, cast
+
 from pithy.fs import add_file_execute_permissions, path_dir, path_join
-from pithy.string import render_template
 from pithy.iterable import closed_int_intervals
+from pithy.string import render_template
 
 from .defs import Mode, ModeTransitions
 from .dfa import DFA

@@ -1,12 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-
 from argparse import Namespace
 from typing import Dict, List
+
 from pithy.io import *
 from pithy.json import write_json
 from pithy.string import render_template
+
 from .defs import ModeTransitions
 from .patterns import Pattern
 

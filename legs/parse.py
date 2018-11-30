@@ -1,18 +1,17 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
+from typing import Container, Dict, List, Match, NoReturn, Set, Tuple, Type
 
-from typing import Container, Dict, List, Set, Match, NoReturn, Tuple, Type
-from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.buffer import Buffer
-from pithy.lex import Lexer, fail_parse
 from pithy.io import *
+from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
+from pithy.lex import Lexer, fail_parse
 
-from .unico import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
-from .charsets import unicode_charsets
-
-from .patterns import *
 from .defs import ModeTransitions
+from .patterns import *
+from .unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
+from .unicode.charsets import unicode_charsets
 
 
 Token = Match[str]
@@ -307,4 +306,3 @@ escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/')
 if False:
   for k, v in sorted(escape_codes.items()):
     errL(f'{k}: {v!r}')
-

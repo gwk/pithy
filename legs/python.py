@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-
 from argparse import Namespace
 from collections import defaultdict
 from pprint import pformat
 from typing import Dict, Tuple
+
 from pithy.fs import add_file_execute_permissions
 from pithy.io import *
 from pithy.string import render_template
