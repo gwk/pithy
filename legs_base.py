@@ -237,7 +237,7 @@ class Lexer(Iterator[Token]):
     return Token(pos=token_pos, end=end, kind=kind)
 
 
-def ployRepr(string: str) -> str:
+def ploy_repr(string: str) -> str:
   r = ["'"]
   for char in string:
     if char == '\\': r.append('\\\\')
@@ -260,7 +260,7 @@ def test_main(LexerClass) -> None:
   for index, arg in enumerate(argv):
     if index == 0: continue
     name = f'arg{index}'
-    print(f'\n{name}: {ployRepr(arg)}')
+    print(f'\n{name}: {ploy_repr(arg)}')
     source = Source(name=name, text=arg.encode('utf8'))
     for token in LexerClass(source=source):
       kind_desc = LexerClass.pattern_descs[token.kind]
