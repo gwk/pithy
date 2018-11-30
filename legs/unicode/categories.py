@@ -56,19 +56,19 @@ unicode_categories:List[UnicodeCategory] = [ # taken directly from: http://www.u
   _mk_cat('C',  'Other',                 'Cc | Cf | Cs | Co | Cn'),
 ]
 
-def _aliases() -> Dict[str, UnicodeCategory]:
-  aliases = { cat.key : cat for cat in unicode_categories }
-  aliases.update((cat.name, cat) for cat in unicode_categories)
+
+unicode_category_aliases:Dict[str,UnicodeCategory] = { cat.key : cat for cat in unicode_categories }
+
+def _add_aliases() -> None:
+  unicode_category_aliases.update((cat.name, cat) for cat in unicode_categories)
   # add first-word aliases wherever they are unambiguous.
   first_word_counts:Counter[str] = Counter()
   first_word_categories = {}
   for cat in unicode_categories:
     first = cat.name.partition('_')[0]
-    if first in aliases: continue
+    if first in unicode_category_aliases: continue
     first_word_counts[first] += 1
     first_word_categories[first] = cat
-  aliases.update(p for p in first_word_categories.items() if first_word_counts[p[0]] == 1)
-  return aliases
+  unicode_category_aliases.update(p for p in first_word_categories.items() if first_word_counts[p[0]] == 1)
 
-unicode_category_aliases = _aliases()
-
+_add_aliases()

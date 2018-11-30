@@ -18,40 +18,44 @@ def is_code_in_charset(code, charset:CodeRanges) -> bool:
   return i > 0 and code < charset[i - 1][1]
 
 
-def _gen_charsets() -> Dict[str, CodeRanges]:
-  charsets:Dict[str, CodeRanges] = {}
+unicode_charsets:Dict[str,CodeRanges] = {}
+ascii_charsets:Dict[str,CodeRanges] = {}
+
+def _gen_charsets() -> None:
 
   # categories.
   for cat in unicode_categories:
     if cat.subcategories:
-      charsets[cat.key] = tuple(sorted(chain(*(category_ranges[k] for k in cat.subcategories))))
+      unicode_charsets[cat.key] = tuple(sorted(chain(*(category_ranges[k] for k in cat.subcategories))))
     else:
-      charsets[cat.key] = category_ranges[cat.key]
+      unicode_charsets[cat.key] = category_ranges[cat.key]
   # add aliases in a second pass to reuse range values by reference.
   for name, cat in unicode_category_aliases.items():
-    if name in charsets: continue
-    charsets[name] = charsets[cat.key]
+    if name in unicode_charsets: continue
+    unicode_charsets[name] = unicode_charsets[cat.key]
 
   # blocks.
   for k, r in blocks.items():
-    charsets[k] = (r,)
+    unicode_charsets[k] = (r,)
 
   # planes.
   for k, plane in abbreviated_planes.items():
-    charsets[k] = plane
+    unicode_charsets[k] = plane
 
   def add(name:str, abbr:str, *ranges:CodeRange) -> None:
-    charsets[name] = tuple(ranges)
-    if abbr: charsets[abbr] = charsets[name]
+    unicode_charsets[name] = tuple(ranges)
+    if abbr: unicode_charsets[abbr] = unicode_charsets[name]
 
   # Ascii.
   add('Ascii', 'A', (0x00, 0x80))
-  Ascii = charsets['Ascii']
+  Ascii = unicode_charsets['Ascii']
 
   for cat in unicode_categories:
-    ranges = tuple(intersect_sorted_ranges(Ascii, charsets[cat.name]))
+    ranges = tuple(intersect_sorted_ranges(Ascii, unicode_charsets[cat.name]))
     if not ranges: continue
-    add('Ascii_' + cat.name, 'A' + cat.key, *ranges)
+    k = 'Ascii_' + cat.name
+    add(k, 'A' + cat.key, *ranges)
+    ascii_charsets[k] = unicode_charsets[k]
 
   # Control characters. Note that 'Cc' also includes 0x7F (DEL).
   add('Control_0', 'C0', (0x0000, 0x0020))
@@ -66,13 +70,10 @@ def _gen_charsets() -> Dict[str, CodeRanges]:
 
   # Miscellaneous.
 
-  add('Visible', 'V', *union_sorted_ranges(*[charsets[k] for k in ['L', 'M', 'N', 'P', 'S']]))
-  add('Readable', 'R', *union_sorted_ranges(*[charsets[k] for k in ['L', 'M', 'N', 'P', 'S', 'Z']]))
+  add('Visible', 'V', *union_sorted_ranges(*[unicode_charsets[k] for k in ['L', 'M', 'N', 'P', 'S']]))
+  add('Readable', 'R', *union_sorted_ranges(*[unicode_charsets[k] for k in ['L', 'M', 'N', 'P', 'S', 'Z']]))
 
-  add('Ascii_Visible', 'AV', *intersect_sorted_ranges(Ascii, charsets['V']))
-  add('Ascii_Readable', 'AR', *intersect_sorted_ranges(Ascii, charsets['R']))
+  add('Ascii_Visible', 'AV', *intersect_sorted_ranges(Ascii, unicode_charsets['V']))
+  add('Ascii_Readable', 'AR', *intersect_sorted_ranges(Ascii, unicode_charsets['R']))
 
-  return charsets
-
-unicode_charsets = _gen_charsets()
-
+_gen_charsets()
