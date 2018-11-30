@@ -115,8 +115,10 @@ template = r'''// ${license}
 import Foundation
 
 
-public enum ${Name}TokenKind: CustomStringConvertible {
+public enum ${Name}TokenKind: Int, Comparable, CustomStringConvertible {
   ${token_kind_case_defs}
+
+  public static func < (l: ${Name}TokenKind, r: ${Name}TokenKind) -> Bool { return l.rawValue < r.rawValue }
 
   public var description: String {
     switch self {
