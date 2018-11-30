@@ -12,7 +12,6 @@ from pithy.fs import path_ext
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
-from pithy.task import runCO
 
 from ..defs import Mode, ModeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
@@ -174,32 +173,39 @@ def main() -> None:
       pattern_descs=pattern_descs, license=license, args=args)
 
   if args.test:
-    # For each language, run against the specified match arguments, and capture output.
-    # If all of the tests have identical output, then print it; otherwise print each output.
-    from difflib import ndiff
-    from shlex import quote as sh_quote
-    def quote(cmd:List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
-    first_cmd = None
-    first_out = None
-    status = 0
-    for cmd in test_cmds:
-      if args.dbg: errL('\nrunning test:', quote(cmd))
-      code, out = runCO(cmd)
-      if code != 0:
-        errSL('test failed:', quote(cmd))
-        outZ(out)
-        exit(1)
-      if first_cmd is None:
-        first_cmd = cmd
-        first_out = out
-        outZ(first_out)
-      elif out != first_out:
-        errL('test outputs differ:')
-        errSL('-$', quote(first_cmd))
-        errSL('+$', quote(cmd))
-        errZ(*ndiff(first_out.splitlines(keepends=True), out.splitlines(keepends=True)))
-        status = 1
-    exit(status)
+    run_tests(test_cmds, dbg=args.dbg)
+
+
+def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
+  # For each language, run against the specified match arguments, and capture output.
+  # Print the output from the first test, and then the diff for each subsequent output that differs.
+  from difflib import ndiff
+  from shlex import quote as sh_quote
+  from pithy.task import runCO
+
+  def quote(cmd:List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
+
+  first_cmd = None
+  first_out = None
+  status = 0
+  for cmd in test_cmds:
+    if dbg: errL('\nrunning test:', quote(cmd))
+    code, out = runCO(cmd)
+    if code != 0:
+      errSL('test failed:', quote(cmd))
+      outZ(out)
+      exit(1)
+    if first_cmd is None:
+      first_cmd = cmd
+      first_out = out
+      outZ(first_out)
+    elif out != first_out:
+      errL('test outputs differ:')
+      errSL('-$', quote(first_cmd))
+      errSL('+$', quote(cmd))
+      errZ(*ndiff(first_out.splitlines(keepends=True), out.splitlines(keepends=True)))
+      status = 1
+  exit(status)
 
 
 def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
