@@ -4,16 +4,18 @@
 # official data is found here: http://www.unicode.org/Public/zipped/9.0.0/UCD.zip
 
 from argparse import ArgumentParser
-from collections import defaultdict
 from itertools import chain
 from os.path import join as path_join
 from sys import stderr
-from typing import NamedTuple
+from typing import DefaultDict, Dict, Iterator, List, NamedTuple, Tuple
 
 from legs.unico import coalesce_sorted_ranges
 
 
-def main():
+CodeRange = Tuple[int,int]
+
+
+def main() -> None:
   parser = ArgumentParser()
   parser.add_argument('source_dir')
 
@@ -24,7 +26,7 @@ def main():
   categories_path = path_join(args.source_dir, 'extracted', 'DerivedGeneralCategory.txt')
   east_asian_path = path_join(args.source_dir, 'extracted', 'DerivedEastAsianWidth.txt')
 
-  block_names_to_codes = { name.replace(' ', '_').replace('-', '_') : codes for codes, name in parse_rows(blocks_path) }
+  block_names_to_codes = { name.replace(' ', '_').replace('-', '_') : codes for codes, (name,) in parse_rows(blocks_path) }
 
   print('# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.')
   print('# Derived from data published by the Unicode Consortium; see: http://unicode.org/copyright.html.')
@@ -39,8 +41,8 @@ def main():
     print('  {!r}: {},'.format(name, repr_pair(codes)))
   print('}\n\n')
 
-  category_ranges = defaultdict(list)
-  for codes, cat in parse_rows(categories_path):
+  category_ranges = DefaultDict[str,List[CodeRange]](list)
+  for codes, (cat,) in parse_rows(categories_path):
     category_ranges[cat].append(codes)
 
   print('category_ranges: Dict[str, Tuple[Tuple[int, int], ...]] = {')
@@ -57,9 +59,9 @@ def main():
   assert len(coalesced_range) == 1 and coalesced_range[0] == (0, 0x110000)
 
 # Generate terminal double width ranges.
-  east_asian_widths_to_codes = defaultdict(list)
+  east_asian_widths_to_codes = DefaultDict[str,List[CodeRange]](list)
   double_codes = []
-  for codes, width in parse_rows(east_asian_path):
+  for codes, (width,) in parse_rows(east_asian_path):
     if width == 'N': continue # this is the default for omitted codes, but also appears often in the table.
     east_asian_widths_to_codes[width].append(codes)
     if width in ('F', 'W'):
@@ -74,25 +76,29 @@ def main():
   data = parse_data(data_path)
 
 
-def parse_rows(path):
+Row = Tuple[CodeRange, Tuple[str,...]]
+
+def parse_rows(path:str) -> Iterator[Row]:
   for line in open(path):
     line, _, _ = line.partition('#')
     line = line.strip()
     if not line: continue
     els = line.split(';')
-    yield (parse_codes(els[0]),) + tuple(el.strip() for el in els[1:])
+    yield (parse_codes(els[0]), tuple(el.strip() for el in els[1:]))
 
-def parse_codes(string):
+
+def parse_codes(string:str) -> CodeRange:
     low, dots, high = string.partition('..')
     l = int(low, base=16)
     if dots: return (l, int(high, base=16) + 1) # add one to produce end index.
     else: return (l, l + 1)
 
-def repr_pair(pair):
+
+def repr_pair(pair:CodeRange) -> str:
   return '(0x{:04X}, 0x{:04X})'.format(*pair)
 
 
-def parse_data(path):
+def parse_data(path:str) -> Dict[int,'CharInfo']:
   d = {}
   for line in open(path):
     row = line.split(';')
