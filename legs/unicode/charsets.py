@@ -15,7 +15,6 @@ def is_code_in_charset(code, charset:CodeRanges) -> bool:
   if i < len(charset):
     s, e = charset[i]
     if s <= code < e: return True
-  p0, p1 = charset[i - 1] if i > 0 else (0, 0)
   return i > 0 and code < charset[i - 1][1]
 
 
