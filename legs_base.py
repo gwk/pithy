@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from typing import Dict, Iterator, List, Match, NamedTuple, Optional, Tuple
-from pithy.lex import Lexer as _Lexer
 
 
 class Token(NamedTuple):
@@ -187,7 +186,7 @@ class Source:
 
 
 
-class Lexer(Iterator[Token]):
+class LexerBase(Iterator[Token]):
 
   def __init__(self, source:Source) -> None:
     self.source = source
