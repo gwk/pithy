@@ -5,16 +5,14 @@
 # $^: The names of all the prerequisites, with spaces between them.
 # $*: The stem with which an implicit rule matches.
 
+.SECONDARY: # Disable deletion of intermediate products.
+.SUFFIXES: # Disable implicit rules.
 
-.PHONY: _default clean cov pip-develop pip-uninstall pypi-dist pypi-register pypi-upload test typecheck
+.PHONY: _default clean clean-data clean-grammars cov gen gen-data gen-grammars \
+  pip-develop pip-uninstall pypi-dist pypi-upload test typecheck
 
 # First target of a makefile is the default.
 _default: test typecheck
-
-build: \
-	legs/unicode/data_09_00.py \
-	legs/unicode/data_10_00.py \
-	legs/unicode/data_11_00.py
 
 clean:
 	rm -rf _build/*
@@ -22,11 +20,22 @@ clean:
 clean-data:
 	rm legs/data_*.py
 
+clean-grammars:
+	rm grammars/{ascii,unicode}.legs
+
 cov:
 	iotest -fail-fast -coverage
 
-legs/data_%.py: gen-data.py
-	./$^ data/$* > $@
+gen: gen-data gen-grammars
+
+gen-data: \
+	legs/unicode/data_09_00.py \
+	legs/unicode/data_10_00.py \
+	legs/unicode/data_11_00.py \
+
+gen-grammars: \
+	grammars/ascii.legs \
+	grammars/unicode.legs \
 
 install-vscode: vscode-ext/syntaxes/legs.json
 	vscode-ext/install-vscode-ext.sh
@@ -43,11 +52,42 @@ pypi-dist:
 pypi-upload: pypi-dist
 	python3 setup.py sdist upload
 
-test: build
+test: gen
 	iotest -fail-fast
 
-typecheck: build
-	craft-py-check legs gen-data.py legs_base.py -deps pithy
+typecheck: gen
+	craft-py-check legs gen-data.py gen-grammar.py legs_base.py -deps pithy
+
+
+# Targets.
+
+grammars/%.legs: gen-grammar.py
+	./$^ $* > $@
+
+legs/data_%.py: gen-data.py
+	./$^ data/$* > $@
 
 vscode-ext/syntaxes/legs.json: legs.legs
 	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -language vscode -output $@
+
+
+# Perf.
+
+_build/perf:
+	mkdir -p $@
+
+# Perf-swift.
+_build/perf/%-swift: _build/perf/%.swift legs/legs_base.swift perf/main.swift
+	time swiftc -num-threads 8 -O $^ -o $@
+
+_build/perf/%.swift: grammars/%.legs _build/perf
+	legs $< -langs python3 swift -output $@
+
+# Perf-py.
+_build/perf/%-py: _build/perf/%.py legs_base.py perf/main.py
+	echo '#!/usr/bin/env python3' > $@
+	cat _build/perf/$*.py perf/main.py >> $@
+	chmod +x $@
+
+_build/perf/%.py: grammars/%.legs _build/perf
+	legs $< -langs python3 swift -output $@
