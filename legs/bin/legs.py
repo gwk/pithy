@@ -8,7 +8,7 @@ from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set, Tuple
 
 from pithy.collection import freeze
 from pithy.dict import dict_put
-from pithy.fs import path_ext
+from pithy.fs import path_ext, path_stem
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
@@ -42,21 +42,23 @@ lexical errors are found at the ends of `incomplete` tokens and the starts of `i
 def main() -> None:
   parser = ArgumentParser(prog='legs', description=description)
   parser.add_argument('path', nargs='?', help='Path to the .legs file.')
-  parser.add_argument('-patterns', nargs='+', help='Specify legs patterns for quick testing.')
   parser.add_argument('-dbg', action='store_true', help='Verbose debug printing.')
+  parser.add_argument('-langs', nargs='+', default=[], help='Target languages for which to generate lexers.')
   parser.add_argument('-match', nargs='+', help='Attempt to lex each argument string.')
   parser.add_argument('-mode', default=None, help='Mode with which to lex the arguments to `-match`.')
   parser.add_argument('-output', default=None, help='Path to output generated source.')
-  parser.add_argument('-language', default=None, help='Generated source target language.')
+  parser.add_argument('-patterns', nargs='+', help='Specify legs patterns for quick testing.')
   parser.add_argument('-stats', action='store_true', help='Print statistics about the generated automata.')
+  parser.add_argument('-syntax-exts', nargs='*', help='Extensions list for syntax definitions.')
   parser.add_argument('-syntax-name', help='Syntax readable name for syntax definitions.')
   parser.add_argument('-syntax-scope', help='Syntax scope name for textmate-style syntax definitions.')
-  parser.add_argument('-syntax-exts', nargs='*', help='Extensions list for syntax definitions.')
 
   parser.add_argument('-test', nargs='+',
     help='Generate testing source code for the specified language or else all supported languages;'
     ' run each test lexer on the specified arguments.')
+
   parser.add_argument('-type-prefix', default='', help='Type names prefix for generated source code.')
+
   args = parser.parse_args()
   dbg = args.dbg
 
@@ -65,23 +67,24 @@ def main() -> None:
   match_mode = args.mode or 'main'
 
   if args.match and args.output: exit('`-match` and `-output` are mutually exclusive.')
-  if args.match and args.language: exit('`-match` and `-language` are mutually exclusive.')
+  if args.match and args.langs: exit('`-match` and `-langs` are mutually exclusive.')
   if args.match and args.test: exit('`-match` and `-test` are mutually exclusive.')
 
   if args.test and not args.output: exit('`-test` requires `-output`.')
 
   langs:Set[str]
-  if args.language:
-    if args.language not in supported_langs:
-      exit(f'unknown language {args.language!r}; supported languages are: {sorted(supported_langs)}.')
-    langs = {args.language}
+  if args.langs:
+    for lang in args.langs:
+      if lang not in supported_langs:
+        exit(f'unknown language {lang!r}; supported languages are: {sorted(supported_langs)}.')
+    langs = args.langs
   elif args.test:
     langs = test_langs
   elif args.output:
     ext = path_ext(args.output)
     try: langs = {ext_langs[ext]}
     except KeyError:
-      exit(f'unsupported output extension {ext!r}; supported extensions are: {sorted(ext_langs)}.')
+      exit(f'unsupported output language extension {ext!r}; supported extensions are: {sorted(ext_langs)}.')
   else:
     langs = set()
 
@@ -156,24 +159,28 @@ def main() -> None:
     mode_transitions[parent_start][parent_kind] = (child_start, child_kind)
 
   if 'python3' in langs:
-    path = args.output + ('.py' if args.test else '')
+    path = path_for_output(args.output, '.py')
     output_python3(path, mode_transitions=mode_transitions, dfa=dfa,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
-    path = args.output + ('.swift' if args.test else '')
+    path = path_for_output(args.output, '.swift')
     output_swift(path, mode_transitions=mode_transitions, dfa=dfa, node_modes=node_modes,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
   if 'vscode' in langs:
-    path = args.output
+    path = path_for_output(args.output, '.json')
     output_vscode(path, patterns=patterns, mode_pattern_names=mode_pattern_names, transitions=transitions,
       pattern_descs=pattern_descs, license=license, args=args)
 
   if args.test:
     run_tests(test_cmds, dbg=args.dbg)
+
+
+def path_for_output(output:str, ext:str) -> str:
+  return path_stem(output) + ext
 
 
 def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
@@ -279,8 +286,8 @@ def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_pattern_names:Di
 
 
 ext_langs = {
-  '.swift' : 'swift',
   '.py' : 'python3',
+  '.swift' : 'swift',
 }
 
 supported_langs = {'python3', 'swift', 'vscode'}
