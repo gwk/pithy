@@ -54,6 +54,7 @@ unicode_categories:List[UnicodeCategory] = [ # taken directly from: http://www.u
   _mk_cat('Co', 'Private_Use',           'A private-use character'),
   _mk_cat('Cn', 'Unassigned',            'A reserved unassigned code point or a noncharacter'),
   _mk_cat('C',  'Other',                 'Cc | Cf | Cs | Co | Cn'),
+  _mk_cat('CE', 'Other_Encodable',       'Cc | Cf | Co | Cn'), # This category is a Legs invention; excludes unencodable surrogates.
 ]
 
 
