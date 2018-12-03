@@ -26,14 +26,14 @@ from ..ctx import Ctx
 def main() -> None:
   start_time = time.time()
   arg_parser = argparse.ArgumentParser(description='iotest: a simple file-based test harness.')
+  arg_parser.add_argument('paths', nargs='*', default=['test'], help='test directories to search.')
   arg_parser.add_argument('-build-dir')
-  arg_parser.add_argument('-parse-only', action='store_true', help='parse test cases and exit.')
   arg_parser.add_argument('-coverage', action='store_true', help='use coven to trace test coverage.')
+  arg_parser.add_argument('-dbg', action='store_true', help='debug mode: print extra info; implies -fast).')
+  arg_parser.add_argument('-fail-fast',  action='store_true', help='exit on first error; implied by -dbg.')
   arg_parser.add_argument('-no-coverage-report', action='store_true', help='do not report coverage.')
   arg_parser.add_argument('-no-times', action='store_true', help='do not report test times.')
-  arg_parser.add_argument('-fail-fast',  action='store_true', help='exit on first error; implied by -dbg.')
-  arg_parser.add_argument('-dbg', action='store_true', help='debug mode: print extra info; implies -fast).')
-  arg_parser.add_argument('paths', nargs='*', default=['test'], help='test directories to search.')
+  arg_parser.add_argument('-parse-only', action='store_true', help='parse test cases and exit.')
   args = arg_parser.parse_args()
 
   if args.dbg: errL('iotest: DEBUG MODE ON.')
