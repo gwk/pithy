@@ -245,7 +245,7 @@ def case_stem_for_path(path:str) -> str:
 
 def add_iot_configs(configs: Dict, path: str) -> None:
   stem = case_stem_for_path(path)
-  if '.' in stem: exit(f"iotest error: .iot name cannot contain '.': {path!r}.")
+  if '.' in stem: exit(f"iotest error: .iot name stem cannot contain '.': {stem!r}; path: {path!r}.")
   text = read_from_path(path)
   if not text or text.isspace():
     configs[stem].setdefault('.test_info_paths', set()).add(path)
