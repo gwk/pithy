@@ -4,8 +4,10 @@ compile process was expected to return code: 0; actual code: 1.
 compile step 0 failed: `test-meta/1/compile-fail.py`
 cat _b/test-meta/1/compile-fail/compile-fail.compile-out-00
 compile-fail: std out.
+
 cat _b/test-meta/1/compile-fail/compile-fail.compile-err-00
 compile-fail: error.
+
 ================================================================
 
 

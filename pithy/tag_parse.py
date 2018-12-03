@@ -18,7 +18,7 @@ import typing
 
 from itertools import chain
 from typing import Callable, Dict, Match, Iterable, Iterator, List, Sequence, Tuple, Union
-from .ansi import TXT_R, TXT_Y, RST_TXT
+from .ansi import TXT_R, TXT_Y, RST_TXT, sgr
 from .buffer import Buffer
 
 
@@ -202,7 +202,7 @@ class TagTreeUnexpected(TagTreeFlawed):
 
   class_label = 'Unexpected'
   ansi_color = TXT_R
-  ansi_reset = RST_TXT
+  ansi_reset = sgr(RST_TXT)
 
   def __new__(cls, *args) -> TagTree:
     assert len(args) == 1
@@ -219,7 +219,7 @@ class TagTreeUnterminated(TagTreeFlawed):
 
   class_label = 'Unterminated'
   ansi_color = TXT_Y
-  ansi_reset = RST_TXT
+  ansi_reset = sgr(RST_TXT)
 
   @property
   def contents(self) -> Iterable[Node]:

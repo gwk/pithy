@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from html import escape as html_escape
 from pithy.fs import norm_path, path_dir, path_exists, path_ext, path_join, path_name_stem, rel_path
-from pithy.io import errSL
+from pithy.io import errSL, errSN
 from pithy.json import load_json
 from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, Sequence, Union, TextIO, Tuple, cast
 
@@ -517,7 +517,7 @@ class Ctx:
     line, txt = src
     if col is None: col = 0
     errSL(f'{self.src_path}:{line+1}:{col+1}: {label}:', *items)
-    errSL(txt.rstrip('\n'))
+    errSN(txt)
 
   def warn(self, src: SrcLine, *items: Any, col:int=None) -> None:
     self.msg(src, 'warning', items, col)
@@ -576,7 +576,7 @@ def parse(ctx: Ctx, src_lines: Iterable[SrcLine]) -> None:
     line_idx, version_line = src
     m = version_re.fullmatch(version_line)
     if m is None:
-      ctx.error(src, f'first line must specify writeup version matching pattern: {version_re.pattern!r}\n'
+      ctx.error(src, f'first line must specify writeup version matching pattern: `{version_re.pattern}`\n'
         '  (The only currently supported version number is 0.)')
     version = int(m.group(1))
     if version != 0:

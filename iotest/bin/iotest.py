@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import argparse
+import re
 import shlex
 import time
 
@@ -9,7 +10,7 @@ from collections import defaultdict
 from sys import stdout, stderr
 from typing import *
 
-from pithy.ansi import RST_OUT, TXT_B_OUT, TXT_D_OUT, TXT_R_OUT
+from pithy.ansi import sgr, gray26, rgb6, BG, FILL_OUT, INVERT, RST_OUT, TTY_OUT, TXT
 from pithy.dict import dict_fan_by_key_pred
 from pithy.io import *
 from pithy.string import string_contains
@@ -20,11 +21,6 @@ from pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
 
 from ..case import Case, FileExpectation, ParConfig, TestCaseError, file_expectation_fns
 from ..ctx import Ctx
-
-
-bar_width = 64
-dflt_build_dir = '_build'
-dflt_timeout = 4
 
 
 def main() -> None:
@@ -383,8 +379,8 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
     if not status:
       outL(f'\ncompile step {i} failed: `{shell_cmd_str(compile_cmd)}`')
       if status is not None: # not aborted; output is interesting.
-        cat_file(compile_out_path, color=TXT_R_OUT)
-        cat_file(compile_err_path, color=TXT_R_OUT)
+        cat_file(compile_out_path)
+        cat_file(compile_err_path)
       return False
 
   if case.in_ is not None:
@@ -482,7 +478,7 @@ def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
     return True
   is_empty = not act_val
   outL(f'\noutput file does not {exp.mode} expectation. actual value:', (" ''" if is_empty else ''))
-  if not is_empty: cat_file(path, color=TXT_B_OUT)
+  if not is_empty: cat_file(path)
   if not exp.val:
     outL('Expected empty file.')
     return False
@@ -490,8 +486,9 @@ def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
     path_expected = path + '.expected'
     write_to_path(path_expected, exp.val)
     cmd = diff_cmd + [rel_path(path_expected), rel_path(path)]
-    outL(TXT_D_OUT, ' '.join(cmd), RST_OUT)
+    outL(QUOTE, ' '.join(cmd), FILL_OUT)
     run(cmd, exp=None)
+    outL(QUOTE_END, FILL_OUT)
   elif exp.mode == 'match':
     act_lines = act_val.splitlines(True)
     assert exp.match_error is not None
@@ -504,16 +501,45 @@ def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
 diff_cmd = 'git diff --exit-code --no-index --no-prefix --no-renames --histogram --color=auto --ws-error-highlight=old,new'.split()
 
 
-def cat_file(path: str, color: str, limit=-1) -> None:
-  outL(TXT_D_OUT, 'cat ', rel_path(path), RST_OUT)
+def cat_file(path: str, limit=-1) -> None:
+  outL(QUOTE, 'cat ', rel_path(path), FILL_OUT)
+  line = None
   with open(path) as f:
-    line = None
-    for i, line in enumerate(f, 1):
-      l = line.rstrip('\n')
-      outL(color, l, RST_OUT)
+    for i, line in enumerate(f):
       if i == limit: return #!cov-ignore.
-    if line is not None and not line.endswith('\n'):
-      outL('(missing final newline)') #!cov-ignore.
+      sanitized = []
+      for m in sanitize_re.finditer(line):
+        s = m[0]
+        if m.lastgroup: # Visible.
+          sanitized.append(s)
+        else: # Not visible.
+          escaped = escape_reprs.get(s) or f'\\{ord(m[0]):x};'
+          sanitized.append(f'{ESCAPE_OUT}{escaped}{RST_OUT}')
+      outN(*sanitized)
+  if line is None:
+    outL(QUOTE_END, '(empty)', FILL_OUT)
+  elif not line.endswith('\n'):
+    outL(QUOTE_END, '(missing final newline)', FILL_OUT) #!cov-ignore.
+  else:
+    outL(QUOTE_END, FILL_OUT)
 
+
+sanitize_re = re.compile(r'(?P<vis>[\n -~]+)|.')
+escape_reprs = {
+  '\r': '\\r',
+  '\t': '\\t',
+}
 
 def shell_cmd_str(cmd: List[str]) -> str: return ' '.join(shlex.quote(word) for word in cmd)
+
+
+# Constants.
+
+bar_width = 64
+dflt_build_dir = '_build'
+dflt_timeout = 4
+
+# Colors.
+QUOTE = TTY_OUT and sgr(BG, gray26(6))
+QUOTE_END = TTY_OUT and sgr(BG, gray26(4))
+ESCAPE_OUT = TTY_OUT and sgr(TXT, rgb6(4,1,0), INVERT)

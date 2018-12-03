@@ -7,6 +7,10 @@ from os import environ
 from ..diff import calc_diff
 from sys import stderr, stdout
 from typing import Any, Dict, List, Match, Optional, Set, Tuple
+from pithy.ansi import (
+  sgr, rgb6, gray26,
+  BG, TXT, BOLD, INVERT, FILL,
+  RST, RST_BG, RST_BOLD, RST_INVERT, RST_TXT)
 
 
 class DiffLine:
@@ -400,49 +404,6 @@ strange_char_names.update({
 strange_char_trans_table = str.maketrans(strange_char_names)
 
 
-# ANSI control sequence indicator.
-CSI = '\x1b['
-
-ERASE_LINE_F = CSI + 'K' # Sending erase line forward while background color is set colors to end of line.
-
-def sgr(*codes:Any) -> str:
-  'Select Graphic Rendition control sequence string.'
-  code = ';'.join(str(c) for c in codes)
-  return '\x1b[{}m'.format(code)
-
-RST = sgr()
-
-RST_BOLD, RST_ULINE, RST_BLINK, RST_INVERT, RST_TXT, RST_BG = (22, 24, 25, 27, 39, 49)
-
-BOLD, ULINE, BLINK, INVERT = (1, 4, 5, 7)
-
-
-# xterm-256 sequence initiators; these should be followed by a single color index.
-# both text and background can be specified in a single sgr call.
-TXT = '38;5'
-BG = '48;5'
-
-# RGB6 color cube: 6x6x6, from black to white.
-K = 16  # black.
-W = 231 # white.
-
-# Grayscale: the 24 palette values have a suggested 8 bit grayscale range of [8, 238].
-middle_gray_indices = range(232, 256)
-
-def gray26(n:int) -> int:
-  assert 0 <= n < 26
-  if n == 0: return K
-  if n == 25: return W
-  return W + n
-
-def rgb6(r:int, g:int, b:int) -> int:
-  'index RGB triples into the 256-color palette (returns 16 for black, 231 for white).'
-  assert 0 <= r < 6
-  assert 0 <= g < 6
-  assert 0 <= b < 6
-  return (((r * 6) + g) * 6) + b + 16
-
-
 # same-same colors.
 
 C_FILE = sgr(BG, rgb6(1, 0, 1))
@@ -471,7 +432,7 @@ C_RST_TOKEN = sgr(RST_TXT, RST_BOLD)
 C_STRANGE = sgr(INVERT)
 C_RST_STRANGE = sgr(RST_INVERT)
 
-C_END = ERASE_LINE_F + RST # Erase-line fills the background color to the end of line.
+C_END = FILL
 
 
 def vscode_path(path:str) -> str:

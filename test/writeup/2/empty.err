@@ -1,3 +1,3 @@
-empty.wu:1:1: error: first line must specify writeup version matching pattern: 'writeup v(\\d+)\\n'
+empty.wu:1:1: error: first line must specify writeup version matching pattern: `writeup v(\d+)\n`
   (The only currently supported version number is 0.)
 
