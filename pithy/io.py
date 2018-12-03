@@ -30,9 +30,19 @@ def writeL(file: TextIO, *items: Any, sep='', flush=False) -> None:
   "Write `items` to file; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=file, flush=flush)
 
+def writeN(file: TextIO, *items: Any, sep='', flush=False) -> None:
+  "Write `items` to file; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
+  end = ('' if items and items[-1].endswith('\n') else '\n')
+  print(*items, sep=sep, end=end, file=file, flush=flush)
+
 def writeSL(file: TextIO, *items: Any, flush=False) -> None:
   "Write `items` to file; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=file, flush=flush)
+
+def writeSN(file: TextIO, *items: Any, flush=False) -> None:
+  "Write `items` to file; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
+  end = ('' if items and items[-1].endswith('\n') else '\n')
+  print(*items, sep=' ', end=end, file=file, flush=flush)
 
 def writeLL(file: TextIO, *items: Any, flush=False) -> None:
   "Write `items` to file; sep='\\n', end='\\n'."
@@ -94,9 +104,19 @@ def outL(*items: Any, sep='', flush=False) -> None:
   "Write `items` to std out; sep='', end='\\n'."
   print(*items, sep=sep, flush=flush)
 
+def outN(*items: Any, sep='', flush=False) -> None:
+  "Write `items` to std out; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
+  end = ('' if items and items[-1].endswith('\n') else '\n')
+  print(*items, sep=sep, end=end, flush=flush)
+
 def outSL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep=' ', end='\\n'."
   print(*items, flush=flush)
+
+def outSN(*items: Any, flush=False) -> None:
+  "Write `items` to std out; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
+  end = ('' if items and items[-1].endswith('\n') else '\n')
+  print(*items, sep=' ', end=end, flush=flush)
 
 def outLL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep='\\n', end='\\n'."
@@ -133,9 +153,19 @@ def errL(*items: Any, sep='', flush=False) -> None:
   "Write items to std err; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=stderr, flush=flush)
 
+def errN(*items: Any, sep='', flush=False) -> None:
+  "Write `items` to std err; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
+  end = ('' if items and items[-1].endswith('\n') else '\n')
+  print(*items, sep=sep, end=end, file=stderr, flush=flush)
+
 def errSL(*items: Any, flush=False) -> None:
   "Write items to std err; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=stderr, flush=flush)
+
+def errSN(*items: Any, flush=False) -> None:
+  "Write `items` to std err; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
+  end = ('' if items and items[-1].endswith('\n') else '\n')
+  print(*items, sep=' ', end=end, file=stderr, flush=flush)
 
 def errLL(*items: Any, flush=False) -> None:
   "Write items to std err; sep='\\n', end='\\n'."
