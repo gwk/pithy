@@ -271,6 +271,15 @@ def clip_newlines(iterable: Iterable[str]) -> Iterable[str]:
     yield line.rstrip('\n')
 
 
+def confirm(question:str) -> bool:
+  from .term import change_mode, CBREAK
+  print(f'{question}? press "y" to confirm: ', end='', flush=True)
+  with change_mode(CBREAK):
+    response = stdin.read(1)
+    print(response)
+    return (response == 'y')
+
+
 def assert_eq(a: Any, b: Any):
   if a != b:
     raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
