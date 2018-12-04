@@ -29,7 +29,7 @@ class FileExpectation:
   def __init__(self, path: str, info: Dict[str, str], expand_str_fn: Callable) -> None:
     if path.find('..') != -1:
       raise TestCaseError(f"file expectation {path}: cannot contain '..'")
-    self.path = path
+    self.path = expand_str_fn(path)
     self.mode = info.get('mode', 'equal')
     validate_exp_mode(path, self.mode)
     try:
@@ -42,6 +42,7 @@ class FileExpectation:
       exp_path_expanded = expand_str_fn(exp_path)
       val = read_from_path(exp_path_expanded)
     self.val = expand_str_fn(val)
+    self.src_path = info.get('path') # Do not yet have capability to update the value within an iot file.
     if self.mode == 'match':
       self.match_pattern_pairs = self.compile_match_lines(self.val)
     else:
@@ -74,7 +75,8 @@ class FileExpectation:
 
 
   def __repr__(self) -> str:
-    return 'FileExpectation({!r}, {!r}, {!r})'.format(self.path, self.mode, self.val)
+    val_repr = repr(self.val) if len(self.val) < 64 else repr(self.val[:64]) + '…'
+    return f'FileExpectation({self.path!r}, {self.mode!r}, {val_repr})'.format(self.path, self.mode, self.val)
 
 
 class ParConfig(NamedTuple):
@@ -91,7 +93,8 @@ class Case:
 
   def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: Dict, par_configs: List[ParConfig],
    par_stems_used: Set[str]) -> None:
-    self.stem: str = path_dir(stem) if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
+    self.dir: str = path_dir(stem)
+    self.stem: str = self.dir if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
     self.name: str = path_name(self.stem)
     # derived properties.
     self.multi_index: Optional[int] = None
@@ -217,7 +220,7 @@ class Case:
     env['PROJ'] = abs_path(ctx.proj_dir)
     env['SRC'] = self.dflt_src_paths[0] if len(self.dflt_src_paths) == 1 else 'NONE'
     env['STEM'] = self.stem
-    env['DIR'] = path_dir(self.stem)
+    env['DIR'] = self.dir
 
     def default_to_env(key: str) -> None:
       if key not in env and key in os.environ:
@@ -322,8 +325,8 @@ class Case:
 
 iot_key_subs = {
   '.in' : 'in_',
-  '.err' : 'err_val',
-  '.out' : 'out_val',
+  '.err' : 'err_path',
+  '.out' : 'out_path',
   '.dflt_src_paths' : 'dflt_src_paths',
   '.test_info_paths' : 'test_info_paths',
   'in' : 'in_',
@@ -348,7 +351,7 @@ def validate_exp_mode(key: str, mode: str) -> None:
 
 def validate_exp_dict(key: str, val: Any) -> None:
   if not is_dict(val):
-    raise TestCaseError(f'file expectation: {key}: value must be a dictionary.')
+    raise TestCaseError(f'file expectation: {key}: value must be a dictionary; recieved {val!r}')
   for k in val:
     if k not in ('mode', 'path', 'val'):
       raise TestCaseError(f'file expectation: {key}: invalid expectation property: {k}')
@@ -356,10 +359,10 @@ def validate_exp_dict(key: str, val: Any) -> None:
 
 def validate_files_dict(key: str, val: Any) -> None:
   if not is_dict(val):
-    raise TestCaseError(f'file expectation: {key}: value must be a dictionary.')
+    raise TestCaseError(f'file expectation: {key}: value must be a dictionary; recieved {val!r}')
   for k, exp_dict in val.items():
     if k in ('out', 'err'):
-      raise TestCaseError(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val).')
+      raise TestCaseError(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val)')
     validate_exp_dict(k, exp_dict)
 
 def validate_links_dict(key: str, val: Any) -> None:

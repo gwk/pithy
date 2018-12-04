@@ -31,6 +31,7 @@ def main() -> None:
   arg_parser.add_argument('-coverage', action='store_true', help='Use coven to trace test coverage.')
   arg_parser.add_argument('-dbg', action='store_true', help='Debug mode: print extra info; implies -fast).')
   arg_parser.add_argument('-fail-fast',  action='store_true', help='Exit on first error; implied by -dbg.')
+  arg_parser.add_argument('-interactive', action='store_true', help='Interactively update failing tests.')
   arg_parser.add_argument('-no-coverage-report', action='store_true', help='Do not report coverage.')
   arg_parser.add_argument('-no-times', action='store_true', help='Do not report test times.')
   arg_parser.add_argument('-parse-only', action='store_true', help='Parse test cases and exit.')
@@ -61,6 +62,7 @@ def main() -> None:
     coverage=args.coverage,
     dbg=args.dbg,
     fail_fast=fail_fast,
+    interactive=args.interactive,
     parse_only=args.parse_only,
     proj_dir=proj_dir,
     show_times=(not args.no_times),
@@ -204,7 +206,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   for path in val_paths:
     stem = case_stem_for_path(path)
     if path_ext(path) in implied_case_exts:
-      add_std_val(config=configs[stem], path=path)
+      add_std_file(config=configs[stem], path=path)
     else:
       configs[stem].setdefault('.dflt_src_paths', []).append(path)
 
@@ -274,14 +276,14 @@ def add_iot_configs(configs: Dict, path: str) -> None:
     exit(f'iotest error: {stem}: case iot contents is not a dictionary: {path!r}')
 
 
-def add_std_val(config: Dict, path: str) -> None:
+def add_std_file(config: Dict, path: str) -> None:
+  'Add a standard file (i.e. `.in`, `.out`, `.err`).'
   ext = path_ext(path)
-  val = read_from_path(path)
   if ext in config: # TODO: this check should occur in add_iot_configs.
     exit(f'iotest error: {path}: test case configuration contains reserved key: {ext!r}')
-  assert ext != '.iot'
+  assert ext in ('.in', '.out', '.err'), ext
   config.setdefault('.test_info_paths', set()).add(path)
-  config[ext] = val
+  config[ext] = path
 
 
 def compile_par_stem_re(stem: str) -> Pattern[str]:
@@ -393,7 +395,7 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
   if ctx.dbg: errSL('input path:', in_path)
 
   if case.code is None:
-    exp_code = 1 if case.err_val else 0
+    exp_code = 1 if (case.err_val or case.err_path) else 0
   else:
     exp_code = case.code
 
@@ -424,7 +426,7 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
     return False
 
   # use a list comprehension to ensure that we always report all failed expectations.
-  exps_ok = all([check_file_exp(ctx, case.test_dir, exp) for exp in case.test_expectations])
+  exps_ok = all([check_file_exp(ctx=ctx, case=case, exp=exp) for exp in case.test_expectations])
   return status and exps_ok
 
 
@@ -458,17 +460,17 @@ def run_cmd(ctx:Ctx, coverage_cases: Optional[List[Case]], case: Case, label: st
     return None
 
 
-def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
+def check_file_exp(ctx:Ctx, case:Case, exp:FileExpectation) -> bool:
   'return True if expectation is met.'
   if ctx.dbg: errL(f'check_file_exp: {exp}')
-  path = path_join(test_dir, exp.path)
+  path = rel_path(path_join(case.test_dir, exp.path))
   # TODO: support binary files by getting read mode from test case.
   # Expected read mode could alse be indicated by using a bytes value for the expectation.
   try:
     with open(path, errors='replace') as f:
       act_val = f.read()
   except FileNotFoundError as e:
-    outL(f'\niotest: test did not output expected file: {path}')
+    outL(f'\niotest: test did not output expected file: {exp.path}')
     return False
   except Exception as e:
     outL(f'\niotest: could not read test output file: {path}\n  exception: {e!r}')
@@ -476,15 +478,16 @@ def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
     return False
   if file_expectation_fns[exp.mode](exp, act_val):
     return True
+
   is_empty = not act_val
   outL(f'\noutput file does not {exp.mode} expectation. actual value:', (" ''" if is_empty else ''))
   if not is_empty: cat_file(path)
+
   if not exp.val:
     outL('Expected empty file.')
-    return False
-  if exp.mode == 'equal': # show a diff.
+  elif exp.mode == 'equal': # show a diff.
     path_expected = path + '.expected'
-    write_to_path(path_expected, exp.val)
+    write_to_path(path_expected, exp.val) # TODO: only write out if it is not already in a file.
     cmd = diff_cmd + [rel_path(path_expected), rel_path(path)]
     outL(QUOTE, ' '.join(cmd), FILL_OUT)
     run(cmd, exp=None)
@@ -494,6 +497,13 @@ def check_file_exp(ctx:Ctx, test_dir: str, exp: FileExpectation) -> bool:
     assert exp.match_error is not None
     i, exp_pattern, act_line = exp.match_error
     outL(f'match failed at line {i}:\npattern:   {exp_pattern!r}\nactual text: {act_line!r}')
+
+  if ctx.interactive:
+    if exp.src_path:
+      if confirm(f'update expectation to match result ({path} -> {exp.src_path})'):
+        copy_path(path, exp.src_path)
+    else:
+      outSL('note: cannot update expectation:', exp)
   outSL('-' * bar_width)
   return False
 

@@ -8,6 +8,7 @@ class Ctx(NamedTuple):
   coverage: bool
   dbg: bool
   fail_fast: Callable[..., None]
+  interactive: bool
   parse_only: bool
   proj_dir: str
   show_times: bool
