@@ -10,7 +10,8 @@ from collections import defaultdict
 from sys import stdout, stderr
 from typing import *
 
-from pithy.ansi import sgr, gray26, rgb6, BG, FILL_OUT, INVERT, RST_OUT, TTY_OUT, TXT
+from pithy.ansi import (sanitize_for_console, is_out_tty, sgr, gray26, rgb6,
+  BG, FILL_OUT, INVERT, RST_INVERT, RST_OUT, TTY_OUT, TXT)
 from pithy.dict import dict_fan_by_key_pred
 from pithy.io import *
 from pithy.string import string_contains
@@ -517,15 +518,7 @@ def cat_file(path: str, limit=-1) -> None:
   with open(path) as f:
     for i, line in enumerate(f):
       if i == limit: return #!cov-ignore.
-      sanitized = []
-      for m in sanitize_re.finditer(line):
-        s = m[0]
-        if m.lastgroup: # Visible.
-          sanitized.append(s)
-        else: # Not visible.
-          escaped = escape_reprs.get(s) or f'\\{ord(m[0]):x};'
-          sanitized.append(f'{ESCAPE_OUT}{escaped}{RST_OUT}')
-      outN(*sanitized)
+      outN(*sanitize_for_console(line, allow_sgr=is_out_tty, escape=ESCAPE_OUT, unescape=UNESCAPE_OUT))
   if line is None:
     outL(QUOTE_END, '(empty)', FILL_OUT)
   elif not line.endswith('\n'):
@@ -534,7 +527,7 @@ def cat_file(path: str, limit=-1) -> None:
     outL(QUOTE_END, FILL_OUT)
 
 
-sanitize_re = re.compile(r'(?P<vis>[\n -~]+)|.')
+sanitize_re = re.compile(r'(?P<vis>[\n\x1b -~]+)|.')
 escape_reprs = {
   '\r': '\\r',
   '\t': '\\t',
@@ -552,4 +545,5 @@ dflt_timeout = 4
 # Colors.
 QUOTE = TTY_OUT and sgr(BG, gray26(6))
 QUOTE_END = TTY_OUT and sgr(BG, gray26(4))
-ESCAPE_OUT = TTY_OUT and sgr(TXT, rgb6(4,1,0), INVERT)
+ESCAPE_OUT = TTY_OUT and sgr(INVERT)
+UNESCAPE_OUT = TTY_OUT and sgr(RST_INVERT)
