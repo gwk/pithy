@@ -315,8 +315,8 @@ class Case:
       exp = FileExpectation(self.std_name(name), info, expand_str)
       self.test_expectations.append(exp)
 
-    add_std_exp('err', self.err_mode, self.err_path, self.err_val)
-    add_std_exp('out', self.out_mode, self.out_path, self.out_val)
+    add_std_exp('err', mode=self.err_mode, path=self.err_path, val=self.err_val)
+    add_std_exp('out', mode=self.out_mode, path=self.out_path, val=self.out_val)
 
     for path, info in (self.files or {}).items():
       exp = FileExpectation(path, info, expand_str)
