@@ -51,7 +51,7 @@ CSI n T: Scroll whole page down by n (default 1) lines. New lines are added at t
 import re as _re
 
 from sys import stderr, stdout
-from typing import Any
+from typing import Any, List
 
 is_err_tty = stderr.isatty()
 is_out_tty = stdout.isatty()
@@ -190,3 +190,33 @@ def show_cursor(show_cursor: Any) -> str:
   return CURSOR_SHOW if show_cursor else CURSOR_HIDE
 
 
+def sanitize_for_console(*text:str, allow_sgr=False, allow_tab=False, escape=sgr(INVERT), unescape=sgr(RST_INVERT)) -> List[str]:
+  sanitized = []
+  for t in text:
+    for m in _sanitize_re.finditer(t):
+      s = m[0]
+      k = m.lastgroup
+      if k == 'vis' or (allow_sgr and k == 'sgr') or (allow_tab and k == 'tab'):
+        sanitized.append(s)
+      else: # Sanitize.
+        sanitized.append(f'{escape}{escape_char_for_console(s)}{unescape}')
+  return sanitized
+
+
+_sanitize_re = _re.compile(r'''(?x)
+  (?P<vis> [\n -~]+ )
+| (?P<sgr> \x1b (?= \[ [\d;]* m ))
+| (?P<tab> \t )
+| .
+''')
+
+
+def escape_char_for_console(char:str) -> str:
+  'Escape characters using ploy syntax.'
+  return escape_reprs.get(char) or f'\\{ord(char):x};'
+
+escape_reprs = {
+  '\r': '\\r',
+  '\t': '\\t',
+  '\v': '\\v',
+}

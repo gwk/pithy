@@ -8,9 +8,9 @@ from ..diff import calc_diff
 from sys import stderr, stdout
 from typing import Any, Dict, List, Match, Optional, Set, Tuple
 from pithy.ansi import (
-  sgr, rgb6, gray26,
-  BG, TXT, BOLD, INVERT, FILL,
-  RST, RST_BG, RST_BOLD, RST_INVERT, RST_TXT)
+  sanitize_for_console, sgr, rgb6, gray26,
+  BG, TXT, BOLD, FILL,
+  RST, RST_BOLD, RST_TXT)
 
 
 class DiffLine:
@@ -79,7 +79,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
 
   # Detect if we should skip these lines.
   if kind not in ('diff', 'loc'): skip = True
-  elif graph_pat.match(first.plain_text).end(): skip = True # type: ignore
+  elif git_diff_graph_mode_pat.match(first.plain_text).end(): skip = True # type: ignore
   if skip:
     for line in lines: print(line.rich_text)
     return
@@ -197,7 +197,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
       add_token_diffs(rem_lines, add_lines)
     elif is_src: # ctx or moved.
       for l in chunk:
-        l.text = highlight_strange_chars(l.text)
+        l.text = ''.join(sanitize_for_console(l.text))
 
     # Print lines.
     for line in chunk:
@@ -300,7 +300,7 @@ class HighlightState:
           if self.state != H_TOKEN:
             self.state = H_TOKEN
             line_frags.append(self.hl_token)
-        line_frags.append(highlight_strange_chars(frag))
+        line_frags.extend(sanitize_for_console(frag))
 
   def update_lines(self) -> None:
     for line, line_frags in zip(self.lines, self.frags):
@@ -324,15 +324,9 @@ def is_token_junk(token:str) -> bool:
   return token.isspace() and token != '\n'
 
 
-def highlight_strange_chars(string:str) -> str:
-  return strange_char_pat.sub(
-    lambda m: '{}{}{}'.format(C_STRANGE, m[0].translate(strange_char_trans_table), C_RST_STRANGE),
-    string)
-
-
 sgr_pat = re.compile(r'\x1B\[[0-9;]*m')
 
-graph_pat = re.compile(r'(?x) [ /\*\|\\]*') # space is treated as literal inside of brackets, even in extended mode.
+git_diff_graph_mode_pat = re.compile(r'(?x) [ /\*\|\\]*') # space is treated as literal inside of brackets, even in extended mode.
 
 diff_pat = re.compile(r'''(?x)
 (?:
@@ -385,24 +379,8 @@ token_pat = re.compile(r'''(?x)
 # SHY:  \xAD (soft hyphen)
 strange_char_re = r'(?x) [\x00-\x09\x0B-\x1F\x7F\x80-\x9F\xA0\xAD]+'
 strange_char_pat = re.compile(strange_char_re)
+vis_char_pat = re.compile(r'[^\n -~]')
 assert not strange_char_pat.match(' ')
-
-strange_char_ords = chain(range(0, 0x09+1), range(0x0B, 0x1F+1), range(0x7F, 0x7F+1),
-  range(0x80, 0x9F+1), range(0xA0, 0xA0+1), range(0xAD, 0xAD+1))
-assert ord(' ') not in strange_char_ords
-strange_char_names = { chr(i) : '\\x{:02x}'.format(i) for i in strange_char_ords }
-strange_char_names.update({
-  '\0' : '\\0',
-  '\a' : '\\a',
-  '\b' : '\\b',
-  '\f' : '\\f',
-  '\r' : '\\r',
-  '\t' : '\\t',
-  '\v' : '\\v',
-})
-
-strange_char_trans_table = str.maketrans(strange_char_names)
-
 
 # same-same colors.
 
@@ -428,9 +406,6 @@ C_REM_TOKEN = sgr(BG, REM_BG, TXT, rgb6(5, 2, 3), BOLD)
 C_ADD_TOKEN = sgr(BG, ADD_BG, TXT, rgb6(2, 5, 3), BOLD)
 
 C_RST_TOKEN = sgr(RST_TXT, RST_BOLD)
-
-C_STRANGE = sgr(INVERT)
-C_RST_STRANGE = sgr(RST_INVERT)
 
 C_END = FILL
 
