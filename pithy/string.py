@@ -10,18 +10,18 @@ from typing import Any, Callable, Iterable, Iterator, List, Sequence, Tuple, Typ
 _T = TypeVar('_T')
 
 
-def render_template(template: str, **substitutions: Any) -> str:
+def render_template(template:str, **substitutions:Any) -> str:
   'Render a template using $ syntax.'
   t = Template(template)
   return t.substitute(substitutions)
 
 
-def string_contains(string: str, query: str) -> bool:
+def string_contains(string:str, query:str) -> bool:
   'Return True if string contains query.'
   return string.find(query) != -1
 
 
-def clip_prefix(string: str, prefix: str, req=True) -> str:
+def clip_prefix(string:str, prefix:str, req=True) -> str:
   'Remove `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):
     return string[len(prefix):]
@@ -30,7 +30,7 @@ def clip_prefix(string: str, prefix: str, req=True) -> str:
   return string
 
 
-def  clip_suffix(string: str, suffix: str, req=True) -> str:
+def clip_suffix(string:str, suffix:str, req=True) -> str:
   'Remove `suffix`if it is present, or raise ValueError, unless `req` is False.'
   if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
@@ -40,7 +40,7 @@ def  clip_suffix(string: str, suffix: str, req=True) -> str:
   return string
 
 
-def replace_prefix(string: str, prefix: str, replacement: str, req=True) -> str:
+def replace_prefix(string:str, prefix:str, replacement:str, req=True) -> str:
   'Replace `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):
     return replacement + string[len(prefix):]
@@ -49,7 +49,7 @@ def replace_prefix(string: str, prefix: str, replacement: str, req=True) -> str:
   return string
 
 
-def replace_suffix(string: str, suffix: str, replacement: str, req=True) -> str:
+def replace_suffix(string:str, suffix:str, replacement:str, req=True) -> str:
   'Replace `suffix`if it is present, or raise ValueError, unless `req` is False.'
   if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
@@ -59,7 +59,7 @@ def replace_suffix(string: str, suffix: str, replacement: str, req=True) -> str:
   return string
 
 
-def clip_first_prefix(string: str, prefixes: Sequence[str], req=True) -> str:
+def clip_first_prefix(string:str, prefixes:Sequence[str], req=True) -> str:
   'Remove the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
   for p in prefixes:
     try:
@@ -71,7 +71,7 @@ def clip_first_prefix(string: str, prefixes: Sequence[str], req=True) -> str:
   return string
 
 
-def find_and_clip_suffix(string: str, suffix: str, req=True) -> str:
+def find_and_clip_suffix(string:str, suffix:str, req=True) -> str:
   idx = string.find(suffix)
   if idx == -1:
     if req: raise ValueError(string)
@@ -79,7 +79,7 @@ def find_and_clip_suffix(string: str, suffix: str, req=True) -> str:
   return string[:idx]
 
 
-def iter_excluding_str(iterable: Iterable[_T]) -> Iterator[_T]:
+def iter_excluding_str(iterable:Iterable[_T]) -> Iterator[_T]:
   '''
   Often we want to handle all iterables in a particular way, except for str.
   There are two common reasons why:
@@ -92,7 +92,7 @@ def iter_excluding_str(iterable: Iterable[_T]) -> Iterator[_T]:
   return iter(iterable) # raises TypeError for non-iterables.
 
 
-def pluralize(count: int, name: str, plural=None, spec='') -> str:
+def pluralize(count:int, name:str, plural=None, spec='') -> str:
   'Return a string of format "{count} {name}s", with optional custom plural form and format spec.'
   if count == 1:
     n = name
@@ -103,15 +103,15 @@ def pluralize(count: int, name: str, plural=None, spec='') -> str:
   return '{count:{spec}} {n}'.format(count=count, spec=spec, n=n)
 
 
-def format_nonempty(fmt: str, string: str) -> str:
+def format_nonempty(fmt:str, string:str) -> str:
   'format `string` into `format` unless `string` is empty.'
   return '' if (string == '') else fmt.format(string)
 
-def prepend_to_nonempty(prefix: str, string: str) -> str:
+def prepend_to_nonempty(prefix:str, string:str) -> str:
   'prepend `prefix` to `string` unless `string` is empty.'
   return '' if (string == '') else (prefix + string)
 
-def append_to_nonempty(string: str, suffix: str) -> str:
+def append_to_nonempty(string:str, suffix:str) -> str:
   'append `prefix` to `string` unless `string` is empty.'
   return '' if (string == '') else (string + suffix)
 
@@ -128,7 +128,7 @@ _byte_count_dec_magnitudes = [
   ('YB', 'yottabyte'),
 ]
 
-def format_byte_count(count: int, prec=3, abbr=True) -> str:
+def format_byte_count(count:int, prec=3, abbr=True) -> str:
   "Format a string for the given number of bytes, using the largest appropriate prefix (e.g. 'kB')"
   count = int(count)
   if count < 1000:
@@ -149,14 +149,14 @@ def format_byte_count(count: int, prec=3, abbr=True) -> str:
   return f'{c:.{prec}f} {label}{s}'
 
 
-def line_col_0(string: str, pos: int) -> Tuple[int, int]:
+def line_col_0(string:str, pos:int) -> Tuple[int, int]:
   if pos < 0 or pos > len(string): raise IndexError(pos)
   line = string.count('\n', 0, pos) # number of newlines preceeding pos.
   last_line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match; `+ 1` just happens to work perfectly as is.
   return (line, pos - last_line_start)
 
 
-def line_col_1(string: str, pos: int) -> Tuple[int, int]:
+def line_col_1(string:str, pos:int) -> Tuple[int, int]:
   l, c = line_col_0(string, pos)
   return (l + 1, c + 1)
 
