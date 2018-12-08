@@ -14,10 +14,9 @@ from pithy.ansi import (
 
 
 class DiffLine:
-  def __init__(self, kind:str, match:Match, rich_text:str) -> None:
+  def __init__(self, kind:str, match:Match) -> None:
     self.kind = kind # The name from `diff_pat` named capture groups.
     self.match = match
-    self.rich_text = rich_text # Original colorized text from git.
     self.old_num = 0 # 1-indexed.
     self.new_num = 0 # ".
     self.chunk_idx = 0 # Positive for rem/add.
@@ -25,8 +24,14 @@ class DiffLine:
     self.text = '' # Final text for ctx/rem/add.
 
   @property
-  def plain_text(self) -> str:
+  def raw_text(self) -> str:
     return self.match.string # type: ignore
+
+  def set_text(self, key:str, clip:bool=False) -> None:
+    text = self.match[key]
+    if self.match['git_color'] or clip:
+      text = clip_reset(text)
+    self.text = text
 
 
 def main() -> None:
@@ -45,6 +50,8 @@ def main() -> None:
 
   dbg = ('SAME_SAME_DBG' in environ)
 
+  # Break input into segments starting with 'diff' lines.
+  # Note that the first segment might begin with any kind of line.
   buffer:List[DiffLine] = []
 
   def flush_buffer() -> None:
@@ -54,19 +61,22 @@ def main() -> None:
       buffer = []
 
   try:
-    for rich_text in stdin:
-      rich_text = rich_text.rstrip('\n')
-      plain_text = sgr_pat.sub('', rich_text) # remove colors.
-      match = diff_pat.match(plain_text)
+    for line in stdin:
+      raw_text = line.rstrip('\n')
+      match = diff_pat.match(raw_text)
       assert match is not None
       kind = match.lastgroup
       assert kind is not None, match
       if dbg:
-        print(kind, ':', repr(plain_text))
+        print(kind, ':', repr(raw_text))
+        continue
+      if kind in pass_kinds:
+        flush_buffer()
+        print(raw_text)
         continue
       if kind == 'diff':
         flush_buffer()
-      buffer.append(DiffLine(kind, match, rich_text))
+      buffer.append(DiffLine(kind, match))
     flush_buffer()
   except BrokenPipeError:
     stderr.close() # Prevents warning message.
@@ -77,12 +87,12 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
   kind = first.kind
   skip = False
 
-  # Detect if we should skip these lines.
-  if kind not in ('diff', 'loc'): skip = True
-  elif git_diff_graph_mode_pat.match(first.plain_text).end(): skip = True # type: ignore
-  if skip:
-    for line in lines: print(line.rich_text)
+  # If we are processing `git log --graph` then parsing will fail; detect and skip.
+  if git_diff_graph_mode_pat.match(first.raw_text).end(): # type: ignore
+    for line in lines: print(line.raw_text)
     return
+
+  # Scan `lines` to build up diff structures.
 
   old_ctx_nums:Set[int] = set() # Line numbers of context lines.
   new_ctx_nums:Set[int] = set() # ".
@@ -93,11 +103,11 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
   old_num = 0 # 1-indexed source line number.
   new_num = 0 # ".
   chunk_idx = 0 # Counter to differentiate chunks; becomes part of the groupby key.
-
-  # Accumulate source lines into structures.
   old_path = '<OLD_PATH>'
   new_path = '<NEW_PATH>'
   is_prev_add_rem = False
+  is_loc_colored = False # Because git diff does not give ctx lines an sgr prefix, it seems more reliable to detect from the hunk.
+
   for line in lines:
     match = line.match
     kind = line.kind
@@ -107,13 +117,13 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
     if kind in ('ctx', 'rem', 'add'):
       line.is_src = True
       if kind == 'ctx':
-        line.text = match['ctx_text']
+        line.set_text(key='ctx_text', clip=is_loc_colored) # Clip is a hack; ctx lines do not have a leading color sequence.
       elif kind == 'rem':
-        line.text = match['rem_text']
+        line.set_text(key='rem_text')
         line.chunk_idx = chunk_idx
         insert_unique_line(old_uniques, line.text, old_num)
       elif kind == 'add':
-        line.text = match['add_text']
+        line.set_text(key='add_text')
         line.chunk_idx = chunk_idx
         insert_unique_line(new_uniques, line.text, new_num)
       if kind in ('ctx', 'rem'):
@@ -131,6 +141,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
         new_ctx_nums.add(new_num)
         new_num += 1
     elif kind == 'loc':
+      is_loc_colored = bool(line.match['git_color'])
       o = int(match['old_num'])
       if o > 0:
         assert o > old_num, (o, old_num, match.string)
@@ -140,17 +151,15 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
         assert n > new_num
         new_num = n
     elif kind == 'diff': # Not the best way to parse paths, because paths with spaces are ambiguous.
-      paths = match['diff_paths'].split(' ') # Split into words, then guess at old and new split as best we can.
+      paths = clip_reset(match['diff_paths']).split(' ') # Split into words, then guess at old and new split as best we can.
       i = len(paths) // 2 # Assume that both sides have the same number of spaces between them.
       # Note: if this does not prove sufficient for file renames we could try to find a split that matches either head or tail.
       old_path = ' '.join(paths[:i])
       new_path = ' '.join(paths[i:])
-    elif kind == 'old': old_path = vscode_path(match['old_path'].rstrip('\t'))
-    elif kind == 'new': new_path = vscode_path(match['new_path'].rstrip('\t')) # Not sure why this trailing tab appears.
-    # These lines are a better way to parse the paths, but are not always present (particularly when one side is /dev/null).
-    # Since they come after the diff line, they will overwrite the previous guess.
-    elif kind == 'old': old_path = vscode_path(match['old_path'].rstrip('\t'))
-    elif kind == 'new': new_path = vscode_path(match['new_path'].rstrip('\t')) # Not sure why this trailing tab appears.
+    elif kind == 'old': old_path = vscode_path(clip_reset(match['old_path']).rstrip('\t'))
+    elif kind == 'new': new_path = vscode_path(clip_reset(match['new_path']).rstrip('\t')) # Not sure why this trailing tab appears.
+    #^ These lines are a better way to parse the paths, but are not always present (particularly when one side is /dev/null).
+    #^ Since they come after the diff line, they will overwrite the previous guess.
 
   # Detect moved lines.
 
@@ -178,7 +187,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
     old_moved_nums.update(range(p_o, e_o))
     new_moved_nums.update(range(p_n, e_n))
 
-  # Break lines into rem/add chunks.
+  # Break lines into rem/add chunks and print them.
   # While a "hunk" is a series of (possibly many) ctx/rem/add lines provided by git diff,
   # a "chunk" is either a contiguous block of rem/add lines, or else any other single line.
   # This approach simplifies the token diffing process so that it is a reasonably
@@ -214,19 +223,19 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
         print(m, text, C_END, sep='')
       elif kind == 'loc':
         new_num = match['new_num']
-        snippet = match['parent_snippet']
+        snippet = clip_reset(match['parent_snippet'])
         s = ' ' + C_SNIPPET if snippet else ''
         print(C_LOC, new_path, ':', new_num, ':', s, snippet, C_END, sep='')
       elif kind == 'diff':
         msg = new_path if (old_path == new_path) else '{} -> {}'.format(old_path, new_path)
         print(C_FILE, msg, ':', C_END, sep='')
       elif kind == 'meta':
-        print(C_MODE, new_path, ':', RST, ' ', line.rich_text, sep='')
+        print(C_MODE, new_path, ':', RST, ' ', line.text, sep='')
       elif kind in dropped_kinds:
         if interactive: # Cannot drop lines, because interactive mode slices the diff by line counts.
-          print(C_DROPPED, line.plain_text, RST, sep='')
+          print(C_DROPPED, line.text, RST, sep='')
       elif kind in pass_kinds:
-        print(line.rich_text)
+        print(line.text)
       else:
         raise Exception('unhandled kind: {}\n{!r}'.format(kind, text))
 
@@ -236,7 +245,7 @@ dropped_kinds = {
 }
 
 pass_kinds = {
-  'empty', 'other'
+  'author', 'commit', 'date', 'empty', 'other'
 }
 
 
@@ -324,13 +333,12 @@ def is_token_junk(token:str) -> bool:
   return token.isspace() and token != '\n'
 
 
-sgr_pat = re.compile(r'\x1B\[[0-9;]*m')
-
 git_diff_graph_mode_pat = re.compile(r'(?x) [ /\*\|\\]*') # space is treated as literal inside of brackets, even in extended mode.
 
 diff_pat = re.compile(r'''(?x)
+(?P<git_color> \x1b \[ \d* m)*
 (?:
-  (?P<empty> $)
+  (?P<empty>    $ )
 | (?P<commit>   commit\ [0-9a-z]{40} )
 | (?P<author>   Author: )
 | (?P<date>     Date:   )
@@ -338,10 +346,11 @@ diff_pat = re.compile(r'''(?x)
 | (?P<idx>      index   )
 | (?P<old>      ---     \ (?P<old_path>.+) )
 | (?P<new>      \+\+\+  \ (?P<new_path>.+) )
-| (?P<loc>      @@\ -(?P<old_num>\d+)(?P<old_len>,\d+)?\ \+(?P<new_num>\d+)(?P<new_len>,\d+)?\ @@\ ?(?P<parent_snippet>.*) )
+| (?P<loc>      @@\ -(?P<old_num>\d+)(?P<old_len>,\d+)?\ \+(?P<new_num>\d+)(?P<new_len>,\d+)?\ @@
+    (?:\x1b\[m)? \ ? (?:\x1b\[m)? (?P<parent_snippet>.*) ) # Note the RST SPACE RST sequence.
 | (?P<ctx>      \  (?P<ctx_text>.*) )
 | (?P<rem>      -  (?P<rem_text>.*) )
-| (?P<add>      \+ (?P<add_text>.*) )
+| (?P<add>      \+(?:\x1b\[m\x1b\[32m)? (?P<add_text>.*) ) # Hack to remove extra color sequences that git 2.19.2 shows for these lines only.
 | (?P<meta>
   ( old\ mode
   | new\ mode
@@ -367,20 +376,6 @@ token_pat = re.compile(r'''(?x)
 | . # Any other single character; newlines are never present so DOTALL is irrelevant.
 ''')
 
-
-# Unicode ranges for strange characters:
-# C0:   \x00 - \x1F
-# \n:   \x0A
-# C0 !\n: [ \x00-\x09 \x0B-\x1F ]
-# SP:   \x20
-# DEL:  \x7F
-# C1:   \x80 - \x9F
-# NBSP: \xA0 (nonbreaking space)
-# SHY:  \xAD (soft hyphen)
-strange_char_re = r'(?x) [\x00-\x09\x0B-\x1F\x7F\x80-\x9F\xA0\xAD]+'
-strange_char_pat = re.compile(strange_char_re)
-vis_char_pat = re.compile(r'[^\n -~]')
-assert not strange_char_pat.match(' ')
 
 # same-same colors.
 
@@ -414,6 +409,14 @@ def vscode_path(path:str) -> str:
   'VSCode will only recognize source locations if the path contains a slash; add "./" to plain file names.'
   if '/' in path or '<' in path or '>' in path: return path # Do not alter pseudo-names like <stdin>.
   return './' + path
+
+
+def clip_reset(text:str) -> str:
+  return text[:-len(reset_sgr)] if text.endswith(reset_sgr) else text
+
+reset_sgr = '\x1b[m' # Git uses the short version with "0" code omitted.
+
+
 
 def errL(*items:Any) -> None: print(*items, sep='', file=stderr)
 
