@@ -27,7 +27,7 @@ comment: comment_open comment_close comment_contents comment_star comment_slash 
 lit: sq dq backslash lit_contents lit_escape lit_interpolate
 
 # Transitions.
-main  paren_open      : main paren_close // must push child main ctx so that a lit ctx does not get prematurely popped.
+main  paren_open      : main paren_close // must push child main frame so that a lit frame does not get prematurely popped.
 lit   lit_interpolate : main paren_close
 
 main    comment_open : comment comment_close

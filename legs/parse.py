@@ -52,10 +52,13 @@ kind_descs = {
 def desc_kind(kind:str) -> str: return kind_descs.get(kind, kind)
 
 
-def parse_legs(path:str, src:str) -> Tuple[str, Dict[str, Pattern], Dict[str, List[str]], ModeTransitions]:
+def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,List[str]],ModeTransitions]:
   '''
-  Parse the legs source given in `src`,
-  returning a dictionary of mode names to pattern objects, and a dictionary of mode transitions.
+  Parse the legs source given in `src`, returning:
+  * the license string;
+  * a dictionary of pattern names to Pattern objects;
+  * a dictionary of mode names to pattern names;
+  * a dictionary of mode transitions.
   '''
 
   tokens_with_comments = list(lexer.lex(src, drop={'space'}))
