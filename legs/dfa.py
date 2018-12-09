@@ -237,9 +237,9 @@ def minimize_dfa(dfa:DFA) -> DFA:
     for old_node in part:
       mapping[old_node] = new_node
 
-  transitions:DefaultDict[int, Dict[int, int]] = defaultdict(dict)
+  transitions_dd:DefaultDict[int, Dict[int, int]] = defaultdict(dict)
   for old_node, old_d in dfa.transitions.items():
-    new_d = transitions[mapping[old_node]]
+    new_d = transitions_dd[mapping[old_node]]
     for char, old_dst in old_d.items():
       new_dst = mapping[old_dst]
       try:
@@ -248,6 +248,8 @@ def minimize_dfa(dfa:DFA) -> DFA:
           exit(f'inconsistency in minimized DFA: src state: {old_node}->{new_node}; char: {char!r}; dst state: {old_dst}->{new_dst} != ?->{existing}')
       except KeyError:
         new_d[char] = new_dst
+
+  transitions = dict(transitions_dd)
 
   # Nodes may match more than one pattern when the patterns overlap.
   # If the set of match nodes for a pattern is a superset of another pattern, ignore it;
@@ -280,4 +282,4 @@ def minimize_dfa(dfa:DFA) -> DFA:
     exit(1)
 
   match_node_name_sets = { node : frozenset(names) for node, names in match_node_names.items() }
-  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns)
+  return DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns)
