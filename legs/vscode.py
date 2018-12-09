@@ -12,7 +12,7 @@ from .defs import ModeTransitions
 from .patterns import Pattern
 
 
-def output_vscode(path:str, patterns:Dict[str, Pattern], mode_pattern_names:Dict[str, List[str]], transitions:ModeTransitions,
+def output_vscode(path:str, patterns:Dict[str, Pattern], mode_pattern_names:Dict[str, List[str]],
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   if not args.syntax_name: exit('error: vscode output requires `-syntax-name` argument.')
@@ -44,13 +44,6 @@ def output_vscode(path:str, patterns:Dict[str, Pattern], mode_pattern_names:Dict
     repository[mode] = {
       "patterns": mode_patterns,
     }
-
-  #py_modes:List[str] = []
-  #for mode, pattern_names in sorted(mode_pattern_names.items()):
-  #  names_str = ''.join(f'\n      {n!r},' for n in pattern_names)
-  #  py_modes.append(f'\n    {mode}={{{names_str}}}')
-
-  #py_transitions:List[str] = [f'\n    ({a}, {b}) : ({c}, {d})' for (a, b), (c, d) in transitions.items()]
 
   with open(path, 'w', encoding='utf8') as f:
     write_json(f, syntax_def)

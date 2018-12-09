@@ -37,7 +37,9 @@ gen-grammars: \
 	grammars/ascii.legs \
 	grammars/unicode.legs \
 
-install-vscode: vscode-ext/syntaxes/legs.json
+gen-vscode: vscode-ext/syntaxes/legs.json
+
+install-vscode: gen-vscode
 	vscode-ext/install-vscode-ext.sh
 
 pip-develop:
@@ -61,14 +63,16 @@ typecheck: gen
 
 # Targets.
 
+grammars/legs.legs: # Override the pattern rule below.
+
 grammars/%.legs: gen-grammar.py
 	./$^ $* > $@
 
 legs/data_%.py: gen-data.py
 	./$^ data/$* > $@
 
-vscode-ext/syntaxes/legs.json: legs.legs
-	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -language vscode -output $@
+vscode-ext/syntaxes/legs.json: grammars/legs.legs
+	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -langs vscode -output $@
 
 
 # Perf.
