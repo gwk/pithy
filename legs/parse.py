@@ -73,8 +73,8 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,List[s
   sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
 
   patterns:Dict[str, Pattern] = {} # keyed by pattern name.
-  modes:Dict[str, List[str]] = {} # keyed by mode name.
-  transitions:ModeTransitions = {}
+  mode_pattern_names:Dict[str, List[str]] = {} # keyed by mode name.
+  mode_transitions:ModeTransitions = {}
 
   for section in sections:
     buffer = Buffer(section)
@@ -83,15 +83,15 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,List[s
     else:
       section_name = ''
     if section_name.startswith('modes'):
-      parse_modes(path, buffer, patterns.keys(), modes)
+      parse_modes(path, buffer, patterns.keys(), mode_pattern_names)
     if section_name.startswith('transitions'):
-      parse_transitions(path, buffer, patterns.keys(), modes.keys(), transitions)
+      parse_transitions(path, buffer, patterns.keys(), mode_pattern_names.keys(), mode_transitions)
     else:
       parse_patterns(path, buffer, patterns)
 
-  if not modes:
-    modes['main'] = list(patterns)
-  return (license, patterns, modes, transitions)
+  if not mode_pattern_names:
+    mode_pattern_names['main'] = list(patterns)
+  return (license, patterns, mode_pattern_names, mode_transitions)
 
 
 def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, Pattern]) -> None:

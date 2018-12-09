@@ -99,7 +99,7 @@ def main() -> None:
   else:
     exit('`must specify either `path` or `-patterns`.')
 
-  license, patterns, mode_pattern_names, transitions = parse_legs(path, src)
+  license, patterns, mode_pattern_names, mode_transitions = parse_legs(path, src)
 
   if dbg:
     errSL('\nPatterns:')
@@ -153,7 +153,7 @@ def main() -> None:
 
   node_transitions:DefaultDict[int,Dict[str,Tuple[int,str]]] = defaultdict(dict)
   # node_transitions maps parent_start_node : (parent_kind : (child_start_node, child_kind)).
-  for (parent_mode_name, parent_kind), (child_mode_name, child_kind) in transitions.items():
+  for (parent_mode_name, parent_kind), (child_mode_name, child_kind) in mode_transitions.items():
     parent_start = modes[parent_mode_name].start
     child_start = modes[child_mode_name].start
     node_transitions[parent_start][parent_kind] = (child_start, child_kind)
