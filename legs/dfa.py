@@ -257,19 +257,18 @@ def minimize_dfa(dfa:DFA) -> DFA:
 
   match_node_names = { mapping[old] : set(names) for old, names in dfa.match_node_name_sets.items() }
 
-  name_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
+  name_match_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
   for node, names in match_node_names.items():
     for name in names:
-      name_nodes[name].add(node)
+      name_match_nodes[name].add(node)
 
-  for name, nodes in name_nodes.items():
+  for name, nodes in name_match_nodes.items():
     for node in tuple(nodes):
       names = match_node_names[node]
       assert names
-      if len(names) == 1: continue # unambiguous.
       for other_name in names:
         if other_name == name: continue
-        other_nodes = name_nodes[other_name]
+        other_nodes = name_match_nodes[other_name]
         if other_nodes < nodes: # this pattern is a superset of other; it should not match.
           match_node_names[node].remove(name)
           break
