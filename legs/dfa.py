@@ -253,31 +253,31 @@ def minimize_dfa(dfa:DFA) -> DFA:
   # If the set of match nodes for a pattern is a superset of another pattern, ignore it;
   # otherwise intersections are treated as ambiguity errors.
 
-  node_names = { mapping[old] : set(names) for old, names in dfa.match_node_name_sets.items() }
+  match_node_names = { mapping[old] : set(names) for old, names in dfa.match_node_name_sets.items() }
 
   name_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
-  for node, names in node_names.items():
+  for node, names in match_node_names.items():
     for name in names:
       name_nodes[name].add(node)
 
   for name, nodes in name_nodes.items():
     for node in tuple(nodes):
-      names = node_names[node]
+      names = match_node_names[node]
       assert names
       if len(names) == 1: continue # unambiguous.
       for other_name in names:
         if other_name == name: continue
         other_nodes = name_nodes[other_name]
         if other_nodes < nodes: # this pattern is a superset of other; it should not match.
-          node_names[node].remove(name)
+          match_node_names[node].remove(name)
           break
 
   # check for ambiguous patterns.
-  ambiguous_name_groups = { tuple(sorted(names)) for names in node_names.values() if len(names) != 1 }
+  ambiguous_name_groups = { tuple(sorted(names)) for names in match_node_names.values() if len(names) != 1 }
   if ambiguous_name_groups:
     for group in sorted(ambiguous_name_groups):
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
 
-  match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
+  match_node_name_sets = { node : frozenset(names) for node, names in match_node_names.items() }
   return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns)
