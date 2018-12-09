@@ -14,7 +14,7 @@ from .defs import Mode, ModeTransitions
 from .dfa import DFA
 
 
-def output_python3(path:str, mode_transitions:Dict[int, Dict[str, Tuple[int, str]]], dfa:DFA,
+def output_python3(path:str, node_transitions:Dict[int, Dict[str, Tuple[int, str]]], dfa:DFA,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   match_node_kinds = { match_node : dfa.match_name(match_node) for match_node in dfa.match_nodes}
@@ -30,7 +30,7 @@ def output_python3(path:str, mode_transitions:Dict[int, Dict[str, Tuple[int, str
       pattern_descs=fmt_obj(pattern_descs),
       patterns_path=args.path,
       transitions=fmt_obj(dfa.transitions),
-      mode_transitions=fmt_obj(dict(mode_transitions)),
+      node_transitions=fmt_obj(dict(node_transitions)),
       Name=args.type_prefix,
     )
     f.write(src)
@@ -58,7 +58,7 @@ class ${Name}Lexer(LexerBase):
 
   pattern_descs:Dict[str, str] = ${pattern_descs}
 
-  mode_transitions:Dict[str, Dict[str, Tuple[str, str]]] = ${mode_transitions}
+  node_transitions:Dict[str, Dict[str, Tuple[str, str]]] = ${node_transitions}
 '''
 
 

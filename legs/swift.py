@@ -14,7 +14,7 @@ from .defs import Mode, ModeTransitions
 from .dfa import DFA
 
 
-def output_swift(path:str, mode_transitions:Dict[int, Dict[str, Tuple[int, str]]], dfa:DFA,
+def output_swift(path:str, node_transitions:Dict[int, Dict[str, Tuple[int, str]]], dfa:DFA,
  node_modes:Dict[int, Mode], pattern_descs:Dict[str, str], license:str, args:Namespace) -> None:
 
   kinds = { name : swift_safe_sym(name) for name in dfa.pattern_names }
@@ -31,8 +31,8 @@ def output_swift(path:str, mode_transitions:Dict[int, Dict[str, Tuple[int, str]]
   def swift_mode_transition(d:Dict[str, Tuple[int, str]]) -> Dict[SwiftEnum, Tuple[int, SwiftEnum]]:
     return {SwiftEnum(parent_kind): (child_start, SwiftEnum(child_kind)) for parent_kind, (child_start, child_kind) in d.items()}
 
-  if mode_transitions:
-    mode_transition_items = '\n'.join(f'    {parent_start}: {swift_repr(swift_mode_transition(d))},' for parent_start, d in mode_transitions.items())
+  if node_transitions:
+    mode_transition_items = '\n'.join(f'    {parent_start}: {swift_repr(swift_mode_transition(d))},' for parent_start, d in node_transitions.items())
   else:
     mode_transition_items = ':'
 

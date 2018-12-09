@@ -151,22 +151,22 @@ def main() -> None:
 
   test_cmds:List[List[str]] = []
 
-  mode_transitions:DefaultDict[int, Dict[str, Tuple[int, str]]] = defaultdict(dict)
-  # mode_transitions maps parent_start : (parent_kind : (child_start, child_kind)).
+  node_transitions:DefaultDict[int,Dict[str,Tuple[int,str]]] = defaultdict(dict)
+  # node_transitions maps parent_start_node : (parent_kind : (child_start_node, child_kind)).
   for (parent_mode_name, parent_kind), (child_mode_name, child_kind) in transitions.items():
     parent_start = modes[parent_mode_name].start
     child_start = modes[child_mode_name].start
-    mode_transitions[parent_start][parent_kind] = (child_start, child_kind)
+    node_transitions[parent_start][parent_kind] = (child_start, child_kind)
 
   if 'python3' in langs:
     path = path_for_output(args.output, '.py')
-    output_python3(path, mode_transitions=mode_transitions, dfa=dfa,
+    output_python3(path, node_transitions=node_transitions, dfa=dfa,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
     path = path_for_output(args.output, '.swift')
-    output_swift(path, mode_transitions=mode_transitions, dfa=dfa, node_modes=node_modes,
+    output_swift(path, node_transitions=node_transitions, dfa=dfa, node_modes=node_modes,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 

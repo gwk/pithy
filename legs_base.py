@@ -195,7 +195,7 @@ class LexerBase(Iterator[Token]):
 
   transitions:Dict[int, Dict[int, int]] = {}
   match_node_kinds:Dict[int, str] = {}
-  mode_transitions:Dict[int, Dict[str, Tuple[int, str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
+  node_transitions:Dict[int, Dict[str, Tuple[int, str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
   pattern_descs:Dict[str, str] = {}
 
   def __iter__(self) -> Iterator[Token]: return self
@@ -230,7 +230,7 @@ class LexerBase(Iterator[Token]):
     if kind == pop_kind:
       self.stack.pop()
     else:
-      try: child_pair = self.mode_transitions[mode_start][kind]
+      try: child_pair = self.node_transitions[mode_start][kind]
       except KeyError: pass
       else: self.stack.append(child_pair)
     return Token(pos=token_pos, end=end, kind=kind)
