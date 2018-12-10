@@ -50,7 +50,7 @@ def output_swift(path:str, node_transitions:NodeTransitions, dfa:DFA,
     return 'case {chars}: state = {dst}{suffix}'.format(
       chars=', '.join(byte_case_patterns(chars)),
       dst=dst,
-      suffix=f'; end = pos+1; kind = .{kind}' if kind else '')
+      suffix=f'; last = pos; kind = .{kind}' if kind else '')
 
   def byte_cases(node:int) -> List[str]:
     dst_chars:DefaultDict[int, List[int]] = DefaultDict(list)
@@ -148,7 +148,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     let lineIdx = source.newlinePositions.count
     var pos = self.pos
     var state = modeStart
-    var end: Int? = nil
+    var last: Int = -1
     var kind: ${Name}TokenKind = .incomplete
 
     loop: while pos < source.text.count {
@@ -173,9 +173,14 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     }
 
     let tokenPos = self.pos
-    let tokenEnd = end ?? pos
+    let tokenEnd:Int
+    if (last == -1) {
+      tokenEnd = pos
+      assert(kind == .incomplete)
+    } else {
+      tokenEnd = last + 1
+    }
     assert(tokenPos < tokenEnd, "tokenPos: \(tokenPos); tokenEnd: \(tokenEnd)")
-    if end == nil { assert(kind == .incomplete) }
     self.pos = tokenEnd
     if kind == popKind {
       stack.removeLast()
