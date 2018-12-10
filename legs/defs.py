@@ -8,5 +8,5 @@ class Mode(NamedTuple):
   start:int
   invalid:int
 
-ModeTransitions = Dict[Tuple[str,str],Tuple[str,str]]
+ModeTransitions = Dict[str,Dict[str,Tuple[str,str]]]
 NodeTransitions = DefaultDict[int,Dict[str,Tuple[int,str]]]

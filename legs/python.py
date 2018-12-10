@@ -80,7 +80,7 @@ class ${Name}Lexer(DictLexerBase):
 
   pattern_descs:Dict[str,str] = ${pattern_descs}
 
-  node_transitions:Dict[str,Dict[str,Tuple[str,str]]] = ${node_transitions}
+  node_transitions:Dict[int,Dict[str,Tuple[int,str]]] = ${node_transitions}
 
 
 class ${Name}RegexLexer(RegexLexerBase):

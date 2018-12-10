@@ -155,10 +155,12 @@ def parse_transitions(path:str, buffer:Buffer[Token], patterns:Container[str],
     r_pattern = consume(path, buffer, kind='sym', subj='transition pop pattern')
     check_pattern(r_pattern)
     consume(path, buffer, kind='newline', subj='transition')
-    l = (l_mode[0], l_pattern[0])
+    lm = l_mode[0]
+    lp = l_pattern[0]
     r = (r_mode[0], r_pattern[0])
-    if l in transitions: fail_parse(path, token, f'duplicate transition entry: {l}.')
-    transitions[l] = r
+    if lm not in transitions: transitions[lm] = {}
+    if lp in transitions[lm]: fail_parse(path, token, f'duplicate transition entry: {lm}, {lp}.')
+    transitions[lm][lp] = r
 
 
 def parse_pattern(path:str, sym_token:Token, buffer:Buffer[Token]) -> Pattern:

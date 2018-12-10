@@ -245,7 +245,7 @@ class DictLexerBase(LexerBase):
 class RegexLexerBase(LexerBase):
 
   mode_patterns:Dict[str,Pattern]
-  mode_transitions:Dict[Tuple[str,str],Tuple[str,str]]
+  mode_transitions:Dict[str,Dict[str,Tuple[str,str]]]
 
   def __init__(self, source:Source) -> None:
     self.stack:List[Tuple[str,Optional[str]]] = [('main', None)]
@@ -268,7 +268,7 @@ class RegexLexerBase(LexerBase):
     if kind == pop_kind:
       self.stack.pop()
     else:
-      try: child_pair = self.mode_transitions[(mode, kind)]
+      try: child_pair = self.mode_transitions[mode][kind]
       except KeyError: pass
       else: self.stack.append(child_pair)
     return Token(pos=token_pos, end=end, kind=kind)

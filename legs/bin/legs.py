@@ -13,7 +13,7 @@ from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
 
-from ..defs import Mode, ModeTransitions, NodeTransitions
+from ..defs import Mode, NodeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, gen_dfa
 from ..parse import parse_legs
@@ -153,10 +153,11 @@ def main() -> None:
 
   node_transitions:NodeTransitions = defaultdict(dict)
   # node_transitions maps parent_start_node : (parent_kind : (child_start_node, child_kind)).
-  for (parent_mode_name, parent_kind), (child_mode_name, child_kind) in mode_transitions.items():
-    parent_start = modes[parent_mode_name].start
-    child_start = modes[child_mode_name].start
-    node_transitions[parent_start][parent_kind] = (child_start, child_kind)
+  for parent_mode_name, d in mode_transitions.items():
+    for parent_kind, (child_mode_name, child_kind) in d.items():
+      parent_start = modes[parent_mode_name].start
+      child_start = modes[child_mode_name].start
+      node_transitions[parent_start][parent_kind] = (child_start, child_kind)
 
   if 'python3' in langs:
     path = path_for_output(args.output, '.py')
