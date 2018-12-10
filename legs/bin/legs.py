@@ -219,7 +219,7 @@ def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
 def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
   '''
   Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.
-  This tricky because each is subtly different:
+  This is tricky because each is subtly different:
   * NFA does not have any transitions to `invalid`.
   * fat DFA does not disambiguate between multiple match states.
   Therefore the minimized DFA is most correct,
