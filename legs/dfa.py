@@ -46,14 +46,20 @@ DfaState = int
 DfaStateTransitions = Dict[int, DfaState]
 DfaTransitions = Dict[int, DfaStateTransitions]
 
+FrozenSetStr0:FrozenSet[str] = frozenset()
 
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, transitions:DfaTransitions, match_node_name_sets:Dict[int, FrozenSet[str]], lit_patterns:Set[str]) -> None:
+  def __init__(self, transitions:DfaTransitions, match_node_name_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
+   iso_kinds=FrozenSetStr0, strict_sub_kinds=FrozenSetStr0, strict_sup_kinds=FrozenSetStr0, po_kinds=FrozenSetStr0) -> None:
     self.transitions = transitions
     self.match_node_name_sets = match_node_name_sets
     self.lit_patterns = lit_patterns
+    self.iso_kinds = iso_kinds
+    self.strict_sub_kinds = strict_sub_kinds
+    self.strict_sup_kinds = strict_sup_kinds
+    self.po_kinds = po_kinds
 
   @property
   def is_empty(self) -> bool:
@@ -262,16 +268,19 @@ def minimize_dfa(dfa:DFA) -> DFA:
     for name in names:
       name_match_nodes[name].add(node)
 
+  kind_rels:List[Tuple[str,str]] = [] # (subset, superset) kind pairs.
   for name, nodes in name_match_nodes.items():
     for node in tuple(nodes):
       names = match_node_names[node]
       assert names
-      for other_name in names:
+      for other_name in tuple(names):
         if other_name == name: continue
         other_nodes = name_match_nodes[other_name]
         if other_nodes < nodes: # this pattern is a superset of other; it should not match.
-          match_node_names[node].remove(name)
-          break
+          kind_rels.append((other_name, name))
+          try: names.remove(name)
+          except KeyError: pass # Already removed.
+
 
   # check for ambiguous patterns.
   ambiguous_name_groups = { tuple(sorted(names)) for names in match_node_names.values() if len(names) != 1 }
@@ -280,5 +289,22 @@ def minimize_dfa(dfa:DFA) -> DFA:
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
 
+  # Determine a satisfactory ordering of kinds.
+  sub_kinds_set = { r[0] for r in kind_rels }
+  sup_kinds_set = { r[1] for r in kind_rels }
+
+  iso_kinds = [n for n in name_match_nodes if (n not in sub_kinds_set and n not in sup_kinds_set)]
+  strict_sub_kinds = {n for n in sub_kinds_set if n not in sup_kinds_set}
+  strict_sup_kinds = {n for n in sup_kinds_set if n not in sub_kinds_set}
+
+  po_kinds:List[str] = [] # Partially ordered kinds.
+  while kind_rels:
+    sub, sup = kind_rels.pop()
+    # HACK: For now, just assume we don't get any complex partially ordered kinds.
+    assert sub in strict_sub_kinds, sub
+    assert sup in strict_sup_kinds, sup
+
   match_node_name_sets = { node : frozenset(names) for node, names in match_node_names.items() }
-  return DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns)
+
+  return DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns,
+    iso_kinds=iso_kinds, strict_sub_kinds=strict_sub_kinds, strict_sup_kinds=strict_sup_kinds, po_kinds=po_kinds)

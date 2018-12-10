@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Dict, List, NamedTuple, Tuple
+from typing import Dict, DefaultDict, List, NamedTuple, Tuple
 
 
 class Mode(NamedTuple):
@@ -8,4 +8,5 @@ class Mode(NamedTuple):
   start:int
   invalid:int
 
-ModeTransitions = Dict[Tuple[str, str], Tuple[str, str]]
+ModeTransitions = Dict[Tuple[str,str],Tuple[str,str]]
+NodeTransitions = DefaultDict[int,Dict[str,Tuple[int,str]]]

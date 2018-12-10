@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Dict, Iterator, List, Match, NamedTuple, Optional, Tuple
+from typing import Dict, Iterator, List, Match, NamedTuple, Optional, Pattern, Tuple
 
 
 class Token(NamedTuple):
@@ -188,23 +188,31 @@ class Source:
 
 class LexerBase(Iterator[Token]):
 
+  pattern_descs:Dict[str,str] = {}
+
   def __init__(self, source:Source) -> None:
     self.source = source
-    self.stack:List[Tuple[int, Optional[str]]] = [(0, None)] # [(mode_start, pop_kind)].
     self.pos = 0
 
-  transitions:Dict[int, Dict[int, int]] = {}
-  match_node_kinds:Dict[int, str] = {}
-  node_transitions:Dict[int, Dict[str, Tuple[int, str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
-  pattern_descs:Dict[str, str] = {}
-
   def __iter__(self) -> Iterator[Token]: return self
+
+
+class DictLexerBase(LexerBase):
+
+  def __init__(self, source:Source) -> None:
+    self.stack:List[Tuple[int,Optional[str]]] = [(0, None)] # [(mode_start, pop_kind)].
+    super().__init__(source=source)
+
+  transitions:Dict[int, Dict[int, int]] = {} # state -> byte -> dst_state.
+  match_node_kinds:Dict[int, str] = {} # state -> kind.
+  node_transitions:Dict[int,Dict[str,Tuple[int,str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
 
   def __next__(self) -> Token:
     text = self.source.text
     len_text = len(text)
-    mode_start, pop_kind = self.stack[-1]
     pos = self.pos
+    if pos == len_text: raise StopIteration
+    mode_start, pop_kind = self.stack[-1]
     state = mode_start
     end = None
     kind = 'incomplete'
@@ -217,20 +225,50 @@ class LexerBase(Iterator[Token]):
         try: kind = self.match_node_kinds[state]
         except KeyError: pass
         else: end = pos
-    # matching stopped or reached end of text.
-    if pos == self.pos: # no more tokens; done.
-      assert pos == len_text
-      raise StopIteration
-    if end is None:
+    # Matching stopped or reached end of text.
+    token_pos = self.pos
+    if end is None: # Never reached a match state.
       assert kind == 'incomplete'
       end = pos
-    assert self.pos < end
-    token_pos = self.pos
-    self.pos = end
+    assert token_pos < end # Token cannot be zero length. TODO: support zero-length tokens?
+    self.pos = end # Advance lexer state.
+    # Check for mode transition.
     if kind == pop_kind:
       self.stack.pop()
     else:
       try: child_pair = self.node_transitions[mode_start][kind]
+      except KeyError: pass
+      else: self.stack.append(child_pair)
+    return Token(pos=token_pos, end=end, kind=kind)
+
+
+class RegexLexerBase(LexerBase):
+
+  mode_patterns:Dict[str,Pattern]
+  mode_transitions:Dict[Tuple[str,str],Tuple[str,str]]
+
+  def __init__(self, source:Source) -> None:
+    self.stack:List[Tuple[str,Optional[str]]] = [('main', None)]
+    super().__init__(source=source)
+
+  def __next__(self) -> Token:
+    text = self.source.text
+    len_text = len(text)
+    pos = self.pos
+    if pos == len_text: raise StopIteration
+    mode, pop_kind = self.stack[-1]
+    pattern = self.mode_patterns[mode]
+    m = pattern.match(text, pos)
+    assert m, (pos, text[pos:pos+64])
+    token_pos = self.pos
+    end = m.end()
+    kind = m.lastgroup
+    self.pos = end # Advance lexer state.
+    # Check for mode transition.
+    if kind == pop_kind:
+      self.stack.pop()
+    else:
+      try: child_pair = self.mode_transitions[(mode, kind)]
       except KeyError: pass
       else: self.stack.append(child_pair)
     return Token(pos=token_pos, end=end, kind=kind)

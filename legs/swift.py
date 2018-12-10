@@ -10,11 +10,11 @@ from pithy.fs import add_file_execute_permissions, path_dir, path_join
 from pithy.iterable import closed_int_intervals
 from pithy.string import render_template
 
-from .defs import Mode, ModeTransitions
+from .defs import Mode, ModeTransitions, NodeTransitions
 from .dfa import DFA
 
 
-def output_swift(path:str, node_transitions:Dict[int, Dict[str, Tuple[int, str]]], dfa:DFA,
+def output_swift(path:str, node_transitions:NodeTransitions, dfa:DFA,
  node_modes:Dict[int, Mode], pattern_descs:Dict[str, str], license:str, args:Namespace) -> None:
 
   kinds = { name : swift_safe_sym(name) for name in dfa.pattern_names }

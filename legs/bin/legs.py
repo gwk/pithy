@@ -13,7 +13,7 @@ from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
 
-from ..defs import Mode, ModeTransitions
+from ..defs import Mode, ModeTransitions, NodeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, gen_dfa
 from ..parse import parse_legs
@@ -151,7 +151,7 @@ def main() -> None:
 
   test_cmds:List[List[str]] = []
 
-  node_transitions:DefaultDict[int,Dict[str,Tuple[int,str]]] = defaultdict(dict)
+  node_transitions:NodeTransitions = defaultdict(dict)
   # node_transitions maps parent_start_node : (parent_kind : (child_start_node, child_kind)).
   for (parent_mode_name, parent_kind), (child_mode_name, child_kind) in mode_transitions.items():
     parent_start = modes[parent_mode_name].start
@@ -160,7 +160,8 @@ def main() -> None:
 
   if 'python3' in langs:
     path = path_for_output(args.output, '.py')
-    output_python3(path, node_transitions=node_transitions, dfa=dfa,
+    output_python3(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
+      mode_transitions=mode_transitions, node_transitions=node_transitions, dfa=dfa,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
