@@ -2,7 +2,7 @@
 
 import re
 from argparse import Namespace
-from typing import Dict, List
+from typing import Dict, FrozenSet, List
 
 from pithy.io import *
 from pithy.json import write_json
@@ -12,7 +12,7 @@ from .defs import ModeTransitions
 from .patterns import Pattern
 
 
-def output_vscode(path:str, patterns:Dict[str, Pattern], mode_pattern_names:Dict[str, List[str]],
+def output_vscode(path:str, patterns:Dict[str, Pattern], mode_pattern_names:Dict[str,FrozenSet[str]],
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   if not args.syntax_name: exit('error: vscode output requires `-syntax-name` argument.')

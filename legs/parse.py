@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from typing import Container, Dict, List, Match, NoReturn, Set, Tuple, Type
+from typing import Container, Dict, FrozenSet, List, Match, NoReturn, Set, Tuple, Type
 
 from pithy.buffer import Buffer
 from pithy.io import *
@@ -52,7 +52,7 @@ kind_descs = {
 def desc_kind(kind:str) -> str: return kind_descs.get(kind, kind)
 
 
-def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,List[str]],ModeTransitions]:
+def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,FrozenSet[str]],ModeTransitions]:
   '''
   Parse the legs source given in `src`, returning:
   * the license string;
@@ -73,7 +73,7 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,List[s
   sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
 
   patterns:Dict[str, Pattern] = {} # keyed by pattern name.
-  mode_pattern_names:Dict[str, List[str]] = {} # keyed by mode name.
+  mode_pattern_names:Dict[str,FrozenSet[str]] = {} # keyed by mode name.
   mode_transitions:ModeTransitions = {}
 
   for section in sections:
@@ -82,15 +82,17 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,List[s
       section_name = next(buffer)[0].strip('# ').lower()
     else:
       section_name = ''
-    if section_name.startswith('modes'):
+    if not section_name or section_name.startswith('patterns'):
+      parse_patterns(path, buffer, patterns)
+    elif section_name.startswith('modes'):
       parse_modes(path, buffer, patterns.keys(), mode_pattern_names)
-    if section_name.startswith('transitions'):
+    elif section_name.startswith('transitions'):
       parse_transitions(path, buffer, patterns.keys(), mode_pattern_names.keys(), mode_transitions)
     else:
-      parse_patterns(path, buffer, patterns)
+      fail_parse(path, buffer.peek(), f'bad section name: {section_name!r}.')
 
   if not mode_pattern_names:
-    mode_pattern_names['main'] = list(patterns)
+    mode_pattern_names['main'] = frozenset(patterns)
   return (license, patterns, mode_pattern_names, mode_transitions)
 
 
@@ -105,28 +107,29 @@ def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, Pattern]) 
     patterns[name] = parse_pattern(path, token, buffer)
 
 
-def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], modes:Dict[str, List[str]]) -> None:
+def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], mode_pattern_names:Dict[str,FrozenSet[str]]) -> None:
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': continue
     check_is_sym(path, token, 'mode name')
     name = token[0]
-    if name in modes:
+    if name in mode_pattern_names:
       fail_parse(path, token, f'duplicate mode name: {name!r}.')
     consume(path, buffer, kind='colon', subj='mode declaration')
-    modes[name] = parse_mode(path, buffer, patterns)
+    mode_pattern_names[name] = parse_mode(path, buffer, patterns)
 
 
-def parse_mode(path:str, buffer:Buffer[Token], patterns:Container[str]) -> List[str]:
-  mode:List[str] = []
+def parse_mode(path:str, buffer:Buffer[Token], patterns:Container[str]) -> FrozenSet[str]:
+  names:Set[str] = set()
   for token in buffer:
     kind = token.lastgroup
-    if kind == 'newline': return mode
+    if kind == 'newline': break
     check_is_sym(path, token, 'pattern name')
     name = token[0]
     if name not in patterns: fail_parse(path, token, f'unknown pattern name: {name!r}.')
-    mode.append(name)
-  return mode
+    if name in names: fail_parse(path, token, f'duplicate pattern name: {name!r}.')
+    names.add(name)
+  return frozenset(names)
 
 
 def parse_transitions(path:str, buffer:Buffer[Token], patterns:Container[str],

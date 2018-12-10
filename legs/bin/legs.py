@@ -146,7 +146,7 @@ def main() -> None:
   pattern_descs['invalid'] = 'invalid'
   pattern_descs['incomplete'] = 'incomplete'
 
-  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs, mode_pattern_names)
+  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
   if dbg: dfa.describe('Combined DFA')
 
   test_cmds:List[List[str]] = []
@@ -264,8 +264,7 @@ def gen_nfa(mode:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
   return NFA(transitions=freeze(transitions), match_node_names=match_node_names, lit_patterns=lit_patterns)
 
 
-def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]], mode_pattern_names:Dict[str, List[str]]) \
- -> Tuple[DFA, Dict[str, Mode], Dict[int, Mode]]:
+def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]]) -> Tuple[DFA, Dict[str, Mode], Dict[int, Mode]]:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
   transitions:DfaTransitions = {}
