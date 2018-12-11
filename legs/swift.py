@@ -143,6 +143,11 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   }
 
   public mutating func next() -> Token<${Name}TokenKind>? {
+
+    if self.pos == source.text.count { // Done.
+      return nil
+    }
+
     let (modeStart, popKind) = self.stack.last!
     let linePos = (source.newlinePositions.last ?? -1) + 1
     let lineIdx = source.newlinePositions.count
@@ -164,12 +169,6 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
         source.newlinePositions.append(pos)
       }
       pos += 1
-    }
-
-    // matching stopped or reached end of text.
-    if pos == self.pos { // no more tokens; done.
-      assert(pos == source.text.count)
-      return nil
     }
 
     let tokenPos = self.pos
