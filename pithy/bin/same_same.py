@@ -13,6 +13,20 @@ from pithy.ansi import (
   RST, RST_BOLD, RST_TXT)
 
 
+'''
+same-same is a git diff highlighter.
+
+To use it, add the following configuration to your .gitconfig:
+[core]
+  pager = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+[interactive]
+  diffFilter = same-same -interactive | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+[diff]
+  noprefix = true
+  wsErrorHighlight = none # Intraline coloring creates trouble for same-same.
+'''
+
+
 class DiffLine:
   def __init__(self, kind:str, match:Match) -> None:
     self.kind = kind # The name from `diff_pat` named capture groups.
