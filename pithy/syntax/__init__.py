@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Iterable, Iterator, List, Tuple
+from typing import Any, Callable, Iterable, Iterator, List, Tuple
 
 
 SyntaxStack = Tuple['Syntax', ...]
