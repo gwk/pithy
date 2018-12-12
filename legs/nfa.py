@@ -31,7 +31,9 @@ empty_symbol = -1 # not a legitimate byte value.
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, transitions:NfaTransitions, match_node_names:Dict[int, str], lit_patterns:Set[str]) -> None:
+  def __init__(self, name:str, transitions:NfaTransitions, match_node_names:Dict[int, str], lit_patterns:Set[str]) -> None:
+    assert name
+    self.name = name
     self.transitions = transitions
     self.match_node_names = match_node_names
     self.lit_patterns = lit_patterns
@@ -101,7 +103,7 @@ class NFA:
     return frozenset(nodes)
 
   def describe(self, label=None) -> None:
-    errL(label or type(self).__name__, ':')
+    errL(self.name, (label and f': {label}'), ':')
     errL(' match_node_names:')
     for node, name in sorted(self.match_node_names.items()):
       errL(f'  {node}: {name}')
@@ -118,7 +120,7 @@ class NFA:
     errL()
 
   def describe_stats(self, label=None) -> None:
-    errL(label or type(self).__name__, ':')
+    errL(self.name, (label and f': {label}'), ':')
     errSL('  match nodes:', len(self.match_node_names))
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
@@ -196,7 +198,7 @@ def gen_dfa(nfa:NFA) -> DFA:
   start_node = nfa_states_to_dfa_nodes[start]
   invalid_node = nfa_states_to_dfa_nodes[invalid]
 
-  transitions:DefaultDict[int, Dict[int, int]] = defaultdict(dict)
+  transitions:DefaultDict[int,Dict[int,int]] = defaultdict(dict)
   alphabet = nfa.alphabet
   remaining = {start}
   while remaining:
@@ -231,6 +233,6 @@ def gen_dfa(nfa:NFA) -> DFA:
       node_names[dfa_node].add(name)
   match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
 
-  return DFA(transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=nfa.lit_patterns)
+  return DFA(name=nfa.name, transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=nfa.lit_patterns)
 
 

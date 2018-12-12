@@ -65,7 +65,7 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,Frozen
   # If first token is a comment, assume it is the license.
   license:str
   if tokens_with_comments and tokens_with_comments[0].lastgroup == 'comment':
-    license = tokens_with_comments[0].group().strip('# ')
+    license = tokens_with_comments[0].group().strip('/ ')
   else:
     license = 'NO LICENSE SPECIFIED.'
 

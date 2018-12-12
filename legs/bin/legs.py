@@ -13,7 +13,7 @@ from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
 
-from ..defs import Mode, NodeTransitions
+from ..defs import ModeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, gen_dfa
 from ..parse import parse_legs
@@ -107,27 +107,29 @@ def main() -> None:
       pattern.describe(name=name)
     errL()
 
-  mode_dfa_pairs:List[Tuple[str, DFA]] = []
-  for mode, pattern_names in sorted(mode_pattern_names.items()):
+  dfas:List[DFA] = []
+  start_node = 0
+  for mode, pattern_names in sorted(mode_pattern_names.items(), key=lambda p: mode_name_key(p[0])):
     if args.match and mode != match_mode: continue
 
     named_patterns = sorted((name, patterns[name]) for name in pattern_names)
-    nfa = gen_nfa(mode, named_patterns=named_patterns)
-    if dbg: nfa.describe(f'{mode}: NFA')
-    if dbg or args.stats: nfa.describe_stats(f'{mode} NFA Stats')
+    nfa = gen_nfa(name=mode, named_patterns=named_patterns)
+    if dbg: nfa.describe('NFA')
+    if dbg or args.stats: nfa.describe_stats(f'NFA Stats')
     msgs = nfa.validate()
     if msgs:
       errLL(*msgs)
       exit(1)
 
     fat_dfa = gen_dfa(nfa)
-    if dbg: fat_dfa.describe(f'{mode}: Fat DFA')
+    if dbg: fat_dfa.describe('Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
 
-    min_dfa = minimize_dfa(fat_dfa)
-    if dbg: min_dfa.describe(f'{mode}: Min DFA')
+    min_dfa = minimize_dfa(fat_dfa, start_node=start_node)
+    start_node = min_dfa.end_node
+    if dbg: min_dfa.describe('Min DFA')
     if dbg or args.stats: min_dfa.describe_stats('Min DFA Stats')
-    mode_dfa_pairs.append((mode, min_dfa))
+    dfas.append(min_dfa)
 
     if args.match and mode == match_mode:
       for string in args.match:
@@ -146,29 +148,18 @@ def main() -> None:
   pattern_descs['invalid'] = 'invalid'
   pattern_descs['incomplete'] = 'incomplete'
 
-  dfa, modes, node_modes = combine_dfas(mode_dfa_pairs)
-  if dbg: dfa.describe('Combined DFA')
-
   test_cmds:List[List[str]] = []
-
-  node_transitions:NodeTransitions = defaultdict(dict)
-  # node_transitions maps parent_start_node : (parent_kind : (child_start_node, child_kind)).
-  for parent_mode_name, d in mode_transitions.items():
-    for parent_kind, (child_mode_name, child_kind) in d.items():
-      parent_start = modes[parent_mode_name].start
-      child_start = modes[child_mode_name].start
-      node_transitions[parent_start][parent_kind] = (child_start, child_kind)
 
   if 'python3' in langs:
     path = path_for_output(args.output, '.py')
     output_python3(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
-      mode_transitions=mode_transitions, node_transitions=node_transitions, dfa=dfa,
+      dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
     path = path_for_output(args.output, '.swift')
-    output_swift(path, node_transitions=node_transitions, dfa=dfa, node_modes=node_modes,
+    output_swift(path, dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
@@ -179,6 +170,11 @@ def main() -> None:
 
   if args.test:
     run_tests(test_cmds, dbg=args.dbg)
+
+
+def mode_name_key(name:str) -> str:
+  'Always place main mode first.'
+  return '' if name == 'main' else name
 
 
 def path_for_output(output:str, ext:str) -> str:
@@ -241,7 +237,7 @@ def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
     outL(f'match: {string!r} -- <none>')
 
 
-def gen_nfa(mode:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
+def gen_nfa(name:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
   '''
   Generate an NFA from a set of patterns.
   The NFA can be used to match against an argument string,
@@ -258,32 +254,12 @@ def gen_nfa(mode:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
   match_node_names:Dict[int, str] = { invalid: 'invalid' }
 
   transitions:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
-  for name, pattern in named_patterns:
+  for pat_name, pattern in named_patterns:
     match_node = mk_node()
     pattern.gen_nfa(mk_node, transitions, start, match_node)
-    dict_put(match_node_names, match_node, name)
-  lit_patterns = { name for name, pattern in named_patterns if pattern.is_literal }
-  return NFA(transitions=freeze(transitions), match_node_names=match_node_names, lit_patterns=lit_patterns)
-
-
-def combine_dfas(mode_dfa_pairs:Iterable[Tuple[str, DFA]]) -> Tuple[DFA, Dict[str, Mode], Dict[int, Mode]]:
-  indexer = iter(count())
-  def mk_node() -> int: return next(indexer)
-  transitions:DfaTransitions = {}
-  match_node_name_sets:Dict[int, FrozenSet[str]] = {}
-  lit_patterns:Set[str] = set()
-  modes:Dict[str, Mode] = {}
-  node_modes:Dict[int, Mode] = {}
-  for mode_name, dfa in sorted(mode_dfa_pairs, key=lambda p: '' if p[0] == 'main' else p[0]):
-    remap = { node : mk_node() for node in sorted(dfa.all_nodes) } # preserves existing order of dfa nodes.
-    mode = Mode(name=mode_name, start=remap[0], invalid=remap[1])
-    modes[mode_name] = mode
-    node_modes.update((node, mode) for node in remap.values())
-    def remap_trans_dict(d:Dict[int, int]): return { c : remap[dst] for c, dst in d.items() }
-    transitions.update((remap[src], remap_trans_dict(d)) for src, d in sorted(dfa.transitions.items()))
-    match_node_name_sets.update((remap[node], names) for node, names in sorted(dfa.match_node_name_sets.items()))
-    lit_patterns.update(dfa.lit_patterns)
-  return (DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=lit_patterns), modes, node_modes)
+    dict_put(match_node_names, match_node, pat_name)
+  lit_patterns = { n for n, pattern in named_patterns if pattern.is_literal }
+  return NFA(name=name, transitions=freeze(transitions), match_node_names=match_node_names, lit_patterns=lit_patterns)
 
 
 ext_langs = {

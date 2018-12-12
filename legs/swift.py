@@ -4,20 +4,25 @@ import re
 from argparse import Namespace
 from importlib.util import find_spec as find_module_spec
 from itertools import chain
-from typing import Any, DefaultDict, Dict, List, Tuple, cast
+from typing import Any, DefaultDict, Dict, Iterator, List, Tuple, cast
 
 from pithy.fs import add_file_execute_permissions, path_dir, path_join
 from pithy.iterable import closed_int_intervals
 from pithy.string import render_template
 
-from .defs import Mode, ModeTransitions, NodeTransitions
+from .defs import ModeTransitions
 from .dfa import DFA
 
 
-def output_swift(path:str, node_transitions:NodeTransitions, dfa:DFA,
- node_modes:Dict[int, Mode], pattern_descs:Dict[str, str], license:str, args:Namespace) -> None:
+def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
+ pattern_descs:Dict[str,str], license:str, args:Namespace) -> None:
 
-  kinds = { name : swift_safe_sym(name) for name in dfa.pattern_names }
+  # Create safe mode names.
+  modes = { dfa.name : swift_safe_sym(dfa.name) for dfa in dfas }
+  mode_case_defs = [f'case {modes[dfa.name]} = {dfa.start_node}' for dfa in dfas]
+
+  # Create safe token kind names.
+  kinds = { name : swift_safe_sym(name) for name in pattern_descs }
   kinds['incomplete'] = 'incomplete'
   assert len(kinds) == len(set(kinds.values()))
   token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(kinds.values())]
@@ -28,13 +33,11 @@ def output_swift(path:str, node_transitions:NodeTransitions, dfa:DFA,
 
   # Mode transitions dictionary.
 
-  def swift_mode_transition(d:Dict[str, Tuple[int, str]]) -> Dict[SwiftEnum, Tuple[int, SwiftEnum]]:
-    return {SwiftEnum(parent_kind): (child_start, SwiftEnum(child_kind)) for parent_kind, (child_start, child_kind) in d.items()}
+  def mode_trans_dict(d:Dict[str,Tuple[str,str]]) -> dict:
+    return {SwiftEnum(parent_kind): (SwiftEnum(child_mode), SwiftEnum(child_kind))
+      for parent_kind, (child_mode, child_kind) in d.items()}
 
-  if node_transitions:
-    mode_transition_items = '\n'.join(f'    {parent_start}: {swift_repr(swift_mode_transition(d))},' for parent_start, d in node_transitions.items())
-  else:
-    mode_transition_items = ':'
+  mode_transitions_dict = {SwiftEnum(modes[name]):mode_trans_dict(d) for name, d in mode_transitions.items()}
 
   # State cases.
 
@@ -44,7 +47,7 @@ def output_swift(path:str, node_transitions:NodeTransitions, dfa:DFA,
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
     return [fmt(*r) for r in closed_int_intervals(chars)]
 
-  def byte_case(chars, dst:int) -> str:
+  def byte_case(dfa:DFA, chars:List[int], dst:int) -> str:
     pattern_name = dfa.match_name(dst)
     kind = None if pattern_name is None else kinds.get(pattern_name)
     return 'case {chars}: state = {dst}{suffix}'.format(
@@ -52,44 +55,44 @@ def output_swift(path:str, node_transitions:NodeTransitions, dfa:DFA,
       dst=dst,
       suffix=f'; last = pos; kind = .{kind}' if kind else '')
 
-  def byte_cases(node:int) -> List[str]:
+  def byte_cases(dfa:DFA, node:int) -> List[str]:
     dst_chars:DefaultDict[int, List[int]] = DefaultDict(list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
-    return [byte_case(chars, dst) for dst, chars in dst_chars_sorted]
+    return [byte_case(dfa, chars, dst) for dst, chars in dst_chars_sorted]
 
-  def transition_code(node:int) -> str:
+  def transition_code(dfa:DFA, node:int) -> str:
     d = dfa.transitions[node]
     if not d: return 'break loop' # no transitions.
     return render_template('''switch byte {
         ${byte_cases}
         default: break loop
         }''',
-      byte_cases='\n        '.join(byte_cases(node)))
+      byte_cases='\n        '.join(byte_cases(dfa, node)))
 
-  def state_case(node:int) -> str:
-    mode = node_modes[node]
+  def state_case(dfa:DFA, node:int) -> str:
+    mode = dfa.name
     name = dfa.match_name(node)
     if name:
       desc = name
     elif node in dfa.pre_match_nodes:
-      desc = mode.name + ' pre-match'
+      desc = f'{mode} pre-match'
     else:
-      desc = mode.name + ' post-match'
+      desc = f'{mode} post-match'
     return 'case {node}: // {desc}.\n        {transition_code}'.format(
       desc=desc,
       node=node,
-      transition_code=transition_code(node))
+      transition_code=transition_code(dfa, node))
 
-  dfa_nodes = sorted(dfa.transitions.keys())
-  state_cases = [state_case(node) for node in dfa_nodes]
+  state_cases = [state_case(dfa, node) for dfa in dfas for node in sorted(dfa.transitions.keys())]
 
   with open(path, 'w', encoding='utf8') as f:
     src = render_template(template,
-      license=license,
-      mode_transition_items=mode_transition_items,
       Name=args.type_prefix,
+      license=license,
+      mode_case_defs='\n  '.join(mode_case_defs),
+      mode_transitions_dict=swift_repr(mode_transitions_dict, indent=2),
       patterns_path=args.path,
       state_cases='\n      '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
@@ -115,6 +118,15 @@ template = r'''// ${license}
 import Foundation
 
 
+public enum ${Name}LexMode: Int, Comparable {
+  ${mode_case_defs}
+
+  public var startState: Int { return rawValue }
+
+  public static func < (l: ${Name}LexMode, r: ${Name}LexMode) -> Bool { return l.rawValue < r.rawValue }
+}
+
+
 public enum ${Name}TokenKind: Int, Comparable, CustomStringConvertible {
   ${token_kind_case_defs}
 
@@ -135,7 +147,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
   public let source: Source
 
-  private var stack: [(UInt, ${Name}TokenKind?)] = [(0, nil)]
+  private var stack: [(${Name}LexMode, ${Name}TokenKind?)] = [(.main, nil)]
   private var pos: Int = 0
 
   public init(source: Source) {
@@ -148,11 +160,12 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
       return nil
     }
 
-    let (modeStart, popKind) = self.stack.last!
+    let (mode, popKind) = self.stack.last!
     let linePos = (source.newlinePositions.last ?? -1) + 1
     let lineIdx = source.newlinePositions.count
+
     var pos = self.pos
-    var state = modeStart
+    var state = mode.startState
     var last: Int = -1
     var kind: ${Name}TokenKind = .incomplete
 
@@ -184,18 +197,17 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     if kind == popKind {
       stack.removeLast()
     } else {
-      if let childPair = ${Name}Lexer.modeTransitions[modeStart]?[kind] {
+      if let childPair = ${Name}Lexer.modeTransitions[mode]?[kind] {
         stack.append(childPair)
       }
     }
     return Token(pos: tokenPos, end: tokenEnd, linePos: linePos, lineIdx: lineIdx, kind: kind)
   }
 
-  private static let modeTransitions: Dictionary<UInt, Dictionary<${Name}TokenKind, (UInt, ${Name}TokenKind?)>> = [
-${mode_transition_items}
-  ]
+  private static let modeTransitions: Dictionary<${Name}LexMode, Dictionary<TokenKind, (${Name}LexMode, TokenKind?)>> = ${mode_transitions_dict}
 }
 '''
+
 
 test_template = r'''
 
@@ -268,15 +280,20 @@ def swift_escape_literal_char(c:str) -> str:
 def swift_esc_str(string:str) -> str:
   return ''.join(swift_escape_literal_char(c) for c in string)
 
-def swift_repr(obj:Any) -> str:
+def swift_repr(obj:Any, indent=0) -> str:
   if isinstance(obj, int): return repr(obj)
-  if isinstance(obj, str): return '"{}"'.format(swift_esc_str(obj))
+  if isinstance(obj, str): return f'"{swift_esc_str(obj)}"'
   if isinstance(obj, SwiftEnum): return obj.swift_repr
   if isinstance(obj, tuple): return f'({",".join(swift_repr(el) for el in obj)})'
-  if isinstance(obj, dict): return f'[{",".join(swift_repr_kv(kv) for kv in obj.items())}]'
+  if isinstance(obj, dict):
+    items = ''.join(swift_repr_kv(kv, indent=indent+2) for kv in obj.items())
+    ind = ' ' * indent
+    return f'[\n{items}{ind}]' if obj else '[:]'
   raise ValueError(obj)
 
-def swift_repr_kv(kv:Tuple[Any, Any]) -> str: return f'{swift_repr(kv[0])}:{swift_repr(kv[1])}'
+def swift_repr_kv(kv:Tuple[Any, Any], indent:int) -> str:
+  ind = ' ' * indent
+  return f'{ind}{swift_repr(kv[0], indent=indent)}:{swift_repr(kv[1], indent=indent)},\n'
 
 
 def swift_safe_sym(name:str) -> str:

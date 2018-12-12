@@ -21,14 +21,14 @@ An automaton consists of two parts:
   * for NFAs, the destination is a set of nodes, representing a subset of the next state.
 * match_node_name_sets: dictionary of nodes mapping matching nodes to the set of corresponding pattern names.
 
-The starting state is always 0 for DFAs, and {0} for NFAs.
-Additionally, 1 and {1} are always the respective invalid states.
+For NFAs, the start state is always {0}, and the invalid state is always {1}.
+For DFAs, start_state and invalid_state are the lowest two node indices, and are available as attributes.
 
 For all bytes that do not naturally transition out of `start`,
 artificial transitions are added from `start` to `invalid`,
-and `invalid` transitions to itself for all bytes that are not a transition from `start`.
+and `invalid` transitions to itself for all bytes that are not a valid transition from `start`.
 This trick allows the FA to always progress from the start state,
-thus producing a stream of tokens that completely span any input string.
+thus producing a stream of tokens that seamlessly cover any input string.
 '''
 
 from collections import defaultdict
@@ -51,8 +51,10 @@ FrozenSetStr0:FrozenSet[str] = frozenset()
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, transitions:DfaTransitions, match_node_name_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
+  def __init__(self, name:str, transitions:DfaTransitions, match_node_name_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
    iso_kinds=FrozenSetStr0, strict_sub_kinds=FrozenSetStr0, strict_sup_kinds=FrozenSetStr0, po_kinds=FrozenSetStr0) -> None:
+    assert name
+    self.name = name
     self.transitions = transitions
     self.match_node_name_sets = match_node_name_sets
     self.lit_patterns = lit_patterns
@@ -60,6 +62,9 @@ class DFA:
     self.strict_sub_kinds = strict_sub_kinds
     self.strict_sup_kinds = strict_sup_kinds
     self.po_kinds = po_kinds
+    self.start_node = min(transitions)
+    self.invalid_node = self.start_node + 1
+    self.end_node = max(transitions) + 1
 
   @property
   def is_empty(self) -> bool:
@@ -101,7 +106,7 @@ class DFA:
       return frozenset() # empty.
     match_nodes = self.match_nodes
     nodes:Set[int] = set()
-    remaining = {0}
+    remaining = {self.start_node}
     while remaining:
       node = remaining.pop()
       assert node not in nodes
@@ -126,8 +131,9 @@ class DFA:
   @property
   def pattern_names(self) -> FrozenSet[str]: return frozenset().union(*self.match_node_name_sets.values()) # type: ignore
 
-  def describe(self, label=None) -> None:
-    errL(label or type(self).__name__, ':')
+  def describe(self, label='') -> None:
+    errL(self.name, (label and f': {label}'), ':')
+    errL(f' start_node:{self.start_node} end_node:{self.end_node}')
     errL(' match_node_name_sets:')
     for node, names in sorted(self.match_node_name_sets.items()):
       errSL(f'  {node}:', *sorted(names))
@@ -143,8 +149,8 @@ class DFA:
         errSL(f'    {codes_desc(byte_ranges)} ==> {dst}', *sorted(self.match_names(dst)))
     errL()
 
-  def describe_stats(self, label=None) -> None:
-    errL(label or type(self).__name__, ':')
+  def describe_stats(self, label='') -> None:
+    errL(self.name, (label and f': {label}'), ':')
     errSL('  match nodes:', len(self.match_node_name_sets))
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
@@ -158,7 +164,7 @@ class DFA:
 
   def match(self, text:str) -> FrozenSet[str]:
     text_bytes = text.encode('utf8')
-    state = 0
+    state = self.start_node
     for byte in text_bytes:
       try: state = self.advance(state, byte)
       except KeyError: return frozenset()
@@ -169,11 +175,13 @@ class DFA:
     except KeyError: return frozenset()
 
   def match_name(self, node:int) -> Optional[str]:
-    try: return first_el(self.match_node_name_sets[node])
+    try: s = self.match_node_name_sets[node]
     except KeyError: return None
+    assert len(s) == 1
+    return first_el(s)
 
 
-def minimize_dfa(dfa:DFA) -> DFA:
+def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   '''
   Optimize a DFA by coalescing redundant states.
   sources:
@@ -239,11 +247,11 @@ def minimize_dfa(dfa:DFA) -> DFA:
           elif new not in remaining: remaining.append(new)
 
   mapping = {}
-  for new_node, part in enumerate(sorted(sorted(p) for p in partition.values())):
+  for new_node, part in enumerate(sorted(sorted(p) for p in partition.values()), start_node):
     for old_node in part:
       mapping[old_node] = new_node
 
-  transitions_dd:DefaultDict[int, Dict[int, int]] = defaultdict(dict)
+  transitions_dd:DefaultDict[int,Dict[int,int]] = defaultdict(dict)
   for old_node, old_d in dfa.transitions.items():
     new_d = transitions_dd[mapping[old_node]]
     for char, old_dst in old_d.items():
@@ -251,7 +259,9 @@ def minimize_dfa(dfa:DFA) -> DFA:
       try:
         existing = new_d[char]
         if existing != new_dst:
-          exit(f'inconsistency in minimized DFA: src state: {old_node}->{new_node}; char: {char!r}; dst state: {old_dst}->{new_dst} != ?->{existing}')
+          exit('inconsistency in minimized DFA:\n'
+            f'src state: {old_node}->{new_node}; char: {char!r};\n'
+            f'dst state: {old_dst}->{new_dst} != ?->{existing}')
       except KeyError:
         new_d[char] = new_dst
 
@@ -306,5 +316,5 @@ def minimize_dfa(dfa:DFA) -> DFA:
 
   match_node_name_sets = { node : frozenset(names) for node, names in match_node_names.items() }
 
-  return DFA(transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns,
+  return DFA(name=dfa.name, transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns,
     iso_kinds=iso_kinds, strict_sub_kinds=strict_sub_kinds, strict_sup_kinds=strict_sup_kinds, po_kinds=po_kinds)

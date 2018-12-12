@@ -2,11 +2,4 @@
 
 from typing import Dict, DefaultDict, List, NamedTuple, Tuple
 
-
-class Mode(NamedTuple):
-  name:str
-  start:int
-  invalid:int
-
-ModeTransitions = Dict[str,Dict[str,Tuple[str,str]]]
-NodeTransitions = DefaultDict[int,Dict[str,Tuple[int,str]]]
+from legs_base import StateTransitions, MatchStateKinds, ModeData, KindModeTransitions, ModeTransitions

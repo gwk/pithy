@@ -185,10 +185,18 @@ class Source:
     return val
 
 
+StateTransitions = Dict[int,Dict[int,int]] # state -> byte -> dst_state.
+MatchStateKinds = Dict[int,str] # state -> token kind.
+ModeData = Tuple[int,StateTransitions,MatchStateKinds] # start_node, state_transitions, match_state_kinds.
+
+KindModeTransitions = Dict[str,Tuple[str,str]]
+ModeTransitions = Dict[str,KindModeTransitions]
+
 
 class LexerBase(Iterator[Token]):
 
-  pattern_descs:Dict[str,str] = {}
+  mode_transitions:ModeTransitions
+  pattern_descs:Dict[str,str]
 
   def __init__(self, source:Source) -> None:
     self.source = source
@@ -199,30 +207,31 @@ class LexerBase(Iterator[Token]):
 
 class DictLexerBase(LexerBase):
 
-  def __init__(self, source:Source) -> None:
-    self.stack:List[Tuple[int,Optional[str]]] = [(0, None)] # [(mode_start, pop_kind)].
-    super().__init__(source=source)
+  mode_data:Dict[str,ModeData]
 
-  transitions:Dict[int, Dict[int, int]] = {} # state -> byte -> dst_state.
-  match_node_kinds:Dict[int, str] = {} # state -> kind.
-  node_transitions:Dict[int,Dict[str,Tuple[int,str]]] = {} # parent_start->(parent_kind->child_start_kind_pair).
+  def __init__(self, source:Source) -> None:
+    self.stack:List[Tuple[str,Optional[str]]] = [('main', None)] # [(mode, pop_kind)].
+    super().__init__(source=source)
 
   def __next__(self) -> Token:
     text = self.source.text
     len_text = len(text)
     pos = self.pos
     if pos == len_text: raise StopIteration
-    mode_start, pop_kind = self.stack[-1]
+    mode, pop_kind = self.stack[-1]
+    assert mode in self.mode_data, (mode, list(self.mode_data))
+    mode_start, transitions, match_node_kinds = self.mode_data[mode]
+
     state = mode_start
     end = None
     kind = 'incomplete'
     while pos < len_text:
       byte = text[pos]
-      try: state = self.transitions[state][byte]
+      try: state = transitions[state][byte]
       except KeyError: break
       else: # advance.
         pos += 1
-        try: kind = self.match_node_kinds[state]
+        try: kind = match_node_kinds[state]
         except KeyError: pass
         else: end = pos
     # Matching stopped or reached end of text.
@@ -236,19 +245,18 @@ class DictLexerBase(LexerBase):
     if kind == pop_kind:
       self.stack.pop()
     else:
-      try: child_pair = self.node_transitions[mode_start][kind]
+      try: child_frame = self.mode_transitions[mode][kind]
       except KeyError: pass
-      else: self.stack.append(child_pair)
+      else: self.stack.append(child_frame)
     return Token(pos=token_pos, end=end, kind=kind)
 
 
 class RegexLexerBase(LexerBase):
 
   mode_patterns:Dict[str,Pattern]
-  mode_transitions:Dict[str,Dict[str,Tuple[str,str]]]
 
   def __init__(self, source:Source) -> None:
-    self.stack:List[Tuple[str,Optional[str]]] = [('main', None)]
+    self.stack:List[Tuple[str,Optional[str]]] = [('main', None)] # [(mode, pop_kind)].
     super().__init__(source=source)
 
   def __next__(self) -> Token:
@@ -268,9 +276,9 @@ class RegexLexerBase(LexerBase):
     if kind == pop_kind:
       self.stack.pop()
     else:
-      try: child_pair = self.mode_transitions[mode][kind]
+      try: child_frame = self.mode_transitions[mode][kind]
       except KeyError: pass
-      else: self.stack.append(child_pair)
+      else: self.stack.append(child_frame)
     return Token(pos=token_pos, end=end, kind=kind)
 
 
