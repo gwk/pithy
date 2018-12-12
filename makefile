@@ -77,17 +77,16 @@ vscode-ext/syntaxes/legs.json: grammars/legs.legs
 
 # Perf.
 
+.PHONY: perf-%
 perf-%: _build/perf/%
 	perf/run.py $^ data/11_00/UnicodeData.txt --fast
-
-_build/perf:
-	mkdir -p $@
 
 # Perf-swift.
 _build/perf/%-swift: _build/perf/%.swift legs/legs_base.swift perf/main.swift
 	time swiftc -num-threads 8 -O $^ -o $@
 
-_build/perf/%.swift: grammars/%.legs _build/perf legs/*.py
+_build/perf/%.swift: grammars/%.legs legs/*.py
+	mkdir -p _build/perf
 	legs $< -langs python3 swift -output $@
 
 # Perf-py.
@@ -96,5 +95,6 @@ _build/perf/%-py: _build/perf/%.py legs_base.py perf/main.py
 	cat _build/perf/$*.py perf/main.py >> $@
 	chmod +x $@
 
-_build/perf/%.py: grammars/%.legs _build/perf legs/*.py
+_build/perf/%.py: grammars/%.legs legs/*.py
+	mkdir -p _build/perf
 	legs $< -langs python3 swift -output $@
