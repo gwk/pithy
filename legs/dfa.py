@@ -194,9 +194,9 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   '''
 
   alphabet = dfa.alphabet
-  # start with a rough partition; match nodes are all distinct from each other,
-  # and non-match nodes form an additional distinct set.
-  init_sets = [{n} for n in dfa.match_nodes] + [set(dfa.non_match_nodes)]
+  # start with a rough partition; non-match nodes form one set,
+  # and each match node is distinct from all others.
+  init_sets = [set(dfa.non_match_nodes), *({n} for n in dfa.match_nodes)]
 
   sets = { id(s): s for s in init_sets }
   partition = { n: s for s in sets.values() for n in s }
