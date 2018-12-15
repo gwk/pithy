@@ -231,10 +231,12 @@ class Charset(Pattern):
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
 
+    SubMap = Dict[Optional[int], Optional[Dict]] # Optimization: types in hot functions can waste time.
+
     def walk(seq_map:Dict[Optional[int], Optional[Dict]], node:int) -> None:
       for byte, sub_map_ in seq_map.items():
         if byte is None: continue # handled by parent frame of `walk`.
-        sub_map = cast(Dict[Optional[int], Optional[Dict]], sub_map_)
+        sub_map = cast(SubMap, sub_map_)
         if None in sub_map:
           transitions[node][byte].add(end)
           if len(sub_map) == 1: continue # no need to recurse.
