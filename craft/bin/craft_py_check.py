@@ -3,7 +3,7 @@
 from importlib.util import find_spec as find_module_spec
 from pithy.ansi import *
 from pithy.io import *
-from pithy.path import path_name, path_dir
+from pithy.path import abs_path, path_name, path_dir
 from pithy.lex import Lexer
 from pithy.task import runCO
 from argparse import ArgumentParser
@@ -18,6 +18,8 @@ def main() -> None:
   arg_parser.add_argument('roots', nargs='+')
   arg_parser.add_argument('-deps', nargs='+', default=[])
   arg_parser.add_argument('-paths', nargs='+', default=[])
+  arg_parser.add_argument('-dbg', action='store_true')
+
   args = arg_parser.parse_args()
 
   env = environ.copy()
@@ -43,13 +45,16 @@ def main() -> None:
 
   for p in args.paths:
     if ':' in p: exit(f'bad `-path` argument: {p!r}')
-  mypy_path.extend(args.paths)
+    mypy_path.append(abs_path(p))
 
   if mypy_path:
     env['MYPYPATH'] = ':'.join(mypy_path)
+    if args.dbg: errSL(f'MYPYPATH={mypy_path}')
 
   version_flag = ['--python-version', args.python_version] if args.python_version else []
-  c, o = runCO(['mypy', *version_flag, *args.roots], env=env)
+  cmd = ['mypy', *version_flag, *args.roots]
+  if args.dbg: errSL('cmd:', *cmd)
+  c, o = runCO(cmd, env=env)
   for token in lexer.lex(o):
     s = token[0]
     kind = token.lastgroup
