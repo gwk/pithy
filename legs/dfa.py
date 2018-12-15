@@ -206,18 +206,26 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     for char, dst in d.items():
       rev_transitions[dst][char].add(src)
 
+  def validate_partition() -> None:
+    for node, part in partition.items():
+      assert node in part, (node, part)
+    parts = list(sets.values())
+    for i, pr in enumerate(parts):
+      for j in range(i):
+        pl = parts[j]
+        assert pl.isdisjoint(pr), (pl, pr)
+
   def refine(refining_set:Set[int]) -> List[Tuple[Set[int], Set[int]]]:
     '''
-    Given refining set B,
-    Refine each set A in the partition to a pair of sets: A & B and A - B.
+    Given refining set B, refine each set A in the partition to a pair of sets: A & B and A - B.
     Return a list of pairs for each changed set;
     one of these is a new set, the other is the mutated original.
     '''
     part_sets_to_intersections:DefaultDict[int, Set[int]] = defaultdict(set)
-    set_pairs = []
     for node in refining_set:
       s = partition[node]
       part_sets_to_intersections[id(s)].add(node)
+    set_pairs = []
     for id_s, intersection in part_sets_to_intersections.items():
       s = sets[id_s]
       if intersection != s:
@@ -232,7 +240,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   while remaining:
     a = remaining.pop() # a partition.
     for char in alphabet:
-      # find all nodes `m` that transition via `char` to any node `n` in `a`.
+      # Find all nodes `m` that transition via `char` to any node `n` in `a`.
       dsts = set(chain.from_iterable(rev_transitions[node][char] for node in a))
       #dsts_brute = [node for node in partition if dfa.transitions[node].get(char) in a] # brute force version is slow.
       #assert set(dsts_brute) == dsts
@@ -246,9 +254,12 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
           if old not in remaining: remaining.append(old)
           elif new not in remaining: remaining.append(new)
 
-  mapping = {}
-  for new_node, part in enumerate(sorted(sorted(p) for p in partition.values()), start_node):
+  validate_partition()
+
+  mapping:Dict[int,int] = {}
+  for new_node, part in enumerate(sorted(sorted(p) for p in sets.values()), start_node):
     for old_node in part:
+      assert old_node not in mapping, old_node
       mapping[old_node] = new_node
 
   transitions_dd:DefaultDict[int,Dict[int,int]] = defaultdict(dict)
