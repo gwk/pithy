@@ -6,7 +6,6 @@ from collections import defaultdict
 from itertools import chain, count
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set, Tuple
 
-from pithy.collection import freeze
 from pithy.dict import dict_put
 from pithy.fs import path_ext, path_stem
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
@@ -15,7 +14,7 @@ from pithy.string import pluralize
 
 from ..defs import ModeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
-from ..nfa import NFA, gen_dfa
+from ..nfa import NFA, NfaTransitions, gen_dfa
 from ..parse import parse_legs
 from ..patterns import NfaMutableTransitions, Pattern
 from ..python import output_python3
@@ -253,13 +252,16 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
 
   match_node_names:Dict[int, str] = { invalid: 'invalid' }
 
-  transitions:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
+  transitions_dd:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for pat_name, pattern in named_patterns:
     match_node = mk_node()
-    pattern.gen_nfa(mk_node, transitions, start, match_node)
+    pattern.gen_nfa(mk_node, transitions_dd, start, match_node)
     dict_put(match_node_names, match_node, pat_name)
   lit_patterns = { n for n, pattern in named_patterns if pattern.is_literal }
-  return NFA(name=name, transitions=freeze(transitions), match_node_names=match_node_names, lit_patterns=lit_patterns)
+
+  transitions:NfaTransitions = {
+    src: {char: frozenset(dst) for char, dst in d.items() } for src, d in transitions_dd.items() }
+  return NFA(name=name, transitions=transitions, match_node_names=match_node_names, lit_patterns=lit_patterns)
 
 
 ext_langs = {
