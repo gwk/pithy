@@ -142,7 +142,7 @@ def format_byte_count(count:int, prec=3, abbr=True) -> str:
       if round(c * shift) < 1000 * shift: break
     c /= 1000
   if prec == 0 and not abbr:
-    return pluralize(round(c), full)
+    return pluralize(round(c), full) # type: ignore
   # with precision > 0, always pluralize the full names, even if all the digits are zero.
   s = '' if abbr else 's'
   label = abbrev if abbr else full
