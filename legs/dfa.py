@@ -198,8 +198,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   # and each match node is distinct from all others.
   init_sets = [set(dfa.non_match_nodes), *({n} for n in dfa.match_nodes)]
 
-  sets = { id(s): s for s in init_sets }
-  partition = { n: s for s in sets.values() for n in s }
+  part_ids_to_parts = { id(s): s for s in init_sets }
+  node_parts = { n: s for s in part_ids_to_parts.values() for n in s }
 
   rev_transitions:DefaultDict[int, DefaultDict[int, Set[int]]] = defaultdict(lambda: defaultdict(set))
   for src, d in dfa.transitions.items():
@@ -207,9 +207,9 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       rev_transitions[dst][char].add(src)
 
   def validate_partition() -> None:
-    for node, part in partition.items():
+    for node, part in node_parts.items():
       assert node in part, (node, part)
-    parts = list(sets.values())
+    parts = list(part_ids_to_parts.values())
     for i, pr in enumerate(parts):
       for j in range(i):
         pl = parts[j]
@@ -222,43 +222,43 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     Return a list of pairs for each changed set;
     one of these is a new set, the other is the mutated original.
     '''
-    part_sets_to_intersections:DDISI = defaultdict(set)
+    part_id_intersections:DDISI = defaultdict(set)
     for node in refining_set:
-      s = partition[node]
-      part_sets_to_intersections[id(s)].add(node)
+      s = node_parts[node]
+      part_id_intersections[id(s)].add(node)
     set_pairs = []
-    for id_s, intersection in part_sets_to_intersections.items():
-      s = sets[id_s]
+    for id_s, intersection in part_id_intersections.items():
+      s = part_ids_to_parts[id_s]
       if intersection != s:
-        sets[id(intersection)] = intersection
+        part_ids_to_parts[id(intersection)] = intersection
         for x in intersection:
-          partition[x] = intersection
+          node_parts[x] = intersection
         s -= intersection
         set_pairs.append((intersection, s))
     return set_pairs
 
   remaining = list(init_sets) # distinguishing sets used to refine the partition.
   while remaining:
-    a = remaining.pop() # a partition.
+    s = remaining.pop() # a partition.
     for char in alphabet:
-      # Find all nodes `m` that transition via `char` to any node `n` in `a`.
-      dsts = set(chain.from_iterable(rev_transitions[node][char] for node in a))
-      #dsts_brute = [node for node in partition if dfa.transitions[node].get(char) in a] # brute force version is slow.
+      # Find all nodes `m` that transition via `char` to any node `n` in `s`.
+      dsts = set(chain.from_iterable(rev_transitions[node][char] for node in s))
+      #dsts_brute = [node for node in node_parts if dfa.transitions[node].get(char) in s] # brute force version is slow.
       #assert set(dsts_brute) == dsts
       len_dsts = len(dsts)
-      if len_dsts == 0 or len_dsts == len(partition): continue # no refinement.
-      for new, old in refine(dsts):
-        if len(new) < len(old): # prefer new.
-          if new not in remaining: remaining.append(new)
-          elif old not in remaining: remaining.append(old)
-        else: # prefer old.
-          if old not in remaining: remaining.append(old)
-          elif new not in remaining: remaining.append(new)
+      if len_dsts == 0 or len_dsts == len(node_parts): continue # no refinement.
+      for a, b in refine(dsts):
+        if len(a) < len(b): # Prefer the smaller set to continue refining with.
+          if a not in remaining: remaining.append(a)
+          elif b not in remaining: remaining.append(b)
+        else:
+          if b not in remaining: remaining.append(b)
+          elif a not in remaining: remaining.append(a)
 
   validate_partition()
 
   mapping:Dict[int,int] = {}
-  for new_node, part in enumerate(sorted(sorted(p) for p in sets.values()), start_node):
+  for new_node, part in enumerate(sorted(sorted(p) for p in part_ids_to_parts.values()), start_node):
     for old_node in part:
       assert old_node not in mapping, old_node
       mapping[old_node] = new_node
