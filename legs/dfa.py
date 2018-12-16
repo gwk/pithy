@@ -245,8 +245,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       dsts = set(chain.from_iterable(rev_transitions[node][char] for node in s))
       #dsts_brute = [node for node in node_parts if dfa.transitions[node].get(char) in s] # brute force version is slow.
       #assert set(dsts_brute) == dsts
-      len_dsts = len(dsts)
-      if len_dsts == 0 or len_dsts == len(node_parts): continue # no refinement.
+      if not dsts: continue # no refinement.
       for a, b in refine(dsts):
         if len(a) < len(b): # Prefer the smaller set to continue refining with.
           if a not in remaining: remaining.append(a)
