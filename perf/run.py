@@ -7,6 +7,7 @@ from pithy.path import path_name
 from sys import argv
 from typing import Any, List
 
+
 def main() -> None:
   # Runner invokes itself as a subprocess with '--worker --pipe'.
   # This makes specifying command line arguments tricky.
@@ -18,7 +19,8 @@ def main() -> None:
       perf_args.extend(cmd[i:])
       cmd = cmd[:i]
       break
-  if not cmd: exit(f'error: command is empty.')
+  if not cmd:
+    exit(f'error: no command specified; usage: run.py [CMD...] [PERF FLAGS...].')
 
   name = path_name(cmd[0])
 
