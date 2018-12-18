@@ -121,6 +121,7 @@ def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
 def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[int, bytes, bytes]:
   '''
   Communicate with and wait for a task.
+  Returns (exit_code, out_bytes, err_bytes).
   '''
 
   # Note: Popen provides its own timeout mechanism, based on select.
@@ -130,7 +131,7 @@ def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[
   with AlarmManager(timeout=timeout, msg='process timed out after {timeout} seconds and was killed', on_signal=proc.kill):
     out_bytes, err_bytes = proc.communicate(input_bytes) # waits for process to complete.
 
-  return proc.returncode, b'' if out_bytes is None else out_bytes, b'' if err_bytes is None else err_bytes
+  return proc.returncode, (b'' if out_bytes is None else out_bytes), (b'' if err_bytes is None else err_bytes)
 
 
 def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, exp: TaskCodeExpectation=0,
