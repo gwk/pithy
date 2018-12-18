@@ -3,7 +3,6 @@
 from typing import Any, Callable, DefaultDict, Dict, Iterable, Optional, Set, Type, cast
 
 from pithy.io import errL, errSL
-from pithy.iterable import prefix_tree
 from pithy.types import is_pair_of_int
 
 from .nfa import empty_symbol
@@ -230,21 +229,21 @@ class Charset(Pattern):
 
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
-
-    SubMap = Dict[Optional[int], Optional[Dict]] # Optimization: types in hot functions can waste time.
-
-    def walk(seq_map:Dict[Optional[int], Optional[Dict]], node:int) -> None:
-      for byte, sub_map_ in seq_map.items():
-        if byte is None: continue # handled by parent frame of `walk`.
-        sub_map = cast(SubMap, sub_map_)
-        if None in sub_map:
+    node_byte_nodes = DefaultDict[int,Dict[int,int]](dict)
+    for code in codes_for_ranges(self.ranges):
+      node = start
+      enc_bytes = chr(code).encode()
+      for i, byte in enumerate(enc_bytes, 1-len(enc_bytes)):
+        if i: # Not the final byte.
+          byte_nodes = node_byte_nodes[node]
+          try: n = byte_nodes[byte]
+          except KeyError:
+            n = mk_node()
+            byte_nodes[byte] = n
+            transitions[node][byte].add(n)
+          node = n
+        else: # Final byte.
           transitions[node][byte].add(end)
-          if len(sub_map) == 1: continue # no need to recurse.
-        next_node = mk_node()
-        transitions[node][byte].add(next_node)
-        walk(sub_map, next_node)
-
-    walk(prefix_tree(chr(code).encode() for code in codes_for_ranges(self.ranges)), start)
 
 
   def gen_regex(self, flavor:str) -> str:
