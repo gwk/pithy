@@ -301,24 +301,22 @@ def window_pairs(iterable: Iterable[_T], tail: Optional[_T]=None) -> Iterator[Tu
   yield (head, tail)
 
 
-_KTerminator = TypeVar('_KTerminator', bound=Hashable)
-PrefixTree = Dict[Union[_K, _KTerminator], Optional[Dict]] # mypy cannot handle recursive types.
+_PrefixTreeTerminator = TypeVar('_PrefixTreeTerminator', bound=Hashable)
+PrefixTree = Dict[Union[_K, _PrefixTreeTerminator], Optional[Dict]] # mypy cannot handle recursive types.
 
 
-def prefix_tree(iterables: Iterable[Sequence[_K]], index=0, terminator=None) -> PrefixTree:
-  'Make a nested mapping indicating shared prefixes of `iterables`.'
-  d: Dict = {}
-  subsets: DefaultDict = defaultdict(list)
-  # partition the sequences by leading element.
-  for seq in iterables:
-    l = len(seq)
-    assert l >= index
-    if l  == index: # handle the terminal case immediately.
-      d[terminator] = None
-    else:
-      subsets[seq[index]].append(seq)
-  # recurse for each partition.
-  for el, subset in subsets.items():
-    d[el] = prefix_tree(subset, index=index + 1, terminator=terminator)
-  return d
-
+def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator=None) -> PrefixTree:
+  res:PrefixTree = {}
+  for it in iterables:
+    d = res
+    for el in it:
+      try:
+        e = d[el]
+        assert e is not None
+        d = e
+      except KeyError:
+        e = {}
+        d[el] = e
+        d = e
+    d[terminator] = None
+  return res
