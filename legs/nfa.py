@@ -132,7 +132,7 @@ class NFA:
     return FrozenSet(s)
 
   def validate(self) -> List[str]:
-    start = self.advance_empties(frozenset({0}))
+    start = self.advance_empties({0})
     msgs = []
     for node, name in sorted(self.match_node_names.items()):
       if node in start:
@@ -145,11 +145,11 @@ class NFA:
       try: dst_nodes = self.transitions[node][byte]
       except KeyError: pass
       else: nextState.update(dst_nodes)
-    return self.advance_empties(frozenset(nextState))
+    return self.advance_empties(nextState)
 
   def match(self, text:str) -> FrozenSet[str]:
     text_bytes = text.encode('utf8')
-    state = self.advance_empties(frozenset({0}))
+    state = self.advance_empties({0})
     #errSL('NFA start:', state)
     for byte in text_bytes:
       state = self.advance(state, byte)
@@ -159,16 +159,15 @@ class NFA:
     literal_matches = frozenset(n for n in all_matches if n in self.lit_patterns)
     return literal_matches or all_matches
 
-  def advance_empties(self, state:NfaState) -> NfaState:
-    remaining = set(state)
+  def advance_empties(self, mut_state:Set[int]) -> NfaState:
     expanded:Set[int] = set()
-    while remaining:
-      node = remaining.pop()
+    while mut_state:
+      node = mut_state.pop()
       expanded.add(node)
       try: dst_nodes = self.transitions[node][empty_symbol]
       except KeyError: continue
       novel = dst_nodes - expanded
-      remaining.update(novel)
+      mut_state.update(novel)
     return frozenset(expanded)
 
 
@@ -193,7 +192,7 @@ def gen_dfa(nfa:NFA) -> DFA:
   def mk_node() -> int: return next(indexer)
 
   nfa_states_to_dfa_nodes:DefaultDict[NfaState, int] = defaultdict(mk_node)
-  start = frozenset(nfa.advance_empties(frozenset({0})))
+  start = nfa.advance_empties({0})
   invalid = frozenset({1}) # no need to advance_empties as `invalid` is unreachable in the nfa.
   start_node = nfa_states_to_dfa_nodes[start]
   invalid_node = nfa_states_to_dfa_nodes[invalid]
