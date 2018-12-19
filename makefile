@@ -78,8 +78,8 @@ vscode-ext/syntaxes/legs.json: grammars/legs.legs
 # Perf.
 
 .PHONY: perf-%
-perf-%: _build/perf/%
-	perf/run.py $^ data/11_00/UnicodeData.txt --fast
+perf-%: _build/perf/% # <grammar>-<lang>
+	time-runs 8 $^ data/11_00/UnicodeData.txt
 
 # Perf-swift.
 _build/perf/%-swift: _build/perf/%.swift legs/legs_base.swift perf/main.swift
