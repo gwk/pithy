@@ -222,19 +222,21 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     Return a list of pairs for each changed set;
     one of these is a new set, the other is the mutated original.
     '''
+    # Accumulate intersection sets.
     part_id_intersections:PartIntersections = defaultdict(set)
     for node in refining_set:
-      s = node_parts[node]
-      part_id_intersections[id(s)].add(node)
+      part = node_parts[node]
+      part_id_intersections[id(part)].add(node)
+    # Split existing sets by the intersection sets.
     set_pairs = []
-    for id_s, intersection in part_id_intersections.items():
-      s = part_ids_to_parts[id_s]
-      if intersection != s:
+    for id_part, intersection in part_id_intersections.items():
+      part = part_ids_to_parts[id_part]
+      if intersection != part: # Split part into difference and intersection.
         part_ids_to_parts[id(intersection)] = intersection
         for x in intersection:
           node_parts[x] = intersection
-        s -= intersection
-        set_pairs.append((intersection, s))
+        part -= intersection # Original part mutates to become difference.
+        set_pairs.append((intersection, part))
     return set_pairs
 
   remaining = list(init_sets) # distinguishing sets used to refine the partition.
