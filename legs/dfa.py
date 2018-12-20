@@ -215,14 +215,14 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         pl = parts[j]
         assert pl.isdisjoint(pr), (pl, pr)
 
-  DDISI = DefaultDict[int, Set[int]] # Optimization: types in hot functions can waste time.
+  PartIntersections = DefaultDict[int, Set[int]] # Optimization: types in hot functions can waste time.
   def refine(refining_set:Set[int]) -> List[Tuple[Set[int], Set[int]]]:
     '''
     Given refining set B, refine each set A in the partition to a pair of sets: A & B and A - B.
     Return a list of pairs for each changed set;
     one of these is a new set, the other is the mutated original.
     '''
-    part_id_intersections:DDISI = defaultdict(set)
+    part_id_intersections:PartIntersections = defaultdict(set)
     for node in refining_set:
       s = node_parts[node]
       part_id_intersections[id(s)].add(node)
