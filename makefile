@@ -87,7 +87,7 @@ _build/perf/%-swift: _build/perf/%.swift legs/legs_base.swift perf/main.swift
 
 _build/perf/%.swift: grammars/%.legs legs/*.py
 	mkdir -p _build/perf
-	legs $< -langs python3 swift -output $@
+	legs $< -langs python swift -output $@
 
 # Perf-py.
 _build/perf/%-py: _build/perf/%.py legs_base.py perf/main.py
@@ -97,4 +97,4 @@ _build/perf/%-py: _build/perf/%.py legs_base.py perf/main.py
 
 _build/perf/%.py: grammars/%.legs legs/*.py
 	mkdir -p _build/perf
-	legs $< -langs python3 swift -output $@
+	legs $< -langs python swift -output $@

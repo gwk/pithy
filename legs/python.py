@@ -17,7 +17,7 @@ from .dfa import DFA
 from .patterns import Pattern
 
 
-def output_python3(path:str, patterns:Dict[str,Pattern], mode_pattern_names:Dict[str,FrozenSet[str]],
+def output_python(path:str, patterns:Dict[str,Pattern], mode_pattern_names:Dict[str,FrozenSet[str]],
   dfas:List[DFA], mode_transitions:ModeTransitions,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 

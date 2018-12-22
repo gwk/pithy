@@ -17,7 +17,7 @@ from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, NfaTransitions, gen_dfa
 from ..parse import parse_legs
 from ..patterns import NfaMutableTransitions, Pattern
-from ..python import output_python3
+from ..python import output_python
 from ..swift import output_swift
 from ..vscode import output_vscode
 
@@ -160,12 +160,12 @@ def main() -> None:
     if not out_name_stem: exit('could not determine output file name from `path`.')
   out_stem = path_join(out_dir, out_name_stem)
 
-  if 'python3' in langs:
+  if 'python' in langs:
     path = out_stem + '.py'
-    output_python3(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
+    output_python(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
       dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
-    if args.test: test_cmds.append(['python3', path] + args.test)
+    if args.test: test_cmds.append(['python', path] + args.test)
 
   if 'swift' in langs:
     path = out_stem + '.swift'
@@ -272,12 +272,12 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
 
 
 ext_langs = {
-  '.py' : 'python3',
+  '.py' : 'python',
   '.swift' : 'swift',
 }
 
-supported_langs = {'python3', 'swift', 'vscode'}
-test_langs = {'python3', 'swift'}
+supported_langs = {'python', 'swift', 'vscode'}
+test_langs = {'python', 'swift'}
 
 
 if __name__ == "__main__": main()
