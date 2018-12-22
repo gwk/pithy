@@ -7,7 +7,7 @@ from itertools import chain, count
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set, Tuple
 
 from pithy.dict import dict_put
-from pithy.fs import path_ext, path_stem
+from pithy.path import path_ext, path_join, path_name_stem, split_dir_stem_ext
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
@@ -69,14 +69,15 @@ def main() -> None:
   if args.match and args.langs: exit('`-match` and `-langs` are mutually exclusive.')
   if args.match and args.test: exit('`-match` and `-test` are mutually exclusive.')
 
-  if args.test and not args.output: exit('`-test` requires `-output`.')
-
   langs:Set[str]
   if args.langs:
-    for lang in args.langs:
-      if lang not in supported_langs:
-        exit(f'unknown language {lang!r}; supported languages are: {sorted(supported_langs)}.')
-    langs = args.langs
+    if 'all' in args.langs:
+      langs = supported_langs
+    else:
+      for lang in args.langs:
+        if lang not in supported_langs:
+          exit(f'unknown language {lang!r}; supported languages are: {sorted(supported_langs)}.')
+      langs = set(args.langs)
   elif args.test:
     langs = test_langs
   elif args.output:
@@ -149,21 +150,31 @@ def main() -> None:
 
   test_cmds:List[List[str]] = []
 
+  out_path = args.output or args.path
+  if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
+
+  out_dir, out_name_stem, out_ext = split_dir_stem_ext(out_path)
+  if not out_name_stem:
+    if not args.path: exit('could not determine output file name.')
+    out_name_stem = path_name_stem(args.path)
+    if not out_name_stem: exit('could not determine output file name from `path`.')
+  out_stem = path_join(out_dir, out_name_stem)
+
   if 'python3' in langs:
-    path = path_for_output(args.output, '.py')
+    path = out_stem + '.py'
     output_python3(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
       dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
-    path = path_for_output(args.output, '.swift')
+    path = out_stem + '.swift'
     output_swift(path, dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
   if 'vscode' in langs:
-    path = path_for_output(args.output, '.json')
+    path = out_stem + '.json'
     output_vscode(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
       pattern_descs=pattern_descs, license=license, args=args)
 
@@ -174,10 +185,6 @@ def main() -> None:
 def mode_name_key(name:str) -> str:
   'Always place main mode first.'
   return '' if name == 'main' else name
-
-
-def path_for_output(output:str, ext:str) -> str:
-  return path_stem(output) + ext
 
 
 def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
