@@ -77,24 +77,32 @@ vscode-ext/syntaxes/legs.json: grammars/legs.legs
 
 # Perf.
 
-.PHONY: perf-%
+.PHONY: perf-% perf-gen-%
+
 perf-%: _build/perf/% # <grammar>-<lang>
 	time-runs 8 $^ data/11_00/UnicodeData.txt
 
-# Perf-swift.
-_build/perf/%-swift: _build/perf/%.swift legs/legs_base.swift perf/main.swift
-	time swiftc -num-threads 8 -O $^ -o $@
-
-_build/perf/%.swift: grammars/%.legs legs/*.py
-	mkdir -p _build/perf
-	legs $< -langs python swift -output $@
-
-# Perf-py.
-_build/perf/%-py: _build/perf/%.py legs_base.py perf/main.py
+_build/perf/%-py-table: _build/perf/%.py legs_base.py perf/main.py
 	echo '#!/usr/bin/env python3' > $@
 	cat _build/perf/$*.py perf/main.py >> $@
 	chmod +x $@
 
-_build/perf/%.py: grammars/%.legs legs/*.py
+_build/perf/%-py-re: _build/perf/%.re.py legs_base.py perf/main.py
+	echo '#!/usr/bin/env python3' > $@
+	cat _build/perf/$*.re.py perf/main.py >> $@
+	chmod +x $@
+
+_build/perf/%-swift: _build/perf/%.swift legs/legs_base.swift perf/main.swift
+	time swiftc -num-threads 8 -O $^ -o $@
+
+_build/perf/%.re.py: grammars/%.legs legs/*.py
 	mkdir -p _build/perf
-	legs $< -langs python swift -output $@
+	legs $< -langs python python-re swift -output $@
+
+_build/perf/%.table.py: grammars/%.legs legs/*.py
+	mkdir -p _build/perf
+	legs $< -langs python python-re swift -output $@
+
+_build/perf/%.swift: grammars/%.legs legs/*.py
+	mkdir -p _build/perf
+	legs $< -langs python python-re swift -output $@

@@ -7,7 +7,7 @@ from itertools import chain, count
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set, Tuple
 
 from pithy.dict import dict_put
-from pithy.path import path_ext, path_join, path_name_stem, split_dir_stem_ext
+from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.string import pluralize
@@ -17,7 +17,7 @@ from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, NfaTransitions, gen_dfa
 from ..parse import parse_legs
 from ..patterns import NfaMutableTransitions, Pattern
-from ..python import output_python
+from ..python import output_python, output_python_re
 from ..swift import output_swift
 from ..vscode import output_vscode
 
@@ -153,16 +153,24 @@ def main() -> None:
   out_path = args.output or args.path
   if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
 
-  out_dir, out_name_stem, out_ext = split_dir_stem_ext(out_path)
-  if not out_name_stem:
+  out_dir, out_name = split_dir_name(out_path)
+  if not out_name:
     if not args.path: exit('could not determine output file name.')
-    out_name_stem = path_name_stem(args.path)
-    if not out_name_stem: exit('could not determine output file name from `path`.')
+    out_name = path_name(args.path)
+    if not out_name: exit('could not determine output file name from `path`.')
+  out_name_stem = out_name[:out_name.find('.')] if '.' in out_name else out_name # TODO: path_stem should be changed to do this.
   out_stem = path_join(out_dir, out_name_stem)
 
   if 'python' in langs:
     path = out_stem + '.py'
     output_python(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
+      dfas=dfas, mode_transitions=mode_transitions,
+      pattern_descs=pattern_descs, license=license, args=args)
+    if args.test: test_cmds.append(['python', path] + args.test)
+
+  if 'python-re' in langs:
+    path = out_stem + '.re.py'
+    output_python_re(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
       dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python', path] + args.test)
@@ -273,10 +281,11 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
 
 ext_langs = {
   '.py' : 'python',
+  '.re.py' : 'python-re',
   '.swift' : 'swift',
 }
 
-supported_langs = {'python', 'swift', 'vscode'}
+supported_langs = {'python', 'python-re', 'swift', 'vscode'}
 test_langs = {'python', 'swift'}
 
 
