@@ -2,18 +2,18 @@
 
 from boto3 import client as Client, Session # type: ignore
 from botocore.exceptions import ClientError # type: ignore
-from datetime import datetime as DateTime
+from datetime import datetime as DateTime, timezone as TimeZone
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
 from ..fs import path_dir, path_join, make_dirs, file_status, walk_paths
 from json import dumps as render_json, loads as parse_json
-from typing import Any, Callable, Dict, IO, Union
+from typing import Any, Callable, Dict, IO, Optional, Union
 import os
 
 
 # Brotli compression is supported by major browsers and AWS. Pithy treats it as optional.
-def br_compress(data:bytes) -> bytes: raise Exception('brotli module failed to import')
+def br_compress(data:bytes, mode:int=0) -> bytes: raise Exception('brotli module failed to import')
 def br_expand(data:bytes) -> bytes: raise Exception('brotli module failed to import')
 br_MODE_TEXT = -1
 try: from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore
@@ -27,19 +27,24 @@ def get_bytes(client:Any, bucket:str, key:str) -> bytes:
   r = client.get_object(Bucket=bucket, Key=key)
   body: bytes = r['Body'].read()
   encoding = r['ResponseMetadata']['HTTPHeaders'].get('content-encoding')
-  if encoding == 'gzip': return gz_expand(body)
+  if encoding == None or encoding == 'identity': return body
+  elif encoding == 'gzip': return gz_expand(body)
   elif encoding == 'br': return br_expand(body)
-  elif encoding: raise ValueError(encoding)
-  return body
-  #text = GzipFile(None, 'rb', fileobj=BytesIO(compressed_body)).read().decode()
-  #d:Dict[str,Any] = parse_json(text)
+  raise ValueError(encoding)
 
 
 def get_json(client:Any, bucket:str, key:str) -> Any:
   return parse_json(get_bytes(client=client, bucket=bucket, key=key))
 
 
-def put_bytes(client:Any, data:bytes, bucket:str, key:str, compress:str=None, is_utf8_hint=False) -> None:
+def get_text(client:Any, bucket:str, key:str) -> Any:
+  return get_bytes(client=client, bucket=bucket, key=key).decode()
+
+
+def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str=None, is_utf8_hint=False) -> None:
+  '''
+  `content_encode` specifies an optional compression encoding, either `gzip` or `br`.
+  '''
   content_type, content_encoding = guess_mime_type(key)
 
   # Validate that the implied encoding appears to be the actual encoding.
@@ -47,41 +52,61 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, compress:str=None, is
     content_type = 'application/octet-stream' # default to binary.
   if content_encoding == 'gzip':
     if data[:2] != b'\x1F\x8B':
-      raise Exception(f"save_bytes: filname implies content-type 'gzip' but data does not: {key!r}")
+      raise Exception(f"save_bytes: filename implies content-type 'gzip' but data does not: {key!r}")
   elif content_encoding == 'br':
     pass # Brotli defines no magic bytes/header.
   elif content_encoding is not None:
     raise Exception(f'unknown content-encoding: {content_encoding!r}')
 
   # Compress as requested.
-  if compress is not None:
+  if content_encode is not None:
     if content_encoding is not None:
-      raise Exception(f"save_bytes: key {key!r} implies content-type {content_type!r}, but `compress` is also specified: {compress!r}")
+      raise Exception(f'save_bytes: key {key!r} implies content-type {content_type!r}, but `content_encode` is also specified: {content_encode!r}')
     kwargs:Dict[str,Any] = {}
-    if compress == 'br' and is_utf8_hint:
+    if content_encode == 'br' and is_utf8_hint:
       kwargs['mode'] = br_MODE_TEXT
-    compress_fn = compressors[compress]
+    compress_fn = compressors[content_encode]
     data = compress_fn(data, **kwargs)
-    content_encoding = compress
+    content_encoding = content_encode
 
   result = client.put_object(
     Bucket=bucket,
     Key=key,
     ContentType=content_type,
-    ContentEncoding=compress,
+    ContentEncoding=content_encoding or 'identity',
     Body=data)
 
 
 compressors:Dict[str, Callable[..., Any]] = {
-  'gzip' : gz_compress,
   'br': br_compress,
+  'gzip' : gz_compress,
 }
 
 
-def put_json(client:Any, obj:Any, bucket:str, key:str, compress:str=None) -> None:
-  data = render_json(obj).encode('utf8')
-  put_bytes(client=client, data=data, bucket=bucket, key=key, compress=compress, is_utf8_hint=True)
+def put_json(client:Any, obj:Any, bucket:str, key:str, content_encode:str=None) -> None:
+  data = render_json(obj).encode()
+  if key.endswith('.br'):
+    if content_encode not in (None, 'br'):
+      raise Exception(f'put_json: key {key!r} implies `br` compression but content_encode is also specified: {content_encode!r}')
+    data = br_compress(data, mode=br_MODE_TEXT)
+  elif key.endswith('.gz'):
+    data = gz_compress(data)
+    if content_encode not in (None, 'gzip'):
+      raise Exception(f'put_json: key {key!r} implies `gzip` compression but content_encode is also specified: {content_encode!r}')
+  put_bytes(client=client, data=data, bucket=bucket, key=key, content_encode=content_encode)
 
+
+def put_text(client:Any, text:str, bucket:str, key:str, content_encode:str=None) -> None:
+  data = text.encode()
+  if key.endswith('.br'):
+    if content_encode not in (None, 'br'):
+      raise Exception(f'put_text: key {key!r} implies `br` compression but content_encode is also specified: {content_encode!r}')
+    data = br_compress(data, mode=br_MODE_TEXT)
+  elif key.endswith('.gz'):
+    data = gz_compress(data)
+    if content_encode not in (None, 'gzip'):
+      raise Exception(f'put_text: key {key!r} implies `gzip` compression but content_encode is also specified: {content_encode!r}')
+  put_bytes(client=client, data=data, bucket=bucket, key=key, content_encode=content_encode)
 
 
 class S3Client:
@@ -138,7 +163,8 @@ class S3MockClient(S3Client):
     bucket_path = self._bucket_path(bucket)
     dir = path_join(bucket_path, path_dir(key))
     make_dirs(dir)
-    try: return open(path_join(bucket_path, key), mode)
+    path = path_join(bucket_path, key)
+    try: return open(path, mode)
     except KeyError as e: raise S3MockError(f'mock key not found: {key!r}')
 
 
@@ -146,12 +172,17 @@ class S3MockClient(S3Client):
     try: f =  self._open(Bucket, Key, 'rb')
     except FileNotFoundError as e: pass
     else:
+      encoding:Optional[str] = None
+      # TODO: metadata should be saved to disk and read, not inferred.
+      # Guessing like this is not sufficiently generalized.
+      if Key.endswith('.br'): encoding = 'br'
+      elif Key.endswith('.gz'): encoding = 'gzip'
       with f:
         return {
           'Body': BytesIO(f.read()),
           'ResponseMetadata': {
             'HTTPHeaders': {
-              'content-encoding': 'gzip' # TODO: apply this conditionally.
+              'content-encoding': encoding
             }
           }
         }
@@ -181,7 +212,7 @@ class S3MockClient(S3Client):
       contents.append({
         'Key': key,
         'Size': s.size,
-        'LastModified': DateTime.fromtimestamp(s.mtime),
+        'LastModified': DateTime.fromtimestamp(s.mtime, tz=TimeZone.utc),
       })
     return {
       'KeyCount': len(contents),
