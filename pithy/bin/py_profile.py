@@ -51,7 +51,7 @@ def main() -> None:
   profile = Profile()
   exit_code = 0
   try:
-    profile.runctx(code, globals=globals_, locals={})
+    profile.runctx(code, globals=globals_, locals=globals_)
   except SystemExit as e:
     exit_code = e.code
   except BaseException:
