@@ -6,8 +6,8 @@ from datetime import datetime as DateTime, timezone as TimeZone
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
-from ..fs import path_dir, path_join, make_dirs, file_status, walk_paths
-from json import dumps as render_json, loads as parse_json
+from ..fs import path_dir, path_ext, path_join, make_dirs, file_status, walk_paths
+from ..json import parse_json, render_json
 from typing import Any, Callable, Dict, IO, Optional, Union
 import os
 
@@ -27,9 +27,14 @@ def get_bytes(client:Any, bucket:str, key:str) -> bytes:
   r = client.get_object(Bucket=bucket, Key=key)
   body: bytes = r['Body'].read()
   encoding = r['ResponseMetadata']['HTTPHeaders'].get('content-encoding')
-  if encoding == None or encoding == 'identity': return body
-  elif encoding == 'gzip': return gz_expand(body)
+  if encoding is None:
+    ext = path_ext(key)
+    if ext == '.br': encoding = 'br'
+    elif ext == '.gz': encoding = 'gzip'
+    else: encoding = 'identity'
+  if encoding == 'identity': return body
   elif encoding == 'br': return br_expand(body)
+  elif encoding == 'gzip': return gz_expand(body)
   raise ValueError(encoding)
 
 
@@ -83,8 +88,8 @@ compressors:Dict[str, Callable[..., Any]] = {
 }
 
 
-def put_json(client:Any, obj:Any, bucket:str, key:str, content_encode:str=None) -> None:
-  data = render_json(obj).encode()
+def put_json(client:Any, obj:Any, bucket:str, key:str, content_encode:str=None, **kwargs:Any) -> None:
+  data = render_json(obj, **kwargs).encode()
   if key.endswith('.br'):
     if content_encode not in (None, 'br'):
       raise Exception(f'put_json: key {key!r} implies `br` compression but content_encode is also specified: {content_encode!r}')
