@@ -5,6 +5,7 @@ XML tools.
 '''
 
 from enum import Enum
+from functools import lru_cache
 from html import escape as html_escape
 from io import StringIO
 from itertools import chain, count
@@ -132,7 +133,7 @@ class XmlWriter(ContextManager):
         v = 'none'
       else:
         k = self.replaced_attrs.get(k, k)
-      parts.append(f' {esc_xml_attr(k.replace("_", "-"))}="{esc_xml_attr(v)}"')
+      parts.append(f' {esc_xml_attr_key(k)}="{esc_xml_attr(v)}"')
     return ''.join(parts)
 
 
@@ -161,3 +162,7 @@ def esc_xml_attr(val:Any) -> str:
   'HTML-escape the string representation of `val`, including quote characters.'
   return val if isinstance(val, EscapedStr) else html_escape(str(val), quote=True)
 
+
+@lru_cache(maxsize=1024, typed=True)
+def esc_xml_attr_key(key:str) -> str:
+  return html_escape(key.replace("_", "-"))
