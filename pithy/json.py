@@ -7,7 +7,13 @@ from json.decoder import JSONDecodeError
 from sys import stderr, stdout, version_info
 from typing import Any, Callable, Dict, FrozenSet, IO, Iterable, Hashable, List, Optional, Sequence, TextIO, Tuple, Union
 from .util import all_slots
-from dataclasses import asdict, dataclass, fields, is_dataclass
+
+try: from dataclasses import asdict, dataclass, fields, is_dataclass
+except ModuleNotFoundError:
+  def asdict(obj:Any) -> Dict: raise NotImplementedError
+  def dataclass(obj:Any) -> Any: raise NotImplementedError
+  def fields(*args:Any, **kwargs:Any) -> Any: raise NotImplementedError # type: ignore
+  def is_dataclass(obj:Any) -> bool: return False
 
 
 JsonAny = Any # TODO: remove this once recursive types work.
