@@ -104,8 +104,9 @@ sort_keys = {
 }
 
 
-Func = Tuple[str,int,str] #
+Func = Tuple[str,int,str]
 Selector = Union[str,float,int]
+
 
 class CustomStats(Stats):
 
@@ -228,6 +229,7 @@ class CustomStats(Stats):
     if subheader:
       self.print(" "*name_size + "  ncalls  tottime  cumtime")
 
+
   def display_call_line(self, name_size:int, source:Func, call_dict:Dict[Func,Any], arrow:str='->') -> None:
     self.print(fmt_func(source).ljust(name_size) + arrow, end=' ')
     if not call_dict:
@@ -252,8 +254,10 @@ class CustomStats(Stats):
       self.print(indent*left_width + substats)
       indent = " "
 
+
   def print_title(self) -> None:
     self.print('   ncalls  tottime  percall  cumtime  percall filename:lineno(function)')
+
 
   def display_line(self, func:Func) -> None:  # hack: should print percentages
     cc, nc, tt, ct, callers = self.stats[func]
@@ -266,9 +270,11 @@ class CustomStats(Stats):
 
 def f8(x:float) -> str: return f'{x:8.3f}'
 
+
 def get_func_name(func:Func) -> str:
   _, _, name = func
   return name
+
 
 def fmt_func(func:Func) -> str:
   file, line, name = func
@@ -281,5 +287,6 @@ def fmt_func(func:Func) -> str:
   return f'{file}:{line}:{name}'
 
 std_prefix = os.__file__[:-len('os.py')]
+
 
 if __name__ == '__main__': main()
