@@ -67,13 +67,13 @@ def main() -> None:
   print('\n', '=' * 64, sep='')
 
   stats = CustomStats(profile)
+  stats.sort_stats(*args.sort)
 
   if stats.fcn_list:
     print(f'Ordered by: {stats.sort_type}.\n')
   else:
     print('Random listing order was used.\n')
 
-  stats.sort_stats(*args.sort)
   stats.display_stats(*filter_clauses)
   #print('\nCallers:')
   #stats.display_callers(*filter_clauses)
