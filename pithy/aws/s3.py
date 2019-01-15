@@ -166,7 +166,9 @@ class S3MockClient(S3Client):
 
   def _open(self, bucket:str, key:str, mode:str) -> IO[Any]:
     bucket_path = self._bucket_path(bucket)
-    dir = path_join(bucket_path, path_dir(key))
+    key_dir = path_dir(key)
+    assert not key_dir.startswith('/'), key_dir
+    dir = path_join(bucket_path, key_dir)
     make_dirs(dir)
     path = path_join(bucket_path, key)
     try: return open(path, mode)
