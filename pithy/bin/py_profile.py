@@ -142,7 +142,7 @@ class CustomStats(Stats):
       self.print_title()
       for func in stat_list:
         self.display_line(func)
-      self.print()
+      self.print_title()
       self.print()
 
 
@@ -244,8 +244,7 @@ class CustomStats(Stats):
             substats = '%d/%d' % (nc, cc)
         else:
             substats = '%d' % (nc,)
-        substats = '%s %s %s  %s' % (substats.rjust(7+2*len(indent)),
-                              f8(tt), f8(ct), name)
+        substats = '%s %s %s  %s' % (substats.rjust(7+2*len(indent)), f8(tt), f8(ct), name)
         left_width = name_size + 1
       else:
         substats = '%s(%r) %s' % (name, value, f8(self.stats[func][3]))
@@ -254,29 +253,18 @@ class CustomStats(Stats):
       indent = " "
 
   def print_title(self) -> None:
-    self.print('   ncalls  tottime  percall  cumtime  percall', end=' ')
-    self.print('filename:lineno(function)')
+    self.print('   ncalls  tottime  percall  cumtime  percall filename:lineno(function)')
 
   def display_line(self, func:Func) -> None:  # hack: should print percentages
     cc, nc, tt, ct, callers = self.stats[func]
-    c = str(nc)
-    if nc != cc:
-      c = c + '/' + str(cc)
-    self.print(c.rjust(9), end=' ')
-    self.print(f8(tt), end=' ')
-    if nc == 0:
-      self.print(' '*8, end=' ')
-    else:
-      self.print(f8(tt/nc), end=' ')
-    self.print(f8(ct), end=' ')
-    if cc == 0:
-      self.print(' '*8, end=' ')
-    else:
-      self.print(f8(ct/cc), end=' ')
-    self.print(fmt_func(func))
+    ncalls = str(nc) if nc == cc else f'{nc}/{cc}'
+    ttpc = f8(tt/nc) if nc else ' '*8
+    ctpc = f8(ct/nc) if nc else ' '*8
+
+    self.print(f'{ncalls:>9} {f8(tt)} {ttpc} {f8(ct)} {ctpc} {fmt_func(func)}')
 
 
-def f8(x:float) -> str: return "%8.3f" % x
+def f8(x:float) -> str: return f'{x:8.3f}'
 
 def get_func_name(func:Func) -> str:
   _, _, name = func
