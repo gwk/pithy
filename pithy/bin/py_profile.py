@@ -3,7 +3,6 @@
 
 import os
 import re
-import sys
 from argparse import ArgumentParser
 from cProfile import Profile
 from pstats import Stats
@@ -11,7 +10,7 @@ from os.path import dirname
 from typing import Any, Dict, Iterable, List, Optional, Set, TextIO, Tuple, Union
 from pithy.io import errL, errSL
 from pithy.path import path_rel_to_current_or_abs
-from sys import prefix as sys_prefix
+from sys import argv, prefix as sys_prefix, path as sys_path, exc_info, stdout, stderr
 
 
 def main() -> None:
@@ -20,11 +19,17 @@ def main() -> None:
   parser = ArgumentParser(description='Run a python script under the Python cProfile profiler.')
   parser.add_argument('-sort', nargs='+', default=['cumulative', 'filename', 'name'], help=sort_keys_desc)
   parser.add_argument('-filter', nargs='+', default=[], help='filtering clauses.')
+  parser.add_argument('-output', default='<stderr>', help='Output file; defaults to <stderr>.')
   parser.add_argument('cmd', nargs='+', help='the command to run.')
   args = parser.parse_args()
 
   cmd = args.cmd
   cmd_path = cmd[0]
+
+  output:TextIO
+  if args.output == '<stderr>': output = stderr
+  elif args.output in ('-', '<stdout>'): output = stdout
+  else: output = open(args.output, 'w')
 
   def filter_clause(word:Any) -> Any:
     for T in (int, float):
@@ -44,9 +49,9 @@ def main() -> None:
     '__cached__': None,
   }
 
-  sys.argv[:] = cmd
+  argv[:] = cmd
   # also need to fix the search path to imitate the regular interpreter.
-  sys.path[0] = dirname(cmd_path) # not sure if this is right in all cases.
+  sys_path[0] = dirname(cmd_path) # not sure if this is right in all cases.
 
   profile = Profile()
   exit_code = 0
@@ -62,22 +67,22 @@ def main() -> None:
     # note: the traceback will contain stack frames from the host.
     # this can be avoided with a fixup function, but does not seem necessary at this point. See coven.py for an example.
     #fixup_traceback(traceback)
-    print(*traceback.format(), sep='', end='', file=sys.stderr)
+    print(*traceback.format(), sep='', end='', file=stderr)
 
-  print('\n', '=' * 64, sep='')
 
-  stats = CustomStats(profile)
+  stats = CustomStats(profile, stream=output)
   stats.sort_stats(*args.sort)
 
+  stats.print('\n', '=' * 64, sep='')
   if stats.fcn_list:
-    print(f'Ordered by: {stats.sort_type}.\n')
+    stats.print(f'Ordered by: {stats.sort_type}.\n')
   else:
-    print('Random listing order was used.\n')
+    stats.print('Random listing order was used.\n')
 
   stats.display_stats(*filter_clauses)
-  #print('\nCallers:')
+  #stats.print('\nCallers:')
   #stats.display_callers(*filter_clauses)
-  #print('\nCallees:')
+  #stats.print('\nCallees:')
   #stats.display_callees(*filter_clauses)
 
 
@@ -152,8 +157,7 @@ class CustomStats(Stats):
           self.display_call_line(width, func, self.all_callees[func])
       else:
           self.display_call_line(width, func, {})
-    print(file=self.stream)
-    print(file=self.stream)
+    self.print('\n')
 
 
   def display_callers(self, *amount:Selector) -> None:
@@ -163,8 +167,7 @@ class CustomStats(Stats):
     for func in stat_list:
       cc, nc, tt, ct, callers = self.stats[func]
       self.display_call_line(width, func, callers, "<-")
-    print(file=self.stream)
-    print(file=self.stream)
+    self.print('\n')
 
 
   def eval_display_amount(self, sel:Selector, stat_list:List[Func], msg:str) -> Tuple[List[Func], str]:
@@ -214,7 +217,7 @@ class CustomStats(Stats):
 
 
   def print_call_heading(self, name_size:int, column_title:str) -> None:
-    print("Function ".ljust(name_size) + column_title, file=self.stream)
+    self.print('Function'.ljust(name_size), column_title)
     # print sub-header only if we have new-style callers
     subheader = False
     for cc, nc, tt, ct, callers in self.stats.values():
@@ -223,12 +226,12 @@ class CustomStats(Stats):
         subheader = isinstance(value, tuple)
         break
     if subheader:
-      print(" "*name_size + "  ncalls  tottime  cumtime", file=self.stream)
+      self.print(" "*name_size + "  ncalls  tottime  cumtime")
 
   def display_call_line(self, name_size:int, source:Func, call_dict:Dict[Func,Any], arrow:str='->') -> None:
-    print(fmt_func(source).ljust(name_size) + arrow, end=' ', file=self.stream)
+    self.print(fmt_func(source).ljust(name_size) + arrow, end=' ')
     if not call_dict:
-      print(file=self.stream)
+      self.print()
       return
     clist = sorted(call_dict.keys())
     indent = ""
@@ -247,30 +250,30 @@ class CustomStats(Stats):
       else:
         substats = '%s(%r) %s' % (name, value, f8(self.stats[func][3]))
         left_width = name_size + 3
-      print(indent*left_width + substats, file=self.stream)
+      self.print(indent*left_width + substats)
       indent = " "
 
   def print_title(self) -> None:
-    print('   ncalls  tottime  percall  cumtime  percall', end=' ', file=self.stream)
-    print('filename:lineno(function)', file=self.stream)
+    self.print('   ncalls  tottime  percall  cumtime  percall', end=' ')
+    self.print('filename:lineno(function)')
 
   def display_line(self, func:Func) -> None:  # hack: should print percentages
     cc, nc, tt, ct, callers = self.stats[func]
     c = str(nc)
     if nc != cc:
       c = c + '/' + str(cc)
-    print(c.rjust(9), end=' ', file=self.stream)
-    print(f8(tt), end=' ', file=self.stream)
+    self.print(c.rjust(9), end=' ')
+    self.print(f8(tt), end=' ')
     if nc == 0:
-      print(' '*8, end=' ', file=self.stream)
+      self.print(' '*8, end=' ')
     else:
-      print(f8(tt/nc), end=' ', file=self.stream)
-    print(f8(ct), end=' ', file=self.stream)
+      self.print(f8(tt/nc), end=' ')
+    self.print(f8(ct), end=' ')
     if cc == 0:
-      print(' '*8, end=' ', file=self.stream)
+      self.print(' '*8, end=' ')
     else:
-      print(f8(ct/cc), end=' ', file=self.stream)
-    print(fmt_func(func), file=self.stream)
+      self.print(f8(ct/cc), end=' ')
+    self.print(fmt_func(func))
 
 
 def f8(x:float) -> str: return "%8.3f" % x
