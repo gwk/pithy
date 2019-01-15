@@ -5,7 +5,7 @@ import json as _json
 
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout, version_info
-from typing import Any, Callable, Dict, FrozenSet, Iterable, Hashable, List, Optional, Sequence, TextIO, Tuple, Union
+from typing import Any, Callable, Dict, FrozenSet, IO, Iterable, Hashable, List, Optional, Sequence, TextIO, Tuple, Union
 from .util import all_slots
 from dataclasses import asdict, dataclass, fields, is_dataclass
 
@@ -17,6 +17,7 @@ Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 
 JsonDefaulter = Callable[[Any], Any]
 
+JsonText = Union[str,bytes,bytearray]
 
 class JSONEmptyDocument(JSONDecodeError): pass
 
@@ -138,18 +139,18 @@ def _mk_decoder(types:Sequence) -> _json.JSONDecoder:
 _ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
 
 
-def parse_json(string:str, types:Sequence[type]=()) -> Any:
+def parse_json(text:JsonText, types:Sequence[type]=()) -> Any:
   '''
-  Parse json from `string`.
+  Parse json from `text`.
   If `types` is a non-empty sequence,
   then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
   based on field name sets.
   The sets of field names must be unambiguous for all provided record types.
   '''
-  return _json.loads(string, object_hook=_mk_hook(types))
+  return _json.loads(text, object_hook=_mk_hook(types))
 
 
-def load_json(file:TextIO, types:Sequence[type]=()) -> Any:
+def load_json(file:IO, types:Sequence[type]=()) -> Any:
   '''
   Read json from `file`.
   If `types` is a non-empty sequence,
@@ -166,12 +167,12 @@ def load_json(file:TextIO, types:Sequence[type]=()) -> Any:
       raise
 
 
-def parse_jsonl(string:str, types:Sequence[type]=()) -> Iterable[Any]:
+def parse_jsonl(text:JsonText, types:Sequence[type]=()) -> Iterable[Any]:
   hook = _mk_hook(types)
-  return (_json.loads(line, object_hook=hook) for line in string.splitlines())
+  return (_json.loads(line, object_hook=hook) for line in text.splitlines())
 
 
-def load_jsonl(stream:Iterable[str], types:Sequence[type]=()) -> Iterable[Any]:
+def load_jsonl(stream:Iterable[JsonText], types:Sequence[type]=()) -> Iterable[Any]:
   hook = _mk_hook(types)
   return (_json.loads(line, object_hook=hook) for line in stream)
 
