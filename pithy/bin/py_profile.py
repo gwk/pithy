@@ -262,10 +262,12 @@ class CustomStats(Stats):
   def display_line(self, func:Func) -> None:  # hack: should print percentages
     cc, nc, tt, ct, callers = self.stats[func]
     ncalls = str(nc) if nc == cc else f'{nc}/{cc}'
+    stt = f8(tt)
+    sct = f8(ct)
     ttpc = f8(tt/nc) if nc else ' '*8
     ctpc = f8(ct/nc) if nc else ' '*8
-
-    self.print(f'{ncalls:>9} {f8(tt)} {ttpc} {f8(ct)} {ctpc} {fmt_func(func)}')
+    if all(s == '   0.000' for s in (stt, sct, ttpc, ctpc)): return
+    self.print(f'{ncalls:>9} {stt} {ttpc} {sct} {ctpc} {fmt_func(func)}')
 
 
 def f8(x:float) -> str: return f'{x:8.3f}'
