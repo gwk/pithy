@@ -3,7 +3,7 @@
 # $@: The file name of the target of the rule.
 # $<: The name of the first prerequisite.
 # $^: The names of all the prerequisites, with spaces between them.
-# $*: The stem with which an implicit rule matches.
+# $*: The match for a `%` pattern rule.
 
 .SECONDARY: # Disable deletion of intermediate products.
 .SUFFIXES: # Disable implicit rules.
