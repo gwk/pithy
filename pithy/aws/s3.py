@@ -6,7 +6,7 @@ from datetime import datetime as DateTime, timezone as TimeZone
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
-from ..fs import path_dir, path_ext, path_join, make_dirs, file_status, walk_paths
+from ..fs import path_dir, path_ext, path_join, make_dirs, file_status, walk_files
 from ..json import parse_json, render_json
 from typing import Any, Callable, Dict, IO, Optional, Union
 import os
@@ -212,7 +212,7 @@ class S3MockClient(S3Client):
     assert not path.endswith('/')
     l = len(path) + 1 # Eat the directory slash.
     contents = []
-    for p in walk_paths(path):
+    for p in walk_files(path):
       key = p[l:]
       s = file_status(p)
       assert s is not None
