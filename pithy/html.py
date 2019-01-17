@@ -50,6 +50,8 @@ class HtmlWriter(XmlWriter):
 
   def p(self, *children:Any, **attrs:Any) -> 'P': return self.child(P, *children, attrs=attrs)
 
+  def pre(self, *children:Any, **attrs:Any) -> 'Pre': return self.child(Pre, *children, attrs=attrs)
+
   def span(self, *children:Any, **attrs:Any) -> 'Span': return self.child(Span, *children, attrs=attrs)
 
   def script(self, *children:Any, **attrs:Any) -> Script: return self.child(Script, *children, attrs=attrs)
@@ -140,6 +142,9 @@ class H6(HtmlWriter):
 
 class P(HtmlWriter):
   tag = 'p'
+
+class Pre(HtmlWriter):
+  tag = 'pre'
 
 class Form(HtmlWriter):
   tag = 'form'
