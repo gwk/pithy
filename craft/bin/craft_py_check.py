@@ -19,6 +19,7 @@ def main() -> None:
   arg_parser.add_argument('-deps', nargs='+', default=[])
   arg_parser.add_argument('-paths', nargs='+', default=[])
   arg_parser.add_argument('-dbg', action='store_true')
+  arg_parser.add_argument('-mypy-dbg', action='store_true')
 
   args = arg_parser.parse_args()
 
@@ -53,6 +54,7 @@ def main() -> None:
 
   version_flag = ['--python-version', args.python_version] if args.python_version else []
   cmd = ['mypy', *version_flag, *args.roots]
+  if args.mypy_dbg: cmd.append('--show-traceback')
   if args.dbg: errSL('cmd:', *cmd)
   c, o = runCO(cmd, env=env)
   for token in lexer.lex(o):
