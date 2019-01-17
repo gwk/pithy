@@ -3,7 +3,9 @@
 # $@: The file name of the target of the rule.
 # $<: The name of the first prerequisite.
 # $^: The names of all the prerequisites, with spaces between them.
+# $*: The stem with which a pattern rule matches.
 
+.SUFFIXES: # Disable implicit rules.
 
 .PHONY: _default _phony clean cov docs pip-develop pip-uninstall pypi-dist pypi-upload test test-diff test-diff-pairs typecheck
 
