@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from datetime import date as Date, datetime as DateTime, timedelta as TimeDelta
+from datetime import date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone, tzinfo as TZInfo
 from typing import Iterator, TypeVar
 
 
@@ -66,6 +66,10 @@ def parse_datetime(string: str, fmt='%Y-%m-%d %H:%M:%S') -> DateTime:
 
 def parse_date(string: str, fmt='%Y-%m-%d') -> Date:
   return DateTime.strptime(string, fmt).date()
+
+
+def dt_for_utc_ts(ts:float) -> DateTime:
+  return DateTime.fromtimestamp(ts, TimeZone.utc)
 
 
 def next_day(date_: DateLike) -> DateLike:
