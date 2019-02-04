@@ -272,9 +272,9 @@ def clip_newlines(iterable: Iterable[str]) -> Iterable[str]:
 
 
 def confirm(question:str) -> bool:
-  from .term import change_mode, CBREAK
+  from .term import CBreakMode
   print(f'{question}? press "y" to confirm: ', end='', flush=True)
-  with change_mode(CBREAK):
+  with CBreakMode():
     response = stdin.read(1)
     print(response)
     return (response == 'y')
