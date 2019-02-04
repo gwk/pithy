@@ -285,7 +285,7 @@ def assert_eq(a: Any, b: Any):
     raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
 
 
-def tee_to_err(iterable: Iterable[_T], msg: str = 'tee_to_stderr') -> Iterator[_T]:
+def tee_to_err(iterable:Iterable[_T], label:str = 'tee_to_err') -> Iterator[_T]:
   for el in iterable:
-    errL(msg, ': ', repr(el))
+    errL(label, ': ', repr(el))
     yield el
