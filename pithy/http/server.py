@@ -253,12 +253,12 @@ class HTTPRequestHandler(StreamRequestHandler):
 
     # Compute local_path.
     p = self.path
-    # abandon query parameters.
+    # abandon query and fragment parameters.
     p = p.partition('?')[0]
     p = p.partition('#')[0]
     has_trailing_slash = p.rstrip().endswith('/') # remember explicit trailing slash.
     p = url_unquote(p)
-    p = normpath(p)
+    p = norm_path(p)
     if '..' in p: return
     assert p.startswith('/')
     p = p[1:] # Remove leading slash. TODO: path_join should not use os.path.join, which behaves dangerously for absolute paths.

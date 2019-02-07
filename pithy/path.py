@@ -22,13 +22,12 @@ from os.path import (
   exists as _exists,
   isabs as _isabs,
   join as _join,
-  normpath as _normpath,
   realpath as _realpath,
   relpath as _relpath,
   split as _split,
   splitext as _splitext,
 )
-from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
+from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, Pattern, TextIO, Tuple, Union
 
 
 Path = Union[str, PathLike]
@@ -42,20 +41,12 @@ class PathIsNotDescendantError(Exception): pass
 
 def abs_or_norm_path(path: Path, make_abs: bool) -> str:
   'Return the absolute path if make_abs is True. If make_abs is False, return a normalized path.'
-  p = str_path(path)
-  return _abspath(p) if make_abs else _normpath(p)
+  return abs_path(path) if make_abs else norm_path(path)
 
 
 def abs_path(path: Path) -> str:
   'Return the absolute path corresponding to `path`.'
-  return _abspath(str_path(path))
-
-
-def append_path_stem_suffix(path: Path, suffix: str) -> str:
-  'Append suffix to the path stem.'
-  # TODO: rename to insert_path_stem_suffix?
-  stem, ext = split_stem_ext(path)
-  return stem + suffix + ext
+  return _abspath(norm_path(path))
 
 
 def current_dir() -> str: return abs_path('.')
@@ -73,19 +64,67 @@ def executable_path() -> str:
   return _realpath(path)
 
 
+def insert_path_stem_suffix(path: Path, suffix: str) -> str:
+  'Insert a suffix in between the path stem and ext.'
+  stem, ext = split_stem_ext(path)
+  return f'{stem}{suffix}{ext}'
+
+
+def is_norm_path(path:Path) -> bool:
+  return bool(_norm_path_re.fullmatch(str_path(path)))
+
+
+_norm_path_re = _re.compile(r'''(?x)
+# This is nasty. In particular the "component" clauses have to deal with the validity of three or more dots.
+  [./] # Either a lone dot or slash, or...
+| (?: # Absolute path.
+    / # Leading slash.
+    (?:[^./]|\.{1,2}[^./]|\.{3})[^/]* # Component.
+  )+
+| # Relative path.
+  (?: \.\./ )* # Leading backups ending with a slash.
+  (?:
+    \.\. # Final backup.
+  | (?:[^./]|\.{1,2}[^./]|\.{3})[^/]* # Initial component.
+    (?: / (?:[^./]|\.{1,2}[^./]|\.{3})[^/]* )* # Trailing components.
+  )
+''')
+
+
 def is_path_abs(path: Path) -> bool:
   'Return true if `path` is an absolute path.'
   return _isabs(path)
 
 
 def is_sub_path(path: Path) -> bool:
-  'Return true if `path` is a relative path that does not refer to parent directories.'
+  'Return true if `path` is a relative path that, after normalization, does not refer to parent directories.'
   return not is_path_abs(path) and '..' not in path_split(path)
 
 
-def norm_path(path: Path) -> str:
-  'Normalize `path` according to system convention.'
-  return _normpath(str_path(path))
+
+def norm_path(path:Path) -> str:
+  '''
+  Normalize `path`.
+  * trailing slashes are removed.
+  * duplicate slashes (empty components) and '.' components are removed.
+  * '..' components are simplified, or dropped if it implies a location beyond the root '/'.
+  * Unlike `os.path.normpath`, this implementation simplifies leading double slash to a single slash.
+  '''
+  p = str_path(path)
+  lead_slash = '/' if p.startswith('/') else ''
+  comps:list = []
+  for comp in p.split('/'):
+    if not comp or comp == '.': continue
+    if comp == '..':
+      if comps:
+        if comps[-1] == '..': comps.append(comp)
+        else: comps.pop()
+      else:
+        if lead_slash: pass # '..' beyond root gets dropped.
+        else: comps.append(comp)
+    else:
+      comps.append(comp)
+  return (lead_slash + '/'.join(comps)) or '.'
 
 
 def parent_dir() -> str: return abs_path('..')

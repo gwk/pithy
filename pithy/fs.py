@@ -7,7 +7,7 @@ import stat as _stat
 import time as _time
 
 from itertools import zip_longest as _zip_longest
-from os import DirEntry
+from os import DirEntry, mkdir as _mkdir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
 from typing.re import Pattern # type: ignore
@@ -49,7 +49,7 @@ def copy_path(src:str, dst:str, overwrite:bool=True, create_dirs:bool=False, fol
   if overwrite and path_exists(dst):
     remove_path(dst)
   if create_dirs:
-    make_dirs(path_dir(dst))
+    make_parent_dirs(dst)
   clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=copy_eagerly)
 
 
@@ -131,11 +131,50 @@ def list_dir_paths(path:Path, exts:Iterable[str]=(), hidden=False) -> List[str]:
   return [path_join(path, name) for name in list_dir(path, exts=exts, hidden=hidden)]
 
 
-def make_dir(path:Path) -> None: return _os.mkdir(path)
+def make_dir(path:Path) -> None:
+  return _mkdir(path)
 
-def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None: return _os.makedirs(path, mode, exist_ok)
 
-def make_link(orig:Path, link:Path, absolute=False, allow_nonexistent=False, make_dirs=False, perms:Optional[int]=None) -> None:
+def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
+  '''
+  Like os.makedirs, except:
+  * uses `mode` to make all intermediate directories.
+  * checks more carefully that existing paths are directories, raising NotADirectoryError.
+  '''
+  dir, name = split_dir_name(norm_path(path))
+  # Recursively make the parent dirs.
+  if not name:
+    assert dir == '/'
+  elif dir:
+    ds = file_status(dir)
+    if ds is None: # Parent dir does not exist; try to create it.
+      try: make_dirs(dir, mode=mode, exist_ok=exist_ok)
+      except FileExistsError as e: # Another thread or process just created it.
+        if not is_dir(dir):
+          raise NotADirectoryError(dir) from e
+    elif not ds.is_dir:
+      raise NotADirectoryError(dir)
+  # Make the specified dir.
+  try: _mkdir(path, mode)
+  except OSError as e:
+    # Cannot rely on checking for EEXIST, since the operating system
+    # could give priority to other errors like EACCES or EROFS
+    s = file_status(path)
+    if not s: raise # Does not exist; some other OSError.
+    if not exist_ok: raise PathAlreadyExists(path) from e
+    if not is_dir(path): raise NotADirectoryError(path) from e
+
+
+def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
+  dir = path_dir(path)
+  if dir:
+    make_dirs(dir)
+  elif not exist_ok:
+    raise PathAlreadyExists(dir)
+
+
+def make_link(orig:Path, link:Path, absolute=False, allow_nonexistent=False, create_dirs=False, perms:Optional[int]=None) \
+ -> None:
   if perms is not None: raise NotImplementedError # TODO
   if not allow_nonexistent and not path_exists(orig):
     raise FileNotFoundError(orig)
@@ -143,15 +182,16 @@ def make_link(orig:Path, link:Path, absolute=False, allow_nonexistent=False, mak
     _orig = abs_path(orig)
   else:
     _orig = rel_path(orig, start=path_dir(link))
-  if make_dirs:
-    link_dir = path_dir(link)
-    if link_dir: _os.makedirs(link_dir, exist_ok=True)
+  if create_dirs:
+    make_parent_dirs(link)
   return _os.symlink(_orig, link)
 
 
-def move_file(path:Path, to:str, overwrite=False) -> None:
+def move_file(path:Path, to:str, overwrite=False, create_dirs=False) -> None:
   if not overwrite and path_exists(to):
     raise Exception('destination path already exists: {}'.format(to))
+  if create_dirs:
+    make_parent_dirs(path)
   _os.replace(path, to)
 
 
@@ -175,12 +215,11 @@ def normalize_exts(exts:Iterable[str]) -> FrozenSet[str]:
   return frozenset(exts)
 
 
-def open_new(path:Path, make_parent_dirs:bool=True, **open_args) -> IO[Any]:
+def open_new(path:Path, make_dirs:bool=True, **open_args) -> IO[Any]:
   if path_exists(path):
     raise PathAlreadyExists(path)
-  if make_parent_dirs:
-    dirs = path_dir(path)
-    if dirs: make_dirs(dirs)
+  if make_dirs:
+    make_parent_dirs(path)
   return open(path, 'w', **open_args)
 
 
