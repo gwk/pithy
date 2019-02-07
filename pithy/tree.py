@@ -22,11 +22,17 @@ class OmitNode(Exception): pass
 
 def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _R:
   '''
-  The `visit` function takes these parameters:
+  `transform_tree` visits nodes, leaves-first, with the `visit` function,
+  thereby generating a transformed tree.
+  The `visit` function takes three parameters:
   * node: the current node.
   * stack: the stack of parent nodes.
   * results: the transformed children.
-  `visit` should return either a single result node or else a generator of results; in the latter case the results are flattened with those of the node's siblings.
+
+  `visit` should either:
+  * return a single result node
+  * return  a generator of results, which are flattened with those of the node's siblings.
+  * raise OmitNode.
   '''
   res = _transform_tree(root, get_children, visit, ())
   if isinstance(res, _Generator): raise ValueError(res)
