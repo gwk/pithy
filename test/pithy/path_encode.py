@@ -54,10 +54,18 @@ utest_val('scheme', parts.scheme)
 utest_val('host', parts.netloc)
 utest_val('/', parts.path)
 
+# path_encode.
+utest('', path_encode, '')
+utest('+2e', path_encode, '.')
+utest('+2e.', path_encode, '..')
+
+# path_for_url.
+
 utest('+/+', path_for_url, 'scheme://')
 
-utest('scheme/host/path', path_for_url, 'scheme://host/path', scheme=COMP)
-utest('host/path,', path_for_url, '//host/path/')
+utest('scheme/host/path', path_for_url, 'scheme://host/path', split_path=False, scheme=COMP)
+utest('scheme/host/path', path_for_url, 'scheme://host/path', split_path=False, scheme=COMP)
+utest('host/path', path_for_url, '//host/path/')
 
-utest('scheme+3a,,host/path', path_for_url, 'scheme://host/path', scheme=COMP, host=SQUASH)
+utest('scheme+3a,,host/path', path_for_url, 'scheme://host/path', split_path=False, scheme=COMP, host=SQUASH)
 
