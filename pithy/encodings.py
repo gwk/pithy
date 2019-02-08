@@ -17,11 +17,13 @@ assert len(base58_alphabet) == 58
 
 
 def _lep_int_from_bytes(val:ByteString) -> int:
-  'For now we cheat by using big ints. This is not very efficient but easy.'
-  n = 0
-  for i, b in enumerate(val):
-    n += b<<(i*8)
+  '''
+  Create a (big) integer from the little-endian interpretation of the bytes,
+  and then add a leading 1, which will act as a terminator when decoding.
+  '''
+  n = int.from_bytes(val, byteorder='little')
   return n + (1<<(len(val)*8))
+
 
 def lep_encode(val:ByteString, alphabet:bytes) -> bytes:
   m = len(alphabet)
@@ -45,6 +47,7 @@ def lep_decode(val:ByteString, alphabet:bytes, alphabet_inverse:bytes) -> bytes:
     res.append(r)
   if n != 1: raise ValueError(val)
   return bytes(res)
+
 
 def enc_lep62(val:ByteString) -> bytes:
   return lep_encode(val, alphabet=base62_alphabet)

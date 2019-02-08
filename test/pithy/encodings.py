@@ -16,7 +16,7 @@ utest(b'94', enc_lep62, b'\x01')
 
 utest(b'', dec_lep62, enc_lep62(b''))
 
-for width in range(1, 65):
+for width in range(1, 33):
   for _ in range(16):
     b = bytes(randrange(0x100) for _ in range(width))
     utest(b, dec_lep62, enc_lep62(b))
