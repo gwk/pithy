@@ -8,11 +8,11 @@ def _byte_index(alphabet:bytes, char:int) -> int:
   except ValueError: return 0xff
 
 base62_alphabet = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-base62_alphabet_rev = bytes(_byte_index(base62_alphabet, c) for c in range(0x100))
+base62_alphabet_inverse = bytes(_byte_index(base62_alphabet, c) for c in range(0x100))
 assert len(base62_alphabet) == 62
 
 base58_alphabet = b'123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-base58_alphabet_rev = bytes(_byte_index(base58_alphabet, c) for c in range(0x100))
+base58_alphabet_inverse = bytes(_byte_index(base58_alphabet, c) for c in range(0x100))
 assert len(base58_alphabet) == 58
 
 
@@ -32,11 +32,11 @@ def lep_encode(val:ByteString, alphabet:bytes) -> bytes:
     res.append(alphabet[r])
   return bytes(res)
 
-def lep_decode(val:ByteString, alphabet:bytes, alphabet_rev:bytes) -> bytes:
+def lep_decode(val:ByteString, alphabet:bytes, alphabet_inverse:bytes) -> bytes:
   m = len(alphabet)
   n = 0
   for i, char in enumerate(val):
-    n += (m**i) * alphabet_rev[char]
+    n += (m**i) * alphabet_inverse[char]
   res = bytearray()
   while n > 1:
     n, r = divmod(n, 0x100)
@@ -44,9 +44,11 @@ def lep_decode(val:ByteString, alphabet:bytes, alphabet_rev:bytes) -> bytes:
   if n != 1: raise ValueError(val)
   return bytes(res)
 
-def enc_lep62(val:ByteString) -> bytes: return lep_encode(val, alphabet=base62_alphabet)
+def enc_lep62(val:ByteString) -> bytes:
+  return lep_encode(val, alphabet=base62_alphabet)
 
-def dec_lep62(val:ByteString) -> bytes: return lep_decode(val, alphabet=base62_alphabet, alphabet_rev=base62_alphabet_rev)
+def dec_lep62(val:ByteString) -> bytes:
+  return lep_decode(val, alphabet=base62_alphabet, alphabet_inverse=base62_alphabet_inverse)
 
 
 def enc_b32(val:int) -> str:
