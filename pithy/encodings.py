@@ -36,7 +36,9 @@ def lep_decode(val:ByteString, alphabet:bytes, alphabet_inverse:bytes) -> bytes:
   m = len(alphabet)
   n = 0
   for i, char in enumerate(val):
-    n += (m**i) * alphabet_inverse[char]
+    a = alphabet_inverse[char]
+    if a >= m: raise ValueError(val)
+    n += (m**i) * a
   res = bytearray()
   while n > 1:
     n, r = divmod(n, 0x100)
