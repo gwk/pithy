@@ -24,6 +24,9 @@ docs:
 	craft-docs
 	test-meta/meta-coverage.sh
 
+help: # Summarize the targets of this makefile.
+	@GREP_COLOR="1;32" egrep --color=always '^\w[^ :]+:' makefile | sort
+
 install-vscode:
 	craft-vscode-ext -name craft -src vscode-craft
 	craft-vscode-ext -name writeup -src vscode-writeup
