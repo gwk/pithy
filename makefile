@@ -31,7 +31,7 @@ install-vscode:
 	craft-vscode-ext -name craft -src vscode-craft
 	craft-vscode-ext -name writeup -src vscode-writeup
 
-pip-develop:
+pip-dev:
 	pip3 install -e .
 
 pip-uninstall:
