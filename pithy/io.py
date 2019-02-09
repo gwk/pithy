@@ -1,9 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from os import close as os_close, open as os_open, read as os_read, O_RDONLY, O_NONBLOCK
 from pprint import pprint
 from sys import argv, stdin, stdout, stderr
 from string import Template
-from typing import Any, Iterable, Iterator, TextIO, TypeVar, Union
+from typing import Any, ContextManager, Iterable, Iterator, TextIO, TypeVar, Union
+from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
 
 
 _T = TypeVar('_T')
@@ -262,6 +264,62 @@ def write_to_path(path: str, string) -> None:
   'Writes `string` to file at `path`.'
   with open(path, 'w') as f:
     f.write(string)
+
+
+# Nonblocking tools.
+
+class AsyncLineReader(ContextManager):
+  '''
+  A file-like object for reading asynchronously from a file descriptor.
+  '''
+
+  def __init__(self, path:str) -> None:
+    self.fd = os_open(path, O_RDONLY|O_NONBLOCK) # TODO: accept raw descriptor.
+    self.buffer = bytearray()
+
+  def __del__(self) -> None:
+    self.close()
+
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
+    self.close()
+
+  def close(self) -> None:
+    if self.fd >= 0:
+      os_close(self.fd)
+      self.fd = -1
+
+  def readline(self) -> str:
+    '''
+    Attempt to return a complete line from the input stream.
+    If there is not enough data available, return ''.
+    '''
+    line:Union[bytes,bytearray]
+
+    # The buffer might already contain a complete line.
+    buffer_line_end = self.buffer.find(0x0a) + 1 # 0 if no newline found.
+    if buffer_line_end: # Buffer already contains a complete line.
+      line = self.buffer[:buffer_line_end]
+      del self.buffer[buffer_line_end:]
+      return line.decode()
+
+    # Read from the file descriptor until it returns nothing or we have a complete line.
+    while True:
+      try: data = os_read(self.fd, 4096)
+      except BlockingIOError: return ''
+      if not data: return ''
+      line_end = data.find(0x0a) + 1 # 0 if no newline found.
+      if not line_end: # No newline.
+        self.buffer.extend(data)
+        continue
+      if self.buffer: # Have previous data.
+        line_end += len(self.buffer)
+        self.buffer.extend(data)
+        line = self.buffer[:line_end]
+        del self.buffer[:line_end]
+      else: # No previous data.
+        line = data[:line_end]
+        self.buffer.extend(data[line_end:])
+      return line.decode()
 
 
 # misc.
