@@ -2,7 +2,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser, FileType
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pithy.io import errL, errSL, errP, stdin
 from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file,
   path_descendants, path_dir, path_exists, path_ext, path_join, remove_path_if_exists)
@@ -19,15 +19,16 @@ import re
 
 def main() -> None:
   arg_parser = ArgumentParser(description='Crawl URLs, using a regex filter for discovered links.')
-  arg_parser.add_argument('urls', nargs='+', help='URLs to scrape.')
-  arg_parser.add_argument('-link-filter', required=True, help='regex predicate for determining discovered links to crawl.')
+  arg_parser.add_argument('seeds', nargs='+', help='URLs to crawl.')
+  arg_parser.add_argument('-patterns', nargs='*', help='regex predicates that filter discovered links. '
+    'A URL matching any pattern will be crawled. Defaults to the seed URLs.')
   arg_parser.add_argument('-out', required=True, help='output directory.')
   arg_parser.add_argument('-force', action='store_true', help='always fetch URLs, even when cached results are present.')
   args = arg_parser.parse_args()
 
   dir = args.out
-  url0 = args.urls[0]
-  seeds = {clean_url(url0, url) for url in args.urls}
+  seed0 = args.seeds[0]
+  seeds = {clean_url(seed0, url) for url in args.seeds}
 
   ds = file_status(dir)
   if ds is None:
@@ -35,10 +36,20 @@ def main() -> None:
   elif not ds.is_dir:
     exit(f'output path exists and is not a directory: {dir!r}')
 
+  if not args.patterns: # Default to seed URLs.
+    args.patterns = [re.escape(s) for s in seeds]
+
+  patterns:List[Pattern] = []
+  for s in args.patterns:
+    try: p = re.compile(s)
+    except Exception as e: exit(f'bad pattern regex: {e}\n {s}')
+    patterns.append(p)
+
+
   crawler = Crawler(
     dir=dir,
-    link_filter=re.compile(args.link_filter),
-    remaining=seeds,
+    patterns=patterns,
+    remaining=set(seeds),
     visited=set(),
     force=args.force)
 
@@ -48,10 +59,11 @@ def main() -> None:
 @dataclass(frozen=True)
 class Crawler:
   dir:str
-  link_filter:Pattern
+  patterns:List[Pattern]
   remaining:Set[str]
   visited:Set[str]
   force:bool
+  rejected:Set[str] = field(default_factory=set)
 
 
   def crawl(self) -> None:
@@ -68,6 +80,8 @@ class Crawler:
     tmp_path = self.tmp_path_for_url(url)
     if is_dir(tmp_path): exit(f'error: please remove the directory existing at tmp path: {tmp_path}')
 
+    self.visited.add(url)
+
     if self.force or not is_file(path):
       make_dirs(path_dir(tmp_path))
       remove_path_if_exists(tmp_path)
@@ -78,6 +92,11 @@ class Crawler:
       output = runO(cmd)
       errL(output)
       results = parse_curl_output(output)
+
+      code = results['http_code']
+      if code not in http_success_codes:
+        errSL('bad result:', code)
+        return
 
       final_url = results['url_effective']
       final_path = self.path_for_url(final_url)
@@ -90,7 +109,6 @@ class Crawler:
         make_link(orig=final_path, link=path)
         self.visited.add(final_url)
 
-    self.visited.add(url)
 
     # Determine if we should scrape this document for links.
     url = url.partition('?')[0]
@@ -127,8 +145,12 @@ class Crawler:
 
   def add_url(self, base:str, url:str) -> None:
     url = clean_url(base, url)
-    if url not in self.remaining and url not in self.visited and self.link_filter.match(url):
-      self.remaining.add(url)
+    if url in self.rejected or url in self.remaining or url in self.visited: return
+    for p in self.patterns:
+      if p.match(url):
+        self.remaining.add(url)
+        return
+    self.rejected.add(url)
 
 
   def path_for_url(self, url:str) -> str:
@@ -180,6 +202,12 @@ curl_output_fmt = '|'.join(f'{k}:%{{{k}}}' for k in [
 def parse_curl_output(output:str) -> Dict[str,str]:
   triples = [word.partition(':') for word in output.split('|')]
   return { k:v for k,_,v in triples }
+
+
+http_success_codes = {
+  '200', # Standard.
+  '203', # Server is returning a modified version.
+}
 
 
 def clean_url(base:str, url:str='') -> str:
