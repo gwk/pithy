@@ -41,7 +41,7 @@ def pack(path:str, ext:str, overwrite:bool, level:Optional[str], show_stats:bool
   if path_exists(dst):
     if not overwrite:
       if stdin.isatty():
-        confirm_or_exit(f'archive path {dst!r} exists; remove it?')
+        if not confirm(f'archive path {dst!r} exists; remove it?'): exit(1)
       else:
         exit(f'archive path exists: {dst!r}')
     remove_path(dst)
@@ -86,7 +86,3 @@ formats = {
 }
 
 format_flags = ', '.join(ext.replace('.', '-') for ext in formats)
-
-def confirm_or_exit(msg:str) -> None:
-  response = input(f"{msg} [y]: ")
-  if response != 'y': exit(1)
