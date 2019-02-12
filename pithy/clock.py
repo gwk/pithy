@@ -2,12 +2,22 @@
 
 from sys import stderr
 from time import time as now
+from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
 
 
 class Clock:
+
   def __init__(self, name:str) -> None:
     self.name = name
     self.times = [(now(), 'start')]
+
+
+  def __enter__(self) -> 'Clock': return self
+
+
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
+    self.total()
+
 
   def split(self, label:str) -> None:
     t = now()
