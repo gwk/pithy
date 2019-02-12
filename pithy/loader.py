@@ -10,8 +10,15 @@ from typing import Any, BinaryIO, Callable, Dict, IO, Iterable, Iterator, Sequen
 from .io import stderr, errL, errSL
 from .fs import path_ext, path_stem
 
-File = Union[TextIO, BinaryIO]
-FileOrPath = Union[File, str]
+__all__ = [
+  'add_loader',
+  'FileOrPath',
+  'LoaderException',
+  'load',
+  'LoadFn',
+]
+
+FileOrPath = Union[IO, str]
 LoadFn = Callable[..., Any]
 
 
