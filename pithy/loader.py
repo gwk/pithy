@@ -49,7 +49,7 @@ class LoaderException(Exception): pass
 def _text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
   if isinstance(f, TextIOWrapper): return f
   if isinstance(f, str): return open(f, 'r', **kwargs)
-  try: return TextIOWrapper(f, **kwargs) # type: ignore
+  try: return TextIOWrapper(f, **kwargs)
   except Exception as e:
     raise ValueError(f'load: required text file or path; received {f!r}') from e
 
@@ -188,7 +188,7 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from lzma import LZMAFile
   d = LZMAFile(_binary_file_for(f))
   #b = BufferedReader(d) # type: ignore
-  return load(d, ext=sub_ext, **kwargs) # type: ignore
+  return load(d, ext=sub_ext, **kwargs)
 
 
 def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
