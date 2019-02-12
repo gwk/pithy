@@ -5,7 +5,8 @@ from types import TracebackType
 
 Opt = Optional
 
-# For defining __exit__.
+# These types are helpful when defining `__exit__`:
+# def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> bool: ...
 OptTypeBaseExc = Optional[Type[BaseException]]
 OptBaseExc = Optional[BaseException]
 OptTraceback = Optional[TracebackType]

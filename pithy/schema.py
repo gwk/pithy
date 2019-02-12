@@ -11,7 +11,7 @@ from .string import iter_excluding_str
 
 class Schema(NamedTuple):
   '''
-  A schema represents the aggregate of values occurring at a structural position in some data.
+  A schema represents the aggregate of values occurring at a structural position in a set of data trees.
   atoms: counts atom values.
   seqs: maps all of the occurring element types to schemas.
   dicts: maps occurring keys to a defaultdict of occurring value types to schemas.
