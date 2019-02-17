@@ -3,7 +3,7 @@
 # $@: The file name of the target of the rule.
 # $<: The name of the first prerequisite.
 # $^: The names of all the prerequisites, with spaces between them.
-# $*: The stem with which a pattern rule matches.
+# $*: The matching string in a pattern rule.
 
 .SUFFIXES: # Disable implicit rules.
 
