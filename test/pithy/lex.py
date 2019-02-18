@@ -56,7 +56,7 @@ utest_seq_exc(Lexer.DefinitionError(
   Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
 
 
-# msg_for_match.
+# match_diagnostic.
 
 tokens = list(word_lexer.lex('1a b\n2c d', drop={'inv'})) # note missing final newline.
 
@@ -64,30 +64,30 @@ utest('''\
 PRE:1:1: word
 | 1a b
   ~~\
-''', msg_for_match, tokens[0], prefix='PRE', msg=tokens[0].lastgroup)
+''', match_diagnostic, tokens[0], prefix='PRE', msg=tokens[0].lastgroup)
 
 utest('''\
 PRE:1:4: word
 | 1a b
      ~\
-''', msg_for_match, tokens[1], prefix='PRE', msg=tokens[1].lastgroup)
+''', match_diagnostic, tokens[1], prefix='PRE', msg=tokens[1].lastgroup)
 
 utest('''\
 PRE:2:1: word
 | 2c d
   ~~\
-''', msg_for_match, tokens[2], prefix='PRE', msg=tokens[2].lastgroup)
+''', match_diagnostic, tokens[2], prefix='PRE', msg=tokens[2].lastgroup)
 
 utest('''\
 PRE:2:4: word
 | 2c d
      ~\
-''', msg_for_match, tokens[3], prefix='PRE', msg=tokens[3].lastgroup)
+''', match_diagnostic, tokens[3], prefix='PRE', msg=tokens[3].lastgroup)
 
 # test the caret underline for zero-length matches.
 utest('''\
 PRE:1:1: MSG
 | abc
   ^\
-''', msg_for_match, re.match('^', 'abc'), prefix='PRE', msg='MSG')
+''', match_diagnostic, re.match('^', 'abc'), prefix='PRE', msg='MSG')
 

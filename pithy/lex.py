@@ -157,12 +157,12 @@ class Lexer:
         yield from self._lex_gen(stack, string, 0, len(string), drop)
 
 
-def fail_parse(path: str, token: Match, msg: str) -> NoReturn:
+def match_fail(path:str, token:Match, msg:str) -> NoReturn:
   'Print a formatted parsing failure to std err and exit.'
-  exit(msg_for_match(token, prefix=path, msg=msg))
+  exit(match_diagnostic(token, prefix=path, msg=msg))
 
 
-def msg_for_match(match: Match, prefix: str, msg: str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
+def match_diagnostic(match:Match, prefix:str, msg:str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
   'Return a formatted parser error message.'
   string = match.string
   p, e = match.span()
