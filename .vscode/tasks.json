@@ -10,7 +10,7 @@
       "args": ["-print-ok", "${relativeFile}"],
       "group": {"kind": "build", "isDefault": true},
       "problemMatcher": "$craft",
-      "presentation": {"showReuseMessage": false},
+      "presentation": {"showReuseMessage": false}
     },
     {
       "label": "typecheck",
@@ -18,7 +18,7 @@
       "args": ["typecheck"],
       "group": "build",
       "problemMatcher": "$craft",
-      "presentation": {"showReuseMessage": false},
+      "presentation": {"showReuseMessage": false}
     },
     {
       "label": "test",
@@ -26,7 +26,7 @@
       "args": ["test"],
       "group": {"kind": "test", "isDefault": true},
       "problemMatcher": "$craft",
-      "presentation": {"showReuseMessage": false},
+      "presentation": {"showReuseMessage": false}
     }
   ]
 }
