@@ -4,15 +4,15 @@ import re
 
 from html import escape as html_escape
 from sys import stdout
-from typing import Any, Callable, Dict, Iterable, Set, TextIO, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Hashable, Iterable, Set, TextIO, Tuple, TypeVar, Union
 
 
-_T = TypeVar('_T')
 
 Name = Union[int, float, str]
 
+_H = TypeVar('_H', bound=Hashable)
 
-def visit_nodes(start_nodes: Iterable[_T], visitor: Callable[[_T], Iterable[_T]]) -> Set[_T]:
+def visit_nodes(start_nodes: Iterable[_H], visitor: Callable[[_H], Iterable[_H]]) -> Set[_H]:
   '''
   Starting with `start_nodes`, call `visitor` with each node.
   `visitor` should return discovered nodes to be visited.
