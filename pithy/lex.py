@@ -4,10 +4,8 @@
 Simple lexing using python regular expressions.
 '''
 
-
 import re
-from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, Match, Optional, Pattern, Tuple
-from mypy_extensions import NoReturn
+from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, Match, NoReturn, Optional, Pattern, Tuple
 
 
 class LexError(Exception): pass
@@ -15,11 +13,11 @@ class LexError(Exception): pass
 
 class Lexer:
   '''
-  * A zero-length match, e.g. r'^' causes an exception.
-    Otherwise the stream would never advance.
-    One way to support zero-length tokens, e.g. r'^\s*' for Python indent tokens,
-    would be to swap out the main regex for one with the pattern in question omitted,
-    for the next iteration only.
+  Note: A zero-length match, e.g. r'^' causes an exception.
+  Otherwise the stream would never advance.
+  One way to support zero-length tokens, e.g. r'^\s*' for Python indent tokens,
+  would be to swap out the main regex for one with the pattern in question omitted,
+  for the next iteration only.
   '''
 
   class DefinitionError(Exception): pass
