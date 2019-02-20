@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
+
 from .generator import GeneratorType as _Generator
 
 
@@ -26,8 +27,8 @@ def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _R:
   * results: the transformed children.
 
   `visit` should either:
-  * return a single result node
-  * return  a generator of results, which are flattened with those of the node's siblings.
+  * return a single result node;
+  * return a generator of results, which are flattened with those of the node's siblings;
   * raise OmitNode.
   '''
   res = _transform_tree(root, get_children, visit, ())
@@ -48,3 +49,17 @@ def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_VisitFn, stack:
       else:
         results.append(r)
   return visit(node, stack, results)
+
+
+known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, type(None), type(Ellipsis))
+
+
+def traverse_generic_tree(obj:Any) -> Iterator[Any]:
+  if isinstance(obj, known_leaf_types): return
+
+  if hasattr(obj, 'values'): # Treat as a mapping.
+    yield from obj.values()
+
+  try: it = iter(obj)
+  except TypeError: return
+  yield from it
