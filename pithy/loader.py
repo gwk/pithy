@@ -151,8 +151,13 @@ def load_jsons(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_msgpack(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from .msgpack import load_msgpack as _load
-  return _load(_binary_file_for(file_or_path), **kwargs)
+  from .msgpack import load_msgpack as _load_msgpack
+  return _load_msgpack(_binary_file_for(file_or_path), **kwargs)
+
+
+def load_msgpacks(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
+  from .msgpack import load_msgpacks as _load_msgpacks
+  return _load_msgpacks(_binary_file_for(file_or_path), **kwargs)
 
 
 def load_pyl(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
@@ -205,23 +210,24 @@ def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return load(d, ext=_sub_ext(ext), **kwargs)
 
 
-add_loader('',          load_binary,  _dflt=True)
-add_loader('.css',      load_txt,     _dflt=True)
-add_loader('.csv',      load_csv,     _dflt=True)
-add_loader('.gz',       load_gz,      _dflt=True)
-add_loader('.json',     load_json,    _dflt=True)
-add_loader('.jsonl',    load_jsonl,   _dflt=True)
-add_loader('.jsons',    load_jsons,   _dflt=True)
-add_loader('.msgpack',  load_msgpack, _dflt=True)
-add_loader('.pyl',      load_pyl,     _dflt=True)
-add_loader('.sqlite',   load_sqlite,  _dflt=True)
-add_loader('.sqlite3',  load_sqlite,  _dflt=True)
-add_loader('.tar',      load_archive, _dflt=True)
-add_loader('.txt',      load_txt,     _dflt=True)
-add_loader('.xls',      load_xls,     _dflt=True)
-add_loader('.xz',       load_xz,      _dflt=True)
-add_loader('.zip',      load_archive, _dflt=True)
-add_loader('.zst',      load_zst,     _dflt=True)
+add_loader('',          load_binary,    _dflt=True)
+add_loader('.css',      load_txt,       _dflt=True)
+add_loader('.csv',      load_csv,       _dflt=True)
+add_loader('.gz',       load_gz,        _dflt=True)
+add_loader('.json',     load_json,      _dflt=True)
+add_loader('.jsonl',    load_jsonl,     _dflt=True)
+add_loader('.jsons',    load_jsons,     _dflt=True)
+add_loader('.msgpack',  load_msgpack,   _dflt=True)
+add_loader('.msgpacks', load_msgpacks,  _dflt=True)
+add_loader('.pyl',      load_pyl,       _dflt=True)
+add_loader('.sqlite',   load_sqlite,    _dflt=True)
+add_loader('.sqlite3',  load_sqlite,    _dflt=True)
+add_loader('.tar',      load_archive,   _dflt=True)
+add_loader('.txt',      load_txt,       _dflt=True)
+add_loader('.xls',      load_xls,       _dflt=True)
+add_loader('.xz',       load_xz,        _dflt=True)
+add_loader('.zip',      load_archive,   _dflt=True)
+add_loader('.zst',      load_zst,       _dflt=True)
 
 
 # Compound path utilities.
