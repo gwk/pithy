@@ -4,21 +4,20 @@ import argparse
 import re
 import shlex
 import time
-
 from ast import literal_eval
 from collections import defaultdict
-from sys import stdout, stderr
+from sys import stderr, stdout
 from typing import *
 
-from pithy.ansi import (sanitize_for_console, is_out_tty, sgr, gray26, rgb6,
-  BG, FILL_OUT, INVERT, RST_INVERT, RST_OUT, TTY_OUT, TXT)
+from pithy.ansi import (BG, FILL_OUT, INVERT, RST_INVERT, RST_OUT, TTY_OUT, TXT, gray26, is_out_tty, rgb6, sanitize_for_console,
+  sgr)
 from pithy.dict import dict_fan_by_key_pred
-from pithy.io import *
-from pithy.string import string_contains
 from pithy.format import FormatError, format_to_re
 from pithy.fs import *
+from pithy.io import *
 from pithy.iterable import fan_by_key_fn, fan_by_pred
-from pithy.task import TaskLaunchError, UnexpectedExit, Timeout, run, runC
+from pithy.string import string_contains
+from pithy.task import TaskLaunchError, Timeout, UnexpectedExit, run, runC
 
 from ..case import Case, FileExpectation, ParConfig, TestCaseError, file_expectation_fns
 from ..ctx import Ctx
