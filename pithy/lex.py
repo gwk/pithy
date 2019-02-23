@@ -34,7 +34,7 @@ class Lexer:
 
     # validate patterns.
     if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
-    self.patterns: Dict[str, str] = {}
+    self.patterns: Dict[str,str] = {}
     for n, v in patterns.items():
       if n == invalid:
         raise Lexer.DefinitionError(f'{n!r} pattern name collides with the invalid token name')
@@ -54,7 +54,7 @@ class Lexer:
       self.patterns[n] = pattern
 
     # validate modes.
-    self.modes: Dict[str, FrozenSet[str]] = {}
+    self.modes: Dict[str,FrozenSet[str]] = {}
     main = None
     if modes:
       for mode, names in modes.items():
@@ -80,10 +80,11 @@ class Lexer:
     else:
       self.modes = { 'main' : frozenset(self.patterns) }
       main = 'main'
+
     # validate transitions.
     assert main is not None
     self.main: str = main
-    self.transitions: Dict[Tuple[str, str], Tuple[str, FrozenSet[str]]] = {}
+    self.transitions:Dict[Tuple[str,str],Tuple[str,FrozenSet[str]]] = {}
     for (parent_mode, enter), (child_mode, leaves) in transitions.items():
       if parent_mode not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {parent_mode!r}')
       if child_mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {child_mode!r}')
@@ -104,8 +105,8 @@ class Lexer:
     self.inv_re = re.compile(f'(?s)(?P<{self.invalid}>.+)' if self.invalid else '(?s).+')
 
 
-  def _lex_mode(self, regex: Pattern, string: str, pos: int, end: int) -> Iterator[Match]:
-    def lex_inv(end: int) -> Match[str]:
+  def _lex_mode(self, regex:Pattern, string:str, pos:int, end:int) -> Iterator[Match]:
+    def lex_inv(end:int) -> Match[str]:
       inv_match = self.inv_re.match(string, pos, end) # create a real match object.
       assert inv_match is not None
       if self.invalid: return inv_match
@@ -124,7 +125,7 @@ class Lexer:
       yield match
       pos = e
 
-  def _lex_gen(self, stack: List[Tuple[str, FrozenSet[str]]], string: str, p: int, e: int, drop: Container[str]) -> Iterator[Match]:
+  def _lex_gen(self, stack:List[Tuple[str,FrozenSet[str]]], string:str, p:int, e:int, drop:Container[str]) -> Iterator[Match]:
     while p < e:
       mode, exit_names = stack[-1]
       regex = self.regexes[mode]
@@ -141,7 +142,7 @@ class Lexer:
           stack.append(frame)
           break
 
-  def lex(self, string: str, pos: int=0, end: Optional[int]=None, drop: Container[str]=()) -> Iterator[Match]:
+  def lex(self, string:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=()) -> Iterator[Match]:
     if pos < 0:
       pos = len(string) + pos
     if end is None:
@@ -152,8 +153,8 @@ class Lexer:
     return self._lex_gen([(self.main, frozenset())], string, pos, _e, drop)
 
 
-  def lex_stream(self, stream: Iterable[str], drop: Container[str]=()) -> Iterator[Match]:
-    stack: List[Tuple[str, FrozenSet[str]]] = [(self.main, frozenset())]
+  def lex_stream(self, stream:Iterable[str], drop:Container[str]=()) -> Iterator[Match]:
+    stack:List[Tuple[str,FrozenSet[str]]] = [(self.main, frozenset())]
     for string in stream:
       if string:
         yield from self._lex_gen(stack, string, 0, len(string), drop)
@@ -184,7 +185,7 @@ def match_diagnostic(match:Match, prefix:str, msg:str, pos:Optional[int]=None, e
   return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{src_bar}{line}\n  {indent}{underline}'
 
 
-def line_col_0_for_match(match: Match) -> Tuple[int, int]:
+def line_col_0_for_match(match:Match) -> Tuple[int,int]:
   'Return a pair of 0-indexed line and column numbers for a token (Match object).'
   string = match.string
   pos = match.start()
