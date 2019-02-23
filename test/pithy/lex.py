@@ -49,12 +49,33 @@ utest_exc(Lexer.DefinitionError("member 0 'star' pattern is invalid: (?P<star>*)
 utest_exc(Lexer.DefinitionError("member 1 'b' pattern contains a conflicting capture group name: 'a'"),
   Lexer, patterns=dict(a='a', b='(?P<a>b)'))
 
-utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer)
+utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, patterns={})
 
 utest_seq_exc(Lexer.DefinitionError(
   "Zero-length patterns are disallowed, because they cause the following character to be skipped.\n"
   "  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
   Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
+
+
+# Modes.
+
+str_lexer = Lexer(patterns=dict(
+  line  = r'\n',
+  space = r' +',
+  dq    = r'"',
+  chars = r'[^"\\]+',
+  esc = r'\\"|\\\\'),
+  modes=dict(
+    main=['line', 'space', 'dq'],
+    string=['chars', 'esc', 'dq']),
+  transitions={
+    ('main', 'dq'): ('string', 'dq')})
+
+
+utest_seq([
+  ('dq', '"'), ('chars', 'a'), ('dq', '"'), ('space', ' '),
+  ('dq', '"'), ('chars', 'b'), ('esc', '\\"'), ('esc', '\\\\'), ('dq', '"'), ('line', '\n')],
+  run_lexer, str_lexer, '"a" "b\\"\\\\"\n')
 
 
 # match_diagnostic.

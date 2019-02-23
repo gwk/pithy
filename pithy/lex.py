@@ -13,16 +13,16 @@ class LexError(Exception): pass
 
 class Lexer:
   '''
-  Note: A zero-length match, e.g. r'^' causes an exception.
-  Otherwise the stream would never advance.
-  One way to support zero-length tokens, e.g. r'^\s*' for Python indent tokens,
-  would be to swap out the main regex for one with the pattern in question omitted,
-  for the next iteration only.
+  Note: A zero-length match, e.g. r'^' causes an exception; otherwise the stream would never advance.
   '''
+  # One way to support zero-length tokens, e.g. r'^\s*' for Python indent tokens,
+  # would be to swap out the main regex for one with the pattern in question omitted,
+  # for the next iteration only.
 
   class DefinitionError(Exception): pass
 
-  def __init__(self, flags='', invalid=None, patterns=dict(), modes=dict(), transitions=dict()) -> None:
+  def __init__(self, *, flags='', invalid=None, patterns:Dict[str,str], modes:Dict[str,Iterable[str]]={},
+   transitions:Dict[Tuple[str,str],Tuple[str,Iterable[str]]]={}) -> None:
     self.invalid = invalid
 
     # validate flags.
@@ -60,6 +60,8 @@ class Lexer:
         if mode in patterns:
           raise Lexer.DefinitionError(f'mode name conflicts with pattern name: {mode!r}')
         expanded = set()
+        if isinstance(names, str):
+          raise Lexer.DefinitionError(f'mode {mode!r} value should be a iterable of names, not a str: {names!r}')
         for name in names:
           if re.fullmatch(r'\w+', name):
             if name in patterns: expanded.add(name)
@@ -85,7 +87,7 @@ class Lexer:
       if child_mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {child_mode!r}')
       if enter not in patterns: raise Lexer.DefinitionError(f'unknown mode enter pattern: {enter!r}')
       if isinstance(leaves, str):
-        leaves = {leaves}
+        leaves = [leaves]
       for leave in leaves:
         if leave not in patterns: raise Lexer.DefinitionError(f'unknown mode leave pattern: {leave!r}')
       self.transitions[(parent_mode, enter)] = (child_mode, frozenset(leaves))
