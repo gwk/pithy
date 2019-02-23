@@ -10,10 +10,11 @@ import inspect as _inspect
 from os.path import relpath as _rel_path
 from sys import stderr as _stderr
 from traceback import print_exception as _print_exception
-from typing import Any, Callable, Dict, Iterable, Tuple
+from typing import Any, Callable, Dict, Iterable, Tuple, TypeVar
 
 
 __all__ = [
+  'run',
   'utest',
   'utest_exc',
   'utest_seq',
@@ -25,6 +26,12 @@ __all__ = [
 
 _utest_test_count = 0
 _utest_failure_count = 0
+
+
+_C = TypeVar('_C', bound=Callable)
+def run(callable:_C) -> _C:
+  callable()
+  return callable
 
 
 def utest(exp:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:

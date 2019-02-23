@@ -5,7 +5,8 @@ from functools import singledispatch
 from pithy.tree import *
 
 
-def test0():
+@run
+def test_transform_tree_0():
 
   @singledispatch
   def get_children(node: Iterable) -> Iterable:
@@ -37,10 +38,9 @@ def test0():
 
   utest(output, transform_tree, input, get_children, visit)
 
-test0()
 
-
-def test1():
+@run
+def test_transform_tree_1():
 
   def get_children(node: Iterable) -> Iterable:
     return None if isinstance(node, (int, str)) else node
@@ -67,4 +67,3 @@ def test1():
 
   utest(output, transform_tree, input, get_children, visit)
 
-test1()
