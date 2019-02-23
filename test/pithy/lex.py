@@ -7,9 +7,10 @@ from pithy.lex import *
 
 # Lexer.
 
-def test_lex(lexer, string, **kwargs):
+def run_lexer(lexer, string, **kwargs):
+  'Run `lexer` on `string`, yielding (kind, text) pairs.'
   for match in lexer.lex(string, **kwargs):
-    yield match.lastgroup, match.group()
+    yield match.lastgroup, match[0]
 
 
 num_lexer = Lexer(patterns=dict(
@@ -19,13 +20,13 @@ num_lexer = Lexer(patterns=dict(
 ))
 
 utest_seq([('num', '1'), ('space', ' '), ('num', '20'), ('line', '\n')],
-  test_lex, num_lexer, '1 20\n')
+  run_lexer, num_lexer, '1 20\n')
 
 utest_seq([('num', '1'), ('num', '20')],
-  test_lex, num_lexer, '1 20\n', drop={'line', 'space'})
+  run_lexer, num_lexer, '1 20\n', drop={'line', 'space'})
 
-utest_seq_exc("LexError(<re.Match object; span=(2, 3), match='x'>)", test_lex, num_lexer, '1 x 2')
-utest_seq_exc("LexError(<re.Match object; span=(4, 5), match='x'>)", test_lex, num_lexer, '1 2 x')
+utest_seq_exc("LexError(<re.Match object; span=(2, 3), match='x'>)", run_lexer, num_lexer, '1 x 2')
+utest_seq_exc("LexError(<re.Match object; span=(4, 5), match='x'>)", run_lexer, num_lexer, '1 2 x')
 
 
 word_lexer = Lexer(invalid='inv', patterns=dict(
@@ -33,10 +34,10 @@ word_lexer = Lexer(invalid='inv', patterns=dict(
 ))
 
 utest_seq([('inv', '!'), ('word', 'a'), ('inv', ' '), ('word', 'b2'), ('inv', '.')],
-  test_lex, word_lexer, '!a b2.')
+  run_lexer, word_lexer, '!a b2.')
 
 utest_seq([('word', 'a'), ('word', 'b2')],
-  test_lex, word_lexer, '!a b2.', drop={'inv'})
+  run_lexer, word_lexer, '!a b2.', drop={'inv'})
 
 
 utest_exc(Lexer.DefinitionError("member 0 'num' value must be a string; found 0"),
