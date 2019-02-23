@@ -24,16 +24,8 @@ utest('-body', clip_first_prefix, 'prefix-body', ['miss0', 'prefix', 'miss1'])
 utest('prefix-body', clip_first_prefix, 'prefix-body', ['miss0', 'miss1'], req=False)
 utest_exc(ValueError('prefix-body'), clip_first_prefix, 'prefix-body', ['miss0', 'miss1'])
 
-
-def iter_excluding_str_test(val):
-  'iter_excluding_str returns an iterator, this is testable.'
-  try: it = iter_excluding_str(val)
-  except TypeError: return ('atom:', val)
-  else: return ('collection:', *val)
-
-utest(('atom:', 'string'), iter_excluding_str_test, 'string')
-utest(('collection:', 1, 2, 3), iter_excluding_str_test, [1,2,3])
-
+utest_exc(TypeError('iter_excluding_str explictly treats str as non-iterable type'), iter_excluding_str, 'string')
+utest_seq([1, 2, 3], iter_excluding_str, [1,2,3])
 
 utest('-1 things',  pluralize, -1, 'thing')
 utest('0 things',   pluralize,  0, 'thing')
