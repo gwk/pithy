@@ -35,20 +35,22 @@ class Lexer:
     # validate patterns.
     if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
     self.patterns: Dict[str, str] = {}
-    for i, (n, v) in enumerate(patterns.items()):
+    for n, v in patterns.items():
+      if n == invalid:
+        raise Lexer.DefinitionError(f'{n!r} pattern name collides with the invalid token name')
       if not isinstance(v, str): # TODO: also support bytes.
-        raise Lexer.DefinitionError(f'member {i} {n!r} value must be a string; found {v!r}')
+        raise Lexer.DefinitionError(f'{n!r} pattern value must be a string; found {v!r}')
       pattern = f'{flags_pattern}(?P<{n}>{v})'
       try: r = re.compile(pattern) # compile each expression by itself to improve error clarity.
       except Exception as e:
-        lines = [f'member {i} {n!r} pattern is invalid: {pattern}']
+        lines = [f'{n!r} pattern is invalid: {pattern}']
         if flags: lines.append(f'global flags: {flags!r}')
         if is_extended and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comments break lexer')
         msg = '\n  note: '.join(lines)
         raise Lexer.DefinitionError(msg) from e
       for group_name in r.groupindex:
         if group_name in patterns and group_name != n:
-          raise Lexer.DefinitionError(f'member {i} {n!r} pattern contains a conflicting capture group name: {group_name!r}')
+          raise Lexer.DefinitionError(f'{n!r} pattern contains a conflicting capture group name: {group_name!r}')
       self.patterns[n] = pattern
 
     # validate modes.
@@ -117,7 +119,7 @@ class Lexer:
       if pos < s:
         yield lex_inv(s)
       if s == e:
-        raise Lexer.DefinitionError('Zero-length patterns are disallowed, because they cause the following character to be skipped.\n'
+        raise Lexer.DefinitionError('Zero-length patterns are disallowed.\n'
           f'  kind: {match.lastgroup}; match: {match}')
       yield match
       pos = e

@@ -40,20 +40,19 @@ utest_seq([('word', 'a'), ('word', 'b2')],
   run_lexer, word_lexer, '!a b2.', drop={'inv'})
 
 
-utest_exc(Lexer.DefinitionError("member 0 'num' value must be a string; found 0"),
+utest_exc(Lexer.DefinitionError("'num' pattern value must be a string; found 0"),
   Lexer, patterns=dict(num=0))
 
-utest_exc(Lexer.DefinitionError("member 0 'star' pattern is invalid: (?P<star>*)"),
+utest_exc(Lexer.DefinitionError("'star' pattern is invalid: (?P<star>*)"),
   Lexer, patterns=dict(star='*'))
 
-utest_exc(Lexer.DefinitionError("member 1 'b' pattern contains a conflicting capture group name: 'a'"),
+utest_exc(Lexer.DefinitionError("'b' pattern contains a conflicting capture group name: 'a'"),
   Lexer, patterns=dict(a='a', b='(?P<a>b)'))
 
 utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, patterns={})
 
 utest_seq_exc(Lexer.DefinitionError(
-  "Zero-length patterns are disallowed, because they cause the following character to be skipped.\n"
-  "  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
+  "Zero-length patterns are disallowed.\n  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
   Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
 
 
