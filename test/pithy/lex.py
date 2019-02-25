@@ -25,6 +25,9 @@ utest_seq([('num', '1'), ('space', ' '), ('num', '20'), ('line', '\n')],
 utest_seq([('num', '1'), ('num', '20')],
   run_lexer, num_lexer, '1 20\n', drop={'line', 'space'})
 
+utest_seq([('num','0'), ('line','\n'), ('end_of_text','')],
+  run_lexer, num_lexer, '0\n', eot=True)
+
 utest_seq_exc("LexError(<re.Match object; span=(2, 3), match='x'>)", run_lexer, num_lexer, '1 x 2')
 utest_seq_exc("LexError(<re.Match object; span=(4, 5), match='x'>)", run_lexer, num_lexer, '1 2 x')
 

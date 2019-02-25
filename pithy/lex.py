@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, Match, NoReturn, Optional, Pattern, Tuple
+from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, Match, NoReturn, Optional, Pattern, Tuple, cast
 
 
 class LexError(Exception): pass
@@ -36,6 +36,7 @@ class Lexer:
     if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
     self.patterns: Dict[str,str] = {}
     for n, v in patterns.items():
+      validate_name(n)
       if n == invalid:
         raise Lexer.DefinitionError(f'{n!r} pattern name collides with the invalid token name')
       if not isinstance(v, str): # TODO: also support bytes.
@@ -125,7 +126,8 @@ class Lexer:
       yield match
       pos = e
 
-  def _lex_gen(self, stack:List[Tuple[str,FrozenSet[str]]], string:str, p:int, e:int, drop:Container[str]) -> Iterator[Match]:
+  def _lex_gen(self, stack:List[Tuple[str,FrozenSet[str]]], string:str, p:int, e:int, drop:Container[str],
+   eot:bool) -> Iterator[Match]:
     while p < e:
       mode, exit_names = stack[-1]
       regex = self.regexes[mode]
@@ -141,8 +143,11 @@ class Lexer:
         else:
           stack.append(frame)
           break
+    if eot:
+      yield eot_token(string[:e])
 
-  def lex(self, string:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=()) -> Iterator[Match]:
+
+  def lex(self, string:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Match]:
     if pos < 0:
       pos = len(string) + pos
     if end is None:
@@ -150,14 +155,25 @@ class Lexer:
     elif end < 0:
       end = len(string) + end
     _e: int = end # typing hack.
-    return self._lex_gen([(self.main, frozenset())], string, pos, _e, drop)
+    return self._lex_gen(stack=[(self.main, frozenset())], string=string, p=pos, e=_e, drop=drop, eot=eot)
 
 
-  def lex_stream(self, stream:Iterable[str], drop:Container[str]=()) -> Iterator[Match]:
+  def lex_stream(self, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Match]:
+    '''
+    Note: the yielded Match objects have positions relative to input string that each was lexed from.'
+    '''
     stack:List[Tuple[str,FrozenSet[str]]] = [(self.main, frozenset())]
+    string = ''
     for string in stream:
       if string:
-        yield from self._lex_gen(stack, string, 0, len(string), drop)
+        yield from self._lex_gen(stack=stack, string=string, p=0, e=len(string), drop=drop, eot=False)
+    if eot:
+      yield eot_token(string)
+
+
+_eot_re = re.compile(r'(?P<end_of_text>$)')
+
+def eot_token(string:str) -> Match: return cast(Match, _eot_re.search(string, len(string)))
 
 
 def match_fail(path:str, token:Match, msg:str) -> NoReturn:
@@ -192,3 +208,15 @@ def line_col_0_for_match(match:Match) -> Tuple[int,int]:
   line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
   line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
   return (line_num, pos - line_start)
+
+
+def validate_name(name:str) -> str:
+  if not valid_name_re.fullmatch(name):
+    raise Lexer.DefinitionError(f'invalid name: {name!r}')
+  if name in reserved_names:
+    raise Lexer.DefinitionError(f'name is reserved: {name!r}')
+  return name
+
+valid_name_re = re.compile(r'[A-Za-z_]\w*')
+
+reserved_names = frozenset({'end_of_text'})
