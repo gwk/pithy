@@ -79,6 +79,13 @@ def find_and_clip_suffix(string:str, suffix:str, req=True) -> str:
   return string[:idx]
 
 
+def indent_lines(lines:Iterable[str], depth=1) -> Iterator[str]:
+  ind = '  '*depth
+  for line in lines:
+    nl = '' if line.endswith('\n') else '\n'
+    yield f'{ind}{line}{nl}'
+
+
 def iter_excluding_str(iterable:Iterable[_T]) -> Iterator[_T]:
   '''
   Often we want to handle all iterables in a particular way, except for str.
