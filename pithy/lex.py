@@ -10,6 +10,8 @@ from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, Ma
 
 class LexError(Exception): pass
 
+Token = Match[str]
+
 
 class Lexer:
   '''
@@ -106,28 +108,28 @@ class Lexer:
     self.inv_re = re.compile(f'(?s)(?P<{self.invalid}>.+)' if self.invalid else '(?s).+')
 
 
-  def _lex_mode(self, regex:Pattern, string:str, pos:int, end:int) -> Iterator[Match]:
-    def lex_inv(end:int) -> Match[str]:
+  def _lex_mode(self, regex:Pattern, string:str, pos:int, end:int) -> Iterator[Token]:
+    def lex_inv(end:int) -> Token:
       inv_match = self.inv_re.match(string, pos, end) # create a real match object.
       assert inv_match is not None
       if self.invalid: return inv_match
       raise LexError(inv_match)
     while pos < end:
-      match = regex.search(string, pos)
-      if not match:
+      token = regex.search(string, pos)
+      if not token:
         yield lex_inv(end)
         break
-      s, e = match.span()
+      s, e = token.span()
       if pos < s:
         yield lex_inv(s)
       if s == e:
         raise Lexer.DefinitionError('Zero-length patterns are disallowed.\n'
-          f'  kind: {match.lastgroup}; match: {match}')
-      yield match
+          f'  kind: {token.lastgroup}; token: {token}')
+      yield token
       pos = e
 
   def _lex_gen(self, stack:List[Tuple[str,FrozenSet[str]]], string:str, p:int, e:int, drop:Container[str],
-   eot:bool) -> Iterator[Match]:
+   eot:bool) -> Iterator[Token]:
     while p < e:
       mode, exit_names = stack[-1]
       regex = self.regexes[mode]
@@ -147,7 +149,7 @@ class Lexer:
       yield eot_token(string[:e])
 
 
-  def lex(self, string:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Match]:
+  def lex(self, string:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
     if pos < 0:
       pos = len(string) + pos
     if end is None:
@@ -158,9 +160,9 @@ class Lexer:
     return self._lex_gen(stack=[(self.main, frozenset())], string=string, p=pos, e=_e, drop=drop, eot=eot)
 
 
-  def lex_stream(self, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Match]:
+  def lex_stream(self, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Token]:
     '''
-    Note: the yielded Match objects have positions relative to input string that each was lexed from.'
+    Note: the yielded Token objects have positions relative to input string that each was lexed from.'
     '''
     stack:List[Tuple[str,FrozenSet[str]]] = [(self.main, frozenset())]
     string = ''
@@ -173,18 +175,25 @@ class Lexer:
 
 _eot_re = re.compile(r'(?P<end_of_text>$)')
 
-def eot_token(string:str) -> Match: return cast(Match, _eot_re.search(string, len(string)))
+def eot_token(string:str) -> Token:
+  'Create a token representing the end-of-text.'
+  return cast(Token, _eot_re.search(string, len(string)))
+
+_pos_re = re.compile(r'')
+def pos_token(token:Token) -> Token:
+  'Create a new token with the same position as `token` but with zero length.'
+  return cast(Token, _pos_re.match(token.string, token.start()))
 
 
-def match_fail(path:str, token:Match, msg:str) -> NoReturn:
+def token_fail(path:str, token:Token, msg:str) -> NoReturn:
   'Print a formatted parsing failure to std err and exit.'
-  exit(match_diagnostic(token, prefix=path, msg=msg))
+  exit(token_diagnostic(token, prefix=path, msg=msg))
 
 
-def match_diagnostic(match:Match, prefix:str, msg:str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
+def token_diagnostic(token:Token, prefix:str, msg:str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
   'Return a formatted parser error message.'
-  string = match.string
-  p, e = match.span()
+  string = token.string
+  p, e = token.span()
   if pos is None: pos = p
   else: assert pos >= p
   if end is None: end = e
@@ -201,10 +210,10 @@ def match_diagnostic(match:Match, prefix:str, msg:str, pos:Optional[int]=None, e
   return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{src_bar}{line}\n  {indent}{underline}'
 
 
-def line_col_0_for_match(match:Match) -> Tuple[int,int]:
-  'Return a pair of 0-indexed line and column numbers for a token (Match object).'
-  string = match.string
-  pos = match.start()
+def line_col_0_for_token(token:Token) -> Tuple[int,int]:
+  'Return a pair of 0-indexed line and column numbers for a token.'
+  string = token.string
+  pos = token.start()
   line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
   line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
   return (line_num, pos - line_start)

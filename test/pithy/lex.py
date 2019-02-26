@@ -9,8 +9,8 @@ from pithy.lex import *
 
 def run_lexer(lexer, string, **kwargs):
   'Run `lexer` on `string`, yielding (kind, text) pairs.'
-  for match in lexer.lex(string, **kwargs):
-    yield match.lastgroup, match[0]
+  for token in lexer.lex(string, **kwargs):
+    yield token.lastgroup, token[0]
 
 
 num_lexer = Lexer(patterns=dict(
@@ -55,7 +55,7 @@ utest_exc(Lexer.DefinitionError("'b' pattern contains a conflicting capture grou
 utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, patterns={})
 
 utest_seq_exc(Lexer.DefinitionError(
-  "Zero-length patterns are disallowed.\n  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
+  "Zero-length patterns are disallowed.\n  kind: caret; token: <re.Match object; span=(0, 0), match=''>"),
   Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
 
 
@@ -80,7 +80,7 @@ utest_seq([
   run_lexer, str_lexer, '"a" "b\\"\\\\"\n')
 
 
-# match_diagnostic.
+# token_diagnostic.
 
 tokens = list(word_lexer.lex('1a b\n2c d', drop={'inv'})) # note missing final newline.
 
@@ -88,30 +88,30 @@ utest('''\
 PRE:1:1: word
 | 1a b
   ~~\
-''', match_diagnostic, tokens[0], prefix='PRE', msg=tokens[0].lastgroup)
+''', token_diagnostic, tokens[0], prefix='PRE', msg=tokens[0].lastgroup)
 
 utest('''\
 PRE:1:4: word
 | 1a b
      ~\
-''', match_diagnostic, tokens[1], prefix='PRE', msg=tokens[1].lastgroup)
+''', token_diagnostic, tokens[1], prefix='PRE', msg=tokens[1].lastgroup)
 
 utest('''\
 PRE:2:1: word
 | 2c d
   ~~\
-''', match_diagnostic, tokens[2], prefix='PRE', msg=tokens[2].lastgroup)
+''', token_diagnostic, tokens[2], prefix='PRE', msg=tokens[2].lastgroup)
 
 utest('''\
 PRE:2:4: word
 | 2c d
      ~\
-''', match_diagnostic, tokens[3], prefix='PRE', msg=tokens[3].lastgroup)
+''', token_diagnostic, tokens[3], prefix='PRE', msg=tokens[3].lastgroup)
 
 # test the caret underline for zero-length matches.
 utest('''\
 PRE:1:1: MSG
 | abc
   ^\
-''', match_diagnostic, re.match('^', 'abc'), prefix='PRE', msg='MSG')
+''', token_diagnostic, re.match('^', 'abc'), prefix='PRE', msg='MSG')
 
