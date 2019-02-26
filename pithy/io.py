@@ -6,6 +6,7 @@ from sys import argv, stdin, stdout, stderr
 from string import Template
 from typing import Any, ContextManager, Iterable, Iterator, TextIO, TypeVar, Union
 from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
+from .desc import writeD, errD, outD
 
 
 _T = TypeVar('_T')
