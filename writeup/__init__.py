@@ -348,7 +348,7 @@ class LangBlock(LeafBlock):
     elif self.lang == 'img':
       for line in self.lines:
         for word in line.split():
-          yield f'<img{fmt_attrs(self.attrs)} src={html_esc_attr(word)}/>'
+          yield f'<img{fmt_attrs(self.attrs)} src="{html_esc_attr(word)}"/>'
     else:
       raise NotImplementedError(self.lang)
 
