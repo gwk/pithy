@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from functools import singledispatch
 from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 from .generator import GeneratorType as _Generator
@@ -54,7 +55,8 @@ def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_VisitFn, stack:
 known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, type(None), type(Ellipsis))
 
 
-def traverse_generic_tree(obj:Any) -> Iterator[Any]:
+@singledispatch
+def traverse_values(obj:Any) -> Iterator[Any]:
   if isinstance(obj, known_leaf_types): return
 
   if hasattr(obj, 'values'): # Treat as a mapping.

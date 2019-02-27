@@ -13,7 +13,7 @@ from ..io import *
 from ..lex import Lexer, Token
 from ..loader import load
 from ..parse import Adjacency, Atom, Choice, Infix, Left, ParseError, Parser, Precedence, Prefix, Right, Rule, RuleName, Suffix
-from ..tree import traverse_generic_tree
+from ..tree import traverse_values
 
 
 def main() -> None:
@@ -82,7 +82,7 @@ class ChainQuery(BinaryQuery):
 
 class ChildQuery(BinaryQuery):
   def run(self, stream:Iterable[Any]) -> Iterable[Any]:
-    return self.right.run(child for result in self.left.run(stream) for child in traverse_generic_tree(result))
+    return self.right.run(child for result in self.left.run(stream) for child in traverse_values(result))
 
 
 @dataclass
@@ -106,7 +106,7 @@ class SearchQuery(Query):
       if p(el):
         yield el
       else:
-        yield from self.run(traverse_generic_tree(el))
+        yield from self.run(traverse_values(el))
 
 
 # Parsing.
