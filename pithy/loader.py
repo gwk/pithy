@@ -128,6 +128,39 @@ def load_csv(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Iterator
   return load_csv(_text_file_for(f, newline='', encoding=encoding), **kwargs)
 
 
+def load_html(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Any:
+  from html5_parser import parse
+
+  tf = _binary_file_for(f)
+  text = tf.read()
+  html = parse(text, transport_encoding=encoding, return_root=True, **kwargs)
+  if 'treebuilder' in kwargs: return html
+
+  def transform(obj:Any) -> Any:
+    res:Dict = {'': obj.tag}
+    res.update(sorted(obj.items()))
+    idx = 0
+    t = obj.text
+    if t:
+      t = t.strip()
+      if t:
+        res[idx] = t
+        idx += 1
+    for child in obj:
+      res[idx] = transform(child)
+      idx += 1
+      t = child.tail
+      if t:
+        t = t.strip()
+        if t:
+          res[idx] = t
+          idx += 1
+    return res
+
+  return transform(html)
+
+
+
 def load_gz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   sub_ext = _sub_ext(ext)
   if sub_ext.endswith('.tar'): # load_archive handles compressed tar stream faster.
@@ -214,6 +247,7 @@ add_loader('',          load_binary,    _dflt=True)
 add_loader('.css',      load_txt,       _dflt=True)
 add_loader('.csv',      load_csv,       _dflt=True)
 add_loader('.gz',       load_gz,        _dflt=True)
+add_loader('.html',     load_html,      _dflt=True)
 add_loader('.json',     load_json,      _dflt=True)
 add_loader('.jsonl',    load_jsonl,     _dflt=True)
 add_loader('.jsons',    load_jsons,     _dflt=True)

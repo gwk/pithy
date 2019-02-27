@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, AnyStr
 
 def parse(
-    html:str,
+    html:AnyStr,
     transport_encoding:str=None,
     namespace_elements=False,
     treebuilder='lxml',
