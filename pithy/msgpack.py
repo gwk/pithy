@@ -40,6 +40,15 @@ def load_msgpacks(file:BinaryIO, use_list=False, raw=False, strict_map_key=False
     max_map_len=max_map_len, max_ext_len=max_ext_len)
 
 
+def count_msgpacks(file:BinaryIO) -> int:
+  unpacker = Unpacker(file)
+  i = 0
+  while True:
+    try: unpacker.skip()
+    except OutOfData: return i
+    i += 1
+
+
 def write_msgpack(file:BinaryIO, obj:Any, default:DefaultFn=None, unicode_errors='strict',
  use_single_float=False, autoreset=False, use_bin_type=True, strict_types=False) -> None:
 
