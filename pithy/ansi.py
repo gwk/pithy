@@ -102,27 +102,29 @@ RST_OUT = (TTY_OUT and RST)
 (BOLD, ULINE, BLINK, INVERT) = (1, 4, 5, 7)
 
 
-# color text: dark gray, red, green, yellow, blue, magenta, cyan, light gray.
+# color text: black, red, green, yellow, blue, magenta, cyan, white.
 txt_primary_indices = range(30, 38)
 txt_primaries = tuple(sgr(i) for i in txt_primary_indices)
-TXT_D, TXT_R, TXT_G, TXT_Y, TXT_B, TXT_M, TXT_C, TXT_L = txt_primaries
+TXT_KT, TXT_R, TXT_G, TXT_Y, TXT_B, TXT_M, TXT_C, TXT_WT = txt_primaries
 
-TXT_D_ERR, TXT_R_ERR, TXT_G_ERR, TXT_Y_ERR, TXT_B_ERR, TXT_M_ERR, TXT_C_ERR, TXT_L_ERR = (
+TXT_KT_ERR, TXT_R_ERR, TXT_G_ERR, TXT_Y_ERR, TXT_B_ERR, TXT_M_ERR, TXT_C_ERR, TXT_WT_ERR = (
   (TTY_ERR and c) for c in txt_primaries)
 
-TXT_D_OUT, TXT_R_OUT, TXT_G_OUT, TXT_Y_OUT, TXT_B_OUT, TXT_M_OUT, TXT_C_OUT, TXT_L_OUT = (
+TXT_KT_OUT, TXT_R_OUT, TXT_G_OUT, TXT_Y_OUT, TXT_B_OUT, TXT_M_OUT, TXT_C_OUT, TXT_WT_OUT = (
   (TTY_OUT and c) for c in txt_primaries)
 
 
-# color background: dark gray, red, green, yellow, blue, magenta, cyan, light gray.
+# color background: black, red, green, yellow, blue, magenta, cyan, white.
+# Note that black and white acronyms are suffixed with T,
+# because we prefer to use true black and white from xterm-256color, defined below.
 bg_primary_indices = range(40, 48)
 bg_primaries = tuple(sgr(i) for i in bg_primary_indices)
-BG_D, BG_R, BG_G, BG_Y, BG_B, BG_M, BG_C, BG_L = bg_primaries
+BG_KT, BG_R, BG_G, BG_Y, BG_B, BG_M, BG_C, BG_WT = bg_primaries
 
-BG_D_ERR, BG_R_ERR, BG_G_ERR, BG_Y_ERR, BG_B_ERR, BG_M_ERR, BG_C_ERR, BG_L_ERR = (
+BG_KT_ERR, BG_R_ERR, BG_G_ERR, BG_Y_ERR, BG_B_ERR, BG_M_ERR, BG_C_ERR, BG_WT_ERR = (
   (TTY_ERR and c) for c in  bg_primaries)
 
-BG_D_OUT, BG_R_OUT, BG_G_OUT, BG_Y_OUT, BG_B_OUT, BG_M_OUT, BG_C_OUT, BG_L_OUT = (
+BG_KT_OUT, BG_R_OUT, BG_G_OUT, BG_Y_OUT, BG_B_OUT, BG_M_OUT, BG_C_OUT, BG_WT_OUT = (
   (TTY_OUT and c) for c in  bg_primaries)
 
 # xterm-256 sequence initiators; these should be followed by a single color index.
@@ -133,6 +135,9 @@ BG = '48;5'
 # RGB6 color cube: 6x6x6, from black to white.
 K = 16  # black.
 W = 231 # white.
+D = W + 7 # #444444.
+N = W + 13 # 808080.
+L = W + 18 # B2B2B2.
 
 # Grayscale: the 24 palette values have a suggested 8 bit grayscale range of [8, 238].
 middle_gray_indices = range(232, 256)
@@ -149,6 +154,18 @@ def rgb6(r:int, g:int, b:int) -> int:
   assert 0 <= g < 6
   assert 0 <= b < 6
   return (((r * 6) + g) * 6) + b + 16
+
+named_gray_indices = (K, D, N, L, W)
+
+TXT_K, TXT_D, TXT_N, TXT_L, TXT_W = txt_grays = tuple(sgr(TXT, code) for code in named_gray_indices)
+
+TXT_K_OUT, TXT_D_OUT, TXT_N_OUT, TXT_L_OUT, TXT_W_OUT = ((TTY_OUT and c) for c in txt_grays)
+TXT_K_ERR, TXT_D_ERR, TXT_N_ERR, TXT_L_ERR, TXT_W_ERR = ((TTY_ERR and c) for c in txt_grays)
+
+BG_K, BG_D, BG_N, BG_L, BG_W = bg_grays = tuple(sgr(BG, code) for code in named_gray_indices)
+
+BG_K_OUT, BG_D_OUT, BG_N_OUT, BG_L_OUT, BG_W_OUT = ((TTY_OUT and c) for c in bg_grays)
+BG_K_ERR, BG_D_ERR, BG_N_ERR, BG_L_ERR, BG_W_ERR = ((TTY_ERR and c) for c in bg_grays)
 
 
 def cursor_pos(x:int, y:int) -> str:
