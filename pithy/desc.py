@@ -1,24 +1,25 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from sys import stderr
+from sys import stderr, stdout
 from typing import Any, Iterable, Iterator, List, Mapping, TextIO, Tuple
 
 from .tree import known_leaf_types
 
 
-def writeD(file:TextIO, obj:Any, depth:int=0) -> None:
+def writeD(file:TextIO, *labels_and_obj:Any, depth:int=0) -> None:
+  obj = labels_and_obj[-1]
+  labels = labels_and_obj[:-1]
+  if labels: print(*labels, end=': ', file=file)
   for line in gen_desc(obj, depth=depth):
     print(line, file=file)
 
 
-def errD(obj:Any, depth:int=0) -> None:
-  for line in gen_desc(obj, depth=depth):
-    print(line, file=stderr)
+def errD(*labels_and_obj:Any, depth:int=0) -> None:
+  writeD(stderr, *labels_and_obj, depth=depth)
 
 
-def outD(obj:Any, depth:int=0) -> None:
-  for line in gen_desc(obj, depth=depth):
-    print(line)
+def outD(*labels_and_obj:Any, depth:int=0) -> None:
+  writeD(stdout, *labels_and_obj, depth=depth)
 
 
 def gen_desc(obj:Any, depth:int=0) -> Iterator[str]:
@@ -90,8 +91,15 @@ def gen_dict_desc(obj:Mapping, depth:int) -> Iterator[Tuple[int,str]]:
 
 
 def gen_iter_desc(obj:Any, it:Iterator, depth:int) ->  Iterator[Tuple[int,str]]:
-  is_list = isinstance(obj, list)
-  head = '[' if  is_list else (type(obj).__qualname__ + '([')
+  if isinstance(obj, list):
+    head = '['
+    close = ']'
+  elif isinstance(obj, tuple):
+    head = '('
+    close = ',)' if len(obj) == 1 else ')'
+  else:
+    head = type(obj).__qualname__ + '(['
+    close = '])'
   yield (depth, head)
   for el in it: yield from gen_obj_desc(el, depth+1)
-  yield (-1, ']' if is_list else '])')
+  yield (-1, close)
