@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import *
-from pithy.num import *
+from pithy.range import *
 
 
 utest_seq([0, 1, 2, 3], NumRange, 4)

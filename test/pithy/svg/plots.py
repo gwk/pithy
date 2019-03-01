@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from pithy.svg import *
-from pithy.num import NumRange
+from pithy.range import NumRange
 from sys import stdout
 from math import sin, pi
 
