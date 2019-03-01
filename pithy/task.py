@@ -10,7 +10,7 @@ from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from time import time as _now, sleep as _sleep
 from typing import cast, Any, AnyStr, BinaryIO, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
-from .alarm import AlarmManager, Timeout
+from .alarm import Alarm, Timeout
 
 
 Cmd = Union[str, Sequence[str]]
@@ -143,7 +143,7 @@ def communicate(proc: _Popen, input_bytes: bytes=None, timeout: int=0) -> Tuple[
   # However, the CPython implementation of communicate() has an optimized path that is only used
   # when the timeout feature is not used.
   # The tradeoff between that implementation and this alarm-based one should be examined further.
-  with AlarmManager(timeout=timeout, msg='process timed out after {timeout} seconds and was killed', on_signal=proc.kill):
+  with Alarm(timeout=timeout, msg='process timed out after {timeout} seconds and was killed', on_signal=proc.kill):
     out_bytes, err_bytes = proc.communicate(input_bytes) # waits for process to complete.
 
   return proc.returncode, (b'' if out_bytes is None else out_bytes), (b'' if err_bytes is None else err_bytes)
