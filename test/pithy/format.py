@@ -20,7 +20,7 @@ utest_seq([('', None, None, str), ('a', 'r', '2d', int)], parse_formatters, '{} 
 
 utest('0 {i} {} J', format_partial, '{} {i} {} {j}', 0, j='J')
 
-utest(re.compile(r'a\-(.*)\-(?P<n>.*)\.txt'), format_to_re, 'a-{}-{n:{w}}.txt')
+utest(re.compile(r'a\-(.+?)\-(?P<n>.+?)\.txt'), format_to_re, 'a-{}-{n:{w}}.txt')
 
 utest(re.compile(r'(\d+)'), format_to_re, '{:d}')
 

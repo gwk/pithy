@@ -1,12 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-'Simple lexing.'
+'Parse Python format strings and generate corresponding regular expressions.'
 
 import re
 from .string import line_col_1
 from typing import Any, AnyStr, Iterable, Match, Pattern, Tuple
 
+
 class FormatError(Exception): pass
+
 
 fmt_re = re.compile(r'''(?x)
 (?P<formatter>\{
@@ -32,9 +34,8 @@ fmt_spec_re = re.compile(r'''(?x)
 (?P<type> [bcdeEfFgGnosxX%] )?
 ''')
 
-fmt_spec_dynamic_re = re.compile(r':[^}]\{')
 
-spec_type_pats = {
+spec_type_patterns = {
   'd': r'\d'
 }
 
@@ -92,31 +93,37 @@ def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
   return ''.join(format_frag(m) for m in gen_format_matches(fmt))
 
 
-def format_to_re(fmt: str) -> Pattern[str]:
+def format_to_re(fmt: str, allow_empty=False, greedy=False) -> Pattern[str]:
   'translate a format string into a regular expression pattern.'
+  quantifier = ('*' if allow_empty else '+') + ('' if greedy else '?')
+
   def pattern_from(match: Match[str]) -> str:
+
     def exc(msg: str) -> FormatError: return _exc(fmt, match.start(), msg)
+
     if match.group('formatter'):
+      pat = '.' + quantifier # Default pattern.
       spec = match.group('spec')
-      if not spec:
-        pat = '.*'
-      else:
+      if spec:
         spec_match = fmt_spec_re.fullmatch(spec)
         if not spec_match: raise exc(f'invalid format spec: {spec!r}')
+
         fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
+
         if type_:
-          try: pat = spec_type_pats[type_] + '+'
+          try: pat = spec_type_patterns[type_] + '+'
           except KeyError as e: raise exc(f'spec type {type_!r} not implemented') from e
-        else:
-          pat = '.*'
+
       name = match.group('name')
       if name: return f'(?P<{name}>{pat})'
       else: return f'({pat})'
+
     text = match.group()
     if text == '{{': return '\{'
     if text == '}}': return '\}'
     return re.escape(text)
+
   return re.compile(''.join(pattern_from(m) for m in gen_format_matches(fmt)))
 
 
