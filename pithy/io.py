@@ -4,7 +4,7 @@ from os import close as os_close, open as os_open, read as os_read, O_RDONLY, O_
 from pprint import pprint
 from sys import argv, stdin, stdout, stderr
 from string import Template
-from typing import Any, ContextManager, Iterable, Iterator, TextIO, TypeVar, Union
+from typing import Any, Callable, ContextManager, Iterable, Iterator, TextIO, TypeVar, Union
 from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
 from .desc import writeD, errD, outD
 
@@ -265,6 +265,15 @@ def write_to_path(path: str, string) -> None:
   'Writes `string` to file at `path`.'
   with open(path, 'w') as f:
     f.write(string)
+
+
+# Opener utility.
+
+def mk_opener(flags:int, mode=0o777, dir_fd:int=None) -> Callable[[str, int], int]:
+  def _opener(path:str, _flags:int, mode=mode, dir_fd=dir_fd) -> int: return os_open(path,_flags&flags)
+  return _opener
+
+nonblock_opener = mk_opener(O_NONBLOCK)
 
 
 # Nonblocking tools.
