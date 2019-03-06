@@ -210,7 +210,7 @@ def token_diagnostic(token:Token, prefix:str, msg:str, pos:Optional[int]=None, e
   return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{src_bar}{line}\n  {indent}{underline}'
 
 
-def line_col_0_for_token(token:Token) -> Tuple[int,int]:
+def token_line_col_0(token:Token) -> Tuple[int,int]:
   'Return a pair of 0-indexed line and column numbers for a token.'
   string = token.string
   pos = token.start()
