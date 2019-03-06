@@ -1,14 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os as _os
-import time as _time
 
-from os import R_OK, X_OK, access as _access, supports_effective_ids as _supports_effective_ids
+from os import R_OK, X_OK, access as _access, supports_effective_ids as _supports_effective_ids, getpid as _getpid
 from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file, join as _path_join
 from selectors import PollSelector as _PollSelector, EVENT_READ, EVENT_WRITE
 from shlex import split as sh_split, quote as sh_quote
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
+from time import time as _now, sleep as _sleep
 from typing import cast, Any, AnyStr, BinaryIO, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
 from .alarm import AlarmManager, Timeout
 
@@ -31,8 +31,7 @@ TaskCodeExpectation = Union[None, int, NonzeroCodeExpectation]
 
 
 def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, files: Sequence[File]=(),
- note_cmd=False) \
- -> Tuple[Tuple[str, ...], _Popen, Optional[bytes]]:
+ note_cmd=False, lldb=False) -> Tuple[Tuple[str, ...], _Popen, Optional[bytes]]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
@@ -80,7 +79,8 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
       shell=False,
       env=env,
       pass_fds=fds,
-    )
+      preexec_fn=(preexec_launch_lldb if lldb else None))
+
     return cmd, proc, input_bytes
 
   # _Popen may raise FileNotFoundError, PermissionError, or OSError.
@@ -91,6 +91,21 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
     # TODO: If absolute, try to make path relative to parent cwd.
     if e.filename == cmd_path: _diagnose_launch_error(path, cmd_path, e) # Raises a more specific exception or else return.
     raise TaskLaunchUndiagnosedError(path) from e # Default.
+
+
+def preexec_launch_lldb():
+  '''
+  Note: this relies on a race condition to work: the spawn is slow, which gives this process time to exec.
+  This is not perfect; if the child process crashes very fast then LLDB might not attach in time.
+  However if we try to sleep here then LLDB stops once the exec occurs, which is useless.
+  GDB has something called `follow-fork-mode` that sounds like it would address this, but sticking with LLDB for now.
+  '''
+  pid_str = str(_getpid())
+  lldb_cmd = ['PATH=/usr/bin', 'lldb', '--batch', '--one-line', 'continue', '--attach-pid', pid_str]
+  lldb_str = ' '.join(lldb_cmd)
+  script = f'tell application "Terminal" to do script "{lldb_str}"'
+  _os.spawnvp(_os.P_WAIT, 'osascript', ['osascript', '-e', script])
+  #^ Use spawn because subprocess is complex and preexec_fn is documented to be incompatible with threading.
 
 
 def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
@@ -154,14 +169,14 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
     sel = _PollSelector()
     if send: sel.register(send, EVENT_WRITE)
     if recv: sel.register(recv, EVENT_READ)
-    time_start = _time.time()
+    time_start = _now()
     send_buffer: List[bytes] = []
     recv_bytes = b''
 
     while recv_bytes or sel.get_map():
       time_rem: Optional[float]
       if timeout > 0:
-        time_rem = timeout - (_time.time() - time_start)
+        time_rem = timeout - (_now() - time_start)
         if time_rem <= 0:
           proc.kill()
           raise Timeout(f'process timed out after {timeout} seconds and was killed')
@@ -217,7 +232,7 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
 
     if recv: _os.close(recv)
     if send: _os.close(send)
-    time_rem = timeout - (_time.time() - time_start)
+    time_rem = timeout - (_now() - time_start)
     code = proc.wait(timeout=(time_rem if timeout > 0 else None))
     _check_exp(cmd, exp, code, exits)
     return code # generator will raise StopIteration(code).
@@ -228,11 +243,12 @@ def run_gen(cmd: Cmd, cwd: str=None, env: Env=None, stdin=None, timeout: int=0, 
 
 
 def run(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, timeout: int=0,
- files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> Tuple[int, str, str]:
+ files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> Tuple[int, str, str]:
   '''
   Run a command and return (exit_code, std_out, std_err).
   '''
-  cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd)
+  cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd,
+    lldb=lldb)
   code, out_bytes, err_bytes = communicate(proc, input_bytes, timeout)
   _check_exp(cmd, exp, code, exits)
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
@@ -254,64 +270,69 @@ def fmt_cmd(cmd: Sequence[str]) -> str: return ' '.join(sh_quote(word) for word 
 
 
 def runCOE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> Tuple[int, str, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> Tuple[int, str, str]:
   'Run a command and return exit code, std out, std err.'
-  return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
+  return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=None,
+    note_cmd=note_cmd, lldb=lldb)
 
 
 def runC(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None, err: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> int:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not PIPE
   assert err is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, files=files, exp=None,
+    note_cmd=note_cmd, lldb=lldb)
   assert e == ''
   assert o == ''
   return c
 
 
 def runCO(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, err: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> Tuple[int, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> Tuple[int, str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=None,
+    note_cmd=note_cmd, lldb=lldb)
   assert e == '', repr(e)
   return c, o
 
 
 def runCE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False) -> Tuple[int, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> Tuple[int, str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=None, note_cmd=note_cmd)
+  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=None,
+    note_cmd=note_cmd, lldb=lldb)
   assert o == ''
   return c, e
 
 
 def runOE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> Tuple[str, str]:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) \
+ -> Tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE,
-    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, exits=exits)
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
   return o, e
 
 
 def runO(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, err: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> str:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err,
-    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, exits=exits)
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
   assert e == ''
   return o
 
 
 def runE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryIO=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, exits:ExitOpt=False) -> str:
+ timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE,
-    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, exits=exits)
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
   assert o ==  ''
   return e
 
