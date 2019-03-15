@@ -95,15 +95,15 @@ def update_swift_package_json(config) -> Any:
   dst = f'{config.build_dir}/swift-package.json'
   if product_needs_update(dst, source=src):
     dev_dir = config.xcode_dev_dir
-    lib_pm_4_dir = f'{config.xcode_toolchain_dir}/usr/lib/swift/pm/4'
+    lib_pm_dir = f'{config.xcode_toolchain_dir}/usr/lib/swift/pm/4_2'
     cmd = [
       'swiftc',
       '--driver-mode=swift',
-      '-swift-version', '4',
-      '-target', 'x86_64-apple-macosx10.10',
+      '-swift-version', '5',
+      '-target', 'x86_64-apple-macosx10.14',
       '-sdk', dev_dir + '/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk',
-      '-I', lib_pm_4_dir,
-      '-L', lib_pm_4_dir,
+      '-I', lib_pm_dir,
+      '-L', lib_pm_dir,
       '-lPackageDescription',
       'Package.swift',
       '-fileno', '1',
