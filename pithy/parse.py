@@ -17,12 +17,13 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 import re
-from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NewType, NoReturn, Set, Tuple, Union, cast
+from typing import (Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Match, NewType, NoReturn, Optional, Set, Tuple,
+  Union, cast)
 
 from .buffer import Buffer
 from .graph import visit_nodes
 from .lex import Lexer, Token, pos_token, reserved_names, token_fail, valid_name_re
-from .string import indent_lines
+from .string import indent_lines, pluralize
 
 
 class ParseError(Exception):
@@ -55,6 +56,9 @@ def unary_syn(token:Token, obj:Any) -> Any: return (token[0], obj)
 
 BinaryTransform = Callable[[Token,Any,Any],Any]
 def binary_syn(token:Token, left:Any, right:Any) -> Any: return (token[0], left, right)
+
+QuantityTransform = Callable[[List[Any]],Any]
+def quantity_syn(elements:List[Any]) -> Tuple[Any,...]: return tuple(elements)
 
 ChoiceTransform = Callable[[RuleName,Any],Any]
 def choice_syn(name:RuleName, obj:Any) -> Any: return (name, obj)
@@ -111,7 +115,7 @@ class Rule:
 
 
   def expect(self, token:Token, kind:str) -> Token:
-    if token.lastgroup != kind: raise ParseError(token, f'{self} expects {kind}: received {token.lastgroup}.')
+    if token.lastgroup != kind: raise ParseError(token, f'{self} expects {kind}; received {token.lastgroup}.')
     return token
 
 
@@ -158,6 +162,60 @@ class Prefix(Rule):
     syn = self.body.parse(next(buffer), buffer)
     if self.suffix: self.expect(next(buffer), self.suffix)
     return self.transform(token, syn)
+
+
+class Quantity(Rule):
+  '''
+  A rule that matches some quantity of another rule.
+  '''
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:bool=None, min=0, max=None, transform:QuantityTransform=quantity_syn) -> None:
+    if min < 0: raise ValueError(min)
+    if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
+    if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is None but `sep_at_end` is `{sep_at_end}`')
+    self.name = ''
+    self.sub_refs = (body,)
+    self.heads = ()
+    self.sep = sep
+    self.sep_at_end:Optional[bool] = None if sep_at_end is None else bool(sep_at_end)
+    self.min = min
+    self.max = max
+    self.transform = transform
+
+  @property
+  def body(self) -> Rule:
+    return self.subs[0]
+
+  @property
+  def head_subs(self) -> Iterable['Rule']:
+    return (self.body,)
+
+  def parse(self, token:Token, buffer:Buffer) -> Any:
+    from pithy.io import errSL
+    els:List[Any] = []
+    body_heads = set(self.body.heads)
+    sep_token:Optional[Match] = None
+    while token.lastgroup in body_heads:
+      el = self.body.parse(token, buffer)
+      els.append(el)
+      if self.sep is None:
+        token = next(buffer)
+      else: # Parse separator.
+        sep_token = cast(Match, next(buffer))
+        if sep_token.lastgroup == self.sep: # Found separator.
+          token = next(buffer)
+        elif self.sep_at_end:
+          raise ParseError(sep_token, f'{self} expects {self.sep} separator; received {sep_token.lastgroup}.')
+        else:
+          token = sep_token
+          sep_token = None
+          break
+      if len(els) == self.max: break
+    if len(els) < self.min:
+      raise ParseError(token, f'{self} expects at least {pluralize(self.min, "elements")}; received {token.lastgroup}.')
+    if self.sep_at_end is False and sep_token is not None:
+      raise ParseError(sep_token, f'{self} received unpexpected {self.sep} separator.')
+    buffer.push(token)
+    return self.transform(els)
 
 
 class Choice(Rule):
@@ -293,10 +351,11 @@ class Right(Group):
 class Precedence(Rule):
   'An operator precedence rule, consisting of groups of operators.'
 
-  def __init__(self, leaves:Iterable[RuleRef], *groups:Group, transform:Transform=identity) -> None:
+  def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group, transform:Transform=identity) -> None:
     # Keep track of the distinction between subs that came from leaves vs groups.
     # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
     # and then get the linked leaves back via the leaves property implemented below.
+    if isinstance(leaves, (str,Rule)): leaves = (leaves,)
     self.leaf_refs = tuple(leaves)
     self.group_refs = tuple(ref for g in groups for ref in g.sub_refs)
     self.name = ''
