@@ -2,6 +2,18 @@
 
 '''
 Simple parser based on recursive descent and operator precedence parsing.
+Recursive decent is performed by looking at the next token, and then dispatching through a table of token kinds.
+Several types of rules are available:
+* Atom: a single token kind.
+* Prefix: a prefix token, followed by a body rule, optionally followed by a suffix.
+* Quantity: a body rule, optionally interleaved with a separator token, with optional `min` and `max` quantities.
+* Choice: one of several rules, which must be distinguishable by the head token.
+* Precedence: a family of binary precedence operators.
+
+The main design feature of Parser is that operators are not first-class rules:
+they are parsed within the context of a Precedence rule.
+This allows us to use the simple operator-precedence parsing algorithm,
+while expressing other aspects of a grammar using straightforward recursive descent.
 '''
 
 import re
@@ -23,7 +35,8 @@ class ParseError(Exception):
     token_fail(path=path, token=self.token, msg=self.msg)
 
 
-class ExcessToken(ParseError): pass
+class ExcessToken(ParseError):
+  'Raised by Parser when expression parsing completes but does not exhaust the token stream.'
 
 
 TokenKind = str
@@ -51,8 +64,10 @@ _sentinel_kind = '!SENTINEL'
 
 
 class Rule:
-  name:str
-  sub_refs:Tuple[RuleRef,...] = ()
+  'A parser rule. A complete parser is created from a graph of rules.'
+
+  name:str # Optional name, used to link the rule graph.
+  sub_refs:Tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
   subs:Tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
   heads:Tuple[TokenKind,...] # Set of leading token kinds for this rule.
 
@@ -75,9 +90,11 @@ class Rule:
 
   @property
   def head_subs(self) -> Iterable['Rule']:
+    'The sub-rules that determine the head of a match for this rule. Used by `compile_heads`.'
     raise NotImplementedError(repr(self))
 
   def compile_heads(self) -> Iterator[TokenKind]:
+    'Calculate the `heads` set for this rule. The parser uses this to build a dispatch table against token kinds.'
     if self.heads: # For recursive rules, the sentinel causes recursion to break here.
       yield from self.heads
       return
@@ -85,7 +102,8 @@ class Rule:
     self.heads = (_sentinel_kind,) # Temporarily set to prevent recursion loops; use an impossible name for Match.lastgroup.
     for sub in self.head_subs:
       yield from sub.compile_heads()
-    # Now reset self.heads; it is up to Parser to do so for each node. Otherwise results will be incomplete.
+    # Now reset self.heads; it is up to Parser to call `compile_heads` for each node.
+    # Otherwise, we would be relying on possibly incomplete sets that accumulate in intermediates during deep recursion.
     self.heads = ()
 
 
