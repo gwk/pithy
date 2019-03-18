@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
 from sys import stderr, stdout
 from typing import Any, Iterable, Iterator, List, Mapping, TextIO, Tuple
 
@@ -103,3 +104,17 @@ def gen_iter_desc(obj:Any, it:Iterator, depth:int) ->  Iterator[Tuple[int,str]]:
   yield (depth, head)
   for el in it: yield from gen_obj_desc(el, depth+1)
   yield (-1, close)
+
+
+def repr_clean(obj:Any) -> str:
+  r = repr(obj)
+  if isinstance(obj, (bytes,str,list,dict,set)) or _decent_repr_re.fullmatch(r): return r
+  return f'{type(obj).__name__}({r})'
+
+_decent_repr_re = re.compile(r'[a-zA-Z][.\w]*\(.*\)')
+
+
+def repr_lim(obj:Any, limit=64) -> str:
+  r = repr(obj)
+  if len(r) <= limit: return r
+  return r[:limit-1] + '…'
