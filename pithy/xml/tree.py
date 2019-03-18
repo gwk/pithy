@@ -11,7 +11,7 @@ from io import StringIO
 from itertools import chain, count
 from types import TracebackType
 from typing import Any, ContextManager, Dict, Iterable, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
-from .io import errSL
+from ..io import errSL
 
 
 _XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
@@ -23,7 +23,7 @@ class EscapedStr(str):
   'A `str` subclass that signifies to some receiver that it has already been properly escaped.'
 
 
-class _Counter:
+class IndexCounters:
   'Internal pair of counters for XmlWriter to generate "id" and "class" attributes.'
   def __init__(self) -> None:
     self.id_counter = count()
@@ -40,11 +40,11 @@ class XmlWriter(ContextManager):
     'class_' : 'class',
   }
 
-  can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing", for example '<TAG/>'. False for HTML.
+  can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing", e.g. '<TAG/>'. False for HTML.
   is_self_closing = False # True for e.g. HTML tags that are self closing, such as <img />.
   tag:str = '' # Subclasses can specify a tag.
 
-  def __init__(self, *_children:Any, tag:str=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, *_children:Any, tag:str=None, _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     '''
     `attrs` also allows for XML attributes that contain non-identifier characters.
     '''
@@ -58,7 +58,7 @@ class XmlWriter(ContextManager):
     self._appears_inline = bool(self.children)
     self._context_depth = 0
     self._is_closed = False
-    self._counter:_Counter = _counter or _Counter()
+    self._counters:IndexCounters = _counters or IndexCounters()
 
 
   def write(self, file:TextIO, end='\n') -> None:
@@ -119,7 +119,7 @@ class XmlWriter(ContextManager):
   def child(self, child_class:Type[_XmlWriter], *children:Any, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
     'Create a child XmlWriter for use in a `with` context to represent a nesting XML element.'
     if self._is_closed: raise Exception(f'XmlWriter is already closed: {self}')
-    c = child_class(*children, _counter=self._counter, attrs=attrs, **kwargs)
+    c = child_class(*children, _counters=self._counters, attrs=attrs, **kwargs)
     self.add(c)
     return c
 
@@ -138,10 +138,10 @@ class XmlWriter(ContextManager):
 
 
   def gen_id(self) -> str:
-    return f'_id{next(self._counter.id_counter)}'
+    return f'_id{next(self._counters.id_counter)}'
 
   def gen_class(self) -> str:
-    return f'_class{next(self._counter.class_counter)}'
+    return f'_class{next(self._counters.class_counter)}'
 
 
 def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> None:

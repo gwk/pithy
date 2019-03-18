@@ -7,7 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from .iterable import iter_unique, window_pairs
 from .range import Num, NumRange
-from .xml import _Counter, EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
+from .xml import IndexCounters, EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from functools import reduce
 from html import escape as html_escape
 from math import floor, log10
@@ -40,9 +40,9 @@ class SvgWriter(XmlWriter):
     **XmlWriter.replaced_attrs,
   }
 
-  def __init__(self, *children:Any, tag:str=None, title:Any=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, *children:Any, tag:str=None, title:Any=None, _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     'A `title` attribute gets converted into a child element, which renders in browsers as a tooltip.'
-    super().__init__(*children, tag=tag, _counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(*children, tag=tag, _counters=_counters, attrs=attrs, **kwargs)
     if title is not None:
       self.add(SvgTitle(title))
 
@@ -69,20 +69,20 @@ class Circle(SvgWriter):
   tag = 'circle'
 
   def __init__(self, pos:Vec=None, r:Num=None, x:Num=None, y:Num=None,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
     add_opt_attrs(kwargs, cx=fmt_num(x), cy=fmt_num(y), r=fmt_num(r))
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 class Image(SvgWriter):
   tag = 'image'
 
   def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -92,14 +92,14 @@ class Image(SvgWriter):
       assert h is None
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(kwargs, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 class Line(SvgWriter):
   tag = 'line'
 
   def __init__(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if a is not None:
       assert x1 is None
       assert y1 is None
@@ -109,14 +109,14 @@ class Line(SvgWriter):
       assert y2 is None
       x2, y2 = b
     add_opt_attrs(kwargs, x1=fmt_num(x1), y1=fmt_num(y1), x2=fmt_num(x2), y2=fmt_num(y2))
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 class Path(SvgWriter):
   tag = 'path'
 
   def __init__(self, commands:Iterable[PathCommand],
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     assert (attrs is None or 'd' not in attrs)
     assert 'd' not in kwargs
     cmd_strs:List[str] = []
@@ -128,13 +128,13 @@ class Path(SvgWriter):
       if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
       cmd_strs.append(code + ','.join(fmt_num(n) for n in c[1:]))
     kwargs['d'] = ' '.join(cmd_strs)
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 class Poly(SvgWriter):
 
   def __init__(self, points:Iterable[Vec],
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     assert (attrs is None or 'points' not in attrs)
     assert 'points' not in kwargs
     point_strs:List[str] = []
@@ -142,7 +142,7 @@ class Poly(SvgWriter):
       if len(p) < 2: raise Exception(f'bad point for {self.tag}: {p}')
       point_strs.append(f'{fmt_num(p[0])},{fmt_num(p[1])}')
     kwargs['points'] = ' '.join(point_strs)
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 class Polygon(Poly):
@@ -156,7 +156,7 @@ class Rect(SvgWriter):
   tag = 'rect'
 
   def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -172,21 +172,21 @@ class Rect(SvgWriter):
     else:
       rx = ry = r
     add_opt_attrs(kwargs, x=fmt_num(x), y=fmt_num(y), w=fmt_num(w), h=fmt_num(h), rx=fmt_num(rx), ry=fmt_num(ry))
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 class Text(SvgWriter):
   tag = 'text'
 
   def __init__(self, *text, pos:Vec=None, x:Num=None, y:Num=None, alignment_baseline:str=None,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
       x, y = pos
     if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
     add_opt_attrs(kwargs, x=fmt_num(x), y=fmt_num(y), alignment_baseline=alignment_baseline)
-    super().__init__(*text, _counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(*text, _counters=_counters, attrs=attrs, **kwargs)
 
 
 class TSpan(SvgWriter):
@@ -198,7 +198,7 @@ class Use(SvgWriter):
   tag = 'use'
 
   def __init__(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     assert id
     if id[0] != '#': id = '#' + id
     if pos is not None:
@@ -210,7 +210,7 @@ class Use(SvgWriter):
       assert h is None
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(kwargs, href=id, x=fmt_num(x), y=fmt_num(y), width=fmt_num(w), height=fmt_num(h))
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 
@@ -365,7 +365,7 @@ class Svg(SvgBranch):
   tag = 'svg'
 
   def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -392,7 +392,7 @@ class Svg(SvgBranch):
       **kwargs
     }
     add_opt_attrs(kwargs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
-    super().__init__(_counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(_counters=_counters, attrs=attrs, **kwargs)
 
 
 # SVG branch elements.
@@ -408,7 +408,7 @@ class G(SvgBranch):
   tag = 'g'
 
   def __init__(self, *children:Any, transform:Iterable[str]='',
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     t:str = ''
     if isinstance(transform, str):
       t = transform
@@ -416,7 +416,7 @@ class G(SvgBranch):
       t = ' '.join(transform)
     if t:
       kwargs['transform'] = t
-    super().__init__(*children, _counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(*children, _counters=_counters, attrs=attrs, **kwargs)
 
 
 class Marker(SvgBranch):
@@ -424,7 +424,7 @@ class Marker(SvgBranch):
 
   def __init__(self, *children:Any, id:str='', pos:Vec=None, size:VecOrNum=None, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
    vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, markerUnits='strokeWidth', orient:str='auto',
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if not id: raise ValueError(f'Marker requires an `id` string')
     if pos is not None:
       assert x is None
@@ -436,21 +436,21 @@ class Marker(SvgBranch):
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(kwargs, id=id, refX=fmt_num(x), refY=fmt_num(y), markerWidth=fmt_num(w), markerHeight=fmt_num(h),
       viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
-    super().__init__(*children, _counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(*children, _counters=_counters, attrs=attrs, **kwargs)
 
 
 class Symbol(SvgBranch):
   tag = 'symbol'
 
   def __init__(self, *children:Any, id:str, vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs:Any) -> None:
     if vx is None: vx = 0
     if vy is None: vy = 0
     # TODO: figure out if no viewBox is legal and at all useful.
     assert vw >= 0 # type: ignore
     assert vh >= 0 # type: ignore
     add_opt_attrs(kwargs, id=id, viewBox=f'{vx} {vy} {vw} {vh}')
-    super().__init__(*children, _counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(*children, _counters=_counters, attrs=attrs, **kwargs)
 
 
 
@@ -721,13 +721,13 @@ class Plot(G):
    corner_radius:VecOrNum=None,
    symmetric_xy=False,
    dbg=False,
-   _counter:_Counter=None, attrs:XmlAttrs=None, **kwargs) -> None:
+   _counters:IndexCounters=None, attrs:XmlAttrs=None, **kwargs) -> None:
 
     attrs = attrs or {}
     pos = f2_for_vec(pos)
     # Initialize as `g` element.
     kwargs.setdefault('class_', 'plot')
-    super().__init__(*children, transform=translate(*pos), _counter=_counter, attrs=attrs, **kwargs)
+    super().__init__(*children, transform=translate(*pos), _counters=_counters, attrs=attrs, **kwargs)
 
     self.pos = pos
     self.size = size = f2_for_vec(size)
