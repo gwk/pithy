@@ -129,36 +129,9 @@ def load_csv(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Iterable
 
 
 def load_html(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Any:
-  from html5_parser import parse
-
-  tf = _binary_file_for(f)
-  text = tf.read()
-  html = parse(text, transport_encoding=encoding, return_root=True, **kwargs)
-  if 'treebuilder' in kwargs: return html
-
-  def transform(obj:Any) -> Any:
-    res:Dict = {'': obj.tag}
-    res.update(sorted(obj.items()))
-    idx = 0
-    t = obj.text
-    if t:
-      t = t.strip()
-      if t:
-        res[idx] = t
-        idx += 1
-    for child in obj:
-      res[idx] = transform(child)
-      idx += 1
-      t = child.tail
-      if t:
-        t = t.strip()
-        if t:
-          res[idx] = t
-          idx += 1
-    return res
-
-  return transform(html)
-
+  from .html.loader import load_html as _load_html
+  bf = _binary_file_for(f)
+  return _load_html(bf, encoding=encoding, **kwargs)
 
 
 def load_gz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
