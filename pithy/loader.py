@@ -5,7 +5,7 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, RawIOBase, TextIOBase, TextIOWrapper
-from typing import Any, BinaryIO, Callable, Dict, IO, Iterable, Iterator, Sequence, Set, TextIO, Union
+from typing import Any, BinaryIO, Callable, Dict, IO, Iterable, Iterator, List, Sequence, Set, TextIO, Union
 
 from .io import stderr, errL, errSL
 from .fs import path_ext, path_stem
@@ -123,9 +123,9 @@ def load_binary(f:FileOrPath, ext:str, **kwargs:Any) -> BinaryIO:
 #  return load(df, ext=sub_ext, **kwargs) # type: ignore
 
 
-def load_csv(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Iterator[Sequence[str]]:
-  from .csv import load_csv # type: ignore
-  return load_csv(_text_file_for(f, newline='', encoding=encoding), **kwargs)
+def load_csv(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Iterable[List[str]]:
+  from .csv import load_csv as _load_csv
+  return _load_csv(_text_file_for(f, newline='', encoding=encoding), **kwargs)
 
 
 def load_html(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Any:
@@ -171,16 +171,16 @@ def load_gz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_json(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from .json import load_json # type: ignore
-  return load_json(_text_file_for(file_or_path), **kwargs)
+  from .json import load_json as _load_json
+  return _load_json(_text_file_for(file_or_path), **kwargs)
 
 def load_jsonl(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from .json import load_jsonl # type: ignore
-  return load_jsonl(_text_file_for(file_or_path), **kwargs)
+  from .json import load_jsonl  as _load_jsonl
+  return _load_jsonl(_text_file_for(file_or_path), **kwargs)
 
 def load_jsons(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from .json import load_jsons # type: ignore
-  return load_jsons(_text_file_for(file_or_path), **kwargs)
+  from .json import load_jsons as _load_jsons
+  return _load_jsons(_text_file_for(file_or_path), **kwargs)
 
 
 def load_msgpack(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
