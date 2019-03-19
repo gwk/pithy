@@ -21,19 +21,15 @@ def load_html(file:BinaryIO, encoding:str=None, **kwargs:Any) -> Any:
     idx = 0
     t = obj.text
     if t:
-      t = t.strip()
-      if t:
-        res[idx] = t
-        idx += 1
+      res[idx] = t
+      idx += 1
     for child in obj:
       res[idx] = transform(child)
       idx += 1
       t = child.tail
       if t:
-        t = t.strip()
-        if t:
-          res[idx] = t
-          idx += 1
+        res[idx] = t
+        idx += 1
     return res
 
   return transform(html)
