@@ -175,7 +175,7 @@ def _default_to_json(obj: Any) -> Any:
 
 
 def fields_of(class_: type) -> Tuple[str, ...]:
-  if issubclass(class_, NamedTuple): return class_._fields # type: ignore
+  if issubclass(class_, NamedTuple): return class_._fields
   # TODO: support dataclasses.
   raise TypeError(class_)
 
