@@ -7,7 +7,7 @@ import time
 from ast import literal_eval
 from collections import defaultdict
 from sys import stderr, stdout
-from typing import *
+from typing import DefaultDict, Dict, Set
 
 from pithy.ansi import (BG, FILL_OUT, INVERT, RST_INVERT, RST_OUT, TTY_OUT, TXT, gray26, is_out_tty, rgb6, sanitize_for_console,
   sgr)
