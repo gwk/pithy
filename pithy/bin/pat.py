@@ -10,11 +10,6 @@ from sys import stderr
 from typing import DefaultDict, List, Set, NoReturn, Tuple, cast
 
 from ..diff import calc_diff
-from ..pat import *
-
-
-__all__ = ['pat_dependency', 'main']
-
 
 pat_version = '0'
 
@@ -97,18 +92,18 @@ def main_diff(args) -> None:
   f_out = args.out
   min_context = args.min_context
 
-  if min_context < 1: failF('min-context value must be positive.')
+  if min_context < 1: exit('min-context value must be positive.')
 
   if original.name.find('..') != -1:
-    failF("original path cannot contain '..': {!r}", original.name)
+    exit(f"original path cannot contain '..': {original.name!r}")
 
   o_lines = original.readlines()
   m_lines = modified.readlines()
 
   if o_lines and not o_lines[-1].endswith('\n'):
-    failF('{}:{} original document is missing final newline (not yet supported).')
+    exit(f'{original.name}:{len(o_lines)} original document is missing final newline (not yet supported).')
   if m_lines and not m_lines[-1].endswith('\n'):
-    failF('{}:{} modified document is missing final newline (not yet supported).')
+    exit(f'{modified.name}:{len(m_lines)} modified document is missing final newline (not yet supported).')
 
   write = f_out.write
 
@@ -170,8 +165,8 @@ def main_apply(args) -> None:
   f_patch = args.patch
   f_out = args.out
 
-  def patch_failF(line_num, fmt, *items) -> NoReturn:
-    failF('{}:{}: ' + fmt, f_patch.name, line_num + 1, *items)
+  def patch_fail(line_num, msg) -> NoReturn:
+    exit(f'{f_patch.name}:{line_num+1}: {msg}')
 
   version_line = f_patch.readline()
   orig_path_line = f_patch.readline()
@@ -179,20 +174,19 @@ def main_apply(args) -> None:
 
   m = version_re.fullmatch(version_line)
   if not m:
-    patch_failF(0, 'first line should specify pat version matching pattern: {!r}\n  found: {!r}',
-      version_re.pattern, version_line)
+    patch_fail(0, f'first line should specify pat version matching pattern: {version_re.pattern!r}\n  found: {version_line!r}')
   version = m.group(1)
-  if version != pat_version: patch_failF(0, 'unsupported version number: {}', version)
+  if version != pat_version: patch_fail(0, f'unsupported version number: {version}')
 
   if not orig_path_line:
-    patch_failF(1, 'patch file does not specify an original path')
+    patch_fail(1, 'patch file does not specify an original path')
   orig_path = orig_path_line.rstrip()
 
   if orig_path.find('..') != -1:
-    patch_failF(1, "original path cannot contain '..': {!r}", orig_path)
+    patch_fail(1, f"original path cannot contain '..': {orig_path!r}")
 
   try: f_orig = open(orig_path)
-  except FileNotFoundError: patch_failF(1, 'could not open source path specified by patch: {!r}', orig_path)
+  except FileNotFoundError: patch_fail(1, f'could not open source path specified by patch: {orig_path!r}')
 
   orig_lines = f_orig.readlines()
 
@@ -209,7 +203,7 @@ def main_apply(args) -> None:
       continue
     if patch_line == '|^\n':
       if orig_index != 0:
-        patch_failF(pi, 'patch start-of-file symbol `|^` may only occur at beginning of patch.')
+        patch_fail(pi, 'patch start-of-file symbol `|^` may only occur at beginning of patch.')
       continue
     prefix = patch_line[0]
     line = patch_line[2:]
@@ -221,15 +215,15 @@ def main_apply(args) -> None:
         f_out.write(orig_line())
         orig_index += 1
       if orig_index == len_orig:
-        patch_failF(pi, 'patch context line does not match in source line range: {}-{}\n{}',
-          orig_index_start + 1, orig_index + 1, patch_line)
+        patch_fail(pi,
+          f'patch context line does not match in source line range: {orig_index_start+1}-{orig_index+1}\n{patch_line}')
       if prefix == '|':
         f_out.write(orig_line())
       orig_index += 1
     elif prefix == '+':
       f_out.write(line)
     else:
-      patch_failF(pi, 'bad patch line prefix: {!r}',  prefix)
+      patch_fail(pi, f'bad patch line prefix: {prefix!r}')
 
   while orig_index < len_orig:
     f_out.write(orig_line())
