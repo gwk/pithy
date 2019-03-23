@@ -70,7 +70,7 @@ def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, autho
     yield '</body>\n</html>'
 
 
-def writeup_dependencies(src_path: str, text_lines: Iterable[str], emit_dbg=False) -> List[str]:
+def writeup_dependencies(src_path:str, text_lines: Iterable[str], emit_dbg=False) -> List[str]:
   '''
   Return a list of dependencies from the writeup in `src_lines`.
   '''
