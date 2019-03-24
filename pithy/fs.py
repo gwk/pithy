@@ -5,12 +5,11 @@ import re as _re
 import shutil as _shutil
 import stat as _stat
 import time as _time
-
 from itertools import zip_longest as _zip_longest
 from os import DirEntry, mkdir as _mkdir
 from os.path import expanduser as _expanduser, realpath as _realpath
-from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, TextIO, Tuple, Union
-from typing.re import Pattern # type: ignore
+from typing import (IO, AbstractSet, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Pattern, TextIO, Tuple,
+  Union)
 
 from .clonefile import clone
 from .filestatus import *
@@ -374,3 +373,24 @@ def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hid
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
     elif yield_files and name_has_any_ext(name, file_exts):
       yield path
+
+
+class DirEntries:
+
+  def __init__(self, exts:Iterable[str]=(), hidden=False, pred:Callable[[DirEntry],bool]=None) -> None:
+    self.exts  = normalize_exts(exts)
+    self.hidden = hidden
+    self.pred = lambda entry:True if pred is None else pred
+    self._entries:Dict[str,Tuple[DirEntry,...]] = {}
+
+  def __getitem__(self, dir_path:str) -> Tuple[DirEntry,...]:
+    try: return self._entries[dir_path]
+    except KeyError: pass
+
+    try: v = tuple(filter(self.pred, scan_dir(dir_path, exts=self.exts, hidden=self.hidden)))
+    except OSError as e: raise KeyError(dir_path) from e
+    self._entries[dir_path] = v
+    return v
+
+  def clear(self) -> None:
+    self._entries.clear()
