@@ -2,10 +2,13 @@
 
 from typing import Any, BinaryIO, Dict
 
+from ..loader import FileOrPath, binary_file_for
 
-def load_html(file:BinaryIO, encoding:str=None, **kwargs:Any) -> Any:
+
+def load_html(file_or_path:FileOrPath, encoding:str=None, **kwargs:Any) -> Any:
   from html5_parser import parse
-  data = file.read()
+  with binary_file_for(file_or_path) as file:
+    data = file.read()
   html = parse(data, transport_encoding=encoding, return_root=True, **kwargs)
   if 'treebuilder' in kwargs: return html
 

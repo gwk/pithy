@@ -53,7 +53,7 @@ class LoaderException(Exception): pass
 
 
 
-def _text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
+def text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
   if isinstance(f, TextIOWrapper): return f
   if isinstance(f, str): return open(f, 'r', **kwargs)
   try: return TextIOWrapper(f, **kwargs)
@@ -61,7 +61,7 @@ def _text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
     raise ValueError(f'load: required text file or path; received {f!r}') from e
 
 
-def _binary_file_for(f:FileOrPath) -> BinaryIO:
+def binary_file_for(f:FileOrPath) -> BinaryIO:
   if isinstance(f, BufferedReader): return f
   if isinstance(f, str): return open(f, 'rb')
   try: return BufferedReader(f) # type: ignore
@@ -92,7 +92,7 @@ _dflt_loaders:Set[LoadFn] = set()
 
 def load_archive(f:FileOrPath, single_name=None, single_ext=None, **kwargs:Any) -> Any:
   from .archive import Archive
-  archive = Archive(_binary_file_for(f))
+  archive = Archive(binary_file_for(f))
   if single_name is None and single_ext is None:
     if kwargs:
       raise ValueError('load_archive: `single_name` or `single_ext` not specified; no other options should be set')
@@ -110,27 +110,27 @@ def load_archive(f:FileOrPath, single_name=None, single_ext=None, **kwargs:Any) 
 
 def load_binary(f:FileOrPath, ext:str, **kwargs:Any) -> BinaryIO:
   assert not kwargs, kwargs # To allow for opening as bytes or text with any encoding.
-  return _binary_file_for(f)
+  return binary_file_for(f)
 
 
 #def load_brotli(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 #  from brotli import decompress
-#  with _binary_file_for(f) as f:
+#  with binary_file_for(f) as f:
 #    data = decompress(f.read())
 #  sub_ext = _sub_ext(ext)
 #  from gzip import GzipFile
-#  df = GzipFile(mode='rb', fileobj=_binary_file_for(f))
+#  df = GzipFile(mode='rb', fileobj=binary_file_for(f))
 #  return load(df, ext=sub_ext, **kwargs) # type: ignore
 
 
 def load_csv(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Iterable[List[str]]:
   from .csv import load_csv as _load_csv
-  return _load_csv(_text_file_for(f, newline='', encoding=encoding), **kwargs)
+  return _load_csv(text_file_for(f, newline='', encoding=encoding), **kwargs)
 
 
 def load_html(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Any:
   from .html.loader import load_html as _load_html
-  bf = _binary_file_for(f)
+  bf = binary_file_for(f)
   return _load_html(bf, encoding=encoding, **kwargs)
 
 
@@ -139,37 +139,37 @@ def load_gz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   if sub_ext.endswith('.tar'): # load_archive handles compressed tar stream faster.
     return load_archive(f, **kwargs)
   from gzip import GzipFile
-  df = GzipFile(mode='rb', fileobj=_binary_file_for(f))
+  df = GzipFile(mode='rb', fileobj=binary_file_for(f))
   return load(df, ext=sub_ext, **kwargs) # type: ignore
 
 
 def load_json(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .json import load_json as _load_json
-  return _load_json(_text_file_for(file_or_path), **kwargs)
+  return _load_json(text_file_for(file_or_path), **kwargs)
 
 def load_jsonl(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .json import load_jsonl  as _load_jsonl
-  return _load_jsonl(_text_file_for(file_or_path), **kwargs)
+  return _load_jsonl(text_file_for(file_or_path), **kwargs)
 
 def load_jsons(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .json import load_jsons as _load_jsons
-  return _load_jsons(_text_file_for(file_or_path), **kwargs)
+  return _load_jsons(text_file_for(file_or_path), **kwargs)
 
 
 def load_msgpack(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .msgpack import load_msgpack as _load_msgpack
-  return _load_msgpack(_binary_file_for(file_or_path), **kwargs)
+  return _load_msgpack(binary_file_for(file_or_path), **kwargs)
 
 
 def load_msgpacks(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .msgpack import load_msgpacks as _load_msgpacks
-  return _load_msgpacks(_binary_file_for(file_or_path), **kwargs)
+  return _load_msgpacks(binary_file_for(file_or_path), **kwargs)
 
 
 def load_pyl(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   'Load a python literal AST file (Python equivalent of JSON).'
   from ast import literal_eval
-  return literal_eval(_text_file_for(f, **kwargs).read())
+  return literal_eval(text_file_for(f, **kwargs).read())
 
 
 def load_sqlite(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
@@ -180,7 +180,7 @@ def load_sqlite(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[str]:
-  f = _text_file_for(f, **kwargs)
+  f = text_file_for(f, **kwargs)
   if clip_ends: return (line.rstrip('\n\r') for line in f)
   return f
 
@@ -195,7 +195,7 @@ def load_xls(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   # Alternative would be to make ArchiveFile conform to mmap protocol
   # (xrld supports passing in mmap objects),
   # or patch xlrd to support passing in an open binary file descriptor.
-  return open_workbook(filename=None, logfile=stderr, file_contents=_binary_file_for(f).read(), **kwargs)
+  return open_workbook(filename=None, logfile=stderr, file_contents=binary_file_for(f).read(), **kwargs)
 
 
 def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
@@ -204,7 +204,7 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
     # TODO: investigate whether a multithreaded subprocess and/or pipeline between two processes could be faster.
     return load_archive(f, **kwargs)
   from lzma import LZMAFile
-  d = LZMAFile(_binary_file_for(f))
+  d = LZMAFile(binary_file_for(f))
   #b = BufferedReader(d) # type: ignore
   return load(d, ext=sub_ext, **kwargs)
 
@@ -212,7 +212,7 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from zstandard import ZstdDecompressor # type: ignore
   decompressor = ZstdDecompressor()
-  d = decompressor.stream_reader(_binary_file_for(f))
+  d = decompressor.stream_reader(binary_file_for(f))
   return load(d, ext=_sub_ext(ext), **kwargs)
 
 
