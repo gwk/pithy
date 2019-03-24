@@ -26,9 +26,7 @@ class Transformer(Generic[_T], ContextManager):
   A data transformation pipeline.
   '''
 
-
-
-  def __init__(self, iterable: Iterable[_T], log_stem='_build/', log_index_width=2, progress_frequency=0.1) -> None:
+  def __init__(self, iterable: Iterable[_T], log_stem:str, log_index_width=2, progress_frequency=0.1) -> None:
 
     self.iterable = iterable
     self.log_stem = log_stem
@@ -59,7 +57,7 @@ class Transformer(Generic[_T], ContextManager):
 
   def _mk_log_fn(self, mode: str, name: str, ext: str) -> Callable[..., None]:
     'create a dedicated log file and logging function for use by a particular stage.'
-    index = len(self.stages)
+    index = len(self.stages) # Caller has not added itself as a stage yet.
     path = f'{self.log_stem}{index:0{self.log_index_width}}-{mode}-{name}{ext}'
     f = open(path, 'w')
     self.log_files.append(f)
@@ -70,7 +68,7 @@ class Transformer(Generic[_T], ContextManager):
 
     def log_fn(*items: Any) -> None:
       counts[index] += 1
-      writeL(*items)
+      writeL(f, *items)
 
     return log_fn
 
@@ -193,5 +191,5 @@ class Transformer(Generic[_T], ContextManager):
     for i, (name, count) in enumerate(zip(self.stage_names, self.counts)):
       c = '-' if count == -1 else count
       width = self.log_index_width
-      errL('◊   {i:0{width}}-{name}: {c}')
+      errL(f'◊   {i:0{width}}-{name}: {c}')
 
