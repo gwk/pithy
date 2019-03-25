@@ -172,7 +172,7 @@ def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
     raise PathAlreadyExists(dir)
 
 
-def make_link(orig:Path, link:Path, absolute=False, allow_nonexistent=False, create_dirs=False, perms:Optional[int]=None) \
+def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, create_dirs=False, perms:Optional[int]=None) \
  -> None:
   if perms is not None: raise NotImplementedError # TODO
   if not allow_nonexistent and not path_exists(orig):

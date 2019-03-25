@@ -29,7 +29,7 @@ def main() -> None:
   # HACK: add link to source dir so that browser can see sources as described in source map.
   build_dir_src = f'{build_dir}/src'
   if not path_exists(build_dir_src):
-    make_link(src='src', dst=build_dir_src, make_dirs=True)
+    make_link(orig='src', link=build_dir_src, make_dirs=True)
 
   manifest: List[str] = []
 

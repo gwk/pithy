@@ -38,7 +38,7 @@ utest_exc(TaskFileHashbangMissing('./empty.link', b''), run, './empty.link')
 
 with open('hashbang-missing.py', 'w') as f:
   f.write('xyz\n')
-make_link('hashbang-missing.py', 'hashbang-missing.link')
+make_link('hashbang-missing.py', link='hashbang-missing.link')
 chmod('hashbang-missing.py', 0o700)
 
 utest_exc(TaskFileHashbangMissing('./hashbang-missing.py', b'xyz'), run, './hashbang-missing.py')
@@ -47,7 +47,7 @@ utest_exc(TaskFileHashbangMissing('./hashbang-missing.link', b'xyz'), run, './ha
 with open('./hashbang-ill-formed.py', 'w') as f:
   f.write('#!xyz\n')
 chmod('./hashbang-ill-formed.py', 0o700)
-make_link('hashbang-ill-formed.py', 'hashbang-ill-formed.link')
+make_link('hashbang-ill-formed.py', link='hashbang-ill-formed.link')
 
 utest_exc(TaskFileHashbangIllFormed('./hashbang-ill-formed.py', b'#!xyz'), run, './hashbang-ill-formed.py')
 utest_exc(TaskFileHashbangIllFormed('./hashbang-ill-formed.link', b'#!xyz'), run, './hashbang-ill-formed.link')
