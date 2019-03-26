@@ -22,7 +22,7 @@ FileOrPath = Union[IO, str]
 LoadFn = Callable[..., Any]
 
 
-def load(file_or_path:FileOrPath, ext:str=None, encoding:str=None, **kwargs:Any) -> Any:
+def load(file_or_path:FileOrPath, ext:str=None, **kwargs:Any) -> Any:
   '''
   Select an appropriate loader based on the file extension, or `ext` if specified.
 
