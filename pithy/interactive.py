@@ -1,11 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from code import InteractiveInterpreter
-from .io import errSL
-from typing import List
 import inspect
 import readline
 import sys
+from code import InteractiveInterpreter
+from typing import ContextManager, List
+
+from .io import errSL
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class Interpreter(InteractiveInterpreter):
@@ -85,3 +87,12 @@ def interact(banner=None, locals=None):
   interpreter = Interpreter(locals=locals)
   interpreter.interact()
 
+
+class ExitOnKeyboardInterrupt(ContextManager):
+
+  def __init__(self, dbg:bool=False) -> None:
+    self.dbg = dbg
+
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
+    if isinstance(exc_value, KeyboardInterrupt) and not self.dbg:
+      exit(' Keyboard interrupt.')
