@@ -216,6 +216,10 @@ def is_file_not_link(path:Path) -> bool: return is_file(path) and not is_link(pa
 
 def is_link(path:Path) -> bool: return _islink(path)
 
+def is_link_to_dir(path:Path) -> bool: return _islink(path) and _isdir(path)
+
+def is_link_to_file(path:Path) -> bool: return _islink(path) and _isfile(path)
+
 def is_mount(path:Path) -> bool: return _ismount(path)
 
 def is_node_not_link(path:Path) -> bool: return path_exists(path) and not is_link(path)
