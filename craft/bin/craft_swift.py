@@ -27,11 +27,9 @@ def main() -> None:
   sub_cmd = 'test' if args.xctest else 'build'
   errL(f'swift compiler: {conf.swift_path}')
 
-  cmd = ['swift', sub_cmd, '--package-path='+conf.project_dir, '--build-path='+conf.build_dir,
-    '-Xswiftc=-target', '-Xswiftc='+conf.target_triple_macOS]
+  cmd = ['swift', sub_cmd, '--package-path='+conf.project_dir, '--build-path='+conf.build_dir]
   if args.product: cmd.extend(['--product', args.product])
   if args.target: cmd.extend(['--target', args.target])
-  cmd.extend(['-Xcc', '-D', '-Xcc', 'GL_SILENCE_DEPRECATION'])
   cmd.extend(args.args)
   errSL(TXT_D, *cmd, RST)
 
