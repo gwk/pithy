@@ -4,14 +4,17 @@ import re
 from argparse import ArgumentParser
 from itertools import chain
 from json import loads as parse_json
-from typing import *
-from pithy.ansi import *
-from pithy.io import *
-from pithy.fs import *
-from pithy.iterable import group_by_heads, OnHeadless
+from typing import Iterable, Iterator, Match, Tuple, Union
+
+from pithy.ansi import RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
+from pithy.fs import path_rel_to_current_or_abs
+from pithy.interactive import ExitOnKeyboardInterrupt
+from pithy.io import errL, outZ, stdout
+from pithy.iterable import OnHeadless, group_by_heads
 from pithy.lex import Lexer
 from pithy.task import run_gen
-from craft import *
+
+from .. import load_craft_config
 
 
 def main() -> None:
@@ -31,54 +34,36 @@ def main() -> None:
   if args.product: cmd.extend(['--product', args.product])
   if args.target: cmd.extend(['--target', args.target])
   cmd.extend(args.args)
-  errSL(TXT_D, *cmd, RST)
+  errL(TXT_D, ' '.join(cmd), RST)
 
-  for token in lex_deduplicate_reorder(run_gen(cmd, merge_err=True, exits=True)):
-    if token.lastgroup in diag_kinds:
-      path_abs, pos, msg = diag_re.fullmatch(token[0]).groups()
-      path = path_rel_to_current_or_abs(path_abs)
-      color = colors[token.lastgroup]
-      outZ(TXT_L, path, pos, color, msg, RST)
-    else:
-      s = token[0]
-      try: color = colors[token.lastgroup]
-      except KeyError: outZ(s)
-      else: outZ(color, s, RST)
-    stdout.flush()
+  with ExitOnKeyboardInterrupt():
+    for token in lex_compiler_output(run_gen(cmd, merge_err=True, exits=True)):
+      if token.lastgroup in diag_kinds:
+        assert token.lastgroup is not None
+        path_abs, pos, msg = diag_re.fullmatch(token[0]).groups() # type: ignore
+        path = path_rel_to_current_or_abs(path_abs)
+        color = colors[token.lastgroup]
+        outZ(TXT_L, path, pos, color, msg, RST)
+      else:
+        s = token[0]
+        color = colors[token.lastgroup]
+        rst = color or RST
+        outZ(color, s, rst)
+      stdout.flush()
 
 
-def lex_deduplicate_reorder(swift_output_stream):
+def lex_compiler_output(stream:Iterable[str]) -> Iterator[Match]:
   '''
   Yield the toplevel heads, e.g. "Compile Swift Module ..." immediately.
   Aggregate diagnostics into a buffer, then group by path heads.
-  These need to be deduplicated as of Xcode 9.0 GM.
   '''
-  it = lexer.lex_stream(swift_output_stream)
-  for token in it:
-    yield token
-    if is_toplevel(token): break
-
-  group = []
-  def flush():
-    subgroups = list(group_by_heads(group, is_head=is_diag_head, headless=OnHeadless.keep))
-    group.clear()
-    d = { ''.join(t[0] for t in sg) : sg for sg in subgroups } # deduplicates.
-    return chain.from_iterable(v for (_, v) in sorted(d.items(), key=lambda p: key_by_splitting_ints(p[0])))
-
-  for token in it:
-    if is_toplevel(token):
-      yield from flush()
-      yield token
-    else:
-      group.append(token)
-  yield from flush()
+  return lexer.lex_stream(stream)
 
 
 lexer = Lexer(invalid='invalid',
   patterns=dict(
     newline   = r'\n',
-    compile   = r'Compile Swift Module .+\n',
-    linking   = r'Linking .+',
+    top_step  = r'\[\d+/\d+\] .+',
     error     = r'[^:\n]+:\d+:\d+: error: .+',
     warning   = r'[^:\n]+:\d+:\d+: warning: .+',
     note      = r'[^:\n]+:\d+:\d+: note: .+',
@@ -91,24 +76,28 @@ lexer = Lexer(invalid='invalid',
 
 diag_re = re.compile(r'([^:]+)(:\d+:\d+: )(\w+: .+)')
 
-diag_kinds = ('error', 'warning', 'note')
+head_kinds = set(lexer.patterns) - {'newline', 'note', 'other'}
+diag_head_kinds = {'error', 'warning', 'unknown_error', 'unknown_warning'}
+diag_kinds = {*diag_head_kinds, 'note'}
 
-def is_toplevel(token) -> bool:
-  return token.lastgroup in {'compile', 'linking', 'error_terminated'}
+def is_head(token:Match) -> bool:
+  return token.lastgroup in head_kinds
 
-def is_diag_head(token) -> bool:
-  return token.lastgroup in {'error', 'warning', 'unknown_error', 'unknown_warning'}
+def is_diag_head(token:Match) -> bool:
+  return token.lastgroup in diag_head_kinds
 
-def key_by_splitting_ints(string: str) -> Tuple[Union[str, int], ...]:
+def is_diag(token:Match) -> bool:
+  return token.lastgroup in diag_kinds
+
+def key_by_splitting_ints(string:str) -> Tuple[Union[str,int],...]:
   return tuple(int(s) if s.isnumeric() else s for s in int_re.split(string))
 
 int_re = re.compile(r'(\d+)')
 
 
 colors = {
-  'invalid'   : INVERT,
-  'compile'   : TXT_M,
-  'linking'   : TXT_M,
+  'newline'   : '',
+  'top_step'  : TXT_M,
   'error'     : TXT_R,
   'warning'   : TXT_Y,
   'note'      : TXT_L,
@@ -116,6 +105,7 @@ colors = {
   'unknown_warning' : TXT_Y,
   'error_terminated' : TXT_D,
   'underline' : TXT_B,
+  'other'     : '',
 }
 
 

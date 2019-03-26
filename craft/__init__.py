@@ -1,19 +1,20 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from argparse import ArgumentParser
-from pithy.ansi import *
-from pithy.dict import dict_set_defaults
-from pithy.fs import *
-from pithy.io import *
-from pithy.json import load_json, parse_json, write_json
-from pithy.string import find_and_clip_suffix
-from pithy.task import runO
-from typing import Any, AnyStr, Dict, cast
 import os
 import os.path
 import plistlib
 import re
+from argparse import ArgumentParser
+from typing import Any, Dict, NamedTuple, Optional, cast
+
 import yaml
+
+from pithy.dict import dict_set_defaults
+from pithy.fs import (find_project_dir, is_sub_path, list_dir, make_dirs, norm_path, path_ext, path_for_cmd, path_join,
+  path_name_stem, path_split, product_needs_update, real_path, rel_path)
+from pithy.json import load_json, parse_json, write_json
+from pithy.string import find_and_clip_suffix
+from pithy.task import runO
 
 
 CRAFT_PROJECT_DIR = 'CRAFT_PROJECT_DIR'
@@ -23,7 +24,26 @@ XCODE_DEVELOPER_DIR = 'XCODE_DEVELOPER_DIR'
 XCODE_TOOLCHAIN_DIR = 'XCODE_TOOLCHAIN_DIR'
 
 
-def load_craft_config():
+class CraftConfig(NamedTuple):
+  build_dir: str
+  config_path: str
+  copyright: str
+  project_dir: str
+  target_macOS: str
+  swift_path: str
+  xcode_dev_dir: str
+  xcode_toolchain_dir: str
+  product_name: Optional[str] = None
+  product_identifier: Optional[str] = None
+  sources: str = 'src'
+  resources: Dict[str, str] = {}
+  ts_modules: Dict[str, str] = {}
+
+  @property
+  def target_triple_macOS(self) -> str: return f'x86_64-apple-macosx{self.target_macOS}'
+
+
+def load_craft_config() -> CraftConfig:
 
   try: project_dir = os.environ[CRAFT_PROJECT_DIR]
   except KeyError:
@@ -117,25 +137,6 @@ def update_swift_package_json(config) -> Any:
     return load_json(open(dst))
 
 
-class CraftConfig(NamedTuple):
-  build_dir: str
-  config_path: str
-  copyright: str
-  project_dir: str
-  target_macOS: str
-  swift_path: str
-  xcode_dev_dir: str
-  xcode_toolchain_dir: str
-  product_name: Optional[str] = None
-  product_identifier: Optional[str] = None
-  sources: str = 'src'
-  resources: Dict[str, str] = {}
-  ts_modules: Dict[str, str] = {}
-
-  @property
-  def target_triple_macOS(self) -> str: return f'x86_64-apple-macosx{self.target_macOS}'
-
-
 craft_required_keys = frozenset({
   'copyright'
 })
@@ -197,4 +198,3 @@ def resolve_yaml_node(node: Any) -> Any:
 
 # NOTE: modifies the global default yaml Loader object.
 yaml.add_constructor('!private', handle_yaml_private) # type: ignore
-
