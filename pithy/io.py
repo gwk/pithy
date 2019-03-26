@@ -8,6 +8,8 @@ from typing import Any, Callable, ContextManager, Iterable, Iterator, TextIO, Ty
 from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
 from .desc import writeD, errD, outD
 
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+
 
 _T = TypeVar('_T')
 

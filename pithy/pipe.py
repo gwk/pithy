@@ -4,6 +4,9 @@ import os
 from types import TracebackType
 from typing import Any, ContextManager, IO, List, Optional, Tuple, Type, Union
 
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+
+
 File = Union[None, int, IO]
 
 
@@ -18,8 +21,7 @@ class DuplexPipe(ContextManager):
   def __del__(self) -> None:
     for i in range(4): self.close(i)
 
-  def __exit__(self, exc_type:Optional[Type[BaseException]], exc_value:Optional[BaseException],
-   traceback:Optional[TracebackType]) -> None:
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     for i in range(4): self.close(i)
 
   def close(self, index:int) -> None:

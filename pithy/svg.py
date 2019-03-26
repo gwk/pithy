@@ -5,15 +5,16 @@ SVG writer.
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from .iterable import iter_unique, window_pairs
-from .range import Num, NumRange
-from .xml import IndexCounters, EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from functools import reduce
 from html import escape as html_escape
 from math import floor, log10
 from types import TracebackType
-from typing import Any, Callable, ContextManager, Dict, Hashable, Iterator, List, Mapping, \
-Optional, Sequence, TextIO, Tuple, Type, Union, Iterable, overload
+from typing import (Any, Callable, Dict, Hashable, Iterable, Iterator, List, Mapping, Optional, Sequence, TextIO, Tuple, Type,
+  Union, overload)
+
+from .iterable import iter_unique, window_pairs
+from .range import Num, NumRange
+from .xml import EscapedStr, IndexCounters, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 
 
 Dim = Union[int, float, str]

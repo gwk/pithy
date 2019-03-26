@@ -4,13 +4,14 @@ r'''
 TODO: register a signal handler for SIGWINCH to update sizes.
 '''
 
-from sys import stderr, stdin, stdout
-import struct as _struct
 import fcntl as _fcntl
-from termios import (BRKINT, ICRNL, INPCK, ISTRIP, IXON, OPOST, CSIZE, PARENB, CS8, ECHO,
-  ICANON, IEXTEN, ISIG, VMIN, VTIME, TIOCGWINSZ, TCSANOW, TCSAFLUSH, TCSADRAIN,
-  tcgetattr, tcsetattr)
+import struct as _struct
 from copy import deepcopy
+from sys import stderr, stdin, stdout
+from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, TCSADRAIN,
+  TCSAFLUSH, TCSANOW, TIOCGWINSZ, VMIN, VTIME, tcgetattr, tcsetattr)
+
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 def window_size(f=stdout):
@@ -64,7 +65,7 @@ class TermMode:
   def __enter__(self):
     tcsetattr(self.fd, self.when, self.attrs)
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     tcsetattr(self.fd, self.when, self.original_attrs)
 
   def alter_attrs(self) -> None:

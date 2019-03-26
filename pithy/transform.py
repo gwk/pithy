@@ -6,7 +6,8 @@ from types import TracebackType
 from typing import Any, Callable, ContextManager, Generic, Iterable, List, Optional, TextIO, Type, TypeVar
 
 from .fs import path_ext, path_join, path_stem
-from .io import errL, err_progress, writeL
+from .io import err_progress, errL, writeL
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 _T = TypeVar('_T')
@@ -39,8 +40,7 @@ class Transformer(Generic[_T], ContextManager):
     self.log_files: List[TextIO] = []
 
 
-  def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
-   traceback: Optional[TracebackType]) -> None:
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     if exc_type: return
     self.run()
 

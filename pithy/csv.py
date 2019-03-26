@@ -9,6 +9,8 @@ from sys import stdout
 from types import TracebackType
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+
 
 def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
   w = csv.writer(f, quoting=quoting)
@@ -105,6 +107,5 @@ class CSVFileReader(Iterable, ContextManager):
     return self
 
 
-  def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException],
-   traceback: Optional[TracebackType]) -> None:
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.file.close()

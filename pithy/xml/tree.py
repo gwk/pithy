@@ -11,7 +11,9 @@ from io import StringIO
 from itertools import chain, count
 from types import TracebackType
 from typing import Any, ContextManager, Dict, Iterable, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
+
 from ..io import errSL
+from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 _XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
@@ -94,9 +96,7 @@ class XmlWriter(ContextManager):
     self._context_depth += 1
     return self
 
-
-  def __exit__(self, exc_type:Optional[Type[BaseException]], exc_value:Optional[BaseException],
-   traceback: Optional[TracebackType]) -> None:
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self._context_depth -= 1
     if self._context_depth == 0:
       self._is_closed = True
