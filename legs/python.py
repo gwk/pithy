@@ -14,10 +14,10 @@ from pithy.string import render_template
 from legs_base import ModeTransitions
 from .defs import ModeTransitions, StateTransitions, MatchStateKinds, ModeData
 from .dfa import DFA
-from .patterns import Pattern
+from .patterns import LegsPattern
 
 
-def output_python(path:str, patterns:Dict[str,Pattern], mode_pattern_names:Dict[str,FrozenSet[str]],
+def output_python(path:str, patterns:Dict[str,LegsPattern], mode_pattern_names:Dict[str,FrozenSet[str]],
   dfas:List[DFA], mode_transitions:ModeTransitions,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
@@ -73,7 +73,7 @@ class ${Name}Lexer(DictLexerBase):
 
 
 
-def output_python_re(path:str, patterns:Dict[str,Pattern], mode_pattern_names:Dict[str,FrozenSet[str]],
+def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_names:Dict[str,FrozenSet[str]],
   dfas:List[DFA], mode_transitions:ModeTransitions,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 

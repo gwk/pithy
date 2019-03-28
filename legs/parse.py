@@ -52,11 +52,11 @@ kind_descs = {
 def desc_kind(kind:str) -> str: return kind_descs.get(kind, kind)
 
 
-def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,FrozenSet[str]],ModeTransitions]:
+def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,FrozenSet[str]],ModeTransitions]:
   '''
   Parse the legs source given in `src`, returning:
   * the license string;
-  * a dictionary of pattern names to Pattern objects;
+  * a dictionary of pattern names to LegsPattern objects;
   * a dictionary of mode names to pattern names;
   * a dictionary of mode transitions.
   '''
@@ -72,7 +72,7 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,Frozen
   tokens = [t for t in tokens_with_comments if t.lastgroup != 'comment']
   sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
 
-  patterns:Dict[str, Pattern] = {} # keyed by pattern name.
+  patterns:Dict[str, LegsPattern] = {} # keyed by pattern name.
   mode_pattern_names:Dict[str,FrozenSet[str]] = {} # keyed by mode name.
   mode_transitions:ModeTransitions = {}
 
@@ -96,7 +96,7 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,Pattern],Dict[str,Frozen
   return (license, patterns, mode_pattern_names, mode_transitions)
 
 
-def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, Pattern]) -> None:
+def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, LegsPattern]) -> None:
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': continue
@@ -163,7 +163,7 @@ def parse_transitions(path:str, buffer:Buffer[Token], patterns:Container[str],
     transitions[lm][lp] = r
 
 
-def parse_pattern(path:str, sym_token:Token, buffer:Buffer[Token]) -> Pattern:
+def parse_pattern(path:str, sym_token:Token, buffer:Buffer[Token]) -> LegsPattern:
   assert sym_token.lastgroup == 'sym'
   try: next_token = buffer.peek()
   except StopIteration: pass
@@ -176,14 +176,14 @@ def parse_pattern(path:str, sym_token:Token, buffer:Buffer[Token]) -> Pattern:
   return Seq.of_iter(Charset.for_char(c) for c in text)
 
 
-def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Pattern:
-  'Parse a pattern and return a Pattern object.'
-  els:List[Pattern] = []
-  def finish() -> Pattern: return Seq.of_iter(els)
+def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> LegsPattern:
+  'Parse a pattern and return a LegsPattern object.'
+  els:List[LegsPattern] = []
+  def finish() -> LegsPattern: return Seq.of_iter(els)
   for token in buffer:
     kind = token.lastgroup
     def _fail(msg) -> 'NoReturn': token_fail(path, token, msg)
-    def quantity(pattern_type:Type[Pattern]) -> None:
+    def quantity(pattern_type:Type[LegsPattern]) -> None:
       if not els: _fail('quantity operator must be preceded by a pattern.')
       els[-1] = pattern_type(els[-1])
     if kind == terminator: return finish()
@@ -203,7 +203,7 @@ def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Pat
   return finish()
 
 
-def parse_choice(path:str, buffer:Buffer[Token], left:Pattern, terminator:str) -> Pattern:
+def parse_choice(path:str, buffer:Buffer[Token], left:LegsPattern, terminator:str) -> LegsPattern:
   return Choice(left, parse_pattern_pattern(path, buffer, terminator=terminator))
 
 

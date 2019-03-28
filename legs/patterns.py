@@ -16,7 +16,7 @@ __all__ = [
   'Opt',
   'Plus',
   'Quantity',
-  'Pattern',
+  'LegsPattern',
   'Seq',
   'Star',
   'NfaMutableTransitions',
@@ -30,7 +30,7 @@ MkNode = Callable[[], int]
 NfaMutableTransitions = DefaultDict[int, DefaultDict[int, Set[int]]]
 
 
-class Pattern(tuple):
+class LegsPattern(tuple):
 
   precedence:int = -1
 
@@ -69,7 +69,7 @@ class Pattern(tuple):
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
 
-  def __or__(self, r: 'Pattern') -> 'Pattern':
+  def __or__(self, r: 'LegsPattern') -> 'LegsPattern':
     tl = type(self)
     tr = type(r)
     if tl.precedence > tr.precedence: return r | self
@@ -79,20 +79,20 @@ class Pattern(tuple):
     return Choice(self, r)
 
   def __lt__(self, r:Any) -> bool:
-    if not isinstance(r, Pattern): return NotImplemented
+    if not isinstance(r, LegsPattern): return NotImplemented
     return self.precedence < r.precedence or self.precedence == r.precedence and tuple.__lt__(self, r)
 
 
-class Choice(Pattern):
+class Choice(LegsPattern):
 
   precedence = 1
 
-  def __init__(cls, *subs:Pattern) -> None: pass # for mypy only.
+  def __init__(cls, *subs:LegsPattern) -> None: pass # for mypy only.
 
-  def __new__(cls, *subs:Pattern):
+  def __new__(cls, *subs:LegsPattern):
     for sub in subs:
-      if not isinstance(sub, Pattern):
-        raise ValueError(f'{cls.__name__} received non-Pattern sub: {sub}')
+      if not isinstance(sub, LegsPattern):
+        raise ValueError(f'{cls.__name__} received non-LegsPattern sub: {sub}')
     return tuple.__new__(cls, sorted(set(subs)))
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
@@ -104,16 +104,16 @@ class Choice(Pattern):
     return '|'.join(sub_patterns)
 
 
-class Seq(Pattern):
+class Seq(LegsPattern):
 
   precedence = 2
 
-  def __init__(cls, *subs:Pattern) -> None: pass # for mypy only.
+  def __init__(cls, *subs:LegsPattern) -> None: pass # for mypy only.
 
-  def __new__(cls, *subs:Pattern):
+  def __new__(cls, *subs:LegsPattern):
     for sub in subs:
-      if not isinstance(sub, Pattern):
-        raise ValueError(f'{cls.__name__} received non-Pattern sub: {sub}')
+      if not isinstance(sub, LegsPattern):
+        raise ValueError(f'{cls.__name__} received non-LegsPattern sub: {sub}')
     return tuple.__new__(cls, subs)
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
@@ -135,28 +135,28 @@ class Seq(Pattern):
   def literal_pattern(self): return ''.join(sub.literal_pattern for sub in self)
 
   @staticmethod
-  def of(*subs:Pattern) -> Pattern:
+  def of(*subs:LegsPattern) -> LegsPattern:
     for sub in subs:
-      assert isinstance(sub, Pattern), sub
+      assert isinstance(sub, LegsPattern), sub
     return subs[0] if len(subs) == 1 else Seq(*subs)
 
   @staticmethod
-  def of_iter(subs:Iterable[Pattern]) -> Pattern:
+  def of_iter(subs:Iterable[LegsPattern]) -> LegsPattern:
     return Seq.of(*subs)
 
 
-class Quantity(Pattern):
+class Quantity(LegsPattern):
 
   precedence = 3
   operator:str = ''
 
-  def __init__(cls, sub:Pattern) -> None: pass # for mypy only.
+  def __init__(cls, sub:LegsPattern) -> None: pass # for mypy only.
 
   def __new__(cls, *subs):
     if len(subs) != 1:
       raise ValueError(f'{cls.__name__} expcets single sub; received: {subs}')
-    if not isinstance(subs[0], Pattern):
-      raise ValueError(f'{cls.__name__} received non-Pattern sub: {subs[0]}')
+    if not isinstance(subs[0], LegsPattern):
+      raise ValueError(f'{cls.__name__} received non-LegsPattern sub: {subs[0]}')
     return tuple.__new__(cls, subs)
 
   def gen_regex(self, flavor:str) -> str:
@@ -184,7 +184,7 @@ class Star(Quantity):
     self[0].gen_nfa(mk_node, transitions, branch, branch)
 
   @staticmethod
-  def of(pattern:Pattern) -> Pattern:
+  def of(pattern:LegsPattern) -> LegsPattern:
     if isinstance(pattern, (Plus, Star)): return pattern
     return Star(pattern)
 
@@ -202,7 +202,7 @@ class Plus(Quantity):
     self[0].gen_nfa(mk_node, transitions, pre, post)
 
 
-class Charset(Pattern):
+class Charset(LegsPattern):
 
   precedence = 4
 

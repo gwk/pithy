@@ -9,10 +9,10 @@ from pithy.json import write_json
 from pithy.string import render_template
 
 from .defs import ModeTransitions
-from .patterns import Pattern
+from .patterns import LegsPattern
 
 
-def output_vscode(path:str, patterns:Dict[str, Pattern], mode_pattern_names:Dict[str,FrozenSet[str]],
+def output_vscode(path:str, patterns:Dict[str, LegsPattern], mode_pattern_names:Dict[str,FrozenSet[str]],
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   if not args.syntax_name: exit('error: vscode output requires `-syntax-name` argument.')

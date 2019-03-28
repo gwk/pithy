@@ -16,7 +16,7 @@ from ..defs import ModeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, NfaTransitions, gen_dfa
 from ..parse import parse_legs
-from ..patterns import NfaMutableTransitions, Pattern
+from ..patterns import NfaMutableTransitions, LegsPattern
 from ..python import output_python, output_python_re
 from ..swift import output_swift
 from ..vscode import output_vscode
@@ -251,7 +251,7 @@ def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
     outL(f'match: {string!r} -- <none>')
 
 
-def gen_nfa(name:str, named_patterns:List[Tuple[str, Pattern]]) -> NFA:
+def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]]) -> NFA:
   '''
   Generate an NFA from a set of patterns.
   The NFA can be used to match against an argument string,
