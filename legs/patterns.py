@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Optional, Set, Type, cast
+from typing import Any, Callable, DefaultDict, Dict, Iterable, Optional, Set, cast
 
 from pithy.io import errL, errSL
 from pithy.types import is_pair_of_int
@@ -267,14 +267,14 @@ class Charset(LegsPattern):
   @property
   def inline_description(self) -> str: return ' ' + codes_desc(self.ranges)
 
-  @classmethod
-  def for_char(cls:Type['Charset'], char:str) -> 'Charset':
+  @staticmethod
+  def for_char(char:str) -> 'Charset':
     code = ord(char)
-    return cls(ranges=((code, code + 1),))
+    return Charset(ranges=((code, code + 1),))
 
-  @classmethod
-  def for_code(cls:Type['Charset'], code:int) -> 'Charset':
-    return cls(ranges=((code, code + 1),))
+  @staticmethod
+  def for_code(code:int) -> 'Charset':
+    return Charset(ranges=((code, code + 1),))
 
 
 
