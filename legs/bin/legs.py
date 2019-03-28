@@ -166,14 +166,14 @@ def main() -> None:
     output_python(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
       dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
-    if args.test: test_cmds.append(['python', path] + args.test)
+    if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'python-re' in langs:
     path = out_stem + '.re.py'
     output_python_re(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
       dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
-    if args.test: test_cmds.append(['python', path] + args.test)
+    if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
     path = out_stem + '.swift'
@@ -208,7 +208,7 @@ def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
   first_out = None
   status = 0
   for cmd in test_cmds:
-    if dbg: errL('\nrunning test:', quote(cmd))
+    if dbg: errSL('\nrunning test:', quote(cmd))
     code, out = runCO(cmd)
     if code != 0:
       errSL('test failed:', quote(cmd))
