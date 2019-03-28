@@ -99,7 +99,7 @@ def main() -> None:
   else:
     exit('`must specify either `path` or `-patterns`.')
 
-  license, patterns, mode_pattern_names, mode_transitions = parse_legs(path, src)
+  license, patterns, mode_pattern_kinds, mode_transitions = parse_legs(path, src)
 
   if dbg:
     errSL('\nPatterns:')
@@ -109,10 +109,10 @@ def main() -> None:
 
   dfas:List[DFA] = []
   start_node = 0
-  for mode, pattern_names in sorted(mode_pattern_names.items(), key=lambda p: mode_name_key(p[0])):
+  for mode, pattern_kinds in sorted(mode_pattern_kinds.items(), key=lambda p: mode_name_key(p[0])):
     if args.match and mode != match_mode: continue
 
-    named_patterns = sorted((name, patterns[name]) for name in pattern_names)
+    named_patterns = sorted((kind, patterns[kind]) for kind in pattern_kinds)
     nfa = gen_nfa(name=mode, named_patterns=named_patterns)
     if dbg: nfa.describe('NFA')
     if dbg or args.stats: nfa.describe_stats(f'NFA Stats')
@@ -169,7 +169,7 @@ def main() -> None:
 
   if 'python-re' in langs:
     path = out_stem + '.re.py'
-    output_python_re(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
+    output_python_re(path, patterns=patterns, mode_pattern_kinds=mode_pattern_kinds,
       dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
@@ -182,7 +182,7 @@ def main() -> None:
 
   if 'vscode' in langs:
     path = out_stem + '.json'
-    output_vscode(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
+    output_vscode(path, patterns=patterns, mode_pattern_kinds=mode_pattern_kinds,
       pattern_descs=pattern_descs, license=license, args=args)
 
   if args.test:
@@ -264,18 +264,18 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]]) -> NFA:
   start = mk_node() # always 0; see gen_dfa.
   invalid = mk_node() # always 1; see gen_dfa.
 
-  match_node_names:Dict[int, str] = { invalid: 'invalid' }
+  match_node_kinds:Dict[int, str] = { invalid: 'invalid' }
 
   transitions_dd:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
-  for pat_name, pattern in named_patterns:
+  for kind, pattern in named_patterns:
     match_node = mk_node()
     pattern.gen_nfa(mk_node, transitions_dd, start, match_node)
-    dict_put(match_node_names, match_node, pat_name)
+    dict_put(match_node_kinds, match_node, kind)
   lit_patterns = { n for n, pattern in named_patterns if pattern.is_literal }
 
   transitions:NfaTransitions = {
     src: {char: frozenset(dst) for char, dst in d.items() } for src, d in transitions_dd.items() }
-  return NFA(name=name, transitions=transitions, match_node_names=match_node_names, lit_patterns=lit_patterns)
+  return NFA(name=name, transitions=transitions, match_node_kinds=match_node_kinds, lit_patterns=lit_patterns)
 
 
 ext_langs = {

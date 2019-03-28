@@ -22,14 +22,14 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
   mode_case_defs = [f'case {modes[dfa.name]} = {dfa.start_node}' for dfa in dfas]
 
   # Create safe token kind names.
-  kinds = { name : swift_safe_sym(name) for name in pattern_descs }
-  kinds['incomplete'] = 'incomplete'
-  assert len(kinds) == len(set(kinds.values()))
-  token_kind_case_defs = ['case {}'.format(kind) for kind in sorted(kinds.values())]
+  kind_syms = { kind : swift_safe_sym(kind) for kind in pattern_descs }
+  kind_syms['incomplete'] = 'incomplete'
+  assert len(kind_syms) == len(set(kind_syms.values()))
+  token_kind_case_defs = [f'case {sym}' for sym in sorted(kind_syms.values())]
 
   # Token kind descriptions.
-  def pattern_desc(name:str) -> str: return swift_repr(pattern_descs[name])
-  token_kind_case_descs = ['case .{}: return {}'.format(kind, pattern_desc(name)) for name, kind in sorted(kinds.items())]
+  def pattern_desc(kind:str) -> str: return swift_repr(pattern_descs[kind])
+  token_kind_case_descs = [f'case .{sym}: return {pattern_desc(kind)}' for kind, sym in sorted(kind_syms.items())]
 
   # Mode transitions dictionary.
 
@@ -48,12 +48,12 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
     return [fmt(*r) for r in closed_int_intervals(chars)]
 
   def byte_case(dfa:DFA, chars:List[int], dst:int) -> str:
-    pattern_name = dfa.match_name(dst)
-    kind = None if pattern_name is None else kinds.get(pattern_name)
+    pattern_kind = dfa.match_kind(dst)
+    sym = None if pattern_kind is None else kind_syms.get(pattern_kind)
     return 'case {chars}: state = {dst}{suffix}'.format(
       chars=', '.join(byte_case_patterns(chars)),
       dst=dst,
-      suffix=f'; last = pos; kind = .{kind}' if kind else '')
+      suffix=f'; last = pos; kind = .{sym}' if sym else '')
 
   def byte_cases(dfa:DFA, node:int) -> List[str]:
     dst_chars:DefaultDict[int, List[int]] = DefaultDict(list)
@@ -73,9 +73,9 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
 
   def state_case(dfa:DFA, node:int) -> str:
     mode = dfa.name
-    name = dfa.match_name(node)
-    if name:
-      desc = name
+    kind = dfa.match_kind(node)
+    if kind:
+      desc = kind
     elif node in dfa.pre_match_nodes:
       desc = f'{mode} pre-match'
     else:

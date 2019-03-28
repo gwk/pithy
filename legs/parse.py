@@ -73,7 +73,7 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,Fr
   sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
 
   patterns:Dict[str, LegsPattern] = {} # keyed by pattern name.
-  mode_pattern_names:Dict[str,FrozenSet[str]] = {} # keyed by mode name.
+  mode_pattern_kinds:Dict[str,FrozenSet[str]] = {} # keyed by mode name.
   mode_transitions:ModeTransitions = {}
 
   for section in sections:
@@ -85,15 +85,15 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,Fr
     if not section_name or section_name.startswith('patterns'):
       parse_patterns(path, buffer, patterns)
     elif section_name.startswith('modes'):
-      parse_modes(path, buffer, patterns.keys(), mode_pattern_names)
+      parse_modes(path, buffer, patterns.keys(), mode_pattern_kinds)
     elif section_name.startswith('transitions'):
-      parse_transitions(path, buffer, patterns.keys(), mode_pattern_names.keys(), mode_transitions)
+      parse_transitions(path, buffer, patterns.keys(), mode_pattern_kinds.keys(), mode_transitions)
     else:
       token_fail(path, buffer.peek(), f'bad section name: {section_name!r}.')
 
-  if not mode_pattern_names:
-    mode_pattern_names['main'] = frozenset(patterns)
-  return (license, patterns, mode_pattern_names, mode_transitions)
+  if not mode_pattern_kinds:
+    mode_pattern_kinds['main'] = frozenset(patterns)
+  return (license, patterns, mode_pattern_kinds, mode_transitions)
 
 
 def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, LegsPattern]) -> None:
@@ -107,16 +107,16 @@ def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, LegsPatter
     patterns[name] = parse_pattern(path, token, buffer)
 
 
-def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], mode_pattern_names:Dict[str,FrozenSet[str]]) -> None:
+def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], mode_pattern_kinds:Dict[str,FrozenSet[str]]) -> None:
   for token in buffer:
     kind = token.lastgroup
     if kind == 'newline': continue
     check_is_sym(path, token, 'mode name')
     name = token[0]
-    if name in mode_pattern_names:
+    if name in mode_pattern_kinds:
       token_fail(path, token, f'duplicate mode name: {name!r}.')
     consume(path, buffer, kind='colon', subj='mode declaration')
-    mode_pattern_names[name] = parse_mode(path, buffer, patterns)
+    mode_pattern_kinds[name] = parse_mode(path, buffer, patterns)
 
 
 def parse_mode(path:str, buffer:Buffer[Token], patterns:Container[str]) -> FrozenSet[str]:

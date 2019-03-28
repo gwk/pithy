@@ -31,11 +31,11 @@ empty_symbol = -1 # not a legitimate byte value.
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, name:str, transitions:NfaTransitions, match_node_names:Dict[int, str], lit_patterns:Set[str]) -> None:
+  def __init__(self, name:str, transitions:NfaTransitions, match_node_kinds:Dict[int, str], lit_patterns:Set[str]) -> None:
     assert name
     self.name = name
     self.transitions = transitions
-    self.match_node_names = match_node_names
+    self.match_node_kinds = match_node_kinds
     self.lit_patterns = lit_patterns
 
 
@@ -69,7 +69,7 @@ class NFA:
   def terminal_nodes(self) -> FrozenSet[int]: return frozenset(n for n in self.all_nodes if not self.transitions.get(n))
 
   @property
-  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.match_node_names.keys())
+  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.match_node_kinds.keys())
 
   @property
   def non_match_nodes(self) -> FrozenSet[int]: return self.all_nodes - self.match_nodes
@@ -104,12 +104,12 @@ class NFA:
 
   def describe(self, label=None) -> None:
     errL(self.name, (label and f': {label}'), ':')
-    errL(' match_node_names:')
-    for node, name in sorted(self.match_node_names.items()):
-      errL(f'  {node}: {name}')
+    errL(' match_node_kinds:')
+    for node, kind in sorted(self.match_node_kinds.items()):
+      errL(f'  {node}: {kind}')
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
-      errL(f'  {src}:{prepend_to_nonempty(" ", self.match_node_names.get(src, ""))}')
+      errL(f'  {src}:{prepend_to_nonempty(" ", self.match_node_kinds.get(src, ""))}')
       dst_bytes:DefaultDict[FrozenSet[int], Set[int]] = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
@@ -121,7 +121,7 @@ class NFA:
 
   def describe_stats(self, label=None) -> None:
     errL(self.name, (label and f': {label}'), ':')
-    errSL('  match nodes:', len(self.match_node_names))
+    errSL('  match nodes:', len(self.match_node_kinds))
     errSL('  nodes:', len(self.transitions))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
@@ -134,9 +134,9 @@ class NFA:
   def validate(self) -> List[str]:
     start = self.advance_empties({0})
     msgs = []
-    for node, name in sorted(self.match_node_names.items()):
+    for node, kind in sorted(self.match_node_kinds.items()):
       if node in start:
-        msgs.append('error: pattern is trivially matched from start: {}.'.format(name))
+        msgs.append(f'error: pattern is trivially matched from start: {kind}.')
     return msgs
 
   def advance(self, state:FrozenSet[int], byte:int) -> NfaState:
@@ -154,7 +154,7 @@ class NFA:
     for byte in text_bytes:
       state = self.advance(state, byte)
       #errL(f'NFA step: {bytes([byte])} -> {state}')
-    s:Iterable[str] = filtermap_with_mapping(state, self.match_node_names)
+    s:Iterable[str] = filtermap_with_mapping(state, self.match_node_kinds)
     all_matches:FrozenSet[str] = frozenset(s)
     literal_matches = frozenset(n for n in all_matches if n in self.lit_patterns)
     return literal_matches or all_matches
@@ -223,15 +223,15 @@ def gen_dfa(nfa:NFA) -> DFA:
     start_dict[c] = invalid_node
     invalid_dict[c] = invalid_node
 
-  # Generate match_node_name_sets.
-  node_names:DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of names.
+  # Generate match_node_kind_sets.
+  node_kinds:DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of kinds.
   for nfa_state, dfa_node in nfa_states_to_dfa_nodes.items():
     for nfa_node in nfa_state:
-      try: name = nfa.match_node_names[nfa_node]
+      try: kind = nfa.match_node_kinds[nfa_node]
       except KeyError: continue
-      node_names[dfa_node].add(name)
-  match_node_name_sets = { node : frozenset(names) for node, names in node_names.items() }
+      node_kinds[dfa_node].add(kind)
+  match_node_kind_sets = { node : frozenset(kinds) for node, kinds in node_kinds.items() }
 
-  return DFA(name=nfa.name, transitions=dict(transitions), match_node_name_sets=match_node_name_sets, lit_patterns=nfa.lit_patterns)
+  return DFA(name=nfa.name, transitions=dict(transitions), match_node_kind_sets=match_node_kind_sets, lit_patterns=nfa.lit_patterns)
 
 

@@ -19,7 +19,7 @@ An automaton consists of two parts:
 * transitions: dictionary of source node to (dictionary of byte to destination).
   * for DFAs, the destination is a single node.
   * for NFAs, the destination is a set of nodes, representing a subset of the next state.
-* match_node_name_sets: dictionary of nodes mapping matching nodes to the set of corresponding pattern names.
+* match_node_kind_sets: dictionary of nodes mapping matching nodes to the set of corresponding pattern names.
 
 For NFAs, the start state is always {0}, and the invalid state is always {1}.
 For DFAs, start_state and invalid_state are the lowest two node indices, and are available as attributes.
@@ -51,12 +51,12 @@ FrozenSetStr0:FrozenSet[str] = frozenset()
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, name:str, transitions:DfaTransitions, match_node_name_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
+  def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
    iso_kinds=FrozenSetStr0, strict_sub_kinds=FrozenSetStr0, strict_sup_kinds=FrozenSetStr0, po_kinds=FrozenSetStr0) -> None:
     assert name
     self.name = name
     self.transitions = transitions
-    self.match_node_name_sets = match_node_name_sets
+    self.match_node_kind_sets = match_node_kind_sets
     self.lit_patterns = lit_patterns
     self.iso_kinds = iso_kinds
     self.strict_sub_kinds = strict_sub_kinds
@@ -95,7 +95,7 @@ class DFA:
   def terminal_nodes(self) -> FrozenSet[int]: return frozenset(n for n in self.all_nodes if not self.transitions.get(n))
 
   @property
-  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.match_node_name_sets.keys())
+  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.match_node_kind_sets.keys())
 
   @property
   def non_match_nodes(self) -> FrozenSet[int]: return self.all_nodes - self.match_nodes
@@ -129,30 +129,30 @@ class DFA:
     return frozenset(nodes)
 
   @property
-  def pattern_names(self) -> FrozenSet[str]: return frozenset().union(*self.match_node_name_sets.values()) # type: ignore
+  def pattern_kinds(self) -> FrozenSet[str]: return frozenset().union(*self.match_node_kind_sets.values()) # type: ignore
 
   def describe(self, label='') -> None:
     errL(self.name, (label and f': {label}'), ':')
     errL(f' start_node:{self.start_node} end_node:{self.end_node}')
-    errL(' match_node_name_sets:')
-    for node, names in sorted(self.match_node_name_sets.items()):
-      errSL(f'  {node}:', *sorted(names))
+    errL(' match_node_kind_sets:')
+    for node, kinds in sorted(self.match_node_kind_sets.items()):
+      errSL(f'  {node}:', *sorted(kinds))
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
-      errSL(f'  {src}:', *sorted(self.match_names(src)))
+      errSL(f'  {src}:', *sorted(self.match_kinds(src)))
       dst_bytes:DefaultDict[int, Set[int]]  = defaultdict(set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
       for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
         byte_ranges = int_tuple_ranges(bytes_list)
-        errSL(f'    {codes_desc(byte_ranges)} ==> {dst}', *sorted(self.match_names(dst)))
+        errSL(f'    {codes_desc(byte_ranges)} ==> {dst}', *sorted(self.match_kinds(dst)))
     errL()
 
   def describe_stats(self, label='') -> None:
     errL(self.name, (label and f': {label}'), ':')
     errSL('  nodes:', len(self.transitions))
-    errSL('  match nodes:', len(self.match_node_name_sets))
+    errSL('  match nodes:', len(self.match_node_kind_sets))
     errSL('  post-match nodes:', len(self.post_match_nodes))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
@@ -169,14 +169,14 @@ class DFA:
     for byte in text_bytes:
       try: state = self.advance(state, byte)
       except KeyError: return frozenset()
-    return self.match_names(state)
+    return self.match_kinds(state)
 
-  def match_names(self, node:int) -> FrozenSet[str]:
-    try: return self.match_node_name_sets[node]
+  def match_kinds(self, node:int) -> FrozenSet[str]:
+    try: return self.match_node_kind_sets[node]
     except KeyError: return frozenset()
 
-  def match_name(self, node:int) -> Optional[str]:
-    try: s = self.match_node_name_sets[node]
+  def match_kind(self, node:int) -> Optional[str]:
+    try: s = self.match_node_kind_sets[node]
     except KeyError: return None
     assert len(s) == 1
     return first_el(s)
@@ -289,30 +289,30 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   # a typical case is a set of literal keywords plus a more general "identifier" pattern.
   # Other intersections are treated as ambiguity errors.
 
-  match_node_names = { mapping[old] : set(names) for old, names in dfa.match_node_name_sets.items() }
+  match_node_kinds = { mapping[old] : set(kinds) for old, kinds in dfa.match_node_kind_sets.items() }
 
-  name_match_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # names to sets of nodes.
-  for node, names in match_node_names.items():
-    for name in names:
-      name_match_nodes[name].add(node)
+  kind_match_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # kinds to sets of nodes.
+  for node, kinds in match_node_kinds.items():
+    for kind in kinds:
+      kind_match_nodes[kind].add(node)
 
   kind_rels:List[Tuple[str,str]] = [] # (subset, superset) kind pairs.
-  for name, nodes in name_match_nodes.items():
+  for kind, nodes in kind_match_nodes.items():
     for node in tuple(nodes):
-      names = match_node_names[node]
-      assert names
-      for other_name in tuple(names):
-        if other_name == name: continue
-        other_nodes = name_match_nodes[other_name]
+      kinds = match_node_kinds[node]
+      assert kinds
+      for other_kind in tuple(kinds):
+        if other_kind == kind: continue
+        other_nodes = kind_match_nodes[other_kind]
         if other_nodes < nodes: # this pattern is a superset of other; it should not match.
-          kind_rels.append((other_name, name))
-          try: names.remove(name)
+          kind_rels.append((other_kind, kind))
+          try: kinds.remove(kind)
           except KeyError: pass # Already removed.
 
   # Check for ambiguous patterns.
-  ambiguous_name_groups = { tuple(sorted(names)) for names in match_node_names.values() if len(names) != 1 }
-  if ambiguous_name_groups:
-    for group in sorted(ambiguous_name_groups):
+  ambiguous_kind_groups = { tuple(sorted(kinds)) for kinds in match_node_kinds.values() if len(kinds) != 1 }
+  if ambiguous_kind_groups:
+    for group in sorted(ambiguous_kind_groups):
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
 
@@ -320,7 +320,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   sub_kinds_set = { r[0] for r in kind_rels }
   sup_kinds_set = { r[1] for r in kind_rels }
 
-  iso_kinds = [n for n in name_match_nodes if (n not in sub_kinds_set and n not in sup_kinds_set)]
+  iso_kinds = [n for n in kind_match_nodes if (n not in sub_kinds_set and n not in sup_kinds_set)]
   strict_sub_kinds = {n for n in sub_kinds_set if n not in sup_kinds_set}
   strict_sup_kinds = {n for n in sup_kinds_set if n not in sub_kinds_set}
 
@@ -331,7 +331,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     assert sub in strict_sub_kinds, sub
     assert sup in strict_sup_kinds, sup
 
-  match_node_name_sets = { node : frozenset(names) for node, names in match_node_names.items() }
+  match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
-  return DFA(name=dfa.name, transitions=transitions, match_node_name_sets=match_node_name_sets, lit_patterns=dfa.lit_patterns,
+  return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets, lit_patterns=dfa.lit_patterns,
     iso_kinds=iso_kinds, strict_sub_kinds=strict_sub_kinds, strict_sup_kinds=strict_sup_kinds, po_kinds=po_kinds)

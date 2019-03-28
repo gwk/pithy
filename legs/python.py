@@ -25,8 +25,8 @@ def output_python(path:str,
 
   for dfa in dfas:
     mode = dfa.name
-    match_node_kinds = { match_node : unwrap(dfa.match_name(match_node)) for match_node in dfa.match_nodes }
-    kinds = { name : py_safe_sym(name) for name in dfa.pattern_names }
+    match_node_kinds = { match_node : unwrap(dfa.match_kind(match_node)) for match_node in dfa.match_nodes }
+    kinds = { kind : py_safe_sym(kind) for kind in dfa.pattern_kinds }
     kinds['incomplete'] = 'incomplete'
     assert len(kinds) == len(set(kinds.values()))
     mode_data[mode] = (dfa.start_node, dfa.transitions, match_node_kinds)
@@ -65,18 +65,18 @@ class ${Name}Lexer(DictLexerBase):
 
 
 
-def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_names:Dict[str,FrozenSet[str]],
+def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_kinds:Dict[str,FrozenSet[str]],
   dfas:List[DFA], mode_transitions:ModeTransitions,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   flavor = 'py.re'
 
   mode_patterns_code:List[str] = []
-  for mode, pattern_names in mode_pattern_names.items():
+  for mode, pattern_kinds in mode_pattern_kinds.items():
     kind_patterns:List[str] = []
-    for name in sorted(pattern_names):
-      pattern = patterns[name]
-      kind_patterns.append(f'(?P<{name}> {pattern.gen_regex(flavor=flavor)} )\n')
+    for kind in sorted(pattern_kinds):
+      pattern = patterns[kind]
+      kind_patterns.append(f'(?P<{kind}> {pattern.gen_regex(flavor=flavor)} )\n')
     choices = '| '.join(kind_patterns)
     re_text = f'(?x)\n  {choices}'
     code = f"    {mode!r} : _re_compile(br'''{re_text}''')"
