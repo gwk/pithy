@@ -248,11 +248,15 @@ class Charset(LegsPattern):
 
   def gen_regex(self, flavor:str) -> str:
     ranges = self.ranges
+    if flavor.endswith('.bytes') and any(r[1] >= 0x80 for r in ranges):
+      # Some code points exceed ASCII range; need to encode char-by-char.
+      s = '|'.join(''.join(regex_for_code(byte, flavor) for byte in chr(code).encode()) for r in ranges for code in r)
+      return f'(?:{s})'
     if len(ranges) == 1:
       r = ranges[0]
       if r[0] + 1 == r[1]: # single character.
-        return pattern_for_code(r[0], flavor)
-    p = ''.join(pattern_for_code_range(r, flavor) for r in ranges)
+        return regex_for_code(r[0], flavor)
+    p = ''.join(regex_for_code_range(r, flavor) for r in ranges)
     return f'[{p}]'
 
   @property
@@ -278,7 +282,7 @@ class Charset(LegsPattern):
 
 
 
-def pattern_for_code(code:int, flavor:str) -> str:
+def regex_for_code(code:int, flavor:str) -> str:
   if 0x30 <= code <= 0x39 or 0x41 <= code <= 0x5A or 0x61 <= code <= 0x7A or code == 0x5F:
     return chr(code) # ASCII alphanumeric or underscore.
   if code < 0x100: return f'\\x{code:02x}'
@@ -286,10 +290,12 @@ def pattern_for_code(code:int, flavor:str) -> str:
   return f'\\U{code:08x}'
 
 
-def pattern_for_code_range(code_range:CodeRange, flavor:str) -> str:
-  s, e = code_range
-  if s + 1 == e: return pattern_for_code(s, flavor)
-  return f'{pattern_for_code(s, flavor)}-{pattern_for_code(e - 1, flavor)}'
+def regex_for_code_range(code_range:CodeRange, flavor:str) -> str:
+  start, end = code_range
+  last = end - 1
+  if start == last: return regex_for_code(start, flavor)
+  return f'{regex_for_code(start, flavor)}-{regex_for_code(last, flavor)}'
+
 
 empty_choice = Choice()
 empty_seq = Seq()

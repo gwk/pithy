@@ -69,7 +69,7 @@ def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_kind
   dfas:List[DFA], mode_transitions:ModeTransitions,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
-  flavor = 'py.re'
+  flavor = 'py.re.bytes'
 
   mode_patterns_code:List[str] = []
   for dfa in dfas:
