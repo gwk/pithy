@@ -151,8 +151,9 @@ class DFA:
 
   def describe_stats(self, label='') -> None:
     errL(self.name, (label and f': {label}'), ':')
-    errSL('  match nodes:', len(self.match_node_name_sets))
     errSL('  nodes:', len(self.transitions))
+    errSL('  match nodes:', len(self.match_node_name_sets))
+    errSL('  post-match nodes:', len(self.post_match_nodes))
     errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
     errL()
 
