@@ -163,8 +163,7 @@ def main() -> None:
 
   if 'python' in langs:
     path = out_stem + '.py'
-    output_python(path, patterns=patterns, mode_pattern_names=mode_pattern_names,
-      dfas=dfas, mode_transitions=mode_transitions,
+    output_python(path, dfas=dfas, mode_transitions=mode_transitions,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 

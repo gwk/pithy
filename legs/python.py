@@ -17,7 +17,7 @@ from .dfa import DFA
 from .patterns import LegsPattern
 
 
-def output_python(path:str, patterns:Dict[str,LegsPattern], mode_pattern_names:Dict[str,FrozenSet[str]],
+def output_python(path:str,
   dfas:List[DFA], mode_transitions:ModeTransitions,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
@@ -30,14 +30,6 @@ def output_python(path:str, patterns:Dict[str,LegsPattern], mode_pattern_names:D
     kinds['incomplete'] = 'incomplete'
     assert len(kinds) == len(set(kinds.values()))
     mode_data[mode] = (dfa.start_node, dfa.transitions, match_node_kinds)
-
-  for mode, pattern_names in mode_pattern_names.items():
-    kind_patterns:List[str] = []
-    for name in sorted(pattern_names):
-      pattern = patterns[name]
-    choices = '| '.join(kind_patterns)
-    re_text = f'(?x)\n  {choices}'
-    code = f"    {mode!r} : _re_compile(br'''{re_text}''')"
 
   with open(path, 'w', encoding='utf8') as f:
     src = render_template(template,
