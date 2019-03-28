@@ -284,8 +284,9 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   transitions = dict(transitions_dd)
 
   # Nodes may match more than one pattern when the patterns overlap.
-  # If the set of match nodes for a pattern is a superset of another pattern, ignore it;
-  # otherwise intersections are treated as ambiguity errors.
+  # If the set of match nodes for one pattern is a superset of another pattern, only match the subset pattern;
+  # a typical case is a set of literal keywords plus a more general "identifier" pattern.
+  # Other intersections are treated as ambiguity errors.
 
   match_node_names = { mapping[old] : set(names) for old, names in dfa.match_node_name_sets.items() }
 
@@ -307,8 +308,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
           try: names.remove(name)
           except KeyError: pass # Already removed.
 
-
-  # check for ambiguous patterns.
+  # Check for ambiguous patterns.
   ambiguous_name_groups = { tuple(sorted(names)) for names in match_node_names.values() if len(names) != 1 }
   if ambiguous_name_groups:
     for group in sorted(ambiguous_name_groups):
