@@ -72,10 +72,14 @@ def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_kind
   flavor = 'py.re'
 
   mode_patterns_code:List[str] = []
-  for mode, pattern_kinds in mode_pattern_kinds.items():
+  for dfa in dfas:
+    mode = dfa.name
     kind_patterns:List[str] = []
-    for kind in sorted(pattern_kinds):
-      pattern = patterns[kind]
+    for kind in dfa.kinds_greedy_ordered:
+      try: pattern = patterns[kind]
+      except KeyError as e:
+        assert e.args[0] == 'invalid'
+        continue
       kind_patterns.append(f'(?P<{kind}> {pattern.gen_regex(flavor=flavor)} )\n')
     choices = '| '.join(kind_patterns)
     re_text = f'(?x)\n  {choices}'

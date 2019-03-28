@@ -35,6 +35,7 @@ from collections import defaultdict
 from itertools import chain
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
+from pithy.graph import visit_nodes
 from pithy.io import errL, errSL
 from pithy.iterable import first_el, int_tuple_ranges
 from pithy.string import prepend_to_nonempty
@@ -48,20 +49,18 @@ DfaTransitions = Dict[int, DfaStateTransitions]
 
 FrozenSetStr0:FrozenSet[str] = frozenset()
 
+
 class DFA:
   'Deterministic Finite Automaton.'
 
   def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
-   iso_kinds=FrozenSetStr0, strict_sub_kinds=FrozenSetStr0, strict_sup_kinds=FrozenSetStr0, po_kinds=FrozenSetStr0) -> None:
+   kinds_greedy_ordered=Tuple[str,...]) -> None:
     assert name
     self.name = name
     self.transitions = transitions
     self.match_node_kind_sets = match_node_kind_sets
     self.lit_patterns = lit_patterns
-    self.iso_kinds = iso_kinds
-    self.strict_sub_kinds = strict_sub_kinds
-    self.strict_sup_kinds = strict_sup_kinds
-    self.po_kinds = po_kinds
+    self.kinds_greedy_ordered = kinds_greedy_ordered # The ordering necessary for greedy regex choices to match correctly.
     self.start_node = min(transitions)
     self.invalid_node = self.start_node + 1
     self.end_node = max(transitions) + 1
@@ -296,7 +295,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     for kind in kinds:
       kind_match_nodes[kind].add(node)
 
-  kind_rels:List[Tuple[str,str]] = [] # (subset, superset) kind pairs.
+  kind_rels:DefaultDict[str,Set[str]] = defaultdict(set)
+  #^ For each kind, the set of nodes that must precede this node in generated regex choices.
   for kind, nodes in kind_match_nodes.items():
     for node in tuple(nodes):
       kinds = match_node_kinds[node]
@@ -304,8 +304,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       for other_kind in tuple(kinds):
         if other_kind == kind: continue
         other_nodes = kind_match_nodes[other_kind]
-        if other_nodes < nodes: # this pattern is a superset of other; it should not match.
-          kind_rels.append((other_kind, kind))
+        if other_nodes < nodes: # This pattern is a superset; it should not match.
+          kind_rels[kind].add(other_kind) # Other pattern is more specific, must be tried first.
           try: kinds.remove(kind)
           except KeyError: pass # Already removed.
 
@@ -316,22 +316,34 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
 
-  # Determine a satisfactory ordering of kinds.
-  sub_kinds_set = { r[0] for r in kind_rels }
-  sup_kinds_set = { r[1] for r in kind_rels }
+  # Determine a satisfactory ordering of kinds for generated greedy regex choices.
+  # `kind_rels` is currently half complete: it will prefer more specific patterns over less specific ones.
+  # However it must also prefer longer patterns over shorter ones.
+  # This is probably still not adequate for some cases.
+  for kind, nodes in kind_match_nodes.items():
+    reachable_nodes = visit_nodes(start_nodes=nodes, visitor=lambda node:transitions[node].values())
+    reachable_kinds = set()
+    for node in reachable_nodes:
+      try: node_kinds = match_node_kinds[node]
+      except KeyError: continue
+      reachable_kinds.update(node_kinds)
+    reachable_kinds.discard(kind)
+    kind_rels[kind].update(reachable_kinds) # Reachable kinds must precede this kind.
 
-  iso_kinds = [n for n in kind_match_nodes if (n not in sub_kinds_set and n not in sup_kinds_set)]
-  strict_sub_kinds = {n for n in sub_kinds_set if n not in sup_kinds_set}
-  strict_sup_kinds = {n for n in sup_kinds_set if n not in sub_kinds_set}
+  ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_rels.items())
+  unorderable_pairs:List[Tuple[str,str]] = []
+  for supers, kind in ordered_kinds:
+    for sup in supers:
+      if kind < sup and kind in kind_rels[sup]:
+        unorderable_pairs.append((kind, sup))
 
-  po_kinds:List[str] = [] # Partially ordered kinds.
-  while kind_rels:
-    sub, sup = kind_rels.pop()
-    # HACK: For now, just assume we don't get any complex partially ordered kinds.
-    assert sub in strict_sub_kinds, sub
-    assert sup in strict_sup_kinds, sup
+  if unorderable_pairs:
+    errL(f'note: `{dfa.name}`: minimized DFA contains patterns that cannot be correctly ordered for greedy regex choice: ',
+      ', '.join(str(p) for p in unorderable_pairs), '.')
+
+  kinds_greedy_ordered = tuple(kind for _, kind in ordered_kinds)
 
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
-  return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets, lit_patterns=dfa.lit_patterns,
-    iso_kinds=iso_kinds, strict_sub_kinds=strict_sub_kinds, strict_sup_kinds=strict_sup_kinds, po_kinds=po_kinds)
+  return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
+    lit_patterns=dfa.lit_patterns, kinds_greedy_ordered=kinds_greedy_ordered)

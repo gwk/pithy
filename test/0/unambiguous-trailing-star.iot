@@ -1,3 +1,4 @@
 {
     'cmd': 'legs $STEM.legs',
+    'code': 0,
 }
