@@ -148,10 +148,15 @@ def main() -> None:
   pattern_descs['invalid'] = 'invalid'
   pattern_descs['incomplete'] = 'incomplete'
 
-  test_cmds:List[List[str]] = []
+  if not (langs or args.test): # Print and exit.
+    for name, pattern in patterns.items():
+      pattern.describe(name=name)
+    exit(0)
 
   out_path = args.output or args.path
   if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
+
+  test_cmds:List[List[str]] = []
 
   out_dir, out_name = split_dir_name(out_path)
   if not out_name:

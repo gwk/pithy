@@ -1,1 +1,10 @@
 note: `main`: minimized DFA contains patterns that cannot be correctly ordered for greedy regex choice: ('r', 's').
+r Seq:
+  Plus:
+    Charset: a
+  Star:
+    Charset: b
+s Seq:
+  Charset: a
+  Star:
+    Charset: b
