@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, Optional, Sequence, Set, Tuple, cast
+from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, cast
 
 from pithy.io import errL, errSL
 from pithy.types import is_pair_of_int
@@ -59,6 +59,8 @@ class LegsPattern:
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
 
+  def gen_incomplete(self) -> Optional['LegsPattern']: raise NotImplementedError(self)
+
 
 class StructPattern(LegsPattern):
 
@@ -76,9 +78,9 @@ class Choice(StructPattern):
 
   precedence = 1
 
-  def __init__(self, hd:LegsPattern, tl:LegsPattern) -> None:
+  def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern) -> None:
     self.hd = hd
-    self.tl = tl
+    self.tl = Choice(tl, *rem) if rem else tl
 
   def __iter__(self) -> Iterator[LegsPattern]:
     link:LegsPattern = self
@@ -95,13 +97,28 @@ class Choice(StructPattern):
     sub_patterns = [sub.gen_regex_sub(flavor=flavor, precedence=self.precedence) for sub in self]
     return '|'.join(sub_patterns)
 
+  def gen_incomplete(self) -> Optional[LegsPattern]:
+    hd = self.hd.gen_incomplete()
+    tl = self.tl.gen_incomplete()
+    if not tl: return hd
+    if not hd: return tl
+    return Choice(hd, tl)
+
+  @staticmethod
+  def from_opts(subs:Iterable[Optional[LegsPattern]]) -> Optional[LegsPattern]:
+    l = [s for s in subs if s]
+    if not l: return None
+    if len(l) == 1: return l[0]
+    return Choice(*l)
+
 
 class Seq(StructPattern):
 
   precedence = 2
 
-  def __init__(self, *els:LegsPattern) -> None:
-    self.els = els
+  def __init__(self, els:Iterable[LegsPattern]) -> None:
+    self.els = tuple(els)
+    if len(self.els) < 2: raise ValueError(els)
 
   def __iter__(self) -> Iterator[LegsPattern]:
     return iter(self.els)
@@ -118,6 +135,20 @@ class Seq(StructPattern):
     sub_patterns = [sub.gen_regex_sub(flavor=flavor, precedence=self.precedence) for sub in self]
     return ''.join(sub_patterns)
 
+  def gen_incomplete(self) -> Optional[LegsPattern]:
+    els = self.els
+    incs:List[LegsPattern] = []
+    for i in range(len(els)):
+      inc_els = list(els[:i])
+      inc_tail = els[i].gen_incomplete()
+      if inc_tail is not None:
+        inc_els.append(inc_tail)
+      inc = Seq.from_opts(inc_els)
+      if inc: incs.append(inc)
+    # TODO: any non-tail element in the sequence must be expanded out.
+    # Reverse so that the most complete match is preferred.
+    return Choice.from_opts(reversed(incs))
+
   @property
   def is_literal(self): return all(sub.is_literal for sub in self)
 
@@ -125,14 +156,15 @@ class Seq(StructPattern):
   def literal_pattern(self): return ''.join(sub.literal_pattern for sub in self)
 
   @staticmethod
-  def of(*subs:LegsPattern) -> LegsPattern:
-    for sub in subs:
-      assert isinstance(sub, LegsPattern), sub
-    return subs[0] if len(subs) == 1 else Seq(*subs)
+  def from_list(els:List[LegsPattern]) -> LegsPattern:
+    if len(els) == 1: return els[0]
+    return Seq(els)
 
   @staticmethod
-  def of_iter(subs:Iterable[LegsPattern]) -> LegsPattern:
-    return Seq.of(*subs)
+  def from_opts(els:Iterable[Optional[LegsPattern]]) -> Optional[LegsPattern]:
+    l = list(filter(None, els))
+    if not l: return None
+    return Seq.from_list(l)
 
 
 class QuantityPattern(StructPattern):
@@ -159,6 +191,9 @@ class Opt(QuantityPattern):
     transitions[start][empty_symbol].add(end)
     self.sub.gen_nfa(mk_node, transitions, start, end)
 
+  def gen_incomplete(self) -> Optional[LegsPattern]:
+    return self.sub.gen_incomplete()
+
 
 class Star(QuantityPattern):
 
@@ -170,10 +205,10 @@ class Star(QuantityPattern):
     transitions[branch][empty_symbol].add(end)
     self.sub.gen_nfa(mk_node, transitions, branch, branch)
 
-  @staticmethod
-  def of(pattern:LegsPattern) -> LegsPattern:
-    if isinstance(pattern, (Plus, Star)): return pattern
-    return Star(pattern)
+  def gen_incomplete(self) -> Optional[LegsPattern]:
+    sub_inc = self.sub.gen_incomplete()
+    if sub_inc is None: return None
+    return Seq.from_opts((self, sub_inc))
 
 
 class Plus(QuantityPattern):
@@ -187,6 +222,9 @@ class Plus(QuantityPattern):
     transitions[post][empty_symbol].add(end)
     transitions[post][empty_symbol].add(pre)
     self.sub.gen_nfa(mk_node, transitions, pre, post)
+
+  def gen_incomplete(self) -> Optional[LegsPattern]:
+    return Star(self.sub).gen_incomplete()
 
 
 class Charset(LegsPattern):
@@ -226,6 +264,11 @@ class Charset(LegsPattern):
       s = '|'.join(''.join(regex_for_code(byte, flavor) for byte in chr(code).encode()) for r in ranges for code in r)
       return f'(?:{s})'
     return regex_for_code_ranges(ranges, flavor)
+
+
+  def gen_incomplete(self) -> Optional[LegsPattern]:
+    return None
+
 
   @property
   def is_literal(self) -> bool:
@@ -273,3 +316,12 @@ def regex_for_code_ranges(ranges:Sequence[CodeRange], flavor:str) -> str:
 
 def regex_for_codes(codes:Iterable[int], flavor:str) -> str:
   return regex_for_code_ranges(tuple(ranges_for_codes(codes)), flavor)
+
+
+def gen_incomplete_pattern(kinds_greedy_ordered:List[str], patterns:Dict[str,LegsPattern]) -> Optional[LegsPattern]:
+  incompletes:List[LegsPattern] = []
+  for kind in kinds_greedy_ordered:
+    pattern = patterns[kind]
+    incomplete = pattern.gen_incomplete()
+    if incomplete: incompletes.append(incomplete)
+  return Choice.from_opts(incompletes)

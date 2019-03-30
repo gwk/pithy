@@ -271,6 +271,7 @@ class RegexLexerBase(LexerBase):
     # whereas this approach emits the shortest possible incomplete token.
     # It is also inefficient.
     m = pattern.search(text, pos)
+    assert m is not None
     if not m: # Emit an incomplete token to end.
       self.pos = len_text
       return Token(pos=pos, end=len_text, kind='incomplete')
@@ -280,6 +281,7 @@ class RegexLexerBase(LexerBase):
       return Token(pos=pos, end=start, kind='incomplete')
     end = m.end()
     kind = m.lastgroup
+    assert pos < end, (kind, m)
     self.pos = end # Advance lexer state.
     # Check for mode transition.
     if kind == pop_kind:

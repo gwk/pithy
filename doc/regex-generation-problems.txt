@@ -1,0 +1,27 @@
+Existing problems with the incomplete match pattern generator:
+
+# Greedy ordering is not sufficient. I think that currently, the generated regex will match `keyword` in the string "keywordx" which is no good. However it may be that the vscode engine accommodates this by trying multiple regexes.
+
+# Inner Choice Ordering
+Currently we use the greedy ordering generated from the mode DFA. this is not sufficient: we need to order every choice within each subpattern or else it may not behave correctly.
+
+I think I might be able to solve problem #2 by generating a DFA for each choice and calculating the ordering immediately, but it still does not fix the problem above.
+
+There may be some optimizations to be done on the generated incomplete regexes: deduplication and dropping meaningless tail terms.
+
+
+Approach:
+
+Pattern gains a sort() method. This recursively calls sort. The override for Choice calls super(), then generates a DFA for itself, calculates the greedy ordering for the choice elements, and sorts them to place subsets first. The rules that are subsets (e.g. more specific keywords) then get an extra lookahead property, which is a negative lookahead pattern that is sufficient to discriminate from all supersets, e.g. `keyword` to `keyword(?!\w)`.
+
+The lookahead calculation is not easy. it seems like the patterns first need to be expanded out, in the same way that we do for the incomplete matches, so that we can distinguish between various final states. In particular, we need to be able to map each match state of the DFA back to a particular branch of the Pattern. By doing so, we can then modify the branch with the appropriate lookahead for the match state.
+
+Given a branch and a match state, take all of the transitions out of the match state.
+for each transition:
+* to the same match state, drop it. or add it, it shouldn't matter.
+* to a match state that is not in this rule's set of match states, then add this transition char to the neg-lookahead charset.
+* to a match state that is in this rule's set of match states, then also add it to neg-lookaheads, because this branch would be preventing shortcutting a longer match for a later branch of this rule.
+* to a post-match state, then we need to add to the neg-lookahead all possible complete transitions out.
+
+A "complete transition" out is the expansion of each post-match transition path to a match state.
+

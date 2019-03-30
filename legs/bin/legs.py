@@ -4,19 +4,19 @@
 from argparse import ArgumentParser, Namespace
 from collections import defaultdict
 from itertools import chain, count
-from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set, Tuple
+from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
 from pithy.dict import dict_put
-from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
+from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.string import pluralize
 
 from ..defs import ModeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
 from ..nfa import NFA, NfaTransitions, gen_dfa
 from ..parse import parse_legs
-from ..patterns import NfaMutableTransitions, LegsPattern
+from ..patterns import LegsPattern, NfaMutableTransitions, gen_incomplete_pattern
 from ..python import output_python, output_python_re
 from ..swift import output_swift
 from ..vscode import output_vscode
@@ -145,12 +145,17 @@ def main() -> None:
   if args.match: exit(f'bad mode: {match_mode!r}')
 
   pattern_descs = { name : pattern.literal_desc or name for name, pattern in patterns.items() }
-  pattern_descs['invalid'] = 'invalid'
-  pattern_descs['incomplete'] = 'incomplete'
+  pattern_descs.update((n, n) for n in ['invalid', 'incomplete'])
+
+  incomplete_patterns:Dict[str,Optional[LegsPattern]] = {
+    dfa.name : gen_incomplete_pattern(dfa.kinds_greedy_ordered, patterns) for dfa in dfas }
 
   if not (langs or args.test): # Print and exit.
     for name, pattern in patterns.items():
       pattern.describe(name=name)
+    for name, inc_pattern in incomplete_patterns.items():
+      if inc_pattern:
+        inc_pattern.describe(name=f'{name}.incomplete')
     exit(0)
 
   out_path = args.output or args.path
@@ -174,8 +179,8 @@ def main() -> None:
 
   if 'python-re' in langs:
     path = out_stem + '.re.py'
-    output_python_re(path, patterns=patterns, mode_pattern_kinds=mode_pattern_kinds,
-      dfas=dfas, mode_transitions=mode_transitions,
+    output_python_re(path, dfas=dfas, mode_transitions=mode_transitions,
+      patterns=patterns, incomplete_patterns=incomplete_patterns,
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['python3', path] + args.test)
 

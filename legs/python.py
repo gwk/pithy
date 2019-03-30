@@ -4,21 +4,20 @@ import re
 from argparse import Namespace
 from collections import defaultdict
 from pprint import pformat
-from typing import Dict, FrozenSet, List, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
+from legs_base import ModeTransitions
 from pithy.fs import add_file_execute_permissions
 from pithy.io import *
 from pithy.optional import unwrap
 from pithy.string import render_template
 
-from legs_base import ModeTransitions
-from .defs import ModeTransitions, StateTransitions, MatchStateKinds, ModeData
+from .defs import MatchStateKinds, ModeData, ModeTransitions, StateTransitions
 from .dfa import DFA
-from .patterns import LegsPattern, regex_for_codes
+from .patterns import Choice, LegsPattern, regex_for_codes
 
 
-def output_python(path:str,
-  dfas:List[DFA], mode_transitions:ModeTransitions,
+def output_python(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   mode_data:Dict[str,ModeData] = {}
@@ -65,8 +64,8 @@ class ${Name}Lexer(DictLexerBase):
 
 
 
-def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_kinds:Dict[str,FrozenSet[str]],
-  dfas:List[DFA], mode_transitions:ModeTransitions,
+def output_python_re(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
+  patterns:Dict[str,LegsPattern], incomplete_patterns:Dict[str,Optional[LegsPattern]],
   pattern_descs:Dict[str, str], license:str, args:Namespace):
 
   flavor = 'py.re.bytes'
@@ -75,18 +74,26 @@ def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_kind
   for dfa in dfas:
     mode = dfa.name
     regexes:List[str] = []
+    incompletes:List[LegsPattern] = []
+
     for kind in dfa.kinds_greedy_ordered:
-      try: pattern = patterns[kind]
-      except KeyError:
-        assert kind == 'invalid'
-        regex = regex_for_codes(dfa.transitions[dfa.invalid_node], flavor) + '+'
-      else:
-        regex = pattern.gen_regex(flavor=flavor)
+      pattern = patterns[kind]
+      regex = pattern.gen_regex(flavor=flavor)
       regexes.append(f'(?P<{kind}> {regex} )\n')
+
+    invalid_regex = regex_for_codes(dfa.transitions[dfa.invalid_node], flavor) + '+'
+    regexes.append(f'(?P<invalid> {invalid_regex} )\n')
+
+    incomplete_pattern = incomplete_patterns[mode]
+    if incomplete_pattern:
+      incomplete_regex = incomplete_pattern.gen_regex(flavor=flavor)
+      regexes.append(f'(?P<incomplete> {incomplete_regex} )\n')
+
     choices = '| '.join(regexes)
     re_text = f'(?x)\n  {choices}'
     code = f"    {mode!r} : _re_compile(br'''{re_text}''')"
     mode_patterns_code.append(code)
+
   mode_patterns_body = ",\n    ".join(mode_patterns_code)
   mode_patterns_repr = f'{{\n{mode_patterns_body}\n}}'
 

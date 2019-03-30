@@ -173,13 +173,13 @@ def parse_pattern(path:str, sym_token:Token, buffer:Buffer[Token]) -> LegsPatter
       return parse_pattern_pattern(path, buffer, terminator='newline')
   # literal symbol pattern.
   text = sym_token[0]
-  return Seq.of_iter(Charset.for_char(c) for c in text)
+  return Seq.from_list([Charset.for_char(c) for c in text])
 
 
 def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> LegsPattern:
   'Parse a pattern and return a LegsPattern object.'
   els:List[LegsPattern] = []
-  def finish() -> LegsPattern: return Seq.of_iter(els)
+  def finish() -> LegsPattern: return Seq.from_list(els)
   for token in buffer:
     kind = token.lastgroup
     def _fail(msg) -> 'NoReturn': token_fail(path, token, msg)

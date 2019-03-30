@@ -321,6 +321,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   # However it must also prefer longer patterns over shorter ones.
   # This is probably still not adequate for some cases.
   for kind, nodes in kind_match_nodes.items():
+    if kind == 'invalid': continue # Omit invalid entirely; it is handled separately.
     reachable_nodes = visit_nodes(start_nodes=nodes, visitor=lambda node:transitions[node].values())
     reachable_kinds = set()
     for node in reachable_nodes:
@@ -330,9 +331,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     reachable_kinds.discard(kind)
     kind_rels[kind].update(reachable_kinds) # Reachable kinds must precede this kind.
 
-  invalid_rel = kind_rels['invalid']
-  assert not invalid_rel
-  invalid_rel.add('~') # Hack to make `invalid` last.
+  assert not kind_rels.get('invalid')
   ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_rels.items())
   unorderable_pairs:List[Tuple[str,str]] = []
   for supers, kind in ordered_kinds:

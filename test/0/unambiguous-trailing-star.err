@@ -8,3 +8,7 @@ s Seq:
   Charset: a
   Star:
     Charset: b
+main.incomplete Choice:
+  Charset: a
+  Plus:
+    Charset: a
