@@ -183,7 +183,7 @@ def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Leg
   for token in buffer:
     kind = token.lastgroup
     def _fail(msg) -> 'NoReturn': token_fail(path, token, msg)
-    def quantity(pattern_type:Type[LegsPattern]) -> None:
+    def quantity(pattern_type:Type[QuantityPattern]) -> None:
       if not els: _fail('quantity operator must be preceded by a pattern.')
       els[-1] = pattern_type(els[-1])
     if kind == terminator: return finish()

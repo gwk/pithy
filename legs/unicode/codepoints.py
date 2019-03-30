@@ -10,7 +10,7 @@ __all__ = [
 
 
 def codes_desc(code_ranges:Iterable[CodeRange]) -> str:
-  return ' '.join(codes_range_desc(*p) for p in code_ranges)
+  return ' '.join(codes_range_desc(*p) for p in code_ranges) or 'Ø'
 
 def codes_range_desc(l:int, h:int) -> str:
   if l + 1 == h: return code_desc(l)

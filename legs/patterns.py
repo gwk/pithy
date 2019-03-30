@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Optional, Sequence, Set, cast
+from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, Optional, Sequence, Set, Tuple, cast
 
 from pithy.io import errL, errSL
 from pithy.types import is_pair_of_int
@@ -17,11 +17,9 @@ __all__ = [
   'NfaMutableTransitions',
   'Opt',
   'Plus',
-  'Quantity',
+  'QuantityPattern',
   'Seq',
   'Star',
-  'empty_choice',
-  'empty_seq',
   'regex_for_codes',
 ]
 
@@ -31,20 +29,11 @@ MkNode = Callable[[], int]
 NfaMutableTransitions = DefaultDict[int, DefaultDict[int, Set[int]]]
 
 
-class LegsPattern(tuple):
+class LegsPattern:
 
   precedence:int = -1
 
-  def __repr__(self) -> str: return f'{type(self).__name__}{super().__repr__()}'
-
-  def describe(self, name:Optional[str], depth=0) -> None:
-    n = name + ' ' if name else ''
-    errL('  ' * depth, n, type(self).__name__, ':', self.inline_description)
-    for sub in self:
-      sub.describe(name=None, depth=depth+1)
-
-  @property
-  def inline_description(self) -> str: return '' if self else ' Ø'
+  def describe(self, name:Optional[str], depth=0) -> None: raise NotImplementedError
 
   @property
   def is_literal(self) -> bool: return False
@@ -70,31 +59,33 @@ class LegsPattern(tuple):
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
 
-  def __or__(self, r: 'LegsPattern') -> 'LegsPattern':
-    tl = type(self)
-    tr = type(r)
-    if tl.precedence > tr.precedence: return r | self
-    if tl is Choice:
-      if tr is Choice: return Choice(*self, *r)
-      return Choice(*self, r)
-    return Choice(self, r)
 
-  def __lt__(self, r:Any) -> bool:
-    if not isinstance(r, LegsPattern): return NotImplemented
-    return self.precedence < r.precedence or self.precedence == r.precedence and tuple.__lt__(self, r)
+class StructPattern(LegsPattern):
+
+  def __iter__(self) -> Iterator[LegsPattern]: raise NotImplementedError
+
+  def describe(self, name:Optional[str], depth=0) -> None:
+    n = name + ' ' if name else ''
+    subs = tuple(self)
+    errL('  ' * depth, n, type(self).__name__, ':', '' if subs else ' Ø')
+    for sub in self:
+      sub.describe(name=None, depth=depth+1)
 
 
-class Choice(LegsPattern):
+class Choice(StructPattern):
 
   precedence = 1
 
-  def __init__(cls, *subs:LegsPattern) -> None: pass # for mypy only.
+  def __init__(self, hd:LegsPattern, tl:LegsPattern) -> None:
+    self.hd = hd
+    self.tl = tl
 
-  def __new__(cls, *subs:LegsPattern):
-    for sub in subs:
-      if not isinstance(sub, LegsPattern):
-        raise ValueError(f'{cls.__name__} received non-LegsPattern sub: {sub}')
-    return tuple.__new__(cls, sorted(set(subs)))
+  def __iter__(self) -> Iterator[LegsPattern]:
+    link:LegsPattern = self
+    while isinstance(link, Choice):
+      yield link.hd
+      link = link.tl
+    yield link
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     for sub in self:
@@ -105,24 +96,22 @@ class Choice(LegsPattern):
     return '|'.join(sub_patterns)
 
 
-class Seq(LegsPattern):
+class Seq(StructPattern):
 
   precedence = 2
 
-  def __init__(cls, *subs:LegsPattern) -> None: pass # for mypy only.
+  def __init__(self, *els:LegsPattern) -> None:
+    self.els = els
 
-  def __new__(cls, *subs:LegsPattern):
-    for sub in subs:
-      if not isinstance(sub, LegsPattern):
-        raise ValueError(f'{cls.__name__} received non-LegsPattern sub: {sub}')
-    return tuple.__new__(cls, subs)
+  def __iter__(self) -> Iterator[LegsPattern]:
+    return iter(self.els)
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     if not self:
       transitions[start][empty_symbol].add(end)
       return
-    intermediates = [mk_node() for i in range(1, len(self))]
-    for sub, src, dst in zip(self, [start] + intermediates, intermediates + [end]):
+    intermediates = [mk_node() for i in range(1, len(self.els))]
+    for sub, src, dst in zip(self.els, [start] + intermediates, intermediates + [end]):
       sub.gen_nfa(mk_node, transitions, src, dst)
 
   def gen_regex(self, flavor:str) -> str:
@@ -146,35 +135,32 @@ class Seq(LegsPattern):
     return Seq.of(*subs)
 
 
-class Quantity(LegsPattern):
+class QuantityPattern(StructPattern):
 
   precedence = 3
   operator:str = ''
 
-  def __init__(cls, sub:LegsPattern) -> None: pass # for mypy only.
+  def __init__(self, sub:LegsPattern) -> None:
+    self.sub = sub
 
-  def __new__(cls, *subs):
-    if len(subs) != 1:
-      raise ValueError(f'{cls.__name__} expcets single sub; received: {subs}')
-    if not isinstance(subs[0], LegsPattern):
-      raise ValueError(f'{cls.__name__} received non-LegsPattern sub: {subs[0]}')
-    return tuple.__new__(cls, subs)
+  def __iter__(self) -> Iterator[LegsPattern]:
+    yield self.sub
 
   def gen_regex(self, flavor:str) -> str:
-    sub_pattern = self[0].gen_regex_sub(flavor=flavor, precedence=self.precedence)
-    return sub_pattern + self.operator # type: ignore
+    sub_pattern = self.sub.gen_regex_sub(flavor=flavor, precedence=self.precedence)
+    return sub_pattern + self.operator
 
 
-class Opt(Quantity):
+class Opt(QuantityPattern):
 
   operator = '?'
 
   def gen_nfa(self, mk_node, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     transitions[start][empty_symbol].add(end)
-    self[0].gen_nfa(mk_node, transitions, start, end)
+    self.sub.gen_nfa(mk_node, transitions, start, end)
 
 
-class Star(Quantity):
+class Star(QuantityPattern):
 
   operator = '*'
 
@@ -182,7 +168,7 @@ class Star(Quantity):
     branch = mk_node()
     transitions[start][empty_symbol].add(branch)
     transitions[branch][empty_symbol].add(end)
-    self[0].gen_nfa(mk_node, transitions, branch, branch)
+    self.sub.gen_nfa(mk_node, transitions, branch, branch)
 
   @staticmethod
   def of(pattern:LegsPattern) -> LegsPattern:
@@ -190,7 +176,7 @@ class Star(Quantity):
     return Star(pattern)
 
 
-class Plus(Quantity):
+class Plus(QuantityPattern):
 
   operator = '+'
 
@@ -200,33 +186,19 @@ class Plus(Quantity):
     transitions[start][empty_symbol].add(pre)
     transitions[post][empty_symbol].add(end)
     transitions[post][empty_symbol].add(pre)
-    self[0].gen_nfa(mk_node, transitions, pre, post)
+    self.sub.gen_nfa(mk_node, transitions, pre, post)
 
 
 class Charset(LegsPattern):
 
   precedence = 4
 
-  def __new__(cls, ranges):
-    for r in ranges:
-      if not isinstance(r, tuple):
-        raise ValueError(f'{cls.__name__} received non-tuple range: {r}')
-    return tuple.__new__(cls, ranges)
-
-
-  def __init__(self, ranges:CodeRanges) -> None:
-    super().__init__()
-    assert isinstance(ranges, tuple)
-    assert all(is_pair_of_int(p) for p in ranges)
-    assert ranges
-    self.ranges = ranges
-
-  def __repr__(self) -> str: return f'{type(self).__name__}({self.inline_description})'
-
+  def __init__(self, ranges:Iterable[CodeRange]) -> None:
+    self.ranges = tuple(ranges)
 
   def describe(self, name:Optional[str], depth=0) -> None:
     n = name + ' ' if name else ''
-    errL('  ' * depth, n, type(self).__name__, ':', self.inline_description)
+    errL('  ' * depth, n, type(self).__name__, ': ', codes_desc(self.ranges))
 
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
@@ -263,9 +235,6 @@ class Charset(LegsPattern):
 
   @property
   def literal_pattern(self) -> str: return chr(self.ranges[0][0])
-
-  @property
-  def inline_description(self) -> str: return ' ' + codes_desc(self.ranges)
 
   @staticmethod
   def for_char(char:str) -> 'Charset':
@@ -304,7 +273,3 @@ def regex_for_code_ranges(ranges:Sequence[CodeRange], flavor:str) -> str:
 
 def regex_for_codes(codes:Iterable[int], flavor:str) -> str:
   return regex_for_code_ranges(tuple(ranges_for_codes(codes)), flavor)
-
-
-empty_choice = Choice()
-empty_seq = Seq()
