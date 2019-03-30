@@ -266,9 +266,18 @@ class RegexLexerBase(LexerBase):
     if pos == len_text: raise StopIteration
     mode, pop_kind = self.stack[-1]
     pattern = self.mode_patterns[mode]
-    m = pattern.match(text, pos)
-    assert m, (pos, text[pos:pos+64])
-    token_pos = self.pos
+    # Currently we use search as a hack to determine incomplete tokens.
+    # This is not totally accurate because incompletes are supposed to be greedy,
+    # whereas this approach emits the shortest possible incomplete token.
+    # It is also inefficient.
+    m = pattern.search(text, pos)
+    if not m: # Emit an incomplete token to end.
+      self.pos = len_text
+      return Token(pos=pos, end=len_text, kind='incomplete')
+    start = m.start()
+    if start > pos: # Emit an incomplete token up to the match; the next search will find the same match (inefficient).
+      self.pos = start
+      return Token(pos=pos, end=start, kind='incomplete')
     end = m.end()
     kind = m.lastgroup
     self.pos = end # Advance lexer state.
@@ -279,7 +288,7 @@ class RegexLexerBase(LexerBase):
       try: child_frame = self.mode_transitions[mode][kind]
       except KeyError: pass
       else: self.stack.append(child_frame)
-    return Token(pos=token_pos, end=end, kind=kind)
+    return Token(pos=pos, end=end, kind=kind)
 
 
 def ploy_repr(string: str) -> str:

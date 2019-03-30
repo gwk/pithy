@@ -14,7 +14,7 @@ from pithy.string import render_template
 from legs_base import ModeTransitions
 from .defs import ModeTransitions, StateTransitions, MatchStateKinds, ModeData
 from .dfa import DFA
-from .patterns import LegsPattern
+from .patterns import LegsPattern, regex_for_codes
 
 
 def output_python(path:str,
@@ -74,14 +74,16 @@ def output_python_re(path:str, patterns:Dict[str,LegsPattern], mode_pattern_kind
   mode_patterns_code:List[str] = []
   for dfa in dfas:
     mode = dfa.name
-    kind_patterns:List[str] = []
+    regexes:List[str] = []
     for kind in dfa.kinds_greedy_ordered:
       try: pattern = patterns[kind]
-      except KeyError as e:
-        assert e.args[0] == 'invalid'
-        continue
-      kind_patterns.append(f'(?P<{kind}> {pattern.gen_regex(flavor=flavor)} )\n')
-    choices = '| '.join(kind_patterns)
+      except KeyError:
+        assert kind == 'invalid'
+        regex = regex_for_codes(dfa.transitions[dfa.invalid_node], flavor) + '+'
+      else:
+        regex = pattern.gen_regex(flavor=flavor)
+      regexes.append(f'(?P<{kind}> {regex} )\n')
+    choices = '| '.join(regexes)
     re_text = f'(?x)\n  {choices}'
     code = f"    {mode!r} : _re_compile(br'''{re_text}''')"
     mode_patterns_code.append(code)

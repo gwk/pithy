@@ -1,27 +1,28 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Optional, Set, cast
+from typing import Any, Callable, DefaultDict, Dict, Iterable, Optional, Sequence, Set, cast
 
 from pithy.io import errL, errSL
 from pithy.types import is_pair_of_int
 
 from .nfa import empty_symbol
-from .unicode import CodeRange, CodeRanges, codes_for_ranges
+from .unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
 from .unicode.codepoints import codes_desc
 
 
 __all__ = [
   'Charset',
   'Choice',
+  'LegsPattern',
+  'NfaMutableTransitions',
   'Opt',
   'Plus',
   'Quantity',
-  'LegsPattern',
   'Seq',
   'Star',
-  'NfaMutableTransitions',
   'empty_choice',
   'empty_seq',
+  'regex_for_codes',
 ]
 
 
@@ -252,12 +253,7 @@ class Charset(LegsPattern):
       # Some code points exceed ASCII range; need to encode char-by-char.
       s = '|'.join(''.join(regex_for_code(byte, flavor) for byte in chr(code).encode()) for r in ranges for code in r)
       return f'(?:{s})'
-    if len(ranges) == 1:
-      r = ranges[0]
-      if r[0] + 1 == r[1]: # single character.
-        return regex_for_code(r[0], flavor)
-    p = ''.join(regex_for_code_range(r, flavor) for r in ranges)
-    return f'[{p}]'
+    return regex_for_code_ranges(ranges, flavor)
 
   @property
   def is_literal(self) -> bool:
@@ -295,6 +291,19 @@ def regex_for_code_range(code_range:CodeRange, flavor:str) -> str:
   last = end - 1
   if start == last: return regex_for_code(start, flavor)
   return f'{regex_for_code(start, flavor)}-{regex_for_code(last, flavor)}'
+
+
+def regex_for_code_ranges(ranges:Sequence[CodeRange], flavor:str) -> str:
+  if len(ranges) == 1:
+    r = ranges[0]
+    if r[0] + 1 == r[1]: # single character.
+      return regex_for_code(r[0], flavor)
+  p = ''.join(regex_for_code_range(r, flavor) for r in ranges)
+  return f'[{p}]'
+
+
+def regex_for_codes(codes:Iterable[int], flavor:str) -> str:
+  return regex_for_code_ranges(tuple(ranges_for_codes(codes)), flavor)
 
 
 empty_choice = Choice()

@@ -330,6 +330,9 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     reachable_kinds.discard(kind)
     kind_rels[kind].update(reachable_kinds) # Reachable kinds must precede this kind.
 
+  invalid_rel = kind_rels['invalid']
+  assert not invalid_rel
+  invalid_rel.add('~') # Hack to make `invalid` last.
   ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_rels.items())
   unorderable_pairs:List[Tuple[str,str]] = []
   for supers, kind in ordered_kinds:
