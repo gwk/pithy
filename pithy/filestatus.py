@@ -194,8 +194,6 @@ def file_status(path_or_fd:PathOrFd, follow_symlinks:bool=True) -> Optional[File
   return FileStatus.from_stat_result(path, s)
 
 
-def file_time_access(path:PathOrFd) -> float: return _stat(path).st_atime
-
 def file_time_mod(path:PathOrFd) -> float: return _stat(path).st_mtime
 
 def file_time_mod_or_zero(path:str) -> float:
