@@ -30,7 +30,7 @@ def main() -> None:
   seed0 = args.seeds[0]
   seeds = {clean_url(seed0, url) for url in args.seeds}
 
-  ds = file_status(dir)
+  ds = file_status(dir, follow=True)
   if ds is None:
     make_dirs(dir)
   elif not ds.is_dir:
@@ -78,11 +78,12 @@ class Crawler:
 
     path = self.path_for_url(url)
     tmp_path = self.tmp_path_for_url(url)
-    if is_dir(tmp_path): exit(f'error: please remove the directory existing at tmp path: {tmp_path}')
+    if is_dir(tmp_path, follow=False): exit(f'error: please remove the directory existing at path: {path}')
+    if is_dir(tmp_path, follow=False): exit(f'error: please remove the directory existing at tmp path: {tmp_path}')
 
     self.visited.add(url)
 
-    if self.force or not is_file(path):
+    if self.force or not is_file(path, follow=True):
       make_dirs(path_dir(tmp_path))
       remove_path_if_exists(tmp_path)
 
@@ -172,7 +173,7 @@ class Crawler:
     '''
     # Resolve intermediates.
     for intermediate in path_descendants(self.dir, path, include_start=False, include_end=False):
-      s = file_status(intermediate)
+      s = file_status(intermediate, follow=True)
       if s is None:
         make_dir(intermediate)
       elif not s.is_dir:
@@ -182,10 +183,12 @@ class Crawler:
         make_dir(intermediate)
         move_file(tmp_path, final_path)
     # Resolve tip.
-    s = file_status(path)
+    # TODO: improve confidence that this does the right thing in the presence of symlinks.
+    s = file_status(path, follow=False)
     if s is None or not s.is_dir: return path
     path += '/+'
-    if is_dir(path): exit(f'error: path collision could not be resolved. Please remove the directory at {path!r}')
+    if is_dir(path, follow=False):
+      exit(f'error: path collision could not be resolved. Please remove the directory at {path!r}')
     return path
 
 

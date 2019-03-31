@@ -214,7 +214,7 @@ class S3MockClient(S3Client):
     contents = []
     for p in walk_files(path):
       key = p[l:]
-      s = file_status(p)
+      s = file_status(p, follow=True)
       assert s is not None
       contents.append({
         'Key': key,

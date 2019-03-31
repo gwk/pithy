@@ -28,7 +28,7 @@ def fetch(url:str, cache_path:str=None, params:Dict[str, str]={}, headers:Dict[s
     cache_path = path_for_url(url)
   path = path_join('_fetch', cache_path)
   path_tmp = path_join('_fetch/tmp', cache_path)
-  if not path_exists(path):
+  if not path_exists(path, follow=False):
     cmd = ['curl', url, '--write-out', '%{http_code}', '--output', path_tmp]
     if spoof_ua:
       h = spoofing_headers()

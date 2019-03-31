@@ -75,12 +75,12 @@ def main() -> None:
     if string_contains(path, '..'):
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
       exit(f"iotest error: argument path cannot contain '..': {path!r}.")
-    if is_dir(path):
+    if is_dir(path, follow=True):
       dir_path = path + '/'
       specified_name_prefix = None
     else:
       dir_path = path_dir_or_dot(path) + '/'
-      if not is_dir(dir_path):
+      if not is_dir(dir_path, follow=True):
         exit('iotest error: argument path directory does not exist: {dir_path!r}.')
       specified_name_prefix = path_name_stem(path)
     proto = collect_proto(ctx, dir_path)
@@ -158,7 +158,7 @@ def collect_cases(ctx:Ctx, cases_dict:Dict[str, Case], proto: Optional[Case], di
   for name in names:
     path = path_join(dir_path, name)
     if specified_name_prefix is None: # collect dirs.
-      if is_dir(path):
+      if is_dir(path, follow=True):
         sub_dirs.append(path + '/')
       elif path_ext(name):
         file_paths.append(path)
@@ -337,8 +337,9 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
     case.describe(stderr)
 
   # set up directory.
-  if path_exists(case.test_dir):
-    if not is_dir(case.test_dir): # could be a symlink; do not want to remove contents of link destination.
+  test_dir_status = file_status(case.test_dir, follow=False)
+  if test_dir_status:
+    if not test_dir_status.is_dir: # Could be a symlink; do not want to remove contents of link destination.
       raise TestCaseError(f'test directory already exists as a non-directory: {case.test_dir}')
     if not case.multi_index: # None or 0 (lead subcase of a multicase).
       remove_dir_contents(case.test_dir)
@@ -354,8 +355,8 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
     link_path = path_join(case.test_dir, link)
     if path_dir(link):
       raise TestCaseError(f'symlink must be a name, not a path: {link}') # TODO: make parent dirs for link_path?
-    if is_node_not_link(link_path): # do not allow symlinks to overwrite previous contents in test dir.
-      raise TestCaseError(f'non-symlink already exists at desired symlink path: {link_path}')
+    if path_exists(link_path, follow=False):
+      raise TestCaseError(f'desired symlink path already exists: {link_path}')
     try: make_link(orig=orig_path, link=link_path)
     except FileNotFoundError as e: raise TestCaseError(f'link original source does not exist: {orig_path}') from e
 

@@ -19,12 +19,12 @@ def main() -> None:
     if lc_ext == ext:
       continue
     lc_path = stem + lc_ext
-    try: inode = file_inode(lc_path)
+    try: inode = file_inode(lc_path, follow=False)
     except FileNotFoundError: pass
     else:
       # OSX file system is case insensitive, so lc_path always appears to exist.
       # Check if it is really the same file by comparing inodes.
-      if file_inode(path) != inode:
+      if file_inode(path, follow=False) != inode:
         print('error: {!r} -> {!r}; destination already exists.'.format(path, lc_path), file=stderr)
         continue
     move_file(path, to=lc_path, overwrite=True)

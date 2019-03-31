@@ -8,7 +8,7 @@ from typing import Any, Callable, List, Match, Optional, Union
 
 from ..buffer import Buffer
 from ..desc import errD, outD
-from ..fs import file_size, path_exists, remove_path
+from ..fs import path_exists, remove_path
 from ..io import *
 from ..lex import Lexer, Token
 from ..loader import load

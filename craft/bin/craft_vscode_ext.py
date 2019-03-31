@@ -31,7 +31,7 @@ def main() -> None:
   for d in ['configurations', 'grammars', 'themes']:
     src_dir = f'{src}/{d}'
     dst_dir = f'{dst}/{d}'
-    if is_dir(src_dir):
+    if is_dir(src_dir, follow=True):
       for src_path in walk_files(src_dir, file_exts='.json'):
         dst_path = replace_prefix(src_path, src, dst)
         errSL('copy:', src_path, dst_path)

@@ -20,10 +20,10 @@ class PathAlreadyExists(Exception): pass
 class PathHasNoDirError(Exception): pass
 
 
-def add_file_execute_permissions(path:PathOrFd) -> None:
-  old_perms = file_permissions(path)
+def add_file_execute_permissions(path:PathOrFd, *, follow:bool) -> None:
+  old_perms = file_permissions(path, follow=follow)
   new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
-  _os.chmod(path, new_perms)
+  _os.chmod(path, new_perms, follow_symlinks=follow)
 
 
 def change_dir(path:PathOrFd) -> None: _os.chdir(path)
@@ -45,7 +45,7 @@ def copy_eagerly(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:boo
 
 def copy_path(src:str, dst:str, overwrite:bool=True, create_dirs:bool=False, follow_symlinks:bool=True,
  preserve_owner:bool=True) -> None:
-  if overwrite and path_exists(dst):
+  if overwrite and path_exists(dst, follow=False):
     remove_path(dst)
   if create_dirs:
     make_parent_dirs(dst)
@@ -145,11 +145,11 @@ def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
   if not name:
     assert dir == '/'
   elif dir:
-    ds = file_status(dir)
+    ds = file_status(dir, follow=True)
     if ds is None: # Parent dir does not exist; try to create it.
       try: make_dirs(dir, mode=mode, exist_ok=exist_ok)
       except FileExistsError as e: # Another thread or process just created it.
-        if not is_dir(dir):
+        if not is_dir(dir, follow=True):
           raise NotADirectoryError(dir) from e
     elif not ds.is_dir:
       raise NotADirectoryError(dir)
@@ -158,10 +158,11 @@ def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
   except OSError as e:
     # Cannot rely on checking for EEXIST, since the operating system
     # could give priority to other errors like EACCES or EROFS
-    s = file_status(path)
+    s = file_status(path, follow=True)
     if not s: raise # Does not exist; some other OSError.
     if not exist_ok: raise PathAlreadyExists(path) from e
-    if not is_dir(path): raise NotADirectoryError(path) from e
+    if not is_dir(path, follow=True): raise NotADirectoryError(path) from e
+    raise
 
 
 def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
@@ -175,7 +176,7 @@ def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
 def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, create_dirs=False, perms:Optional[int]=None) \
  -> None:
   if perms is not None: raise NotImplementedError # TODO
-  if not allow_nonexistent and not path_exists(orig):
+  if not allow_nonexistent and not path_exists(orig, follow=True):
     raise FileNotFoundError(orig)
   if absolute:
     _orig = abs_path(orig)
@@ -183,11 +184,13 @@ def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, 
     _orig = rel_path(orig, start=path_dir(link))
   if create_dirs:
     make_parent_dirs(link)
+  if path_exists(link, follow=False):
+    raise FileExistsError(link)
   return _os.symlink(_orig, link)
 
 
 def move_file(path:Path, to:str, overwrite=False, create_dirs=False) -> None:
-  if not overwrite and path_exists(to):
+  if not overwrite and path_exists(to, follow=False):
     raise Exception('destination path already exists: {}'.format(to))
   if create_dirs:
     make_parent_dirs(path)
@@ -214,16 +217,15 @@ def normalize_exts(exts:Iterable[str]) -> FrozenSet[str]:
   return frozenset(exts)
 
 
-def open_new(path:Path, make_dirs:bool=True, **open_args) -> IO[Any]:
-  if path_exists(path):
+def open_new(path:Path, create_dirs:bool=True, **open_args) -> IO[Any]:
+  if path_exists(path, follow=False):
     raise PathAlreadyExists(path)
-  if make_dirs:
-    make_parent_dirs(path)
+  if create_dirs: make_parent_dirs(path)
   return open(path, 'w', **open_args)
 
 
-def product_needs_update(product:PathOrFd, source:PathOrFd) -> bool:
-  return file_mtime_or_zero(product) <= file_mtime(source)
+def product_needs_update(product=PathOrFd, source=PathOrFd) -> bool: # type: ignore
+  return file_mtime_or_zero(product, follow=True) <= file_mtime(source, follow=True)
 
 
 read_link = _os.readlink
@@ -243,14 +245,14 @@ def remove_dir_contents(path:Path, hidden=False) -> None:
 
 
 def remove_dir_contents_if_exists(path:Path, hidden=False) -> None:
-  if path_exists(path): remove_dir_contents(path, hidden=hidden)
+  if path_exists(path, follow=True): remove_dir_contents(path, hidden=hidden)
 
 
 def remove_file(path:Path) -> None: _os.remove(path)
 
 
 def remove_file_if_exists(path:Path) -> None:
-  if path_exists(path):
+  if path_exists(path, follow=False):
     remove_file(path)
 
 
@@ -260,12 +262,12 @@ def remove_empty_dirs(path:Path) -> None: _os.removedirs(path)
 
 
 def remove_path(path:Path) -> None:
-  if is_dir_not_link(path): remove_dir(path)
+  if is_dir(path, follow=False): remove_dir(path)
   else: remove_file(path)
 
 
 def remove_path_if_exists(path:Path) -> None:
-  if path_exists(path):
+  if path_exists(path, follow=False):
     remove_path(path)
 
 
@@ -315,7 +317,7 @@ def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:FrozenSet[
   assert dir_path.endswith('/')
   for name in list_dir(dir_path, hidden=include_hidden):
     path = dir_path + name
-    if is_dir(path):
+    if is_dir(path, follow=True):
       sub_dirs.append(path + '/')
     elif name_has_any_ext(name, file_exts):
       files.append(path if files_as_paths else name)
@@ -327,7 +329,7 @@ def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:FrozenSet[
 def walk_dirs_up(path:Path, top:Path, include_top=True) -> Iterable[str]:
   if is_path_abs(path) ^ is_path_abs(top):
     raise MixedAbsoluteAndRelativePathsError((path, top))
-  if is_dir(path):
+  if is_dir(path, follow=True):
     dir_path = path
   else:
     dir_path = path_dir(path)
@@ -354,9 +356,9 @@ def walk_paths(*paths:Path, make_abs=False, yield_files=True, yield_dirs=True, i
       yield '-'
       continue
     path = abs_or_norm_path(raw_path, make_abs)
-    if is_dir(path):
+    if is_dir(path, follow=True):
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
-    elif not path_exists(path):
+    elif not path_exists(path, follow=True):
       raise FileNotFoundError(path)
     elif yield_files and name_has_any_ext(path_name(path), file_exts):
       yield path
@@ -369,7 +371,7 @@ def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hid
     yield dir_path
   for name in list_dir(dir_path, hidden=include_hidden):
     path = path_join(dir_path, name)
-    if is_dir(path):
+    if is_dir(path, follow=True):
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
     elif yield_files and name_has_any_ext(name, file_exts):
       yield path

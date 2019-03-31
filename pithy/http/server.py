@@ -444,7 +444,7 @@ class HTTPRequestHandler(StreamRequestHandler):
       self.send_error(HTTPStatus.UNAUTHORIZED, "Path refers to parent directory")
       return None
 
-    if is_dir(self.local_path):
+    if is_dir(self.local_path, follow=True):
       if not self.local_path.endswith('/'): # redirect browser to path with slash (what apache does).
         self.send_response(HTTPStatus.MOVED_PERMANENTLY)
         parts = list(url_split(self.path))
@@ -455,7 +455,7 @@ class HTTPRequestHandler(StreamRequestHandler):
         return None
       for index in ("index.html", "index.htm"):
         index = path_join(self.local_path, index)
-        if path_exists(index):
+        if path_exists(index, follow=False):
           self.local_path = index
           break
       else:

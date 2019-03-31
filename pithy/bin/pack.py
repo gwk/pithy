@@ -38,7 +38,7 @@ def main() -> None:
 def pack(path:str, ext:str, overwrite:bool, level:Optional[str], show_stats:bool) -> None:
   dst = path + ext
   pack_fn = formats[ext]
-  if path_exists(dst):
+  if path_exists(dst, follow=False):
     if not overwrite:
       if stdin.isatty():
         if not confirm(f'archive path {dst!r} exists; remove it?'): exit(1)

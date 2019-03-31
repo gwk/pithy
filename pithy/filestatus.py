@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from os import DirEntry, stat as _stat, stat_result as StatResult
-from os.path import exists as _exists, isdir as _isdir, isfile as _isfile, islink as _islink, ismount as _ismount, lexists as _lexists
 from stat import *
 from typing import Optional, NamedTuple, Union
 from .path import Path, PathOrFd
@@ -56,14 +55,14 @@ class FileStatus(NamedTuple):
       mtime=s.st_mtime,
       mtime_ns=s.st_mtime_ns,
       path=path,
-      perms=S_IMODE(mode),
+      perms=(PERM_MASK&mode),
       size=s.st_size,
-      type=S_IFMT(mode),
+      type=(TYPE_MASK&mode),
       user_id=s.st_uid)
 
   @classmethod
-  def from_dir_entry(class_, entry: DirEntry, follow_symlinks=True) -> Optional['FileStatus']:
-    return class_.from_stat_result(entry.path, entry.stat(follow_symlinks=follow_symlinks))
+  def from_dir_entry(class_, entry: DirEntry, *, follow:bool) -> Optional['FileStatus']:
+    return class_.from_stat_result(entry.path, entry.stat(follow_symlinks=follow))
 
 
   # File type tests derived from Python's stat.py.
@@ -178,53 +177,79 @@ def dir_entry_type_char(entry: DirEntry) -> str:
   return 'U'
 
 
-def file_ctime(path:PathOrFd) -> float: return _stat(path).st_ctime
+def file_ctime(path_or_fd:PathOrFd, *, follow:bool) -> float: return _stat(path_or_fd, follow_symlinks=follow).st_ctime
 
-def file_inode(path:PathOrFd) -> int: return _stat(path).st_ino
+def file_inode(path_or_fd:PathOrFd, *, follow:bool) -> int: return _stat(path_or_fd, follow_symlinks=follow).st_ino
 
-def file_permissions(path:PathOrFd) -> int: return _stat(path).st_mode
+def file_permissions(path_or_fd:PathOrFd, *, follow:bool=True) -> int:
+  # TODO: might be useful to OR the permissions of a symlink and its destination together; perhaps a separate function.
+  return _stat(path_or_fd, follow_symlinks=follow).st_mode & PERM_MASK
 
-def file_size(path:PathOrFd) -> int: return _stat(path).st_size
+def file_size(path_or_fd:PathOrFd, *, follow:bool=True) -> int: return _stat(path_or_fd, follow_symlinks=follow).st_size
 
-def file_stat(path:PathOrFd) -> StatResult: return _stat(path)
+def file_stat(path_or_fd:PathOrFd, *, follow:bool) -> StatResult: return _stat(path_or_fd, follow_symlinks=follow)
 
-
-def file_status(path_or_fd:PathOrFd, follow_symlinks:bool=True) -> Optional[FileStatus]:
-  try: s = _stat(path_or_fd, follow_symlinks=follow_symlinks)
-  except FileNotFoundError: return None
+def file_status(path_or_fd:PathOrFd, *, follow:bool, raises=False) -> Optional[FileStatus]:
+  try: s = _stat(path_or_fd, follow_symlinks=follow)
+  except FileNotFoundError:
+    if raises: raise
+    return None
   path = '' if isinstance(path_or_fd, int) else str(path_or_fd)
   return FileStatus.from_stat_result(path, s)
 
+def file_mtime(path_or_fd:PathOrFd, *, follow:bool) -> float:
+  return _stat(path_or_fd, follow_symlinks=follow).st_mtime
 
-def file_mtime(path:PathOrFd) -> float: return _stat(path).st_mtime
-
-def file_mtime_or_zero(path:PathOrFd) -> float:
-  try: return file_mtime(path)
+def file_mtime_or_zero(path_or_fd:str, *, follow:bool) -> float:
+  try: return file_mtime(path_or_fd, follow=follow)
   except FileNotFoundError: return 0
 
-def is_dir(path:Path) -> bool: return _isdir(path)
+def is_dir(path_or_fd:Path, *, follow:bool, raises=False) -> Optional[bool]:
+  try: s = _stat(path_or_fd, follow_symlinks=follow)
+  except FileNotFoundError:
+    if raises: raise
+    return None
+  return s.st_mode&TYPE_MASK == S_IFDIR
 
-def is_dir_not_link(path:Path) -> bool: return is_dir(path) and not is_link(path)
+def is_file(path_or_fd:Path, *, follow:bool, raises=False) -> Optional[bool]:
+  try: s = _stat(path_or_fd, follow_symlinks=follow)
+  except FileNotFoundError:
+    if raises: raise
+    return None
+  return s.st_mode&TYPE_MASK == S_IFREG
 
-def is_file(path:Path) -> bool: return _isfile(path)
+def is_file_executable_by_owner(path_or_fd:Path, *, follow:bool=True) -> bool:
+  return bool(file_permissions(path_or_fd, follow=follow) & S_IXUSR)
 
-def is_file_executable_by_owner(path:Path) -> bool: return bool(file_permissions(path) & S_IXUSR)
+def is_link(path_or_fd:Path, *, raises=False) -> Optional[bool]:
+  try: s = _stat(path_or_fd, follow_symlinks=False)
+  except FileNotFoundError:
+    if raises: raise
+    return None
+  return s.st_mode&TYPE_MASK == S_IFLNK
 
-def is_file_not_link(path:Path) -> bool: return is_file(path) and not is_link(path)
+def is_link_to_dir(path_or_fd:Path, *, raises=False) -> Optional[bool]:
+  return is_link(path_or_fd, raises=raises) and is_dir(path_or_fd, follow=True, raises=raises)
 
-def is_link(path:Path) -> bool: return _islink(path)
+def is_link_to_file(path_or_fd:Path, *, raises=False) -> Optional[bool]:
+  return is_link(path_or_fd, raises=raises) and is_file(path_or_fd, follow=True, raises=raises)
 
-def is_link_to_dir(path:Path) -> bool: return _islink(path) and _isdir(path)
+def is_mount(path_or_fd:Path, *, follow:bool=True, raises=False) -> Optional[bool]:
+  try: s = _stat(path_or_fd, follow_symlinks=follow)
+  except FileNotFoundError:
+    if raises: raise
+    return None
+  return s.st_mode&TYPE_MASK == S_IFMT
 
-def is_link_to_file(path:Path) -> bool: return _islink(path) and _isfile(path)
+def path_exists(path_or_fd:Path, *, follow:bool) -> Optional[bool]:
+  try: _stat(path_or_fd, follow_symlinks=follow)
+  except FileNotFoundError: return False
+  else: return True
 
-def is_mount(path:Path) -> bool: return _ismount(path)
 
-def is_node_not_link(path:Path) -> bool: return path_exists(path) and not is_link(path)
 
-def link_exists(path:Path) -> bool: return _lexists(path) # TODO: rename?
-
-def path_exists(path:Path) -> bool: return _exists(path)
+PERM_MASK = 0o7777
+TYPE_MASK = 0o170000
 
 
 _type_chars = {
