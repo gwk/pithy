@@ -222,8 +222,8 @@ def open_new(path:Path, make_dirs:bool=True, **open_args) -> IO[Any]:
   return open(path, 'w', **open_args)
 
 
-def product_needs_update(product=PathOrFd, source=PathOrFd) -> bool: # type: ignore
-  return file_time_mod_or_zero(product) <= file_time_mod(source)
+def product_needs_update(product:PathOrFd, source:PathOrFd) -> bool:
+  return file_mtime_or_zero(product) <= file_mtime(source)
 
 
 read_link = _os.readlink
@@ -276,7 +276,7 @@ def scan_dir(path:Path, exts:Iterable[str]=(), hidden=False) -> List[DirEntry]:
   return [e for e in entries if name_has_any_ext(e.name, exts) and (hidden or not e.name.startswith('.'))]
 
 
-def set_file_time_mod(path:PathOrFd, mtime:Optional[float]) -> None:
+def set_mtime(path:PathOrFd, mtime:Optional[float]) -> None:
   '''
   Update the access and modification times of the file at `path`.
   The access time is always updated to the current time;

@@ -178,6 +178,8 @@ def dir_entry_type_char(entry: DirEntry) -> str:
   return 'U'
 
 
+def file_ctime(path:PathOrFd) -> float: return _stat(path).st_ctime
+
 def file_inode(path:PathOrFd) -> int: return _stat(path).st_ino
 
 def file_permissions(path:PathOrFd) -> int: return _stat(path).st_mode
@@ -194,13 +196,11 @@ def file_status(path_or_fd:PathOrFd, follow_symlinks:bool=True) -> Optional[File
   return FileStatus.from_stat_result(path, s)
 
 
-def file_time_mod(path:PathOrFd) -> float: return _stat(path).st_mtime
+def file_mtime(path:PathOrFd) -> float: return _stat(path).st_mtime
 
-def file_time_mod_or_zero(path:str) -> float:
-  try: return file_time_mod(path)
+def file_mtime_or_zero(path:PathOrFd) -> float:
+  try: return file_mtime(path)
   except FileNotFoundError: return 0
-
-def file_time_meta_change(path:PathOrFd) -> float: return _stat(path).st_ctime
 
 def is_dir(path:Path) -> bool: return _isdir(path)
 
