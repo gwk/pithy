@@ -178,8 +178,7 @@ def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, 
     _orig = abs_path(orig)
   else:
     _orig = rel_path(orig, start=path_dir(link))
-  if create_dirs:
-    make_parent_dirs(link)
+  if create_dirs: make_parent_dirs(link)
   if path_exists(link, follow=False):
     if overwrite:
       remove_file(link)
@@ -191,8 +190,7 @@ def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, 
 def move_file(path:Path, to:str, overwrite=False, create_dirs=False) -> None:
   if not overwrite and path_exists(to, follow=False):
     raise Exception('destination path already exists: {}'.format(to))
-  if create_dirs:
-    make_parent_dirs(path)
+  if create_dirs: make_parent_dirs(path)
   _os.replace(path, to)
 
 
