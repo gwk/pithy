@@ -158,11 +158,10 @@ def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
   except OSError as e:
     # Cannot rely on checking for EEXIST, since the operating system
     # could give priority to other errors like EACCES or EROFS
-    s = file_status(path, follow=True)
-    if not s: raise # Does not exist; some other OSError.
+    if not path_exists(path, follow=False): raise # Perhaps some other OSError.
     if not exist_ok: raise PathAlreadyExists(path) from e
     if not is_dir(path, follow=True): raise NotADirectoryError(path) from e
-    raise
+    return # The directory already exists.
 
 
 def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
