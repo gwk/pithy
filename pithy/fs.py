@@ -173,8 +173,8 @@ def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
     raise PathAlreadyExists(dir)
 
 
-def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, create_dirs=False, perms:Optional[int]=None) \
- -> None:
+def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, overwrite=False, create_dirs=False,
+ perms:Optional[int]=None) -> None:
   if perms is not None: raise NotImplementedError # TODO
   if not allow_nonexistent and not path_exists(orig, follow=True):
     raise FileNotFoundError(orig)
@@ -185,7 +185,10 @@ def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, 
   if create_dirs:
     make_parent_dirs(link)
   if path_exists(link, follow=False):
-    raise FileExistsError(link)
+    if overwrite:
+      remove_file(link)
+    else:
+      raise FileExistsError(link)
   return _os.symlink(_orig, link)
 
 
