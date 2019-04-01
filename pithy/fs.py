@@ -166,10 +166,7 @@ def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
 
 def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
   dir = path_dir(path)
-  if dir:
-    make_dirs(dir)
-  elif not exist_ok:
-    raise PathAlreadyExists(dir)
+  if dir: make_dirs(dir, exist_ok=exist_ok)
 
 
 def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, overwrite=False, create_dirs=False,
