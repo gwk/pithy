@@ -20,6 +20,7 @@ __all__ = [
   'utest_seq',
   'utest_seq_exc',
   'utest_val',
+  'utest_val_ne',
   'usymmetric',
 ]
 
@@ -104,7 +105,6 @@ def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-
 def utest_val(exp_val:Any, act_val:Any, desc='<value>') -> None:
   '''
   Log a test failure if `exp_val` does not equal `act_val`.
@@ -113,6 +113,17 @@ def utest_val(exp_val:Any, act_val:Any, desc='<value>') -> None:
   global _utest_test_count
   _utest_test_count += 1
   if exp_val != act_val:
+    _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
+
+
+def utest_val_ne(exp_val:Any, act_val:Any, desc='<value>') -> None:
+  '''
+  Log a test failure if `exp_val` equals `act_val`.
+  Describe the test with the optional `desc`.
+  '''
+  global _utest_test_count
+  _utest_test_count += 1
+  if exp_val == act_val:
     _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
