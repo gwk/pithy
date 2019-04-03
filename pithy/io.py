@@ -4,7 +4,7 @@ from os import O_NONBLOCK, O_RDONLY, close as os_close, open as os_open, read as
 from pprint import pprint
 from string import Template
 from sys import argv, stderr, stdin, stdout
-from typing import Any, Callable, ContextManager, Iterable, Iterator, TextIO, TypeVar, Union
+from typing import Any, Callable, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union, cast
 
 from .desc import errD, outD, writeD
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -201,6 +201,15 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
   post = (suffix and ' ' + suffix) + '…'
   final = f' {final_suffix}.' if final_suffix else '.'
 
+  total = ''
+  width = 0
+  try: l = len(cast(Sized, iterable))
+  except TypeError: pass
+  else:
+    ls = f'{l:,}'
+    width = len(ls)
+    total = '/' + ls
+
   if isinstance(frequency, float):
     from time import time
     def err_progress_gen() -> Iterator[_T]:
@@ -213,14 +222,14 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
           i -= 1
           break
         if i == next_i:
-          print(f'{pre}{i:,}{post}', end='', file=stderr, flush=True)
+          print(f'{pre}{i:{width},}{total}{post}', end='', file=stderr, flush=True)
           t = time()
           d = t - prev_t
           step = max(1, int(step * frequency / d))
           prev_t = t
           next_i = i + step
         yield el
-      print(f'{pre}{i+1:,}{final}', file=stderr)
+      print(f'{pre}{i+1:{width},}{total}{final}', file=stderr)
 
 
   else:
