@@ -1,13 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from os import close as os_close, open as os_open, read as os_read, O_RDONLY, O_NONBLOCK
+from os import O_NONBLOCK, O_RDONLY, close as os_close, open as os_open, read as os_read
 from pprint import pprint
-from sys import argv, stdin, stdout, stderr
 from string import Template
+from sys import argv, stderr, stdin, stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, TextIO, TypeVar, Union
-from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
-from .desc import writeD, errD, outD
 
+from .desc import errD, outD, writeD
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
