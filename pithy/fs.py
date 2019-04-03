@@ -348,7 +348,7 @@ def walk_paths(*paths:Path, make_abs=False, yield_files=True, yield_dirs=True, i
   This special case can be turned off with `pass_dash=False`.
   '''
   file_exts = normalize_exts(file_exts)
-  for raw_path in paths:
+  for raw_path in paths: # TODO: sort?
     if pass_dash and yield_files and raw_path == '-': # Special case to indicate stdin.
       yield '-'
       continue
