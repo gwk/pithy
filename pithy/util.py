@@ -31,6 +31,7 @@ def memoize(_fn:Callable=None, sentinel:Any=Ellipsis) -> Callable:
 
 
 class lazy_property(object):
+  'Lazy property decorator.'
 
   def __init__(self, acc_fn:Callable) -> None:
     self.acc_fn = acc_fn
