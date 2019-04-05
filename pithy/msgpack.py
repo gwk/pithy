@@ -5,8 +5,7 @@ from typing import Any, BinaryIO, Callable, Dict, List, Tuple
 
 from msgpack import ExtraData, FormatError, OutOfData, StackError, Unpacker, dump as _dump, load as _load  # type: ignore
 
-
-DefaultFn = Callable[[Any], Any]
+from .util import EncodeObj, all_slots, encode_obj
 
 ObjectHook = Callable[[Dict[str,Any]], Any]
 ObjectPairsHook = Callable[[List[Tuple[str,Any]]], Any]
@@ -49,15 +48,15 @@ def count_msgpacks(file:BinaryIO) -> int:
     i += 1
 
 
-def write_msgpack(file:BinaryIO, obj:Any, default:DefaultFn=None, unicode_errors='strict',
+def write_msgpack(file:BinaryIO, obj:Any, default:EncodeObj=encode_obj, unicode_errors='strict',
  use_single_float=False, autoreset=False, use_bin_type=True, strict_types=False) -> None:
 
-  _dump(obj, file, default=default, unicode_errors=unicode_errors,
+  _dump(obj, file, default=encode_obj, unicode_errors=unicode_errors,
     use_single_float=use_single_float, use_bin_type=use_bin_type, strict_types=strict_types)
 
 
-def out_msgpack(obj:Any, default:DefaultFn=None, unicode_errors='strict',
+def out_msgpack(obj:Any, default:EncodeObj=encode_obj, unicode_errors='strict',
  use_single_float=False, autoreset=False, use_bin_type=True, strict_types=False) -> None:
 
-  _dump(obj, stdout.buffer, default=default, unicode_errors=unicode_errors,
+  _dump(obj, stdout.buffer, default=encode_obj, unicode_errors=unicode_errors,
     use_single_float=use_single_float, use_bin_type=use_bin_type, strict_types=strict_types)
