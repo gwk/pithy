@@ -1,19 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
 import json as _json
-
+import re
+from dataclasses import fields, is_dataclass
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout, version_info
-from typing import Any, Callable, Dict, FrozenSet, IO, Iterable, Hashable, List, Optional, Sequence, TextIO, Tuple, Union
-from .util import all_slots
+from typing import IO, Any, Callable, Dict, FrozenSet, Hashable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union
 
-try: from dataclasses import asdict, dataclass, fields, is_dataclass
-except ModuleNotFoundError:
-  def asdict(obj:Any) -> Dict: raise NotImplementedError
-  def dataclass(obj:Any) -> Any: raise NotImplementedError
-  def fields(*args:Any, **kwargs:Any) -> Any: raise NotImplementedError # type: ignore
-  def is_dataclass(obj:Any) -> bool: return False
+from .util import EncodeObj, all_slots, encode_obj
 
 
 JsonAny = Any # TODO: remove this once recursive types work.
@@ -21,46 +15,21 @@ JsonList = List[JsonAny]
 JsonDict = Dict[str, JsonAny]
 Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 
-JsonDefaulter = Callable[[Any], Any]
-
 JsonText = Union[str,bytes,bytearray]
 
 class JSONEmptyDocument(JSONDecodeError): pass
 
-
-def json_encode_default(obj:Any) -> Any:
-  '''
-  Note: it is not possible to encode namedtuple as dict using a `default` function such as this,
-  because the namedtuple gets converted to a list without ever calling `default`.
-  '''
-  try: it = iter(obj) # Try to convert to a sequence first.
-  except TypeError: pass
-  else: return list(it)
-
-  if is_dataclass(obj): return asdict(obj)
-
-  if hasattr(obj, '__slots__'):
-    slots = all_slots(type(obj))
-    slots = slots.union(getattr(obj, '__dict__', ())) # Slots classes may also have backing dicts.
-    return {a: getattr(obj, a) for a in slots}
-
-  try: d = obj.__dict__ # Treat other classes as dicts by default.
-  except AttributeError: pass
-  else: return {k:v for k,v in d.items() if not k.startswith('_')}
-
-  return str(obj) # convert to string as last resort.
-
-
 _Seps = Optional[Tuple[str,str]]
 
-def render_json(item:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, **kwargs) -> str:
+
+def render_json(item:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, **kwargs) -> str:
   'Render `item` as a json string.'
   if not separators:
     separators = (',', ': ') if indent else (',', ':')
   return _json.dumps(item, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
 
 
-def write_json(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
+def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
   'Write each item in `items` as json to file.'
   if not separators:
     separators = (',', ': ') if indent else (',', ':')
@@ -70,16 +39,16 @@ def write_json(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_defaul
     if flush: file.flush()
 
 
-def err_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
+def err_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
   'Write items as json to std err.'
   write_json(stderr, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def out_json(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
+def out_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
   write_json(stdout, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def write_jsonl(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_default, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
+def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
   'Write each item in `items` as jsonl to file.'
   if separators:
     assert '\n' not in separators[0]
@@ -92,12 +61,12 @@ def write_jsonl(file:TextIO, *items:Any, default:JsonDefaulter=json_encode_defau
     if flush: file.flush()
 
 
-def err_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
+def err_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
   'Write items as jsonl to std err.'
   write_jsonl(stderr, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 
 
-def out_jsonl(*items:Any, default:JsonDefaulter=json_encode_default, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
+def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
   'Write items as jsonl to std out.'
   write_jsonl(stdout, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 

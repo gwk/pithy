@@ -18,8 +18,6 @@ class Basic:
   def __init__(self, x: int) -> None:
     self.x = x
 
-utest(frozenset(), all_slots, Basic)
-
 
 class SlotX:
   __slots__ = ['x']
@@ -27,8 +25,6 @@ class SlotX:
     self.x = x
   def __eq__(l, r: 'SlotX') -> bool:
     return l.x == r.x
-
-utest(frozenset({'x'}), all_slots, SlotX)
 
 
 class SlotXY(SlotX):
@@ -39,8 +35,6 @@ class SlotXY(SlotX):
   def __eq__(l, r: 'SlotXY') -> bool:
     return super().__eq__(r) and l.y == r.y
 
-utest(frozenset({'x', 'y'}), all_slots, SlotXY)
-
 
 class SlotXYZ(SlotXY):
   'Subclass of slots classes that uses a backing `__dict__` for attribute `z`.'
@@ -49,8 +43,6 @@ class SlotXYZ(SlotXY):
     self.z = z
   def __eq__(l, r: 'SlotXYZ') -> bool:
     return super().__eq__(r) and l.z == r.z
-
-utest(frozenset({'x', 'y'}), all_slots, SlotXYZ)
 
 
 utest('null', render_json, None)
@@ -67,7 +59,6 @@ utest('{"x":1}', render_json, SlotX(x=1), indent=None)
 utest('{"x":1,"y":2}', render_json, SlotXY(x=1, y=2), indent=None)
 utest('{"x":1,"y":2,"z":3}', render_json, SlotXYZ(x=1, y=2, z=3), indent=None)
 
-utest('{"mro":"<method \'mro\' of \'type\' objects>"}', render_json, type, indent=None) # __dict__ of type is weird.
 utest('"Ellipsis"', render_json, ...) # `str` fallback.
 
 utest(DC(x=1), parse_json, '{"x":1}', types=[DC])
