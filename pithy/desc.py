@@ -2,7 +2,7 @@
 
 import re
 from sys import stderr, stdout
-from typing import Any, Iterable, Iterator, List, Mapping, TextIO, Tuple
+from typing import Any, Iterable, Iterator, List, Mapping, Optional, Set, TextIO, Tuple
 
 from .tree import known_leaf_types
 
@@ -21,6 +21,19 @@ def errD(*labels_and_obj:Any, depth:int=0) -> None:
 
 def outD(*labels_and_obj:Any, depth:int=0) -> None:
   writeD(stdout, *labels_and_obj, depth=depth)
+
+
+class _VisitedIds(Set[int]):
+
+  def __init__(self, parent:Optional['_VisitedIds']) -> None:
+    self.parent = parent
+
+  def child(self) -> '_VisitedIds':
+    return _VisitedIds(parent=self)
+
+  def __contains__(self, key:int) -> bool: # type: ignore
+    return super().__contains__(key) or (self.parent is not None and (key in self.parent))
+
 
 
 def gen_desc(obj:Any, depth:int=0) -> Iterator[str]:
@@ -42,7 +55,7 @@ def gen_desc(obj:Any, depth:int=0) -> Iterator[str]:
       yield ind + ', '.join(buffer)
     buffer.clear()
 
-  for d, s in gen_obj_desc(obj, depth=depth):
+  for d, s in gen_obj_desc(obj, depth=depth, visited_ids=_VisitedIds(parent=None)):
     if d < 0: # Closer.
       assert buffer
       buffer[-1] += s if (buffer[-1][-1] in ']})') else ' '+s
@@ -60,30 +73,44 @@ def gen_desc(obj:Any, depth:int=0) -> Iterator[str]:
   yield from flush()
 
 
-def gen_obj_desc(obj:Any, depth:int) -> Iterator[Tuple[int,str]]:
+def gen_obj_desc(obj:Any, depth:int, visited_ids:_VisitedIds) -> Iterator[Tuple[int,str]]:
   if isinstance(obj, known_leaf_types):
     yield (depth, repr(obj))
     return
 
-  if hasattr(obj, 'items'): # Treat as a mapping.
-    yield from gen_dict_desc(obj, depth=depth)
+  try: items = obj.items()
+  except (AttributeError, TypeError): pass
+  else: # Treat as a mapping.
+    i = id(obj)
+    if i in visited_ids:
+      yield (depth, '^')
+    else:
+      visited_ids.add(i)
+      yield from gen_dict_desc(obj, items, depth, visited_ids)
     return
 
-  try: it = iter(obj)
-  except TypeError: pass
-  else:
-    yield from gen_iter_desc(obj, it, depth=depth)
-    return
+  # Explicit test because iter() will return an iterator for objects without __iter__ but with __getitem__;
+  # this includes typing._SpecialForm, which then fails when you try to iterate.
+  if hasattr(obj, '__iter__'):
+    try: it = iter(obj)
+    except TypeError: pass
+    else:
+      i = id(obj)
+      if i in visited_ids:
+        yield (depth, '^')
+      else:
+        yield from gen_iter_desc(obj, iter(obj), depth, visited_ids)
+        return
 
   yield (depth, repr(obj))
 
 
-def gen_dict_desc(obj:Mapping, depth:int) -> Iterator[Tuple[int,str]]:
+def gen_dict_desc(obj:Mapping, items:Iterable[Tuple[Any,Any]], depth:int, visited_ids:_VisitedIds) -> Iterator[Tuple[int,str]]:
   is_dict = isinstance(obj, dict)
   head = '{' if is_dict else (type(obj).__qualname__ + '({')
   yield (depth, head)
-  for k, v in obj.items():
-    vg = gen_obj_desc(v, depth+1)
+  for k, v in items:
+    vg = gen_obj_desc(v, depth+1, visited_ids.child())
     v1d, v1s = next(vg)
     ks = f'{k!r}: {v1s}'
     yield (depth+1, ks)
@@ -91,7 +118,7 @@ def gen_dict_desc(obj:Mapping, depth:int) -> Iterator[Tuple[int,str]]:
   yield (-1, '}' if is_dict else '})')
 
 
-def gen_iter_desc(obj:Any, it:Iterator, depth:int) ->  Iterator[Tuple[int,str]]:
+def gen_iter_desc(obj:Any, it:Iterator, depth:int, visited_ids:_VisitedIds) ->  Iterator[Tuple[int,str]]:
   if isinstance(obj, list):
     head = '['
     close = ']'
@@ -102,7 +129,7 @@ def gen_iter_desc(obj:Any, it:Iterator, depth:int) ->  Iterator[Tuple[int,str]]:
     head = type(obj).__qualname__ + '(['
     close = '])'
   yield (depth, head)
-  for el in it: yield from gen_obj_desc(el, depth+1)
+  for el in it: yield from gen_obj_desc(el, depth+1, visited_ids.child())
   yield (-1, close)
 
 
