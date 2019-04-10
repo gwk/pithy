@@ -74,46 +74,6 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_S
 # input.
 
 
-def _hook_type_keys(type) -> FrozenSet[str]:
-  if is_dataclass(type): return frozenset(f.name for f in fields(type))
-
-  try: return frozenset(type._fields) # namedtuple or similar.
-  except AttributeError: pass
-
-  slots = all_slots(type)
-  if slots: return frozenset(slots)
-  else: raise TypeError(f'JSON decode type must be either a dataclass, namedtuple, or define `__slots__`: {type}')
-
-
-def _mk_hook(types:Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
-  '''
-  Provide a hook function that creates custom objects from json.
-  `types` is a sequence of type objects, each of which must be a dataclass or NamedTuple.
-  '''
-  if not types: return None
-
-  type_map = { _hook_type_keys(t) : t for t in types }
-  if len(type_map) < len(types):
-    # TODO: find all offending pairs.
-    raise ValueError('provided record types are ambiguous (identical field name sets).')
-
-  def _read_json_object_hook(d: Dict) -> Any:
-    keys = frozenset(d.keys())
-    try:
-      record_type = type_map[keys]
-    except KeyError: return d
-    return record_type(**d)
-
-  return _read_json_object_hook
-
-
-def _mk_decoder(types:Sequence) -> _json.JSONDecoder:
-  return _json.JSONDecoder(object_hook=_mk_hook(types))
-
-
-_ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
-
-
 def parse_json(text:JsonText, types:Sequence[type]=()) -> Any:
   '''
   Parse json from `text`.
@@ -179,3 +139,43 @@ def load_jsons(file:TextIO, types:Sequence[type]=()) -> Iterable[Any]:
   # identify object boundaries and create substrings to pass to the decoder.
   # For now just read the whole thing at once.
   return parse_jsons(file.read(), types=types)
+
+
+def _mk_hook(types:Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
+  '''
+  Provide a hook function that creates custom objects from json.
+  `types` is a sequence of type objects, each of which must be a dataclass or NamedTuple.
+  '''
+  if not types: return None
+
+  type_map = { _hook_type_keys(t) : t for t in types }
+  if len(type_map) < len(types):
+    # TODO: find all offending pairs.
+    raise ValueError('provided record types are ambiguous (identical field name sets).')
+
+  def _read_json_object_hook(d: Dict) -> Any:
+    keys = frozenset(d.keys())
+    try:
+      record_type = type_map[keys]
+    except KeyError: return d
+    return record_type(**d)
+
+  return _read_json_object_hook
+
+
+def _hook_type_keys(type) -> FrozenSet[str]:
+  if is_dataclass(type): return frozenset(f.name for f in fields(type))
+
+  try: return frozenset(type._fields) # namedtuple or similar.
+  except AttributeError: pass
+
+  slots = all_slots(type)
+  if slots: return frozenset(slots)
+  else: raise TypeError(f'JSON decode type must be either a dataclass, namedtuple, or define `__slots__`: {type}')
+
+
+def _mk_decoder(types:Sequence) -> _json.JSONDecoder:
+  return _json.JSONDecoder(object_hook=_mk_hook(types))
+
+
+_ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
