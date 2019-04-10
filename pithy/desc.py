@@ -96,7 +96,11 @@ def gen_mapping_desc(obj:Mapping, items:Iterator[Tuple[Any,Any]], depth:int, vis
   is_dict = isinstance(obj, dict)
   head = '{' if is_dict else (type(obj).__qualname__ + '({')
   yield (depth, head)
-  for k, v in items:
+  for pair in items:
+    try: k, v = pair
+    except (TypeError, ValueError):
+      yield (depth+1, f'! {pair!r}')
+      continue
     vg = gen_obj_desc(v, depth+1, visited_ids)
     v1d, v1s = next(vg)
     ks = f'{k!r}: {v1s}'
