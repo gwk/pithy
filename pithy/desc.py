@@ -70,29 +70,29 @@ def gen_obj_desc(obj:Any, depth:int, visited_ids:List[int]) -> Iterator[Tuple[in
     yield (depth, f'^0x{i:x}:{type(obj).__name__}')
     return
 
-  try: items = obj.items()
-  except (AttributeError, TypeError): pass
-  else: # Treat as a mapping.
-    visited_ids.append(i)
-    yield from gen_mapping_desc(obj, items, depth, visited_ids)
-    visited_ids.pop()
-    return
+  # Most objects in a tree are leaves; we minimize tests for the leaf case by nesting the mapping test inside the iter test.
+  # This has the side effect of ignoring non-iterable classes that have an irrelevant items() function.
 
-  # Explicit test because iter() will return an iterator for objects without __iter__ but with __getitem__;
+  # Explicit test because iter() will return for objects without __iter__ but with __getitem__;
   # this includes typing._SpecialForm, which fails when we attempt to iterate.
   if hasattr(obj, '__iter__'):
     try: it = iter(obj)
     except TypeError: pass
     else:
       visited_ids.append(i)
-      yield from gen_iter_desc(obj, iter(obj), depth, visited_ids)
+      # Attempt to distinguish between mapping and sequence types.
+      try: items = iter(obj.items()) # Wrapping `iter` guards against badly formed items() functions.
+      except (AttributeError, TypeError): # Treat as iterable.
+        yield from gen_iter_desc(obj, iter(obj), depth, visited_ids)
+      else: # Treat as a mapping.
+        yield from gen_mapping_desc(obj, items, depth, visited_ids)
       visited_ids.pop()
       return
 
   yield (depth, repr(obj))
 
 
-def gen_mapping_desc(obj:Mapping, items:Iterable[Tuple[Any,Any]], depth:int, visited_ids:List[int]) -> Iterator[Tuple[int,str]]:
+def gen_mapping_desc(obj:Mapping, items:Iterator[Tuple[Any,Any]], depth:int, visited_ids:List[int]) -> Iterator[Tuple[int,str]]:
   is_dict = isinstance(obj, dict)
   head = '{' if is_dict else (type(obj).__qualname__ + '({')
   yield (depth, head)
