@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
 
 from utest import *
-from pithy.immutable import *
+from pithy.untyped import *
