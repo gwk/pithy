@@ -60,7 +60,7 @@ class Range(Generic[_Bound, _Step], Iterable[_Bound]):
       yield stop
 
 
-_set_attr = object.__setattr__
+_setattr = object.__setattr__
 
 
 class NumRange(Sequence[Num]):
@@ -73,17 +73,17 @@ class NumRange(Sequence[Num]):
 
   def __init__(self, start:Num, stop:Num=None, step:Num=1, *, closed=False) -> None:
     if stop is None: # Imitate `range`; `start` is actually `stop`.
-      _set_attr(self, 'start', 0)
-      _set_attr(self, 'stop', start)
+      _setattr(self, 'start', 0)
+      _setattr(self, 'stop', start)
     else:
-      _set_attr(self, 'start', start)
-      _set_attr(self, 'stop', stop)
-    _set_attr(self, 'step', step)
-    _set_attr(self, 'closed', closed)
+      _setattr(self, 'start', start)
+      _setattr(self, 'stop', stop)
+    _setattr(self, 'step', step)
+    _setattr(self, 'closed', closed)
     dist = max(0, self.stop - self.start)
     steps = dist / step
     extra = 1 if (closed or steps % 1) else 0
-    _set_attr(self, '_len', int(steps) + extra)
+    _setattr(self, '_len', int(steps) + extra)
 
   def __len__(self):
     return self._len
@@ -102,7 +102,7 @@ class NumRange(Sequence[Num]):
     return '{}({}, {}, {})'.format(type(self).__name__, self.start, self.stop, self.step)
 
   def __setattr__(self, name:str, val:str) -> None:
-    raise AttributeError('readonly attributes')
+    raise AttributeError('NumRange attributes are readonly')
 
   def __hash__(self) -> int:
     return hash(self.start)^hash(self.stop)^hash(self.step)^int(self.closed)
