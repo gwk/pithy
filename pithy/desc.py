@@ -58,12 +58,12 @@ def gen_desc(obj:Any, depth:int=0) -> Iterator[str]:
   for d, s in gen_obj_desc(obj, depth=depth, visited_ids=_VisitedIds(parent=None)):
     if d < 0: # Closer.
       assert buffer
-      buffer[-1] += s if (buffer[-1][-1] in ']})') else ' '+s
-    elif d < buffer_depth:
+      buffer[-1] += s if (buffer[-1][-1] in '[]{}()') else ' '+s
+    elif d < buffer_depth: # Pop level out.
       yield from flush()
       buffer_depth = d
       buffer.append(s)
-    elif d > buffer_depth: # Entered deeper.
+    elif d > buffer_depth: # Push level in.
       yield from flush(multiline=True)
       buffer_depth = d
       buffer.append(s)
