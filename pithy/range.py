@@ -108,5 +108,4 @@ class NumRange(Sequence[Num]):
     return hash(self.start)^hash(self.stop)^hash(self.step)^int(self.closed)
 
   def __eq__(self, other:object) -> bool:
-    return isinstance(other, NumRange) and \
-    self.start == other.start and self.stop == other.stop and self.step == other.step and self.closed == other.closed
+    return type(self) == type(other) and vars(self) == vars(other)

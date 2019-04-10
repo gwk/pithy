@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import *
 
 from pithy.json import *
+from pithy.untyped import *
 from utest import *
 
 
@@ -45,6 +46,8 @@ class SlotXYZ(SlotXY):
     return super().__eq__(r) and l.z == r.z
 
 
+# Render.
+
 utest('null', render_json, None)
 utest('1', render_json, 1)
 utest('"a"', render_json, 'a')
@@ -61,15 +64,18 @@ utest('{"x":1,"y":2,"z":3}', render_json, SlotXYZ(x=1, y=2, z=3), indent=None)
 
 utest('"Ellipsis"', render_json, ...) # `str` fallback.
 
-utest(DC(x=1), parse_json, '{"x":1}', types=[DC])
-utest(NT(x=1), parse_json, '{"x":1}', types=[NT])
-utest(SlotX(x=1), parse_json, '{"x":1}', types=[SlotX])
-utest(SlotXY(x=1, y=2), parse_json, '{"x":1, "y":2}', types=[SlotXY])
 
-utest_exc(Exception, parse_json, '{"x":1}', types=[DC, NT])
+# Parse.
+utest(Immutable(x=Immutable(y=0)), parse_json, '{"x": {"y":0}}', hook=Immutable)
+utest(DC(x=1), parse_json, '{"x":1}', hooks=[DC])
+utest(NT(x=1), parse_json, '{"x":1}', hooks=[NT])
+utest(SlotX(x=1), parse_json, '{"x":1}', hooks=[SlotX])
+utest(SlotXY(x=1, y=2), parse_json, '{"x":1, "y":2}', hooks=[SlotXY])
+
+utest_exc(Exception, parse_json, '{"x":1}', hooks=[DC, NT])
 
 utest_exc(TypeError("__init__() missing 1 required positional argument: 'z'"),
-  parse_json, '{"x":1, "y":2}', types=[SlotXYZ]) # Not picked up because?
+  parse_json, '{"x":1, "y":2}', hooks=[SlotXYZ]) # Not picked up because?
 
 utest({'x': 1, 'y': 2, 'z': 3},
-  parse_json, '{"x":1, "y":2, "z":3}', types=[SlotXYZ]) # not recognized because slots of SlotXYZ are only x,y.
+  parse_json, '{"x":1, "y":2, "z":3}', hooks=[SlotXYZ]) # not recognized because slots of SlotXYZ are only x,y.

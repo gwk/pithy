@@ -5,7 +5,8 @@ import re
 from dataclasses import fields, is_dataclass
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout, version_info
-from typing import IO, Any, Callable, Dict, FrozenSet, Hashable, Iterable, List, Optional, Sequence, TextIO, Tuple, Union
+from typing import (IO, AbstractSet, Any, Callable, Dict, FrozenSet, Hashable, Iterable, List, Optional, Sequence, TextIO,
+  Tuple, Union, cast)
 
 from .util import EncodeObj, all_slots, encode_obj
 
@@ -18,6 +19,10 @@ Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 JsonText = Union[str,bytes,bytearray]
 
 class JSONEmptyDocument(JSONDecodeError): pass
+
+ObjDecodeFn = Callable[[Dict],Any]
+ObjDecodeHook = Union[type, Tuple[AbstractSet[str],Union[type,ObjDecodeFn]]]
+ObjDecodeHooks = Sequence[ObjDecodeHook]
 
 _Seps = Optional[Tuple[str,str]]
 
@@ -74,27 +79,27 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_S
 # input.
 
 
-def parse_json(text:JsonText, types:Sequence[type]=()) -> Any:
+def parse_json(text:JsonText, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Parse json from `text`.
-  If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
+  If `object_hook` is None and `types` is a non-empty sequence,
+  then a hook is created that transforms JSON objects into matching record types,
   based on field name sets.
-  The sets of field names must be unambiguous for all provided record types.
+  The sets of field names must be distinct for all provided record types.
   '''
-  return _json.loads(text, object_hook=_mk_hook(types))
+  return _json.loads(text, object_hook=_mk_hook(hook, hooks))
 
 
-def load_json(file:IO, types:Sequence[type]=()) -> Any:
+def load_json(file:IO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Read json from `file`.
-  If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching namedtuple types,
+  If `object_hook` is None and `types` is a non-empty sequence,
+  then a hook is created that transforms JSON objects into matching record types,
   based on field name sets.
-  The sets of field names must be unambiguous for all provided record types.
+  The sets of field names must be distinct for all provided record types.
   '''
   try:
-    return _json.load(file, object_hook=_mk_hook(types))
+    return _json.load(file, object_hook=_mk_hook(hook, hooks))
   except JSONDecodeError as e:
     if e.pos == 0 and e.msg == 'Expecting value':
       raise JSONEmptyDocument(msg=e.msg, doc=e.doc, pos=e.pos) from e
@@ -102,23 +107,24 @@ def load_json(file:IO, types:Sequence[type]=()) -> Any:
       raise
 
 
-def parse_jsonl(text:JsonText, types:Sequence[type]=()) -> Iterable[Any]:
-  hook = _mk_hook(types)
+def parse_jsonl(text:JsonText, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+  hook = _mk_hook(hook, hooks)
   return (_json.loads(line, object_hook=hook) for line in text.splitlines())
 
 
-def load_jsonl(stream:Iterable[JsonText], types:Sequence[type]=()) -> Iterable[Any]:
-  hook = _mk_hook(types)
+def load_jsonl(stream:Iterable[JsonText], hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+  hook = _mk_hook(hook, hooks)
   return (_json.loads(line, object_hook=hook) for line in stream)
 
 
-def parse_jsons(string:str, types:Sequence[type]=()) -> Iterable[Any]:
+def parse_jsons(string:str, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
   If `types` is a non-empty sequence,
   then an object hook is passed to the decoder transforms JSON objects into matching dataclass types.
   '''
-  decoder = _mk_decoder(types)
+  hook = _mk_hook(hook, hooks)
+  decoder = _json.JSONDecoder(object_hook=hook)
   m = _ws_re.match(string, 0)
   assert m is not None
   idx = m.end() # must consume leading whitespace for the decoder.
@@ -131,51 +137,66 @@ def parse_jsons(string:str, types:Sequence[type]=()) -> Iterable[Any]:
     idx = m.end()
 
 
-def load_jsons(file:TextIO, types:Sequence[type]=()) -> Iterable[Any]:
+def load_jsons(file:TextIO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   # TODO: it seems like we ought to be able to stream the file into the parser,
   # but JSONDecoder requires the entire string for a single JSON segment.
   # Therefore in order to stream we would need to read into a buffer,
   # count nesting tokens (accounting for strings and escaped characters inside of them),
   # identify object boundaries and create substrings to pass to the decoder.
   # For now just read the whole thing at once.
-  return parse_jsons(file.read(), types=types)
+  return parse_jsons(file.read(), hook=hook, hooks=hooks)
 
 
-def _mk_hook(types:Sequence) -> Optional[Callable[[Dict[Any, Any]], Any]]:
+def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Callable[[Dict[Any,Any]],Any]]:
   '''
-  Provide a hook function that creates custom objects from json.
+  Provide a hook function to deserialize JSON into the provided types.
   `types` is a sequence of type objects, each of which must be a dataclass or NamedTuple.
   '''
-  if not types: return None
+  if not hooks: return hook
+  dflt_hook:ObjDecodeFn = lambda d: d if hook is None else hook
 
-  type_map = { _hook_type_keys(t) : t for t in types }
-  if len(type_map) < len(types):
-    # TODO: find all offending pairs.
-    raise ValueError('provided record types are ambiguous (identical field name sets).')
+  type_map:Dict[FrozenSet[str],Any] = {}
+  for h in hooks:
 
-  def _read_json_object_hook(d: Dict) -> Any:
+    fn:ObjDecodeFn
+    if isinstance(h, type):
+      keys_raw = _hook_type_keys(h)
+      fn = _hook_type_fn(h)
+    else:
+      try: keys_raw, fn_raw = h # Explicit pair.
+      except Exception as e:
+        raise ValueError(f'malformed decoder hook; expected (keys, constructor) pair; received: {h!r}') from e
+      fn = _hook_type_fn(fn_raw) if isinstance(fn_raw, type) else fn_raw
+
+    if isinstance(keys_raw, str): keys = frozenset({keys_raw})
+    else: keys = frozenset(keys_raw)
+    if keys in type_map:
+      raise ValueError(f'conflicting type hooks for key seyt {keys}:\n  {type_map[keys]}\n  {fn}')
+    type_map[keys] = fn
+
+  def types_object_hook(d:Dict) -> Any:
     keys = frozenset(d.keys())
-    try:
-      record_type = type_map[keys]
-    except KeyError: return d
+    try: record_type = type_map[keys]
+    except KeyError: return dflt_hook(d)
     return record_type(**d)
 
-  return _read_json_object_hook
+  return types_object_hook
 
 
-def _hook_type_keys(type) -> FrozenSet[str]:
-  if is_dataclass(type): return frozenset(f.name for f in fields(type))
+def _hook_type_keys(t:type) -> AbstractSet[str]:
+  if is_dataclass(t): return frozenset(f.name for f in fields(t))
 
-  try: return frozenset(type._fields) # namedtuple or similar.
+  try: return frozenset(t._fields) # type: ignore # NamedTuple.
   except AttributeError: pass
 
-  slots = all_slots(type)
+  slots = all_slots(t)
   if slots: return frozenset(slots)
-  else: raise TypeError(f'JSON decode type must be either a dataclass, namedtuple, or define `__slots__`: {type}')
+  else: raise TypeError(f'type must be either a dataclass, namedtuple, or define `__slots__`: {type}')
 
 
-def _mk_decoder(types:Sequence) -> _json.JSONDecoder:
-  return _json.JSONDecoder(object_hook=_mk_hook(types))
+def _hook_type_fn(t:type) -> ObjDecodeFn:
+  try: return t.from_json # type: ignore
+  except AttributeError: return t
 
 
 _ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
