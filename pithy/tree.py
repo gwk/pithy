@@ -3,7 +3,7 @@
 from functools import singledispatch
 from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
-from .generator import GeneratorType as _Generator
+from types import GeneratorType
 
 
 _T = TypeVar('_T')
@@ -33,7 +33,7 @@ def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _R:
   * raise OmitNode.
   '''
   res = _transform_tree(root, get_children, visit, ())
-  if isinstance(res, _Generator): raise ValueError(res)
+  if isinstance(res, GeneratorType): raise ValueError(res)
   else: return res # type: ignore
 
 
@@ -45,7 +45,7 @@ def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_VisitFn, stack:
     for child in children:
       try: r = _transform_tree(child, get_children, visit, child_stack)
       except OmitNode: continue
-      if isinstance(r, _Generator):
+      if isinstance(r, GeneratorType):
         results.extend(r)
       else:
         results.append(r)
