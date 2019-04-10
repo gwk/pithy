@@ -40,10 +40,14 @@ def main() -> None:
     for token in lex_compiler_output(run_gen(cmd, merge_err=True, exits=True)):
       if token.lastgroup in diag_kinds:
         assert token.lastgroup is not None
-        path_abs, pos, msg = diag_re.fullmatch(token[0]).groups() # type: ignore
-        path = path_rel_to_current_or_abs(path_abs)
-        color = colors[token.lastgroup]
-        outZ(TXT_L, path, pos, color, msg, RST)
+        diag_m = diag_re.fullmatch(token[0])
+        if diag_m:
+          path_abs, pos, msg = diag_m.groups() # type: ignore
+          path = path_rel_to_current_or_abs(path_abs)
+          color = colors[token.lastgroup]
+          outZ(TXT_L, path, pos, color, msg, RST)
+        else:
+          outZ(token[0])
       else:
         s = token[0]
         color = colors[token.lastgroup]
