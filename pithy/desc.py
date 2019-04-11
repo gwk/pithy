@@ -29,7 +29,7 @@ def gen_desc(obj:Any, depth:int=0) -> Iterator[str]:
   buffer_depth = depth
 
   def needs_multiline() -> bool:
-    return False
+    return any(',' in desc for desc in buffer)
 
   def flush(multiline:bool=False) -> Iterator[str]:
     ind = '  ' * buffer_depth
