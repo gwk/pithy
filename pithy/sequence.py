@@ -4,7 +4,7 @@
 
 
 from bisect import bisect_left, bisect_right
-from typing import Sequence, TypeVar
+from typing import Iterator, Sequence, Tuple, TypeVar
 
 
 _T = TypeVar('_T')
@@ -62,3 +62,8 @@ def sorted_list_find_ge(a: Sequence[_T], x: _T) -> _T:
   if i != len(a):
     return a[i]
   raise ValueError
+
+
+def iter_pairs_of_el_is_last(seq:Sequence[_T]) -> Iterator[Tuple[_T, bool]]:
+  last = len(seq) - 1
+  return ((el, i==last) for i, el in enumerate(seq))
