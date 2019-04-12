@@ -41,6 +41,7 @@ def iter_from(iterable: Iterable[_T], start: int) -> Iterator[_T]:
 
 
 def iter_unique(iterable: Iterable[_T]) -> Iterator[_T]:
+  'Drop repeated elements, like unix `uniq`. TODO: rename to `iter_drop_repeated`.'
   prev:Any = object()
   for el in iterable:
     if el != prev:
@@ -50,6 +51,7 @@ def iter_unique(iterable: Iterable[_T]) -> Iterator[_T]:
 
 
 def extent(iterable: Iterable[_C], key: Callable[[_C], _CK]=None, default: Optional[_C]=None) -> Tuple[_C, _C]:
+  'Return the min and max.'
   it = iter(iterable)
   first = next(it) if default is None else next(it, default)
   l = first
