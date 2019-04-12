@@ -49,6 +49,9 @@ utest_seq([[1, 2], [3, 4]], group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x
 
 utest_seq([[0], [1, 2], [3, 4]], group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x % 2, headless=OnHeadless.keep)
 
+utest({0, 1}, set_from, iter([(0,), (0, 1)]))
+
+utest(frozenset({0, 1}), frozenset_from, iter([(0,), (0, 1)]))
 
 F2 = Tuple[float, float]
 def split_pair(pair:F2) -> Optional[Tuple[F2, F2]]:

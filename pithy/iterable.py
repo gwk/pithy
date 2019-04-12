@@ -5,7 +5,9 @@ from collections import defaultdict
 from enum import Enum
 from itertools import tee
 from operator import le
-from typing import Any, Callable, DefaultDict, Dict, Hashable, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import (Any, Callable, DefaultDict, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional,
+  Sequence, Set, Tuple, TypeVar, Union)
+
 from .types import Comparable
 
 
@@ -245,6 +247,17 @@ def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headle
     else:
       group.append(el)
   if group: yield group
+
+
+def set_from(iterables:Iterable[Iterable[_K]]) -> Set[_K]:
+  s:Set[_K] = set()
+  for el in iterables:
+    s.update(el)
+  return s
+
+
+def frozenset_from(iterables:Iterable[Iterable[_K]]) -> FrozenSet[_K]:
+  return frozenset(set_from(iterables))
 
 
 def split_els(iterable:Iterable[_T], split=Callable[[_T], Optional[Tuple[_T, _T]]]) -> Iterator[_T]:
