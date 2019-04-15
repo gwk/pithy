@@ -15,6 +15,7 @@ objs = [
 
   [],
   [0],
+  [[0], [0]],
   [0, 1],
   [0, [1, 2]],
   [l_empty, l_empty, [l_empty]], # Should not backref.
