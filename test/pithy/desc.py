@@ -18,6 +18,7 @@ objs = [
   [[0], [0]],
   [0, 1],
   [0, [1, 2]],
+  [[0, 1], 2],
   [l_empty, l_empty, [l_empty]], # Should not backref.
 
   tuple(),
@@ -39,3 +40,6 @@ objs = [
 for obj in objs:
   outL()
   outD(repr(obj), obj)
+
+
+outD('\nComma test', {0:[1, [2, 3]], 4:5}, commas=True)
