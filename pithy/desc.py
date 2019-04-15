@@ -24,6 +24,9 @@ def outD(*labels_and_obj:Any, depth:int=0) -> None:
 
 
 def gen_desc(obj:Any, depth:int=0) -> Iterator[str]:
+  '''
+  Generate description lines.
+  '''
   width = 128
   buffer:List[str] = []
   buffer_depth = depth
@@ -93,14 +96,15 @@ def gen_obj_desc(obj:Any, depth:int, visited_ids:List[int]) -> Iterator[Tuple[in
 
 
 def gen_iter_desc(obj:Any, it:Iterator, depth:int, visited_ids:List[int]) ->  Iterator[Tuple[int,str]]:
-  if isinstance(obj, list):
+  t = type(obj)
+  if t is list:
     head = '['
     close = ']'
-  elif isinstance(obj, tuple):
+  elif t is tuple:
     head = '('
     close = ',)' if len(obj) == 1 else ')'
   else:
-    head = type(obj).__qualname__ + '(['
+    head = t.__qualname__ + '(['
     close = '])'
   yield (depth, head)
   for el in it: yield from gen_obj_desc(el, depth+1, visited_ids)
@@ -108,8 +112,8 @@ def gen_iter_desc(obj:Any, it:Iterator, depth:int, visited_ids:List[int]) ->  It
 
 
 def gen_mapping_desc(obj:Mapping, items:Iterator[Tuple[Any,Any]], depth:int, visited_ids:List[int]) -> Iterator[Tuple[int,str]]:
-  is_dict = isinstance(obj, dict)
-  head = '{' if is_dict else (type(obj).__qualname__ + '({')
+  t = type(obj)
+  head = '{' if (t is dict) else (t.__qualname__ + '({')
   yield (depth, head)
   for pair in items:
     try: k, v = pair
@@ -121,7 +125,7 @@ def gen_mapping_desc(obj:Mapping, items:Iterator[Tuple[Any,Any]], depth:int, vis
     ks = f'{k!r}: {v1s}'
     yield (depth+1, ks)
     yield from vg
-  yield (-1, '}' if is_dict else '})')
+  yield (-1, '}' if (t is dict) else '})')
 
 
 def repr_clean(obj:Any) -> str:
