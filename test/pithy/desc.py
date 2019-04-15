@@ -53,4 +53,4 @@ for obj in objs:
   outD(repr(obj), obj)
 
 
-outD('\nComma test', {0:[1, [2, 3]], 4:5}, commas=True)
+outD('\nExact mode', {'a':[1, [2, 3]], 4:5}, exact=True)

@@ -60,13 +60,13 @@ set(): set()
 frozenset(): frozenset([])
 
 [DC(x=0, y=1), DC(x=[2, 3], y=4)]: [
-  DC( 'x'=0 'y'=1 )
+  DC( x=0 y=1 )
   DC(
-    'x'=[ 2 3 ]
-    'y'=4 )]
+    x=[ 2 3 ]
+    y=4 )]
 
-Comma test: {
-  0:[
+Exact mode: {
+  'a':[
     1,
     [ 2, 3 ]],
   4:5 }

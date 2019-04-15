@@ -15,21 +15,21 @@ from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Optional,
 from .tree import known_leaf_types
 
 
-def writeD(file:TextIO, *labels_and_obj:Any, indent='', commas=False) -> None:
+def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:
   obj = labels_and_obj[-1]
   labels = labels_and_obj[:-1]
   if labels: print(*labels, end=': ', file=file)
-  for part in gen_desc(obj, indent=indent, commas=commas):
+  for part in gen_desc(obj, indent=indent, exact=exact):
     print(part, end='', file=file)
   print(file=file)
 
 
-def errD(*labels_and_obj:Any, indent='', commas=False) -> None:
-  writeD(stderr, *labels_and_obj, indent=indent, commas=commas)
+def errD(*labels_and_obj:Any, indent='', exact=False) -> None:
+  writeD(stderr, *labels_and_obj, indent=indent, exact=exact)
 
 
-def outD(*labels_and_obj:Any, indent='', commas=False) -> None:
-  writeD(stdout, *labels_and_obj, indent=indent, commas=commas)
+def outD(*labels_and_obj:Any, indent='', exact=False) -> None:
+  writeD(stdout, *labels_and_obj, indent=indent, exact=exact)
 
 
 class _Desc(NamedTuple):
@@ -53,15 +53,14 @@ class _Desc(NamedTuple):
 _DescEl = Union[str,_Desc]
 
 
-
-def gen_desc(obj:Any, indent:str='', commas=False) -> Iterator[str]:
+def gen_desc(obj:Any, indent:str='', exact=False) -> Iterator[str]:
   '''
   Generate description parts. Does not include final newline.
   '''
-  yield from _gen_desc(_obj_desc(obj, prefix='', visited_ids=set()), indent=indent, commas=commas)
+  yield from _gen_desc(_obj_desc(obj, prefix='', visited_ids=set(), simple_keys=(not exact)), indent=indent, exact=exact)
 
 
-def _gen_desc(d:_DescEl, indent:str, commas:bool) -> Iterator[str]:
+def _gen_desc(d:_DescEl, indent:str, exact:bool) -> Iterator[str]:
   '''
   Generate description parts. Does not include final newline.
   '''
@@ -76,7 +75,7 @@ def _gen_desc(d:_DescEl, indent:str, commas:bool) -> Iterator[str]:
   if d.scan_inlineables(): # Inlineable.
     if d.buffer: # Nonempty.
       yield ' '
-      comma_joiner = ', ' if commas else ' '
+      comma_joiner = ', ' if exact else ' '
       yield comma_joiner.join(d.buffer)
       yield ' '
 
@@ -84,19 +83,19 @@ def _gen_desc(d:_DescEl, indent:str, commas:bool) -> Iterator[str]:
     indent1 = indent + '  '
     is_leaf = False
     for i, el in enumerate(d.children()):
-      yield ',\n' if (commas and i) else '\n'
+      yield ',\n' if (exact and i) else '\n'
       is_leaf = isinstance(el, str)
       if is_leaf:
         yield indent1
         yield el # type: ignore
       else:
-        yield from _gen_desc(el, indent1, commas)
+        yield from _gen_desc(el, indent1, exact)
     if is_leaf: yield ' ' # Final space before closer.
 
   yield d.closer
 
 
-def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int]) -> _DescEl:
+def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _DescEl:
   if isinstance(obj, known_leaf_types):
     return prefix + repr(obj)
 
@@ -108,7 +107,7 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int]) -> _DescEl:
     visited_ids1 = visited_ids.copy()
     visited_ids1.add(i)
     items:_Items = ((f.name, getattr(obj, f.name)) for f in _dc_fields(obj))
-    return _record_desc(obj, prefix, visited_ids1, items)
+    return _record_desc(obj, prefix, visited_ids1, items, simple_keys)
 
   # Most objects in a tree are leaves; we minimize tests for the leaf case by nesting the mapping test inside the iter test.
   # This has the debatable side effect of ignoring non-iterable classes that have an items() function.
@@ -124,14 +123,14 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int]) -> _DescEl:
       # Attempt to distinguish between mapping and sequence types.
       try: items = iter(obj.items()) # Wrapping `iter` guards against badly formed items() functions.
       except (AttributeError, TypeError): # Treat as iterable.
-        return _iterable_desc(obj, prefix, visited_ids1, iter(obj))
+        return _iterable_desc(obj, prefix, visited_ids1, iter(obj), simple_keys)
       else: # Treat as a mapping.
-        return _mapping_desc(obj, prefix, visited_ids1, items)
+        return _mapping_desc(obj, prefix, visited_ids1, items, simple_keys)
 
   return prefix + repr(obj)
 
 
-def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator) -> _Desc:
+def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator, simple_keys:bool) -> _Desc:
   t = type(obj)
   if t is tuple:
     opener = '('
@@ -150,14 +149,14 @@ def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator) -> _D
     opener = t.__qualname__ + '(['
     closer = '])'
 
-  it = (_obj_desc(el, prefix='', visited_ids=visited_ids) for el in it)
+  it = (_obj_desc(el, prefix='', visited_ids=visited_ids, simple_keys=simple_keys) for el in it)
   return _Desc(opener=prefix+opener, closer=closer, it=it, buffer=[])
 
 
 _Items = Iterator[Tuple[Any,Any]]
 
 
-def _mapping_desc(obj:Mapping, prefix:str, visited_ids:Set[int], items:_Items) -> _Desc:
+def _mapping_desc(obj:Mapping, prefix:str, visited_ids:Set[int], items:_Items, simple_keys:bool) -> _Desc:
   t = type(obj)
   if t is dict:
     opener = '{'
@@ -166,22 +165,27 @@ def _mapping_desc(obj:Mapping, prefix:str, visited_ids:Set[int], items:_Items) -
     opener = t.__qualname__ + '({'
     closer = '})'
 
-  it = _gen_item_descs(items, key_joiner=':', visited_ids=visited_ids)
+  it = _gen_item_descs(visited_ids, items, simple_keys, key_sep=':')
   return _Desc(opener=prefix+opener, closer=closer, it=it, buffer=[])
 
 
-def _record_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items) -> _Desc:
-  it = _gen_item_descs(items, key_joiner='=', visited_ids=visited_ids)
+def _record_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simple_keys:bool) -> _Desc:
+  it = _gen_item_descs(visited_ids, items, simple_keys, key_sep='=')
   return _Desc(opener=f'{prefix}{type(obj).__qualname__}(', closer=')', it=it, buffer=[])
 
 
-def _gen_item_descs(items:_Items, key_joiner:str, visited_ids:Set[int]) -> Iterator[_DescEl]:
+def _gen_item_descs(visited_ids:Set[int], items:_Items, simple_keys:bool, key_sep:str) -> Iterator[_DescEl]:
   for pair in items:
     try: k, v = pair
     except (TypeError, ValueError): # Guard against a weird items() iterator.
       yield f'! {pair!r}'
       continue
-    yield _obj_desc(v, prefix=f'{k!r}{key_joiner}', visited_ids=visited_ids)
+    if simple_keys:
+      ks = str(k)
+      if not _word_re.fullmatch(ks): ks = repr(k)
+    else:
+      ks = repr(k)
+    yield _obj_desc(v, prefix=ks+key_sep, visited_ids=visited_ids, simple_keys=simple_keys)
 
 
 def repr_clean(obj:Any) -> str:
@@ -195,6 +199,7 @@ def repr_clean(obj:Any) -> str:
 
 _literal_repr_types = { bytes,str,list,dict,set,tuple }
 _decent_repr_re = re.compile(r'[a-zA-Z][.\w]*\(.*\)')
+_word_re = re.compile(r'[-\w]+')
 
 
 def repr_lim(obj:Any, limit=64) -> str:
