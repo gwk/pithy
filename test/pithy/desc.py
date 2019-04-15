@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 
-from utest import *
+from dataclasses import dataclass
+
 from pithy.desc import *
 from pithy.io import outL
+from utest import *
+
 
 l_empty = [] # Noncyclical; referenced multiple times.
+
+@dataclass
+class DC:
+  x:Any
+  y:Any
+
 
 objs = [
   0,
@@ -35,6 +44,8 @@ objs = [
   {0, 1},
 
   frozenset(),
+
+  [DC(x=0, y=1), DC(x=[2,3], y=4)],
 ]
 
 for obj in objs:

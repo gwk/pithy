@@ -8,6 +8,7 @@ like `pprint` but streaming, and with a more compact, lisp-like style.
 
 import re
 from itertools import count
+from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
 from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Optional, Set, TextIO, Tuple, Union
 
@@ -103,6 +104,12 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int]) -> _DescEl:
   if i in visited_ids:
     return f'^0x{i:x}:{type(obj).__name__}'
 
+  if is_dataclass(obj):
+    visited_ids1 = visited_ids.copy()
+    visited_ids1.add(i)
+    items:_Items = ((f.name, getattr(obj, f.name)) for f in _dc_fields(obj))
+    return _record_desc(obj, prefix, visited_ids1, items)
+
   # Most objects in a tree are leaves; we minimize tests for the leaf case by nesting the mapping test inside the iter test.
   # This has the debatable side effect of ignoring non-iterable classes that have an items() function.
 
@@ -161,6 +168,11 @@ def _mapping_desc(obj:Mapping, prefix:str, visited_ids:Set[int], items:_Items) -
 
   it = _gen_item_descs(items, key_joiner=':', visited_ids=visited_ids)
   return _Desc(opener=prefix+opener, closer=closer, it=it, buffer=[])
+
+
+def _record_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items) -> _Desc:
+  it = _gen_item_descs(items, key_joiner='=', visited_ids=visited_ids)
+  return _Desc(opener=f'{prefix}{type(obj).__qualname__}(', closer=')', it=it, buffer=[])
 
 
 def _gen_item_descs(items:_Items, key_joiner:str, visited_ids:Set[int]) -> Iterator[_DescEl]:
