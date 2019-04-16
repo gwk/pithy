@@ -5,12 +5,12 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import Any, Container, Dict, FrozenSet, Iterable, Iterator, List, Match, NoReturn, Optional, Pattern, Tuple, cast
+from typing import Container, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Pattern, Tuple, cast
+
+from .token import Token
 
 
 class LexError(Exception): pass
-
-Token = Match[str]
 
 
 class Lexer:
@@ -105,59 +105,57 @@ class Lexer:
 
     self.regexes = { mode : compile_mode(mode, pattern_names) for mode, pattern_names in self.modes.items() }
 
-    self.inv_re = re.compile(f'(?s)(?P<{self.invalid}>.+)' if self.invalid else '(?s).+')
 
-
-  def _lex_mode(self, regex:Pattern, string:str, pos:int, end:int) -> Iterator[Token]:
+  def _lex_mode(self, regex:Pattern, source:str, pos:int, end:int) -> Iterator[Token]:
     def lex_inv(end:int) -> Token:
-      inv_match = self.inv_re.match(string, pos, end) # create a real match object.
-      assert inv_match is not None
-      if self.invalid: return inv_match
-      raise LexError(inv_match)
+      inv = Token(source=source, pos=pos, end=end, kind=(self.invalid or 'invalid'))
+      if self.invalid: return inv
+      raise LexError(inv)
     while pos < end:
-      token = regex.search(string, pos)
-      if not token:
-        yield lex_inv(end)
+      m = regex.search(source, pos)
+      if not m:
+        yield lex_inv(end=end)
         break
-      s, e = token.span()
-      if pos < s:
-        yield lex_inv(s)
-      if s == e:
+      p, e = m.span()
+      if pos < p:
+        yield lex_inv(end=p)
+        break
+      if p == e:
         raise Lexer.DefinitionError('Zero-length patterns are disallowed.\n'
-          f'  kind: {token.lastgroup}; token: {token}')
-      yield token
+          f'  kind: {m.lastgroup}; match: {m}')
+      yield Token(source=source, pos=p, end=e, kind=m.lastgroup)
       pos = e
 
-  def _lex_gen(self, stack:List[Tuple[str,FrozenSet[str]]], string:str, p:int, e:int, drop:Container[str],
+  def _lex(self, stack:List[Tuple[str,FrozenSet[str]]], source:str, p:int, e:int, drop:Container[str],
    eot:bool) -> Iterator[Token]:
     while p < e:
       mode, exit_names = stack[-1]
       regex = self.regexes[mode]
-      for token in self._lex_mode(regex, string, pos=p, end=e):
-        p = token.end()
-        if not drop or token.lastgroup not in drop:
+      for token in self._lex_mode(regex, source, pos=p, end=e):
+        p = token.end
+        if not drop or token.kind not in drop:
           yield token
-        if token.lastgroup in exit_names:
+        if token.kind in exit_names:
           stack.pop()
           break
-        try: frame = self.transitions[(mode, token.lastgroup)]
+        try: frame = self.transitions[(mode, token.kind)]
         except KeyError: pass
         else:
           stack.append(frame)
           break
     if eot:
-      yield eot_token(string[:e])
+      yield eot_token(source)
 
 
-  def lex(self, string:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
+  def lex(self, source:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
     if pos < 0:
-      pos = len(string) + pos
+      pos = len(source) + pos
     if end is None:
-      end = len(string)
+      end = len(source)
     elif end < 0:
-      end = len(string) + end
+      end = len(source) + end
     _e: int = end # typing hack.
-    return self._lex_gen(stack=[(self.main, frozenset())], string=string, p=pos, e=_e, drop=drop, eot=eot)
+    return self._lex(stack=[(self.main, frozenset())], source=source, p=pos, e=_e, drop=drop, eot=eot)
 
 
   def lex_stream(self, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Token]:
@@ -165,58 +163,18 @@ class Lexer:
     Note: the yielded Token objects have positions relative to input string that each was lexed from.'
     '''
     stack:List[Tuple[str,FrozenSet[str]]] = [(self.main, frozenset())]
-    string = ''
-    for string in stream:
-      if string:
-        yield from self._lex_gen(stack=stack, string=string, p=0, e=len(string), drop=drop, eot=False)
+    source = ''
+    for source in stream:
+      if source:
+        yield from self._lex(stack=stack, source=source, p=0, e=len(source), drop=drop, eot=False)
     if eot:
-      yield eot_token(string)
+      yield eot_token(source)
 
 
-_eot_re = re.compile(r'(?P<end_of_text>$)')
-
-def eot_token(string:str) -> Token:
+def eot_token(source:str) -> Token:
   'Create a token representing the end-of-text.'
-  return cast(Token, _eot_re.search(string, len(string)))
-
-_pos_re = re.compile(r'')
-def pos_token(token:Token) -> Token:
-  'Create a new token with the same position as `token` but with zero length.'
-  return cast(Token, _pos_re.match(token.string, token.start()))
-
-
-def token_fail(path:str, token:Token, msg:str) -> NoReturn:
-  'Print a formatted parsing failure to std err and exit.'
-  exit(token_diagnostic(token, prefix=path, msg=msg))
-
-
-def token_diagnostic(token:Token, prefix:str, msg:str, pos:Optional[int]=None, end:Optional[int]=None) -> str:
-  'Return a formatted parser error message.'
-  string = token.string
-  p, e = token.span()
-  if pos is None: pos = p
-  else: assert pos >= p
-  if end is None: end = e
-  else: assert end <= e
-  line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
-  line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
-  line_end = string.find('\n', pos)
-  if line_end == -1: line_end = len(string)
-  line = string[line_start:line_end]
-  col = pos - line_start
-  indent = ''.join('\t' if c == '\t' else ' ' for c in line[:col])
-  src_bar = '| ' if line else '|'
-  underline = '~' * (min(end - pos, len(line))) or '^'
-  return f'{prefix}:{line_num+1}:{col+1}: {msg}\n{src_bar}{line}\n  {indent}{underline}'
-
-
-def token_line_col_0(token:Token) -> Tuple[int,int]:
-  'Return a pair of 0-indexed line and column numbers for a token.'
-  string = token.string
-  pos = token.start()
-  line_num = string.count('\n', 0, pos) # number of newlines preceeding pos.
-  line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, happens to work perfectly.
-  return (line_num, pos - line_start)
+  end = len(source)
+  return Token(source=source, pos=end, end=end, kind='end_of_text')
 
 
 def validate_name(name:str) -> str:

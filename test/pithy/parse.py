@@ -32,7 +32,7 @@ lexer = Lexer(flags='x',
 
 arithmetic = Parser(lexer, dict(
     name=Atom('name'),
-    int=Atom('int', transform=lambda m: int(m[0])),
+    int=Atom('int', transform=lambda t: int(t.text)),
     paren=Prefix('paren_o', 'expr', 'paren_c'),
     # TODO: unary plus, minus.
     expr=Precedence(

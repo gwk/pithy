@@ -58,8 +58,8 @@ def main() -> None:
   if args.dbg: errSL('cmd:', *cmd)
   c, o = runCO(cmd, env=env)
   for token in lexer.lex(o):
-    s = token[0]
-    kind = token.lastgroup
+    s = token.text
+    kind = token.kind
     if kind == 'location' and '/' not in s and '<' not in s:
       s = './' + s
     try: color = colors[kind]

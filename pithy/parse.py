@@ -17,13 +17,13 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 import re
-from typing import (Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Match, NewType, NoReturn, Optional, Set, Tuple,
-  Union, cast)
+from typing import Any, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union, cast
 
 from .buffer import Buffer
 from .graph import visit_nodes
-from .lex import Lexer, Token, pos_token, reserved_names, token_fail, valid_name_re
+from .lex import Lexer, Token, reserved_names, valid_name_re
 from .string import indent_lines, pluralize
+from .token import Token
 
 
 class ParseError(Exception):
@@ -33,7 +33,7 @@ class ParseError(Exception):
     super().__init__(self.msg)
 
   def fail(self, path:str) -> NoReturn:
-    token_fail(path=path, token=self.token, msg=self.msg)
+    self.token.fail(path=path, msg=self.msg)
 
 
 class ExcessToken(ParseError):
@@ -49,13 +49,13 @@ Transform = Callable[[Any],Any]
 def identity(obj:Any) -> Any: return obj
 
 TokenTransform = Callable[[Token],Any]
-def token_syn(token:Token) -> Any: return token[0]
+def token_syn(token:Token) -> Any: return token.text
 
 UnaryTransform = Callable[[Token,Any],Any]
-def unary_syn(token:Token, obj:Any) -> Any: return (token[0], obj)
+def unary_syn(token:Token, obj:Any) -> Any: return (token.text, obj)
 
 BinaryTransform = Callable[[Token,Any,Any],Any]
-def binary_syn(token:Token, left:Any, right:Any) -> Any: return (token[0], left, right)
+def binary_syn(token:Token, left:Any, right:Any) -> Any: return (token.text, left, right)
 
 QuantityTransform = Callable[[List[Any]],Any]
 def quantity_syn(elements:List[Any]) -> Tuple[Any,...]: return tuple(elements)
@@ -103,7 +103,7 @@ class Rule:
       yield from self.heads
       return
     # This rule does not yet know its own heads; discover them recursively.
-    self.heads = (_sentinel_kind,) # Temporarily set to prevent recursion loops; use an impossible name for Match.lastgroup.
+    self.heads = (_sentinel_kind,) # Temporarily set to prevent recursion loops; use an impossible name.
     for sub in self.head_subs:
       yield from sub.compile_heads()
     # Now reset self.heads; it is up to Parser to call `compile_heads` for each node.
@@ -115,7 +115,7 @@ class Rule:
 
 
   def expect(self, token:Token, kind:str) -> Token:
-    if token.lastgroup != kind: raise ParseError(token, f'{self} expects {kind}; received {token.lastgroup}.')
+    if token.kind != kind: raise ParseError(token, f'{self} expects {kind}; received {token.kind}.')
     return token
 
 
@@ -193,25 +193,25 @@ class Quantity(Rule):
     from pithy.io import errSL
     els:List[Any] = []
     body_heads = set(self.body.heads)
-    sep_token:Optional[Match] = None
-    while token.lastgroup in body_heads:
+    sep_token:Optional[Token] = None
+    while token.kind in body_heads:
       el = self.body.parse(token, buffer)
       els.append(el)
       if self.sep is None:
         token = next(buffer)
       else: # Parse separator.
-        sep_token = cast(Match, next(buffer))
-        if sep_token.lastgroup == self.sep: # Found separator.
+        sep_token = cast(Token, next(buffer))
+        if sep_token.kind == self.sep: # Found separator.
           token = next(buffer)
         elif self.sep_at_end:
-          raise ParseError(sep_token, f'{self} expects {self.sep} separator; received {sep_token.lastgroup}.')
+          raise ParseError(sep_token, f'{self} expects {self.sep} separator; received {sep_token.kind}.')
         else:
           token = sep_token
           sep_token = None
           break
       if len(els) == self.max: break
     if len(els) < self.min:
-      raise ParseError(token, f'{self} expects at least {pluralize(self.min, "elements")}; received {token.lastgroup}.')
+      raise ParseError(token, f'{self} expects at least {pluralize(self.min, "elements")}; received {token.kind}.')
     if self.sep_at_end is False and sep_token is not None:
       raise ParseError(sep_token, f'{self} received unpexpected {self.sep} separator.')
     buffer.push(token)
@@ -243,12 +243,12 @@ class Choice(Rule):
       self.head_table[head] = matching_subs[0]
 
   def parse(self, token:Token, buffer:Buffer) -> Any:
-    try: sub = self.head_table[token.lastgroup]
+    try: sub = self.head_table[token.kind]
     except KeyError: pass
     else:
       syn = sub.parse(token, buffer)
       return self.transform(sub.name, syn)
-    raise ParseError(token, f'{self} expects any of {sorted(self.subs)}; received {token.lastgroup}')
+    raise ParseError(token, f'{self} expects any of {sorted(self.subs)}; received {token.kind}')
 
 
 class Operator:
@@ -292,7 +292,7 @@ class SuffixRule(Operator):
 
   def parse_right(self, left:Any, op_token:Token, buffer:Buffer, parse_precedence_level:Callable, level:int) -> Any:
     right = self.suffix.parse(op_token, buffer)
-    return self.transform(pos_token(op_token), left, right)
+    return self.transform(op_token.pos_token(), left, right)
 
 
 class BinaryOp(Operator):
@@ -312,7 +312,7 @@ class Adjacency(BinaryOp):
 
   def parse_right(self, left:Any, op_token:Token, buffer:Buffer, parse_precedence_level:Callable, level:int) -> Any:
     right = parse_precedence_level(token=op_token, buffer=buffer, level=level)
-    return self.transform(pos_token(op_token), left, right)
+    return self.transform(op_token.pos_token(), left, right)
 
 class _AllLeafKinds(Exception): pass
 
@@ -402,7 +402,7 @@ class Precedence(Rule):
     while True:
       op_token = next(buffer)
       try:
-        group, op = self.tail_table[op_token.lastgroup]
+        group, op = self.tail_table[op_token.kind]
       except KeyError:
         break # op_token is not an operator.
       if group.level < level: break # This operator is at a lower precedence.
@@ -413,10 +413,10 @@ class Precedence(Rule):
 
 
   def parse_leaf(self, token:Token, buffer:Buffer) -> Any:
-    try: sub = self.head_table[token.lastgroup]
+    try: sub = self.head_table[token.kind]
     except KeyError: pass
     else: return sub.parse(token, buffer)
-    raise ParseError(token, f'{self} expects any of {sorted(self.subs)}; received {token.lastgroup}')
+    raise ParseError(token, f'{self} expects any of {sorted(self.subs)}; received {token.kind}')
 
 
 
@@ -483,7 +483,7 @@ class Parser:
     token = next(buffer)
     result = rule.parse(token, buffer)
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
-    if not ignore_excess and excess_token.lastgroup != 'end_of_text':
+    if not ignore_excess and excess_token.kind != 'end_of_text':
       raise ExcessToken(excess_token, 'error: excess token')
     return result
 
@@ -491,7 +491,7 @@ class Parser:
   def parse_or_fail(self, path:str, name:RuleName, text:str, ignore_excess=False) -> Any:
     try: return self.parse(name=name, text=text, ignore_excess=ignore_excess)
     except ParseError as e:
-      token_fail(path=path, token=e.token, msg=e.msg)
+      e.fail(path=path)
 
 
   def parse_all(self, name:RuleName, text:str) -> Iterator[Any]:
@@ -499,7 +499,7 @@ class Parser:
     buffer = self.make_buffer(text)
     while True:
       token = next(buffer)
-      if token.lastgroup == 'end_of_text': return
+      if token.kind == 'end_of_text': return
       yield rule.parse(token, buffer)
 
 

@@ -10,7 +10,7 @@ from pithy.lex import *
 def run_lexer(lexer, string, **kwargs):
   'Run `lexer` on `string`, yielding (kind, text) pairs.'
   for token in lexer.lex(string, **kwargs):
-    yield token.lastgroup, token[0]
+    yield token.kind, string[token.slice]
 
 
 num_lexer = Lexer(patterns=dict(
@@ -28,8 +28,8 @@ utest_seq([('num', '1'), ('num', '20')],
 utest_seq([('num','0'), ('line','\n'), ('end_of_text','')],
   run_lexer, num_lexer, '0\n', eot=True)
 
-utest_seq_exc("LexError(<re.Match object; span=(2, 3), match='x'>)", run_lexer, num_lexer, '1 x 2')
-utest_seq_exc("LexError(<re.Match object; span=(4, 5), match='x'>)", run_lexer, num_lexer, '1 2 x')
+utest_seq_exc("LexError(Token(pos=2, end=3, kind='invalid'))", run_lexer, num_lexer, '1 x 2')
+utest_seq_exc("LexError(Token(pos=4, end=5, kind='invalid'))", run_lexer, num_lexer, '1 2 x')
 
 
 word_lexer = Lexer(invalid='inv', patterns=dict(
@@ -55,7 +55,7 @@ utest_exc(Lexer.DefinitionError("'b' pattern contains a conflicting capture grou
 utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, patterns={})
 
 utest_seq_exc(Lexer.DefinitionError(
-  "Zero-length patterns are disallowed.\n  kind: caret; token: <re.Match object; span=(0, 0), match=''>"),
+  "Zero-length patterns are disallowed.\n  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
   Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
 
 
@@ -78,40 +78,3 @@ utest_seq([
   ('dq', '"'), ('chars', 'a'), ('dq', '"'), ('space', ' '),
   ('dq', '"'), ('chars', 'b'), ('esc', '\\"'), ('esc', '\\\\'), ('dq', '"'), ('line', '\n')],
   run_lexer, str_lexer, '"a" "b\\"\\\\"\n')
-
-
-# token_diagnostic.
-
-tokens = list(word_lexer.lex('1a b\n2c d', drop={'inv'})) # note missing final newline.
-
-utest('''\
-PRE:1:1: word
-| 1a b
-  ~~\
-''', token_diagnostic, tokens[0], prefix='PRE', msg=tokens[0].lastgroup)
-
-utest('''\
-PRE:1:4: word
-| 1a b
-     ~\
-''', token_diagnostic, tokens[1], prefix='PRE', msg=tokens[1].lastgroup)
-
-utest('''\
-PRE:2:1: word
-| 2c d
-  ~~\
-''', token_diagnostic, tokens[2], prefix='PRE', msg=tokens[2].lastgroup)
-
-utest('''\
-PRE:2:4: word
-| 2c d
-     ~\
-''', token_diagnostic, tokens[3], prefix='PRE', msg=tokens[3].lastgroup)
-
-# test the caret underline for zero-length matches.
-utest('''\
-PRE:1:1: MSG
-| abc
-  ^\
-''', token_diagnostic, re.match('^', 'abc'), prefix='PRE', msg='MSG')
-
