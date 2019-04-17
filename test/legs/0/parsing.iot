@@ -1,0 +1,9 @@
+{
+  'args': [
+    '-test',
+    '10 0b10 0q10 0o10 0d10 0x10',
+    '0x__ffff_ffff_ffff_ffff',
+    #'0x1_0000_0000_0000_0000', # temporarily disabled because swift overflows but python does not.
+  ],
+  'code': 0,
+}

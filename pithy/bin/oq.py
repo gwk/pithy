@@ -119,7 +119,7 @@ def parse_query(src:str) -> Query:
   return query
 
 def mk_type_pred(token:Token) -> Predicate:
-  type_name = token[0]
+  type_name = token.text
   def type_pred(obj:Any) -> bool:
     return type(obj).__name__ == type_name or (isinstance(obj, dict) and obj.get('') == type_name)
   return type_pred

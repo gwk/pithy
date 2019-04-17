@@ -1,0 +1,2 @@
+error: pattern is trivially matched from start: a_opt.
+error: pattern is trivially matched from start: a_star.

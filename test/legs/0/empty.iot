@@ -1,0 +1,7 @@
+{
+  'args': [
+    '-test',
+    'a b c',
+    'abc def',
+  ],
+}

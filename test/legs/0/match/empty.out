@@ -1,0 +1,3 @@
+match: '' -- <none>
+match: 'a' -> invalid
+match: 'ab' -> invalid

@@ -1,0 +1,23 @@
+{
+  'args': [
+    '-test',
+    '',
+    'a bd bcd eg efg effg h hh ij k l', # similar to test/0/match/basic.iot.
+    'aa',
+    'ab',
+    'b',
+    'bb',
+    'bccd',
+    'e',
+    'ef',
+    'g',
+    'ah',
+    'ha',
+    'i',
+    'j',
+    'ija',
+    'kl',
+    'xx',
+    'axa',
+  ],
+}
