@@ -56,7 +56,7 @@ See the `utest.py` for the complete docstrings, and the tests for more examples.
 Note that as of Python 3.5.2, `atexit` suppresses `SystemExit` exceptions raised in handlers, which is unfortunate because it means that utest must use `_exit` to return a status code of 1, thereby bypassing any lower `atexit` handlers. If your unit tests require other `atexit` handlers to run, then make sure to include `utest` at the very top of the `__main__` file of your test process.
 
 ### `_utest_depth` parameter name
-`_test_depth` is the only reserved parameter name. Passing this keyword parameter to a function under test is not supported, because it will also be passed along to internal utest failure handling function.
+`_utest_depth` is the only reserved parameter name. Passing this keyword parameter to a function under test is not supported, because it will also be passed along to internal utest failure handling function.
 
 
 # Testing utest
