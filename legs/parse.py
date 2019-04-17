@@ -6,15 +6,14 @@ from typing import Container, Dict, FrozenSet, List, Match, NoReturn, Set, Tuple
 from pithy.buffer import Buffer
 from pithy.io import *
 from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
-from pithy.lex import Lexer, token_fail
+from pithy.lex import Lexer
+from pithy.token import Token
 
 from .defs import ModeTransitions
 from .patterns import *
 from .unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
 from .unicode.charsets import unicode_charsets
 
-
-Token = Match[str]
 
 
 lexer = Lexer(flags='x', invalid='invalid', patterns=dict(
@@ -64,12 +63,12 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,Fr
   tokens_with_comments = list(lexer.lex(src, drop={'space'}))
   # If first token is a comment, assume it is the license.
   license:str
-  if tokens_with_comments and tokens_with_comments[0].lastgroup == 'comment':
-    license = tokens_with_comments[0].group().strip('/ ')
+  if tokens_with_comments and tokens_with_comments[0].kind == 'comment':
+    license = tokens_with_comments[0].text.strip('/ ')
   else:
     license = 'NO LICENSE SPECIFIED.'
 
-  tokens = [t for t in tokens_with_comments if t.lastgroup != 'comment']
+  tokens = [t for t in tokens_with_comments if t.kind != 'comment']
   sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
 
   patterns:Dict[str, LegsPattern] = {} # keyed by pattern name.
@@ -78,8 +77,8 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,Fr
 
   for section in sections:
     buffer = Buffer(section)
-    if buffer.peek().lastgroup == 'section':
-      section_name = next(buffer)[0].strip('# ').lower()
+    if buffer.peek().kind == 'section':
+      section_name = next(buffer).text.strip('# ').lower()
     else:
       section_name = ''
     if not section_name or section_name.startswith('patterns'):
@@ -89,7 +88,7 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,Fr
     elif section_name.startswith('transitions'):
       parse_transitions(path, buffer, patterns.keys(), mode_pattern_kinds.keys(), mode_transitions)
     else:
-      token_fail(path, buffer.peek(), f'bad section name: {section_name!r}.')
+      buffer.peek().fail(path, f'bad section name: {section_name!r}.')
 
   if not mode_pattern_kinds:
     mode_pattern_kinds['main'] = frozenset(patterns)
@@ -98,23 +97,23 @@ def parse_legs(path:str, src:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,Fr
 
 def parse_patterns(path:str, buffer:Buffer[Token], patterns:Dict[str, LegsPattern]) -> None:
   for token in buffer:
-    kind = token.lastgroup
+    kind = token.kind
     if kind == 'newline': continue
     check_is_sym(path, token, 'pattern name symbol')
-    name = token[0]
+    name = token.text
     if name in patterns:
-      token_fail(path, token, f'duplicate pattern name: {name!r}.')
+      token.fail(path, f'duplicate pattern name: {name!r}.')
     patterns[name] = parse_pattern(path, token, buffer)
 
 
 def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], mode_pattern_kinds:Dict[str,FrozenSet[str]]) -> None:
   for token in buffer:
-    kind = token.lastgroup
+    kind = token.kind
     if kind == 'newline': continue
     check_is_sym(path, token, 'mode name')
-    name = token[0]
+    name = token.text
     if name in mode_pattern_kinds:
-      token_fail(path, token, f'duplicate mode name: {name!r}.')
+      token.fail(path, f'duplicate mode name: {name!r}.')
     consume(path, buffer, kind='colon', subj='mode declaration')
     mode_pattern_kinds[name] = parse_mode(path, buffer, patterns)
 
@@ -122,12 +121,12 @@ def parse_modes(path:str, buffer:Buffer[Token], patterns:Container[str], mode_pa
 def parse_mode(path:str, buffer:Buffer[Token], patterns:Container[str]) -> FrozenSet[str]:
   names:Set[str] = set()
   for token in buffer:
-    kind = token.lastgroup
+    kind = token.kind
     if kind == 'newline': break
     check_is_sym(path, token, 'pattern name')
-    name = token[0]
-    if name not in patterns: token_fail(path, token, f'unknown pattern name: {name!r}.')
-    if name in names: token_fail(path, token, f'duplicate pattern name: {name!r}.')
+    name = token.text
+    if name not in patterns: token.fail(path, f'unknown pattern name: {name!r}.')
+    if name in names: token.fail(path, f'duplicate pattern name: {name!r}.')
     names.add(name)
   return frozenset(names)
 
@@ -136,13 +135,13 @@ def parse_transitions(path:str, buffer:Buffer[Token], patterns:Container[str],
   modes:Container[str], transitions:ModeTransitions) -> None:
 
   def check_mode(token:Token) -> None:
-    if token[0] not in modes: token_fail(path, token, f'unknown mode name: {token[0]!r}.')
+    if token.text not in modes: token.fail(path, f'unknown mode name: {token.text!r}.')
 
   def check_pattern(token:Token) -> None:
-    if token[0] not in patterns: token_fail(path, token, f'unknown pattern name: {token[0]!r}.')
+    if token.text not in patterns: token.fail(path, f'unknown pattern name: {token.text!r}.')
 
   for token in buffer:
-    kind = token.lastgroup
+    kind = token.kind
     if kind == 'newline': continue
     check_is_sym(path, token, 'expected transition start mode')
     l_mode = token
@@ -155,24 +154,24 @@ def parse_transitions(path:str, buffer:Buffer[Token], patterns:Container[str],
     r_pattern = consume(path, buffer, kind='sym', subj='transition pop pattern')
     check_pattern(r_pattern)
     consume(path, buffer, kind='newline', subj='transition')
-    lm = l_mode[0]
-    lp = l_pattern[0]
-    r = (r_mode[0], r_pattern[0])
+    lm = l_mode.text
+    lp = l_pattern.text
+    r = (r_mode.text, r_pattern.text)
     if lm not in transitions: transitions[lm] = {}
-    if lp in transitions[lm]: token_fail(path, token, f'duplicate transition entry: {lm}, {lp}.')
+    if lp in transitions[lm]: token.fail(path, f'duplicate transition entry: {lm}, {lp}.')
     transitions[lm][lp] = r
 
 
 def parse_pattern(path:str, sym_token:Token, buffer:Buffer[Token]) -> LegsPattern:
-  assert sym_token.lastgroup == 'sym'
+  assert sym_token.kind == 'sym'
   try: next_token = buffer.peek()
   except StopIteration: pass
   else:
-    if next_token.lastgroup != 'newline': # named pattern.
+    if next_token.kind != 'newline': # named pattern.
       consume(path, buffer, kind='colon', subj='pattern')
       return parse_pattern_pattern(path, buffer, terminator='newline')
   # literal symbol pattern.
-  text = sym_token[0]
+  text = sym_token.text
   return Seq.from_list([Charset.for_char(c) for c in text])
 
 
@@ -181,8 +180,8 @@ def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Leg
   els:List[LegsPattern] = []
   def finish() -> LegsPattern: return Seq.from_list(els)
   for token in buffer:
-    kind = token.lastgroup
-    def _fail(msg) -> 'NoReturn': token_fail(path, token, msg)
+    kind = token.kind
+    def _fail(msg) -> 'NoReturn': token.fail(path, msg)
     def quantity(pattern_type:Type[QuantityPattern]) -> None:
       if not els: _fail('quantity operator must be preceded by a pattern.')
       els[-1] = pattern_type(els[-1])
@@ -195,9 +194,9 @@ def parse_pattern_pattern(path:str, buffer:Buffer[Token], terminator:str) -> Leg
     elif kind == 'plus': quantity(Plus)
     elif kind == 'esc': els.append(Charset(ranges=ranges_for_code(parse_esc(path, token))))
     elif kind == 'ref': els.append(Charset(ranges=parse_ref(path, token)))
-    elif kind == 'sym': els.extend(Charset.for_char(c) for c in token[0])
+    elif kind == 'sym': els.extend(Charset.for_char(c) for c in token.text)
     elif kind in ('colon', 'amp', 'dash', 'caret', 'char'):
-      els.append(Charset.for_char(token[0]))
+      els.append(Charset.for_char(token.text))
     elif kind == 'invalid': _fail('invalid pattern token.')
     else: _fail(f'unexpected pattern token: {desc_kind(kind)}.')
   return finish()
@@ -208,9 +207,9 @@ def parse_choice(path:str, buffer:Buffer[Token], left:LegsPattern, terminator:st
 
 
 def parse_esc(path:str, token:Token) -> int:
-  char = token[0][1]
+  char = token.text[1]
   try: code = escape_codes[char]
-  except KeyError: token_fail(path, token, f'invalid escaped character: {char!r}.')
+  except KeyError: token.fail(path, f'invalid escaped character: {char!r}.')
   return code
 
 
@@ -218,8 +217,8 @@ def ranges_for_code(code:int) -> CodeRanges: return ((code, code+1),)
 
 
 def parse_ref(path:str, token:Token) -> CodeRanges:
-  try: return unicode_charsets[token[0][1:]]
-  except KeyError: token_fail(path, token, 'unknown charset name.')
+  try: return unicode_charsets[token.text[1:]]
+  except KeyError: token.fail(path, 'unknown charset name.')
 
 
 def parse_charset(path:str, buffer:Buffer[Token], start_token:Token, is_right=False, is_diff=False) -> Set[int]:
@@ -239,22 +238,22 @@ def parse_charset(path:str, buffer:Buffer[Token], start_token:Token, is_right=Fa
 
   def add_code(token:Token, code:int) -> None:
     if code in codes:
-      token_fail(path, token, f'repeated character in set: {code!r}.')
+      token.fail(path, f'repeated character in set: {code!r}.')
     codes.add(code)
 
   def parse_right(token:Token, is_diff_op:bool) -> Set[int]:
     if not codes:
-      token_fail(path, token, f'empty charset preceding operator.')
+      token.fail(path, f'empty charset preceding operator.')
     if is_diff or (is_right and is_diff_op):
-      token_fail(path, token, f'compound set expressions containing `-` or `^` operators must be grouped with `[...]`.')
+      token.fail(path, f'compound set expressions containing `-` or `^` operators must be grouped with `[...]`.')
     return parse_charset(path, buffer, token, is_right=True, is_diff=is_diff_op)
 
   def finish() -> Set[int]:
-      if not codes: token_fail(path, start_token, 'empty character set.')
+      if not codes: start_token.fail(path, 'empty character set.')
       return codes
 
   for token in buffer:
-    kind = token.lastgroup
+    kind = token.kind
     if kind == 'brckt_c':
       return finish()
     if kind == 'brckt_o':
@@ -275,33 +274,33 @@ def parse_charset(path:str, buffer:Buffer[Token], start_token:Token, is_right=Fa
     elif kind == 'esc':
       add_code(token, parse_esc(path, token))
     elif kind == 'sym':
-      for char in token[0]:
+      for char in token.text:
         add_code(token, ord(char))
     elif kind in ('char', 'colon', 'bar', 'qmark', 'star', 'plus', 'paren_o', 'paren_c'):
-      add_code(token, ord(token[0]))
-    elif kind == 'invalid': token_fail(path, token, 'invalid pattern token.')
-    else: token_fail(path, token, f'unexpected charset token: {desc_kind(kind)}.')
-  token_fail(path, start_token, 'unterminated charset.')
+      add_code(token, ord(token.text))
+    elif kind == 'invalid': token.fail(path, 'invalid pattern token.')
+    else: token.fail(path, f'unexpected charset token: {desc_kind(kind)}.')
+  start_token.fail(path, 'unterminated charset.')
 
 
 def consume(path:str, buffer:Buffer[Token], kind:str, subj:str) -> Token:
   token:Token = next(buffer)
-  act = token.lastgroup
-  if act != kind: token_fail(path, token, f'{subj} expected {desc_kind(kind)}; found {desc_kind(act)}.')
+  act = token.kind
+  if act != kind: token.fail(path, f'{subj} expected {desc_kind(kind)}; found {desc_kind(act)}.')
   return token
 
 
 def check_is_sym(path:str, token:Token, expectation:str) -> None:
-  kind = token.lastgroup
+  kind = token.kind
   if kind != 'sym':
-    token_fail(path, token, f'expected {expectation}; found {desc_kind(kind)}.')
-  if token[0] in reserved_names:
-    token_fail(path, token, f'pattern name is reserved: {token[0]!r}.')
+    token.fail(path, f'expected {expectation}; found {desc_kind(kind)}.')
+  if token.text in reserved_names:
+    token.fail(path, f'pattern name is reserved: {token.text!r}.')
 
 reserved_names = { 'invalid', 'incomplete' }
 
 
-def is_section(token:Token) -> bool: return token.lastgroup == 'section'
+def is_section(token:Token) -> bool: return token.kind == 'section'
 
 
 escape_codes:Dict[str, int] = {
