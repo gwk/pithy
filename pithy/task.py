@@ -86,10 +86,11 @@ def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=
   # _Popen may raise FileNotFoundError, PermissionError, or OSError.
   # The distinction is more confusing than helpful; therefore we handle them all as OSError.
   except OSError as e:
-    cmd_path = cmd[0] # The path as seen by the command.
-    path = cmd_path if cwd is None else _path_join(cwd, cmd_path) # The path relative to the parent cwd, or absolute.
+    cmd_path_as_invoked = cmd[0] # The path as seen by the command.
+    path = cmd_path_as_invoked if cwd is None else _path_join(cwd, cmd_path_as_invoked) # The cmd relative to the parent cwd, or absolute.
     # TODO: If absolute, try to make path relative to parent cwd.
-    if e.filename == cmd_path: _diagnose_launch_error(path, cmd_path, e) # Raises a more specific exception or else return.
+    if e.filename == cmd_path_as_invoked:
+      _diagnose_launch_error(path, cmd_path_as_invoked, e) # Raises a more specific exception or else return.
     raise TaskLaunchUndiagnosedError(path) from e # Default.
 
 
@@ -111,7 +112,7 @@ def preexec_launch_lldb():
 def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
   if not _dir_name(cmd_path): # invoked as installed command.
     if _path_exists(path): raise TaskFileInvokedAsInstalledCommand(path) from e
-    else: raise TaskInstalledCommandNotFound(path) from e
+    else: raise TaskInstalledCommandNotFound(cmd_path) from e
 
   if not _path_exists(path): raise TaskFileNotFound(path) from e
   if not _is_file(path): raise TaskNotAFile(path) from e
@@ -463,7 +464,7 @@ class TaskInstalledCommandNotFound(TaskLaunchError):
     self.path = path
 
   @property
-  def diagnosis(self) -> str: return 'installed command was not found.'
+  def diagnosis(self) -> str: return f'installed executable was not found: `{self.path}`'
 
 
 class TaskNotAFile(TaskLaunchError):

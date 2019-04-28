@@ -1,5 +1,5 @@
 test-meta/1/cmd-installed-nonexistent
-test process launch failed; installed command was not found.
+test process launch failed; installed executable was not found: `nonexistent-installed-cmd`
 test command failed: `nonexistent-installed-cmd`
 
 ================================================================
