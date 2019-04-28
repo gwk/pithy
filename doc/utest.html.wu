@@ -46,7 +46,7 @@ The `utest_seq` and `utest_seq_exc` functions mirror those above, except that th
 
 When an expectation is not met, utest prints a message to stderr, and increments the failure count. When the process exits, if failures have occured, then an `atexit` handler (set by the utest module on import) prints a summary message and forces a hard exit with status 1.
 
-See the `utest.py` for the complete docstrings, and the tests for more examples.
+See `utest/__init__.py` for the complete docstrings, and the tests for more examples.
 
 
 ## Caveats
