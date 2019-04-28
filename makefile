@@ -18,6 +18,8 @@ _default: test typecheck
 
 _phony:
 
+packages := craft iotest legs pithy utest writeup
+
 clean:
 	rm -rf _build/*
 
@@ -32,6 +34,9 @@ cov:
 
 cov-meta:
 	test-meta/meta-coverage.sh
+
+develop:
+	./develop.sh $(packages)
 
 docs:
 	craft-docs
@@ -57,17 +62,8 @@ install-vscode:
 	craft-vscode-ext -name craft -src vscode-craft
 	craft-vscode-ext -name writeup -src vscode-writeup
 
-pip-develop:
-	pip3 install -e .
-
 pip-uninstall:
-	pip3 uninstall --yes pithy
-
-pypi-dist:
-	python3 setup.py sdist
-
-pypi-upload:
-	python3 setup.py sdist upload
+	pip3 uninstall --yes $(packages)
 
 test: gen
 	iotest -fail-fast
@@ -76,7 +72,7 @@ test/%: _phony
 	iotest -fail-fast $@
 
 typecheck: gen
-	craft-py-check iotest legs pithy gen-data.py gen-grammar.py legs_base.py utest.py
+	craft-py-check iotest legs pithy utest gen-data.py gen-grammar.py legs_base.py
 
 test-diff:
 	test-diff/test.py
