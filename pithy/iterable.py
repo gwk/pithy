@@ -320,8 +320,8 @@ _PrefixTreeTerminator = TypeVar('_PrefixTreeTerminator', bound=Hashable)
 PrefixTree = Dict[Union[_K, _PrefixTreeTerminator], Optional[Dict]] # mypy cannot handle recursive types.
 
 
-def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator=None) -> PrefixTree:
-  res:PrefixTree = {}
+def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator=None, update:PrefixTree=None) -> PrefixTree:
+  res:PrefixTree = {} if update is None else update
   for it in iterables:
     d = res
     for el in it:
