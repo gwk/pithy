@@ -61,11 +61,36 @@ utest('+2e.', path_encode, '..')
 
 # path_for_url.
 
-utest('+/+', path_for_url, 'scheme://')
+m_squash = dict(scheme=COMP, host=SQUASH, path=SQUASH, query=SQUASH, fragment=SQUASH)
+m_comp = dict(scheme=COMP, host=COMP, path=COMP, query=COMP, fragment=COMP)
+m_split = dict(scheme=COMP, host=COMP, path=SPLIT, query=COMP, fragment=COMP)
 
-utest('scheme/host/path', path_for_url, 'scheme://host/path', split_path=False, scheme=COMP)
-utest('scheme/host/path', path_for_url, 'scheme://host/path', split_path=False, scheme=COMP)
-utest('host/path', path_for_url, '//host/path/')
+utest(':,,',    path_for_url, '', **m_squash)
+utest(':/,,/+',  path_for_url, '', **m_comp)
+utest(':/,,/+',  path_for_url, '', **m_split)
 
-utest('scheme+3a,,host/path', path_for_url, 'scheme://host/path', split_path=False, scheme=COMP, host=SQUASH)
+utest(',,', path_for_url, '',   scheme=OMIT, host=COMP, path=SQUASH)
+utest(',,/+', path_for_url, '', scheme=OMIT, host=SQUASH, path=COMP)
 
+utest('path',   path_for_url, 'path', scheme=OMIT, host=OMIT, path=COMP)
+utest(':path',  path_for_url, 'path', scheme=COMP, host=OMIT, path=SQUASH)
+utest(':/path', path_for_url, 'path', scheme=COMP, host=OMIT, path=COMP)
+
+utest(',path',   path_for_url, '/path', scheme=OMIT, host=OMIT, path=COMP)
+utest(':,path',  path_for_url, '/path', scheme=COMP, host=OMIT, path=SQUASH)
+utest(':/,path', path_for_url, '/path', scheme=COMP, host=OMIT, path=COMP)
+
+utest('scheme:,,host,dir,file+3fquery+23fragment',
+  path_for_url, 'scheme://host/dir/file?query#fragment', **m_squash)
+
+utest('scheme:/host/dir,file/+3fquery/+23fragment',
+  path_for_url, 'scheme://host/dir/file?query#fragment', **m_comp)
+
+utest('scheme:/host/dir/file/+3fquery/+23fragment',
+  path_for_url, 'scheme://host/dir/file?query#fragment', **m_split)
+
+
+utest_exc(ValueError, path_for_url, '', scheme=SPLIT)
+utest_exc(ValueError, path_for_url, '', host=SPLIT)
+utest_exc(ValueError, path_for_url, '', query=SPLIT)
+utest_exc(ValueError, path_for_url, '', fragment=SPLIT)
