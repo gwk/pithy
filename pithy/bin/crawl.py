@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
 from argparse import ArgumentParser, FileType
 from dataclasses import dataclass, field
-from pithy.io import errL, errSL, errP, stdin
-from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file,
-  path_descendants, path_dir, path_exists, path_ext, path_join, remove_path_if_exists)
-from pithy.path_encode import path_for_url, OMIT, COMP, SQUASH
-from pithy.string import replace_prefix
-from pithy.task import runO
 from shlex import quote as sh_quote
 from typing import Any, Dict, List, Pattern, Set, Tuple, Union
 from urllib.parse import urldefrag, urljoin, urlsplit
 from xml.etree.ElementTree import Element
+
 import html5_parser
-import re
+
+from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file, path_descendants, path_dir,
+  path_exists, path_ext, path_join, remove_path, remove_path_if_exists)
+from pithy.io import errL, errSL, outL, outSL, errD
+from pithy.path_encode import COMP, OMIT, SPLIT, SQUASH, path_for_url
+from pithy.string import clip_first_prefix
+from pithy.task import runO
+from pithy.iterable import prefix_tree
 
 
 def main() -> None:
@@ -54,6 +57,7 @@ def main() -> None:
     force=args.force)
 
   crawler.crawl()
+  describe_skipped(crawler.skipped)
 
 
 @dataclass(frozen=True)
@@ -63,8 +67,8 @@ class Crawler:
   remaining:Set[str]
   visited:Set[str]
   force:bool
-  rejected:Set[str] = field(default_factory=set)
-
+  skipped:Set[str] = field(default_factory=set)
+  max_redirects = 8
 
   def crawl(self) -> None:
     while self.remaining:
@@ -72,44 +76,53 @@ class Crawler:
       self.crawl_url(url=url)
 
 
-  def crawl_url(self, url:str) -> None:
+  def crawl_url(self, url:str, redirects=0) -> None:
     assert url not in self.remaining
     assert url not in self.visited
+
+    if redirects > self.max_redirects:
+      errSL('too many redirects:', url)
+      return
+
+    self.visited.add(url)
 
     path = self.path_for_url(url)
     tmp_path = self.tmp_path_for_url(url)
     if is_dir(tmp_path, follow=False): exit(f'error: please remove the directory existing at path: {path}')
     if is_dir(tmp_path, follow=False): exit(f'error: please remove the directory existing at tmp path: {tmp_path}')
 
-    self.visited.add(url)
-
     if self.force or not is_file(path, follow=True):
       make_dirs(path_dir(tmp_path))
       remove_path_if_exists(tmp_path)
 
-      cmd = ['curl', '-L', url, '-o', tmp_path]
-      errSL('\ncrawl:', *[sh_quote(word) for word in cmd])
+      cmd = ['curl', url, '-o', tmp_path]
+      errSL('\ncrawl:', *[sh_quote (word) for word in cmd])
       cmd.extend(['--progress-bar', '--write-out', curl_output_fmt])
       output = runO(cmd)
       errL(output)
       results = parse_curl_output(output)
-
       code = results['http_code']
-      if code not in http_success_codes:
+
+      if code in http_redirect_codes:
+        redirect_url = clean_url(base=url, url=results['redirect_url'])
+        if redirect_url == url:
+          errSL(f'CIRCULAR redirect: {url} -> {redirect_url}')
+          return
+        errSL(f'redirect: {url} -> {redirect_url}')
+        redirect_path = self.path_for_url(redirect_url)
+        make_link(orig=redirect_path, link=path, allow_nonexistent=True, overwrite=True)
+        remove_path(tmp_path)
+        if redirect_url not in self.visited and redirect_url not in self.remaining:
+          self.crawl_url(redirect_url, redirects=redirects+1)
+
+      elif code in http_success_codes:
+        move_file(tmp_path, to=path, overwrite=True)
+
+      else:
         errSL('bad result:', code)
         return
 
-      final_url = results['url_effective']
-      final_path = self.path_for_url(final_url)
-      move_file(tmp_path, to=final_path, overwrite=True)
-
-      errSL(f'{final_url} : {final_path}')
-      if path != final_path: # add symlink.
-        errSL(f'{url} > {path}')
-        remove_path_if_exists(path)
-        make_link(orig=final_path, link=path)
-        self.visited.add(final_url)
-
+      errSL(f'{url} : {path}')
 
     # Determine if we should scrape this document for links.
     url = url.partition('?')[0]
@@ -146,23 +159,22 @@ class Crawler:
 
   def add_url(self, base:str, url:str) -> None:
     url = clean_url(base, url)
-    if url in self.rejected or url in self.remaining or url in self.visited: return
+    if url in self.skipped or url in self.remaining or url in self.visited: return
     for p in self.patterns:
       if p.match(url):
         self.remaining.add(url)
         return
-    self.rejected.add(url)
+    #if url not in self.skipped: outSL('skipping:', url)
+    self.skipped.add(url)
 
 
   def path_for_url(self, url:str) -> str:
-    p = path_for_url(url, normalize=True, split_path=True, lead_path_slash=False,
-      scheme=OMIT, host=COMP, path=COMP, query=SQUASH, fragment=OMIT)
+    p = path_for_url(url, normalize=True, scheme=OMIT, host=COMP, path=SPLIT, query=SQUASH, fragment=OMIT)
     return self.resolve_dir_collisions(path_join(self.dir, p))
 
 
   def tmp_path_for_url(self, url:str) -> str:
-    p = path_for_url(url, normalize=True, split_path=False, lead_path_slash=False,
-      scheme=OMIT, host=COMP, path=SQUASH, query=SQUASH, fragment=OMIT)
+    p = path_for_url(url, normalize=True, scheme=OMIT, host=COMP, path=SQUASH, query=SQUASH, fragment=OMIT)
     return path_join(self.dir, p) + '.tmp'
 
 
@@ -198,7 +210,7 @@ curl_output_fmt = '|'.join(f'{k}:%{{{k}}}' for k in [
   'content_type',
   'size_download',
   'time_total',
-  'url_effective',
+  'redirect_url',
 ])
 
 
@@ -207,9 +219,17 @@ def parse_curl_output(output:str) -> Dict[str,str]:
   return { k:v for k,_,v in triples }
 
 
+http_redirect_codes = {
+  '301',
+  '302',
+  '303',
+  '307',
+  '308',
+}
+
 http_success_codes = {
   '200', # Standard.
-  '203', # Server is returning a modified version.
+  '203', # Transforming proxy is returning a modified version.
 }
 
 
@@ -218,8 +238,39 @@ def clean_url(base:str, url:str='') -> str:
   return urldefrag(res)[0] # type: ignore
 
 
-html5_re = re.compile(r'(?ix) \s* <!doctype \s+ html>')
+def describe_skipped(skipped:Set[str]) -> None:
+  tree = prefix_tree(split_skipped(url) for url in skipped)
+  _simplify(tree)
+  outL('\nSkipped URLs:')
+  _describe_skipped(tree, indent='')
 
+
+def _simplify(tree:Dict) -> None:
+  try: del tree[None]
+  except KeyError: pass
+  for child in tree.values(): _simplify(child)
+
+
+def _describe_skipped(tree:Dict, indent:str) -> None:
+  if len(tree) == 1:
+    k, v = next(iter(tree.items()))
+    _describe_skipped(v, indent=f'{indent}{k}/')
+  elif tree and not any(tree.values()):
+    outL(indent, ', '.join(k or repr(k) for k in tree))
+  else:
+    for k, v in sorted(tree.items()):
+      outL(indent, k or repr(k))
+      _describe_skipped(v, indent+'  ')
+
+
+def split_skipped(url:str) -> List[str]:
+  url = clip_first_prefix(url, ['https://', 'http://', 'file://'])
+  return url_parts_re.split(url)
+
+
+url_parts_re = re.compile(r'(?x) [/]+')
+
+html5_re = re.compile(r'(?ix) \s* <!doctype \s+ html>')
 
 
 if __name__ == '__main__': main()
