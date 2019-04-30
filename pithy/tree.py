@@ -10,13 +10,13 @@ _R = TypeVar('_R')
 _Stack = Tuple[_T, ...]
 _VisitResult = Union[_R, Generator[_R, None, None]]
 _GetChildrenFn = Callable[[_T], Optional[Iterable[_T]]]
-_VisitFn = Callable[[_T, _Stack, List[_R]], _VisitResult]
+_TransformVisitor = Callable[[_T, _Stack, List[_R]], _VisitResult]
 
 
 class OmitNode(Exception): pass
 
 
-def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _R:
+def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_TransformVisitor) -> _R:
   '''
   `transform_tree` visits nodes, leaves-first, with the `visit` function,
   thereby generating a transformed tree.
@@ -35,7 +35,7 @@ def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_VisitFn) -> _R:
   else: return res # type: ignore
 
 
-def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_VisitFn, stack:_Stack) -> _VisitResult:
+def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_TransformVisitor, stack:_Stack) -> _VisitResult:
   results: List[_R] = [] # type: ignore
   children = get_children(node)
   if children:
