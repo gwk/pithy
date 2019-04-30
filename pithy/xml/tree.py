@@ -5,8 +5,6 @@ XML tools.
 '''
 
 from enum import Enum
-from functools import lru_cache
-from html import escape as html_escape
 from io import StringIO
 from itertools import chain, count
 from types import TracebackType
@@ -15,14 +13,10 @@ from typing import Any, ContextManager, Dict, Iterable, Iterator, List, Optional
 from ..io import errSL
 from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
+from .escape import EscapedStr, XmlAttrs, esc_xml_attr, esc_xml_attr_key, esc_xml_text, fmt_attrs
+
 
 _XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
-
-XmlAttrs = Optional[Dict[str,Any]]
-
-
-class EscapedStr(str):
-  'A `str` subclass that signifies to some receiver that it has already been properly escaped.'
 
 
 class IndexCounters:
@@ -65,7 +59,7 @@ class XmlWriter(ContextManager):
 
   def write(self, file:TextIO, end='\n') -> None:
     if self.prefix: print(self.prefix, file=file)
-    print('<', self.tag, self.fmt_attrs(self.attrs), sep='', end='', file=file)
+    print('<', self.tag, fmt_attrs(self.attrs, self.replaced_attrs), sep='', end='', file=file)
     if self.can_auto_close_tags and not self.children:
       print('/>', end=end, file=file)
       return
@@ -113,7 +107,7 @@ class XmlWriter(ContextManager):
 
 
   def leaf(self, tag:str, *, attrs:XmlAttrs) -> None:
-    self.add(EscapedStr(f'<{tag}{self.fmt_attrs(attrs)}/>'))
+    self.add(EscapedStr(f'<{tag}{fmt_attrs(attrs, self.replaced_attrs)}/>'))
 
 
   def child(self, child_class:Type[_XmlWriter], *children:Any, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
@@ -122,19 +116,6 @@ class XmlWriter(ContextManager):
     c = child_class(*children, _counters=self._counters, attrs=attrs, **kwargs)
     self.add(c)
     return c
-
-
-  def fmt_attrs(self, attrs:XmlAttrs) -> str:
-    'Format the `attrs` dict into XML key-value attributes.'
-    if not attrs: return ''
-    parts: List[str] = []
-    for k, v in attrs.items():
-      if v is None:
-        v = 'none'
-      else:
-        k = self.replaced_attrs.get(k, k)
-      parts.append(f' {esc_xml_attr_key(k)}="{esc_xml_attr(v)}"')
-    return ''.join(parts)
 
 
   def gen_id(self) -> str:
@@ -150,19 +131,3 @@ def add_opt_attrs(attrs:Dict[str,Any], *pairs:Tuple[str, Any], **items:Any) -> N
     if v is None: continue
     assert k not in attrs, k
     attrs[k] = v
-
-
-def esc_xml_text(val:Any) -> str:
-  'HTML-escape the string representation of `val`.'
-  # TODO: add options to support whitespace escaping?
-  return val if isinstance(val, EscapedStr) else html_escape(str(val), quote=False)
-
-
-def esc_xml_attr(val:Any) -> str:
-  'HTML-escape the string representation of `val`, including quote characters.'
-  return val if isinstance(val, EscapedStr) else html_escape(str(val), quote=True)
-
-
-@lru_cache(maxsize=1024, typed=True)
-def esc_xml_attr_key(key:str) -> str:
-  return html_escape(key.replace("_", "-"))
