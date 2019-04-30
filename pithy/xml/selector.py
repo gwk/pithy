@@ -22,6 +22,7 @@ class MultipleMatchesError(KeyError):
 class NoMatchError(KeyError):
   'Raised when a query matches no children.'
 
+
 class XmlSel:
 
   def __init__(self, dict:_XmlDict, idx:int=None, back:'XmlSel'=None) -> None:
