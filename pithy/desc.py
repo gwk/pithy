@@ -12,7 +12,7 @@ from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
 from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Optional, Set, TextIO, Tuple, Union
 
-from .tree import known_leaf_types
+from .iterable import known_leaf_types
 
 
 def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:

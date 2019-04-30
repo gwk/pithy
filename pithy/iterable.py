@@ -3,6 +3,7 @@
 
 from collections import defaultdict
 from enum import Enum
+from functools import singledispatch
 from itertools import tee
 from operator import le
 from typing import (Any, Callable, DefaultDict, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional,
@@ -16,6 +17,13 @@ _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
 _C = TypeVar('_C', bound=Comparable)
 _CK = TypeVar('_CK', bound=Comparable)
+
+
+# Note: the only type that is strictly necessary is `str`, because its element type is `str` which causes infinite recursion.
+# It also makes sense not to iterate over byte values or range indices, as that is probably not the intent of a generic iteration.
+# The remaining members are a speculative optimization.
+known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, range, type(None), type(Ellipsis))
+
 
 
 def is_sorted(iterable: Iterable, cmp=le) -> bool:
@@ -49,6 +57,19 @@ def iter_unique(iterable: Iterable[_T]) -> Iterator[_T]:
     if el != prev:
       yield el
       prev = el
+
+
+@singledispatch
+def iter_values(obj:Any) -> Iterator[Any]:
+  if isinstance(obj, known_leaf_types): return
+
+  if hasattr(obj, 'values'): # Treat as a mapping.
+    yield from obj.values()
+
+  try: it = iter(obj)
+  except TypeError: return
+  yield from it
+
 
 
 

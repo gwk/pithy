@@ -1,9 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from functools import singledispatch
-from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
-
 from types import GeneratorType
+from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 
 _T = TypeVar('_T')
@@ -52,16 +50,3 @@ def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_VisitFn, stack:
   return visit(node, stack, results)
 
 
-known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, type(None), type(Ellipsis))
-
-
-@singledispatch
-def traverse_values(obj:Any) -> Iterator[Any]:
-  if isinstance(obj, known_leaf_types): return
-
-  if hasattr(obj, 'values'): # Treat as a mapping.
-    yield from obj.values()
-
-  try: it = iter(obj)
-  except TypeError: return
-  yield from it
