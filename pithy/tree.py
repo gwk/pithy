@@ -3,6 +3,8 @@
 from types import GeneratorType
 from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
+from .iterable import iter_values
+
 
 _T = TypeVar('_T')
 _R = TypeVar('_R')
@@ -50,3 +52,13 @@ def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_TransformVisito
   return visit(node, stack, results)
 
 
+def traverse_preorder(obj:_T, visit:Callable[[_T],None]) -> None:
+  visit(obj)
+  for el in iter_values(obj):
+    traverse_preorder(el, visit)
+
+
+def traverse_postorder(obj:_T, visit:Callable[[_T],None]) -> None:
+  for el in iter_values(obj):
+    traverse_postorder(el, visit)
+  visit(obj)
