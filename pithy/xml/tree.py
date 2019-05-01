@@ -33,7 +33,7 @@ class XmlWriter(ContextManager):
   '''
 
   replaced_attrs = {
-    'class_' : 'class',
+    'cl' : 'class',
   }
 
   can_auto_close_tags = True # Allows treating all elements as "void" or "self-closing", e.g. '<TAG/>'. False for HTML.
