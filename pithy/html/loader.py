@@ -2,11 +2,13 @@
 
 from typing import Any, BinaryIO, Dict
 
+from html5_parser import parse
+
 from ..loader import FileOrPath, binary_file_for
+from ..xml.generic import generic_xml_from_etree
 
 
-def load_html(file_or_path:FileOrPath, encoding:str=None, **kwargs:Any) -> Any:
-  from html5_parser import parse
+def load_html(file_or_path:FileOrPath, encoding:str=None, comment_tag='!comment', **kwargs:Any) -> Any:
   with binary_file_for(file_or_path) as file:
     data = file.read()
   html = parse(data, transport_encoding=encoding, return_root=True, **kwargs)
@@ -14,25 +16,5 @@ def load_html(file_or_path:FileOrPath, encoding:str=None, **kwargs:Any) -> Any:
 
   # If none of the html5_parser `treebuilder` options was supplied,
   # then it will use the fast `lxml` option by default.
-  # We then transform this tree into a generic dictionary tree.
-  # Attributes are stored with string keys,
-  # and node children and text are interleaved under increasing numeric keys.
-
-  def transform(obj:Any) -> Any:
-    res:Dict = {'': obj.tag}
-    res.update(sorted(obj.items()))
-    idx = 0
-    t = obj.text
-    if t:
-      res[idx] = t
-      idx += 1
-    for child in obj:
-      res[idx] = transform(child)
-      idx += 1
-      t = child.tail
-      if t:
-        res[idx] = t
-        idx += 1
-    return res
-
-  return transform(html)
+  # Transform the resulting etree into a generic dictionary tree.
+  return generic_xml_from_etree(html, comment_tag=comment_tag)
