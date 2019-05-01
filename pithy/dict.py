@@ -7,6 +7,11 @@ _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
 
 
+def dict_discard(d:MutableMapping[_K,_V], k:_K) -> None:
+  try: del d[k]
+  except KeyError: pass
+
+
 def dict_put(d: MutableMapping[_K, _V], k: _K, v: _V) -> MutableMapping[_K, _V]:
   '''
   Put a new key and value in the dictionary, or raise err KeyError if the key already exists.
