@@ -19,11 +19,18 @@ _C = TypeVar('_C', bound=Comparable)
 _CK = TypeVar('_CK', bound=Comparable)
 
 
-# Note: the only type that is strictly necessary is `str`, because its element type is `str` which causes infinite recursion.
+class MultipleElements(ValueError):
+  'Raised when an iterable unexpectedly has multiple elements.'
+
+
+class NoElements(KeyError):
+  'Raised when an iterable unexpectedly has no elements.'
+
+
+known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, range, type(None), type(Ellipsis))
+#^ Note: the only type that is strictly necessary is `str`, because its element type is `str` which causes infinite recursion.
 # It also makes sense not to iterate over byte values or range indices, as that is probably not the intent of a generic iteration.
 # The remaining members are a speculative optimization.
-known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, range, type(None), type(Ellipsis))
-
 
 
 def is_sorted(iterable: Iterable, cmp=le) -> bool:
@@ -36,7 +43,18 @@ def is_sorted(iterable: Iterable, cmp=le) -> bool:
 def first_el(iterable: Iterable[_T]) -> _T:
   'Advance `iterable` and return the first element or raise `ValueError`.'
   for el in iterable: return el
-  raise ValueError('empty iterable')
+  raise NoElements(iterable)
+
+
+def single_el(iterable:Iterable[_T]) -> _T:
+  first = init = object()
+  for el in iterable:
+    if first == init:
+      first = el
+    else:
+      raise MultipleElements((first, el))
+  if first == init: raise NoElements(iterable)
+  return first # type: ignore
 
 
 def iter_from(iterable: Iterable[_T], start: int) -> Iterator[_T]:

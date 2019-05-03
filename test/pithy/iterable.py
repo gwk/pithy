@@ -14,7 +14,7 @@ utest(True, is_sorted, '')
 utest(True, is_sorted, 'aabbcc')
 utest(False, is_sorted, 'acb')
 
-utest_exc(ValueError('empty iterable'), first_el, [])
+utest_exc(NoElements, first_el, [])
 utest(0, first_el, [0])
 
 utest_seq([], iter_from, [], 0)
