@@ -1,10 +1,20 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Dict, Hashable, Iterable, List, Mapping, MutableMapping, MutableSequence, Sequence, Tuple, TypeVar, Union
+from typing import (Any, Callable, Dict, Hashable, Iterable, List, Mapping, MutableMapping, MutableSequence, NamedTuple,
+  Sequence, Tuple, TypeVar, Union)
 
 
 _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
+
+
+class ConflictingValues(KeyError): pass
+
+
+class KeyExistingIncoming(NamedTuple):
+  key:Any
+  existing:Any
+  incoming:Any
 
 
 def dict_discard(d:MutableMapping[_K,_V], k:_K) -> None:
@@ -21,6 +31,18 @@ def dict_put(d: MutableMapping[_K, _V], k: _K, v: _V) -> MutableMapping[_K, _V]:
     raise KeyError(k)
   d[k] = v
   return d
+
+
+def idemput(d:MutableMapping[_K,_V], k:_K, v:_V) -> None:
+  '''
+  Put a new key and value in the dictionary;
+  raise err KeyError if the key already exists and the existing value is not equal to the incoming one.
+  '''
+  try: existing = d[k]
+  except KeyError: pass
+  else:
+    if v != existing: raise ConflictingValues(KeyExistingIncoming(k, existing, v))
+  d[k] = v
 
 
 def dict_list_append(d: Dict[_K, List[_V]], k: _K, v: _V) -> Dict[_K, List[_V]]:
