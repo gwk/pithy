@@ -14,8 +14,8 @@ from typing import (Any, Callable, Dict, Hashable, Iterable, Iterator, List, Map
 
 from .iterable import iter_unique, window_pairs
 from .range import Num, NumRange
-from .xml import EscapedStr, IndexCounters, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
-
+from .xml.tree import IndexCounters, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
+from .xml.escape import EscapedStr
 
 Dim = Union[int, float, str]
 Vec = Tuple[Num, Num]

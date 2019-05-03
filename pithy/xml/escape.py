@@ -30,16 +30,16 @@ def esc_xml_attr(val:Any) -> str:
 
 @lru_cache(maxsize=1024, typed=True)
 def esc_xml_attr_key(key:str) -> str:
-  return html_escape(key.replace("_", "-"))
+  return html_escape(key.replace("_", "-"), quote=True)
 
 
-def fmt_attrs(attrs:XmlAttrs, replaced_attrs:Dict[str,str]={}) -> str:
+def fmt_attrs(attrs:XmlAttrs, replaced_attrs:Dict[str,str]) -> str:
   'Format the `attrs` dict into XML key-value attributes.'
   if not attrs: return ''
   return fmt_attr_items(attrs.items(), replaced_attrs)
 
 
-def fmt_attr_items(attr_items:Iterable[Tuple[str,Any]], replaced_attrs:Dict[str,str]={}) -> str:
+def fmt_attr_items(attr_items:Iterable[Tuple[str,Any]], replaced_attrs:Dict[str,str]) -> str:
   parts: List[str] = []
   for k, v in attr_items:
     k = replaced_attrs.get(k, k)

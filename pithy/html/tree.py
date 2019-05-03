@@ -9,7 +9,7 @@ from html import escape as html_escape
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, Iterable, cast
 from ..range import Num, NumRange
-from ..xml import EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
+from ..xml.tree import EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from ..svg import *
 from .semantics import form_input_types
 

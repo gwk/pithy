@@ -26,9 +26,9 @@ GenericXmlVal = Union[str,Dict]
 GenericXml = Dict[GenericXmlKey,GenericXmlVal]
 
 
-def generic_xml_from_etree(el:Element, comment_tag='!comment') -> GenericXml:
+def generic_xml_from_etree(el:Element, comment_tag:str=None) -> GenericXml:
   tag = el.tag
-  if tag == Comment: tag = comment_tag
+  if tag == Comment: tag = comment_tag or '!COMMENT'
   res:Dict = {'': tag}
   res.update(sorted(el.items()))
   idx = 0
@@ -109,7 +109,7 @@ def render_generic_xml(xml:GenericXml, void_elements:Container[str]) -> Iterator
   else:
     self_closing = (not children)
 
-  attrs_str = fmt_attr_items(attrs)
+  attrs_str = fmt_attr_items(attrs, {})
   head = f'<{tag}{attrs_str}'
 
   if self_closing:

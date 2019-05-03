@@ -5,10 +5,10 @@ from typing import Any, BinaryIO, Dict
 from html5_parser import parse
 
 from ..loader import FileOrPath, binary_file_for
-from ..xml.generic import generic_xml_from_etree
+from ..html import Html
 
 
-def load_html(file_or_path:FileOrPath, encoding:str=None, comment_tag='!comment', **kwargs:Any) -> Any:
+def load_html(file_or_path:FileOrPath, encoding:str=None, comment_tag:str=None, **kwargs:Any) -> Any:
   with binary_file_for(file_or_path) as file:
     data = file.read()
   html = parse(data, transport_encoding=encoding, return_root=True, **kwargs)
@@ -17,4 +17,4 @@ def load_html(file_or_path:FileOrPath, encoding:str=None, comment_tag='!comment'
   # If none of the html5_parser `treebuilder` options was supplied,
   # then it will use the fast `lxml` option by default.
   # Transform the resulting etree into a generic dictionary tree.
-  return generic_xml_from_etree(html, comment_tag=comment_tag)
+  return Html.from_etree(html, comment_tag=comment_tag)

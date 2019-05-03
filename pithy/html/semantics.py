@@ -4,11 +4,11 @@
 HTML semantics data.
 '''
 
-raw_text_elements = { 'script', 'style' }
-escapeable_raw_text_elements = { 'textarea', 'title' }
-ws_sensitive_elements = raw_text_elements | escapeable_raw_text_elements | {'pre'}
+raw_text_elements = frozenset({ 'script', 'style' })
+escapeable_raw_text_elements = frozenset({ 'textarea', 'title' })
+ws_sensitive_elements = raw_text_elements | escapeable_raw_text_elements | frozenset({'pre'})
 
-void_elements = {
+void_elements = frozenset({
   'area',
   'base',
   'br',
@@ -23,7 +23,7 @@ void_elements = {
   'source',
   'track',
   'wbr',
-}
+})
 
 form_input_types = frozenset({
   'button', # Push button with no default behavior.
