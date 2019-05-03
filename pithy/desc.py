@@ -38,11 +38,14 @@ class _Desc(NamedTuple):
   it:Iterator # _DescEl
   buffer:List[str]
 
-  def scan_inlineables(self) -> bool:
+  def scan_inlineables(self, max_width:int) -> bool:
+    width = 0
     for el in self.it:
       self.buffer.append(el)
       if not isinstance(el, str) or ',' in el: # Comma heuristic could be configurable.
         return False
+      width += len(el)
+      if width > max_width: return False
     return True # Inlineable.
 
   def children(self) -> Iterable['_DescEl']:
@@ -72,7 +75,7 @@ def _gen_desc(d:_DescEl, indent:str, exact:bool) -> Iterator[str]:
 
   yield d.opener
 
-  if d.scan_inlineables(): # Inlineable.
+  if d.scan_inlineables(max_width=128): # Inlineable.
     if d.buffer: # Nonempty.
       yield ' '
       comma_joiner = ', ' if exact else ' '
