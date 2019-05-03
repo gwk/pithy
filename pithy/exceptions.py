@@ -8,6 +8,8 @@ Various exception classes.
 class DeleteNode(Exception):
   'Signals a traverser to delete the current node.'
 
+class FlattenNode(Exception):
+  'Signals a traverser to delete the current node.'
 
 class OmitNode(Exception):
   'Signals a transformer to omit the current node.'

@@ -9,7 +9,7 @@ from typing import Any, Callable, ContextManager, Dict, FrozenSet, Iterable, Ite
 from xml.etree.ElementTree import Element
 
 from ..desc import repr_lim
-from ..exceptions import DeleteNode
+from ..exceptions import DeleteNode, FlattenNode
 from .escape import fmt_attr_items
 
 
@@ -234,12 +234,17 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
       yield f'</{self.tag}>'
 
 
-  def visit(self, visitor:Callable[['Xml'],None]) -> None:
-    visitor(self)
+  def visit(self, *, pre:Callable[['Xml'],None]=None, post:Callable[['Xml'],None]=None) -> None:
+    if pre is not None: pre(self)
     for k, v in tuple(self.items()):
       if isinstance(v, Xml): # Child element.
-        try: v.visit(visitor)
-        except DeleteNode: del self[k]
+        try: v.visit(pre=pre, post=post)
+        except DeleteNode:
+          del self[k]
+        except FlattenNode:
+          del self[k]
+          self.add_all(v.children)
+    if post is not None: post(self)
 
 
 ws_re = re.compile(r'\s+')
