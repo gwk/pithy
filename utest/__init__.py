@@ -15,13 +15,14 @@ from typing import Any, Callable, Dict, Iterable, Tuple, TypeVar
 
 __all__ = [
   'run',
-  'utest',
-  'utest_exc',
-  'utest_seq',
-  'utest_seq_exc',
-  'utest_val',
-  'utest_val_ne',
   'usymmetric',
+  'utest_exc',
+  'utest_repr',
+  'utest_seq_exc',
+  'utest_seq',
+  'utest_val_ne',
+  'utest_val',
+  'utest',
 ]
 
 
@@ -48,6 +49,22 @@ def utest(exp:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None
   else:
     if exp != ret:
       _utest_failure(_utest_depth, exp_label='value', exp=exp, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
+
+
+def utest_repr(exp_repr:str, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
+  '''
+  Invoke `fn` with `args` and `kwargs`.
+  Log a test failure if an exception is raised or the returned value's `repr` does not equal `exp_repr`.
+  '''
+  global _utest_test_count
+  _utest_test_count += 1
+  try: ret = fn(*args, **kwargs)
+  except BaseException as exc:
+    _utest_failure(_utest_depth, exp_label='repr', exp=exp_repr, exc=exc, subj=fn, args=args, kwargs=kwargs)
+  else:
+    if exp_repr != repr(ret):
+      _utest_failure(_utest_depth, exp_label='repr', exp=exp_repr, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
+
 
 
 def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
