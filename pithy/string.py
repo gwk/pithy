@@ -71,6 +71,18 @@ def clip_first_prefix(string:str, prefixes:Sequence[str], req=True) -> str:
   return string
 
 
+def replace_first_prefix(string:str, prefixes:Sequence[Tuple[str,str]], req=True) -> str:
+  'Replace the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
+  for prefix, replacement in prefixes:
+    try:
+      return replace_prefix(string, prefix, replacement, req=True)
+    except ValueError:
+      continue
+  if req:
+    raise ValueError(string)
+  return string
+
+
 def find_and_clip_suffix(string:str, suffix:str, req=True) -> str:
   idx = string.find(suffix)
   if idx == -1:
