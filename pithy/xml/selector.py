@@ -40,7 +40,7 @@ class XmlSel:
     or else the child node with matching tag, id, or class.
     Raises MultipleMatchesError when multiple child nodes match.
     '''
-    # First attempt direct access of underlying dict.
+    # First attempt direct access.
     try: v = self.node[sel]
     except KeyError: pass
     else:
@@ -110,13 +110,13 @@ class XmlSel:
    attrs:Dict[str,str]={}, **_attrs:str) -> Iterator['XmlSel']:
     pred = self._mk_predicate(sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
     for k, v in self.node.items():
-      if not (isinstance(k, int) and isinstance(v, dict)): continue
+      if not (isinstance(k, int) and isinstance(v, Xml)): continue
       if pred(v):
         yield XmlSel(v, idx=k, back=self)
 
   def _find_all(self, pred:Callable[[Xml],bool]) -> Iterator['XmlSel']:
     for k, v in self.node.items():
-      if not (isinstance(k, int) and isinstance(v, dict)): continue
+      if not (isinstance(k, int) and isinstance(v, Xml)): continue
       c = XmlSel(v, idx=k, back=self)
       if pred(v):
         yield c
@@ -173,7 +173,7 @@ class XmlSel:
 
   def all_texts(self, exact=False, _needs_space:bool=True) -> Generator[str,None,bool]:
     for c in self:
-      if isinstance(c, dict):
+      if isinstance(c, Xml):
         _needs_space = yield from XmlSel(c).all_texts(exact=exact, _needs_space=_needs_space)
         continue
       raw = str(c)
@@ -223,7 +223,7 @@ class XmlSel:
           yield repr(v)
         else:
           yield ni1
-          if not isinstance(v, dict):
+          if not isinstance(v, Xml):
             yield repr(v)
           else:
             yield from XmlSel(v)._summarize(levels-1, ni1)
@@ -235,7 +235,7 @@ def _item_summary(key:XmlKey, val:XmlChild, text_limit=32) -> str:
   if isinstance(key, str):
     if key in ('id', 'class'): return f'{key}={val!r}' # Show id and class values.
     return f'{key}=…' # Omit other attribute values.
-  if isinstance(val, dict):
+  if isinstance(val, Xml):
     try:
       sel = XmlSel(val)
       t = sel.text(exact=True, limit=text_limit)
