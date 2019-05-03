@@ -27,6 +27,7 @@ XmlAttrItem = Tuple[str,str]
 XmlChildItem = Tuple[int,XmlChild]
 
 _Xml = TypeVar('_Xml', bound='Xml')
+_XmlChild = TypeVar('_XmlChild', bound='XmlChild')
 
 
 class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
@@ -46,6 +47,13 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
 
   def __repr__(self) -> str: return f'{self.type_name}({super().__repr__()})'
 
+  @classmethod
+  def new(Class:Type[_Xml], tag:str, *children:XmlChild, **attrs:str) -> _Xml:
+    xml = Class()
+    xml.tag = tag
+    xml.update(attrs) # type: ignore
+    xml.update(enumerate(children))
+    return xml
 
   @classmethod
   def from_raw(Class:Type[_Xml], raw:Dict) -> _Xml:
@@ -92,6 +100,10 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
 
   @property
   def tag(self) -> str: return cast(str, self[None])
+
+  @tag.setter
+  def tag(self, tag:str) -> None: self[None] = tag
+
 
   @property
   def attrs(self) -> Iterator[XmlAttrItem]:
@@ -149,7 +161,21 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
   def id(self) -> str: return cast(str, self.get('id', ''))
 
 
-  def clean_node(self) -> None:
+  def add(self, child:_XmlChild) -> _XmlChild:
+    i = 0
+    while i in self: i += 1
+    self[i] = child
+    return child
+
+
+  def add_all(self, children:Iterable[_XmlChild]) -> None:
+    i = 0
+    while i in self: i += 1
+    for i, child in enumerate(children, i):
+      self[i] = child
+
+
+  def clean(self, deep=True) -> None:
     # Get all children, consolidating consecutive strings, and simultaneously remove all children from the node.
     children:List[XmlChild] = []
     for k, v in tuple(self.items()):
@@ -161,8 +187,11 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
           children[-1] += v
         else:
           children.append(v)
-      else: # Child element.
+      elif isinstance(v, Xml): # Child element.
+        if deep: v.clean()
         children.append(v)
+      else:
+        raise ValueError(v)
 
     if self.tag not in self.ws_sensitive_tags: # Clean whitespace.
       for i in range(len(children)):
@@ -172,10 +201,6 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
         children[i] = ws_re.sub(replacement, v)
 
     self.update(enumerate(children)) # Replace children with fresh, compacted indices.
-
-
-  def clean(self) -> None:
-    self.visit(type(self).clean_node)
 
 
   def discard(self, attr:str) -> None:
