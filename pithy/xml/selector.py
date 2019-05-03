@@ -78,37 +78,32 @@ class XmlSel:
     except KeyError: return default
 
 
-  def  _mk_predicate(self, sel:Optional[str], tag:Optional[str], cl:Optional[str], text:Optional[str],
+  def  _mk_predicate(self, *, tag:Optional[str], cl:Optional[str], text:Optional[str],
    attrs:Dict[str,str], _attrs:Dict[str,str]) -> Callable[[Xml],bool]:
     'Update _attrs with items from other arguments, then construct a predicate that tests Xml nodes.'
-
 
     def add(k:str, v:str) -> None:
       if _attrs.get(k, v) != v: raise ValueError('conflicting selectors for {k!r}: {v!r} != {_attrs[k]!r}')
       _attrs[k] = v
 
-    if sel is not None:
-      if not sel: raise ValueError('`sel` should not be empty string')
     if tag is not None: # Test for tag handled specially due to None key.
-      if not tag: raise ValueError('`tag` should not be empty string')
+      if not tag: raise ValueError('`tag` should not be empty')
       add(None, tag) # type: ignore # Special exception for the tag's None key.
-    if cl is not None: # Test for 'class' handled specially due to rename.
-      add('class', cl)
     for k, v in attrs.items():
       add(k, v)
 
     def predicate(node:Xml) -> bool:
       return (
-        (not sel or node.get(None) == sel or node.get('id') == sel or node.get('class') == sel) and
+        (cl is None or cl in node.classes) and
         all(node.get(ak) == av for ak, av in _attrs.items()) and
         (not text or bool(re.search(text, node.text))))
 
     return predicate
 
 
-  def all(self, sel:str=None, tag:str=None, cl:str=None, text:str=None,
+  def all(self, *, tag:str=None, cl:str=None, text:str=None,
    attrs:Dict[str,str]={}, **_attrs:str) -> Iterator['XmlSel']:
-    pred = self._mk_predicate(sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
+    pred = self._mk_predicate(tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
     for k, v in self.node.items():
       if not (isinstance(k, int) and isinstance(v, Xml)): continue
       if pred(v):
@@ -123,50 +118,50 @@ class XmlSel:
       else:
         yield from c._find_all(pred)
 
-  def find_all(self, sel:str=None, tag:str=None, cl:str=None, text:str=None,
+  def find_all(self, *, tag:str=None, cl:str=None, text:str=None,
    attrs:Dict[str,str]={}, **_attrs:str) -> Iterator['XmlSel']:
-    pred = self._mk_predicate(sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
+    pred = self._mk_predicate(tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
     return self._find_all(pred=pred)
 
-  def first(self, sel:str=None, tag:str=None, cl:str=None, text:str=None,
+  def first(self, *, tag:str=None, cl:str=None, text:str=None,
    attrs:Dict[str,str]={}, **_attrs:str) -> 'XmlSel':
-    try: return next(self.all(sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
+    try: return next(self.all(tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
     except StopIteration: pass
-    raise NoMatchError(f'sel={sel!r}, tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
+    raise NoMatchError(f'tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
 
-  def find(self, sel:str=None, tag:str=None, cl:str=None, text:str=None,
+  def find(self, *, tag:str=None, cl:str=None, text:str=None,
    attrs:Dict[str,str]={}, **_attrs:str) -> 'XmlSel':
-    try: return next(self.find_all(sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
+    try: return next(self.find_all(tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
     except StopIteration: pass
-    raise NoMatchError(f'sel={sel!r}, tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
+    raise NoMatchError(f'tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
 
   # TODO: find_first?
 
   # Traversal.
 
-  def traverse(self, distance:int, sel:str=None, tag:str=None, cl:str=None, text:str=None,
+  def traverse(self, *, distance:int, tag:str=None, cl:str=None, text:str=None,
    attrs:Dict[str,str]={}, **_attrs:str) -> XmlChildSel:
     if self.idx is None or self.back is None: raise ValueError('cannot traverse root XmlSel')
     assert distance != 0
     i = self.idx + distance
     s = self.back[i]
-    if sel is None and tag is None and cl is None and not attrs: return s
+    if tag is None and cl is None and not attrs: return s
     # Continue traversing until we find a matching element.
     step = 1 if distance > 0 else -1
-    pred = self._mk_predicate(sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
+    pred = self._mk_predicate(tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
     while not (isinstance(s, XmlSel) and pred(s.node)):
       i += step
       s = self.back[i]
     assert s.idx and s.back, s
     return s
 
-  def prev(self, sel:str=None, tag:str=None, cl:str=None, text:str=None,
+  def prev(self, tag:str=None, cl:str=None, text:str=None,
    attrs:Dict[str,str]={}, **_attrs:str) -> XmlChildSel:
-    return self.traverse(distance=-1, sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, **_attrs)
+    return self.traverse(distance=-1, tag=tag, cl=cl, text=text, attrs=attrs, **_attrs)
 
-  def next(self, sel:str=None, tag:str=None, cl:str=None, text:str=None,
+  def next(self, tag:str=None, cl:str=None, text:str=None,
    attrs:Dict[str,str]={}, **_attrs:str) -> XmlChildSel:
-    return self.traverse(distance=1, sel=sel, tag=tag, cl=cl, text=text, attrs=attrs, **_attrs)
+    return self.traverse(distance=1, tag=tag, cl=cl, text=text, attrs=attrs, **_attrs)
 
 
   # Text extraction.
