@@ -3,6 +3,7 @@
 from types import GeneratorType
 from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
+from .exceptions import OmitNode
 from .iterable import iter_values
 
 
@@ -13,14 +14,6 @@ _Stack = Tuple[_T, ...]
 _VisitResult = Union[_R, Generator[_R, None, None]]
 _GetChildrenFn = Callable[[_T], Optional[Iterable[_T]]]
 _TransformVisitor = Callable[[_T, _Stack, List[_R]], _VisitResult]
-
-
-class DeleteNode(Exception):
-  'Signals a traverser to delete the current node.'
-
-
-class OmitNode(Exception):
-  'Signals a transformer to omit the current node.'
 
 
 def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_TransformVisitor) -> _R:
