@@ -17,6 +17,7 @@ def path_encode(string:str) -> str:
   * A leading '.' is escaped to prevent hidden files from being created.
   * '%' characters are not escaped, to make prior URL encoding more readable.
   * ':' characters are not escaped to make URL schemes more readable.
+  * '=' characters are not escaped.
   * '/' is translated to ',', which allows multiple path segments in the url to be squashed into a single filename.
   * Note that ',' is itself encoded, so the encoding is unambiguous.
   * All other bytes are encoded as "+XX", where XX is the uppercase hexadecimal byte value.
@@ -35,7 +36,7 @@ _path_encode_table = [f'+{i:02x}' for i in range(0x100)]
 
 _path_encode_table[ord('/')] = ','
 
-for c in '%-._:':
+for c in '%-._:=':
   _path_encode_table[ord(c)] = c
 
 for start, last in ['09', 'AZ', 'az']:
