@@ -109,6 +109,7 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
   def attrs(self) -> Iterator[XmlAttrItem]:
     return (p for p in self.items() if isinstance(p[0], str)) # type: ignore
 
+
   @property
   def child_items(self) -> Iterator[XmlChildItem]:
     return (p for p in self.items() if isinstance(p[0], int)) # type: ignore
@@ -116,6 +117,15 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
   @property
   def children(self) -> Iterator[XmlChild]:
     return (v for k, v in self.items() if isinstance(k, int))
+
+  @property
+  def substantial_child_items(self) -> Iterator[XmlChildItem]:
+    return ((k, v) for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and ws_re.fullmatch(v)))
+
+  @property
+  def substantial_children(self) -> Iterator[XmlChild]:
+    return (v for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and ws_re.fullmatch(v)))
+
 
   @property
   def has_children(self) -> bool: return any(isinstance(k, int) for k in self)
