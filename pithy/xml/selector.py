@@ -51,8 +51,8 @@ class XmlSel:
         return v
 
     # Select all matching children.
-    pairs = [(k,v) for (k,v) in self.node.items() if isinstance(k, int) and isinstance(v, dict)
-      and (v.get(None) == sel or v.get('id') == sel or v.get('class') == sel)]
+    pairs = [(k,v) for (k,v) in self.node.items() if isinstance(k, int) and isinstance(v, Xml)
+      and (v.tag == sel or v.id == sel or sel in v.classes)]
     if not pairs: raise NoMatchError(sel)
     if len(pairs) > 1: raise MultipleMatchesError(pairs)
     k, v = pairs[0]

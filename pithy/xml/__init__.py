@@ -127,6 +127,24 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
   @property
   def cl(self) -> str: return cast(str, self.get('class', ''))
 
+  @cl.deleter
+  def cl(self) -> None: del self['class']
+
+  @cl.setter
+  def cl(self, val:str) -> None: self['class'] = val
+
+  @property
+  def classes(self) -> List[str]: return cast(str, self.get('class', '')).split()
+
+  @classes.deleter
+  def classes(self) -> None: del self['class']
+
+  @classes.setter
+  def classes(self, val:Union[str, Iterable[str]]) -> None:
+    if not isinstance(val, str): val = ' '.join(val)
+    self['class'] = val
+
+
   @property
   def id(self) -> str: return cast(str, self.get('id', ''))
 
