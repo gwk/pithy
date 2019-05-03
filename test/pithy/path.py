@@ -69,3 +69,14 @@ for i in range(1<<10):
   else:
     n = norm_path(path)
     utest(True, is_norm_path, n)
+
+
+# path_rel_to_dir.
+utest('.', path_rel_to_dir, '', '')
+utest('a', path_rel_to_dir, 'a', '')
+utest('a', path_rel_to_dir, 'a', '.')
+
+utest('b', path_rel_to_dir, 'a/b', 'a/')
+
+utest('b', path_rel_to_dir, '/a/b', '/a/')
+utest('../b', path_rel_to_dir, '/a/b', '/a/c')

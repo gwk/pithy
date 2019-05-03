@@ -210,6 +210,18 @@ def path_name_stem(path: Path) -> str:
   return path_stem(path_name(path))
 
 
+def path_rel_to_dir(path:Path, dir:Path) -> str:
+  comps:List[str] = []
+  parent_comps = 0
+  for p, r in _zip_longest(path_split(abs_path(path)), path_split(abs_path(dir))):
+    if not parent_comps and p == r: continue
+    if p is not None: comps.append(p)
+    if r is not None: parent_comps += 1
+  comps = ['..']*parent_comps + comps
+  if not comps: return '.'
+  return path_join(*comps)
+
+
 def path_rel_to_ancestor(path: Path, ancestor: str, dot=False) -> str:
   '''
   Return the path relative to `ancestor`.
