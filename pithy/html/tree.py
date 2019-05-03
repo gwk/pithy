@@ -14,8 +14,6 @@ from ..svg import *
 from .semantics import form_input_types
 
 
-_XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')
-
 Dim = Union[int, float, str]
 Vec = Tuple[Num, Num]
 VecOrNum = Union[Vec, Num]
