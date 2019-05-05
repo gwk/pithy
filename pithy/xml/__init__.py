@@ -5,7 +5,8 @@ XML tools.
 '''
 
 import re
-from typing import Any, Callable, ContextManager, Dict, FrozenSet, Iterable, Iterator, List, Tuple, Type, TypeVar, Union, cast
+from typing import (Any, Callable, ContextManager, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Tuple, Type,
+  TypeVar, Union, cast)
 from xml.etree.ElementTree import Element
 
 from ..desc import repr_lim
@@ -41,11 +42,19 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
   replaced_attrs:Dict[str,str] = {}
   ws_sensitive_tags:FrozenSet[str] = frozenset()
 
+
   def __init__(self, items:Iterable[XmlItem]=(), **attrs:Any) -> None:
     super().__init__(items, **attrs)
     self.setdefault(None, '')
 
+
   def __repr__(self) -> str: return f'{self.type_name}({super().__repr__()})'
+
+
+  def __str__(self) -> str:
+    words = ' '.join(xml_item_summary(k, v) for k, v in self.items())
+    return f'<{words}>'
+
 
   @classmethod
   def new(Class:Type[_Xml], tag:str, *children:XmlChild, **attrs:str) -> _Xml:
@@ -54,6 +63,7 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
     xml.update(attrs) # type: ignore
     xml.update(enumerate(children))
     return xml
+
 
   @classmethod
   def from_raw(Class:Type[_Xml], raw:Dict) -> _Xml:
@@ -120,11 +130,11 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
 
   @property
   def substantial_child_items(self) -> Iterator[XmlChildItem]:
-    return ((k, v) for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and ws_re.fullmatch(v)))
+    return ((k, v) for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and html_ws_re.fullmatch(v)))
 
   @property
   def substantial_children(self) -> Iterator[XmlChild]:
-    return (v for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and ws_re.fullmatch(v)))
+    return (v for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and html_ws_re.fullmatch(v)))
 
 
   @property
@@ -208,9 +218,36 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
         v = children[i]
         if not isinstance(v, str): continue
         replacement = '\n' if '\n' in v else ' '
-        children[i] = ws_re.sub(replacement, v)
+        children[i] = html_ws_re.sub(replacement, v)
 
     self.update(enumerate(children)) # Replace children with fresh, compacted indices.
+
+
+  def summary_texts(self, _needs_space:bool=True) -> Generator[str,None,bool]:
+    for child in self.children:
+      if isinstance(child, Xml):
+        _needs_space = yield from child.summary_texts(_needs_space=_needs_space)
+        continue
+      for m in html_ws_split_re.finditer(str(child)):
+        if m.lastgroup == 'space':
+          if _needs_space:
+            yield ' '
+            _needs_space = False
+        else:
+          yield m[0]
+          _needs_space = True
+    return _needs_space
+
+
+  def summary_text(self, limit=0) -> str:
+    if not limit: return ''.join(self.summary_texts())
+    parts:List[str] = []
+    length = 0
+    for part in self.summary_texts():
+      parts.append(part)
+      length += len(part)
+      if length > limit: break
+    return ''.join(parts)[:limit]
 
 
   def discard(self, attr:str) -> None:
@@ -247,7 +284,25 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
     if post is not None: post(self)
 
 
-ws_re = re.compile(r'\s+')
+def xml_item_summary(key:XmlKey, val:XmlChild, text_limit=32, attrs=False) -> str:
+  if key is None: return f'{val}:' # Tag is stored under None.
+  if isinstance(key, str):
+    ks = key if _word_re.fullmatch(key) else repr(key)
+    if attrs or key in ('id', 'class'): return f'{ks}={val!r}' # Show id and class values.
+    return f'{ks}=…' # Omit other attribute values.
+  if isinstance(val, Xml):
+    text = val.summary_text(limit=text_limit+1)
+    if text: return f'{val.tag}:{repr_lim(text, limit=text_limit)}'
+    else: return val.tag
+  text = html_ws_re.sub(newline_or_space_for_ws, val)
+  return repr_lim(text, limit=text_limit)
+
+
+def newline_or_space_for_ws(match:Match) -> str:
+  return '\n' if '\n' in match[0] else ' '
 
 # HTML defines ASCII whitespace as "U+0009 TAB, U+000A LF, U+000C FF, U+000D CR, or U+0020 SPACE."
 html_ws_re = re.compile(r'[\t\n\f\r ]+')
+html_ws_split_re = re.compile(r'(?P<space>[\t\n\f\r ])|[^\t\n\f\r ]+')
+
+_word_re = re.compile(r'[-\w]+')
