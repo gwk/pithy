@@ -5,19 +5,17 @@ XML tools.
 '''
 
 import re
-from typing import (Any, Callable, ContextManager, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Tuple, Type,
-  TypeVar, Union, cast)
+from typing import (Any, Callable, ContextManager, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Optional, Tuple,
+  Type, TypeVar, Union, cast)
 from xml.etree.ElementTree import Element
 
 from ..desc import repr_lim
-from ..exceptions import DeleteNode, FlattenNode
+from ..exceptions import DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from .escape import fmt_attr_items
-
 
 # Handle lxml comments if available; these are produced by html5_parser.
 try: from lxml.etree import Comment  # type: ignore
 except ImportError: Comment = type(Ellipsis)
-
 
 
 XmlKey = Union[None,str,int] # Tag is stored under None; attrs under `str` keys; children under `int` keys.
@@ -223,6 +221,38 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
     self.update(enumerate(children)) # Replace children with fresh, compacted indices.
 
 
+  def all(self, *, tag:str=None, cl:str=None, text:str=None, attrs:Dict[str,str]={}, **_attrs:str) -> Iterator['Xml']:
+    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
+    for k, v in self.items():
+      if isinstance(k, int) and isinstance(v, Xml) and pred(v):
+        yield v
+
+  def _find_all(self, pred:Callable[['Xml'],bool]) -> Iterator['Xml']:
+    for k, v in self.items():
+      if isinstance(k, int) and isinstance(v, Xml):
+        if pred(v):
+          yield v
+        else:
+          yield from v._find_all(pred)
+
+
+  def find_all(self, *, tag:str=None, cl:str=None, text:str=None,
+   attrs:Dict[str,str]={}, **_attrs:str) -> Iterator['Xml']:
+    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
+    return self._find_all(pred=pred)
+
+
+  def first(self, *, tag:str=None, cl:str=None, text:str=None, attrs:Dict[str,str]={}, **_attrs:str) -> 'Xml':
+    try: return next(self.all(tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
+    except StopIteration: pass
+    raise NoMatchError(f'tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
+
+  def find(self, *, tag:str=None, cl:str=None, text:str=None, attrs:Dict[str,str]={}, **_attrs:str) -> 'Xml':
+    try: return next(self.find_all(tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
+    except StopIteration: pass
+    raise NoMatchError(f'tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
+
+
   def summary_texts(self, _needs_space:bool=True) -> Generator[str,None,bool]:
     for child in self.children:
       if isinstance(child, Xml):
@@ -296,6 +326,28 @@ def xml_item_summary(key:XmlKey, val:XmlChild, text_limit=32, attrs=False) -> st
     else: return val.tag
   text = html_ws_re.sub(newline_or_space_for_ws, val)
   return repr_lim(text, limit=text_limit)
+
+
+def xml_predicate(*, tag:Optional[str], cl:Optional[str], text:Optional[str], attrs:Dict[str,str], _attrs:Dict[str,str]) -> Callable[[Xml],bool]:
+  'Update _attrs with items from other arguments, then construct a predicate that tests Xml nodes.'
+
+  def add(k:str, v:str) -> None:
+    if _attrs.get(k, v) != v: raise ValueError('conflicting selectors for {k!r}: {v!r} != {_attrs[k]!r}')
+    _attrs[k] = v
+
+  if tag is not None: # Test for tag handled specially due to None key.
+    if not tag: raise ValueError('`tag` should not be empty')
+    add(None, tag) # type: ignore # Special exception for the tag's None key.
+  for k, v in attrs.items():
+    add(k, v)
+
+  def predicate(node:Xml) -> bool:
+    return (
+      (cl is None or cl in node.classes) and
+      all(node.get(ak) == av for ak, av in _attrs.items()) and
+      (not text or text in node.text))
+
+  return predicate
 
 
 def newline_or_space_for_ws(match:Match) -> str:
