@@ -20,6 +20,7 @@ try: from lxml.etree import Comment  # type: ignore
 except ImportError: Comment = type(Ellipsis)
 
 
+XmlAttrs = Dict[str,Any]
 XmlAttrItem = Tuple[str,Any]
 
 XmlChild = Union[str,'Xml']
@@ -27,6 +28,9 @@ XmlChildren = List[XmlChild]
 
 _Xml = TypeVar('_Xml', bound='Xml')
 _XmlChild = TypeVar('_XmlChild', bound='XmlChild')
+
+XmlPred = Callable[['Xml'],bool]
+XmlVisitor = Callable[['Xml'],None]
 
 
 class Xml:
@@ -40,31 +44,51 @@ class Xml:
   replaced_attrs:Dict[str,str] = {}
   ws_sensitive_tags:FrozenSet[str] = frozenset()
 
-  __slots__ = ('tag', 'attrs', 'ch')
+  __slots__ = ('tag', 'attrs', 'ch', '_orig', '_parent')
 
-  def __init__(self, *, tag:str='', ch:Iterable[XmlChild]=(), cl:Iterable[str]=None, **attrs:Any) -> None:
+
+  def __init__(self:_Xml, *, tag:str='', attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,
+   _orig:_Xml=None, _parent:'Xml'=None, **kw_attrs:Any) -> None:
+    '''
+    Note: the initializer uses `attrs` dict and `ch` list references if provided, resulting in data sharing.
+    This is done for two reasons:
+    * avoid excess copying during deserialization from json, msgpack, or similar;
+    * allow for creation of subtree nodes (with _orig/_parent set) that alias the `attr` and `ch` collections.
+
+    Normally, nodes do not hold a reference to parent; this makes Xml trees acyclic.
+    However, various Xml methods have a `traversable` option, which will return subtrees with the _orig/_parent refs set.
+    Such "subtree nodes" can use the `next` and `prev` methods in addition to `pick` and friends.
+    '''
+
     if not isinstance(tag, str): raise TypeError(tag)
     tag = tag or self.type_tag
     if not tag: raise ValueError(tag)
     self.tag = tag
+
+    if attrs is None: attrs = kw_attrs # Important: use existing dict ref if provided.
+    else: attrs.update(kw_attrs)
     self.attrs = attrs
+
     if cl is not None:
       if not isinstance(cl, str): cl = ' '.join(cl)
-      if cl != self.attrs.setdefault('class', cl):
-        raise ConflictingValues((self.attrs['class'], cl))
-    self.ch:XmlChildren = ch if isinstance(ch, list) else list(ch)
-    #^ Important: we use an existing list reference if provided, to share data.
-    # This means that multiple nodes can alias each other's contents.
+      if cl != attrs.setdefault('class', cl):
+        raise ConflictingValues((attrs['class'], cl))
+
+    self.ch:XmlChildren = ch if isinstance(ch, list) else list(ch) #^ Important: use an existing list ref if provided.
+
+    self._orig = _orig
+    self._parent = _parent
 
 
   def __repr__(self) -> str: return f'{type(self).__name__}{self}'
 
 
   def __str__(self) -> str:
+    subnode = '' if self._orig is None else '$'
     words = ''.join(chain(
       (xml_attr_summary(k, v, text_limit=32, all_attrs=False) for k, v in self.attrs.items()),
       (xml_child_summary(c, text_limit=32) for c in self.ch)))
-    return f'<{self.tag}:{words}>'
+    return f'<{subnode}{self.tag}:{words}>'
 
 
   def __delitem__(self, key:str) -> Any: del self.attrs[key]
@@ -93,7 +117,7 @@ class Xml:
       if isinstance(c, (str, Xml)): ch.append(c)
       elif isinstance(c, dict): ch.append(Class.from_raw(c))
       else: raise ValueError(f'Xml child must be `str`, `Xml`, or `dict`; received: {c!r}')
-    return Class(tag=tag, ch=ch, **attrs)
+    return Class(tag=tag, attrs=attrs, ch=ch)
 
 
   @classmethod
@@ -109,26 +133,44 @@ class Xml:
       ch.append(Class.from_etree(child, comment_tag=comment_tag))
       text = child.tail
       if text: ch.append(text)
-    xml = Class(tag=tag, ch=ch)
-    xml.attrs.update(el.items()) # Potentially faster than constructing el.attrib.
-    return xml
+    return Class(tag=tag, attrs=el.attrib, ch=ch)
 
 
   @property
-  def substantial_child_items(self) -> Iterator[Tuple[int,XmlChild]]:
-    return ((i, c) for i, c in enumerate(self.ch) if not (isinstance(c, str) and html_ws_re.fullmatch(c)))
+  def orig(self:_Xml) -> _Xml:
+    if self._orig is None: raise ValueError(f'node is not a subnode: {self}')
+    return self._orig
 
-  @property
-  def substantial_children(self) -> Iterator[XmlChild]:
-    return (c for c in self.ch if not (isinstance(c, str) and html_ws_re.fullmatch(c)))
+
+  def subnode(self:_Xml, parent:'Xml') -> _Xml:
+    'Create a subnode for `self` referencing the provided `parent`.'
+    if self._orig is not None: raise ValueError(f'node is already a subnode: {self}')
+    return type(self)(tag=self.tag, attrs=self.attrs, ch=self.ch, _orig=self, _parent=parent)
+
+
+  def child_items(self, ws=False, traversable=False) -> Iterator[Tuple[int,XmlChild]]:
+    'Yield (index, child) pairs. If `ws` is False, then children that are purely whitespace will be filtered out.'
+    for i, c in enumerate(self.ch):
+      if isinstance(c, str):
+        if not ws and html_ws_re.fullmatch(c): continue
+        yield (i, c)
+      else:
+        yield (i, (c.subnode(self) if traversable else c))
+
+
+  def children(self, ws=False, traversable=False) -> Iterator[XmlChild]:
+    'Yield child nodes. If `ws` is False, then children that are purely whitespace will be filtered out.'
+    for c in self.ch:
+      if isinstance(c, str):
+        if not ws and html_ws_re.fullmatch(c): continue
+        yield c
+      else:
+        yield c.subnode(self) if traversable else c
+
 
   @property
   def has_substantial_children(self) -> bool: return any(not (isinstance(c, str) and html_ws_re.fullmatch(c)) for c in self.ch)
 
-
-  @property
-  def nodes(self) -> Iterator['Xml']:
-    return (c for c in self.ch if isinstance(c, Xml))
 
   @property
   def texts(self) -> Iterator[str]:
@@ -167,12 +209,13 @@ class Xml:
 
 
   def append(self, child:_XmlChild) -> _XmlChild:
+    if child._orig is not None: child = child.copy()
     self.ch.append(child)
     return child
 
 
-  def extend(self, ch:Iterable[_XmlChild]) -> None:
-    self.ch.extend(ch)
+  def extend(self, children:Iterable[_XmlChild]) -> None:
+    for el in children: self.append(el)
 
 
   def clean(self, deep=True) -> None:
@@ -198,23 +241,25 @@ class Xml:
     self.ch[:] = ch
 
 
-  def pick_all(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> Iterator['Xml']:
+  # Picking and finding.
+
+  def pick_all(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Xml']:
     pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
-    return (c for c in self.ch if isinstance(c, Xml) and pred(c))
+    return ((c.subnode(self) if traversable else c) for c in self.ch if isinstance(c, Xml) and pred(c))
 
 
-  def find_all(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> Iterator['Xml']:
+  def find_all(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Xml']:
     pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
-    if text: return self._find_all_text(pred)
-    else: return self._find_all(pred)
+    if text: return self._find_all_text(pred, traversable)
+    else: return self._find_all(pred, traversable)
 
-  def _find_all(self, pred:Callable[['Xml'],bool]) -> Iterator['Xml']:
+  def _find_all(self, pred:XmlPred, traversable:bool) -> Iterator['Xml']:
     for c in self.ch:
       if isinstance(c, Xml):
-        if pred(c): yield c
-        yield from c._find_all(pred) # Always search ch. TODO: use generator send() to let consumer decide?
+        if pred(c): yield (c.subnode(self) if traversable else c)
+        yield from c._find_all(pred, traversable) # Always search ch. TODO: use generator send() to let consumer decide?
 
-  def _find_all_text(self, pred:Callable[['Xml'],bool]) -> Generator['Xml',None,bool]:
+  def _find_all_text(self, pred:XmlPred, traversable:bool) -> Generator['Xml',None,bool]:
     '''
     Use post-order algorithm to find matching text, and do not search parents of matching children.
     This is desirable because the calculation of text is expensive
@@ -223,31 +268,31 @@ class Xml:
     found_match = False
     for c in self.ch:
       if isinstance(c, Xml):
-        child_match = yield from c._find_all_text(pred)
+        child_match = yield from c._find_all_text(pred, traversable)
         if child_match:
           found_match = True
         elif pred(c):
           found_match = True
-          yield c
+          yield (c.subnode(self) if traversable else c)
     return found_match
 
 
-  def pick_first(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
+  def pick_first(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
     pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
     for c in self.ch:
-      if isinstance(c, Xml) and pred(c): return c
+      if isinstance(c, Xml) and pred(c): return (c.subnode(self) if traversable else c)
     raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
 
 
-  def find_first(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
-    for c in self.find_all(tag=tag, cl=cl, text=text, **attrs):
+  def find_first(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
+    for c in self.find_all(tag=tag, cl=cl, text=text, traversable=traversable, **attrs):
       return c
     raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
 
 
-  def pick(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
+  def pick(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
     first:Optional[Xml] = None
-    for c in self.pick_all(tag=tag, cl=cl, text=text, **attrs):
+    for c in self.pick_all(tag=tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first is None: first = c
       else:
         s = fmt_xml_predicate_args(tag, cl, text, attrs)
@@ -257,9 +302,9 @@ class Xml:
     return first
 
 
-  def find(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
+  def find(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
     first:Optional[Xml] = None
-    for c in self.find_all(tag=tag, cl=cl, text=text, **attrs):
+    for c in self.find_all(tag=tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first is None: first = c
       else:
         s = fmt_xml_predicate_args(tag, cl, text, attrs)
@@ -268,6 +313,39 @@ class Xml:
       raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
     return first
 
+
+  # Traversal.
+
+  def next(self, *, tag:str='', cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
+    if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
+    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+    found_orig = False
+    for c in self._parent.ch:
+      if not isinstance(c, Xml): continue
+      if found_orig:
+        if pred(c): return (c.subnode(self._parent) if traversable else c)
+      elif c is self._orig:
+        found_orig = True
+    if not found_orig: raise ValueError('node was removed from parent')
+    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+
+
+
+  def prev(self, *, tag:str='', cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
+    if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
+    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+    found_orig = False
+    for c in reversed(self._parent.ch):
+      if not isinstance(c, Xml): continue
+      if found_orig:
+        if pred(c): return (c.subnode(self._parent) if traversable else c)
+      elif c is self._orig:
+        found_orig = True
+    if not found_orig: raise ValueError('node was removed from parent')
+    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+
+
+  # Text.
 
   def summary_texts(self, _needs_space:bool=True) -> Generator[str,None,bool]:
     for child in self.ch:
@@ -321,25 +399,26 @@ class Xml:
       yield f'</{self.tag}>'
 
 
-  def visit(self, *, pre:Callable[['Xml'],None]=None, post:Callable[['Xml'],None]=None) -> None:
+  def visit(self, *, pre:XmlVisitor=None, post:XmlVisitor=None, traversable=False) -> None:
     if pre is not None: pre(self)
 
-    ch:List[XmlChild] = []
+    modified_children:List[XmlChild] = []
     first_mod_idx:Optional[int] = None
     for i, c in enumerate(self.ch):
       if isinstance(c, Xml):
-        try: c.visit(pre=pre, post=post)
+        if traversable: c = c.subnode(self)
+        try: c.visit(pre=pre, post=post, traversable=traversable)
         except DeleteNode:
           if first_mod_idx is None: first_mod_idx = i
           continue
         except FlattenNode:
           if first_mod_idx is None: first_mod_idx = i
-          ch.extend(c.ch) # Insert children in place of `c`.
+          modified_children.extend(c.ch) # Insert children in place of `c`.
           continue
       if first_mod_idx is not None:
-        ch.append(c)
+        modified_children.append(c)
     if first_mod_idx is not None:
-      self.ch[first_mod_idx:] = ch
+      self.ch[first_mod_idx:] = modified_children
 
     if post is not None: post(self)
 
@@ -359,11 +438,10 @@ def xml_child_summary(child:XmlChild, text_limit:int) -> str:
   return ' ' + repr_lim(text, limit=text_limit)
 
 
-def xml_predicate(*, tag:str, cl:str, text:str, attrs:Dict[str,str]) -> Callable[[Xml],bool]:
+def xml_predicate(*, tag:str, cl:str, text:str, attrs:Dict[str,str]) -> XmlPred:
   'Update _attrs with items from other arguments, then construct a predicate that tests Xml nodes.'
 
   def predicate(node:Xml) -> bool:
-    #print("PRED", tag, cl, node)
     return (
       (not tag or node.tag == tag) and
       (not cl or cl in node.classes) and

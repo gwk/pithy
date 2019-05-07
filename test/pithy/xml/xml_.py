@@ -39,3 +39,14 @@ utest_exc(MultipleMatchesError, html.find, 'div')
 
 utest_exc(MultipleMatchesError, body.pick, cl='DIV-CLASS')
 utest_exc(MultipleMatchesError, html.find, cl='DIV-CLASS')
+
+
+sd0 = body.pick(id='DIV-ID-0', traversable=True)
+sd1 = html.find(id='DIV-ID-1', traversable=True)
+
+utest_val(div0, sd0.orig, 'sd0.orig')
+utest_val(div1, sd1.orig, 'sd1.orig')
+
+utest(div1, sd0.next)
+utest(div0, sd1.prev)
+
