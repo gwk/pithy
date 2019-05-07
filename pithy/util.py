@@ -3,6 +3,18 @@
 from typing import Any, Callable, Dict, FrozenSet, Iterable, NamedTuple, Set, Tuple, Type, cast
 
 
+class lazy_property(object):
+  'Lazy property decorator.'
+
+  def __init__(self, acc_fn:Callable) -> None:
+    self.acc_fn = acc_fn
+
+  def __get__(self, obj:Any, cls:Type) -> Any:
+    val = self.acc_fn(obj)
+    setattr(obj, self.acc_fn.__name__, val)
+    return val
+
+
 def memoize(_fn:Callable=None, sentinel:Any=Ellipsis) -> Callable:
   '''
   recursive function memoization decorator.
@@ -28,18 +40,6 @@ def memoize(_fn:Callable=None, sentinel:Any=Ellipsis) -> Callable:
     return _memoize
   else: # called without parens.
     return _memoize(_fn)
-
-
-class lazy_property(object):
-  'Lazy property decorator.'
-
-  def __init__(self, acc_fn:Callable) -> None:
-    self.acc_fn = acc_fn
-
-  def __get__(self, obj:Any, cls:Type) -> Any:
-    val = self.acc_fn(obj)
-    setattr(obj, self.acc_fn.__name__, val)
-    return val
 
 
 def nt_items(nt:NamedTuple) -> Iterable[Tuple[str,Any]]:
