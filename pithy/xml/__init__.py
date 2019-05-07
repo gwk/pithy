@@ -1,152 +1,140 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-XML tools.
+Xml type.
 '''
 
 import re
-from typing import (Any, Callable, ContextManager, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Optional, Tuple,
-  Type, TypeVar, Union, cast)
+from itertools import chain
+from typing import (Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Optional, Tuple, Type, TypeVar,
+  Union, cast)
 from xml.etree.ElementTree import Element
 
 from ..desc import repr_lim
-from ..exceptions import DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
+from ..exceptions import DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError, ConflictingValues
 from .escape import fmt_attr_items
+
 
 # Handle lxml comments if available; these are produced by html5_parser.
 try: from lxml.etree import Comment  # type: ignore
 except ImportError: Comment = type(Ellipsis)
 
 
-XmlKey = Union[None,str,int] # Tag is stored under None; attrs under `str` keys; children under `int` keys.
-XmlChild = Union[str,'Xml']
+XmlAttrItem = Tuple[str,Any]
 
-XmlItem = Tuple[XmlKey,XmlChild]
-XmlAttrItem = Tuple[str,str]
-XmlChildItem = Tuple[int,XmlChild]
+XmlChild = Union[str,'Xml']
+XmlChildren = List[XmlChild]
 
 _Xml = TypeVar('_Xml', bound='Xml')
 _XmlChild = TypeVar('_XmlChild', bound='XmlChild')
 
 
-class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
+class Xml:
   '''
-  XmlWriter is the root class for building document trees for output.
-  XmlWriter is subclassed to provide more convenient Python APIs; see pithy.html and pithy.svg.
+  Xml root class for building document trees.
+  Unlike xml.etree.ElementTree.Element, child nodes and text are interleaved.
   '''
 
+  type_tag = '' # Subclasses can specify a tag by overriding `type_tag`.
   void_elements:FrozenSet[str] = frozenset()
   replaced_attrs:Dict[str,str] = {}
   ws_sensitive_tags:FrozenSet[str] = frozenset()
 
+  __slots__ = ('tag', 'attrs', 'ch')
 
-  def __init__(self, items:Iterable[XmlItem]=(), **attrs:Any) -> None:
-    super().__init__(items, **attrs)
-    self.setdefault(None, '')
+  def __init__(self, *, tag:str='', ch:Iterable[XmlChild]=(), cl:Iterable[str]=None, **attrs:Any) -> None:
+    if not isinstance(tag, str): raise TypeError(tag)
+    tag = tag or self.type_tag
+    if not tag: raise ValueError(tag)
+    self.tag = tag
+    self.attrs = attrs
+    if cl is not None:
+      if not isinstance(cl, str): cl = ' '.join(cl)
+      if cl != self.attrs.setdefault('class', cl):
+        raise ConflictingValues((self.attrs['class'], cl))
+    self.ch:XmlChildren = ch if isinstance(ch, list) else list(ch)
+    #^ Important: we use an existing list reference if provided, to share data.
+    # This means that multiple nodes can alias each other's contents.
 
 
   def __repr__(self) -> str: return f'{type(self).__name__}{self}'
 
 
   def __str__(self) -> str:
-    words = ' '.join(xml_item_summary(k, v) for k, v in self.items())
-    return f'<{words}>'
+    words = ''.join(chain(
+      (xml_attr_summary(k, v, text_limit=32, all_attrs=False) for k, v in self.attrs.items()),
+      (xml_child_summary(c, text_limit=32) for c in self.ch)))
+    return f'<{self.tag}:{words}>'
 
 
-  @classmethod
-  def new(Class:Type[_Xml], tag:str, *children:XmlChild, **attrs:str) -> _Xml:
-    xml = Class()
-    xml.tag = tag
-    xml.update(attrs) # type: ignore
-    xml.update(enumerate(children))
-    return xml
+  def __delitem__(self, key:str) -> Any: del self.attrs[key]
+
+  def __getitem__(self, key:str) -> Any: return self.attrs[key]
+
+  def __setitem__(self, key:str, val:Any) -> Any: self.attrs[key] = val
+
+  def get(self, key:str, default=None) -> Any: return self.attrs.get(key, default)
+
+  def __iter__(self) -> Iterator[XmlChild]: return iter(self.ch)
 
 
   @classmethod
   def from_raw(Class:Type[_Xml], raw:Dict) -> _Xml:
-    xml = Class()
-    if raw:
-      for k, v in raw.items():
-        if isinstance(k, str):
-          if k == '': k = None
-          xml[k] = str(v)
-        elif not isinstance(k, int):
-          raise ValueError(f'Xml key must be `str` or `int`; received: {k!r}')
-        if isinstance(v, (str, Xml)):
-          xml[k] = v
-        elif isinstance(v, dict):
-          xml[k] = Class.from_raw(v)
-        else:
-          raise ValueError(f'Xml value must be `str`, `Xml`, or `dict`; received: {v!r}')
-    return xml
+    tag = raw['tag']
+    attrs = raw['attrs']
+    raw_children = raw['ch']
+    if not isinstance(tag, str): raise ValueError(tag)
+    if not isinstance(attrs, dict): raise ValueError(attrs)
+    for k, v in attrs.items():
+      if not isinstance(k, str):
+        raise ValueError(f'Xml attr key must be `str`; received: {k!r}')
+    ch:XmlChildren = []
+    for c in raw_children:
+      if isinstance(c, (str, Xml)): ch.append(c)
+      elif isinstance(c, dict): ch.append(Class.from_raw(c))
+      else: raise ValueError(f'Xml child must be `str`, `Xml`, or `dict`; received: {c!r}')
+    return Class(tag=tag, ch=ch, **attrs)
 
 
   @classmethod
   def from_etree(Class:Type[_Xml], el:Element, comment_tag:str=None) -> _Xml:
-    xml = Class()
     tag = el.tag
     if tag == Comment: # Weird, but this is what html5_parser produces.
       tag = comment_tag or '!COMMENT'
-    xml[None] = tag
-    xml.update(sorted(el.items())) # Attrs.
-    # Enumerate children.
-    idx = 0
+    # Collect children.
+    ch:XmlChildren = []
     text = el.text
-    if text:
-      xml[idx] = text
-      idx += 1
+    if text: ch.append(text)
     for child in el:
-      xml[idx] = Class.from_etree(child, comment_tag=comment_tag)
-      idx += 1
+      ch.append(Class.from_etree(child, comment_tag=comment_tag))
       text = child.tail
-      if text:
-        xml[idx] = text
-        idx += 1
+      if text: ch.append(text)
+    xml = Class(tag=tag, ch=ch)
+    xml.attrs.update(el.items()) # Potentially faster than constructing el.attrib.
     return xml
 
 
   @property
-  def tag(self) -> str: return cast(str, self[None])
-
-  @tag.setter
-  def tag(self, tag:str) -> None: self[None] = tag
-
-
-  @property
-  def attrs(self) -> Iterator[XmlAttrItem]:
-    return (p for p in self.items() if isinstance(p[0], str)) # type: ignore
-
-
-  @property
-  def child_items(self) -> Iterator[XmlChildItem]:
-    return (p for p in self.items() if isinstance(p[0], int)) # type: ignore
-
-  @property
-  def children(self) -> Iterator[XmlChild]:
-    return (v for k, v in self.items() if isinstance(k, int))
-
-  @property
-  def substantial_child_items(self) -> Iterator[XmlChildItem]:
-    return ((k, v) for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and html_ws_re.fullmatch(v)))
+  def substantial_child_items(self) -> Iterator[Tuple[int,XmlChild]]:
+    return ((i, c) for i, c in enumerate(self.ch) if not (isinstance(c, str) and html_ws_re.fullmatch(c)))
 
   @property
   def substantial_children(self) -> Iterator[XmlChild]:
-    return (v for k, v in self.items() if isinstance(k, int) and not (isinstance(v, str) and html_ws_re.fullmatch(v)))
-
+    return (c for c in self.ch if not (isinstance(c, str) and html_ws_re.fullmatch(c)))
 
   @property
-  def has_children(self) -> bool: return any(isinstance(k, int) for k in self)
+  def has_substantial_children(self) -> bool: return any(not (isinstance(c, str) and html_ws_re.fullmatch(c)) for c in self.ch)
+
 
   @property
   def nodes(self) -> Iterator['Xml']:
-    return (v for k, v in self.items() if isinstance(v, Xml))
+    return (c for c in self.ch if isinstance(c, Xml))
 
   @property
   def texts(self) -> Iterator[str]:
-    for k, v in self.items():
-      if not isinstance(k, int): continue
-      if isinstance(v, str): yield v
-      else: yield from v.texts
+    for c in self.ch:
+      if isinstance(c, Xml): yield from c.texts
+      else: yield c
 
   @property
   def text(self) -> str:
@@ -154,106 +142,135 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
 
 
   @property
-  def cl(self) -> str: return cast(str, self.get('class', ''))
+  def cl(self) -> str: return cast(str, self.attrs.get('class', ''))
 
   @cl.deleter
-  def cl(self) -> None: del self['class']
+  def cl(self) -> None: del self.attrs['class']
 
   @cl.setter
-  def cl(self, val:str) -> None: self['class'] = val
+  def cl(self, val:str) -> None: self.attrs['class'] = val
 
   @property
-  def classes(self) -> List[str]: return cast(str, self.get('class', '')).split()
+  def classes(self) -> List[str]: return cast(str, self.attrs.get('class', '')).split()
 
   @classes.deleter
-  def classes(self) -> None: del self['class']
+  def classes(self) -> None: del self.attrs['class']
 
   @classes.setter
   def classes(self, val:Union[str, Iterable[str]]) -> None:
     if not isinstance(val, str): val = ' '.join(val)
-    self['class'] = val
+    self.attrs['class'] = val
 
 
   @property
-  def id(self) -> str: return cast(str, self.get('id', ''))
+  def id(self) -> str: return cast(str, self.attrs.get('id', ''))
 
 
-  def add(self, child:_XmlChild) -> _XmlChild:
-    i = 0
-    while i in self: i += 1
-    self[i] = child
+  def append(self, child:_XmlChild) -> _XmlChild:
+    self.ch.append(child)
     return child
 
 
-  def add_all(self, children:Iterable[_XmlChild]) -> None:
-    i = 0
-    while i in self: i += 1
-    for i, child in enumerate(children, i):
-      self[i] = child
+  def extend(self, ch:Iterable[_XmlChild]) -> None:
+    self.ch.extend(ch)
 
 
   def clean(self, deep=True) -> None:
-    # Get all children, consolidating consecutive strings, and simultaneously remove all children from the node.
-    children:List[XmlChild] = []
-    for k, v in tuple(self.items()):
-      if not isinstance(k, int): continue
-      del self[k]
-      if isinstance(v, str): # Text.
-        if not v: continue # Omit empty strings.
-        if children and isinstance(children[-1], str): # Consolidate.
-          children[-1] += v
-        else:
-          children.append(v)
-      elif isinstance(v, Xml): # Child element.
-        if deep: v.clean()
-        children.append(v)
-      else:
-        raise ValueError(v)
+    # Consolidate consecutive strings.
+    ch:List[XmlChild] = []
+    for c in self.ch:
+      if isinstance(c, Xml):
+        if deep: c.clean(deep)
+      else: # Assume c is str.
+        if not c: continue
+        if ch and isinstance(ch[-1], str): # Consolidate.
+          ch[-1] += c
+          continue
+      ch.append(c)
 
     if self.tag not in self.ws_sensitive_tags: # Clean whitespace.
-      for i in range(len(children)):
-        v = children[i]
-        if not isinstance(v, str): continue
-        replacement = '\n' if '\n' in v else ' '
-        children[i] = html_ws_re.sub(replacement, v)
+      for i in range(len(ch)):
+        c = ch[i]
+        if not isinstance(c, str): continue
+        replacement = '\n' if '\n' in c else ' '
+        ch[i] = html_ws_re.sub(replacement, c)
 
-    self.update(enumerate(children)) # Replace children with fresh, compacted indices.
+    self.ch[:] = ch
 
 
-  def all(self, *, tag:str=None, cl:str=None, text:str=None, attrs:Dict[str,str]={}, **_attrs:str) -> Iterator['Xml']:
-    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
-    for k, v in self.items():
-      if isinstance(k, int) and isinstance(v, Xml) and pred(v):
-        yield v
+  def pick_all(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> Iterator['Xml']:
+    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+    return (c for c in self.ch if isinstance(c, Xml) and pred(c))
+
+
+  def find_all(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> Iterator['Xml']:
+    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+    if text: return self._find_all_text(pred)
+    else: return self._find_all(pred)
 
   def _find_all(self, pred:Callable[['Xml'],bool]) -> Iterator['Xml']:
-    for k, v in self.items():
-      if isinstance(k, int) and isinstance(v, Xml):
-        if pred(v):
-          yield v
-        else:
-          yield from v._find_all(pred)
+    for c in self.ch:
+      if isinstance(c, Xml):
+        if pred(c): yield c
+        yield from c._find_all(pred) # Always search ch. TODO: use generator send() to let consumer decide?
+
+  def _find_all_text(self, pred:Callable[['Xml'],bool]) -> Generator['Xml',None,bool]:
+    '''
+    Use post-order algorithm to find matching text, and do not search parents of matching children.
+    This is desirable because the calculation of text is expensive
+    and the caller most likely does not want nodes that contain each other.
+    '''
+    found_match = False
+    for c in self.ch:
+      if isinstance(c, Xml):
+        child_match = yield from c._find_all_text(pred)
+        if child_match:
+          found_match = True
+        elif pred(c):
+          found_match = True
+          yield c
+    return found_match
 
 
-  def find_all(self, *, tag:str=None, cl:str=None, text:str=None,
-   attrs:Dict[str,str]={}, **_attrs:str) -> Iterator['Xml']:
-    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs, _attrs=_attrs)
-    return self._find_all(pred=pred)
+  def pick_first(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
+    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+    for c in self.ch:
+      if isinstance(c, Xml) and pred(c): return c
+    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
 
 
-  def first(self, *, tag:str=None, cl:str=None, text:str=None, attrs:Dict[str,str]={}, **_attrs:str) -> 'Xml':
-    try: return next(self.all(tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
-    except StopIteration: pass
-    raise NoMatchError(f'tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
+  def find_first(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
+    for c in self.find_all(tag=tag, cl=cl, text=text, **attrs):
+      return c
+    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
 
-  def find(self, *, tag:str=None, cl:str=None, text:str=None, attrs:Dict[str,str]={}, **_attrs:str) -> 'Xml':
-    try: return next(self.find_all(tag=tag, cl=cl, text=text, attrs=attrs, **_attrs))
-    except StopIteration: pass
-    raise NoMatchError(f'tag={tag!r}, cl={cl!r}, text={text!r}, attrs={attrs}, **{_attrs}; node={self}')
+
+  def pick(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
+    first:Optional[Xml] = None
+    for c in self.pick_all(tag=tag, cl=cl, text=text, **attrs):
+      if first is None: first = c
+      else:
+        s = fmt_xml_predicate_args(tag, cl, text, attrs)
+        raise MultipleMatchesError(f'{s}; node={self}\n  match: {first}\n  match: {c}')
+    if first is None:
+      raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+    return first
+
+
+  def find(self, tag:str='', *, cl:str='', text:str='', **attrs:str) -> 'Xml':
+    first:Optional[Xml] = None
+    for c in self.find_all(tag=tag, cl=cl, text=text, **attrs):
+      if first is None: first = c
+      else:
+        s = fmt_xml_predicate_args(tag, cl, text, attrs)
+        raise MultipleMatchesError(f'{s}; node={self}\n  match: {first}\n  match: {c}')
+    if first is None:
+      raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+    return first
 
 
   def summary_texts(self, _needs_space:bool=True) -> Generator[str,None,bool]:
-    for child in self.children:
+    for child in self.ch:
       if isinstance(child, Xml):
         _needs_space = yield from child.summary_texts(_needs_space=_needs_space)
         continue
@@ -280,19 +297,23 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
 
 
   def discard(self, attr:str) -> None:
-    try: del self[attr]
+    try: del self.attrs[attr]
     except KeyError: pass
 
 
   def render(self) -> Iterator[str]:
-    self_closing = not self.has_children and (not self.void_elements or (self.tag in self.void_elements))
+    if self.void_elements:
+      self_closing = self.tag in self.void_elements
+      if self_closing and self.ch: raise ValueError(self)
+    else:
+      self_closing = not self.ch
 
-    attrs_str = fmt_attr_items(self.attrs, self.replaced_attrs)
+    attrs_str = fmt_attr_items(self.attrs.items(), self.replaced_attrs)
     head_slash = '/' if self_closing else ''
     yield f'<{self.tag}{attrs_str}{head_slash}>'
 
     if not self_closing:
-      for child in self.children:
+      for child in self.ch:
         if isinstance(child, Xml):
           yield from child.render()
         else:
@@ -302,51 +323,63 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
 
   def visit(self, *, pre:Callable[['Xml'],None]=None, post:Callable[['Xml'],None]=None) -> None:
     if pre is not None: pre(self)
-    for k, v in tuple(self.items()):
-      if isinstance(v, Xml): # Child element.
-        try: v.visit(pre=pre, post=post)
+
+    ch:List[XmlChild] = []
+    first_mod_idx:Optional[int] = None
+    for i, c in enumerate(self.ch):
+      if isinstance(c, Xml):
+        try: c.visit(pre=pre, post=post)
         except DeleteNode:
-          del self[k]
+          if first_mod_idx is None: first_mod_idx = i
+          continue
         except FlattenNode:
-          del self[k]
-          self.add_all(v.children)
+          if first_mod_idx is None: first_mod_idx = i
+          ch.extend(c.ch) # Insert children in place of `c`.
+          continue
+      if first_mod_idx is not None:
+        ch.append(c)
+    if first_mod_idx is not None:
+      self.ch[first_mod_idx:] = ch
+
     if post is not None: post(self)
 
 
-def xml_item_summary(key:XmlKey, val:XmlChild, text_limit=32, attrs=False) -> str:
-  if key is None: return f'{val}:' # Tag is stored under None.
-  if isinstance(key, str):
-    ks = key if _word_re.fullmatch(key) else repr(key)
-    if attrs or key in ('id', 'class'): return f'{ks}={val!r}' # Show id and class values.
-    return f'{ks}=…' # Omit other attribute values.
-  if isinstance(val, Xml):
-    text = val.summary_text(limit=text_limit+1)
-    if text: return f'{val.tag}:{repr_lim(text, limit=text_limit)}'
-    else: return val.tag
-  text = html_ws_re.sub(newline_or_space_for_ws, val)
-  return repr_lim(text, limit=text_limit)
+def xml_attr_summary(key:str, val:Any, *, text_limit:int, all_attrs:bool) -> str:
+  ks = key if _word_re.fullmatch(key) else repr(key)
+  if all_attrs or key in ('id', 'class'): return f' {ks}={repr_lim(val, text_limit)}' # Show id and class values.
+  return f' {ks}=…' # Omit other attribute values.
 
 
-def xml_predicate(*, tag:Optional[str], cl:Optional[str], text:Optional[str], attrs:Dict[str,str], _attrs:Dict[str,str]) -> Callable[[Xml],bool]:
+def xml_child_summary(child:XmlChild, text_limit:int) -> str:
+  if isinstance(child, Xml):
+    text = child.summary_text(limit=text_limit)
+    if text: return f' {child.tag}:{repr_lim(text, limit=text_limit)}'
+    else: return ' ' + child.tag
+  text = html_ws_re.sub(newline_or_space_for_ws, child)
+  return ' ' + repr_lim(text, limit=text_limit)
+
+
+def xml_predicate(*, tag:str, cl:str, text:str, attrs:Dict[str,str]) -> Callable[[Xml],bool]:
   'Update _attrs with items from other arguments, then construct a predicate that tests Xml nodes.'
 
-  def add(k:str, v:str) -> None:
-    if _attrs.get(k, v) != v: raise ValueError('conflicting selectors for {k!r}: {v!r} != {_attrs[k]!r}')
-    _attrs[k] = v
-
-  if tag is not None: # Test for tag handled specially due to None key.
-    if not tag: raise ValueError('`tag` should not be empty')
-    add(None, tag) # type: ignore # Special exception for the tag's None key.
-  for k, v in attrs.items():
-    add(k, v)
-
   def predicate(node:Xml) -> bool:
+    #print("PRED", tag, cl, node)
     return (
-      (cl is None or cl in node.classes) and
-      all(node.get(ak) == av for ak, av in _attrs.items()) and
+      (not tag or node.tag == tag) and
+      (not cl or cl in node.classes) and
+      all(node.attrs.get(k) == v for k, v in attrs.items()) and
       (not text or text in node.text))
 
   return predicate
+
+
+def fmt_xml_predicate_args(tag:str, cl:str, text:str, attrs:Dict[str,str]) -> str:
+  words:List[str] = []
+  if tag: words.append(f'{tag}:')
+  if cl: words.append(f'cl={cl!r}')
+  for k, v in attrs.items(): words.append(xml_attr_summary(k, v, text_limit=0, all_attrs=True))
+  if text: words.append(f'…{text!r}…')
+  return ' '.join(words)
 
 
 def newline_or_space_for_ws(match:Match) -> str:
