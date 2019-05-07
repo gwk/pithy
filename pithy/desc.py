@@ -207,5 +207,8 @@ _word_re = re.compile(r'[-\w]+')
 
 def repr_lim(obj:Any, limit=64) -> str:
   r = repr(obj)
-  if len(r) <= limit: return r
-  return f'{r[:limit-2]}{r[0]}…'
+  if limit > 2 and len(r) > limit:
+    q = r[0]
+    if q in '\'"': return f'{r[:limit-2]}{q}…'
+    else: return f'{r[:limit-1]}…'
+  return r
