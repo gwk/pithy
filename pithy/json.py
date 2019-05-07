@@ -8,7 +8,7 @@ from sys import stderr, stdout, version_info
 from typing import (IO, AbstractSet, Any, Callable, Dict, FrozenSet, Hashable, Iterable, List, Optional, Sequence, TextIO,
   Tuple, Union, cast)
 
-from .util import EncodeObj, all_slots, encode_obj
+from .encode import EncodeObj, all_slots, encode_obj
 
 
 JsonAny = Any # TODO: remove this once recursive types work.
