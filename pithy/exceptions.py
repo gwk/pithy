@@ -5,6 +5,12 @@ Various exception classes.
 '''
 
 
+class ConflictingValues(ValueError):
+  '''
+  Raised when an incoming value collides with an existing value.
+  In one sense, it is both a KeyError and a ValueError.
+  '''
+
 class DeleteNode(Exception):
   'Signals a traverser to delete the current node.'
 
