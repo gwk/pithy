@@ -10,6 +10,5 @@ from ..xml import Xml
 
 class Html(Xml):
 
-  type_name = 'Html'
   void_elements = semantics.void_elements
   ws_sensitive_tags = semantics.ws_sensitive_elements

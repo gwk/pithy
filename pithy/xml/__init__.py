@@ -35,7 +35,6 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
   XmlWriter is subclassed to provide more convenient Python APIs; see pithy.html and pithy.svg.
   '''
 
-  type_name = 'Xml'
   void_elements:FrozenSet[str] = frozenset()
   replaced_attrs:Dict[str,str] = {}
   ws_sensitive_tags:FrozenSet[str] = frozenset()
@@ -46,7 +45,7 @@ class Xml(Dict[Union[XmlKey],XmlChild], ContextManager):
     self.setdefault(None, '')
 
 
-  def __repr__(self) -> str: return f'{self.type_name}({super().__repr__()})'
+  def __repr__(self) -> str: return f'{type(self).__name__}{self}'
 
 
   def __str__(self) -> str:
