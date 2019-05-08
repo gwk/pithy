@@ -121,16 +121,15 @@ class Xml:
 
 
   @classmethod
-  def from_etree(Class:Type[_Xml], el:Element, comment_tag:str=None) -> _Xml:
+  def from_etree(Class:Type[_Xml], el:Element) -> _Xml:
     tag = el.tag
-    if tag == Comment: # Weird, but this is what html5_parser produces.
-      tag = comment_tag or '!COMMENT'
+    if tag == Comment: tag = '!COMMENT' # Weird, but this is what html5_parser produces.
     # Collect children.
     ch:XmlChildren = []
     text = el.text
     if text: ch.append(text)
     for child in el:
-      ch.append(Class.from_etree(child, comment_tag=comment_tag))
+      ch.append(Class.from_etree(child))
       text = child.tail
       if text: ch.append(text)
     return Class(tag=tag, attrs=el.attrib, ch=ch)
