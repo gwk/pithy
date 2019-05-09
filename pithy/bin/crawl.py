@@ -239,10 +239,20 @@ def clean_url(base:str, url:str='') -> str:
 
 
 def describe_skipped(skipped:Set[str]) -> None:
-  tree = prefix_tree(split_skipped(url) for url in skipped)
+  'Describe URLs that were skipped by building a prefix tree.'
+  tree = prefix_tree(_split_skipped(url) for url in skipped)
   _simplify(tree)
   outL('\nSkipped URLs:')
   _describe_skipped(tree, indent='')
+
+
+def _split_skipped(url:str) -> List[str]:
+  '''
+  Split a skipped URL into parts for the purpose of building an informative prefix tree.
+  We only omit the http and https schemes, because other schemes are unusual and should be reported.
+  '''
+  url = clip_first_prefix(url, ['https://', 'http://'], req=False)
+  return url_parts_re.split(url)
 
 
 def _simplify(tree:Dict) -> None:
@@ -261,11 +271,6 @@ def _describe_skipped(tree:Dict, indent:str) -> None:
     for k, v in sorted(tree.items()):
       outL(indent, k or repr(k))
       _describe_skipped(v, indent+'  ')
-
-
-def split_skipped(url:str) -> List[str]:
-  url = clip_first_prefix(url, ['https://', 'http://', 'file://'])
-  return url_parts_re.split(url)
 
 
 url_parts_re = re.compile(r'(?x) [/]+')
