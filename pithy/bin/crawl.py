@@ -25,6 +25,7 @@ def main() -> None:
   arg_parser.add_argument('seeds', nargs='+', help='URLs to crawl.')
   arg_parser.add_argument('-patterns', nargs='*', help='regex predicates that filter discovered links. '
     'A URL matching any pattern will be crawled. Defaults to the seed URLs.')
+  arg_parser.add_argument('-clip-paths', nargs='*', help='path prefixes to clip each result with.')
   arg_parser.add_argument('-out', required=True, help='output directory.')
   arg_parser.add_argument('-force', action='store_true', help='always fetch URLs, even when cached results are present.')
   args = arg_parser.parse_args()
@@ -52,6 +53,7 @@ def main() -> None:
   crawler = Crawler(
     dir=dir,
     patterns=patterns,
+    clip_paths=args.clip_paths,
     remaining=set(seeds),
     visited=set(),
     force=args.force)
@@ -64,6 +66,7 @@ def main() -> None:
 class Crawler:
   dir:str
   patterns:List[Pattern]
+  clip_paths:List[str]
   remaining:Set[str]
   visited:Set[str]
   force:bool
@@ -170,6 +173,7 @@ class Crawler:
 
   def path_for_url(self, url:str) -> str:
     p = path_for_url(url, normalize=True, scheme=OMIT, host=COMP, path=SPLIT, query=SQUASH, fragment=OMIT)
+    p = clip_first_prefix(p, self.clip_paths, req=False)
     return self.resolve_dir_collisions(path_join(self.dir, p))
 
 
