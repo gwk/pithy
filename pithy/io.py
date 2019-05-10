@@ -2,7 +2,7 @@
 
 from os import O_NONBLOCK, O_RDONLY, close as os_close, open as os_open, read as os_read
 from pprint import pprint
-from string import Template
+from string import Template as _Template
 from sys import argv, stderr, stdin, stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union, cast
 
@@ -59,21 +59,21 @@ def writeLSSL(file: TextIO, *items: Any, flush=False) -> None:
 
 # templated format printing.
 
-def writeTF(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items: Any) -> None:
+def writeTF(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_items:Any) -> None:
   """
   Expand the format string with keyed_items, then format the string; end=''.
   Useful for constructing dynamic format strings.
   """
-  fmt = Template(template_fmt).substitute(**keyed_items)
+  fmt = _Template(template_fmt).substitute(**keyed_items)
   print(fmt.format(*items, **keyed_items, end='', file=file, flush=flush))
 
 
-def writeTFL(file: TextIO, template_fmt, *items: Any, flush=False, **keyed_items: Any) -> None:
+def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_items:Any) -> None:
   """
   Expand the format string template with keyed_items, then format the string; end='\\n'
   Useful for constructing dynamic format strings.
   """
-  fmt = Template(template_fmt).substitute(**keyed_items)
+  fmt = _Template(template_fmt).substitute(**keyed_items)
   print(fmt.format(*items, **keyed_items, file=file, flush=flush))
 
 
