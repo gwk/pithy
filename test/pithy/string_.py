@@ -10,6 +10,8 @@ utest(True, string_contains, 'a', '')
 utest(True, string_contains, 'a', 'a')
 utest(False, string_contains, '', 'a')
 
+# Clip functions.
+
 utest('-body', clip_prefix, 'prefix-body', 'prefix')
 utest('prefix-body', clip_prefix, 'prefix-body', 'missing', req=False)
 utest('body', clip_prefix, 'body', '')
@@ -23,6 +25,10 @@ utest_exc(ValueError('body-suffix'), clip_suffix, 'body-suffix', 'missing')
 utest('-body', clip_first_prefix, 'prefix-body', ['miss0', 'prefix', 'miss1'])
 utest('prefix-body', clip_first_prefix, 'prefix-body', ['miss0', 'miss1'], req=False)
 utest_exc(ValueError('prefix-body'), clip_first_prefix, 'prefix-body', ['miss0', 'miss1'])
+
+utest((), clip_common, [])
+utest(('', 'a', 'ab', 'b'), clip_common, ['1289', '12a89', '12ab89', '12b89'])
+
 
 utest_exc(TypeError('iter_excluding_str explictly treats str as non-iterable type'), iter_excluding_str, 'string')
 utest_seq([1, 2, 3], iter_excluding_str, [1,2,3])

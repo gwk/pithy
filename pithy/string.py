@@ -66,9 +66,25 @@ def clip_first_prefix(string:str, prefixes:Sequence[str], req=True) -> str:
       return clip_prefix(string, p, req=True)
     except ValueError:
       continue
-  if req:
-    raise ValueError(string)
-  return string
+  if req: raise ValueError(string)
+  else: return string
+
+
+def clip_common(strings:Sequence[str], prefix=True, suffix=True) -> Tuple[str,...]:
+  if not strings: return ()
+  if len(strings) == 1: return ('',)
+  first = strings[0]
+  min_len = min(len(s) for s in strings)
+  i = 0
+  if prefix:
+    while i < min_len and all(s[i] == first[i] for s in strings):
+      i += 1
+  l = -1 # Last index.
+  if suffix:
+    l_term = i - min_len # The final negative index before we would clip everything from `i` to end.
+    while l > l_term and all(s[l] == first[l] for s in strings):
+      l -= 1
+  return tuple(s[i:l] for s in strings)
 
 
 def replace_first_prefix(string:str, prefixes:Sequence[Tuple[str,str]], req=True) -> str:
