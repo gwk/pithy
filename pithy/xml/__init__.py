@@ -7,7 +7,7 @@ Xml type.
 import re
 from itertools import chain
 from typing import (Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Optional, Tuple, Type, TypeVar,
-  Union, cast)
+  Union, cast, overload)
 from xml.etree.ElementTree import Element
 
 from ..desc import repr_lim
@@ -40,6 +40,7 @@ class Xml:
   '''
 
   type_tag = '' # Subclasses can specify a tag by overriding `type_tag`.
+  tag_types:Dict[str,Type['Xml']] = {}
   void_elements:FrozenSet[str] = frozenset()
   replaced_attrs:Dict[str,str] = {}
   ws_sensitive_tags:FrozenSet[str] = frozenset()
@@ -104,6 +105,7 @@ class Xml:
 
   @classmethod
   def from_raw(Class:Type[_Xml], raw:Dict) -> _Xml:
+    'Create an Xml object (possibly subclass by tag) from a raw data dictionary.'
     tag = raw['tag']
     attrs = raw['attrs']
     raw_children = raw['ch']
@@ -117,14 +119,20 @@ class Xml:
       if isinstance(c, (str, Xml)): ch.append(c)
       elif isinstance(c, dict): ch.append(Class.from_raw(c))
       else: raise ValueError(f'Xml child must be `str`, `Xml`, or `dict`; received: {c!r}')
-    return Class(tag=tag, attrs=attrs, ch=ch)
+    TagClass = Class.tag_types.get(tag, Class)
+    return cast(_Xml, TagClass(tag=tag, attrs=attrs, ch=ch))
 
 
   @classmethod
   def from_etree(Class:Type[_Xml], el:Element) -> _Xml:
+    '''
+    Create an Xml object (possibly subclass by tag) from a standard library Xml element tree.
+    Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
+    '''
     tag = el.tag
     if tag == Comment: tag = '!COMMENT' # Weird, but this is what html5_parser produces.
     # Collect children.
+    attrs = el.attrib
     ch:XmlChildren = []
     text = el.text
     if text: ch.append(text)
@@ -132,11 +140,13 @@ class Xml:
       ch.append(Class.from_etree(child))
       text = child.tail
       if text: ch.append(text)
-    return Class(tag=tag, attrs=el.attrib, ch=ch)
+    TagClass = Class.tag_types.get(tag, Class)
+    return cast(_Xml, TagClass(tag=tag, attrs=attrs, ch=ch))
 
 
   @property
   def orig(self:_Xml) -> _Xml:
+    'If this node is a query subnode, return the original; otherwise raise ValueError.'
     if self._orig is None: raise ValueError(f'node is not a subnode: {self}')
     return self._orig
 
@@ -150,25 +160,31 @@ class Xml:
   def child_items(self, ws=False, traversable=False) -> Iterator[Tuple[int,XmlChild]]:
     'Yield (index, child) pairs. If `ws` is False, then children that are purely whitespace will be filtered out.'
     for i, c in enumerate(self.ch):
-      if isinstance(c, str):
+      if isinstance(c, Xml):
+        yield (i, (c.subnode(self) if traversable else c))
+      else:
         if not ws and html_ws_re.fullmatch(c): continue
         yield (i, c)
-      else:
-        yield (i, (c.subnode(self) if traversable else c))
 
 
   def children(self, ws=False, traversable=False) -> Iterator[XmlChild]:
-    'Yield child nodes. If `ws` is False, then children that are purely whitespace will be filtered out.'
+    'Yield child nodes and text. If `ws` is False, then children that are purely whitespace will be filtered out.'
     for c in self.ch:
-      if isinstance(c, str):
+      if isinstance(c, Xml):
+        yield c.subnode(self) if traversable else c
+      else:
         if not ws and html_ws_re.fullmatch(c): continue
         yield c
-      else:
-        yield c.subnode(self) if traversable else c
+
+
+  def child_nodes(self, traversable=False) -> Iterator['Xml']:
+    'Yield child Xml nodes.'
+    return ((c.subnode(self) if traversable else c) for c in self.ch if isinstance(c, Xml))
 
 
   @property
-  def has_substantial_children(self) -> bool: return any(not (isinstance(c, str) and html_ws_re.fullmatch(c)) for c in self.ch)
+  def has_substantial_children(self) -> bool:
+    return any((isinstance(c, Xml) or c and not html_ws_re.fullmatch(c)) for c in self.ch)
 
 
   @property
@@ -208,13 +224,19 @@ class Xml:
 
 
   def append(self, child:_XmlChild) -> _XmlChild:
-    if child._orig is not None: child = child.copy()
+    if isinstance(child, Xml) and child._orig is not None: child = child._orig
     self.ch.append(child)
     return child
 
 
   def extend(self, children:Iterable[_XmlChild]) -> None:
     for el in children: self.append(el)
+
+
+  def _single(self, Child_type:Type[_Xml]) -> _Xml:
+    for c in self.ch:
+      if isinstance(c, Child_type): return c
+    return self.append(Child_type())
 
 
   def clean(self, deep=True) -> None:
@@ -242,13 +264,25 @@ class Xml:
 
   # Picking and finding.
 
-  def pick_all(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Xml']:
-    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+  @overload
+  def pick_all(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Xml]: ...
+
+  @overload
+  def pick_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Xml']: ...
+
+  def pick_all(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     return ((c.subnode(self) if traversable else c) for c in self.ch if isinstance(c, Xml) and pred(c))
 
 
-  def find_all(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Xml']:
-    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+  @overload
+  def find_all(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Xml]: ...
+
+  @overload
+  def find_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Xml']: ...
+
+  def find_all(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     if text: return self._find_all_text(pred, traversable)
     else: return self._find_all(pred, traversable)
 
@@ -276,48 +310,78 @@ class Xml:
     return found_match
 
 
-  def pick_first(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
-    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+  @overload
+  def pick_first(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Xml: ...
+
+  @overload
+  def pick_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml': ...
+
+  def pick_first(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     for c in self.ch:
       if isinstance(c, Xml) and pred(c): return (c.subnode(self) if traversable else c)
-    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
 
 
-  def find_first(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
-    for c in self.find_all(tag=tag, cl=cl, text=text, traversable=traversable, **attrs):
+  @overload
+  def find_first(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Xml: ...
+
+  @overload
+  def find_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml': ...
+
+  def find_first(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       return c
-    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
 
 
-  def pick(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
+  @overload
+  def pick(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Xml: ...
+
+  @overload
+  def pick(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml': ...
+
+  def pick(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     first:Optional[Xml] = None
-    for c in self.pick_all(tag=tag, cl=cl, text=text, traversable=traversable, **attrs):
+    for c in self.pick_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first is None: first = c
       else:
-        s = fmt_xml_predicate_args(tag, cl, text, attrs)
-        raise MultipleMatchesError(f'{s}; node={self}\n  match: {first}\n  match: {c}')
+        s = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
+        raise MultipleMatchesError(f'{s}; node: {self}\n  match: {first}\n  match: {c}')
     if first is None:
-      raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+      raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
     return first
 
 
-  def find(self, tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
+  @overload
+  def find(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Xml: ...
+
+  @overload
+  def find(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml': ...
+
+  def find(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     first:Optional[Xml] = None
-    for c in self.find_all(tag=tag, cl=cl, text=text, traversable=traversable, **attrs):
+    for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first is None: first = c
       else:
-        s = fmt_xml_predicate_args(tag, cl, text, attrs)
-        raise MultipleMatchesError(f'{s}; node={self}\n  match: {first}\n  match: {c}')
+        s = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
+        raise MultipleMatchesError(f'{s}; node: {self}\n  match: {first}\n  match: {c}')
     if first is None:
-      raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+      raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
     return first
 
 
   # Traversal.
 
-  def next(self, *, tag:str='', cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
+  @overload
+  def next(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Xml: ...
+
+  @overload
+  def next(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml': ...
+
+  def next(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
-    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+    pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     found_orig = False
     for c in self._parent.ch:
       if not isinstance(c, Xml): continue
@@ -326,13 +390,18 @@ class Xml:
       elif c is self._orig:
         found_orig = True
     if not found_orig: raise ValueError('node was removed from parent')
-    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
 
 
+  @overload
+  def prev(self, type_or_tag:Type[_Xml], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Xml: ...
 
-  def prev(self, *, tag:str='', cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml':
+  @overload
+  def prev(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Xml': ...
+
+  def prev(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
-    pred = xml_predicate(tag=tag, cl=cl, text=text, attrs=attrs)
+    pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     found_orig = False
     for c in reversed(self._parent.ch):
       if not isinstance(c, Xml): continue
@@ -341,7 +410,7 @@ class Xml:
       elif c is self._orig:
         found_orig = True
     if not found_orig: raise ValueError('node was removed from parent')
-    raise NoMatchError(f'{fmt_xml_predicate_args(tag, cl, text, attrs)}; node={self}')
+    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
 
 
   # Text.
@@ -372,6 +441,28 @@ class Xml:
       if length > limit: break
     return ''.join(parts)[:limit]
 
+
+  # Text summary.
+
+  def summarize(self, levels=1, indent=0) -> str:
+    nl_indent = '\n' + '  ' * indent
+    return ''.join(self._summarize(levels, nl_indent))
+
+  def _summarize(self, levels:int, nl_indent:str) -> Iterator[str]:
+    if levels <= 0:
+      yield str(self)
+    else:
+      subnode = '' if self._orig is None else '$'
+      attr_words = ''.join(xml_attr_summary(k, v, text_limit=32, all_attrs=False) for k, v in self.attrs.items())
+      nl_indent1 = nl_indent + '  '
+      yield f'<{subnode}{self.tag}:{attr_words}'
+      for c in self.ch:
+        yield nl_indent1
+        if isinstance(c, Xml):
+          yield from c._summarize(levels-1, nl_indent1)
+        else:
+          yield repr(c)
+      yield '>'
 
   def discard(self, attr:str) -> None:
     try: del self.attrs[attr]
@@ -437,12 +528,17 @@ def xml_child_summary(child:XmlChild, text_limit:int) -> str:
   return ' ' + repr_lim(text, limit=text_limit)
 
 
-def xml_predicate(*, tag:str, cl:str, text:str, attrs:Dict[str,str]) -> XmlPred:
+def xml_pred(type_or_tag:Union[str,Type[_Xml]]='', *, cl:str='', text:str='', attrs:Dict[str,Any]={}) -> XmlPred:
   'Update _attrs with items from other arguments, then construct a predicate that tests Xml nodes.'
+
+  tag_pred:Callable
+  if not type_or_tag: tag_pred = lambda node: True
+  elif isinstance(type_or_tag, type): tag_pred = lambda node: isinstance(node, type_or_tag) # type: ignore
+  else: tag_pred = lambda node: node.tag == type_or_tag
 
   def predicate(node:Xml) -> bool:
     return (
-      (not tag or node.tag == tag) and
+      tag_pred(node) and
       (not cl or cl in node.classes) and
       all(node.attrs.get(k) == v for k, v in attrs.items()) and
       (not text or text in node.text))
@@ -450,9 +546,9 @@ def xml_predicate(*, tag:str, cl:str, text:str, attrs:Dict[str,str]) -> XmlPred:
   return predicate
 
 
-def fmt_xml_predicate_args(tag:str, cl:str, text:str, attrs:Dict[str,str]) -> str:
+def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:Dict[str,str]) -> str:
   words:List[str] = []
-  if tag: words.append(f'{tag}:')
+  if type_or_tag: words.append(f'{type_or_tag.__name__ if isinstance(type_or_tag, type) else type_or_tag}:')
   if cl: words.append(f'cl={cl!r}')
   for k, v in attrs.items(): words.append(xml_attr_summary(k, v, text_limit=0, all_attrs=True))
   if text: words.append(f'…{text!r}…')

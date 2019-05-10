@@ -5,7 +5,7 @@ from typing import Any, BinaryIO, Dict
 from html5_parser import parse
 
 from ..loader import FileOrPath, binary_file_for
-from ..html import Html
+from ..html import HtmlNode
 
 
 def load_html(file_or_path:FileOrPath, encoding:str=None, **kwargs:Any) -> Any:
@@ -17,4 +17,4 @@ def load_html(file_or_path:FileOrPath, encoding:str=None, **kwargs:Any) -> Any:
   # If none of the html5_parser `treebuilder` options was supplied,
   # then it will use the fast `lxml` option by default.
   # Transform the resulting etree into a generic dictionary tree.
-  return Html.from_etree(html)
+  return HtmlNode.from_etree(html)
