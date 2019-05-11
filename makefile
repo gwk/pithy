@@ -20,6 +20,8 @@ _phony:
 
 packages := craft iotest legs pithy utest writeup
 
+build:
+	./build.sh $(packages)
 clean:
 	rm -rf _build/*
 

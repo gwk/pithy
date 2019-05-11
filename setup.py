@@ -1,23 +1,25 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# This is the setup.py for for *ALL* packages; each package symlinks to this file.
+# This is the setup.py for for all packages in the repo.
+# The package to be installed is specified by setting the PACKAGE environment variable.
 # Each package has its own `setup.cfg`.
 
+from configparser import ConfigParser
 from distutils.command.build_scripts import build_scripts  # type: ignore
 from itertools import chain
-from os import chmod, getcwd as current_dir, listdir as list_dir, walk, mkdir as make_dir
+from os import chmod, environ, getcwd as current_dir, listdir as list_dir, mkdir as make_dir, walk
 from os.path import (abspath as abs_path, basename as path_name, dirname as path_dir, exists as path_exists, isdir as is_dir,
-  join as path_join, splitext as split_ext, split as split_dir_name, normpath as norm_path, isfile as is_file)
+  isfile as is_file, join as path_join, normpath as norm_path, split as split_dir_name,
+  splitext as split_ext)
 from pprint import pprint
 from sys import stderr
 from typing import Any, Iterable, Iterator, List
-from configparser import ConfigParser
 
 from setuptools import Command, setup  # type: ignore
-from setuptools.config import read_configuration # type: ignore
 from setuptools.command.develop import develop  # type: ignore
 from setuptools.command.install import install  # type: ignore
 from setuptools.command.install_scripts import install_scripts  # type: ignore
+from setuptools.config import read_configuration  # type: ignore
 
 
 # We stubbornly insist on keeping each package directory at the root of the repo.
@@ -31,14 +33,17 @@ from setuptools.command.install_scripts import install_scripts  # type: ignore
 # Instead, add the repo directory to PYTHONPATH.
 # Everything else seems to work correctly.
 
-package_dir = path_dir(norm_path(__file__)) # When run from pip, this is a temp dir, and does not have the name of the package.
-bin_src_dir = f'{package_dir}/bin'
-
-base_dir, package_name = split_dir_name(package_dir)
-assert package_name
-assert not base_dir.endswith('/')
-if base_dir: base_dir += '/'
+base_dir = path_dir(norm_path(__file__)) or '.' #^ When run from pip, this is a temp dir.
+assert not base_dir.endswith('/'), base_dir
+base_dir += '/'
 base_prefix_len = len(base_dir)
+
+package_name = environ['PACKAGE']
+assert package_name
+
+package_dir = path_join(base_dir, package_name)
+bin_src_dir = path_join(package_dir, 'bin')
+
 
 
 def msg(*items:Any) -> None: print(' ', *items)
@@ -135,27 +140,19 @@ def is_subpackage(dir_name:str) -> bool:
 
 def main() -> None:
 
-  msg('package_name:', package_name)
+  msg('base_dir:', base_dir)
   msg('package_dir:', package_dir)
+  msg('package_name:', package_name)
   packages = discover_packages()
   py_module = package_dir + '.py'
   py_modules = [py_module] if path_exists(py_module) else []
 
+  # The root `setup.cfg` contains only common config data for all packages; it is loaded automatically by setuptools.
+  # Each package has its own `setup.cfg` which must be loaded manually.
   cfg_path = f'{package_dir}/setup.cfg'
-  metadata = read_configuration(cfg_path)['metadata'] # Get the metadata the setuptools way, just to be as insane as setuptools.
+  metadata = read_configuration(cfg_path)['metadata'] # Get the metadata the setuptools way.
 
   if 'name' not in metadata: exit('setup.cfg: error: missing `name`.')
-
-  # Since read_configuration ignores the other sections, load it again.
-  cfg_parser = ConfigParser()
-  cfg_parser.read(cfg_path)
-  cfg = {s:dict(cfg_parser.items(s)) for s in cfg_parser.sections()}
-
-  # Make sure each setup.cfg has the expected build layout sections.
-  assert cfg['build'] == { 'build-base' : '_build' }
-  assert cfg['bdist'] == { 'dist-dir' : '_build/dist' }
-  assert cfg['sdist'] == { 'dist-dir' : '_build/dist' }
-
 
   args = dict(
     license='CC0',
@@ -174,14 +171,6 @@ def main() -> None:
     package_dir={package_name:package_dir},
     **metadata,
   )
-
-
-  # Note that we use an absolute path for package_dir, which is unconventional.
-  # We do this to avoid ambiguity when CWD is different from setup.py (which in our case is requried; see above).
-  # `package_dir={'':'../..'}` results in a "Can't get a consistent path to setup script from installation directory".
-  # https://stackoverflow.com/questions/9401916/cant-get-a-consistent-path-to-setup-script-from-installation-directory
-  # suggests that adding a pyproject.toml file might fix it. However this causes reams of 'bad module' errors,
-  # apparently because it causes pip to look into the entire .git directory.
 
   #pprint(args)
   setup(**args)

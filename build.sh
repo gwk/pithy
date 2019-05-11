@@ -8,9 +8,8 @@ for package in "$@"; do
   echo "package: $package"
   mkdir -p _build/dist
   set -x
-  python3 setup/$package/setup.py build --build-base=_build
-  python3 setup/$package/setup.py sdist --dist-dir=_build/dist
-  python3 setup/$package/setup.py bdist --dist-dir=_build/dist --bdist-base=_build  --skip-build
-  rm -rf $package*.egg-info
+  PACKAGE=$package python3 ./setup.py build --build-base=_build
+  PACKAGE=$package python3 ./setup.py sdist --dist-dir=_build/dist
+  PACKAGE=$package python3 ./setup.py bdist --dist-dir=_build/dist --bdist-base=_build  --skip-build
   set +x
 done

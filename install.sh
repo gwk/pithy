@@ -6,6 +6,5 @@ for package in "$@"; do
   echo
   echo '--------------------------------'
   echo "package: $package"
-  python3 setup/$package/setup.py install
-  rm -rf $package*.egg-info
+  PACKAGE=$package python3 setup/setup.py install
 done
