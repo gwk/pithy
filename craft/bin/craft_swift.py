@@ -11,7 +11,7 @@ from pithy.fs import path_rel_to_current_or_abs
 from pithy.interactive import ExitOnKeyboardInterrupt
 from pithy.io import errL, outZ, stdout
 from pithy.iterable import OnHeadless, group_by_heads
-from pithy.lex import Lexer
+from pithy.lex import Lexer, Token
 from pithy.task import run_gen
 
 from .. import load_craft_config
@@ -38,25 +38,24 @@ def main() -> None:
 
   with ExitOnKeyboardInterrupt():
     for token in lex_compiler_output(run_gen(cmd, merge_err=True, exits=True)):
-      if token.lastgroup in diag_kinds:
-        assert token.lastgroup is not None
-        diag_m = diag_re.fullmatch(token[0])
+      kind = token.kind
+      if kind in diag_kinds:
+        diag_m = diag_re.fullmatch(token.text)
         if diag_m:
-          path_abs, pos, msg = diag_m.groups() # type: ignore
+          path_abs, pos, msg = diag_m.groups()
           path = path_rel_to_current_or_abs(path_abs)
-          color = colors[token.lastgroup]
+          color = colors[kind]
           outZ(TXT_L, path, pos, color, msg, RST)
         else:
-          outZ(token[0])
+          outZ(token.text)
       else:
-        s = token[0]
-        color = colors[token.lastgroup]
+        color = colors[kind]
         rst = color or RST
-        outZ(color, s, rst)
+        outZ(color, token.text, rst)
       stdout.flush()
 
 
-def lex_compiler_output(stream:Iterable[str]) -> Iterator[Match]:
+def lex_compiler_output(stream:Iterable[str]) -> Iterator[Token]:
   '''
   Yield the toplevel heads, e.g. "Compile Swift Module ..." immediately.
   Aggregate diagnostics into a buffer, then group by path heads.
