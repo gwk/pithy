@@ -9,7 +9,7 @@ from os.path import join as path_join
 from sys import stderr
 from typing import DefaultDict, Dict, Iterator, List, NamedTuple, Tuple
 
-from legs.unicode import coalesce_sorted_ranges
+from pithy.unicode import coalesce_sorted_ranges
 
 
 CodeRange = Tuple[int,int]

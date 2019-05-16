@@ -46,9 +46,9 @@ docs:
 gen: gen-data gen-grammars
 
 gen-data: \
-	legs/unicode/data_09_00.py \
-	legs/unicode/data_10_00.py \
-	legs/unicode/data_11_00.py \
+	pithy/unicode/data_09_00.py \
+	pithy/unicode/data_10_00.py \
+	pithy/unicode/data_11_00.py \
 
 gen-grammars: \
 	grammars/ascii.legs \
@@ -74,7 +74,7 @@ test/%: _phony
 	iotest -fail-fast $@
 
 typecheck: gen
-	craft-py-check iotest legs pithy utest gen-data.py gen-grammar.py legs_base.py
+	craft-py-check iotest legs pithy tools utest
 
 test-diff:
 	test-diff/test.py
@@ -88,12 +88,11 @@ test-diff-data:
 
 grammars/legs.legs: # Override the pattern rule below.
 
-grammars/%.legs: gen-grammar.py
+grammars/%.legs: tools/gen-charset-grammar.py
 	./$^ $* > $@
 
-legs/data_%.py: gen-data.py
+legs/data_%.py: tools/gen-data.py
 	./$^ data/$* > $@
 
 vscode-ext/syntaxes/legs.json: grammars/legs.legs
 	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -langs vscode -output $@
-

@@ -39,8 +39,8 @@ from pithy.graph import visit_nodes
 from pithy.io import errL, errSL
 from pithy.iterable import first_el, int_tuple_ranges
 from pithy.string import prepend_to_nonempty
+from pithy.unicode.codepoints import codes_desc
 
-from .unicode.codepoints import codes_desc
 
 
 DfaState = int

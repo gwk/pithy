@@ -1,0 +1,28 @@
+// Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+newline: \n
+space: \s+
+comment: / / $Ascii_Visible*
+hash: \#
+colon: :
+angle_o: <
+angle_c: >
+brckt_o: \[
+brckt_c: \]
+//brace_o: \{
+//brace_c: \}
+//paren_o: \(
+//paren_c: \)
+bar: \|
+//qmark: \?
+star: \*
+plus: \+
+//amp: &
+dash: -
+caret: \^
+//sym: $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
+//ref: \$ $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
+//esc: \\ $Ascii_Readable // TODO: list escapable characters.
+//char: [$Ascii_Readable - \# \s $Ascii_Letter]
+word: [$Ascii_Letter $Ascii_Number _ \- ]+
+visible: $Ascii_Visible+

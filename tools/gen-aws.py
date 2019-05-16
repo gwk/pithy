@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+# type: ignore
 
 import re
 from sys import stdin
 from argparse import ArgumentParser
 from typing import *
-import boto3
+import boto3 # type: ignore
 from pithy.io import *
-from botocore.docs.shape import ShapeDocumenter
-from botocore.model import ListShape, MapShape, OperationModel, Shape, StringShape, StructureShape
+from botocore.docs.shape import ShapeDocumenter # type: ignore
+from botocore.model import ListShape, MapShape, OperationModel, Shape, StringShape, StructureShape # type: ignore
 from functools import singledispatch
 
 

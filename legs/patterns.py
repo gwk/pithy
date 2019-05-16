@@ -4,10 +4,10 @@ from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, O
 
 from pithy.io import errL, errSL
 from pithy.types import is_pair_of_int
+from pithy.unicode.codepoints import codes_desc
+from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
 
 from .nfa import empty_symbol
-from .unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
-from .unicode.codepoints import codes_desc
 
 
 __all__ = [

@@ -15,12 +15,12 @@
 perf-%: _build/% # <grammar>-<lang>
 	time-runs 8 $^ ../data/11_00/UnicodeData.txt
 
-_build/%-py-table: _build/%.py legs_base.py perf/main.py
+_build/%-py-table: _build/%.py legs/__init__.py perf/main.py
 	echo '#!/usr/bin/env python3' > $@
 	cat _build/$*.py perf/main.py >> $@
 	chmod +x $@
 
-_build/%-py-re: _build/%.re.py legs_base.py perf/main.py
+_build/%-py-re: _build/%.re.py legs/__init__.py perf/main.py
 	echo '#!/usr/bin/env python3' > $@
 	cat _build/$*.re.py perf/main.py >> $@
 	chmod +x $@

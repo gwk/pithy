@@ -2,7 +2,7 @@
 
 from sys import argv
 from typing import Counter
-from legs_base import Source
+from legs import Source
 
 
 def main() -> None:

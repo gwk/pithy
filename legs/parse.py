@@ -8,11 +8,11 @@ from pithy.io import *
 from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
 from pithy.lex import Lexer
 from pithy.token import Token
+from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
+from pithy.unicode.charsets import unicode_charsets
 
 from .defs import ModeTransitions
 from .patterns import *
-from .unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
-from .unicode.charsets import unicode_charsets
 
 
 

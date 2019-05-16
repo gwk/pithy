@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import *
-from legs.unicode import *
+from pithy.unicode import *
 
 
 utest_seq([], coalesce_sorted_ranges, [])

@@ -2,4 +2,4 @@
 
 from typing import Dict, DefaultDict, List, NamedTuple, Tuple
 
-from legs_base import StateTransitions, MatchStateKinds, ModeData, KindModeTransitions, ModeTransitions
+from . import StateTransitions, MatchStateKinds, ModeData, KindModeTransitions, ModeTransitions
