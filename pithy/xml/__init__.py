@@ -465,12 +465,13 @@ class Xml:
           yield repr(c)
       yield '>'
 
+
   def discard(self, attr:str) -> None:
     try: del self.attrs[attr]
     except KeyError: pass
 
 
-  def render(self) -> Iterator[str]:
+  def render(self, newline:bool=True) -> Iterator[str]:
     if self.void_elements:
       self_closing = self.tag in self.void_elements
       if self_closing and self.ch: raise ValueError(self)
@@ -482,12 +483,18 @@ class Xml:
     yield f'<{self.tag}{attrs_str}{head_slash}>'
 
     if not self_closing:
+      child_newlines = len(self.ch) > 1 and not (self.tag in self.ws_sensitive_tags)
+      if child_newlines: yield '\n'
       for child in self.ch:
         if isinstance(child, Xml):
-          yield from child.render()
+          yield from child.render(newline=child_newlines)
         else:
           yield str(child)
+          if child_newlines: yield '\n'
       yield f'</{self.tag}>'
+
+    if newline:
+      yield '\n'
 
 
   def visit(self, *, pre:XmlVisitor=None, post:XmlVisitor=None, traversable=False) -> None:

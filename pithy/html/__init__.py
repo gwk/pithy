@@ -341,7 +341,7 @@ class Html(HtmlNode):
   'A head element followed by a body element.'
 
   def render(self) -> Iterator[str]:
-    yield '<!DOCTYPE html>'
+    yield '<!DOCTYPE html>\n'
     yield from super().render()
 
   @property
