@@ -75,7 +75,8 @@ class Xml:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
-    self.ch:XmlChildren = ch if isinstance(ch, list) else list(ch) #^ Important: use an existing list ref if provided.
+    if isinstance(ch, str): ch = [ch]
+    self.ch:XmlChildren = ch if isinstance(ch, list) else list(ch) # Important: use an existing list ref if provided.
 
     self._orig = _orig
     self._parent = _parent
