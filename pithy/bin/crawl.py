@@ -25,7 +25,7 @@ def main() -> None:
   arg_parser.add_argument('seeds', nargs='+', help='URLs to crawl.')
   arg_parser.add_argument('-patterns', nargs='*', help='regex predicates that filter discovered links. '
     'A URL matching any pattern will be crawled. Defaults to the seed URLs.')
-  arg_parser.add_argument('-clip-paths', nargs='*', help='path prefixes to clip each result with.')
+  arg_parser.add_argument('-clip-paths', nargs='*', default=[], help='path prefixes to clip each result with.')
   arg_parser.add_argument('-out', required=True, help='output directory.')
   arg_parser.add_argument('-force', action='store_true', help='always fetch URLs, even when cached results are present.')
   args = arg_parser.parse_args()
