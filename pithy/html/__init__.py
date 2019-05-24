@@ -340,9 +340,9 @@ class Hr(HtmlNode):
 class Html(HtmlNode):
   'A head element followed by a body element.'
 
-  def render(self) -> Iterator[str]:
+  def render(self, newline:bool=True) -> Iterator[str]:
     yield '<!DOCTYPE html>\n'
-    yield from super().render()
+    yield from super().render(newline=newline)
 
   @property
   def body(self) -> Body: return self._single(Body)

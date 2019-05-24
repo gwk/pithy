@@ -445,22 +445,22 @@ class Xml:
 
   # Text summary.
 
-  def summarize(self, levels=1, indent=0) -> str:
+  def summarize(self, levels=1, indent=0, all_attrs=True) -> str:
     nl_indent = '\n' + '  ' * indent
-    return ''.join(self._summarize(levels, nl_indent))
+    return ''.join(self._summarize(levels, nl_indent, all_attrs=all_attrs))
 
-  def _summarize(self, levels:int, nl_indent:str) -> Iterator[str]:
+  def _summarize(self, levels:int, nl_indent:str, all_attrs:bool) -> Iterator[str]:
     if levels <= 0:
       yield str(self)
     else:
       subnode = '' if self._orig is None else '$'
-      attr_words = ''.join(xml_attr_summary(k, v, text_limit=32, all_attrs=False) for k, v in self.attrs.items())
+      attr_words = ''.join(xml_attr_summary(k, v, text_limit=32, all_attrs=all_attrs) for k, v in self.attrs.items())
       nl_indent1 = nl_indent + '  '
       yield f'<{subnode}{self.tag}:{attr_words}'
       for c in self.ch:
         yield nl_indent1
         if isinstance(c, Xml):
-          yield from c._summarize(levels-1, nl_indent1)
+          yield from c._summarize(levels-1, nl_indent1, all_attrs)
         else:
           yield repr(c)
       yield '>'
