@@ -40,6 +40,7 @@ base_prefix_len = len(base_dir)
 
 package_name = environ['PACKAGE']
 assert package_name
+assert not package_name.endswith('/')
 
 package_dir = path_join(base_dir, package_name)
 bin_src_dir = path_join(package_dir, 'bin')

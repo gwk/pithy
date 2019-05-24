@@ -3,20 +3,18 @@
 set -e
 
 if [[ "$1" == "-live" ]]; then
-  echo "*** LIVE ***"
+  echo "Upload to LIVE..."
   shift
   url="https://upload.pypi.org/legacy/"
 else
-  echo "TEST"
+  echo "Upload to TEST..."
   url="https://test.pypi.org/legacy/"
 fi
 
+echo "package: $1"
+dist_files=$(echo _build/dist/$1-*)
+echo "distribution files:" $dist_files
+set -x
+twine upload --verbose --repository-url "$url" $dist_files
+set +x
 
-for package in "$@"; do
-  echo
-  echo '--------------------------------'
-  echo "package: $package"
-  set -x
-	twine upload --repository-url "$url" _build/dist/$package-*
-  set +x
-done

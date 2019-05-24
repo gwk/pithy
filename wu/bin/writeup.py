@@ -15,7 +15,7 @@ import pygments.lexers # type: ignore
 import pygments.token # type: ignore
 from pygments.token import Token
 from pygments.token import *
-from writeup import *
+from wu import *
 
 
 __all__ = ['main', 'writeup', 'writeup_dependencies']
