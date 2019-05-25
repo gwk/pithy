@@ -1,29 +1,29 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-HTML tools.
+Html type hierarchy.
 '''
 
+from html import escape as _escape
 from inspect import signature as _signature
 from typing import (Any, AnyStr as _AnyStr, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
   Union, cast)
 
-from ..xml import MultipleMatchesError, NoMatchError, Xml, XmlAttrs, XmlChild
+from ..exceptions import MultipleMatchesError, NoMatchError
+from ..markup import Mu, MuAttrs, MuChild, _Mu
 from . import semantics
 
-
-_Xml = TypeVar('_Xml', bound=Xml)
 
 DtDdPair = Tuple[List['Dt'],List['Dd']]
 
 
-class HtmlNode(Xml):
+class HtmlNode(Mu):
   void_elements = semantics.void_elements
   ws_sensitive_tags = semantics.ws_sensitive_elements
-  tag_types:Dict[str,Type[Xml]] = {}
+  tag_types:Dict[str,Type[Mu]] = {}
 
   @classmethod
-  def parse(Class:Type[_Xml], source:_AnyStr, **kwargs:Any) -> _Xml:
+  def parse(Class:Type[_Mu], source:_AnyStr, **kwargs:Any) -> _Mu:
     from html5_parser import parse
     if 'treebuilder' in kwargs: raise ValueError('HtmlNode.parse() requires default `lxml` treebuilder option.')
     if isinstance(source, bytes): kwargs['transport_encoding'] = 'utf-8'
@@ -31,28 +31,33 @@ class HtmlNode(Xml):
     return Class.from_etree(etree)
 
 
-def _tag(Subclass:Type[_Xml]) -> Type[_Xml]:
+  def esc_attr_val(self, val:str) -> str: return _escape(val, quote=True)
+
+  def esc_text(self, text:str) -> str: return _escape(text, quote=False)
+
+
+def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
   'Decoractor for associating a concrete subclass with the lowercase tag matching its name.'
-  assert issubclass(Subclass, Xml)
-  Subclass.type_tag = Subclass.__name__.lower()
-  HtmlNode.tag_types[Subclass.type_tag] = Subclass
+  assert issubclass(Subclass, Mu)
+  Subclass.tag = Subclass.__name__.lower()
+  HtmlNode.tag_types[Subclass.tag] = Subclass
   return Subclass
 
 
-_Child = TypeVar('_Child', bound=Xml)
-_Self = TypeVar('_Self', bound=Xml)
+_Child = TypeVar('_Child', bound=Mu)
+_Self = TypeVar('_Self', bound=Mu)
 
 _Accessor = Callable[[_Self],_Child]
 
 def _single(acc:_Accessor) -> _Accessor:
-  'Decorator for creating a single-child accessor.'
+  'Wrapper function for creating a single-child accessor.'
   sig = _signature(acc)
   AccesseeClass:Type = sig.return_annotation
-  tag = AccesseeClass.type_tag
+  tag = AccesseeClass.tag
 
   def xml_accessor(self:_Self) -> _Child:
     for c in self.ch:
-      if isinstance(c, Xml) and c.tag == tag: return cast(_Child, c)
+      if isinstance(c, Mu) and c.tag == tag: return cast(_Child, c)
     raise ValueError()
     return self.append(AccesseeClass())
 
@@ -65,22 +70,22 @@ class HtmlFlow(HtmlNode):
 
 class HtmlHeading(HtmlNode):
 
-  def h1(self, attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H1':
+  def h1(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H1':
     return self.append(H1(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h2(self, attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H2':
+  def h2(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H2':
     return self.append(H2(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h3(self, attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H3':
+  def h3(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H3':
     return self.append(H3(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h4(self, attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H4':
+  def h4(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H4':
     return self.append(H4(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h5(self, attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H5':
+  def h5(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H5':
     return self.append(H5(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h6(self, attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H6':
+  def h6(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H6':
     return self.append(H6(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
 
@@ -90,7 +95,7 @@ class HtmlPhrasing(HtmlNode):
 
 class HtmlScriptSupporting(HtmlNode):
 
-  def script(self, attrs:XmlAttrs=None, ch:Iterable[XmlChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'Script':
+  def script(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'Script':
     return self.append(Script(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
 

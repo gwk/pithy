@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import *
 from pithy.xml import *
+from utest import *
 
 
 html = Xml(tag='html', lang='en-us')
@@ -48,4 +48,3 @@ utest_val(div1, sd1.orig, 'sd1.orig')
 
 utest(div1, sd0.next)
 utest(div0, sd1.prev)
-
