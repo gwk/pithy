@@ -3,7 +3,6 @@
 import re
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
-from functools import singledispatch
 from typing import Any, Callable, List, Match, Optional, Union
 
 from ..buffer import Buffer
