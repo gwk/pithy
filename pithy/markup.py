@@ -17,7 +17,7 @@ from .util import memoize
 
 # Handle lxml comments if available; these are produced by html5_parser.
 try: from lxml.etree import Comment  # type: ignore
-except ImportError: Comment = type(Ellipsis) # Dummy type definition.
+except ImportError: Comment = object() # Comment is a cyfunction (weirdly), so we can fallback to a dummy object.
 
 
 MuAttrs = Dict[str,Any]
@@ -126,7 +126,7 @@ class Mu:
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
     '''
     tag = el.tag
-    if tag == Comment: tag = '!COMMENT' # Weird, but this is what html5_parser produces.
+    if tag == Comment: tag = '!COMMENT' # Weird that the tag is an object, but this is what html5_parser produces.
     # Collect children.
     attrs = el.attrib
     ch:MuChildren = []
@@ -507,7 +507,7 @@ class Mu:
     return ''.join(parts)
 
 
-  def render(self, newline:bool=True) -> Iterator[str]:
+  def render(self, newline=True) -> Iterator[str]:
     if self.void_elements:
       self_closing = self.tag in self.void_elements
       if self_closing and self.ch: raise ValueError(self)
