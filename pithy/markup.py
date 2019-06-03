@@ -533,6 +533,10 @@ class Mu:
       yield '\n'
 
 
+  def render_str(self, newline=True) -> str:
+    return ''.join(self.render(newline=newline))
+
+
 
 def xml_attr_summary(key:str, val:Any, *, text_limit:int, all_attrs:bool) -> str:
   ks = key if _word_re.fullmatch(key) else repr(key)
