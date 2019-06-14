@@ -258,6 +258,7 @@ def read_from_path(path: str, default: str=None) -> str:
     if default is None: raise
     return default
 
+
 def read_line_from_path(path: str, line0=0, keep_end=False, default: str=None) -> str:
   'Read a single line of text from file at `path`.'
   try:
@@ -270,6 +271,7 @@ def read_line_from_path(path: str, line0=0, keep_end=False, default: str=None) -
   except (FileNotFoundError, IsADirectoryError, PermissionError, UnicodeDecodeError):
     if default is None: raise
     return default
+
 
 def write_to_path(path: str, string) -> None:
   'Writes `string` to file at `path`.'
@@ -352,10 +354,13 @@ def clip_newlines(iterable: Iterable[str]) -> Iterable[str]:
 def confirm(question:str) -> bool:
   from .term import CBreakMode
   print(f'{question}? press "y" to confirm: ', end='', flush=True)
-  with CBreakMode():
-    response = stdin.read(1)
-    print(response)
-    return (response == 'y')
+  with CBreakMode(): response = stdin.read(1)
+  print(response)
+  return (response == 'y')
+
+
+def confirm_or_exit(question:str) -> None:
+  if not confirm(question): exit(1)
 
 
 def assert_eq(a: Any, b: Any):
