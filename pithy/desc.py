@@ -15,6 +15,11 @@ from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Optional,
 from .iterable import known_leaf_types
 
 
+_Printer = type(copyright)
+_Quitter = type(quit) # Also the type of `exit`.
+_BadRepr = (_Printer, _Quitter)
+
+
 def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:
   obj = labels_and_obj[-1]
   labels = labels_and_obj[:-1]
@@ -130,6 +135,8 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _D
       else: # Treat as a mapping.
         return _mapping_desc(obj, prefix, visited_ids1, items, simple_keys)
 
+  if isinstance(obj, _BadRepr):
+    return f'{prefix}{type(obj).__name__}<{repr(obj)!r}>'
   return prefix + repr(obj)
 
 
