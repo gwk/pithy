@@ -40,7 +40,7 @@ class Parser(HTMLParser):
     if self.extract_start_pos: exit('specified element was found but unterminated.')
     else: exit('specified element was not found.')
 
-  def handle_starttag(self, tag: str, attrs: List[Tuple[str, str]]):
+  def handle_starttag(self, tag: str, attrs: List[Tuple[str,Optional[str]]]):
     self.stack.append((self.pos, tag))
     d = dict(attrs)
     if d.get('id') == self.id:

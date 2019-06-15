@@ -41,7 +41,7 @@ class Parser(HTMLParser):
   def handle_startendtag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
     pass
 
-  def handle_starttag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
+  def handle_starttag(self, tag: str, attrs: List[Tuple[str,Optional[str]]]) -> None:
     self.stack.append((self.pos, tag))
 
   def handle_endtag(self, tag: str) -> None:

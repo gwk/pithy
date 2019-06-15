@@ -6,10 +6,10 @@ import re
 from sys import stdin
 from argparse import ArgumentParser
 from typing import *
-import boto3 # type: ignore
+import boto3
 from pithy.io import *
-from botocore.docs.shape import ShapeDocumenter # type: ignore
-from botocore.model import ListShape, MapShape, OperationModel, Shape, StringShape, StructureShape # type: ignore
+from botocore.docs.shape import ShapeDocumenter
+from botocore.model import ListShape, MapShape, OperationModel, Shape, StringShape, StructureShape
 from functools import singledispatch
 
 
