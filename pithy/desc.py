@@ -129,7 +129,7 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _D
       visited_ids1 = visited_ids.copy()
       visited_ids1.add(i)
       # Attempt to distinguish between mapping and sequence types.
-      try: items = iter(obj.items()) # Wrapping `iter` guards against badly formed items() functions.
+      try: items = iter(obj.items()) # The outer call to `iter` guards against badly formed items() functions.
       except (AttributeError, TypeError): # Treat as iterable.
         return _iterable_desc(obj, prefix, visited_ids1, iter(obj), simple_keys)
       else: # Treat as a mapping.
