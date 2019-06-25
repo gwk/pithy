@@ -10,15 +10,14 @@ class C():
   @dispatched
   def describe(self, item:int) -> None: return f'int: {item}'
 
-  @dispatched
+  @dispatched # type: ignore
   def describe(self, item:str) -> None: return f'str: {item}'
 
   @dispatched
-  def measure(self, item:int) -> None: return item
+  def measure(self, item:int) -> int: return item
 
-  @dispatched
-  def measure(self, item:str) -> None: return len(item)
-
+  @dispatched # type: ignore
+  def measure(self, item:str) -> int: return len(item)
 
 c = C()
 utest('int: 0', c.describe, 0)

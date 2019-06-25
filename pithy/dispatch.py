@@ -2,9 +2,10 @@
 
 import inspect
 from collections import defaultdict
-from functools import wraps, _find_impl # type: ignore
+from functools import _find_impl, wraps  # type: ignore
+from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Type, TypeVar, cast
 from weakref import WeakKeyDictionary
-from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple
+
 from .default import Raise
 
 
@@ -15,7 +16,9 @@ class DispatchTypeError(TypeError): pass
 # module_name -> method_name -> arg_type.
 _dispatched_registries: DefaultDict[str, DefaultDict[str, Dict[type, Callable]]] = defaultdict(lambda: defaultdict(dict))
 
-def dispatched(method: Callable) -> Callable:
+_Method = TypeVar('_Method', bound=Callable)
+
+def dispatched(method:_Method) -> _Method:
   '''
   Decorator for instance methods to dispatch on first arg (after self).
   Uses the same MRO resolution algorithm as functools.singledispatch.
@@ -53,7 +56,8 @@ def dispatched(method: Callable) -> Callable:
   def dispatch(self, arg, *args, **kwargs):
     method = _dispatch(type(arg), registry, dispatch_cache)
     return method(self, arg, *args, **kwargs)
-  return dispatch
+
+  return cast(_Method, dispatch)
 
 
 def _source_loc(function: Callable) -> str:
