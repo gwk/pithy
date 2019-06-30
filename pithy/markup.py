@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-Base Markup type for Html, Svg, Xml, as well as legacy SGML formats and derivative formats like Writeup (.wu).
+Base Markup type for Html, Svg, Xml, as well as legacy SGML formats.
 '''
 
 import re
