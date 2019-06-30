@@ -37,7 +37,7 @@ class HtmlNode(Mu):
 
 
 def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
-  'Decoractor for associating a concrete subclass with the lowercase tag matching its name.'
+  'Decorator for associating a concrete subclass with the lowercase tag matching its name.'
   assert issubclass(Subclass, Mu)
   Subclass.tag = Subclass.__name__.lower()
   HtmlNode.tag_types[Subclass.tag] = Subclass
