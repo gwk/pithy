@@ -96,8 +96,10 @@ def _gen_desc(d:_DescEl, indent:str, exact:bool) -> Iterator[str]:
   else: # Not inlineable.
     indent1 = indent + '  '
     is_leaf = False
-    for i, el in enumerate(d.children()):
-      yield ',\n' if (exact and i) else '\n'
+    is_subsequent = False
+    for el in d.children():
+      yield ',\n' if (exact and is_subsequent) else '\n'
+      is_subsequent = True
       is_leaf = isinstance(el, str)
       if is_leaf:
         yield indent1
