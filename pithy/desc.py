@@ -163,6 +163,7 @@ def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator, simpl
     opener = '['
     closer = ']'
   elif t is set:
+    it = iter(sorted(it))
     if obj:
       opener = '{'
       closer = '}'
@@ -170,6 +171,8 @@ def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator, simpl
       opener = 'set('
       closer = ')'
   else:
+    if isinstance(t, frozenset):
+      it = iter(sorted(it))
     opener = t.__qualname__ + '(['
     closer = '])'
 
