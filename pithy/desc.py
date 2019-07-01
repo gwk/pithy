@@ -2,7 +2,7 @@
 
 '''
 Print indented object descriptions.
-like `pprint` but streaming, and with a more compact, lisp-like style.
+like `pprint` but streaming, and with a more compact, minimal style.
 '''
 
 
@@ -15,12 +15,14 @@ from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Optional,
 from .iterable import known_leaf_types
 
 
+# Special handling for annoying types that show up in Python scopes.
 _Printer = type(copyright)
 _Quitter = type(quit) # Also the type of `exit`.
 _BadRepr = (_Printer, _Quitter)
 
 
 def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:
+  'Write a description to a file.'
   obj = labels_and_obj[-1]
   labels = labels_and_obj[:-1]
   if labels: print(*labels, end=': ', file=file)
@@ -30,20 +32,26 @@ def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:
 
 
 def errD(*labels_and_obj:Any, indent='', exact=False) -> None:
+  'Write a description to `stderr`.'
   writeD(stderr, *labels_and_obj, indent=indent, exact=exact)
 
 
 def outD(*labels_and_obj:Any, indent='', exact=False) -> None:
+  'Write a description to `stdout`.'
   writeD(stdout, *labels_and_obj, indent=indent, exact=exact)
 
 
+_DescEl = Union[str,'_Desc']
+
 class _Desc(NamedTuple):
-  opener:str
-  closer:str
-  it:Iterator # _DescEl
-  buffer:List[str]
+  'Temporary description object.'
+  opener:str # Opening character, e.g. '('.
+  closer:str # Closing character, e.g. ')'.
+  it:Iterator # TODO: when mypy supports recursive types, fully annotate with `['_DescEl']`.
+  buffer:List[str] # Holds leading elements obtained from `it`.
 
   def scan_inlineables(self, max_width:int) -> bool:
+    'Determine if this description can be rendered inline.'
     width = 0
     for el in self.it:
       self.buffer.append(el)
@@ -53,12 +61,10 @@ class _Desc(NamedTuple):
       if width > max_width: return False
     return True # Inlineable.
 
-  def children(self) -> Iterable['_DescEl']:
+  def children(self) -> Iterable[_DescEl]:
     yield from self.buffer
     del self.buffer[:] # Makes the single-use semantics a bit more explicit, but not perfect.
     yield from self.it
-
-_DescEl = Union[str,_Desc]
 
 
 def gen_desc(obj:Any, indent:str='', exact=False) -> Iterator[str]:
@@ -104,12 +110,18 @@ def _gen_desc(d:_DescEl, indent:str, exact:bool) -> Iterator[str]:
 
 
 def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _DescEl:
+  '''
+  Main description generator function. This dispatches out to others using various criteria.
+  '''
+
   if isinstance(obj, known_leaf_types):
     return prefix + repr(obj)
 
   i = id(obj)
   if i in visited_ids:
     return f'^0x{i:x}:{type(obj).__name__}'
+
+  # TODO: add singledispatch override here?
 
   if is_dataclass(obj):
     visited_ids1 = visited_ids.copy()

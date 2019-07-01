@@ -10,7 +10,7 @@ from typing import (Any, AnyStr as _AnyStr, Callable, Dict, Iterable, Iterator, 
   Union, cast)
 
 from ..exceptions import MultipleMatchesError, NoMatchError
-from ..markup import Mu, MuAttrs, MuChild, _Mu
+from ..markup import Mu, MuAttrs, MuChild, _Mu, _MuChild
 from . import semantics
 
 
