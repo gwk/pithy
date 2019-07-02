@@ -251,14 +251,15 @@ class Mu:
         raise ValueError(c) # Not (str, Mu).
       ch.append(c)
 
+    # https://www.w3.org/TR/CSS22/text.html#white-space-model
     if self.tag not in self.ws_sensitive_tags: # Clean whitespace.
       for i in range(len(ch)):
         c = ch[i]
         if not isinstance(c, str): continue
-        replacement = '\n' if '\n' in c else ' '
-        ch[i] = html_ws_re.sub(replacement, c)
+        ch[i] = html_ws_re.sub(html_ws_replacement, c).strip(' ')
 
-    self.ch[:] = ch
+    self.ch[:] = ch # Mutate the existing array beacuse it may be aliased by subnodes.
+
 
 
   # Picking and finding.
@@ -585,6 +586,10 @@ def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:
 
 def newline_or_space_for_ws(match:Match) -> str:
   return '\n' if '\n' in match[0] else ' '
+
+
+def html_ws_replacement(m:Match) -> str:
+  return '\n' if '\n' in m[0] else ' '
 
 
 # HTML defines ASCII whitespace as "U+0009 TAB, U+000A LF, U+000C FF, U+000D CR, or U+0020 SPACE."
