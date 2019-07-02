@@ -221,8 +221,9 @@ class Mu:
 
   def append(self, child:_MuChild) -> _MuChild:
     if isinstance(child, Mu) and child._orig is not None: child = child._orig
+    if not isinstance(child, (str, Mu)): raise TypeError(child)
     self.ch.append(child)
-    return child
+    return child # type: ignore # The type of child._orig the same as child.
 
 
   def extend(self, children:Iterable[_MuChild]) -> None:
@@ -241,11 +242,13 @@ class Mu:
     for c in self.ch:
       if isinstance(c, Mu):
         if deep: c.clean(deep)
-      else: # Assume c is str.
+      elif isinstance(c, str):
         if not c: continue
         if ch and isinstance(ch[-1], str): # Consolidate.
           ch[-1] += c
           continue
+      else:
+        raise ValueError(c) # Not (str, Mu).
       ch.append(c)
 
     if self.tag not in self.ws_sensitive_tags: # Clean whitespace.
