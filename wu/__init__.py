@@ -146,7 +146,7 @@ class GenericSpan(AttrSpan):
 
 class ImgSpan(AttrSpan):
   def html(self, depth: int) -> str:
-    return f'<img src="{html_esc_attr(self.text)}"{fmt_attrs(self.attrs)}/b>'
+    return f'<img src="{html_esc_attr(self.text)}"{fmt_attrs(self.attrs)}/>'
 
 
 class LinkSpan(AttrSpan):
