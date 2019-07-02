@@ -55,13 +55,13 @@ def _single(acc:_Accessor) -> _Accessor:
   AccesseeClass:Type = sig.return_annotation
   tag = AccesseeClass.tag
 
-  def xml_accessor(self:_Self) -> _Child:
+  def html_single_accessor(self:_Self) -> _Child:
     for c in self.ch:
       if isinstance(c, Mu) and c.tag == tag: return cast(_Child, c)
     raise ValueError()
     return self.append(AccesseeClass())
 
-  return property(xml_accessor) # type: ignore
+  return property(html_single_accessor) # type: ignore
 
 
 class HtmlFlow(HtmlNode):
