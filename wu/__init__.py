@@ -607,7 +607,9 @@ def parse(ctx: Ctx, src_lines: Iterable[SrcLine]) -> None:
     if m is None: ctx.error(src, 'invalid line (unknown reason; please report)')
     #errSL('L', repr(line))
     #errSL('M', m)
-    state = line_groups_to_states[m.lastgroup]
+    g = m.lastgroup
+    assert g is not None
+    state = line_groups_to_states[g]
     writeup_line(ctx=ctx, src=src, state=state, m=m)
     prev_state = state
 
@@ -712,6 +714,7 @@ def parse_spans(ctx: Ctx, src: SrcLine, text: str) -> Spans:
     flush(start_idx)
     prev_idx = m.end()
     i = m.lastindex
+    assert i is not None
     span_fn = span_fns[i-1] # Groups are 1-indexed, but function array is 0-indexed.
     group_text = m.group(i)
     spans.append(span_fn(ctx, src, group_text))
@@ -769,6 +772,7 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
   if tag == 'span':
     return GenericSpan(text=body_text, attrs=attrs)
   ctx.error(src, f'span has invalid tag: {tag!r}')
+  raise Exception # TODO: remove. This is a hack around mypy type checker.
 
 
 span_link_tags = { 'http', 'https', 'link', 'mailto' }
