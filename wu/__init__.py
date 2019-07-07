@@ -13,6 +13,7 @@ from pygments.token import *
 from pygments.token import Token
 
 from pithy.fs import norm_path, path_dir, path_exists, path_ext, path_join, path_name_stem, rel_path
+from pithy.html.semantics import phrasing_tags
 from pithy.io import errSL, errSN
 from pithy.json import load_json
 
@@ -142,8 +143,12 @@ class EmbedSpan(AttrSpan):
 
 class GenericSpan(AttrSpan):
 
+  def __init__(self, text:str, attrs:Dict[str,str], tag:str) -> None:
+    super().__init__(text=text, attrs=attrs)
+    self.tag = tag
+
   def html(self, depth: int) -> str:
-    return f"<span{fmt_attrs(self.attrs)}>{html_esc(self.text)}</span>"
+    return f'<{self.tag}{fmt_attrs(self.attrs)}>{html_esc(self.text)}</span>'
 
 
 class ImgSpan(AttrSpan):
@@ -771,8 +776,8 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
     if tag == 'link' and not span.link.startswith('#'):
       ctx.add_dependency(span.link)
     return span
-  if tag == 'span':
-    return GenericSpan(text=body_text, attrs=attrs)
+  if tag in phrasing_tags:
+    return GenericSpan(text=body_text, attrs=attrs, tag=tag)
   ctx.error(src, f'span has invalid tag: {tag!r}')
   raise Exception # TODO: remove. This is a hack around mypy type checker.
 
