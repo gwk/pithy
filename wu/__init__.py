@@ -961,8 +961,7 @@ def attrs_bool(attrs: Dict[str, str], key: str) -> bool:
 # HTML output.
 
 def fmt_attrs(attrs:Dict[str,str]) -> str:
-  if not attrs: return ''
-  return ' ' + ' '.join(f'{html_esc_attr(attr_subs.get(k, k))}="{html_esc_attr(v)}"' for k, v in attrs.items())
+  return ''.join(f' {html_esc_attr(attr_subs.get(k, k))}="{html_esc_attr(v)}"' for k, v in attrs.items())
 
 attr_subs = {
   'class_' : 'class'
