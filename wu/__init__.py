@@ -1,19 +1,21 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-
 from collections import defaultdict
 from html import escape as html_escape
+from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple, Union,
+ cast)
+
+import pygments  # type: ignore
+import pygments.lexers  # type: ignore
+import pygments.token  # type: ignore
+from pygments.token import *
+from pygments.token import Token
+
 from pithy.fs import norm_path, path_dir, path_exists, path_ext, path_join, path_name_stem, rel_path
 from pithy.io import errSL, errSN
 from pithy.json import load_json
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, Sequence, Union, TextIO, Tuple, cast
 
-import pygments # type: ignore
-import pygments.lexers # type: ignore
-import pygments.token # type: ignore
-from pygments.token import Token
-from pygments.token import *
 
 __all__ = ['writeup', 'writeup_dependencies', 'default_css', 'minify_css', 'minify_js', 'default_js']
 
