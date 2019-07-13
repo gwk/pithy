@@ -3,7 +3,7 @@
 from importlib.util import find_spec as find_module_spec
 from pithy.ansi import *
 from pithy.io import *
-from pithy.path import abs_path, path_name, path_dir
+from pithy.path import abs_path, path_name, path_dir, path_join
 from pithy.lex import Lexer
 from pithy.task import runCO
 from argparse import ArgumentParser
@@ -43,6 +43,8 @@ def main() -> None:
     assert path_name(path) == '__init__.py'
     search_path = path_dir(path_dir(path))
     mypy_path.append(search_path)
+    typestubs_path = path_join(search_path, 'typestubs')
+    mypy_path.append(typestubs_path)
 
   for p in args.paths:
     if ':' in p: exit(f'bad `-path` argument: {p!r}')
