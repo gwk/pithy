@@ -13,11 +13,11 @@ from typing import Set
 
 def main() -> None:
   arg_parser = ArgumentParser(description='Run mypy, format and colorize output.')
-  arg_parser.add_argument('-print-ok', action='store_true')
-  arg_parser.add_argument('-python-version')
   arg_parser.add_argument('roots', nargs='+')
   arg_parser.add_argument('-deps', nargs='+', default=[])
   arg_parser.add_argument('-paths', nargs='+', default=[])
+  arg_parser.add_argument('-print-ok', action='store_true')
+  arg_parser.add_argument('-python-version')
   arg_parser.add_argument('-dbg', action='store_true')
   arg_parser.add_argument('-mypy-dbg', action='store_true')
 
