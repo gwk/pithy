@@ -607,6 +607,11 @@ class Heading(HtmlPhrasingContent):
   Contexts for use: As a child of an hgroup element, Flow.
   '''
 
+  @classmethod
+  def for_level(cls, level:int, *, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None, **kw_attrs:Any) -> 'Heading':
+    c = _heading_classes[min(level, 6) - 1]
+    return c(attrs=attrs, ch=ch, cl=cl, **kw_attrs)
+
 
 @_tag
 class H1(Heading):
@@ -631,6 +636,8 @@ class H5(Heading):
 @_tag
 class H6(Heading):
   ''
+
+_heading_classes:List[Type[Heading]] = [H1, H2, H3, H4, H5, H6]
 
 
 @_tag
