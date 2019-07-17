@@ -577,7 +577,7 @@ def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', att
 
 def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:Dict[str,str]) -> str:
   words:List[str] = []
-  if type_or_tag: words.append(f'{type_or_tag.__name__ if isinstance(type_or_tag, type) else type_or_tag}:')
+  if type_or_tag: words.append(f'`{type_or_tag.__name__}`' if isinstance(type_or_tag, type) else repr(type_or_tag))
   if cl: words.append(f'cl={cl!r}')
   for k, v in attrs.items(): words.append(xml_attr_summary(k, v, text_limit=0, all_attrs=True))
   if text: words.append(f'…{text!r}…')
