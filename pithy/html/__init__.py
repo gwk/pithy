@@ -650,6 +650,7 @@ class Head(HtmlMetadataContent):
 
   Contexts for use: As the first element in an html element.
   '''
+
   @property
   def title(self) -> 'Title': return self._single(Title)
 
