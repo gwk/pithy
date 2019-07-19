@@ -123,7 +123,9 @@ class Lexer:
       if p == e:
         raise Lexer.DefinitionError('Zero-length patterns are disallowed.\n'
           f'  kind: {m.lastgroup}; match: {m}')
-      yield Token(source=source, pos=p, end=e, kind=m.lastgroup)
+      kind = m.lastgroup
+      assert isinstance(kind, str)
+      yield Token(source=source, pos=p, end=e, kind=kind)
       pos = e
 
   def _lex(self, stack:List[Tuple[str,FrozenSet[str]]], source:str, p:int, e:int, drop:Container[str],
