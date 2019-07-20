@@ -148,6 +148,12 @@ class Mu:
     return self._orig
 
 
+  @property
+  def parent(self) -> 'Mu':
+    if self._parent is None: raise ValueError(f'node is not a subnode: {self}')
+    return self._parent
+
+
   def subnode(self:_Mu, parent:'Mu') -> _Mu:
     'Create a subnode for `self` referencing the provided `parent`.'
     if self._orig is not None: raise ValueError(f'node is already a subnode: {self}')
