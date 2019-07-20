@@ -20,6 +20,7 @@ try: from lxml.etree import Comment  # type: ignore
 except ImportError: Comment = object() # Comment is a cyfunction (weirdly), so we can fallback to a dummy object.
 
 
+# Attr values are currently Any so that we can preserve exact numerical values.
 MuAttrs = Dict[str,Any]
 MuAttrItem = Tuple[str,Any]
 
@@ -195,13 +196,14 @@ class Mu:
 
 
   @property
-  def cl(self) -> str: return cast(str, self.attrs.get('class', ''))
+  def cl(self) -> str: return str(self.attrs.get('class', ''))
 
   @cl.deleter
   def cl(self) -> None: del self.attrs['class']
 
   @cl.setter
   def cl(self, val:str) -> None: self.attrs['class'] = val
+
 
   @property
   def classes(self) -> List[str]: return cast(str, self.attrs.get('class', '')).split()
@@ -216,7 +218,13 @@ class Mu:
 
 
   @property
-  def id(self) -> str: return cast(str, self.attrs.get('id', ''))
+  def id(self) -> str: return str(self.attrs.get('id', ''))
+
+  @id.setter
+  def id(self, val:str) -> None: self.attrs['id'] = val
+
+  @id.deleter
+  def id(self) -> None: del self.attrs['id']
 
 
   def append(self, child:_MuChild) -> _MuChild:
