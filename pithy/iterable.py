@@ -256,7 +256,8 @@ class OnHeadless(Enum):
   error, drop, keep = range(3)
 
 
-def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headless=OnHeadless.error) -> Iterable[List[_T]]:
+def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headless=OnHeadless.error, keep_heads=True) \
+ -> Iterable[List[_T]]:
   '''
   Group elements of `iterable` by creating a new group every time the `is_head` predicate evaluates to true.
   If the first element of the stream is not a head, the behavior is specified by `headless`.
@@ -266,13 +267,13 @@ def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headle
   while True: # consume all headless (leading tail) tokens.
     try: el = next(it)
     except StopIteration:
-      if group: yield group
+      if group: yield group # Headless.keep.
       return
     if is_head(el):
-      if group:
+      if group: # Headless.keep.
         yield group
         group = []
-      group.append(el)
+      if keep_heads: group.append(el)
       break
     else: # leading tail element.
       if headless == OnHeadless.error: raise ValueError(el)
@@ -282,7 +283,7 @@ def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headle
   for el in it:
     if is_head(el):
       yield group
-      group = [el]
+      group = [el] if keep_heads else []
     else:
       group.append(el)
   if group: yield group
