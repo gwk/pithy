@@ -774,7 +774,10 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
   if tag in span_link_tags:
     span = LinkSpan(text=body_text, attrs=attrs, tag=tag, words=body_words, ctx=ctx, src=src)
     if tag == 'link' and not span.link.startswith('#'):
-      ctx.add_dependency(span.link)
+      rel_path = span.link
+      if not path_ext(rel_path): # A link to a directory needs `index.html`.
+        rel_path = path_join(rel_path, 'index.html')
+      ctx.add_dependency(rel_path)
     return span
   if tag in phrasing_tags:
     return GenericSpan(text=body_text, attrs=attrs, tag=tag)
