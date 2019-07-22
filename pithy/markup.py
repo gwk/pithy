@@ -71,8 +71,12 @@ class Mu:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
-    if isinstance(ch, str): ch = [ch]
-    self.ch:MuChildren = ch if isinstance(ch, list) else list(ch) # Important: use an existing list ref if provided.
+    if isinstance(ch, (str, Mu)):
+      self.ch:MuChildren = [ch]
+    elif isinstance(ch, list):
+      self.ch = ch # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
+    else:
+      self.ch = list(ch)
 
     self._orig = _orig
     self._parent = _parent
