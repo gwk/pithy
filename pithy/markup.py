@@ -20,6 +20,8 @@ try: from lxml.etree import Comment  # type: ignore
 except ImportError: Comment = object() # Comment is a cyfunction (weirdly), so we can fallback to a dummy object.
 
 
+_T = TypeVar('_T')
+
 # Attr values are currently Any so that we can preserve exact numerical values.
 MuAttrs = Dict[str,Any]
 MuAttrItem = Tuple[str,Any]
@@ -32,6 +34,7 @@ _MuChild = TypeVar('_MuChild', bound='MuChild')
 
 MuPred = Callable[['Mu'],bool]
 MuVisitor = Callable[['Mu'],None]
+MuIterVisitor = Callable[['Mu'],Iterator[_T]]
 
 
 class Mu:
@@ -510,6 +513,17 @@ class Mu:
       self.ch[first_mod_idx:] = modified_children
 
     if post is not None: post(self)
+
+
+  def iter_visit(self, *, pre:MuIterVisitor=None, post:MuIterVisitor=None, traversable=False) -> Iterator[_T]:
+    if pre is not None: yield from pre(self)
+
+    for i, c in enumerate(self.ch):
+      if isinstance(c, Mu):
+        if traversable: c = c.subnode(self)
+        yield from c.iter_visit(pre=pre, post=post, traversable=traversable)
+
+    if post is not None: yield from post(self)
 
 
   # Rendering.

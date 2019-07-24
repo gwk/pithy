@@ -43,6 +43,34 @@ class HtmlNode(Mu):
     return False
 
 
+  @property
+  def attr_urls(self) -> Iterator[str]:
+    yield from self.iter_visit(pre=_attr_urls_visit)
+
+
+def _attr_urls_visit(node:HtmlNode) -> None:
+  for k, v in node.attrs.items():
+    if k in url_containing_attrs:
+      if k == 'srcset':
+        for el in v.split(','):
+          src, space, descriptor = el.partition(' ')
+          yield src
+      else:
+        yield v
+
+
+url_containing_attrs = {
+  'action', # Form URI.
+  'cite',
+  'data', # Object.
+  'formaction',
+  'href',
+  'poster',
+  'src',
+  'srcset',
+}
+
+
 def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
   'Decorator for associating a concrete subclass with the lowercase tag matching its name.'
   assert issubclass(Subclass, Mu)
