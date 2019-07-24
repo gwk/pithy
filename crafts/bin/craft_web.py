@@ -8,7 +8,7 @@ from pithy.fs import *
 from pithy.io import *
 from pithy.string import replace_prefix
 from pithy.task import runCO
-from craft import *
+from crafts import *
 
 
 def main() -> None:

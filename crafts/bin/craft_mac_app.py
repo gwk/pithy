@@ -10,7 +10,7 @@ from pithy.io import *
 from pithy.fs import copy_path, path_exists, make_dirs
 from pithy.string import find_and_clip_suffix, replace_prefix
 from pithy.task import *
-from craft import *
+from crafts import *
 
 
 def main() -> None:

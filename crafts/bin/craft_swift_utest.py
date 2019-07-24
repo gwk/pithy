@@ -11,7 +11,7 @@ from pithy.fs import *
 from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
 from pithy.lex import Lexer
 from pithy.task import run, run_gen
-from craft import *
+from crafts import *
 
 
 def main() -> None:
