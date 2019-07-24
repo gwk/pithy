@@ -654,6 +654,9 @@ class Head(HtmlMetadataContent):
   @property
   def title(self) -> 'Title': return self._single(Title)
 
+  def add_stylesheet(self, url:str, media='all') -> None:
+    self.append(Link(rel='stylesheet', type='text/css', media=media, href=url))
+
 
 @_tag
 class Header(HtmlFlow, HtmlPalpable, HtmlFlowContent):
