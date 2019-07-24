@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/local/bin/node
 
 'use strict';
 
@@ -332,5 +332,9 @@ function errL(...items) {
   console.error('%s', reprs.join(''));
 }
 
+function errSL(...items) {
+  let reprs = items.map(str);
+  console.error('%s', reprs.join(' '));
+}
 
 main();
