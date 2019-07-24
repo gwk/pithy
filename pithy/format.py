@@ -128,6 +128,7 @@ def format_to_re(fmt: str, allow_empty=False, greedy=False) -> Pattern[str]:
 
 
 def gen_format_matches(fmt: str) -> Iterable[Match]:
+  'Generate a sequence of match objects completely covering the format string.'
   pos = 0
   def exc() -> FormatError: return _exc(fmt, pos, f'invalid format character: {fmt[pos]!r}')
   for match in fmt_re.finditer(fmt):
