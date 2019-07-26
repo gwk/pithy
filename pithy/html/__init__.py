@@ -4,6 +4,7 @@
 Html type hierarchy.
 '''
 
+import re
 from html import escape as _escape
 from inspect import signature as _signature
 from typing import (Any, AnyStr as _AnyStr, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
@@ -70,6 +71,16 @@ attr_keys_for_url_vals = frozenset({
   'srcset',
 })
 
+
+def html_id_for(title:str) -> str:
+  '''
+  HTML4 IDs consist of ASCII letters, digits, '_', '-' and '.'
+  HTML5 no longer has this restriction.
+  We choose to restrict IDs to Unicode letters, digits, '_', '-' and '.'
+  '''
+  return html_id_invalid_re.sub('_', title)
+
+html_id_invalid_re = re.compile(r'[^-.\w]+')
 
 
 def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
