@@ -50,7 +50,7 @@ class HtmlNode(Mu):
 
 def _attr_urls_visit(node:HtmlNode) -> Iterator[str]:
   for k, v in node.attrs.items():
-    if k in url_containing_attrs:
+    if k in attr_keys_for_url_vals:
       if k == 'srcset':
         for el in v.split(','):
           src, space, descriptor = el.partition(' ')
@@ -59,7 +59,7 @@ def _attr_urls_visit(node:HtmlNode) -> Iterator[str]:
         yield v
 
 
-url_containing_attrs = {
+attr_keys_for_url_vals = frozenset({
   'action', # Form URI.
   'cite',
   'data', # Object.
@@ -68,7 +68,8 @@ url_containing_attrs = {
   'poster',
   'src',
   'srcset',
-}
+})
+
 
 
 def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
