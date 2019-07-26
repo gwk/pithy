@@ -306,7 +306,7 @@ class Adjacency(BinaryOp):
   def __init__(self, transform:BinaryTransform=binary_syn) -> None:
     self.transform = transform
 
-  @property
+  @property # type: ignore
   def kinds(self) -> Tuple[TokenKind,...]: # type: ignore
     raise _AllLeafKinds
 
