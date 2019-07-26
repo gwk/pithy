@@ -166,6 +166,11 @@ def load_msgpacks(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return _load_msgpacks(binary_file_for(file_or_path), **kwargs)
 
 
+def load_pickle(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
+  from .pickle import load_pickle as _load_pickle
+  return _load_pickle(binary_file_for(file_or_path), **kwargs)
+
+
 def load_pyl(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   'Load a python literal AST file (Python equivalent of JSON).'
   from ast import literal_eval
@@ -226,6 +231,7 @@ add_loader('.jsonl',    load_jsonl,     _dflt=True)
 add_loader('.jsons',    load_jsons,     _dflt=True)
 add_loader('.msgpack',  load_msgpack,   _dflt=True)
 add_loader('.msgpacks', load_msgpacks,  _dflt=True)
+add_loader('.pickle',   load_pickle,    _dflt=True)
 add_loader('.pyl',      load_pyl,       _dflt=True)
 add_loader('.sqlite',   load_sqlite,    _dflt=True)
 add_loader('.sqlite3',  load_sqlite,    _dflt=True)
