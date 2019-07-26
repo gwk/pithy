@@ -48,7 +48,7 @@ class HtmlNode(Mu):
     yield from self.iter_visit(pre=_attr_urls_visit)
 
 
-def _attr_urls_visit(node:HtmlNode) -> None:
+def _attr_urls_visit(node:HtmlNode) -> Iterator[str]:
   for k, v in node.attrs.items():
     if k in url_containing_attrs:
       if k == 'srcset':
