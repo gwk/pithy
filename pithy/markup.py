@@ -32,9 +32,9 @@ MuChildren = List[MuChild]
 _Mu = TypeVar('_Mu', bound='Mu')
 _MuChild = TypeVar('_MuChild', bound='MuChild')
 
-MuPred = Callable[['Mu'],bool]
-MuVisitor = Callable[['Mu'],None]
-MuIterVisitor = Callable[['Mu'],Iterator[_T]]
+MuPred = Callable[[_Mu],bool]
+MuVisitor = Callable[[_Mu],None]
+MuIterVisitor = Callable[[_Mu],Iterator[_T]]
 
 
 class Mu:
