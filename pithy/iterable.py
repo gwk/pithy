@@ -317,6 +317,11 @@ def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iter
   '''
   Split the sequence whenever the sequence of predicates has consecutively matched.
   Each yielded chunk is a pair (is_split_seq, seq).
+  For example:
+  `split_by_preds('abcde', lambda el: el=='b', lambde el: el=='c')` yields:
+  * (False, ['a'])
+  * (True, ['b', 'c'])
+  * (False, ['d'. 'e'])
   '''
   if not preds: raise ValueError('split_by_preds requires at least one predicate')
   l = len(preds)
