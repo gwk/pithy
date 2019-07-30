@@ -6,7 +6,7 @@ from functools import _find_impl, wraps  # type: ignore
 from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Type, TypeVar, cast
 from weakref import WeakKeyDictionary
 
-from .default import Raise
+from .default import Default
 
 
 class DispatchKeyError(KeyError): pass
@@ -85,26 +85,28 @@ def _dispatch(cls: type, registry: Dict[type, Callable], dispatch_cache: Dict[ty
 # module_name -> method_name -> (dispatcher_method, key).
 _keyed_dispatch_registries: DefaultDict[str, Dict[str, Tuple[Callable, Dict[Any, Callable]]]] = defaultdict(dict)
 
-def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Raise._) -> Callable[[Callable], Callable]:
-  'Decorator to register a method as the dispatched method for the specified key.'
+def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Default._) -> Callable[[Callable], Callable]:
+  '''
+  Decorator to register a method as the dispatched method for the specified key.
+  Usage:
+    @key_dispatched
+  '''
 
   if key_fn is not None: # register new dispatcher name with default implementation.
-    assert key is Raise._
-    assert key_fn.__closure__ is None # type: ignore
+    if not callable(key_fn):
+      raise TypeError(f'argument to key_dispatched() must be key function; received {key_fn!r}')
+    if key is not Default._:
+      raise ValueError(f'@key_dispatch() takes either positional `key_fn` (decorating default method) or keyword `key`')
+    if key_fn.__closure__ is not None: # type: ignore # Key function cannot be a closure.
+      raise ValueError(f'@key_dispatch() `key_fn` cannot be a closure; recieved {key_fn!r}')
+
     def dflt_decorator(dflt_method:Callable)->Callable:
-      assert dflt_method.__closure__ is None # type: ignore # Method cannot be a closure.
-      # Check that the method looks appropriate.
-      sig = inspect.signature(dflt_method)
-      pars = list(sig.parameters.values())
-      assert len(pars) >= 2, f'`keyed_dispatch dflt_method requires at least `self` and one additional parameter.'
-      par_self = pars[0]
-      assert par_self.name == 'self'
+      _check_key_dispatched_method(dflt_method)
       # Check for collision.
-      module_registry = _keyed_dispatch_registries[dflt_method.__module__]
       name = dflt_method.__name__
+      module_registry = _keyed_dispatch_registries[dflt_method.__module__]
       if name in module_registry:
-        suffix = '' if callable(key_fn) else '; did you mean `@keyed_dispatch(key=...)`?'
-        raise DispatchKeyError(f'`keyed_dispatch` collision on method name: {name}{suffix}')
+        raise DispatchKeyError(f'`keyed_dispatch` collision on method name: {name}')
       # Register.
       method_registry: Dict[Any, Callable] = {}
       # Create and return dispatcher method.
@@ -116,16 +118,12 @@ def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Raise.
       return dispatch
     return dflt_decorator
 
-  else: # register implementation for key.
-    assert key is not Raise._
+  else: # key_fn is None; register implementation for key.
+    if key is Default._:
+      raise ValueError(f'@key_dispatch() takes either positional `key_fn` (decorating default method) or keyword `key`')
+
     def decorator(method:Callable) -> Callable:
-      assert method.__closure__ is None # type: ignore # Method cannot be a closure.
-      # Check that the method looks appropriate.
-      sig = inspect.signature(method)
-      pars = list(sig.parameters.values())
-      assert len(pars) >= 2, f'`keyed_dispatch method requires at least `self` and one additional parameter.'
-      par_self = pars[0]
-      assert par_self.name == 'self'
+      _check_key_dispatched_method(method)
       # Check for collision.
       name = method.__name__
       module_registry = _keyed_dispatch_registries[method.__module__]
@@ -137,3 +135,12 @@ def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Raise.
       method_registry[key] = method
       return dispatch
     return decorator
+
+
+def _check_key_dispatched_method(method:Callable) -> None:
+  if method.__closure__ is not None: # type: ignore # Method cannot be a closure because it is registered globally.
+    raise ValueError(f'@key_dispatch() decorated method cannot be a closure; recieved {method!r}')
+  sig = inspect.signature(method)
+  pars = list(sig.parameters.values())
+  if len(pars) < 2 or pars[0].name != 'self':
+    raise TypeError(f'`keyed_dispatch` decorated method requires at least `self` and one additional parameter; received {method!r}')

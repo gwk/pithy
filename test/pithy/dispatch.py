@@ -24,3 +24,26 @@ utest('int: 0', c.describe, 0)
 utest('str: a', c.describe, 'a')
 utest(0, c.measure, 0)
 utest(3, c.measure, 'abc')
+
+
+
+class KeyDispatcher:
+
+  @key_dispatched(lambda k: k)
+  def echo(self, key:str) -> str:
+    return key
+
+  @key_dispatched(key='a')
+  def echo(self, key:str) -> str:
+    return 'A'
+
+  @key_dispatched(key='b')
+  def echo(self, key:str) -> str:
+    return 'B'
+
+
+d = KeyDispatcher()
+
+utest('A', d.echo, 'a')
+utest('B', d.echo, 'b')
+utest('c', d.echo, 'c')
