@@ -8,12 +8,10 @@ from configparser import ConfigParser
 from distutils.command.build_scripts import build_scripts  # type: ignore
 from itertools import chain
 from os import chmod, environ, getcwd as current_dir, listdir as list_dir, mkdir as make_dir, walk
-from os.path import (abspath as abs_path, basename as path_name, dirname as path_dir, exists as path_exists, isdir as is_dir,
-  isfile as is_file, join as path_join, normpath as norm_path, split as split_dir_name,
-  splitext as split_ext)
+from os.path import (dirname as path_dir, exists as path_exists, isdir as is_dir, join as path_join, normpath as norm_path,
+  split as split_dir_name, splitext as split_ext)
 from pprint import pprint
-from sys import stderr
-from typing import Any, Iterable, Iterator, List
+from typing import Any, List
 
 from setuptools import Command, setup  # type: ignore
 from setuptools.command.develop import develop  # type: ignore
