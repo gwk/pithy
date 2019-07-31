@@ -120,7 +120,8 @@ def discover_packages() -> List[str]:
       missing_inits.append(path_join(dir_path, '__init__.py'))
 
   if bad_names: msg(f'bad module names:\n' + '\n'.join(sorted(bad_names)))
-  if missing_inits: msg(f'missing package init files:\n' + '\n'.join(sorted(missing_inits)))
+  if missing_inits:
+    msg(f'missing package __init__.py files:\n    ' + '\n    '.join(repr(s) for s in sorted(missing_inits)))
   if bad_names or missing_inits: exit(1)
   msg('packages:', *packages)
   return packages
