@@ -171,7 +171,7 @@ class HtmlHeadingContent(HtmlNode):
   '''
   Heading content model: all node types that can contain heading elements.
   Note: this class represents <em: parents> of heading elements.
-  The superclass of H1-H6 heading elemenents themselves is `Heading`.
+  The superclass of H1-H6 heading elements themselves is `Heading`.
   '''
 
   def h1(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H1':
@@ -191,6 +191,12 @@ class HtmlHeadingContent(HtmlNode):
 
   def h6(self, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,**kw_attrs:Any) -> 'H6':
     return self.append(H6(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+
+  @property
+  def heading(self) -> Optional[HtmlNode]:
+    for el in self.ch:
+      if isinstance(el, Heading): return el
+    return None
 
 
 class HtmlMetadataContent(HtmlNode):
@@ -228,7 +234,7 @@ class HtmlTransparentPhrasing(HtmlTransparentContent):
 
 class HtmlFlowContent(HtmlHeadingContent, HtmlPhrasingContent):
   '''
-  All elements that can contain flow content (which is almost everything).
+  All elements that can contain flow content.
   '''
   # TODO: flow constructor methods.
 
@@ -1231,13 +1237,6 @@ class Section(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
 
   Contexts for use: Flow.
   '''
-
-  @property
-  def heading(self) -> Optional[HtmlNode]:
-    for el in self.ch:
-      if isinstance(el, str) and (not el or el.isspace()): continue
-      if isinstance(el, Heading): return el
-    return None
 
 
 @_tag
