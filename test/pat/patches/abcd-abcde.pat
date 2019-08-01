@@ -1,5 +1,5 @@
 pat v0
-fixtures/abcd.txt
+../fixtures/abcd.txt
 
 | b
 | c

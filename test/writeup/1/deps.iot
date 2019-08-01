@@ -1,4 +1,7 @@
 {
-  'cmd': 'writeup -deps test/writeup/1/html/embed.wu',
-  'links': 'test',
+  'cmd': 'writeup -deps embed.wu',
+  'links': {
+    'test/writeup/1/html/embed.wu',
+    'test/writeup/assets',
+  },
 }

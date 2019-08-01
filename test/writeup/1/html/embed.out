@@ -41,7 +41,7 @@
 <section class="S1" id="s3">
   <h1 id="h3">img</h1>
   <p>
-    <img src=test/writeup/assets/head.jpg> <img src=test/writeup/assets/head.gif> <img src=test/writeup/assets/head.png>
+    <img src=assets/head.jpg> <img src=assets/head.gif> <img src=assets/head.png>
   </p>
 </section>
 <section class="S1" id="s4">
@@ -63,7 +63,7 @@
     <p>
       Absolute:
     <br />
-      <a href="/test/writeup/assets/line.wu">/test/writeup/assets/line.wu</a>
+      <a href="/assets/line.wu">/assets/line.wu</a>
     <br />
       <p>
     line.

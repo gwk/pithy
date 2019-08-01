@@ -1,4 +1,4 @@
 {
   'interpreter': 'writeup -bare',
-  'links': 'test',
+  'links': 'test/writeup/assets',
 }

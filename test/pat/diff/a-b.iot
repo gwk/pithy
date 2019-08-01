@@ -1,3 +1,3 @@
 {
-  'args': ['fixtures/a.txt', 'fixtures/b.txt'],
+  'args': ['fixtures/a.txt', 'fixtures/b.txt', 'patches/$NAME.pat'],
 }

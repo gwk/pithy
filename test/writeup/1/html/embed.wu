@@ -1,20 +1,20 @@
 writeup v0
 
 # txt
-<embed: test/writeup/assets/text.txt>
+<embed: assets/text.txt>
 
 # csv
 ## empty
-<embed: test/writeup/assets/empty.csv>
+<embed: assets/empty.csv>
 ## non-empty
-<embed: test/writeup/assets/table.csv>
+<embed: assets/table.csv>
 
 # svg
-<embed: test/writeup/assets/circle.svg>
+<embed: assets/circle.svg>
 
 # img
-<embed: test/writeup/assets/head.jpg> <embed: test/writeup/assets/head.gif> <embed: test/writeup/assets/head.png>
+<embed: assets/head.jpg> <embed: assets/head.gif> <embed: assets/head.png>
 
 # wu
-<embed: test/writeup/assets/line.wu>
-<embed: test/writeup/assets/nested.wu>
+<embed: assets/line.wu>
+<embed: assets/nested.wu>

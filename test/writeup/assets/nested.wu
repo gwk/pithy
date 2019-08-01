@@ -5,5 +5,5 @@ Relative:
 <embed: line.wu>
 
 Absolute:
-<link: /test/writeup/assets/line.wu>
-<embed: /test/writeup/assets/line.wu>
+<link: /assets/line.wu>
+<embed: /assets/line.wu>

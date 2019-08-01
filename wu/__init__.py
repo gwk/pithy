@@ -3,8 +3,9 @@
 import re
 from collections import defaultdict
 from html import escape as html_escape
+from os import environ
 from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple, Union,
- cast)
+  cast)
 
 import pygments  # type: ignore
 import pygments.lexers  # type: ignore
@@ -12,10 +13,12 @@ import pygments.token  # type: ignore
 from pygments.token import *
 from pygments.token import Token
 
-from pithy.fs import norm_path, path_dir, path_exists, path_ext, path_join, path_name_stem, rel_path
+from pithy.fs import path_exists
 from pithy.html.semantics import phrasing_tags
 from pithy.io import errSL, errSN
 from pithy.json import load_json
+from pithy.path import norm_path, path_dir, path_ext, path_join, path_name_stem, rel_path
+from pithy.url import url_path
 
 
 __all__ = ['writeup', 'writeup_dependencies', 'default_css', 'minify_css', 'minify_js', 'default_js']
@@ -270,6 +273,7 @@ class Quote(LeafBlock):
   def finish(self, ctx: 'Ctx') -> None:
     quote_ctx = Ctx(
       src_path=ctx.src_path,
+      project_dir=ctx.project_dir,
       quote_depth=ctx.quote_depth + 1,
       is_versioned=False,
       warn_missing_final_newline=False,
@@ -392,7 +396,7 @@ class Ctx:
   Converts input writeup source text to output html lines and dependencies.
   '''
 
-  def __init__(self, src_path: str, should_embed: bool, is_versioned=True,
+  def __init__(self, *, src_path:str, should_embed:bool, project_dir:str='', is_versioned=True,
    warn_missing_final_newline=True, quote_depth=0, line_offset=0, emit_dbg=False) -> None:
     self.src_path = src_path
     self.title = path_name_stem(src_path)
@@ -403,8 +407,8 @@ class Ctx:
     self.line_offset = line_offset
     self.emit_dbg = emit_dbg
 
-    self.project_dir = '.' # For now, assume that writeup is invoked from the project root.
-    self.src_dir = path_dir(src_path) or '.'
+    self.project_dir = norm_path(project_dir or environ.get('PROJECT_DIR', '.'))
+    self.src_dir = path_dir(src_path)
     self.license_lines: List[str] = []
     self.head_text: List[str] = []
     self.stack: List[Block] = [] # stack of currently open content blocks.
@@ -501,15 +505,11 @@ class Ctx:
     if self.open_div: # See LangBlock.html 'div' case.
       yield '</div>'
 
-  def add_dependency(self, dependency: str) -> str:
+  def add_dependency(self, dependency:str) -> None:
     assert dependency
-    if dependency.startswith('/'): # Relative to project.
-      path = norm_path(self.project_dir + dependency) # Using path_join would omit everything before the absolute path.
-    else: # Relative to source.
-      path = norm_path(path_join(self.src_dir, dependency))
-    assert path
-    self.dependencies.append(path)
-    return path
+    if '#' in dependency: raise ValueError(dependency)
+    if '?' in dependency: raise ValueError(dependency)
+    self.dependencies.append(dependency)
 
   def add_css(self, class_, style) -> None:
     l = self.css[class_] # get list from default dict.
@@ -773,11 +773,12 @@ def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
     return ImgSpan(text=body_text, attrs=attrs)
   if tag in span_link_tags:
     span = LinkSpan(text=body_text, attrs=attrs, tag=tag, words=body_words, ctx=ctx, src=src)
-    if tag == 'link' and not span.link.startswith('#'):
-      rel_path = span.link
-      if not path_ext(rel_path): # A link to a directory needs `index.html`.
-        rel_path = path_join(rel_path, 'index.html')
-      ctx.add_dependency(rel_path)
+    if tag == 'link':
+      path = url_path(span.link)
+      if path: # If the url is just an anchor, then there is no dependency.
+        if not path_ext(path): # A link to a directory needs `index.html`.
+          path = path_join(path, 'index.html')
+        ctx.add_dependency(path)
     return span
   if tag in phrasing_tags:
     return GenericSpan(text=body_text, attrs=attrs, tag=tag)
@@ -823,7 +824,13 @@ span_re = re.compile('|'.join(p for p, _ in span_pairs))
 def embed(ctx: Ctx, src: SrcLine, text: str, attrs: Dict[str, str]) -> Span:
   'convert an `embed` span into html.'
   words = text.split()
-  path = ctx.add_dependency(words[0])
+  dep = words[0]
+  ctx.add_dependency(dep)
+  if dep.startswith('/'):
+    assert not ctx.project_dir.endswith('/')
+    path = ctx.project_dir + dep # Using path_join would omit everything before the absolute path.
+  else:
+    path = path_join(ctx.src_dir, dep)
   args = words[1:]
   if ctx.should_embed:
     try: f = open(path)
@@ -891,7 +898,6 @@ xml_processing_instruction_re = re.compile(r'<\?[^>]*>')
 
 
 def embed_html(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
-  src_dir = path_dir(ctx.src_path) or '.'
   lines = list(f)
   head = ''
   for head in lines:
@@ -899,7 +905,7 @@ def embed_html(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,
   if html_doc_re.match(head): # looks like a complete html doc.
     # TODO: we shouldn't just leave a cryptic error message here.
     # Use an iframe? Or does object tag work for this purpose?
-    path = rel_path(f.name, start=src_dir)
+    path = rel_path(f.name, start=ctx.src_dir)
     msg = f'<error: missing object: {path!r}>'
     return [f'<object data="{html_esc_attr(path)}" type="text/html">{html_esc(msg)}</object>']
   else:
@@ -934,6 +940,7 @@ def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:List[str], attrs:Dict[str,st
 def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
   embed_ctx = Ctx(
     src_path=f.name,
+    project_dir=ctx.project_dir,
     quote_depth=ctx.quote_depth,
     line_offset=0,
     is_versioned=True,

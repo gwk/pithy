@@ -1,4 +1,4 @@
 {
   'desc': 'leading context is sufficient but reaches start; outputs start symbol.',
-  'args': ['fixtures/abc.txt', 'fixtures/abcd.txt'],
+  'args': ['fixtures/abc.txt', 'fixtures/abcd.txt', 'patches/$NAME.pat'],
 }

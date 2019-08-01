@@ -1,5 +1,5 @@
 pat v0
-fixtures/a.txt
+../fixtures/a.txt
 
 |^
 - a

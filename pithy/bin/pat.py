@@ -1,15 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-
 from argparse import ArgumentParser, FileType, Namespace
 from collections import defaultdict
-from os.path import isfile as is_file, exists as path_exists
+from os import environ
 from shutil import copyfile
 from sys import stderr
-from typing import DefaultDict, List, Set, NoReturn, Tuple, cast
+from typing import DefaultDict, List, NoReturn, Set, Tuple, cast
 
 from ..diff import calc_diff
+from ..fs import is_file, path_exists
+from ..path import norm_path, path_dir, path_join, path_rel_to_dir
 
 pat_version = '0'
 
@@ -39,7 +40,7 @@ def main() -> None:
 
 
   sub_diff = subs.add_parser('diff',
-    help='[original] [modified] [out]?: create .pat style diff between [original] and [modified], writing it to [out] or stdout.')
+    help='[original] [modified] [out]: create .pat style diff between [original] and [modified], writing it to [out].')
 
   sub_diff.set_defaults(handler=main_diff)
 
@@ -49,8 +50,8 @@ def main() -> None:
   sub_diff.add_argument('modified', type=FileType('r'),
     help='source file to use as the modified (right/plus) side of the patch.')
 
-  sub_diff.add_argument('out', nargs='?', type=FileType('w'), default='-',
-    help='output path (defaults to stdout)')
+  sub_diff.add_argument('out', type=FileType('w'),
+    help='output path.')
 
   sub_diff.add_argument('-min-context', type=int, default=3,
     help='minimum number of lines of context to show before each hunk.')
@@ -76,12 +77,14 @@ def main_create(args: Namespace) -> None:
   original = args.original
   modified = args.modified
   patch = args.patch
-  if not is_file(original): exit("pat create error: 'original' is not an existing file: " + original)
-  if path_exists(modified): exit("pat create error: 'modified' file already exists: " + modified)
-  if path_exists(patch):    exit("pat create error: 'patch' file already exists: " + patch)
+  if not is_file(original, follow=True):  exit("pat create error: 'original' is not an existing file: " + original)
+  if path_exists(modified, follow=False): exit("pat create error: 'modified' file already exists: " + modified)
+  if path_exists(patch, follow=False):    exit("pat create error: 'patch' file already exists: " + patch)
+  patch_dir = path_dir(patch)
+  orig_rel = path_rel_to_dir(original, patch_dir)
   with open(patch, 'w') as f:
     f.write('pat v' + pat_version + '\n')
-    f.write(original + '\n')
+    f.write(orig_rel + '\n')
   copyfile(original, modified)
 
 
@@ -91,6 +94,9 @@ def main_diff(args) -> None:
   modified = args.modified
   f_out = args.out
   min_context = args.min_context
+
+  out_dir = path_dir(f_out.name)
+  orig_rel = path_rel_to_dir(original.name, out_dir)
 
   if min_context < 1: exit('min-context value must be positive.')
 
@@ -108,7 +114,7 @@ def main_diff(args) -> None:
   write = f_out.write
 
   write('pat v' + pat_version + '\n')
-  write(args.original.name + '\n')
+  write(orig_rel + '\n')
 
   line_indices: DefaultDict[str, Set[int]] = defaultdict(set) # maps line contents to line numbers.
   for i, line in enumerate(o_lines):
@@ -159,7 +165,7 @@ def main_diff(args) -> None:
 # version pattern is applied to the first line of documents;
 # programs processing input strings may or may not check for a version as appropriate.
 version_re = re.compile(r'pat v(\d+)\n')
-
+from pithy.io import *
 def main_apply(args) -> None:
   'apply command entry point.'
   f_patch = args.patch
@@ -180,11 +186,12 @@ def main_apply(args) -> None:
 
   if not orig_path_line:
     patch_fail(1, 'patch file does not specify an original path')
-  orig_path = orig_path_line.rstrip()
+  orig = orig_path_line.rstrip()
 
-  if orig_path.find('..') != -1:
-    patch_fail(1, f"original path cannot contain '..': {orig_path!r}")
-
+  if orig.startswith('/'):
+    orig_path = norm_path(environ.get('PROJECT_DIR', '.')) + orig
+  else:
+    orig_path = norm_path(path_join(path_dir(f_patch.name), orig))
   try: f_orig = open(orig_path)
   except FileNotFoundError: patch_fail(1, f'could not open source path specified by patch: {orig_path!r}')
 
