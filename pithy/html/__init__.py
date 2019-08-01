@@ -21,8 +21,8 @@ DtDdPair = Tuple[List['Dt'],List['Dd']]
 class HtmlNode(Mu):
   'Abstract HTML node; root class of the hierarchy. For the HTML tag, use `Html`.'
 
-  void_elements = semantics.void_elements
-  ws_sensitive_tags = semantics.ws_sensitive_elements
+  void_tags = semantics.void_tags
+  ws_sensitive_tags = semantics.ws_sensitive_tags
   tag_types:Dict[str,Type[Mu]] = {}
 
   @classmethod

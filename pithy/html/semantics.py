@@ -4,11 +4,11 @@
 HTML semantics data.
 '''
 
-raw_text_elements = frozenset({ 'script', 'style' })
-escapeable_raw_text_elements = frozenset({ 'textarea', 'title' })
-ws_sensitive_elements = raw_text_elements | escapeable_raw_text_elements | frozenset({'pre'})
+raw_text_tags = frozenset({ 'script', 'style' })
+escapeable_raw_text_tags = frozenset({ 'textarea', 'title' })
+ws_sensitive_tags = raw_text_tags | escapeable_raw_text_tags | frozenset({'pre'})
 
-void_elements = frozenset({
+void_tags = frozenset({
   'area',
   'base',
   'br',

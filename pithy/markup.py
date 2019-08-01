@@ -45,9 +45,9 @@ class Mu:
 
   tag = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
   tag_types:Dict[str,Type['Mu']] = {}
-  void_elements:FrozenSet[str] = frozenset()
-  replaced_attrs:Dict[str,str] = {}
+  void_tags:FrozenSet[str] = frozenset()
   ws_sensitive_tags:FrozenSet[str] = frozenset()
+  replaced_attrs:Dict[str,str] = {}
 
   __slots__ = ('attrs', 'ch', '_orig', '_parent')
 
@@ -544,8 +544,8 @@ class Mu:
 
 
   def render(self, newline=True) -> Iterator[str]:
-    if self.void_elements:
-      self_closing = self.tag in self.void_elements
+    if self.void_tags:
+      self_closing = self.tag in self.void_tags
       if self_closing and self.ch: raise ValueError(self)
     else:
       self_closing = not self.ch
