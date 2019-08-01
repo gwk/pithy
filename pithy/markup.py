@@ -544,6 +544,10 @@ class Mu:
 
 
   def render(self, newline=True) -> Iterator[str]:
+    yield from self._render()
+    if newline: yield '\n'
+
+  def _render(self) -> Iterator[str]:
     if self.void_tags:
       self_closing = self.tag in self.void_tags
       if self_closing and self.ch: raise ValueError(self)
@@ -553,20 +557,20 @@ class Mu:
     attrs_str = self.fmt_attr_items(self.attrs.items())
     head_slash = '/' if self_closing else ''
     yield f'<{self.tag}{attrs_str}{head_slash}>'
+    if self_closing: return
 
-    if not self_closing:
-      child_newlines = len(self.ch) > 1 and not (self.tag in self.ws_sensitive_tags)
-      if child_newlines: yield '\n'
-      for child in self.ch:
-        if isinstance(child, Mu):
-          yield from child.render(newline=child_newlines)
-        else:
-          yield self.esc_text(child)
-          if child_newlines: yield '\n'
-      yield f'</{self.tag}>'
+    child_newlines = len(self.ch) > 1 and not (self.tag in self.ws_sensitive_tags)
+    if child_newlines: yield '\n'
+    for child in self.ch:
+      if isinstance(child, Mu):
+        yield from child._render()
+        if child_newlines: yield '\n'
+      else:
+        text = self.esc_text(child)
+        yield text
+        if child_newlines and not text.endswith('\n'): yield '\n'
 
-    if newline:
-      yield '\n'
+    yield f'</{self.tag}>'
 
 
   def render_str(self, newline=True) -> str:
