@@ -341,6 +341,7 @@ def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iter
 
 def window_iter(iterable: Iterable[_T], width=2) -> Iterator[Tuple[_T, ...]]:
   'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
+  # TODO: use tee? might be faster.
   assert width > 0
   buffer = []
   for el in iterable:

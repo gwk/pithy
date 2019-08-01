@@ -12,6 +12,7 @@ from xml.etree.ElementTree import Element
 
 from .desc import repr_lim
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
+from .iterable import window_iter
 from .util import memoize
 
 
@@ -45,6 +46,7 @@ class Mu:
 
   tag = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
   tag_types:Dict[str,Type['Mu']] = {}
+  inline_tags:FrozenSet[str] = frozenset()
   void_tags:FrozenSet[str] = frozenset()
   ws_sensitive_tags:FrozenSet[str] = frozenset()
   replaced_attrs:Dict[str,str] = {}
@@ -264,20 +266,38 @@ class Mu:
       if isinstance(c, Mu):
         if deep: c.clean(deep)
       elif isinstance(c, str):
-        if not c: continue
+        if not c: continue # Do not append.
         if ch and isinstance(ch[-1], str): # Consolidate.
           ch[-1] += c
-          continue
+          continue # Do not append.
       else:
         raise ValueError(c) # Not (str, Mu).
       ch.append(c)
 
+    # Strip strings adjacent to block elements.
+    for i, (p, c, n) in enumerate(window_iter(ch, width=3), 1):
+      if not isinstance(c, str): continue
+      assert isinstance(p, Mu)
+      assert isinstance(n, Mu)
+      if p.tag not in self.inline_tags: c = c.lstrip()
+      if n.tag not in self.inline_tags: c = c.rstrip()
+      ch[i] = c
+
+    if ch:
+      c0 = ch[0]
+      if isinstance(c0, str): ch[0] = c0.lstrip()
+      cl = ch[-1]
+      if isinstance(cl, str): ch[-1] = cl.rstrip()
+
+    ch = [c for c in ch if c]
+
     # https://www.w3.org/TR/CSS22/text.html#white-space-model
-    if self.tag not in self.ws_sensitive_tags: # Clean whitespace.
+    # https://drafts.csswg.org/css-text-3/#white-space-phase-1
+    if self.tag not in self.ws_sensitive_tags: # Reduce whitespace.
       for i in range(len(ch)):
         c = ch[i]
-        if not isinstance(c, str): continue
-        ch[i] = html_ws_re.sub(html_ws_replacement, c).strip(' ')
+        if isinstance(c, str):
+          ch[i] = html_ws_re.sub(html_ws_replacement, c)
 
     self.ch[:] = ch # Mutate the existing array beacuse it may be aliased by subnodes.
 

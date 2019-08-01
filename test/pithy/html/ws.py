@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import *
+from pithy.io import *
 from pithy.html import *
 from pithy.string import clip_prefix, clip_suffix
 from typing import *
@@ -14,12 +15,20 @@ ws_normalizations:List[Tuple[MuChild,MuChild]] = [
   ( '<p>Paragraph 0.</p>',
     '<p>Paragraph 0.</p>'),
 
-  #( Body(ch=['\n', 'Hi.', '\n', '\n', 'bye.']),
-  #  ''),
+  ( Body(ch=['\n', 'Hi.', '\n', '\n', 'Bye.\n']),
+    'Hi.\nBye.'),
+
+  ( '<section>top<section>sub 1.</section><section> sub 2.</section></section>',
+'''\
+<section>
+top
+<section>sub 1.</section>
+<section>sub 2.</section>
+</section>''')
 ]
 
 
-for src, norm, in ws_normalizations:
+for src, exp, in ws_normalizations:
   if isinstance(src, HtmlNode):
     html = src
   else:
@@ -30,5 +39,8 @@ for src, norm, in ws_normalizations:
   res = body.render_str()
   res = clip_prefix(res, '<body>')
   res = clip_suffix(res, '</body>\n')
-  utest_val(norm, res, f'normalization of: {src!r}')
+  if res != exp:
+    outL(f'test failure: normalization of: {src!r}')
+    outL('expected:\n', exp)
+    outL('\n------\nactual:\n', res)
 

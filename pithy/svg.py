@@ -12,7 +12,7 @@ from types import TracebackType
 from typing import (Any, Callable, Dict, Hashable, Iterable, Iterator, List, Mapping, Optional, Sequence, TextIO, Tuple, Type,
   Union, overload)
 
-from .iterable import iter_unique, window_pairs
+from .iterable import iter_unique, window_iter
 from .range import Num, NumRange
 from .xml.tree import IndexCounters, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
 from .xml.escape import EscapedStr
@@ -580,7 +580,7 @@ class LineSeries(XYSeries):
   def render(self, plot:'Plot', series:G) -> None:
     with series.g(**self.attrs) as g:
       if self.use_segments:
-        for (a, b) in window_pairs(plot.transform(p) for p in self.points):
+        for (a, b) in window_iter(plot.transform(p) for p in self.points):
           g.line(a, b)
       else:
         g.polyline(points=iter_unique(plot.transform(p) for p in self.points), fill='none')
