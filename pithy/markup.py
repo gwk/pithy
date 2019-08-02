@@ -12,7 +12,7 @@ from xml.etree.ElementTree import Element
 
 from .desc import repr_lim
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
-from .iterable import window_iter
+from .iterable import window_iter, window_pairs
 from .util import memoize
 
 
@@ -274,32 +274,36 @@ class Mu:
         raise ValueError(c) # Not (str, Mu).
       ch.append(c)
 
-    # Strip strings adjacent to block elements.
-    for i, (p, c, n) in enumerate(window_iter(ch, width=3), 1):
-      if not isinstance(c, str): continue
-      assert isinstance(p, Mu)
-      assert isinstance(n, Mu)
-      if p.tag not in self.inline_tags: c = c.lstrip()
-      if n.tag not in self.inline_tags: c = c.rstrip()
-      ch[i] = c
+    inline_tags = self.inline_tags
 
-    if ch:
-      c0 = ch[0]
-      if isinstance(c0, str): ch[0] = c0.lstrip()
-      cl = ch[-1]
-      if isinstance(cl, str): ch[-1] = cl.rstrip()
+    if self.tag not in self.ws_sensitive_tags:
+      # Strip strings adjacent to block elements.
+      for i, (p, c, n) in enumerate(window_iter(ch, width=3), 1):
+        if not isinstance(c, str): continue
+        assert isinstance(p, Mu)
+        assert isinstance(n, Mu)
+        if p.tag not in inline_tags: c = c.lstrip()
+        if n.tag not in inline_tags: c = c.rstrip()
+        ch[i] = c
 
-    ch = [c for c in ch if c]
+      # If this element is a block, strip text at beginning and end.
+      if ch and self.tag not in inline_tags:
+        c0 = ch[0]
+        if isinstance(c0, str): ch[0] = c0.lstrip()
+        cl = ch[-1]
+        if isinstance(cl, str): ch[-1] = cl.rstrip()
 
-    # https://www.w3.org/TR/CSS22/text.html#white-space-model
-    # https://drafts.csswg.org/css-text-3/#white-space-phase-1
-    if self.tag not in self.ws_sensitive_tags: # Reduce whitespace.
+      ch = [c for c in ch if c] # Filter now-empty text elements.
+
+      # Reduce remaining, repeated whitespace down to single '\n' and ' ' characters.
+      # https://www.w3.org/TR/CSS22/text.html#white-space-model
+      # https://drafts.csswg.org/css-text-3/#white-space-phase-1
       for i in range(len(ch)):
         c = ch[i]
         if isinstance(c, str):
           ch[i] = html_ws_re.sub(html_ws_replacement, c)
 
-    self.ch[:] = ch # Mutate the existing array beacuse it may be aliased by subnodes.
+    self.ch[:] = ch # Mutate the original array beacuse it may be aliased by subnodes.
 
 
 
@@ -564,10 +568,14 @@ class Mu:
 
 
   def render(self, newline=True) -> Iterator[str]:
+    'Render the tree as a stream of text lines.'
     yield from self._render()
     if newline: yield '\n'
 
+
   def _render(self) -> Iterator[str]:
+    'Recursive helper to `render`.'
+
     if self.void_tags:
       self_closing = self.tag in self.void_tags
       if self_closing and self.ch: raise ValueError(self)
@@ -579,21 +587,28 @@ class Mu:
     yield f'<{self.tag}{attrs_str}{head_slash}>'
     if self_closing: return
 
-    child_newlines = len(self.ch) > 1 and not (self.tag in self.ws_sensitive_tags)
-    if child_newlines: yield '\n'
-    for child in self.ch:
+    child_newlines = (
+      len(self.ch) > 1 and
+      (self.tag not in self.ws_sensitive_tags) and
+      (self.tag not in self.inline_tags))
+
+    def is_block(el:MuChild) -> bool: return isinstance(el, Mu) and (el.tag not in self.inline_tags)
+
+    if child_newlines:
+      yield '\n'
+    for child, next_child in window_pairs(self.ch):
       if isinstance(child, Mu):
         yield from child._render()
-        if child_newlines: yield '\n'
       else:
-        text = self.esc_text(child)
-        yield text
-        if child_newlines and not text.endswith('\n'): yield '\n'
+        yield self.esc_text(child)
+      if child_newlines and (is_block(child) or next_child is None or is_block(next_child)):
+        yield '\n'
 
     yield f'</{self.tag}>'
 
 
   def render_str(self, newline=True) -> str:
+    'Render the tree into a single string.'
     return ''.join(self.render(newline=newline))
 
 

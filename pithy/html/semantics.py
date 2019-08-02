@@ -77,7 +77,6 @@ phrasing_tags = frozenset({
   'ins',
   'kbd',
   'label',
-  'link',
   'map',
   'mark',
   'meta',
