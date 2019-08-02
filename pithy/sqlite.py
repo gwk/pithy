@@ -66,7 +66,7 @@ class Cursor(sqlite3.Cursor):
     self.insert_seq(with_=with_, or_=or_, table=table, fields=fields, args=args_seq)
 
 
-  def select(self, *sql: str, **args: Any) -> Cursor:
+  def select(self, *sql: str, **args: Any) -> 'Cursor':
     'Execute a SELECT query.'
     return self.run('SELECT', *sql, **args)
 
