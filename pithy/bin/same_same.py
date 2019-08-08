@@ -24,6 +24,8 @@ To use it, add the following configuration to your .gitconfig:
 [diff]
   noprefix = true
   wsErrorHighlight = none # Intraline coloring creates trouble for same-same.
+
+To disable, set 'SAME_SAME_OFF' in the shell environment.'
 '''
 
 
