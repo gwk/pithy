@@ -339,6 +339,20 @@ def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iter
     yield (False, buffer)
 
 
+def split_halves_by_pred(iterable:Iterable[_T], pred:Callable[[_T], bool]) -> Tuple[List[_T],List[_T]]:
+  left:List[_T] = []
+  right:List[_T] = []
+  it = iter(iterable)
+  for el in it:
+    if pred(el):
+      right.append(el)
+      break
+    else:
+      left.append(el)
+  right.extend(it)
+  return left, right
+
+
 def window_iter(iterable: Iterable[_T], width=2) -> Iterator[Tuple[_T, ...]]:
   'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
   # TODO: use tee? might be faster.
