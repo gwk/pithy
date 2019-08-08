@@ -9,7 +9,7 @@ from typing import Any, Callable, List, Optional, Tuple, TypeVar
 def bindings_matching(prefix:str=None, val_type:type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
   '''
   Return (name, value) pairs of bindings from the specified frame,
-  that match the specified prefix and type filters.
+  that match the specified prefix and val_type filters.
   Frame must be either an int (depth; immediate caller is 1),
   or a string (the name of the target frame's function, or '<module>', the default).
   '''
