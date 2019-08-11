@@ -365,7 +365,7 @@ class Mu:
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     for c in self.ch:
       if isinstance(c, Mu) and pred(c): return (c.subnode(self) if traversable else c)
-    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
+    raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
 
 
   @overload
@@ -377,7 +377,7 @@ class Mu:
   def find_first(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       return c
-    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
+    raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
 
 
   @overload
@@ -387,15 +387,16 @@ class Mu:
   def pick(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
 
   def pick(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
-    first:Optional[Mu] = None
+    first_match:Optional[Mu] = None
     for c in self.pick_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
-      if first is None: first = c
+      if first_match is None: first_match = c
       else:
-        s = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
-        raise MultipleMatchesError(f'{s}; node: {self}\n  match: {first}\n  match: {c}')
-    if first is None:
-      raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
-    return first
+        args_msg = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
+        subsequent_match = c # Alias improves readablity of the following line in stack traces.
+        raise MultipleMatchesError(self, args_msg, first_match, subsequent_match)
+    if first_match is None:
+      raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
+    return first_match
 
 
   @overload
@@ -405,15 +406,16 @@ class Mu:
   def find(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
 
   def find(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
-    first:Optional[Mu] = None
+    first_match:Optional[Mu] = None
     for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
-      if first is None: first = c
+      if first_match is None: first_match = c
       else:
-        s = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
-        raise MultipleMatchesError(f'{s}; node: {self}\n  match: {first}\n  match: {c}')
-    if first is None:
-      raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
-    return first
+        args_msg = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
+        subsequent_match = c # Alias improves readablity of the following line in stack traces.
+        raise MultipleMatchesError(self, args_msg, first_match, subsequent_match)
+    if first_match is None:
+      raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
+    return first_match
 
 
   # Traversal.
@@ -435,7 +437,7 @@ class Mu:
       elif c is self._orig:
         found_orig = True
     if not found_orig: raise ValueError('node was removed from parent')
-    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
+    raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
 
 
   @overload
@@ -455,7 +457,7 @@ class Mu:
       elif c is self._orig:
         found_orig = True
     if not found_orig: raise ValueError('node was removed from parent')
-    raise NoMatchError(f'{fmt_xml_predicate_args(type_or_tag, cl, text, attrs)}; node: {self}')
+    raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
 
 
   # Text.
@@ -650,7 +652,7 @@ def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:
   words:List[str] = []
   if type_or_tag: words.append(f'`{type_or_tag.__name__}`' if isinstance(type_or_tag, type) else repr(type_or_tag))
   if cl: words.append(f'cl={cl!r}')
-  for k, v in attrs.items(): words.append(xml_attr_summary(k, v, text_limit=0, all_attrs=True))
+  for k, v in attrs.items(): words.append(xml_attr_summary(k, v, text_limit=0, all_attrs=True).lstrip())
   if text: words.append(f'…{text!r}…')
   return ' '.join(words)
 
