@@ -564,7 +564,7 @@ class Mu:
     parts: List[str] = []
     for k, v in items:
       k = self.replaced_attrs.get(k, k)
-      if v is None: v = 'none'
+      if v in (None, True, False): v = str(v).lower()
       parts.append(f' {k}="{self.esc_attr_val(str(v))}"')
     return ''.join(parts)
 
