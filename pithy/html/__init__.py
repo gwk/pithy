@@ -10,7 +10,7 @@ from inspect import signature as _signature
 from typing import (Any, AnyStr as _AnyStr, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
   Union, cast)
 
-from ..exceptions import MultipleMatchesError, NoMatchError
+from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import Mu, MuAttrs, MuChild, _Mu, _MuChild
 from . import semantics
 
@@ -742,6 +742,9 @@ class Head(HtmlMetadataContent):
 
   def add_stylesheet(self, url:str, media='all') -> None:
     self.append(Link(rel='stylesheet', type='text/css', media=media, href=url))
+
+  @property
+  def style(self) -> 'Style': return self._single(Style)
 
 
 @_tag
