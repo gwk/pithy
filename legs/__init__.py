@@ -281,6 +281,7 @@ class RegexLexerBase(LexerBase):
       return Token(pos=pos, end=start, kind='incomplete')
     end = m.end()
     kind = m.lastgroup
+    assert isinstance(kind, str)
     assert pos < end, (kind, m)
     self.pos = end # Advance lexer state.
     # Check for mode transition.
