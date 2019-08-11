@@ -127,7 +127,7 @@ def main() -> None:
 
 
 def minutes_for(match:Match) -> int:
-  return int(match.group(1)) * 60 + int(match.group(2))
+  return int(match.group(1)) * 60 + int(match.group(2)) # type: ignore
 
 day_re      = re.compile(r'(?:(\d\d\d\d)-)?(\d\d)-(\d\d)')
 time_re     = re.compile(r'(\d\d):(\d\d) ')
