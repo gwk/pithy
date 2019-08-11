@@ -22,9 +22,6 @@ from .ansi import TXT_R, TXT_Y, RST_TXT, sgr
 from .buffer import Buffer
 
 
-Node = Union[str, 'TagTree'] # TODO: move code.
-
-
 class TagRule():
   def __init__(self, open_pattern: str, close_pattern: str, open_close_tokens_match_fn: Callable=None) -> None:
     self.open_pattern = open_pattern
@@ -87,12 +84,14 @@ class TagParser():
     return TagTreeRoot(*subs) if depth == 0 else TagTreeUnterminated(*subs), len(text)
 
 
-  def parse(self, text: str, leaf_replacements: Dict[str, str]=None) -> Node:
+  def parse(self, text: str, leaf_replacements: Dict[str, str]=None) -> 'Node':
     match_stream = Buffer(self.lexer.finditer(text))
     res, pos = self._parse(leaf_replacements or {}, text, match_stream, pos=0, depth=0,
       subs=[], close_pred=lambda i, t: False, parent_close_pred=lambda i, t: False)
     return res
 
+
+Node = Union[str,'TagTree']
 
 
 class TagTree(tuple):
@@ -104,7 +103,7 @@ class TagTree(tuple):
   def __new__(cls, *args: Node) -> 'TagTree':
     for el in args:
       if not isinstance(el, (str, TagTree)): raise ValueError(el)
-    return super().__new__(cls, args)
+    return super().__new__(cls, args) # type: ignore
 
   def __repr__(self) -> str:
     return '{}({})'.format(type(self).__name__, ', '.join(repr(el) for el in self))
@@ -204,9 +203,9 @@ class TagTreeUnexpected(TagTreeFlawed):
   ansi_color = TXT_R
   ansi_reset = sgr(RST_TXT)
 
-  def __new__(cls, *args) -> TagTree:
+  def __new__(cls, *args) -> 'TagTreeUnexpected':
     assert len(args) == 1
-    return super().__new__(cls, *args)
+    return super().__new__(cls, *args) # type: ignore
 
   @property
   def contents(self) -> Sequence[Node]:
