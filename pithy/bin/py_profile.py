@@ -202,6 +202,7 @@ class CustomStats(Stats):
 
     width = self.max_name_len
 
+    msg = ''
     for selection in sel_list:
       stat_list, msg = self.eval_display_amount(selection, stat_list, msg)
 
