@@ -77,18 +77,14 @@ def iter_unique(iterable: Iterable[_T]) -> Iterator[_T]:
       prev = el
 
 
-@singledispatch
 def iter_values(obj:Any) -> Iterator[Any]:
   if isinstance(obj, known_leaf_types): return
-
   if hasattr(obj, 'values'): # Treat as a mapping.
     yield from obj.values()
-
-  try: it = iter(obj)
-  except TypeError: return
-  yield from it
-
-
+  else:
+    try: it = iter(obj)
+    except TypeError: return
+    yield from it
 
 
 def extent(iterable: Iterable[_C], key: Callable[[_C], _CK]=None, default: Optional[_C]=None) -> Tuple[_C, _C]:
