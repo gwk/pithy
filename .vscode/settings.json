@@ -1,5 +1,6 @@
 {
   "search.exclude": {
+    ".git": true,
     "_build": true,
     "_misc": true
   },
