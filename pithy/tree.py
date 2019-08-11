@@ -50,13 +50,13 @@ def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_TransformVisito
   return visit(node, stack, results)
 
 
-def traverse_preorder(obj:_T, visit:Callable[[_T],None]) -> None:
-  visit(obj)
-  for el in iter_values(obj):
-    traverse_preorder(el, visit)
+def visit_tree_preorder(obj:_T, get_values:Callable[[_T],Iterable[_T]]=iter_values) -> Iterator[_T]:
+  yield obj
+  for el in get_values(obj):
+    yield from visit_tree_preorder(el, get_values)
 
 
-def traverse_postorder(obj:_T, visit:Callable[[_T],None]) -> None:
-  for el in iter_values(obj):
-    traverse_postorder(el, visit)
-  visit(obj)
+def visit_tree_postorder(obj:_T, get_values:Callable[[_T],Iterator[_T]]=iter_values) -> Iterator[_T]:
+  for el in get_values(obj):
+    yield from visit_tree_postorder(el, get_values)
+  yield obj
