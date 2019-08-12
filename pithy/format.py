@@ -66,6 +66,7 @@ def parse_formatters(fmt: str) -> Iterable[Tuple[str, str, str, type]]:
     if formatter is not None:
       value_type: type = str
       name, conv, spec = match.group('name', 'conv', 'spec')
+      assert isinstance(name, str), name
       if spec:
         spec_match = fmt_spec_re.fullmatch(spec)
         if not spec_match: raise _exc(fmt, match.start(), f'invalid format spec: {spec!r}')
@@ -74,7 +75,7 @@ def parse_formatters(fmt: str) -> Iterable[Tuple[str, str, str, type]]:
         if type_:
           try: value_type = spec_types[type_]
           except KeyError as e: raise _exc(fmt, match.start(), f'spec type {type_!r} not implemented') from e
-      yield (name, conv, spec, value_type)
+      yield (name, conv or '', spec or '', value_type)
 
 
 def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
