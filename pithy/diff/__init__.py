@@ -2,16 +2,13 @@
 
 
 from difflib import SequenceMatcher
-from typing import Any, Callable, List, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeVar, Union
 
-from .patience import *
-from .util import *
+from .patience import Alignment, Diff, align_patience
+from .util import ranges_without_common_ends, trim_common_ends
 
 
 _T = TypeVar('_T')
-
-Alignment = List[Tuple[int, int]]
-Diff = List[Tuple[range, range]]
 
 
 def calc_diff(seq_a:Sequence[_T], seq_b:Sequence[_T], algorithm='patience', **kwargs:Any):
