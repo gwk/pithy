@@ -42,4 +42,4 @@ class Xml(Mu):
   def __init__(self:_Mu, *, tag, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,
    _orig:_Mu=None, _parent:'Mu'=None, **kw_attrs:Any) -> None:
     self.tag = tag
-    super().__init__(tag=tag, attrs=attrs, ch=ch, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)
+    super().__init__(tag=tag, attrs=attrs, ch=ch, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs) # type: ignore
