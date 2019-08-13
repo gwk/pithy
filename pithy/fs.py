@@ -381,7 +381,7 @@ class DirEntries:
   def __init__(self, exts:Iterable[str]=(), hidden=False, pred:Callable[[DirEntry],bool]=None) -> None:
     self.exts  = normalize_exts(exts)
     self.hidden = hidden
-    self.pred = lambda entry:True if pred is None else pred
+    self.pred = (lambda entry:True) if pred is None else pred
     self._entries:Dict[str,Tuple[DirEntry,...]] = {}
 
   def __getitem__(self, dir_path:str) -> Tuple[DirEntry,...]:
