@@ -395,3 +395,7 @@ class DirEntries:
 
   def clear(self) -> None:
     self._entries.clear()
+
+  def clear_dir(self, dir:str) -> None:
+    try: del self._entries[dir]
+    except KeyError: pass
