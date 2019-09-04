@@ -259,14 +259,14 @@ def read_from_path(path: str, default: str=None) -> str:
     return default
 
 
-def read_line_from_path(path: str, line0=0, keep_end=False, default: str=None) -> str:
+def read_line_from_path(path: str, line_index=0, keep_end=False, default: str=None) -> str:
   'Read a single line of text from file at `path`.'
   try:
     with open(path) as f:
       for i, line in enumerate(f):
-        if i == line0:
+        if i == line_index:
           return line if keep_end else line.rstrip('\n')
-      if default is None: raise IndexError(line0)
+      if default is None: raise IndexError(line_index)
       return default
   except (FileNotFoundError, IsADirectoryError, PermissionError, UnicodeDecodeError):
     if default is None: raise
