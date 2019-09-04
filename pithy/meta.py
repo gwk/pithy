@@ -3,7 +3,7 @@
 import inspect
 from inspect import FrameInfo
 from types import FunctionType
-from typing import Any, Callable, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar
 
 
 def bindings_matching(prefix:str=None, val_type:type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
@@ -40,24 +40,33 @@ def bindings_matching(prefix:str=None, val_type:type=None, strip_prefix=True, fr
   return pairs
 
 
-def dispatcher_for_names(prefix:str=None, default_name:str=None, default_fn:Callable=None, **renames:str) -> Callable:
+def dispatcher_for_names(*, prefix:str, exclude:Iterable[str]=(), default_name:str=None, default_fn:Callable=None,
+ **renames:str) -> Callable:
   'Creates a dispatcher function for functions starting with prefix.'
-  assert prefix
+
+  _exclude = set(exclude)
+
   bindings = { renames.get(name, name) : fn
-    for name, fn in bindings_matching(prefix=prefix, val_type=FunctionType, frame='<module>') }
+    for name, fn in bindings_matching(prefix=prefix, frame='<module>')
+    if (name not in _exclude) and callable(fn) }
 
   if default_name is not None:
     if default_fn is not None:
       raise ValueError('default_name and default_fn cannot both be specified.')
     default_fn = bindings[default_name]
 
-  def dispatch_fn(name, *args, **kwargs):
-    try:
+  if default_fn is None:
+    def dispatch_fn(name, *args, **kwargs):
       fn = bindings[name]
-    except KeyError:
-      if default_fn is None: raise
-      fn = default_fn
-    return fn(*args, **kwargs)
+      return fn(*args, **kwargs)
+  else:
+    def dispatch_fn(name, *args, **kwargs):
+      try:
+        fn = bindings[name]
+      except KeyError:
+        return default_fn(name, *args,  **kwargs) # type: ignore
+      else:
+        return fn(*args, **kwargs)
 
   return dispatch_fn
 
