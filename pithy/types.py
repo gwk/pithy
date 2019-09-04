@@ -22,16 +22,16 @@ class Comparable(Protocol):
   def __eq__(self, other:Any) -> bool: ...
 
 
-def is_a(val:Any, Type:Any) -> bool:
+def is_a(val:Any, T:Union[type, Tuple[type, ...]]) -> bool:
   '''
-  Test if `val` is of `Type`. Unlike `isinstance`,
+  Test if `val` is of `T`. Unlike `isinstance`,
   this function works with generic static types.
   '''
-  try: return isinstance(val, Type)
+  try: return isinstance(val, T)
   except TypeError as e:
     if e.args[0] != 'Subscripted generics cannot be used with class and instance checks': raise
-  RTT = Type.__origin__ # runtime type.
-  args = Type.__args__
+  RTT = T.__origin__ # type: ignore # The runtime type for the static type.
+  args = T.__args__  # type: ignore
   try:
     predicate = _generic_type_predicates[RTT]
   except KeyError: # Not specialized.
@@ -42,11 +42,11 @@ def is_a(val:Any, Type:Any) -> bool:
       else:
         K, V = args
       return isinstance(val, RTT) and all(is_a(k, K) and is_a(v, V) for (k, v) in val.items())
-    elif len(args) == 1: # Assume `Type` is a single-parameter generic container.
+    elif len(args) == 1: # Assume `T` is a single-parameter generic container.
       E = args[0]
       return isinstance(val, RTT) and all(is_a(el, E) for el in val)
     else:
-      raise TypeError(f'{Type} is not a single-parameter generic type; origin type: {RTT}')
+      raise TypeError(f'{T} is not a single-parameter generic type; origin type: {RTT}')
   else: # Specialized.
     # Union is an extra strange case, because the origin type is not a runtime type either.
     return (RTT is Union or isinstance(val, RTT)) and predicate(val, args)
