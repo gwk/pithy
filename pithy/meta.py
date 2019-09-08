@@ -3,10 +3,10 @@
 import inspect
 from inspect import FrameInfo
 from types import FunctionType
-from typing import Any, Callable, Iterable, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar
 
 
-def bindings_matching(prefix:str=None, val_type:type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
+def bindings_matching(*, prefix:str=None, val_type:type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
   '''
   Return (name, value) pairs of bindings from the specified frame,
   that match the specified prefix and val_type filters.
@@ -40,35 +40,41 @@ def bindings_matching(prefix:str=None, val_type:type=None, strip_prefix=True, fr
   return pairs
 
 
-def dispatcher_for_names(*, prefix:str, exclude:Iterable[str]=(), default_name:str=None, default_fn:Callable=None,
- **renames:str) -> Callable:
-  'Creates a dispatcher function for functions starting with prefix.'
+def dispatcher_for_defs(*, prefix:str, default:Callable=None, base:Mapping[str,Callable]={}, exclude:Iterable[str]=()) -> Callable:
+  '''
+  Creates a dispatcher function from callable definitions in the caller's module.
+  Only callables whose name starts with `prefix` are included.
+  `default` is another callable; it will receive all of the arguments to the dispatcher (including the first string argument)
+  when no particular dispatch function matches.
+  '''
 
-  _exclude = set(exclude)
+  _exclude = {exclude} if isinstance(exclude, str) else set(exclude)
 
-  bindings = { renames.get(name, name) : fn
-    for name, fn in bindings_matching(prefix=prefix, frame='<module>')
-    if (name not in _exclude) and callable(fn) }
+  bindings:Dict[str,Callable] = dict(base)
+  for name, fn in bindings_matching(prefix=prefix, frame='<module>', strip_prefix=True):
+    if (name in bindings) or (name in _exclude) or (not callable(fn)): continue
+    bindings[name] = fn
 
-  if default_name is not None:
-    if default_fn is not None:
-      raise ValueError('default_name and default_fn cannot both be specified.')
-    default_fn = bindings[default_name]
-
-  if default_fn is None:
+  if default is None:
     def dispatch_fn(name, *args, **kwargs):
       fn = bindings[name]
-      return fn(*args, **kwargs)
+      try: return fn(*args, **kwargs)
+      except Exception as exc: raise DispatchWrapperException(fn) from exc
   else:
     def dispatch_fn(name, *args, **kwargs):
-      try:
-        fn = bindings[name]
-      except KeyError:
-        return default_fn(name, *args,  **kwargs) # type: ignore
+      try: fn = bindings[name]
+      except KeyError: pass # Handled below.
       else:
-        return fn(*args, **kwargs)
+        try: return fn(*args, **kwargs)
+        except Exception as exc: raise DispatchWrapperException(fn) from exc
+      return default(name, *args,  **kwargs) # type: ignore
 
+  setattr(dispatch_fn, 'bindings', bindings)
+  setattr(dispatch_fn, 'default', default)
   return dispatch_fn
+
+
+class DispatchWrapperException(Exception): pass
 
 
 _A = TypeVar('_A', bound=Any)
