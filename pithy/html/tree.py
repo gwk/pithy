@@ -14,14 +14,6 @@ from ..svg import *
 from .semantics import form_input_types
 
 
-Dim = Union[int, float, str]
-Vec = Tuple[Num, Num]
-VecOrNum = Union[Vec, Num]
-PathCommand = Tuple
-
-ViewBox = Union[None, Vec, Tuple[Num, Num, Num, Num], Tuple[Vec, Vec]] # TODO: currently unused.
-
-
 class HtmlWriter(XmlWriter):
   '''
   HtmlWriter is a ContextManager class for generating HTML.
