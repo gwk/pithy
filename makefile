@@ -8,17 +8,15 @@
 .SECONDARY: # Disable deletion of intermediate products.
 .SUFFIXES: # Disable implicit rules.
 
-.PHONY: _default _phony clean cov docs pip-develop pip-uninstall pypi-dist pypi-upload test test-diff test-diff-pairs typecheck
-
-.PHONY: _default clean clean-data clean-grammars cov gen gen-data gen-grammars \
-  pip-develop pip-uninstall pypi-dist pypi-upload test typecheck
+.PHONY: _default _phony build clean clean-grammars clean-legs-data cov cov-meta develop docs gen gen-data gen-grammars \
+  gen-vscode help install-vscode pip-uninstall test test-diff test-diff-data typecheck
 
 # First target of a makefile is the default.
 _default: test typecheck
 
-_phony:
+_phony: # Used to mark pattern rules as phony.
 
-packages := craft iotest legs pithy utest writeup
+packages := crafts iotest legs pithy utest wu
 
 build:
 	./build.sh $(packages)
@@ -73,15 +71,15 @@ test: gen
 test/%: _phony
 	iotest -fail-fast $@
 
-typecheck: gen
-	craft-py-check iotest legs pithy tools utest
-
 test-diff:
 	test-diff/test.py
 
 test-diff-data:
 	rm -rf _build/test-diff/*
 	test-diff/collect-diff-examples.py ../pithy ../quilt
+
+typecheck: gen
+	craft-py-check iotest legs pithy tools utest
 
 
 # Targets.
