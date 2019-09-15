@@ -10,57 +10,57 @@ from typing import Iterator, Sequence, Tuple, TypeVar
 _T = TypeVar('_T')
 
 
-def sorted_list_index(a: Sequence[_T], x: _T) -> int:
+def sorted_seq_index(seq:Sequence[_T], el:_T) -> int:
   '''
-  Locate the leftmost value exactly equal to x.
+  Locate the leftmost element exactly equal to `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_left(a, x)
-  if i != len(a) and a[i] == x:
+  i = bisect_left(seq, el)
+  if i != len(seq) and seq[i] == el:
     return i
-  raise ValueError
+  raise ValueError(el)
 
 
-def sorted_list_find_lt(a: Sequence[_T], x: _T) -> _T:
+def sorted_seq_find_lt(seq:Sequence[_T], el:_T) -> _T:
   '''
-  Find rightmost value less than x.
+  Find rightmost element less than `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_left(a, x)
+  i = bisect_left(seq, el)
   if i:
-    return a[i-1]
+    return seq[i-1]
   raise ValueError
 
 
-def sorted_list_find_le(a: Sequence[_T], x: _T) -> _T:
+def sorted_seq_find_le(seq:Sequence[_T], el:_T) -> _T:
   '''
-  Find rightmost value less than or equal to x.
+  Find rightmost element less than or equal to `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_right(a, x)
+  i = bisect_right(seq, el)
   if i:
-    return a[i-1]
+    return seq[i-1]
   raise ValueError
 
 
-def sorted_list_find_gt(a: Sequence[_T], x: _T) -> _T:
+def sorted_seq_find_gt(seq:Sequence[_T], el:_T) -> _T:
   '''
-  Find leftmost value greater than x.
+  Find leftmost element greater than `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_right(a, x)
-  if i != len(a):
-    return a[i]
+  i = bisect_right(seq, el)
+  if i != len(seq):
+    return seq[i]
   raise ValueError
 
 
-def sorted_list_find_ge(a: Sequence[_T], x: _T) -> _T:
-  '''Find leftmost item greater than or equal to x.
+def sorted_seq_find_ge(seq:Sequence[_T], el:_T) -> _T:
+  '''Find leftmost element greater than or equal to `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_left(a, x)
-  if i != len(a):
-    return a[i]
+  i = bisect_left(seq, el)
+  if i != len(seq):
+    return seq[i]
   raise ValueError
 
 
