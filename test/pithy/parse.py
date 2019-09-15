@@ -77,6 +77,7 @@ chain_left = Parser(lexer, dict(
   drop=('space', 'line'))
 
 utest(('', ('', 'a', 'b'), ('+', 'c', 'd')), chain_left.parse, 'expr', 'a b c+d')
+utest(('', ('', ('+', 'a', 'b'), 'c'), 'd'), chain_left.parse, 'expr', 'a+b c d')
 
 
 def mk_comma_parser(sep_at_end:Optional[bool]) -> Parser:
