@@ -99,7 +99,7 @@ class Lexer:
       self.transitions[(parent_mode, enter)] = (child_mode, frozenset(leaves))
 
     choice_sep = '\n| ' if 'x' in flags else '|'
-    def compile_mode(mode: str, pattern_names: FrozenSet[str]) -> Pattern:
+    def compile_mode(mode:str, pattern_names:FrozenSet[str]) -> Pattern:
       return re.compile(choice_sep.join(pattern for name, pattern in self.patterns.items() if name in pattern_names))
       #^ note: iterate over self.patterns.items (not pattern_names) because the dict preserves the original pattern order.
 
