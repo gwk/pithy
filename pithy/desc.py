@@ -128,7 +128,7 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _D
   if is_dataclass(obj):
     visited_ids1 = visited_ids.copy()
     visited_ids1.add(i)
-    items:_Items = ((f.name, getattr(obj, f.name)) for f in _dc_fields(obj))
+    items:_Items = ((f.name, getattr(obj, f.name, '<?>')) for f in _dc_fields(obj))
     return _record_desc(obj, prefix, visited_ids1, items, simple_keys)
 
   # Most objects in a tree are leaves; we minimize tests for the leaf case by nesting the mapping test inside the iter test.
