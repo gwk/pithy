@@ -557,7 +557,7 @@ class HTTPRequestHandler(StreamRequestHandler):
   def format_log_date(self, timestamp:float=None) -> str:
     'Format the current time for logging.'
     if timestamp is None: timestamp = time.time()
-    y, m, d, hh, mm, ss, wd, yd, is_dst, zone, gmt_off = time.localtime(timestamp)
+    y, m, d, hh, mm, ss, wd, yd, is_dst = time.localtime(timestamp)
     return f'{y:04}-{m:02}-{d:02} {hh:02}:{mm:02}:{ss:02}.{timestamp%1:.03f}'
 
 
