@@ -273,10 +273,12 @@ def read_line_from_path(path: str, line_index=0, keep_end=False, default: str=No
     return default
 
 
-def write_to_path(path: str, string) -> None:
+def write_to_path(path:str, text:Union[str,bytes,bytearray]) -> None:
   'Writes `string` to file at `path`.'
-  with open(path, 'w') as f:
-    f.write(string)
+  if isinstance(text, str):
+    with open(path, 'w') as f: f.write(text)
+  else:
+    with open(path, 'wb') as bf: bf.write(text)
 
 
 # Opener utility.
