@@ -37,30 +37,23 @@ def main() -> None:
   errL(TXT_D, ' '.join(cmd), RST)
 
   with ExitOnKeyboardInterrupt():
-    for token in lex_compiler_output(run_gen(cmd, merge_err=True, exits=True)):
+    for source, token in lexer.lex_stream(name='swift', stream=run_gen(cmd, merge_err=True, exits=True)):
       kind = token.kind
+      text = source[token]
       if kind in diag_kinds:
-        diag_m = diag_re.fullmatch(token.text)
+        diag_m = diag_re.fullmatch(text)
         if diag_m:
           path_abs, pos, msg = diag_m.groups()
           path = path_rel_to_current_or_abs(path_abs)
           color = colors[kind]
           outZ(TXT_L, path, pos, color, msg, RST)
         else:
-          outZ(token.text)
+          outZ(text)
       else:
         color = colors[kind]
         rst = color or RST
-        outZ(color, token.text, rst)
+        outZ(color, text, rst)
       stdout.flush()
-
-
-def lex_compiler_output(stream:Iterable[str]) -> Iterator[Token]:
-  '''
-  Yield the toplevel heads, e.g. "Compile Swift Module ..." immediately.
-  Aggregate diagnostics into a buffer, then group by path heads.
-  '''
-  return lexer.lex_stream(stream)
 
 
 lexer = Lexer(invalid='invalid',

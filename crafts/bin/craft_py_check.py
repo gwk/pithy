@@ -1,14 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from importlib.util import find_spec as find_module_spec
-from pithy.ansi import *
-from pithy.io import *
-from pithy.path import abs_path, path_name, path_dir, path_join
-from pithy.lex import Lexer
-from pithy.task import runCO
 from argparse import ArgumentParser
+from importlib.util import find_spec as find_module_spec
 from os import environ
 from typing import Set
+
+from pithy.ansi import *
+from pithy.io import *
+from pithy.lex import Lexer
+from pithy.path import abs_path, path_dir, path_join, path_name
+from pithy.task import runCO
+from tolkien import Source, Token
 
 
 def main() -> None:
@@ -59,8 +61,9 @@ def main() -> None:
   if args.mypy_dbg: cmd.append('--show-traceback')
   if args.dbg: errSL('cmd:', *cmd)
   c, o = runCO(cmd, env=env)
-  for token in lexer.lex(o):
-    s = token.text
+  source = Source(name='mypy', text=o)
+  for token in lexer.lex(source):
+    s = source[token]
     kind = token.kind
     if kind == 'location' and '/' not in s and '<' not in s:
       s = './' + s

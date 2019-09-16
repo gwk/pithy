@@ -7,7 +7,7 @@ Simple lexing using python regular expressions.
 import re
 from typing import Container, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Pattern, Tuple, cast
 
-from .token import Token
+from tolkien import Source, Token
 
 
 class LexError(Exception): pass
@@ -106,13 +106,13 @@ class Lexer:
     self.regexes = { mode : compile_mode(mode, pattern_names) for mode, pattern_names in self.modes.items() }
 
 
-  def _lex_mode(self, regex:Pattern, source:str, pos:int, end:int) -> Iterator[Token]:
+  def _lex_mode(self, regex:Pattern, source:Source[str], pos:int, end:int) -> Iterator[Token]:
     def lex_inv(end:int) -> Token:
-      inv = Token(source=source, pos=pos, end=end, kind=(self.invalid or 'invalid'))
+      inv = Token(pos=pos, end=end, kind=(self.invalid or 'invalid'))
       if self.invalid: return inv
       raise LexError(inv)
     while pos < end:
-      m = regex.search(source, pos)
+      m = regex.search(source.text, pos)
       if not m:
         yield lex_inv(end=end)
         break
@@ -125,11 +125,12 @@ class Lexer:
           f'  kind: {m.lastgroup}; match: {m}')
       kind = m.lastgroup
       assert isinstance(kind, str)
-      yield Token(source=source, pos=p, end=e, kind=kind)
+      yield Token(pos=p, end=e, kind=kind)
       pos = e
 
-  def _lex(self, stack:List[Tuple[str,FrozenSet[str]]], source:str, p:int, e:int, drop:Container[str],
-   eot:bool) -> Iterator[Token]:
+  def _lex(self, stack:List[Tuple[str,FrozenSet[str]]], source:Source[str], p:int, e:int, drop:Container[str], eot:bool
+   ) -> Iterator[Token]:
+    assert isinstance(source, Source)
     while p < e:
       mode, exit_names = stack[-1]
       regex = self.regexes[mode]
@@ -149,34 +150,39 @@ class Lexer:
       yield eot_token(source)
 
 
-  def lex(self, source:str, pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
+  def lex(self, source:Source[str], pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
+    if not isinstance(source, Source): raise TypeError(source)
+    text = source.text
     if pos < 0:
-      pos = len(source) + pos
+      pos = len(text) + pos
     if end is None:
-      end = len(source)
+      end = len(text)
     elif end < 0:
-      end = len(source) + end
-    _e: int = end # typing hack.
+      end = len(text) + end
+    _e:int = end # typing hack.
     return self._lex(stack=[(self.main, frozenset())], source=source, p=pos, e=_e, drop=drop, eot=eot)
 
 
-  def lex_stream(self, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Token]:
+  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Tuple[Source, Token]]:
     '''
-    Note: the yielded Token objects have positions relative to input string that each was lexed from.'
+    Note: the yielded Token objects have positions relative to input string that each was lexed from.
+    TODO: fix the line numbers.
     '''
     stack:List[Tuple[str,FrozenSet[str]]] = [(self.main, frozenset())]
-    source = ''
-    for source in stream:
-      if source:
-        yield from self._lex(stack=stack, source=source, p=0, e=len(source), drop=drop, eot=False)
+    source = Source(name=name, text='')
+    for text in stream:
+      if text:
+        source = Source(name=name, text=text)
+        for token in self._lex(stack=stack, source=source, p=0, e=len(source.text), drop=drop, eot=False):
+          yield (source, token)
     if eot:
-      yield eot_token(source)
+      yield (source, eot_token(source))
 
 
-def eot_token(source:str) -> Token:
+def eot_token(source:Source[str]) -> Token:
   'Create a token representing the end-of-text.'
-  end = len(source)
-  return Token(source=source, pos=end, end=end, kind='end_of_text')
+  end = len(source.text)
+  return Token(pos=end, end=end, kind='end_of_text')
 
 
 def validate_name(name:str) -> str:
@@ -185,6 +191,7 @@ def validate_name(name:str) -> str:
   if name in reserved_names:
     raise Lexer.DefinitionError(f'name is reserved: {name!r}')
   return name
+
 
 valid_name_re = re.compile(r'[A-Za-z_]\w*')
 

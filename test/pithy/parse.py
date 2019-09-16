@@ -32,7 +32,7 @@ lexer = Lexer(flags='x',
 
 arithmetic = Parser(lexer, dict(
     name=Atom('name'),
-    int=Atom('int', transform=lambda t: int(t.text)),
+    int=Atom('int', transform=lambda s, t: int(s[t])),
     paren=Prefix('paren_o', 'expr', 'paren_c'),
     # TODO: unary plus, minus.
     expr=Precedence(
@@ -48,22 +48,22 @@ arithmetic = Parser(lexer, dict(
   drop=('space', 'line'))
 
 
-utest(0, arithmetic.parse, 'expr', '0')
-utest('x', arithmetic.parse, 'expr', 'x')
+utest(0, arithmetic.parse, 'expr', Source('', '0'))
+utest('x', arithmetic.parse, 'expr', Source('', 'x'))
 
-utest(('+',0,1), arithmetic.parse, 'expr', '0+1')
+utest(('+',0,1), arithmetic.parse, 'expr', Source('', '0+1'))
 
-utest(('+', ('+',0,1), 2), arithmetic.parse, 'expr', '0+1+2') # Left associative.
+utest(('+', ('+',0,1), 2), arithmetic.parse, 'expr', Source('', '0+1+2')) # Left associative.
 
-utest(('+', 0, ('(', ('+',1,2))), arithmetic.parse, 'expr', '0+(1+2)') # Parenthetical.
+utest(('+', 0, ('(', ('+',1,2))), arithmetic.parse, 'expr', Source('', '0+(1+2)')) # Parenthetical.
 
-utest(('**', 2, ('**',1,2)), arithmetic.parse, 'expr', '2**1**2') # Right associative.
+utest(('**', 2, ('**',1,2)), arithmetic.parse, 'expr', Source('', '2**1**2')) # Right associative.
 
-utest(('+', ('+', 0, ('*',1,2)), 3), arithmetic.parse, 'expr', '0+1*2+3')
+utest(('+', ('+', 0, ('*',1,2)), 3), arithmetic.parse, 'expr', Source('', '0+1*2+3'))
 
-utest(('+', ('*',0,1), ('*',2,3)), arithmetic.parse, 'expr', '0*1+2*3')
+utest(('+', ('*',0,1), ('*',2,3)), arithmetic.parse, 'expr', Source('', '0*1+2*3'))
 
-utest(('', ('', 'a', ('[', 0)), ('[', 1)), arithmetic.parse, 'expr', 'a[0][1]')
+utest(('', ('', 'a', ('[', 0)), ('[', 1)), arithmetic.parse, 'expr', Source('', 'a[0][1]'))
 
 
 
@@ -76,8 +76,8 @@ chain_left = Parser(lexer, dict(
     )),
   drop=('space', 'line'))
 
-utest(('', ('', 'a', 'b'), ('+', 'c', 'd')), chain_left.parse, 'expr', 'a b c+d')
-utest(('', ('', ('+', 'a', 'b'), 'c'), 'd'), chain_left.parse, 'expr', 'a+b c d')
+utest(('', ('', 'a', 'b'), ('+', 'c', 'd')), chain_left.parse, 'expr', Source('', 'a b c+d'))
+utest(('', ('', ('+', 'a', 'b'), 'c'), 'd'), chain_left.parse, 'expr', Source('', 'a+b c d'))
 
 
 def mk_comma_parser(sep_at_end:Optional[bool]) -> Parser:
@@ -90,8 +90,8 @@ comma_opt = mk_comma_parser(sep_at_end=None)
 comma_req = mk_comma_parser(sep_at_end=True)
 comma_rej = mk_comma_parser(sep_at_end=False)
 
-utest(('a', 'b', 'c'), comma_opt.parse, 'seq', 'a, b, c')
-utest(('a', 'b', 'c'), comma_opt.parse, 'seq', 'a, b, c,')
-utest(('a', 'b', 'c'), comma_req.parse, 'seq', 'a, b, c,')
-utest(('a', 'b', 'c'), comma_rej.parse, 'seq', 'a, b, c')
+utest(('a', 'b', 'c'), comma_opt.parse, 'seq', Source('', 'a, b, c'))
+utest(('a', 'b', 'c'), comma_opt.parse, 'seq', Source('', 'a, b, c,'))
+utest(('a', 'b', 'c'), comma_req.parse, 'seq', Source('', 'a, b, c,'))
+utest(('a', 'b', 'c'), comma_rej.parse, 'seq', Source('', 'a, b, c'))
 

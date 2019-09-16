@@ -15,7 +15,7 @@ from typing import (Any, ByteString, Callable, Dict, Iterable, Iterator, List, N
 from mypy_extensions import VarArg
 
 from pithy.ansi import *
-from pithy.io import errL, errSL, errD, read_from_path, read_line_from_path
+from pithy.io import errD, errL, errSL, read_from_path, read_line_from_path
 from pithy.path import path_name, path_stem
 
 

@@ -9,8 +9,9 @@ from pithy.lex import *
 
 def run_lexer(lexer, string, **kwargs):
   'Run `lexer` on `string`, yielding (kind, text) pairs.'
-  for token in lexer.lex(string, **kwargs):
-    yield token.kind, string[token.slice]
+  source = Source(name='test', text=string)
+  for token in lexer.lex(source, **kwargs):
+    yield token.kind, source[token]
 
 
 num_lexer = Lexer(patterns=dict(
@@ -54,9 +55,9 @@ utest_exc(Lexer.DefinitionError("'b' pattern contains a conflicting capture grou
 
 utest_exc(Lexer.DefinitionError('Lexer instance must define at least one pattern'), Lexer, patterns={})
 
-utest_seq_exc(Lexer.DefinitionError(
-  "Zero-length patterns are disallowed.\n  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
-  Lexer(patterns=dict(caret='^', a='a')).lex, 'a')
+utest_seq_exc(
+  Lexer.DefinitionError("Zero-length patterns are disallowed.\n  kind: caret; match: <re.Match object; span=(0, 0), match=''>"),
+  Lexer(patterns=dict(caret='^', a='a')).lex, Source(name='test', text='a'))
 
 
 # Modes.

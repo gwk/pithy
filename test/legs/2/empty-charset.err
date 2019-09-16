@@ -1,3 +1,4 @@
-empty-charset.legs:1:8: empty character set.
+empty-charset.legs:1:8-9: empty character set.
 | empty: []
          ~
+
