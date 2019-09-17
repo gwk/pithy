@@ -121,7 +121,7 @@ class Rule:
     return token
 
 
-  def parse(self, source:Source, token:Token, buffer:Buffer) -> Any:
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     raise NotImplementedError(self)
 
 
@@ -136,7 +136,7 @@ class Atom(Rule):
     self.kind = validate_name(kind)
     self.transform = transform
 
-  def parse(self, source:Source, token:Token, buffer:Buffer) -> Any:
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     self.expect(source, token, self.kind)
     return self.transform(source, token)
 
@@ -159,7 +159,7 @@ class Prefix(Rule):
     assert len(self.subs) == len(self.sub_refs), (self, self.subs, self.sub_refs)
     return self.subs[0]
 
-  def parse(self, source:Source, token:Token, buffer:Buffer) -> Any:
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     self.expect(source, token, self.prefix)
     syn = self.body.parse(source, next(buffer), buffer)
     if self.suffix: self.expect(source, next(buffer), self.suffix)
@@ -191,7 +191,7 @@ class Quantity(Rule):
   def head_subs(self) -> Iterable['Rule']:
     return (self.body,)
 
-  def parse(self, source:Source, token:Token, buffer:Buffer) -> Any:
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
     body_heads = set(self.body.heads)
     sep_token:Optional[Token] = None
@@ -201,7 +201,7 @@ class Quantity(Rule):
       if self.sep is None:
         token = next(buffer)
       else: # Parse separator.
-        sep_token = cast(Token, next(buffer))
+        sep_token = next(buffer)
         if sep_token.kind == self.sep: # Found separator.
           token = next(buffer)
         elif self.sep_at_end:
@@ -243,7 +243,7 @@ class Choice(Rule):
           *indent_lines(str(s) for s in matching_subs))
       self.head_table[head] = matching_subs[0]
 
-  def parse(self, source:Source, token:Token, buffer:Buffer) -> Any:
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else:
@@ -260,7 +260,7 @@ class Operator:
   # TODO: spacing requirement options, e.g. no space, some space, symmetrical space.
   def __init__(self, *args:Any, **kwargs:Any) -> None: raise Exception(f'abstract base class: {self}')
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer, parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     raise NotImplementedError(self)
 
 
@@ -270,7 +270,7 @@ class Suffix(Operator):
     self.kinds = (validate_name(suffix),)
     self.transform = transform
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer, parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     return self.transform(source, op_token, left) # No right-hand side.
 
 
@@ -291,7 +291,7 @@ class SuffixRule(Operator):
   def kinds(self) -> Tuple[TokenKind,...]: # type: ignore
     return tuple(self.suffix.heads)
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer, parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     right = self.suffix.parse(source, op_token, buffer)
     return self.transform(source, op_token.pos_token(), left, right)
 
@@ -311,7 +311,7 @@ class Adjacency(BinaryOp):
   def kinds(self) -> Tuple[TokenKind,...]: # type: ignore
     raise _AllLeafKinds
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer, parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     right = parse_precedence_level(source=source, token=op_token, buffer=buffer, level=level)
     return self.transform(source, op_token.pos_token(), left, right)
 
@@ -324,7 +324,7 @@ class Infix(BinaryOp):
     self.kinds = (validate_name(kind),)
     self.transform = transform
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer, parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     right = parse_precedence_level(source=source, token=next(buffer), buffer=buffer, level=level)
     return self.transform(source, op_token, left, right)
 
@@ -393,12 +393,12 @@ class Precedence(Rule):
           self.tail_table[kind] = (group, op)
 
 
-  def parse(self, source:Source, token:Token, buffer:Buffer) -> Any:
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     syn = self.parse_precedence_level(source, token, buffer, 0)
     return self.transform(source, syn)
 
 
-  def parse_precedence_level(self, source:Source, token:Token, buffer:Buffer, level:int) -> Any:
+  def parse_precedence_level(self, source:Source, token:Token, buffer:Buffer[Token], level:int) -> Any:
     left = self.parse_leaf(source, token, buffer)
     while True:
       op_token = next(buffer)
@@ -413,7 +413,7 @@ class Precedence(Rule):
     return left
 
 
-  def parse_leaf(self, source:Source, token:Token, buffer:Buffer) -> Any:
+  def parse_leaf(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else: return sub.parse(source, token, buffer)
