@@ -102,6 +102,10 @@ RST_OUT = (TTY_OUT and RST)
 (BOLD, ULINE, BLINK, INVERT) = (1, 4, 5, 7)
 
 
+# "Primary" colors.
+# Note that black and white acronyms are suffixed with T,
+# because we prefer to use true black and white from xterm-256color, defined below.
+
 # color text: black, red, green, yellow, blue, magenta, cyan, white.
 txt_primary_indices = range(30, 38)
 txt_primaries = tuple(sgr(i) for i in txt_primary_indices)
@@ -115,8 +119,6 @@ TXT_KT_OUT, TXT_R_OUT, TXT_G_OUT, TXT_Y_OUT, TXT_B_OUT, TXT_M_OUT, TXT_C_OUT, TX
 
 
 # color background: black, red, green, yellow, blue, magenta, cyan, white.
-# Note that black and white acronyms are suffixed with T,
-# because we prefer to use true black and white from xterm-256color, defined below.
 bg_primary_indices = range(40, 48)
 bg_primaries = tuple(sgr(i) for i in bg_primary_indices)
 BG_KT, BG_R, BG_G, BG_Y, BG_B, BG_M, BG_C, BG_WT = bg_primaries
