@@ -119,7 +119,7 @@ class Source(Generic[_Text]):
       return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx,
         line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg, show_missing_newline=show_missing_newline)
     else: # multiline.
-      end_line_idx = self.get_line_index(pos)
+      end_line_idx = self.get_line_index(end)
       end_line_pos = self.get_line_start(end)
       end_line_end = self.get_line_end(end)
       return (
