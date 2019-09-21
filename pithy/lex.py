@@ -196,3 +196,93 @@ def validate_name(name:str) -> str:
 valid_name_re = re.compile(r'[A-Za-z_]\w*')
 
 reserved_names = frozenset({'end_of_text'})
+
+
+whitespace_patterns = dict(
+  indents   = r'(?m:^\ +)',
+  spaces    = r'\ +',
+  ind_tabs  = r'(?m:^\ +)',
+  tabs      = r'\t+',
+  newline   = r'\n',
+)
+
+
+c_like_punctuation_patterns = dict(
+
+  paren_o     = r'\(',
+  paren_c     = r'\)',
+  brack_o     = r'\[',
+  brack_c     = r'\]',
+  brace_o     = r'{',
+  brace_c     = r'}',
+
+  comma       = r',',
+  semi        = r';',
+
+  # Order-dependent patterns.
+  dot3        = r'\.\.\.',
+  dot2        = r'\.\.',
+  dot         = r'\.',
+
+  eq3         = r'===',
+  eq2         = r'==',
+  eq          = r'=',
+
+  exclaim2_eq = r'!==',
+  exclaim_eq  = r'!=',
+  exclaim     = r'!',
+
+  arrow_r     = r'->',
+  dash_eq     = r'-=',
+  dash        = r'-',
+
+  plus_eq     = r'\+=',
+  plus        = r'\+',
+
+  amp_eq      = r'&=',
+  amp2        = r'&&',
+  amp         = r'&',
+
+  pipe2       = r'\|\|',
+  pipe_eq     = r'\|=',
+  pipe        = r'\|',
+
+  at_eq       = r'@=',
+  at          = r'@',
+
+  caret_eq    = r'\^=',
+  caret       = r'\^',
+
+  colon_eq    = r':=',
+  colon       = r':',
+
+  slash2_eq   = r'//=',
+  slash2      = r'//',
+
+  slash_eq    = r'/=',
+  slash       = r'/',
+
+  star2_eq    = r'\*\*=',
+  star2       = r'\*\*',
+  star_eq     = r'\*=',
+  star        = r'\*',
+
+  shift_l_eq  = r'<<=',
+  shift_l     = r'<<',
+  le          = r'<=',
+  arrow_l     = r'<-',
+  lt          = r'<',
+
+  shift_r_eq  = r'>>=',
+  shift_r     = r'>>',
+  ge          = r'>=',
+  gt          = r'>',
+
+  percent_eq  = r'%=',
+  percent     = r'%',
+
+  tilde_eq    = r'~=',
+  tilde       = r'~',
+
+  backslash   = r'\\',
+)
