@@ -26,9 +26,10 @@ class Token(NamedTuple):
   def slice(self) -> Slice:
     return slice(self.pos, self.end)
 
-  def pos_token(self) -> 'Token':
+  def pos_token(self, kind:str=None) -> 'Token':
     'Create a new token with the same position as `token` but with zero length.'
-    return Token(pos=self.pos, end=self.pos, kind=self.kind)
+    if kind is None: kind = self.kind
+    return Token(pos=self.pos, end=self.pos, kind=kind)
 
 
 SourceText = Union[str,bytes,bytearray]
