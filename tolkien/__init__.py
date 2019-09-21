@@ -53,7 +53,8 @@ class Source(Generic[_Text]):
       if self.text[i] == n: self.newline_positions.append(i)
 
 
-  def __repr__(self): return f'{self.__class__.__name__}({self.name})'
+  def __repr__(self):
+    return f'{self.__class__.__name__}({self.name!r}, text=<{type(self.text).__name__}[{len(self.text)}]>)'
 
 
   def get_line_index(self, pos:int) -> int:
