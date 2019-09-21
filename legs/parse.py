@@ -1,6 +1,5 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
 from typing import Container, Dict, FrozenSet, List, Match, NoReturn, Set, Tuple, Type
 
 from pithy.buffer import Buffer
