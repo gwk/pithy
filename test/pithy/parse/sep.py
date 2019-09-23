@@ -18,8 +18,8 @@ comma_opt = mk_comma_parser(sep_at_end=None)
 comma_req = mk_comma_parser(sep_at_end=True)
 comma_rej = mk_comma_parser(sep_at_end=False)
 
-utest(('a', 'b', 'c'), comma_opt.parse, 'seq', Source('', 'a, b, c'))
-utest(('a', 'b', 'c'), comma_opt.parse, 'seq', Source('', 'a, b, c,'))
-utest(('a', 'b', 'c'), comma_req.parse, 'seq', Source('', 'a, b, c,'))
-utest(('a', 'b', 'c'), comma_rej.parse, 'seq', Source('', 'a, b, c'))
+utest(['a', 'b', 'c'], comma_opt.parse, 'seq', Source('', 'a, b, c'))
+utest(['a', 'b', 'c'], comma_opt.parse, 'seq', Source('', 'a, b, c,'))
+utest(['a', 'b', 'c'], comma_req.parse, 'seq', Source('', 'a, b, c,'))
+utest(['a', 'b', 'c'], comma_rej.parse, 'seq', Source('', 'a, b, c'))
 # TODO: test failure cases.

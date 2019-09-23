@@ -66,7 +66,7 @@ BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Any: return (source[token], left, right)
 
 QuantityTransform = Callable[[Source,List[Any]],Any]
-def quantity_syn(source:Source, elements:List[Any]) -> Tuple[Any,...]: return tuple(elements)
+def quantity_syn(source:Source, elements:List[Any]) -> List[Any]: return elements
 
 ChoiceTransform = Callable[[Source,RuleName,Any],Any]
 def choice_syn(source:Source, name:RuleName, obj:Any) -> Any: return (name, obj)
