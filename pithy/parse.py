@@ -2,7 +2,13 @@
 
 '''
 A simple parser library based on recursive descent and operator precedence parsing.
-Recursive decent is performed by looking at the next token, and then dispatching through a table of token kinds.
+Recursive decent is performed by looking at the next token,
+and then dispatching through a table of token kinds to select the appropriate Rule.
+
+Upon parsing, each type of rule produces a generic result, which is then passed to a user-provided transformer function.
+Different rule types have different transformer function types to match the shape of the parsed structure.
+Transformers can return results of any type.
+
 Several types of rules are available:
 * Atom: a single token kind.
 * Prefix: a prefix token, followed by a body rule, optionally followed by a suffix.
@@ -69,6 +75,7 @@ def choice_syn(source:Source, name:RuleName, obj:Any) -> Any: return (name, obj)
 _sentinel_kind = '!SENTINEL'
 
 
+
 class Rule:
   'A parser rule. A complete parser is created from a graph of rules.'
 
@@ -104,7 +111,7 @@ class Rule:
     if self.heads: # For recursive rules, the sentinel causes recursion to break here.
       yield from self.heads
       return
-    # This rule does not yet know its own heads; discover them recursively.
+    # Otherwise, this rule does not yet know its own heads; discover them recursively.
     self.heads = (_sentinel_kind,) # Temporarily set to prevent recursion loops; use an impossible name.
     for sub in self.head_subs:
       yield from sub.compile_heads()
@@ -125,6 +132,7 @@ class Rule:
     raise NotImplementedError(self)
 
 
+
 class Atom(Rule):
   '''
   A rule that matches a single token.
@@ -132,7 +140,7 @@ class Atom(Rule):
 
   def __init__(self, kind:TokenKind, transform:TokenTransform=token_syn) -> None:
     self.name = ''
-    self.heads = (kind,)
+    self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
     self.kind = validate_name(kind)
     self.transform = transform
 
