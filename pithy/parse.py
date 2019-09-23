@@ -167,7 +167,7 @@ class Prefix(Rule):
   def __init__(self, prefix:TokenKind, body:RuleRef, suffix:TokenKind=None, transform:UnaryTransform=unary_syn) -> None:
     self.name = ''
     self.sub_refs = (body,)
-    self.heads = (prefix,)
+    self.heads = (prefix,) # Pre-fill heads.
     self.prefix = validate_name(prefix)
     self.suffix = suffix if suffix is None else validate_name(suffix)
     self.transform = transform
@@ -476,7 +476,10 @@ class Parser:
     # Link rule graph. Note: this creates reference cycles which are dissolved with unlink() in __del__ below.
 
     def linker(rule:RuleRef) -> Rule:
-      return rule if isinstance(rule, Rule) else rules[rule]
+      if isinstance(rule, Rule): return rule
+      try: return rules[rule]
+      except KeyError: pass
+      raise Parser.DefinitionError(f'nonexistent rule: {rule!r}')
 
     def link(rule:Rule) -> Iterable[Rule]:
       assert not rule.subs
@@ -487,17 +490,20 @@ class Parser:
 
     self.nodes = visit_nodes(self.rules.values(), link) # All of the rule nodes.
 
-    # Compile heads.
     for rule in self.nodes:
+      # Validate token references.
       for token_kind in rule.token_kinds():
         if token_kind not in lexer.patterns:
           raise Parser.DefinitionError(f'{rule} refers to nonexistent token kind: {token_kind}')
+      # Fill out rule heads.
       if not rule.heads:
         heads = set(rule.compile_heads())
         try: heads.remove(_sentinel_kind)
         except KeyError: pass
         rule.heads = tuple(sorted(heads))
         assert rule.heads
+
+    # Compile.
     for rule in self.nodes:
       rule.compile()
 
