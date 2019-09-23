@@ -158,6 +158,7 @@ class Atom(Rule):
     return self.transform(source, token)
 
 
+
 class Prefix(Rule):
   '''
   A rule that matches a prefix token, a body rule, and an optional suffix token.
