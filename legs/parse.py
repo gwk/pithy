@@ -11,7 +11,8 @@ from pithy.unicode.charsets import unicode_charsets
 from tolkien import Source, Token
 
 from .defs import ModeTransitions
-from .patterns import *
+from .patterns import (CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern,
+  QuantityPattern, SeqPattern, StarPattern)
 
 
 lexer = Lexer(flags='x', invalid='invalid', patterns=dict(
@@ -173,13 +174,13 @@ def parse_pattern(source:Source[str], sym_token:Token, buffer:Buffer[Token]) -> 
       return parse_pattern_pattern(source, buffer, terminator='newline')
   # literal symbol pattern.
   text = source[sym_token]
-  return Seq.from_list([Charset.for_char(c) for c in text])
+  return SeqPattern.from_list([CharsetPattern.for_char(c) for c in text])
 
 
 def parse_pattern_pattern(source:Source[str], buffer:Buffer[Token], terminator:str) -> LegsPattern:
   'Parse a pattern and return a LegsPattern object.'
   els:List[LegsPattern] = []
-  def finish() -> LegsPattern: return Seq.from_list(els)
+  def finish() -> LegsPattern: return SeqPattern.from_list(els)
   for token in buffer:
     kind = token.kind
     def _fail(msg) -> 'NoReturn': source.fail(token, msg)
@@ -188,23 +189,23 @@ def parse_pattern_pattern(source:Source[str], buffer:Buffer[Token], terminator:s
       els[-1] = pattern_type(els[-1])
     if kind == terminator: return finish()
     elif kind == 'paren_o': els.append(parse_pattern_pattern(source, buffer, terminator='paren_c'))
-    elif kind == 'brckt_o': els.append(Charset(ranges=tuple(ranges_for_codes(sorted(parse_charset(source, buffer, token))))))
+    elif kind == 'brckt_o': els.append(CharsetPattern(ranges=tuple(ranges_for_codes(sorted(parse_charset(source, buffer, token))))))
     elif kind == 'bar': return parse_choice(source, buffer, left=finish(), terminator=terminator)
-    elif kind == 'qmark': quantity(Opt)
-    elif kind == 'star': quantity(Star)
-    elif kind == 'plus': quantity(Plus)
-    elif kind == 'esc': els.append(Charset(ranges=ranges_for_code(parse_esc(source, token))))
-    elif kind == 'ref': els.append(Charset(ranges=parse_ref(source, token)))
-    elif kind == 'sym': els.extend(Charset.for_char(c) for c in source[token])
+    elif kind == 'qmark': quantity(OptPattern)
+    elif kind == 'star': quantity(StarPattern)
+    elif kind == 'plus': quantity(PlusPattern)
+    elif kind == 'esc': els.append(CharsetPattern(ranges=ranges_for_code(parse_esc(source, token))))
+    elif kind == 'ref': els.append(CharsetPattern(ranges=parse_ref(source, token)))
+    elif kind == 'sym': els.extend(CharsetPattern.for_char(c) for c in source[token])
     elif kind in ('colon', 'amp', 'dash', 'caret', 'char'):
-      els.append(Charset.for_char(source[token]))
+      els.append(CharsetPattern.for_char(source[token]))
     elif kind == 'invalid': _fail('invalid pattern token.')
     else: _fail(f'unexpected pattern token: {desc_kind(kind)}.')
   return finish()
 
 
 def parse_choice(source:Source[str], buffer:Buffer[Token], left:LegsPattern, terminator:str) -> LegsPattern:
-  return Choice(left, parse_pattern_pattern(source, buffer, terminator=terminator))
+  return ChoicePattern(left, parse_pattern_pattern(source, buffer, terminator=terminator))
 
 
 def parse_esc(source:Source[str], token:Token) -> int:

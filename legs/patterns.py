@@ -3,23 +3,24 @@
 from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, cast
 
 from pithy.io import errL, errSL
+from pithy.string import clip_suffix
 from pithy.types import is_pair_of_int
-from pithy.unicode.codepoints import codes_desc
 from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
+from pithy.unicode.codepoints import codes_desc
 
 from .nfa import empty_symbol
 
 
 __all__ = [
-  'Charset',
-  'Choice',
+  'CharsetPattern',
+  'ChoicePattern',
   'LegsPattern',
   'NfaMutableTransitions',
-  'Opt',
-  'Plus',
+  'OptPattern',
+  'PlusPattern',
   'QuantityPattern',
-  'Seq',
-  'Star',
+  'SeqPattern',
+  'StarPattern',
   'regex_for_codes',
 ]
 
@@ -34,6 +35,9 @@ class LegsPattern:
   precedence:int = -1
 
   def describe(self, name:Optional[str], depth=0) -> None: raise NotImplementedError
+
+  @property
+  def desc_type(self) -> str: return clip_suffix(type(self).__name__, 'Pattern')
 
   @property
   def is_literal(self) -> bool: return False
@@ -69,22 +73,22 @@ class StructPattern(LegsPattern):
   def describe(self, name:Optional[str], depth=0) -> None:
     n = name + ' ' if name else ''
     subs = tuple(self)
-    errL('  ' * depth, n, type(self).__name__, ':', '' if subs else ' Ø')
+    errL('  ' * depth, n, self.desc_type, ':', '' if subs else ' Ø')
     for sub in self:
       sub.describe(name=None, depth=depth+1)
 
 
-class Choice(StructPattern):
+class ChoicePattern(StructPattern):
 
   precedence = 1
 
   def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern) -> None:
     self.hd = hd
-    self.tl = Choice(tl, *rem) if rem else tl
+    self.tl = ChoicePattern(tl, *rem) if rem else tl
 
   def __iter__(self) -> Iterator[LegsPattern]:
     link:LegsPattern = self
-    while isinstance(link, Choice):
+    while isinstance(link, ChoicePattern):
       yield link.hd
       link = link.tl
     yield link
@@ -102,17 +106,17 @@ class Choice(StructPattern):
     tl = self.tl.gen_incomplete()
     if not tl: return hd
     if not hd: return tl
-    return Choice(hd, tl)
+    return ChoicePattern(hd, tl)
 
   @staticmethod
   def from_opts(subs:Iterable[Optional[LegsPattern]]) -> Optional[LegsPattern]:
     l = [s for s in subs if s]
     if not l: return None
     if len(l) == 1: return l[0]
-    return Choice(*l)
+    return ChoicePattern(*l)
 
 
-class Seq(StructPattern):
+class SeqPattern(StructPattern):
 
   precedence = 2
 
@@ -143,11 +147,11 @@ class Seq(StructPattern):
       inc_tail = els[i].gen_incomplete()
       if inc_tail is not None:
         inc_els.append(inc_tail)
-      inc = Seq.from_opts(inc_els)
+      inc = SeqPattern.from_opts(inc_els)
       if inc: incs.append(inc)
     # TODO: any non-tail element in the sequence must be expanded out.
     # Reverse so that the most complete match is preferred.
-    return Choice.from_opts(reversed(incs))
+    return ChoicePattern.from_opts(reversed(incs))
 
   @property
   def is_literal(self): return all(sub.is_literal for sub in self)
@@ -158,13 +162,13 @@ class Seq(StructPattern):
   @staticmethod
   def from_list(els:List[LegsPattern]) -> LegsPattern:
     if len(els) == 1: return els[0]
-    return Seq(els)
+    return SeqPattern(els)
 
   @staticmethod
   def from_opts(els:Iterable[Optional[LegsPattern]]) -> Optional[LegsPattern]:
     l = list(filter(None, els))
     if not l: return None
-    return Seq.from_list(l)
+    return SeqPattern.from_list(l)
 
 
 class QuantityPattern(StructPattern):
@@ -183,7 +187,7 @@ class QuantityPattern(StructPattern):
     return sub_pattern + self.operator
 
 
-class Opt(QuantityPattern):
+class OptPattern(QuantityPattern):
 
   operator = '?'
 
@@ -195,7 +199,7 @@ class Opt(QuantityPattern):
     return self.sub.gen_incomplete()
 
 
-class Star(QuantityPattern):
+class StarPattern(QuantityPattern):
 
   operator = '*'
 
@@ -208,10 +212,10 @@ class Star(QuantityPattern):
   def gen_incomplete(self) -> Optional[LegsPattern]:
     sub_inc = self.sub.gen_incomplete()
     if sub_inc is None: return None
-    return Seq.from_opts((self, sub_inc))
+    return SeqPattern.from_opts((self, sub_inc))
 
 
-class Plus(QuantityPattern):
+class PlusPattern(QuantityPattern):
 
   operator = '+'
 
@@ -224,10 +228,10 @@ class Plus(QuantityPattern):
     self.sub.gen_nfa(mk_node, transitions, pre, post)
 
   def gen_incomplete(self) -> Optional[LegsPattern]:
-    return Star(self.sub).gen_incomplete()
+    return StarPattern(self.sub).gen_incomplete()
 
 
-class Charset(LegsPattern):
+class CharsetPattern(LegsPattern):
 
   precedence = 4
 
@@ -236,7 +240,7 @@ class Charset(LegsPattern):
 
   def describe(self, name:Optional[str], depth=0) -> None:
     n = name + ' ' if name else ''
-    errL('  ' * depth, n, type(self).__name__, ': ', codes_desc(self.ranges))
+    errL('  ' * depth, n, self.desc_type, ': ', codes_desc(self.ranges))
 
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
@@ -280,13 +284,13 @@ class Charset(LegsPattern):
   def literal_pattern(self) -> str: return chr(self.ranges[0][0])
 
   @staticmethod
-  def for_char(char:str) -> 'Charset':
+  def for_char(char:str) -> 'CharsetPattern':
     code = ord(char)
-    return Charset(ranges=((code, code + 1),))
+    return CharsetPattern(ranges=((code, code + 1),))
 
   @staticmethod
-  def for_code(code:int) -> 'Charset':
-    return Charset(ranges=((code, code + 1),))
+  def for_code(code:int) -> 'CharsetPattern':
+    return CharsetPattern(ranges=((code, code + 1),))
 
 
 
@@ -324,4 +328,4 @@ def gen_incomplete_pattern(kinds_greedy_ordered:List[str], patterns:Dict[str,Leg
     pattern = patterns[kind]
     incomplete = pattern.gen_incomplete()
     if incomplete: incompletes.append(incomplete)
-  return Choice.from_opts(incompletes)
+  return ChoicePattern.from_opts(incompletes)

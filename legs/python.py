@@ -14,7 +14,7 @@ from pithy.string import render_template
 
 from .defs import MatchStateKinds, ModeData, ModeTransitions, StateTransitions
 from .dfa import DFA
-from .patterns import Choice, LegsPattern, regex_for_codes
+from .patterns import LegsPattern, regex_for_codes
 
 
 def output_python(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
