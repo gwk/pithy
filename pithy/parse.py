@@ -38,7 +38,7 @@ class ParseError(Exception):
     self.source = source
     self.token = token
     self.msg = ' '.join(msgs)
-    super().__init__(self.msg)
+    super().__init__((self.token, self.msg))
 
   def fail(self) -> NoReturn:
     self.source.fail(self.token, msg=self.msg)
@@ -104,7 +104,8 @@ class Rule:
   @property
   def head_subs(self) -> Iterable['Rule']:
     'The sub-rules that determine the head of a match for this rule. Used by `compile_heads`.'
-    raise NotImplementedError(repr(self))
+    raise NotImplementedError(self)
+
 
   def compile_heads(self) -> Iterator[TokenKind]:
     'Calculate the `heads` set for this rule. The parser uses this to build a dispatch table against token kinds.'
@@ -257,7 +258,7 @@ class Choice(Rule):
     else:
       syn = sub.parse(source, token, buffer)
       return self.transform(source, sub.name, syn)
-    raise ParseError(source, token, f'{self} expects any of {sorted(self.subs)}; received {token.kind}')
+    raise ParseError(source, token, f'{self} expects any of {self.subs}; received {token.kind}')
 
 
 class Operator:
