@@ -102,6 +102,11 @@ class Rule:
     return str(self) < str(other)
 
 
+  def token_kinds(self) -> Iterable[str]:
+    'The token kinds directly referenced by this rule.'
+    return ()
+
+
   def head_subs(self) -> Iterable['Rule']:
     'The sub-rules that determine the head of a match for this rule. Used by `compile_heads`.'
     raise NotImplementedError(self)
@@ -145,6 +150,9 @@ class Atom(Rule):
     self.kind = validate_name(kind)
     self.transform = transform
 
+  def token_kinds(self) -> Iterable[str]:
+    yield self.kind
+
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     self.expect(source, token, self.kind)
     return self.transform(source, token)
@@ -167,6 +175,11 @@ class Prefix(Rule):
   def body(self) -> Rule:
     assert len(self.subs) == len(self.sub_refs), (self, self.subs, self.sub_refs)
     return self.subs[0]
+
+  def token_kinds(self) -> Iterable[str]:
+    yield self.prefix
+    if self.suffix is not None:
+      yield self.suffix
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     self.expect(source, token, self.prefix)
@@ -196,6 +209,10 @@ class Quantity(Rule):
   @property
   def body(self) -> Rule:
     return self.subs[0]
+
+  def token_kinds(self) -> Iterable[str]:
+    if self.sep is not None:
+      yield self.sep
 
   def head_subs(self) -> Iterable['Rule']:
     return (self.body,)
@@ -323,7 +340,8 @@ class Adjacency(BinaryOp):
     right = parse_precedence_level(source=source, token=op_token, buffer=buffer, level=level)
     return self.transform(source, op_token.pos_token(), left, right)
 
-class _AllLeafKinds(Exception): pass
+class _AllLeafKinds(Exception):
+  'Raised by Adjacency.kinds to signal that the precedence parser associates the set of leaf token kinds with this adjacency op.'
 
 
 class Infix(BinaryOp):
@@ -374,6 +392,13 @@ class Precedence(Rule):
     self.groups = groups
     self.head_table:Dict[TokenKind,Rule] = {}
     self.tail_table:Dict[TokenKind,Tuple[Group,Operator]] = {}
+
+
+  def token_kinds(self) -> Iterable[str]:
+    for group in self.groups:
+      for op in group.ops:
+        try: yield from op.kinds
+        except _AllLeafKinds: pass # Adjacency ops do not directly reference any token.
 
 
   def head_subs(self) -> Iterable[Rule]:
@@ -463,9 +488,9 @@ class Parser:
 
     # Compile heads.
     for rule in self.nodes:
-      if isinstance(rule, Atom):
-        if rule.kind not in lexer.patterns:
-          raise Parser.DefinitionError(f'{rule} refers to nonexistent token kind: {rule.kind}')
+      for token_kind in rule.token_kinds():
+        if token_kind not in lexer.patterns:
+          raise Parser.DefinitionError(f'{rule} refers to nonexistent token kind: {token_kind}')
       if not rule.heads:
         heads = set(rule.compile_heads())
         try: heads.remove(_sentinel_kind)
