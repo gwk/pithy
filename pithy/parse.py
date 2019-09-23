@@ -160,7 +160,7 @@ class Prefix(Rule):
     self.sub_refs = (body,)
     self.heads = (prefix,)
     self.prefix = validate_name(prefix)
-    self.suffix = suffix and validate_name(suffix)
+    self.suffix = suffix if suffix is None else validate_name(suffix)
     self.transform = transform
 
   @property
@@ -175,19 +175,20 @@ class Prefix(Rule):
     return self.transform(source, token, syn)
 
 
+
 class Quantity(Rule):
   '''
   A rule that matches some quantity of another rule.
   '''
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:bool=None, min=0, max=None, transform:QuantityTransform=quantity_syn) -> None:
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None, transform:QuantityTransform=quantity_syn) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
     if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is None but `sep_at_end` is `{sep_at_end}`')
     self.name = ''
     self.sub_refs = (body,)
     self.heads = ()
-    self.sep = sep
-    self.sep_at_end:Optional[bool] = None if sep_at_end is None else bool(sep_at_end)
+    self.sep = sep if sep is None else validate_name(sep)
+    self.sep_at_end:Optional[bool] = sep_at_end
     self.min = min
     self.max = max
     self.transform = transform
@@ -514,7 +515,7 @@ class Parser:
 
 
 def validate_name(name:str) -> str:
-  if not valid_name_re.fullmatch(name):
+  if not (isinstance(name, str) and valid_name_re.fullmatch(name)):
     raise Parser.DefinitionError(f'invalid name: {name!r}')
   if name in reserved_names:
     raise Parser.DefinitionError(f'name is reserved: {name!r}')
