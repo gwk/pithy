@@ -68,6 +68,9 @@ def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Any: return (
 QuantityTransform = Callable[[Source,List[Any]],Any]
 def quantity_syn(source:Source, elements:List[Any]) -> List[Any]: return elements
 
+StructTransform = Callable[[Source,List[Any]],Any]
+def struct_syn(source:Source, elements:List[Any]) -> Tuple[Any,...]: return tuple(elements)
+
 ChoiceTransform = Callable[[Source,RuleName,Any],Any]
 def choice_syn(source:Source, name:RuleName, obj:Any) -> Any: return (name, obj)
 
@@ -243,6 +246,33 @@ class Quantity(Rule):
     if self.sep_at_end is False and sep_token is not None:
       raise ParseError(source, sep_token, f'{self} received unpexpected {self.sep} separator.')
     buffer.push(token)
+    return self.transform(source, els)
+
+
+
+class Struct(Rule):
+  '''
+  A rule that matches a sequence of sub rules, producing a tuple of values.
+  '''
+  def __init__(self, *fields:RuleRef, transform:StructTransform=struct_syn) -> None:
+    if not fields: raise ValueError('Struct requires at least one field')
+    self.name = ''
+    self.sub_refs = fields
+    self.heads = ()
+    self.transform = transform
+
+  def head_subs(self) -> Iterable['Rule']:
+    for field in self.subs:
+      yield field
+      if not (isinstance(field, Quantity) and field.min == 0):
+        break
+
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    els:List[Any] = []
+    for i, field in enumerate(self.subs):
+      if i: token = next(buffer)
+      el = field.parse(source, token, buffer)
+      els.append(el)
     return self.transform(source, els)
 
 

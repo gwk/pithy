@@ -9,10 +9,22 @@ patterns=dict(
   # These are ordered roughly to improve matching speed on a sample (all .py files in the repository).
 
   # Python keywords must come before `name`.
-  const   = r'None|True|False|Ellipsis',
-  keyword = r'break|class|continue|def|elif|else|for|from|if|import|while|yield',
-  kw_async  = r'async',
-  kw_await  = r'await',
+  const = r'None|True|False|Ellipsis',
+  kw_as       = 'as',
+  kw_async    = 'async',
+  kw_await    = 'await',
+  kw_break    = 'break',
+  kw_class    = 'class',
+  kw_continue = 'continue',
+  kw_def      = 'def',
+  kw_elif     = 'elif',
+  kw_else     = 'else',
+  kw_for      = 'for',
+  kw_from     = 'from',
+  kw_if       = 'if',
+  kw_import   = 'import',
+  kw_while    = 'while',
+  kw_yield    = 'yield',
 
   name  = r'[_A-Za-z][_A-Za-z0-9]*', # Most common.
   **whitespace_patterns,
@@ -21,6 +33,7 @@ patterns=dict(
   int_o = r'0o[_07]+',
   flt   = r'([0-9]+\.|\.[0-9])[_0-9]*',
   int_d = r'[0-9][_0-9]*',
+
   **c_like_punctuation_patterns,
 
   comment_type_ignore = r'\# type: ignore',
