@@ -101,7 +101,7 @@ class Rule:
     if not isinstance(other, Rule): raise ValueError(other)
     return str(self) < str(other)
 
-  @property
+
   def head_subs(self) -> Iterable['Rule']:
     'The sub-rules that determine the head of a match for this rule. Used by `compile_heads`.'
     raise NotImplementedError(self)
@@ -114,7 +114,7 @@ class Rule:
       return
     # Otherwise, this rule does not yet know its own heads; discover them recursively.
     self.heads = (_sentinel_kind,) # Temporarily set to prevent recursion loops; use an impossible name.
-    for sub in self.head_subs:
+    for sub in self.head_subs():
       yield from sub.compile_heads()
     # Now reset self.heads; it is up to Parser to call `compile_heads` for each node.
     # Otherwise, we would be relying on possibly incomplete sets that accumulate in intermediates during deep recursion.
@@ -197,7 +197,6 @@ class Quantity(Rule):
   def body(self) -> Rule:
     return self.subs[0]
 
-  @property
   def head_subs(self) -> Iterable['Rule']:
     return (self.body,)
 
@@ -241,7 +240,6 @@ class Choice(Rule):
     self.transform = transform
     self.head_table:Dict[TokenKind,Rule] = {}
 
-  @property
   def head_subs(self) -> Iterable[Rule]: return self.subs
 
   def compile(self) -> None:
@@ -377,7 +375,7 @@ class Precedence(Rule):
     self.head_table:Dict[TokenKind,Rule] = {}
     self.tail_table:Dict[TokenKind,Tuple[Group,Operator]] = {}
 
-  @property
+
   def head_subs(self) -> Iterable[Rule]:
     return iter(self.subs[:len(self.leaf_refs)]) # Only the leaves can be heads.
 
