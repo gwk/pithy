@@ -66,7 +66,7 @@ BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Any: return (source[token], left, right)
 
 QuantityTransform = Callable[[Source,List[Any]],Any]
-def quantity_syn(source:Source, elements:List[Any]) -> List[Any]: return elements
+def quantity_identity(source:Source, elements:List[Any]) -> List[Any]: return elements
 
 StructTransform = Callable[[Source,List[Any]],Any]
 def struct_syn(source:Source, elements:List[Any]) -> Tuple[Any,...]: return tuple(elements)
@@ -197,7 +197,8 @@ class Quantity(Rule):
   '''
   A rule that matches some quantity of another rule.
   '''
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None, transform:QuantityTransform=quantity_syn) -> None:
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None,
+   transform:QuantityTransform=quantity_identity) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
     if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is None but `sep_at_end` is `{sep_at_end}`')
