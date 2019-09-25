@@ -23,7 +23,7 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 import re
-from typing import Any, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union, cast
 
 from tolkien import Source, Token
 
@@ -193,7 +193,46 @@ class Prefix(Rule):
 
 
 
-class Quantity(Rule):
+class _QuantityRule(Rule):
+  'Base class for Opt and Quantity.'
+  min:int
+  body_heads:FrozenSet[str]
+
+  @property
+  def body(self) -> Rule:
+    return self.subs[0]
+
+  def head_subs(self) -> Iterable['Rule']:
+    return (self.body,)
+
+  def compile(self) -> None:
+    self.body_heads = frozenset(self.body.heads)
+
+
+
+class Opt(_QuantityRule):
+  '''
+  A rule that optionally matches another rule.
+  '''
+  min = 0
+
+  def __init__(self, body:RuleRef, transform:TreeTransform=tree_identity) -> None:
+    self.sub_refs = (body,)
+    self.heads = ()
+    self.transform = transform
+
+
+  def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    res = None
+    if token.kind in self.body_heads:
+      res = self.body.parse(source, token, buffer)
+    else:
+      buffer.push(token)
+    return self.transform(source, res)
+
+
+
+class Quantity(_QuantityRule):
   '''
   A rule that matches some quantity of another rule.
   '''
@@ -211,22 +250,14 @@ class Quantity(Rule):
     self.max = max
     self.transform = transform
 
-  @property
-  def body(self) -> Rule:
-    return self.subs[0]
-
   def token_kinds(self) -> Iterable[str]:
     if self.sep is not None:
       yield self.sep
 
-  def head_subs(self) -> Iterable['Rule']:
-    return (self.body,)
-
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
-    body_heads = set(self.body.heads)
     sep_token:Optional[Token] = None
-    while token.kind in body_heads:
+    while token.kind in self.body_heads:
       el = self.body.parse(source, token, buffer)
       els.append(el)
       if self.sep is None:
