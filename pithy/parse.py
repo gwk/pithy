@@ -34,14 +34,15 @@ from .string import indent_lines, pluralize
 
 
 class ParseError(Exception):
-  def __init__(self, source:Source, token:Token, *msgs:str) -> None:
+  def __init__(self, source:Source, token:Token, *msgs:Any) -> None:
     self.source = source
     self.token = token
-    self.msg = ' '.join(msgs)
-    super().__init__((self.token, self.msg))
+    self.msgs = msgs
+    super().__init__((self.token, self.msgs))
 
   def fail(self) -> NoReturn:
-    self.source.fail(self.token, msg=self.msg)
+    msg = ' '.join(str(m) for m in self.msgs)
+    self.source.fail(self.token, msg=msg)
 
 
 class ExcessToken(ParseError):
@@ -587,7 +588,7 @@ class Parser:
     result = rule.parse(source, token, buffer)
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
-      raise ExcessToken(source, excess_token, 'error: excess token')
+      raise ExcessToken(source, excess_token, 'error: excess token:', excess_token.kind)
     return result
 
 
