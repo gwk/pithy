@@ -216,7 +216,7 @@ class _QuantityRule(Rule):
   'Base class for Opt and Quantity.'
   min:int
   body_heads:FrozenSet[str]
-
+  drop:FrozenSet[str]
 
   @property
   def body(self) -> Rule:
@@ -229,6 +229,9 @@ class _QuantityRule(Rule):
 
   def compile(self) -> None:
     self.body_heads = frozenset(self.body.heads)
+    drop_body_intersect = self.body_heads & self.drop
+    if drop_body_intersect:
+      raise Parser.DefinitionError(f'{self} drop kinds and body head kinds intersect: {drop_body_intersect}')
 
 
 
@@ -239,14 +242,18 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, transform:TreeTransform=tree_identity) -> None:
+  def __init__(self, body:RuleRef, drop:Iterable[str]=(), transform:TreeTransform=tree_identity) -> None:
     self.sub_refs = (body,)
     self.heads = ()
+    self.body_heads = frozenset() # Replaced by compile.
+    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
     self.transform = transform
 
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     res = None
+    while token.kind in self.drop:
+      token = next(buffer)
     if token.kind in self.body_heads:
       res = self.body.parse(source, token, buffer)
     else:
@@ -261,7 +268,7 @@ class Quantity(_QuantityRule):
   '''
   type_desc = 'quantity'
 
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None,
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
@@ -273,41 +280,57 @@ class Quantity(_QuantityRule):
     self.sep_at_end:Optional[bool] = sep_at_end
     self.min = min
     self.max = max
+    self.body_heads = frozenset() # Replaced by compile.
+    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
     self.transform = transform
 
 
   def token_kinds(self) -> Iterable[str]:
     if self.sep is not None:
       yield self.sep
+    yield from self.drop
 
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
-    sep_token:Optional[Token] = None
-    while token.kind in self.body_heads:
+    found_sep = False
+    while True:
+      while token.kind in self.drop:
+        token = next(buffer)
+      if len(els) == self.max or token.kind not in self.body_heads: break
       el = self.body.parse(source, token, buffer)
       els.append(el)
-      if self.sep is None:
-        token = next(buffer)
-      else: # Parse separator.
-        sep_token = next(buffer)
-        if sep_token.kind == self.sep: # Found separator.
+      token = next(buffer)
+      if self.sep is not None: # Parse separator.
+        found_sep = (token.kind == self.sep)
+        if found_sep:
           token = next(buffer)
         elif self.sep_at_end:
-          raise ParseError(source, sep_token, f'{self} expects {self.sep} separator; received {sep_token.kind}.')
+          raise ParseError(source, token, f'{self} expects {self.sep} separator; received {token.kind}.')
         else:
-          token = sep_token
-          sep_token = None
           break
-      if len(els) == self.max: break
+
     if len(els) < self.min:
       body_plural = pluralize(self.min, f'{self.body} element')
       raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
-    if self.sep_at_end is False and sep_token is not None:
-      raise ParseError(source, sep_token, f'{self} received unpexpected {self.sep} separator.')
+
+    if self.sep_at_end is False and found_sep:
+      raise ParseError(source, token, f'{self} received unpexpected {self.sep} separator.')
+
     buffer.push(token)
     return self.transform(source, els)
 
+
+class ZeroOrMore(Quantity):
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, drop:Iterable[str]=(),
+   transform:QuantityTransform=quantity_identity) -> None:
+    super().__init__(body=body, sep=sep, sep_at_end=sep_at_end, min=0, drop=drop, transform=transform)
+
+
+class OneOrMore(Quantity):
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, drop:Iterable[str]=(),
+   transform:QuantityTransform=quantity_identity) -> None:
+    super().__init__(body=body, sep=sep, sep_at_end=sep_at_end, min=1, drop=drop, transform=transform)
 
 
 class Struct(Rule):
@@ -316,11 +339,12 @@ class Struct(Rule):
   '''
   type_desc = 'structure'
 
-  def __init__(self, *fields:RuleRef, transform:StructTransform=struct_syn) -> None:
+  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform=struct_syn) -> None:
     if not fields: raise ValueError('Struct requires at least one field')
     self.name = ''
     self.sub_refs = fields
     self.heads = ()
+    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
     self.transform = transform
 
 
@@ -334,7 +358,10 @@ class Struct(Rule):
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
     for i, field in enumerate(self.subs):
-      if i: token = next(buffer)
+      if i:
+        token = next(buffer)
+      while token.kind in self.drop:
+        token = next(buffer)
       el = field.parse(source, token, buffer)
       els.append(el)
     return self.transform(source, els)
@@ -347,10 +374,11 @@ class Choice(Rule):
   '''
   type_desc = 'choice'
 
-  def __init__(self, *choices:RuleRef, transform:ChoiceTransform=choice_syn) -> None:
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), transform:ChoiceTransform=choice_syn) -> None:
     self.name = ''
     self.sub_refs = choices
     self.heads = ()
+    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
     self.transform = transform
     self.head_table:Dict[TokenKind,Rule] = {}
 
@@ -369,6 +397,8 @@ class Choice(Rule):
 
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    while token.kind in self.drop:
+      token = next(buffer)
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else:
@@ -594,7 +624,7 @@ class Parser:
   def __init__(self, lexer:Lexer, rules:Dict[RuleName,Rule], drop:Iterable[TokenKind]=()) -> None:
     self.lexer = lexer
     self.rules = rules
-    self.drop = frozenset(drop)
+    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
 
     for name, rule in rules.items():
       validate_name(name)
