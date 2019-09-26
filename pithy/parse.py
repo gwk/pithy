@@ -33,6 +33,7 @@ from .lex import Lexer, Token, reserved_names, valid_name_re
 from .string import indent_lines, pluralize
 
 
+
 class ParseError(Exception):
   def __init__(self, source:Source, token:Token, *msgs:Any) -> None:
     self.source = source
@@ -45,8 +46,10 @@ class ParseError(Exception):
     self.source.fail(self.token, msg=msg)
 
 
+
 class ExcessToken(ParseError):
   'Raised by Parser when expression parsing completes but does not exhaust the token stream.'
+
 
 
 TokenKind = str
@@ -90,9 +93,11 @@ class Rule:
 
   def __init__(self, *args:Any, **kwargs:Any) -> None: raise Exception(f'abstract base class: {self}')
 
+
   def __str__(self) -> str:
     if self.name: return f'{self.name}:{type(self).__name__}'
     else: return repr(self)
+
 
   def __repr__(self) -> str:
     parts = []
@@ -100,6 +105,7 @@ class Rule:
     parts.extend((repr(s) for s in self.sub_refs))
     s = ', '.join(parts)
     return f'{type(self).__name__}({s})'
+
 
   def __lt__(self, other:'Rule') -> bool:
     if not isinstance(other, Rule): raise ValueError(other)
@@ -154,8 +160,10 @@ class Atom(Rule):
     self.kind = validate_name(kind)
     self.transform = transform
 
+
   def token_kinds(self) -> Iterable[str]:
     yield self.kind
+
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     self.expect(source, token, self.kind)
@@ -176,15 +184,18 @@ class Prefix(Rule):
     self.suffix = suffix if suffix is None else validate_name(suffix)
     self.transform = transform
 
+
   @property
   def body(self) -> Rule:
     assert len(self.subs) == len(self.sub_refs), (self, self.subs, self.sub_refs)
     return self.subs[0]
 
+
   def token_kinds(self) -> Iterable[str]:
     yield self.prefix
     if self.suffix is not None:
       yield self.suffix
+
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     self.expect(source, token, self.prefix)
@@ -199,12 +210,15 @@ class _QuantityRule(Rule):
   min:int
   body_heads:FrozenSet[str]
 
+
   @property
   def body(self) -> Rule:
     return self.subs[0]
 
+
   def head_subs(self) -> Iterable['Rule']:
     return (self.body,)
+
 
   def compile(self) -> None:
     self.body_heads = frozenset(self.body.heads)
@@ -237,6 +251,7 @@ class Quantity(_QuantityRule):
   '''
   A rule that matches some quantity of another rule.
   '''
+
   def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None,
    transform:QuantityTransform=quantity_identity) -> None:
     if min < 0: raise ValueError(min)
@@ -251,9 +266,11 @@ class Quantity(_QuantityRule):
     self.max = max
     self.transform = transform
 
+
   def token_kinds(self) -> Iterable[str]:
     if self.sep is not None:
       yield self.sep
+
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
@@ -287,6 +304,7 @@ class Struct(Rule):
   '''
   A rule that matches a sequence of sub rules, producing a tuple of values.
   '''
+
   def __init__(self, *fields:RuleRef, transform:StructTransform=struct_syn) -> None:
     if not fields: raise ValueError('Struct requires at least one field')
     self.name = ''
@@ -294,11 +312,13 @@ class Struct(Rule):
     self.heads = ()
     self.transform = transform
 
+
   def head_subs(self) -> Iterable['Rule']:
     for field in self.subs:
       yield field
       if not (isinstance(field, Quantity) and field.min == 0):
         break
+
 
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
@@ -307,6 +327,7 @@ class Struct(Rule):
       el = field.parse(source, token, buffer)
       els.append(el)
     return self.transform(source, els)
+
 
 
 class Choice(Rule):
@@ -321,7 +342,9 @@ class Choice(Rule):
     self.transform = transform
     self.head_table:Dict[TokenKind,Rule] = {}
 
+
   def head_subs(self) -> Iterable[Rule]: return self.subs
+
 
   def compile(self) -> None:
     for head in self.heads:
@@ -332,6 +355,7 @@ class Choice(Rule):
           *indent_lines(str(s) for s in matching_subs))
       self.head_table[head] = matching_subs[0]
 
+
   def parse(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     try: sub = self.head_table[token.kind]
     except KeyError: pass
@@ -339,6 +363,7 @@ class Choice(Rule):
       syn = sub.parse(source, token, buffer)
       return self.transform(source, sub.name, syn)
     raise ParseError(source, token, f'{self} expects any of {self.subs}; received {token.kind}')
+
 
 
 class Operator:
@@ -349,18 +374,23 @@ class Operator:
   # TODO: spacing requirement options, e.g. no space, some space, symmetrical space.
   def __init__(self, *args:Any, **kwargs:Any) -> None: raise Exception(f'abstract base class: {self}')
 
+
   def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     raise NotImplementedError(self)
 
 
+
 class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
+
   def __init__(self, suffix:TokenKind, transform:UnaryTransform=unary_syn) -> None:
     self.kinds = (validate_name(suffix),)
     self.transform = transform
 
+
   def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     return self.transform(source, op_token, left) # No right-hand side.
+
 
 
 class SuffixRule(Operator):
@@ -369,24 +399,30 @@ class SuffixRule(Operator):
   Note: due to current limitations in the linker implementation,
   `suffix` must be a constructed rule and not a string reference.
   '''
+
   def __init__(self, suffix:Rule, transform:BinaryTransform=binary_syn) -> None:
     self.sub_refs = (suffix,)
     self.transform = transform
 
+
   @property
   def suffix(self) -> Rule: return cast(Rule, self.sub_refs[0]) # TODO: link over operators, and refer to self.subs instead.
+
 
   @property
   def kinds(self) -> Tuple[TokenKind,...]: # type: ignore
     return tuple(self.suffix.heads)
+
 
   def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     right = self.suffix.parse(source, op_token, buffer)
     return self.transform(source, op_token.pos_token(), left, right)
 
 
+
 class BinaryOp(Operator):
   'Abstract base class for binary operators that take left and right primary expressions.'
+
 
 
 class Adjacency(BinaryOp):
@@ -396,47 +432,62 @@ class Adjacency(BinaryOp):
   def __init__(self, transform:BinaryTransform=binary_syn) -> None:
     self.transform = transform
 
+
   @property # type: ignore
   def kinds(self) -> Tuple[TokenKind,...]: # type: ignore
     raise _AllLeafKinds
+
 
   def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     right = parse_precedence_level(source=source, token=op_token, buffer=buffer, level=level)
     return self.transform(source, op_token.pos_token(), left, right)
 
+
+
 class _AllLeafKinds(Exception):
   'Raised by Adjacency.kinds to signal that the precedence parser associates the set of leaf token kinds with this adjacency op.'
 
 
+
 class Infix(BinaryOp):
   'A binary operator that joins two primary expressions with an infix operator.'
+
   def __init__(self, kind:TokenKind, transform:BinaryTransform=binary_syn) -> None:
     self.kinds = (validate_name(kind),)
     self.transform = transform
+
 
   def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     right = parse_precedence_level(source=source, token=next(buffer), buffer=buffer, level=level)
     return self.transform(source, op_token, left, right)
 
 
+
 class Group:
   level_bump = 0
   'Operator precedence group.'
+
   def __init__(self, *ops:Operator) -> None:
     self.ops = ops
     self.level = -1
+
 
   @property
   def sub_refs(self) -> Iterator[RuleRef]:
     for op in self.ops:
       yield from op.sub_refs
 
+
+
 class Left(Group):
   'Left-associative operator precedence group.'
   level_bump = 1
 
+
+
 class Right(Group):
   'Right-associative operator precedence group.'
+
 
 
 class Precedence(Rule):
