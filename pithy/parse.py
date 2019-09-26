@@ -42,7 +42,7 @@ class ParseError(Exception):
     super().__init__((self.token, self.msgs))
 
   def fail(self) -> NoReturn:
-    msg = ' '.join(str(m) for m in self.msgs)
+    msg = ''.join(str(m) for m in self.msgs)
     self.source.fail(self.token, msg=msg)
 
 
@@ -87,6 +87,7 @@ class Rule:
   'A parser rule. A complete parser is created from a graph of rules.'
 
   name:str # Optional name, used to link the rule graph.
+  type_desc:str # Type description for diagnostic descriptions.
   sub_refs:Tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
   subs:Tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
   heads:Tuple[TokenKind,...] # Set of leading token kinds for this rule.
@@ -95,7 +96,7 @@ class Rule:
 
 
   def __str__(self) -> str:
-    if self.name: return f'{self.name}:{type(self).__name__}'
+    if self.name: return f'{self.name!r} {self.type_desc}'
     else: return repr(self)
 
 
@@ -110,6 +111,10 @@ class Rule:
   def __lt__(self, other:'Rule') -> bool:
     if not isinstance(other, Rule): raise ValueError(other)
     return str(self) < str(other)
+
+  @property
+  def subs_desc(self) -> str:
+    return f'[{", ".join(str(s) for s in self.subs)}]'
 
 
   def token_kinds(self) -> Iterable[str]:
@@ -153,6 +158,7 @@ class Atom(Rule):
   '''
   A rule that matches a single token.
   '''
+  type_desc = 'atom'
 
   def __init__(self, kind:TokenKind, transform:TokenTransform=token_syn) -> None:
     self.name = ''
@@ -175,6 +181,7 @@ class Prefix(Rule):
   '''
   A rule that matches a prefix token, a body rule, and an optional suffix token.
   '''
+  type_desc = 'prefix rule'
 
   def __init__(self, prefix:TokenKind, body:RuleRef, suffix:TokenKind=None, transform:UnaryTransform=unary_syn) -> None:
     self.name = ''
@@ -229,6 +236,7 @@ class Opt(_QuantityRule):
   '''
   A rule that optionally matches another rule.
   '''
+  type_desc = 'optional'
   min = 0
 
   def __init__(self, body:RuleRef, transform:TreeTransform=tree_identity) -> None:
@@ -251,6 +259,7 @@ class Quantity(_QuantityRule):
   '''
   A rule that matches some quantity of another rule.
   '''
+  type_desc = 'quantity'
 
   def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None,
    transform:QuantityTransform=quantity_identity) -> None:
@@ -292,7 +301,8 @@ class Quantity(_QuantityRule):
           break
       if len(els) == self.max: break
     if len(els) < self.min:
-      raise ParseError(source, token, f'{self} expects at least {pluralize(self.min, "elements")}; received {token.kind}.')
+      body_plural = pluralize(self.min, f'{self.body} element')
+      raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
     if self.sep_at_end is False and sep_token is not None:
       raise ParseError(source, sep_token, f'{self} received unpexpected {self.sep} separator.')
     buffer.push(token)
@@ -304,6 +314,7 @@ class Struct(Rule):
   '''
   A rule that matches a sequence of sub rules, producing a tuple of values.
   '''
+  type_desc = 'structure'
 
   def __init__(self, *fields:RuleRef, transform:StructTransform=struct_syn) -> None:
     if not fields: raise ValueError('Struct requires at least one field')
@@ -334,6 +345,7 @@ class Choice(Rule):
   '''
   A rule that matches one of a set of choices, which must have unambiguous heads.
   '''
+  type_desc = 'choice'
 
   def __init__(self, *choices:RuleRef, transform:ChoiceTransform=choice_syn) -> None:
     self.name = ''
@@ -362,7 +374,7 @@ class Choice(Rule):
     else:
       syn = sub.parse(source, token, buffer)
       return self.transform(source, sub.name, syn)
-    raise ParseError(source, token, f'{self} expects any of {self.subs}; received {token.kind}')
+    raise ParseError(source, token, f'{self} expects any of {self.subs_desc}; received {token.kind}')
 
 
 
@@ -492,6 +504,7 @@ class Right(Group):
 
 class Precedence(Rule):
   'An operator precedence rule, consisting of groups of operators.'
+  type_desc = 'precedence rule'
 
   def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group, transform:TreeTransform=tree_identity) -> None:
     # Keep track of the distinction between subs that came from leaves vs groups.
@@ -565,7 +578,7 @@ class Precedence(Rule):
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else: return sub.parse(source, token, buffer)
-    raise ParseError(source, token, f'{self} expects any of {sorted(self.subs)}; received {token.kind}')
+    raise ParseError(source, token, f'{self} expects any of {self.subs_desc}; received {token.kind}.')
 
 
 
@@ -639,7 +652,7 @@ class Parser:
     result = rule.parse(source, token, buffer)
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
-      raise ExcessToken(source, excess_token, 'error: excess token:', excess_token.kind)
+      raise ExcessToken(source, excess_token, 'error: excess token: ', excess_token.kind)
     return result
 
 
