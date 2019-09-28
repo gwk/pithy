@@ -177,6 +177,7 @@ class QuantityPattern(StructPattern):
   operator:str = ''
 
   def __init__(self, sub:LegsPattern) -> None:
+    assert isinstance(sub, LegsPattern), sub
     self.sub = sub
 
   def __iter__(self) -> Iterator[LegsPattern]:
@@ -238,6 +239,9 @@ class CharsetPattern(LegsPattern):
   def __init__(self, ranges:Iterable[CodeRange]) -> None:
     self.ranges = tuple(ranges)
 
+  def __repr__(self) -> str:
+    return f'{type(self).__name__}< {codes_desc(self.ranges)} >'
+
   def describe(self, name:Optional[str], depth=0) -> None:
     n = name + ' ' if name else ''
     errL('  ' * depth, n, self.desc_type, ': ', codes_desc(self.ranges))
@@ -292,6 +296,9 @@ class CharsetPattern(LegsPattern):
   def for_code(code:int) -> 'CharsetPattern':
     return CharsetPattern(ranges=((code, code + 1),))
 
+  @staticmethod
+  def for_codes(codes:Set[int]) -> 'CharsetPattern':
+    return CharsetPattern(ranges=tuple(ranges_for_codes(sorted(codes))))
 
 
 def regex_for_code(code:int, flavor:str) -> str:

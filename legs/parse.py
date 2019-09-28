@@ -15,6 +15,7 @@ from .patterns import (CharsetPattern, ChoicePattern, LegsPattern, OptPattern, P
   QuantityPattern, SeqPattern, StarPattern)
 
 
+
 lexer = Lexer(flags='x', invalid='invalid', patterns=dict(
   newline = r'\n',
   space   = r'\ +',
@@ -194,7 +195,7 @@ def parse_pattern_pattern(source:Source[str], buffer:Buffer[Token], terminator:s
     elif kind == 'qmark': quantity(OptPattern)
     elif kind == 'star': quantity(StarPattern)
     elif kind == 'plus': quantity(PlusPattern)
-    elif kind == 'esc': els.append(CharsetPattern(ranges=ranges_for_code(parse_esc(source, token))))
+    elif kind == 'esc': els.append(CharsetPattern.for_code(parse_esc(source, token)))
     elif kind == 'ref': els.append(CharsetPattern(ranges=parse_ref(source, token)))
     elif kind == 'sym': els.extend(CharsetPattern.for_char(c) for c in source[token])
     elif kind in ('colon', 'amp', 'dash', 'caret', 'char'):
