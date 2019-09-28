@@ -204,16 +204,11 @@ def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[s
 
 
 def load_xls(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from xlrd import open_workbook # type: ignore
+  from openpyxl import load_workbook # type: ignore
   if isinstance(f, str):
-    return open_workbook(filename=f, logfile=stderr, **kwargs)
-  # Unfortunately load_xls will not take an open file handle.
-  # Since we might be passing in an in-memory file like ArchiveFile,
-  # the best we can do for now is read file contents into memory.
-  # Alternative would be to make ArchiveFile conform to mmap protocol
-  # (xrld supports passing in mmap objects),
-  # or patch xlrd to support passing in an open binary file descriptor.
-  return open_workbook(filename=None, logfile=stderr, file_contents=binary_file_for(f).read(), **kwargs)
+    return load_workbook(filename=f, **kwargs)
+  else:
+    raise Exception(f'load_xls cannot load from an already open file handle: {f}')
 
 
 def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
@@ -253,6 +248,7 @@ add_loader('.sqlite3',  load_sqlite,    _dflt=True)
 add_loader('.tar',      load_archive,   _dflt=True)
 add_loader('.txt',      load_txt,       _dflt=True)
 add_loader('.xls',      load_xls,       _dflt=True)
+add_loader('.xlsx',     load_xls,       _dflt=True)
 add_loader('.xz',       load_xz,        _dflt=True)
 add_loader('.zip',      load_archive,   _dflt=True)
 add_loader('.zst',      load_zst,       _dflt=True)
