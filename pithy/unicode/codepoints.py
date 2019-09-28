@@ -19,12 +19,9 @@ def codes_range_desc(l:int, h:int) -> str:
 def code_desc(c:int) -> str:
   assert isinstance(c, int)
   try: return code_descriptions[c]
-  except KeyError: return '{:02x}'.format(c)
+  except KeyError: return f'\\{c:02x}/'
 
-code_descriptions:Dict[int, str] = {c : '{:02x}'.format(c) for c in range(0x100)}
-# TODO: why fill these out if we fall back on same format?
-
-code_descriptions.update({
+code_descriptions:Dict[int, str] = {
   -1: 'Ø',
   ord('\a'): '\\a',
   ord('\b'): '\\b',
@@ -34,6 +31,6 @@ code_descriptions.update({
   ord('\f'): '\\f',
   ord('\r'): '\\r',
   ord(' '): '\\s',
-})
+}
 
 code_descriptions.update((i, chr(i)) for i in range(ord('!'), 0x7f))
