@@ -14,7 +14,7 @@ def codes_desc(code_ranges:Iterable[CodeRange]) -> str:
 
 def codes_range_desc(l:int, h:int) -> str:
   if l + 1 == h: return code_desc(l)
-  return '{}-{}'.format(code_desc(l), code_desc(h))
+  return '{}-{}'.format(code_desc(l), code_desc(h-1))
 
 def code_desc(c:int) -> str:
   assert isinstance(c, int)
