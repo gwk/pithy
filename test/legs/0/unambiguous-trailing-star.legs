@@ -1,3 +1,5 @@
+# Patterns
+
 // These rules fail if the ambiguous rule check is performed on the fat DFA,
 // presumably because of the way that star rules are transformed into distinct states.
 // However it passes when the check is done on the minimized DFA.

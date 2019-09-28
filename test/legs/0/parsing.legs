@@ -1,6 +1,8 @@
 // Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-space: \s+
+# Patterns
+
+spaces: \s+
 num: [$Dec _]+
 bin:  0b [$Bin _]+
 quat: 0q [$Quat _]+

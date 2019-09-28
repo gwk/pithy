@@ -1,4 +1,4 @@
-match: ' ' -> space
+match: ' ' -> spaces
 match: 'a' -> a
 match: 'bd' -> b_c_opt_d
 match: 'bcd' -> b_c_opt_d

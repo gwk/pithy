@@ -1,10 +1,16 @@
-// Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+# License: Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Patterns
 
 newline: \n
-space: \s+
-section: \# \s* ([Pp]atterns|[Mm]odes|[Tt]ransitions) $Ascii_Readable*
-section_invalid: \# $Ascii_Readable*
+spaces: \s+
 comment: / / $Ascii_Readable*
+
+section_label_patterns:     \# \s* [Pp]atterns
+section_label_modes:        \# \s* [Mm]modes
+section_label_transitions:  \# \s* [Tt]ransitions
+section_label_invalid:      \# [$Ascii_Visible]*
+
 sym: $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
 colon: :
 brckt_o: \[
@@ -21,5 +27,5 @@ amp: &
 dash: -
 caret: \^
 ref: \$ $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
-esc: \\ $Ascii_Readable // TODO: list escapable characters.
-char: [$Ascii_Readable - \# \s $Ascii_Letter]
+esc: \\ $Ascii_Visible // TODO: list escapable characters.
+char: [$Ascii_Visible - \# \s $Ascii_Letter]

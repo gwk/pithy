@@ -3,7 +3,7 @@ arg1: 'a (bc def) g'
 arg1:1:1-2: sym
 | a (bc def) g
   ~
-arg1:1:2-3: space
+arg1:1:2-3: spaces
 | a (bc def) g
    ~
 arg1:1:3-4: `(`
@@ -12,7 +12,7 @@ arg1:1:3-4: `(`
 arg1:1:4-6: sym
 | a (bc def) g
      ~~
-arg1:1:6-7: space
+arg1:1:6-7: spaces
 | a (bc def) g
        ~
 arg1:1:7-10: sym
@@ -21,7 +21,7 @@ arg1:1:7-10: sym
 arg1:1:10-11: `)`
 | a (bc def) g
            ~
-arg1:1:11-12: space
+arg1:1:11-12: spaces
 | a (bc def) g
             ~
 arg1:1:12-13: sym
@@ -61,7 +61,7 @@ arg3:1:2-16: lit_contents
 arg3:1:16-17: `'`
 | 'single quoted.' "double quoted."
                  ~
-arg3:1:17-18: space
+arg3:1:17-18: spaces
 | 'single quoted.' "double quoted."
                   ~
 arg3:1:18-19: `"`
@@ -156,7 +156,7 @@ arg7:1:5-7: `\\(`
 arg7:1:7-13: sym
 | 'sq \(nested "interpolated \(a)").'
         ~~~~~~
-arg7:1:13-14: space
+arg7:1:13-14: spaces
 | 'sq \(nested "interpolated \(a)").'
               ~
 arg7:1:14-15: `"`

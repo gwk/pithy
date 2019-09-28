@@ -2,7 +2,7 @@
 
 # Patterns.
 
-space: \s+
+spaces: \s+
 sym: $Ascii_Letter+
 sq: '
 dq: "
@@ -22,7 +22,7 @@ lit_interpolate: \\ \(
 
 # Modes.
 
-main: space sym comment_open sq dq paren_open paren_close
+main: spaces sym comment_open sq dq paren_open paren_close
 comment: comment_open comment_close comment_contents comment_star comment_slash
 lit: sq dq backslash lit_contents lit_escape lit_interpolate
 
