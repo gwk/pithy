@@ -15,6 +15,6 @@ chain_left = Parser(lexer, dict(
     )),
   drop=('spaces',))
 
-utest(('', ('', 'a', 'b'), ('+', 'c', 'd')), chain_left.parse, 'expr', Source('', 'a b c+d'))
-utest(('', ('', ('+', 'a', 'b'), 'c'), 'd'), chain_left.parse, 'expr', Source('', 'a+b c d'))
+utest((('a', 'b'), ('+', 'c', 'd')), chain_left.parse, 'expr', Source('', 'a b c+d'))
+utest(((('+', 'a', 'b'), 'c'), 'd'), chain_left.parse, 'expr', Source('', 'a+b c d'))
 

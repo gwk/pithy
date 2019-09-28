@@ -61,13 +61,15 @@ TreeTransform = Callable[[Source,Any],Any]
 def tree_identity(source:Source, obj:Any) -> Any: return obj
 
 TokenTransform = Callable[[Source,Token],Any]
-def token_syn(source:Source, token:Token) -> Any: return source[token]
+def token_syn(source:Source, token:Token) -> str: return source[token]
 
 UnaryTransform = Callable[[Source,Token,Any],Any]
-def unary_syn(source:Source, token:Token, obj:Any) -> Any: return (source[token], obj)
+def unary_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
 
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
-def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Any: return (source[token], left, right)
+def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
+
+def adjacency_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
 
 QuantityTransform = Callable[[Source,List[Any]],Any]
 def quantity_identity(source:Source, elements:List[Any]) -> List[Any]: return elements
@@ -76,7 +78,7 @@ StructTransform = Callable[[Source,List[Any]],Any]
 def struct_syn(source:Source, elements:List[Any]) -> Tuple[Any,...]: return tuple(elements)
 
 ChoiceTransform = Callable[[Source,RuleName,Any],Any]
-def choice_syn(source:Source, name:RuleName, obj:Any) -> Any: return (name, obj)
+def choice_syn(source:Source, name:RuleName, obj:Any) -> Tuple[str,Any]: return (name, obj)
 
 
 _sentinel_kind = '!SENTINEL'
@@ -471,7 +473,7 @@ class Adjacency(BinaryOp):
   'A binary operator that joins two primary expressions with no operator token in between.'
   kinds:Tuple[TokenKind,...] = () # Adjacency operators have no operator token.
 
-  def __init__(self, transform:BinaryTransform=binary_syn) -> None:
+  def __init__(self, transform:BinaryTransform=adjacency_syn) -> None:
     self.transform = transform
 
 
