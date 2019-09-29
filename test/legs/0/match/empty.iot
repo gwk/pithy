@@ -1,8 +1,0 @@
-{
-  'cmd': 'legs',
-  'args': ['test/legs/0/empty.legs', '-match',
-    '',
-    'a',
-    'ab',
-  ],
-}

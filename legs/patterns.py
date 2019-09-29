@@ -83,6 +83,8 @@ class ChoicePattern(StructPattern):
   precedence = 1
 
   def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern) -> None:
+    assert isinstance(hd, LegsPattern)
+    assert isinstance(tl, LegsPattern)
     self.hd = hd
     self.tl = ChoicePattern(tl, *rem) if rem else tl
 
@@ -121,6 +123,8 @@ class SeqPattern(StructPattern):
   precedence = 2
 
   def __init__(self, els:Iterable[LegsPattern]) -> None:
+    for el in els:
+      assert isinstance(el, LegsPattern), el
     self.els = tuple(els)
     if len(self.els) < 2: raise ValueError(els)
 
@@ -179,6 +183,9 @@ class QuantityPattern(StructPattern):
   def __init__(self, sub:LegsPattern) -> None:
     assert isinstance(sub, LegsPattern), sub
     self.sub = sub
+
+  def __repr__(self) -> str:
+    return f'{type(self).__name__}({self.sub})>'
 
   def __iter__(self) -> Iterator[LegsPattern]:
     yield self.sub
