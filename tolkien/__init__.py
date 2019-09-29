@@ -86,7 +86,7 @@ class Source(Generic[_Text]):
 
 
   def get_line_str(self, pos:int, end:int) -> str:
-    assert pos < end, (pos, end)
+    assert pos <= end, (pos, end)
     line = self.text[pos:end]
     if isinstance(line, str): return line
     assert isinstance(line, bytes)
@@ -148,7 +148,7 @@ class Source(Generic[_Text]):
     line_end = line_pos + len(line_str)
 
     src_line:str
-    if line_str[-1] == newline:
+    if line_str and line_str[-1] == newline:
       last_idx = len(line_str) - 1
       s = line_str[:-1]
       if pos == last_idx or end == line_end:
