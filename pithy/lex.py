@@ -267,6 +267,9 @@ c_like_punctuation_patterns = dict(
   star_eq     = r'\*=',
   star        = r'\*',
 
+  qmark2      = r'\?\?',
+  qmark       = r'\?',
+
   shift_l_eq  = r'<<=',
   shift_l     = r'<<',
   le          = r'<=',
