@@ -600,7 +600,7 @@ class Precedence(Rule):
       except KeyError:
         break # op_token is not an operator.
       if group.level < level: break # This operator is at a lower precedence.
-      left = op.parse_right(left, source, op_token, buffer, self.parse_precedence_level, level=level+group.level_bump)
+      left = op.parse_right(left, source, op_token, buffer, self.parse_precedence_level, level=group.level+group.level_bump)
     # op_token is either not an operator, or of a lower precedence level.
     buffer.push(op_token) # Put it back.
     return left
