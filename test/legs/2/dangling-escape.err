@@ -1,4 +1,4 @@
-dangling-escape.legs:2:5-6: invalid pattern token.
+dangling-escape.legs:2:5-6: 'pattern' structure expects newline; received backslash.
 | a: a\
       ~
 

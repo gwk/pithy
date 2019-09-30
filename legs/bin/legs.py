@@ -99,7 +99,11 @@ def main() -> None:
   else:
     exit('`must specify either `path` or `-patterns`.')
 
-  license, patterns, mode_pattern_kinds, mode_transitions = parse_legs(path, src)
+  grammar = parse_legs(path, src)
+  license = grammar.license
+  patterns = grammar.patterns
+  mode_pattern_kinds = grammar.modes
+  mode_transitions = grammar.transitions
 
   if dbg:
     errSL('\nPatterns:')

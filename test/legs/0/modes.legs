@@ -1,6 +1,6 @@
 // Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# Patterns.
+# Patterns
 
 spaces: \s+
 sym: $Ascii_Letter+
@@ -20,18 +20,19 @@ lit_contents: [$Ascii - '"\\]+
 lit_escape: \\ [ $Ascii - ( ]
 lit_interpolate: \\ \(
 
-# Modes.
+# Modes
 
 main: spaces sym comment_open sq dq paren_open paren_close
 comment: comment_open comment_close comment_contents comment_star comment_slash
 lit: sq dq backslash lit_contents lit_escape lit_interpolate
 
-# Transitions.
-main  paren_open      : main paren_close // must push child main frame so that a lit frame does not get prematurely popped.
-lit   lit_interpolate : main paren_close
+# Transitions
 
-main    comment_open : comment comment_close
-comment comment_open : comment comment_close
+main  : paren_open      :: main : paren_close // must push child main frame so that a lit frame does not get prematurely popped.
+lit   : lit_interpolate :: main : paren_close
 
-main sq : lit sq
-main dq : lit dq
+main    : comment_open :: comment : comment_close
+comment : comment_open :: comment : comment_close
+
+main : sq :: lit : sq
+main : dq :: lit : dq

@@ -1,4 +1,4 @@
-empty-charset.legs:2:8-9: empty character set.
+empty-charset.legs:2:9-10: 'charset' prefix rule expects charset_expr; received brack_c.
 | empty: []
-         ~
+          ~
 

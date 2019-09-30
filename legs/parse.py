@@ -1,57 +1,30 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Container, Dict, FrozenSet, List, Match, NoReturn, Set, Tuple, Type
+from dataclasses import dataclass
+from typing import Container, DefaultDict, Dict, FrozenSet, List, Match, NoReturn, Set, Tuple, Type, cast
 
-from pithy.buffer import Buffer
 from pithy.io import *
 from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
 from pithy.lex import Lexer
-from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
+from pithy.parse import *
+from pithy.string import clip_prefix
+from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges
 from pithy.unicode.charsets import unicode_charsets
 from tolkien import Source, Token
 
-from .defs import ModeTransitions
-from .patterns import (CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern,
-  QuantityPattern, SeqPattern, StarPattern)
+from .defs import KindModeTransitions, ModeTransitions
+from .patterns import *
 
 
-
-lexer = Lexer(flags='x', invalid='invalid', patterns=dict(
-  newline = r'\n',
-  space   = r'\ +',
-  section = r'\#\ *([Pp]atterns|[Mm]odes|[Tt]ransitions)[^\n]*',
-  section_invalid = r'\#[^\n]*',
-  comment = r'//[^\n]*',
-  sym     = r'\w+',
-  colon   = r':',
-  brckt_o = r'\[',
-  brckt_c = r'\]',
-  #brace_o = r'\{',
-  #brace_c = r'\}',
-  paren_o = r'\(',
-  paren_c = r'\)',
-  bar     = r'\|',
-  qmark   = r'\?',
-  star    = r'\*',
-  plus    = r'\+',
-  amp     = '&',
-  dash    = '-',
-  caret   = r'\^',
-  ref     = r'\$\w*',
-  esc     = r'\\[^\n]', # TODO: list escapable characters.
-  char    = r'[^\\\n]',
-))
-
-kind_descs = {
-  'section_invalid' : 'invalid section',
-  'sym'     : 'symbol',
-  'colon'   : '`:`',
-}
-
-def desc_kind(kind:str) -> str: return kind_descs.get(kind, kind)
+@dataclass
+class Grammar:
+  license:str
+  patterns:Dict[str,LegsPattern]
+  modes:Dict[str,FrozenSet[str]]
+  transitions:ModeTransitions
 
 
-def parse_legs(path:str, text:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,FrozenSet[str]],ModeTransitions]:
+def parse_legs(path:str, text:str) -> Grammar:
   '''
   Parse the legs source given in `text`, returning:
   * the license string;
@@ -60,250 +33,242 @@ def parse_legs(path:str, text:str) -> Tuple[str,Dict[str,LegsPattern],Dict[str,F
   * a dictionary of mode transitions.
   '''
   source = Source(name=path, text=text)
-  tokens_with_comments = list(lexer.lex(source, drop={'space'}))
-  # If first token is a comment, assume it is the license.
-  license:str
-  if tokens_with_comments and tokens_with_comments[0].kind == 'comment':
-    license = source[tokens_with_comments[0]].strip('/ ')
-  else:
-    license = 'NO LICENSE SPECIFIED.'
-
-  tokens = [t for t in tokens_with_comments if t.kind != 'comment']
-  sections = list(group_by_heads(tokens, is_head=is_section, headless=OnHeadless.keep))
-
-  patterns:Dict[str, LegsPattern] = {} # keyed by pattern name.
-  mode_pattern_kinds:Dict[str,FrozenSet[str]] = {} # keyed by mode name.
-  mode_transitions:ModeTransitions = {}
-
-  for section in sections:
-    buffer = Buffer(section)
-    if buffer.peek().kind == 'section':
-      section_name = source[next(buffer)].strip('# ').lower()
-    else:
-      section_name = ''
-    if not section_name or section_name.startswith('patterns'):
-      parse_patterns(source, buffer, patterns)
-    elif section_name.startswith('modes'):
-      parse_modes(source, buffer, patterns.keys(), mode_pattern_kinds)
-    elif section_name.startswith('transitions'):
-      parse_transitions(source, buffer, patterns.keys(), mode_pattern_kinds.keys(), mode_transitions)
-    else:
-      source.fail(buffer.peek(), f'bad section name: {section_name!r}.')
-
-  if not mode_pattern_kinds:
-    mode_pattern_kinds['main'] = frozenset(patterns)
-  return (license, patterns, mode_pattern_kinds, mode_transitions)
+  try: grammar:Grammar = parser.parse('grammar', source)
+  except ParseError as e: e.fail()
+  return grammar
 
 
-def parse_patterns(source:Source[str], buffer:Buffer[Token], patterns:Dict[str, LegsPattern]) -> None:
-  for token in buffer:
-    kind = token.kind
-    if kind == 'newline': continue
-    check_is_sym(source, token, 'pattern name symbol')
-    name = source[token]
-    if name in patterns:
-      source.fail(token, f'duplicate pattern name: {name!r}.')
-    patterns[name] = parse_pattern(source, token, buffer)
+common_kinds = ['newline', 'spaces', 'comment']
+sl_kinds = ['sl_license', 'sl_patterns', 'sl_modes', 'sl_transitions', 'sl_invalid']
+
+lexer = Lexer(flags='x', invalid='invalid',
+  patterns=dict(
+    newline_indent = r'\n\ +',
+    newline = r'\n',
+    spaces  = r'\ +',
+    comment = r'//[^\n]*',
+
+    # Section labels.
+    sl_license     = r'\#\ *[Ll]icense',
+    sl_patterns    = r'\#\ *[Pp]atterns',
+    sl_modes       = r'\#\ *[Mm]odes',
+    sl_transitions = r'\#\ *[Tt]ransitions',
+    sl_invalid     = r'\#[^\n]*',
+
+    # High level tokens.
+    colon = r':',
+    sym = r'[A-Za-z_][0-9A-Za-z_]*',
+    license_text = r'[^\n]+',
+
+    # Pattern tokens.
+    brack_o = r'\[',
+    brack_c = r'\]',
+    paren_o = r'\(',
+    paren_c = r'\)',
+    bar     = r'\|',
+    qmark   = r'\?',
+    star    = r'\*',
+    plus    = r'\+',
+    amp     = '&',
+    dash    = '-',
+    caret   = r'\^',
+    ref     = r'\$\w*',
+    esc     = r'\\[^\n]',
+    backslash = r'\\',
+    char    = r'[!-~]',
+  ),
+  modes=dict(
+    main=['newline_indent', *common_kinds, 'sym', 'colon', *sl_kinds],
+    license=['newline', 'license_text', *sl_kinds],
+    patterns=[*common_kinds, 'sym', 'colon', *sl_kinds],
+    pattern=['newline_indent', *common_kinds, 'colon',
+      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'],
+  ),
+  transitions={
+    ('main', 'sl_license') : ('license', sl_kinds),
+    ('main', 'sl_patterns') : ('patterns', sl_kinds),
+    ('patterns', 'colon') : ('pattern', 'newline'),
+  }
+)
 
 
-def parse_modes(source:Source[str], buffer:Buffer[Token], patterns:Container[str],
- mode_pattern_kinds:Dict[str,FrozenSet[str]]) -> None:
-  for token in buffer:
-    kind = token.kind
-    if kind == 'newline': continue
-    check_is_sym(source, token, 'mode name')
-    name = source[token]
-    if name in mode_pattern_kinds:
-      source.fail(token, f'duplicate mode name: {name!r}.')
-    consume(source, buffer, kind='colon', subj='mode declaration')
-    mode_pattern_kinds[name] = parse_mode(source, buffer, patterns)
+def build_legs_grammar_parser() -> Parser:
+  return Parser(lexer,
+    dict(
+      grammar=OneOrMore('section', drop='newline', transform=transform_grammar),
+
+      section=Choice('section_license', 'section_patterns', 'section_modes', 'section_transitions'),
+
+      # Section label and body rules.
+
+      section_license=Struct(Atom('sl_license'), ZeroOrMore('license'),
+        transform=lambda s, t: t[1]),
+
+      section_patterns=Struct(Atom('sl_patterns'), 'newline', ZeroOrMore('pattern', drop='newline'),
+        transform=lambda s, t: t[2]),
+
+      section_modes=Struct(Atom('sl_modes'), 'newline', ZeroOrMore('mode', drop='newline'),
+        transform=lambda s, t: t[2]),
+
+      section_transitions=Struct(Atom('sl_transitions'), 'newline', ZeroOrMore('transition', drop='newline'),
+        transform=lambda s, t: t[2]),
+
+      # License lines.
+      license=Choice(Atom('newline'), Atom('license_text'),
+        transform=lambda s, label, atom_text: atom_text),
+
+      # Section body rules.
+
+      pattern=Struct('sym', Opt('colon_pattern_expr'), 'newline',
+        transform=transform_pattern),
+
+      colon_pattern_expr=Struct('colon', 'pattern_expr',
+        transform=lambda s, struct: struct[1]),
+
+      mode=Struct('sym', 'colon', Quantity('sym'), 'newline',
+        transform=lambda s, t: (t[0], t[2])),
+
+      transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline',
+        transform=lambda s, t: ((t[0], t[2]), (t[5], t[7]))),
+
+      sym=Atom('sym'),
+      colon=Atom('colon'),
+      newline=Atom('newline'),
+
+      # Pattern rules.
+
+      pattern_expr=Precedence(
+        ('amp', 'char', 'caret', 'colon_p', 'dash', 'esc', 'ref', 'charset_p', 'paren'),
+        Right(Infix('bar', transform=transform_choice)),
+        Right(Adjacency(transform=transform_adj)),
+        Right(
+          Suffix('qmark', transform=lambda s, t, p: OptPattern(p)),
+          Suffix('star',  transform=lambda s, t, p: StarPattern(p)),
+          Suffix('plus',  transform=lambda s, t, p: PlusPattern(p))),
+      ),
+
+      paren=Prefix('paren_o', 'pattern_expr', 'paren_c',
+        transform=lambda s, t, pattern: pattern),
+
+      charset_p=Struct('charset', # Wrapper to transform from Set[int] to CharsetPattern.
+        transform=lambda s, tup: CharsetPattern.for_codes(tup[0])),
+
+      charset=Prefix('brack_o', 'charset_expr', 'brack_c',
+        transform=lambda s, t, cs: cs),
+
+      charset_expr=Precedence(
+        ('charset', 'bar_cs', 'char_cs', 'colon_cs', 'esc_cs', 'paren_o_cs', 'paren_c_cs', 'plus_cs', 'qmark_cs', 'ref_cs', 'star_cs'),
+        Left(
+          Infix('amp',    transform=lambda s, t, l, r: l & r),
+          Infix('caret',  transform=lambda s, t, l, r: l ^ r),
+          Infix('dash',   transform=lambda s, t, l, r: l - r)),
+        Right(Adjacency(  transform=lambda s, t, l, r: l | r)),
+        transform=lambda s, cs: cs),
+
+      # Pattern atoms.
+      amp=Atom('amp',       transform=transform_char),
+      caret=Atom('caret',   transform=transform_char),
+      char=Atom('char',     transform=transform_char),
+      colon_p=Atom('colon', transform=transform_char),
+      dash=Atom('dash',     transform=transform_char),
+      esc=Atom('esc',       transform=transform_esc),
+      ref=Atom('ref',       transform=transform_ref),
+
+      # Charset atoms.
+      bar_cs=Atom('bar',          transform=transform_cs_char),
+      char_cs=Atom('char',        transform=transform_cs_char),
+      colon_cs=Atom('colon',      transform=transform_cs_char),
+      esc_cs=Atom('esc',          transform=transform_cs_esc),
+      paren_o_cs=Atom('paren_o',  transform=transform_cs_char),
+      paren_c_cs=Atom('paren_c',  transform=transform_cs_char),
+      plus_cs=Atom('plus',        transform=transform_cs_char),
+      qmark_cs=Atom('qmark',      transform=transform_cs_char),
+      ref_cs=Atom('ref',          transform=transform_cs_ref),
+      star_cs=Atom('star',        transform=transform_cs_char),
+    ),
+  drop=('comment', 'spaces'))
 
 
-def parse_mode(source:Source[str], buffer:Buffer[Token], patterns:Container[str]) -> FrozenSet[str]:
-  names:Set[str] = set()
-  for token in buffer:
-    kind = token.kind
-    if kind == 'newline': break
-    check_is_sym(source, token, 'pattern name')
-    name = source[token]
-    if name not in patterns: source.fail(token, f'unknown pattern name: {name!r}.')
-    if name in names: source.fail(token, f'duplicate pattern name: {name!r}.')
-    names.add(name)
-  return frozenset(names)
+# Parser transformers.
+
+def transform_grammar(source:Source, sections:List) -> Grammar:
+  licenses:List[str] = []
+  patterns:Dict[str,LegsPattern] = {}
+  modes:Dict[str,FrozenSet[str]] = {}
+  transitions = DefaultDict[str,KindModeTransitions](dict)
+  for name, section in sections:
+    label = clip_prefix(name.lower(), 'section_')
+    if label == 'license': licenses.extend(section)
+    elif label == 'patterns': patterns.update(section)
+    elif label == 'modes': modes.update(section)
+    elif label == 'transitions':
+      for (ms, ks), (md, kd) in section:
+        transitions[ms][ks] = (md, kd)
+  license = ''.join(licenses).strip()
+  for pattern in patterns.values():
+    assert isinstance(pattern, LegsPattern), pattern
+  if not modes:
+    modes['main'] = frozenset(patterns)
+
+  return Grammar(license=license, patterns=patterns, modes=modes, transitions=dict(transitions))
 
 
-def parse_transitions(source:Source[str], buffer:Buffer[Token], patterns:Container[str],
-  modes:Container[str], transitions:ModeTransitions) -> None:
-
-  def check_mode(token:Token) -> None:
-    s = source[token]
-    if s not in modes: source.fail(token, f'unknown mode name: {s!r}.')
-
-  def check_pattern(token:Token) -> None:
-    s = source[token]
-    if s not in patterns: source.fail(token, f'unknown pattern name: {s!r}.')
-
-  for token in buffer:
-    kind = token.kind
-    if kind == 'newline': continue
-    check_is_sym(source, token, 'expected transition start mode')
-    l_mode = token
-    check_mode(l_mode)
-    l_pattern = consume(source, buffer, kind='sym', subj='transition push pattern')
-    check_pattern(l_pattern)
-    consume(source, buffer, kind='colon', subj='transition declaration')
-    r_mode = consume(source, buffer, kind='sym', subj='transition destination mode')
-    check_mode(r_mode)
-    r_pattern = consume(source, buffer, kind='sym', subj='transition pop pattern')
-    check_pattern(r_pattern)
-    consume(source, buffer, kind='newline', subj='transition')
-    lm = source[l_mode]
-    lp = source[l_pattern]
-    r = (source[r_mode], source[r_pattern])
-    if lm not in transitions: transitions[lm] = {}
-    if lp in transitions[lm]: source.fail(token, f'duplicate transition entry: {lm}, {lp}.')
-    transitions[lm][lp] = r
+def transform_pattern(source:Source, struct:List) -> Tuple[str,LegsPattern]:
+  name, pattern, nl = struct
+  if pattern is None:
+    pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in name])
+  return (name, pattern)
 
 
-def parse_pattern(source:Source[str], sym_token:Token, buffer:Buffer[Token]) -> LegsPattern:
-  assert sym_token.kind == 'sym'
-  try: next_token = buffer.peek()
-  except StopIteration: pass
-  else:
-    if next_token.kind != 'newline': # named pattern.
-      consume(source, buffer, kind='colon', subj='pattern')
-      return parse_pattern_pattern(source, buffer, terminator='newline')
-  # literal symbol pattern.
-  text = source[sym_token]
-  return SeqPattern.from_list([CharsetPattern.for_char(c) for c in text])
+def transform_choice(source:Source, token:Token, l:LegsPattern, r:LegsPattern) -> ChoicePattern:
+  return ChoicePattern(l, r)
+
+def transform_adj(source:Source, token:Token, l:LegsPattern, r:LegsPattern) -> SeqPattern:
+  return SeqPattern((l, r))
 
 
-def parse_pattern_pattern(source:Source[str], buffer:Buffer[Token], terminator:str) -> LegsPattern:
-  'Parse a pattern and return a LegsPattern object.'
-  els:List[LegsPattern] = []
-  def finish() -> LegsPattern: return SeqPattern.from_list(els)
-  for token in buffer:
-    kind = token.kind
-    def _fail(msg) -> 'NoReturn': source.fail(token, msg)
-    def quantity(pattern_type:Type[QuantityPattern]) -> None:
-      if not els: _fail('quantity operator must be preceded by a pattern.')
-      els[-1] = pattern_type(els[-1])
-    if kind == terminator: return finish()
-    elif kind == 'paren_o': els.append(parse_pattern_pattern(source, buffer, terminator='paren_c'))
-    elif kind == 'brckt_o': els.append(CharsetPattern(ranges=tuple(ranges_for_codes(sorted(parse_charset(source, buffer, token))))))
-    elif kind == 'bar': return parse_choice(source, buffer, left=finish(), terminator=terminator)
-    elif kind == 'qmark': quantity(OptPattern)
-    elif kind == 'star': quantity(StarPattern)
-    elif kind == 'plus': quantity(PlusPattern)
-    elif kind == 'esc': els.append(CharsetPattern.for_code(parse_esc(source, token)))
-    elif kind == 'ref': els.append(CharsetPattern(ranges=parse_ref(source, token)))
-    elif kind == 'sym': els.extend(CharsetPattern.for_char(c) for c in source[token])
-    elif kind in ('colon', 'amp', 'dash', 'caret', 'char'):
-      els.append(CharsetPattern.for_char(source[token]))
-    elif kind == 'invalid': _fail('invalid pattern token.')
-    else: _fail(f'unexpected pattern token: {desc_kind(kind)}.')
-  return finish()
+# Parser atom transformers.
+
+def transform_char(source:Source, token:Token) -> CharsetPattern:
+  return CharsetPattern.for_code(ord(source[token]))
+
+def transform_esc(source:Source, token:Token) -> CharsetPattern:
+  return CharsetPattern.for_code(code_for_esc(source, token))
+
+def transform_ref(source:Source, token:Token) -> CharsetPattern:
+  return CharsetPattern(ranges=ranges_for_ref(source, token))
 
 
-def parse_choice(source:Source[str], buffer:Buffer[Token], left:LegsPattern, terminator:str) -> LegsPattern:
-  return ChoicePattern(left, parse_pattern_pattern(source, buffer, terminator=terminator))
+# Charset atom transformers.
+
+def transform_cs_char(source:Source, token:Token) -> Set[int]:
+  return set((ord(source[token]),))
+
+def transform_cs_esc(source:Source, token:Token) -> Set[int]:
+  return set((code_for_esc(source, token),))
+
+def transform_cs_ref(source:Source, token:Token) -> Set[int]:
+  return set(codes_for_ranges(ranges_for_ref(source, token)))
 
 
-def parse_esc(source:Source[str], token:Token) -> int:
+# Utilities.
+
+def code_for_esc(source:Source, token:Token) -> int:
   char = source[token][1]
-  try: code = escape_codes[char]
+  try: return escape_codes[char]
   except KeyError: source.fail(token, f'invalid escaped character: {char!r}.')
-  return code
+
+def ranges_for_ref(source:Source[str], token:Token) -> CodeRanges:
+  name = source[token][1:]
+  try: return unicode_charsets[name]
+  except KeyError: source.fail(token, f'unknown charset name: {name!r}.')
 
 
-def ranges_for_code(code:int) -> CodeRanges: return ((code, code+1),)
-
-
-def parse_ref(source:Source[str], token:Token) -> CodeRanges:
-  try: return unicode_charsets[source[token][1:]]
-  except KeyError: source.fail(token, 'unknown charset name.')
-
-
-def parse_charset(source:Source[str], buffer:Buffer[Token], start_token:Token, is_right=False, is_diff=False) -> Set[int]:
-  '''
-  The Legs character set syntax is different from traditional regular expressions.
-  * `[...]` introduces a nested character set.
-  * `&` binary operator: set intersection.
-  * `-` binary operator: set difference.
-  * `^` binary operator: set symmetric difference.
-  Multiple intersection operators can be chained together,
-  but if a difference or symmetric difference operator is used,
-  it must be the only operator to appear within the character set;
-  more complex expressions must be explicitly grouped.
-  Thus, the set expression syntax has no operator precedence or associativity.
-  '''
-  codes:Set[int] = set()
-
-  def add_code(token:Token, code:int) -> None:
-    if code in codes:
-      source.fail(token, f'repeated character in set: {code!r}.')
-    codes.add(code)
-
-  def parse_right(token:Token, is_diff_op:bool) -> Set[int]:
-    if not codes:
-      source.fail(token, f'empty charset preceding operator.')
-    if is_diff or (is_right and is_diff_op):
-      source.fail(token, f'compound set expressions containing `-` or `^` operators must be grouped with `[...]`.')
-    return parse_charset(source, buffer, token, is_right=True, is_diff=is_diff_op)
-
-  def finish() -> Set[int]:
-      if not codes: source.fail(start_token, 'empty character set.')
-      return codes
-
-  for token in buffer:
-    kind = token.kind
-    if kind == 'brckt_c':
-      return finish()
-    if kind == 'brckt_o':
-      for code in parse_charset(source, buffer, token):
-        add_code(token, code)
-    elif kind == 'ref':
-      for code in codes_for_ranges(parse_ref(source, token)):
-        add_code(token, code)
-    elif kind == 'amp':
-      codes.intersection_update(parse_right(token, is_diff_op=False))
-      return finish()
-    elif kind == 'dash':
-      codes.difference_update(parse_right(token, is_diff_op=True))
-      return finish()
-    elif kind == 'caret':
-      codes.symmetric_difference_update(parse_right(token, is_diff_op=True))
-      return finish()
-    elif kind == 'esc':
-      add_code(token, parse_esc(source, token))
-    elif kind == 'sym':
-      for char in source[token]:
-        add_code(token, ord(char))
-    elif kind in ('char', 'colon', 'bar', 'qmark', 'star', 'plus', 'paren_o', 'paren_c'):
-      add_code(token, ord(source[token]))
-    elif kind == 'invalid': source.fail(token, 'invalid pattern token.')
-    else: source.fail(token, f'unexpected charset token: {desc_kind(kind)}.')
-  source.fail(start_token, 'unterminated charset.')
-
-
-def consume(source:Source[str], buffer:Buffer[Token], kind:str, subj:str) -> Token:
-  token:Token = next(buffer)
-  act = token.kind
-  if act != kind: source.fail(token, f'{subj} expected {desc_kind(kind)}; found {desc_kind(act)}.')
-  return token
-
-
-def check_is_sym(source:Source[str], token:Token, expectation:str) -> None:
-  kind = token.kind
-  if kind != 'sym':
-    source.fail(token, f'expected {expectation}; found {desc_kind(kind)}.')
-  if source[token] in reserved_names:
-    source.fail(token, f'pattern name is reserved: {source[token]!r}.')
-
-reserved_names = { 'invalid', 'incomplete' }
-
-
-def is_section(token:Token) -> bool: return token.kind == 'section'
+kind_descs = { # TODO: Change pithy.parse.expect to use these.
+  'section_invalid' : 'invalid section',
+  'sym'     : 'symbol',
+  'colon'   : '`:`',
+}
 
 
 escape_codes:Dict[str, int] = {
@@ -316,3 +281,6 @@ escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/')
 if False:
   for k, v in sorted(escape_codes.items()):
     errL(f'{k}: {v!r}')
+
+
+parser = build_legs_grammar_parser()

@@ -295,11 +295,6 @@ class CharsetPattern(LegsPattern):
   def literal_pattern(self) -> str: return chr(self.ranges[0][0])
 
   @staticmethod
-  def for_char(char:str) -> 'CharsetPattern':
-    code = ord(char)
-    return CharsetPattern(ranges=((code, code + 1),))
-
-  @staticmethod
   def for_code(code:int) -> 'CharsetPattern':
     return CharsetPattern(ranges=((code, code + 1),))
 

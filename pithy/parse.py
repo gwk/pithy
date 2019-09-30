@@ -408,7 +408,8 @@ class Choice(Rule):
     else:
       syn = sub.parse(self, source, token, buffer)
       return self.transform(source, sub.name, syn)
-    raise ParseError(source, token, f'{self} expects any of {self.subs_desc}; received {token.kind}')
+    exp = self.name or f'any of {self.subs_desc}'
+    raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}')
 
 
 
@@ -421,7 +422,7 @@ class Operator:
   def __init__(self, *args:Any, **kwargs:Any) -> None: raise Exception(f'abstract base class: {self}')
 
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     raise NotImplementedError(self)
 
 
@@ -434,7 +435,7 @@ class Suffix(Operator):
     self.transform = transform
 
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     return self.transform(source, op_token, left) # No right-hand side.
 
 
@@ -460,8 +461,7 @@ class SuffixRule(Operator):
     return tuple(self.suffix.heads)
 
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token],
-   parse_precedence_level:Callable, level:int) -> Any:
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
     right = self.suffix.parse(cast(Rule, self), source, op_token, buffer)
     return self.transform(source, op_token.pos_token(), left, right)
 
@@ -485,8 +485,8 @@ class Adjacency(BinaryOp):
     raise _AllLeafKinds
 
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
-    right = parse_precedence_level(source=source, token=op_token, buffer=buffer, level=level)
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
+    right = parse_precedence_level(parent=parent, source=source, token=op_token, buffer=buffer, level=level)
     return self.transform(source, op_token.pos_token(), left, right)
 
 
@@ -504,8 +504,8 @@ class Infix(BinaryOp):
     self.transform = transform
 
 
-  def parse_right(self, left:Any, source:Source, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
-    right = parse_precedence_level(source=source, token=next(buffer), buffer=buffer, level=level)
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_precedence_level:Callable, level:int) -> Any:
+    right = parse_precedence_level(parent=parent, source=source, token=next(buffer), buffer=buffer, level=level)
     return self.transform(source, op_token, left, right)
 
 
@@ -590,12 +590,12 @@ class Precedence(Rule):
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    syn = self.parse_precedence_level(source, token, buffer, 0)
+    syn = self.parse_precedence_level(parent, source, token, buffer, 0)
     return self.transform(source, syn)
 
 
-  def parse_precedence_level(self, source:Source, token:Token, buffer:Buffer[Token], level:int) -> Any:
-    left = self.parse_leaf(source, token, buffer)
+  def parse_precedence_level(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token], level:int) -> Any:
+    left = self.parse_leaf(parent, source, token, buffer)
     while True:
       op_token = next(buffer)
       try:
@@ -603,17 +603,18 @@ class Precedence(Rule):
       except KeyError:
         break # op_token is not an operator.
       if group.level < level: break # This operator is at a lower precedence.
-      left = op.parse_right(left, source, op_token, buffer, self.parse_precedence_level, level=group.level+group.level_bump)
+      left = op.parse_right(parent, source, left, op_token, buffer, self.parse_precedence_level, level=group.level+group.level_bump)
     # op_token is either not an operator, or of a lower precedence level.
     buffer.push(op_token) # Put it back.
     return left
 
 
-  def parse_leaf(self, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+  def parse_leaf(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else: return sub.parse(self, source, token, buffer)
-    raise ParseError(source, token, f'{self} expects any of {self.subs_desc}; received {token.kind}.')
+    exp = self.name or f'any of {self.subs_desc}'
+    raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
 
 
