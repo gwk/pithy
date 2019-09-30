@@ -122,21 +122,22 @@ class SeqPattern(StructPattern):
 
   precedence = 2
 
-  def __init__(self, els:Iterable[LegsPattern]) -> None:
-    for el in els:
-      assert isinstance(el, LegsPattern), el
-    self.els = tuple(els)
-    if len(self.els) < 2: raise ValueError(els)
+  def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern) -> None:
+    assert isinstance(hd, LegsPattern), hd
+    assert isinstance(tl, LegsPattern), tl
+    self.hd = hd
+    self.tl = SeqPattern(tl, *rem) if rem else tl
 
   def __iter__(self) -> Iterator[LegsPattern]:
-    return iter(self.els)
+    link:LegsPattern = self
+    while isinstance(link, SeqPattern):
+      yield link.hd
+      link = link.tl
+    yield link
 
   def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
-    if not self:
-      transitions[start][empty_symbol].add(end)
-      return
-    intermediates = [mk_node() for i in range(1, len(self.els))]
-    for sub, src, dst in zip(self.els, [start] + intermediates, intermediates + [end]):
+    intermediates = [mk_node() for i in range(1, len(list(self)))]
+    for sub, src, dst in zip(self, [start] + intermediates, intermediates + [end]):
       sub.gen_nfa(mk_node, transitions, src, dst)
 
   def gen_regex(self, flavor:str) -> str:
@@ -144,7 +145,7 @@ class SeqPattern(StructPattern):
     return ''.join(sub_patterns)
 
   def gen_incomplete(self) -> Optional[LegsPattern]:
-    els = self.els
+    els = list(self)
     incs:List[LegsPattern] = []
     for i in range(len(els)):
       inc_els = list(els[:i])
@@ -166,13 +167,13 @@ class SeqPattern(StructPattern):
   @staticmethod
   def from_list(els:List[LegsPattern]) -> LegsPattern:
     if len(els) == 1: return els[0]
-    return SeqPattern(els)
+    return SeqPattern(*els)
 
   @staticmethod
   def from_opts(els:Iterable[Optional[LegsPattern]]) -> Optional[LegsPattern]:
-    l = list(filter(None, els))
-    if not l: return None
-    return SeqPattern.from_list(l)
+    filtered:List[LegsPattern] = list(filter(None, els))
+    if not filtered: return None
+    return SeqPattern.from_list(filtered)
 
 
 class QuantityPattern(StructPattern):

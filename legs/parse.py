@@ -224,7 +224,7 @@ def transform_choice(source:Source, token:Token, l:LegsPattern, r:LegsPattern) -
   return ChoicePattern(l, r)
 
 def transform_adj(source:Source, token:Token, l:LegsPattern, r:LegsPattern) -> SeqPattern:
-  return SeqPattern((l, r))
+  return SeqPattern(l, r)
 
 
 # Parser atom transformers.
