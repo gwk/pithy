@@ -81,13 +81,17 @@ lexer = Lexer(flags='x', invalid='invalid',
     main=['newline_indent', *common_kinds, 'sym', 'colon', *sl_kinds],
     license=['newline', 'license_text', *sl_kinds],
     patterns=[*common_kinds, 'sym', 'colon', *sl_kinds],
-    pattern=['newline_indent', *common_kinds, 'colon',
-      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'],
+    pattern=['newline_indent', *common_kinds,
+      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char'],
+    charset=['newline_indent', *common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'],
+
   ),
   transitions=[
     LexTrans('main', 'sl_license', 'license', sl_kinds, consume=False),
     LexTrans('main', 'sl_patterns', 'patterns', sl_kinds, consume=False),
     LexTrans('patterns', 'colon', 'pattern', 'newline', consume=True),
+    LexTrans('pattern', 'brack_o', 'charset', 'brack_c', consume=True),
+    LexTrans('charset', 'brack_o', 'charset', 'brack_c', consume=True),
   ]
 )
 
@@ -138,7 +142,7 @@ def build_legs_grammar_parser() -> Parser:
       # Pattern rules.
 
       pattern_expr=Precedence(
-        ('amp', 'char', 'caret', 'colon_p', 'dash', 'esc', 'ref', 'charset_p', 'paren'),
+        ('char', 'esc', 'ref', 'charset_p', 'paren'),
         Right(Infix('bar', transform=transform_choice)),
         Right(Adjacency(transform=transform_adj)),
         Right(
@@ -157,7 +161,7 @@ def build_legs_grammar_parser() -> Parser:
         transform=lambda s, t, cs: cs),
 
       charset_expr=Precedence(
-        ('charset', 'bar_cs', 'char_cs', 'colon_cs', 'esc_cs', 'paren_o_cs', 'paren_c_cs', 'plus_cs', 'qmark_cs', 'ref_cs', 'star_cs'),
+        ('charset', 'char_cs', 'esc_cs', 'ref_cs'),
         Left(
           Infix('amp',    transform=lambda s, t, l, r: l & r),
           Infix('caret',  transform=lambda s, t, l, r: l ^ r),
@@ -169,22 +173,14 @@ def build_legs_grammar_parser() -> Parser:
       amp=Atom('amp',       transform=transform_char),
       caret=Atom('caret',   transform=transform_char),
       char=Atom('char',     transform=transform_char),
-      colon_p=Atom('colon', transform=transform_char),
       dash=Atom('dash',     transform=transform_char),
       esc=Atom('esc',       transform=transform_esc),
       ref=Atom('ref',       transform=transform_ref),
 
       # Charset atoms.
-      bar_cs=Atom('bar',          transform=transform_cs_char),
       char_cs=Atom('char',        transform=transform_cs_char),
-      colon_cs=Atom('colon',      transform=transform_cs_char),
       esc_cs=Atom('esc',          transform=transform_cs_esc),
-      paren_o_cs=Atom('paren_o',  transform=transform_cs_char),
-      paren_c_cs=Atom('paren_c',  transform=transform_cs_char),
-      plus_cs=Atom('plus',        transform=transform_cs_char),
-      qmark_cs=Atom('qmark',      transform=transform_cs_char),
       ref_cs=Atom('ref',          transform=transform_cs_ref),
-      star_cs=Atom('star',        transform=transform_cs_char),
     ),
   drop=('comment', 'spaces'))
 
