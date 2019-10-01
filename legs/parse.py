@@ -5,7 +5,7 @@ from typing import Container, DefaultDict, Dict, FrozenSet, List, Match, NoRetur
 
 from pithy.io import *
 from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
-from pithy.lex import Lexer
+from pithy.lex import Lexer, LexTrans
 from pithy.parse import *
 from pithy.string import clip_prefix
 from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges
@@ -84,11 +84,11 @@ lexer = Lexer(flags='x', invalid='invalid',
     pattern=['newline_indent', *common_kinds, 'colon',
       'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'],
   ),
-  transitions={
-    ('main', 'sl_license') : ('license', sl_kinds),
-    ('main', 'sl_patterns') : ('patterns', sl_kinds),
-    ('patterns', 'colon') : ('pattern', 'newline'),
-  }
+  transitions=[
+    LexTrans('main', 'sl_license', 'license', sl_kinds, consume=False),
+    LexTrans('main', 'sl_patterns', 'patterns', sl_kinds, consume=False),
+    LexTrans('patterns', 'colon', 'pattern', 'newline', consume=True),
+  ]
 )
 
 

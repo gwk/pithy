@@ -71,8 +71,8 @@ str_lexer = Lexer(patterns=dict(
   modes=dict(
     main=['line', 'space', 'dq'],
     string=['chars', 'esc', 'dq']),
-  transitions={
-    ('main', 'dq'): ('string', 'dq')})
+  transitions=[
+    LexTrans('main', 'dq', 'string', 'dq', consume=True)])
 
 
 utest_seq([

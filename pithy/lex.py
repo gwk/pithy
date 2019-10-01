@@ -13,6 +13,17 @@ from tolkien import Source, Token
 class LexError(Exception): pass
 
 
+class LexTrans:
+  def __init__(self, base:str, kind:str, mode:str, pops:Iterable[str], consume:bool) -> None:
+    self.base = base # Parent mode.
+    self.kind = kind # Base token kind.
+    self.mode = mode # Child mode.
+    self.pops = frozenset([pops] if isinstance(pops, str) else pops) # Child token kinds.
+    self.consume = consume # If false, base will consider this token for further push/pop mode transitions.
+
+  def __repr__(self) -> str: return f'{type(self).__name__}({self.base!r}, {self.kind!r}, {self.mode!r}, {self.pops!r}, {self.consume!r})'
+
+
 class Lexer:
   '''
   Note: A zero-length match, e.g. r'^' causes an exception; otherwise the stream would never advance.
@@ -24,7 +35,7 @@ class Lexer:
   class DefinitionError(Exception): pass
 
   def __init__(self, *, flags='', invalid=None, patterns:Dict[str,str], modes:Dict[str,Iterable[str]]={},
-   transitions:Dict[Tuple[str,str],Tuple[str,Iterable[str]]]={}) -> None:
+   transitions:Iterable[LexTrans]=()) -> None:
     self.invalid = invalid
 
     # Validate flags.
@@ -86,17 +97,16 @@ class Lexer:
 
     # Validate transitions.
     assert main is not None
-    self.main: str = main
-    self.transitions:Dict[Tuple[str,str],Tuple[str,FrozenSet[str]]] = {}
-    for (parent_mode, enter), (child_mode, leaves) in transitions.items():
-      if parent_mode not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {parent_mode!r}')
-      if child_mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {child_mode!r}')
-      if enter not in patterns: raise Lexer.DefinitionError(f'unknown mode enter pattern: {enter!r}')
-      if isinstance(leaves, str):
-        leaves = [leaves]
-      for leave in leaves:
-        if leave not in patterns: raise Lexer.DefinitionError(f'unknown mode leave pattern: {leave!r}')
-      self.transitions[(parent_mode, enter)] = (child_mode, frozenset(leaves))
+    self.main:str = main
+    self.transitions:Dict[Tuple[str,str],LexTrans] = {}
+    for trans in transitions:
+      if not isinstance(trans, LexTrans): raise TypeError(trans)
+      if trans.base not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {trans.base!r}')
+      if trans.mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {trans.mode!r}')
+      if trans.kind not in patterns: raise Lexer.DefinitionError(f'unknown mode push pattern: {trans.kind!r}')
+      for kind in trans.pops:
+        if kind not in patterns: raise Lexer.DefinitionError(f'unknown mode pop pattern: {kind!r}')
+      self.transitions[(trans.base, trans.kind)] = trans
 
     choice_sep = '\n| ' if 'x' in flags else '|'
     def compile_mode(mode:str, pattern_names:FrozenSet[str]) -> Pattern:
@@ -106,46 +116,52 @@ class Lexer:
     self.regexes = { mode : compile_mode(mode, pattern_names) for mode, pattern_names in self.modes.items() }
 
 
-  def _lex_mode(self, regex:Pattern, source:Source[str], pos:int, end:int) -> Iterator[Token]:
-    def lex_inv(end:int) -> Token:
-      inv = Token(pos=pos, end=end, kind=(self.invalid or 'invalid'))
-      if self.invalid: return inv
-      raise LexError(inv)
-    while pos < end:
-      m = regex.search(source.text, pos)
-      if not m:
-        yield lex_inv(end=end)
-        break
-      p, e = m.span()
-      if pos < p:
-        yield lex_inv(end=p)
-        break
-      if p == e:
-        raise Lexer.DefinitionError('Zero-length patterns are disallowed.\n'
-          f'  kind: {m.lastgroup}; match: {m}')
-      kind = m.lastgroup
-      assert isinstance(kind, str)
-      yield Token(pos=p, end=e, kind=kind)
-      pos = e
+  def _lex_inv(self, pos:int, end:int) -> Token:
+    inv = Token(pos=pos, end=end, kind=(self.invalid or 'invalid'))
+    if self.invalid: return inv
+    raise LexError(inv)
 
-  def _lex(self, stack:List[Tuple[str,FrozenSet[str]]], source:Source[str], p:int, e:int, drop:Container[str], eot:bool
+
+  def _lex_one(self, regex:Pattern, source:Source[str], pos:int, end:int) -> Token:
+    m = regex.search(source.text, pos)
+    if not m:
+      return self._lex_inv(pos=pos, end=end)
+    p, e = m.span()
+    if pos < p:
+      return self._lex_inv(pos=pos, end=p)
+    if p == e:
+      raise Lexer.DefinitionError(f'Zero-length patterns are disallowed.\n  kind: {m.lastgroup}; match: {m}')
+    kind = m.lastgroup
+    assert isinstance(kind, str)
+    return Token(pos=p, end=e, kind=kind)
+
+
+  def _lex(self, stack:List[Tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
    ) -> Iterator[Token]:
     assert isinstance(source, Source)
-    while p < e:
-      mode, exit_names = stack[-1]
+    while pos < end:
+      frame_trans, frame_token = stack[-1]
+      mode = frame_trans.mode
       regex = self.regexes[mode]
-      for token in self._lex_mode(regex, source, pos=p, end=e):
-        p = token.end
-        if not drop or token.kind not in drop:
-          yield token
-        if token.kind in exit_names:
+      token = self._lex_one(regex, source, pos=pos, end=end)
+      kind = token.kind
+      pos = token.end
+      if kind not in drop:
+        yield token
+      # Check if we should pop one or more modes.
+      try:
+        while kind in frame_trans.pops: # Check if we should pop the current mode.
           stack.pop()
-          break
-        try: frame = self.transitions[(mode, token.kind)]
+          if frame_trans.consume:
+            raise _BreakFromModeSwitching # This frame "consumes" the token.
+          frame_trans, frame_token = stack[-1]
+          mode = frame_trans.mode
+        # Check if we should push a child mode.
+        try: push_trans = self.transitions[(mode, kind)]
         except KeyError: pass
         else:
-          stack.append(frame)
-          break
+          stack.append((push_trans, token))
+      except _BreakFromModeSwitching: pass
     if eot:
       yield eot_token(source)
 
@@ -160,7 +176,7 @@ class Lexer:
     elif end < 0:
       end = len(text) + end
     _e:int = end # typing hack.
-    return self._lex(stack=[(self.main, frozenset())], source=source, p=pos, e=_e, drop=drop, eot=eot)
+    return self._lex(stack=[self.root_frame(mode=self.main)], source=source, pos=pos, end=_e, drop=drop, eot=eot)
 
 
   def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Tuple[Source, Token]]:
@@ -168,15 +184,23 @@ class Lexer:
     Note: the yielded Token objects have positions relative to input string that each was lexed from.
     TODO: fix the line numbers.
     '''
-    stack:List[Tuple[str,FrozenSet[str]]] = [(self.main, frozenset())]
+    stack = [self.root_frame(mode=self.main)]
     source = Source(name=name, text='')
     for text in stream:
       if text:
         source = Source(name=name, text=text)
-        for token in self._lex(stack=stack, source=source, p=0, e=len(source.text), drop=drop, eot=False):
+        for token in self._lex(stack=stack, source=source, pos=0, end=len(source.text), drop=drop, eot=False):
           yield (source, token)
     if eot:
       yield (source, eot_token(source))
+
+
+  def root_frame(self, mode:str) -> Tuple[LexTrans,Token]:
+    'The root frame is degenerate; because it has an empty pops set it will never get popped; base and kind are never accessed.'
+    return (LexTrans(base='', kind='', mode=mode, pops=frozenset(), consume=False), Token(0, 0, ''))
+
+
+class _BreakFromModeSwitching(Exception): pass
 
 
 def eot_token(source:Source[str]) -> Token:
