@@ -21,7 +21,7 @@ def parse(path:str, counts:Counter[str]) -> None:
   for token in Lexer(source=source):
     counts[token.kind] += 1
     if token.kind == 'invalid':
-      print(source.diagnostic_for_token(token, msg='invalid'))
+      print(source.diagnostic(token, msg='invalid'))
 
 
 if __name__ == '__main__': main()
