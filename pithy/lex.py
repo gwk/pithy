@@ -27,14 +27,14 @@ class Lexer:
    transitions:Dict[Tuple[str,str],Tuple[str,Iterable[str]]]={}) -> None:
     self.invalid = invalid
 
-    # validate flags.
+    # Validate flags.
     for flag in flags:
       if flag not in 'aiLmsux':
         raise Lexer.DefinitionError(f'invalid global regex flag: {flag}')
     flags_pattern = f'(?{flags})' if flags else ''
     is_extended = 'x' in flags
 
-    # validate patterns.
+    # Validate patterns.
     if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
     self.patterns: Dict[str,str] = {}
     for n, v in patterns.items():
@@ -56,7 +56,7 @@ class Lexer:
           raise Lexer.DefinitionError(f'{n!r} pattern contains a conflicting capture group name: {group_name!r}')
       self.patterns[n] = pattern
 
-    # validate modes.
+    # Validate modes.
     self.modes: Dict[str,FrozenSet[str]] = {}
     main = None
     if modes:
@@ -84,7 +84,7 @@ class Lexer:
       self.modes = { 'main' : frozenset(self.patterns) }
       main = 'main'
 
-    # validate transitions.
+    # Validate transitions.
     assert main is not None
     self.main: str = main
     self.transitions:Dict[Tuple[str,str],Tuple[str,FrozenSet[str]]] = {}
