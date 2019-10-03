@@ -1,27 +1,28 @@
 # Derived from CPython 3.7 Lib/http/server.py.
 # Changes dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from ..fs import is_dir, list_dir, norm_path, path_exists, path_join
-from ..io import errL, errSL
-from email.utils import formatdate as format_email_date
-from html import escape as html_escape
-from http import HTTPStatus
-from http.client import HTTPException, HTTPMessage, LineTooLong, parse_headers # type: ignore
-from io import BytesIO
-from os import fstat as os_fstat
-from posixpath import normpath, splitext
-from shutil import copyfileobj
-from socket import getfqdn as get_fully_qualified_domain_name, timeout as SocketTimeout
-from socketserver import TCPServer, StreamRequestHandler
-from sys import exc_info
-from traceback import print_exception
-from typing import Any, BinaryIO, List, Optional, Tuple, Type
-from urllib.parse import unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
 import mimetypes
 import os
 import sys
 import time
 import urllib.parse
+from email.utils import formatdate as format_email_date
+from html import escape as html_escape
+from http import HTTPStatus
+from http.client import HTTPException, HTTPMessage, LineTooLong, parse_headers  # type: ignore
+from io import BytesIO
+from os import fstat as os_fstat
+from posixpath import normpath, splitext
+from shutil import copyfileobj
+from socket import getfqdn as get_fully_qualified_domain_name, timeout as SocketTimeout
+from socketserver import StreamRequestHandler, TCPServer
+from sys import exc_info
+from traceback import print_exception
+from typing import Any, BinaryIO, List, Optional, Tuple, Type, cast
+from urllib.parse import unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
+
+from ..fs import is_dir, list_dir, norm_path, path_exists, path_join
+from ..io import errL, errSL
 
 
 __version__ = '0.1'
@@ -557,7 +558,8 @@ class HTTPRequestHandler(StreamRequestHandler):
   def format_log_date(self, timestamp:float=None) -> str:
     'Format the current time for logging.'
     if timestamp is None: timestamp = time.time()
-    y, m, d, hh, mm, ss, wd, yd, is_dst = time.localtime(timestamp)
+    ts = time.localtime(timestamp)
+    y, m, d, hh, mm, ss, wd, yd = ts[:8]
     return f'{y:04}-{m:02}-{d:02} {hh:02}:{mm:02}:{ss:02}.{timestamp%1:.03f}'
 
 
