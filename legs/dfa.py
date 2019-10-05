@@ -239,6 +239,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         set_pairs.append((intersection, part))
     return set_pairs
 
+  # Refinement.
   remaining = list(init_sets) # distinguishing sets used to refine the partition.
   while remaining:
     s = remaining.pop() # a partition.
@@ -261,12 +262,14 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
 
   validate_partition()
 
+  # Map old nodes to new nodes.
   mapping:Dict[int,int] = {}
   for new_node, part in enumerate(sorted(sorted(p) for p in part_ids_to_parts.values()), start_node):
     for old_node in part:
       assert old_node not in mapping, old_node
       mapping[old_node] = new_node
 
+  # Build new transitions.
   transitions_dd:DefaultDict[int,Dict[int,int]] = defaultdict(dict)
   for old_node, old_d in dfa.transitions.items():
     new_d = transitions_dd[mapping[old_node]]
@@ -290,6 +293,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
 
   match_node_kinds = { mapping[old] : set(kinds) for old, kinds in dfa.match_node_kind_sets.items() }
 
+  # Build kind to match nodes map.
   kind_match_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # kinds to sets of nodes.
   for node, kinds in match_node_kinds.items():
     for kind in kinds:
@@ -297,19 +301,23 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
 
   kind_rels:DefaultDict[str,Set[str]] = defaultdict(set)
   #^ For each kind, the set of nodes that must precede this node in generated regex choices.
+
+  # Reduce ambiguities and generate greedy regex ordering.
+  # For each kind, for each match node, compare this kind to all other kinds matching at this node.
+  # If this kind's match node set is a strict superset of others, then remove it from the match set *of that node*.
   for kind, nodes in kind_match_nodes.items():
-    for node in tuple(nodes):
+    for node in tuple(nodes): # Convert to tuple for order stability.
       kinds = match_node_kinds[node]
       assert kinds
-      for other_kind in tuple(kinds):
+      for other_kind in tuple(kinds): # Convert to tuple for order stability.
         if other_kind == kind: continue
         other_nodes = kind_match_nodes[other_kind]
         if other_nodes < nodes: # This pattern is a superset; it should not match.
           kind_rels[kind].add(other_kind) # Other pattern is more specific, must be tried first.
-          try: kinds.remove(kind)
+          try: kinds.remove(kind) # Remove this pattern.
           except KeyError: pass # Already removed.
 
-  # Check for ambiguous patterns.
+  # Check for ambiguous patterns. This must happen after the ambiguity reduction above.
   ambiguous_kind_groups = { tuple(sorted(kinds)) for kinds in match_node_kinds.values() if len(kinds) != 1 }
   if ambiguous_kind_groups:
     for group in sorted(ambiguous_kind_groups):
