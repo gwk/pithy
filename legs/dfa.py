@@ -37,7 +37,7 @@ from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Optional, Set, 
 
 from pithy.graph import visit_nodes
 from pithy.io import errL, errSL
-from pithy.iterable import first_el, int_tuple_ranges
+from pithy.iterable import first_el, frozenset_from, int_tuple_ranges, set_from
 from pithy.string import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
 
@@ -74,18 +74,14 @@ class DFA:
 
   @property
   def alphabet(self) -> FrozenSet[int]:
-    a:Set[int] = set()
-    a.update(*(d.keys() for d in self.all_byte_to_state_dicts))
-    return cast(FrozenSet[int], frozenset(a)) # mypy bug.
+    return frozenset_from(d.keys() for d in self.all_byte_to_state_dicts)
 
   @property
   def all_src_nodes(self) -> FrozenSet[int]: return frozenset(self.transitions.keys())
 
   @property
   def all_dst_nodes(self) -> FrozenSet[int]:
-    s:Set[int] = set()
-    s.update(*(self.dst_nodes(node) for node in self.all_src_nodes))
-    return frozenset(s)
+    return frozenset_from(self.dst_nodes(node) for node in self.all_src_nodes)
 
   @property
   def all_nodes(self) -> FrozenSet[int]: return self.all_src_nodes | self.all_dst_nodes
@@ -128,7 +124,7 @@ class DFA:
     return frozenset(nodes)
 
   @property
-  def pattern_kinds(self) -> FrozenSet[str]: return frozenset().union(*self.match_node_kind_sets.values()) # type: ignore
+  def pattern_kinds(self) -> FrozenSet[str]: return frozenset_from(self.match_node_kind_sets.values())
 
   def describe(self, label='') -> None:
     errL(self.name, (label and f': {label}'), ':')

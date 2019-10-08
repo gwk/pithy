@@ -13,7 +13,7 @@ from itertools import count
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set
 
 from pithy.io import errL, errSL
-from pithy.iterable import filtermap_with_mapping, int_tuple_ranges
+from pithy.iterable import frozenset_from, filtermap_with_mapping, int_tuple_ranges, set_from
 from pithy.string import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
 
@@ -48,8 +48,7 @@ class NFA:
 
   @property
   def alphabet(self) -> FrozenSet[int]:
-    s:Set[int] = set()
-    s.update(*(d.keys() for d in self.all_byte_to_state_dicts))
+    s = set_from(d.keys() for d in self.all_byte_to_state_dicts)
     s.discard(empty_symbol)
     return frozenset(s)
 
@@ -58,9 +57,7 @@ class NFA:
 
   @property
   def all_dst_nodes(self) -> FrozenSet[int]:
-    s:Set[int] = set()
-    s.update(*(self.dst_nodes(node) for node in self.all_src_nodes))
-    return frozenset(s)
+    return frozenset_from(self.dst_nodes(node) for node in self.all_src_nodes)
 
   @property
   def all_nodes(self) -> FrozenSet[int]: return self.all_src_nodes | self.all_dst_nodes
@@ -127,9 +124,7 @@ class NFA:
     errL()
 
   def dst_nodes(self, node:int) -> FrozenSet[int]:
-    s:Set[int] = set()
-    s.update(*self.transitions[node].values())
-    return FrozenSet(s)
+    return frozenset_from(self.transitions[node].values())
 
   def validate(self) -> List[str]:
     start = self.advance_empties({0})
