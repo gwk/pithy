@@ -1,4 +1,4 @@
-note: `main`: minimized DFA contains patterns that cannot be correctly ordered for greedy regex choice: ('r', 's').
+note: `main`: patterns cannot be correctly ordered for greedy regex choice: ('r', 's').
 r Seq:
   Plus:
     Charset: a

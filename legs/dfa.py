@@ -299,21 +299,21 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     for kind in kinds:
       kind_match_nodes[kind].add(node)
 
-  kind_rels:DefaultDict[str,Set[str]] = defaultdict(set)
-  #^ For each kind, the set of nodes that must precede this node in generated regex choices.
+  kind_subset_kinds:DefaultDict[str,Set[str]] = defaultdict(set)
+  #^ For each kind, the set of kinds whose match sets are subsets.
 
   # Reduce ambiguities and generate greedy regex ordering.
   # For each kind, for each match node, compare this kind to all other kinds matching at this node.
-  # If this kind's match node set is a strict superset of others, then remove it from the match set *of that node*.
+  # If this kind's match set is a strict superset of others, then remove it from the match set *of that node*.
   for kind, nodes in kind_match_nodes.items():
     for node in tuple(nodes): # Convert to tuple for order stability.
-      kinds = match_node_kinds[node]
+      kinds = match_node_kinds[node] # Mutable set.
       assert kinds
       for other_kind in tuple(kinds): # Convert to tuple for order stability.
         if other_kind == kind: continue
         other_nodes = kind_match_nodes[other_kind]
         if other_nodes < nodes: # This pattern is a superset; it should not match.
-          kind_rels[kind].add(other_kind) # Other pattern is more specific, must be tried first.
+          kind_subset_kinds[kind].add(other_kind) # Other pattern is more specific, must be tried first.
           try: kinds.remove(kind) # Remove this pattern.
           except KeyError: pass # Already removed.
 
@@ -325,8 +325,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     exit(1)
 
   # Determine a satisfactory ordering of kinds for generated greedy regex choices.
-  # `kind_rels` is currently half complete: it will prefer more specific patterns over less specific ones.
-  # However it must also prefer longer patterns over shorter ones.
+  # Using `kind_subset_kinds` we can prefer more specific patterns over less specific ones.
+  # We must also prefer longer patterns over shorter ones.
   # This is probably still not adequate for some cases.
   for kind, nodes in kind_match_nodes.items():
     if kind == 'invalid': continue # Omit invalid entirely; it is handled separately.
@@ -337,18 +337,18 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       except KeyError: continue
       reachable_kinds.update(node_kinds)
     reachable_kinds.discard(kind)
-    kind_rels[kind].update(reachable_kinds) # Reachable kinds must precede this kind.
+    kind_subset_kinds[kind].update(reachable_kinds) # Reachable kinds must precede this kind.
 
-  assert not kind_rels.get('invalid')
-  ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_rels.items())
+  assert not kind_subset_kinds.get('invalid')
+  ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_subset_kinds.items())
   unorderable_pairs:List[Tuple[str,str]] = []
   for supers, kind in ordered_kinds:
     for sup in supers:
-      if kind < sup and kind in kind_rels[sup]:
+      if kind < sup and kind in kind_subset_kinds[sup]:
         unorderable_pairs.append((kind, sup))
 
   if unorderable_pairs:
-    errL(f'note: `{dfa.name}`: minimized DFA contains patterns that cannot be correctly ordered for greedy regex choice: ',
+    errL(f'note: `{dfa.name}`: patterns cannot be correctly ordered for greedy regex choice: ',
       ', '.join(str(p) for p in unorderable_pairs), '.')
 
   kinds_greedy_ordered = tuple(kind for _, kind in ordered_kinds)
