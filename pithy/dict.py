@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from typing import (Any, Callable, Dict, Hashable, Iterable, List, Mapping, MutableMapping, MutableSequence, NamedTuple,
-  Sequence, Tuple, TypeVar, Union)
+  Sequence, Set, Tuple, TypeVar, Union)
 
 
 _K = TypeVar('_K', bound=Hashable)
@@ -82,6 +82,25 @@ def dict_set_defaults(d: MutableMapping[_K, _V], defaults: Union[Mapping[_K, _V]
     it = defaults
   for k, v in it:
     d.setdefault(k, v)
+  return d
+
+
+_VH = TypeVar('_VH', bound=Hashable)
+_S = Set[_VH]
+_I = Iterable[_VH]
+
+def dict_update_sets(d:MutableMapping[_K,_S], update:Union[Mapping[_K, _I],Iterable[Tuple[_K,_I]]]) -> MutableMapping[_K, _S]:
+  it:Iterable[Tuple[_K,_I]]
+  if isinstance(update, Mapping):
+    it = update.items()
+  else:
+    it = update
+  for k, i in it:
+    try: s = d[k]
+    except KeyError:
+      s = set()
+      d[k] = s
+    s.update(i)
   return d
 
 

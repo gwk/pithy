@@ -22,6 +22,12 @@ utest({'k': [0, 1, 2]}, dict_list_extend, {'k': [0]}, 'k', [1, 2])
 utest({'k': 0, 'l': 2}, dict_set_defaults, {'k': 0}, {'k': 1, 'l': 2})
 utest({'k': 0, 'l': 2}, dict_set_defaults, {'k': 0}, [('k', 1), ('l', 2)])
 
+utest({'k': {1}}, dict_update_sets, {}, {'k':{1}})
+utest({'k': {1}}, dict_update_sets, {}, [('k',{1})])
+
+utest({'k': {1, 2}}, dict_update_sets, {'k':{1}}, {'k':{2}})
+
+
 def DefaultByKeyDict_test(factory, test_keys):
   d = DefaultByKeyDict(factory)
   for k in test_keys:
