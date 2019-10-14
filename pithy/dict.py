@@ -12,23 +12,24 @@ class ConflictingValues(KeyError): pass
 
 
 class KeyExistingIncoming(NamedTuple):
+  'Triple of (key, existing, incoming) for reporting conflicting values.'
   key:Any
   existing:Any
   incoming:Any
 
 
 def dict_discard(d:MutableMapping[_K,_V], k:_K) -> None:
+  'Discard the element at `k` if it exists.'
   try: del d[k]
   except KeyError: pass
 
 
-def dict_put(d: MutableMapping[_K, _V], k: _K, v: _V) -> MutableMapping[_K, _V]:
+def dict_put(d:MutableMapping[_K,_V], k: _K, v: _V) -> MutableMapping[_K,_V]:
   '''
   Put a new key and value in the dictionary, or raise err KeyError if the key already exists.
   Returns the dictionary.
   '''
-  if k in d:
-    raise KeyError(k)
+  if k in d: raise KeyError(k)
   d[k] = v
   return d
 
