@@ -100,6 +100,7 @@ class ChoicePattern(StructPattern):
       sub.gen_nfa(mk_node, transitions, start, end)
 
   def gen_regex(self, flavor:str) -> str:
+    # TODO: must take into account ordering.
     sub_patterns = [sub.gen_regex_sub(flavor=flavor, precedence=self.precedence) for sub in self]
     return '|'.join(sub_patterns)
 
