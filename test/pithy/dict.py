@@ -7,6 +7,11 @@ from pithy.dict import *
 utest({'k': 0}, dict_put, {}, 'k', 0)
 utest_exc(KeyError('k'), dict_put, {'k': 0}, 'k', 1)
 
+utest({'k': 0}, idemput, {}, 'k', 0)
+utest({'k': 0}, idemput, {'k': 0}, 'k', 0)
+utest_exc(ConflictingValues(KeyExistingIncoming(key='k', existing=0, incoming=1)), idemput, {'k': 0}, 'k', 1)
+
+
 utest({'k': [0]}, dict_list_append, {}, 'k', 0)
 utest({'k': [0, 1]}, dict_list_append, {'k': [0]}, 'k', 1)
 

@@ -34,7 +34,7 @@ def dict_put(d:MutableMapping[_K,_V], k: _K, v: _V) -> MutableMapping[_K,_V]:
   return d
 
 
-def idemput(d:MutableMapping[_K,_V], k:_K, v:_V) -> None:
+def idemput(d:MutableMapping[_K,_V], k:_K, v:_V) -> MutableMapping[_K,_V]:
   '''
   Put a new key and value in the dictionary;
   raise err KeyError if the key already exists and the existing value is not equal to the incoming one.
@@ -44,6 +44,7 @@ def idemput(d:MutableMapping[_K,_V], k:_K, v:_V) -> None:
   else:
     if v != existing: raise ConflictingValues(KeyExistingIncoming(k, existing, v))
   d[k] = v
+  return d
 
 
 def dict_list_append(d: Dict[_K, List[_V]], k: _K, v: _V) -> Dict[_K, List[_V]]:
