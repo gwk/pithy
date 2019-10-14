@@ -10,6 +10,7 @@ from os.path import dirname
 from typing import Any, Dict, Iterable, List, Optional, Set, TextIO, Tuple, Union
 from pithy.io import errL, errSL
 from pithy.path import path_rel_to_current_or_abs
+from pithy.task import path_for_cmd
 from sys import argv, prefix as sys_prefix, path as sys_path, exc_info, stdout, stderr
 
 
@@ -24,7 +25,7 @@ def main() -> None:
   args = parser.parse_args()
 
   cmd = args.cmd
-  cmd_path = cmd[0]
+  cmd_path = path_for_cmd(cmd[0])
 
   output:TextIO
   if args.output == '<stderr>': output = stderr
