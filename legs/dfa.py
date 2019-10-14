@@ -295,10 +295,23 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     for kind in kinds:
       kind_match_nodes[kind].add(node)
 
-  kind_subset_kinds:DefaultDict[str,Set[str]] = defaultdict(set)
-  #^ For each kind, the set of kinds whose match sets are subsets.
+  # Compute reachability between kinds before reducing ambiguities. This is used for greedy regex ordering.
+  kind_reachable_kinds:Dict[str,Set[str]] = {}
+  #^ For each kind, the set of kinds whose match nodes are reachable from those of this kind.
+  for kind, nodes in kind_match_nodes.items():
+    if kind == 'invalid': continue # Omit invalid entirely; it is handled separately.
+    reachable_nodes = visit_nodes(start_nodes=nodes, visitor=lambda node:transitions[node].values())
+    reachable_kinds = set()
+    for node in reachable_nodes:
+      try: node_kinds = match_node_kinds[node]
+      except KeyError: continue
+      reachable_kinds.update(node_kinds)
+    reachable_kinds.discard(kind)
+    kind_reachable_kinds[kind] = reachable_kinds # Reachable kinds must precede this kind.
 
-  # Reduce ambiguities and generate greedy regex ordering.
+  assert 'invalid' not in kind_reachable_kinds
+
+  # Reduce ambiguities.
   # For each kind, for each match node, compare this kind to all other kinds matching at this node.
   # If this kind's match set is a strict superset of others, then remove it from the match set *of that node*.
   for kind, nodes in kind_match_nodes.items():
@@ -309,7 +322,6 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         if other_kind == kind: continue
         other_nodes = kind_match_nodes[other_kind]
         if other_nodes < nodes: # This pattern is a superset; it should not match.
-          kind_subset_kinds[kind].add(other_kind) # Other pattern is more specific, must be tried first.
           try: kinds.remove(kind) # Remove this pattern.
           except KeyError: pass # Already removed.
 
@@ -321,26 +333,24 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     exit(1)
 
   # Determine a satisfactory ordering of kinds for generated greedy regex choices.
-  # Using `kind_subset_kinds` we can prefer more specific patterns over less specific ones.
-  # We must also prefer longer patterns over shorter ones.
-  # This is probably still not adequate for some cases.
+  # In general it is not always possbile to get a satisfactory ordering.
+  # For example, a keyword literal 'kw' and a name pattern '$Ascii_Letter+'.
+  kind_subset_kinds:DefaultDict[str,Set[str]] = defaultdict(set)
+  #^ For each kind, the set of kinds whose match sets are subsets.
   for kind, nodes in kind_match_nodes.items():
-    if kind == 'invalid': continue # Omit invalid entirely; it is handled separately.
-    reachable_nodes = visit_nodes(start_nodes=nodes, visitor=lambda node:transitions[node].values())
-    reachable_kinds = set()
-    for node in reachable_nodes:
-      try: node_kinds = match_node_kinds[node]
-      except KeyError: continue
-      reachable_kinds.update(node_kinds)
-    reachable_kinds.discard(kind)
-    kind_subset_kinds[kind].update(reachable_kinds) # Reachable kinds must precede this kind.
+    other_kinds = set_from(match_node_kinds[node] for node in nodes)
+    assert other_kinds
+    for other_kind in tuple(other_kinds): # Convert to tuple for order stability.
+      if other_kind == kind: continue
+      other_nodes = kind_match_nodes[other_kind]
+      if other_nodes < nodes: # This pattern is a superset; it should not match.
+        kind_subset_kinds[kind].add(other_kind) # Other pattern is more specific, must be tried first.
 
-  assert not kind_subset_kinds.get('invalid')
-  ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_subset_kinds.items())
+  ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_reachable_kinds.items())
   unorderable_pairs:List[Tuple[str,str]] = []
   for supers, kind in ordered_kinds:
     for sup in supers:
-      if kind < sup and kind in kind_subset_kinds[sup]:
+      if kind < sup and kind in kind_reachable_kinds[sup]:
         unorderable_pairs.append((kind, sup))
 
   if unorderable_pairs:
