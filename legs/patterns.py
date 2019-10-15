@@ -333,7 +333,7 @@ def regex_for_codes(codes:Iterable[int], flavor:str) -> str:
   return regex_for_code_ranges(tuple(ranges_for_codes(codes)), flavor)
 
 
-def gen_incomplete_pattern(kinds_greedy_ordered:List[str], patterns:Dict[str,LegsPattern]) -> Optional[LegsPattern]:
+def gen_incomplete_pattern(kinds_greedy_ordered:Sequence[str], patterns:Dict[str,LegsPattern]) -> Optional[LegsPattern]:
   incompletes:List[LegsPattern] = []
   for kind in kinds_greedy_ordered:
     pattern = patterns[kind]
