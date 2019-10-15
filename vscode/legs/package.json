@@ -17,6 +17,19 @@
         "scopeName": "source.legs",
         "path": "./syntaxes/legs.json"
       }
+    ],
+    "problemMatchers": [
+      { "name": "legs",
+        "fileLocation": "relative",
+        "pattern": [
+          { "regexp": "([^:]+):(\\d+)(?:-\\d+)?:(\\d+)(?:-\\d+)?: ?(.*)",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "message": 4
+          }
+        ]
+      }
     ]
   }
 }
