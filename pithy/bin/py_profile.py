@@ -258,7 +258,7 @@ class CustomStats(Stats):
 
 
   def print_title(self) -> None:
-    self.print('       ncalls  tottime  percall  cumtime  percall filename:lineno(function)')
+    self.print('         ncalls  tottime  percall  cumtime  percall filename:lineno(function)')
 
 
   def display_line(self, func:Func) -> None:  # hack: should print percentages
@@ -269,7 +269,7 @@ class CustomStats(Stats):
     ttpc = f8(tt/nc) if nc else ' '*8
     ctpc = f8(ct/nc) if nc else ' '*8
     if all(s == '   0.000' for s in (stt, sct, ttpc, ctpc)): return
-    self.print(f'{ncalls:>13} {stt} {ttpc} {sct} {ctpc} {fmt_func(func)}')
+    self.print(f'{ncalls:>15} {stt} {ttpc} {sct} {ctpc} {fmt_func(func)}')
 
 
 def f8(x:float) -> str: return f'{x:8.3f}'
