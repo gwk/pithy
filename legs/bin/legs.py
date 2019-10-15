@@ -285,11 +285,11 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]]) -> NFA:
     match_node = mk_node()
     pattern.gen_nfa(mk_node, transitions_dd, start, match_node)
     dict_put(match_node_kinds, match_node, kind)
-  lit_patterns = { n for n, pattern in named_patterns if pattern.is_literal }
+  lit_pattern_names = { n for n, pattern in named_patterns if pattern.is_literal }
 
   transitions:NfaTransitions = {
     src: {char: frozenset(dst) for char, dst in d.items() } for src, d in transitions_dd.items() }
-  return NFA(name=name, transitions=transitions, match_node_kinds=match_node_kinds, lit_patterns=lit_patterns)
+  return NFA(name=name, transitions=transitions, match_node_kinds=match_node_kinds, lit_pattern_names=lit_pattern_names)
 
 
 ext_langs = {

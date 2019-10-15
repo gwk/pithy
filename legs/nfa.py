@@ -31,12 +31,12 @@ empty_symbol = -1 # not a legitimate byte value.
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, name:str, transitions:NfaTransitions, match_node_kinds:Dict[int, str], lit_patterns:Set[str]) -> None:
+  def __init__(self, name:str, transitions:NfaTransitions, match_node_kinds:Dict[int, str], lit_pattern_names:Set[str]) -> None:
     assert name
     self.name = name
     self.transitions = transitions
     self.match_node_kinds = match_node_kinds
-    self.lit_patterns = lit_patterns
+    self.lit_pattern_names = lit_pattern_names
 
 
   @property
@@ -151,7 +151,7 @@ class NFA:
       #errL(f'NFA step: {bytes([byte])} -> {state}')
     s:Iterable[str] = filtermap_with_mapping(state, self.match_node_kinds)
     all_matches:FrozenSet[str] = frozenset(s)
-    literal_matches = frozenset(n for n in all_matches if n in self.lit_patterns)
+    literal_matches = frozenset(n for n in all_matches if n in self.lit_pattern_names)
     return literal_matches or all_matches
 
   def advance_empties(self, mut_state:Set[int]) -> NfaState:
@@ -227,6 +227,6 @@ def gen_dfa(nfa:NFA) -> DFA:
       node_kinds[dfa_node].add(kind)
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in node_kinds.items() }
 
-  return DFA(name=nfa.name, transitions=dict(transitions), match_node_kind_sets=match_node_kind_sets, lit_patterns=nfa.lit_patterns)
+  return DFA(name=nfa.name, transitions=dict(transitions), match_node_kind_sets=match_node_kind_sets, lit_pattern_names=nfa.lit_pattern_names)
 
 

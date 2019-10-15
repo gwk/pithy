@@ -53,13 +53,13 @@ FrozenSetStr0:FrozenSet[str] = frozenset()
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
+  def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:Dict[int,FrozenSet[str]], lit_pattern_names:Set[str],
    kinds_greedy_ordered:Tuple[str,...]=()) -> None:
     assert name
     self.name = name
     self.transitions = transitions
     self.match_node_kind_sets = match_node_kind_sets
-    self.lit_patterns = lit_patterns
+    self.lit_pattern_names = lit_pattern_names
     self.kinds_greedy_ordered = kinds_greedy_ordered # The ordering necessary for greedy regex choices to match correctly.
     self.start_node = min(transitions)
     self.invalid_node = self.start_node + 1
@@ -362,4 +362,4 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
   return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
-    lit_patterns=dfa.lit_patterns, kinds_greedy_ordered=kinds_greedy_ordered)
+    lit_pattern_names=dfa.lit_pattern_names, kinds_greedy_ordered=kinds_greedy_ordered)
