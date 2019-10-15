@@ -54,7 +54,7 @@ class DFA:
   'Deterministic Finite Automaton.'
 
   def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:Dict[int,FrozenSet[str]], lit_patterns:Set[str],
-   kinds_greedy_ordered=Tuple[str,...]) -> None:
+   kinds_greedy_ordered:Tuple[str,...]=()) -> None:
     assert name
     self.name = name
     self.transitions = transitions
