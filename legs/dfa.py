@@ -185,8 +185,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   * https://en.wikipedia.org/wiki/DFA_minimization.
   * https://www.ics.uci.edu/~eppstein/PADS/PartitionRefinement.py
 
-  Additionally, reduce nodes that match more than one pattern where possible,
-  or issue errors if not.
+  Additionally, for nodes that match more than one pattern,
+  disambiguate by choosing the most specific node if it exists, or else issue errors.
   '''
 
   alphabet = dfa.alphabet
