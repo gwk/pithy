@@ -1,6 +1,6 @@
 {
-  "name": "craft",
-  "displayName": "craft",
+  "name": "crafts",
+  "displayName": "crafts",
   "description": "Build tool problem matchers.",
   "version": "1.0.0",
   "publisher": "gwk",
@@ -10,7 +10,7 @@
   "categories": ["Programming Languages"],
   "contributes": {
     "problemMatchers": [
-      { "name": "craft",
+      { "name": "crafts",
         "fileLocation": "relative",
         "pattern": [
           { "regexp": "([^:]+):(\\d+):(\\d+): ?(.+)",

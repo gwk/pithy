@@ -8,7 +8,7 @@
       "command": "craft-py-check",
       "args": ["-print-ok", "${relativeFile}"],
       "group": {"kind": "build", "isDefault": true},
-      "problemMatcher": "$craft",
+      "problemMatcher": "$crafts",
       "presentation": {"showReuseMessage": false}
     },
     {
@@ -16,7 +16,7 @@
       "command": "make",
       "args": ["typecheck"],
       "group": "build",
-      "problemMatcher": "$craft",
+      "problemMatcher": "$crafts",
       "presentation": {"showReuseMessage": false}
     },
     {
@@ -24,7 +24,7 @@
       "command": "make",
       "args": ["test"],
       "group": {"kind": "test", "isDefault": true},
-      "problemMatcher": "$craft",
+      "problemMatcher": "$crafts",
       "presentation": {"showReuseMessage": false}
     }
   ]

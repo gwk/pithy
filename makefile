@@ -20,6 +20,7 @@ packages := crafts iotest legs pithy utest wu
 
 build:
 	./build.sh $(packages)
+
 clean:
 	rm -rf _build/*
 
@@ -52,15 +53,10 @@ gen-grammars: \
 	grammars/ascii.legs \
 	grammars/unicode.legs \
 
-gen-vscode: vscode-ext/syntaxes/legs.json
+gen-vscode-legs: vscode/legs/syntaxes/legs.json
 
 help: # Summarize the targets of this makefile.
 	@GREP_COLOR="1;32" egrep --color=always '^\w[^ :]+:' makefile | sort
-
-install-vscode:
-	vscode-ext/install-vscode-ext.sh
-	craft-vscode-ext -name craft -src vscode-craft
-	craft-vscode-ext -name writeup -src vscode-writeup
 
 pip-uninstall:
 	pip3 uninstall --yes $(packages)
@@ -81,6 +77,9 @@ test-diff-data:
 typecheck: gen
 	craft-py-check iotest legs pithy tools utest
 
+vscode-insider-links:
+	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
+
 
 # Targets.
 
@@ -92,5 +91,5 @@ grammars/%.legs: tools/gen-charset-grammar.py
 legs/data_%.py: tools/gen-data.py
 	./$^ data/$* > $@
 
-vscode-ext/syntaxes/legs.json: grammars/legs.legs
+vscode/legs/syntaxes/legs.json: grammars/legs.legs
 	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -langs vscode -output $@
