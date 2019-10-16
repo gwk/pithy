@@ -1,0 +1,19 @@
+strict digraph Plain {
+label=Plain;
+a -> b;
+b -> c;
+c -> a;
+}
+strict digraph "Plain (dict)" {
+label="Plain (dict)";
+a -> b;
+b -> c;
+c -> a;
+}
+strict digraph Attributed {
+label=Attributed;
+a [style=bold];
+a -> b;
+b -> c [label="b->c"];
+c -> a;
+}

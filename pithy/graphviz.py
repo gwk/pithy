@@ -5,53 +5,76 @@
 import re
 from html import escape as html_escape
 from sys import stdout
-from typing import Any, Callable, Dict, Iterable, TextIO, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Optional, TextIO, Tuple, Union, Mapping
 
 
-Name = Union[int, float, str]
+GraphvizName = Union[int, float, str]
+
+GraphvizAttrs = Mapping[str,GraphvizName]
+GraphvizValAttrs = Tuple[GraphvizName,GraphvizAttrs]
+GraphvizValues = Union[Iterable[GraphvizName], Iterable[GraphvizValAttrs], Mapping[GraphvizName,GraphvizAttrs]]
+GraphvizAdjacency = Union[Mapping[GraphvizName,GraphvizValues], Iterable[Tuple[GraphvizName,GraphvizValues]]]
 
 dot_bare_id_re = re.compile(r'[_a-zA-Z][_a-zA-Z0-9]*')
+dot_quotable_id_re = re.compile(r'([ !#-\[\]-~\w]| )+') # Exclude double-quote and backslash; allow non-ascii word chars.
 dot_keywords = frozenset({'node', 'edge', 'graph', 'digraph', 'subgraph', 'strict'})
 
 
-def dot_id_quote(name: Name) -> str:
+def dot_id_quote(name:GraphvizName) -> str:
   '''
   Properly quote an identifier.
-  The DOT language has a facility for double-quoted strings, but the escape semantics are flawed,
-  in that double backslash is not an escape sequence.
-  Since XML escaping is also allowed, we just use that approach instead.
+  The DOT language has two quotation mechanisms:
+  * backslash double-quote escape, which is flawed because double backslash is not also an escape;
+  * HTML escapes surrounded by angle brackets.
+  we use the double-quote syntax when no escaping is required because it looks nicer,
+  but rely on HTML escaping for everything else.
+  See https://www.graphviz.org/doc/info/lang.html.
   '''
   if isinstance(name, (int, float)): return str(name)
-  return name if (dot_bare_id_re.fullmatch(name) and name not in dot_keywords) else f'<{html_escape(name)}>'
+  assert isinstance(name, str), name
+  if dot_bare_id_re.fullmatch(name) and name not in dot_keywords: return name
+  if dot_quotable_id_re.fullmatch(name): return f'"{name}"'
+  return f'<{html_escape(name)}>'
 
 
-AdjacencyIterable = Iterable[Tuple[Name, Iterable[Name]]]
-
-def write_dot_digraph_adjacency_contents(f: TextIO, adjacency: AdjacencyIterable) -> None:
-  for src, dsts in adjacency:
+def write_dot_digraph_adjacency_contents(f: TextIO, adjacency:GraphvizAdjacency) -> None:
+  if isinstance(adjacency, dict): adjacency = adjacency.items()
+  for src, dsts in adjacency: # type: ignore
+    if isinstance(dsts, dict): dsts = dsts.items()
     src_quoted = dot_id_quote(src)
-    f.write(f'  {src_quoted} -> {{')
-    for dst in sorted(dsts):
-      f.write(' ')
-      f.write(dot_id_quote(dst))
-    f.write(' };\n')
+    for dst in dsts:
+      attrs_str = ''
+      if isinstance(dst, tuple):
+        dst, attrs = dst
+        if not isinstance(attrs, dict): raise ValueError(attrs)
+        attrs_str = fmt_dot_attrs(attrs)
+      f.write(f'{src_quoted} -> {dot_id_quote(dst)}{attrs_str};\n')
 
 
-def write_dot_digraph_adjacency(f: TextIO, adjacency: AdjacencyIterable, **kwargs) -> None:
-  label = kwargs.get('label')
-  if label is None:
-    f.write('strict digraph {')
-  else:
-    f.write(f'strict digraph {dot_id_quote(label)} {{\n')
+def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:Mapping[GraphvizName,GraphvizAttrs]=None, **kwargs) -> None:
+  label = dot_id_quote(kwargs.get('label', ''))
+  if label: label += ' '
+  f.write(f'strict digraph {label}{{\n')
+  # Graph attributes.
   for k, v in kwargs.items():
     validator = graph_prop_validators[k]
     if not validator(v): raise ValueError(f'value for {k} failed validation: {v!r}')
-    f.write(f'  {k}={dot_id_quote(v)};\n')
+    f.write(f'{k}={dot_id_quote(v)};\n')
+  # Nodes.
+  if nodes:
+    for node, attrs in nodes.items():
+      f.write(f'{dot_id_quote(node)}{fmt_dot_attrs(attrs)};\n')
+  # Edges.
   write_dot_digraph_adjacency_contents(f, adjacency)
   f.write('}\n')
 
 
-def out_dot_digraph_adjacency(adjacency: AdjacencyIterable, **kwargs) -> None:
+def fmt_dot_attrs(attrs:Optional[GraphvizAttrs]) -> str:
+  if not attrs: return ''
+  s = ', '.join(f'{k}={dot_id_quote(v)}' for k, v in attrs.items())
+  return f' [{s}]'
+
+def out_dot_digraph_adjacency(adjacency:GraphvizAdjacency, **kwargs) -> None:
   write_dot_digraph_adjacency(stdout, adjacency=adjacency, **kwargs)
 
 
