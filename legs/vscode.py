@@ -2,18 +2,20 @@
 
 import re
 from argparse import Namespace
-from typing import Dict, FrozenSet, List
+from typing import Dict, FrozenSet, List, Optional
 
 from pithy.io import *
 from pithy.json import write_json
 from pithy.string import render_template
 
 from .defs import ModeTransitions
+from .dfa import DFA
 from .patterns import LegsPattern
 
 
-def output_vscode(path:str, patterns:Dict[str, LegsPattern], mode_pattern_kinds:Dict[str,FrozenSet[str]],
-  pattern_descs:Dict[str, str], license:str, args:Namespace):
+def output_vscode(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
+  patterns:Dict[str,LegsPattern], incomplete_patterns:Dict[str,Optional[LegsPattern]],
+  pattern_descs:Dict[str, str], license:str, args:Namespace) -> None:
 
   if not args.syntax_name: exit('error: vscode output requires `-syntax-name` argument.')
   if not args.syntax_scope: exit('error: vscode output requires `-syntax-scope` argument.')
@@ -32,9 +34,10 @@ def output_vscode(path:str, patterns:Dict[str, LegsPattern], mode_pattern_kinds:
 
   gen_patterns = {name : pattern.gen_regex(flavor='vscode') for name, pattern in patterns.items()}
 
-  for mode, pattern_names in mode_pattern_kinds.items():
+  for dfa in dfas:
+    mode = dfa.name
     mode_patterns:List[Any] = []
-    for name in pattern_names:
+    for name in dfa.backtracking_order:
       pattern = patterns[name]
       key = f'{name}.{scope}'
       if mode != 'main': key = f'{mode}.{key}'

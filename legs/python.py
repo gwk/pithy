@@ -18,7 +18,7 @@ from .patterns import LegsPattern, regex_for_codes
 
 
 def output_python(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
-  pattern_descs:Dict[str, str], license:str, args:Namespace):
+  pattern_descs:Dict[str, str], license:str, args:Namespace) -> None:
 
   mode_data:Dict[str,ModeData] = {}
 
@@ -66,7 +66,7 @@ class ${Name}Lexer(DictLexerBase):
 
 def output_python_re(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
   patterns:Dict[str,LegsPattern], incomplete_patterns:Dict[str,Optional[LegsPattern]],
-  pattern_descs:Dict[str, str], license:str, args:Namespace):
+  pattern_descs:Dict[str, str], license:str, args:Namespace) -> None:
 
   flavor = 'py.re.bytes'
 

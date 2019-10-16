@@ -12,84 +12,88 @@
     "main": {
       "patterns": [
         {
-          "match": "\\x0a",
-          "name": "newline.legs"
-        },
-        {
-          "match": "\\x20+",
-          "name": "space.legs"
-        },
-        {
-          "match": "\\x23\\x20*(?:(?:[Mm]odes|[Tt]ransitions)|[Pp]atterns)[\\x20-\\x7e]*",
-          "name": "section.legs"
-        },
-        {
-          "match": "\\x23[\\x20-\\x7e]*",
-          "name": "section_invalid.legs"
-        },
-        {
-          "match": "\\x2f\\x2f[\\x20-\\x7e]*",
-          "name": "comment.legs"
-        },
-        {
-          "match": "[A-Za-z][0-9A-Z_a-z]*",
-          "name": "sym.legs"
-        },
-        {
-          "match": "\\x3a",
-          "name": "colon.legs"
-        },
-        {
-          "match": "\\x5b",
-          "name": "brckt_o.legs"
-        },
-        {
-          "match": "\\x5d",
-          "name": "brckt_c.legs"
-        },
-        {
-          "match": "\\x28",
-          "name": "paren_o.legs"
-        },
-        {
-          "match": "\\x29",
-          "name": "paren_c.legs"
+          "match": "\\x26",
+          "name": "amp.legs"
         },
         {
           "match": "\\x7c",
           "name": "bar.legs"
         },
         {
-          "match": "\\x3f",
-          "name": "qmark.legs"
+          "match": "\\x5d",
+          "name": "brckt_c.legs"
         },
         {
-          "match": "\\x2a",
-          "name": "star.legs"
-        },
-        {
-          "match": "\\x2b",
-          "name": "plus.legs"
-        },
-        {
-          "match": "\\x26",
-          "name": "amp.legs"
-        },
-        {
-          "match": "\\x2d",
-          "name": "dash.legs"
+          "match": "\\x5b",
+          "name": "brckt_o.legs"
         },
         {
           "match": "\\x5e",
           "name": "caret.legs"
         },
         {
+          "match": "\\x3a",
+          "name": "colon.legs"
+        },
+        {
+          "match": "\\x2f\\x2f[\\x20-\\x7e]*",
+          "name": "comment.legs"
+        },
+        {
+          "match": "\\x2d",
+          "name": "dash.legs"
+        },
+        {
+          "match": "\\x5c[\\x21-\\x7e]",
+          "name": "esc.legs"
+        },
+        {
+          "match": "\\x0a",
+          "name": "newline.legs"
+        },
+        {
+          "match": "\\x29",
+          "name": "paren_c.legs"
+        },
+        {
+          "match": "\\x28",
+          "name": "paren_o.legs"
+        },
+        {
+          "match": "\\x2b",
+          "name": "plus.legs"
+        },
+        {
+          "match": "\\x3f",
+          "name": "qmark.legs"
+        },
+        {
           "match": "\\x24[A-Za-z][0-9A-Z_a-z]*",
           "name": "ref.legs"
         },
         {
-          "match": "\\x5c[\\x20-\\x7e]",
-          "name": "esc.legs"
+          "match": "\\x23\\x20*[Mm]modes",
+          "name": "section_label_modes.legs"
+        },
+        {
+          "match": "\\x23\\x20*[Pp]atterns",
+          "name": "section_label_patterns.legs"
+        },
+        {
+          "match": "\\x23\\x20*[Tt]ransitions",
+          "name": "section_label_transitions.legs"
+        },
+        {
+          "match": "\\x20+",
+          "name": "spaces.legs"
+        },
+        {
+          "match": "\\x2a",
+          "name": "star.legs"
+        },
+        {
+          "match": "[A-Za-z][0-9A-Z_a-z]*",
+          "name": "sym.legs"
         },
         {
           "match": "[\\x21-\\x22\\x24-\\x40\\x5b-\\x60\\x7b-\\x7e]",

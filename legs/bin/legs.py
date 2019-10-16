@@ -200,7 +200,8 @@ def main() -> None:
 
   if 'vscode' in langs:
     path = out_stem + '.json'
-    output_vscode(path, patterns=patterns, mode_pattern_kinds=mode_pattern_kinds,
+    output_vscode(path, dfas=dfas, mode_transitions=mode_transitions,
+      patterns=patterns, incomplete_patterns=incomplete_patterns,
       pattern_descs=pattern_descs, license=license, args=args)
 
   if args.test:
