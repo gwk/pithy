@@ -22,31 +22,27 @@ def output_vscode(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
   if not args.syntax_exts: exit('error: vscode output requires `-syntax-exts` argument.')
   if args.test: exit('error: vscode output is not testable.')
 
-  scope = args.syntax_scope
-  repository:Dict[str, Any] = {}
+  lang_scope = args.syntax_scope
+  repository:Dict[str,Any] = {}
   syntax_def = {
-    "scopeName": "source." + scope,
+    "scopeName": "source." + lang_scope,
     "fileTypes": args.syntax_exts,
     "name": args.syntax_name,
     "patterns": [{ "include" : "#main" }],
     "repository": repository,
   }
 
-  gen_patterns = {name : pattern.gen_regex(flavor='vscode') for name, pattern in patterns.items()}
+  for name, pattern in patterns.items():
+    key = f'{name}.{lang_scope}'
+    repository[name] = {
+      "name": key,
+      "match": pattern.gen_regex(flavor='vscode')}
 
   for dfa in dfas:
     mode = dfa.name
     mode_patterns:List[Any] = []
-    for name in dfa.backtracking_order:
-      pattern = patterns[name]
-      key = f'{name}.{scope}'
-      if mode != 'main': key = f'{mode}.{key}'
-      mode_patterns.append({
-        "name": key,
-        "match": pattern.gen_regex(flavor='vscode')})
-    repository[mode] = {
-      "patterns": mode_patterns,
-    }
+    includes = [{"include" : f'#{name}'} for name in dfa.backtracking_order]
+    repository[mode] = dict(patterns=includes)
 
   with open(path, 'w', encoding='utf8') as f:
     write_json(f, syntax_def)

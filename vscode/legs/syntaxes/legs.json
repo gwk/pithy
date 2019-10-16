@@ -9,97 +9,163 @@
     }
   ],
   "repository": {
+    "amp": {
+      "match": "\\x26",
+      "name": "amp.legs"
+    },
+    "bar": {
+      "match": "\\x7c",
+      "name": "bar.legs"
+    },
+    "brckt_c": {
+      "match": "\\x5d",
+      "name": "brckt_c.legs"
+    },
+    "brckt_o": {
+      "match": "\\x5b",
+      "name": "brckt_o.legs"
+    },
+    "caret": {
+      "match": "\\x5e",
+      "name": "caret.legs"
+    },
+    "char": {
+      "match": "[\\x21-\\x22\\x24-\\x40\\x5b-\\x60\\x7b-\\x7e]",
+      "name": "char.legs"
+    },
+    "colon": {
+      "match": "\\x3a",
+      "name": "colon.legs"
+    },
+    "comment": {
+      "match": "\\x2f\\x2f[\\x20-\\x7e]*",
+      "name": "comment.legs"
+    },
+    "dash": {
+      "match": "\\x2d",
+      "name": "dash.legs"
+    },
+    "esc": {
+      "match": "\\x5c[\\x21-\\x7e]",
+      "name": "esc.legs"
+    },
     "main": {
       "patterns": [
         {
-          "match": "\\x26",
-          "name": "amp.legs"
+          "include": "#amp"
         },
         {
-          "match": "\\x7c",
-          "name": "bar.legs"
+          "include": "#bar"
         },
         {
-          "match": "\\x5d",
-          "name": "brckt_c.legs"
+          "include": "#brckt_c"
         },
         {
-          "match": "\\x5b",
-          "name": "brckt_o.legs"
+          "include": "#brckt_o"
         },
         {
-          "match": "\\x5e",
-          "name": "caret.legs"
+          "include": "#caret"
         },
         {
-          "match": "\\x3a",
-          "name": "colon.legs"
+          "include": "#colon"
         },
         {
-          "match": "\\x2f\\x2f[\\x20-\\x7e]*",
-          "name": "comment.legs"
+          "include": "#comment"
         },
         {
-          "match": "\\x2d",
-          "name": "dash.legs"
+          "include": "#dash"
         },
         {
-          "match": "\\x5c[\\x21-\\x7e]",
-          "name": "esc.legs"
+          "include": "#esc"
         },
         {
-          "match": "\\x0a",
-          "name": "newline.legs"
+          "include": "#newline"
         },
         {
-          "match": "\\x29",
-          "name": "paren_c.legs"
+          "include": "#paren_c"
         },
         {
-          "match": "\\x28",
-          "name": "paren_o.legs"
+          "include": "#paren_o"
         },
         {
-          "match": "\\x2b",
-          "name": "plus.legs"
+          "include": "#plus"
         },
         {
-          "match": "\\x3f",
-          "name": "qmark.legs"
+          "include": "#qmark"
         },
         {
-          "match": "\\x24[A-Za-z][0-9A-Z_a-z]*",
-          "name": "ref.legs"
+          "include": "#ref"
         },
         {
-          "match": "\\x23\\x20*[Mm]modes",
-          "name": "section_label_modes.legs"
+          "include": "#section_label_modes"
         },
         {
-          "match": "\\x23\\x20*[Pp]atterns",
-          "name": "section_label_patterns.legs"
+          "include": "#section_label_patterns"
         },
         {
-          "match": "\\x23\\x20*[Tt]ransitions",
-          "name": "section_label_transitions.legs"
+          "include": "#section_label_transitions"
         },
         {
-          "match": "\\x20+",
-          "name": "spaces.legs"
+          "include": "#spaces"
         },
         {
-          "match": "\\x2a",
-          "name": "star.legs"
+          "include": "#star"
         },
         {
-          "match": "[A-Za-z][0-9A-Z_a-z]*",
-          "name": "sym.legs"
+          "include": "#sym"
         },
         {
-          "match": "[\\x21-\\x22\\x24-\\x40\\x5b-\\x60\\x7b-\\x7e]",
-          "name": "char.legs"
+          "include": "#char"
         }
       ]
+    },
+    "newline": {
+      "match": "\\x0a",
+      "name": "newline.legs"
+    },
+    "paren_c": {
+      "match": "\\x29",
+      "name": "paren_c.legs"
+    },
+    "paren_o": {
+      "match": "\\x28",
+      "name": "paren_o.legs"
+    },
+    "plus": {
+      "match": "\\x2b",
+      "name": "plus.legs"
+    },
+    "qmark": {
+      "match": "\\x3f",
+      "name": "qmark.legs"
+    },
+    "ref": {
+      "match": "\\x24[A-Za-z][0-9A-Z_a-z]*",
+      "name": "ref.legs"
+    },
+    "section_label_modes": {
+      "match": "\\x23\\x20*[Mm]modes",
+      "name": "section_label_modes.legs"
+    },
+    "section_label_patterns": {
+      "match": "\\x23\\x20*[Pp]atterns",
+      "name": "section_label_patterns.legs"
+    },
+    "section_label_transitions": {
+      "match": "\\x23\\x20*[Tt]ransitions",
+      "name": "section_label_transitions.legs"
+    },
+    "spaces": {
+      "match": "\\x20+",
+      "name": "spaces.legs"
+    },
+    "star": {
+      "match": "\\x2a",
+      "name": "star.legs"
+    },
+    "sym": {
+      "match": "[A-Za-z][0-9A-Z_a-z]*",
+      "name": "sym.legs"
     }
   },
   "scopeName": "source.legs"
