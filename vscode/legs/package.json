@@ -2,27 +2,44 @@
   "name": "legs",
   "displayName": "legs",
   "description": "Legs grammar support.",
+  "license": "CC0-1.0",
+  "repository": {
+    "url": "https://github.com/gwk/pithy"
+  },
   "version": "1.0.0",
   "publisher": "gwk",
-  "engines": {"vscode": "^1.0.0"},
-  "categories": ["Programming Languages"],
+  "engines": {
+    "vscode": "^1.32.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+  ],
+  "main": "./built/extension.js",
   "contributes": {
     "languages": [
-      { "id": "legs",
-        "extensions": [".legs"]
+      {
+        "id": "legs",
+        "extensions": [
+          ".legs"
+        ]
       }
     ],
     "grammars": [
-      { "language": "legs",
+      {
+        "language": "legs",
         "scopeName": "source.legs",
         "path": "./syntaxes/legs.json"
       }
     ],
     "problemMatchers": [
-      { "name": "legs",
+      {
+        "name": "legs",
         "fileLocation": "relative",
         "pattern": [
-          { "regexp": "([^:]+):(\\d+)(?:-\\d+)?:(\\d+)(?:-\\d+)?: ?(.*)",
+          {
+            "regexp": "([^:]+):(\\d+)(?:-\\d+)?:(\\d+)(?:-\\d+)?: ?(.*)",
             "file": 1,
             "line": 2,
             "column": 3,
@@ -30,6 +47,27 @@
           }
         ]
       }
+    ],
+		"colors": [
+			{
+				"id": "myextension.largeNumberBackground",
+				"description": "Background decoration color for large numbers",
+				"defaults": {
+					"dark": "#FF000055",
+					"light": "#FF000055",
+					"highContrast": "#FF000055"
+				}
+			}
     ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^8.9.1",
+    "@types/vscode": "^1.32.0",
+    "typescript": "^3.5.1"
   }
 }
