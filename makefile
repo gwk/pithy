@@ -83,10 +83,11 @@ vscode-insider-links:
 
 # Targets.
 
-grammars/legs.legs: # Override the pattern rule below.
+grammars/ascii.legs: tools/gen-charset-grammar.py
+	./$^ ascii > $@
 
-grammars/%.legs: tools/gen-charset-grammar.py
-	./$^ $* > $@
+grammars/unicode.legs: tools/gen-charset-grammar.py
+	./$^ unicode > $@
 
 legs/data_%.py: tools/gen-data.py
 	./$^ data/$* > $@
