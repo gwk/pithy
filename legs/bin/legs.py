@@ -12,8 +12,8 @@ from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.string import pluralize
 
-from ..defs import ModeTransitions
 from ..dfa import DFA, DfaTransitions, minimize_dfa
+from ..dot import output_dot
 from ..nfa import NFA, NfaTransitions, gen_dfa
 from ..parse import parse_legs
 from ..patterns import LegsPattern, NfaMutableTransitions, gen_incomplete_pattern
@@ -175,6 +175,10 @@ def main() -> None:
   out_name_stem = out_name[:out_name.find('.')] if '.' in out_name else out_name # TODO: path_stem should be changed to do this.
   out_stem = path_join(out_dir, out_name_stem)
 
+  if 'dot' in langs:
+    output_dot(out_stem, dfas=dfas,
+      pattern_descs=pattern_descs, license=license, args=args)
+
   if 'python' in langs:
     path = out_stem + '.py'
     output_python(path, dfas=dfas, mode_transitions=mode_transitions,
@@ -293,12 +297,13 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]]) -> NFA:
 
 
 ext_langs = {
+  '.dot' : 'dot',
   '.py' : 'python',
   '.re.py' : 'python-re',
   '.swift' : 'swift',
 }
 
-supported_langs = {'python', 'python-re', 'swift', 'vscode'}
+supported_langs = {'dot', 'python', 'python-re', 'swift', 'vscode'}
 test_langs = {'python', 'swift'}
 
 

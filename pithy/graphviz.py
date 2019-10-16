@@ -14,6 +14,7 @@ GraphvizAttrs = Mapping[str,GraphvizName]
 GraphvizValAttrs = Tuple[GraphvizName,GraphvizAttrs]
 GraphvizValues = Union[Iterable[GraphvizName], Iterable[GraphvizValAttrs], Mapping[GraphvizName,GraphvizAttrs]]
 GraphvizAdjacency = Union[Mapping[GraphvizName,GraphvizValues], Iterable[Tuple[GraphvizName,GraphvizValues]]]
+GraphvizNodes = Mapping[GraphvizName,GraphvizAttrs]
 
 dot_bare_id_re = re.compile(r'[_a-zA-Z][_a-zA-Z0-9]*')
 dot_quotable_id_re = re.compile(r'([ !#-\[\]-~\w]| )+') # Exclude double-quote and backslash; allow non-ascii word chars.
@@ -51,7 +52,7 @@ def write_dot_digraph_adjacency_contents(f: TextIO, adjacency:GraphvizAdjacency)
       f.write(f'{src_quoted} -> {dot_id_quote(dst)}{attrs_str};\n')
 
 
-def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:Mapping[GraphvizName,GraphvizAttrs]=None, **kwargs) -> None:
+def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:GraphvizNodes=None, **kwargs) -> None:
   label = dot_id_quote(kwargs.get('label', ''))
   if label: label += ' '
   f.write(f'strict digraph {label}{{\n')
