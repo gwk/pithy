@@ -152,7 +152,7 @@ def main() -> None:
   pattern_descs.update((n, n) for n in ['invalid', 'incomplete'])
 
   incomplete_patterns:Dict[str,Optional[LegsPattern]] = {
-    dfa.name : gen_incomplete_pattern(dfa.kinds_greedy_ordered, patterns) for dfa in dfas }
+    dfa.name : gen_incomplete_pattern(dfa.backtracking_order, patterns) for dfa in dfas }
 
   if not (langs or args.test): # Print and exit.
     for name, pattern in patterns.items():

@@ -9,7 +9,6 @@ comment: / / $Ascii_Readable*
 section_label_patterns:     \# \s* [Pp]atterns
 section_label_modes:        \# \s* [Mm]modes
 section_label_transitions:  \# \s* [Tt]ransitions
-section_label_invalid:      \# \s* [$Ascii_Visible]*
 
 sym: $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
 colon: :

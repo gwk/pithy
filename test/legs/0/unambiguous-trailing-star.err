@@ -1,4 +1,4 @@
-note: `main`: patterns cannot be correctly ordered for greedy regex choice: ('r', 's').
+note: `main`: patterns cannot be correctly ordered for backtracking regex engines: ('r', 's').
 r Seq:
   Plus:
     Charset: a

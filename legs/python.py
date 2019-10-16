@@ -76,7 +76,7 @@ def output_python_re(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
     regexes:List[str] = []
     incompletes:List[LegsPattern] = []
 
-    for kind in dfa.kinds_greedy_ordered:
+    for kind in dfa.backtracking_order:
       pattern = patterns[kind]
       regex = pattern.gen_regex(flavor=flavor)
       regexes.append(f'(?P<{kind}> {regex} )\n')

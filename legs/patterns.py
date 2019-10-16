@@ -333,9 +333,9 @@ def regex_for_codes(codes:Iterable[int], flavor:str) -> str:
   return regex_for_code_ranges(tuple(ranges_for_codes(codes)), flavor)
 
 
-def gen_incomplete_pattern(kinds_greedy_ordered:Sequence[str], patterns:Dict[str,LegsPattern]) -> Optional[LegsPattern]:
+def gen_incomplete_pattern(backtracking_order:Sequence[str], patterns:Dict[str,LegsPattern]) -> Optional[LegsPattern]:
   incompletes:List[LegsPattern] = []
-  for kind in kinds_greedy_ordered:
+  for kind in backtracking_order:
     pattern = patterns[kind]
     incomplete = pattern.gen_incomplete()
     if incomplete: incompletes.append(incomplete)

@@ -32,15 +32,14 @@ thus producing a stream of tokens that seamlessly cover any input string.
 '''
 
 from collections import defaultdict
-from itertools import chain
-from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
+from itertools import chain, combinations
+from typing import DefaultDict, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple, cast
 
 from pithy.graph import visit_nodes
 from pithy.io import errL, errSL
 from pithy.iterable import first_el, frozenset_from, int_tuple_ranges, set_from
 from pithy.string import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
-
 
 
 DfaState = int
@@ -54,13 +53,13 @@ class DFA:
   'Deterministic Finite Automaton.'
 
   def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:Dict[int,FrozenSet[str]], lit_pattern_names:Set[str],
-   kinds_greedy_ordered:Tuple[str,...]=()) -> None:
+   backtracking_order:Tuple[str,...]=()) -> None:
     assert name
     self.name = name
     self.transitions = transitions
     self.match_node_kind_sets = match_node_kind_sets
     self.lit_pattern_names = lit_pattern_names
-    self.kinds_greedy_ordered = kinds_greedy_ordered # The ordering necessary for greedy regex choices to match correctly.
+    self.backtracking_order = backtracking_order # The best-effort ordering backtracking regex patterns.
     self.start_node = min(transitions)
     self.invalid_node = self.start_node + 1
     self.end_node = max(transitions) + 1
@@ -126,6 +125,19 @@ class DFA:
   @property
   def pattern_kinds(self) -> FrozenSet[str]: return frozenset_from(self.match_node_kind_sets.values())
 
+  def transition_descs(self) -> Iterator[Tuple[int,List[Tuple[int,str]]]]:
+    'Yield (src, [(dst, ranges_desc)]) tuples.'
+    for src, d in sorted(self.transitions.items()):
+      dst_bytes = DefaultDict[int,Set[int]](set)
+      for byte, dst in d.items():
+        dst_bytes[dst].add(byte)
+      dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
+      pairs = []
+      for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
+        byte_ranges = int_tuple_ranges(bytes_list)
+        pairs.append((dst, codes_desc(byte_ranges)))
+      yield (src, pairs)
+
   def describe(self, label='') -> None:
     errL(self.name, (label and f': {label}'), ':')
     errL(f' start_node:{self.start_node} end_node:{self.end_node}')
@@ -133,15 +145,10 @@ class DFA:
     for node, kinds in sorted(self.match_node_kind_sets.items()):
       errSL(f'  {node}:', *sorted(kinds))
     errL(' transitions:')
-    for src, d in sorted(self.transitions.items()):
+    for src, pairs in self.transition_descs():
       errSL(f'  {src}:', *sorted(self.match_kinds(src)))
-      dst_bytes:DefaultDict[int, Set[int]]  = defaultdict(set)
-      for byte, dst in d.items():
-        dst_bytes[dst].add(byte)
-      dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
-      for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
-        byte_ranges = int_tuple_ranges(bytes_list)
-        errSL(f'    {codes_desc(byte_ranges)} ==> {dst}', *sorted(self.match_kinds(dst)))
+      for dst, ranges_desc in pairs:
+        errSL(f'    {ranges_desc} ==> {dst}', *sorted(self.match_kinds(dst)))
     errL()
 
   def describe_stats(self, label='') -> None:
@@ -295,21 +302,9 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     for kind in kinds:
       kind_match_nodes[kind].add(node)
 
-  # Compute reachability between kinds before reducing ambiguities. This is used for greedy regex ordering.
-  kind_reachable_kinds:Dict[str,Set[str]] = {}
-  #^ For each kind, the set of kinds whose match nodes are reachable from those of this kind.
-  for kind, nodes in kind_match_nodes.items():
-    if kind == 'invalid': continue # Omit invalid entirely; it is handled separately.
-    reachable_nodes = visit_nodes(start_nodes=nodes, visitor=lambda node:transitions[node].values())
-    reachable_kinds = set()
-    for node in reachable_nodes:
-      try: node_kinds = match_node_kinds[node]
-      except KeyError: continue
-      reachable_kinds.update(node_kinds)
-    reachable_kinds.discard(kind)
-    kind_reachable_kinds[kind] = reachable_kinds # Reachable kinds must precede this kind.
-
-  assert 'invalid' not in kind_reachable_kinds
+  # Attempt to order the patterns for backtracking regex generation.
+  # This is done before ambiguity reduction, to more closely match the original patterns that are generated.
+  backtracking_order, unorderable_pairs = calc_backtrack_order(match_node_kinds, kind_match_nodes, transitions)
 
   # Reduce ambiguities.
   # For each kind, for each match node, compare this kind to all other kinds matching at this node.
@@ -332,34 +327,78 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
 
-  # Determine a satisfactory ordering of kinds for generated greedy regex choices.
-  # In general it is not always possbile to get a satisfactory ordering.
-  # For example, a keyword literal 'kw' and a name pattern '$Ascii_Letter+'.
+  if unorderable_pairs:
+    errL(f'note: `{dfa.name}`: patterns cannot be correctly ordered for backtracking regex engines: ',
+      ', '.join(str(p) for p in unorderable_pairs), '.')
+
+  # Freeze the set values.
+  match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
+
+  return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
+    lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order)
+
+
+def calc_backtrack_order(match_node_kinds:Dict[int,Set[str]], kind_match_nodes:Dict[str,Set[int]],
+ transitions:DfaTransitions) -> Tuple[Tuple[str,...],List[Tuple[str,str]]]:
+  '''
+  Calculate a reasonable order for backtracking regex outputs.
+  It is not always possible to generate a correct order,
+  because backtracking regex engines handle ambiguity by ordered choice,
+  so ambiguity can only addressed with positive or negative assertions ("\\b" is the most common case).
+  For example, a keyword literal 'kw' and a name pattern '$Ascii_Letter+' can be fixed by writing "kw\\b" first.
+  There are pathological examples that get much worse however.
+
+  Since our main goal is to generate TextMate grammars, we make a best effort here even though it isn't perfectly correct.
+  '''
+
   kind_subset_kinds:DefaultDict[str,Set[str]] = defaultdict(set)
-  #^ For each kind, the set of kinds whose match sets are subsets.
+  #^ For each kind, the set of kinds whose match node sets are subsets.
+
+  kind_reachable_kinds:Dict[str,Set[str]] = {}
+  #^ For each kind, the set of kinds whose match nodes are reachable from this kind's match nodes.
+
   for kind, nodes in kind_match_nodes.items():
+    if kind == 'invalid': continue # Omit invalid entirely; it is handled separately.
+    # Compute subsets.
     other_kinds = set_from(match_node_kinds[node] for node in nodes)
     assert other_kinds
     for other_kind in tuple(other_kinds): # Convert to tuple for order stability.
       if other_kind == kind: continue
       other_nodes = kind_match_nodes[other_kind]
-      if other_nodes < nodes: # This pattern is a superset; it should not match.
-        kind_subset_kinds[kind].add(other_kind) # Other pattern is more specific, must be tried first.
+      if other_nodes.issubset(nodes):
+        kind_subset_kinds[kind].add(other_kind)
+    # Compute reachability.
+    next_nodes = set_from(transitions[node].values() for node in nodes)
+    reachable_nodes = visit_nodes(start_nodes=next_nodes, visitor=lambda node:transitions[node].values())
+    reachable_kinds:Set[str] = set()
+    for node in reachable_nodes:
+      try: node_kinds = match_node_kinds[node]
+      except KeyError: continue
+      reachable_kinds.update(node_kinds)
+    reachable_kinds.discard(kind)
+    kind_reachable_kinds[kind] = reachable_kinds
 
-  ordered_kinds = sorted((sorted(supers), kind) for kind, supers in kind_reachable_kinds.items())
+  kinds = sorted(k for k in kind_match_nodes if k != 'invalid')
+  unorderable_kinds:Set[str] = set()
   unorderable_pairs:List[Tuple[str,str]] = []
-  for supers, kind in ordered_kinds:
-    for sup in supers:
-      if kind < sup and kind in kind_reachable_kinds[sup]:
-        unorderable_pairs.append((kind, sup))
+  for p in combinations(kinds, 2):
+    l, r = p
+    if l in kind_reachable_kinds[r] and r in kind_reachable_kinds[l]: # Cyclical reachability.
+      unorderable_kinds.update(p)
+      unorderable_pairs.append(cast(Tuple[str,str], p))
 
-  if unorderable_pairs:
-    errL(f'note: `{dfa.name}`: patterns cannot be correctly ordered for greedy regex choice: ',
-      ', '.join(str(p) for p in unorderable_pairs), '.')
+  def order_key(kind:str) -> Tuple:
+    '''
+    The ordering heuristic attempts to accommodate the following cases:
+    * For cyclical patterns, subset patterns should come first. These require additional assertions. e.g. 'kw' and '\w+'.
+    * Otherwise, longer (reachable) patterns should come first to utilize the backtracker, e.g. '==' before '='.
+    We choose to place unorderable patterns first because they require attention.
+    '''
+    orderable = kind not in unorderable_kinds # Unordereables first.
+    subsets = sorted(kind_subset_kinds[kind])
+    reachables = sorted(kind_reachable_kinds[kind])
+    return (orderable, subsets, reachables)
 
-  kinds_greedy_ordered = tuple(kind for _, kind in ordered_kinds)
+  ordered_kinds = tuple(sorted(kinds, key=order_key))
 
-  match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
-
-  return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
-    lit_pattern_names=dfa.lit_pattern_names, kinds_greedy_ordered=kinds_greedy_ordered)
+  return (ordered_kinds, unorderable_pairs)
