@@ -22,11 +22,11 @@ def main() -> None:
   host, port = address
   addr_str = f'http://{host}:{port}'
 
-  f:BinaryIO
+  f_in:BinaryIO
   if args.path is not None:
-    f = open(args.path, 'rb')
+    f_in = open(args.path, 'rb')
   else:
-    f = stdin.detach() # type: ignore
+    f_in = stdin.detach() # type: ignore
 
 
   class Handler(BaseHTTPRequestHandler):
@@ -40,7 +40,7 @@ def main() -> None:
       self.send_response(200)
       self.send_header('Content-Type', 'text/html')
       self.end_headers()
-      for line in f:
+      for line in f_in:
         self.wfile.write(line)
         self.wfile.flush()
 
