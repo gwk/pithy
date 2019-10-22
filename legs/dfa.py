@@ -36,7 +36,7 @@ from itertools import chain, combinations
 from typing import DefaultDict, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple, cast
 
 from pithy.graph import visit_nodes
-from pithy.io import errL, errSL
+from pithy.io import errD, errL, errSL
 from pithy.iterable import first_el, frozenset_from, int_tuple_ranges, set_from
 from pithy.string import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
@@ -93,6 +93,16 @@ class DFA:
 
   @property
   def non_match_nodes(self) -> FrozenSet[int]: return self.all_nodes - self.match_nodes
+
+  @property
+  def partitioned_match_nodes(self) -> Iterable[FrozenSet[int]]:
+    # Keyed by (set of match kinds, set of transitions).
+    K = Tuple[FrozenSet[str], FrozenSet[Tuple[int,int]]]
+    parts = DefaultDict[K,Set[int]](set)
+    for node, kind_sets in self.match_node_kind_sets.items():
+      k = (kind_sets, frozenset(self.transitions[node].items()))
+      parts[k].add(node)
+    return (frozenset(s) for s in parts.values())
 
   @property
   def pre_match_nodes(self) -> FrozenSet[int]:
@@ -197,9 +207,9 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   '''
 
   alphabet = dfa.alphabet
-  # start with a rough partition; non-match nodes form one set,
-  # and each match node is distinct from all others.
-  init_sets = [set(dfa.non_match_nodes), *({n} for n in dfa.match_nodes)]
+  # start with a rough partition. Non-match nodes form one set.
+  # Match nodes are mostly distinct from each other, but can be coalesced in some cases.
+  init_sets = [set(dfa.non_match_nodes), *dfa.partitioned_match_nodes]
 
   part_ids_to_parts = { id(s): s for s in init_sets }
   node_parts = { n: s for s in part_ids_to_parts.values() for n in s }
@@ -231,7 +241,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       part = node_parts[node]
       part_id_intersections[id(part)].add(node)
     # Split existing sets by the intersection sets.
-    set_pairs = []
+    set_pairs:List[Tuple[Set[int],Set[int]]] = []
     for id_part, intersection in part_id_intersections.items():
       part = part_ids_to_parts[id_part]
       if intersection != part: # Split part into difference and intersection.
@@ -239,7 +249,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         for x in intersection:
           node_parts[x] = intersection
         part -= intersection # Original part mutates to become difference.
-        set_pairs.append((intersection, part))
+        set_pairs.append((intersection, part)) # type: ignore
     return set_pairs
 
   # Refinement.
