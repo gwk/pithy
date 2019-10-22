@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from sys import argv, stdin
-from ..task import run
 from typing import BinaryIO
 
+from ..task import run
 
 
 def main() -> None:
