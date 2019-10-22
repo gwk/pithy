@@ -341,7 +341,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     errL(f'note: `{dfa.name}`: patterns cannot be correctly ordered for backtracking regex engines: ',
       ', '.join(str(p) for p in unorderable_pairs), '.')
 
-  # Freeze the set values.
+  # Freeze the match sets.
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
   return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
