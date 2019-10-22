@@ -329,6 +329,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         if other_nodes < nodes: # This pattern is a superset; it should not match.
           try: kinds.remove(kind) # Remove this pattern.
           except KeyError: pass # Already removed.
+          # Note: do not update kind_match_nodes as the match sets shrink, or else the subset comparison will start to fail.
 
   # Check for ambiguous patterns. This must happen after the ambiguity reduction above.
   ambiguous_kind_groups = { tuple(sorted(kinds)) for kinds in match_node_kinds.values() if len(kinds) != 1 }
