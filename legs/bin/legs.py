@@ -42,6 +42,7 @@ def main() -> None:
   parser = ArgumentParser(prog='legs', description=description)
   parser.add_argument('path', nargs='?', help='Path to the .legs file.')
   parser.add_argument('-dbg', action='store_true', help='Verbose debug printing.')
+  parser.add_argument('-describe', action='store_true', help='Print pattern descriptions.')
   parser.add_argument('-langs', nargs='+', default=[], help='Target languages for which to generate lexers.')
   parser.add_argument('-match', nargs='+', help='Attempt to lex each argument string.')
   parser.add_argument('-mode', default=None, help='Mode with which to lex the arguments to `-match`.')
@@ -154,13 +155,15 @@ def main() -> None:
   incomplete_patterns:Dict[str,Optional[LegsPattern]] = {
     dfa.name : gen_incomplete_pattern(dfa.backtracking_order, patterns) for dfa in dfas }
 
-  if not (langs or args.test): # Print and exit.
+  if args.describe:
+    errL('Patterns:')
     for name, pattern in patterns.items():
       pattern.describe(name=name)
     for name, inc_pattern in incomplete_patterns.items():
       if inc_pattern:
         inc_pattern.describe(name=f'{name}.incomplete')
-    exit(0)
+
+  if not (langs or args.test): exit(0)
 
   out_path = args.output or args.path
   if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')

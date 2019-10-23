@@ -1,4 +1,4 @@
 {
-    'cmd': 'legs $STEM.legs',
+    'cmd': 'legs $STEM.legs -describe',
     'code': 0,
 }

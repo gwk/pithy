@@ -1,4 +1,5 @@
 note: `main`: patterns cannot be correctly ordered for backtracking regex engines: ('r', 's').
+Patterns:
 r Seq:
   Plus:
     Charset: a
