@@ -71,7 +71,7 @@ class DictLexerBase(LexerBase):
       try: child_frame = self.mode_transitions[mode][kind]
       except KeyError: pass
       else: self.stack.append(child_frame)
-    return Token(pos=token_pos, end=end, kind=kind)
+    return Token(pos=token_pos, end=end, mode=mode, kind=kind)
 
 
 class RegexLexerBase(LexerBase):
@@ -97,11 +97,11 @@ class RegexLexerBase(LexerBase):
     assert m is not None
     if not m: # Emit an incomplete token to end.
       self.pos = len_text
-      return Token(pos=pos, end=len_text, kind='incomplete')
+      return Token(pos=pos, end=len_text, mode=mode, kind='incomplete')
     start = m.start()
     if start > pos: # Emit an incomplete token up to the match; the next search will find the same match (inefficient).
       self.pos = start
-      return Token(pos=pos, end=start, kind='incomplete')
+      return Token(pos=pos, end=start, mode=mode, kind='incomplete')
     end = m.end()
     kind = m.lastgroup
     assert isinstance(kind, str)
@@ -114,7 +114,7 @@ class RegexLexerBase(LexerBase):
       try: child_frame = self.mode_transitions[mode][kind]
       except KeyError: pass
       else: self.stack.append(child_frame)
-    return Token(pos=pos, end=end, kind=kind)
+    return Token(pos=pos, end=end, mode=mode, kind=kind)
 
 
 def ploy_repr(string: str) -> str:

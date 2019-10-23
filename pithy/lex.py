@@ -115,22 +115,22 @@ class Lexer:
     self.regexes = { mode : compile_mode(mode, pattern_names) for mode, pattern_names in self.modes.items() }
 
 
-  def _lex_inv(self, pos:int, end:int) -> Token:
-    return Token(pos=pos, end=end, kind='invalid')
+  def _lex_inv(self, pos:int, end:int, mode:str) -> Token:
+    return Token(pos=pos, end=end, mode=mode, kind='invalid')
 
 
-  def _lex_one(self, regex:Pattern, source:Source[str], pos:int, end:int) -> Token:
+  def _lex_one(self, regex:Pattern, source:Source[str], pos:int, end:int, mode:str) -> Token:
     m = regex.search(source.text, pos)
     if not m:
-      return self._lex_inv(pos=pos, end=end)
+      return self._lex_inv(pos=pos, end=end, mode=mode)
     p, e = m.span()
     if pos < p:
-      return self._lex_inv(pos=pos, end=p)
+      return self._lex_inv(pos=pos, end=p, mode=mode)
     if p == e:
       raise Lexer.DefinitionError(f'Zero-length patterns are disallowed.\n  kind: {m.lastgroup}; match: {m}')
     kind = m.lastgroup
     assert isinstance(kind, str)
-    return Token(pos=p, end=e, kind=kind)
+    return Token(pos=p, end=e, mode=mode, kind=kind)
 
 
   def _lex(self, stack:List[Tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
@@ -140,7 +140,7 @@ class Lexer:
       frame_trans, frame_token = stack[-1]
       mode = frame_trans.mode
       regex = self.regexes[mode]
-      token = self._lex_one(regex, source, pos=pos, end=end)
+      token = self._lex_one(regex, source, pos=pos, end=end, mode=mode)
       kind = token.kind
       pos = token.end
       if kind not in drop:
@@ -160,7 +160,7 @@ class Lexer:
           stack.append((push_trans, token))
       except _BreakFromModeSwitching: pass
     if eot:
-      yield eot_token(source)
+      yield eot_token(source, mode=stack[-1][0].mode)
 
 
   def lex(self, source:Source[str], pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
@@ -189,21 +189,21 @@ class Lexer:
         for token in self._lex(stack=stack, source=source, pos=0, end=len(source.text), drop=drop, eot=False):
           yield (source, token)
     if eot:
-      yield (source, eot_token(source))
+      yield (source, eot_token(source, mode=stack[-1][0].mode))
 
 
   def root_frame(self, mode:str) -> Tuple[LexTrans,Token]:
     'The root frame is degenerate; because it has an empty pops set it will never get popped; base and kind are never accessed.'
-    return (LexTrans(base='', kind='', mode=mode, pops=frozenset(), consume=False), Token(0, 0, ''))
+    return (LexTrans(base='', kind='', mode=mode, pops=frozenset(), consume=False), Token(0, 0, mode='', kind=''))
 
 
 class _BreakFromModeSwitching(Exception): pass
 
 
-def eot_token(source:Source[str]) -> Token:
+def eot_token(source:Source[str], mode:str) -> Token:
   'Create a token representing the end-of-text.'
   end = len(source.text)
-  return Token(pos=end, end=end, kind='end_of_text')
+  return Token(pos=end, end=end, mode=mode, kind='end_of_text')
 
 
 def validate_name(name:str) -> str:

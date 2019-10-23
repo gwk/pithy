@@ -14,6 +14,7 @@ Slice = slice
 class Token(NamedTuple):
   pos:int
   end:int
+  mode:str
   kind:str
 
   def __str__(self) -> str:
@@ -29,7 +30,7 @@ class Token(NamedTuple):
   def pos_token(self, kind:str=None) -> 'Token':
     'Create a new token with the same position as `token` but with zero length.'
     if kind is None: kind = self.kind
-    return Token(pos=self.pos, end=self.pos, kind=kind)
+    return Token(pos=self.pos, end=self.pos, mode=self.mode, kind=kind)
 
 
 SourceText = Union[str,bytes,bytearray]
