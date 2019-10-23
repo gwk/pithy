@@ -101,6 +101,10 @@ class Buffer(Iterator[_T]):
     return els
 
 
+  def peek_all(self) -> List[_T]:
+    return self.peeks(count=1<<63, short=True)
+
+
   def expect(self, pred: Callable[[_T], bool]) -> _T:
     el = next(self)
     if pred(el): return el

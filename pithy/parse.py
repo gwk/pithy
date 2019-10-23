@@ -29,6 +29,7 @@ from tolkien import Source, Token
 
 from .buffer import Buffer
 from .graph import visit_nodes
+from .io import errL
 from .lex import Lexer, Token, reserved_names, valid_name_re
 from .string import indent_lines, pluralize
 
@@ -681,9 +682,13 @@ class Parser:
     return Buffer(stream)
 
 
-  def parse(self, rule_name:RuleName, source:Source, ignore_excess=False) -> Any:
+  def parse(self, rule_name:RuleName, source:Source, ignore_excess=False, dbg_tokens=False) -> Any:
     rule = self.rules[rule_name]
     buffer = self.make_buffer(source)
+    if dbg_tokens:
+      for token in buffer.peek_all():
+        errL(source.diagnostic(token, msg=f'{token.mode}.{token.kind}'))
+
     token = next(buffer)
     result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
