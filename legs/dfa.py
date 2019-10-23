@@ -300,21 +300,21 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   transitions = dict(transitions_dd)
 
   # Nodes may match more than one pattern when the patterns overlap.
-  # If the set of match nodes for one pattern is a superset of another pattern, only match the subset pattern;
-  # a typical case is a set of literal keywords plus a more general "identifier" pattern.
+  # If the set of match nodes for one pattern is a superset of another pattern, only match the subset pattern.
+  # The typical case is a set of literal keywords plus a more general "identifier" pattern.
   # Other intersections are treated as ambiguity errors.
 
-  match_node_kinds = { mapping[old] : set(kinds) for old, kinds in dfa.match_node_kind_sets.items() }
+  # Keep an immutable copy of the full node sets before reduction.
+  full_match_node_kinds = { mapping[old] : kinds for old, kinds in dfa.match_node_kind_sets.items() }
 
-  # Build kind to match nodes map.
+  # Create a mutable copy for reduction.
+  match_node_kinds = { node : set(kinds) for node, kinds in full_match_node_kinds.items() }
+
+  # Build kind to match nodes map. This does not get reduced.
   kind_match_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # kinds to sets of nodes.
   for node, kinds in match_node_kinds.items():
     for kind in kinds:
       kind_match_nodes[kind].add(node)
-
-  # Attempt to order the patterns for backtracking regex generation.
-  # This is done before ambiguity reduction, to more closely match the original patterns that are generated.
-  backtracking_order, unorderable_pairs = calc_backtrack_order(match_node_kinds, kind_match_nodes, transitions)
 
   # Reduce ambiguities.
   # For each kind, for each match node, compare this kind to all other kinds matching at this node.
@@ -338,19 +338,19 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       errL('Rules are ambiguous: ', ', '.join(group), '.')
     exit(1)
 
-  if unorderable_pairs:
-    errL(f'note: `{dfa.name}`: patterns cannot be correctly ordered for backtracking regex engines: ',
-      ', '.join(str(p) for p in unorderable_pairs), '.')
 
-  # Freeze the match sets.
+  # Attempt to order the patterns for backtracking regex generation using the full match node sets.
+  backtracking_order = calc_backtrack_order(dfa.name, match_node_kinds, kind_match_nodes, transitions)
+
+  # Freeze the reduced match sets.
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
   return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
     lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order)
 
 
-def calc_backtrack_order(match_node_kinds:Dict[int,Set[str]], kind_match_nodes:Dict[str,Set[int]],
- transitions:DfaTransitions) -> Tuple[Tuple[str,...],List[Tuple[str,str]]]:
+def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_match_nodes:Dict[str,Set[int]],
+ transitions:DfaTransitions) -> Tuple[str,...]:
   '''
   Calculate a reasonable order for backtracking regex outputs.
   It is not always possible to generate a correct order,
@@ -359,7 +359,7 @@ def calc_backtrack_order(match_node_kinds:Dict[int,Set[str]], kind_match_nodes:D
   For example, a keyword literal 'kw' and a name pattern '$Ascii_Letter+' can be fixed by writing "kw\\b" first.
   There are pathological examples that get much worse however.
 
-  Since our main goal is to generate TextMate grammars, we make a best effort here even though it isn't perfectly correct.
+  The goal is to generate TextMate grammars, so we make a best effort that is not guaranteed to be correct.
   '''
 
   kind_subset_kinds:DefaultDict[str,Set[str]] = defaultdict(set)
@@ -398,6 +398,10 @@ def calc_backtrack_order(match_node_kinds:Dict[int,Set[str]], kind_match_nodes:D
       unorderable_kinds.update(p)
       unorderable_pairs.append(cast(Tuple[str,str], p))
 
+  if unorderable_pairs:
+    errL(f'note: `{name}`: patterns cannot be correctly ordered for backtracking regex engines: ',
+      ', '.join(str(p) for p in unorderable_pairs), '.')
+
   def order_key(kind:str) -> Tuple:
     '''
     The ordering heuristic attempts to accommodate the following cases:
@@ -412,4 +416,4 @@ def calc_backtrack_order(match_node_kinds:Dict[int,Set[str]], kind_match_nodes:D
 
   ordered_kinds = tuple(sorted(kinds, key=order_key))
 
-  return (ordered_kinds, unorderable_pairs)
+  return ordered_kinds
