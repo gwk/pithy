@@ -8,12 +8,12 @@ from tolkien import Source, Token
 
 # Token.diagnostic.
 
-word_lexer = Lexer(invalid='inv', patterns=dict(
+word_lexer = Lexer(patterns=dict(
   word = r'\w+',
 ))
 
 source = Source(name='test', text='1a b\n2c d')
-tokens = list(word_lexer.lex(source, drop={'inv'})) # Note missing final newline.
+tokens = list(word_lexer.lex(source, drop={'invalid'})) # Note missing final newline.
 
 utest('''\
 test:1:1-3: word

@@ -74,7 +74,7 @@ def main() -> None:
   if c == 0 and args.print_ok: print('ok.')
   exit(c)
 
-lexer = Lexer(invalid='invalid', patterns=dict(
+lexer = Lexer(patterns=dict(
   newline   = r'\n',
   location  = r'[^\n]+:\d+:(\d+:)?',
   error     = r'error:',

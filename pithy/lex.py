@@ -34,9 +34,8 @@ class Lexer:
 
   class DefinitionError(Exception): pass
 
-  def __init__(self, *, flags='', invalid=None, patterns:Dict[str,str], modes:Dict[str,Iterable[str]]={},
+  def __init__(self, *, flags='', patterns:Dict[str,str], modes:Dict[str,Iterable[str]]={},
    transitions:Iterable[LexTrans]=()) -> None:
-    self.invalid = invalid
 
     # Validate flags.
     for flag in flags:
@@ -50,7 +49,7 @@ class Lexer:
     self.patterns: Dict[str,str] = {}
     for n, v in patterns.items():
       validate_name(n)
-      if n == invalid:
+      if n == 'invalid':
         raise Lexer.DefinitionError(f'{n!r} pattern name collides with the invalid token name')
       if not isinstance(v, str): # TODO: also support bytes.
         raise Lexer.DefinitionError(f'{n!r} pattern value must be a string; found {v!r}')
@@ -117,9 +116,7 @@ class Lexer:
 
 
   def _lex_inv(self, pos:int, end:int) -> Token:
-    inv = Token(pos=pos, end=end, kind=(self.invalid or 'invalid'))
-    if self.invalid: return inv
-    raise LexError(inv)
+    return Token(pos=pos, end=end, kind='invalid')
 
 
   def _lex_one(self, regex:Pattern, source:Source[str], pos:int, end:int) -> Token:

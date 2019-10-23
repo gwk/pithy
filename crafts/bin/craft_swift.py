@@ -56,7 +56,7 @@ def main() -> None:
       stdout.flush()
 
 
-lexer = Lexer(invalid='invalid',
+lexer = Lexer(
   patterns=dict(
     newline   = r'\n',
     top_step  = r'\[\d+/\d+\] .+',

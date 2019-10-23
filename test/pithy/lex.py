@@ -29,19 +29,18 @@ utest_seq([('num', '1'), ('num', '20')],
 utest_seq([('num','0'), ('line','\n'), ('end_of_text','')],
   run_lexer, num_lexer, '0\n', eot=True)
 
-utest_seq_exc("LexError(Token(pos=2, end=3, kind='invalid'))", run_lexer, num_lexer, '1 x 2')
-utest_seq_exc("LexError(Token(pos=4, end=5, kind='invalid'))", run_lexer, num_lexer, '1 2 x')
+utest_seq([('num', '1'), ('invalid', 'x'), ('num', '2')], run_lexer, num_lexer, '1 x 2', drop='space')
 
 
-word_lexer = Lexer(invalid='inv', patterns=dict(
+word_lexer = Lexer(patterns=dict(
   word = r'\w+',
 ))
 
-utest_seq([('inv', '!'), ('word', 'a'), ('inv', ' '), ('word', 'b2'), ('inv', '.')],
+utest_seq([('invalid', '!'), ('word', 'a'), ('invalid', ' '), ('word', 'b2'), ('invalid', '.')],
   run_lexer, word_lexer, '!a b2.')
 
 utest_seq([('word', 'a'), ('word', 'b2')],
-  run_lexer, word_lexer, '!a b2.', drop={'inv'})
+  run_lexer, word_lexer, '!a b2.', drop={'invalid'})
 
 
 utest_exc(Lexer.DefinitionError("'num' pattern value must be a string; found 0"),

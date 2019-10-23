@@ -41,7 +41,7 @@ def parse_legs(path:str, text:str) -> Grammar:
 common_kinds = ['newline', 'spaces', 'comment']
 sl_kinds = ['sl_license', 'sl_patterns', 'sl_modes', 'sl_transitions', 'sl_invalid']
 
-lexer = Lexer(flags='x', invalid='invalid',
+lexer = Lexer(flags='x',
   patterns=dict(
     newline_indent = r'\n\ +',
     newline = r'\n',
