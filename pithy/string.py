@@ -114,6 +114,12 @@ def indent_lines(lines:Iterable[str], depth=1) -> Iterator[str]:
     yield f'{ind}{line}{nl}'
 
 
+def iter_str(iterable:Iterable[str]) -> Iterable[str]:
+  'Return the iterable unless it is a string, in which case return the single-element tuple of the string.'
+  if isinstance(iterable, str): return (iterable,)
+  return iterable
+
+
 def iter_excluding_str(iterable:Iterable[_T]) -> Iterator[_T]:
   '''
   Often we want to handle all iterables in a particular way, except for str.
