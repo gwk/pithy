@@ -692,13 +692,13 @@ class Parser:
     buffer = self.make_buffer(source)
     if dbg_tokens:
       for token in buffer.peek_all():
-        errL(source.diagnostic(token, msg=f'{token.mode}.{token.kind}'))
+        errL(source.diagnostic(token, msg=f'{token.mode_kind}'))
 
     token = next(buffer)
     result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
-      raise ExcessToken(source, excess_token, 'error: excess token: ', excess_token.kind)
+      raise ExcessToken(source, excess_token, f'error: excess token: {excess_token.mode_kind}.')
     return result
 
 

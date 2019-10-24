@@ -24,6 +24,10 @@ class Token(NamedTuple):
     return f'{type(self).__qualname__}(pos={self.pos}, end={self.end}, kind={self.kind!r})'
 
   @property
+  def mode_kind(self) -> str:
+    return f'{self.mode}.{self.kind}'
+
+  @property
   def slice(self) -> Slice:
     return slice(self.pos, self.end)
 

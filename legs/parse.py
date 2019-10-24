@@ -38,13 +38,13 @@ def parse_legs(path:str, text:str) -> Grammar:
   return grammar
 
 
-common_kinds = ['newline', 'spaces', 'comment']
+common_kinds = ['newline', 'indents', 'spaces', 'comment']
 sl_kinds = ['sl_license', 'sl_patterns', 'sl_modes', 'sl_transitions', 'sl_invalid']
 
-lexer = Lexer(flags='x',
+lexer = Lexer(flags='mx',
   patterns=dict(
-    newline_indent = r'\n\ +',
     newline = r'\n',
+    indents = r'^\ +',
     spaces  = r'\ +',
     comment = r'//[^\n]*',
 
@@ -55,7 +55,7 @@ lexer = Lexer(flags='x',
     sl_transitions = r'\#\ *[Tt]ransitions',
     sl_invalid     = r'\#[^\n]*',
 
-    # High level tokens.
+    # Top level tokens.
     colon = r':',
     sym = r'[A-Za-z_][0-9A-Za-z_]*',
     license_text = r'[^\n]+',
@@ -78,19 +78,20 @@ lexer = Lexer(flags='x',
     char    = r'[!-~]',
   ),
   modes=dict(
-    main=['newline_indent', *common_kinds, 'sym', 'colon', *sl_kinds],
+    main=[*common_kinds, 'sym', 'colon', *sl_kinds],
     license=['newline', 'license_text', *sl_kinds],
-    patterns=[*common_kinds, 'sym', 'colon', *sl_kinds],
-    pattern=['newline_indent', *common_kinds,
+    patterns=[*common_kinds, 'bar', 'colon', 'sym', *sl_kinds],
+    pattern=[*common_kinds,
       'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char'],
-    charset=['newline_indent', *common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'],
+    charset=[*common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'],
 
   ),
   transitions=[
     LexTrans('main',      kind='sl_license',  mode='license',   pop=sl_kinds, consume=False),
     LexTrans('main',      kind='sl_patterns', mode='patterns',  pop=sl_kinds, consume=False),
 
-    LexTrans('patterns', kind='colon', mode='pattern', pop='newline', consume=True),
+    LexTrans('patterns', kind=('colon', 'indents', 'bar'), mode='pattern', pop='newline', consume=True),
+
     LexTrans(('pattern', 'charset'), kind='brack_o', mode='charset', pop='brack_c', consume=True),
   ]
 )
@@ -123,10 +124,10 @@ def build_legs_grammar_parser() -> Parser:
 
       # Section body rules.
 
-      pattern=Struct('sym', Opt('colon_pattern_expr'), 'newline',
+      pattern=Struct('sym', Opt('colon_pattern_expr'),
         transform=transform_pattern),
 
-      colon_pattern_expr=Struct('colon', 'pattern_expr',
+      colon_pattern_expr=Struct('colon', 'pattern_expr', drop=('newline', 'indents'),
         transform=lambda s, struct: struct[1]),
 
       mode=Struct('sym', 'colon', Quantity('sym'), 'newline',
@@ -138,6 +139,7 @@ def build_legs_grammar_parser() -> Parser:
       sym=Atom('sym'),
       colon=Atom('colon'),
       newline=Atom('newline'),
+      indents=Atom('indents'),
 
       # Pattern rules.
 
@@ -149,6 +151,7 @@ def build_legs_grammar_parser() -> Parser:
           Suffix('qmark', transform=lambda s, t, p: OptPattern(p)),
           Suffix('star',  transform=lambda s, t, p: StarPattern(p)),
           Suffix('plus',  transform=lambda s, t, p: PlusPattern(p))),
+        drop=('newline', 'indents'),
       ),
 
       paren=Prefix('paren_o', 'pattern_expr', 'paren_c',
@@ -210,7 +213,7 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
 
 
 def transform_pattern(source:Source, struct:List) -> Tuple[str,LegsPattern]:
-  name, pattern, nl = struct
+  name, pattern = struct
   if pattern is None:
     pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in name])
   return (name, pattern)
