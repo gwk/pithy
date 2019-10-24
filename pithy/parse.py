@@ -31,8 +31,7 @@ from .buffer import Buffer
 from .graph import visit_nodes
 from .io import errL
 from .lex import Lexer, Token, reserved_names, valid_name_re
-from .string import indent_lines, pluralize
-
+from .string import indent_lines, iter_str, pluralize
 
 
 class ParseError(Exception):
@@ -251,7 +250,7 @@ class Opt(_QuantityRule):
     self.sub_refs = (body,)
     self.heads = ()
     self.body_heads = frozenset() # Replaced by compile.
-    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
+    self.drop = frozenset(iter_str(drop))
     self.transform = transform
 
 
@@ -286,7 +285,7 @@ class Quantity(_QuantityRule):
     self.min = min
     self.max = max
     self.body_heads = frozenset() # Replaced by compile.
-    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
+    self.drop = frozenset(iter_str(drop))
     self.transform = transform
 
 
@@ -349,7 +348,7 @@ class Struct(Rule):
     self.name = ''
     self.sub_refs = fields
     self.heads = ()
-    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
+    self.drop = frozenset(iter_str(drop))
     self.transform = transform
 
 
@@ -383,7 +382,7 @@ class Choice(Rule):
     self.name = ''
     self.sub_refs = choices
     self.heads = ()
-    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
+    self.drop = frozenset(iter_str(drop))
     self.transform = transform
     self.head_table:Dict[TokenKind,Rule] = {}
 
@@ -631,7 +630,7 @@ class Parser:
   def __init__(self, lexer:Lexer, rules:Dict[RuleName,Rule], drop:Iterable[TokenKind]=()) -> None:
     self.lexer = lexer
     self.rules = rules
-    self.drop = frozenset([drop] if isinstance(drop, str) else drop)
+    self.drop = frozenset(iter_str(drop))
 
     for name, rule in rules.items():
       validate_name(name)
