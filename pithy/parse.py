@@ -541,7 +541,8 @@ class Precedence(Rule):
   'An operator precedence rule, consisting of groups of operators.'
   type_desc = 'precedence rule'
 
-  def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group, transform:TreeTransform=tree_identity) -> None:
+  def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group, drop:Iterable[str]=(),
+   transform:TreeTransform=tree_identity) -> None:
     # Keep track of the distinction between subs that came from leaves vs groups.
     # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
     # and then get the linked leaves back via the leaves property implemented below.
@@ -551,6 +552,7 @@ class Precedence(Rule):
     self.name = ''
     self.sub_refs = self.leaf_refs + self.group_refs
     self.heads = ()
+    self.drop = frozenset(iter_str(drop))
     self.transform = transform
     self.groups = groups
     self.head_table:Dict[TokenKind,Rule] = {}
@@ -598,6 +600,8 @@ class Precedence(Rule):
     left = self.parse_leaf(parent, source, token, buffer)
     while True:
       op_token = next(buffer)
+      while op_token.kind in self.drop:
+        op_token = next(buffer)
       try:
         group, op = self.tail_table[op_token.kind]
       except KeyError:
@@ -610,6 +614,8 @@ class Precedence(Rule):
 
 
   def parse_leaf(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    while token.kind in self.drop:
+      token = next(buffer)
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else: return sub.parse(self, source, token, buffer)
