@@ -5,23 +5,64 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import Container, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Pattern, Tuple, cast
+from typing import Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Pattern, Tuple, Union
 
 from tolkien import Source, Token
+
+from .string import iter_str
 
 
 class LexError(Exception): pass
 
 
+class KindPair(NamedTuple):
+  'A pair of kinds that, when encountered in sequence, trigger a mode transition.'
+  prev:str
+  curr:str
+
+  @staticmethod
+  def mk(kind:'LexTransKind') -> 'KindPair':
+    if isinstance(kind, str): return KindPair(prev='', curr=kind)
+    if isinstance(kind, KindPair): return kind
+    raise Lexer.DefinitionError(f'expected `str` or `KindPair`; received {kind!r}')
+
+
+LexTransKind = Union[str,KindPair]
+LexTransKinds = Union[LexTransKind,Iterable[LexTransKind]]
+LexTransTuple = Tuple[KindPair,...]
+
 class LexTrans:
-  def __init__(self, base:str, kind:str, mode:str, pops:Iterable[str], consume:bool) -> None:
-    self.base = base # Parent mode.
-    self.kind = kind # Base token kind.
+  def __init__(self, base:Iterable[str], *, kind:LexTransKinds, mode:str, pop:LexTransKinds, consume:bool) -> None:
+    self.bases = tuple(iter_str(base)) # Parent modes.
+    self.kinds:LexTransTuple = _mk_pairs_tuple(kind) # Parent mode token kind or pair that causes push.
     self.mode = mode # Child mode.
-    self.pops = frozenset([pops] if isinstance(pops, str) else pops) # Child token kinds.
+    self.pops:LexTransTuple = _mk_pairs_tuple(pop)
+    self.pop_dict = _mk_trans_pop_dict(self.pops) # Child mode token kinds or pairs as (curr -> prev or '') mapping.
     self.consume = consume # If false, base will consider this token for further push/pop mode transitions.
 
-  def __repr__(self) -> str: return f'{type(self).__name__}({self.base!r}, {self.kind!r}, {self.mode!r}, {self.pops!r}, {self.consume!r})'
+  def __repr__(self) -> str:
+    return f'{type(self).__name__}({self.bases!r}, kinds={self.kinds!r}, mode={self.mode!r}, pops={self.pops!r}, consume={self.consume!r})'
+
+  def should_pop(self, frame_token:Token, token:Token, prev_kind:str) -> bool:
+    try: pop_prev = self.pop_dict[token.kind]
+    except KeyError: return False
+    return not pop_prev or prev_kind == pop_prev
+    # TODO: support exact token content matching.
+
+
+def _mk_pairs_tuple(pop:LexTransKinds) -> LexTransTuple:
+  if isinstance(pop, (str, KindPair)): pop = (pop,)
+  return tuple(KindPair.mk(el) for el in pop)
+
+
+def _mk_trans_pop_dict(pops:LexTransTuple) -> Dict[str,str]:
+  d:Dict[str,str] = {}
+  for pair in pops:
+    try: existing = d[pair.curr]
+    except KeyError: d[pair.curr] = pair.prev
+    else: raise Lexer.DefinitionError(f'repeated pop kind key: {pair.curr!r}')
+  return d
+
 
 
 class Lexer:
@@ -97,15 +138,25 @@ class Lexer:
     # Validate transitions.
     assert main is not None
     self.main:str = main
-    self.transitions:Dict[Tuple[str,str],LexTrans] = {}
+    self.transitions:Dict[Tuple[str,str],Tuple[LexTrans,str]] = {}
     for trans in transitions:
-      if not isinstance(trans, LexTrans): raise TypeError(trans)
-      if trans.base not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {trans.base!r}')
+      if not isinstance(trans, LexTrans): raise Lexer.DefinitionError(f'expected `LexTrans`; received {trans!r}')
+      for base in trans.bases:
+        if base not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {base!r}')
       if trans.mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {trans.mode!r}')
-      if trans.kind not in patterns: raise Lexer.DefinitionError(f'unknown mode push pattern: {trans.kind!r}')
-      for kind in trans.pops:
-        if kind not in patterns: raise Lexer.DefinitionError(f'unknown mode pop pattern: {kind!r}')
-      self.transitions[(trans.base, trans.kind)] = trans
+      for label, pairs in [('push', trans.kinds), ('pop', trans.pops)]:
+        for pair in pairs:
+          for i, k in enumerate(pair):
+            if i == 0 and not k: continue # Prev is allowed to be empty.
+            if k and k not in patterns: raise Lexer.DefinitionError(f'unknown mode {label} pattern: {k!r}')
+      for base in trans.bases:
+        for kind in trans.kinds:
+          key = (base, kind.curr)
+          try: _, existing = self.transitions[key]
+          except KeyError: # No conflict.
+            self.transitions[key] = (trans, kind.prev)
+          else: # Conflict.
+            raise Lexer.DefinitionError(f'conflicting transitions:\n  {existing}\n  {trans}')
 
     choice_sep = '\n| ' if 'x' in flags else '|'
     def compile_mode(mode:str, pattern_names:FrozenSet[str]) -> Pattern:
@@ -136,6 +187,7 @@ class Lexer:
   def _lex(self, stack:List[Tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
    ) -> Iterator[Token]:
     assert isinstance(source, Source)
+    prev_kind = ''
     while pos < end:
       frame_trans, frame_token = stack[-1]
       mode = frame_trans.mode
@@ -147,18 +199,21 @@ class Lexer:
         yield token
       # Check if we should pop one or more modes.
       try:
-        while kind in frame_trans.pops: # Check if we should pop the current mode.
+        while frame_trans.should_pop(frame_token=frame_token, token=token, prev_kind=prev_kind):
           stack.pop()
           if frame_trans.consume:
             raise _BreakFromModeSwitching # This frame "consumes" the token.
           frame_trans, frame_token = stack[-1]
           mode = frame_trans.mode
         # Check if we should push a child mode.
-        try: push_trans = self.transitions[(mode, kind)]
+        try: push_trans, push_prev_kind = self.transitions[(mode, kind)]
         except KeyError: pass
         else:
-          stack.append((push_trans, token))
+          if not push_prev_kind or prev_kind == push_prev_kind:
+            stack.append((push_trans, token))
+            kind = '' # Make prev_kind empty on the next iteration.
       except _BreakFromModeSwitching: pass
+      prev_kind = kind
     if eot:
       yield eot_token(source, mode=stack[-1][0].mode)
 
@@ -194,7 +249,7 @@ class Lexer:
 
   def root_frame(self, mode:str) -> Tuple[LexTrans,Token]:
     'The root frame is degenerate; because it has an empty pops set it will never get popped; base and kind are never accessed.'
-    return (LexTrans(base='', kind='', mode=mode, pops=frozenset(), consume=False), Token(0, 0, mode='', kind=''))
+    return (LexTrans(base='', kind='', mode=mode, pop=frozenset(), consume=False), Token(0, 0, mode='', kind=''))
 
 
 class _BreakFromModeSwitching(Exception): pass

@@ -87,11 +87,11 @@ lexer = Lexer(flags='x',
 
   ),
   transitions=[
-    LexTrans('main', 'sl_license', 'license', sl_kinds, consume=False),
-    LexTrans('main', 'sl_patterns', 'patterns', sl_kinds, consume=False),
-    LexTrans('patterns', 'colon', 'pattern', 'newline', consume=True),
-    LexTrans('pattern', 'brack_o', 'charset', 'brack_c', consume=True),
-    LexTrans('charset', 'brack_o', 'charset', 'brack_c', consume=True),
+    LexTrans('main',      kind='sl_license',  mode='license',   pop=sl_kinds, consume=False),
+    LexTrans('main',      kind='sl_patterns', mode='patterns',  pop=sl_kinds, consume=False),
+
+    LexTrans('patterns', kind='colon', mode='pattern', pop='newline', consume=True),
+    LexTrans(('pattern', 'charset'), kind='brack_o', mode='charset', pop='brack_c', consume=True),
   ]
 )
 
