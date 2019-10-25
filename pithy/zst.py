@@ -68,9 +68,8 @@ class ZstWriter(ZstWriterBase, BinaryIO):
 
   def __enter__(self) -> 'ZstWriter': return self
 
-  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> bool:
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.close()
-    return False
 
   def write(self, data:bytes) -> int:
     l = len(data)
@@ -88,9 +87,8 @@ class ZstTextWriter(ZstWriterBase, TextIO):
 
   def __enter__(self) -> 'ZstTextWriter': return self
 
-  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> bool:
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.close()
-    return False
 
   def write(self, text:str) -> int:
     data = text.encode(self.encoding)

@@ -38,7 +38,7 @@ class Parser(HTMLParser):
     if not self.found_leading_doctype:
       self.msg("did not find '<!DOCTYPE html>' declaration in leading position.", pos=(0,0))
 
-  def handle_startendtag(self, tag: str, attrs: List[Tuple[str, str]]) -> None:
+  def handle_startendtag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
     pass
 
   def handle_starttag(self, tag: str, attrs: List[Tuple[str,Optional[str]]]) -> None:

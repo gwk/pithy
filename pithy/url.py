@@ -18,17 +18,17 @@ def url_fragment(url:str) -> str: return split_url(url).fragment
 
 def url_scheme_netloc_path(url:str) -> str:
   scheme, netloc, path, query, fragment = split_url(url)
-  return compose_url((scheme, netloc, path, None, None)) # type: ignore
+  return compose_url((scheme, netloc, path, None, None))
 
 
 def url_netloc_path(url:str) -> str:
   scheme, netloc, path, query, fragment = split_url(url)
-  return compose_url((None, netloc, path, None, None)) # type: ignore
+  return compose_url((None, netloc, path, None, None))
 
 
 def drop_url_fragment(url:str) -> str:
   scheme, netloc, path, query, fragment = split_url(url)
-  return compose_url((scheme, netloc, path, query, None)) # type: ignore
+  return compose_url((scheme, netloc, path, query, None))
 
 
 def replace_url_ext(url:str, ext:str) -> str:

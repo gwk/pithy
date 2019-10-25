@@ -89,14 +89,14 @@ class HTTPServer(TCPServer):
     SyntaxError,
   )
 
-  def server_bind(self):
+  def server_bind(self) -> None:
     '''Override TCP.server_bind to store the server name.'''
     super().server_bind()
     host, port = self.server_address[:2]
     self.name = get_fully_qualified_domain_name(host)
     self.port = port
 
-  def handle_error(self, request, client_address):
+  def handle_error(self, request, client_address) -> None:
     '''
     Override BaseServer.handle_error to fail fast for unrecoverable errors.
     '''
@@ -147,7 +147,7 @@ class HTTPRequestHandler(StreamRequestHandler):
 
 
   def __init__(self, *args, directory:str=None, **kwargs) -> None:
-    self.command:Optional[str] = None  # set in case of error on the first line.
+    self.command:str = '' # Set in case of error on the first line.
     self.request_version = self.default_request_version
     self.close_connection = True
     self.requestline = ''
@@ -157,7 +157,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     super().__init__(*args, **kwargs) # type: ignore # Calls handle.
 
 
-  def handle(self):
+  def handle(self) -> None:
     '''Handle multiple requests if necessary.'''
     self.close_connection = True
 
@@ -166,7 +166,7 @@ class HTTPRequestHandler(StreamRequestHandler):
       self.handle_one_request()
 
 
-  def handle_one_request(self):
+  def handle_one_request(self) -> None:
     '''
     Handle a single HTTP request.
     '''
@@ -200,7 +200,7 @@ class HTTPRequestHandler(StreamRequestHandler):
       return
 
 
-  def parse_request(self):
+  def parse_request(self) -> bool:
     version = self.request_version
     self.requestline = requestline = str(self.raw_requestline, 'latin-1').rstrip('\r\n')
     words = requestline.split()
@@ -212,14 +212,14 @@ class HTTPRequestHandler(StreamRequestHandler):
     try:
       if not version.startswith('HTTP/'): raise ValueError
       base_version_number = version.split('/', 1)[1]
-      version_number = base_version_number.split(".")
+      version_numbers = base_version_number.split(".")
       # RFC 2145 section 3.1 says:
       # * there can be only one ".";
       # * major and minor numbers MUST be treated as separate integers;
       # * HTTP/2.4 is a lower version than HTTP/2.13, which in turn is lower than HTTP/12.3;
       # * Leading zeros MUST be ignored by recipients.
-      if len(version_number) != 2: raise ValueError
-      version_number = int(version_number[0]), int(version_number[1])
+      if len(version_numbers) != 2: raise ValueError
+      version_number = (int(version_numbers[0]), int(version_numbers[1]))
     except (ValueError, IndexError):
       self.send_error(HTTPStatus.BAD_REQUEST, "Bad request version (%r)" % version)
       return False
@@ -260,7 +260,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     has_trailing_slash = p.rstrip().endswith('/') # remember explicit trailing slash.
     p = url_unquote(p)
     p = norm_path(p)
-    if '..' in p: return
+    if '..' in p: return False
     assert p.startswith('/')
     p = p[1:] # Remove leading slash. TODO: path_join should not use os.path.join, which behaves dangerously for absolute paths.
     p = norm_path(path_join(self.directory, p))
@@ -269,7 +269,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     return True
 
 
-  def handle_expect_100(self):
+  def handle_expect_100(self) -> bool:
     '''Decide what to do with an "Expect: 100-continue" header.
 
     If the client is expecting a 100 Continue response,
