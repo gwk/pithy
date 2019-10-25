@@ -39,9 +39,9 @@ def main() -> None:
   hourly_rate = args.rate
 
   days:List[Day] = []
-  start_minutes = None
-  end_minutes   = None
-  total_minutes = 0.0
+  start_minutes:Optional[int] = None
+  end_minutes:Optional[int]   = None
+  total_minutes = 0
   total_payment = 0.0
   total_expense = 0.0
 

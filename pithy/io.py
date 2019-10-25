@@ -231,9 +231,8 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
         yield el
       print(f'{pre}{i+1:{width},}{total}{final}', file=stderr)
 
-
-  else:
-    def err_progress_gen() -> Iterator[_T]:
+  else: # frequency is an int.
+    def err_progress_gen() -> Iterator[_T]: # type: ignore
       for i, el in enumerate(iterable):
         if limit and i == limit:
           i -= 1

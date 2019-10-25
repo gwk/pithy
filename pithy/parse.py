@@ -717,8 +717,10 @@ class Parser:
 
 
 
-def validate_name(name:str) -> str:
-  if not (isinstance(name, str) and valid_name_re.fullmatch(name)):
+def validate_name(name:Any) -> str:
+  if not isinstance(name, str):
+    raise Parser.DefinitionError(f'name is not a string: {name!r}')
+  if not valid_name_re.fullmatch(name):
     raise Parser.DefinitionError(f'invalid name: {name!r}')
   if name in reserved_names:
     raise Parser.DefinitionError(f'name is reserved: {name!r}')

@@ -225,8 +225,8 @@ def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
 
   def quote(cmd:List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
 
-  first_cmd = None
-  first_out = None
+  first_cmd:List[str] = []
+  first_out:str = ''
   status = 0
   for cmd in test_cmds:
     if dbg: errSL('\nrunning test:', quote(cmd))
@@ -235,7 +235,7 @@ def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
       errSL('test failed:', quote(cmd))
       outZ(out)
       exit(1)
-    if first_cmd is None:
+    if not first_cmd:
       first_cmd = cmd
       first_out = out
       outZ(first_out)

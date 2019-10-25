@@ -186,7 +186,7 @@ class CustomStats(Stats):
             new_list.append(func)
     else:
       count = len(stat_list)
-      if isinstance(sel, float) and 0.0 <= sel < 1.0:
+      if isinstance(sel, float) and 0.0 <= sel < 1.0: # type: ignore # Spurious 'Left operand of 'and' is always true'.
         count = int(count * sel + .5)
         new_list = stat_list[:count]
       elif isinstance(sel, int) and 0 <= sel < count:

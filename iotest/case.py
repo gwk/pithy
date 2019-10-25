@@ -124,7 +124,8 @@ class Case:
     self.in_: Optional[str] = None # stdin as text.
     self.interpreter: Optional[str] = None # interpreter to prepend to cmd.
     self.interpreter_args: Optional[List[str]] = None # interpreter args.
-    self.links: Union[None, Set[str], Dict[str, str]] = None # symlinks to be made into the test directory; written as a str, set or dict.
+    self.links: Union[None, str, Set[str], Dict[str, str]] = None # symlinks to be made into the test directory.
+    #^ Written as a str, set or dict.
     self.out_mode: Optional[str] = None # comparison mode for stdout expectation.
     self.out_path: Optional[str] = None # file path for stdout expectation.
     self.out_val: Optional[str] = None # stdout expectation value (mutually exclusive with out_path).

@@ -257,7 +257,6 @@ def add_iot_configs(configs: Dict, path: str) -> None:
     else:
       msg = f'malformed .iot file: {path!r}\n  exception: {s}'
     exit(f'iotest error: {stem}: {msg}')
-    return
 
   if isinstance(val, dict):
     configs[stem].setdefault('.test_info_paths', set()).add(path)
@@ -514,13 +513,13 @@ diff_cmd = 'git diff --exit-code --no-index --no-prefix --no-renames --histogram
 
 def cat_file(path: str, limit=-1) -> None:
   outL(QUOTE, 'cat ', rel_path(path), FILL_OUT)
-  line = None
+  line:Optional[str] = None
   with open(path) as f:
     for i, line in enumerate(f):
       if i == limit: return #!cov-ignore.
       outN(*sanitize_for_console(line, allow_sgr=is_out_tty, escape=ESCAPE_OUT, unescape=UNESCAPE_OUT))
   if line is None:
-    outL(QUOTE_END, '(empty)', FILL_OUT)
+    outL(QUOTE_END, '(empty)', FILL_OUT) # type: ignore # Spurious 'Statement is unreachable'.
   elif not line.endswith('\n'):
     outL(QUOTE_END, '(missing final newline)', FILL_OUT) #!cov-ignore.
   else:

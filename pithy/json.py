@@ -10,7 +10,6 @@ from typing import (IO, AbstractSet, Any, Callable, Dict, FrozenSet, Hashable, I
 
 from .encode import EncodeObj, all_slots, encode_obj
 
-
 JsonAny = Any # TODO: remove this once recursive types work.
 JsonList = List[JsonAny]
 JsonDict = Dict[str, JsonAny]
@@ -168,8 +167,8 @@ def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Calla
         raise ValueError(f'malformed decoder hook; expected (keys, constructor) pair; received: {h!r}') from e
       fn = _hook_type_fn(fn_raw) if isinstance(fn_raw, type) else fn_raw
 
-    if isinstance(keys_raw, str): keys = frozenset({keys_raw})
-    else: keys = frozenset(keys_raw)
+    assert not isinstance(keys_raw, str)
+    keys = frozenset(keys_raw)
     if keys in type_map:
       raise ValueError(f'conflicting type hooks for key seyt {keys}:\n  {type_map[keys]}\n  {fn}')
     type_map[keys] = fn

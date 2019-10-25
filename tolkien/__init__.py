@@ -120,7 +120,6 @@ class Source(Generic[_Text]):
 
   def diagnostic_for_pos(self, pos:int, *, end:int, line_pos:int, line_idx:int, prefix:str='', msg:str = '',
    show_missing_newline:bool = True) -> str:
-    if end is None: end = pos
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
       return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx,
