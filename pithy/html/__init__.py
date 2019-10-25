@@ -6,7 +6,6 @@ Html type hierarchy.
 
 import re
 from html import escape as _escape
-from inspect import signature as _signature
 from typing import (Any, AnyStr as _AnyStr, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
   Union, cast)
 
@@ -97,16 +96,13 @@ _Self = TypeVar('_Self', bound=Mu)
 
 _Accessor = Callable[[_Self],_Child]
 
-def _single(acc:_Accessor) -> _Accessor:
+def _single(AccesseeClass:Type[_Child]) -> _Accessor:
   'Wrapper function for creating a single-child accessor.'
-  sig = _signature(acc)
-  AccesseeClass:Type = sig.return_annotation
   tag = AccesseeClass.tag
 
   def html_single_accessor(self:_Self) -> _Child:
     for c in self.ch:
       if isinstance(c, Mu) and c.tag == tag: return cast(_Child, c)
-    raise ValueError()
     return self.append(AccesseeClass())
 
   return property(html_single_accessor) # type: ignore
