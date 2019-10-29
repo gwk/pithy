@@ -2,7 +2,7 @@
 
 from typing import Counter, Dict, List
 
-from ..lex import Lexer, whitespace_patterns, c_like_punctuation_patterns
+from ..lex import Lexer, LexMode, c_like_punctuation_patterns, whitespace_patterns
 
 
 patterns=dict(
@@ -79,4 +79,4 @@ for l, q in [('s', "'"), ('d', '"')]:
     add_str_patterns(label=label, quote=quote, multiline=multiline)
     main_pattern_names.append('str_' + label) # TODO: generalize to allow choosing multimode lexer.
 
-lexer = Lexer(flags='x', patterns=patterns, modes=dict(main=main_pattern_names))
+lexer = Lexer(flags='x', patterns=patterns, modes=[LexMode('main', main_pattern_names)])

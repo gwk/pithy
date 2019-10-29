@@ -5,7 +5,7 @@ from typing import Container, DefaultDict, Dict, FrozenSet, List, Match, NoRetur
 
 from pithy.io import *
 from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
-from pithy.lex import Lexer, LexTrans
+from pithy.lex import Lexer, LexMode, LexTrans
 from pithy.parse import *
 from pithy.string import clip_prefix
 from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges
@@ -77,15 +77,14 @@ lexer = Lexer(flags='mx',
     backslash = r'\\',
     char    = r'[!-~]',
   ),
-  modes=dict(
-    main=[*common_kinds, 'sym', 'colon', *sl_kinds],
-    license=['newline', 'license_text', *sl_kinds],
-    patterns=[*common_kinds, 'bar', 'colon', 'sym', *sl_kinds],
-    pattern=[*common_kinds,
-      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char'],
-    charset=[*common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'],
-
-  ),
+  modes=[
+    LexMode('main', kinds=[*common_kinds, 'sym', 'colon', *sl_kinds]),
+    LexMode('license', kinds=['newline', 'license_text', *sl_kinds]),
+    LexMode('patterns', kinds=[*common_kinds, 'bar', 'colon', 'sym', *sl_kinds]),
+    LexMode('pattern', kinds=[*common_kinds,
+      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char']),
+    LexMode('charset', kinds=[*common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char']),
+  ],
   transitions=[
     LexTrans('main',      kind='sl_license',  mode='license',   pop=sl_kinds, consume=False),
     LexTrans('main',      kind='sl_patterns', mode='patterns',  pop=sl_kinds, consume=False),

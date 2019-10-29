@@ -67,9 +67,10 @@ str_lexer = Lexer(patterns=dict(
   dq    = r'"',
   chars = r'[^"\\]+',
   esc = r'\\"|\\\\'),
-  modes=dict(
-    main=['line', 'space', 'dq'],
-    string=['chars', 'esc', 'dq']),
+  modes=[
+    LexMode('main', ['line', 'space', 'dq']),
+    LexMode('string', ['chars', 'esc', 'dq']),
+  ],
   transitions=[
     LexTrans('main', kind='dq', mode='string', pop='dq', consume=True)])
 

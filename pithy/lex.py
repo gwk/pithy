@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Pattern, Tuple, Union
+from typing import Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Pattern, Tuple, Union, cast
 
 from tolkien import Source, Token
 
@@ -13,6 +13,18 @@ from .string import iter_str
 
 
 class LexError(Exception): pass
+
+
+class LexMode:
+  def __init__(self, name:str, kinds:Iterable[str], *, indents=False) -> None:
+    self.name = name
+    self.kinds = list(iter_str(kinds))
+    self.indents = indents
+    self.kind_set:FrozenSet[str] = frozenset() # Filled in by Lexer.
+    self.regex:Pattern = cast(Pattern, None) # Filled in by Lexer.
+
+  def __repr__(self) -> str:
+    return f'{type(self).__name__}({self.name!r}, kinds={self.kinds}, kind_set={self.kind_set}, indents={self.indents})'
 
 
 class KindPair(NamedTuple):
@@ -41,7 +53,7 @@ class LexTrans:
     self.consume = consume # If false, base will consider this token for further push/pop mode transitions.
 
   def __repr__(self) -> str:
-    return f'{type(self).__name__}({self.bases!r}, kinds={self.kinds!r}, mode={self.mode!r}, pops={self.pops!r}, consume={self.consume!r})'
+    return f'{type(self).__name__}({self.bases!r}, kinds={self.kinds}, mode={self.mode!r}, pops={self.pops}, consume={self.consume})'
 
   def should_pop(self, frame_token:Token, token:Token, prev_kind:str) -> bool:
     try: pop_prev = self.pop_dict[token.kind]
@@ -75,7 +87,7 @@ class Lexer:
 
   class DefinitionError(Exception): pass
 
-  def __init__(self, *, flags='', patterns:Dict[str,str], modes:Dict[str,Iterable[str]]={},
+  def __init__(self, *, flags='', patterns:Dict[str,str], modes:Iterable[LexMode]=(),
    transitions:Iterable[LexTrans]=()) -> None:
 
     # Validate flags.
@@ -107,33 +119,36 @@ class Lexer:
           raise Lexer.DefinitionError(f'{n!r} pattern contains a conflicting capture group name: {group_name!r}')
       self.patterns[n] = pattern
 
-    # Validate modes.
-    self.modes: Dict[str,FrozenSet[str]] = {}
+    # Validate and compile modes.
+    if not modes:
+      modes = [LexMode('main', kinds=self.patterns)]
+    self.modes: Dict[str,LexMode] = {}
     main = None
-    if modes:
-      for mode, names in modes.items():
-        if not main: main = mode
-        if mode in patterns:
-          raise Lexer.DefinitionError(f'mode name conflicts with pattern name: {mode!r}')
-        expanded = set()
-        if isinstance(names, str):
-          raise Lexer.DefinitionError(f'mode {mode!r} value should be a iterable of names, not a str: {names!r}')
-        for name in names:
-          if re.fullmatch(r'\w+', name):
-            if name in patterns: expanded.add(name)
-            else: raise Lexer.DefinitionError(f'mode {mode!r} includes nonexistant pattern: {name!r}')
-          else:
-            try:
-              matching = {p for p in self.patterns if re.fullmatch(name, p)}
-            except Exception:
-              raise Lexer.DefinitionError(f'mode {mode!r} includes invalid wildcard pattern regex: {name}')
-            if not matching:
-              raise Lexer.DefinitionError(f'mode {mode!r} wildcard pattern regex does not match any patterns: {name}')
-            expanded.update(matching)
-        self.modes[mode] = frozenset(expanded)
-    else:
-      self.modes = { 'main' : frozenset(self.patterns) }
-      main = 'main'
+    for mode in modes:
+      if not isinstance(mode, LexMode): raise Lexer.DefinitionError(f'expected LexMode; received: {mode!r}')
+      if not main: main = mode.name
+      if mode.name in self.modes:
+        raise Lexer.DefinitionError(f'duplicate mode name: {mode.name!r}')
+      if mode.name in patterns:
+        raise Lexer.DefinitionError(f'mode name conflicts with pattern name: {mode.name!r}')
+      kind_set = set()
+      for kind in iter_str(mode.kinds):
+        if re.fullmatch(r'\w+', kind): # Single name.
+          if kind in patterns: kind_set.add(kind)
+          else: raise Lexer.DefinitionError(f'mode {mode.name!r} includes nonexistant pattern: {kind!r}')
+        else: # Pattern.
+          try:
+            matching = {p for p in self.patterns if re.fullmatch(kind, p)}
+          except Exception:
+            raise Lexer.DefinitionError(f'mode {mode.name!r} includes invalid pattern regex: {kind}')
+          if not matching:
+            raise Lexer.DefinitionError(f'mode {mode.name!r} wildcard pattern regex does not match any patterns: {kind}')
+          kind_set.update(matching)
+      self.modes[mode.name] = mode
+      mode.kind_set = frozenset(kind_set)
+      choice_sep = '\n| ' if 'x' in flags else '|'
+      mode.regex = re.compile(choice_sep.join(pattern for name, pattern in self.patterns.items() if name in kind_set))
+      #^ note: iterate over self.patterns.items (not pattern_names) because the dict preserves the original pattern order.
 
     # Validate transitions.
     assert main is not None
@@ -142,28 +157,21 @@ class Lexer:
     for trans in transitions:
       if not isinstance(trans, LexTrans): raise Lexer.DefinitionError(f'expected `LexTrans`; received {trans!r}')
       for base in trans.bases:
-        if base not in modes: raise Lexer.DefinitionError(f'unknown parent mode: {base!r}')
-      if trans.mode not in modes: raise Lexer.DefinitionError(f'unknown child mode: {trans.mode!r}')
+        if base not in self.modes: raise Lexer.DefinitionError(f'unknown parent mode: {base!r}')
+      if trans.mode not in self.modes: raise Lexer.DefinitionError(f'unknown child mode: {trans.mode!r}')
       for label, pairs in [('push', trans.kinds), ('pop', trans.pops)]:
         for pair in pairs:
           for i, k in enumerate(pair):
             if i == 0 and not k: continue # Prev is allowed to be empty.
             if k and k not in patterns: raise Lexer.DefinitionError(f'unknown mode {label} pattern: {k!r}')
       for base in trans.bases:
-        for kind in trans.kinds:
-          key = (base, kind.curr)
+        for kind_pair in trans.kinds:
+          key = (base, kind_pair.curr)
           try: _, existing = self.transitions[key]
           except KeyError: # No conflict.
-            self.transitions[key] = (trans, kind.prev)
+            self.transitions[key] = (trans, kind_pair.prev)
           else: # Conflict.
             raise Lexer.DefinitionError(f'conflicting transitions:\n  {existing}\n  {trans}')
-
-    choice_sep = '\n| ' if 'x' in flags else '|'
-    def compile_mode(mode:str, pattern_names:FrozenSet[str]) -> Pattern:
-      return re.compile(choice_sep.join(pattern for name, pattern in self.patterns.items() if name in pattern_names))
-      #^ note: iterate over self.patterns.items (not pattern_names) because the dict preserves the original pattern order.
-
-    self.regexes = { mode : compile_mode(mode, pattern_names) for mode, pattern_names in self.modes.items() }
 
 
   def _lex_inv(self, pos:int, end:int, mode:str) -> Token:
@@ -190,9 +198,8 @@ class Lexer:
     prev_kind = ''
     while pos < end:
       frame_trans, frame_token = stack[-1]
-      mode = frame_trans.mode
-      regex = self.regexes[mode]
-      token = self._lex_one(regex, source, pos=pos, end=end, mode=mode)
+      mode = self.modes[frame_trans.mode]
+      token = self._lex_one(mode.regex, source, pos=pos, end=end, mode=mode.name)
       kind = token.kind
       pos = token.end
       if kind not in drop:
@@ -204,9 +211,8 @@ class Lexer:
           if frame_trans.consume:
             raise _BreakFromModeSwitching # This frame "consumes" the token.
           frame_trans, frame_token = stack[-1]
-          mode = frame_trans.mode
         # Check if we should push a child mode.
-        try: push_trans, push_prev_kind = self.transitions[(mode, kind)]
+        try: push_trans, push_prev_kind = self.transitions[(frame_trans.mode, kind)]
         except KeyError: pass
         else:
           if not push_prev_kind or prev_kind == push_prev_kind:
