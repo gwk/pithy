@@ -1,4 +1,4 @@
-dangling-escape.legs:2:5-6: error: excess token: pattern.backslash.
+dangling-escape.legs:2:5-6: parse error: excess token: pattern.backslash.
 | a: a\
       ~
 

@@ -42,7 +42,7 @@ class ParseError(Exception):
     super().__init__((self.token, self.msgs))
 
   def fail(self) -> NoReturn:
-    msg = ''.join(str(m) for m in self.msgs)
+    msg = 'parse error: ' + ''.join(str(m) for m in self.msgs)
     self.source.fail(self.token, msg=msg)
 
 
@@ -698,7 +698,7 @@ class Parser:
     result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
-      raise ExcessToken(source, excess_token, f'error: excess token: {excess_token.mode_kind}.')
+      raise ExcessToken(source, excess_token, f'excess token: {excess_token.mode_kind}.')
     return result
 
 
