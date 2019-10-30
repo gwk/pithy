@@ -1,0 +1,4 @@
+empty-rule.legs:3:1: parse error: 'colon_pattern_expr' structure expects pattern_expr; received end_of_text.
+| ⏎͓
+  ^
+
