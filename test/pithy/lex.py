@@ -3,11 +3,12 @@
 
 from utest import *
 from pithy.lex import *
+from typing import Any
 
 
 # Lexer.
 
-def run_lexer(lexer, string, **kwargs):
+def run_lexer(lexer, string:str, **kwargs:Any) -> None:
   'Run `lexer` on `string`, yielding (kind, text) pairs.'
   source = Source(name='test', text=string)
   for token in lexer.lex(source, **kwargs):
@@ -79,3 +80,37 @@ utest_seq([
   ('dq', '"'), ('chars', 'a'), ('dq', '"'), ('spaces', ' '),
   ('dq', '"'), ('chars', 'b'), ('esc', '\\"'), ('esc', '\\\\'), ('dq', '"'), ('newline', '\n')],
   run_lexer, str_lexer, '"a" "b\\"\\\\"\n')
+
+
+word_indent_lexer = Lexer(patterns=dict(
+  newline  = r'\n',
+  spaces = r' +',
+  word    = r'\w+',
+  comment = '#[^\n]+'),
+  modes=[LexMode('main', ['newline', 'spaces', 'word'], indents=True)])
+
+
+word_indent_text = '''
+a
+  b
+
+  c
+    d
+'''
+
+
+def run_word_indent_lexer(string:str) -> None:
+  'Run `lexer` on `string`, yielding token text strings.'
+  source = Source(name='test', text=string)
+  for token in word_indent_lexer.lex(source, drop={'spaces', 'comment'}):
+    yield source[token] if token.kind == 'word' else token.kind
+
+utest_seq([
+  'newline', 'a',
+  'newline', 'indent', 'b',
+  'newline',
+  'newline', 'c',
+  'newline', 'indent', 'd',
+  'newline', 'dedent', 'dedent'],
+  run_word_indent_lexer, word_indent_text)
+

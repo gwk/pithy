@@ -196,6 +196,7 @@ class Lexer:
    ) -> Iterator[Token]:
     assert isinstance(source, Source)
     prev_kind = ''
+    indent_stack:List[int] = []
     while pos < end:
       frame_trans, frame_token = stack[-1]
       mode = self.modes[frame_trans.mode]
@@ -204,6 +205,20 @@ class Lexer:
       pos = token.end
       if kind not in drop:
         yield token
+      # Check if we should synthesize indent or dedent tokens.
+      if mode.indents and prev_kind == 'newline':
+        if kind == 'spaces': # Generate indent or dedent tokens.
+          indent_len = len(source[token])
+          while indent_stack and indent_stack[-1] > indent_len:
+            yield token.pos_token(kind='dedent')
+            indent_stack.pop()
+          if not indent_stack or indent_stack[-1] < indent_len:
+            yield token.pos_token(kind='indent')
+            indent_stack.append(indent_len)
+        elif kind != 'newline': # Empty lines do not affect indent stack. All others pop the entire indent stack.
+          while indent_stack:
+            yield token.pos_token(kind='dedent')
+            indent_stack.pop()
       # Check if we should pop one or more modes.
       try:
         while frame_trans.should_pop(frame_token=frame_token, token=token, prev_kind=prev_kind):
@@ -220,6 +235,9 @@ class Lexer:
             kind = '' # Make prev_kind empty on the next iteration.
       except _BreakFromModeSwitching: pass
       prev_kind = kind
+    while indent_stack:
+      yield token.pos_token(kind='dedent')
+      indent_stack.pop()
     if eot:
       yield eot_token(source, mode=stack[-1][0].mode)
 
