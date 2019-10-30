@@ -15,21 +15,21 @@ def run_lexer(lexer, string, **kwargs):
 
 
 num_lexer = Lexer(patterns=dict(
-  line  = r'\n',
-  space = r' +',
+  newline  = r'\n',
+  spaces = r' +',
   num   = r'\d+',
 ))
 
-utest_seq([('num', '1'), ('space', ' '), ('num', '20'), ('line', '\n')],
+utest_seq([('num', '1'), ('spaces', ' '), ('num', '20'), ('newline', '\n')],
   run_lexer, num_lexer, '1 20\n')
 
 utest_seq([('num', '1'), ('num', '20')],
-  run_lexer, num_lexer, '1 20\n', drop={'line', 'space'})
+  run_lexer, num_lexer, '1 20\n', drop={'newline', 'spaces'})
 
-utest_seq([('num','0'), ('line','\n'), ('end_of_text','')],
+utest_seq([('num','0'), ('newline','\n'), ('end_of_text','')],
   run_lexer, num_lexer, '0\n', eot=True)
 
-utest_seq([('num', '1'), ('invalid', 'x'), ('num', '2')], run_lexer, num_lexer, '1 x 2', drop='space')
+utest_seq([('num', '1'), ('invalid', 'x'), ('num', '2')], run_lexer, num_lexer, '1 x 2', drop='spaces')
 
 
 word_lexer = Lexer(patterns=dict(
@@ -62,13 +62,13 @@ utest_seq_exc(
 # Modes.
 
 str_lexer = Lexer(patterns=dict(
-  line  = r'\n',
-  space = r' +',
+  newline  = r'\n',
+  spaces = r' +',
   dq    = r'"',
   chars = r'[^"\\]+',
   esc = r'\\"|\\\\'),
   modes=[
-    LexMode('main', ['line', 'space', 'dq']),
+    LexMode('main', ['newline', 'spaces', 'dq']),
     LexMode('string', ['chars', 'esc', 'dq']),
   ],
   transitions=[
@@ -76,6 +76,6 @@ str_lexer = Lexer(patterns=dict(
 
 
 utest_seq([
-  ('dq', '"'), ('chars', 'a'), ('dq', '"'), ('space', ' '),
-  ('dq', '"'), ('chars', 'b'), ('esc', '\\"'), ('esc', '\\\\'), ('dq', '"'), ('line', '\n')],
+  ('dq', '"'), ('chars', 'a'), ('dq', '"'), ('spaces', ' '),
+  ('dq', '"'), ('chars', 'b'), ('esc', '\\"'), ('esc', '\\\\'), ('dq', '"'), ('newline', '\n')],
   run_lexer, str_lexer, '"a" "b\\"\\\\"\n')
