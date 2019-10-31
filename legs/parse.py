@@ -106,16 +106,16 @@ def build_legs_grammar_parser() -> Parser:
       # Section label and body rules.
 
       section_license=Struct(Atom('sl_license'), ZeroOrMore('license'),
-        transform=lambda s, t: t[1]),
+        transform=lambda s, fields: fields[1]),
 
       section_patterns=Struct(Atom('sl_patterns'), 'newline', ZeroOrMore('pattern', drop='newline'),
-        transform=lambda s, t: t[2]),
+        transform=lambda s, fields: fields[2]),
 
       section_modes=Struct(Atom('sl_modes'), 'newline', ZeroOrMore('mode', drop='newline'),
-        transform=lambda s, t: t[2]),
+        transform=lambda s, fields: fields[2]),
 
       section_transitions=Struct(Atom('sl_transitions'), 'newline', ZeroOrMore('transition', drop='newline'),
-        transform=lambda s, t: t[2]),
+        transform=lambda s, fields: fields[2]),
 
       # License lines.
       license=Choice(Atom('newline'), Atom('license_text'),
@@ -127,13 +127,13 @@ def build_legs_grammar_parser() -> Parser:
         transform=transform_pattern),
 
       colon_pattern_expr=Struct('colon', 'pattern_expr', drop=('newline', 'indents'),
-        transform=lambda s, struct: struct[1]),
+        transform=lambda s, fields: fields[1]),
 
       mode=Struct('sym', 'colon', Quantity('sym'), 'newline',
-        transform=lambda s, t: (t[0], t[2])),
+        transform=lambda s, fields: (fields[0], fields[2])),
 
       transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline',
-        transform=lambda s, t: ((t[0], t[2]), (t[5], t[7]))),
+        transform=lambda s, fields: ((fields[0], fields[2]), (fields[5], fields[7]))),
 
       sym=Atom('sym'),
       colon=Atom('colon'),
@@ -211,8 +211,8 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
   return Grammar(license=license, patterns=patterns, modes=modes, transitions=dict(transitions))
 
 
-def transform_pattern(source:Source, struct:List) -> Tuple[str,LegsPattern]:
-  name, pattern = struct
+def transform_pattern(source:Source, fields:List) -> Tuple[str,LegsPattern]:
+  name, pattern = fields
   if pattern is None:
     pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in name])
   return (name, pattern)
