@@ -78,7 +78,7 @@ StructTransform = Callable[[Source,List[Any]],Any]
 def struct_syn(source:Source, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
 
 ChoiceTransform = Callable[[Source,RuleName,Any],Any]
-def choice_syn(source:Source, name:RuleName, obj:Any) -> Tuple[str,Any]: return (name, obj)
+def choice_syn(source:Source, label:RuleName, obj:Any) -> Tuple[str,Any]: return (label, obj)
 
 
 _sentinel_kind = '!SENTINEL'
