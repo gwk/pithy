@@ -194,12 +194,19 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
   patterns:Dict[str,LegsPattern] = {}
   modes:Dict[str,FrozenSet[str]] = {}
   transitions = DefaultDict[str,KindModeTransitions](dict)
-  for name, section in sections:
-    label = clip_prefix(name.lower(), 'section_')
-    if label == 'license': licenses.extend(section)
-    elif label == 'patterns': patterns.update(section)
-    elif label == 'modes': modes.update(section)
-    elif label == 'transitions':
+  for label, section in sections:
+    sk = clip_prefix(label.lower(), 'section_')
+    if sk == 'license':
+      licenses.extend(section)
+    elif sk == 'patterns':
+      for name, pattern in section:
+        if name in patterns: raise KeyError(name)
+        patterns[name] = pattern
+    elif sk == 'modes':
+      for name, mode in section:
+        if name in modes: raise KeyError(name)
+        modes[name] = mode
+    elif sk == 'transitions':
       for (ms, ks), (md, kd) in section:
         transitions[ms][ks] = (md, kd)
   license = ''.join(licenses).strip()
