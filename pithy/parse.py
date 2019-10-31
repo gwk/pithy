@@ -61,7 +61,12 @@ TreeTransform = Callable[[Source,Any],Any]
 def tree_identity(source:Source, obj:Any) -> Any: return obj
 
 TokenTransform = Callable[[Source,Token],Any]
-def token_syn(source:Source, token:Token) -> str: return source[token]
+
+def token_identity(source:Source, token:Token) -> Token: return token
+
+def token_extract_text(source:Source, token:Token) -> str: return source[token]
+def token_extract_kind(source:Source, token:Token) -> str: return token.kind
+
 
 UnaryTransform = Callable[[Source,Token,Any],Any]
 def unary_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
@@ -162,7 +167,7 @@ class Atom(Rule):
   '''
   type_desc = 'atom'
 
-  def __init__(self, kind:TokenKind, transform:TokenTransform=token_syn) -> None:
+  def __init__(self, kind:TokenKind, transform:TokenTransform=token_identity) -> None:
     self.name = ''
     self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
     self.kind = validate_name(kind)

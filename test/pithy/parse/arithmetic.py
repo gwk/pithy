@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from pithy.parse import Atom, Infix, Left, Parser, Precedence, Prefix, Right, SuffixRule
+from pithy.parse import Atom, Infix, Left, Parser, Precedence, Prefix, Right, SuffixRule, token_extract_text
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import *
 
 
 arithmetic = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     int=Atom('int_d', transform=lambda s, t: int(s[t])),
     paren=Prefix('paren_o', 'expr', 'paren_c'),
     # TODO: unary plus, minus.

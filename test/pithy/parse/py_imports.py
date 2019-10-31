@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
-from pithy.parse import Atom, Choice, Infix, Left, Opt, Parser, Precedence, Struct, Quantity
+from pithy.parse import Atom, Choice, Infix, Left, Opt, Parser, Precedence, Struct, Quantity, token_extract_text
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import *
 
 
 basic = Parser(lexer, dict(
-    name=Atom('name'),
-    kw_as=Atom('kw_as'),
-    kw_import=Atom('kw_import'),
-    kw_from=Atom('kw_from'),
+    name=Atom('name', transform=token_extract_text),
+    kw_as=Atom('kw_as', transform=token_extract_text),
+    kw_import=Atom('kw_import', transform=token_extract_text),
+    kw_from=Atom('kw_from', transform=token_extract_text),
 
     import_=Choice('import_modules', 'import_from'),
     import_modules=Struct('kw_import', 'path_as_exprs'),

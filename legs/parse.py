@@ -119,7 +119,7 @@ def build_legs_grammar_parser() -> Parser:
 
       # License lines.
       license=Choice(Atom('newline'), Atom('license_text'),
-        transform=lambda s, label, atom_text: atom_text),
+        transform=lambda s, label, token: s[token]),
 
       # Section body rules.
 
@@ -199,16 +199,26 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
     if sk == 'license':
       licenses.extend(section)
     elif sk == 'patterns':
-      for name, pattern in section:
-        if name in patterns: raise KeyError(name)
+      for sym, pattern in section:
+        name = source[sym]
+        if name in patterns: source.fail(sym, f'pattern already defined: {name}')
         patterns[name] = pattern
     elif sk == 'modes':
-      for name, mode in section:
-        if name in modes: raise KeyError(name)
-        modes[name] = mode
+      for sym, mode_pattern_syms in section:
+        name = source[sym]
+        if name in modes:  source.fail(sym, f'mode already defined: {name}')
+        for sym in mode_pattern_syms:
+          pattern_name = source[sym]
+          if pattern_name not in patterns:
+            source.fail(sym, f'undefined pattern name: {name}')
+        modes[name] = frozenset(source[sym] for sym in mode_pattern_syms)
     elif sk == 'transitions':
-      for (ms, ks), (md, kd) in section:
-        transitions[ms][ks] = (md, kd)
+      for (from_mode_tok, open_kind_tok), (push_mode_tok, close_kind_tok) in section:
+        from_mode = source[from_mode_tok]
+        open_kind = source[open_kind_tok]
+        push_mode = source[push_mode_tok]
+        close_kind = source[close_kind_tok]
+        transitions[from_mode][open_kind] = (push_mode, close_kind)
   license = ''.join(licenses).strip()
   for pattern in patterns.values():
     assert isinstance(pattern, LegsPattern), pattern
@@ -218,11 +228,11 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
   return Grammar(license=license, patterns=patterns, modes=modes, transitions=dict(transitions))
 
 
-def transform_pattern(source:Source, fields:List) -> Tuple[str,LegsPattern]:
-  name, pattern = fields
+def transform_pattern(source:Source, fields:List) -> Tuple[Token,LegsPattern]:
+  sym, pattern = fields
   if pattern is None:
-    pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in name])
-  return (name, pattern)
+    pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in source[sym]])
+  return (sym, pattern)
 
 
 def transform_choice(source:Source, token:Token, l:LegsPattern, r:LegsPattern) -> ChoicePattern:

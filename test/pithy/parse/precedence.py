@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-from pithy.parse import Adjacency, Atom, Infix, Left, Parser, Precedence, Right, Suffix
+from pithy.parse import Adjacency, Atom, Infix, Left, Parser, Precedence, Right, Suffix, token_extract_text
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import *
 
 
 left = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Left(Infix('plus')),
@@ -20,7 +20,7 @@ utest(('+', ('*', 'a', 'b'), ('*', ('*', 'c', 'd'), 'e')), left.parse, 'expr', S
 
 
 right = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Infix('plus')),
@@ -33,7 +33,7 @@ utest(('+', ('*', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), right.parse, 'expr', 
 
 
 left_adj_dot = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Left(Adjacency()),
@@ -46,7 +46,7 @@ utest((('a', ('.', 'b', 'c')), 'd'), left_adj_dot.parse, 'expr', Source('', 'a b
 
 
 left_dot_adj = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Left(Infix('dot')),
@@ -59,7 +59,7 @@ utest(('.', (('a', 'b'), 'c'), 'd'), left_dot_adj.parse, 'expr', Source('', 'a b
 
 
 right_adj_dot = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Adjacency()),
@@ -72,7 +72,7 @@ utest(('a', (('.', 'b', 'c'), 'd')), right_adj_dot.parse, 'expr', Source('', 'a 
 
 
 right_dot_adj = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Infix('dot')),
@@ -85,7 +85,7 @@ utest(('.', ('a', ('b', 'c')), 'd'), right_dot_adj.parse, 'expr', Source('', 'a 
 
 
 right_adj_qmark = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Adjacency()),
@@ -97,7 +97,7 @@ utest(('a', (('?', 'b'), 'c')), right_adj_qmark.parse, 'expr', Source('', 'a b? 
 
 
 right_qmark_adj = Parser(lexer, dict(
-    name=Atom('name'),
+    name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Suffix('qmark')),
