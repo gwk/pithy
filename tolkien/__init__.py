@@ -36,6 +36,11 @@ class Token(NamedTuple):
     if kind is None: kind = self.kind
     return Token(pos=self.pos, end=self.pos, mode=self.mode, kind=kind)
 
+  def end_token(self, kind:str=None) -> 'Token':
+    'Create a new token with position and end set to `token.end`.'
+    if kind is None: kind = self.kind
+    return Token(pos=self.end, end=self.end, mode=self.mode, kind=kind)
+
 
 SourceText = Union[str,bytes,bytearray]
 _Text = TypeVar('_Text', bound=SourceText)
