@@ -667,7 +667,7 @@ class Parser:
     for rule in self.nodes:
       # Validate token references.
       for token_kind in rule.token_kinds():
-        if token_kind not in lexer.patterns:
+        if token_kind not in lexer.kinds:
           raise Parser.DefinitionError(f'{rule} refers to nonexistent token kind: {token_kind}')
       # Fill out rule heads.
       if not rule.heads:

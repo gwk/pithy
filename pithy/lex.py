@@ -173,6 +173,11 @@ class Lexer:
           else: # Conflict.
             raise Lexer.DefinitionError(f'conflicting transitions:\n  {existing}\n  {trans}')
 
+    kinds = list(self.patterns)
+    if any(mode.indents for mode in modes):
+      kinds.extend(['indent', 'dedent'])
+    self.kinds = frozenset(kinds)
+
 
   def _lex_inv(self, pos:int, end:int, mode:str) -> Token:
     return Token(pos=pos, end=end, mode=mode, kind='invalid')
