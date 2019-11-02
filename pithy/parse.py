@@ -84,7 +84,7 @@ def struct_syn(source:Source, fields:List[Any]) -> Tuple[Any,...]: return tuple(
 
 ChoiceTransform = Callable[[Source,RuleName,Any],Any]
 def choice_syn(source:Source, label:RuleName, obj:Any) -> Tuple[str,Any]: return (label, obj)
-
+def choice_identity(source:Source, label:RuleName, obj:Any) -> Any: return obj
 
 _sentinel_kind = '!SENTINEL'
 
