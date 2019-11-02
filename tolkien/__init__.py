@@ -105,11 +105,8 @@ class Source(Generic[_Text]):
 
 
   def diagnostic(self, token:Token, msg:str, *, prefix:str='') -> str:
-    pos = token.pos
-    end = token.end
-    line_pos = self.get_line_start(pos)
-    line_idx = self.get_line_index(pos)
-    return self.diagnostic_for_pos(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg)
+    return self.diagnostic_for_pos(pos=token.pos, end=token.end, prefix=prefix, msg=msg)
+
 
   def fail(self, token:Token, msg:str, *, prefix:str='') -> NoReturn:
     exit(self.diagnostic(token=token, msg=msg, prefix=prefix))
@@ -117,12 +114,12 @@ class Source(Generic[_Text]):
 
   def diagnostic_at_end(self, msg:str, *, prefix:str='') -> str:
     pos = len(self.text)
-    line_pos = self.get_line_start(pos)
-    line_idx = self.get_line_index(pos)
     return self.diagnostic_for_pos(pos=pos, end=pos, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg)
 
 
-  def diagnostic_for_pos(self, pos:int, *, end:int, line_pos:int, line_idx:int, prefix:str='', msg:str = '') -> str:
+  def diagnostic_for_pos(self, pos:int, *, end:int, prefix:str='', msg:str = '') -> str:
+    line_idx = self.get_line_index(pos)
+    line_pos = self.get_line_start(pos)
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
       return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx,
