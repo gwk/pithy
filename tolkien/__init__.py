@@ -48,10 +48,11 @@ _Text = TypeVar('_Text', bound=SourceText)
 
 class Source(Generic[_Text]):
 
-  def __init__(self, name:str, text:_Text) -> None:
+  def __init__(self, name:str, text:_Text, show_missing_newline=True) -> None:
     assert isinstance(text, (str,bytes,bytearray))
     self.name = name
     self.text = text
+    self.show_missing_newline = show_missing_newline
     self.newline_positions:List[int] = []
 
 
@@ -103,45 +104,41 @@ class Source(Generic[_Text]):
     return line.decode(errors='replace')
 
 
-  def diagnostic(self, token:Token, msg:str, *, prefix:str='', show_missing_newline:bool=True) -> str:
+  def diagnostic(self, token:Token, msg:str, *, prefix:str='') -> str:
     pos = token.pos
     end = token.end
     line_pos = self.get_line_start(pos)
     line_idx = self.get_line_index(pos)
-    return self.diagnostic_for_pos(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg,
-      show_missing_newline=show_missing_newline)
+    return self.diagnostic_for_pos(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg)
 
-  def fail(self, token:Token, msg:str, *, prefix:str='', show_missing_newline:bool=True) -> NoReturn:
-    exit(self.diagnostic(token=token, msg=msg, prefix=prefix, show_missing_newline=show_missing_newline))
+  def fail(self, token:Token, msg:str, *, prefix:str='') -> NoReturn:
+    exit(self.diagnostic(token=token, msg=msg, prefix=prefix))
 
 
-  def diagnostic_at_end(self, msg:str, *, prefix:str='', show_missing_newline:bool=True) -> str:
+  def diagnostic_at_end(self, msg:str, *, prefix:str='') -> str:
     pos = len(self.text)
     line_pos = self.get_line_start(pos)
     line_idx = self.get_line_index(pos)
-    return self.diagnostic_for_pos(pos=pos, end=pos, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg,
-      show_missing_newline=show_missing_newline)
+    return self.diagnostic_for_pos(pos=pos, end=pos, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg)
 
 
-  def diagnostic_for_pos(self, pos:int, *, end:int, line_pos:int, line_idx:int, prefix:str='', msg:str = '',
-   show_missing_newline:bool = True) -> str:
+  def diagnostic_for_pos(self, pos:int, *, end:int, line_pos:int, line_idx:int, prefix:str='', msg:str = '') -> str:
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
       return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx,
-        line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg, show_missing_newline=show_missing_newline)
+        line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg)
     else: # multiline.
       end_line_idx = self.get_line_index(end)
       end_line_pos = self.get_line_start(end)
       end_line_end = self.get_line_end(end)
       return (
         self._diagnostic(pos=pos, end=line_end, line_pos=line_pos, line_idx=line_idx,
-          line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg, show_missing_newline=show_missing_newline) +
+          line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg) +
         self._diagnostic(pos=end_line_pos, end=end, line_pos=end_line_pos, line_idx=end_line_idx,
-          line_str=self.get_line_str(end_line_pos, end_line_end), prefix=prefix, msg='ending here.', show_missing_newline=show_missing_newline))
+          line_str=self.get_line_str(end_line_pos, end_line_end), prefix=prefix, msg='ending here.'))
 
 
-  def _diagnostic(self, pos:int, end:int, line_pos:int, line_idx:int, line_str:str, *, prefix:str, msg:str,
-   show_missing_newline:bool) -> str:
+  def _diagnostic(self, pos:int, end:int, line_pos:int, line_idx:int, line_str:str, *, prefix:str, msg:str) -> str:
 
     assert pos >= 0
     assert pos <= end
@@ -164,7 +161,7 @@ class Source(Generic[_Text]):
         src_line = s + "\u23CE" # RETURN SYMBOL.
       else:
         src_line = s
-    elif show_missing_newline:
+    elif self.show_missing_newline:
       src_line = line_str + "\u23CE\u0353" # RETURN SYMBOL, COMBINING X BELOW.
     else:
       src_line = line_str

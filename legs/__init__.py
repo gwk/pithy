@@ -141,11 +141,11 @@ def test_main(LexerClass) -> None:
     if index == 0: continue
     name = f'arg{index}'
     print(f'\n{name}: {ploy_repr(arg)}')
-    source = Source(name=name, text=arg.encode('utf8'))
+    source = Source(name=name, text=arg.encode('utf8'), show_missing_newline=False)
     for token in LexerClass(source=source):
       kind_desc = LexerClass.pattern_descs[token.kind]
       msg = test_desc(source=source, token=token, kind_desc=kind_desc)
-      print(source.diagnostic(token, msg, show_missing_newline=False), end='')
+      print(source.diagnostic(token, msg), end='')
 
 
 def test_desc(source:Source, token:Token, kind_desc:str) -> str:
