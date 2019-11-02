@@ -414,7 +414,7 @@ class Choice(Rule):
       syn = sub.parse(self, source, token, buffer)
       return self.transform(source, sub.name, syn)
     exp = self.name or f'any of {self.subs_desc}'
-    raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}')
+    raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
 
 
