@@ -132,7 +132,7 @@ class Source(Generic[_Text]):
         self._diagnostic(pos=pos, end=line_end, line_pos=line_pos, line_idx=line_idx,
           line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg, show_missing_newline=show_missing_newline) +
         self._diagnostic(pos=end_line_pos, end=end, line_pos=end_line_pos, line_idx=end_line_idx,
-          line_str=self.get_line_str(end_line_pos, end_line_end), prefix=prefix, msg=msg, show_missing_newline=show_missing_newline))
+          line_str=self.get_line_str(end_line_pos, end_line_end), prefix=prefix, msg='ending here.', show_missing_newline=show_missing_newline))
 
 
   def _diagnostic(self, pos:int, end:int, line_pos:int, line_idx:int, line_str:str, *, prefix:str, msg:str,
