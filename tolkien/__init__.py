@@ -90,10 +90,10 @@ class Source(Generic[_Text]):
     a newline is considered the final character of a line.
     '''
     if isinstance(self.text, str):
-      line_end = self.text.find('\n', pos)
+      newline_pos = self.text.find('\n', pos)
     else:
-      line_end = self.text.find(b'\n', pos)
-    return len(self.text) if line_end == -1 else line_end + 1
+      newline_pos = self.text.find(b'\n', pos)
+    return len(self.text) if newline_pos == -1 else newline_pos + 1
 
 
   def get_line_str(self, pos:int, end:int) -> str:
