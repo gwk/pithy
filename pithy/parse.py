@@ -324,7 +324,7 @@ class Quantity(_QuantityRule):
       raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
 
     if self.sep_at_end is False and found_sep:
-      raise ParseError(source, token, f'{self} received unpexpected {self.sep} separator.')
+      raise ParseError(source, token, f'{self} received unexpected {self.sep} separator.')
 
     buffer.push(token)
     return self.transform(source, els)
