@@ -73,15 +73,25 @@ class Source(Generic[_Text]):
     for (index, newline_pos) in enumerate(self.newline_positions):
       if pos <= newline_pos:
         return index
-    return len(self.newline_positions)
+
+    newline_count = len(self.newline_positions)
+    text = self.text
+    if isinstance(text, str):
+      if pos == len(text) and text.endswith('\n'): return newline_count - 1
+    else:
+      if pos == len(text) and text.endswith(b'\n'): return newline_count -1
+    return newline_count
 
 
   def get_line_start(self, pos:int) -> int:
     'Return the character index for the start of the line containing `pos`.'
-    if isinstance(self.text, str):
-      return self.text.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, so just add one.
+    text = self.text
+    if isinstance(text, str):
+      if pos == len(text) and text.endswith('\n'): pos -= 1
+      return text.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, so just add one.
     else:
-      return self.text.rfind(b'\n', 0, pos) + 1
+      if pos == len(text) and text.endswith(b'\n'): pos -= 1
+      return text.rfind(b'\n', 0, pos) + 1
 
 
   def get_line_end(self, pos:int) -> int:
