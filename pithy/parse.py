@@ -697,7 +697,7 @@ class Parser:
     buffer = self.make_buffer(source)
     if dbg_tokens:
       for token in buffer.peek_all():
-        errL(source.diagnostic(token, msg=f'{token.mode_kind}'))
+        errL(source.diagnostic(token, msg=f'dbg_token: {token.mode_kind}'))
 
     token = next(buffer)
     result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
