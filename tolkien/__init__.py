@@ -114,7 +114,7 @@ class Source(Generic[_Text]):
 
   def diagnostic_at_end(self, msg:str, *, prefix:str='') -> str:
     pos = len(self.text)
-    return self.diagnostic_for_pos(pos=pos, end=pos, line_pos=line_pos, line_idx=line_idx, prefix=prefix, msg=msg)
+    return self.diagnostic_for_pos(pos=pos, end=pos, prefix=prefix, msg=msg)
 
 
   def diagnostic_for_pos(self, pos:int, *, end:int, prefix:str='', msg:str = '') -> str:
@@ -122,24 +122,24 @@ class Source(Generic[_Text]):
     line_pos = self.get_line_start(pos)
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
-      return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_idx=line_idx,
-        line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg)
+      return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_end=line_end, line_idx=line_idx, prefix=prefix, msg=msg)
     else: # multiline.
       end_line_idx = self.get_line_index(end)
       end_line_pos = self.get_line_start(end)
       end_line_end = self.get_line_end(end)
       return (
-        self._diagnostic(pos=pos, end=line_end, line_pos=line_pos, line_idx=line_idx,
-          line_str=self.get_line_str(line_pos, line_end), prefix=prefix, msg=msg) +
-        self._diagnostic(pos=end_line_pos, end=end, line_pos=end_line_pos, line_idx=end_line_idx,
-          line_str=self.get_line_str(end_line_pos, end_line_end), prefix=prefix, msg='ending here.'))
+        self._diagnostic(pos=pos, end=line_end, line_pos=line_pos, line_end=line_end,  line_idx=line_idx, prefix=prefix, msg=msg) +
+        self._diagnostic(pos=end_line_pos, end=end, line_pos=end_line_pos, line_end=end_line_end, line_idx=end_line_idx,
+          prefix=prefix, msg='ending here.'))
 
 
-  def _diagnostic(self, pos:int, end:int, line_pos:int, line_idx:int, line_str:str, *, prefix:str, msg:str) -> str:
+  def _diagnostic(self, pos:int, end:int, line_pos:int, line_end:int, line_idx:int, *, prefix:str, msg:str) -> str:
 
     assert pos >= 0
     assert pos <= end
     assert line_pos <= pos
+
+    line_str = self.get_line_str(line_pos, line_end)
     assert end <= line_pos + len(line_str)
 
     tab = '\t'
@@ -147,8 +147,6 @@ class Source(Generic[_Text]):
     space = ' '
     caret = '^'
     tilde = '~'
-
-    line_end = line_pos + len(line_str)
 
     src_line:str
     if line_str and line_str[-1] == newline:
