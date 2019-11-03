@@ -145,7 +145,7 @@ def test_main(LexerClass) -> None:
     for token in LexerClass(source=source):
       kind_desc = LexerClass.pattern_descs[token.kind]
       msg = test_desc(source=source, token=token, kind_desc=kind_desc)
-      print(source.diagnostic(token, msg), end='')
+      print(source.diagnostic((token, msg)), end='')
 
 
 def test_desc(source:Source, token:Token, kind_desc:str) -> str:

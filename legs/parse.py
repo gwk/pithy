@@ -201,16 +201,16 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
     elif sk == 'patterns':
       for sym, pattern in section:
         name = source[sym]
-        if name in patterns: source.fail(sym, f'pattern already defined: {name}')
+        if name in patterns: source.fail((sym, f'error: pattern already defined: {name}'))
         patterns[name] = pattern
     elif sk == 'modes':
       for sym, mode_pattern_syms in section:
         name = source[sym]
-        if name in modes:  source.fail(sym, f'mode already defined: {name}')
+        if name in modes:  source.fail((sym, f'error: mode already defined: {name}'))
         for sym in mode_pattern_syms:
           pattern_name = source[sym]
           if pattern_name not in patterns:
-            source.fail(sym, f'undefined pattern name: {name}')
+            source.fail((sym, f'error: undefined pattern name: {name}'))
         modes[name] = frozenset(source[sym] for sym in mode_pattern_syms)
     elif sk == 'transitions':
       for (from_mode_tok, open_kind_tok), (push_mode_tok, close_kind_tok) in section:
@@ -271,12 +271,12 @@ def transform_cs_ref(source:Source, token:Token) -> Set[int]:
 def code_for_esc(source:Source, token:Token) -> int:
   char = source[token][1]
   try: return escape_codes[char]
-  except KeyError: source.fail(token, f'invalid escaped character: {char!r}.')
+  except KeyError: source.fail((token, f'error: invalid escaped character: {char!r}.'))
 
 def ranges_for_ref(source:Source[str], token:Token) -> CodeRanges:
   name = source[token][1:]
   try: return unicode_charsets[name]
-  except KeyError: source.fail(token, f'unknown charset name: {name!r}.')
+  except KeyError: source.fail((token, f'error: unknown charset name: {name!r}.'))
 
 
 kind_descs = { # TODO: Change pithy.parse.expect to use these.

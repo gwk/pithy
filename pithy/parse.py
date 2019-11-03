@@ -25,7 +25,7 @@ while expressing other aspects of a grammar using straightforward recursive desc
 import re
 from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union, cast
 
-from tolkien import Source, Token
+from tolkien import Source, Token, TokenMsg
 
 from .buffer import Buffer
 from .graph import visit_nodes
@@ -37,14 +37,20 @@ from .string import indent_lines, iter_str, pluralize
 class ParseError(Exception):
   def __init__(self, source:Source, token:Token, *msgs:Any) -> None:
     self.source = source
+    self.notes:List[Tuple[Token,str]] = []
     self.token = token
     self.msgs = msgs
     super().__init__((self.token, self.msgs))
 
   def fail(self) -> NoReturn:
     msg = 'parse error: ' + ''.join(str(m) for m in self.msgs)
-    self.source.fail(self.token, msg=msg)
+    self.source.fail(*reversed(self.notes), (self.token, msg))
 
+  def add_in_note(self, token:Token, rule:'Rule') -> None:
+    # For repeated positions, keep only the innermost note.
+    # Outer notes are for choice, quantity, and optional, which are not very informative for debugging parse errors.
+    if not self.notes or self.notes[-1][0] != token:
+      self.notes.append((token, f'note: in {rule}:'))
 
 
 class ExcessToken(ParseError):
@@ -160,6 +166,13 @@ class Rule:
     raise NotImplementedError(self)
 
 
+  def parse_sub(self, sub:'Rule', source:Source, start:Token, token:Token, buffer:Buffer[Token]) -> Any:
+    try:
+      return sub.parse(self, source, token, buffer)
+    except ParseError as e:
+      e.add_in_note(start, self)
+      raise
+
 
 class Atom(Rule):
   '''
@@ -179,7 +192,7 @@ class Atom(Rule):
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    parent.expect(source, token, self.kind)
+    parent.expect(source, token=token, kind=self.kind)
     #^ We use `parent` and not `self` to expect the token for a more contextualized error message.
     #^ Using `self` we get messages like "'newline' atom expects newline".
     return self.transform(source, token)
@@ -214,9 +227,9 @@ class Prefix(Rule):
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    self.expect(source, token, self.prefix)
-    syn = self.body.parse(self, source, next(buffer), buffer)
-    if self.suffix: self.expect(source, next(buffer), self.suffix)
+    self.expect(source, token=token, kind=self.prefix)
+    syn = self.parse_sub(self.body, source, token, next(buffer), buffer)
+    if self.suffix: self.expect(source, token=next(buffer), kind=self.suffix)
     return self.transform(source, token, syn)
 
 
@@ -264,7 +277,7 @@ class Opt(_QuantityRule):
     while token.kind in self.drop:
       token = next(buffer)
     if token.kind in self.body_heads:
-      res = self.body.parse(self, source, token, buffer)
+      res = self.parse_sub(self.body, source, token, token, buffer)
     else:
       buffer.push(token)
     return self.transform(source, res)
@@ -303,11 +316,12 @@ class Quantity(_QuantityRule):
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
     found_sep = False
+    start = token
     while True:
       while token.kind in self.drop:
         token = next(buffer)
       if len(els) == self.max or token.kind not in self.body_heads: break
-      el = self.body.parse(self, source, token, buffer)
+      el = self.parse_sub(self.body, source, start, token, buffer)
       els.append(el)
       token = next(buffer)
       if self.sep is not None: # Parse separator.
@@ -366,12 +380,13 @@ class Struct(Rule):
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
+    start = token
     for i, field in enumerate(self.subs):
       if i:
         token = next(buffer)
       while token.kind in self.drop:
         token = next(buffer)
-      el = field.parse(self, source, token, buffer)
+      el = self.parse_sub(field, source, start, token, buffer)
       els.append(el)
     return self.transform(source, els)
 
@@ -406,12 +421,13 @@ class Choice(Rule):
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    start = token
     while token.kind in self.drop:
       token = next(buffer)
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else:
-      syn = sub.parse(self, source, token, buffer)
+      syn = self.parse_sub(sub, source, start, token, buffer)
       return self.transform(source, sub.name, syn)
     exp = self.name or f'any of {self.subs_desc}'
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
@@ -467,7 +483,7 @@ class SuffixRule(Operator):
 
 
   def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> Any:
-    right = self.suffix.parse(cast(Rule, self), source, op_token, buffer)
+    right = parent.parse_sub(self.suffix, source, op_token, op_token, buffer)
     return self.transform(source, op_token.pos_token(), left, right)
 
 
@@ -619,11 +635,12 @@ class Precedence(Rule):
 
 
   def parse_leaf(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    start = token
     while token.kind in self.drop:
       token = next(buffer)
     try: sub = self.head_table[token.kind]
     except KeyError: pass
-    else: return sub.parse(self, source, token, buffer)
+    else: return self.parse_sub(sub, source, start, token, buffer)
     exp = self.name or f'any of {self.subs_desc}'
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
@@ -697,7 +714,7 @@ class Parser:
     buffer = self.make_buffer(source)
     if dbg_tokens:
       for token in buffer.peek_all():
-        errL(source.diagnostic(token, msg=f'dbg_token: {token.mode_kind}'))
+        errL(source.diagnostic((token, f'dbg_token: {token.mode_kind}')))
 
     token = next(buffer)
     result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.

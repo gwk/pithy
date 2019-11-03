@@ -31,6 +31,6 @@ def count_tokens(path:str, counter:Counter[str]) -> None:
     counter[token.kind] += 1
     #print(source.diagnostic(token, msg=token.kind))
     if token.kind == 'invalid':
-      source.fail(token, msg='invalid token')
+      source.fail((token, 'invalid token'))
 
 main()

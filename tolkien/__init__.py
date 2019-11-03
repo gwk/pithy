@@ -4,11 +4,13 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
-from typing import ByteString, Generic, List, NamedTuple, NoReturn, Optional, Tuple, TypeVar, Union
+from typing import ByteString, Generic, Iterable, List, NamedTuple, NoReturn, Optional, Tuple, TypeVar, Union
 
 _setattr = object.__setattr__
 
 Slice = slice
+
+TokenMsg = Optional[Tuple['Token',str]]
 
 
 class Token(NamedTuple):
@@ -113,18 +115,21 @@ class Source(Generic[_Text]):
     assert isinstance(line, bytes)
     return line.decode(errors='replace')
 
-
-  def diagnostic(self, token:Token, msg:str, *, prefix:str='') -> str:
-    return self.diagnostic_for_pos(pos=token.pos, end=token.end, prefix=prefix, msg=msg)
-
-
-  def fail(self, token:Token, msg:str, *, prefix:str='') -> NoReturn:
-    exit(self.diagnostic(token=token, msg=msg, prefix=prefix))
+  def eot_token(self) -> Token:
+    end = len(self.text)
+    return Token(pos=end, end=end, mode='none', kind='eot')
 
 
-  def diagnostic_at_end(self, msg:str, *, prefix:str='') -> str:
-    pos = len(self.text)
-    return self.diagnostic_for_pos(pos=pos, end=pos, prefix=prefix, msg=msg)
+  def diagnostic(self, *token_msgs:TokenMsg, prefix:str='') -> str:
+    return ''.join(self.diagnostic_for_token(tm[0], tm[1], prefix=prefix) for tm in token_msgs if tm is not None)
+
+
+  def fail(self, *token_msgs:TokenMsg, prefix:str='') -> NoReturn:
+    exit(self.diagnostic(*token_msgs, prefix=prefix))
+
+
+  def diagnostic_for_token(self, token:Token, msg:str, *, prefix:str='') -> str:
+    return self.diagnostic_for_pos(pos=token.pos, end=token.end, msg=msg, prefix=prefix)
 
 
   def diagnostic_for_pos(self, pos:int, *, end:int, prefix:str='', msg:str = '') -> str:
