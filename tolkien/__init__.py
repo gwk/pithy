@@ -10,7 +10,8 @@ _setattr = object.__setattr__
 
 Slice = slice
 
-TokenMsg = Optional[Tuple['Token',str]]
+TokenMsg = Tuple['Token',str]
+OptTokenMsg = Optional[TokenMsg]
 
 
 class Token(NamedTuple):
@@ -120,11 +121,11 @@ class Source(Generic[_Text]):
     return Token(pos=end, end=end, mode='none', kind='eot')
 
 
-  def diagnostic(self, *token_msgs:TokenMsg, prefix:str='') -> str:
+  def diagnostic(self, *token_msgs:OptTokenMsg, prefix:str='') -> str:
     return ''.join(self.diagnostic_for_token(tm[0], tm[1], prefix=prefix) for tm in token_msgs if tm is not None)
 
 
-  def fail(self, *token_msgs:TokenMsg, prefix:str='') -> NoReturn:
+  def fail(self, *token_msgs:OptTokenMsg, prefix:str='') -> NoReturn:
     exit(self.diagnostic(*token_msgs, prefix=prefix))
 
 
