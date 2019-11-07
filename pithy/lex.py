@@ -79,11 +79,10 @@ def _mk_trans_pop_dict(pops:LexTransTuple) -> Dict[str,str]:
 
 class Lexer:
   '''
+  Define a Lexer using python regular expressions.
+  This class is used to prototype (and bootstrap) Legs lexers.
   Note: A zero-length match, e.g. r'^' causes an exception; otherwise the stream would never advance.
   '''
-  # One way to support zero-length tokens, e.g. r'^\s*' for Python indent tokens,
-  # would be to swap out the main regex for one with the pattern in question omitted,
-  # for the next iteration only.
 
   class DefinitionError(Exception): pass
 
