@@ -264,16 +264,17 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, drop:Iterable[str]=(), transform:ValTransform=val_identity) -> None:
+  def __init__(self, body:RuleRef, drop:Iterable[str]=(), dflt=None, transform:ValTransform=val_identity) -> None:
     self.sub_refs = (body,)
     self.heads = ()
     self.body_heads = frozenset() # Replaced by compile.
     self.drop = frozenset(iter_str(drop))
+    self.dflt = dflt
     self.transform = transform
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    res = None
+    res = self.dflt
     while token.kind in self.drop:
       token = next(buffer)
     if token.kind in self.body_heads:
