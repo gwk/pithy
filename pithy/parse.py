@@ -668,7 +668,7 @@ class Parser:
       validate_name(name)
       rule.name = name
 
-    # Link rule graph. Note: this creates reference cycles which are dissolved with unlink() in __del__ below.
+    # Link rule graph. Note: this creates reference cycles which are dissolved by __del__.
 
     def linker(rule:RuleRef) -> Rule:
       if isinstance(rule, Rule): return rule
