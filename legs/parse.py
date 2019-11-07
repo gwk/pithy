@@ -135,11 +135,6 @@ def build_legs_grammar_parser() -> Parser:
       transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline',
         transform=lambda s, fields: ((fields[0], fields[2]), (fields[5], fields[7]))),
 
-      sym=Atom('sym'),
-      colon=Atom('colon'),
-      newline=Atom('newline'),
-      indents=Atom('indents'),
-
       # Pattern rules.
 
       pattern_expr=Precedence(
@@ -180,9 +175,9 @@ def build_legs_grammar_parser() -> Parser:
       ref=Atom('ref',       transform=transform_ref),
 
       # Charset atoms.
-      char_cs=Atom('char',        transform=transform_cs_char),
-      esc_cs=Atom('esc',          transform=transform_cs_esc),
-      ref_cs=Atom('ref',          transform=transform_cs_ref),
+      char_cs=Atom('char',  transform=transform_cs_char),
+      esc_cs=Atom('esc',    transform=transform_cs_esc),
+      ref_cs=Atom('ref',    transform=transform_cs_ref),
     ),
   drop=('comment', 'spaces'))
 

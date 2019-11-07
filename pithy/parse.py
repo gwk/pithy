@@ -675,6 +675,11 @@ class Parser:
       if isinstance(rule, Rule): return rule
       try: return rules[rule]
       except KeyError: pass
+      if rule in self.lexer.kinds: # Add the implied Atom rule.
+        atom = Atom(rule)
+        atom.name = rule
+        self.rules[rule] = atom
+        return atom
       raise Parser.DefinitionError(f'nonexistent rule: {rule!r}')
 
     def link(rule:Rule) -> Iterable[Rule]:
