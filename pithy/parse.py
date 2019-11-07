@@ -35,9 +35,9 @@ from .string import indent_lines, iter_str, pluralize
 
 
 class ParseError(Exception):
-  def __init__(self, source:Source, token:Token, *msgs:Any) -> None:
+  def __init__(self, source:Source, token:Token, *msgs:Any, notes:Iterable[TokenMsg]=()) -> None:
     self.source = source
-    self.notes:List[Tuple[Token,str]] = []
+    self.notes:List[TokenMsg] = list(notes)
     self.token = token
     self.msgs = msgs
     super().__init__((self.token, self.msgs))
