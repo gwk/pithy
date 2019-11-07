@@ -670,7 +670,7 @@ class Parser:
 
     # Link rule graph. Note: this creates reference cycles which are dissolved by __del__.
 
-    def linker(rule:RuleRef) -> Rule:
+    def link_sub_ref(rule:RuleRef) -> Rule:
       if isinstance(rule, Rule): return rule
       try: return rules[rule]
       except KeyError: pass
@@ -679,7 +679,7 @@ class Parser:
     def link(rule:Rule) -> Iterable[Rule]:
       assert not rule.subs
       if rule.sub_refs:
-        rule.subs = tuple(linker(s) for s in rule.sub_refs)
+        rule.subs = tuple(link_sub_ref(s) for s in rule.sub_refs)
       assert len(rule.subs) == len(rule.sub_refs)
       return rule.subs
 
