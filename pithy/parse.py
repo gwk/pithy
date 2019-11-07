@@ -264,6 +264,7 @@ class Opt(_QuantityRule):
   min = 0
 
   def __init__(self, body:RuleRef, drop:Iterable[str]=(), dflt=None, transform:ValTransform=val_identity) -> None:
+    self.name = ''
     self.sub_refs = (body,)
     self.heads = ()
     self.body_heads = frozenset() # Replaced by compile.
