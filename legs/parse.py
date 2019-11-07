@@ -78,9 +78,9 @@ lexer = Lexer(flags='mx',
     char    = r'[!-~]',
   ),
   modes=[
-    LexMode('main', kinds=[*common_kinds, 'sym', 'colon', *sl_kinds]),
-    LexMode('license', kinds=['newline', 'license_text', *sl_kinds]),
-    LexMode('patterns', kinds=[*common_kinds, 'bar', 'colon', 'sym', *sl_kinds]),
+    LexMode('main', kinds=[*common_kinds, *sl_kinds, 'colon', 'sym']),
+    LexMode('license', kinds=[*sl_kinds, 'newline', 'license_text']),
+    LexMode('patterns', kinds=[*common_kinds, *sl_kinds, 'bar', 'colon', 'sym']),
     LexMode('pattern', kinds=[*common_kinds,
       'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char']),
     LexMode('charset', kinds=[*common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char']),
@@ -103,7 +103,7 @@ def build_legs_grammar_parser() -> Parser:
 
       section=Choice('section_license', 'section_patterns', 'section_modes', 'section_transitions'),
 
-      # Section label and body rules.
+      # Section top-level rules.
 
       section_license=Struct(Atom('sl_license'), ZeroOrMore('license'),
         transform=lambda s, fields: fields[1]),
@@ -117,25 +117,18 @@ def build_legs_grammar_parser() -> Parser:
       section_transitions=Struct(Atom('sl_transitions'), 'newline', ZeroOrMore('transition', drop='newline'),
         transform=lambda s, fields: fields[2]),
 
-      # License lines.
+      # License.
+
       license=Choice(Atom('newline'), Atom('license_text'),
         transform=lambda s, label, token: s[token]),
 
-      # Section body rules.
+      # Patterns.
 
       pattern=Struct('sym', Opt('colon_pattern_expr'),
         transform=transform_pattern),
 
       colon_pattern_expr=Struct('colon', 'pattern_expr', drop=('newline', 'indents'),
         transform=lambda s, fields: fields[1]),
-
-      mode=Struct('sym', 'colon', Quantity('sym'), 'newline',
-        transform=lambda s, fields: (fields[0], fields[2])),
-
-      transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline',
-        transform=lambda s, fields: ((fields[0], fields[2]), (fields[5], fields[7]))),
-
-      # Pattern rules.
 
       pattern_expr=Precedence(
         ('char', 'esc', 'ref', 'charset_p', 'paren'),
@@ -150,6 +143,8 @@ def build_legs_grammar_parser() -> Parser:
 
       paren=Prefix('paren_o', 'pattern_expr', 'paren_c',
         transform=lambda s, t, pattern: pattern),
+
+      # Charsets.
 
       charset_p=Struct('charset', # Wrapper to transform from Set[int] to CharsetPattern.
         transform=lambda s, tup: CharsetPattern.for_codes(tup[0])),
@@ -178,6 +173,16 @@ def build_legs_grammar_parser() -> Parser:
       char_cs=Atom('char',  transform=transform_cs_char),
       esc_cs=Atom('esc',    transform=transform_cs_esc),
       ref_cs=Atom('ref',    transform=transform_cs_ref),
+
+      # Modes.
+
+      mode=Struct('sym', 'colon', Quantity('sym'), 'newline',
+        transform=lambda s, fields: (fields[0], fields[2])),
+
+      # Transitions.
+
+      transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline',
+        transform=lambda s, fields: ((fields[0], fields[2]), (fields[5], fields[7]))),
     ),
   drop=('comment', 'spaces'))
 
