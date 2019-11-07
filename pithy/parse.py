@@ -63,8 +63,8 @@ RuleName = str
 RuleRef = Union['Rule',RuleName]
 
 
-TreeTransform = Callable[[Source,Any],Any]
-def tree_identity(source:Source, obj:Any) -> Any: return obj
+ValTransform = Callable[[Source,Any],Any]
+def val_identity(source:Source, obj:Any) -> Any: return obj
 
 TokenTransform = Callable[[Source,Token],Any]
 
@@ -264,7 +264,7 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, drop:Iterable[str]=(), transform:TreeTransform=tree_identity) -> None:
+  def __init__(self, body:RuleRef, drop:Iterable[str]=(), transform:ValTransform=val_identity) -> None:
     self.sub_refs = (body,)
     self.heads = ()
     self.body_heads = frozenset() # Replaced by compile.
@@ -563,7 +563,7 @@ class Precedence(Rule):
   type_desc = 'precedence rule'
 
   def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group, drop:Iterable[str]=(),
-   transform:TreeTransform=tree_identity) -> None:
+   transform:ValTransform=val_identity) -> None:
     # Keep track of the distinction between subs that came from leaves vs groups.
     # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
     # and then get the linked leaves back via the leaves property implemented below.
