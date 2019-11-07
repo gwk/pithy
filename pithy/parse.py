@@ -210,13 +210,12 @@ class Prefix(Rule):
     self.sub_refs = (body,)
     self.heads = (prefix,) # Pre-fill heads.
     self.prefix = validate_name(prefix)
-    self.suffix = suffix if suffix is None else validate_name(suffix)
+    self.suffix = None if suffix is None else validate_name(suffix)
     self.transform = transform
 
 
   @property
   def body(self) -> Rule:
-    assert len(self.subs) == len(self.sub_refs), (self, self.subs, self.sub_refs)
     return self.subs[0]
 
 
