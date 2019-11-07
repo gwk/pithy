@@ -291,7 +291,7 @@ class Quantity(_QuantityRule):
   '''
   type_desc = 'quantity'
 
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, min=0, max=None, drop:Iterable[str]=(),
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, repeated_seps=False, min=0, max=None, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
@@ -301,6 +301,7 @@ class Quantity(_QuantityRule):
     self.heads = ()
     self.sep = sep if sep is None else validate_name(sep)
     self.sep_at_end:Optional[bool] = sep_at_end
+    self.repeated_seps = repeated_seps
     self.min = min
     self.max = max
     self.body_heads = frozenset() # Replaced by compile.
@@ -333,28 +334,31 @@ class Quantity(_QuantityRule):
           raise ParseError(source, token, f'{self} expects {self.sep} separator; received {token.kind}.')
         else:
           break
+        if self.repeated_seps:
+          while token.kind == self.sep:
+            token = next(buffer)
 
     if len(els) < self.min:
       body_plural = pluralize(self.min, f'{self.body} element')
       raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
 
     if self.sep_at_end is False and found_sep:
-      raise ParseError(source, token, f'{self} received unexpected {self.sep} separator.')
+      raise ParseError(source, token, f'{self} received disallowed trailing {self.sep} separator.')
 
     buffer.push(token)
     return self.transform(source, els)
 
 
 class ZeroOrMore(Quantity):
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, drop:Iterable[str]=(),
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, repeated_seps=False, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
-    super().__init__(body=body, sep=sep, sep_at_end=sep_at_end, min=0, drop=drop, transform=transform)
+    super().__init__(body=body, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, min=0, drop=drop, transform=transform)
 
 
 class OneOrMore(Quantity):
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, drop:Iterable[str]=(),
+  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, repeated_seps=False, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
-    super().__init__(body=body, sep=sep, sep_at_end=sep_at_end, min=1, drop=drop, transform=transform)
+    super().__init__(body=body, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, min=1, drop=drop, transform=transform)
 
 
 class Struct(Rule):
