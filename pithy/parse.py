@@ -673,6 +673,7 @@ class Parser:
 
     def link_sub_ref(rule:RuleRef) -> Rule:
       if isinstance(rule, Rule): return rule
+      if not isinstance(rule, str): raise Parser.DefinitionError(f'subrule must be a Rule or string reference: {rule!r}')
       try: return rules[rule]
       except KeyError: pass
       if rule in self.lexer.kinds: # Add the implied Atom rule.
