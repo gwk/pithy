@@ -173,7 +173,7 @@ def build_legs_grammar_parser() -> Parser:
 
       # Modes.
 
-      mode=Struct('sym', 'colon', Quantity('sym'), 'newline',
+      mode=Struct('sym', 'colon', ZeroOrMore('sym'), 'newline',
         transform=lambda s, fields: (fields[0], fields[2])),
 
       # Transitions.

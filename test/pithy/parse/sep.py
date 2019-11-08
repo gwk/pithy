@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pithy.parse import Atom, Parser, Quantity, token_extract_text
+from pithy.parse import Atom, Parser, ZeroOrMore, token_extract_text
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import *
@@ -11,7 +11,7 @@ from utest import *
 def mk_comma_parser(sep_at_end:Optional[bool]) -> Parser:
   return Parser(lexer, dict(
       name=Atom('name', transform=token_extract_text),
-      seq=Quantity('name', sep='comma', sep_at_end=sep_at_end)),
+      seq=ZeroOrMore('name', sep='comma', sep_at_end=sep_at_end)),
     drop=('spaces',))
 
 comma_opt = mk_comma_parser(sep_at_end=None)
