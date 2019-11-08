@@ -162,10 +162,7 @@ def build_legs_grammar_parser() -> Parser:
         transform=lambda s, cs: cs),
 
       # Pattern atoms.
-      amp=Atom('amp',       transform=transform_char),
-      caret=Atom('caret',   transform=transform_char),
       char=Atom('char',     transform=transform_char),
-      dash=Atom('dash',     transform=transform_char),
       esc=Atom('esc',       transform=transform_esc),
       ref=Atom('ref',       transform=transform_ref),
 
