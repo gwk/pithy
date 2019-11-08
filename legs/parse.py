@@ -105,30 +105,23 @@ def build_legs_grammar_parser() -> Parser:
 
       # Section top-level rules.
 
-      section_license=Struct(Atom('sl_license'), ZeroOrMore('license'),
-        transform=lambda s, fields: fields[1]),
+      section_license=Struct('sl_license', ZeroOrMore('license')),
 
-      section_patterns=Struct(Atom('sl_patterns'), 'newline', ZeroOrMore('pattern', drop='newline'),
-        transform=lambda s, fields: fields[2]),
+      section_patterns=Struct('sl_patterns', 'newline', ZeroOrMore('pattern', drop='newline')),
 
-      section_modes=Struct(Atom('sl_modes'), 'newline', ZeroOrMore('mode', drop='newline'),
-        transform=lambda s, fields: fields[2]),
+      section_modes=Struct('sl_modes', 'newline', ZeroOrMore('mode', drop='newline')),
 
-      section_transitions=Struct(Atom('sl_transitions'), 'newline', ZeroOrMore('transition', drop='newline'),
-        transform=lambda s, fields: fields[2]),
+      section_transitions=Struct('sl_transitions', 'newline', ZeroOrMore('transition', drop='newline')),
 
       # License.
 
-      license=Choice(Atom('newline'), Atom('license_text'),
-        transform=lambda s, label, token: s[token]),
+      license=Choice('newline', 'license_text', transform=lambda s, label, token: s[token]),
 
       # Patterns.
 
-      pattern=Struct('sym', Opt('colon_pattern_expr'),
-        transform=transform_pattern),
+      pattern=Struct('sym', Opt('colon_pattern_expr'), transform=transform_pattern),
 
-      colon_pattern_expr=Struct('colon', 'pattern_expr', drop=('newline', 'indents'),
-        transform=lambda s, fields: fields[1]),
+      colon_pattern_expr=Struct('colon', 'pattern_expr', drop=('newline', 'indents')),
 
       pattern_expr=Precedence(
         ('char', 'esc', 'ref', 'charset_p', 'paren'),
@@ -147,7 +140,7 @@ def build_legs_grammar_parser() -> Parser:
       # Charsets.
 
       charset_p=Struct('charset', # Wrapper to transform from Set[int] to CharsetPattern.
-        transform=lambda s, tup: CharsetPattern.for_codes(tup[0])),
+        transform=lambda s, fields: CharsetPattern.for_codes(fields[0])),
 
       charset=Prefix('brack_o', 'charset_expr', 'brack_c',
         transform=lambda s, t, cs: cs),
@@ -173,14 +166,13 @@ def build_legs_grammar_parser() -> Parser:
 
       # Modes.
 
-      mode=Struct('sym', 'colon', ZeroOrMore('sym'), 'newline',
-        transform=lambda s, fields: (fields[0], fields[2])),
+      mode=Struct('sym', 'colon', ZeroOrMore('sym'), 'newline'),
 
       # Transitions.
 
-      transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline',
-        transform=lambda s, fields: ((fields[0], fields[2]), (fields[5], fields[7]))),
+      transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline'),
     ),
+  literals=('newline', 'colon', *sl_kinds),
   drop=('comment', 'spaces'))
 
 
@@ -210,7 +202,7 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
             source.fail((sym, f'error: undefined pattern name: {name}'))
         modes[name] = frozenset(source[sym] for sym in mode_pattern_syms)
     elif sk == 'transitions':
-      for (from_mode_tok, open_kind_tok), (push_mode_tok, close_kind_tok) in section:
+      for (from_mode_tok, open_kind_tok, push_mode_tok, close_kind_tok) in section:
         from_mode = source[from_mode_tok]
         open_kind = source[open_kind_tok]
         push_mode = source[push_mode_tok]
