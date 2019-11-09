@@ -134,16 +134,14 @@ def build_legs_grammar_parser() -> Parser:
         drop=('newline', 'indents'),
       ),
 
-      paren=Prefix('paren_o', 'pattern_expr', 'paren_c',
-        transform=lambda s, t, pattern: pattern),
+      paren=Struct('paren_o', 'pattern_expr', 'paren_c'),
 
       # Charsets.
 
       charset_p=Struct('charset', # Wrapper to transform from Set[int] to CharsetPattern.
         transform=lambda s, fields: CharsetPattern.for_codes(fields[0])),
 
-      charset=Prefix('brack_o', 'charset_expr', 'brack_c',
-        transform=lambda s, t, cs: cs),
+      charset=Struct('brack_o', 'charset_expr', 'brack_c'),
 
       charset_expr=Precedence(
         ('charset', 'char_cs', 'esc_cs', 'ref_cs'),
@@ -172,7 +170,7 @@ def build_legs_grammar_parser() -> Parser:
 
       transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline'),
     ),
-  literals=('newline', 'colon', *sl_kinds),
+  literals=('newline', *sl_kinds, 'colon', 'brack_o', 'brack_c', 'paren_o', 'paren_c'),
   drop=('comment', 'spaces'))
 
 

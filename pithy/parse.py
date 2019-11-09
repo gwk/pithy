@@ -219,40 +219,6 @@ class Atom(Rule):
 
 
 
-class Prefix(Rule):
-  '''
-  A rule that matches a prefix token, a body rule, and an optional suffix token.
-  '''
-  type_desc = 'prefix rule'
-
-  def __init__(self, prefix:TokenKind, body:RuleRef, suffix:TokenKind=None, transform:UnaryTransform=unary_syn) -> None:
-    self.name = ''
-    self.sub_refs = (body,)
-    self.heads = (prefix,) # Pre-fill heads.
-    self.prefix = validate_name(prefix)
-    self.suffix = None if suffix is None else validate_name(suffix)
-    self.transform = transform
-
-
-  @property
-  def body(self) -> Rule:
-    return self.subs[0]
-
-
-  def token_kinds(self) -> Iterable[str]:
-    yield self.prefix
-    if self.suffix is not None:
-      yield self.suffix
-
-
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    self.expect(source, token=token, kind=self.prefix)
-    syn = self.parse_sub(self.body, source, token, next(buffer), buffer)
-    if self.suffix: self.expect(source, token=next(buffer), kind=self.suffix)
-    return self.transform(source, token, syn)
-
-
-
 class _QuantityRule(Rule):
   'Base class for Opt and Quantity.'
   min:int

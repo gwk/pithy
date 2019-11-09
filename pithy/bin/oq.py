@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, List, Match, Optional, Union
 
 from tolkien import Source, Token
+
 from ..buffer import Buffer
 from ..desc import errD, outD
 from ..fs import path_exists, remove_path
@@ -13,7 +14,7 @@ from ..io import *
 from ..iterable import iter_values
 from ..lex import Lexer
 from ..loader import load
-from ..parse import Adjacency, Atom, Choice, Infix, Left, ParseError, Parser, Precedence, Prefix, Right, Rule, RuleName, Suffix
+from ..parse import Adjacency, Atom, Choice, Infix, Left, ParseError, Parser, Precedence, Right, Rule, RuleName, Struct, Suffix
 
 
 def main() -> None:
@@ -151,7 +152,7 @@ parser = Parser(lexer, dict(
     ),
   ),
   search=Choice('pred', transform=lambda source, name, predicate: SearchQuery(predicate)),
-  filter=Prefix('dot', 'pred', transform=lambda source, token, predicate: FilterQuery(predicate)),
+  filter=Struct('dot', 'pred', transform=lambda source, fields: FilterQuery(fields[1])),
 
   pred=Choice('type_pred', transform=lambda source, name, pred: pred),
 
