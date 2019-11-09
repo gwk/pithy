@@ -679,6 +679,20 @@ class Precedence(Rule):
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
 
+class SubParser(Rule):
+
+  def __init__(self, parser:'Parser', rule_name:str, transform:ValTransform=val_identity) -> None:
+    self.name = ''
+    self.sub_refs = ()
+    self.heads = parser.rules[rule_name].heads
+    self.parser = parser
+    self.rule = parser.rules[rule_name]
+    self.transform = transform
+
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    sub_res = self.rule.parse(self, source, token, buffer)
+    return self.transform(source, sub_res)
+
 
 class Parser:
   '''
