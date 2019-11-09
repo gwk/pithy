@@ -185,6 +185,13 @@ def load_plist(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return _load_plist(binary_file_for(file_or_path), **kwargs)
 
 
+def load_eon(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
+  from .eon import parse_eon
+  with text_file_for(file_or_path) as f:
+    text = f.read()
+    return parse_eon(path=f.name, text=text, **kwargs)
+
+
 def load_pyl(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   'Load a python literal AST file (Python equivalent of JSON).'
   from ast import literal_eval
@@ -234,6 +241,7 @@ add_loader('',          load_binary,    _dflt=True)
 add_loader('.css',      load_txt,       _dflt=True)
 add_loader('.csv',      load_csv,       _dflt=True)
 add_loader('.gz',       load_gz,        _dflt=True)
+add_loader('.eon',      load_eon,       _dflt=True)
 add_loader('.html',     load_html,      _dflt=True)
 add_loader('.json',     load_json,      _dflt=True)
 add_loader('.jsonl',    load_jsonl,     _dflt=True)
@@ -274,3 +282,18 @@ def _sub_ext(cmpd_ext:str) -> str:
   try: idx = cmpd_ext.rindex('.')
   except ValueError: return cmpd_ext
   else: return cmpd_ext[:idx]
+
+
+def main() -> None:
+  from sys import argv
+  from .io import outD
+  from .parse import ParseError
+
+  args = argv[1:] or ['/dev/stdin']
+  for path in args:
+    try: obj = load(path)
+    except ParseError as e: e.fail()
+    outD(path, obj)
+
+
+if __name__ == '__main__': main()
