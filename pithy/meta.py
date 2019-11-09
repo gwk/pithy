@@ -3,7 +3,7 @@
 import inspect
 from inspect import FrameInfo
 from types import FunctionType
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar, cast
 
 
 def bindings_matching(*, prefix:str=None, val_type:type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
@@ -79,11 +79,27 @@ class DispatchWrapperException(Exception): pass
 
 _A = TypeVar('_A', bound=Any)
 
-def rename(obj:_A, name:str) -> _A:
-  'Returns a renamed object.'
-  obj.__name__ = name
-  obj.__qualname__ = name
+def rename(obj:_A, name:str=None, module:str=None) -> _A:
+  'Returns `obj`, after renaming name and/or module.'
+  if name is not None:
+    obj.__name__ = name
+    obj.__qualname__ = name
+  if module is not None:
+    obj.__module__ = module
   return obj
+
+
+def get_caller_module_name(steps=1) -> Optional[str]:
+  'Get the module name of the caller name, `steps` number of frames from the immediate caller (defaults to 1).'
+  f = inspect.currentframe() # This frame.
+  if f is None: return None
+  f = f.f_back # Immediate caller's frame; caller already knows this.
+  for i in range(steps):
+    f = f.f_back
+    if f is None: return None # type: ignore # mypy thinks this is unreachable.
+  spec = f.f_globals['__spec__']
+  if spec: return cast(str, spec.name)
+  else: return cast(str, f.f_globals['__name__'])
 
 
 def main_file_path() -> str:

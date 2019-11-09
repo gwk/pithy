@@ -23,7 +23,9 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 import re
-from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Union, cast
+from collections import namedtuple
+from typing import (Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Type, TypeVar,
+  Union, cast)
 
 from tolkien import Source, Token, TokenMsg
 
@@ -31,7 +33,15 @@ from .buffer import Buffer
 from .graph import visit_nodes
 from .io import errL
 from .lex import Lexer, Token, reserved_names, valid_name_re
+from .meta import get_caller_module_name
 from .string import indent_lines, iter_str, pluralize
+from .untyped import Immutable
+
+
+TokenKind = str
+RuleName = str
+RuleRef = Union['Rule',RuleName]
+_T = TypeVar('_T')
 
 
 class ParseError(Exception):
@@ -57,10 +67,18 @@ class ExcessToken(ParseError):
   'Raised by Parser when expression parsing completes but does not exhaust the token stream.'
 
 
+def append(list_:List[_T], el:_T) -> List[_T]:
+  'Append an element to a list and return the list. Useful when writing transform lambdas.'
+  list_.append(el)
+  return list_
 
-TokenKind = str
-RuleName = str
-RuleRef = Union['Rule',RuleName]
+def append_or_list(list_or_el:Union[_T,List[_T]], el:_T) -> List[_T]:
+  'Create a list from two elements, or if the left element is already a list, append the right element to it and return it.'
+  if isinstance(list_or_el, list):
+    list_or_el.append(el)
+    return list_or_el
+  else:
+    return [list_or_el, el]
 
 
 ValTransform = Callable[[Source,Any],Any]
@@ -76,11 +94,12 @@ def token_extract_kind(source:Source, token:Token) -> str: return token.kind
 
 UnaryTransform = Callable[[Source,Token,Any],Any]
 def unary_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
+def unary_identity(source:Source, token:Token, obj:Any) -> Any: return obj
 
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
-
 def adjacency_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
+def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> List[Any]: return append_or_list(left, right)
 
 QuantityTransform = Callable[[Source,List[Any]],Any]
 def quantity_identity(source:Source, elements:List[Any]) -> List[Any]: return elements
@@ -154,7 +173,7 @@ class Rule:
     self.heads = ()
 
 
-  def compile(self) -> None: pass
+  def compile(self, parser:'Parser') -> None: pass
 
 
   def expect(self, source:Source, token:Token, kind:str) -> Token:
@@ -172,6 +191,7 @@ class Rule:
     except ParseError as e:
       e.add_in_note(start, self)
       raise
+
 
 
 class Atom(Rule):
@@ -248,7 +268,7 @@ class _QuantityRule(Rule):
     return (self.body,)
 
 
-  def compile(self) -> None:
+  def compile(self, parser:'Parser') -> None:
     self.body_heads = frozenset(self.body.heads)
     drop_body_intersect = self.body_heads & self.drop
     if drop_body_intersect:
@@ -349,10 +369,12 @@ class Quantity(_QuantityRule):
     return self.transform(source, els)
 
 
+
 class ZeroOrMore(Quantity):
   def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, repeated_seps=False, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
     super().__init__(body=body, min=0, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, drop=drop, transform=transform)
+
 
 
 class OneOrMore(Quantity):
@@ -361,13 +383,14 @@ class OneOrMore(Quantity):
     super().__init__(body=body, min=1, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, drop=drop, transform=transform)
 
 
+
 class Struct(Rule):
   '''
   A rule that matches a sequence of sub rules, producing a tuple of values.
   '''
   type_desc = 'structure'
 
-  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform=struct_syn) -> None:
+  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform=None) -> None:
     if not fields: raise ValueError('Struct requires at least one field')
     self.name = ''
     self.sub_refs = fields
@@ -383,6 +406,11 @@ class Struct(Rule):
         break
 
 
+  def compile(self, parser:'Parser') -> None:
+    if self.transform is None:
+      self.transform = parser._mk_transform(name=self.name, subs=self.subs)
+
+
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
     start = token
@@ -393,6 +421,7 @@ class Struct(Rule):
         token = next(buffer)
       el = self.parse_sub(field, source, start, token, buffer)
       els.append(el)
+    assert self.transform is not None
     return self.transform(source, els)
 
 
@@ -415,7 +444,7 @@ class Choice(Rule):
   def head_subs(self) -> Iterable[Rule]: return self.subs
 
 
-  def compile(self) -> None:
+  def compile(self, parser:'Parser') -> None:
     for head in self.heads:
       matching_subs = [s for s in self.subs if head in s.heads]
       assert matching_subs
@@ -596,7 +625,7 @@ class Precedence(Rule):
     return iter(self.subs[:len(self.leaf_refs)]) # Only the leaves can be heads.
 
 
-  def compile(self) -> None:
+  def compile(self, parser:'Parser') -> None:
     for head in self.heads:
       matching_subs = [s for s in self.subs if head in s.heads]
       assert matching_subs
@@ -660,10 +689,13 @@ class Parser:
       super().__init__(''.join(str(msg) for msg in msgs))
 
 
-  def __init__(self, lexer:Lexer, rules:Dict[RuleName,Rule], drop:Iterable[TokenKind]=()) -> None:
+  def __init__(self, lexer:Lexer, rules:Dict[RuleName,Rule], literals:Iterable[TokenKind]=(), drop:Iterable[TokenKind]=()) -> None:
     self.lexer = lexer
     self.rules = rules
+    self.literals = frozenset(iter_str(literals))
     self.drop = frozenset(iter_str(drop))
+    self.module_name = get_caller_module_name()
+    self._struct_types:Dict[str,Type] = {}
 
     for name, rule in rules.items():
       validate_name(name)
@@ -707,12 +739,49 @@ class Parser:
 
     # Compile.
     for rule in self.nodes:
-      rule.compile()
+      rule.compile(parser=self)
+
+    self.types:Immutable[Type] = Immutable(**self._struct_types)
 
 
   def __del__(self) -> None:
     for rule in self.rules.values():
       rule.__dict__.clear() # Break all references between rules.
+
+
+  def _mk_transform(self, name:str, subs:Tuple[Rule,...]) -> Callable[[Source, List[Any]],Any]:
+
+    includes = [sub.name not in self.literals for sub in subs]
+    field_names = [sub.name for sub in subs] # Allow empty names as they are; namedtuple will rename them.
+    included_field_names = tuple(n for n, include in zip(field_names, includes) if include)
+
+    if not any(includes):
+      raise Parser.DefinitionError(f'struct rule {name} contains all literal fields: {field_names}; default transformer is degenerate.')
+
+    if includes.count(True) == 1: # No need for a struct; just extract the interesting child element.
+      i = includes.index(True)
+      def single_transform(source:Source, fields:List[Any]) -> Any: return fields[i]
+      return single_transform
+
+    struct_type = self._mk_struct_type(name, fields=included_field_names)
+
+    def transform(source:Source, fields:List[Any]) -> Any:
+      return struct_type(*(f for f, include in zip(fields, includes) if include))
+
+    return transform
+
+
+  def _mk_struct_type(self, name:str, fields:Tuple[str,...]) -> Type:
+    type_name = name.capitalize() or '_'.join(n.capitalize() for n in fields)
+    try: existing = self._struct_types[type_name]
+    except KeyError: pass
+    else:
+      if existing._fields != fields:
+        raise Parser.DefinitionError(f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {fields}')
+      return existing
+    struct_type = namedtuple(type_name, fields, rename=True, module=self.module_name or '?') # type: ignore
+    self._struct_types[type_name] = struct_type
+    return struct_type
 
 
   def make_buffer(self, source:Source) -> Buffer[Token]:
