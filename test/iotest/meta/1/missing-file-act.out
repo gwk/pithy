@@ -1,6 +1,6 @@
 test-meta/1/missing-file-act
 
-iotest: test did not output expected file: nonexistant.txt
+iotest: test did not output expected file: nonexistent.txt
 ================================================================
 
 

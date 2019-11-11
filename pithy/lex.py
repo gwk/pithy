@@ -134,7 +134,7 @@ class Lexer:
       for kind in iter_str(mode.kinds):
         if re.fullmatch(r'\w+', kind): # Single name.
           if kind in patterns: kind_set.add(kind)
-          else: raise Lexer.DefinitionError(f'mode {mode.name!r} includes nonexistant pattern: {kind!r}')
+          else: raise Lexer.DefinitionError(f'mode {mode.name!r} includes nonexistent pattern: {kind!r}')
         else: # Pattern.
           try:
             matching = {p for p in self.patterns if re.fullmatch(kind, p)}

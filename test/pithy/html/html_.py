@@ -49,8 +49,8 @@ utest(div1, html.find_first, id='d1')
 p1:P = div1.pick(P)
 utest(p1, html.find, text='P1')
 
-utest_exc(NoMatchError, html.pick, tag='nonexistant')
-utest_exc(NoMatchError, html.find, tag='nonexistant')
+utest_exc(NoMatchError, html.pick, tag='nonexistent')
+utest_exc(NoMatchError, html.find, tag='nonexistent')
 
 utest_exc(MultipleMatchesError, body.pick, Div)
 utest_exc(MultipleMatchesError, html.find, Div)

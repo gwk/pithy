@@ -30,8 +30,8 @@ utest(div1, html.find_first, id='DIV-ID-1')
 
 utest(p1, html.find, text='#1 text')
 
-utest_exc(NoMatchError, html.pick, 'nonexistant')
-utest_exc(NoMatchError, html.find, 'nonexistant')
+utest_exc(NoMatchError, html.pick, 'nonexistent')
+utest_exc(NoMatchError, html.find, 'nonexistent')
 
 utest_exc(MultipleMatchesError, body.pick, 'div')
 utest_exc(MultipleMatchesError, html.find, 'div')
