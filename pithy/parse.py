@@ -398,7 +398,7 @@ class Choice(Rule):
   '''
   type_desc = 'choice'
 
-  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), transform:ChoiceTransform=choice_syn) -> None:
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), transform:ChoiceTransform=choice_identity) -> None:
     self.name = ''
     self.sub_refs = choices
     self.heads = ()

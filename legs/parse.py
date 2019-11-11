@@ -101,7 +101,8 @@ def build_legs_grammar_parser() -> Parser:
     dict(
       grammar=OneOrMore('section', drop='newline', transform=transform_grammar),
 
-      section=Choice('section_license', 'section_patterns', 'section_modes', 'section_transitions'),
+      section=Choice('section_license', 'section_patterns', 'section_modes', 'section_transitions',
+        transform=choice_syn),
 
       # Section top-level rules.
 

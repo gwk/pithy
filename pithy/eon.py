@@ -8,7 +8,7 @@ from typing import Container, DefaultDict, Dict, FrozenSet, List, Match, NoRetur
 from pithy.io import *
 from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
 from pithy.lex import Lexer, LexMode, LexTrans
-from pithy.parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore, choice_identity
+from pithy.parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
 from pithy.string import clip_prefix
 from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges
 from pithy.unicode.charsets import unicode_charsets
@@ -91,14 +91,14 @@ def _build_eon_parser() -> Parser:
 
       #section=Struct(Atom('section_label'), 'items'),
 
-      key=Choice('flt', 'int', 'sym', transform=choice_identity),
+      key=Choice('flt', 'int', 'sym'),
 
       leaf=Struct(
-        Choice('flt', 'int', 'sym', transform=choice_identity),
+        Choice('flt', 'int', 'sym'),
         'newline'),
 
       # Values always consume trailing newline.
-      value=Choice('leaf', 'dash_list', 'tilde_dict', transform=choice_identity),
+      value=Choice('leaf', 'dash_list', 'tilde_dict'),
 
 
       dash_list=Struct(
@@ -133,7 +133,7 @@ def _build_eon_parser() -> Parser:
 
       colon_body=Struct('colon', 'body'),
 
-      body=Choice('value', 'body_multiline', transform=choice_identity),
+      body=Choice('value', 'body_multiline'),
 
       body_multiline=Struct('newline', 'indent', 'items', 'dedent'),
     ),
