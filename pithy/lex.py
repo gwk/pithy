@@ -149,6 +149,11 @@ class Lexer:
       mode.regex = re.compile(choice_sep.join(pattern for name, pattern in self.patterns.items() if name in kind_set))
       #^ note: iterate over self.patterns.items (not pattern_names) because the dict preserves the original pattern order.
 
+    kinds = list(self.patterns)
+    if any(mode.indents for mode in modes):
+      kinds.extend(['indent', 'dedent'])
+    self.kinds = frozenset(kinds)
+
     # Validate transitions.
     assert main is not None
     self.main:str = main
@@ -162,7 +167,7 @@ class Lexer:
         for pair in pairs:
           for i, k in enumerate(pair):
             if i == 0 and not k: continue # Prev is allowed to be empty.
-            if k and k not in patterns: raise Lexer.DefinitionError(f'unknown mode {label} pattern: {k!r}')
+            if k and k not in self.kinds: raise Lexer.DefinitionError(f'unknown mode {label} pattern: {k!r}')
       for base in trans.bases:
         for kind_pair in trans.kinds:
           key = (base, kind_pair.curr)
@@ -171,11 +176,6 @@ class Lexer:
             self.transitions[key] = (trans, kind_pair.prev)
           else: # Conflict.
             raise Lexer.DefinitionError(f'conflicting transitions:\n  {existing}\n  {trans}')
-
-    kinds = list(self.patterns)
-    if any(mode.indents for mode in modes):
-      kinds.extend(['indent', 'dedent'])
-    self.kinds = frozenset(kinds)
 
 
   def _lex_inv(self, pos:int, end:int, mode:str) -> Token:
