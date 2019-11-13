@@ -11,7 +11,7 @@ def parse(text:str) -> Any:
   return parse_eon(path='<test>', text=text, generic=True)
 
 
-utest({}, parse, '')
+utest(None, parse, '')
 
 
 utest(

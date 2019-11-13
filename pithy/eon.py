@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from functools import singledispatch
-from itertools import chain
 from typing import Container, DefaultDict, Dict, FrozenSet, List, Match, NoReturn, Optional, Set, Tuple, Type, cast
 
 from pithy.io import *
@@ -15,43 +14,67 @@ from pithy.unicode.charsets import unicode_charsets
 from tolkien import Source, Token
 
 
+class EonContainer:
+  token:Token
+
+
+class EonEmpty(EonContainer):
+  def __init__(self, token:Token) -> None:
+    self.token = token
+
+
+class EonDict(EonContainer):
+  def __init__(self, token:Token, items:List[Tuple[Token,'EonSyntax']]) -> None:
+    self.token = token
+    self.items = items
+
+
+class EonList(EonContainer):
+  def __init__(self, token:Token, els:List['EonSyntax']) -> None:
+    self.token = token
+    self.els = els
+
+
+EonSyntax = Union[Token,EonContainer]
+
+
 def parse_eon(path:str, text:str, generic=False) -> Any:
   '''
   Parse source text as EON data format.
   '''
   source = Source(name=path, text=text)
-  items = eon_parser.parse('items', source)
+  syntax = eon_parser.parse('items', source)
   if generic:
-    return _to_generic(items, source)
+    return _to_generic(syntax, source)
   else:
-    return items
+    return syntax
 
 
 @singledispatch
-def _to_generic(items:List[Any], source:Source) -> Any:
+def _to_generic(syntax:EonSyntax, source:Source) -> Any:
   'Convert eon AST to a generic data value.'
-  raise ValueError(items)
+  raise ValueError(syntax)
 
 @_to_generic.register
-def _(ast:Token, source:Source) -> Any:
-  text = source[ast]
-  if ast.kind == 'sym': return text
-  if ast.kind == 'str': return text
-  if ast.kind == 'int': return int(text)
-  if ast.kind == 'flt': return float(text)
-  raise ValueError(ast)
+def _(syntax:Token, source:Source) -> Any:
+  text = source[syntax]
+  if syntax.kind == 'sym': return text
+  if syntax.kind == 'str': return text
+  if syntax.kind == 'int': return int(text)
+  if syntax.kind == 'flt': return float(text)
+  raise ValueError(syntax)
 
 @_to_generic.register # type: ignore
-def _(ast:tuple, source:Source) -> Any:
-  return tuple(_to_generic(el, source) for el in ast)
+def _(syntax:EonEmpty, source:Source) -> Any:
+  return None
 
 @_to_generic.register # type: ignore
-def _(ast:list, source:Source) -> Any:
-  return [_to_generic(el, source) for el in ast]
+def _(syntax:EonList, source:Source) -> Any:
+  return [_to_generic(el, source) for el in syntax.els]
 
 @_to_generic.register # type: ignore
-def _(ast:dict, source:Source) -> Any:
-  return { _to_generic(k, source) : _to_generic(v, source) for (k, v) in ast.items() }
+def _(syntax:EonDict, source:Source) -> Any:
+  return { _to_generic(k, source) : _to_generic(v, source) for (k, v) in syntax.items }
 
 
 
@@ -105,7 +128,7 @@ def _build_eon_parser() -> Parser:
         'dash',
         Choice('newline', 'value', transform=lambda s, t, label, val: None if label == 'newline' else val),
         Opt('list_body_multiline', dflt=()),
-        transform=lambda s, t, fields: [fields[1], *fields[2]] if fields[1] else fields[2]),
+        transform=lambda s, t, fields: EonList(token=t, els=[fields[1], *fields[2]] if fields[1] else fields[2])),
 
       list_body_multiline=Struct('indent', OneOrMore('value', drop='newline'), 'dedent'),
 
@@ -114,7 +137,7 @@ def _build_eon_parser() -> Parser:
         'tilde',
         Choice('newline', 'kv_pair', transform=lambda s, t, label, pair: () if label == 'newline' else (pair,)),
         Opt('dict_body_multiline', dflt=()),
-        transform=lambda s, t, fields: dict(chain(fields[1], fields[2]))),
+        transform=lambda s, t, fields: EonDict(token=t, items=[*fields[1], *fields[2]])),
 
       dict_body_multiline=Struct('indent', OneOrMore('kv_pair', drop='newline'), 'dedent'),
 
@@ -144,7 +167,7 @@ def _build_eon_parser() -> Parser:
 # Parser transformers.
 
 
-def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> Union[Dict,List]:
+def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> EonContainer:
   is_dict:bool
   vals:List[Any] = []
   for token, p in items:
@@ -160,11 +183,11 @@ def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> U
       raise ParseError(source, token, 'inconsistent sequence. ', msg, notes=[(start, 'note: first element is here.')])
     vals.append(p if is_pair else k)
   if not vals:
-    return {} # Default to dict; if caller is expecting a simple iterable, this still works.
+    return EonEmpty(token=start)
   if is_dict:
-    return dict(vals)
+    return EonDict(token=start, items=vals)
   else:
-    return vals
+    return EonList(token=start, els=vals)
 
 
 def transform_item(source:Source, token:Token, label:str, item:Any) -> Tuple[Token,Any]:
