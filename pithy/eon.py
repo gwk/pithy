@@ -103,18 +103,18 @@ def _build_eon_parser() -> Parser:
 
       dash_list=Struct(
         'dash',
-        Choice('newline', 'value', transform=lambda s, label, val: None if label == 'newline' else val),
+        Choice('newline', 'value', transform=lambda s, t, label, val: None if label == 'newline' else val),
         Opt('list_body_multiline', dflt=()),
-        transform=lambda s, fields: [fields[1], *fields[2]] if fields[1] else fields[2]),
+        transform=lambda s, t, fields: [fields[1], *fields[2]] if fields[1] else fields[2]),
 
       list_body_multiline=Struct('indent', OneOrMore('value', drop='newline'), 'dedent'),
 
 
       tilde_dict=Struct(
         'tilde',
-        Choice('newline', 'kv_pair', transform=lambda s, label, pair: () if label == 'newline' else (pair,)),
+        Choice('newline', 'kv_pair', transform=lambda s, t, label, pair: () if label == 'newline' else (pair,)),
         Opt('dict_body_multiline', dflt=()),
-        transform=lambda s, fields: dict(chain(fields[1], fields[2]))),
+        transform=lambda s, t, fields: dict(chain(fields[1], fields[2]))),
 
       dict_body_multiline=Struct('indent', OneOrMore('kv_pair', drop='newline'), 'dedent'),
 
@@ -129,7 +129,7 @@ def _build_eon_parser() -> Parser:
       keylike_item=Struct('key', 'newline_or_colon_body'),
 
       newline_or_colon_body=Choice('newline', 'colon_body',
-        transform=lambda s, label, val: None if label == 'newline' else val), # Newline implies that the just-parsed key is a list element.
+        transform=lambda s, t, label, val: None if label == 'newline' else val), # Newline implies that the just-parsed key is a list element.
 
       colon_body=Struct('colon', 'body'),
 
@@ -144,38 +144,34 @@ def _build_eon_parser() -> Parser:
 # Parser transformers.
 
 
-def transform_items(source:Source, items:List[Tuple[Any,Any]]) -> Any:
-  is_dict:Optional[bool] = None
-  first_k = None
-  for k, v in items:
+def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> Union[Dict,List]:
+  is_dict:bool
+  vals:List[Any] = []
+  for token, p in items:
+    k, v = p
     is_pair = (v is not None) # None is never returned by value transformers, so it is a sufficient discriminator.
-    if is_dict is None:
+    if not vals:
       is_dict = is_pair
-      first_k = k
     elif is_dict != is_pair: # Inconsistent.
-      token = k
-      while not isinstance(token, Token): token = token[0] # Extract leading token from a structure key.
       if is_pair:
         msg = f'Expected list elements; received key-value pair.'
       else:
         msg = f'Expected key-value pair; received list element.'
-      assert first_k is not None
-      first_token = first_k
-      while not isinstance(first_token, Token): first_token = first_token[0] # Extract leading token from a structure key.
-      raise ParseError(source, token, 'inconsistent sequence. ', msg, notes=[(first_token, 'note: first element is here.')])
-  if is_dict is None: # Default to dict; if caller is expecting a simple iterable, this still works.
-    return {}
+      raise ParseError(source, token, 'inconsistent sequence. ', msg, notes=[(start, 'note: first element is here.')])
+    vals.append(p if is_pair else k)
+  if not vals:
+    return {} # Default to dict; if caller is expecting a simple iterable, this still works.
   if is_dict:
-    return dict(items)
+    return dict(vals)
   else:
-    return [item[0] for item in items]
+    return vals
 
 
-def transform_item(source:Source, label:str, item:Any) -> Any:
+def transform_item(source:Source, token:Token, label:str, item:Any) -> Tuple[Token,Any]:
   if label == 'keylike_item':
     assert isinstance(item, tuple) and len(item) == 2
-    return item
-  else: return (item, None)
+    return (token, item)
+  else: return (token, (item, None))
 
 
 eon_parser = _build_eon_parser()

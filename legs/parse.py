@@ -116,7 +116,7 @@ def build_legs_grammar_parser() -> Parser:
 
       # License.
 
-      license=Choice('newline', 'license_text', transform=lambda s, label, token: s[token]),
+      license=Choice('newline', 'license_text', transform=lambda s, t, label, token: s[token]),
 
       # Patterns.
 
@@ -140,7 +140,7 @@ def build_legs_grammar_parser() -> Parser:
       # Charsets.
 
       charset_p=Struct('charset', # Wrapper to transform from Set[int] to CharsetPattern.
-        transform=lambda s, fields: CharsetPattern.for_codes(fields[0])),
+        transform=lambda s, t, fields: CharsetPattern.for_codes(fields[0])),
 
       charset=Struct('brack_o', 'charset_expr', 'brack_c'),
 
@@ -151,7 +151,7 @@ def build_legs_grammar_parser() -> Parser:
           Infix('caret',  transform=lambda s, t, l, r: l ^ r),
           Infix('dash',   transform=lambda s, t, l, r: l - r)),
         Right(Adjacency(  transform=lambda s, t, l, r: l | r)),
-        transform=lambda s, cs: cs),
+        transform=lambda s, t, cs: cs),
 
       # Pattern atoms.
       char=Atom('char',     transform=transform_char),
@@ -177,7 +177,7 @@ def build_legs_grammar_parser() -> Parser:
 
 # Parser transformers.
 
-def transform_grammar(source:Source, sections:List) -> Grammar:
+def transform_grammar(source:Source, token:Token, sections:List) -> Grammar:
   licenses:List[str] = []
   patterns:Dict[str,LegsPattern] = {}
   modes:Dict[str,FrozenSet[str]] = {}
@@ -216,7 +216,7 @@ def transform_grammar(source:Source, sections:List) -> Grammar:
   return Grammar(license=license, patterns=patterns, modes=modes, transitions=dict(transitions))
 
 
-def transform_pattern(source:Source, fields:List) -> Tuple[Token,LegsPattern]:
+def transform_pattern(source:Source, token:Token, fields:List) -> Tuple[Token,LegsPattern]:
   sym, pattern = fields
   if pattern is None:
     pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in source[sym]])

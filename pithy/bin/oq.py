@@ -151,10 +151,10 @@ parser = Parser(lexer, dict(
       Adjacency(transform=lambda source, token, left, right: ChildQuery(left, right))
     ),
   ),
-  search=Choice('pred', transform=lambda source, name, predicate: SearchQuery(predicate)),
-  filter=Struct('dot', 'pred', transform=lambda source, fields: FilterQuery(fields[1])),
+  search=Choice('pred', transform=lambda source, token, name, predicate: SearchQuery(predicate)),
+  filter=Struct('dot', 'pred', transform=lambda source, token, fields: FilterQuery(fields[1])),
 
-  pred=Choice('type_pred', transform=lambda source, name, pred: pred),
+  pred=Choice('type_pred', transform=lambda source, token, name, pred: pred),
 
   type_pred=Atom('name', mk_type_pred),
   ),

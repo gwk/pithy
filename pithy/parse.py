@@ -81,9 +81,6 @@ def append_or_list(list_or_el:Union[_T,List[_T]], el:_T) -> List[_T]:
     return [list_or_el, el]
 
 
-ValTransform = Callable[[Source,Any],Any]
-def val_identity(source:Source, obj:Any) -> Any: return obj
-
 TokenTransform = Callable[[Source,Token],Any]
 
 def token_identity(source:Source, token:Token) -> Token: return token
@@ -101,15 +98,15 @@ def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any
 def adjacency_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
 def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> List[Any]: return append_or_list(left, right)
 
-QuantityTransform = Callable[[Source,List[Any]],Any]
-def quantity_identity(source:Source, elements:List[Any]) -> List[Any]: return elements
+QuantityTransform = Callable[[Source,Token,List[Any]],Any]
+def quantity_identity(source:Source, token:Token, elements:List[Any]) -> List[Any]: return elements
 
-StructTransform = Callable[[Source,List[Any]],Any]
-def struct_syn(source:Source, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
+StructTransform = Callable[[Source,Token,List[Any]],Any]
+def struct_syn(source:Source, token:Token, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
 
-ChoiceTransform = Callable[[Source,RuleName,Any],Any]
-def choice_syn(source:Source, label:RuleName, obj:Any) -> Tuple[str,Any]: return (label, obj)
-def choice_identity(source:Source, label:RuleName, obj:Any) -> Any: return obj
+ChoiceTransform = Callable[[Source,Token,RuleName,Any],Any]
+def choice_syn(source:Source, token:Token, label:RuleName, obj:Any) -> Tuple[str,Any]: return (label, obj)
+def choice_identity(source:Source, token:Token, label:RuleName, obj:Any) -> Any: return obj
 
 _sentinel_kind = '!SENTINEL'
 
@@ -249,7 +246,7 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, drop:Iterable[str]=(), dflt=None, transform:ValTransform=val_identity) -> None:
+  def __init__(self, body:RuleRef, drop:Iterable[str]=(), dflt=None, transform:UnaryTransform=unary_identity) -> None:
     self.name = ''
     self.sub_refs = (body,)
     self.heads = ()
@@ -267,7 +264,7 @@ class Opt(_QuantityRule):
       res = self.parse_sub(self.body, source, token, token, buffer)
     else:
       buffer.push(token)
-    return self.transform(source, res)
+    return self.transform(source, token, res)
 
 
 
@@ -332,7 +329,7 @@ class Quantity(_QuantityRule):
       raise ParseError(source, token, f'{self} received disallowed trailing {self.sep} separator.')
 
     buffer.push(token)
-    return self.transform(source, els)
+    return self.transform(source, start, els)
 
 
 
@@ -374,7 +371,7 @@ class Struct(Rule):
 
   def compile(self, parser:'Parser') -> None:
     if self.transform is None:
-      self.transform = parser._mk_transform(name=self.name, subs=self.subs)
+      self.transform = parser._mk_struct_transform(name=self.name, subs=self.subs)
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
@@ -388,7 +385,7 @@ class Struct(Rule):
       el = self.parse_sub(field, source, start, token, buffer)
       els.append(el)
     assert self.transform is not None
-    return self.transform(source, els)
+    return self.transform(source, start, els)
 
 
 
@@ -428,7 +425,7 @@ class Choice(Rule):
     except KeyError: pass
     else:
       syn = self.parse_sub(sub, source, start, token, buffer)
-      return self.transform(source, sub.name, syn)
+      return self.transform(source, start, sub.name, syn)
     exp = self.name or f'any of {self.subs_desc}'
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
@@ -563,7 +560,7 @@ class Precedence(Rule):
   type_desc = 'precedence rule'
 
   def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group, drop:Iterable[str]=(),
-   transform:ValTransform=val_identity) -> None:
+   transform:UnaryTransform=unary_identity) -> None:
     # Keep track of the distinction between subs that came from leaves vs groups.
     # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
     # and then get the linked leaves back via the leaves property implemented below.
@@ -614,7 +611,7 @@ class Precedence(Rule):
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     syn = self.parse_level(parent, source, token, buffer, 0)
-    return self.transform(source, syn)
+    return self.transform(source, token, syn)
 
 
   def parse_level(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token], level:int) -> Any:
@@ -647,7 +644,7 @@ class Precedence(Rule):
 
 class SubParser(Rule):
 
-  def __init__(self, parser:'Parser', rule_name:str, transform:ValTransform=val_identity) -> None:
+  def __init__(self, parser:'Parser', rule_name:str, transform:UnaryTransform=unary_identity) -> None:
     self.name = ''
     self.sub_refs = ()
     self.heads = parser.rules[rule_name].heads
@@ -657,7 +654,7 @@ class SubParser(Rule):
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     sub_res = self.rule.parse(self, source, token, buffer)
-    return self.transform(source, sub_res)
+    return self.transform(source, token, sub_res)
 
 
 class Parser:
@@ -729,7 +726,7 @@ class Parser:
       rule.__dict__.clear() # Break all references between rules.
 
 
-  def _mk_transform(self, name:str, subs:Tuple[Rule,...]) -> Callable[[Source, List[Any]],Any]:
+  def _mk_struct_transform(self, name:str, subs:Tuple[Rule,...]) -> StructTransform:
 
     includes = [sub.name not in self.literals for sub in subs]
     field_names = [sub.name for sub in subs] # Allow empty names as they are; namedtuple will rename them.
@@ -740,12 +737,12 @@ class Parser:
 
     if includes.count(True) == 1: # No need for a struct; just extract the interesting child element.
       i = includes.index(True)
-      def single_transform(source:Source, fields:List[Any]) -> Any: return fields[i]
+      def single_transform(source:Source, token:Token, fields:List[Any]) -> Any: return fields[i]
       return single_transform
 
     struct_type = self._mk_struct_type(name, fields=included_field_names)
 
-    def transform(source:Source, fields:List[Any]) -> Any:
+    def transform(source:Source, token:Token, fields:List[Any]) -> Any:
       return struct_type(*(f for f, include in zip(fields, includes) if include))
 
     return transform
