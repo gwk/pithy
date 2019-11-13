@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import abstractmethod
-from typing import Any, Generic, Iterable, Iterator, Sequence, TypeVar, Union
-from typing_extensions import Protocol
+from typing import Any, Generic, Iterable, Iterator, Protocol, Sequence, TypeVar, Union
+
 from .default import Default
 
 

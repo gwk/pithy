@@ -2,9 +2,7 @@
 
 from abc import ABCMeta, abstractmethod
 from collections import Counter as _Counter
-from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
-
-from typing_extensions import Protocol
+from typing import Any, Callable, Dict, Optional, Protocol, Tuple, TypeVar, Union
 
 
 _T = TypeVar('_T')
