@@ -55,11 +55,11 @@ class ParseError(Exception):
     msg = 'parse error: ' + ''.join(str(m) for m in self.msgs)
     self.source.fail(*reversed(self.notes), (self.token, msg))
 
-  def add_in_note(self, token:Token, rule:'Rule') -> None:
+  def add_in_note(self, token:Token, context:Any) -> None:
     # For repeated positions, keep only the innermost note.
     # Outer notes are for choice, quantity, and optional, which are not very informative for debugging parse errors.
     if not self.notes or self.notes[-1][0] != token:
-      self.notes.append((token, f'note: in {rule}:'))
+      self.notes.append((token, f'note: in {context}:'))
 
 
 class ExcessToken(ParseError):
