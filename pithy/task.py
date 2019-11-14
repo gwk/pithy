@@ -11,6 +11,7 @@ from time import time as _now
 from typing import IO, AnyStr, BinaryIO, Dict, Iterator, List, Optional, Sequence, Tuple, Union, cast
 
 from .alarm import Alarm, Timeout
+from .fs import path_for_cmd
 
 
 Cmd = Union[str, Sequence[str]]
@@ -340,22 +341,6 @@ def runE(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: BinaryI
 
 def _is_permitted(path: str, mode: int) -> bool:
   return _access(path, mode, effective_ids=(_access in _supports_effective_ids))
-
-
-def path_for_cmd(name_or_path:str) -> str:
-  '''
-  get the result of running the 'which' utility on a string.
-  this should return the path to an executable in the current PATH.
-  this function caches results.
-  '''
-  try: return _path_for_cmd_cache[name_or_path]
-  except KeyError: pass
-  path = runO(['which', name_or_path]).strip()
-  if not path: raise ExecutableNotFound(name_or_path)
-  _path_for_cmd_cache[name_or_path] = path
-  return path
-
-_path_for_cmd_cache:Dict[str,str] = {}
 
 
 class ExecutableNotFound(ValueError): pass

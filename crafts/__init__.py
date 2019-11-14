@@ -10,7 +10,7 @@ from typing import Any, Dict, NamedTuple, Optional, cast
 import yaml
 
 from pithy.dict import dict_set_defaults
-from pithy.fs import find_project_dir, list_dir, make_dirs, product_needs_update, real_path
+from pithy.fs import find_project_dir, list_dir, make_dirs, path_for_cmd, product_needs_update, real_path
 from pithy.json import load_json, parse_json, write_json
 from pithy.path import is_sub_path, norm_path, path_ext, path_join, path_name_stem, path_split, rel_path
 from pithy.string import find_and_clip_suffix
