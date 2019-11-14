@@ -5,10 +5,8 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, BytesIO, RawIOBase, TextIOBase, TextIOWrapper
-from typing import Any, BinaryIO, Callable, Dict, IO, Iterable, Iterator, List, Sequence, Set, TextIO, Union
+from typing import IO, Any, BinaryIO, Callable, Dict, Iterable, Iterator, List, Sequence, Set, TextIO, Union
 
-from .io import stderr, errL, errSL
-from .fs import path_ext, path_stem
 
 __all__ = [
   'add_loader',
@@ -38,7 +36,7 @@ def load(file_or_path:FileOrPath, ext:str=None, **kwargs:Any) -> Any:
       except AttributeError as e:
         raise ValueError(f'load: no `ext` specified and file does not have `name` attribute: {file_or_path}') from e
       if not isinstance(name, str):
-        raise ValueError(f'load: no `ext` specified and file has non-string `name` attribute: {name!r}') from e
+        raise ValueError(f'load: no `ext` specified and file has non-string `name` attribute: {name!r}')
       ext = _path_cmpd_ext(name)
   dispatch_ext = _last_ext(ext)
   try: load_fn = _loaders[dispatch_ext]

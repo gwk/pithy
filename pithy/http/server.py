@@ -12,16 +12,16 @@ from http import HTTPStatus
 from http.client import HTTPException, HTTPMessage, LineTooLong, parse_headers  # type: ignore
 from io import BytesIO
 from os import fstat as os_fstat
-from posixpath import normpath, splitext
+from posixpath import splitext
 from shutil import copyfileobj
 from socket import getfqdn as get_fully_qualified_domain_name, timeout as SocketTimeout
 from socketserver import StreamRequestHandler, TCPServer
 from sys import exc_info
 from traceback import print_exception
-from typing import Any, BinaryIO, List, Optional, Tuple, Type, cast
+from typing import Any, BinaryIO, List, Optional, Tuple, Type
 from urllib.parse import unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
 
-from ..fs import is_dir, list_dir, norm_path, path_exists, path_join
+from ..fs import is_dir, norm_path, path_exists, path_join
 from ..io import errL, errSL
 
 
@@ -102,7 +102,7 @@ class HTTPServer(TCPServer):
     '''
     errL()
     errSL('Exception while processing request from client:', client_address)
-    e_type, exc, traceback = info = exc_info()
+    e_type, exc, traceback = exc_info()
     if isinstance(exc, self.unrecoverable_exceptions):
       raise Exception('unrecoverable error') from exc
     else:

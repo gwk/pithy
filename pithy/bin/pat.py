@@ -4,12 +4,12 @@ import re
 from argparse import ArgumentParser, FileType, Namespace
 from os import environ
 from shutil import copyfile
-from sys import stderr
-from typing import DefaultDict, List, NoReturn, Set, Tuple, cast
+from typing import DefaultDict, NoReturn, Set
 
 from ..diff import calc_diff
 from ..fs import is_file, path_exists
 from ..path import norm_path, path_dir, path_join, path_rel_to_dir
+
 
 pat_version = '0'
 
@@ -164,7 +164,6 @@ def main_diff(args) -> None:
 # version pattern is applied to the first line of documents;
 # programs processing input strings may or may not check for a version as appropriate.
 version_re = re.compile(r'pat v(\d+)\n')
-from pithy.io import *
 def main_apply(args) -> None:
   'apply command entry point.'
   f_patch = args.patch

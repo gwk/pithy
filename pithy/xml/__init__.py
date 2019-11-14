@@ -4,7 +4,7 @@
 Xml type.
 '''
 
-from typing import Any, Iterable, List, TypeVar, Union
+from typing import Any, Iterable, List, Union
 from xml.etree.ElementTree import Element
 from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 

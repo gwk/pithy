@@ -4,11 +4,11 @@ import json as _json
 import re
 from dataclasses import fields, is_dataclass
 from json.decoder import JSONDecodeError
-from sys import stderr, stdout, version_info
-from typing import (IO, AbstractSet, Any, Callable, Dict, FrozenSet, Hashable, Iterable, List, Optional, Sequence, TextIO,
-  Tuple, Union, cast)
+from sys import stderr, stdout
+from typing import IO, AbstractSet, Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, TextIO, Tuple, Union
 
 from .encode import EncodeObj, all_slots, encode_obj
+
 
 JsonAny = Any # TODO: remove this once recursive types work.
 JsonList = List[JsonAny]

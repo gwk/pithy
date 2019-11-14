@@ -4,13 +4,10 @@
 HTML writer.
 '''
 
-from sys import stdout
-from html import escape as html_escape
-from types import TracebackType
-from typing import Any, Dict, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union, Iterable, cast
-from ..range import Num, NumRange
-from ..xml.tree import EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs, esc_xml_attr, esc_xml_text
-from ..svg import *
+from typing import Any
+from ..xml.tree import EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs
+from ..xml.escape import esc_xml_attr, esc_xml_text
+from ..svg import Svg, Style, Script
 from .semantics import form_input_types
 
 

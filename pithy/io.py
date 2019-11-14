@@ -3,7 +3,7 @@
 from os import O_NONBLOCK, O_RDONLY, close as os_close, open as os_open, read as os_read
 from pprint import pprint
 from string import Template as _Template
-from sys import argv, stderr, stdin, stdout
+from sys import stderr, stdin, stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union, cast
 
 from .desc import errD, outD, writeD

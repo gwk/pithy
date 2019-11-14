@@ -7,10 +7,9 @@ like `pprint` but streaming, and with a more compact, minimal style.
 
 
 import re
-from itertools import count
 from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
-from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Optional, Set, TextIO, Tuple, Union
+from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Set, TextIO, Tuple, Union
 
 from .iterable import known_leaf_types
 

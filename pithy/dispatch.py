@@ -2,8 +2,7 @@
 
 import inspect
 from functools import _find_impl, wraps  # type: ignore
-from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Type, TypeVar, cast
-from weakref import WeakKeyDictionary
+from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, TypeVar, cast
 
 from .default import Default
 

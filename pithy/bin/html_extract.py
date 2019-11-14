@@ -1,10 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
-from sys import stdin
 from argparse import ArgumentParser
 from html.parser import HTMLParser
-from typing import *
+from sys import stdin
+from typing import List, Optional, Tuple
 
 
 def main() -> None:

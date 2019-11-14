@@ -2,12 +2,12 @@
 
 from http import HTTPStatus
 from shlex import quote as sh_quote
-from typing import Any, Dict, List
+from typing import Any, Dict
 from urllib.parse import urlencode, urlparse
 from random import uniform as rand_uniform
 from time import sleep
 from .fs import make_dirs, move_file, path_dir, path_exists, path_ext, path_join
-from .io import errL, errSL, stderr
+from .io import errSL
 from .path_encode import path_for_url
 from .task import runCO
 

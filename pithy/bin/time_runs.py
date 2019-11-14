@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from sys import argv
-from typing import Any, List
-from pithy.task import launch, communicate, DEVNULL
-from time import perf_counter
 from math import sqrt
+from sys import argv
+from time import perf_counter
+from typing import List
+
+from pithy.task import DEVNULL, communicate, launch
 
 
 def main() -> None:
@@ -12,7 +13,7 @@ def main() -> None:
 
   _, num_runs_str, *cmd = argv
   try: num_runs = int(num_runs_str)
-  except ValueError as e: exit(f'error: first argument must be an integer; received {argv[1]!r}.')
+  except ValueError: exit(f'error: first argument must be an integer; received {argv[1]!r}.')
   if num_runs < 1: exit(f'error: first argument must be positive: received {num_runs}.')
 
   tot_times:List[float] = []

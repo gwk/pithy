@@ -1,9 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple, Type, cast
-from .io import *
-from .json import Json, render_json
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Type, cast
+from .json import render_json
 
 
 class SqliteError(Exception): pass

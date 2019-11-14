@@ -1,8 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from types import TracebackType
-from typing import Any, ContextManager, IO, List, Optional, Tuple, Type, Union
+from typing import Any, ContextManager, IO, List, Tuple, Union
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

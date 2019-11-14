@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, List, ByteString, Union
+from typing import ByteString
 
 
 def _byte_index(alphabet:bytes, char:int) -> int:

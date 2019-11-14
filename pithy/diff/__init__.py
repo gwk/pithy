@@ -2,10 +2,9 @@
 
 
 from difflib import SequenceMatcher
-from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeVar
 
 from .patience import Alignment, Diff, align_patience
-from .util import ranges_without_common_ends, trim_common_ends
 
 
 _T = TypeVar('_T')

@@ -1,9 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from os import environ
-from sys import stderr
 from typing import Iterable
-from .path import path_dir, path_join
 
 
 class ParseError(Exception): pass

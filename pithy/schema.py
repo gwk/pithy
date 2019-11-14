@@ -4,7 +4,7 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
-from typing import Any, Counter, DefaultDict, Hashable, NamedTuple, Optional, TextIO
+from typing import Any, Counter, DefaultDict, NamedTuple, Optional, TextIO
 from .string import iter_excluding_str
 
 

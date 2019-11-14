@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import (Any, Callable, Dict, Hashable, Iterable, List, Mapping, MutableMapping, MutableSequence, NamedTuple,
-  Sequence, Set, Tuple, TypeVar, Union)
+from typing import (Any, Callable, Dict, Hashable, Iterable, List, Mapping, MutableMapping, NamedTuple, Set, Tuple, TypeVar,
+  Union)
 
 
 _K = TypeVar('_K', bound=Hashable)

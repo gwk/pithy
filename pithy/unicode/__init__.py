@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from itertools import chain
-from typing import Collection, Dict, Iterable, Tuple
+from typing import Dict, Iterable, Tuple
 
 
 # use pairs instead of real range objects because they are sortable, and faster to load in the interpreter.

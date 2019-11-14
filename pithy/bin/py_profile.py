@@ -5,13 +5,13 @@ import os
 import re
 from argparse import ArgumentParser
 from cProfile import Profile
-from pstats import Stats
 from os.path import dirname
+from pstats import Stats
+from sys import argv, exc_info, path as sys_path, stderr, stdout
 from typing import Any, Dict, Iterable, List, Optional, Set, TextIO, Tuple, Union
-from pithy.io import errL, errSL
+
 from pithy.path import path_rel_to_current_or_abs
 from pithy.task import path_for_cmd
-from sys import argv, prefix as sys_prefix, path as sys_path, exc_info, stdout, stderr
 
 
 def main() -> None:
@@ -64,7 +64,7 @@ def main() -> None:
     from traceback import TracebackException
     exit_code = 1 # exit code that Python returns when an exception raises to toplevel.
     # Format the traceback as it would appear when run standalone.
-    traceback = TracebackException(*sys.exc_info()) # type: ignore
+    traceback = TracebackException(*exc_info()) # type: ignore
     # note: the traceback will contain stack frames from the host.
     # this can be avoided with a fixup function, but does not seem necessary at this point. See coven.py for an example.
     #fixup_traceback(traceback)

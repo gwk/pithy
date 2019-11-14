@@ -2,9 +2,10 @@
 
 from argparse import ArgumentParser
 from functools import partial
-from ..http.server import HTTPServer, HTTPRequestHandler
+from typing import cast
+
+from ..http.server import HTTPRequestHandler, HTTPServer
 from ..task import run
-from typing import *
 
 
 def main() -> None:

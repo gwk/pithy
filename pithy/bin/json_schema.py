@@ -5,9 +5,9 @@ Produce a schema from input json.
 '''
 
 import json
-
-from argparse import ArgumentParser, FileType
+from argparse import ArgumentParser
 from sys import stderr, stdin, stdout
+
 from ..fs import walk_files
 from ..schema import compile_schema, write_schema
 

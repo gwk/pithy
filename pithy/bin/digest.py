@@ -2,12 +2,13 @@
 
 'print file hashes. first argument is the format; remaining args are the paths.'
 
-from ..encodings import enc_lep62
-from ..io import errSL
+import hashlib
 from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
-from typing import Any, ByteString, Callable, Dict, List, Optional, TypeVar, Tuple, Union
-import hashlib
+from typing import Any, ByteString, Callable, Dict, List, Optional, Tuple, TypeVar
+
+from ..encodings import enc_lep62
+from ..io import errSL
 
 
 _ByteString = TypeVar('_ByteString', ByteString, bytes, bytearray, memoryview) # Hack around the typeshed defs from base64.

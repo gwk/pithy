@@ -1,10 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
-from sys import stdin
 from argparse import ArgumentParser
-from typing import *
 from base64 import b64encode
+
 
 def main() -> None:
   arg_parser = ArgumentParser('Convert images.')

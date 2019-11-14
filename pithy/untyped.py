@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from typing import Any, Dict, Generic, Iterator, Tuple, TypeVar
+from typing import Any, Generic, Iterator, TypeVar
 
 
 _T = TypeVar('_T')

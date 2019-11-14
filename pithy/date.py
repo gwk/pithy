@@ -1,7 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from datetime import date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone, tzinfo as TZInfo
-from typing import Iterator, TypeVar
+from datetime import (date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone,
+  tzinfo as TZInfo)
+from typing import TypeVar
 
 
 sec_per_min = 60

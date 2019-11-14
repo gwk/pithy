@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from sys import argv, stdin, stderr
+from sys import argv, stderr, stdin
 
 
 def main() -> None:
@@ -10,4 +10,3 @@ def main() -> None:
   try: total = sum(float(s) for s in number_strings)
   except ValueError as e: exit(f'sum error: {e}')
   print(total)
-

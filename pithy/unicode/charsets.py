@@ -2,7 +2,7 @@
 
 from bisect import bisect
 from itertools import chain
-from typing import Dict, Tuple
+from typing import Dict
 
 from . import CodeRange, CodeRanges, abbreviated_planes, intersect_sorted_ranges, union_sorted_ranges
 from .categories import unicode_categories, unicode_category_aliases

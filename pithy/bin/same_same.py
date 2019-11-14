@@ -2,15 +2,14 @@
 
 import re
 from argparse import ArgumentParser
-from itertools import chain, groupby
+from itertools import groupby
 from os import environ
-from ..diff import calc_diff
 from sys import stderr, stdout
 from typing import Any, Dict, List, Match, Optional, Set, Tuple
-from pithy.ansi import (
-  sanitize_for_console, sgr, rgb6, gray26,
-  BG, TXT, BOLD, FILL,
-  RST, RST_BOLD, RST_TXT)
+
+from pithy.ansi import BG, BOLD, FILL, RST, RST_BOLD, RST_TXT, TXT, gray26, rgb6, sanitize_for_console, sgr
+
+from ..diff import calc_diff
 
 
 '''

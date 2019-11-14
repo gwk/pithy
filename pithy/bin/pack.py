@@ -1,12 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from argparse import ArgumentParser, Namespace
-from ..task import run, UnexpectedExit, DEVNULL
-from typing import Callable, List, Optional
-from ..fs import file_size, path_exists, remove_path
-from ..string import format_byte_count
-from ..io import *
+from argparse import ArgumentParser
 from time import time as now
+from typing import Callable, Optional
+
+from ..fs import file_size, path_exists, remove_path
+from ..io import confirm, outL, outZ, stderr, stdin
+from ..string import format_byte_count
+from ..task import UnexpectedExit, run
 
 
 PackFn = Callable[[str, str], None]

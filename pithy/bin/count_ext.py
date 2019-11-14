@@ -13,10 +13,10 @@
 #  in this case don't print stats, so that the results can be piped to other utilities
 
 
-import os
 from argparse import ArgumentParser
+from typing import DefaultDict
+
 from ..fs import path_ext, walk_files
-from typing import *
 
 
 def main() -> None:

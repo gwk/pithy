@@ -1,10 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from enum import Enum
-from types import TracebackType
-from typing import Any, Callable, ContextManager, Generic, Iterable, List, Optional, TextIO, Type, TypeVar
+from typing import Any, Callable, ContextManager, Generic, Iterable, List, TextIO, TypeVar
 
-from .fs import path_ext, path_join, path_stem
 from .io import err_progress, errL, writeL
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

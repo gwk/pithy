@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import signal
-from typing import Callable, ContextManager, Optional, Type
+from typing import Callable, ContextManager
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

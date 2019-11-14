@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from sys import argv, stdin
+from sys import stdin
 from typing import BinaryIO
 
 from ..task import run

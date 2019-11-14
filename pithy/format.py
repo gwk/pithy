@@ -4,7 +4,7 @@
 
 import re
 from .string import line_col_1
-from typing import Any, AnyStr, Iterable, Match, Pattern, Tuple
+from typing import Any, Iterable, Match, Pattern, Tuple
 
 
 class FormatError(Exception): pass

@@ -2,22 +2,21 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from argparse import ArgumentParser, FileType
+from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from shlex import quote as sh_quote
-from typing import Any, Dict, List, Pattern, Set, Tuple, Union
-from urllib.parse import urldefrag, urljoin, urlsplit
-from xml.etree.ElementTree import Element
+from typing import Any, Dict, List, Pattern, Set
+from urllib.parse import urldefrag, urljoin
 
 import html5_parser
 
 from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file, path_descendants, path_dir,
-  path_exists, path_ext, path_join, remove_path, remove_path_if_exists)
-from pithy.io import errL, errSL, outL, outSL, errD
+  path_ext, path_join, remove_path, remove_path_if_exists)
+from pithy.io import errL, errSL, outL
+from pithy.iterable import prefix_tree
 from pithy.path_encode import COMP, OMIT, SPLIT, SQUASH, path_for_url
 from pithy.string import clip_first_prefix
 from pithy.task import runO
-from pithy.iterable import prefix_tree
 
 
 def main() -> None:

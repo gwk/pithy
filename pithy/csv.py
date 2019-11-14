@@ -3,11 +3,9 @@
 # TODO: handle leading UTF8-BOM.
 
 import csv
-import collections
 from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONNUMERIC, QUOTE_NONE
 from sys import stdout
-from types import TracebackType
-from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
+from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Union
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

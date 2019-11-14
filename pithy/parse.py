@@ -22,17 +22,16 @@ This allows us to use the simple operator-precedence parsing algorithm,
 while expressing other aspects of a grammar using straightforward recursive descent.
 '''
 
-import re
 from collections import namedtuple
-from typing import (Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Set, Tuple, Type, TypeVar,
-  Union, cast)
+from typing import (Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar, Union,
+  cast)
 
 from tolkien import Source, Token, TokenMsg
 
 from .buffer import Buffer
 from .graph import visit_nodes
 from .io import errL
-from .lex import Lexer, Token, reserved_names, valid_name_re
+from .lex import Lexer, reserved_names, valid_name_re
 from .meta import get_caller_module_name
 from .string import indent_lines, iter_str, pluralize
 from .untyped import Immutable

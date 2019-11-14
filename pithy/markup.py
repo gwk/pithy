@@ -13,7 +13,6 @@ from xml.etree.ElementTree import Element
 from .desc import repr_lim
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from .iterable import window_iter, window_pairs
-from .util import memoize
 
 
 # Handle lxml comments if available; these are produced by html5_parser.

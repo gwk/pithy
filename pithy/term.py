@@ -7,7 +7,7 @@ TODO: register a signal handler for SIGWINCH to update sizes.
 import fcntl as _fcntl
 import struct as _struct
 from copy import deepcopy
-from sys import stderr, stdin, stdout
+from sys import stderr, stdout
 from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, TCSADRAIN,
   TCSAFLUSH, TCSANOW, TIOCGWINSZ, VMIN, VTIME, tcgetattr, tcsetattr)
 

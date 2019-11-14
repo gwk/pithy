@@ -2,10 +2,9 @@
 
 'String utilities.'
 
-import re
 from decimal import Decimal
 from string import Template
-from typing import Any, Callable, Iterable, Iterator, List, Sequence, Tuple, TypeVar
+from typing import Any, Iterable, Iterator, Sequence, Tuple, TypeVar
 
 _T = TypeVar('_T')
 

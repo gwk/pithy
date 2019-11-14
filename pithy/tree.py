@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from types import GeneratorType
-from typing import Any, Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 from .exceptions import OmitNode
 from .iterable import iter_values

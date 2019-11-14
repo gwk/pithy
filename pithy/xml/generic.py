@@ -18,7 +18,7 @@ from xml.etree.ElementTree import Element
 from lxml.etree import Comment  # type: ignore
 
 from ..exceptions import DeleteNode
-from .escape import EscapedStr, esc_xml_attr, esc_xml_attr_key, esc_xml_text, fmt_attr_items
+from .escape import fmt_attr_items
 
 
 GenericXmlKey = Union[int,str]

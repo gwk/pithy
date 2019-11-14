@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from enum import Enum
-from functools import singledispatch
 from itertools import tee
 from operator import le
 from typing import (Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional, Set, Tuple, TypeVar,

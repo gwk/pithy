@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Iterator, List, Tuple
+from typing import Any, Iterable, Iterator, Tuple
 
 
 SyntaxStack = Tuple['Syntax', ...]
@@ -38,7 +38,7 @@ class Syntax:
 
     def __str__(self): return f'{self.line+1:04}:{self.col+1:03}-{self.end_line+1:04}:{self.end_col+1:03}'
 
-    def expand(self, pos:'Pos') -> 'Pos': # type: ignore
+    def expand(self, pos:'Syntax.Pos') -> 'Syntax.Pos': # type: ignore
       line = self.line
       col = self.col
       end_line = self.end_line

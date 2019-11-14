@@ -1,20 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from dataclasses import dataclass
-from typing import Any, Callable, List, Match, Optional, Union
-
+from typing import Any, Callable, Iterable, List
 from tolkien import Source, Token
 
-from ..buffer import Buffer
-from ..desc import errD, outD
-from ..fs import path_exists, remove_path
-from ..io import *
+from ..desc import outD
 from ..iterable import iter_values
 from ..lex import Lexer
 from ..loader import load
-from ..parse import Adjacency, Atom, Choice, Infix, Left, ParseError, Parser, Precedence, Right, Rule, RuleName, Struct, Suffix
+from ..parse import Adjacency, Atom, Choice, Left, Parser, Precedence, Struct
 
 
 def main() -> None:

@@ -14,7 +14,6 @@ the branches are TagTree instances, which are subclasses of tuple.
 '''
 
 import re
-import typing
 
 from itertools import chain
 from typing import Callable, Dict, Match, Iterable, Iterator, List, Sequence, Tuple, Union

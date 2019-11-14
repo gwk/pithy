@@ -1,13 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from functools import total_ordering
-from io import BytesIO, TextIOBase, TextIOWrapper
-from typing import BinaryIO, Callable, Dict, Iterable, List, Type, cast
+from io import TextIOBase, TextIOWrapper
 from tarfile import TarFile
-from zipfile import ZipFile, BadZipFile
+from typing import Any, BinaryIO, Callable, Dict, Iterable, List, Type, Union, cast
+from zipfile import BadZipFile, ZipFile
+
 from .fs import path_ext
 from .util import lazy_property
-from .io import *
 
 
 FileOrPath = Union[BinaryIO, str] # TODO: support other pathlike objects.

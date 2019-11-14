@@ -2,10 +2,10 @@
 
 from . import Syntax
 from ..dispatch import dispatched
-from ..io import errL, errSL
+from ..io import errL
 from ..tree import transform_tree, OmitNode
 from dataclasses import dataclass
-from typing import Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Tuple
 import re
 
 from docutils import frontend as _frontend

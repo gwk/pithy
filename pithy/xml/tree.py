@@ -4,16 +4,13 @@
 XML tools.
 '''
 
-from enum import Enum
 from io import StringIO
 from itertools import chain, count
-from types import TracebackType
-from typing import Any, ContextManager, Dict, Iterable, Iterator, List, Optional, Sequence, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, ContextManager, Dict, Optional, TextIO, Tuple, Type, TypeVar
 
-from ..io import errSL
 from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
-from .escape import EscapedStr, XmlAttrs, esc_xml_attr, esc_xml_attr_key, esc_xml_text, fmt_attrs
+from .escape import EscapedStr, XmlAttrs, esc_xml_text, fmt_attrs
 
 
 _XmlWriter = TypeVar('_XmlWriter', bound='XmlWriter')

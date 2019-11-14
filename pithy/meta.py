@@ -2,7 +2,6 @@
 
 import inspect
 from inspect import FrameInfo
-from types import FunctionType
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar, cast
 
 

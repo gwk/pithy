@@ -12,12 +12,12 @@
 # +$100 cost of materials.
 # -$100 a payment.
 
-import os
 import re
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from ..io import *
 from typing import List, Match, Optional
+
+from ..io import outL, outZ
 
 
 @dataclass

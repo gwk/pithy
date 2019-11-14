@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Counter, Dict, List
+from typing import Dict, List
 
 from ..lex import Lexer, LexMode, c_like_punctuation_patterns, whitespace_patterns
 

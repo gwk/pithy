@@ -2,11 +2,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import platform
-
 from os import execv
+from os.path import abspath as abs_path, join as path_join
 from shlex import quote as sh_quote
 from sys import argv, executable, stderr
-from os.path import abspath as abs_path, join as path_join
+
 
 def main() -> None:
   if len(argv) < 2: exit('usage: py-lldb [script] ...')
