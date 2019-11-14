@@ -6,15 +6,16 @@ import shlex
 import time
 from ast import literal_eval
 from sys import stderr, stdout
-from typing import DefaultDict, Dict, Set
+from typing import DefaultDict, Dict, Iterable, List, Optional, Pattern, Set
 
-from pithy.ansi import (BG, FILL_OUT, INVERT, RST_INVERT, RST_OUT, TTY_OUT, TXT, gray26, is_out_tty, rgb6, sanitize_for_console,
-  sgr)
+from pithy.ansi import BG, FILL_OUT, INVERT, RST_INVERT, TTY_OUT, gray26, is_out_tty, sanitize_for_console, sgr
 from pithy.dict import dict_fan_by_key_pred
 from pithy.format import FormatError, format_to_re
-from pithy.fs import *
-from pithy.io import *
-from pithy.iterable import fan_by_key_fn, fan_by_pred
+from pithy.fs import (abs_path, copy_path, file_status, find_project_dir, is_dir, is_python_file, list_dir, make_dirs,
+  make_link, norm_path, open_new, path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join, path_name,
+  path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, split_dir_name)
+from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_path, write_to_path
+from pithy.iterable import fan_by_pred
 from pithy.string import string_contains
 from pithy.task import TaskLaunchError, Timeout, UnexpectedExit, run, runC
 
@@ -432,7 +433,7 @@ def run_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
 def run_cmd(ctx:Ctx, coverage_cases: Optional[List[Case]], case: Case, label: str, cmd: List[str], cwd: str, env: Dict[str, str], in_path: str, out_path: str, err_path: str, timeout: int, exp_code: int) -> Optional[bool]:
   'returns True for success, False for failure, and None for abort.'
   cmd_head = cmd[0]
-  cmd_path = path_rel_to_current_or_abs(cmd_head) # For diagnostics.
+  #cmd_path = path_rel_to_current_or_abs(cmd_head) # For diagnostics.
   is_cmd_installed = not path_dir(cmd_head) # command is a name, presumably a name on the PATH (or else a mistake).
 
   if ctx.coverage and coverage_cases is not None and not is_cmd_installed and is_python_file(cmd_head): # interpose the coverage harness.
@@ -468,7 +469,7 @@ def check_file_exp(ctx:Ctx, case:Case, exp:FileExpectation) -> bool:
   try:
     with open(path, errors='replace') as f:
       act_val = f.read()
-  except FileNotFoundError as e:
+  except FileNotFoundError:
     outL(f'\niotest: test did not output expected file: {exp.path}')
     return False
   except Exception as e:
@@ -492,7 +493,6 @@ def check_file_exp(ctx:Ctx, case:Case, exp:FileExpectation) -> bool:
     run(cmd, exp=None)
     outL(QUOTE_END, FILL_OUT)
   elif exp.mode == 'match':
-    act_lines = act_val.splitlines(True)
     assert exp.match_error is not None
     i, exp_pattern, act_line = exp.match_error
     outL(f'match failed at line {i}:\npattern:   {exp_pattern!r}\nactual text: {act_line!r}')

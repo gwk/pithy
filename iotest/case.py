@@ -1,19 +1,22 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import ast
 import os
 import re
 import shlex
-
 from itertools import zip_longest
 from string import Template
-from typing import Callable, Dict, Set, cast
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Pattern, Set, TextIO, Tuple, Union, cast
 
-from pithy.fs import *
-from pithy.io import *
-from pithy.types import *
+from pithy.fs import abs_path, path_dir, path_join, path_name, path_stem
+from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
+from pithy.types import (is_bool, is_dict, is_dict_of_str, is_int, is_list, is_list_of_str, is_pos_int, is_set, is_set_of_str,
+  is_str, is_str_or_list)
 
 from .ctx import Ctx
+
+
+#from pithy.types import *
+
 
 
 coverage_name = '_.coven'
