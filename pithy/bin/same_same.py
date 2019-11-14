@@ -100,7 +100,6 @@ def main() -> None:
 def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
   first = lines[0]
   kind = first.kind
-  skip = False
 
   # If we are processing `git log --graph` then parsing will fail; detect and skip.
   if git_diff_graph_mode_pat.match(first.raw_text).end(): # type: ignore

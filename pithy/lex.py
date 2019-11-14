@@ -70,9 +70,9 @@ def _mk_pairs_tuple(pop:LexTransKinds) -> LexTransTuple:
 def _mk_trans_pop_dict(pops:LexTransTuple) -> Dict[str,str]:
   d:Dict[str,str] = {}
   for pair in pops:
-    try: existing = d[pair.curr]
-    except KeyError: d[pair.curr] = pair.prev
-    else: raise Lexer.DefinitionError(f'repeated pop kind key: {pair.curr!r}')
+    if pair.curr in d:
+      raise Lexer.DefinitionError(f'repeated pop kind key: {pair.curr!r}')
+    d[pair.curr] = pair.prev
   return d
 
 

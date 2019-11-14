@@ -140,7 +140,6 @@ class Crawler:
     except Exception as e:
       errSL(f'{path}: could not read contents as text: {e}')
       return
-    scraped_urls:Set[str] = set()
     if html5_re.match(text):
       self.scrape_html5(url=url, text=text)
     else:

@@ -136,9 +136,9 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _D
   # Use an explicit test for __iter__ because iter() will return for objects without __iter__ but with __getitem__;
   # this includes typing._SpecialForm, which fails when we attempt to iterate.
   if hasattr(obj, '__iter__'):
-    try: it = iter(obj)
+    try: _ = iter(obj)
     except TypeError: pass
-    else:
+    else: # `obj` is an Iterator.
       visited_ids1 = visited_ids.copy()
       visited_ids1.add(i)
       # Attempt to distinguish between mapping and sequence types.
