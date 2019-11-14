@@ -64,7 +64,7 @@ def main() -> None:
     from traceback import TracebackException
     exit_code = 1 # exit code that Python returns when an exception raises to toplevel.
     # Format the traceback as it would appear when run standalone.
-    traceback = TracebackException(*exc_info()) # type: ignore
+    traceback = TracebackException(*exc_info())
     # note: the traceback will contain stack frames from the host.
     # this can be avoided with a fixup function, but does not seem necessary at this point. See coven.py for an example.
     #fixup_traceback(traceback)
