@@ -11,11 +11,12 @@ from typing import DefaultDict, Dict, Iterable, List, Optional, Pattern, Set
 from pithy.ansi import BG, FILL_OUT, INVERT, RST_INVERT, TTY_OUT, gray26, is_out_tty, sanitize_for_console, sgr
 from pithy.dict import dict_fan_by_key_pred
 from pithy.format import FormatError, format_to_re
-from pithy.fs import (abs_path, copy_path, file_status, find_project_dir, is_dir, is_python_file, list_dir, make_dirs,
-  make_link, norm_path, open_new, path_descendants, path_dir, path_dir_or_dot, path_exists, path_ext, path_join, path_name,
-  path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, remove_dir_contents, remove_file_if_exists, split_dir_name)
+from pithy.fs import (copy_path, file_status, find_project_dir, is_dir, is_python_file, list_dir, make_dirs, make_link,
+                      open_new, path_exists, remove_dir_contents, remove_file_if_exists)
 from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_path, write_to_path
 from pithy.iterable import fan_by_pred
+from pithy.path import (abs_path, norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_join, path_name,
+                        path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, split_dir_name)
 from pithy.string import string_contains
 from pithy.task import TaskLaunchError, Timeout, UnexpectedExit, run, runC
 

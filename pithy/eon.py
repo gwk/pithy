@@ -1,16 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from dataclasses import dataclass
 from functools import singledispatch
-from typing import Container, DefaultDict, Dict, FrozenSet, List, Match, NoReturn, Optional, Set, Tuple, Type, cast
+from typing import Any, List, Tuple, Union
 
-from pithy.io import *
-from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
-from pithy.lex import Lexer, LexMode, LexTrans
+from pithy.lex import Lexer, LexMode
 from pithy.parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
-from pithy.string import clip_prefix
-from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges
-from pithy.unicode.charsets import unicode_charsets
 from tolkien import Source, Token
 
 

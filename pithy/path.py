@@ -1,33 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re as _re
-import shutil as _shutil
-import stat as _stat
-import time as _time
-
 from itertools import zip_longest as _zip_longest
-from os import (
-  DirEntry,
-  PathLike,
-  fspath as _fspath,
-  get_exec_path as _get_exec_path,
-  scandir as _scandir,
-  sep
-)
-from os.path import (
-  abspath as _abspath,
-  basename as _basename,
-  commonpath as _commonpath,
-  dirname as _dirname,
-  exists as _exists,
-  isabs as _isabs,
-  join as _join,
-  realpath as _realpath,
-  relpath as _relpath,
-  split as _split,
-  splitext as _splitext,
-)
-from typing import AbstractSet, Any, FrozenSet, IO, Iterable, Iterator, List, Optional, Pattern, TextIO, Tuple, Union
+from os import PathLike, fspath as _fspath, sep
+from os.path import (abspath as _abspath, basename as _basename, commonpath as _commonpath, dirname as _dirname,
+  isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split, splitext as _splitext)
+from typing import List, Tuple, Union
 
 
 Path = Union[str, PathLike]
@@ -184,15 +162,6 @@ def path_exts(path: Path) -> Tuple[str, ...]:
     if not ext: break
     exts.append(ext)
   return tuple(exts)
-
-
-def path_for_cmd(cmd: str) -> Optional[str]:
-  for dir in _get_exec_path():
-    try: entries = _scandir(dir)
-    except FileNotFoundError: continue # directory in PATH might not exist.
-    for entry in entries:
-      if entry.name == cmd and entry.is_file: return path_join(dir, cmd)
-  return None
 
 
 def path_join(first: Path, *additional: Path) -> str:

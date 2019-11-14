@@ -8,7 +8,7 @@ from typing import Callable, Optional
 import sys
 
 
-__all__ = ['clone_path', 'volume_supports_clone']
+__all__ = ['clone', 'volume_supports_clone']
 
 
 if sys.platform == 'darwin':

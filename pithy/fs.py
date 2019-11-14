@@ -6,14 +6,17 @@ import shutil as _shutil
 import stat as _stat
 import time as _time
 from itertools import zip_longest as _zip_longest
-from os import DirEntry, mkdir as _mkdir
+from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from typing import (IO, AbstractSet, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Pattern, TextIO, Tuple,
   Union)
 
 from .clonefile import clone
-from .filestatus import *
-from .path import *
+from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
+  file_status, is_dir, is_file, is_file_executable_by_owner, is_link, is_link_to_dir, is_link_to_file, is_mount, path_exists)
+
+from .path import (MixedAbsoluteAndRelativePathsError, Path, PathOrFd, abs_or_norm_path, abs_path, is_path_abs, norm_path,
+  path_descendants, path_dir, path_ext, path_join, path_name, rel_path, split_dir_name, str_path)
 
 
 class PathAlreadyExists(Exception): pass
@@ -221,6 +224,15 @@ def open_new(path:Path, create_dirs:bool=True, **open_args) -> IO[Any]:
     raise PathAlreadyExists(path)
   if create_dirs: make_parent_dirs(path)
   return open(path, 'w', **open_args)
+
+
+def path_for_cmd(cmd: str) -> Optional[str]:
+  for dir in _get_exec_path():
+    try: entries = _scandir(dir)
+    except FileNotFoundError: continue # directory in PATH might not exist.
+    for entry in entries:
+      if entry.name == cmd and entry.is_file: return path_join(dir, cmd)
+  return None
 
 
 def product_needs_update(product=PathOrFd, source=PathOrFd) -> bool: # type: ignore
