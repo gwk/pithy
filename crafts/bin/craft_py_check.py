@@ -3,14 +3,15 @@
 from argparse import ArgumentParser
 from importlib.util import find_spec as find_module_spec
 from os import environ
-from typing import Set
+from sys import stdout
+from typing import List
 
-from pithy.ansi import *
-from pithy.io import *
+from pithy.ansi import INVERT, RST, TXT_C, TXT_L, TXT_R, TXT_Y
+from pithy.io import errL, errSL, outZ
 from pithy.lex import Lexer
 from pithy.path import abs_path, path_dir, path_join, path_name
 from pithy.task import runCO
-from tolkien import Source, Token
+from tolkien import Source
 
 
 def main() -> None:

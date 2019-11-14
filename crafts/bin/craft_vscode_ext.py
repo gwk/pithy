@@ -1,13 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from crafts import *
-from pithy.ansi import *
-from pithy.fs import *
-from pithy.io import *
+from argparse import ArgumentParser
+from pithy.fs import is_dir, expand_user, remove_dir_contents_if_exists, copy_path, walk_files
+from pithy.io import errSL
 from pithy.string import replace_prefix
-from pithy.task import runCO
-#from typing import Dict
-import re
+
 
 
 def main() -> None:
@@ -30,7 +27,6 @@ def main() -> None:
   copy_path(src_path, dst_path, create_dirs=True)
   for d in ['configurations', 'grammars', 'themes']:
     src_dir = f'{src}/{d}'
-    dst_dir = f'{dst}/{d}'
     if is_dir(src_dir, follow=True):
       for src_path in walk_files(src_dir, file_exts='.json'):
         dst_path = replace_prefix(src_path, src, dst)

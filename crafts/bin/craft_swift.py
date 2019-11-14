@@ -2,16 +2,13 @@
 
 import re
 from argparse import ArgumentParser
-from itertools import chain
-from json import loads as parse_json
-from typing import Iterable, Iterator, Match, Tuple, Union
+from typing import Match, Tuple, Union
 
 from pithy.ansi import RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.fs import path_rel_to_current_or_abs
 from pithy.interactive import ExitOnKeyboardInterrupt
 from pithy.io import errL, outZ, stdout
-from pithy.iterable import OnHeadless, group_by_heads
-from pithy.lex import Lexer, Token
+from pithy.lex import Lexer
 from pithy.task import run_gen
 
 from .. import load_craft_config

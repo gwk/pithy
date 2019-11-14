@@ -2,20 +2,17 @@
 
 import re
 from argparse import ArgumentParser
-from ast import (AST, AnnAssign, Assign, AsyncFunctionDef, AugAssign, ClassDef, Expr as ExprStmt, FunctionDef, Import,
-                 ImportFrom, Module, Name, Str, expr as Expr, parse, stmt as Stmt)
+from ast import (AST, AnnAssign, Assign, AsyncFunctionDef, ClassDef, Expr as ExprStmt, FunctionDef, Import, ImportFrom, Module,
+  Name, Str, parse, stmt as Stmt)
 from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
-from importlib.util import find_spec as find_module_spec
 from inspect import Parameter, Signature, signature
-from typing import (Any, ByteString, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Set, TextIO, Tuple, Type,
-                    Union, cast)
+from typing import Any, ByteString, Callable, Dict, Iterator, List, NoReturn, Optional, TextIO, Tuple, Type, Union
 
 from mypy_extensions import VarArg
 
-from pithy.ansi import *
-from pithy.io import errD, errL, errSL, read_from_path, read_line_from_path
+from pithy.io import errL, errSL, read_from_path, read_line_from_path
 from pithy.path import path_name, path_stem
 
 
@@ -280,10 +277,10 @@ def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,A
     n = p.name
     t = p.annotation
     d = p.default
-    k = p.kind # POSITIONAL_ONLY, POSITIONAL_OR_KEYWORD, KEYWORD_ONLY, VAR_KEYWORD.
+    #k = p.kind # POSITIONAL_ONLY, POSITIONAL_OR_KEYWORD, KEYWORD_ONLY, VAR_KEYWORD.
     if isinstance(t, str):
       try: t = global_vals[t]
-      except KeyError as e: scope.error(syntax, f'parameter {n!r} has invalid string annotation: {t!r}')
+      except KeyError: scope.error(syntax, f'parameter {n!r} has invalid string annotation: {t!r}')
     if i == 0 and is_method:
       expected_name = 'cls' if is_class_method else 'self'
       if n != expected_name: scope.warning(syntax, f'parameter {n!r} has unexpected name; expected {expected_name!r}')
@@ -293,7 +290,7 @@ def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,A
   ret = sig.return_annotation
   if isinstance(ret, str):
     try: ret = global_vals[ret]
-    except KeyError as e: scope.error(syntax, f'return type has invalid string annotation: {ret!r}')
+    except KeyError: scope.error(syntax, f'return type has invalid string annotation: {ret!r}')
   ret_ti = type_infos.get(ret, type_info_any)
   if ret is not None and ret_ti.return_conv is None:
     scope.error(syntax, f'return type is mapped to a C type that cannot be converted to a return value: {ret!r}')

@@ -1,17 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
 from argparse import ArgumentParser
-from itertools import chain
-from json import loads as parse_json
-from typing import *
-from pithy.ansi import *
-from pithy.io import *
-from pithy.fs import *
-from pithy.iterable import fan_by_key_fn, group_by_heads, OnHeadless
-from pithy.lex import Lexer
-from pithy.task import run, run_gen
-from crafts import *
+from typing import Dict, List, NamedTuple
+
+import yaml
+
+from crafts import load_craft_config
+from pithy.fs import make_dirs, remove_dir_contents, walk_files
+from pithy.io import errSL, outL, errL
+from pithy.iterable import fan_by_key_fn
+from pithy.path import path_stem, replace_first_dir, rel_path, path_ext, is_sub_path, path_name
+from pithy.task import run, runC
 
 
 def main() -> None:

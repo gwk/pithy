@@ -1,14 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from time import time
-from typing import *
-from pithy.ansi import *
-from pithy.fs import *
-from pithy.io import *
+from sys import argv
+from typing import List
+
+from crafts import load_craft_config
+from pithy.ansi import RST, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
+from pithy.fs import copy_path, file_mtime, file_mtime_or_zero, make_dirs, make_link, path_exists, walk_files
+from pithy.io import outL, outSL
+from pithy.path import norm_path, path_dir, path_dir_or_dot, path_join
 from pithy.string import replace_prefix
 from pithy.task import runCO
-from crafts import *
 
 
 def main() -> None:
@@ -47,8 +49,8 @@ def main() -> None:
     build_dst_root = path_join(build_dir, dst_root)
     for res_path in walk_files(res_root, file_exts=web_res_exts):
       dst_path = norm_path(replace_prefix(res_path, prefix=res_root, replacement=build_dst_root))
-      res_mtime = file_time_mod(res_path)
-      dst_mtime = file_time_mod_or_zero(dst_path)
+      res_mtime = file_mtime(res_path)
+      dst_mtime = file_mtime_or_zero(dst_path)
       if res_mtime == dst_mtime: continue
       outSL(res_path, '->', dst_path)
       if res_mtime < dst_mtime: exit(f'resource build copy was subsequently modified: {dst_path}')

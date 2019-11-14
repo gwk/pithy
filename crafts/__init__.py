@@ -2,9 +2,7 @@
 
 import os
 import os.path
-import plistlib
 import re
-from argparse import ArgumentParser
 from typing import Any, Dict, NamedTuple, Optional, cast
 
 import yaml
@@ -13,7 +11,6 @@ from pithy.dict import dict_set_defaults
 from pithy.fs import find_project_dir, list_dir, make_dirs, path_for_cmd, product_needs_update, real_path
 from pithy.json import load_json, parse_json, write_json
 from pithy.path import is_sub_path, norm_path, path_ext, path_join, path_name_stem, path_split, rel_path
-from pithy.string import find_and_clip_suffix
 from pithy.task import runO
 
 
@@ -173,8 +170,7 @@ def find_dev_dir() -> str:
 
 def find_toolchain_dir(swift_path:str, dev_dir:str) -> str:
   if swift_path is None: exit('no `swift` executable found in PATH.')
-  path = real_path(swift_path)
-  parts = path_split(swift_path)
+  parts = path_split(real_path(swift_path))
   for i, part in enumerate(parts):
     if path_ext(part) == '.xctoolchain':
       return path_join(*parts[:i+1])

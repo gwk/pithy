@@ -1,16 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import os
-import os.path
 import plistlib
 import re
 from argparse import ArgumentParser
-from pithy.ansi import *
-from pithy.io import *
-from pithy.fs import copy_path, path_exists, make_dirs
-from pithy.string import find_and_clip_suffix, replace_prefix
-from pithy.task import *
-from crafts import *
+
+from crafts import find_dev_dir, load_craft_config, update_swift_package_json
+from pithy.filestatus import file_mtime, file_mtime_or_zero
+from pithy.fs import copy_path, make_dirs, path_dir, path_exists, walk_files
+from pithy.io import outSL
+from pithy.path import norm_path, path_join
+from pithy.string import replace_prefix
+from pithy.task import run, runO
 
 
 def main() -> None:
@@ -33,7 +33,7 @@ def build(args, conf, package):
 
   dev_dir = find_dev_dir()
 
-  sdk_dir = f'{dev_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk' # The versioned SDK just links to the unversioned one.
+  #sdk_dir = f'{dev_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk' # The versioned SDK just links to the unversioned one.
   #swift_libs_dir = f'{conf.xcode_toolchain_dir}/lib/swift/macosx'
   swift_libs_dir = f'{dev_dir}/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx'
   mode_dir = f'{build_dir}/debug' # TODO: support other modes/configurations.
@@ -76,7 +76,7 @@ def build(args, conf, package):
     'images.xcassets']
 
   _ = runO(actool_cmd, exits=True) # output is not helpful.
-  img_deps = open(img_deps_path).read()
+  #img_deps = open(img_deps_path).read()
   img_info = plistlib.load(open(img_info_path, 'rb'))
   #errL('img_deps:\n', img_deps, '\n')
   #errP(img_info, label='img_info')
@@ -124,8 +124,8 @@ def build(args, conf, package):
     build_dst_root = path_join(build_dir, dst_root)
     for res_path in walk_files(res_root):
       dst_path = norm_path(replace_prefix(res_path, prefix=res_root, replacement=build_dst_root))
-      res_mtime = file_time_mod(res_path)
-      dst_mtime = file_time_mod_or_zero(dst_path)
+      res_mtime = file_mtime(res_path)
+      dst_mtime = file_mtime_or_zero(dst_path)
       if res_mtime == dst_mtime: continue
       outSL(res_path, '->', dst_path)
       if res_mtime < dst_mtime: exit(f'resource build copy was subsequently modified: {dst_path}')
