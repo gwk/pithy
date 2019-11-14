@@ -2,7 +2,7 @@
 
 import re
 from sys import argv
-from typing import List
+from typing import Dict, List
 
 from crafts import load_craft_config
 from pithy.ansi import RST, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
@@ -30,8 +30,8 @@ def main() -> None:
 
   # HACK: add link to source dir so that browser can see sources as described in source map.
   build_dir_src = f'{build_dir}/src'
-  if not path_exists(build_dir_src):
-    make_link(orig='src', link=build_dir_src, make_dirs=True)
+  if not path_exists(build_dir_src, follow=False):
+    make_link(orig='src', link=build_dir_src, create_dirs=True)
 
   manifest: List[str] = []
 
@@ -49,15 +49,15 @@ def main() -> None:
     build_dst_root = path_join(build_dir, dst_root)
     for res_path in walk_files(res_root, file_exts=web_res_exts):
       dst_path = norm_path(replace_prefix(res_path, prefix=res_root, replacement=build_dst_root))
-      res_mtime = file_mtime(res_path)
-      dst_mtime = file_mtime_or_zero(dst_path)
+      res_mtime = file_mtime(res_path, follow=True)
+      dst_mtime = file_mtime_or_zero(dst_path, follow=True)
       if res_mtime == dst_mtime: continue
       outSL(res_path, '->', dst_path)
       if res_mtime < dst_mtime: exit(f'resource build copy was subsequently modified: {dst_path}')
       make_dirs(path_dir(dst_path))
       copy_path(res_path, dst_path)
 
-def transpile_js(ts_path, dst_path, modules_map):
+def transpile_js(ts_path:str, dst_path:str, modules_map:Dict[str,str]) -> None:
   lines = list(open(ts_path))
   for line_idx, line in enumerate(lines):
     m = import_regex.fullmatch(line)

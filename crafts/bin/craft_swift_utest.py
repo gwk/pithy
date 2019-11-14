@@ -5,11 +5,11 @@ from typing import Dict, List, NamedTuple
 
 import yaml
 
-from crafts import load_craft_config
+from crafts import CraftConfig, load_craft_config
 from pithy.fs import make_dirs, remove_dir_contents, walk_files
-from pithy.io import errSL, outL, errL
+from pithy.io import errL, errSL, outL
 from pithy.iterable import fan_by_key_fn
-from pithy.path import path_stem, replace_first_dir, rel_path, path_ext, is_sub_path, path_name
+from pithy.path import is_sub_path, path_ext, path_name, path_stem, rel_path, replace_first_dir
 from pithy.task import run, runC
 
 
@@ -35,8 +35,8 @@ def main() -> None:
 
   debug_yaml = yaml.load(open(debug_yaml_path))
 
-  modules = {}
-  source_modules = {}
+  modules:Dict[str,Module] = {}
+  source_modules:Dict[str,Module] = {}
   for name, command in debug_yaml['commands'].items():
     if command['tool'] != 'swift-compiler': continue
     module_name = command['module-name']
@@ -73,7 +73,7 @@ class Module(NamedTuple):
   inputs: Dict[str, List[str]]
 
 
-def run_utest(src_path, module, conf, debug_dir, sdk_dir, fw_dir, module_cache_dir):
+def run_utest(src_path:str, module:Module, conf:CraftConfig, debug_dir:str, sdk_dir:str, fw_dir:str, module_cache_dir:str) -> bool:
   outL(f'craft-swift-utest: {module.name}: {src_path}')
   build_dir = conf.build_dir
   stem = path_stem(src_path)

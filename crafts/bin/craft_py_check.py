@@ -39,10 +39,12 @@ def main() -> None:
       errL(f'warning: could not find dependency: {dep!r}')
       continue
     while spec.parent != dep:
-      s = find_module_spec(spec.parent)
-      assert s is not None and s != spec
-      spec = s
+      assert spec.parent
+      p_spec = find_module_spec(spec.parent)
+      assert p_spec is not None and p_spec != spec
+      spec = p_spec
     path = spec.origin
+    assert path
     assert path_name(path) == '__init__.py'
     search_path = path_dir(path_dir(path))
     mypy_path.append(search_path)

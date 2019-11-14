@@ -2,9 +2,10 @@
 
 import plistlib
 import re
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
+from typing import Any, BinaryIO, Dict, Optional
 
-from crafts import find_dev_dir, load_craft_config, update_swift_package_json
+from crafts import CraftConfig, find_dev_dir, load_craft_config, update_swift_package_json
 from pithy.filestatus import file_mtime, file_mtime_or_zero
 from pithy.fs import copy_path, make_dirs, path_dir, path_exists, walk_files
 from pithy.io import outSL
@@ -23,12 +24,12 @@ def main() -> None:
   build(args, conf, package)
 
 
-def build(args, conf, package):
+def build(args:Namespace, conf:CraftConfig, package:Dict[str,Any]) -> None:
   build_dir = conf.build_dir
   sources = conf.sources
 
   for source in sources:
-    if not path_exists(source):
+    if not path_exists(source, follow=True):
       exit(f'craft error: source does not exist: {source!r}')
 
   dev_dir = find_dev_dir()
@@ -77,7 +78,7 @@ def build(args, conf, package):
 
   _ = runO(actool_cmd, exits=True) # output is not helpful.
   #img_deps = open(img_deps_path).read()
-  img_info = plistlib.load(open(img_info_path, 'rb'))
+  img_info:Dict[str,Any] = plistlib.load(open(img_info_path, 'rb'))
   #errL('img_deps:\n', img_deps, '\n')
   #errP(img_info, label='img_info')
 
@@ -111,7 +112,7 @@ def build(args, conf, package):
       lib_name = f'libswift{import_name}.dylib'
       src_path = f'{swift_libs_dir}/{lib_name}'
       dst_path = f'{frameworks_path}/{lib_name}'
-      if not path_exists(dst_path):
+      if not path_exists(dst_path, follow=False):
         copy_path(src_path, dst_path)
     else:
       pass
@@ -124,8 +125,8 @@ def build(args, conf, package):
     build_dst_root = path_join(build_dir, dst_root)
     for res_path in walk_files(res_root):
       dst_path = norm_path(replace_prefix(res_path, prefix=res_root, replacement=build_dst_root))
-      res_mtime = file_mtime(res_path)
-      dst_mtime = file_mtime_or_zero(dst_path)
+      res_mtime = file_mtime(res_path, follow=True)
+      dst_mtime = file_mtime_or_zero(dst_path, follow=True)
       if res_mtime == dst_mtime: continue
       outSL(res_path, '->', dst_path)
       if res_mtime < dst_mtime: exit(f'resource build copy was subsequently modified: {dst_path}')
@@ -138,7 +139,8 @@ def build(args, conf, package):
   # TODO: register with launch services?
 
 
-def gen_plist(dst_file, EXECUTABLE_NAME, PRODUCT_BUNDLE_IDENTIFIER, PRODUCT_NAME, MACOSX_DEPLOYMENT_TARGET, copyright, principle_class, **items):
+def gen_plist(dst_file:BinaryIO, EXECUTABLE_NAME:Optional[str], PRODUCT_BUNDLE_IDENTIFIER:Optional[str],
+ PRODUCT_NAME:Optional[str], MACOSX_DEPLOYMENT_TARGET:str, copyright:str, principle_class:str, **items:str) -> None:
   d = {
     'BuildMachineOSBuild': '17A362a', # TODO.
     'CFBundleDevelopmentRegion': 'en',
@@ -166,7 +168,7 @@ def gen_plist(dst_file, EXECUTABLE_NAME, PRODUCT_BUNDLE_IDENTIFIER, PRODUCT_NAME
   plistlib.dump(d, dst_file)
 
 
-def trim_import_statement(statement):
+def trim_import_statement(statement:str) -> str:
   m = re.match(r'\s*import (\w+)', statement)
   if not m: raise ValueError(f'egrep found bad import line: {statement!r}')
   return m[1]

@@ -75,7 +75,7 @@ test-diff-data:
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
 typecheck: gen
-	craft-py-check iotest legs pithy tools utest
+	craft-py-check crafts iotest legs pithy tools utest
 
 vscode-insider-links:
 	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
