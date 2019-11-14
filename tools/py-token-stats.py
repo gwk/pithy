@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from math import ceil, log10
+from sys import argv
 from typing import Counter
 
 from pithy.io import *
