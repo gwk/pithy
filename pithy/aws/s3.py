@@ -1,23 +1,27 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from boto3 import client as Client, Session # type: ignore
-from botocore.exceptions import ClientError # type: ignore
+import os
 from datetime import datetime as DateTime, timezone as TimeZone
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
-from ..fs import path_dir, path_ext, path_join, make_dirs, file_status, walk_files
+from typing import IO, Any, Callable, Dict, Optional
+
+from boto3 import Session  # type: ignore
+from botocore.exceptions import ClientError  # type: ignore
+
+from ..fs import file_status, make_dirs, path_dir, path_ext, path_join, walk_files
 from ..json import parse_json, render_json
-from typing import Any, Callable, Dict, IO, Optional, Union
-import os
 
 
-# Brotli compression is supported by major browsers and AWS. Pithy treats it as optional.
-def br_compress(data:bytes, mode:int=0) -> bytes: raise Exception('brotli module failed to import')
-def br_expand(data:bytes) -> bytes: raise Exception('brotli module failed to import')
 br_MODE_TEXT = -1
-try: from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore
-except ImportError: pass
+try:
+  from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore
+except ImportError:
+  # Brotli compression is supported by major browsers and AWS. Pithy treats it as optional.
+  def br_compress(data:bytes, mode:int=0) -> bytes: raise Exception('brotli module failed to import')
+  def br_expand(data:bytes) -> bytes: raise Exception('brotli module failed to import')
+
 
 
 class S3MockError(Exception): pass
@@ -33,7 +37,7 @@ def get_bytes(client:Any, bucket:str, key:str) -> bytes:
     elif ext == '.gz': encoding = 'gzip'
     else: encoding = 'identity'
   if encoding == 'identity': return body
-  elif encoding == 'br': return br_expand(body)
+  elif encoding == 'br': return br_expand(body) # type: ignore
   elif encoding == 'gzip': return gz_expand(body)
   raise ValueError(encoding)
 
@@ -74,7 +78,7 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str=No
     data = compress_fn(data, **kwargs)
     content_encoding = content_encode
 
-  result = client.put_object(
+  _ = client.put_object(
     Bucket=bucket,
     Key=key,
     ContentType=content_type,
@@ -172,12 +176,12 @@ class S3MockClient(S3Client):
     make_dirs(dir)
     path = path_join(bucket_path, key)
     try: return open(path, mode)
-    except KeyError as e: raise S3MockError(f'mock key not found: {key!r}')
+    except KeyError: raise S3MockError(f'mock key not found: {key!r}')
 
 
   def get_object(self, Bucket:str, Key:str) -> Dict[str,Any]:
     try: f =  self._open(Bucket, Key, 'rb')
-    except FileNotFoundError as e: pass
+    except FileNotFoundError: pass
     else:
       encoding:Optional[str] = None
       # TODO: metadata should be saved to disk and read, not inferred.
