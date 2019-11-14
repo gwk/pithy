@@ -1,11 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, cast
+from typing import Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set
 
-from pithy.io import errL, errSL
+from pithy.io import errL
 from pithy.string import clip_suffix
-from pithy.types import is_pair_of_int
-from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges, ranges_for_codes
+from pithy.unicode import CodeRange, codes_for_ranges, ranges_for_codes
 from pithy.unicode.codepoints import codes_desc
 
 from .nfa import empty_symbol

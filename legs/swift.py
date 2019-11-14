@@ -3,14 +3,13 @@
 import re
 from argparse import Namespace
 from importlib.util import find_spec as find_module_spec
-from itertools import chain
-from typing import Any, DefaultDict, Dict, Iterator, List, Tuple, cast
+from typing import Any, DefaultDict, Dict, List, Tuple, cast
 
-from pithy.fs import add_file_execute_permissions, path_dir, path_join
+from pithy.fs import path_dir, path_join
 from pithy.iterable import closed_int_intervals
 from pithy.string import render_template
 
-from .defs import ModeTransitions
+from . import ModeTransitions
 from .dfa import DFA
 
 

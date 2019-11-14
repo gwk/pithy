@@ -1,19 +1,19 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass
-from typing import Container, DefaultDict, Dict, FrozenSet, List, Match, NoReturn, Set, Tuple, Type, cast
+from typing import DefaultDict, Dict, FrozenSet, List, Set, Tuple
 
-from pithy.io import *
-from pithy.iterable import OnHeadless, fan_by_key_fn, group_by_heads
+from pithy.io import errL
 from pithy.lex import Lexer, LexMode, LexTrans
-from pithy.parse import *
+from pithy.parse import (Adjacency, Atom, Choice, Infix, Left, OneOrMore, Opt, ParseError, Parser, Precedence, Right, Struct,
+  Suffix, ZeroOrMore, choice_syn)
 from pithy.string import clip_prefix
-from pithy.unicode import CodeRange, CodeRanges, codes_for_ranges
+from pithy.unicode import CodeRanges, codes_for_ranges
 from pithy.unicode.charsets import unicode_charsets
 from tolkien import Source, Token
 
-from .defs import KindModeTransitions, ModeTransitions
-from .patterns import *
+from . import KindModeTransitions, ModeTransitions
+from .patterns import CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern, SeqPattern, StarPattern
 
 
 @dataclass

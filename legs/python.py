@@ -3,15 +3,12 @@
 import re
 from argparse import Namespace
 from pprint import pformat
-from typing import Dict, FrozenSet, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from . import ModeTransitions
-from pithy.fs import add_file_execute_permissions
-from pithy.io import *
 from pithy.optional import unwrap
 from pithy.string import render_template
 
-from .defs import MatchStateKinds, ModeData, ModeTransitions, StateTransitions
+from . import ModeData, ModeTransitions
 from .dfa import DFA
 from .patterns import LegsPattern, regex_for_codes
 
@@ -73,7 +70,6 @@ def output_python_re(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
   for dfa in dfas:
     mode = dfa.name
     regexes:List[str] = []
-    incompletes:List[LegsPattern] = []
 
     for kind in dfa.backtracking_order:
       pattern = patterns[kind]

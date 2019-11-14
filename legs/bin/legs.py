@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from argparse import ArgumentParser, Namespace
-from itertools import chain, count
-from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+from argparse import ArgumentParser
+from itertools import count
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 from pithy.dict import dict_put
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
@@ -11,7 +11,7 @@ from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.string import pluralize
 
-from ..dfa import DFA, DfaTransitions, minimize_dfa
+from ..dfa import DFA, minimize_dfa
 from ..dot import output_dot
 from ..nfa import NFA, NfaTransitions, gen_dfa
 from ..parse import parse_legs

@@ -1,11 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import Namespace
-from typing import DefaultDict, Dict, List, Set, Tuple
+from typing import Dict, List, Tuple
 
 from pithy.graphviz import GraphvizAttrs, GraphvizName, GraphvizNodes, write_dot_digraph_adjacency
-from pithy.io import errSL
-from pithy.iterable import int_tuple_ranges
 
 from .dfa import DFA
 

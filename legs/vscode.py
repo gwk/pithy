@@ -1,14 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
 from argparse import Namespace
-from typing import Dict, FrozenSet, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pithy.io import *
 from pithy.json import write_json
-from pithy.string import render_template
 
-from .defs import ModeTransitions
+from . import ModeTransitions
 from .dfa import DFA
 from .patterns import LegsPattern
 
@@ -40,7 +37,6 @@ def output_vscode(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
 
   for dfa in dfas:
     mode = dfa.name
-    mode_patterns:List[Any] = []
     includes = [{"include" : f'#{name}'} for name in dfa.backtracking_order]
     repository[mode] = dict(patterns=includes)
 

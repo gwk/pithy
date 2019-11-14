@@ -35,9 +35,8 @@ from itertools import chain, combinations
 from typing import DefaultDict, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple, cast
 
 from pithy.graph import visit_nodes
-from pithy.io import errD, errL, errSL
+from pithy.io import errL, errSL
 from pithy.iterable import first_el, frozenset_from, int_tuple_ranges, set_from
-from pithy.string import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
 
 

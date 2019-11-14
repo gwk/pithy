@@ -12,7 +12,7 @@ from itertools import count
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set
 
 from pithy.io import errL, errSL
-from pithy.iterable import frozenset_from, filtermap_with_mapping, int_tuple_ranges, set_from
+from pithy.iterable import filtermap_with_mapping, frozenset_from, int_tuple_ranges, set_from
 from pithy.string import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
 
@@ -227,5 +227,3 @@ def gen_dfa(nfa:NFA) -> DFA:
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in node_kinds.items() }
 
   return DFA(name=nfa.name, transitions=dict(transitions), match_node_kind_sets=match_node_kind_sets, lit_pattern_names=nfa.lit_pattern_names)
-
-
