@@ -2,7 +2,6 @@
 
 import re
 from argparse import Namespace
-from collections import defaultdict
 from pprint import pformat
 from typing import Dict, FrozenSet, List, Optional, Tuple
 

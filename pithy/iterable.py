@@ -1,13 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-
-from collections import defaultdict
 from enum import Enum
 from functools import singledispatch
 from itertools import tee
 from operator import le
-from typing import (Any, Callable, DefaultDict, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional,
-  Sequence, Set, Tuple, TypeVar, Union)
+from typing import (Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional, Set, Tuple, TypeVar,
+  Union)
 
 from .types import Comparable
 

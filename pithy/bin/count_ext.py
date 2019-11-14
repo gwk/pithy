@@ -15,7 +15,6 @@
 
 import os
 from argparse import ArgumentParser
-from collections import defaultdict
 from ..fs import path_ext, walk_files
 from typing import *
 
@@ -25,7 +24,7 @@ def main() -> None:
   parser.add_argument('paths', nargs='+', help='Directories to explore.')
   args = parser.parse_args()
 
-  ext_counts:DefaultDict[str,int] = defaultdict(int)
+  ext_counts = DefaultDict[str,int](int)
 
   for path in walk_files(*args.paths):
     ext = path_ext(path)

@@ -56,7 +56,7 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
       suffix=f'; last = pos; kind = .{sym}' if sym else '')
 
   def byte_cases(dfa:DFA, node:int) -> List[str]:
-    dst_chars:DefaultDict[int, List[int]] = DefaultDict(list)
+    dst_chars = DefaultDict[int, List[int]](list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])

@@ -8,7 +8,6 @@ See the documentation in dfa.py for more.
 that represents a nondeterministic jump between NFA nodes.
 '''
 
-from collections import defaultdict
 from itertools import count
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Set
 
@@ -107,7 +106,7 @@ class NFA:
     errL(' transitions:')
     for src, d in sorted(self.transitions.items()):
       errL(f'  {src}:{prepend_to_nonempty(" ", self.match_node_kinds.get(src, ""))}')
-      dst_bytes:DefaultDict[FrozenSet[int], Set[int]] = defaultdict(set)
+      dst_bytes = DefaultDict[FrozenSet[int], Set[int]](set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
@@ -186,13 +185,13 @@ def gen_dfa(nfa:NFA) -> DFA:
   indexer = iter(count())
   def mk_node() -> int: return next(indexer)
 
-  nfa_states_to_dfa_nodes:DefaultDict[NfaState, int] = defaultdict(mk_node)
+  nfa_states_to_dfa_nodes = DefaultDict[NfaState, int](mk_node)
   start = nfa.advance_empties({0})
   invalid = frozenset({1}) # no need to advance_empties as `invalid` is unreachable in the nfa.
   start_node = nfa_states_to_dfa_nodes[start]
   invalid_node = nfa_states_to_dfa_nodes[invalid]
 
-  transitions:DefaultDict[int,Dict[int,int]] = defaultdict(dict)
+  transitions = DefaultDict[int,Dict[int,int]](dict)
   alphabet = nfa.alphabet
   remaining = {start}
   while remaining:
@@ -219,7 +218,7 @@ def gen_dfa(nfa:NFA) -> DFA:
     invalid_dict[c] = invalid_node
 
   # Generate match_node_kind_sets.
-  node_kinds:DefaultDict[int, Set[str]] = defaultdict(set) # nodes to sets of kinds.
+  node_kinds = DefaultDict[int, Set[str]](set) # nodes to sets of kinds.
   for nfa_state, dfa_node in nfa_states_to_dfa_nodes.items():
     for nfa_node in nfa_state:
       try: kind = nfa.match_node_kinds[nfa_node]

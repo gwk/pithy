@@ -31,7 +31,6 @@ This trick allows the FA to always progress from the start state,
 thus producing a stream of tokens that seamlessly cover any input string.
 '''
 
-from collections import defaultdict
 from itertools import chain, combinations
 from typing import DefaultDict, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple, cast
 
@@ -214,7 +213,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   part_ids_to_parts = { id(s): s for s in init_sets }
   node_parts = { n: s for s in part_ids_to_parts.values() for n in s }
 
-  rev_transitions:DefaultDict[int, DefaultDict[int, Set[int]]] = defaultdict(lambda: defaultdict(set))
+  rev_transitions = DefaultDict[int, DefaultDict[int, Set[int]]](lambda: DefaultDict(set))
   for src, d in dfa.transitions.items():
     for char, dst in d.items():
       rev_transitions[dst][char].add(src)
@@ -236,7 +235,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     one of these is a new set, the other is the mutated original.
     '''
     # Accumulate intersection sets.
-    part_id_intersections:PartIntersections = defaultdict(set)
+    part_id_intersections:PartIntersections = DefaultDict(set)
     for node in refining_set:
       part = node_parts[node]
       part_id_intersections[id(part)].add(node)
@@ -283,7 +282,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       mapping[old_node] = new_node
 
   # Build new transitions.
-  transitions_dd:DefaultDict[int,Dict[int,int]] = defaultdict(dict)
+  transitions_dd = DefaultDict[int,Dict[int,int]](dict)
   for old_node, old_d in dfa.transitions.items():
     new_d = transitions_dd[mapping[old_node]]
     for char, old_dst in old_d.items():
@@ -311,7 +310,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   match_node_kinds = { node : set(kinds) for node, kinds in full_match_node_kinds.items() }
 
   # Build kind to match nodes map. This does not get reduced.
-  kind_match_nodes:DefaultDict[str, Set[int]] = defaultdict(set) # kinds to sets of nodes.
+  kind_match_nodes = DefaultDict[str, Set[int]](set) # kinds to sets of nodes.
   for node, kinds in match_node_kinds.items():
     for kind in kinds:
       kind_match_nodes[kind].add(node)
@@ -362,7 +361,7 @@ def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_mat
   The goal is to generate TextMate grammars, so we make a best effort that is not guaranteed to be correct.
   '''
 
-  kind_subset_kinds:DefaultDict[str,Set[str]] = defaultdict(set)
+  kind_subset_kinds = DefaultDict[str,Set[str]](set)
   #^ For each kind, the set of kinds whose match node sets are subsets.
 
   kind_reachable_kinds:Dict[str,Set[str]] = {}

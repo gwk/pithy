@@ -1,6 +1,5 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from collections import Counter
 from enum import Enum
 from types import TracebackType
 from typing import Any, Callable, ContextManager, Generic, Iterable, List, Optional, TextIO, Type, TypeVar

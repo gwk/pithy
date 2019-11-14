@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from collections import defaultdict
 from html import escape as html_escape
 from os import environ
 from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple, Union,
@@ -416,7 +415,7 @@ class Ctx:
     self.dependencies: List[str] = []
     self.section_ids: List[str] = [] # accumulated list of all section ids.
     self.paging_ids: List[str] = [] # accumulated list of all paging (level 1 & 2) section ids.
-    self.css: DefaultDict[str, List[str]] = defaultdict(list)
+    self.css = DefaultDict[str, List[str]](list)
     self.found_target_section = False
     self.title = ''
     self.open_div = False

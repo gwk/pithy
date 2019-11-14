@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import inspect
-from collections import defaultdict
 from functools import _find_impl, wraps  # type: ignore
 from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, Type, TypeVar, cast
 from weakref import WeakKeyDictionary
@@ -14,7 +13,7 @@ class DispatchTypeError(TypeError): pass
 
 
 # module_name -> method_name -> arg_type.
-_dispatched_registries: DefaultDict[str, DefaultDict[str, Dict[type, Callable]]] = defaultdict(lambda: defaultdict(dict))
+_dispatched_registries = DefaultDict[str, DefaultDict[str, Dict[type, Callable]]](lambda: DefaultDict(dict))
 
 _Method = TypeVar('_Method', bound=Callable)
 
@@ -83,7 +82,7 @@ def _dispatch(cls: type, registry: Dict[type, Callable], dispatch_cache: Dict[ty
 
 
 # module_name -> method_name -> (dispatcher_method, key).
-_keyed_dispatch_registries: DefaultDict[str, Dict[str, Tuple[Callable, Dict[Any, Callable]]]] = defaultdict(dict)
+_keyed_dispatch_registries = DefaultDict[str, Dict[str, Tuple[Callable, Dict[Any, Callable]]]](dict)
 
 def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Default._) -> Callable[[Callable], Callable]:
   '''

@@ -4,8 +4,7 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
-from collections import Counter, defaultdict, namedtuple
-from typing import Any, Hashable, NamedTuple, Optional, TextIO
+from typing import Any, Counter, DefaultDict, Hashable, NamedTuple, Optional, TextIO
 from .string import iter_excluding_str
 
 
@@ -14,20 +13,20 @@ class Schema(NamedTuple):
   A schema represents the aggregate of values occurring at a structural position in a set of data trees.
   atoms: counts atom values.
   seqs: maps all of the occurring element types to schemas.
-  dicts: maps occurring keys to a defaultdict of occurring value types to schemas.
+  dicts: maps occurring keys to a DefaultDict of occurring value types to schemas.
   All sequence types are lumped together.
   All dict classes are lumped together.
   '''
   atoms: Counter
-  seqs: defaultdict
-  dicts: defaultdict
+  seqs: DefaultDict
+  dicts: DefaultDict
 
 
 def _mk_schema() -> Schema:
-  return Schema(atoms=Counter(), seqs=defaultdict(_mk_schema), dicts=defaultdict(_dd_of_schemas))
+  return Schema(atoms=Counter(), seqs=DefaultDict(_mk_schema), dicts=DefaultDict(_dd_of_schemas))
 
-def _dd_of_schemas() -> defaultdict:
-  return defaultdict(_mk_schema)
+def _dd_of_schemas() -> DefaultDict:
+  return DefaultDict(_mk_schema)
 
 
 def _compile_schema(node: Any, schema: Schema):

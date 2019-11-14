@@ -1,8 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import ABCMeta, abstractmethod
-from collections import Counter as _Counter
-from typing import Any, Callable, Dict, Optional, Protocol, Tuple, TypeVar, Union
+from typing import Any, Callable, Counter, Dict, Optional, Protocol, Tuple, TypeVar, Union
 
 
 _T = TypeVar('_T')
@@ -34,7 +33,7 @@ def is_a(val:Any, T:Union[type, Tuple[type, ...]]) -> bool:
     predicate = _generic_type_predicates[RTT]
   except KeyError: # Not specialized.
     if issubclass(RTT, dict): # Two parameters.
-      if issubclass(RTT, _Counter): # Counter only has one type parameter.
+      if issubclass(RTT, Counter): # Counter only has one type parameter.
         K = args[0]
         V = int # Note that Counters can have non-int values inserted.
       else:

@@ -2,7 +2,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser, Namespace
-from collections import defaultdict
 from itertools import chain, count
 from typing import DefaultDict, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
@@ -288,7 +287,7 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]]) -> NFA:
 
   match_node_kinds:Dict[int, str] = { invalid: 'invalid' }
 
-  transitions_dd:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
+  transitions_dd:NfaMutableTransitions = DefaultDict(lambda: DefaultDict(set))
   for kind, pattern in named_patterns:
     match_node = mk_node()
     pattern.gen_nfa(mk_node, transitions_dd, start, match_node)
