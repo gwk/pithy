@@ -36,7 +36,7 @@ def run(callable:_C) -> _C:
   return callable
 
 
-def utest(exp:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
+def utest(exp:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is raised or the returned value does not equal `exp`.
@@ -46,12 +46,13 @@ def utest(exp:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None
   try: ret = fn(*args, **kwargs)
   except BaseException as exc:
     _utest_failure(_utest_depth, exp_label='value', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    if _exit: raise
   else:
     if exp != ret:
       _utest_failure(_utest_depth, exp_label='value', exp=exp, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_repr(exp_repr:str, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
+def utest_repr(exp_repr:str, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is raised or the returned value's `repr` does not equal `exp_repr`.
@@ -61,13 +62,14 @@ def utest_repr(exp_repr:str, fn:Callable, *args:Any, _utest_depth=0, **kwargs:An
   try: ret = fn(*args, **kwargs)
   except BaseException as exc:
     _utest_failure(_utest_depth, exp_label='repr', exp=exp_repr, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    if _exit: raise
   else:
     if exp_repr != repr(ret):
       _utest_failure(_utest_depth, exp_label='repr', exp=exp_repr, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
 
-def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
+def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -78,11 +80,12 @@ def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any)
   except BaseException as exc:
     if not _compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
+      if _exit: raise
   else:
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
+def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is raised,
@@ -95,6 +98,7 @@ def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _utest_depth=0, **k
     ret_seq = fn(*args, **kwargs)
   except BaseException as exc:
     _utest_failure(_utest_depth, exp_label='sequence', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    if _exit: raise
     return
   try:
     ret = list(ret_seq)
@@ -105,7 +109,7 @@ def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _utest_depth=0, **k
     _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
+def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -118,6 +122,7 @@ def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:
   except BaseException as exc:
     if not _compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
+      if _exit: raise
   else:
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
@@ -144,7 +149,7 @@ def utest_val_ne(exp_val:Any, act_val:Any, desc='<value>') -> None:
     _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def usymmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _utest_depth=0, **kwargs:Any) -> None:
+def usymmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Apply `test_fn` to the provided arguments,
   then again to the same arguments but with the last two positional parameters swapped.
@@ -152,8 +157,8 @@ def usymmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _utest_depth=0
   head = args[:-2]
   argA, argB = args[-2:]
   args_swapped = head + (argB, argA)
-  test_fn(exp, fn, *args, _utest_depth=_utest_depth+1, **kwargs)
-  test_fn(exp, fn, *args_swapped, _utest_depth=_utest_depth+1, **kwargs)
+  test_fn(exp, fn, *args, _exit=_exit, _utest_depth=_utest_depth+1, **kwargs)
+  test_fn(exp, fn, *args_swapped, _exit=_exit, _utest_depth=_utest_depth+1, **kwargs)
 
 
 def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str=None, ret:Any=None, exc:Any=None, subj:Any=None,
