@@ -4,14 +4,11 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
-from typing import ByteString, Generic, Iterable, List, NamedTuple, NoReturn, Optional, Tuple, TypeVar, Union
+from typing import ByteString, Generic, Iterable, List, NamedTuple, NoReturn, Optional, Protocol, Tuple, TypeVar, Union
 
 _setattr = object.__setattr__
 
 Slice = slice
-
-TokenMsg = Tuple['Token',str]
-OptTokenMsg = Optional[TokenMsg]
 
 
 class Token(NamedTuple):
@@ -43,6 +40,20 @@ class Token(NamedTuple):
     'Create a new token with position and end set to `token.end`.'
     if kind is None: kind = self.kind
     return Token(pos=self.end, end=self.end, mode=self.mode, kind=kind)
+
+
+class HasToken(Protocol):
+  token:Token
+
+Syntax = Union[Token,HasToken]
+
+def get_syntax_token(syntax:Syntax) -> Token:
+  return syntax if isinstance(syntax, Token) else syntax.token
+
+
+SyntaxMsg = Tuple[Syntax,str]
+OptSyntaxMsg = Optional[SyntaxMsg]
+
 
 
 SourceText = Union[str,bytes,bytearray]
@@ -121,12 +132,13 @@ class Source(Generic[_Text]):
     return Token(pos=end, end=end, mode='none', kind='eot')
 
 
-  def diagnostic(self, *token_msgs:OptTokenMsg, prefix:str='') -> str:
-    return ''.join(self.diagnostic_for_token(tm[0], tm[1], prefix=prefix) for tm in token_msgs if tm is not None)
+  def diagnostic(self, *syntax_msgs:OptSyntaxMsg, prefix:str='') -> str:
+    return ''.join(
+      self.diagnostic_for_token(get_syntax_token(sm[0]), sm[1], prefix=prefix) for sm in syntax_msgs if sm is not None)
 
 
-  def fail(self, *token_msgs:OptTokenMsg, prefix:str='') -> NoReturn:
-    exit(self.diagnostic(*token_msgs, prefix=prefix))
+  def fail(self, *syntax_msgs:OptSyntaxMsg, prefix:str='') -> NoReturn:
+    exit(self.diagnostic(*syntax_msgs, prefix=prefix))
 
 
   def diagnostic_for_token(self, token:Token, msg:str, *, prefix:str='') -> str:

@@ -26,7 +26,7 @@ from collections import namedtuple
 from typing import (Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar, Union,
   cast)
 
-from tolkien import Source, Token, TokenMsg
+from tolkien import Source, Syntax, SyntaxMsg, Token
 
 from .buffer import Buffer
 from .graph import visit_nodes
@@ -44,22 +44,23 @@ _T = TypeVar('_T')
 
 
 class ParseError(Exception):
-  def __init__(self, source:Source, token:Token, *msgs:Any, notes:Iterable[TokenMsg]=()) -> None:
+  error_prefix = 'parse'
+
+  def __init__(self, source:Source, syntax:Syntax, msg:str, notes:Iterable[SyntaxMsg]=()) -> None:
     self.source = source
-    self.notes:List[TokenMsg] = list(notes)
-    self.token = token
-    self.msgs = msgs
-    super().__init__((self.token, self.msgs))
+    self.notes:List[SyntaxMsg] = list(notes)
+    self.syntax = syntax
+    self.msg = msg
+    super().__init__((self.syntax, self.msg))
 
   def fail(self) -> NoReturn:
-    msg = 'parse error: ' + ''.join(str(m) for m in self.msgs)
-    self.source.fail(*reversed(self.notes), (self.token, msg))
+    self.source.fail(*reversed(self.notes), (self.syntax, f'{self.error_prefix} error: {self.msg}'))
 
-  def add_in_note(self, token:Token, context:Any) -> None:
+  def add_in_note(self, syntax:Syntax, context:Any) -> None:
     # For repeated positions, keep only the innermost note.
     # Outer notes are for choice, quantity, and optional, which are not very informative for debugging parse errors.
-    if not self.notes or self.notes[-1][0] != token:
-      self.notes.append((token, f'note: in {context}:'))
+    if not self.notes or self.notes[-1][0] != syntax:
+      self.notes.append((syntax, f'note: in {context}:'))
 
 
 class ExcessToken(ParseError):
