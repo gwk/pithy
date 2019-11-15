@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from tolkien import Source
-from utest import *
-
 from pithy.eon import *
+from utest import *
 
 
 def parse(text:str) -> Any:
-  return parse_eon(path='<test>', text=text, generic=True)
+  return parse_eon(path='<test>', text=text, to=object)
 
 
 utest(None, parse, '')
