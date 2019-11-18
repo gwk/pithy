@@ -30,7 +30,7 @@ from tolkien import Source, Syntax, SyntaxMsg, Token
 
 from .buffer import Buffer
 from .graph import visit_nodes
-from .io import errL
+from .io import errL, tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import get_caller_module_name
 from .string import indent_lines, iter_str, pluralize
@@ -761,18 +761,16 @@ class Parser:
     return struct_type
 
 
-  def make_buffer(self, source:Source) -> Buffer[Token]:
+  def make_buffer(self, source:Source, dbg_tokens:bool) -> Buffer[Token]:
     stream = self.lexer.lex(source, drop=self.drop, eot=True)
+    if dbg_tokens:
+      stream = tee_to_err(stream, label='Parser dbg_tokens')
     return Buffer(stream)
 
 
   def parse(self, rule_name:RuleName, source:Source, ignore_excess=False, dbg_tokens=False) -> Any:
     rule = self.rules[rule_name]
-    buffer = self.make_buffer(source)
-    if dbg_tokens:
-      for token in buffer.peek_all():
-        errL(source.diagnostic((token, f'dbg_token: {token.mode_kind}')))
-
+    buffer = self.make_buffer(source, dbg_tokens)
     token = next(buffer)
     result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
@@ -781,14 +779,14 @@ class Parser:
     return result
 
 
-  def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess=False) -> Any:
-    try: return self.parse(rule_name=rule_name, source=source, ignore_excess=ignore_excess)
+  def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess=False, dbg_tokens=False) -> Any:
+    try: return self.parse(rule_name=rule_name, source=source, ignore_excess=ignore_excess, dbg_tokens=dbg_tokens)
     except ParseError as e: e.fail()
 
 
-  def parse_all(self, rule_name:RuleName, source:Source) -> Iterator[Any]:
+  def parse_all(self, rule_name:RuleName, source:Source, dbg_tokens=False) -> Iterator[Any]:
     rule = self.rules[rule_name]
-    buffer = self.make_buffer(source)
+    buffer = self.make_buffer(source, dbg_tokens=dbg_tokens)
     while True:
       token = next(buffer)
       if token.kind == 'end_of_text': return
