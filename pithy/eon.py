@@ -49,6 +49,33 @@ class EonList(EonContainer):
   def __iter__(self) -> Iterator[EonSyntax]: return iter(self.els)
 
 
+class EonStr(EonContainer):
+  def __init__(self, token:Token, tokens:List[Token]) -> None:
+    self.token = token
+    self.tokens = tokens
+
+  def __repr__(self) -> str: return f'{type(self).__name__}({self.token}, <{len(self.tokens)} tokens>)'
+
+  def __iter__(self) -> Iterator[EonSyntax]: return iter(self.tokens)
+
+  def value(self, source:Source) -> str:
+    return ''.join(source[t] for t in self.tokens)
+
+
+def _str_token_val(source:Source, token:Token) -> str:
+  k = token.kind
+  t = source[token]
+  if k == 'esc_char': return _esc_char_vals[t]
+  else: return t
+
+
+_esc_char_vals = {
+  '\\n' : '\n',
+  '\\\\' : '\\',
+  '\\"' : '"',
+  "\\'" : "'",
+}
+
 
 class ConversionError(ParseError):
   error_prefix = 'conversion'
@@ -81,7 +108,6 @@ def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
   if to is bool: return _bool_vals[text] # type: ignore
   if to in (Any, object):
     if syntax.kind == 'sym': return text # type: ignore
-    if syntax.kind == 'str': return text # type: ignore # TODO: handle quoted strings.
     if syntax.kind == 'int': return int(text) # type: ignore
     if syntax.kind == 'flt': return float(text) # type: ignore
     raise NotImplementedError(syntax)
@@ -89,6 +115,13 @@ def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
   try: return rtt(text) # type: ignore
   except Exception as e:
     raise ConversionError(source, syntax, f'expected {_fmt_type(to)}; received {syntax.kind}.\n{_fmt_exc(e)}') from e
+
+
+@convert_eon.register
+def convert_eon_str(syntax:EonStr, source:Source, to:Type[_T]) -> _T:
+  if to not in (str, Any, object):
+    raise ConversionError(source, syntax, f'expected {to}; received {syntax.token.kind}.')
+  return syntax.value(source) # type: ignore
 
 
 _bools = [('false', False), ('no', False), ('true', True), ('yes', True)]
@@ -279,13 +312,26 @@ lexer = Lexer(flags='x',
     brack_c = r'\]',
     paren_o = r'\(',
     paren_c = r'\)',
+    dq = r'"',
+    sq = r"'",
+
+    esc_char=r'\\[n\\"\']',
+    chars_dq=r'[^\n\\"]+',
+    chars_sq=r"[^\n\\']+",
   ),
   modes=[
     LexMode('main',
-      kinds=['newline', 'spaces', 'comment', 'sym', 'flt', 'int', 'colon', 'dash', 'tilde', 'brack_o', 'brack_c', 'paren_o', 'paren_c'],
+      kinds=[
+        'newline', 'spaces', 'comment', 'sym', 'flt', 'int', 'colon', 'dash', 'tilde',
+        'brack_o', 'brack_c', 'paren_o', 'paren_c', 'dq', 'sq'],
       indents=True),
+    LexMode('string_dq', kinds=['chars_sq', 'esc_char', 'dq']),
+    LexMode('string_sq', kinds=['chars_sq', 'esc_char', 'sq']),
   ],
-  transitions=[]
+  transitions=[
+    LexTrans('main', kind='dq', mode='string_dq', pop='dq', consume=True),
+    LexTrans('main', kind='sq', mode='string_sq', pop='sq', consume=True),
+  ],
 )
 
 
@@ -296,11 +342,14 @@ def _build_eon_parser() -> Parser:
 
       #section=Struct(Atom('section_label'), 'items'),
 
-      key=Choice('flt', 'int', 'sym'),
+      key=Choice('flt', 'int', 'str_dq', 'str_sq', 'sym'),
 
       leaf=Struct(
-        Choice('flt', 'int', 'sym'),
+        Choice('flt', 'int', 'str_dq', 'str_sq', 'sym'),
         'newline'),
+
+      str_dq=Struct('dq', ZeroOrMore(Choice('esc_char', 'chars_dq')), 'dq', transform=lambda s, t, fields: EonStr(t, fields[1])),
+      str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq')), 'sq', transform=lambda s, t, fields: EonStr(t, fields[1])),
 
       # Values always consume trailing newline.
       value=Choice('leaf', 'dash_list', 'tilde_dict'),
