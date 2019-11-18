@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 from typing import Dict, List, NamedTuple
 
-import yaml
+from yaml import safe_load as load_yaml
 
 from crafts import CraftConfig, load_craft_config
 from pithy.fs import make_dirs, remove_dir_contents, walk_files
@@ -33,7 +33,7 @@ def main() -> None:
   debug_yaml_path = f'{build_dir}/debug.yaml'
   module_cache_dir = f'{debug_dir}/ModuleCache'
 
-  debug_yaml = yaml.load(open(debug_yaml_path))
+  debug_yaml = load_yaml(open(debug_yaml_path))
 
   modules:Dict[str,Module] = {}
   source_modules:Dict[str,Module] = {}
@@ -86,7 +86,7 @@ def run_utest(src_path:str, module:Module, conf:CraftConfig, debug_dir:str, sdk_
   remove_dir_contents(test_dir)
   main_path = f'{test_dir}/main.swift'
   exe_path = f'{test_dir}/{name}'
-  swiftdeps = yaml.load(open(swiftdeps_path))
+  swiftdeps = load_yaml(open(swiftdeps_path))
   top_level_syms = swiftdeps['provides-top-level']
   if top_level_syms is None: return True
 
