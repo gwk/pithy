@@ -228,6 +228,12 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return load(d, ext=sub_ext, **kwargs)
 
 
+def load_yaml(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
+  from yaml import load as _load_yaml, SafeLoader
+  loader = kwargs.pop('Loader', SafeLoader)
+  return _load_yaml(binary_file_for(f), Loader=loader, **kwargs) # type: ignore
+
+
 def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from zstandard import ZstdDecompressor # type: ignore
   decompressor = ZstdDecompressor()
@@ -257,6 +263,7 @@ add_loader('.txt',      load_txt,       _dflt=True)
 add_loader('.xls',      load_xls,       _dflt=True)
 add_loader('.xlsx',     load_xls,       _dflt=True)
 add_loader('.xz',       load_xz,        _dflt=True)
+add_loader('.yaml',     load_yaml,      _dflt=True)
 add_loader('.zip',      load_archive,   _dflt=True)
 add_loader('.zst',      load_zst,       _dflt=True)
 
