@@ -215,13 +215,16 @@ class Lexer:
           indent_len = len(source[token])
           while indent_stack and indent_stack[-1] > indent_len:
             yield token.pos_token(kind='dedent')
+            prev_kind = 'dedent' # Hack to allow for transitions on spaces following indent/dedent.
             indent_stack.pop()
           if not indent_stack or indent_stack[-1] < indent_len:
             yield token.pos_token(kind='indent')
+            prev_kind = 'indent' # Hack to allow for transitions on spaces following indent/dedent.
             indent_stack.append(indent_len)
         elif kind != 'newline': # Empty lines do not affect indent stack. All others pop the entire indent stack.
           while indent_stack:
             yield token.pos_token(kind='dedent')
+            prev_kind = 'dedent' # Hack to allow for transitions on spaces following indent/dedent.
             indent_stack.pop()
       # Yield the current token.
       if kind not in drop:
@@ -245,6 +248,7 @@ class Lexer:
       prev_kind = kind
     while indent_stack:
       yield token.pos_token(kind='dedent')
+      prev_kind = 'dedent' # Hack to allow for transitions on spaces following indent/dedent.
       indent_stack.pop()
     if eot:
       yield eot_token(source, mode=stack[-1][0].mode)
