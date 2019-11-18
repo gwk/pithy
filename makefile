@@ -58,6 +58,9 @@ gen-vscode-legs: vscode/legs/syntaxes/legs.json
 help: # Summarize the targets of this makefile.
 	@GREP_COLOR="1;32" egrep --color=always '^\w[^ :]+:' makefile | sort
 
+lint:
+	pyflakes $(packages)
+
 pip-uninstall:
 	pip3 uninstall --yes $(packages)
 
