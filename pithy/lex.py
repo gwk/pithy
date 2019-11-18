@@ -202,8 +202,10 @@ class Lexer:
     prev_kind = ''
     indent_stack:List[int] = []
     while pos < end:
+      # Get the current frame and mode.
       frame_trans, frame_token = stack[-1]
       mode = self.modes[frame_trans.mode]
+      # Lex one token.
       token = self._lex_one(mode.regex, source, pos=pos, end=end, mode=mode.name)
       kind = token.kind
       pos = token.end
@@ -221,10 +223,12 @@ class Lexer:
           while indent_stack:
             yield token.pos_token(kind='dedent')
             indent_stack.pop()
+      # Yield the current token.
       if kind not in drop:
         yield token
-      # Check if we should pop one or more modes.
+      # Perform mode transitions.
       try:
+        # Check if we should pop one or more modes.
         while frame_trans.should_pop(frame_token=frame_token, token=token, prev_kind=prev_kind):
           stack.pop()
           if frame_trans.consume:
