@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import DefaultDict, Dict, FrozenSet, List, Set, Tuple
 
 from pithy.io import errL
-from pithy.lex import Lexer, LexMode, LexTrans
+from pithy.lex import KindPair, Lexer, LexMode, LexTrans
 from pithy.parse import (Adjacency, Atom, Choice, Infix, Left, OneOrMore, Opt, ParseError, Parser, Precedence, Right, Struct,
   Suffix, ZeroOrMore, choice_syn)
 from pithy.string import clip_prefix
@@ -38,13 +38,12 @@ def parse_legs(path:str, text:str) -> Grammar:
   return grammar
 
 
-common_kinds = ['newline', 'indents', 'spaces', 'comment']
+common_kinds = ['newline', 'spaces', 'comment']
 sl_kinds = ['sl_license', 'sl_patterns', 'sl_modes', 'sl_transitions', 'sl_invalid']
 
 lexer = Lexer(flags='mx',
   patterns=dict(
     newline = r'\n',
-    indents = r'^\ +',
     spaces  = r'\ +',
     comment = r'//[^\n]*',
 
@@ -78,18 +77,20 @@ lexer = Lexer(flags='mx',
     char    = r'[!-~]',
   ),
   modes=[
-    LexMode('main', kinds=[*common_kinds, *sl_kinds, 'colon', 'sym']),
+    LexMode('main', kinds=[*common_kinds, *sl_kinds, 'colon', 'dash', 'sym'], indents=True),
     LexMode('license', kinds=[*sl_kinds, 'newline', 'license_text']),
-    LexMode('patterns', kinds=[*common_kinds, *sl_kinds, 'bar', 'colon', 'sym']),
-    LexMode('pattern', kinds=[*common_kinds,
-      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char']),
-    LexMode('charset', kinds=[*common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char']),
+    LexMode('patterns', kinds=[*common_kinds, *sl_kinds, 'bar', 'colon', 'sym'], indents=True),
+    LexMode('pattern',
+      kinds=[*common_kinds, 'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char'],
+      indents=True),
+    LexMode('charset', kinds=[*common_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char'], indents=True),
   ],
   transitions=[
-    LexTrans('main',      kind='sl_license',  mode='license',   pop=sl_kinds, consume=False),
-    LexTrans('main',      kind='sl_patterns', mode='patterns',  pop=sl_kinds, consume=False),
+    LexTrans('main', kind='sl_license',  mode='license',   pop=sl_kinds, consume=False),
+    LexTrans('main', kind='sl_patterns', mode='patterns',  pop=sl_kinds, consume=False),
 
-    LexTrans('patterns', kind=('colon', 'indents', 'bar'), mode='pattern', pop='newline', consume=True),
+    LexTrans('patterns', kind=('colon',  'bar'), mode='pattern', pop='newline', consume=True),
+    LexTrans('patterns', kind=KindPair('indent', 'spaces'), mode='pattern', pop=KindPair('newline', 'dedent'), consume=True),
 
     LexTrans(('pattern', 'charset'), kind='brack_o', mode='charset', pop='brack_c', consume=True),
   ]
@@ -122,7 +123,7 @@ def build_legs_grammar_parser() -> Parser:
 
       pattern=Struct('sym', Opt('colon_pattern_expr'), transform=transform_pattern),
 
-      colon_pattern_expr=Struct('colon', 'pattern_expr', drop=('newline', 'indents')),
+      colon_pattern_expr=Struct('colon', 'pattern_expr', drop=('newline', 'indent')),
 
       pattern_expr=Precedence(
         ('char', 'esc', 'ref', 'charset_p', 'paren'),
@@ -132,7 +133,7 @@ def build_legs_grammar_parser() -> Parser:
           Suffix('qmark', transform=lambda s, t, p: OptPattern(p)),
           Suffix('star',  transform=lambda s, t, p: StarPattern(p)),
           Suffix('plus',  transform=lambda s, t, p: PlusPattern(p))),
-        drop=('newline', 'indents'),
+        drop=('newline', 'indent', 'dedent'),
       ),
 
       paren=Struct('paren_o', 'pattern_expr', 'paren_c'),
