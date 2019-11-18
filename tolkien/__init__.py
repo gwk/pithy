@@ -21,7 +21,7 @@ class Token(NamedTuple):
     return f'{self.pos}-{self.end}:{self.kind!r}'
 
   def __repr__(self) -> str:
-    return f'{type(self).__qualname__}(pos={self.pos}, end={self.end}, kind={self.kind!r})'
+    return f'{type(self).__qualname__}(pos={self.pos}, end={self.end}, mode={self.mode}, kind={self.kind})'
 
   @property
   def mode_kind(self) -> str:
