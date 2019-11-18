@@ -5,9 +5,8 @@ import os.path
 import re
 from typing import Any, Dict, NamedTuple, Optional, cast
 
-import yaml
-
 from pithy.dict import dict_set_defaults
+from pithy.eon import parse_eon
 from pithy.fs import find_project_dir, list_dir, make_dirs, path_for_cmd, product_needs_update, real_path
 from pithy.json import load_json, parse_json, write_json
 from pithy.path import is_sub_path, norm_path, path_ext, path_join, path_name_stem, path_split, rel_path
@@ -95,8 +94,9 @@ def load_craft_config() -> CraftConfig:
 def parse_craft(path:str) -> Dict[str,Any]:
   try: f = open(path)
   except FileNotFoundError: exit(f'craft error: craft file does not exist: {path!r}')
-  if path_ext(path) != '.yaml': exit(f'craft error: caft file must be a `.yaml` file.') # TODO: relax this restriction.
-  with f: d = yaml.load(f)
+  if path_ext(path) != '.eon': exit(f'craft error: craft file must be a `.eon` file.') # TODO: relax this restriction.
+  with f: text = f.read()
+  d = parse_eon(path=path, text=text, to=Dict[str,Any])
   for k, v in d.items():
     if k in craft_nonconfigurable_keys: exit(f'craft error: key is not configurable: {k!r}')
     if k not in craft_configurable_keys: exit(f'craft error: invalid craft config key: {k!r}')
@@ -176,21 +176,3 @@ def find_toolchain_dir(swift_path:str, dev_dir:str) -> str:
       return path_join(*parts[:i+1])
   # default to dev dir.
   return f'{dev_dir}/Toolchains/XcodeDefault.xctoolchain'
-
-
-class Private(NamedTuple):
-  sym: str
-
-
-def handle_yaml_private(loader, node) -> Private:
-  return Private(sym=resolve_yaml_node(node.value))
-
-def resolve_yaml_node(node: Any) -> Any:
-  if isinstance(node, yaml.Node): return resolve_yaml_node(node.value)
-  if isinstance(node, list): return [resolve_yaml_node(n) for n in node]
-  if isinstance(node, dict): return {resolve_yaml_node(k): resolve_yaml_node(v) for k, v in node.items()}
-  return node
-
-
-# NOTE: modifies the global default yaml Loader object.
-yaml.add_constructor('!private', handle_yaml_private) # type: ignore

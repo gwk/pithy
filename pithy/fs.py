@@ -72,7 +72,7 @@ default_project_signifiers: Tuple[str, ...] = (
   '.git',
   '.project-root',
   'Package.swift',
-  'craft.yaml',
+  'craft.eon',
   'setup.py',
 )
 
