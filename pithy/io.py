@@ -2,6 +2,7 @@
 
 from os import O_NONBLOCK, O_RDONLY, close as os_close, open as os_open, read as os_read
 from pprint import pprint
+from shlex import quote as sh_quote
 from string import Template as _Template
 from sys import stderr, stdin, stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union, cast
@@ -367,6 +368,10 @@ def confirm_or_exit(question:str) -> None:
 def assert_eq(a: Any, b: Any):
   if a != b:
     raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
+
+
+def shell_cmd_str(cmd:Iterable[str]) -> str:
+  return ' '.join(sh_quote(word) for word in cmd)
 
 
 def tee_to_err(iterable:Iterable[_T], label:str = 'tee_to_err') -> Iterator[_T]:

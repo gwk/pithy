@@ -3,12 +3,12 @@
 import plistlib
 import re
 from argparse import ArgumentParser, Namespace
-from typing import Any, BinaryIO, Dict, Optional
+from typing import Any, BinaryIO, Dict, List, Optional
 
-from crafts import CraftConfig, find_dev_dir, load_craft_config, update_swift_package_json
+from crafts import CraftConfig, load_craft_config
 from pithy.filestatus import file_mtime, file_mtime_or_zero
 from pithy.fs import copy_path, make_dirs, path_dir, path_exists, walk_files
-from pithy.io import outSL
+from pithy.io import outSL, shell_cmd_str
 from pithy.path import norm_path, path_join
 from pithy.string import replace_prefix
 from pithy.task import run, runO
@@ -19,12 +19,11 @@ def main() -> None:
   args = arg_parser.parse_args()
 
   conf = load_craft_config()
-  package = update_swift_package_json(conf)
 
-  build(args, conf, package)
+  build(args, conf)
 
 
-def build(args:Namespace, conf:CraftConfig, package:Dict[str,Any]) -> None:
+def build(args:Namespace, conf:CraftConfig) -> None:
   build_dir = conf.build_dir
   sources = conf.sources
 
@@ -32,11 +31,7 @@ def build(args:Namespace, conf:CraftConfig, package:Dict[str,Any]) -> None:
     if not path_exists(source, follow=True):
       exit(f'craft error: source does not exist: {source!r}')
 
-  dev_dir = find_dev_dir()
-
   #sdk_dir = f'{dev_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk' # The versioned SDK just links to the unversioned one.
-  #swift_libs_dir = f'{conf.xcode_toolchain_dir}/lib/swift/macosx'
-  swift_libs_dir = f'{dev_dir}/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx'
   mode_dir = f'{build_dir}/debug' # TODO: support other modes/configurations.
 
   # Build program.
@@ -94,30 +89,6 @@ def build(args:Namespace, conf:CraftConfig, package:Dict[str,Any]) -> None:
       principle_class='NSApplication',
       **img_info)
 
-  # Find swift source paths.
-  swift_source_paths = sorted(walk_files(*sources, file_exts=['.swift']))
-
-  # Detect swift imports.
-  egrep_cmd = ['egrep', '--no-filename', '--only-matching', r'\s*import .*'] + swift_source_paths
-  swift_import_lines = list(filter(None, runO(egrep_cmd).split('\n'))) # TODO: use run_gen.
-  swift_imports = sorted(set(trim_import_statement(line) for line in swift_import_lines))
-
-  # Copy swift libs.
-  swift_libs = set(required_libs)
-  swift_libs.update(debug_libs)
-  swift_libs.update(swift_imports)
-
-  for import_name in swift_imports:
-    if import_name in system_frameworks:
-      lib_name = f'libswift{import_name}.dylib'
-      src_path = f'{swift_libs_dir}/{lib_name}'
-      dst_path = f'{frameworks_path}/{lib_name}'
-      if not path_exists(dst_path, follow=False):
-        copy_path(src_path, dst_path)
-    else:
-      pass
-      #errSL('note: ignoring unknown import:', import_name)
-
   # Copy frameworks.
 
   # Copy resources.
@@ -157,7 +128,7 @@ def gen_plist(dst_file:BinaryIO, EXECUTABLE_NAME:Optional[str], PRODUCT_BUNDLE_I
     'DTPlatformBuild': '9A235', # TODO.
     'DTPlatformVersion': 'GM', # TODO.
     'DTSDKBuild': '17A360', # TODO.
-    'DTSDKName': 'macosx10.14', # TODO.
+    'DTSDKName': 'macosx10.15', # TODO.
     'DTXcode': '0900', # TODO.
     'DTXcodeBuild': '9A235', # TODO.
     'LSMinimumSystemVersion': MACOSX_DEPLOYMENT_TARGET,
@@ -168,62 +139,19 @@ def gen_plist(dst_file:BinaryIO, EXECUTABLE_NAME:Optional[str], PRODUCT_BUNDLE_I
   plistlib.dump(d, dst_file)
 
 
+def detect_swift_imports(swift_source_paths:List[str]) -> List[str]:
+  # Prior to swift 5 it was necessary to copy swift libs into the app.
+  # This is not currently used but we are hanging onto it for now.
+  egrep_cmd = ['egrep', '--no-filename', '--only-matching', r'\s*import .*'] + swift_source_paths
+  print(shell_cmd_str(egrep_cmd))
+  swift_import_lines = list(filter(None, runO(egrep_cmd).split('\n'))) # TODO: use run_gen.
+  return sorted(set(trim_import_statement(line) for line in swift_import_lines))
+
+
 def trim_import_statement(statement:str) -> str:
   m = re.match(r'\s*import (\w+)', statement)
   if not m: raise ValueError(f'egrep found bad import line: {statement!r}')
   return m[1]
-
-
-system_frameworks = {
-  'AVFoundation',
-  'Accelerate',
-  'AppKit',
-  'CloudKit',
-  'Contacts',
-  'Core',
-  'CoreAudio',
-  'CoreData',
-  'CoreFoundation',
-  'CoreGraphics',
-  'CoreImage',
-  'CoreLocation',
-  'CoreMedia',
-  'CryptoTokenKit',
-  'Darwin',
-  'Dispatch',
-  'Foundation',
-  'GLKit',
-  'GameplayKit',
-  'IOKit',
-  'Intents',
-  'MapKit',
-  'Metal',
-  'MetalKit',
-  'ModelIO',
-  'ObjectiveC',
-  'OpenCL',
-  'QuartzCore',
-  'RemoteMirror',
-  'SafariServices',
-  'SceneKit',
-  'SpriteKit',
-  'SwiftOnoneSupport',
-  'Vision',
-  'XCTest',
-  'XPC',
-  'os',
-  'simd',
-}
-
-required_libs = { # TODO: unsure about this.
-  'os',
-  'ObjectiveC'
-}
-
-debug_libs = { # TODO: release libs.
-  'RemoteMirror', # TODO: necessary?
-  'SwiftOnoneSupport'
-}
 
 
 if __name__ == '__main__': main()

@@ -6,9 +6,8 @@ import re
 from typing import Any, Dict, NamedTuple, Optional, cast
 
 from pithy.dict import dict_set_defaults
-from pithy.eon import parse_eon
-from pithy.fs import find_project_dir, list_dir, make_dirs, path_for_cmd, product_needs_update, real_path
-from pithy.json import load_json, parse_json, write_json
+from pithy.eon import parse_eon_or_fail
+from pithy.fs import find_project_dir, list_dir, path_for_cmd, real_path
 from pithy.path import is_sub_path, norm_path, path_ext, path_join, path_name_stem, path_split, rel_path
 from pithy.task import runO
 
@@ -96,7 +95,7 @@ def parse_craft(path:str) -> Dict[str,Any]:
   except FileNotFoundError: exit(f'craft error: craft file does not exist: {path!r}')
   if path_ext(path) != '.eon': exit(f'craft error: craft file must be a `.eon` file.') # TODO: relax this restriction.
   with f: text = f.read()
-  d = parse_eon(path=path, text=text, to=Dict[str,Any])
+  d = parse_eon_or_fail(path=path, text=text, to=Dict[str,Any])
   for k, v in d.items():
     if k in craft_nonconfigurable_keys: exit(f'craft error: key is not configurable: {k!r}')
     if k not in craft_configurable_keys: exit(f'craft error: invalid craft config key: {k!r}')
@@ -104,34 +103,6 @@ def parse_craft(path:str) -> Dict[str,Any]:
   if missing_keys: exit('\n  '.join([f'craft error: missing required keys in {path!r}:', *sorted(missing_keys)]))
   dict_set_defaults(d, craft_config_defaults)
   return cast(Dict[str,Any], d)
-
-
-def update_swift_package_json(config) -> Any:
-  make_dirs(config.build_dir)
-  src = 'Package.swift'
-  dst = f'{config.build_dir}/swift-package.json'
-  if product_needs_update(dst, source=src):
-    dev_dir = config.xcode_dev_dir
-    lib_pm_dir = f'{config.xcode_toolchain_dir}/usr/lib/swift/pm/4_2'
-    cmd = [
-      'swiftc',
-      '--driver-mode=swift',
-      '-swift-version', '5',
-      '-target', 'x86_64-apple-macosx10.14',
-      '-sdk', dev_dir + '/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk',
-      '-I', lib_pm_dir,
-      '-L', lib_pm_dir,
-      '-lPackageDescription',
-      'Package.swift',
-      '-fileno', '1',
-    ]
-    o = runO(cmd, exits=True)
-    data = parse_json(o)
-    with open(dst, 'w') as f:
-      write_json(f, data)
-    return data
-  else:
-    return load_json(open(dst))
 
 
 craft_required_keys = frozenset({
