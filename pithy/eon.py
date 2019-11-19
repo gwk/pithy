@@ -301,7 +301,7 @@ lexer = Lexer(flags='x',
 
     # TODO: section labels.
 
-    sym = r'[A-Za-z_][0-9A-Za-z_\-]*',
+    sym = r'[A-Za-z_][0-9A-Za-z_\-\./]*',
     flt = r'[0-9]+\.[0-9]+',
     int = r'[0-9]+',
 
