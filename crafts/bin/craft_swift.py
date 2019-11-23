@@ -2,14 +2,16 @@
 
 import re
 from argparse import ArgumentParser
-from typing import Match, Tuple, Union
+from typing import Match, Set, Tuple, Union
 
-from pithy.ansi import RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
+from pithy.ansi import FILL, RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt
+from pithy.iterable import group_by_heads
 from pithy.io import errL, outZ, stdout
 from pithy.lex import Lexer
 from pithy.path import path_rel_to_current_or_abs
 from pithy.task import run_gen
+from tolkien import Source, Token
 
 from .. import load_craft_config
 
@@ -34,29 +36,40 @@ def main() -> None:
   errL(TXT_D, ' '.join(cmd), RST)
 
   with ExitOnKeyboardInterrupt():
-    for source, token in lexer.lex_stream(name='swift', stream=run_gen(cmd, merge_err=True, exits=True)):
-      kind = token.kind
-      text = source[token]
-      if kind in diag_kinds:
-        diag_m = diag_re.fullmatch(text)
-        if diag_m:
-          path_abs, pos, msg = diag_m.groups()
-          path = path_rel_to_current_or_abs(path_abs)
-          color = colors[kind]
-          outZ(TXT_L, path, pos, color, msg, RST)
+    # As of Swift 5.1.2 (2019/11), swift build generates duplicate build messages. Deduplicate these.
+    head_texts:Set[str] = set()
+    token_stream = lexer.lex_stream(name='swift', stream=run_gen(cmd, merge_err=True, exits=True))
+    for g in group_by_heads(token_stream, is_head=is_pair_group_head):
+      head_source, head_token = g[0]
+      head_text = head_source[head_token]
+      if head_text in head_texts:
+        continue
+      head_texts.add(head_text)
+      for source, token in g:
+        kind = token.kind
+        text = source[token]
+        if kind == 'top_step': # Print as overwriteable.
+          outZ(TXT_M, text[:-1], FILL, '\r')
+        elif kind in diag_kinds:
+          diag_m = diag_re.fullmatch(text)
+          if diag_m:
+            path_abs, pos, msg = diag_m.groups()
+            path = path_rel_to_current_or_abs(path_abs)
+            color = colors[kind]
+            outZ(TXT_L, path, pos, color, msg, RST)
+          else:
+            outZ(text)
         else:
-          outZ(text)
-      else:
-        color = colors[kind]
-        rst = color or RST
-        outZ(color, text, rst)
-      stdout.flush()
+          color = colors[kind]
+          rst = color or RST
+          outZ(color, text, rst)
+        stdout.flush()
 
 
 lexer = Lexer(
   patterns=dict(
     newline   = r'\n',
-    top_step  = r'\[\d+/\d+\] .+',
+    top_step  = r'\[\d+/\d+\] .+\n', # Need trailing newline to make this line erasable.
     error     = r'[^:\n]+:\d+:\d+: error: .+',
     warning   = r'[^:\n]+:\d+:\d+: warning: .+',
     note      = r'[^:\n]+:\d+:\d+: note: .+',
@@ -67,20 +80,19 @@ lexer = Lexer(
     other     = r'.+',
 ))
 
+
+def is_pair_group_head(pair:Tuple[Source[str],Token]) -> bool:
+  _, t = pair
+  return (t.kind in group_head_kinds)
+
+group_head_kinds = { 'top_step', 'error', 'warning', 'unknown_error', 'unknown_warning', 'error_terminated' }
+
+
 diag_re = re.compile(r'([^:]+)(:\d+:\d+: )(\w+: .+)')
 
-head_kinds = set(lexer.patterns) - {'newline', 'note', 'other'}
 diag_head_kinds = {'error', 'warning', 'unknown_error', 'unknown_warning'}
 diag_kinds = {*diag_head_kinds, 'note'}
 
-def is_head(token:Match) -> bool:
-  return token.lastgroup in head_kinds
-
-def is_diag_head(token:Match) -> bool:
-  return token.lastgroup in diag_head_kinds
-
-def is_diag(token:Match) -> bool:
-  return token.lastgroup in diag_kinds
 
 def key_by_splitting_ints(string:str) -> Tuple[Union[str,int],...]:
   return tuple(int(s) if s.isnumeric() else s for s in int_re.split(string))
