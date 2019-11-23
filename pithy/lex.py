@@ -267,7 +267,7 @@ class Lexer:
     return self._lex(stack=[self.root_frame(mode=self.main)], source=source, pos=pos, end=_e, drop=drop, eot=eot)
 
 
-  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Tuple[Source, Token]]:
+  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Tuple[Source[str], Token]]:
     '''
     Note: the yielded Token objects have positions relative to input string that each was lexed from.
     TODO: fix the line numbers.
