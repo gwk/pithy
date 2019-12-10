@@ -6,7 +6,7 @@ from typing import Match, Set, Tuple, Union
 
 from pithy.ansi import FILL, RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt
-from pithy.iterable import group_by_heads
+from pithy.iterable import group_by_heads, OnHeadless
 from pithy.io import errL, outZ, stdout
 from pithy.lex import Lexer
 from pithy.path import path_rel_to_current_or_abs
@@ -39,7 +39,7 @@ def main() -> None:
     # As of Swift 5.1.2 (2019/11), swift build generates duplicate build messages. Deduplicate these.
     head_texts:Set[str] = set()
     token_stream = lexer.lex_stream(name='swift', stream=run_gen(cmd, merge_err=True, exits=True))
-    for g in group_by_heads(token_stream, is_head=is_pair_group_head):
+    for g in group_by_heads(token_stream, is_head=is_pair_group_head, headless=OnHeadless.keep):
       head_source, head_token = g[0]
       head_text = head_source[head_token]
       if head_text in head_texts:
@@ -64,6 +64,7 @@ def main() -> None:
           rst = color or RST
           outZ(color, text, rst)
         stdout.flush()
+    print() # Newline moves past last overwriteable line.
 
 
 lexer = Lexer(
