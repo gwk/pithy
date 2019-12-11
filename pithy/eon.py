@@ -7,9 +7,9 @@ from inspect import Parameter, signature
 from typing import (Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union,
   get_args as get_type_args, get_origin, get_type_hints)
 
-from pithy.lex import Lexer, LexMode, LexTrans
-from pithy.parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
-from pithy.util import memoize
+from .lex import Lexer, LexMode, LexTrans
+from .parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
+from .util import memoize
 from tolkien import Source, Token
 
 
@@ -437,7 +437,6 @@ def main() -> None:
   '''
   from sys import argv
   from .io import outD
-  from .parse import ParseError
 
   args = argv[1:] or ['/dev/stdin']
   for path in args:
