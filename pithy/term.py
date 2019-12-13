@@ -55,7 +55,7 @@ class TermMode:
     self.when = when
     self.min_bytes = min_bytes
     self.original_attrs = tcgetattr(fd)
-    self.attrs = attrs = deepcopy(self.original_attrs)
+    self.attrs = deepcopy(self.original_attrs)
     self.vtime = 0
     if delay > 0:
       self.vtime = int(delay * 10)
