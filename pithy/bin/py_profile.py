@@ -70,7 +70,6 @@ def main() -> None:
     #fixup_traceback(traceback)
     print(*traceback.format(), sep='', end='', file=stderr)
 
-
   stats = CustomStats(profile, stream=output)
   stats.sort_stats(*args.sort)
 
@@ -85,6 +84,8 @@ def main() -> None:
   #stats.display_callers(*filter_clauses)
   #stats.print('\nCallees:')
   #stats.display_callees(*filter_clauses)
+
+  exit(exit_code)
 
 
 sort_keys = {
