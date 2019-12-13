@@ -383,7 +383,9 @@ def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hid
   assert dir_path.endswith('/')
   if yield_dirs:
     yield dir_path
-  for name in list_dir(dir_path, hidden=include_hidden):
+  try: names = list_dir(dir_path, hidden=include_hidden)
+  except FileNotFoundError: return # It existed a moment ago; caller probably deleted the directory.
+  for name in names:
     path = path_join(dir_path, name)
     if is_dir(path, follow=True):
       yield from _walk_paths_rec(path + '/', yield_files, yield_dirs, include_hidden, file_exts)
