@@ -5,7 +5,7 @@ from typing import Any, BinaryIO, Callable, Dict, List, Tuple
 
 from msgpack import ExtraData, FormatError, OutOfData, StackError, Unpacker, dump as _dump, load as _load  # type: ignore
 
-from .encode import EncodeObj, all_slots, encode_obj
+from .encode import EncodeObj, encode_obj
 
 ObjectHook = Callable[[Dict[str,Any]], Any]
 ObjectPairsHook = Callable[[List[Tuple[str,Any]]], Any]

@@ -5,11 +5,9 @@ import re as _re
 import shutil as _shutil
 import stat as _stat
 import time as _time
-from itertools import zip_longest as _zip_longest
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
-from typing import (IO, AbstractSet, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Pattern, TextIO, Tuple,
-  Union)
+from typing import (IO, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple)
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,

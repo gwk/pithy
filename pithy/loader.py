@@ -4,8 +4,8 @@
 File open/load dispatch by file extension.
 '''
 
-from io import BufferedReader, BytesIO, RawIOBase, TextIOBase, TextIOWrapper
-from typing import IO, Any, BinaryIO, Callable, Dict, Iterable, Iterator, List, Sequence, Set, TextIO, Union
+from io import BufferedReader, BytesIO, TextIOWrapper
+from typing import IO, Any, BinaryIO, Callable, Dict, Iterable, List, Set, TextIO, Union
 
 
 __all__ = [

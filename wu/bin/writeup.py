@@ -1,21 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sys
-assert sys.version_info >= (3, 6, 0)
-
-import re
-
 from argparse import ArgumentParser
-from pithy.io import errSL
 from sys import stdin, stdout
 from typing import Tuple
 
-import pygments # type: ignore
-import pygments.lexers # type: ignore
-import pygments.token # type: ignore
-from pygments.token import Token
-from pygments.token import *
-from wu import *
+from pithy.io import errSL
+
+from .. import default_css, default_js, minify_css, minify_js, writeup, writeup_dependencies
 
 
 __all__ = ['main', 'writeup', 'writeup_dependencies']

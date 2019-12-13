@@ -30,7 +30,7 @@ from tolkien import Source, Syntax, SyntaxMsg, Token
 
 from .buffer import Buffer
 from .graph import visit_nodes
-from .io import errL, tee_to_err
+from .io import tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import get_caller_module_name
 from .string import indent_lines, iter_str, pluralize

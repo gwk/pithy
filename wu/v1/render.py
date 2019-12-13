@@ -2,10 +2,9 @@
 
 import re
 from functools import singledispatch
-from typing import Iterator, List
+from typing import Iterator, List, Union
 
-from pithy.markup import Mu
-from pithy.html import HtmlNode, Html, Body, Section, P, Code, Pre, Union
+from pithy.html import HtmlNode, Html, Body, Section
 
 
 

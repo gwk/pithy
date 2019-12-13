@@ -9,10 +9,8 @@ from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, 
 import pygments  # type: ignore
 import pygments.lexers  # type: ignore
 import pygments.token  # type: ignore
-from pygments.token import *
 from pygments.token import Token
 
-from pithy.fs import path_exists
 from pithy.html.semantics import phrasing_tags
 from pithy.io import errSL, errSN
 from pithy.json import load_json

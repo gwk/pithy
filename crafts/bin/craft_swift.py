@@ -2,7 +2,7 @@
 
 import re
 from argparse import ArgumentParser
-from typing import Match, Set, Tuple, Union
+from typing import Set, Tuple, Union
 
 from pithy.ansi import FILL, RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt

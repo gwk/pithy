@@ -1,7 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from tolkien import Source
+
 from .lex import Lexer
-from legs import ploy_repr, Source
+
 
 def test_main() -> None:
   from sys import argv
