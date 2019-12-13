@@ -11,7 +11,6 @@ from time import time as _now
 from typing import IO, AnyStr, BinaryIO, Dict, Iterator, List, Optional, Sequence, Tuple, Union, cast
 
 from .alarm import Alarm, Timeout
-from .fs import path_for_cmd
 
 
 Cmd = Union[str, Sequence[str]]

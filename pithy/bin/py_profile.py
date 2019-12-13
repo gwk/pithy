@@ -10,8 +10,8 @@ from pstats import Stats
 from sys import argv, exc_info, path as sys_path, stderr, stdout
 from typing import Any, Dict, Iterable, List, Optional, Set, TextIO, Tuple, Union
 
+from pithy.fs import path_for_cmd
 from pithy.path import path_rel_to_current_or_abs
-from pithy.task import path_for_cmd
 
 
 def main() -> None:
