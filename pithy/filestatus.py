@@ -243,11 +243,17 @@ def is_mount(path_or_fd:Path, *, follow:bool=True, raises=False) -> Optional[boo
     return None
   return s.st_mode&TYPE_MASK == S_IFMT
 
+def is_sticky(path_or_fd:Path, *, follow:bool, raises=False) -> Optional[bool]:
+  try: s = _stat(path_or_fd, follow_symlinks=follow)
+  except FileNotFoundError:
+    if raises: raise
+    return None
+  return bool(s.st_mode&S_ISVTX)
+
 def path_exists(path_or_fd:Path, *, follow:bool) -> Optional[bool]:
   try: _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError: return False
   else: return True
-
 
 
 PERM_MASK = 0o7777
