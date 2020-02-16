@@ -372,6 +372,20 @@ class Body(HtmlSectioningRoot, HtmlFlowContent):
   Contexts for use: As the second element in an html element.
   '''
 
+  @property
+  def header(self) -> 'Header': return self._single(Header)
+
+  @property
+  def nav(self) -> 'Nav': return self._single(Nav)
+
+
+  @property
+  def main(self) -> 'Main': return self._single(Main)
+
+
+  @property
+  def footer(self) -> 'Footer': return self._single(Footer)
+
 
 @_tag
 class Br(HtmlFlow, HtmlPhrasing, HtmlNoContent):
