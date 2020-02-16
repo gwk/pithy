@@ -10,7 +10,7 @@ from pithy.iterable import group_by_heads, OnHeadless
 from pithy.io import errL, outZ, stdout
 from pithy.lex import Lexer
 from pithy.path import path_rel_to_current_or_abs
-from pithy.task import run_gen
+from pithy.task import run_gen, runCO
 from tolkien import Source, Token
 
 from .. import load_craft_config
@@ -37,15 +37,17 @@ def main() -> None:
 
   with ExitOnKeyboardInterrupt():
     # As of Swift 5.1.2 (2019/11), swift build generates duplicate build messages. Deduplicate these.
+    c, o = runCO(cmd)
+    source = Source(name='swift', text=o)
+    token_stream = lexer.lex(source)
     head_texts:Set[str] = set()
-    token_stream = lexer.lex_stream(name='swift', stream=run_gen(cmd, merge_err=True, exits=True))
     for g in group_by_heads(token_stream, is_head=is_pair_group_head, headless=OnHeadless.keep):
-      head_source, head_token = g[0]
-      head_text = head_source[head_token]
+      head_token = g[0]
+      head_text = source[head_token]
       if head_text in head_texts:
         continue
       head_texts.add(head_text)
-      for source, token in g:
+      for token in g:
         kind = token.kind
         text = source[token]
         if kind == 'top_step': # Print as overwriteable.
@@ -65,6 +67,7 @@ def main() -> None:
           outZ(color, text, rst)
         stdout.flush()
     print() # Newline moves past last overwriteable line.
+    exit(c)
 
 
 lexer = Lexer(
@@ -76,15 +79,13 @@ lexer = Lexer(
     note      = r'[^:\n]+:\d+:\d+: note: .+',
     unknown_error   = '<unknown>:0: error: .+',
     unknown_warning = '<unknown>:0: warning: .+',
-    error_terminated = r'error: terminated.+', # comes in on stderr.
     underline = r'[ ]*[~^][~^ ]*',
     other     = r'.+',
 ))
 
 
-def is_pair_group_head(pair:Tuple[Source[str],Token]) -> bool:
-  _, t = pair
-  return (t.kind in group_head_kinds)
+def is_pair_group_head(token:Token) -> bool:
+  return (token.kind in group_head_kinds)
 
 group_head_kinds = { 'top_step', 'error', 'warning', 'unknown_error', 'unknown_warning', 'error_terminated' }
 
