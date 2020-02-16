@@ -2,6 +2,7 @@
 
 'String utilities.'
 
+import re
 from decimal import Decimal
 from string import Template
 from typing import Any, Iterable, Iterator, Sequence, Tuple, TypeVar
@@ -200,3 +201,18 @@ def line_col_1(string:str, pos:int) -> Tuple[int, int]:
   l, c = line_col_0(string, pos)
   return (l + 1, c + 1)
 
+
+def simplify_punctuation(text:str) -> str:
+  text = non_ascii_hyphens_re.sub('-', text) # Replace unicode hyphens.
+  text = text.replace('\u2014', '--') # Em dash.
+  text = non_ascii_single_quotes.sub("'", text)
+  text = non_ascii_double_quotes.sub('"', text)
+  return text
+
+non_ascii_single_quotes = re.compile(r'[‘’]')
+non_ascii_double_quotes = re.compile(r'[“”]')
+
+non_ascii_hyphens_re = re.compile(r'[\xad\u2010\u2011\u2013\u2212]+')
+#^ Soft hyphen, hyphen, non-breaking hyphen, en-dash, minus-sign.
+
+zero_width_space = '\u200b'
