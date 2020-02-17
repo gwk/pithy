@@ -166,8 +166,8 @@ def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Calla
       except Exception as e:
         raise ValueError(f'malformed decoder hook; expected (keys, constructor) pair; received: {h!r}') from e
       fn = _hook_type_fn(fn_raw) if isinstance(fn_raw, type) else fn_raw
+      if isinstance(keys_raw, str): raise TypeError(keys_raw) # type: ignore
 
-    assert not isinstance(keys_raw, str)
     keys = frozenset(keys_raw)
     if keys in type_map:
       raise ValueError(f'conflicting type hooks for key seyt {keys}:\n  {type_map[keys]}\n  {fn}')

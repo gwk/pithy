@@ -176,6 +176,7 @@ class ScopeSource(SourceReporter):
       self.error(self.node, 'missing docstring')
     doc_expr = body[0].value
     doc = doc_expr.s
+    assert isinstance(doc, str)
     m = invalid_doc_re.search(doc)
     if m:
       s, e = m.span()

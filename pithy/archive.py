@@ -116,7 +116,7 @@ class _ZipHandler(_Handler):
   def __init__(self, file_or_path:FileOrPath) -> None:
     try: self.zip = ZipFile(file_or_path)
     except BadZipFile as e:
-      if isinstance(file_or_path, TextIOBase):
+      if isinstance(file_or_path, TextIOBase): # type: ignore
         raise TypeError(f'Archive requires a path or binary stream but received text stream: {file_or_path}') from e
       raise
 

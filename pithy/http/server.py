@@ -154,7 +154,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     self.directory = directory or os.getcwd()
     self.local_path: Optional[str] = None
     self.prevent_client_caching = True
-    super().__init__(*args, **kwargs) # type: ignore # Calls handle.
+    super().__init__(*args, **kwargs)
 
 
   def handle(self) -> None:
