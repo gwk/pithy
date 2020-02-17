@@ -3,9 +3,9 @@
 # TODO: handle leading UTF8-BOM.
 
 import csv
-from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONNUMERIC, QUOTE_NONE
+from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONNUMERIC, QUOTE_NONE, Dialect
 from sys import stdout
-from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Union
+from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -21,7 +21,7 @@ def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:I
 
 
 def load_csv(file: TextIO,
- dialect:Optional[str]=None,
+ dialect:Union[str,Dialect,Type[Dialect]]='excel',
  delimiter:Optional[str]=None,
  doublequote:Optional[bool]=None,
  escapechar:Optional[str]=None,
@@ -51,7 +51,7 @@ def load_csv(file: TextIO,
 class CSVFileReader(Iterable, ContextManager):
 
   def __init__(self, file: TextIO,
-   dialect:Optional[str]=None,
+   dialect:Union[str,Dialect,Type[Dialect]]='excel',
    delimiter:Optional[str]=None,
    doublequote:Optional[bool]=None,
    escapechar:Optional[str]=None,
@@ -64,7 +64,6 @@ class CSVFileReader(Iterable, ContextManager):
    header:Union[None, bool, Sequence[str]]=None) -> None:
 
     opts = { k : v for (k, v) in [
-      ('dialect', dialect),
       ('delimiter', delimiter),
       ('doublequote', doublequote),
       ('escapechar', escapechar),
