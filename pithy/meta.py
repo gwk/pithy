@@ -93,9 +93,10 @@ def get_caller_module_name(steps=1) -> Optional[str]:
   f = inspect.currentframe() # This frame.
   if f is None: return None
   f = f.f_back # Immediate caller's frame; caller already knows this.
+  if f is None: return None
   for i in range(steps):
     f = f.f_back
-    if f is None: return None # type: ignore # mypy thinks this is unreachable.
+    if f is None: return None
   spec = f.f_globals['__spec__']
   if spec: return cast(str, spec.name)
   else: return cast(str, f.f_globals['__name__'])
