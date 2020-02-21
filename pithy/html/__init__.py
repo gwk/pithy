@@ -1565,3 +1565,10 @@ class Wbr(HtmlFlow, HtmlPhrasing, HtmlNoContent):
 
   Contexts for use: Phrasing.
   '''
+
+
+
+class InlineStyle(Dict[str,Any]):
+
+  def __str__(self) -> str:
+    return ';'.join(f'{k.replace("_", "-")}:{v}' for (k, v) in self.items())

@@ -26,7 +26,7 @@ _T = TypeVar('_T')
 MuAttrs = Dict[str,Any]
 MuAttrItem = Tuple[str,Any]
 
-MuChild = Union[str,'Mu']
+MuChild = Union[str,'EscapedStr','Mu']
 MuChildren = List[MuChild]
 
 _Mu = TypeVar('_Mu', bound='Mu')
@@ -35,6 +35,11 @@ _MuChild = TypeVar('_MuChild', bound='MuChild')
 MuPred = Callable[[_Mu],bool]
 MuVisitor = Callable[[_Mu],None]
 MuIterVisitor = Callable[[_Mu],Iterator[_T]]
+
+
+class EscapedStr:
+  def __init__(self, string:str) -> None:
+    self.string = string
 
 
 class Mu:
@@ -75,7 +80,7 @@ class Mu:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
-    if isinstance(ch, (str, Mu)):
+    if isinstance(ch, (str,EscapedStr,Mu)):
       self.ch:MuChildren = [ch]
     elif isinstance(ch, list):
       self.ch = ch # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
@@ -173,9 +178,11 @@ class Mu:
     for i, c in enumerate(self.ch):
       if isinstance(c, Mu):
         yield (i, (c.subnode(self) if traversable else c))
-      else:
-        if not ws and html_ws_re.fullmatch(c): continue
-        yield (i, c)
+        continue
+      if isinstance(c, EscapedStr):
+        c = c.string
+      if not ws and html_ws_re.fullmatch(c): continue
+      yield (i, c)
 
 
   def children(self, ws=False, traversable=False) -> Iterator[MuChild]:
@@ -183,9 +190,11 @@ class Mu:
     for c in self.ch:
       if isinstance(c, Mu):
         yield c.subnode(self) if traversable else c
-      else:
-        if not ws and html_ws_re.fullmatch(c): continue
-        yield c
+        continue
+      if isinstance(c, EscapedStr):
+        c = c.string
+      if not ws and html_ws_re.fullmatch(c): continue
+      yield c
 
 
   def child_nodes(self, traversable=False) -> Iterator['Mu']:
@@ -195,13 +204,18 @@ class Mu:
 
   @property
   def has_substantial_children(self) -> bool:
-    return any((isinstance(c, Mu) or c and not html_ws_re.fullmatch(c)) for c in self.ch)
+    for c in self.ch:
+      if isinstance(c, Mu): return True
+      if isinstance(c, EscapedStr): c = c.string
+      if c and not html_ws_re.fullmatch(c): return True
+    return False
 
 
   @property
   def texts(self) -> Iterator[str]:
     for c in self.ch:
       if isinstance(c, Mu): yield from c.texts
+      elif isinstance(c, EscapedStr): yield c.string
       else: yield c
 
   @property
@@ -600,6 +614,8 @@ class Mu:
     for child, next_child in window_pairs(self.ch):
       if isinstance(child, Mu):
         yield from child._render()
+      elif isinstance(child, EscapedStr):
+        yield child.string
       else:
         yield self.esc_text(child)
       if child_newlines and (is_block(child) or next_child is None or is_block(next_child)):
@@ -624,7 +640,9 @@ def xml_child_summary(child:MuChild, text_limit:int) -> str:
   if isinstance(child, Mu):
     text = child.summary_text(limit=text_limit)
     if text: return f' {child.tag}:{repr_lim(text, limit=text_limit)}'
-    else: return ' ' + child.tag
+    return ' ' + child.tag
+  if isinstance(child, EscapedStr):
+    child = child.string
   text = html_ws_re.sub(newline_or_space_for_ws, child)
   return ' ' + repr_lim(text, limit=text_limit)
 
