@@ -28,6 +28,7 @@ MuAttrItem = Tuple[str,Any]
 
 MuChild = Union[str,'EscapedStr','Mu']
 MuChildren = List[MuChild]
+MuChildOrChildren = Union[MuChild,Iterable[MuChild]]
 
 _Mu = TypeVar('_Mu', bound='Mu')
 _MuChild = TypeVar('_MuChild', bound='MuChild')
@@ -58,7 +59,7 @@ class Mu:
   __slots__ = ('attrs', 'ch', '_orig', '_parent')
 
 
-  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,
+  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs=None, ch:MuChildOrChildren=(), cl:Iterable[str]=None,
    _orig:_Mu=None, _parent:'Mu'=None, **kw_attrs:Any) -> None:
     '''
     Note: the initializer uses `attrs` dict and `ch` list references if provided, resulting in data sharing.
