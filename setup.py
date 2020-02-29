@@ -1,46 +1,31 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 # This is the setup.py for for all packages in the repo.
-# The package to be installed is specified by setting the PACKAGE environment variable.
-# Each package has its own `setup.cfg`.
+# The package to be installed is selected by copying its setup-PACKAGE.cfg file to setup.cfg.
+# This is necessary because pip does not practically allow us to use alternate names for the setup files.
 
 from configparser import ConfigParser
 from distutils.command.build_scripts import build_scripts  # type: ignore
 from itertools import chain
 from os import chmod, environ, getcwd as current_dir, listdir as list_dir, mkdir as make_dir, walk
-from os.path import (dirname as path_dir, exists as path_exists, isdir as is_dir, join as path_join, normpath as norm_path,
-  split as split_dir_name, splitext as split_ext)
+from os.path import (basename as path_name, dirname as path_dir, exists as path_exists, isdir as is_dir, join as path_join,
+  normpath as norm_path, split as split_dir_name, splitext as split_ext)
 from pprint import pprint
 from typing import Any, List
 
-from setuptools import Command, setup  # type: ignore
+from setuptools import setup  # type: ignore
 from setuptools.command.develop import develop  # type: ignore
 from setuptools.command.install import install  # type: ignore
 from setuptools.command.install_scripts import install_scripts  # type: ignore
 from setuptools.config import read_configuration  # type: ignore
 
 
-# We stubbornly insist on keeping each package directory at the root of the repo.
-# Since we want to distribute each package separately, we need a setup.py for each.
-# We cannot use a name other than setup.py if we want to support pip,
-# and must place setup.py in the parent directory of each package.
-# In other words, we have can only make this work by using the same setup.py for each package.
-# We make this work by telling setup.py which package it is installing via the PACKAGE environment variable.
-
-base_dir = path_dir(norm_path(__file__)) or '.' # When run from pip, this is a temp dir.
-assert not base_dir.endswith('/'), base_dir
-base_dir += '/'
-base_prefix_len = len(base_dir)
-
-package_name = environ['PACKAGE']
-assert package_name
-assert not package_name.endswith('/')
-
-package_dir = path_join(base_dir, package_name)
-bin_src_dir = path_join(package_dir, 'bin')
-
-
 def msg(*items:Any) -> None: print(' ', *items)
+
+
+# Note: all Command subclasses have the `distribution` property, which in turn has a `metadata` property,
+# as well as: packages:List[str]; package_dir:Dict[str,str], py_modules:List[sstr], scripts:List[str] and others.
+# See: https://github.com/python/cpython/blob/master/Lib/distutils/dist.py.
 
 
 class BuildScripts(build_scripts): # type: ignore
@@ -50,28 +35,31 @@ class BuildScripts(build_scripts): # type: ignore
 
 class Develop(develop): # type: ignore
   def run(self) -> None:
+    msg('Develop')
     super().run()
-    install_bins(dst_dir=self.script_dir)
+    install_bins(package=self.distribution.metadata.name, dst_dir=self.script_dir)
 
 
 class Install(install): # type: ignore
   def run(self) -> None:
+    msg('Install')
     super().run()
 
 
 class InstallScripts(install_scripts): # type: ignore
   def run(self) -> None:
     msg('InstallScripts')
-    super().run()
-    install_bins(dst_dir=self.install_dir)
+    install_bins(package=self.distribution.metadata.name, dst_dir=self.install_dir)
 
 
-def install_bins(dst_dir:str) -> None:
+def install_bins(package:str, dst_dir:str) -> None:
   '''
   Generate executable script entry points.
   We do this because standard entry_points/console_scripts have noticeably slow startup times,
   apparently due to overly complex boilerplate.
   '''
+  bin_src_dir = path_join(package, 'bin')
+
   msg('bin_src_dir:', bin_src_dir)
   msg('bin dst_dir:', dst_dir)
 
@@ -84,7 +72,7 @@ def install_bins(dst_dir:str) -> None:
     stem, ext = split_ext(name)
     if ext != '.py' or stem.startswith('.') or stem.startswith('_'): continue
     path = path_join(dst_dir, stem.replace('_', '-')) # Omit extension from bin name and use dashes.
-    module = f'{package_name}.bin.{stem}'
+    module = f'{package}.bin.{stem}'
     msg(f'generating script: {path}')
     with open(path, 'w') as f:
       f.write(bin_template.format(py_path=py_path, module=module))
@@ -98,7 +86,7 @@ main()
 '''
 
 
-def discover_packages() -> List[str]:
+def discover_packages(package:str) -> List[str]:
   '''
   Discover subpackages by traversing over the directory tree.
   Verify that all subdirectories have `__init__` files.
@@ -106,11 +94,10 @@ def discover_packages() -> List[str]:
   bad_names = []
   missing_inits = []
   packages = []
-  for dir_path, dir_names, file_names in walk(package_dir):
-    rel_path = dir_path[base_prefix_len:]
-    subpackage_name = rel_path.strip('./').replace('/', '.')
+  for dir_path, dir_names, file_names in walk(package):
+    subpackage_name = dir_path.strip('./').replace('/', '.')
     packages.append(subpackage_name)
-    msg('discovered subpackage:', rel_path, '->', subpackage_name)
+    #msg('discovered subpackage:', dir_path, '->', subpackage_name)
     # Filter the subdirectories in place, as permitted by `walk`.
     dir_names[:] = filter(is_subpackage, dir_names)
     # Validate names. Collect them so that we can issue all error messages at once, then exit.
@@ -123,6 +110,7 @@ def discover_packages() -> List[str]:
   if missing_inits:
     msg(f'missing package __init__.py files:\n    ' + '\n    '.join(repr(s) for s in sorted(missing_inits)))
   if bad_names or missing_inits: exit(1)
+  packages.sort()
   msg('packages:', *packages)
   return packages
 
@@ -134,27 +122,21 @@ def is_subpackage(dir_name:str) -> bool:
 
 
 def main() -> None:
+  metadata = read_configuration('setup.cfg')['metadata'] # Get the metadata the setuptools way.
 
-  msg('base_dir:', base_dir)
-  msg('package_dir:', package_dir)
-  msg('package_name:', package_name)
-  packages = discover_packages()
-  py_module = package_dir + '.py'
+  if 'name' not in metadata: exit('error: setup.cfg is missing `name`.')
+
+  name = metadata['name']
+  packages = discover_packages(name)
+  py_module = name + '.py'
   py_modules = [py_module] if path_exists(py_module) else []
-
-  # The root `setup.cfg` contains only common config data for all packages; it is loaded automatically by setuptools.
-  # Each package has its own `setup.cfg` which must be loaded manually.
-  cfg_path = f'{package_dir}/setup.cfg'
-  metadata = read_configuration(cfg_path)['metadata'] # Get the metadata the setuptools way.
-
-  if 'name' not in metadata: exit('setup.cfg: error: missing `name`.')
 
   args = dict(
     license='CC0',
     author='George King',
     author_email='george.w.king@gmail.com',
     url='https://github.com/gwk/pithy',
-
+    include_package_data=True,
     packages=packages,
     cmdclass={
       'build_scripts': BuildScripts,
@@ -162,9 +144,8 @@ def main() -> None:
       'install': Install,
       'install_scripts': InstallScripts,
     },
-    py_modules=[],
-    package_dir={package_name:package_dir},
-    **metadata,
+    py_modules=py_modules,
+    package_dir={name:name},
   )
 
   #pprint(args)
