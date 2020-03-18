@@ -10,6 +10,15 @@ from typing import Any, Iterable, Iterator, Sequence, Tuple, TypeVar
 _T = TypeVar('_T')
 
 
+class EscapedStr:
+  'A `str` subclass that signifies (in some external context) that the content has already been properly escaped.'
+
+  def __init__(self, string:str) -> None:
+    self.string = string
+
+  def __repr__(self) -> str: return f'EscapedStr({self.string!r})'
+
+
 def render_template(template:str, **substitutions:Any) -> str:
   'Render a template using $ syntax.'
   t = Template(template)

@@ -13,6 +13,7 @@ from xml.etree.ElementTree import Element
 from .desc import repr_lim
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from .iterable import window_iter, window_pairs
+from .string import EscapedStr
 
 
 # Handle lxml comments if available; these are produced by html5_parser.
@@ -36,11 +37,6 @@ _MuChild = TypeVar('_MuChild', bound='MuChild')
 MuPred = Callable[[_Mu],bool]
 MuVisitor = Callable[[_Mu],None]
 MuIterVisitor = Callable[[_Mu],Iterator[_T]]
-
-
-class EscapedStr:
-  def __init__(self, string:str) -> None:
-    self.string = string
 
 
 class Mu:
