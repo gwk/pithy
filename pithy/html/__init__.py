@@ -33,7 +33,6 @@ class HtmlNode(Mu):
     etree = parse(source, return_root=True, **kwargs)
     return Class.from_etree(etree)
 
-
   def esc_attr_val(self, val:str) -> str: return _escape(val, quote=True)
 
   def esc_text(self, text:str) -> str: return _escape(text, quote=False)
@@ -43,10 +42,10 @@ class HtmlNode(Mu):
     'Wether or not the node is phrasing content.'
     return False
 
-
   @property
   def attr_urls(self) -> Iterator[str]:
     yield from self.iter_visit(pre=_attr_urls_visit)
+
 
 
 def _attr_urls_visit(node:HtmlNode) -> Iterator[str]:
