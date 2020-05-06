@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from dataclasses import dataclass
 from typing import List, Match, Optional
 
-from ..io import outL, outZ
+from pithy.io import outL, outZ
 
 
 @dataclass

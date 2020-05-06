@@ -4,10 +4,10 @@ from argparse import ArgumentParser
 from time import time as now
 from typing import Callable, Optional
 
-from ..fs import file_size, path_exists, remove_path
-from ..io import confirm, outL, outZ, stderr, stdin
-from ..string import format_byte_count
-from ..task import UnexpectedExit, run
+from pithy.fs import file_size, path_exists, remove_path
+from pithy.io import confirm, outL, outZ, stderr, stdin
+from pithy.string import format_byte_count
+from pithy.task import UnexpectedExit, run
 
 
 PackFn = Callable[[str, str], None]

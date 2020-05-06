@@ -4,8 +4,8 @@ from argparse import ArgumentParser
 from functools import partial
 from typing import cast
 
-from ..http.server import HTTPRequestHandler, HTTPServer
-from ..task import run
+from pithy.http.server import HTTPRequestHandler, HTTPServer
+from pithy.task import run
 
 
 def main() -> None:

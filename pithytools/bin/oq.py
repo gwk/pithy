@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterable, List
 from tolkien import Source, Token
 
-from ..desc import outD
-from ..iterable import iter_values
-from ..lex import Lexer
-from ..loader import load
-from ..parse import Adjacency, Atom, Choice, Left, Parser, Precedence, Struct
+from pithy.desc import outD
+from pithy.iterable import iter_values
+from pithy.lex import Lexer
+from pithy.loader import load
+from pithy.parse import Adjacency, Atom, Choice, Left, Parser, Precedence, Struct
 
 
 def main() -> None:

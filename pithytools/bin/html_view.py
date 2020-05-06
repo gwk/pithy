@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from sys import stdin
 from typing import BinaryIO
 
-from ..task import run
+from pithy.task import run
 
 
 def main() -> None:

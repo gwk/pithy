@@ -7,8 +7,8 @@ from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
 from typing import Any, ByteString, Callable, Dict, List, Optional, Tuple, TypeVar
 
-from ..encodings import enc_lep62
-from ..io import errSL
+from pithy.encodings import enc_lep62
+from pithy.io import errSL
 
 
 _ByteString = TypeVar('_ByteString', ByteString, bytes, bytearray, memoryview) # Hack around the typeshed defs from base64.

@@ -15,7 +15,8 @@ else
 fi
 
 echo "package: $1"
-dist_files=$(find _build/dist -regex '.*/pithy-[0-9]*\.[0-9]*\.[0-9]*\.tar\.gz')
+regex=".*/$1-[0-9.]*\.tar\.gz"
+dist_files=$(find _build/dist -regex "$regex")
 echo "distribution files:" $dist_files
 [[ $dist_files = *' '* ]] && fail "found multiple distribution files: $dist_files"
 

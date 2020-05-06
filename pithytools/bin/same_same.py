@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Match, Optional, Set, Tuple
 
 from pithy.ansi import BG, BOLD, FILL, RST, RST_BOLD, RST_TXT, TXT, gray26, rgb6, sanitize_for_console, sgr
 
-from ..diff import calc_diff
+from pithy.diff import calc_diff
 
 
 '''

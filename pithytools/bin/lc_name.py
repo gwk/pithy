@@ -5,7 +5,7 @@
 from argparse import ArgumentParser
 from sys import stderr
 
-from ..fs import file_inode, move_file, path_join, split_dir_name, walk_files
+from pithy.fs import file_inode, move_file, path_join, split_dir_name, walk_files
 
 
 def main() -> None:

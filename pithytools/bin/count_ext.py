@@ -16,7 +16,7 @@
 from argparse import ArgumentParser
 from typing import DefaultDict
 
-from ..fs import path_ext, walk_files
+from pithy.fs import path_ext, walk_files
 
 
 def main() -> None:

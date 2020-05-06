@@ -6,9 +6,9 @@ from os import environ
 from shutil import copyfile
 from typing import DefaultDict, NoReturn, Set
 
-from ..diff import calc_diff
-from ..fs import is_file, path_exists
-from ..path import norm_path, path_dir, path_join, path_rel_to_dir
+from pithy.diff import calc_diff
+from pithy.fs import is_file, path_exists
+from pithy.path import norm_path, path_dir, path_join, path_rel_to_dir
 
 
 pat_version = '0'
