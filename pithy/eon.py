@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Eon is a a structured data format, similar to JSON and YAML.
+'''
+
+
 import re
 from collections.abc import Mapping
 from functools import singledispatch
