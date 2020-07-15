@@ -164,7 +164,7 @@ def _wrapped_type_for_optional(static_type: type) -> type:
   except AttributeError as e: raise TypeError(static_type) from e
   if meta_class_name != '_Union': raise TypeError(static_type)
   members = static_type.__args__ # type: ignore
-  if len(members) != 2 or NoneType not in members: raise TypeError(static_type) # type: ignore
+  if len(members) != 2 or NoneType not in members: raise TypeError(static_type)
   return [m for m in members if m is not NoneType][0] # type: ignore
 
 

@@ -60,7 +60,7 @@ def text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
 
 
 def binary_file_for(f:FileOrPath) -> BinaryIO:
-  if isinstance(f, BufferedReader): return f # type: ignore # 'Statement is unreachable'.
+  if isinstance(f, BufferedReader): return f
   #^ Not sure about the reachability error above. Has to do with the relationship between abstract IO and concrete BufferedReader.
   if isinstance(f, str): return open(f, 'rb')
   try: return BufferedReader(f) # type: ignore
