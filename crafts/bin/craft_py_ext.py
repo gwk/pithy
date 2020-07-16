@@ -218,7 +218,9 @@ def parse_pyi_module(path:str) -> ScopeSource:
 
   # Compile.
   try: code = compile(module, filename=path, mode='exec', optimize=1)
-  except SyntaxError as e: exit(src_diagnostic(path, line0=e.lineno+1, col0=(e.offset or 0), msg=str(e)))
+  except SyntaxError as e:
+    line1 = e.lineno or 0 # If lineno is None, then line0 in our diagnostic becomes -1, which will print as '0'.
+    exit(src_diagnostic(path, line0=line1-1, col0=(e.offset or 0), msg=str(e)))
   except ValueError as e: exit(src_diagnostic(path, line0=0, col0=0, msg=str(e)))
 
   # Exec.
