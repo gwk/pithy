@@ -394,7 +394,7 @@ def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_mat
     l, r = p
     if l in kind_reachable_kinds[r] and r in kind_reachable_kinds[l]: # Cyclical reachability.
       unorderable_kinds.update(p)
-      unorderable_pairs.append(cast(Tuple[str,str], p))
+      unorderable_pairs.append(p)
 
   if unorderable_pairs:
     errL(f'note: `{name}`: patterns cannot be correctly ordered for backtracking regex engines: ',
