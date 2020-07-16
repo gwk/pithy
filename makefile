@@ -16,7 +16,7 @@ _default: test typecheck lint
 
 _phony: # Used to mark pattern rules as phony.
 
-packages := crafts iotest legs pithy utest wu
+packages := crafts iotest legs pithy pithytools tolkien utest wu
 
 build:
 	./build.sh $(packages)
@@ -78,7 +78,7 @@ test-diff-data:
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
 typecheck: gen
-	craft-py-check crafts iotest legs pithy tools utest
+	craft-py-check $(packages)
 
 vscode-insider-links:
 	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
