@@ -17,7 +17,7 @@ def main() -> None:
 def conv_img(path:str, base64:bool) -> None:
   b = open(path, 'rb').read()
   if base64:
-    encoded = b64encode(b, altchars=None) # type: ignore
+    encoded = b64encode(b, altchars=None)
     print(f'{path}:\ndata:image/png;base64,{encoded.decode()}')
   else:
     exit('error: `-base64` is currently the only supported option.')
