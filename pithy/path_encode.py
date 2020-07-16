@@ -39,7 +39,7 @@ _path_encode_table[ord('/')] = ','
 for c in '%-._:=':
   _path_encode_table[ord(c)] = c
 
-for start, last in ['09', 'AZ', 'az']:
+for start, last in [('0', '9'), ('A', 'Z'), ('a', 'z')]:
   for code in range(ord(start), ord(last) + 1):
     _path_encode_table[code] = chr(code)
 
