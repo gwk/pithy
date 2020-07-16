@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from typing import Any, ContextManager, IO, List, Tuple, Union
+from typing import IO, Any, ContextManager, List, Tuple, Union, cast
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -42,7 +42,7 @@ class DuplexPipe(ContextManager):
     if isinstance(f, int):
       f = open(f, **kwargs)
       self._files[idx] = f
-    return f
+    return cast(IO, f)
 
   @property
   def left_fds(self) -> Tuple[int, int]:
