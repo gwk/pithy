@@ -4,7 +4,7 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
-from typing import Any, Counter, DefaultDict, NamedTuple, Optional, TextIO
+from typing import Any, Counter, DefaultDict, NamedTuple, Optional, TextIO, cast
 from .string import iter_excluding_str
 
 
@@ -81,7 +81,7 @@ def _write_schema(file: TextIO, schema: Schema, count_atoms: bool, inline: bool,
     print(*items, sep='', end='', file=file)
 
   def put_types(prefix: str, symbol: str, subindent: str, types: dict):
-    for t, subschema, in sorted(types.items(), key=lambda item: item[0].__name__):
+    for t, subschema, in sorted(types.items(), key=lambda item: cast(str, item[0].__name__)):
       put(prefix, symbol, t.__name__)
       _write_schema(file, subschema, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
 
