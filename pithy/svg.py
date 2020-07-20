@@ -8,7 +8,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 from functools import reduce
 from html import escape as html_escape
 from math import floor, log10
-from typing import (Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union, overload)
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union, overload, cast
 
 from .iterable import iter_unique, window_iter
 from .range import Num, NumRange
@@ -48,7 +48,7 @@ class SvgWriter(XmlWriter):
 
 
   def on_close(self) -> None:
-    self.children.sort(key=lambda el: el.attrs.get('z_index', 0))
+    self.children.sort(key=lambda el: cast(str, el.attrs.get('z_index', 0)))
 
 
 # Html and Svg share these classes.
