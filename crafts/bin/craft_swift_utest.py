@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
+from shlex import join as sh_join
 from typing import Any, Dict, List, NamedTuple
 
 import yaml
@@ -10,7 +11,7 @@ from crafts import CraftConfig, load_craft_config
 from pithy.fs import make_dirs, remove_dir_contents, walk_files
 from pithy.io import errL, errSL, outL
 from pithy.iterable import fan_by_key_fn
-from pithy.path import is_sub_path, path_ext, path_name, path_stem, rel_path, replace_first_dir
+from pithy.path import is_sub_path, path_ext, path_join, path_name, path_rel_to_dir, path_stem, rel_path, replace_first_dir
 from pithy.task import run, runC
 
 
@@ -87,6 +88,7 @@ def run_utest(src_path:str, module:Module, conf:CraftConfig, debug_dir:str, sdk_
   remove_dir_contents(test_dir)
   main_path = f'{test_dir}/main.swift'
   exe_path = f'{test_dir}/{name}'
+  debug_dir_rpath = path_join('@executable_path', path_rel_to_dir(debug_dir, test_dir))
   swiftdeps = load_yaml(open(swiftdeps_path))
   top_level_syms = swiftdeps['provides-top-level']
   if top_level_syms is None: return True
@@ -103,22 +105,24 @@ def run_utest(src_path:str, module:Module, conf:CraftConfig, debug_dir:str, sdk_
     '-I', debug_dir,
     '-L', debug_dir,
     '-module-cache-path', module_cache_dir,
-    '-swift-version', '4.2',
+    '-swift-version', conf.swift_version,
     '-target', conf.target_triple_macOS,
     '-Onone',
     '-g',
     '-enable-testing',
     '-module-name', name,
     '-emit-executable',
+    '-Xlinker', '-rpath',
+    '-Xlinker', debug_dir_rpath,
     '-l' + module.name,
     '-o', f'{test_dir}/{name}',
     main_path,
   ]
-  #errSL('CMD', cmd)
+  #errSL('CMD:', sh_join(cmd))
   if runC(cmd) != 0:
     errSL('utest compile failed:', *cmd)
     return False
-  if runC(exe_path,) != 0:
+  if runC(exe_path) != 0:
     errSL('utest failed:', exe_path)
     return False
   return True

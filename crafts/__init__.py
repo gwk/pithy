@@ -20,19 +20,20 @@ XCODE_TOOLCHAIN_DIR = 'XCODE_TOOLCHAIN_DIR'
 
 
 class CraftConfig(NamedTuple):
-  build_dir: str
-  config_path: str
-  copyright: str
-  project_dir: str
-  target_macOS: str
-  swift_path: str
-  xcode_dev_dir: str
-  xcode_toolchain_dir: str
-  product_name: Optional[str] = None
+  build_dir: str = '_build'
+  config_path: str = '' # Derived.
+  copyright: str = '' # Required.
   product_identifier: Optional[str] = None
-  sources: str = 'src'
+  product_name: Optional[str] = None
+  project_dir: str = '' # Derived.
   resources: Dict[str, str] = {}
+  sources: str = 'src'
+  swift_path: str = ''
+  swift_version: str = None
+  target_macOS: str = None
   ts_modules: Dict[str, str] = {}
+  xcode_dev_dir: str = '' # Derived.
+  xcode_toolchain_dir: str = '' # Derived.
 
   @property
   def target_triple_macOS(self) -> str: return f'x86_64-apple-macosx{self.target_macOS}'
@@ -84,6 +85,9 @@ def load_craft_config() -> CraftConfig:
 
   if not is_sub_path(c.build_dir): exit(f'craft error: build-dir must be a subpath: {c.build_dir!r}')
 
+  if c.swift_version and not re.fullmatch(r'\d+(\.\d+)?', c.swift_version):
+    exit(f"craft error: swift-version should be 'MAJOR' or MAJOR.MINOR' number; received {c.swift_version!r}")
+
   if c.target_macOS and not re.fullmatch(r'\d+\.\d+', c.target_macOS):
     exit(f"craft error: target-macOS should be 'MAJOR.MINOR' number; received {c.target_macOS!r}")
 
@@ -101,7 +105,6 @@ def parse_craft(path:str) -> Dict[str,Any]:
     if k not in craft_configurable_keys: exit(f'craft error: invalid craft config key: {k!r}')
   missing_keys = craft_required_keys.difference(d)
   if missing_keys: exit('\n  '.join([f'craft error: missing required keys in {path!r}:', *sorted(missing_keys)]))
-  dict_set_defaults(d, craft_config_defaults)
   return cast(Dict[str,Any], d)
 
 
@@ -109,20 +112,17 @@ craft_required_keys = frozenset({
   'copyright'
 })
 
-craft_config_defaults = {
-  'copyright': 'Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.',
-  'build-dir': '_build',
-  'target-macOS': '10.14',
-}
 
 # TODO: derive this from CraftConfig class def.
 craft_configurable_keys = frozenset({
   *craft_required_keys,
-  *craft_config_defaults,
+  'copyright',
   'product-name',
   'product-identifier',
   'sources',
+  'swift-version',
   'resources',
+  'target-macOS',
   'ts-modules',
 })
 
