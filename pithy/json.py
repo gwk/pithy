@@ -170,7 +170,7 @@ def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Calla
 
     keys = frozenset(keys_raw)
     if keys in type_map:
-      raise ValueError(f'conflicting type hooks for key seyt {keys}:\n  {type_map[keys]}\n  {fn}')
+      raise ValueError(f'conflicting type hooks for key set {keys}:\n  {type_map[keys]}\n  {fn}')
     type_map[keys] = fn
 
   def types_object_hook(d:Dict) -> Any:
