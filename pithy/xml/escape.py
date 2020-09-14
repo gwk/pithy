@@ -6,8 +6,7 @@ XML escaping utilities.
 
 from functools import lru_cache
 from html import escape as html_escape
-
-from typing import Any, Iterable, Tuple, Optional, Dict, List
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
 XmlAttrs = Optional[Dict[str,Any]]

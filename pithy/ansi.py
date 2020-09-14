@@ -49,9 +49,9 @@ CSI n T: Scroll whole page down by n (default 1) lines. New lines are added at t
 '''
 
 import re as _re
-
 from sys import stderr, stdout
 from typing import Any, List
+
 
 is_err_tty = stderr.isatty()
 is_out_tty = stdout.isatty()

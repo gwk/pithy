@@ -220,6 +220,7 @@ def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
   # Print the output from the first test, and then the diff for each subsequent output that differs.
   from difflib import ndiff
   from shlex import quote as sh_quote
+
   from pithy.task import runCO
 
   def quote(cmd:List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)

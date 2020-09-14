@@ -28,7 +28,7 @@ def is_a(val:Any, T:Union[type, Tuple[type, ...]]) -> bool:
   except TypeError as e:
     if e.args[0] != 'Subscripted generics cannot be used with class and instance checks': raise
   RTT = T.__origin__ # type: ignore # The runtime type for the static type.
-  args = T.__args__  # type: ignore
+  args = T.__args__ # type: ignore
   try:
     predicate = _generic_type_predicates[RTT]
   except KeyError: # Not specialized.

@@ -11,7 +11,6 @@ from inspect import Parameter, Signature, signature
 from typing import Any, ByteString, Callable, Dict, Iterator, List, NoReturn, Optional, TextIO, Tuple, Type, Union
 
 from mypy_extensions import VarArg
-
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
 from pithy.path import path_name, path_stem
 

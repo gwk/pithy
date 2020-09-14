@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Pattern, Set
 from urllib.parse import urldefrag, urljoin
 
 import html5_parser
-
 from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file, path_descendants, path_dir,
   path_ext, path_join, remove_path, remove_path_if_exists)
 from pithy.io import errL, errSL, outL

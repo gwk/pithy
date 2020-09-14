@@ -2,7 +2,8 @@
 
 from sys import stderr
 from time import time as now
-from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
+
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class Clock:

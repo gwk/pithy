@@ -1,18 +1,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from . import Syntax
-from ..dispatch import dispatched
-from ..io import errL
-from ..tree import transform_tree, OmitNode
+import re
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple
-import re
 
-from docutils import frontend as _frontend
-from docutils import nodes as _nodes
+from docutils import frontend as _frontend, nodes as _nodes
 from docutils.nodes import Node as Node, Text
-from docutils.utils import new_document as _new_document
 from docutils.parsers.rst import Parser as _RstParser
+from docutils.utils import new_document as _new_document
+
+from ..dispatch import dispatched
+from ..io import errL
+from ..tree import OmitNode, transform_tree
+from . import Syntax
 
 
 def parse_rst(path:str, text:str) -> Syntax:

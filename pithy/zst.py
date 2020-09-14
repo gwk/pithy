@@ -1,6 +1,8 @@
+from typing import IO, AnyStr, BinaryIO, Iterable, List, NoReturn, TextIO
+
 from zstandard import ZstdCompressor # type: ignore
-from typing import AnyStr, BinaryIO, IO, Iterable, List, NoReturn, TextIO
-from .typing import OptTypeBaseExc, OptBaseExc, OptTraceback
+
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class ZstWriterBase(IO[AnyStr]):

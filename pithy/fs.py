@@ -7,15 +7,13 @@ import stat as _stat
 import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
-from typing import (IO, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple)
+from typing import IO, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
   file_status, is_dir, is_file, is_file_executable_by_owner, is_link, is_link_to_dir, is_link_to_file, is_mount, path_exists)
-
 from .path import (MixedAbsoluteAndRelativePathsError, Path, PathOrFd, abs_or_norm_path, abs_path, is_path_abs, norm_path,
   path_descendants, path_dir, path_ext, path_join, path_name, rel_path, split_dir_name, str_path)
-
 from .util import memoize
 
 

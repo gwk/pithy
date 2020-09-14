@@ -5,7 +5,7 @@
 import re
 from html import escape as html_escape
 from sys import stdout
-from typing import Any, Callable, Dict, Iterable, Optional, TextIO, Tuple, Union, Mapping
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, TextIO, Tuple, Union
 
 
 GraphvizName = Union[int, float, str]

@@ -6,8 +6,8 @@ from typing import Set, Tuple, Union
 
 from pithy.ansi import FILL, RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt
-from pithy.iterable import group_by_heads, OnHeadless
 from pithy.io import errL, outZ, stdout
+from pithy.iterable import OnHeadless, group_by_heads
 from pithy.lex import Lexer
 from pithy.path import path_rel_to_current_or_abs
 from pithy.task import run_gen, runCO

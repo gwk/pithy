@@ -1,11 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from http import HTTPStatus
+from random import uniform as rand_uniform
 from shlex import quote as sh_quote
+from time import sleep
 from typing import Any, Dict
 from urllib.parse import urlencode, urlparse
-from random import uniform as rand_uniform
-from time import sleep
+
 from .fs import make_dirs, move_file, path_dir, path_exists, path_ext, path_join
 from .io import errSL
 from .path_encode import path_for_url

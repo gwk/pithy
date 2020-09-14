@@ -17,7 +17,7 @@ from .string import EscapedStr
 
 
 # Handle lxml comments if available; these are produced by html5_parser.
-try: from lxml.etree import Comment  # type: ignore
+try: from lxml.etree import Comment # type: ignore
 except ImportError: Comment = object() # Comment is a cyfunction (weirdly), so we can fallback to a dummy object.
 
 

@@ -8,7 +8,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 from functools import reduce
 from html import escape as html_escape
 from math import floor, log10
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union, overload, cast
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union, cast, overload
 
 from .iterable import iter_unique, window_iter
 from .range import Num, NumRange

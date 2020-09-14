@@ -9,7 +9,6 @@ from itertools import chain, count
 from typing import Any, ContextManager, Dict, Optional, TextIO, Tuple, Type, TypeVar
 
 from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
-
 from .escape import EscapedStr, XmlAttrs, esc_xml_text, fmt_attrs
 
 

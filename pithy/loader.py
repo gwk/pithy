@@ -147,7 +147,7 @@ def load_json(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return _load_json(text_file_for(file_or_path), **kwargs)
 
 def load_jsonl(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from .json import load_jsonl  as _load_jsonl
+  from .json import load_jsonl as _load_jsonl
   return _load_jsonl(text_file_for(file_or_path), **kwargs)
 
 def load_jsons(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
@@ -229,7 +229,7 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_yaml(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from yaml import load as _load_yaml, SafeLoader
+  from yaml import SafeLoader, load as _load_yaml
   loader = kwargs.pop('Loader', SafeLoader)
   return _load_yaml(binary_file_for(f), Loader=loader, **kwargs) # type: ignore
 
@@ -291,6 +291,7 @@ def _sub_ext(cmpd_ext:str) -> str:
 
 def main() -> None:
   from sys import argv
+
   from .io import outD
   from .parse import ParseError
 

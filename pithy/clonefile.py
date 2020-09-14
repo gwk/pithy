@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from ctypes import CDLL, c_char_p, c_uint, c_int, set_errno
+import sys
+from ctypes import CDLL, c_char_p, c_int, c_uint, set_errno
 from errno import ENOENT, ENOTSUP
 from os import strerror
 from os.path import dirname, isdir
 from typing import Callable, Optional
-import sys
 
 
 __all__ = ['clone', 'volume_supports_clone']

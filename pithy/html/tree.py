@@ -5,9 +5,10 @@ HTML writer.
 '''
 
 from typing import Any
-from ..xml.tree import EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs
+
+from ..svg import Script, Style, Svg
 from ..xml.escape import esc_xml_attr, esc_xml_text
-from ..svg import Svg, Style, Script
+from ..xml.tree import EscapedStr, XmlAttrs, XmlWriter, add_opt_attrs
 from .semantics import form_input_types
 
 

@@ -2,5 +2,6 @@
 
 from . import Syntax
 
+
 def parse(text:str) -> Syntax:
   raise NotImplementedError

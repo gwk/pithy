@@ -64,6 +64,9 @@ lint:
 pip-uninstall:
 	pip3 uninstall --yes $(packages)
 
+sort-imports:
+	isort $(packages)
+
 test: gen
 	iotest -fail-fast
 

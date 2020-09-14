@@ -3,8 +3,9 @@
 'Parse Python format strings and generate corresponding regular expressions.'
 
 import re
-from .string import line_col_1
 from typing import Any, Iterable, Match, Pattern, Tuple
+
+from .string import line_col_1
 
 
 class FormatError(Exception): pass

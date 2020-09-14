@@ -14,10 +14,10 @@ the branches are TagTree instances, which are subclasses of tuple.
 '''
 
 import re
-
 from itertools import chain
-from typing import Callable, Dict, Match, Iterable, Iterator, List, Sequence, Tuple, Union
-from .ansi import TXT_R, TXT_Y, RST_TXT, sgr
+from typing import Callable, Dict, Iterable, Iterator, List, Match, Sequence, Tuple, Union
+
+from .ansi import RST_TXT, TXT_R, TXT_Y, sgr
 from .buffer import Buffer
 
 

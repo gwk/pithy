@@ -4,8 +4,8 @@ from typing import Any
 
 from html5_parser import parse
 
-from ..loader import FileOrPath, binary_file_for
 from ..html import HtmlNode
+from ..loader import FileOrPath, binary_file_for
 
 
 def load_html(file_or_path:FileOrPath, encoding:str=None, **kwargs:Any) -> Any:

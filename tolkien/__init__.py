@@ -6,6 +6,7 @@ Token and Source classes for implementing lexers and parsers.
 
 from typing import ByteString, Generic, Iterable, List, NamedTuple, NoReturn, Optional, Protocol, Tuple, TypeVar, Union
 
+
 _setattr = object.__setattr__
 
 Slice = slice

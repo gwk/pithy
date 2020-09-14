@@ -2,6 +2,7 @@
 
 import sqlite3
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Type, cast
+
 from .json import render_json
 
 

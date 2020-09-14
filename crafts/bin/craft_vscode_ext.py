@@ -1,10 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from pithy.fs import is_dir, expand_user, remove_dir_contents_if_exists, copy_path, walk_files
+
+from pithy.fs import copy_path, expand_user, is_dir, remove_dir_contents_if_exists, walk_files
 from pithy.io import errSL
 from pithy.string import replace_prefix
-
 
 
 def main() -> None:

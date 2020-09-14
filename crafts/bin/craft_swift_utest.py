@@ -5,14 +5,13 @@ from shlex import join as sh_join
 from typing import Any, Dict, List, NamedTuple
 
 import yaml
-from yaml import safe_load as load_yaml
-
 from crafts import CraftConfig, load_craft_config
 from pithy.fs import make_dirs, remove_dir_contents, walk_files
 from pithy.io import errL, errSL, outL
 from pithy.iterable import fan_by_key_fn
 from pithy.path import is_sub_path, path_ext, path_join, path_name, path_rel_to_dir, path_stem, rel_path, replace_first_dir
 from pithy.task import run, runC
+from yaml import safe_load as load_yaml
 
 
 def main() -> None:

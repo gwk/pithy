@@ -6,16 +6,15 @@ from os import environ
 from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple, Union,
   cast)
 
-import pygments  # type: ignore
-import pygments.lexers  # type: ignore
-import pygments.token  # type: ignore
-from pygments.token import Token
-
+import pygments # type: ignore
+import pygments.lexers # type: ignore
+import pygments.token # type: ignore
 from pithy.html.semantics import phrasing_tags
 from pithy.io import errSL, errSN
 from pithy.json import load_json
 from pithy.path import norm_path, path_dir, path_ext, path_join, path_name_stem, rel_path
 from pithy.url import url_path
+from pygments.token import Token
 
 
 __all__ = ['writeup', 'writeup_dependencies', 'default_css', 'minify_css', 'minify_js', 'default_js']

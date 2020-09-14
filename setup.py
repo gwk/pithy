@@ -5,7 +5,7 @@
 # This is necessary because pip does not practically allow us to use alternate names for the setup files.
 
 from configparser import ConfigParser
-from distutils.command.build_scripts import build_scripts  # type: ignore
+from distutils.command.build_scripts import build_scripts # type: ignore
 from itertools import chain
 from os import chmod, environ, getcwd as current_dir, listdir as list_dir, mkdir as make_dir, walk
 from os.path import (basename as path_name, dirname as path_dir, exists as path_exists, isdir as is_dir, join as path_join,
@@ -13,11 +13,11 @@ from os.path import (basename as path_name, dirname as path_dir, exists as path_
 from pprint import pprint
 from typing import Any, List
 
-from setuptools import setup  # type: ignore
-from setuptools.command.develop import develop  # type: ignore
-from setuptools.command.install import install  # type: ignore
-from setuptools.command.install_scripts import install_scripts  # type: ignore
-from setuptools.config import read_configuration  # type: ignore
+from setuptools import setup # type: ignore
+from setuptools.command.develop import develop # type: ignore
+from setuptools.command.install import install # type: ignore
+from setuptools.command.install_scripts import install_scripts # type: ignore
+from setuptools.config import read_configuration # type: ignore
 
 
 def msg(*items:Any) -> None: print(' ', *items)

@@ -7,6 +7,7 @@ from decimal import Decimal
 from string import Template
 from typing import Any, Iterable, Iterator, Sequence, Tuple, TypeVar
 
+
 _T = TypeVar('_T')
 
 
