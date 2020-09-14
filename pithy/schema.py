@@ -4,7 +4,7 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
-from typing import Any, Counter, DefaultDict, NamedTuple, Optional, TextIO, cast
+from typing import Any, Counter, DefaultDict, NamedTuple, Optional, Set, TextIO, Tuple, TypeVar, cast
 from .string import iter_excluding_str
 
 
@@ -19,7 +19,45 @@ class Schema(NamedTuple):
   '''
   atoms: Counter
   seqs: DefaultDict
-  dicts: DefaultDict
+  dicts: DefaultDict # DefaultDict of keys to DefaultDict of value schemas.
+
+
+  def update(self: 'Schema', other: Optional['Schema']) -> None:
+    if other is None: return
+    self.atoms.update(other.atoms) # Counter accumulates the counts automatically.
+    for et, es in other.seqs.items(): # Recursively update sequence element type schemas.
+      self.seqs[et].update(es)
+    for key, value_type_schemas in other.dicts.items(): # Recursively update dict key -> value -> schemas.
+      for vt, vs in value_type_schemas.items():
+        self.dicts[key][vt].update(vs)
+
+
+  def collapse(self, *paths:Tuple[str,...]) -> None:
+    for path in paths:
+      self._collapse(path)
+
+
+  def _collapse(self, path: Tuple[str,...]) -> None:
+      if path:
+        key = path[0]
+        tail = path[1:]
+        for vs in self.dicts[key].values():
+          vs._collapse(tail)
+        return
+      # Path is empty; collapse this node.
+      collapsed_dicts = DefaultDict(_dd_of_schemas)
+      keys = Keys()
+      collapsed_value_schemas = collapsed_dicts[keys]
+      for key, value_type_schemas in self.dicts.items():
+        keys.add(key)
+        for value_type, schema in value_type_schemas.items(): # Keep the value types separate.
+          collapsed_value_schemas[value_type].update(schema)
+      self.dicts.clear()
+      self.dicts.update(collapsed_dicts)
+
+
+class Keys(Set):
+  def __hash__(self) -> int: return id(self)
 
 
 def _mk_schema() -> Schema:
@@ -71,7 +109,7 @@ def _unique_el(counter: Counter) -> Any:
   raise ValueError(counter)
 
 
-def _write_schema(file: TextIO, schema: Schema, count_atoms: bool, inline: bool, indent: str, root: bool) -> None:
+def _write_schema(file: TextIO, schema: Schema, *, all_keys: bool, count_atoms: bool, inline: bool, indent: str, root: bool) -> None:
   '''
   Note: _write_schema expects its caller to not have emitted a trailing newline.
   This allows it to decide whether or not to inline monomorphic type information.
@@ -83,7 +121,7 @@ def _write_schema(file: TextIO, schema: Schema, count_atoms: bool, inline: bool,
   def put_types(prefix: str, symbol: str, subindent: str, types: dict):
     for t, subschema, in sorted(types.items(), key=lambda item: cast(str, item[0].__name__)):
       put(prefix, symbol, t.__name__)
-      _write_schema(file, subschema, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
+      _write_schema(file, subschema, all_keys=all_keys, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
 
   if not any(schema): # should only happen for root; other schemas are created on demand.
     put(indent, 'empty')
@@ -105,22 +143,24 @@ def _write_schema(file: TextIO, schema: Schema, count_atoms: bool, inline: bool,
     put_types(prefix=prefix, symbol='* ', subindent=(indent + '| '), types=schema.seqs)
   if schema.dicts:
     for k, types in sorted(schema.dicts.items()):
-      put(indent, repr(k))
+      rk = repr(k) if all_keys or not isinstance(k, Keys) else f'<{len(k)} keys>'
+      put(indent, rk)
       # Inlining for dictionaries is simpler, because we can always inline after the key we just emitted.
       prefix = ' ' if (inline and len(types) == 1) else indent
       put_types(prefix=prefix, symbol=': ', subindent=(indent + '. '), types=types)
 
 
-def write_schema(file: TextIO, schema: Optional[Schema]=None, count_atoms=False, inline=True, indent='', end='\n') -> None:
+def write_schema(file: TextIO, schema: Optional[Schema]=None, *, all_keys=False, count_atoms=False, inline=True, indent='', end='\n') -> None:
   '''
   Write `schema` to file `file`.
   If `count_atoms` is true, then histograms of atom values are emitted.
   If `inline` is false, then monomorphic type names are never inlined,
   resulting in longer but more regular output.
+  `indent` specifies a leading indentation for each line; can be any string.
   '''
   if schema is None:
     file.write(indent + 'empty')
   else:
-    _write_schema(file, schema=schema, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
+    _write_schema(file, schema=schema, all_keys=all_keys, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
   file.write(end)
 
