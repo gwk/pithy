@@ -20,7 +20,7 @@ XCODE_TOOLCHAIN_DIR = 'XCODE_TOOLCHAIN_DIR'
 
 
 class CraftConfig(NamedTuple):
-  build_dir: str = '_build'
+  build_dir: str = '.build'
   config_path: str = '' # Derived.
   copyright: str = '' # Required.
   product_identifier: Optional[str] = None
@@ -28,7 +28,7 @@ class CraftConfig(NamedTuple):
   project_dir: str = '' # Derived.
   resources: Dict[str, str] = {}
   sources: str = 'src'
-  swift_path: str = ''
+  swift_path: str = '' # Derived.
   swift_version: str = None
   target_macOS: str = None
   ts_modules: Dict[str, str] = {}

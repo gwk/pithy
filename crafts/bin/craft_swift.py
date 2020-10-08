@@ -29,7 +29,9 @@ def main() -> None:
   sub_cmd = 'test' if args.xctest else 'build'
   errL(f'swift compiler: {conf.swift_path}')
 
-  cmd = ['swift', sub_cmd, '--package-path='+conf.project_dir, '--build-path='+conf.build_dir]
+  cmd = ['swift', sub_cmd, '--package-path='+conf.project_dir]
+  if conf.build_dir != '.build':
+    cmd.append('--build-path='+conf.build_dir)
   if args.product: cmd.extend(['--product', args.product])
   if args.target: cmd.extend(['--target', args.target])
   cmd.extend(args.args)
