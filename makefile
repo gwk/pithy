@@ -37,7 +37,7 @@ cov-meta:
 	test-meta/meta-coverage.sh
 
 develop:
-	./develop.sh $(packages)
+	sh/develop.sh $(packages)
 
 docs:
 	craft-docs
