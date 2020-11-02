@@ -1,36 +1,35 @@
-<section class="S1" id="s0">
-  <h1 id="h0">Pithy</h1>
-  <p>
-    Pithy is a small library of Python 3.6 utilities. The various modules are mostly independent of each other.
-  </p>
-  <p>
-    The project is hosted at 'https://github.com/gwk/pithy'.
-  </p>
-  <ul class="L1">
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/ansi.py">ansi</a> Ansi console control strings for colors and other terminal IO.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/buffer.py">buffer</a> Buffer is an iterable class that lets you peek at and push back elements. Useful for parsing.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/collection.py">collection</a> Collection utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/csv_utils.py">csv_utils</a> CSV (comma-separated-value table files) utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/date.py">data</a> Date and time utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/defaultlist.py">defaultlist</a> DefaultList is a list subclass, analogous to <code class="inline">defaultdict</code>.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/format.py">format</a> Python format string parsing utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/fs.py">fs</a> File system utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/graph_utils.py">graph_utils</a> Graph (as in network, not chart) utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/immutable.py">immutable</a> Immutable object utilitise.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/io.py">io</a> IO utilites, including shorthand functions for printing to stdout and stderr.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/iterable.py">iterable</a> Iterable utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/json_utils.py">json_utils</a> JSON, JSONL (per-line JSON), and JSONS (concatenated/streamable JSON) utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/lex.py">lex</a> Easily create robust lexers from regular expressions.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/meta.py">meta</a> Python metaprogramming tools (it's a slippery slope!).</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/path_encode.py">path_encode</a> Like urlencode, for creating sensible filesystem paths.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/schema.py">schema</a> Compute the common structure for a collection of data examples.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/sentinel.py">sentinel</a> Even sillier than NPM's left-pad.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/sequence.py">sequence</a> Sequence utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/string_utils.py">string_utils</a> String utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/tag_parse.py">tag_parse</a> Simplistic parser for simple structural languages defined by start/end tags.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/task.py">task</a> Subprocess utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/transform.py">transform</a> Transformer creates a pipeline of functional stages for an input stream, through which each record is transformed and notable transformations are logged.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/type_util.py">type_util</a> Type utilities.</li>
-    <li><a href="https://github.com/gwk/pithy/blob/master/pithy/util.py">util</a> Miscellaneous utilities.</li>
-  </ul>
-</section>
+# Pithy: Python libraries and utilities
+
+This repository contains the source code for the `pithy` library, as well as several other projects that depend on it. These dependent projects used to live in separate repositories but got merged together when versioning became too laborious. Each repository has its own readme.
+
+
+## Pithy library
+
+The code in the `pithy` library first started accumulating around 2010. It contains a variety of code, some of which has been used a lot, other parts that are still rather experimental, and probably a few parts that are or should be abandoned. A lot of it is rather idiosyncratic and pays little heed to various conventions in the Python community.
+
+
+## Crafts
+Crafts is an odd assortment of build tools.
+
+
+## IOTest
+`iotest` is a command line program for doing testing other command line programs. It is supposed to make it easy to test for expectations in text file outputs. In particular, it allows for parameterizing tests and shows diffs between expected and actual program output.
+
+
+## Legs
+Legs is a lexer generator. It is currently in an experimental state.
+
+
+## Pithy Tools
+`pithytools` This is a set of miscellaneous command line tools. They used to be part of Pithy but it seemed better that the core libary not come with a bunch of executables that potential users might not want.
+
+## Tolkien
+`tolkien` is a very small library that defines a Token type for writing parsers in Python. It was factored out of Legs so that I could use the same structure type in both Legs-based and in projects that do not depend on Legs.
+
+
+## UTest
+`utest` is a small, standalone library that provides basic unit testing. It can be used in conjunction with `iotest`.
+
+
+## Writeup
+A markup language similar to Markdown. This is currently in an experimental state. I have plans to rewrite it but it has been on the back burner for several years.
