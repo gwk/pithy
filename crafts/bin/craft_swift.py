@@ -1,5 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+`craft-swift` is a build tool wrapper around the swift compiler.
+'''
+
 import re
 from argparse import ArgumentParser
 from typing import Set, Tuple, Union

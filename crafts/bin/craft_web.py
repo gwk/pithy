@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+`craft-web` is a build tool wrapper around the TypeScript compiler. It is a work in progress.
+'''
+
+
 import re
 from sys import argv
 from typing import Dict, List

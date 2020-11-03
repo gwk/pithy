@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+`craft-vscode-ext` is a tool to generate simple VSCode extensions. It is a work in progress.
+'''
+
+
 from argparse import ArgumentParser
 
 from pithy.fs import copy_path, expand_user, is_dir, remove_dir_contents_if_exists, walk_files

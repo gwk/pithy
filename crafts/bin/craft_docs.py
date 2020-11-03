@@ -1,5 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+`craft-docs` is meant to build documentation trees using muck. It is currently outdated, because `muck` no longer uses a build directory.
+'''
+
 from pithy.fs import copy_path, remove_dir_contents, walk_files
 from pithy.string import replace_prefix
 from pithy.task import run

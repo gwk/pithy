@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+`craft-swift-utest` is a small test harness for running unit tests, with no dependency on XCTest.
+It is currently a work in progress and is somewhat out of date.
+'''
+
 from argparse import ArgumentParser
 from shlex import join as sh_join
 from typing import Any, Dict, List, NamedTuple

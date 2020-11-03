@@ -1,5 +1,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+`craft-py-ext` is an experimental tool for generating the boilerplate to build simple CPython extensions.
+It should be considered a work in progress.
+
+To use it, you write a `.pyi` type declaration file, and then generate the boilerplate from that.
+The boilerplate comes in two layers.
+An outer function provides the C extension interface (e.g. PyObject* types),
+and does a certain amount of error checking and unwrapping to native C types.
+Then, a corresponding inner function is called, which is where the actual implementation goes.
+The idea is to let the implementor fill out the inner funcntion, and keep most of the generated boilerplate separate.
+'''
+
+
 import re
 from argparse import ArgumentParser
 from ast import (AST, AnnAssign, Assign, AsyncFunctionDef, ClassDef, Expr as ExprStmt, FunctionDef, Import, ImportFrom, Module,
