@@ -3,9 +3,11 @@
 import json as _json
 import re
 from dataclasses import fields, is_dataclass
+from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import IO, AbstractSet, Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, TextIO, Tuple, Union
+from typing import (IO, AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, TextIO,
+  Tuple, Union)
 
 from .encode import EncodeObj, all_slots, encode_obj
 
@@ -199,15 +201,15 @@ def _hook_type_fn(t:type) -> ObjDecodeFn:
 
 
 
-def format_json_bytes(bytes_or_file):
-  file = bytes_or_file if hasattr(bytes_or_file, 'read') else BytesIO(bytes_or_file)
+def format_json_bytes(bytes_or_file: Union[BinaryIO, bytes], out_raw: BinaryIO) -> None:
+  file: BinaryIO = bytes_or_file if hasattr(bytes_or_file, 'read') else BytesIO(bytes_or_file) # type: ignore
 
   s_start, s_open, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(8)
 
   indent = 0
   state = s_start
   is_open_fresh = True
-  while byte := f.read(1):
+  while byte := file.read(1):
     prev_state = state
 
     if state == s_str_esc:
