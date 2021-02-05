@@ -11,15 +11,16 @@ class SqliteError(Exception): pass
 
 class Cursor(sqlite3.Cursor):
 
-  def execute(self, query: str, args:Iterable=()) -> 'Cursor':
+  def execute(self, query:str, args:Iterable=()) -> 'Cursor':
     try: return cast('Cursor', super().execute(query, args))
     except sqlite3.Error as e:
       raise SqliteError(f'SQLite error; query: {query!r}') from e
 
-  def run(self, *sql: str, **args: Any) -> 'Cursor':
+
+  def run(self, *sql:str, **args:Any) -> 'Cursor':
     '''
     Execute a query, joining multiple pieces of `sql` into a single query string, with values provided by keyword arguments.
-    Values whose types are not sqlite compatible are automatically converted to Json.
+    Argument values whose types are not sqlite-compatible are automatically converted to Json.
     '''
     query = ' '.join(sql)
     for k, v in args.items(): # Convert non-native values to Json.
@@ -28,69 +29,83 @@ class Cursor(sqlite3.Cursor):
     return self.execute(query, args)
 
 
-  def insert(self, *, with_='', or_='FAIL', table: str, fields: Tuple[str, ...], sql: str, args: Any) -> None:
+  def insert(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, sql:str, args:Any=()) -> None:
     '''
-    Execute an insert statement synthesized from `table`, `fields`, and `sql`.
+    Execute an insert statement synthesized from `into` (the table name), `fields` (optional), and `sql`.
+    This function is intended to be an intermediate helper for higher level insert functions.
     '''
     assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
-    fields_str = ', '.join(fields)
+    if fields:
+      fields_joined = ', '.join(fields)
+      fields_clause = f' ({fields_joined})'
+    else:
+      fields_clause = ''
     with_space = ' ' if with_ else ''
-    sql = f'{with_}{with_space}INSERT OR {or_} INTO {table} ({fields_str}) {sql}'
-    # TODO: cache sql with (with_, or_, table, fields, sql) key.
-    self.execute(sql, args)
+    complete_sql = f'{with_}{with_space}INSERT OR {or_} INTO {into}{fields_clause} {sql}'
+    # TODO: cache sql with (with_, or_, into, fields, sql) key.
+    self.execute(complete_sql, args)
 
 
-  def insert_seq(self, *, with_='', or_='FAIL', table: str, fields: Tuple[str, ...], args: Sequence[Any]) -> None:
+  def insert_row(self, *, with_='', or_='FAIL', into:str, **kwargs:Any) -> None:
     '''
-    Execute an insert statement inserting the sequence `args`, synthesized from `table`, and `fields`.
+    Execute an insert statement inserting the kwargs key/value pairs passed as named arguments.
     '''
-    assert len(fields) == len(args)
-    placeholders = ','.join('?' for _ in fields)
-    self.insert(with_=with_, or_=or_, table=table, fields=fields, sql=f'VALUES ({placeholders})', args=args)
+    placeholders = ','.join(['?'] * len(kwargs))
+    args = [_default_to_json(v) for v in kwargs.values()]
+    self.insert(with_=with_, or_=or_, into=into, fields=kwargs.keys(), sql=f'VALUES ({placeholders})', args=args)
 
 
-  def insert_dict(self, *, with_='', or_='FAIL', table:str, fields:Tuple[str, ...],
-   args:Dict[str, Any], defaults:Dict[str, Any]={}, **overrides:Any) -> None:
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, args:Dict[str, Any],
+   defaults:Dict[str, Any]={}) -> None:
     '''
-    Execute an insert statement inserting the dictionary `args`, synthesized from `table`, `fields`.
-    Values are pulled by name in order of preference from keyword argument overrides, the `args` dictionary, and `defaults`;
-    a KeyError is raised if one of the fields is not provided in any of these sources.
+    Execute an insert statement inserting the dictionary `args`, synthesized from `into` (the table name) and `fields`.
+    Values are pulled in by name first from the `args` dictionary, then from `defaults`;
+    a KeyError is raised if one of the fields is not provided in either of these sources.
     '''
     def arg_for(f: str) -> Any:
-      try: return overrides[f]
-      except KeyError: pass
       try: return args[f]
       except KeyError: pass
       return defaults[f]
-    args_seq = [_default_to_json(arg_for(f)) for f in fields]
-    self.insert_seq(with_=with_, or_=or_, table=table, fields=fields, args=args_seq)
+
+    placeholders = ','.join('?' for _ in args)
+    values = [_default_to_json(arg_for(f)) for f in fields or args.keys()]
+    self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
 
 
-  def select(self, *sql: str, **args: Any) -> 'Cursor':
+  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, seq:Sequence[Any]) -> None:
+    '''
+    Execute an insert statement inserting the sequence `args`, synthesized from `into` (the table name), and `fields`.
+    '''
+    placeholders = ','.join('?' for _ in seq)
+    values = [_default_to_json(v) for v in seq]
+    self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
+
+
+  def select(self, *sql:str, **args:Any) -> 'Cursor':
     'Execute a SELECT query.'
     return self.run('SELECT', *sql, **args)
 
-  def select_opt(self, *sql: str, **args: Any) -> Optional[List[Any]]:
+  def select_opt(self, *sql:str, **args:Any) -> Optional[List[Any]]:
     'Execute a SELECT query, returning a single row or None.'
     return self.run('SELECT', *sql, **args).fetchone() # type: ignore
 
-  def select_col(self, *sql: str, **args: Any) -> Iterator[Any]:
+  def select_col(self, *sql:str, **args:Any) -> Iterator[Any]:
     'Execute a SELECT query, returning column 0 of each result row.'
     for row in self.run('SELECT', *sql, **args):
       assert len(row) == 1
       yield row[0]
 
-  def contains(self, table: str, *criteria: str, **args: Any) -> bool:
-    'Execute a SELECT query, returning True if the `criteria` SQL result in a row.`'
-    for row in self.run('SELECT 1 FROM', table, 'WHERE', *criteria, 'LIMIT 1', **args):
+  def contains(self, table:str, *where:str, **args:Any) -> bool:
+    'Execute a SELECT query, returning True if the `where` SQL clause results in at least one row.`'
+    for row in self.run('SELECT 1 FROM', table, 'WHERE', *where, 'LIMIT 1', **args):
       return True
     return False
 
 
 class Connection(sqlite3.Connection):
 
-  def __init__(self, path: str, uri:bool=False) -> None:
-    super().__init__(path, uri=uri) # type: ignore
+  def __init__(self, path:str, uri:bool=False) -> None:
+    super().__init__(path, uri=uri)
     self.row_factory = sqlite3.Row # default for convenience.
     #self.stmt_cache = {}
 
@@ -100,49 +115,48 @@ class Connection(sqlite3.Connection):
     assert issubclass(factory, Cursor)
     return cast(Cursor, super().cursor(factory))
 
-  def run(self, *sql: str, **args: Any) -> Cursor:
+  def run(self, *sql:str, **args:Any) -> Cursor:
     return self.cursor().run(*sql, **args)
 
-  def insert(self, *, with_='', or_='FAIL', table: str, fields: Tuple[str, ...], sql: str, args: Any) -> None:
-    return self.cursor().insert(with_=with_, or_=or_, table=table, fields=fields, sql=sql, args=args)
+  def insert_row(self, *, with_='', or_='FAIL', into:str, **kwargs:Any) -> None:
+    return self.cursor().insert_row(with_=with_, or_=or_, into=into, **kwargs)
 
-  def insert_seq(self, *, with_='', or_='FAIL', table: str, fields: Tuple[str, ...], args: Sequence[Any]) -> None:
-    return self.cursor().insert_seq(with_=with_, or_=or_, table=table, fields=fields, args=args)
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, args:Dict[str, Any],
+   defaults:Dict[str, Any]={}) -> None:
+    return self.cursor().insert_dict(with_=with_, or_=or_, into=into, fields=fields, args=args, defaults=defaults)
 
-  def insert_dict(self, *, with_='', or_='FAIL', table:str, fields:Tuple[str, ...],
-   args:Dict[str, Any], defaults:Dict[str, Any]={}, **overrides:Any) -> None:
-    return self.cursor().insert_dict(with_=with_, or_=or_, table=table, fields=fields, args=args, defaults=defaults, **overrides)
+  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, seq:Sequence[Any]) -> None:
+    return self.cursor().insert_seq(with_=with_, or_=or_, into=into, fields=fields, seq=seq)
 
-  def select(self, *sql: str, **args: Any) -> Cursor:
-    return self.select(*sql, **args)
+  def select(self, *sql:str, **args:Any) -> Cursor:
+    return self.cursor().select(*sql, **args)
 
-  def select_opt(self, *sql: str, **args: Any) -> Optional[List[Any]]:
-    return self.select_opt(*sql, **args)
+  def select_opt(self, *sql:str, **args:Any) -> Optional[List[Any]]:
+    return self.cursor().select_opt(*sql, **args)
 
-  def select_col(self, *sql: str, **args: Any) -> Iterator[Any]:
-    return self.select_col(*sql, **args)
+  def select_col(self, *sql:str, **args:Any) -> Iterator[Any]:
+    return self.cursor().select_col(*sql, **args)
 
-
-  def contains(self, table: str, *criteria: str, **args: Any) -> bool:
-    return self.contains(table, *criteria, **args)
-
+  def contains(self, table:str, *where:str, **args:Any) -> bool:
+    return self.cursor().contains(table, *where, **args)
 
 
-def sql_col_names(dataclass: type) -> str:
+
+def sql_col_names(dataclass:type) -> str:
   '''
   Given a dataclass or NamedTuple subclass, return a string of comma-separated field names.
   '''
   return ', '.join(fields_of(dataclass))
 
 
-def sql_col_placeholders(dataclass: type) -> str:
+def sql_col_placeholders(dataclass:type) -> str:
   '''
   Given a dataclass or NamedTuple subclass, return a string of comma-separated SQL named placeholders.
   '''
   return ', '.join(f':{n}' for n in fields_of(dataclass))
 
 
-def sql_col_decls(class_: Type[NamedTuple], primary: str) -> str:
+def sql_col_decls(class_:Type[NamedTuple], primary:str) -> str:
   '''
   Given a dataclass or NamedTuple subclass, yield a sequence of SQL column declarations for use in a CREATE TABLE statement.
   '''
@@ -159,7 +173,7 @@ def sql_col_decls(class_: Type[NamedTuple], primary: str) -> str:
   return ', '.join(decls)
 
 
-def _wrapped_type_for_optional(static_type: type) -> type:
+def _wrapped_type_for_optional(static_type:type) -> type:
   # Optionals are really unions, which are a pain to work with at runtime.
   try: meta_class_name = static_type.__class__.__name__
   except AttributeError as e: raise TypeError(static_type) from e
@@ -169,12 +183,12 @@ def _wrapped_type_for_optional(static_type: type) -> type:
   return [m for m in members if m is not NoneType][0] # type: ignore
 
 
-def _default_to_json(obj: Any) -> Any:
+def _default_to_json(obj:Any) -> Any:
   if isinstance(obj, py_to_sql_types_tuple): return obj
   return render_json(obj)
 
 
-def fields_of(class_: type) -> Tuple[str, ...]:
+def fields_of(class_:type) -> Tuple[str, ...]:
   if issubclass(class_, NamedTuple): return class_._fields
   # TODO: support dataclasses.
   raise TypeError(class_)
@@ -182,7 +196,7 @@ def fields_of(class_: type) -> Tuple[str, ...]:
 
 NoneType = type(None)
 
-py_to_sql_types: Dict[type, str] = {
+py_to_sql_types:Dict[type, str] = {
   int : 'INTEGER',
   float: 'REAL',
   str : 'TEXT',
