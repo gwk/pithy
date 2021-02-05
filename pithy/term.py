@@ -1,6 +1,6 @@
 # Copyright 2011 George King. Permission to use this file is granted in license-gloss.txt.
 
-r'''
+'''
 TODO: register a signal handler for SIGWINCH to update sizes.
 '''
 
@@ -76,26 +76,26 @@ class CBreakMode(TermMode):
 
   def alter_attrs(self) -> None:
     attrs = self.attrs
-    attrs[IFLAG] &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON) # type: ignore
-    attrs[OFLAG] &= ~(OPOST) # type: ignore
-    attrs[CFLAG] &= ~(CSIZE | PARENB) # type: ignore
-    attrs[CFLAG] |= CS8 # type: ignore
-    attrs[LFLAG] &= ~(ECHO | ICANON | IEXTEN | ISIG) # type: ignore
-    attrs[CC][VMIN] = self.min_bytes # type: ignore
-    attrs[CC][VTIME] = self.vtime # type: ignore
+    attrs[IFLAG] &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON)
+    attrs[OFLAG] &= ~(OPOST)
+    attrs[CFLAG] &= ~(CSIZE | PARENB)
+    attrs[CFLAG] |= CS8
+    attrs[LFLAG] &= ~(ECHO | ICANON | IEXTEN | ISIG)
+    attrs[CC][VMIN] = self.min_bytes
+    attrs[CC][VTIME] = self.vtime
 
 
 class RawMode(TermMode):
 
   def alter_attrs(self) -> None:
     attrs = self.attrs
-    attrs[LFLAG] &= ~(ECHO | ICANON) # type: ignore
-    attrs[CC][VMIN] = self.min_bytes # type: ignore
-    attrs[CC][VTIME] = self.vtime # type: ignore
+    attrs[LFLAG] &= ~(ECHO | ICANON)
+    attrs[CC][VMIN] = self.min_bytes
+    attrs[CC][VTIME] = self.vtime
 
 
 class SilentMode(TermMode):
 
   def alter_attrs(self) -> None:
     attrs = self.attrs
-    attrs[LFLAG] &= ~(ECHO) # type: ignore
+    attrs[LFLAG] &= ~(ECHO)

@@ -9,7 +9,7 @@ import urllib.parse
 from email.utils import formatdate as format_email_date
 from html import escape as html_escape
 from http import HTTPStatus
-from http.client import HTTPException, HTTPMessage, LineTooLong, parse_headers # type: ignore
+from http.client import HTTPException, HTTPMessage, LineTooLong, parse_headers
 from io import BytesIO
 from os import fstat as os_fstat
 from posixpath import splitext
