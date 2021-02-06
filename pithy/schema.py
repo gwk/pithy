@@ -46,7 +46,7 @@ class Schema(NamedTuple):
           vs._collapse(tail)
         return
       # Path is empty; collapse this node.
-      collapsed_dicts = DefaultDict(_dd_of_schemas)
+      collapsed_dicts: DefaultDict = DefaultDict(_dd_of_schemas)
       keys = Keys()
       collapsed_value_schemas = collapsed_dicts[keys]
       for key, value_type_schemas in self.dicts.items():
@@ -58,7 +58,7 @@ class Schema(NamedTuple):
 
 
 class Keys(Set):
-  def __hash__(self) -> int: return id(self)
+  def __hash__(self) -> int: return id(self) # type: ignore
 
 
 def _mk_schema() -> Schema:
