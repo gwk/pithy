@@ -15,7 +15,7 @@ import re
 from typing import Any, Callable, Container, Dict, Iterator, List, Tuple, Union, cast
 from xml.etree.ElementTree import Element
 
-from lxml.etree import Comment # type: ignore
+from lxml.etree import Comment  # type: ignore
 
 from ..exceptions import DeleteNode
 from .escape import fmt_attr_items

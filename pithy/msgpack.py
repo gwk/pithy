@@ -3,7 +3,7 @@
 from sys import stdout
 from typing import Any, BinaryIO, Callable, Dict, List, Tuple
 
-from msgpack import ExtraData, FormatError, OutOfData, StackError, Unpacker, dump as _dump, load as _load # type: ignore
+from msgpack import ExtraData, FormatError, OutOfData, StackError, Unpacker, dump as _dump, load as _load  # type: ignore
 
 from .encode import EncodeObj, encode_obj
 

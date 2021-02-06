@@ -37,7 +37,7 @@ def executable_dir() -> str:
 
 def executable_path() -> str:
   'Return the path to this executable.'
-  import __main__ # type: ignore # mypy bug.
+  import __main__  # type: ignore # mypy bug.
   path: str = __main__.__file__
   return _realpath(path)
 

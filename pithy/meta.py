@@ -104,6 +104,6 @@ def get_caller_module_name(steps=1) -> Optional[str]:
 
 def main_file_path() -> str:
   'Returns the main file path.'
-  import __main__ # type: ignore # mypy bug.
+  import __main__  # type: ignore # mypy bug.
   path: str = __main__.__file__
   return path

@@ -7,8 +7,8 @@ from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
 from typing import IO, Any, Callable, Dict, Optional
 
-from boto3 import Session # type: ignore
-from botocore.exceptions import ClientError # type: ignore
+from boto3 import Session  # type: ignore
+from botocore.exceptions import ClientError  # type: ignore
 
 from ..fs import file_status, make_dirs, path_dir, path_ext, path_join, walk_files
 from ..json import parse_json, render_json
@@ -16,7 +16,7 @@ from ..json import parse_json, render_json
 
 br_MODE_TEXT = -1
 try:
-  from brotli import MODE_TEXT as br_MODE_TEXT, compress as br_compress, decompress as br_expand # type: ignore
+  from brotli import MODE_TEXT as br_MODE_TEXT, compress as br_compress, decompress as br_expand  # type: ignore
 except ImportError:
   # Brotli compression is supported by major browsers and AWS. Pithy treats it as optional.
   def br_compress(data:bytes, mode:int=0) -> bytes: raise Exception('brotli module failed to import')

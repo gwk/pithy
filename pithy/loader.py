@@ -156,7 +156,7 @@ def load_jsons(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_lzfse(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from lzfse import decompress # type: ignore
+  from lzfse import decompress  # type: ignore
   sub_ext = _sub_ext(ext)
   with binary_file_for(file_or_path) as f:
     df = BytesIO(f.read())
@@ -210,7 +210,7 @@ def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[s
 
 
 def load_xls(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from openpyxl import load_workbook # type: ignore
+  from openpyxl import load_workbook  # type: ignore
   if isinstance(f, str):
     return load_workbook(filename=f, **kwargs)
   else:
@@ -235,7 +235,7 @@ def load_yaml(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from zstandard import ZstdDecompressor # type: ignore
+  from zstandard import ZstdDecompressor  # type: ignore
   decompressor = ZstdDecompressor()
   d = decompressor.stream_reader(binary_file_for(f))
   return load(d, ext=_sub_ext(ext), **kwargs)

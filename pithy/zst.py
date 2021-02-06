@@ -1,6 +1,6 @@
 from typing import IO, AnyStr, BinaryIO, Iterable, List, NoReturn, TextIO
 
-from zstandard import ZstdCompressor # type: ignore
+from zstandard import ZstdCompressor  # type: ignore
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

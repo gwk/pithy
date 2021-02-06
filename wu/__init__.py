@@ -6,9 +6,9 @@ from os import environ
 from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple, Union,
   cast)
 
-import pygments # type: ignore
-import pygments.lexers # type: ignore
-import pygments.token # type: ignore
+import pygments  # type: ignore
+import pygments.lexers  # type: ignore
+import pygments.token  # type: ignore
 from pithy.html.semantics import phrasing_tags
 from pithy.io import errSL, errSN
 from pithy.json import load_json

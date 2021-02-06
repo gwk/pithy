@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import inspect
-from functools import _find_impl, wraps # type: ignore
+from functools import _find_impl, wraps  # type: ignore
 from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple, TypeVar, cast
 
 from .default import Default
