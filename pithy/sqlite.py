@@ -85,9 +85,11 @@ class Cursor(sqlite3.Cursor):
     'Execute a SELECT query.'
     return self.run('SELECT', *sql, **args)
 
-  def select_opt(self, *sql:str, **args:Any) -> Optional[List[Any]]:
+
+  def select_opt(self, *sql:str, **args:Any) -> Optional[sqlite3.Row]:
     'Execute a SELECT query, returning a single row or None.'
     return self.run('SELECT', *sql, **args).fetchone() # type: ignore
+
 
   def select_col(self, *sql:str, **args:Any) -> Iterator[Any]:
     'Execute a SELECT query, returning column 0 of each result row.'
@@ -95,11 +97,24 @@ class Cursor(sqlite3.Cursor):
       assert len(row) == 1
       yield row[0]
 
+
+  def select_one_col(self, *sql:str, **args:Any) -> Any:
+    row = self.run('SELECT', *sql, **args).fetchone() # type: ignore
+    if row is None: raise ValueError(None)
+    return row[0]
+
+
   def contains(self, table:str, *where:str, **args:Any) -> bool:
     'Execute a SELECT query, returning True if the `where` SQL clause results in at least one row.`'
     for row in self.run('SELECT 1 FROM', table, 'WHERE', *where, 'LIMIT 1', **args):
       return True
     return False
+
+
+  def update(self, table:str, *, cols:Iterable[str], where:str, **args:Any) -> None:
+    bindings = [f'{col} = :{col}' for col in cols]
+    bindings_clause = ', '.join(bindings)
+    self.run('UPDATE', table, 'SET', bindings_clause, 'WHERE', where, **args)
 
 
 class Connection(sqlite3.Connection):
@@ -118,6 +133,7 @@ class Connection(sqlite3.Connection):
   def run(self, *sql:str, **args:Any) -> Cursor:
     return self.cursor().run(*sql, **args)
 
+
   def insert_row(self, *, with_='', or_='FAIL', into:str, **kwargs:Any) -> None:
     return self.cursor().insert_row(with_=with_, or_=or_, into=into, **kwargs)
 
@@ -128,18 +144,25 @@ class Connection(sqlite3.Connection):
   def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, seq:Sequence[Any]) -> None:
     return self.cursor().insert_seq(with_=with_, or_=or_, into=into, fields=fields, seq=seq)
 
+
   def select(self, *sql:str, **args:Any) -> Cursor:
     return self.cursor().select(*sql, **args)
 
-  def select_opt(self, *sql:str, **args:Any) -> Optional[List[Any]]:
+  def select_opt(self, *sql:str, **args:Any) -> Optional[sqlite3.Row]:
     return self.cursor().select_opt(*sql, **args)
 
   def select_col(self, *sql:str, **args:Any) -> Iterator[Any]:
     return self.cursor().select_col(*sql, **args)
 
+  def select_one_col(self, *sql:str, **args:Any) -> Any:
+    return self.cursor().select_one_col(*sql, **args)
+
   def contains(self, table:str, *where:str, **args:Any) -> bool:
     return self.cursor().contains(table, *where, **args)
 
+
+  def update(self, table:str, *, cols:Iterable[str], where:str, **args:Any) -> None:
+    return self.cursor().update(table, cols=cols, where=where, **args)
 
 
 def sql_col_names(dataclass:type) -> str:
