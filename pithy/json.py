@@ -37,11 +37,15 @@ def render_json(item:Any, default:EncodeObj=encode_obj, sort=True, indent:Option
 
 def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
   'Write each item in `items` as json to file.'
+  try: write = file.write # If the `file` argument was omitted, the first `item` may have taken its place.
+  except AttributeError as e: # We must check for this or else `items` could be empty and we will silently fail.
+    raise ValueError('`file` (first) argument does not have a `write` attribute; was the file omitted from the call?') from e
+
   if not separators:
     separators = (',', ': ') if indent else (',', ':')
   for item in items:
     _json.dump(item, file, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
-    if end: file.write(end)
+    if end: write(end)
     if flush: file.flush()
 
 
