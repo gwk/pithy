@@ -131,6 +131,14 @@ def outLSSL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', flush=flush)
 
+def outR(*items: Any, sep='', flush=False) -> None:
+  '''Write `items` to std out; sep='', end=ERASE_LINE_F+'\\r'.'''
+  print(*items, sep=sep, end='\x1b[0K\r', flush=flush)
+
+def outSR(*items: Any, sep=' ', flush=False) -> None:
+  '''Write `items` to std out; sep=' ', end=ERASE_LINE_F+'\\r'.'''
+  print(*items, sep=sep, end='\x1b[0K\r', flush=flush)
+
 def outP(*items: Any, label=None, flush=False, **opts: Any) -> None:
   'Pretty print to std out.'
   writeP(stdout, *items, label=label, **opts)
