@@ -21,7 +21,7 @@ from yaml import safe_load as load_yaml
 
 def main() -> None:
   arg_parser = ArgumentParser(description='Swift unit test tool.')
-  arg_parser.add_argument('test_paths', nargs='*')
+  arg_parser.add_argument('test_paths', nargs='+')
   args = arg_parser.parse_args()
 
   for path in args.test_paths:
