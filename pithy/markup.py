@@ -211,9 +211,11 @@ class Mu:
   @property
   def texts(self) -> Iterator[str]:
     for c in self.ch:
-      if isinstance(c, Mu): yield from c.texts
+      if isinstance(c, str): yield c
+      elif isinstance(c, Mu): yield from c.texts
       elif isinstance(c, EscapedStr): yield c.string
-      else: yield c
+      else: raise TypeError(repr(c)) # Expected str, Mu, or EscapedStr.
+
 
   @property
   def text(self) -> str:
