@@ -394,6 +394,11 @@ class Br(HtmlFlow, HtmlPhrasing, HtmlNoContent):
   Contexts for use: Phrasing.
   '''
 
+  @property
+  def texts(self) -> Iterator[str]:
+    yield from super().texts
+    yield '\n'
+
 
 @_tag
 class Button(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
@@ -1105,6 +1110,11 @@ class P(HtmlFlow, HtmlPalpable, HtmlPhrasingContent):
 
   Contexts for use: Flow.
   '''
+
+  @property
+  def texts(self) -> Iterator[str]:
+    yield from super().texts
+    yield '\n\n'
 
 
 @_tag
