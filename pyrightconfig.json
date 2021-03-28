@@ -3,6 +3,6 @@
   "exclude": ["_misc"],
   "typeshedPath": "typeshed",
   "typingsPath": "typestubs",
-  "pythonVersion": "3.7",
+  "pythonVersion": "3.9",
   "reportMissingImports": true
 }
