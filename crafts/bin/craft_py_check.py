@@ -1,8 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-`craft-py-check` is a wrapper around the MyPy type checker. It originally worked around some rather frustrating usability bugs in `mypy`,
-many of which have since been fixed. Now its main utility is in providing some additional smarts for finding dependencies,
+`craft-py-check` is a wrapper around the MyPy type checker.
+It originally worked around some rather frustrating usability bugs in `mypy`,
+many of which have since been fixed.
+Now its main utility is in providing some additional smarts for finding dependencies,
 and for converting the output diagnostic file/line info into the same format as used by clang and swift.
 '''
 

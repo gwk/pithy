@@ -1,7 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-`craft-mac-app` is an experimental build tool that builds a complete mac app without using Xcode. The steps to build a functioning app were discovered by looking at the raw build logs in an Xcode application. This is currently not in use and may need updating.
+`craft-mac-app` is an experimental build tool that builds a complete mac app without using Xcode.
+The steps to build a functioning app were discovered by looking at the raw build logs in an Xcode application.
+This is not currently in use and may need updating.
 '''
 
 import plistlib
