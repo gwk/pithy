@@ -8,5 +8,5 @@ def main() -> None:
   number_strings = [a.replace(',', '_') for arg in args for a in arg.split()]
   print(number_strings, file=stderr)
   try: total = sum(float(s) for s in number_strings)
-  except ValueError as e: exit(f'sum error: {e}')
+  except ValueError as e: exit(f'add error: {e}')
   print(total)
