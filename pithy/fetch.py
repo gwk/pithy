@@ -62,7 +62,7 @@ def fetch(url:str, cache_path:str=None, params:Dict[str, str]={}, headers:Dict[s
 
 
 def load_url(url:str, ext:str=None, cache_path:str=None, params:Dict[str, str]={}, headers:Dict[str, str]={}, expected_status_code=200, timeout=30, delay=0, delay_range=0, spoof_ua=False, **kwargs:Any) -> Any:
-  'Fetch the data at `url` and then load using `muck.load`.'
+  'Fetch the data at `url` and then load using `loader.load`.'
   from .loader import load
   if ext is None:
     if cache_path:
