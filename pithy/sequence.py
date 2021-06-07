@@ -10,6 +10,12 @@ from typing import Iterator, Sequence, Tuple, TypeVar
 _T = TypeVar('_T')
 
 
+def seq_rindex(seq:Sequence[_T], el: _T) -> int:
+  for i in range(len(seq) - 1, -1, -1):
+    if seq[i] == el: return i
+  raise ValueError(el)
+
+
 def sorted_seq_index(seq:Sequence[_T], el:_T) -> int:
   '''
   Locate the leftmost element exactly equal to `el`.
