@@ -38,15 +38,16 @@ def chart_seq_inline(values:Iterable[_Num], max:_Num=0) -> str:
 class ChartMode(Enum):
   Normalized, Total, Cumulative, Ratio = range(4)
 
+Normalized, Total, Cumulative, Ratio = ChartMode
+
 
 def chart_items(m:Mapping, mode=ChartMode.Normalized, threshold=0, sort_by_val=False, width=64) -> str:
   '''
-  create a chart from a map, where values are either integers or pairs of integers
-  (for ChartModeRatio).
+  create a chart from a map, where values are either integers or pairs of integers (for ChartModeRatio).
   threshold is a minimum denominator count for ratios, and a minimum ratio otherwise.
   '''
 
-   # rows are of form (sortKey, name, val, ratio). key can be of any type; name and val must be strings.
+  # rows are of form (sortKey, name, val, ratio). key can be of any type; name and val must be strings.
   rows = []
 
   if m and mode in (ChartMode.Total, ChartMode.Cumulative):
