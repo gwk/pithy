@@ -19,7 +19,7 @@ _phony: # Used to mark pattern rules as phony.
 packages := crafts iotest legs pithy pithytools tolkien utest wu
 
 build:
-	./build.sh $(packages)
+	sh/build.sh $(packages)
 
 clean:
 	rm -rf _build/*
