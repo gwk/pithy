@@ -37,7 +37,7 @@ def executable_dir() -> str:
 
 def executable_path() -> str:
   'Return the path to this executable.'
-  import __main__  # type: ignore # mypy bug.
+  import __main__
   path: str = __main__.__file__
   return _realpath(path)
 
@@ -110,7 +110,7 @@ def parent_dir() -> str: return abs_path('..')
 
 def path_common_prefix(*paths: Path) -> str:
   'Return the common path prefix for a sequence of paths.'
-  try: return _commonpath([str_path(p) for p in paths]) # type: ignore
+  try: return _commonpath([str_path(p) for p in paths])
   except ValueError: # we want a more specific exception.
     raise MixedAbsoluteAndRelativePathsError(paths) from None
 
