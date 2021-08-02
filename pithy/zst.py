@@ -1,6 +1,6 @@
-from typing import IO, AnyStr, BinaryIO, Iterable, List, NoReturn, TextIO
+from typing import IO, AnyStr, BinaryIO, Iterable, Iterator, List, TextIO
 
-from zstandard import ZstdCompressor  # type: ignore
+from zstandard import ZstdCompressor
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -16,9 +16,9 @@ class ZstWriterBase(IO[AnyStr]):
     self.input_byte_count = 0
     self.compressed_byte_count = 0
 
-  def __iter__(self) -> NoReturn: raise TypeError
+  def __iter__(self) -> Iterator[AnyStr]: raise TypeError
 
-  def __next__(self) -> NoReturn: raise TypeError
+  def __next__(self) -> AnyStr: raise TypeError
 
   def fileno(self) -> int: return self.file.fileno()
 
@@ -51,10 +51,10 @@ class ZstWriterBase(IO[AnyStr]):
       self.compressed_byte_count += self.file.write(chunk)
 
   def flush(self) -> None:
-    self._write_chunks(self.chunker.flush())
+    self._write_chunks(self.chunker.flush()) # type: ignore # flush is untyped.
 
   def close(self) -> None:
-    self._write_chunks(self.chunker.finish())
+    self._write_chunks(self.chunker.finish()) # type: ignore # flush is untyped.
     self.file.close()
 
   @property
