@@ -111,7 +111,7 @@ class Mu:
 
 
   @classmethod
-  def from_raw(Class:Type[_Mu], raw:Dict) -> _Mu:
+  def from_raw(cls:Type[_Mu], raw:Dict) -> _Mu:
     'Create a Mu object (or possibly a subclass instance chosen by tag) from a raw data dictionary.'
     tag = raw['tag']
     attrs = raw['attrs']
@@ -124,14 +124,14 @@ class Mu:
     ch:MuChildren = []
     for c in raw_children:
       if isinstance(c, (str, Mu)): ch.append(c)
-      elif isinstance(c, dict): ch.append(Class.from_raw(c))
+      elif isinstance(c, dict): ch.append(cls.from_raw(c))
       else: raise ValueError(f'Mu child must be `str`, `Mu`, or `dict`; received: {c!r}')
-    TagClass = Class.tag_types.get(tag, Class)
+    TagClass = cls.tag_types.get(tag, cls)
     return cast(_Mu, TagClass(tag=tag, attrs=attrs, ch=ch))
 
 
   @classmethod
-  def from_etree(Class:Type[_Mu], el:Element) -> _Mu:
+  def from_etree(cls:Type[_Mu], el:Element) -> _Mu:
     '''
     Create an Mu object (possibly subclass by tag) from a standard library Mu element tree.
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
@@ -144,10 +144,10 @@ class Mu:
     text = el.text
     if text: ch.append(text)
     for child in el:
-      ch.append(Class.from_etree(child))
+      ch.append(cls.from_etree(child))
       text = child.tail
       if text: ch.append(text)
-    TagClass = Class.tag_types.get(tag, Class)
+    TagClass = cls.tag_types.get(tag, cls)
     return cast(_Mu, TagClass(tag=tag, attrs=attrs, ch=ch))
 
 
