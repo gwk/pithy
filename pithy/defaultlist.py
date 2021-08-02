@@ -1,29 +1,34 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Generic, Iterable, TypeVar, Union
+from typing import Callable, Generic, Iterable, List, SupportsIndex, TypeVar, Union, overload
 
 
 _T = TypeVar('_T')
 
 
-class DefaultList(list, Generic[_T]):
+class DefaultList(List[_T], Generic[_T]):
   '''
   A subclass of `list` that adds default elements produced by a factory function
   when an out-of-bounds element is accessed.
   The factory function takes the array index as a its sole parameter.
   '''
 
-  def __init__(self, factory: Callable[[int], _T], iterable: Iterable[_T]=(), fill_length=0) -> None:
+  def __init__(self, factory:Callable[[int], _T], iterable:Iterable[_T]=(), fill_length=0) -> None:
     super().__init__(iterable)
     self.factory = factory
     for i in range(fill_length):
       self.append(factory(i))
 
-  def __getitem__(self, index: Union[int, slice]):
+  @overload
+  def __getitem__(self, index: SupportsIndex) -> _T: ...
+  @overload
+  def __getitem__(self, index: slice) -> List[_T]: ...
+
+  def __getitem__(self, index):
     if isinstance(index, slice):
-      end = 0 if index.stop is None else index.stop
+      end = len(self) if index.stop is None else index.stop
     else:
-      end = index
+      end = index + 1
     for i in range(len(self), end):
       self.append(self.factory(i))
     return super().__getitem__(index)
