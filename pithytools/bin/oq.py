@@ -86,7 +86,7 @@ class FilterQuery(Query):
   predicate:Predicate
 
   def run(self, stream:Iterable[Any]) -> Iterable[Any]:
-    p:Predicate = self.predicate # type: ignore # long-standing mypy bug.
+    p:Predicate = self.predicate
     for el in stream:
       if p(el):
         yield el
@@ -97,7 +97,7 @@ class SearchQuery(Query):
   predicate:Predicate
 
   def run(self, stream:Iterable[Any]) -> Iterable[Any]:
-    p:Predicate = self.predicate # type: ignore # long-standing mypy bug.
+    p:Predicate = self.predicate
     for el in stream:
       if p(el):
         yield el
