@@ -242,6 +242,7 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
 
   else: # frequency is an int.
     def err_progress_gen() -> Iterator[_T]: # type: ignore # Spurious "Statement is unreachable".
+      i = -1
       for i, el in enumerate(iterable):
         if limit and i == limit:
           i -= 1
