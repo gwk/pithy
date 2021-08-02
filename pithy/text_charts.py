@@ -42,7 +42,7 @@ def chart_seq_inline(values:Iterable[_Num], max:_Num=0, width:int=0) -> str:
 class ChartMode(Enum):
   Normalized, Total, Cumulative, Ratio = range(4)
 
-Normalized, Total, Cumulative, Ratio = ChartMode
+Normalized, Total, Cumulative, Ratio = tuple(ChartMode)
 
 
 def chart_items(m:Mapping, mode=ChartMode.Normalized, threshold=0, sort_by_val=False, width=64) -> str:
