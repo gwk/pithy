@@ -40,7 +40,7 @@ def reindent(path: str) -> None:
   #move_file(path=reindent_path, to=path)
 
 
-def reindent_line(path: str, f_out: TextIO, line_idx: int, line: str) -> int:
+def reindent_line(path: str, f_out: TextIO, line_idx: int, line: str) -> bool:
   i = 0 # Current position.
   spaces = 0 # Number of spaces since last indent counted.
   indents = 0 # Number of indents counted.
