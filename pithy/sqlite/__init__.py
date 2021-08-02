@@ -154,7 +154,7 @@ class Connection(sqlite3.Connection):
     Execute an insert statement synthesized from `into` (the table name), `fields` (optional), and `sql`.
     This function is intended to be an intermediate helper for higher level insert functions.
     '''
-    self.cursor().insert(with_=With_, or_=or_, into=into, fields=fields, sql=sql, args=args)
+    self.cursor().insert(with_=with_, or_=or_, into=into, fields=fields, sql=sql, args=args)
 
 
   def insert_row(self, *, with_='', or_='FAIL', into:str, **kwargs:Any) -> None:
