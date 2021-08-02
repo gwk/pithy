@@ -17,7 +17,7 @@ from . import Syntax
 
 def parse_rst(path:str, text:str) -> Syntax:
   parser = _RstParser()
-  settings = _frontend.OptionParser(components=(_RstParser,)).get_default_values()
+  settings = _frontend.OptionParser(components=(_RstParser,)).get_default_values() # type: ignore
   document = _new_document(path, settings=settings)
   parser.parse(text, document)
   ctx = _Ctx(path=path, text=text, lines=text.splitlines(keepends=True))
