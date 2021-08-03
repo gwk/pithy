@@ -4,5 +4,10 @@
   "typeshedPath": "typeshed",
   "typingsPath": "typestubs",
   "pythonVersion": "3.9",
-  "reportMissingImports": true
+  "reportSelfClsParameterName": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportInvalidTypeVarUse": "none",
+  "reportPropertyTypeMismatch": "none",
+  "reportUnboundVariable": "none",
+  "reportMissingImports": true,
 }
