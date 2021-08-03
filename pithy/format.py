@@ -122,8 +122,8 @@ def format_to_re(fmt: str, allow_empty=False, greedy=False) -> Pattern[str]:
       else: return f'({pat})'
 
     text = match.group()
-    if text == '{{': return '\{'
-    if text == '}}': return '\}'
+    if text == '{{': return r'\{'
+    if text == '}}': return r'\}'
     return re.escape(text)
 
   return re.compile(''.join(pattern_from(m) for m in gen_format_matches(fmt)))
