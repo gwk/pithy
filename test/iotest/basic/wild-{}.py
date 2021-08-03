@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from os import environ
-from sys import *
+from sys import argv, stderr, stdout
 
 _, arg = argv
 

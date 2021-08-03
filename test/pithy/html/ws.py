@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.io import *
-from pithy.html import *
+from pithy.html import Body, Html, HtmlNode, MuChild
+from pithy.io import outL
 from pithy.string import clip_prefix, clip_suffix
-from typing import *
+from utest import utest
+
+from typing import List, Tuple
 
 
 ws_normalizations:List[Tuple[MuChild,MuChild]] = [

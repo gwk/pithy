@@ -1,5 +1,5 @@
 from sys import stdout
-from pithy.charts import *
+from pithy.charts import XYChart
 
 
 chart = XYChart(

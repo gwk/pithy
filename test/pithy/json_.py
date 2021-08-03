@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
-from typing import *
+from typing import NamedTuple
 
-from pithy.json import *
-from pithy.untyped import *
-from utest import *
+from pithy.json import parse_json, render_json
+from pithy.untyped import Immutable
+from utest import utest, utest_exc
 
 
 class NT(NamedTuple):
