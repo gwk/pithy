@@ -25,12 +25,12 @@ from tolkien import Source
 def main() -> None:
   arg_parser = ArgumentParser(description='Run mypy, format and colorize output.')
   arg_parser.add_argument('roots', nargs='+')
-  arg_parser.add_argument('-deps', nargs='+', default=[])
-  arg_parser.add_argument('-paths', nargs='+', default=[])
-  arg_parser.add_argument('-print-ok', action='store_true')
-  arg_parser.add_argument('-python-version')
-  arg_parser.add_argument('-dbg', action='store_true')
-  arg_parser.add_argument('-mypy-dbg', action='store_true')
+  arg_parser.add_argument('-deps', nargs='+', default=[], help='Names of package dependencies to typecheck against.')
+  arg_parser.add_argument('-paths', nargs='+', default=[], help='Package search paths to add to MYPY_PATH to typecheck against.')
+  arg_parser.add_argument('-print-ok', action='store_true', help='Print an "ok" message when exiting with no errors.')
+  arg_parser.add_argument('-python-version', help='Python version to pass to mypy.')
+  arg_parser.add_argument('-dbg', action='store_true', help='Print debug messages.')
+  arg_parser.add_argument('-mypy-dbg', action='store_true', help='Pass debugging flags to mypy.')
 
   args = arg_parser.parse_args()
 
