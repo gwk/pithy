@@ -253,7 +253,7 @@ def add_iot_configs(configs: Dict, path: str) -> None:
   try: val = literal_eval(text)
   except (SyntaxError, ValueError) as e:
     s = str(e)
-    if s.startswith('malformed node or string:'): # omit the repr garbage containing object address.
+    if s.startswith('malformed node or string'): # omit the repr garbage containing object address.
       msg = f'malformed .iot file: {path!r}'
     else:
       msg = f'malformed .iot file: {path!r}\n  exception: {s}'
