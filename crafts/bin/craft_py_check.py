@@ -25,6 +25,7 @@ from tolkien import Source
 def main() -> None:
   arg_parser = ArgumentParser(description='Run mypy, format and colorize output.')
   arg_parser.add_argument('roots', nargs='+')
+  arg_parser.add_argument('-dmypy', '-d', action='store_true', help='Use dmypy daemon to speed up repeated typechecking runs.')
   arg_parser.add_argument('-deps', nargs='+', default=[], help='Names of package dependencies to typecheck against.')
   arg_parser.add_argument('-paths', nargs='+', default=[], help='Package search paths to add to MYPY_PATH to typecheck against.')
   arg_parser.add_argument('-print-ok', action='store_true', help='Print an "ok" message when exiting with no errors.')
@@ -68,7 +69,8 @@ def main() -> None:
     if args.dbg: errSL(f'MYPYPATH={mypy_path}')
 
   version_flag = ['--python-version', args.python_version] if args.python_version else []
-  cmd = ['mypy', *version_flag, *args.roots]
+  cmd = ['dmypy', 'run', '--'] if args.dmypy else ['mypy']
+  cmd += [*version_flag, *args.roots]
   if args.mypy_dbg: cmd.append('--show-traceback')
   if args.dbg: errSL('cmd:', *cmd)
   c, o = runCO(cmd, env=env)
