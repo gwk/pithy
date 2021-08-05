@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from pithy.io import outL, errL
-import locale
+from locale import getpreferredencoding
+from sys import stderr
 
-errL("locale: ", locale.getpreferredencoding(do_setlocale=True))
-errL('…')
-outL('…')
+
+print("locale:", getpreferredencoding(do_setlocale=True), file=stderr)
+print('…', file=stderr)
+print('…')
