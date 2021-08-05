@@ -16,4 +16,4 @@ package="$1"
 echo
 echo '--------------------------------'
 echo "package: $package"
-cp "$1/setup.cfg" setup.cfg
+cp "$package/setup.cfg" setup.cfg
