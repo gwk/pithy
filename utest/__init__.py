@@ -1,16 +1,18 @@
 '''
 utest is a tiny unit testing library.
-
-Set the UTEST_SHOW_EXC environment variable to truthful to print unexpected exception tracebacks.
 '''
 
 
 import atexit as _atexit
 import inspect as _inspect
+import re as _re
+import pathlib as _pathlib
+from os import getcwd as _getcwd
 from os.path import relpath as _rel_path
 from sys import stderr as _stderr
-from traceback import print_exception as _print_exception
-from typing import Any, Callable, Dict, Iterable, Tuple, TypeVar
+from traceback import format_exc, format_exception as _format_exception
+from types import TracebackType
+from typing import Any, Callable, Dict, Iterable, Tuple, Type, TypeVar
 
 
 __all__ = [
@@ -186,7 +188,7 @@ def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str=None, ret:An
     for i, arg in enumerate(exc.args):
       _errL(f'    exc arg {i}: {arg!r}')
     _errL()
-    _print_exception(etype=type(exc), value=exc, tb=exc.__traceback__, file=_stderr)
+    _print_exception(exc)
   _errL()
 
 
@@ -204,6 +206,40 @@ def _compare_exceptions(exp:Any, act:Any) -> bool:
 
 
 def _errL(*items:Any) -> None: print(*items, sep='', file=_stderr)
+
+
+def _print_exception(exc: BaseException) -> Any:
+
+  messages = _format_exception(type(exc), exc, tb=exc.__traceback__, limit=None, chain=True)
+  for msg in messages:
+    if m := _exc_msg_re.fullmatch(msg):
+      file = m['stack_file']
+      line = m['stack_line']
+      s_in = m['stack_in'] or ''
+      fn = m['stack_fn']
+      code = m['stack_code']
+      if file.startswith(_starting_work_dir_slash):
+        rel_file = file[len(_starting_work_dir_slash):]
+        file = ('' if ('/' in rel_file) else './') + rel_file
+      elif file.startswith(_home_dir_slash):
+        rel_file = file[len(_home_dir_slash):]
+        file = '~/' + rel_file
+      _stderr.write(f'  File "{file}", line {line}{s_in}{fn}{code}')
+    else:
+      _stderr.write(msg)
+
+
+
+_home_dir = str(_pathlib.Path.home())
+_home_dir_slash = _home_dir + ('' if _home_dir.endswith('/') else '/')
+
+_work_dir = _getcwd()
+_starting_work_dir_slash = _work_dir + ('' if _work_dir.endswith('/') else '/')
+
+_exc_msg_re = _re.compile(r'''(?sx) # s=Dotall; each message can contain newlines.
+\ \ File\ "(?P<stack_file>[^"\n]+)",\ line\ (?P<stack_line>\d+)(?P<stack_in>,\ in\ )?(?P<stack_fn>[^\n]*)(?P<stack_code>.*)
+''')
+#^ Note: this pattern will fail if the file name contains a '"'.
 
 
 @_atexit.register
