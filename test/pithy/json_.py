@@ -74,7 +74,7 @@ utest(SlotXY(x=1, y=2), parse_json, '{"x":1, "y":2}', hooks=[SlotXY])
 
 utest_exc(Exception, parse_json, '{"x":1}', hooks=[DC, NT])
 
-utest_exc(TypeError("__init__() missing 1 required positional argument: 'z'"),
+utest_exc(TypeError("SlotXYZ.__init__() missing 1 required positional argument: 'z'"),
   parse_json, '{"x":1, "y":2}', hooks=[SlotXYZ]) # Not picked up because?
 
 utest({'x': 1, 'y': 2, 'z': 3},
