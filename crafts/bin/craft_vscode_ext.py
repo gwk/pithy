@@ -23,7 +23,7 @@ def main() -> None:
   for s in ('..', '/'):
     if s in name: exit(f'invalid name (contains {s!r}): {name!r}')
 
-  dst = expand_user(f'~/.vscode-insiders/extensions/{name}')
+  dst = expand_user(f'~/.vscode/extensions/{name}')
   remove_dir_contents_if_exists(dst)
 
   src_path = f'{src}/package.json'
