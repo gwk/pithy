@@ -30,7 +30,7 @@ def main() -> None:
   arg_parser.add_argument('paths', nargs='*', default=['test'], help='Test directories to search.')
   arg_parser.add_argument('-build-dir', help='Specify the build directory to use.')
   arg_parser.add_argument('-coverage', action='store_true', help='Use coven to trace test coverage.')
-  arg_parser.add_argument('-dbg', action='store_true', help='Debug mode: print extra info; implies -fast).')
+  arg_parser.add_argument('-dbg', action='store_true', help='Debug mode: print extra info; implies -fast.')
   arg_parser.add_argument('-fail-fast',  action='store_true', help='Exit on first error; implied by -dbg.')
   arg_parser.add_argument('-interactive', action='store_true', help='Interactively update failing tests.')
   arg_parser.add_argument('-no-coverage-report', action='store_true', help='Do not report coverage.')
