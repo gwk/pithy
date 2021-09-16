@@ -13,4 +13,4 @@ __main__: _build/test-meta/1/coverage-gap/coverage-gap.py:
    3   def f():
    4 !   return None
 
-__main__: _build/test-meta/1/coverage-gap/coverage-gap.py: 4 lines; 2 trivial; 2 traceable; 1 covered; 0 ignored; 0 ignored but covered; 1 not covered.
+__main__: _build/test-meta/1/coverage-gap/coverage-gap.py: 2 traceable; 1 covered; 0 ignored; 0 ignored but covered; 1 not covered.
