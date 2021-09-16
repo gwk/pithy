@@ -1,0 +1,11 @@
+# the following cases default to matching this parameterized stem:
+#   param-err
+#   param-out
+
+# the following stems have their own concrete iot files and do not use this case:
+#  param-iot
+
+{
+  'code': 0,
+  'env': {'TEST_PARAM' : 'env: param-{}'},
+}

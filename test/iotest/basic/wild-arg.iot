@@ -1,5 +1,0 @@
-{
-  'code': 0,
-  'env': {'TEST_WILD' : 'env: wild-arg'},
-  'args': ['ARG'],
-}

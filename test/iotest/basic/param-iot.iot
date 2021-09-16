@@ -1,0 +1,4 @@
+{
+  # note: leave code unspecified; inherited from param-{}.iot.
+  'env': {'TEST_PARAM' : 'env: param-iot'},
+}
