@@ -54,6 +54,7 @@ def has_formatter(string: str) -> bool:
 
 
 def count_formatters(fmt: str) -> int:
+  'Count the number of formatters in the string.'
   count = 0
   for match in gen_format_matches(fmt):
     if match.group('formatter'):
@@ -96,7 +97,7 @@ def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
 
 
 def format_to_re(fmt: str, allow_empty=False, greedy=False) -> Pattern[str]:
-  'translate a format string into a regular expression pattern.'
+  'Translate a format string into a regular expression pattern.'
   quantifier = ('*' if allow_empty else '+') + ('' if greedy else '?')
 
   def pattern_from(match: Match[str]) -> str:
