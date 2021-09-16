@@ -4,4 +4,5 @@
     "_build": true,
     "_misc": true
   },
+  "mypy.targets": ["crafts", "iotest", "legs", "pithy", "pithytools", "tolkien", "tools", "utest", "wu"]
 }
