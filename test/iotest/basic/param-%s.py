@@ -13,10 +13,10 @@ elif arg == 'ARG': # arg value specified by param-arg.iot args, overriding forma
 elif arg == 'iot':
   assert env_val == 'env: param-iot'
 else:
-  assert env_val == 'env: param-{}'
+  assert env_val == 'env: param-%s'
 
-out = 'out: param-{}'
-err = 'err: param-{}'
+out = 'out: param-%s'
+err = 'err: param-%s'
 
 if arg == 'out':
   out = 'out: param-out'

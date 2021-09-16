@@ -10,7 +10,7 @@ from typing import DefaultDict, Dict, Iterable, List, Optional, Pattern, Set
 
 from pithy.ansi import BG, FILL_OUT, INVERT, RST_INVERT, TTY_OUT, gray26, is_out_tty, sanitize_for_console, sgr
 from pithy.dict import dict_fan_by_key_pred
-from pithy.format import FormatError, format_to_re
+from pithy.filenamefmt import FilenameFormatterError, regex_for_fnf_str, fnf_str_has_formatter
 from pithy.fs import (copy_path, file_status, find_project_dir, is_dir, is_python_file, list_dir, make_dirs, make_link,
   open_new, path_exists, remove_dir_contents, remove_file_if_exists)
 from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_path, write_to_path
@@ -211,7 +211,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
     else:
       configs[stem].setdefault('.dflt_src_paths', []).append(path)
 
-  case_configs, par_configs_dicts = dict_fan_by_key_pred(configs, pred=lambda stem: '{' in stem)
+  case_configs, par_configs_dicts = dict_fan_by_key_pred(configs, pred=fnf_str_has_formatter)
 
   par_configs: List[ParConfig] = [ParConfig(stem=s, pattern=compile_par_stem_re(s), config=c) for s, c in par_configs_dicts.items()]
   par_stems_used: Set[str] = set()
@@ -287,8 +287,8 @@ def add_std_file(config: Dict, path: str) -> None:
 
 
 def compile_par_stem_re(stem: str) -> Pattern[str]:
-  try: return format_to_re(stem)
-  except FormatError as e:
+  try: return regex_for_fnf_str(stem, allow_empty=False)
+  except FilenameFormatterError as e:
     exit(f'iotest error: invalid parameterized case stem: {stem}\n  {e}')
 
 

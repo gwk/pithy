@@ -7,5 +7,5 @@
 
 {
   'code': 0,
-  'env': {'TEST_PARAM' : 'env: param-{}'},
+  'env': {'TEST_PARAM' : 'env: param-%s'},
 }
