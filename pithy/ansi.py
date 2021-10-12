@@ -137,12 +137,19 @@ BG = '48;5'
 # RGB6 color cube: 6x6x6, from black to white.
 K = 16  # black.
 W = 231 # white.
-D = W + 7 # #444444.
-N = W + 13 # 808080.
-L = W + 18 # B2B2B2.
 
 # Grayscale: the 24 palette values have a suggested 8 bit grayscale range of [8, 238].
 middle_gray_indices = range(232, 256)
+
+KD = W + 4
+D = W + 7
+DN = W + 10
+N = W + 13
+NL = W + 16
+L = W + 19
+LW = W + 22
+
+named_gray_indices = (K, KD, D, DN, N, NL, L, LW, W)
 
 def gray26(n:int) -> int:
   assert 0 <= n < 26
@@ -157,17 +164,16 @@ def rgb6(r:int, g:int, b:int) -> int:
   assert 0 <= b < 6
   return (((r * 6) + g) * 6) + b + 16
 
-named_gray_indices = (K, D, N, L, W)
 
-TXT_K, TXT_D, TXT_N, TXT_L, TXT_W = txt_grays = tuple(sgr(TXT, code) for code in named_gray_indices)
+TXT_K, TXT_KD, TXT_D, TXT_DN, TXT_N, TXT_NL, TXT_L, TXT_LW, TXT_W = txt_grays = tuple(sgr(TXT, code) for code in named_gray_indices)
 
-TXT_K_OUT, TXT_D_OUT, TXT_N_OUT, TXT_L_OUT, TXT_W_OUT = ((TTY_OUT and c) for c in txt_grays)
-TXT_K_ERR, TXT_D_ERR, TXT_N_ERR, TXT_L_ERR, TXT_W_ERR = ((TTY_ERR and c) for c in txt_grays)
+TXT_K_OUT, TXT_KD_OUT, TXT_D_OUT, TXT_DN_OUT, TXT_N_OUT, TXT_NL_OUT, TXT_L_OUT, TXT_LW_OUT, TXT_W_OUT = ((TTY_OUT and c) for c in txt_grays)
+TXT_K_ERR, TXT_KD_ERR, TXT_D_ERR, TXT_DN_ERR, TXT_N_ERR, TXT_NL_ERR, TXT_L_ERR, TXT_LW_ERR, TXT_W_ERR = ((TTY_ERR and c) for c in txt_grays)
 
-BG_K, BG_D, BG_N, BG_L, BG_W = bg_grays = tuple(sgr(BG, code) for code in named_gray_indices)
+BG_K, BG_KD, BG_D, BG_DN, BG_N, BG_NL, BG_L, BG_LW, BG_W = bg_grays = tuple(sgr(BG, code) for code in named_gray_indices)
 
-BG_K_OUT, BG_D_OUT, BG_N_OUT, BG_L_OUT, BG_W_OUT = ((TTY_OUT and c) for c in bg_grays)
-BG_K_ERR, BG_D_ERR, BG_N_ERR, BG_L_ERR, BG_W_ERR = ((TTY_ERR and c) for c in bg_grays)
+BG_K_OUT, BG_KD_OUT, BG_D_OUT, BG_DN_OUT, BG_N_OUT, BG_NL_OUT, BG_L_OUT, BG_LW_OUT, BG_W_OUT = ((TTY_OUT and c) for c in bg_grays)
+BG_K_ERR, BG_KD_ERR, BG_D_ERR, BG_DN_ERR, BG_N_ERR, BG_NL_ERR, BG_L_ERR, BG_LW_ERR, BG_W_ERR = ((TTY_ERR and c) for c in bg_grays)
 
 
 def cursor_pos(x:int, y:int) -> str:
