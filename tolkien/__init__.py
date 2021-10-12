@@ -4,7 +4,7 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
-from typing import Generic, List, NamedTuple, NoReturn, Optional, Protocol, Tuple, TypeVar, Union
+from typing import Any, Generic, NamedTuple, NoReturn, Optional, Protocol, TypeVar, Union
 
 
 Slice = slice
@@ -50,7 +50,7 @@ def get_syntax_token(syntax:Syntax) -> Token:
   return syntax if isinstance(syntax, Token) else syntax.token
 
 
-SyntaxMsg = Tuple[Syntax,str]
+SyntaxMsg = tuple[Syntax,str]
 OptSyntaxMsg = Optional[SyntaxMsg]
 
 
@@ -66,7 +66,7 @@ class Source(Generic[_Text]):
     self.name = name
     self.text = text
     self.show_missing_newline = show_missing_newline
-    self.newline_positions:List[int] = []
+    self.newline_positions:list[int] = []
 
 
   def update_line_positions(self) -> None:
