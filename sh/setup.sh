@@ -2,10 +2,9 @@
 
 set -e
 
-script_path="$0"
-script_dir=$(dirname "$script_path")
+function fail { echo "$0: error: $@" 1>&2; exit 1; }
 
-function fail { echo "$script_path: error: $@" 1>&2; exit 1; }
+script_dir=$(dirname "$0")
 
 [[ "$script_dir" == "sh" ]] || fail 'script must be executed from the repository root directory.'
 

@@ -2,12 +2,12 @@
 
 set -e
 
-repo=$(dirname "$0")
+script_dir=$(dirname "$0")
 
 function fail { echo "error: $@" 1>&2; exit 1; }
 
 for package in "$@"; do
-  "$repo/setup.sh" "$package"
+  "$script_dir/setup.sh" "$package"
 
   set -x
   mkdir -p _build/dist

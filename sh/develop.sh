@@ -2,10 +2,10 @@
 
 set -e
 
-repo=$(dirname "$0")
+script_dir=$(dirname "$0")
 
 for package in "$@"; do
-  "$repo/setup.sh" "$package"
+  "$script_dir/setup.sh" "$package"
   python3 setup.py develop -v
 done
 rm setup.cfg
