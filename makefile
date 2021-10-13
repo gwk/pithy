@@ -56,7 +56,7 @@ gen-grammars: \
 gen-vscode-legs: vscode/legs/syntaxes/legs.json
 
 help: # Summarize the targets of this makefile.
-	@GREP_COLOR="1;32" egrep --color=always '^\w[^ :]+:' makefile | sort
+	@GREP_COLOR="1;32" egrep --color=always '^[a-zA-Z][^ :]+:' makefile | sort
 
 lint:
 	pyflakes $(packages)
