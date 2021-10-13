@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 # This is the setup.py for for all packages in the repo.
-# The package to be installed is selected by copying its setup-PACKAGE.cfg file to setup.cfg.
+# The package to be installed is selected by copying $PACKAGE/setup.cfg file to setup.cfg.
 # This is necessary because pip does not practically allow us to use alternate names for the setup files.
 
 from configparser import ConfigParser
