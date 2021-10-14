@@ -7,9 +7,6 @@ Token and Source classes for implementing lexers and parsers.
 from typing import Any, Generic, NamedTuple, NoReturn, Optional, Protocol, TypeVar, Union
 
 
-Slice = slice
-
-
 class Token(NamedTuple):
   pos:int
   end:int
@@ -27,7 +24,7 @@ class Token(NamedTuple):
     return f'{self.mode}.{self.kind}'
 
   @property
-  def slice(self) -> Slice:
+  def slice(self) -> slice:
     return slice(self.pos, self.end)
 
   def pos_token(self, kind:str=None) -> 'Token':
