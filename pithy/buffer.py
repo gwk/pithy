@@ -12,7 +12,7 @@ class Buffer(Iterator[_T]):
   '''
   Iterable object that buffers an iterable.
   Call push() to push an item into the buffer;
-  this will be returned on the subsequent call to next().
+  this will be returned on the subsequent call to __next__().
   '''
 
 
