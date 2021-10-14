@@ -67,7 +67,7 @@ class Source(Generic[_Text]):
 
 
   def update_line_positions(self) -> None:
-    'Lazily update newline positions array. This is not quite optimal but good enough for now.'
+    'Lazily update newline positions array. This is not quite optimal and should be optimized eventually.'
     start = self.newline_positions[-1] + 1 if self.newline_positions else 0
     n = '\n' if isinstance(self.text, str) else b'\n'
     for i in range(start, len(self.text)):
