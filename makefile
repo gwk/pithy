@@ -83,6 +83,9 @@ test-diff-data:
 typecheck: gen
 	craft-py-check $(packages)
 
+vscode-links:
+	ln -fs $$PWD/vscode/* ~/.vscode/extensions
+
 vscode-insider-links:
 	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
 
