@@ -28,7 +28,7 @@ def window_size(f=stdout):
   return int(cr[1]), int(cr[0])
 
 
-# Indexes for termios list (see <termios.h>).
+# Indexes for termios list (see <termios.h>, cpython/Lib/tty.py).
 IFLAG = 0
 OFLAG = 1
 CFLAG = 2
@@ -76,11 +76,8 @@ class CBreakMode(TermMode):
 
   def alter_attrs(self) -> None:
     attrs = self.attrs
-    attrs[IFLAG] &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON)
-    attrs[OFLAG] &= ~(OPOST)
-    attrs[CFLAG] &= ~(CSIZE | PARENB)
-    attrs[CFLAG] |= CS8
-    attrs[LFLAG] &= ~(ECHO | ICANON | IEXTEN | ISIG)
+    # See cpython/Lib/tty.py for reference.
+    attrs[LFLAG] &= ~(ECHO | ICANON)
     attrs[CC][VMIN] = self.min_bytes
     attrs[CC][VTIME] = self.vtime
 
@@ -89,7 +86,12 @@ class RawMode(TermMode):
 
   def alter_attrs(self) -> None:
     attrs = self.attrs
-    attrs[LFLAG] &= ~(ECHO | ICANON)
+    # See cpython/Lib/tty.py for reference.
+    attrs[IFLAG] &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON)
+    attrs[OFLAG] &= ~(OPOST)
+    attrs[CFLAG] &= ~(CSIZE | PARENB)
+    attrs[CFLAG] |= CS8
+    attrs[LFLAG] &= ~(ECHO | ICANON | IEXTEN | ISIG)
     attrs[CC][VMIN] = self.min_bytes
     attrs[CC][VTIME] = self.vtime
 
