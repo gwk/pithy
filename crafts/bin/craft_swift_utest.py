@@ -148,7 +148,7 @@ def resolve_yaml_node(node: Any) -> Any:
   return node
 
 # NOTE: modifies the global default yaml Loader object.
-yaml.add_constructor('!private', handle_yaml_private, Loader=yaml.SafeLoader) # type: ignore
+yaml.add_constructor('!private', handle_yaml_private, Loader=yaml.SafeLoader)
 
 
 if __name__ == '__main__': main()
