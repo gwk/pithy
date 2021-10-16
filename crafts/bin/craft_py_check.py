@@ -14,11 +14,12 @@ from os import environ
 from sys import stdout
 from typing import List
 
+from mypy import api
+
 from pithy.ansi import INVERT, RST, TXT_C, TXT_L, TXT_R, TXT_Y
 from pithy.io import errL, errSL, outZ
 from pithy.lex import Lexer
 from pithy.path import abs_path, path_dir, path_join, path_name
-from pithy.task import runCO
 from tolkien import Source
 
 
@@ -69,11 +70,13 @@ def main() -> None:
     if args.dbg: errSL(f'MYPYPATH={mypy_path}')
 
   version_flag = ['--python-version', args.python_version] if args.python_version else []
-  cmd = ['dmypy', 'run', '--'] if args.dmypy else ['mypy']
-  cmd += [*version_flag, *args.roots]
-  if args.mypy_dbg: cmd.append('--show-traceback')
-  if args.dbg: errSL('cmd:', *cmd)
-  c, o = runCO(cmd, env=env)
+  run_fn = api.run_dmypy if args.dmypy else api.run
+  mypy_args = [*version_flag, *args.roots]
+  if args.mypy_dbg: mypy_args.append('--show-traceback')
+  if args.dbg: errSL('args:', *mypy_args)
+  (o, e, c) = run_fn(mypy_args)
+
+  # Lex the output from mypy.
   source = Source(name='mypy', text=o)
   for token in lexer.lex(source):
     s = source[token]
