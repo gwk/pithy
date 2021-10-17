@@ -44,16 +44,16 @@ def encode_obj(obj:Any) -> Any:
 @encode_obj.register
 def _(obj:None) -> Any: return obj
 
-@encode_obj.register # type: ignore
+@encode_obj.register # type: ignore[no-redef]
 def _(obj:bool) -> Any: return obj
 
-@encode_obj.register # type: ignore
+@encode_obj.register # type: ignore[no-redef]
 def _(obj:int) -> Any: return obj
 
-@encode_obj.register # type: ignore
+@encode_obj.register # type: ignore[no-redef]
 def _(obj:str) -> Any: return obj
 
-@encode_obj.register # type: ignore
+@encode_obj.register # type: ignore[no-redef]
 def _(obj:type) -> Any: return repr(obj)
 
 

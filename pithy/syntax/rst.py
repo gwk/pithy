@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass
+from functools import singledispatchmethod
 from typing import Iterable, List, Optional, Tuple
 
 from docutils import frontend as _frontend, nodes as _nodes
@@ -9,7 +10,6 @@ from docutils.nodes import Node as Node, Text
 from docutils.parsers.rst import Parser as _RstParser
 from docutils.utils import new_document as _new_document
 
-from ..dispatch import dispatched
 from ..io import errL
 from ..tree import OmitNode, transform_tree
 from . import Syntax
@@ -75,14 +75,14 @@ class _Ctx:
     return Syntax.Pos(line=line, col=col, end_line=self.line, end_col=end_col)
 
 
-  @dispatched
+  @singledispatchmethod
   def visit(self, node:Node, stack:Tuple[Node, ...], children:List[Node]) -> Syntax:
     'Default visitor.'
     pos = Syntax.Pos(line=(-1 if node.line is None else node.line-1), enclosed=children)
     return Syntax(path=self.path, pos=pos, kind=_kind_for(node), content=children)
 
 
-  @dispatched # type: ignore
+  @visit.register # type: ignore[no-redef]
   def visit(self, node:Text, stack:Tuple[Node, ...], children:List[Node]) -> Syntax:
     'Text visitor. Determines line/col position post-hoc, which docutils does not provide.'
     assert node.line is None # Text never has line number.
@@ -102,7 +102,7 @@ class _Ctx:
     return Syntax(path=self.path, pos=pos, kind='lines', content=tuple(children))
 
 
-  @dispatched # type: ignore
+  @visit.register # type: ignore[no-redef]
   def visit(self, node:_nodes.reference, stack:Tuple[Node, ...], children:List[Node]) -> Syntax:
     assert len(children) == 1
     text = children[0]
@@ -119,7 +119,7 @@ class _Ctx:
     return Syntax(path=self.path, pos=pos, kind='ref', content=content)
 
 
-  @dispatched # type: ignore
+  @visit.register # type: ignore[no-redef]
   def visit(self, node:_nodes.target, stack:Tuple[Node, ...], children:List[Node]) -> None:
     raise OmitNode
 

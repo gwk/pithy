@@ -256,13 +256,13 @@ def _(syntax:AnnAssign, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any
   scope.warn(syntax, f'assignment not implemented')
 
 
-@parse_decl.register # type: ignore
+@parse_decl.register # type: ignore[no-redef]
 def _(syntax:AsyncFunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Async function.'
   scope.warn(syntax, f'async function def is not implemented')
 
 
-@parse_decl.register # type: ignore
+@parse_decl.register # type: ignore[no-redef]
 def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Function declaration.'
 
@@ -314,7 +314,7 @@ def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,A
   scope.decls.append(Func(name=name, type_name=type_name, sig=sig, pars=pars, ret=ret, doc=doc, kind=kind))
 
 
-@parse_decl.register # type: ignore
+@parse_decl.register # type: ignore[no-redef]
 def _(syntax:ClassDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Class declaration.'
 
