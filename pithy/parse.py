@@ -11,9 +11,9 @@ Transformers can return results of any type.
 
 Several types of rules are available:
 * Atom: a single token kind.
-* Prefix: a prefix token, followed by a body rule, optionally followed by a suffix.
 * Quantity: a body rule, optionally interleaved with a separator token, with optional `min` and `max` quantities.
 * Choice: one of several rules, which must be distinguishable by the head token.
+* Struct: a fixed-length sequence of heterogenous subrules.
 * Precedence: a family of binary precedence operators.
 
 The main design feature of Parser is that operators are not first-class rules:
@@ -158,7 +158,7 @@ class Rule:
 
   def compile_heads(self) -> Iterator[TokenKind]:
     'Calculate the `heads` set for this rule. The parser uses this to build a dispatch table against token kinds.'
-    if self.heads: # For recursive rules, the sentinel causes recursion to break here.
+    if self.heads: # Prefilled for Atom base case. For recursive rules, the sentinel causes recursion to break here.
       yield from self.heads
       return
     # Otherwise, this rule does not yet know its own heads; discover them recursively.
