@@ -365,7 +365,7 @@ class Struct(Rule):
   def head_subs(self) -> Iterable['Rule']:
     for field in self.subs:
       yield field
-      if not (isinstance(field, Quantity) and field.min == 0):
+      if not (isinstance(field, _QuantityRule) and field.min == 0):
         break
 
 
