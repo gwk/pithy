@@ -190,6 +190,29 @@ class Rule:
       raise
 
 
+class Alias(Rule):
+  '''
+  A rule that is an alias for another named rule.
+  '''
+
+  type_desc = 'alias'
+
+  def __init__(self, alias:str, transform:UnaryTransform=unary_identity) -> None:
+    self.name = ''
+    self.alias = alias
+    self.sub_refs = (alias,)
+    self.heads = ()
+    self.transform = transform
+
+  def head_subs(self) -> Iterable['Rule']:
+    return self.subs
+
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+    res = self.parse_sub(self.subs[0], source, token, token, buffer)
+    return self.transform(source, token, res)
+
+
+
 
 class Atom(Rule):
   '''
