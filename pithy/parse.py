@@ -251,7 +251,7 @@ class _QuantityRule(Rule):
 
 
   def head_subs(self) -> Iterable['Rule']:
-    return (self.body,)
+    return self.subs
 
 
   def compile(self, parser:'Parser') -> None:
