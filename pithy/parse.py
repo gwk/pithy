@@ -301,7 +301,7 @@ class Quantity(_QuantityRule):
    transform:QuantityTransform=quantity_identity) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
-    if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is None but `sep_at_end` is `{sep_at_end}`')
+    if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is `None` but `sep_at_end` is `{sep_at_end}`')
     self.name = ''
     self.sub_refs = (body,)
     self.heads = ()
