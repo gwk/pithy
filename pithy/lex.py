@@ -241,7 +241,7 @@ class Lexer:
         try: push_trans, push_prev_kind = self.transitions[(frame_trans.mode, kind)]
         except KeyError: pass
         else:
-          if not push_prev_kind or prev_kind == push_prev_kind:
+          if not push_prev_kind or prev_kind == push_prev_kind: # prev_kind is not significant or also matches; do transition.
             stack.append((push_trans, token))
             kind = '' # Make prev_kind empty on the next iteration.
       except _BreakFromModeSwitching: pass

@@ -621,7 +621,7 @@ class Precedence(Rule):
       self.head_table[head] = matching_subs[0]
 
     for i, group in enumerate(self.groups):
-      group.level = i*10 # Multiplying by ten lets us fudge the level by one to achieve right-associativity.
+      group.level = i*10 # Multiplying by ten lets level_bump increase the level by one to achieve left-associativity.
       for op in group.ops:
         try: kinds = op.kinds
         except _AllLeafKinds: kinds = tuple(self.head_table)
