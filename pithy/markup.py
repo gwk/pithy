@@ -67,6 +67,8 @@ class Mu:
     However, various Mu methods have a `traversable` option, which will return subtrees with the _orig/_parent refs set.
     Such "subtree nodes" can use the `next` and `prev` methods in addition to `pick` and friends.
     '''
+    # TODO: handle tag!!!
+
     if attrs is None: attrs = {} # Important: use existing dict ref if provided.
     for k, v in kw_attrs.items():
       attrs[k.replace('_', '-')] = v
