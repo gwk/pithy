@@ -162,6 +162,7 @@ class Mu:
 
   @property
   def parent(self) -> 'Mu':
+    'If the node is a subnode, return the parent. Otherwise raise ValueError.'
     if self._parent is None: raise ValueError(f'node is not a subnode: {self}')
     return self._parent
 
@@ -203,6 +204,7 @@ class Mu:
 
   @property
   def has_substantial_children(self) -> bool:
+    'Predicate testing whether the node has non-whitespace children.'
     for c in self.ch:
       if isinstance(c, Mu): return True
       if isinstance(c, EscapedStr): c = c.string
@@ -212,6 +214,7 @@ class Mu:
 
   @property
   def texts(self) -> Iterator[str]:
+    'Yield the text of the tree sequentially.'
     for c in self.ch:
       if isinstance(c, str): yield c
       elif isinstance(c, Mu): yield from c.texts
@@ -221,11 +224,14 @@ class Mu:
 
   @property
   def text(self) -> str:
+    'Return the text of the tree joined as a single string.'
     return ''.join(self.texts)
 
 
   @property
-  def cl(self) -> str: return str(self.attrs.get('class', ''))
+  def cl(self) -> str:
+    '`cl` is shortand for the `class` attribute.'
+    return str(self.attrs.get('class', ''))
 
   @cl.deleter
   def cl(self) -> None: del self.attrs['class']
@@ -235,7 +241,9 @@ class Mu:
 
 
   @property
-  def classes(self) -> List[str]: return cast(str, self.attrs.get('class', '')).split()
+  def classes(self) -> List[str]:
+    'The `class` attribute split into individual words.'
+    return cast(str, self.attrs.get('class', '')).split()
 
   @classes.deleter
   def classes(self) -> None: del self.attrs['class']
