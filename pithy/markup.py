@@ -5,6 +5,7 @@ Base Markup type for Html, Svg, Xml, as well as legacy SGML formats.
 '''
 
 import re
+from collections import Counter
 from itertools import chain
 from typing import (Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Optional, Tuple, Type, TypeVar,
   Union, cast, overload)
@@ -274,6 +275,25 @@ class Mu:
 
   @id.deleter
   def id(self) -> None: del self.attrs['id']
+
+
+  def all_ids(self) -> set[str]:
+    ids = set()
+    self.visit(pre=lambda node: ids.add(node.id))
+    return ids
+
+
+  def unique_ids(self) -> set[str]:
+    ids = Counter[str]()
+    def count_ids(node:Mu) -> None:
+      ids[node.id] += 1
+    self.visit(pre=count_ids)
+    return { id for id, count in ids.items() if count == 1 }
+
+
+  def unique_id(self, unique_id_set:set[str]) -> Optional[str]:
+    id = self.id
+    return id if id in unique_id_set else None
 
 
   def append(self, child:_MuChild) -> _MuChild:
