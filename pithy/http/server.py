@@ -54,12 +54,16 @@ DEFAULT_ERROR_HTML = '''\
 DEFAULT_ERROR_CONTENT_TYPE = "text/html;charset=utf-8"
 
 
+class UnrecoverableServerError(Exception):
+  'An error occurred for which the server cannot recover.'
+
+
 class HTTPServer(TCPServer):
 
   allow_reuse_address = True # See cpython/Lib/socketserver.py.
   #^ Controls whether `self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)` is called.
 
-  unrecoverable_exceptions: Tuple[Type, ...] = (
+  unrecoverable_exception_types: Tuple[Type, ...] = (
     AttributeError,
     ImportError,
     MemoryError,
@@ -81,8 +85,8 @@ class HTTPServer(TCPServer):
     errL()
     errSL('Exception while processing request from client:', client_address)
     e_type, exc, traceback = exc_info()
-    if isinstance(exc, self.unrecoverable_exceptions):
-      raise Exception('unrecoverable error') from exc
+    if isinstance(exc, self.unrecoverable_exception_types):
+      raise UnrecoverableServerError from exc
     else:
       print_exception(e_type, exc, traceback)
       errL('-'*40)
