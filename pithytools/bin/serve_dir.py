@@ -1,8 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from functools import partial
-from typing import cast
 
 from pithy.http.server import HTTPRequestHandler, HTTPServer
 from pithy.task import run
@@ -29,7 +27,7 @@ def main() -> None:
     'apple-touch-icon-precomposed.png',
   }
 
-  server = HTTPServer(address, cast(type, partial(HTTPRequestHandler, directory=root)))
+  server = HTTPServer(address, HTTPRequestHandler.for_directory(directory=root))
 
   # note: the way we tell the OS to open the URL in the browser is a rather suspicious hack:
   # the `open` command returns and then we launch the web server,

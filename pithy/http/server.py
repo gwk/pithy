@@ -7,6 +7,7 @@ import sys
 import time
 import urllib.parse
 from email.utils import formatdate as format_email_date
+from functools import partial
 from html import escape as html_escape
 from http import HTTPStatus
 from http.client import HTTPException, HTTPMessage, LineTooLong, parse_headers
@@ -15,10 +16,10 @@ from os import fstat as os_fstat
 from posixpath import splitext
 from shutil import copyfileobj
 from socket import getfqdn as get_fully_qualified_domain_name
-from socketserver import StreamRequestHandler, TCPServer
+from socketserver import BaseRequestHandler, StreamRequestHandler, TCPServer
 from sys import exc_info
 from traceback import print_exception
-from typing import BinaryIO, List, Optional, Tuple, Type
+from typing import BinaryIO, Callable, List, Optional, Tuple, Type
 from urllib.parse import unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
 
 from ..fs import is_dir, norm_path, path_exists, path_join
@@ -129,6 +130,11 @@ class HTTPRequestHandler(StreamRequestHandler):
     self.local_path: Optional[str] = None
     self.prevent_client_caching = True
     super().__init__(*args, **kwargs)
+
+
+  @classmethod
+  def for_directory(cls, directory:str) -> Callable[..., BaseRequestHandler]:
+    return partial(cls, directory=directory)
 
 
   def handle(self) -> None:
