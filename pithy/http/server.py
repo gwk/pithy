@@ -324,24 +324,22 @@ class HTTPRequestHandler(StreamRequestHandler):
 
   def send_response_only(self, code:HTTPStatus, label:str=None) -> None:
     '''Send the response header only.'''
-    if self.request_version != 'HTTP/0.9':
-      if label is None:
-        if code in self.responses:
-          label = self.responses[code][0]
-        else:
-          label = ''
-      if not hasattr(self, '_headers_buffer'):
-        self._headers_buffer:List[bytes] = []
-      self._headers_buffer.append(f'{self.protocol_version} {code} {label}\r\n'.encode('latin-1', 'strict'))
+    if label is None:
+      if code in self.responses:
+        label = self.responses[code][0]
+      else:
+        label = ''
+    if not hasattr(self, '_headers_buffer'):
+      self._headers_buffer:List[bytes] = []
+    self._headers_buffer.append(f'{self.protocol_version} {code} {label}\r\n'.encode('latin-1', 'strict'))
 
 
   def send_header(self, keyword:str, value:str) -> None:
     '''Send a MIME header to the headers buffer.'''
 
-    if self.request_version != 'HTTP/0.9':
-      if not hasattr(self, '_headers_buffer'):
-        self._headers_buffer = []
-      self._headers_buffer.append(f'{keyword}: {value}\r\n'.encode('latin-1', 'strict'))
+    if not hasattr(self, '_headers_buffer'):
+      self._headers_buffer = []
+    self._headers_buffer.append(f'{keyword}: {value}\r\n'.encode('latin-1', 'strict'))
 
     if keyword.lower() == 'connection':
       if value.lower() == 'close':
@@ -352,9 +350,8 @@ class HTTPRequestHandler(StreamRequestHandler):
 
   def end_headers(self) -> None:
     '''Send the blank line ending the MIME headers.'''
-    if self.request_version != 'HTTP/0.9':
-      self._headers_buffer.append(b"\r\n")
-      self.flush_headers()
+    self._headers_buffer.append(b"\r\n")
+    self.flush_headers()
 
 
   def flush_headers(self) -> None:
