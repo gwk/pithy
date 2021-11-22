@@ -314,7 +314,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     '''
     self.log_request(code)
     self.send_response_only(code, label)
-    self.send_header('Server', self.version_string())
+    self.send_header('Server', f'{self.server_version} {self.sys_version}')
     self.send_header('Date', self.format_header_date())
     if self.prevent_client_caching:
       self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -358,16 +358,6 @@ class HTTPRequestHandler(StreamRequestHandler):
     if hasattr(self, '_headers_buffer'):
       self.wfile.write(b"".join(self._headers_buffer))
       self._headers_buffer = []
-
-
-  def version_string(self) -> str:
-    '''Return the server software version string.'''
-    return self.server_version + ' ' + self.sys_version
-
-
-  def address_string(self) -> str:
-    '''Return the client address.'''
-    return self.client_address[0] # type: ignore
 
 
   def do_GET(self) -> None:
@@ -497,7 +487,7 @@ class HTTPRequestHandler(StreamRequestHandler):
 
   def log_message(self, msg:str) -> None:
     'Base logging function called by all others. Overridden to alter formatting.'
-    errL(f'{self.format_log_date()}: {self.address_string()} - {msg}')
+    errL(f'{self.format_log_date()}: {self.client_address_string()} - {msg}')
 
 
   def log_request(self, code='-', size='-') -> None:
@@ -522,3 +512,7 @@ class HTTPRequestHandler(StreamRequestHandler):
   def format_header_date(self, timestamp:float=None):
     'Format `timestamp` or now for an HTTP header value.'
     return format_email_date(time.time() if timestamp is None else timestamp, usegmt=True)
+
+  def client_address_string(self) -> str:
+    '''Return the client address.'''
+    return self.client_address[0] # type: ignore
