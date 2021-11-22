@@ -4,7 +4,8 @@ import re as _re
 from itertools import zip_longest as _zip_longest
 from os import PathLike, fspath as _fspath, sep
 from os.path import (abspath as _abspath, basename as _basename, commonpath as _commonpath, dirname as _dirname,
-  isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split, splitext as _splitext)
+  expanduser as _expand_user, isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split,
+  splitext as _splitext)
 from typing import List, Tuple, Union
 
 
@@ -40,6 +41,10 @@ def executable_path() -> str:
   import __main__
   path: str = __main__.__file__
   return _realpath(path)
+
+
+def expand_user(path:Path) -> str:
+  return _expand_user(path)
 
 
 def insert_path_stem_suffix(path: Path, suffix: str) -> str:
