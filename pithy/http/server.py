@@ -461,9 +461,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     except UnicodeDecodeError:
       displaypath = urllib.parse.unquote(path)
 
-    displaypath = html_escape(displaypath, quote=False)
-
-    title = f'Directory listing for {displaypath}'
+    title = html_escape(displaypath, quote=False)
 
     r.append('<!DOCTYPE html>\n<html>')
     r.append(f'<head>\n<meta charset="utf-8" />\n<title>{title}</title>\n</head>')
