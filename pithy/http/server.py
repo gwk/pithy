@@ -123,7 +123,7 @@ class HTTPRequestHandler(StreamRequestHandler):
 
   def __init__(self, *args, directory:str=None, **kwargs) -> None:
     self.command:str = '' # Set in case of error on the first line.
-    self.request_version = self.protocol_version
+    self.request_version = ''
     self.close_connection = True
     self.requestline = ''
     self.directory = directory or os.getcwd()
@@ -179,7 +179,7 @@ class HTTPRequestHandler(StreamRequestHandler):
 
 
   def parse_request(self) -> bool:
-    version = self.request_version
+    version = ''
     self.requestline = requestline = str(self.raw_requestline, 'latin-1').rstrip('\r\n')
     words = requestline.split()
     if not words: return False
