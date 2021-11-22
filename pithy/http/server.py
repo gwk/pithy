@@ -221,11 +221,11 @@ class HTTPRequestHandler(StreamRequestHandler):
     conntype = self.headers.get('Connection', "")
     if conntype.lower() == 'close':
       self.close_connection = True
-    elif (conntype.lower() == 'keep-alive' and self.protocol_version >= "HTTP/1.1"): # TODO: lexicographical compare.
+    elif conntype.lower() == 'keep-alive': # TODO: lexicographical compare.
       self.close_connection = False
 
     expect = self.headers.get('Expect', "")
-    if (expect.lower() == "100-continue" and self.protocol_version >= "HTTP/1.1" and self.request_version >= "HTTP/1.1"): # TODO: lexicographical compare.
+    if expect.lower() == "100-continue": # TODO: lexicographical compare.
       if not self.handle_expect_100(): return False
 
     # Compute local_path.
