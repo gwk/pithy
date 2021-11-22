@@ -363,11 +363,6 @@ class HTTPRequestHandler(StreamRequestHandler):
       self._headers_buffer = []
 
 
-  def log_error(self, msg:str) -> None:
-    '''Log an error. Called when a request cannot be fulfilled. By default it passes the message on to log_message().'''
-    self.log_message(msg)
-
-
   def version_string(self) -> str:
     '''Return the server software version string.'''
     return self.server_version + ' ' + self.sys_version
@@ -514,6 +509,11 @@ class HTTPRequestHandler(StreamRequestHandler):
     'Log an accepted request; called by send_response().'
     assert isinstance(code, HTTPStatus)
     self.log_message(f'{code.value} {code.phrase} "{self.requestline}": {self.local_path}')
+
+
+  def log_error(self, msg:str) -> None:
+    '''Log an error. Called when a request cannot be fulfilled. By default it passes the message on to log_message().'''
+    self.log_message(msg)
 
 
   def format_log_date(self, timestamp:float=None) -> str:
