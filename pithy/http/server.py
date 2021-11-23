@@ -16,7 +16,7 @@ from os import fstat as os_fstat
 from posixpath import splitext
 from shutil import copyfileobj
 from socket import getfqdn as get_fully_qualified_domain_name
-from socketserver import BaseRequestHandler, StreamRequestHandler, TCPServer
+from socketserver import BaseRequestHandler, StreamRequestHandler, TCPServer, ThreadingMixIn
 from sys import exc_info
 from traceback import print_exception
 from typing import BinaryIO, Callable, List, Optional, Tuple, Type
@@ -91,6 +91,11 @@ class HTTPServer(TCPServer):
     else:
       print_exception(e_type, exc, traceback)
       errL('-'*40)
+
+
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
 
 
 class HTTPRequestHandler(StreamRequestHandler):
