@@ -46,7 +46,7 @@ DEFAULT_ERROR_HTML = '''\
   <title>Error: {code}</title>
 </head>
 <body>
-  <h1>Error: {code} - {label}</p>
+  <h1>Error: {code} - {label}</h1>
   <p>{message}</p>
 </body>
 </html>
