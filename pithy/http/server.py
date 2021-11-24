@@ -110,9 +110,10 @@ class HTTPRequestHandler(StreamRequestHandler):
 
   server: HTTPServer # Covariant type override of BaseRequestHandler.
 
-  sys_version = 'Python/{}.{}.{}'.format(*sys.version_info[:3])
+  python_version = 'Python/{}.{}.{}'.format(*sys.version_info[:3])
 
-  server_version = f"pithy.http.Server/{__version__}"
+  server_version = f"pithy.http.server/{__version__} {python_version}"
+
   #^ The format is multiple whitespace-separated strings, where each string is of the form name[/version].
 
   error_message_format = DEFAULT_ERROR_HTML
@@ -141,8 +142,9 @@ class HTTPRequestHandler(StreamRequestHandler):
     self.request_line = ''
     self.command = ''
     self.close_connection = True
-    self.prevent_client_caching = True
+    self.prevent_client_caching = True # TODO: this should not be an instance variable.
     self.headers: Optional[HTTPMessage] = None
+    self.response_buffer = bytearray() # Response line followed by header lines.
     super().__init__(*args, **kwargs)
 
 
@@ -151,8 +153,6 @@ class HTTPRequestHandler(StreamRequestHandler):
     Override point provided by BaseRequestHandler.
     Handle multiple requests if necessary.
     '''
-    self.close_connection = True
-
     self.handle_one_request()
     while not self.close_connection:
       self.handle_one_request()
@@ -195,7 +195,7 @@ class HTTPRequestHandler(StreamRequestHandler):
 
 
   def parse_request(self) -> Optional[tuple[HTTPStatus,str,str]]:
-    self.request_line = request_line = str(self.request_line_bytes, 'latin-1').rstrip('\r\n')
+    self.request_line = request_line = str(self.request_line_bytes, 'latin1').rstrip('\r\n')
     words = request_line.split(' ')
     if not words:
       return (HTTPStatus.BAD_REQUEST, 'Empty request line', '')
@@ -224,7 +224,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     self.command = command
     self.path = path
 
-    # Examine the headers and look for a Connection directive.
+    # Parse headers.
     try:
       self.headers = parse_headers(self.rfile, _class=self.MessageClass) # type: ignore
     except LineTooLong as err:
@@ -232,12 +232,12 @@ class HTTPRequestHandler(StreamRequestHandler):
     except HTTPException as err:
       return (HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE, "Too many headers", str(err))
 
-    conn_type = self.headers.get('Connection', "").lower()
-    if conn_type == 'close':
+    # Respect connection directive.
+    conn_type = self.headers.get('Connection', '').lower()
+    if 'close' in conn_type:
       self.close_connection = True
-    elif conn_type == 'keep-alive':
-      self.close_connection = False
-
+    else:
+      self.close_connection = False # Keep-alive is the default for HTTP/1.1.n
     return None
 
 
@@ -269,8 +269,8 @@ class HTTPRequestHandler(StreamRequestHandler):
     This method should either return True (possibly after sending a 100 Continue response)
     or send an error response and return False.
     '''
-    self.send_response_only(HTTPStatus.CONTINUE)
-    self.end_headers()
+    self.add_response_line(HTTPStatus.CONTINUE)
+    self.end_headers_and_flush_response()
     return True
 
 
@@ -298,8 +298,8 @@ class HTTPRequestHandler(StreamRequestHandler):
     if not message:
       message = dflt_message
     self.log_error(f'code: {code}; label: {label}')
-    self.send_response(code, label)
-    self.send_header('Connection', 'close')
+    self.add_response(code, label)
+    self.close_connection = True
 
     # Message body is omitted for cases described in:
     #  - RFC7230: 3.3. 1xx, 204 (No Content), 304 (Not Modified).
@@ -311,65 +311,55 @@ class HTTPRequestHandler(StreamRequestHandler):
         code=code, label=html_escape(label, quote=False), message=html_escape(message, quote=False))
 
       body = content.encode('UTF-8', 'replace')
-      self.send_header("Content-Type", self.error_content_type)
-      self.send_header('Content-Length', str(len(body)))
-    self.end_headers()
+      self.add_header("Content-Type", self.error_content_type)
+      self.add_header('Content-Length', str(len(body)))
+    self.end_headers_and_flush_response()
 
     if self.command != 'HEAD' and body:
       self.wfile.write(body)
 
 
-  def send_response(self, code:HTTPStatus, label:str=None) -> None:
+  def add_response(self, code:HTTPStatus, label:str=None) -> None:
     '''
     Add the response header to the headers buffer and log the response code.
     Also send two standard headers with the server software version and the current date.
     '''
     self.log_request(code)
-    self.send_response_only(code, label)
-    self.send_header('Server', f'{self.server_version} {self.sys_version}')
-    self.send_header('Date', self.format_header_date())
+    self.add_response_line(code, label)
+    self.add_header('Server', self.server_version)
+    self.add_header('Date', self.format_header_date())
     if self.prevent_client_caching:
-      self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-      self.send_header('Pragma', 'no-cache')
-      self.send_header('Expires', '0')
+      self.add_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+      self.add_header('Pragma', 'no-cache')
+      self.add_header('Expires', '0')
 
 
-  def send_response_only(self, code:HTTPStatus, label:str=None) -> None:
-    '''Send the response header only.'''
+  def add_response_line(self, code:HTTPStatus, label:str=None) -> None:
+    '''Add the response line only.'''
     if label is None:
       if code in self.responses:
         label = self.responses[code][0]
       else:
         label = ''
-    if not hasattr(self, '_headers_buffer'):
-      self._headers_buffer:List[bytes] = []
-    self._headers_buffer.append(f'{self.protocol_version} {code} {label}\r\n'.encode('latin-1', 'strict'))
+    assert not self.response_buffer
+    self.response_buffer.extend(f'{self.protocol_version} {code} {label}\r\n'.encode('latin1', 'strict'))
 
 
-  def send_header(self, keyword:str, value:str) -> None:
-    '''Send a MIME header to the headers buffer.'''
-
-    if not hasattr(self, '_headers_buffer'):
-      self._headers_buffer = []
-    self._headers_buffer.append(f'{keyword}: {value}\r\n'.encode('latin-1', 'strict'))
-
-    if keyword.lower() == 'connection':
-      if value.lower() == 'close':
-        self.close_connection = True
-      elif value.lower() == 'keep-alive':
-        self.close_connection = False
+  def add_header(self, key:str, val:str) -> None:
+    '''Add a MIME header to the headers buffer.'''
+    self.response_buffer.extend(f'{key}: {val}\r\n'.encode('latin1', 'strict'))
 
 
-  def end_headers(self) -> None:
-    '''Send the blank line ending the MIME headers.'''
-    self._headers_buffer.append(b"\r\n")
-    self.flush_headers()
-
-
-  def flush_headers(self) -> None:
-    if hasattr(self, '_headers_buffer'):
-      self.wfile.write(b"".join(self._headers_buffer))
-      self._headers_buffer = []
+  def end_headers_and_flush_response(self) -> None:
+    '''
+    Add a `Connection: close` header if appropriate, add the blank line ending the MIME headers, and flush the response.
+    '''
+    if self.close_connection:
+      self.add_header('Connection', 'close')
+    self.response_buffer.extend(b"\r\n")
+    self.wfile.write(self.response_buffer)
+    #print(self.response_buffer.decode('latin1'))
+    self.response_buffer.clear()
 
 
   def handle_http_GET(self) -> None:
@@ -389,10 +379,10 @@ class HTTPRequestHandler(StreamRequestHandler):
 
   def send_head(self) -> Optional[BinaryIO]:
     if self.path == '/favicon.ico': # TODO: send actual favicon if it exists.
-      self.send_response(HTTPStatus.OK)
-      self.send_header('Content-type', 'image/x-icon')
-      self.send_header('Content-Length', '0')
-      self.end_headers()
+      self.add_response(HTTPStatus.OK)
+      self.add_header('Content-type', 'image/x-icon')
+      self.add_header('Content-Length', '0')
+      self.end_headers_and_flush_response()
       return None
 
     local_path = self.compute_local_path()
@@ -402,12 +392,12 @@ class HTTPRequestHandler(StreamRequestHandler):
 
     if is_dir(local_path, follow=True):
       if not local_path.endswith('/'): # redirect browser to path with slash (what apache does).
-        self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+        self.add_response(HTTPStatus.MOVED_PERMANENTLY)
         parts = list(url_split(self.path))
         parts[2] += '/'
         new_url = url_join(parts)
-        self.send_header("Location", new_url)
-        self.end_headers()
+        self.add_header("Location", new_url)
+        self.end_headers_and_flush_response()
         return None
       for index in ("index.html", "index.htm"):
         index = path_join(local_path, index)
@@ -430,11 +420,11 @@ class HTTPRequestHandler(StreamRequestHandler):
       return None
     try:
       f_stat = os_fstat(f.fileno())
-      self.send_response(HTTPStatus.OK)
-      self.send_header("Content-type", ctype)
-      self.send_header("Content-Length", str(f_stat.st_size))
-      self.send_header("Last-Modified", self.format_header_date(f_stat.st_mtime))
-      self.end_headers()
+      self.add_response(HTTPStatus.OK)
+      self.add_header("Content-type", ctype)
+      self.add_header("Content-Length", str(f_stat.st_size))
+      self.add_header("Last-Modified", self.format_header_date(f_stat.st_mtime))
+      self.end_headers_and_flush_response()
       return f
     except:
       f.close()
@@ -484,10 +474,10 @@ class HTTPRequestHandler(StreamRequestHandler):
     f = BytesIO()
     f.write(encoded)
     f.seek(0)
-    self.send_response(HTTPStatus.OK)
-    self.send_header("Content-type", "text/html; charset=utf-8")
-    self.send_header("Content-Length", str(len(encoded)))
-    self.end_headers()
+    self.add_response(HTTPStatus.OK)
+    self.add_header("Content-type", "text/html; charset=utf-8")
+    self.add_header("Content-Length", str(len(encoded)))
+    self.end_headers_and_flush_response()
     return f
 
 
@@ -499,12 +489,12 @@ class HTTPRequestHandler(StreamRequestHandler):
 
 
   def log_message(self, msg:str) -> None:
-    'Base logging function called by all others. Overridden to alter formatting.'
+    'Base logging function called by all others.'
     errL(f'{self.format_log_date()}: {self.client_address_string()} - {msg}')
 
 
-  def log_request(self, code='-', size='-') -> None:
-    'Log an accepted request; called by send_response().'
+  def log_request(self, code:HTTPStatus) -> None:
+    'Log an accepted request; called by add_response().'
     assert isinstance(code, HTTPStatus)
     self.log_message(f'{code.value} {code.phrase} {self.request_line!r}')
 
