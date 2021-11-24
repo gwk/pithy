@@ -59,6 +59,7 @@ class UnrecoverableServerError(Exception):
   'An error occurred for which the server cannot recover.'
 
 
+
 class HTTPServer(TCPServer):
 
   allow_reuse_address = True # See cpython/Lib/socketserver.py.
@@ -78,6 +79,7 @@ class HTTPServer(TCPServer):
     host, port = self.server_address[:2]
     self.server_name = get_fully_qualified_domain_name(host)
     self.server_port = port
+
 
   def handle_error(self, request, client_address) -> None:
     '''
