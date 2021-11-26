@@ -7,64 +7,135 @@ def _byte_index(alphabet:bytes, char:int) -> int:
   try: return alphabet.index(char)
   except ValueError: return 0xff
 
+# The base62 alphabet consists of all ASCII numbers and letters.
 base62_alphabet = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 base62_alphabet_inverse = bytes(_byte_index(base62_alphabet, c) for c in range(0x100))
 assert len(base62_alphabet) == 62
 
+# The base58 alphabet as described by bitcoin removes 0, O, I, and l to improve readability.
 base58_alphabet = b'123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 base58_alphabet_inverse = bytes(_byte_index(base58_alphabet, c) for c in range(0x100))
 assert len(base58_alphabet) == 58
 
+# The base128 alphabet is a subset of the latin1 alphanumeric alphabet,
+# chosen so that blocks of characters can be double-clicked to select the entire block.
+# The only set that achieves this goal uses every letter character, as well as 0-9 and '_'.
+# In VSCode, the double-click behavior also works for the numeric characters '²³¹¼½¾',
+# but in macOS applications only the ten ASCII digits are double-clickable.
+base128_alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzªµºÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'.encode('latin1')
+base128_alphabet_inverse = bytes(_byte_index(base128_alphabet, c) for c in range(0x100))
 
-def _lep_int_from_bytes(val:ByteString) -> int:
+assert len(base128_alphabet) == 128
+
+
+def lep_int_from_bytes(val:ByteString) -> int:
   '''
-  Create a (big) integer from the little-endian interpretation of the bytes,
-  and then add a leading 1, which will act as a terminator when decoding.
+  Create a (possibly very big) integer from the little endian interpretation of the bytes,
+  and then add the equivalent of a final 1 bit, which acts as a terminator when decoding.
   '''
   n = int.from_bytes(val, byteorder='little')
   return n + (1<<(len(val)*8))
 
 
 def lep_encode(val:ByteString, alphabet:bytes) -> bytes:
+  'Encode a byte string using the specified base alphabet using the "little endian punctuated" scheme.'
   m = len(alphabet)
   res = bytearray()
-  n = _lep_int_from_bytes(val)
+  n = lep_int_from_bytes(val)
   while n:
     n, r = divmod(n, m)
     res.append(alphabet[r])
   return bytes(res)
 
-def lep_decode(val:ByteString, alphabet:bytes, alphabet_inverse:bytes) -> bytes:
+
+def lep_decode(encoded:ByteString, alphabet:bytes, alphabet_inverse:bytes) -> bytes:
+  'Decode a byte string using the specified base alphabet and its inverse lookup table using the "little-endian punctuated" scheme.'
   m = len(alphabet)
   n = 0
-  for i, char in enumerate(val):
+  for i, char in enumerate(encoded):
     a = alphabet_inverse[char]
-    if a >= m: raise ValueError(val)
+    if a >= m: raise ValueError(encoded)
     n += (m**i) * a
   res = bytearray()
   while n > 1:
     n, r = divmod(n, 0x100)
     res.append(r)
-  if n != 1: raise ValueError(val)
+  if n != 1: raise ValueError(encoded)
   return bytes(res)
 
 
 def enc_lep62(val:ByteString) -> bytes:
+  'Encode a byte string using the little endian punctuated base62 alphabet.'
   return lep_encode(val, alphabet=base62_alphabet)
 
 def dec_lep62(val:ByteString) -> bytes:
+  'Decode a byte string using the little endian punctuated base62 alphabet.'
   return lep_decode(val, alphabet=base62_alphabet, alphabet_inverse=base62_alphabet_inverse)
 
 
-def enc_b32(val:int) -> str:
-  if not isinstance(val, int): raise TypeError
-  chars = []
-  if val == 0: return '0'
-  neg = (val < 0)
-  if neg: val = -val
-  while val > 0:
-    digit = val & 0x1f # low five bits.
-    val >>= 5
-    chars.append(chr((0x30 if digit < 10 else 0x37) + digit))
-  if neg: chars.append('-')
-  return ''.join(reversed(chars))
+def enc_lep128(val:ByteString) -> bytes:
+  'Encode a byte string using the little endian punctuated base128 alphabet.'
+  a = base128_alphabet # Local alias for brevity.
+  res = bytearray()
+  i = -7
+  for i in range(0, len(val)//7, 7): # Step over 7 bytes at a time.
+    n = int.from_bytes(val[i:i+7], byteorder='little')
+    res.append(a[n & 0x7f]) # Low 7 bits of n.
+    res.append(a[(n >> 7) & 0x7f])
+    res.append(a[(n >> 14) & 0x7f])
+    res.append(a[(n >> 21) & 0x7f])
+    res.append(a[(n >> 28) & 0x7f])
+    res.append(a[(n >> 35) & 0x7f])
+    res.append(a[(n >> 42) & 0x7f])
+    res.append(a[(n >> 49)])
+  tail = val[i+7:] # Get the remaining bytes.
+  n = int.from_bytes(tail, byteorder='little') + (1<<(len(tail)*8)) # Append the terminating bit.
+  while n:
+    n, r = divmod(n, 128)
+    res.append(a[r])
+  return bytes(res)
+
+
+def dec_lep128(encoded:ByteString) -> bytes:
+  'Decode a byte string using the little endian punctuated base128 alphabet.'
+  res = bytearray()
+  i = -1
+  n = 0
+  last_i = len(encoded) - 1
+  for i, c in enumerate(encoded):
+    j = i % 8
+    c = encoded[i]
+    v = base128_alphabet_inverse[c]
+    if v >= 128: raise ValueError(encoded)
+    n += v << (7*j)
+    if j == 7 and i < last_i:
+      res.extend(n.to_bytes(7, byteorder='little'))
+      n = 0
+  # Handle the final chunk specially, since it is has the terminating bit.
+  j = i % 8
+  while n > 1:
+    n, r = divmod(n, 0x100)
+    res.append(r)
+  if n != 1: raise ValueError(encoded)
+  return bytes(res)
+
+
+def enc_lep128_to_str(val:ByteString) -> str:
+  'Encode a byte string using the little endian punctuated base128 alphabet, returning a string.'
+  return enc_lep128(val).decode('latin1')
+
+
+def dec_lep128_from_str(val:str) -> bytes:
+  'Decode a string using the little endian punctuated base128 alphabet.'
+  return dec_lep128(val.encode('latin1'))
+
+
+def enc_lep128_to_utf8(val:ByteString) -> bytes:
+  'Encode a byte string using the little endian punctuated base128 alphabet, returning a UTF-8 byte string.'
+  return enc_lep128(val).decode('latin1').encode('utf8')
+
+
+def dec_lep128_from_utf8(val:ByteString) -> bytes:
+  'Decode a UTF-8 byte string using the little endian punctuated base128 alphabet.'
+  if not isinstance(val, (bytes, bytearray)): val = bytes(val) # memoryview does not have the decode() method.
+  return dec_lep128(val.decode('utf8').encode('latin1'))
