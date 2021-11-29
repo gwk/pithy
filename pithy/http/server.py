@@ -163,18 +163,18 @@ class HttpRequestHandler(StreamRequestHandler):
     try:
       # Parse request.
       self.request_line_bytes = self.rfile.readline(65537)
-      if len(self.request_line_bytes) > 65536:
-        self.send_error(HTTPStatus.REQUEST_URI_TOO_LONG)
-        return
       if not self.request_line_bytes:
         self.close_connection = True
+        return
+      if len(self.request_line_bytes) > 65536:
+        self.send_error(HTTPStatus.REQUEST_URI_TOO_LONG)
         return
       if error_args := self.parse_request():
         code, reason = error_args
         self.send_error(code=code, reason=reason)
         return
-      # Handle 'Expect'.
       assert self.headers
+      # Handle 'Expect'.
       expect = self.headers.get('Expect', '').lower()
       if expect == '100-continue':
         if not self.handle_expect_100(): return
@@ -187,10 +187,9 @@ class HttpRequestHandler(StreamRequestHandler):
       method()
       self.wfile.flush() # Send the response if not already done.
     except TimeoutError as e:
-      # A read or a write timed out.  Discard this connection.
+      # Either a read or a write timed out. Discard this connection.
       self.log_error(f'Request timed out: {e}')
       self.close_connection = True
-      return
 
 
   def parse_request(self) -> Optional[tuple[HTTPStatus,str]]:
