@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 from os import chdir
 
-from pithy.http.server import HTTPRequestHandler, HTTPServer
+from pithy.http.server import HttpRequestHandler, HttpServer
 from pithy.task import run
 
 
@@ -29,7 +29,7 @@ def main() -> None:
   }
 
   chdir(root)
-  server = HTTPServer(address, HTTPRequestHandler)
+  server = HttpServer(address, HttpRequestHandler)
 
   # note: the way we tell the OS to open the URL in the browser is a rather suspicious hack:
   # the `open` command returns and then we launch the web server,

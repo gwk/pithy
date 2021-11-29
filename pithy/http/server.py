@@ -57,7 +57,7 @@ class UnrecoverableServerError(Exception):
 
 
 
-class HTTPServer(TCPServer):
+class HttpServer(TCPServer):
 
   allow_reuse_address = True # See cpython/Lib/socketserver.py.
   #^ Controls whether `self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)` is called.
@@ -100,13 +100,13 @@ class HTTPServer(TCPServer):
 
 
 
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+class ThreadingHttpServer(ThreadingMixIn, HttpServer):
     daemon_threads = True
 
 
-class HTTPRequestHandler(StreamRequestHandler):
+class HttpRequestHandler(StreamRequestHandler):
 
-  server: HTTPServer # Covariant type override of BaseRequestHandler.
+  server: HttpServer # Covariant type override of BaseRequestHandler.
 
   python_version = 'Python/{}.{}.{}'.format(*sys.version_info[:3])
 
@@ -276,10 +276,10 @@ class HTTPRequestHandler(StreamRequestHandler):
     Send and log an error reply.
 
     Arguments are:
-    * code:  a 3 digit HTTP error code
+    * code:  a 3 digit HTTP error code.
     * label: a simple optional 1 line reason phrase.
-      * ( HTAB / SP / VCHAR / %x80-FF ) (TODO: enforce these character requirements)
-      * defaults to short entry matching the response code
+      * ( HTAB / SP / VCHAR / %x80-FF ) (TODO: enforce these character requirements).
+      * defaults to short entry matching the response code.
     * message: a detailed message defaults to the long entry matching the response code.
 
     This sends an error response (so it must be called before any output has been generated),
