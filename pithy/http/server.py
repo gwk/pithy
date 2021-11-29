@@ -9,7 +9,7 @@ import urllib.parse
 from email.utils import formatdate as format_email_date
 from html import escape as html_escape
 from http import HTTPStatus
-from http.client import HTTPException, HTTPMessage, LineTooLong, parse_headers
+from http.client import HTTPException, HTTPMessage, parse_headers
 from io import BytesIO
 from os import fstat as os_fstat
 from posixpath import splitext
@@ -36,7 +36,7 @@ Since then it has changed substantially.
 
 __version__ = '0'
 
-DEFAULT_ERROR_HTML = '''\
+_default_error_html_format = '''\
 <!DOCTYPE html>
 <html>
 <head>
@@ -45,12 +45,11 @@ DEFAULT_ERROR_HTML = '''\
 </head>
 <body>
   <h1>Error: {code} - {label}</h1>
-  <p>{message}</p>
 </body>
 </html>
 '''
 
-DEFAULT_ERROR_CONTENT_TYPE = "text/html;charset=utf-8"
+_default_error_content_type = "text/html;charset=utf-8"
 
 
 class UnrecoverableServerError(Exception):
@@ -115,14 +114,14 @@ class HTTPRequestHandler(StreamRequestHandler):
 
   #^ The format is multiple whitespace-separated strings, where each string is of the form name[/version].
 
-  error_message_format = DEFAULT_ERROR_HTML
-  error_content_type = DEFAULT_ERROR_CONTENT_TYPE
+  error_html_format = _default_error_html_format
+  error_content_type = _default_error_content_type
 
   protocol_version = "HTTP/1.1"
 
   MessageClass = HTTPMessage
 
-  responses = { v: (v.phrase, v.description) for v in HTTPStatus.__members__.values() }
+  http_response_phrases = { v: v.phrase for v in HTTPStatus.__members__.values() }
 
   if not mimetypes.inited: mimetypes.init()
   ext_mime_types = mimetypes.types_map.copy()
@@ -136,7 +135,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     })
 
 
-  def __init__(self, *args, **kwargs) -> None:
+  def __init__(self, request, client_address, server) -> None:
     self.request_line_bytes = b''
     self.request_line = ''
     self.command = ''
@@ -144,7 +143,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     self.prevent_client_caching = True # TODO: this should not be an instance variable.
     self.headers: Optional[HTTPMessage] = None
     self.response_buffer = bytearray() # Response line followed by header lines.
-    super().__init__(*args, **kwargs)
+    super().__init__(request=request, client_address=client_address, server=server)
 
 
   def handle(self) -> None:
@@ -171,7 +170,8 @@ class HTTPRequestHandler(StreamRequestHandler):
         self.close_connection = True
         return
       if error_args := self.parse_request():
-        self.send_error(*error_args)
+        code, label = error_args
+        self.send_error(code=code, label=label)
         return
       # Handle 'Expect'.
       assert self.headers
@@ -193,13 +193,13 @@ class HTTPRequestHandler(StreamRequestHandler):
       return
 
 
-  def parse_request(self) -> Optional[tuple[HTTPStatus,str,str]]:
+  def parse_request(self) -> Optional[tuple[HTTPStatus,str]]:
     self.request_line = request_line = str(self.request_line_bytes, 'latin1').rstrip('\r\n')
     words = request_line.split(' ')
     if not words:
-      return (HTTPStatus.BAD_REQUEST, 'Empty request line', '')
+      return (HTTPStatus.BAD_REQUEST, 'Empty request line')
     if len(words) != 3:
-      return (HTTPStatus.BAD_REQUEST, f'Bad request syntax: {request_line!r}', '')
+      return (HTTPStatus.BAD_REQUEST, f'Bad request syntax: {request_line!r}')
     command, path, version = words
     try:
       if not version.startswith('HTTP/'): raise ValueError
@@ -213,12 +213,12 @@ class HTTPRequestHandler(StreamRequestHandler):
       if len(version_numbers) != 2: raise ValueError
       version_number = (int(version_numbers[0]), int(version_numbers[1]))
     except (ValueError, IndexError):
-      return (HTTPStatus.BAD_REQUEST, f'Bad request version: {version!r}', '')
+      return (HTTPStatus.BAD_REQUEST, f'Bad request version: {version!r}')
     if version_number < (1, 1) or version_number >= (2, 0):
-      return (HTTPStatus.HTTP_VERSION_NOT_SUPPORTED, f'Unsupported HTTP version: {version_number}', '')
+      return (HTTPStatus.HTTP_VERSION_NOT_SUPPORTED, f'Unsupported HTTP version: {version_number}')
 
     if command not in http_commands:
-      return (HTTPStatus.BAD_REQUEST, f'Unrecognized HTTP command: {command!r}', '')
+      return (HTTPStatus.BAD_REQUEST, f'Unrecognized HTTP command: {command!r}')
 
     self.command = command
     self.path = path
@@ -226,10 +226,8 @@ class HTTPRequestHandler(StreamRequestHandler):
     # Parse headers.
     try:
       self.headers = parse_headers(self.rfile, _class=self.MessageClass) # type: ignore
-    except LineTooLong as err:
-      return (HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE, "Line too long", str(err))
-    except HTTPException as err:
-      return (HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE, "Too many headers", str(err))
+    except HTTPException as exc:
+      return (HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE, f'{type(exc)}: {exc}')
 
     # Respect connection directive.
     conn_type = self.headers.get('Connection', '').lower()
@@ -273,7 +271,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     return True
 
 
-  def send_error(self, code:HTTPStatus, label:str='', message:str='') -> None:
+  def send_error(self, code:HTTPStatus, label:str='') -> None:
     '''
     Send and log an error reply.
 
@@ -288,14 +286,8 @@ class HTTPRequestHandler(StreamRequestHandler):
     logs the error, and finally sends a piece of HTML explaining the error to the user.
     '''
 
-    try:
-      dflt_label, dflt_message = self.responses[code]
-    except KeyError:
-      dflt_label, dflt_message = '???', '???'
     if not label:
-      label = dflt_label
-    if not message:
-      message = dflt_message
+      label = self.http_response_phrases.get(code, '???')
     self.log_error(f'code: {code}; label: {label}')
     self.add_response(code, label)
     self.close_connection = True
@@ -305,15 +297,13 @@ class HTTPRequestHandler(StreamRequestHandler):
     #  - RFC7231: 6.3.6. 205 (Reset Content).
     body = None
     if (code >= 200 and code not in (HTTPStatus.NO_CONTENT, HTTPStatus.RESET_CONTENT, HTTPStatus.NOT_MODIFIED)):
-      # HTML encode to prevent Cross Site Scripting attacks (see cpython bug #1100201).
-      content = self.error_message_format.format(
-        code=code, label=html_escape(label, quote=False), message=html_escape(message, quote=False))
-
+      content = self.error_html_format.format(code=code, label=html_escape(label, quote=False))
+      #^ HTML-escape the label to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       body = content.encode('UTF-8', 'replace')
       self.add_header("Content-Type", self.error_content_type)
       self.add_header('Content-Length', str(len(body)))
-    self.end_headers_and_flush_response()
 
+    self.end_headers_and_flush_response()
     if self.command != 'HEAD' and body:
       self.wfile.write(body)
 
@@ -336,10 +326,7 @@ class HTTPRequestHandler(StreamRequestHandler):
   def add_response_line(self, code:HTTPStatus, label:str=None) -> None:
     '''Add the response line only.'''
     if label is None:
-      if code in self.responses:
-        label = self.responses[code][0]
-      else:
-        label = ''
+      label = self.http_response_phrases.get(code, '')
     assert not self.response_buffer
     self.response_buffer.extend(f'{self.protocol_version} {code} {label}\r\n'.encode('latin1', 'strict'))
 
@@ -407,7 +394,7 @@ class HTTPRequestHandler(StreamRequestHandler):
         return self.list_directory(local_path)
 
     if local_path.endswith('/'): # Actual file is not a directory. See CPython issue #17324.
-      self.send_error(HTTPStatus.NOT_FOUND, "File not found")
+      self.send_error(HTTPStatus.NOT_FOUND)
       return None
 
     ctype = self.guess_file_type(local_path)
@@ -415,7 +402,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     try:
       f = open(local_path, 'rb')
     except OSError:
-      self.send_error(HTTPStatus.NOT_FOUND, f'File not found: {local_path}', message=f'URI path: {self.path}')
+      self.send_error(HTTPStatus.NOT_FOUND)
       return None
     try:
       f_stat = os_fstat(f.fileno())
@@ -440,7 +427,7 @@ class HTTPRequestHandler(StreamRequestHandler):
     try:
       listing = os.listdir(path)
     except OSError:
-      self.send_error(HTTPStatus.NOT_FOUND, "No permission to list directory")
+      self.send_error(HTTPStatus.NOT_FOUND)
       return None
     listing.sort(key=lambda a: a.lower())
 
