@@ -70,7 +70,7 @@ class HttpServer(TCPServer):
     SyntaxError,
   )
 
-  def __init__(self, server_address:Tuple[str,int], RequestHandlerClass:Type['HTTPRequestHandler'],
+  def __init__(self, server_address:Tuple[str,int], RequestHandlerClass:Type['HttpRequestHandler'],
    bind_and_activate=True) -> None:
 
     super().__init__(server_address=server_address, RequestHandlerClass=RequestHandlerClass,
@@ -285,9 +285,6 @@ class HttpRequestHandler(StreamRequestHandler):
     This sends an error response (so it must be called before any output has been generated),
     logs the error, and finally sends a piece of HTML explaining the error to the user.
     '''
-
-    if not reason:
-      reason = self.http_response_phrases.get(code, '???')
     self.log_error(f'code: {code}; reason: {reason}')
     self.add_response(code, reason)
     self.close_connection = True
@@ -308,7 +305,7 @@ class HttpRequestHandler(StreamRequestHandler):
       self.wfile.write(body)
 
 
-  def add_response(self, code:HTTPStatus, reason:str=None) -> None:
+  def add_response(self, code:HTTPStatus, reason:str='') -> None:
     '''
     Add the response header to the headers buffer and log the response code.
     Also send two standard headers with the server software version and the current date.
@@ -323,7 +320,7 @@ class HttpRequestHandler(StreamRequestHandler):
       self.add_header('Expires', '0')
 
 
-  def add_response_line(self, code:HTTPStatus, reason:str=None) -> None:
+  def add_response_line(self, code:HTTPStatus, reason:str='') -> None:
     '''Add the response line only.'''
     if reason is None:
       reason = self.http_response_phrases.get(code, '')
