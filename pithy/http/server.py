@@ -439,12 +439,11 @@ class HTTPRequestHandler(StreamRequestHandler):
     In either case, the headers are sent, making the interface the same as for send_head().
     '''
     try:
-      list = os.listdir(path)
+      listing = os.listdir(path)
     except OSError:
       self.send_error(HTTPStatus.NOT_FOUND, "No permission to list directory")
       return None
-    list.sort(key=lambda a: a.lower())
-    r = []
+    listing.sort(key=lambda a: a.lower())
 
     try:
       displaypath = urllib.parse.unquote(self.path, errors='replace')
@@ -453,11 +452,12 @@ class HTTPRequestHandler(StreamRequestHandler):
 
     title = html_escape(displaypath, quote=False)
 
+    r = []
     r.append('<!DOCTYPE html>\n<html>')
     r.append(f'<head>\n<meta charset="utf-8" />\n<title>{title}</title>\n</head>')
     r.append(f'<body>\n<h1>{title}</h1>')
     r.append('<hr>\n<ul>')
-    for name in list:
+    for name in listing:
       fullname = path_join(path, name)
       displayname = linkname = name
       # Append / for directories or @ for symbolic links
