@@ -44,7 +44,7 @@ _default_error_html_format = '''\
   <title>Error: {code}</title>
 </head>
 <body>
-  <h1>Error: {code} - {label}</h1>
+  <h1>Error: {code} - {reason}</h1>
 </body>
 </html>
 '''
@@ -170,8 +170,8 @@ class HttpRequestHandler(StreamRequestHandler):
         self.close_connection = True
         return
       if error_args := self.parse_request():
-        code, label = error_args
-        self.send_error(code=code, label=label)
+        code, reason = error_args
+        self.send_error(code=code, reason=reason)
         return
       # Handle 'Expect'.
       assert self.headers
@@ -271,13 +271,13 @@ class HttpRequestHandler(StreamRequestHandler):
     return True
 
 
-  def send_error(self, code:HTTPStatus, label:str='') -> None:
+  def send_error(self, code:HTTPStatus, reason:str='') -> None:
     '''
     Send and log an error reply.
 
     Arguments are:
     * code:  a 3 digit HTTP error code.
-    * label: a simple optional 1 line reason phrase.
+    * reason: a simple optional 1 line reason phrase.
       * ( HTAB / SP / VCHAR / %x80-FF ) (TODO: enforce these character requirements).
       * defaults to short entry matching the response code.
     * message: a detailed message defaults to the long entry matching the response code.
@@ -286,10 +286,10 @@ class HttpRequestHandler(StreamRequestHandler):
     logs the error, and finally sends a piece of HTML explaining the error to the user.
     '''
 
-    if not label:
-      label = self.http_response_phrases.get(code, '???')
-    self.log_error(f'code: {code}; label: {label}')
-    self.add_response(code, label)
+    if not reason:
+      reason = self.http_response_phrases.get(code, '???')
+    self.log_error(f'code: {code}; reason: {reason}')
+    self.add_response(code, reason)
     self.close_connection = True
 
     # Message body is omitted for cases described in:
@@ -297,8 +297,8 @@ class HttpRequestHandler(StreamRequestHandler):
     #  - RFC7231: 6.3.6. 205 (Reset Content).
     body = None
     if (code >= 200 and code not in (HTTPStatus.NO_CONTENT, HTTPStatus.RESET_CONTENT, HTTPStatus.NOT_MODIFIED)):
-      content = self.error_html_format.format(code=code, label=html_escape(label, quote=False))
-      #^ HTML-escape the label to prevent Cross Site Scripting attacks (see cpython bug #1100201).
+      content = self.error_html_format.format(code=code, reason=html_escape(reason, quote=False))
+      #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       body = content.encode('UTF-8', 'replace')
       self.add_header("Content-Type", self.error_content_type)
       self.add_header('Content-Length', str(len(body)))
@@ -308,13 +308,13 @@ class HttpRequestHandler(StreamRequestHandler):
       self.wfile.write(body)
 
 
-  def add_response(self, code:HTTPStatus, label:str=None) -> None:
+  def add_response(self, code:HTTPStatus, reason:str=None) -> None:
     '''
     Add the response header to the headers buffer and log the response code.
     Also send two standard headers with the server software version and the current date.
     '''
     self.log_request(code)
-    self.add_response_line(code, label)
+    self.add_response_line(code, reason)
     self.add_header('Server', self.server_version)
     self.add_header('Date', self.format_header_date())
     if self.prevent_client_caching:
@@ -323,12 +323,12 @@ class HttpRequestHandler(StreamRequestHandler):
       self.add_header('Expires', '0')
 
 
-  def add_response_line(self, code:HTTPStatus, label:str=None) -> None:
+  def add_response_line(self, code:HTTPStatus, reason:str=None) -> None:
     '''Add the response line only.'''
-    if label is None:
-      label = self.http_response_phrases.get(code, '')
+    if reason is None:
+      reason = self.http_response_phrases.get(code, '')
     assert not self.response_buffer
-    self.response_buffer.extend(f'{self.protocol_version} {code} {label}\r\n'.encode('latin1', 'strict'))
+    self.response_buffer.extend(f'{self.protocol_version} {code} {reason}\r\n'.encode('latin1', 'strict'))
 
 
   def add_header(self, key:str, val:str) -> None:
