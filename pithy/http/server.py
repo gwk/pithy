@@ -30,12 +30,11 @@ This server implementation is derived from the stdlib http.server.
 It was originally pulled from CPython 3.7.
 It has since been updated to CPython 3.10.0; the last reviewed commit is 058f9b27d3.
 Note that not all changes have been ported.
-
-TODO: Update to threading / dual stack server as in stdlib http.server?
+Since then it has changed substantially.
 '''
 
 
-__version__ = '1'
+__version__ = '0'
 
 DEFAULT_ERROR_HTML = '''\
 <!DOCTYPE html>
