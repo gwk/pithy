@@ -171,6 +171,7 @@ def path_exts(path: Path) -> Tuple[str, ...]:
 
 def path_join(first: Path, *additional: Path) -> str:
   'Join the path with the system path separator.'
+  # TODO: path_join should not use os.path.join, which behaves dangerously for absolute paths.
   return _join(str_path(first), *[str_path(p) for p in additional])
 
 
