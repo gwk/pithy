@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 from os import chdir
 
-from pithy.http.server import HttpRequestHandler, HttpServer
+from pithy.http.server import HttpContent, HttpRequestHandler, HttpServer
 from pithy.task import run
 
 
@@ -29,7 +29,7 @@ def main() -> None:
   }
 
   chdir(root)
-  server = HttpServer(address, HttpRequestHandler)
+  server = HttpServer(address, LocalHandler)
 
   # note: the way we tell the OS to open the URL in the browser is a rather suspicious hack:
   # the `open` command returns and then we launch the web server,
@@ -45,3 +45,11 @@ def main() -> None:
   except KeyboardInterrupt:
     print('\nKeyboard interrupt received; shutting down server.')
     exit()
+
+
+class LocalHandler(HttpRequestHandler):
+
+  prevent_client_caching = True
+
+  def get_content(self) -> HttpContent:
+    return self.get_content_from_local_fs(self.compute_local_path())

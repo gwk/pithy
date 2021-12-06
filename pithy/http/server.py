@@ -2,27 +2,25 @@
 # Changes dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import mimetypes
-import os
 import sys
 import time
-import urllib.parse
 from email.utils import formatdate as format_email_date
 from html import escape as html_escape
 from http import HTTPStatus
 from http.client import HTTPException, HTTPMessage, parse_headers
-from io import BytesIO
-from os import fstat as os_fstat
-from posixpath import splitext
+from io import BufferedReader
+from os import environ, fstat as os_fstat
 from shutil import copyfileobj
 from socket import getfqdn as get_fully_qualified_domain_name
 from socketserver import StreamRequestHandler, TCPServer, ThreadingMixIn
 from sys import exc_info
 from traceback import print_exception
-from typing import BinaryIO, List, Optional, Tuple, Type
-from urllib.parse import unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
+from typing import ByteString, Optional, Tuple, Type, Union
+from urllib.parse import quote as url_quote, unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
 
-from ..fs import is_dir, norm_path, path_exists, path_join
+from ..fs import is_dir, list_dir, norm_path, path_exists
 from ..io import errL, errSL
+from ..path import path_ext, path_join
 
 
 '''
@@ -49,12 +47,38 @@ _default_error_html_format = '''\
 </html>
 '''
 
-_default_error_content_type = "text/html;charset=utf-8"
+_default_error_content_type = html_content_type = b'text/html;charset=utf-8'
 
 
 class UnrecoverableServerError(Exception):
   'An error occurred for which the server cannot recover.'
 
+
+class HttpContentError(Exception):
+  '''
+  An error that causes the current request handler to return the specified HTTP status code.
+  Implementations of get_content can raise this as an alternative to returning a Content object.
+  '''
+  def __init__(self, status:HTTPStatus, reason:str='', headers:Optional[dict[bytes,ByteString]]=None):
+    self.status = status
+    self.reason = reason
+    self.headers = headers
+    super().__init__(f'{status} - {reason}')
+
+
+ContentBody = Union[None,str,bytes,bytearray,BufferedReader]
+BinaryContentBody = Union[None,bytes,bytearray,BufferedReader]
+#^ Note: normally we would use the abstract BinaryIO type
+#  but mypy does not understand the Union difference when test the concrete type.
+
+class HttpContent:
+  '''
+  Implementations of get_content return instances of this type for each request.
+  '''
+  def __init__(self, body:ContentBody, content_type:bytes=b'', last_modified:float=0.0) -> None:
+    self.body:BinaryContentBody = body.encode('utf8', errors='replace') if isinstance(body, str) else body
+    self.content_type = content_type
+    self.last_modified = last_modified
 
 
 class HttpServer(TCPServer):
@@ -70,8 +94,11 @@ class HttpServer(TCPServer):
     SyntaxError,
   )
 
+
   def __init__(self, server_address:Tuple[str,int], RequestHandlerClass:Type['HttpRequestHandler'],
    bind_and_activate=True) -> None:
+
+    self.dbg = environ.get('DEBUG') is not None
 
     super().__init__(server_address=server_address, RequestHandlerClass=RequestHandlerClass,
       bind_and_activate=bind_and_activate)
@@ -85,7 +112,7 @@ class HttpServer(TCPServer):
     self.server_port = port
 
 
-  def handle_error(self, request, client_address) -> None:
+  def handle_error(self, request:bytes, client_address:tuple[str,int]) -> None:
     '''
     Override BaseServer.handle_error to fail fast for unrecoverable errors.
     '''
@@ -110,39 +137,35 @@ class HttpRequestHandler(StreamRequestHandler):
 
   python_version = 'Python/{}.{}.{}'.format(*sys.version_info[:3])
 
-  server_version = f"pithy.http.server/{__version__} {python_version}"
-
+  server_version = f'pithy.http.server/{__version__} {python_version}'.encode('latin1')
   #^ The format is multiple whitespace-separated strings, where each string is of the form name[/version].
 
   error_html_format = _default_error_html_format
   error_content_type = _default_error_content_type
 
-  protocol_version = "HTTP/1.1"
+  prevent_client_caching = False
+  close_connection = True
+  sent_response = False
 
-  MessageClass = HTTPMessage
-
-  http_response_phrases = { v: v.phrase for v in HTTPStatus.__members__.values() }
+  protocol_version = 'HTTP/1.1'
 
   if not mimetypes.inited: mimetypes.init()
-  ext_mime_types = mimetypes.types_map.copy()
+  ext_mime_types = { ext : mime_type.encode('latin1') for (ext, mime_type) in mimetypes.types_map.items() }
   ext_mime_types.update({
-    '': 'text/plain', # Default.
-    '.bz2': 'application/x-bzip2',
-    '.gz': 'application/gzip',
-    '.sh': 'text/plain', # Show source instead of prompting download.
-    '.xz': 'application/x-xz',
-    '.z': 'application/octet-stream',
+    '': b'text/plain', # Default.
+    '.bz2': b'application/x-bzip2',
+    '.gz': b'application/gzip',
+    '.sh': b'text/plain', # Show source instead of prompting download.
+    '.xz': b'application/x-xz',
+    '.z': b'application/octet-stream',
     })
 
 
-  def __init__(self, request, client_address, server) -> None:
+  def __init__(self, request:bytes, client_address:tuple[str,int], server:HttpServer) -> None:
     self.request_line_bytes = b''
     self.request_line = ''
     self.command = ''
-    self.close_connection = True
-    self.prevent_client_caching = True # TODO: this should not be an instance variable.
-    self.headers: Optional[HTTPMessage] = None
-    self.response_buffer = bytearray() # Response line followed by header lines.
+    self.headers: Optional[HTTPMessage] = None # The request headers.
     super().__init__(request=request, client_address=client_address, server=server)
 
 
@@ -167,13 +190,13 @@ class HttpRequestHandler(StreamRequestHandler):
         self.close_connection = True
         return
       if len(self.request_line_bytes) > 65536:
-        self.send_error(HTTPStatus.REQUEST_URI_TOO_LONG)
+        self.send_error(HTTPStatus.REQUEST_URI_TOO_LONG, headers={})
         return
       if error_args := self.parse_request():
-        code, reason = error_args
-        self.send_error(code=code, reason=reason)
+        status, reason = error_args
+        self.send_error(status=status, reason=reason, headers={})
         return
-      assert self.headers
+      assert self.headers is not None
       # Handle 'Expect'.
       expect = self.headers.get('Expect', '').lower()
       if expect == '100-continue':
@@ -182,7 +205,7 @@ class HttpRequestHandler(StreamRequestHandler):
       method_name = 'handle_http_' + self.command
       method = getattr(self, method_name, None)
       if not method:
-        self.send_error(HTTPStatus.NOT_IMPLEMENTED, f'Unsupported method: {self.command!r}')
+        self.send_error(HTTPStatus.NOT_IMPLEMENTED, headers={}, reason=f'Unsupported method: {self.command!r}')
         return
       method()
       self.wfile.flush() # Send the response if not already done.
@@ -203,9 +226,9 @@ class HttpRequestHandler(StreamRequestHandler):
     try:
       if not version.startswith('HTTP/'): raise ValueError
       base_version_number = version.split('/', 1)[1]
-      version_numbers = base_version_number.split(".")
+      version_numbers = base_version_number.split('.')
       # RFC 2145 section 3.1 says:
-      # * there can be only one ".";
+      # * there can be only one '.';
       # * major and minor numbers MUST be treated as separate integers;
       # * HTTP/2.4 is a lower version than HTTP/2.13, which in turn is lower than HTTP/12.3;
       # * Leading zeros MUST be ignored by recipients.
@@ -224,7 +247,7 @@ class HttpRequestHandler(StreamRequestHandler):
 
     # Parse headers.
     try:
-      self.headers = parse_headers(self.rfile, _class=self.MessageClass) # type: ignore
+      self.headers = parse_headers(self.rfile, _class=HTTPMessage) # type: ignore
     except HTTPException as exc:
       return (HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE, f'{type(exc)}: {exc}')
 
@@ -248,7 +271,7 @@ class HttpRequestHandler(StreamRequestHandler):
     p = norm_path(p)
     if '..' in p: return None
     assert p.startswith('/')
-    p = p.lstrip('/') # Remove leading slash. TODO: path_join should not use os.path.join, which behaves dangerously for absolute paths.
+    p = p.lstrip('/') # Remove leading slash.
     if not p: p = '.'
     return p + trailing_slash
 
@@ -265,17 +288,16 @@ class HttpRequestHandler(StreamRequestHandler):
     This method should either return True (possibly after sending a 100 Continue response)
     or send an error response and return False.
     '''
-    self.add_response_line(HTTPStatus.CONTINUE)
-    self.end_headers_and_flush_response()
+    self.send_response_and_headers(status=HTTPStatus.CONTINUE, headers={})
     return True
 
 
-  def send_error(self, code:HTTPStatus, reason:str='') -> None:
+  def send_error(self, status:HTTPStatus, *, reason:str='', headers:dict[bytes,ByteString]) -> None:
     '''
     Send and log an error reply.
 
     Arguments are:
-    * code:  a 3 digit HTTP error code.
+    * status:  HTTPStatus.
     * reason: a simple optional 1 line reason phrase.
       * ( HTAB / SP / VCHAR / %x80-FF ) (TODO: enforce these character requirements).
       * defaults to short entry matching the response code.
@@ -284,8 +306,8 @@ class HttpRequestHandler(StreamRequestHandler):
     This sends an error response (so it must be called before any output has been generated),
     logs the error, and finally sends a piece of HTML explaining the error to the user.
     '''
-    self.log_error(f'code: {code}; reason: {reason}')
-    self.add_response(code, reason)
+    code = status.value
+    self.log_error(f'{code} - {reason}')
     self.close_connection = True
 
     # Message body is omitted for cases described in:
@@ -293,144 +315,140 @@ class HttpRequestHandler(StreamRequestHandler):
     #  - RFC7231: 6.3.6. 205 (Reset Content).
     body = None
     if (code >= 200 and code not in (HTTPStatus.NO_CONTENT, HTTPStatus.RESET_CONTENT, HTTPStatus.NOT_MODIFIED)):
-      content = self.error_html_format.format(code=code, reason=html_escape(reason, quote=False))
+      content = self.error_html_format.format(code=code, reason=html_escape(reason or status.phrase, quote=False))
       #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       body = content.encode('UTF-8', 'replace')
-      self.add_header("Content-Type", self.error_content_type)
-      self.add_header('Content-Length', str(len(body)))
+      headers[b'Content-Type'] = self.error_content_type
+      headers[b'Content-Length'] = bytes(len(body))
 
-    self.end_headers_and_flush_response()
+    self.send_response_and_headers(status=status, reason=reason, headers=headers)
     if self.command != 'HEAD' and body:
       self.wfile.write(body)
 
 
-  def add_response(self, code:HTTPStatus, reason:str='') -> None:
+  def send_response_and_headers(self, status:HTTPStatus, headers:dict[bytes,ByteString], reason:str='') -> None:
     '''
-    Add the response header to the headers buffer and log the response code.
-    Also send two standard headers with the server software version and the current date.
+    Send the response line and headers to the client.
+    Adds cache control headers if `prevent_client_caching` is set.
+    Adds a `Connection: close` header if `close_connection` is set.
+    Sets `sent_response` to ensure that this method is only called once.
     '''
-    self.log_request(code)
-    self.add_response_line(code, reason)
-    self.add_header('Server', self.server_version)
-    self.add_header('Date', self.format_header_date())
+    reason = reason or status.phrase
+    self.log_message(f'{status.value} {reason} {self.request_line!r}')
+
+    assert not self.sent_response
+    self.sent_response = True
+    if status != HTTPStatus.CONTINUE:
+      # These standard headers are excluded from the 100-continue response because that appears to be the way the python stddlib server worked.
+      headers[b'Server'] = self.server_version
+      headers[b'Date'] = self.format_header_date()
     if self.prevent_client_caching:
-      self.add_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-      self.add_header('Pragma', 'no-cache')
-      self.add_header('Expires', '0')
-
-
-  def add_response_line(self, code:HTTPStatus, reason:str='') -> None:
-    '''Add the response line only.'''
-    if reason is None:
-      reason = self.http_response_phrases.get(code, '')
-    assert not self.response_buffer
-    self.response_buffer.extend(f'{self.protocol_version} {code} {reason}\r\n'.encode('latin1', 'strict'))
-
-
-  def add_header(self, key:str, val:str) -> None:
-    '''Add a MIME header to the headers buffer.'''
-    self.response_buffer.extend(f'{key}: {val}\r\n'.encode('latin1', 'strict'))
-
-
-  def end_headers_and_flush_response(self) -> None:
-    '''
-    Add a `Connection: close` header if appropriate, add the blank line ending the MIME headers, and flush the response.
-    '''
+      headers.setdefault(b'Cache-Control', b'no-cache, no-store, must-revalidate')
+      headers.setdefault(b'Pragma', b'no-cache')
+      headers.setdefault(b'Expires', b'0')
     if self.close_connection:
-      self.add_header('Connection', 'close')
-    self.response_buffer.extend(b"\r\n")
-    self.wfile.write(self.response_buffer)
-    #print(self.response_buffer.decode('latin1'))
-    self.response_buffer.clear()
+      headers[b'Connection'] = b'close'
+
+    buffer = bytearray(f'{self.protocol_version} {status.value} {reason}\r\n'.encode('latin1'))
+    for k, v in headers.items():
+      buffer.extend(k)
+      buffer.extend(b': ')
+      assert isinstance(v, (bytes, bytearray, memoryview)), v
+      buffer.extend(v)
+      buffer.extend(b'\r\n')
+    buffer.extend(b'\r\n')
+    self.wfile.write(buffer)
+
+    if self.server.dbg:
+      response = buffer.decode('latin1', errors='replace')
+      for line in response.splitlines(keepends=True):
+        print(repr(line))
+      print()
 
 
   def handle_http_GET(self) -> None:
     '''Serve a GET request.'''
-    f = self.send_head()
-    if f:
-      try: copyfileobj(f, self.wfile)
-      finally: f.close()
+    body:BinaryContentBody = self.send_head()
+    if isinstance(body, BufferedReader):
+      try: copyfileobj(body, self.wfile)
+      finally: body.close()
+    elif body:
+      self.wfile.write(body)
 
 
   def handle_http_HEAD(self) -> None:
     '''Serve a HEAD request.'''
-    f = self.send_head()
-    if f:
-      f.close()
+    body = self.send_head()
+    if isinstance(body, BufferedReader):
+      body.close()
 
 
-  def send_head(self) -> Optional[BinaryIO]:
-    if self.path == '/favicon.ico': # TODO: send actual favicon if it exists.
-      self.add_response(HTTPStatus.OK)
-      self.add_header('Content-type', 'image/x-icon')
-      self.add_header('Content-Length', '0')
-      self.end_headers_and_flush_response()
+  def send_head(self) -> BinaryContentBody:
+    'Send the head of the response and return an optional file object for the body.'
+    try: content = self.get_content()
+    except HttpContentError as e:
+      headers = e.headers if e.headers is not None else {}
+      self.send_error(status=e.status, reason=e.reason, headers=headers)
       return None
 
-    local_path = self.compute_local_path()
-    if local_path is None:
-      self.send_error(HTTPStatus.UNAUTHORIZED, "Path refers to parent directory")
-      return None
+    if isinstance(content.body, BufferedReader):
+      fd = content.body.fileno()
+      stat = os_fstat(fd)
+      content_length = stat[6]
+    elif content.body:
+      content_length = len(content.body)
+    else:
+      content_length = 0
+    headers = {
+      b'Content-Type' : content.content_type,
+      b'Content-Length' : str(content_length).encode('latin1'),
+    }
+    self.send_response_and_headers(HTTPStatus.OK, headers=headers)
+    return content.body
+
+
+  def get_content(self) -> HttpContent:
+    raise HttpContentError(status=HTTPStatus.NOT_FOUND)
+
+
+  def get_content_from_local_fs(self, local_path:Optional[str]) -> HttpContent:
+    '''
+    Return the content of a file.
+    '''
+    if not local_path:
+      raise HttpContentError(HTTPStatus.UNAUTHORIZED)
 
     if is_dir(local_path, follow=True):
-      if not local_path.endswith('/'): # redirect browser to path with slash (what apache does).
-        self.add_response(HTTPStatus.MOVED_PERMANENTLY)
-        parts = list(url_split(self.path))
-        parts[2] += '/'
-        new_url = url_join(parts)
-        self.add_header("Location", new_url)
-        self.end_headers_and_flush_response()
-        return None
-      for index in ("index.html", "index.htm"):
-        index = path_join(local_path, index)
-        if path_exists(index, follow=False):
-          local_path = index
-          break
+      if not local_path.endswith('/'): # Redirect browser to path with slash (same behavior as Apache).
+        parts = url_split(self.path)
+        new_url = url_join(parts.replace(path=parts.path+'/')) # type: ignore
+        raise HttpContentError(status=HTTPStatus.MOVED_PERMANENTLY, headers={b'Location':new_url.encode('latin1')})
+      index_path = path_join(local_path, 'index.html')
+      if path_exists(index_path, follow=False):
+        local_path = index_path
       else:
         return self.list_directory(local_path)
 
-    if local_path.endswith('/'): # Actual file is not a directory. See CPython issue #17324.
-      self.send_error(HTTPStatus.NOT_FOUND)
-      return None
-
-    ctype = self.guess_file_type(local_path)
-    f: BinaryIO
-    try:
-      f = open(local_path, 'rb')
-    except OSError:
-      self.send_error(HTTPStatus.NOT_FOUND)
-      return None
-    try:
-      f_stat = os_fstat(f.fileno())
-      self.add_response(HTTPStatus.OK)
-      self.add_header("Content-type", ctype)
-      self.add_header("Content-Length", str(f_stat.st_size))
-      self.add_header("Last-Modified", self.format_header_date(f_stat.st_mtime))
-      self.end_headers_and_flush_response()
-      return f
-    except:
-      f.close()
-      raise
+    try: f = open(local_path, 'rb')
+    except (FileNotFoundError, PermissionError):
+      raise HttpContentError(status=HTTPStatus.NOT_FOUND)
+    else:
+      assert isinstance(f, BufferedReader)
+      return HttpContent(body=f, content_type=self.guess_mime_type(local_path))
 
 
-  def list_directory(self, path:str) -> Optional[BytesIO]:
+
+  def list_directory(self, path:str) -> HttpContent:
     '''
-    Helper to produce a directory listing (absent index.html).
-
-    Return value is either a file object, or None (indicating an error).
-    In either case, the headers are sent, making the interface the same as for send_head().
+    Produce a directory listing html page (absent index.html).
     '''
-    try:
-      listing = os.listdir(path)
-    except OSError:
-      self.send_error(HTTPStatus.NOT_FOUND)
-      return None
+    try: listing = list_dir(path)
+    except OSError: raise HttpContentError(status=HTTPStatus.NOT_FOUND)
     listing.sort(key=lambda a: a.lower())
 
-    try:
-      displaypath = urllib.parse.unquote(self.path, errors='replace')
+    try: displaypath = url_unquote(self.path, errors='replace')
     except UnicodeDecodeError:
-      displaypath = urllib.parse.unquote(path)
+      displaypath = url_unquote(path)
 
     title = html_escape(displaypath, quote=False)
 
@@ -442,43 +460,39 @@ class HttpRequestHandler(StreamRequestHandler):
     for name in listing:
       fullname = path_join(path, name)
       displayname = linkname = name
-      # Append / for directories or @ for symbolic links
-      if os.path.isdir(fullname):
-        displayname = name + "/"
-        linkname = name + "/"
-      if os.path.islink(fullname):
-        displayname = name + "@"
-      link_href = urllib.parse.quote(linkname, errors='replace')
+      if is_dir(fullname, follow=True):
+        displayname = name + '/'
+        linkname = name + '/'
+      link_href = url_quote(linkname, errors='replace')
       link_text = html_escape(displayname, quote=False)
       r.append(f'<li><a href="{link_href}">{link_text}</a></li>')
     r.append('</ul>\n<hr>\n</body>\n</html>\n')
-    encoded = '\n'.join(r).encode(errors='replace')
-    f = BytesIO()
-    f.write(encoded)
-    f.seek(0)
-    self.add_response(HTTPStatus.OK)
-    self.add_header("Content-type", "text/html; charset=utf-8")
-    self.add_header("Content-Length", str(len(encoded)))
-    self.end_headers_and_flush_response()
-    return f
+    body = '\n'.join(r).encode(errors='replace')
+    return HttpContent(body=body, content_type=html_content_type)
 
 
-  def guess_file_type(self, path:str) -> str:
-    base, ext = splitext(path)
-    ext = ext.lower()
+  def fake_favicon(self) -> None:
+    'This was a hack to prevent favicon request errors from showing up in the logs.'
+    if self.path == '/favicon.ico': # TODO: send actual favicon if it exists.
+      self.response_status = HTTPStatus.OK
+      headers:dict[bytes,ByteString] = {
+        b'Content-type': b'image/x-icon',
+        b'Content-Length': b'0'
+      }
+      self.send_response_and_headers(HTTPStatus.OK, headers=headers)
+      return None
+
+
+  def guess_mime_type(self, path:str) -> bytes:
+    'Guess the mime type for a file path.'
+    ext = path_ext(path).lower()
     try: return self.ext_mime_types[ext]
     except KeyError: return self.ext_mime_types['']
 
 
   def log_message(self, msg:str) -> None:
     'Base logging function called by all others.'
-    errL(f'{self.format_log_date()}: {self.client_address_string()} - {msg}')
-
-
-  def log_request(self, code:HTTPStatus) -> None:
-    'Log an accepted request; called by add_response().'
-    assert isinstance(code, HTTPStatus)
-    self.log_message(f'{code.value} {code.phrase} {self.request_line!r}')
+    errL(f'{self.format_log_date()}  {self.client_address_string()}: {msg}')
 
 
   def log_error(self, msg:str) -> None:
@@ -494,9 +508,10 @@ class HttpRequestHandler(StreamRequestHandler):
     return f'{y:04}-{m:02}-{d:02} {hh:02}:{mm:02}:{ss:02}.{timestamp:.03f}'
 
 
-  def format_header_date(self, timestamp:float=None):
+  def format_header_date(self, timestamp:float=None) -> bytes:
     'Format `timestamp` or now for an HTTP header value.'
-    return format_email_date(time.time() if timestamp is None else timestamp, usegmt=True)
+    return format_email_date(time.time() if timestamp is None else timestamp, usegmt=True).encode('latin1')
+
 
   def client_address_string(self) -> str:
     '''Return the client address.'''
