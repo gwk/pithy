@@ -102,6 +102,7 @@ def discover_packages(package:str) -> List[str]:
     dir_names[:] = filter(is_subpackage, dir_names)
     # Validate names. Collect them so that we can issue all error messages at once, then exit.
     for name in chain(dir_names, file_names):
+      if not name.endswith('.py'): continue
       if '-' in name: bad_names.append(path_join(dir_path, name))
     if '__init__.py' not in file_names:
       missing_inits.append(path_join(dir_path, '__init__.py'))
