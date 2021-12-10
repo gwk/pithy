@@ -7,6 +7,7 @@ import stat as _stat
 import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
+from sys import argv
 from typing import IO, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple
 
 from .clonefile import clone
@@ -28,6 +29,9 @@ def add_file_execute_permissions(path:PathOrFd, *, follow:bool) -> None:
 
 
 def change_dir(path:PathOrFd) -> None: _os.chdir(path)
+
+def change_dir_to_src() -> None:
+  change_dir(path_dir(argv[0]))
 
 
 def clone_or_hardlink(src:str, dst:str, follow_symlinks=True, preserve_owner=True) -> None:
