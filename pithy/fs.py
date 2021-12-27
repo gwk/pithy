@@ -30,6 +30,13 @@ def add_file_execute_permissions(path:PathOrFd, *, follow:bool) -> None:
 
 def change_dir(path:PathOrFd) -> None: _os.chdir(path)
 
+
+def change_dir_to_project() -> None:
+  project_dir = find_project_dir()
+  assert project_dir
+  change_dir(project_dir)
+
+
 def change_dir_to_src() -> None:
   change_dir(path_dir(argv[0]))
 
