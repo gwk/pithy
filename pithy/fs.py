@@ -81,6 +81,8 @@ default_project_signifiers: Tuple[str, ...] = (
   'Package.swift',
   'craft.eon',
   'setup.py',
+  'setup.cfg',
+  'pyproject.toml',
 )
 
 def find_project_dir(start_dir:Path='.', top:Optional[Path]=None, include_top=False,
