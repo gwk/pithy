@@ -1581,3 +1581,12 @@ class InlineStyle(Dict[str,Any]):
 
   def __str__(self) -> str:
     return ';'.join(f'{k.replace("_", "-")}:{v}' for (k, v) in self.items())
+
+
+def html_esc(text: str) -> str:
+  # TODO: check for strange characters that html will ignore.
+  return _escape(text, quote=False)
+
+
+def html_esc_attr(text: str) -> str:
+  return _escape(text, quote=True)
