@@ -135,7 +135,6 @@ class Cursor(sqlite3.Cursor):
     self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
 
 
-
 class Connection(sqlite3.Connection):
 
   def __init__(self, path:str, uri:bool=False) -> None:
@@ -180,11 +179,11 @@ class Connection(sqlite3.Connection):
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;
     a KeyError is raised if one of the fields is not provided in either of these sources.
     '''
-    self.insert_dict(with_=with_, or_=or_, into=into, fields=fields, args=args, defaults=defaults)
+    self.cursor().insert_dict(with_=with_, or_=or_, into=into, fields=fields, args=args, defaults=defaults)
 
 
   def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, seq:Sequence[Any]) -> None:
     '''
     Execute an insert statement inserting the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
-    self.insert_seq(with_=with_, or_=or_, into=into, fields=fields, seq=seq)
+    self.cursor().insert_seq(with_=with_, or_=or_, into=into, fields=fields, seq=seq)
