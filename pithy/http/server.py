@@ -334,7 +334,7 @@ class HttpRequestHandler(StreamRequestHandler):
       #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       body = content.encode('UTF-8', 'replace')
       headers[b'Content-Type'] = self.error_content_type
-      headers[b'Content-Length'] = bytes(len(body))
+      headers[b'Content-Length'] = str(len(body)).encode('latin1')
 
     self.send_response_and_headers(status=status, reason=reason, headers=headers)
     if self.command != 'HEAD' and body:
