@@ -12,7 +12,7 @@ _T = TypeVar('_T')
 
 
 class EscapedStr:
-  'A `str` subclass that signifies (in some external context) that the content has already been properly escaped.'
+  'A `str` wrapper class that signifies (in some external context) that the content has already been properly escaped.'
 
   def __init__(self, string:str) -> None:
     self.string = string

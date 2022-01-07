@@ -80,12 +80,16 @@ class Mu:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
-    if isinstance(ch, (str,EscapedStr,Mu)):
+    if isinstance(ch, mu_child_classes):
       self.ch:MuChildren = [ch]
     elif isinstance(ch, list):
       self.ch = ch # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
+      for c in ch:
+        assert isinstance(c, mu_child_classes), c
     else:
       self.ch = list(ch)
+      for c in self.ch:
+        assert isinstance(c, mu_child_classes), c
 
     self._orig = _orig
     self._parent = _parent
@@ -126,9 +130,9 @@ class Mu:
         raise ValueError(f'Mu attr key must be `str`; received: {k!r}')
     ch:MuChildren = []
     for c in raw_children:
-      if isinstance(c, (str, Mu)): ch.append(c)
+      if isinstance(c, mu_child_classes): ch.append(c)
       elif isinstance(c, dict): ch.append(cls.from_raw(c))
-      else: raise ValueError(f'Mu child must be `str`, `Mu`, or `dict`; received: {c!r}')
+      else: raise ValueError(f'Mu child must be `str`, `EscapedStr`, `Mu`, or `dict`; received: {c!r}')
     TagClass = cls.tag_types.get(tag, cls)
     return cast(_Mu, TagClass(tag=tag, attrs=attrs, ch=ch))
 
@@ -298,7 +302,7 @@ class Mu:
 
   def append(self, child:_MuChild) -> _MuChild:
     if isinstance(child, Mu) and child._orig is not None: child = child._orig
-    if not isinstance(child, (str, Mu)): raise TypeError(child)
+    if not isinstance(child, mu_child_classes): raise TypeError(child)
     self.ch.append(child)
     return child # type: ignore # The type of child._orig the same as child.
 
@@ -325,7 +329,7 @@ class Mu:
           ch[-1] += c
           continue # Do not append.
       else:
-        raise ValueError(c) # Not (str, Mu).
+        raise ValueError(c) # Not mu_child_classes.
       ch.append(c)
 
     inline_tags = self.inline_tags
@@ -643,6 +647,11 @@ class Mu:
     yield f'<{self.tag}{attrs_str}{head_slash}>'
     if self_closing: return
 
+    yield from self.render_children()
+    yield f'</{self.tag}>'
+
+
+  def render_children(self) -> Iterator[str]:
     child_newlines = (
       len(self.ch) > 1 and
       (self.tag not in self.ws_sensitive_tags) and
@@ -653,22 +662,31 @@ class Mu:
     if child_newlines:
       yield '\n'
     for child, next_child in window_pairs(self.ch):
-      if isinstance(child, Mu):
+      assert isinstance(child, mu_child_classes), child
+      if isinstance(child, str):
+        yield self.esc_text(child)
+      elif isinstance(child, Mu):
         yield from child._render()
       elif isinstance(child, EscapedStr):
+        assert isinstance(child.string, str), child.string
         yield child.string
       else:
-        yield self.esc_text(child)
+        raise TypeError(child) # Expected str, EscapedStr, or Mu.
       if child_newlines and (is_block(child) or next_child is None or is_block(next_child)):
         yield '\n'
-
-    yield f'</{self.tag}>'
 
 
   def render_str(self, newline=True) -> str:
     'Render the tree into a single string.'
     return ''.join(self.render(newline=newline))
 
+
+  def render_children_str(self, newline=True) -> str:
+    'Render the children into a single string.'
+    return ''.join(self.render_children())
+
+
+mu_child_classes = (str, EscapedStr, Mu)
 
 
 def xml_attr_summary(key:str, val:Any, *, text_limit:int, all_attrs:bool) -> str:
