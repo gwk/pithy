@@ -5,7 +5,7 @@ from sqlite3 import Row
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Type, cast
 
 from ..json import render_json
-from .util import _default_to_json, py_to_sql_types_tuple
+from .util import default_to_json, py_to_sql_types_tuple
 
 
 class SqliteError(Exception): pass
@@ -96,7 +96,7 @@ class Cursor(sqlite3.Cursor):
     Execute an insert statement inserting the kwargs key/value pairs passed as named arguments.
     '''
     placeholders = ','.join(['?'] * len(kwargs))
-    args = [_default_to_json(v) for v in kwargs.values()]
+    args = [default_to_json(v) for v in kwargs.values()]
     self.insert(with_=with_, or_=or_, into=into, fields=kwargs.keys(), sql=f'VALUES ({placeholders})', args=args)
 
 
@@ -113,7 +113,7 @@ class Cursor(sqlite3.Cursor):
       return defaults[f]
 
     placeholders = ','.join('?' for _ in args)
-    values = [_default_to_json(arg_for(f)) for f in fields or args.keys()]
+    values = [default_to_json(arg_for(f)) for f in fields or args.keys()]
     self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
 
 
@@ -122,7 +122,7 @@ class Cursor(sqlite3.Cursor):
     Execute an insert statement inserting the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
     placeholders = ','.join('?' for _ in seq)
-    values = [_default_to_json(v) for v in seq]
+    values = [default_to_json(v) for v in seq]
     self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
 
 

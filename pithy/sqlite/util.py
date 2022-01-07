@@ -46,7 +46,7 @@ def _wrapped_type_for_optional(static_type:type) -> type:
   return [m for m in members if m is not NoneType][0] # type: ignore
 
 
-def _default_to_json(obj:Any) -> Any:
+def default_to_json(obj:Any) -> Any:
   if isinstance(obj, py_to_sql_types_tuple): return obj
   return render_json(obj)
 
