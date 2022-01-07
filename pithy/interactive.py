@@ -28,7 +28,7 @@ class Interpreter(InteractiveInterpreter):
     self.write(f'{banner}\n')
     needs_more_input = 0
     while 1:
-      prompt = sys.ps2 if needs_more_input else sys.ps1
+      prompt:str = str(sys.ps2) if needs_more_input else str(sys.ps1)
       try:
         line = self.raw_input(prompt)
       except EOFError:
