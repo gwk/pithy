@@ -145,8 +145,6 @@ class HttpRequestHandler(StreamRequestHandler):
   error_content_type = _default_error_content_type
 
   prevent_client_caching = False
-  close_connection = True
-  sent_response = False
 
   protocol_version = 'HTTP/1.1'
 
@@ -162,13 +160,28 @@ class HttpRequestHandler(StreamRequestHandler):
     })
 
 
-  def __init__(self, request:bytes, client_address:tuple[str,int], server:HttpServer) -> None:
+  request_line_bytes: bytes
+  request_line: str
+  command: str
+  path: str
+  headers: Optional[HTTPMessage]
+  close_connection: bool
+  sent_response: bool
+
+  def __init__(self, request:Union[socket, Tuple[bytes,socket]], client_address:tuple[str,int], server:HttpServer) -> None:
+    self.reset()
+    self.reuse_count = 0
+    super().__init__(request=request, client_address=client_address, server=server)
+
+
+  def reset(self) -> None:
     self.request_line_bytes = b''
     self.request_line = ''
     self.command = ''
-    self.headers: Optional[HTTPMessage] = None # The request headers.
-    super().__init__(request=request, client_address=client_address, server=server)
-
+    self.path = ''
+    self.headers = None # The request headers.
+    self.close_connection = True
+    self.sent_response = False
 
   def handle(self) -> None:
     '''
@@ -177,6 +190,8 @@ class HttpRequestHandler(StreamRequestHandler):
     '''
     self.handle_one_request()
     while not self.close_connection:
+      self.reset()
+      self.reuse_count += 1
       self.handle_one_request()
 
 
@@ -188,7 +203,6 @@ class HttpRequestHandler(StreamRequestHandler):
       # Parse request.
       self.request_line_bytes = self.rfile.readline(65537)
       if not self.request_line_bytes:
-        self.close_connection = True
         return
       if len(self.request_line_bytes) > 65536:
         self.send_error(HTTPStatus.REQUEST_URI_TOO_LONG, headers={})
