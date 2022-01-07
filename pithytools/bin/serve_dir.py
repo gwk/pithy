@@ -11,6 +11,7 @@ def main() -> None:
 
   parser = ArgumentParser(description='Serve files from a directory.')
   parser.add_argument('root', default='.', nargs='?', help='Root directory to serve from')
+  parser.add_argument('-port', default=8000, type=int, help='Port to listen on')
   parser.add_argument('-browse', action='store_true', help='Launch the default system browser')
   parser.add_argument('-chrome',  action='store_true', help='Launch Google Chrome')
   parser.add_argument('-firefox', action='store_true', help='Launch Firefox')
@@ -19,10 +20,11 @@ def main() -> None:
 
   args = parser.parse_args()
   root = args.root
-  address = ('localhost', 8000) # TODO: argparse option.
-  host, port = address
+  host = 'localhost'
+  port = args.port
+  address = (host, port)
   addr_str = f'http://{host}:{port}'
-  print(addr_str)
+  print(f'Serving {root} on {addr_str}…')
 
   ignored_paths = {
     'apple-touch-icon-precomposed.png',
