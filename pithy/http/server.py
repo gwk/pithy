@@ -11,7 +11,7 @@ from http.client import HTTPException, HTTPMessage, parse_headers
 from io import BufferedReader
 from os import environ, fstat as os_fstat
 from shutil import copyfileobj
-from socket import getfqdn as get_fully_qualified_domain_name
+from socket import getfqdn as get_fully_qualified_domain_name, socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info
 from traceback import print_exception
@@ -119,7 +119,7 @@ class HttpServer(ThreadingTCPServer):
     self.server_port = port
 
 
-  def handle_error(self, request:bytes, client_address:tuple[str,int]) -> None:
+  def handle_error(self, request:Union[socket, Tuple[bytes,socket]], client_address:Union[tuple[str,int],str]) -> None:
     '''
     Override BaseServer.handle_error to fail fast for unrecoverable errors.
     '''
@@ -385,7 +385,7 @@ class HttpRequestHandler(StreamRequestHandler):
 
 
   def send_head(self) -> BinaryContentBody:
-    'Send the head of the response and return an optional file object for the body.'
+    'Send the head of the response and return an optional body object.'
     try: content = self.get_content()
     except HttpContentError as e:
       headers = e.headers if e.headers is not None else {}
