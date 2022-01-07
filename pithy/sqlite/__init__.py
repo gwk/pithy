@@ -8,7 +8,16 @@ from ..json import render_json
 from .util import default_to_json, py_to_sql_types_tuple
 
 
-class SqliteError(Exception): pass
+class SqliteError(Exception):
+
+  @property
+  def failed_unique_constraint(self) -> Optional[str]:
+    'Return the failed uniqueness constraint if that was the cause of the error or else None.'
+    cause = self.__cause__
+    if cause is None: return None
+    msg = cause.args[0]
+    suffix = msg.removeprefix('UNIQUE constraint failed: ')
+    return suffix if suffix != msg else None
 
 
 class Cursor(sqlite3.Cursor):
