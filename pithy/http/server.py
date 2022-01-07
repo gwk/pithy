@@ -81,7 +81,13 @@ class HttpContent:
     self.last_modified = last_modified
 
 
-class HttpServer(TCPServer):
+class HttpServer(TCPServer, ThreadingMixIn):
+  '''
+  HttpServer is an HTTP/1.1 server.
+  In order to serve HTTP 1.1, the class must inherit from socketserver.ThreadingMixIn to function correctly.
+  '''
+
+  daemon_threads = True # Same as http.server.ThreadingHTTPServer.
 
   allow_reuse_address = True # See cpython/Lib/socketserver.py.
   #^ Controls whether `self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)` is called.
@@ -124,11 +130,6 @@ class HttpServer(TCPServer):
     else:
       print_exception(e_type, exc, traceback)
       errL('-'*40)
-
-
-
-class ThreadingHttpServer(ThreadingMixIn, HttpServer):
-    daemon_threads = True
 
 
 class HttpRequestHandler(StreamRequestHandler):
