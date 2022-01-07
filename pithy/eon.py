@@ -228,7 +228,7 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
           raise ConversionError(source, syntax, f'expected {_fmt_type(to)} ({pars}); invalid parameter: {k!r}') from e
         v = convert_eon(sv, source, v_type)
         args[k] = v
-      return rtt(**args) # type: ignore
+      return rtt(**args)
     except ConversionError as e:
       e.add_in_note(syntax.token, f'dict -> {_fmt_type(to)}')
       raise
