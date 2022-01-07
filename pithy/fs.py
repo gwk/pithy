@@ -97,10 +97,10 @@ def find_project_dir(start_dir:Path='.', top:Optional[Path]=None, include_top=Fa
   start_dir = abs_path(start_dir)
   if top is None:
     top = home_dir()
-    if not start_dir.startswith(top):
-      top = '/'
   else:
     top = abs_path(top)
+  if not start_dir.startswith(top):
+    raise Exception(f'find_project_dir: start_dir is not a subdirectory of top:\n  start_dir: {start_dir}\n  top: {top}')
   for path in walk_dirs_up(start_dir, top=top, include_top=include_top):
     for name in list_dir(path, hidden=True):
       if signifier_re.fullmatch(name):
