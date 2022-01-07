@@ -363,7 +363,7 @@ class HttpRequestHandler(StreamRequestHandler):
     if self.server.dbg:
       response = buffer.decode('latin1', errors='replace')
       for line in response.splitlines(keepends=True):
-        print(repr(line))
+        print('  DBG:', repr(line))
       print()
 
 
