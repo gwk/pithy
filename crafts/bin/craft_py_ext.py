@@ -104,7 +104,7 @@ class FuncKind(Enum):
 class Func:
   'Function info, as parsed from Python annotations.'
   name:str
-  type_name:str
+  type_name:Optional[str]
   sig:Signature
   pars:List[Par]
   ret:TypeAnn
@@ -256,13 +256,13 @@ def _(syntax:AnnAssign, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any
   scope.warn(syntax, f'assignment not implemented')
 
 
-@parse_decl.register # type: ignore[no-redef]
+@parse_decl.register
 def _(syntax:AsyncFunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Async function.'
   scope.warn(syntax, f'async function def is not implemented')
 
 
-@parse_decl.register # type: ignore[no-redef]
+@parse_decl.register
 def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Function declaration.'
 
@@ -298,7 +298,7 @@ def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,A
       except KeyError: scope.error(syntax, f'parameter {n!r} has invalid string annotation: {t!r}')
     if i == 0 and is_method:
       expected_name = 'cls' if is_class_method else 'self'
-      if n != expected_name: scope.warning(syntax, f'parameter {n!r} has unexpected name; expected {expected_name!r}')
+      if n != expected_name: scope.error(syntax, f'parameter {n!r} has unexpected name; expected {expected_name!r}')
     elif t == empty: scope.error(syntax, f'parameter {n!r} has no type annotation')
     pars.append(Par(name=n, type=t, dflt=d))
 
@@ -321,8 +321,8 @@ def _(syntax:ClassDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]
   class_source = ScopeSource(path=scope.path, node=syntax, vals=vars(obj))
   c = Class(path=scope.path, name=name, doc=class_source.doc)
 
-  for member_name, syntax, member in class_source:
-    parse_decl(syntax, name=member_name, obj=member, scope=c, global_vals=global_vals)
+  for member_name, decl_syntax, member in class_source:
+    parse_decl(decl_syntax, name=member_name, obj=member, scope=c, global_vals=global_vals)
 
   # Register this custom type in our global dictionary.
   type_infos[obj] = TypeInfo(obj,
