@@ -296,7 +296,7 @@ def remove_path_if_exists(path:Path) -> None:
 
 def scan_dir(path:Path, exts:Iterable[str]=(), hidden=False) -> List[DirEntry]:
   exts = normalize_exts(exts)
-  entries = sorted(_os.scandir(path), key=lambda e: e.name)
+  entries = sorted(_os.scandir(str_path(path)), key=lambda e: e.name)
   if not exts and hidden: return entries
   return [e for e in entries if name_has_any_ext(e.name, exts) and (hidden or not e.name.startswith('.'))]
 
