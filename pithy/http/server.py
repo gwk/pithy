@@ -271,7 +271,7 @@ class HttpRequestHandler(StreamRequestHandler):
     if 'close' in conn_type:
       self.close_connection = True
     else:
-      self.close_connection = False # Keep-alive is the default for HTTP/1.1.n
+      self.close_connection = False # Keep-alive is the default for HTTP/1.1.
     return None
 
 
