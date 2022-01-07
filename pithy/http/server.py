@@ -102,9 +102,10 @@ class HttpServer(ThreadingTCPServer):
 
 
   def __init__(self, server_address:Tuple[str,int], RequestHandlerClass:Type['HttpRequestHandler'],
-   bind_and_activate=True) -> None:
+   bind_and_activate=True, local_dir:str='') -> None:
 
     self.dbg = environ.get('DEBUG') is not None
+    self.local_dir = local_dir.rstrip('/')
 
     super().__init__(server_address=server_address, RequestHandlerClass=RequestHandlerClass,
       bind_and_activate=bind_and_activate)
@@ -275,21 +276,6 @@ class HttpRequestHandler(StreamRequestHandler):
     return None
 
 
-  def compute_local_path(self) -> Optional[str]:
-    'Compute local_path.'
-    p = self.path
-    # abandon query and fragment parameters.
-    p = p.partition('?')[0]
-    p = p.partition('#')[0]
-    trailing_slash = '/' if p.rstrip().endswith('/') else ''
-    p = url_unquote(p)
-    p = norm_path(p)
-    if '..' in p: return None
-    assert p.startswith('/')
-    p = p.lstrip('/') # Remove leading slash.
-    if not p: p = '.'
-    return p + trailing_slash
-
 
   def handle_expect_100(self) -> bool:
     '''
@@ -451,6 +437,22 @@ class HttpRequestHandler(StreamRequestHandler):
       assert isinstance(f, BufferedReader)
       return HttpContent(body=f, content_type=self.guess_mime_type(local_path))
 
+
+  def compute_local_path(self) -> Optional[str]:
+    'Compute local_path.'
+    local_dir = self.server.local_dir
+    if not local_dir: return None
+    p = self.path
+    # abandon query and fragment parameters.
+    p = p.partition('?')[0]
+    p = p.partition('#')[0]
+    trailing_slash = '/' if p.rstrip().endswith('/') else ''
+    p = url_unquote(p)
+    p = norm_path(p)
+    if '..' in p: return None
+    if not p.startswith('/'): raise ValueError(p)
+    assert not local_dir.endswith('/')
+    return f'{local_dir}{p}{trailing_slash}'
 
 
   def list_directory(self, path:str) -> HttpContent:

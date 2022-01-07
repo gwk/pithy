@@ -28,8 +28,7 @@ def main() -> None:
     'apple-touch-icon-precomposed.png',
   }
 
-  chdir(root)
-  server = HttpServer(address, LocalHandler)
+  server = HttpServer(address, LocalHandler, local_dir=root)
 
   # note: the way we tell the OS to open the URL in the browser is a rather suspicious hack:
   # the `open` command returns and then we launch the web server,
