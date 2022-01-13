@@ -12,7 +12,7 @@ from io import BufferedReader
 from os import environ, fstat as os_fstat
 from shutil import copyfileobj
 from socket import getfqdn as get_fully_qualified_domain_name
-from socketserver import StreamRequestHandler, TCPServer, ThreadingMixIn
+from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info
 from traceback import print_exception
 from typing import ByteString, Optional, Tuple, Type, Union
@@ -81,7 +81,7 @@ class HttpContent:
     self.last_modified = last_modified
 
 
-class HttpServer(TCPServer, ThreadingMixIn):
+class HttpServer(ThreadingTCPServer):
   '''
   HttpServer is an HTTP/1.1 server.
   In order to serve HTTP 1.1, the class must inherit from socketserver.ThreadingMixIn to function correctly.
