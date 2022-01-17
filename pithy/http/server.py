@@ -422,7 +422,7 @@ class HttpRequestHandler(StreamRequestHandler):
     if is_dir(local_path, follow=True):
       if not local_path.endswith('/'): # Redirect browser to path with slash (same behavior as Apache).
         parts = url_split(self.path)
-        new_url = url_join(parts.replace(path=parts.path+'/')) # type: ignore
+        new_url = url_join(parts._replace(path=parts.path+'/'))
         raise HttpContentError(status=HTTPStatus.MOVED_PERMANENTLY, headers={b'Location':new_url.encode('latin1')})
       index_path = path_join(local_path, 'index.html')
       if path_exists(index_path, follow=False):
