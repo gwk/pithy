@@ -412,12 +412,14 @@ class HttpRequestHandler(StreamRequestHandler):
     raise HttpContentError(status=HTTPStatus.NOT_FOUND)
 
 
-  def get_content_from_local_fs(self, local_path:Optional[str]) -> HttpContent:
+  def get_content_from_local_fs(self, local_path:Optional[str]=None) -> HttpContent:
     '''
     Return the content of a file.
     '''
-    if not local_path:
-      raise HttpContentError(HTTPStatus.UNAUTHORIZED)
+    if local_path is None:
+      local_path = self.compute_local_path()
+
+    if not local_path: raise ValueError(local_path) # Should never end up with an empty string.
 
     if is_dir(local_path, follow=True):
       if not local_path.endswith('/'): # Redirect browser to path with slash (same behavior as Apache).
@@ -438,21 +440,36 @@ class HttpRequestHandler(StreamRequestHandler):
       return HttpContent(body=f, content_type=self.guess_mime_type(local_path))
 
 
-  def compute_local_path(self) -> Optional[str]:
-    'Compute local_path.'
-    local_dir = self.server.local_dir
-    if not local_dir: return None
-    if local_dir.endswith('/'): raise ValueError(local_dir)
-    p = self.path
+  def compute_logical_path(self, path:Optional[str]=None) -> str:
+    '''
+    Compute logical path from URL path.
+    The logical path is normalized but not sanitized.
+    In particular it can still contain '..', so is not safe to use without further checking.
+    `compute_local_path` will sanitize the path.
+    '''
+    p = self.path if path is None else path
     # abandon query and fragment parameters.
     p = p.partition('?')[0]
     p = p.partition('#')[0]
     trailing_slash = '/' if (p != '/' and p.endswith('/')) else ''
     p = url_unquote(p)
     p = norm_path(p)
-    if not p.startswith('/') or (p != '/' and p.endswith('/')): raise ValueError(p)
-    if '..' in p: return None
-    return f'{local_dir}{p}{trailing_slash}'
+    if p != '/' and p.endswith('/'): raise ValueError(p) # Should be guaranteed by norm_path.
+    return p + trailing_slash
+
+
+  def compute_local_path(self, logical_path:Optional[str]=None) -> str:
+    'Compute local_path.'
+
+    local_dir = self.server.local_dir
+    if not local_dir: raise HttpContentError(HTTPStatus.NOT_FOUND) # Local FS access is not configured.
+    if local_dir.endswith('/'): raise ValueError(local_dir)
+
+    if logical_path is None: logical_path = self.compute_logical_path()
+    if not logical_path.startswith('/'): raise ValueError(logical_path)
+    if '..' in logical_path: raise HttpContentError(HTTPStatus.FORBIDDEN)
+
+    return local_dir + logical_path
 
 
   def list_directory(self, path:str) -> HttpContent:
