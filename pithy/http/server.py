@@ -442,16 +442,16 @@ class HttpRequestHandler(StreamRequestHandler):
     'Compute local_path.'
     local_dir = self.server.local_dir
     if not local_dir: return None
+    if local_dir.endswith('/'): raise ValueError(local_dir)
     p = self.path
     # abandon query and fragment parameters.
     p = p.partition('?')[0]
     p = p.partition('#')[0]
-    trailing_slash = '/' if p.rstrip().endswith('/') else ''
+    trailing_slash = '/' if (p != '/' and p.endswith('/')) else ''
     p = url_unquote(p)
     p = norm_path(p)
+    if not p.startswith('/') or (p != '/' and p.endswith('/')): raise ValueError(p)
     if '..' in p: return None
-    if not p.startswith('/'): raise ValueError(p)
-    assert not local_dir.endswith('/')
     return f'{local_dir}{p}{trailing_slash}'
 
 
