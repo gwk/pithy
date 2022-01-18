@@ -200,7 +200,7 @@ def load_sqlite(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .sqlite import Connection
   if not isinstance(f, str):
     raise ValueError(f'load: sqlite files can only be opened with a string path; received {f!r}')
-  return Connection(f'file:{f}?mode=ro', uri=True, **kwargs) # type: ignore # Open in read-only mode.
+  return Connection(f'file:{f}?mode=ro', uri=True, **kwargs)
 
 
 def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[str]:
@@ -231,7 +231,7 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 def load_yaml(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from yaml import SafeLoader, load as _load_yaml
   loader = kwargs.pop('Loader', SafeLoader)
-  return _load_yaml(binary_file_for(f), Loader=loader, **kwargs) # type: ignore
+  return _load_yaml(binary_file_for(f), Loader=loader, **kwargs)
 
 
 def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:

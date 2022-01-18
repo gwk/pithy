@@ -314,7 +314,7 @@ def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,A
   scope.decls.append(Func(name=name, type_name=type_name, sig=sig, pars=pars, ret=ret, doc=doc, kind=kind))
 
 
-@parse_decl.register # type: ignore[no-redef]
+@parse_decl.register
 def _(syntax:ClassDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Class declaration.'
 

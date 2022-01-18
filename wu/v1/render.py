@@ -22,7 +22,7 @@ def _(node:str, section_depth:int, max_top_nl:int) -> Iterator[str]:
   yield fmt_wu_text(node)
 
 
-@_render.register # type: ignore[no-redef]
+@_render.register
 def _(node:HtmlNode, section_depth:int, max_top_nl:int) -> Iterator[str]:
 
   attrs_str = fmt_wu_node_attrs(node)
@@ -39,19 +39,19 @@ def _(node:HtmlNode, section_depth:int, max_top_nl:int) -> Iterator[str]:
   yield '>'
 
 
-@_render.register # type: ignore[no-redef]
+@_render.register
 def _(node:Html, section_depth:int, max_top_nl:int) -> Iterator[str]:
   for el in node:
     yield from _render(el, section_depth, max_top_nl=max_top_nl)
 
 
-@_render.register # type: ignore[no-redef]
+@_render.register
 def _(node:Body, section_depth:int, max_top_nl:int) -> Iterator[str]:
   for el in node:
     yield from _render(el, section_depth, max_top_nl=max_top_nl)
 
 
-@_render.register # type: ignore[no-redef]
+@_render.register
 def _(node:Section, section_depth:int, max_top_nl:int) -> Iterator[str]:
   nl_count_top = min(max_top_nl, max(1, 3 - section_depth))
   nl_top = '\n' * nl_count_top
@@ -64,7 +64,7 @@ def _(node:Section, section_depth:int, max_top_nl:int) -> Iterator[str]:
     if el is heading: continue
     yield from _render(el, section_depth+1, max_top_nl=max_top_nl)
 
-#@_render.register # type: ignore[no-redef]
+#@_render.register
 #def _render(node:P, section_depth:int, preceding_newlines:int) -> Iterator[str]:
 #  pass
 
