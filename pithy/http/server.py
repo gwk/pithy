@@ -4,19 +4,21 @@
 import mimetypes
 import sys
 import time
+from cgi import parse_header as cgi_parse_header, parse_multipart
 from email.utils import formatdate as format_email_date
 from html import escape as html_escape
 from http import HTTPStatus
 from http.client import HTTPException, HTTPMessage, parse_headers
-from io import BufferedReader
+from io import BufferedIOBase, BufferedReader
 from os import environ, fstat as os_fstat
 from shutil import copyfileobj
 from socket import getfqdn as get_fully_qualified_domain_name, socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info
 from traceback import print_exception
-from typing import ByteString, Optional, Tuple, Type, Union
-from urllib.parse import quote as url_quote, unquote as url_unquote, urlsplit as url_split, urlunsplit as url_join
+from typing import ByteString, Optional, Tuple, Type, Union, cast
+from urllib.parse import (SplitResult as Url, quote as url_quote, unquote as url_unquote, urlsplit as url_split,
+  urlunsplit as url_join, parse_qs)
 
 from ..fs import is_dir, list_dir, norm_path, path_exists
 from ..io import errL, errSL
@@ -164,7 +166,8 @@ class HttpRequestHandler(StreamRequestHandler):
   request_line_bytes: bytes
   request_line: str
   command: str
-  path: str
+  target: str
+  url: Url
   headers: Optional[HTTPMessage]
   close_connection: bool
   sent_response: bool
@@ -179,7 +182,8 @@ class HttpRequestHandler(StreamRequestHandler):
     self.request_line_bytes = b''
     self.request_line = ''
     self.command = ''
-    self.path = ''
+    self.target = ''
+    self.url = url_split('')
     self.headers = None # The request headers.
     self.close_connection = True
     self.sent_response = False
@@ -238,7 +242,7 @@ class HttpRequestHandler(StreamRequestHandler):
       return (HTTPStatus.BAD_REQUEST, 'Empty request line')
     if len(words) != 3:
       return (HTTPStatus.BAD_REQUEST, f'Bad request syntax: {request_line!r}')
-    command, path, version = words
+    command, target, version = words
     try:
       if not version.startswith('HTTP/'): raise ValueError
       base_version_number = version.split('/', 1)[1]
@@ -259,11 +263,13 @@ class HttpRequestHandler(StreamRequestHandler):
       return (HTTPStatus.BAD_REQUEST, f'Unrecognized HTTP command: {command!r}')
 
     self.command = command
-    self.path = path
+    self.target = target
+    try: self.url = url_split(target)
+    except ValueError: pass
 
     # Parse headers.
     try:
-      self.headers = parse_headers(self.rfile, _class=HTTPMessage) # type: ignore
+      self.headers = parse_headers(cast(BufferedIOBase, self.rfile), _class=HTTPMessage)
     except HTTPException as exc:
       return (HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE, f'{type(exc)}: {exc}')
 
@@ -409,6 +415,71 @@ class HttpRequestHandler(StreamRequestHandler):
 
 
   def get_content(self) -> HttpContent:
+    '''Override point for subclasses to return HttpContent for GET and HEAD requests.'''
+    raise HttpContentError(status=HTTPStatus.NOT_FOUND)
+
+
+  def handle_http_POST(self) -> None:
+    '''Serve a POST request.'''
+    assert self.headers is not None
+
+    try: content_length = int(self.headers.get('Content-Length', '0'))
+    except ValueError:
+      return self.send_error(HTTPStatus.BAD_REQUEST, reason='Invalid Content-Length header.', headers={})
+
+    # TODO: before parsing anything, validate that we want to handle this request.
+
+    content_type_val = self.headers.get('Content-Type', '')
+    content_type, pdict = cgi_parse_header(content_type_val)
+
+    if content_type == 'application/x-www-form-urlencoded':
+      try:
+        body = self.rfile.read(content_length)
+        text = body.decode()
+        content = parse_qs(text)
+      except Exception as exc:
+        return self.send_error(HTTPStatus.BAD_REQUEST, reason=f'Failed to read request body: {type(exc)}: {exc}', headers={})
+
+    elif content_type == 'multipart/form-data':
+      try:
+        body = self.rfile.read(content_length)
+        content = parse_multipart(self.rfile, pdict=pdict) # type: ignore; # TODO: fix or explain this type error.
+      except Exception as exc:
+        return self.send_error(HTTPStatus.BAD_REQUEST, reason=f'Failed to read request body: {type(exc)}: {exc}', headers={})
+
+    else:
+      return self.send_error(HTTPStatus.BAD_REQUEST, reason=f'Unsupported Content-Type: {content_type!r}', headers={})
+
+    try: response = self.post_content(content=content)
+    except HttpContentError as e:
+      headers = e.headers if e.headers is not None else {}
+      self.send_error(status=e.status, reason=e.reason, headers=headers)
+      return
+
+    if isinstance(response.body, BufferedReader):
+      fd = response.body.fileno()
+      stat = os_fstat(fd)
+      resp_content_length = stat[6]
+    elif response.body:
+      resp_content_length = len(response.body)
+    else:
+      resp_content_length = 0
+    resp_headers = {
+      b'Content-Type' : response.content_type,
+      b'Content-Length' : str(resp_content_length).encode('latin1'),
+    }
+    self.send_response_and_headers(HTTPStatus.OK, headers=resp_headers)
+
+    if isinstance(response.body, BufferedReader):
+      try: copyfileobj(response.body, self.wfile)
+      finally: response.body.close()
+    elif response.body:
+      self.wfile.write(response.body)
+
+
+  def post_content(self, content:dict[str,list[str]]) -> HttpContent:
+    '''Override point for subclasses to return HttpContent for a POST request.'''
+    errL('Unhandled POST request:', content)
     raise HttpContentError(status=HTTPStatus.NOT_FOUND)
 
 
@@ -423,8 +494,9 @@ class HttpRequestHandler(StreamRequestHandler):
 
     if is_dir(local_path, follow=True):
       if not local_path.endswith('/'): # Redirect browser to path with slash (same behavior as Apache).
-        parts = url_split(self.path)
-        new_url = url_join(parts._replace(path=parts.path+'/'))
+        url = self.url
+        if url is None: raise HttpContentError(status=HTTPStatus.NOT_FOUND)
+        new_url = url_join(url._replace(path=url.path+'/'))
         raise HttpContentError(status=HTTPStatus.MOVED_PERMANENTLY, headers={b'Location':new_url.encode('latin1')})
       index_path = path_join(local_path, 'index.html')
       if path_exists(index_path, follow=False):
@@ -440,17 +512,17 @@ class HttpRequestHandler(StreamRequestHandler):
       return HttpContent(body=f, content_type=self.guess_mime_type(local_path))
 
 
-  def compute_logical_path(self, path:Optional[str]=None) -> str:
+  def compute_logical_path(self, target:Optional[str]=None) -> str:
     '''
-    Compute logical path from URL path.
+    Compute logical path from the request target (URL string).
     The logical path is normalized but not sanitized.
     In particular it can still contain '..', so is not safe to use without further checking.
     `compute_local_path` will sanitize the path.
     '''
-    p = self.path if path is None else path
-    # abandon query and fragment parameters.
-    p = p.partition('?')[0]
-    p = p.partition('#')[0]
+    if target is None:
+      p = self.url.path
+    else:
+      p = url_split(target).path
     trailing_slash = '/' if (p != '/' and p.endswith('/')) else ''
     p = url_unquote(p)
     p = norm_path(p)
@@ -480,7 +552,7 @@ class HttpRequestHandler(StreamRequestHandler):
     except OSError: raise HttpContentError(status=HTTPStatus.NOT_FOUND)
     listing.sort(key=lambda a: a.lower())
 
-    try: displaypath = url_unquote(self.path, errors='replace')
+    try: displaypath = url_unquote(path, errors='replace')
     except UnicodeDecodeError:
       displaypath = url_unquote(path)
 
@@ -507,7 +579,7 @@ class HttpRequestHandler(StreamRequestHandler):
 
   def fake_favicon(self) -> None:
     'This was a hack to prevent favicon request errors from showing up in the logs.'
-    if self.path == '/favicon.ico': # TODO: send actual favicon if it exists.
+    if self.target == '/favicon.ico': # TODO: send actual favicon if it exists.
       self.response_status = HTTPStatus.OK
       headers:dict[bytes,ByteString] = {
         b'Content-type': b'image/x-icon',
