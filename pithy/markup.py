@@ -19,7 +19,7 @@ from .string import EscapedStr
 
 # Handle lxml comments if available; these are produced by html5_parser.
 try: from lxml.etree import Comment # type: ignore
-except ImportError: Comment = object() # Comment is a cyfunction (weirdly), so we can fallback to a dummy object.
+except ImportError: Comment = object() # Comment is a cyfunction (weirdly), so we can fall back to a dummy object.
 
 
 _T = TypeVar('_T')
@@ -38,6 +38,12 @@ _MuChild = TypeVar('_MuChild', bound='MuChild')
 MuPred = Callable[[_Mu],bool]
 MuVisitor = Callable[[_Mu],None]
 MuIterVisitor = Callable[[_Mu],Iterator[_T]]
+
+
+class Present:
+  '''The Present class is used to only set an attribute if `is_present` evaluates to True.'''
+  def __init__(self, is_present: Any):
+    self.is_present = bool(is_present)
 
 
 class Mu:
@@ -623,6 +629,9 @@ class Mu:
     for k, v in items:
       k = self.replaced_attrs.get(k, k)
       if v in (None, True, False): v = str(v).lower()
+      elif isinstance(v, Present):
+        if v.is_present: v = ''
+        else: continue
       parts.append(f' {k}="{self.esc_attr_val(str(v))}"')
     return ''.join(parts)
 
