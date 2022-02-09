@@ -443,7 +443,7 @@ class HttpRequestHandler(StreamRequestHandler):
     elif content_type == 'multipart/form-data':
       try:
         body = self.rfile.read(content_length)
-        content = parse_multipart(self.rfile, pdict=pdict) # type: ignore; # TODO: fix or explain this type error.
+        content = parse_multipart(self.rfile, pdict=pdict) # type: ignore # TODO: fix or explain this type error.
       except Exception as exc:
         return self.send_error(HTTPStatus.BAD_REQUEST, reason=f'Failed to read request body: {type(exc)}: {exc}', headers={})
 
@@ -464,7 +464,7 @@ class HttpRequestHandler(StreamRequestHandler):
       resp_content_length = len(response.body)
     else:
       resp_content_length = 0
-    resp_headers = {
+    resp_headers:dict[bytes,ByteString] = {
       b'Content-Type' : response.content_type,
       b'Content-Length' : str(resp_content_length).encode('latin1'),
     }
