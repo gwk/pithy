@@ -20,7 +20,7 @@ from typing import ByteString, Optional, Tuple, Type, Union, cast
 from urllib.parse import (SplitResult as Url, quote as url_quote, unquote as url_unquote, urlsplit as url_split,
   urlunsplit as url_join, parse_qs)
 
-from ..fs import is_dir, list_dir, norm_path, path_exists
+from ..fs import is_dir, scan_dir, norm_path, path_exists
 from ..io import errL, errSL
 from ..path import path_ext, path_join
 
@@ -544,33 +544,31 @@ class HttpRequestHandler(StreamRequestHandler):
     return local_dir + logical_path
 
 
-  def list_directory(self, path:str) -> HttpContent:
+  def list_directory(self, local_path:str) -> HttpContent:
     '''
     Produce a directory listing html page (absent index.html).
     '''
-    try: listing = list_dir(path)
-    except OSError: raise HttpContentError(status=HTTPStatus.NOT_FOUND)
-    listing.sort(key=lambda a: a.lower())
+    try: listing = scan_dir(local_path)
+    except OSError as e:
+      errL('Failed to list directory:', local_path, e)
+      raise HttpContentError(status=HTTPStatus.NOT_FOUND)
+    listing.sort(key=lambda e: cast(str, e.name.lower()))
 
-    try: displaypath = url_unquote(path, errors='replace')
+    try: display_path = url_unquote(self.url.path, errors='replace')
     except UnicodeDecodeError:
-      displaypath = url_unquote(path)
+      display_path = url_unquote(self.url.path)
 
-    title = html_escape(displaypath, quote=False)
+    title = html_escape(display_path, quote=False)
 
     r = []
     r.append('<!DOCTYPE html>\n<html>')
     r.append(f'<head>\n<meta charset="utf-8" />\n<title>{title}</title>\n</head>')
     r.append(f'<body>\n<h1>{title}</h1>')
     r.append('<hr>\n<ul>')
-    for name in listing:
-      fullname = path_join(path, name)
-      displayname = linkname = name
-      if is_dir(fullname, follow=True):
-        displayname = name + '/'
-        linkname = name + '/'
-      link_href = url_quote(linkname, errors='replace')
-      link_text = html_escape(displayname, quote=False)
+    for entry in listing:
+      n = entry.name + ('/' if entry.is_dir(follow_symlinks=True) else '')
+      link_href = url_quote(n, errors='replace')
+      link_text = html_escape(n, quote=False)
       r.append(f'<li><a href="{link_href}">{link_text}</a></li>')
     r.append('</ul>\n<hr>\n</body>\n</html>\n')
     body = '\n'.join(r).encode(errors='replace')
