@@ -523,25 +523,35 @@ class HttpRequestHandler(StreamRequestHandler):
       p = self.url.path
     else:
       p = url_split(target).path
+    if not p.startswith('/'): raise ValueError(p)
     trailing_slash = '/' if (p != '/' and p.endswith('/')) else ''
     p = url_unquote(p)
     p = norm_path(p)
     if p != '/' and p.endswith('/'): raise ValueError(p) # Should be guaranteed by norm_path.
-    return p + trailing_slash
+    return self.transform_logical_path_for_local(p + trailing_slash)
 
 
   def compute_local_path(self, logical_path:Optional[str]=None) -> str:
-    'Compute local_path.'
+    'Compute local_path from a logical path.'
 
     local_dir = self.server.local_dir
     if not local_dir: raise HttpContentError(HTTPStatus.NOT_FOUND) # Local FS access is not configured.
     if local_dir.endswith('/'): raise ValueError(local_dir)
 
     if logical_path is None: logical_path = self.compute_logical_path()
+    logical_path = self.transform_logical_path_for_local(logical_path)
     if not logical_path.startswith('/'): raise ValueError(logical_path)
     if '..' in logical_path: raise HttpContentError(HTTPStatus.FORBIDDEN)
 
     return local_dir + logical_path
+
+
+  def transform_logical_path_for_local(self, logical_path:str) -> str:
+    '''
+    Called by compute_local_path; override point for subclasses to transform the normalized logical path.
+    The default implementation returns the logical path unchanged.
+    '''
+    return logical_path
 
 
   def list_directory(self, local_path:str) -> HttpContent:
