@@ -24,7 +24,7 @@ def sql_col_decls(class_:Type[NamedTuple], primary:str) -> str:
   Given a dataclass or NamedTuple subclass, yield a sequence of SQL column declarations for use in a CREATE TABLE statement.
   '''
   decls = []
-  for n, static_type in class_._field_types.items():
+  for n, static_type in class_.__annotations__.items():
     # Currently supports primitive types and their optionals, and Json.
     try: sql_type = py_to_sql_types[static_type]
     except KeyError:
