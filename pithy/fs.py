@@ -8,7 +8,7 @@ import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from sys import argv
-from typing import IO, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, Tuple
+from typing import Callable, Dict, FrozenSet, Iterable, Iterator, List, Optional, TextIO, Tuple, cast
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
@@ -230,11 +230,11 @@ def normalize_exts(exts:Iterable[str]) -> FrozenSet[str]:
   return frozenset(exts)
 
 
-def open_new(path:Path, create_dirs:bool=True, **open_args) -> IO[Any]:
+def open_new(path:Path, create_dirs:bool=True, **open_args) -> TextIO:
   if path_exists(path, follow=False):
     raise PathAlreadyExists(path)
   if create_dirs: make_parent_dirs(path)
-  return open(path, 'w', **open_args)
+  return cast(TextIO, open(path, 'w', **open_args))
 
 
 @memoize

@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 from html.parser import HTMLParser
 from sys import stdin
-from typing import List, Optional, Tuple
+from typing import List, Optional, TextIO, Tuple
 
 
 def main() -> None:
@@ -11,7 +11,7 @@ def main() -> None:
   arg_parser.add_argument('paths', nargs='*', help='paths to HTML documents (defaults to stdin).')
   args = arg_parser.parse_args()
 
-  try: files = [open(path) for path in args.paths]
+  try: files:list[TextIO] = [open(path) for path in args.paths]
   except FileNotFoundError as e: exit(f'file not found: {e.filename}')
   if not files: files = [stdin]
 

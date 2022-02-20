@@ -5,7 +5,7 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, BytesIO, TextIOWrapper
-from typing import IO, Any, BinaryIO, Callable, Dict, Iterable, List, Set, TextIO, Union
+from typing import IO, Any, BinaryIO, Callable, Dict, Iterable, List, Set, TextIO, Union, cast
 
 
 __all__ = [
@@ -53,7 +53,7 @@ class LoaderException(Exception): pass
 
 def text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
   if isinstance(f, TextIOWrapper): return f
-  if isinstance(f, str): return open(f, 'r', **kwargs)
+  if isinstance(f, str): return cast(TextIO, open(f, 'r', **kwargs))
   try: return TextIOWrapper(f, **kwargs)
   except Exception as e:
     raise ValueError(f'load: required text file or path; received {f!r}') from e
