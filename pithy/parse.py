@@ -787,7 +787,7 @@ class Parser:
   def make_buffer(self, source:Source, dbg_tokens:bool) -> Buffer[Token]:
     stream = self.lexer.lex(source, drop=self.drop, eot=True)
     if dbg_tokens:
-      stream = tee_to_err(stream, label='Parser dbg_tokens')
+      stream = tee_to_err(stream, label='Parser dbg_tokens', transform=lambda t: f'{t}: {source[t]!r}')
     return Buffer(stream)
 
 

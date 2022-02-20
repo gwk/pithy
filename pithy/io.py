@@ -383,7 +383,8 @@ def shell_cmd_str(cmd:Iterable[str]) -> str:
   return ' '.join(sh_quote(word) for word in cmd)
 
 
-def tee_to_err(iterable:Iterable[_T], label:str = 'tee_to_err') -> Iterator[_T]:
+def tee_to_err(iterable:Iterable[_T], label:str = 'tee_to_err', transform:Callable[[_T],Any]=None) -> Iterator[_T]:
   for el in iterable:
-    errL(label, ': ', repr(el))
+    s = repr(el) if transform is None else str(transform(el))
+    errL(label, ': ', s)
     yield el
