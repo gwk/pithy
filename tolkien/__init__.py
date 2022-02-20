@@ -58,10 +58,11 @@ _Text = TypeVar('_Text', bound=SourceText)
 
 class Source(Generic[_Text]):
 
-  def __init__(self, name:str, text:_Text, show_missing_newline=True) -> None:
+  def __init__(self, name:str, text:_Text, *, line_idx_start:int=0, show_missing_newline:bool=True) -> None:
     assert isinstance(text, (str,bytes,bytearray))
     self.name = name
     self.text = text
+    self.line_idx_start = line_idx_start
     self.show_missing_newline = show_missing_newline
     self.newline_positions:list[int] = []
 
@@ -80,11 +81,11 @@ class Source(Generic[_Text]):
 
   def get_line_index(self, pos:int) -> int:
     self.update_line_positions()
-    for (index, newline_pos) in enumerate(self.newline_positions):
+    for (index, newline_pos) in enumerate(self.newline_positions, start=self.line_idx_start):
       if pos <= newline_pos:
         return index
 
-    newline_count = len(self.newline_positions)
+    newline_count = self.line_idx_start + len(self.newline_positions)
     text = self.text
     if isinstance(text, str):
       if pos == len(text) and text.endswith('\n'): return newline_count - 1
@@ -272,4 +273,3 @@ class Source(Generic[_Text]):
       except ValueError: continue # ignore digit.
       val = val*base + v
     return val
-
