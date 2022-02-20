@@ -25,7 +25,7 @@ def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Defaul
       raise TypeError(f'argument to @key_dispatched() must be key function; received {key_fn!r}')
     if key is not Default._:
       raise ValueError(f'@key_dispatched() requires either positional `key_fn` (decorating default method) or keyword `key`')
-    if key_fn.__closure__ is not None: # type: ignore # Key function cannot be a closure.
+    if key_fn.__closure__ is not None:
       raise ValueError(f'@key_dispatched() `key_fn` cannot be a closure; recieved {key_fn!r}')
 
     def dflt_decorator(dflt_method:Callable)->Callable:
@@ -66,7 +66,7 @@ def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Defaul
 
 
 def _check_key_dispatched_method(method:Callable) -> None:
-  if method.__closure__ is not None: # type: ignore # Method cannot be a closure because it is registered globally.
+  if method.__closure__ is not None:
     raise ValueError(f'@key_dispatched() decorated method cannot be a closure; recieved {method!r}')
   sig = inspect.signature(method)
   pars = list(sig.parameters.values())
