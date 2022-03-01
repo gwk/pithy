@@ -18,8 +18,8 @@ from .string import EscapedStr
 
 
 # Handle lxml comments if available; these are produced by html5_parser.
-try: from lxml.etree import Comment # type: ignore
-except ImportError: Comment = object() # Comment is a cyfunction (weirdly), so we can fall back to a dummy object.
+try: from lxml.etree import Comment
+except ImportError: Comment = object() # type: ignore # Comment is a cyfunction, so we can fall back to a dummy object.
 
 
 _T = TypeVar('_T')
