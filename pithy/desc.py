@@ -13,6 +13,11 @@ from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Set, Text
 
 from .iterable import known_leaf_types
 
+try:
+  from lxml.etree import _Element as XmlElement
+except ImportError:
+  class XmlElement: pass # type: ignore
+
 
 # Special handling for annoying types that show up in Python scopes.
 _Printer = type(copyright)
@@ -136,7 +141,7 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _D
   # Use an explicit test for __iter__ because iter() will return for objects without __iter__ but with __getitem__;
   # this includes typing._SpecialForm, which fails when we attempt to iterate.
   if hasattr(obj, '__iter__'):
-    try: _ = iter(obj)
+    try: it = iter(obj)
     except TypeError: pass
     else: # `obj` is an Iterator.
       visited_ids1 = visited_ids.copy()
@@ -144,7 +149,7 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _D
       # Attempt to distinguish between mapping and sequence types.
       try: items = iter(obj.items()) # The outer call to `iter` guards against badly formed items() functions.
       except (AttributeError, TypeError): # Treat as iterable.
-        return _iterable_desc(obj, prefix, visited_ids1, iter(obj), simple_keys)
+        return _iterable_desc(obj, prefix, visited_ids1, it, simple_keys)
       else: # Treat as a mapping.
         return _mapping_desc(obj, prefix, visited_ids1, items, simple_keys)
 
@@ -182,11 +187,15 @@ def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator, simpl
 _Items = Iterator[Tuple[Any,Any]]
 
 
-def _mapping_desc(obj:Mapping, prefix:str, visited_ids:Set[int], items:_Items, simple_keys:bool) -> _Desc:
+def _mapping_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simple_keys:bool) -> _Desc:
   t = type(obj)
   if t is dict:
     opener = '{'
     closer = '}'
+  elif issubclass(t, XmlElement):
+    rendered_attrs = [f'{k}={v!r}' for k,v in items]
+    it = (_obj_desc(el, prefix='', visited_ids=visited_ids, simple_keys=simple_keys) for el in obj)
+    return _Desc(opener=prefix+'<'+obj.tag, closer='>', it=it, buffer=rendered_attrs)
   else:
     opener = t.__qualname__ + '({'
     closer = '})'
