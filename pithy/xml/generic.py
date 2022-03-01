@@ -15,7 +15,7 @@ import re
 from typing import Any, Callable, Container, Dict, Iterator, List, Tuple, Union, cast
 from xml.etree.ElementTree import Element
 
-from lxml.etree import Comment  # type: ignore
+from lxml.etree import Comment
 
 from ..exceptions import DeleteNode
 from .escape import fmt_attr_items
@@ -130,4 +130,3 @@ def visit_generic_xml(xml:GenericXml, visit:Callable[[GenericXml],None]) -> None
     if isinstance(k, int) and isinstance(v, dict): # Child element.
       try: visit_generic_xml(v, visit)
       except DeleteNode: del xml[k]
-
