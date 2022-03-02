@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-Xml type.
+Xml Mu/markup type.
 '''
 
 from typing import Any, Iterable, List, Union
