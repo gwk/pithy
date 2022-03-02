@@ -9,7 +9,7 @@ patterns=dict(
   # These are ordered roughly to improve matching speed on a sample (all .py files in the repository).
 
   # Python keywords must come before `name`.
-  const = r'None|True|False|Ellipsis',
+  const = r'None|True|False',
   kw_as       = 'as',
   kw_async    = 'async',
   kw_await    = 'await',
