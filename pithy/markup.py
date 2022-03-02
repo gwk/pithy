@@ -150,7 +150,7 @@ class Mu:
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
     '''
     tag = el.tag
-    if tag == Comment: tag = '!COMMENT' # Weird that the tag is an object, but this is what html5_parser produces.
+    if tag is Comment: tag = '!COMMENT' # `Comment` is a cython object; convert it to a string.
     # Collect children.
     attrs = el.attrib
     ch:MuChildren = []
