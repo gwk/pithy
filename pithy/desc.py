@@ -194,7 +194,7 @@ def _mapping_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simpl
     closer = '}'
   elif issubclass(t, XmlElement):
     rendered_attrs = [f'{k}={v!r}' for k,v in items]
-    it = (_obj_desc(el, prefix='', visited_ids=visited_ids, simple_keys=simple_keys) for el in obj)
+    it:Iterator = (_obj_desc(el, prefix='', visited_ids=visited_ids, simple_keys=simple_keys) for el in obj)
     return _Desc(opener=prefix+'<'+obj.tag, closer='>', it=it, buffer=rendered_attrs)
   else:
     opener = t.__qualname__ + '({'
