@@ -4,16 +4,21 @@
 Generic dictionary trees for XML.
 
 Trees are represented as ordinary dictionaries:
-* The element tag is stored under the '' key;
-* attributes are stored under string keys;
-* node children and text are stored together under zero-indexed numeric keys.
+* The element tag is stored under the '' key.
+* Attributes are sosrted and stored under string keys.
+* Node children and text are stored together in a list under the '-' key.
+* The children item is omitted if the node has no children.
 
-Note that this scheme relies on the stable ordering of dict items, so it requires Python3.6+.
+The hyphen key is chosen for children because it is not a legal XML name; see: https://www.w3.org/TR/xml/#NT-Name.
+Similarly, we use '!COMMENT' as the tag for comments.
+
+This representation makes use of stable dictionary ordering.
+The tag is always first, followed by sorted attributes, followed by the children list.
 '''
 
 import re
-from typing import Any, Callable, Container, Dict, Iterator, List, Tuple, Union, cast
-from xml.etree.ElementTree import Element
+from typing import Callable, Collection, Container, Iterator, cast
+from xml.etree.ElementTree import Element, fromstring as parse_xml_data
 
 from lxml.etree import Comment
 
@@ -21,112 +26,135 @@ from ..exceptions import DeleteNode
 from .escape import fmt_attr_items
 
 
-GenericXmlKey = Union[int,str]
-GenericXmlVal = Union[str,Dict]
-GenericXml = Dict[GenericXmlKey,GenericXmlVal]
+GenericXmlChild = str|dict
+GenericXml = dict[str,GenericXmlChild|list[GenericXmlChild]]
 
 
-def generic_xml_from_etree(el:Element) -> GenericXml:
+def gxml_from_etree(xml:str|bytes|Element) -> GenericXml:
+  '''
+  Build a generic XML tree from an XML string, bytes or lxml.etree.Element.
+  Note that any text or tail on the root element is discarded.
+  '''
+  if isinstance(xml, (str,bytes)): xml = parse_xml_data(xml)
+  assert isinstance(xml, Element)
+  return _build_gxml_from_etree(xml)
+
+
+def _build_gxml_from_etree(el:Element) -> GenericXml:
+  'Recursive helper function for gxml_from_etree.'
   tag = el.tag
   if tag == Comment: tag = '!COMMENT'
-  res:Dict = {'': tag}
+  res:GenericXml = {'': tag}
   res.update(sorted(el.items()))
-  idx = 0
-  t = el.text
-  if t:
-    res[idx] = t
-    idx += 1
-  for child in el:
-    res[idx] = generic_xml_from_etree(child)
-    idx += 1
-    t = child.tail
-    if t:
-      res[idx] = t
-      idx += 1
+  children:list[GenericXmlChild] = []
+  if text := el.text:
+    children.append(text)
+  children.extend(_build_gxml_from_etree(child) for child in el)
+  if tail := el.tail:
+    children.append(tail)
+  if children:
+    res['-'] = children
   return res
 
 
-def get_tag_attrs_children(xml:GenericXml) -> Tuple[str, List[Tuple[str,Any]], List[Any]]:
-  tag = cast(str, xml[''])
-  attrs:List[Tuple[str,Any]] = []
-  children:List[Tuple[int,Any]] = []
-  for p in xml.items():
-    k = p[0]
-    if isinstance(k, str):
-      if k: attrs.append(p) # type: ignore
-    else:
-      children.append(p) # type: ignore
-  return tag, attrs, children
+def gxml_iter(xml:GenericXml) -> Iterator[GenericXmlChild]:
+  try: children = xml['-']
+  except KeyError: return
+  yield from children
 
 
-def get_text(xml:GenericXml) -> str:
-  text:List[str] = []
-  for k, v in xml.items():
-    if isinstance(k, int):
-      if isinstance(v, dict): text.append(get_text(v))
-      else: text.append(str(v))
-  return ''.join(text)
+def gxml_iter_child_els(xml:GenericXml) -> Iterator[GenericXml]:
+  try: children = xml['-']
+  except KeyError: return
+  for child in children:
+    if isinstance(child, dict): yield child
 
 
-def clean_generic_xml_whitespace(xml:GenericXml, ws_sensitive_tags:Container[str]) -> None:
+def gxml_child_collection(xml:GenericXml) -> Collection[GenericXmlChild]:
+  return xml.get('-', ())
+
+
+def gen_gxml_text(xml:GenericXml) -> Iterator[str]:
+  if xml[''] == '!COMMENT': return
+  try: children = xml['-']
+  except KeyError: return
+  for c in children:
+    if isinstance(c, str): yield c
+    else: yield from gen_gxml_text(c)
+
+
+def gxml_text(xml:GenericXml) -> str:
+  return ''.join(gen_gxml_text(xml))
+
+
+def clean_gxml_whitespace(xml:GenericXml, ws_sensitive_tags:Container[str]) -> None:
 
   def _clean(xml:GenericXml) -> None:
-    tag = xml['']
-    children:List[GenericXmlVal] = []
-
-    # Get all children, consolidating consecutive strings, and simultaneously remove all children from the node.
-    for k, v in tuple(xml.items()):
-      if isinstance(k, str): continue # Leave tag and attrs untouched.
-      del xml[k]
-      if isinstance(v, str): # Text.
-        if not v: continue # Omit empty strings.
+    if '-' not in xml: return
+    children:list[GenericXmlChild] = []
+    # Consolidate consecutive strings.
+    for child in gxml_iter(xml):
+      if isinstance(child, str): # Text.
+        if not child: continue # Omit empty strings.
         if children and isinstance(children[-1], str): # Consolidate.
-          children[-1] += v
+          children[-1] += child
         else:
-          children.append(v)
+          children.append(child)
       else: # Child element.
-        children.append(v)
+        children.append(child)
 
+    tag = xml['']
     if tag not in ws_sensitive_tags: # Clean whitespace.
-      for i in range(len(children)):
-        v = children[i]
-        if not isinstance(v, str): continue
-        replacement = '\n' if '\n' in v else ' '
-        children[i] = ws_re.sub(replacement, v)
+      for i, child in enumerate(children):
+        if not isinstance(child, str): continue
+        replacement = '\n' if '\n' in child else ' '
+        children[i] = _ws_re.sub(replacement, child)
 
-    xml.update(enumerate(children)) # Replace children with fresh, compacted indices.
+    xml['-'] = children
 
-  visit_generic_xml(xml, _clean)
-
-ws_re = re.compile(r'\s+')
+  visit_gxml(xml, pre=_clean)
 
 
-def render_generic_xml(xml:GenericXml, void_elements:Container[str]) -> Iterator[str]:
-  tag, attrs, children = get_tag_attrs_children(xml)
+_ws_re = re.compile(r'\s+')
+
+
+def render_gxml(xml:GenericXml, void_elements:Container[str]) -> Iterator[str]:
+  tag = xml['']
+  if tag == '!COMMENT': raise NotImplementedError('Comments are not yet supported')
+  children = gxml_child_collection(xml)
 
   if (not children) and void_elements:
     self_closing = (tag in void_elements)
   else:
     self_closing = (not children)
 
-  attrs_str = fmt_attr_items(attrs, {})
+  attrs_str = fmt_attr_items(xml.items(), ignore=gxml_non_attr_keys)
   head = f'<{tag}{attrs_str}'
 
   if self_closing:
     yield head + '/>'
   else:
     yield head + '>'
-    for _, child in children:
+    for child in children:
       if isinstance(child, dict):
-        yield from render_generic_xml(child, void_elements=void_elements)
+        yield from render_gxml(child, void_elements=void_elements)
       else:
         yield str(child)
     yield f'</{tag}>'
 
 
-def visit_generic_xml(xml:GenericXml, visit:Callable[[GenericXml],None]) -> None:
-  visit(xml)
-  for k, v in tuple(xml.items()):
-    if isinstance(k, int) and isinstance(v, dict): # Child element.
-      try: visit_generic_xml(v, visit)
-      except DeleteNode: del xml[k]
+def visit_gxml(xml:GenericXml, *, pre:Callable[[GenericXml],None]=None, post:Callable[[GenericXml],None]=None) -> None:
+  if pre is not None: pre(xml)
+  try: children = cast(list[GenericXml], xml['-'])
+  except KeyError: pass
+  else:
+    del_indexes = set()
+    for i, child in enumerate(children):
+      try: visit_gxml(child, pre=pre, post=post)
+      except DeleteNode: del_indexes.add(i)
+    if del_indexes:
+      children[:] = [child for i, child in enumerate(children) if i not in del_indexes]
+  if post is not None: post(xml)
+
+
+gxml_non_attr_keys = ('', '-')

@@ -5,8 +5,8 @@ XML escaping utilities.
 '''
 
 from functools import lru_cache
-from html import escape as html_escape
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
+from typing import Any, Container, Dict, Iterable, List, Optional, Tuple
 
 
 XmlAttrs = Optional[Dict[str,Any]]
@@ -19,28 +19,29 @@ class EscapedStr(str):
 def esc_xml_text(val:Any) -> str:
   'HTML-escape the string representation of `val`.'
   # TODO: add options to support whitespace escaping?
-  return val if isinstance(val, EscapedStr) else html_escape(str(val), quote=False)
+  return val if isinstance(val, EscapedStr) else _escape_text(str(val))
 
 
 def esc_xml_attr(val:Any) -> str:
   'HTML-escape the string representation of `val`, including quote characters.'
-  return val if isinstance(val, EscapedStr) else html_escape(str(val), quote=True)
+  return val if isinstance(val, EscapedStr) else _escape_attr(str(val))
 
 
 @lru_cache(maxsize=1024, typed=True)
 def esc_xml_attr_key(key:str) -> str:
-  return html_escape(key.replace("_", "-"), quote=True)
+  return _escape_attr(key.replace("_", "-"))
 
 
-def fmt_attrs(attrs:XmlAttrs, replaced_attrs:Dict[str,str]) -> str:
+def fmt_attrs(attrs:XmlAttrs, *, replaced_attrs:Dict[str,str]={}, ignore:Container[str]=()) -> str:
   'Format the `attrs` dict into XML key-value attributes.'
   if not attrs: return ''
-  return fmt_attr_items(attrs.items(), replaced_attrs)
+  return fmt_attr_items(attrs.items(), replaced_attrs=replaced_attrs, ignore=ignore)
 
 
-def fmt_attr_items(attr_items:Iterable[Tuple[str,Any]], replaced_attrs:Dict[str,str]) -> str:
+def fmt_attr_items(attr_items:Iterable[Tuple[str,Any]], *, replaced_attrs:Dict[str,str]={}, ignore:Container[str]=()) -> str:
   parts: List[str] = []
   for k, v in attr_items:
+    if k in ignore: continue
     k = replaced_attrs.get(k, k)
     if v is None: v = 'none'
     parts.append(f' {esc_xml_attr_key(k)}="{esc_xml_attr(v)}"')

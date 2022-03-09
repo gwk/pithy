@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-XML tools.
+XmlWriter is a failed experiment to use python context managers as a way to output XML from code.
 '''
 
 from io import StringIO
@@ -55,7 +55,7 @@ class XmlWriter(ContextManager):
 
   def write(self, file:TextIO, end='\n') -> None:
     if self.prefix: print(self.prefix, file=file)
-    print('<', self.tag, fmt_attrs(self.attrs, self.replaced_attrs), sep='', end='', file=file)
+    print('<', self.tag, fmt_attrs(self.attrs, replaced_attrs=self.replaced_attrs), sep='', end='', file=file)
     if self.can_auto_close_tags and not self.children:
       print('/>', end=end, file=file)
       return
@@ -103,7 +103,7 @@ class XmlWriter(ContextManager):
 
 
   def leaf(self, tag:str, *, attrs:XmlAttrs) -> None:
-    self.add(EscapedStr(f'<{tag}{fmt_attrs(attrs, self.replaced_attrs)}/>'))
+    self.add(EscapedStr(f'<{tag}{fmt_attrs(attrs, replaced_attrs=self.replaced_attrs)}/>'))
 
 
   def child(self, child_class:Type[_XmlWriter], *children:Any, attrs:XmlAttrs=None, **kwargs:Any) -> _XmlWriter:
