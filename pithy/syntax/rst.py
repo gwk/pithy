@@ -35,7 +35,7 @@ class Ref:
 
 
 def _get_children(node:Node) -> Iterable[Node]:
-  return node.children # type: ignore
+  return node.children
 
 
 @dataclass
