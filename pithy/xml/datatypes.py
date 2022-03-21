@@ -4,7 +4,7 @@
 Xml generated datatypes base class and utilities. See craft-xml-datatypes for context.
 '''
 
-from typing import Any, Callable, ClassVar, Iterable, Optional, Type, TypeVar, Union
+from typing import Any, Callable, ClassVar, Iterable, Optional, Type, TypeVar, Union, get_args, get_origin
 
 from lxml.etree import Comment, _Element, fromstring as parse_xml_data
 
@@ -94,10 +94,9 @@ class XmlDatatype:
   def _attr_type(cls, name:str) -> Type:
     try: t:Type = cls.__annotations__[name]
     except KeyError as e: raise ValueError(f'Unknown attribute: {name!r}') from e
-    if hasattr(t, '__origin__'):
-      rtt = t.__origin__
+    if rtt := get_origin(t):
       if rtt is Union:
-        return t.__args__[0] # type: ignore # Note: this assumes that the type is an Optional.
+        return get_args(t)[0] # type: ignore # Note: this assumes that the type is an Optional.
       else:
         return t
     else: return t

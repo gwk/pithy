@@ -3,7 +3,7 @@
 
 from collections import Counter
 from itertools import zip_longest
-from typing import Any, Callable, NamedTuple, Optional, Type, TypeVar, Union, cast, get_type_hints
+from typing import Any, Callable, NamedTuple, Optional, Type, TypeVar, Union, cast, get_args, get_origin, get_type_hints
 
 
 _T = TypeVar('_T')
@@ -21,19 +21,23 @@ def transtructor_for(t:Type[_T]) -> Callable[[Any],_T]:
   if annotations := get_type_hints(t): # Includes NamedTuple.
     return transtructor_for_annotated_class(t, annotations)
 
-  if o := getattr(t, '__origin__', None): # Generic types have an origin type.
-    return transtructor_for_generic_type(t, o)
+  origin = get_origin(t)
+  type_args = get_args(t)
+  if origin and type_args: # Generic types have an origin type and a tuple of type arguments.
+    return transtructor_for_generic_type(t, origin=origin, type_args=type_args)
 
   return t
 
 
-def transtructor_for_generic_type(t:Type[_T], origin:Type[_T]) -> Callable[[Any],_T]:
+def transtructor_for_generic_type(t:Type[_T], origin:Type[_T], type_args:tuple[type,...]) -> Callable[[Any],_T]:
   # The origin type is usually a runtime type, but not in the case of Union.
-  type_args = cast(tuple[Type,...], getattr(t, '__args__', ()))
+
   if origin is Union:
     return transtructor_for_union_type(frozenset(type_args))
+
   if issubclass(origin, tuple):
     return transtructor_for_tuple_type(t, origin, type_args)
+
   if issubclass(origin, dict) and len(type_args) > 1: # Excludes Counter.
     key_type, val_type = type_args
     key_ctor = transtructor_for(key_type)

@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import abstractmethod
-from typing import Any, Callable, Counter, Dict, Optional, Protocol, Tuple, TypeVar, Union
+from typing import Any, Callable, Counter, Dict, Optional, Protocol, Tuple, TypeVar, Union, get_args, get_origin
 
 
 _T = TypeVar('_T')
@@ -27,8 +27,8 @@ def is_a(val:Any, T:Union[type, Tuple[type, ...]]) -> bool:
   try: return isinstance(val, T)
   except TypeError as e:
     if e.args[0] != 'Subscripted generics cannot be used with class and instance checks': raise
-  RTT = T.__origin__ # type: ignore # The runtime type for the static type.
-  args = T.__args__ # type: ignore
+  RTT = get_origin(T)
+  args = get_args(T)
   try:
     predicate = _generic_type_predicates[RTT]
   except KeyError: # Not specialized.

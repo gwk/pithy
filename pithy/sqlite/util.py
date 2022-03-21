@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Dict, NamedTuple, Tuple, Type
+from typing import Any, Dict, NamedTuple, Tuple, Type, get_args
 
 from ..json import render_json
 
@@ -41,9 +41,9 @@ def _wrapped_type_for_optional(static_type:type) -> type:
   try: meta_class_name = static_type.__class__.__name__
   except AttributeError as e: raise TypeError(static_type) from e
   if meta_class_name != '_Union': raise TypeError(static_type)
-  members = static_type.__args__ # type: ignore
-  if len(members) != 2 or NoneType not in members: raise TypeError(static_type)
-  return [m for m in members if m is not NoneType][0] # type: ignore
+  args = get_args(static_type)
+  if not args or len(args) != 2 or NoneType not in args: raise TypeError(static_type)
+  return [a for a in args if a is not NoneType][0] # type: ignore
 
 
 def default_to_json(obj:Any) -> Any:
