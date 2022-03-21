@@ -12,7 +12,7 @@ _T = TypeVar('_T')
 def transtructor_for(t:Type[_T]) -> Callable[[Any],_T]:
   '''
   Return a "transtructor" for the given type.
-  A transtructor takes a generic value, e.g. a JSON value or a CSV row, and returns a well type value.
+  A transtructor takes a generic value, e.g. a JSON value or a CSV row, and returns a well typed value.
   Transtructors are recursive functions meant to alleviate the tedium of type checking parsed but softly typed data values.
   '''
   try: return primitive_transtructors[t] # type: ignore
@@ -40,19 +40,33 @@ def transtructor_for_generic_type(t:Type[_T], origin:Type[_T], type_args:tuple[t
 
   if issubclass(origin, dict) and len(type_args) > 1: # Excludes Counter.
     key_type, val_type = type_args
-    key_ctor = transtructor_for(key_type)
-    val_ctor = transtructor_for(val_type)
-    return lambda d: origin((key_ctor(k), val_ctor(v)) for k, v in d.items()) # type: ignore
+    key_ctor = transtructor_for(key_type) # type: ignore
+    val_ctor = transtructor_for(val_type) # type: ignore
+
+    def transtruct_dict(val:Any) -> _T:
+      try: items = val.items()
+      except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
+      return origin((key_ctor(k), val_ctor(v)) for k, v in items) # type: ignore
+
+    return transtruct_dict
+
   if issubclass(origin, (list, set, frozenset, Counter)):
     assert len(type_args) == 1
     el_type = type_args[0]
-    el_ctor = transtructor_for(el_type)
-    return lambda v: origin(el_ctor(e) for e in v) # type: ignore
-  return origin
+    el_ctor = transtructor_for(el_type) # type: ignore[arg-type]
+
+    def transtruct_collection(val:Any) -> _T:
+      return origin(el_ctor(e) for e in v) # type: ignore
+
+    return transtruct_collection
+
+  # TODO: further handling. At this point it does not make sense to just return origin,
+  # because the args probably need to be considered to create well-typed values.
+  raise TypeError(f'{t}: transtructor for generic type {t} not implemented.')
 
 
 def transtructor_for_annotated_class(class_:Type[_T], annotations:dict[str,Type]) -> Callable[[Any], _T]:
-  transtructors = {k: transtructor_for(v) for k, v in annotations.items()}
+  transtructors = {k: transtructor_for(v) for k, v in annotations.items()} # type: ignore[arg-type]
 
   pre_transtruct_dict:Optional[Callable[[dict[str,Any]],dict[str,Any]]] = getattr(class_, 'pre_transtruct_dict', None)
   pre_transtruct_list:Optional[Callable[[list[Any]],list[Any]]] = getattr(class_, 'pre_transtruct_list', None)
@@ -86,7 +100,7 @@ def transtructor_for_annotated_class(class_:Type[_T], annotations:dict[str,Type]
 
 def transtructor_for_tuple_type(type_:Type, rtt:Type, types:tuple[Type,...]) -> Callable[[Any],Any]:
   # TODO: handle sequence tuple definitions.
-  transtructors = tuple(transtructor_for(t) for t in types)
+  transtructors = tuple(transtructor_for(t) for t in types) # type: ignore[arg-type]
 
   def transtruct_tuple(args:Any) -> Any:
     typed_args:list[Any] = []
@@ -102,9 +116,16 @@ def transtructor_for_tuple_type(type_:Type, rtt:Type, types:tuple[Type,...]) -> 
 
 
 def transtructor_for_union_type(types:frozenset[Type]) -> Callable[[Any],Any]:
+
   if len(types) == 2 and NoneType in types:
     t = next(t for t in types if t is not NoneType)
-    return lambda v: v if v is None else t(v)
+
+    def transtruct_union(val:Any) -> Any:
+      if val is None: return None
+      return t(val)
+
+    return transtruct_union
+
   raise NotImplementedError('Union types other than Optional are not yet supported.')
 
 
