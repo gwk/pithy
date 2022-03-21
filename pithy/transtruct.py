@@ -29,6 +29,39 @@ def transtructor_for(t:Type[_T]) -> Callable[[Any],_T]:
   return t
 
 
+def transtructor_for_annotated_class(class_:Type[_T], annotations:dict[str,Type]) -> Callable[[Any], _T]:
+  transtructors = {k: transtructor_for(v) for k, v in annotations.items()} # type: ignore[arg-type]
+
+  pre_transtruct_dict:Optional[Callable[[dict[str,Any]],dict[str,Any]]] = getattr(class_, 'pre_transtruct_dict', None)
+  pre_transtruct_list:Optional[Callable[[list[Any]],list[Any]]] = getattr(class_, 'pre_transtruct_list', None)
+
+  def transtruct_annotated_class(args:Any) -> _T:
+    if isinstance(args, dict):
+      if pre_transtruct_dict:
+        args = pre_transtruct_dict(args)
+      typed_kwargs:dict[str,Any] = {}
+      for name, val in args.items():
+        try: transtructor = transtructors[name]
+        except KeyError: raise ValueError(f'{class_}: transtruct argument {name} not found in annotations.')
+        typed_kwargs[name] = transtructor(val)
+      return class_(**typed_kwargs)
+
+    # Assume `args` is a positional argument list.
+    if pre_transtruct_list:
+      args = pre_transtruct_list(args)
+    typed_args:list[Any] = []
+    for idx, (arg, pair) in enumerate(zip_longest(args, transtructors.items())):
+      if arg is None: break
+      if pair is None:
+        raise ValueError(f'{class_}: transtruct argument {idx} exceeds number of annotations.')
+      name, transtructor = pair
+      typed_args.append(transtructor(arg))
+    if issubclass(class_, NamedTuple): return class_(typed_args) # type: ignore # For Namenamed tuple types, the args are passed as a single iterable.
+    return class_(*typed_args)
+
+  return transtruct_annotated_class
+
+
 def transtructor_for_generic_type(t:Type[_T], origin:Type[_T], type_args:tuple[type,...]) -> Callable[[Any],_T]:
   # The origin type is usually a runtime type, but not in the case of Union.
 
@@ -63,39 +96,6 @@ def transtructor_for_generic_type(t:Type[_T], origin:Type[_T], type_args:tuple[t
   # TODO: further handling. At this point it does not make sense to just return origin,
   # because the args probably need to be considered to create well-typed values.
   raise TypeError(f'{t}: transtructor for generic type {t} not implemented.')
-
-
-def transtructor_for_annotated_class(class_:Type[_T], annotations:dict[str,Type]) -> Callable[[Any], _T]:
-  transtructors = {k: transtructor_for(v) for k, v in annotations.items()} # type: ignore[arg-type]
-
-  pre_transtruct_dict:Optional[Callable[[dict[str,Any]],dict[str,Any]]] = getattr(class_, 'pre_transtruct_dict', None)
-  pre_transtruct_list:Optional[Callable[[list[Any]],list[Any]]] = getattr(class_, 'pre_transtruct_list', None)
-
-  def transtruct_annotated_class(args:Any) -> _T:
-    if isinstance(args, dict):
-      if pre_transtruct_dict:
-        args = pre_transtruct_dict(args)
-      typed_kwargs:dict[str,Any] = {}
-      for name, val in args.items():
-        try: transtructor = transtructors[name]
-        except KeyError: raise ValueError(f'{class_}: transtruct argument {name} not found in annotations.')
-        typed_kwargs[name] = transtructor(val)
-      return class_(**typed_kwargs)
-
-    # Assume `args` is a positional argument list.
-    if pre_transtruct_list:
-      args = pre_transtruct_list(args)
-    typed_args:list[Any] = []
-    for idx, (arg, pair) in enumerate(zip_longest(args, transtructors.items())):
-      if arg is None: break
-      if pair is None:
-        raise ValueError(f'{class_}: transtruct argument {idx} exceeds number of annotations.')
-      name, transtructor = pair
-      typed_args.append(transtructor(arg))
-    if issubclass(class_, NamedTuple): return class_(typed_args) # type: ignore # For Namenamed tuple types, the args are passed as a single iterable.
-    return class_(*typed_args)
-
-  return transtruct_annotated_class
 
 
 def transtructor_for_tuple_type(type_:Type, rtt:Type, types:tuple[Type,...]) -> Callable[[Any],Any]:
