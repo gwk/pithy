@@ -40,6 +40,7 @@ def main() -> None:
 
   days:List[Day] = []
   start_minutes:Optional[int] = None
+  prev_minutes:Optional[int] = None
   end_minutes:Optional[int]   = None
   total_minutes = 0
   total_payment = 0.0
@@ -52,11 +53,11 @@ def main() -> None:
 
   for line in f:
     l = line.rstrip('\n')
-    outZ(f'{l:64}')
+    outZ(f'{l:48}')
 
     day_match = day_re.match(line)
     if day_match:
-      outL('(day)')
+      outL('.')
       if start_minutes is not None or end_minutes is not None:
         exit(f'timesheet error: previous day is missing end time.')
       days.append(Day(day_match[0]))
@@ -65,9 +66,16 @@ def main() -> None:
     time_match = time_re.match(line)
     if time_match:
       m = minutes_for(time_match)
-      if start_minutes is None: start_minutes = m
-      else: end_minutes = m # Cumulative from last start.
-      outZ(f'|{m:4} ')
+      if start_minutes is None:
+        start_minutes = m
+      else:
+        end_minutes = m # Cumulative from last start.
+      if prev_minutes is None:
+        split_time = ''
+      else:
+        split_time = f' [{m - prev_minutes:>3}]'
+      prev_minutes = m
+      outZ(f'|{m:4}{split_time} ')
 
     subtotal_match = subtotal_re.search(line)
     if subtotal_match:
@@ -89,6 +97,7 @@ def main() -> None:
       days[-1].minutes += sub_minutes
       total_minutes += sub_minutes
       start_minutes = None
+      prev_minutes = None
       end_minutes = None
 
     money_match = money_re.match(line)
