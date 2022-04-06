@@ -14,9 +14,9 @@ from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Set, Text
 from .iterable import known_leaf_types
 
 try:
-  from lxml.etree import _Element as XmlElement
+  from lxml.etree import _Element as LxmlElement
 except ImportError:
-  class XmlElement: pass # type: ignore
+  class LxmlElement: pass # type: ignore
 
 
 # Special handling for annoying types that show up in Python scopes.
@@ -192,7 +192,7 @@ def _mapping_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simpl
   if t is dict:
     opener = '{'
     closer = '}'
-  elif issubclass(t, XmlElement):
+  elif issubclass(t, LxmlElement):
     rendered_attrs = [f'{k}={v!r}' for k,v in items]
     it:Iterator = (_obj_desc(el, prefix='', visited_ids=visited_ids, simple_keys=simple_keys) for el in obj)
     return _Desc(opener=prefix+'<'+obj.tag, closer='>', it=it, buffer=rendered_attrs)
