@@ -6,8 +6,8 @@ Html type hierarchy.
 
 import re
 from html import escape as _escape
-from typing import (Any, AnyStr as _AnyStr, Callable, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
-  Union, cast)
+from typing import (Any, AnyStr as _AnyStr, Callable, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type,
+  TypeVar, Union, cast)
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import Mu, MuAttrs, MuChild, _Mu, _MuChild
@@ -23,7 +23,7 @@ class HtmlNode(Mu):
   inline_tags = semantics.phrasing_tags
   void_tags = semantics.void_tags
   ws_sensitive_tags = semantics.ws_sensitive_tags
-  tag_types:Dict[str,Type[Mu]] = {}
+  tag_types:ClassVar[dict[str,type[Mu]]] = {}
 
   @classmethod
   def parse(Class:Type[_Mu], source:_AnyStr, **kwargs:Any) -> _Mu:
