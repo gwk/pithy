@@ -4,6 +4,7 @@ import re
 from functools import singledispatch
 from typing import Iterator, List, Union
 
+from pithy.markup import MuChild
 from pithy.html import Body, Html, HtmlNode, Section
 
 
@@ -13,7 +14,7 @@ def render_wu(node:HtmlNode) -> Iterator[str]:
 
 
 @singledispatch
-def _render(node:Union[str,HtmlNode], section_depth:int, max_top_nl:int) -> Iterator[str]:
+def _render(node:MuChild, section_depth:int, max_top_nl:int) -> Iterator[str]:
   raise NotImplementedError(node)
 
 
