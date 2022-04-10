@@ -7,7 +7,7 @@ Base Markup type for Html, Svg, Xml, as well as legacy SGML formats.
 import re
 from collections import Counter
 from itertools import chain
-from typing import (Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match, Optional, Tuple, Type, TypeVar,
+from typing import (Any, Callable, ClassVar, Dict, Generator, Iterable, Iterator, List, Match, Optional, Tuple, Type, TypeVar,
   Union, cast, overload)
 from xml.etree.ElementTree import Element
 
@@ -53,11 +53,12 @@ class Mu:
   '''
 
   tag = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
-  tag_types:Dict[str,Type['Mu']] = {}
-  inline_tags:FrozenSet[str] = frozenset()
-  void_tags:FrozenSet[str] = frozenset()
-  ws_sensitive_tags:FrozenSet[str] = frozenset()
-  replaced_attrs:Dict[str,str] = {}
+
+  tag_types:ClassVar[dict[str,type['Mu']]] = {} # Dispatch table mapping tag names to Mu subtypes.
+  inline_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that should be rendered inline.
+  void_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that should be rendered as "void tags" (for HTML correctness).
+  ws_sensitive_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that are whitespace sensitive.
+  replaced_attrs:ClassVar[Dict[str,str]] = {} # Map of attribute names to replacement values for rendering.
 
   __slots__ = ('attrs', 'ch', '_orig', '_parent')
 
@@ -86,7 +87,7 @@ class Mu:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
-    if isinstance(ch, mu_child_classes):
+    if isinstance(ch, mu_child_classes): # Single child argument; wrap it in a list.
       self.ch:MuChildren = [ch]
     elif isinstance(ch, list):
       self.ch = ch # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
@@ -146,7 +147,7 @@ class Mu:
   @classmethod
   def from_etree(cls:Type[_Mu], el:Element) -> _Mu:
     '''
-    Create an Mu object (possibly subclass by tag) from a standard library Mu element tree.
+    Create an Mu object (possibly subclass by tag) from a standard library element tree.
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
     '''
     tag = el.tag
