@@ -115,6 +115,40 @@ def dict_fan_by_key_pred(d: Mapping[_K, _V], pred: Callable[[_K], bool]) -> Tupl
   return fan
 
 
+def dict_remap_keys(d:Mapping[_K,_V], remap:dict[_K,_K]) -> dict[_K,_V]:
+  '''
+  Remap the keys of `d` using the mapping `remap`.
+  Keys not  in `remap` are left unchanged.
+  Always returns a new dictionary, even if no remapping occurs.
+  '''
+  return { remap.get(k, k) : v for k, v in d.items() }
+
+
+def dict_remap_keys_mut(d:dict[_K,_V], remap:Union[Mapping[_K,_K],Iterable[Tuple[_K,_K]]]) -> dict[_K,_V]:
+  '''
+  Remap the keys of `d` using the mapping `remap`, modifying `d` in place.
+  `remap` can be a dictionary or an iterable of pairs.
+  Keys not  in `remap` are left unchanged.
+  '''
+  if isinstance(remap, Mapping):
+    it:Iterable[Tuple[_K,_K]] = remap.items()
+  else:
+    it = remap
+
+  for ko, kr in it:
+    try: v = d[ko]
+    except KeyError: pass
+    else:
+      if kr in d: raise RemapKeyError(f'remap key is already present: {kr!r}; original key: {ko!r}')
+      d[kr] = v
+      del d[ko]
+
+  return d
+
+
+class RemapKeyError(Exception): pass
+
+
 class DefaultByKeyDict(Dict[_K,_V]):
   '''
   Subclass of Dict, similar to DefaultDict.
