@@ -1,132 +1,128 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-Xml generated datatypes base class and utilities. See craft-xml-datatypes for context.
+Base class and utilities for generated Xml datatypes; see the craft-xml-datatypes script for context.
 '''
 
-from typing import Any, Callable, ClassVar, Iterable, Optional, Type, TypeVar, Union, get_args, get_origin
+from __future__ import annotations
 
-from lxml.etree import Comment, _Element, fromstring as parse_xml_data
+from dataclasses import dataclass
+from typing import Callable, ClassVar, Iterable, Optional, Type, TypeVar
 
-from ..py import sanitize_for_py_keywords
-from ..transtruct import bool_vals
+from ..transtruct import Transtructor
+
 
 
 _T = TypeVar('_T')
 
 
-_bool_cap_items:list[tuple[str,bool]] = [
-  ('True', True),
-  ('Yes', True),
-  ('On', True),
-  ('1', True),
-  ('False', False),
-  ('No', False),
-  ('Off', False),
-  ('0', False),
-]
+@dataclass
+class ChildAttrInfo:
+  '''
+  Information about a child tag that is treated as an attribute.
+  '''
+  attr:str = ''
+  is_plural:bool = False # If set, then the attribute accumulates multiple children into the attribute list.
+  is_flattened:bool = False # If set, then the child node's children are used as the value; its attributes are ignored.
 
 
 class XmlDatatype:
   '''
-  Base class for all datatypes.
+  Base class for all Xml datatypes.
   '''
 
   _tag:ClassVar[str] # Static tag name set by all subclasses.
 
-  _datatypes:ClassVar[dict[str,Type['XmlDatatype']]] # Static map of tag name to datatype class.
+  _datatypes:ClassVar[dict[str,Type[XmlDatatype]]] # Static map of tag name to datatype class.
 
-  _child_attr_tags:ClassVar[frozenset[str]] = frozenset(set())
-  #^ Static dict of tag names for child element types that always appear singly.
+  _child_attr_infos:ClassVar[dict[str,ChildAttrInfo]] = {}
+  #^ Static dict of child tag names to info for child element types that always appear singly.
   #^ These are mapped to attributes whose raw name is the same as the tag.
 
 
-  @classmethod
-  def _child_type(cls) -> Type['XmlDatatype']:
-    'Static type of child element type, if all children are of the same type, or else the base type.'
-    return XmlDatatype
-
-
-  @classmethod
-  def transtruct(cls, element:_Element) -> 'XmlDatatype':
-    'Construct an instance from an lxml.etree element.'
-    tag = element.tag
-    if tag is Comment: tag = '!COMMENT'
-    try: class_ = cls._datatypes[tag]
-    except KeyError: raise ValueError(f'Unknown tag: {tag!r}')
-    args:dict[str,Any] = {}
-    for raw_name, raw_val in element.attrib.items():
-      assert isinstance(raw_name, str)
-      assert isinstance(raw_val, str)
-      name = sanitize_for_py_keywords(raw_name.replace('-', '_'))
-      t = class_._attr_type(name)
-      try: # Convert the attribute string to the expected type.
-        if t is bool: # Special handling for boolean names.
-          v = bool_vals[raw_val]
-        else:
-          v = t(raw_val)
-      except ValueError as e: raise ValueError(f'Invalid value for attribute: {name!r}; type: {t}; val: {raw_val!r}') from e
-      args[name] = v
-
-    children = []
-    child_type = class_._child_type()
-    for child_xml in element:
-      child = child_type.transtruct(child_xml)
-      if child._tag in class_._child_attr_tags:
-        args[child._tag] = child # TODO: sanitize tag name.
-      else:
-        children.append(child)
-
-    if children:
-      assert 'children' not in args # TODO: deal with the potential for this key collision more thoroughly.
-      args['children'] = children
-
-    return class_(**args)
-
-
-  @classmethod
-  def parse(cls, name:str, data:bytes) -> 'XmlDatatype':
-    doc = parse_xml_data(data)
-    return cls.transtruct(doc)
-
-
-  @classmethod
-  def _attr_type(cls, name:str) -> Type:
-    try: t:Type = cls.__annotations__[name]
-    except KeyError as e: raise ValueError(f'Unknown attribute: {name!r}') from e
-    if rtt := get_origin(t):
-      if rtt is Union:
-        return get_args(t)[0] # type: ignore # Note: this assumes that the type is an Optional.
-      else:
-        return t
-    else: return t
-
-
-  def walk(self, visitor:Callable[['XmlDatatype'],None]) -> None:
+  def visit(self, *, pre:Optional[Callable[[XmlDatatype],None]]=None, post:Optional[Callable[[XmlDatatype],None]]=None) -> None:
     '''
-    Walk an xml datatype tree, calling visitor on each node.
+    Visit the data tree, calling pre and post on each node.
+    TODO: factor this out with markup.visit.
     '''
-    visitor(self)
-    if hasattr(self, 'children'):
-      for child in self.children: # type: ignore
-        child.walk(visitor)
+    if pre is not None: pre(self)
+    try: ch = getattr(self, 'children')
+    except AttributeError: pass
+    else:
+      for child in ch:
+        child.walk(pre, post)
+    if post is not None: post(self)
 
 
-  def gen_walk(self, visitor:Callable[['XmlDatatype'],Optional[_T]]) -> Iterable[_T]:
+  def gen_visit(self, *,
+   pre:Optional[Callable[[XmlDatatype],Optional[_T]]]=None,
+   post:Optional[Callable[[XmlDatatype],Optional[_T]]]=None) -> Iterable[_T]:
     '''
-    Walk an xml datatype tree and yield non-None results from visitor.
+    Visit the data tree, yielding Walk an xml datatype tree and yield non-None results from visitor
+    TODO: reconcile and factor out with markup.iter_visit. Perhaps gen_visit and iter_visit both exist, but need better names.
     '''
-    print("WALK")
-    result = visitor(self)
-    if result is not None: yield result
-    if hasattr(self, 'children'):
-      for child in self.children: # type: ignore
-        yield from child.gen_walk(visitor)
+    if pre is not None:
+      if result := pre(self): yield result
+    if hasattr(self, 'ch'):
+      for child in self.ch: # type: ignore
+        yield from child.gen_visit(pre=pre, post=post)
+    if post is not None:
+      if result := post(self): yield result
 
 
 
 class XmlComment(XmlDatatype):
   '''
-  A comment.
+  An XML comment.
   '''
   _tag = "!COMMENT"
+
+
+
+xmlTranstructor = Transtructor()
+
+@xmlTranstructor.selector(XmlDatatype)
+def xml_selector(class_:type[XmlDatatype], val:dict) -> type:
+  #print("xml_selector:", class_, val[''])
+  return class_._datatypes[val['']]
+
+
+@xmlTranstructor.prefigure(XmlDatatype)
+def xml_prefigure(class_:type[XmlDatatype], val:dict) -> dict:
+  '''
+  Prefigure a dict of raw xml data.
+  '''
+
+  if child_attr_infos := class_._child_attr_infos:
+    # Pull children out of the child array as necessary.
+    try: ch = val['ch']
+    except KeyError: pass
+    else:
+      clean_ch = []
+      for child in ch:
+        if not isinstance(child, dict):
+          clean_ch.append(child)
+          continue
+        tag = child['']
+        try: info = child_attr_infos[tag]
+        except KeyError:
+          clean_ch.append(child)
+          continue
+        attr = info.attr
+        assert attr
+        if info.is_plural:
+          try: coll = val[attr]
+          except KeyError: coll = val[attr] = []
+          if info.is_flattened:
+            coll.extend(child['ch'])
+          else:
+            coll.append(child)
+        else:
+          assert attr not in val
+          val[attr] = child
+      if clean_ch:
+        val['ch'] = clean_ch
+      else:
+        del val['ch']
+
+  return val
