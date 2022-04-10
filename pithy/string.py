@@ -212,6 +212,18 @@ def line_col_1(string:str, pos:int) -> Tuple[int, int]:
   return (l + 1, c + 1)
 
 
+def truncate_str_with_ellipsis(val:Any, max_len:int) -> str:
+  s = str(val)
+  if len(s) <= max_len: return s
+  return s[:max_len-1] + '…'
+
+
+def truncate_repr_with_ellipsis(val:Any, max_len:int) -> str:
+  r = repr(val)
+  if len(r) <= max_len: return r
+  return r[:max_len-2] + r[0] + '…'
+
+
 def simplify_punctuation(text:str) -> str:
   text = non_ascii_hyphens_re.sub('-', text) # Replace unicode hyphens.
   text = text.replace('\u2014', '--') # Em dash.
