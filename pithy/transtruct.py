@@ -2,12 +2,9 @@
 
 
 from collections import Counter, defaultdict
-from functools import cache, wraps
+from functools import cache
 from itertools import zip_longest
-from re import S, sub
 from typing import Any, Callable, ClassVar, NamedTuple, Optional, Type, TypeVar, Union, get_args, get_origin, get_type_hints
-
-from .io import errD
 
 
 _T = TypeVar('_T')
@@ -112,15 +109,16 @@ class Transtructor:
     transtructors = { k: self.transtructor_for(v) for k, v in constructor_annotations.items() } # type: ignore[arg-type]
 
     prefigure_fn = self.prefigure_fn_for(class_) # type: ignore
-    print("prefigure_fn:", class_, prefigure_fn)
+    #print("prefigure_fn:", class_, prefigure_fn)
     def transtruct_annotated_class(args:Any) -> _T:
+      if prefigure_fn:
+        args = prefigure_fn(class_, args)
+
       if isinstance(args, dict):
-        if prefigure_fn:
-          args = prefigure_fn(class_, args)
         typed_kwargs:dict[str,Any] = {}
         for name, val in args.items():
           try: transtructor = transtructors[name]
-          except KeyError: continue
+          except KeyError: continue # TODO: raise error unless this element is explicitly ignored.
           typed_kwargs[name] = transtructor(val)
         try: return class_(**typed_kwargs)
         except Exception as e: raise TranstructorError(e, class_, typed_kwargs) from e
@@ -130,8 +128,6 @@ class Transtructor:
         args = (args,)
 
       # Assume `args` is a positional argument sequence.
-      if prefigure_fn:
-        args = prefigure_fn(class_, args)
       typed_args:list[Any] = []
       for idx, (arg, pair) in enumerate(zip_longest(args, transtructors.items())):
         if arg is None: break

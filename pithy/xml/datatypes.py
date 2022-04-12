@@ -79,15 +79,15 @@ class XmlComment(XmlDatatype):
 
 
 
-xmlTranstructor = Transtructor()
+xml_transtructor = Transtructor()
 
-@xmlTranstructor.selector(XmlDatatype)
+@xml_transtructor.selector(XmlDatatype)
 def xml_selector(class_:type[XmlDatatype], val:dict) -> type:
   #print("xml_selector:", class_, val[''])
   return class_._datatypes[val['']]
 
 
-@xmlTranstructor.prefigure(XmlDatatype)
+@xml_transtructor.prefigure(XmlDatatype)
 def xml_prefigure(class_:type[XmlDatatype], val:dict) -> dict:
   '''
   Prefigure a dict of raw xml data.
