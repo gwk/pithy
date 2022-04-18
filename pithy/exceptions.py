@@ -15,7 +15,7 @@ class DeleteNode(Exception):
   'Signals a traverser to delete the current node.'
 
 class FlattenNode(Exception):
-  'Signals a traverser to delete the current node.'
+  'Signals a traverser or transformer to delete the current node.'
 
 class OmitNode(Exception):
   'Signals a transformer to omit the current node.'
@@ -27,4 +27,3 @@ class MultipleMatchesError(KeyError):
 
 class NoMatchError(KeyError):
   'Raised when a query matches no children.'
-

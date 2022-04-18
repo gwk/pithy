@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Iterator, Optional, TextIO
 
 from tomli import load as load_toml
-from lxml.etree import Comment, XMLSyntaxError, _Element as LxmlElement, fromstring as parse_xml_data
 
 from pithy.dict import dict_remap_keys_mut
 from pithy.io import errL
@@ -22,6 +21,7 @@ from pithy.py import sanitize_for_py_keywords_and_type_names
 from pithy.string import truncate_repr_with_ellipsis
 from pithy.transtruct import Transtructor, bool_vals
 from pithy.xml.datatypes import ChildAttrInfo
+from pithy.xml.xmldict import XmlDictParser, XmlDict, XmlError
 
 
 def main() -> None:
@@ -235,15 +235,19 @@ def parse_path(path:str, summaries:dict[str,ElementSummary]) -> None:
   if b'<<<<<<<' in data:
     errL(f'{path}: error: found "<<<<<<<" marker, skipping.')
     return
-  try: doc = parse_xml_data(data)
-  except XMLSyntaxError as e:
+  try: doc = xmldict_parser.parse(data)
+  except XmlError as e:
     errL(f'{path}: error: {e}')
     return
   parse_element(element=doc, summaries=summaries)
 
 
-def parse_element(element:LxmlElement, summaries:dict[str,ElementSummary]) -> None:
-  tag = clean_tag(element.tag)
+xmldict_parser = XmlDictParser(children_key='_', text_key='text')
+
+
+def parse_element(element:XmlDict, summaries:dict[str,ElementSummary]) -> str:
+  tag = element['']
+  assert isinstance(tag, str)
 
   try: summary = summaries[tag]
   except KeyError:
@@ -252,34 +256,24 @@ def parse_element(element:LxmlElement, summaries:dict[str,ElementSummary]) -> No
 
   summary.count += 1
 
-  for k, v in element.attrib.items():
-    assert isinstance(k, str)
+  for k, v in element.items():
+    if k == '' or k == '_': continue
     assert isinstance(v, str)
     attr_counter = summary.attrs[k]
     attr_counter[v] += 1
 
-  child_tag_counts = Counter[str]()
-  for child in element:
-    child_tag = clean_tag(child.tag)
-    child_tag_counts[child_tag] += 1
-    parse_element(child, summaries)
+  if children := element.get('_'):
+    assert isinstance(children, list)
+    child_tag_counts = Counter[str]()
+    for child in children:
+      child_tag = parse_element(child, summaries)
+      child_tag_counts[child_tag] += 1
 
-  summary.all_child_tags.update(child_tag_counts.keys())
-  summary.plural_child_tags.update(child_tag for child_tag, count in child_tag_counts.items() if count > 1)
-  summary.single_child_tag_counts.update(child_tag for child_tag, count in child_tag_counts.items() if count == 1)
+    summary.all_child_tags.update(child_tag_counts.keys())
+    summary.plural_child_tags.update(child_tag for child_tag, count in child_tag_counts.items() if count > 1)
+    summary.single_child_tag_counts.update(child_tag for child_tag, count in child_tag_counts.items() if count == 1)
 
-  if element.text and element.text.strip():
-    attr_counter = summary.attrs['text']
-    attr_counter[element.text.strip()] += 1 # TODO: decide whether to strip or not.
-
-
-def clean_tag(tag:str) -> str:
-    if isinstance(tag, str):
-      return tag
-    elif tag is Comment: # type: ignore # Statement is in fact reachable.
-      return 'Comment' # TODO: make this less likely to collide.
-    else:
-      raise TypeError(f'Unknown element tag type: {tag}')
+  return tag
 
 
 def write_dump(args:Namespace, file:TextIO, summaries:Iterable[ElementSummary]) -> None:
@@ -289,7 +283,9 @@ def write_dump(args:Namespace, file:TextIO, summaries:Iterable[ElementSummary]) 
     file.write('\n')
 
   for summary in summaries:
-    outL(f'\n\n{summary.name}({summary.parents}): summary.count')
+    parents = ', '.join(s.name for s in summary.parents)
+    outL(f'\n\n{summary.name}({parents}): {summary.count}')
+    outL(f'has key: {"key" in summary.attrs}')
     outL('\n  attrs:', sorted(f'{k}:{len(c)}' for k, c in summary.attrs.items()))
     outL('\n  child_attrs:', sorted(summary.hint.child_attrs))
     outL('\n  single_child_tags:', sorted(summary.single_child_tag_counts.keys()))
@@ -309,14 +305,13 @@ def write_code(args:Namespace, file:TextIO, summaries:Iterable[ElementSummary]) 
   outL('from __future__ import annotations')
   outL()
   outL('from dataclasses import dataclass, field')
-  outL('from typing import Any, ClassVar, Optional, Type, Union')
+  outL('from typing import ClassVar, Optional')
   #outL()
-  #outL('from pithy.xml.datatypes import ChildAttrInfo, XmlComment, XmlDatatype')
+  outL('from pithy.xml.datatypes import ChildAttrInfo')
+  outL()
+  outL(f'from .base import {base}')
   outL()
   outL()
-  #outL(f'class {base}(XmlDatatype):')
-  #outL()
-  #outL(f'  _datatypes:ClassVar[dict[str,Type[XmlDatatype]]] = {{}} # Populated with subclasses below.')
 
   for summary in summaries:
     write_class(args=args, outL=outL, summary=summary)
@@ -324,7 +319,6 @@ def write_code(args:Namespace, file:TextIO, summaries:Iterable[ElementSummary]) 
   outL()
   outL()
   outL(f'{base}._datatypes = {{')
-  outL("  '!COMMENT': XmlComment,")
   for summary in summaries:
     if summary.hint.is_list: continue
     outL(f'  {summary.tag!r}: {summary.name},')
