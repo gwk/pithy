@@ -485,7 +485,7 @@ class HttpRequestHandler(StreamRequestHandler):
 
   def get_content_from_local_fs(self, local_path:Optional[str]=None) -> HttpContent:
     '''
-    Return the content of a file.
+    Return the content of a local file or a directory listing.
     '''
     if local_path is None:
       local_path = self.compute_local_path()
@@ -509,7 +509,14 @@ class HttpRequestHandler(StreamRequestHandler):
       raise HttpContentError(status=HTTPStatus.NOT_FOUND)
     else:
       assert isinstance(f, BufferedReader)
-      return HttpContent(body=f, content_type=self.guess_mime_type(local_path))
+      return self.transform_file_from_local_fs(file=f, local_path=local_path)
+
+
+  def transform_file_from_local_fs(self, file:BufferedReader, local_path:str) -> HttpContent:
+    '''
+    Override point to transform the content of a local file. The base implementation returns the file handle unaltered.
+    '''
+    return HttpContent(body=file, content_type=self.guess_mime_type(local_path))
 
 
   def compute_logical_path(self, target:Optional[str]=None) -> str:
