@@ -381,6 +381,7 @@ class Mu:
   def pick_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Mu']: ...
 
   def pick_all(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    'Pick all matching children of this node.'
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     return ((c.subnode(self) if traversable else c) for c in self.ch if isinstance(c, Mu) and pred(c))
 
@@ -392,6 +393,7 @@ class Mu:
   def find_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Mu']: ...
 
   def find_all(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    'Find matching nodes in the subtree rooted at this node.'
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     if text: return self._find_all_text(pred, traversable)
     else: return self._find_all(pred, traversable)
