@@ -6,9 +6,11 @@ from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from shlex import quote as sh_quote
 from typing import Any, Dict, List, Pattern, Set
-from urllib.parse import urldefrag, urljoin
+from urllib.parse import urlsplit as url_split, urldefrag as url_defrag, urljoin as url_join
 
 import html5_parser
+from lxml.html import fromstring as lxml_html_fromstring
+
 from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file, path_descendants, path_dir,
   path_ext, path_join, remove_path, remove_path_if_exists)
 from pithy.io import errL, errSL, outL
@@ -29,8 +31,7 @@ def main() -> None:
   args = arg_parser.parse_args()
 
   dir = args.out
-  seed0 = args.seeds[0]
-  seeds = {clean_url(seed0, url) for url in args.seeds}
+  seeds = {clean_seed_url(url) for url in args.seeds}
 
   ds = file_status(dir, follow=True)
   if ds is None:
@@ -111,7 +112,8 @@ class Crawler:
           return
         errSL(f'redirect: {url} -> {redirect_url}')
         redirect_path = self.path_for_url(redirect_url)
-        make_link(orig=redirect_path, link=path, allow_nonexistent=True, overwrite=True)
+        if redirect_path != path: # These can be the same path for e.g. http->https redirects.
+          make_link(orig=redirect_path, link=path, allow_nonexistent=True, overwrite=True)
         remove_path(tmp_path)
         if redirect_url not in self.visited and redirect_url not in self.remaining:
           self.crawl_url(redirect_url, redirects=redirects+1)
@@ -134,20 +136,17 @@ class Crawler:
 
 
   def try_scrape(self, url:str, path:str) -> None:
-    try: text = open(path).read()
-    except IsADirectoryError: raise
-    except Exception as e:
-      errSL(f'{path}: could not read contents as text: {e}')
-      return
+    with open(path, 'rb') as f:
+      try: text = open(path).read()
+      except Exception as e:
+        errSL(f'{path}: could not read contents as text: {e}')
+        return
     if html5_re.match(text):
-      self.scrape_html5(url=url, text=text)
+      html = html5_parser.parse(text, return_root=True, line_number_attr='#', sanitize_names=False)
     else:
-      raise Exception('non-html5 parsing is not supported.')
-
-
-  def scrape_html5(self, url:str, text:str) -> None:
-    html = html5_parser.parse(text, return_root=True, line_number_attr='#', sanitize_names=False)
+      html = lxml_html_fromstring(text)
     self.walk_html_hrefs(url=url, node=html)
+
 
   def walk_html_hrefs(self, url:str, node:Any) -> None:
     href = node.get('href')
@@ -235,8 +234,14 @@ http_success_codes = {
 
 
 def clean_url(base:str, url:str='') -> str:
-  res = urljoin(base, url)
-  return urldefrag(res)[0] # type: ignore
+  res = url_join(base, url)
+  return url_defrag(res).url
+
+
+def clean_seed_url(url:str) -> str:
+  u = url_split(url)
+  if not (u.scheme and u.host): exit('error: seed URL must have a scheme and host.') # type: ignore
+  return url_defrag(url).url
 
 
 def describe_skipped(skipped:Set[str]) -> None:

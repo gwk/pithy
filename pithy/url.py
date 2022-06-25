@@ -1,38 +1,62 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from urllib.parse import urlsplit as split_url, urlunsplit as compose_url
+from urllib.parse import urlsplit as url_split, urlunsplit as url_unsplit
 
 from .path import path_stem
 
 
-def url_scheme(url:str) -> str: return split_url(url).scheme
+def url_scheme(url:str) -> str: return url_split(url).scheme
 
-def url_netloc(url:str) -> str: return split_url(url).netloc
+def url_netloc(url:str) -> str: return url_split(url).netloc
 
-def url_path(url:str) -> str: return split_url(url).path
+def url_path(url:str) -> str: return url_split(url).path
 
-def url_query(url:str) -> str: return split_url(url).query
+def url_query(url:str) -> str: return url_split(url).query
 
-def url_fragment(url:str) -> str: return split_url(url).fragment
-
-
-def url_scheme_netloc_path(url:str) -> str:
-  scheme, netloc, path, query, fragment = split_url(url)
-  return compose_url((scheme, netloc, path, None, None))
+def url_fragment(url:str) -> str: return url_split(url).fragment
 
 
-def url_netloc_path(url:str) -> str:
-  scheme, netloc, path, query, fragment = split_url(url)
-  return compose_url((None, netloc, path, None, None))
+def url_drop_scheme_fragment(url:str) -> str:
+  return url_unsplit(url_split(url)._replace(scheme='', fragment=''))
+
+def url_drop_scheme_query_fragment(url:str) -> str:
+  return url_unsplit(url_split(url)._replace(scheme='', query='', fragment=''))
+
+def url_drop_query_fragment(url:str) -> str:
+  return url_unsplit(url_split(url)._replace(query='', fragment=''))
+
+def url_drop_fragment(url:str) -> str:
+  return url_unsplit(url_split(url)._replace(fragment=''))
 
 
-def drop_url_fragment(url:str) -> str:
-  scheme, netloc, path, query, fragment = split_url(url)
-  return compose_url((scheme, netloc, path, query, None))
+def url_replace(url:str, **replacements:str) -> str:
+  u = url_split(url)
+  r = u._replace(**replacements)
+  return url_unsplit(r)
 
 
-def replace_url_ext(url:str, ext:str) -> str:
-  scheme, netloc, path, query, fragment = split_url(url)
-  stem = path_stem(path)
-  return compose_url((scheme, netloc, stem + ext, query, fragment))
+def url_replace_ext(url:str, ext:str) -> str:
+  u = url_split(url)
+  stem = path_stem(u.path)
+  return url_unsplit(u._replace(path=stem+ext))
 
+
+def url_compose(scheme:str='', netloc:str='', path:str='', query:str='', fragment:str='') -> str:
+  return url_unsplit((scheme, netloc, path, query, fragment))
+
+
+def url_assuming_netloc(url:str) -> str:
+  '''
+  Sanitize a URL string by assuming that it has a netloc/host.
+  This is important because a string like 'x.com' will be treated by urlparse/urlsplit as consisting only of a path,
+  whereas a human assumes that it represents a host.
+
+  This is essentially in direct contravention of urlparse compliance with the RFC:
+  > Following the syntax specifications in RFC 1808, urlparse recognizes a netloc only if it is properly introduced by "//".
+  > Otherwise the input is presumed to be a relative URL and thus to start with a path component.
+  '''
+  u = url_split(url)
+  if u.netloc: return url
+  # The URL does not have a netloc. This is usually because it was not preceded with the "//" prefix.
+  netloc, slash, path = u.path.partition('/')
+  return url_unsplit(u._replace(netloc=netloc, path=path))
