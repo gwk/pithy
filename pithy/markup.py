@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-Base Markup type for Html, Svg, Xml, as well as legacy SGML formats.
+`markup` provides the `Mu` class, a base class for representing HTML, SVG, XML, SGML, and other document tree formats.
 '''
 
 import re
@@ -48,8 +48,16 @@ class Present:
 
 class Mu:
   '''
-  Mu root class for building Html/Sgml/Xml document trees.
+  Base Markup type for HTML, SVG, XML, SGML, and other document tree formats.
+
   Unlike xml.etree.ElementTree.Element, child nodes and text are interleaved.
+
+  The design is biased towards HTML5 but works with XML.
+
+  Every node has a tag string, usually provided as a static override by a subclass.
+  For example, the `Div` subclass represents an HTML div and defines `tag = 'div'`.
+
+  However a parser could instead return generic `Mu` nodes with tags set per node.
   '''
 
   tag = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
