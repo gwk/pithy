@@ -5,6 +5,7 @@
 import csv
 from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC, Dialect
 from sys import stdout
+from .transtruct import transtruct_bool
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -20,7 +21,7 @@ def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:I
   write_csv(f=stdout, quoting=quoting, header=header, rows=rows)
 
 
-def load_csv(file: TextIO,
+def load_csv(file: TextIO, *,
  dialect:Union[str,Dialect,Type[Dialect]]='excel',
  delimiter:Optional[str]=None,
  doublequote:Optional[bool]=None,
@@ -28,12 +29,15 @@ def load_csv(file: TextIO,
  quotechar:Optional[str]=None,
  quoting:int=QUOTE_MINIMAL,
  skipinitialspace:Optional[bool]=None,
- strict:Optional[bool]=None,
- row_type:type=None,
- col_conv:Iterable[Callable]=(),
- header:Union[None, bool, Sequence[str]]=None) -> 'CSVFileReader':
+ strict:bool=True,
+ has_header=True,
+ row_ctor:Optional[Callable]=None,
+ spread_args:bool=False,
+ as_dicts:bool=False,
+ preserve_empty_vals:bool=False,
+ cols:Optional[dict[str,Optional[Callable]]]=None) -> 'CsvLoader':
 
-  return CSVFileReader(
+  return CsvLoader(
     file=file,
     dialect=dialect,
     delimiter=delimiter,
@@ -43,14 +47,28 @@ def load_csv(file: TextIO,
     quoting=quoting,
     skipinitialspace=skipinitialspace,
     strict=strict,
-    row_type=row_type,
-    col_conv=col_conv,
-    header=header)
+    has_header=has_header,
+    row_ctor=row_ctor,
+    spread_args=spread_args,
+    as_dicts=as_dicts,
+    preserve_empty_vals=preserve_empty_vals,
+    cols=cols)
 
 
-class CSVFileReader(Iterable, ContextManager):
+'''
+    assert keys is not None or header is not None and not isinstance(header, bool)
+    if keys is not None:
+      row_keys = keys
+    else:
+      row_keys = header
 
-  def __init__(self, file: TextIO,
+    row_ctor = lambda row: { key : col for key, col in zip(row_keys, row) if key is not None }
+'''
+
+
+class CsvLoader(Iterable, ContextManager):
+
+  def __init__(self, file: TextIO, *,
    dialect:Union[str,Dialect,Type[Dialect]]='excel',
    delimiter:Optional[str]=None,
    doublequote:Optional[bool]=None,
@@ -59,11 +77,15 @@ class CSVFileReader(Iterable, ContextManager):
    quoting:Optional[int]=None,
    skipinitialspace:Optional[bool]=None,
    strict:Optional[bool]=None,
-   row_type:type=None,
-   col_conv:Iterable[Callable]=(),
-   header:Union[None, bool, Sequence[str]]=None) -> None:
+   has_header=True,
+   row_ctor:Optional[Callable]=None,
+   spread_args:bool=False,
+   as_dicts:bool=False,
+   preserve_empty_vals:bool=False,
+   cols:Optional[dict[str,Optional[Callable]]]=None) -> None:
 
-    opts = { k : v for (k, v) in [
+    # Filter out the unspecified options so that the dialect defaults are respected.
+    opts:dict[str,Any] = { k : v for (k, v) in [
       ('delimiter', delimiter),
       ('doublequote', doublequote),
       ('escapechar', escapechar),
@@ -73,34 +95,59 @@ class CSVFileReader(Iterable, ContextManager):
       ('strict', strict),
       ] if v is not None }
 
+    if cols is not None:
+      # Replace any `bool` types with an actually useful constructor.
+      cols = { k : (transtruct_bool if v is bool else v) for k, v in cols.items() }
     self._reader = csv.reader(file, dialect, **opts)
     self.file = file
-    self.row_type = row_type
-    self.col_conv = col_conv
+    self.row_ctor = row_ctor
+    self.cols = cols
 
-    if header is None or isinstance(header, bool):
-      if header: next(self._reader) # simply discard.
-    else: # match expected against actual.
-      row = next(self._reader)
-      list_header = list(header)
-      if row != list_header:
-        raise ValueError(f'load_csv expected header:\n{list_header}\nreceived:\n{row}')
+    if has_header:
+      try: self.header:Optional[list[str]] = [str(raw_cell) for raw_cell in next(self._reader)]
+      except StopIteration: self.header = None # Allow empty files.
+      else:
+        if cols is not None: # Match expected header against actual.
+          col_names = list(cols)
+          if self.header != col_names:
+            raise ValueError(f'load_csv expected header row:\n{col_names}\nreceived:\n{self.header}')
+    else:
+      self.header = None
+
+    # Define the row constructor.
+    row_seq_fn:Callable[[Sequence[Any]],Any]
+    if as_dicts:
+      if cols is None:
+        raise ValueError('load_csv: as_dicts option requires cols argument to be provided.')
+      else:
+        row_seq_fn = lambda row: { key : cell_ctor(cell) for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore
+          if cell_ctor is not None and (preserve_empty_vals or cell) }
+    else: # Sequence.
+      if cols is None:
+        row_seq_fn = lambda row: row
+      else:
+        row_seq_fn = lambda row: [cell_ctor(cell) for cell_ctor, cell in zip(cols.values(), row) # type: ignore
+          if cell_ctor is not None]
+
+    if row_ctor is not None:
+      if spread_args:
+        if as_dicts:
+          row_fn = lambda row: row_ctor(**row_seq_fn(row)) # type: ignore
+        else:
+          row_fn = lambda row: row_ctor(*row_seq_fn(row)) # type: ignore
+      else:
+        row_fn = lambda row: row_ctor(row_seq_fn(row)) # type: ignore
+    else:
+      row_fn = row_seq_fn
+
+    self.row_fn = row_fn
 
 
   def __iter__(self) -> Iterator[Any]:
-    if self.col_conv:
-      if self.row_type is None:
-        return ([conv(col) for conv, col in zip(self.col_conv, row)] for row in self._reader)
-      else:
-        return (self.row_type(*(conv(col) for conv, col in zip(self.col_conv, row))) for row in self._reader)
-    else:
-      if self.row_type is None:
-        return self._reader
-      else:
-        return (self.row_type(*row) for row in self._reader)
+    return (self.row_fn(row) for row in self._reader)
 
 
-  def __enter__(self) -> 'CSVFileReader':
+  def __enter__(self) -> 'CsvLoader':
     return self
 
 

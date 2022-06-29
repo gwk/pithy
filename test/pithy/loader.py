@@ -18,11 +18,11 @@ utest_seq(lines, load, 'test.txt')
 utest_seq(lines_b, load, 'test.txt', ext='') # Open with binary loader.
 
 header = ('N', 'A')
-rows = [['0', 'a'], ['1', 'b']]
+rows = [[0, 'a'], [1, 'b']]
 with open('test.csv', 'w') as f:
   write_csv(f, header=header, rows=rows)
 
-utest_seq(rows, load, 'test.csv', header=header)
+utest_seq(rows, load, 'test.csv', cols=dict(N=int, A=str))
 
 
 d = {'0':0, '1':1}
@@ -79,4 +79,3 @@ utest('', _sub_ext, '.ext')
 
 utest('.b', _last_ext, '.a.b')
 utest('.a', _sub_ext, '.a.b')
-
