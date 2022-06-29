@@ -22,8 +22,8 @@ class SqliteError(Exception):
 
 class Cursor(sqlite3.Cursor):
 
-  def execute(self, query:str, args:Iterable=()) -> 'Cursor':
-    try: return cast('Cursor', super().execute(query, args))
+  def execute(self, query:str, args:Iterable=()) -> 'Cursor': # type: ignore
+    try: return super().execute(query, args) # type: ignore
     except sqlite3.Error as e:
       raise SqliteError(f'SQLite error; query: {query!r}') from e
 
@@ -146,11 +146,11 @@ class Connection(sqlite3.Connection):
     self.row_factory = Row # Default for convenience.
 
 
-  def cursor(self, factory:Optional[type]=None) -> Cursor:
+  def cursor(self, factory:Optional[type]=None) -> Cursor: # type: ignore
     if factory is None:
       factory = Cursor
     assert issubclass(factory, Cursor)
-    return cast(Cursor, super().cursor(factory))
+    return super().cursor(factory)
 
 
   def run(self, *sql:str, **args:Any) -> Cursor:

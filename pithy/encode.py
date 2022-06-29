@@ -67,7 +67,7 @@ def all_slots(type: Type) -> FrozenSet[str]:
   '''
   slots: Set[str] = set()
   for t in type.__mro__:
-    try: s = t.__slots__
+    try: s = t.__slots__ # type: ignore
     except AttributeError: break
     else:
       if isinstance(s, str): slots.add(s) # single slot.
