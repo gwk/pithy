@@ -261,30 +261,30 @@ class Transtructor:
     return None
 
 
-def transtructor_bool(v:Any) -> bool:
+def transtruct_bool(v:Any) -> bool:
   try: return bool_vals[v]
   except KeyError: pass
   return bool(v)
 
 
-def transtructor_None(v:Any) -> None:
+def transtruct_None(v:Any) -> None:
   if v is None: return None
-  raise ValueError(f'Expected None, got {v!r}.')
+  raise ValueError(f'Expected None, received {v!r}.')
 
 
-def transtructor_type(v:Any) -> type:
+def transtruct_type(v:Any) -> type:
   try: return named_types[v]
   except KeyError: pass
-  raise ValueError(f'Expected type name (str), got {v}.')
+  raise ValueError(f'Expected type name (str), received {v}.')
 
 
 primitive_transtructors = {
-  bool: transtructor_bool,
+  bool: transtruct_bool,
   int: int,
   float: float,
   str: str,
-  type(None): transtructor_None,
-  type: transtructor_type,
+  type(None): transtruct_None,
+  type: transtruct_type,
 }
 
 
