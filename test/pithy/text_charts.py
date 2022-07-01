@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.text_charts import *
+from utest import utest
+from pithy.text_charts import chart_inline
 
-utest('', chart_seq_inline, range(0))
-utest('▒', chart_seq_inline, range(1))
-utest(' █', chart_seq_inline, range(2))
-utest(' ▄█', chart_seq_inline, range(3))
-utest(' ▁▂▃▄▅▆▇█', chart_seq_inline, range(9))
+utest('', chart_inline, range(0))
+utest('▒', chart_inline, range(1))
+utest(' █', chart_inline, range(2))
+utest(' ▄█', chart_inline, range(3))
+utest(' ▁▂▃▄▅▆▇█', chart_inline, range(9))

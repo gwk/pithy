@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from enum import Enum
-from typing import Iterable, Mapping, Union
+from typing import Any, Iterable, Mapping, Union
 
 
 vertical_bars = ' ' + ''.join(chr(i) for i in range(0x2581, 0x2589))
@@ -26,7 +26,8 @@ _max = max
 _Num = Union[int,float]
 
 
-def chart_seq_inline(values:Iterable[_Num], max:_Num=0, width:int=0) -> str:
+def chart_inline(values:Iterable[_Num], max:_Num=0, width:int=0) -> str:
+  'Create an inline chart out of vertical fractional bar characters.'
   values = tuple(values)
   if not values: return ''
   if max <= 0:
@@ -40,102 +41,164 @@ def chart_seq_inline(values:Iterable[_Num], max:_Num=0, width:int=0) -> str:
 
 
 class ChartMode(Enum):
-  Normalized, Total, Cumulative, Ratio = range(4)
-
-Normalized, Total, Cumulative, Ratio = tuple(ChartMode)
-
-
-def chart_items(m:Mapping, mode=ChartMode.Normalized, threshold=0, sort_by_val=False, width=64) -> str:
   '''
-  create a chart from a map, where values are either integers or pairs of integers (for ChartModeRatio).
-  threshold is a minimum denominator count for ratios, and a minimum ratio otherwise.
+  Rendering modes for text charts.
+  Normalized: values are scaled by the maximum value.
+  Total: values are scaled by the sum of all values.
+  Cumulative: charted values are the accumulation of successive values, scaled by the sum of all values.
+
+  '''
+  Normalized, Total, Cumulative = range(3)
+
+Normalized, Total, Cumulative = tuple(ChartMode)
+
+
+def chart_items(data:Union[Mapping[Any,_Num],Iterable[tuple[Any,_Num]]], mode=ChartMode.Normalized, threshold=0.0,
+ sort_by_val=False, reverse=False, val_width=0, val_prec=16, bar_width=64, show_ratio=False) -> str:
+  '''
+  Create a chart from a mapping or iterable of key/value pairs.
+  Keys are converted to string labels.
+  Values are numeric (int or float).
+  `threshold` is a minimum ratio (a value determined by the mode); items below the threshold are omitted.
   '''
 
-  # rows are of form (sortKey, name, val, ratio). key can be of any type; name and val must be strings.
-  rows = []
+  if isinstance(data, Mapping):
+    pairs = sorted(data.items())
+  else:
+    pairs = list(data)
 
-  if m and mode in (ChartMode.Total, ChartMode.Cumulative):
-    total = sum(m.values())
-    if mode is ChartMode.Cumulative:
-      cum = 0
+  if not pairs: return ''
 
-  elif m and mode is ChartMode.Normalized:
-    max_val = max(m.values())
-    if max_val <= 0:
-      max_val = 1 # hack to prevent divide by zero.
+  # Rows are of form (ratio, key, val).
+  rows:list[tuple[float,str,str]] = []
 
-  for k, v in sorted(m.items()):
+  match mode:
 
-    if mode is ChartMode.Normalized:
-      r = v / max_val
-      if r < threshold:
-        continue
-      val = '{:,}'.format(v)
+    case ChartMode.Normalized:
+      max_val = max(p[1] for p in pairs)
+      if max_val <= 0.0:
+        max_val = 1.0 # Prevent divide by zero on all-zero values.
+      for k, v in pairs:
+        r = v / max_val
+        if r < threshold: continue
+        rows.append((r, str(k), f'{v:.{val_prec}}' if isinstance(v, float) else f'{v:,}'))
 
-    elif mode is ChartMode.Total:
-      r = v / max(total, 1)
-      if r < threshold:
-        continue
-      val = '{:,}'.format(v)
+    case ChartMode.Total:
+      total = float(sum(p[1] for p in pairs))
+      if total <= 0.0:
+        total = 1.0 # Prevent divide by zero on all-zero values.
+      for k, v in pairs:
+        r = v / total
+        if r < threshold: continue
+        rows.append((r, str(k), f'{v:.{val_prec}}' if isinstance(v, float) else f'{v:,}'))
 
-    elif mode is ChartMode.Cumulative:
-      cum += v
-      r = cum / total
-      if r > 1 - threshold:
-        continue
-      val = '{:,}'.format(cum)
+    case ChartMode.Cumulative:
+      total = float(sum(p[1] for p in pairs))
+      if total <= 0:
+        total = 1.0 # Prevent divide by zero on all-zero values.
+      accum = 0
+      for k, v in pairs:
+        accum += v
+        r = accum / total
+        if r < threshold: continue
+        rows.append((r, str(k), f'{accum:.{val_prec}}' if isinstance(v, float) else f'{accum:,}'))
 
-    elif mode is ChartMode.Ratio:
-      if v[0] == 0 or v[1] < threshold:
-        continue
-      r = v[0] / v[1]
-      val = '{:,}/{:,}'.format(*v)
+    case _:
+      raise ValueError(f'unknown ChartMode: {mode}')
 
-
-    sort_key = r if sort_by_val else k
-    row = (sort_key, str(k), val, r)
-    rows.append(row)
-
-  if not rows:
-    return ''
-
-  rows.sort(reverse=sort_by_val)
+  if sort_by_val:
+    rows.sort(reverse=reverse)
 
   name_width = max(len(r[1]) for r in rows)
-  val_width  = max(len(r[2]) for r in rows)
+  val_width = val_width or max(len(r[2]) for r in rows)
 
-  lines = [chart_line(n, v, r, name_width=name_width, val_width=val_width, bar_width=width, suffix='\n') for sk, n, v, r in rows]
+  lines = [chart_line(n, v, r, name_width=name_width, val_width=val_width, bar_width=bar_width, show_ratio=show_ratio, suffix='\n')
+    for r, n, v in rows]
 
   return ''.join(lines)
 
 
-def chart_line(name:str, val:str, ratio:float, name_width:int, val_width:int, bar_width:int, suffix='') -> str:
+Ratio = tuple[int,int]
+
+def chart_ratio_items(data:Union[Mapping[Any,Ratio],Iterable[tuple[Any,Ratio]]], threshold=0, sort_by_val=False,
+ reverse=False, val_width=0, bar_width=64, show_ratio=False) -> str:
+  '''
+  Create a chart from a mapping or iterable of key/value pairs, where the values are pairs of integers representing a ratio.
+  This is useful for displaying ratios where the denominator might be zero; zero denominators are treated as zero values.
+  '''
+
+  if isinstance(data, Mapping):
+    pairs = sorted(data.items())
+  else:
+    pairs = list(data)
+
+  if not pairs: return ''
+
+  # Rows are of form (ratio, key, val).
+  rows:list[tuple[float,str,str]] = []
+
+  for k, (n, d) in pairs:
+    if d == 0:
+      r = 0.0
+    else:
+      r = n / d
+    if r < threshold: continue
+    rows.append((r, str(k), f'{n:,}/{d:,}'))
+
+
+  if sort_by_val:
+    rows.sort(reverse=reverse)
+
+  name_width = max(len(r[1]) for r in rows)
+  val_width = val_width or max(len(r[2]) for r in rows)
+
+  lines = [chart_line(n, v, r, name_width=name_width, val_width=val_width, bar_width=bar_width, show_ratio=show_ratio, suffix='\n')
+    for r, n, v in rows]
+
+  return ''.join(lines)
+
+
+def chart_line(name:str, val:str, ratio:float, name_width:int, val_width:int, bar_width:int, show_ratio:bool, suffix='') -> str:
   'create a string for a single line of a chart.'
-  n = f'{name:<{name_width}}'
-  v = f'{val:>{val_width}}'
-  b = bar_str(ratio, bar_width, pad_right=bool(suffix))
-
-  return '  {} : {}  {:.3f} {}{}'.format(n, v, ratio, b, suffix)
+  b = bar_str(ratio, bar_width)
+  ratio_str = f'  {ratio:.3f}' if show_ratio else ''
+  return f'  {name:<{name_width}} : {val:>{val_width}}{ratio_str} {b}{suffix}'
 
 
-def bar_str(ratio:float, width:int, pad_right=False) -> str:
+def bar_str(ratio:float, width:int) -> str:
   'create a string of block characters for the given ratio and width.'
   if ratio > 1:
-    return '*' * width
+    return full_block * width + '+'
 
-  index = int(ratio * width * 8) # quantize the ratio
-  solid_count = index // 8 # number of filled blocks
+  index = int(ratio * width * 8) # Quantize the ratio.
+  solid_count = index // 8 # Number of filled blocks.
   fraction_index = index % 8
-  solid = full_block * solid_count # string of solid blocks
-  fraction = horizontal_bars[fraction_index] if fraction_index else '' # fraction char string
-  pad = (' ' * (width - (solid_count + len(fraction)))) if pad_right else ''
+  solid = full_block * solid_count # String of solid blocks.
+  fraction = horizontal_bars[fraction_index] if fraction_index else '' # Fraction char string.
+  pad = (' ' * (width - (solid_count + len(fraction))))
 
-  return f'{solid}{fraction}{pad}'
+  return f'{solid}{fraction}{pad}|'
 
 
 
 if __name__ == '__main__':
-  for mode in (ChartMode.Normalized, ChartMode.Total, ChartMode.Cumulative):
-    print(mode)
-    m = { i : i for i in range(32) }
-    print(chart_items(m, mode=mode))
+
+  def examples() -> None:
+    for mode in (ChartMode.Normalized, ChartMode.Total, ChartMode.Cumulative):
+      print(mode)
+      m = { i : i for i in range(16) }
+      print(chart_items(m, mode=mode))
+
+    for mode in (ChartMode.Normalized, ChartMode.Total, ChartMode.Cumulative):
+      print('float values,', mode)
+      mf = { i/3 : i/3 for i in range(16) }
+      print(chart_items(mf, mode=mode, val_prec=6))
+
+    print('sort_by_val=True')
+    print(chart_items([('a', 3), ('b', 2), ('c', 1), ('d', 4), ('e', 0)], sort_by_val=True))
+
+
+    mr = { (n, d) : (n, d) for d in range(4) for n in range(4) }
+    print(chart_ratio_items(mr,))
+
+  examples()
