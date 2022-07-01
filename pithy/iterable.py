@@ -3,6 +3,7 @@
 from enum import Enum
 from itertools import tee
 from operator import le
+from random import shuffle
 from typing import (Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional, Set, Tuple, TypeVar,
   Union)
 
@@ -389,3 +390,12 @@ def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminat
         d = e
     d[terminator] = None
   return res
+
+
+def shuffled(iterable:Iterable[_T]) -> list[_T]:
+  '''
+  Return a shuffled list of `iterable`.
+  '''
+  l = list(iterable)
+  shuffle(l)
+  return l
