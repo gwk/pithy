@@ -129,6 +129,48 @@ def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
+def utest_items(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+  '''
+  Invoke `fn` with `args` and `kwargs`, and convert the resulting mapping into a key/value items sequence.
+  Log a test failure if an exception is raised,
+  or if any items of the returned seqence do not equal the items of `exp`.
+  '''
+  global _utest_test_count
+  _utest_test_count += 1
+  exp = list(exp_seq) # convert to a list for referential isolation and consistent string repr.
+  try:
+    ret_seq = fn(*args, **kwargs)
+  except BaseException as exc:
+    _utest_failure(_utest_depth, exp_label='items', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    if _exit: raise
+    return
+  try:
+    ret = list(ret_seq.items())
+  except BaseException as exc:
+    _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='value', ret=ret_seq, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    return
+  if exp != ret:
+    _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='items', ret=ret, subj=fn, args=args, kwargs=kwargs)
+
+
+def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+  '''
+  Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a key/value items sequence.
+  Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
+  '''
+  global _utest_test_count
+  _utest_test_count += 1
+  try:
+    ret_seq = fn(*args, **kwargs)
+    ret = list(ret_seq.items())
+  except BaseException as exc:
+    if not _compare_exceptions(exp_exc, exc):
+      _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
+      if _exit: raise
+  else:
+    _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='items', ret=ret, subj=fn, args=args, kwargs=kwargs)
+
+
 def utest_val(exp_val:Any, act_val:Any, desc='<value>') -> None:
   '''
   Log a test failure if `exp_val` does not equal `act_val`.
@@ -250,4 +292,3 @@ def report() -> None: #!cov-ignore - the call to _exit kills coven before it rec
     _errL(f'\nutest ran: {_utest_test_count}; failed: {_utest_failure_count}')
     _stderr.flush()
     _exit(1) # raising SystemExit has no effect in an atexit handler as of 3.5.2.
-
