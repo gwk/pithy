@@ -21,9 +21,9 @@ def sorted_seq_index(seq:Sequence[_T], el:_T) -> int:
   Locate the leftmost element exactly equal to `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_left(seq, el)
+  i = bisect_left(seq, el) # type: ignore
   if i != len(seq) and seq[i] == el:
-    return i
+    return i # type: ignore
   raise ValueError(el)
 
 
@@ -32,9 +32,9 @@ def sorted_seq_find_lt(seq:Sequence[_T], el:_T) -> _T:
   Find rightmost element less than `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_left(seq, el)
+  i = bisect_left(seq, el) # type: ignore
   if i:
-    return seq[i-1]
+    return seq[i-1] # type: ignore
   raise ValueError
 
 
@@ -43,9 +43,9 @@ def sorted_seq_find_le(seq:Sequence[_T], el:_T) -> _T:
   Find rightmost element less than or equal to `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_right(seq, el)
+  i = bisect_right(seq, el) # type: ignore
   if i:
-    return seq[i-1]
+    return seq[i-1] # type: ignore
   raise ValueError
 
 
@@ -54,9 +54,9 @@ def sorted_seq_find_gt(seq:Sequence[_T], el:_T) -> _T:
   Find leftmost element greater than `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_right(seq, el)
+  i = bisect_right(seq, el) # type: ignore
   if i != len(seq):
-    return seq[i]
+    return seq[i] # type: ignore
   raise ValueError
 
 
@@ -64,9 +64,9 @@ def sorted_seq_find_ge(seq:Sequence[_T], el:_T) -> _T:
   '''Find leftmost element greater than or equal to `el`.
   From stdlib bisect documentation.
   '''
-  i = bisect_left(seq, el)
+  i = bisect_left(seq, el) # type: ignore
   if i != len(seq):
-    return seq[i]
+    return seq[i] # type: ignore
   raise ValueError
 
 

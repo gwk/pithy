@@ -144,7 +144,7 @@ class CsvLoader(Iterable, ContextManager):
 
 
   def __iter__(self) -> Iterator[Any]:
-    return (self.row_fn(row) for row in self._reader)
+    return (self.row_fn(row) for row in self._reader) # type: ignore
 
 
   def __enter__(self) -> 'CsvLoader':

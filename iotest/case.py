@@ -427,7 +427,7 @@ def compare_match(exp: FileExpectation, val: str) -> bool:
       return False
     (pattern, regex) = pair
     if line is None or not regex.fullmatch(line):
-      exp.match_error = (i, pattern, line)
+      exp.match_error = (i, pattern, line) # type: ignore
       return False
   return True
 
