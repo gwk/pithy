@@ -20,10 +20,12 @@ DtDdPair = Tuple[List['Dt'],List['Dd']]
 class HtmlNode(Mu):
   'Abstract HTML node; root class of the hierarchy. For the HTML tag, use `Html`.'
 
+  tag_types:ClassVar[dict[str,type[Mu]]] = {} # Dispatch table mapping tag names to Mu subtypes.
+
   inline_tags = semantics.phrasing_tags
   void_tags = semantics.void_tags
   ws_sensitive_tags = semantics.ws_sensitive_tags
-  tag_types:ClassVar[dict[str,type[Mu]]] = {}
+
 
   @classmethod
   def parse(Class:Type[_Mu], source:_AnyStr, **kwargs:Any) -> _Mu:
@@ -32,10 +34,6 @@ class HtmlNode(Mu):
     if isinstance(source, bytes): kwargs['transport_encoding'] = 'utf-8'
     etree = parse(source, return_root=True, **kwargs)
     return Class.from_etree(etree)
-
-  def esc_attr_val(self, val:str) -> str: return _escape(val, quote=True)
-
-  def esc_text(self, text:str) -> str: return _escape(text, quote=False)
 
   @property
   def is_phrasing(self) -> bool:

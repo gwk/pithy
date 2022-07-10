@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from pithy.xml import *
-from utest import *
+from pithy.markup import MultipleMatchesError, NoMatchError
+from pithy.xml import Xml
+from utest import utest, utest_exc, utest_seq, utest_val
 
 
 html = Xml(tag='html', lang='en-us')

@@ -4,6 +4,7 @@
 `markup` provides the `Mu` class, a base class for representing HTML, SVG, XML, SGML, and other document tree formats.
 '''
 
+from os import stat
 import re
 from collections import Counter
 from itertools import chain
@@ -68,8 +69,12 @@ class Mu:
   ws_sensitive_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that are whitespace sensitive.
   replaced_attrs:ClassVar[Dict[str,str]] = {} # Map of attribute names to replacement values for rendering.
 
-  __slots__ = ('attrs', 'ch', '_orig', '_parent')
+  attr_sort_ranks = {
+    'id': -2,
+    'class': -1,
+  }
 
+  __slots__ = ('attrs', 'ch', '_orig', '_parent')
 
   def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs=None, ch:MuChildOrChildren=(), cl:Iterable[str]=None,
    _orig:_Mu=None, _parent:'Mu'=None, **kw_attrs:Any) -> None:
@@ -83,7 +88,13 @@ class Mu:
     However, various Mu methods have a `traversable` option, which will return subtrees with the _orig/_parent refs set.
     Such "subtree nodes" can use the `next` and `prev` methods in addition to `pick` and friends.
     '''
-    # TODO: handle tag!!!
+
+    if tag:
+      if cls_tag := getattr(self, 'tag', None):
+        if cls_tag != tag:
+           raise ValueError(f'Mu subclass {type(self)!r} already has tag: {self.tag!r}; instance tag: {tag!r}')
+      else:
+        self.tag = tag
 
     if attrs is None: attrs = {} # Important: use existing dict ref if provided.
     for k, v in kw_attrs.items():
@@ -144,18 +155,20 @@ class Mu:
       if not isinstance(k, str):
         raise ValueError(f'Mu attr key must be `str`; received: {k!r}')
     ch:MuChildren = []
+    TagClass = cls.tag_types.get(tag, cls)
     for c in raw_children:
       if isinstance(c, mu_child_classes): ch.append(c)
-      elif isinstance(c, dict): ch.append(cls.from_raw(c))
+      elif isinstance(c, dict): ch.append(TagClass.from_raw(c))
+      #^ Note: we use the dynamically chosen TagClass when recursing,
+      # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       else: raise ValueError(f'Mu child must be `str`, `EscapedStr`, `Mu`, or `dict`; received: {c!r}')
-    TagClass = cls.tag_types.get(tag, cls)
     return cast(_Mu, TagClass(tag=tag, attrs=attrs, ch=ch))
 
 
   @classmethod
   def from_etree(cls:Type[_Mu], el:Element) -> _Mu:
     '''
-    Create an Mu object (possibly subclass by tag) from a standard library element tree.
+    Create a Mu object (possibly subclass by tag) from a standard library element tree.
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
     '''
     tag = el.tag
@@ -462,6 +475,10 @@ class Mu:
   def pick(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
 
   def pick(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    '''
+    Pick the matching child of this node.
+    Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
+    '''
     first_match:Optional[Mu] = None
     for c in self.pick_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first_match is None: first_match = c
@@ -481,6 +498,10 @@ class Mu:
   def find(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
 
   def find(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    '''
+    Find the matching node of this node's subtree.
+    Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
+    '''
     first_match:Optional[Mu] = None
     for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first_match is None: first_match = c
@@ -629,21 +650,36 @@ class Mu:
 
   # Rendering.
 
+  @staticmethod
+  def esc_text(text:str) -> str:
+    text = text.replace("&", "&amp;") # Ampersand must be replaced first, because escapes use ampersands.
+    text = text.replace("<", "&lt;")
+    text = text.replace(">", "&gt;")
+    return text
 
-  def esc_attr_val(self, val:str) -> str: raise NotImplementedError
 
-  def esc_text(self, text:str) -> str: raise NotImplementedError
+  @staticmethod
+  def quote_attr_val(text:str) -> str:
+    text = text.replace("&", "&amp;") # Ampersand must be replaced first, because escapes use ampersands.
+    text = text.replace("<", "&lt;")
+    text = text.replace(">", "&gt;")
+    if "'" in text:
+      text = text.replace('"', "&quot;")
+      return f'"{text}"'
+    else:
+      return f"'{text}'"
+
 
   def fmt_attr_items(self, items:Iterable[Tuple[str,Any]]) -> str:
     'Return a string that is either empty or with a leading space, containing all of the formatted items.'
     parts: List[str] = []
-    for k, v in items:
+    for k, v in sorted(items, key=lambda item: self.attr_sort_ranks.get(item[0], 0)):
       k = self.replaced_attrs.get(k, k)
       if v in (None, True, False): v = str(v).lower()
       elif isinstance(v, Present):
         if v.is_present: v = ''
         else: continue
-      parts.append(f' {k}="{self.esc_attr_val(str(v))}"')
+      parts.append(f" {k}={self.quote_attr_val(str(prefer_int(v)))}")
     return ''.join(parts)
 
 
@@ -745,12 +781,36 @@ def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', att
 
 
 def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:Dict[str,str]) -> str:
+  'Format the arguments of a predicate function for an error message.'
   words:List[str] = []
   if type_or_tag: words.append(f'`{type_or_tag.__name__}`' if isinstance(type_or_tag, type) else repr(type_or_tag))
   if cl: words.append(f'cl={cl!r}')
   for k, v in attrs.items(): words.append(xml_attr_summary(k, v, text_limit=0, all_attrs=True).lstrip())
   if text: words.append(f'…{text!r}…')
   return ' '.join(words)
+
+
+def add_opt_attrs(attrs:Dict[str,Any], **items:Any) -> None:
+  'Add the items in `**items` attrs, excluding any None values.'
+  for k, v in items.items():
+    if v is None: continue
+    assert k not in attrs, k
+    attrs[k] = v
+
+
+@overload
+def prefer_int(v:int) -> int: ...
+@overload
+def prefer_int(v:float) -> Union[int,float]: ...
+@overload
+def prefer_int(v:str) -> str: ...
+
+def prefer_int(v:Union[float,int,str]) -> Union[float,int,str]:
+  'Convert integral floats to int.'
+  if isinstance(v, float):
+    i = int(v)
+    return i if i == v else v
+  return v
 
 
 def newline_or_space_for_ws(match:Match) -> str:

@@ -24,7 +24,7 @@ def esc_xml_text(val:Any) -> str:
 
 def esc_xml_attr(val:Any) -> str:
   'HTML-escape the string representation of `val`, including quote characters.'
-  return val if isinstance(val, EscapedStr) else _escape_attr(str(val))
+  return val if isinstance(val, EscapedStr) else _escape_attr(str(val)) # TODO: THIS LOOKS WRONG
 
 
 @lru_cache(maxsize=1024, typed=True)
