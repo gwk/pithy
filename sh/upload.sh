@@ -16,11 +16,10 @@ fi
 
 echo "package: $1"
 regex=".*/$1-[0-9.]*\.tar\.gz"
-dist_files=$(find _build/dist -regex "$regex")
+dist_files=$(find dist/ -regex "$regex")
 echo "distribution files:" $dist_files
 [[ $dist_files = *' '* ]] && fail "found multiple distribution files: $dist_files"
 
 set -x
 twine upload --verbose --repository-url "$url" $dist_files
 set +x
-

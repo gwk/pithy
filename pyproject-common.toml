@@ -1,0 +1,14 @@
+
+[project]
+license = "CC0-1.0"
+authors = [{ name = "George King", email = "george@theorypractice.dev" }]
+
+dynamic = ["version"]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

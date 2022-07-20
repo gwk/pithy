@@ -1,0 +1,27 @@
+
+[project]
+
+name = "utest"
+description = "UTest is a simple unit-testing library."
+requires-python = ">=3.10"
+
+dependencies = []
+
+keywords = [
+  "unit",
+  "test",
+  "testing",
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]

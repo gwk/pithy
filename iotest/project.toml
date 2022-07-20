@@ -1,0 +1,27 @@
+
+[project]
+
+name = "iotest"
+description = "IOTest is a process/integration test harness that captures standard IO as the basis for test validation."
+requires-python = ">=3.10"
+
+dependencies = []
+
+keywords = [
+  "io",
+  "test",
+  "testing",
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Science/Research",
+  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]

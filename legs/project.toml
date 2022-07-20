@@ -1,0 +1,44 @@
+
+[project]
+
+name = "legs"
+description = "Legs is a lexer generator."
+requires-python = ">=3.10"
+
+dependencies = []
+
+keywords = [
+  "generator",
+  "grammar",
+  "lex",
+  "lexer",
+  "lexing",
+  "regex",
+  "regular expression",
+  "token",
+  "tokenization",
+  "tokenize",
+  "tokenizer",
+  "tokenizing",
+  "unicode",
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Science/Research",
+  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Code Generators",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Pre-processors",
+  "Topic :: Software Development :: User Interfaces",
+  "Topic :: System",
+  "Topic :: Text Processing",
+  "Topic :: Utilities",
+  "Typing :: Typed",
+]

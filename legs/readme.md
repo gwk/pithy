@@ -1,10 +1,6 @@
-writeup v0
-Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
-
-
 # Legs
 
-Legs is a lexer generator. It takes as input a .legs file consisting of pattern definitions, and outputs code. Currently it only outputs Swift code, but I would like to extend it to support other languages. The long-term goal of this project is to support correct generation of Unicode-aware lexers for a variety of targets (outputs), including various programming languages but also their regular expression engines and text editor syntax definitions. No more nightmare TextMate language definitions!
+Legs is a lexer generator. It takes as input a `.legs` file consisting of pattern definitions, and outputs code. Currently it only outputs Swift code, but I would like to extend it to support other languages. The long-term goal of this project is to support correct generation of Unicode-aware lexers for a variety of targets (outputs), including various programming languages but also their regular expression engines and text editor syntax definitions. No more nightmare TextMate language definitions!
 
 Legs is distinguished by the following features:
 * Parses UTF-8 data directly; it does not require a preceding conversion to the String datatype.
@@ -21,15 +17,11 @@ Legs is distinguished by the following features:
 * Better documentation.
 * More testing.
 * Support UTF-16/UCS2 and UTF-32 representations as well.
-* Backends:
-  * Python regex
-  * tmlanguage definitions
-  * JavaScript regex
-  * And many more...
 * Performance analysis of generated Swift code.
 
 
 # Incomplete Tokens
+TODO.
 
 
 # Column Pathology
