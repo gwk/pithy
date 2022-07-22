@@ -814,11 +814,12 @@ class Html(HtmlNode):
   def head(self) -> Head: return self._single(Head)
 
   @staticmethod
-  def doc(*, title:str, charset='utf-8', lang='en') -> 'Html':
+  def doc(*, lang='en', charset='utf-8', title:str='') -> 'Html':
     html = Html(lang=lang)
     head = html.head
-    head.title.append(title)
     head.append(Meta(charset=charset))
+    if title:
+      head.title.append(title)
     return html
 
 
