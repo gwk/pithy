@@ -104,10 +104,12 @@ class HttpServer(ThreadingTCPServer):
 
 
   def __init__(self, server_address:Tuple[str,int], RequestHandlerClass:Type['HttpRequestHandler'],
-   bind_and_activate=True, local_dir:str='') -> None:
+   bind_and_activate=True, local_dir:str='', prevent_client_caching:bool=False, assume_local_html:bool=False) -> None:
 
     self.dbg = environ.get('DEBUG') is not None
     self.local_dir = local_dir.rstrip('/')
+    self.prevent_client_caching = prevent_client_caching
+    self.assume_local_html = assume_local_html
 
     super().__init__(server_address=server_address, RequestHandlerClass=RequestHandlerClass,
       bind_and_activate=bind_and_activate)
@@ -137,7 +139,7 @@ class HttpServer(ThreadingTCPServer):
 
 class HttpRequestHandler(StreamRequestHandler):
 
-  server: HttpServer # Covariant type override of BaseRequestHandler.
+  server: HttpServer
 
   python_version = 'Python/{}.{}.{}'.format(*sys.version_info[:3])
 
@@ -146,8 +148,6 @@ class HttpRequestHandler(StreamRequestHandler):
 
   error_html_format = _default_error_html_format
   error_content_type = _default_error_content_type
-
-  prevent_client_caching = False
 
   protocol_version = 'HTTP/1.1'
 
@@ -336,7 +336,7 @@ class HttpRequestHandler(StreamRequestHandler):
   def send_response_and_headers(self, status:HTTPStatus, headers:dict[bytes,ByteString], reason:str='') -> None:
     '''
     Send the response line and headers to the client.
-    Adds cache control headers if `prevent_client_caching` is set.
+    Adds cache control headers if `server.prevent_client_caching` is set.
     Adds a `Connection: close` header if `close_connection` is set.
     Sets `sent_response` to ensure that this method is only called once.
     '''
@@ -349,7 +349,7 @@ class HttpRequestHandler(StreamRequestHandler):
       # These standard headers are excluded from the 100-continue response because that appears to be the way the python stddlib server worked.
       headers[b'Server'] = self.server_version
       headers[b'Date'] = self.format_header_date()
-    if self.prevent_client_caching:
+    if self.server.prevent_client_caching:
       headers.setdefault(b'Cache-Control', b'no-cache, no-store, must-revalidate')
       headers.setdefault(b'Pragma', b'no-cache')
       headers.setdefault(b'Expires', b'0')
@@ -505,11 +505,10 @@ class HttpRequestHandler(StreamRequestHandler):
         return self.list_directory(local_path)
 
     try: f = open(local_path, 'rb')
-    except (FileNotFoundError, PermissionError):
-      raise HttpContentError(status=HTTPStatus.NOT_FOUND)
-    else:
-      assert isinstance(f, BufferedReader)
-      return self.transform_file_from_local_fs(file=f, local_path=local_path)
+    except (FileNotFoundError, PermissionError): raise HttpContentError(status=HTTPStatus.NOT_FOUND)
+
+    assert isinstance(f, BufferedReader)
+    return self.transform_file_from_local_fs(file=f, local_path=local_path)
 
 
   def transform_file_from_local_fs(self, file:BufferedReader, local_path:str) -> HttpContent:
