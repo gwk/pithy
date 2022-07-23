@@ -535,7 +535,7 @@ class HttpRequestHandler(StreamRequestHandler):
     p = url_unquote(p)
     p = norm_path(p)
     if p != '/' and p.endswith('/'): raise ValueError(p) # Should be guaranteed by norm_path.
-    return self.transform_logical_path_for_local(p + trailing_slash)
+    return p + trailing_slash
 
 
   def compute_local_path(self, logical_path:Optional[str]=None) -> str:
@@ -550,12 +550,15 @@ class HttpRequestHandler(StreamRequestHandler):
     if not logical_path.startswith('/'): raise ValueError(logical_path)
     if '..' in logical_path: raise HttpContentError(HTTPStatus.FORBIDDEN)
 
+    if self.server.assume_local_html and not logical_path.endswith('/') and not path_ext(logical_path):
+      logical_path += '.html'
+
     return local_dir + logical_path
 
 
   def transform_logical_path_for_local(self, logical_path:str) -> str:
     '''
-    Called by compute_local_path; override point for subclasses to transform the normalized logical path.
+    Called by compute_logical_path; override point for subclasses to transform the normalized logical path.
     The default implementation returns the logical path unchanged.
     '''
     return logical_path
