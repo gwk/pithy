@@ -132,6 +132,10 @@ class Mu:
     return f'<{subnode}{self.tag}:{words}>'
 
 
+  def __bytes__(self) -> bytes:
+    return self.render_str().encode('utf-8')
+
+
   def __delitem__(self, key:str) -> Any: del self.attrs[key]
 
   def __getitem__(self, key:str) -> Any: return self.attrs[key]

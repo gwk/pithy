@@ -23,6 +23,7 @@ from urllib.parse import (SplitResult as Url, quote as url_quote, unquote as url
 from ..fs import is_dir, scan_dir, norm_path, path_exists
 from ..io import errL, errSL
 from ..path import path_ext, path_join
+from ..markup import Mu
 
 
 '''
@@ -61,14 +62,20 @@ class HttpContentError(Exception):
   An error that causes the current request handler to return the specified HTTP status code.
   Implementations of get_content can raise this as an alternative to returning a Content object.
   '''
+
   def __init__(self, status:HTTPStatus, reason:str='', headers:Optional[dict[bytes,ByteString]]=None):
     self.status = status
     self.reason = reason
     self.headers = headers
     super().__init__(f'{status} - {reason}')
 
+  NOT_FOUND: 'HttpContentError'
 
-ContentBody = Union[None,str,bytes,bytearray,BufferedReader]
+HttpContentNotFound = HttpContentError(HTTPStatus.NOT_FOUND)
+HttpContentNotImplemented = HttpContentError(HTTPStatus.NOT_IMPLEMENTED)
+
+
+ContentBody = Union[None,str,bytes,bytearray,BufferedReader,Mu]
 BinaryContentBody = Union[None,bytes,bytearray,BufferedReader]
 #^ Note: normally we would use the abstract BinaryIO type
 #  but mypy does not understand the Union difference when test the concrete type.
@@ -78,7 +85,13 @@ class HttpContent:
   Implementations of get_content return instances of this type for each request.
   '''
   def __init__(self, body:ContentBody, content_type:bytes=b'', last_modified:float=0.0) -> None:
-    self.body:BinaryContentBody = body.encode('utf8', errors='replace') if isinstance(body, str) else body
+    if isinstance(body, str):
+      bytes_body:BinaryContentBody = body.encode('utf-8', errors='replace')
+    elif isinstance(body, Mu):
+      bytes_body = bytes(body)
+    else:
+      bytes_body = body
+    self.body = bytes_body
     self.content_type = content_type
     self.last_modified = last_modified
 
