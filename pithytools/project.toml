@@ -6,7 +6,7 @@ description = "Pithytools is a collection of comamnd line utilities that depend 
 requires-python = ">=3.10"
 
 dependencies = [
-  "Pillow", "type-Pillow",
+  "Pillow", "types-Pillow",
 ]
 
 keywords = [
