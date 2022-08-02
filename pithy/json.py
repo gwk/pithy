@@ -87,10 +87,6 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_S
 def parse_json(text:JsonText, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Parse json from `text`.
-  If `object_hook` is None and `types` is a non-empty sequence,
-  then a hook is created that transforms JSON objects into matching record types,
-  based on field name sets.
-  The sets of field names must be distinct for all provided record types.
   '''
   return _json.loads(text, object_hook=_mk_hook(hook, hooks))
 
@@ -98,10 +94,6 @@ def parse_json(text:JsonText, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) ->
 def load_json(file:IO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Read json from `file`.
-  If `object_hook` is None and `types` is a non-empty sequence,
-  then a hook is created that transforms JSON objects into matching record types,
-  based on field name sets.
-  The sets of field names must be distinct for all provided record types.
   '''
   try:
     return _json.load(file, object_hook=_mk_hook(hook, hooks))
@@ -125,8 +117,6 @@ def load_jsonl(stream:Iterable[JsonText], hook:ObjDecodeFn=None, hooks:ObjDecode
 def parse_jsons(string:str, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
-  If `types` is a non-empty sequence,
-  then an object hook is passed to the decoder transforms JSON objects into matching dataclass types.
   '''
   hook = _mk_hook(hook, hooks)
   decoder = _json.JSONDecoder(object_hook=hook)
@@ -155,7 +145,6 @@ def load_jsons(file:TextIO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> I
 def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Callable[[Dict[Any,Any]],Any]]:
   '''
   Provide a hook function to deserialize JSON into the provided types.
-  `types` is a sequence of type objects, each of which must be a dataclass or NamedTuple.
   '''
   if not hooks: return hook
   dflt_hook:ObjDecodeFn = lambda d: d if hook is None else hook
