@@ -58,14 +58,14 @@ def dispatcher_for_defs(*, prefix:str, default:Callable=None, base:Mapping[str,C
     def dispatch_fn(name, *args, **kwargs):
       fn = bindings[name]
       try: return fn(*args, **kwargs)
-      except Exception as exc: raise DispatchWrapperException(fn) from exc
+      except TypeError as exc: raise DispatchException(fn) from exc
   else:
     def dispatch_fn(name, *args, **kwargs):
       try: fn = bindings[name]
       except KeyError: pass # Handled below.
       else:
         try: return fn(*args, **kwargs)
-        except Exception as exc: raise DispatchWrapperException(fn) from exc
+        except TypeError as exc: raise DispatchException(fn) from exc
       return default(name, *args,  **kwargs) # type: ignore
 
   setattr(dispatch_fn, 'bindings', bindings)
@@ -73,7 +73,7 @@ def dispatcher_for_defs(*, prefix:str, default:Callable=None, base:Mapping[str,C
   return dispatch_fn
 
 
-class DispatchWrapperException(Exception): pass
+class DispatchException(Exception): pass
 
 
 _A = TypeVar('_A', bound=Any)
