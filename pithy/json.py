@@ -105,13 +105,15 @@ def load_json(file:IO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
 
 
 def parse_jsonl(text:JsonText, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
-  hook = _mk_hook(hook, hooks)
-  return (_json.loads(line, object_hook=hook) for line in text.splitlines())
+  return load_jsonl(text.splitlines(), hook=hook, hooks=hooks)
 
 
 def load_jsonl(stream:Iterable[JsonText], hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+  if isinstance(stream, (str,bytes,bytearray)): raise TypeError('`stream` argument must be an iterable of text.')
   hook = _mk_hook(hook, hooks)
-  return (_json.loads(line, object_hook=hook) for line in stream)
+  for line in stream:
+    if not line or line.isspace(): continue
+    yield _json.loads(line, object_hook=hook)
 
 
 def parse_jsons(string:str, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
