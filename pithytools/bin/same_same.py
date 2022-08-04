@@ -28,13 +28,15 @@ To disable, set 'SAME_SAME_OFF' in the shell environment.'
 
 
 class DiffLine:
+  'A line of input from the traditional diff program, classfied.'
+
   def __init__(self, kind:str, match:Match) -> None:
     self.kind = kind # The name from `diff_pat` named capture groups.
     self.match = match
     self.old_num = 0 # 1-indexed.
     self.new_num = 0 # ".
     self.chunk_idx = 0 # Positive for rem/add.
-    self.is_src = False # True for ctx/rem/add.
+    self.is_src = False # Is source code text; True for ctx/rem/add.
     self.text = '' # Final text for ctx/rem/add.
 
   @property
@@ -64,8 +66,9 @@ def main() -> None:
 
   dbg = ('SAME_SAME_DBG' in environ)
 
-  # Break input into segments starting with 'diff' lines.
+  # Break input into groups of lines starting with 'diff' lines.
   # Note that the first segment might begin with any kind of line.
+  # As soon as a group is complete, call flush_buffer() to render them.
   buffer:List[DiffLine] = []
 
   def flush_buffer() -> None:
@@ -125,8 +128,10 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
     match = line.match
     kind = line.kind
     is_add_rem = (kind in ('rem', 'add'))
+    # Determine if this is a new chunk.
     if not is_prev_add_rem and is_add_rem: chunk_idx += 1
     is_prev_add_rem = is_add_rem
+    # Dispatch on kinds.
     if kind in ('ctx', 'rem', 'add'):
       line.is_src = True
       if kind == 'ctx':
@@ -286,8 +291,9 @@ def add_token_diffs(rem_lines:List[DiffLine], add_lines:List[DiffLine]) -> None:
 
 H_START, H_CTX, H_SPACE, H_TOKEN = range(4)
 
-class HighlightState:
 
+class HighlightState:
+  'HighlightState is a list of lines that have been tokenized for highlighting.'
   def __init__(self, lines:List[DiffLine], tokens:List[str], hl_ctx:str, hl_space:str, hl_token:str) -> None:
     self.lines = lines
     self.tokens = tokens
