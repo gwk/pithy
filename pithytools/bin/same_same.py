@@ -85,7 +85,7 @@ def main() -> None:
     if buffer:
       if dbg: print(f'SAMESAME: FLUSH')
       handle_file_lines(buffer, interactive=args.interactive)
-      buffer = []
+      buffer.clear()
 
   try:
     for line in stdin:
@@ -103,9 +103,10 @@ def main() -> None:
       if kind == 'diff':
         flush_buffer()
       buffer.append(DiffLine(kind, match))
-    flush_buffer()
   except BrokenPipeError:
     stderr.close() # Prevents warning message.
+  finally:
+    flush_buffer()
 
 
 def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
