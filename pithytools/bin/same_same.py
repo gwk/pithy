@@ -277,11 +277,11 @@ pass_kinds = {
 }
 
 
-def insert_unique_line(d:Dict[str, Optional[int]], line:str, idx:int) -> None:
+def insert_unique_line(d:Dict[str,Optional[int]], line:str, line_num:int) -> None:
   'For the purpose of movement detection, lines are tested for uniqueness after stripping leading and trailing whitespace.'
   body = line.strip()
   if body in d: d[body] = None
-  else: d[body] = idx
+  else: d[body] = line_num
 
 
 def add_token_diffs(rem_lines:List[DiffLine], add_lines:List[DiffLine]) -> None:
