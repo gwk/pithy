@@ -436,7 +436,7 @@ C_END = FILL
 
 def vscode_path(path:str) -> str:
   'VSCode will only recognize source locations if the path contains a slash; add "./" to plain file names.'
-  if '/' in path or '<' in path or '>' in path: return path # Do not alter pseudo-names like <stdin>.
+  if '/' in path or path.startswith('<') and path.endswith('>'): return path # Do not alter pseudo-names like <stdin>.
   return './' + path
 
 
