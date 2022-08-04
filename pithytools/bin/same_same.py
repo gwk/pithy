@@ -59,12 +59,21 @@ def main() -> None:
   # Git can generate utf8-illegal sequences; ignore them.
   stdin = open(0, errors='replace')
 
-  if 'SAME_SAME_OFF' in environ:
+  env_mode_str = environ.get('SAMESAME', '1')
+  try: env_mode = int(env_mode_str)
+  except ValueError:
+    env_mode = 1
+    errL(f'error: bad (non-integer) SAMESAME environment variable: {env_mode_str!r}')
+
+
+  if env_mode == 0:
     for line in stdin:
       stdout.write(line)
     exit(0)
 
-  dbg = ('SAME_SAME_DBG' in environ)
+  dbg = (env_mode > 1)
+  if dbg:
+    print("SAMESAME: DEBUG")
 
   # Break input into groups of lines starting with 'diff' lines.
   # Note that the first segment might begin with any kind of line.
@@ -74,6 +83,7 @@ def main() -> None:
   def flush_buffer() -> None:
     nonlocal buffer
     if buffer:
+      if dbg: print(f'SAMESAME: FLUSH')
       handle_file_lines(buffer, interactive=args.interactive)
       buffer = []
 
@@ -85,8 +95,7 @@ def main() -> None:
       kind = match.lastgroup
       assert kind is not None, match
       if dbg:
-        print(kind, ':', repr(raw_text))
-        continue
+        print(f'{kind}: {raw_text!r}')
       if kind in pass_kinds:
         flush_buffer()
         print(raw_text)
