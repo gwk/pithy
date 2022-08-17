@@ -193,7 +193,7 @@ def errP(*items: Any, label=None, **opts) -> None:
   writeP(stderr, *items, label=label, **opts)
 
 
-def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suffix='', frequency:Union[float, int]=0.1, limit=0) -> Iterator[_T]:
+def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suffix='', frequency:Union[float,int]=0.1, limit=0) -> Iterator[_T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.

@@ -201,6 +201,7 @@ class HttpRequestHandler(StreamRequestHandler):
     self.close_connection = True
     self.sent_response = False
 
+
   def handle(self) -> None:
     '''
     Override point provided by BaseRequestHandler.
@@ -293,7 +294,6 @@ class HttpRequestHandler(StreamRequestHandler):
     else:
       self.close_connection = False # Keep-alive is the default for HTTP/1.1.
     return None
-
 
 
   def handle_expect_100(self) -> bool:
