@@ -83,6 +83,14 @@ class Cursor(sqlite3.Cursor):
     return False
 
 
+  def count(self, table:str, *where:str, **args:Any) -> int:
+    'Execute a SELECT COUNT(1) query, returning the number of rows.'
+    where_clause = ('WHERE', *where) if where else []
+    for row in self.run('SELECT COUNT(1) FROM', table, *where_clause, **args):
+      return row[0] # type: ignore
+    return 0
+
+
   def insert(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, sql:str, args:Any=()) -> None:
     '''
     Execute an insert statement synthesized from `into` (the table name), `fields` (optional), and `sql`.
@@ -159,6 +167,10 @@ class Connection(sqlite3.Connection):
 
   def contains(self, table:str, *where:str, **args:Any) -> bool:
     return self.cursor().contains(table, *where, **args)
+
+
+  def count(self, table:str, *where:str, **args:Any) -> int:
+    return self.cursor().count(table, *where, **args)
 
 
   def insert(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, sql:str, args:Any=()) -> None:
