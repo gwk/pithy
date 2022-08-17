@@ -178,7 +178,7 @@ class HttpRequestHandler(StreamRequestHandler):
 
   request_line_bytes: bytes
   request_line: str
-  command: str
+  method: str
   target: str
   url: Url
   headers: Optional[HTTPMessage]
@@ -194,7 +194,7 @@ class HttpRequestHandler(StreamRequestHandler):
   def reset(self) -> None:
     self.request_line_bytes = b''
     self.request_line = ''
-    self.command = ''
+    self.method = ''
     self.target = ''
     self.url = url_split('')
     self.headers = None # The request headers.
@@ -236,10 +236,10 @@ class HttpRequestHandler(StreamRequestHandler):
       if expect == '100-continue':
         if not self.handle_expect_100(): return
       # Determine method and dispatch.
-      method_name = 'handle_http_' + self.command
+      method_name = 'handle_http_' + self.method
       method = getattr(self, method_name, None)
       if not method:
-        self.send_error(HTTPStatus.NOT_IMPLEMENTED, headers={}, reason=f'Unsupported method: {self.command!r}')
+        self.send_error(HTTPStatus.NOT_IMPLEMENTED, headers={}, reason=f'Unsupported method: {self.method!r}')
         return
       method()
       self.wfile.flush() # Send the response if not already done.
@@ -256,7 +256,7 @@ class HttpRequestHandler(StreamRequestHandler):
       return (HTTPStatus.BAD_REQUEST, 'Empty request line')
     if len(words) != 3:
       return (HTTPStatus.BAD_REQUEST, f'Bad request syntax: {request_line!r}')
-    command, target, version = words
+    method, target, version = words
     try:
       if not version.startswith('HTTP/'): raise ValueError
       base_version_number = version.split('/', 1)[1]
@@ -273,10 +273,10 @@ class HttpRequestHandler(StreamRequestHandler):
     if version_number < (1, 1) or version_number >= (2, 0):
       return (HTTPStatus.HTTP_VERSION_NOT_SUPPORTED, f'Unsupported HTTP version: {version_number}')
 
-    if command not in http_commands:
-      return (HTTPStatus.BAD_REQUEST, f'Unrecognized HTTP command: {command!r}')
+    if method not in http_methods:
+      return (HTTPStatus.BAD_REQUEST, f'Unrecognized HTTP method: {method!r}')
 
-    self.command = command
+    self.method = method
     self.target = target
     try: self.url = url_split(target)
     except ValueError: pass
@@ -342,7 +342,7 @@ class HttpRequestHandler(StreamRequestHandler):
       headers[b'Content-Length'] = str(len(body)).encode('latin1')
 
     self.send_response_and_headers(status=status, reason=reason, headers=headers)
-    if self.command != 'HEAD' and body:
+    if self.method != 'HEAD' and body:
       self.wfile.write(body)
 
 
@@ -654,7 +654,7 @@ class HttpRequestHandler(StreamRequestHandler):
     return self.client_address[0] # type: ignore
 
 
-http_commands = frozenset({
+http_methods = frozenset({
   'CONNECT',
   'DELETE',
   'GET',
