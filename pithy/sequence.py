@@ -68,8 +68,3 @@ def sorted_seq_find_ge(seq:Sequence[_T], el:_T) -> _T:
   if i != len(seq):
     return seq[i] # type: ignore
   raise ValueError
-
-
-def iter_pairs_of_el_is_last(seq:Sequence[_T]) -> Iterator[Tuple[_T, bool]]:
-  last = len(seq) - 1
-  return ((el, i==last) for i, el in enumerate(seq))

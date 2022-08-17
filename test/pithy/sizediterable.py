@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utest import *
-from pithy.sequence import *
+from pithy.sizediterable import *
 
 
 utest_seq([(0, True)], iter_pairs_of_el_is_last, range(1))
