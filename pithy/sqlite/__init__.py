@@ -130,7 +130,8 @@ class Cursor(sqlite3.Cursor):
       return defaults[f]
 
     placeholders = ','.join('?' for _ in args)
-    values = [default_to_json(arg_for(f)) for f in fields or args.keys()]
+    if fields is None: fields = args.keys()
+    values = [default_to_json(arg_for(f)) for f in fields]
     self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
 
 
