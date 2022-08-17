@@ -23,7 +23,10 @@ To use it, add the following configuration to your .gitconfig:
   noprefix = true
   wsErrorHighlight = none # Intraline coloring creates trouble for same-same.
 
-To disable, set 'SAME_SAME_OFF' in the shell environment.'
+To disable, set 'SAMESAME=0' in the shell environment.
+To debug, set 'SAMESAME=2' in the shell environment.
+
+For a description of LESSANSIENDCHARS, see: https://major.io/2013/05/21/handling-terminal-color-escape-sequences-in-less/
 '''
 
 
