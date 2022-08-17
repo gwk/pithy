@@ -2,6 +2,7 @@
 
 
 from collections import Counter, defaultdict
+from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
 from typing import Any, Callable, ClassVar, NamedTuple, Optional, Type, TypeVar, Union, get_args, get_origin, get_type_hints
@@ -227,8 +228,8 @@ class Transtructor:
   def prefigure(self, datatype:type) -> Callable[[PrefigureFn],PrefigureFn]:
     '''
     Function decorator that registers a prefigure function for the given datatype.
-    The decorated function takes input data and manipulates it prior to being passed to the  constructor.
-    This is the method by which transtructors can handle misshapen data.
+    The decorated function takes input data and manipulates it prior to being passed to the constructor.
+    This is the method by which transtructors can handle misshapen or otherwise raw data.
     '''
     def prefigure_decorator(fn:PrefigureFn) -> PrefigureFn:
         self.prefigures[datatype] = fn
@@ -274,8 +275,10 @@ def transtruct_None(v:Any) -> None:
 
 
 def transtruct_type(v:Any) -> type:
-  try: return named_types[v]
-  except KeyError: pass
+  if isinstance(v, type): return v
+  if isinstance(v, str):
+    try: return named_types[v.lower()]
+    except KeyError: pass
   raise ValueError(f'Expected type name (str), received {v}.')
 
 
@@ -290,19 +293,29 @@ primitive_transtructors = {
 
 
 named_types = {
+  'blob': bytes,
   'bool': bool,
+  'boolean': bool,
   'bytearray': bytearray,
   'bytes': bytes,
-  'Counter': Counter,
+  'counter': Counter,
+  'date': date,
+  'datetime': datetime,
   'defaultdict': defaultdict,
   'dict': dict,
+  'double': float,
+  'enum': str,
   'float': float,
   'frozenset': frozenset,
+  'id': int,
   'int': int,
+  'integer': int,
   'list': list,
+  'long': int,
   'None': type(None),
   'set': set,
   'str': str,
+  'string': str,
   'tuple': tuple,
 }
 
