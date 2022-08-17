@@ -5,7 +5,7 @@ from sqlite3 import Row
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Type, cast
 
 from ..json import render_json
-from .util import default_to_json, py_to_sql_types_tuple
+from .util import default_to_json, py_to_sqlite_types_tuple
 
 
 class SqliteError(Exception):
@@ -35,7 +35,7 @@ class Cursor(sqlite3.Cursor):
     '''
     query = ' '.join(sql)
     for k, v in args.items(): # Convert non-native values to Json.
-      if not isinstance(v, py_to_sql_types_tuple):
+      if not isinstance(v, py_to_sqlite_types_tuple):
         args[k] = render_json(v, indent=None)
     return self.execute(query, args)
 
