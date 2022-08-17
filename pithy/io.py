@@ -219,7 +219,7 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
     width = len(ls)
     total = '/' + ls
 
-  if isinstance(frequency, float):
+  if type(frequency) is float: # Use `is` instead of `isinstance` or else type checker thinks `else` branch is unreachable.
     from time import time
     def err_progress_gen() -> Iterator[_T]:
       prev_t = time()
@@ -241,7 +241,7 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
       print(f'{pre}{i+1:{width},}{total}{final}', file=stderr)
 
   else: # frequency is an int.
-    def err_progress_gen() -> Iterator[_T]: # type: ignore # Spurious "Statement is unreachable".
+    def err_progress_gen() -> Iterator[_T]:
       i = -1
       for i, el in enumerate(iterable):
         if limit and i == limit:
