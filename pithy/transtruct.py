@@ -161,8 +161,9 @@ class Transtructor:
       def transtruct_dict(val:Any) -> _T:
         try: items = val.items()
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
-        return origin((key_ctor(k), val_ctor(v)) for k, v in items) # type: ignore
-
+        try: return origin((key_ctor(k), val_ctor(v)) for k, v in items) # type: ignore
+        except ValueError as e:
+          raise TranstructorError(f'failed to transtruct items of type {type(items).__name__}', t, val) from e
       return transtruct_dict
 
     if issubclass(origin, (list, set, frozenset, Counter)):
