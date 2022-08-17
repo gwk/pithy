@@ -396,7 +396,7 @@ class Mu:
       for i in range(len(ch)):
         c = ch[i]
         if isinstance(c, str):
-          ch[i] = html_ws_re.sub(html_ws_replacement, c)
+          ch[i] = html_ws_re.sub(newline_or_space_for_ws, c)
 
     self.ch[:] = ch # Mutate the original array beacuse it may be aliased by subnodes.
 
@@ -823,11 +823,8 @@ def prefer_int(v:Union[float,int,str]) -> Union[float,int,str]:
 
 
 def newline_or_space_for_ws(match:Match) -> str:
+  'Collapse whitespace to either a newline or single space.'
   return '\n' if '\n' in match[0] else ' '
-
-
-def html_ws_replacement(m:Match) -> str:
-  return '\n' if '\n' in m[0] else ' '
 
 
 # HTML defines ASCII whitespace as "U+0009 TAB, U+000A LF, U+000C FF, U+000D CR, or U+0020 SPACE."
