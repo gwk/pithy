@@ -54,7 +54,7 @@ def _(obj:int) -> Any: return obj
 def _(obj:str) -> Any: return obj
 
 @encode_obj.register
-def _(obj:type) -> Any: return repr(obj)
+def _(obj:type) -> Any: return obj.__name__
 
 
 @memoize()
