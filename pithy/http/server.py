@@ -1,6 +1,15 @@
 # Derived from cpython/Lib/http/server.py.
 # Changes dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+This server implementation is derived from the stdlib http.server.
+It was originally pulled from CPython 3.7.
+It has since been updated to CPython 3.10.0; the last reviewed commit is 058f9b27d3.
+Note that not all changes have been ported.
+Since then it has changed substantially.
+'''
+
+
 import mimetypes
 import sys
 import time
@@ -24,15 +33,6 @@ from ..fs import is_dir, scan_dir, norm_path, path_exists
 from ..io import errL, errSL
 from ..path import path_ext, path_join
 from ..markup import Mu
-
-
-'''
-This server implementation is derived from the stdlib http.server.
-It was originally pulled from CPython 3.7.
-It has since been updated to CPython 3.10.0; the last reviewed commit is 058f9b27d3.
-Note that not all changes have been ported.
-Since then it has changed substantially.
-'''
 
 
 __version__ = '0'
