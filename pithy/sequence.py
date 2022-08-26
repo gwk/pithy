@@ -4,7 +4,7 @@
 
 
 from bisect import bisect_left, bisect_right
-from typing import Iterator, Sequence, Tuple, TypeVar
+from typing import Sequence, TypeVar
 
 
 _T = TypeVar('_T')
