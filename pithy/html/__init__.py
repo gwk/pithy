@@ -22,6 +22,10 @@ class HtmlNode(Mu):
 
   tag_types:ClassVar[dict[str,type[Mu]]] = {} # Dispatch table mapping tag names to Mu subtypes.
 
+  replaced_attrs = {
+    'async_' : 'async',
+  }
+
   inline_tags = semantics.phrasing_tags
   void_tags = semantics.void_tags
   ws_sensitive_tags = semantics.ws_sensitive_tags
