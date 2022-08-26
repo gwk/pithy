@@ -98,6 +98,10 @@ class CsvLoader(Iterable, ContextManager):
     if cols is not None:
       # Replace any `bool` types with an actually useful constructor.
       cols = { k : (transtruct_bool if v is bool else v) for k, v in cols.items() }
+
+    if isinstance(file, str):
+      raise ValueError('file must be an iterable of strings, not a string.')
+
     self._reader = csv.reader(file, dialect, **opts)
     self.file = file
     self.row_ctor = row_ctor
