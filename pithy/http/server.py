@@ -78,7 +78,8 @@ HttpContentNotImplemented = HttpContentError(HTTPStatus.NOT_IMPLEMENTED)
 ContentBody = Union[None,str,bytes,bytearray,BufferedReader,Mu]
 BinaryContentBody = Union[None,bytes,bytearray,BufferedReader]
 #^ Note: normally we would use the abstract BinaryIO type
-#  but mypy does not understand the Union difference when test the concrete type.
+#  but mypy does not understand the difference between the unions when testing the runtime file type.
+
 
 class HttpContent:
   '''
