@@ -544,5 +544,5 @@ dflt_timeout = 4
 # Colors.
 QUOTE = TTY_OUT and sgr(BG, gray26(6))
 QUOTE_END = TTY_OUT and sgr(BG, gray26(4))
-ESCAPE_OUT = TTY_OUT and sgr(INVERT)
-UNESCAPE_OUT = TTY_OUT and sgr(RST_INVERT)
+ESCAPE_OUT = TTY_OUT and INVERT
+UNESCAPE_OUT = TTY_OUT and RST_INVERT

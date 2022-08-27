@@ -17,7 +17,7 @@ import re
 from itertools import chain
 from typing import Callable, Dict, Iterable, Iterator, List, Match, Sequence, Tuple, Union
 
-from .ansi import RST_TXT, TXT_R, TXT_Y, sgr
+from .ansi import RST_TXT, TXT_R, TXT_Y
 from .buffer import Buffer
 
 
@@ -116,8 +116,8 @@ class TagTree(tuple):
     return super().__getitem__(key) # type: ignore
 
   class_label = 'Tag'
-  ansi_color = ''
-  ansi_reset = ''
+  sgr_color = ''
+  sgr_reset = ''
 
   @property
   def is_flawed(self) -> bool:
@@ -159,10 +159,10 @@ class TagTree(tuple):
 
   def _structured_desc(self, res: List[str], depth: int) -> None:
     'multiline indented description helper.'
-    if self.ansi_color: res.append(self.ansi_color)
+    if self.sgr_color: res.append(self.sgr_color)
     res.append(self.class_label)
     res.append(':')
-    if self.ansi_reset: res.append(self.ansi_reset)
+    if self.sgr_reset: res.append(self.sgr_reset)
     d = depth + 1
     nest_spacer = '\n' + ('  ' * d)
     spacer = ' ' # the spacer to use for string tokens.
@@ -199,8 +199,8 @@ class TagTreeUnexpected(TagTreeFlawed):
   'unexpected trees consist solely of an unpaired closing tag.'
 
   class_label = 'Unexpected'
-  ansi_color = TXT_R
-  ansi_reset = sgr(RST_TXT)
+  sgr_color = TXT_R
+  sgr_reset = RST_TXT
 
   def __new__(cls, *args) -> 'TagTreeUnexpected':
     assert len(args) == 1
@@ -216,8 +216,8 @@ class TagTreeUnterminated(TagTreeFlawed):
   'unterminated trees are missing a closing tag.'
 
   class_label = 'Unterminated'
-  ansi_color = TXT_Y
-  ansi_reset = sgr(RST_TXT)
+  sgr_color = TXT_Y
+  sgr_reset = RST_TXT
 
   @property
   def contents(self) -> Iterable[Node]:

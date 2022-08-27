@@ -7,7 +7,7 @@ from os import environ
 from sys import stderr, stdout
 from typing import Any, Dict, List, Match, Optional, Set, Tuple
 
-from pithy.ansi import BG, BOLD, FILL, RST, RST_BOLD, RST_TXT, TXT, gray26, rgb6, sanitize_for_console, sgr
+from pithy.ansi import BG, cBOLD, FILL, RST, cRST_BOLD, cRST_TXT, TXT, gray26, rgb6, sanitize_for_console, sgr
 from pithy.diff import calc_diff
 
 
@@ -425,14 +425,14 @@ C_REM_MOVED = sgr(BG, REM_BG, TXT, rgb6(4, 2, 0)) # Move detected.
 C_ADD_MOVED = sgr(BG, ADD_BG, TXT, rgb6(2, 4, 0))
 
 # Token highlighting.
-C_REM_CTX = sgr(BG, REM_BG, RST_TXT, RST_BOLD)
-C_ADD_CTX = sgr(BG, ADD_BG, RST_TXT, RST_BOLD)
-C_REM_SPACE = sgr(BG, rgb6(3, 0, 0), RST_TXT, BOLD) # Change to space.
-C_ADD_SPACE = sgr(BG, rgb6(0, 3, 0), RST_TXT, BOLD)
-C_REM_TOKEN = sgr(BG, REM_BG, TXT, rgb6(5, 2, 3), BOLD)
-C_ADD_TOKEN = sgr(BG, ADD_BG, TXT, rgb6(2, 5, 3), BOLD)
+C_REM_CTX = sgr(BG, REM_BG, cRST_TXT, cRST_BOLD)
+C_ADD_CTX = sgr(BG, ADD_BG, cRST_TXT, cRST_BOLD)
+C_REM_SPACE = sgr(BG, rgb6(3, 0, 0), cRST_TXT, cBOLD) # Change to space.
+C_ADD_SPACE = sgr(BG, rgb6(0, 3, 0), cRST_TXT, cBOLD)
+C_REM_TOKEN = sgr(BG, REM_BG, TXT, rgb6(5, 2, 3), cBOLD)
+C_ADD_TOKEN = sgr(BG, ADD_BG, TXT, rgb6(2, 5, 3), cBOLD)
 
-C_RST_TOKEN = sgr(RST_TXT, RST_BOLD)
+C_RST_TOKEN = sgr(cRST_TXT, cRST_BOLD)
 
 C_END = FILL
 
