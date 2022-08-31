@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
+
 from datetime import date, datetime
 from typing import Any, Dict, NamedTuple, Tuple, Type, get_args
 
@@ -77,7 +79,7 @@ sql_to_py_types = { sql : py for (py, sql) in py_to_sqlite_types.items() }
 
 
 def sqlite_quote_entity(entity:str) -> str:
-  needs_quote = entity.upper() in sqlite_keyords or not entity.isalnum()
+  needs_quote = entity.upper() in sqlite_keyords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', entity)
   return f'"{entity}"' if needs_quote else entity
 
 
