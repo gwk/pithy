@@ -1,9 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from sqlite3 import Row
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Type, cast
 
+from ..ansi import RST_TXT, TXT_C, TXT_D, TXT_Y
 from ..json import render_json
 from .util import default_to_json, py_to_sqlite_types_tuple
 
@@ -18,6 +18,27 @@ class SqliteError(Exception):
     msg = cause.args[0]
     suffix = msg.removeprefix('UNIQUE constraint failed: ')
     return suffix if suffix != msg else None
+
+
+class Row(sqlite3.Row):
+  'A row of a query result. Subclasses sqlite3.Row to add property access.'
+
+  def __getattr__(self, key:str) -> Any:
+    try: return self[key]
+    except IndexError as e: raise AttributeError(key) from e
+
+  def items(self) -> Iterator[Tuple[str, Any]]:
+    'Return an iterator of (key, value) pairs.'
+    for key in self.keys():
+      yield key, self[key]
+
+  def qdi(self) -> str:
+    '"quick describe inline". Return a string describing the query result.'
+    parts = []
+    for key, val in self.items():
+      color = TXT_C if isinstance(val, int) else TXT_Y
+      parts.append(f'{TXT_D}{key}:{color}{val!r}{RST_TXT}')
+    return '  '.join(parts)
 
 
 class Cursor(sqlite3.Cursor):
