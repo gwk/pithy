@@ -52,5 +52,6 @@ class LocalHandler(HttpRequestHandler):
 
   prevent_client_caching = True
 
-  def get_content(self) -> HttpContent:
+  def process_request(self) -> HttpContent:
+    self.allow_methods('GET')
     return self.get_content_from_local_fs()

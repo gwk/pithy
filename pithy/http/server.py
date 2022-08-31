@@ -25,7 +25,7 @@ from socket import getfqdn as get_fully_qualified_domain_name, socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info
 from traceback import print_exception
-from typing import ByteString, Optional, Tuple, Type, Union, cast
+from typing import Any, ByteString, Optional, Tuple, Type, Union, cast
 from urllib.parse import (SplitResult as Url, quote as url_quote, unquote as url_unquote, urlsplit as url_split,
   urlunsplit as url_join, parse_qs)
 
@@ -69,16 +69,17 @@ class HttpContentError(Exception):
     self.headers = headers
     super().__init__(f'{status} - {reason}')
 
-  NOT_FOUND: 'HttpContentError'
 
 HttpContentNotFound = HttpContentError(HTTPStatus.NOT_FOUND)
 HttpContentNotImplemented = HttpContentError(HTTPStatus.NOT_IMPLEMENTED)
 
 
 ContentBody = Union[None,str,bytes,bytearray,BufferedReader,Mu]
+
 BinaryContentBody = Union[None,bytes,bytearray,BufferedReader]
 #^ Note: normally we would use the abstract BinaryIO type
 #  but mypy does not understand the difference between the unions when testing the runtime file type.
+# TODO: support iterable[bytes]?
 
 
 class HttpContent:
@@ -87,14 +88,17 @@ class HttpContent:
   '''
   def __init__(self, body:ContentBody, content_type:bytes=b'', last_modified:float=0.0) -> None:
     if isinstance(body, str):
-      bytes_body:BinaryContentBody = body.encode('utf-8', errors='replace')
+      binary_body:BinaryContentBody = body.encode('utf-8', errors='replace')
     elif isinstance(body, Mu):
-      bytes_body = bytes(body)
+      binary_body = bytes(body)
     else:
-      bytes_body = body
-    self.body = bytes_body
+      binary_body = body
+    self.body = binary_body
     self.content_type = content_type
     self.last_modified = last_modified
+
+
+http_status_response_strings = { s : f'{s.value} {s.phrase}'  for s in HTTPStatus }
 
 
 class HttpServer(ThreadingTCPServer):
@@ -221,6 +225,7 @@ class HttpRequestHandler(StreamRequestHandler):
     '''
     try:
       # Parse request.
+      # TODO: move this initial stuff into parse_request.
       self.request_line_bytes = self.rfile.readline(65537)
       if not self.request_line_bytes:
         return
@@ -236,14 +241,27 @@ class HttpRequestHandler(StreamRequestHandler):
       expect = self.headers.get('Expect', '').lower()
       if expect == '100-continue':
         if not self.handle_expect_100(): return
-      # Determine method and dispatch.
-      method_name = 'handle_http_' + self.method
-      method = getattr(self, method_name, None)
-      if not method:
-        self.send_error(HTTPStatus.NOT_IMPLEMENTED, headers={}, reason=f'Unsupported method: {self.method!r}')
+
+      try: response = self.process_request()
+      except HttpContentError as e:
+        headers = e.headers if e.headers is not None else {}
+        self.send_error(status=e.status, reason=e.reason, headers=headers)
         return
-      method()
+
+      try:
+        self.send_head(response)
+        body = response.body
+        if isinstance(body, BufferedReader):
+          try: copyfileobj(body, self.wfile)
+          finally: pass # No way to report the error at this point.
+        elif body:
+          self.wfile.write(body)
+      finally:
+        if isinstance(body, BufferedReader):
+          body.close()
+
       self.wfile.flush() # Send the response if not already done.
+
     except TimeoutError as e:
       # Either a read or a write timed out. Discard this connection.
       self.log_error(f'Request timed out: {e}')
@@ -315,7 +333,7 @@ class HttpRequestHandler(StreamRequestHandler):
 
   def send_error(self, status:HTTPStatus, *, reason:str='', headers:dict[bytes,ByteString]) -> None:
     '''
-    Send and log an error reply.
+    Send an error response and log a message.
 
     Arguments are:
     * status:  HTTPStatus.
@@ -387,31 +405,8 @@ class HttpRequestHandler(StreamRequestHandler):
       print()
 
 
-  def handle_http_GET(self) -> None:
-    '''Serve a GET request.'''
-    body:BinaryContentBody = self.send_head()
-    if isinstance(body, BufferedReader):
-      try: copyfileobj(body, self.wfile)
-      finally: body.close()
-    elif body:
-      self.wfile.write(body)
-
-
-  def handle_http_HEAD(self) -> None:
-    '''Serve a HEAD request.'''
-    body = self.send_head()
-    if isinstance(body, BufferedReader):
-      body.close()
-
-
-  def send_head(self) -> BinaryContentBody:
-    'Send the head of the response and return an optional body object.'
-    try: content = self.get_content()
-    except HttpContentError as e:
-      headers = e.headers if e.headers is not None else {}
-      self.send_error(status=e.status, reason=e.reason, headers=headers)
-      return None
-
+  def send_head(self, content:HttpContent) -> None:
+    'Send the head of the response.'
     if isinstance(content.body, BufferedReader):
       fd = content.body.fileno()
       stat = os_fstat(fd)
@@ -420,26 +415,20 @@ class HttpRequestHandler(StreamRequestHandler):
       content_length = len(content.body)
     else:
       content_length = 0
-    headers = {
+    headers:dict[bytes,ByteString] = {
       b'Content-Type' : content.content_type,
       b'Content-Length' : str(content_length).encode('latin1'),
     }
     self.send_response_and_headers(HTTPStatus.OK, headers=headers)
-    return content.body
 
 
-  def get_content(self) -> HttpContent:
-    '''Override point for subclasses to return HttpContent for GET and HEAD requests.'''
-    raise HttpContentError(status=HTTPStatus.NOT_FOUND)
-
-
-  def handle_http_POST(self) -> None:
-    '''Serve a POST request.'''
+  def parse_post(self) -> dict[str,Any]:
+    '''Parse a POST request.'''
     assert self.headers is not None
 
     try: content_length = int(self.headers.get('Content-Length', '0'))
-    except ValueError:
-      return self.send_error(HTTPStatus.BAD_REQUEST, reason='Invalid Content-Length header.', headers={})
+    except ValueError as exc:
+      raise HttpContentError(HTTPStatus.BAD_REQUEST, reason='Invalid Content-Length header.') from exc
 
     # TODO: before parsing anything, validate that we want to handle this request.
 
@@ -452,55 +441,42 @@ class HttpRequestHandler(StreamRequestHandler):
         text = body.decode()
         content = parse_qs(text)
       except Exception as exc:
-        return self.send_error(HTTPStatus.BAD_REQUEST, reason=f'Failed to read request body: {type(exc)}: {exc}', headers={})
+        raise HttpContentError(HTTPStatus.BAD_REQUEST, reason=f'Failed to read request body: {type(exc)}: {exc}') from exc
 
     elif content_type == 'multipart/form-data':
       try:
         body = self.rfile.read(content_length)
         content = parse_multipart(self.rfile, pdict=pdict) # type: ignore # TODO: fix or explain this type error.
       except Exception as exc:
-        return self.send_error(HTTPStatus.BAD_REQUEST, reason=f'Failed to read request body: {type(exc)}: {exc}', headers={})
+        raise HttpContentError(HTTPStatus.BAD_REQUEST, reason=f'Failed to read request body: {type(exc)}: {exc}') from exc
 
-    else:
-      return self.send_error(HTTPStatus.BAD_REQUEST, reason=f'Unsupported Content-Type: {content_type!r}', headers={})
+    else: raise HttpContentError(HTTPStatus.BAD_REQUEST, reason=f'Unsupported Content-Type: {content_type!r}')
 
-    try: response = self.post_content(content=content)
-    except HttpContentError as e:
-      headers = e.headers if e.headers is not None else {}
-      self.send_error(status=e.status, reason=e.reason, headers=headers)
-      return
-
-    if isinstance(response.body, BufferedReader):
-      fd = response.body.fileno()
-      stat = os_fstat(fd)
-      resp_content_length = stat[6]
-    elif response.body:
-      resp_content_length = len(response.body)
-    else:
-      resp_content_length = 0
-    resp_headers:dict[bytes,ByteString] = {
-      b'Content-Type' : response.content_type,
-      b'Content-Length' : str(resp_content_length).encode('latin1'),
-    }
-    self.send_response_and_headers(HTTPStatus.OK, headers=resp_headers)
-
-    if isinstance(response.body, BufferedReader):
-      try: copyfileobj(response.body, self.wfile)
-      finally: response.body.close()
-    elif response.body:
-      self.wfile.write(response.body)
+    return content
 
 
-  def post_content(self, content:dict[str,list[str]]) -> HttpContent:
-    '''Override point for subclasses to return HttpContent for a POST request.'''
-    errL('Unhandled POST request:', content)
-    raise HttpContentError(status=HTTPStatus.NOT_FOUND)
+  def process_request(self) -> HttpContent:
+    '''
+    Override point for subclasses to handle a request.
+    Should return HttpContent or else raise an HttpContentError.
+    '''
+    errL(f'Unhandled request: {self.url}')
+    raise HttpContentError(status=HTTPStatus.NOT_IMPLEMENTED)
+
+
+  def allow_methods(self, *methods:str) -> None:
+    '''
+    If the current request method is one of the specified methods, return. Otherwise respond with 405 Method Not Allowed.
+    This should be called by process_request to enforce the allowed methods.
+    '''
+    if self.method not in methods: raise HttpContentError(status=HTTPStatus.METHOD_NOT_ALLOWED)
 
 
   def get_content_from_local_fs(self, local_path:Optional[str]=None) -> HttpContent:
     '''
     Return the content of a local file or a directory listing.
     '''
+
     if local_path is None:
       local_path = self.compute_local_path()
 
