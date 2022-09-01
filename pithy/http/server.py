@@ -25,7 +25,7 @@ from socket import getfqdn as get_fully_qualified_domain_name, socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info
 from traceback import print_exception
-from typing import Any, ByteString, Optional, Tuple, Type, Union, cast
+from typing import Any, Optional, Tuple, Type, Union, cast
 from urllib.parse import (SplitResult as Url, quote as url_quote, unquote as url_unquote, urlsplit as url_split,
   urlunsplit as url_join, parse_qs)
 
@@ -33,72 +33,13 @@ from ..fs import is_dir, scan_dir, norm_path, path_exists
 from ..io import errL, errSL
 from ..path import path_ext, path_join
 from ..markup import Mu
-
+from . import default_error_content_type, default_error_html_format, html_content_type, HttpContent, HttpContentError
 
 __version__ = '0'
-
-_default_error_html_format = '''\
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Error: {code}</title>
-</head>
-<body>
-  <h1>Error: {code} - {reason}</h1>
-</body>
-</html>
-'''
-
-_default_error_content_type = html_content_type = b'text/html;charset=utf-8'
 
 
 class UnrecoverableServerError(Exception):
   'An error occurred for which the server cannot recover.'
-
-
-class HttpContentError(Exception):
-  '''
-  An error that causes the current request handler to return the specified HTTP status code.
-  Implementations of get_content can raise this as an alternative to returning a Content object.
-  '''
-
-  def __init__(self, status:HTTPStatus, reason:str='', headers:Optional[dict[bytes,ByteString]]=None):
-    self.status = status
-    self.reason = reason
-    self.headers = headers
-    super().__init__(f'{status} - {reason}')
-
-
-HttpContentNotFound = HttpContentError(HTTPStatus.NOT_FOUND)
-HttpContentNotImplemented = HttpContentError(HTTPStatus.NOT_IMPLEMENTED)
-
-
-ContentBody = Union[None,str,bytes,bytearray,BufferedReader,Mu]
-
-BinaryContentBody = Union[None,bytes,bytearray,BufferedReader]
-#^ Note: normally we would use the abstract BinaryIO type
-#  but mypy does not understand the difference between the unions when testing the runtime file type.
-# TODO: support iterable[bytes]?
-
-
-class HttpContent:
-  '''
-  Implementations of get_content return instances of this type for each request.
-  '''
-  def __init__(self, body:ContentBody, content_type:bytes=b'', last_modified:float=0.0) -> None:
-    if isinstance(body, str):
-      binary_body:BinaryContentBody = body.encode('utf-8', errors='replace')
-    elif isinstance(body, Mu):
-      binary_body = bytes(body)
-    else:
-      binary_body = body
-    self.body = binary_body
-    self.content_type = content_type
-    self.last_modified = last_modified
-
-
-http_status_response_strings = { s : f'{s.value} {s.phrase}'  for s in HTTPStatus }
 
 
 class HttpServer(ThreadingTCPServer):
@@ -161,25 +102,24 @@ class HttpRequestHandler(StreamRequestHandler):
 
   python_version = 'Python/{}.{}.{}'.format(*sys.version_info[:3])
 
-  server_version = f'pithy.http.server/{__version__} {python_version}'.encode('latin1')
+  server_version = f'pithy.http.server/{__version__} {python_version}'
   #^ The format is multiple whitespace-separated strings, where each string is of the form name[/version].
 
-  error_html_format = _default_error_html_format
-  error_content_type = _default_error_content_type
+  error_html_format = default_error_html_format
+  error_content_type = default_error_content_type
 
   protocol_version = 'HTTP/1.1'
 
   if not mimetypes.inited: mimetypes.init()
-  ext_mime_types = { ext : mime_type.encode('latin1') for (ext, mime_type) in mimetypes.types_map.items() }
+  ext_mime_types = { ext : mime_type for (ext, mime_type) in mimetypes.types_map.items() }
   ext_mime_types.update({
-    '': b'text/plain', # Default.
-    '.bz2': b'application/x-bzip2',
-    '.gz': b'application/gzip',
-    '.sh': b'text/plain', # Show source instead of prompting download.
-    '.xz': b'application/x-xz',
-    '.z': b'application/octet-stream',
+    '': 'text/plain', # Default.
+    '.bz2': 'application/x-bzip2',
+    '.gz': 'application/gzip',
+    '.sh': 'text/plain', # Show source instead of prompting download.
+    '.xz': 'application/x-xz',
+    '.z': 'application/octet-stream',
     })
-
 
   request_line_bytes: bytes
   request_line: str
@@ -189,6 +129,7 @@ class HttpRequestHandler(StreamRequestHandler):
   headers: Optional[HTTPMessage]
   close_connection: bool
   sent_response: bool
+
 
   def __init__(self, request:Union[socket, Tuple[bytes,socket]], client_address:tuple[str,int], server:HttpServer) -> None:
     self.reset()
@@ -331,7 +272,7 @@ class HttpRequestHandler(StreamRequestHandler):
     return True
 
 
-  def send_error(self, status:HTTPStatus, *, reason:str='', headers:dict[bytes,ByteString]) -> None:
+  def send_error(self, status:HTTPStatus, *, reason:str='', headers:dict[str,str]) -> None:
     '''
     Send an error response and log a message.
 
@@ -357,15 +298,15 @@ class HttpRequestHandler(StreamRequestHandler):
       content = self.error_html_format.format(code=code, reason=html_escape(reason or status.phrase, quote=False))
       #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       body = content.encode('UTF-8', 'replace')
-      headers[b'Content-Type'] = self.error_content_type
-      headers[b'Content-Length'] = str(len(body)).encode('latin1')
+      headers['Content-Type'] = self.error_content_type
+      headers['Content-Length'] = str(len(body))
 
     self.send_response_and_headers(status=status, reason=reason, headers=headers)
     if self.method != 'HEAD' and body:
       self.wfile.write(body)
 
 
-  def send_response_and_headers(self, status:HTTPStatus, headers:dict[bytes,ByteString], reason:str='') -> None:
+  def send_response_and_headers(self, status:HTTPStatus, headers:dict[str,str], reason:str='') -> None:
     '''
     Send the response line and headers to the client.
     Adds cache control headers if `server.prevent_client_caching` is set.
@@ -379,21 +320,21 @@ class HttpRequestHandler(StreamRequestHandler):
     self.sent_response = True
     if status != HTTPStatus.CONTINUE:
       # These standard headers are excluded from the 100-continue response because that appears to be the way the python stddlib server worked.
-      headers[b'Server'] = self.server_version
-      headers[b'Date'] = self.format_header_date()
+      headers['Server'] = self.server_version
+      headers['Date'] = self.format_header_date()
     if self.server.prevent_client_caching:
-      headers.setdefault(b'Cache-Control', b'no-cache, no-store, must-revalidate')
-      headers.setdefault(b'Pragma', b'no-cache')
-      headers.setdefault(b'Expires', b'0')
+      headers.setdefault('Cache-Control', 'no-cache, no-store, must-revalidate')
+      headers.setdefault('Pragma', 'no-cache')
+      headers.setdefault('Expires', '0')
     if self.close_connection:
-      headers[b'Connection'] = b'close'
+      headers['Connection'] = 'close'
 
     buffer = bytearray(f'{self.protocol_version} {status.value} {reason}\r\n'.encode('latin1'))
     for k, v in headers.items():
-      buffer.extend(k)
+      buffer.extend(k.encode('latin1'))
       buffer.extend(b': ')
-      assert isinstance(v, (bytes, bytearray, memoryview)), v
-      buffer.extend(v)
+      assert isinstance(v, str)
+      buffer.extend(v.encode('latin1'))
       buffer.extend(b'\r\n')
     buffer.extend(b'\r\n')
     self.wfile.write(buffer)
@@ -415,9 +356,9 @@ class HttpRequestHandler(StreamRequestHandler):
       content_length = len(content.body)
     else:
       content_length = 0
-    headers:dict[bytes,ByteString] = {
-      b'Content-Type' : content.content_type,
-      b'Content-Length' : str(content_length).encode('latin1'),
+    headers = {
+      'Content-Type' : content.content_type,
+      'Content-Length' : str(content_length),
     }
     self.send_response_and_headers(HTTPStatus.OK, headers=headers)
 
@@ -429,8 +370,6 @@ class HttpRequestHandler(StreamRequestHandler):
     try: content_length = int(self.headers.get('Content-Length', '0'))
     except ValueError as exc:
       raise HttpContentError(HTTPStatus.BAD_REQUEST, reason='Invalid Content-Length header.') from exc
-
-    # TODO: before parsing anything, validate that we want to handle this request.
 
     content_type_val = self.headers.get('Content-Type', '')
     content_type, pdict = cgi_parse_header(content_type_val)
@@ -487,7 +426,7 @@ class HttpRequestHandler(StreamRequestHandler):
         url = self.url
         if url is None: raise HttpContentError(status=HTTPStatus.NOT_FOUND)
         new_url = url_join(url._replace(path=url.path+'/'))
-        raise HttpContentError(status=HTTPStatus.MOVED_PERMANENTLY, headers={b'Location':new_url.encode('latin1')})
+        raise HttpContentError(status=HTTPStatus.MOVED_PERMANENTLY, headers={'Location':new_url})
       index_path = path_join(local_path, 'index.html')
       if path_exists(index_path, follow=False):
         local_path = index_path
@@ -588,15 +527,15 @@ class HttpRequestHandler(StreamRequestHandler):
     'This was a hack to prevent favicon request errors from showing up in the logs.'
     if self.target == '/favicon.ico': # TODO: send actual favicon if it exists.
       self.response_status = HTTPStatus.OK
-      headers:dict[bytes,ByteString] = {
-        b'Content-type': b'image/x-icon',
-        b'Content-Length': b'0'
+      headers = {
+        'Content-type': 'image/x-icon',
+        'Content-Length': '0'
       }
       self.send_response_and_headers(HTTPStatus.OK, headers=headers)
       return None
 
 
-  def guess_mime_type(self, path:str) -> bytes:
+  def guess_mime_type(self, path:str) -> str:
     'Guess the mime type for a file path.'
     ext = path_ext(path).lower()
     try: return self.ext_mime_types[ext]
@@ -621,9 +560,9 @@ class HttpRequestHandler(StreamRequestHandler):
     return f'{y:04}-{m:02}-{d:02} {hh:02}:{mm:02}:{ss:02}.{timestamp:.03f}'
 
 
-  def format_header_date(self, timestamp:float=None) -> bytes:
+  def format_header_date(self, timestamp:float=None) -> str:
     'Format `timestamp` or now for an HTTP header value.'
-    return format_email_date(time.time() if timestamp is None else timestamp, usegmt=True).encode('latin1')
+    return format_email_date(time.time() if timestamp is None else timestamp, usegmt=True)
 
 
   def client_address_string(self) -> str:
