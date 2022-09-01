@@ -17,7 +17,7 @@ PrefigureFn = Callable[[type,Any],Any]
 
 class TranstructorError(Exception):
 
-  def __init__(self, error:Exception, class_:type, args:Any) -> None:
+  def __init__(self, error:Exception|str, class_:type, args:Any) -> None:
     super().__init__(f'{error};\n  class: {class_};\n  args: {args!r}')
 
 
