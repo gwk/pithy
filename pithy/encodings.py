@@ -24,7 +24,6 @@ assert len(base58_alphabet) == 58
 # but in macOS applications only the ten ASCII digits are double-clickable.
 base128_alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzªµºÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'.encode('latin1')
 base128_alphabet_inverse = bytes(_byte_index(base128_alphabet, c) for c in range(0x100))
-
 assert len(base128_alphabet) == 128
 
 
