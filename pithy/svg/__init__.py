@@ -50,7 +50,7 @@ class SvgNode(Mu):
       elif not isinstance(ch, list):
           ch = list(ch)
       ch.append(Title(ch=title))
-    super().__init__(tag=tag, attrs=attrs, ch=ch, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)
+    super().__init__(tag=tag, attrs=attrs, ch=ch, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs) # type: ignore
 
 
   @property
@@ -312,7 +312,7 @@ class SvgBranch(SvgNode):
     return self.append(Style(ch=text, **kwargs))
 
 
-  def symbol(self, id:str, ch=(), vx:Num=None, vy:Num=None, vw:Num=None, vh:Num=None, **kwargs:Any) -> 'Symbol':
+  def symbol(self, id:str, ch=(), vx:Num=None, vy:Num=None, vw:Num=-1, vh:Num=-1, **kwargs:Any) -> 'Symbol':
     'Create a child `symbol` element.'
     return self.append(Symbol(ch=ch, id=id, vx=vx, vy=vy, vw=vw, vh=vh, **kwargs))
 
