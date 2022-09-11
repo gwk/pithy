@@ -1,14 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os as _os
-from os import R_OK, X_OK, access as _access, getpid as _getpid, supports_effective_ids as _supports_effective_ids
+from os import R_OK, X_OK, access as _access, getpid as _getpid, supports_effective_ids as _supports_effective_ids, execvp
 from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file, join as _path_join
 from selectors import EVENT_READ, EVENT_WRITE, PollSelector as _PollSelector
 from shlex import quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from time import time as _now
-from typing import IO, AnyStr, BinaryIO, Dict, Iterator, List, Optional, Sequence, Tuple, Union, cast
+from typing import IO, AnyStr, BinaryIO, Dict, Iterator, List, NoReturn, Optional, Sequence, Tuple, Union, cast
 
 from .alarm import Alarm, Timeout
 
@@ -28,6 +28,11 @@ NONZERO = NonzeroCodeExpectation()
 
 
 TaskCodeExpectation = Union[None, int, NonzeroCodeExpectation]
+
+
+def exec(cmd:Cmd) -> NoReturn:
+  cmd = tuple(sh_split(cmd) if isinstance(cmd, str) else cmd)
+  execvp(cmd[0], cmd)
 
 
 def launch(cmd: Cmd, cwd: str=None, env: Env=None, stdin: Input=None, out: File=None, err: File=None, files: Sequence[File]=(),
