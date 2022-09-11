@@ -27,8 +27,8 @@ _BadRepr = (_Printer, _Quitter)
 
 def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:
   'Write a description to a file.'
-  obj = labels_and_obj[-1]
   labels = labels_and_obj[:-1]
+  obj = labels_and_obj[-1]
   if labels: print(*labels, end=': ', file=file)
   for part in gen_desc(obj, indent=indent, exact=exact):
     print(part, end='', file=file)

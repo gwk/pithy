@@ -81,7 +81,7 @@ def build(args:Namespace, conf:CraftConfig) -> None:
   #img_deps = open(img_deps_path).read()
   img_info:Dict[str,Any] = plistlib.load(open(img_info_path, 'rb'))
   #errL('img_deps:\n', img_deps, '\n')
-  #errP(img_info, label='img_info')
+  #errP('img_info', img_info)
 
   # Generate Info.plist.
   plist_path = f'{contents_path}/Info.plist'

@@ -78,13 +78,12 @@ def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_ite
   print(fmt.format(*items, **keyed_items, file=file, flush=flush))
 
 
-def writeP(file: TextIO, *items: Any, label=None, indent=2, **opts: Any) -> None:
-  'Pretty print to file.'
-  if label is not None:
-    file.write(label)
-    file.write (': ')
-  for item in items:
-    pprint(item, stream=file, indent=indent, **opts)
+def writeP(file: TextIO, *labels_and_obj: Any, indent=2, **opts: Any) -> None:
+  'Pretty labels and object to file.'
+  labels = labels_and_obj[:-1]
+  obj = labels_and_obj[-1]
+  if labels: print(*labels, end=': ', file=file)
+  pprint(obj, stream=file, indent=indent, **opts)
 
 
 # std out.
@@ -139,9 +138,9 @@ def outSR(*items: Any, sep=' ', flush=False) -> None:
   '''Write `items` to std out; sep=' ', end=ERASE_LINE_F+'\\r'.'''
   print(*items, sep=sep, end='\x1b[0K\r', flush=flush)
 
-def outP(*items: Any, label=None, flush=False, **opts: Any) -> None:
+def outP(*labels_and_obj:Any, flush=False, **opts: Any) -> None:
   'Pretty print to std out.'
-  writeP(stdout, *items, label=label, **opts)
+  writeP(stdout, *labels_and_obj, **opts)
 
 
 # std err.
@@ -188,9 +187,9 @@ def errLSSL(*items: Any, flush=False) -> None:
   "Write items to std err; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=stderr, flush=flush)
 
-def errP(*items: Any, label=None, **opts) -> None:
+def errP(*labels_and_obj:Any, **opts) -> None:
   'Pretty print to std err.'
-  writeP(stderr, *items, label=label, **opts)
+  writeP(stderr, *labels_and_obj, **opts)
 
 
 def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suffix='', frequency:Union[float,int]=0.1, limit=0) -> Iterator[_T]:
