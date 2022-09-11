@@ -3,7 +3,8 @@
 from argparse import ArgumentParser
 from os import chdir
 
-from pithy.http.server import HttpContent, HttpRequestHandler, HttpServer
+from pithy.http.server import Response, HttpRequestHandler, HttpServer
+from pithy.web.app import WebApp, Request
 from pithy.task import run
 
 
@@ -30,7 +31,8 @@ def main() -> None:
     'apple-touch-icon-precomposed.png',
   }
 
-  server = HttpServer(address, LocalHandler, local_dir=root)
+  app = LocalFileApp(local_dir=root, prevent_client_caching=True, map_bare_names_to_html=False)
+  server = HttpServer(host=host, port=port, app=app)
 
   # note: the way we tell the OS to open the URL in the browser is a rather suspicious hack:
   # the `open` command returns and then we launch the web server,
@@ -48,10 +50,8 @@ def main() -> None:
     exit()
 
 
-class LocalHandler(HttpRequestHandler):
+class LocalFileApp(WebApp):
 
-  prevent_client_caching = True
-
-  def process_request(self) -> HttpContent:
-    self.allow_methods('GET')
-    return self.get_content_from_local_fs()
+  def handle_request(self, request:Request) -> Response:
+    request.allow_methods('GET')
+    return self.serve_content_from_local_fs(request)

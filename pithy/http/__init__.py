@@ -1,68 +1,41 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import time
+from email.utils import formatdate as format_email_date
 from http import HTTPStatus
-from io import BufferedReader
-from typing import ByteString, Optional, Union
 
-from pithy.markup import Mu
-
-
-default_error_html_format = '''\
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Error: {code}</title>
-</head>
-<body>
-  <h1>Error: {code} - {reason}</h1>
-</body>
-</html>
-'''
-
-default_error_content_type = html_content_type = 'text/html;charset=utf-8'
 
 http_status_response_strings = { s : f'{s.value} {s.phrase}'  for s in HTTPStatus }
 
+http_methods = frozenset({
+  'CONNECT',
+  'DELETE',
+  'GET',
+  'HEAD',
+  'OPTIONS',
+  'PATCH',
+  'POST',
+  'PUT',
+  'TRACE',
+})
 
-class HttpContentError(Exception):
+
+def may_send_body(method:str, status:HTTPStatus) -> bool:
   '''
-  An error that causes the current request handler to return the specified HTTP status code.
-  Implementations of get_content can raise this as an alternative to returning a Content object.
+  Return True if the body of the response should be sent.
+  See:
+  * https://www.rfc-editor.org/rfc/rfc7230#section-3.3
+  * https://www.rfc-editor.org/rfc/rfc7231#section-6.3.6
   '''
-
-  def __init__(self, status:HTTPStatus, reason:str='', headers:Optional[dict[str,str]]=None) -> None:
-    self.status = status
-    self.reason = reason
-    self.headers = headers
-    desc = http_status_response_strings[status]
-    if reason: desc = f'{desc}: {reason}'
-    super().__init__(desc)
+  if method == 'HEAD': return False
+  if method == 'CONNECT' and 200 <= status < 300: return False # Successful connect responses.
+  if 100 <= status < 200: return False # Informational responses.
+  if status in (HTTPStatus.NO_CONTENT, HTTPStatus.RESET_CONTENT, HTTPStatus.NOT_MODIFIED): return False
+  #^ Note: RFC 7230 3.3 does not mention 205 RESET CONTENT but RFC 7231 6.3.6 does.
+  return True
 
 
-HttpContentNotFound = HttpContentError(HTTPStatus.NOT_FOUND)
-HttpContentNotImplemented = HttpContentError(HTTPStatus.NOT_IMPLEMENTED)
-
-
-ContentBody = Union[None,str,bytes,bytearray,BufferedReader,Mu]
-
-BinaryContentBody = Union[None,bytes,bytearray,BufferedReader]
-#^ Note: normally we would use the abstract BinaryIO type
-#  but mypy does not understand the difference between the unions when testing the runtime file type.
-# TODO: support iterable[bytes]?
-
-
-class HttpContent:
-  '''
-  Implementations of get_content return instances of this type for each request.
-  '''
-  def __init__(self, body:ContentBody, content_type:str='', last_modified:float=0.0) -> None:
-    if isinstance(body, str):
-      binary_body:BinaryContentBody = body.encode('utf-8', errors='replace')
-    elif isinstance(body, Mu):
-      binary_body = bytes(body)
-    else:
-      binary_body = body
-    self.body = binary_body
-    self.content_type = content_type
-    self.last_modified = last_modified
+def format_header_date(timestamp:float=None) -> str:
+  'Format `timestamp` or now for an HTTP header value.'
+  if timestamp is None: timestamp = time.time()
+  return format_email_date(timestamp, usegmt=True)
