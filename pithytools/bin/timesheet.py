@@ -17,32 +17,27 @@ from argparse import ArgumentParser
 from dataclasses import dataclass
 from typing import List, Match, Optional
 
+from pithy.iterable import fan_by_key_fn
 from pithy.io import outL, outZ
-
-
-@dataclass
-class Day:
-  day: str
-  minutes: int = 0
-
-  def __str__(self) -> str:
-    return '{}: {:>2}:{:02}'.format(self.day, *divmod(self.minutes, 60))
 
 
 def main() -> None:
   parser = ArgumentParser(description='Validate timesheets.')
   parser.add_argument('timesheet', nargs='?', default='timesheet.txt')
-  parser.add_argument('-rate', type=int, default=0)
+  parser.add_argument('-rates', nargs='+', default=[0])
   args = parser.parse_args()
 
   path = args.timesheet
-  hourly_rate = args.rate
+  hourly_rates = [int(r) for r in args.rates]
 
   days:List[Day] = []
+  all_blocks:List[TimeBlock] = []
+
+  curr_blocks:List[TimeBlock] = []
   start_minutes:Optional[int] = None
   prev_minutes:Optional[int] = None
-  end_minutes:Optional[int]   = None
-  total_minutes = 0
+  end_minutes:Optional[int] = None
+  prev_rate:Optional[int] = None
   total_payment = 0.0
   total_expense = 0.0
 
@@ -55,53 +50,67 @@ def main() -> None:
     l = line.rstrip('\n')
     outZ(f'{l:48}')
 
+    # Match a date line, e.g. '2020-01-01' or '01-01'.
     day_match = day_re.match(line)
     if day_match:
       outL('.')
       if start_minutes is not None or end_minutes is not None:
         exit(f'timesheet error: previous day is missing end time.')
-      days.append(Day(day_match[0]))
+      curr_blocks = []
+      days.append(Day(day=day_match[0], blocks=curr_blocks))
       continue
 
-    time_match = time_re.match(line)
-    if time_match:
+    # Match a time line, e.g. '12:00: some note.'.
+    if time_match := time_re.match(line):
+
+      # Parse the optional rate.
+      if rate_match := rate_idx_re.search(line):
+        rate_idx = int(rate_match.group(1))
+        if rate_idx >= len(hourly_rates):
+          exit(f'timesheet error: rate index {rate_idx} is out of range.')
+        rate = hourly_rates[rate_idx]
+      else:
+        rate = hourly_rates[0]
+
       m = minutes_for(time_match)
       if start_minutes is None:
         start_minutes = m
+        block_str = ''
       else:
         end_minutes = m # Cumulative from last start.
-      if prev_minutes is None:
-        split_time = ''
-      else:
-        split_time = f' [{m - prev_minutes:>3}]'
+        assert prev_minutes is not None
+        assert prev_rate is not None
+        block = TimeBlock(start=prev_minutes, end=end_minutes, rate=prev_rate)
+        all_blocks.append(block)
+        curr_blocks.append(block)
+        block_str = f' {block}'
       prev_minutes = m
-      outZ(f'|{m:4}{split_time} ')
+      prev_rate = rate
+      outZ(f'|{m:4}{block_str}')
 
-    subtotal_match = subtotal_re.search(line)
-    if subtotal_match:
-      if not time_match:
-        outL()
-        exit(f'timesheet error: subtotal line does not specify a time.')
-      if start_minutes is None or end_minutes is None:
-        outL()
-        exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
-      sub_minutes = end_minutes - start_minutes
-      m = minutes_for(subtotal_match)
-      outZ(f'= {sub_minutes:4}m')
-      if m != sub_minutes:
-        outZ(f' *** found: {m}; calculated: {sub_minutes}')
-        valid = False
-      if sub_minutes <= 0:
-        outL()
-        exit(f'timesheet error: subtototal is negative')
-      days[-1].minutes += sub_minutes
-      total_minutes += sub_minutes
-      start_minutes = None
-      prev_minutes = None
-      end_minutes = None
+      # Match an inline subtotal, e.g. '12:00 finished = 1:00'.
+      if subtotal_match := subtotal_re.search(line):
+        if not time_match:
+          outL()
+          exit(f'timesheet error: subtotal line does not specify a time.')
+        if start_minutes is None or end_minutes is None:
+          outL()
+          exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
+        sub_minutes = end_minutes - start_minutes
+        m = minutes_for(subtotal_match)
+        outZ(f' = {sub_minutes:4}m')
+        if m != sub_minutes:
+          outZ(f' *** found: {m}; calculated: {sub_minutes}')
+          valid = False
+        if sub_minutes <= 0:
+          outL()
+          exit(f'timesheet error: subtototal is negative')
 
-    money_match = money_re.match(line)
-    if money_match:
+        start_minutes = None
+        prev_minutes = None
+        end_minutes = None
+
+    if money_match := money_re.match(line):
       s = ''.join(money_match.groups())
       i = float(s)
       if (i < 0):
@@ -112,23 +121,23 @@ def main() -> None:
 
     outL()
 
-
-  hours, minutes = divmod(int(total_minutes), 60)
-  time_expense = hourly_rate * total_minutes / 60
-  total = time_expense + total_payment + total_expense
-  if hourly_rate:
-    hourly_string = ' @ {:0.2f}/hr = ${:,.2f}'.format(hourly_rate, time_expense)
-  else:
-    hourly_string = ''
-
   outL()
   outL(f'DAYS:')
-  for day in days: outL(day)
+  for day in days: outL(day.desc_with_rates(hourly_rates))
+
+  rate_blocks = fan_by_key_fn(all_blocks, lambda b: b.rate)
+  total_hours = { r : sum(b.hours for b in blocks) for r, blocks in rate_blocks.items() }
 
   outL()
-  outL(f'TOTAL HOURS:   {hours:2}:{minutes:02}{hourly_string}')
-  outL(f'TOTAL EXPENSE: ${total_expense:,.2f}')
-  outL(f'TOTAL PAYMENT: ${total_payment:,.2f}')
+  outL(f'Total hours:')
+  for r, h in sorted(total_hours.items()):
+    outL(f'  {h:.02f} @ ${r}/hr = ${h * r:,.02f}')
+
+  time_expense = sum(day.price for day in days)
+  total = time_expense + total_payment + total_expense
+
+  outL(f'Total expenses: ${total_expense:,.2f}')
+  outL(f'Total payments: ${total_payment:,.2f}')
   outL(f'TOTAL:         ${total:,.2f}')
 
   if not valid:
@@ -141,7 +150,58 @@ def minutes_for(match:Match) -> int:
 day_re      = re.compile(r'(?:(\d\d\d\d)-)?(\d\d)-(\d\d)')
 time_re     = re.compile(r'(\d\d):(\d\d) ')
 subtotal_re = re.compile(r'= (\d{1,2}):(\d\d)')
-money_re    = re.compile(r'([+-])\s*\$(\d+)(\.?\d*)')
+money_re    = re.compile(r'([+-]?)\s*\$(\d+)(\.?\d*)')
+rate_idx_re = re.compile(r'\bR(\d+)\b')
+
+
+@dataclass
+class TimeBlock:
+  start: int # In minutes from midnight.
+  end: int # In minutes from midnight.
+  minutes: int # In minutes.
+  rate: int
+
+  def __init__(self, start:int, end:int, rate:int) -> None:
+    assert start < end
+    self.start = start
+    self.end = end
+    self.minutes = end - start
+    assert self.minutes > 0
+    self.rate = rate
+
+  @property
+  def hours(self) -> float:
+    return self.minutes / 60
+
+  @property
+  def price(self) -> float:
+    return self.hours * self.rate
+
+
+@dataclass
+class Day:
+  day:str
+  blocks:list[TimeBlock]
+
+  def __init__(self, day:str, blocks:list[TimeBlock]) -> None:
+    self.day = day
+    self.blocks = blocks
+
+  @property
+  def price(self) -> float:
+    return sum(block.price for block in self.blocks)
+
+  def rate_minutes(self, rates_count:int) -> list[int]:
+    rate_blocks = fan_by_key_fn(self.blocks, lambda b: b.rate)
+    return [sum(b.minutes for b in blocks) for r, blocks in sorted(rate_blocks.items())]
+
+  def desc_with_rates(self, rates:list[int]) -> str:
+    parts = []
+    for rate, minutes in zip(rates, self.rate_minutes(len(rates))):
+      h, m = divmod(minutes, 60)
+      parts.append(f'{h:}:{m:02} @ {rate}/hr')
+    return f'{self.day}:  ' + ', '.join(parts)
+
 
 
 if __name__ == '__main__': main()
