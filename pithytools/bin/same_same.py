@@ -76,7 +76,7 @@ def main() -> None:
 
   dbg = (env_mode > 1)
   if dbg:
-    print("SAMESAME: DEBUG")
+    errL("SAMESAME: DEBUG")
 
   # Break input into groups of lines starting with 'diff' lines.
   # Note that the first segment might begin with any kind of line.
@@ -86,8 +86,8 @@ def main() -> None:
   def flush_buffer() -> None:
     nonlocal buffer
     if buffer:
-      if dbg: print(f'SAMESAME: FLUSH')
-      handle_file_lines(buffer, interactive=args.interactive)
+      if dbg: errL(f'SAMESAME: FLUSH')
+      handle_file_lines(buffer, interactive=args.interactive, dbg=dbg)
       buffer.clear()
 
   try:
@@ -98,7 +98,7 @@ def main() -> None:
       kind = match.lastgroup
       assert kind is not None, match
       if dbg:
-        print(f'{kind}: {raw_text!r}')
+        errL(f'{kind}: {raw_text!r}')
       if kind in pass_kinds:
         flush_buffer()
         print(raw_text)
@@ -112,7 +112,7 @@ def main() -> None:
     flush_buffer()
 
 
-def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
+def handle_file_lines(lines:List[DiffLine], interactive:bool, dbg:bool) -> None:
   first = lines[0]
   kind = first.kind
 
@@ -181,6 +181,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
       if n > 0:
         assert n > new_num
         new_num = n
+      line.set_text(key='loc')
     elif kind == 'diff': # Not the best way to parse paths, because paths with spaces are ambiguous.
       paths = clip_reset(match['diff_paths']).split(' ') # Split into words, then guess at old and new split as best we can.
       i = len(paths) // 2 # Assume that both sides have the same number of spaces between them.
@@ -253,10 +254,13 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool) -> None:
         m = C_ADD_MOVED if line.new_num in new_moved_nums else ''
         print(m, text, C_END, sep='')
       elif kind == 'loc':
-        new_num = match['new_num']
-        snippet = clip_reset(match['parent_snippet'])
-        s = ' ' + C_SNIPPET if snippet else ''
-        print(C_LOC, new_path, ':', new_num, ':', s, snippet, C_END, sep='')
+        if interactive:
+          print(text)
+        else:
+          new_num = match['new_num']
+          snippet = clip_reset(match['parent_snippet'])
+          s = ' ' + C_SNIPPET if snippet else ''
+          print(C_LOC, new_path, ':', new_num, ':', s, snippet, C_END, sep='')
       elif kind == 'diff':
         msg = new_path if (old_path == new_path) else '{} -> {}'.format(old_path, new_path)
         print(C_FILE, msg, ':', C_END, sep='')
