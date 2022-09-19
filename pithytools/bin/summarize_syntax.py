@@ -23,7 +23,7 @@ def main() -> None:
     elif path.endswith('.plist'):
       syntax = plistlib.load(open(path, 'rb'))
     elif path.endswith('.yaml'):
-      syntax = yaml.load(open(path))
+      syntax = yaml.safe_load(open(path))
     else: exit("unsupported extension")
     syntaxes.append(syntax)
 
