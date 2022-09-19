@@ -35,7 +35,7 @@ class Histogram(Mapping[Num,int]):
     items = ', '.join(f'{k!r}:{v!r}' for k, v in sorted(self.items()))
     return f'{self.__class__.__name__}({{{items}}}, bin_width={self.bin_width!r})'
 
-  def update(self, iterable_or_mapping:Union[Iterable[Num],Mapping[Num,int]]) -> None: # type: ignore
+  def update(self, iterable_or_mapping:Union[Iterable[Num],Mapping[Num,int]]) -> None:
     if isinstance(iterable_or_mapping, Mapping):
       for x, count in iterable_or_mapping.items():
         self.increment(x, count)

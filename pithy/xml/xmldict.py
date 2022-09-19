@@ -94,7 +94,7 @@ class XmlDictParser:
       else:
         raise OmitNode()
     res:XmlDict = {'': tag}
-    res.update(sorted(el.items())) # type: ignore
+    res.update(sorted(el.items()))
     children:list[dict[str,Any]] = []
     if text := el.text:
       if text := self.text_preprocess(text):
@@ -117,7 +117,7 @@ class XmlDictParser:
       else:
         raise OmitNode()
     res:XmlInterleavedDict = {'': tag}
-    res.update(sorted(el.items())) # type: ignore
+    res.update(sorted(el.items()))
     children:list[XmlDictChild] = []
     if text := el.text:
       if text := self.text_preprocess(text):

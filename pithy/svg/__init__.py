@@ -438,8 +438,8 @@ class Symbol(SvgBranch):
     if vx is None: vx = 0
     if vy is None: vy = 0
     # TODO: figure out if no viewBox is legal and at all useful.
-    assert vw >= 0 # type: ignore
-    assert vh >= 0 # type: ignore
+    assert vw >= 0
+    assert vh >= 0
     add_opt_attrs(kwargs, id=id, viewBox=f'{prefer_int(vx)} {prefer_int(vy)} {prefer_int(vw)} {prefer_int(vh)}')
     super().__init__(ch=ch, attrs=attrs, **kwargs)
 
