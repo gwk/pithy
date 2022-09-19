@@ -105,10 +105,11 @@ class Lexer:
         raise Lexer.DefinitionError(f'{n!r} pattern name collides with the invalid token name')
       if not isinstance(v, str): # TODO: also support bytes.
         raise Lexer.DefinitionError(f'{n!r} pattern value must be a string; found {v!r}')
-      pattern = f'{flags_pattern}(?P<{n}>{v})'
-      try: r = re.compile(pattern) # compile each expression by itself to improve error clarity.
+      pattern = f'(?P<{n}>{v})'
+      flagged_pattern = flags_pattern + pattern
+      try: r = re.compile(flagged_pattern) # Compile each expression by itself to improve error clarity.
       except Exception as e:
-        lines = [f'{n!r} pattern is invalid: {pattern}']
+        lines = [f'{n!r} pattern is invalid: {flagged_pattern}']
         if flags: lines.append(f'global flags: {flags!r}')
         if is_extended and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comments break lexer')
         msg = '\n  note: '.join(lines)
@@ -145,8 +146,12 @@ class Lexer:
           kind_set.update(matching)
       self.modes[mode.name] = mode
       mode.kind_set = frozenset(kind_set)
-      choice_sep = '\n| ' if 'x' in flags else '|'
-      mode.regex = re.compile(choice_sep.join(pattern for name, pattern in self.patterns.items() if name in kind_set))
+      choice_sep = '\n| ' if is_extended else '|'
+
+      pattern = flags_pattern + choice_sep.join(pat for name, pat in self.patterns.items() if name in kind_set)
+      try: mode.regex = re.compile(pattern)
+      except re.error as e:
+        raise Lexer.DefinitionError(f'mode {mode.name!r} assembled pattern is invalid: {pattern}') from e
       #^ note: iterate over self.patterns.items (not pattern_names) because the dict preserves the original pattern order.
 
     kinds = list(self.patterns)
