@@ -1,1 +1,1 @@
-iotest error: test-meta/1/broken: malformed .iot file: 'test-meta/1/broken.iot'
+iotest error: test-meta/1/broken: malformed .iot file: 'test-meta/1/broken.iot', line 1.

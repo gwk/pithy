@@ -253,8 +253,8 @@ def add_iot_configs(configs: Dict, path: str) -> None:
   try: val = literal_eval(text)
   except (SyntaxError, ValueError) as e:
     s = str(e)
-    if s.startswith('malformed node or string'): # omit the repr garbage containing object address.
-      msg = f'malformed .iot file: {path!r}'
+    if m := re.match(r'malformed node or string on line (\d+):', s): # omit the repr garbage containing object address.
+      msg = f'malformed .iot file: {path!r}, line {m.group(1)}.'
     else:
       msg = f'malformed .iot file: {path!r}\n  exception: {s}'
     exit(f'iotest error: {stem}: {msg}')
@@ -466,7 +466,7 @@ def check_file_exp(ctx:Ctx, case:Case, exp:FileExpectation) -> bool:
   if ctx.dbg: errL(f'check_file_exp: {exp}')
   path = rel_path(path_join(case.test_dir, exp.path))
   # TODO: support binary files by getting read mode from test case.
-  # Expected read mode could alse be indicated by using a bytes value for the expectation.
+  # Expected read mode could also be indicated by using a bytes value for the expectation.
   try:
     with open(path, errors='replace') as f:
       act_val = f.read()
