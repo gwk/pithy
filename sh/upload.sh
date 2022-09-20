@@ -4,6 +4,8 @@ set -e
 
 function fail { echo "error: $@" 1>&2; exit 1; }
 
+[[ -n "$1" ]] || fail "usage: $0 [package]"
+
 
 if [[ "$1" == "-live" ]]; then
   echo "Upload to LIVE..."
