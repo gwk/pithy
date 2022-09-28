@@ -58,11 +58,11 @@ gen-vscode-legs: vscode/legs/syntaxes/legs.json
 help: # Summarize the targets of this makefile.
 	@GREP_COLOR="1;32" egrep --color=always '^[a-zA-Z][^ :]+:' makefile | sort
 
+install:
+	sh/install.sh $(packages)
+
 lint:
 	pyflakes $(packages)
-
-pip-uninstall:
-	pip3 uninstall --yes $(packages)
 
 sort-imports:
 	isort $(packages)
@@ -82,6 +82,9 @@ test-diff-data:
 
 typecheck: gen
 	craft-py-check $(packages)
+
+uninstall:
+	pip3 uninstall --yes $(packages)
 
 vscode-links:
 	ln -fs $$PWD/vscode/* ~/.vscode/extensions
