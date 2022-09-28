@@ -57,7 +57,7 @@ _Args = Tuple[type, ...]
 def _is_a_Tuple(v:Any, args:_Args) -> bool:
   if not isinstance(v, tuple): return False
   if len(args) == 2 and args[1] is Ellipsis:
-    E = args[0]
+    E = args[0] # type: ignore
     return all(is_a(el, E) for el in v)
   else:
     return len(v) == len(args) and all(is_a(el, E) for (el, E) in zip(v, args))
