@@ -88,11 +88,15 @@ def rename(obj:_A, name:str=None, module:str=None) -> _A:
   return obj
 
 
-def get_caller_module_name(steps=1) -> Optional[str]:
-  'Get the module name of the caller name, `steps` number of frames from the immediate caller (defaults to 1).'
+def caller_module_name(steps:int) -> Optional[str]:
+  '''
+  Get the module name of the caller name, `steps` number of frames from the immediate caller.
+  steps=0 is useful when called from the module scope.
+  steps=1 is useful when called from a function that wants to know the name of the caller's module.
+  '''
   f = inspect.currentframe() # This frame.
   if f is None: return None
-  f = f.f_back # Immediate caller's frame; caller already knows this.
+  f = f.f_back # Immediate caller's frame.
   if f is None: return None
   for i in range(steps):
     f = f.f_back
@@ -100,6 +104,23 @@ def get_caller_module_name(steps=1) -> Optional[str]:
   spec = f.f_globals['__spec__']
   if spec: return cast(str, spec.name)
   else: return cast(str, f.f_globals['__name__'])
+
+
+def caller_pkg_path(steps:int) -> str:
+  '''
+  Returns the path of the package containing the caller, `steps` number of frames from the immediate caller.
+  steps=0 is useful when called from the module scope.
+  steps=1 is useful when called from a function that wants to know the path of the caller's package.
+  '''
+  f = inspect.currentframe() # This frame.
+  if f is None: raise ValueError('no current frame')
+  f = f.f_back # Immediate caller's frame; caller already knows this.
+  if f is None: raise ValueError('no caller frame')
+  for i in range(steps):
+    f = f.f_back
+    if f is None: raise ValueError(f'no caller frame (step {i+1})')
+  spec = f.f_globals['__spec__']
+  return cast(str, spec.submodule_search_locations[0])
 
 
 def main_file_path() -> str:

@@ -32,7 +32,7 @@ from .buffer import Buffer
 from .graph import visit_nodes
 from .io import tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
-from .meta import get_caller_module_name
+from .meta import caller_module_name
 from .string import indent_lines, iter_str, pluralize
 from .untyped import Immutable
 
@@ -694,7 +694,7 @@ class Parser:
     self.rules = rules
     self.literals = frozenset(iter_str(literals))
     self.drop = frozenset(iter_str(drop))
-    self.module_name = get_caller_module_name()
+    self.module_name = caller_module_name(1)
     self._struct_types:Dict[str,Type] = {}
 
     for name, rule in rules.items():
