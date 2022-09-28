@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Type, cast
+from typing import Any, Dict, Iterable, Iterator, Optional, Sequence, Tuple, cast
 
 from ..ansi import RST_TXT, TXT_C, TXT_D, TXT_Y
 from ..json import render_json
