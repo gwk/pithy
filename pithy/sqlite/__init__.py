@@ -15,9 +15,10 @@ class SqliteError(Exception):
     'Return the failed uniqueness constraint if that was the cause of the error or else None.'
     cause = self.__cause__
     if cause is None: return None
-    msg = cause.args[0]
+    msg:str = cause.args[0]
     suffix = msg.removeprefix('UNIQUE constraint failed: ')
-    return suffix if suffix != msg else None
+    if suffix == msg: return None
+    return suffix
 
 
 class Row(sqlite3.Row):
