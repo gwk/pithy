@@ -90,6 +90,7 @@ class Source(Generic[_Text]):
     if isinstance(text, str):
       if pos == len(text) and text.endswith('\n'): return newline_count - 1
     else:
+      assert isinstance(text, (bytes, bytearray))
       if pos == len(text) and text.endswith(b'\n'): return newline_count -1
     return newline_count
 
@@ -101,6 +102,7 @@ class Source(Generic[_Text]):
       if pos == len(text) and text.endswith('\n'): pos -= 1
       return text.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match, so just add one.
     else:
+      assert isinstance(text, (bytes, bytearray))
       if pos == len(text) and text.endswith(b'\n'): pos -= 1
       return text.rfind(b'\n', 0, pos) + 1
 
@@ -110,18 +112,20 @@ class Source(Generic[_Text]):
     Return the character index for the end of the line containing `pos`;
     a newline is considered the final character of a line.
     '''
-    if isinstance(self.text, str):
-      newline_pos = self.text.find('\n', pos)
+    text = self.text
+    if isinstance(text, str):
+      newline_pos = text.find('\n', pos)
     else:
-      newline_pos = self.text.find(b'\n', pos)
-    return len(self.text) if newline_pos == -1 else newline_pos + 1
+      assert isinstance(text, (bytes, bytearray))
+      newline_pos = text.find(b'\n', pos)
+    return len(text) if newline_pos == -1 else newline_pos + 1
 
 
   def get_line_str(self, pos:int, end:int) -> str:
     assert pos <= end, (pos, end)
     line = self.text[pos:end]
     if isinstance(line, str): return line
-    assert isinstance(line, bytes)
+    assert isinstance(line, (bytes, bytearray))
     return line.decode(errors='replace')
 
   def eot_token(self) -> Token:
@@ -210,24 +214,30 @@ class Source(Generic[_Text]):
 
 
   def bytes_for(self, token:Token, offset=0) -> bytes:
-    if isinstance(self.text, str):
-      return self.text[token.pos+offset:token.end].encode()
+    text = self.text
+    if isinstance(text, str):
+      return text[token.pos+offset:token.end].encode()
     else:
-      return self.text[token.pos+offset:token.end]
+      assert isinstance(text, (bytes, bytearray))
+      return text[token.pos+offset:token.end]
 
 
   def str_for(self, token:Token, offset=0) -> str:
-    if isinstance(self.text, str):
-      return self.text[token.pos+offset:token.end]
+    text = self.text
+    if isinstance(text, str):
+      return text[token.pos+offset:token.end]
     else:
-      return self.text[token.pos+offset:token.end].decode(errors='replace')
+      assert isinstance(text, (bytes, bytearray))
+      return text[token.pos+offset:token.end].decode(errors='replace')
 
 
   def __getitem__(self, token:Token) -> str:
-    if isinstance(self.text, str):
-      return self.text[token.pos:token.end]
+    text = self.text
+    if isinstance(text, str):
+      return text[token.pos:token.end]
     else:
-      return self.text[token.pos:token.end].decode(errors='replace')
+      assert isinstance(text, (bytes, bytearray))
+      return text[token.pos:token.end].decode(errors='replace')
 
 
   '''
