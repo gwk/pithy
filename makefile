@@ -16,7 +16,8 @@ _default: test typecheck lint
 
 _phony: # Used to mark pattern rules as phony.
 
-packages := crafts iotest legs pithy pithytools tolkien utest wu
+# Pithy must come first for manual installation, or else pip will download the PyPI version.
+packages := pithy crafts iotest legs pithytools tolkien utest wu
 
 build:
 	sh/build.sh $(packages)
