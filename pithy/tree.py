@@ -1,22 +1,27 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from types import GeneratorType
-from typing import Callable, Generator, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Generator, Iterable, Iterator, List, Optional, Protocol, Tuple, TypeVar, Union
 
 from .exceptions import OmitNode
 from .iterable import iter_values
 
 
-_T = TypeVar('_T')
+_C = TypeVar('_C')
+_T = TypeVar('_T', contravariant=True)
 _R = TypeVar('_R')
 
 _Stack = Tuple[_T, ...]
 _VisitResult = Union[_R, Generator[_R, None, None]]
-_GetChildrenFn = Callable[[_T], Optional[Iterable[_T]]]
-_TransformVisitor = Callable[[_T, _Stack, List[_R]], _VisitResult]
+
+class _GetChildrenFn(Protocol[_C]):
+  def __call__(self, node:_C) -> Optional[Iterable[_C]]: ...
+
+class _TransformVisitor(Protocol[_T, _R]):
+  def __call__(self, node:_T, stack:_Stack, transformed_children:list[_R]) -> _VisitResult: ...
 
 
-def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_TransformVisitor) -> _R:
+def transform_tree(root:_T, get_children:_GetChildrenFn[_T], visit:_TransformVisitor[_T, _R]) -> _R:
   '''
   `transform_tree` visits nodes, leaves-first, with the `visit` function,
   thereby generating a transformed tree.

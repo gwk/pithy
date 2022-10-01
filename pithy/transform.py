@@ -9,7 +9,6 @@ from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 _T = TypeVar('_T')
 _I = TypeVar('_I')
 _O = TypeVar('_O')
-Stage = Callable[[_I], _O]
 Pred = Callable[[_I], bool]
 Put = Callable[[_I], None]
 
@@ -41,7 +40,7 @@ class Transformer(Generic[_T], ContextManager):
     self.run()
 
 
-  def _add_stage(self, name: str, fn: Stage) -> None:
+  def _add_stage(self, name: str, fn: Callable[[_I],_O]) -> None:
     if name in self.stage_names: # makes adding all stages quadratic time, but len(stages) is low.
       raise KeyError('Transformer: stage name is a duplicate: {}'.format(name))
     self.stage_names.append(name)
@@ -121,7 +120,7 @@ class Transformer(Generic[_T], ContextManager):
     self._add_stage(pred.__name__, keep_fn)
 
 
-  def edit(self, fn: Stage) -> None:
+  def edit(self, fn:Callable[[_I],_O]) -> None:
     '''
     add an edit stage.
     the decorated function should return either the original item or an edited item.
@@ -134,12 +133,12 @@ class Transformer(Generic[_T], ContextManager):
       edited = fn(item)
       if edited != item:
         log_fn(f'- {item!r}\n+ {edited!r}\n')
-      return edited # type: ignore
+      return edited
 
     self._add_stage(name, edit_fn)
 
 
-  def convert(self, fn: Stage) -> None:
+  def convert(self, fn: Callable[[_I],_O]) -> None:
     '''
     add a conversion stage.
     the decorated function should convert the input item to an output item.
@@ -188,4 +187,3 @@ class Transformer(Generic[_T], ContextManager):
       c = '-' if count == -1 else count
       width = self.log_index_width
       errL(f'◊   {i:0{width}}-{name}: {c}')
-
