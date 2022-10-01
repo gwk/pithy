@@ -155,14 +155,6 @@ def load_jsons(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return _load_jsons(text_file_for(file_or_path), **kwargs)
 
 
-def load_lzfse(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from lzfse import decompress  # type: ignore
-  sub_ext = _sub_ext(ext)
-  with binary_file_for(file_or_path) as f:
-    df = BytesIO(f.read())
-  return load(df, ext=sub_ext, **kwargs)
-
-
 def load_msgpack(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .msgpack import load_msgpack as _load_msgpack
   return _load_msgpack(binary_file_for(file_or_path), **kwargs)
@@ -250,7 +242,6 @@ add_loader('.html',     load_html,      _dflt=True)
 add_loader('.json',     load_json,      _dflt=True)
 add_loader('.jsonl',    load_jsonl,     _dflt=True)
 add_loader('.jsons',    load_jsons,     _dflt=True)
-add_loader('.lzfse',    load_lzfse,     _dflt=True)
 add_loader('.msgpack',  load_msgpack,   _dflt=True)
 add_loader('.msgpacks', load_msgpacks,  _dflt=True)
 add_loader('.pickle',   load_pickle,    _dflt=True)
