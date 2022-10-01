@@ -16,7 +16,7 @@ from .iterable import known_leaf_types
 try:
   from lxml.etree import _Element as LxmlElement
 except ImportError:
-  class LxmlElement: pass # type: ignore
+  class LxmlElement: pass # type: ignore[no-redef]
 
 
 # Special handling for annoying types that show up in Python scopes.
@@ -107,7 +107,7 @@ def _gen_desc(d:_DescEl, indent:str, exact:bool) -> Iterator[str]:
       is_leaf = isinstance(el, str)
       if is_leaf:
         yield indent1
-        yield el # type: ignore
+        yield el # type: ignore[misc]
       else:
         yield from _gen_desc(el, indent1, exact)
     if is_leaf: yield ' ' # Final space before closer.

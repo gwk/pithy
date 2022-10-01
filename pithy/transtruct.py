@@ -41,7 +41,7 @@ class Transtructor:
 
 
   def transtruct(self, t:Type[_T], val:Any) -> _T:
-    transtructor = self.transtructor_for(t) # type: ignore
+    transtructor = self.transtructor_for(t) # type: ignore[arg-type]
     return transtructor(val)
 
 
@@ -53,10 +53,10 @@ class Transtructor:
     Transtructors are recursive functions meant to alleviate the tedium of type checking parsed but softly typed data values.
     This method is cached per Transtructor instance.
     '''
-    if self.selector_fn_for(t): # type: ignore
+    if self.selector_fn_for(t): # type: ignore[arg-type]
       return self.transtructor_for_selector(t)
 
-    return self.transtructor_post_selector_for(t) # type: ignore
+    return self.transtructor_post_selector_for(t) # type: ignore[arg-type]
 
 
   @cache
@@ -67,7 +67,7 @@ class Transtructor:
     which is common for class families.
     '''
 
-    try: return primitive_transtructors[t] # type: ignore
+    try: return primitive_transtructors[t] # type: ignore[return-value]
     except KeyError: pass
 
     origin = get_origin(t)
@@ -86,7 +86,7 @@ class Transtructor:
     def transtruct_with_selector(val:Any) -> _T:
       type_ = static_type
       #print("transtruct_with_selector static_type:", static_type)
-      while selector := self.selector_fn_for(type_): # type: ignore
+      while selector := self.selector_fn_for(type_): # type: ignore[arg-type]
         #print("  selector:", selector)
         subtype = selector(type_, val)
         #print("  subtype:", subtype)
@@ -95,7 +95,7 @@ class Transtructor:
         if not issubclass(subtype, type_):
           raise TypeError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}')
         type_ = subtype
-      transtructor = self.transtructor_post_selector_for(type_) # type: ignore
+      transtructor = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
       return transtructor(val)
 
     return transtruct_with_selector
@@ -109,7 +109,7 @@ class Transtructor:
 
     transtructors = { k: self.transtructor_for(v) for k, v in constructor_annotations.items() } # type: ignore[arg-type]
 
-    prefigure_fn = self.prefigure_fn_for(class_) # type: ignore
+    prefigure_fn = self.prefigure_fn_for(class_) # type: ignore[arg-type]
     #print("prefigure_fn:", class_, prefigure_fn)
     def transtruct_annotated_class(args:Any) -> _T:
       if prefigure_fn:
@@ -137,8 +137,11 @@ class Transtructor:
         name, transtructor = pair
         typed_args.append(transtructor(arg))
       try:
-       if issubclass(class_, NamedTuple): return class_(typed_args) # type: ignore # For named tuple types, the args are passed as a single iterable.
-       else: return class_(*typed_args)
+        if issubclass(class_, NamedTuple):
+          # For named tuple types, the args are passed as a single iterable.
+          return class_(typed_args) # type: ignore[call-overload, no-any-return]
+        else:
+          return class_(*typed_args)
       except TypeError as e:
         raise TranstructorError(e, class_, typed_args) from e
 
@@ -162,7 +165,7 @@ class Transtructor:
       def transtruct_dict(val:Any) -> _T:
         try: items = val.items()
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
-        try: return origin((key_ctor(k), val_ctor(v)) for k, v in items) # type: ignore
+        try: return origin((key_ctor(k), val_ctor(v)) for k, v in items) # type: ignore[call-arg]
         except ValueError as e:
           raise TranstructorError(f'failed to transtruct items of type {type(items).__name__}', t, val) from e
       return transtruct_dict
@@ -173,7 +176,7 @@ class Transtructor:
       el_ctor = self.transtructor_for(el_type)
 
       def transtruct_collection(val:Any) -> _T:
-        return origin(el_ctor(e) for e in val) # type: ignore
+        return origin(el_ctor(e) for e in val) # type: ignore[call-arg]
 
       return transtruct_collection
 
@@ -203,7 +206,7 @@ class Transtructor:
 
     if len(types) == 2 and type(None) in types:
       variant_type = next(t for t in types if t is not type(None))
-      transtructor = self.transtructor_for(variant_type) # type: ignore
+      transtructor = self.transtructor_for(variant_type) # type: ignore[arg-type]
       def transtruct_union(val:Any) -> Any:
         if val is None: return None
         return transtructor(val)

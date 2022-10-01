@@ -63,7 +63,7 @@ def binary_file_for(f:FileOrPath) -> BinaryIO:
   if isinstance(f, BufferedReader): return f
   #^ Not sure about the reachability error above. Has to do with the relationship between abstract IO and concrete BufferedReader.
   if isinstance(f, str): return open(f, 'rb')
-  try: return BufferedReader(f) # type: ignore
+  try: return BufferedReader(f) # type: ignore[arg-type]
   except Exception as e:
     raise ValueError(f'load: required binary file or path; received {f!r}') from e
 
@@ -98,7 +98,7 @@ def load_archive(f:FileOrPath, single_name=None, single_ext=None, **kwargs:Any) 
     return archive
   # load single file.
   match_exact = (single_name is not None)
-  for file in archive: # type: ignore
+  for file in archive: # type: ignore[attr-defined]
     if match_exact:
       if file.name != single_name: continue
     else:
@@ -139,7 +139,7 @@ def load_gz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
     return load_archive(f, **kwargs)
   from gzip import GzipFile
   df = GzipFile(mode='rb', fileobj=binary_file_for(f))
-  return load(df, ext=sub_ext, **kwargs) # type: ignore
+  return load(df, ext=sub_ext, **kwargs) # type: ignore[arg-type]
 
 
 def load_json(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
@@ -210,7 +210,7 @@ def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[s
 
 
 def load_xls(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from openpyxl import load_workbook  # type: ignore
+  from openpyxl import load_workbook  # type: ignore[import]
   if isinstance(f, str):
     return load_workbook(filename=f, **kwargs)
   else:
@@ -224,7 +224,7 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
     return load_archive(f, **kwargs)
   from lzma import LZMAFile
   d = LZMAFile(binary_file_for(f))
-  #b = BufferedReader(d) # type: ignore
+  #b = BufferedReader(d) # type: ignore[import]
   return load(d, ext=sub_ext, **kwargs)
 
 

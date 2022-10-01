@@ -40,7 +40,7 @@ def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Defaul
       # Create and return dispatcher method.
       @wraps(dflt_method)
       def dispatch(self, arg, *args, **kwargs):
-        f = method_registry.get(key_fn(arg), dflt_method) # type: ignore
+        f = method_registry.get(key_fn(arg), dflt_method) # type: ignore[misc]
         return f(self, arg, *args, **kwargs)
       module_registry[name] = (dispatch, method_registry)
       return dispatch

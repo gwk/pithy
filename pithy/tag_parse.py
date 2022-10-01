@@ -102,7 +102,7 @@ class TagTree(tuple):
   def __new__(cls, *args: Node) -> 'TagTree':
     for el in args:
       if not isinstance(el, (str, TagTree)): raise ValueError(el)
-    return super().__new__(cls, args) # type: ignore
+    return super().__new__(cls, args) # type: ignore[arg-type]
 
   def __repr__(self) -> str:
     return '{}({})'.format(type(self).__name__, ', '.join(repr(el) for el in self))
@@ -110,10 +110,10 @@ class TagTree(tuple):
   def __str__(self) -> str:
     return ''.join(self.walk_all())
 
-  def __getitem__(self, key) -> Node: # type: ignore
+  def __getitem__(self, key) -> Node: # type: ignore[override]
     if isinstance(key, slice):
       return type(self)(*super().__getitem__(key)) # create a TagTree as the slice.
-    return super().__getitem__(key) # type: ignore
+    return super().__getitem__(key) # type: ignore[no-any-return]
 
   class_label = 'Tag'
   sgr_color = ''
@@ -204,7 +204,7 @@ class TagTreeUnexpected(TagTreeFlawed):
 
   def __new__(cls, *args) -> 'TagTreeUnexpected':
     assert len(args) == 1
-    return super().__new__(cls, *args) # type: ignore
+    return super().__new__(cls, *args) # type: ignore[return-value]
 
   @property
   def contents(self) -> Sequence[Node]:

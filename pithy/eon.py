@@ -110,15 +110,15 @@ def convert_eon(syntax:EonSyntax, source:Source, to:Type[_T]) -> Any: # TODO: th
 @convert_eon.register
 def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
   text = source[syntax]
-  if to is str: return text # type: ignore # TODO: handle quoted strings.
-  if to is bool: return _bool_vals[text] # type: ignore
+  if to is str: return text # type: ignore[return-value] # TODO: handle quoted strings.
+  if to is bool: return _bool_vals[text] # type: ignore[return-value]
   if to in (Any, object):
-    if syntax.kind == 'sym': return text # type: ignore
-    if syntax.kind == 'int': return int(text) # type: ignore
-    if syntax.kind == 'flt': return float(text) # type: ignore
+    if syntax.kind == 'sym': return text # type: ignore[return-value]
+    if syntax.kind == 'int': return int(text) # type: ignore[return-value]
+    if syntax.kind == 'flt': return float(text) # type: ignore[return-value]
     raise NotImplementedError(syntax)
   rtt = get_origin(to) or to
-  try: return rtt(text) # type: ignore
+  try: return rtt(text) # type: ignore[call-arg]
   except Exception as e:
     raise ConversionError(source, syntax, f'expected {_fmt_type(to)}; received {syntax.kind}.\n{_fmt_exc(e)}') from e
 
@@ -127,7 +127,7 @@ def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
 def convert_eon_str(syntax:EonStr, source:Source, to:Type[_T]) -> _T:
   if to not in (str, Any, object):
     raise ConversionError(source, syntax, f'expected {to}; received {syntax.token.kind}.')
-  return syntax.value(source) # type: ignore
+  return syntax.value(source) # type: ignore[return-value]
 
 
 _bools = [('false', False), ('no', False), ('true', True), ('yes', True)]
@@ -139,7 +139,7 @@ _bool_vals:Dict[str,bool] = { kx : v
 
 @convert_eon.register
 def convert_eon_empty(syntax:EonEmpty, source:Source, to:Type[_T]) -> _T:
-  if to in (Any, object, None): return None # type: ignore
+  if to in (Any, object, None): return None # type: ignore[return-value]
   rtt = get_origin(to) or to
   try: return rtt()
   except Exception as e:
@@ -153,8 +153,8 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
   if field_types is None: # Use single element type.
     try:
       args = (convert_eon(el, source, el_type) for el in syntax.els)
-      if as_seq: return rtt(args) # type: ignore
-      else: return rtt(*args) # type: ignore
+      if as_seq: return rtt(args) # type: ignore[no-any-return]
+      else: return rtt(*args) # type: ignore[no-any-return]
     except ConversionError as e:
       e.add_in_note(syntax.token, f'list -> {_fmt_type(to)}')
       raise
@@ -169,8 +169,8 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
     # If there are more fields than arguments, try it anyway; perhaps some of them have defaults. `zip` stops when els run out.
     try:
       args = (convert_eon(el, source, ft) for el, ft in zip(syntax.els, field_types))
-      if as_seq: return rtt(args) # type: ignore
-      else: return rtt(*args) # type: ignore
+      if as_seq: return rtt(args) # type: ignore[no-any-return]
+      else: return rtt(*args) # type: ignore[no-any-return]
     except ConversionError as e:
       e.add_in_note(syntax.token, f'list -> {_fmt_type(to)}')
       raise

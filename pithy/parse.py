@@ -498,7 +498,7 @@ class SuffixRule(Operator):
 
 
   @property
-  def kinds(self) -> Tuple[TokenKind,...]: # type: ignore
+  def kinds(self) -> Tuple[TokenKind,...]: # type: ignore[override]
     return tuple(self.suffix.heads)
 
 
@@ -521,8 +521,8 @@ class Adjacency(BinaryOp):
     self.transform = transform
 
 
-  @property # type: ignore
-  def kinds(self) -> Tuple[TokenKind,...]: # type: ignore
+  @property # type: ignore[no-redef, override]
+  def kinds(self) -> Tuple[TokenKind,...]:
     raise _AllLeafKinds
 
 
@@ -779,7 +779,7 @@ class Parser:
       if existing._fields != fields:
         raise Parser.DefinitionError(f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {fields}')
       return existing
-    struct_type = namedtuple(type_name, fields, rename=True, module=self.module_name or '?') # type: ignore
+    struct_type = namedtuple(type_name, fields, rename=True, module=self.module_name or '?') # type: ignore[misc]
     self._struct_types[type_name] = struct_type
     return struct_type
 

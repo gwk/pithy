@@ -86,7 +86,7 @@ def validate_diff(seq_a:Sequence[_T], seq_b:Sequence[_T], diff:Diff, allow_empty
 
 def align_difflib(seq_a:Sequence[_T], seq_b:Sequence[_T], isjunk:Callable[[str], bool]=str.isspace, **kwargs) -> Alignment:
   'Diff using Python difflib.SequenceMatcher.'
-  blocks:List[Tuple[int, int, int]] = SequenceMatcher(isjunk=isjunk, a=seq_a, b=seq_b, **kwargs).get_matching_blocks() # type: ignore
+  blocks:List[Tuple[int, int, int]] = SequenceMatcher(isjunk=isjunk, a=seq_a, b=seq_b, **kwargs).get_matching_blocks() # type: ignore[arg-type, assignment]
   assert blocks[-1] == (len(seq_a), len(seq_b), 0)
   return [(i_a+j, i_b+j) for (i_a, i_b, l) in blocks for j in range(l)]
 

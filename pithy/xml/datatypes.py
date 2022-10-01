@@ -64,7 +64,7 @@ class XmlDatatype:
     if pre is not None:
       if result := pre(self): yield result
     if hasattr(self, 'ch'):
-      for child in self.ch: # type: ignore
+      for child in self.ch:
         yield from child.gen_visit(pre=pre, post=post)
     if post is not None:
       if result := post(self): yield result

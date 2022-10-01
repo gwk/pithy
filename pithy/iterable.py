@@ -52,7 +52,7 @@ def single_el(iterable:Iterable[_T]) -> _T:
     else:
       raise MultipleElements((first, el))
   if first == init: raise NoElements(iterable)
-  return first # type: ignore
+  return first # type: ignore[return-value]
 
 
 def iter_from(iterable: Iterable[_T], start: int) -> Iterator[_T]:

@@ -51,10 +51,10 @@ class ZstWriterBase(IO[AnyStr]):
       self.compressed_byte_count += self.file.write(chunk)
 
   def flush(self) -> None:
-    self._write_chunks(self.chunker.flush()) # type: ignore # flush is untyped.
+    self._write_chunks(self.chunker.flush()) # type: ignore[no-untyped-call] # flush is untyped.
 
   def close(self) -> None:
-    self._write_chunks(self.chunker.finish()) # type: ignore # flush is untyped.
+    self._write_chunks(self.chunker.finish()) # type: ignore[no-untyped-call] # flush is untyped.
     self.file.close()
 
   @property

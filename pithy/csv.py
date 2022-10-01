@@ -124,23 +124,23 @@ class CsvLoader(Iterable, ContextManager):
       if cols is None:
         raise ValueError('load_csv: as_dicts option requires cols argument to be provided.')
       else:
-        row_seq_fn = lambda row: { key : cell_ctor(cell) for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore
+        row_seq_fn = lambda row: { key : cell_ctor(cell) for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
           if cell_ctor is not None and (preserve_empty_vals or cell) }
     else: # Sequence.
       if cols is None:
         row_seq_fn = lambda row: row
       else:
-        row_seq_fn = lambda row: [cell_ctor(cell) for cell_ctor, cell in zip(cols.values(), row) # type: ignore
+        row_seq_fn = lambda row: [cell_ctor(cell) for cell_ctor, cell in zip(cols.values(), row) # type: ignore[union-attr]
           if cell_ctor is not None]
 
     if row_ctor is not None:
       if spread_args:
         if as_dicts:
-          row_fn = lambda row: row_ctor(**row_seq_fn(row)) # type: ignore
+          row_fn = lambda row: row_ctor(**row_seq_fn(row)) # type: ignore[arg-type]
         else:
-          row_fn = lambda row: row_ctor(*row_seq_fn(row)) # type: ignore
+          row_fn = lambda row: row_ctor(*row_seq_fn(row)) # type: ignore[misc]
       else:
-        row_fn = lambda row: row_ctor(row_seq_fn(row)) # type: ignore
+        row_fn = lambda row: row_ctor(row_seq_fn(row)) # type: ignore[misc]
     else:
       row_fn = row_seq_fn
 
@@ -148,7 +148,7 @@ class CsvLoader(Iterable, ContextManager):
 
 
   def __iter__(self) -> Iterator[Any]:
-    return (self.row_fn(row) for row in self._reader) # type: ignore
+    return (self.row_fn(row) for row in self._reader) # type: ignore[no-untyped-call]
 
 
   def __enter__(self) -> 'CsvLoader':

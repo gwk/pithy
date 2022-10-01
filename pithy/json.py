@@ -163,7 +163,7 @@ def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Calla
       except Exception as e:
         raise ValueError(f'malformed decoder hook; expected (keys, constructor) pair; received: {h!r}') from e
       fn = _hook_type_fn(fn_raw) if isinstance(fn_raw, type) else fn_raw
-      if isinstance(keys_raw, str): raise TypeError(keys_raw) # type: ignore
+      if isinstance(keys_raw, str): raise TypeError(keys_raw) # type: ignore[unreachable]
 
     keys = frozenset(keys_raw)
     if keys in type_map:
@@ -182,7 +182,7 @@ def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Calla
 def _hook_type_keys(t:type) -> AbstractSet[str]:
   if is_dataclass(t): return frozenset(f.name for f in fields(t))
 
-  try: return frozenset(t._fields) # type: ignore # NamedTuple.
+  try: return frozenset(t._fields) # type: ignore[attr-defined] # NamedTuple.
   except AttributeError: pass
 
   slots = all_slots(t)
@@ -191,13 +191,13 @@ def _hook_type_keys(t:type) -> AbstractSet[str]:
 
 
 def _hook_type_fn(t:type) -> ObjDecodeFn:
-  try: return t.from_json # type: ignore
+  try: return t.from_json # type: ignore[attr-defined, no-any-return]
   except AttributeError: return t
 
 
 
 def format_json_bytes(bytes_or_file: Union[BinaryIO, bytes], out_raw: BinaryIO) -> None:
-  file: BinaryIO = bytes_or_file if hasattr(bytes_or_file, 'read') else BytesIO(bytes_or_file) # type: ignore
+  file: BinaryIO = bytes_or_file if hasattr(bytes_or_file, 'read') else BytesIO(bytes_or_file) # type: ignore[assignment]
 
   s_start, s_open, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(8)
 

@@ -40,7 +40,7 @@ def dot_id_quote(name:GraphvizName) -> str:
 
 def write_dot_digraph_adjacency_contents(f: TextIO, adjacency:GraphvizAdjacency) -> None:
   if isinstance(adjacency, dict): adjacency = adjacency.items()
-  for src, dsts in adjacency: # type: ignore
+  for src, dsts in adjacency: # type: ignore[misc]
     if isinstance(dsts, dict): dsts = dsts.items()
     src_quoted = dot_id_quote(src)
     for dst in dsts:

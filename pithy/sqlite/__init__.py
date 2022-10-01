@@ -44,8 +44,8 @@ class Row(sqlite3.Row):
 
 class Cursor(sqlite3.Cursor):
 
-  def execute(self, query:str, args:Iterable=()) -> 'Cursor': # type: ignore
-    try: return super().execute(query, args) # type: ignore
+  def execute(self, query:str, args:Iterable=()) -> 'Cursor': # type: ignore[override]
+    try: return super().execute(query, args) # type: ignore[arg-type]
     except sqlite3.Error as e:
       raise SqliteError(f'SQLite error; query: {query!r}') from e
 
@@ -109,7 +109,7 @@ class Cursor(sqlite3.Cursor):
     'Execute a SELECT COUNT(1) query, returning the number of rows.'
     where_clause = ('WHERE', *where) if where else []
     for row in self.run('SELECT COUNT(1) FROM', table, *where_clause, **args):
-      return row[0] # type: ignore
+      return row[0] # type: ignore[no-any-return]
     return 0
 
 
@@ -177,7 +177,7 @@ class Connection(sqlite3.Connection):
     self.row_factory = Row # Default for convenience.
 
 
-  def cursor(self, factory:Optional[type]=None) -> Cursor: # type: ignore
+  def cursor(self, factory:Optional[type]=None) -> Cursor: # type: ignore[override]
     if factory is None:
       factory = Cursor
     assert issubclass(factory, Cursor)

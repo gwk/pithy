@@ -106,7 +106,7 @@ def _single(AccesseeClass:Type[_Child]) -> _Accessor:
       if isinstance(c, Mu) and c.tag == tag: return cast(_Child, c)
     return self.append(AccesseeClass())
 
-  return property(html_single_accessor) # type: ignore
+  return property(html_single_accessor) # type: ignore[return-value]
 
 
 # Categories.

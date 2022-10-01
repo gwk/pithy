@@ -58,7 +58,7 @@ class Schema(NamedTuple):
 
 
 class Keys(Set):
-  def __hash__(self) -> int: return id(self) # type: ignore
+  def __hash__(self) -> int: return id(self) # type: ignore[override]
 
 
 def _mk_schema() -> Schema:
@@ -164,4 +164,3 @@ def write_schema(file: TextIO, schema: Optional[Schema]=None, *, all_keys=False,
   else:
     _write_schema(file, schema=schema, all_keys=all_keys, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
   file.write(end)
-

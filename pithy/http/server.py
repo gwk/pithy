@@ -309,4 +309,4 @@ class HttpRequestHandler(StreamRequestHandler):
 
   def client_address_ip(self) -> str:
     '''Return the client address, omitting the port.'''
-    return self.client_address[0] # type: ignore
+    return cast(str, self.client_address[0])

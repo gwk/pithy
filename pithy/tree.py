@@ -32,11 +32,11 @@ def transform_tree(root:_T, get_children:_GetChildrenFn, visit:_TransformVisitor
   '''
   res = _transform_tree(root, get_children, visit, ())
   if isinstance(res, GeneratorType): raise ValueError(res)
-  else: return res # type: ignore
+  else: return res # type: ignore[return-value]
 
 
 def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_TransformVisitor, stack:_Stack) -> _VisitResult:
-  results: List[_R] = [] # type: ignore
+  results: List[_R] = [] # type: ignore[valid-type]
   children = get_children(node)
   if children:
     child_stack = (*stack, node)

@@ -23,7 +23,7 @@ class Immutable(Generic[_T]):
     return f'{type(self).__name__}({args})'
 
   def __getattr__(self, key:str) -> _T:
-    return vars(self)[key] # type: ignore
+    return vars(self)[key] # type: ignore[no-any-return]
 
   def __setattr__(self, name:str, val:_T) -> None:
     raise AttributeError('Immutable instance attributes are readonly')
@@ -32,7 +32,7 @@ class Immutable(Generic[_T]):
     raise AttributeError('Immutable instance attributes are readonly')
 
   def __getitem__(self, key:str) -> _T:
-    return vars(self)[key] # type: ignore
+    return vars(self)[key] # type: ignore[no-any-return]
 
   def __hash__(self) -> int:
     h = 0
@@ -44,7 +44,7 @@ class Immutable(Generic[_T]):
     return type(self) == type(other) and vars(self) == vars(other)
 
   def __iter__(self) -> Iterator[_T]:
-    return iter(vars(self).items()) # type: ignore
+    return iter(vars(self).items()) # type: ignore[arg-type]
 
 
 _identifier_re = re.compile(r'(?!\d)\w+')

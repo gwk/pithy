@@ -40,7 +40,7 @@ class Range(Generic[_Bound, _Step], Iterable[_Bound]):
       try: self.stop = start + length
       except TypeError:
         # Because builtin types like DateTime do not correctly raise NotImplemented, we try reversing the operands manually.
-        try: self.stop = length + start # type: ignore
+        try: self.stop = length + start # type: ignore[operator]
         except ValueError as e: raise ValueError(f'Range stop calculation failed: start: {start!r}; length: {length!r}') from e
     else:
       self.stop = stop
@@ -54,7 +54,7 @@ class Range(Generic[_Bound, _Step], Iterable[_Bound]):
       try: pos += step
       except TypeError:
         # Because builtin types like DateTime do not correctly raise NotImplemented, we try reversing the operands manually.
-        try: pos = step + pos # type: ignore
+        try: pos = step + pos # type: ignore[operator]
         except ValueError as e: raise ValueError(f'Range step addition failed: position: {pos!r}; step: {step!r}') from e
     if self.closed:
       yield stop
@@ -88,7 +88,7 @@ class NumRange(Sequence[Num]):
   def __len__(self):
     return self._len
 
-  def __getitem__(self, i:Union[int, slice]) -> Num: # type: ignore
+  def __getitem__(self, i:Union[int, slice]) -> Num: # type: ignore[override]
     if isinstance(i, int):
       if i >= 0 and i >= self._len: raise IndexError(i)
       return self.start + self.step * (i if i >= 0 else (self._len+i))

@@ -20,7 +20,7 @@ from .string import EscapedStr
 
 # Handle lxml comments if available; these are produced by html5_parser.
 try: from lxml.etree import Comment
-except ImportError: Comment = object() # type: ignore # Comment is a cyfunction, so we can fall back to a dummy object.
+except ImportError: Comment = object() # type: ignore[assignment] # Comment is a cyfunction, so we can fall back to a dummy object.
 
 
 _T = TypeVar('_T')
@@ -341,7 +341,7 @@ class Mu:
     if isinstance(child, Mu) and child._orig is not None: child = child._orig
     if not isinstance(child, mu_child_classes): raise TypeError(child)
     self.ch.append(child)
-    return child # type: ignore # The type of child._orig the same as child.
+    return child # The type of child._orig the same as child.
 
 
   def extend(self, children:Iterable[_MuChild]) -> None:
@@ -776,7 +776,7 @@ def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', att
 
   tag_pred:Callable
   if not type_or_tag: tag_pred = lambda node: True
-  elif isinstance(type_or_tag, type): tag_pred = lambda node: isinstance(node, type_or_tag) # type: ignore
+  elif isinstance(type_or_tag, type): tag_pred = lambda node: isinstance(node, type_or_tag) # type: ignore[arg-type]
   else: tag_pred = lambda node: node.tag == type_or_tag
 
   def predicate(node:Mu) -> bool:

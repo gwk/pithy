@@ -46,7 +46,7 @@ def _wrapped_type_for_optional(static_type:type) -> type:
   if meta_class_name != '_Union': raise TypeError(static_type)
   args = get_args(static_type)
   if not args or len(args) != 2 or NoneType not in args: raise TypeError(static_type)
-  return [a for a in args if a is not NoneType][0] # type: ignore
+  return [a for a in args if a is not NoneType][0] # type: ignore[no-any-return]
 
 
 def default_to_json(obj:Any) -> Any:
