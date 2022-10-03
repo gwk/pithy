@@ -12,7 +12,7 @@ class Timeout(Exception):
 
 class Alarm(ContextManager):
 
-  def __init__(self, timeout: int, msg:str='alarm timed out after {timeout} seconds', on_signal: Callable[[], None]=None) -> None:
+  def __init__(self, timeout: int, msg:str='alarm timed out after {timeout} seconds', on_signal: Callable[[], None]=None):
     if not isinstance(timeout, int): raise TypeError(f'timeout must be an int; received: {timeout!r}')
     if timeout < 0: raise TypeError(f'timeout must be nonnegative; received: {timeout!r}')
     self.timeout = timeout

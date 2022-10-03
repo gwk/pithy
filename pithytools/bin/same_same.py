@@ -33,7 +33,7 @@ For a description of LESSANSIENDCHARS, see: https://major.io/2013/05/21/handling
 class DiffLine:
   'A line of input from the traditional diff program, classfied.'
 
-  def __init__(self, kind:str, match:Match) -> None:
+  def __init__(self, kind:str, match:Match):
     self.kind = kind # The name from `diff_pat` named capture groups.
     self.match = match
     self.old_num = 0 # 1-indexed.
@@ -311,7 +311,7 @@ H_START, H_CTX, H_SPACE, H_TOKEN = range(4)
 
 class HighlightState:
   'HighlightState is a list of lines that have been tokenized for highlighting.'
-  def __init__(self, lines:List[DiffLine], tokens:List[str], hl_ctx:str, hl_space:str, hl_token:str) -> None:
+  def __init__(self, lines:List[DiffLine], tokens:List[str], hl_ctx:str, hl_space:str, hl_token:str):
     self.lines = lines
     self.tokens = tokens
     self.hl_ctx = hl_ctx # Context highlight.

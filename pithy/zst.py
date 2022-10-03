@@ -7,7 +7,7 @@ from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 class ZstWriterBase(IO[AnyStr]):
 
-  def __init__(self, file:BinaryIO, level=6, threads=1, chunk_size=32768) -> None:
+  def __init__(self, file:BinaryIO, level=6, threads=1, chunk_size=32768):
     self.file = file
     self.compressor = ZstdCompressor(level=level, threads=1)
     self.chunker = self.compressor.chunker(chunk_size=chunk_size)
@@ -82,7 +82,7 @@ class ZstWriter(ZstWriterBase, BinaryIO):
 
 class ZstTextWriter(ZstWriterBase, TextIO):
 
-  def __init__(self, file:BinaryIO, encoding:str=None, errors:str=None, level=6, threads=1, chunk_size=32768) -> None:
+  def __init__(self, file:BinaryIO, encoding:str=None, errors:str=None, level=6, threads=1, chunk_size=32768):
     self._encoding = encoding or 'utf-8'
     self._errors = errors or 'strict'
     super().__init__(file=file, level=level, threads=threads, chunk_size=chunk_size)

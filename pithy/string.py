@@ -14,7 +14,7 @@ _T = TypeVar('_T')
 class EscapedStr:
   'A `str` wrapper class that signifies (in some external context) that the content has already been properly escaped.'
 
-  def __init__(self, string:str) -> None:
+  def __init__(self, string:str):
     self.string = string
 
   def __repr__(self) -> str: return f'EscapedStr({self.string!r})'

@@ -31,7 +31,7 @@ _Bound = TypeVar('_Bound', bound=RangeBound)
 
 class Range(Generic[_Bound, _Step], Iterable[_Bound]):
 
-  def __init__(self, start:_Bound, stop:Union[_Bound,Default]=Default._, *, step:_Step, length:Union[_Step,Default]=Default._, closed=False) -> None:
+  def __init__(self, start:_Bound, stop:Union[_Bound,Default]=Default._, *, step:_Step, length:Union[_Step,Default]=Default._, closed=False):
     self.start = start
     self.step = step
     self.closed = closed
@@ -71,7 +71,7 @@ class NumRange(Sequence[Num]):
   closed:bool
   _len:int
 
-  def __init__(self, start:Num, stop:Num=None, step:Num=1, *, closed=False) -> None:
+  def __init__(self, start:Num, stop:Num=None, step:Num=1, *, closed=False):
     if stop is None: # Imitate `range`; `start` is actually `stop`.
       _setattr(self, 'start', 0)
       _setattr(self, 'stop', start)

@@ -44,7 +44,7 @@ DateLike = TypeVar('DateLike', Date, DateTime)
 
 class DateDelta:
 
-  def __init__(self, years:int=0, months:int=0) -> None:
+  def __init__(self, years:int=0, months:int=0):
     self.years = years
     self.months = months
 

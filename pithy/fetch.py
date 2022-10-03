@@ -14,7 +14,7 @@ from .task import runCO
 
 
 class HTTPError(Exception):
-  def __init__(self, msg:str, curl_code:int=0, status_code:int=-1) -> None:
+  def __init__(self, msg:str, curl_code:int=0, status_code:int=-1):
     super().__init__(msg)
     self.curl_code = curl_code
     self.status_code = status_code

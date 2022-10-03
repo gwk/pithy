@@ -81,7 +81,7 @@ class ChoicePattern(StructPattern):
 
   precedence = 1
 
-  def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern) -> None:
+  def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern):
     assert isinstance(hd, LegsPattern)
     assert isinstance(tl, LegsPattern)
     self.hd = hd
@@ -122,7 +122,7 @@ class SeqPattern(StructPattern):
 
   precedence = 2
 
-  def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern) -> None:
+  def __init__(self, hd:LegsPattern, tl:LegsPattern, *rem:LegsPattern):
     assert isinstance(hd, LegsPattern), hd
     assert isinstance(tl, LegsPattern), tl
     self.hd = hd
@@ -181,7 +181,7 @@ class QuantityPattern(StructPattern):
   precedence = 3
   operator:str = ''
 
-  def __init__(self, sub:LegsPattern) -> None:
+  def __init__(self, sub:LegsPattern):
     assert isinstance(sub, LegsPattern), sub
     self.sub = sub
 
@@ -244,7 +244,7 @@ class CharsetPattern(LegsPattern):
 
   precedence = 4
 
-  def __init__(self, ranges:Iterable[CodeRange]) -> None:
+  def __init__(self, ranges:Iterable[CodeRange]):
     self.ranges = tuple(ranges)
 
   def __repr__(self) -> str:

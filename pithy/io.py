@@ -305,7 +305,7 @@ class AsyncLineReader(ContextManager):
   A file-like object for reading asynchronously from a file descriptor.
   '''
 
-  def __init__(self, path:str) -> None:
+  def __init__(self, path:str):
     self.fd = os_open(path, O_RDONLY|O_NONBLOCK) # TODO: accept raw descriptor.
     self.buffer = bytearray()
 

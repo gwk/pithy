@@ -18,7 +18,7 @@ class LexerBase(Iterator[Token]):
   mode_transitions:ModeTransitions
   pattern_descs:Dict[str,str]
 
-  def __init__(self, source:Source[bytes]) -> None:
+  def __init__(self, source:Source[bytes]):
     self.source = source
     self.pos = 0
 
@@ -31,7 +31,7 @@ class DictLexerBase(LexerBase):
 
   mode_data:Dict[str,ModeData]
 
-  def __init__(self, source:Source[bytes]) -> None:
+  def __init__(self, source:Source[bytes]):
     self.stack:List[Tuple[str,Optional[str]]] = [('main', None)] # [(mode, pop_kind)].
     super().__init__(source=source)
 
@@ -78,7 +78,7 @@ class RegexLexerBase(LexerBase):
 
   mode_patterns:Dict[str,Pattern]
 
-  def __init__(self, source:Source) -> None:
+  def __init__(self, source:Source):
     self.stack:List[Tuple[str,Optional[str]]] = [('main', None)] # [(mode, pop_kind)].
     super().__init__(source=source)
 

@@ -135,7 +135,7 @@ class SourceReporter:
 class Scope(SourceReporter):
   'Scope base class is either a ExtMod (whole module being generated) or a Class.'
 
-  def __init__(self, path:str, name:str, doc:str) -> None:
+  def __init__(self, path:str, name:str, doc:str):
     self.path = path
     self.name = name
     self.doc:str = doc

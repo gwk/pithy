@@ -12,7 +12,7 @@ _setattr = object.__setattr__
 class Immutable(Generic[_T]):
   'Untyped immutable object.'
 
-  def __init__(self, obj:Any=None, **kw:Any) -> None:
+  def __init__(self, obj:Any=None, **kw:Any):
     if obj is not None:
       vars(self).update(obj)
     for k, v in kw.items():

@@ -9,7 +9,7 @@ from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 class Clock:
 
-  def __init__(self, name:str) -> None:
+  def __init__(self, name:str):
     self.name = name
     self.times: List[Tuple[float, str]] = [(now(), 'start')]
 

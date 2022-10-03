@@ -83,7 +83,7 @@ def writeup_dependencies(src_path:str, text_lines: Iterable[str], emit_dbg=False
 
 class Span:
   'A tree node of inline HTML content.'
-  def __init__(self, text: str) -> None:
+  def __init__(self, text: str):
     self.text = text
 
   def html(self, depth: int) -> str:
@@ -106,7 +106,7 @@ class CodeSpan(Span):
 
 
 class AttrSpan(Span):
-  def __init__(self, text: str, attrs: Dict[str, str]) -> None:
+  def __init__(self, text: str, attrs: Dict[str, str]):
     super().__init__(text=text)
     self.attrs = attrs
 
@@ -120,7 +120,7 @@ class BoldSpan(AttrSpan):
 
 
 class EmbedSpan(AttrSpan):
-  def __init__(self, text: str, attrs: Dict[str, str], path: str, contents: Tuple[str, ...]) -> None:
+  def __init__(self, text: str, attrs: Dict[str, str], path: str, contents: Tuple[str, ...]):
     super().__init__(text=text, attrs=attrs)
     self.path = path
     self.contents = contents
@@ -142,7 +142,7 @@ class EmbedSpan(AttrSpan):
 
 class GenericSpan(AttrSpan):
 
-  def __init__(self, text:str, attrs:Dict[str,str], tag:str) -> None:
+  def __init__(self, text:str, attrs:Dict[str,str], tag:str):
     super().__init__(text=text, attrs=attrs)
     self.tag = tag
 
@@ -156,7 +156,7 @@ class ImgSpan(AttrSpan):
 
 
 class LinkSpan(AttrSpan):
-  def __init__(self, text: str, attrs: Dict[str, str], tag: str, words: List[str], ctx: 'Ctx', src: SrcLine) -> None:
+  def __init__(self, text: str, attrs: Dict[str, str], tag: str, words: List[str], ctx: 'Ctx', src: SrcLine):
     super().__init__(text=text, attrs=attrs)
     self.tag = tag
     if not words:
@@ -184,7 +184,7 @@ class Block:
 
 
 class Section(Block):
-  def __init__(self, section_depth: int, quote_depth: int, index_path: Tuple[int, ...], title: Spans) -> None:
+  def __init__(self, section_depth: int, quote_depth: int, index_path: Tuple[int, ...], title: Spans):
     self.section_depth = section_depth
     self.quote_depth = quote_depth
     self.index_path = index_path
@@ -210,7 +210,7 @@ class Section(Block):
 
 
 class UList(Block):
-  def __init__(self, list_level: int) -> None:
+  def __init__(self, list_level: int):
     super().__init__()
     self.list_level = list_level # 1-indexed (top-level list is 1; no lists is 0).
     self.items: List[ListItem] = []
@@ -225,7 +225,7 @@ class UList(Block):
 
 
 class ListItem(Block):
-  def __init__(self, list_level: int) -> None:
+  def __init__(self, list_level: int):
     self.list_level = list_level # 1-indexed (top-level list is 1; no lists is 0).
     self.blocks: List[Block] = []
 

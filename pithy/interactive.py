@@ -14,7 +14,7 @@ class Interpreter(InteractiveInterpreter):
   Similar to code.InteractiveConsole.
   '''
 
-  def __init__(self, locals=None, filename='<interact>') -> None:
+  def __init__(self, locals=None, filename='<interact>'):
     super().__init__(locals=locals)
     self.buffer:List[str] = []
     self.filename = filename
@@ -89,7 +89,7 @@ def interact(banner=None, locals=None):
 
 class ExitOnKeyboardInterrupt(ContextManager):
 
-  def __init__(self, dbg:bool=False) -> None:
+  def __init__(self, dbg:bool=False):
     self.dbg = dbg
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:

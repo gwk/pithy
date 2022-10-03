@@ -11,19 +11,19 @@ class DC:
 
 
 class Basic:
-  def __init__(self, x: int) -> None:
+  def __init__(self, x: int):
     self.x = x
 
 
 class SlotX:
   __slots__ = ['x']
-  def __init__(self, x: int) -> None:
+  def __init__(self, x: int):
     self.x = x
 
 
 class SlotXY(SlotX):
   __slots__ = ['y']
-  def __init__(self, x: int, y: int) -> None:
+  def __init__(self, x: int, y: int):
     super().__init__(x=x)
     self.y = y
 
@@ -63,4 +63,3 @@ utest({'x':1}, encode_obj, Basic(x=1)) # __dict__ only.
 utest({'x':1}, encode_obj, SlotX(x=1))
 utest({'x':1,'y':2}, encode_obj, SlotXY(x=1, y=2))
 utest({'x':1,'y':2,'z':3}, encode_obj, SlotXYZ(x=1, y=2, z=3))
-

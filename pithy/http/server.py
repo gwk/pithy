@@ -73,7 +73,7 @@ class HttpServer(ThreadingTCPServer):
   err:TextIO
 
 
-  def __init__(self, *, host:str, port:int, app:WebApp, err=stderr, bind_and_activate=True) -> None:
+  def __init__(self, *, host:str, port:int, app:WebApp, err=stderr, bind_and_activate=True):
 
     self.host = host
     self.port = port
@@ -120,7 +120,7 @@ class HttpRequestHandler(StreamRequestHandler):
   close_connection: bool
 
 
-  def __init__(self, request:Union[socket, Tuple[bytes,socket]], client_address:tuple[str,int], server:HttpServer) -> None:
+  def __init__(self, request:Union[socket, Tuple[bytes,socket]], client_address:tuple[str,int], server:HttpServer):
     self.reset()
     self.reuse_count = 0
     super().__init__(request=request, client_address=client_address, server=server)

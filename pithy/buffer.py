@@ -16,7 +16,7 @@ class Buffer(Iterator[_T]):
   '''
 
 
-  def __init__(self, iterable: Iterable[_T]) -> None:
+  def __init__(self, iterable: Iterable[_T]):
     self.iterator = iter(iterable)
     self.buffer: List[_T] = []
 

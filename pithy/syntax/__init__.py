@@ -20,7 +20,7 @@ class Syntax:
     end_line: int
     end_col: int
 
-    def __init__(self, *, line=-1, col=-1, end_line=-1, end_col=-1, enclosed:Iterable[Any]=()) -> None:
+    def __init__(self, *, line=-1, col=-1, end_line=-1, end_col=-1, enclosed:Iterable[Any]=()):
       for el in enclosed:
         if el is None: continue
         pos = el if isinstance(el, Syntax.Pos) else el.pos # `enclosed` elements should either be a `Pos` or have a `pos`.

@@ -16,7 +16,7 @@ Opener = Callable[[], BinaryIO]
 
 class Archive:
 
-  def __init__(self, file_or_path:FileOrPath, ext=None) -> None:
+  def __init__(self, file_or_path:FileOrPath, ext=None):
     self.name: str = getattr(file_or_path, 'name', str(file_or_path))
     if ext is None:
       ext = path_ext(self.name)
@@ -38,7 +38,7 @@ class Archive:
 @total_ordering
 class ArchiveMember:
 
-  def __init__(self, archive: Archive, name: str) -> None:
+  def __init__(self, archive: Archive, name: str):
     self.archive = archive
     self.name = name
 
@@ -54,7 +54,7 @@ class ArchiveMember:
 
 class ArchiveFile(ArchiveMember):
 
-  def __init__(self, archive:Archive, name:str, opener:Opener) -> None:
+  def __init__(self, archive:Archive, name:str, opener:Opener):
     super().__init__(archive=archive, name=name)
     self._opener = opener
 
@@ -83,7 +83,7 @@ class ArchiveDir(ArchiveMember): pass
 
 class _Handler:
 
-  def __init__(self, file_or_path:FileOrPath) -> None: raise NotImplementedError
+  def __init__(self, file_or_path:FileOrPath): raise NotImplementedError
 
   def files(self, archive:Archive) -> Iterable[ArchiveFile]: raise NotImplementedError
 
@@ -92,7 +92,7 @@ class _Handler:
 
 
 class _TarHandler(_Handler):
-  def __init__(self, file_or_path:FileOrPath) -> None:
+  def __init__(self, file_or_path:FileOrPath):
     if isinstance(file_or_path, str):
       file_or_path = open(file_or_path, 'rb')
     self.tar = TarFile.open(mode='r|*', fileobj=file_or_path)
@@ -113,7 +113,7 @@ class _TarHandler(_Handler):
 
 
 class _ZipHandler(_Handler):
-  def __init__(self, file_or_path:FileOrPath) -> None:
+  def __init__(self, file_or_path:FileOrPath):
     try: self.zip = ZipFile(file_or_path)
     except BadZipFile as e:
       if isinstance(file_or_path, TextIOBase): # type: ignore[unreachable]

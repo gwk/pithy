@@ -16,13 +16,13 @@ class DC:
   x: int
 
 class Basic:
-  def __init__(self, x: int) -> None:
+  def __init__(self, x: int):
     self.x = x
 
 
 class SlotX:
   __slots__ = ['x']
-  def __init__(self, x: int) -> None:
+  def __init__(self, x: int):
     self.x = x
   def __eq__(l, r: 'SlotX') -> bool:
     return l.x == r.x
@@ -30,7 +30,7 @@ class SlotX:
 
 class SlotXY(SlotX):
   __slots__ = ['y']
-  def __init__(self, x: int, y: int) -> None:
+  def __init__(self, x: int, y: int):
     super().__init__(x=x)
     self.y = y
   def __eq__(l, r: 'SlotXY') -> bool:

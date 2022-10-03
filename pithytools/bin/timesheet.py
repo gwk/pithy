@@ -161,7 +161,7 @@ class TimeBlock:
   minutes: int # In minutes.
   rate: int
 
-  def __init__(self, start:int, end:int, rate:int) -> None:
+  def __init__(self, start:int, end:int, rate:int):
     assert start < end
     self.start = start
     self.end = end
@@ -183,7 +183,7 @@ class Day:
   day:str
   blocks:list[TimeBlock]
 
-  def __init__(self, day:str, blocks:list[TimeBlock]) -> None:
+  def __init__(self, day:str, blocks:list[TimeBlock]):
     self.day = day
     self.blocks = blocks
 

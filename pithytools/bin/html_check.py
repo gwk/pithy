@@ -27,7 +27,7 @@ Pos = Tuple[int, int]
 
 class Parser(HTMLParser):
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(convert_charrefs=True)
     self.path = path
     self.stack: List[Tuple[Pos, str]] = []

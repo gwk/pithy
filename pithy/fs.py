@@ -404,7 +404,7 @@ def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hid
 
 class DirEntries:
 
-  def __init__(self, exts:Iterable[str]=(), hidden=False, pred:Callable[[DirEntry],bool]=None) -> None:
+  def __init__(self, exts:Iterable[str]=(), hidden=False, pred:Callable[[DirEntry],bool]=None):
     self.exts  = normalize_exts(exts)
     self.hidden = hidden
     self.pred = (lambda entry:True) if pred is None else pred

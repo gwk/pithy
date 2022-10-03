@@ -22,7 +22,7 @@ from .buffer import Buffer
 
 
 class TagRule():
-  def __init__(self, open_pattern: str, close_pattern: str, open_close_tokens_match_fn: Callable=None) -> None:
+  def __init__(self, open_pattern: str, close_pattern: str, open_close_tokens_match_fn: Callable=None):
     self.open_pattern = open_pattern
     self.close_pattern = close_pattern
     self.open_close_tokens_match_fn = open_close_tokens_match_fn
@@ -30,7 +30,7 @@ class TagRule():
 
 class TagParser():
 
-  def __init__(self, leaf_patterns: Sequence[str], tag_rules: Sequence[TagRule]) -> None:
+  def __init__(self, leaf_patterns: Sequence[str], tag_rules: Sequence[TagRule]):
     # parser works by wrapping each start and end pattern in a capture group.
     # the group itself is not used,
     # but the match group index indicates which open or close pattern matched.

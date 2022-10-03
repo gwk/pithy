@@ -206,7 +206,7 @@ class ResponseError(Exception):
   Perhaps the best way to do it is to move response() to WebApp.
   '''
 
-  def __init__(self, status:HTTPStatus, reason:str='', headers:Optional[dict[str,float|int|str]]=None) -> None:
+  def __init__(self, status:HTTPStatus, reason:str='', headers:Optional[dict[str,float|int|str]]=None):
     self.status = status
     self.reason = reason
     self.headers = headers

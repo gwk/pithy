@@ -6,7 +6,7 @@ from typing import Any, Callable, Iterable, NamedTuple, Tuple, Type, TypeVar
 class lazy_property(object):
   'Lazy property decorator.'
 
-  def __init__(self, acc_fn:Callable) -> None:
+  def __init__(self, acc_fn:Callable):
     self.acc_fn = acc_fn
 
   def __get__(self, obj:Any, cls:Type) -> Any:

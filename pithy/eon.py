@@ -29,14 +29,14 @@ EonSyntax = Union[Token,EonContainer]
 
 
 class EonEmpty(EonContainer):
-  def __init__(self, token:Token) -> None:
+  def __init__(self, token:Token):
     self.token = token
 
   def __repr__(self) -> str: return f'{type(self).__name__}({self.token})'
 
 
 class EonDict(EonContainer):
-  def __init__(self, token:Token, items:List[Tuple[Token,'EonSyntax']]) -> None:
+  def __init__(self, token:Token, items:List[Tuple[Token,'EonSyntax']]):
     self.token = token
     self.items = items
 
@@ -46,7 +46,7 @@ class EonDict(EonContainer):
 
 
 class EonList(EonContainer):
-  def __init__(self, token:Token, els:List['EonSyntax']) -> None:
+  def __init__(self, token:Token, els:List['EonSyntax']):
     self.token = token
     self.els = els
 
@@ -56,7 +56,7 @@ class EonList(EonContainer):
 
 
 class EonStr(EonContainer):
-  def __init__(self, token:Token, tokens:List[Token]) -> None:
+  def __init__(self, token:Token, tokens:List[Token]):
     self.token = token
     self.tokens = tokens
 

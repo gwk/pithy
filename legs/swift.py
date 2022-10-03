@@ -252,7 +252,7 @@ for (i, arg) in CommandLine.arguments.enumerated() {
 
 
 class SwiftEnum:
-  def __init__(self, string:str) -> None:
+  def __init__(self, string:str):
     self.string = string
 
   @property

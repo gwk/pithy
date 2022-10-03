@@ -46,7 +46,7 @@ _T = TypeVar('_T')
 class ParseError(Exception):
   error_prefix = 'parse'
 
-  def __init__(self, source:Source, syntax:Syntax, msg:str, notes:Iterable[SyntaxMsg]=()) -> None:
+  def __init__(self, source:Source, syntax:Syntax, msg:str, notes:Iterable[SyntaxMsg]=()):
     self.source = source
     self.notes:List[SyntaxMsg] = list(notes)
     self.syntax = syntax
@@ -121,7 +121,7 @@ class Rule:
   subs:Tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
   heads:Tuple[TokenKind,...] # Set of leading token kinds for this rule.
 
-  def __init__(self, *args:Any, **kwargs:Any) -> None: raise Exception(f'abstract base class: {self}')
+  def __init__(self, *args:Any, **kwargs:Any): raise Exception(f'abstract base class: {self}')
 
 
   def __str__(self) -> str:
@@ -197,7 +197,7 @@ class Alias(Rule):
 
   type_desc = 'alias'
 
-  def __init__(self, alias:str, transform:UnaryTransform=unary_identity) -> None:
+  def __init__(self, alias:str, transform:UnaryTransform=unary_identity):
     self.name = ''
     self.alias = alias
     self.sub_refs = (alias,)
@@ -220,7 +220,7 @@ class Atom(Rule):
   '''
   type_desc = 'atom'
 
-  def __init__(self, kind:TokenKind, transform:TokenTransform=token_identity) -> None:
+  def __init__(self, kind:TokenKind, transform:TokenTransform=token_identity):
     self.name = ''
     self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
     self.kind = validate_name(kind)
@@ -269,7 +269,7 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, drop:Iterable[str]=(), dflt=None, transform:UnaryTransform=unary_identity) -> None:
+  def __init__(self, body:RuleRef, drop:Iterable[str]=(), dflt=None, transform:UnaryTransform=unary_identity):
     self.name = ''
     self.sub_refs = (body,)
     self.heads = ()
@@ -376,7 +376,7 @@ class Struct(Rule):
   '''
   type_desc = 'structure'
 
-  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform=None) -> None:
+  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform=None):
     if not fields: raise ValueError('Struct requires at least one field')
     self.name = ''
     self.sub_refs = fields
@@ -418,7 +418,7 @@ class Choice(Rule):
   '''
   type_desc = 'choice'
 
-  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), transform:ChoiceTransform=choice_identity) -> None:
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), transform:ChoiceTransform=choice_identity):
     self.name = ''
     self.sub_refs = choices
     self.heads = ()
@@ -460,7 +460,7 @@ class Operator:
   sub_refs:Tuple[RuleRef,...] = ()
 
   # TODO: spacing requirement options, e.g. no space, some space, symmetrical space.
-  def __init__(self, *args:Any, **kwargs:Any) -> None: raise Exception(f'abstract base class: {self}')
+  def __init__(self, *args:Any, **kwargs:Any): raise Exception(f'abstract base class: {self}')
 
 
   def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> Any:
@@ -471,7 +471,7 @@ class Operator:
 class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
 
-  def __init__(self, suffix:TokenKind, transform:UnaryTransform=unary_syn) -> None:
+  def __init__(self, suffix:TokenKind, transform:UnaryTransform=unary_syn):
     self.kinds = (validate_name(suffix),)
     self.transform = transform
 
@@ -488,7 +488,7 @@ class SuffixRule(Operator):
   `suffix` must be a constructed rule and not a string reference.
   '''
 
-  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_syn) -> None:
+  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_syn):
     self.sub_refs = (suffix,)
     self.transform = transform
 
@@ -517,7 +517,7 @@ class Adjacency(BinaryOp):
   'A binary operator that joins two primary expressions with no operator token in between.'
   kinds:Tuple[TokenKind,...] = () # Adjacency operators have no operator token.
 
-  def __init__(self, transform:BinaryTransform=adjacency_syn) -> None:
+  def __init__(self, transform:BinaryTransform=adjacency_syn):
     self.transform = transform
 
 
@@ -540,7 +540,7 @@ class _AllLeafKinds(Exception):
 class Infix(BinaryOp):
   'A binary operator that joins two primary expressions with an infix operator.'
 
-  def __init__(self, kind:TokenKind, transform:BinaryTransform=binary_syn) -> None:
+  def __init__(self, kind:TokenKind, transform:BinaryTransform=binary_syn):
     self.kinds = (validate_name(kind),)
     self.transform = transform
 
@@ -555,7 +555,7 @@ class Group:
   level_bump = 0
   'Operator precedence group.'
 
-  def __init__(self, *ops:Operator) -> None:
+  def __init__(self, *ops:Operator):
     self.ops = ops
     self.level = -1
 
@@ -667,7 +667,7 @@ class Precedence(Rule):
 
 class SubParser(Rule):
 
-  def __init__(self, parser:'Parser', rule_name:str, transform:UnaryTransform=unary_identity) -> None:
+  def __init__(self, parser:'Parser', rule_name:str, transform:UnaryTransform=unary_identity):
     self.name = ''
     self.sub_refs = ()
     self.heads = parser.rules[rule_name].heads
@@ -685,11 +685,11 @@ class Parser:
   '''
 
   class DefinitionError(Exception):
-    def __init__(self, *msgs:Any) -> None:
+    def __init__(self, *msgs:Any):
       super().__init__(''.join(str(msg) for msg in msgs))
 
 
-  def __init__(self, lexer:Lexer, rules:Dict[RuleName,Rule], literals:Iterable[TokenKind]=(), drop:Iterable[TokenKind]=()) -> None:
+  def __init__(self, lexer:Lexer, rules:Dict[RuleName,Rule], literals:Iterable[TokenKind]=(), drop:Iterable[TokenKind]=()):
     self.lexer = lexer
     self.rules = rules
     self.literals = frozenset(iter_str(literals))

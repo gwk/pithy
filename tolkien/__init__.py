@@ -58,7 +58,7 @@ _Text = TypeVar('_Text', bound=SourceText)
 
 class Source(Generic[_Text]):
 
-  def __init__(self, name:str, text:_Text, *, line_idx_start:int=0, show_missing_newline:bool=True) -> None:
+  def __init__(self, name:str, text:_Text, *, line_idx_start:int=0, show_missing_newline:bool=True):
     assert isinstance(text, (str,bytes,bytearray))
     self.name = name
     self.text = text

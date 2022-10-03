@@ -16,7 +16,7 @@ class LexError(Exception): pass
 
 
 class LexMode:
-  def __init__(self, name:str, kinds:Iterable[str], *, indents=False) -> None:
+  def __init__(self, name:str, kinds:Iterable[str], *, indents=False):
     self.name = name
     self.kinds = list(iter_str(kinds))
     self.indents = indents
@@ -44,7 +44,7 @@ LexTransKinds = Union[LexTransKind,Iterable[LexTransKind]]
 LexTransTuple = Tuple[KindPair,...]
 
 class LexTrans:
-  def __init__(self, base:Iterable[str], *, kind:LexTransKinds, mode:str, pop:LexTransKinds, consume:bool) -> None:
+  def __init__(self, base:Iterable[str], *, kind:LexTransKinds, mode:str, pop:LexTransKinds, consume:bool):
     self.bases = tuple(iter_str(base)) # Parent modes.
     self.kinds:LexTransTuple = _mk_pairs_tuple(kind) # Parent mode token kind or pair that causes push.
     self.mode = mode # Child mode.

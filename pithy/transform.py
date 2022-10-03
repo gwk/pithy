@@ -22,7 +22,7 @@ class Transformer(Generic[_T], ContextManager):
   A data transformation pipeline.
   '''
 
-  def __init__(self, iterable: Iterable[_T], log_stem:str, log_index_width=2, progress_frequency=0.1) -> None:
+  def __init__(self, iterable: Iterable[_T], log_stem:str, log_index_width=2, progress_frequency=0.1):
 
     self.iterable = iterable
     self.log_stem = log_stem

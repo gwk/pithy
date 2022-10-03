@@ -13,7 +13,7 @@ class DefaultList(List[_T], Generic[_T]):
   The factory function takes the array index as a its sole parameter.
   '''
 
-  def __init__(self, factory:Callable[[int], _T], iterable:Iterable[_T]=(), fill_length=0) -> None:
+  def __init__(self, factory:Callable[[int], _T], iterable:Iterable[_T]=(), fill_length=0):
     super().__init__(iterable)
     self.factory = factory
     for i in range(fill_length):

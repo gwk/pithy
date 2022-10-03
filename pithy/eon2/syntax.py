@@ -43,14 +43,14 @@ class EonBinding(EonNode):
   eq: Token # TODO: remove and just use `token`?
   val: EonSyntax
 
-  def __init__(self, token:Token, key:EonSyntax, val:EonSyntax) -> None:
+  def __init__(self, token:Token, key:EonSyntax, val:EonSyntax):
     self.token = token
     self.key = key
     self.val = val
 
 
 class EonList(EonNode):
-  def __init__(self, token:Token, els:list['EonSyntax']) -> None:
+  def __init__(self, token:Token, els:list['EonSyntax']):
     self.token = token
     self.els = els
 
@@ -60,7 +60,7 @@ class EonList(EonNode):
 
 
 class EonStr(EonNode):
-  def __init__(self, token:Token, tokens:list[Token]) -> None:
+  def __init__(self, token:Token, tokens:list[Token]):
     self.token = token
     self.tokens = tokens
 

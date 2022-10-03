@@ -8,7 +8,7 @@ Num = Union[float,int]
 
 class Histogram(Mapping[Num,int]):
 
-  def __init__(self, iterable_or_mapping:Union[Iterable[Num],Mapping[Num,int]]=(), *, bin_width:Num) -> None:
+  def __init__(self, iterable_or_mapping:Union[Iterable[Num],Mapping[Num,int]]=(), *, bin_width:Num):
     self.bin_width = bin_width
     self.counter = Counter[Num]()
     self.update(iterable_or_mapping)

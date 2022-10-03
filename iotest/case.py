@@ -30,7 +30,7 @@ class IotParseError(TestCaseError): pass
 
 class FileExpectation:
 
-  def __init__(self, path: str, info: Dict[str, str], expand_str_fn: Callable) -> None:
+  def __init__(self, path: str, info: Dict[str, str], expand_str_fn: Callable):
     if path.find('..') != -1:
       raise TestCaseError(f"file expectation {path}: cannot contain '..'")
     self.path = expand_str_fn(path)

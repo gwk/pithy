@@ -354,7 +354,7 @@ class ExecutableNotFound(ValueError): pass
 
 class UnexpectedExit(Exception):
   'Exception indicating that a subprocess exit code did not match the code expectation.'
-  def __init__(self, msg: str, cmd: Tuple[str, ...], exp: TaskCodeExpectation, act: int) -> None:
+  def __init__(self, msg: str, cmd: Tuple[str, ...], exp: TaskCodeExpectation, act: int):
     super().__init__(msg)
     self.cmd = cmd
     self.exp = exp
@@ -379,7 +379,7 @@ class TaskLaunchUndiagnosedError(TaskLaunchError):
   Undiagnosed launch error.
   '''
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(path)
     self.path = path
 
@@ -390,7 +390,7 @@ class TaskLaunchUndiagnosedError(TaskLaunchError):
 
 class TaskFileBinaryIllFormed(TaskLaunchError):
 
-  def __init__(self, path: str, first_line: bytes) -> None:
+  def __init__(self, path: str, first_line: bytes):
     super().__init__(path, first_line)
     self.path = path
     self.first_line = first_line
@@ -402,7 +402,7 @@ class TaskFileBinaryIllFormed(TaskLaunchError):
 
 class TaskFileInvokedAsInstalledCommand(TaskLaunchError):
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(path)
     self.path = path
 
@@ -412,7 +412,7 @@ class TaskFileInvokedAsInstalledCommand(TaskLaunchError):
 
 class TaskFileHashbangMissing(TaskLaunchError):
 
-  def __init__(self, path: str, first_line: bytes) -> None:
+  def __init__(self, path: str, first_line: bytes):
     super().__init__(path, first_line)
     self.path = path
     self.first_line = first_line
@@ -424,7 +424,7 @@ class TaskFileHashbangMissing(TaskLaunchError):
 
 class TaskFileHashbangIllFormed(TaskLaunchError):
 
-  def __init__(self, path: str, first_line: bytes) -> None:
+  def __init__(self, path: str, first_line: bytes):
     super().__init__(path, first_line)
     self.path = path
     self.first_line = first_line
@@ -436,7 +436,7 @@ class TaskFileHashbangIllFormed(TaskLaunchError):
 
 class TaskFileNotExecutable(TaskLaunchError):
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(path)
     self.path = path
 
@@ -446,7 +446,7 @@ class TaskFileNotExecutable(TaskLaunchError):
 
 class TaskFileNotFound(TaskLaunchError):
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(path)
     self.path = path
 
@@ -456,7 +456,7 @@ class TaskFileNotFound(TaskLaunchError):
 
 class TaskFileNotReadable(TaskLaunchError):
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(path)
     self.path = path
 
@@ -466,7 +466,7 @@ class TaskFileNotReadable(TaskLaunchError):
 
 class TaskInstalledCommandNotFound(TaskLaunchError):
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(path)
     self.path = path
 
@@ -476,7 +476,7 @@ class TaskInstalledCommandNotFound(TaskLaunchError):
 
 class TaskNotAFile(TaskLaunchError):
 
-  def __init__(self, path: str) -> None:
+  def __init__(self, path: str):
     super().__init__(path)
     self.path = path
 
