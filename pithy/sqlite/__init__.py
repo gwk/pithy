@@ -3,7 +3,7 @@
 import sqlite3
 from typing import Any, Dict, Iterable, Iterator, Optional, Sequence, Tuple, cast
 
-from ..ansi import RST_TXT, TXT_C, TXT_D, TXT_Y
+from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
 from .util import default_to_json, py_to_sqlite_types_tuple
 
@@ -37,10 +37,18 @@ class Row(sqlite3.Row):
     '"quick describe inline". Return a string describing the query result.'
     parts = []
     for key, val in self.items():
-      color = TXT_C if isinstance(val, int) else TXT_Y
+      color = _row_qdi_colors.get(type(val), TXT_R)
       parts.append(f'{TXT_D}{key}:{color}{val!r}{RST_TXT}')
     return '  '.join(parts)
 
+_row_qdi_colors = {
+  bool: TXT_G,
+  bytes: TXT_M,
+  float: TXT_B,
+  int: TXT_C,
+  str: TXT_Y,
+  type(None): TXT_R,
+}
 
 class Cursor(sqlite3.Cursor):
 
