@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from enum import Enum
+from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
@@ -25,9 +26,10 @@ class NoElements(KeyError):
   'Raised when an iterable unexpectedly has no elements.'
 
 
-known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, range, type(None), type(Ellipsis))
+known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, type(None), type(Ellipsis), range, IOBase)
 #^ Note: the only type that is strictly necessary is `str`, because its element type is `str` which causes infinite recursion.
 # It also makes sense not to iterate over byte values or range indices, as that is probably not the intent of a generic iteration.
+# Iterating over files is problematic, particularly because some are write-only and will fail.
 # The remaining members are a speculative optimization.
 
 
