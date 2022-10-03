@@ -51,6 +51,15 @@ class Request:
 
 
   @lazy_property
+  def path_parts(self) -> list[str]:
+    assert self.path.startswith('/')
+    parts = self.path.split('/')
+    if not parts[-1]: del parts[-1]
+    del parts[0]
+    return parts
+
+
+  @lazy_property
   def body_bytes(self) -> bytes:
     try: return self.body_file.read(self.content_length) if self.content_length else b''
     except Exception as exc: raise BadRequest(f'Failed to read request body') from exc
