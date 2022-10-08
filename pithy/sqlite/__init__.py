@@ -55,7 +55,7 @@ class Cursor(sqlite3.Cursor):
   def execute(self, query:str, args:Iterable=()) -> 'Cursor': # type: ignore[override]
     try: return super().execute(query, args) # type: ignore[arg-type]
     except sqlite3.Error as e:
-      raise SqliteError(f'SQLite error; query: {query!r}') from e
+      raise SqliteError(f'SQLite error: {e}\n  query: {query!r}') from e
 
 
   def run(self, *sql:str, **args:Any) -> 'Cursor':
