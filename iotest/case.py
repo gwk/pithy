@@ -414,7 +414,7 @@ case_key_validators: Dict[str, Tuple[str, Callable[[Any], bool], Optional[Callab
 # file expectation functions.
 
 def compare_equal(exp: FileExpectation, val: str) -> bool:
-  return exp.val == val # type: ignore
+  return exp.val == val # type: ignore[no-any-return]
 
 def compare_contain(exp: FileExpectation, val: str) -> bool:
   return val.find(exp.val) != -1
@@ -427,7 +427,7 @@ def compare_match(exp: FileExpectation, val: str) -> bool:
       return False
     (pattern, regex) = pair
     if line is None or not regex.fullmatch(line):
-      exp.match_error = (i, pattern, line) # type: ignore
+      exp.match_error = (i, pattern, line) # type: ignore[assignment]
       return False
   return True
 

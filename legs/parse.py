@@ -283,7 +283,7 @@ escape_codes:Dict[str, int] = {
 escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/')
 
 if False:
-  for k, v in sorted(escape_codes.items()): # type: ignore
+  for k, v in sorted(escape_codes.items()): # type: ignore[unreachable]
     errL(f'{k}: {v!r}')
 
 

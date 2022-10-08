@@ -29,8 +29,8 @@ class CraftConfig(NamedTuple):
   resources: Dict[str, str] = {}
   sources: str = 'src'
   swift_path: str = '' # Derived.
-  swift_version: str = None # type: ignore # TODO
-  target_macOS: str = None # type: ignore # TODO
+  swift_version: str = None # type: ignore[assignment] # TODO
+  target_macOS: str = None # type: ignore[assignment] # TODO
   ts_modules: Dict[str, str] = {}
   xcode_dev_dir: str = '' # Derived.
   xcode_toolchain_dir: str = '' # Derived.

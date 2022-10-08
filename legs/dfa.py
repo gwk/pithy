@@ -247,7 +247,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         for x in intersection:
           node_parts[x] = intersection
         part -= intersection # Original part mutates to become difference.
-        set_pairs.append((intersection, part)) # type: ignore
+        set_pairs.append((intersection, part)) # type: ignore[arg-type]
     return set_pairs
 
   # Refinement.

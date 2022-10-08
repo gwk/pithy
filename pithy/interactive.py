@@ -3,7 +3,7 @@
 import inspect
 import sys
 from code import InteractiveInterpreter
-from typing import ContextManager, List
+from typing import Any, ContextManager, List
 
 from .io import errSL
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -14,7 +14,7 @@ class Interpreter(InteractiveInterpreter):
   Similar to code.InteractiveConsole.
   '''
 
-  def __init__(self, locals=None, filename='<interact>'):
+  def __init__(self, locals:dict[str,Any]=None, filename='<interact>'):
     super().__init__(locals=locals)
     self.buffer:List[str] = []
     self.filename = filename
