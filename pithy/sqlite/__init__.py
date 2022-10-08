@@ -1,11 +1,28 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import Any, Dict, Iterable, Iterator, Optional, Sequence, Tuple, cast
+from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Protocol, Sequence, Tuple, TypeAlias, TypeVar, cast
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
 from .util import default_to_json, py_to_sqlite_types_tuple
+
+
+_T_co = TypeVar('_T_co', covariant=True)
+
+class _SupportsLenAndGetItemByInt(Protocol[_T_co]):
+  def __len__(self) -> int: ...
+  def __getitem__(self, __k:int) -> _T_co: ...
+
+_ReadableBuffer:TypeAlias = bytes | bytearray | memoryview # | array.array[Any] | mmap.mmap | ctypes._CData | pickle.PickleBuffer
+
+_SqliteData:TypeAlias = str | _ReadableBuffer | int | float | None
+
+_AdaptedInputData:TypeAlias = _SqliteData | Any # type: ignore[operator]
+#^ Data that is passed through adapters can be of any type accepted by an adapter.
+
+_SqlParameters: TypeAlias = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[str, _AdaptedInputData]
+#^ The Mapping must really be a dict, but making it invariant is too annoying.
 
 
 class SqliteError(Exception):
@@ -52,8 +69,20 @@ _row_qdi_colors = {
 
 class Cursor(sqlite3.Cursor):
 
-  def execute(self, query:str, args:Iterable=()) -> 'Cursor': # type: ignore[override]
-    try: return super().execute(query, args) # type: ignore[arg-type]
+  def execute(self, query:str, args:_SqlParameters=()) -> 'Cursor':
+    '''
+    Override execute so that we can raise an SqliteError with the complete query string.
+    '''
+    try: return super().execute(query, args)
+    except sqlite3.Error as e:
+      raise SqliteError(f'SQLite error: {e}\n  query: {query!r}') from e
+
+
+  def executemany(self, query:str, it_args:Iterable[_SqlParameters]) -> 'Cursor':
+    '''
+    Override executemany so that we can raise an SqliteError with the complete query string.
+    '''
+    try: return super().executemany(query, it_args)
     except sqlite3.Error as e:
       raise SqliteError(f'SQLite error: {e}\n  query: {query!r}') from e
 
