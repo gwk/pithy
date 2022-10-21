@@ -114,6 +114,7 @@ class Cursor(sqlite3.Cursor):
   def col(self) -> Iterable[Any]:
     'Yield column 0 of each result row.'
     row = self.fetchone()
+    if row is None: return
     assert len(row) == 1
     yield row[0]
     for row in self:
@@ -207,6 +208,8 @@ class Connection(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:Optional[str]=None,
    check_same_thread:bool=True, cached_statements:int=100, uri:bool=False) -> None:
+
+    self.path = path
 
     super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
       check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri)
