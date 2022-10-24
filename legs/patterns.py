@@ -52,7 +52,7 @@ class LegsPattern:
     s = p.replace('\\', '\\\\').replace('`', '\\`')
     return f'`{s}`'
 
-  def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     raise NotImplementedError
 
   def gen_regex(self, flavor:str) -> str: raise NotImplementedError
@@ -94,9 +94,9 @@ class ChoicePattern(StructPattern):
       link = link.tl
     yield link
 
-  def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     for sub in self:
-      sub.gen_nfa(mk_node, transitions, start, end)
+      sub.gen_nfa(mk_node, encoding, transitions, start, end)
 
   def gen_regex(self, flavor:str) -> str:
     # TODO: must take into account ordering.
@@ -135,10 +135,10 @@ class SeqPattern(StructPattern):
       link = link.tl
     yield link
 
-  def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     intermediates = [mk_node() for i in range(1, len(list(self)))]
     for sub, src, dst in zip(self, [start] + intermediates, intermediates + [end]):
-      sub.gen_nfa(mk_node, transitions, src, dst)
+      sub.gen_nfa(mk_node, encoding, transitions, src, dst)
 
   def gen_regex(self, flavor:str) -> str:
     sub_patterns = [sub.gen_regex_sub(flavor=flavor, precedence=self.precedence) for sub in self]
@@ -200,9 +200,9 @@ class OptPattern(QuantityPattern):
 
   operator = '?'
 
-  def gen_nfa(self, mk_node, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     transitions[start][empty_symbol].add(end)
-    self.sub.gen_nfa(mk_node, transitions, start, end)
+    self.sub.gen_nfa(mk_node, encoding, transitions, start, end)
 
   def gen_incomplete(self) -> Optional[LegsPattern]:
     return self.sub.gen_incomplete()
@@ -212,11 +212,11 @@ class StarPattern(QuantityPattern):
 
   operator = '*'
 
-  def gen_nfa(self, mk_node, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     branch = mk_node()
     transitions[start][empty_symbol].add(branch)
     transitions[branch][empty_symbol].add(end)
-    self.sub.gen_nfa(mk_node, transitions, branch, branch)
+    self.sub.gen_nfa(mk_node, encoding, transitions, branch, branch)
 
   def gen_incomplete(self) -> Optional[LegsPattern]:
     sub_inc = self.sub.gen_incomplete()
@@ -228,13 +228,13 @@ class PlusPattern(QuantityPattern):
 
   operator = '+'
 
-  def gen_nfa(self, mk_node, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     pre = mk_node()
     post = mk_node()
     transitions[start][empty_symbol].add(pre)
     transitions[post][empty_symbol].add(end)
     transitions[post][empty_symbol].add(pre)
-    self.sub.gen_nfa(mk_node, transitions, pre, post)
+    self.sub.gen_nfa(mk_node, encoding, transitions, pre, post)
 
   def gen_incomplete(self) -> Optional[LegsPattern]:
     return StarPattern(self.sub).gen_incomplete()
@@ -255,11 +255,11 @@ class CharsetPattern(LegsPattern):
     errL('  ' * depth, n, self.desc_type, ': ', codes_desc(self.ranges))
 
 
-  def gen_nfa(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
     node_byte_nodes = DefaultDict[int,Dict[int,int]](dict)
     for code in codes_for_ranges(self.ranges):
       node = start
-      enc_bytes = chr(code).encode()
+      enc_bytes = chr(code).encode(encoding)
       for i, byte in enumerate(enc_bytes, 1-len(enc_bytes)):
         if i: # Not the final byte.
           byte_nodes = node_byte_nodes[node]

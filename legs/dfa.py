@@ -161,10 +161,10 @@ class DFA:
 
   def describe_stats(self, label='') -> None:
     errL(self.name, (label and f': {label}'), ':')
-    errSL('  nodes:', len(self.transitions))
-    errSL('  match nodes:', len(self.match_node_kind_sets))
-    errSL('  post-match nodes:', len(self.post_match_nodes))
-    errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
+    errSL(f'  nodes: {len(self.transitions):_}')
+    errSL(f'  match nodes: {len(self.match_node_kind_sets):_}')
+    errSL(f'  post-match nodes: {len(self.post_match_nodes):_}')
+    errSL(f'  transitions: {sum(len(d) for d in self.transitions.values()):_}')
     errL()
 
   def dst_nodes(self, node:int) -> FrozenSet[int]:
@@ -173,8 +173,7 @@ class DFA:
   def advance(self, state:int, byte:int) -> int:
     return self.transitions[state][byte]
 
-  def match(self, text:str) -> FrozenSet[str]:
-    text_bytes = text.encode('utf8')
+  def match(self, text_bytes:bytes) -> FrozenSet[str]:
     state = self.start_node
     for byte in text_bytes:
       try: state = self.advance(state, byte)

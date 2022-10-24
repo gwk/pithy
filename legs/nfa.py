@@ -117,9 +117,9 @@ class NFA:
 
   def describe_stats(self, label=None) -> None:
     errL(self.name, (label and f': {label}'), ':')
-    errSL('  match nodes:', len(self.match_node_kinds))
-    errSL('  nodes:', len(self.transitions))
-    errSL('  transitions:', sum(len(d) for d in self.transitions.values()))
+    errSL(f'  match nodes: {len(self.match_node_kinds):_}')
+    errSL(f'  nodes: {len(self.transitions):_}')
+    errSL(f'  transitions: {sum(len(d) for d in self.transitions.values()):_}')
     errL()
 
   def dst_nodes(self, node:int) -> FrozenSet[int]:
@@ -141,8 +141,7 @@ class NFA:
       else: nextState.update(dst_nodes)
     return self.advance_empties(nextState)
 
-  def match(self, text:str) -> FrozenSet[str]:
-    text_bytes = text.encode('utf8')
+  def match(self, text_bytes:bytes) -> FrozenSet[str]:
     state = self.advance_empties({0})
     #errSL('NFA start:', state)
     for byte in text_bytes:

@@ -42,6 +42,7 @@ def main() -> None:
   parser.add_argument('path', nargs='?', help='Path to the .legs file.')
   parser.add_argument('-dbg', action='store_true', help='Verbose debug printing.')
   parser.add_argument('-describe', action='store_true', help='Print pattern descriptions.')
+  parser.add_argument('-encoding', default='utf-8', help='Encoding of the input file.')
   parser.add_argument('-langs', nargs='+', default=[], help='Target languages for which to generate lexers.')
   parser.add_argument('-match', nargs='+', help='Attempt to lex each argument string.')
   parser.add_argument('-mode', default=None, help='Mode with which to lex the arguments to `-match`.')
@@ -117,7 +118,7 @@ def main() -> None:
     if args.match and mode != match_mode: continue
 
     named_patterns = sorted((kind, patterns[kind]) for kind in pattern_kinds)
-    nfa = gen_nfa(name=mode, named_patterns=named_patterns)
+    nfa = gen_nfa(name=mode, named_patterns=named_patterns, encoding=args.encoding)
     if dbg: nfa.describe('NFA')
     if dbg or args.stats: nfa.describe_stats(f'NFA Stats')
     msgs = nfa.validate()
@@ -136,8 +137,9 @@ def main() -> None:
     dfas.append(min_dfa)
 
     if args.match and mode == match_mode:
-      for string in args.match:
-        match_string(nfa, fat_dfa, min_dfa, string)
+      for text in args.match:
+        text_bytes = text.encode(args.encoding)
+        match_bytes(nfa, fat_dfa, min_dfa, text, text_bytes)
       exit()
 
     if dbg: errL('----')
@@ -248,7 +250,7 @@ def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
   exit(status)
 
 
-def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
+def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -> None:
   '''
   Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.
   This is tricky because each is subtly different:
@@ -257,22 +259,22 @@ def match_string(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, string: str) -> None:
   Therefore the minimized DFA is most correct,
   but for now it seems worthwhile to keep the ability to check them against each other.
   '''
-  nfa_matches = nfa.match(string)
-  fat_dfa_matches = fat_dfa.match(string)
+  nfa_matches = nfa.match(text_bytes)
+  fat_dfa_matches = fat_dfa.match(text_bytes)
   if nfa_matches != fat_dfa_matches:
     if not (nfa_matches == frozenset() and fat_dfa_matches == frozenset({'invalid'})): # allow this special case.
-      exit(f'match: {string!r}; inconsistent matches: NFA: {nfa_matches}; fat DFA: {fat_dfa_matches}.')
-  min_dfa_matches = min_dfa.match(string)
+      exit(f'match: {text!r}; inconsistent matches: NFA: {nfa_matches}; fat DFA: {fat_dfa_matches}.')
+  min_dfa_matches = min_dfa.match(text_bytes)
   if not (fat_dfa_matches >= min_dfa_matches):
-    exit(f'match: {string!r}; inconsistent matches: fat DFA: {fat_dfa_matches}; min DFA: {min_dfa_matches}.')
+    exit(f'match: {text!r}; inconsistent matches: fat DFA: {fat_dfa_matches}; min DFA: {min_dfa_matches}.')
   assert len(min_dfa_matches) <= 1, min_dfa_matches
   if min_dfa_matches:
-    outL(f'match: {string!r} -> {first_el(min_dfa_matches)}')
+    outL(f'match: {text!r} -> {first_el(min_dfa_matches)}')
   else:
-    outL(f'match: {string!r} -- <none>')
+    outL(f'match: {text!r} -- <none>')
 
 
-def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]]) -> NFA:
+def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]], encoding:str) -> NFA:
   '''
   Generate an NFA from a set of patterns.
   The NFA can be used to match against an argument string,
@@ -291,7 +293,7 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]]) -> NFA:
   transitions_dd:NfaMutableTransitions = DefaultDict(lambda: DefaultDict(set))
   for kind, pattern in named_patterns:
     match_node = mk_node()
-    pattern.gen_nfa(mk_node, transitions_dd, start, match_node)
+    pattern.gen_nfa(mk_node, encoding, transitions_dd, start, match_node)
     dict_put(match_node_kinds, match_node, kind)
   lit_pattern_names = { n for n, pattern in named_patterns if pattern.is_literal }
 
