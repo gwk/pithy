@@ -105,6 +105,7 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
       pkg_dir_path = path_dir(cast(str, spec.origin))
       legs_base_path = path_join(pkg_dir_path, 'legs_base.swift')
       legs_base_contents = open(legs_base_path).read()
+      f.write('\n\n')
       f.write(legs_base_contents)
       # Write the test main function.
       test_src = render_template(test_template, Name=args.type_prefix)
