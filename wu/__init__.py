@@ -6,9 +6,9 @@ from os import environ
 from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple, Union,
   cast)
 
-import pygments  # type: ignore
-import pygments.lexers  # type: ignore
-import pygments.token  # type: ignore
+import pygments
+import pygments.lexers
+import pygments.token
 from pithy.html.semantics import phrasing_tags
 from pithy.io import errSL, errSN
 from pithy.json import load_json
@@ -876,7 +876,7 @@ def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,
   lexer = pygments.lexers.guess_lexer_for_filename(f.name, first)
   yield '<div class="code-block">'
   for line in lines:
-    content = ''.join(render_token(ctx, *t) for t in pygments.lex(line, lexer))
+    content = ''.join(render_token(ctx, *t) for t in pygments.lex(line, lexer)) # type: ignore[no-untyped-call]
     yield f'<code class="line">{content}</code>'
   yield '</div>'
 

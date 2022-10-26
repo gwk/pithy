@@ -98,8 +98,8 @@ def digest(hasher:Any, path:str, hash_size:Optional[int]) -> bytes:
     chunk = f.read(hash_chunk_size)
     if not chunk: break
     hasher.update(chunk)
-  if hash_size: return hasher.digest(hash_size) # type: ignore
-  else: return hasher.digest() # type: ignore
+  if hash_size: return hasher.digest(hash_size) # type: ignore[no-any-return]
+  else: return hasher.digest() # type: ignore[no-any-return]
 
 
 if __name__ == '__main__': main()

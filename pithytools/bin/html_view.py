@@ -26,7 +26,7 @@ def main() -> None:
   if args.path is not None:
     f_in = open(args.path, 'rb')
   else:
-    f_in = stdin.detach() # type: ignore
+    f_in = stdin.detach() # type: ignore[attr-defined]
 
 
   class Handler(BaseHTTPRequestHandler):

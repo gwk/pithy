@@ -44,7 +44,7 @@ class DiffLine:
 
   @property
   def raw_text(self) -> str:
-    return self.match.string # type: ignore
+    return self.match.string # type: ignore[no-any-return]
 
   def set_text(self, key:str, clip:bool=False) -> None:
     text = self.match[key]
@@ -117,7 +117,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool, dbg:bool) -> None:
   kind = first.kind
 
   # If we are processing `git log --graph` then parsing will fail; detect and skip.
-  if git_diff_graph_mode_pat.match(first.raw_text).end(): # type: ignore
+  if git_diff_graph_mode_pat.match(first.raw_text).end(): # type: ignore[union-attr]
     for line in lines: print(line.raw_text)
     return
 

@@ -240,7 +240,7 @@ def clean_url(base:str, url:str='') -> str:
 
 def clean_seed_url(url:str) -> str:
   u = url_split(url)
-  if not (u.scheme and u.host): exit('error: seed URL must have a scheme and host.') # type: ignore
+  if not (u.scheme and u.host): exit('error: seed URL must have a scheme and host.') # type: ignore[attr-defined]
   return url_defrag(url).url
 
 
