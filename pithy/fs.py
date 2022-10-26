@@ -239,11 +239,15 @@ def open_new(path:Path, create_dirs:bool=True, **open_args) -> TextIO:
 
 @memoize
 def path_for_cmd(cmd:str) -> Optional[str]:
+  '''
+  Determine the path for the executable `cmd` by iterating over the sequence of directories given by _get_exec_path().
+  TODO: it might be wiser to simply call `which` and memoize the result.
+  '''
   for dir in _get_exec_path():
     try: entries = _scandir(dir)
     except FileNotFoundError: continue # directory in PATH might not exist.
     for entry in entries:
-      if entry.name == cmd and entry.is_file: return path_join(dir, cmd)
+      if entry.name == cmd and entry.is_file(follow_symlinks=True): return path_join(dir, cmd)
   return None
 
 
