@@ -84,7 +84,7 @@ def _compile_schema(node: Any, schema: Schema):
         _compile_schema(el, schema.seqs[type(el)])
 
 
-def compile_schema(*nodes: Any, schema: Schema=None) -> Schema:
+def compile_schema(*nodes: Any, schema: Schema|None=None) -> Schema:
   '''
   Generate or update a `Schema` from one or more example objects.
   Each object (JSON or similar generic collections) is explored
@@ -151,7 +151,7 @@ def _write_schema(file: TextIO, schema: Schema, *, all_keys: bool, count_atoms: 
       put_types(prefix=prefix, symbol=': ', subindent=(indent + '. '), types=types)
 
 
-def write_schema(file: TextIO, schema: Optional[Schema]=None, *, all_keys=False, count_atoms=False, inline=True, indent='', end='\n') -> None:
+def write_schema(file: TextIO, schema: Schema|None=None, *, all_keys=False, count_atoms=False, inline=True, indent='', end='\n') -> None:
   '''
   Write `schema` to file `file`.
   If `count_atoms` is true, then histograms of atom values are emitted.

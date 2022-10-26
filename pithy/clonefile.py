@@ -25,7 +25,7 @@ CLONE_NOFOLLOW = 1 # Int32
 CLONE_NOOWNERCOPY = 2 # Int32
 
 
-def clone(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True, fallback:Optional[Callable[..., None]]=None) -> None:
+def clone(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True, fallback:Callable[..., None]|None=None) -> None:
   '''
   Clone a file using the file system's copy-on-write semantics if available (e.g. APFS); otherwise copy.
   '''

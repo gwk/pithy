@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 class WebApp:
 
-  def __init__(self, local_dir:str=None, prevent_client_caching:bool=False, map_bare_names_to_html=False):
+  def __init__(self, local_dir:str|None=None, prevent_client_caching:bool=False, map_bare_names_to_html=False):
 
     self.local_dir = local_dir
     self.prevent_client_caching = prevent_client_caching

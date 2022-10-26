@@ -71,7 +71,7 @@ class NumRange(Sequence[Num]):
   closed:bool
   _len:int
 
-  def __init__(self, start:Num, stop:Num=None, step:Num=1, *, closed=False):
+  def __init__(self, start:Num, stop:Num|None=None, step:Num=1, *, closed=False):
     if stop is None: # Imitate `range`; `start` is actually `stop`.
       _setattr(self, 'start', 0)
       _setattr(self, 'stop', start)

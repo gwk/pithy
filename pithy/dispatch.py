@@ -13,7 +13,7 @@ class DispatchKeyError(KeyError): pass
 # module_name -> method_name -> (dispatcher_method, key).
 _keyed_dispatch_registries = DefaultDict[str, Dict[str, Tuple[Callable, Dict[Any, Callable]]]](dict)
 
-def key_dispatched(key_fn:Optional[Callable[[Any], Any]]=None, *, key:Any=Default._) -> Callable[[Callable], Callable]:
+def key_dispatched(key_fn:Callable[[Any], Any]|None=None, *, key:Any=Default._) -> Callable[[Callable], Callable]:
   '''
   Decorator to register a method as the dispatched method for the specified key.
   Usage:

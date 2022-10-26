@@ -76,8 +76,8 @@ class Mu:
 
   __slots__ = ('attrs', 'ch', '_orig', '_parent')
 
-  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs=None, ch:MuChildOrChildren=(), cl:Iterable[str]=None,
-   _orig:_Mu=None, _parent:'Mu'=None, **kw_attrs:Any) -> None:
+  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs|None=None, ch:MuChildOrChildren=(), cl:Iterable[str]|None=None,
+   _orig:_Mu|None=None, _parent:Optional['Mu']=None, **kw_attrs:Any) -> None:
     '''
     Note: the initializer uses `attrs` dict and `ch` list references if provided, resulting in data sharing.
     This is done for two reasons:
@@ -622,7 +622,7 @@ class Mu:
     except KeyError: pass
 
 
-  def visit(self, *, pre:MuVisitor=None, post:MuVisitor=None, traversable=False) -> None:
+  def visit(self, *, pre:MuVisitor|None=None, post:MuVisitor|None=None, traversable=False) -> None:
     if pre is not None: pre(self)
 
     modified_children:List[MuChild] = []
@@ -646,7 +646,7 @@ class Mu:
     if post is not None: post(self)
 
 
-  def iter_visit(self, *, pre:MuIterVisitor=None, post:MuIterVisitor=None, traversable=False) -> Iterator[_T]:
+  def iter_visit(self, *, pre:MuIterVisitor|None=None, post:MuIterVisitor|None=None, traversable=False) -> Iterator[_T]:
     if pre is not None: yield from pre(self)
 
     for i, c in enumerate(self.ch):

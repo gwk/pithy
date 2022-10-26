@@ -84,7 +84,7 @@ class Par:
   dflt:Any
 
   @property
-  def c_arg_cleanup(self) -> Optional[str]:
+  def c_arg_cleanup(self) ->str|None:
     'Optional C argument cleanup code.'
     if self.ti.c_type == 'Py_buffer ': return f'if ({self.name}.obj) PyBuffer_Release(&{self.name})'
     return None

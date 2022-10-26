@@ -36,7 +36,7 @@ def main() -> None:
     if args.xz:   pack(path, ext='.xz', **kwargs)
     if args.zst:  pack(path, ext='.zst', **kwargs)
 
-def pack(path:str, ext:str, overwrite:bool, level:Optional[str], show_stats:bool) -> None:
+def pack(path:str, ext:str, overwrite:bool, level:str|None, show_stats:bool) -> None:
   dst = path + ext
   pack_fn = formats[ext]
   if path_exists(dst, follow=False):
@@ -62,19 +62,19 @@ def pack(path:str, ext:str, overwrite:bool, level:Optional[str], show_stats:bool
     if show_stats: outL(f' {format_byte_count(orig_size)} -> {format_byte_count(pack_size)} ({ratio:.0%}; {duration:0.2f}s)')
 
 
-def br(path:str, level:str=None) -> None:
+def br(path:str, level:str|None=None) -> None:
   if not level: level = '5'
   run(['brotli', '--keep', f'-{level}', path])
 
-def gz(path:str, level:str=None) -> None:
+def gz(path:str, level:str|None=None) -> None:
   if not level: level = '5'
   run(['gzip', '--keep', f'-{level}', path])
 
-def xz(path:str, level:str=None) -> None:
+def xz(path:str, level:str|None=None) -> None:
   if not level: level = '4'
   run(['xz', '--keep', f'-{level}', '--threads=0', path])
 
-def zst(path:str, level:str=None) -> None:
+def zst(path:str, level:str|None=None) -> None:
   if not level: level = '6'
   run(['zstd', '--keep', f'-{level}', '--threads=0', '-q', path], err=stderr)
 

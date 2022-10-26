@@ -51,7 +51,7 @@ class FileExpectation:
       self.match_pattern_pairs = self.compile_match_lines(self.val)
     else:
       self.match_pattern_pairs = []
-    self.match_error: Optional[Tuple[int, Optional[Pattern], str]] = None
+    self.match_error: Optional[Tuple[int,Pattern|None, str]] = None
 
 
   def compile_match_lines(self, text: str) -> List[Tuple[str, Pattern]]:

@@ -14,7 +14,7 @@ class Interpreter(InteractiveInterpreter):
   Similar to code.InteractiveConsole.
   '''
 
-  def __init__(self, locals:dict[str,Any]=None, filename='<interact>'):
+  def __init__(self, locals:dict[str,Any]|None=None, filename='<interact>'):
     super().__init__(locals=locals)
     self.buffer:List[str] = []
     self.filename = filename

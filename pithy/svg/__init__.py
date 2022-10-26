@@ -34,8 +34,8 @@ class SvgNode(Mu):
   }
 
 
-  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs=None, ch:MuChildOrChildren=(), cl:Iterable[str]=None,
-   _orig:_Mu=None, _parent:'Mu'=None, title:str=None, **kw_attrs:Any) -> None:
+  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs|None=None, ch:MuChildOrChildren=(), cl:Iterable[str]|None=None,
+   _orig:_Mu|None=None, _parent:Optional['Mu']=None, title:str|None=None, **kw_attrs:Any) -> None:
     '''
     SvgNode constructor.
     The `title` parameter is a special attribute that is not included in the `attrs` parameter.
@@ -85,8 +85,8 @@ class Style(SvgNode):
 @_tag
 class Circle(SvgNode):
 
-  def __init__(self, *, pos:Vec=None, r:Num=None, x:Num=None, y:Num=None,
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, *, pos:Vec|None=None, r:Num|None=None, x:Num|None=None, y:Num|None=None,
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -98,8 +98,8 @@ class Circle(SvgNode):
 @_tag
 class Image(SvgNode):
 
-  def __init__(self, pos:Vec=None, *, size:VecOrNum=None, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, pos:Vec|None=None, *, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -115,8 +115,8 @@ class Image(SvgNode):
 @_tag
 class Line(SvgNode):
 
-  def __init__(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None,
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, a:Vec|None=None, b:Vec|None=None, *, x1:Num|None=None, y1:Num|None=None, x2:Num|None=None, y2:Num|None=None,
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if a is not None:
       assert x1 is None
       assert y1 is None
@@ -133,7 +133,7 @@ class Line(SvgNode):
 class Path(SvgNode):
 
   def __init__(self, d:Iterable[PathCommand],
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     assert (attrs is None or 'd' not in attrs)
     cmd_strs:list[str] = []
     for c in d:
@@ -151,7 +151,7 @@ class Path(SvgNode):
 class SvgPoly(SvgNode):
 
   def __init__(self, points:Iterable[Vec],
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     assert (attrs is None or 'points' not in attrs)
     point_strs:list[str] = []
     for p in points:
@@ -175,8 +175,8 @@ class Polyline(SvgPoly):
 class Rect(SvgNode):
   'Rect element.'
 
-  def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None,
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, r:VecOrNum|None=None,
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -199,8 +199,8 @@ class Rect(SvgNode):
 class Text(SvgNode):
   tag = 'text'
 
-  def __init__(self, ch='', pos:Vec=None, x:Num=None, y:Num=None, alignment_baseline:str=None,
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, ch='', pos:Vec|None=None, x:Num|None=None, y:Num|None=None, alignment_baseline:str|None=None,
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -224,8 +224,8 @@ class TSpan(SvgNode):
 class Use(SvgNode):
   tag = 'use'
 
-  def __init__(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
+   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     assert id
     if id[0] != '#': id = '#' + id
     if pos is not None:
@@ -245,7 +245,7 @@ class SvgBranch(SvgNode):
   'An abstract class for SVG nodes that can contain other nodes.'
 
 
-  def circle(self, pos:Vec=None, r:Num=None, x:Num=None, y:Num=None, **kwargs:Any) -> Circle:
+  def circle(self, pos:Vec|None=None, r:Num|None=None, x:Num|None=None, y:Num|None=None, **kwargs:Any) -> Circle:
     'Create a child `circle` element.'
     return self.append(Circle(pos=pos, r=r, x=x, y=y, **kwargs))
 
@@ -265,18 +265,18 @@ class SvgBranch(SvgNode):
     return self.append(G(transform=transform, **kwargs))
 
 
-  def image(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **kwargs:Any) -> Image:
+  def image(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, **kwargs:Any) -> Image:
     'Create a child `image` element.'
     return self.append(Image(pos=pos, size=size, x=x, y=y, w=w, h=h, **kwargs))
 
 
-  def line(self, a:Vec=None, b:Vec=None, *, x1:Num=None, y1:Num=None, x2:Num=None, y2:Num=None, **kwargs:Any) -> Line:
+  def line(self, a:Vec|None=None, b:Vec|None=None, *, x1:Num|None=None, y1:Num|None=None, x2:Num|None=None, y2:Num|None=None, **kwargs:Any) -> Line:
     'Create a child `line` element.'
     return self.append(Line(a=a, b=b, x1=x1, y1=y1, x2=x2, y2=y2, **kwargs))
 
 
-  def marker(self, ch=(), id:str='', pos:Vec=None, size:VecOrNum=None, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
+  def marker(self, ch=(), id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
+   vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
     'Create a child `marker` element.'
     return self.append(Marker(ch=ch, id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh,
       markerUnits=markerUnits, orient=orient, **kwargs))
@@ -297,7 +297,7 @@ class SvgBranch(SvgNode):
     return self.append(Polyline(points=points, **kwargs))
 
 
-  def rect(self, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, r:VecOrNum=None, **kwargs:Any) -> Rect:
+  def rect(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, r:VecOrNum|None=None, **kwargs:Any) -> Rect:
     'Create a child `rect` element.'
     return self.append(Rect(pos=pos, size=size, x=x, y=y, w=w, h=h, r=r, **kwargs))
 
@@ -312,18 +312,18 @@ class SvgBranch(SvgNode):
     return self.append(Style(ch=text, **kwargs))
 
 
-  def symbol(self, id:str, ch=(), vx:Num=None, vy:Num=None, vw:Num=-1, vh:Num=-1, **kwargs:Any) -> 'Symbol':
+  def symbol(self, id:str, ch=(), vx:Num|None=None, vy:Num|None=None, vw:Num=-1, vh:Num=-1, **kwargs:Any) -> 'Symbol':
     'Create a child `symbol` element.'
     return self.append(Symbol(ch=ch, id=id, vx=vx, vy=vy, vw=vw, vh=vh, **kwargs))
 
 
-  def use(self, id:str, pos:Vec=None, size:VecOrNum=None, *, x:Num=None, y:Num=None, w:Num=None, h:Num=None, **kwargs:Any) -> Use:
+  def use(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, **kwargs:Any) -> Use:
     'Create a child `use` element to use a previously defined symbol.'
     return self.append(Use(id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, **kwargs))
 
 
   def grid(self, pos:Vec=(0,0), size:VecOrNum=(256,256), *,
-   step:VecOrNum=16, offset:Vec=(0, 0), corner_radius:VecOrNum=None, **kwargs:Any) -> 'G':
+   step:VecOrNum=16, offset:Vec=(0, 0), corner_radius:VecOrNum|None=None, **kwargs:Any) -> 'G':
     x, y = f2_for_vec(pos)
     w, h = unpack_VecOrNum(size)
     sx, sy = unpack_VecOrNum(step)
@@ -350,8 +350,8 @@ class Svg(SvgBranch):
   Svg is an XmlWriter class that outputs SVG code.
   '''
 
-  def __init__(self, pos:Vec=None, size:VecOrNum=None, *, x:Dim=None, y:Dim=None, w:Dim=None, h:Dim=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Dim|None=None, y:Dim|None=None, w:Dim|None=None, h:Dim|None=None,
+   vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -398,7 +398,7 @@ class G(SvgBranch):
   'Group element.'
 
   def __init__(self, transform:Iterable[str]='',
-   ch:Iterable[SvgNode]=(), attrs:MuAttrs=None, **kwargs:Any) -> None:
+   ch:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     t:str = ''
     if isinstance(transform, str):
       t = transform
@@ -413,9 +413,9 @@ class G(SvgBranch):
 class Marker(SvgBranch):
   'Marker element.'
 
-  def __init__(self, id:str='', pos:Vec=None, size:VecOrNum=None, x:Num=None, y:Num=None, w:Num=None, h:Num=None,
-   vx:Num=0, vy:Num=0, vw:Num=None, vh:Num=None, markerUnits='strokeWidth', orient:str='auto',
-   ch:Iterable[SvgNode]=(), attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
+   vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, markerUnits='strokeWidth', orient:str='auto',
+   ch:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if not id: raise ValueError(f'Marker requires an `id` string')
     if pos is not None:
       assert x is None
@@ -433,8 +433,8 @@ class Marker(SvgBranch):
 @_tag
 class Symbol(SvgBranch):
 
-  def __init__(self, id:str, vx:Num=None, vy:Num=None, vw:Num=-1, vh:Num=-1,
-   ch:Iterable[SvgNode]=(), attrs:MuAttrs=None, **kwargs:Any) -> None:
+  def __init__(self, id:str, vx:Num|None=None, vy:Num|None=None, vw:Num=-1, vh:Num=-1,
+   ch:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if vx is None: vx = 0
     if vy is None: vy = 0
     # TODO: figure out if no viewBox is legal and at all useful.

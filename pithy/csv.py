@@ -23,19 +23,19 @@ def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:I
 
 def load_csv(file: TextIO, *,
  dialect:Union[str,Dialect,Type[Dialect]]='excel',
- delimiter:Optional[str]=None,
- doublequote:Optional[bool]=None,
- escapechar:Optional[str]=None,
- quotechar:Optional[str]=None,
+ delimiter:str|None=None,
+ doublequote:bool|None=None,
+ escapechar:str|None=None,
+ quotechar:str|None=None,
  quoting:int=QUOTE_MINIMAL,
- skipinitialspace:Optional[bool]=None,
+ skipinitialspace:bool|None=None,
  strict:bool=True,
  has_header=True,
- row_ctor:Optional[Callable]=None,
+ row_ctor:Callable|None=None,
  spread_args:bool=False,
  as_dicts:bool=False,
  preserve_empty_vals:bool=False,
- cols:Optional[dict[str,Optional[Callable]]]=None) -> 'CsvLoader':
+ cols:dict[str,Optional[Callable]]|None=None) -> 'CsvLoader':
 
   return CsvLoader(
     file=file,
@@ -70,19 +70,19 @@ class CsvLoader(Iterable, ContextManager):
 
   def __init__(self, file: TextIO, *,
    dialect:Union[str,Dialect,Type[Dialect]]='excel',
-   delimiter:Optional[str]=None,
-   doublequote:Optional[bool]=None,
-   escapechar:Optional[str]=None,
-   quotechar:Optional[str]=None,
-   quoting:Optional[int]=None,
-   skipinitialspace:Optional[bool]=None,
-   strict:Optional[bool]=None,
+   delimiter:str|None=None,
+   doublequote:bool|None=None,
+   escapechar:str|None=None,
+   quotechar:str|None=None,
+   quoting:int|None=None,
+   skipinitialspace:bool|None=None,
+   strict:bool|None=None,
    has_header=True,
-   row_ctor:Optional[Callable]=None,
+   row_ctor:Callable|None=None,
    spread_args:bool=False,
    as_dicts:bool=False,
    preserve_empty_vals:bool=False,
-   cols:Optional[dict[str,Optional[Callable]]]=None) -> None:
+   cols:dict[str,Optional[Callable]]|None=None) -> None:
 
     # Filter out the unspecified options so that the dialect defaults are respected.
     opts:dict[str,Any] = { k : v for (k, v) in [

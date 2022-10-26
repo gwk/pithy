@@ -4,7 +4,7 @@
 Xml Mu/markup type.
 '''
 
-from typing import Any, Iterable, List, Union
+from typing import Any, Iterable, List, Optional, Union
 
 from ..markup import Mu, MuAttrs, MuChild, _Mu
 
@@ -24,6 +24,6 @@ class Xml(Mu):
   '''
   __slots__ = ('tag')
 
-  def __init__(self:_Mu, *, tag, attrs:MuAttrs=None, ch:Iterable[MuChild]=(), cl:Iterable[str]=None,
-   _orig:_Mu=None, _parent:'Mu'=None, **kw_attrs:Any) -> None:
+  def __init__(self:_Mu, *, tag:str, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,
+   _orig:_Mu|None=None, _parent:Optional['Mu']=None, **kw_attrs:Any) -> None:
     super().__init__(tag=tag, attrs=attrs, ch=ch, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)

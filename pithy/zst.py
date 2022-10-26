@@ -30,7 +30,7 @@ class ZstWriterBase(IO[AnyStr]):
 
   def tell(self) -> int: return self.file.tell()
 
-  def truncate(self, size:int=None) -> int: return self.file.truncate()
+  def truncate(self, size:int|None=None) -> int: return self.file.truncate()
 
   def read(self, size=-1) -> AnyStr: raise TypeError
 
@@ -82,7 +82,7 @@ class ZstWriter(ZstWriterBase, BinaryIO):
 
 class ZstTextWriter(ZstWriterBase, TextIO):
 
-  def __init__(self, file:BinaryIO, encoding:str=None, errors:str=None, level=6, threads=1, chunk_size=32768):
+  def __init__(self, file:BinaryIO, encoding:str|None=None, errors:str|None=None, level=6, threads=1, chunk_size=32768):
     self._encoding = encoding or 'utf-8'
     self._errors = errors or 'strict'
     super().__init__(file=file, level=level, threads=threads, chunk_size=chunk_size)

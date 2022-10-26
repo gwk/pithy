@@ -205,7 +205,7 @@ def usymmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit=False, _
   test_fn(exp, fn, *args_swapped, _exit=_exit, _utest_depth=_utest_depth+1, **kwargs)
 
 
-def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str=None, ret:Any=None, exc:Any=None, subj:Any=None,
+def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:Any=None, subj:Any=None,
  args:Tuple[Any,...]=(), kwargs:Dict[str,Any]={}) -> None:
   global _utest_failure_count
   assert subj is not None

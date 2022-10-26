@@ -151,7 +151,7 @@ class Cursor(sqlite3.Cursor):
     return 0
 
 
-  def insert(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, sql:str, args:Any=()) -> None:
+  def insert(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, sql:str, args:Any=()) -> None:
     '''
     Execute an insert statement synthesized from `into` (the table name), `fields` (optional), and `sql`.
     This function is intended to be an intermediate helper for higher level insert functions.
@@ -177,7 +177,7 @@ class Cursor(sqlite3.Cursor):
     self.insert(with_=with_, or_=or_, into=into, fields=kwargs.keys(), sql=f'VALUES ({placeholders})', args=args)
 
 
-  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, args:Dict[str, Any],
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, args:Dict[str, Any],
    defaults:Dict[str, Any]={}) -> None:
     '''
     Execute an insert statement inserting the dictionary `args`, synthesized from `into` (the table name) and `fields`.
@@ -195,7 +195,7 @@ class Cursor(sqlite3.Cursor):
     self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
 
 
-  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, seq:Sequence[Any]) -> None:
+  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, seq:Sequence[Any]) -> None:
     '''
     Execute an insert statement inserting the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
@@ -206,7 +206,7 @@ class Cursor(sqlite3.Cursor):
 
 class Connection(sqlite3.Connection):
 
-  def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:Optional[str]=None,
+  def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None=None,
    check_same_thread:bool=True, cached_statements:int=100, uri:bool=False) -> None:
 
     self.path = path
@@ -217,7 +217,7 @@ class Connection(sqlite3.Connection):
     self.row_factory = Row # Default for convenience.
 
 
-  def cursor(self, factory:Optional[type]=None) -> Cursor: # type: ignore[override]
+  def cursor(self, factory:type|None=None) -> Cursor: # type: ignore[override]
     if factory is None:
       factory = Cursor
     assert issubclass(factory, Cursor)
@@ -236,7 +236,7 @@ class Connection(sqlite3.Connection):
     return self.cursor().count(table, *where, **args)
 
 
-  def insert(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, sql:str, args:Any=()) -> None:
+  def insert(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, sql:str, args:Any=()) -> None:
     '''
     Execute an insert statement synthesized from `into` (the table name), `fields` (optional), and `sql`.
     This function is intended to be an intermediate helper for higher level insert functions.
@@ -251,7 +251,7 @@ class Connection(sqlite3.Connection):
     self.cursor().insert_row(with_=with_, or_=or_, into=into, **kwargs)
 
 
-  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, args:Dict[str, Any],
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, args:Dict[str, Any],
    defaults:Dict[str, Any]={}) -> None:
     '''
     Execute an insert statement inserting the dictionary `args`, synthesized from `into` (the table name) and `fields`.
@@ -261,7 +261,7 @@ class Connection(sqlite3.Connection):
     self.cursor().insert_dict(with_=with_, or_=or_, into=into, fields=fields, args=args, defaults=defaults)
 
 
-  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Optional[Iterable[str]]=None, seq:Sequence[Any]) -> None:
+  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, seq:Sequence[Any]) -> None:
     '''
     Execute an insert statement inserting the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''

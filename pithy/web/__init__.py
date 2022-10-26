@@ -134,7 +134,7 @@ class Response:
   body:BinaryResponseBody
 
 
-  def __init__(self, status:HTTPStatus=HTTPStatus.OK, *, headers:dict[str,float|int|str]=None, body:ResponseBody=None,
+  def __init__(self, status:HTTPStatus=HTTPStatus.OK, *, headers:dict[str,float|int|str]|None=None, body:ResponseBody|None=None,
    media_type:str='', last_modified:float=0.0) -> None:
 
     self.status = status
@@ -206,7 +206,7 @@ class ResponseError(Exception):
   Perhaps the best way to do it is to move response() to WebApp.
   '''
 
-  def __init__(self, status:HTTPStatus, reason:str='', headers:Optional[dict[str,float|int|str]]=None):
+  def __init__(self, status:HTTPStatus, reason:str='', headers:dict[str,float|int|str]|None=None):
     self.status = status
     self.reason = reason
     self.headers = headers

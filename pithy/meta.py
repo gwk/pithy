@@ -5,7 +5,7 @@ from inspect import FrameInfo
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar, cast
 
 
-def bindings_matching(*, prefix:str=None, val_type:type=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
+def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
   '''
   Return (name, value) pairs of bindings from the specified frame,
   that match the specified prefix and val_type filters.
@@ -39,7 +39,7 @@ def bindings_matching(*, prefix:str=None, val_type:type=None, strip_prefix=True,
   return pairs
 
 
-def dispatcher_for_defs(*, prefix:str, default:Callable=None, base:Mapping[str,Callable]={}, exclude:Iterable[str]=()) -> Callable:
+def dispatcher_for_defs(*, prefix:str, default: Callable|None=None, base:Mapping[str,Callable]={}, exclude:Iterable[str]=()) -> Callable:
   '''
   Creates a dispatcher function from callable definitions in the caller's module.
   Only callables whose name starts with `prefix` are included.
@@ -78,7 +78,7 @@ class DispatchException(Exception): pass
 
 _A = TypeVar('_A', bound=Any)
 
-def rename(obj:_A, name:str=None, module:str=None) -> _A:
+def rename(obj:_A, name:str|None=None, module:str|None=None) -> _A:
   'Returns `obj`, after renaming name and/or module.'
   if name is not None:
     obj.__name__ = name

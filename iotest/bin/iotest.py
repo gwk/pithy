@@ -50,13 +50,13 @@ def main() -> None:
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
 
   if args.dbg:
-    def fail_fast(e:Exception=None) -> None:
+    def fail_fast(e:Exception|None=None) -> None:
       errL('\nfail_fast:')
       raise Exception('iotest: stopping after error (-dbg).') from e
   elif args.fail_fast:
-    def fail_fast(e:Exception=None) -> None: exit('iotest: stopping after error (-fail-fast).')
+    def fail_fast(e:Exception|None=None) -> None: exit('iotest: stopping after error (-fail-fast).')
   else:
-    def fail_fast(e:Exception=None) -> None: pass
+    def fail_fast(e:Exception|None=None) -> None: pass
 
   ctx = Ctx(
     build_dir=build_dir,

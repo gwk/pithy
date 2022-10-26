@@ -28,14 +28,14 @@ ObjDecodeHooks = Sequence[ObjDecodeHook]
 _Seps = Optional[Tuple[str,str]]
 
 
-def render_json(item:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, **kwargs) -> str:
+def render_json(item:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, **kwargs) -> str:
   'Render `item` as a json string.'
   if not separators:
     separators = (',', ': ') if indent else (',', ':')
   return _json.dumps(item, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
 
 
-def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
+def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, end='\n', flush=False, **kwargs) -> None:
   'Write each item in `items` as json to file.'
   try: write = file.write # If the `file` argument was omitted, the first `item` may have taken its place.
   except AttributeError as e: # We must check for this or else `items` could be empty and we will silently fail.
@@ -49,16 +49,16 @@ def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True,
     if flush: file.flush()
 
 
-def err_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
+def err_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, end='\n', flush=False, **kwargs) -> None:
   'Write items as json to std err.'
   write_json(stderr, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def out_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:Optional[int]=2, separators:_Seps=None, end='\n', flush=False, **kwargs) -> None:
+def out_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, end='\n', flush=False, **kwargs) -> None:
   write_json(stdout, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
+def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps|None=None, flush=False, **kwargs) -> None:
   'Write each item in `items` as jsonl to file.'
   if separators:
     assert '\n' not in separators[0]
@@ -71,12 +71,12 @@ def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True
     if flush: file.flush()
 
 
-def err_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
+def err_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps|None=None, flush=False, **kwargs) -> None:
   'Write items as jsonl to std err.'
   write_jsonl(stderr, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 
 
-def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps=None, flush=False, **kwargs) -> None:
+def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps|None=None, flush=False, **kwargs) -> None:
   'Write items as jsonl to std out.'
   write_jsonl(stdout, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 
@@ -84,14 +84,14 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_S
 # input.
 
 
-def parse_json(text:JsonText, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
+def parse_json(text:JsonText, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Parse json from `text`.
   '''
   return _json.loads(text, object_hook=_mk_hook(hook, hooks))
 
 
-def load_json(file:IO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
+def load_json(file:IO, hook: ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Read json from `file`.
   '''
@@ -104,11 +104,11 @@ def load_json(file:IO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Any:
       raise
 
 
-def parse_jsonl(text:JsonText, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+def parse_jsonl(text:JsonText, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   return load_jsonl(text.splitlines(), hook=hook, hooks=hooks)
 
 
-def load_jsonl(stream:Iterable[JsonText], hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+def load_jsonl(stream:Iterable[JsonText], hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   if isinstance(stream, (str,bytes,bytearray)): raise TypeError('`stream` argument must be an iterable of text.')
   hook = _mk_hook(hook, hooks)
   for line in stream:
@@ -116,7 +116,7 @@ def load_jsonl(stream:Iterable[JsonText], hook:ObjDecodeFn=None, hooks:ObjDecode
     yield _json.loads(line, object_hook=hook)
 
 
-def parse_jsons(string:str, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+def parse_jsons(string:str, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
   '''
@@ -134,7 +134,7 @@ def parse_jsons(string:str, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> I
     idx = m.end()
 
 
-def load_jsons(file:TextIO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+def load_jsons(file:TextIO, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   # TODO: it seems like we ought to be able to stream the file into the parser,
   # but JSONDecoder requires the entire string for a single JSON segment.
   # Therefore in order to stream we would need to read into a buffer,
@@ -144,7 +144,7 @@ def load_jsons(file:TextIO, hook:ObjDecodeFn=None, hooks:ObjDecodeHooks=()) -> I
   return parse_jsons(file.read(), hook=hook, hooks=hooks)
 
 
-def _mk_hook(hook:Optional[ObjDecodeFn], hooks:ObjDecodeHooks) -> Optional[Callable[[Dict[Any,Any]],Any]]:
+def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Optional[Callable[[Dict[Any,Any]],Any]]:
   '''
   Provide a hook function to deserialize JSON into the provided types.
   '''

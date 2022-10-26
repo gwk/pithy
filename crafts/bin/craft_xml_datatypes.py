@@ -83,7 +83,7 @@ def main() -> None:
 class Hint:
   parent:str = ''
   is_list:bool = False # Whether the tag is flattened into a list; implies that it has no attributes.
-  is_branch:Optional[bool] = None # Whether the tag is allowed to have children; None defers to the global argument passed to "-assume-branches".
+  is_branch:bool|None= None # Whether the tag is allowed to have children; None defers to the global argument passed to "-assume-branches".
   #all_children_as_attrs:bool = False # TODO: not yet implemented.
   child_attrs:dict[str,ChildAttrInfo] = field(default_factory=dict) # Child tag names that are treated as attributes.
 

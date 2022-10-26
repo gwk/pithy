@@ -20,7 +20,7 @@ FileOrPath = Union[IO, str]
 LoadFn = Callable[..., Any]
 
 
-def load(file_or_path:FileOrPath, ext:str=None, **kwargs:Any) -> Any:
+def load(file_or_path:FileOrPath, ext:str|None=None, **kwargs:Any) -> Any:
   '''
   Select an appropriate loader based on the file extension, or `ext` if specified.
 
@@ -122,12 +122,12 @@ def load_binary(f:FileOrPath, ext:str, **kwargs:Any) -> BinaryIO:
 #  return load(df, ext=sub_ext, **kwargs) # type: ignore
 
 
-def load_csv(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Iterable[List[str]]:
+def load_csv(f:FileOrPath, ext:str, encoding:str|None=None, **kwargs:Any) -> Iterable[List[str]]:
   from .csv import load_csv as _load_csv
   return _load_csv(text_file_for(f, newline='', encoding=encoding), **kwargs)
 
 
-def load_html(f:FileOrPath, ext:str, encoding:str=None, **kwargs:Any) -> Any:
+def load_html(f:FileOrPath, ext:str, encoding:str|None=None, **kwargs:Any) -> Any:
   from .html.loader import load_html as _load_html
   bf = binary_file_for(f)
   return _load_html(bf, encoding=encoding, **kwargs)

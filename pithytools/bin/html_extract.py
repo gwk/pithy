@@ -82,7 +82,7 @@ class Parser(HTMLParser):
     line1, col0 = self.getpos()
     return (line1-1, col0)
 
-  def msg(self, msg: str, pos:Pos=None) -> None:
+  def msg(self, msg: str, pos:Pos|None=None) -> None:
     if pos is None: pos = self.pos
     print(f'{self.path}:{pos[0]+1}:{pos[1]+1}: {msg}')
 

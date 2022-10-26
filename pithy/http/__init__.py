@@ -35,7 +35,7 @@ def may_send_body(method:str, status:HTTPStatus) -> bool:
   return True
 
 
-def format_header_date(timestamp:float=None) -> str:
+def format_header_date(timestamp:float|None=None) -> str:
   'Format `timestamp` or now for an HTTP header value.'
   if timestamp is None: timestamp = time.time()
   return format_email_date(timestamp, usegmt=True)

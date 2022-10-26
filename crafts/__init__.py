@@ -23,8 +23,8 @@ class CraftConfig(NamedTuple):
   build_dir: str = '.build'
   config_path: str = '' # Derived.
   copyright: str = '' # Required.
-  product_identifier: Optional[str] = None
-  product_name: Optional[str] = None
+  product_identifier: str|None = None
+  product_name: str|None = None
   project_dir: str = '' # Derived.
   resources: Dict[str, str] = {}
   sources: str = 'src'

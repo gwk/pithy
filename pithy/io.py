@@ -78,7 +78,7 @@ def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_ite
   print(fmt.format(*items, **keyed_items, file=file, flush=flush))
 
 
-def writeP(file: TextIO, *labels_and_obj: Any, indent=2, **opts: Any) -> None:
+def writeP(file:TextIO, *labels_and_obj: Any, indent=2, **opts:Any) -> None:
   'Pretty labels and object to file.'
   labels = labels_and_obj[:-1]
   obj = labels_and_obj[-1]
@@ -257,7 +257,7 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
 # convenience read/write.
 
 
-def read_from_path(path: str, default: str=None) -> str:
+def read_from_path(path: str, default: str|None=None) -> str:
   'Read all text from file at `path`.'
   try:
     with open(path) as f:
@@ -267,7 +267,7 @@ def read_from_path(path: str, default: str=None) -> str:
     return default
 
 
-def read_line_from_path(path: str, line_index=0, keep_end=False, default: str=None) -> str:
+def read_line_from_path(path: str, line_index=0, keep_end=False, default: str|None=None) -> str:
   'Read a single line of text from file at `path`.'
   try:
     with open(path) as f:
@@ -291,7 +291,7 @@ def write_to_path(path:str, text:Union[str,bytes,bytearray]) -> None:
 
 # Opener utility.
 
-def mk_opener(flags:int, mode=0o777, dir_fd:int=None) -> Callable[[str, int], int]:
+def mk_opener(flags:int, mode=0o777, dir_fd:int|None=None) -> Callable[[str, int], int]:
   def _opener(path:str, _flags:int, mode=mode, dir_fd=dir_fd) -> int: return os_open(path,_flags&flags)
   return _opener
 
@@ -356,7 +356,7 @@ class AsyncLineReader(ContextManager):
 
 # misc.
 
-def clip_newlines(iterable: Iterable[str]) -> Iterable[str]:
+def clip_newlines(iterable:Iterable[str]) -> Iterable[str]:
   for line in iterable:
     yield line.rstrip('\n')
 
@@ -382,7 +382,7 @@ def shell_cmd_str(cmd:Iterable[str]) -> str:
   return ' '.join(sh_quote(word) for word in cmd)
 
 
-def tee_to_err(iterable:Iterable[_T], label:str = 'tee_to_err', transform:Callable[[_T],Any]=None) -> Iterator[_T]:
+def tee_to_err(iterable:Iterable[_T], label:str='tee_to_err', transform:Callable[[_T],Any]|None=None) -> Iterator[_T]:
   for el in iterable:
     s = repr(el) if transform is None else str(transform(el))
     errL(label, ': ', s)

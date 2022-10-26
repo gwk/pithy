@@ -22,7 +22,7 @@ from .buffer import Buffer
 
 
 class TagRule():
-  def __init__(self, open_pattern: str, close_pattern: str, open_close_tokens_match_fn: Callable=None):
+  def __init__(self, open_pattern: str, close_pattern: str, open_close_tokens_match_fn: Callable|None=None):
     self.open_pattern = open_pattern
     self.close_pattern = close_pattern
     self.open_close_tokens_match_fn = open_close_tokens_match_fn
@@ -83,7 +83,7 @@ class TagParser():
     return TagTreeRoot(*subs) if depth == 0 else TagTreeUnterminated(*subs), len(text)
 
 
-  def parse(self, text: str, leaf_replacements: Dict[str, str]=None) -> 'Node':
+  def parse(self, text: str, leaf_replacements: Dict[str, str]|None=None) -> 'Node':
     match_stream = Buffer(self.lexer.finditer(text))
     res, pos = self._parse(leaf_replacements or {}, text, match_stream, pos=0, depth=0,
       subs=[], close_pred=lambda i, t: False, parent_close_pred=lambda i, t: False)

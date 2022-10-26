@@ -116,8 +116,8 @@ def build(args:Namespace, conf:CraftConfig) -> None:
   # TODO: register with launch services?
 
 
-def gen_plist(dst_file:BinaryIO, EXECUTABLE_NAME:Optional[str], PRODUCT_BUNDLE_IDENTIFIER:Optional[str],
- PRODUCT_NAME:Optional[str], MACOSX_DEPLOYMENT_TARGET:str, copyright:str, principle_class:str, **items:str) -> None:
+def gen_plist(dst_file:BinaryIO, EXECUTABLE_NAME:str|None, PRODUCT_BUNDLE_IDENTIFIER:str|None,
+ PRODUCT_NAME:str|None, MACOSX_DEPLOYMENT_TARGET:str, copyright:str, principle_class:str, **items:str) -> None:
   d = {
     'BuildMachineOSBuild': '17A362a', # TODO.
     'CFBundleDevelopmentRegion': 'en',

@@ -297,7 +297,7 @@ class Quantity(_QuantityRule):
   '''
   type_desc = 'quantity'
 
-  def __init__(self, body:RuleRef, min:int, max:Optional[int], sep:TokenKind=None, sep_at_end:Optional[bool]=None, repeated_seps=False, drop:Iterable[str]=(),
+  def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
@@ -357,14 +357,14 @@ class Quantity(_QuantityRule):
 
 
 class ZeroOrMore(Quantity):
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, repeated_seps=False, drop:Iterable[str]=(),
+  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
     super().__init__(body=body, min=0, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, drop=drop, transform=transform)
 
 
 
 class OneOrMore(Quantity):
-  def __init__(self, body:RuleRef, sep:TokenKind=None, sep_at_end:Optional[bool]=None, repeated_seps=False, drop:Iterable[str]=(),
+  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
     super().__init__(body=body, min=1, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, drop=drop, transform=transform)
 
@@ -376,7 +376,7 @@ class Struct(Rule):
   '''
   type_desc = 'structure'
 
-  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform=None):
+  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform|None=None):
     if not fields: raise ValueError('Struct requires at least one field')
     self.name = ''
     self.sub_refs = fields

@@ -87,7 +87,7 @@ def iter_values(obj:Any) -> Iterator[Any]:
     yield from it
 
 
-def extent(iterable: Iterable[_C], key: Callable[[_C], _CK]=None, default: Optional[_C]=None) -> Tuple[_C, _C]:
+def extent(iterable: Iterable[_C], key: Callable[[_C], _CK]|None=None, default:_C|None=None) -> Tuple[_C, _C]:
   'Return the min and max.'
   it = iter(iterable)
   first = next(it) if default is None else next(it, default)
@@ -348,7 +348,7 @@ def window_iter(iterable: Iterable[_T], width=2) -> Iterator[Tuple[_T, ...]]:
       del buffer[0]
 
 
-def window_pairs(iterable: Iterable[_T], tail: Optional[_T]=None) -> Iterator[Tuple[_T, Optional[_T]]]:
+def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[Tuple[_T, Optional[_T]]]:
   'Yield pairs of adjacent elements in `seq`, including a final pair consisting of the last element and `tail`.'
   it = iter(iterable)
   try: head = next(it)
@@ -363,7 +363,7 @@ _PrefixTreeTerminator = TypeVar('_PrefixTreeTerminator', bound=Hashable)
 PrefixTree = Dict[Union[_K, _PrefixTreeTerminator], Optional[Dict]] # mypy cannot handle recursive types.
 
 
-def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator=None, update:PrefixTree=None) -> PrefixTree:
+def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator|None=None, update:PrefixTree|None=None) -> PrefixTree:
   res:PrefixTree = {} if update is None else update
   for it in iterables:
     d = res

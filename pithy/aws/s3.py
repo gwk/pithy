@@ -126,11 +126,11 @@ class S3Client:
   '''
 
   def __init__(self, bucket_paths:Dict[str,str],
-    aws_access_key_id:str=None,
-    aws_secret_access_key:str=None,
-    aws_session_token:str=None,
-    config:Any=None,
-    region_name:str=None,
+    aws_access_key_id:str|None=None,
+    aws_secret_access_key:str|None=None,
+    aws_session_token:str|None=None,
+    config: Any|None=None,
+    region_name:str|None=None,
    ) -> None:
     raise NotImplementedError
 
@@ -154,11 +154,11 @@ class S3MockClient(S3Client):
   '''
 
   def __init__(self, bucket_paths:Dict[str,str],
-    aws_access_key_id:str=None,
-    aws_secret_access_key:str=None,
-    aws_session_token:str=None,
-    config:Any=None,
-    region_name:str=None,
+    aws_access_key_id:str|None=None,
+    aws_secret_access_key:str|None=None,
+    aws_session_token:str|None=None,
+    config:Any|None=None,
+    region_name:str|None=None,
    ) -> None:
     self._bucket_paths = bucket_paths
 

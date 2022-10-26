@@ -27,12 +27,12 @@ class Token(NamedTuple):
   def slice(self) -> slice:
     return slice(self.pos, self.end)
 
-  def pos_token(self, kind:str=None) -> 'Token':
+  def pos_token(self, kind:str|None=None) -> 'Token':
     'Create a new token with the same position as `token` but with zero length.'
     if kind is None: kind = self.kind
     return Token(pos=self.pos, end=self.pos, mode=self.mode, kind=kind)
 
-  def end_token(self, kind:str=None) -> 'Token':
+  def end_token(self, kind:str|None=None) -> 'Token':
     'Create a new token with position and end set to `token.end`.'
     if kind is None: kind = self.kind
     return Token(pos=self.end, end=self.end, mode=self.mode, kind=kind)

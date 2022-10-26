@@ -85,7 +85,7 @@ default_project_signifiers: Tuple[str, ...] = (
   'pyproject.toml',
 )
 
-def find_project_dir(start_dir:Path='.', top:Optional[Path]=None, include_top=False,
+def find_project_dir(start_dir:Path='.', top:Path|None=None, include_top=False,
  project_signifiers:Iterable[str]=default_project_signifiers) -> Optional[str]:
   '''
   find a project root directory, as denoted by the presence of a file/directory in `project_signifiers`.
@@ -184,7 +184,7 @@ def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
 
 
 def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, overwrite=False, create_dirs=False,
- perms:Optional[int]=None) -> None:
+ perms:int|None=None) -> None:
   if perms is not None: raise NotImplementedError # TODO
   abs_orig = abs_path(orig)
   if abs_orig == abs_path(link): raise ValueError(f'cannot create link to self: orig: {orig!r}; link: {link!r}')
@@ -238,7 +238,7 @@ def open_new(path:Path, create_dirs:bool=True, **open_args) -> TextIO:
 
 
 @memoize
-def path_for_cmd(cmd: str) -> Optional[str]:
+def path_for_cmd(cmd:str) -> Optional[str]:
   for dir in _get_exec_path():
     try: entries = _scandir(dir)
     except FileNotFoundError: continue # directory in PATH might not exist.
@@ -404,7 +404,7 @@ def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hid
 
 class DirEntries:
 
-  def __init__(self, exts:Iterable[str]=(), hidden=False, pred:Callable[[DirEntry],bool]=None):
+  def __init__(self, exts:Iterable[str]=(), hidden=False, pred:Callable[[DirEntry],bool]|None=None):
     self.exts  = normalize_exts(exts)
     self.hidden = hidden
     self.pred = (lambda entry:True) if pred is None else pred

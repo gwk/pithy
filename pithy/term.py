@@ -11,7 +11,6 @@ from sys import stderr, stdout
 from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, TCSADRAIN,
   TCSAFLUSH, TCSANOW, TIOCGWINSZ, VMIN, VTIME, tcgetattr, tcsetattr)
 
-from typing import Optional
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
@@ -48,7 +47,7 @@ class TermMode:
   If no file descriptor is provided, it defaults to stdout.
   '''
 
-  def __init__(self, fd:Optional[int]=None, when:int=TCSAFLUSH, min_bytes=1, delay=0):
+  def __init__(self, fd:int|None=None, when:int=TCSAFLUSH, min_bytes=1, delay=0):
     assert when in when_vals, when
     if fd is None:
       fd = stdout.fileno()

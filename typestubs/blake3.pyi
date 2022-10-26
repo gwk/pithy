@@ -13,8 +13,8 @@ _Self = TypeVar("_Self")
 
 class blake3:
 
-  def __init__(self, data:ReadableBuffer=..., key:Optional[ReadableBuffer]=None,
-    derive_key_context:Optional[str]=None, multithreading:bool=False) -> None: ...
+  def __init__(self, data:ReadableBuffer=..., key:ReadableBuffer|None=None,
+    derive_key_context:str|None=None, multithreading:bool=False) -> None: ...
 
   @property
   def block_size(self) -> int: ...

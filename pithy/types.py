@@ -84,16 +84,16 @@ def is_int(val: Any) -> bool: return isinstance(val, int)
 
 def is_str(val: Any) -> bool: return isinstance(val, str)
 
-def is_list(val: Any, of:Optional[type]=None) -> bool:
+def is_list(val: Any, of:type|None=None) -> bool:
   return isinstance(val, list) and (of is None or all(isinstance(el, of) for el in val))
 
-def is_set(val: Any, of:Optional[type]=None) -> bool:
+def is_set(val: Any, of:type|None=None) -> bool:
   return isinstance(val, set) and (of is None or all(isinstance(el, of) for el in val))
 
-def is_dict(val: Any, of:Optional[type]=None) -> bool:
+def is_dict(val: Any, of:type|None=None) -> bool:
   return isinstance(val, dict) and (of is None or all(isinstance(el, of) for el in val))
 
-def is_tuple(val: Any, of:Optional[type]=None, length:Optional[int]=None) -> bool:
+def is_tuple(val:Any, of:type|None=None, length:int|None=None) -> bool:
   return isinstance(val, tuple) and (length is None or length == len(val)) and (of is None or all(isinstance(el, of) for el in val))
 
 def is_int_or_bool(val: Any) -> bool: return isinstance(val, (int, bool))
@@ -102,7 +102,7 @@ def is_list_of_str(val: Any) -> bool: return isinstance(val, list) and all(isins
 
 def is_set_of_str(val: Any) -> bool: return isinstance(val, set) and all(isinstance(el, str) for el in val)
 
-def is_tuple_of_str(val: Any, length:Optional[int]=None) -> bool:
+def is_tuple_of_str(val: Any, length:int|None=None) -> bool:
   return is_tuple(val, of=str, length=length)
 
 def is_dict_of_str(val: Any) -> bool:

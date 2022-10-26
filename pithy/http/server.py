@@ -23,7 +23,7 @@ from socket import socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info, stderr
 from traceback import print_exception
-from typing import Optional, Tuple, Type, Union, cast, TextIO
+from typing import Tuple, Type, Union, cast, TextIO
 from urllib.parse import SplitResult as Url, urlsplit as url_split
 
 from . import http_methods

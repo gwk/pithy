@@ -489,7 +489,7 @@ class Ctx:
   def emit_head(self) -> Iterator[str]:
     yield from self.head_text
 
-  def emit_body(self, depth: int, target_section: Optional[str]=None) -> Iterator[str]:
+  def emit_body(self, depth: int, target_section: str|None=None) -> Iterator[str]:
     for block in self.blocks:
       if target_section is not None:
         if not isinstance(block, Section): continue
@@ -522,14 +522,14 @@ class Ctx:
     errSL(f'{self.src_path}:{line+1}:{col+1}: {label}:', *items)
     errSN(txt)
 
-  def warn(self, src: SrcLine, *items: Any, col:int=None) -> None:
+  def warn(self, src: SrcLine, *items: Any, col:int|None=None) -> None:
     self.msg(src, 'warning', items, col)
 
-  def error(self, src: SrcLine, *items: Any, col:int=None) -> NoReturn:
+  def error(self, src: SrcLine, *items: Any, col:int|None=None) -> NoReturn:
     self.msg(src, 'error', items, col)
     exit(1)
 
-  def dbg(self, src: SrcLine, *items: Any, col:int=None) -> None:
+  def dbg(self, src: SrcLine, *items: Any, col:int|None=None) -> None:
     if self.emit_dbg: self.msg(src, 'debug', items, col)
 
 

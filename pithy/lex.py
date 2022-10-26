@@ -259,7 +259,7 @@ class Lexer:
       yield eot_token(source, mode=stack[-1][0].mode)
 
 
-  def lex(self, source:Source[str], pos:int=0, end:Optional[int]=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
+  def lex(self, source:Source[str], pos:int=0, end:int|None=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
     if not isinstance(source, Source): raise TypeError(source)
     text = source.text
     if pos < 0:

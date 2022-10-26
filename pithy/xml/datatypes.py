@@ -40,7 +40,7 @@ class XmlDatatype:
   #^ These are mapped to attributes whose raw name is the same as the tag.
 
 
-  def visit(self, *, pre:Optional[Callable[[XmlDatatype],None]]=None, post:Optional[Callable[[XmlDatatype],None]]=None) -> None:
+  def visit(self, *, pre:Callable[[XmlDatatype],None]|None=None, post:Callable[[XmlDatatype],None]|None=None) -> None:
     '''
     Visit the data tree, calling pre and post on each node.
     TODO: factor this out with markup.visit.
@@ -55,8 +55,8 @@ class XmlDatatype:
 
 
   def gen_visit(self, *,
-   pre:Optional[Callable[[XmlDatatype],Optional[_T]]]=None,
-   post:Optional[Callable[[XmlDatatype],Optional[_T]]]=None) -> Iterable[_T]:
+   pre:Callable[[XmlDatatype],Optional[_T]]|None=None,
+   post:Callable[[XmlDatatype],Optional[_T]]|None=None) -> Iterable[_T]:
     '''
     Visit the data tree, yielding Walk an xml datatype tree and yield non-None results from visitor
     TODO: reconcile and factor out with markup.iter_visit. Perhaps gen_visit and iter_visit both exist, but need better names.

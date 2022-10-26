@@ -20,7 +20,7 @@ _T = TypeVar('_T')
 def once(fn:Callable[[],_T]) -> _T: return fn()
 
 
-def memoize(_fn:Callable=None, sentinel:Any=Ellipsis) -> Callable:
+def memoize(_fn:Callable|None=None, sentinel:Any=Ellipsis) -> Callable:
   '''
   recursive function memoization decorator.
   results will be memoized by a key that is the tuple of all arguments.
