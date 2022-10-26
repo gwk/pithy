@@ -8,7 +8,7 @@ from ..html import HtmlNode
 from ..loader import FileOrPath, binary_file_for
 
 
-def load_html(file_or_path:FileOrPath, encoding:str|None=None, **kwargs:Any) -> Any:
+def load_html(file_or_path:FileOrPath, encoding:str='utf8', **kwargs:Any) -> Any:
   with binary_file_for(file_or_path) as file:
     data = file.read()
   html = parse(data, transport_encoding=encoding, return_root=True, **kwargs)
