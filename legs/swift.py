@@ -15,6 +15,7 @@ from .dfa import DFA
 
 def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
  pattern_descs:Dict[str,str], license:str, args:Namespace) -> None:
+  'Generate and write a swift lexer to a file at `path`.'
 
   # Create safe mode names.
   modes = { dfa.name : swift_safe_sym(dfa.name) for dfa in dfas }

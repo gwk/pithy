@@ -205,7 +205,8 @@ def gen_dfa(nfa:NFA) -> DFA:
       if dst_node not in transitions:
         remaining.add(dst_state)
 
-  # explicitly add transitions to and from `invalid`, which is otherwise not reachable.
+
+  # Explicitly add transitions to and from `invalid`, which is otherwise not reachable.
   # `start` transitions to `invalid` for all bytes not yet covered.
   # `invalid` transitions to itself for those same bytes.
   assert invalid_node not in transitions
