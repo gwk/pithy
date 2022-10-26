@@ -50,7 +50,7 @@ def get_text(client:Any, bucket:str, key:str) -> Any:
   return get_bytes(client=client, bucket=bucket, key=key).decode()
 
 
-def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str=None, is_utf8_hint=False) -> None:
+def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str='', is_utf8_hint=False) -> None:
   '''
   `content_encode` specifies an optional compression encoding, either `gzip` or `br`.
   '''
@@ -68,7 +68,7 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str=No
     raise Exception(f'unknown content-encoding: {content_encoding!r}')
 
   # Compress as requested.
-  if content_encode is not None:
+  if content_encode:
     if content_encoding is not None:
       raise Exception(f'save_bytes: key {key!r} implies content-type {content_type!r}, but `content_encode` is also specified: {content_encode!r}')
     kwargs:Dict[str,Any] = {}
@@ -92,28 +92,28 @@ compressors:Dict[str, Callable[..., Any]] = {
 }
 
 
-def put_json(client:Any, obj:Any, bucket:str, key:str, content_encode:str=None, **kwargs:Any) -> None:
+def put_json(client:Any, obj:Any, bucket:str, key:str, content_encode:str='', **kwargs:Any) -> None:
   data = render_json(obj, **kwargs).encode()
   if key.endswith('.br'):
-    if content_encode not in (None, 'br'):
+    if content_encode not in ('', 'br'):
       raise Exception(f'put_json: key {key!r} implies `br` compression but content_encode is also specified: {content_encode!r}')
     data = br_compress(data, mode=br_MODE_TEXT)
   elif key.endswith('.gz'):
     data = gz_compress(data)
-    if content_encode not in (None, 'gzip'):
+    if content_encode not in ('', 'gzip'):
       raise Exception(f'put_json: key {key!r} implies `gzip` compression but content_encode is also specified: {content_encode!r}')
   put_bytes(client=client, data=data, bucket=bucket, key=key, content_encode=content_encode)
 
 
-def put_text(client:Any, text:str, bucket:str, key:str, content_encode:str=None) -> None:
+def put_text(client:Any, text:str, bucket:str, key:str, content_encode:str='') -> None:
   data = text.encode()
   if key.endswith('.br'):
-    if content_encode not in (None, 'br'):
+    if content_encode not in ('', 'br'):
       raise Exception(f'put_text: key {key!r} implies `br` compression but content_encode is also specified: {content_encode!r}')
     data = br_compress(data, mode=br_MODE_TEXT)
   elif key.endswith('.gz'):
     data = gz_compress(data)
-    if content_encode not in (None, 'gzip'):
+    if content_encode not in ('', 'gzip'):
       raise Exception(f'put_text: key {key!r} implies `gzip` compression but content_encode is also specified: {content_encode!r}')
   put_bytes(client=client, data=data, bucket=bucket, key=key, content_encode=content_encode)
 

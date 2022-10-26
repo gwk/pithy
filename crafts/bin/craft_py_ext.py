@@ -583,9 +583,9 @@ def write_class(class_:Class, writers:_Writers) -> None:
   cL( '};')
 
 
-def src_diagnostic(path:str, line0:int, col0:int, msg:str, text:str=None) -> str:
+def src_diagnostic(path:str, line0:int, col0:int, msg:str, text:str='') -> str:
   pad = ' ' * col0
-  if text is None:
+  if not text:
     text = read_line_from_path(path, line_index=line0, default='<MISSING>')
   return f'{path}:{line0+1}:{col0+1}: {msg}.\n  {text}\n  {pad}^'
 
