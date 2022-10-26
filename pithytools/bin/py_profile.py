@@ -55,7 +55,7 @@ def main() -> None:
   sys_path[0] = dirname(cmd_path) # not sure if this is right in all cases.
 
   profile = Profile()
-  exit_code = 0
+  exit_code:int|str|None = 0
   try:
     profile.runctx(code, globals=globals_, locals=globals_)
   except SystemExit as e:
