@@ -36,7 +36,7 @@ class CraftConfig(NamedTuple):
   xcode_toolchain_dir: str = '' # Derived.
 
   @property
-  def target_triple_macOS(self) -> str: return f'x86_64-apple-macosx{self.target_macOS}'
+  def target_triple_macOS(self) -> str: return f'arm64-apple-macosx{self.target_macOS}'
 
 
 def load_craft_config() -> CraftConfig:
