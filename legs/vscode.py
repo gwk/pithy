@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import Namespace
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pithy.json import write_json
 
@@ -10,9 +10,9 @@ from .dfa import DFA
 from .patterns import LegsPattern
 
 
-def output_vscode(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
-  patterns:Dict[str,LegsPattern], incomplete_patterns:Dict[str,Optional[LegsPattern]],
-  pattern_descs:Dict[str, str], license:str, args:Namespace) -> None:
+def output_vscode(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
+  patterns:dict[str,LegsPattern], incomplete_patterns:dict[str,LegsPattern|None],
+  pattern_descs:dict[str, str], license:str, args:Namespace) -> None:
 
   if not args.syntax_name: exit('error: vscode output requires `-syntax-name` argument.')
   if not args.syntax_scope: exit('error: vscode output requires `-syntax-scope` argument.')
@@ -20,7 +20,7 @@ def output_vscode(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
   if args.test: exit('error: vscode output is not testable.')
 
   lang_scope = args.syntax_scope
-  repository:Dict[str,Any] = {}
+  repository:dict[str,Any] = {}
   syntax_def = {
     "scopeName": "source." + lang_scope,
     "fileTypes": args.syntax_exts,

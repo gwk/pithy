@@ -2,8 +2,9 @@
 
 import re
 from argparse import Namespace
+from collections import defaultdict
 from importlib.util import find_spec as find_module_spec
-from typing import Any, DefaultDict, Dict, List, Tuple, cast
+from typing import Any, cast
 
 from pithy.fs import path_dir, path_join
 from pithy.iterable import closed_int_intervals
@@ -13,8 +14,8 @@ from . import ModeTransitions
 from .dfa import DFA
 
 
-def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
- pattern_descs:Dict[str,str], license:str, args:Namespace) -> None:
+def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
+ pattern_descs:dict[str,str], license:str, args:Namespace) -> None:
   'Generate and write a swift lexer to a file at `path`.'
 
   # Create safe mode names.
@@ -33,7 +34,7 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
 
   # Mode transitions dictionary.
 
-  def mode_trans_dict(d:Dict[str,Tuple[str,str]]) -> dict:
+  def mode_trans_dict(d:dict[str,tuple[str,str]]) -> dict:
     return {SwiftEnum(parent_kind): (SwiftEnum(child_mode), SwiftEnum(child_kind))
       for parent_kind, (child_mode, child_kind) in d.items()}
 
@@ -41,13 +42,13 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
 
   # State cases.
 
-  def byte_case_patterns(chars:List[int]) -> List[str]:
+  def byte_case_patterns(chars:list[int]) -> list[str]:
     def fmt(l:int, h:int) -> str:
       if l == h: return hex(l)
       return hex(l) + (', ' if l + 1 == h else '...') + hex(h)
     return [fmt(*r) for r in closed_int_intervals(chars)]
 
-  def byte_case(dfa:DFA, chars:List[int], dst:int) -> str:
+  def byte_case(dfa:DFA, chars:list[int], dst:int) -> str:
     pattern_kind = dfa.match_kind(dst)
     sym = None if pattern_kind is None else kind_syms.get(pattern_kind)
     return 'case {chars}: state = {dst}{suffix}'.format(
@@ -55,8 +56,8 @@ def output_swift(path:str, dfas:List[DFA], mode_transitions:ModeTransitions,
       dst=dst,
       suffix=f'; last = pos; kind = .{sym}' if sym else '')
 
-  def byte_cases(dfa:DFA, node:int) -> List[str]:
-    dst_chars = DefaultDict[int, List[int]](list)
+  def byte_cases(dfa:DFA, node:int) -> list[str]:
+    dst_chars = defaultdict[int, list[int]](list)
     for char, dst in sorted(dfa.transitions[node].items()):
       dst_chars[dst].append(char)
     dst_chars_sorted = sorted(dst_chars.items(), key=lambda p: p[1])
@@ -261,7 +262,7 @@ class SwiftEnum:
   def swift_repr(self) -> str: return '.' + self.string
 
 
-swift_escapes:Dict[str, str] = {
+swift_escapes:dict[str, str] = {
   '\0' : '\\0',
   '\\' : '\\\\',
   '\t' : '\\t',
@@ -292,7 +293,7 @@ def swift_repr(obj:Any, indent=0) -> str:
     return f'[\n{items}{ind}]' if obj else '[:]'
   raise ValueError(obj)
 
-def swift_repr_kv(kv:Tuple[Any, Any], indent:int) -> str:
+def swift_repr_kv(kv:tuple[Any, Any], indent:int) -> str:
   ind = ' ' * indent
   return f'{ind}{swift_repr(kv[0], indent=indent)}:{swift_repr(kv[1], indent=indent)},\n'
 

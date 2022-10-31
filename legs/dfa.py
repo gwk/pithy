@@ -31,8 +31,9 @@ This trick allows the FA to always progress from the start state,
 thus producing a stream of tokens that seamlessly cover any input string.
 '''
 
+from collections import defaultdict
 from itertools import chain, combinations
-from typing import DefaultDict, Dict, FrozenSet, Iterable, Iterator, List, Optional, Set, Tuple, cast
+from typing import Iterable, Iterator
 
 from pithy.graph import visit_nodes
 from pithy.io import errL, errSL
@@ -41,17 +42,17 @@ from pithy.unicode.codepoints import codes_desc
 
 
 DfaState = int
-DfaStateTransitions = Dict[int, DfaState]
-DfaTransitions = Dict[int, DfaStateTransitions]
+DfaStateTransitions = dict[int, DfaState]
+DfaTransitions = dict[int, DfaStateTransitions]
 
-FrozenSetStr0:FrozenSet[str] = frozenset()
+FrozenSetStr0:frozenset[str] = frozenset()
 
 
 class DFA:
   'Deterministic Finite Automaton.'
 
-  def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:Dict[int,FrozenSet[str]], lit_pattern_names:Set[str],
-   backtracking_order:Tuple[str,...]=()) -> None:
+  def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:dict[int,frozenset[str]], lit_pattern_names:set[str],
+   backtracking_order:tuple[str,...]=()) -> None:
     assert name
     self.name = name
     self.transitions = transitions
@@ -70,44 +71,44 @@ class DFA:
   def all_byte_to_state_dicts(self) -> Iterable[DfaStateTransitions]: return self.transitions.values()
 
   @property
-  def alphabet(self) -> FrozenSet[int]:
+  def alphabet(self) -> frozenset[int]:
     return frozenset_from(d.keys() for d in self.all_byte_to_state_dicts)
 
   @property
-  def all_src_nodes(self) -> FrozenSet[int]: return frozenset(self.transitions.keys())
+  def all_src_nodes(self) -> frozenset[int]: return frozenset(self.transitions.keys())
 
   @property
-  def all_dst_nodes(self) -> FrozenSet[int]:
+  def all_dst_nodes(self) -> frozenset[int]:
     return frozenset_from(self.dst_nodes(node) for node in self.all_src_nodes)
 
   @property
-  def all_nodes(self) -> FrozenSet[int]: return self.all_src_nodes | self.all_dst_nodes
+  def all_nodes(self) -> frozenset[int]: return self.all_src_nodes | self.all_dst_nodes
 
   @property
-  def terminal_nodes(self) -> FrozenSet[int]: return frozenset(n for n in self.all_nodes if not self.transitions.get(n))
+  def terminal_nodes(self) -> frozenset[int]: return frozenset(n for n in self.all_nodes if not self.transitions.get(n))
 
   @property
-  def match_nodes(self) -> FrozenSet[int]: return frozenset(self.match_node_kind_sets.keys())
+  def match_nodes(self) -> frozenset[int]: return frozenset(self.match_node_kind_sets.keys())
 
   @property
-  def non_match_nodes(self) -> FrozenSet[int]: return self.all_nodes - self.match_nodes
+  def non_match_nodes(self) -> frozenset[int]: return self.all_nodes - self.match_nodes
 
   @property
-  def partitioned_match_nodes(self) -> Iterable[FrozenSet[int]]:
+  def partitioned_match_nodes(self) -> Iterable[frozenset[int]]:
     # Keyed by (set of match kinds, set of transitions).
-    K = Tuple[FrozenSet[str], FrozenSet[Tuple[int,int]]]
-    parts = DefaultDict[K,Set[int]](set)
+    K = tuple[frozenset[str], frozenset[tuple[int,int]]]
+    parts = defaultdict[K,set[int]](set)
     for node, kind_sets in self.match_node_kind_sets.items():
       k = (kind_sets, frozenset(self.transitions[node].items()))
       parts[k].add(node)
     return (frozenset(s) for s in parts.values())
 
   @property
-  def pre_match_nodes(self) -> FrozenSet[int]:
+  def pre_match_nodes(self) -> frozenset[int]:
     if self.is_empty:
       return frozenset() # empty.
     match_nodes = self.match_nodes
-    nodes:Set[int] = set()
+    nodes:set[int] = set()
     remaining = {self.start_node}
     while remaining:
       node = remaining.pop()
@@ -118,9 +119,9 @@ class DFA:
     return frozenset(nodes)
 
   @property
-  def post_match_nodes(self) -> FrozenSet[int]:
+  def post_match_nodes(self) -> frozenset[int]:
     match_nodes = self.match_nodes
-    nodes:Set[int] = set()
+    nodes:set[int] = set()
     remaining = set(match_nodes)
     while remaining:
       node = remaining.pop()
@@ -131,12 +132,12 @@ class DFA:
     return frozenset(nodes)
 
   @property
-  def pattern_kinds(self) -> FrozenSet[str]: return frozenset_from(self.match_node_kind_sets.values())
+  def pattern_kinds(self) -> frozenset[str]: return frozenset_from(self.match_node_kind_sets.values())
 
-  def transition_descs(self) -> Iterator[Tuple[int,List[Tuple[int,str]]]]:
+  def transition_descs(self) -> Iterator[tuple[int,list[tuple[int,str]]]]:
     'Yield (src, [(dst, ranges_desc)]) tuples.'
     for src, d in sorted(self.transitions.items()):
-      dst_bytes = DefaultDict[int,Set[int]](set)
+      dst_bytes = defaultdict[int,set[int]](set)
       for byte, dst in d.items():
         dst_bytes[dst].add(byte)
       dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
@@ -167,24 +168,24 @@ class DFA:
     errSL(f'  transitions: {sum(len(d) for d in self.transitions.values()):_}')
     errL()
 
-  def dst_nodes(self, node:int) -> FrozenSet[int]:
+  def dst_nodes(self, node:int) -> frozenset[int]:
     return frozenset(self.transitions[node].values())
 
   def advance(self, state:int, byte:int) -> int:
     return self.transitions[state][byte]
 
-  def match(self, text_bytes:bytes) -> FrozenSet[str]:
+  def match(self, text_bytes:bytes) -> frozenset[str]:
     state = self.start_node
     for byte in text_bytes:
       try: state = self.advance(state, byte)
       except KeyError: return frozenset()
     return self.match_kinds(state)
 
-  def match_kinds(self, node:int) -> FrozenSet[str]:
+  def match_kinds(self, node:int) -> frozenset[str]:
     try: return self.match_node_kind_sets[node]
     except KeyError: return frozenset()
 
-  def match_kind(self, node:int) -> Optional[str]:
+  def match_kind(self, node:int) -> str|None:
     try: s = self.match_node_kind_sets[node]
     except KeyError: return None
     assert len(s) == 1
@@ -211,7 +212,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   part_ids_to_parts = { id(s): s for s in init_sets }
   node_parts = { n: s for s in part_ids_to_parts.values() for n in s }
 
-  rev_transitions = DefaultDict[int, DefaultDict[int, Set[int]]](lambda: DefaultDict(set))
+  rev_transitions = defaultdict[int, defaultdict[int, set[int]]](lambda: defaultdict(set))
   for src, d in dfa.transitions.items():
     for char, dst in d.items():
       rev_transitions[dst][char].add(src)
@@ -225,20 +226,20 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         pl = parts[j]
         assert pl.isdisjoint(pr), (pl, pr)
 
-  PartIntersections = DefaultDict[int, Set[int]] # Optimization: types in hot functions can waste time.
-  def refine(refining_set:Set[int]) -> List[Tuple[Set[int], Set[int]]]:
+  PartIntersections = defaultdict[int, set[int]] # Optimization: types in hot functions can waste time.
+  def refine(refining_set:set[int]) -> list[tuple[set[int], set[int]]]:
     '''
     Given refining set B, refine each set A in the partition to a pair of sets: A & B and A - B.
     Return a list of pairs for each changed set;
     one of these is a new set, the other is the mutated original.
     '''
     # Accumulate intersection sets.
-    part_id_intersections:PartIntersections = DefaultDict(set)
+    part_id_intersections:PartIntersections = defaultdict(set)
     for node in refining_set:
       part = node_parts[node]
       part_id_intersections[id(part)].add(node)
     # Split existing sets by the intersection sets.
-    set_pairs:List[Tuple[Set[int],Set[int]]] = []
+    set_pairs:list[tuple[set[int],set[int]]] = []
     for id_part, intersection in part_id_intersections.items():
       part = part_ids_to_parts[id_part]
       if intersection != part: # Split part into difference and intersection.
@@ -273,14 +274,14 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   validate_partition()
 
   # Map old nodes to new nodes.
-  mapping:Dict[int,int] = {}
+  mapping:dict[int,int] = {}
   for new_node, part in enumerate(sorted(sorted(p) for p in part_ids_to_parts.values()), start_node):
     for old_node in part:
       assert old_node not in mapping, old_node
       mapping[old_node] = new_node
 
   # Build new transitions.
-  transitions_dd = DefaultDict[int,Dict[int,int]](dict)
+  transitions_dd = defaultdict[int,dict[int,int]](dict)
   for old_node, old_d in dfa.transitions.items():
     new_d = transitions_dd[mapping[old_node]]
     for char, old_dst in old_d.items():
@@ -308,7 +309,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   match_node_kinds = { node : set(kinds) for node, kinds in full_match_node_kinds.items() }
 
   # Build kind to match nodes map. This does not get reduced.
-  kind_match_nodes = DefaultDict[str, Set[int]](set) # kinds to sets of nodes.
+  kind_match_nodes = defaultdict[str, set[int]](set) # kinds to sets of nodes.
   for node, kinds in match_node_kinds.items():
     for kind in kinds:
       kind_match_nodes[kind].add(node)
@@ -346,8 +347,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
     lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order)
 
 
-def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_match_nodes:Dict[str,Set[int]],
- transitions:DfaTransitions) -> Tuple[str,...]:
+def calc_backtrack_order(name:str, match_node_kinds:dict[int,set[str]], kind_match_nodes:dict[str,set[int]],
+ transitions:DfaTransitions) -> tuple[str,...]:
   '''
   Calculate a reasonable order for backtracking regex outputs.
   It is not always possible to generate a correct order,
@@ -359,10 +360,10 @@ def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_mat
   The goal is to generate TextMate grammars, so we make a best effort that is not guaranteed to be correct.
   '''
 
-  kind_subset_kinds = DefaultDict[str,Set[str]](set)
+  kind_subset_kinds = defaultdict[str,set[str]](set)
   #^ For each kind, the set of kinds whose match node sets are subsets.
 
-  kind_reachable_kinds:Dict[str,Set[str]] = {}
+  kind_reachable_kinds:dict[str,set[str]] = {}
   #^ For each kind, the set of kinds whose match nodes are reachable from this kind's match nodes.
 
   for kind, nodes in kind_match_nodes.items():
@@ -378,7 +379,7 @@ def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_mat
     # Compute reachability.
     next_nodes = set_from(transitions[node].values() for node in nodes)
     reachable_nodes = visit_nodes(start_nodes=next_nodes, visitor=lambda node:transitions[node].values())
-    reachable_kinds:Set[str] = set()
+    reachable_kinds:set[str] = set()
     for node in reachable_nodes:
       try: node_kinds = match_node_kinds[node]
       except KeyError: continue
@@ -387,8 +388,8 @@ def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_mat
     kind_reachable_kinds[kind] = reachable_kinds
 
   kinds = sorted(k for k in kind_match_nodes if k != 'invalid')
-  unorderable_kinds:Set[str] = set()
-  unorderable_pairs:List[Tuple[str,str]] = []
+  unorderable_kinds:set[str] = set()
+  unorderable_pairs:list[tuple[str,str]] = []
   for p in combinations(kinds, 2):
     l, r = p
     if l in kind_reachable_kinds[r] and r in kind_reachable_kinds[l]: # Cyclical reachability.
@@ -399,7 +400,7 @@ def calc_backtrack_order(name:str, match_node_kinds:Dict[int,Set[str]], kind_mat
     errL(f'note: `{name}`: patterns cannot be correctly ordered for backtracking regex engines: ',
       ', '.join(str(p) for p in unorderable_pairs), '.')
 
-  def order_key(kind:str) -> Tuple:
+  def order_key(kind:str) -> tuple:
     '''
     The ordering heuristic attempts to accommodate the following cases:
     * For cyclical patterns, subset patterns should come first. These require additional assertions. e.g. 'kw' and '\w+'.

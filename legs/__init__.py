@@ -1,22 +1,22 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Dict, Iterator, List, Optional, Pattern, Tuple
+from typing import Iterator, Pattern
 
 from tolkien import Source, Token
 
 
-StateTransitions = Dict[int,Dict[int,int]] # state -> byte -> dst_state.
-MatchStateKinds = Dict[int,str] # state -> token kind.
-ModeData = Tuple[int,StateTransitions,MatchStateKinds] # start_node, state_transitions, match_state_kinds.
+StateTransitions = dict[int,dict[int,int]] # state -> byte -> dst_state.
+MatchStateKinds = dict[int,str] # state -> token kind.
+ModeData = tuple[int,StateTransitions,MatchStateKinds] # start_node, state_transitions, match_state_kinds.
 
-KindModeTransitions = Dict[str,Tuple[str,str]]
-ModeTransitions = Dict[str,KindModeTransitions]
+KindModeTransitions = dict[str,tuple[str,str]]
+ModeTransitions = dict[str,KindModeTransitions]
 
 
 class LexerBase(Iterator[Token]):
 
   mode_transitions:ModeTransitions
-  pattern_descs:Dict[str,str]
+  pattern_descs:dict[str,str]
 
   def __init__(self, source:Source[bytes]):
     self.source = source
@@ -29,10 +29,10 @@ class LexerBase(Iterator[Token]):
 
 class DictLexerBase(LexerBase):
 
-  mode_data:Dict[str,ModeData]
+  mode_data:dict[str,ModeData]
 
   def __init__(self, source:Source[bytes]):
-    self.stack:List[Tuple[str,Optional[str]]] = [('main', None)] # [(mode, pop_kind)].
+    self.stack:list[tuple[str,str|None]] = [('main', None)] # [(mode, pop_kind)].
     super().__init__(source=source)
 
   def __next__(self) -> Token:
@@ -76,10 +76,10 @@ class DictLexerBase(LexerBase):
 
 class RegexLexerBase(LexerBase):
 
-  mode_patterns:Dict[str,Pattern]
+  mode_patterns:dict[str,Pattern]
 
   def __init__(self, source:Source):
-    self.stack:List[Tuple[str,Optional[str]]] = [('main', None)] # [(mode, pop_kind)].
+    self.stack:list[tuple[str,str|None]] = [('main', None)] # [(mode, pop_kind)].
     super().__init__(source=source)
 
   def __next__(self) -> Token:
@@ -150,7 +150,7 @@ def test_main(LexerClass) -> None:
 
 def test_desc(source:Source, token:Token, kind_desc:str) -> str:
   off = 2 # "0_" prefix is the common case.
-  base:Optional[int]
+  base:int|None
   if token.kind == 'num':     base = 10; off = 0
   elif token.kind == 'bin':   base = 2
   elif token.kind == 'quat':  base = 4

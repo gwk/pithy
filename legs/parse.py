@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import DefaultDict, Dict, FrozenSet, List, Set, Tuple
 
 from pithy.io import errL
 from pithy.lex import KindPair, Lexer, LexMode, LexTrans
@@ -19,8 +19,8 @@ from .patterns import CharsetPattern, ChoicePattern, LegsPattern, OptPattern, Pl
 @dataclass
 class Grammar:
   license:str
-  patterns:Dict[str,LegsPattern]
-  modes:Dict[str,FrozenSet[str]]
+  patterns:dict[str,LegsPattern]
+  modes:dict[str,frozenset[str]]
   transitions:ModeTransitions
 
 
@@ -140,7 +140,7 @@ def build_legs_grammar_parser() -> Parser:
 
       # Charsets.
 
-      charset_p=Struct('charset', # Wrapper to transform from Set[int] to CharsetPattern.
+      charset_p=Struct('charset', # Wrapper to transform from set[int] to CharsetPattern.
         transform=lambda s, t, fields: CharsetPattern.for_codes(fields[0])),
 
       charset=Struct('brack_o', 'charset_expr', 'brack_c'),
@@ -178,11 +178,11 @@ def build_legs_grammar_parser() -> Parser:
 
 # Parser transformers.
 
-def transform_grammar(source:Source, token:Token, sections:List) -> Grammar:
-  licenses:List[str] = []
-  patterns:Dict[str,LegsPattern] = {}
-  modes:Dict[str,FrozenSet[str]] = {}
-  transitions = DefaultDict[str,KindModeTransitions](dict)
+def transform_grammar(source:Source, token:Token, sections:list) -> Grammar:
+  licenses:list[str] = []
+  patterns:dict[str,LegsPattern] = {}
+  modes:dict[str,frozenset[str]] = {}
+  transitions = defaultdict[str,KindModeTransitions](dict)
   for label, section in sections:
     sk = clip_prefix(label.lower(), 'section_')
     if sk == 'license':
@@ -217,7 +217,7 @@ def transform_grammar(source:Source, token:Token, sections:List) -> Grammar:
   return Grammar(license=license, patterns=patterns, modes=modes, transitions=dict(transitions))
 
 
-def transform_pattern(source:Source, token:Token, fields:List) -> Tuple[Token,LegsPattern]:
+def transform_pattern(source:Source, token:Token, fields:list) -> tuple[Token,LegsPattern]:
   sym, pattern = fields
   if pattern is None:
     pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in source[sym]])
@@ -245,13 +245,13 @@ def transform_ref(source:Source, token:Token) -> CharsetPattern:
 
 # Charset atom transformers.
 
-def transform_cs_char(source:Source, token:Token) -> Set[int]:
+def transform_cs_char(source:Source, token:Token) -> set[int]:
   return set((ord(source[token]),))
 
-def transform_cs_esc(source:Source, token:Token) -> Set[int]:
+def transform_cs_esc(source:Source, token:Token) -> set[int]:
   return set((code_for_esc(source, token),))
 
-def transform_cs_ref(source:Source, token:Token) -> Set[int]:
+def transform_cs_ref(source:Source, token:Token) -> set[int]:
   return set(codes_for_ranges(ranges_for_ref(source, token)))
 
 
@@ -275,7 +275,7 @@ kind_descs = { # TODO: Change pithy.parse.expect to use these.
 }
 
 
-escape_codes:Dict[str, int] = {
+escape_codes:dict[str, int] = {
   'n': ord('\n'),
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),

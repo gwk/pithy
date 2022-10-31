@@ -1,19 +1,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import Namespace
-from typing import Dict, List, Tuple
 
 from pithy.graphviz import GraphvizAttrs, GraphvizName, GraphvizNodes, write_dot_digraph_adjacency
 
 from .dfa import DFA
 
 
-def output_dot(path_stem:str, dfas:List[DFA], pattern_descs:Dict[str,str], license:str, args:Namespace):
+def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str], license:str, args:Namespace):
 
   for dfa in dfas:
     path = f'{path_stem}-{dfa.name}.dot'
 
-    adjacency:Dict[GraphvizName,List[Tuple[GraphvizName,GraphvizAttrs]]] = {}
+    adjacency:dict[GraphvizName,list[tuple[GraphvizName,GraphvizAttrs]]] = {}
     for src, pairs in dfa.transition_descs():
       adjacency[src] = [(dst, dict(label=f'[{ranges_desc}]')) for dst, ranges_desc in pairs]
 

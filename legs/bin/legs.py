@@ -3,7 +3,7 @@
 
 from argparse import ArgumentParser
 from itertools import count
-from typing import DefaultDict, Dict, List, Optional, Set, Tuple
+from collections import defaultdict
 
 from pithy.dict import dict_put
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
@@ -70,7 +70,7 @@ def main() -> None:
   if args.match and args.langs: exit('`-match` and `-langs` are mutually exclusive.')
   if args.match and args.test: exit('`-match` and `-test` are mutually exclusive.')
 
-  langs:Set[str]
+  langs:set[str]
   if args.langs:
     if 'all' in args.langs:
       langs = supported_langs
@@ -112,7 +112,7 @@ def main() -> None:
       pattern.describe(name=name)
     errL()
 
-  dfas:List[DFA] = []
+  dfas:list[DFA] = []
   start_node = 0
   for mode, pattern_kinds in sorted(mode_pattern_kinds.items(), key=lambda p: mode_name_key(p[0])):
     if args.match and mode != match_mode: continue
@@ -153,7 +153,7 @@ def main() -> None:
   pattern_descs = { name : pattern.literal_desc or name for name, pattern in patterns.items() }
   pattern_descs.update((n, n) for n in ['invalid', 'incomplete'])
 
-  incomplete_patterns:Dict[str,Optional[LegsPattern]] = {
+  incomplete_patterns:dict[str,LegsPattern|None] = {
     dfa.name : gen_incomplete_pattern(dfa.backtracking_order, patterns) for dfa in dfas }
 
   if args.describe:
@@ -169,7 +169,7 @@ def main() -> None:
   out_path = args.output or args.path
   if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
 
-  test_cmds:List[List[str]] = []
+  test_cmds:list[list[str]] = []
 
   out_dir, out_name = split_dir_name(out_path)
   if not out_name:
@@ -217,7 +217,7 @@ def mode_name_key(name:str) -> str:
   return '' if name == 'main' else name
 
 
-def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
+def run_tests(test_cmds:list[list[str]], dbg:bool) -> None:
   # For each language, run against the specified match arguments, and capture output.
   # Print the output from the first test, and then the diff for each subsequent output that differs.
   from difflib import ndiff
@@ -225,9 +225,9 @@ def run_tests(test_cmds:List[List[str]], dbg:bool) -> None:
 
   from pithy.task import runCO
 
-  def quote(cmd:List[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
+  def quote(cmd:list[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
 
-  first_cmd:List[str] = []
+  first_cmd:list[str] = []
   first_out:str = ''
   status = 0
   for cmd in test_cmds:
@@ -274,7 +274,7 @@ def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -
     outL(f'match: {text!r} -- <none>')
 
 
-def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]], encoding:str) -> NFA:
+def gen_nfa(name:str, named_patterns:list[tuple[str, LegsPattern]], encoding:str) -> NFA:
   '''
   Generate an NFA from a set of patterns.
   The NFA can be used to match against an argument string,
@@ -288,9 +288,9 @@ def gen_nfa(name:str, named_patterns:List[Tuple[str, LegsPattern]], encoding:str
   start = mk_node() # always 0; see gen_dfa.
   invalid = mk_node() # always 1; see gen_dfa.
 
-  match_node_kinds:Dict[int, str] = { invalid: 'invalid' }
+  match_node_kinds:dict[int,str] = { invalid: 'invalid' }
 
-  transitions_dd:NfaMutableTransitions = DefaultDict(lambda: DefaultDict(set))
+  transitions_dd:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for kind, pattern in named_patterns:
     match_node = mk_node()
     pattern.gen_nfa(mk_node, encoding, transitions_dd, start, match_node)
