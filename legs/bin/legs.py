@@ -73,6 +73,7 @@ def main() -> None:
 
   langs:set[str] = determine_output_languages(args.langs, is_test=bool(args.test), output_path=args.output)
 
+  # Get the source string from either the command line or the source file.
   if (args.path is None) and args.patterns:
     path = '<patterns>'
     src = '\n'.join(args.patterns)
@@ -120,19 +121,21 @@ def main() -> None:
     if dbg or args.stats: min_dfa.describe_stats('Min DFA Stats')
     dfas.append(min_dfa)
 
-    if args.match and mode == match_mode:
-      for text in args.match:
-        text_bytes = text.encode(args.encoding)
-        match_bytes(nfa, fat_dfa, min_dfa, text, text_bytes)
-      exit()
-
     if dbg: errL('----')
 
     post_matches = len(min_dfa.post_match_nodes)
     if post_matches:
       errL(f'note: `{mode}`: minimized DFA contains ', pluralize(post_matches, "post-match node"), '.')
 
-  if args.match: exit(f'bad mode: {match_mode!r}')
+  # If we are testing patterns on the command line, then find the specified DFA, test each argument, and exit.
+  if args.match:
+    for dfa in dfas:
+      if dfa.name != mode: continue
+      for text in args.match:
+        text_bytes = text.encode(args.encoding)
+        match_bytes(nfa, fat_dfa, min_dfa, text, text_bytes)
+      exit()
+    exit(f'bad mode: {match_mode!r}')
 
   pattern_descs = { name : pattern.literal_desc or name for name, pattern in patterns.items() }
   pattern_descs.update((n, n) for n in ['invalid', 'incomplete'])
