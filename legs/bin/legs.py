@@ -2,20 +2,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from itertools import count
-from collections import defaultdict
 
-from pithy.dict import dict_put
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.string import pluralize
 
+from ..build import build_dfa, build_nfa
 from ..dfa import DFA, minimize_dfa
 from ..dot import output_dot
-from ..nfa import NFA, NfaTransitions, gen_dfa
+from ..nfa import NFA
 from ..parse import parse_legs
-from ..patterns import LegsPattern, NfaMutableTransitions, gen_incomplete_pattern
+from ..patterns import LegsPattern, gen_incomplete_pattern
 from ..python import output_python, output_python_re
 from ..swift import output_swift
 from ..vscode import output_vscode
@@ -103,7 +101,7 @@ def main() -> None:
     if args.match and mode != match_mode: continue
 
     named_patterns = sorted((kind, patterns[kind]) for kind in pattern_kinds)
-    nfa = gen_nfa(name=mode, named_patterns=named_patterns, encoding=args.encoding)
+    nfa = build_nfa(name=mode, named_patterns=named_patterns, encoding=args.encoding)
     if dbg: nfa.describe('NFA')
     if dbg or args.stats: nfa.describe_stats(f'NFA Stats')
     msgs = nfa.validate()
@@ -111,7 +109,7 @@ def main() -> None:
       errLL(*msgs)
       exit(1)
 
-    fat_dfa = gen_dfa(nfa)
+    fat_dfa = build_dfa(nfa)
     if dbg: fat_dfa.describe('Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
 
@@ -221,7 +219,6 @@ def determine_output_languages(args_langs:list[str], is_test:bool, output_path:s
   return langs
 
 
-
 def mode_name_key(name:str) -> str:
   'Always place main mode first.'
   return '' if name == 'main' else name
@@ -282,34 +279,6 @@ def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -
     outL(f'match: {text!r} -> {first_el(min_dfa_matches)}')
   else:
     outL(f'match: {text!r} -- <none>')
-
-
-def gen_nfa(name:str, named_patterns:list[tuple[str, LegsPattern]], encoding:str) -> NFA:
-  '''
-  Generate an NFA from a set of patterns.
-  The NFA can be used to match against an argument string,
-  but cannot produce a token stream directly.
-  The `invalid` node is unreachable, and reserved for later use by the derived DFA.
-  '''
-
-  indexer = iter(count())
-  def mk_node() -> int: return next(indexer)
-
-  start = mk_node() # always 0; see gen_dfa.
-  invalid = mk_node() # always 1; see gen_dfa.
-
-  match_node_kinds:dict[int,str] = { invalid: 'invalid' }
-
-  transitions_dd:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
-  for kind, pattern in named_patterns:
-    match_node = mk_node()
-    pattern.gen_nfa(mk_node, encoding, transitions_dd, start, match_node)
-    dict_put(match_node_kinds, match_node, kind)
-  lit_pattern_names = { n for n, pattern in named_patterns if pattern.is_literal }
-
-  transitions:NfaTransitions = {
-    src: {char: frozenset(dst) for char, dst in d.items() } for src, d in transitions_dd.items() }
-  return NFA(name=name, transitions=transitions, match_node_kinds=match_node_kinds, lit_pattern_names=lit_pattern_names)
 
 
 ext_langs = {
