@@ -37,6 +37,7 @@ This distinction is important for error reporting;
 lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
 '''
 
+
 def main() -> None:
   parser = ArgumentParser(prog='legs', description=description)
   parser.add_argument('path', nargs='?', help='Path to the .legs file.')
@@ -70,24 +71,7 @@ def main() -> None:
   if args.match and args.langs: exit('`-match` and `-langs` are mutually exclusive.')
   if args.match and args.test: exit('`-match` and `-test` are mutually exclusive.')
 
-  langs:set[str]
-  if args.langs:
-    if 'all' in args.langs:
-      langs = supported_langs
-    else:
-      for lang in args.langs:
-        if lang not in supported_langs:
-          exit(f'unknown language {lang!r}; supported languages are: {sorted(supported_langs)}.')
-      langs = set(args.langs)
-  elif args.test:
-    langs = test_langs
-  elif args.output:
-    ext = path_ext(args.output)
-    try: langs = {ext_langs[ext]}
-    except KeyError:
-      exit(f'unsupported output language extension {ext!r}; supported extensions are: {sorted(ext_langs)}.')
-  else:
-    langs = set()
+  langs:set[str] = determine_output_languages(args.langs, is_test=bool(args.test), output_path=args.output)
 
   if (args.path is None) and args.patterns:
     path = '<patterns>'
@@ -210,6 +194,29 @@ def main() -> None:
 
   if args.test:
     run_tests(test_cmds, dbg=args.dbg)
+
+
+
+def determine_output_languages(args_langs:list[str], is_test:bool, output_path:str|None) -> set[str]:
+  if args_langs:
+    if 'all' in args_langs:
+      langs = supported_langs
+    else:
+      for lang in args_langs:
+        if lang not in supported_langs:
+          exit(f'unknown language {lang!r}; supported languages are: {sorted(supported_langs)}.')
+      langs = set(args_langs)
+  elif is_test:
+    langs = test_langs
+  elif output_path:
+    ext = path_ext(output_path)
+    try: langs = {ext_langs[ext]}
+    except KeyError:
+      exit(f'unsupported output language extension {ext!r}; supported extensions are: {sorted(ext_langs)}.')
+  else:
+    langs = set()
+  return langs
+
 
 
 def mode_name_key(name:str) -> str:
