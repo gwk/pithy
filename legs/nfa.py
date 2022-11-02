@@ -41,11 +41,11 @@ class NFA:
     return not self.transitions
 
   @property
-  def all_byte_to_state_dicts(self) -> Iterable[NfaStateTransitions]: return self.transitions.values()
+  def all_letter_to_state_dicts(self) -> Iterable[NfaStateTransitions]: return self.transitions.values()
 
   @property
   def alphabet(self) -> frozenset[int]:
-    s = set_from(d.keys() for d in self.all_byte_to_state_dicts)
+    s = set_from(d.keys() for d in self.all_letter_to_state_dicts)
     s.discard(empty_symbol)
     return frozenset(s)
 

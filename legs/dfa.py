@@ -68,11 +68,11 @@ class DFA:
     return not self.transitions
 
   @property
-  def all_byte_to_state_dicts(self) -> Iterable[DfaStateTransitions]: return self.transitions.values()
+  def all_letter_to_state_dicts(self) -> Iterable[DfaStateTransitions]: return self.transitions.values()
 
   @property
   def alphabet(self) -> frozenset[int]:
-    return frozenset_from(d.keys() for d in self.all_byte_to_state_dicts)
+    return frozenset_from(d.keys() for d in self.all_letter_to_state_dicts)
 
   @property
   def all_src_nodes(self) -> frozenset[int]: return frozenset(self.transitions.keys())
