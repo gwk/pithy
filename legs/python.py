@@ -2,9 +2,8 @@
 
 import re
 from argparse import Namespace
-from pprint import pformat
-from typing import Any
 
+from pithy.reprs import repr_ml
 from pithy.optional import unwrap
 from pithy.string import render_template
 
@@ -30,9 +29,9 @@ def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
     src = render_template(template,
       Name=args.type_prefix,
       license=license,
-      mode_data=fmt_obj(mode_data),
-      mode_transitions=fmt_obj(mode_transitions),
-      pattern_descs=fmt_obj(pattern_descs),
+      mode_data=repr_ml(mode_data, indent=1),
+      mode_transitions=repr_ml(mode_transitions, indent=1),
+      pattern_descs=repr_ml(pattern_descs, indent=1),
       patterns_path=args.path,
     )
     f.write(src)
@@ -97,18 +96,14 @@ def output_python_re(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       Name=args.type_prefix,
       license=license,
       mode_patterns_repr=mode_patterns_repr,
-      mode_transitions=fmt_obj(mode_transitions),
-      pattern_descs=fmt_obj(pattern_descs),
+      mode_transitions=repr_ml(mode_transitions, indent=1),
+      pattern_descs=repr_ml(pattern_descs, indent=1),
       patterns_path=args.path,
     )
     f.write(src)
     if args.test:
       test_src = render_template(test_template, Name=args.type_prefix)
       f.write(test_src)
-
-
-def fmt_obj(object:Any) -> str:
-  return pformat(object, indent=2, width=128, compact=True)
 
 
 re_template = '''# ${license}
