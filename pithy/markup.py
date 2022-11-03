@@ -12,7 +12,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generator, Iterable, Iterator
   Union, cast, overload)
 from xml.etree.ElementTree import Element
 
-from .desc import repr_lim
+from .reprs import repr_lim
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from .iterable import window_iter, window_pairs
 from .string import EscapedStr

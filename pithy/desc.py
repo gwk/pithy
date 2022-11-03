@@ -5,11 +5,11 @@ Print indented object descriptions.
 like `pprint` but streaming, and with a more compact, minimal style.
 '''
 
-
 import re
+
 from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
-from typing import Any, Iterable, Iterator, List, Mapping, NamedTuple, Set, TextIO, Tuple, Union
+from typing import Any, Iterable, Iterator, List, NamedTuple, Set, TextIO, Tuple, Union
 
 from .iterable import known_leaf_types
 
@@ -223,24 +223,4 @@ def _gen_item_descs(visited_ids:Set[int], items:_Items, simple_keys:bool, key_se
     yield _obj_desc(v, prefix=ks+key_sep, visited_ids=visited_ids, simple_keys=simple_keys)
 
 
-def repr_clean(obj:Any) -> str:
-  '''
-  Attempt to ensure that an object gets printed with a decent repr.
-  Some third-party libraries print unconventional reprs that are confusing inside of collection descriptions.
-  '''
-  r = repr(obj)
-  if type(obj) in _literal_repr_types or _decent_repr_re.fullmatch(r): return r
-  return f'{type(obj).__name__}({r})'
-
-_literal_repr_types = { bytes,str,list,dict,set,tuple }
-_decent_repr_re = re.compile(r'[a-zA-Z][.\w]*\(.*\)')
-_word_re = re.compile(r'[-\w]+')
-
-
-def repr_lim(obj:Any, limit=64) -> str:
-  r = repr(obj)
-  if limit > 2 and len(r) > limit:
-    q = r[0]
-    if q in '\'"': return f'{r[:limit-2]}{q}…'
-    else: return f'{r[:limit-1]}…'
-  return r
+_word_re = re.compile(r'[-\w]+') # Hypens and word characters.
