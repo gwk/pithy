@@ -35,7 +35,7 @@ def build_nfa(name:str, named_patterns:list[tuple[str, LegsPattern]], encoding:s
 
   transitions:NfaTransitions = {
     src: {char: frozenset(dst) for char, dst in d.items() } for src, d in transitions_dd.items() }
-  return NFA(name=name, transitions=transitions, match_node_kinds=match_node_kinds, lit_pattern_names=lit_pattern_names)
+  return NFA(name=name, encoding=encoding, transitions=transitions, match_node_kinds=match_node_kinds, lit_pattern_names=lit_pattern_names)
 
 
 def build_dfa(nfa:NFA) -> DFA:
@@ -84,7 +84,8 @@ def build_dfa(nfa:NFA) -> DFA:
   assert invalid_node not in transitions
   start_dict = transitions[start_node]
   invalid_dict = transitions[invalid_node]
-  invalid_start_chars = set(range(0x100)) - set(start_dict)
+  whole_alphabet = set(range(2**8 if nfa.encoding else 2**32))
+  invalid_start_chars = whole_alphabet.difference(start_dict)
   for c in invalid_start_chars:
     start_dict[c] = invalid_node
     invalid_dict[c] = invalid_node

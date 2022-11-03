@@ -28,9 +28,10 @@ empty_symbol = -1 # not a legitimate byte value.
 class NFA:
   'Nondeterministic Finite Automaton.'
 
-  def __init__(self, name:str, transitions:NfaTransitions, match_node_kinds:dict[int, str], lit_pattern_names:set[str]):
+  def __init__(self, name:str, encoding:str, transitions:NfaTransitions, match_node_kinds:dict[int, str], lit_pattern_names:set[str]):
     assert name
     self.name = name
+    self.encoding = encoding
     self.transitions = transitions
     self.match_node_kinds = match_node_kinds
     self.lit_pattern_names = lit_pattern_names
