@@ -313,7 +313,7 @@ def regex_for_code(code:int, flavor:str) -> str:
   return f'\\U{code:08x}'
 
 
-def regex_for_code_range(code_range:CodeRange, flavor:str) -> str:
+def _regex_range_for_code_range(code_range:CodeRange, flavor:str) -> str:
   start, end = code_range
   last = end - 1
   if start == last: return regex_for_code(start, flavor)
@@ -325,7 +325,7 @@ def regex_for_code_ranges(ranges:Sequence[CodeRange], flavor:str) -> str:
     r = ranges[0]
     if r[0] + 1 == r[1]: # single character.
       return regex_for_code(r[0], flavor)
-  p = ''.join(regex_for_code_range(r, flavor) for r in ranges)
+  p = ''.join(_regex_range_for_code_range(r, flavor) for r in ranges)
   return f'[{p}]'
 
 
