@@ -68,6 +68,16 @@ def iter_from(iterable: Iterable[_T], start: int) -> Iterator[_T]:
   return it
 
 
+def iter_interleave_sep(iterable: Iterable[_T], sep: _T) -> Iterator[_T]:
+  'Yield the elements of `iterable`, interleaving `sep` between elements.'
+  it = iter(iterable)
+  try: yield next(it)
+  except StopIteration: return
+  for el in it:
+    yield sep
+    yield el
+
+
 def iter_unique(iterable: Iterable[_T]) -> Iterator[_T]:
   'Drop repeated elements, like unix `uniq`. TODO: rename to `iter_drop_repeated`.'
   prev:Any = object()
