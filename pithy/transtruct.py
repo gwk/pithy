@@ -5,7 +5,8 @@ from collections import Counter, defaultdict
 from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
-from typing import Any, Callable, ClassVar, NamedTuple, Optional, Type, TypeVar, Union, get_args, get_origin, get_type_hints
+from typing import (Any, Callable, ClassVar, NamedTuple, Optional, Type, TypeVar, Union, cast, get_args, get_origin,
+  get_type_hints)
 
 
 _T = TypeVar('_T')
@@ -186,6 +187,12 @@ class Transtructor:
 
 
   def transtructor_for_tuple_type(self, type_:Type, rtt:Type, types:tuple[Type,...]) -> Callable[[Any],Any]:
+    if len(types) == 2 and types[1] is cast(type, Ellipsis):
+      el_transtructor = self.transtructor_for(types[0]) # type: ignore[arg-type]
+      def transtruct_seq_tuple(args:Any) -> Any:
+        return rtt(el_transtructor(a) for a in args)
+      return transtruct_seq_tuple
+
     # TODO: handle sequence tuple definitions.
     transtructors = tuple(self.transtructor_for(t) for t in types) # type: ignore[arg-type]
 
