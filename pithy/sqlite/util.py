@@ -67,8 +67,10 @@ py_to_sqlite_types:Dict[type, str] = {
   bytes: 'BLOB',
   date: 'TEXT',
   datetime: 'TEXT',
+  dict: 'TEXT',
   float: 'REAL',
   int : 'INTEGER',
+  list : 'TEXT',
   str : 'TEXT',
   type(None): 'BLOB', # blob affinity has no conversion preference, so is most appropriate for unknown types.
 }
