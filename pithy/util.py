@@ -4,7 +4,10 @@ from typing import Any, Callable, Iterable, NamedTuple, Tuple, Type, TypeVar
 
 
 class lazy_property(object):
-  'Lazy property decorator.'
+  '''
+  Lazy property decorator.
+  This should probably be removed in favor of functools.cached_property, which is more complex but provindes thread safety.
+  '''
 
   def __init__(self, acc_fn:Callable):
     self.acc_fn = acc_fn
