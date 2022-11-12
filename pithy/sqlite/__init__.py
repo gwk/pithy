@@ -27,15 +27,26 @@ _SqlParameters: TypeAlias = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Map
 
 class SqliteError(Exception):
 
-  @property
-  def failed_unique_constraint(self) -> Optional[str]:
-    'Return the failed uniqueness constraint if that was the cause of the error or else None.'
-    cause = self.__cause__
-    if cause is None: return None
-    msg:str = cause.args[0]
-    suffix = msg.removeprefix('UNIQUE constraint failed: ')
-    if suffix == msg: return None
-    return suffix
+  @classmethod
+  def from_error(self, e:sqlite3.Error, query:str) -> 'SqliteError':
+    orig_msg = e.args[0]
+    msg = f'{orig_msg}\n  query: {query!r}'
+    prefix = e.args[0].partition(':')[0]
+    match prefix:
+      case 'UNIQUE constraint failed': return SqliteUniqueConstraintError(msg)
+      case 'FOREIGN KEY constraint failed': return SqliteForeignKeyConstraintError(msg)
+      case 'NOT NULL constraint failed': return SqliteNotNullConstraintError(msg)
+      case _: return SqliteError(msg)
+
+
+class SqliteIntegrityError(SqliteError): pass
+
+class SqliteForeignKeyConstraintError(SqliteIntegrityError): pass
+
+class SqliteNotNullConstraintError(SqliteIntegrityError): pass
+
+class SqliteUniqueConstraintError(SqliteIntegrityError): pass
+
 
 
 class Row(sqlite3.Row):
@@ -74,8 +85,7 @@ class Cursor(sqlite3.Cursor):
     Override execute so that we can raise an SqliteError with the complete query string.
     '''
     try: return super().execute(query, args)
-    except sqlite3.Error as e:
-      raise SqliteError(f'SQLite error: {e}\n  query: {query!r}') from e
+    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
 
 
   def executemany(self, query:str, it_args:Iterable[_SqlParameters]) -> 'Cursor':
@@ -83,8 +93,7 @@ class Cursor(sqlite3.Cursor):
     Override executemany so that we can raise an SqliteError with the complete query string.
     '''
     try: return super().executemany(query, it_args)
-    except sqlite3.Error as e:
-      raise SqliteError(f'SQLite error: {e}\n  query: {query!r}') from e
+    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
 
 
   def run(self, *sql:str, **args:Any) -> 'Cursor':
@@ -94,7 +103,7 @@ class Cursor(sqlite3.Cursor):
     '''
     query = ' '.join(sql)
     for k, v in args.items(): # Convert non-native values to Json.
-      if not isinstance(v, py_to_sqlite_types_tuple):
+      if not isinstance(v, py_to_sqlite_types_tuple): # Note: this is a conditional inlining of `default_to_json`.
         args[k] = render_json(v, indent=None)
     return self.execute(query, args)
 
