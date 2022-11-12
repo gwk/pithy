@@ -168,7 +168,7 @@ class Transtructor:
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
         try: return origin((key_ctor(k), val_ctor(v)) for k, v in items) # type: ignore[call-arg]
         except ValueError as e:
-          raise TranstructorError(f'failed to transtruct items of type {type(items).__name__}', t, val) from e
+          raise TranstructorError(f'failed to transtruct items of type {type(val).__name__!r}', t, val) from e
       return transtruct_dict
 
     if issubclass(origin, (list, set, frozenset, Counter)):
@@ -323,6 +323,7 @@ named_types = {
   'list': list,
   'long': int,
   'None': type(None),
+  'object': object,
   'set': set,
   'str': str,
   'string': str,
