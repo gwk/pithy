@@ -3,7 +3,7 @@
 import re
 
 from datetime import date, datetime
-from typing import Any, Dict, NamedTuple, Tuple, Type, get_args
+from typing import Any, NamedTuple, Tuple, Type, get_args
 
 from ..json import render_json
 
@@ -29,11 +29,11 @@ def sql_col_decls(class_:Type[NamedTuple], primary:str) -> str:
   decls = []
   for n, static_type in class_.__annotations__.items():
     # Currently supports primitive types and their optionals, and Json.
-    try: sql_type = py_to_sqlite_types[static_type]
+    try: sql_type = py_to_sqlite_static_types[static_type]
     except KeyError:
       try: unwrapped_type = _wrapped_type_for_optional(static_type)
       except TypeError: sql_type = 'TEXT'
-      else: sql_type = py_to_sqlite_types.get(unwrapped_type, 'TEXT')
+      else: sql_type = py_to_sqlite_static_types.get(unwrapped_type, 'TEXT')
     suffix = f' PRIMARY KEY' if n == primary else ''
     decls.append(f'{n} {sql_type}{suffix}')
   return ', '.join(decls)
@@ -51,7 +51,7 @@ def _wrapped_type_for_optional(static_type:type) -> type:
 
 def default_to_json(obj:Any) -> Any:
   if isinstance(obj, py_to_sqlite_types_tuple): return obj
-  return render_json(obj)
+  return render_json(obj, indent=None)
 
 
 def fields_of(class_:type) -> Tuple[str, ...]:
@@ -62,22 +62,28 @@ def fields_of(class_:type) -> Tuple[str, ...]:
 
 NoneType = type(None)
 
-py_to_sqlite_types:Dict[type, str] = {
-  bool : 'INT',
+py_to_sqlite_types:dict[type,str] = {
+  bool: 'INT',
   bytes: 'BLOB',
   date: 'TEXT',
   datetime: 'TEXT',
   dict: 'TEXT',
   float: 'REAL',
-  int : 'INTEGER',
-  list : 'TEXT',
-  str : 'TEXT',
-  type(None): 'BLOB', # blob affinity has no conversion preference, so is most appropriate for unknown types.
+  int: 'INTEGER',
+  list: 'TEXT',
+  object: 'ANY', # Necessary for expressing ANY columns for STRICT tables.
+  str: 'TEXT',
+  type(None): 'BLOB', # None gets treated as NULL. 'BLOB' is considered the most generic type.
 }
 
-py_to_sqlite_types_tuple = tuple(py_to_sqlite_types)
+# The set of types that are converted by the native sqlite3 module. All others are rendered as JSON, defaulting to their repr.
+py_to_sqlite_types_tuple = (bool, bytes, float, int, str, type(None))
 
-sql_to_py_types = { sql : py for (py, sql) in py_to_sqlite_types.items() }
+
+py_to_sqlite_static_types:dict[Any,str] = {
+  Any: 'ANY',
+  **py_to_sqlite_types,
+}
 
 
 def sqlite_quote_entity(entity:str) -> str:
