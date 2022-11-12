@@ -24,7 +24,7 @@ from pithy.io import outL, outZ
 def main() -> None:
   parser = ArgumentParser(description='Validate timesheets.')
   parser.add_argument('timesheet', nargs='?', default='timesheet.txt')
-  parser.add_argument('-rates', nargs='+', default=[0])
+  parser.add_argument('-rates', nargs='+', default=[])
   args = parser.parse_args()
 
   path = args.timesheet
@@ -62,14 +62,15 @@ def main() -> None:
 
     # Match a time line, e.g. '12:00: some note.'.
     if time_match := time_re.match(line):
-
       # Parse the optional rate.
+      rate = 0
       if rate_match := rate_idx_re.search(line):
         rate_idx = int(rate_match.group(1))
-        if rate_idx >= len(hourly_rates):
-          exit(f'timesheet error: rate index {rate_idx} is out of range.')
-        rate = hourly_rates[rate_idx]
-      else:
+        if hourly_rates:
+          if rate_idx >= len(hourly_rates):
+            exit(f'timesheet error: rate index {rate_idx} is out of range.')
+          rate = hourly_rates[rate_idx]
+      elif hourly_rates:
         rate = hourly_rates[0]
 
       m = minutes_for(time_match)
