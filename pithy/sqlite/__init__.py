@@ -154,7 +154,7 @@ class Cursor(sqlite3.Cursor):
 
   def count(self, table:str, *where:str, **args:Any) -> int:
     'Execute a SELECT COUNT(1) query, returning the number of rows.'
-    where_clause = ('WHERE', *where) if where else []
+    where_clause = ('WHERE', *where) if where else ()
     for row in self.run('SELECT COUNT(1) FROM', table, *where_clause, **args):
       return row[0] # type: ignore[no-any-return]
     return 0
