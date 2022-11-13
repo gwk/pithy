@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Protocol, S
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
-from .util import default_to_json, py_to_sqlite_types_tuple
+from .util import default_to_json, py_to_sqlite_types_tuple, sql_quote_entity
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -212,6 +212,18 @@ class Cursor(sqlite3.Cursor):
     placeholders = ','.join('?' for _ in seq)
     values = [default_to_json(v) for v in seq]
     self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
+
+
+  def count_all_tables(self, schema:str='main', omit_empty=False) -> list[tuple[str, int]]:
+    'Return an iterable of (table, count) pairs.'
+    schema_q = sql_quote_entity(schema)
+    table_names = list(self.run(f"SELECT name FROM {schema_q}.sqlite_master ORDER BY name").col())
+    pairs = []
+    for name in table_names:
+      count = self.count(f'{schema_q}.{name}')
+      if omit_empty and count == 0: continue
+      pairs.append((name, count))
+    return pairs
 
 
 class Connection(sqlite3.Connection):
