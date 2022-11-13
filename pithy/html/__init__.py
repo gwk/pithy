@@ -6,6 +6,7 @@ Html type hierarchy.
 
 import re
 from html import escape as _escape
+from itertools import chain
 from typing import (Any, AnyStr as _AnyStr, Callable, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type,
   TypeVar, Union, cast)
 
@@ -1389,6 +1390,22 @@ class Table(HtmlFlow, HtmlPalpable):
   '''
   # TODO: def caption
 
+
+  @classmethod
+  def simple(cls, *inline_rows:tuple[MuChildLax,...], caption:MuChildLax='', header:tuple[MuChildLax,...]=(),
+   rows:Iterable[tuple[MuChildLax,...]], **kwargs:Any) -> 'Table':
+
+    table = cls(**kwargs)
+    if caption:
+      table.append(Caption(ch=caption))
+
+    if header:
+      table.append(Tr(ch=[Th(ch=cell) for cell in header]))
+
+    for row in chain(inline_rows, rows):
+      table.append(Tr(ch=[Td(ch=cell) for cell in row]))
+
+    return table
 
 
 @_tag
