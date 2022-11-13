@@ -43,7 +43,7 @@ MuIterVisitor = Callable[[_Mu],Iterator[_T]]
 
 class Present:
   '''The Present class is used to only set an attribute if `is_present` evaluates to True.'''
-  def __init__(self, is_present: Any):
+  def __init__(self, is_present:Any):
     self.is_present = bool(is_present)
 
 
