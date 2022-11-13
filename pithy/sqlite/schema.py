@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from functools import cached_property
-from .util import sqlite_quote_entity, py_to_sqlite_types
+from .util import sql_quote_entity, py_to_sqlite_types
 
 
 @dataclass
@@ -50,10 +50,10 @@ class Table:
       not_null = '' if (c.is_opt or c.is_primary) else ' NOT NULL'
       comment = f' -- {c.desc}' if c.desc else ''
       inner_parts.append(
-        ['  ', sqlite_quote_entity(c.name), ' ', py_to_sqlite_types[c.datatype], primary_key, not_null, ',', comment])
+        ['  ', sql_quote_entity(c.name), ' ', py_to_sqlite_types[c.datatype], primary_key, not_null, ',', comment])
 
     if self.primary_key:
-      primary_key_parts = ', '.join(sqlite_quote_entity(c) for c in self.primary_key)
+      primary_key_parts = ', '.join(sql_quote_entity(c) for c in self.primary_key)
       inner_parts.append([f'  PRIMARY KEY ({primary_key_parts})', ',', ''])
 
     # Fix up the last inner line.

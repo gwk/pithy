@@ -86,9 +86,13 @@ py_to_sqlite_static_types:dict[Any,str] = {
 }
 
 
-def sqlite_quote_entity(entity:str) -> str:
+def sql_quote_entity(entity:str) -> str:
   needs_quote = entity.upper() in sqlite_keyords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', entity)
-  return f'"{entity}"' if needs_quote else entity
+  if needs_quote:
+    if '"' in entity: raise ValueError(f'Cannot quote entity containing double quote: {entity!r}')
+    return f'"{entity}"'
+  else:
+    return entity
 
 
 sqlite_keyords = {
