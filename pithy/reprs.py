@@ -19,6 +19,7 @@ _decent_repr_re = re.compile(r'[a-zA-Z][.\w]*\(.*\)')
 
 
 def repr_lim(obj:Any, limit=64) -> str:
+  'Return a repr of `obj` that is at most `limit` characters long.'
   r = repr(obj)
   if limit > 2 and len(r) > limit:
     q = r[0]
