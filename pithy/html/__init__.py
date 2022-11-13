@@ -10,7 +10,7 @@ from typing import (Any, AnyStr as _AnyStr, Callable, ClassVar, Dict, Iterable, 
   TypeVar, Union, cast)
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
-from ..markup import Mu, MuAttrs, MuChild, _Mu, _MuChild
+from ..markup import Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, _Mu, _MuChild
 from . import semantics
 
 
@@ -172,22 +172,22 @@ class HtmlHeadingContent(HtmlNode):
   The superclass of H1-H6 heading elements themselves is `Heading`.
   '''
 
-  def h1(self, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H1':
+  def h1(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H1':
     return self.append(H1(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h2(self, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H2':
+  def h2(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H2':
     return self.append(H2(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h3(self, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H3':
+  def h3(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H3':
     return self.append(H3(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h4(self, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H4':
+  def h4(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H4':
     return self.append(H4(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h5(self, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H5':
+  def h5(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H5':
     return self.append(H5(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
-  def h6(self, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H6':
+  def h6(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H6':
     return self.append(H6(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
   @property
@@ -211,7 +211,7 @@ class HtmlPhrasingContent(HtmlNode):
 
 class HtmlScriptSupporting(HtmlNode):
 
-  def script(self, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'Script':
+  def script(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'Script':
     return self.append(Script(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
 
 
@@ -709,7 +709,7 @@ class Heading(HtmlPhrasingContent):
   '''
 
   @classmethod
-  def for_level(cls, level:int, *, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'Heading':
+  def for_level(cls, level:int, *, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'Heading':
     c = _heading_classes[min(level, 6) - 1]
     return c(attrs=attrs, ch=ch, cl=cl, **kw_attrs)
 

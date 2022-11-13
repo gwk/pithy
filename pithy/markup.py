@@ -33,6 +33,10 @@ MuChild = Union[str,'EscapedStr','Mu']
 MuChildren = List[MuChild]
 MuChildOrChildren = Union[MuChild,Iterable[MuChild]]
 
+MuChildLax = Union[MuChild,int,float]
+MuChildrenLax = List[MuChildLax]
+MuChildOrChildrenLax = Union[MuChildLax,Iterable[MuChildLax]]
+
 _Mu = TypeVar('_Mu', bound='Mu')
 _MuChild = TypeVar('_MuChild', bound='MuChild')
 
@@ -76,13 +80,21 @@ class Mu:
 
   __slots__ = ('attrs', 'ch', '_orig', '_parent')
 
-  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs|None=None, ch:MuChildOrChildren=(), cl:Iterable[str]|None=None,
+  # Instance attributes.
+  attrs:MuAttrs
+  ch:list[MuChild]
+
+  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,
    _orig:_Mu|None=None, _parent:Optional['Mu']=None, **kw_attrs:Any) -> None:
     '''
     Note: the initializer uses `attrs` dict and `ch` list references if provided, resulting in data sharing.
     This is done for two reasons:
     * avoid excess copying during deserialization from json, msgpack, or similar;
     * allow for creation of subtree nodes (with _orig/_parent set) that alias the `attr` and `ch` collections.
+
+    The `ch` initializer argument is typed as MuChildOrChildrenLax to allow for numeric values.
+    These are converted to strings during initialization.
+    If the `ch` argument is a list and contains numeric values, it is mutated in place.
 
     Normally, nodes do not hold a reference to parent; this makes Mu trees acyclic.
     However, various Mu methods have a `traversable` option, which will return subtrees with the _orig/_parent refs set.
@@ -106,17 +118,21 @@ class Mu:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
-    if isinstance(ch, mu_child_classes): # Single child argument; wrap it in a list.
-      self.ch:MuChildren = [ch]
+    if isinstance(ch, mu_child_classes_lax): # Single child argument; wrap it in a list.
+      ch_lax:MuChildrenLax = [ch]
     elif isinstance(ch, list):
-      self.ch = ch # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
-      for c in ch:
-        assert isinstance(c, mu_child_classes), c
+      ch_lax = ch # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
     else:
-      self.ch = list(ch)
-      for c in self.ch:
-        assert isinstance(c, mu_child_classes), c
+      ch_lax = list(ch)
+    for i, c in enumerate(ch_lax):
+      if isinstance(c, mu_child_classes):
+        continue
+      if isinstance(c, _mu_child_classes_lax_converted):
+        ch_lax[i] = str(c)
+      else:
+        raise TypeError(f'Invalid child type: {type(c)!r}; value: {repr_lim(c)!r}')
 
+    self.ch = cast(list[MuChild], ch_lax)
     self._orig = _orig
     self._parent = _parent
 
@@ -341,11 +357,14 @@ class Mu:
     if isinstance(child, Mu) and child._orig is not None: child = child._orig
     if not isinstance(child, mu_child_classes): raise TypeError(child)
     self.ch.append(child)
-    return child # The type of child._orig the same as child.
+    return child # The type of child._orig is the same as child.
 
 
-  def extend(self, children:Iterable[_MuChild]) -> None:
-    for el in children: self.append(el)
+  def extend(self, children:Iterable[MuChildLax]) -> None:
+    for el in children:
+      if isinstance(el, _mu_child_classes_lax_converted):
+        el = str(el)
+      self.append(el)
 
 
   def _single(self, Child_type:Type[_Mu]) -> _Mu:
@@ -752,6 +771,8 @@ class Mu:
 
 
 mu_child_classes = (str, EscapedStr, Mu)
+_mu_child_classes_lax_converted = (int, float, bool, type(None))
+mu_child_classes_lax = mu_child_classes + _mu_child_classes_lax_converted
 
 
 def xml_attr_summary(key:str, val:Any, *, text_limit:int, all_attrs:bool) -> str:
