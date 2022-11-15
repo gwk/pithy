@@ -23,130 +23,144 @@ from pithy.io import outL, outZ
 
 def main() -> None:
   parser = ArgumentParser(description='Validate timesheets.')
-  parser.add_argument('timesheet', nargs='?', default='timesheet.txt')
-  parser.add_argument('-rates', nargs='+', default=[])
+  parser.add_argument('timesheets', nargs='+')
+  parser.add_argument('-rates', type=int, nargs='+', default=[])
   args = parser.parse_args()
 
-  path = args.timesheet
-  hourly_rates = [int(r) for r in args.rates]
+  totals = Totals(hourly_rates=args.rates)
 
-  days:List[Day] = []
-  all_blocks:List[TimeBlock] = []
+  for path in args.timesheets:
+    totals.parse_timesheet(path)
 
-  curr_blocks:List[TimeBlock] = []
-  start_minutes:Optional[int] = None
-  prev_minutes:Optional[int] = None
-  end_minutes:Optional[int] = None
-  prev_rate:Optional[int] = None
-  total_payment = 0.0
-  total_expense = 0.0
+  totals.render()
 
-  valid = True
 
-  try: f = open(path)
-  except FileNotFoundError: exit(f'bad path: {path}')
+class Totals:
 
-  for line in f:
-    l = line.rstrip('\n')
-    outZ(f'{l:48}')
+  def __init__(self, hourly_rates:list[int]):
+    self.hourly_rates = hourly_rates
+    self.days:list[Day] = []
+    self.all_blocks:list[TimeBlock] = []
+    self.total_expense = 0.0
+    self.total_payment = 0.0
+    self.is_valid = True
 
-    # Match a date line, e.g. '2020-01-01' or '01-01'.
-    day_match = day_re.match(line)
-    if day_match:
-      outL('.')
-      if start_minutes is not None or end_minutes is not None:
-        exit(f'timesheet error: previous day is missing end time.')
-      curr_blocks = []
-      days.append(Day(day=day_match[0], blocks=curr_blocks))
-      continue
 
-    # Match a time line, e.g. '12:00: some note.'.
-    if time_match := time_re.match(line):
-      # Parse the optional rate.
-      rate = 0
-      if rate_match := rate_idx_re.search(line):
-        rate_idx = int(rate_match.group(1))
-        if hourly_rates:
-          if rate_idx >= len(hourly_rates):
-            exit(f'timesheet error: rate index {rate_idx} is out of range.')
-          rate = hourly_rates[rate_idx]
-      elif hourly_rates:
-        rate = hourly_rates[0]
+  def parse_timesheet(self, path:str):
 
-      m = minutes_for(time_match)
-      if start_minutes is None:
-        start_minutes = m
-        block_str = ''
-      else:
-        end_minutes = m # Cumulative from last start.
-        assert prev_minutes is not None
-        assert prev_rate is not None
-        block = TimeBlock(start=prev_minutes, end=end_minutes, rate=prev_rate)
-        all_blocks.append(block)
-        curr_blocks.append(block)
-        block_str = f' {block}'
-      prev_minutes = m
-      prev_rate = rate
-      outZ(f'|{m:4}{block_str}')
+    curr_blocks:List[TimeBlock] = []
+    start_minutes:Optional[int] = None
+    prev_minutes:Optional[int] = None
+    end_minutes:Optional[int] = None
+    prev_rate:Optional[int] = None
 
-      # Match an inline subtotal, e.g. '12:00 finished = 1:00'.
-      if subtotal_match := subtotal_re.search(line):
-        if not time_match:
-          outL()
-          exit(f'timesheet error: subtotal line does not specify a time.')
-        if start_minutes is None or end_minutes is None:
-          outL()
-          exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
-        sub_minutes = end_minutes - start_minutes
-        m = minutes_for(subtotal_match)
-        outZ(f' = {sub_minutes:4}m')
-        if m != sub_minutes:
-          outZ(f' *** found: {m}; calculated: {sub_minutes}')
-          valid = False
-        if sub_minutes <= 0:
-          outL()
-          exit(f'timesheet error: subtototal is negative')
+    try: f = open(path)
+    except FileNotFoundError: exit(f'bad path: {path}')
 
-        start_minutes = None
-        prev_minutes = None
-        end_minutes = None
+    for line in f:
+      l = line.rstrip('\n')
+      outZ(f'{l:48}')
 
-    if money_match := money_re.match(line):
-      s = ''.join(money_match.groups())
-      i = float(s)
-      if (i < 0):
-        total_payment += i
-      else:
-        total_expense += i
-      outZ(f'               {i: 10,.2f}')
+      # Match a date line, e.g. '2020-01-01' or '01-01'.
+      day_match = day_re.match(line)
+      if day_match:
+        outL('.')
+        if start_minutes is not None or end_minutes is not None:
+          exit(f'timesheet error: previous day is missing end time.')
+        curr_blocks = []
+        self.days.append(Day(day=day_match[0], blocks=curr_blocks))
+        continue
+
+      # Match a time line, e.g. '12:00: some note.'.
+      if time_match := time_re.match(line):
+        # Parse the optional rate.
+        rate = 0
+        if rate_match := rate_idx_re.search(line):
+          rate_idx = int(rate_match.group(1))
+          if self.hourly_rates:
+            if rate_idx >= len(self.hourly_rates):
+              exit(f'timesheet error: rate index {rate_idx} is out of range.')
+            rate = self.hourly_rates[rate_idx]
+        elif self.hourly_rates:
+          rate = self.hourly_rates[0]
+
+        m = minutes_for(time_match)
+        if start_minutes is None:
+          start_minutes = m
+          block_str = ''
+        else:
+          end_minutes = m # Cumulative from last start.
+          assert prev_minutes is not None
+          assert prev_rate is not None
+          block = TimeBlock(start=prev_minutes, end=end_minutes, rate=prev_rate)
+          self.all_blocks.append(block)
+          curr_blocks.append(block)
+          block_str = f' {block}'
+        prev_minutes = m
+        prev_rate = rate
+        outZ(f'|{m:4}{block_str}')
+
+        # Match an inline subtotal, e.g. '12:00 finished = 1:00'.
+        if subtotal_match := subtotal_re.search(line):
+          if not time_match:
+            outL()
+            exit(f'timesheet error: subtotal line does not specify a time.')
+          if start_minutes is None or end_minutes is None:
+            outL()
+            exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
+          sub_minutes = end_minutes - start_minutes
+          m = minutes_for(subtotal_match)
+          outZ(f' = {sub_minutes:4}m')
+          if m != sub_minutes:
+            outZ(f' *** found: {m}; calculated: {sub_minutes}')
+            valid = False
+          if sub_minutes <= 0:
+            outL()
+            exit(f'timesheet error: subtototal is negative')
+
+          start_minutes = None
+          prev_minutes = None
+          end_minutes = None
+
+      if money_match := money_re.match(line):
+        s = ''.join(money_match.groups())
+        i = float(s)
+        if (i < 0):
+          self.total_payment += i
+        else:
+          self.total_expense += i
+        outZ(f'               {i: 10,.2f}')
+
+      outL()
+
+
+  def render(self) -> None:
+    outL()
+    outL(f'DAYS:')
+    for day in self.days: outL(day.desc_with_rates(self.hourly_rates))
+
+    rate_blocks = fan_by_key_fn(self.all_blocks, lambda b: b.rate)
+    total_hours = { r : sum(b.hours for b in blocks) for r, blocks in rate_blocks.items() }
 
     outL()
+    outL(f'Total hours:')
+    for r, h in sorted(total_hours.items()):
+      outL(f'  {h:.02f} @ ${r}/hr = ${h * r:,.02f}')
 
-  outL()
-  outL(f'DAYS:')
-  for day in days: outL(day.desc_with_rates(hourly_rates))
+    time_expense = sum(day.price for day in self.days)
+    total = time_expense + self.total_expense + self.total_payment
 
-  rate_blocks = fan_by_key_fn(all_blocks, lambda b: b.rate)
-  total_hours = { r : sum(b.hours for b in blocks) for r, blocks in rate_blocks.items() }
+    outL(f'Total expenses: ${self.total_expense:,.2f}')
+    outL(f'Total payments: ${self.total_payment:,.2f}')
+    outL(f'TOTAL:         ${total:,.2f}')
 
-  outL()
-  outL(f'Total hours:')
-  for r, h in sorted(total_hours.items()):
-    outL(f'  {h:.02f} @ ${r}/hr = ${h * r:,.02f}')
-
-  time_expense = sum(day.price for day in days)
-  total = time_expense + total_payment + total_expense
-
-  outL(f'Total expenses: ${total_expense:,.2f}')
-  outL(f'Total payments: ${total_payment:,.2f}')
-  outL(f'TOTAL:         ${total:,.2f}')
-
-  if not valid:
-    exit('*** INVALID ***')
+    if not self.is_valid:
+      exit('*** INVALID ***')
 
 
 def minutes_for(match:Match) -> int:
   return int(match.group(1)) * 60 + int(match.group(2))
+
 
 day_re      = re.compile(r'(?:(\d\d\d\d)-)?(\d\d)-(\d\d)')
 time_re     = re.compile(r'(\d\d):(\d\d) ')
