@@ -17,8 +17,8 @@ from argparse import ArgumentParser
 from dataclasses import dataclass
 from typing import List, Match, Optional
 
-from pithy.iterable import fan_by_key_fn
 from pithy.io import outL, outZ
+from pithy.iterable import fan_by_key_fn
 
 
 def main() -> None:
@@ -129,7 +129,7 @@ class Totals:
           self.total_payment += i
         else:
           self.total_expense += i
-        outZ(f'               {i: 10,.2f}')
+        outZ(f'               {i: 10,}')
 
       outL()
 
@@ -142,18 +142,23 @@ class Totals:
     outL()
     outL(f'Total hours:')
     for r, h in sorted(total_hours.items()):
-      outL(f'  {h:.02f} @ ${r}/hr = ${h * r:,.02f}')
+      cost = r * h
+      outL(f'{h:.02f} @ ${r}/hr = ${cost:10,.2f}')
 
-    time_expense = sum(day.price for day in self.days)
-    total = time_expense + self.total_expense + self.total_payment
+    total_wages = round(sum(day.cost for day in self.days))
+    total_expense = round(self.total_expense)
+    total_payment = round(self.total_payment)
+    total = total_wages + total_expense + total_payment
 
-    outL(f'Total expenses: ${self.total_expense:,.2f}')
-    outL(f'Total payments: ${self.total_payment:,.2f}')
-    outL(f'TOTAL:         ${total:,.2f}')
+    outL()
+    outL(f'Total wages:    ${total_wages:7,}')
+    outL(f'Total expenses: ${total_expense:7,}')
+    outL(f'Total payments: ${total_payment:7,}')
+    outL(f'TOTAL:          ${total:7,}')
 
     outL()
     outL(f'Days:')
-    for day in self.days: outL(day.desc_with_rates(self.hourly_rates))
+    for day in self.days: outL(day.desc_with_rates())
 
     if not self.is_valid:
       exit('*** INVALID ***')
@@ -190,7 +195,7 @@ class TimeBlock:
     return self.minutes / 60
 
   @property
-  def price(self) -> float:
+  def cost(self) -> float:
     return self.hours * self.rate
 
 
@@ -204,16 +209,16 @@ class Day:
     self.blocks = blocks
 
   @property
-  def price(self) -> float:
-    return sum(block.price for block in self.blocks)
+  def cost(self) -> float:
+    return sum(block.cost for block in self.blocks)
 
-  def rate_minutes(self, rates_count:int) -> list[int]:
+  def rate_minutes(self) -> dict[int,float]:
     rate_blocks = fan_by_key_fn(self.blocks, lambda b: b.rate)
-    return [sum(b.minutes for b in blocks) for r, blocks in sorted(rate_blocks.items())]
+    return { rate : sum(b.minutes for b in blocks) for rate, blocks in sorted(rate_blocks.items()) }
 
-  def desc_with_rates(self, rates:list[int]) -> str:
+  def desc_with_rates(self) -> str:
     parts = []
-    for rate, minutes in zip(rates, self.rate_minutes(len(rates))):
+    for rate, minutes in self.rate_minutes().items():
       h, m = divmod(minutes, 60)
       parts.append(f'{h:}:{m:02} @ {rate}/hr')
     return f'{self.day}:  ' + ', '.join(parts)
