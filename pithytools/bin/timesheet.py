@@ -135,9 +135,6 @@ class Totals:
 
 
   def render(self) -> None:
-    outL()
-    outL(f'DAYS:')
-    for day in self.days: outL(day.desc_with_rates(self.hourly_rates))
 
     rate_blocks = fan_by_key_fn(self.all_blocks, lambda b: b.rate)
     total_hours = { r : sum(b.hours for b in blocks) for r, blocks in rate_blocks.items() }
@@ -153,6 +150,10 @@ class Totals:
     outL(f'Total expenses: ${self.total_expense:,.2f}')
     outL(f'Total payments: ${self.total_payment:,.2f}')
     outL(f'TOTAL:         ${total:,.2f}')
+
+    outL()
+    outL(f'Days:')
+    for day in self.days: outL(day.desc_with_rates(self.hourly_rates))
 
     if not self.is_valid:
       exit('*** INVALID ***')
