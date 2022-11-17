@@ -362,11 +362,17 @@ class Mu:
     return child # The type of child._orig is the same as child.
 
 
-  def extend(self, children:Iterable[MuChildLax]) -> None:
-    for el in children:
-      if isinstance(el, _mu_child_classes_lax_converted):
-        el = str(el)
-      self.append(el)
+  def extend(self, *child_or_children:MuChildOrChildrenLax) -> None:
+    for c in child_or_children:
+      if isinstance(c, mu_child_classes):
+        self.append(c)
+      elif isinstance(c, _mu_child_classes_lax_converted):
+        self.append(str(c))
+      else:
+        for el in c:
+          if isinstance(el, _mu_child_classes_lax_converted):
+            el = str(el)
+          self.append(el)
 
 
   def _single(self, Child_type:Type[_Mu]) -> _Mu:
