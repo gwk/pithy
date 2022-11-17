@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from urllib.parse import urlsplit as url_split, urlunsplit as url_unsplit
+from urllib.parse import parse_qsl
 
 from .path import path_stem
 
@@ -14,6 +15,10 @@ def url_path(url:str) -> str: return url_split(url).path
 def url_query(url:str) -> str: return url_split(url).query
 
 def url_fragment(url:str) -> str: return url_split(url).fragment
+
+
+def url_query_params(url:str) -> dict[str,str]:
+  return dict(parse_qsl(url_split(url).query))
 
 
 def url_drop_scheme_fragment(url:str) -> str:
