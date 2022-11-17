@@ -354,7 +354,9 @@ class Mu:
 
 
   def append(self, child:_MuChild) -> _MuChild:
-    if isinstance(child, Mu) and child._orig is not None: child = child._orig
+    if isinstance(child, Mu) and child._orig is not None:
+      child = child._orig
+      assert child._orig is None
     if not isinstance(child, mu_child_classes): raise TypeError(child)
     self.ch.append(child)
     return child # The type of child._orig is the same as child.
