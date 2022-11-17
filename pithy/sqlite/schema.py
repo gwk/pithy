@@ -37,9 +37,10 @@ class Table:
   def column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns)
 
 
-  def sql_create_stmt(self, if_not_exists=False, strict=False) -> str:
+  def sql_create_stmt(self, schema='', if_not_exists=False, strict=False) -> str:
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
-    lines = [f'CREATE TABLE {if_not_exists_str}{self.name} (']
+    schema_dot = '.' if schema else ''
+    lines = [f'CREATE TABLE {if_not_exists_str}{schema}{schema_dot}{self.name} (']
 
     # Colmuns are separated by commas, except for the last one.
     # This is complicated by comments following commas,
