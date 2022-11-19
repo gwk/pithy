@@ -2,6 +2,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
+from time import perf_counter
 
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
@@ -113,10 +114,15 @@ def main() -> None:
     if dbg: fat_dfa.describe('Fat DFA')
     if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
 
+    start_time = perf_counter()
     min_dfa = minimize_dfa(fat_dfa, start_node=start_node)
+    end_time = perf_counter()
+
     start_node = min_dfa.end_node
     if dbg: min_dfa.describe('Min DFA')
-    if dbg or args.stats: min_dfa.describe_stats('Min DFA Stats')
+    if dbg or args.stats:
+      min_dfa.describe_stats('Min DFA Stats')
+      print(f'  time: {end_time-start_time:.3f} seconds')
     dfas.append(min_dfa)
 
     if dbg: errL('----')
