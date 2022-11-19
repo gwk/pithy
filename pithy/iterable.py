@@ -152,6 +152,7 @@ def closed_int_intervals(iterable: Iterable[int]) -> Iterable[Tuple[int, int]]:
 
 
 _RangeTypes = Union[int, range, Tuple[int, int]]
+
 def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int]]:
   'Given `iterable`, yield range pair tuples.'
 
@@ -168,7 +169,7 @@ def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int
   for el in it:
     l, e = pair_for_el(el)
     if e < l: raise ValueError(el)
-    if l < end: raise ValueError('seq_int_ranges requires monotonically increasing elements', end, l)
+    if l < end: raise ValueError('int_tuple_ranges requires monotonically increasing elements', end, l)
     if l == end:
       end = e
     else:
