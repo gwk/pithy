@@ -38,7 +38,7 @@ from typing import Iterable, Iterator
 from pithy.graph import visit_nodes
 from pithy.io import errL, errSL
 from pithy.iterable import first_el, frozenset_from, int_tuple_ranges, set_from
-from pithy.unicode.codepoints import codes_desc
+from pithy.unicode.codepoints import codes_desc, codes_range_desc
 
 
 DfaState = int
@@ -136,13 +136,10 @@ class DFA:
 
   def transition_descs(self) -> Iterator[tuple[int,list[tuple[int,str]]]]:
     'Yield (src, [(dst, ranges_desc)]) tuples.'
-    for src, d in sorted(self.transitions.items()):
-      dst_bytes = defaultdict[int,set[int]](set)
-      for byte, dst in d.items():
-        dst_bytes[dst].add(byte)
-      dst_sorted_bytes = [(dst, sorted(byte_set)) for (dst, byte_set) in dst_bytes.items()]
+    for src in sorted(self.transitions.keys()):
+      dst_letters = self.dst_letter_lists(src)
       pairs = []
-      for dst, bytes_list in sorted(dst_sorted_bytes, key=lambda p: p[1]):
+      for dst, bytes_list in sorted(dst_letters.items(), key=lambda p: p[1]):
         byte_ranges = int_tuple_ranges(bytes_list)
         pairs.append((dst, codes_desc(byte_ranges)))
       yield (src, pairs)
@@ -158,6 +155,10 @@ class DFA:
       errSL(f'  {src}:', *sorted(self.match_kinds(src)))
       for dst, ranges_desc in pairs:
         errSL(f'    {ranges_desc} ==> {dst}', *sorted(self.match_kinds(dst)))
+      letter_ranges = self.letter_range_dsts(src)
+      if len(letter_ranges) > 1:
+        for letter_range, dst in letter_ranges:
+          errSL(f'    {codes_range_desc(*letter_range)} --> {dst}')
     errL()
 
   def describe_stats(self, label='') -> None:
@@ -170,6 +171,26 @@ class DFA:
 
   def dst_nodes(self, node:int) -> frozenset[int]:
     return frozenset(self.transitions[node].values())
+
+  def dst_letter_lists(self, node:int) -> dict[int,list[int]]:
+    'Given `node`, return a defaultdict mapping dst states to the sorted list of letters that transition to them.'
+    dst_letters = defaultdict[int,list[int]](list)
+    for byte, dst in self.transitions[node].items():
+      dst_letters[dst].append(byte)
+    for l in dst_letters.values():
+      l.sort()
+    return dict(dst_letters)
+
+  def letter_range_dsts(self, node:int) -> list[tuple[tuple[int,int],int]]:
+    'Return a list of ((letter_range_pair), dst_node) tuples.'
+    dst_letters = self.dst_letter_lists(node)
+    range_dsts = []
+    for dst, letters in dst_letters.items():
+      ranges = int_tuple_ranges(letters)
+      for r in ranges:
+        range_dsts.append((r, dst))
+    range_dsts.sort()
+    return range_dsts
 
   def advance(self, state:int, byte:int) -> int:
     return self.transitions[state][byte]
