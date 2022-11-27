@@ -77,7 +77,7 @@ py_to_sqlite_types:dict[type,str] = {
 }
 
 # The set of types that are converted by the native sqlite3 module. All others are rendered as JSON, defaulting to their repr.
-py_to_sqlite_types_tuple = (bool, bytes, float, int, str, type(None))
+py_to_sqlite_types_tuple = (bool, bytes, date, datetime, float, int, str, type(None))
 
 
 py_to_sqlite_static_types:dict[Any,str] = {
