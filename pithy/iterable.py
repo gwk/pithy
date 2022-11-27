@@ -214,7 +214,7 @@ def fan_by_pred(iterable: Iterable[_T], pred: Callable[[_T], bool]) -> Tuple[Lis
   return fan
 
 
-def fan_by_key_fn(iterable: Iterable[_T], key: Callable[[_T], _K]) -> Dict[_K, List[_T]]:
+def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> Dict[_K, List[_T]]:
   '''
   Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element.
   returns a dictionary of lists.
