@@ -14,6 +14,7 @@ from .types import Comparable
 _T = TypeVar('_T')
 _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
+_R = TypeVar('_R')
 _C = TypeVar('_C', bound=Comparable)
 _CK = TypeVar('_CK', bound=Comparable)
 
@@ -228,6 +229,24 @@ def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> Dict[_K, List
       group = []
       groups[k] = group
     group.append(el)
+  return groups
+
+
+def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], transform:Callable[[_T],_R]) -> Dict[_K, List[_R]]:
+  '''
+  Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element,
+  applying `transform` to each element.
+  returns a dictionary of lists of transformed elements.
+  '''
+  groups: Dict[_K, List[_R]] = {}
+  for el in iterable:
+    k = key(el)
+    try:
+      group = groups[k]
+    except KeyError:
+      group = []
+      groups[k] = group
+    group.append(transform(el))
   return groups
 
 
