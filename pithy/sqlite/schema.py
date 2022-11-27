@@ -40,7 +40,7 @@ class Table:
   def sql_create_stmt(self, schema='', if_not_exists=False, strict=False) -> str:
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     schema_dot = '.' if schema else ''
-    lines = [f'CREATE TABLE {if_not_exists_str}{schema}{schema_dot}{self.name} (']
+    lines = [f'CREATE TABLE {if_not_exists_str}{schema}{schema_dot}{sql_quote_entity(self.name)} (']
 
     # Colmuns are separated by commas, except for the last one.
     # This is complicated by comments following commas,
