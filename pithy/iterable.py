@@ -348,7 +348,7 @@ def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iter
   `split_by_preds('abcde', lambda el: el=='b', lambde el: el=='c')` yields:
   * (False, ['a'])
   * (True, ['b', 'c'])
-  * (False, ['d'. 'e'])
+  * (False, ['d', 'e'])
   '''
   if not preds: raise ValueError('split_by_preds requires at least one predicate')
   l = len(preds)
