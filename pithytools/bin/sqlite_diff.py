@@ -14,8 +14,8 @@ def main() -> None:
   ca = Connection(args.path_a)
   cb = Connection(args.path_b)
 
-  a_tables = set(ca.run("SELECT name FROM sqlite_master WHERE type = 'table'").col())
-  b_tables = set(cb.run("SELECT name FROM sqlite_master WHERE type = 'table'").col())
+  a_tables = set(ca.run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
+  b_tables = set(cb.run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
   common_tables = a_tables & b_tables
 
   if a_only_tables := a_tables - b_tables:
@@ -30,8 +30,8 @@ def main() -> None:
 
 def diff_table(ca: Connection, cb: Connection, table: str):
 
-  a_sql = ca.run("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :table", table=table).one_col()
-  b_sql = cb.run("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :table", table=table).one_col()
+  a_sql = ca.run("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = :table", table=table).one_col()
+  b_sql = cb.run("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = :table", table=table).one_col()
 
   first = True
   def msg(*msg:str):

@@ -217,7 +217,7 @@ class Cursor(sqlite3.Cursor):
   def count_all_tables(self, schema:str='main', omit_empty=False) -> list[tuple[str, int]]:
     'Return an iterable of (table, count) pairs.'
     schema_q = sql_quote_entity(schema)
-    table_names = list(self.run(f"SELECT name FROM {schema_q}.sqlite_master ORDER BY name").col())
+    table_names = list(self.run(f"SELECT name FROM {schema_q}.sqlite_schema ORDER BY name").col())
     pairs = []
     for name in table_names:
       count = self.count(f'{schema_q}.{name}')
