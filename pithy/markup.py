@@ -754,7 +754,6 @@ class Mu:
     if child_newlines:
       yield '\n'
     for child, next_child in window_pairs(self.ch):
-      assert isinstance(child, mu_child_classes), child
       if isinstance(child, str):
         yield self.esc_text(child)
       elif isinstance(child, Mu):
@@ -766,6 +765,15 @@ class Mu:
         raise TypeError(child) # Expected str, EscapedStr, or Mu.
       if child_newlines and (is_block(child) or next_child is None or is_block(next_child)):
         yield '\n'
+
+
+  @staticmethod
+  def render_child(child:MuChildLax) -> str:
+    if isinstance(child, str): return Mu.esc_text(child)
+    if isinstance(child, Mu): return child.render_str()
+    if isinstance(child, EscapedStr): return child.string
+    if isinstance(child, _mu_child_classes_lax_converted): return Mu.esc_text(str(child))
+    else: raise TypeError(child)
 
 
   def render_str(self, newline=True) -> str:
