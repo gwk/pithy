@@ -71,3 +71,19 @@ class Table:
     lines.append(f'){table_options_str};')
 
     return '\n'.join(lines)
+
+
+@dataclass
+class Index:
+  name:str
+  table:str
+  is_unique:bool = False
+  desc:str = ''
+  columns:tuple[str,...] = ()
+
+  def sql_create_stmt(self, schema='', if_not_exists=False) -> str:
+    if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
+    schema_dot = '.' if schema else ''
+    unique_str = 'UNIQUE ' if self.is_unique else ''
+    columns_str = ', '.join(sql_quote_entity(c) for c in self.columns)
+    return f'CREATE {unique_str}INDEX {if_not_exists_str}{schema}{schema_dot}{sql_quote_entity(self.name)} ON {sql_quote_entity(self.table)} ({columns_str});'
