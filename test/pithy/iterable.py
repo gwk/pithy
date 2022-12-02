@@ -40,8 +40,8 @@ utest(([0], [1, 2]), fan_by_pred, [0, 1, 2], pred=lambda el: el)
 utest({}, fan_by_key_fn, [], key=int)
 utest({False: [0], True: [1, 2]}, fan_by_key_fn, range(3), key=lambda el: bool(el))
 
-utest_seq([], group_sorted_by_cmp, [], cmp=eq)
-utest_seq([[0], [1, 1], [2]], group_sorted_by_cmp, (0, 1, 1, 2), cmp=eq)
+utest_seq([], group_by_cmp, [], cmp=eq)
+utest_seq([[0], [1, 1], [2]], group_by_cmp, (0, 1, 1, 2), cmp=eq)
 
 utest_seq_exc(ValueError(0), group_by_heads, [0, 1, 2, 3, 4], is_head=lambda x: x % 2)
 

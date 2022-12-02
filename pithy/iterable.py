@@ -250,7 +250,7 @@ def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], tr
   return groups
 
 
-def group_sorted_by_cmp(iterable: Iterable[_T], cmp: Callable[[_T, _T], bool]) -> List[List[_T]]:
+def group_by_cmp(iterable: Iterable[_T], cmp: Callable[[_T, _T], bool]) -> Iterable[List[_T]]:
   '''
   Group elements `iterable`, which must already be sorted,
   by applying the `comparison` predicate to each consecutive pair of elements.
@@ -259,24 +259,41 @@ def group_sorted_by_cmp(iterable: Iterable[_T], cmp: Callable[[_T, _T], bool]) -
   '''
   # TODO: convert to generator.
   it = iter(iterable)
-  try:
-    first = next(it)
-  except StopIteration:
-    return []
-  # TODO: rename group.
-  groups = []
+  try: first = next(it)
+  except StopIteration: return
   group = [first]
   prev = first
   for el in it:
     if cmp(prev, el):
       group.append(el)
     else:
-      groups.append(group)
+      yield group
       group = [el]
     prev = el
-  if group:
-    groups.append(group)
-  return groups
+  yield group
+
+
+def group_by_key_fn(iterable:Iterable[_T], key:Callable[[_T], Comparable]) -> Iterable[List[_T]]:
+  '''
+  Group elements `iterable`, which must already be sorted,
+  by applying the `key` function to each element.
+  Consecutive elements for which the key values are equal will be grouped together;
+  a group is yielded whenever comparison fails.
+  '''
+  it = iter(iterable)
+  try: first = next(it)
+  except StopIteration: return
+  group = [first]
+  prev_key = key(first)
+  for el in it:
+    curr_key = key(el)
+    if curr_key == prev_key:
+      group.append(el)
+    else:
+      yield group
+      group = [el]
+    prev_key = curr_key
+  yield group
 
 
 class OnHeadless(Enum):
