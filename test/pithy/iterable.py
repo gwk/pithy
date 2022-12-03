@@ -77,6 +77,11 @@ utest_seq([(True, [0, 1])], split_by_preds, [0, 1], is_zero, is_one)
 utest_seq([(False, [0]), (True, [0, 1]), (False, [0])],
   split_by_preds, [0, 0, 1, 0], is_zero, is_one)
 
+utest_seq([], transpose, [])
+utest_seq([], transpose, [[]])
+utest_seq([[0, 1], [2, 3]], transpose, [[0, 2], [1, 3]])
+utest_seq([[0, 1], [2, 3], [4, 5]], transpose, [[0, 2, 4], [1, 3, 5]])
+
 utest_seq([], window_iter, [])
 utest_seq([(0,1), (1,2), (2,3)], window_iter, range(4))
 utest_seq([(0,1,2), (1,2,3)], window_iter, range(4), width=3)
