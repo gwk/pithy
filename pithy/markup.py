@@ -141,11 +141,14 @@ class Mu:
 
 
   def __str__(self) -> str:
-    subnode = '' if self._orig is None else '$'
-    words = ''.join(chain(
-      (xml_attr_summary(k, v, text_limit=32, all_attrs=False) for k, v in self.attrs.items()),
-      (xml_child_summary(c, text_limit=32) for c in self.ch)))
-    return f'<{subnode}{self.tag}:{words}>'
+    try: # `__str__` may get called during exception handling during initialization, when attributes are not yet set.
+      subnode = '' if self._orig is None else '$'
+      words = ''.join(chain(
+        (xml_attr_summary(k, v, text_limit=32, all_attrs=False) for k, v in self.attrs.items()),
+        (xml_child_summary(c, text_limit=32) for c in self.ch)))
+      return f'<{subnode}{self.tag}:{words}>'
+    except AttributeError:
+      return super().__repr__()
 
 
   def __bytes__(self) -> bytes:
