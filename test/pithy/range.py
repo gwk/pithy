@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.range import *
+from utest import utest_seq, utest_val
+from pithy.range import NumRange
 
 
 utest_seq([0, 1, 2, 3], NumRange, 4)
@@ -14,3 +14,11 @@ utest_val(4, r[-1])
 utest_seq([0.0, 1.5, 3.0, 4.5], NumRange, 0, 6, 1.5)
 
 utest_seq([0.0, 1.5, 3.0, 4.5, 6.0], NumRange, 0, 6, 1.5, closed=True)
+
+utest_seq([0.0, 0.5], NumRange, 0, 1, 0.5)
+utest_seq([0.0, 0.5, 1.0], NumRange, 0, 1, 0.5, closed=True)
+utest_seq([0.0, 0.5, 1.0], NumRange, 0, 1.1, 0.5)
+utest_seq([0.0, 0.5, 1.0], NumRange, 0, 1.1, 0.5, closed=True)
+
+utest_seq([0, 1/3, 2/3], NumRange, 0, 1, 1/3)
+utest_seq([0, 1/3, 2/3, 1], NumRange, 0, 1, 1/3, closed=True)
