@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from dataclasses import dataclass
 from datetime import (date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone,
   tzinfo as TZInfo)
 from typing import TypeVar
@@ -14,7 +15,7 @@ months = ('January', 'February', 'March', 'April', 'May', 'June',
 
 month_days = {
   1: 31,
-  2: 28,
+  2: 28, # Leap day must be handled separately.
   3: 31,
   4: 30,
   5: 31,
@@ -28,6 +29,11 @@ month_days = {
 }
 
 
+def num_days_of_month(year:int, month:int) -> int:
+  if month == 2 and is_leap_year(year): return 29
+  return month_days[month]
+
+
 def days_in_year(year:int) -> int:
   if year % 4: return 365
   if year % 100: return 366
@@ -39,34 +45,55 @@ def is_leap_year(year:int) -> bool:
   return not bool((year%4) and (year%100 or not (year%400)))
 
 
-DateLike = TypeVar('DateLike', Date, DateTime)
+DateLike = TypeVar('DateLike', 'DateDelta', Date, DateTime)
 
 
+@dataclass(frozen=True)
 class DateDelta:
+  years:int = 0
+  months:int = 0
 
-  def __init__(self, years:int=0, months:int=0):
-    self.years = years
-    self.months = months
-
-  def __repr__(self) -> str:
-    return f'{type(self).__name__}(years={self.years!r}, months={self.months!r})'
 
   def __add__(self, other:DateLike) -> DateLike:
-    carry_years, month0 = divmod(other.month + self.months - 1, 12)
-    year = other.year + self.years + carry_years
+    if isinstance(other, DateDelta):
+      carry_years, months = divmod(self.months + other.months, 12)
+      years = self.years + other.years + carry_years
+      return DateDelta(years, months)
+    try:
+      date_year = other.year
+      date_month = other.month
+      date_day = other.day
+      date_replace = other.replace
+    except AttributeError as e:
+      raise TypeError(f'cannot add DateDelta to {type(other).__name__!r}') from e
+    carry_years, month0 = divmod(date_month + self.months - 1, 12)
+    year = date_year + self.years + carry_years
     month = month0 + 1
-    if month == 2 and other.day == 29 and not is_leap_year(year):
-      return other.replace(year=year, month=month, day=28)
+    last_valid_day = num_days_of_month(year, month)
+    if date_day > last_valid_day:
+      return date_replace(year=year, month=month, day=last_valid_day)
     else:
-      return other.replace(year=year, month=month)
+      return date_replace(year=year, month=month)
 
 
-def parse_datetime(string: str, fmt='%Y-%m-%d %H:%M:%S') -> DateTime:
-  return DateTime.strptime(string, fmt)
+  def __neg__(self) -> 'DateDelta':
+    return DateDelta(-self.years, -self.months)
 
 
-def parse_date(string: str, fmt='%Y-%m-%d') -> Date:
-  return DateTime.strptime(string, fmt).date()
+  def __sub__(self, other:DateLike) -> DateLike:
+    if isinstance(other, DateDelta):
+      return DateDelta(self.years - other.years, self.months - other.months)
+    raise TypeError(f'cannot subtract {type(other).__name__!r} from DateDelta')
+
+
+def parse_datetime(string: str, fmt:str|None=None) -> DateTime:
+  if fmt: return DateTime.strptime(string, fmt)
+  return DateTime.fromisoformat(string)
+
+
+def parse_date(string: str, fmt:str|None=None) -> Date:
+  if fmt: return DateTime.strptime(string, fmt).date()
+  return Date.fromisoformat(string)
 
 
 def dt_for_utc_ts(ts:float) -> DateTime:
