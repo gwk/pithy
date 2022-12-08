@@ -46,7 +46,12 @@ MuIterVisitor = Callable[[_Mu],Iterator[_T]]
 
 
 class Present:
-  '''The Present class is used to only set an attribute if `is_present` evaluates to True.'''
+  '''
+  The Present class is used to only set an attribute key if `is_present` evaluates to True.
+  If an attribute has a `Present(True)` value, then the markup output will have an empty value set.
+  https://html.spec.whatwg.org/multipage/syntax.html#attributes-2.
+  For attributes that are unconditionally set, just use `key=''`.
+  '''
   def __init__(self, is_present:Any):
     self.is_present = bool(is_present)
 
@@ -714,7 +719,7 @@ class Mu:
     parts: List[str] = []
     for k, v in sorted(items, key=lambda item: self.attr_sort_ranks.get(item[0], 0)):
       k = self.replaced_attrs.get(k, k)
-      if v in (None, True, False): v = str(v).lower()
+      if v in (None, True, False): v = str(v).lower() # TODO: look up values in a dict for speed?
       elif isinstance(v, Present):
         if v.is_present: v = ''
         else: continue
