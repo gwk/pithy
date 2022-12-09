@@ -1,8 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import inspect
+from importlib.machinery import ModuleSpec
 from inspect import FrameInfo
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar, cast
+
+
+class MetaprogrammingError(Exception): pass
 
 
 def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
@@ -88,6 +92,29 @@ def rename(obj:_A, name:str|None=None, module:str|None=None) -> _A:
   return obj
 
 
+def caller_module_spec(steps:int) -> ModuleSpec:
+  '''
+  Returns the ModuleSpec of the parent module `steps` number of frames from the immediate caller.
+  steps=0 is useful when this function is called from the module scope.
+  steps=1 is useful when this function is called from a function that wants to know about its own caller.
+  '''
+  f = inspect.currentframe() # This frame.
+  if f is None: raise MetaprogrammingError('no current frame')
+  f = f.f_back # Immediate caller's frame; caller already knows this.
+  if f is None: raise MetaprogrammingError('no caller frame')
+  for i in range(steps):
+    p = f
+    f = f.f_back
+    if f is None: raise MetaprogrammingError(f'no caller frame (step {i+1}); previous: {p!r}')
+  spec = f.f_globals['__spec__']
+  if spec is None:
+    desc = f'{f.f_code.co_filename}:{f.f_lineno}:{f.f_code.co_name}'
+    raise MetaprogrammingError(f'no module spec for caller frame: {desc!r}')
+  if not isinstance(spec, ModuleSpec):
+    raise MetaprogrammingError(f'caller frame has invalid module spec: {spec!r}')
+  return spec
+
+
 def caller_module_name(steps:int) -> Optional[str]:
   '''
   Get the module name of the caller name, `steps` number of frames from the immediate caller.
@@ -113,13 +140,19 @@ def caller_pkg_path(steps:int) -> str:
   steps=1 is useful when called from a function that wants to know the path of the caller's package.
   '''
   f = inspect.currentframe() # This frame.
-  if f is None: raise ValueError('no current frame')
+  if f is None: raise MetaprogrammingError('no current frame')
   f = f.f_back # Immediate caller's frame; caller already knows this.
-  if f is None: raise ValueError('no caller frame')
+  if f is None: raise MetaprogrammingError('no caller frame')
   for i in range(steps):
+    p = f
     f = f.f_back
-    if f is None: raise ValueError(f'no caller frame (step {i+1})')
+    if f is None: raise MetaprogrammingError(f'no caller frame (step {i+1}); previous: {p!r}')
   spec = f.f_globals['__spec__']
+  if not spec: raise MetaprogrammingError(f'no module spec for caller frame: {f!r}')
+  locations = spec.submodule_search_locations
+  if locations is None:
+    desc = f'{f.f_code.co_filename}:{f.f_lineno}:{f.f_code.co_name}()'
+    raise MetaprogrammingError(f'no submodule search locations for frame: {desc}')
   return cast(str, spec.submodule_search_locations[0])
 
 
