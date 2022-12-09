@@ -1,8 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from dataclasses import dataclass
+import re
+
+from dataclasses import dataclass, field
 from functools import cached_property
-from .util import sql_quote_entity, py_to_sqlite_types
+
+from .util import py_to_sqlite_types, sql_quote_entity, sql_comment_lines, sql_comment_inline
+
+from typing import Iterable
 
 
 @dataclass
@@ -20,10 +25,23 @@ class Column:
       if not self.is_unique: raise ValueError(f'Primary key column {self} must be unique.')
 
 
+
+class Structure:
+  'Top-level SQL objects, i.e. Index, Table, Trigger, View.'
+
+  name:str
+  desc:str
+
+  def sql(self, schema='', if_not_exists=False) -> str:
+    raise NotImplementedError
+
+
+
 @dataclass
-class Table:
+class Table(Structure):
   name:str
   desc:str = ''
+  is_strict:bool = False
   without_rowid:bool = False
   primary_key:tuple[str,...] = () # The compound primary key, if any.
   # TODO: foreign keys.
@@ -37,10 +55,14 @@ class Table:
   def column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns)
 
 
-  def sql_create_stmt(self, schema='', if_not_exists=False, strict=False) -> str:
+  def sql(self, schema='', if_not_exists=False) -> str:
+    qual_name = f'{schema}{schema and "."}{sql_quote_entity(self.name)}'
+    lines:list[str] = []
+    if self.desc:
+      lines.append(f'-- {qual_name}')
+      lines.extend(sql_comment_lines(self.desc))
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
-    schema_dot = '.' if schema else ''
-    lines = [f'CREATE TABLE {if_not_exists_str}{schema}{schema_dot}{sql_quote_entity(self.name)} (']
+    lines.append(f'CREATE TABLE {if_not_exists_str}{qual_name} (')
 
     # Colmuns are separated by commas, except for the last one.
     # This is complicated by comments following commas,
@@ -49,7 +71,7 @@ class Table:
     for c in self.columns:
       primary_key = ' PRIMARY KEY' if c.is_primary else ''
       not_null = '' if (c.is_opt or c.is_primary) else ' NOT NULL'
-      comment = f' -- {c.desc}' if c.desc else ''
+      comment = sql_comment_inline(c.desc) if c.desc else ''
       inner_parts.append(
         ['  ', sql_quote_entity(c.name), ' ', py_to_sqlite_types[c.datatype], primary_key, not_null, ',', comment])
 
@@ -64,7 +86,7 @@ class Table:
     lines.extend(''.join(p) for p in inner_parts)
 
     table_options = [
-      ' STRICT' if strict else '',
+      ' STRICT' if self.is_strict else '',
       ' WITHOUT ROWID' if self.without_rowid else '',
     ]
     table_options_str = ','.join(opt for opt in table_options if opt)
@@ -74,16 +96,83 @@ class Table:
 
 
 @dataclass
-class Index:
+class Index(Structure):
   name:str
   table:str
   is_unique:bool = False
   desc:str = ''
   columns:tuple[str,...] = ()
 
-  def sql_create_stmt(self, schema='', if_not_exists=False) -> str:
+
+  def sql(self, schema='', if_not_exists=False) -> str:
+    qual_name = f'{schema}{schema and "."}{sql_quote_entity(self.name)}'
+    lines = []
+    if self.desc:
+      lines.append(f'-- {qual_name}')
+      lines.extend(sql_comment_lines(self.desc))
+
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
-    schema_dot = '.' if schema else ''
     unique_str = 'UNIQUE ' if self.is_unique else ''
+    lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
     columns_str = ', '.join(sql_quote_entity(c) for c in self.columns)
-    return f'CREATE {unique_str}INDEX {if_not_exists_str}{schema}{schema_dot}{sql_quote_entity(self.name)} ON {sql_quote_entity(self.table)} ({columns_str});'
+    lines.append(f'  ON {sql_quote_entity(self.table)} ({columns_str});')
+    return '\n'.join(lines)
+
+
+
+@dataclass
+class Schema:
+  name:str = ''
+  desc:str = ''
+  tables:list[Table] = field(default_factory=list)
+  indexes:list[Index] = field(default_factory=list)
+
+
+  def __post_init__(self) -> None:
+    names = set()
+    for s in self.structures:
+      if s.name in names: raise ValueError(f'Structure {s} has a duplicate name.')
+      names.add(s.name)
+
+
+  @property
+  def structures(self) -> Iterable[Structure]:
+    yield from self.tables
+    yield from self.indexes
+
+
+  def structures_dict(self) -> dict[str, Structure]:
+    return {s.name: s for s in self.structures}
+
+
+  def sql(self, if_not_exists=False) -> Iterable[str]:
+
+    if self.name or self.desc:
+      yield '\n'
+      if self.name: yield f'-- Schema: {self.name}\n'
+      if self.desc: yield '\n'.join(sql_comment_lines(self.desc)) + '\n'
+
+    for s in self.structures:
+      yield '\n'
+      yield s.sql(schema=self.name, if_not_exists=if_not_exists)
+      yield '\n'
+
+
+  def write_module_sql(self, if_not_exists=False, steps=1) -> None:
+    '''
+    Write an SQL schema file for this schema to the packge directory of the caller.
+    This is typically callled from the main() of a module defining a schema.
+    `steps` can be used to adjust the frame introspection level.
+    Be careful: if the step count is wrong, the file may be written into an installed package location,
+    which is usually not desirable and potentially destructive to the installation.
+    '''
+    from ..meta import caller_module_spec
+    if steps < 1: raise ValueError(f'steps must be >= 1; received {steps!r}')
+    spec = caller_module_spec(steps=steps)
+    path = spec.origin
+    if not path: raise ValueError(f'Cannot determine path of caller module: {spec!r}.')
+    if not path.endswith('.py'): raise ValueError(f'Expected a .py file for module; {spec!r}')
+    path = path[:-3] + '.sql'
+    print(f'Writing SQL schema to {path!r}.')
+    with open(path, 'w') as f:
+      f.write(''.join(self.sql(if_not_exists=if_not_exists)))

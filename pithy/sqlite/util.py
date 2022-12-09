@@ -86,6 +86,15 @@ py_to_sqlite_static_types:dict[Any,str] = {
 }
 
 
+def sql_comment_lines(comment:str) -> list[str]:
+  return [f'-- {l.rstrip()}' for l in comment.strip().splitlines()]
+
+
+def sql_comment_inline(comment:str) -> str:
+  s = re.sub(r'\s+', ' ', comment)
+  return ' -- ' + s
+
+
 def sql_quote_entity(entity:str) -> str:
   needs_quote = entity.upper() in sqlite_keyords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', entity)
   if needs_quote:
