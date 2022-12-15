@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Protocol, Sequence, Tuple, TypeAlias, TypeVar, cast
+from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Protocol, Self, Sequence, Tuple, TypeAlias, TypeVar, cast
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
@@ -69,6 +69,7 @@ class Row(sqlite3.Row):
       parts.append(f'{TXT_D}{key}:{color}{val!r}{RST_TXT}')
     return '  '.join(parts)
 
+
 _row_qdi_colors = {
   bool: TXT_G,
   bytes: TXT_M,
@@ -78,25 +79,34 @@ _row_qdi_colors = {
   type(None): TXT_R,
 }
 
+
 class Cursor(sqlite3.Cursor):
 
-  def execute(self, query:str, args:_SqlParameters=()) -> 'Cursor':
+  def execute(self, query:str, args:_SqlParameters=()) -> Self:
     '''
-    Override execute so that we can raise an SqliteError with the complete query string.
+    Override execute in order to raise an SqliteError with the complete query string.
     '''
     try: return super().execute(query, args)
     except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
 
 
-  def executemany(self, query:str, it_args:Iterable[_SqlParameters]) -> 'Cursor':
+  def executemany(self, query:str, it_args:Iterable[_SqlParameters]) -> Self:
     '''
-    Override executemany so that we can raise an SqliteError with the complete query string.
+    Override executemany in order to raise an SqliteError with the complete query string.
     '''
     try: return super().executemany(query, it_args)
     except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
 
 
-  def run(self, *sql:str, dbg=False, **args:Any) -> 'Cursor':
+  def executescript(self, sql_script:str) -> Self:
+    '''
+    Override executescript in order to raise an SqliteError with the complete query string.
+    '''
+    try: return cast(Self, super().executescript(sql_script))
+    except sqlite3.Error as e: raise SqliteError.from_error(e, sql_script) from e
+
+
+  def run(self, *sql:str, dbg=False, **args:Any) -> Self:
     '''
     Execute a query, joining multiple pieces of `sql` into a single query string, with values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to Json.
@@ -226,6 +236,7 @@ class Cursor(sqlite3.Cursor):
     return pairs
 
 
+
 class Connection(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None=None,
@@ -239,11 +250,35 @@ class Connection(sqlite3.Connection):
     self.row_factory = Row # Default for convenience.
 
 
-  def cursor(self, factory:type|None=None) -> Cursor: # type: ignore[override]
-    if factory is None:
-      factory = Cursor
+  def cursor(self, factory:type[Cursor]|None=None) -> Cursor: # type: ignore[override]
+    if factory is None: factory = Cursor
     assert issubclass(factory, Cursor)
     return super().cursor(factory)
+
+
+  def execute(self, query:str, args:_SqlParameters=()) -> Cursor:
+    '''
+    Override execute in order to raise an SqliteError with the complete query string.
+    '''
+    try: return cast(Cursor, super().execute(query, args))
+    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
+
+
+  def executemany(self, query:str, it_args:Iterable[_SqlParameters]) -> Cursor:
+    '''
+    Override executemany in order to raise an SqliteError with the complete query string.
+    '''
+    try: return cast(Cursor, super().executemany(query, it_args))
+    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
+
+
+  def executescript(self, sql_script:str) -> Cursor:
+    '''
+    Override executescript in order to raise an SqliteError with the complete query string,
+    and to return pithy.sqlite.Cursor instead of sqlite3.Cursor.
+    '''
+    try: return self.cursor().executescript(sql_script)
+    except sqlite3.Error as e: raise SqliteError.from_error(e, sql_script) from e
 
 
   def run(self, *sql:str, **args:Any) -> Cursor:
