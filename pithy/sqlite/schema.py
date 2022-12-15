@@ -63,7 +63,7 @@ class Table(Structure):
 
     # Colmuns are separated by commas, except for the last one.
     # This is complicated by comments following commas,
-    # and primary/foreign key lines that are also within the parens.
+    # and trailing primary/foreign key lines that are also included within the parens.
     inner_parts = [] # Parts of lines within the parens.
     for c in self.columns:
       primary_key = ' PRIMARY KEY' if c.is_primary else ''
@@ -76,7 +76,7 @@ class Table(Structure):
       primary_key_parts = ', '.join(sql_quote_entity(c) for c in self.primary_key)
       inner_parts.append([f'  PRIMARY KEY ({primary_key_parts})', ',', ''])
 
-    # Fix up the last inner line.
+    # Remove the comma from the last inner line.
     assert inner_parts[-1][-2] == ','
     inner_parts[-1][-2] = '' # Remove last comma.
 
