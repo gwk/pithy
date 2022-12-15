@@ -96,7 +96,7 @@ def sql_comment_inline(comment:str) -> str:
 
 
 def sql_quote_entity(entity:str) -> str:
-  needs_quote = entity.upper() in sqlite_keyords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', entity)
+  needs_quote = entity.upper() in sqlite_keyords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]+', entity)
   if needs_quote:
     if '"' in entity: raise ValueError(f'Cannot quote entity containing double quote: {entity!r}')
     return f'"{entity}"'
