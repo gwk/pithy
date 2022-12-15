@@ -1,13 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import re
-
 from dataclasses import dataclass, field
 from functools import cached_property
-
-from .util import py_to_sqlite_types, sql_quote_entity, sql_comment_lines, sql_comment_inline
-
 from typing import Iterable
+
+from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity
 
 
 @dataclass
