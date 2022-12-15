@@ -3,7 +3,7 @@
   "exclude": ["_build", "_misc"],
   "typeshedPath": "typeshed",
   "typingsPath": "typestubs",
-  "pythonVersion": "3.10",
+  "pythonVersion": "3.11",
   "reportSelfClsParameterName": "none",
   "reportGeneralTypeIssues": "none",
   "reportInvalidTypeVarUse": "none",

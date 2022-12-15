@@ -3,7 +3,7 @@
 
 name = "utest"
 description = "UTest is a simple unit-testing library."
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 dependencies = []
 

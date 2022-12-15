@@ -3,7 +3,7 @@
 
 name = "iotest"
 description = "IOTest is a process/integration test harness that captures standard IO as the basis for test validation."
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 dependencies = []
 
