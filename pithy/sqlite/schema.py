@@ -9,11 +9,16 @@ from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql
 
 @dataclass
 class Column:
+  '''
+  `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP', or an SQL `expr`.
+  SQLite column constraints: https://www.sqlite.org/syntax/column-constraint.html
+  '''
   name:str
   datatype:type # Note: 'ANY' columns should be expressed with `object` rather than `Any` to mollify the type checker.
   is_opt:bool = False # Whether the column allows NULL. Must be False for primary keys.
   is_primary:bool = False # Whether the column is PRIMARY KEY.
   is_unique:bool = False # Whether the column is UNIQUE.
+  default:int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
   desc:str = ''
 
   def __post_init__(self) -> None:
@@ -21,6 +26,27 @@ class Column:
       if self.is_opt: raise ValueError(f'Primary key column {self} cannot be optional.')
       if not self.is_unique: raise ValueError(f'Primary key column {self} must be unique.')
 
+  def sql(self) -> str:
+    name = sql_quote_entity(self.name)
+    type_ = py_to_sqlite_types[self.datatype]
+    primary_key = ' PRIMARY KEY' if self.is_primary else ''
+    not_null = '' if (self.is_opt or self.is_primary) else ' NOT NULL'
+
+    if self.default is None:
+      default = ''
+    else:
+      d = self.default
+      if isinstance(d, (int, float)): ds = str(self.default)
+      else:
+        assert isinstance(d, str)
+        if d == '': ds = "''" # Special affordance for the empty string as shorthand.
+        elif d.startswith("'") and d.endswith("'"): ds = d # Quoted string value.
+        elif d.startswith('(') and d.endswith(')'): ds = d # SQL expression.
+        elif d in ('CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP'): ds = d # Special value.
+        else: raise ValueError(f'Invalid Column default SQL expression: {d!r}')
+      default = f' DEFAULT {ds}'
+
+    return f'{name} {type_}{primary_key}{not_null}{default}'
 
 
 class Structure:
@@ -66,11 +92,9 @@ class Table(Structure):
     # and trailing primary/foreign key lines that are also included within the parens.
     inner_parts = [] # Parts of lines within the parens.
     for c in self.columns:
-      primary_key = ' PRIMARY KEY' if c.is_primary else ''
-      not_null = '' if (c.is_opt or c.is_primary) else ' NOT NULL'
+      column_sql = c.sql()
       comment = sql_comment_inline(c.desc) if c.desc else ''
-      inner_parts.append(
-        ['  ', sql_quote_entity(c.name), ' ', py_to_sqlite_types[c.datatype], primary_key, not_null, ',', comment])
+      inner_parts.append(['  ', column_sql, ',', comment])
 
     if self.primary_key:
       primary_key_parts = ', '.join(sql_quote_entity(c) for c in self.primary_key)
