@@ -7,11 +7,10 @@ Html type hierarchy.
 import re
 from html import escape as _escape
 from itertools import chain
-from typing import (Any, AnyStr as _AnyStr, Callable, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type,
-  TypeVar, Union, cast)
+from typing import Any, AnyStr as _AnyStr, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
-from ..markup import Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, _Mu, _MuChild
+from ..markup import Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, _Mu, _MuChild, single_child_property
 from . import semantics
 
 
@@ -91,23 +90,6 @@ def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
   Subclass.tag = Subclass.__name__.lower()
   HtmlNode.tag_types[Subclass.tag] = Subclass
   return Subclass
-
-
-_Child = TypeVar('_Child', bound=Mu)
-_Self = TypeVar('_Self', bound=Mu)
-
-_Accessor = Callable[[_Self],_Child]
-
-def _single(AccesseeClass:Type[_Child]) -> _Accessor:
-  'Wrapper function for creating a single-child accessor.'
-  tag = AccesseeClass.tag
-
-  def html_single_accessor(self:_Self) -> _Child:
-    for c in self.ch:
-      if isinstance(c, Mu) and c.tag == tag: return cast(_Child, c)
-    return self.append(AccesseeClass())
-
-  return property(html_single_accessor) # type: ignore[return-value]
 
 
 # Categories.
@@ -374,19 +356,19 @@ class Body(HtmlSectioningRoot, HtmlFlowContent):
   Contexts for use: As the second element in an html element.
   '''
 
-  @property
-  def header(self) -> 'Header': return self._single(Header)
+  @single_child_property
+  def header(self) -> 'Header': return Header()
 
-  @property
-  def nav(self) -> 'Nav': return self._single(Nav)
-
-
-  @property
-  def main(self) -> 'Main': return self._single(Main)
+  @single_child_property
+  def nav(self) -> 'Nav': return Nav()
 
 
-  @property
-  def footer(self) -> 'Footer': return self._single(Footer)
+  @single_child_property
+  def main(self) -> 'Main': return Main()
+
+
+  @single_child_property
+  def footer(self) -> 'Footer': return Footer()
 
 
 @_tag
@@ -754,14 +736,14 @@ class Head(HtmlMetadataContent):
   Contexts for use: As the first element in an html element.
   '''
 
-  @property
-  def title(self) -> 'Title': return self._single(Title)
+  @single_child_property
+  def style(self) -> 'Style': return Style()
+
+  @single_child_property
+  def title(self) -> 'Title': return Title()
 
   def add_stylesheet(self, url:str, media='all') -> None:
     self.append(Link(rel='stylesheet', type='text/css', media=media, href=url))
-
-  @property
-  def style(self) -> 'Style': return self._single(Style)
 
 
 @_tag
@@ -812,11 +794,11 @@ class Html(HtmlNode):
     yield '<!DOCTYPE html>\n'
     yield from super().render(newline=newline)
 
-  @property
-  def body(self) -> Body: return self._single(Body)
+  @single_child_property
+  def body(self) -> Body: return Body()
 
-  @property
-  def head(self) -> Head: return self._single(Head)
+  @single_child_property
+  def head(self) -> Head: return Head()
 
   @staticmethod
   def doc(*, lang='en', charset='utf-8', title:str='') -> 'Html':

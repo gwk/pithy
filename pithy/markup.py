@@ -4,9 +4,10 @@
 `markup` provides the `Mu` class, a base class for representing HTML, SVG, XML, SGML, and other document tree formats.
 '''
 
-from os import stat
 import re
 from collections import Counter
+from inspect import get_annotations
+from functools import wraps
 from itertools import chain
 from typing import (Any, Callable, ClassVar, Dict, Generator, Iterable, Iterator, List, Match, Optional, Tuple, Type, TypeVar,
   Union, cast, overload)
@@ -381,12 +382,6 @@ class Mu:
           if isinstance(el, _mu_child_classes_lax_converted):
             el = str(el)
           self.append(el)
-
-
-  def _single(self, Child_type:Type[_Mu]) -> _Mu:
-    for c in self.ch:
-      if isinstance(c, Child_type): return c
-    return self.append(Child_type())
 
 
   def clean(self, deep=True) -> None:
@@ -850,6 +845,59 @@ def add_opt_attrs(attrs:Dict[str,Any], **items:Any) -> None:
     if v is None: continue
     assert k not in attrs, k
     attrs[k] = v
+
+
+_Child = TypeVar('_Child', bound=Mu)
+_Self = TypeVar('_Self', bound=Mu)
+
+def single_child_property(constructor:Callable[[_Self],_Child]) -> property:
+  '''
+  Decorator for creating single-child-of-class properties.
+  For example, the Html package uses this to define Html.head, Html.body, Body.main, etc.
+  The decorated property must be annotated with the child class return type (possibly as a string for forward references),
+  and should be implemented using `return ChildClass()` or similar.
+  '''
+
+  ann = get_annotations(constructor, eval_str=False)
+  ret = ann['return']
+  class_desc = ret if isinstance(ret, str) else ret.__name__
+
+  _child_class:type[_Child]|None = ret if isinstance(ret, type) else None
+
+  def get_child_class() -> type[_Child]:
+    nonlocal _child_class
+    if _child_class is None:
+      ann = get_annotations(constructor, eval_str=True)
+      ret = ann['return']
+      assert issubclass(ret, Mu), ret
+      _child_class = ret
+    return cast(type[_Child], _child_class)
+
+  @wraps(constructor)
+  def _get_single_child_prop(self:_Self) -> _Child:
+    child_class = get_child_class()
+    for c in self.ch:
+      if isinstance(c, child_class): return c
+    return self.append(constructor(self))
+
+  def _set_single_child_prop(self:_Self, val:_Child) -> None:
+    child_class = get_child_class()
+    for i, c in enumerate(self.ch):
+      if isinstance(c, child_class):
+        self.ch[i] = val
+        return
+    self.append(val)
+
+  def _del_single_child_prop(self:_Self) -> None:
+    child_class = get_child_class()
+    for i, c in enumerate(self.ch):
+      if isinstance(c, child_class):
+        del self.ch[i]
+        return
+
+  doc = f'The single child element of type {class_desc}.\n' + (constructor.__doc__ or '')
+  return property(_get_single_child_prop, _set_single_child_prop, _del_single_child_prop, doc=doc) # type: ignore[return-value]
+
 
 
 @overload
