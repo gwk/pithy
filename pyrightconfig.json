@@ -1,13 +1,14 @@
 {
-  "include": ["craft", "iotest", "pithy", "test", "test-meta", "writeup"],
   "exclude": ["_build", "_misc"],
-  "typeshedPath": "typeshed",
-  "typingsPath": "typestubs",
+  "include": ["craft", "iotest", "pithy", "test", "test-meta", "writeup"],
   "pythonVersion": "3.11",
-  "reportSelfClsParameterName": "none",
   "reportGeneralTypeIssues": "none",
   "reportInvalidTypeVarUse": "none",
-  "reportPropertyTypeMismatch": "none",
-  "reportUnboundVariable": "none",
   "reportMissingImports": true,
+  "reportPropertyTypeMismatch": "none",
+  "reportSelfClsParameterName": "none",
+  "reportShadowedImports": false,
+  "reportUnboundVariable": "none",
+  "typeshedPath": "typeshed",
+  "typingsPath": "typestubs"
 }
