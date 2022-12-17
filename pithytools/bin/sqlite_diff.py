@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 
-from pithy.sqlite import Connection
+from pithy.sqlite import Connection, Cursor
 
 def main() -> None:
 
@@ -11,11 +11,11 @@ def main() -> None:
   parser.add_argument('path_b', help='Path to the second database file.')
 
   args = parser.parse_args()
-  ca = Connection(args.path_a)
-  cb = Connection(args.path_b)
+  cn_a = Connection(args.path_a)
+  cn_b = Connection(args.path_b)
 
-  a_tables = set(ca.run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
-  b_tables = set(cb.run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
+  a_tables = set(cn_a.cursor().run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
+  b_tables = set(cn_a.cursor().run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
   common_tables = a_tables & b_tables
 
   if a_only_tables := a_tables - b_tables:
@@ -25,11 +25,12 @@ def main() -> None:
     print(f'Tables only in {args.path_b}: {b_only_tables}')
 
   for table in sorted(common_tables):
-    diff_table(ca, cb, table)
+    diff_table(cn_a, cn_b, table)
 
 
-def diff_table(ca: Connection, cb: Connection, table: str):
-
+def diff_table(cn_a:Connection, cn_b:Connection, table: str):
+  ca = cn_a.cursor()
+  cb = cn_b.cursor()
   a_sql = ca.run("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = :table", table=table).one_col()
   b_sql = cb.run("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = :table", table=table).one_col()
 
@@ -52,11 +53,11 @@ def diff_table(ca: Connection, cb: Connection, table: str):
   b_ids = set(cb.run(f'SELECT rowid FROM {table}').col())
 
   if a_only_ids := a_ids - b_ids:
-    msg(f'Rows only in {ca.path}:')
+    msg(f'Rows only in {cn_a.path}:')
     for id in sorted(a_only_ids):
       print(ca.run(f'SELECT * FROM {table} WHERE rowid = :id', id=id).one().qdi())
 
   if b_only_ids := b_ids - a_ids:
-    msg(f'Rows only in {cb.path}:')
+    msg(f'Rows only in {cn_b.path}:')
     for id in sorted(b_only_ids):
       print(ca.run(f'SELECT * FROM {table} WHERE rowid = :id', id=id).one().qdi())
