@@ -120,7 +120,7 @@ class Mu:
     self.attrs = attrs
 
     if cl is not None:
-      if not isinstance(cl, str): cl = ' '.join(cl)
+      if not isinstance(cl, str): cl = ' '.join(filter(None, cl))
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
