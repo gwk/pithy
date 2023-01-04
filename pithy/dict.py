@@ -58,6 +58,17 @@ def dict_list_append(d: Dict[_K, List[_V]], k: _K, v: _V) -> Dict[_K, List[_V]]:
   return d
 
 
+def dict_list_append_items(d:Dict[_K, List[_V]], items:Iterable[tuple[_K,_V]]) -> Dict[_K, List[_V]]:
+  '''
+  Append each value in the iterable to the list stored under the specified key in the dictionary.
+  If the key is not present, an empty list is first inserted.
+  Returns the dictionary.
+  '''
+  for k, v in items:
+    d.setdefault(k, []).append(v)
+  return d
+
+
 def dict_list_extend(d: Dict[_K, List[_V]], k: _K, v: Iterable[_V]) -> Dict[_K, List[_V]]:
   '''
   Extend a value on the list stored under the specified key in the dictionary.
