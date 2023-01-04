@@ -275,10 +275,11 @@ def group_by_cmp(iterable: Iterable[_T], cmp: Callable[[_T, _T], bool]) -> Itera
 
 def group_by_key_fn(iterable:Iterable[_T], key:Callable[[_T], Comparable]) -> Iterable[List[_T]]:
   '''
-  Group elements `iterable`, which must already be sorted,
+  Group elements of `iterable`, which must already be sorted,
   by applying the `key` function to each element.
   Consecutive elements for which the key values are equal will be grouped together;
   a group is yielded whenever comparison fails.
+  Unlike `itertools.groupby`, this function yields only the values, not the key/value pairs.
   '''
   it = iter(iterable)
   try: first = next(it)
@@ -293,6 +294,29 @@ def group_by_key_fn(iterable:Iterable[_T], key:Callable[[_T], Comparable]) -> It
       yield group
       group = [el]
     prev_key = curr_key
+  yield group
+
+
+def group_by_attr(iterable:Iterable[_T], attr:str) -> Iterable[List[_T]]:
+  '''
+  Group elements of `iterable`, which must already be sorted,
+  by comparing the `attr` attribute of each element.
+  Consecutive elements for which the attribute values are equal will be grouped together;
+  a group is yielded whenever comparison fails.
+  '''
+  it = iter(iterable)
+  try: first = next(it)
+  except StopIteration: return
+  group = [first]
+  prev_val = getattr(first, attr)
+  for el in it:
+    curr_val = getattr(el, attr)
+    if curr_val == prev_val:
+      group.append(el)
+    else:
+      yield group
+      group = [el]
+    prev_val = curr_val
   yield group
 
 
