@@ -1,9 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-
 from datetime import date, datetime
-from typing import Any, NamedTuple, Tuple, Type, get_args
+from typing import Any, Iterable, NamedTuple, Tuple, Type, get_args
 
 from ..json import render_json
 
@@ -104,6 +103,25 @@ def sql_quote_entity(entity:str) -> str:
     return f'"{entity}"'
   else:
     return entity
+
+
+def sql_quote_str(s:str) -> str:
+  if '\0' in s: raise ValueError(f'Cannot quote string for SQLite containing null byte: {s!r}')
+  contents = s.replace("'", "''")
+  return f"'{contents}'"
+
+
+def sql_quote_val(val:Any) -> str:
+  if val is None: return 'NULL'
+  if isinstance(val, str): return sql_quote_str(val)
+  if isinstance(val, (int, float)): return str(val)
+  if isinstance(val, bool): return '1' if val else '0'
+  if isinstance(val, (date, datetime)): return sql_quote_str(str(val))
+  raise ValueError(f'Cannot quote value for SQLite: {val!r}')
+
+
+def sql_quote_seq(seq:Iterable[Any]) -> str:
+  return ', '.join(sql_quote_val(v) for v in seq)
 
 
 sqlite_keyords = {
