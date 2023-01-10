@@ -896,7 +896,7 @@ def single_child_property(constructor:Callable[[_Self],_Child]) -> property:
         return
 
   doc = f'The single child element of type {class_desc}.\n' + (constructor.__doc__ or '')
-  return property(_get_single_child_prop, _set_single_child_prop, _del_single_child_prop, doc=doc) # type: ignore[return-value]
+  return property(_get_single_child_prop, _set_single_child_prop, _del_single_child_prop, doc=doc)
 
 
 
