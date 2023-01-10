@@ -70,7 +70,7 @@ def main() -> None:
     if args.dbg: errSL(f'MYPYPATH={mypy_path}')
 
   version_flag = ['--python-version', args.python_version] if args.python_version else []
-  run_fn = api.run_dmypy if args.dmypy else api.run
+  run_fn = api.run_dmypy if args.dmypy else api.run # type: ignore[attr-defined]
   mypy_args = [*version_flag, *args.roots]
   if args.mypy_dbg: mypy_args.append('--show-traceback')
   if args.dbg: errSL('args:', *mypy_args)
