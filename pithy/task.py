@@ -67,7 +67,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
     f_in = stdin # presume None, PIPE, file, or DEVNULL.
     input_bytes = None
 
-  fds = [f if isinstance(f, int) else f.fileno for f in files]
+  fds = [f if isinstance(f, int) else f.fileno() for f in files]
 
   # flushing std file descriptors guarantees consistent behavior between console and iotest;
   # otherwise we see that parent output appears after child output when run under iotest only.
