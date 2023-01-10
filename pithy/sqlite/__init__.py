@@ -18,7 +18,7 @@ _ReadableBuffer:TypeAlias = bytes | bytearray | memoryview # | array.array[Any] 
 
 _SqliteData:TypeAlias = str | _ReadableBuffer | int | float | None
 
-_AdaptedInputData:TypeAlias = _SqliteData | Any # type: ignore[operator]
+_AdaptedInputData:TypeAlias = _SqliteData | Any
 #^ Data that is passed through adapters can be of any type accepted by an adapter.
 
 _SqlParameters: TypeAlias = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[str, _AdaptedInputData]
