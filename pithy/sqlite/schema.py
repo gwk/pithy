@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Iterable
 
-from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity
+from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity, sqlite_keyords
 
 
 @dataclass
@@ -15,16 +15,21 @@ class Column:
   '''
   name:str
   datatype:type # Note: 'ANY' columns should be expressed with `object` rather than `Any` to mollify the type checker.
+  allow_kw:bool = False # Whether the column name is allowed to be a keyword.
   is_opt:bool = False # Whether the column allows NULL. Must be False for primary keys.
   is_primary:bool = False # Whether the column is PRIMARY KEY.
   is_unique:bool = False # Whether the column is UNIQUE.
   default:int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
   desc:str = ''
 
+
   def __post_init__(self) -> None:
+    if not self.allow_kw and self.name.upper() in sqlite_keyords:
+      raise ValueError(f'Column name {self.name!r} is an SQLite keyword. Use `allow_kw=True` to override.')
     if self.is_primary:
       if self.is_opt: raise ValueError(f'Primary key column {self} cannot be optional.')
       if not self.is_unique: raise ValueError(f'Primary key column {self} must be unique.')
+
 
   def sql(self) -> str:
     name = sql_quote_entity(self.name)
