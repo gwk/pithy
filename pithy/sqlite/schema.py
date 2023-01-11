@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Iterable
 
-from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity, sqlite_keyords
+from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity_always, sqlite_keyords
 
 
 @dataclass
@@ -12,6 +12,9 @@ class Column:
   '''
   `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP', or an SQL `expr`.
   SQLite column constraints: https://www.sqlite.org/syntax/column-constraint.html
+
+  We use `sql_quote_entity_always` to quote all column names because this is SQLite currently always quotes renamed columns.
+  By quoting names in the generated statements, we eliminate sytnactic discrepancies caused by rename operations.
   '''
   name:str
   datatype:type # Note: 'ANY' columns should be expressed with `object` rather than `Any` to mollify the type checker.
@@ -32,7 +35,7 @@ class Column:
 
 
   def sql(self) -> str:
-    name = sql_quote_entity(self.name)
+    name = sql_quote_entity_always(self.name)
     type_ = py_to_sqlite_types[self.datatype]
     primary_key = ' PRIMARY KEY' if self.is_primary else ''
     not_null = '' if (self.is_opt or self.is_primary) else ' NOT NULL'
@@ -84,7 +87,7 @@ class Table(Structure):
 
 
   def sql(self, schema='', if_not_exists=False) -> str:
-    qual_name = f'{schema}{schema and "."}{sql_quote_entity(self.name)}'
+    qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(self.name)}'
     lines:list[str] = []
     if self.desc:
       lines.append(f'-- {qual_name}')
@@ -102,7 +105,7 @@ class Table(Structure):
       inner_parts.append(['  ', column_sql, ',', comment])
 
     if self.primary_key:
-      primary_key_parts = ', '.join(sql_quote_entity(c) for c in self.primary_key)
+      primary_key_parts = ', '.join(sql_quote_entity_always(c) for c in self.primary_key)
       inner_parts.append([f'  PRIMARY KEY ({primary_key_parts})', ',', ''])
 
     # Remove the comma from the last inner line.
@@ -131,7 +134,7 @@ class Index(Structure):
 
 
   def sql(self, schema='', if_not_exists=False) -> str:
-    qual_name = f'{schema}{schema and "."}{sql_quote_entity(self.name)}'
+    qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(self.name)}'
     lines = []
     if self.desc:
       lines.append(f'-- {qual_name}')
@@ -140,8 +143,8 @@ class Index(Structure):
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     unique_str = 'UNIQUE ' if self.is_unique else ''
     lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
-    columns_str = ', '.join(sql_quote_entity(c) for c in self.columns)
-    lines.append(f'  ON {sql_quote_entity(self.table)} ({columns_str});')
+    columns_str = ', '.join(sql_quote_entity_always(c) for c in self.columns)
+    lines.append(f'  ON {sql_quote_entity_always(self.table)} ({columns_str});')
     return '\n'.join(lines)
 
 
