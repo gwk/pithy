@@ -96,13 +96,16 @@ def sql_comment_inline(comment:str) -> str:
   return ' -- ' + s
 
 
-def sql_quote_entity(entity:str) -> str:
-  needs_quote = entity.upper() in sqlite_keyords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]+', entity)
-  if needs_quote:
-    if '"' in entity: raise ValueError(f'Cannot quote entity containing double quote: {entity!r}')
-    return f'"{entity}"'
+def sql_quote_entity(entity:str, always=False) -> str:
+  if always or entity.upper() in sqlite_keyords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]+', entity):
+    return sql_quote_entity_always(entity)
   else:
     return entity
+
+
+def sql_quote_entity_always(entity:str) -> str:
+  if '"' in entity: raise ValueError(f'Cannot quote entity containing double quote: {entity!r}')
+  return f'"{entity}"'
 
 
 def sql_quote_str(s:str) -> str:
