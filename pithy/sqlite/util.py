@@ -62,9 +62,7 @@ def fields_of(class_:type) -> Tuple[str, ...]:
 NoneType = type(None)
 
 py_to_sqlite_types:dict[type,str] = {
-  bool: 'BOOLEAN',
-  #^ BOOLEAN is a storage class in Postgres but not in SQLite; defaults to NUMERIC affinity.
-  #^ We use it here for clarity of intent in generated SQL.
+  bool: 'INTEGER', # We must use 'INTEGER' or 'INT' in order to be compatible with SQLite strict tables.
   bytes: 'BLOB',
   date: 'TEXT',
   datetime: 'TEXT',
