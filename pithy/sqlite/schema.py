@@ -22,6 +22,7 @@ class Column:
   is_opt:bool = False # Whether the column allows NULL. Must be False for primary keys.
   is_primary:bool = False # Whether the column is PRIMARY KEY.
   is_unique:bool = False # Whether the column is UNIQUE.
+  virtual:str|None = None
   default:int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
   desc:str = ''
 
@@ -35,7 +36,9 @@ class Column:
     if self.is_primary:
       if self.is_opt: raise ValueError(f'Primary key column {self} cannot be optional.')
       if not self.is_unique: raise ValueError(f'Primary key column {self} must be unique.')
-
+    if self.virtual is not None:
+      if self.is_primary: raise ValueError(f'Virtual column {self} cannot be primary key.')
+      if self.default is not None: raise ValueError(f'Virtual column {self} cannot have a default value.')
 
   def sql(self) -> str:
     name = sql_quote_entity_always(self.name)
@@ -43,9 +46,7 @@ class Column:
     primary_key = ' PRIMARY KEY' if self.is_primary else ''
     not_null = '' if (self.is_opt or self.is_primary) else ' NOT NULL'
 
-    if self.default is None:
-      default = ''
-    else:
+    if self.default is not None:
       d = self.default
       if isinstance(d, (int, float)): ds = str(self.default)
       else:
@@ -56,6 +57,10 @@ class Column:
         elif d in ('CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP'): ds = d # Special value.
         else: raise ValueError(f'Invalid Column default SQL expression: {d!r}')
       default = f' DEFAULT {ds}'
+    elif self.virtual is not None:
+      default = f' AS ({self.virtual}) VIRTUAL'
+    else:
+      default = ''
 
     return f'{name} {type_}{primary_key}{not_null}{default}'
 
