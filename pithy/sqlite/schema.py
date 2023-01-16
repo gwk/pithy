@@ -198,7 +198,7 @@ class Schema:
   def write_module_sql(self, if_not_exists=False, steps=1) -> None:
     '''
     Write an SQL schema file for this schema to the packge directory of the caller.
-    This is typically callled from the main() of a module defining a schema.
+    This is typically called from the main() of a module defining a schema.
     `steps` can be used to adjust the frame introspection level.
     Be careful: if the step count is wrong, the file may be written into an installed package location,
     which is usually not desirable and potentially destructive to the installation.
