@@ -68,7 +68,7 @@ class ChartSeries:
   def kind_class(self) -> str: raise NotImplementedError # e.g. 'bar', 'line', 'scatter'.
 
 
-  def _compute_bounds(self, axis_key:Any) -> Any:
+  def _compute_bounds(self, axis_key:Any) -> tuple[bool,Any]:
     '''
     Returns (is_numeric, bounds).
     (True, (min, max)) if the axis is numeric.
@@ -137,17 +137,11 @@ class BarSeries(ChartSeries):
     '''
     Fill the series visualization div with html representing the data.
     '''
+    div['style'] = f'--n:{len(self.points)};'
     for p in self.points:
-      match (transform_x(p[self.x]), transform_y(p[self.y])):
-        case (vx, vy):
-          style = f'--vx:{vx};--vy:{vy};'
-        case (vx, None):
-          style = f'--vx:{vx};'
-        case (None, vy):
-          style = f'--vy:{vy};'
-        case (None, None):
-          style = ''
-
+      vx = transform_x(p[self.x])
+      vy = transform_y(p[self.y])
+      style = f'--vx:{vx};--vy:{vy};'
       div.append(Div(style=style))
 
 
@@ -191,6 +185,14 @@ class ChartAxis:
     raise NotImplementedError
 
 
+  def ticks_x_style(self) -> str:
+    return ''
+
+
+  def ticks_y_style(self) -> str:
+    return ''
+
+
   def tick_divs(self) -> list[Div]:
     '''
     Create divs for the axis ticks.
@@ -226,7 +228,7 @@ class CategoricalAxis(ChartAxis):
 
 
   def transform(self, v:Any) -> Any:
-    return self.labels.index(v)
+    return self.labels.index(v) / len(self.labels)
 
 
   def configure(self, series:list['ChartSeries']) -> None:
@@ -258,8 +260,17 @@ class CategoricalAxis(ChartAxis):
       self.labels = sorted(labels_set, key=self.label_sort_key)
 
 
+  def ticks_x_style(self) -> str:
+    return f'--n:{len(self.labels)};'
+
+
+  def ticks_y_style(self) -> str:
+    return f'--n:{len(self.labels)};'
+
+
   def tick_divs(self) -> list[Div]:
-    return [Div(cl='tick', ch=str(label)) for label in self.labels]
+    l = len(self.labels)
+    return [Div(style=f'--v:{i/l:0.3f}',  ch=Div(ch=str(label))) for (i, label) in enumerate(self.labels)]
 
 
 
@@ -349,7 +360,6 @@ class LinearAxis(NumericalAxis):
 
 
 
-
 def chart_figure(*,
  cl:Iterable[str]|None=None,
  title:MuChildOrChildrenLax=(),
@@ -369,8 +379,6 @@ def chart_figure(*,
   '''
 
   series = list(series)
-
-  data_class = ''
 
   is_x_numeric = all(s.bounds[0][0] for s in series)
   is_y_numeric = all(s.bounds[1][0] for s in series)
@@ -400,15 +408,19 @@ def chart_figure(*,
 
   if title is not None: chart.append(Figcaption(ch=title))
 
-  grid = chart.append(Div(cl='vis-grid'))
+  vis_w = 0
+  vis_h = 0
+  grid = chart.append(Div(cl='vis-grid', style=f'--vis-w:{vis_w}; --vis-h:{vis_h};'))
   legend = chart.append(Div(cl='legend'))
 
   grid.append(Div(cl='origin')) # By default this box is empty.
-  grid.append(Div(cl=['ticks-x', x.data_class, x.kind_class], ch=x.tick_divs()))
-  grid.append(Div(cl=['ticks-y', y.data_class, y.kind_class], ch=y.tick_divs()))
+  grid.append(Div(cl='ticks-x-scroll', ch=Div(cl=['ticks-x', x.data_class, x.kind_class], style=x.ticks_x_style(), ch=x.tick_divs())))
+  grid.append(Div(cl='ticks-y-scroll', ch=Div(cl=['ticks-y', y.data_class, y.kind_class], style=y.ticks_y_style(), ch=y.tick_divs())))
+
   print(x, x.kind_class)
   print(y, y.kind_class)
-  grid.append(Div(cl='vis', ch=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series]))
+  grid.append(Div(cl='vis-scroll',
+    ch=Div(cl='vis', ch=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series])))
 
   legend.ch = [s.make_legend_item_div() for s in series]
 
@@ -456,20 +468,21 @@ def calc_min_max_of_ranges(ranges:Iterable[V2F|None], min_:float|None=None, max_
   if min_ is None:
     assert max_ is None
     return (0, 1)
+  assert max_ is not None
   return (min_, max_)
 
 
 
-chart_style = '''
+chart_css = '''
 /* Chart layout. */
 figure.chart {
 }
 figure.chart > figcaption {
 }
-figure.chart > div.legend {
+figure.chart > .legend {
 }
-figure.chart > div.vis-grid {
-  /* This CSS grid allocates minimum space for the gutter/tick areas,
+figure.chart > .vis-grid {
+  /* This 2x2 grid allocates minimum space for the gutter/tick areas,
   and devotes the remaining space to the data visualization area. */
   display: grid;
   grid-template-columns: min-content auto; /* Left gutter, vis. */
@@ -477,84 +490,139 @@ figure.chart > div.vis-grid {
   grid-column-gap: 0px;
   grid-row-gap: 0px;
 }
-figure.chart div.ticks-y { /* The y-axis tick marks on the left. */
+
+/* Quadrant scroll containers. */
+figure.chart .ticks-y-scroll { /* The y-axis tick marks on the left. */
   grid-area: 1 / 1 / 2 / 2; /* row-start / column-start / row-end / column-end */
 }
-figure.chart div.vis { /* The data visualization area. */
+figure.chart .vis-scroll { /* The data visualization scolling container. */
   grid-area: 1 / 2 / 2 / 3;
 }
-figure.chart div.origin { /* The small square at the origin. */
+figure.chart .origin { /* The small square at the lower-left origin. */
   grid-area: 2 / 1 / 3 / 2;
 }
-figure.chart div.ticks-x { /* The x-axis tick marks on the bottom. */
+figure.chart .ticks-x-scroll { /* The x-axis tick marks on the bottom. */
   grid-area: 2 / 2 / 3 / 3;
 }
 
-figure.chart div.ticks-x.categorical {
-  display: flex;
+/* Quadrant scrolling container sizing. */
+figure.chart :is(.vis-scroll, .ticks-x-scroll) {
+  overflow-x: auto;
+  scrollbar-height: none; /* Hide scrollbar for Firefox. */
 }
-figure.chart div.ticks-x.categorical > div { /* These rules kep the bars from collapsing. */
-  flex-grow: 1;
-  flex-shrink: 1;
+figure.chart :is(.vis-scroll, .ticks-y-scroll) {
+  overflow-y: auto;
+  scrollbar-width: none; /* Hide scrollbar for Firefox. */
 }
-figure.chart div.ticks-x.numerical {
-  /* TODO. */
+figure.chart :is(.vis-scroll, .ticks-x-scroll)::-webkit-scrollbar { /* Hide scrollbar for Chrome, Safari, and Opera. */
+  height: 0;
+}
+figure.chart :is(.vis-scroll, .ticks-y-scroll)::-webkit-scrollbar { /* Hide scrollbar for Chrome, Safari, and Opera. */
+  width: 0;
 }
 
-figure.chart div.ticks-y > div {
+/* Quadrant scroll content sizing. */
+figure.chart :is(.vis, .ticks-x) {
+  min-width: 100%;
+  width: calc(1em * var(--vis-w));
 }
-figure.chart div.ticks-y.categorical {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+figure.chart :is(.vis, .ticks-y) {
+  min-height: 100%;
+  height: calc(1em * var(--vis-h));
 }
-figure.chart div.ticks-y.categorical > div {
-  /* TODO. */
-}
-figure.chart div.ticks-y.numerical > div {
-  /* This is tricky:
-  we use relative positioning so that the tick elements participate in document layout
-  and influence the width of the gutter.
-  The zero height lets us use the CSS variable to position the tick mark itself. */
+
+/* Tick marks positioning trick:
+We use relative positioning so that the tick elements participate in document layout and influence the sizes of the gutters
+(height for ticks-x, width for ticks-y).
+The zero width/height lets us use the CSS variable to position the tick mark itself.
+If we instead used absolute positioning, then the tick text would not participate in document layout.
+Because of this trick, we are obliged to use a child div to hold the text.
+The parent div has zero height, so the text hangs below the specified vertical position.
+The child div allows us to transform the text and center it around the specified position.
+*/
+
+/* The x-axis tick mark gutter on the bottom. */
+figure.chart .ticks-x {
   position: relative;
-  height: 0px;
+}
+figure.chart .ticks-x > div {
+  display: inline-block;
+  float: left; /* Prevent syntactic whitespace between divs from showing, which breaks the relative spacing trick. */
+  margin: 0;
+  padding: 0;
+  position: relative;
+  width: 0;
+  background-color: red;
+  left: calc(100% * calc(var(--v)));
+}
+figure.chart .ticks-x > div > div {
+  display: inline-block;
+  vertical-align: top;
+  writing-mode: vertical-rl;
+  transform-origin: center;
+  transform: rotate(180deg);
+  border: 1px solid black;
+  background-color: white;
+}
+
+figure.chart .ticks-x > div > div::after {
+  /* This ::after element is used to render the tick mark. */
+  /* TODO
+  content: '\\a0'; /* A nonbreaking space to prevent the div from collapsing. */
+  margin-left: 0.125em;
+  clip-path: polygon(0 calc(50% - 0.5px), 0 calc(50% + 0.5px), 100% calc(50% + 0.5px), 100% calc(50% - 0.5px));
+  */
+}
+
+/* The y-axis tick mark gutter on the left. */
+figure.chart .ticks-y {
+  position: relative;
+  /* TODO: negative padding and compensation so that the start and end tick text does not clip, but stays aligned. */
+}
+figure.chart .ticks-y > div {
+  position: relative;
+  height: 0;
   top: calc(100% * calc(1 - var(--v)));
 }
-figure.chart div.ticks-y.numerical > div > div {
+figure.chart .ticks-y > div > div {
   /* We are obliged to use a child div to hold the text.
   Because the parent div has zero height, the text hangs below the specified vertical position.
   The child div allows us to transform the text and center it around the specified position. */
   transform: translateY(-50%);
 }
-figure.chart div.ticks-y.numerical > div > div::after {
+figure.chart .ticks-y > div > div::after {
   /* This ::after element is used to render the tick mark. */
   content: '\\a0'; /* A nonbreaking space to prevent the div from collapsing. */
+  margin-left: 0.125em;
   clip-path: polygon(0 calc(50% - 0.5px), 0 calc(50% + 0.5px), 100% calc(50% + 0.5px), 100% calc(50% - 0.5px));
 }
 
-figure.chart div.vis { /* The data visualization area. */
+figure.chart .vis { /* The data visualization area. */
   position: relative;
-  overflow: hidden;
 }
-figure.chart div.vis > div.series {
+figure.chart .vis > .series {
   position: absolute;
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
   width: 100%;
   height: 100%;
 }
-figure.chart div.vis > div.series > div {
-  flex: 1 1 auto;
+figure.chart .series.categorical-numerical > div {
+  position: absolute;
+  width: 1em;
+  min-width: 1em;
   height: calc(100% * calc(var(--vy)));
+  left: calc(100% * calc(var(--vx)));
+  bottom: 0;
   background-color: var(--series-color);
 }
-div.swatch {
+.swatch {
   display: inline-block;
   background-color: var(--series-color);
 }
 
 /* User style. */
+figure.chart * {
+  box-sizing: border-box;
+}
 figure.chart {
   width: 96%;
   margin: 0 auto;
@@ -565,50 +633,59 @@ figure.chart > figcaption {
   padding: 0.5em 0;
   background-color: #8D6;
 }
-figure.chart > div.legend {
+figure.chart > .legend {
   padding: 0.5em 0;
   background-color: lightgray;
 }
-figure.chart div.vis-grid {
+figure.chart .vis-grid {
   background-color: yellow;
 }
-figure.chart div.origin {
+figure.chart .origin {
   background-color: #DDF;
 }
-figure.chart div.vis {
+figure.chart .vis-scroll {
   height: 24em;
 }
-figure.chart div.ticks-x {
+figure.chart .ticks-x {
   background-color: lightgreen;
 }
-figure.chart div.ticks-x.categorical {
-  text-align: center;
+
+figure.chart .ticks-x > div > div {
+
 }
-figure.chart div.ticks-y {
+figure.chart .ticks-y {
   background-color: #8DD;
 }
-figure.chart div.ticks-y > div {
+figure.chart .ticks-y > div {
   text-align: right;
 }
-figure.chart div.ticks-y.numerical > div > div::after {
+figure.chart .ticks-y.numerical > div > div::after {
   /* This ::after element is used to render the tick mark. */
   width: 0.25em;
   background-color: black;
 }
-figure.chart div.series {
+figure.chart .series {
   column-gap: 4px;
 }
+figure.chart .series > div {
+    border: 1px solid black;
+}
+
 figure.chart .Series0 {
   --series-color: coral;
 }
 figure.chart .Series1 {
   --series-color: lightblue;
 }
-div.swatch {
+.swatch {
   width: 1em;
   height: 1em;
   margin-right: 0.5em;
   vertical-align: middle;
   border-radius: 0.25em;
 }
+'''
+
+chart_js = '''
+
 '''
