@@ -75,7 +75,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   stdout.flush()
 
   try:
-    proc = _Popen( # type: ignore[misc] # Message is about too many unions.
+    proc = _Popen(
       cmd,
       cwd=cwd,
       stdin=f_in,
