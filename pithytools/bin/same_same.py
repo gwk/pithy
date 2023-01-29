@@ -40,7 +40,7 @@ class DiffLine:
     self.new_num = 0 # ".
     self.chunk_idx = 0 # Positive for rem/add.
     self.is_src = False # Is source code text; True for ctx/rem/add.
-    self.text = '' # Final text for ctx/rem/add.
+    self.text = match[0] # Final text. Some cases update this.
 
   @property
   def raw_text(self) -> str:
@@ -264,6 +264,8 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool, dbg:bool) -> None:
       elif kind == 'diff':
         msg = new_path if (old_path == new_path) else '{} -> {}'.format(old_path, new_path)
         print(C_FILE, msg, ':', C_END, sep='')
+      elif kind == 'submodule':
+        print(C_FILE, line.text, C_END, sep='')
       elif kind == 'meta':
         print(C_MODE, new_path, ':', RST, ' ', line.text, sep='')
       elif kind in dropped_kinds:
@@ -387,6 +389,7 @@ diff_pat = re.compile(r'''(?x)
 | (?P<ctx>      \  (?P<ctx_text>.*) )
 | (?P<rem>      -  (?P<rem_text>.*) )
 | (?P<add>      \+(?:\x1b\[m\x1b\[32m)? (?P<add_text>.*) ) # Hack to remove extra color sequences that git 2.19.2 shows for these lines only.
+| (?P<submodule> Submodule\ \w+\ [0-9a-f]{7,}\.\.[0-9a-f]{7,}: )
 | (?P<meta>
   ( old\ mode
   | new\ mode
