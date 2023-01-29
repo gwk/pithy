@@ -100,8 +100,10 @@ def dt_for_utc_ts(ts:float) -> DateTime:
   return DateTime.fromtimestamp(ts, TimeZone.utc)
 
 
-def next_day(date_: DateLike) -> DateLike:
+_DateOrDateTime = TypeVar('_DateOrDateTime', Date, DateTime)
+
+def next_day(date_: _DateOrDateTime) -> _DateOrDateTime:
   return date_ + TimeDelta(days=1)
 
-def next_week(date_: DateLike) -> DateLike:
+def next_week(date_: _DateOrDateTime) -> _DateOrDateTime:
   return date_ + TimeDelta(days=7)
