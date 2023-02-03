@@ -197,7 +197,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool, dbg:bool) -> None:
 
   def diff_lines_match(old_idx:int, new_idx:int) -> bool:
     if old_idx in old_ctx_nums or new_idx in new_ctx_nums: return False
-    try: return old_lines[old_idx].text.strip() == new_lines[new_idx].text.strip()
+    try: return old_lines[old_idx].text.strip() == new_lines[new_idx].text.strip() # type: ignore[no-any-return]
     except KeyError: return False
 
   old_moved_nums:Set[int] = set()
