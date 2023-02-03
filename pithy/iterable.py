@@ -98,6 +98,31 @@ def iter_values(obj:Any) -> Iterator[Any]:
     yield from it
 
 
+def joinSC(iterable:Iterable) -> str:
+  'Join str representations, separated by comma.'
+  return ','.join(map(str, iterable))
+
+def joinSCS(iterable:Iterable) -> str:
+  'Join str representations, separated by comma-space.'
+  return ', '.join(map(str, iterable))
+
+def joinST(iterable:Iterable) -> str:
+  'Join str representations, separated by tab.'
+  return '\t'.join(map(str, iterable))
+
+def joinRC(iterable:Iterable) -> str:
+  'Join repr representations, separated by comma.'
+  return ','.join(map(repr, iterable))
+
+def joinRCS(iterable:Iterable) -> str:
+  'Join repr representations, separated by comma-space.'
+  return ', '.join(map(repr, iterable))
+
+def joinRT(iterable:Iterable) -> str:
+  'Join repr representations, separated by tab.'
+  return '\t'.join(map(repr, iterable))
+
+
 def extent(iterable: Iterable[_C], key: Callable[[_C], _CK]|None=None, default:_C|None=None) -> Tuple[_C, _C]:
   'Return the min and max.'
   it = iter(iterable)
