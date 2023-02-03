@@ -1,9 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import (date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone,
   tzinfo as TZInfo)
-from typing import TypeVar
+from typing import Sequence, TypeVar, Iterator, overload
 
 
 sec_per_min = 60
@@ -84,6 +84,44 @@ class DateDelta:
     if isinstance(other, DateDelta):
       return DateDelta(self.years - other.years, self.months - other.months)
     raise TypeError(f'cannot subtract {type(other).__name__!r} from DateDelta')
+
+
+
+@dataclass(frozen=True)
+class DateRange(Sequence[Date]):
+  start:Date
+  end:Date
+  step:DateDelta|TimeDelta = TimeDelta(days=1)
+  _seq:list[Date] = field(default_factory=list, compare=False, init=False, repr=False)
+
+
+  def __post_init__(self):
+    start = self.start
+    end = self.end
+    if start > end: raise ValueError(f'start > end: start={start}; end={end}.')
+    d = start
+    while d < end:
+      self._seq.append(d)
+      d = self.step + d # Add in this order to accommodate DateDelta.
+
+
+  def __contains__(self, value: object) -> bool:
+    return super().__contains__(value)
+
+
+  @overload
+  def __getitem__(self, index:int) -> Date: ...
+
+  @overload
+  def __getitem__(self, index:slice) -> Sequence[Date]: ...
+
+  def __getitem__(self, index): return self._seq[index]
+
+
+  def __iter__(self) -> Iterator[Date]: return iter(self._seq)
+
+  def __len__(self) -> int: return len(self._seq)
+
 
 
 def parse_datetime(string: str, fmt:str|None=None) -> DateTime:
