@@ -1262,6 +1262,23 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
   Contexts for use: Phrasing.
   '''
 
+  @staticmethod
+  def simple(options:Iterable[Any], value=None, **kwargs) -> 'Select':
+    if value is not None:
+      value = str(value)
+    select = Select(**kwargs)
+    for o in options:
+      if isinstance(o, tuple):
+        if len(o) != 2: raise ValueError(f'tuple option must be a pair; received: {o}')
+        v = str(o[0])
+        option = Option(value=v, ch=str(o[1]))
+      else:
+        v = str(o)
+        option = Option(value=v, ch=v)
+      if v == value: option['selected'] = ''
+      select.append(option)
+    return select
+
 
 @_tag
 class Slot(HtmlFlow, HtmlPhrasing, HtmlTransparentContent):
