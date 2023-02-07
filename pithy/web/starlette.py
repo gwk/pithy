@@ -1,8 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.date import Date
+from time import sleep
+
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.exceptions import HTTPException
+from starlette.responses import HTMLResponse
+
+from ..date import Date
+from ..html import HtmlNode
+from ..markup import MuChildLax
 
 
 class DateConverter(Convertor):
@@ -25,3 +31,14 @@ class DateConverter(Convertor):
   @classmethod
   def  register(cls, name='date') -> None:
     register_url_convertor(name, cls())
+
+
+def htmx_response(*content:MuChildLax, FAKE_LATENCY=0.0) -> HTMLResponse:
+  '''
+  Return a response for one or more HTMX fragments.
+  The first fragment is swapped into the target element.
+  Subsequent fragments can be used to swap other targets 'out-of-band' via the `hx-swap-oob` attribute.
+  `FAKE_LATENCY` is a float in seconds to simulate a slow response.
+  '''
+  if FAKE_LATENCY: sleep(FAKE_LATENCY)
+  return HTMLResponse(content='\n\n'.join(HtmlNode.render_child(c) for c in content))
