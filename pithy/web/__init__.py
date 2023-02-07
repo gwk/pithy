@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import time
+import sys
 from cgi import parse_header as cgi_parse_header, parse_multipart
 from dataclasses import dataclass
 from email.utils import formatdate as format_email_date
@@ -17,6 +17,10 @@ from ..path import norm_path, path_ext
 from ..util import lazy_property
 
 from ..http import http_methods, may_send_body
+
+
+pithy_web_static_dir_path = sys.modules[__name__].__path__[0] + '/static'
+
 
 ResponseBody = Union[None,str,bytes,bytearray,BufferedReader,Mu]
 
