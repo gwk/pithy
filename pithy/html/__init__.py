@@ -1600,11 +1600,35 @@ class Wbr(HtmlFlow, HtmlPhrasing, HtmlNoContent):
   '''
 
 
+class Css(Style):
+  '''
+  Embedded CSS stylesheet.
+  This is a convenience subclass of Style that ensures that all child elements are strings.
+  Additionally it checks that the strings do not contain unescaped HTML characters,
+  rather than blindly escaping them.
+  '''
 
-class InlineStyle(Dict[str,Any]):
+  def render_children(self) -> Iterator[str]:
+    'Override render children to treat children as CSS text.'
+    for c in self.ch:
+      if not isinstance(c, str):
+        raise TypeError(f'Css children must be strings; recieved: {c!r}')
+      if m := html_req_escape_chars_re.search(c):
+        raise ValueError(f'Css text cannot contain unescaped char: {c!r}; position: {m.start()}.')
+      yield c
+      if not c.endswith('\n'): yield '\n'
 
-  def __str__(self) -> str:
-    return ';'.join(f'{k.replace("_", "-")}:{v}' for (k, v) in self.items())
+
+html_req_escape_chars_re = re.compile(r'([<&])')
+
+
+def cssi(**styles:int|float|str) -> str:
+  '''
+  CSS inline value. Creates a string for use as an inline style attribute.
+  This function automatically translates underscores to dashes in the key name.
+  example: `Div(style=cssiv(font_size='1em', color='red'))`.
+  '''
+  return ';'.join(f'{k.replace("_", "-")}:{v}' for k, v in styles.items())
 
 
 def html_esc(text: str) -> str:

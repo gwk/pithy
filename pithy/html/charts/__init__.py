@@ -17,7 +17,7 @@ from math import floor, log10
 from typing import Any, Callable, ClassVar, Iterable, Union, TypeVar
 
 from ...range import Num, NumRange
-from .. import Div, Figcaption, Figure, InlineStyle, Span, MuChildOrChildrenLax
+from .. import Div, Figcaption, Figure, Span, MuChildOrChildrenLax
 
 
 Dim = int|float|str
