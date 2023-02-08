@@ -16,8 +16,6 @@ p, h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; } /* Avoid text overflows
 
 img, picture, video, canvas, svg { display: block; max-width: 100%; } /* Improve media defaults. */
 
-input, button, textarea, select { font: inherit; } /* Remove built-in form typography styles. */
-
 ul[role='list'], ol[role='list'] { list-style: none; } /* Remove list styles on ul, ol elements with a list role. */
 
 a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that don't have a class get default styles. */
