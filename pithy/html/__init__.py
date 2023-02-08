@@ -46,7 +46,7 @@ class HtmlNode(Mu):
 
   @property
   def attr_urls(self) -> Iterator[str]:
-    yield from self.iter_visit(pre=_attr_urls_visit)
+   return self.iter_visit(pre=_attr_urls_visit)
 
 
 
