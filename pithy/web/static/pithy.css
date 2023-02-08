@@ -34,6 +34,20 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that don't have
   }
 }
 
+/* Utility classes. */
+
+.w100 { width: 100%; }
+.h100 { height: 100%; }
+.table-auto { table-layout: auto; }
+.table-fixed { table-layout: fixed; }
+
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-justify { text-align: justify; }
+.text-start { text-align: start; }
+.text-end { text-align: end; }
+
 
 /* Htmx emoji clock spinner. */
 
