@@ -8,23 +8,22 @@ from functools import lru_cache
 from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 from typing import Any, Container, Dict, Iterable, List, Optional, Tuple
 
+from ..string import EscapedStr
+
 
 XmlAttrs = Optional[Dict[str,Any]]
 
-
-class EscapedStr(str):
-  'A `str` subclass that signifies to some receiver that it has already been properly escaped.'
 
 
 def esc_xml_text(val:Any) -> str:
   'HTML-escape the string representation of `val`.'
   # TODO: add options to support whitespace escaping?
-  return val if isinstance(val, EscapedStr) else _escape_text(str(val))
+  return val.string if isinstance(val, EscapedStr) else _escape_text(str(val))
 
 
 def esc_xml_attr(val:Any) -> str:
   'HTML-escape the string representation of `val`, including quote characters.'
-  return val if isinstance(val, EscapedStr) else _escape_attr(str(val)) # TODO: THIS LOOKS WRONG
+  return val.string if isinstance(val, EscapedStr) else _escape_attr(str(val))
 
 
 @lru_cache(maxsize=1024, typed=True)
