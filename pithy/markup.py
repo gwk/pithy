@@ -693,7 +693,7 @@ class Mu:
   def esc_text(text:str) -> str:
     text = text.replace("&", "&amp;") # Ampersand must be replaced first, because escapes use ampersands.
     text = text.replace("<", "&lt;")
-    text = text.replace(">", "&gt;")
+    # Note: we do not replace ">" because it is not required and helpful to leave unescaped for embedded CSS.
     return text
 
 
@@ -701,7 +701,7 @@ class Mu:
   def quote_attr_val(text:str) -> str:
     text = text.replace("&", "&amp;") # Ampersand must be replaced first, because escapes use ampersands.
     text = text.replace("<", "&lt;")
-    text = text.replace(">", "&gt;")
+    # Note: we do not replace ">" because it is not required and helpful to leave unescaped for inline CSS.
     if "'" in text:
       text = text.replace('"', "&quot;")
       return f'"{text}"'
