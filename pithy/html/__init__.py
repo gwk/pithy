@@ -1391,18 +1391,23 @@ class Table(HtmlFlow, HtmlPalpable):
 
 
   @classmethod
-  def simple(cls, *inline_rows:tuple[MuChildLax,...], caption:MuChildLax='', header:tuple[MuChildLax,...]=(),
+  def simple(cls, *inline_rows:tuple[MuChildLax,...], caption:MuChildLax='', cols:Iterable[Col]=(), head:tuple[MuChildLax,...]=(),
    rows:Iterable[tuple[MuChildLax,...]], **kwargs:Any) -> 'Table':
 
     table = cls(**kwargs)
     if caption:
       table.append(Caption(ch=caption))
 
-    if header:
-      table.append(Tr(ch=[Th(ch=cell) for cell in header]))
+    if cols:
+      table.append(Colgroup(ch=cols))
+
+    if head:
+      table.append(Thead(ch=Tr(ch=[Th(ch=cell) for cell in head])))
+
+    tbody = table.append(Tbody())
 
     for row in chain(inline_rows, rows):
-      table.append(Tr(ch=[Td(ch=cell) for cell in row]))
+      tbody.append(Tr(ch=[Td(ch=cell) for cell in row]))
 
     return table
 
