@@ -1263,10 +1263,19 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
   '''
 
   @staticmethod
-  def simple(options:Iterable[Any], value=None, **kwargs) -> 'Select':
+  def simple(options:Iterable[Any], placeholder=None, value=None, **kwargs) -> 'Select':
+
+    select = Select(**kwargs)
+
+    if placeholder is not None:
+      pho = select.append(Option(disabled='', value='', ch=str(placeholder)))
+    else:
+      pho = None
+
     if value is not None:
       value = str(value)
-    select = Select(**kwargs)
+
+    has_selected = False
     for o in options:
       if isinstance(o, tuple):
         if len(o) != 2: raise ValueError(f'tuple option must be a pair; received: {o}')
@@ -1275,8 +1284,13 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
       else:
         v = str(o)
         option = Option(value=v, ch=v)
-      if v == value: option['selected'] = ''
+      if v == value:
+        option['selected'] = ''
+        has_selected = True
       select.append(option)
+    if pho is not None and not has_selected:
+      pho['selected'] = ''
+
     return select
 
 
