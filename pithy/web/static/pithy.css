@@ -38,6 +38,13 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that don't have
 
 .w100 { width: 100%; }
 .h100 { height: 100%; }
+
+.bold { font-weight: bold; }
+
+.block { display: block; }
+.inline { display: inline; }
+.inline-block { display: inline-block; }
+
 .table-auto { table-layout: auto; }
 .table-fixed { table-layout: fixed; }
 
