@@ -3,7 +3,7 @@
 from difflib import SequenceMatcher
 from typing import Any, Callable, Dict, List, Sequence, Tuple, TypeVar
 
-from .patience import Alignment, Diff, align_patience
+from .patience import align_patience, Alignment, Diff
 
 
 _T = TypeVar('_T')

@@ -6,9 +6,8 @@ from pithy.parse import Alias, Choice, OneOrMore, Opt, Parser, Struct, ZeroOrMor
 from tolkien import Source, Token
 
 from ..parse import ParseError
-from .syntax import (EonBinding, EonNode, EonList, EonStr, EonSyntax, eon_syntax_token, render_eon_syntax,
-  section_rank_leaf)
 from .lex import lexer
+from .syntax import eon_syntax_token, EonBinding, EonList, EonNode, EonStr, EonSyntax, render_eon_syntax, section_rank_leaf
 
 
 class ConversionError(ParseError):

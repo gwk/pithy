@@ -6,7 +6,7 @@ It is currently a work in progress and is somewhat out of date.
 '''
 
 from argparse import ArgumentParser
-from typing import Dict, List, NamedTuple, Iterator
+from typing import Dict, Iterator, List, NamedTuple
 
 from crafts import CraftConfig, load_craft_config
 from pithy.fs import make_dirs, remove_dir_contents, walk_files

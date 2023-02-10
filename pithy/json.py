@@ -6,10 +6,10 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import (IO, AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, TextIO,
+from typing import (AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, IO, Iterable, List, Optional, Sequence, TextIO,
   Tuple, Union)
 
-from .encode import EncodeObj, all_slots, encode_obj
+from .encode import all_slots, encode_obj, EncodeObj
 
 
 JsonAny = Any # TODO: remove this once recursive types work.

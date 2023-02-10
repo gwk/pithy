@@ -8,8 +8,8 @@ import fcntl as _fcntl
 import struct as _struct
 from copy import deepcopy
 from sys import stderr, stdout
-from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, TCSADRAIN,
-  TCSAFLUSH, TCSANOW, TIOCGWINSZ, VMIN, VTIME, tcgetattr, tcsetattr)
+from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, tcgetattr,
+  TCSADRAIN, TCSAFLUSH, TCSANOW, tcsetattr, TIOCGWINSZ, VMIN, VTIME)
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

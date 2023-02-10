@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 
 from pithy.sqlite import Connection, Cursor
 
+
 def main() -> None:
 
   parser = ArgumentParser(description='Diff two SQLite database files.')

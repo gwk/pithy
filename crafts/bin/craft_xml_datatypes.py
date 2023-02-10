@@ -12,16 +12,15 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Iterator, Optional, TextIO
 
-from tomli import load as load_toml
-
 from pithy.dict import dict_remap_keys_mut
 from pithy.io import errL
 from pithy.iterable import single_el
 from pithy.py import sanitize_for_py_keywords_and_type_names
 from pithy.string import truncate_repr_with_ellipsis
-from pithy.transtruct import Transtructor, bool_vals
+from pithy.transtruct import bool_vals, Transtructor
 from pithy.xml.datatypes import ChildAttrInfo
-from pithy.xml.xmldict import XmlDictParser, XmlDict, XmlError
+from pithy.xml.xmldict import XmlDict, XmlDictParser, XmlError
+from tomli import load as load_toml
 
 
 def main() -> None:

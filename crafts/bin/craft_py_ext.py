@@ -15,8 +15,8 @@ The idea is to let the implementor fill out the inner funcntion, and keep most o
 
 import re
 from argparse import ArgumentParser
-from ast import (AST, AnnAssign, Assign, AsyncFunctionDef, ClassDef, Expr as ExprStmt, FunctionDef, Import, ImportFrom, Module,
-  Name, Str, parse, stmt as Stmt)
+from ast import (AnnAssign, Assign, AST, AsyncFunctionDef, ClassDef, Expr as ExprStmt, FunctionDef, Import, ImportFrom, Module,
+  Name, parse, stmt as Stmt, Str)
 from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch

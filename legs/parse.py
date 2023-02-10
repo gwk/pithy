@@ -5,8 +5,8 @@ from dataclasses import dataclass
 
 from pithy.io import errL
 from pithy.lex import KindPair, Lexer, LexMode, LexTrans
-from pithy.parse import (Adjacency, Atom, Choice, Infix, Left, OneOrMore, Opt, ParseError, Parser, Precedence, Right, Struct,
-  Suffix, ZeroOrMore, choice_syn)
+from pithy.parse import (Adjacency, Atom, Choice, choice_syn, Infix, Left, OneOrMore, Opt, ParseError, Parser, Precedence,
+  Right, Struct, Suffix, ZeroOrMore)
 from pithy.string import clip_prefix
 from pithy.unicode import CodeRanges, codes_for_ranges
 from pithy.unicode.charsets import unicode_charsets

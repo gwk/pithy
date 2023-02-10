@@ -14,10 +14,10 @@ An axis can be categorical or numeric.
 import re
 from functools import reduce
 from math import floor, log10
-from typing import Any, Callable, ClassVar, Iterable, Union, TypeVar
+from typing import Any, Callable, ClassVar, Iterable, TypeVar, Union
 
 from ...range import Num, NumRange
-from .. import Div, Figcaption, Figure, Span, MuChildOrChildrenLax
+from .. import Div, Figcaption, Figure, MuChildOrChildrenLax, Span
 
 
 Dim = int|float|str

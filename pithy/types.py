@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import abstractmethod
-from typing import Any, Callable, Counter, Dict, Optional, Protocol, Tuple, TypeVar, Union, get_args, get_origin
+from typing import Any, Callable, Counter, Dict, get_args, get_origin, Optional, Protocol, Tuple, TypeVar, Union
 
 
 _T = TypeVar('_T')

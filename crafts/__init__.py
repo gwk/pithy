@@ -3,7 +3,7 @@
 import os
 import os.path
 import re
-from typing import Any, Dict, NamedTuple, Optional, cast
+from typing import Any, cast, Dict, NamedTuple, Optional
 
 from pithy.dict import dict_set_defaults
 from pithy.eon import parse_eon_or_fail

@@ -5,9 +5,9 @@ SVG writer.
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from typing import ClassVar, Any, Iterable, Optional, Type, Union
+from typing import Any, ClassVar, Iterable, Optional, Type, Union
 
-from ..markup import Mu, MuAttrs, MuChildOrChildren, NoMatchError, _Mu, add_opt_attrs, mu_child_classes, prefer_int
+from ..markup import _Mu, add_opt_attrs, Mu, mu_child_classes, MuAttrs, MuChildOrChildren, NoMatchError, prefer_int
 from ..range import Num, NumRange
 
 

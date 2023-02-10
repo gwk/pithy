@@ -3,8 +3,8 @@
 import re
 from html import escape as html_escape
 from os import environ
-from typing import (Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple, Union,
-  cast)
+from typing import (Any, Callable, cast, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple,
+  Union)
 
 import pygments
 import pygments.lexers

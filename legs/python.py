@@ -3,8 +3,8 @@
 import re
 from argparse import Namespace
 
-from pithy.reprs import repr_ml
 from pithy.optional import unwrap
+from pithy.reprs import repr_ml
 from pithy.string import render_template
 
 from . import ModeData, ModeTransitions

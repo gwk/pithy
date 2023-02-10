@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sys
-from ctypes import CDLL, c_char_p, c_int, c_uint, set_errno
+from ctypes import c_char_p, c_int, c_uint, CDLL, set_errno
 from errno import ENOENT, ENOTSUP
 from os import strerror
 from os.path import dirname, isdir

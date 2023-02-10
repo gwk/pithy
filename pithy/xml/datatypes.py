@@ -12,7 +12,6 @@ from typing import Callable, ClassVar, Iterable, Optional, Type, TypeVar
 from ..transtruct import Transtructor
 
 
-
 _T = TypeVar('_T')
 
 

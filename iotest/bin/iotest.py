@@ -8,9 +8,9 @@ from ast import literal_eval
 from sys import stderr, stdout
 from typing import DefaultDict, Dict, Iterable, List, Optional, Pattern, Set
 
-from pithy.ansi import BG, FILL_OUT, INVERT, RST_INVERT, TTY_OUT, gray26, is_out_tty, sanitize_for_console, sgr
+from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
-from pithy.filenamefmt import FilenameFormatterError, regex_for_fnf_str, fnf_str_has_formatter
+from pithy.filenamefmt import FilenameFormatterError, fnf_str_has_formatter, regex_for_fnf_str
 from pithy.fs import (copy_path, file_status, find_project_dir, is_dir, is_python_file, list_dir, make_dirs, make_link,
   open_new, path_exists, remove_dir_contents, remove_file_if_exists)
 from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_path, write_to_path
@@ -18,9 +18,9 @@ from pithy.iterable import fan_by_pred
 from pithy.path import (abs_path, norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_join, path_name,
   path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, split_dir_name)
 from pithy.string import string_contains
-from pithy.task import TaskLaunchError, Timeout, UnexpectedExit, run, runC
+from pithy.task import run, runC, TaskLaunchError, Timeout, UnexpectedExit
 
-from ..case import Case, FileExpectation, ParConfig, TestCaseError, file_expectation_fns
+from ..case import Case, file_expectation_fns, FileExpectation, ParConfig, TestCaseError
 from ..ctx import Ctx
 
 

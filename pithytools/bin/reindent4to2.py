@@ -3,11 +3,11 @@
 
 # Reindent a text file from four spaces to two.
 
-import sys
 import random
+import sys
 from typing import TextIO
 
-from pithy.fs import path_exists, is_file, move_file
+from pithy.fs import is_file, move_file, path_exists
 from pithy.io import errL, outL
 
 

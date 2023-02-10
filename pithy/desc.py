@@ -6,12 +6,12 @@ like `pprint` but streaming, and with a more compact, minimal style.
 '''
 
 import re
-
 from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
 from typing import Any, Iterable, Iterator, List, NamedTuple, Set, TextIO, Tuple, Union
 
 from .iterable import known_leaf_types
+
 
 try:
   from lxml.etree import _Element as LxmlElement

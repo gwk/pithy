@@ -2,7 +2,7 @@
 
 from typing import Dict, List
 
-from ..lex import Lexer, LexMode, c_like_punctuation_patterns, whitespace_patterns
+from ..lex import c_like_punctuation_patterns, Lexer, LexMode, whitespace_patterns
 
 
 patterns=dict(

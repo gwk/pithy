@@ -5,7 +5,7 @@ from sys import argv
 from time import perf_counter
 from typing import List
 
-from pithy.task import DEVNULL, communicate, launch
+from pithy.task import communicate, DEVNULL, launch
 
 
 def main() -> None:

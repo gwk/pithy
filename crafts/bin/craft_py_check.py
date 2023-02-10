@@ -15,7 +15,6 @@ from sys import stdout
 from typing import List
 
 from mypy import api
-
 from pithy.ansi import INVERT, RST, TXT_C, TXT_L, TXT_R, TXT_Y
 from pithy.io import errL, errSL, outZ
 from pithy.lex import Lexer

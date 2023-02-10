@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import (date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone,
   tzinfo as TZInfo)
-from typing import Sequence, TypeVar, Iterator, overload
+from typing import Iterator, overload, Sequence, TypeVar
 
 
 sec_per_min = 60

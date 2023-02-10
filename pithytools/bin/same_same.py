@@ -7,7 +7,7 @@ from os import environ
 from sys import stderr, stdout
 from typing import Any, Dict, List, Match, Optional, Set, Tuple
 
-from pithy.ansi import BG, cBOLD, FILL, RST, cRST_BOLD, cRST_TXT, TXT, gray26, rgb6, sanitize_for_console, sgr
+from pithy.ansi import BG, cBOLD, cRST_BOLD, cRST_TXT, FILL, gray26, rgb6, RST, sanitize_for_console, sgr, TXT
 from pithy.diff import calc_diff
 
 

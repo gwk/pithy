@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 
-from pithy.markup import EscapedStr
-from pithy.html import Html, Style, Div
+from pithy.html import Div, Html, Style
 from pithy.html.charts import BarSeries, chart_css, chart_figure, LinearAxis
-
+from pithy.markup import EscapedStr
 from starlette.applications import Starlette
-from starlette.routing import Route
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
+from starlette.routing import Route
+
 
 def app() -> Starlette:
 

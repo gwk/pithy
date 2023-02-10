@@ -9,8 +9,8 @@ import re
 from collections.abc import Mapping
 from functools import singledispatch
 from inspect import Parameter, signature
-from typing import (Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union,
-  get_args as get_type_args, get_origin, get_type_hints)
+from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, List,
+  Optional, Tuple, Type, TypeVar, Union)
 
 from tolkien import Source, Token
 

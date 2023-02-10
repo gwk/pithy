@@ -5,9 +5,9 @@ from itertools import count
 
 from pithy.dict import dict_put
 
-from .patterns import LegsPattern, NfaMutableTransitions
 from .dfa import DFA
 from .nfa import NFA, NfaState, NfaTransitions
+from .patterns import LegsPattern, NfaMutableTransitions
 
 
 def build_nfa(name:str, named_patterns:list[tuple[str, LegsPattern]], encoding:str) -> NFA:

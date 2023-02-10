@@ -14,7 +14,7 @@ from ..dfa import DFA, minimize_dfa
 from ..dot import output_dot
 from ..nfa import NFA
 from ..parse import parse_legs
-from ..patterns import LegsPattern, gen_incomplete_pattern
+from ..patterns import gen_incomplete_pattern, LegsPattern
 from ..python import output_python, output_python_re
 from ..swift import output_swift
 from ..vscode import output_vscode
