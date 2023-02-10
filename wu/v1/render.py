@@ -4,8 +4,8 @@ import re
 from functools import singledispatch
 from typing import Iterator, List, Union
 
-from pithy.markup import MuChild
 from pithy.html import Body, Html, HtmlNode, Section
+from pithy.markup import MuChild
 
 
 def render_wu(node:HtmlNode) -> Iterator[str]:

@@ -3,9 +3,9 @@
 from argparse import ArgumentParser
 from os import chdir
 
-from pithy.http.server import Response, HttpRequestHandler, HttpServer
-from pithy.web.app import WebApp, Request
+from pithy.http.server import HttpRequestHandler, HttpServer, Response
 from pithy.task import run
+from pithy.web.app import Request, WebApp
 
 
 def main() -> None:

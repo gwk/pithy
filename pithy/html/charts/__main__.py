@@ -2,8 +2,8 @@
 
 from sys import stderr
 
-import uvicorn # type: ignore[import]
-import watchfiles # This is an optional import for uvicorn but we want to make sure it is installed.
+import uvicorn  # type: ignore[import]
+import watchfiles  # This is an optional import for uvicorn but we want to make sure it is installed.
 
 
 def main() -> None:

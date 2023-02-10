@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from . import ParseError, parse_eon
+from . import parse_eon, ParseError
 
 
 def main() -> None:

@@ -5,8 +5,8 @@ from collections import Counter, defaultdict
 from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
-from typing import (Any, Callable, ClassVar, NamedTuple, Optional, Type, TypeVar, Union, cast, get_args, get_origin,
-  get_type_hints)
+from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, get_type_hints, NamedTuple, Optional, Type, TypeVar,
+  Union)
 
 
 _T = TypeVar('_T')

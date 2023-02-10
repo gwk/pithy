@@ -2,14 +2,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import plistlib
+from sys import argv, stdout
+
 import yaml
-
-from sys import stdout, argv
-
-from pithy.io import outL
 from pithy.fs import walk_files
-from pithy.schema import compile_schema, write_schema
+from pithy.io import outL
 from pithy.json import load_json
+from pithy.schema import compile_schema, write_schema
 
 
 def main() -> None:

@@ -43,6 +43,9 @@ develop:
 docs:
 	craft-docs
 
+isort:
+	isort $(packages)
+
 gen: gen-data gen-grammars
 
 gen-data: \
@@ -64,9 +67,6 @@ install:
 
 lint:
 	pyflakes $(packages)
-
-sort-imports:
-	isort $(packages)
 
 test: gen
 	iotest -fail-fast

@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 
-from pickle import HIGHEST_PROTOCOL, dump as _dump, load as _load
+from pickle import dump as _dump, HIGHEST_PROTOCOL, load as _load
 from sys import stdout
 from typing import Any, BinaryIO
 

@@ -3,7 +3,7 @@
 from functools import total_ordering
 from io import TextIOBase, TextIOWrapper
 from tarfile import TarFile
-from typing import Any, BinaryIO, Callable, Dict, Iterable, List, Type, Union, cast
+from typing import Any, BinaryIO, Callable, cast, Dict, Iterable, List, Type, Union
 from zipfile import BadZipFile, ZipFile
 
 from .fs import path_ext

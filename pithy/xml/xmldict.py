@@ -31,12 +31,12 @@ The tag is always first, followed by sorted attributes, followed by the children
 '''
 
 import re
-from typing import Any, Callable, Collection, Container, Iterator, cast
 from dataclasses import dataclass
+from typing import Any, Callable, cast, Collection, Container, Iterator
 
-from lxml.etree import Comment, _Element as LxmlElement, fromstring as parse_xml_data, XMLSyntaxError
+from lxml.etree import _Element as LxmlElement, Comment, fromstring as parse_xml_data, XMLSyntaxError
 
-from ..exceptions import OmitNode, FlattenNode, DeleteNode
+from ..exceptions import DeleteNode, FlattenNode, OmitNode
 from .escape import fmt_attr_items
 
 

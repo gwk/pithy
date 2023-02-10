@@ -5,8 +5,8 @@ utest is a tiny unit testing library.
 
 import atexit as _atexit
 import inspect as _inspect
-import re as _re
 import pathlib as _pathlib
+import re as _re
 from os import getcwd as _getcwd
 from os.path import relpath as _rel_path
 from sys import stderr as _stderr

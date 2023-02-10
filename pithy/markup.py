@@ -6,16 +6,16 @@
 
 import re
 from collections import Counter
-from inspect import get_annotations
 from functools import wraps
+from inspect import get_annotations
 from itertools import chain
-from typing import (Any, Callable, ClassVar, Dict, Generator, Iterable, Iterator, List, Match, Optional, Tuple, Type, TypeVar,
-  Union, cast, overload)
+from typing import (Any, Callable, cast, ClassVar, Dict, Generator, Iterable, Iterator, List, Match, Optional, overload, Tuple,
+  Type, TypeVar, Union)
 from xml.etree.ElementTree import Element
 
-from .reprs import repr_lim
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from .iterable import window_iter, window_pairs
+from .reprs import repr_lim
 from .string import EscapedStr
 
 

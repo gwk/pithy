@@ -5,8 +5,8 @@ XML escaping utilities.
 '''
 
 from functools import lru_cache
-from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 from typing import Any, Container, Dict, Iterable, List, Optional, Tuple
+from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 
 from ..string import EscapedStr
 

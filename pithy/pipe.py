@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from typing import IO, Any, ContextManager, List, Tuple, Union, cast
+from typing import Any, cast, ContextManager, IO, List, Tuple, Union
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

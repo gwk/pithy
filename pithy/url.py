@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from urllib.parse import urlsplit as url_split, urlunsplit as url_unsplit
-from urllib.parse import parse_qsl
+from urllib.parse import parse_qsl, urlsplit as url_split, urlunsplit as url_unsplit
 
 from .path import path_stem
 

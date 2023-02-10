@@ -65,9 +65,11 @@ def main() -> None:
   Parse specified files (or stdin) as EON and print each result.'
   '''
   from sys import argv
+
   from tolkien import Source, Token
+
+  from ..ansi import RST, TXT_R
   from ..io import outD
-  from ..ansi import TXT_R, RST
 
   args = argv[1:] or ['/dev/stdin']
   for path in args:

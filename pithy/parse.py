@@ -23,8 +23,8 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 from collections import namedtuple
-from typing import (Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar, Union,
-  cast)
+from typing import (Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
+  Union)
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 

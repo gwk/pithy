@@ -8,7 +8,6 @@ from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
 from typing import Any, ByteString, Callable, Dict, List, Optional, Tuple, TypeVar
 
 import blake3
-
 from pithy.encodings import enc_lep62, enc_lep128_to_utf8
 from pithy.io import errSL
 

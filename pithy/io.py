@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from os import O_NONBLOCK, O_RDONLY, close as os_close, open as os_open, read as os_read
+from os import close as os_close, O_NONBLOCK, O_RDONLY, open as os_open, read as os_read
 from pprint import pprint
 from shlex import quote as sh_quote
 from string import Template as _Template
 from sys import stderr, stdin, stdout
-from typing import Any, Callable, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union, cast
+from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union
 
 from .desc import errD, outD, writeD
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc

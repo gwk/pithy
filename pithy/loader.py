@@ -5,7 +5,7 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, BytesIO, TextIOWrapper
-from typing import IO, Any, BinaryIO, Callable, Dict, Iterable, List, Set, TextIO, Union, cast
+from typing import Any, BinaryIO, Callable, cast, Dict, IO, Iterable, List, Set, TextIO, Union
 
 
 __all__ = [
@@ -221,7 +221,7 @@ def load_xz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_yaml(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from yaml import SafeLoader, load as _load_yaml
+  from yaml import load as _load_yaml, SafeLoader
   loader = kwargs.pop('Loader', SafeLoader)
   return _load_yaml(binary_file_for(f), Loader=loader, **kwargs)
 

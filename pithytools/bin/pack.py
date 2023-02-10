@@ -7,7 +7,7 @@ from typing import Callable, Optional
 from pithy.fs import file_size, path_exists, remove_path
 from pithy.io import confirm, outL, outZ, stderr, stdin
 from pithy.string import format_byte_count
-from pithy.task import UnexpectedExit, run
+from pithy.task import run, UnexpectedExit
 
 
 PackFn = Callable[[str, str], None]

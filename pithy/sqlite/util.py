@@ -2,7 +2,7 @@
 
 import re
 from datetime import date, datetime
-from typing import Any, Iterable, NamedTuple, Tuple, Type, get_args
+from typing import Any, get_args, Iterable, NamedTuple, Tuple, Type
 
 from ..json import render_json
 

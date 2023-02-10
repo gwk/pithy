@@ -3,11 +3,11 @@
 # TODO: handle leading UTF8-BOM.
 
 import csv
-from csv import QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC, Dialect
+from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
 from sys import stdout
-from .transtruct import transtruct_bool
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
+from .transtruct import transtruct_bool
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 

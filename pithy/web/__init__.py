@@ -12,11 +12,10 @@ from os import fstat as os_fstat
 from typing import Any, BinaryIO, Optional, TextIO, Union
 from urllib.parse import parse_qs, unquote as url_unquote, urlsplit as url_split
 
+from ..http import http_methods, may_send_body
 from ..markup import Mu
 from ..path import norm_path, path_ext
 from ..util import lazy_property
-
-from ..http import http_methods, may_send_body
 
 
 pithy_web_static_dir_path = sys.modules[__name__].__path__[0] + '/static'

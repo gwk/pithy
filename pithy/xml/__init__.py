@@ -6,7 +6,8 @@ Xml Mu/markup type.
 
 from typing import Any, Iterable, List, Optional, Union
 
-from ..markup import Mu, MuAttrs, MuChild, _Mu
+from ..markup import _Mu, Mu, MuAttrs, MuChild
+
 
 XmlChild = Union[str,'Xml']
 XmlChildren = List[XmlChild]

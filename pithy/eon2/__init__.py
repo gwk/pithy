@@ -10,8 +10,8 @@ from typing import Any, Type, TypeVar
 from tolkien import Source, Token
 
 from ..parse import ParseError
-from .parse import eon_parser
 from .convert import convert_eon
+from .parse import eon_parser
 
 
 _T = TypeVar('_T')

@@ -6,16 +6,15 @@ from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from shlex import quote as sh_quote
 from typing import Any, Dict, List, Pattern, Set
-from urllib.parse import urlsplit as url_split, urldefrag as url_defrag, urljoin as url_join
+from urllib.parse import urldefrag as url_defrag, urljoin as url_join, urlsplit as url_split
 
 import html5_parser
 from lxml.html import fromstring as lxml_html_fromstring
-
 from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file, path_descendants, path_dir,
   path_ext, path_join, remove_path, remove_path_if_exists)
 from pithy.io import errL, errSL, outL
 from pithy.iterable import prefix_tree
-from pithy.path_encode import COMP, OMIT, SPLIT, SQUASH, path_for_url
+from pithy.path_encode import COMP, OMIT, path_for_url, SPLIT, SQUASH
 from pithy.string import clip_first_prefix
 from pithy.task import runO
 

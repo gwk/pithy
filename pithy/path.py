@@ -2,7 +2,7 @@
 
 import re as _re
 from itertools import zip_longest as _zip_longest
-from os import PathLike, fspath as _fspath, sep
+from os import fspath as _fspath, PathLike, sep
 from os.path import (abspath as _abspath, basename as _basename, commonpath as _commonpath, dirname as _dirname,
   expanduser as _expand_user, isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split,
   splitext as _splitext)

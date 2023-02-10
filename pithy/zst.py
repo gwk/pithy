@@ -1,4 +1,4 @@
-from typing import IO, AnyStr, BinaryIO, Iterable, Iterator, List, TextIO
+from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, List, TextIO
 
 from zstandard import ZstdCompressor
 

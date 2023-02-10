@@ -3,7 +3,7 @@
 import inspect
 from importlib.machinery import ModuleSpec
 from inspect import FrameInfo
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar, cast
+from typing import Any, Callable, cast, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar
 
 
 class MetaprogrammingError(Exception): pass
