@@ -24,6 +24,18 @@ _AdaptedInputData:TypeAlias = _SqliteData | Any
 _SqlParameters: TypeAlias = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[str, _AdaptedInputData]
 #^ The Mapping must really be a dict, but making it invariant is too annoying.
 
+sqlite_version = sqlite3.sqlite_version
+sqlite_threadsafe_dbapi_id = sqlite3.threadsafety
+
+sqlite_threadsafe_dbapi_id_descs = [
+  '0 - single-thread (threads may not share the module).',
+  '1 - multi-thread (threads may share the module, but not connections).',
+  '2 - invalid.',
+  '3 - serialized (threads may share the module and connections).',
+]
+
+sqlite_threadsafe_desc = sqlite_threadsafe_dbapi_id_descs[sqlite_threadsafe_dbapi_id]
+
 
 class SqliteError(Exception):
 
