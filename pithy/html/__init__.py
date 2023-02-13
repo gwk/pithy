@@ -1405,8 +1405,8 @@ class Table(HtmlFlow, HtmlPalpable):
 
 
   @classmethod
-  def simple(cls, *inline_rows:tuple[MuChildLax,...], caption:MuChildLax='', cols:Iterable[Col]=(), head:tuple[MuChildLax,...]=(),
-   rows:Iterable[tuple[MuChildLax,...]], **kwargs:Any) -> 'Table':
+  def simple(cls, *inline_rows:Iterable[MuChildLax], caption:MuChildLax='', cols:Iterable[Col]=(), head:Iterable[MuChildLax]=(),
+   rows:Iterable[Iterable[MuChildLax]], **kwargs:Any) -> 'Table':
 
     table = cls(**kwargs)
     if caption:
