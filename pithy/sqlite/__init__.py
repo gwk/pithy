@@ -127,7 +127,7 @@ class Cursor(sqlite3.Cursor):
     for k, v in args.items(): # Convert non-native values to Json.
       if not isinstance(v, py_to_sqlite_types_tuple): # Note: this is a conditional inlining of `default_to_json`.
         args[k] = render_json(v, indent=None)
-    if dbg: print(f'query: {query!r}  args: {args}')
+    if dbg: print(f'query: {query}\n  args: {args}')
     return self.execute(query, args)
 
 
