@@ -1416,12 +1416,12 @@ class Table(HtmlFlow, HtmlPalpable):
       table.append(Colgroup(ch=cols))
 
     if head:
-      table.append(Thead(ch=Tr(ch=[Th(ch=cell) for cell in head])))
+      table.append(Thead(ch=Tr(ch=[cell if isinstance(cell, (Td, Th)) else Th(ch=cell) for cell in head])))
 
     tbody = table.append(Tbody())
 
     for row in chain(inline_rows, rows):
-      tbody.append(Tr(ch=[Td(ch=cell) for cell in row]))
+      tbody.append(Tr(ch=[cell if isinstance(cell, (Td, Th)) else Td(ch=cell) for cell in row]))
 
     return table
 
