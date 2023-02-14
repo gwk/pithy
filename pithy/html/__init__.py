@@ -1546,6 +1546,16 @@ class Tr(HtmlNode):
   Contexts for use: As a child of a table element, after any caption, colgroup, and thead elements, but only if there are no tbody elements that are children of the table element, As a child of a tbody element, As a child of a tfoot element, As a child of a thead element.
   '''
 
+  @classmethod
+  def tds(cls, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
+    'Build a table row from the arguments, each of which is either a Td/Th or else becomes the content of a Td.'
+    return cls(ch=[cell if isinstance(cell, (Td, Th)) else Td(ch=cell) for cell in cells], **kwargs)
+
+  @classmethod
+  def ths(cls, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
+    'Build a table row from the arguments, each of which is either a Td/Th or else becomes the content of a Th.'
+    return cls(ch=[cell if isinstance(cell, (Td, Th)) else Th(ch=cell) for cell in cells], **kwargs)
+
 
 @_tag
 class Track(HtmlNoContent):
