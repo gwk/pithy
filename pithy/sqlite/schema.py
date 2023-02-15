@@ -178,8 +178,19 @@ class Schema:
     yield from self.indexes
 
 
+  @cached_property
   def structures_dict(self) -> dict[str, Structure]:
     return {s.name: s for s in self.structures}
+
+
+  @cached_property
+  def tables_dict(self) -> dict[str, Table]:
+    return {t.name: t for t in self.tables}
+
+
+  @cached_property
+  def indexes_dict(self) -> dict[str, Index]:
+    return {i.name: i for i in self.indexes}
 
 
   def sql(self, if_not_exists=False) -> Iterable[str]:
