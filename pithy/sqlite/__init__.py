@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
+from urllib.parse import quote as url_quote
 from typing import Any, cast, Dict, Iterable, Iterator, Mapping, Optional, Protocol, Self, Sequence, Tuple, TypeAlias, TypeVar
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
@@ -252,9 +253,14 @@ class Cursor(sqlite3.Cursor):
 class Connection(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None=None,
-   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False) -> None:
+   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, readonly=False) -> None:
 
     self.path = path
+    self.readonly = readonly
+    if readonly:
+      if uri: raise ValueError('Cannot use URI with readonly=True')
+      path = f'file:{url_quote(path)}?mode=ro'
+      uri = True
 
     super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
       check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri)
