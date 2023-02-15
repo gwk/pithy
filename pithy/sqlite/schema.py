@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Any, Iterable
 
-from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity_always, sqlite_keyords
+from .keywords import sqlite_keywords
+from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity_always
 
 
 @dataclass
@@ -31,7 +32,7 @@ class Column:
 
 
   def __post_init__(self) -> None:
-    if not self.allow_kw and self.name.upper() in sqlite_keyords:
+    if not self.allow_kw and self.name.upper() in sqlite_keywords:
       raise ValueError(f'Column name {self.name!r} is an SQLite keyword. Use `allow_kw=True` to override.')
     if self.is_primary:
       if self.is_opt: raise ValueError(f'Primary key column {self} cannot be optional.')
