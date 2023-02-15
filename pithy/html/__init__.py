@@ -10,7 +10,7 @@ from itertools import chain
 from typing import Any, AnyStr as _AnyStr, ClassVar, Dict, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
-from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, single_child_property
+from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
 from . import semantics
 
 
