@@ -4,7 +4,7 @@ from time import sleep
 
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.exceptions import HTTPException
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, Response
 
 from ..date import Date
 from ..html import HtmlNode
@@ -42,3 +42,11 @@ def htmx_response(*content:MuChildLax, FAKE_LATENCY=0.0) -> HTMLResponse:
   '''
   if FAKE_LATENCY: sleep(FAKE_LATENCY)
   return HTMLResponse(content='\n\n'.join(HtmlNode.render_child(c) for c in content))
+
+
+def empty_favicon(HTMLRequest) -> Response:
+  '''
+  Return an empty favicon; this should be used as a fallback route for '/favicon.ico'.
+  Using this prevents 404s getting logged for favicon requests.
+  '''
+  return HTMLResponse(content=b'', media_type='image/x-icon')
