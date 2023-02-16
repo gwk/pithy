@@ -133,6 +133,10 @@ class Source(Generic[_Text]):
     return Token(pos=end, end=end, mode='none', kind='eot')
 
 
+  def name_line_prefix(self, pos:int) -> str:
+    return f'{self.name}:{self.get_line_index(pos)+1}:'
+
+
   def diagnostic(self, *syntax_msgs:OptSyntaxMsg, prefix:str='') -> str:
     return ''.join(
       self.diagnostic_for_token(get_syntax_token(sm[0]), sm[1], prefix=prefix) for sm in syntax_msgs if sm is not None)
