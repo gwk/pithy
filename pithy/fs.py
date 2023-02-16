@@ -72,6 +72,8 @@ def copy_to_dir(src:str, dst:str,  overwrite:bool=True, create_dirs:bool=False, 
     overwrite=overwrite, create_dirs=False, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner)
 
 
+def abbreviate_user(path:Path) -> str: return str_path(path).replace(home_dir(), '~')
+
 def expand_user(path:Path) -> str: return _expanduser(str_path(path))
 
 
