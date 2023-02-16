@@ -94,7 +94,7 @@ class Lexer:
       if flag not in 'aiLmsux':
         raise Lexer.DefinitionError(f'invalid global regex flag: {flag}')
     flags_pattern = f'(?{flags})' if flags else ''
-    is_extended = 'x' in flags
+    is_verbose = 'x' in flags
 
     # Validate patterns.
     if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
@@ -111,7 +111,7 @@ class Lexer:
       except Exception as e:
         lines = [f'{n!r} pattern is invalid: {flagged_pattern}']
         if flags: lines.append(f'global flags: {flags!r}')
-        if is_extended and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comments break lexer')
+        if is_verbose and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comments break lexer')
         msg = '\n  note: '.join(lines)
         raise Lexer.DefinitionError(msg) from e
       for group_name in r.groupindex:
@@ -146,7 +146,7 @@ class Lexer:
           kind_set.update(matching)
       self.modes[mode.name] = mode
       mode.kind_set = frozenset(kind_set)
-      choice_sep = '\n| ' if is_extended else '|'
+      choice_sep = '\n| ' if is_verbose else '|'
 
       pattern = flags_pattern + choice_sep.join(pat for name, pat in self.patterns.items() if name in kind_set)
       try: mode.regex = re.compile(pattern)
