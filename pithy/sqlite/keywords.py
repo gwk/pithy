@@ -150,3 +150,31 @@ sqlite_keywords = frozenset({
   'WITH',
   'WITHOUT',
 })
+
+
+sqlite_leading_keywords = frozenset({
+  'ALTER',
+  'ANALYZE',
+  'ATTACH',
+  'BEGIN',
+  'CAST',
+  'COMMIT',
+  'CREATE',
+  'DELETE',
+  'DETACH',
+  'DROP',
+  'END',
+  'EXPLAIN',
+  'INSERT',
+  'PRAGMA',
+  'REINDEX',
+  'RELEASE',
+  'REPLACE',
+  'ROLLBACK',
+  'SAVEPOINT',
+  'SELECT',
+  'UPDATE',
+  'VACUUM',
+  'VALUES',
+  'WITH',
+})

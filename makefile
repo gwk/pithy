@@ -53,6 +53,9 @@ gen-data: \
 	pithy/unicode/data_10_00.py \
 	pithy/unicode/data_11_00.py \
 
+gen-sqlite-extracted-sql:
+	tools/gen-sqlite-test-sql.py -i ~/external/sqlite -o _misc/sqlite-extracted-stmts
+
 gen-grammars: \
 	grammars/ascii.legs \
 	grammars/unicode.legs \
