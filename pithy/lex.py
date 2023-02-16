@@ -111,7 +111,7 @@ class Lexer:
       except Exception as e:
         lines = [f'{n!r} pattern is invalid: {flagged_pattern}']
         if flags: lines.append(f'global flags: {flags!r}')
-        if is_verbose and re.search('(?<!\\)#)', v): lines.append('unescaped verbose mode comments break lexer')
+        if is_verbose and re.search(r'(?<!\\)#', v): lines.append('unescaped verbose mode comments break lexer')
         msg = '\n  note: '.join(lines)
         raise Lexer.DefinitionError(msg) from e
       for group_name in r.groupindex:
