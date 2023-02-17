@@ -81,13 +81,11 @@ def append_or_list(list_or_el:Union[_T,List[_T]], el:_T) -> List[_T]:
     return [list_or_el, el]
 
 
-TokenTransform = Callable[[Source,Token],Any]
+AtomTransform = Callable[[Source,Token],Any]
 
-def token_identity(source:Source, token:Token) -> Token: return token
-
-def token_extract_text(source:Source, token:Token) -> str: return source[token]
-def token_extract_kind(source:Source, token:Token) -> str: return token.kind
-
+def atom_identity(source:Source, token:Token) -> Token: return token
+def atom_text(source:Source, token:Token) -> str: return source[token]
+def atom_kind(source:Source, token:Token) -> str: return token.kind
 
 UnaryTransform = Callable[[Source,Token,Any],Any]
 def unary_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
@@ -220,7 +218,7 @@ class Atom(Rule):
   '''
   type_desc = 'atom'
 
-  def __init__(self, kind:TokenKind, transform:TokenTransform=token_identity):
+  def __init__(self, kind:TokenKind, transform:AtomTransform=atom_identity):
     self.name = ''
     self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
     self.kind = validate_name(kind)

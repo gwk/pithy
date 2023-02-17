@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pithy.parse import Atom, Parser, ZeroOrMore, token_extract_text
+from pithy.parse import Atom, Parser, ZeroOrMore, atom_text
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import *
@@ -10,7 +10,7 @@ def mk_comma_parser(sep_at_end:bool|None) -> Parser:
   return Parser(lexer,
   drop=('spaces',),
   rules=dict(
-      name=Atom('name', transform=token_extract_text),
+      name=Atom('name', transform=atom_text),
       seq=ZeroOrMore('name', sep='comma', sep_at_end=sep_at_end)),
   )
 

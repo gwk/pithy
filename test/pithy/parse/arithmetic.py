@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pithy.parse import Atom, Infix, Left, Parser, Precedence, Right, Struct, SuffixRule, token_extract_text
+from pithy.parse import Atom, Infix, Left, Parser, Precedence, Right, Struct, SuffixRule, atom_text
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import *
@@ -10,7 +10,7 @@ arithmetic = Parser(lexer,
   drop=('newline', 'spaces'),
   literals=('brack_o', 'brack_c', 'paren_o', 'paren_c'),
   rules=dict(
-    name=Atom('name', transform=token_extract_text),
+    name=Atom('name', transform=atom_text),
     int=Atom('int_d', transform=lambda s, t: int(s[t])),
     paren=Struct('paren_o', 'expr', 'paren_c'),
     # TODO: unary plus, minus.
