@@ -26,11 +26,6 @@ def render_template(template:str, **substitutions:Any) -> str:
   return t.substitute(substitutions)
 
 
-def string_contains(string:str, query:str) -> bool:
-  'Return True if string contains query.'
-  return string.find(query) != -1
-
-
 def clip_prefix(string:str, prefix:str, req=True) -> str:
   'Remove `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):

@@ -17,7 +17,6 @@ from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_pa
 from pithy.iterable import fan_by_pred
 from pithy.path import (abs_path, norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_join, path_name,
   path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, split_dir_name)
-from pithy.string import string_contains
 from pithy.task import run, runC, TaskLaunchError, Timeout, UnexpectedExit
 
 from ..case import Case, file_expectation_fns, FileExpectation, ParConfig, TestCaseError
@@ -73,7 +72,7 @@ def main() -> None:
 
   for raw_path in ctx.top_paths:
     path = norm_path(raw_path)
-    if string_contains(path, '..'):
+    if '..' in path:
       # because we recreate the dir structure in the results dir, parent dirs are forbidden.
       exit(f"iotest error: argument path cannot contain '..': {path!r}.")
     if is_dir(path, follow=True):

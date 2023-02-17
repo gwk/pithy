@@ -5,11 +5,6 @@ from pithy.string import *
 
 utest('abc', render_template, 'a${y}c', y='b')
 
-utest(True, string_contains, '', '') # strange, but simply the behavior of string.find.
-utest(True, string_contains, 'a', '')
-utest(True, string_contains, 'a', 'a')
-utest(False, string_contains, '', 'a')
-
 # Clip functions.
 
 utest('-body', clip_prefix, 'prefix-body', 'prefix')
