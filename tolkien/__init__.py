@@ -48,9 +48,6 @@ def get_syntax_token(syntax:Syntax) -> Token:
 
 
 SyntaxMsg = tuple[Syntax,str]
-OptSyntaxMsg = Optional[SyntaxMsg]
-
-
 
 SourceText = Union[str,bytes,bytearray]
 _Text = TypeVar('_Text', bound=SourceText)
@@ -137,12 +134,12 @@ class Source(Generic[_Text]):
     return f'{self.name}:{self.get_line_index(pos)+1}:'
 
 
-  def diagnostic(self, *syntax_msgs:OptSyntaxMsg, prefix:str='') -> str:
+  def diagnostic(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> str:
     return ''.join(
       self.diagnostic_for_token(get_syntax_token(sm[0]), sm[1], prefix=prefix) for sm in syntax_msgs if sm is not None)
 
 
-  def fail(self, *syntax_msgs:OptSyntaxMsg, prefix:str='') -> NoReturn:
+  def fail(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> NoReturn:
     exit(self.diagnostic(*syntax_msgs, prefix=prefix))
 
 
