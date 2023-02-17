@@ -678,6 +678,9 @@ class SubParser(Rule):
     return self.transform(source, token, sub_res)
 
 
+Preprocessor = Callable[[Source, Iterator[Token]], Iterable[Token]]
+
+
 class Parser:
   '''
   drop: a set of token kinds to be dropped from the input token stream.
@@ -692,8 +695,10 @@ class Parser:
       super().__init__(''.join(str(msg) for msg in msgs))
 
 
-  def __init__(self, lexer:Lexer, *, drop:Iterable[TokenKind]=(), literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule]):
+  def __init__(self, lexer:Lexer, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
+   literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule]):
     self.lexer = lexer
+    self.preprocessor = preprocessor
     self.drop = frozenset(iter_str(drop))
     self.literals = frozenset(iter_str(literals))
     self.rules = rules
@@ -789,6 +794,7 @@ class Parser:
 
   def make_buffer(self, source:Source, dbg_tokens:bool) -> Buffer[Token]:
     stream = self.lexer.lex(source, drop=self.drop, eot=True)
+    if self.preprocessor: stream = iter(self.preprocessor(source, stream))
     if dbg_tokens:
       stream = tee_to_err(stream, label='Parser dbg_tokens', transform=lambda t: f'{t}: {source[t]!r}')
     return Buffer(stream)
