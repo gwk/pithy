@@ -682,6 +682,11 @@ class SubParser(Rule):
 
 class Parser:
   '''
+  drop: a set of token kinds to be dropped from the input token stream.
+
+  literals: a set of token kinds that are fixed strings and should not be included in output structures.
+  For example we might parse "(1 2 3)" with a rule like `Struct('paren_o', ZeroOrMore('expr'), 'paren_c')`.
+  There is no utility in including the parenthesis tokens in the returned structure, because their string content is known.
   '''
 
   class DefinitionError(Exception):
@@ -689,12 +694,12 @@ class Parser:
       super().__init__(''.join(str(msg) for msg in msgs))
 
 
-  def __init__(self, lexer:Lexer, rules:Dict[RuleName,Rule], literals:Iterable[TokenKind]=(), drop:Iterable[TokenKind]=()):
+  def __init__(self, lexer:Lexer, *, drop:Iterable[TokenKind]=(), literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule]):
     self.lexer = lexer
-    self.rules = rules
-    self.literals = frozenset(iter_str(literals))
     self.drop = frozenset(iter_str(drop))
-    self.module_name = caller_module_name(1)
+    self.literals = frozenset(iter_str(literals))
+    self.rules = rules
+    self.module_name = caller_module_name(1) # Get the calling module name to use for synthesized NamedTuple types.
     self._struct_types:Dict[str,Type] = {}
 
     for name, rule in rules.items():

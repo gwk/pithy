@@ -139,7 +139,9 @@ lexer = Lexer(flags='x', patterns=dict(
   pipe=r'\|',
 ))
 
-parser = Parser(lexer, dict(
+parser = Parser(lexer,
+  drop=('line', 'space'),
+  rules=dict(
   query=Precedence(
     ('filter', 'search'),
     Left(
@@ -152,5 +154,4 @@ parser = Parser(lexer, dict(
   pred=Choice('type_pred', transform=lambda source, token, name, pred: pred),
 
   type_pred=Atom('name', mk_type_pred),
-  ),
-  drop=('line', 'space'))
+  ))

@@ -6,105 +6,111 @@ from tolkien import Source
 from utest import *
 
 
-left = Parser(lexer, dict(
+left = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Left(Infix('plus')),
       Left(Infix('star')),
-    )),
-  drop=('spaces',))
+    )))
 
 utest(('+', ('+', 'a', ('*', 'b', 'c')), 'd'), left.parse, 'expr', Source('', 'a + b * c + d'))
 utest(('+', ('*', 'a', 'b'), ('*', ('*', 'c', 'd'), 'e')), left.parse, 'expr', Source('', 'a * b + c * d * e'))
 
 
-right = Parser(lexer, dict(
+right = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Infix('plus')),
       Right(Infix('star')),
-    )),
-  drop=('spaces',))
+    )))
 
 utest(('+', 'a', ('+', ('*', 'b', 'c'), 'd')), right.parse, 'expr', Source('', 'a + b * c + d'))
 utest(('+', ('*', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), right.parse, 'expr', Source('', 'a * b + c * d * e'))
 
 
-left_adj_dot = Parser(lexer, dict(
+left_adj_dot = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Left(Adjacency()),
       Left(Infix('dot')),
-    )),
-  drop=('spaces',))
+    )))
 
 utest(((('.', 'a', 'b'), 'c'), 'd'), left_adj_dot.parse, 'expr', Source('', 'a.b c d'))
 utest((('a', ('.', 'b', 'c')), 'd'), left_adj_dot.parse, 'expr', Source('', 'a b.c d'))
 
 
-left_dot_adj = Parser(lexer, dict(
+left_dot_adj = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Left(Infix('dot')),
       Left(Adjacency()),
-    )),
-  drop=('spaces',))
+    )))
 
 utest(('.', 'a', (('b', 'c'), 'd')), left_dot_adj.parse, 'expr', Source('', 'a . b c d'))
 utest(('.', (('a', 'b'), 'c'), 'd'), left_dot_adj.parse, 'expr', Source('', 'a b c . d'))
 
 
-right_adj_dot = Parser(lexer, dict(
+right_adj_dot = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Adjacency()),
       Right(Infix('dot')),
-    )),
-  drop=('spaces',))
+    )))
 
 utest((('.', 'a', 'b'), ('c', 'd')), right_adj_dot.parse, 'expr', Source('', 'a.b c d'))
 utest(('a', (('.', 'b', 'c'), 'd')), right_adj_dot.parse, 'expr', Source('', 'a b.c d'))
 
 
-right_dot_adj = Parser(lexer, dict(
+right_dot_adj = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Infix('dot')),
       Right(Adjacency()),
-    )),
-  drop=('spaces',))
+    )))
 
 utest(('.', 'a', ('b', ('c', 'd'))), right_dot_adj.parse, 'expr', Source('', 'a . b c d'))
 utest(('.', ('a', ('b', 'c')), 'd'), right_dot_adj.parse, 'expr', Source('', 'a b c . d'))
 
 
-right_adj_qmark = Parser(lexer, dict(
+right_adj_qmark = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Adjacency()),
       Right(Suffix('qmark')),
-    )),
-  drop=('spaces',))
+    )))
 
 utest(('a', (('?', 'b'), 'c')), right_adj_qmark.parse, 'expr', Source('', 'a b? c'))
 
 
-right_qmark_adj = Parser(lexer, dict(
+right_qmark_adj = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     expr=Precedence(
       ('name',),
       Right(Suffix('qmark')),
       Right(Adjacency()),
-    )),
-  drop=('spaces',))
+    )))
 
 utest(('?', ('a', 'b')), right_qmark_adj.parse, 'expr', Source('', 'a b ?'))
-
-

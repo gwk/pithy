@@ -6,7 +6,10 @@ from tolkien import Source
 from utest import *
 
 
-arithmetic = Parser(lexer, dict(
+arithmetic = Parser(lexer,
+  drop=('newline', 'spaces'),
+  literals=('brack_o', 'brack_c', 'paren_o', 'paren_c'),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
     int=Atom('int_d', transform=lambda s, t: int(s[t])),
     paren=Struct('paren_o', 'expr', 'paren_c'),
@@ -21,10 +24,7 @@ arithmetic = Parser(lexer, dict(
         SuffixRule(Struct('brack_o', 'expr', 'brack_c'),
           transform=lambda s, t, l, r: ('[]', l, r)),
       ),
-    )),
-  literals=('brack_o', 'brack_c', 'paren_o', 'paren_c'),
-  drop=('newline', 'spaces'))
-
+    )))
 
 utest(0, arithmetic.parse, 'expr', Source('', '0'))
 utest('x', arithmetic.parse, 'expr', Source('', 'x'))
