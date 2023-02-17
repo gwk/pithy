@@ -16,8 +16,13 @@ class ConversionError(ParseError):
 
 def _build_eon_parser() -> Parser:
   return Parser(lexer,
-    dict(
+    drop=('comment', 'spaces'),
 
+    literals=('indent', 'dedent', 'newline', 'newlines',
+      'brace_o', 'brace_c', 'brack_o', 'brack_c', 'paren_o', 'paren_c',
+      'dq', 'sq'),
+
+    rules=dict(
       body=ZeroOrMore('section_or_tree', transform=transform_body),
 
       section_or_tree=Choice('section_tree', 'tree'),
@@ -46,11 +51,7 @@ def _build_eon_parser() -> Parser:
       str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq')), 'sq', transform=lambda s, t, fields: EonStr(t, fields[1])),
 
       newlines=OneOrMore('newline'),
-    ),
-  literals=('indent', 'dedent', 'newline', 'newlines',
-    'brace_o', 'brace_c', 'brack_o', 'brack_c', 'paren_o', 'paren_c',
-    'dq', 'sq'),
-  drop=('comment', 'spaces'))
+    ))
 
 # Parser transformers.
 

@@ -7,7 +7,10 @@ from tolkien import Source
 from utest import *
 
 
-basic = Parser(lexer, dict(
+basic = Parser(lexer,
+  drop=('newline', 'spaces'),
+  literals=('kw_as', 'kw_import', 'kw_from'),
+  rules=dict(
     name=Atom('name', transform=token_extract_text),
 
     import_=Choice('import_modules', 'import_from', transform=choice_syn),
@@ -23,9 +26,7 @@ basic = Parser(lexer, dict(
     path=Precedence(
       ('name',),
       Left(Infix('dot', transform=binary_to_list)),
-    )),
-  literals=('kw_as', 'kw_import', 'kw_from'),
-  drop=('newline', 'spaces'))
+    )))
 
 Import_from = basic.types.Import_from
 

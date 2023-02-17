@@ -99,7 +99,9 @@ lexer = Lexer(flags='mx',
 
 def build_legs_grammar_parser() -> Parser:
   return Parser(lexer,
-    dict(
+    drop=('comment', 'spaces'),
+    literals=('newline', *sl_kinds, 'colon', 'brack_o', 'brack_c', 'paren_o', 'paren_c'),
+    rules=dict(
       grammar=OneOrMore('section', drop='newline', transform=transform_grammar),
 
       section=Choice('section_license', 'section_patterns', 'section_modes', 'section_transitions',
@@ -171,9 +173,7 @@ def build_legs_grammar_parser() -> Parser:
       # Transitions.
 
       transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline'),
-    ),
-  literals=('newline', *sl_kinds, 'colon', 'brack_o', 'brack_c', 'paren_o', 'paren_c'),
-  drop=('comment', 'spaces'))
+    ))
 
 
 # Parser transformers.

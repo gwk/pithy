@@ -7,10 +7,12 @@ from utest import *
 
 
 def mk_comma_parser(sep_at_end:bool|None) -> Parser:
-  return Parser(lexer, dict(
+  return Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
       name=Atom('name', transform=token_extract_text),
       seq=ZeroOrMore('name', sep='comma', sep_at_end=sep_at_end)),
-    drop=('spaces',))
+  )
 
 comma_opt = mk_comma_parser(sep_at_end=None)
 comma_req = mk_comma_parser(sep_at_end=True)

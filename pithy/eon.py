@@ -343,7 +343,9 @@ lexer = Lexer(flags='x',
 
 def _build_eon_parser() -> Parser:
   return Parser(lexer,
-    dict(
+    drop=('comment', 'spaces'),
+    literals=('newline', 'indent', 'dedent', 'colon'),
+    rules=dict(
       #sections=OneOrMore('section', drop='newline', transform=transform_sections),
 
       #section=Struct(Atom('section_label'), 'items'),
@@ -396,9 +398,7 @@ def _build_eon_parser() -> Parser:
       body=Choice('value', 'body_multiline'),
 
       body_multiline=Struct('newline', 'indent', 'items', 'dedent'),
-    ),
-  literals=('newline', 'indent', 'dedent', 'colon'),
-  drop=('comment', 'spaces'))
+    ))
 
 
 # Parser transformers.
