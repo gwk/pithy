@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Match, Optional, Set, Tuple
 
 from pithy.ansi import BG, cBOLD, cRST_BOLD, cRST_TXT, FILL, gray26, rgb6, RST, sanitize_for_console, sgr, TXT
 from pithy.diff import calc_diff
+from pithy.path import vscode_path
 
 
 '''
@@ -442,12 +443,6 @@ C_ADD_TOKEN = sgr(BG, ADD_BG, TXT, rgb6(2, 5, 3), cBOLD)
 C_RST_TOKEN = sgr(cRST_TXT, cRST_BOLD)
 
 C_END = FILL
-
-
-def vscode_path(path:str) -> str:
-  'VSCode will only recognize source locations if the path contains a slash; add "./" to plain file names.'
-  if '/' in path or path.startswith('<') and path.endswith('>'): return path # Do not alter pseudo-names like <stdin>.
-  return './' + path
 
 
 def clip_reset(text:str) -> str:
