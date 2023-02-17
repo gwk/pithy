@@ -293,7 +293,7 @@ class Quantity(_QuantityRule):
   '''
   A rule that matches some quantity of another rule.
   '''
-  type_desc = 'quantity'
+  type_desc = 'sequence'
 
   def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False, drop:Iterable[str]=(),
    transform:QuantityTransform=quantity_identity) -> None:
