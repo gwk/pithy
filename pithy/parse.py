@@ -33,7 +33,7 @@ from .graph import visit_nodes
 from .io import tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import caller_module_name
-from .string import indent_lines, iter_str, pluralize
+from .string import indent_lines, iter_str, pluralize, capitalize_first
 from .untyped import Immutable
 
 
@@ -191,6 +191,7 @@ class Rule:
 class Alias(Rule):
   '''
   A rule that is an alias for another named rule.
+  This can be used as a placeholder during parser development, to add a transform to a rule, or to change the field name.
   '''
 
   type_desc = 'alias'
@@ -780,7 +781,7 @@ class Parser:
 
 
   def _mk_struct_type(self, name:str, fields:Tuple[str,...]) -> Type:
-    type_name = name.capitalize() or '_'.join(n.capitalize() for n in fields)
+    type_name = capitalize_first(name) if name else '_'.join(n.capitalize() for n in fields)
     try: existing = self._struct_types[type_name]
     except KeyError: pass
     else:

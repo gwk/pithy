@@ -26,6 +26,15 @@ def render_template(template:str, **substitutions:Any) -> str:
   return t.substitute(substitutions)
 
 
+def capitalize_first(string:str) -> str:
+  '''
+  Return `string` with the first character capitalized.
+  This differs from `string.capitalize()` in that it does not lowercase the rest of the string.
+  '''
+  if not string or string[0].isupper(): return string
+  return string[0].upper() + string[1:]
+
+
 def clip_prefix(string:str, prefix:str, req=True) -> str:
   'Remove `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):
