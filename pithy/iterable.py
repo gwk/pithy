@@ -257,6 +257,18 @@ def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> Dict[_K, List
   return groups
 
 
+def fan_items(iterable:Iterable[tuple[_K,_V]]) -> dict[_K,list[_V]]:
+  '''
+  Fan out `iterable` of key/value pair itmems into a dictionary of lists of values.
+  '''
+  groups:dict[_K,list[_V]] = {}
+  for k, v in iterable:
+    try: group = groups[k]
+    except KeyError: groups[k] = group = []
+    group.append(v)
+  return groups
+
+
 def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], transform:Callable[[_T],_R]) -> Dict[_K, List[_R]]:
   '''
   Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element,
