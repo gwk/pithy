@@ -39,7 +39,8 @@ def executable_dir() -> str:
 def executable_path() -> str:
   'Return the path to this executable.'
   import __main__
-  path: str = __main__.__file__
+  path = __main__.__file__
+  if not path: raise Exception('could not determine executable path.')
   return _realpath(path)
 
 
