@@ -114,6 +114,9 @@ class Rule:
   'A parser rule. A complete parser is created from a graph of rules.'
 
   name:str # Optional name, used to link the rule graph.
+  field:str|None # Optional field name, used for generated structures.
+  #^ A value of '' (the default) causes the rule name or else a default field name to be used.
+  #^ An explicit value of None causes the field to be omitted.
   type_desc:str # Type description for diagnostic descriptions.
   sub_refs:Tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
   subs:Tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
@@ -196,8 +199,9 @@ class Alias(Rule):
 
   type_desc = 'alias'
 
-  def __init__(self, alias:str, transform:UnaryTransform=unary_identity):
+  def __init__(self, alias:str, field='', transform:UnaryTransform=unary_identity):
     self.name = ''
+    self.field = field
     self.alias = alias
     self.sub_refs = (alias,)
     self.heads = ()
@@ -219,8 +223,9 @@ class Atom(Rule):
   '''
   type_desc = 'atom'
 
-  def __init__(self, kind:TokenKind, transform:AtomTransform=atom_identity):
+  def __init__(self, kind:TokenKind, field='', transform:AtomTransform=atom_identity):
     self.name = ''
+    self.field = field
     self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
     self.kind = validate_name(kind)
     self.transform = transform
@@ -268,8 +273,9 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, drop:Iterable[str]=(), dflt=None, transform:UnaryTransform=unary_identity):
+  def __init__(self, body:RuleRef, field='', drop:Iterable[str]=(), dflt=None, transform:UnaryTransform=unary_identity):
     self.name = ''
+    self.field = field
     self.sub_refs = (body,)
     self.heads = ()
     self.body_heads = frozenset() # Replaced by compile.
@@ -296,12 +302,13 @@ class Quantity(_QuantityRule):
   '''
   type_desc = 'sequence'
 
-  def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False, drop:Iterable[str]=(),
-   transform:QuantityTransform=quantity_identity) -> None:
+  def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
+   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_identity) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
     if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is `None` but `sep_at_end` is `{sep_at_end}`')
     self.name = ''
+    self.field = field
     self.sub_refs = (body,)
     self.heads = ()
     self.sep = sep if sep is None else validate_name(sep)
@@ -356,16 +363,22 @@ class Quantity(_QuantityRule):
 
 
 class ZeroOrMore(Quantity):
-  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False, drop:Iterable[str]=(),
-   transform:QuantityTransform=quantity_identity) -> None:
-    super().__init__(body=body, min=0, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, drop=drop, transform=transform)
+
+  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
+   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_identity) -> None:
+
+    super().__init__(body=body, min=0, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps,
+      field=field, drop=drop, transform=transform)
 
 
 
 class OneOrMore(Quantity):
-  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False, drop:Iterable[str]=(),
-   transform:QuantityTransform=quantity_identity) -> None:
-    super().__init__(body=body, min=1, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps, drop=drop, transform=transform)
+
+  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
+   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_identity) -> None:
+
+    super().__init__(body=body, min=1, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps,
+      field=field, drop=drop, transform=transform)
 
 
 
@@ -375,9 +388,10 @@ class Struct(Rule):
   '''
   type_desc = 'structure'
 
-  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), transform:StructTransform|None=None):
+  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), field='', transform:StructTransform|None=None):
     if not fields: raise ValueError('Struct requires at least one field')
     self.name = ''
+    self.field = field
     self.sub_refs = fields
     self.heads = ()
     self.drop = frozenset(iter_str(drop))
@@ -417,8 +431,9 @@ class Choice(Rule):
   '''
   type_desc = 'choice'
 
-  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), transform:ChoiceTransform=choice_identity):
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field='', transform:ChoiceTransform=choice_identity):
     self.name = ''
+    self.field = field
     self.sub_refs = choices
     self.heads = ()
     self.drop = frozenset(iter_str(drop))
@@ -581,8 +596,9 @@ class Precedence(Rule):
   'An operator precedence rule, consisting of groups of operators.'
   type_desc = 'precedence rule'
 
-  def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group, drop:Iterable[str]=(),
-   transform:UnaryTransform=unary_identity) -> None:
+  def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group,
+   field='', drop:Iterable[str]=(), transform:UnaryTransform=unary_identity) -> None:
+
     # Keep track of the distinction between subs that came from leaves vs groups.
     # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
     # and then get the linked leaves back via the leaves property implemented below.
@@ -590,6 +606,7 @@ class Precedence(Rule):
     self.leaf_refs = tuple(leaves)
     self.group_refs = tuple(ref for g in groups for ref in g.sub_refs)
     self.name = ''
+    self.field = field
     self.sub_refs = self.leaf_refs + self.group_refs
     self.heads = ()
     self.drop = frozenset(iter_str(drop))
@@ -666,8 +683,9 @@ class Precedence(Rule):
 
 class SubParser(Rule):
 
-  def __init__(self, parser:'Parser', rule_name:str, transform:UnaryTransform=unary_identity):
+  def __init__(self, parser:'Parser', rule_name:str, field='', transform:UnaryTransform=unary_identity):
     self.name = ''
+    self.field = field
     self.sub_refs = ()
     self.heads = parser.rules[rule_name].heads
     self.parser = parser
@@ -708,6 +726,7 @@ class Parser:
 
     for name, rule in rules.items():
       validate_name(name)
+      assert rule.name == '' # Names are never set during construction, only during parser initialization.
       rule.name = name
 
     # Link rule graph. Note: this creates reference cycles which are dissolved by __del__.
@@ -719,6 +738,7 @@ class Parser:
       except KeyError: pass
       if rule in self.lexer.kinds: # Add the implied Atom rule.
         atom = Atom(rule)
+        assert atom.name == ''
         atom.name = rule
         self.rules[rule] = atom
         return atom
@@ -760,22 +780,30 @@ class Parser:
 
   def _mk_struct_transform(self, name:str, subs:Tuple[Rule,...]) -> StructTransform:
 
-    includes = [sub.name not in self.literals for sub in subs]
-    field_names = [sub.name for sub in subs] # Allow empty names as they are; namedtuple will rename them.
-    included_field_names = tuple(n for n, include in zip(field_names, includes) if include)
+    includes = [((sub.field is not None) and (bool(sub.field) or (sub.name not in self.literals))) for sub in subs]
+    #^ Bool for each sub position.
+    #^ If field is None, that is an explicit request to exclude the field.
+    #^ If field is provided, always include the field.
+    #^ Otherwise, include the field only if it is not a literal.
 
     if not any(includes):
-      raise Parser.DefinitionError(f'struct rule {name} contains all literal fields: {field_names}; default transformer is degenerate.')
+      # TODO: remove this restriction and create a more useful default transform.
+      all_field_names = [sub.name for sub in subs]
+      raise Parser.DefinitionError(f'struct rule {name} contains all literal fields: {all_field_names}; default transformer is degenerate.')
 
     if includes.count(True) == 1: # No need for a struct; just extract the interesting child element.
       i = includes.index(True)
       def single_transform(source:Source, token:Token, fields:List[Any]) -> Any: return fields[i]
       return single_transform
 
-    struct_type = self._mk_struct_type(name, fields=included_field_names)
+    field_names = tuple((sub.field or sub.name) for sub, should_inlude in zip(subs, includes) if should_inlude)
+    #^ Prefer the provided field name over the rule name.
+    #^ Allow empty names as they are; namedtuple will rename them for us.
+
+    struct_type = self._mk_struct_type(name, fields=field_names)
 
     def transform(source:Source, token:Token, fields:List[Any]) -> Any:
-      return struct_type(*(f for f, include in zip(fields, includes) if include))
+      return struct_type(*(f for f, should_include in zip(fields, includes) if should_include))
 
     return transform
 
