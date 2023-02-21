@@ -86,11 +86,13 @@ py_to_sqlite_static_types:dict[Any,str] = {
 }
 
 
-def sql_comment_lines(comment:str) -> list[str]:
-  return [f'-- {l.rstrip()}' for l in comment.strip().splitlines()]
+def sql_comment_lines(comment:str, indent='') -> list[str]:
+  if not indent.isspace(): raise ValueError(f'Indent must be whitespace: {indent!r}')
+  return [f'{indent}-- {l.rstrip()}' for l in comment.strip().splitlines()]
 
 
 def sql_comment_inline(comment:str) -> str:
+  if '\n' in comment: raise ValueError(f'Cannot inline comment containing newline: {comment!r}')
   s = re.sub(r'\s+', ' ', comment)
   return ' -- ' + s
 

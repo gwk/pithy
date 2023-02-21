@@ -98,11 +98,9 @@ class Table(Structure):
   def sql(self, schema='', if_not_exists=False) -> str:
     qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(self.name)}'
     lines:list[str] = []
-    if self.desc:
-      lines.append(f'-- {qual_name}')
-      lines.extend(sql_comment_lines(self.desc))
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     lines.append(f'CREATE TABLE {if_not_exists_str}{qual_name} (')
+    if self.desc: lines.extend(sql_comment_lines(self.desc, indent='  '))
 
     # Colmuns are separated by commas, except for the last one.
     # This is complicated by comments following commas,
