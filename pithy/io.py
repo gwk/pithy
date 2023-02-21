@@ -8,6 +8,7 @@ from sys import stderr, stdin, stdout
 from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union
 
 from .desc import errD, outD, writeD
+from .reprs import repr_ml
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
@@ -88,6 +89,16 @@ def writeP(file:TextIO, *labels_and_obj: Any, indent=2, **opts:Any) -> None:
   pprint(obj, stream=file, indent=indent, **opts)
 
 
+def writeM(file:TextIO, *labels_and_obj:Any, at_line_start:bool|None=None, color:bool|None=None, **opts:Any) -> None:
+  'Write labels and multiline repr of object to file.'
+  labels = labels_and_obj[:-1]
+  obj = labels_and_obj[-1]
+  if labels: print(*labels, end=': ', file=file)
+  if at_line_start is None: at_line_start = bool(labels)
+  if color is None: color = file.isatty()
+  print(repr_ml(obj, at_line_start=at_line_start, color=color, **opts), file=file)
+
+
 # std out.
 
 def outZ(*items: Any, sep='', end='', flush=False) -> None:
@@ -144,6 +155,10 @@ def outP(*labels_and_obj:Any, **opts: Any) -> None:
   'Pretty print to std out.'
   writeP(stdout, *labels_and_obj, **opts)
 
+def outM(*labels_and_obj:Any, **opts: Any) -> None:
+  'Multiline repr to std out.'
+  writeM(stdout, *labels_and_obj, **opts)
+
 
 # std err.
 
@@ -192,6 +207,10 @@ def errLSSL(*items: Any, flush=False) -> None:
 def errP(*labels_and_obj:Any, **opts) -> None:
   'Pretty print to std err.'
   writeP(stderr, *labels_and_obj, **opts)
+
+def errM(*labels_and_obj:Any, **opts) -> None:
+  'Multiline repr to std err.'
+  writeM(stderr, *labels_and_obj, **opts)
 
 
 def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suffix='', frequency:Union[float,int]=0.1, limit=0) -> Iterator[_T]:
