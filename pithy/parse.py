@@ -331,7 +331,7 @@ class Quantity(_QuantityRule):
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     els:List[Any] = []
-    found_sep = False
+    sep_token:Token|None = None
     start = token
     while True:
       while token.kind in self.drop:
@@ -341,8 +341,8 @@ class Quantity(_QuantityRule):
       els.append(el)
       token = next(buffer)
       if self.sep is not None: # Parse separator.
-        found_sep = (token.kind == self.sep)
-        if found_sep:
+        sep_token = token if (token.kind == self.sep) else None
+        if sep_token:
           token = next(buffer)
         elif self.sep_at_end:
           raise ParseError(source, token, f'{self} expects {self.sep} separator; received {token.kind}.')
@@ -356,10 +356,9 @@ class Quantity(_QuantityRule):
       body_plural = pluralize(self.min, f'{self.body} element')
       raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
 
-    if self.sep_at_end is False and found_sep:
-      raise ParseError(source, token, f'{self} received disallowed trailing {self.sep} separator.')
-
     buffer.push(token)
+    if self.sep_at_end is False and sep_token: buffer.push(sep_token)
+
     return self.transform(source, start, els)
 
 
