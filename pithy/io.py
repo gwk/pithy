@@ -78,8 +78,10 @@ def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_ite
   print(fmt.format(*items, **keyed_items, file=file, flush=flush))
 
 
+# Pretty printing.
+
 def writeP(file:TextIO, *labels_and_obj: Any, indent=2, **opts:Any) -> None:
-  'Pretty labels and object to file.'
+  'Write labels and pretty-print object to file.'
   labels = labels_and_obj[:-1]
   obj = labels_and_obj[-1]
   if labels: print(*labels, end=': ', file=file)
@@ -138,7 +140,7 @@ def outSR(*items: Any, sep=' ', flush=False) -> None:
   '''Write `items` to std out; sep=' ', end=ERASE_LINE_F+'\\r'.'''
   print(*items, sep=sep, end='\x1b[0K\r', flush=flush)
 
-def outP(*labels_and_obj:Any, flush=False, **opts: Any) -> None:
+def outP(*labels_and_obj:Any, **opts: Any) -> None:
   'Pretty print to std out.'
   writeP(stdout, *labels_and_obj, **opts)
 
