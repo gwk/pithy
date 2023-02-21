@@ -45,13 +45,23 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, comma:str) -> I
   Returns (is_inline, parts).
   '''
 
-  if is_dataclass(obj):
+  if is_dataclass_or_namedtuple(obj):
     child_indent = indent + '  '
     opener = f'{type(obj).__qualname__}('
     closer = ')'
-    all_items = [(f.name, getattr(obj, f.name), f.default) for f in fields(obj)]
-    vis_items = [(k, _repr_ml(v, False, child_indent, width-2, comma)) for k, v, d in all_items if v != d]
+
+    def _el_repr(el:Any) -> Iterable[str]: return _repr_ml(el, False, child_indent, width-2, comma)
+
+    if is_dataclass(obj):
+      vis_items = [(f.name, _el_repr(getattr(obj, f.name))) for f in fields(obj) if getattr(obj, f.name) != f.default]
+    else:
+      # At present there is no clear way to get the default values of a namedtuple.
+      # * Get_annotations does not return default values.
+      # * Attempting to getattr on the class returns a `_tuplegetter` object.
+      vis_items = [(name, _el_repr(val)) for name, val in zip(obj._fields, obj)]
+
     if not vis_items: return opener + closer
+
     if all(isinstance(v, str) for _, v in vis_items):
       str_items = cast(list[tuple[str,str]], vis_items)
       l = sum(len(k)+1+len(v) for k, v in str_items) + (len(str_items)-1)*len(comma) + len(closer)
@@ -108,6 +118,10 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, comma:str) -> I
 
   # Default for all other types.
   return repr(obj)
+
+
+def is_dataclass_or_namedtuple(obj:Any) -> bool:
+  return is_dataclass(obj) or (isinstance(obj, tuple) and hasattr(obj, '_fields'))
 
 
 def brackets_for_iterable_type(t:type) -> tuple[str,str]:
