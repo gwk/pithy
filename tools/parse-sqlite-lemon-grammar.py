@@ -41,7 +41,7 @@ def main() -> None:
   try: grammar = parser.parse('grammar', source)
   except ParseError as e: e.fail()
 
-  rules = fan_items(c for c in grammar if isinstance(c, RuleChoice))
+  rules = fan_items(c for c in grammar if isinstance(c, parser.types.Rule))
 
   for name, choices in rules.items():
     print(f'\n{name}')
@@ -172,13 +172,9 @@ def preprocess(source:Source, stream:Iterator[Token]) -> Iterator[Token]:
 
 
 def transform_d_name(source:Source, token:Token, label:str, obj:Any) -> str:
+  'Omit the directive contents but return the name for debugging purposes.'
   assert token == obj
   return source[token]
-
-
-class RuleChoice(NamedTuple):
-  name:str
-  seq:list[list[str]] # Each element in seq is a list of symbols representing choices.
 
 
 parser = Parser(
@@ -217,18 +213,16 @@ parser = Parser(
 
     rule = Struct(
       'sym',
-      Opt('param'),
+      Opt('param', field=None),
       'rule_op',
-      ZeroOrMore('rule_el'),
+      ZeroOrMore('rule_el', field='seq'),
       'dot',
-      Opt('bracketed_content'),
-      Opt('braced_content'),
-      transform=lambda s, t, fields: RuleChoice(name=fields[0], seq=fields[3])),
+      Opt('bracketed_content', field=None),
+      Opt('braced_content', field=None)),
 
     rule_el =Struct(
       OneOrMore('sym', sep='pipe'),
-      Opt('param'),
-      transform=lambda s, t, fields: fields[0]),
+      Opt('param', field=None)),
 
     param = Struct('paren_o', 'sym', 'paren_c'),
 
