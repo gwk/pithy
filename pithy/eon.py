@@ -380,7 +380,7 @@ def _build_eon_parser() -> Parser:
 
       dict_body_multiline=Struct('indent', OneOrMore('kv_pair', drop='newline'), 'dedent'),
 
-      kv_pair=Struct('key', 'colon', 'value'),
+      kv_pair=Struct('key', 'colon', 'value', transform=lambda s, t, p: (p[0], p[2])),
 
       # Items are sequences of either all list items, or all dict key-value pairs.
       # The returned value is inferred to be either a list or dict.
@@ -429,8 +429,8 @@ def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> E
 
 def transform_item(source:Source, token:Token, label:str, item:Any) -> Tuple[Token,Any]:
   if label == 'keylike_item':
-    assert isinstance(item, tuple) and len(item) == 2
-    return (token, item)
+    assert len(item) == 3
+    return (token, (item.key, item.newline_or_colon_body))
   else: return (token, (item, None))
 
 
