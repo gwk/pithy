@@ -103,6 +103,7 @@ StructTransform = Callable[[Source,Token,List[Any]],Any]
 def struct_syn(source:Source, token:Token, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
 
 ChoiceTransform = Callable[[Source,Token,RuleName,Any],Any]
+def choice_label(source:Source, token:Token, label:RuleName, obj:Any) -> str: return label
 def choice_syn(source:Source, token:Token, label:RuleName, obj:Any) -> Tuple[str,Any]: return (label, obj)
 def choice_identity(source:Source, token:Token, label:RuleName, obj:Any) -> Any: return obj
 
