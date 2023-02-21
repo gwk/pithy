@@ -127,6 +127,7 @@ sqlite_keywords = frozenset({
   'SAVEPOINT',
   'SELECT',
   'SET',
+  'STORED', # NOTE: not in the official list.
   'TABLE',
   'TEMP',
   'TEMPORARY',
