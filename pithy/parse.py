@@ -134,6 +134,7 @@ class Rule:
   def __repr__(self) -> str:
     parts = []
     if self.name: parts.append(f'name={self.name!r}')
+    if self.field: parts.append(f'field={self.field!r}')
     parts.extend((repr(s) for s in self.sub_refs))
     s = ', '.join(parts)
     return f'{type(self).__name__}({s})'
