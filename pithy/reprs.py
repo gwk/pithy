@@ -45,6 +45,25 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, comma:str) -> I
   Returns (is_inline, parts).
   '''
 
+  if is_dataclass(obj):
+    child_indent = indent + '  '
+    opener = f'{type(obj).__qualname__}('
+    closer = ')'
+    all_items = [(f.name, getattr(obj, f.name), f.default) for f in fields(obj)]
+    vis_items = [(k, _repr_ml(v, False, child_indent, width-2, comma)) for k, v, d in all_items if v != d]
+    if not vis_items: return opener + closer
+    if all(isinstance(v, str) for _, v in vis_items):
+      str_items = cast(list[tuple[str,str]], vis_items)
+      l = sum(len(k)+1+len(v) for k, v in str_items) + (len(str_items)-1)*len(comma) + len(closer)
+      if l + 1 <= width: # Half-inlineable.
+        contents = comma.join(f'{k}={v}' for k, v in str_items)
+        if len(opener) + l <= width: # Inlineable.
+          return f'{opener}{contents}{closer}'
+        # Put the opener on its own line and half-indent the remainder.
+        return (opener, '\n', f'{indent} {contents}{closer}')
+    # Not inlineable.
+    return _repr_ml_gen_kv_lines(vis_items, opener, closer, '=', at_line_start, child_indent)
+
   if isinstance(obj, (tuple, list, set, frozenset)):
     child_indent = indent + '  '
     opener, closer = brackets_for_iterable_type(type(obj))
@@ -84,25 +103,6 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, comma:str) -> I
         return (opener, '\n', f'{indent} {contents}{closer}')
     # Not inlineable.
     return _repr_ml_gen_kv_lines(items, opener, closer, ':', at_line_start, child_indent)
-
-  if is_dataclass(obj):
-    child_indent = indent + '  '
-    opener = f'{type(obj).__qualname__}('
-    closer = ')'
-    all_items = [(f.name, getattr(obj, f.name), f.default) for f in fields(obj)]
-    vis_items = [(k, _repr_ml(v, False, child_indent, width-2, comma)) for k, v, d in all_items if v != d]
-    if not vis_items: return opener + closer
-    if all(isinstance(v, str) for _, v in vis_items):
-      str_items = cast(list[tuple[str,str]], vis_items)
-      l = sum(len(k)+1+len(v) for k, v in str_items) + (len(str_items)-1)*len(comma) + len(closer)
-      if l + 1 <= width: # Half-inlineable.
-        contents = comma.join(f'{k}={v}' for k, v in str_items)
-        if len(opener) + l <= width: # Inlineable.
-          return f'{opener}{contents}{closer}'
-        # Put the opener on its own line and half-indent the remainder.
-        return (opener, '\n', f'{indent} {contents}{closer}')
-    # Not inlineable.
-    return _repr_ml_gen_kv_lines(vis_items, opener, closer, '=', at_line_start, child_indent)
 
   if isinstance(obj, type): return obj.__qualname__
 
