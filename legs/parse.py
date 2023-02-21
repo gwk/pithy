@@ -115,7 +115,7 @@ def build_legs_grammar_parser() -> Parser:
 
       section_modes=Struct('sl_modes', 'newline', ZeroOrMore('mode', drop='newline')),
 
-      section_transitions=Struct('sl_transitions', 'newline', ZeroOrMore('transition', drop='newline')),
+      section_transitions=Struct('sl_transitions', 'newline', ZeroOrMore('transition', drop='newline', field='transitions')),
 
       # License.
 
@@ -168,7 +168,7 @@ def build_legs_grammar_parser() -> Parser:
 
       # Modes.
 
-      mode=Struct('sym', 'colon', ZeroOrMore('sym'), 'newline'),
+      mode=Struct('sym', 'colon', ZeroOrMore('sym', field='mode_pattern_syms'), 'newline'),
 
       # Transitions.
 
@@ -183,31 +183,35 @@ def transform_grammar(source:Source, token:Token, sections:list) -> Grammar:
   patterns:dict[str,LegsPattern] = {}
   modes:dict[str,frozenset[str]] = {}
   transitions = defaultdict[str,KindModeTransitions](dict)
+
   for label, section in sections:
-    sk = clip_prefix(label.lower(), 'section_')
-    if sk == 'license':
-      licenses.extend(section)
-    elif sk == 'patterns':
-      for sym, pattern in section:
-        name = source[sym]
-        if name in patterns: source.fail((sym, f'error: pattern already defined: {name}'))
-        patterns[name] = pattern
-    elif sk == 'modes':
-      for sym, mode_pattern_syms in section:
-        name = source[sym]
-        if name in modes:  source.fail((sym, f'error: mode already defined: {name}'))
-        for sym in mode_pattern_syms:
-          pattern_name = source[sym]
-          if pattern_name not in patterns:
-            source.fail((sym, f'error: undefined pattern name: {name}'))
-        modes[name] = frozenset(source[sym] for sym in mode_pattern_syms)
-    elif sk == 'transitions':
-      for (from_mode_tok, open_kind_tok, push_mode_tok, close_kind_tok) in section:
-        from_mode = source[from_mode_tok]
-        open_kind = source[open_kind_tok]
-        push_mode = source[push_mode_tok]
-        close_kind = source[close_kind_tok]
-        transitions[from_mode][open_kind] = (push_mode, close_kind)
+    match label:
+      case 'section_license':
+        licenses.extend(section)
+      case 'section_patterns':
+        for sym, pattern in section:
+          name = source[sym]
+          if name in patterns: source.fail((sym, f'error: pattern already defined: {name}'))
+          patterns[name] = pattern
+      case 'section_modes':
+        for mode in section:
+          name = source[mode.sym]
+          if name in modes:  source.fail((mode.sym, f'error: mode already defined: {name}'))
+          mode_pattern_syms = mode.mode_pattern_syms
+          for ps in mode_pattern_syms:
+            pattern_name = source[ps]
+            if pattern_name not in patterns:
+              source.fail((ps, f'error: undefined pattern name: {pattern_name}'))
+          modes[name] = frozenset(source[ps] for ps in mode_pattern_syms)
+      case 'section_transitions':
+        for (head_tok, from_mode_tok, open_kind_tok, push_mode_tok, close_kind_tok) in section:
+          from_mode = source[from_mode_tok]
+          open_kind = source[open_kind_tok]
+          push_mode = source[push_mode_tok]
+          close_kind = source[close_kind_tok]
+          transitions[from_mode][open_kind] = (push_mode, close_kind)
+      case _: raise NotImplementedError
+
   license = ''.join(licenses).strip()
   for pattern in patterns.values():
     assert isinstance(pattern, LegsPattern), pattern

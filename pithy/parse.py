@@ -23,6 +23,7 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 from collections import namedtuple
+from keyword import iskeyword, issoftkeyword
 from typing import (Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
   Union)
 
@@ -796,41 +797,42 @@ class Parser:
     #^ If field is provided, always include the field.
     #^ Otherwise, include the field only if it is not a literal.
 
-    if not any(includes):
-      def literal_struct_transform(source:Source, token:Token, fields:List[Any]) -> Any: return fields
-      return literal_struct_transform
-
     if includes.count(True) == 1: # No need for a struct; just extract the interesting child element.
       i = includes.index(True)
       def single_transform(source:Source, token:Token, fields:List[Any]) -> Any: return fields[i]
       return single_transform
 
-    field_names = tuple((sub.field_name) for sub, should_inlude in zip(subs, includes) if should_inlude)
-    #^ Prefer the provided field name over the rule name.
-    #^ Allow empty names as they are; namedtuple will rename them for us.
+    raw_field_names = [sub.field_name for sub, should_inlude in zip(subs, includes) if should_inlude]
+    field_names = ('token',) + tuple(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names))
 
-    struct_type = self._mk_struct_type(name, fields=field_names)
+    struct_type = self._mk_struct_type(name, field_names=field_names)
 
     def transform(source:Source, token:Token, fields:List[Any]) -> Any:
-      return struct_type(*(f for f, should_include in zip(fields, includes) if should_include))
+      return struct_type(token, *(f for f, should_include in zip(fields, includes) if should_include))
 
     return transform
 
 
-  def _mk_struct_type(self, name:str, fields:Tuple[str,...]) -> Type:
+  def _mk_clean_field_name(self, name:str, idx:int) -> str:
+    if not name: return f'f{idx}'
+    if iskeyword(name) or issoftkeyword(name) or name == 'token': return name + '_'
+    if name[0].isdigit() or name[0] == '_': return 'f' + name
+    return name
+
+
+  def _mk_struct_type(self, name:str, field_names:tuple[str,...]) -> Type:
     if name:
       type_name = typecase_from_snakecase(name)
     else:
-      type_name = '_'.join((typecase_from_snakecase(n) or str(i)) for i, n in enumerate(fields))
-      if not (type_name and type_name[0].isalpha()): type_name = '_' + type_name
+      type_name = '_'.join(typecase_from_snakecase(n) for n in field_names)
 
     try: existing = self._struct_types[type_name]
     except KeyError: pass
     else:
-      if existing._fields != fields:
-        raise Parser.DefinitionError(f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {fields}')
+      if existing._fields != field_names:
+        raise Parser.DefinitionError(f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {field_names}')
       return existing
-    struct_type = namedtuple(type_name, fields, rename=True, module=self.module_name or '?') # type: ignore[misc]
+    struct_type = namedtuple(type_name, field_names, rename=True, module=self.module_name or '?') # type: ignore[misc]
     self._struct_types[type_name] = struct_type
     return struct_type
 
