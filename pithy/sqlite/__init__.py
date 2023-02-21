@@ -124,7 +124,7 @@ class Cursor(sqlite3.Cursor):
     Execute a query, joining multiple pieces of `sql` into a single query string, with values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to Json.
     '''
-    query = ' '.join(sql)
+    query = ' '.join(sql).strip()
     for k, v in args.items(): # Convert non-native values to Json.
       if not isinstance(v, py_to_sqlite_types_tuple): # Note: this is a conditional inlining of `default_to_json`.
         args[k] = render_json(v, indent=None)
