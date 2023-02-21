@@ -35,6 +35,11 @@ def capitalize_first(string:str) -> str:
   return string[0].upper() + string[1:]
 
 
+def typecase_from_snakecase(string:str) -> str:
+  'Convert a snake_case string to a TypeCase string.'
+  return ''.join(s.capitalize() for s in string.split('_'))
+
+
 def clip_prefix(string:str, prefix:str, req=True) -> str:
   'Remove `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):

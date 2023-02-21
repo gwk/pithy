@@ -33,7 +33,7 @@ from .graph import visit_nodes
 from .io import tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import caller_module_name
-from .string import indent_lines, iter_str, pluralize, capitalize_first
+from .string import indent_lines, iter_str, pluralize, typecase_from_snakecase, capitalize_first
 from .untyped import Immutable
 
 
@@ -192,6 +192,9 @@ class Rule:
       e.add_in_note(start, self)
       raise
 
+  @property
+  def field_name(self) -> str: return self.field or self.name
+
 
 class Alias(Rule):
   '''
@@ -295,6 +298,12 @@ class Opt(_QuantityRule):
     else:
       buffer.push(token)
     return self.transform(source, token, res)
+
+
+  @property
+  def field_name(self) -> str:
+    'Override to default to passing through the subrule field name.'
+    return super().field_name or self.body.field_name
 
 
 
@@ -463,7 +472,7 @@ class Choice(Rule):
     except KeyError: pass
     else:
       syn = self.parse_sub(sub, source, start, token, buffer)
-      return self.transform(source, start, sub.name, syn)
+      return self.transform(source, start, sub.field_name, syn)
     exp = self.name or f'any of {self.subs_desc}'
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
@@ -788,16 +797,15 @@ class Parser:
     #^ Otherwise, include the field only if it is not a literal.
 
     if not any(includes):
-      # TODO: remove this restriction and create a more useful default transform.
-      all_field_names = [sub.name for sub in subs]
-      raise Parser.DefinitionError(f'struct rule {name} contains all literal fields: {all_field_names}; default transformer is degenerate.')
+      def literal_struct_transform(source:Source, token:Token, fields:List[Any]) -> Any: return fields
+      return literal_struct_transform
 
     if includes.count(True) == 1: # No need for a struct; just extract the interesting child element.
       i = includes.index(True)
       def single_transform(source:Source, token:Token, fields:List[Any]) -> Any: return fields[i]
       return single_transform
 
-    field_names = tuple((sub.field or sub.name) for sub, should_inlude in zip(subs, includes) if should_inlude)
+    field_names = tuple((sub.field_name) for sub, should_inlude in zip(subs, includes) if should_inlude)
     #^ Prefer the provided field name over the rule name.
     #^ Allow empty names as they are; namedtuple will rename them for us.
 
@@ -810,7 +818,12 @@ class Parser:
 
 
   def _mk_struct_type(self, name:str, fields:Tuple[str,...]) -> Type:
-    type_name = capitalize_first(name) if name else '_'.join(n.capitalize() for n in fields)
+    if name:
+      type_name = typecase_from_snakecase(name)
+    else:
+      type_name = '_'.join((typecase_from_snakecase(n) or str(i)) for i, n in enumerate(fields))
+      if not (type_name and type_name[0].isalpha()): type_name = '_' + type_name
+
     try: existing = self._struct_types[type_name]
     except KeyError: pass
     else:
