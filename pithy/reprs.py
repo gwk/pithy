@@ -94,7 +94,7 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, inl_comma:str, 
 
   if is_mapping or is_dataclass_or_namedtuple(obj):
     child_indent = indent + '  '
-    typename, opener, closer, sep = syntax_for_kv_type(type(obj), colors) # type: ignore
+    typename, opener, closer, sep = syntax_for_kv_type(type(obj), colors) # type: ignore[arg-type]
 
     def _el_repr(el:Any) -> Iterable[str]: return _repr_ml(el, False, child_indent, width-2, inl_comma, colors)
 
