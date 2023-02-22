@@ -351,6 +351,9 @@ def transtruct_None(v:Any) -> None:
   raise ValueError(f'Expected None, received {v!r}.')
 
 
+def transtruct_object(v:_T) -> _T:
+  return v
+
 def transtruct_type(v:Any) -> type:
   if isinstance(v, type): return v
   if isinstance(v, str):
@@ -363,6 +366,7 @@ primitive_transtructors = {
   bool: transtruct_bool,
   int: int,
   float: float,
+  object: transtruct_object,
   str: str,
   type(None): transtruct_None,
   type: transtruct_type,
