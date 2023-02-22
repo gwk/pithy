@@ -11,6 +11,11 @@ from utest import *
 
 ttor = Transtructor()
 
+# Primitive types.
+
+utest(1, ttor.transtruct, object, 1) # object passes any value through.
+
+
 @dataclass
 class DC1:
   a:int
