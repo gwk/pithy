@@ -2,11 +2,14 @@
 
 
 from collections import Counter, defaultdict
+from dataclasses import is_dataclass, asdict as dataclass_asdict
 from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
 from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, get_type_hints, NamedTuple, Optional, Type, TypeVar,
   Union)
+
+from .types import is_type_namedtuple, is_namedtuple
 
 
 _T = TypeVar('_T')
@@ -93,7 +96,10 @@ class Transtructor:
     if annotations := get_type_hints(t): # Note: annotated NamedTuple will return hints.
       return self.transtructor_for_annotated_class(t, annotations)
 
-    return t
+    if is_type_namedtuple(t):
+      return self.transtructor_for_unannotated_namedtuple(t)
+
+    return self.transtructor_for_unannotated_type(t)
 
 
   def transtructor_for_selector(self, static_type:Type[_T]) -> Callable[[Any],_T]:
@@ -116,6 +122,37 @@ class Transtructor:
     return transtruct_with_selector
 
 
+  def transtructor_for_unannotated_type(self, class_:Type[_T]) -> Callable[[Any],_T]:
+
+      def transtruct_unannotated_type(args:Any) -> _T:
+        if type(args) is class_: return args # Already the correct type. Note that this causes referential aliasing.
+        try: return class_(args) # type: ignore[call-arg]
+        except Exception as e: raise TranstructorError(e, class_, args)
+
+      return transtruct_unannotated_type
+
+
+  def transtructor_for_unannotated_namedtuple(self, class_:Type[_T]) -> Callable[[Any],_T]:
+
+      def transtruct_unannotated_namedtuple(args:Any) -> _T:
+        if type(args) is class_: return args
+
+        try:
+          if is_dataclass(args): return class_(**dataclass_asdict(args))
+          if is_namedtuple(args): return class_(**args._asdict())
+          if isinstance(args, dict): return class_(**args)
+
+          try: it = iter(args)
+          except TypeError: pass
+          else: return class_(*it) # type: ignore[call-arg]
+
+          return class_(args) # type: ignore[call-arg]
+
+        except Exception as e: raise TranstructorError(e, class_, args)
+
+      return transtruct_unannotated_namedtuple
+
+
   def transtructor_for_annotated_class(self, class_:Type[_T], annotations:dict[str,Type]) -> Callable[[Any], _T]:
 
     # TODO: this should use __init__ annotations if they exist.
@@ -125,10 +162,15 @@ class Transtructor:
     transtructors = { k: self.transtructor_for(v) for k, v in constructor_annotations.items() } # type: ignore[arg-type]
 
     prefigure_fn = self.prefigure_fn_for(class_) # type: ignore[arg-type]
-    #print("prefigure_fn:", class_, prefigure_fn)
+
     def transtruct_annotated_class(args:Any) -> _T:
       if prefigure_fn:
         args = prefigure_fn(class_, args)
+
+      if type(args) is class_: return args # Already the correct type. Note that this causes referential aliasing.
+
+      if is_type_namedtuple(type(args)): args = args._asdict()
+      elif is_dataclass(args): args = dataclass_asdict(args)
 
       if isinstance(args, dict):
         typed_kwargs:dict[str,Any] = {}
@@ -144,17 +186,19 @@ class Transtructor:
         args = (args,)
 
       # Assume `args` is a positional argument sequence.
+      try: args_it = iter(args)
+      except TypeError as e: raise TranstructorError('argument type is not iterable', class_, args) from e
       typed_args:list[Any] = []
-      for idx, (arg, pair) in enumerate(zip_longest(args, transtructors.items())):
+      for idx, (arg, pair) in enumerate(zip_longest(args_it, transtructors.items())):
         if arg is None: break
         if pair is None:
           raise ValueError(f'{class_}: transtruct argument {idx} exceeds parameters: {constructor_annotations}')
         name, transtructor = pair
         typed_args.append(transtructor(arg))
       try:
-        if issubclass(class_, NamedTuple):
+        if is_type_namedtuple(class_):
           # For named tuple types, the args are passed as a single iterable.
-          return class_(typed_args) # type: ignore[call-overload, no-any-return]
+          return class_(typed_args) # type: ignore[call-arg]
         else:
           return class_(*typed_args)
       except TypeError as e:
