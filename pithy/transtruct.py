@@ -25,7 +25,21 @@ class TranstructorError(Exception):
 
 class Transtructor:
   '''
-  A transtructor is an object that takes a desired type and a raw input value and returns a well-typed value.
+  A transtructor is an object that facilitates transforming typed data.
+  It is typically used to convert parsed but softly typed data (e.g. CSV or JSON) into well-typed data.
+  However it can also be used to convert between different types of strongly typed data,
+  for example namedtuples from parse trees or dataclasses from other sources.
+
+  Transtructor attempts to provide automatic conversions of many structural types while not being too magicial.
+
+  A Transtructor instance is first configured in order to customize the transformation.
+  It is then invoked using `transtructor_for` or `transtruct`.
+
+  `transtructor_for` takes a desired type and returns a transtructor function.
+  A transtructor function takes a generic value, e.g. a JSON value or a CSV row, and returns a well typed value.
+
+  `transtruct` simply calls `transtructor_for` and then invokes the transtructor function.
+
   Use @selector and @prefigure to register custom helper functions on a transtructor instance.
 
   Selectors are functions that take a raw input value and return a type.
@@ -49,9 +63,8 @@ class Transtructor:
   @cache
   def transtructor_for(self, t:Type[_T]) -> Callable[[Any],_T]:
     '''
-    Return a "transtructor" function for the given type.
-    A transtructor takes a generic value, e.g. a JSON value or a CSV row, and returns a well typed value.
-    Transtructors are recursive functions meant to alleviate the tedium of type checking parsed but softly typed data values.
+    Return a "transtructor" function for the desired output type.
+    A transtructor function takes a single argument value and returns a transformed value of the desired output type.
     This method is cached per Transtructor instance.
     '''
     if self.selector_fn_for(t): # type: ignore[arg-type]
@@ -63,7 +76,7 @@ class Transtructor:
   @cache
   def transtructor_post_selector_for(self, t:Type[_T]) -> Callable[[Any],_T]:
     '''
-    Choose a transtructor for the given type, but after any selector has been applied.
+    Choose a transtructor for the desired output type, but after any selector has been applied.
     This prevents infinite recursion for types whose selectors return the original type,
     which is common for class families.
     '''
@@ -252,6 +265,8 @@ class Transtructor:
     '''
     Returns the selector function for the given datatype, or None if no selector function is registered.
     This method uses the MRO of the datatype to find base class implementations and caches the result.
+
+    This method is cached per constructor instance because it is called by the `transtruct_with_selector` closure.
     '''
     mro = getattr(datatype, '__mro__', (datatype,))
     for t in mro:
