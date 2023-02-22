@@ -13,6 +13,19 @@ ttor = Transtructor()
 
 # Primitive types.
 
+utest(0, ttor.transtruct, int, 0)
+utest(0, ttor.transtruct, int, 0.0)
+utest(0, ttor.transtruct, int, 0.9)
+utest(0, ttor.transtruct, int, '0')
+
+utest(0.0, ttor.transtruct, float, 0.0)
+utest(0.0, ttor.transtruct, float, 0)
+utest(0.0, ttor.transtruct, float, '0.0')
+
+utest('0', ttor.transtruct, str, '0')
+utest('0', ttor.transtruct, str, 0)
+utest('0.0', ttor.transtruct, str, 0.0)
+
 utest(1, ttor.transtruct, object, 1) # object passes any value through.
 
 
@@ -51,6 +64,7 @@ utest([nt1], ttor.transtruct, list[NT1], [ntu1])
 
 utest([ntu1], ttor.transtruct, list[NTU1], [dc1])
 utest([ntu1], ttor.transtruct, list[NTU1], [nt1])
+
 
 utest({'a':1}, ttor.transtruct, dict[str,int], Counter({'a':1}))
 utest({'a':1}, ttor.transtruct, dict[str,int], defaultdict(lambda: 0, {'a':1}))
