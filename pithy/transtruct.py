@@ -55,8 +55,9 @@ class Transtructor:
     self.prefigures:dict[type,PrefigureFn] = {}
 
 
-  def transtruct(self, t:Type[_T], val:Any) -> _T:
+  def transtruct(self, t:Type[_T], val:Any, dbg=False) -> _T:
     transtructor = self.transtructor_for(t) # type: ignore[arg-type]
+    if dbg: print(f'transtructor for type:{t!r}: {transtructor!r}')
     return transtructor(val)
 
 
