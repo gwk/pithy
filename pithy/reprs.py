@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
+from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 from typing import Any, cast, Iterable, NamedTuple
 from functools import cache
@@ -89,15 +90,15 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, inl_comma:str, 
   Returns (is_inline, parts).
   '''
 
-  is_dict = isinstance(obj, dict)
+  is_mapping = isinstance(obj, Mapping)
 
-  if is_dict or is_dataclass_or_namedtuple(obj):
+  if is_mapping or is_dataclass_or_namedtuple(obj):
     child_indent = indent + '  '
     typename, opener, closer, sep = syntax_for_kv_type(type(obj), colors) # type: ignore
 
     def _el_repr(el:Any) -> Iterable[str]: return _repr_ml(el, False, child_indent, width-2, inl_comma, colors)
 
-    if is_dict:
+    if is_mapping:
       items = [(repr(k), _el_repr(v)) for k, v in obj.items()]
     elif is_dataclass(obj):
       items = [(f.name, _el_repr(getattr(obj, f.name))) for f in fields(obj) if getattr(obj, f.name) != f.default]

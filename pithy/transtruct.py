@@ -2,6 +2,7 @@
 
 
 from collections import Counter, defaultdict
+from collections.abc import Mapping
 from dataclasses import is_dataclass, asdict as dataclass_asdict
 from datetime import date, datetime
 from functools import cache
@@ -140,7 +141,7 @@ class Transtructor:
         try:
           if is_dataclass(args): return class_(**dataclass_asdict(args))
           if is_namedtuple(args): return class_(**args._asdict())
-          if isinstance(args, dict): return class_(**args)
+          if isinstance(args, Mapping): return class_(**args)
 
           try: it = iter(args)
           except TypeError: pass
@@ -172,7 +173,7 @@ class Transtructor:
       if is_type_namedtuple(type(args)): args = args._asdict()
       elif is_dataclass(args): args = dataclass_asdict(args)
 
-      if isinstance(args, dict):
+      if isinstance(args, Mapping):
         typed_kwargs:dict[str,Any] = {}
         for name, val in args.items():
           try: transtructor = transtructors[name]
