@@ -80,6 +80,26 @@ class Transtructor:
     return self.transtructor_post_selector_for(t) # type: ignore[arg-type]
 
 
+  def transtructor_for_selector(self, static_type:Type[_T]) -> Callable[[Any],_T]:
+
+    def transtruct_with_selector(val:Any) -> _T:
+      type_ = static_type
+      #print("transtruct_with_selector static_type:", static_type)
+      while selector := self.selector_fn_for(type_): # type: ignore[arg-type]
+        #print("  selector:", selector)
+        subtype = selector(type_, val)
+        #print("  subtype:", subtype)
+        if subtype is type_:
+          break
+        if not issubclass(subtype, type_):
+          raise TypeError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}')
+        type_ = subtype
+      transtructor = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
+      return transtructor(val)
+
+    return transtruct_with_selector
+
+
   @cache
   def transtructor_post_selector_for(self, t:Type[_T]) -> Callable[[Any],_T]:
     '''
@@ -108,26 +128,6 @@ class Transtructor:
       return self.transtructor_for_unannotated_namedtuple(t)
 
     return self.transtructor_for_unannotated_type(t)
-
-
-  def transtructor_for_selector(self, static_type:Type[_T]) -> Callable[[Any],_T]:
-
-    def transtruct_with_selector(val:Any) -> _T:
-      type_ = static_type
-      #print("transtruct_with_selector static_type:", static_type)
-      while selector := self.selector_fn_for(type_): # type: ignore[arg-type]
-        #print("  selector:", selector)
-        subtype = selector(type_, val)
-        #print("  subtype:", subtype)
-        if subtype is type_:
-          break
-        if not issubclass(subtype, type_):
-          raise TypeError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}')
-        type_ = subtype
-      transtructor = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
-      return transtructor(val)
-
-    return transtruct_with_selector
 
 
   def transtructor_for_unannotated_type(self, class_:Type[_T]) -> Callable[[Any],_T]:
