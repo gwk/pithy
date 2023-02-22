@@ -70,7 +70,9 @@ class Transtructor:
     '''
     Return a "transtructor" function for the desired output type.
     A transtructor function takes a single argument value and returns a transformed value of the desired output type.
-    This method is cached per Transtructor instance.
+
+    This method is cached per Transtructor instance because the results should be deterministic per type.
+    This means that the transtructor instance must not be further customized after the first call to this method.
     '''
     if self.selector_fn_for(t): # type: ignore[arg-type]
       return self.transtructor_for_selector(t)
@@ -84,6 +86,11 @@ class Transtructor:
     Choose a transtructor for the desired output type, but after any selector has been applied.
     This prevents infinite recursion for types whose selectors return the original type,
     which is common for class families.
+
+    This method is cached per Transtructor instance because the results should be deterministic per type.
+    It may be called repeatedly at runtime by `transtructor_for_selector`, so the caching is important.
+
+    This means that the transtructor instance must not be further customized after the first call to this method.
     '''
 
     try: return primitive_transtructors[t] # type: ignore[return-value]
@@ -321,7 +328,6 @@ class Transtructor:
     return None
 
 
-  @cache
   def prefigure_fn_for(self, datatype:type) -> Optional[PrefigureFn]:
     '''
     Returns the prefigure function for the given datatype, or None if no prefigure function is registered.
