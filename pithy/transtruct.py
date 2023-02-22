@@ -152,7 +152,7 @@ class Transtructor:
 
           try: it = iter(args)
           except TypeError: pass
-          else: return class_(*it) # type: ignore[call-arg]
+          else: return class_(*it)
 
           return class_(args) # type: ignore[call-arg]
 
@@ -169,7 +169,7 @@ class Transtructor:
 
     transtructors = { k: self.transtructor_for(v) for k, v in constructor_annotations.items() } # type: ignore[arg-type]
 
-    prefigure_fn = self.prefigure_fn_for(class_) # type: ignore[arg-type]
+    prefigure_fn = self.prefigure_fn_for(class_)
 
     def transtruct_annotated_class(args:Any) -> _T:
       if prefigure_fn:
