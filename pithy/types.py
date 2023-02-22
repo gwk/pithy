@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import abstractmethod
+from dataclasses import is_dataclass
 from typing import Any, Callable, Counter, Dict, get_args, get_origin, Optional, Protocol, Tuple, TypeVar, Union
 
 
@@ -72,6 +73,32 @@ _generic_type_predicates: Dict[Any, Callable[[Any, _Args], bool]] = {
   tuple: _is_a_Tuple,
   Union: _is_a_Union,
 }
+
+
+def is_type_namedtuple(t:type) -> bool:
+  '''
+  Return `True` if `t` appears to be a `namedtuple` type.
+  This is a guess based on the attributes of `t`.
+  '''
+  return issubclass(t, tuple) and namedtuple_type_expected_attrs.intersection(t.__dict__) == namedtuple_type_expected_attrs
+
+namedtuple_type_expected_attrs = frozenset({'_asdict', '_field_defaults', '_fields', '_make', '_replace'})
+
+
+def is_namedtuple(obj:Any) -> bool:
+  '''
+  Return `True` if `obj` appears to be a `namedtuple` instance or type.
+  Like is_dataclass, this accepts both instances and types.
+  '''
+  return is_type_namedtuple(obj if isinstance(obj, type) else type(obj))
+
+
+def is_dataclass_or_namedtuple(obj:Any) -> bool:
+  '''
+  is_dataclass works for both instances and types.
+  This function offers a similarly flexible check for both dataclass and namedtuple instances/types.
+  '''
+  return is_dataclass(obj) or is_namedtuple(obj)
 
 
 # Convenience type predicates.

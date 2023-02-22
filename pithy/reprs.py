@@ -6,6 +6,7 @@ from typing import Any, cast, Iterable, NamedTuple
 from functools import cache
 
 from .ansi import TXT_G, TXT_R, TXT_Y, TXT_M, TXT_C, TXT_C, TXT_B, RST_TXT
+from .types import is_dataclass_or_namedtuple
 
 
 def repr_clean(obj:Any) -> str:
@@ -149,14 +150,6 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, inl_comma:str, 
   return colors.rst + repr(obj)
 
 
-def is_dataclass_or_namedtuple(obj:Any) -> bool:
-  '''
-  is_dataclass works for both instances and types.
-  This function offers a similarly flexible check for both dataclass and namedtuple instances/types.
-  '''
-  if is_dataclass(obj): return True
-  if not hasattr(obj, '_fields'): return False
-  return issubclass(obj, tuple) if isinstance(obj, type) else isinstance(obj, tuple)
 _not_present = object()
 
 
