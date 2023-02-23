@@ -70,3 +70,8 @@ utest({'a':1}, ttor.transtruct, dict[str,int], Counter({'a':1}))
 utest({'a':1}, ttor.transtruct, dict[str,int], defaultdict(lambda: 0, {'a':1}))
 
 utest(Counter({'a':1}), ttor.transtruct, Counter[str], {'a':'1'})
+
+
+utest(0, ttor.transtruct, int|str|None, 0)
+utest('0', ttor.transtruct, int|str|None, '0')
+utest(None, ttor.transtruct, int|str|None, None)
