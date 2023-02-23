@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from pithy.parse import (Atom, Choice, Infix, Left, Opt, Parser, Precedence, ZeroOrMore, Struct, binary_to_list, choice_syn,
-  atom_text, struct_syn)
+from pithy.parse import (Atom, atom_text, binary_to_list, Choice, choice_labeled, Infix, Left, Opt, Parser, Precedence, Struct,
+  struct_syn, ZeroOrMore)
 from pithy.py.lex import lexer
-from tolkien import Source, Token
+from tolkien import Source
 from utest import *
 
 
@@ -13,7 +13,7 @@ basic = Parser(lexer,
   rules=dict(
     name=Atom('name', transform=atom_text),
 
-    import_=Choice('import_modules', 'import_from', transform=choice_syn),
+    import_=Choice('import_modules', 'import_from', transform=choice_labeled),
     import_modules=Struct('kw_import', 'path_as_exprs'),
     import_from=Struct('kw_from', 'path', 'kw_import', 'name_as_exprs', transform=lambda s, t, p: (p[1], p[3])),
 

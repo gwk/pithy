@@ -105,7 +105,9 @@ def struct_syn(source:Source, token:Token, fields:List[Any]) -> Tuple[Any,...]: 
 
 ChoiceTransform = Callable[[Source,Token,RuleName,Any],Any]
 def choice_label(source:Source, token:Token, label:RuleName, obj:Any) -> str: return label
-def choice_syn(source:Source, token:Token, label:RuleName, obj:Any) -> Tuple[str,Any]: return (label, obj)
+def choice_labeled(source:Source, token:Token, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
+def choice_syn(source:Source, token:Token, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
+#^ TODO: change choice_syn to return a namedtuple with a syntax field, for compatibility with tolkien.Syntax.
 def choice_identity(source:Source, token:Token, label:RuleName, obj:Any) -> Any: return obj
 
 _sentinel_kind = '!SENTINEL'

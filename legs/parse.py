@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from pithy.io import errL
 from pithy.lex import KindPair, Lexer, LexMode, LexTrans
-from pithy.parse import (Adjacency, Atom, Choice, choice_syn, Infix, Left, OneOrMore, Opt, ParseError, Parser, Precedence,
+from pithy.parse import (Adjacency, Atom, Choice, choice_labeled, Infix, Left, OneOrMore, Opt, ParseError, Parser, Precedence,
   Right, Struct, Suffix, ZeroOrMore)
 from pithy.string import clip_prefix
 from pithy.unicode import CodeRanges, codes_for_ranges
@@ -105,7 +105,7 @@ def build_legs_grammar_parser() -> Parser:
       grammar=OneOrMore('section', drop='newline', transform=transform_grammar),
 
       section=Choice('section_license', 'section_patterns', 'section_modes', 'section_transitions',
-        transform=choice_syn),
+        transform=choice_labeled),
 
       # Section top-level rules.
 
