@@ -17,7 +17,7 @@ from pithy.io import errL
 from pithy.iterable import single_el
 from pithy.py import sanitize_for_py_keywords_and_type_names
 from pithy.string import truncate_repr_with_ellipsis
-from pithy.transtruct import bool_vals, Transtructor
+from pithy.transtruct import bool_vals, Ctx, Transtructor
 from pithy.xml.datatypes import ChildAttrInfo
 from pithy.xml.xmldict import XmlDict, XmlDictParser, XmlError
 from tomli import load as load_toml
@@ -93,7 +93,7 @@ Hints = dict[str,Hint]
 hintTranstructor = Transtructor()
 
 @hintTranstructor.prefigure(ChildAttrInfo)
-def prefigure_ChildAttrInfo(class_:type, val:dict) -> dict:
+def prefigure_ChildAttrInfo(class_:type, val:dict, ctx:Ctx) -> dict:
   return dict_remap_keys_mut(val, remap_ChildAttrInfo_keys)
 
 
