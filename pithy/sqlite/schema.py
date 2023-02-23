@@ -45,6 +45,7 @@ class Column:
     name = sql_quote_entity_always(self.name)
     type_ = py_to_sqlite_types[self.datatype]
     primary_key = ' PRIMARY KEY' if self.is_primary else ''
+    unique = ' UNIQUE' if self.is_unique else ''
     not_null = '' if (self.is_opt or self.is_primary) else ' NOT NULL'
 
     if self.default is not None:
@@ -63,7 +64,7 @@ class Column:
     else:
       default = ''
 
-    return f'{name} {type_}{primary_key}{not_null}{default}'
+    return f'{name} {type_}{primary_key}{unique}{not_null}{default}'
 
 
 class Structure:
