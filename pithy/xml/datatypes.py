@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, ClassVar, Iterable, Optional, Type, TypeVar
 
-from ..transtruct import Transtructor
+from ..transtruct import Ctx, Transtructor
 
 
 _T = TypeVar('_T')
@@ -81,13 +81,13 @@ class XmlComment(XmlDatatype):
 xml_transtructor = Transtructor()
 
 @xml_transtructor.selector(XmlDatatype)
-def xml_selector(class_:type[XmlDatatype], val:dict) -> type:
+def xml_selector(class_:type[XmlDatatype], val:dict, ctx:Ctx) -> type:
   #print("xml_selector:", class_, val[''])
   return class_._datatypes[val['']]
 
 
 @xml_transtructor.prefigure(XmlDatatype)
-def xml_prefigure(class_:type[XmlDatatype], val:dict) -> dict:
+def xml_prefigure(class_:type[XmlDatatype], val:dict, ctx:Ctx) -> dict:
   '''
   Prefigure a dict of raw xml data.
   '''
