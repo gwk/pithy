@@ -93,7 +93,7 @@ class Transtructor:
         if subtype is type_:
           break
         if not issubclass(subtype, type_):
-          raise TypeError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}')
+          raise TranstructorError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}', static_type, val)
         type_ = subtype
       transtructor = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
       return transtructor(val)
@@ -250,7 +250,7 @@ class Transtructor:
 
     # TODO: further handling. At this point it does not make sense to just return origin,
     # because the args probably need to be considered to create well-typed values.
-    raise TypeError(f'Transtructor for generic type {desired_type} not implemented.')
+    raise NotImplementedError(f'Transtructor for generic type {desired_type} not implemented.')
 
 
   def transtructor_for_tuple_type(self, type_:Type, rtt:Type, types:tuple[Type,...]) -> Callable[[Any],Any]:
