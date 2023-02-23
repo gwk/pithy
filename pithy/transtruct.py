@@ -7,6 +7,7 @@ from dataclasses import is_dataclass, asdict as dataclass_asdict
 from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
+from types import UnionType
 from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, get_type_hints, NamedTuple, Optional, Type, TypeVar,
   Union)
 
@@ -218,8 +219,8 @@ class Transtructor:
   def transtructor_for_generic_type(self, t:Type[_T], origin:Type[_T], type_args:tuple[type,...]) -> Callable[[Any],_T]:
     # The origin type is usually a runtime type, but not in the case of Union.
 
-    if origin is Union:
-      return self.transtructor_for_union_type(frozenset(type_args))
+    if origin in(Union, UnionType):
+      return self.transtructor_for_union_type(t, frozenset(type_args))
 
     if issubclass(origin, tuple):
       return self.transtructor_for_tuple_type(t, origin, type_args)
@@ -275,18 +276,28 @@ class Transtructor:
     return transtruct_tuple
 
 
-  def transtructor_for_union_type(self, types:frozenset[Type]) -> Callable[[Any],Any]:
+  def transtructor_for_union_type(self, t:type, types:frozenset[Type]) -> Callable[[Any],Any]:
 
     if len(types) == 2 and type(None) in types:
       variant_type = next(t for t in types if t is not type(None))
       transtructor = self.transtructor_for(variant_type) # type: ignore[arg-type]
-      def transtruct_union(val:Any) -> Any:
+
+      def transtruct_optional(val:Any) -> Any:
         if val is None: return None
         return transtructor(val)
 
-      return transtruct_union
+      return transtruct_optional
 
-    raise NotImplementedError('Union types other than Optional are not yet supported.')
+    if not types.difference(primitive_transtructors):
+      # Union of primitive types.
+      def transtruct_primitive_union(val:Any) -> Any:
+        if type(val) in primitive_transtructors: return val
+        type_names = ', '.join(sorted(t.__name__ for t in types))
+        raise TranstructorError(f'expected primitive type in {{{type_names}}}; received {type(val)!r}', t, val)
+
+      return transtruct_primitive_union
+
+    raise NotImplementedError(f'Union types other than Optional and primitive unions are not yet supported: {t}:\n  members: {types}')
 
 
   def selector(self, datatype:type) -> Callable[[SelectorFn],SelectorFn]:
