@@ -127,7 +127,7 @@ class Table(Structure):
       ' WITHOUT ROWID' if self.without_rowid else '',
     ]
     table_options_str = ','.join(opt for opt in table_options if opt)
-    lines.append(f'){table_options_str};')
+    lines.append(f'){table_options_str}')
 
     return '\n'.join(lines)
 
@@ -152,7 +152,7 @@ class Index(Structure):
     unique_str = 'UNIQUE ' if self.is_unique else ''
     lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
     columns_str = ', '.join(sql_quote_entity_always(c) for c in self.columns)
-    lines.append(f'  ON {sql_quote_entity_always(self.table)} ({columns_str});')
+    lines.append(f'  ON {sql_quote_entity_always(self.table)} ({columns_str})')
     return '\n'.join(lines)
 
 
@@ -203,6 +203,7 @@ class Schema:
     for s in self.structures:
       yield '\n'
       yield s.sql(schema=self.name, if_not_exists=if_not_exists)
+      yield ';'
       yield '\n'
 
 
