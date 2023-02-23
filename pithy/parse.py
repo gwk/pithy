@@ -92,6 +92,12 @@ UnaryTransform = Callable[[Source,Token,Any],Any]
 def unary_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
 def unary_identity(source:Source, token:Token, obj:Any) -> Any: return obj
 
+def opt_text_or_empty(source:Source, token:Token, obj:Any) -> str:
+  if isinstance(obj, Token): return source[obj]
+  if isinstance(obj, str): return obj
+  if obj is None: return ''
+  raise ValueError(f'expected Token, str or None; received: {obj!r}')
+
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
 def adjacency_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
@@ -104,11 +110,12 @@ StructTransform = Callable[[Source,Token,List[Any]],Any]
 def struct_syn(source:Source, token:Token, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
 
 ChoiceTransform = Callable[[Source,Token,RuleName,Any],Any]
+def choice_identity(source:Source, token:Token, label:RuleName, obj:Any) -> Any: return obj
 def choice_label(source:Source, token:Token, label:RuleName, obj:Any) -> str: return label
 def choice_labeled(source:Source, token:Token, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
 def choice_syn(source:Source, token:Token, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
 #^ TODO: change choice_syn to return a namedtuple with a syntax field, for compatibility with tolkien.Syntax.
-def choice_identity(source:Source, token:Token, label:RuleName, obj:Any) -> Any: return obj
+def choice_text(source:Source, token:Token, label:RuleName, obj:Any) -> str: return source[token]
 
 _sentinel_kind = '!SENTINEL'
 
