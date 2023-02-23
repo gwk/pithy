@@ -2,7 +2,7 @@
 
 import re
 from datetime import date, datetime
-from typing import Any, get_args, Iterable, NamedTuple, Tuple, Type
+from typing import Any, get_args, Iterable, Match, NamedTuple, Tuple, Type
 
 from ..json import render_json
 from .keywords import sqlite_keywords
@@ -126,3 +126,33 @@ def sql_quote_val(val:Any) -> str:
 
 def sql_quote_seq(seq:Iterable[Any]) -> str:
   return ', '.join(sql_quote_val(v) for v in seq)
+
+
+def sql_unquote_entity(entity:str) -> str:
+  if '"' not in entity:
+    if "'" in entity: raise ValueError(f'SQL entity is malformed (contains "\'"): {entity!r}')
+    return entity
+  if not (len(entity) >= 2 and entity.startswith('"') and entity.endswith('"')):
+    raise ValueError(f'SQL entity is malformed: {entity!r}')
+  content = entity[1:-1]
+  return _sql_unquote_entity_re.sub(_sql_unquote_entity_replace, content)
+
+
+_sql_unquote_entity_re = re.compile(r'"{1,2}')
+
+def _sql_unquote_entity_replace(m:Match[str]) -> str:
+  if len(m[0]) != 2: raise ValueError(f'SQL entity is malformed (contains unescaped \'"\'): {m[0]!r}')
+  return '"'
+
+
+def sql_unquote_str(s:str) -> str:
+  if not (len(s) >= 2 and s.startswith("'") and s.endswith("'")):
+    raise ValueError(f'SQL string is malformed (missing quotes): {s!r}')
+  content = s[1:-1]
+  return _sql_unquote_str_re.sub(_sql_unquote_str_replace, content)
+
+_sql_unquote_str_re = re.compile(r"'{1,2}")
+
+def _sql_unquote_str_replace(m:Match[str]) -> str:
+  if len(m[0]) != 2: raise ValueError(f'SQL string is malformed (contains unescaped "\'"): {m[0]!r}')
+  return "'"
