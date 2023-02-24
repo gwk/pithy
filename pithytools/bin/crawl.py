@@ -135,11 +135,10 @@ class Crawler:
 
 
   def try_scrape(self, url:str, path:str) -> None:
-    with open(path, 'rb') as f:
-      try: text = open(path).read()
-      except Exception as e:
-        errSL(f'{path}: could not read contents as text: {e}')
-        return
+    try: text = open(path).read()
+    except Exception as e:
+      errSL(f'{path}: could not read contents as text: {e}')
+      return
     if html5_re.match(text):
       html = html5_parser.parse(text, return_root=True, line_number_attr='#', sanitize_names=False)
     else:
