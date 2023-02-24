@@ -71,13 +71,7 @@ def test_schema_parse(table:Table) -> None:
     outM('\nAST', ast, color=True)
     raise e
 
-  # Copy over descriptions and datatypes as necessary to relax equality comparison.
-  parsed_table.desc = table.desc
-  for pc, oc in zip(parsed_table.columns, table.columns):
-    if pc.name != oc.name: break
-    pc.desc = oc.desc
-    if pc.datatype == nonstrict_to_strict_types_for_sqlite.get(oc.datatype):
-      pc.datatype = oc.datatype
+  parsed_table.update_unparseable_details_to_match(table)
 
   if parsed_table != table:
     outL('\nParsed table does not match original table.')

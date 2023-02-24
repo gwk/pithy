@@ -1,19 +1,19 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dc_replace
 from functools import cached_property
-from typing import Any, Iterable
+from typing import Any, Iterable, Self
 
 from tolkien import Source, Token
 
 from ..transtruct import Ctx, Input, Transtructor
 from .keywords import sqlite_keywords
 from .parse import parser
-from .util import (sql_comment_inline, sql_comment_lines, sql_quote_entity_always,
+from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity_always,
   sql_unquote_entity, sql_unquote_str, strict_sqlite_to_types, types_to_strict_sqlite)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Column:
   '''
   `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP', or an SQL `expr`.
@@ -72,23 +72,36 @@ class Column:
     return f'{name} {type_}{primary_key}{unique}{not_null}{default}'
 
 
+
 class Structure:
   'Top-level SQL objects, i.e. Index, Table, Trigger, View.'
 
   name:str
   desc:str
 
+
   def sql(self, schema='', if_not_exists=False) -> str:
     raise NotImplementedError
 
+
   @classmethod
-  def parse(cls, path:str, text:str) -> 'Structure':
+  def parse(cls, path:str, text:str) -> Self:
     '''
     Parse a schema definition from a string.
     '''
     source = Source(path, text)
     ast = parser.parse('create_stmt', source)
     return schema_transtructor.transtruct(cls, ast, ctx=source)
+
+
+  def update_unparseable_details_to_match(self, other:Self):
+    '''
+    Update the details of this (presumably parsed) structure which might be empty or innacurate to match those of another.
+    This is makes equality comparison between a parsed structure (e.g. from sqlite_schema)
+    and a constructed structure (e.g. from a python schema definition) more useful.
+    '''
+    raise NotImplementedError
+
 
 
 @dataclass
@@ -145,6 +158,30 @@ class Table(Structure):
     return '\n'.join(lines)
 
 
+  def update_unparseable_details_to_match(self, other:Self):
+    self.desc = other.desc
+    other_columns = other.columns_dict
+
+    replacement_cols = {}
+
+    for col in self.columns:
+      try: oc = other_columns[col.name]
+      except KeyError: continue
+
+      # The datatype inferred from the parsed SQL is not as accurate as can be expressed in the python schema.
+      if col.datatype == nonstrict_to_strict_types_for_sqlite.get(oc.datatype):
+        datatype = oc.datatype
+      else:
+        datatype = col.datatype
+
+      if col.desc != oc.desc or col.datatype != datatype:
+        replacement_cols[col.name] = dc_replace(col, datatype=datatype, desc=oc.desc)
+
+    if replacement_cols:
+      self.columns = tuple(replacement_cols.get(c.name, c) for c in self.columns)
+
+
+
 @dataclass
 class Index(Structure):
   name:str
@@ -167,6 +204,10 @@ class Index(Structure):
     columns_str = ', '.join(sql_quote_entity_always(c) for c in self.columns)
     lines.append(f'  ON {sql_quote_entity_always(self.table)} ({columns_str})')
     return '\n'.join(lines)
+
+
+  def update_unparseable_details_to_match(self, other:Self):
+    raise NotImplementedError
 
 
 
