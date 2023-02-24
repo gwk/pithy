@@ -6,7 +6,7 @@ from typing import Any, cast, Dict, Iterable, Iterator, Mapping, Optional, Proto
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
-from .util import default_to_json, py_to_sqlite_types_tuple, sql_quote_entity
+from .util import default_to_json, types_natively_converted_by_sqlite, sql_quote_entity
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -126,7 +126,7 @@ class Cursor(sqlite3.Cursor):
     '''
     query = ' '.join(sql).strip()
     for k, v in args.items(): # Convert non-native values to Json.
-      if not isinstance(v, py_to_sqlite_types_tuple): # Note: this is a conditional inlining of `default_to_json`.
+      if not isinstance(v, types_natively_converted_by_sqlite): # Note: this is a conditional inlining of `default_to_json`.
         args[k] = render_json(v, indent=None)
     if dbg: print(f'query: {query}\n  args: {args}')
     return self.execute(query, args)

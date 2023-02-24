@@ -2,7 +2,8 @@
 
 from pithy.io import outL, outM
 from pithy.sqlite.parse import parser, Source
-from pithy.sqlite.schema import Column, Index, Schema, Table, sqlite_py_type_ambiguities
+from pithy.sqlite.schema import Column, Index, Schema, Table
+from pithy.sqlite.util import nonstrict_to_strict_types_for_sqlite
 from pithy.transtruct import TranstructorError
 from utest import utest
 
@@ -75,8 +76,7 @@ def test_schema_parse(table:Table) -> None:
   for pc, oc in zip(parsed_table.columns, table.columns):
     if pc.name != oc.name: break
     pc.desc = oc.desc
-    ambigiuities = sqlite_py_type_ambiguities.get(pc.datatype)
-    if ambigiuities and oc.datatype in ambigiuities:
+    if pc.datatype == nonstrict_to_strict_types_for_sqlite.get(oc.datatype):
       pc.datatype = oc.datatype
 
   if parsed_table != table:
