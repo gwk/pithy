@@ -3,15 +3,14 @@
 
 from collections import Counter, defaultdict
 from collections.abc import Mapping
-from dataclasses import is_dataclass, asdict as dataclass_asdict
+from dataclasses import asdict as dataclass_asdict, is_dataclass
 from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
 from types import UnionType
-from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, get_type_hints, NamedTuple, Optional, Type, TypeVar,
-  Union)
+from typing import Any, Callable, cast, ClassVar, get_args, get_origin, get_type_hints, Optional, Type, TypeVar, Union
 
-from .types import is_type_namedtuple, is_namedtuple
+from .types import is_namedtuple, is_type_namedtuple
 
 
 Desired = TypeVar('Desired')
@@ -119,23 +118,28 @@ class Transtructor:
     try: return primitive_transtructors[desired_type] # type: ignore[return-value]
     except KeyError: pass
 
+    prefigure_fn = self.prefigure_fn_for(desired_type)
+
     origin = get_origin(desired_type)
     type_args = get_args(desired_type)
     if origin and type_args: # Generic types have an origin type and a tuple of type arguments.
-      return self.transtructor_for_generic_type(desired_type, origin=origin, type_args=type_args)
+      return self.transtructor_for_generic_type(desired_type, prefigure_fn, origin=origin, type_args=type_args)
 
     if annotations := get_type_hints(desired_type): # Note: annotated NamedTuple will return hints.
-      return self.transtructor_for_annotated_class(desired_type, annotations)
+      return self.transtructor_for_annotated_class(desired_type, prefigure_fn, annotations)
 
     if is_type_namedtuple(desired_type):
-      return self.transtructor_for_unannotated_namedtuple(desired_type)
+      return self.transtructor_for_unannotated_namedtuple(desired_type, prefigure_fn)
 
-    return self.transtructor_for_unannotated_type(desired_type)
+    return self.transtructor_for_unannotated_type(desired_type, prefigure_fn)
 
 
-  def transtructor_for_unannotated_type(self, class_:Type[Desired]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_unannotated_type(self, class_:Type[Desired], prefigure_fn:PrefigureFn|None
+   ) -> Callable[[Input,Ctx],Desired]:
 
       def transtruct_unannotated_type(val:Input, ctx:Ctx) -> Desired:
+        if prefigure_fn: val = prefigure_fn(class_, val, ctx)
+
         if type(val) is class_: return val # Already the correct type. Note that this causes referential aliasing.
         try: return class_(val) # type: ignore[call-arg]
         except Exception as e: raise TranstructorError(e, class_, val)
@@ -143,9 +147,12 @@ class Transtructor:
       return transtruct_unannotated_type
 
 
-  def transtructor_for_unannotated_namedtuple(self, class_:Type[Desired]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_unannotated_namedtuple(self, class_:Type[Desired], prefigure_fn:PrefigureFn|None
+   ) -> Callable[[Input,Ctx],Desired]:
 
       def transtruct_unannotated_namedtuple(args:Any, ctx:Ctx) -> Desired:
+        if prefigure_fn: args = prefigure_fn(class_, args, ctx)
+
         if type(args) is class_: return args
 
         try:
@@ -164,7 +171,8 @@ class Transtructor:
       return transtruct_unannotated_namedtuple
 
 
-  def transtructor_for_annotated_class(self, class_:Type[Desired], annotations:dict[str,Type]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_annotated_class(self, class_:Type[Desired], prefigure_fn:PrefigureFn|None, annotations:dict[str,Type]
+   ) -> Callable[[Input,Ctx],Desired]:
 
     # TODO: this should use __init__ annotations if they exist.
     constructor_annotations = { k:v for k, v in annotations.items()
@@ -172,11 +180,8 @@ class Transtructor:
 
     transtructors = { k: self.transtructor_for(v) for k, v in constructor_annotations.items() } # type: ignore[arg-type]
 
-    prefigure_fn = self.prefigure_fn_for(class_)
-
     def transtruct_annotated_class(args:Any, ctx:Ctx) -> Desired:
-      if prefigure_fn:
-        args = prefigure_fn(class_, args, ctx)
+      if prefigure_fn: args = prefigure_fn(class_, args, ctx)
 
       if type(args) is class_: return args # Already the correct type. Note that this causes referential aliasing.
 
@@ -218,15 +223,16 @@ class Transtructor:
     return transtruct_annotated_class
 
 
-  def transtructor_for_generic_type(self, desired_type:Type[Desired], origin:Type[Desired], type_args:tuple[type,...]
-   ) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_generic_type(self, desired_type:Type[Desired], prefigure_fn:PrefigureFn|None, origin:Type[Desired],
+   type_args:tuple[type,...]) -> Callable[[Input,Ctx],Desired]:
+
     # The origin type is usually a runtime type, but not in the case of Union.
 
     if origin in(Union, UnionType):
-      return self.transtructor_for_union_type(desired_type, frozenset(type_args))
+      return self.transtructor_for_union_type(desired_type, prefigure_fn, frozenset(type_args))
 
     if issubclass(origin, tuple):
-      return self.transtructor_for_tuple_type(desired_type, origin, type_args)
+      return self.transtructor_for_tuple_type(desired_type, prefigure_fn, origin, type_args)
 
     if issubclass(origin, dict) and len(type_args) > 1: # Excludes Counter.
       key_type, val_type = type_args
@@ -234,6 +240,8 @@ class Transtructor:
       val_ctor = self.transtructor_for(val_type)
 
       def transtruct_dict(val:Input, ctx:Ctx) -> Desired:
+        if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
+
         try: items = val.items()
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
         try: return origin((key_ctor(k, ctx), val_ctor(v, ctx)) for k, v in items) # type: ignore[call-arg]
@@ -256,17 +264,24 @@ class Transtructor:
     raise NotImplementedError(f'Transtructor for generic type {desired_type} not implemented.')
 
 
-  def transtructor_for_tuple_type(self, type_:Type, rtt:Type, types:tuple[Type,...]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_tuple_type(self, type_:Type, prefigure_fn:PrefigureFn|None, rtt:Type, types:tuple[Type,...]
+   ) -> Callable[[Input,Ctx],Desired]:
+
     if len(types) == 2 and types[1] is cast(type, Ellipsis):
       el_transtructor = self.transtructor_for(types[0]) # type: ignore[arg-type]
+
       def transtruct_seq_tuple(args:Any, ctx) -> Any:
+        if prefigure_fn: args = prefigure_fn(type_, args, ctx)
         return rtt(el_transtructor(a, ctx) for a in args)
+
       return transtruct_seq_tuple
 
     # TODO: handle sequence tuple definitions.
     transtructors = tuple(self.transtructor_for(t) for t in types) # type: ignore[arg-type]
 
     def transtruct_tuple(args:Input, ctx:Ctx) -> Any: # TODO: improve type declaration to use Desired?
+      if prefigure_fn: args = prefigure_fn(type_, args, ctx)
+
       typed_args:list[Any] = []
       for idx, (arg, transtructor) in enumerate(zip_longest(args, transtructors)):
         if arg is None:
@@ -279,13 +294,15 @@ class Transtructor:
     return transtruct_tuple
 
 
-  def transtructor_for_union_type(self, desired_type:type, types:frozenset[Type]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_union_type(self, desired_type:type, prefigure_fn:PrefigureFn|None, types:frozenset[Type]
+   ) -> Callable[[Input,Ctx],Desired]:
 
     if len(types) == 2 and type(None) in types:
       variant_type = next(t for t in types if t is not type(None))
       transtructor = self.transtructor_for(variant_type) # type: ignore[arg-type]
 
       def transtruct_optional(val:Input, ctx:Ctx) -> Any:
+        if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
         if val is None: return None
         return transtructor(val, ctx)
 
@@ -294,6 +311,7 @@ class Transtructor:
     if not types.difference(primitive_transtructors):
       # Union of primitive types.
       def transtruct_primitive_union(val:Input, ctx:Ctx) -> Any:
+        if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
         if type(val) in primitive_transtructors: return val
         type_names = ', '.join(sorted(t.__name__ for t in types))
         raise TranstructorError(f'expected primitive type in {{{type_names}}}; received {type(val)!r}', desired_type, val)
