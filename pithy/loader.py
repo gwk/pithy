@@ -4,7 +4,7 @@
 File open/load dispatch by file extension.
 '''
 
-from io import BufferedReader, BytesIO, TextIOWrapper
+from io import BufferedReader, TextIOWrapper
 from typing import Any, BinaryIO, Callable, cast, Dict, IO, Iterable, List, Set, TextIO, Union
 
 

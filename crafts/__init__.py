@@ -3,9 +3,8 @@
 import os
 import os.path
 import re
-from typing import Any, cast, Dict, NamedTuple, Optional
+from typing import Any, cast, Dict, NamedTuple
 
-from pithy.dict import dict_set_defaults
 from pithy.eon import parse_eon_or_fail
 from pithy.fs import find_project_dir, list_dir, path_for_cmd, real_path
 from pithy.path import is_sub_path, norm_path, path_ext, path_join, path_name_stem, path_split, rel_path

@@ -4,7 +4,6 @@ import mimetypes
 from html import escape as html_escape
 from http import HTTPStatus
 from io import BufferedReader
-from os import close
 from typing import Any, cast, Iterable, TYPE_CHECKING
 from urllib.parse import quote as url_quote, unquote as url_unquote
 
@@ -16,7 +15,7 @@ from . import compute_local_path, html_media_type, norm_url_path, Request, Respo
 
 
 if TYPE_CHECKING:
-  from _typeshed.wsgi import StartResponse, WSGIApplication
+  from _typeshed.wsgi import StartResponse
 
 
 class WebApp:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from sys import argv, stderr, stdin, stdout
+from sys import argv, stdin, stdout
 
 from pithy.json import format_json_bytes
 

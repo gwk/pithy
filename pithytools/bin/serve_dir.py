@@ -1,9 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from os import chdir
 
-from pithy.http.server import HttpRequestHandler, HttpServer, Response
+from pithy.http.server import HttpServer, Response
 from pithy.task import run
 from pithy.web.app import Request, WebApp
 

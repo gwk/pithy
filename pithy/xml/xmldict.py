@@ -30,14 +30,12 @@ This representation benefits from Python's stable dictionary ordering:
 The tag is always first, followed by sorted attributes, followed by the children list.
 '''
 
-import re
 from dataclasses import dataclass
-from typing import Any, Callable, cast, Collection, Container, Iterator
+from typing import Any, Callable
 
 from lxml.etree import _Element as LxmlElement, Comment, fromstring as parse_xml_data, XMLSyntaxError
 
 from ..exceptions import DeleteNode, FlattenNode, OmitNode
-from .escape import fmt_attr_items
 
 
 XmlDict = dict[str,str|list[dict[str,Any]]] # The "Any" compensates for lack of recursive types in mypy.

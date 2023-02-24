@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 
-from pithy.sqlite import Connection, Cursor
+from pithy.sqlite import Connection
 
 
 def main() -> None:

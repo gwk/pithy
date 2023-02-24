@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 from time import time as now
-from typing import Callable, Optional
+from typing import Callable
 
 from pithy.fs import file_size, path_exists, remove_path
 from pithy.io import confirm, outL, outZ, stderr, stdin
