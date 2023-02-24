@@ -113,7 +113,7 @@ class Totals:
           outZ(f' = {sub_minutes:4}m')
           if m != sub_minutes:
             outZ(f' *** found: {m}; calculated: {sub_minutes}')
-            valid = False
+            self.is_valid = False
           if sub_minutes <= 0:
             outL()
             exit('timesheet error: subtototal is negative')
