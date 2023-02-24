@@ -29,11 +29,11 @@ def sql_col_decls(class_:Type[NamedTuple], primary:str) -> str:
   decls = []
   for n, static_type in class_.__annotations__.items():
     # Currently supports primitive types and their optionals, and Json.
-    try: sql_type = py_to_sqlite_static_types[static_type]
+    try: sql_type = static_types_to_strict_sqlite[static_type]
     except KeyError:
       try: unwrapped_type = _wrapped_type_for_optional(static_type)
       except TypeError: sql_type = 'TEXT'
-      else: sql_type = py_to_sqlite_static_types.get(unwrapped_type, 'TEXT')
+      else: sql_type = static_types_to_strict_sqlite.get(unwrapped_type, 'TEXT')
     suffix = ' PRIMARY KEY' if n == primary else ''
     decls.append(f'{n} {sql_type}{suffix}')
   return ', '.join(decls)
@@ -50,7 +50,7 @@ def _wrapped_type_for_optional(static_type:type) -> type:
 
 
 def default_to_json(obj:Any) -> Any:
-  if isinstance(obj, py_to_sqlite_types_tuple): return obj
+  if isinstance(obj, types_natively_converted_by_sqlite): return obj
   return render_json(obj, indent=None)
 
 
@@ -62,7 +62,7 @@ def fields_of(class_:type) -> Tuple[str, ...]:
 
 NoneType:type = type(None)
 
-py_to_sqlite_types:dict[type,str] = {
+types_to_strict_sqlite:dict[type,str] = {
   bool: 'INTEGER', # We must use 'INTEGER' or 'INT' in order to be compatible with SQLite strict tables.
   bytes: 'BLOB',
   date: 'TEXT',
@@ -77,15 +77,14 @@ py_to_sqlite_types:dict[type,str] = {
 }
 
 # The set of types that are converted by the native sqlite3 module. All others are rendered as JSON, defaulting to their repr.
-py_to_sqlite_types_tuple = (bool, bytes, date, datetime, float, int, str, NoneType)
+types_natively_converted_by_sqlite = (bool, bytes, date, datetime, float, int, str, NoneType)
 
-
-py_to_sqlite_static_types:dict[Any,str] = {
+static_types_to_strict_sqlite:dict[Any,str] = {
   Any: 'ANY',
-  **py_to_sqlite_types,
+  **types_to_strict_sqlite,
 }
 
-sqlite_to_py_types:dict[str,type] = {
+strict_sqlite_to_types:dict[str,type] = {
   'ANY': object,
   'BLOB': bytes,
   'INTEGER': int,
@@ -93,12 +92,13 @@ sqlite_to_py_types:dict[str,type] = {
   'TEXT': str,
 }
 
-sqlite_py_type_ambiguities:dict[type,frozenset[type]] = {
-  object: frozenset(),
-  bytes: frozenset({NoneType}),
-  int: frozenset({bool}),
-  float: frozenset(),
-  str: frozenset({date, datetime, dict, list}),
+nonstrict_to_strict_types_for_sqlite = {
+  NoneType: bytes,
+  bool: int,
+  date: str,
+  datetime: str,
+  dict: str,
+  list: str,
 }
 
 

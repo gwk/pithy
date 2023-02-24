@@ -9,8 +9,8 @@ from tolkien import Source, Token
 from ..transtruct import Ctx, Input, Transtructor
 from .keywords import sqlite_keywords
 from .parse import parser
-from .util import (py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity_always, sql_unquote_entity,
-  sql_unquote_str, sqlite_py_type_ambiguities, sqlite_to_py_types)
+from .util import (sql_comment_inline, sql_comment_lines, sql_quote_entity_always,
+  sql_unquote_entity, sql_unquote_str, strict_sqlite_to_types, types_to_strict_sqlite)
 
 
 @dataclass
@@ -48,7 +48,7 @@ class Column:
 
   def sql(self) -> str:
     name = sql_quote_entity_always(self.name)
-    type_ = py_to_sqlite_types[self.datatype]
+    type_ = types_to_strict_sqlite[self.datatype]
     primary_key = ' PRIMARY KEY' if self.is_primary else ''
     unique = ' UNIQUE' if self.is_unique else ''
     not_null = '' if (self.is_opt or self.is_primary) else ' NOT NULL'
@@ -258,7 +258,7 @@ def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
   name = sql_unquote_entity(source[column.name])
   if column.type_name is None: raise ValueError(f'Column {name!r} has no type.')
   type_name = source[column.type_name]
-  datatype = sqlite_to_py_types[type_name]
+  datatype = strict_sqlite_to_types[type_name]
   constraints = dict(_parse_column_constraint(cc, source) for cc in column.constraints)
   is_primary = constraints.get('primary_key', False)
   is_opt = not constraints.get('not_null', False) and not is_primary
