@@ -34,7 +34,7 @@ def sql_col_decls(class_:Type[NamedTuple], primary:str) -> str:
       try: unwrapped_type = _wrapped_type_for_optional(static_type)
       except TypeError: sql_type = 'TEXT'
       else: sql_type = py_to_sqlite_static_types.get(unwrapped_type, 'TEXT')
-    suffix = f' PRIMARY KEY' if n == primary else ''
+    suffix = ' PRIMARY KEY' if n == primary else ''
     decls.append(f'{n} {sql_type}{suffix}')
   return ', '.join(decls)
 

@@ -414,9 +414,9 @@ def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> E
       is_dict = is_pair
     elif is_dict != is_pair: # Inconsistent.
       if is_pair:
-        msg = f'Expected list elements; received key-value pair.'
+        msg = 'Expected list elements; received key-value pair.'
       else:
-        msg = f'Expected key-value pair; received list element.'
+        msg = 'Expected key-value pair; received list element.'
       raise ParseError(source, token, 'inconsistent sequence. ' + msg, notes=[(start, 'note: first element is here.')])
     vals.append(p if is_pair else k)
   if not vals:

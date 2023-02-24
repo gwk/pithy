@@ -7,7 +7,7 @@ import watchfiles  # This is an optional import for uvicorn but we want to make 
 
 
 def main() -> None:
-  print(f'Serving chart _webtest', file=stderr)
+  print('Serving chart _webtest', file=stderr)
   uvicorn.run("pithy.html.charts._webtest:app", host='localhost', port=8000, log_level="info", factory=True, reload=True)
 
 

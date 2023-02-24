@@ -55,7 +55,7 @@ class Parser(HTMLParser):
         self.msg(f'unmatched closing tag: {tag}')
         for p, t in reversed(self.stack[i+1:]):
           self.msg(f'note: ignoring open `{t}` here', pos=p)
-        self.msg(f'note: could match here', pos=self.stack[i][0])
+        self.msg('note: could match here', pos=self.stack[i][0])
         return
     self.msg(f'unmatched closing tag: {tag}')
 

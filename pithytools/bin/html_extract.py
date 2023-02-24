@@ -59,7 +59,7 @@ class Parser(HTMLParser):
       if ti == tag: # found match.
         for p, t in self.stack[i+1:]:
           self.msg(f'note: ignoring open `{t}` here', pos=p)
-        self.msg(f'note: could match here', pos=pi)
+        self.msg('note: could match here', pos=pi)
         return
 
   def print_range(self, start_pos: Pos, end_pos: Pos) -> None:

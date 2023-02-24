@@ -44,7 +44,7 @@ def load_craft_config() -> CraftConfig:
   try: project_dir = os.environ[CRAFT_PROJECT_DIR]
   except KeyError:
     p = find_project_dir()
-    if p is None: exit(f'craft error: could not identify project directory.')
+    if p is None: exit('craft error: could not identify project directory.')
     project_dir = rel_path(p)
     os.environ[CRAFT_PROJECT_DIR] = project_dir
 
@@ -59,7 +59,7 @@ def load_craft_config() -> CraftConfig:
   try: swift_path = os.environ[CRAFT_SWIFT_PATH]
   except KeyError:
     p = path_for_cmd('swift')
-    if p is None: exit(f'craft error: no path to `swift` executable')
+    if p is None: exit('craft error: no path to `swift` executable')
     swift_path = p
   os.environ[CRAFT_SWIFT_PATH] = swift_path
 
@@ -97,7 +97,7 @@ def load_craft_config() -> CraftConfig:
 def parse_craft(path:str) -> Dict[str,Any]:
   try: f = open(path)
   except FileNotFoundError: exit(f'craft error: craft file does not exist: {path!r}')
-  if path_ext(path) != '.eon': exit(f'craft error: craft file must be a `.eon` file.') # TODO: relax this restriction.
+  if path_ext(path) != '.eon': exit('craft error: craft file must be a `.eon` file.') # TODO: relax this restriction.
   with f: text = f.read()
   d = parse_eon_or_fail(path=path, text=text, to=Dict[str,Any])
   for k, v in d.items():

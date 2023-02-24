@@ -9,7 +9,7 @@ from pithy.task import communicate, DEVNULL, launch
 
 
 def main() -> None:
-  if len(argv) < 3: exit(f'error: usage: time-runs NUM_RUNS CMD ...')
+  if len(argv) < 3: exit('error: usage: time-runs NUM_RUNS CMD ...')
 
   _, num_runs_str, *cmd = argv
   try: num_runs = int(num_runs_str)

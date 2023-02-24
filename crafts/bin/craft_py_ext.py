@@ -253,13 +253,13 @@ def parse_decl(syntax:AST, name:str, obj:Any, scope:Scope, global_vals:Dict[str,
 @parse_decl.register
 def _(syntax:AnnAssign, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Parse an annotated variable declaration.'
-  scope.warn(syntax, f'assignment not implemented')
+  scope.warn(syntax, 'assignment not implemented')
 
 
 @parse_decl.register
 def _(syntax:AsyncFunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
   'Async function.'
-  scope.warn(syntax, f'async function def is not implemented')
+  scope.warn(syntax, 'async function def is not implemented')
 
 
 @parse_decl.register
@@ -397,7 +397,7 @@ def write_module(mod:ExtMod, c:TextIO, h:TextIO) -> None:
     type_obj = decl.name + '_type'
     cL()
     cL(f'  if (PyType_Ready(&{type_obj}) < 0) return NULL;')
-    cL(f'  Py_INCREF(&Aquahash_type);')
+    cL( '  Py_INCREF(&Aquahash_type);')
     cL(f'  PyModule_AddObject(module, {type_obj}.tp_name, (PyObject *)&{type_obj});')
 
   cL()
@@ -530,7 +530,7 @@ def write_func(func:Func, prefix:str, writers:_Writers) -> str:
   if ret_ti.type is None:
     cL(f'  {name}({h_args});')
     cL( '  ret = Py_None;')
-    cL(f'  Py_INCREF(ret);')
+    cL( '  Py_INCREF(ret);')
   else:
     cL(f'  _ret = {name}({h_args});')
     cL(f'  ret = {ret_ti.return_conv}(_ret);')

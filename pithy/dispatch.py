@@ -24,9 +24,9 @@ def key_dispatched(key_fn:Callable[[Any], Any]|None=None, *, key:Any=Default._) 
     if not callable(key_fn):
       raise TypeError(f'argument to @key_dispatched() must be key function; received {key_fn!r}')
     if key is not Default._:
-      raise ValueError(f'@key_dispatched() requires either positional `key_fn` (decorating default method) or keyword `key`')
+      raise ValueError('@key_dispatched() requires either positional `key_fn` (decorating default method) or keyword `key`')
     if key_fn.__closure__ is not None:
-      raise ValueError(f'@key_dispatched() `key_fn` cannot be a closure; recieved {key_fn!r}')
+      raise ValueError('@key_dispatched() `key_fn` cannot be a closure; recieved {key_fn!r}')
 
     def dflt_decorator(dflt_method:Callable)->Callable:
       _check_key_dispatched_method(dflt_method)
@@ -48,7 +48,7 @@ def key_dispatched(key_fn:Callable[[Any], Any]|None=None, *, key:Any=Default._) 
 
   else: # key_fn is None; register implementation for key.
     if key is Default._:
-      raise ValueError(f'@key_dispatched() takes either positional `key_fn` (decorating default method) or keyword `key`')
+      raise ValueError('@key_dispatched() takes either positional `key_fn` (decorating default method) or keyword `key`')
 
     def decorator(method:Callable) -> Callable:
       _check_key_dispatched_method(method)
