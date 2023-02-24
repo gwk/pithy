@@ -65,7 +65,7 @@ class Request:
   @lazy_property
   def body_bytes(self) -> bytes:
     try: return self.body_file.read(self.content_length) if self.content_length else b''
-    except Exception as exc: raise BadRequest(f'Failed to read request body') from exc
+    except Exception as exc: raise BadRequest('Failed to read request body') from exc
 
 
   @lazy_property
@@ -83,14 +83,14 @@ class Request:
     if media_type == 'application/x-www-form-urlencoded':
       body = self.body_bytes
       try: text = body.decode()
-      except Exception as exc: raise BadRequest(f'Failed to decode urlencoded form.') from exc
+      except Exception as exc: raise BadRequest('Failed to decode urlencoded form.') from exc
       try: return parse_qs(text)
-      except Exception as exc: raise BadRequest(f'Failed to read request body.') from exc
+      except Exception as exc: raise BadRequest('Failed to read request body.') from exc
 
     elif media_type == 'multipart/form-data':
       # TODO: use cgi.FieldStorage instead?
       try: content = parse_multipart(self.body_file, pdict=pdict) # type: ignore[arg-type] # TODO: fix or explain this type error.
-      except Exception as exc: raise BadRequest(f'Failed to read/parse POST multipart/form-data request body') from exc
+      except Exception as exc: raise BadRequest('Failed to read/parse POST multipart/form-data request body') from exc
 
     else: raise BadRequest(f'Unsupported Content-Type: {media_type!r}')
 

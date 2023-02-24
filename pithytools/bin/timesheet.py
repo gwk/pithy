@@ -66,7 +66,7 @@ class Totals:
       if day_match:
         outL('.')
         if start_minutes is not None or end_minutes is not None:
-          exit(f'timesheet error: previous day is missing end time.')
+          exit('timesheet error: previous day is missing end time.')
         curr_blocks = []
         self.days.append(Day(day=day_match[0], blocks=curr_blocks))
         continue
@@ -104,7 +104,7 @@ class Totals:
         if subtotal_match := subtotal_re.search(line):
           if not time_match:
             outL()
-            exit(f'timesheet error: subtotal line does not specify a time.')
+            exit('timesheet error: subtotal line does not specify a time.')
           if start_minutes is None or end_minutes is None:
             outL()
             exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
@@ -116,7 +116,7 @@ class Totals:
             valid = False
           if sub_minutes <= 0:
             outL()
-            exit(f'timesheet error: subtototal is negative')
+            exit('timesheet error: subtototal is negative')
 
           start_minutes = None
           prev_minutes = None
@@ -140,7 +140,7 @@ class Totals:
     total_hours = { r : sum(b.hours for b in blocks) for r, blocks in rate_blocks.items() }
 
     outL()
-    outL(f'Total hours:')
+    outL('Total hours:')
     for r, h in sorted(total_hours.items()):
       cost = r * h
       outL(f'{h:.02f} @ ${r}/hr = ${cost:10,.2f}')
@@ -157,7 +157,7 @@ class Totals:
     outL(f'TOTAL:          ${total:7,}')
 
     outL()
-    outL(f'Days:')
+    outL('Days:')
     for day in self.days: outL(day.desc_with_rates())
 
     if not self.is_valid:

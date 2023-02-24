@@ -87,7 +87,7 @@ def main() -> None:
   def flush_buffer() -> None:
     nonlocal buffer
     if buffer:
-      if dbg: errL(f'SAMESAME: FLUSH')
+      if dbg: errL('SAMESAME: FLUSH')
       handle_file_lines(buffer, interactive=args.interactive, dbg=dbg)
       buffer.clear()
 

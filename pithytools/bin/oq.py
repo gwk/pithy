@@ -31,7 +31,7 @@ def main() -> None:
   args = parser.parse_args()
 
   if not args.paths and args.interactive:
-    exit(f'interactive mode requires a path argument.')
+    exit('interactive mode requires a path argument.')
 
   roots = [load(p) for p in args.paths]
 

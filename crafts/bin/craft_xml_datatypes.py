@@ -343,7 +343,7 @@ def write_class(args:Namespace, outL:Callable[...,None], summary:ElementSummary)
 
   outL()
   outL()
-  outL(f'@dataclass(kw_only=True)') # TODO: custom repr in XmlDatatype, set repr=False here.
+  outL('@dataclass(kw_only=True)') # TODO: custom repr in XmlDatatype, set repr=False here.
   outL(f'class {summary.name}({parent}):', (f'# {summary.count} examples.' if add_comments else ''))
   outL(f'  _tag:ClassVar[str] = {summary.tag!r}')
 
@@ -362,11 +362,11 @@ def write_class(args:Namespace, outL:Callable[...,None], summary:ElementSummary)
 
   if summary.single_child_tag_counts:
     outL()
-    outL(f'  # single child tags: ', str(sorted(summary.single_child_tag_counts)))
+    outL('  # single child tags: ', str(sorted(summary.single_child_tag_counts)))
 
   if summary.plural_child_tags:
     outL()
-    outL(f'  # plural child tags: ', str(sorted(summary.plural_child_tags)))
+    outL('  # plural child tags: ', str(sorted(summary.plural_child_tags)))
 
   if child_type:
     outL()

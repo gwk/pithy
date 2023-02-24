@@ -42,7 +42,7 @@ def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, autho
       '<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=" />', # empty icon.
     ]
     if css_lines is not None:
-      yield f'<style type="text/css">'
+      yield '<style type="text/css">'
       yield from css_lines
       yield from ctx.render_css()
       yield '</style>'
@@ -221,7 +221,7 @@ class UList(Block):
     yield indent(depth, f'<ul class="L{self.list_level}">')
     for item in self.items:
       yield from item.html(ctx, depth + 1)
-    yield indent(depth, f'</ul>')
+    yield indent(depth, '</ul>')
 
 
 class ListItem(Block):
@@ -236,16 +236,16 @@ class ListItem(Block):
       if len(self.blocks[0].lines) == 1:
         yield indent(depth, f'<li>{html_for_spans(self.blocks[0].lines[0], depth=depth)}</li>')
       else:
-        yield indent(depth, f'<li>')
+        yield indent(depth, '<li>')
         for i, line in enumerate(self.blocks[0].lines):
           if i: yield indent(depth, '<br />')
           yield indent(depth + 1, html_for_spans(line, depth=depth))
-        yield indent(depth, f'</li>')
+        yield indent(depth, '</li>')
     else:
-      yield indent(depth, f'<li>')
+      yield indent(depth, '<li>')
       for block in self.blocks:
         yield from block.html(ctx, depth + 1)
-      yield indent(depth, f'</li>')
+      yield indent(depth, '</li>')
 
 
 BranchBlock = Union[Section, UList, ListItem]
@@ -333,7 +333,7 @@ class LangBlock(LeafBlock):
     elif lang == 'head':
       ctx.head_text.extend(l.strip() for l in self.lines)
     elif lang == 'img':
-      if 'src' in self.attrs: ctx.error(self.src_lines[0], f'img cannot have `src` specified as attribute.')
+      if 'src' in self.attrs: ctx.error(self.src_lines[0], 'img cannot have `src` specified as attribute.')
     elif lang == 'style':
       ctx.head_text.extend(minify_css(self.lines))
     elif lang == 'title':
@@ -628,7 +628,7 @@ def writeup_line(ctx: Ctx, src: SrcLine, state: int, m: Match) -> None:
 
   if state == s_section:
     ctx.pop_to_list(0)
-    if m['section_indents']: ctx.error(src, f'section header cannot be indented.')
+    if m['section_indents']: ctx.error(src, 'section header cannot be indented.')
     check_whitespace(ctx, src, len_exp=1, m=m, key='section_spaces', msg_suffix=' following `#`')
     section_depth = len(m['section_hashes'])
     index_path: Tuple[int, ...]
@@ -759,7 +759,7 @@ def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> Tuple[str, Dict[str,
 def span_angle_conv(ctx: Ctx, src: SrcLine, text: str) -> Span:
   'convert angle bracket span to html.'
   tag, attrs, body_words = parse_tag_attrs_body(ctx, src, text)
-  if not body_words: ctx.error(src, f'span has no body (missing colon after the tag?)')
+  if not body_words: ctx.error(src, 'span has no body (missing colon after the tag?)')
   body_text = ' '.join(body_words)
   if tag == 'b':
     return BoldSpan(text=body_text, attrs=attrs)

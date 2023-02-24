@@ -371,7 +371,7 @@ class TaskLaunchError(Exception):
 
   @property
   def diagnosis(self) -> str:
-    return f'task launch failed.'
+    return 'task launch failed.'
 
 
 class TaskLaunchUndiagnosedError(TaskLaunchError):
@@ -385,7 +385,7 @@ class TaskLaunchUndiagnosedError(TaskLaunchError):
 
   @property
   def diagnosis(self) -> str:
-    return f'task launch failed (undiagnosed).'
+    return 'task launch failed (undiagnosed).'
 
 
 class TaskFileBinaryIllFormed(TaskLaunchError):

@@ -45,8 +45,8 @@ def diff_table(cn_a:Connection, cn_b:Connection, table: str):
 
   if a_sql != b_sql:
     msg(f'table: {table}: SQL differs.')
-    print(f'a:', a_sql)
-    print(f'b:', b_sql)
+    print('a:', a_sql)
+    print('b:', b_sql)
     print()
     return
 
