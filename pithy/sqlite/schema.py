@@ -4,8 +4,13 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Any, Iterable
 
+from tolkien import Source, Token
+
+from ..transtruct import Ctx, Input, Transtructor
 from .keywords import sqlite_keywords
-from .util import py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity_always
+from .parse import parser
+from .util import (py_to_sqlite_types, sql_comment_inline, sql_comment_lines, sql_quote_entity_always, sql_unquote_entity,
+  sql_unquote_str, sqlite_py_type_ambiguities, sqlite_to_py_types)
 
 
 @dataclass
@@ -76,6 +81,14 @@ class Structure:
   def sql(self, schema='', if_not_exists=False) -> str:
     raise NotImplementedError
 
+  @classmethod
+  def parse(cls, path:str, text:str) -> 'Structure':
+    '''
+    Parse a schema definition from a string.
+    '''
+    source = Source(path, text)
+    ast = parser.parse('create_stmt', source)
+    return schema_transtructor.transtruct(cls, ast, ctx=source)
 
 
 @dataclass
@@ -226,6 +239,113 @@ class Schema:
     with open(path, 'w') as f:
       f.write(''.join(self.sql(if_not_exists=if_not_exists)))
 
+
+  @classmethod
+  def parse(cls, path:str, text:str) -> 'Schema':
+    '''
+    Parse a schema definition from a string.
+    '''
+    source = Source(path, text)
+    ast = parser.parse('stmts', source)
+    return schema_transtructor.transtruct(Schema, ast, ctx=source)
+
+
+schema_transtructor = Transtructor()
+
+
+@schema_transtructor.prefigure(Column)
+def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
+  name = sql_unquote_entity(source[column.name])
+  if column.type_name is None: raise ValueError(f'Column {name!r} has no type.')
+  type_name = source[column.type_name]
+  datatype = sqlite_to_py_types[type_name]
+  constraints = dict(_parse_column_constraint(cc, source) for cc in column.constraints)
+  is_primary = constraints.get('primary_key', False)
+  is_opt = not constraints.get('not_null', False) and not is_primary
+  is_unique = constraints.get('unique', False) or is_primary
+  return dict(
+    name=name,
+    datatype=datatype,
+    allow_kw=(name.upper() in sqlite_keywords),
+    is_opt=is_opt,
+    is_primary=is_primary,
+    is_unique=is_unique,
+    virtual=None,
+    default=constraints.get('default'),
+  )
+
+
+def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
+  if constraint.constraint_name is not None: raise NotImplementedError(f'column_constraint named constraint: {constraint.constraint_name!r}')
+  label, val = constraint.kind
+  match label:
+    case 'primary_key':
+      if val.asc_desc is not None: raise NotImplementedError(f'column_constraint primary_key asc_desc: {constraint!r}')
+      if val.on_conflict is not None: raise NotImplementedError(f'column_constraint primary_key on_conflict: {constraint!r}')
+      if val.AUTOINCREMENT is not None: raise NotImplementedError(f'column_constraint primary_key autoincrement: {constraint!r}')
+      return label, True
+    case 'not_null' | 'unique':
+      on_conflict = val
+      if on_conflict is not None: raise NotImplementedError(f'column_constraint primary_key on_conflict: {constraint!r}')
+      return label, True
+    case 'check':
+      raise NotImplementedError(f'column_constraint check: {constraint!r}')
+    case 'default':
+      return label, _parse_column_default(val, source)
+    case 'collate':
+      raise NotImplementedError(f'column_constraint collate: {constraint!r}')
+    case 'generated_constraint':
+      raise NotImplementedError(f'column_constraint generated_constraint: {constraint!r}')
+    case _:
+      raise NotImplementedError(f'column_constraint: {constraint!r}')
+
+
+def _parse_column_default(default:Input, source:Source) -> Any:
+  'int|float|str|None'
+  label, val = default
+  match label:
+    case 'paren_expr': raise NotImplementedError
+    case 'literal_value': return sql_unquote_str(source[val])
+    case 'signed_number': return source[val.sign] + source[val.number]
+
+
+
+@schema_transtructor.prefigure(Table)
+def prefigure_Table(class_:type, table:Input, source:Source) -> dict[str,Any]:
+  table_name_parts = [sql_unquote_entity(source[t]) for t in table.name]
+
+  def_ = table.def_
+  if not isinstance(def_, parser.types.TableDef): raise ValueError(f'Expected a table_def; received {def_!r}')
+  column_defs = def_.column_defs
+  constraints = dict(_parse_table_constraint(tc, source) for tc in def_.table_constraints)
+  table_options = def_.table_options
+
+  return dict(
+    name=table_name_parts[-1], # NOTE: we currently discard the schema name if it is present.
+    is_strict=('STRICT' in table_options),
+    without_rowid=('WITHOUT ROWID' in table_options),
+    primary_key=constraints.get('primary_key', ()),
+    columns=column_defs,
+  )
+
+
+def _parse_table_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
+  if constraint.constraint_name is not None: raise NotImplementedError(f'Cannot parse constraint_name: {constraint.constraint_name!r}')
+  label, val = constraint.kind
+  match label:
+    case 'primary_key':
+      col_names = tuple(_parse_indexed_column(c, source) for c in val.indexed_columns)
+      if val.on_conflict is not None: raise NotImplementedError(f'Cannot parse on_conflict: {val.on_conflict!r}')
+      return label, col_names
+    case _: raise NotImplementedError(f'Cannot parse table constraint {label!r}: {constraint!r}')
+
+
+def _parse_indexed_column(column:Input, source:Source) -> str:
+  expr = column.expr
+  assert column.collate is None
+  assert column.asc_desc is None
+  assert isinstance(expr, list) and len(expr) == 1
+  return sql_unquote_entity(source[expr[0]])
 
 
 def clean_row_record(table:Table, renamed_keys:dict[str,str]|None, record:dict[str,Any]) -> dict[str,Any]:

@@ -85,6 +85,22 @@ py_to_sqlite_static_types:dict[Any,str] = {
   **py_to_sqlite_types,
 }
 
+sqlite_to_py_types:dict[str,type] = {
+  'ANY': object,
+  'BLOB': bytes,
+  'INTEGER': int,
+  'REAL': float,
+  'TEXT': str,
+}
+
+sqlite_py_type_ambiguities:dict[type,frozenset[type]] = {
+  object: frozenset(),
+  bytes: frozenset({NoneType}),
+  int: frozenset({bool}),
+  float: frozenset(),
+  str: frozenset({date, datetime, dict, list}),
+}
+
 
 def sql_comment_lines(comment:str, indent='') -> list[str]:
   if not indent.isspace(): raise ValueError(f'Indent must be whitespace: {indent!r}')
