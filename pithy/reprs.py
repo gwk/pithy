@@ -6,7 +6,7 @@ from dataclasses import fields, is_dataclass
 from typing import Any, cast, Iterable, NamedTuple
 from functools import cache
 
-from .ansi import TXT_G, TXT_R, TXT_Y, TXT_M, TXT_C, TXT_C, TXT_B, RST_TXT
+from .ansi import TXT_G, TXT_R, TXT_Y, TXT_M, TXT_C, TXT_B, RST_TXT
 from .types import is_dataclass_or_namedtuple
 
 

@@ -2,7 +2,7 @@
 
 import inspect
 from functools import wraps
-from typing import Any, Callable, DefaultDict, Dict, Optional, Tuple
+from typing import Any, Callable, DefaultDict, Dict, Tuple
 
 from .default import Default
 

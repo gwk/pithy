@@ -3,7 +3,6 @@
 
 # Reindent a text file from four spaces to two.
 
-import random
 import sys
 from typing import TextIO
 

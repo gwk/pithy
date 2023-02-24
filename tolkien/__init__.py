@@ -4,7 +4,7 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
-from typing import Any, Generic, NamedTuple, NoReturn, Optional, Protocol, TypeVar, Union
+from typing import Generic, NamedTuple, NoReturn, Protocol, TypeVar, Union
 
 
 class Token(NamedTuple):

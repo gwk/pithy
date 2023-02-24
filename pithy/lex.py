@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import cast, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Pattern, Tuple, Union
+from typing import cast, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Pattern, Tuple, Union
 
 from tolkien import Source, Token
 
