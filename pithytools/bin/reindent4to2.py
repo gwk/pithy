@@ -26,7 +26,7 @@ def reindent(path: str) -> None:
   if not is_file(path, follow=False): raise PassableException('path is not a file.')
 
   reindent_path = path + '.reindent'
-  orig_path = path + '.orig'
+  #orig_path = path + '.orig'
   #if path_exists(reindent_path, follow=False): raise PassableException(f'temporary path already exists: {reindent_path!r}')
   #if path_exists(orig_path, follow=False): raise PassableException(f'temporary path already exists: {orig_path!r}')
 
