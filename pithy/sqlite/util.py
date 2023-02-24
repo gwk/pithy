@@ -60,7 +60,7 @@ def fields_of(class_:type) -> Tuple[str, ...]:
   raise TypeError(class_)
 
 
-NoneType = type(None)
+NoneType:type = type(None)
 
 py_to_sqlite_types:dict[type,str] = {
   bool: 'INTEGER', # We must use 'INTEGER' or 'INT' in order to be compatible with SQLite strict tables.
@@ -73,11 +73,11 @@ py_to_sqlite_types:dict[type,str] = {
   list: 'TEXT',
   object: 'ANY', # Necessary for expressing ANY columns for STRICT tables.
   str: 'TEXT',
-  type(None): 'BLOB', # None gets treated as NULL. 'BLOB' is considered the most generic type.
+  NoneType: 'BLOB', # None gets treated as NULL. 'BLOB' is considered the most generic type.
 }
 
 # The set of types that are converted by the native sqlite3 module. All others are rendered as JSON, defaulting to their repr.
-py_to_sqlite_types_tuple = (bool, bytes, date, datetime, float, int, str, type(None))
+py_to_sqlite_types_tuple = (bool, bytes, date, datetime, float, int, str, NoneType)
 
 
 py_to_sqlite_static_types:dict[Any,str] = {
