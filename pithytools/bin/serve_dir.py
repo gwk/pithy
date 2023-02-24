@@ -22,13 +22,11 @@ def main() -> None:
   root = args.root
   host = 'localhost'
   port = args.port
-  address = (host, port)
+  #address = (host, port)
   addr_str = f'http://{host}:{port}'
   print(f'Serving {root} on {addr_str}…')
 
-  ignored_paths = {
-    'apple-touch-icon-precomposed.png',
-  }
+  #ignored_paths = { 'apple-touch-icon-precomposed.png' }
 
   app = LocalFileApp(local_dir=root, prevent_client_caching=True, map_bare_names_to_html=False)
   server = HttpServer(host=host, port=port, app=app)
