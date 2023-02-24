@@ -19,8 +19,8 @@ class Column:
   `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP', or an SQL `expr`.
   SQLite column constraints: https://www.sqlite.org/syntax/column-constraint.html
 
-  We use `sql_quote_entity_always` to quote all column names because this is SQLite currently always quotes renamed columns.
-  By quoting names in the generated statements, we eliminate sytnactic discrepancies caused by rename operations.
+  We use `sql_quote_entity_always` to quote all column names because SQLite 3.40 always quotes renamed columns.
+  By quoting names in the generated statements, we eliminate syntactic discrepancies caused by rename operations.
   '''
   name:str
   datatype:type # Note: 'ANY' columns should be expressed with `object` rather than `Any` to mollify the type checker.
