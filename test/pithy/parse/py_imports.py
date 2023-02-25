@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from pithy.parse import (Atom, atom_text, binary_to_list, Choice, choice_labeled, Infix, Left, Opt, Parser, Precedence, Struct,
-  struct_syn, ZeroOrMore)
+  struct_tuple, ZeroOrMore)
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import *
@@ -18,10 +18,10 @@ basic = Parser(lexer,
     import_from=Struct('kw_from', 'path', 'kw_import', 'name_as_exprs', transform=lambda s, t, p: (p[1], p[3])),
 
     path_as_exprs=ZeroOrMore('path_as_expr', sep='comma'),
-    path_as_expr=Struct('path', 'as_name', transform=struct_syn),
+    path_as_expr=Struct('path', 'as_name', transform=struct_tuple),
 
     name_as_exprs=ZeroOrMore('name_as_expr', sep='comma'),
-    name_as_expr=Struct('name', 'as_name', transform=struct_syn),
+    name_as_expr=Struct('name', 'as_name', transform=struct_tuple),
     as_name=Opt(Struct('kw_as', 'name')),
     path=Precedence(
       ('name',),

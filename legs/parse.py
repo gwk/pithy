@@ -177,7 +177,7 @@ def build_legs_grammar_parser() -> Parser:
 
 # Parser transformers.
 
-def transform_grammar(source:Source, token:Token, sections:list) -> Grammar:
+def transform_grammar(source:Source, slc:slice, sections:list) -> Grammar:
   licenses:list[str] = []
   patterns:dict[str,LegsPattern] = {}
   modes:dict[str,frozenset[str]] = {}
@@ -220,7 +220,7 @@ def transform_grammar(source:Source, token:Token, sections:list) -> Grammar:
   return Grammar(license=license, patterns=patterns, modes=modes, transitions=dict(transitions))
 
 
-def transform_pattern(source:Source, token:Token, fields:list) -> tuple[Token,LegsPattern]:
+def transform_pattern(source:Source, slice:slice, fields:list) -> tuple[Token,LegsPattern]:
   sym, pattern = fields
   if pattern is None:
     pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in source[sym]])
