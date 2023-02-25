@@ -35,6 +35,8 @@ def main() -> None:
   arg_parser.add_argument('-no-coverage-report', action='store_true', help='Do not report coverage.')
   arg_parser.add_argument('-no-times', action='store_true', help='Do not report test times.')
   arg_parser.add_argument('-parse-only', action='store_true', help='Parse test cases and exit.')
+  arg_parser.add_argument('-retest', action='store_true', help='Rerun previously failed tests.')
+
   args = arg_parser.parse_args()
 
   if args.dbg: errL('iotest: DEBUG MODE ON.')
@@ -108,6 +110,9 @@ def main() -> None:
     if case.skip:
       skipped_count += 1
       outL(f'{case.stem:{bar_width}} SKIPPED.')
+    elif args.retest and not case.test_failed_previously:
+      if args.dbg: outL(f'{case.stem:{bar_width}} PREVIOUSLY PASSED.')
+      skipped_count += 1
     else:
       ok = try_case(ctx, coverage_cases, case)
       if not ok:
@@ -318,12 +323,18 @@ def try_case(ctx:Ctx, coverage_cases:List[Case], case: Case) -> bool:
   except TestCaseError as e:
     t = type(e)
     outL(f'\niotest: could not run test case: {case.stem}.\n  exception: {t.__module__}.{t.__qualname__}: {e}')
-    ctx.fail_fast(e)
     ok = False
+
   if not ok:
     if case.desc: outSL('description:', case.desc)
     outL('=' * bar_width, '\n')
-  if not ok: ctx.fail_fast()
+
+    # Touch the .failed marker file.
+    try: open(case.test_failed_path, 'w').close()
+    except OSError as e: errL(f'iotest: could not touch failed file: {case.test_failed_path!r}\n  exception: {e}')
+
+    ctx.fail_fast()
+
   return ok
 
 
