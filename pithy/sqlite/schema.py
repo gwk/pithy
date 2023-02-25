@@ -16,7 +16,7 @@ from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql
 @dataclass(frozen=True)
 class Column:
   '''
-  `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP', or an SQL `expr`.
+  `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', or an SQL `expr`.
   SQLite column constraints: https://www.sqlite.org/syntax/column-constraint.html
 
   We use `sql_quote_entity_always` to quote all column names because SQLite 3.40 always quotes renamed columns.
@@ -61,7 +61,7 @@ class Column:
         if d == '': ds = "''" # Special affordance for the empty string as shorthand.
         elif d.startswith("'") and d.endswith("'"): ds = d # Quoted string value.
         elif d.startswith('(') and d.endswith(')'): ds = d # SQL expression.
-        elif d in ('CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP'): ds = d # Special value.
+        elif d in ('CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP'): ds = d # Special value.
         else: raise ValueError(f'Invalid Column default SQL expression: {d!r}')
       default = f' DEFAULT {ds}'
     elif self.virtual is not None:
