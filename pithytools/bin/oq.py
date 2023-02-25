@@ -8,7 +8,7 @@ from pithy.desc import outD
 from pithy.iterable import iter_values
 from pithy.lex import Lexer
 from pithy.loader import load
-from pithy.parse import Adjacency, Atom, Choice, Left, Parser, Precedence, Struct
+from pithy.parse import Adjacency, Atom, Choice, choice_val, Left, Parser, Precedence, Struct
 from tolkien import Source, Token
 
 
@@ -145,13 +145,13 @@ parser = Parser(lexer,
   query=Precedence(
     ('filter', 'search'),
     Left(
-      Adjacency(transform=lambda source, token, left, right: ChildQuery(left, right))
+      Adjacency(transform=lambda s, t, l, r: ChildQuery(l, r))
     ),
   ),
-  search=Choice('pred', transform=lambda source, token, name, predicate: SearchQuery(predicate)),
-  filter=Struct('dot', 'pred', transform=lambda source, token, fields: FilterQuery(fields[1])),
+  search=Choice('pred', transform=lambda s, slc, name, predicate: SearchQuery(predicate)),
+  filter=Struct('dot', 'pred', transform=lambda s, slc, f: FilterQuery(f[1])),
 
-  pred=Choice('type_pred', transform=lambda source, token, name, pred: pred),
+  pred=Choice('type_pred', transform=choice_val),
 
   type_pred=Atom('name', mk_type_pred),
   ))

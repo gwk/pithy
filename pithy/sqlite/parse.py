@@ -87,7 +87,7 @@ create_rules = dict(
   create_index = Struct(
     Opt('UNIQUE', field='is_unique'),
     'INDEX',
-    Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists', transform=lambda s, t, p: True),
+    Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists', transform=lambda s, slc, f: True),
     Alias('schema_table_name', field='name'),
     'ON',
     Alias('schema_table_name', field='table'),
@@ -151,7 +151,7 @@ create_rules = dict(
       transform=choice_labeled)),
 
   table_option = Choice(
-    Struct('WITHOUT', Atom('name', field='rowid'), transform=lambda s, t, p: 'WITHOUT ROWID'),
+    Struct('WITHOUT', Atom('name', field='rowid'), transform=lambda s, slc, f: 'WITHOUT ROWID'), # TODO: the transform should raise ParseError if the name is not "ROWID".
     Atom('name', field='strict', transform=atom_text),
   ),
 

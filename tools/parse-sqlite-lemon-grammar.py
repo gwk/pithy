@@ -227,8 +227,8 @@ parser = Parser(
 
     sym = Atom('sym', transform=atom_text),
 
-    bracketed_content = Struct('brack_o', ZeroOrMore('sym'), 'brack_c', transform=lambda s, t, fields: None),
-    braced_content = Struct('brace_o', ZeroOrMore('braced_content'), 'brace_c', transform=lambda s, t, fields: None),
+    bracketed_content = Struct('brack_o', ZeroOrMore('sym'), 'brack_c', transform=lambda s, slc, f: None),
+    braced_content = Struct('brace_o', ZeroOrMore('braced_content'), 'brace_c', transform=lambda s, slc, f: None),
 ))
 
 

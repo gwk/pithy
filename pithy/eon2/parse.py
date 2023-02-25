@@ -47,8 +47,8 @@ def _build_eon_parser() -> Parser:
 
       #pair=Struct('atom', 'eq', 'atom'),
 
-      str_dq=Struct('dq', ZeroOrMore(Choice('esc_char', 'chars_dq')), 'dq', transform=lambda s, t, fields: EonStr(t, fields[1])),
-      str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq')), 'sq', transform=lambda s, t, fields: EonStr(t, fields[1])),
+      str_dq=Struct('dq', ZeroOrMore(Choice('esc_char', 'chars_dq')), 'dq', transform=lambda s, slc, fields: EonStr(slc, fields[1])),
+      str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq')), 'sq', transform=lambda s, slc, fields: EonStr(slc, fields[1])),
 
       newlines=OneOrMore('newline'),
     ))

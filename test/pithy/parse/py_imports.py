@@ -15,7 +15,7 @@ basic = Parser(lexer,
 
     import_=Choice('import_modules', 'import_from', transform=choice_labeled),
     import_modules=Struct('kw_import', 'path_as_exprs'),
-    import_from=Struct('kw_from', 'path', 'kw_import', 'name_as_exprs', transform=lambda s, t, p: (p[1], p[3])),
+    import_from=Struct('kw_from', 'path', 'kw_import', 'name_as_exprs', transform=lambda s, slc, f: (f[1], f[3])),
 
     path_as_exprs=ZeroOrMore('path_as_expr', sep='comma'),
     path_as_expr=Struct('path', 'as_name', transform=struct_fields_tuple),
