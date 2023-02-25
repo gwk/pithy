@@ -368,7 +368,7 @@ def _build_eon_parser() -> Parser:
 
       dash_list=Struct(
         'dash',
-        Choice('newline', 'value', transform=lambda s, t, label, val: None if label == 'newline' else val),
+        Choice('newline', 'value', transform=lambda s, slc, label, val: None if label == 'newline' else val),
         Opt('list_body_multiline', dflt=()),
         transform=lambda s, slc, fields: EonList(slc=slc, els=[fields[1], *fields[2]] if fields[1] else fields[2])),
 
@@ -377,13 +377,13 @@ def _build_eon_parser() -> Parser:
 
       tilde_dict=Struct(
         'tilde',
-        Choice('newline', 'kv_pair', transform=lambda s, t, label, pair: () if label == 'newline' else (pair,)),
+        Choice('newline', 'kv_pair', transform=lambda s, slc, label, pair: () if label == 'newline' else (pair,)),
         Opt('dict_body_multiline', dflt=()),
         transform=lambda s, slc, fields: EonDict(slc=slc, items=[*fields[1], *fields[2]])),
 
       dict_body_multiline=Struct('indent', OneOrMore('kv_pair', drop='newline'), 'dedent'),
 
-      kv_pair=Struct('key', 'colon', 'value', transform=lambda s, t, p: (p[0], p[2])),
+      kv_pair=Struct('key', 'colon', 'value', transform=lambda s, slc, f: (f[0], f[2])),
 
       # Items are sequences of either all list items, or all dict key-value pairs.
       # The returned value is inferred to be either a list or dict.
@@ -394,7 +394,7 @@ def _build_eon_parser() -> Parser:
       keylike_item=Struct('key', 'newline_or_colon_body'),
 
       newline_or_colon_body=Choice('newline', 'colon_body',
-        transform=lambda s, t, label, val: None if label == 'newline' else val), # Newline implies that the just-parsed key is a list element.
+        transform=lambda s, slc, label, val: None if label == 'newline' else val), # Newline implies that the just-parsed key is a list element.
 
       colon_body=Struct('colon', 'body'),
 

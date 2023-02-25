@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pithy.io import errL
 from pithy.lex import KindPair, Lexer, LexMode, LexTrans
 from pithy.parse import (Adjacency, Atom, Choice, choice_labeled, Infix, Left, OneOrMore, Opt, ParseError, Parser, Precedence,
-  Right, Struct, Suffix, ZeroOrMore)
+  Right, Struct, Suffix, ZeroOrMore, uni_val)
 from pithy.unicode import CodeRanges, codes_for_ranges
 from pithy.unicode.charsets import unicode_charsets
 from tolkien import Source, Token
@@ -118,7 +118,7 @@ def build_legs_grammar_parser() -> Parser:
 
       # License.
 
-      license=Choice('newline', 'license_text', transform=lambda s, t, label, token: s[token]),
+      license=Choice('newline', 'license_text', transform=lambda s, slc, l, token: s[token]),
 
       # Patterns.
 
@@ -131,9 +131,9 @@ def build_legs_grammar_parser() -> Parser:
         Right(Infix('bar', transform=transform_choice)),
         Right(Adjacency(transform=transform_adj)),
         Right(
-          Suffix('qmark', transform=lambda s, t, p: OptPattern(p)),
-          Suffix('star',  transform=lambda s, t, p: StarPattern(p)),
-          Suffix('plus',  transform=lambda s, t, p: PlusPattern(p))),
+          Suffix('qmark', transform=lambda s, t, v: OptPattern(v)),
+          Suffix('star',  transform=lambda s, t, v: StarPattern(v)),
+          Suffix('plus',  transform=lambda s, t, v: PlusPattern(v))),
         drop=('newline', 'indent', 'dedent'),
       ),
 
@@ -153,7 +153,7 @@ def build_legs_grammar_parser() -> Parser:
           Infix('caret',  transform=lambda s, t, l, r: l ^ r),
           Infix('dash',   transform=lambda s, t, l, r: l - r)),
         Right(Adjacency(  transform=lambda s, t, l, r: l | r)),
-        transform=lambda s, t, cs: cs),
+        transform=uni_val),
 
       # Pattern atoms.
       char=Atom('char',     transform=transform_char),

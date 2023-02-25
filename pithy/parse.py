@@ -96,17 +96,17 @@ def atom_kind(source:Source, token:Token) -> str: return token.kind
 def atom_text(source:Source, token:Token) -> str: return source[token]
 
 UniTransform = Callable[[Source,slice,Any],Any]
-def uni_val(source:Source, slc:slice, obj:Any) -> Any: return obj
-def uni_syn(source:Source, slc:slice, obj:Any) -> Syn: return Syn(slc, obj)
-def uni_text(source:Source, slc:slice, obj:Any) -> str: return source[slc]
+def uni_val(source:Source, slc:slice, val:Any) -> Any: return val
+def uni_syn(source:Source, slc:slice, val:Any) -> Syn: return Syn(slc, val)
+def uni_text(source:Source, slc:slice, val:Any) -> str: return source[slc]
 
 SuffixTransform = Callable[[Source,Token,Any],Any]
-def suffix_val(source:Source, token:Token, obj:Any) -> Any: return obj
-def suffix_text_val_pair(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
+def suffix_val(source:Source, token:Token, val:Any) -> Any: return val
+def suffix_text_val_pair(source:Source, token:Token, val:Any) -> Tuple[str,Any]: return (source[token], val)
 
-def suffix_text(source:Source, token:Token, obj:Any) -> str:
-  assert isinstance(obj, str)
-  return obj + source[token]
+def suffix_text(source:Source, token:Token, val:Any) -> str:
+  assert isinstance(val, str)
+  return val + source[token]
 
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
@@ -123,11 +123,11 @@ def struct_fields_tuple(source:Source, slc:slice, fields:List[Any]) -> Tuple[Any
 def struct_syn(source, slc, fields): return Syn(slc, fields)
 
 ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
-def choice_val(source:Source, slc:slice, label:RuleName, obj:Any) -> Any: return obj
-def choice_label(source:Source, slc:slice, label:RuleName, obj:Any) -> str: return label
-def choice_labeled(source:Source, slc:slice, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
-def choice_syn(source:Source, slc:slice, label:RuleName, obj:Any) -> Syn: return Syn(slc, obj)
-def choice_text(source:Source, slc:slice, label:RuleName, obj:Any) -> str: return source[slc]
+def choice_val(source:Source, slc:slice, label:RuleName, val:Any) -> Any: return val
+def choice_label(source:Source, slc:slice, label:RuleName, val:Any) -> str: return label
+def choice_labeled(source:Source, slc:slice, label:RuleName, val:Any) -> tuple[str,Any]: return (label, val)
+def choice_syn(source:Source, slc:slice, label:RuleName, val:Any) -> Syn: return Syn(slc, val)
+def choice_text(source:Source, slc:slice, label:RuleName, val:Any) -> str: return source[slc]
 
 _sentinel_kind = '!SENTINEL'
 
