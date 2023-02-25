@@ -4,28 +4,61 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
-from typing import Generic, NamedTuple, NoReturn, Protocol, TypeVar, Union
+from dataclasses import dataclass
+from typing import Generic, NoReturn, Protocol, TypeVar, Union, runtime_checkable
 
 
-class Token(NamedTuple):
-  pos:int
-  end:int
+@runtime_checkable
+class HasSlc(Protocol):
+  @property
+  def slc(self) -> slice: ...
+
+
+Syntax = slice|HasSlc
+
+
+def get_syntax_slc(syntax:Syntax) -> slice:
+  return syntax if isinstance(syntax, slice) else syntax.slc
+
+
+def slc_str(slc:slice) -> str: return f'{slc.start}-{slc.stop}'
+
+
+_setattr = object.__setattr__
+
+
+@dataclass(frozen=True)
+class Token:
+  slc:slice
   mode:str
   kind:str
 
+  def __init__(self, pos:int, end:int, mode:str='main', kind:str='?'):
+    _setattr(self, 'slc', slice(pos, end))
+    _setattr(self, 'mode', mode)
+    _setattr(self, 'kind', kind)
+
   def __str__(self) -> str:
-    return f'{self.pos}-{self.end}:{self.kind!r}'
+    return f'{slc_str(self.slc)}:{self.short_mode_kind}'
 
   def __repr__(self) -> str:
-    return f'{type(self).__qualname__}(pos={self.pos}, end={self.end}, mode={self.mode}, kind={self.kind})'
+    mode_str = '' if self.mode == 'main' else f', mode={self.mode!r}'
+    kind_str = '' if self.kind == '?' else f', kind={self.kind!r}'
+    return f'{type(self).__qualname__}({self.slc.start}, {self.slc.stop}{mode_str}{kind_str})'
 
   @property
   def mode_kind(self) -> str:
     return f'{self.mode}.{self.kind}'
 
   @property
-  def slice(self) -> slice:
-    return slice(self.pos, self.end)
+  def short_mode_kind(self) -> str:
+    return self.kind if self.mode == 'main' else self.mode_kind
+
+  @property
+  def pos(self) -> int: return int(self.slc.start)
+
+  @property
+  def end(self) -> int: return int(self.slc.stop)
 
   def pos_token(self, kind:str|None=None) -> 'Token':
     'Create a new token with the same position as `token` but with zero length.'
@@ -36,15 +69,6 @@ class Token(NamedTuple):
     'Create a new token with position and end set to `token.end`.'
     if kind is None: kind = self.kind
     return Token(pos=self.end, end=self.end, mode=self.mode, kind=kind)
-
-
-class HasToken(Protocol):
-  token:Token
-
-Syntax = Union[Token,HasToken]
-
-def get_syntax_token(syntax:Syntax) -> Token:
-  return syntax if isinstance(syntax, Token) else syntax.token
 
 
 SyntaxMsg = tuple[Syntax,str]
@@ -136,15 +160,16 @@ class Source(Generic[_Text]):
 
   def diagnostic(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> str:
     return ''.join(
-      self.diagnostic_for_token(get_syntax_token(sm[0]), sm[1], prefix=prefix) for sm in syntax_msgs if sm is not None)
+      self.diagnostic_for_syntax(sm[0], sm[1], prefix=prefix) for sm in syntax_msgs if sm is not None)
 
 
   def fail(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> NoReturn:
     exit(self.diagnostic(*syntax_msgs, prefix=prefix))
 
 
-  def diagnostic_for_token(self, token:Token, msg:str, *, prefix:str='') -> str:
-    return self.diagnostic_for_pos(pos=token.pos, end=token.end, msg=msg, prefix=prefix)
+  def diagnostic_for_syntax(self, syntax:Syntax, msg:str, *, prefix:str='') -> str:
+    slc = get_syntax_slc(syntax)
+    return self.diagnostic_for_pos(pos=slc.start, end=slc.stop, msg=msg, prefix=prefix)
 
 
   def diagnostic_for_pos(self, pos:int, *, end:int, prefix:str='', msg:str = '') -> str:
@@ -232,13 +257,14 @@ class Source(Generic[_Text]):
       return text[token.pos+offset:token.end].decode(errors='replace')
 
 
-  def __getitem__(self, token:Token) -> str:
+  def __getitem__(self, idx:int|Syntax) -> str:
     text = self.text
+    slc = slice(idx,idx+1) if isinstance(idx, int) else get_syntax_slc(idx)
     if isinstance(text, str):
-      return text[token.pos:token.end]
+      return text[slc]
     else:
       assert isinstance(text, (bytes, bytearray))
-      return text[token.pos:token.end].decode(errors='replace')
+      return text[slc].decode(errors='replace')
 
 
   '''

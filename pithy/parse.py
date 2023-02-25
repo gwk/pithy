@@ -23,6 +23,7 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 from collections import namedtuple
+from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
 from typing import (Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
   Union)
@@ -82,40 +83,51 @@ def append_or_list(list_or_el:Union[_T,List[_T]], el:_T) -> List[_T]:
     return [list_or_el, el]
 
 
+@dataclass(frozen=True)
+class Syn:
+  slc:slice
+  val:Any
+
+
 AtomTransform = Callable[[Source,Token],Any]
 
 def atom_identity(source:Source, token:Token) -> Token: return token
-def atom_text(source:Source, token:Token) -> str: return source[token]
 def atom_kind(source:Source, token:Token) -> str: return token.kind
+def atom_text(source:Source, token:Token) -> str: return source[token]
 
-UnaryTransform = Callable[[Source,Token,Any],Any]
-def unary_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
-def unary_identity(source:Source, token:Token, obj:Any) -> Any: return obj
+UniTransform = Callable[[Source,slice,Any],Any]
+def uni_identity(source:Source, slc:slice, obj:Any) -> Any: return obj
+def uni_syn(source:Source, slc:slice, obj:Any) -> Syn: return Syn(slc, obj)
+def uni_text(source:Source, slc:slice, obj:Any) -> str: return source[slc]
 
-def opt_text_or_empty(source:Source, token:Token, obj:Any) -> str:
-  if isinstance(obj, Token): return source[obj]
-  if isinstance(obj, str): return obj
-  if obj is None: return ''
-  raise ValueError(f'expected Token, str or None; received: {obj!r}')
+SuffixTransform = Callable[[Source,Token,Any],Any]
+def suffix_identity(source:Source, token:Token, obj:Any) -> Any: return obj
+def suffix_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
+
+def suffix_text(source:Source, token:Token, obj:Any) -> str:
+  assert isinstance(obj, str)
+  return obj + source[token]
 
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
 def adjacency_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
 def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> List[Any]: return append_or_list(left, right)
 
-QuantityTransform = Callable[[Source,Token,List[Any]],Any]
-def quantity_identity(source:Source, token:Token, elements:List[Any]) -> List[Any]: return elements
+QuantityTransform = Callable[[Source,slice,List[Any]],Any]
+def quantity_els(source:Source, slc:slice, elements:List[Any]) -> List[Any]: return elements
+def quantity_syn(source:Source, slc:slice, elements:List[Any]) -> Syn: return Syn(slc, elements)
+def quantity_text(source:Source, slc:slice, elements:List[Any]) -> str: return source[slc]
 
-StructTransform = Callable[[Source,Token,List[Any]],Any]
-def struct_syn(source:Source, token:Token, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
+StructTransform = Callable[[Source,slice,List[Any]],Any]
+def struct_tuple(source:Source, slc:slice, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
+def struct_syn(source, slc, fields): return Syn(slc, fields)
 
-ChoiceTransform = Callable[[Source,Token,RuleName,Any],Any]
-def choice_identity(source:Source, token:Token, label:RuleName, obj:Any) -> Any: return obj
-def choice_label(source:Source, token:Token, label:RuleName, obj:Any) -> str: return label
-def choice_labeled(source:Source, token:Token, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
-def choice_syn(source:Source, token:Token, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
-#^ TODO: change choice_syn to return a namedtuple with a syntax field, for compatibility with tolkien.Syntax.
-def choice_text(source:Source, token:Token, label:RuleName, obj:Any) -> str: return source[token]
+ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
+def choice_identity(source:Source, slc:slice, label:RuleName, obj:Any) -> Any: return obj
+def choice_label(source:Source, slc:slice, label:RuleName, obj:Any) -> str: return label
+def choice_labeled(source:Source, slc:slice, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
+def choice_syn(source:Source, slc:slice, label:RuleName, obj:Any) -> Syn: return Syn(slc, obj)
+def choice_text(source:Source, slc:slice, label:RuleName, obj:Any) -> str: return source[slc]
 
 _sentinel_kind = '!SENTINEL'
 
@@ -132,6 +144,7 @@ class Rule:
   sub_refs:Tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
   subs:Tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
   heads:Tuple[TokenKind,...] # Set of leading token kinds for this rule.
+
 
   def __init__(self, *args:Any, **kwargs:Any): raise Exception(f'abstract base class: {self}')
 
@@ -153,6 +166,7 @@ class Rule:
   def __lt__(self, other:'Rule') -> bool:
     if not isinstance(other, Rule): raise ValueError(other)
     return str(self) < str(other)
+
 
   @property
   def subs_desc(self) -> str:
@@ -202,8 +216,10 @@ class Rule:
       e.add_in_note(start, self)
       raise
 
+
   @property
   def field_name(self) -> str: return self.field or self.name
+
 
 
 class Alias(Rule):
@@ -214,7 +230,7 @@ class Alias(Rule):
 
   type_desc = 'alias'
 
-  def __init__(self, alias:str, field='', transform:UnaryTransform=unary_identity):
+  def __init__(self, alias:str, field='', transform:UniTransform=uni_identity):
     self.name = ''
     self.field = field
     self.alias = alias
@@ -227,7 +243,8 @@ class Alias(Rule):
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     res = self.parse_sub(self.subs[0], source, token, token, buffer)
-    return self.transform(source, token, res)
+    end = buffer.peek().pos
+    return self.transform(source, slice(token.pos, end), res)
 
 
 
@@ -253,7 +270,7 @@ class Atom(Rule):
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     parent.expect(source, token=token, kind=self.kind)
     #^ We use `parent` and not `self` to expect the token for a more contextualized error message.
-    #^ Using `self` we get messages like "'newline' atom expects newline".
+    #^ Using `self` we would get messages like "'newline' atom expects newline".
     return self.transform(source, token)
 
 
@@ -288,7 +305,7 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, field='', drop:Iterable[str]=(), dflt=None, transform:UnaryTransform=unary_identity):
+  def __init__(self, body:RuleRef, field='', drop:Iterable[str]=(), dflt=None, transform:UniTransform=uni_identity):
     self.name = ''
     self.field = field
     self.sub_refs = (body,)
@@ -303,11 +320,14 @@ class Opt(_QuantityRule):
     res = self.dflt
     while token.kind in self.drop:
       token = next(buffer)
+    pos = token.pos
     if token.kind in self.body_heads:
       res = self.parse_sub(self.body, source, token, token, buffer)
+      end = buffer.peek().pos
     else:
       buffer.push(token)
-    return self.transform(source, token, res)
+      end = pos
+    return self.transform(source, slice(pos, end), res)
 
 
   @property
@@ -324,7 +344,7 @@ class Quantity(_QuantityRule):
   type_desc = 'sequence'
 
   def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
-   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_identity) -> None:
+   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
     if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is `None` but `sep_at_end` is `{sep_at_end}`')
@@ -375,17 +395,18 @@ class Quantity(_QuantityRule):
       body_plural = pluralize(self.min, f'{self.body} element')
       raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
 
+    end = token.pos
     buffer.push(token)
     if self.sep_at_end is False and sep_token: buffer.push(sep_token)
 
-    return self.transform(source, start, els)
+    return self.transform(source, slice(start.pos, end), els)
 
 
 
 class ZeroOrMore(Quantity):
 
   def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
-   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_identity) -> None:
+   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
 
     super().__init__(body=body, min=0, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps,
       field=field, drop=drop, transform=transform)
@@ -395,7 +416,7 @@ class ZeroOrMore(Quantity):
 class OneOrMore(Quantity):
 
   def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
-   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_identity) -> None:
+   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
 
     super().__init__(body=body, min=1, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps,
       field=field, drop=drop, transform=transform)
@@ -440,9 +461,9 @@ class Struct(Rule):
         token = next(buffer)
       el = self.parse_sub(field, source, start, token, buffer)
       els.append(el)
+    end = buffer.peek().pos
     assert self.transform is not None
-    return self.transform(source, start, els)
-
+    return self.transform(source, slice(start.pos, end), els)
 
 
 class Choice(Rule):
@@ -482,7 +503,8 @@ class Choice(Rule):
     except KeyError: pass
     else:
       syn = self.parse_sub(sub, source, start, token, buffer)
-      return self.transform(source, start, sub.field_name, syn)
+      end = buffer.peek().pos
+      return self.transform(source, slice(start.pos, end), sub.field_name, syn)
     exp = self.name or f'any of {self.subs_desc}'
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
@@ -505,7 +527,7 @@ class Operator:
 class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
 
-  def __init__(self, suffix:TokenKind, transform:UnaryTransform=unary_syn):
+  def __init__(self, suffix:TokenKind, transform:SuffixTransform=suffix_syn):
     self.kinds = (validate_name(suffix),)
     self.transform = transform
 
@@ -617,7 +639,7 @@ class Precedence(Rule):
   type_desc = 'precedence rule'
 
   def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group,
-   field='', drop:Iterable[str]=(), transform:UnaryTransform=unary_identity) -> None:
+   field='', drop:Iterable[str]=(), transform:UniTransform=uni_identity) -> None:
 
     # Keep track of the distinction between subs that came from leaves vs groups.
     # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
@@ -670,7 +692,8 @@ class Precedence(Rule):
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     syn = self.parse_level(parent, source, token, buffer, 0)
-    return self.transform(source, token, syn)
+    end = buffer.peek().pos
+    return self.transform(source, slice(token.pos, end), syn)
 
 
   def parse_level(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token], level:int) -> Any:
@@ -703,7 +726,7 @@ class Precedence(Rule):
 
 class SubParser(Rule):
 
-  def __init__(self, parser:'Parser', rule_name:str, field='', transform:UnaryTransform=unary_identity):
+  def __init__(self, parser:'Parser', rule_name:str, field='', transform:UniTransform=uni_identity):
     self.name = ''
     self.field = field
     self.sub_refs = ()
@@ -714,7 +737,8 @@ class SubParser(Rule):
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
     sub_res = self.rule.parse(self, source, token, buffer)
-    return self.transform(source, token, sub_res)
+    end = buffer.peek().pos
+    return self.transform(source, slice(token.pos, end), sub_res)
 
 
 Preprocessor = Callable[[Source, Iterator[Token]], Iterable[Token]]
@@ -808,16 +832,16 @@ class Parser:
 
     if includes.count(True) == 1: # No need for a struct; just extract the interesting child element.
       i = includes.index(True)
-      def single_transform(source:Source, token:Token, fields:List[Any]) -> Any: return fields[i]
+      def single_transform(source:Source, slc:slice, fields:List[Any]) -> Any: return fields[i]
       return single_transform
 
     raw_field_names = [sub.field_name for sub, should_inlude in zip(subs, includes) if should_inlude]
-    field_names = ('token',) + tuple(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names))
+    field_names = ('slc',) + tuple(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names))
 
     struct_type = self._mk_struct_type(name, field_names=field_names)
 
-    def transform(source:Source, token:Token, fields:List[Any]) -> Any:
-      return struct_type(token, *(f for f, should_include in zip(fields, includes) if should_include))
+    def transform(source:Source, slc:slice, fields:List[Any]) -> Any:
+      return struct_type(slc, *(f for f, should_include in zip(fields, includes) if should_include))
 
     return transform
 

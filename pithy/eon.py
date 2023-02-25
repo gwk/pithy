@@ -12,7 +12,7 @@ from inspect import Parameter, signature
 from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, List,
   Optional, Tuple, Type, TypeVar, Union)
 
-from tolkien import Source, Token
+from tolkien import Source, Token, HasSlc, slc_str
 
 from .lex import Lexer, LexMode, LexTrans
 from .parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
@@ -23,44 +23,47 @@ _T = TypeVar('_T')
 
 
 class EonContainer:
-  token:Token
+  slc:slice
+
+  @property
+  def slc_str(self) -> str: return slc_str(self.slc)
 
 EonSyntax = Union[Token,EonContainer]
 
 
 class EonEmpty(EonContainer):
-  def __init__(self, token:Token):
-    self.token = token
+  def __init__(self, slc:slice):
+    self.slc = slc
 
-  def __repr__(self) -> str: return f'{type(self).__name__}({self.token})'
+  def __repr__(self) -> str: return f'{type(self).__name__}({self.slc_str})'
 
 
 class EonDict(EonContainer):
-  def __init__(self, token:Token, items:List[Tuple[Token,'EonSyntax']]):
-    self.token = token
+  def __init__(self, slc:slice, items:List[Tuple[Token,'EonSyntax']]):
+    self.slc = slc
     self.items = items
 
-  def __repr__(self) -> str: return f'{type(self).__name__}({self.token}, <{len(self.items)} items>)'
+  def __repr__(self) -> str: return f'{type(self).__name__}({self.slc_str}, <{len(self.items)} items>)'
 
   def __iter__(self) -> Iterator[Tuple[Token,EonSyntax]]: return iter(self.items)
 
 
 class EonList(EonContainer):
-  def __init__(self, token:Token, els:List['EonSyntax']):
-    self.token = token
+  def __init__(self, slc:slice, els:List['EonSyntax']):
+    self.slc = slc
     self.els = els
 
-  def __repr__(self) -> str: return f'{type(self).__name__}({self.token}, <{len(self.els)} els>)'
+  def __repr__(self) -> str: return f'{type(self).__name__}({self.slc_str}, <{len(self.els)} els>)'
 
   def __iter__(self) -> Iterator[EonSyntax]: return iter(self.els)
 
 
-class EonStr(EonContainer):
-  def __init__(self, token:Token, tokens:List[Token]):
-    self.token = token
+class EonStr(EonContainer, HasSlc):
+  def __init__(self, slc:slice, tokens:List[Token]):
+    self.slc = slc
     self.tokens = tokens
 
-  def __repr__(self) -> str: return f'{type(self).__name__}({self.token}, <{len(self.tokens)} tokens>)'
+  def __repr__(self) -> str: return f'{type(self).__name__}({self.slc_str}, <{len(self.tokens)} tokens>)'
 
   def __iter__(self) -> Iterator[EonSyntax]: return iter(self.tokens)
 
@@ -126,7 +129,7 @@ def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
 @convert_eon.register
 def convert_eon_str(syntax:EonStr, source:Source, to:Type[_T]) -> _T:
   if to not in (str, Any, object):
-    raise ConversionError(source, syntax, f'expected {to}; received {syntax.token.kind}.')
+    raise ConversionError(source, syntax, f'expected {to}; received str?')
   return syntax.value(source) # type: ignore[return-value]
 
 
@@ -156,7 +159,7 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
       if as_seq: return rtt(args) # type: ignore[no-any-return]
       else: return rtt(*args) # type: ignore[no-any-return]
     except ConversionError as e:
-      e.add_in_note(syntax.token, f'list -> {_fmt_type(to)}')
+      e.add_in_note(syntax, f'list -> {_fmt_type(to)}')
       raise
     except Exception as e:
       raise ConversionError(source, syntax,
@@ -172,7 +175,7 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
       if as_seq: return rtt(args) # type: ignore[no-any-return]
       else: return rtt(*args) # type: ignore[no-any-return]
     except ConversionError as e:
-      e.add_in_note(syntax.token, f'list -> {_fmt_type(to)}')
+      e.add_in_note(syntax, f'list -> {_fmt_type(to)}')
       raise
     except Exception as e:
       raise ConversionError(source, syntax, f'expected {_fmt_type(to)} structure; received list.\n{_fmt_exc(e)}') from e
@@ -214,7 +217,7 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
     rtt_mapping:Callable[[Iterable],_T] = rtt
     try: return rtt_mapping((convert_eon(sk, source, key_type), convert_eon(sv, source, val_type)) for sk, sv in syntax.items)
     except ConversionError as e:
-      e.add_in_note(syntax.token, f'dict -> {_fmt_type(to)}')
+      e.add_in_note(syntax, f'dict -> {_fmt_type(to)}')
       raise
     except Exception as e:
       raise ConversionError(source, syntax, f'expected {_fmt_type(to)}; received dict.\n{_fmt_exc(e)}') from e
@@ -230,7 +233,7 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
         args[k] = v
       return rtt(**args)
     except ConversionError as e:
-      e.add_in_note(syntax.token, f'dict -> {_fmt_type(to)}')
+      e.add_in_note(syntax, f'dict -> {_fmt_type(to)}')
       raise
     except Exception as e:
       raise ConversionError(source, syntax, f'expected {_fmt_type(to)} structure; received dict.\n{_fmt_exc(e)}') from e
@@ -356,8 +359,8 @@ def _build_eon_parser() -> Parser:
         Choice('flt', 'int', 'str_dq', 'str_sq', 'sym'),
         'newline'),
 
-      str_dq=Struct('dq', ZeroOrMore(Choice('esc_char', 'chars_dq')), 'dq', transform=lambda s, t, fields: EonStr(t, fields[1])),
-      str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq')), 'sq', transform=lambda s, t, fields: EonStr(t, fields[1])),
+      str_dq=Struct('dq', ZeroOrMore(Choice('esc_char', 'chars_dq')), 'dq', transform=lambda s, slc, fields: EonStr(slc, fields[1])),
+      str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq')), 'sq', transform=lambda s, slc, fields: EonStr(slc, fields[1])),
 
       # Values always consume trailing newline.
       value=Choice('leaf', 'dash_list', 'tilde_dict'),
@@ -367,7 +370,7 @@ def _build_eon_parser() -> Parser:
         'dash',
         Choice('newline', 'value', transform=lambda s, t, label, val: None if label == 'newline' else val),
         Opt('list_body_multiline', dflt=()),
-        transform=lambda s, t, fields: EonList(token=t, els=[fields[1], *fields[2]] if fields[1] else fields[2])),
+        transform=lambda s, slc, fields: EonList(slc=slc, els=[fields[1], *fields[2]] if fields[1] else fields[2])),
 
       list_body_multiline=Struct('indent', OneOrMore('value', drop='newline'), 'dedent'),
 
@@ -376,7 +379,7 @@ def _build_eon_parser() -> Parser:
         'tilde',
         Choice('newline', 'kv_pair', transform=lambda s, t, label, pair: () if label == 'newline' else (pair,)),
         Opt('dict_body_multiline', dflt=()),
-        transform=lambda s, t, fields: EonDict(token=t, items=[*fields[1], *fields[2]])),
+        transform=lambda s, slc, fields: EonDict(slc=slc, items=[*fields[1], *fields[2]])),
 
       dict_body_multiline=Struct('indent', OneOrMore('kv_pair', drop='newline'), 'dedent'),
 
@@ -404,7 +407,7 @@ def _build_eon_parser() -> Parser:
 # Parser transformers.
 
 
-def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> EonContainer:
+def transform_items(source:Source, slc:slice, items:List[Tuple[Any,Any]]) -> EonContainer:
   is_dict:bool
   vals:List[Any] = []
   for token, p in items:
@@ -417,21 +420,21 @@ def transform_items(source:Source, start:Token, items:List[Tuple[Any,Any]]) -> E
         msg = 'Expected list elements; received key-value pair.'
       else:
         msg = 'Expected key-value pair; received list element.'
-      raise ParseError(source, token, 'inconsistent sequence. ' + msg, notes=[(start, 'note: first element is here.')])
+      raise ParseError(source, token, 'inconsistent sequence. ' + msg, notes=[(slc, 'note: first element is here.')])
     vals.append(p if is_pair else k)
   if not vals:
-    return EonEmpty(token=start)
+    return EonEmpty(slc=slc)
   if is_dict:
-    return EonDict(token=start, items=vals)
+    return EonDict(slc=slc, items=vals)
   else:
-    return EonList(token=start, els=vals)
+    return EonList(slc=slc, els=vals)
 
 
-def transform_item(source:Source, token:Token, label:str, item:Any) -> Tuple[Token,Any]:
+def transform_item(source:Source, slc:slice, label:str, item:Any) -> Tuple[slice,Any]:
   if label == 'keylike_item':
     assert len(item) == 3
-    return (token, (item.key, item.newline_or_colon_body))
-  else: return (token, (item, None))
+    return (slc, (item.key, item.newline_or_colon_body))
+  else: return (slc, (item, None))
 
 
 eon_parser = _build_eon_parser()

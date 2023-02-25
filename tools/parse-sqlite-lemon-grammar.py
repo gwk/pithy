@@ -35,7 +35,7 @@ def main() -> None:
       print(bg, source[token], rst, sep='', end='')
       if token.kind == 'invalid':
         print()
-        exit(source.diagnostic_for_token(token, f'invalid token: {source[token]!r}'))
+        exit(source.diagnostic_for_syntax(token, f'invalid token: {source[token]!r}'))
     print()
 
   try: grammar = parser.parse('grammar', source)
@@ -171,10 +171,9 @@ def preprocess(source:Source, stream:Iterator[Token]) -> Iterator[Token]:
       case _: yield token
 
 
-def transform_d_name(source:Source, token:Token, label:str, obj:Any) -> str:
+def transform_d_name(source:Source, slc:slice, label:str, obj:Any) -> str:
   'Omit the directive contents but return the name for debugging purposes.'
-  assert token == obj
-  return source[token]
+  return source[slc]
 
 
 parser = Parser(

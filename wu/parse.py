@@ -14,4 +14,4 @@ def test_main() -> None:
       kind_desc = Lexer.pattern_descs[token.kind]
       _ = source.bytes_for(token).decode()
       if token.kind == 'visible':
-        print(source.diagnostic_for_token(token, msg=kind_desc))
+        print(source.diagnostic_for_syntax(token, msg=kind_desc))

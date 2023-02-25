@@ -18,7 +18,7 @@ class Parser:
   buffer: Buffer[Token]
 
   def error(self, token:Token, msg:str) -> ParseError:
-    return ParseError(self.source.diagnostic_for_token(token, msg))
+    return ParseError(self.source.diagnostic_for_syntax(token, msg))
 
   def parse_head(self) -> Any:
     pass
