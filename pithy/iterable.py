@@ -98,6 +98,10 @@ def iter_values(obj:Any) -> Iterator[Any]:
     yield from it
 
 
+def joinS(joiner:str, iterable:Iterable) -> str:
+  'Join str representations, separated by `joiner`.'
+  return joiner.join(map(str, iterable))
+
 def joinSC(iterable:Iterable) -> str:
   'Join str representations, separated by comma.'
   return ','.join(map(str, iterable))
@@ -109,6 +113,11 @@ def joinSCS(iterable:Iterable) -> str:
 def joinST(iterable:Iterable) -> str:
   'Join str representations, separated by tab.'
   return '\t'.join(map(str, iterable))
+
+
+def joinR(joiner:str, iterable:Iterable) -> str:
+  'Join repr representations, separated by `joiner`.'
+  return joiner.join(map(repr, iterable))
 
 def joinRC(iterable:Iterable) -> str:
   'Join repr representations, separated by comma.'
