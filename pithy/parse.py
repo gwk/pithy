@@ -91,26 +91,26 @@ class Syn:
 
 AtomTransform = Callable[[Source,Token],Any]
 
-def atom_identity(source:Source, token:Token) -> Token: return token
+def atom_token(source:Source, token:Token) -> Token: return token
 def atom_kind(source:Source, token:Token) -> str: return token.kind
 def atom_text(source:Source, token:Token) -> str: return source[token]
 
 UniTransform = Callable[[Source,slice,Any],Any]
-def uni_identity(source:Source, slc:slice, obj:Any) -> Any: return obj
+def uni_val(source:Source, slc:slice, obj:Any) -> Any: return obj
 def uni_syn(source:Source, slc:slice, obj:Any) -> Syn: return Syn(slc, obj)
 def uni_text(source:Source, slc:slice, obj:Any) -> str: return source[slc]
 
 SuffixTransform = Callable[[Source,Token,Any],Any]
-def suffix_identity(source:Source, token:Token, obj:Any) -> Any: return obj
-def suffix_syn(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
+def suffix_val(source:Source, token:Token, obj:Any) -> Any: return obj
+def suffix_text_val_pair(source:Source, token:Token, obj:Any) -> Tuple[str,Any]: return (source[token], obj)
 
 def suffix_text(source:Source, token:Token, obj:Any) -> str:
   assert isinstance(obj, str)
   return obj + source[token]
 
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
-def binary_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
-def adjacency_syn(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
+def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
+def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
 def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> List[Any]: return append_or_list(left, right)
 
 QuantityTransform = Callable[[Source,slice,List[Any]],Any]
@@ -119,11 +119,11 @@ def quantity_syn(source:Source, slc:slice, elements:List[Any]) -> Syn: return Sy
 def quantity_text(source:Source, slc:slice, elements:List[Any]) -> str: return source[slc]
 
 StructTransform = Callable[[Source,slice,List[Any]],Any]
-def struct_tuple(source:Source, slc:slice, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
+def struct_fields_tuple(source:Source, slc:slice, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
 def struct_syn(source, slc, fields): return Syn(slc, fields)
 
 ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
-def choice_identity(source:Source, slc:slice, label:RuleName, obj:Any) -> Any: return obj
+def choice_val(source:Source, slc:slice, label:RuleName, obj:Any) -> Any: return obj
 def choice_label(source:Source, slc:slice, label:RuleName, obj:Any) -> str: return label
 def choice_labeled(source:Source, slc:slice, label:RuleName, obj:Any) -> tuple[str,Any]: return (label, obj)
 def choice_syn(source:Source, slc:slice, label:RuleName, obj:Any) -> Syn: return Syn(slc, obj)
@@ -230,7 +230,7 @@ class Alias(Rule):
 
   type_desc = 'alias'
 
-  def __init__(self, alias:str, field='', transform:UniTransform=uni_identity):
+  def __init__(self, alias:str, field='', transform:UniTransform=uni_val):
     self.name = ''
     self.field = field
     self.alias = alias
@@ -255,7 +255,7 @@ class Atom(Rule):
   '''
   type_desc = 'atom'
 
-  def __init__(self, kind:TokenKind, field='', transform:AtomTransform=atom_identity):
+  def __init__(self, kind:TokenKind, field='', transform:AtomTransform=atom_token):
     self.name = ''
     self.field = field
     self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
@@ -305,7 +305,7 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, field='', drop:Iterable[str]=(), dflt=None, transform:UniTransform=uni_identity):
+  def __init__(self, body:RuleRef, field='', drop:Iterable[str]=(), dflt=None, transform:UniTransform=uni_val):
     self.name = ''
     self.field = field
     self.sub_refs = (body,)
@@ -472,7 +472,7 @@ class Choice(Rule):
   '''
   type_desc = 'choice'
 
-  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field='', transform:ChoiceTransform=choice_identity):
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field='', transform:ChoiceTransform=choice_val):
     self.name = ''
     self.field = field
     self.sub_refs = choices
@@ -527,7 +527,7 @@ class Operator:
 class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
 
-  def __init__(self, suffix:TokenKind, transform:SuffixTransform=suffix_syn):
+  def __init__(self, suffix:TokenKind, transform:SuffixTransform=suffix_text_val_pair):
     self.kinds = (validate_name(suffix),)
     self.transform = transform
 
@@ -544,7 +544,7 @@ class SuffixRule(Operator):
   `suffix` must be a constructed rule and not a string reference.
   '''
 
-  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_syn):
+  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_text_vals_triple):
     self.sub_refs = (suffix,)
     self.transform = transform
 
@@ -573,7 +573,7 @@ class Adjacency(BinaryOp):
   'A binary operator that joins two primary expressions with no operator token in between.'
   kinds:Tuple[TokenKind,...] = () # Adjacency operators have no operator token.
 
-  def __init__(self, transform:BinaryTransform=adjacency_syn):
+  def __init__(self, transform:BinaryTransform=binary_vals_pair):
     self.transform = transform
 
 
@@ -596,7 +596,7 @@ class _AllLeafKinds(Exception):
 class Infix(BinaryOp):
   'A binary operator that joins two primary expressions with an infix operator.'
 
-  def __init__(self, kind:TokenKind, transform:BinaryTransform=binary_syn):
+  def __init__(self, kind:TokenKind, transform:BinaryTransform=binary_text_vals_triple):
     self.kinds = (validate_name(kind),)
     self.transform = transform
 
@@ -639,7 +639,7 @@ class Precedence(Rule):
   type_desc = 'precedence rule'
 
   def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group,
-   field='', drop:Iterable[str]=(), transform:UniTransform=uni_identity) -> None:
+   field='', drop:Iterable[str]=(), transform:UniTransform=uni_val) -> None:
 
     # Keep track of the distinction between subs that came from leaves vs groups.
     # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
@@ -726,7 +726,7 @@ class Precedence(Rule):
 
 class SubParser(Rule):
 
-  def __init__(self, parser:'Parser', rule_name:str, field='', transform:UniTransform=uni_identity):
+  def __init__(self, parser:'Parser', rule_name:str, field='', transform:UniTransform=uni_val):
     self.name = ''
     self.field = field
     self.sub_refs = ()
