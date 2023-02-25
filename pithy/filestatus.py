@@ -250,7 +250,7 @@ def is_sticky(path_or_fd:Path, *, follow:bool, raises=False) -> Optional[bool]:
     return None
   return bool(s.st_mode&S_ISVTX)
 
-def path_exists(path_or_fd:Path, *, follow:bool) -> Optional[bool]:
+def path_exists(path_or_fd:Path, *, follow:bool) -> bool:
   try: _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError: return False
   else: return True
