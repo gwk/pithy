@@ -7,7 +7,7 @@ from itertools import zip_longest
 from string import Template
 from typing import Any, Callable, cast, Dict, List, NamedTuple, Optional, Pattern, Set, TextIO, Tuple, Union
 
-from pithy.fs import abs_path, path_dir, path_join, path_name
+from pithy.fs import abs_path, path_dir, path_join, path_name, path_exists
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
 from pithy.path import path_stem
 from pithy.types import (is_bool, is_dict, is_dict_of_str, is_int, is_list, is_list_of_str, is_pos_int, is_set, is_set_of_str,
@@ -108,6 +108,7 @@ class Case:
     self.test_dir: str = ''
     self.test_cmd: List[str] = []
     self.test_env: Dict[str, str] = {}
+    self.test_failed_previously: bool = False
     self.test_in: Optional[str] = None
     self.test_expectations: List[FileExpectation] = []
     self.test_links: List[Tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
@@ -219,6 +220,9 @@ class Case:
     rel_dir, _, multi_index = self.stem.partition('.')
     self.multi_index = int(multi_index) if multi_index else None
     self.test_dir = path_join(ctx.build_dir, rel_dir)
+    self.test_failed_path = path_join(self.test_dir, self.name + '.failed')
+    self.test_failed_previously = path_exists(self.test_failed_path, follow=False)
+
     env = self.test_env # local alias for convenience.
     env['BUILD'] = ctx.build_dir
     env['NAME'] = self.name
