@@ -5,7 +5,7 @@ Token and Source classes for implementing lexers and parsers.
 '''
 
 from dataclasses import dataclass
-from typing import Generic, NoReturn, Protocol, TypeVar, Union, runtime_checkable
+from typing import Generic, NoReturn, Protocol, runtime_checkable, TypeVar, Union
 
 
 @runtime_checkable
