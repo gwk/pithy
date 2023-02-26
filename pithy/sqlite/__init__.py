@@ -1,12 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from urllib.parse import quote as url_quote
 from typing import Any, cast, Dict, Iterable, Iterator, Mapping, Optional, Protocol, Self, Sequence, Tuple, TypeAlias, TypeVar
+from urllib.parse import quote as url_quote
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
-from .util import default_to_json, types_natively_converted_by_sqlite, sql_quote_entity
+from .util import default_to_json, sql_quote_entity, types_natively_converted_by_sqlite
 
 
 _T_co = TypeVar('_T_co', covariant=True)
