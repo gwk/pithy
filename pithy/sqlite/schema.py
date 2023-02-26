@@ -1,26 +1,26 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from dataclasses import dataclass, field, replace as dc_replace
+from collections import Counter, defaultdict
+from collections.abc import Hashable
+from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any, Iterable, Self
+from typing import Any, Iterable, Protocol, Self
 
-from tolkien import Source, Token
+from tolkien import Source
 
-from ..transtruct import Ctx, Input, Transtructor
+from ..transtruct import Input, Transtructor
+from ..types import Comparable
 from .keywords import sqlite_keywords
 from .parse import parser
-from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity_always,
-  sql_unquote_entity, sql_unquote_str, strict_sqlite_to_types, types_to_strict_sqlite)
+from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity, sql_quote_entity_always,
+  sql_unquote_entity, strict_sqlite_to_types, types_to_strict_sqlite) # type: ignore[misc] # Bogus error due to TableDepStructure(Comparable).
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Column:
   '''
   `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', or an SQL `expr`.
   SQLite column constraints: https://www.sqlite.org/syntax/column-constraint.html
-
-  We use `sql_quote_entity_always` to quote all column names because SQLite 3.40 always quotes renamed columns.
-  By quoting names in the generated statements, we eliminate syntactic discrepancies caused by rename operations.
   '''
   name:str
   datatype:type # Note: 'ANY' columns should be expressed with `object` rather than `Any` to mollify the type checker.
@@ -29,11 +29,8 @@ class Column:
   is_primary:bool = False # Whether the column is PRIMARY KEY.
   is_unique:bool = False # Whether the column is UNIQUE.
   virtual:str|None = None
-  default:int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
+  default:bool|int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
   desc:str = ''
-
-  @cached_property
-  def is_non_opt_str(self) -> bool: return self.datatype is str and not self.is_opt
 
 
   def __post_init__(self) -> None:
@@ -46,11 +43,54 @@ class Column:
       if self.is_primary: raise ValueError(f'Virtual column {self} cannot be primary key.')
       if self.default is not None: raise ValueError(f'Virtual column {self} cannot have a default value.')
 
+  @cached_property
+  def is_non_opt_str(self) -> bool: return self.datatype is str and not self.is_opt
+
+  @property
+  def is_generated(self) -> bool: return self.virtual is not None # TODO: add stored column support.
+
+  @cached_property
+  def default_rendered(self) -> str: return render_column_default(self.default)
+
+
+  @property
+  def semantic_details(self) -> tuple[bool,bool,bool,(str|None),str]:
+    '''
+    A tuple of all semantic attributes other than `name` and `datatype`.
+    Excludes `allow_kw` and `desc`, which are irrelevant to the generated SQL.
+    The rendered string representation of `default` is used because it disambiguates the empty string shorthand case.
+    '''
+    return (self.is_opt, self.is_primary, self.is_unique, self.virtual, self.default_rendered)
+
+
+  def diff_hint(self, other:'Column', exact_type:bool) -> str:
+    '''
+    Return a reason that this column is different from another, ignoring attributes that are not semantically relevant:
+    * allow_kw
+    * desc
+
+    Note that this is not a symmetric operation if exact_type is False:
+    we allow self.datatype to be a nonstrict equivalent type to other.datatype,
+    in the sense of `nonstrict_to_strict_types_for_sqlite`.
+    This allows us to compare a current self from a python schema to a previous version parsed from sqlite_schema.
+    '''
+    if self.name != other.name: return f'/ {sql_quote_entity_always(other.name)} order'
+    if self.datatype != other.datatype:
+      if exact_type or nonstrict_to_strict_types_for_sqlite.get(self.datatype) != other.datatype:
+        return 'datatype'
+    if self.is_opt != other.is_opt: return 'is_opt'
+    if self.is_primary != other.is_primary: return 'is_primary'
+    if self.is_unique != other.is_unique: return 'is_unique'
+    if self.virtual != other.virtual: return f'virtual ({self.virtual!r} != {other.virtual!r})'
+    if self.default_rendered != other.default_rendered: return 'default'
+    return ''
+
+
   def sql(self) -> str:
-    name = sql_quote_entity_always(self.name)
+    name = sql_quote_entity(self.name)
     type_ = types_to_strict_sqlite[self.datatype]
     primary_key = ' PRIMARY KEY' if self.is_primary else ''
-    unique = ' UNIQUE' if self.is_unique else ''
+    unique = ' UNIQUE' if (self.is_unique and not self.is_primary) else ''
     not_null = '' if (self.is_opt or self.is_primary) else ' NOT NULL'
 
     if self.default is not None:
@@ -74,13 +114,24 @@ class Column:
 
 
 class Structure:
-  'Top-level SQL objects, i.e. Index, Table, Trigger, View.'
+  '''
+  Top-level SQL objects, i.e. Index, Table, Trigger, View.
+
+  We use `sql_quote_entity_always` to quote all structure names because SQLite 3.40 always quotes renamed tables.
+  By quoting names in the generated statements, we reduce syntactic discrepancies caused by rename operations.
+
+  Note however that column rename options preserve the quoting as written in the ALTER statement.
+  '''
 
   name:str
   desc:str
 
 
-  def sql(self, schema='', if_not_exists=False) -> str:
+  @cached_property
+  def quoted_name(self) -> str: return sql_quote_entity_always(self.name)
+
+
+  def sql(self, *, schema='', name='', if_not_exists=False) -> str:
     raise NotImplementedError
 
 
@@ -94,17 +145,17 @@ class Structure:
     return schema_transtructor.transtruct(cls, ast, ctx=source)
 
 
-  def update_unparseable_details_to_match(self, other:Self):
-    '''
-    Update the details of this (presumably parsed) structure which might be empty or innacurate to match those of another.
-    This is makes equality comparison between a parsed structure (e.g. from sqlite_schema)
-    and a constructed structure (e.g. from a python schema definition) more useful.
-    '''
-    raise NotImplementedError
+  def diff_hints(self, other:Self) -> list[str]: raise NotImplementedError
 
 
 
-@dataclass
+class TableDepStructure(Structure, Comparable, Hashable):
+  'Structure objects that depend on a table, i.e. indexes, triggers, views.'
+  table:str
+
+
+
+@dataclass(frozen=True, order=True)
 class Table(Structure):
   name:str
   desc:str = ''
@@ -114,6 +165,11 @@ class Table(Structure):
   # TODO: foreign keys.
   columns:tuple[Column,...] = ()
 
+  def __post_init__(self) -> None:
+    if len(self.columns_dict) != len(self.column_names):
+      counter = Counter(self.column_names)
+      dups = [n for n in counter if counter[n] > 1]
+      raise ValueError(f'Table {self} has duplicate column names: {dups!r}')
 
   @cached_property
   def columns_dict(self) -> dict[str, Column]: return {c.name: c for c in self.columns}
@@ -121,9 +177,18 @@ class Table(Structure):
   @cached_property
   def column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns)
 
+  @cached_property
+  def material_column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns if not c.is_generated)
 
-  def sql(self, schema='', if_not_exists=False) -> str:
-    qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(self.name)}'
+  @cached_property
+  def quoted_columns_str(self) -> str: return ', '.join(sql_quote_entity(n) for n in self.column_names)
+
+  @cached_property
+  def quoted_material_columns_str(self) -> str: return ', '.join(sql_quote_entity(n) for n in self.material_column_names)
+
+
+  def sql(self, *, schema='', name='', if_not_exists=False) -> str:
+    qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(name or self.name)}'
     lines:list[str] = []
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     lines.append(f'CREATE TABLE {if_not_exists_str}{qual_name} (')
@@ -139,7 +204,7 @@ class Table(Structure):
       inner_parts.append(['  ', column_sql, ',', comment])
 
     if self.primary_key:
-      primary_key_parts = ', '.join(sql_quote_entity_always(c) for c in self.primary_key)
+      primary_key_parts = ', '.join(sql_quote_entity(c) for c in self.primary_key)
       inner_parts.append([f'  PRIMARY KEY ({primary_key_parts})', ',', ''])
 
     # Remove the comma from the last inner line.
@@ -158,32 +223,39 @@ class Table(Structure):
     return '\n'.join(lines)
 
 
-  def update_unparseable_details_to_match(self, other:Self):
-    self.desc = other.desc
-    other_columns = other.columns_dict
+  def match_columns_by_name(self, other:Self) -> dict[str,Column]:
+    '''
+    Attempt to match the columns of this table to those of another by name.
+    Returns a dict matching self column names to other's columns.
+    '''
 
-    replacement_cols = {}
+    od = other.columns_dict
+    matches = {}
 
-    for col in self.columns:
-      try: oc = other_columns[col.name]
+    for c in self.columns:
+      try: oc = od[c.name]
       except KeyError: continue
+      matches[c.name] = oc
 
-      # The datatype inferred from the parsed SQL is not as accurate as can be expressed in the python schema.
-      if col.datatype == nonstrict_to_strict_types_for_sqlite.get(oc.datatype):
-        datatype = oc.datatype
-      else:
-        datatype = col.datatype
-
-      if col.desc != oc.desc or col.datatype != datatype:
-        replacement_cols[col.name] = dc_replace(col, datatype=datatype, desc=oc.desc)
-
-    if replacement_cols:
-      self.columns = tuple(replacement_cols.get(c.name, c) for c in self.columns)
+    return matches
 
 
+  def diff_hints(self, other:Self) -> list[str]:
+    if self.name != other.name: return ['name']
+    hints = []
+    if self.is_strict != other.is_strict: hints.append('is_strict')
+    if self.without_rowid != other.without_rowid: hints.append('without_rowid')
+    if self.primary_key != other.primary_key: hints.append('primary_key')
+    matches = self.match_columns_by_name(other)
+    if self.column_names != tuple(matches): hints.append('columns')
+    else:
+      hints.extend(filter(None, (c.diff_hint(oc, exact_type=False) for c, oc in zip(self.columns, other.columns))))
+    return hints
 
-@dataclass
-class Index(Structure):
+
+
+@dataclass(frozen=True, order=True)
+class Index(TableDepStructure):
   name:str
   table:str
   is_unique:bool = False
@@ -191,7 +263,7 @@ class Index(Structure):
   columns:tuple[str,...] = ()
 
 
-  def sql(self, schema='', if_not_exists=False) -> str:
+  def sql(self, *, schema='', name='', if_not_exists=False) -> str:
     qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(self.name)}'
     lines = []
     if self.desc:
@@ -201,14 +273,18 @@ class Index(Structure):
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     unique_str = 'UNIQUE ' if self.is_unique else ''
     lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
-    columns_str = ', '.join(sql_quote_entity_always(c) for c in self.columns)
+    columns_str = ', '.join(sql_quote_entity(c) for c in self.columns)
     lines.append(f'  ON {sql_quote_entity_always(self.table)} ({columns_str})')
     return '\n'.join(lines)
 
 
-  def update_unparseable_details_to_match(self, other:Self):
-    raise NotImplementedError
-
+  def diff_hints(self, other:Self) -> list[str]:
+    if self.name != other.name: return ['name']
+    hints = []
+    if self.table != other.table: hints.append('table')
+    if self.is_unique != other.is_unique: hints.append('is_unique')
+    if self.columns != other.columns: hints.append('columns')
+    return hints
 
 
 @dataclass
@@ -247,16 +323,30 @@ class Schema:
     return {i.name: i for i in self.indexes}
 
 
-  def sql(self, if_not_exists=False) -> Iterable[str]:
+  @cached_property
+  def table_deps(self) -> dict[str, tuple[TableDepStructure,...]]:
+    '''
+    Return a dict mapping table names to the structures that depend on it.
+    '''
+    deps = defaultdict[str,set[TableDepStructure]](set)
 
-    if self.name or self.desc:
+    for s in self.structures:
+      if isinstance(s, TableDepStructure): deps[s.table].add(s)
+
+    return { n : tuple(sorted(deps[n])) for n in self.tables_dict }
+
+
+
+  def sql(self, *, name='', if_not_exists=False) -> Iterable[str]:
+    name = name or self.name
+    if name or self.desc:
       yield '\n'
-      if self.name: yield f'-- Schema: {self.name}\n'
+      if self.name: yield f'-- Schema: {name}\n'
       if self.desc: yield '\n'.join(sql_comment_lines(self.desc)) + '\n'
 
     for s in self.structures:
       yield '\n'
-      yield s.sql(schema=self.name, if_not_exists=if_not_exists)
+      yield s.sql(schema=name, if_not_exists=if_not_exists)
       yield ';'
       yield '\n'
 
@@ -291,6 +381,42 @@ class Schema:
     return schema_transtructor.transtruct(Schema, ast, ctx=source)
 
 
+
+def render_column_default(val:bool|int|float|str|None) -> str:
+  match val:
+    case None: return ''
+    case bool()|int()|float(): return str(val)
+    case '': return "''" # Special affordance for the empty string as shorthand.
+    case 'CURRENT_DATE'|'CURRENT_TIME'|'CURRENT_TIMESTAMP': return val
+    case str():
+      if val.startswith("'") and val.endswith("'"): return val # Quoted string or blob value.
+      if val.startswith('(') and val.endswith(')'): return val # SQL expression.
+      if val.startswith("x'") and val.endswith("'"): raise NotImplementedError('BLOB literals not supported.')
+      raise ValueError(f'Invalid Column default SQL expression: {val!r}')
+    case _: raise ValueError(f'Invalid Column default: {val!r}')
+
+
+def unrender_column_default(val:str) -> bool|int|float|str|None:
+  '''
+  Convert the rendered default value back to a python value.
+  This function does not completely validate the rendered string, just converts it back to a python value.
+  '''
+  if val == '': return None
+  if val == "''": return '' # Special affordance for the empty string as shorthand.
+  try: return _bool_repr_to_vals[val.capitalize()]
+  except KeyError: pass
+  c = val[0]
+  if c in '0123456789.+-': return float(val) if '.' in val else int(val)
+  if c == 'x': raise NotImplementedError('BLOB literals not supported.')
+  if c in "'(": return val
+  if val.startswith('CURRENT_'): return val
+  raise ValueError(f'Invalid Column default rendered string: {val!r}')
+
+
+_bool_repr_to_vals = {'True': True, 'False': False}
+
+
+
 schema_transtructor = Transtructor()
 
 
@@ -304,6 +430,9 @@ def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
   is_primary = constraints.get('primary_key', False)
   is_opt = not constraints.get('not_null', False) and not is_primary
   is_unique = constraints.get('unique', False) or is_primary
+  virtual = constraints.get('virtual')
+  stored = constraints.get('stored')
+  if stored: raise NotImplementedError(f'Column {name!r} is stored.')
   return dict(
     name=name,
     datatype=datatype,
@@ -311,7 +440,7 @@ def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
     is_opt=is_opt,
     is_primary=is_primary,
     is_unique=is_unique,
-    virtual=None,
+    virtual=virtual,
     default=constraints.get('default'),
   )
 
@@ -332,22 +461,19 @@ def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
     case 'check':
       raise NotImplementedError(f'column_constraint check: {constraint!r}')
     case 'default':
-      return label, _parse_column_default(val, source)
+      default_val = unrender_column_default(source[val])
+      return label, default_val
     case 'collate':
       raise NotImplementedError(f'column_constraint collate: {constraint!r}')
     case 'generated_constraint':
-      raise NotImplementedError(f'column_constraint generated_constraint: {constraint!r}')
+      stored_or_virtual = val.stored_or_virtual.lower()
+      expr_str = source[val.expr]
+      # Hack to remove the parens around the expression.
+      assert expr_str.startswith('(') and expr_str.endswith(')')
+      expr_str = expr_str[1:-1]
+      return stored_or_virtual, expr_str
     case _:
       raise NotImplementedError(f'column_constraint: {constraint!r}')
-
-
-def _parse_column_default(default:Input, source:Source) -> Any:
-  'int|float|str|None'
-  label, val = default
-  match label:
-    case 'paren_expr': raise NotImplementedError
-    case 'literal_value': return sql_unquote_str(source[val])
-    case 'signed_number': return source[val.sign] + source[val.number]
 
 
 

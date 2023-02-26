@@ -54,6 +54,7 @@ sqlite_keywords = frozenset({
   'EXISTS',
   'EXPLAIN',
   'FAIL',
+  'FALSE', # NOTE: not in the official list.
   'FILTER',
   'FIRST',
   'FOLLOWING',
@@ -136,6 +137,7 @@ sqlite_keywords = frozenset({
   'TO',
   'TRANSACTION',
   'TRIGGER',
+  'TRUE', # NOTE: not in the official list.
   'UNBOUNDED',
   'UNION',
   'UNIQUE',

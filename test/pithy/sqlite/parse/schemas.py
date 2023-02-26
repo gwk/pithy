@@ -71,9 +71,7 @@ def test_schema_parse(table:Table) -> None:
     outM('\nAST', ast, color=True)
     raise e
 
-  parsed_table.update_unparseable_details_to_match(table)
-
-  if parsed_table != table:
+  if hints := table.diff_hints(parsed_table):
     outL('\nParsed table does not match original table.')
     outM('\nOriginal', table)
     outM('\nParsed', parsed_table)
