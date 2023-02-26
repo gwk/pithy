@@ -205,11 +205,11 @@ class Rule:
     return token
 
 
-  def parse(self, parent:'Rule', source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+  def parse(self, parent:'Rule', source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     raise NotImplementedError(self)
 
 
-  def parse_sub(self, sub:'Rule', source:Source, start:Token, token:Token, buffer:Buffer[Token]) -> Any:
+  def parse_sub(self, sub:'Rule', source:Source, start:Token, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     try:
       return sub.parse(self, source, token, buffer)
     except ParseError as e:
@@ -241,10 +241,9 @@ class Alias(Rule):
   def head_subs(self) -> Iterable['Rule']:
     return self.subs
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    res = self.parse_sub(self.subs[0], source, token, token, buffer)
-    end = buffer.peek().pos
-    return self.transform(source, slice(token.pos, end), res)
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+    slc, res = self.parse_sub(self.subs[0], source, token, token, buffer)
+    return slc, self.transform(source, slc, res)
 
 
 
@@ -267,11 +266,11 @@ class Atom(Rule):
     yield self.kind
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     parent.expect(source, token=token, kind=self.kind)
     #^ We use `parent` and not `self` to expect the token for a more contextualized error message.
     #^ Using `self` we would get messages like "'newline' atom expects newline".
-    return self.transform(source, token)
+    return token.slc, self.transform(source, token)
 
 
 
@@ -316,18 +315,17 @@ class Opt(_QuantityRule):
     self.transform = transform
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    res = self.dflt
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     while token.kind in self.drop:
       token = next(buffer)
-    pos = token.pos
     if token.kind in self.body_heads:
-      res = self.parse_sub(self.body, source, token, token, buffer)
-      end = buffer.peek().pos
+      slc, res = self.parse_sub(self.body, source, token, token, buffer)
     else:
+      pos = token.pos
+      slc = slice(pos, pos)
+      res = self.dflt
       buffer.push(token)
-      end = pos
-    return self.transform(source, slice(pos, end), res)
+    return slc, self.transform(source, slc, res)
 
 
   @property
@@ -368,15 +366,17 @@ class Quantity(_QuantityRule):
     yield from self.drop
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     els:List[Any] = []
     sep_token:Token|None = None
     start = token
+    end = start.pos
     while True:
       while token.kind in self.drop:
         token = next(buffer)
       if len(els) == self.max or token.kind not in self.body_heads: break
-      el = self.parse_sub(self.body, source, start, token, buffer)
+      el_slc, el = self.parse_sub(self.body, source, start, token, buffer)
+      end = el_slc.stop
       els.append(el)
       token = next(buffer)
       if self.sep is not None: # Parse separator.
@@ -395,11 +395,10 @@ class Quantity(_QuantityRule):
       body_plural = pluralize(self.min, f'{self.body} element')
       raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
 
-    end = token.pos
     buffer.push(token)
     if self.sep_at_end is False and sep_token: buffer.push(sep_token)
-
-    return self.transform(source, slice(start.pos, end), els)
+    slc = slice(start.pos, end)
+    return slc, self.transform(source, slc, els)
 
 
 
@@ -451,19 +450,23 @@ class Struct(Rule):
       self.transform = parser._mk_struct_transform(name=self.name, subs=self.subs)
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    els:List[Any] = []
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+    vals:List[Any] = []
+    while token.kind in self.drop:
+      token = next(buffer)
     start = token
+    end = start.pos
     for i, field in enumerate(self.subs):
       if i:
         token = next(buffer)
-      while token.kind in self.drop:
-        token = next(buffer)
-      el = self.parse_sub(field, source, start, token, buffer)
-      els.append(el)
-    end = buffer.peek().pos
+        while token.kind in self.drop:
+          token = next(buffer)
+      field_slc, val = self.parse_sub(field, source, start, token, buffer)
+      vals.append(val)
+      end = field_slc.stop
     assert self.transform is not None
-    return self.transform(source, slice(start.pos, end), els)
+    slc = slice(start.pos, end)
+    return slc, self.transform(source, slc, vals)
 
 
 class Choice(Rule):
@@ -495,16 +498,15 @@ class Choice(Rule):
       self.head_table[head] = matching_subs[0]
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     start = token
     while token.kind in self.drop:
       token = next(buffer)
     try: sub = self.head_table[token.kind]
     except KeyError: pass
     else:
-      syn = self.parse_sub(sub, source, start, token, buffer)
-      end = buffer.peek().pos
-      return self.transform(source, slice(start.pos, end), sub.field_name, syn)
+      slc, val = self.parse_sub(sub, source, start, token, buffer)
+      return slc, self.transform(source, slc, sub.field_name, val)
     exp = self.name or f'any of {self.subs_desc}'
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
@@ -519,7 +521,7 @@ class Operator:
   def __init__(self, *args:Any, **kwargs:Any): raise Exception(f'abstract base class: {self}')
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> Any:
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
     raise NotImplementedError(self)
 
 
@@ -527,13 +529,13 @@ class Operator:
 class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
 
-  def __init__(self, suffix:TokenKind, transform:SuffixTransform=suffix_text_val_pair):
+  def __init__(self, suffix:TokenKind, transform:SuffixTransform=suffix_text_val_pair): # TODO: transform should take slc and token?
     self.kinds = (validate_name(suffix),)
     self.transform = transform
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> Any:
-    return self.transform(source, op_token, left) # No right-hand side.
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
+    return op_token.end, self.transform(source, op_token, left) # No right-hand side.
 
 
 
@@ -544,7 +546,7 @@ class SuffixRule(Operator):
   `suffix` must be a constructed rule and not a string reference.
   '''
 
-  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_text_vals_triple):
+  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_text_vals_triple): # TODO: transform should take slc.
     self.sub_refs = (suffix,)
     self.transform = transform
 
@@ -558,9 +560,9 @@ class SuffixRule(Operator):
     return tuple(self.suffix.heads)
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> Any:
-    right = parent.parse_sub(self.suffix, source, op_token, op_token, buffer)
-    return self.transform(source, op_token.pos_token(), left, right)
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
+    slc, right = parent.parse_sub(self.suffix, source, op_token, op_token, buffer)
+    return slc.stop, self.transform(source, op_token.pos_token(), left, right)
 
 
 
@@ -573,7 +575,7 @@ class Adjacency(BinaryOp):
   'A binary operator that joins two primary expressions with no operator token in between.'
   kinds:Tuple[TokenKind,...] = () # Adjacency operators have no operator token.
 
-  def __init__(self, transform:BinaryTransform=binary_vals_pair):
+  def __init__(self, transform:BinaryTransform=binary_vals_pair): # TODO transform should take slc.
     self.transform = transform
 
 
@@ -582,9 +584,9 @@ class Adjacency(BinaryOp):
     raise _AllLeafKinds
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> Any:
-    right = parse_level(parent=parent, source=source, token=op_token, buffer=buffer, level=level)
-    return self.transform(source, op_token.pos_token(), left, right)
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
+    slc, right = parse_level(parent=parent, source=source, token=op_token, buffer=buffer, level=level)
+    return slc.stop, self.transform(source, op_token.pos_token(), left, right)
 
 
 
@@ -601,9 +603,9 @@ class Infix(BinaryOp):
     self.transform = transform
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> Any:
-    right = parse_level(parent=parent, source=source, token=next(buffer), buffer=buffer, level=level)
-    return self.transform(source, op_token, left, right)
+  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
+    slc, right = parse_level(parent=parent, source=source, token=next(buffer), buffer=buffer, level=level)
+    return slc.stop, self.transform(source, op_token, left, right)
 
 
 
@@ -690,14 +692,14 @@ class Precedence(Rule):
           self.tail_table[kind] = (group, op)
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    syn = self.parse_level(parent, source, token, buffer, 0)
-    end = buffer.peek().pos
-    return self.transform(source, slice(token.pos, end), syn)
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+    slc, val = self.parse_level(parent, source, token, buffer, 0)
+    return slc, self.transform(source, slc, val)
 
 
-  def parse_level(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token], level:int) -> Any:
-    left = self.parse_leaf(parent, source, token, buffer)
+  def parse_level(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token], level:int) -> tuple[slice,Any]:
+    left_slc, left = self.parse_leaf(parent, source, token, buffer)
+    end = left_slc.stop
     while True:
       op_token = next(buffer)
       while op_token.kind in self.drop:
@@ -707,13 +709,13 @@ class Precedence(Rule):
       except KeyError:
         break # op_token is not an operator.
       if group.level < level: break # This operator is at a lower precedence.
-      left = op.parse_right(parent, source, left, op_token, buffer, self.parse_level, level=group.level+group.level_bump)
+      end, left = op.parse_right(parent, source, left, op_token, buffer, self.parse_level, level=group.level+group.level_bump)
     # op_token is either not an operator, or of a lower precedence level.
     buffer.push(op_token) # Put it back.
-    return left
+    return slice(left_slc.start, end), left
 
 
-  def parse_leaf(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
+  def parse_leaf(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     start = token
     while token.kind in self.drop:
       token = next(buffer)
@@ -735,10 +737,9 @@ class SubParser(Rule):
     self.rule = parser.rules[rule_name]
     self.transform = transform
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> Any:
-    sub_res = self.rule.parse(self, source, token, buffer)
-    end = buffer.peek().pos
-    return self.transform(source, slice(token.pos, end), sub_res)
+  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+    slc, sub_res = self.rule.parse(self, source, token, buffer)
+    return slc, self.transform(source, slc, sub_res)
 
 
 Preprocessor = Callable[[Source, Iterator[Token]], Iterable[Token]]
@@ -882,7 +883,7 @@ class Parser:
     rule = self.rules[rule_name]
     buffer = self.make_buffer(source, dbg_tokens)
     token = next(buffer)
-    result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
+    _, result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
     excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
       raise ExcessToken(source, excess_token, f'excess token: {excess_token.mode_kind}.')
