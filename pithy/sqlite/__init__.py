@@ -297,3 +297,25 @@ class Connection(sqlite3.Connection):
     '''
     try: return self.cursor().executescript(sql_script)
     except sqlite3.Error as e: raise SqliteError.from_error(e, sql_script) from e
+
+
+  def backup_and_print_progress(self, target:sqlite3.Connection|str|None=None, pages=-1, name='main', sleep=0.250) -> None:
+    '''
+    Backup this database to the target database, printing progress to stdout.
+    '''
+    if target is None: target = self.path + '.backup'
+
+    close = False
+    if isinstance(target, str):
+      target = sqlite3.connect(target)
+      close = True
+
+    def progress(_status:int, remaining:int, total:int):
+      frac = (total - remaining) / total
+      print(f'Backup {name!r}: {frac:0.1%}…', end='\r')
+
+    print(f'Backup {name!r}…')
+    try: self.backup(target, pages=pages, progress=progress, name=name, sleep=sleep)
+    finally:
+      if close: target.close()
+    print(f'Backup {name!r} complete.')
