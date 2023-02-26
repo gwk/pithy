@@ -5,8 +5,8 @@ from typing import Any, cast
 from tolkien import Source, Token
 
 from ..lex import Lexer
-from ..parse import (Alias, Atom, atom_text, Choice, choice_label, choice_labeled, OneOrMore, Opt, ParseError, Parser, Quantity,
-  Struct, ZeroOrMore)
+from ..parse import (Alias, Atom, atom_text, Choice, choice_label, choice_labeled, choice_val, Infix, Left, OneOrMore, Opt,
+  ParseError, Parser, Precedence, Quantity, Struct, uni_syn, uni_text, ZeroOrMore)
 from .keywords import sqlite_keywords
 
 
@@ -125,18 +125,21 @@ create_rules = dict(
       Struct('NOT', 'NULL', 'on_conflict', field='not_null'),
       Struct('UNIQUE', 'on_conflict', field='unique'),
       Struct('CHECK', 'paren_expr', field='check'),
-      Struct('DEFAULT', Choice('paren_expr', 'literal_value', 'signed_number', transform=choice_labeled), field='default'),
+      Struct('DEFAULT', 'default_expr', field='default'),
       Struct('COLLATE', 'name', field='collate'),
       # TODO: foreign-key-clause.
       'generated_constraint',
       field='kind',
       transform=choice_labeled)),
 
+  default_expr = Choice('paren_expr', 'literal_value', 'signed_number', 'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
+    transform=choice_val),
+
   generated_constraint = Struct(
     Opt(Struct('GENERATED', 'ALWAYS'), field=None),
     'AS',
-    'paren_expr',
-    Opt(Choice('STORED', 'VIRTUAL'))),
+    Alias('paren_expr', transform=uni_syn, field='expr'),
+    Opt(Choice('STORED', 'VIRTUAL'), field='stored_or_virtual', transform=uni_text)),
 
   asc_desc = Choice('ASC', 'DESC'),
 
@@ -162,32 +165,38 @@ create_rules = dict(
 
 
 expr_rules = dict(
-  expr = Choice(
-    # The "literal-value" tokens.
-    'blob',
-    'float',
-    'integer',
-    'string',
-
-    # bind-parameter
-    'schema_table_column_name',
-    # unary-operator expr
-    # expr binary-operator expr
-    # function-name ...
-    'paren_expr',
-    Struct('CAST', 'lp', 'expr', 'AS', 'name', 'rp'),
-    # expr COLLATE collation-name
-    # expr NOT LIKE|GLOB|REGEXP|MATCH expr
-    # expr ISNULL, NOTNULL, NOT NULL
-    # expr IS NOT DISTINCT FROM expr
-    # expr NOT BETWEEEN expr AND expr
-    # expr NOT IN (expr, expr, ...)
-    # NOT EXISTS ( SELECT ... ) # Note: this will conflict with `( expr, ... )` above; refactor to separate NOT EXISTS and EXISTS, and ( SELECT ..).
-    # CASE expr WHEN expr THEN expr ELSE expr END
-    # raise-function
+  expr = Precedence(
+    ( 'blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', # The "literal-value" tokens.
+      'signed_number',
+      # bind-parameter
+      'schema_table_column_name',
+      'paren_expr',
+      'cast_expr',
+      'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
+    ),
+    Left(Infix('eq'), Infix('ne'), Infix('lt'), Infix('le'), Infix('gt'), Infix('ge')),
+    Left(Infix('concat')),
+    Left(Infix('plus'), Infix('minus')),
+    Left(Infix('star'), Infix('slash'), Infix('rem')),
   ),
 
+  # unary-operator expr
+  # expr binary-operator expr
+  # function-name ...
+  # expr COLLATE collation-name
+  # expr NOT LIKE|GLOB|REGEXP|MATCH expr
+  # expr ISNULL, NOTNULL, NOT NULL
+  # expr IS NOT DISTINCT FROM expr
+  # expr NOT BETWEEEN expr AND expr
+  # expr NOT IN (expr, expr, ...)
+  # NOT EXISTS ( SELECT ... ) # Note: this will conflict with `( expr, ... )` above; refactor to separate NOT EXISTS and EXISTS, and ( SELECT ..).
+  # CASE expr WHEN expr THEN expr ELSE expr END
+  # raise-function
+
+  signed_number = Struct(Choice('plus', 'minus', field='sign'), Choice('float', 'integer', field='number')),
+
   paren_expr = Struct('lp', 'expr', 'rp', field='expr'),
+  cast_expr =  Struct('CAST', 'lp', 'expr', 'AS', 'name', 'rp'),
 
   exists_prefix = Opt(Choice('EXISTS', 'not_exists', transform=choice_label)),
   not_exists = Struct('NOT', 'EXISTS'),
@@ -214,10 +223,8 @@ parser = Parser(lexer,
 
     stmt = Choice('create_stmt', 'select_stmt'),
 
-    literal_value = Choice('blob', 'float', 'integer', 'string'),
+    literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL'),
     #^ NOTE: This is strict and does not allow entities as strings. See https://www.sqlite.org/lang_keywords.html.
-
-    signed_number = Struct(Choice('plus', 'minus', field='sign'), Choice('float', 'integer', field='number')),
 
     schema_table_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
     table_column_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
