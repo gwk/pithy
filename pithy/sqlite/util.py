@@ -103,6 +103,18 @@ nonstrict_to_strict_types_for_sqlite = {
 }
 
 
+def type_for_lax_sql(sql_type:str) -> type:
+  'Follows the rules in https://www.sqlite.org/datatype3.html#determination_of_column_affinity.'
+  s = sql_type.upper()
+  try: return strict_sqlite_to_types[s]
+  except KeyError: pass
+  if 'INT' in s: return int
+  if any(t in s for t in ('CHAR', 'CLOB', 'TEXT')): return str
+  if 'BLOB' in s: return bytes
+  if any(t in s for t in ('REAL', 'FLOA', 'DOUB')): return float
+  return object # Note: the default affinity is 'NUMERIC', but it makes more sense to default to 'object'.
+
+
 def sql_comment_lines(comment:str, indent='') -> list[str]:
   if not indent.isspace(): raise ValueError(f'Indent must be whitespace: {indent!r}')
   return [f'{indent}-- {l.rstrip()}' for l in comment.strip().splitlines()]
