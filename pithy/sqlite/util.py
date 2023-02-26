@@ -87,6 +87,7 @@ static_types_to_strict_sqlite:dict[Any,str] = {
 strict_sqlite_to_types:dict[str,type] = {
   'ANY': object,
   'BLOB': bytes,
+  'INT': int,
   'INTEGER': int,
   'REAL': float,
   'TEXT': str,
