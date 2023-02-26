@@ -35,7 +35,7 @@ from .graph import visit_nodes
 from .io import tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import caller_module_name
-from .string import indent_lines, iter_str, pluralize, typecase_from_snakecase, capitalize_first
+from .string import indent_lines, iter_str, pluralize, typecase_from_snakecase
 from .untyped import Immutable
 
 
