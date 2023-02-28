@@ -30,6 +30,7 @@ class Column:
   is_unique:bool = False # Whether the column is UNIQUE.
   virtual:str|None = None
   default:bool|int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
+  vis:bool = True # Whether the column should be visible by default.
   desc:str = ''
 
 
@@ -149,7 +150,7 @@ class Structure:
 
 
 
-class TableDepStructure(Structure, Comparable, Hashable):
+class TableDepStructure(Structure):
   'Structure objects that depend on a table, i.e. indexes, triggers, views.'
   table:str
 
@@ -176,6 +177,9 @@ class Table(Structure):
 
   @cached_property
   def column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns)
+
+  @cached_property
+  def quoted_column_names(self) -> tuple[str, ...]: return tuple(sql_quote_entity(n) for n in self.column_names)
 
   @cached_property
   def material_column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns if not c.is_generated)
@@ -333,7 +337,7 @@ class Schema:
     for s in self.structures:
       if isinstance(s, TableDepStructure): deps[s.table].add(s)
 
-    return { n : tuple(sorted(deps[n])) for n in self.tables_dict }
+    return { n : tuple(sorted(deps[n])) for n in self.tables_dict } # type: ignore[type-var]
 
 
 

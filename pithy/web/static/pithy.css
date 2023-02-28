@@ -34,10 +34,68 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that don't have
   }
 }
 
+/* Root vars. */
+:root {
+  --cw: 64rem; /* Content width. */
+  --cp: 0.5rem; /* Content padding. */;
+  --scrollbar-width: 0px; /* Updated by javascript. */
+  --vw-sb: calc(100vw - var(--scrollbar-width));
+}
+
+
+/* Page layout. */
+
+* { position: relative; }
+
+html { overflow-y: scroll; } /* Prevents centered layout from jittering between when scroll bar appears. */
+
+body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.bfull {
+  width: 100%;
+  max-width: 100%;
+  padding: 0 var(--cp);
+}
+
+.bfull-bleed-bg {
+  width: 100%;
+  max-width: 100%;
+  padding: 0 max(var(--cp), calc(50vw - 0.5*var(--cw)));
+}
+
+.bpage {
+  width: 100%;
+  max-width: var(--cw);
+  padding: 0 var(--cp);
+  align-self: center;
+}
+
+body > * { /* By default, all direct children of body are bpage. */
+  width: 100%;
+  max-width: var(--cw);
+  padding: 0 var(--cp);
+  align-self: center;
+}
+
+.wc { width: var(--cw); }
+
+.pc {
+  padding-left:var(--cp);
+  padding-right:var(--cp);
+}
+
+
 /* Utility classes. */
 
 .w100 { width: 100%; }
 .h100 { height: 100%; }
+.w-isodate { width: 11ch; }
+.w-isodatetime-m { width: 17ch; }
+.w-isodatetime-s { width: 20ch; }
 
 .bold { font-weight: bold; }
 
@@ -54,6 +112,60 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that don't have
 .text-justify { text-align: justify; }
 .text-start { text-align: start; }
 .text-end { text-align: end; }
+
+
+/* Tables. */
+
+table {
+  table-layout: fixed;
+  margin: 1rem 0;
+  border-style: solid;
+  border-width: 1px;
+  border-color: #AAA;
+  border-spacing: 1rem 0.5rem;
+}
+
+table caption {
+  font-weight: bold;
+  text-align: left;
+  caption-side: top;
+}
+
+th, td {
+  text-align: left;
+  vertical-align: top;
+}
+
+table.dense {
+  border-collapse: collapse;
+}
+
+table.dense :is(td, th) {
+  border-color: #AAA;
+  border-style: solid;
+  border-width: 1px;
+  padding: 0.25rem 0.5rem;
+}
+
+table.dense tbody tr:nth-child(odd) {
+  background-color: #EEE;
+}
+
+
+/* HTMX interaction indicators. */
+
+.block-emoji-icon {
+  display: block;
+  margin: 1rem 0;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.inline-emoji-icon {
+  display: inline-block;
+  margin: 0 0.5rem;
+  text-align: center;
+}
 
 
 /* Htmx emoji clock spinner. */
@@ -81,4 +193,34 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that don't have
   83.333% { content: '🕙'; }
   91.667% { content: '🕚'; }
   100.00% { content: '🕛'; }
+}
+
+
+/* SelectApp. */
+
+#pithy_select_app form {
+  margin-top: 1em;
+  display: grid;
+  grid-template-columns: min-content 1fr;
+  gap: 1em;
+}
+span.enable-column {
+  margin-right: 1em;
+  white-space: nowrap;
+}
+span.enable-column input {
+  margin-right: 0.5em;
+}
+
+#pithy_select_app table#select_results {
+  table-layout: auto;
+}
+
+#pithy_select_app table#select_results th {
+  resize: horizontal;
+  overflow: clip;
+}
+
+#pithy_select_app pre#select_explain {
+  margin: 1em 0;
 }
