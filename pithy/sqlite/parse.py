@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
 from typing import Any, cast
 
 from tolkien import Source, Token
@@ -8,6 +9,51 @@ from ..lex import Lexer
 from ..parse import (Alias, Atom, atom_text, Choice, choice_label, choice_labeled, choice_val, Infix, Left, OneOrMore, Opt,
   ParseError, Parser, Precedence, Quantity, Struct, uni_syn, uni_text, ZeroOrMore)
 from .keywords import sqlite_keywords
+
+
+sqlite_entity_pattern = r''' # Note: in the SQLite grammar this is called "id" (identifier).
+  [^\W\d]\w* # Nondigit word char followed by zero or more word chars.
+| "  ( (?: [^"]  | ""   )* ) "
+| `  ( (?: [^`]  | ``   )* ) `  # MySQL style.
+| \[ ( (?: [^\]] | \]\] )* ) \] # MS Access and SQL Server style.
+#^ IMPORTANT: the order of the match groups is used by sql_parse_entity, which has security implications.
+'''
+
+sqlite_string_pattern = r'''
+  '( (?:[^']|'')* )'
+'''
+
+sqlite_entity_re = re.compile(r'(?x)' + sqlite_entity_pattern)
+sqlite_string_re = re.compile(r'(?x)' + sqlite_string_pattern)
+
+
+def sql_parse_entity(entity:str) -> str:
+  m = sqlite_entity_re.fullmatch(entity)
+  if not m: raise ValueError(f'SQL entity is malformed: {entity!r}')
+  match m.lastindex:
+    case None:
+      assert "'" not in entity and  '"' not in entity, entity # Be extra careful.
+      return entity
+    case 1: return m[1].replace('""', '"')
+    case 2: return m[2].replace('``', '`')
+    case 3: return m[3].replace(']]', ']')
+    case _: raise ValueError(f'INTERNAL ERROR: sqlite_entity_re match groups are broken: {entity!r}.')
+
+
+def sql_parse_schema_table(s:str) -> tuple[str, str]:
+  m = sqlite_entity_re.match(s)
+  if not m: raise ValueError(f'SQL schema.table string is malformed: {s!r}')
+  schema = sql_parse_entity(m[0])
+  if m.end() == len(s): return '', schema
+  if s[m.end()] != '.': raise ValueError(f'SQL schema.table string is malformed: {s!r}')
+  table = sql_parse_entity(s[m.end()+1:])
+  return schema, table
+
+
+def sql_parse_str(s:str) -> str:
+  m = sqlite_string_re.fullmatch(s)
+  if not m: raise ValueError(f'SQL string is malformed: {s!r}')
+  return m[1].replace("''", "'")
 
 
 def parse_sqlite(path:str, text:str) -> list[Any]: # Actual return type is list[parser.types.Stmt].
@@ -58,7 +104,7 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
     blob = r"x'[0-9a-fA-F]*'", # Must precede `name`.
     float = r'([0-9]+\.[0-9]* | \.[0-9]+) ([eE][+-]?[0-9]+)?', # Must precede `integer`.
     integer = r'[0-9]+ | 0x[0-9a-fA-F]+',
-    string = r" ' ( [^'] | '' )* ' ",
+    string = sqlite_string_pattern,
 
     name = r''' # Note: in the SQLite grammar this is called "id" (identifier).
       [^\W\d]\w*
@@ -67,15 +113,7 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
     | \[ ( [^\]] | \]\] )* \] # MS Access and SQL Server style.
     ''',
 
-    variable = r'''
-    # https://sqlite.org/lang_expr.html#parameters
-    # Note that all three named parameter styles accept a digit as the first character, as well as unicode chars.
-    # The TCL style allows interspersed "::" and trailing "(...)", "containing any text at all".
-    # However this is underspecified. In particular, the parenthetical does not appear to accept spaces.
-      \?   [0-9]*
-    | [:@] \w+
-    | \$ ( \w+ | :: )+ ( \([^)\s]*\) )?  # TCL style allows interspersed "::" and trailing "(...)".
-    ''',
+    variable = sqlite_entity_pattern,
   ),
 )
 

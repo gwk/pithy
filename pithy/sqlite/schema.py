@@ -11,9 +11,9 @@ from tolkien import Source
 from ..transtruct import Input, Transtructor
 from ..types import Comparable
 from .keywords import sqlite_keywords
-from .parse import parser
-from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity, sql_quote_entity_always,
-  sql_unquote_entity, strict_sqlite_to_types, types_to_strict_sqlite) # type: ignore[misc] # Bogus error due to TableDepStructure(Comparable).
+from .parse import parser, sql_parse_entity
+from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity,
+  sql_quote_entity_always, strict_sqlite_to_types, types_to_strict_sqlite)
 
 
 @dataclass(frozen=True, order=True)
@@ -422,7 +422,7 @@ schema_transtructor = Transtructor()
 
 @schema_transtructor.prefigure(Column)
 def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
-  name = sql_unquote_entity(source[column.name])
+  name = sql_parse_entity(source[column.name])
   if column.type_name is None: raise ValueError(f'Column {name!r} has no type.')
   type_name = source[column.type_name]
   datatype = strict_sqlite_to_types[type_name]
@@ -479,7 +479,7 @@ def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
 
 @schema_transtructor.prefigure(Table)
 def prefigure_Table(class_:type, table:Input, source:Source) -> dict[str,Any]:
-  table_name_parts = [sql_unquote_entity(source[t]) for t in table.name]
+  table_name_parts = [sql_parse_entity(source[t]) for t in table.name]
 
   def_ = table.def_
   if not isinstance(def_, parser.types.TableDef): raise ValueError(f'Expected a table_def; received {def_!r}')
@@ -512,7 +512,7 @@ def _parse_indexed_column(column:Input, source:Source) -> str:
   assert column.collate is None
   assert column.asc_desc is None
   assert isinstance(expr, list) and len(expr) == 1
-  return sql_unquote_entity(source[expr[0]])
+  return sql_parse_entity(source[expr[0]])
 
 
 def clean_row_record(table:Table, renamed_keys:dict[str,str]|None, record:dict[str,Any]) -> dict[str,Any]:
