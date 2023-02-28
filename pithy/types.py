@@ -2,7 +2,8 @@
 
 from abc import abstractmethod
 from dataclasses import is_dataclass
-from typing import Any, Callable, Counter, Dict, get_args, get_origin, Optional, Protocol, Tuple, TypeVar, Union
+from typing import (Any, Callable, Counter, Dict, get_args, get_origin, Optional, Protocol, runtime_checkable, Tuple, TypeVar,
+  Union)
 
 
 _T = TypeVar('_T')
@@ -11,6 +12,7 @@ NoneType = type(None)
 Opt = Optional
 
 
+@runtime_checkable
 class Comparable(Protocol):
   # taken from https://www.python.org/dev/peps/pep-0484/.
   @abstractmethod
