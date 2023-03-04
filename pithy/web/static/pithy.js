@@ -23,7 +23,6 @@ function createStyle(title, selectorText) {
   style.type = 'text/css';
   style.title = 'pithy-dynamic';
   style.innerHTML = selectorText;
-  log(document.head);
   document.head.appendChild(style);
 }
 
