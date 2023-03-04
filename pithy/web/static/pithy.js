@@ -28,12 +28,48 @@ function createStyle(title, selectorText) {
 
 
 function createPithyDynamicStyle() {
-  css = `
-  :root {
+  css = `:root {
     --scrollbar-width: ${scrollbarWidth}px;
-  }
-  `;
+  }`;
   createStyle('pithy-dynamic', css);
+}
+
+
+function emptyFirstForSelector(selector) {
+  const element = document.querySelector(selector);
+  if (element) { element.innerHTML = ''; }
+}
+
+function emptyAllForSelector(selector) {
+  for (const element of document.querySelectorAll(selector)) {
+    element.innerHTML = '';
+  }
+}
+
+
+function removeAttrFirstForSelector(selector, attr) {
+  const element = document.querySelector(selector);
+  if (element) { element.removeAttribute(attr); }
+}
+
+
+function removeAttrAllForSelector(selector, attr) {
+  for (const element of document.querySelectorAll(selector)) {
+    element.removeAttribute(attr);
+  }
+}
+
+
+function clearValueFirstForSelector(selector) {
+  const element = document.querySelector(selector);
+  if (element) { element.removeAttribute('value'); }
+}
+
+
+function clearValueAllForSelector(selector) {
+  for (const element of document.querySelectorAll(selector)) {
+    element.removeAttribute('value');
+  }
 }
 
 

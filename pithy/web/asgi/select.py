@@ -3,27 +3,27 @@
 
 from typing import Callable, Iterable, Sequence
 
+from pithy.iterable import iter_interleave_sep
 from starlette.authentication import has_required_scope
+from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import QueryParams
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
-from starlette.routing import Mount
 
-from ...html import Div, Form, H1, Input, Label, Main, Pre, Present, Select, Span, Table as HtmlTable, Tbody, Td, Th, Thead, Tr
+from ...html import (Div, Form, H1, HtmlNode, Input, Label, Main, Pre, Present, Select, Span, Table as HtmlTable, Tbody, Td, Th,
+  Thead, Tr)
 from ...sqlite import Connection
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table
 from ...sqlite.util import sql_quote_entity as qe
-from ..starlette import htmx_response
 
 
 class SelectApp:
   'An ASGI app that provides a web interface for running SELECT queries.'
 
-  def __init__(self, path:str, get_conn:Callable[[],Connection], html_response:Callable[[Request,Main],HTMLResponse],
+  def __init__(self, get_conn:Callable[[],Connection], html_response:Callable[[Request,Main],HTMLResponse],
    schemas:Iterable[Schema], requires:str|Sequence[str]=()) -> None:
-    if path.endswith('/'): raise ValueError(f'SelectApp mount path must not end with slash: {path!r}')
-    self.path = path
     self.get_conn = get_conn
     self.html_response = html_response
     self.schemas = { s.name : s for s in schemas }
@@ -31,131 +31,102 @@ class SelectApp:
     # TODO: optional table restrictions.
 
 
-  def mount(self) -> Mount: return Mount(self.path, self)
-
-
   async def __call__(self, scope, receive, send):
     'ASGI app interface.'
     request = Request(scope, receive)
     if not has_required_scope(request, self.requires): raise HTTPException(status_code=403)
-    response = await self.dispatch(request)
+    response = await run_in_threadpool(self.render_page, request)
     await response(scope, receive, send)
 
 
-  async def dispatch(self, request:Request) -> HTMLResponse:
-    whole_path = request.url.path
-    assert whole_path.startswith(self.path)
-    rel_path = whole_path.removeprefix(self.path)
-    match rel_path:
-      case '/':
-        return self.select_index(request)
-      case '/select_setup.htmx':
-        return self.select_setup_htmx(request)
-      case '/select_query.htmx':
-        return self.select_query_htmx(request)
-      case _: raise HTTPException(404)
+  def render_page(self, request:Request) -> HTMLResponse:
+    '''
+    The main page for the SELECT app.
+    '''
+    params = request.query_params
 
+    if nst := self.get_schema_table(params):
+      table_name, schema, table = nst
 
-  def select_index(self, request:Request) -> HTMLResponse:
+      en_col_names = set(
+        [k[2:] for k in params if k.startswith('c-')] or [c.name for c in table.columns if c.vis] or [table.columns[0].name])
 
-    conn = self.get_conn()
-    c = conn.cursor()
+      en_col_spans = [
+        Span(cl='en-col', ch=[Input(name=f'c-{col.name}', type='checkbox', checked=Present(col.vis)), Label(ch=col.name)])
+        for col in table.columns]
 
-    table_names = [f'{qe(schema.name)}.{qe(table.name)}'
-      for schema in self.schemas.values()
-      for table in schema.tables]
+    else:
+      table_name = ''
+      schema = None
+      en_col_names = set()
+      en_col_spans = []
 
+    table_names = [f'{qe(s.name)}.{qe(t.name)}' for s in self.schemas.values() for t in s.tables]
+    if table_name: assert table_name in table_names
     main = Main(id='pithy_select_app', cl='bfull')
 
     main.append(H1(ch='SELECT'))
-    form = main.append(Form(id='select_form'))
+
+    form = main.append(Form(cl='kv-grid', action='./select'))
 
     form.extend(
       Label(ch='Table:'),
-      Select.simple(name='table', placeholder='Table', options=table_names,
-        hx_trigger='change',
-        hx_get='./select_setup.htmx',
-        hx_target='#select_columns'),
+      Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
+        onchange='emptyFirstForSelector("#columns"); clearValueAllForSelector(".clear-on-table-change", "value"); this.form.submit()'),
 
       Label(ch='Distinct:'),
-      Input(name='distinct', type='checkbox'),
+      Input(name='distinct', type='checkbox', checked=Present(params.get('distinct'))),
 
       Label(ch='Columns:'),
-      Div(id='select_columns'),
+      Div(id='columns', ch=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
 
       Label(ch='Where:'),
-      Input(name='where', type='text'),
+      Input(name='where', type='text', value=params.get('where', ''), cl='clear-on-table-change'),
 
       Label(ch='Order by:'),
-      Input(name='order_by', type='text'),
+      Input(name='order_by', type='text', value=params.get('order_by', ''),  cl='clear-on-table-change'),
 
       Label(ch='Limit:'),
-      Input(name='limit', type='number', value='100'),
+      Input(name='limit', type='number', value=params.get('limit', '100'), cl='clear-on-table-change'),
 
       Label(ch=''),
-      Input(type='submit', value='Run Query',
-        hx_trigger='click',
-        hx_get='./select_query.htmx',
-        hx_include='#select_form',
-        hx_target='#select_results'),
-
-      Label(ch='Query:'),
-      Pre(id='select_query', cl='empty-on-form-change'),
-
-      Label(ch='Plan:'),
-      Pre(id='select_plan', cl='empty-on-form-change'),
-
-      Label(ch='Count:'),
-      Pre(id='select_count', cl='empty-on-form-change'),
+      Input(type='submit', value='Run Query'),
     )
 
-    results_div = main.append(Div(cl='bleed-content', style='overflow-x:auto'))
-    results_div.append(HtmlTable(id='select_results', cl='empty-on-form-change dense'))
+    if table_name:
+      assert schema
+      main.extend(self.render_table(schema, table, en_col_names, request.query_params))
 
     return self.html_response(request, main)
 
 
-  def get_schema_and_table(self, request:Request) -> tuple[Schema,Table]:
-    params = request.query_params
+  def get_schema_table(self, params:QueryParams) -> tuple[str,Schema,Table]|None:
 
-    try: schema_table = params['table']
-    except KeyError: raise HTTPException(400, "missing parameter: 'table'")
+    try: full_name = params['table']
+    except KeyError: return None
 
-    schema_name, table_name = sql_parse_schema_table(schema_table)
+    try: schema_name, table_name = sql_parse_schema_table(full_name)
+    except ValueError: raise HTTPException(400, f'invalid table name: {full_name!r}')
+
     try: schema = self.schemas[schema_name]
     except KeyError: raise HTTPException(400, f'invalid schema: {schema_name!r}')
 
     try: table = schema.tables_dict[table_name]
     except KeyError: raise HTTPException(400, f'invalid table: {table_name!r}')
 
-    return schema, table
+    return full_name, schema, table
 
 
-  def select_setup_htmx(self, request:Request) -> HTMLResponse:
-    schema, table = self.get_schema_and_table(request)
+  def render_table(self, schema:Schema, table:Table, en_col_names:set[str], params:QueryParams) -> list[HtmlNode]:
 
-    spans = [
-      Span(cl='enable-column', ch=[Input(type='checkbox', name=f'c-{col.name}', checked=Present(col.vis)), Label(ch=col.name)])
-      for col in table.columns]
-
-    return htmx_response(*spans,
-      Div(hx_swap_oob='innerHTML:.empty-on-form-change'),
-    )
-
-
-  def select_query_htmx(self, request:Request) -> HTMLResponse:
-    schema, table = self.get_schema_and_table(request)
-
-    params = request.query_params
+    assert en_col_names # Need at least one column to render.
 
     distinct = bool(params.get('distinct'))
-    en_col_names = [k[2:] for k in params if k.startswith('c-')]
 
     en_cols = []
-    for col_name in en_col_names:
-      if col_name not in table.columns_dict:
-        raise HTTPException(400, f'invalid column: {col_name!r}')
-      en_cols.append(table.columns_dict[col_name])
+    for col_name in table.columns_dict:
+      if col_name in en_col_names:
+        en_cols.append(table.columns_dict[col_name])
 
     where = params.get('where', '')
     order_by = params.get('order_by', '')
@@ -194,13 +165,16 @@ class SelectApp:
       else:
         rows = [Tr(ch=[Td(ch=cell) for cell in row]) for row in c]
 
-    return htmx_response(
-      Thead(ch=Tr(ch=[Th(ch=Div(ch=qe(col.name))) for col in en_cols])),
-      Tbody(ch=rows),
-      Pre(id='select_query', hx_swap_oob='innerHTML', ch=query),
-      Pre(id='select_plan', hx_swap_oob='innerHTML', ch=plan),
-      Pre(id='select_count', hx_swap_oob='innerHTML', ch=count and f'{count:,}'),
-    )
+    return [
+      Div(id='query', cl='kv-grid', ch=[
+        Label(ch='Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', ch=query),
+        Label(ch='Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', ch=plan),
+        Label(ch='Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', ch=count and f'{count:,}'),
+      ]),
+      Div(id='results', ch=HtmlTable(cl='dense', ch=[
+        Thead(ch=Tr(ch=[Th(ch=Div(ch=qe(col.name))) for col in en_cols])),
+        Tbody(ch=rows)])),
+    ]
 
 
 def fmt_select_cols(cols:list[Column], distinct:bool) -> str:
