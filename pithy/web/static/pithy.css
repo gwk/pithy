@@ -152,6 +152,15 @@ table.dense tbody tr:nth-child(odd) {
 }
 
 
+/* Grids. */
+
+.kv-grid {
+  display: grid;
+  grid-template-columns: min-content 1fr;
+  gap: 1em;
+}
+
+
 /* HTMX interaction indicators. */
 
 .block-emoji-icon {
@@ -198,29 +207,34 @@ table.dense tbody tr:nth-child(odd) {
 
 /* SelectApp. */
 
+
 #pithy_select_app form {
-  margin-top: 1em;
-  display: grid;
-  grid-template-columns: min-content 1fr;
-  gap: 1em;
+  margin: 1em 0;
 }
-span.enable-column {
+
+#pithy_select_app #query {
+  margin: 1em 0;
+}
+
+#pithy_select_app span.en-col {
   margin-right: 1em;
   white-space: nowrap;
 }
-span.enable-column input {
+
+#pithy_select_app span.en-col input {
   margin-right: 0.5em;
 }
 
-#pithy_select_app table#select_results {
+#pithy_select_app #results {
+  width: 100%;
+  overflow-x: scroll;
+}
+
+#pithy_select_app #results > table {
   table-layout: auto;
 }
 
-#pithy_select_app table#select_results th {
+#pithy_select_app #results > table th {
   resize: horizontal;
   overflow: clip;
-}
-
-#pithy_select_app pre#select_explain {
-  margin: 1em 0;
 }
