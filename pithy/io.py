@@ -94,7 +94,7 @@ def writeM(file:TextIO, *labels_and_obj:Any, at_line_start:bool|None=None, color
   labels = labels_and_obj[:-1]
   obj = labels_and_obj[-1]
   if labels: print(*labels, end=': ', file=file)
-  if at_line_start is None: at_line_start = bool(labels)
+  if at_line_start is None: at_line_start = not labels
   if color is None: color = file.isatty()
   print(repr_ml(obj, at_line_start=at_line_start, color=color, **opts), file=file)
 
