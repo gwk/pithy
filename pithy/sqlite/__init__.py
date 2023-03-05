@@ -268,6 +268,13 @@ class Connection(sqlite3.Connection):
     self.row_factory = Row # Default for convenience.
 
 
+  def validate(self, query:str) -> None:
+    '''
+    Validate a query string by calling the undocumented sqlite3 API to compile a statement.
+    '''
+    super().__call__(query)
+
+
   def cursor(self, factory:type[Cursor]|None=None) -> Cursor: # type: ignore[override]
     if factory is None: factory = Cursor
     assert issubclass(factory, Cursor)
