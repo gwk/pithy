@@ -6,7 +6,7 @@ from typing import Any
 from os import listdir as list_dir
 from os.path import isdir as is_dir, splitext as split_ext
 
-from tomli import load as load_toml
+from tomllib import load as load_toml
 from tomli_w import dump as dump_toml
 
 
