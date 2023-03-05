@@ -182,7 +182,7 @@ def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Optional[Callable[[
 def _hook_type_keys(t:type) -> AbstractSet[str]:
   if is_dataclass(t): return frozenset(f.name for f in fields(t))
 
-  try: return frozenset(t._fields) # type: ignore[unreachable] # NamedTuple.
+  try: return frozenset(t._fields) # type: ignore[attr-defined] # NamedTuple.
   except AttributeError: pass
 
   slots = all_slots(t)

@@ -2,7 +2,7 @@
 
 from sys import stderr
 
-import uvicorn  # type: ignore[import]
+import uvicorn
 import watchfiles  # This is an optional import for uvicorn but we want to make sure it is installed.
 
 
