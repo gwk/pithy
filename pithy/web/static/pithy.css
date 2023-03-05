@@ -57,26 +57,22 @@ body {
 
 .bfull {
   width: 100%;
-  max-width: 100%;
   padding: 0 var(--cp);
 }
 
 .bfull-bleed-bg {
   width: 100%;
-  max-width: 100%;
   padding: 0 max(var(--cp), calc(var(--cp) + 50vw - 0.5*var(--cw)));
 }
 
 .bpage {
-  width: 100%;
-  max-width: var(--cw);
+  width: min(100%, var(--cw));
   padding: 0 var(--cp);
   align-self: center;
 }
 
 body > * { /* By default, all direct children of body are bpage. */
-  width: 100%;
-  max-width: var(--cw);
+  width: min(100%, var(--cw));
   padding: 0 var(--cp);
   align-self: center;
 }
