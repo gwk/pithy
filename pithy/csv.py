@@ -6,6 +6,7 @@ import csv
 from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
 from sys import stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
+from functools import cached_property
 
 from .transtruct import bool_for_val
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -157,3 +158,10 @@ class CsvLoader(Iterable, ContextManager):
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.file.close()
+
+
+  @cached_property
+  def keys(self) -> tuple[str,...]:
+    if self.cols is None:
+      raise ValueError('CsvLoader.keys() requires `cols` constructor argument was provided.')
+    return tuple(k for k, v in self.cols.items() if v is not None)
