@@ -192,6 +192,8 @@ class Table(Structure):
 
 
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
+    if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
+
     qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(name or self.name)}'
     lines:list[str] = []
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
@@ -268,6 +270,8 @@ class Index(TableDepStructure):
 
 
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
+    if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
+
     qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(self.name)}'
     lines = []
     if self.desc:
@@ -300,6 +304,8 @@ class Schema:
 
 
   def __post_init__(self) -> None:
+    if self.name and not self.name.isidentifier(): raise ValueError(f'Invalid schema name: {self.name!r}')
+
     names = set()
     for s in self.structures:
       if s.name in names: raise ValueError(f'Structure {s} has a duplicate name.')
@@ -343,6 +349,8 @@ class Schema:
 
   def sql(self, *, name='', if_not_exists=False) -> Iterable[str]:
     name = name or self.name
+    if name and not name.isidentifier(): raise ValueError(f'Invalid schema name: {name!r}')
+
     if name or self.desc:
       yield '\n'
       if self.name: yield f'-- Schema: {name}\n'
