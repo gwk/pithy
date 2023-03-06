@@ -32,45 +32,52 @@ class ReorderColumns(MigrationStep):
   pass
 
 
-def gen_migration(*, schema:Schema, conn:Connection) -> list[str]:
+def gen_migration(*, conn:Connection, schema:Schema) -> list[str]:
+
+  if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
+
   c = conn.cursor()
   old_table_sqls:dict[str,str] = dict(
-    c.run(f"SELECT name, sql FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"))
+    c.run(f"SELECT name, sql FROM {schema.name}.sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"))
 
   stmts = []
 
   for table in schema.tables:
+    qname = f'{schema.name}.{sql_qe(table.name)}'
+
     old_sql = old_table_sqls.get(table.name)
-    needs_rebuild, table_stmts = gen_table_migration(new=table, old=old_sql)
+    needs_rebuild, table_stmts = gen_table_migration(schema_name=schema.name, qname=qname, new=table, old=old_sql)
     stmts.extend(table_stmts)
 
     old_deps:dict[str,Row] = dict((row.name, row) for row in
-      c.run("SELECT type, name, sql FROM sqlite_schema WHERE type != 'table' AND tbl_name = :name AND name NOT LIKE 'sqlite_%'",
-        name=table.name))
+      c.run(f'''
+        SELECT type, name, sql FROM {schema.name}.sqlite_schema
+        WHERE type != 'table' AND tbl_name = :name AND name NOT LIKE 'sqlite_%'
+        ''', name=table.name))
 
     new_deps = schema.table_deps[table.name]
 
-    stmts.extend(gen_deps_migration(new_deps=new_deps, old_deps=old_deps, needs_rebuild=needs_rebuild))
+    stmts.extend(
+      gen_deps_migration(schema_name=schema.name, new_deps=new_deps, old_deps=old_deps, needs_rebuild=needs_rebuild))
 
   # TODO: handle table drops.
 
   return stmts
 
 
-def gen_table_migration(*, new:Table, old:str|Table|None) -> tuple[bool,list[str]]:
+def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|None) -> tuple[bool,list[str]]:
   '''
   Generate a migration from the given SQL statement or previous table to this table.
   Returns a tuple of (needs_rebuild, stmts).
   This represents steps 4-9 of the recommended 12 step migration process.
   '''
 
-  if not old: return False, [new.sql()]
+  if not old: return False, [new.sql(schema=schema_name)]
 
   if isinstance(old, str):
     old = Table.parse(new.name + '(old)', old)
 
   assert new.name == old.name
-  qname = sql_qe(new.name)
   if old == new: return False, []
 
   matched_cols = new.match_columns_by_name(old)
@@ -83,7 +90,7 @@ def gen_table_migration(*, new:Table, old:str|Table|None) -> tuple[bool,list[str
   if removed and added: # Assume this is a rename.
     if len(new.columns) != len(old.columns):
       raise GenMigrationError.confusing_column_changes(removed=removed, added=added)
-    return False, gen_rename_columns(new=new, old=old, matched_cols=matched_cols)
+    return False, gen_rename_columns(qname=qname, new=new, old=old, matched_cols=matched_cols)
 
   stmts = []
   cols = list(old.columns)
@@ -109,12 +116,12 @@ def gen_table_migration(*, new:Table, old:str|Table|None) -> tuple[bool,list[str
   needs_rebuild = bool(diff_hints)
   if needs_rebuild:
     stmts.append(f'-- Rebuilding {qname} due to {", ".join(diff_hints)}.')
-    stmts.extend(gen_table_rebuild(new=new, old_name=old.name, cols=cols))
+    stmts.extend(gen_table_rebuild(schema_name=schema_name, qname=qname, table=new))
 
   return needs_rebuild, stmts
 
 
-def gen_rename_columns(*, new:Table, old:Table, matched_cols:dict[str,Column]) -> list[str]:
+def gen_rename_columns(*, qname:str, new:Table, old:Table, matched_cols:dict[str,Column]) -> list[str]:
   assert len(new.columns) == len(old.columns)
   stmts = ['-- Renaming columns.']
   for i, (nc, oc) in enumerate(zip(new.columns, old.columns)):
@@ -126,32 +133,26 @@ def gen_rename_columns(*, new:Table, old:Table, matched_cols:dict[str,Column]) -
     is_oc_matched = oc.name in matched_cols
     if is_nc_matched != is_oc_matched:
       raise GenMigrationError(f'Rename failed due to misaligned columns at position {i}: old: {oc!r}, new: {nc!r}.')
-    stmts.append(f'ALTER TABLE {sql_qe(new.name)} RENAME COLUMN {sql_qe(oc.name)} TO {sql_qe(nc.name)}')
+    stmts.append(f'ALTER TABLE {qname} RENAME COLUMN {sql_qe(oc.name)} TO {sql_qe(nc.name)}')
   return stmts
 
 
-def gen_table_rebuild(*, new:Table, old_name:str, cols:list[Column]) -> list[str]:
-
+def gen_table_rebuild(*, schema_name:str, qname:str, table:Table) -> list[str]:
+  '''
+  Steps 4-7.
+  '''
+  tmp_name = table.name + '__rebuild_in_progress'
+  qname_tmp = f'{schema_name}.{sql_qe(tmp_name)}'
   stmts = []
-
-  # Following the 12 steps. https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes
-
-  # 3. The schema contains all indexes, triggers, and views associated with the table, so we can rebuild them.
-
-  tmp_name = new.name + '__rebuild_in_progress'
-  old_name_q = sql_qe(old_name)
-  tmp_name_q = sql_qe(tmp_name)
-  stmts.append(new.sql(name=tmp_name)) # 4. Create a new table with the desired schema and temporary name.
-  stmts.append(f'INSERT INTO {tmp_name_q} SELECT {new.quoted_material_columns_str} FROM {old_name_q}') # 5. Copy the data.
-  stmts.append(f'DROP TABLE {old_name_q}') # 6. Remove the old table.
-  stmts.append(f'ALTER TABLE {tmp_name_q} RENAME TO {new.quoted_name}')
-
-  # 8, 9. TODO: Reconstruct all indexes, triggers, and views associated with the table.
+  stmts.append(table.sql(schema=schema_name, name=tmp_name)) # 4. Create a new table with the desired schema and temporary name.
+  stmts.append(f'INSERT INTO {qname_tmp} SELECT {table.quoted_material_columns_str} FROM {qname}') # 5. Copy the data.
+  stmts.append(f'DROP TABLE {qname}') # 6. Remove the old table.
+  stmts.append(f'ALTER TABLE {qname_tmp} RENAME TO {table.quoted_name}') # 7.
 
   return stmts
 
 
-def gen_deps_migration(*, new_deps:tuple[TableDepStructure,...], old_deps:dict[str,Row],
+def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...], old_deps:dict[str,Row],
  needs_rebuild:bool) -> list[str]:
   '''
   Steps 8-9: reconstruct all indexes, triggers, and views associated with the table.
@@ -162,33 +163,37 @@ def gen_deps_migration(*, new_deps:tuple[TableDepStructure,...], old_deps:dict[s
   new_names = set(dep.name for dep in new_deps)
   for name, dep in old_deps.items():
     if name not in new_names:
-      stmts.append(f'DROP {dep.type.upper()} IF EXISTS {sql_qe(name)}')
+      stmts.append(f'DROP {dep.type.upper()} IF EXISTS {schema_name}.{sql_qe(name)}')
       #^ Use IF EXISTS because the structure may have been dropped by a table rebuild.
 
   for new in new_deps:
-    new_sql = new.sql()
+    new_sql = new.sql() # Note: the sql we use for comparison has no schema name.
     if old := old_deps.get(new.name):
       if not needs_rebuild and old.sql == new_sql: continue
-      stmts.append(f'DROP {old.type.upper()} IF EXISTS {sql_qe(old.name)}')
+      stmts.append(f'DROP {old.type.upper()} IF EXISTS {schema_name}.{sql_qe(old.name)}')
       stmts.append(new_sql)
     else:
-      stmts.append(new_sql)
+      stmts.append(new.sql(schema=schema_name)) # Note: the SQL we execute does have an explicit schema name.
 
   return stmts
 
 
 def run_migration(conn:Connection, migration:list[str], max_errors=100, backup=True) -> None:
+  '''
+  12 migration steps: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes
+  '''
 
   if backup: conn.backup_and_print_progress()
   print('Migrating…')
   c = conn.cursor()
 
   try:
-    for step in migration_start: c.execute(step) # Steps 1, 2.
-    for step in migration: c.execute(step) # Steps 3-9.
+    c.execute('PRAGMA foreign_keys = OFF') # 1.
+    c.execute('BEGIN TRANSACTION') # 2.
+    # 3 is implicit: the schema contains all indexes, triggers, and views associated with the table, so we can rebuild them.
+    for step in migration: c.execute(step) # 4-9.
+    run_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.
 
-    # Step 10. Check for foreign key errors.
-    run_check(c, 'foreign_key_check', max_errors=max_errors)
   except Exception:
     c.execute('ROLLBACK')
     print('Migration failed.')
@@ -212,9 +217,3 @@ def run_check(cursor:Cursor, check:str, args:str='', max_errors=100) -> None:
     s = 's' if n > 1 else ''
     plus = '+' if n >= max_errors else ''
     raise MigrationError(f'{check} failed with {n}{plus} error{s}.')
-
-
-migration_start = [
-  'PRAGMA foreign_keys = OFF', # 1.
-  'BEGIN TRANSACTION', # 2.
-]
