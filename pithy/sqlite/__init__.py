@@ -119,17 +119,16 @@ class Cursor(sqlite3.Cursor):
     except sqlite3.Error as e: raise SqliteError.from_error(e, sql_script) from e
 
 
-  def run(self, *sql:str, _dbg=False, **args:Any) -> Self:
+  def run(self, sql:str, *, _dbg=False, **args:Any) -> Self:
     '''
-    Execute a query, joining multiple pieces of `sql` into a single query string, with values provided by keyword arguments.
+    Execute a query with parameter values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to Json.
     '''
-    query = ' '.join(sql).strip()
     for k, v in args.items(): # Convert non-native values to Json.
       if not isinstance(v, types_natively_converted_by_sqlite): # Note: this is a conditional inlining of `default_to_json`.
         args[k] = render_json(v, indent=None)
-    if _dbg: print(f'query: {query}\n  args: {args}')
-    return self.execute(query, args)
+    if _dbg: print(f'query: {sql.strip()}\n  args: {args}')
+    return self.execute(sql, args)
 
 
   def opt(self) -> Optional[Row]:
@@ -169,17 +168,18 @@ class Cursor(sqlite3.Cursor):
     return row[0]
 
 
-  def contains(self, table:str, *where:str, **args:Any) -> bool:
+  def contains(self, table:str, *, where:str, **args:Any) -> bool:
     'Execute a SELECT query, returning True if the `where` SQL clause results in at least one row.`'
-    for row in self.run('SELECT 1 FROM', table, 'WHERE', *where, 'LIMIT 1', **args):
+
+    for row in self.execute(f'SELECT 1 FROM {table} WHERE {where} LIMIT 1', args):
       return True
     return False
 
 
-  def count(self, table:str, *where:str, **args:Any) -> int:
+  def count(self, table:str, *, where='', **args:Any) -> int:
     'Execute a SELECT COUNT(1) query, returning the number of rows.'
-    where_clause = ('WHERE', *where) if where else ()
-    for row in self.run('SELECT COUNT(1) FROM', table, *where_clause, **args):
+    where_clause = f' WHERE {where}' if where else ''
+    for row in self.execute(f'SELECT COUNT(1) FROM {table}{where_clause}', args):
       return row[0] # type: ignore[no-any-return]
     return 0
 
@@ -240,7 +240,7 @@ class Cursor(sqlite3.Cursor):
   def count_all_tables(self, schema:str='main', omit_empty=False) -> list[tuple[str, int]]:
     'Return an iterable of (table, count) pairs.'
     schema_q = sql_quote_entity(schema)
-    table_names = list(self.run(f"SELECT name FROM {schema_q}.sqlite_schema WHERE type = 'table' ORDER BY name").col())
+    table_names = list(self.execute(f"SELECT name FROM {schema_q}.sqlite_schema WHERE type = 'table' ORDER BY name").col())
     pairs = []
     for name in table_names:
       count = self.count(f'{schema_q}.{name}')
