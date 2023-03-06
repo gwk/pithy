@@ -198,7 +198,7 @@ class Table(Structure):
     lines.append(f'CREATE TABLE {if_not_exists_str}{qual_name} (')
     if self.desc: lines.extend(sql_comment_lines(self.desc, indent='  '))
 
-    # Colmuns are separated by commas, except for the last one.
+    # Columns are separated by commas, except for the last one.
     # This is complicated by comments following commas,
     # and trailing primary/foreign key lines that are also included within the parens.
     inner_parts = [] # Parts of lines within the parens.

@@ -38,6 +38,7 @@ def gen_migration(*, schema:Schema, conn:Connection) -> list[str]:
     c.run(f"SELECT name, sql FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"))
 
   stmts = []
+
   for table in schema.tables:
     old_sql = old_table_sqls.get(table.name)
     needs_rebuild, table_stmts = gen_table_migration(new=table, old=old_sql)
@@ -60,6 +61,7 @@ def gen_table_migration(*, new:Table, old:str|Table|None) -> tuple[bool,list[str
   '''
   Generate a migration from the given SQL statement or previous table to this table.
   Returns a tuple of (needs_rebuild, stmts).
+  This represents steps 4-9 of the recommended 12 step migration process.
   '''
 
   if not old: return False, [new.sql()]
@@ -151,6 +153,9 @@ def gen_table_rebuild(*, new:Table, old_name:str, cols:list[Column]) -> list[str
 
 def gen_deps_migration(*, new_deps:tuple[TableDepStructure,...], old_deps:dict[str,Row],
  needs_rebuild:bool) -> list[str]:
+  '''
+  Steps 8-9: reconstruct all indexes, triggers, and views associated with the table.
+  '''
 
   stmts = []
 
