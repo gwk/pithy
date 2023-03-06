@@ -6,7 +6,8 @@ from urllib.parse import quote as url_quote
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
-from .util import default_to_json, sql_quote_entity, types_natively_converted_by_sqlite
+from .util import (default_to_json, insert_named_values_stmt, insert_positional_values_stmt, sql_quote_entity,
+  types_natively_converted_by_sqlite)
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -184,57 +185,42 @@ class Cursor(sqlite3.Cursor):
     return 0
 
 
-  def insert(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, sql:str, args:Any=()) -> None:
-    '''
-    Execute an insert statement synthesized from `into` (the table name), `fields` (optional), and `sql`.
-    This function is intended to be an intermediate helper for higher level insert functions.
-    '''
-    assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
-    if fields:
-      fields_joined = ', '.join(fields)
-      fields_clause = f' ({fields_joined})'
-    else:
-      fields_clause = ''
-    with_space = ' ' if with_ else ''
-    complete_sql = f'{with_}{with_space}INSERT OR {or_} INTO {into}{fields_clause} {sql}'
-    # TODO: cache sql with (with_, or_, into, fields, sql) key.
-    self.execute(complete_sql, args)
-
-
-  def insert_row(self, *, with_='', or_='FAIL', into:str, **kwargs:Any) -> None:
+  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, **kwargs:Any) -> None:
     '''
     Execute an insert statement inserting the kwargs key/value pairs passed as named arguments.
     '''
-    placeholders = ','.join(['?'] * len(kwargs))
-    args = [default_to_json(v) for v in kwargs.values()]
-    self.insert(with_=with_, or_=or_, into=into, fields=kwargs.keys(), sql=f'VALUES ({placeholders})', args=args)
+    stmt = insert_named_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(kwargs.keys()))
+    if as_json and not all(isinstance(v, types_natively_converted_by_sqlite) for v in kwargs.values()):
+      kwargs = {k: default_to_json(v) for k, v in kwargs.items()}
+    self.execute(stmt, kwargs)
 
 
   def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, args:Dict[str, Any],
    defaults:Dict[str, Any]={}) -> None:
     '''
-    Execute an insert statement inserting the dictionary `args`, synthesized from `into` (the table name) and `fields`.
+    Execute an insert of the dictionary `args`, synthesized from `into` (the table name) and `fields`.
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;
     a KeyError is raised if one of the fields is not provided in either of these sources.
     '''
+    if fields is None: fields = args.keys()
+    stmt = insert_positional_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(fields))
+
     def arg_for(f: str) -> Any:
       try: return args[f]
       except KeyError: pass
       return defaults[f]
 
-    placeholders = ','.join('?' for _ in args)
-    if fields is None: fields = args.keys()
     values = [default_to_json(arg_for(f)) for f in fields]
-    self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
+    self.execute(stmt, values)
 
 
-  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, seq:Sequence[Any]) -> None:
+  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str], seq:Sequence[Any]) -> None:
     '''
-    Execute an insert statement inserting the sequence `args`, synthesized from `into` (the table name), and `fields`.
+    Execute an insert of the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
-    placeholders = ','.join('?' for _ in seq)
+    stmt = insert_positional_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(fields))
     values = [default_to_json(v) for v in seq]
-    self.insert(with_=with_, or_=or_, into=into, fields=fields, sql=f'VALUES ({placeholders})', args=values)
+    self.execute(stmt, values)
 
 
   def count_all_tables(self, schema:str='main', omit_empty=False) -> list[tuple[str, int]]:
