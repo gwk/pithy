@@ -2,10 +2,58 @@
 
 import re
 from datetime import date, datetime
+from functools import lru_cache
 from typing import Any, get_args, Iterable, Match, NamedTuple, Tuple, Type
 
 from ..json import render_json
 from .keywords import sqlite_keywords
+
+
+@lru_cache
+def insert_head_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -> str:
+    '''
+    Create the first part of an INSERT statement, up to the VALUES/SELECT/DEFAULT clause.
+
+    '''
+    assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
+    if fields:
+      if not all(f.isidentifier() for f in fields): raise ValueError(f'invalid field names: {fields!r}')
+      fields_joined = ', '.join(fields)
+      fields_clause = f' ({fields_joined})'
+    else:
+      fields_clause = ''
+    with_space = ' ' if with_ else ''
+    return f'{with_}{with_space}INSERT OR {or_} INTO {into}{fields_clause}'
+
+
+@lru_cache
+def insert_named_values_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -> str:
+    '''
+    Create an INSERT statement that uses named placeholders for values.
+
+    '''
+    head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
+    if fields:
+      fields_joined = ', '.join(f':{f}' for f in fields)
+      values_clause = f' VALUES ({fields_joined})'
+    else:
+      values_clause = ' DEFAULT VALUES'
+    return head + values_clause
+
+
+@lru_cache
+def insert_positional_values_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -> str:
+    '''
+    Create an INSERT statement that uses positional '?' placeholders for values.
+
+    '''
+    head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
+    if fields:
+      fields_joined = ', '.join('?' for f in fields)
+      values_clause = f' VALUES ({fields_joined})'
+    else:
+      values_clause = ' DEFAULT VALUES'
+    return head + values_clause
 
 
 def sql_col_names(dataclass:type) -> str:
