@@ -7,7 +7,7 @@ from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
 from sys import stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 
-from .transtruct import transtruct_bool
+from .transtruct import bool_for_val
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
@@ -96,8 +96,8 @@ class CsvLoader(Iterable, ContextManager):
       ] if v is not None }
 
     if cols is not None:
-      # Replace any `bool` types with an actually useful constructor.
-      cols = { k : (transtruct_bool if v is bool else v) for k, v in cols.items() }
+      # Replace any `bool` types with a useful constructor.
+      cols = { k : (bool_for_val if v is bool else v) for k, v in cols.items() }
 
     if isinstance(file, str):
       raise ValueError('file must be an iterable of strings, not a string.')

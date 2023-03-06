@@ -412,6 +412,18 @@ def transtruct_type(v:Any, ctx:Ctx) -> type:
   raise ValueError(f'Expected type name (str); received {v}.')
 
 
+def bool_for_val(val:Any) -> bool: return bool_vals[val]
+
+def opt_bool(val:Any) -> Optional[bool]:
+  if val in (None, ''): return None
+  return bool_vals.get(val)
+
+
+def opt_int(val:Any) -> Optional[int]:
+  if val in (None, ''): return None
+  return int(val)
+
+
 NoneType = type(None)
 
 primitive_transtructors = {
