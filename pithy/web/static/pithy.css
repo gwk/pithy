@@ -40,6 +40,9 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that don't have
   --cp: 0.5rem; /* Content padding. */;
   --scrollbar-width: 0px; /* Updated by javascript. */
   --vw-sb: calc(100vw - var(--scrollbar-width));
+
+  --clr-table-even: #FFF;
+  --clr-table-odd: #EEE;
 }
 
 
@@ -143,8 +146,12 @@ table.dense :is(td, th) {
   padding: 0.25rem 0.5rem;
 }
 
+table.dense tbody tr:nth-child(even) {
+  background-color: var(--clr-table-even);
+}
+
 table.dense tbody tr:nth-child(odd) {
-  background-color: #EEE;
+  background-color: var(--clr-table-odd);
 }
 
 
