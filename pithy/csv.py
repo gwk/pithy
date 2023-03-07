@@ -82,6 +82,7 @@ class CsvLoader(Iterable, ContextManager):
    row_ctor:Callable|None=None,
    spread_args:bool=False,
    as_dicts:bool=False,
+   remap_keys:dict[str,str]|None=None,
    preserve_empty_vals:bool=False,
    cols:dict[str,Optional[Callable]]|None=None) -> None:
 
@@ -107,6 +108,7 @@ class CsvLoader(Iterable, ContextManager):
     self.file = file
     self.row_ctor = row_ctor
     self.cols = cols
+    self.remap_keys = remap_keys or {}
 
     if has_header:
       try: self.header:Optional[list[str]] = [str(raw_cell) for raw_cell in next(self._reader)]
@@ -125,13 +127,21 @@ class CsvLoader(Iterable, ContextManager):
       if cols is None:
         raise ValueError('load_csv: as_dicts option requires cols argument to be provided.')
       else:
-        row_seq_fn = lambda row: { key : cell_ctor(cell) for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
-          if cell_ctor is not None and (preserve_empty_vals or cell) }
+        if remap_keys:
+          rm = remap_keys # Alias for type-safe use in lambda.
+          row_seq_fn = lambda row: { rm.get(key, key) : try_cell_ctor(cell_ctor, cell, key)
+            for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
+            if cell_ctor is not None and (preserve_empty_vals or cell) }
+        else:
+          row_seq_fn = lambda row: { key : try_cell_ctor(cell_ctor, cell, key)
+            for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
+            if cell_ctor is not None and (preserve_empty_vals or cell) }
     else: # Sequence.
       if cols is None:
         row_seq_fn = lambda row: row
       else:
-        row_seq_fn = lambda row: [cell_ctor(cell) for cell_ctor, cell in zip(cols.values(), row) # type: ignore[union-attr]
+        row_seq_fn = lambda row: [try_cell_ctor(cell_ctor, cell, key)
+          for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
           if cell_ctor is not None]
 
     if row_ctor is not None:
@@ -162,6 +172,13 @@ class CsvLoader(Iterable, ContextManager):
 
   @cached_property
   def keys(self) -> tuple[str,...]:
+    remap_keys = self.remap_keys
     if self.cols is None:
       raise ValueError('CsvLoader.keys() requires `cols` constructor argument was provided.')
-    return tuple(k for k, v in self.cols.items() if v is not None)
+    return tuple(remap_keys.get(k, k) for k, v in self.cols.items() if v is not None)
+
+
+def try_cell_ctor(ctor:Callable, cell:Any, col:str) -> Any:
+  try: return ctor(cell)
+  except Exception as e:
+    raise ValueError(f'Error parsing cell {cell!r} in column {col!r}.') from e
