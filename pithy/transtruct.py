@@ -308,17 +308,25 @@ class Transtructor:
 
       return transtruct_optional
 
-    if not types.difference(primitive_transtructors):
-      # Union of primitive types.
-      def transtruct_primitive_union(val:Input, ctx:Ctx) -> Any:
-        if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
-        if type(val) in primitive_transtructors: return val
-        type_names = ', '.join(sorted(t.__name__ for t in types))
-        raise TranstructorError(f'expected primitive type in {{{type_names}}}; received {type(val)!r}', desired_type, val)
+    non_primitive_types = types.difference(primitive_transtructors)
 
-      return transtruct_primitive_union
+    if len(non_primitive_types) > 1:
+      raise NotImplementedError(f'Union types with more than one primitive type are not yet supported: {desired_type}:\n  members: {types}')
 
-    raise NotImplementedError(f'Union types other than Optional and primitive unions are not yet supported: {desired_type}:\n  members: {types}')
+    if len(non_primitive_types) == 1:
+      for non_primitive_type in non_primitive_types: break # Get the single variant.
+      non_primitive_transtructor = self.transtructor_for(non_primitive_type) # type: ignore[arg-type]
+    else:
+      non_primitive_transtructor = None
+
+    def transtruct_union(val:Input, ctx:Ctx) -> Any:
+      if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
+      if type(val) in primitive_transtructors: return val
+      if non_primitive_transtructor is not None: return non_primitive_transtructor(val, ctx)
+      type_names = ', '.join(sorted(t.__name__ for t in types))
+      raise TranstructorError(f'expected value for type in {{{type_names}}}; received {type(val)!r}', desired_type, val)
+
+    return transtruct_union
 
 
   def selector(self, datatype:type) -> Callable[[SelectorFn],SelectorFn]:
