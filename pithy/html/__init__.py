@@ -1421,7 +1421,11 @@ class Table(HtmlFlow, HtmlPalpable):
     tbody = table.append(Tbody())
 
     for row in chain(inline_rows, rows):
-      tbody.append(Tr(ch=[cell if isinstance(cell, (Td, Th)) else Td(ch=cell) for cell in row]))
+      if isinstance(row, Tr):
+        tr = row
+      else:
+        tr = Tr(ch=[cell if isinstance(cell, (Td, Th)) else Td(ch=cell) for cell in row])
+      tbody.append(tr)
 
     return table
 
