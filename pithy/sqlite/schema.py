@@ -19,7 +19,7 @@ from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql
 @dataclass(frozen=True, order=True)
 class Column:
   '''
-  `default`: must be either a `signed-number`, `literal-value`, 'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', or an SQL `expr`.
+  `default`: must be either None, a `signed-number`, `literal-value`, 'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP', or an SQL `expr`.
   SQLite column constraints: https://www.sqlite.org/syntax/column-constraint.html
   '''
   name:str
