@@ -164,7 +164,7 @@ def type_for_lax_sql(sql_type:str) -> type:
 
 
 def sql_comment_lines(comment:str, indent='') -> list[str]:
-  if not indent.isspace(): raise ValueError(f'Indent must be whitespace: {indent!r}')
+  if indent and not indent.isspace(): raise ValueError(f'Indent must be whitespace: {indent!r}')
   return [f'{indent}-- {l.rstrip()}' for l in comment.strip().splitlines()]
 
 
