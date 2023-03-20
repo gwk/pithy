@@ -44,7 +44,7 @@ class SqliteError(Exception):
   @classmethod
   def from_error(self, e:sqlite3.Error, query:str) -> 'SqliteError':
     orig_msg = e.args[0]
-    msg = f'{orig_msg}\n  query: {query!r}'
+    msg = f'{orig_msg}.\n  Query: {query!r}'
     prefix = e.args[0].partition(':')[0]
     match prefix:
       case 'UNIQUE constraint failed': return SqliteUniqueConstraintError(msg)
