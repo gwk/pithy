@@ -1,11 +1,14 @@
 from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, List, TextIO
-
+from array import array
+from mmap import mmap
+from ctypes import _CData
 from zstandard import ZstdCompressor
+from pickle import PickleBuffer
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
-class ZstWriterBase(IO[AnyStr]):
+class ZstWriterBase:
 
   def __init__(self, file:BinaryIO, level=6, threads=1, chunk_size=32768):
     self.file = file
@@ -42,10 +45,6 @@ class ZstWriterBase(IO[AnyStr]):
 
   def seekable(self) -> bool: return self.file.seekable()
 
-
-  def writelines(self, lines:Iterable) -> None:
-    for line in lines: self.write(line)
-
   def _write_chunks(self, chunks:Iterable[bytes]) -> None:
     for chunk in chunks:
       self.compressed_byte_count += self.file.write(chunk)
@@ -66,6 +65,8 @@ class ZstWriterBase(IO[AnyStr]):
     return self.compressed_byte_count / self.input_byte_count
 
 
+BytesLike = bytes|bytearray|memoryview|array|mmap|_CData|PickleBuffer
+
 class ZstWriter(ZstWriterBase, BinaryIO):
 
   def __enter__(self) -> 'ZstWriter': return self
@@ -73,11 +74,15 @@ class ZstWriter(ZstWriterBase, BinaryIO):
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.close()
 
-  def write(self, data:bytes) -> int:
+  def write(self, data:BytesLike) -> int:
+    if isinstance(data, (array, mmap, _CData, PickleBuffer)): data = bytes(data)
     l = len(data)
     self.input_byte_count += l
     self._write_chunks(self.chunker.compress(data))
     return l
+
+  def writelines(self, lines:Iterable[BytesLike]) -> None:
+    for line in lines: self.write(line)
 
 
 class ZstTextWriter(ZstWriterBase, TextIO):
@@ -97,6 +102,9 @@ class ZstTextWriter(ZstWriterBase, TextIO):
     self.input_byte_count += len(data)
     self._write_chunks(self.chunker.compress(data))
     return len(text)
+
+  def writelines(self, lines:Iterable[str]) -> None:
+    for line in lines: self.write(line)
 
   @property
   def encoding(self) -> str:
