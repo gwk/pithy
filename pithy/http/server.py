@@ -23,7 +23,7 @@ from socket import socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info, stderr
 from traceback import print_exception
-from typing import cast, TextIO, Tuple, Type, Union
+from typing import cast, TextIO, Tuple, Type, Union, IO
 from urllib.parse import SplitResult as Url, urlsplit as url_split
 
 from ..web import Request, Response, ResponseError
@@ -291,7 +291,7 @@ class HttpRequestHandler(StreamRequestHandler):
     body = response.body
     if self.method != 'HEAD' and body:
       if isinstance(body, BufferedReader):
-        try: copyfileobj(body, self.wfile)
+        try: copyfileobj(cast(IO, body), self.wfile)
         except OSError as e:
           # No way to report the error to the client at this point.
           print(f'Error while writing response body file: {e}', file=self.server.err)
