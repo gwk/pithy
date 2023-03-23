@@ -87,7 +87,7 @@ def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, 
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest_depth=0, _sort=False, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is raised,
@@ -107,6 +107,11 @@ def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest
   except BaseException as exc:
     _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='value', ret=ret_seq, exc=exc, subj=fn, args=args, kwargs=kwargs)
     return
+  if _sort:
+    try: ret.sort()
+    except BaseException as exc:
+      _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sort', ret=ret_seq, exc=exc, subj=fn, args=args, kwargs=kwargs)
+      return
   if exp != ret:
     _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
