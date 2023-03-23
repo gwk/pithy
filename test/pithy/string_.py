@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.string import *
+from itertools import permutations
+
+from pithy.string import (append_to_nonempty, clip_common, clip_first_prefix, clip_prefix, clip_suffix, format_byte_count,
+  format_nonempty, iter_excluding_str, line_col_0, line_col_1, pluralize, prepend_to_nonempty, render_template, str_tree,
+  str_tree_insert, str_tree_iter)
+from utest import utest, utest_exc, utest_seq
+
 
 utest('abc', render_template, 'a${y}c', y='b')
 
@@ -87,3 +92,21 @@ utest_exc(IndexError(1), line_col_0, '', 1)
 utest_exc(IndexError(2), line_col_0, 'a', 2)
 
 utest((1, 1), line_col_1, '', 0)
+
+
+# str_tree.
+
+str_tree_tests = [
+  ([], {}),
+  ([''], {'':None}),
+  (['a'], {'a':None}),
+  (['', 'a'], {'':None, 'a':None}),
+  (['', 'a', 'aa'], {'':None, 'a':{'':None, 'a':None}}),
+  (['', 'a', 'aa', 'ab'], {'':None, 'a':{'':None, 'a':None, 'b':None}}),
+  (['', 'a', 'aa', 'ab', 'abc'], {'':None, 'a':{'':None, 'a':None, 'b':{'c':None, '':None}}}),
+]
+
+for (strs, tree) in str_tree_tests:
+  utest_seq(strs, str_tree_iter, tree, _sort=True)
+  for p in permutations(strs):
+    utest(tree, str_tree, p)
