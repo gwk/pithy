@@ -240,6 +240,67 @@ def simplify_punctuation(text:str) -> str:
   text = non_ascii_double_quotes.sub('"', text)
   return text
 
+
+StrTree = dict[str,dict|None]
+
+def str_tree(strings:Iterable[str], update:dict[str,dict|None]|None=None, dbg=False) -> StrTree:
+  if dbg:
+    strings = list(strings)
+    print(f'DBG: str_tree: {strings}')
+  tree = {} if update is None else update
+  for s in strings:
+    str_tree_insert(tree, s, dbg=dbg)
+  return tree
+
+
+def str_tree_insert(tree:StrTree, s:str, dbg=False) -> None:
+  if dbg: print(f'inserting {s!r} into {tree!r}')
+  # Look for a nonempty key prefix, starting with the whole string.
+  for lp in range(len(s), 0, -1):
+    prefix = s[:lp]
+    assert lp == len(prefix) # TEMP
+    try: sub = tree[prefix]
+    except KeyError: pass # Prefix not found. See below.
+    else: # Prefix found.
+      if sub is None: # Replace the terminal with a subtree.
+        suffix = s[lp:]
+        tree[prefix] = { '': None, suffix: None }
+      else: # Recurse into the subtree.
+        str_tree_insert(sub, s[lp:])
+      return
+    # Prefix not found. We now also have to check if any other existing key has this prefix.
+    for other_k in tree:
+      if other_k.startswith(prefix): # Split this key into a subtree.
+        other_suffix = other_k[lp:]
+        assert prefix + other_suffix == other_k # TEMP
+        assert len(other_suffix) > 0 # TEMP
+        other = tree.pop(other_k)
+        suffix = s[lp:]
+        tree[prefix] = {
+          suffix: None,
+          other_suffix: other }
+        return
+
+  # No prefix found, so insert a new terminal.
+  assert s not in tree
+  tree[s] = None
+
+
+def str_tree_iter(tree:StrTree, prefix='') -> Iterator[str]:
+  for k, sub in tree.items():
+    if sub is None: yield prefix + k
+    else:
+      yield from str_tree_iter(sub, prefix + k)
+
+
+def str_tree_pairs(tree:StrTree, prefix='') -> Iterator[tuple[str,str]]:
+  'Iterate over the tree elements, yielding (shared prefix, unique suffix) pairs.'
+  for k, sub in tree.items():
+    if sub is None: yield (prefix, k)
+    else:
+      yield from str_tree_pairs(sub, prefix + k)
+
+
 non_ascii_single_quotes = re.compile(r'[‘’]')
 non_ascii_double_quotes = re.compile(r'[“”]')
 
