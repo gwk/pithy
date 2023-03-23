@@ -485,6 +485,13 @@ PrefixTree = Dict[Union[_K, _PrefixTreeTerminator], Optional[Dict]] # mypy canno
 
 
 def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator|None=None, update:PrefixTree|None=None) -> PrefixTree:
+  '''
+  Generate a simple prefix tree from the given iterables.
+  The `terminator` key is used to mark the end of a sequence; it defaults to None.
+  The result is a nested dictionary.
+  If `terminator` is present it marks the end of a complete sequence.
+  All other keys point to subdictionaries with that prefix.
+  '''
   res:PrefixTree = {} if update is None else update
   for it in iterables:
     d = res
