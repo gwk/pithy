@@ -1,19 +1,46 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter, defaultdict
-from collections.abc import Hashable
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any, Iterable, Protocol, Self
+from typing import Any, Iterable, Self
 
 from tolkien import Source
 
 from ..transtruct import Input, Transtructor
-from ..types import Comparable
 from .keywords import sqlite_keywords
-from .parse import parser, sql_parse_entity
-from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity,
+from .parse import parser, sql_parse_entity, sql_parse_schema_table_column
+from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity as qe,
   sql_quote_entity_always, strict_sqlite_to_types, types_to_strict_sqlite)
+
+
+_setattr = object.__setattr__
+
+
+@dataclass(frozen=True)
+class Vis:
+  join:str
+  col:str # The column in the joined table to display instead of the actual column.
+  schema:str = ''
+  table:str = ''
+  join_col:str = ''
+
+  def __post_init__(self) -> None:
+    if not self.join: raise ValueError('`join` is required.')
+    if not self.col: raise ValueError(f'`join` requires that `col` is also specified: {self}')
+    s, t, c = sql_parse_schema_table_column(self.join)
+    if not t and c: raise ValueError(f'`join` must specify table and column: {self.join!r}')
+    _setattr(self, 'schema', s)
+    _setattr(self, 'table', t)
+    _setattr(self, 'join_col', c)
+
+  def __repr__(self) -> str:
+    return f'Vis(join={self.join!r}, col={self.col!r})'
+
+  @cached_property
+  def schema_table(self) -> str:
+    if self.schema: return f'{qe(self.schema)}.{qe(self.table)}'
+    return qe(self.table)
 
 
 @dataclass(frozen=True, order=True)
@@ -30,7 +57,7 @@ class Column:
   is_unique:bool = False # Whether the column is UNIQUE.
   virtual:str|None = None
   default:bool|int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
-  vis:bool = True # Whether the column should be visible by default.
+  vis:bool|Vis = True # Whether the column should be visible by default.
   desc:str = ''
 
 
@@ -75,7 +102,7 @@ class Column:
     in the sense of `nonstrict_to_strict_types_for_sqlite`.
     This allows us to compare a current self from a python schema to a previous version parsed from sqlite_schema.
     '''
-    if self.name != other.name: return f'/ {sql_quote_entity_always(other.name)} order'
+    if self.name != other.name: return f'/ {qe(other.name)} order'
     if self.datatype != other.datatype:
       if exact_type or nonstrict_to_strict_types_for_sqlite.get(self.datatype) != other.datatype:
         return 'datatype'
@@ -88,7 +115,7 @@ class Column:
 
 
   def sql(self) -> str:
-    name = sql_quote_entity(self.name)
+    name = qe(self.name)
     type_ = types_to_strict_sqlite[self.datatype]
     primary_key = ' PRIMARY KEY' if self.is_primary else ''
     unique = ' UNIQUE' if (self.is_unique and not self.is_primary) else ''
@@ -179,16 +206,16 @@ class Table(Structure):
   def column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns)
 
   @cached_property
-  def quoted_column_names(self) -> tuple[str, ...]: return tuple(sql_quote_entity(n) for n in self.column_names)
+  def quoted_column_names(self) -> tuple[str, ...]: return tuple(qe(n) for n in self.column_names)
 
   @cached_property
   def material_column_names(self) -> tuple[str, ...]: return tuple(c.name for c in self.columns if not c.is_generated)
 
   @cached_property
-  def quoted_columns_str(self) -> str: return ', '.join(sql_quote_entity(n) for n in self.column_names)
+  def quoted_columns_str(self) -> str: return ', '.join(qe(n) for n in self.column_names)
 
   @cached_property
-  def quoted_material_columns_str(self) -> str: return ', '.join(sql_quote_entity(n) for n in self.material_column_names)
+  def quoted_material_columns_str(self) -> str: return ', '.join(qe(n) for n in self.material_column_names)
 
 
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
@@ -210,7 +237,7 @@ class Table(Structure):
       inner_parts.append(['  ', column_sql, ',', comment])
 
     if self.primary_key:
-      primary_key_parts = ', '.join(sql_quote_entity(c) for c in self.primary_key)
+      primary_key_parts = ', '.join(qe(c) for c in self.primary_key)
       inner_parts.append([f'  PRIMARY KEY ({primary_key_parts})', ',', ''])
 
     # Remove the comma from the last inner line.
@@ -281,7 +308,7 @@ class Index(TableDepStructure):
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     unique_str = 'UNIQUE ' if self.is_unique else ''
     lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
-    columns_str = ', '.join(sql_quote_entity(c) for c in self.columns)
+    columns_str = ', '.join(qe(c) for c in self.columns)
     lines.append(f'  ON {sql_quote_entity_always(self.table)} ({columns_str})')
     return '\n'.join(lines)
 
