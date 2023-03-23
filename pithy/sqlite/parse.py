@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from typing import Any, cast
+from typing import Any, cast, Match
 
 from tolkien import Source, Token
 
@@ -29,11 +29,15 @@ sqlite_string_re = re.compile(r'(?x)' + sqlite_string_pattern)
 
 def sql_parse_entity(entity:str) -> str:
   m = sqlite_entity_re.fullmatch(entity)
+  return _sql_unquote_entity_match(entity, m)
+
+
+def _sql_unquote_entity_match(entity:str, m:Match[str]|None) -> str:
   if not m: raise ValueError(f'SQL entity is malformed: {entity!r}')
   match m.lastindex:
     case None:
       assert "'" not in entity and  '"' not in entity, entity # Be extra careful.
-      return entity
+      return m[0]
     case 1: return m[1].replace('""', '"')
     case 2: return m[2].replace('``', '`')
     case 3: return m[3].replace(']]', ']')
@@ -42,12 +46,28 @@ def sql_parse_entity(entity:str) -> str:
 
 def sql_parse_schema_table(s:str) -> tuple[str, str]:
   m = sqlite_entity_re.match(s)
-  if not m: raise ValueError(f'SQL schema.table string is malformed: {s!r}')
-  schema = sql_parse_entity(m[0])
-  if m.end() == len(s): return '', schema
-  if s[m.end()] != '.': raise ValueError(f'SQL schema.table string is malformed: {s!r}')
+  if not m: raise ValueError(f'SQL schema.table string head part is malformed: {s!r}')
+  head = _sql_unquote_entity_match(s, m)
+  if m.end() == len(s): return '', head # No dot; just a table name.
+  if s[m.end()] != '.': raise ValueError(f'SQL schema.table string is missing dot after schema: {s!r}')
   table = sql_parse_entity(s[m.end()+1:])
-  return schema, table
+  print(head, table)
+  return head, table
+
+
+def sql_parse_schema_table_column(s:str) -> tuple[str,str,str]:
+  m = sqlite_entity_re.match(s)
+  if not m: raise ValueError(f'SQL schema.table.column string first part is malformed: {s!r}')
+  first = _sql_unquote_entity_match(s, m)
+  if m.end() == len(s): return '', '', first # No dot; just a column name.
+  if s[m.end()] != '.': raise ValueError(f'SQL schema.table.column string is missing dot after first part: {s!r}')
+  m = sqlite_entity_re.match(s, m.end()+1)
+  if not m: raise ValueError(f'SQL schema.table.column string second part is malformed: {s!r}')
+  second = _sql_unquote_entity_match(s, m)
+  if m.end() == len(s): return '', first, second # No second dot; table.column.
+  if s[m.end()] != '.': raise ValueError(f'SQL schema.table.column string is missing dot after second part: {s!r}')
+  third = sql_parse_entity(s[m.end()+1:])
+  return first, second, third
 
 
 def sql_parse_str(s:str) -> str:
