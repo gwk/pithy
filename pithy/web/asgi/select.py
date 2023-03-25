@@ -54,7 +54,9 @@ class SelectApp:
         [k[2:] for k in params if k.startswith('c-')] or [c.name for c in table.columns if c.vis] or [table.columns[0].name])
 
       en_col_spans = [
-        Span(cl='en-col', ch=[Input(name=f'c-{col.name}', type='checkbox', checked=Present(col.vis)), Label(ch=col.name)])
+        Span(cl='en-col', ch=[
+          Input(name=f'c-{col.name}', type='checkbox', checked=Present(col.name in en_col_names)),
+          Label(ch=col.name)])
         for col in table.columns]
 
     else:
