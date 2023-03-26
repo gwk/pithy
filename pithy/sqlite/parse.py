@@ -51,7 +51,6 @@ def sql_parse_schema_table(s:str) -> tuple[str, str]:
   if m.end() == len(s): return '', head # No dot; just a table name.
   if s[m.end()] != '.': raise ValueError(f'SQL schema.table string is missing dot after schema: {s!r}')
   table = sql_parse_entity(s[m.end()+1:])
-  print(head, table)
   return head, table
 
 
