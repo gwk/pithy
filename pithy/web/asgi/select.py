@@ -188,7 +188,7 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column], distinct:bool) -> 
 
   def table_abbr(schema:str, table:str) -> str:
     s = schema_abbrs[schema]
-    t = table[0]
+    t = capital_letters_abbr(table)
     abbr = f'{s}{t}'
     if n := table_abbrs[abbr]: abbrN = abbr + str(n)
     else: abbrN = abbr
@@ -233,3 +233,7 @@ def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
   if len(schema_names) < 2: return { n : '' for n in schema_names } # If only one schema is present then we can omit it entirely.
   tree = str_tree(sorted(schema_names))
   return { prefix+suffix : prefix+suffix[:1] for prefix, suffix in str_tree_pairs(tree) }
+
+
+def capital_letters_abbr(s:str) -> str:
+  return ''.join(c for c in s if c.isupper())
