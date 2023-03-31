@@ -1,8 +1,20 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from urllib.parse import parse_qsl, urlsplit as url_split, urlunsplit as url_unsplit
+from typing import Any
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit as url_split, urlunsplit as url_unsplit
 
 from .path import path_stem
+
+
+def fmt_url(url:str, *path_parts:str, **params:Any) -> str:
+  '''
+  Path parts and params are escaped.
+  '''
+  if path_parts:
+    url = '/'.join(tuple(url, *(quote(part) for part in path_parts)))
+  if params:
+    url = f'{url}?{urlencode(tuple((k, str(v)) for k, v in params.items()))}'
+  return url
 
 
 def url_scheme(url:str) -> str: return url_split(url).scheme
