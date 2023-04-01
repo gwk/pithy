@@ -156,12 +156,18 @@ table.dense tbody tr:nth-child(odd) {
 
 /* Grids. */
 
-.kv-grid {
+.kv-grid-min {
   display: grid;
   grid-template-columns: min-content 1fr;
-  gap: 1em;
+  gap: 0.5em;
 }
 
+
+.kv-grid-max {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5em;
+}
 
 /* HTMX interaction indicators. */
 
