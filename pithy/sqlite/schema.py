@@ -21,6 +21,7 @@ _setattr = object.__setattr__
 class Vis:
   join:str # The schema.table.column to join on, typically the primary key.
   col:str # The column in the joined table to display instead of the actual column.
+  show:bool = True # Whether to show the column by default.
   schema:str = ''
   table:str = ''
   join_col:str = ''

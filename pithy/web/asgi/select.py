@@ -51,7 +51,9 @@ class SelectApp:
       table_name, schema, table = nst
 
       en_col_names = set(
-        [k[2:] for k in params if k.startswith('c-')] or [c.name for c in table.columns if c.vis] or [table.columns[0].name])
+        [k[2:] for k in params if k.startswith('c-')]
+        or [c.name for c in table.columns if (c.vis.show if isinstance(c.vis, Vis) else c.vis)]
+        or [table.columns[0].name])
 
       en_col_spans = [
         Span(cl='en-col', ch=[
