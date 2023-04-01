@@ -258,9 +258,10 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
 
 def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str) -> CellRenderFn:
   'Create a cell function a column in the rendered output.'
-  vis = col.vis
-  if isinstance(vis, Vis):
+
+  if isinstance(col.vis, Vis):
     def render_cell_vis(row:Row) -> MuChildLax:
+      vis = col.vis
       assert isinstance(vis, Vis)
       assert join_col_name
       assert join_table_primary_abbr
@@ -268,14 +269,21 @@ def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str
       join_val = row[join_col_name]
       if vis.join:
         where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
-        return A(href=fmt_url('./select', table=vis.schema_table, where=where), ch=str(join_val))
-      return str(val)
+        return A(href=fmt_url('./select', table=vis.schema_table, where=where), ch=render_val_plain(join_val))
+      return render_val_plain(val)
     return render_cell_vis
 
   else:
     def render_cell_plain(row:Row) -> MuChildLax:
-      return str(row[col.name])
+      val = row[col.name]
+      if val is None: return Span(cl='null', ch='NULL')
+      return A.maybe(str(val))
     return render_cell_plain
+
+
+def render_val_plain(val:Any) -> MuChildLax:
+  if val is None: return Span(cl='null', ch='NULL')
+  return A.maybe(str(val))
 
 
 def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
