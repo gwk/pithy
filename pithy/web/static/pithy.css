@@ -112,7 +112,6 @@ body > * { /* By default, all direct children of body are bpage. */
 .text-start { text-align: start; }
 .text-end { text-align: end; }
 
-
 /* Tables. */
 
 table {
@@ -210,7 +209,6 @@ table.dense tbody tr:nth-child(odd) {
 
 /* SelectApp. */
 
-
 #pithy_select_app form {
   margin: 1em 0;
 }
@@ -240,4 +238,8 @@ table.dense tbody tr:nth-child(odd) {
 #pithy_select_app #results > table th {
   resize: horizontal;
   overflow: clip;
+}
+
+#pithy_select_app .null {
+  color: #888;
 }

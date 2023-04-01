@@ -7,7 +7,7 @@ Html type hierarchy.
 import re
 from html import escape as _escape
 from itertools import chain
-from typing import Any, AnyStr as _AnyStr, ClassVar, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, Union
+from typing import Any, AnyStr as _AnyStr, Callable, ClassVar, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
@@ -236,6 +236,12 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
 
   Contexts for use: Phrasing.
   '''
+
+  @classmethod
+  def maybe(cls, text:str, transform:Callable[[str],str]|None=None) -> Union['A',str]:
+    if text.startswith('http://') or text.startswith('https://'):
+      return cls(href=text, ch=(transform(text) if transform else text))
+    return text
 
 
 @_tag
