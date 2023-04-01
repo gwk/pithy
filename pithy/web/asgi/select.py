@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
-from pithy.io import outM
 from pithy.iterable import iter_interleave_sep
-from pithy.string import str_tree, str_tree_iter, str_tree_pairs
+from pithy.string import str_tree, str_tree_pairs
+from pithy.url import fmt_url
 from starlette.authentication import has_required_scope
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import QueryParams
@@ -13,12 +13,12 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
-from ...html import (Div, Form, H1, HtmlNode, Input, Label, Main, Pre, Present, Select, Span, Table as HtmlTable, Tbody, Td, Th,
-  Thead, Tr)
-from ...sqlite import Connection
+from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChildLax, Pre, Present, Select, Span, Table as HtmlTable,
+  Tbody, Td, Th, Thead, Tr)
+from ...sqlite import Connection, Row
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table, Vis
-from ...sqlite.util import sql_quote_entity as qe
+from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
 
 
 class SelectApp:
@@ -134,10 +134,14 @@ class SelectApp:
 
     limit = int(params.get('limit', 100) or 100)
 
-    header_names, select_clause, from_clause = fmt_select_cols(schema=schema.name, table=table.name, cols=en_cols, distinct=distinct)
+    columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
+      schema=schema.name, table=table.name, cols=en_cols)
+
+    select_head = 'SELECT' + (' DISTINCT' if distinct else '')
     where_clause = f'\nWHERE {where}' if where else ''
     order_by_clause = f'\nORDER BY {order_by}' if order_by else ''
-    query = f'{select_clause}{from_clause}{where_clause}{order_by_clause}\nLIMIT {limit}'
+
+    query = f'{select_head}{columns_part}{from_clause}{where_clause}{order_by_clause}\nLIMIT {limit}'
 
     conn = self.get_conn()
     c = conn.cursor()
@@ -151,7 +155,7 @@ class SelectApp:
     count = ''
     if is_ok:
       try:
-        count_int = c.run(f"SELECT COUNT(1) {from_clause}{where_clause}").one_col()
+        count_int = c.run(f'SELECT COUNT() {from_clause}{where_clause}').one_col()
       except Exception as e:
         count = f'Count failed: {e}\n{query}'
       else:
@@ -164,7 +168,7 @@ class SelectApp:
         plan = f'Query failed: {e}\n{query}'
         is_ok = False
       else:
-        rows = [Tr(ch=[Td(ch=cell) for cell in row]) for row in c]
+        rows = [Tr(ch=[Td(ch=rcf(row)) for rcf in render_cell_fns]) for row in c]
 
     return [
       Div(id='query', cl='kv-grid', ch=[
@@ -178,18 +182,27 @@ class SelectApp:
     ]
 
 
-def fmt_select_cols(schema:str, table:str, cols:list[Column], distinct:bool) -> tuple[list[str],str,str]:
+CellRenderFn = Callable[[Any],MuChildLax]
+
+
+def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,list[str],list[CellRenderFn]]:
   '''
-  Return the rendered table header names, the SELECT [cols...] portion, and FROM/JOIN portion of the query.
+  Return "SELECT [cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
   '''
+
   all_vis = [col.vis for col in cols if isinstance(col.vis, Vis)]
   schema_abbrs = abbreviate_schema_names({schema, *(vis.schema for vis in all_vis)})
   table_abbrs = Counter[str]()
 
-  def table_abbr(schema:str, table:str) -> str:
+  def simple_table_abbr(schema:str, table:str) -> str:
+    'Generate a table abbreviation without concern for collision with other tables.'
     s = schema_abbrs[schema]
     t = capital_letters_abbr(table)
-    abbr = f'{s}{t}'
+    return f'{s}{t}'
+
+  def table_abbr(schema:str, table:str) -> str:
+    'Generate a unique table abbreviation for use within the query.'
+    abbr = simple_table_abbr(schema, table)
     if n := table_abbrs[abbr]: abbrN = abbr + str(n)
     else: abbrN = abbr
     table_abbrs[abbr] += 1
@@ -197,36 +210,72 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column], distinct:bool) -> 
 
   t_abbr = table_abbr(schema, table)
 
-  select = 'SELECT ' + ('DISTINCT ' if distinct else '')
-  header_names = []
-  select_parts = [select]
+  column_parts:list[str] = []
+  line_len = 0
+  def append_select_part(col_name:str):
+    'Append a column name to the SELECT clause, wrapping lines as needed.'
+    nonlocal line_len
+    if column_parts:
+      column_parts.append(',')
+    if line_len + len(col_name) >= 128:
+      column_parts.append('\n  ')
+      line_len = 2
+    else:
+      column_parts.append(' ')
+      line_len += 2
+    column_parts.append(col_name)
+    line_len += len(col_name)
+
   from_parts:list[str] = [f'\nFROM {qe(schema)}.{qe(table)} AS {t_abbr}']
-  line_len = len(select)
+
+  header_names = []
+  render_cell_fns:list[CellRenderFn] = []
 
   for i, col in enumerate(cols):
+    qcol = qe(col.name)
+    qual_col = f'{t_abbr}.{qcol}'
     vis = col.vis
     if isinstance(vis, Vis) and vis.join:
       # Generate a join to show the desired visualization column.
+      # We need to select two columns, rendered cell value and the actual column value for the link to the joined table.
       vis_t = table_abbr(vis.schema, vis.table)
-      qual_col = f'{t_abbr}.{qe(col.name)}'
-      col_name = f'COALESCE({vis_t}.{qe(vis.col)}, {qual_col})'
-      head_name = f'{col.name}: {vis_t}.{vis.col}'
+      head_name = f'{col.name}: {vis.table}.{vis.col}'
+      join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
+      join_table_primary_abbr = simple_table_abbr(vis.schema, vis.table) # The join table abbrev when it is the primary table.
+      append_select_part(f'COALESCE({vis_t}.{qe(vis.col)}, {qual_col}) AS {qe(join_col_name)}') # The joined value.
+      append_select_part(qual_col) # The actual column value is also needed to render the hyperlink.
       from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {vis_t} ON {qual_col} = {vis_t}.{qe(vis.join_col)}')
     else:
-      col_name = f'{t_abbr}.{qe(col.name)}'
       head_name = qe(col.name)
-    if i:
-      if line_len + len(col_name) >= 128:
-        select_parts.append(',\n  ')
-        line_len = 2
-      else:
-        select_parts.append(', ')
-        line_len += 2
+      join_col_name = ''
+      join_table_primary_abbr = ''
+      append_select_part(qual_col)
     header_names.append(head_name)
-    select_parts.append(col_name)
-    line_len += len(col_name)
+    render_cell_fns.append(mk_render_cell_fn(col, join_col_name=join_col_name, join_table_primary_abbr=join_table_primary_abbr))
 
-  return header_names, ''.join(select_parts), ''.join(from_parts)
+  return ''.join(column_parts), ''.join(from_parts), header_names, render_cell_fns
+
+
+def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str) -> CellRenderFn:
+  'Create a cell function a column in the rendered output.'
+  vis = col.vis
+  if isinstance(vis, Vis):
+    def render_cell_vis(row:Row) -> MuChildLax:
+      assert isinstance(vis, Vis)
+      assert join_col_name
+      assert join_table_primary_abbr
+      val = row[col.name]
+      join_val = row[join_col_name]
+      if vis.join:
+        where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
+        return A(href=fmt_url('./select', table=vis.schema_table, where=where), ch=str(join_val))
+      return str(val)
+    return render_cell_vis
+
+  else:
+    def render_cell_plain(row:Row) -> MuChildLax:
+      return str(row[col.name])
+    return render_cell_plain
 
 
 def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
