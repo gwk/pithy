@@ -89,13 +89,13 @@ class SelectApp:
       Div(id='columns', ch=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
 
       Label(ch='Where:'),
-      Input(name='where', type='text', value=params.get('where', ''), cl='clear-on-table-change'),
+      Input(name='where', type='search', value=params.get('where', ''), cl='clear-on-table-change'),
 
       Label(ch='Order by:'),
-      Input(name='order_by', type='text', value=params.get('order_by', ''),  cl='clear-on-table-change'),
+      Input(name='order_by', type='search', value=params.get('order_by', ''),  cl='clear-on-table-change'),
 
       Label(ch='Limit:'),
-      Div(ch=Input(name='limit', type='number', value=params.get('limit', '100'), cl='clear-on-table-change')),
+      Div(ch=Input(name='limit', type='search', value=params.get('limit', '100'), cl='clear-on-table-change')),
 
       Label(),
       Div(ch=Input(type='submit', value='Run Query')),
