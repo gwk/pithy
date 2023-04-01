@@ -71,15 +71,17 @@ class SelectApp:
 
     main.append(H1(ch='SELECT'))
 
-    form = main.append(Form(cl='kv-grid', action='./select'))
+    form = main.append(Form(cl='kv-grid-max', action='./select', autocomplete='off'))
+    #^ autocomplete off is important for the table select input,
+    #^ which otherwise remembers the current value when the user presses the back button.
 
     form.extend(
       Label(ch='Table:'),
-      Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
-        onchange='emptyFirstForSelector("#columns"); clearValueAllForSelector(".clear-on-table-change", "value"); this.form.submit()'),
+      Div(ch=Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
+        onchange='emptyFirstForSelector("#columns"); clearValueAllForSelector(".clear-on-table-change", "value"); this.form.submit()')),
 
       Label(ch='Distinct:'),
-      Input(name='distinct', type='checkbox', checked=Present(params.get('distinct'))),
+      Div(ch=Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
 
       Label(ch='Columns:'),
       Div(id='columns', ch=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
@@ -91,10 +93,10 @@ class SelectApp:
       Input(name='order_by', type='text', value=params.get('order_by', ''),  cl='clear-on-table-change'),
 
       Label(ch='Limit:'),
-      Input(name='limit', type='number', value=params.get('limit', '100'), cl='clear-on-table-change'),
+      Div(ch=Input(name='limit', type='number', value=params.get('limit', '100'), cl='clear-on-table-change')),
 
-      Label(ch=''),
-      Input(type='submit', value='Run Query'),
+      Label(),
+      Div(ch=Input(type='submit', value='Run Query')),
     )
 
     if table_name:
@@ -171,7 +173,7 @@ class SelectApp:
         rows = [Tr(ch=[Td(ch=rcf(row)) for rcf in render_cell_fns]) for row in c]
 
     return [
-      Div(id='query', cl='kv-grid', ch=[
+      Div(id='query', cl='kv-grid-max', ch=[
         Label(ch='Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', ch=query),
         Label(ch='Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', ch=plan),
         Label(ch='Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', ch=count and f'{count}'),
