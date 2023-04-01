@@ -175,7 +175,7 @@ def sql_comment_inline(comment:str) -> str:
 
 
 def sql_quote_entity(entity:str, always=False) -> str:
-  if always or entity.upper() in sqlite_keywords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]+', entity):
+  if always or entity.upper() in sqlite_keywords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', entity):
     return sql_quote_entity_always(entity)
   else:
     return entity
