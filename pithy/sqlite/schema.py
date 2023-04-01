@@ -19,7 +19,7 @@ _setattr = object.__setattr__
 
 @dataclass(frozen=True)
 class Vis:
-  join:str
+  join:str # The schema.table.column to join on, typically the primary key.
   col:str # The column in the joined table to display instead of the actual column.
   schema:str = ''
   table:str = ''
@@ -28,8 +28,8 @@ class Vis:
   def __post_init__(self) -> None:
     if not self.join: raise ValueError('`join` is required.')
     if not self.col: raise ValueError(f'`join` requires that `col` is also specified: {self}')
-    s, t, c = sql_parse_schema_table_column(self.join)
-    if not t and c: raise ValueError(f'`join` must specify table and column: {self.join!r}')
+    s, t, c = parts = sql_parse_schema_table_column(self.join)
+    if not all(parts): raise ValueError(f'`join` must specify schema, table and column: {self.join!r}')
     _setattr(self, 'schema', s)
     _setattr(self, 'table', t)
     _setattr(self, 'join_col', c)
