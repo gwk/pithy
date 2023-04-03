@@ -1,14 +1,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from http import HTTPStatus
 from time import sleep
 
 from starlette.convertors import Convertor, register_url_convertor
+from starlette.datastructures import FormData
 from starlette.exceptions import HTTPException
-from starlette.responses import HTMLResponse, Response
+from starlette.requests import HTTPConnection
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from ..date import Date
 from ..html import HtmlNode
 from ..markup import MuChildLax
+from ..url import fmt_url
 
 
 class DateConverter(Convertor):
@@ -33,6 +37,15 @@ class DateConverter(Convertor):
     register_url_convertor(name, cls())
 
 
+def get_form_str(form_data:FormData, key:str) -> str:
+  '''
+  Get a string value from a request's FormData.
+  If the key is not present or the value is not a str (i.e. UploadFile), return an empty string.
+  '''
+  v = form_data.get(key)
+  return v if isinstance(v, str) else ''
+
+
 def htmx_response(*content:MuChildLax, FAKE_LATENCY=0.0) -> HTMLResponse:
   '''
   Return a response for one or more HTMX fragments.
@@ -50,3 +63,14 @@ def empty_favicon(HTMLRequest) -> Response:
   Using this prevents 404s getting logged for favicon requests.
   '''
   return HTMLResponse(content=b'', media_type='image/x-icon')
+
+
+def redirect_to_signin_response(conn:HTTPConnection, exc:Exception|None=None) -> RedirectResponse:
+  '''
+  Return a response that redirects to the signin page, encoding the current URL as the `next` query parameter.
+  The usage of `next` matches that of Starlette's `requires` decorator when `redirect` is specified.
+  The exception argument is ignored; it exists to make this function compatible with Starlette.exception_handlers,
+  and is intended for 403 Forbidden exceptions.
+  '''
+  signin_url = fmt_url('/signin', next=conn.url.path)
+  return RedirectResponse(url=signin_url, status_code=HTTPStatus.SEE_OTHER)
