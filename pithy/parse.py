@@ -74,6 +74,7 @@ def append(list_:List[_T], el:_T) -> List[_T]:
   list_.append(el)
   return list_
 
+
 def append_or_list(list_or_el:Union[_T,List[_T]], el:_T) -> List[_T]:
   'Create a list from two elements, or if the left element is already a list, append the right element to it and return it.'
   if isinstance(list_or_el, list):
@@ -244,7 +245,6 @@ class Alias(Rule):
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     slc, res = self.parse_sub(self.subs[0], source, token, token, buffer)
     return slc, self.transform(source, slc, res)
-
 
 
 
@@ -467,6 +467,7 @@ class Struct(Rule):
     assert self.transform is not None
     slc = slice(start.pos, end)
     return slc, self.transform(source, slc, vals)
+
 
 
 class Choice(Rule):
@@ -726,6 +727,7 @@ class Precedence(Rule):
     raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
 
 
+
 class SubParser(Rule):
 
   def __init__(self, parser:'Parser', rule_name:str, field='', transform:UniTransform=uni_val):
@@ -737,9 +739,11 @@ class SubParser(Rule):
     self.rule = parser.rules[rule_name]
     self.transform = transform
 
+
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
     slc, sub_res = self.rule.parse(self, source, token, buffer)
     return slc, self.transform(source, slc, sub_res)
+
 
 
 Preprocessor = Callable[[Source, Iterator[Token]], Iterable[Token]]
