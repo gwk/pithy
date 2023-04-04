@@ -246,7 +246,7 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
       head_name = f'{col.name}: {vis.table}.{vis.col}'
       join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
       join_table_primary_abbr = simple_table_abbr(vis.schema, vis.table) # The join table abbrev when it is the primary table.
-      append_select_part(f'COALESCE({vis_t}.{qe(vis.col)}, {qual_col}) AS {qe(join_col_name)}') # The joined value.
+      append_select_part(f'{vis_t}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
       append_select_part(qual_col) # The actual column value is also needed to render the hyperlink.
       from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {vis_t} ON {qual_col} = {vis_t}.{qe(vis.join_col)}')
     else:
@@ -270,10 +270,14 @@ def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str
       assert join_col_name
       assert join_table_primary_abbr
       val = row[col.name]
-      join_val = row[join_col_name]
       if vis.join:
+        display_val = row[join_col_name]
+        cl = 'joined'
+        if display_val is None:
+          display_val = val
+          cl = 'joined null'
         where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
-        return A(href=fmt_url('./select', table=vis.schema_table, where=where), ch=render_val_plain(join_val))
+        return A(cl=cl, href=fmt_url('./select', table=vis.schema_table, where=where), ch=render_val_plain(display_val))
       return render_val_plain(val)
     return render_cell_vis
 
