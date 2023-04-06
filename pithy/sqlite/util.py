@@ -27,33 +27,25 @@ def insert_head_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -
 
 
 @lru_cache
-def insert_named_values_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -> str:
+def insert_values_stmt(*, with_='', or_='FAIL', into:str, named:bool, fields:tuple[str,...],
+ returning:tuple[str,...]|str|None=None) -> str:
     '''
-    Create an INSERT statement that uses named placeholders for values.
-
-    '''
-    head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
-    if fields:
-      fields_joined = ', '.join(f':{f}' for f in fields)
-      values_clause = f' VALUES ({fields_joined})'
-    else:
-      values_clause = ' DEFAULT VALUES'
-    return head + values_clause
-
-
-@lru_cache
-def insert_positional_values_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -> str:
-    '''
-    Create an INSERT statement that uses positional '?' placeholders for values.
-
+    Create an INSERT statement that uses positional or named placeholders for values.
     '''
     head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
     if fields:
-      fields_joined = ', '.join('?' for f in fields)
+      fields_joined = ', '.join((f':{f}' if named else '?') for f in fields)
       values_clause = f' VALUES ({fields_joined})'
     else:
       values_clause = ' DEFAULT VALUES'
-    return head + values_clause
+    stmt = head + values_clause
+
+    if returning:
+      if isinstance(returning, tuple): r = ', '.join(returning)
+      elif isinstance(returning, str): r = returning
+      stmt += f' RETURNING {r}'
+
+    return stmt
 
 
 def sql_col_names(dataclass:type) -> str:

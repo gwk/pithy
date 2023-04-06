@@ -1,13 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import Any, cast, Dict, Iterable, Iterator, Mapping, Optional, Protocol, Self, Sequence, Tuple, TypeAlias, TypeVar
+from typing import (Any, cast, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, Tuple,
+  TypeAlias, TypeVar)
 from urllib.parse import quote as url_quote
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
-from .util import (default_to_json, insert_named_values_stmt, insert_positional_values_stmt, sql_quote_entity,
-  types_natively_converted_by_sqlite)
+from .util import default_to_json, insert_values_stmt, sql_quote_entity, types_natively_converted_by_sqlite
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -185,40 +185,73 @@ class Cursor(sqlite3.Cursor):
     return 0
 
 
-  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, **kwargs:Any) -> None:
+  @overload
+  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:tuple[str,...], **kwargs:Any) -> Row: ...
+
+  @overload
+  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:str, **kwargs:Any) -> Any: ...
+
+  @overload
+  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:None=None, **kwargs:Any) -> None: ...
+
+  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:tuple[str,...]|str|None=None, **kwargs:Any):
     '''
-    Execute an insert statement inserting the kwargs key/value pairs passed as named arguments.
+    Execute an insert statement with the kwargs key/value pairs passed as named arguments.
+    If `returning` is a tuple, return a single row; if it is a string, return a single column.
     '''
-    stmt = insert_named_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(kwargs.keys()))
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=True, fields=tuple(kwargs.keys()), returning=returning)
     if as_json and not all(isinstance(v, types_natively_converted_by_sqlite) for v in kwargs.values()):
       kwargs = {k: default_to_json(v) for k, v in kwargs.items()}
+
     self.execute(stmt, kwargs)
 
+    if isinstance(returning, tuple): return self.one()
+    elif isinstance(returning, str): return self.one_col()
+    else: return None
 
-  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, args:Dict[str, Any],
-   defaults:Dict[str, Any]={}) -> None:
+
+  @overload
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...],
+   args:Dict[str, Any], defaults:Dict[str,Any]=...) -> Row: ...
+
+  @overload
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:str,
+   args:Dict[str,Any], defaults:Dict[str,Any]=...) -> Any: ...
+
+  @overload
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None,returning:None=None,
+   args:Dict[str,Any], defaults:Dict[str,Any]=...) -> None: ...
+
+  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...]|str|None=None,
+   args:Dict[str,Any], defaults:Dict[str,Any]={}) -> Any:
     '''
     Execute an insert of the dictionary `args`, synthesized from `into` (the table name) and `fields`.
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;
     a KeyError is raised if one of the fields is not provided in either of these sources.
+    If `returning` is a tuple, return a single row; if it is a string, return a single column.
     '''
     if fields is None: fields = args.keys()
-    stmt = insert_positional_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(fields))
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields), returning=returning)
 
-    def arg_for(f: str) -> Any:
+    def arg_for(f:str) -> Any:
       try: return args[f]
       except KeyError: pass
       return defaults[f]
 
     values = [default_to_json(arg_for(f)) for f in fields]
+
     self.execute(stmt, values)
+
+    if isinstance(returning, tuple): return self.one()
+    elif isinstance(returning, str): return self.one_col()
+    else: return None
 
 
   def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str], seq:Sequence[Any]) -> None:
     '''
     Execute an insert of the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
-    stmt = insert_positional_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(fields))
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields))
     values = [default_to_json(v) for v in seq]
     self.execute(stmt, values)
 
