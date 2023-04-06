@@ -1411,7 +1411,7 @@ class Table(HtmlFlow, HtmlPalpable):
 
 
   @classmethod
-  def simple(cls, *inline_rows:Iterable[MuChildLax], caption:MuChildLax='', cols:Iterable[Col]=(), head:Iterable[MuChildLax]=(),
+  def simple(cls, *inline_rows:Iterable[MuChildLax], caption:MuChildLax='', cols:Iterable[Col]=(), head:'Thead'|Iterable[MuChildLax]=(),
    rows:Iterable[Iterable[MuChildLax]], **kwargs:Any) -> 'Table':
 
     table = cls(**kwargs)
@@ -1422,7 +1422,10 @@ class Table(HtmlFlow, HtmlPalpable):
       table.append(Colgroup(ch=cols))
 
     if head:
-      table.append(Thead(ch=Tr(ch=[cell if isinstance(cell, (Td, Th)) else Th(ch=cell) for cell in head])))
+      if isinstance(head, Thead):
+        table.append(head)
+      else:
+        table.append(Thead(ch=Tr(ch=[cell if isinstance(cell, (Td, Th)) else Th(ch=cell) for cell in head])))
 
     tbody = table.append(Tbody())
 
