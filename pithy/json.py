@@ -84,11 +84,11 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_S
 # input.
 
 
-def parse_json(text:JsonText, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
+def parse_json(text:JsonText|None, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Parse json from `text`.
   '''
-  return _json.loads(text, object_hook=_mk_hook(hook, hooks))
+  return None if text is None else _json.loads(text, object_hook=_mk_hook(hook, hooks))
 
 
 def load_json(file:IO, hook: ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
