@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
 from random import randbytes, randint
-from sqlite3 import Cursor, Row, connect
+from sqlite3 import connect, Cursor, Row
 from statistics import fmean, median, stdev, variance
 from time import perf_counter
 from typing import Iterable
@@ -11,22 +11,22 @@ from typing import Iterable
 
 def main() -> None:
   parser = ArgumentParser()
-  parser.add_argument('-num-runs', type=int, required=True, help='Number rounds to test the query.')
+  parser.add_argument('-num-runs', type=int, required=True, help='Number of rounds to test the query.')
   parser.add_argument('-clean', action='store_true', help='Regenerate row data.')
   parser.add_argument('-print-all-times', action='store_true', help='Print all times for each query.')
+
+  cmd_args = parser.parse_args()
 
   conn = connect('column-order-exp.db', isolation_level=None)
   conn.row_factory = Row
   c = conn.cursor()
 
-  cmd_args = parser.parse_args()
-
   num_rows = 1<<14
   max_byte_pairs = 1<<8
 
   if cmd_args.clean:
-    c.execute('DROP TABLE IF EXISTS Front')
-    c.execute('DROP TABLE IF EXISTS Back')
+    c.execute('DROP TABLE IF EXISTS TF')
+    c.execute('DROP TABLE IF EXISTS TB')
 
     # Create two tables, with an integer column in either the front or the back,
     # and ten columns of random text.
@@ -44,7 +44,6 @@ def main() -> None:
     t7 TEXT,
     t8 TEXT,
     t9 TEXT)''')
-
 
     c.execute('''
     CREATE TABLE IF NOT EXISTS TB (
