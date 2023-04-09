@@ -7,15 +7,20 @@ def _byte_index(alphabet:bytes, char:int) -> int:
   try: return alphabet.index(char)
   except ValueError: return 0xff
 
-# The base62 alphabet consists of all ASCII numbers and letters.
-base62_alphabet = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-base62_alphabet_inverse = bytes(_byte_index(base62_alphabet, c) for c in range(0x100))
-assert len(base62_alphabet) == 62
+# The base36LC alphabet consists of all ASCII numbers and lowercase letters.
+base36LC_alphabet = b'0123456789abcdefghijklmnopqrstuvwxyz'
+base36LC_alphabet_inverse = bytes(_byte_index(base36LC_alphabet, c) for c in range(0x100))
+assert len(base36LC_alphabet) == 36
 
 # The base58 alphabet as described by bitcoin removes 0, O, I, and l to improve readability.
 base58_alphabet = b'123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 base58_alphabet_inverse = bytes(_byte_index(base58_alphabet, c) for c in range(0x100))
 assert len(base58_alphabet) == 58
+
+# The base62 alphabet consists of all ASCII numbers and letters.
+base62_alphabet = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+base62_alphabet_inverse = bytes(_byte_index(base62_alphabet, c) for c in range(0x100))
+assert len(base62_alphabet) == 62
 
 # The base128 alphabet is a subset of the latin1 alphanumeric alphabet,
 # chosen so that blocks of characters can be double-clicked to select the entire block.
