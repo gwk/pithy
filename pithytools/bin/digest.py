@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-'print file hashes. first argument is the format; remaining args are the paths.'
+'Print file hashes. The first argument is the format; remaining args are the paths.'
 
 import hashlib
 from argparse import ArgumentParser
