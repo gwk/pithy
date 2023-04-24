@@ -102,6 +102,8 @@ body > * { /* By default, all direct children of body are bpage. */
 .inline { display: inline; }
 .inline-block { display: inline-block; }
 
+.o50 { opacity: 0.5; }
+
 .table-auto { table-layout: auto; }
 .table-fixed { table-layout: fixed; }
 
