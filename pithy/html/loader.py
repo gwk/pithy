@@ -16,5 +16,5 @@ def load_html(file_or_path:FileOrPath, encoding:str='utf8', **kwargs:Any) -> Any
 
   # If none of the html5_parser `treebuilder` options was supplied,
   # then it will use the fast `lxml` option by default.
-  # Transform the resulting etree into a generic dictionary tree.
+  # Transform the resulting etree into an HtmlNode tree.
   return HtmlNode.from_etree(html)
