@@ -12,7 +12,7 @@
   gen-vscode help install-vscode pip-uninstall test test-diff test-diff-data typecheck
 
 # First target of a makefile is the default.
-_default: test typecheck lint
+_default: help
 
 _phony: # Used to mark pattern rules as phony.
 
