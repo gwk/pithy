@@ -12,11 +12,11 @@ ws_normalizations:List[Tuple[MuChild,MuChild]] = [
   ( '',
     ''),
   ( ' Leading and trailing space. ',
-    'Leading and trailing space.'),
+    '<p>Leading and trailing space.</p>'),
   ( '<p>Paragraph 0.</p>',
     '<p>Paragraph 0.</p>'),
 
-  ( Body(ch=['\n', 'Hi.', '\n', '\n', 'Bye.\n']),
+  ( Html(ch=Body(ch=['\n', 'Hi.', '\n', '\n', 'Bye.\n'])),
     'Hi.\nBye.'),
 
   ( '<section>top<section>sub 1.</section><section> sub 2.</section></section>',
@@ -35,13 +35,11 @@ for src, exp, in ws_normalizations:
   else:
     html = Html.parse(src)
 
+  assert isinstance(html, Html), html
   html.clean()
-  body = html.body if isinstance(html, Html) else html
-  res = body.render_str()
-  res = clip_prefix(res, '<body>')
-  res = clip_suffix(res, '</body>\n')
+  body = html.body
+  res = body.render_children_str()
   if res != exp:
     outL(f'test failure: normalization of: {src!r}')
-    outL('expected:\n', exp)
+    outL('\n------\nexpected:\n', exp)
     outL('\n------\nactual:\n', res)
-
