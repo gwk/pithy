@@ -8,7 +8,6 @@ from shlex import quote as sh_quote
 from typing import Any, Dict, List, Pattern, Set
 from urllib.parse import urldefrag as url_defrag, urljoin as url_join, urlsplit as url_split
 
-import html5_parser
 from lxml.html import fromstring as lxml_html_fromstring
 from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file, path_descendants, path_dir,
   path_ext, path_join, remove_path, remove_path_if_exists)
@@ -139,10 +138,7 @@ class Crawler:
     except Exception as e:
       errSL(f'{path}: could not read contents as text: {e}')
       return
-    if html5_re.match(text):
-      html = html5_parser.parse(text, return_root=True, line_number_attr='#', sanitize_names=False)
-    else:
-      html = lxml_html_fromstring(text)
+    html = lxml_html_fromstring(text)
     self.walk_html_hrefs(url=url, node=html)
 
 

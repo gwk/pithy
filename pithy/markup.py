@@ -19,9 +19,9 @@ from .reprs import repr_lim
 from .string import EscapedStr
 
 
-# Handle lxml comments if available; these are produced by html5_parser.
+# If lxml is available, import the special Comment value that is used as the tag for comments.
 try: from lxml.etree import Comment
-except ImportError: Comment = object() # type: ignore[assignment] # Comment is a cyfunction, so we can fall back to a dummy object.
+except ImportError: Comment = object() # type: ignore[assignment] # Comment is a cyfunction; fall back to a dummy object.
 
 
 _T = TypeVar('_T')

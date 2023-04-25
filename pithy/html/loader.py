@@ -1,20 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any
-
-from html5_parser import parse
+from typing import Any, TextIO, BinaryIO, Union, cast
 
 from ..html import HtmlNode
-from ..loader import binary_file_for, FileOrPath
+from ..loader import FileOrPath
 
 
 def load_html(file_or_path:FileOrPath, encoding:str='utf8', **kwargs:Any) -> Any:
-  with binary_file_for(file_or_path) as file:
-    data = file.read()
-  html = parse(data, transport_encoding=encoding, return_root=True, **kwargs)
-  if 'treebuilder' in kwargs: return html
-
-  # If none of the html5_parser `treebuilder` options was supplied,
-  # then it will use the fast `lxml` option by default.
-  # Transform the resulting etree into an HtmlNode tree.
-  return HtmlNode.from_etree(html)
+  return HtmlNode.parse_file(cast(Union[str,TextIO,BinaryIO], file_or_path), encoding=encoding, **kwargs)

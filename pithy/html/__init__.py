@@ -6,16 +6,21 @@ Html type hierarchy.
 
 import re
 from html import escape as _escape
+from io import BytesIO, StringIO
+from os import PathLike
 from itertools import chain
-from typing import Any, AnyStr as _AnyStr, Callable, ClassVar, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, Union
+from typing import (Any, AnyStr as _AnyStr, Callable, ClassVar, Iterable, Iterator, List, NoReturn, Optional, BinaryIO, TextIO, Tuple,
+  Type, Union)
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
 from . import semantics
 
 
-DtDdPair = Tuple[List['Dt'],List['Dd']]
+_LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
+_LxmlFileReadSource = _LxmlFilePath | BinaryIO | TextIO
 
+DtDdPair = Tuple[List['Dt'],List['Dd']]
 
 class HtmlNode(Mu):
   'Abstract HTML node; root class of the hierarchy. For the HTML tag, use `Html`.'
@@ -32,12 +37,28 @@ class HtmlNode(Mu):
 
 
   @classmethod
-  def parse(Class:Type[_Mu], source:_AnyStr, **kwargs:Any) -> _Mu:
-    from html5_parser import parse
+  def parse_file(cls, file:_LxmlFileReadSource,  **kwargs:Any) -> 'Html':
+    from lxml import etree
     if 'treebuilder' in kwargs: raise ValueError('HtmlNode.parse() requires default `lxml` treebuilder option.')
-    if isinstance(source, bytes): kwargs['transport_encoding'] = 'utf-8'
-    etree = parse(source, return_root=True, **kwargs)
-    return Class.from_etree(etree)
+    parser = etree.HTMLParser(**kwargs)
+    tree = etree.parse(file, parser)
+    root = tree.getroot()
+    if root is None: # Empty or whitespace strings produce None.
+      return Html(ch=Body())
+    html = HtmlNode.from_etree(root)
+    assert isinstance(html, Html), html
+    return html
+
+
+  @classmethod
+  def parse(cls, source:_AnyStr, **kwargs:Any) -> 'Html':
+    if isinstance(source, bytes):
+      kwargs['transport_encoding'] = 'utf-8'
+      f = BytesIO(source)
+    else:
+      f = StringIO(source)
+    return cls.parse_file(f, **kwargs)
+
 
   @property
   def is_phrasing(self) -> bool:
