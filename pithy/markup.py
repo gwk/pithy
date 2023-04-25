@@ -207,11 +207,13 @@ class Mu:
     ch:MuChildren = []
     text = el.text
     if text: ch.append(text)
+    TagClass = cls.tag_types.get(tag, cls)
     for child in el:
-      ch.append(cls.from_etree(child))
+      ch.append(TagClass.from_etree(child))
+      #^ Note: we use the dynamically chosen TagClass when recursing,
+      # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       text = child.tail
       if text: ch.append(text)
-    TagClass = cls.tag_types.get(tag, cls)
     return cast(_Mu, TagClass(tag=tag, attrs=attrs, ch=ch))
 
 
@@ -631,7 +633,7 @@ class Mu:
     return ''.join(self._summarize(levels, nl_indent, all_attrs=all_attrs))
 
   def _summarize(self, levels:int, nl_indent:str, all_attrs:bool) -> Iterator[str]:
-    if levels <= 0:
+    if levels == 0:
       yield str(self)
     else:
       subnode = '' if self._orig is None else '$'

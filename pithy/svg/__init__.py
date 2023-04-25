@@ -348,6 +348,8 @@ class SvgBranch(SvgNode):
 class Svg(SvgBranch):
   '''
   Svg is an XmlWriter class that outputs SVG code.
+
+  HTML contexts for use: Phrasing.
   '''
 
   def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Dim|None=None, y:Dim|None=None, w:Dim|None=None, h:Dim|None=None,
