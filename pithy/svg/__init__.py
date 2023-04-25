@@ -63,6 +63,9 @@ class SvgNode(Mu):
     except NoMatchError: return None
 
 
+SvgNode.generic_tag_type = SvgNode # Note: this creates a circular reference.
+
+
 def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
   'Decorator for associating a concrete subclass with the lowercase tag matching its name.'
   assert issubclass(Subclass, Mu)

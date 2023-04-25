@@ -74,6 +74,7 @@ class Mu:
   tag = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
 
   tag_types:ClassVar[dict[str,type['Mu']]] = {} # Dispatch table mapping tag names to Mu subtypes.
+  generic_tag_type:ClassVar[type['Mu']] # The subtype to use for tags that are not in `tag_types`. Set to `Mu` below.
   inline_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that should be rendered inline.
   void_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that should be rendered as "void tags" (for HTML correctness).
   ws_sensitive_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that are whitespace sensitive.
@@ -184,7 +185,7 @@ class Mu:
       if not isinstance(k, str):
         raise ValueError(f'Mu attr key must be `str`; received: {k!r}')
     ch:MuChildren = []
-    TagClass = cls.tag_types.get(tag, cls)
+    TagClass = cls.tag_types.get(tag, cls.generic_tag_type)
     for c in raw_children:
       if isinstance(c, mu_child_classes): ch.append(c)
       elif isinstance(c, dict): ch.append(TagClass.from_raw(c))
@@ -207,7 +208,7 @@ class Mu:
     ch:MuChildren = []
     text = el.text
     if text: ch.append(text)
-    TagClass = cls.tag_types.get(tag, cls)
+    TagClass = cls.tag_types.get(tag, cls.generic_tag_type)
     for child in el:
       ch.append(TagClass.from_etree(child))
       #^ Note: we use the dynamically chosen TagClass when recursing,
@@ -789,6 +790,9 @@ class Mu:
   def render_children_str(self, newline=True) -> str:
     'Render the children into a single string.'
     return ''.join(self.render_children())
+
+
+Mu.generic_tag_type = Mu # Note: this creates a circular reference.
 
 
 mu_child_classes = (str, EscapedStr, Mu)
