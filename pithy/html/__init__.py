@@ -68,10 +68,13 @@ class HtmlNode(Mu):
     'Wether or not the node is phrasing content.'
     return False
 
+
   @property
   def attr_urls(self) -> Iterator[str]:
    return self.iter_visit(pre=_attr_urls_visit)
 
+
+HtmlNode.generic_tag_type = HtmlNode # Note: this creates a circular reference.
 
 
 def _attr_urls_visit(node:HtmlNode) -> Iterator[str]:
