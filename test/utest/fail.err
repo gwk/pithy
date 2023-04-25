@@ -89,7 +89,7 @@
 |     exc arg 0: "'int' object is not iterable"
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 123, in utest_seq_exc
+~   File ".+/pithy/utest/__init__.py", line 128, in utest_seq_exc
 |     ret = list(ret_seq)
 |           ^^^^^^^^^^^^^
 | TypeError: 'int' object is not iterable
@@ -102,7 +102,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 123, in utest_seq_exc
+~   File ".+/pithy/utest/__init__.py", line 128, in utest_seq_exc
 |     ret = list(ret_seq)
 |           ^^^^^^^^^^^^^
 |   File "./fail.py", line 24, in yield_then_raise
