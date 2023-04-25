@@ -14,6 +14,7 @@ from typing import (Any, AnyStr as _AnyStr, Callable, ClassVar, Iterable, Iterat
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
+from ..svg import Svg
 from . import semantics
 
 
@@ -25,7 +26,9 @@ DtDdPair = Tuple[List['Dt'],List['Dd']]
 class HtmlNode(Mu):
   'Abstract HTML node; root class of the hierarchy. For the HTML tag, use `Html`.'
 
-  tag_types:ClassVar[dict[str,type[Mu]]] = {} # Dispatch table mapping tag names to Mu subtypes.
+  tag_types:ClassVar[dict[str,type[Mu]]] = { # Dispatch table mapping tag names to Mu subtypes.
+    'svg': Svg
+  }
 
   replaced_attrs = {
     'async_' : 'async',
@@ -1404,15 +1407,6 @@ class Summary(HtmlPhrasing):
 class Sup(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
   Specifies inline text which is to be displayed as superscript for solely typographical reasons.
-
-  Contexts for use: Phrasing.
-  '''
-
-
-@_tag
-class Svg(HtmlNode):
-  '''
-  An SVG vector graphic.
 
   Contexts for use: Phrasing.
   '''
