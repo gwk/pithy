@@ -1,7 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Iterable, NamedTuple, Tuple, Type, TypeVar
+from typing import Any, Callable, Iterable, NamedTuple, Optional, Type, TypeVar
 
+
+_T = TypeVar('_T')
 
 class lazy_property(object):
   '''
@@ -18,7 +20,11 @@ class lazy_property(object):
     return val
 
 
-_T = TypeVar('_T')
+def nonopt(optional:Optional[_T]) -> _T:
+  'Return the value of an optional, raising an exception if it is None.'
+  if optional is None: raise ValueError
+  return optional
+
 
 def once(fn:Callable[[],_T]) -> _T: return fn()
 
@@ -50,6 +56,6 @@ def memoize(_fn:Callable|None=None, sentinel:Any=Ellipsis) -> Callable:
     return _memoize(_fn)
 
 
-def nt_items(nt:NamedTuple) -> Iterable[Tuple[str,Any]]:
+def nt_items(nt:NamedTuple) -> Iterable[tuple[str,Any]]:
   'Return an iterable that returns the (name, value) pairs of a NamedTuple.'
   return zip(nt._fields, nt)
