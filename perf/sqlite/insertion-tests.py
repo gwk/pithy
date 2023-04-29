@@ -35,7 +35,7 @@ def main() -> None:
 
 def run_insertion_test(num_rows:int, el_size:int, verbose:bool) -> None:
   if path_exists(path): remove_file(path)
-  conn = connect('insertion-tests.db', isolation_level=None)
+  conn = connect(path, isolation_level=None)
   conn.row_factory = Row
   c = conn.cursor()
 
@@ -70,12 +70,7 @@ def compute_stats(num_rows:int, times:list[float]) -> str:
   variance_ = variance(times) if n > 1 else 0
   stdev_ = stdev(times) if n > 1 else 0
 
-  return f'Iiterations: {n:,}  rows: {num_rows:,}  mean: {mean_:.4f};  median: {median_:.4f};  variance: { variance_:.6f};  stddev: { stdev_:.6f}.'
-
-
-def joinCSF(fmt:str, iterable:Iterable) -> str:
-  return ', '.join(fmt.format(el) for el in iterable)
-
+  return f'Iterations: {n:,}  rows: {num_rows:,}  mean: {mean_:.4f};  median: {median_:.4f};  variance: { variance_:.6f};  stddev: { stdev_:.6f}.'
 
 
 if __name__ == '__main__': main()
