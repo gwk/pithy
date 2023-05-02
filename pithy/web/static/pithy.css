@@ -102,6 +102,8 @@ body > * { /* By default, all direct children of body are bpage. */
 .inline { display: inline; }
 .inline-block { display: inline-block; }
 
+.mv1em { margin-top: 1em; margin-bottom: 1em; }
+
 .o50 { opacity: 0.5; }
 
 .table-auto { table-layout: auto; }
@@ -114,7 +116,28 @@ body > * { /* By default, all direct children of body are bpage. */
 .text-start { text-align: start; }
 .text-end { text-align: end; }
 
+
 /* Forms. */
+
+form.grid {
+  width: 100%;
+  margin: 1em 0;
+  display: grid;
+  grid-template-columns: min-content 1fr;
+  gap: 1em;
+}
+
+form.inline {
+  display: flex;
+  flex-direction: row;
+  gap: 1ch;
+}
+
+.input-labels-inline {
+  display: flex;
+  flex-direction: row;
+  gap: 1ch;
+}
 
 span.input-label { /* A span that wraps an input (e.g. radio or checkbox) and its label. */
   display: flex;
@@ -129,6 +152,7 @@ span.input-label > input:first-child { /* The input. */
 span.input-label > input:first-child:where([type='checkbox'], [type='radio']) {
   align-self: center;
 }
+
 
 /* Tables. */
 
@@ -180,12 +204,16 @@ table.dense tbody tr:nth-child(odd) {
   gap: 0.5em;
 }
 
+.kv-grid-min > :nth-child(odd) {
+  white-space: nowrap;
+}
 
 .kv-grid-max {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 0.5em;
 }
+
 
 /* HTMX interaction indicators. */
 
@@ -207,7 +235,7 @@ table.dense tbody tr:nth-child(odd) {
 
 .with-spinner-after.htmx-request::after {
   /* The htmx-request class is added to the requesting element or specified hx-indicator element while the request is ongoing. */
-  content: '🕐';
+  content: '🕛';
 
   animation-name: emoji-clock;
   animation-duration: 3s;
