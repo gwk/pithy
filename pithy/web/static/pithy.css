@@ -114,6 +114,22 @@ body > * { /* By default, all direct children of body are bpage. */
 .text-start { text-align: start; }
 .text-end { text-align: end; }
 
+/* Forms. */
+
+span.input-label { /* A span that wraps an input (e.g. radio or checkbox) and its label. */
+  display: flex;
+  flex-direction: row;
+  white-space: nowrap;
+}
+
+span.input-label > input:first-child { /* The input. */
+  margin-right: 0.5ch;
+}
+
+span.input-label > input:first-child:where([type='checkbox'], [type='radio']) {
+  align-self: center;
+}
+
 /* Tables. */
 
 table {
