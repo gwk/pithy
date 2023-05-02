@@ -21,7 +21,7 @@ addEventListener('DOMContentLoaded', ()=>{
 function createStyle(title, selectorText) {
   style = document.createElement('style');
   style.type = 'text/css';
-  style.title = 'pithy-dynamic';
+  style.title = title;
   style.innerHTML = selectorText;
   document.head.appendChild(style);
 }
@@ -97,6 +97,8 @@ function setupReloadingDateInput(input) {
 
 
 function setupBeforeSendClearHxTargetContent(element) {
+  // Configure an element with an event handler so that before an htmx request is sent,
+  // the content of the target element is cleared.
   // Configure an element with this handler: `onfocus='setupBeforeSendClearHxTargetContent(this)'`.
   element.onfocus = null; // This handler is a lazy initializer; remove it.
   const hx_target_sel = element.getAttribute('hx-target');
