@@ -63,12 +63,13 @@ class Mu:
 
   Unlike xml.etree.ElementTree.Element, child nodes and text are interleaved.
 
-  The design is biased towards HTML5 but works with XML.
+  The design primarily accommodates HTML5 and SVG but works with XML.
 
   Every node has a tag string, usually provided as a static override by a subclass.
   For example, the `Div` subclass represents an HTML div and defines `tag = 'div'`.
 
-  However a parser could instead return generic `Mu` nodes with tags set per node.
+  However a parser can instead return generic `Mu` nodes with tags set per node,
+  or perhaps a subclass representing invalid nodes that sets the tag per node.
   '''
 
   tag = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
@@ -91,8 +92,15 @@ class Mu:
   attrs:MuAttrs
   ch:list[MuChild]
 
-  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,
-   _orig:_Mu|None=None, _parent:Optional['Mu']=None, **kw_attrs:Any) -> None:
+  def __init__(self:_Mu, *,
+   tag:str='',
+   attrs:MuAttrs|None=None,
+   ch:MuChildOrChildrenLax=(),
+   cl:Iterable[str]|None=None,
+   _orig:_Mu|None=None, # _orig is set by methods that are called with the `traversable` option.
+   _parent:Optional['Mu']=None, # _parent is set by methods that are called with the `traversable` option.
+   **kw_attrs:Any # Additional attrs can be passed as keyword arguments. These take precedence over keys in `attrs`.
+   ) -> None:
     '''
     Note: the initializer uses `attrs` dict and `ch` list references if provided, resulting in data sharing.
     This is done for two reasons:
@@ -102,6 +110,9 @@ class Mu:
     The `ch` initializer argument is typed as MuChildOrChildrenLax to allow for numeric values.
     These are converted to strings during initialization.
     If the `ch` argument is a list and contains numeric values, it is mutated in place.
+
+    The `cl` initializer argument is a special shorthand for htm `class` attributes.
+    It accepts an iterable of strings, which are joined with spaces and set as the `class` attribute.
 
     Normally, nodes do not hold a reference to parent; this makes Mu trees acyclic.
     However, various Mu methods have a `traversable` option, which will return subtrees with the _orig/_parent refs set.
