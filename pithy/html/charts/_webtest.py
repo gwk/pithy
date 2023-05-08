@@ -21,8 +21,8 @@ def app() -> Starlette:
 async def home_page(request:Request) -> HTMLResponse:
   html = Html.doc(title='TEST')
 
-  html.head.append(Style(ch=EscapedStr('*, *::before, *::after { box-sizing: border-box; }')))
-  html.head.append(Style(ch=EscapedStr(chart_css)))
+  html.head.append(Style(_=EscapedStr('*, *::before, *::after { box-sizing: border-box; }')))
+  html.head.append(Style(_=EscapedStr(chart_css)))
 
 
   figure = chart_figure(title='CHART',

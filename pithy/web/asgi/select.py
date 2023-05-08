@@ -56,9 +56,9 @@ class SelectApp:
         or [table.columns[0].name])
 
       en_col_spans = [
-        Span(cl='en-col', ch=[
+        Span(cl='en-col', _=[
           Input(name=f'c-{col.name}', type='checkbox', checked=Present(col.name in en_col_names)),
-          Label(ch=col.name)])
+          Label(_=col.name)])
         for col in table.columns]
 
     else:
@@ -71,34 +71,34 @@ class SelectApp:
     if table_name: assert table_name in table_names
     main = Main(id='pithy_select_app', cl='bfull')
 
-    main.append(H1(ch='SELECT'))
+    main.append(H1(_='SELECT'))
 
     form = main.append(Form(cl='kv-grid-max', action='./select', autocomplete='off'))
     #^ autocomplete off is important for the table select input,
     #^ which otherwise remembers the current value when the user presses the back button.
 
     form.extend(
-      Label(ch='Table:'),
-      Div(ch=Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
+      Label(_='Table:'),
+      Div(_=Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
         onchange='emptyFirstForSelector("#columns"); clearValueAllForSelector(".clear-on-table-change", "value"); this.form.submit()')),
 
-      Label(ch='Distinct:'),
-      Div(ch=Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
+      Label(_='Distinct:'),
+      Div(_=Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
 
-      Label(ch='Columns:'),
-      Div(id='columns', ch=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
+      Label(_='Columns:'),
+      Div(id='columns', _=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
 
-      Label(ch='Where:'),
+      Label(_='Where:'),
       Input(name='where', type='search', value=params.get('where', ''), cl='clear-on-table-change'),
 
-      Label(ch='Order by:'),
+      Label(_='Order by:'),
       Input(name='order_by', type='search', value=params.get('order_by', ''),  cl='clear-on-table-change'),
 
-      Label(ch='Limit:'),
-      Div(ch=Input(name='limit', type='search', value=params.get('limit', '100'), cl='clear-on-table-change')),
+      Label(_='Limit:'),
+      Div(_=Input(name='limit', type='search', value=params.get('limit', '100'), cl='clear-on-table-change')),
 
       Label(),
-      Div(ch=Input(type='submit', value='Run Query')),
+      Div(_=Input(type='submit', value='Run Query')),
     )
 
     if table_name:
@@ -172,17 +172,17 @@ class SelectApp:
         plan = f'Query failed: {e}\n{query}'
         is_ok = False
       else:
-        rows = [Tr(ch=[Td(ch=rcf(row)) for rcf in render_cell_fns]) for row in c]
+        rows = [Tr(_=[Td(_=rcf(row)) for rcf in render_cell_fns]) for row in c]
 
     return [
-      Div(id='query', cl='kv-grid-max', ch=[
-        Label(ch='Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', ch=query),
-        Label(ch='Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', ch=plan),
-        Label(ch='Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', ch=count and f'{count}'),
+      Div(id='query', cl='kv-grid-max', _=[
+        Label(_='Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', _=query),
+        Label(_='Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan),
+        Label(_='Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', _=count and f'{count}'),
       ]),
-      Div(id='results', ch=HtmlTable(cl='dense', ch=[
-        Thead(ch=Tr(ch=[Th(ch=Div(ch=name)) for name in header_names])),
-        Tbody(ch=rows)])),
+      Div(id='results', _=HtmlTable(cl='dense', _=[
+        Thead(_=Tr(_=[Th(_=Div(_=name)) for name in header_names])),
+        Tbody(_=rows)])),
     ]
 
 
@@ -277,20 +277,20 @@ def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str
           display_val = val
           cl = 'joined null'
         where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
-        return A(cl=cl, href=fmt_url('./select', table=vis.schema_table, where=where), ch=render_val_plain(display_val))
+        return A(cl=cl, href=fmt_url('./select', table=vis.schema_table, where=where), _=render_val_plain(display_val))
       return render_val_plain(val)
     return render_cell_vis
 
   else:
     def render_cell_plain(row:Row) -> MuChildLax:
       val = row[col.name]
-      if val is None: return Span(cl='null', ch='NULL')
+      if val is None: return Span(cl='null', _='NULL')
       return A.maybe(str(val))
     return render_cell_plain
 
 
 def render_val_plain(val:Any) -> MuChildLax:
-  if val is None: return Span(cl='null', ch='NULL')
+  if val is None: return Span(cl='null', _='NULL')
   return A.maybe(str(val))
 
 

@@ -86,30 +86,30 @@ class Mu:
     'class': -1,
   }
 
-  __slots__ = ('attrs', 'ch', '_orig', '_parent')
+  __slots__ = ('attrs', '_', '_orig', '_parent')
 
   # Instance attributes.
   attrs:MuAttrs
-  ch:list[MuChild]
+  _:list[MuChild]
 
   def __init__(self:_Mu, *,
    tag:str='',
    attrs:MuAttrs|None=None,
-   ch:MuChildOrChildrenLax=(),
+   _:MuChildOrChildrenLax=(),
    cl:Iterable[str]|None=None,
    _orig:_Mu|None=None, # _orig is set by methods that are called with the `traversable` option.
    _parent:Optional['Mu']=None, # _parent is set by methods that are called with the `traversable` option.
    **kw_attrs:Any # Additional attrs can be passed as keyword arguments. These take precedence over keys in `attrs`.
    ) -> None:
     '''
-    Note: the initializer uses `attrs` dict and `ch` list references if provided, resulting in data sharing.
+    Note: the initializer uses `attrs` dict and `_` (children) list references if provided, resulting in data sharing.
     This is done for two reasons:
     * avoid excess copying during deserialization from json, msgpack, or similar;
-    * allow for creation of subtree nodes (with _orig/_parent set) that alias the `attr` and `ch` collections.
+    * allow for creation of subtree nodes (with _orig/_parent set) that alias the `attr` and `_` collections.
 
-    The `ch` initializer argument is typed as MuChildOrChildrenLax to allow for numeric values.
+    The `_` property represents the node children list, and is typed as MuChildOrChildrenLax to allow for numeric values.
     These are converted to strings during initialization.
-    If the `ch` argument is a list and contains numeric values, it is mutated in place.
+    If the `_` argument is a list and contains numeric values, it is mutated in place.
 
     The `cl` initializer argument is a special shorthand for htm `class` attributes.
     It accepts an iterable of strings, which are joined with spaces and set as the `class` attribute.
@@ -118,6 +118,8 @@ class Mu:
     However, various Mu methods have a `traversable` option, which will return subtrees with the _orig/_parent refs set.
     Such "subtree nodes" can use the `next` and `prev` methods in addition to `pick` and friends.
     '''
+
+    assert 'ch' not in kw_attrs, 'Use `_` instead of `ch` for children.'
 
     if tag:
       if cls_tag := getattr(self, 'tag', None):
@@ -136,21 +138,21 @@ class Mu:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
-    if isinstance(ch, mu_child_classes_lax): # Single child argument; wrap it in a list.
-      ch_lax:MuChildrenLax = [ch]
-    elif isinstance(ch, list):
-      ch_lax = ch # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
+    if isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
+      children:MuChildrenLax = [_]
+    elif isinstance(_, list):
+      children = _ # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
     else:
-      ch_lax = list(ch)
-    for i, c in enumerate(ch_lax):
+      children = list(_)
+    for i, c in enumerate(children):
       if isinstance(c, mu_child_classes):
         continue
       if isinstance(c, _mu_child_classes_lax_converted):
-        ch_lax[i] = str(c)
+        children[i] = str(c)
       else:
         raise TypeError(f'Invalid child type: {type(c)!r}; value: {repr_lim(c)!r}')
 
-    self.ch = cast(list[MuChild], ch_lax)
+    self._ = cast(list[MuChild], children)
     self._orig = _orig
     self._parent = _parent
 
@@ -163,7 +165,7 @@ class Mu:
       subnode = '' if self._orig is None else '$'
       words = ''.join(chain(
         (xml_attr_summary(k, v, text_limit=32, all_attrs=False) for k, v in self.attrs.items()),
-        (xml_child_summary(c, text_limit=32) for c in self.ch)))
+        (xml_child_summary(c, text_limit=32) for c in self._)))
       return f'<{subnode}{self.tag}:{words}>'
     except AttributeError:
       return super().__repr__()
@@ -181,7 +183,7 @@ class Mu:
 
   def get(self, key:str, default=None) -> Any: return self.attrs.get(key, default)
 
-  def __iter__(self) -> Iterator[MuChild]: return iter(self.ch)
+  def __iter__(self) -> Iterator[MuChild]: return iter(self._)
 
 
   @classmethod
@@ -189,21 +191,21 @@ class Mu:
     'Create a Mu object (or possibly a subclass instance chosen by tag) from a raw data dictionary.'
     tag = raw['tag']
     attrs = raw['attrs']
-    raw_children = raw['ch']
+    raw_children = raw['_']
     if not isinstance(tag, str): raise ValueError(tag)
     if not isinstance(attrs, dict): raise ValueError(attrs)
     for k, v in attrs.items():
       if not isinstance(k, str):
         raise ValueError(f'Mu attr key must be `str`; received: {k!r}')
-    ch:MuChildren = []
+    children:MuChildren = []
     TagClass = cls.tag_types.get(tag, cls.generic_tag_type)
     for c in raw_children:
-      if isinstance(c, mu_child_classes): ch.append(c)
-      elif isinstance(c, dict): ch.append(TagClass.from_raw(c))
+      if isinstance(c, mu_child_classes): children.append(c)
+      elif isinstance(c, dict): children.append(TagClass.from_raw(c))
       #^ Note: we use the dynamically chosen TagClass when recursing,
       # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       else: raise ValueError(f'Mu child must be `str`, `EscapedStr`, `Mu`, or `dict`; received: {c!r}')
-    return cast(_Mu, TagClass(tag=tag, attrs=attrs, ch=ch))
+    return cast(_Mu, TagClass(tag=tag, attrs=attrs, _=children))
 
 
   @classmethod
@@ -216,17 +218,17 @@ class Mu:
     if tag is Comment: tag = '!COMMENT' # `Comment` is a cython object; convert it to a string.
     # Collect children.
     attrs = el.attrib
-    ch:MuChildren = []
+    children:MuChildren = []
     text = el.text
-    if text: ch.append(text)
+    if text: children.append(text)
     TagClass = cls.tag_types.get(tag, cls.generic_tag_type)
     for child in el:
-      ch.append(TagClass.from_etree(child))
+      children.append(TagClass.from_etree(child))
       #^ Note: we use the dynamically chosen TagClass when recursing,
       # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       text = child.tail
-      if text: ch.append(text)
-    return cast(_Mu, TagClass(tag=tag, attrs=attrs, ch=ch))
+      if text: children.append(text)
+    return cast(_Mu, TagClass(tag=tag, attrs=attrs, _=children))
 
 
   @property
@@ -246,12 +248,12 @@ class Mu:
   def subnode(self:_Mu, parent:'Mu') -> _Mu:
     'Create a subnode for `self` referencing the provided `parent`.'
     if self._orig is not None: raise ValueError(f'node is already a subnode: {self}')
-    return type(self)(tag=self.tag, attrs=self.attrs, ch=self.ch, _orig=self, _parent=parent)
+    return type(self)(tag=self.tag, attrs=self.attrs, _=self._, _orig=self, _parent=parent)
 
 
   def child_items(self, ws=False, traversable=False) -> Iterator[Tuple[int,MuChild]]:
     'Yield (index, child) pairs. If `ws` is False, then children that are purely whitespace will be filtered out.'
-    for i, c in enumerate(self.ch):
+    for i, c in enumerate(self._):
       if isinstance(c, Mu):
         yield (i, (c.subnode(self) if traversable else c))
         continue
@@ -263,7 +265,7 @@ class Mu:
 
   def children(self, ws=False, traversable=False) -> Iterator[MuChild]:
     'Yield child nodes and text. If `ws` is False, then children that are purely whitespace will be filtered out.'
-    for c in self.ch:
+    for c in self._:
       if isinstance(c, Mu):
         yield c.subnode(self) if traversable else c
         continue
@@ -275,13 +277,13 @@ class Mu:
 
   def child_nodes(self, traversable=False) -> Iterator['Mu']:
     'Yield child Mu nodes.'
-    return ((c.subnode(self) if traversable else c) for c in self.ch if isinstance(c, Mu))
+    return ((c.subnode(self) if traversable else c) for c in self._ if isinstance(c, Mu))
 
 
   @property
   def has_substantial_children(self) -> bool:
     'Predicate testing whether the node has non-whitespace children.'
-    for c in self.ch:
+    for c in self._:
       if isinstance(c, Mu): return True
       if isinstance(c, EscapedStr): c = c.string
       if c and not html_ws_re.fullmatch(c): return True
@@ -291,7 +293,7 @@ class Mu:
   @property
   def texts(self) -> Iterator[str]:
     'Yield the text of the tree sequentially.'
-    for c in self.ch:
+    for c in self._:
       if isinstance(c, str): yield c
       elif isinstance(c, Mu): yield from c.texts
       elif isinstance(c, EscapedStr): yield c.string
@@ -381,7 +383,7 @@ class Mu:
       child = child._orig
       assert child._orig is None
     if not isinstance(child, mu_child_classes): raise TypeError(child)
-    self.ch.append(child)
+    self._.append(child)
     return child # The type of child._orig is the same as child.
 
 
@@ -400,49 +402,49 @@ class Mu:
 
   def clean(self, deep=True) -> None:
     # Consolidate consecutive strings.
-    ch:List[MuChild] = []
-    for c in self.ch:
+    children:List[MuChild] = []
+    for c in self._:
       if isinstance(c, Mu):
         if deep: c.clean(deep)
       elif isinstance(c, str):
         if not c: continue # Do not append.
-        if ch and isinstance(ch[-1], str): # Consolidate.
-          ch[-1] += c
+        if children and isinstance(children[-1], str): # Consolidate.
+          children[-1] += c
           continue # Do not append.
       else:
         raise ValueError(c) # Not mu_child_classes.
-      ch.append(c)
+      children.append(c)
 
     inline_tags = self.inline_tags
 
     if self.tag not in self.ws_sensitive_tags:
       # Strip strings adjacent to block elements.
-      for i, (p, c, n) in enumerate(window_iter(ch, width=3), 1):
+      for i, (p, c, n) in enumerate(window_iter(children, width=3), 1):
         if not isinstance(c, str): continue
         assert isinstance(p, Mu)
         assert isinstance(n, Mu)
         if p.tag not in inline_tags: c = c.lstrip()
         if n.tag not in inline_tags: c = c.rstrip()
-        ch[i] = c
+        children[i] = c
 
       # If this element is a block, strip text at beginning and end.
-      if ch and self.tag not in inline_tags:
-        c0 = ch[0]
-        if isinstance(c0, str): ch[0] = c0.lstrip()
-        cl = ch[-1]
-        if isinstance(cl, str): ch[-1] = cl.rstrip()
+      if children and self.tag not in inline_tags:
+        c0 = children[0]
+        if isinstance(c0, str): children[0] = c0.lstrip()
+        cl = children[-1]
+        if isinstance(cl, str): children[-1] = cl.rstrip()
 
-      ch = [c for c in ch if c] # Filter now-empty text elements.
+      children = [c for c in children if c] # Filter now-empty text elements.
 
       # Reduce remaining, repeated whitespace down to single '\n' and ' ' characters.
       # https://www.w3.org/TR/CSS22/text.html#white-space-model
       # https://drafts.csswg.org/css-text-3/#white-space-phase-1
-      for i in range(len(ch)):
-        c = ch[i]
+      for i in range(len(children)):
+        c = children[i]
         if isinstance(c, str):
-          ch[i] = html_ws_re.sub(newline_or_space_for_ws, c)
+          children[i] = html_ws_re.sub(newline_or_space_for_ws, c)
 
-    self.ch[:] = ch # Mutate the original array beacuse it may be aliased by subnodes.
+    self._[:] = children # Mutate the original array beacuse it may be aliased by subnodes.
 
 
 
@@ -457,7 +459,7 @@ class Mu:
   def pick_all(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     'Pick all matching children of this node.'
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
-    return ((c.subnode(self) if traversable else c) for c in self.ch if isinstance(c, Mu) and pred(c))
+    return ((c.subnode(self) if traversable else c) for c in self._ if isinstance(c, Mu) and pred(c))
 
 
   @overload
@@ -473,10 +475,10 @@ class Mu:
     else: return self._find_all(pred, traversable)
 
   def _find_all(self, pred:MuPred, traversable:bool) -> Iterator['Mu']:
-    for c in self.ch:
+    for c in self._:
       if isinstance(c, Mu):
         if pred(c): yield (c.subnode(self) if traversable else c)
-        yield from c._find_all(pred, traversable) # Always search ch. TODO: use generator send() to let consumer decide?
+        yield from c._find_all(pred, traversable) # Always search children. TODO: use generator send() to let consumer decide?
 
   def _find_all_text(self, pred:MuPred, traversable:bool) -> Generator['Mu',None,bool]:
     '''
@@ -485,7 +487,7 @@ class Mu:
     and the caller most likely does not want nodes that contain each other.
     '''
     found_match = False
-    for c in self.ch:
+    for c in self._:
       if isinstance(c, Mu):
         child_match = yield from c._find_all_text(pred, traversable)
         if child_match:
@@ -504,7 +506,7 @@ class Mu:
 
   def pick_first(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
-    for c in self.ch:
+    for c in self._:
       if isinstance(c, Mu) and pred(c): return (c.subnode(self) if traversable else c)
     raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
 
@@ -579,7 +581,7 @@ class Mu:
     if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     found_orig = False
-    for c in self._parent.ch:
+    for c in self._parent._:
       if not isinstance(c, Mu): continue
       if found_orig:
         if pred(c): return (c.subnode(self._parent) if traversable else c)
@@ -599,7 +601,7 @@ class Mu:
     if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     found_orig = False
-    for c in reversed(self._parent.ch):
+    for c in reversed(self._parent._):
       if not isinstance(c, Mu): continue
       if found_orig:
         if pred(c): return (c.subnode(self._parent) if traversable else c)
@@ -612,7 +614,7 @@ class Mu:
   # Text.
 
   def summary_texts(self, _needs_space:bool=True) -> Generator[str,None,bool]:
-    for child in self.ch:
+    for child in self._:
       if isinstance(child, Mu):
         _needs_space = yield from child.summary_texts(_needs_space=_needs_space)
         continue
@@ -652,7 +654,7 @@ class Mu:
       attr_words = ''.join(xml_attr_summary(k, v, text_limit=32, all_attrs=all_attrs) for k, v in self.attrs.items())
       nl_indent1 = nl_indent + '  '
       yield f'<{subnode}{self.tag}:{attr_words}'
-      for c in self.ch:
+      for c in self._:
         yield nl_indent1
         if isinstance(c, Mu):
           yield from c._summarize(levels-1, nl_indent1, all_attrs)
@@ -671,7 +673,7 @@ class Mu:
 
     modified_children:List[MuChild] = []
     first_mod_idx:Optional[int] = None
-    for i, c in enumerate(self.ch):
+    for i, c in enumerate(self._):
       if isinstance(c, Mu):
         if traversable: c = c.subnode(self)
         try: c.visit(pre=pre, post=post, traversable=traversable)
@@ -680,12 +682,12 @@ class Mu:
           continue
         except FlattenNode:
           if first_mod_idx is None: first_mod_idx = i
-          modified_children.extend(c.ch) # Insert children in place of `c`.
+          modified_children.extend(c._) # Insert children in place of `c`.
           continue
       if first_mod_idx is not None:
         modified_children.append(c)
     if first_mod_idx is not None:
-      self.ch[first_mod_idx:] = modified_children
+      self._[first_mod_idx:] = modified_children
 
     if post is not None: post(self)
 
@@ -693,7 +695,7 @@ class Mu:
   def iter_visit(self, *, pre:MuIterVisitor|None=None, post:MuIterVisitor|None=None, traversable=False) -> Iterator[_T]:
     if pre is not None: yield from pre(self)
 
-    for i, c in enumerate(self.ch):
+    for i, c in enumerate(self._):
       if isinstance(c, Mu):
         if traversable: c = c.subnode(self)
         yield from c.iter_visit(pre=pre, post=post, traversable=traversable)
@@ -747,9 +749,9 @@ class Mu:
 
     if self.void_tags:
       self_closing = self.tag in self.void_tags
-      if self_closing and self.ch: raise ValueError(self)
+      if self_closing and self._: raise ValueError(self)
     else:
-      self_closing = not self.ch
+      self_closing = not self._
 
     attrs_str = self.fmt_attr_items(self.attrs.items())
     head_slash = '/' if self_closing else ''
@@ -762,7 +764,7 @@ class Mu:
 
   def render_children(self) -> Iterator[str]:
     child_newlines = (
-      len(self.ch) > 1 and
+      len(self._) > 1 and
       (self.tag not in self.ws_sensitive_tags) and
       (self.tag not in self.inline_tags))
 
@@ -770,7 +772,7 @@ class Mu:
 
     if child_newlines:
       yield '\n'
-    for child, next_child in window_pairs(self.ch):
+    for child, next_child in window_pairs(self._):
       if isinstance(child, str):
         yield self.esc_text(child)
       elif isinstance(child, Mu):
@@ -893,23 +895,23 @@ def single_child_property(constructor:Callable[[_Self],_Child]) -> property:
   @wraps(constructor)
   def _get_single_child_prop(self:_Self) -> _Child:
     child_class = get_child_class()
-    for c in self.ch:
+    for c in self._:
       if isinstance(c, child_class): return c
     return self.append(constructor(self))
 
   def _set_single_child_prop(self:_Self, val:_Child) -> None:
     child_class = get_child_class()
-    for i, c in enumerate(self.ch):
+    for i, c in enumerate(self._):
       if isinstance(c, child_class):
-        self.ch[i] = val
+        self._[i] = val
         return
     self.append(val)
 
   def _del_single_child_prop(self:_Self) -> None:
     child_class = get_child_class()
-    for i, c in enumerate(self.ch):
+    for i, c in enumerate(self._):
       if isinstance(c, child_class):
-        del self.ch[i]
+        del self._[i]
         return
 
   doc = f'The single child element of type {class_desc}.\n' + (constructor.__doc__ or '')

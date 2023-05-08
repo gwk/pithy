@@ -6,7 +6,7 @@ Xml Mu/markup type.
 
 from typing import Any, Iterable, List, Optional, Union
 
-from ..markup import _Mu, Mu, MuAttrs, MuChild
+from ..markup import _Mu, Mu, MuAttrs, MuChildOrChildrenLax
 
 
 XmlChild = Union[str,'Xml']
@@ -25,6 +25,12 @@ class Xml(Mu):
   '''
   __slots__ = ('tag')
 
-  def __init__(self:_Mu, *, tag:str, attrs:MuAttrs|None=None, ch:Iterable[MuChild]=(), cl:Iterable[str]|None=None,
-   _orig:_Mu|None=None, _parent:Optional['Mu']=None, **kw_attrs:Any) -> None:
-    super().__init__(tag=tag, attrs=attrs, ch=ch, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)
+  def __init__(self:_Mu, *,
+   tag:str,
+   attrs:MuAttrs|None=None,
+   _:MuChildOrChildrenLax=(),
+   cl:Iterable[str]|None=None,
+   _orig:_Mu|None=None,
+   _parent:Optional['Mu']=None,
+   **kw_attrs:Any) -> None:
+    super().__init__(tag=tag, attrs=attrs, _=_, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)

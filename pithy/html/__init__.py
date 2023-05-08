@@ -47,7 +47,7 @@ class HtmlNode(Mu):
     tree = etree.parse(file, parser)
     root = tree.getroot()
     if root is None: # Empty or whitespace strings produce None.
-      return Html(ch=Body())
+      return Html(_=Body())
     html = HtmlNode.from_etree(root)
     assert isinstance(html, Html), html
     return html
@@ -182,27 +182,27 @@ class HtmlHeadingContent(HtmlNode):
   The superclass of H1-H6 heading elements themselves is `Heading`.
   '''
 
-  def h1(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H1':
-    return self.append(H1(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+  def h1(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H1':
+    return self.append(H1(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
-  def h2(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H2':
-    return self.append(H2(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+  def h2(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H2':
+    return self.append(H2(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
-  def h3(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H3':
-    return self.append(H3(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+  def h3(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H3':
+    return self.append(H3(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
-  def h4(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H4':
-    return self.append(H4(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+  def h4(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H4':
+    return self.append(H4(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
-  def h5(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H5':
-    return self.append(H5(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+  def h5(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H5':
+    return self.append(H5(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
-  def h6(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H6':
-    return self.append(H6(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+  def h6(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'H6':
+    return self.append(H6(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
   @property
   def heading(self) -> Optional[HtmlNode]:
-    for el in self.ch:
+    for el in self._:
       if isinstance(el, Heading): return el
     return None
 
@@ -221,8 +221,8 @@ class HtmlPhrasingContent(HtmlNode):
 
 class HtmlScriptSupporting(HtmlNode):
 
-  def script(self, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'Script':
-    return self.append(Script(attrs=attrs, ch=ch, cl=cl, **kw_attrs))
+  def script(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'Script':
+    return self.append(Script(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
 
 class HtmlTextContent(HtmlNode):
@@ -237,7 +237,7 @@ class HtmlTransparentPhrasing(HtmlTransparentContent):
   'Nodes are considered phrasing content if all of their children are phrasing content.'
   @property
   def is_phrasing(self) -> bool:
-    return all((not isinstance(c, Html) or c.is_phrasing) for c in self.ch)
+    return all((not isinstance(c, Html) or c.is_phrasing) for c in self._)
 
 
 class HtmlFlowContent(HtmlHeadingContent, HtmlPhrasingContent):
@@ -267,7 +267,7 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
   @classmethod
   def maybe(cls, text:str, transform:Callable[[str],str]|None=None) -> Union['A',str]:
     if text.startswith('http://') or text.startswith('https://'):
-      return cls(href=text, ch=(transform(text) if transform else text))
+      return cls(href=text, _=(transform(text) if transform else text))
     return text
 
 
@@ -725,9 +725,9 @@ class Heading(HtmlPhrasingContent):
   '''
 
   @classmethod
-  def for_level(cls, level:int, *, attrs:MuAttrs|None=None, ch:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'Heading':
+  def for_level(cls, level:int, *, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'Heading':
     c = _heading_classes[min(level, 6) - 1]
-    return c(attrs=attrs, ch=ch, cl=cl, **kw_attrs)
+    return c(attrs=attrs, _=_, cl=cl, **kw_attrs)
 
 
 @_tag
@@ -1301,7 +1301,7 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
     select = Select(**kwargs)
 
     if placeholder is not None:
-      pho = select.append(Option(disabled='', value='', ch=str(placeholder)))
+      pho = select.append(Option(disabled='', value='', _=str(placeholder)))
     else:
       pho = None
 
@@ -1313,10 +1313,10 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
       if isinstance(o, tuple):
         if len(o) != 2: raise ValueError(f'tuple option must be a pair; received: {o}')
         v = str(o[0])
-        option = Option(value=v, ch=str(o[1]))
+        option = Option(value=v, _=str(o[1]))
       else:
         v = str(o)
-        option = Option(value=v, ch=v)
+        option = Option(value=v, _=v)
       if v == value:
         option['selected'] = ''
         has_selected = True
@@ -1434,16 +1434,16 @@ class Table(HtmlFlow, HtmlPalpable):
 
     table = cls(**kwargs)
     if caption:
-      table.append(Caption(ch=caption))
+      table.append(Caption(_=caption))
 
     if cols:
-      table.append(Colgroup(ch=cols))
+      table.append(Colgroup(_=cols))
 
     if head:
       if isinstance(head, Thead):
         table.append(head)
       else:
-        table.append(Thead(ch=Tr(ch=[cell if isinstance(cell, (Td, Th)) else Th(ch=cell) for cell in head])))
+        table.append(Thead(_=Tr(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head])))
 
     tbody = table.append(Tbody())
 
@@ -1451,7 +1451,7 @@ class Table(HtmlFlow, HtmlPalpable):
       if isinstance(row, Tr):
         tr = row
       else:
-        tr = Tr(ch=[cell if isinstance(cell, (Td, Th)) else Td(ch=cell) for cell in row])
+        tr = Tr(_=[cell if isinstance(cell, (Td, Th)) else Td(_=cell) for cell in row])
       tbody.append(tr)
 
     return table
@@ -1580,12 +1580,12 @@ class Tr(HtmlNode):
   @classmethod
   def tds(cls, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
     'Build a table row from the arguments, each of which is either a Td/Th or else becomes the content of a Td.'
-    return cls(ch=[cell if isinstance(cell, (Td, Th)) else Td(ch=cell) for cell in cells], **kwargs)
+    return cls(_=[cell if isinstance(cell, (Td, Th)) else Td(_=cell) for cell in cells], **kwargs)
 
   @classmethod
   def ths(cls, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
     'Build a table row from the arguments, each of which is either a Td/Th or else becomes the content of a Th.'
-    return cls(ch=[cell if isinstance(cell, (Td, Th)) else Th(ch=cell) for cell in cells], **kwargs)
+    return cls(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in cells], **kwargs)
 
 
 @_tag
@@ -1665,7 +1665,7 @@ class Css(Style):
 
   def render_children(self) -> Iterator[str]:
     'Override render children to treat children as CSS text.'
-    for c in self.ch:
+    for c in self._:
       if not isinstance(c, str):
         raise TypeError(f'Css children must be strings; recieved: {c!r}')
       if m := html_req_escape_chars_re.search(c):
