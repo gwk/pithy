@@ -270,7 +270,7 @@ class CategoricalAxis(ChartAxis):
 
   def tick_divs(self) -> list[Div]:
     l = len(self.labels)
-    return [Div(style=f'--v:{i/l:0.3f}',  ch=Div(ch=str(label))) for (i, label) in enumerate(self.labels)]
+    return [Div(style=f'--v:{i/l:0.3f}',  _=Div(_=str(label))) for (i, label) in enumerate(self.labels)]
 
 
 
@@ -356,7 +356,7 @@ class LinearAxis(NumericalAxis):
         if self.tick_count < 2: raise ValueError('tick_count must be at least 2')
         self.tick_step = (self.max - self.min) / self.tick_count
       ticks.extend(NumRange(self.min, self.max, self.tick_step, closed=True))
-    return [Div(style=f'--v:{self.transform(v)}', ch=Div(ch=str(self.tick_fmt(v)))) for v in ticks]
+    return [Div(style=f'--v:{self.transform(v)}', _=Div(_=str(self.tick_fmt(v)))) for v in ticks]
 
 
 
@@ -406,7 +406,7 @@ def chart_figure(*,
   chart = Figure(cl=cl, attrs=kw_attrs)
   chart.prepend_class('chart')
 
-  if title is not None: chart.append(Figcaption(ch=title))
+  if title is not None: chart.append(Figcaption(_=title))
 
   vis_w = 0
   vis_h = 0
@@ -414,15 +414,15 @@ def chart_figure(*,
   legend = chart.append(Div(cl='legend'))
 
   grid.append(Div(cl='origin')) # By default this box is empty.
-  grid.append(Div(cl='ticks-x-scroll', ch=Div(cl=['ticks-x', x.data_class, x.kind_class], style=x.ticks_x_style(), ch=x.tick_divs())))
-  grid.append(Div(cl='ticks-y-scroll', ch=Div(cl=['ticks-y', y.data_class, y.kind_class], style=y.ticks_y_style(), ch=y.tick_divs())))
+  grid.append(Div(cl='ticks-x-scroll', _=Div(cl=['ticks-x', x.data_class, x.kind_class], style=x.ticks_x_style(), _=x.tick_divs())))
+  grid.append(Div(cl='ticks-y-scroll', _=Div(cl=['ticks-y', y.data_class, y.kind_class], style=y.ticks_y_style(), _=y.tick_divs())))
 
   print(x, x.kind_class)
   print(y, y.kind_class)
   grid.append(Div(cl='vis-scroll',
-    ch=Div(cl='vis', ch=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series])))
+    _=Div(cl='vis', _=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series])))
 
-  legend.ch = [s.make_legend_item_div() for s in series]
+  legend._ = [s.make_legend_item_div() for s in series]
 
   return chart
 

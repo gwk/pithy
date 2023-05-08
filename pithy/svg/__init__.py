@@ -7,7 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from typing import Any, ClassVar, Iterable, Optional, Type, Union
 
-from ..markup import _Mu, add_opt_attrs, Mu, mu_child_classes, MuAttrs, MuChildOrChildren, NoMatchError, prefer_int
+from ..markup import _Mu, add_opt_attrs, Mu, mu_child_classes, MuAttrs, MuChildOrChildrenLax, NoMatchError, prefer_int
 from ..range import Num, NumRange
 
 
@@ -34,8 +34,15 @@ class SvgNode(Mu):
   }
 
 
-  def __init__(self:_Mu, *, tag:str='', attrs:MuAttrs|None=None, ch:MuChildOrChildren=(), cl:Iterable[str]|None=None,
-   _orig:_Mu|None=None, _parent:Optional['Mu']=None, title:str|None=None, **kw_attrs:Any) -> None:
+  def __init__(self:_Mu, *,
+   tag:str='',
+   attrs:MuAttrs|None=None,
+   _:MuChildOrChildrenLax=(),
+   cl:Iterable[str]|None=None,
+   _orig:_Mu|None=None,
+   _parent:Optional['Mu']=None,
+   title:str|None=None,
+   **kw_attrs:Any) -> None:
     '''
     SvgNode constructor.
     The `title` parameter is a special attribute that is not included in the `attrs` parameter.
@@ -45,12 +52,12 @@ class SvgNode(Mu):
 
     if title is not None:
       assert _orig is None and _parent is None # Should not be setting `title` for a subtree node.
-      if isinstance(ch, mu_child_classes): # Single child argument; wrap it in a list.
-        ch = [ch]
-      elif not isinstance(ch, list):
-          ch = list(ch)
-      ch.append(Title(ch=title))
-    super().__init__(tag=tag, attrs=attrs, ch=ch, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)
+      if isinstance(_, mu_child_classes): # Single child argument; wrap it in a list.
+        _ = [_]
+      elif not isinstance(_, list):
+          _ = list(_)
+      _.append(Title(_=title))
+    super().__init__(tag=tag, attrs=attrs, _=_, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)
 
 
   @property
@@ -202,7 +209,7 @@ class Rect(SvgNode):
 class Text(SvgNode):
   tag = 'text'
 
-  def __init__(self, ch='', pos:Vec|None=None, x:Num|None=None, y:Num|None=None, alignment_baseline:str|None=None,
+  def __init__(self, _='', pos:Vec|None=None, x:Num|None=None, y:Num|None=None, alignment_baseline:str|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
@@ -210,7 +217,7 @@ class Text(SvgNode):
       x, y = pos
     if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
     add_opt_attrs(kwargs, x=x, y=y, alignment_baseline=alignment_baseline)
-    super().__init__(ch=ch, attrs=attrs, **kwargs)
+    super().__init__(_=_, attrs=attrs, **kwargs)
 
 
 @_tag
@@ -278,10 +285,10 @@ class SvgBranch(SvgNode):
     return self.append(Line(a=a, b=b, x1=x1, y1=y1, x2=x2, y2=y2, **kwargs))
 
 
-  def marker(self, ch=(), id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
+  def marker(self, _=(), id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
    vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
     'Create a child `marker` element.'
-    return self.append(Marker(ch=ch, id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh,
+    return self.append(Marker(_=_, id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh,
       markerUnits=markerUnits, orient=orient, **kwargs))
 
 
@@ -307,17 +314,17 @@ class SvgBranch(SvgNode):
 
   def script(self, *text:str, **kwargs,) -> Script:
     'Create a child `script` element.'
-    return self.append(Script(ch=text, **kwargs))
+    return self.append(Script(_=text, **kwargs))
 
 
   def style(self, *text:str, **kwargs,) -> Style:
     'Create a child `style` element.'
-    return self.append(Style(ch=text, **kwargs))
+    return self.append(Style(_=text, **kwargs))
 
 
-  def symbol(self, id:str, ch=(), vx:Num|None=None, vy:Num|None=None, vw:Num=-1, vh:Num=-1, **kwargs:Any) -> 'Symbol':
+  def symbol(self, id:str, _=(), vx:Num|None=None, vy:Num|None=None, vw:Num=-1, vh:Num=-1, **kwargs:Any) -> 'Symbol':
     'Create a child `symbol` element.'
-    return self.append(Symbol(ch=ch, id=id, vx=vx, vy=vy, vw=vw, vh=vh, **kwargs))
+    return self.append(Symbol(_=_, id=id, vx=vx, vy=vy, vw=vw, vh=vh, **kwargs))
 
 
   def use(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, **kwargs:Any) -> Use:
@@ -403,7 +410,7 @@ class G(SvgBranch):
   'Group element.'
 
   def __init__(self, transform:Iterable[str]='',
-   ch:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
+   _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     t:str = ''
     if isinstance(transform, str):
       t = transform
@@ -411,7 +418,7 @@ class G(SvgBranch):
       t = ' '.join(transform)
     if t:
       kwargs['transform'] = t
-    super().__init__(ch=ch, attrs=attrs, **kwargs)
+    super().__init__(_=_, attrs=attrs, **kwargs)
 
 
 @_tag
@@ -420,7 +427,7 @@ class Marker(SvgBranch):
 
   def __init__(self, id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
    vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, markerUnits='strokeWidth', orient:str='auto',
-   ch:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
+   _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if not id: raise ValueError(f'Marker requires an `id` string')
     if pos is not None:
       assert x is None
@@ -432,21 +439,21 @@ class Marker(SvgBranch):
       w, h = unpack_VecOrNum(size)
     add_opt_attrs(kwargs, id=id, refX=x, refY=y, markerWidth=w, markerHeight=h,
       viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
-    super().__init__(ch=ch, attrs=attrs, **kwargs)
+    super().__init__(_=_, attrs=attrs, **kwargs)
 
 
 @_tag
 class Symbol(SvgBranch):
 
   def __init__(self, id:str, vx:Num|None=None, vy:Num|None=None, vw:Num=-1, vh:Num=-1,
-   ch:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
+   _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if vx is None: vx = 0
     if vy is None: vy = 0
     # TODO: figure out if no viewBox is legal and at all useful.
     assert vw >= 0
     assert vh >= 0
     add_opt_attrs(kwargs, id=id, viewBox=f'{prefer_int(vx)} {prefer_int(vy)} {prefer_int(vw)} {prefer_int(vh)}')
-    super().__init__(ch=ch, attrs=attrs, **kwargs)
+    super().__init__(_=_, attrs=attrs, **kwargs)
 
 
 # Transforms.

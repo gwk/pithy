@@ -6,14 +6,14 @@ from utest import utest, utest_exc, utest_seq, utest_val
 
 
 html = Xml(tag='html', lang='en-us')
-head = html.append(Xml(tag='head', ch=[Xml(tag='title', ch=['TITLE'])]))
+head = html.append(Xml(tag='head', _=[Xml(tag='title', _=['TITLE'])]))
 body = html.append(Xml(tag='body'))
 
 div0 = body.append(Xml(tag='div', cl='DIV-CLASS', id='DIV-ID-0'))
-p0 = div0.append(Xml(tag='p', ch=['Paragraph #0 text.\n\npost-newlines.\n']))
+p0 = div0.append(Xml(tag='p', _=['Paragraph #0 text.\n\npost-newlines.\n']))
 
 div1 = body.append(Xml(tag='div', cl='DIV-CLASS', id='DIV-ID-1'))
-p1 = div1.append(Xml(tag='p', ch=['Paragraph #1 text.  post double space.\n']))
+p1 = div1.append(Xml(tag='p', _=['Paragraph #1 text.  post double space.\n']))
 
 utest('en-us', html.get, 'lang')
 utest(head, html.pick, 'head')

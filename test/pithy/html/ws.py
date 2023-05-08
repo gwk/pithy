@@ -16,7 +16,7 @@ ws_normalizations:List[Tuple[MuChild,MuChild]] = [
   ( '<p>Paragraph 0.</p>',
     '<p>Paragraph 0.</p>'),
 
-  ( Html(ch=Body(ch=['\n', 'Hi.', '\n', '\n', 'Bye.\n'])),
+  ( Html(_=Body(_=['\n', 'Hi.', '\n', '\n', 'Bye.\n'])),
     'Hi.\nBye.'),
 
   ( '<section>top<section>sub 1.</section><section> sub 2.</section></section>',

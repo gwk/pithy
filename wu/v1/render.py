@@ -27,14 +27,13 @@ def _(node:str, section_depth:int, max_top_nl:int) -> Iterator[str]:
 def _(node:HtmlNode, section_depth:int, max_top_nl:int) -> Iterator[str]:
 
   attrs_str = fmt_wu_node_attrs(node)
-  ch = node.ch
-  head_end = ' ' if ch else '>'
+  head_end = ' ' if node._ else '>'
   yield f'<{node.tag}:{attrs_str}{head_end}'
-  if not node.ch: return
+  if not node._: return
 
-  child_newlines = len(node.ch) > 1
+  child_newlines = len(node._) > 1
   if child_newlines: yield '\n'
-  for child in node.ch:
+  for child in node._:
     yield from _render(child, section_depth=section_depth, max_top_nl=max_top_nl)
     if child_newlines: yield '\n'
   yield '>'
