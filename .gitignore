@@ -17,6 +17,8 @@ _build/
 _misc/
 _repro.wu
 docs/_muck
-pyproject.toml
 todo.txt
 typeshed
+
+# Packaging pyproject.toml files are generated from smaller project.toml.
+pkg/*/pyproject.toml

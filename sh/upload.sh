@@ -6,8 +6,9 @@ function fail { echo "error: $@" 1>&2; exit 1; }
 
 [[ -n "$1" ]] || fail "usage: $0 [package]"
 
+package="$1"
 
-if [[ "$1" == "-live" ]]; then
+if [[ "$package" == "-live" ]]; then
   echo "Upload to LIVE..."
   shift
   url="https://upload.pypi.org/legacy/"
@@ -16,8 +17,9 @@ else
   url="https://test.pypi.org/legacy/"
 fi
 
-echo "package: $1"
-regex=".*/$1-[0-9.]*\.tar\.gz"
+echo "package: $package"
+cd "pkg/$package"
+regex=".*/$package-[0-9.]*\.tar\.gz"
 dist_files=$(find dist/ -regex "$regex")
 echo "distribution files:" $dist_files
 [[ $dist_files = *' '* ]] && fail "found multiple distribution files: $dist_files"

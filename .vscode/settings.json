@@ -2,7 +2,15 @@
   "search.exclude": {
     ".git": true,
     "_build": true,
-    "_misc": true
+    "_misc": true,
+    "pkg/crafts/crafts": true,
+    "pkg/iotest/iotest": true,
+    "pkg/legs/legs": true,
+    "pkg/pithy/pithy": true,
+    "pkg/pithytools/pithytools": true,
+    "pkg/tolkien/tolkien": true,
+    "pkg/utest/utest": true,
+    "pkg/wu/wu": true
   },
   "mypy.targets": [
     "crafts",

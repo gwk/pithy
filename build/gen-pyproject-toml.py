@@ -3,34 +3,39 @@
 
 from argparse import ArgumentParser
 from typing import Any
-from os import listdir as list_dir
-from os.path import isdir as is_dir, splitext as split_ext
+from os import listdir as list_dir, chdir
+from os.path import isdir as is_dir, splitext as split_ext, dirname as dir_name
 
 from tomllib import load as load_toml
 from tomli_w import dump as dump_toml
 
 
 def main() -> None:
-
   arg_parser = ArgumentParser(description='Generate the pyproject.toml for a package hosted in this repository.')
   arg_parser.add_argument('name')
   arg_parser.add_argument('-dbg', action='store_true')
 
   args = arg_parser.parse_args()
+  name = args.name
 
-  print(f'\nGenerating pyproject.toml for {args.name}.')
+  proj_dir = dir_name(dir_name(__file__))
+  chdir(proj_dir)
 
-  with open('pyproject-common.toml', 'rb') as f:
+  pyproject_path = f'pkg/{name}/pyproject.toml'
+
+  print(f'\nGenerating {pyproject_path}.')
+
+  with open(f'pkg/_common.toml', 'rb') as f:
     common = load_toml(f)
 
-  with open(f'{args.name}/project.toml', 'rb') as f:
+  with open(f'pkg/{name}.toml', 'rb') as f:
     project = load_toml(f)
 
-  add_properties(args.name, common)
+  add_properties(name, common)
 
   merged = merge_toml((), common, project)
 
-  with open('pyproject.toml', 'wb') as f:
+  with open(f'pkg/{name}/pyproject.toml', 'wb') as f:
     dump_toml(merged, f)
 
 
