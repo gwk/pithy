@@ -92,13 +92,14 @@ class Mu:
   attrs:MuAttrs
   _:list[MuChild]
 
-  def __init__(self:_Mu, *,
-   tag:str='',
-   attrs:MuAttrs|None=None,
+  def __init__(self:_Mu,
+   *_mu_positional_children:MuChildLax, # Additional children can be passed as positional arguments.
    _:MuChildOrChildrenLax=(),
+   tag:str='',
    cl:Iterable[str]|None=None,
    _orig:_Mu|None=None, # _orig is set by methods that are called with the `traversable` option.
    _parent:Optional['Mu']=None, # _parent is set by methods that are called with the `traversable` option.
+   attrs:MuAttrs|None=None,
    **kw_attrs:Any # Additional attrs can be passed as keyword arguments. These take precedence over keys in `attrs`.
    ) -> None:
     '''
@@ -138,6 +139,9 @@ class Mu:
       if cl != attrs.setdefault('class', cl):
         raise ConflictingValues((attrs['class'], cl))
 
+    self._orig = _orig
+    self._parent = _parent
+
     if isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
       children:MuChildrenLax = [_]
     elif isinstance(_, list):
@@ -152,9 +156,12 @@ class Mu:
       else:
         raise TypeError(f'Invalid child type: {type(c)!r}; value: {repr_lim(c)!r}')
 
+    for c in _mu_positional_children:
+      if isinstance(c, _mu_child_classes_lax_converted):
+        c = str(c)
+      children.append(c)
+
     self._ = cast(list[MuChild], children)
-    self._orig = _orig
-    self._parent = _parent
 
 
   def __repr__(self) -> str: return f'{type(self).__name__}{self}'

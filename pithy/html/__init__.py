@@ -47,7 +47,7 @@ class HtmlNode(Mu):
     tree = etree.parse(file, parser)
     root = tree.getroot()
     if root is None: # Empty or whitespace strings produce None.
-      return Html(_=Body())
+      return Html(Body())
     html = HtmlNode.from_etree(root)
     assert isinstance(html, Html), html
     return html
@@ -1434,10 +1434,10 @@ class Table(HtmlFlow, HtmlPalpable):
 
     table = cls(**kwargs)
     if caption:
-      table.append(Caption(_=caption))
+      table.append(Caption(caption))
 
     if cols:
-      table.append(Colgroup(_=cols))
+      table.append(Colgroup(cols))
 
     if head:
       if isinstance(head, Thead):

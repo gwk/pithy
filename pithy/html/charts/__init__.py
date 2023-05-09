@@ -270,7 +270,7 @@ class CategoricalAxis(ChartAxis):
 
   def tick_divs(self) -> list[Div]:
     l = len(self.labels)
-    return [Div(style=f'--v:{i/l:0.3f}',  _=Div(_=str(label))) for (i, label) in enumerate(self.labels)]
+    return [Div(style=f'--v:{i/l:0.3f}',  _=Div(str(label))) for (i, label) in enumerate(self.labels)]
 
 
 
@@ -356,7 +356,7 @@ class LinearAxis(NumericalAxis):
         if self.tick_count < 2: raise ValueError('tick_count must be at least 2')
         self.tick_step = (self.max - self.min) / self.tick_count
       ticks.extend(NumRange(self.min, self.max, self.tick_step, closed=True))
-    return [Div(style=f'--v:{self.transform(v)}', _=Div(_=str(self.tick_fmt(v)))) for v in ticks]
+    return [Div(style=f'--v:{self.transform(v)}', _=Div(str(self.tick_fmt(v)))) for v in ticks]
 
 
 
