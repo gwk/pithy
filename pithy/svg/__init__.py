@@ -7,7 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from typing import Any, ClassVar, Iterable, Optional, Type, Union
 
-from ..markup import _Mu, add_opt_attrs, Mu, mu_child_classes, MuAttrs, MuChildOrChildrenLax, NoMatchError, prefer_int
+from ..markup import _Mu, add_opt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildOrChildrenLax, NoMatchError, prefer_int
 from ..range import Num, NumRange
 
 
@@ -52,7 +52,7 @@ class SvgNode(Mu):
 
     if title is not None:
       assert _orig is None and _parent is None # Should not be setting `title` for a subtree node.
-      if isinstance(_, mu_child_classes): # Single child argument; wrap it in a list.
+      if isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
         _ = [_]
       elif not isinstance(_, list):
           _ = list(_)
