@@ -58,7 +58,7 @@ class SelectApp:
       en_col_spans = [
         Span(cl='en-col', _=[
           Input(name=f'c-{col.name}', type='checkbox', checked=Present(col.name in en_col_names)),
-          Label(_=col.name)])
+          Label(col.name)])
         for col in table.columns]
 
     else:
@@ -71,34 +71,34 @@ class SelectApp:
     if table_name: assert table_name in table_names
     main = Main(id='pithy_select_app', cl='bfull')
 
-    main.append(H1(_='SELECT'))
+    main.append(H1('SELECT'))
 
     form = main.append(Form(cl='kv-grid-max', action='./select', autocomplete='off'))
     #^ autocomplete off is important for the table select input,
     #^ which otherwise remembers the current value when the user presses the back button.
 
     form.extend(
-      Label(_='Table:'),
-      Div(_=Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
+      Label('Table:'),
+      Div(Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
         onchange='emptyFirstForSelector("#columns"); clearValueAllForSelector(".clear-on-table-change", "value"); this.form.submit()')),
 
-      Label(_='Distinct:'),
-      Div(_=Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
+      Label('Distinct:'),
+      Div(Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
 
-      Label(_='Columns:'),
+      Label('Columns:'),
       Div(id='columns', _=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
 
-      Label(_='Where:'),
+      Label('Where:'),
       Input(name='where', type='search', value=params.get('where', ''), cl='clear-on-table-change'),
 
-      Label(_='Order by:'),
+      Label('Order by:'),
       Input(name='order_by', type='search', value=params.get('order_by', ''),  cl='clear-on-table-change'),
 
-      Label(_='Limit:'),
-      Div(_=Input(name='limit', type='search', value=params.get('limit', '100'), cl='clear-on-table-change')),
+      Label('Limit:'),
+      Div(Input(name='limit', type='search', value=params.get('limit', '100'), cl='clear-on-table-change')),
 
       Label(),
-      Div(_=Input(type='submit', value='Run Query')),
+      Div(Input(type='submit', value='Run Query')),
     )
 
     if table_name:
@@ -172,16 +172,16 @@ class SelectApp:
         plan = f'Query failed: {e}\n{query}'
         is_ok = False
       else:
-        rows = [Tr(_=[Td(_=rcf(row)) for rcf in render_cell_fns]) for row in c]
+        rows = [Tr(_=[Td(rcf(row)) for rcf in render_cell_fns]) for row in c]
 
     return [
       Div(id='query', cl='kv-grid-max', _=[
-        Label(_='Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', _=query),
-        Label(_='Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan),
-        Label(_='Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', _=count and f'{count}'),
+        Label('Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', _=query),
+        Label('Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan),
+        Label('Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', _=count and f'{count}'),
       ]),
       Div(id='results', _=HtmlTable(cl='dense', _=[
-        Thead(_=Tr(_=[Th(_=Div(_=name)) for name in header_names])),
+        Thead(Tr(_=[Th(Div(name)) for name in header_names])),
         Tbody(_=rows)])),
     ]
 
