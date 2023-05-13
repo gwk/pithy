@@ -1429,15 +1429,15 @@ class Table(HtmlFlow, HtmlPalpable):
 
 
   @classmethod
-  def simple(cls, *inline_rows:Iterable[MuChildLax], caption:MuChildLax='', cols:Iterable[Col]=(), head:'Thead'|Iterable[MuChildLax]=(),
-   rows:Iterable[Iterable[MuChildLax]], **kwargs:Any) -> 'Table':
+  def simple(cls, *inline_rows:Iterable[MuChildLax], caption:MuChildLax='', cols:Iterable[Union[Col,'Template']]=(),
+    head:'Thead'|Iterable[MuChildLax]=(), rows:Iterable[Iterable[MuChildLax]], **kwargs:Any) -> 'Table':
 
     table = cls(**kwargs)
     if caption:
       table.append(Caption(caption))
 
     if cols:
-      table.append(Colgroup(cols))
+      table.append(Colgroup(_=cols))
 
     if head:
       if isinstance(head, Thead):
