@@ -46,8 +46,8 @@ def main() -> None:
   globals_ = {
     '__file__': cmd_path,
     '__name__': '__main__',
-    '__package__': None,
-    '__cached__': None,
+    '__package__': None, # TODO: deprecated and to be remove in Python 3.14.
+    '__cached__': None, # TODO: deprecated and to be remove in Python 3.14.
   }
 
   argv[:] = cmd
