@@ -41,7 +41,9 @@ class UnrecoverableServerError(Exception):
 class HttpServer(ThreadingTCPServer):
   '''
   HttpServer is an HTTP/1.1 server.
-  In order to serve HTTP 1.1, the class must inherit from socketserver.ThreadingMixIn to function correctly.
+  In order to serve HTTP 1.1 with keep-alive, the class needs multithreading.
+  This is poorly explained in the stdlib http.server implementation.
+  ThreadingTCPServer inherits from ThreadingMixIn and TCPServer.
   '''
 
   daemon_threads = True # Same as http.server.ThreadingHTTPServer.
