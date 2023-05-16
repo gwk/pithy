@@ -71,6 +71,13 @@ class Column:
     if self.virtual is not None:
       if self.is_primary: raise ValueError(f'Virtual column {self} cannot be primary key.')
       if self.default is not None: raise ValueError(f'Virtual column {self} cannot have a default value.')
+    if self.default is not None:
+      if strict_type := nonstrict_to_strict_types_for_sqlite.get(self.datatype):
+        if not isinstance(self.default, strict_type):
+          raise ValueError(f'Column {self} default value {self.default!r} is not of strict type {strict_type.__name__} for datatype {self.datatype.__name__}.')
+      elif not isinstance(self.default, self.datatype):
+        raise ValueError(f'Column {self} default value {self.default!r} is not of datatype {self.datatype.__name__}.')
+
 
   @cached_property
   def is_non_opt_str(self) -> bool: return self.datatype is str and not self.is_opt
