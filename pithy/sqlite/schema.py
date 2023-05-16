@@ -565,7 +565,7 @@ def _parse_indexed_column(column:Input, source:Source) -> str:
 def clean_row_record(table:Table, renamed_keys:dict[str,str]|None, record:dict[str,Any]) -> dict[str,Any]:
   '''
   Clean a record dict in preparation for inserting it into a database table.
-  `renamed_keys`  maps the record key to the desired table column name.
+  `renamed_keys` maps the record key to the desired table column name.
   '''
   columns_dict = table.columns_dict
   def replace_none_with_empty(k:str, v:Any) -> Any:
