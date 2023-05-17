@@ -159,7 +159,7 @@ class SelectApp:
     count = ''
     if is_ok:
       try:
-        count_int = c.run(f'SELECT COUNT() {from_clause}{where_clause}').one_col()
+        count_int = c.run(f'{select_head} COUNT() {from_clause}{where_clause}').one_col()
       except Exception as e:
         count = f'Count failed: {e}\n{query}'
       else:
