@@ -18,7 +18,7 @@ def insert_head_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -
     assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
     if fields:
       if not all(f.isidentifier() for f in fields): raise ValueError(f'invalid field names: {fields!r}')
-      fields_joined = ', '.join(fields)
+      fields_joined = ', '.join(sql_quote_entity(f) for f in fields)
       fields_clause = f' ({fields_joined})'
     else:
       fields_clause = ''
