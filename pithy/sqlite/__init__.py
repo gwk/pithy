@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import (Any, cast, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, Tuple,
+from typing import (Any, cast, Callable, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, Tuple,
   TypeAlias, TypeVar)
 from urllib.parse import quote as url_quote
 
@@ -37,6 +37,9 @@ sqlite_threadsafe_dbapi_id_descs = [
 ]
 
 sqlite_threadsafe_desc = sqlite_threadsafe_dbapi_id_descs[sqlite_threadsafe_dbapi_id]
+
+
+BackupProgressFn = Callable[[int,int,int],object]
 
 
 class SqliteError(Exception):
@@ -325,7 +328,8 @@ class Connection(sqlite3.Connection):
     except sqlite3.Error as e: raise SqliteError.from_error(e, sql_script) from e
 
 
-  def backup_and_print_progress(self, target:sqlite3.Connection|str|None=None, pages=-1, name='main', sleep=0.250) -> None:
+  def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,
+   name='main', sleep=0.250) -> None:
     '''
     Backup this database to the target database, printing progress to stdout.
     '''
@@ -336,12 +340,20 @@ class Connection(sqlite3.Connection):
       target = sqlite3.connect(target)
       close = True
 
-    def progress(_status:int, remaining:int, total:int):
-      frac = (total - remaining) / total
-      print(f'Backup {name!r}: {frac:0.1%}…', end='\r')
+    progress_fn:BackupProgressFn|None = None
+    if progress:
+      if callable(progress):
+        progress_fn = progress
+      else:
+        def progress_fn(_status:int, remaining:int, total:int):
+          frac = (total - remaining) / total
+          print(f'Backup {name!r}: {frac:0.1%}…', end='\r')
 
-    print(f'Backup {name!r}…')
-    try: self.backup(target, pages=pages, progress=progress, name=name, sleep=sleep)
+      print(f'Backup {name!r}…', end='\r')
+
+    try:
+      super().backup(target, pages=pages, progress=progress_fn, name=name, sleep=sleep)
     finally:
       if close: target.close()
-    print(f'Backup {name!r} complete.')
+
+    if progress: print(f'Backup {name!r} complete.')
