@@ -292,6 +292,10 @@ table.dense tbody tr:nth-child(odd) {
   overflow: clip;
 }
 
+#pithy_select_app .error {
+  color: #800;
+}
+
 #pithy_select_app .null {
   color: #888;
 }
