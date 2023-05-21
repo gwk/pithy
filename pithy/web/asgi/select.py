@@ -172,7 +172,7 @@ class SelectApp:
         plan = f'Query failed: {e}\n{query}'
         is_ok = False
       else:
-        rows = [Tr(_=[Td(rcf(row)) for rcf in render_cell_fns]) for row in c]
+        rows = [Tr(_=[rcf(row) for rcf in render_cell_fns]) for row in c]
 
     return [
       Div(id='query', cl='kv-grid-max', _=[
@@ -186,7 +186,7 @@ class SelectApp:
     ]
 
 
-CellRenderFn = Callable[[Any],MuChildLax]
+CellRenderFn = Callable[[Any],Td]
 
 
 def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,list[str],list[CellRenderFn]]:
@@ -261,37 +261,51 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
 
 
 def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str) -> CellRenderFn:
-  'Create a cell function a column in the rendered output.'
+  '''
+  Create a cell value rendering function for the given column.
+  The function receives the entire row so that it can use joined values for display purposes as necessary.
+  '''
 
   if isinstance(col.vis, Vis):
-    def render_cell_vis(row:Row) -> MuChildLax:
-      vis = col.vis
-      assert isinstance(vis, Vis)
-      assert join_col_name
-      assert join_table_primary_abbr
-      val = row[col.name]
-      if vis.join:
-        display_val = row[join_col_name]
-        cl = 'joined'
-        if display_val is None:
-          display_val = val
-          cl = 'joined null'
+    vis = col.vis
+
+    if vis.join:
+      def render_cell_vis_join(row:Row) -> Td:
+        assert join_col_name
+        assert join_table_primary_abbr
+        val = row[col.name]
+        joined_val = row[join_col_name]
+        if render := vis.render:
+          cl, display_val = try_vis_render(render, joined_val)
+        elif joined_val is None:
+          cl = 'null'
+          display_val = 'NULL'
+        else:
+          cl = ''
+          display_val = str(joined_val)
         where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
-        return A(cl=cl, href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=render_val_plain(display_val))
-      return render_val_plain(val)
-    return render_cell_vis
+        return Td(cl=('joined', cl), _=A(href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=display_val))
+      return render_cell_vis_join
 
-  else:
-    def render_cell_plain(row:Row) -> MuChildLax:
-      val = row[col.name]
-      if val is None: return Span(cl='null', _='NULL')
-      return A.maybe(str(val))
-    return render_cell_plain
+    elif render := vis.render:
+      def render_cell_vis_render(row:Row) -> Td:
+        val = row[col.name]
+        cl, display_val = try_vis_render(render, val)
+        return Td(cl=cl, title=str(val), _=display_val)
+      return render_cell_vis_render
+
+  def render_cell_plain(row:Row) -> Td:
+    val = row[col.name]
+    if val is None: return Td(cl='null', _='NULL')
+    return Td(A.maybe(str(val))) # TODO: might augment this to parse out all URLs, not just text with leading "http".
+
+  return render_cell_plain
 
 
-def render_val_plain(val:Any) -> MuChildLax:
-  if val is None: return Span(cl='null', _='NULL')
-  return A.maybe(str(val))
+def try_vis_render(val:Any, render:Callable[[Any],Any]) -> tuple[str,str]:
+  if val is None: return ('null', 'NULL')
+  try: return ('', str(render(val)))
+  except Exception: return ('error', str(val))
 
 
 def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
