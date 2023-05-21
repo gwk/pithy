@@ -266,7 +266,9 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
 
   @classmethod
   def maybe(cls, text:str, transform:Callable[[str],str]|None=None) -> Union['A',str]:
+    'Create a link element if the text looks like a URL. Otherwise, return the plain text as-is.'
     if text.startswith('http://') or text.startswith('https://'):
+      # TODO: what should we do with trailing text after the URL?
       return cls(href=text, _=(transform(text) if transform else text))
     return text
 
