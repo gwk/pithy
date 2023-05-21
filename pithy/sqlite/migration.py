@@ -6,7 +6,7 @@ from pithy.iterable import fan_by_key_fn, joinR
 
 from . import Connection, Cursor, Row
 from .schema import Column, Index, Schema, Table, TableDepStructure
-from .util import sql_quote_entity_always as sql_qe
+from .util import sql_quote_entity_always as qea
 
 
 class GenMigrationError(Exception):
@@ -43,7 +43,7 @@ def gen_migration(*, conn:Connection, schema:Schema) -> list[str]:
   stmts = []
 
   for table in schema.tables:
-    qname = f'{schema.name}.{sql_qe(table.name)}'
+    qname = f'{schema.name}.{qea(table.name)}'
 
     old_sql = old_table_sqls.get(table.name)
     needs_rebuild, table_stmts = gen_table_migration(schema_name=schema.name, qname=qname, new=table, old=old_sql)
@@ -97,7 +97,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
 
   # Drop columns.
   for col in removed:
-    stmts.append(f'ALTER TABLE {qname} DROP COLUMN {sql_qe(col.name)}')
+    stmts.append(f'ALTER TABLE {qname} DROP COLUMN {qea(col.name)}')
     cols.remove(col)
 
   # Add columns.
@@ -110,7 +110,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   diff_hints = []
   for (nc, c) in zip(new.columns, cols):
     if dh := nc.diff_hint(c, exact_type=False):
-      diff_hints.append(f'{sql_qe(nc.name)} {dh}')
+      diff_hints.append(f'{qea(nc.name)} {dh}')
       if dh.endswith('order'): break
 
   needs_rebuild = bool(diff_hints)
@@ -133,7 +133,7 @@ def gen_rename_columns(*, qname:str, new:Table, old:Table, matched_cols:dict[str
     is_oc_matched = oc.name in matched_cols
     if is_nc_matched != is_oc_matched:
       raise GenMigrationError(f'Rename failed due to misaligned columns at position {i}: old: {oc!r}, new: {nc!r}.')
-    stmts.append(f'ALTER TABLE {qname} RENAME COLUMN {sql_qe(oc.name)} TO {sql_qe(nc.name)}')
+    stmts.append(f'ALTER TABLE {qname} RENAME COLUMN {qea(oc.name)} TO {qea(nc.name)}')
   return stmts
 
 
@@ -142,7 +142,7 @@ def gen_table_rebuild(*, schema_name:str, qname:str, table:Table) -> list[str]:
   Steps 4-7.
   '''
   tmp_name = table.name + '__rebuild_in_progress'
-  qname_tmp = f'{schema_name}.{sql_qe(tmp_name)}'
+  qname_tmp = f'{schema_name}.{qea(tmp_name)}'
   stmts = []
   stmts.append(table.sql(schema=schema_name, name=tmp_name)) # 4. Create a new table with the desired schema and temporary name.
   stmts.append(f'INSERT INTO {qname_tmp} SELECT {table.quoted_material_columns_str} FROM {qname}') # 5. Copy the data.
@@ -163,14 +163,14 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
   new_names = set(dep.name for dep in new_deps)
   for name, dep in old_deps.items():
     if name not in new_names:
-      stmts.append(f'DROP {dep.type.upper()} IF EXISTS {schema_name}.{sql_qe(name)}')
+      stmts.append(f'DROP {dep.type.upper()} IF EXISTS {schema_name}.{qea(name)}')
       #^ Use IF EXISTS because the structure may have been dropped by a table rebuild.
 
   for new in new_deps:
     new_sql = new.sql() # Note: the sql we use for comparison has no schema name.
     if old := old_deps.get(new.name):
       if not needs_rebuild and old.sql == new_sql: continue
-      stmts.append(f'DROP {old.type.upper()} IF EXISTS {schema_name}.{sql_qe(old.name)}')
+      stmts.append(f'DROP {old.type.upper()} IF EXISTS {schema_name}.{qea(old.name)}')
       stmts.append(new_sql)
     else:
       stmts.append(new.sql(schema=schema_name)) # Note: the SQL we execute does have an explicit schema name.
