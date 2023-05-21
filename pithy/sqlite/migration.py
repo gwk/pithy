@@ -43,6 +43,8 @@ def gen_migration(*, conn:Connection, schema:Schema) -> list[str]:
   stmts = []
 
   for table in schema.tables:
+    assert isinstance(table, Table), table
+
     qname = f'{schema.name}.{qea(table.name)}'
 
     old_sql = old_table_sqls.get(table.name)
