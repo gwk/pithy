@@ -183,7 +183,7 @@ def run_migration(conn:Connection, migration:list[str], max_errors=100, backup=T
   12 migration steps: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes
   '''
 
-  if backup: conn.backup_and_print_progress()
+  if backup: conn.backup(progress=True)
   print('Migrating…')
   c = conn.cursor()
 
