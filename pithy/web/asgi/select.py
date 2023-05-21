@@ -277,7 +277,7 @@ def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str
           display_val = val
           cl = 'joined null'
         where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
-        return A(cl=cl, href=fmt_url('./select', table=vis.schema_table, where=where), _=render_val_plain(display_val))
+        return A(cl=cl, href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=render_val_plain(display_val))
       return render_val_plain(val)
     return render_cell_vis
 
