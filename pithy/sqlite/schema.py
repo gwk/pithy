@@ -110,7 +110,7 @@ class Column:
     in the sense of `nonstrict_to_strict_types_for_sqlite`.
     This allows us to compare a current self from a python schema to a previous version parsed from sqlite_schema.
     '''
-    if self.name != other.name: return f'/ {qe(other.name)} order'
+    if self.name != other.name: return f'/ {qea(other.name)} order'
     if self.datatype != other.datatype:
       if exact_type or nonstrict_to_strict_types_for_sqlite.get(self.datatype) != other.datatype:
         return 'datatype'
