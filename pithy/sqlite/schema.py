@@ -11,7 +11,7 @@ from ..transtruct import Input, Transtructor
 from .keywords import sqlite_keywords
 from .parse import parser, sql_parse_entity, sql_parse_schema_table_column
 from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity as qe,
-  sql_quote_entity_always, strict_sqlite_to_types, types_to_strict_sqlite)
+  sql_quote_entity_always as qea, strict_sqlite_to_types, types_to_strict_sqlite)
 
 
 _setattr = object.__setattr__
@@ -164,7 +164,7 @@ class Structure:
 
 
   @cached_property
-  def quoted_name(self) -> str: return sql_quote_entity_always(self.name)
+  def quoted_name(self) -> str: return qea(self.name)
 
 
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
@@ -229,7 +229,7 @@ class Table(Structure):
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
-    qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(name or self.name)}'
+    qual_name = f'{schema}{schema and "."}{qea(name or self.name)}'
     lines:list[str] = []
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     lines.append(f'CREATE TABLE {if_not_exists_str}{qual_name} (')
@@ -307,7 +307,7 @@ class Index(TableDepStructure):
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
-    qual_name = f'{schema}{schema and "."}{sql_quote_entity_always(self.name)}'
+    qual_name = f'{schema}{schema and "."}{qea(self.name)}'
     lines = []
     if self.desc:
       lines.append(f'-- {qual_name}')
@@ -317,7 +317,7 @@ class Index(TableDepStructure):
     unique_str = 'UNIQUE ' if self.is_unique else ''
     lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
     columns_str = ', '.join(qe(c) for c in self.columns)
-    lines.append(f'  ON {sql_quote_entity_always(self.table)} ({columns_str})')
+    lines.append(f'  ON {qea(self.table)} ({columns_str})')
     return '\n'.join(lines)
 
 
