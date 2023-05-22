@@ -2,13 +2,13 @@
 
 
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import asdict as dataclass_asdict, is_dataclass
 from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
 from types import UnionType
-from typing import Any, Callable, cast, ClassVar, get_args, get_origin, get_type_hints, Optional, Type, TypeVar, Union
+from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Optional, Type, TypeVar, Union
 
 from .types import is_namedtuple, is_type_namedtuple
 
@@ -259,9 +259,13 @@ class Transtructor:
 
       return transtruct_collection
 
+    if issubclass(origin, Callable): # type: ignore[arg-type]
+      return lambda val, ctx: val # type: ignore[no-any-return] # TODO: this is a temporary hack.
+      raise NotImplementedError(f'Transtructor for callable type {desired_type} not implemented; origin: {origin}.')
+
     # TODO: further handling. At this point it does not make sense to just return origin,
     # because the args probably need to be considered to create well-typed values.
-    raise NotImplementedError(f'Transtructor for generic type {desired_type} not implemented.')
+    raise NotImplementedError(f'Transtructor for generic type {desired_type} not implemented; origin: {origin}.')
 
 
   def transtructor_for_tuple_type(self, type_:Type, prefigure_fn:PrefigureFn|None, rtt:Type, types:tuple[Type,...]
