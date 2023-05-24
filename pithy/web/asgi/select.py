@@ -290,6 +290,7 @@ def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str
     elif render := vis.render:
       def render_cell_vis_render(row:Row) -> Td:
         val = row[col.name]
+        assert render is not None
         cl, display_val = try_vis_render(render, val)
         return Td(cl=cl, title=str(val), _=display_val)
       return render_cell_vis_render
