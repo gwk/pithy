@@ -331,7 +331,8 @@ class Connection(sqlite3.Connection):
   def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,
    name='main', sleep=0.250) -> None:
     '''
-    Backup this database to the target database, printing progress to stdout.
+    Backup this database to the target database, optionally printing progress to stdout.
+    This is an override of sqlite3.Connection.backup, adding the `progress` argument for convenience.
     '''
     if target is None: target = self.path + '.backup'
 
@@ -340,7 +341,8 @@ class Connection(sqlite3.Connection):
       target = sqlite3.connect(target)
       close = True
 
-    path = target.path
+    path = getattr(target, 'path', '')
+
     progress_fn:BackupProgressFn|None = None
     if progress:
       if callable(progress):
