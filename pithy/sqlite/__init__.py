@@ -340,6 +340,7 @@ class Connection(sqlite3.Connection):
       target = sqlite3.connect(target)
       close = True
 
+    path = target.path
     progress_fn:BackupProgressFn|None = None
     if progress:
       if callable(progress):
@@ -347,13 +348,13 @@ class Connection(sqlite3.Connection):
       else:
         def progress_fn(_status:int, remaining:int, total:int):
           frac = (total - remaining) / total
-          print(f'Backup {name!r}: {frac:0.1%}…', end='\r')
+          print(f'Backup {path}:{name}: {frac:0.1%}…', end='\r')
 
-      print(f'Backup {name!r}…', end='\r')
+      print(f'Backup {path}:{name}…', end='\r')
 
     try:
       super().backup(target, pages=pages, progress=progress_fn, name=name, sleep=sleep)
     finally:
       if close: target.close()
 
-    if progress: print(f'Backup {name!r} complete.')
+    if progress: print(f'Backup {path}:{name} complete.')
