@@ -152,15 +152,18 @@ def iter_excluding_str(iterable:Iterable[_T]) -> Iterator[_T]:
   return iter(iterable) # raises TypeError for non-iterables.
 
 
-def pluralize(count:int, name:str, plural=None, spec='') -> str:
-  'Return a string of format "{count} {name}s", with optional custom plural form and format spec.'
+def pluralize(count:int, name:str, plural:str|None=None, spec='') -> str:
+  '''
+  Simple English pluralization.
+  Return a string of format "{count} {name}s", with optional custom plural form and numerical format spec.
+  '''
   if count == 1:
     n = name
-  elif plural is None:
-    n = name + 's'
-  else:
+  elif plural:
     n = plural
-  return '{count:{spec}} {n}'.format(count=count, spec=spec, n=n)
+  else:
+    n = name + 's'
+  return f'{count:{spec}} {n}'
 
 
 def format_nonempty(fmt:str, string:str) -> str:
