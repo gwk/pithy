@@ -54,7 +54,7 @@ Normalized, Total, Cumulative = tuple(ChartMode)
 
 
 def chart_items(data:Union[Mapping[Any,_Num],Iterable[tuple[Any,_Num]]], mode=ChartMode.Normalized, threshold=0.0,
- sort_by_val=False, reverse=False, val_width=0, val_prec=16, bar_width=64, show_ratio=False) -> str:
+ sort_by_val=False, reverse=False, val_width=0, val_prec=16, bar_width=64, show_ratio=False, prefix='  ') -> str:
   '''
   Create a chart from a mapping or iterable of key/value pairs.
   Keys are converted to string labels.
@@ -112,7 +112,9 @@ def chart_items(data:Union[Mapping[Any,_Num],Iterable[tuple[Any,_Num]]], mode=Ch
   name_width = max(len(r[1]) for r in rows)
   val_width = val_width or max(len(r[2]) for r in rows)
 
-  lines = [chart_line(n, v, r, name_width=name_width, val_width=val_width, bar_width=bar_width, show_ratio=show_ratio, suffix='\n')
+  lines = [
+    chart_line(n, v, r, name_width=name_width, val_width=val_width, bar_width=bar_width, show_ratio=show_ratio, prefix=prefix,
+      suffix='\n')
     for r, n, v in rows]
 
   return ''.join(lines)
@@ -121,7 +123,7 @@ def chart_items(data:Union[Mapping[Any,_Num],Iterable[tuple[Any,_Num]]], mode=Ch
 Ratio = tuple[int,int]
 
 def chart_ratio_items(data:Union[Mapping[Any,Ratio],Iterable[tuple[Any,Ratio]]], threshold=0, sort_by_val=False,
- reverse=False, val_width=0, bar_width=64, show_ratio=False) -> str:
+ reverse=False, val_width=0, bar_width=64, show_ratio=False, prefix='  ') -> str:
   '''
   Create a chart from a mapping or iterable of key/value pairs, where the values are pairs of integers representing a ratio.
   This is useful for displaying ratios where the denominator might be zero; zero denominators are treated as zero values.
@@ -152,17 +154,20 @@ def chart_ratio_items(data:Union[Mapping[Any,Ratio],Iterable[tuple[Any,Ratio]]],
   name_width = max(len(r[1]) for r in rows)
   val_width = val_width or max(len(r[2]) for r in rows)
 
-  lines = [chart_line(n, v, r, name_width=name_width, val_width=val_width, bar_width=bar_width, show_ratio=show_ratio, suffix='\n')
+  lines = [
+    chart_line(n, v, r, name_width=name_width, val_width=val_width, bar_width=bar_width, show_ratio=show_ratio, prefix=prefix,
+      suffix='\n')
     for r, n, v in rows]
 
   return ''.join(lines)
 
 
-def chart_line(name:str, val:str, ratio:float, name_width:int, val_width:int, bar_width:int, show_ratio:bool, suffix='') -> str:
+def chart_line(name:str, val:str, ratio:float, name_width:int, val_width:int, bar_width:int, show_ratio:bool, prefix='  ',
+ suffix='') -> str:
   'create a string for a single line of a chart.'
   b = bar_str(ratio, bar_width)
   ratio_str = f'  {ratio:.3f}' if show_ratio else ''
-  return f'  {name:<{name_width}} : {val:>{val_width}}{ratio_str} {b}{suffix}'
+  return f'{prefix}{name:<{name_width}} : {val:>{val_width}}{ratio_str} {b}{suffix}'
 
 
 def bar_str(ratio:float, width:int) -> str:
