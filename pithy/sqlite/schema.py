@@ -3,7 +3,7 @@
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any, Callable, Iterable, Self
+from typing import Any, Callable, Iterable, Self, Container
 
 from tolkien import Source
 
@@ -564,17 +564,20 @@ def _parse_indexed_column(column:Input, source:Source) -> str:
   return sql_parse_entity(source[expr[0]])
 
 
-def clean_row_record(table:Table, renamed_keys:dict[str,str]|None, record:dict[str,Any]) -> dict[str,Any]:
+def clean_row_record(table:Table, *, record:dict[str,Any], renamed_keys:dict[str,str]|None=None, keep_keys:Container[str]=()
+ ) -> dict[str,Any]:
   '''
   Clean a record dict in preparation for inserting it into a database table.
   `renamed_keys` maps the record key to the desired table column name.
+  `keep_keys` is a container of keys to keep in the record, even if they are not in the table.
+  This is useful if a following transformation step requires some additional items.
   '''
   columns_dict = table.columns_dict
   def replace_none_with_empty(k:str, v:Any) -> Any:
     return '' if v is None and columns_dict[k].is_non_opt_str else v
 
   if renamed_keys:
-    return { renamed_keys.get(k,k): replace_none_with_empty(k, v)
-      for k, v in record.items() if k in columns_dict or k in renamed_keys }
+    return { rk: replace_none_with_empty(rk, v) for rk, v in ((renamed_keys.get(k, k), v) for k, v in record.items())
+      if (rk in columns_dict or rk in keep_keys) }
   else:
-    return { k: replace_none_with_empty(k, v) for k, v in record.items() if k in columns_dict }
+    return { k: replace_none_with_empty(k, v) for k, v in record.items() if (k in columns_dict or k in keep_keys) }
