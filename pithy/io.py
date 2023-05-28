@@ -143,13 +143,23 @@ def outLSSL(*items: Any, flush=False) -> None:
   "Write `items` to std out; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', flush=flush)
 
-def outR(*items: Any, sep='', flush=False) -> None:
-  '''Write `items` to std out; sep='', end=ERASE_LINE_F+'\\r'.'''
-  print(*items, sep=sep, end='\x1b[0K\r', flush=flush)
+def outR(*items: Any, sep='', is_tty:bool|None=None, flush=False) -> None:
+  '''
+  Write `items` to std out. sep=''.
+  If `is_tty`, end=ERASE_LINE_F+'\\r'; otherwise, end='\\n'.
+  If `is_tty` is None, it defaults to stdout.isatty().
+  '''
+  if is_tty is None: is_tty = stdout.isatty()
+  print(*items, sep=sep, end=('\x1b[0K\r' if is_tty else '\n'), flush=flush)
 
-def outSR(*items: Any, sep=' ', flush=False) -> None:
-  '''Write `items` to std out; sep=' ', end=ERASE_LINE_F+'\\r'.'''
-  print(*items, sep=sep, end='\x1b[0K\r', flush=flush)
+def outSR(*items: Any, is_tty:bool|None=None, flush=False) -> None:
+  '''
+  Write `items` to std out; sep=' '.
+  If `is_tty`, end=ERASE_LINE_F+'\\r'; otherwise, end='\\n'.
+  If `is_tty` is None, it defaults to stdout.isatty().
+  '''
+  if is_tty is None: is_tty = stdout.isatty()
+  print(*items, sep=' ', end=('\x1b[0K\r' if is_tty else '\n'), flush=flush)
 
 def outP(*labels_and_obj:Any, **opts: Any) -> None:
   'Pretty print to std out.'
