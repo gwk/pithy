@@ -138,6 +138,10 @@ def dt_for_utc_ts(ts:float) -> DateTime:
   return DateTime.fromtimestamp(ts, TimeZone.utc)
 
 
+def dt_from(*, date:Date, hours:int=0, minutes:int=0, seconds:int=0, tzinfo:TZInfo|None=None) -> DateTime:
+  return DateTime(date.year, date.month, date.day, tzinfo=tzinfo) + TimeDelta(hours=hours, minutes=minutes, seconds=seconds)
+
+
 _DateOrDateTime = TypeVar('_DateOrDateTime', Date, DateTime)
 
 def next_day(date_: _DateOrDateTime) -> _DateOrDateTime:
