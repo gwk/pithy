@@ -173,9 +173,7 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
     if old := old_deps.get(new.name):
       if not needs_rebuild and old.sql == new_sql: continue
       stmts.append(f'DROP {old.type.upper()} IF EXISTS {schema_name}.{qea(old.name)}')
-      stmts.append(new_sql)
-    else:
-      stmts.append(new.sql(schema=schema_name)) # Note: the SQL we execute does have an explicit schema name.
+    stmts.append(new.sql(schema=schema_name)) # Note: the SQL we execute does have an explicit schema name.
 
   return stmts
 
