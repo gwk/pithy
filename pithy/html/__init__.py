@@ -269,6 +269,7 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
     Create a link element if the text looks like it starts with a URL. Otherwise, return the plain text as-is.
     If the URL does not appear to span the entire text, create a link element with the entire text as its content.
     Note: the parsing rule is that whitespace, possibly preceded by the characters  `.,;:`, terminates a URL.
+    See also pithy.html.parse.linkify.
     '''
     if text.startswith('http://') or text.startswith('https://'):
       if m := re.search('[.,;:]?\s', text):
