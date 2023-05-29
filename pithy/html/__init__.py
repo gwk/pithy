@@ -7,10 +7,9 @@ Html type hierarchy.
 import re
 from html import escape as _escape
 from io import BytesIO, StringIO
-from os import PathLike
 from itertools import chain
-from typing import (Any, AnyStr as _AnyStr, Callable, ClassVar, Iterable, Iterator, List, NoReturn, Optional, BinaryIO, TextIO, Tuple,
-  Type, Union)
+from os import PathLike
+from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, Optional, TextIO, Type, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
@@ -21,7 +20,7 @@ from . import semantics
 _LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
 _LxmlFileReadSource = _LxmlFilePath | BinaryIO | TextIO
 
-DtDdPair = Tuple[List['Dt'],List['Dd']]
+DtDdPair = tuple[list['Dt'],list['Dd']]
 
 class HtmlNode(Mu):
   'Abstract HTML node; root class of the hierarchy. For the HTML tag, use `Html`.'
@@ -54,10 +53,10 @@ class HtmlNode(Mu):
 
 
   @classmethod
-  def parse(cls, source:_AnyStr, **kwargs:Any) -> 'Html':
+  def parse(cls, source:bytes|str, **kwargs:Any) -> 'Html':
     if isinstance(source, bytes):
       kwargs['transport_encoding'] = 'utf-8'
-      f = BytesIO(source)
+      f:BytesIO|StringIO = BytesIO(source)
     else:
       f = StringIO(source)
     return cls.parse_file(f, **kwargs)
@@ -611,7 +610,7 @@ class Dl(HtmlFlow, HtmlPalpable):
   '''
 
   @property
-  def dt_dd_groups(self) -> Iterable[Union[Div,DtDdPair]]:
+  def dt_dd_groups(self) -> Iterable[Div|DtDdPair]:
     pair:Optional[DtDdPair] = None
     for c in self.child_nodes():
       if isinstance(c, Div):
@@ -763,7 +762,7 @@ class H5(Heading):
 class H6(Heading):
   'H6 heading.'
 
-_heading_classes:List[Type[Heading]] = [H1, H2, H3, H4, H5, H6]
+_heading_classes:list[Type[Heading]] = [H1, H2, H3, H4, H5, H6]
 
 
 @_tag
