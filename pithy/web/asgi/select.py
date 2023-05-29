@@ -15,6 +15,7 @@ from starlette.responses import HTMLResponse
 
 from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChildLax, Pre, Present, Select, Span, Table as HtmlTable,
   Tbody, Td, Th, Thead, Tr)
+from ...html.parse import linkify
 from ...sqlite import Connection, Row
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table, Vis
@@ -298,7 +299,7 @@ def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str
   def render_cell_plain(row:Row) -> Td:
     val = row[col.name]
     if val is None: return Td(cl='null', _='NULL')
-    return Td(A.maybe(str(val))) # TODO: might augment this to parse out all URLs, not just text with leading "http".
+    return Td(_=linkify(str(val)))
 
   return render_cell_plain
 
