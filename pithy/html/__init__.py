@@ -266,10 +266,17 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
 
   @classmethod
   def maybe(cls, text:str, transform:Callable[[str],str]|None=None) -> Union['A',str]:
-    'Create a link element if the text looks like a URL. Otherwise, return the plain text as-is.'
+    '''
+    Create a link element if the text looks like it starts with a URL. Otherwise, return the plain text as-is.
+    If the URL does not appear to span the entire text, create a link element with the entire text as its content.
+    Note: the parsing rule is that whitespace, possibly preceded by the characters  `.,;:`, terminates a URL.
+    '''
     if text.startswith('http://') or text.startswith('https://'):
-      # TODO: what should we do with trailing text after the URL?
-      return cls(href=text, _=(transform(text) if transform else text))
+      if m := re.search('[.,;:]?\s', text):
+        url_end = m.start()
+      else:
+        url_end = len(text)
+      return cls(href=text[:url_end], _=(transform(text) if transform else text))
     return text
 
 
