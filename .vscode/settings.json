@@ -24,4 +24,9 @@
     "wu"
   ],
   "python.analysis.importFormat": "relative",
+  "[python]": {
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+    },
+  },
 }
