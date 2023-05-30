@@ -1,7 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, cast, Iterable, Sequence
+from warnings import warn
 
 from pithy.iterable import iter_interleave_sep
 from pithy.string import str_tree, str_tree_pairs
@@ -20,6 +21,10 @@ from ...sqlite import Connection, Row
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table, Vis
 from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
+
+
+ValRenderFn = Callable[[Any],Any]
+CellRenderFn = Callable[[Any],Td]
 
 
 class SelectApp:
@@ -187,9 +192,6 @@ class SelectApp:
     ]
 
 
-CellRenderFn = Callable[[Any],Td]
-
-
 def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,list[str],list[CellRenderFn]]:
   '''
   Return "SELECT [cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
@@ -236,13 +238,13 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
   header_names = []
   render_cell_fns:list[CellRenderFn] = []
 
-  for i, col in enumerate(cols):
+  for col in cols:
     qcol = qe(col.name)
     qual_col = f'{t_abbr}.{qcol}'
     vis = col.vis
     if isinstance(vis, Vis) and vis.join:
       # Generate a join to show the desired visualization column.
-      # We need to select two columns, rendered cell value and the actual column value for the link to the joined table.
+      # We need to select two columns: the actual column value (for the tooltip and link), and the joined value for the visible text.
       vis_t = table_abbr(vis.schema, vis.table)
       head_name = f'{col.name}: {vis.table}.{vis.col}'
       join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
@@ -250,65 +252,76 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
       append_select_part(f'{vis_t}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
       append_select_part(qual_col) # The actual column value is also needed to render the hyperlink.
       from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {vis_t} ON {qual_col} = {vis_t}.{qe(vis.join_col)}')
+      cell_fn = mk_cell_joined(col, join_col_name, join_table_primary_abbr, render_fn=vis.render)
     else:
       head_name = qe(col.name)
-      join_col_name = ''
-      join_table_primary_abbr = ''
       append_select_part(qual_col)
+      if isinstance(vis, Vis) and vis.render:
+        cell_fn = mk_cell_rendered(col, render_fn=vis.render)
+      else:
+        cell_fn = mk_cell_plain(col)
     header_names.append(head_name)
-    render_cell_fns.append(mk_render_cell_fn(col, join_col_name=join_col_name, join_table_primary_abbr=join_table_primary_abbr))
+    render_cell_fns.append(cell_fn)
 
   return ''.join(column_parts), ''.join(from_parts), header_names, render_cell_fns
 
 
-def mk_render_cell_fn(col:Column, join_col_name:str, join_table_primary_abbr:str) -> CellRenderFn:
+def mk_cell_plain(col:Column) -> CellRenderFn:
   '''
-  Create a cell value rendering function for the given column.
-  The function receives the entire row so that it can use joined values for display purposes as necessary.
+  Create a cell value rendering function for the given column, with no join or render customization.
   '''
-
-  if isinstance(col.vis, Vis):
-    vis = col.vis
-
-    if vis.join:
-      def render_cell_vis_join(row:Row) -> Td:
-        assert join_col_name
-        assert join_table_primary_abbr
-        val = row[col.name]
-        joined_val = row[join_col_name]
-        if render := vis.render:
-          cl, display_val = try_vis_render(render, joined_val)
-        elif joined_val is None:
-          cl = 'null'
-          display_val = 'NULL'
-        else:
-          cl = ''
-          display_val = str(joined_val)
-        where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
-        return Td(cl=('joined', cl), _=A(href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=display_val))
-      return render_cell_vis_join
-
-    elif render := vis.render:
-      def render_cell_vis_render(row:Row) -> Td:
-        val = row[col.name]
-        assert render is not None
-        cl, display_val = try_vis_render(render, val)
-        return Td(cl=cl, title=str(val), _=display_val)
-      return render_cell_vis_render
-
-  def render_cell_plain(row:Row) -> Td:
+  def cell_plain(row:Row) -> Td:
     val = row[col.name]
     if val is None: return Td(cl='null', _='NULL')
     return Td(_=linkify(str(val)))
 
-  return render_cell_plain
+  return cell_plain
 
 
-def try_vis_render(render:Callable[[Any],Any], val:Any) -> tuple[str,str]:
+def mk_cell_rendered(col:Column, render_fn:ValRenderFn) -> CellRenderFn:
+  '''
+  Create a cell value rendering function for the given column, with no join but a custom render function.
+  '''
+  def cell_rendered(row:Row) -> Td:
+    val = row[col.name]
+    cl, display_val = try_vis_render(render_fn, val)
+
+    return Td(cl=cl, _=display_val)
+
+  return cell_rendered
+
+
+def mk_cell_joined(col:Column, join_col_name:str, join_table_primary_abbr:str, render_fn:ValRenderFn|None) -> CellRenderFn:
+  '''
+  Create a cell value rendering function for the given column, with a join and possibly a custom render function.
+  '''
+  vis = cast(Vis, col.vis)
+  assert vis.join
+
+  def cell_joined(row:Row) -> Td:
+    assert join_col_name
+    assert join_table_primary_abbr
+    val = row[col.name]
+    joined_val = row[join_col_name]
+    if render_fn:
+      cl, display_val = try_vis_render(render_fn, joined_val)
+    elif joined_val is None:
+      cl = 'null'
+      display_val = 'NULL'
+    else:
+      cl = ''
+      display_val = str(joined_val)
+    where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
+    return Td(cl=('joined', cl), _=A(href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=display_val))
+
+  return cell_joined
+
+
+def try_vis_render(render_fn:ValRenderFn, val:Any) -> tuple[str,str]:
   if val is None: return ('null', 'NULL')
-  try: return ('', str(render(val)))
+  try: return ('', str(render_fn(val)))
   except Exception as e:
-    print(f'Error rendering {val!r} with {render}: {e}')
+    warn(f'error rendering {val!r} with {render_fn}: {e}')
     return ('error', str(val))
 
 
