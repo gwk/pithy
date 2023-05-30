@@ -97,6 +97,9 @@ class SelectApp:
       Label('Limit:'),
       Div(Input(name='limit', type='search', value=params.get('limit', '100'), cl='clear-on-table-change')),
 
+      Label('Offset:'),
+      Div(Input(name='offset', type='search', value=params.get('offset', '0'), cl='clear-on-table-change')),
+
       Label(),
       Div(Input(type='submit', value='Run Query')),
     )
@@ -137,6 +140,7 @@ class SelectApp:
     order_by = params.get('order_by', '')
 
     limit = int(params.get('limit', 100) or 100)
+    offset = int(params.get('offset', 0) or 0)
 
     columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
       schema=schema.name, table=table.name, cols=en_cols)
@@ -145,7 +149,7 @@ class SelectApp:
     where_clause = f'\nWHERE {where}' if where else ''
     order_by_clause = f'\nORDER BY {order_by}' if order_by else ''
 
-    query = f'{select_head}{columns_part}{from_clause}{where_clause}{order_by_clause}\nLIMIT {limit}'
+    query = f'{select_head}{columns_part}{from_clause}{where_clause}{order_by_clause}\nLIMIT {limit} OFFSET {offset}'
 
     conn = self.get_conn()
     c = conn.cursor()
@@ -180,10 +184,30 @@ class SelectApp:
         Label('Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan),
         Label('Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', _=count and f'{count}'),
       ]),
+      Div(id='pagination', cl='kv-grid-max',  _=[self.render_paging(count_int, limit, offset, params)]),
       Div(id='results', _=HtmlTable(cl='dense', _=[
         Thead(Tr(_=[Th(Div(name)) for name in header_names])),
         Tbody(_=rows)])),
     ]
+  
+  def render_paging(self, count: int, limit: int, offset: int, params: QueryParams) -> Div:
+    summary = Div()
+    if count > 0:
+      if count > limit:
+        s = offset + 1
+        l = min(offset + limit, count)
+        summary.append(f'{s}-{l} of {count} results.')
+        qp = QueryParams([(k, v) for k, v in params.items() if k != 'offset'])
+        first = A(cl='icon', href=f'?{qp}', _='⏮️') if offset > 0 else Span(cl='icon o50', _='⏮️')
+        prev  = A(cl='icon', href=f'?{qp}&offset={offset - limit}', _='◀️') if offset > 0 else Span(cl='icon o50', _='◀️')
+        next_ = A(cl='icon', href=f'?{qp}&offset={offset + limit}', _='▶️') if l < count else Span(cl='icon o50', _='▶️')
+        last  = A(cl='icon', href=f'?{qp}&offset={count - limit}', _='⏭️') if l < count else Span(cl='icon o50', _='⏭️')
+        summary.append(Div(_=[first, ' ', prev, ' ', next_, ' ', last]))
+      else:
+        summary.append(f'{count} results.')
+    else:
+      summary.append('No results.')
+    return summary
 
 
 CellRenderFn = Callable[[Any],Td]
