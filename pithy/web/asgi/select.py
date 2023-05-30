@@ -245,14 +245,16 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
     if isinstance(vis, Vis) and vis.join:
       # Generate a join to show the desired visualization column.
       # We need to select two columns: the actual column value (for the tooltip and link), and the joined value for the visible text.
-      vis_t = table_abbr(vis.schema, vis.table)
-      head_name = f'{col.name}: {vis.table}.{vis.col}'
+      join_table = table_abbr(vis.schema, vis.table)
+      join_key = f'{join_table}.{qe(vis.join_col)}' # The joined table key.
+      head_name = f'{col.name}: {vis.table}.{vis.col}' # The column header name.
       join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
-      join_table_primary_abbr = simple_table_abbr(vis.schema, vis.table) # The join table abbrev when it is the primary table.
-      append_select_part(f'{vis_t}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
-      append_select_part(qual_col) # The actual column value is also needed to render the hyperlink.
-      from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {vis_t} ON {qual_col} = {vis_t}.{qe(vis.join_col)}')
-      cell_fn = mk_cell_joined(col, join_col_name, join_table_primary_abbr, render_fn=vis.render)
+      join_table_primary_abbr = simple_table_abbr(vis.schema, vis.table) # The join table abbrev when it is the primary table, for the link WHERE clause.
+      append_select_part(qual_col) # The actual column value is needed to render the tooltip and link.
+      append_select_part(f'{join_key} AS {qe(join_key)}') # The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
+      append_select_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
+      from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {join_table} ON {qual_col} = {join_key}')
+      cell_fn = mk_cell_joined(col, join_key, join_col_name, join_table_primary_abbr, render_fn=vis.render)
     else:
       head_name = qe(col.name)
       append_select_part(qual_col)
@@ -291,7 +293,7 @@ def mk_cell_rendered(col:Column, render_fn:ValRenderFn) -> CellRenderFn:
   return cell_rendered
 
 
-def mk_cell_joined(col:Column, join_col_name:str, join_table_primary_abbr:str, render_fn:ValRenderFn|None) -> CellRenderFn:
+def mk_cell_joined(col:Column, join_key:str, join_col_name:str, join_table_primary_abbr:str, render_fn:ValRenderFn|None) -> CellRenderFn:
   '''
   Create a cell value rendering function for the given column, with a join and possibly a custom render function.
   '''
@@ -302,6 +304,12 @@ def mk_cell_joined(col:Column, join_col_name:str, join_table_primary_abbr:str, r
     assert join_col_name
     assert join_table_primary_abbr
     val = row[col.name]
+    joined_key_val = row[join_key]
+    if joined_key_val is None: # The join did not match.
+      if val is None:
+        return Td(cl='null unjoined', _='NULL')
+      else:
+        return Td(cl='unjoined', _=val)
     joined_val = row[join_col_name]
     if render_fn:
       cl, display_val = try_vis_render(render_fn, joined_val)
