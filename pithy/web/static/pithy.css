@@ -299,3 +299,7 @@ table.dense tbody tr:nth-child(odd) {
 #pithy_select_app .null {
   color: #888;
 }
+
+#pithy_select_app .unjoined {
+  color: #840;
+}
