@@ -30,14 +30,6 @@ _T = TypeVar('_T')
 MuAttrs = dict[str,Any]
 MuAttrItem = Tuple[str,Any]
 
-MuChild = Union[str,EscapedStr,'Mu']
-MuChildren = list[MuChild]
-MuChildOrChildren = Union[MuChild,Iterable[MuChild]]
-
-MuChildLax = Union[MuChild,int,float]
-MuChildrenLax = list[MuChildLax]
-MuChildOrChildrenLax = Union[MuChildLax,Iterable[MuChildLax]]
-
 _Mu = TypeVar('_Mu', bound='Mu')
 _MuChild = TypeVar('_MuChild', bound='MuChild')
 
@@ -90,11 +82,11 @@ class Mu:
 
   # Instance attributes.
   attrs:MuAttrs
-  _:list[MuChild]
+  _:list['MuChild']
 
   def __init__(self:_Mu,
-   *_mu_positional_children:MuChildLax, # Additional children can be passed as positional arguments.
-   _:MuChildOrChildrenLax=(),
+   *_mu_positional_children:'MuChildLax', # Additional children can be passed as positional arguments.
+   _:'MuChildOrChildrenLax'=(),
    tag:str='',
    cl:Iterable[str]|None=None,
    _orig:_Mu|None=None, # _orig is set by methods that are called with the `traversable` option.
@@ -190,7 +182,7 @@ class Mu:
 
   def get(self, key:str, default=None) -> Any: return self.attrs.get(key, default)
 
-  def __iter__(self) -> Iterator[MuChild]: return iter(self._)
+  def __iter__(self) -> Iterator['MuChild']: return iter(self._)
 
 
   @classmethod
@@ -258,7 +250,7 @@ class Mu:
     return type(self)(tag=self.tag, attrs=self.attrs, _=self._, _orig=self, _parent=parent)
 
 
-  def child_items(self, ws=False, traversable=False) -> Iterator[Tuple[int,MuChild]]:
+  def child_items(self, ws=False, traversable=False) -> Iterator[Tuple[int,'MuChild']]:
     'Yield (index, child) pairs. If `ws` is False, then children that are purely whitespace will be filtered out.'
     for i, c in enumerate(self._):
       if isinstance(c, Mu):
@@ -270,7 +262,7 @@ class Mu:
       yield (i, c)
 
 
-  def children(self, ws=False, traversable=False) -> Iterator[MuChild]:
+  def children(self, ws=False, traversable=False) -> Iterator['MuChild']:
     'Yield child nodes and text. If `ws` is False, then children that are purely whitespace will be filtered out.'
     for c in self._:
       if isinstance(c, Mu):
@@ -394,7 +386,7 @@ class Mu:
     return child # The type of child._orig is the same as child.
 
 
-  def extend(self, *child_or_children:MuChildOrChildrenLax) -> None:
+  def extend(self, *child_or_children:'MuChildOrChildrenLax') -> None:
     for c in child_or_children:
       if isinstance(c, mu_child_classes):
         self.append(c)
@@ -794,7 +786,7 @@ class Mu:
 
 
   @staticmethod
-  def render_child(child:MuChildLax) -> str:
+  def render_child(child:'MuChildLax') -> str:
     if isinstance(child, str): return Mu.esc_text(child)
     if isinstance(child, Mu): return child.render_str()
     if isinstance(child, EscapedStr): return child.string
@@ -826,7 +818,7 @@ def xml_attr_summary(key:str, val:Any, *, text_limit:int, all_attrs:bool) -> str
   return f' {ks}=…' # Omit other attribute values.
 
 
-def xml_child_summary(child:MuChild, text_limit:int) -> str:
+def xml_child_summary(child:'MuChild', text_limit:int) -> str:
   if isinstance(child, Mu):
     text = child.summary_text(limit=text_limit)
     if text: return f' {child.tag}:{repr_lim(text, limit=text_limit)}'
@@ -924,6 +916,14 @@ def single_child_property(constructor:Callable[[_Self],_Child]) -> property:
   doc = f'The single child element of type {class_desc}.\n' + (constructor.__doc__ or '')
   return property(_get_single_child_prop, _set_single_child_prop, _del_single_child_prop, doc=doc)
 
+
+# Note: these are declared below Mu so that they can be used with `isinstance`.
+MuChild = Union[str,EscapedStr,Mu]
+MuChildLax = Union[MuChild,int,float]
+MuChildren = list[MuChild]
+MuChildrenLax = list[MuChildLax]
+MuChildOrChildren = Union[MuChild,Iterable[MuChild]]
+MuChildOrChildrenLax = Union[MuChildLax,Iterable[MuChildLax]]
 
 
 @overload
