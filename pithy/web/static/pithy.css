@@ -1,5 +1,8 @@
 /* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
 
+@import url('https://fonts.googleapis.com/css2?family=Noto+Emoji&display=block');
+
+
 /* Reset. */
 
 *, *::before, *::after { box-sizing: border-box; } /* Use the modern box-sizing model. */
@@ -302,4 +305,27 @@ table.dense tbody tr:nth-child(odd) {
 
 #pithy_select_app .unjoined {
   color: #840;
+}
+
+/* SelectApp. */
+
+#pithy_select_app .icon {
+  font-display: block;
+  font-family: 'Noto Emoji';
+}
+#pithy_select_app a.icon  {
+  color: #000;
+  text-decoration: none;
+}
+#pithy_select_app a.icon:active  {
+  color: #000;
+  text-decoration: none;
+}
+#pithy_select_app a.icon:hover   {
+  color: #222;
+  text-decoration: none;
+}
+#pithy_select_app a.icon:visited {
+  color: rgb(0,0,0);
+  text-decoration: none;
 }
