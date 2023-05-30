@@ -30,7 +30,7 @@ _T = TypeVar('_T')
 MuAttrs = Dict[str,Any]
 MuAttrItem = Tuple[str,Any]
 
-MuChild = Union[str,'EscapedStr','Mu']
+MuChild = Union[str,EscapedStr,'Mu']
 MuChildren = List[MuChild]
 MuChildOrChildren = Union[MuChild,Iterable[MuChild]]
 
