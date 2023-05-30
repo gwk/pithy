@@ -9,8 +9,8 @@ from collections import Counter
 from functools import wraps
 from inspect import get_annotations
 from itertools import chain
-from typing import (Any, Callable, cast, ClassVar, Dict, Generator, Iterable, Iterator, List, Match, Optional, overload, Tuple,
-  Type, TypeVar, Union)
+from typing import (Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, Tuple, Type,
+  TypeVar, Union)
 from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -27,15 +27,15 @@ except ImportError: Comment = object() # type: ignore[assignment] # Comment is a
 _T = TypeVar('_T')
 
 # Attr values are currently Any so that we can preserve exact numerical values.
-MuAttrs = Dict[str,Any]
+MuAttrs = dict[str,Any]
 MuAttrItem = Tuple[str,Any]
 
 MuChild = Union[str,EscapedStr,'Mu']
-MuChildren = List[MuChild]
+MuChildren = list[MuChild]
 MuChildOrChildren = Union[MuChild,Iterable[MuChild]]
 
 MuChildLax = Union[MuChild,int,float]
-MuChildrenLax = List[MuChildLax]
+MuChildrenLax = list[MuChildLax]
 MuChildOrChildrenLax = Union[MuChildLax,Iterable[MuChildLax]]
 
 _Mu = TypeVar('_Mu', bound='Mu')
@@ -79,7 +79,7 @@ class Mu:
   inline_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that should be rendered inline.
   void_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that should be rendered as "void tags" (for HTML correctness).
   ws_sensitive_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that are whitespace sensitive.
-  replaced_attrs:ClassVar[Dict[str,str]] = {} # Map of attribute names to replacement values for rendering.
+  replaced_attrs:ClassVar[dict[str,str]] = {} # Map of attribute names to replacement values for rendering.
 
   attr_sort_ranks = {
     'id': -2,
@@ -194,7 +194,7 @@ class Mu:
 
 
   @classmethod
-  def from_raw(cls:Type[_Mu], raw:Dict) -> _Mu:
+  def from_raw(cls:Type[_Mu], raw:dict) -> _Mu:
     'Create a Mu object (or possibly a subclass instance chosen by tag) from a raw data dictionary.'
     tag = raw['tag']
     attrs = raw['attrs']
@@ -331,7 +331,7 @@ class Mu:
 
 
   @property
-  def classes(self) -> List[str]:
+  def classes(self) -> list[str]:
     'The `class` attribute split into individual words.'
     return cast(str, self.attrs.get('class', '')).split()
 
@@ -409,7 +409,7 @@ class Mu:
 
   def clean(self, deep=True) -> None:
     # Consolidate consecutive strings.
-    children:List[MuChild] = []
+    children:list[MuChild] = []
     for c in self._:
       if isinstance(c, Mu):
         if deep: c.clean(deep)
@@ -638,7 +638,7 @@ class Mu:
 
   def summary_text(self, limit=0) -> str:
     if not limit: return ''.join(self.summary_texts())
-    parts:List[str] = []
+    parts:list[str] = []
     length = 0
     for part in self.summary_texts():
       parts.append(part)
@@ -678,7 +678,7 @@ class Mu:
   def visit(self, *, pre:MuVisitor|None=None, post:MuVisitor|None=None, traversable=False) -> None:
     if pre is not None: pre(self)
 
-    modified_children:List[MuChild] = []
+    modified_children:list[MuChild] = []
     first_mod_idx:Optional[int] = None
     for i, c in enumerate(self._):
       if isinstance(c, Mu):
@@ -734,7 +734,7 @@ class Mu:
 
   def fmt_attr_items(self, items:Iterable[Tuple[str,Any]]) -> str:
     'Return a string that is either empty or with a leading space, containing all of the formatted items.'
-    parts: List[str] = []
+    parts: list[str] = []
     for k, v in sorted(items, key=lambda item: self.attr_sort_ranks.get(item[0], 0)):
       k = self.replaced_attrs.get(k, k)
       if v in (None, True, False): v = str(v).lower() # TODO: look up values in a dict for speed?
@@ -837,7 +837,7 @@ def xml_child_summary(child:MuChild, text_limit:int) -> str:
   return ' ' + repr_lim(text, limit=text_limit)
 
 
-def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', attrs:Dict[str,Any]={}) -> MuPred:
+def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', attrs:dict[str,Any]={}) -> MuPred:
   'Update _attrs with items from other arguments, then construct a predicate that tests Mu nodes.'
 
   tag_pred:Callable
@@ -855,9 +855,9 @@ def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', att
   return predicate
 
 
-def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:Dict[str,str]) -> str:
+def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:dict[str,str]) -> str:
   'Format the arguments of a predicate function for an error message.'
-  words:List[str] = []
+  words:list[str] = []
   if type_or_tag: words.append(f'`{type_or_tag.__name__}`' if isinstance(type_or_tag, type) else repr(type_or_tag))
   if cl: words.append(f'cl={cl!r}')
   for k, v in attrs.items(): words.append(xml_attr_summary(k, v, text_limit=0, all_attrs=True).lstrip())
@@ -865,7 +865,7 @@ def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:
   return ' '.join(words)
 
 
-def add_opt_attrs(attrs:Dict[str,Any], **items:Any) -> None:
+def add_opt_attrs(attrs:dict[str,Any], **items:Any) -> None:
   'Add the items in `**items` attrs, excluding any None values.'
   for k, v in items.items():
     if v is None: continue
