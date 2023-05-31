@@ -14,8 +14,8 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
-from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Select, Span, Table as HtmlTable,
-  Tbody, Td, Th, Thead, Tr)
+from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Span,
+  Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ...html.parse import linkify
 from ...sqlite import Connection, Row
 from ...sqlite.parse import sql_parse_schema_table
@@ -77,6 +77,7 @@ class SelectApp:
     if table_name: assert table_name in table_names
     main = Main(id='pithy_select_app', cl='bfull')
 
+    main.append(main_script())
     main.append(H1('SELECT'))
 
     form = main.append(Form(cl='kv-grid-max', action='./select', autocomplete='off'))
@@ -92,7 +93,11 @@ class SelectApp:
       Div(Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
 
       Label('Columns:'),
-      Div(id='columns', _=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
+      Div(id='columns-container', _=[
+        Div(id='columns', _=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
+        Span(cl='en-act', _=A(id='col-show-all-act', _="Show All", onclick="onActionChange(this)")),
+        Span(cl='en-act', _=A(id='col-show-none-act', _="Show None", onclick="onActionChange(this)"))
+      ]),
 
       Label('Where:'),
       Input(name='where', type='search', value=params.get('where', ''), cl='clear-on-table-change'),
@@ -368,3 +373,32 @@ def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
 
 def capital_letters_abbr(s:str) -> str:
   return ''.join(c for c in s if c.isupper())
+
+
+def main_script() -> Script:
+  return Script('''
+  const showAllId = "col-show-all-act";
+  const showNoneId = "col-show-none-act";
+
+  function onActionChange(el) {
+    const showAllEl = document.getElementById(`${showAllId}`);
+    const showNoneEl = document.getElementById(`${showNoneId}`);
+    const cols = document.querySelectorAll('span.en-col input[type="checkbox"]');
+
+    if (el === showAllEl) {
+      return setChsVal(cols, true);
+    }
+
+    if (el === showNoneEl) {
+      return setChsVal(cols, false);
+    }
+  }
+
+  function setChsVal(chs, val) {
+    chs.forEach(ch => setChVal(ch, val))
+  }
+
+  function setChVal(ch, val) {
+    ch.checked = val;
+  }
+  ''')
