@@ -14,7 +14,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
-from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChildLax, Pre, Present, Select, Span, Table as HtmlTable,
+from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Select, Span, Table as HtmlTable,
   Tbody, Td, Th, Thead, Tr)
 from ...html.parse import linkify
 from ...sqlite import Connection, Row
@@ -287,7 +287,6 @@ def mk_cell_rendered(col:Column, render_fn:ValRenderFn) -> CellRenderFn:
   def cell_rendered(row:Row) -> Td:
     val = row[col.name]
     cl, display_val = try_vis_render(render_fn, val)
-
     return Td(cl=cl, _=display_val)
 
   return cell_rendered
@@ -325,9 +324,12 @@ def mk_cell_joined(col:Column, join_key:str, join_col_name:str, join_table_prima
   return cell_joined
 
 
-def try_vis_render(render_fn:ValRenderFn, val:Any) -> tuple[str,str]:
+def try_vis_render(render_fn:ValRenderFn, val:Any) -> tuple[str,MuChild]:
   if val is None: return ('null', 'NULL')
-  try: return ('', str(render_fn(val)))
+  try:
+    rendered = render_fn(val)
+    if not isinstance(rendered, MuChild): rendered = str(rendered) # type: ignore[misc, arg-type]
+    return ('', rendered)
   except Exception as e:
     warn(f'error rendering {val!r} with {render_fn}: {e}')
     return ('error', str(val))
