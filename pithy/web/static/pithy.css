@@ -281,6 +281,16 @@ table.dense tbody tr:nth-child(odd) {
   margin-right: 0.5em;
 }
 
+#pithy_select_app span.en-act {
+  margin-right: 1em;
+  white-space: nowrap;
+}
+
+#pithy_select_app span.en-act a {
+  cursor: pointer;
+  text-decoration: none;
+}
+
 #pithy_select_app #results {
   width: 100%;
   overflow-x: scroll;
