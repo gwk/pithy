@@ -4,7 +4,6 @@ from collections import Counter
 from typing import Any, Callable, cast, Iterable, Sequence
 from warnings import warn
 
-from pithy.iterable import iter_interleave_sep
 from pithy.string import str_tree, str_tree_pairs
 from pithy.url import fmt_url
 from starlette.authentication import has_required_scope
@@ -19,8 +18,10 @@ from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pr
 from ...html.parse import linkify
 from ...sqlite import Connection, Row
 from ...sqlite.parse import sql_parse_schema_table
-from ...sqlite.schema import Column, Schema, Table, Vis
+from ...sqlite.schema import Column, Schema, Table
 from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
+
+from .vis import Vis
 
 
 ValRenderFn = Callable[[Any],Any]
@@ -30,11 +31,17 @@ CellRenderFn = Callable[[Any],Td]
 class SelectApp:
   'An ASGI app that provides a web interface for running SELECT queries.'
 
-  def __init__(self, get_conn:Callable[[],Connection], html_response:Callable[[Request,Main],HTMLResponse],
-   schemas:Iterable[Schema], requires:str|Sequence[str]=()) -> None:
+  def __init__(self,
+    get_conn:Callable[[],Connection],
+    html_response:Callable[[Request,Main],HTMLResponse],
+    schemas:Iterable[Schema], 
+    vis_dict: dict[str, dict[str, dict[str, Vis|bool]]], # schema -> table -> column -> Vis|bool mapping
+    requires:str|Sequence[str]=()
+  ) -> None:
     self.get_conn = get_conn
     self.html_response = html_response
     self.schemas = { s.name : s for s in schemas }
+    self.vis_dict = vis_dict
     self.requires = (requires,) if isinstance(requires, str) else tuple(requires)
     # TODO: optional table restrictions.
 
@@ -56,9 +63,10 @@ class SelectApp:
     if nst := self.get_schema_table(params):
       table_name, schema, table = nst
 
+      cols_vis = { c.name: select_vis(schema, table, c.name, self.vis_dict) for c in table.columns }
       en_col_names = set(
         [k[2:] for k in params if k.startswith('c-')]
-        or [c.name for c in table.columns if (c.vis.show if isinstance(c.vis, Vis) else c.vis)]
+        or [c.name for c in table.columns if (cols_vis.get(c.name).show if isinstance(cols_vis.get(c.name), Vis) else cols_vis.get(c.name))]
         or [table.columns[0].name])
 
       en_col_spans = [
@@ -154,7 +162,7 @@ class SelectApp:
     offset = int(params.get('offset', 0) or 0)
 
     columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
-      schema=schema.name, table=table.name, cols=en_cols)
+      schema=schema.name, table=table.name, cols=en_cols, vis_dict=self.vis_dict)
 
     select_head = 'SELECT' + (' DISTINCT' if distinct else '')
     where_clause = f'\nWHERE {where}' if where else ''
@@ -222,12 +230,12 @@ class SelectApp:
     return summary
 
 
-def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,list[str],list[CellRenderFn]]:
+def fmt_select_cols(schema:str, table:str, cols:list[Column], vis_dict) -> tuple[str,str,list[str],list[CellRenderFn]]:
   '''
   Return "SELECT [cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
   '''
 
-  all_vis = [col.vis for col in cols if isinstance(col.vis, Vis)]
+  all_vis = filter(lambda v: isinstance(v, Vis) , [select_vis(schema, table, col.name, vis_dict) for col in cols])
   schema_abbrs = abbreviate_schema_names({schema, *(vis.schema for vis in all_vis)})
   table_abbrs = Counter[str]()
 
@@ -271,7 +279,7 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
   for col in cols:
     qcol = qe(col.name)
     qual_col = f'{t_abbr}.{qcol}'
-    vis = col.vis
+    vis = select_vis(schema, table, col.name, vis_dict)
     if isinstance(vis, Vis) and vis.join:
       # Generate a join to show the desired visualization column.
       # We need to select two columns: the actual column value (for the tooltip and link), and the joined value for the visible text.
@@ -284,7 +292,7 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column]) -> tuple[str,str,l
       append_select_part(f'{join_key} AS {qe(join_key)}') # The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
       append_select_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
       from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {join_table} ON {qual_col} = {join_key}')
-      cell_fn = mk_cell_joined(col, join_key, join_col_name, join_table_primary_abbr, render_fn=vis.render)
+      cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, render_fn=vis.render)
     else:
       head_name = qe(col.name)
       append_select_part(qual_col)
@@ -322,11 +330,10 @@ def mk_cell_rendered(col:Column, render_fn:ValRenderFn) -> CellRenderFn:
   return cell_rendered
 
 
-def mk_cell_joined(col:Column, join_key:str, join_col_name:str, join_table_primary_abbr:str, render_fn:ValRenderFn|None) -> CellRenderFn:
+def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_table_primary_abbr:str, render_fn:ValRenderFn|None) -> CellRenderFn:
   '''
   Create a cell value rendering function for the given column, with a join and possibly a custom render function.
   '''
-  vis = cast(Vis, col.vis)
   assert vis.join
 
   def cell_joined(row:Row) -> Td:
@@ -352,6 +359,12 @@ def mk_cell_joined(col:Column, join_key:str, join_col_name:str, join_table_prima
     return Td(cl=('joined', cl), _=A(href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=display_val))
 
   return cell_joined
+
+
+def select_vis(schema:str, table:str, col: str, vis_dict:dict[str, dict[str, dict[str, Vis]]]) -> Vis|bool:
+  try: return vis_dict.get(schema).get(table).get(col)
+  except Exception as e:
+    return True
 
 
 def try_vis_render(render_fn:ValRenderFn, val:Any) -> tuple[str,MuChild]:

@@ -3,47 +3,15 @@
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any, Callable, Iterable, Self, Container
+from typing import Any, Iterable, Self, Container
 
 from tolkien import Source
 
 from ..transtruct import Input, Transtructor
 from .keywords import sqlite_keywords
-from .parse import parser, sql_parse_entity, sql_parse_schema_table_column
+from .parse import parser, sql_parse_entity
 from .util import (nonstrict_to_strict_types_for_sqlite, sql_comment_inline, sql_comment_lines, sql_quote_entity as qe,
   sql_quote_entity_always as qea, strict_sqlite_to_types, types_to_strict_sqlite)
-
-
-_setattr = object.__setattr__
-
-
-@dataclass(frozen=True)
-class Vis:
-  show:bool = True # Whether to show the column by default.
-  join:str = '' # The schema.table.column to join on, typically the primary key.
-  col:str = '' # The column in the joined table to display instead of the actual column.
-  schema:str = ''
-  table:str = ''
-  join_col:str = ''
-  render:Callable[[Any],Any]|None = None
-
-
-  def __post_init__(self) -> None:
-    if self.join or self.col:
-      if not (self.join and self.col): raise ValueError(f'`join` requires that `col` is also specified: {self}')
-      s, t, c = parts = sql_parse_schema_table_column(self.join)
-      if not all(parts): raise ValueError(f'`join` must specify schema, table and column: {self.join!r}')
-      _setattr(self, 'schema', s)
-      _setattr(self, 'table', t)
-      _setattr(self, 'join_col', c)
-
-  def __repr__(self) -> str:
-    return f'Vis(join={self.join!r}, col={self.col!r})'
-
-  @cached_property
-  def schema_table(self) -> str:
-    if self.schema: return f'{qe(self.schema)}.{qe(self.table)}'
-    return qe(self.table)
 
 
 @dataclass(frozen=True, order=True)
@@ -60,7 +28,6 @@ class Column:
   is_unique:bool = False # Whether the column is UNIQUE.
   virtual:str|None = None
   default:bool|int|float|str|None = None # The default value. None means no default; SQLite will default to NULL.
-  vis:bool|Vis = True # Whether the column should be visible by default, and an optional Vis customization.
   desc:str = ''
 
 
