@@ -86,7 +86,7 @@ class SelectApp:
     form.extend(
       Label('Table:'),
       Div(Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
-        onchange='emptyFirstForSelector("#columns"); clearValueAllForSelector(".clear-on-table-change", "value"); this.form.submit()')),
+        onchange='emptyFirstForSelector("#columns"); clearValueForSelectorAll(".clear-on-table-change", "value"); this.form.submit()')),
 
       Label('Distinct:'),
       Div(Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),

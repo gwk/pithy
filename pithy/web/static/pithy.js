@@ -47,26 +47,27 @@ function emptyAllForSelector(selector) {
 }
 
 
-function removeAttrFirstForSelector(selector, attr) {
+function removeAttrForSelector(selector, attr) {
   const element = document.querySelector(selector);
   if (element) { element.removeAttribute(attr); }
 }
 
 
-function removeAttrAllForSelector(selector, attr) {
+function removeAttrForSelectorAll(selector, attr) {
   for (const element of document.querySelectorAll(selector)) {
     element.removeAttribute(attr);
   }
 }
 
 
-function clearValueFirstForSelector(selector) {
+function clearValueForSelector(selector) {
   const element = document.querySelector(selector);
-  if (element) { element.removeAttribute('value'); }
+  if (element) {
+     element.removeAttribute('value'); }
 }
 
 
-function clearValueAllForSelector(selector) {
+function clearValueForSelectorAll(selector) {
   for (const element of document.querySelectorAll(selector)) {
     element.removeAttribute('value');
   }
