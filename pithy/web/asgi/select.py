@@ -86,7 +86,7 @@ class SelectApp:
     form.extend(
       Label('Table:'),
       Div(Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
-        onchange='emptyFirstForSelector("#columns"); clearValueForSelectorAll(".clear-on-table-change", "value"); this.form.submit()')),
+        onchange='emptyFirstForSelector("#columns"); resetValueForSelectorAll(".clear-on-table-change", "value"); this.form.submit()')),
 
       Label('Distinct:'),
       Div(Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
@@ -101,10 +101,10 @@ class SelectApp:
       Input(name='order_by', type='search', value=params.get('order_by', ''),  cl='clear-on-table-change'),
 
       Label('Limit:'),
-      Div(Input(name='limit', type='search', value=params.get('limit', '100'), cl='clear-on-table-change')),
+      Div(Input(name='limit', type='search', value=params.get('limit', '100'), default=100, cl='clear-on-table-change')),
 
       Label('Offset:'),
-      Div(Input(name='offset', type='search', value=params.get('offset', '0'), cl='clear-on-table-change')),
+      Div(Input(name='offset', type='search', value=params.get('offset', '0'), default=0,  cl='clear-on-table-change')),
 
       Label(),
       Div(Input(type='submit', value='Run Query')),
