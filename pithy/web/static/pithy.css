@@ -268,27 +268,21 @@ table.dense tbody tr:nth-child(odd) {
   margin: 1em 0;
 }
 
-#pithy_select_app #query {
-  margin: 1em 0;
+#pithy_select_app form #columns {
+  display: flex;
+  gap: 1em;
 }
 
-#pithy_select_app span.en-col {
-  margin-right: 1em;
+#pithy_select_app form span.en-col {
   white-space: nowrap;
 }
 
-#pithy_select_app span.en-col input {
+#pithy_select_app form span.en-col input {
   margin-right: 0.5em;
 }
 
-#pithy_select_app span.en-act {
-  margin-right: 1em;
-  white-space: nowrap;
-}
-
-#pithy_select_app span.en-act a {
-  cursor: pointer;
-  text-decoration: none;
+#pithy_select_app #query {
+  margin: 1em 0;
 }
 
 #pithy_select_app #results {
