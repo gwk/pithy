@@ -5,6 +5,7 @@
 import csv
 from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
 from functools import cached_property
+from io import StringIO
 from sys import stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Sequence, TextIO, Type, Union
 
@@ -12,14 +13,24 @@ from .transtruct import bool_for_val
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
-def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Sequence[str]|None, rows:Iterable[Sequence]) -> None:
+def write_csv(f:TextIO, *, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> None:
+  'Write CSV to a file.'
+  if quoting is None: quoting = QUOTE_MINIMAL
   w = csv.writer(f, quoting=quoting)
   if header is not None: w.writerow(header)
   w.writerows(rows)
 
 
-def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Sequence[str]|None, rows:Iterable[Sequence]) -> None:
+def out_csv(*, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> None:
+  'Write CSV to stdout.'
   write_csv(f=stdout, quoting=quoting, header=header, rows=rows)
+
+
+def render_csv(*, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> str:
+  'Render CSV to a string.'
+  with StringIO() as f:
+    write_csv(f=f, quoting=quoting, header=header, rows=rows)
+    return f.getvalue()
 
 
 def load_csv(file: TextIO, *,
