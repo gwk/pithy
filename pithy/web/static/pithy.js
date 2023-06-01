@@ -74,6 +74,33 @@ function clearValueForSelectorAll(selector) {
 }
 
 
+function resetValueForSelector(selector) {
+  const element = document.querySelector(selector);
+  if (element) {
+    default_ = element.getAttribute('default');
+    if (default_ === null) {
+      element.removeAttribute('value');
+    } else {
+      element.setAttribute('value', default_);
+    }
+  }
+}
+
+
+function resetValueForSelectorAll(selector) {
+  for (const element of document.querySelectorAll(selector)) {
+    default_ = element.getAttribute('default');
+    if (default_ === null) {
+      element.removeAttribute('value');
+    } else {
+      log('resetValueForSelectorAll:', selector, 'default:', default_);
+      element.setAttribute('value', default_);
+    }
+  }
+}
+
+
+
 function setupReloadingDateInput(input) {
   // Configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
   input.onfocus = null; // This handler is a lazy initializer; remove it.
