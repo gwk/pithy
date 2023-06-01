@@ -4,21 +4,21 @@
 
 import csv
 from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
-from sys import stdout
-from typing import Any, Callable, ContextManager, Iterable, Iterator, Optional, Sequence, TextIO, Type, Union
 from functools import cached_property
+from sys import stdout
+from typing import Any, Callable, ContextManager, Iterable, Iterator, Sequence, TextIO, Type, Union
 
 from .transtruct import bool_for_val
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
-def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
+def write_csv(f:TextIO, *, quoting:int=QUOTE_MINIMAL, header:Sequence[str]|None, rows:Iterable[Sequence]) -> None:
   w = csv.writer(f, quoting=quoting)
   if header is not None: w.writerow(header)
   w.writerows(rows)
 
 
-def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Optional[Sequence[str]], rows:Iterable[Sequence]) -> None:
+def out_csv(*, quoting:int=QUOTE_MINIMAL, header:Sequence[str]|None, rows:Iterable[Sequence]) -> None:
   write_csv(f=stdout, quoting=quoting, header=header, rows=rows)
 
 
@@ -36,7 +36,7 @@ def load_csv(file: TextIO, *,
  spread_args:bool=False,
  as_dicts:bool=False,
  preserve_empty_vals:bool=False,
- cols:dict[str,Optional[Callable]]|None=None) -> 'CsvLoader':
+ cols:dict[str,Callable|None]|None=None) -> 'CsvLoader':
 
   return CsvLoader(
     file=file,
@@ -84,7 +84,7 @@ class CsvLoader(Iterable, ContextManager):
    as_dicts:bool=False,
    remap_keys:dict[str,str]|None=None,
    preserve_empty_vals:bool=False,
-   cols:dict[str,Optional[Callable]]|None=None) -> None:
+   cols:dict[str,Callable|None]|None=None) -> None:
 
     # Filter out the unspecified options so that the dialect defaults are respected.
     opts:dict[str,Any] = { k : v for (k, v) in [
@@ -111,7 +111,7 @@ class CsvLoader(Iterable, ContextManager):
     self.remap_keys = remap_keys or {}
 
     if has_header:
-      try: self.header:Optional[list[str]] = [str(raw_cell) for raw_cell in next(self._reader)]
+      try: self.header:list[str]|None = [str(raw_cell) for raw_cell in next(self._reader)]
       except StopIteration: self.header = None # Allow empty files.
       else:
         if cols is not None: # Match expected header against actual.
