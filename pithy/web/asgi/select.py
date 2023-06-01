@@ -93,10 +93,10 @@ class SelectApp:
       Div(Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
 
       Label('Columns:'),
-      Div(id='columns-container', _=[
-        Div(id='columns', _=iter_interleave_sep(en_col_spans, ' '), cl='clear-on-table-change'),
-        Span(cl='en-act', _=A(id='col-show-all-act', _="Show All", onclick="onActionChange(this)")),
-        Span(cl='en-act', _=A(id='col-show-none-act', _="Show None", onclick="onActionChange(this)"))
+      Div(id='columns', cl='clear-on-table-change', _=[
+        *en_col_spans,
+        Input(type='button', value='All', onclick='updateAllColCheckboxes(true)'),
+        Input(type='button', value='None', onclick='updateAllColCheckboxes(false)'),
       ]),
 
       Label('Where:'),
@@ -377,28 +377,8 @@ def capital_letters_abbr(s:str) -> str:
 
 def main_script() -> Script:
   return Script('''
-  const showAllId = "col-show-all-act";
-  const showNoneId = "col-show-none-act";
-
-  function onActionChange(el) {
-    const showAllEl = document.getElementById(`${showAllId}`);
-    const showNoneEl = document.getElementById(`${showNoneId}`);
-    const cols = document.querySelectorAll('span.en-col input[type="checkbox"]');
-
-    if (el === showAllEl) {
-      return setChsVal(cols, true);
-    }
-
-    if (el === showNoneEl) {
-      return setChsVal(cols, false);
-    }
-  }
-
-  function setChsVal(chs, val) {
-    chs.forEach(ch => setChVal(ch, val))
-  }
-
-  function setChVal(ch, val) {
-    ch.checked = val;
+  function updateAllColCheckboxes(checked) {
+    const checkboxes = document.querySelectorAll('span.en-col input[type="checkbox"]');
+    checkboxes.forEach(el => el.checked = checked);
   }
   ''')
