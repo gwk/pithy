@@ -2,7 +2,9 @@
 
 from http import HTTPStatus
 from time import sleep
+from typing import Iterable, Sequence
 
+from pithy.csv import render_csv
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData
 from starlette.exceptions import HTTPException
@@ -13,6 +15,10 @@ from ..date import Date
 from ..html import HtmlNode
 from ..markup import MuChildLax
 from ..url import fmt_url
+
+
+class CsvResponse(Response):
+    media_type = 'text/csv'
 
 
 class DateConverter(Convertor):
@@ -44,6 +50,15 @@ def get_form_str(form_data:FormData, key:str) -> str:
   '''
   v = form_data.get(key)
   return v if isinstance(v, str) else ''
+
+
+def csv_response(*, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> CsvResponse:
+  '''
+  Return a CSV response.
+  `head` is a tuple of column names.
+  `rows` is an iterable of tuples of row values.
+  '''
+  return CsvResponse(content=render_csv(quoting=quoting, header=header, rows=rows))
 
 
 def htmx_response(*content:MuChildLax, FAKE_LATENCY=0.0) -> HTMLResponse:
