@@ -35,6 +35,7 @@ class SelectApp:
     html_response:Callable[[Request,Main],HTMLResponse],
     schemas:Iterable[Schema],
     vis: dict[str,dict[str,dict[str,Vis|bool]]], # Maps schema -> table -> column -> Vis|bool.
+    order_by: dict[str,dict[str,str]]|None=None,
     requires:str|Sequence[str]=()
   ) -> None:
 
@@ -52,6 +53,16 @@ class SelectApp:
 
     self.vis:dict[str,dict[str,dict[str,Vis]]] = {
       s.name : { t.name : { c.name : _vis_for(s.name, t.name, c.name) for c in t.columns} for t in s.tables } for s in schemas }
+
+    self.order_by:dict[str,dict[str,str]] = { s.name : {} for s in schemas }
+    if order_by:
+      for schema_name, schema_d in order_by.items():
+        if schema_name not in self.order_by: raise ValueError(f'invalid `order_by` schema name: {schema_name!r}; valid names: {self.schemas.keys()}')
+        schema = self.schemas[schema_name]
+        for table_name, order_by_clause in schema_d.items():
+          if table_name not in schema.tables_dict:
+            raise ValueError(f'invalid `order_by` table name in schema {schema_name!r}: {table_name!r}; valid names: {schema.tables_dict.keys()}')
+          self.order_by[schema_name][table_name] = order_by_clause
 
     self.requires = (requires,) if isinstance(requires, str) else tuple(requires)
     # TODO: optional table restrictions.
@@ -91,14 +102,19 @@ class SelectApp:
           Label(col.name)])
         for col in table.columns]
 
+      order_by = params.get('order_by') or self.order_by[schema.name].get(table.name, '')
+
     else:
       table_name = ''
       schema = None
+      table = None
       en_col_names = set()
       en_col_spans = []
+      order_by = ''
 
     table_names = [f'{qe(s.name)}.{qe(t.name)}' for s in self.schemas.values() for t in s.tables]
-    if table_name: assert table_name in table_names
+    if table_name: assert table_name in table_names # Sanity check that these generated table names match the parsed table name.
+
     main = Main(id='pithy_select_app', cl='bfull')
 
     main.append(main_script())
@@ -127,7 +143,7 @@ class SelectApp:
       Input(name='where', type='search', value=params.get('where', ''), cl='clear-on-table-change'),
 
       Label('Order by:'),
-      Input(name='order_by', type='search', value=params.get('order_by', ''),  cl='clear-on-table-change'),
+      Input(name='order_by', type='search', value=order_by,  cl='clear-on-table-change'),
 
       Label('Limit:'),
       Div(Input(name='limit', type='search', value=params.get('limit', '100'), default=100, cl='clear-on-table-change')),
@@ -141,14 +157,15 @@ class SelectApp:
 
     if table_name:
       assert schema
-      main.extend(self.render_table(schema, table, en_col_names, request.query_params))
+      assert table
+      main.extend(self.render_table(schema, table, en_col_names, order_by, request.query_params))
 
     return self.html_response(request, main)
 
 
   def get_schema_table(self, params:QueryParams) -> tuple[str,Schema,Table]|None:
 
-    try: full_name = params['table']
+    try: full_name = params['table'] # The 'table' param is qualified and quoted, (e.g. 'schema.table' or '"some schema"."some table"').
     except KeyError: return None
 
     try: schema_name, table_name = sql_parse_schema_table(full_name)
@@ -163,7 +180,7 @@ class SelectApp:
     return full_name, schema, table
 
 
-  def render_table(self, schema:Schema, table:Table, en_col_names:set[str], params:QueryParams) -> list[HtmlNode]:
+  def render_table(self, schema:Schema, table:Table, en_col_names:set[str], order_by:str, params:QueryParams) -> list[HtmlNode]:
 
     assert en_col_names # Need at least one column to render.
 
@@ -172,7 +189,6 @@ class SelectApp:
     en_cols = [c for c in table.columns if c.name in en_col_names]
 
     where = params.get('where', '')
-    order_by = params.get('order_by', '')
 
     limit = int(params.get('limit', 100) or 100)
     offset = int(params.get('offset', 0) or 0)
