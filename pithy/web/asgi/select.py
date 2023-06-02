@@ -20,7 +20,6 @@ from ...sqlite import Connection, Row
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table
 from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
-
 from .vis import Vis
 
 
@@ -34,14 +33,26 @@ class SelectApp:
   def __init__(self,
     get_conn:Callable[[],Connection],
     html_response:Callable[[Request,Main],HTMLResponse],
-    schemas:Iterable[Schema], 
-    vis_dict: dict[str, dict[str, dict[str, Vis|bool]]], # schema -> table -> column -> Vis|bool mapping
+    schemas:Iterable[Schema],
+    vis: dict[str,dict[str,dict[str,Vis|bool]]], # Maps schema -> table -> column -> Vis|bool.
     requires:str|Sequence[str]=()
   ) -> None:
+
     self.get_conn = get_conn
     self.html_response = html_response
     self.schemas = { s.name : s for s in schemas }
-    self.vis_dict = vis_dict
+
+    def _vis_for(schema:str, table:str, col:str) -> Vis:
+      try: v = vis[schema][table][col]
+      except KeyError: return Vis(show=True)
+      else:
+        if isinstance(v, Vis): return v
+        elif isinstance(v, bool): return Vis(show=v)
+        else: raise TypeError(f'invalid vis; schema={schema!r}, table={table!r}, col={col!r}; vis: {v!r}')
+
+    self.vis:dict[str,dict[str,dict[str,Vis]]] = {
+      s.name : { t.name : { c.name : _vis_for(s.name, t.name, c.name) for c in t.columns} for t in s.tables } for s in schemas }
+
     self.requires = (requires,) if isinstance(requires, str) else tuple(requires)
     # TODO: optional table restrictions.
 
@@ -54,6 +65,11 @@ class SelectApp:
     await response(scope, receive, send)
 
 
+  def should_show(self, schema:str, table:str, col:str) -> bool:
+    try: return self.vis[schema][table][col].show
+    except KeyError: return True
+
+
   def render_page(self, request:Request) -> HTMLResponse:
     '''
     The main page for the SELECT app.
@@ -62,11 +78,11 @@ class SelectApp:
 
     if nst := self.get_schema_table(params):
       table_name, schema, table = nst
+      table_vis = self.vis[schema.name][table.name]
 
-      cols_vis = { c.name: select_vis(schema, table, c.name, self.vis_dict) for c in table.columns }
       en_col_names = set(
         [k[2:] for k in params if k.startswith('c-')]
-        or [c.name for c in table.columns if (cols_vis.get(c.name).show if isinstance(cols_vis.get(c.name), Vis) else cols_vis.get(c.name))]
+        or [c.name for c in table.columns if table_vis[c.name].show]
         or [table.columns[0].name])
 
       en_col_spans = [
@@ -161,8 +177,10 @@ class SelectApp:
     limit = int(params.get('limit', 100) or 100)
     offset = int(params.get('offset', 0) or 0)
 
+    table_vis = self.vis[schema.name][table.name]
+
     columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
-      schema=schema.name, table=table.name, cols=en_cols, vis_dict=self.vis_dict)
+      schema=schema.name, table=table.name, cols=en_cols, table_vis=table_vis)
 
     select_head = 'SELECT' + (' DISTINCT' if distinct else '')
     where_clause = f'\nWHERE {where}' if where else ''
@@ -230,13 +248,12 @@ class SelectApp:
     return summary
 
 
-def fmt_select_cols(schema:str, table:str, cols:list[Column], vis_dict) -> tuple[str,str,list[str],list[CellRenderFn]]:
+def fmt_select_cols(schema:str, table:str, cols:list[Column], table_vis:dict[str,Vis]) -> tuple[str,str,list[str],list[CellRenderFn]]:
   '''
   Return "SELECT [cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
   '''
 
-  all_vis = filter(lambda v: isinstance(v, Vis) , [select_vis(schema, table, col.name, vis_dict) for col in cols])
-  schema_abbrs = abbreviate_schema_names({schema, *(vis.schema for vis in all_vis)})
+  schema_abbrs = abbreviate_schema_names({schema, *(vis.schema for vis in table_vis.values())})
   table_abbrs = Counter[str]()
 
   def simple_table_abbr(schema:str, table:str) -> str:
@@ -279,8 +296,8 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column], vis_dict) -> tuple
   for col in cols:
     qcol = qe(col.name)
     qual_col = f'{t_abbr}.{qcol}'
-    vis = select_vis(schema, table, col.name, vis_dict)
-    if isinstance(vis, Vis) and vis.join:
+    vis = table_vis[col.name]
+    if vis.join:
       # Generate a join to show the desired visualization column.
       # We need to select two columns: the actual column value (for the tooltip and link), and the joined value for the visible text.
       join_table = table_abbr(vis.schema, vis.table)
@@ -296,7 +313,7 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column], vis_dict) -> tuple
     else:
       head_name = qe(col.name)
       append_select_part(qual_col)
-      if isinstance(vis, Vis) and vis.render:
+      if vis.render:
         cell_fn = mk_cell_rendered(col, render_fn=vis.render)
       else:
         cell_fn = mk_cell_plain(col)
@@ -359,12 +376,6 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
     return Td(cl=('joined', cl), _=A(href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=display_val))
 
   return cell_joined
-
-
-def select_vis(schema:str, table:str, col: str, vis_dict:dict[str, dict[str, dict[str, Vis]]]) -> Vis|bool:
-  try: return vis_dict.get(schema).get(table).get(col)
-  except Exception as e:
-    return True
 
 
 def try_vis_render(render_fn:ValRenderFn, val:Any) -> tuple[str,MuChild]:

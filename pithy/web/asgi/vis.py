@@ -34,8 +34,10 @@ class Vis:
       _setattr(self, 'table', t)
       _setattr(self, 'join_col', c)
 
+
   def __repr__(self) -> str:
     return f'Vis(join={self.join!r}, col={self.col!r})'
+
 
   @cached_property
   def schema_table(self) -> str:
