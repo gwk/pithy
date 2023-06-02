@@ -16,7 +16,7 @@ from starlette.responses import HTMLResponse
 from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Span,
   Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ...html.parse import linkify
-from ...sqlite import Connection, Row
+from ...sqlite import Connection, Row, SqliteError
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table
 from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
@@ -197,14 +197,12 @@ class SelectApp:
       plan = f'Explain query failed: {e}\n{query}'
       is_ok = False
 
-    count = ''
+    count:int|None = None
     if is_ok:
       try:
-        count_int = c.run(f'{select_head} COUNT() {from_clause}{where_clause}').one_col()
-      except Exception as e:
-        count = f'Count failed: {e}\n{query}'
-      else:
-        count = f'{count_int:,}'
+        count = c.run(f'{select_head} COUNT() {from_clause}{where_clause}').one_col()
+      except SqliteError as e:
+        is_ok = False
 
     rows = []
     if is_ok:
@@ -219,33 +217,46 @@ class SelectApp:
       Div(id='query', cl='kv-grid-max', _=[
         Label('Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', _=query),
         Label('Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan),
-        Label('Count:'), Pre(id='select_count', hx_swap_oob='innerHTML', _=count and f'{count}'),
       ]),
-      Div(id='pagination', cl='kv-grid-max',  _=[self.render_paging(count_int, limit, offset, params)]),
+      Div(id='pagination', cl='kv-grid-max',  _=[self.render_pagination_control(count, limit, offset, params)]),
       Div(id='results', _=HtmlTable(cl='dense', _=[
         Thead(Tr(_=[Th(Div(name)) for name in header_names])),
         Tbody(_=rows)])),
     ]
 
 
-  def render_paging(self, count: int, limit: int, offset: int, params: QueryParams) -> Div:
-    summary = Div()
-    if count > 0:
+  def render_pagination_control(self, count:int|None, limit:int, offset:int, params:QueryParams) -> Div:
+    first = A(cl='icon', _='⏮️')
+    prev  = A(cl='icon', _='◀️')
+    next_ = A(cl='icon', _='▶️')
+    last  = A(cl='icon', _='⏭️')
+    icons = (first, prev, next_, last)
+
+    msg = Span(cl='msg')
+    div = Div(*icons, msg, cl='pagination-control')
+
+    if count is None:
+      msg.append('Query failed.')
+    elif count > 0:
       if count > limit:
         s = offset + 1
         l = min(offset + limit, count)
-        summary.append(f'{s}-{l} of {count} results.')
+        msg.append(f'{s:,}-{l:,} of {count:,} results.')
         qp = QueryParams([(k, v) for k, v in params.items() if k != 'offset'])
-        first = A(cl='icon', href=f'?{qp}', _='⏮️') if offset > 0 else Span(cl='icon o50', _='⏮️')
-        prev  = A(cl='icon', href=f'?{qp}&offset={offset - limit}', _='◀️') if offset > 0 else Span(cl='icon o50', _='◀️')
-        next_ = A(cl='icon', href=f'?{qp}&offset={offset + limit}', _='▶️') if l < count else Span(cl='icon o50', _='▶️')
-        last  = A(cl='icon', href=f'?{qp}&offset={count - limit}', _='⏭️') if l < count else Span(cl='icon o50', _='⏭️')
-        summary.append(Div(_=[first, ' ', prev, ' ', next_, ' ', last]))
+        if offset > 0:
+          first['href'] = f'?{qp}'
+          prev['href']  = f'?{qp}&offset={offset - limit}'
+        if l < count:
+          next_['href'] = f'?{qp}&offset={offset + limit}'
+          last['href']  = f'?{qp}&offset={count - limit}'
       else:
-        summary.append(f'{count} results.')
+        msg.append(f'{count} results.')
     else:
-      summary.append('No results.')
-    return summary
+      msg.append('No results.')
+
+    for icon in icons:
+      if 'href' not in icon.attrs: icon.append_class('o50')
+    return div
 
 
 def fmt_select_cols(schema:str, table:str, cols:list[Column], table_vis:dict[str,Vis]) -> tuple[str,str,list[str],list[CellRenderFn]]:

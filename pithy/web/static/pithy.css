@@ -286,6 +286,10 @@ table.dense tbody tr:nth-child(odd) {
   margin: 1em 0;
 }
 
+#pithy_select_app .pagination-control span.msg {
+  margin-left: 0.5em;
+}
+
 #pithy_select_app #results {
   width: 100%;
   overflow-x: scroll;
