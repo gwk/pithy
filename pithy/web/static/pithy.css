@@ -270,7 +270,8 @@ table.dense tbody tr:nth-child(odd) {
 
 #pithy_select_app form #columns {
   display: flex;
-  gap: 1em;
+  flex-wrap: wrap;
+  column-gap: 1em;
 }
 
 #pithy_select_app form span.en-col {
