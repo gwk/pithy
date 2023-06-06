@@ -102,7 +102,7 @@ class SelectApp:
           Label(col.name)])
         for col in table.columns]
 
-      order_by = params.get('order_by') or self.order_by[schema.name].get(table.name, '')
+      order_by = params.get('order_by', '') or self.order_by[schema.name].get(table.name, '')
 
     else:
       table_name = ''
