@@ -16,6 +16,7 @@ from starlette.responses import HTMLResponse
 from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Span,
   Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ...html.parse import linkify
+from ...html.parts import pagination_control
 from ...sqlite import Connection, Row, SqliteError
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table
@@ -234,45 +235,11 @@ class SelectApp:
         Label('Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', _=query),
         Label('Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan),
       ]),
-      Div(id='pagination', cl='kv-grid-max',  _=[self.render_pagination_control(count, limit, offset, params)]),
+      Div(id='pagination', cl='kv-grid-max',  _=[pagination_control(count, limit, offset, params)]),
       Div(id='results', _=HtmlTable(cl='dense', _=[
         Thead(Tr(_=[Th(Div(name)) for name in header_names])),
         Tbody(_=rows)])),
     ]
-
-
-  def render_pagination_control(self, count:int|None, limit:int, offset:int, params:QueryParams) -> Div:
-    first = A(cl='icon', _='⏮️')
-    prev  = A(cl='icon', _='◀️')
-    next_ = A(cl='icon', _='▶️')
-    last  = A(cl='icon', _='⏭️')
-    icons = (first, prev, next_, last)
-
-    msg = Span(cl='msg')
-    div = Div(*icons, msg, cl='pagination-control')
-
-    if count is None:
-      msg.append('Query failed.')
-    elif count > 0:
-      if count > limit:
-        s = offset + 1
-        l = min(offset + limit, count)
-        msg.append(f'{s:,}-{l:,} of {count:,} results.')
-        qp = QueryParams([(k, v) for k, v in params.items() if k != 'offset'])
-        if offset > 0:
-          first['href'] = f'?{qp}'
-          prev['href']  = f'?{qp}&offset={offset - limit}'
-        if l < count:
-          next_['href'] = f'?{qp}&offset={offset + limit}'
-          last['href']  = f'?{qp}&offset={count - limit}'
-      else:
-        msg.append(f'{count} results.')
-    else:
-      msg.append('No results.')
-
-    for icon in icons:
-      if 'href' not in icon.attrs: icon.append_class('o50')
-    return div
 
 
 def fmt_select_cols(schema:str, table:str, cols:list[Column], table_vis:dict[str,Vis]) -> tuple[str,str,list[str],list[CellRenderFn]]:
