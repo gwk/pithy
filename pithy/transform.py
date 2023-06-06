@@ -173,7 +173,7 @@ class Transformer(Generic[_T], ContextManager):
 
     errL(f'◊ transform stages: {", ".join(self.stage_names)}.')
 
-    for item in err_progress(self.iterable, 'transform', 'items', frequency=self.progress_frequency):
+    for item in err_progress(self.iterable, label='transform', suffix='items', frequency=self.progress_frequency):
       try:
         for fn in stages:
           item = fn(item)

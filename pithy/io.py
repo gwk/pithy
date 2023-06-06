@@ -223,7 +223,8 @@ def errM(*labels_and_obj:Any, **opts) -> None:
   writeM(stderr, *labels_and_obj, **opts)
 
 
-def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suffix='', frequency:Union[float,int]=0.1, limit=0) -> Iterator[_T]:
+def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_suffix='', frequency:Union[float,int]=0.1,
+ limit=0) -> Iterator[_T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.
@@ -250,37 +251,38 @@ def err_progress(iterable: Iterable[_T], label='progress', suffix='', final_suff
     total = '/' + ls
 
   if type(frequency) is float: # Use `is` instead of `isinstance` or else type checker thinks `else` branch is unreachable.
-    from time import time
+    from time import monotonic as timer  # on macOS, monotomic and perf_counter both perform slightly better than `time`.
+
+    # A previous version attempted to reduce the number of calls to the timer to reduce overhead.
+    # However this was susceptible to visual stalling when the iteration times varied widely.
+    # On macOS, calling the timer on every iteration induces ~1.3x overhead for a `x += 1` loop,
+    # compared to the same loop with a very large integer frequency.
+    # Since most loop bodies are more expensive, this seems acceptable.
     def err_progress_gen() -> Iterator[_T]:
-      prev_t = time()
-      step = 1
-      next_i = step
-      i = -1
-      for i, el in enumerate(iterable):
-        if limit and i == limit:
-          i -= 1
-          break
-        if i == next_i:
-          print(f'{pre}{i:{width},}{total}{post}', end='', file=stderr, flush=True)
-          t = time()
-          d = t - prev_t
-          step = max(1, int(step * frequency / d))
+      prev_t = -1.0
+      completed_count = 0
+      for el in iterable:
+        if limit and completed_count == limit: break
+        t = timer()
+        d = t - prev_t
+        if d >= frequency:
+          print(f'{pre}{completed_count:{width},}{total}{post}', end='', file=stderr, flush=True)
           prev_t = t
-          next_i = i + step
         yield el
-      print(f'{pre}{i+1:{width},}{total}{final}', file=stderr)
+        completed_count += 1
+
+      print(f'{pre}{completed_count:{width},}{total}{final}', file=stderr)
 
   else: # frequency is an int.
     def err_progress_gen() -> Iterator[_T]:
-      i = -1
-      for i, el in enumerate(iterable):
-        if limit and i == limit:
-          i -= 1
-          break
-        if i % frequency == 0:
-          print(pre + str(i) + post, end='', file=stderr, flush=True)
+      completed_count = 0
+      for el in iterable:
+        if limit and completed_count >= limit: break
+        if completed_count % frequency == 0:
+          print(f'{pre}{completed_count:{width},}{total}{post}', end='', file=stderr, flush=True)
         yield el
-      print(pre + str(i) + final, file=stderr)
+        completed_count += 1
+      print(f'{pre}{completed_count:{width},}{total}{final}', file=stderr)
 
   return err_progress_gen()
 
