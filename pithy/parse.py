@@ -6,7 +6,7 @@ Recursive decent is performed by looking at the next token,
 and then dispatching through a table of token kinds to select the appropriate Rule.
 
 Upon parsing, each type of rule produces a generic result, which is then passed to a user-provided transformer function.
-Different rule types have different transformer function types to match the shape of the parsed structure.
+Different rule types have different result and transformer function types to match the shape of the parsed structure.
 Transformers can return results of any type.
 
 Several types of rules are available:
@@ -18,7 +18,7 @@ Several types of rules are available:
 
 The main design feature of Parser is that operators are not first-class rules:
 they are parsed within the context of a Precedence rule.
-This allows us to use the simple operator-precedence parsing algorithm,
+This allows us to use the operator-precedence parsing algorithm,
 while expressing other aspects of a grammar using straightforward recursive descent.
 '''
 
