@@ -841,7 +841,7 @@ class Parser:
       return single_transform
 
     raw_field_names = [sub.field_name for sub, should_inlude in zip(subs, includes) if should_inlude]
-    field_names = ('slc',) + tuple(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names))
+    field_names = ('slc', *(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names)))
 
     struct_type = self._mk_struct_type(name, field_names=field_names)
 
