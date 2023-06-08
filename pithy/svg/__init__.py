@@ -7,7 +7,8 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from typing import Any, ClassVar, Iterable, Optional, Type, Union
 
-from ..markup import _Mu, add_opt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildOrChildrenLax, NoMatchError, prefer_int
+from ..markup import (_Mu, add_opt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError,
+  prefer_int)
 from ..range import Num, NumRange
 
 
@@ -34,14 +35,15 @@ class SvgNode(Mu):
   }
 
 
-  def __init__(self:_Mu, *,
+  def __init__(self:_Mu,
+   *_mu_positional_children:'MuChildLax', # Children can be passed as positional arguments.
+   _:'MuChildOrChildrenLax'=(), # Children can also be passed to the named underscore parameter.
    tag:str='',
-   attrs:MuAttrs|None=None,
-   _:MuChildOrChildrenLax=(),
    cl:Iterable[str]|None=None,
    _orig:_Mu|None=None,
    _parent:Optional['Mu']=None,
-   title:str|None=None,
+   title:str|None=None, # See docstring.
+   attrs:MuAttrs|None=None,
    **kw_attrs:Any) -> None:
     '''
     SvgNode constructor.
