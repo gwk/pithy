@@ -85,8 +85,8 @@ class Mu:
   _:list['MuChild']
 
   def __init__(self:_Mu,
-   *_mu_positional_children:'MuChildLax', # Additional children can be passed as positional arguments.
-   _:'MuChildOrChildrenLax'=(),
+   *_mu_positional_children:'MuChildLax', # Children can be passed as positional arguments.
+   _:'MuChildOrChildrenLax'=(), # Children can also be passed to the named underscore parameter.
    tag:str='',
    cl:Iterable[str]|None=None,
    _orig:_Mu|None=None, # _orig is set by methods that are called with the `traversable` option.
