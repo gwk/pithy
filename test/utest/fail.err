@@ -14,7 +14,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 48, in utest
+~   File ".+/utest/__init__.py", line 48, in utest
 |     try: ret = fn(*args, **kwargs)
 |                ^^^^^^^^^^^^^^^^^^^
 |   File "./fail.py", line 6, in raise_unexpected
@@ -34,7 +34,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 81, in utest_exc
+~   File ".+/utest/__init__.py", line 81, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |                ^^^^^^^^^^^^^^^^^^^
 |   File "./fail.py", line 6, in raise_unexpected
@@ -49,7 +49,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 100, in utest_seq
+~   File ".+/utest/__init__.py", line 100, in utest_seq
 |     ret_seq = fn(*args, **kwargs)
 |               ^^^^^^^^^^^^^^^^^^^
 |   File "./fail.py", line 6, in raise_unexpected
@@ -71,7 +71,7 @@
 |     exc arg 0: "'int' object is not iterable"
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 106, in utest_seq
+~   File ".+/utest/__init__.py", line 106, in utest_seq
 |     ret = list(ret_seq)
 |           ^^^^^^^^^^^^^
 | TypeError: 'int' object is not iterable
@@ -89,7 +89,7 @@
 |     exc arg 0: "'int' object is not iterable"
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 128, in utest_seq_exc
+~   File ".+/utest/__init__.py", line 128, in utest_seq_exc
 |     ret = list(ret_seq)
 |           ^^^^^^^^^^^^^
 | TypeError: 'int' object is not iterable
@@ -102,7 +102,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 128, in utest_seq_exc
+~   File ".+/utest/__init__.py", line 128, in utest_seq_exc
 |     ret = list(ret_seq)
 |           ^^^^^^^^^^^^^
 |   File "./fail.py", line 24, in yield_then_raise
@@ -137,7 +137,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 81, in utest_exc
+~   File ".+/utest/__init__.py", line 81, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |                ^^^^^^^^^^^^^^^^^^^
 |   File "./fail.py", line 31, in add
@@ -154,7 +154,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 81, in utest_exc
+~   File ".+/utest/__init__.py", line 81, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |                ^^^^^^^^^^^^^^^^^^^
 |   File "./fail.py", line 31, in add
@@ -188,7 +188,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 81, in utest_exc
+~   File ".+/utest/__init__.py", line 81, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |                ^^^^^^^^^^^^^^^^^^^
 |   File "./fail.py", line 35, in a_plus_bc
@@ -206,7 +206,7 @@
 |     exc arg 0: "invalid literal for int() with base 10: 'a'"
 |
 | Traceback (most recent call last):
-~   File ".+/pithy/utest/__init__.py", line 81, in utest_exc
+~   File ".+/utest/__init__.py", line 81, in utest_exc
 |     try: ret = fn(*args, **kwargs)
 |                ^^^^^^^^^^^^^^^^^^^
 |   File "./fail.py", line 35, in a_plus_bc
