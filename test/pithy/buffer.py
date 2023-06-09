@@ -40,9 +40,9 @@ utest_seq([3, 4], b.peek_while, pred=lambda el: True)
 utest_seq([3, 4], b.take_while, pred=lambda el: True)
 utest_seq([], b.take_while, pred=bool)
 
-b = Buffer('abc')
-utest(['a', 'b'], b.peeks, 2)
-utest(['a', 'b'], b.take, 2)
+bs= Buffer('abc')
+utest(['a', 'b'], bs.peeks, 2)
+utest(['a', 'b'], bs.take, 2)
 
 utest_exc(StopIteration(), Buffer('ab').take, 3)
 utest_exc(StopIteration(), Buffer('ab').peeks, 3)
