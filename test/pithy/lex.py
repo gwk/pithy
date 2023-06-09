@@ -113,4 +113,3 @@ utest_seq([
   'newline', 'indent', 'd',
   'newline', 'dedent', 'dedent'],
   run_word_indent_lexer, word_indent_text)
-

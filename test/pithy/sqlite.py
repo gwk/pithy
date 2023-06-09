@@ -2,4 +2,3 @@
 
 from utest import *
 from pithy.sqlite import *
-

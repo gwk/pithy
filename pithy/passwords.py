@@ -2,6 +2,7 @@
 
 from secrets import randbelow
 
+
 base36LC_chars = '0123456789abcdefghijklmnopqrstuvwxyz'
 
 

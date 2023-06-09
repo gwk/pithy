@@ -50,4 +50,3 @@ utest(['a', 'b'], Buffer('ab').take, 3, short=True)
 utest(['a', 'b'], Buffer('ab').peeks, 3, short=True)
 utest(['a', 'b', None], Buffer('ab').take, 3, default=None)
 utest(['a', 'b', None], Buffer('ab').peeks, 3, default=None)
-
