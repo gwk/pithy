@@ -213,26 +213,40 @@ def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit=Fal
 
 def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:Any=None, subj:Any=None,
  args:Tuple[Any,...]=(), kwargs:Dict[str,Any]={}) -> None:
+
   global _utest_failure_count
   assert subj is not None
   _utest_failure_count += 1
+
   frame_record = _inspect.stack()[2 + depth] # caller of caller.
   frame = frame_record[0]
   info = _inspect.getframeinfo(frame)
+
   try: name = subj.__qualname__
   except AttributeError: name = str(subj)
+
   path = _rel_path(info.filename)
   if '/' not in path: path = f'./{path}'
   _errL(f'\n{path}:{info.lineno}: utest failure: {name}')
+
   for i, el in enumerate(args):
     _errL(f'  arg {i} = {el!r}')
+
   for name, val, in kwargs.items():
     _errL(f'  arg {name} = {val!r}')
-  _errL(f'  expected {exp_label}: {exp!r}')
-  if ret_label: # unexpected value.
-    _errL(f'  returned {ret_label}: {ret!r}')
-  if exc is not None: # unexpected exception.
-    _errL(f'  raised exception:   {exc!r}')
+
+  exp_label_colon = f'expected {exp_label}:'
+  if ret_label: # Unexpected value.
+    res_label_colon = f'returned {ret_label}:'
+    res = ret
+  if exc is not None: # Unexpected exception.
+    res_label_colon = f'raised exception:'
+    res = exc
+  width = max(len(exp_label_colon),len(res_label_colon))
+
+  _errL(f'  {exp_label_colon:{width}} {exp!r}')
+  _errL(f'  {res_label_colon:{width}} {res!r}')
+  if exc is not None: # Unexpected exception.
     for i, arg in enumerate(exc.args):
       _errL(f'    exc arg {i}: {arg!r}')
     _errL()

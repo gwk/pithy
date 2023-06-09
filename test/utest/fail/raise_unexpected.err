@@ -1,0 +1,77 @@
+|
+~ \./raise_unexpected.py:\d+: utest failure: raise_unexpected
+|   expected value:   True
+|   raised exception: Exception('unexpected')
+|     exc arg 0: 'unexpected'
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest
+|     try: ret = fn(*args, **kwargs)
+|                ^^^^^^^^^^^^^^^^^^^
+~   File "./raise_unexpected.py", line \d+, in raise_unexpected
+|     def raise_unexpected(): raise Exception('unexpected')
+|                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+| Exception: unexpected
+|
+|
+~ \./raise_unexpected.py:\d+: utest failure: raise_unexpected
+|   expected exception: Exception('expected')
+|   raised exception:   Exception('unexpected')
+|     exc arg 0: 'unexpected'
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_exc
+|     try: ret = fn(*args, **kwargs)
+|                ^^^^^^^^^^^^^^^^^^^
+~   File "./raise_unexpected.py", line \d+, in raise_unexpected
+|     def raise_unexpected(): raise Exception('unexpected')
+|                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+| Exception: unexpected
+|
+|
+~ \./raise_unexpected.py:\d+: utest failure: raise_unexpected
+|   expected sequence: [0]
+|   raised exception:  Exception('unexpected')
+|     exc arg 0: 'unexpected'
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_seq
+|     ret_seq = fn(*args, **kwargs)
+|               ^^^^^^^^^^^^^^^^^^^
+~   File "./raise_unexpected.py", line \d+, in raise_unexpected
+|     def raise_unexpected(): raise Exception('unexpected')
+|                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+| Exception: unexpected
+|
+|
+~ .+/raise_unexpected.py:\d+: utest failure: yield_then_raise
+|   arg 0 = 1
+|   expected sequence: [0]
+|   raised exception:  Exception('unexpected')
+|     exc arg 0: 'unexpected'
+|
+| Traceback (most recent call last):
+~   File "~.+/utest/__init__.py", line \d+, in utest_seq
+|     ret = list(ret_seq)
+|           ^^^^^^^^^^^^^
+~   File "./raise_unexpected.py", line \d+, in yield_then_raise
+|     raise Exception('unexpected')
+| Exception: unexpected
+|
+|
+~ \./raise_unexpected.py:\d+: utest failure: yield_then_raise
+|   arg 0 = 1
+|   expected exception: Exception('expected')
+|   raised exception:   Exception('unexpected')
+|     exc arg 0: 'unexpected'
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_seq_exc
+|     ret = list(ret_seq)
+|           ^^^^^^^^^^^^^
+~   File "./raise_unexpected.py", line \d+, in yield_then_raise
+|     raise Exception('unexpected')
+| Exception: unexpected
+|
+|
+~ utest ran: \d+; failed: \d+

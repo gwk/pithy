@@ -1,0 +1,72 @@
+|
+~ ./various.py:\d+: utest failure: <lambda>
+|   arg 0 = 0
+|   arg 1 = 1
+|   arg x = 'x'
+|   arg y = 'y'
+|   expected value: True
+|   returned value: False
+|
+|
+~ \./various.py:\d+: utest failure: <lambda>
+|   expected exception: Exception('expected')
+|   returned value:     True
+|
+|
+~ \./various.py:\d+: utest failure: range
+|   arg 0 = 0
+|   expected sequence: [0]
+|   returned sequence: []
+|
+|
+~ \./various.py:\d+: utest failure: <lambda>
+|   expected sequence: [0]
+|   raised exception:  TypeError("'int' object is not iterable")
+|     exc arg 0: "'int' object is not iterable"
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_seq
+|     ret = list(ret_seq)
+|           ^^^^^^^^^^^^^
+| TypeError: 'int' object is not iterable
+|
+|
+~ \./various.py:\d+: utest failure: range
+|   arg 0 = 1
+|   expected exception: Exception('expected')
+|   returned sequence:  [0]
+|
+|
+~ \./various.py:\d+: utest failure: <lambda>
+|   expected exception: Exception('expected')
+|   raised exception:   TypeError("'int' object is not iterable")
+|     exc arg 0: "'int' object is not iterable"
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_seq_exc
+|     ret = list(ret_seq)
+|           ^^^^^^^^^^^^^
+| TypeError: 'int' object is not iterable
+|
+|
+~ \./various.py:\d+: utest failure: yield_then_raise
+|   arg 0 = 1
+|   expected exception: Exception('expected')
+|   raised exception:   Exception('unexpected')
+|     exc arg 0: 'unexpected'
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_seq_exc
+|     ret = list(ret_seq)
+|           ^^^^^^^^^^^^^
+~   File "./various.py", line \d+, in yield_then_raise
+|     raise Exception('unexpected')
+| Exception: unexpected
+|
+|
+~ \./various.py:\d+: utest failure: 'utest_val fail test'
+|   expected value: True
+|   returned value: False
+|
+|
+~ utest ran: \d+; failed: \d+
