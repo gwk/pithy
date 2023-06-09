@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_exc, utest_seq, utest_seq_exc, utest_val, usymmetric
+from utest import utest, utest_exc, utest_seq, utest_seq_exc, utest_val, utest_symmetric
 
 
 utest(True, lambda: True)
@@ -24,12 +24,12 @@ utest_val(1, 1, 'int test')
 utest_val((0,1), (0,1), 'tuple test')
 
 def add(a, b): return int(a) + int(b)
-usymmetric(utest, 3, add, 1, 2)
-usymmetric(utest_exc, ValueError("invalid literal for int() with base 10: 'a'"), add, 'a', 'a')
+utest_symmetric(utest, 3, add, 1, 2)
+utest_symmetric(utest_exc, ValueError("invalid literal for int() with base 10: 'a'"), add, 'a', 'a')
 
 def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
-usymmetric(utest, 7, a_plus_bc, 1, 2, 3)
-usymmetric(utest_exc, ValueError("invalid literal for int() with base 10: 'a'"), a_plus_bc, 1, 'a', 'a')
+utest_symmetric(utest, 7, a_plus_bc, 1, 2, 3)
+utest_symmetric(utest_exc, ValueError("invalid literal for int() with base 10: 'a'"), a_plus_bc, 1, 'a', 'a')
 
 
 def raise_exc(arg):
