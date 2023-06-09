@@ -13,7 +13,9 @@ GraphvizName = Union[int, float, str]
 GraphvizAttrs = Mapping[str,GraphvizName]
 GraphvizValAttrs = Tuple[GraphvizName,GraphvizAttrs]
 GraphvizValues = Union[Iterable[GraphvizName], Iterable[GraphvizValAttrs], Mapping[GraphvizName,GraphvizAttrs]]
-GraphvizAdjacency = Union[Mapping[GraphvizName,GraphvizValues], Iterable[Tuple[GraphvizName,GraphvizValues]]]
+GraphvizAdjacencyIterable = Iterable[Tuple[GraphvizName,GraphvizValues]]
+GraphvizAdjacencyMapping = Mapping[GraphvizName,GraphvizValues]
+GraphvizAdjacency = Union[GraphvizAdjacencyIterable,GraphvizAdjacencyMapping]
 GraphvizNodes = Mapping[GraphvizName,GraphvizAttrs]
 
 dot_bare_id_re = re.compile(r'[_a-zA-Z][_a-zA-Z0-9]*')
