@@ -1,0 +1,102 @@
+|
+~ ./utest_symmetric.py:\d+: utest failure: add
+|   arg 0 = 1
+|   arg 1 = 2
+|   expected value: 0
+|   returned value: 3
+|
+|
+~ ./utest_symmetric.py:\d+: utest failure: add
+|   arg 0 = 2
+|   arg 1 = 1
+|   expected value: 0
+|   returned value: 3
+|
+|
+~ ./utest_symmetric.py:\d+: utest failure: add
+|   arg 0 = 'a'
+|   arg 1 = 'a'
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
+|     exc arg 0: "invalid literal for int() with base 10: 'a'"
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_exc
+|     try: ret = fn(*args, **kwargs)
+|                ^^^^^^^^^^^^^^^^^^^
+~   File "./utest_symmetric.py", line \d+, in add
+|     def add(a, b): return int(a) + int(b)
+|                           ^^^^^^
+| ValueError: invalid literal for int() with base 10: 'a'
+|
+|
+~ ./utest_symmetric.py:\d+: utest failure: add
+|   arg 0 = 'a'
+|   arg 1 = 'a'
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
+|     exc arg 0: "invalid literal for int() with base 10: 'a'"
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_exc
+|     try: ret = fn(*args, **kwargs)
+|                ^^^^^^^^^^^^^^^^^^^
+~   File "./utest_symmetric.py", line \d+, in add
+|     def add(a, b): return int(a) + int(b)
+|                           ^^^^^^
+| ValueError: invalid literal for int() with base 10: 'a'
+|
+|
+~ ./utest_symmetric.py:\d+: utest failure: a_plus_bc
+|   arg 0 = 1
+|   arg 1 = 2
+|   arg 2 = 3
+|   expected value: 0
+|   returned value: 7
+|
+|
+~ ./utest_symmetric.py:\d+: utest failure: a_plus_bc
+|   arg 0 = 1
+|   arg 1 = 3
+|   arg 2 = 2
+|   expected value: 0
+|   returned value: 7
+|
+|
+~ ./utest_symmetric.py:\d+: utest failure: a_plus_bc
+|   arg 0 = 1
+|   arg 1 = 'a'
+|   arg 2 = 'a'
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
+|     exc arg 0: "invalid literal for int() with base 10: 'a'"
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_exc
+|     try: ret = fn(*args, **kwargs)
+|                ^^^^^^^^^^^^^^^^^^^
+~   File "./utest_symmetric.py", line \d+, in a_plus_bc
+|     def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
+|                                             ^^^^^^
+| ValueError: invalid literal for int() with base 10: 'a'
+|
+|
+~ ./utest_symmetric.py:\d+: utest failure: a_plus_bc
+|   arg 0 = 1
+|   arg 1 = 'a'
+|   arg 2 = 'a'
+|   expected exception: Exception('expected')
+|   raised exception:   ValueError("invalid literal for int() with base 10: 'a'")
+|     exc arg 0: "invalid literal for int() with base 10: 'a'"
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_exc
+|     try: ret = fn(*args, **kwargs)
+|                ^^^^^^^^^^^^^^^^^^^
+~   File "./utest_symmetric.py", line \d+, in a_plus_bc
+|     def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
+|                                             ^^^^^^
+| ValueError: invalid literal for int() with base 10: 'a'
+|
+|
+~ utest ran: \d+; failed: \d+
