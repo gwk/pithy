@@ -44,7 +44,7 @@ docs:
 	craft-docs
 
 isort:
-	isort $(packages)
+	isort $(packages) test
 
 gen: gen-data gen-grammars
 
