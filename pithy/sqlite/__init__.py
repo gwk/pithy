@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import (Any, cast, Callable, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, Tuple,
+from typing import (Any, Callable, cast, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, Tuple,
   TypeAlias, TypeVar)
 from urllib.parse import quote as url_quote
 

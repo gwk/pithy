@@ -1,9 +1,10 @@
-from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, List, TextIO
 from array import array
-from mmap import mmap
 from ctypes import _CData
-from zstandard import ZstdCompressor
+from mmap import mmap
 from pickle import PickleBuffer
+from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, List, TextIO
+
+from zstandard import ZstdCompressor
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 

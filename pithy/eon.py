@@ -12,7 +12,7 @@ from inspect import Parameter, signature
 from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, List,
   Optional, Tuple, Type, TypeVar, Union)
 
-from tolkien import Source, Token, HasSlc, slc_str
+from tolkien import HasSlc, slc_str, Source, Token
 
 from .lex import Lexer, LexMode, LexTrans
 from .parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore

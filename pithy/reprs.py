@@ -3,10 +3,10 @@
 import re
 from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
-from typing import Any, cast, Iterable, NamedTuple
 from functools import cache
+from typing import Any, cast, Iterable, NamedTuple
 
-from .ansi import TXT_G, TXT_R, TXT_Y, TXT_M, TXT_C, TXT_B, RST_TXT
+from .ansi import RST_TXT, TXT_B, TXT_C, TXT_G, TXT_M, TXT_R, TXT_Y
 from .types import is_dataclass_or_namedtuple
 
 
