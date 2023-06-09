@@ -96,7 +96,7 @@ utest((1, 1), line_col_1, '', 0)
 
 # str_tree.
 
-str_tree_tests = [
+str_tree_tests:list[tuple[list[str],dict[str,str|dict|None]]] = [
   ([], {}),
   ([''], {'':None}),
   (['a'], {'a':None}),

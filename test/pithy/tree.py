@@ -9,7 +9,7 @@ from pithy.tree import *
 def test_transform_tree_0():
 
   @singledispatch
-  def get_children(node: Iterable) -> Iterable:
+  def get_children(node: Iterable) -> Iterable|None:
     try: return iter(node)
     except TypeError: return None
 
@@ -42,7 +42,7 @@ def test_transform_tree_0():
 @utest_call
 def test_transform_tree_1():
 
-  def get_children(node: Iterable) -> Iterable:
+  def get_children(node: Iterable) -> Iterable|None:
     return None if isinstance(node, (int, str)) else node
 
   @singledispatch

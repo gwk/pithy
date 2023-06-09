@@ -11,11 +11,11 @@ class KeyDispatcher:
   def echo(self, key:str) -> str:
     return key
 
-  @key_dispatched(key='a')
+  @key_dispatched(key='a') # type: ignore[no-redef]
   def echo(self, key:str) -> str:
     return 'A'
 
-  @key_dispatched(key='b')
+  @key_dispatched(key='b') # type: ignore[no-redef]
   def echo(self, key:str) -> str:
     return 'B'
 

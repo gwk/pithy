@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from pithy.json import parse_json, render_json
 from pithy.untyped import Immutable
@@ -11,9 +11,11 @@ from utest import utest, utest_exc
 class NT(NamedTuple):
   x: int
 
+
 @dataclass
 class DC:
   x: int
+
 
 class Basic:
   def __init__(self, x: int):
@@ -24,8 +26,8 @@ class SlotX:
   __slots__ = ['x']
   def __init__(self, x: int):
     self.x = x
-  def __eq__(l, r: 'SlotX') -> bool:
-    return l.x == r.x
+  def __eq__(l, r:Any) -> bool:
+    return isinstance(r, SlotX) and l.x == r.x
 
 
 class SlotXY(SlotX):
@@ -33,7 +35,7 @@ class SlotXY(SlotX):
   def __init__(self, x: int, y: int):
     super().__init__(x=x)
     self.y = y
-  def __eq__(l, r: 'SlotXY') -> bool:
+  def __eq__(l, r:Any) -> bool:
     return super().__eq__(r) and l.y == r.y
 
 
@@ -42,7 +44,7 @@ class SlotXYZ(SlotXY):
   def __init__(self, x: int, y: int, z: int):
     super().__init__(x=x, y=y)
     self.z = z
-  def __eq__(l, r: 'SlotXYZ') -> bool:
+  def __eq__(l, r:Any) -> bool:
     return super().__eq__(r) and l.z == r.z
 
 
