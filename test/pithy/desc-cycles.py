@@ -8,11 +8,11 @@ from pithy.io import outL
 
 
 # Self-referencing list.
-l_self = []
+l_self:list[Any] = []
 l_self.append(l_self)
 
 # Cycle pair.
-l_a = []
+l_a:list[Any] = []
 l_b = [l_a]
 l_a.append(l_b)
 

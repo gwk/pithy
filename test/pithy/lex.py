@@ -8,7 +8,7 @@ from typing import Any
 
 # Lexer.
 
-def run_lexer(lexer, string:str, **kwargs:Any) -> None:
+def run_lexer(lexer, string:str, **kwargs:Any) -> Iterator[tuple[str,str]]:
   'Run `lexer` on `string`, yielding (kind, text) pairs.'
   source = Source(name='test', text=string)
   for token in lexer.lex(source, **kwargs):
@@ -99,7 +99,7 @@ a
 '''
 
 
-def run_word_indent_lexer(string:str) -> None:
+def run_word_indent_lexer(string:str) -> Iterator[str]:
   'Run `lexer` on `string`, yielding token text strings.'
   source = Source(name='test', text=string)
   for token in word_indent_lexer.lex(source, drop={'spaces', 'comment'}):

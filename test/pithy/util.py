@@ -23,9 +23,9 @@ utest_val(o2, c.p, 'lazy property can be set to new value.')
 
 # memoize.
 
-f_args = []
+f_args:list[tuple[int,int]] = []
 @memoize()
-def f1(x, y):
+def f1(x:int, y:int) -> int:
   global f_args
   f_args.append((x, y))
   return x + y
