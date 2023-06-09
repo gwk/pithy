@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
+from typing import Any
 
-from pithy.desc import *
+from pithy.desc import outD
 from pithy.io import outL
-from utest import *
+from utest import utest
 
 
 l_empty = [] # Noncyclical; referenced multiple times.

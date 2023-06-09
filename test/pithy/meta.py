@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.meta import *
+from utest import utest
+from pithy.meta import dispatcher_for_defs
 
 
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from utest import *
 import os
 from pithy.task import launch
 from pithy.pipe import DuplexPipe

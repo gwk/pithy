@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.util import *
+from utest import utest_seq, utest_val, utest
+from pithy.util import lazy_property, memoize, nt_items
 from dataclasses import dataclass
+from typing import NamedTuple
 
 
 # lazy_property.

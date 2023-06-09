@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from pithy.io import outM
-from pithy.transtruct import *
-from utest import *
+from pithy.transtruct import Transtructor
+from utest import utest
 
 
 ttor = Transtructor()

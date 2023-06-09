@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utest import *
+from utest import utest, utest_seq
 from pithy.loader import *
 from pithy.loader import _path_cmpd_ext, _last_ext, _sub_ext
 from pithy.json import write_json, write_jsonl

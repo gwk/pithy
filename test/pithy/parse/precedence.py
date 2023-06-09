@@ -3,7 +3,7 @@
 from pithy.parse import Adjacency, Atom, Infix, Left, Parser, Precedence, Right, Suffix, atom_text
 from pithy.py.lex import lexer
 from tolkien import Source
-from utest import *
+from utest import utest
 
 
 left = Parser(lexer,

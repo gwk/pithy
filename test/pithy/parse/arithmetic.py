@@ -3,7 +3,7 @@
 from pithy.parse import Atom, Infix, Left, Parser, Precedence, Right, Struct, SuffixRule, atom_text
 from pithy.py.lex import lexer
 from tolkien import Source
-from utest import *
+from utest import utest
 
 
 arithmetic = Parser(lexer,

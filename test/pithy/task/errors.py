@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import *
+from utest import utest_exc
 from os import chmod
-from pithy.task import *
-from pithy.fs import *
+from pithy.task import run, TaskNotAFile, TaskInstalledCommandNotFound, TaskFileNotFound, TaskFileInvokedAsInstalledCommand, TaskFileNotExecutable, TaskFileNotReadable, TaskFileHashbangIllFormed, TaskFileHashbangMissing
+from pithy.fs import make_dir, make_link, touch_path
 
 
 utest_exc(TaskInstalledCommandNotFound('nonexistent'), run, 'nonexistent')

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.date import *
+from utest import utest, utest_val
+from pithy.date import Date, DateDelta, is_leap_year
 from operator import add
 
 j1 = Date(2000, 1, 1)

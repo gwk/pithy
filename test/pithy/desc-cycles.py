@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.desc import *
+from typing import Any
+
+from utest import utest
+from pithy.desc import outD
 from pithy.io import outL
+
 
 # Self-referencing list.
 l_self = []

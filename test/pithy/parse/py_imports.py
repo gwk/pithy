@@ -4,7 +4,7 @@ from pithy.parse import (Atom, atom_text, binary_to_list, Choice, choice_labeled
   struct_fields_tuple, ZeroOrMore)
 from pithy.py.lex import lexer
 from tolkien import Source
-from utest import *
+from utest import utest
 
 
 basic = Parser(lexer,

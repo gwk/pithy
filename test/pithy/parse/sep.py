@@ -3,7 +3,7 @@
 from pithy.parse import Atom, Parser, ZeroOrMore, atom_text
 from pithy.py.lex import lexer
 from tolkien import Source
-from utest import *
+from utest import utest
 
 
 def mk_comma_parser(sep_at_end:bool|None) -> Parser:
