@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import utest
 from pithy.fs import name_has_any_ext
+from utest import utest
 
 
 utest(True, name_has_any_ext, 'a', frozenset())

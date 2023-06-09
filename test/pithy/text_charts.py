@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from utest import utest
 from pithy.text_charts import chart_inline
+from utest import utest
+
 
 utest('', chart_inline, range(0))
 utest('▒', chart_inline, range(1))

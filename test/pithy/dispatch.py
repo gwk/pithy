@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from utest import utest
 from pithy.dispatch import key_dispatched
+from utest import utest
 
 
 class KeyDispatcher:

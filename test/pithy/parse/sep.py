@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pithy.parse import Atom, Parser, ZeroOrMore, atom_text
+from pithy.parse import Atom, atom_text, Parser, ZeroOrMore
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest

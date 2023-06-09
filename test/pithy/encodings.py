@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import utest
-from pithy.encodings import enc_lep62, dec_lep62, enc_lep128, dec_lep128, enc_lep128_to_str
-from pithy.encodings import lep_int_from_bytes
 from random import randrange
+
+from pithy.encodings import dec_lep62, dec_lep128, enc_lep62, enc_lep128, enc_lep128_to_str, lep_int_from_bytes
+from utest import utest
 
 
 utest(1, lep_int_from_bytes, b'')

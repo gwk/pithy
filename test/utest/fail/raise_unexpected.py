@@ -2,6 +2,7 @@
 
 from utest import utest, utest_exc, utest_seq, utest_seq_exc
 
+
 '''
 Test utest failure handling when an unexpected exception is raised.
 '''

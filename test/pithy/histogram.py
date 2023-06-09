@@ -1,6 +1,6 @@
 
-from utest import utest_items
 from pithy.histogram import Histogram
+from utest import utest_items
 
 
 utest_items([(0, 2), (2, 2), (4, 2), (6, 2), (8, 2)],

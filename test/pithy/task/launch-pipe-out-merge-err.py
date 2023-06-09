@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import os
-from pithy.task import launch
-from pithy.pipe import DuplexPipe
+
 from pithy.io import outZ
+from pithy.pipe import DuplexPipe
+from pithy.task import launch
+
 
 fdr, fdw = os.pipe()
 

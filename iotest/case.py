@@ -7,7 +7,7 @@ from itertools import zip_longest
 from string import Template
 from typing import Any, Callable, cast, Dict, List, NamedTuple, Optional, Pattern, Set, TextIO, Tuple, Union
 
-from pithy.fs import abs_path, path_dir, path_join, path_name, path_exists
+from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
 from pithy.path import path_stem
 from pithy.types import (is_bool, is_dict, is_dict_of_str, is_int, is_list, is_list_of_str, is_pos_int, is_set, is_set_of_str,

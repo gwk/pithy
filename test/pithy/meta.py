@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import utest
 from pithy.meta import dispatcher_for_defs
-
+from utest import utest
 
 
 def disp_a(s:str) -> str: return 'A: ' + s

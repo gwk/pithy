@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+from random import choice as rand_choice, seed as rand_seed
+
+from pithy.path import (abs_or_norm_path, abs_path, insert_path_stem_suffix, is_norm_path, is_path_abs, is_sub_path, norm_path,
+  path_rel_to_dir)
 from utest import utest
-from pithy.path import is_norm_path, is_sub_path, norm_path, is_path_abs, path_rel_to_dir, abs_or_norm_path, insert_path_stem_suffix, abs_path
-from random import seed as rand_seed, choice as rand_choice
+
 
 # abs_or_norm_path normalizes inputs.
 utest('.', abs_or_norm_path, './', False)

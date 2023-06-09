@@ -3,6 +3,7 @@
 from pithy.html import Body, Div, Head, Html, Script, Style
 from pithy.svg import Script as svg_Script, Style as svg_Style, Svg
 
+
 '''
 Test that we can embed SVG in HTML and that the SVG elements are parsed as SvgNode and not HtmlNode.
 '''

@@ -3,7 +3,7 @@
 from sys import stdout
 from typing import cast, Mapping
 
-from pithy.graphviz import write_dot_digraph_adjacency, GraphvizName, GraphvizValues, GraphvizAdjacency
+from pithy.graphviz import GraphvizAdjacency, GraphvizName, GraphvizValues, write_dot_digraph_adjacency
 
 
 write_dot_digraph_adjacency(stdout, [('a', 'b'), ('b', 'c'), ('c', 'a')], label='Plain')

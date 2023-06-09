@@ -3,6 +3,7 @@
 from os import environ
 from sys import argv, stderr, stdout
 
+
 _, arg = argv
 
 env_val = environ['TEST_PARAM']

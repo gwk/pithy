@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from pithy.svg import *
 from pithy.io import outZ
+from pithy.svg import *
+
 
 w = 512
 h = 512
