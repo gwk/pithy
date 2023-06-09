@@ -66,4 +66,3 @@ def test_transform_tree_1():
   output = [[0], [1, 2, 3, 4]]
 
   utest(output, transform_tree, input, get_children, visit)
-

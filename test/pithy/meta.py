@@ -14,4 +14,3 @@ disp = dispatcher_for_defs(prefix='disp_')
 
 utest('A: x', disp, 'a', 'x')
 utest('B: y', disp, 'b', 'y')
-

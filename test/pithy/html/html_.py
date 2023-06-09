@@ -67,4 +67,3 @@ utest_val(div1, sd1.orig, 'sd1.orig')
 
 utest(div1, sd0.next)
 utest(div0, sd1.prev)
-
