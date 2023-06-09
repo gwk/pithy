@@ -3,7 +3,7 @@
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Any, Iterable, Self, Container
+from typing import Any, Container, Iterable, Self
 
 from tolkien import Source
 

@@ -1,8 +1,8 @@
 
 import os
-from signal import SIG_DFL, SIGHUP, SIGINT, signal as register_signal_handler, Signals, Handlers, SIGTERM
+from signal import Handlers, SIG_DFL, SIGHUP, SIGINT, signal as register_signal_handler, Signals, SIGTERM
 from types import FrameType
-from typing import Callable, Iterable, Any
+from typing import Any, Callable, Iterable
 
 
 class DeferSignals:
