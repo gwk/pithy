@@ -8,7 +8,7 @@ from pithy.io import outL
 from utest import utest
 
 
-l_empty = [] # Noncyclical; referenced multiple times.
+l_empty:list[Any] = [] # Noncyclical; referenced multiple times.
 
 @dataclass
 class DC:
