@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from utest import utest, run
+from utest import utest, utest_call
 from functools import singledispatch
 from pithy.tree import *
 
 
-@run
+@utest_call
 def test_transform_tree_0():
 
   @singledispatch
@@ -39,7 +39,7 @@ def test_transform_tree_0():
   utest(output, transform_tree, input, get_children, visit)
 
 
-@run
+@utest_call
 def test_transform_tree_1():
 
   def get_children(node: Iterable) -> Iterable:
