@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.path import *
+from utest import utest
+from pithy.path import is_norm_path, is_sub_path, norm_path, is_path_abs, path_rel_to_dir, abs_or_norm_path, insert_path_stem_suffix, abs_path
 from random import seed as rand_seed, choice as rand_choice
 
 # abs_or_norm_path normalizes inputs.

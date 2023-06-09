@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.graphviz import *
+from sys import stdout
+
+from pithy.graphviz import write_dot_digraph_adjacency
+
 
 write_dot_digraph_adjacency(stdout, ['ab', 'bc', 'ca'], label='Plain')
 

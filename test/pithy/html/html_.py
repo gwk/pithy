@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.html import *
+from utest import utest, utest_seq, utest_exc, utest_val
+from pithy.html import Html, Div, NoMatchError, P, MultipleMatchesError
 
 src = '''
 <!DOCTYPE HTML>

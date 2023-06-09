@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import *
-from pithy.dict import *
+from utest import utest, utest_exc
+from pithy.dict import dict_put, idemput, ConflictingValues, KeyExistingIncoming, dict_list_append, dict_list_extend, dict_set_defaults, dict_update_sets, DefaultByKeyDict
 
 
 utest({'k': 0}, dict_put, {}, 'k', 0)

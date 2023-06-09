@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from utest import *
+from utest import utest_val, utest, utest_exc
 from urllib.parse import urlsplit
-from pithy.path_encode import *
+from pithy.path_encode import path_for_url, path_encode, COMP, SQUASH, OMIT, SPLIT
 
 
 # Demonstrate the behavior of urlsplit.
