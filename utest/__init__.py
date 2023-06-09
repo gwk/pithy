@@ -16,15 +16,15 @@ from typing import Any, Callable, Dict, Iterable, Tuple, Type, TypeVar
 
 
 __all__ = [
+  'utest',
   'utest_call',
-  'usymmetric',
   'utest_exc',
   'utest_repr',
-  'utest_seq_exc',
   'utest_seq',
-  'utest_val_ne',
+  'utest_seq_exc',
+  'utest_symmetric',
   'utest_val',
-  'utest',
+  'utest_val_ne',
 ]
 
 
@@ -199,7 +199,7 @@ def utest_val_ne(exp_val:Any, act_val:Any, desc='<value>') -> None:
     _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def usymmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
   Apply `test_fn` to the provided arguments,
   then again to the same arguments but with the last two positional parameters swapped.
