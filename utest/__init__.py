@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, Iterable, Tuple, Type, TypeVar
 
 
 __all__ = [
-  'run',
+  'utest_call',
   'usymmetric',
   'utest_exc',
   'utest_repr',
@@ -33,7 +33,8 @@ _utest_failure_count = 0
 
 
 _C = TypeVar('_C', bound=Callable)
-def run(callable:_C) -> _C:
+def utest_call(callable:_C) -> _C:
+  'A function decorator to call the defined function immediately. Useful for wrapping test state in a local function scope.'
   callable()
   return callable
 
