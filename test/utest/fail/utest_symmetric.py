@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utest import utest_symmetric, utest, utest_exc
+from utest import utest, utest_exc, utest_symmetric
 
 
 def add(a, b): return int(a) + int(b)

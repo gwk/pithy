@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_call
 from functools import singledispatch
+
 from pithy.tree import *
+from utest import utest, utest_call
 
 
 @utest_call

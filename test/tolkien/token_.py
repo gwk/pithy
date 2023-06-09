@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from utest import utest
 from pithy.lex import Lexer
 from tolkien import Source, Token
+from utest import utest
 
 
 # Token.diagnostic.

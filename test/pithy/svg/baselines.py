@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from pithy.svg import Svg, Line, Text, alignment_baselines
 from pithy.io import outZ
+from pithy.svg import alignment_baselines, Line, Svg, Text
 
 
 svg = Svg(w=800, h=800)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+from typing import List, Tuple
+
 from pithy.html import Body, Html, HtmlNode
 from pithy.io import outL
 from pithy.string import clip_prefix, clip_suffix
 from utest import utest
-
-from typing import List, Tuple
 
 
 ws_normalizations:List[Tuple[str|HtmlNode,str]] = [

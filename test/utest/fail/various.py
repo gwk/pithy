@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_exc, utest_seq, utest_seq_exc, utest_val, utest_symmetric
+from utest import utest, utest_exc, utest_seq, utest_seq_exc, utest_symmetric, utest_val
 
 
 utest(True, lambda *args, **kwargs: False, 0, 1, x='x', y='y')

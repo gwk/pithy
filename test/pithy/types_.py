@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import utest
-from typing import Counter, Dict, FrozenSet, List, Set, Tuple, Optional
+from typing import Counter, Dict, FrozenSet, List, Optional, Set, Tuple
+
 from pithy.types import is_a
+from utest import utest
 
 
 utest(True, is_a, None, type(None))

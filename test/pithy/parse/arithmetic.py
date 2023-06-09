@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pithy.parse import Atom, Infix, Left, Parser, Precedence, Right, Struct, SuffixRule, atom_text
+from pithy.parse import Atom, atom_text, Infix, Left, Parser, Precedence, Right, Struct, SuffixRule
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest

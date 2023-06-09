@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_seq, utest_exc
 from pithy.format import *
+from utest import utest, utest_exc, utest_seq
 
 
 utest(False, has_formatter, '')

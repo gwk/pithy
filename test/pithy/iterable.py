@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_seq, utest_exc, utest_seq_exc
-from pithy.iterable import *
 from operator import eq
+
+from pithy.iterable import *
+from utest import utest, utest_exc, utest_seq, utest_seq_exc
 
 
 utest(True, is_sorted, [])

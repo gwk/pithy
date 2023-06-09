@@ -2,9 +2,9 @@
 
 from typing import Any
 
-from utest import utest
 from pithy.desc import outD
 from pithy.io import outL
+from utest import utest
 
 
 # Self-referencing list.

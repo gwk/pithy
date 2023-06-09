@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from utest import utest
-from pithy.encode import all_slots, encode_obj
 from dataclasses import dataclass
+
+from pithy.encode import all_slots, encode_obj
+from utest import utest
 
 
 @dataclass

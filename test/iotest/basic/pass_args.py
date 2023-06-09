@@ -4,6 +4,7 @@
 
 import sys
 
+
 print(sys.argv[2], file=sys.stdout)
 print(sys.argv[3], file=sys.stderr)
 

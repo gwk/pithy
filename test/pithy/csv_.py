@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
+from pithy.csv import load_csv, out_csv, write_csv
 from utest import utest_seq
-from pithy.csv import write_csv, load_csv, out_csv
 
 
 header = ['str', 'int', 'float']

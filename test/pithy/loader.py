@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from utest import utest, utest_seq
-from pithy.loader import *
-from pithy.loader import _path_cmpd_ext, _last_ext, _sub_ext
-from pithy.json import write_json, write_jsonl
 from pithy.csv import write_csv
+from pithy.json import write_json, write_jsonl
+from pithy.loader import *
+from pithy.loader import _last_ext, _path_cmpd_ext, _sub_ext
 from pithy.task import run
+from utest import utest, utest_seq
 
 
 lines = ['0\n', '1\n']
