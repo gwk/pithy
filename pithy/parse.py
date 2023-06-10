@@ -476,12 +476,13 @@ class Choice(Rule):
   '''
   type_desc = 'choice'
 
-  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field='', transform:ChoiceTransform=choice_val):
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field='', transform:ChoiceTransform|None=None):
     self.name = ''
     self.field = field
     self.sub_refs = choices
     self.heads = ()
     self.drop = frozenset(iter_str(drop))
+    if transform is None: raise ValueError('Choice requires an explicit transform')
     self.transform = transform
     self.head_table:Dict[TokenKind,Rule] = {}
 

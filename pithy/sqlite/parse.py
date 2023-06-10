@@ -139,7 +139,7 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
 
 create_rules = dict(
 
-  create_stmt = Struct('CREATE', Choice('create_index', 'create_table')),
+  create_stmt = Struct('CREATE', Choice('create_index', 'create_table', transform=choice_val)),
 
   create_index = Struct(
     Opt('UNIQUE', field='is_unique'),
@@ -160,7 +160,7 @@ create_rules = dict(
     'TABLE',
     Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists'),
     Alias('schema_table_name', field='name'),
-    Choice('table_def', 'as_select', 'virtual_using', field='def')
+    Choice('table_def', 'as_select', 'virtual_using', field='def', transform=choice_val)
   ),
 
   table_def = Struct(
@@ -196,9 +196,9 @@ create_rules = dict(
     Opt(Struct('GENERATED', 'ALWAYS'), field=None),
     'AS',
     Alias('paren_expr', transform=uni_syn, field='expr'),
-    Opt(Choice('STORED', 'VIRTUAL'), field='stored_or_virtual', transform=uni_text)),
+    Opt(Choice('STORED', 'VIRTUAL', transform=choice_val), field='stored_or_virtual', transform=uni_text)),
 
-  asc_desc = Choice('ASC', 'DESC'),
+  asc_desc = Choice('ASC', 'DESC', transform=choice_val),
 
   table_constraint = Struct(
     Opt(Struct('CONSTRAINT', 'name'), field='constraint_name'),
@@ -213,7 +213,7 @@ create_rules = dict(
   table_option = Choice(
     Struct('WITHOUT', Atom('name', field='rowid'), transform=lambda s, slc, f: 'WITHOUT ROWID'), # TODO: the transform should raise ParseError if the name is not "ROWID".
     Atom('name', field='strict', transform=atom_text),
-  ),
+    transform=choice_val),
 
   as_select = Struct('AS', 'select_stmt'),
 
@@ -250,7 +250,9 @@ expr_rules = dict(
   # CASE expr WHEN expr THEN expr ELSE expr END
   # raise-function
 
-  signed_number = Struct(Choice('plus', 'minus', field='sign'), Choice('float', 'integer', field='number')),
+  signed_number = Struct(
+    Choice('plus', 'minus', field='sign', transform=choice_val),
+    Choice('float', 'integer', field='number', transform=choice_val)),
 
   paren_expr = Struct('lp', 'expr', 'rp', field='expr'),
   cast_expr =  Struct('CAST', 'lp', 'expr', 'AS', 'name', 'rp'),
@@ -278,9 +280,9 @@ parser = Parser(lexer,
 
     stmts = ZeroOrMore('stmt', sep='semi', repeated_seps=True),
 
-    stmt = Choice('create_stmt', 'select_stmt'),
+    stmt = Choice('create_stmt', 'select_stmt', transform=choice_val),
 
-    literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL'),
+    literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', transform=choice_val),
     #^ NOTE: This is strict and does not allow entities as strings. See https://www.sqlite.org/lang_keywords.html.
 
     schema_table_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),

@@ -5,7 +5,7 @@ from typing import Any
 from pithy.parse import Alias, Choice, OneOrMore, Opt, Parser, Struct, ZeroOrMore
 from tolkien import Source, Token
 
-from ..parse import ParseError
+from ..parse import ParseError, choice_val
 from .lex import lexer
 from .syntax import eon_syntax_token, EonBinding, EonList, EonNode, EonStr, EonSyntax, render_eon_syntax, section_rank_leaf
 
@@ -25,7 +25,7 @@ def _build_eon_parser() -> Parser:
     rules=dict(
       body=ZeroOrMore('section_or_tree', transform=transform_body),
 
-      section_or_tree=Choice('section_tree', 'tree'),
+      section_or_tree=Choice('section_tree', 'tree', transform=choice_val),
 
       section_tree=Struct('section', 'trees', transform=transform_section_tree),
 
@@ -43,7 +43,7 @@ def _build_eon_parser() -> Parser:
 
       val=Alias('atom'),
 
-      atom=Choice('flt', 'int', 'str_dq', 'str_sq', 'sym'),
+      atom=Choice('flt', 'int', 'str_dq', 'str_sq', 'sym', transform=choice_val),
 
       #pair=Struct('atom', 'eq', 'atom'),
 
