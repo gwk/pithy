@@ -15,7 +15,7 @@ from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, 
 from tolkien import HasSlc, slc_str, Source, Token
 
 from .lex import Lexer, LexMode, LexTrans
-from .parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
+from .parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore, choice_val
 from .util import memoize
 
 
@@ -353,17 +353,20 @@ def _build_eon_parser() -> Parser:
 
       #section=Struct(Atom('section_label'), 'items'),
 
-      key=Choice('flt', 'int', 'str_dq', 'str_sq', 'sym'),
+      key=Choice('flt', 'int', 'str_dq', 'str_sq', 'sym', transform=choice_val),
 
       leaf=Struct(
-        Choice('flt', 'int', 'str_dq', 'str_sq', 'sym'),
+        Choice('flt', 'int', 'str_dq', 'str_sq', 'sym', transform=choice_val),
         'newline'),
 
-      str_dq=Struct('dq', ZeroOrMore(Choice('esc_char', 'chars_dq')), 'dq', transform=lambda s, slc, fields: EonStr(slc, fields[1])),
-      str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq')), 'sq', transform=lambda s, slc, fields: EonStr(slc, fields[1])),
+      str_dq=Struct('dq', ZeroOrMore(Choice('esc_char', 'chars_dq', transform=choice_val)), 'dq',
+        transform=lambda s, slc, fields: EonStr(slc, fields[1])),
+
+      str_sq=Struct('sq', ZeroOrMore(Choice('esc_char', 'chars_sq', transform=choice_val)), 'sq',
+        transform=lambda s, slc, fields: EonStr(slc, fields[1])),
 
       # Values always consume trailing newline.
-      value=Choice('leaf', 'dash_list', 'tilde_dict'),
+      value=Choice('leaf', 'dash_list', 'tilde_dict', transform=choice_val),
 
 
       dash_list=Struct(
@@ -398,7 +401,7 @@ def _build_eon_parser() -> Parser:
 
       colon_body=Struct('colon', 'body'),
 
-      body=Choice('value', 'body_multiline'),
+      body=Choice('value', 'body_multiline', transform=choice_val),
 
       body_multiline=Struct('newline', 'indent', 'items', 'dedent'),
     ))

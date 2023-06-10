@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from typing import Iterator, Any, NamedTuple
 
 from pithy.lex import Lexer, LexMode, LexTrans
-from pithy.parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore, Atom, atom_text
+from pithy.parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore, Atom, atom_text, choice_val
 from pithy.path import vscode_path
 from tolkien import Source, Token
 from pithy.ansi import BG_R, RST, TXT_G, TXT_Y, TXT_B, TXT_C, BG_C
@@ -190,7 +190,7 @@ parser = Parser(
   rules=dict(
 
     grammar = ZeroOrMore('item'),
-    item = Choice('rule', 'directive_sym', 'directive_code', 'directive_sym_code', 'directive_seq', 'directive_token_class'),
+    item = Choice('rule', 'directive_sym', 'directive_code', 'directive_sym_code', 'directive_seq', 'directive_token_class', transform=choice_val),
 
     directive_sym = Struct(
       Choice('name', 'ifdef', 'ifndef', 'endif', 'token_prefix', transform=transform_d_name),
