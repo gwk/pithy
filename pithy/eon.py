@@ -404,7 +404,8 @@ def _build_eon_parser() -> Parser:
       body=Choice('value', 'body_multiline', transform=choice_val),
 
       body_multiline=Struct('newline', 'indent', 'items', 'dedent'),
-    ))
+    ),
+  )
 
 
 # Parser transformers.
