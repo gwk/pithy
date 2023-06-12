@@ -308,7 +308,8 @@ parser = Parser(lexer,
     **create_rules,
     **expr_rules,
     **select_rules,
-  ))
+  ),
+)
 
 
 def test_lex(path:str, text:str) -> None:

@@ -8,11 +8,13 @@ from utest import utest
 
 def mk_comma_parser(sep_at_end:bool|None) -> Parser:
   return Parser(lexer,
-  drop=('spaces',),
-  rules=dict(
-      name=Atom('name', transform=atom_text),
-      seq=ZeroOrMore('name', sep='comma', sep_at_end=sep_at_end)),
+    drop=('spaces',),
+    rules=dict(
+        name=Atom('name', transform=atom_text),
+        seq=ZeroOrMore('name', sep='comma', sep_at_end=sep_at_end),
+    ),
   )
+
 
 comma_opt = mk_comma_parser(sep_at_end=None)
 comma_req = mk_comma_parser(sep_at_end=True)

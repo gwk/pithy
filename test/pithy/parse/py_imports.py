@@ -26,7 +26,9 @@ basic = Parser(lexer,
     path=Precedence(
       ('name',),
       Left(Infix('dot', transform=binary_to_list)),
-    )))
+    ),
+  ),
+)
 
 
 utest(('import_modules', [('m', '_m'), ('n', None)]),

@@ -24,7 +24,10 @@ arithmetic = Parser(lexer,
         SuffixRule(Struct('brack_o', 'expr', 'brack_c'),
           transform=lambda s, t, l, r: ('[]', l, r)),
       ),
-    )))
+    )
+  ),
+)
+
 
 utest(0, arithmetic.parse, 'expr', Source('', '0'))
 utest('x', arithmetic.parse, 'expr', Source('', 'x'))
