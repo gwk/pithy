@@ -300,6 +300,8 @@ class _QuantityRule(Rule):
 class Opt(_QuantityRule):
   '''
   A rule that optionally matches another rule.
+  If the subrule matches, then its result is passed into `transform`.
+  If not, then `dflt` is passed into the transform.
   '''
   type_desc = 'optional'
   min = 0
