@@ -23,6 +23,7 @@ while expressing other aspects of a grammar using straightforward recursive desc
 '''
 
 from collections import namedtuple
+from copy import deepcopy
 from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
 from typing import (Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
@@ -120,8 +121,11 @@ def quantity_syn(source:Source, slc:slice, elements:List[Any]) -> Syn: return Sy
 def quantity_text(source:Source, slc:slice, elements:List[Any]) -> str: return source[slc]
 
 StructTransform = Callable[[Source,slice,List[Any]],Any]
-def struct_fields_tuple(source:Source, slc:slice, fields:List[Any]) -> Tuple[Any,...]: return tuple(fields)
-def struct_syn(source, slc, fields): return Syn(slc, fields)
+def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> Tuple[Any,...]: return tuple(fields)
+def struct_syn(source, slc:slice, fields:list[Any]): return Syn(slc, fields)
+
+def _struct_default_transform_placeholder(source, slc:slice, fields:list[Any]):
+  raise Exception('_struct_placeholder should have been replaced by a real transform')
 
 ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
 def choice_val(source:Source, slc:slice, label:RuleName, val:Any) -> Any: return val
@@ -145,6 +149,7 @@ class Rule:
   sub_refs:Tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
   subs:Tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
   heads:Tuple[TokenKind,...] # Set of leading token kinds for this rule.
+  transform:Callable
 
 
   def __init__(self, *args:Any, **kwargs:Any): raise Exception(f'abstract base class: {self}')
@@ -437,7 +442,7 @@ class Struct(Rule):
     self.sub_refs = fields
     self.heads = ()
     self.drop = frozenset(iter_str(drop))
-    self.transform = transform
+    self.transform = transform or _struct_default_transform_placeholder
 
 
   def head_subs(self) -> Iterable['Rule']:
@@ -448,7 +453,7 @@ class Struct(Rule):
 
 
   def compile(self, parser:'Parser') -> None:
-    if self.transform is None:
+    if self.transform is _struct_default_transform_placeholder:
       self.transform = parser._mk_struct_transform(name=self.name, subs=self.subs)
 
 
@@ -759,6 +764,9 @@ class Parser:
   literals: a set of token kinds that are fixed strings and should not be included in output structures.
   For example we might parse "(1 2 3)" with a rule like `Struct('paren_o', ZeroOrMore('expr'), 'paren_c')`.
   There is no utility in including the parenthesis tokens in the returned structure, because their string content is known.
+
+  rules: a dict of rule names to rules.
+  This dictionary is deep copied so that different parsers can attach different transforms to the same rule set.
   '''
 
   class DefinitionError(Exception):
@@ -767,18 +775,27 @@ class Parser:
 
 
   def __init__(self, lexer:Lexer, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
-   literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule]):
+   literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule], transforms:dict[RuleName,Callable]|None=None):
     self.lexer = lexer
     self.preprocessor = preprocessor
     self.drop = frozenset(iter_str(drop))
     self.literals = frozenset(iter_str(literals))
-    self.rules = rules
+
+    self.rules = deepcopy(rules)
+    rules = None # type: ignore[assignment] # Forget the original dict. This protects from misuse in the code below.
+
     self.module_name = caller_module_name(1) # Get the calling module name to use for synthesized NamedTuple types.
     self._struct_types:Dict[str,Type] = {}
 
-    for name, rule in rules.items():
+    if transforms is None: transforms = {}
+    for name, transform in transforms.items():
+      try: rule = self.rules[name]
+      except KeyError: raise Parser.DefinitionError(f'nonexistent rule: {name!r}')
+      rule.transform = transform
+
+    for name, rule in self.rules.items():
       validate_name(name)
-      assert rule.name == '' # Names are never set during construction, only during parser initialization.
+      assert rule.name == '', rule.name # Names are never set during construction, only during parser initialization.
       rule.name = name
 
     # Link rule graph. Note: this creates reference cycles which are dissolved by __del__.
@@ -786,7 +803,7 @@ class Parser:
     def link_sub_ref(rule:RuleRef) -> Rule:
       if isinstance(rule, Rule): return rule
       if not isinstance(rule, str): raise Parser.DefinitionError(f'subrule must be a Rule or string reference: {rule!r}')
-      try: return rules[rule]
+      try: return self.rules[rule]
       except KeyError: pass
       if rule in self.lexer.kinds: # Add the implied Atom rule.
         atom = Atom(rule)
