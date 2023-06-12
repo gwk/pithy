@@ -172,7 +172,8 @@ def build_legs_grammar_parser() -> Parser:
       # Transitions.
 
       transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym', 'newline'),
-    ))
+    ),
+  )
 
 
 # Parser transformers.

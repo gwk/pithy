@@ -142,16 +142,17 @@ lexer = Lexer(flags='x', patterns=dict(
 parser = Parser(lexer,
   drop=('line', 'space'),
   rules=dict(
-  query=Precedence(
-    ('filter', 'search'),
-    Left(
-      Adjacency(transform=lambda s, t, l, r: ChildQuery(l, r))
+    query=Precedence(
+      ('filter', 'search'),
+      Left(
+        Adjacency(transform=lambda s, t, l, r: ChildQuery(l, r))
+      ),
     ),
+    search=Choice('pred', transform=lambda s, slc, name, predicate: SearchQuery(predicate)),
+    filter=Struct('dot', 'pred', transform=lambda s, slc, f: FilterQuery(f[1])),
+
+    pred=Choice('type_pred', transform=choice_val),
+
+    type_pred=Atom('name', mk_type_pred),
   ),
-  search=Choice('pred', transform=lambda s, slc, name, predicate: SearchQuery(predicate)),
-  filter=Struct('dot', 'pred', transform=lambda s, slc, f: FilterQuery(f[1])),
-
-  pred=Choice('type_pred', transform=choice_val),
-
-  type_pred=Atom('name', mk_type_pred),
-  ))
+)
