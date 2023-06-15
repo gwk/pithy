@@ -7,7 +7,7 @@ from tolkien import Source, Token
 
 from ..lex import Lexer
 from ..parse import (Alias, Atom, atom_text, AtomTransform, Choice, choice_label, choice_labeled, choice_val, Infix, Left,
-  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, uni_syn, uni_text, ZeroOrMore)
+  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, uni_syn, uni_text, ZeroOrMore)
 from .keywords import sqlite_keywords
 
 
@@ -252,7 +252,8 @@ expr_rules = dict(
 
   signed_number = Struct(
     Choice('plus', 'minus', field='sign', transform=choice_val),
-    Choice('float', 'integer', field='number', transform=choice_val)),
+    Choice('float', 'integer', field='number', transform=choice_val),
+    transform=struct_text),
 
   paren_expr = Struct('lp', 'expr', 'rp', field='expr'),
   cast_expr =  Struct('CAST', 'lp', 'expr', 'AS', 'name', 'rp'),
