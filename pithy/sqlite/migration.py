@@ -4,6 +4,7 @@ from typing import cast, Iterable, NoReturn
 
 from pithy.iterable import fan_by_key_fn, joinR
 
+from ..parse import ParseError
 from . import Connection, Cursor, Row
 from .schema import Column, Index, Schema, Table, TableDepStructure
 from .util import sql_quote_entity_always as qea
@@ -77,7 +78,9 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   if not old: return False, [new.sql(schema=schema_name)]
 
   if isinstance(old, str):
-    old = Table.parse(new.name + '(old)', old)
+    try: old = Table.parse(new.name + '(old)', old)
+    except ParseError as e: e.fail()
+
 
   assert new.name == old.name
   if old == new: return False, []
