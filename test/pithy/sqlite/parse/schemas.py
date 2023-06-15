@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from pithy.io import outL, outM
-from pithy.sqlite.parse import parser, Source
+from pithy.sqlite.parse import Source, sql_parser
 from pithy.sqlite.schema import Column, Index, Schema, Table
 from pithy.sqlite.util import nonstrict_to_strict_types_for_sqlite
 from pithy.transtruct import TranstructorError
@@ -63,7 +63,7 @@ def test_schema_parse(table:Table) -> None:
   sql = table.sql()
   sql_lines = sql.split('\n')
   source = Source(name=table.name, text=sql)
-  ast = parser.parse('create_stmt', source)
+  ast = sql_parser.parse('create_stmt', source)
   try:
     parsed_table = Table.parse(table.name, sql)
   except TranstructorError as e:

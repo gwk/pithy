@@ -1,13 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from typing import Any, cast, Match
+from typing import Any, Callable, cast, Match
 
 from tolkien import Source, Token
 
 from ..lex import Lexer
 from ..parse import (Alias, Atom, atom_text, Choice, choice_label, choice_labeled, choice_val, Infix, Left, OneOrMore, Opt,
-  ParseError, Parser, Precedence, Quantity, Struct, uni_syn, uni_text, ZeroOrMore)
+  ParseError, Parser, Precedence, Quantity, RuleName, Struct, uni_syn, uni_text, ZeroOrMore)
 from .keywords import sqlite_keywords
 
 
@@ -80,7 +80,7 @@ def parse_sqlite(path:str, text:str) -> list[Any]: # Actual return type is list[
   Parse the SQLite source given in `text`.
   '''
   source = Source(name=path, text=text)
-  try: stmts = parser.parse('stmts', source)
+  try: stmts = sql_parser.parse('stmts', source)
   except ParseError as e: e.fail()
   return cast(list, stmts)
 
@@ -270,46 +270,52 @@ select_rules = dict(
 )
 
 
-parser = Parser(lexer,
-  drop=('comment', 'spaces', 'newline'),
-  literals=(
-    'bitand', 'bitnot', 'comma', 'dot', 'eq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash', 'star', 'qmark',
-    'le', 'lshift', 'lt', 'ge', 'rshift', 'gt', 'concat', 'bitor', *sqlite_keywords),
+rules=dict(
 
-  rules=dict(
+  stmts = ZeroOrMore('stmt', sep='semi', repeated_seps=True),
 
-    stmts = ZeroOrMore('stmt', sep='semi', repeated_seps=True),
+  stmt = Choice('create_stmt', 'select_stmt', transform=choice_val),
 
-    stmt = Choice('create_stmt', 'select_stmt', transform=choice_val),
+  literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', transform=choice_val),
+  #^ NOTE: This is strict and does not allow entities as strings. See https://www.sqlite.org/lang_keywords.html.
 
-    literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', transform=choice_val),
-    #^ NOTE: This is strict and does not allow entities as strings. See https://www.sqlite.org/lang_keywords.html.
+  schema_table_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
+  table_column_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
+  schema_table_column_name = Quantity('name', min=1, max=3, sep='dot', sep_at_end=False),
 
-    schema_table_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
-    table_column_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
-    schema_table_column_name = Quantity('name', min=1, max=3, sep='dot', sep_at_end=False),
+  foreign_key_clause = Struct(
+    'REFERENCES',
+    'NULL'), # TODO.
 
-    foreign_key_clause = Struct(
-      'REFERENCES',
-      'NULL'), # TODO.
+  indexed_columns = OneOrMore('indexed_column', sep='comma', sep_at_end=False),
 
-    indexed_columns = OneOrMore('indexed_column', sep='comma', sep_at_end=False),
+  indexed_column = Struct(
+    'expr',
+    Opt(Struct('COLLATE', 'name'), field='collate'),
+    Opt('asc_desc')),
 
-    indexed_column = Struct(
-      'expr',
-      Opt(Struct('COLLATE', 'name'), field='collate'),
-      Opt('asc_desc')),
+  on_conflict = Opt(Struct('ON', 'CONFLICT',
+    Choice('ROLLBACK', 'ABORT', 'FAIL', 'IGNORE', 'REPLACE', transform=choice_label))),
 
-    on_conflict = Opt(Struct('ON', 'CONFLICT',
-      Choice('ROLLBACK', 'ABORT', 'FAIL', 'IGNORE', 'REPLACE', transform=choice_label))),
+  where_clause = Struct('WHERE', 'expr'),
 
-    where_clause = Struct('WHERE', 'expr'),
-
-    **create_rules,
-    **expr_rules,
-    **select_rules,
-  ),
+  **create_rules,
+  **expr_rules,
+  **select_rules,
 )
+
+
+def mk_sql_parser(transforms:dict[RuleName,Callable]|None=None) -> Parser:
+  return Parser(lexer,
+    drop=('comment', 'spaces', 'newline'),
+    literals=(
+      'bitand', 'bitnot', 'comma', 'dot', 'eq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash', 'star', 'qmark',
+      'le', 'lshift', 'lt', 'ge', 'rshift', 'gt', 'concat', 'bitor', *sqlite_keywords),
+    rules=rules,
+    transforms=transforms)
+
+
+sql_parser = mk_sql_parser()
 
 
 def test_lex(path:str, text:str) -> None:
