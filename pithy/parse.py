@@ -124,8 +124,8 @@ StructTransform = Callable[[Source,slice,List[Any]],Any]
 def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> Tuple[Any,...]: return tuple(fields)
 def struct_syn(source, slc:slice, fields:list[Any]): return Syn(slc, fields)
 
-def _struct_default_transform_placeholder(source, slc:slice, fields:list[Any]):
-  raise Exception('_struct_placeholder should have been replaced by a real transform')
+def _struct_transform_placeholder(source, slc:slice, fields:list[Any]):
+  raise Exception('_struct_transform_placeholder should have been replaced by a real transform')
 
 ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
 def choice_val(source:Source, slc:slice, label:RuleName, val:Any) -> Any: return val
@@ -442,7 +442,7 @@ class Struct(Rule):
     self.sub_refs = fields
     self.heads = ()
     self.drop = frozenset(iter_str(drop))
-    self.transform = transform or _struct_default_transform_placeholder
+    self.transform = transform or _struct_transform_placeholder
 
 
   def head_subs(self) -> Iterable['Rule']:
@@ -453,7 +453,7 @@ class Struct(Rule):
 
 
   def compile(self, parser:'Parser') -> None:
-    if self.transform is _struct_default_transform_placeholder:
+    if self.transform is _struct_transform_placeholder:
       self.transform = parser._mk_struct_transform(name=self.name, subs=self.subs)
 
 
