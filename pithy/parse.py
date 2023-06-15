@@ -125,7 +125,9 @@ def quantity_text(source:Source, slc:slice, elements:List[Any]) -> str: return s
 
 StructTransform = Callable[[Source,slice,List[Any]],Any]
 def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> Tuple[Any,...]: return tuple(fields)
-def struct_syn(source, slc:slice, fields:list[Any]): return Syn(slc, fields)
+def struct_syn(source:Source, slc:slice, fields:list[Any]): return Syn(slc, fields)
+def struct_text(source:Source, slc:slice, fields:list[Any]) -> str: return source[slc]
+
 
 def _struct_transform_placeholder(source, slc:slice, fields:list[Any]):
   raise Exception('_struct_transform_placeholder should have been replaced by a real transform')
@@ -873,12 +875,19 @@ class Parser:
       return single_transform
 
     raw_field_names = [sub.field_name for sub, should_inlude in zip(subs, includes) if should_inlude]
-    field_names = ('slc', *(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names)))
+    field_names = tuple(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names))
+
+    if not self.simplify:
+      field_names = ('slc', *field_names)
 
     struct_type = self._mk_struct_type(name, field_names=field_names)
 
-    def transform(source:Source, slc:slice, fields:List[Any]) -> Any:
-      return struct_type(slc, *(f for f, should_include in zip(fields, includes) if should_include))
+    if self.simplify:
+      def transform(source:Source, slc:slice, fields:List[Any]) -> Any:
+        return struct_type(*(f for f, should_include in zip(fields, includes) if should_include))
+    else:
+      def transform(source:Source, slc:slice, fields:List[Any]) -> Any:
+        return struct_type(slc, *(f for f, should_include in zip(fields, includes) if should_include))
 
     return transform
 
@@ -893,8 +902,10 @@ class Parser:
   def _mk_struct_type(self, name:str, field_names:tuple[str,...]) -> Type:
     if name:
       type_name = typecase_from_snakecase(name)
-    else:
+    elif field_names:
       type_name = '_'.join(typecase_from_snakecase(n) for n in field_names)
+    else:
+      type_name = 'Empty'
 
     try: existing = self._struct_types[type_name]
     except KeyError: pass
@@ -902,6 +913,7 @@ class Parser:
       if existing._fields != field_names:
         raise Parser.DefinitionError(f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {field_names}')
       return existing
+
     struct_type = namedtuple(type_name, field_names, rename=True, module=self.module_name or '?') # type: ignore[misc]
     self._struct_types[type_name] = struct_type
     return struct_type
