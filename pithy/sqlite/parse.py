@@ -6,8 +6,8 @@ from typing import Any, Callable, cast, Match
 from tolkien import Source, Token
 
 from ..lex import Lexer
-from ..parse import (Alias, Atom, atom_text, Choice, choice_label, choice_labeled, choice_val, Infix, Left, OneOrMore, Opt,
-  ParseError, Parser, Precedence, Quantity, RuleName, Struct, uni_syn, uni_text, ZeroOrMore)
+from ..parse import (Alias, Atom, atom_text, AtomTransform, Choice, choice_label, choice_labeled, choice_val, Infix, Left,
+  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, uni_syn, uni_text, ZeroOrMore)
 from .keywords import sqlite_keywords
 
 
@@ -305,13 +305,16 @@ rules=dict(
 )
 
 
-def mk_sql_parser(transforms:dict[RuleName,Callable]|None=None) -> Parser:
+def mk_sql_parser(simplify:bool=False, atom_transform:AtomTransform|None=None, transforms:dict[RuleName,Callable]|None=None
+ ) -> Parser:
   return Parser(lexer,
     drop=('comment', 'spaces', 'newline'),
     literals=(
       'bitand', 'bitnot', 'comma', 'dot', 'eq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash', 'star', 'qmark',
       'le', 'lshift', 'lt', 'ge', 'rshift', 'gt', 'concat', 'bitor', *sqlite_keywords),
     rules=rules,
+    simplify=simplify,
+    atom_transform=atom_transform,
     transforms=transforms)
 
 
