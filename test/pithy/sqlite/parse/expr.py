@@ -1,13 +1,15 @@
 from typing import Any
 
-from pithy.sqlite.parse import sql_parser
+from pithy.sqlite.parse import mk_sql_parser
 from tolkien import Source
 from utest import utest
 
 
+simple_sql_parser = mk_sql_parser(simplify=True)
+
 def parse_expr(s:str) -> Any:
   source = Source('<expr>', s)
-  return sql_parser.parse('expr', source)
+  return simple_sql_parser.parse('expr', source)
 
 
 parse_expr('a')

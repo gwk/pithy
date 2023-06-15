@@ -97,6 +97,9 @@ def atom_token(source:Source, token:Token) -> Token: return token
 def atom_kind(source:Source, token:Token) -> str: return token.kind
 def atom_text(source:Source, token:Token) -> str: return source[token]
 
+def _atom_transform_placeholder(source, token:Token):
+  raise Exception('_atom_transform_placeholder should have been replaced by a real transform')
+
 UniTransform = Callable[[Source,slice,Any],Any]
 def uni_val(source:Source, slc:slice, val:Any) -> Any: return val
 def uni_syn(source:Source, slc:slice, val:Any) -> Syn: return Syn(slc, val)
@@ -259,16 +262,21 @@ class Atom(Rule):
   '''
   type_desc = 'atom'
 
-  def __init__(self, kind:TokenKind, field='', transform:AtomTransform=atom_token):
+  def __init__(self, kind:TokenKind, field='', transform:AtomTransform|None=None):
     self.name = ''
     self.field = field
     self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
     self.kind = validate_name(kind)
-    self.transform = transform
+    self.transform = transform or _atom_transform_placeholder
 
 
   def token_kinds(self) -> Iterable[str]:
     yield self.kind
+
+
+  def compile(self, parser:'Parser') -> None:
+    if self.transform is _atom_transform_placeholder:
+      self.transform = parser.atom_transform or (atom_text if parser.simplify else atom_token)
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
@@ -775,7 +783,8 @@ class Parser:
 
 
   def __init__(self, lexer:Lexer, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
-   literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule], transforms:dict[RuleName,Callable]|None=None):
+   literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule], simplify:bool=False, atom_transform:AtomTransform|None=None,
+   transforms:dict[RuleName,Callable]|None=None):
     self.lexer = lexer
     self.preprocessor = preprocessor
     self.drop = frozenset(iter_str(drop))
@@ -786,6 +795,9 @@ class Parser:
 
     self.module_name = caller_module_name(1) # Get the calling module name to use for synthesized NamedTuple types.
     self._struct_types:Dict[str,Type] = {}
+
+    self.simplify = simplify
+    self.atom_transform = atom_transform
 
     if transforms is None: transforms = {}
     for name, transform in transforms.items():
