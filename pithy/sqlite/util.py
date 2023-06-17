@@ -195,8 +195,3 @@ def sql_quote_val(val:Any) -> str:
 
 def sql_quote_seq(seq:Iterable[Any]) -> str:
   return ', '.join(sql_quote_val(v) for v in seq)
-
-
-def _sql_unquote_str_replace(m:Match[str]) -> str:
-  if len(m[0]) != 2: raise ValueError(f'SQL string is malformed (contains unescaped "\'"): {m[0]!r}')
-  return "'"
