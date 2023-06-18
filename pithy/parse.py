@@ -679,8 +679,9 @@ class Precedence(Rule):
    field='', drop:Iterable[str]=(), transform:UniTransform=uni_val) -> None:
 
     # Keep track of the distinction between subs that came from leaves vs groups.
-    # This allows us to catenate them all together to sub_refs, so they all get correctly linked,
-    # and then get the linked leaves back via the leaves property implemented below.
+    # We catenate them all together to sub_refs, so they all get correctly linked,
+    # but remember the number of leaves so that `head_subs` can return just the linked leaves.
+
     if isinstance(leaves, (str,Rule)): leaves = (leaves,)
     self.leaf_refs = tuple(leaves)
     self.group_refs = tuple(ref for g in groups for ref in g.sub_refs)
@@ -703,12 +704,12 @@ class Precedence(Rule):
 
 
   def head_subs(self) -> Iterable[Rule]:
-    return iter(self.subs[:len(self.leaf_refs)]) # Only the leaves can be heads.
+    return self.subs[:len(self.leaf_refs)] # Only the leaves can be heads.
 
 
   def compile(self, parser:'Parser') -> None:
     for head in self.heads:
-      matching_subs = [s for s in self.subs if head in s.heads]
+      matching_subs = [s for s in self.head_subs() if head in s.heads]
       assert matching_subs
       if len(matching_subs) > 1:
         raise Parser.DefinitionError(f'{self} contains ambiguous primaries for head token {head!r}:\n',
