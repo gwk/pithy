@@ -21,8 +21,8 @@ arithmetic = Parser(lexer,
       Right(Infix('star2')),
       Left(
         Infix('dot'),
-        SuffixRule(Struct('brack_o', 'expr', 'brack_c'),
-          transform=lambda s, t, l, r: ('[]', l, r)),
+        SuffixRule(Struct('brack_o', 'expr', 'brack_c'), transform=lambda s, t, l, r: ('[]', l, r)),
+        SuffixRule(Struct('paren_o', 'expr', 'paren_c'), transform=lambda s, t, l, r: ('()', l, r)),
       ),
     )
   ),
@@ -45,3 +45,7 @@ utest(('+', ('+', 0, ('*',1,2)), 3), arithmetic.parse, 'expr', Source('', '0+1*2
 utest(('+', ('*',0,1), ('*',2,3)), arithmetic.parse, 'expr', Source('', '0*1+2*3'))
 
 utest(('[]', ('[]', 'a', 0), 1), arithmetic.parse, 'expr', Source('', 'a[0][1]'))
+
+utest(('()', ('()', 'a', 0), 1), arithmetic.parse, 'expr', Source('', 'a(0)(1)'))
+
+utest(('[]', ('()', 'a', 0), 1), arithmetic.parse, 'expr', Source('', 'a(0)[1]'))
