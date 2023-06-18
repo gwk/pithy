@@ -533,10 +533,15 @@ class Choice(Rule):
 
 class Operator:
   'An operator that composes a part of a Precedence rule.'
-  kinds:Tuple[TokenKind,...] = ()
   sub_refs:Tuple[RuleRef,...] = ()
 
   # TODO: spacing requirement options, e.g. no space, some space, symmetrical space.
+
+
+  @property
+  def kinds(self) -> Tuple[TokenKind,...]:
+    return ()
+
 
   def __init__(self, *args:Any, **kwargs:Any):
     raise Exception(f'abstract base class: {self}')
@@ -551,8 +556,13 @@ class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
 
   def __init__(self, suffix:TokenKind, transform:SuffixTransform=suffix_text_val_pair): # TODO: transform should take slc and token?
-    self.kinds = (validate_name(suffix),)
+    self.suffix = validate_name(suffix)
     self.transform = transform
+
+
+  @property
+  def kinds(self) -> Tuple[TokenKind,...]:
+    return (self.suffix,)
 
 
   def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
@@ -577,7 +587,7 @@ class SuffixRule(Operator):
 
 
   @property
-  def kinds(self) -> Tuple[TokenKind,...]: # type: ignore[override]
+  def kinds(self) -> Tuple[TokenKind,...]:
     return tuple(self.suffix.heads)
 
 
@@ -594,13 +604,12 @@ class BinaryOp(Operator):
 
 class Adjacency(BinaryOp):
   'A binary operator that joins two primary expressions with no operator token in between.'
-  kinds:Tuple[TokenKind,...] = () # Adjacency operators have no operator token.
 
   def __init__(self, transform:BinaryTransform=binary_vals_pair): # TODO transform should take slc.
     self.transform = transform
 
 
-  @property # type: ignore[no-redef, override]
+  @property
   def kinds(self) -> Tuple[TokenKind,...]:
     raise _AllLeafKinds
 
@@ -620,8 +629,13 @@ class Infix(BinaryOp):
   'A binary operator that joins two primary expressions with an infix operator.'
 
   def __init__(self, kind:TokenKind, transform:BinaryTransform=binary_text_vals_triple):
-    self.kinds = (validate_name(kind),)
+    self.kind = validate_name(kind)
     self.transform = transform
+
+
+  @property
+  def kinds(self) -> Tuple[TokenKind,...]:
+    return (self.kind,)
 
 
   def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
