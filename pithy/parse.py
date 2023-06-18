@@ -537,7 +537,9 @@ class Operator:
   sub_refs:Tuple[RuleRef,...] = ()
 
   # TODO: spacing requirement options, e.g. no space, some space, symmetrical space.
-  def __init__(self, *args:Any, **kwargs:Any): raise Exception(f'abstract base class: {self}')
+
+  def __init__(self, *args:Any, **kwargs:Any):
+    raise Exception(f'abstract base class: {self}')
 
 
   def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
