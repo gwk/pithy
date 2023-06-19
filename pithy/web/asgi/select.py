@@ -13,8 +13,8 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
-from ...html import (A, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Span,
-  Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
+from ...html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Span,
+  Summary, Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ...html.parse import linkify
 from ...html.parts import pagination_control
 from ...sqlite import Connection, Row, SqliteError
@@ -231,9 +231,9 @@ class SelectApp:
         rows = [Tr(_=[rcf(row) for rcf in render_cell_fns]) for row in c]
 
     return [
-      Div(id='query', cl='kv-grid-max', _=[
-        Label('Query:'), Pre(id='select_query', hx_swap_oob='innerHTML', _=query),
-        Label('Plan:'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan),
+      Div(id='query', _=[
+        Details(Summary('Query'), _=Pre(id='select_query', hx_swap_oob='innerHTML', _=query)),
+        Details(Summary('Plan'), _=Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan)),
       ]),
       Div(id='pagination', cl='kv-grid-max',  _=[pagination_control(count, limit, offset, params)]),
       Div(id='results', _=HtmlTable(cl='dense', _=[
