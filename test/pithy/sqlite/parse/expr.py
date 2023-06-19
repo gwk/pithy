@@ -34,3 +34,5 @@ utest(['"a"'], parse_expr, '"a"')
 
 
 utest(('||', "'a'", "'b'"), parse_expr, "'a' || 'b'")
+
+utest(('()', ['a'], ['b']), parse_expr, 'a(b)')
