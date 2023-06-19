@@ -7,7 +7,8 @@ from tolkien import Source, Token
 
 from ..lex import Lexer
 from ..parse import (Alias, Atom, atom_text, AtomTransform, Choice, choice_label, choice_labeled, choice_val, Infix, Left,
-  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, uni_syn, uni_text, ZeroOrMore)
+  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, SuffixRule, uni_syn, uni_text,
+  ZeroOrMore)
 from .keywords import sqlite_keywords
 
 
@@ -235,6 +236,9 @@ expr_rules = dict(
     Left(Infix('concat')),
     Left(Infix('plus'), Infix('minus')),
     Left(Infix('star'), Infix('slash'), Infix('rem')),
+    Left(
+      SuffixRule(Struct('lp', 'expr', 'rp', field='expr'), transform=lambda s, t, l, r: ('()', l, r)),
+    ),
   ),
 
   # unary-operator expr
