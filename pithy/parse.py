@@ -578,7 +578,7 @@ class SuffixRule(Operator):
   '''
 
   def __init__(self, suffix:Rule, transform:BinaryTransform=binary_text_vals_triple): # TODO: transform should take slc.
-    if isinstance(suffix, str): raise TypeError('SuffixRule requires a constructed rule, not a string reference.')
+    if isinstance(suffix, str): raise TypeError('SuffixRule requires a constructed rule, not a string reference.') # type: ignore[unreachable]
     self.sub_refs = (suffix,)
     self.transform = transform
 
