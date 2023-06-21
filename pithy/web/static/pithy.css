@@ -136,23 +136,23 @@ form.inline {
   gap: 1ch;
 }
 
-.input-labels-inline {
+.input-labels-inline { /* An inline span containing input/label pairs. The labels contain the inputs, followed by label text. */
   display: flex;
   flex-direction: row;
   gap: 1ch;
 }
 
-span.input-label { /* A span that wraps an input (e.g. radio or checkbox) and its label. */
+.input-labels-inline > label { /* A label that wraps an input (e.g. radio or checkbox) followeb dy the label text. */
   display: flex;
   flex-direction: row;
   white-space: nowrap;
 }
 
-span.input-label > input:first-child { /* The input. */
-  margin-right: 0.5ch;
+.input-labels-inline > label > input:first-child {
+  margin-right: 0.5ch; /* Add space between the input and its label text. */
 }
 
-span.input-label > input:first-child:where([type='checkbox'], [type='radio']) {
+.input-labels-inline > label > input:first-child:where([type='checkbox'], [type='radio']) {
   align-self: center;
 }
 
