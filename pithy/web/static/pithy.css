@@ -322,19 +322,19 @@ table.dense tbody tr:nth-child(odd) {
   font-display: block;
   font-family: 'Noto Emoji';
 }
-#pithy_select_app a.icon  {
+#pithy_select_app a.icon {
   color: #000;
   text-decoration: none;
 }
-#pithy_select_app a.icon:active  {
+#pithy_select_app a.icon:active {
   color: #000;
   text-decoration: none;
 }
-#pithy_select_app a.icon:hover   {
+#pithy_select_app a.icon:hover {
   color: #222;
   text-decoration: none;
 }
 #pithy_select_app a.icon:visited {
-  color: rgb(0,0,0);
+  color: rgb(0, 0, 0);
   text-decoration: none;
 }
