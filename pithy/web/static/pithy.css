@@ -220,17 +220,45 @@ table.dense tbody tr:nth-child(odd) {
 
 /* HTMX interaction indicators. */
 
+.block-emoji-icon, .inline-emoji-icon {
+  font-display: block;
+  font-family: 'Noto Emoji';
+  text-align: center;
+}
+
 .block-emoji-icon {
   display: block;
   margin: 1rem 0;
   min-width: 1.5rem;
-  text-align: center;
 }
 
 .inline-emoji-icon {
   display: inline-block;
   margin: 0 0.5rem;
-  text-align: center;
+}
+
+
+/* Emoji icons. */
+
+.icon {
+  font-display: block;
+  font-family: 'Noto Emoji';
+}
+a.icon {
+  color: #000;
+  text-decoration: none;
+}
+a.icon:active {
+  color: #000;
+  text-decoration: none;
+}
+a.icon:hover {
+  color: #222;
+  text-decoration: none;
+}
+a.icon:visited {
+  color: rgb(0, 0, 0);
+  text-decoration: none;
 }
 
 
@@ -314,27 +342,4 @@ table.dense tbody tr:nth-child(odd) {
 
 #pithy_select_app .unjoined {
   color: #840;
-}
-
-/* SelectApp. */
-
-#pithy_select_app .icon {
-  font-display: block;
-  font-family: 'Noto Emoji';
-}
-#pithy_select_app a.icon {
-  color: #000;
-  text-decoration: none;
-}
-#pithy_select_app a.icon:active {
-  color: #000;
-  text-decoration: none;
-}
-#pithy_select_app a.icon:hover {
-  color: #222;
-  text-decoration: none;
-}
-#pithy_select_app a.icon:visited {
-  color: rgb(0, 0, 0);
-  text-decoration: none;
 }
