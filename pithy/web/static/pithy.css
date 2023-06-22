@@ -264,8 +264,22 @@ a.icon:visited {
 
 /* Htmx emoji clock spinner. */
 
-.with-spinner-after.htmx-request::after {
+.with-spinner-after::after, .with-spinner-before::before {
+  font-family: 'Noto Emoji';
+  opacity: 0;
+  transition: opacity 250ms ease-in;
+  text-align: center;
+  display: inline-block;
+  /* TODO: figure out how to align spinner with rest of input-label pair. */
+}
+
+.with-spinner-before::before {
+  transform: translateX(-3ch);
+}
+
+.with-spinner-after.htmx-request::after, .with-spinner-before.htmx-request::before {
   /* The htmx-request class is added to the requesting element or specified hx-indicator element while the request is ongoing. */
+  opacity: 1;
   content: '🕛';
 
   animation-name: emoji-clock;
