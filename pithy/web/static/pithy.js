@@ -5,7 +5,7 @@ const log = console.log;
 let scrollbarWidth = 0;
 
 
-addEventListener('DOMContentLoaded', ()=>{
+addEventListener('DOMContentLoaded', () => {
   // Set safari class on body if browser is Safari.
   if (window.safari !== undefined) {
     document.body.classList.add('safari');
@@ -63,7 +63,8 @@ function removeAttrForSelectorAll(selector, attr) {
 function clearValueForSelector(selector) {
   const element = document.querySelector(selector);
   if (element) {
-     element.removeAttribute('value'); }
+    element.removeAttribute('value');
+  }
 }
 
 
@@ -100,7 +101,6 @@ function resetValueForSelectorAll(selector) {
 }
 
 
-
 function setupReloadingDateInput(input) {
   // Configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
   input.onfocus = null; // This handler is a lazy initializer; remove it.
@@ -134,7 +134,7 @@ function setupBeforeSendClearHxTargetContent(element) {
     log('ERROR: setupBeforeSendClearHxTargetContent: element has no hx-target attribute:', element);
     return;
   }
-  htmx.on(element, 'htmx:beforeSend', (event)=>{
+  htmx.on(element, 'htmx:beforeSend', (event) => {
     const hx_target = document.querySelector(hx_target_sel);
     if (!hx_target) {
       log('ERROR: setupBeforeSendClearHxTargetContent: hx-target not found:', hx_target_sel);
