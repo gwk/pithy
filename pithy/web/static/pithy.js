@@ -143,3 +143,16 @@ function setupBeforeSendClearHxTargetContent(element) {
     hx_target.innerHTML = '';
   });
 }
+
+
+function validateAtLeastOneCheckbox(span) {
+  /* Require at least one checkbox be selected. */
+  let any_checked = false
+  const inputs = span.getElementsByTagName('input')
+  for (const input of inputs) {
+    any_checked = any_checked || input.checked
+  }
+  first_input = span.querySelector('input')
+  const desc = span.desc || 'option'
+  first_input.setCustomValidity(any_checked ? '' : `Select at least one ${desc}`)
+}
