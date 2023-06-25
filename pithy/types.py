@@ -4,13 +4,12 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import is_dataclass
 from types import UnionType
-from typing import Any, Callable, get_args, get_origin, Optional, Protocol, runtime_checkable, TypeVar, Union
+from typing import Any, Callable, get_args, get_origin, Protocol, runtime_checkable, TypeVar, Union
 
 
 _T = TypeVar('_T')
 
 NoneType = type(None)
-Opt = Optional
 
 
 @runtime_checkable
