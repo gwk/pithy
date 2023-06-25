@@ -26,7 +26,7 @@ from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
-from typing import Any, Callable, cast, FrozenSet, Iterable, Iterator, NoReturn, Optional, Type, TypeVar, Union
+from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Optional, Type, TypeVar, Union
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 
@@ -291,8 +291,8 @@ class Atom(Rule):
 class _QuantityRule(Rule):
   'Base class for Opt and Quantity.'
   min:int
-  body_heads:FrozenSet[str]
-  drop:FrozenSet[str]
+  body_heads:frozenset[str]
+  drop:frozenset[str]
 
   @property
   def body(self) -> Rule:

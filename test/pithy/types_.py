@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Counter, FrozenSet, Optional
+from typing import Counter, Optional
 
 from pithy.types import is_a
 from utest import utest
@@ -26,7 +26,7 @@ utest(True, is_a, [], list)
 utest(True, is_a, {}, dict)
 utest(True, is_a, (), tuple)
 utest(True, is_a, set(), set)
-utest(True, is_a, frozenset(), FrozenSet)
+utest(True, is_a, frozenset(), frozenset)
 
 utest(True, is_a, [], list[int])
 utest(True, is_a, [0], list[int])

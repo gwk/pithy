@@ -5,7 +5,7 @@ from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
-from typing import Any, Callable, FrozenSet, Hashable, Iterable, Iterator, Mapping, Optional, TypeVar, Union
+from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, Optional, TypeVar, Union
 
 from .types import Comparable
 
@@ -409,7 +409,7 @@ def set_from(iterables:Iterable[Iterable[_K]]) -> set[_K]:
   return s
 
 
-def frozenset_from(iterables:Iterable[Iterable[_K]]) -> FrozenSet[_K]:
+def frozenset_from(iterables:Iterable[Iterable[_K]]) -> frozenset[_K]:
   return frozenset(set_from(iterables))
 
 

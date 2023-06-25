@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import cast, Container, FrozenSet, Iterable, Iterator, NamedTuple, Pattern, Union
+from typing import cast, Container, Iterable, Iterator, NamedTuple, Pattern, Union
 
 from tolkien import Source, Token
 
@@ -20,7 +20,7 @@ class LexMode:
     self.name = name
     self.kinds = list(iter_str(kinds))
     self.indents = indents
-    self.kind_set:FrozenSet[str] = frozenset() # Filled in by Lexer.
+    self.kind_set:frozenset[str] = frozenset() # Filled in by Lexer.
     self.regex:Pattern = cast(Pattern, None) # Filled in by Lexer.
 
   def __repr__(self) -> str:
