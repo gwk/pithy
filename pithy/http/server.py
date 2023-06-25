@@ -19,7 +19,7 @@ from http.client import HTTPException, HTTPMessage, parse_headers
 from io import BufferedIOBase, BufferedReader
 from os import close, environ
 from shutil import copyfileobj
-from socket import socket
+from socket import socket as Socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info, stderr
 from traceback import print_exception
@@ -51,7 +51,7 @@ class HttpServer(ThreadingTCPServer):
   allow_reuse_address = True # See cpython/Lib/socketserver.py.
   #^ Controls whether `self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)` is called.
 
-  unrecoverable_exception_types: Tuple[Type, ...] = (
+  unrecoverable_exception_types:tuple[Type,...] = (
     AttributeError,
     ImportError,
     MemoryError,
@@ -96,7 +96,7 @@ class HttpServer(ThreadingTCPServer):
 
 
 
-  def handle_error(self, request:Union[socket, Tuple[bytes,socket]], client_address:Union[tuple[str,int],str]) -> None:
+  def handle_error(self, request:Socket|tuple[bytes,Socket], client_address:str|tuple[str,int]) -> None:
     '''
     This method overrides BaseServer.handle_error to fail fast for unrecoverable errors.
     '''
@@ -122,7 +122,7 @@ class HttpRequestHandler(StreamRequestHandler):
   close_connection: bool
 
 
-  def __init__(self, request:Union[socket, Tuple[bytes,socket]], client_address:tuple[str,int], server:HttpServer):
+  def __init__(self, request:Socket|tuple[bytes,Socket], client_address:tuple[str,int], server:HttpServer):
     self.reset()
     self.reuse_count = 0
     super().__init__(request=request, client_address=client_address, server=server)
