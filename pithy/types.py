@@ -3,6 +3,7 @@
 from abc import abstractmethod
 from collections import Counter
 from dataclasses import is_dataclass
+from types import UnionType
 from typing import Any, Callable, get_args, get_origin, Optional, Protocol, runtime_checkable, TypeVar, Union
 
 
@@ -51,7 +52,7 @@ def is_a(val:Any, T:Union[type,tuple[type,...]]) -> bool:
     E = args[0]
     return isinstance(val, RTT) and all(is_a(el, E) for el in val)
 
-  raise TypeError(f'{T} is not a single-parameter generic type; origin type: {RTT}')
+  raise TypeError(f'{T} is not a single-parameter generic type; origin type: {RTT}; args: {args}')
 
 
 _Args = tuple[type, ...]
@@ -74,6 +75,7 @@ def _is_a_Union(v:Any, args:_Args) -> bool:
 _generic_type_predicates: dict[Any, Callable[[Any, _Args], bool]] = {
   tuple: _is_a_Tuple,
   Union: _is_a_Union,
+  UnionType: _is_a_Union,
 }
 
 
