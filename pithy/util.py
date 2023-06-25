@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Iterable, NamedTuple, Type, TypeVar
+from typing import Any, Callable, Iterable, NamedTuple, TypeVar
 
 
 _T = TypeVar('_T')
@@ -14,7 +14,7 @@ class lazy_property(object):
   def __init__(self, acc_fn:Callable):
     self.acc_fn = acc_fn
 
-  def __get__(self, obj:Any, cls:Type) -> Any:
+  def __get__(self, obj:Any, cls:type) -> Any:
     val = self.acc_fn(obj)
     setattr(obj, self.acc_fn.__name__, val)
     return val

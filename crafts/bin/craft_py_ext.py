@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
 from inspect import Parameter, Signature, signature
-from typing import Any, ByteString, Callable, Iterator, NoReturn, TextIO, Type, Union
+from typing import Any, ByteString, Callable, Iterator, NoReturn, TextIO, Union
 
 from mypy_extensions import VarArg
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
@@ -74,7 +74,7 @@ type_infos = { t.type : t for t in [
 ]}
 
 
-TypeAnn = str|Type[Any]|None
+TypeAnn = str|type[Any]|None
 
 
 @dataclass
@@ -116,7 +116,7 @@ class Func:
 @dataclass
 class Var:
   name:str
-  type:Type[Any]
+  type:type[Any]
 
 
 Decl = Union['Class',Func,Var]

@@ -5,7 +5,7 @@ SVG writer.
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from typing import Any, ClassVar, Iterable, Optional, Type
+from typing import Any, ClassVar, Iterable, Optional
 
 from ..markup import (_Mu, add_opt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError,
   prefer_int)
@@ -75,7 +75,7 @@ class SvgNode(Mu):
 SvgNode.generic_tag_type = SvgNode # Note: this creates a circular reference.
 
 
-def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
+def _tag(Subclass:type[_Mu]) -> type[_Mu]:
   'Decorator for associating a concrete subclass with the lowercase tag matching its name.'
   assert issubclass(Subclass, Mu)
   Subclass.tag = Subclass.__name__.lower()

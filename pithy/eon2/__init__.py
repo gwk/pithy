@@ -5,7 +5,7 @@ Eon is a structured data format, similar to JSON and YAML.
 '''
 
 
-from typing import Any, Type, TypeVar
+from typing import Any, TypeVar
 
 from tolkien import Source, Token
 
@@ -32,7 +32,7 @@ _esc_char_vals = {
 }
 
 
-def parse_eon(path:str, text:str, to:Type[_T]) -> Any:
+def parse_eon(path:str, text:str, to:type[_T]) -> Any:
   '''
   Parse source text as EON data format.
   '''
@@ -41,8 +41,6 @@ def parse_eon(path:str, text:str, to:Type[_T]) -> Any:
   return convert_eon(syntax, source, to)
 
 
-def parse_eon_or_fail(path:str, text:str, to:Type[_T]) -> Any:
+def parse_eon_or_fail(path:str, text:str, to:type[_T]) -> Any:
   try: return parse_eon(path, text, to)
   except ParseError as e: e.fail()
-
-

@@ -26,7 +26,7 @@ from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
-from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Type, TypeVar, Union
+from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, TypeVar, Union
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 
@@ -43,6 +43,11 @@ TokenKind = str
 RuleName = str
 RuleRef = Union['Rule',RuleName]
 _T = TypeVar('_T')
+
+
+class GeneratedStruct(Protocol):
+  _fields:tuple[str,...]
+  def __init__(self, *args:Any): ...
 
 
 class ParseError(Exception):
@@ -149,7 +154,7 @@ class Rule:
   field:str|None # Optional field name, used for generated structures.
   #^ A value of '' (the default) causes the rule name or else a default field name to be used.
   #^ An explicit value of None causes the field to be omitted.
-  type_desc:str # Type description for diagnostic descriptions.
+  type_desc:str # type description for diagnostic descriptions.
   sub_refs:tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
   subs:tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
   heads:tuple[TokenKind,...] # Set of leading token kinds for this rule.
@@ -813,7 +818,7 @@ class Parser:
     rules = None # type: ignore[assignment] # Forget the original dict. This protects from misuse in the code below.
 
     self.module_name = caller_module_name(1) # Get the calling module name to use for synthesized NamedTuple types.
-    self._struct_types:dict[str,Type] = {}
+    self._struct_types:dict[str,type[GeneratedStruct]] = {}
 
     self.simplify = simplify
     self.atom_transform = atom_transform
@@ -870,7 +875,7 @@ class Parser:
     for rule in self.nodes:
       rule.compile(parser=self)
 
-    self.types:Immutable[Type] = Immutable(**self._struct_types)
+    self.types:Immutable[type] = Immutable(**self._struct_types)
 
 
   def __del__(self) -> None:
@@ -916,7 +921,7 @@ class Parser:
     return name
 
 
-  def _mk_struct_type(self, name:str, field_names:tuple[str,...]) -> Type:
+  def _mk_struct_type(self, name:str, field_names:tuple[str,...]) -> type[GeneratedStruct]:
     if name:
       type_name = typecase_from_snakecase(name)
     elif field_names:
@@ -931,7 +936,7 @@ class Parser:
         raise Parser.DefinitionError(f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {field_names}')
       return existing
 
-    struct_type = namedtuple(type_name, field_names, rename=True, module=self.module_name or '?') # type: ignore[misc]
+    struct_type = cast(type[GeneratedStruct], namedtuple(type_name, field_names, rename=True, module=self.module_name or '?'))
     self._struct_types[type_name] = struct_type
     return struct_type
 

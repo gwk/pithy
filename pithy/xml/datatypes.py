@@ -7,7 +7,7 @@ Base class and utilities for generated Xml datatypes; see the craft-xml-datatype
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Iterable, Type, TypeVar
+from typing import Callable, ClassVar, Iterable, TypeVar
 
 from ..transtruct import Ctx, Transtructor
 
@@ -32,7 +32,7 @@ class XmlDatatype:
 
   _tag:ClassVar[str] # Static tag name set by all subclasses.
 
-  _datatypes:ClassVar[dict[str,Type[XmlDatatype]]] # Static map of tag name to datatype class.
+  _datatypes:ClassVar[dict[str,type[XmlDatatype]]] # Static map of tag name to datatype class.
 
   _child_attr_infos:ClassVar[dict[str,ChildAttrInfo]] = {}
   #^ Static dict of child tag names to info for child element types that always appear singly.
