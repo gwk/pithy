@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from types import GeneratorType
-from typing import Callable, Generator, Iterable, Iterator, List, Optional, Protocol, TypeVar, Union
+from typing import Callable, Generator, Iterable, Iterator, Optional, Protocol, TypeVar, Union
 
 from .exceptions import OmitNode
 from .iterable import iter_values
@@ -41,7 +41,7 @@ def transform_tree(root:_T, get_children:_GetChildrenFn[_T], visit:_TransformVis
 
 
 def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_TransformVisitor, stack:_Stack) -> _VisitResult:
-  results: List[_R] = [] # type: ignore[valid-type]
+  results: list[_R] = [] # type: ignore[valid-type]
   children = get_children(node)
   if children:
     child_stack = (*stack, node)

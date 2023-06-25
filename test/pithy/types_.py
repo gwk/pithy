@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Counter, Dict, FrozenSet, List, Optional, Set
+from typing import Counter, Dict, FrozenSet, Optional, Set
 
 from pithy.types import is_a
 from utest import utest
@@ -22,18 +22,18 @@ utest(True, is_a, (), tuple)
 utest(True, is_a, set(), set)
 utest(True, is_a, frozenset(), frozenset)
 
-utest(True, is_a, [], List)
+utest(True, is_a, [], list)
 utest(True, is_a, {}, Dict)
 utest(True, is_a, (), tuple)
 utest(True, is_a, set(), Set)
 utest(True, is_a, frozenset(), FrozenSet)
 
-utest(True, is_a, [], List[int])
-utest(True, is_a, [0], List[int])
-utest(False, is_a, [0, None], List[int])
+utest(True, is_a, [], list[int])
+utest(True, is_a, [0], list[int])
+utest(False, is_a, [0, None], list[int])
 
-utest(True, is_a, [0, None], List[Optional[int]])
-utest(False, is_a, [0, None, ''], List[Optional[int]])
+utest(True, is_a, [0, None], list[Optional[int]])
+utest(False, is_a, [0, None, ''], list[Optional[int]])
 
 utest(True, is_a, {}, Dict[int,str])
 utest(True, is_a, {0:'a'}, Dict[int,str])

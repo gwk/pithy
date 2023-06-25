@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, List
+from typing import Any, Callable, Iterable
 
 from pithy.desc import outD
 from pithy.iterable import iter_values
@@ -46,7 +46,7 @@ def main() -> None:
 
 # Evaluation.
 
-def interactive_loop(query_src:str, roots:List[Any]) -> None:
+def interactive_loop(query_src:str, roots:list[Any]) -> None:
   exit("INTERACTIVE LOOP NOT YET IMPLEMENTED.")
 
 

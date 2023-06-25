@@ -23,7 +23,7 @@ def main() -> None:
     commits = runO('git --no-pager log --format=%H', cwd=repo).split('\n')
     outL(f'{name}: {len(commits)} commits.')
     objects:Set[str] = set()
-    pairs:List[str] = []
+    pairs:list[str] = []
     for commit in err_progress(commits, label='commit'):
       diff = runO(f'git --no-pager show --raw --abbrev=16 {commit}', cwd=repo) # only show modified files.
       for line in diff.split('\n'):

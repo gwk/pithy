@@ -6,7 +6,7 @@ from os import fspath as _fspath, PathLike, sep
 from os.path import (abspath as _abspath, basename as _basename, commonpath as _commonpath, dirname as _dirname,
   expanduser as _expand_user, isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split,
   splitext as _splitext)
-from typing import List, Union
+from typing import Union
 
 
 Path = Union[str, PathLike]
@@ -187,7 +187,7 @@ def path_name_stem(path: Path) -> str:
 
 
 def path_rel_to_dir(path:Path, dir:Path) -> str:
-  comps:List[str] = []
+  comps:list[str] = []
   parent_comps = 0
   for p, r in _zip_longest(path_split(abs_path(path)), path_split(abs_path(dir))):
     if not parent_comps and p == r: continue
@@ -233,7 +233,7 @@ def path_rel_to_current_or_abs(path: Path, dot=False) -> str:
   return path_rel_to_ancestor_or_abs(path, current_dir(), dot=dot)
 
 
-def path_split(path: Path) -> List[str]:
+def path_split(path: Path) -> list[str]:
   # TODO: rename to path_comps?
   np = norm_path(path)
   if np == '/': return ['/']

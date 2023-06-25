@@ -8,7 +8,7 @@ from pithy.string import clip_prefix, clip_suffix
 from utest import utest
 
 
-ws_normalizations:List[tuple[str|HtmlNode,str]] = [
+ws_normalizations:list[tuple[str|HtmlNode,str]] = [
   ( '',
     ''),
   ( ' Leading and trailing space. ',

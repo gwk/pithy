@@ -6,7 +6,7 @@ This format syntax is intended for use in file names.
 '''
 
 import re
-from typing import Any, Iterable, Iterator, List, NamedTuple, Optional, Pattern, Union
+from typing import Any, Iterable, Iterator, NamedTuple, Optional, Pattern, Union
 
 from .string import line_col_1
 
@@ -138,7 +138,7 @@ def format_fnf_parts(parts:Iterable[FNFPart], args:Iterable[Any]) -> str:
   num_formatters = count_fnf_parts_formatters(parts)
   if num_formatters != len(args):
     raise ValueError(f'unequal number of formatters ({num_formatters}) and arguments ({len(args)})')
-  res:List[str] = []
+  res:list[str] = []
   args_it = iter(args)
   for part in parts:
     if isinstance(part, str):

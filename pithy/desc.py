@@ -8,7 +8,7 @@ like `pprint` but streaming, and with a more compact, minimal style.
 import re
 from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
-from typing import Any, Iterable, Iterator, List, NamedTuple, Set, TextIO, Union
+from typing import Any, Iterable, Iterator, NamedTuple, Set, TextIO, Union
 
 from .iterable import known_leaf_types
 
@@ -52,7 +52,7 @@ class _Desc(NamedTuple):
   opener:str # Opening character, e.g. '('.
   closer:str # Closing character, e.g. ')'.
   it:Iterator # TODO: when mypy supports recursive types, fully annotate with `['_DescEl']`.
-  buffer:List[str] # Holds leading elements obtained from `it`.
+  buffer:list[str] # Holds leading elements obtained from `it`.
 
   def scan_inlineables(self, max_width:int) -> bool:
     'Determine if this description can be rendered inline.'

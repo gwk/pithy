@@ -5,7 +5,7 @@ XML escaping utilities.
 '''
 
 from functools import lru_cache
-from typing import Any, Container, Dict, Iterable, List, Optional
+from typing import Any, Container, Dict, Iterable, Optional
 from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 
 from ..string import EscapedStr
@@ -38,7 +38,7 @@ def fmt_attrs(attrs:XmlAttrs, *, replaced_attrs:Dict[str,str]={}, ignore:Contain
 
 
 def fmt_attr_items(attr_items:Iterable[tuple[str,Any]], *, replaced_attrs:Dict[str,str]={}, ignore:Container[str]=()) -> str:
-  parts: List[str] = []
+  parts: list[str] = []
   for k, v in attr_items:
     if k in ignore: continue
     k = replaced_attrs.get(k, k)

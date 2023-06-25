@@ -10,7 +10,7 @@ from pithy.ansi import *
 from pithy.diff import *
 from pithy.fs import *
 from pithy.io import *
-from pithy.task import * # type: ignore
+from pithy.task import *  # type: ignore
 
 
 _T = TypeVar('_T')
@@ -62,7 +62,7 @@ def test_pair(obj_a:str, obj_b:str) -> tuple[int, float, float]:
   return not_same, t0, t1
 
 
-def dump_diff(seq_a:List[_T], seq_b:List[_T], diff:Diff) -> None:
+def dump_diff(seq_a:list[_T], seq_b:list[_T], diff:Diff) -> None:
   for a, b in diff:
     if a and b:
       i = 0

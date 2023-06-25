@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, ContextManager, Generic, Iterable, List, TextIO, TypeVar
+from typing import Any, Callable, ContextManager, Generic, Iterable, TextIO, TypeVar
 
 from .io import err_progress, errL, writeL
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -29,10 +29,10 @@ class Transformer(Generic[_T], ContextManager):
     self.log_index_width = log_index_width
     self.progress_frequency = progress_frequency
 
-    self.stages: List[Callable] = []
-    self.stage_names: List[str] = []
-    self.counts: List[int] = []
-    self.log_files: List[TextIO] = []
+    self.stages: list[Callable] = []
+    self.stage_names: list[str] = []
+    self.counts: list[int] = []
+    self.log_files: list[TextIO] = []
 
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:

@@ -8,7 +8,7 @@ from shlex import quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from time import time as _now
-from typing import AnyStr, BinaryIO, cast, Dict, IO, Iterator, List, NoReturn, Optional, Sequence, Union
+from typing import AnyStr, BinaryIO, cast, Dict, IO, Iterator, NoReturn, Optional, Sequence, Union
 
 from .alarm import Alarm, Timeout
 
@@ -176,7 +176,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
     if send: sel.register(send, EVENT_WRITE)
     if recv: sel.register(recv, EVENT_READ)
     time_start = _now()
-    send_buffer: List[bytes] = []
+    send_buffer: list[bytes] = []
     recv_bytes = b''
 
     while recv_bytes or sel.get_map():

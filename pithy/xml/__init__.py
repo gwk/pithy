@@ -4,13 +4,13 @@
 Xml Mu/markup type.
 '''
 
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, Optional, Union
 
 from ..markup import _Mu, Mu, MuAttrs, MuChildOrChildrenLax
 
 
 XmlChild = Union[str,'Xml']
-XmlChildren = List[XmlChild]
+XmlChildren = list[XmlChild]
 
 
 class XmlNode(Mu):

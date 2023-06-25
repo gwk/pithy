@@ -9,7 +9,7 @@ This is not currently in use and may need updating.
 import plistlib
 import re
 from argparse import ArgumentParser, Namespace
-from typing import Any, BinaryIO, Dict, List, Optional
+from typing import Any, BinaryIO, Dict, Optional
 
 from crafts import CraftConfig, load_craft_config
 from pithy.filestatus import file_mtime, file_mtime_or_zero
@@ -145,7 +145,7 @@ def gen_plist(dst_file:BinaryIO, EXECUTABLE_NAME:str|None, PRODUCT_BUNDLE_IDENTI
   plistlib.dump(d, dst_file)
 
 
-def detect_swift_imports(swift_source_paths:List[str]) -> List[str]:
+def detect_swift_imports(swift_source_paths:list[str]) -> list[str]:
   # Prior to swift 5 it was necessary to copy swift libs into the app.
   # This is not currently used but we are hanging onto it for now.
   egrep_cmd = ['egrep', '--no-filename', '--only-matching', r'\s*import .*'] + swift_source_paths

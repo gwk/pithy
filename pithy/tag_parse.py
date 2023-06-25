@@ -15,7 +15,7 @@ the branches are TagTree instances, which are subclasses of tuple.
 
 import re
 from itertools import chain
-from typing import Callable, Dict, Iterable, Iterator, List, Match, Sequence, Union
+from typing import Callable, Dict, Iterable, Iterator, Match, Sequence, Union
 
 from .ansi import RST_TXT, TXT_R, TXT_Y
 from .buffer import Buffer
@@ -43,7 +43,7 @@ class TagParser():
 
 
   def _parse(self, leaf_replacements: Dict[str, str], text: str, match_stream: Buffer[Match],
-    pos: int, depth: int, subs: List, close_pred: Callable, parent_close_pred: Callable) -> tuple['TagTree', int]:
+    pos: int, depth: int, subs: list, close_pred: Callable, parent_close_pred: Callable) -> tuple['TagTree', int]:
 
     def append_leaf(leaf: str) -> None:
       subs.append(leaf_replacements.get(leaf, leaf))
@@ -157,7 +157,7 @@ class TagTree(tuple):
           yield from el.walk_branches(should_enter_tag_fn=should_enter_tag_fn)
 
 
-  def _structured_desc(self, res: List[str], depth: int) -> None:
+  def _structured_desc(self, res: list[str], depth: int) -> None:
     'multiline indented description helper.'
     if self.sgr_color: res.append(self.sgr_color)
     res.append(self.class_label)
@@ -177,7 +177,7 @@ class TagTree(tuple):
         spacer = nest_spacer
 
   def structured_desc(self, depth=0) -> str:
-    res: List[str] = []
+    res: list[str] = []
     self._structured_desc(res, depth)
     return ''.join(res)
 

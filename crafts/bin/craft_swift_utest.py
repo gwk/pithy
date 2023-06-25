@@ -6,7 +6,7 @@ It is currently a work in progress and is somewhat out of date.
 '''
 
 from argparse import ArgumentParser
-from typing import Dict, Iterator, List, NamedTuple
+from typing import Dict, Iterator, NamedTuple
 
 from crafts import CraftConfig, load_craft_config
 from pithy.fs import make_dirs, remove_dir_contents, walk_files
@@ -76,7 +76,7 @@ def main() -> None:
 class Module(NamedTuple):
   name: str
   module_build_dir: str
-  inputs: Dict[str, List[str]]
+  inputs: Dict[str, list[str]]
 
 
 def run_utest(src_path:str, module:Module, conf:CraftConfig, debug_dir:str, sdk_dir:str, fw_dir:str, module_cache_dir:str) -> bool:

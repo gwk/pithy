@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from typing import Any, cast, ContextManager, IO, List, Union
+from typing import Any, cast, ContextManager, IO, Union
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -15,7 +15,7 @@ FR, FW, BR, BW = range(4)
 class DuplexPipe(ContextManager):
 
   def __init__(self) -> None:
-    self._files: List[File] = list(os.pipe() + os.pipe())
+    self._files: list[File] = list(os.pipe() + os.pipe())
 
   def __del__(self) -> None:
     for i in range(4): self.close(i)

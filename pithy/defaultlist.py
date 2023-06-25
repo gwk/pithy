@@ -1,12 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Generic, Iterable, List, overload, SupportsIndex, TypeVar, Union
+from typing import Callable, Generic, Iterable, overload, SupportsIndex, TypeVar, Union
 
 
 _T = TypeVar('_T')
 
 
-class DefaultList(List[_T], Generic[_T]):
+class DefaultList(list[_T], Generic[_T]):
   '''
   A subclass of `list` that adds default elements produced by a factory function
   when an out-of-bounds element is accessed.
@@ -22,7 +22,7 @@ class DefaultList(List[_T], Generic[_T]):
   @overload
   def __getitem__(self, index: SupportsIndex) -> _T: ...
   @overload
-  def __getitem__(self, index: slice) -> List[_T]: ...
+  def __getitem__(self, index: slice) -> list[_T]: ...
 
   def __getitem__(self, index):
     if isinstance(index, slice):

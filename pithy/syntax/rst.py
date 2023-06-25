@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass
 from functools import singledispatchmethod
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 from docutils import frontend as _frontend, nodes as _nodes
 from docutils.nodes import Node as Node, Text
@@ -42,7 +42,7 @@ def _get_children(node:Node) -> Iterable[Node]:
 class _Ctx:
   path: str
   text: str
-  lines: List[str]
+  lines: list[str]
   line: int = 0
   col: int = 0
 
@@ -76,14 +76,14 @@ class _Ctx:
 
 
   @singledispatchmethod
-  def visit(self, node:Node, stack:tuple[Node, ...], children:List[Node]) -> Syntax:
+  def visit(self, node:Node, stack:tuple[Node, ...], children:list[Node]) -> Syntax:
     'Default visitor.'
     pos = Syntax.Pos(line=(-1 if node.line is None else node.line-1), enclosed=children)
     return Syntax(path=self.path, pos=pos, kind=_kind_for(node), content=children)
 
 
   @visit.register # type: ignore[no-redef]
-  def visit(self, node:Text, stack:tuple[Node, ...], children:List[Node]) -> Syntax:
+  def visit(self, node:Text, stack:tuple[Node, ...], children:list[Node]) -> Syntax:
     'Text visitor. Determines line/col position post-hoc, which docutils does not provide.'
     assert node.line is None # Text never has line number.
     text = node.astext()
@@ -103,7 +103,7 @@ class _Ctx:
 
 
   @visit.register # type: ignore[no-redef]
-  def visit(self, node:_nodes.reference, stack:tuple[Node, ...], children:List[Node]) -> Syntax:
+  def visit(self, node:_nodes.reference, stack:tuple[Node, ...], children:list[Node]) -> Syntax:
     assert len(children) == 1
     text = children[0]
     assert isinstance(text, Syntax)
@@ -120,7 +120,7 @@ class _Ctx:
 
 
   @visit.register # type: ignore[no-redef]
-  def visit(self, node:_nodes.target, stack:tuple[Node, ...], children:List[Node]) -> None:
+  def visit(self, node:_nodes.target, stack:tuple[Node, ...], children:list[Node]) -> None:
     raise OmitNode
 
 

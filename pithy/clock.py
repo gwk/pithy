@@ -2,7 +2,6 @@
 
 from sys import stderr
 from time import time as now
-from typing import List
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -11,7 +10,7 @@ class Clock:
 
   def __init__(self, name:str):
     self.name = name
-    self.times: List[tuple[float, str]] = [(now(), 'start')]
+    self.times: list[tuple[float, str]] = [(now(), 'start')]
 
 
   def __enter__(self) -> 'Clock': return self

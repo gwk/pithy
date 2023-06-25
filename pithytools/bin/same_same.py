@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from itertools import groupby
 from os import environ
 from sys import stderr, stdout
-from typing import Any, Dict, List, Match, Optional, Set
+from typing import Any, Dict, Match, Optional, Set
 
 from pithy.ansi import BG, cBOLD, cRST_BOLD, cRST_TXT, FILL, gray26, rgb6, RST, sanitize_for_console, sgr, TXT
 from pithy.diff import calc_diff
@@ -82,7 +82,7 @@ def main() -> None:
   # Break input into groups of lines starting with 'diff' lines.
   # Note that the first segment might begin with any kind of line.
   # As soon as a group is complete, call flush_buffer() to render them.
-  buffer:List[DiffLine] = []
+  buffer:list[DiffLine] = []
 
   def flush_buffer() -> None:
     nonlocal buffer
@@ -113,7 +113,7 @@ def main() -> None:
     flush_buffer()
 
 
-def handle_file_lines(lines:List[DiffLine], interactive:bool, dbg:bool) -> None:
+def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
   first = lines[0]
   kind = first.kind
 
@@ -294,7 +294,7 @@ def insert_unique_line(d:Dict[str,Optional[int]], line:str, line_num:int) -> Non
   else: d[body] = line_num
 
 
-def add_token_diffs(rem_lines:List[DiffLine], add_lines:List[DiffLine]) -> None:
+def add_token_diffs(rem_lines:list[DiffLine], add_lines:list[DiffLine]) -> None:
   'Rewrite DiffLine.text values to include per-token diff highlighting.'
   r = HighlightState(lines=rem_lines, tokens=tokenize_difflines(rem_lines), hl_ctx=C_REM_CTX, hl_space=C_REM_SPACE, hl_token=C_REM_TOKEN)
   a = HighlightState(lines=add_lines, tokens=tokenize_difflines(add_lines), hl_ctx=C_ADD_CTX, hl_space=C_ADD_SPACE, hl_token=C_ADD_TOKEN)
@@ -314,7 +314,7 @@ H_START, H_CTX, H_SPACE, H_TOKEN = range(4)
 
 class HighlightState:
   'HighlightState is a list of lines that have been tokenized for highlighting.'
-  def __init__(self, lines:List[DiffLine], tokens:List[str], hl_ctx:str, hl_space:str, hl_token:str):
+  def __init__(self, lines:list[DiffLine], tokens:list[str], hl_ctx:str, hl_space:str, hl_token:str):
     self.lines = lines
     self.tokens = tokens
     self.hl_ctx = hl_ctx # Context highlight.
@@ -322,7 +322,7 @@ class HighlightState:
     self.hl_token = hl_token # Token highlighter.
     self.state = H_START
     self.line_idx = 0
-    self.frags:List[List[str]] = [[] for _ in lines]
+    self.frags:list[list[str]] = [[] for _ in lines]
 
   def highlight_frags(self, rng:range, is_ctx:bool) -> None:
     for frag in self.tokens[rng.start:rng.stop]:
@@ -355,9 +355,9 @@ class HighlightState:
       line.text = ''.join(line_frags)
 
 
-def tokenize_difflines(lines:List[DiffLine]) -> List[str]:
+def tokenize_difflines(lines:list[DiffLine]) -> list[str]:
   'Convert the list of line texts into a single list of tokens, including newline tokens.'
-  tokens:List[str] = []
+  tokens:list[str] = []
   for line in lines:
     tokens.extend(m[0] for m in token_pat.finditer(line.text))
     tokens.append('\n')

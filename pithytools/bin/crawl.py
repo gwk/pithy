@@ -5,7 +5,7 @@ import re
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from shlex import quote as sh_quote
-from typing import Any, Dict, List, Pattern, Set
+from typing import Any, Dict, Pattern, Set
 from urllib.parse import urldefrag as url_defrag, urljoin as url_join, urlsplit as url_split
 
 from lxml.html import fromstring as lxml_html_fromstring
@@ -40,7 +40,7 @@ def main() -> None:
   if not args.patterns: # Default to seed URLs.
     args.patterns = [re.escape(s) for s in seeds]
 
-  patterns:List[Pattern] = []
+  patterns:list[Pattern] = []
   for s in args.patterns:
     try: p = re.compile(s)
     except Exception as e: exit(f'bad pattern regex: {e}\n {s}')
@@ -62,8 +62,8 @@ def main() -> None:
 @dataclass(frozen=True)
 class Crawler:
   dir:str
-  patterns:List[Pattern]
-  clip_paths:List[str]
+  patterns:list[Pattern]
+  clip_paths:list[str]
   remaining:Set[str]
   visited:Set[str]
   force:bool
@@ -246,7 +246,7 @@ def describe_skipped(skipped:Set[str]) -> None:
   _describe_skipped(tree, indent='')
 
 
-def _split_skipped(url:str) -> List[str]:
+def _split_skipped(url:str) -> list[str]:
   '''
   Split a skipped URL into parts for the purpose of building an informative prefix tree.
   We only omit the http and https schemes, because other schemes are unusual and should be reported.

@@ -12,7 +12,6 @@ from argparse import ArgumentParser
 from importlib.util import find_spec as find_module_spec
 from os import environ
 from sys import stdout
-from typing import List
 
 from mypy import api
 from pithy.ansi import INVERT, RST, TXT_C, TXT_L, TXT_R, TXT_Y
@@ -37,7 +36,7 @@ def main() -> None:
 
   env = environ.copy()
 
-  mypy_path:List[str] = []
+  mypy_path:list[str] = []
   existing_path = env.get('MYPYPATH')
   if existing_path:
     mypy_path.extend(existing_path.split(':'))

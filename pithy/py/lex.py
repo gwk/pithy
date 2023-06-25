@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Dict, List
+from typing import Dict
 
 from ..lex import c_like_punctuation_patterns, Lexer, LexMode, whitespace_patterns
 
@@ -44,7 +44,7 @@ patterns=dict(
 main_pattern_names = list(patterns.keys())
 
 
-str_pattern_names:Dict[str,List[str]] = {}
+str_pattern_names:Dict[str,list[str]] = {}
 
 def add_str_patterns(quote:str, label:str, multiline:bool):
   '''

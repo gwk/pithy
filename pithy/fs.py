@@ -8,7 +8,7 @@ import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from sys import argv
-from typing import Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, Optional, TextIO
+from typing import Callable, cast, Dict, FrozenSet, Iterable, Iterator, Optional, TextIO
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
@@ -130,7 +130,7 @@ def is_python_file(path:Path, always_read=False) -> bool:
   except (FileNotFoundError, IsADirectoryError): return False
 
 
-def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden=False) -> List[str]:
+def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden=False) -> list[str]:
   '''
   Return a list of the names in the directory at `path`,
   optionally filtering by extensions in `exts`, and the `hidden` flag (defaults to False, excluding names beginning with '.').
@@ -142,7 +142,7 @@ def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden=False) -> List[str]:
   return [n for n in names if name_has_any_ext(n, exts) and (hidden or not n.startswith('.'))]
 
 
-def list_dir_paths(path:Path, exts:Iterable[str]=(), hidden=False) -> List[str]:
+def list_dir_paths(path:Path, exts:Iterable[str]=(), hidden=False) -> list[str]:
   return [path_join(path, name) for name in list_dir(path, exts=exts, hidden=hidden)]
 
 
@@ -300,7 +300,7 @@ def remove_path_if_exists(path:Path) -> None:
     remove_path(path)
 
 
-def scan_dir(path:Path, exts:Iterable[str]=(), hidden=False) -> List[DirEntry]:
+def scan_dir(path:Path, exts:Iterable[str]=(), hidden=False) -> list[DirEntry]:
   exts = normalize_exts(exts)
   entries = sorted(_os.scandir(str_path(path)), key=lambda e: e.name)
   if not exts and hidden: return entries
@@ -328,7 +328,7 @@ def walk_dirs(*paths:Path, make_abs=False, include_hidden=False, file_exts:Itera
 
 
 def walk_dirs_and_files(*dir_paths:Path, make_abs=False, include_hidden=False, file_exts:Iterable[str]=(),
- files_as_paths=False) -> Iterator[tuple[str, List[str]]]:
+ files_as_paths=False) -> Iterator[tuple[str, list[str]]]:
   '''
   yield (dir_path, files) pairs.
   files is an array of either names (default) or paths, depending on the files_as_paths option.
@@ -340,7 +340,7 @@ def walk_dirs_and_files(*dir_paths:Path, make_abs=False, include_hidden=False, f
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
 
 
-def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:FrozenSet[str], files_as_paths:bool) -> Iterator[tuple[str, List[str]]]:
+def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:FrozenSet[str], files_as_paths:bool) -> Iterator[tuple[str, list[str]]]:
   sub_dirs = []
   files = []
   assert dir_path.endswith('/')
