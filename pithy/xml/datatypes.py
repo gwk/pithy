@@ -7,7 +7,7 @@ Base class and utilities for generated Xml datatypes; see the craft-xml-datatype
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Iterable, Optional, Type, TypeVar
+from typing import Callable, ClassVar, Iterable, Type, TypeVar
 
 from ..transtruct import Ctx, Transtructor
 
@@ -54,8 +54,8 @@ class XmlDatatype:
 
 
   def gen_visit(self, *,
-   pre:Callable[[XmlDatatype],Optional[_T]]|None=None,
-   post:Callable[[XmlDatatype],Optional[_T]]|None=None) -> Iterable[_T]:
+   pre:Callable[[XmlDatatype],_T|None]|None=None,
+   post:Callable[[XmlDatatype],_T|None]|None=None) -> Iterable[_T]:
     '''
     Visit the data tree, yielding Walk an xml datatype tree and yield non-None results from visitor
     TODO: reconcile and factor out with markup.iter_visit. Perhaps gen_visit and iter_visit both exist, but need better names.

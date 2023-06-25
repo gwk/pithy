@@ -63,7 +63,7 @@ class SvgNode(Mu):
 
 
   @property
-  def title(self) -> Optional[str]:
+  def title(self) -> str|None:
     '''
     Get the title child element.
     TODO: implement setter.
@@ -197,8 +197,8 @@ class Rect(SvgNode):
       assert w is None
       assert h is None
       w, h = unpack_VecOrNum(size)
-    rx:Optional[Num]
-    ry:Optional[Num]
+    rx:Num|None
+    ry:Num|None
     if isinstance(r, tuple):
       rx, ry = r
     else:
@@ -487,7 +487,7 @@ def _validate_unit(unit: str):
     raise Exception(f'Invalid SVG unit: {unit!r}; should be one of {sorted(valid_units)}')
 
 
-def fmt_viewBox(vx:Optional[Num], vy:Optional[Num], vw:Optional[Num], vh:Optional[Num]) -> Optional[str]:
+def fmt_viewBox(vx:Num|None, vy:Num|None, vw:Num|None, vh:Num|None) -> str|None:
   if vw is None and vh is None:
     return None
   else:
@@ -512,7 +512,7 @@ def unpack_VecOrNum(vn:VecOrNum) -> tuple[float, float]:
     return (s, s)
 
 
-def expand_opt_bounds(l:Optional[BoundsF2], r:Optional[BoundsF2]) -> Optional[BoundsF2]:
+def expand_opt_bounds(l:BoundsF2|None, r:BoundsF2|None) -> BoundsF2|None:
   if l is None: return r
   if r is None: return l
   (llx, lly), (lhx, lhy) = l

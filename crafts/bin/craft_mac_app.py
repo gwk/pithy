@@ -9,7 +9,7 @@ This is not currently in use and may need updating.
 import plistlib
 import re
 from argparse import ArgumentParser, Namespace
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO
 
 from crafts import CraftConfig, load_craft_config
 from pithy.filestatus import file_mtime, file_mtime_or_zero

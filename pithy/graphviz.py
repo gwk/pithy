@@ -5,7 +5,7 @@
 import re
 from html import escape as html_escape
 from sys import stdout
-from typing import Any, Callable, Iterable, Mapping, Optional, TextIO, Union
+from typing import Any, Callable, Iterable, Mapping, TextIO, Union
 
 
 GraphvizName = Union[int, float, str]
@@ -72,7 +72,7 @@ def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:Gr
   f.write('}\n')
 
 
-def fmt_dot_attrs(attrs:Optional[GraphvizAttrs]) -> str:
+def fmt_dot_attrs(attrs:GraphvizAttrs|None) -> str:
   if not attrs: return ''
   s = ', '.join(f'{k}={dot_id_quote(v)}' for k, v in attrs.items())
   return f' [{s}]'

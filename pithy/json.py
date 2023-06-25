@@ -6,7 +6,7 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Optional, Sequence, TextIO, Union
+from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Sequence, TextIO, Union
 
 from .encode import all_slots, encode_obj, EncodeObj
 
@@ -24,7 +24,7 @@ ObjDecodeFn = Callable[[dict],Any]
 ObjDecodeHook = Union[type, tuple[AbstractSet[str],Union[type,ObjDecodeFn]]]
 ObjDecodeHooks = Sequence[ObjDecodeHook]
 
-_Seps = Optional[tuple[str,str]]
+_Seps = tuple[str,str]|None
 
 
 def render_json(item:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, **kwargs) -> str:
@@ -143,7 +143,7 @@ def load_jsons(file:TextIO, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=())
   return parse_jsons(file.read(), hook=hook, hooks=hooks)
 
 
-def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Optional[Callable[[dict[Any,Any]],Any]]:
+def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Callable[[dict[Any,Any]],Any]|None:
   '''
   Provide a hook function to deserialize JSON into the provided types.
   '''

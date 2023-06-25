@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
 from inspect import Parameter, Signature, signature
-from typing import Any, ByteString, Callable, Iterator, NoReturn, Optional, TextIO, Type, Union
+from typing import Any, ByteString, Callable, Iterator, NoReturn, TextIO, Type, Union
 
 from mypy_extensions import VarArg
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
@@ -58,7 +58,7 @@ class TypeInfo:
   c_type:str
   c_init:str
   c_arg_parser_fmt:str
-  return_conv:Optional[str]
+  return_conv:str|None
 
 type_info_any = TypeInfo(Any,
     c_type='PyObject *', c_init='NULL', c_arg_parser_fmt='o', return_conv='(PyObject*)')
@@ -104,7 +104,7 @@ class FuncKind(Enum):
 class Func:
   'Function info, as parsed from Python annotations.'
   name:str
-  type_name:Optional[str]
+  type_name:str|None
   sig:Signature
   pars:list[Par]
   ret:TypeAnn

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Iterable, NamedTuple, Optional, Type, TypeVar
+from typing import Any, Callable, Iterable, NamedTuple, Type, TypeVar
 
 
 _T = TypeVar('_T')
@@ -20,7 +20,7 @@ class lazy_property(object):
     return val
 
 
-def nonopt(optional:Optional[_T]) -> _T:
+def nonopt(optional:_T|None) -> _T:
   'Return the value of an optional, raising an exception if it is None.'
   if optional is None: raise ValueError
   return optional

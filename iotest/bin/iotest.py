@@ -7,7 +7,7 @@ import time
 from ast import literal_eval
 from collections import defaultdict
 from sys import stderr, stdout
-from typing import Iterable, Optional, Pattern
+from typing import Iterable, Pattern
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
@@ -138,7 +138,7 @@ def main() -> None:
     exit(code)
 
 
-def collect_proto(ctx: Ctx, end_dir_path: str) -> Optional[Case]:
+def collect_proto(ctx: Ctx, end_dir_path: str) -> Case|None:
   '''
   Assemble the prototype test case information from files named `_default.*`,
   starting at the project root and traversing successive child directories up to `end_dir_path`.
@@ -152,7 +152,7 @@ def collect_proto(ctx: Ctx, end_dir_path: str) -> Optional[Case]:
   return proto
 
 
-def collect_cases(ctx:Ctx, cases_dict:dict[str, Case], proto: Optional[Case], dir_path: str, specified_name_prefix: Optional[str]) -> None:
+def collect_cases(ctx:Ctx, cases_dict:dict[str, Case], proto: Case|None, dir_path: str, specified_name_prefix: str|None) -> None:
   '''
   Recursively find all test cases within the directory tree rooted at `dir_path`,
   and collect them into `cases_dict`.
@@ -183,13 +183,13 @@ def collect_cases(ctx:Ctx, cases_dict:dict[str, Case], proto: Optional[Case], di
     exit(f'iotest error: argument path does not match any files: {p!r}.')
 
 
-def create_proto_case(ctx:Ctx, proto: Optional[Case], stem: str, config: dict) -> Optional[Case]:
+def create_proto_case(ctx:Ctx, proto: Case|None, stem: str, config: dict) -> Case|None:
   if not config:
     return proto
   return Case(ctx, proto=proto, stem=stem, config=config, par_configs=[], par_stems_used=set())
 
 
-def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto: Optional[Case], dir_path: str, file_paths: list[str]) -> Optional[Case]:
+def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto: Case|None, dir_path: str, file_paths: list[str]) -> Case|None:
   '''
   Create Case objects from the paths in the given directory.
   Each case is defined by the collection of file paths that share a common stem (which implies the case name)
@@ -442,8 +442,11 @@ def run_case(ctx:Ctx, coverage_cases:list[Case], case: Case) -> bool:
   return status and exps_ok
 
 
-def run_cmd(ctx:Ctx, coverage_cases: Optional[list[Case]], case: Case, label: str, cmd: list[str], cwd: str, env: dict[str, str], in_path: str, out_path: str, err_path: str, timeout: int, exp_code: int) -> Optional[bool]:
+def run_cmd(ctx:Ctx, coverage_cases:list[Case]|None, case:Case, label:str, cmd:list[str], cwd:str, env:dict[str, str],
+ in_path:str, out_path:str, err_path:str, timeout:int, exp_code:int) -> bool|None:
+
   'returns True for success, False for failure, and None for abort.'
+
   cmd_head = cmd[0]
   #cmd_path = path_rel_to_current_or_abs(cmd_head) # For diagnostics.
   is_cmd_installed = not path_dir(cmd_head) # command is a name, presumably a name on the PATH (or else a mistake).
@@ -524,7 +527,7 @@ diff_cmd = 'git diff --exit-code --no-index --no-prefix --no-renames --histogram
 
 def cat_file(path: str, limit=-1) -> None:
   outL(QUOTE, 'cat ', rel_path(path), FILL_OUT)
-  line:Optional[str] = None
+  line:str|None = None
   with open(path) as f:
     for i, line in enumerate(f):
       if i == limit: return #!cov-ignore.

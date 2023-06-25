@@ -5,13 +5,13 @@ XML escaping utilities.
 '''
 
 from functools import lru_cache
-from typing import Any, Container, Iterable, Optional
+from typing import Any, Container, Iterable
 from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 
 from ..string import EscapedStr
 
 
-XmlAttrs = Optional[dict[str,Any]]
+XmlAttrs = dict[str,Any]|None
 
 
 

@@ -9,7 +9,7 @@ from html import escape as _escape
 from io import BytesIO, StringIO
 from itertools import chain
 from os import PathLike
-from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, Optional, TextIO, Type, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, TextIO, Type, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
@@ -200,7 +200,7 @@ class HtmlHeadingContent(HtmlNode):
     return self.append(H6(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
   @property
-  def heading(self) -> Optional[HtmlNode]:
+  def heading(self) -> HtmlNode|None:
     for el in self._:
       if isinstance(el, Heading): return el
     return None
@@ -612,7 +612,7 @@ class Dl(HtmlFlow, HtmlPalpable):
 
   @property
   def dt_dd_groups(self) -> Iterable[Div|DtDdPair]:
-    pair:Optional[DtDdPair] = None
+    pair:DtDdPair|None = None
     for c in self.child_nodes():
       if isinstance(c, Div):
         yield c

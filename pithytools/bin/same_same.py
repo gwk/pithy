@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from itertools import groupby
 from os import environ
 from sys import stderr, stdout
-from typing import Any, Match, Optional
+from typing import Any, Match
 
 from pithy.ansi import BG, cBOLD, cRST_BOLD, cRST_TXT, FILL, gray26, rgb6, RST, sanitize_for_console, sgr, TXT
 from pithy.diff import calc_diff
@@ -128,8 +128,8 @@ def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
   new_ctx_nums:set[int] = set() # ".
   old_lines:dict[int, DiffLine] = {} # Maps of line numbers to line structs.
   new_lines:dict[int, DiffLine] = {} # ".
-  old_uniques:dict[str, Optional[int]] = {} # Maps unique line bodies to line numbers.
-  new_uniques:dict[str, Optional[int]] = {} # ".
+  old_uniques:dict[str, int|None] = {} # Maps unique line bodies to line numbers.
+  new_uniques:dict[str, int|None] = {} # ".
   old_num = 0 # 1-indexed source line number.
   new_num = 0 # ".
   chunk_idx = 0 # Counter to differentiate chunks; becomes part of the groupby key.
@@ -287,7 +287,7 @@ pass_kinds = {
 }
 
 
-def insert_unique_line(d:dict[str,Optional[int]], line:str, line_num:int) -> None:
+def insert_unique_line(d:dict[str,int|None], line:str, line_num:int) -> None:
   'For the purpose of movement detection, lines are tested for uniqueness after stripping leading and trailing whitespace.'
   body = line.strip()
   if body in d: d[body] = None

@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from types import GeneratorType
-from typing import Callable, Generator, Iterable, Iterator, Optional, Protocol, TypeVar, Union
+from typing import Callable, Generator, Iterable, Iterator, Protocol, TypeVar, Union
 
 from .exceptions import OmitNode
 from .iterable import iter_values
@@ -15,7 +15,7 @@ _Stack = tuple[_T, ...]
 _VisitResult = Union[_R, Generator[_R, None, None]]
 
 class _GetChildrenFn(Protocol[_C]):
-  def __call__(self, node:_C) -> Optional[Iterable[_C]]: ...
+  def __call__(self, node:_C) -> Iterable[_C]|None: ...
 
 class _TransformVisitor(Protocol[_T, _R]):
   def __call__(self, node:_T, stack:_Stack, transformed_children:list[_R]) -> _VisitResult: ...

@@ -8,7 +8,7 @@ import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from sys import argv
-from typing import Callable, cast, Iterable, Iterator, Optional, TextIO
+from typing import Callable, cast, Iterable, Iterator, TextIO
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
@@ -88,7 +88,7 @@ default_project_signifiers: tuple[str, ...] = (
 )
 
 def find_project_dir(start_dir:Path='.', top:Path|None=None, include_top=False,
- project_signifiers:Iterable[str]=default_project_signifiers) -> Optional[str]:
+ project_signifiers:Iterable[str]=default_project_signifiers) -> str|None:
   '''
   find a project root directory, as denoted by the presence of a file/directory in `project_signifiers`.
   By default, stops before reaching the user's home directory.
@@ -240,7 +240,7 @@ def open_new(path:Path, create_dirs:bool=True, **open_args) -> TextIO:
 
 
 @memoize
-def path_for_cmd(cmd:str) -> Optional[str]:
+def path_for_cmd(cmd:str) -> str|None:
   '''
   Determine the path for the executable `cmd` by iterating over the sequence of directories given by _get_exec_path().
   TODO: it might be wiser to simply call `which` and memoize the result.
@@ -307,7 +307,7 @@ def scan_dir(path:Path, exts:Iterable[str]=(), hidden=False) -> list[DirEntry]:
   return [e for e in entries if name_has_any_ext(e.name, exts) and (hidden or not e.name.startswith('.'))]
 
 
-def set_mtime(path:PathOrFd, mtime:Optional[float]) -> None:
+def set_mtime(path:PathOrFd, mtime:float|None) -> None:
   '''
   Update the access and modification times of the file at `path`.
   The access time is always updated to the current time;

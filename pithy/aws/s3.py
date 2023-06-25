@@ -5,7 +5,7 @@ from datetime import datetime as DateTime, timezone as TimeZone
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
-from typing import Any, Callable, IO, Optional
+from typing import Any, Callable, IO
 
 from boto3 import Session # type: ignore[import]
 from botocore.exceptions import ClientError # type: ignore[import]
@@ -183,7 +183,7 @@ class S3MockClient(S3Client):
     try: f =  self._open(Bucket, Key, 'rb')
     except FileNotFoundError: pass
     else:
-      encoding:Optional[str] = None
+      encoding:str|None = None
       # TODO: metadata should be saved to disk and read, not inferred.
       # Guessing like this is not sufficiently generalized.
       if Key.endswith('.br'): encoding = 'br'

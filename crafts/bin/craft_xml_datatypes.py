@@ -10,7 +10,7 @@ import re
 from argparse import ArgumentParser, Namespace
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Iterator, Optional, TextIO
+from typing import Any, Callable, Iterable, Iterator, TextIO
 
 from pithy.dict import dict_remap_keys_mut
 from pithy.io import errL
@@ -304,7 +304,7 @@ def write_code(args:Namespace, file:TextIO, summaries:Iterable[ElementSummary]) 
   outL('from __future__ import annotations')
   outL()
   outL('from dataclasses import dataclass, field')
-  outL('from typing import ClassVar, Optional')
+  outL('from typing import ClassVar')
   #outL()
   outL('from pithy.xml.datatypes import ChildAttrInfo')
   outL()
@@ -399,7 +399,7 @@ def fmt_attr_line(base:str, summary:ElementSummary, raw_name:str, vals:Counter[s
     plain_type = guess_attr_type(vals) # The type before optionality inference.
     dflt = ''
     if count < summary.count: # Optional.
-      attr_type = f'Optional[{plain_type}]'
+      attr_type = f'{plain_type}|None'
       dflt = 'None'
       if plain_type == 'bool': # Try to use a plain bool with default of the missing value.
         vals_set = set(bool_vals[v.lower()] for v in vals)
@@ -415,7 +415,7 @@ def fmt_attr_line(base:str, summary:ElementSummary, raw_name:str, vals:Counter[s
       attr_type = f'list[{base}]' # TODO: needs to be more precise.
       dflt = 'field(default_factory=list)'
     else:
-      attr_type = f'Optional[{base}]' # TODO: needs to be more precise; may not be optional.
+      attr_type = f'{base}|None' # TODO: needs to be more precise; may not be optional.
       dflt = 'None'
     count = summary.single_child_tag_counts[raw_name]
 
