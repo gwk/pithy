@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from itertools import groupby
 from os import environ
 from sys import stderr, stdout
-from typing import Any, Match, Optional, Set
+from typing import Any, Match, Optional
 
 from pithy.ansi import BG, cBOLD, cRST_BOLD, cRST_TXT, FILL, gray26, rgb6, RST, sanitize_for_console, sgr, TXT
 from pithy.diff import calc_diff
@@ -124,8 +124,8 @@ def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
 
   # Scan `lines` to build up diff structures.
 
-  old_ctx_nums:Set[int] = set() # Line numbers of context lines.
-  new_ctx_nums:Set[int] = set() # ".
+  old_ctx_nums:set[int] = set() # Line numbers of context lines.
+  new_ctx_nums:set[int] = set() # ".
   old_lines:dict[int, DiffLine] = {} # Maps of line numbers to line structs.
   new_lines:dict[int, DiffLine] = {} # ".
   old_uniques:dict[str, Optional[int]] = {} # Maps unique line bodies to line numbers.
@@ -201,8 +201,8 @@ def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
     try: return old_lines[old_idx].text.strip() == new_lines[new_idx].text.strip() # type: ignore[no-any-return]
     except KeyError: return False
 
-  old_moved_nums:Set[int] = set()
-  new_moved_nums:Set[int] = set()
+  old_moved_nums:set[int] = set()
+  new_moved_nums:set[int] = set()
   for body, new_idx in new_uniques.items():
     if new_idx is None: continue
     old_idx = old_uniques.get(body)

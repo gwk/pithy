@@ -4,7 +4,7 @@ import re
 from argparse import ArgumentParser, FileType, Namespace
 from os import environ
 from shutil import copyfile
-from typing import DefaultDict, NoReturn, Set
+from typing import DefaultDict, NoReturn
 
 from pithy.diff import calc_diff
 from pithy.fs import is_file, path_exists
@@ -115,7 +115,7 @@ def main_diff(args) -> None:
   write('pat v' + pat_version + '\n')
   write(orig_rel + '\n')
 
-  line_indices = DefaultDict[str,Set[int]](set) # maps line contents to line numbers.
+  line_indices = DefaultDict[str,set[int]](set) # maps line contents to line numbers.
   for i, line in enumerate(o_lines):
     line_indices[line].add(i)
 
@@ -195,7 +195,7 @@ def main_apply(args) -> None:
 
   orig_lines = f_orig.readlines()
 
-  orig_line_indices = DefaultDict[str, Set[int]](set)
+  orig_line_indices = DefaultDict[str, set[int]](set)
   for i, line in enumerate(orig_lines):
     orig_line_indices[line].add(i)
 

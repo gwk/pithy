@@ -6,7 +6,7 @@ import shlex
 import time
 from ast import literal_eval
 from sys import stderr, stdout
-from typing import DefaultDict, Iterable, Optional, Pattern, Set
+from typing import DefaultDict, Iterable, Optional, Pattern
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
@@ -92,7 +92,7 @@ def main() -> None:
   coverage_cases: list[Case] = []
 
   # check that there are no overlapping logical stems.
-  logical_stems: Set[str] = set()
+  logical_stems: set[str] = set()
   for case in cases:
     if case.stem in logical_stems:
       exit(f'iotest error: repeated logical stem: {case.stem}')
@@ -218,7 +218,7 @@ def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto: Optional[Cas
   case_configs, par_configs_dicts = dict_fan_by_key_pred(configs, pred=fnf_str_has_formatter)
 
   par_configs: list[ParConfig] = [ParConfig(stem=s, pattern=compile_par_stem_re(s), config=c) for s, c in par_configs_dicts.items()]
-  par_stems_used: Set[str] = set()
+  par_stems_used: set[str] = set()
 
   # default.
   default_stem = path_join(dir_path, '_default')

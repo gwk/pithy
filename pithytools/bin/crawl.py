@@ -5,7 +5,7 @@ import re
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from shlex import quote as sh_quote
-from typing import Any, Pattern, Set
+from typing import Any, Pattern
 from urllib.parse import urldefrag as url_defrag, urljoin as url_join, urlsplit as url_split
 
 from lxml.html import fromstring as lxml_html_fromstring
@@ -64,10 +64,10 @@ class Crawler:
   dir:str
   patterns:list[Pattern]
   clip_paths:list[str]
-  remaining:Set[str]
-  visited:Set[str]
+  remaining:set[str]
+  visited:set[str]
   force:bool
-  skipped:Set[str] = field(default_factory=set)
+  skipped:set[str] = field(default_factory=set)
   max_redirects = 8
 
   def crawl(self) -> None:
@@ -238,7 +238,7 @@ def clean_seed_url(url:str) -> str:
   return url_defrag(url).url
 
 
-def describe_skipped(skipped:Set[str]) -> None:
+def describe_skipped(skipped:set[str]) -> None:
   'Describe URLs that were skipped by building a prefix tree.'
   tree = prefix_tree(_split_skipped(url) for url in skipped)
   _simplify(tree)

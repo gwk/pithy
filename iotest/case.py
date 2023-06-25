@@ -5,7 +5,7 @@ import re
 import shlex
 from itertools import zip_longest
 from string import Template
-from typing import Any, Callable, cast, NamedTuple, Optional, Pattern, Set, TextIO, Union
+from typing import Any, Callable, cast, NamedTuple, Optional, Pattern, TextIO, Union
 
 from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
@@ -96,13 +96,13 @@ class Case:
   'Case represents a single test case, or a default.'
 
   def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: dict, par_configs: list[ParConfig],
-   par_stems_used: Set[str]) -> None:
+   par_stems_used: set[str]) -> None:
     self.dir: str = path_dir(stem)
     self.stem: str = self.dir if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
     self.name: str = path_name(self.stem)
     # derived properties.
     self.multi_index: Optional[int] = None
-    self.test_info_paths: Set[str] = set() # the files that comprise the test case.
+    self.test_info_paths: set[str] = set() # the files that comprise the test case.
     self.dflt_src_paths: list[str] = []
     self.coverage_targets: list[str] = []
     self.test_dir: str = ''
@@ -129,7 +129,7 @@ class Case:
     self.in_: Optional[str] = None # stdin as text.
     self.interpreter: Optional[str] = None # interpreter to prepend to cmd.
     self.interpreter_args: Optional[list[str]] = None # interpreter args.
-    self.links: Union[None, str, Set[str], dict[str, str]] = None # symlinks to be made into the test directory.
+    self.links: Union[None, str, set[str], dict[str, str]] = None # symlinks to be made into the test directory.
     #^ Written as a str, set or dict.
     self.out_mode: Optional[str] = None # comparison mode for stdout expectation.
     self.out_path: Optional[str] = None # file path for stdout expectation.

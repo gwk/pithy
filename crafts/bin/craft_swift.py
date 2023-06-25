@@ -6,7 +6,7 @@
 
 import re
 from argparse import ArgumentParser
-from typing import Set, Union
+from typing import Union
 
 from pithy.ansi import FILL, RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt
@@ -46,7 +46,7 @@ def main() -> None:
     c, o = runCO(cmd)
     source = Source(name='swift', text=o)
     token_stream = lexer.lex(source)
-    head_texts:Set[str] = set()
+    head_texts:set[str] = set()
     for g in group_by_heads(token_stream, is_head=is_pair_group_head, headless=OnHeadless.keep):
       head_token = g[0]
       head_text = source[head_token]

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, Set, TypeVar, Union
+from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, TypeVar, Union
 
 
 _K = TypeVar('_K', bound=Hashable)
@@ -96,7 +96,7 @@ def dict_set_defaults(d: MutableMapping[_K, _V], defaults: Union[Mapping[_K, _V]
 
 
 _VH = TypeVar('_VH', bound=Hashable)
-_S = Set[_VH]
+_S = set[_VH]
 _I = Iterable[_VH]
 
 def dict_update_sets(d:MutableMapping[_K,_S], update:Union[Mapping[_K, _I],Iterable[tuple[_K,_I]]]) -> MutableMapping[_K, _S]:

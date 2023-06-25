@@ -2,7 +2,7 @@
 
 from dataclasses import asdict, is_dataclass
 from functools import singledispatch
-from typing import Any, Callable, FrozenSet, Set, Type
+from typing import Any, Callable, FrozenSet, Type
 
 from .util import memoize
 
@@ -65,7 +65,7 @@ def all_slots(type: Type) -> FrozenSet[str]:
   Therefore we need to iterate over the inheritance chain to get all slot names.
   We use __mro__ here, and hope for the best regarding multiple inheritance.
   '''
-  slots: Set[str] = set()
+  slots: set[str] = set()
   for t in type.__mro__:
     try: s = t.__slots__ # type: ignore[attr-defined]
     except AttributeError: break

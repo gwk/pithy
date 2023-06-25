@@ -5,7 +5,7 @@ from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
-from typing import Any, Callable, FrozenSet, Hashable, Iterable, Iterator, Mapping, Optional, Set, TypeVar, Union
+from typing import Any, Callable, FrozenSet, Hashable, Iterable, Iterator, Mapping, Optional, TypeVar, Union
 
 from .types import Comparable
 
@@ -402,8 +402,8 @@ def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headle
   if group: yield group
 
 
-def set_from(iterables:Iterable[Iterable[_K]]) -> Set[_K]:
-  s:Set[_K] = set()
+def set_from(iterables:Iterable[Iterable[_K]]) -> set[_K]:
+  s:set[_K] = set()
   for el in iterables:
     s.update(el)
   return s

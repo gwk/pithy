@@ -8,7 +8,7 @@ like `pprint` but streaming, and with a more compact, minimal style.
 import re
 from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
-from typing import Any, Iterable, Iterator, NamedTuple, Set, TextIO, Union
+from typing import Any, Iterable, Iterator, NamedTuple, TextIO, Union
 
 from .iterable import known_leaf_types
 
@@ -115,7 +115,7 @@ def _gen_desc(d:_DescEl, indent:str, exact:bool) -> Iterator[str]:
   yield d.closer
 
 
-def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _DescEl:
+def _obj_desc(obj:Any, prefix:str, visited_ids:set[int], simple_keys:bool) -> _DescEl:
   '''
   Main description generator function. This dispatches out to others using various criteria.
   '''
@@ -158,7 +158,7 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:Set[int], simple_keys:bool) -> _D
   return prefix + repr(obj)
 
 
-def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator, simple_keys:bool) -> _Desc:
+def _iterable_desc(obj:Any, prefix:str, visited_ids:set[int], it:Iterator, simple_keys:bool) -> _Desc:
   t = type(obj)
   if t is tuple:
     opener = '('
@@ -187,7 +187,7 @@ def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator, simpl
 _Items = Iterator[tuple[Any,Any]]
 
 
-def _mapping_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simple_keys:bool) -> _Desc:
+def _mapping_desc(obj:Any, prefix:str, visited_ids:set[int], items:_Items, simple_keys:bool) -> _Desc:
   t = type(obj)
   if t is dict:
     opener = '{'
@@ -204,12 +204,12 @@ def _mapping_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simpl
   return _Desc(opener=prefix+opener, closer=closer, it=it, buffer=[])
 
 
-def _record_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simple_keys:bool) -> _Desc:
+def _record_desc(obj:Any, prefix:str, visited_ids:set[int], items:_Items, simple_keys:bool) -> _Desc:
   it = _gen_item_descs(visited_ids, items, simple_keys, key_sep='=')
   return _Desc(opener=f'{prefix}{type(obj).__qualname__}(', closer=')', it=it, buffer=[])
 
 
-def _gen_item_descs(visited_ids:Set[int], items:_Items, simple_keys:bool, key_sep:str) -> Iterator[_DescEl]:
+def _gen_item_descs(visited_ids:set[int], items:_Items, simple_keys:bool, key_sep:str) -> Iterator[_DescEl]:
   for pair in items:
     try: k, v = pair
     except (TypeError, ValueError): # Guard against a weird items() iterator.
