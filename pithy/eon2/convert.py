@@ -221,5 +221,3 @@ def _fmt_type(t:Any) -> str:
   return n
 
 _typing_re = re.compile(r'\b\w+\.')
-
-

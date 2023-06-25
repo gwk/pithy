@@ -132,4 +132,3 @@ def intersect_sorted_ranges(seq_a:Iterable[CodeRange], seq_b:Iterable[CodeRange]
         yield (s, be)
         a, ae = (be, ae) # if b is empty it will get dropped on next pass, assuming seq_b is coalesced.
   except StopIteration: return
-
