@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
 from inspect import Parameter, Signature, signature
-from typing import Any, ByteString, Callable, Dict, Iterator, List, NoReturn, Optional, TextIO, Type, Union
+from typing import Any, ByteString, Callable, Dict, Iterator, NoReturn, Optional, TextIO, Type, Union
 
 from mypy_extensions import VarArg
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
@@ -106,7 +106,7 @@ class Func:
   name:str
   type_name:Optional[str]
   sig:Signature
-  pars:List[Par]
+  pars:list[Par]
   ret:TypeAnn
   doc:str
   kind:FuncKind
@@ -139,7 +139,7 @@ class Scope(SourceReporter):
     self.path = path
     self.name = name
     self.doc:str = doc
-    self.decls:List[Decl] = []
+    self.decls:list[Decl] = []
 
 
 class ExtMod(Scope):
@@ -179,7 +179,7 @@ class ScopeSource(SourceReporter):
   vals:Dict[str,Any]
 
   @property
-  def body(self) -> List[Stmt]: return self.node.body
+  def body(self) -> list[Stmt]: return self.node.body
 
   @property
   def doc(self) -> str:
@@ -287,7 +287,7 @@ def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,A
   doc = func.__doc__ or ''
   sig = signature(func)
 
-  pars:List[Par] = []
+  pars:list[Par] = []
   for i, p in enumerate(sig.parameters.values()):
     n = p.name
     t = p.annotation
@@ -420,7 +420,7 @@ def write_scope(scope:Scope, prefix:str, writers:_Writers) -> None:
 
   cL()
   write_doc(name=scope.name, doc=scope.doc, writers=writers)
-  methods:List[str] = []
+  methods:list[str] = []
   for decl in scope.decls:
     if isinstance(decl, Var):
       write_var(decl, writers=writers)
@@ -474,7 +474,7 @@ def write_func(func:Func, prefix:str, writers:_Writers) -> str:
 
   if func.kind == FuncKind.Plain:
     lead_c_par = 'PyObject *module'
-    lead_h_par:List[str] = []
+    lead_h_par:list[str] = []
   elif func.kind == FuncKind.Method:
     lead_c_par = f'{func.type_name} *{func.pars[0].name}'
     lead_h_par = [lead_c_par]
@@ -511,7 +511,7 @@ def write_func(func:Func, prefix:str, writers:_Writers) -> str:
     c_arg_strs = ', '.join(f'"{p.name}"' for p in pars)
     cL(f'  static const char * const _keywords[] = {{{c_arg_strs}, NULL}};')
 
-    parser_fmts:List[str] = []
+    parser_fmts:list[str] = []
     fmt_dflt = False
     for p in pars:
       if not fmt_dflt and p.dflt is not empty: # TODO: this would be better determined by value of Parameter.kind.

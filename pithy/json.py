@@ -6,13 +6,13 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, IO, Iterable, List, Optional, Sequence, TextIO, Union
+from typing import AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, IO, Iterable, Optional, Sequence, TextIO, Union
 
 from .encode import all_slots, encode_obj, EncodeObj
 
 
 JsonAny = Any # TODO: remove this once recursive types work.
-JsonList = List[JsonAny]
+JsonList = list[JsonAny]
 JsonDict = Dict[str, JsonAny]
 Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 

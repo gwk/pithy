@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Iterable, Iterator, List, TypeVar
+from typing import Callable, Iterable, Iterator, TypeVar
 
 from .default import Raise, RaiseOr
 
@@ -18,7 +18,7 @@ class Buffer(Iterator[_T]):
 
   def __init__(self, iterable:Iterable[_T]):
     self.iterator = iter(iterable)
-    self.buffer: List[_T] = []
+    self.buffer: list[_T] = []
 
 
   def __repr__(self) -> str:
@@ -71,13 +71,13 @@ class Buffer(Iterator[_T]):
         break
 
 
-  def peek_while(self, pred: Callable[[_T], bool]) -> List[_T]:
+  def peek_while(self, pred: Callable[[_T], bool]) -> list[_T]:
     els = list(self.take_while(pred))
     self.buffer.extend(reversed(els))
     return els
 
 
-  def take(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> List[_T]:
+  def take(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> list[_T]:
     els = []
     for _ in range(count):
       try: els.append(next(self))
@@ -88,7 +88,7 @@ class Buffer(Iterator[_T]):
     return els
 
 
-  def peeks(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> List[_T]:
+  def peeks(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> list[_T]:
     if 0 < count <= len(self.buffer):
       return list(reversed(self.buffer[-count:]))
     els = []
@@ -102,7 +102,7 @@ class Buffer(Iterator[_T]):
     return els
 
 
-  def peek_all(self) -> List[_T]:
+  def peek_all(self) -> list[_T]:
     return self.peeks(count=1<<63, short=True)
 
 

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Dict, Iterable, List, Set
+from typing import Dict, Iterable, Set
 
 from . import CodeRange
 
@@ -14,7 +14,7 @@ def codes_desc(code_ranges:Iterable[CodeRange], raw=False) -> str:
   if raw:
     return ' '.join(codes_range_desc(*p) for p in code_ranges) or 'Ø'
   # Calculate single-character subtraction simplifications for ranges.
-  ranges:List[CodeRange] = []
+  ranges:list[CodeRange] = []
   subtracted:Set[int] = set()
   for r in code_ranges: # Assumed to be sorted.
     if ranges:

@@ -3,14 +3,15 @@
 # type: ignore
 
 import re
-from sys import stdin
 from argparse import ArgumentParser
+from functools import singledispatch
+from sys import stdin
 from typing import *
+
 import boto3
-from pithy.io import *
 from botocore.docs.shape import ShapeDocumenter
 from botocore.model import ListShape, MapShape, OperationModel, Shape, StringShape, StructureShape
-from functools import singledispatch
+from pithy.io import *
 
 
 methods = { 'get_object', 'put_object', 'list_objects_v2' }
@@ -103,7 +104,7 @@ def _(shape:MapShape, name:str) -> None:
 
 @handle_input.register
 def _(shape:ListShape, name:str) -> None:
-  outZ(f'  {name}:List[{shape.member}]')
+  outZ(f'  {name}:list[{shape.member}]')
 
 
 @singledispatch
@@ -134,7 +135,7 @@ def _(shape:MapShape, name:str) -> None:
 
 @handle_output.register
 def _(shape:ListShape, name:str) -> None:
-  outZ(f'  {name}:List[{shape.member}]')
+  outZ(f'  {name}:list[{shape.member}]')
 
 
 shape_type_names_to_py_types = {

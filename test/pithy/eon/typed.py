@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, Type
 
 from pithy.eon import parse_eon_or_fail
 from utest import utest
@@ -13,7 +13,7 @@ def parse(text:str, to:Type) -> Any:
 
 utest(None, parse, '', to=None)
 
-utest([1, 2], parse, '1\n2\n', to=List[int])
+utest([1, 2], parse, '1\n2\n', to=list[int])
 
 utest(dict(a=1, b=2), parse, '''
 a: 1
@@ -39,4 +39,4 @@ a:
   - 3
     4
 ''',
-  to=Dict[str,List[tuple[int,int]]])
+  to=Dict[str,list[tuple[int,int]]])

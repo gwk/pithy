@@ -3,7 +3,7 @@
 from functools import total_ordering
 from io import TextIOBase, TextIOWrapper
 from tarfile import TarFile
-from typing import Any, BinaryIO, Callable, cast, Dict, Iterable, List, Type, Union
+from typing import Any, BinaryIO, Callable, cast, Dict, Iterable, Type, Union
 from zipfile import BadZipFile, ZipFile
 
 from .fs import path_ext
@@ -31,7 +31,7 @@ class Archive:
     return self._handler.files(self)
 
   @property
-  def file_names(self) -> List[str]: return self._handler.file_names
+  def file_names(self) -> list[str]: return self._handler.file_names
 
 
 
@@ -88,7 +88,7 @@ class _Handler:
   def files(self, archive:Archive) -> Iterable[ArchiveFile]: raise NotImplementedError
 
   @property
-  def file_names(self) -> List[str]: raise NotImplementedError
+  def file_names(self) -> list[str]: raise NotImplementedError
 
 
 class _TarHandler(_Handler):
@@ -108,7 +108,7 @@ class _TarHandler(_Handler):
       yield ArchiveFile(archive=archive, name=info.name, opener=opener)
 
   @property
-  def file_names(self) -> List[str]: return self.tar.getnames()
+  def file_names(self) -> list[str]: return self.tar.getnames()
 
 
 
@@ -127,7 +127,7 @@ class _ZipHandler(_Handler):
       yield ArchiveFile(archive=archive, name=name, opener=opener)
 
   @property
-  def file_names(self) -> List[str]: return self.zip.namelist()
+  def file_names(self) -> list[str]: return self.zip.namelist()
 
 
 

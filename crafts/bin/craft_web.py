@@ -7,7 +7,7 @@
 
 import re
 from sys import argv
-from typing import Dict, List
+from typing import Dict
 
 from crafts import load_craft_config
 from pithy.ansi import RST, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
@@ -38,7 +38,7 @@ def main() -> None:
   if not path_exists(build_dir_src, follow=False):
     make_link(orig='src', link=build_dir_src, create_dirs=True)
 
-  manifest: List[str] = []
+  manifest: list[str] = []
 
   for ts_path in walk_files(tsc_build_dir, file_exts=['.js', '.map']):
     dst_path = norm_path(replace_prefix(ts_path, prefix=tsc_build_dir, replacement=build_dir))

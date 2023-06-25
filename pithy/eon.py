@@ -9,8 +9,8 @@ import re
 from collections.abc import Mapping
 from functools import singledispatch
 from inspect import Parameter, signature
-from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, List,
-  Optional, Type, TypeVar, Union)
+from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, Optional,
+  Type, TypeVar, Union)
 
 from tolkien import HasSlc, slc_str, Source, Token
 
@@ -39,7 +39,7 @@ class EonEmpty(EonContainer):
 
 
 class EonDict(EonContainer):
-  def __init__(self, slc:slice, items:List[tuple[Token,'EonSyntax']]):
+  def __init__(self, slc:slice, items:list[tuple[Token,'EonSyntax']]):
     self.slc = slc
     self.items = items
 
@@ -49,7 +49,7 @@ class EonDict(EonContainer):
 
 
 class EonList(EonContainer):
-  def __init__(self, slc:slice, els:List['EonSyntax']):
+  def __init__(self, slc:slice, els:list['EonSyntax']):
     self.slc = slc
     self.els = els
 
@@ -59,7 +59,7 @@ class EonList(EonContainer):
 
 
 class EonStr(EonContainer, HasSlc):
-  def __init__(self, slc:slice, tokens:List[Token]):
+  def __init__(self, slc:slice, tokens:list[Token]):
     self.slc = slc
     self.tokens = tokens
 
@@ -411,9 +411,9 @@ def _build_eon_parser() -> Parser:
 # Parser transformers.
 
 
-def transform_items(source:Source, slc:slice, items:List[tuple[Any,Any]]) -> EonContainer:
+def transform_items(source:Source, slc:slice, items:list[tuple[Any,Any]]) -> EonContainer:
   is_dict:bool
-  vals:List[Any] = []
+  vals:list[Any] = []
   for token, p in items:
     k, v = p
     is_pair = (v is not None) # None is never returned by value transformers, so it is a sufficient discriminator.

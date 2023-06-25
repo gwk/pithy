@@ -58,7 +58,7 @@ CSI n T: Scroll whole page down by n (default 1) lines. New lines are added at t
 
 import re as _re
 from sys import stderr, stdout
-from typing import Any, List, Sequence
+from typing import Any, Sequence
 
 
 is_err_tty = stderr.isatty()
@@ -249,7 +249,7 @@ def show_cursor(show_cursor: Any) -> str:
   return CURSOR_SHOW if show_cursor else CURSOR_HIDE
 
 
-def sanitize_for_console(*text:str, allow_sgr=False, allow_tab=False, escape=INVERT, unescape=RST_INVERT) -> List[str]:
+def sanitize_for_console(*text:str, allow_sgr=False, allow_tab=False, escape=INVERT, unescape=RST_INVERT) -> list[str]:
   sanitized = []
   for t in text:
     for m in _sanitize_re.finditer(t):

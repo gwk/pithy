@@ -5,7 +5,7 @@ from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
-from typing import Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional, Set, TypeVar, Union
+from typing import Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, Mapping, Optional, Set, TypeVar, Union
 
 from .types import Comparable
 
@@ -220,12 +220,12 @@ def filtermap_with_mapping(iterable: Iterable[_K], mapping: Mapping[_K, _V]) -> 
     except KeyError: pass
 
 
-def fan_by_index_fn(iterable: Iterable[_T], index: Callable[[_T], int], min_len=0) -> List[List[_T]]:
+def fan_by_index_fn(iterable: Iterable[_T], index: Callable[[_T], int], min_len=0) -> list[list[_T]]:
   '''
   Fan out `iterable` into a list of lists, with a minimum length of `min_len`,
   according to the index returned by applying `index` to each element.
   '''
-  l: List[List[_T]] = []
+  l: list[list[_T]] = []
   while len(l) < min_len:
     l.append([])
   for el in iterable:
@@ -237,9 +237,9 @@ def fan_by_index_fn(iterable: Iterable[_T], index: Callable[[_T], int], min_len=
   return l
 
 
-def fan_by_pred(iterable: Iterable[_T], pred: Callable[[_T], bool]) -> tuple[List[_T], List[_T]]:
+def fan_by_pred(iterable: Iterable[_T], pred: Callable[[_T], bool]) -> tuple[list[_T], list[_T]]:
   'Fan out `iterable` into a pair of lists by applying `pred` to each element.'
-  fan: tuple[List[_T], List[_T]] = ([], [])
+  fan: tuple[list[_T], list[_T]] = ([], [])
   for el in iterable:
     if pred(el):
       fan[1].append(el)
@@ -248,12 +248,12 @@ def fan_by_pred(iterable: Iterable[_T], pred: Callable[[_T], bool]) -> tuple[Lis
   return fan
 
 
-def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> Dict[_K, List[_T]]:
+def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> Dict[_K, list[_T]]:
   '''
   Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element.
   returns a dictionary of lists.
   '''
-  groups: Dict[_K, List[_T]] = {}
+  groups: Dict[_K, list[_T]] = {}
   for el in iterable:
     k = key(el)
     try:
@@ -277,13 +277,13 @@ def fan_items(iterable:Iterable[tuple[_K,_V]]) -> dict[_K,list[_V]]:
   return groups
 
 
-def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], transform:Callable[[_T],_R]) -> Dict[_K, List[_R]]:
+def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], transform:Callable[[_T],_R]) -> Dict[_K, list[_R]]:
   '''
   Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element,
   applying `transform` to each element.
   returns a dictionary of lists of transformed elements.
   '''
-  groups: Dict[_K, List[_R]] = {}
+  groups: Dict[_K, list[_R]] = {}
   for el in iterable:
     k = key(el)
     try:
@@ -295,7 +295,7 @@ def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], tr
   return groups
 
 
-def group_by_cmp(iterable: Iterable[_T], cmp: Callable[[_T, _T], bool]) -> Iterable[List[_T]]:
+def group_by_cmp(iterable: Iterable[_T], cmp: Callable[[_T, _T], bool]) -> Iterable[list[_T]]:
   '''
   Group elements `iterable`, which must already be sorted,
   by applying the `comparison` predicate to each consecutive pair of elements.
@@ -318,7 +318,7 @@ def group_by_cmp(iterable: Iterable[_T], cmp: Callable[[_T, _T], bool]) -> Itera
   yield group
 
 
-def group_by_key_fn(iterable:Iterable[_T], key:Callable[[_T], Comparable]) -> Iterable[List[_T]]:
+def group_by_key_fn(iterable:Iterable[_T], key:Callable[[_T], Comparable]) -> Iterable[list[_T]]:
   '''
   Group elements of `iterable`, which must already be sorted,
   by applying the `key` function to each element.
@@ -342,7 +342,7 @@ def group_by_key_fn(iterable:Iterable[_T], key:Callable[[_T], Comparable]) -> It
   yield group
 
 
-def group_by_attr(iterable:Iterable[_T], attr:str) -> Iterable[List[_T]]:
+def group_by_attr(iterable:Iterable[_T], attr:str) -> Iterable[list[_T]]:
   '''
   Group elements of `iterable`, which must already be sorted,
   by comparing the `attr` attribute of each element.
@@ -370,13 +370,13 @@ class OnHeadless(Enum):
 
 
 def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headless=OnHeadless.error, keep_heads=True) \
- -> Iterator[List[_T]]:
+ -> Iterator[list[_T]]:
   '''
   Group elements of `iterable` by creating a new group every time the `is_head` predicate evaluates to true.
   If the first element of the stream is not a head, the behavior is specified by `headless`.
   '''
   it = iter(iterable)
-  group: List[_T] = []
+  group: list[_T] = []
   while True: # consume all headless (leading tail) tokens.
     try: el = next(it)
     except StopIteration:
@@ -426,7 +426,7 @@ def split_els(iterable:Iterable[_T], split=Callable[[_T], Optional[tuple[_T, _T]
     yield el
 
 
-def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iterable[tuple[bool, List[_T]]]:
+def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iterable[tuple[bool, list[_T]]]:
   '''
   Split the sequence whenever the sequence of predicates has consecutively matched.
   Each yielded chunk is a pair (is_split_seq, seq).
@@ -438,7 +438,7 @@ def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iter
   '''
   if not preds: raise ValueError('split_by_preds requires at least one predicate')
   l = len(preds)
-  buffer: List[_T] = []
+  buffer: list[_T] = []
   for el in iterable:
     buffer.append(el)
     if len(buffer) >= l:

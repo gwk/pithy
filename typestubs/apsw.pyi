@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, Optional, Union
 
 from pithy.typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -112,7 +112,7 @@ class Cursor:
 
   def executemany(self, statements:str, sequenceofbindings:Iterable[IterOrDict]) -> Iterator: ... # TODO: Iterator ok?
 
-  def fetchall(self) -> List: ...
+  def fetchall(self) -> list: ...
 
   def fetchone(self) -> Any: ...
 
@@ -361,7 +361,7 @@ def sqlitelibversion() -> None: ...
 
 def status(op:int, reset=False) -> tuple[int, int]: ...
 
-def vfsnames() -> List[str]: ...
+def vfsnames() -> list[str]: ...
 
 
 SQLITE_ABORT: int
@@ -636,7 +636,7 @@ SQLITE_VTAB_CONSTRAINT_SUPPORT: int
 SQLITE_WARNING: int
 SQLITE_WARNING_AUTOINDEX: int
 compile_options: tuple[str,...]
-connection_hooks:List[Callable[[Connection],None]]
+connection_hooks:list[Callable[[Connection],None]]
 mapping_access: Any
 mapping_authorizer_function: Any
 mapping_authorizer_return: Any

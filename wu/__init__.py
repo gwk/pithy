@@ -3,7 +3,7 @@
 import re
 from html import escape as html_escape
 from os import environ
-from typing import Any, Callable, cast, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Union
+from typing import Any, Callable, cast, DefaultDict, Dict, Iterable, Iterator, Match, NoReturn, Optional, TextIO, Union
 
 import pygments
 import pygments.lexers
@@ -71,7 +71,7 @@ def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, autho
     yield '</body>\n</html>'
 
 
-def writeup_dependencies(src_path:str, text_lines: Iterable[str], emit_dbg=False) -> List[str]:
+def writeup_dependencies(src_path:str, text_lines: Iterable[str], emit_dbg=False) -> list[str]:
   '''
   Return a list of dependencies from the writeup in `src_lines`.
   '''
@@ -155,7 +155,7 @@ class ImgSpan(AttrSpan):
 
 
 class LinkSpan(AttrSpan):
-  def __init__(self, text: str, attrs: Dict[str, str], tag: str, words: List[str], ctx: 'Ctx', src: SrcLine):
+  def __init__(self, text: str, attrs: Dict[str, str], tag: str, words: list[str], ctx: 'Ctx', src: SrcLine):
     super().__init__(text=text, attrs=attrs)
     self.tag = tag
     if not words:
@@ -188,7 +188,7 @@ class Section(Block):
     self.quote_depth = quote_depth
     self.index_path = index_path
     self.title = title
-    self.blocks: List[Block] = []
+    self.blocks: list[Block] = []
 
   def __repr__(self) -> str: return f'Section({self.sid}, {self.title}, {len(self.blocks)} blocks)'
 
@@ -212,7 +212,7 @@ class UList(Block):
   def __init__(self, list_level: int):
     super().__init__()
     self.list_level = list_level # 1-indexed (top-level list is 1; no lists is 0).
-    self.items: List[ListItem] = []
+    self.items: list[ListItem] = []
 
   def __repr__(self) -> str: return f'UList({self.list_level}, {len(self.items)} items)'
 
@@ -226,7 +226,7 @@ class UList(Block):
 class ListItem(Block):
   def __init__(self, list_level: int):
     self.list_level = list_level # 1-indexed (top-level list is 1; no lists is 0).
-    self.blocks: List[Block] = []
+    self.blocks: list[Block] = []
 
   def __repr__(self) -> str: return f'ListItem({self.list_level}, {len(self.blocks)} blocks)'
 
@@ -252,8 +252,8 @@ BranchBlock = Union[Section, UList, ListItem]
 
 class LeafBlock(Block):
   def __init__(self) -> None:
-    self.src_lines: List[SrcLine] = []
-    self.content_lines: List[str] = []
+    self.src_lines: list[SrcLine] = []
+    self.content_lines: list[str] = []
 
   def __repr__(self) -> str:
     head = f'{self.src_lines[0][1][0:64]!r}… {len(self.src_lines)} lines' if self.src_lines else ''
@@ -263,7 +263,7 @@ class LeafBlock(Block):
 class Quote(LeafBlock):
   def __init__(self) -> None:
     super().__init__()
-    self.blocks: List[Block] = []
+    self.blocks: list[Block] = []
 
   def finish(self, ctx: 'Ctx') -> None:
     quote_ctx = Ctx(
@@ -300,7 +300,7 @@ class LangBlock(LeafBlock):
   def __init__(self) -> None:
     super().__init__()
     self.lang = ''
-    self.lines:List[str] = []
+    self.lines:list[str] = []
     self.attrs:Dict[str,str] = {}
 
   def finish(self, ctx: 'Ctx') -> None:
@@ -370,7 +370,7 @@ def strip_lang_line(line:str) -> str:
 class Text(LeafBlock):
   def __init__(self) -> None:
     super().__init__()
-    self.lines: List[Spans] = []
+    self.lines: list[Spans] = []
 
   def finish(self, ctx: 'Ctx') -> None:
     self.lines = [parse_spans(ctx, src=src, text=text) for (src, text) in zip(self.src_lines, self.content_lines)]
@@ -404,14 +404,14 @@ class Ctx:
 
     self.project_dir = norm_path(project_dir or environ.get('PROJECT_DIR', '.'))
     self.src_dir = path_dir(src_path)
-    self.license_lines: List[str] = []
-    self.head_text: List[str] = []
-    self.stack: List[Block] = [] # stack of currently open content blocks.
-    self.blocks: List[Block] = [] # top level blocks.
-    self.dependencies: List[str] = []
-    self.section_ids: List[str] = [] # accumulated list of all section ids.
-    self.paging_ids: List[str] = [] # accumulated list of all paging (level 1 & 2) section ids.
-    self.css = DefaultDict[str, List[str]](list)
+    self.license_lines: list[str] = []
+    self.head_text: list[str] = []
+    self.stack: list[Block] = [] # stack of currently open content blocks.
+    self.blocks: list[Block] = [] # top level blocks.
+    self.dependencies: list[str] = []
+    self.section_ids: list[str] = [] # accumulated list of all section ids.
+    self.paging_ids: list[str] = [] # accumulated list of all paging (level 1 & 2) section ids.
+    self.css = DefaultDict[str, list[str]](list)
     self.found_target_section = False
     self.title = ''
     self.open_div = False
@@ -706,7 +706,7 @@ def check_whitespace(ctx: Ctx, src: SrcLine, len_exp: Optional[int], m: Match, k
 
 
 def parse_spans(ctx: Ctx, src: SrcLine, text: str) -> Spans:
-  spans: List[Span] = []
+  spans: list[Span] = []
   prev_idx = 0
   def flush(curr_idx: int) -> None:
     if prev_idx < curr_idx:
@@ -724,7 +724,7 @@ def parse_spans(ctx: Ctx, src: SrcLine, text: str) -> Spans:
   return tuple(spans)
 
 
-def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> tuple[str, Dict[str,str], List[str]]:
+def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> tuple[str, Dict[str,str], list[str]]:
   tag, colon, post_tag_text = text.lstrip().partition(':')
   if colon is None: ctx.error(src, f'missing colon after tag: {text!r}')
 
@@ -843,12 +843,12 @@ def embed(ctx: Ctx, src: SrcLine, text: str, attrs: Dict[str, str]) -> Span:
   return EmbedSpan(text=text, attrs=attrs, path=path, contents=contents)
 
 
-def embed_css(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+def embed_css(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
   css = f.read()
   return [f'<style type="text/css">{html_esc(css)}</style>']
 
 
-def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
   from csv import reader
   csv_reader = reader(f)
   it = iter(csv_reader)
@@ -869,7 +869,7 @@ def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,s
   return lines
 
 
-def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> Iterator[str]:
+def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> Iterator[str]:
   lines = list(f)
   first = lines[0] if lines else ''
   lexer = pygments.lexers.guess_lexer_for_filename(f.name, first)
@@ -886,13 +886,13 @@ def render_token(ctx: Ctx, kind: pygments.token._TokenType, text: str) -> str:
   return f'<span class="{class_}">{html_esc(text)}</span>'
 
 
-def embed_direct(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+def embed_direct(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
   return list(filter(None, (xml_processing_instruction_re.sub('', line.rstrip()) for line in f)))
 
 xml_processing_instruction_re = re.compile(r'<\?[^>]*>')
 
 
-def embed_html(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+def embed_html(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
   lines = list(f)
   head = ''
   for head in lines:
@@ -911,11 +911,11 @@ html_doc_re = re.compile(r'''(?xi)
 ''')
 
 
-def embed_img(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+def embed_img(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
   return [f'<img src={html_esc(f.name)}>']
 
 
-def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
   data = load_json(f)
   for i, arg in enumerate(args):
     acc = '.'.join(args[:i+1])
@@ -932,7 +932,7 @@ def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:List[str], attrs:Dict[str,st
   return [str(data)]
 
 
-def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,str]) -> List[str]:
+def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
   embed_ctx = Ctx(
     src_path=f.name,
     project_dir=ctx.project_dir,
@@ -944,7 +944,7 @@ def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:List[str], attrs:Dict[str,st
   return list(embed_ctx.emit_body(depth=0))
 
 
-_EmbedFn = Callable[[Ctx, SrcLine, TextIO, List[str], Dict[str,str]], Iterable[str]]
+_EmbedFn = Callable[[Ctx, SrcLine, TextIO, list[str], Dict[str,str]], Iterable[str]]
 
 embed_dispatch: Dict[str, _EmbedFn] = {
   '.css'  : embed_css,

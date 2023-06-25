@@ -5,7 +5,7 @@ import re
 import shlex
 from itertools import zip_longest
 from string import Template
-from typing import Any, Callable, cast, Dict, List, NamedTuple, Optional, Pattern, Set, TextIO, Union
+from typing import Any, Callable, cast, Dict, NamedTuple, Optional, Pattern, Set, TextIO, Union
 
 from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
@@ -54,7 +54,7 @@ class FileExpectation:
     self.match_error: Optional[tuple[int,Pattern|None, str]] = None
 
 
-  def compile_match_lines(self, text: str) -> List[tuple[str, Pattern]]:
+  def compile_match_lines(self, text: str) -> list[tuple[str, Pattern]]:
     return [self.compile_match_line(i, line) for i, line in enumerate(text.splitlines(True), 1)]
 
 
@@ -95,7 +95,7 @@ class ParConfig(NamedTuple):
 class Case:
   'Case represents a single test case, or a default.'
 
-  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: Dict, par_configs: List[ParConfig],
+  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: Dict, par_configs: list[ParConfig],
    par_stems_used: Set[str]) -> None:
     self.dir: str = path_dir(stem)
     self.stem: str = self.dir if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
@@ -103,22 +103,22 @@ class Case:
     # derived properties.
     self.multi_index: Optional[int] = None
     self.test_info_paths: Set[str] = set() # the files that comprise the test case.
-    self.dflt_src_paths: List[str] = []
-    self.coverage_targets: List[str] = []
+    self.dflt_src_paths: list[str] = []
+    self.coverage_targets: list[str] = []
     self.test_dir: str = ''
-    self.test_cmd: List[str] = []
+    self.test_cmd: list[str] = []
     self.test_env: Dict[str, str] = {}
     self.test_failed_previously: bool = False
     self.test_in: Optional[str] = None
-    self.test_expectations: List[FileExpectation] = []
-    self.test_links: List[tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
+    self.test_expectations: list[FileExpectation] = []
+    self.test_links: list[tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
     self.test_par_args: Dict[str, tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
     # configurable properties.
-    self.args: Optional[List[str]] = None # arguments to follow the file under test.
-    self.cmd: Optional[List[str]] = None # command string/list with which to invoke the test.
-    self.coverage: Optional[List[str]] = None # list of names to include in code coverage analysis.
+    self.args: Optional[list[str]] = None # arguments to follow the file under test.
+    self.cmd: Optional[list[str]] = None # command string/list with which to invoke the test.
+    self.coverage: Optional[list[str]] = None # list of names to include in code coverage analysis.
     self.code: Optional[int] = None # the expected exit code.
-    self.compile: Optional[List[Any]] = None # the optional list of compile commands, each a string or list of strings.
+    self.compile: Optional[list[Any]] = None # the optional list of compile commands, each a string or list of strings.
     self.compile_timeout: Optional[int] = None
     self.desc: Optional[str] = None # description.
     self.env: Optional[Dict[str, str]] = None # environment variables.
@@ -128,7 +128,7 @@ class Case:
     self.files: Optional[Dict[str, Dict[str, str]]] = None # additional file expectations.
     self.in_: Optional[str] = None # stdin as text.
     self.interpreter: Optional[str] = None # interpreter to prepend to cmd.
-    self.interpreter_args: Optional[List[str]] = None # interpreter args.
+    self.interpreter_args: Optional[list[str]] = None # interpreter args.
     self.links: Union[None, str, Set[str], Dict[str, str]] = None # symlinks to be made into the test directory.
     #^ Written as a str, set or dict.
     self.out_mode: Optional[str] = None # comparison mode for stdout expectation.
@@ -177,7 +177,7 @@ class Case:
     return self.std_name(coverage_name)
 
   @property
-  def coven_cmd_prefix(self) -> List[str]:
+  def coven_cmd_prefix(self) -> list[str]:
     coven_cmd = ['coven', '-output', self.coverage_path]
     if self.coverage_targets:
       coven_cmd += ['-targets'] + self.coverage_targets
@@ -246,7 +246,7 @@ class Case:
       t = Template(val)
       return t.safe_substitute(env)
 
-    def expand(val: Any) -> List[str]:
+    def expand(val: Any) -> list[str]:
       if val is None:
         return []
       if is_str(val):
@@ -270,7 +270,7 @@ class Case:
 
     self.compile_cmds = [expand(cmd) for cmd in self.compile] if self.compile else []
 
-    cmd: List[str] = []
+    cmd: list[str] = []
     if self.interpreter:
       cmd += expand(self.interpreter)
     if self.interpreter_args:
@@ -424,7 +424,7 @@ def compare_contain(exp: FileExpectation, val: str) -> bool:
   return val.find(exp.val) != -1
 
 def compare_match(exp: FileExpectation, val: str) -> bool:
-  lines: List[str] = val.splitlines(True)
+  lines: list[str] = val.splitlines(True)
   for i, (pair, line) in enumerate(zip_longest(exp.match_pattern_pairs, lines), 1):
     if pair is None:
       exp.match_error = (i, None, line)

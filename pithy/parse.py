@@ -26,7 +26,7 @@ from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
-from typing import Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Type, TypeVar, Union
+from typing import Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, NoReturn, Optional, Type, TypeVar, Union
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 
@@ -50,7 +50,7 @@ class ParseError(Exception):
 
   def __init__(self, source:Source, syntax:Syntax, msg:str, notes:Iterable[SyntaxMsg]=()):
     self.source = source
-    self.notes:List[SyntaxMsg] = list(notes)
+    self.notes:list[SyntaxMsg] = list(notes)
     self.syntax = syntax
     self.msg = msg
     super().__init__((self.syntax, self.msg))
@@ -69,13 +69,13 @@ class ExcessToken(ParseError):
   'Raised by Parser when expression parsing completes but does not exhaust the token stream.'
 
 
-def append(list_:List[_T], el:_T) -> List[_T]:
+def append(list_:list[_T], el:_T) -> list[_T]:
   'Append an element to a list and return the list. Useful when writing transform lambdas.'
   list_.append(el)
   return list_
 
 
-def append_or_list(list_or_el:Union[_T,List[_T]], el:_T) -> List[_T]:
+def append_or_list(list_or_el:Union[_T,list[_T]], el:_T) -> list[_T]:
   'Create a list from two elements, or if the left element is already a list, append the right element to it and return it.'
   if isinstance(list_or_el, list):
     list_or_el.append(el)
@@ -115,14 +115,14 @@ def suffix_text(source:Source, token:Token, val:Any) -> str:
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> tuple[str,Any,Any]: return (source[token], left, right)
 def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> tuple[Any,Any]: return (left, right)
-def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> List[Any]: return append_or_list(left, right)
+def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list[Any]: return append_or_list(left, right)
 
-QuantityTransform = Callable[[Source,slice,List[Any]],Any]
-def quantity_els(source:Source, slc:slice, elements:List[Any]) -> List[Any]: return elements
-def quantity_syn(source:Source, slc:slice, elements:List[Any]) -> Syn: return Syn(slc, elements)
-def quantity_text(source:Source, slc:slice, elements:List[Any]) -> str: return source[slc]
+QuantityTransform = Callable[[Source,slice,list[Any]],Any]
+def quantity_els(source:Source, slc:slice, elements:list[Any]) -> list[Any]: return elements
+def quantity_syn(source:Source, slc:slice, elements:list[Any]) -> Syn: return Syn(slc, elements)
+def quantity_text(source:Source, slc:slice, elements:list[Any]) -> str: return source[slc]
 
-StructTransform = Callable[[Source,slice,List[Any]],Any]
+StructTransform = Callable[[Source,slice,list[Any]],Any]
 def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> tuple[Any,...]: return tuple(fields)
 def struct_syn(source:Source, slc:slice, fields:list[Any]): return Syn(slc, fields)
 def struct_text(source:Source, slc:slice, fields:list[Any]) -> str: return source[slc]
@@ -383,7 +383,7 @@ class Quantity(_QuantityRule):
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    els:List[Any] = []
+    els:list[Any] = []
     sep_token:Token|None = None
     start = token
     end = start.pos
@@ -467,7 +467,7 @@ class Struct(Rule):
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    vals:List[Any] = []
+    vals:list[Any] = []
     while token.kind in self.drop:
       token = next(buffer)
     start = token
@@ -888,7 +888,7 @@ class Parser:
 
     if includes.count(True) == 1: # No need for a struct; just extract the interesting child element.
       i = includes.index(True)
-      def single_transform(source:Source, slc:slice, fields:List[Any]) -> Any: return fields[i]
+      def single_transform(source:Source, slc:slice, fields:list[Any]) -> Any: return fields[i]
       return single_transform
 
     raw_field_names = [sub.field_name for sub, should_inlude in zip(subs, includes) if should_inlude]
@@ -900,10 +900,10 @@ class Parser:
     struct_type = self._mk_struct_type(name, field_names=field_names)
 
     if self.simplify:
-      def transform(source:Source, slc:slice, fields:List[Any]) -> Any:
+      def transform(source:Source, slc:slice, fields:list[Any]) -> Any:
         return struct_type(*(f for f, should_include in zip(fields, includes) if should_include))
     else:
-      def transform(source:Source, slc:slice, fields:List[Any]) -> Any:
+      def transform(source:Source, slc:slice, fields:list[Any]) -> Any:
         return struct_type(slc, *(f for f, should_include in zip(fields, includes) if should_include))
 
     return transform

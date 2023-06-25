@@ -2,7 +2,7 @@ from array import array
 from ctypes import _CData
 from mmap import mmap
 from pickle import PickleBuffer
-from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, List, TextIO
+from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, TextIO
 
 from zstandard import ZstdCompressor
 
@@ -40,7 +40,7 @@ class ZstWriterBase:
 
   def readline(self, size=-1) -> AnyStr: raise TypeError
 
-  def readlines(self, size=-1) -> List[AnyStr]: raise TypeError
+  def readlines(self, size=-1) -> list[AnyStr]: raise TypeError
 
   def seek(self, offset:int, whence=0) -> int: return self.file.seek(offset, whence)
 

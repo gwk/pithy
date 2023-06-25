@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import cast, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Pattern, Union
+from typing import cast, Container, Dict, FrozenSet, Iterable, Iterator, NamedTuple, Pattern, Union
 
 from tolkien import Source, Token
 
@@ -201,11 +201,11 @@ class Lexer:
     return Token(pos=p, end=e, mode=mode, kind=kind)
 
 
-  def _lex(self, stack:List[tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
+  def _lex(self, stack:list[tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
    ) -> Iterator[Token]:
     assert isinstance(source, Source)
     prev_kind = ''
-    indent_stack:List[int] = []
+    indent_stack:list[int] = []
     while pos < end:
       # Get the current frame and mode.
       frame_trans, frame_token = stack[-1]

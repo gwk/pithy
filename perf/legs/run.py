@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 from os import environ
-from perf import Runner # type: ignore
+from sys import argv
+from typing import Any
+
+from perf import Runner  # type: ignore
 from pithy.io import errSL
 from pithy.path import path_name
-from sys import argv
-from typing import Any, List
 
 
 def main() -> None:
@@ -13,7 +14,7 @@ def main() -> None:
   # This makes specifying command line arguments tricky.
   #errSL('ARGV', argv)
   cmd = argv[1:]
-  perf_args:List[str] = [argv[0]]
+  perf_args:list[str] = [argv[0]]
   for i, arg in enumerate(cmd):
     if arg.startswith('-'): # Beginning of perf args.
       perf_args.extend(cmd[i:])
@@ -24,7 +25,7 @@ def main() -> None:
 
   name = path_name(cmd[0])
 
-  def add_cmdline_args(worker_cmds:List[str], args:Any) -> None:
+  def add_cmdline_args(worker_cmds:list[str], args:Any) -> None:
     worker_cmds[2:2] = cmd
     #errSL('WORKER', worker_cmds)
 

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Counter, Dict, List, NamedTuple
+from typing import Counter, Dict, NamedTuple
 
 
 class UnicodeCategory(NamedTuple):
@@ -15,7 +15,7 @@ def _mk_cat(key:str, name:str, desc:str) -> UnicodeCategory:
   return UnicodeCategory(key=key, name=name, desc=desc, subcategories=tuple(subs if len(subs) > 1 else []))
 
 
-unicode_categories:List[UnicodeCategory] = [ # taken directly from: http://www.unicode.org/reports/tr44/#General_Category_Values.
+unicode_categories:list[UnicodeCategory] = [ # taken directly from: http://www.unicode.org/reports/tr44/#General_Category_Values.
   _mk_cat('Lu', 'Uppercase_Letter',      'An uppercase letter'),
   _mk_cat('Ll', 'Lowercase_Letter',      'A lowercase letter'),
   _mk_cat('Lt', 'Titlecase_Letter',      'A digraphic character, with first part uppercase'),

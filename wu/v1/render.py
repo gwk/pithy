@@ -2,7 +2,7 @@
 
 import re
 from functools import singledispatch
-from typing import Iterator, List
+from typing import Iterator
 
 from pithy.html import Body, Html, HtmlNode, Section
 from pithy.markup import MuChild
@@ -71,7 +71,7 @@ def _(node:Section, section_depth:int, max_top_nl:int) -> Iterator[str]:
 
 def fmt_wu_node_attrs(node:HtmlNode) -> str:
   'Return a string that is either empty or with a leading space, containing all of the formatted items.'
-  parts: List[str] = []
+  parts: list[str] = []
   for k, v in node.attrs.items():
     k = node.replaced_attrs.get(k, k)
     if v is None: v = 'none'

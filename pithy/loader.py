@@ -5,7 +5,7 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, TextIOWrapper
-from typing import Any, BinaryIO, Callable, cast, Dict, IO, Iterable, List, Set, TextIO, Union
+from typing import Any, BinaryIO, Callable, cast, Dict, IO, Iterable, Set, TextIO, Union
 
 
 __all__ = [
@@ -122,7 +122,7 @@ def load_binary(f:FileOrPath, ext:str, **kwargs:Any) -> BinaryIO:
 #  return load(df, ext=sub_ext, **kwargs) # type: ignore
 
 
-def load_csv(f:FileOrPath, ext:str, encoding:str|None=None, **kwargs:Any) -> Iterable[List[str]]:
+def load_csv(f:FileOrPath, ext:str, encoding:str|None=None, **kwargs:Any) -> Iterable[list[str]]:
   from .csv import load_csv as _load_csv
   return _load_csv(text_file_for(f, newline='', encoding=encoding), **kwargs)
 
