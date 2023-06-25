@@ -106,7 +106,7 @@ def gen_fnf_parts(fmt: str) -> Iterator[FNFPart]:
       val_type = fmt_types[type_char]
       yield FilenameFormatter(min_width=min_width, type_char=type_char, val_type=val_type)
     pos = end
-  if pos != len(fmt): 
+  if pos != len(fmt):
     yield fmt[pos:len(fmt)]
 
 

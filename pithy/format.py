@@ -144,4 +144,3 @@ def gen_format_matches(fmt: str) -> Iterable[Match]:
 def _exc(fmt: str, pos: int, msg: str) -> FormatError:
   line, col = line_col_1(fmt, pos)
   return FormatError(f'<str>:{line}:{col}: {msg}')
-
