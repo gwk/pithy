@@ -70,7 +70,7 @@ def dispatcher_for_defs(*, prefix:str, default: Callable|None=None, base:Mapping
       else:
         try: return fn(*args, **kwargs)
         except TypeError as exc: raise DispatchException(fn) from exc
-      return default(name, *args,  **kwargs) # type: ignore[misc]
+      return default(name, *args,  **kwargs)
 
   setattr(dispatch_fn, 'bindings', bindings)
   setattr(dispatch_fn, 'default', default)

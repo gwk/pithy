@@ -244,9 +244,10 @@ class Transtructor:
 
         try: items = val.items()
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
-        try: return origin((key_ctor(k, ctx), val_ctor(v, ctx)) for k, v in items) # type: ignore[call-arg]
+        try: return origin((key_ctor(k, ctx), val_ctor(v, ctx)) for k, v in items) # type: ignore[return-value]
         except ValueError as e:
           raise TranstructorError(f'failed to transtruct items of type {type(val).__name__!r}', desired_type, val) from e
+
       return transtruct_dict
 
     if issubclass(origin, (list, set, frozenset, Counter)):
@@ -255,12 +256,12 @@ class Transtructor:
       el_ttor = self.transtructor_for(el_type)
 
       def transtruct_collection(val:Input, ctx:Ctx) -> Desired:
-        return origin(el_ttor(e, ctx) for e in val) # type: ignore[call-arg]
+        return origin(el_ttor(e, ctx) for e in val) # type: ignore[return-value]
 
       return transtruct_collection
 
     if issubclass(origin, Callable): # type: ignore[arg-type]
-      return lambda val, ctx: val # type: ignore[no-any-return] # TODO: this is a temporary hack.
+      return lambda val, ctx: val
       raise NotImplementedError(f'Transtructor for callable type {desired_type} not implemented; origin: {origin}.')
 
     # TODO: further handling. At this point it does not make sense to just return origin,

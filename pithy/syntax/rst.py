@@ -35,7 +35,8 @@ class Ref:
 
 
 def _get_children(node:Node) -> Iterable[Node]:
-  return node.children
+  if hasattr(node, 'childeren'): return node.children # type: ignore[attr-defined,no-any-return]
+  return ()
 
 
 @dataclass

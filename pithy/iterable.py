@@ -413,7 +413,7 @@ def frozenset_from(iterables:Iterable[Iterable[_K]]) -> frozenset[_K]:
   return frozenset(set_from(iterables))
 
 
-def split_els(iterable:Iterable[_T], split=Callable[[_T], tuple[_T,_T]|None]) -> Iterator[_T]:
+def split_els(iterable:Iterable[_T], split=Callable[[_T], tuple[_T,_T]|None]) -> Iterator[_T]: # type: ignore[valid-type]
   '''
   Repeatedly split the current element using the `split` function until it returns None.
   '''
