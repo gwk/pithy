@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from itertools import chain
-from typing import Dict, Iterable
+from typing import Iterable
 
 
 # use pairs instead of real range objects because they are sortable, and faster to load in the interpreter.
@@ -56,7 +56,7 @@ planes:tuple[CodeRanges, ...] = (
   ),
 )
 
-abbreviated_planes:Dict[str, CodeRanges]  = {
+abbreviated_planes:dict[str, CodeRanges]  = {
   'BMP': planes[0],
   'SMP': planes[1],
   'SIP': planes[2],

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Dict, Iterable, Iterator, Optional, Union
+from typing import Any, Callable, Iterable, Iterator, Optional, Union
 
 from pithy.typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -98,7 +98,7 @@ class Connection:
 
 
 
-IterOrDict = Union[Iterable, Dict]
+IterOrDict = Union[Iterable, dict]
 
 class Cursor:
 

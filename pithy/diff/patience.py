@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from bisect import bisect
-from typing import Dict, Optional, Sequence, TypeVar
+from typing import Optional, Sequence, TypeVar
 
 
 _T = TypeVar('_T')
@@ -105,8 +105,8 @@ def unique_lcs(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> list[tuple[int, int]]:
   return result
 
 
-def index_uniques(seq:Sequence[_T]) -> Dict[_T, Optional[int]]:
-  index:Dict[_T, Optional[int]] = {}
+def index_uniques(seq:Sequence[_T]) -> dict[_T, Optional[int]]:
+  index:dict[_T, Optional[int]] = {}
   for i, el in enumerate(seq):
     index[el] = None if el in index else i
   return index

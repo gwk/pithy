@@ -5,13 +5,13 @@ XML escaping utilities.
 '''
 
 from functools import lru_cache
-from typing import Any, Container, Dict, Iterable, Optional
+from typing import Any, Container, Iterable, Optional
 from xml.sax.saxutils import escape as _escape_text, quoteattr as _escape_attr
 
 from ..string import EscapedStr
 
 
-XmlAttrs = Optional[Dict[str,Any]]
+XmlAttrs = Optional[dict[str,Any]]
 
 
 
@@ -31,13 +31,13 @@ def esc_xml_attr_key(key:str) -> str:
   return _escape_attr(key.replace("_", "-"))
 
 
-def fmt_attrs(attrs:XmlAttrs, *, replaced_attrs:Dict[str,str]={}, ignore:Container[str]=()) -> str:
+def fmt_attrs(attrs:XmlAttrs, *, replaced_attrs:dict[str,str]={}, ignore:Container[str]=()) -> str:
   'Format the `attrs` dict into XML key-value attributes.'
   if not attrs: return ''
   return fmt_attr_items(attrs.items(), replaced_attrs=replaced_attrs, ignore=ignore)
 
 
-def fmt_attr_items(attr_items:Iterable[tuple[str,Any]], *, replaced_attrs:Dict[str,str]={}, ignore:Container[str]=()) -> str:
+def fmt_attr_items(attr_items:Iterable[tuple[str,Any]], *, replaced_attrs:dict[str,str]={}, ignore:Container[str]=()) -> str:
   parts: list[str] = []
   for k, v in attr_items:
     if k in ignore: continue

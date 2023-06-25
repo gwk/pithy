@@ -5,7 +5,7 @@ import re
 import shlex
 from itertools import zip_longest
 from string import Template
-from typing import Any, Callable, cast, Dict, NamedTuple, Optional, Pattern, Set, TextIO, Union
+from typing import Any, Callable, cast, NamedTuple, Optional, Pattern, Set, TextIO, Union
 
 from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
@@ -30,7 +30,7 @@ class IotParseError(TestCaseError): pass
 
 class FileExpectation:
 
-  def __init__(self, path: str, info: Dict[str, str], expand_str_fn: Callable):
+  def __init__(self, path: str, info: dict[str, str], expand_str_fn: Callable):
     if path.find('..') != -1:
       raise TestCaseError(f"file expectation {path}: cannot contain '..'")
     self.path = expand_str_fn(path)
@@ -89,13 +89,13 @@ class ParConfig(NamedTuple):
   '''
   stem: str
   pattern: Pattern[str]
-  config: Dict
+  config: dict
 
 
 class Case:
   'Case represents a single test case, or a default.'
 
-  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: Dict, par_configs: list[ParConfig],
+  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: dict, par_configs: list[ParConfig],
    par_stems_used: Set[str]) -> None:
     self.dir: str = path_dir(stem)
     self.stem: str = self.dir if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
@@ -107,12 +107,12 @@ class Case:
     self.coverage_targets: list[str] = []
     self.test_dir: str = ''
     self.test_cmd: list[str] = []
-    self.test_env: Dict[str, str] = {}
+    self.test_env: dict[str, str] = {}
     self.test_failed_previously: bool = False
     self.test_in: Optional[str] = None
     self.test_expectations: list[FileExpectation] = []
     self.test_links: list[tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
-    self.test_par_args: Dict[str, tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
+    self.test_par_args: dict[str, tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
     # configurable properties.
     self.args: Optional[list[str]] = None # arguments to follow the file under test.
     self.cmd: Optional[list[str]] = None # command string/list with which to invoke the test.
@@ -121,15 +121,15 @@ class Case:
     self.compile: Optional[list[Any]] = None # the optional list of compile commands, each a string or list of strings.
     self.compile_timeout: Optional[int] = None
     self.desc: Optional[str] = None # description.
-    self.env: Optional[Dict[str, str]] = None # environment variables.
+    self.env: Optional[dict[str, str]] = None # environment variables.
     self.err_mode: Optional[str] = None # comparison mode for stderr expectation.
     self.err_path: Optional[str] = None # file path for stderr expectation.
     self.err_val: Optional[str] = None # stderr expectation value (mutually exclusive with err_path).
-    self.files: Optional[Dict[str, Dict[str, str]]] = None # additional file expectations.
+    self.files: Optional[dict[str, dict[str, str]]] = None # additional file expectations.
     self.in_: Optional[str] = None # stdin as text.
     self.interpreter: Optional[str] = None # interpreter to prepend to cmd.
     self.interpreter_args: Optional[list[str]] = None # interpreter args.
-    self.links: Union[None, str, Set[str], Dict[str, str]] = None # symlinks to be made into the test directory.
+    self.links: Union[None, str, Set[str], dict[str, str]] = None # symlinks to be made into the test directory.
     #^ Written as a str, set or dict.
     self.out_mode: Optional[str] = None # comparison mode for stdout expectation.
     self.out_path: Optional[str] = None # file path for stdout expectation.
@@ -387,7 +387,7 @@ def validate_links_dict(key: str, val: Any) -> None:
     if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {link}")
 
 
-case_key_validators: Dict[str, tuple[str, Callable[[Any], bool], Optional[Callable[[str, Any], None]]]] = {
+case_key_validators: dict[str, tuple[str, Callable[[Any], bool], Optional[Callable[[str, Any], None]]]] = {
   # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list,     None),
   'cmd':      ('string or list of strings', is_str_or_list,     None),

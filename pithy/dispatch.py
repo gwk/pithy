@@ -2,7 +2,7 @@
 
 import inspect
 from functools import wraps
-from typing import Any, Callable, DefaultDict, Dict
+from typing import Any, Callable, DefaultDict
 
 from .default import Default
 
@@ -11,7 +11,7 @@ class DispatchKeyError(KeyError): pass
 
 
 # module_name -> method_name -> (dispatcher_method, key).
-_keyed_dispatch_registries = DefaultDict[str, Dict[str, tuple[Callable, Dict[Any, Callable]]]](dict)
+_keyed_dispatch_registries = DefaultDict[str, dict[str, tuple[Callable, dict[Any, Callable]]]](dict)
 
 def key_dispatched(key_fn:Callable[[Any], Any]|None=None, *, key:Any=Default._) -> Callable[[Callable], Callable]:
   '''
@@ -36,7 +36,7 @@ def key_dispatched(key_fn:Callable[[Any], Any]|None=None, *, key:Any=Default._) 
       if name in module_registry:
         raise DispatchKeyError(f'`@key_dispatched()` collision on method name: {name}')
       # Register.
-      method_registry: Dict[Any, Callable] = {}
+      method_registry: dict[Any, Callable] = {}
       # Create and return dispatcher method.
       @wraps(dflt_method)
       def dispatch(self, arg, *args, **kwargs):

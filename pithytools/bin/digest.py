@@ -5,7 +5,7 @@
 import hashlib
 from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
-from typing import Any, ByteString, Callable, Dict, Optional, TypeVar
+from typing import Any, ByteString, Callable, Optional, TypeVar
 
 import blake3
 from pithy.encodings import enc_lep62, enc_lep128_to_utf8
@@ -15,7 +15,7 @@ from pithy.io import errSL
 _ByteString = TypeVar('_ByteString', ByteString, bytes, bytearray, memoryview) # Hack around the typeshed defs from base64.
 _Encoder = Callable[[_ByteString], bytes]
 
-hashes:Dict[str,Any] = {
+hashes:dict[str,Any] = {
   'blake2b'   : hashlib.blake2b,
   'blake2s'   : hashlib.blake2s,
   'blake3'    : blake3.blake3,

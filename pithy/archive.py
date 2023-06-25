@@ -3,7 +3,7 @@
 from functools import total_ordering
 from io import TextIOBase, TextIOWrapper
 from tarfile import TarFile
-from typing import Any, BinaryIO, Callable, cast, Dict, Iterable, Type, Union
+from typing import Any, BinaryIO, Callable, cast, Iterable, Type, Union
 from zipfile import BadZipFile, ZipFile
 
 from .fs import path_ext
@@ -131,7 +131,7 @@ class _ZipHandler(_Handler):
 
 
 
-_ext_handlers: Dict[str, Type[_Handler]] = {
+_ext_handlers: dict[str, Type[_Handler]] = {
   '.bz2' : _TarHandler,
   '.gz'  : _TarHandler,
   '.tar' : _TarHandler,

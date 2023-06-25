@@ -5,7 +5,7 @@
 import re
 from html import escape as html_escape
 from sys import stdout
-from typing import Any, Callable, Dict, Iterable, Mapping, Optional, TextIO, Union
+from typing import Any, Callable, Iterable, Mapping, Optional, TextIO, Union
 
 
 GraphvizName = Union[int, float, str]
@@ -81,7 +81,7 @@ def out_dot_digraph_adjacency(adjacency:GraphvizAdjacency, **kwargs) -> None:
   write_dot_digraph_adjacency(stdout, adjacency=adjacency, **kwargs)
 
 
-graph_prop_validators: Dict[str, Callable[[Any], bool]] = {
+graph_prop_validators: dict[str, Callable[[Any], bool]] = {
   'label': lambda v: isinstance(v, str),
   'rankdir': lambda v: (v in {'TB', 'BT', 'LR', 'RL'}),
 }

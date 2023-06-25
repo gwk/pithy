@@ -2,7 +2,6 @@
 
 from bisect import bisect
 from itertools import chain
-from typing import Dict
 
 from . import abbreviated_planes, CodeRange, CodeRanges, intersect_sorted_ranges, union_sorted_ranges
 from .categories import unicode_categories, unicode_category_aliases
@@ -18,8 +17,8 @@ def is_code_in_charset(code, charset:CodeRanges) -> bool:
   return i > 0 and code < charset[i - 1][1]
 
 
-unicode_charsets:Dict[str,CodeRanges] = {}
-ascii_charsets:Dict[str,CodeRanges] = {}
+unicode_charsets:dict[str,CodeRanges] = {}
+ascii_charsets:dict[str,CodeRanges] = {}
 
 def _gen_charsets() -> None:
 

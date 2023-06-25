@@ -8,7 +8,7 @@ from cProfile import Profile
 from os.path import dirname
 from pstats import Stats
 from sys import argv, exc_info, path as sys_path, stderr, stdout
-from typing import Any, Dict, Iterable, Optional, Set, TextIO, Union
+from typing import Any, Iterable, Optional, Set, TextIO, Union
 
 from pithy.fs import path_for_cmd
 from pithy.path import path_rel_to_current_or_abs
@@ -112,13 +112,13 @@ Selector = Union[str,float,int]
 
 class CustomStats(Stats):
 
-  all_callees:Optional[Dict]
+  all_callees:Optional[dict]
   files:list[TextIO]
   max_name_len:int
   fcn_list:list[Func]
   prim_calls:int
   sort_type:str
-  stats:Dict[Func,Any]
+  stats:dict[Func,Any]
   stream:TextIO
   top_level:Set[Func]
   total_calls:int
@@ -233,7 +233,7 @@ class CustomStats(Stats):
       self.print(" "*name_size + "  ncalls  tottime  cumtime")
 
 
-  def display_call_line(self, name_size:int, source:Func, call_dict:Dict[Func,Any], arrow:str='->') -> None:
+  def display_call_line(self, name_size:int, source:Func, call_dict:dict[Func,Any], arrow:str='->') -> None:
     self.print(fmt_func(source).ljust(name_size) + arrow, end=' ')
     if not call_dict:
       self.print()

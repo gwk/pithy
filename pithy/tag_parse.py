@@ -15,7 +15,7 @@ the branches are TagTree instances, which are subclasses of tuple.
 
 import re
 from itertools import chain
-from typing import Callable, Dict, Iterable, Iterator, Match, Sequence, Union
+from typing import Callable, Iterable, Iterator, Match, Sequence, Union
 
 from .ansi import RST_TXT, TXT_R, TXT_Y
 from .buffer import Buffer
@@ -42,7 +42,7 @@ class TagParser():
     self.last_open_index = len(tag_rules)
 
 
-  def _parse(self, leaf_replacements: Dict[str, str], text: str, match_stream: Buffer[Match],
+  def _parse(self, leaf_replacements: dict[str, str], text: str, match_stream: Buffer[Match],
     pos: int, depth: int, subs: list, close_pred: Callable, parent_close_pred: Callable) -> tuple['TagTree', int]:
 
     def append_leaf(leaf: str) -> None:
@@ -83,7 +83,7 @@ class TagParser():
     return TagTreeRoot(*subs) if depth == 0 else TagTreeUnterminated(*subs), len(text)
 
 
-  def parse(self, text: str, leaf_replacements: Dict[str, str]|None=None) -> 'Node':
+  def parse(self, text: str, leaf_replacements: dict[str, str]|None=None) -> 'Node':
     match_stream = Buffer(self.lexer.finditer(text))
     res, pos = self._parse(leaf_replacements or {}, text, match_stream, pos=0, depth=0,
       subs=[], close_pred=lambda i, t: False, parent_close_pred=lambda i, t: False)

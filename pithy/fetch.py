@@ -4,7 +4,7 @@ from http import HTTPStatus
 from random import uniform as rand_uniform
 from shlex import quote as sh_quote
 from time import sleep
-from typing import Any, Dict
+from typing import Any
 from urllib.parse import urlencode, urlparse
 
 from .fs import make_dirs, move_file, path_dir, path_exists, path_ext, path_join
@@ -20,7 +20,7 @@ class HTTPError(Exception):
     self.status_code = status_code
 
 
-def fetch(url:str, cache_path:str='', params:Dict[str, str]={}, headers:Dict[str, str]={}, expected_status_code=200, timeout=30, delay=0, delay_range=0, spoof_ua=False) -> str:
+def fetch(url:str, cache_path:str='', params:dict[str, str]={}, headers:dict[str, str]={}, expected_status_code=200, timeout=30, delay=0, delay_range=0, spoof_ua=False) -> str:
   "Fetch the data at `url` and save it to a path in the '_fetch' directory derived from the URL."
   if params:
     if '?' in url: raise ValueError("params specified but url already contains '?'")
@@ -61,7 +61,7 @@ def fetch(url:str, cache_path:str='', params:Dict[str, str]={}, headers:Dict[str
   return path
 
 
-def load_url(url:str, ext:str='', cache_path:str='', params:Dict[str, str]={}, headers:Dict[str, str]={}, expected_status_code=200, timeout=30, delay=0, delay_range=0, spoof_ua=False, **kwargs:Any) -> Any:
+def load_url(url:str, ext:str='', cache_path:str='', params:dict[str, str]={}, headers:dict[str, str]={}, expected_status_code=200, timeout=30, delay=0, delay_range=0, spoof_ua=False, **kwargs:Any) -> Any:
   'Fetch the data at `url` and then load using `loader.load`.'
   from .loader import load
   if not ext:
@@ -78,7 +78,7 @@ def load_url(url:str, ext:str='', cache_path:str='', params:Dict[str, str]={}, h
   return load(path, ext=ext, **kwargs)
 
 
-def spoofing_headers() -> Dict[str, str]:
+def spoofing_headers() -> dict[str, str]:
   # Headers that Safari sent at one point. Not sure how up-to-date these ought to be.
   # TODO: allow imitating other browsers?
   return {

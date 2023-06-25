@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Counter, Dict, NamedTuple
+from typing import Counter, NamedTuple
 
 
 class UnicodeCategory(NamedTuple):
@@ -58,7 +58,7 @@ unicode_categories:list[UnicodeCategory] = [ # taken directly from: http://www.u
 ]
 
 
-unicode_category_aliases:Dict[str,UnicodeCategory] = { cat.key : cat for cat in unicode_categories }
+unicode_category_aliases:dict[str,UnicodeCategory] = { cat.key : cat for cat in unicode_categories }
 
 def _add_aliases() -> None:
   unicode_category_aliases.update((cat.name, cat) for cat in unicode_categories)

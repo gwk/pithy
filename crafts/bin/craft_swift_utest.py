@@ -6,7 +6,7 @@ It is currently a work in progress and is somewhat out of date.
 '''
 
 from argparse import ArgumentParser
-from typing import Dict, Iterator, NamedTuple
+from typing import Iterator, NamedTuple
 
 from crafts import CraftConfig, load_craft_config
 from pithy.fs import make_dirs, remove_dir_contents, walk_files
@@ -41,8 +41,8 @@ def main() -> None:
   try: debug_yaml = load_yaml(open(debug_yaml_path))
   except Exception as e: raise Exception(f'error: failed to load debug.yaml: {debug_yaml_path!r}') from e
 
-  modules:Dict[str,Module] = {}
-  source_modules:Dict[str,Module] = {}
+  modules:dict[str,Module] = {}
+  source_modules:dict[str,Module] = {}
   for name, command in debug_yaml['commands'].items():
     if command['tool'] != 'swift-compiler': continue
     module_name = command['module-name']
@@ -76,7 +76,7 @@ def main() -> None:
 class Module(NamedTuple):
   name: str
   module_build_dir: str
-  inputs: Dict[str, list[str]]
+  inputs: dict[str, list[str]]
 
 
 def run_utest(src_path:str, module:Module, conf:CraftConfig, debug_dir:str, sdk_dir:str, fw_dir:str, module_cache_dir:str) -> bool:

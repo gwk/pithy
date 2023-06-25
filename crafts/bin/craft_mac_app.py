@@ -9,7 +9,7 @@ This is not currently in use and may need updating.
 import plistlib
 import re
 from argparse import ArgumentParser, Namespace
-from typing import Any, BinaryIO, Dict, Optional
+from typing import Any, BinaryIO, Optional
 
 from crafts import CraftConfig, load_craft_config
 from pithy.filestatus import file_mtime, file_mtime_or_zero
@@ -79,7 +79,7 @@ def build(args:Namespace, conf:CraftConfig) -> None:
 
   _ = runO(actool_cmd, exits=True) # output is not helpful.
   #img_deps = open(img_deps_path).read()
-  img_info:Dict[str,Any] = plistlib.load(open(img_info_path, 'rb'))
+  img_info:dict[str,Any] = plistlib.load(open(img_info_path, 'rb'))
   #errL('img_deps:\n', img_deps, '\n')
   #errP('img_info', img_info)
 

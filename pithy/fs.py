@@ -8,7 +8,7 @@ import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from sys import argv
-from typing import Callable, cast, Dict, FrozenSet, Iterable, Iterator, Optional, TextIO
+from typing import Callable, cast, FrozenSet, Iterable, Iterator, Optional, TextIO
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
@@ -414,7 +414,7 @@ class DirEntries:
     self.exts  = normalize_exts(exts)
     self.hidden = hidden
     self.pred = (lambda entry:True) if pred is None else pred
-    self._entries:Dict[str,tuple[DirEntry,...]] = {}
+    self._entries:dict[str,tuple[DirEntry,...]] = {}
 
   def __getitem__(self, dir_path:str) -> tuple[DirEntry,...]:
     try: return self._entries[dir_path]

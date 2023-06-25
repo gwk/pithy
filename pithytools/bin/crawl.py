@@ -5,7 +5,7 @@ import re
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from shlex import quote as sh_quote
-from typing import Any, Dict, Pattern, Set
+from typing import Any, Pattern, Set
 from urllib.parse import urldefrag as url_defrag, urljoin as url_join, urlsplit as url_split
 
 from lxml.html import fromstring as lxml_html_fromstring
@@ -208,7 +208,7 @@ curl_output_fmt = '|'.join(f'{k}:%{{{k}}}' for k in [
 ])
 
 
-def parse_curl_output(output:str) -> Dict[str,str]:
+def parse_curl_output(output:str) -> dict[str,str]:
   triples = [word.partition(':') for word in output.split('|')]
   return { k:v for k,_,v in triples }
 
@@ -255,13 +255,13 @@ def _split_skipped(url:str) -> list[str]:
   return url_parts_re.split(url)
 
 
-def _simplify(tree:Dict) -> None:
+def _simplify(tree:dict) -> None:
   try: del tree[None]
   except KeyError: pass
   for child in tree.values(): _simplify(child)
 
 
-def _describe_skipped(tree:Dict, indent:str) -> None:
+def _describe_skipped(tree:dict, indent:str) -> None:
   if len(tree) == 1:
     k, v = next(iter(tree.items()))
     _describe_skipped(v, indent=f'{indent}{k}/')

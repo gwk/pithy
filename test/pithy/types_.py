@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Counter, Dict, FrozenSet, Optional, Set
+from typing import Counter, FrozenSet, Optional, Set
 
 from pithy.types import is_a
 from utest import utest
@@ -23,7 +23,7 @@ utest(True, is_a, set(), set)
 utest(True, is_a, frozenset(), frozenset)
 
 utest(True, is_a, [], list)
-utest(True, is_a, {}, Dict)
+utest(True, is_a, {}, dict)
 utest(True, is_a, (), tuple)
 utest(True, is_a, set(), Set)
 utest(True, is_a, frozenset(), FrozenSet)
@@ -35,12 +35,12 @@ utest(False, is_a, [0, None], list[int])
 utest(True, is_a, [0, None], list[Optional[int]])
 utest(False, is_a, [0, None, ''], list[Optional[int]])
 
-utest(True, is_a, {}, Dict[int,str])
-utest(True, is_a, {0:'a'}, Dict[int,str])
-utest(False, is_a, {0:None}, Dict[int,str])
+utest(True, is_a, {}, dict[int,str])
+utest(True, is_a, {0:'a'}, dict[int,str])
+utest(False, is_a, {0:None}, dict[int,str])
 
-utest(True, is_a, {None:None}, Dict[Optional[int],Optional[str]])
-utest(False, is_a, {None:1}, Dict[Optional[int],Optional[str]])
+utest(True, is_a, {None:None}, dict[Optional[int],Optional[str]])
+utest(False, is_a, {None:1}, dict[Optional[int],Optional[str]])
 
 utest(True, is_a, Counter(), Counter[int])
 utest(True, is_a, Counter({1:1}), Counter[int])

@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
 from inspect import Parameter, Signature, signature
-from typing import Any, ByteString, Callable, Dict, Iterator, NoReturn, Optional, TextIO, Type, Union
+from typing import Any, ByteString, Callable, Iterator, NoReturn, Optional, TextIO, Type, Union
 
 from mypy_extensions import VarArg
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
@@ -176,7 +176,7 @@ class ScopeSource(SourceReporter):
   'The source of a module or class scope. Contains both the syntactic and dynamic representations.'
   path:str
   node:ScopeNode
-  vals:Dict[str,Any]
+  vals:dict[str,Any]
 
   @property
   def body(self) -> list[Stmt]: return self.node.body
@@ -236,7 +236,7 @@ def parse_pyi_module(path:str) -> ScopeSource:
   except ValueError as e: exit(src_diagnostic(path, line0=0, col0=0, msg=str(e)))
 
   # Exec.
-  globals:Dict[str,Any] = {'__builtins__': __builtins__}
+  globals:dict[str,Any] = {'__builtins__': __builtins__}
   exec(code, globals) # As of python3.7, passing separate locals does not work because type annotation lookup is broken.
 
   return ScopeSource(path=path, node=module, vals=globals)
@@ -245,25 +245,25 @@ def parse_pyi_module(path:str) -> ScopeSource:
 # Parsing is dispatched over syntax type.
 
 @singledispatch
-def parse_decl(syntax:AST, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
+def parse_decl(syntax:AST, name:str, obj:Any, scope:Scope, global_vals:dict[str,Any]) -> None:
   'Default implementation raises.'
   raise Exception(f'unknown syntax type: {name}; type: {syntax}')
 
 
 @parse_decl.register
-def _(syntax:AnnAssign, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
+def _(syntax:AnnAssign, name:str, obj:Any, scope:Scope, global_vals:dict[str,Any]) -> None:
   'Parse an annotated variable declaration.'
   scope.warn(syntax, 'assignment not implemented')
 
 
 @parse_decl.register
-def _(syntax:AsyncFunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
+def _(syntax:AsyncFunctionDef, name:str, obj:Any, scope:Scope, global_vals:dict[str,Any]) -> None:
   'Async function.'
   scope.warn(syntax, 'async function def is not implemented')
 
 
 @parse_decl.register
-def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
+def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:dict[str,Any]) -> None:
   'Function declaration.'
 
   is_method = isinstance(scope, Class)
@@ -315,7 +315,7 @@ def _(syntax:FunctionDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,A
 
 
 @parse_decl.register
-def _(syntax:ClassDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]) -> None:
+def _(syntax:ClassDef, name:str, obj:Any, scope:Scope, global_vals:dict[str,Any]) -> None:
   'Class declaration.'
 
   class_source = ScopeSource(path=scope.path, node=syntax, vals=vars(obj))

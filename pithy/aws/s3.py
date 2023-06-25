@@ -5,7 +5,7 @@ from datetime import datetime as DateTime, timezone as TimeZone
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
-from typing import Any, Callable, Dict, IO, Optional
+from typing import Any, Callable, IO, Optional
 
 from boto3 import Session # type: ignore[import]
 from botocore.exceptions import ClientError # type: ignore[import]
@@ -71,7 +71,7 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str=''
   if content_encode:
     if content_encoding is not None:
       raise Exception(f'save_bytes: key {key!r} implies content-type {content_type!r}, but `content_encode` is also specified: {content_encode!r}')
-    kwargs:Dict[str,Any] = {}
+    kwargs:dict[str,Any] = {}
     if content_encode == 'br' and is_utf8_hint:
       kwargs['mode'] = br_MODE_TEXT
     compress_fn = compressors[content_encode]
@@ -86,7 +86,7 @@ def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str=''
     Body=data)
 
 
-compressors:Dict[str, Callable[..., Any]] = {
+compressors:dict[str, Callable[..., Any]] = {
   'br': br_compress,
   'gzip' : gz_compress,
 }
@@ -125,7 +125,7 @@ class S3Client:
   In the future this could become a functioning, statically typed wrapper of the real S3 client.
   '''
 
-  def __init__(self, bucket_paths:Dict[str,str],
+  def __init__(self, bucket_paths:dict[str,str],
     aws_access_key_id:str|None=None,
     aws_secret_access_key:str|None=None,
     aws_session_token:str|None=None,
@@ -134,16 +134,16 @@ class S3Client:
    ) -> None:
     raise NotImplementedError
 
-  def get_object(self, Bucket:str, Key:str) -> Dict[str,Any]:
+  def get_object(self, Bucket:str, Key:str) -> dict[str,Any]:
     raise NotImplementedError
 
-  def list_objects_v2(self, Bucket:str) -> Dict[str,Any]:
+  def list_objects_v2(self, Bucket:str) -> dict[str,Any]:
     raise NotImplementedError
 
-  def put_object(self, Bucket:str, Key:str, ContentType:str, ContentEncoding:str, Body:bytes) -> Dict[str,Any]:
+  def put_object(self, Bucket:str, Key:str, ContentType:str, ContentEncoding:str, Body:bytes) -> dict[str,Any]:
     raise NotImplementedError
 
-  def upload_file(self, path:str, Bucket:str, Key:str) -> Dict[str,Any]:
+  def upload_file(self, path:str, Bucket:str, Key:str) -> dict[str,Any]:
     raise NotImplementedError
 
 
@@ -153,7 +153,7 @@ class S3MockClient(S3Client):
   A local mock of S3 that reads and writes to a provided directory for each bucket.
   '''
 
-  def __init__(self, bucket_paths:Dict[str,str],
+  def __init__(self, bucket_paths:dict[str,str],
     aws_access_key_id:str|None=None,
     aws_secret_access_key:str|None=None,
     aws_session_token:str|None=None,
@@ -179,7 +179,7 @@ class S3MockClient(S3Client):
     except KeyError: raise S3MockError(f'mock key not found: {key!r}')
 
 
-  def get_object(self, Bucket:str, Key:str) -> Dict[str,Any]:
+  def get_object(self, Bucket:str, Key:str) -> dict[str,Any]:
     try: f =  self._open(Bucket, Key, 'rb')
     except FileNotFoundError: pass
     else:
@@ -211,7 +211,7 @@ class S3MockClient(S3Client):
     raise ClientError(error_response=error_response, operation_name='GetObject')
 
 
-  def list_objects_v2(self, Bucket:str) -> Dict[str,Any]:
+  def list_objects_v2(self, Bucket:str) -> dict[str,Any]:
     path = self._bucket_path(Bucket)
     assert not path.endswith('/')
     l = len(path) + 1 # Eat the directory slash.
@@ -231,13 +231,13 @@ class S3MockClient(S3Client):
     }
 
 
-  def put_object(self, Bucket:str, Key:str, ContentType:str, ContentEncoding:str, Body:bytes) -> Dict[str,Any]:
+  def put_object(self, Bucket:str, Key:str, ContentType:str, ContentEncoding:str, Body:bytes) -> dict[str,Any]:
     with self._open(Bucket, Key, 'wb') as f:
       f.write(Body)
     return {}
 
 
-  def upload_file(self, path:str, Bucket:str, Key:str) -> Dict[str,Any]:
+  def upload_file(self, path:str, Bucket:str, Key:str) -> dict[str,Any]:
     with open(path, 'rb') as local_f:
       data = local_f.read()
     with self._open(Bucket, Key, 'wb') as f:
@@ -252,7 +252,7 @@ def s3_client(session:Session, **kwargs:Any) -> S3Client:
   otherwise return a normal s3 client.
   '''
   if 'S3_MOCK_CLIENT' in os.environ:
-    bucket_paths:Dict[str, str] = {}
+    bucket_paths:dict[str, str] = {}
     for s in os.environ['S3_MOCK_CLIENT'].split():
       b, s, p = s.partition('=')
       if not b: raise ValueError(f'S3_MOCK_CLIENT word is not valid bucket name or `bucket=path` pair: {s!r}')
