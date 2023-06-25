@@ -6,7 +6,7 @@ This format syntax is intended for use in file names.
 '''
 
 import re
-from typing import Any, Iterable, Iterator, NamedTuple, Pattern, Union
+from typing import Any, Iterable, Iterator, NamedTuple, Pattern
 
 from .string import line_col_1
 
@@ -74,7 +74,7 @@ class FilenameFormatter(NamedTuple):
     return f'({pat}{quant})'
 
 
-FNFPart = Union[FilenameFormatter,str]
+FNFPart = FilenameFormatter|str
 
 
 def gen_fnf_parts(fmt: str) -> Iterator[FNFPart]:

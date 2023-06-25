@@ -5,7 +5,7 @@ import re
 import shlex
 from itertools import zip_longest
 from string import Template
-from typing import Any, Callable, cast, NamedTuple, Optional, Pattern, TextIO, Union
+from typing import Any, Callable, cast, NamedTuple, Optional, Pattern, TextIO
 
 from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
@@ -129,7 +129,7 @@ class Case:
     self.in_: str|None = None # stdin as text.
     self.interpreter: str|None = None # interpreter to prepend to cmd.
     self.interpreter_args: list[str]|None = None # interpreter args.
-    self.links: Union[None, str, set[str], dict[str, str]] = None # symlinks to be made into the test directory.
+    self.links: str|set[str]|dict[str, str]|None = None # symlinks to be made into the test directory.
     #^ Written as a str, set or dict.
     self.out_mode: str|None = None # comparison mode for stdout expectation.
     self.out_path: str|None = None # file path for stdout expectation.

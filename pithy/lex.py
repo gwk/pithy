@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import cast, Container, Iterable, Iterator, NamedTuple, Pattern, Union
+from typing import cast, Container, Iterable, Iterator, NamedTuple, Pattern
 
 from tolkien import Source, Token
 
@@ -39,8 +39,8 @@ class KindPair(NamedTuple):
     raise Lexer.DefinitionError(f'expected `str` or `KindPair`; received {kind!r}')
 
 
-LexTransKind = Union[str,KindPair]
-LexTransKinds = Union[LexTransKind,Iterable[LexTransKind]]
+LexTransKind = str|KindPair
+LexTransKinds = LexTransKind|Iterable[LexTransKind]
 LexTransTuple = tuple[KindPair,...]
 
 class LexTrans:

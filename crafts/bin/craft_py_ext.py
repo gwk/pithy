@@ -74,7 +74,8 @@ type_infos = { t.type : t for t in [
 ]}
 
 
-TypeAnn = Union[None,str,Type[Any]]
+TypeAnn = str|Type[Any]|None
+
 
 @dataclass
 class Par:
@@ -169,7 +170,7 @@ def generate_ext(path:str) -> None:
 
 
 
-ScopeNode = Union[ClassDef,Module]
+ScopeNode = ClassDef|Module
 
 @dataclass
 class ScopeSource(SourceReporter):

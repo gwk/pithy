@@ -7,7 +7,7 @@ from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
 from functools import cached_property
 from io import StringIO
 from sys import stdout
-from typing import Any, Callable, ContextManager, Iterable, Iterator, Sequence, TextIO, Type, Union
+from typing import Any, Callable, ContextManager, Iterable, Iterator, Sequence, TextIO
 
 from .transtruct import bool_for_val
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -34,7 +34,7 @@ def render_csv(*, quoting:int|None=None, header:Sequence[str]|None, rows:Iterabl
 
 
 def load_csv(file: TextIO, *,
- dialect:Union[str,Dialect,Type[Dialect]]='excel',
+ dialect:str|Dialect|type[Dialect]='excel',
  delimiter:str|None=None,
  doublequote:bool|None=None,
  escapechar:str|None=None,
@@ -81,7 +81,7 @@ def load_csv(file: TextIO, *,
 class CsvLoader(Iterable, ContextManager):
 
   def __init__(self, file: TextIO, *,
-   dialect:Union[str,Dialect,Type[Dialect]]='excel',
+   dialect:str|Dialect|type[Dialect]='excel',
    delimiter:str|None=None,
    doublequote:bool|None=None,
    escapechar:str|None=None,

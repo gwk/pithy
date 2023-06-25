@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from enum import Enum
-from typing import Any, Iterable, Mapping, Union
+from typing import Any, Iterable, Mapping
 
 
 vertical_bars = ' ' + ''.join(chr(i) for i in range(0x2581, 0x2589))
@@ -23,7 +23,7 @@ full_block = '\u2588'
 _min = min
 _max = max
 
-_Num = Union[int,float]
+_Num = int|float
 
 
 def chart_inline(values:Iterable[_Num], max:_Num=0, width:int=0) -> str:
@@ -53,7 +53,7 @@ class ChartMode(Enum):
 Normalized, Total, Cumulative = tuple(ChartMode)
 
 
-def chart_items(data:Union[Mapping[Any,_Num],Iterable[tuple[Any,_Num]]], mode=ChartMode.Normalized, threshold=0.0,
+def chart_items(data:Mapping[Any,_Num]|Iterable[tuple[Any,_Num]], mode=ChartMode.Normalized, threshold=0.0,
  sort_by_val=False, reverse=False, val_width=0, val_prec=16, bar_width=64, show_ratio=False, prefix='  ') -> str:
   '''
   Create a chart from a mapping or iterable of key/value pairs.
@@ -122,7 +122,7 @@ def chart_items(data:Union[Mapping[Any,_Num],Iterable[tuple[Any,_Num]]], mode=Ch
 
 Ratio = tuple[int,int]
 
-def chart_ratio_items(data:Union[Mapping[Any,Ratio],Iterable[tuple[Any,Ratio]]], threshold=0, sort_by_val=False,
+def chart_ratio_items(data:Mapping[Any,Ratio]|Iterable[tuple[Any,Ratio]], threshold=0, sort_by_val=False,
  reverse=False, val_width=0, bar_width=64, show_ratio=False, prefix='  ') -> str:
   '''
   Create a chart from a mapping or iterable of key/value pairs, where the values are pairs of integers representing a ratio.

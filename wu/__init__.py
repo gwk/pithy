@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 from html import escape as html_escape
 from os import environ
-from typing import Any, Callable, cast, Iterable, Iterator, Match, NoReturn, TextIO, Union
+from typing import Any, Callable, cast, Iterable, Iterator, Match, NoReturn, TextIO
 
 import pygments
 import pygments.lexers
@@ -248,7 +248,7 @@ class ListItem(Block):
       yield indent(depth, '</li>')
 
 
-BranchBlock = Union[Section, UList, ListItem]
+BranchBlock = Section|UList|ListItem
 
 
 class LeafBlock(Block):

@@ -9,7 +9,7 @@ from collections import Counter
 from functools import wraps
 from inspect import get_annotations
 from itertools import chain
-from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, Type, TypeVar, Union
+from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, Type, TypeVar
 from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -330,7 +330,7 @@ class Mu:
   def classes(self) -> None: del self.attrs['class']
 
   @classes.setter
-  def classes(self, val:Union[str, Iterable[str]]) -> None:
+  def classes(self, val:str|Iterable[str]) -> None:
     if not isinstance(val, str): val = ' '.join(val)
     self.attrs['class'] = val
 
@@ -828,7 +828,7 @@ def xml_child_summary(child:'MuChild', text_limit:int) -> str:
   return ' ' + repr_lim(text, limit=text_limit)
 
 
-def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', attrs:dict[str,Any]={}) -> MuPred:
+def xml_pred(type_or_tag:str|Type[_Mu]='', *, cl:str='', text:str='', attrs:dict[str,Any]={}) -> MuPred:
   'Update _attrs with items from other arguments, then construct a predicate that tests Mu nodes.'
 
   tag_pred:Callable
@@ -846,7 +846,7 @@ def xml_pred(type_or_tag:Union[str,Type[_Mu]]='', *, cl:str='', text:str='', att
   return predicate
 
 
-def fmt_xml_predicate_args(type_or_tag:Union[Type,str], cl:str, text:str, attrs:dict[str,str]) -> str:
+def fmt_xml_predicate_args(type_or_tag:type|str, cl:str, text:str, attrs:dict[str,str]) -> str:
   'Format the arguments of a predicate function for an error message.'
   words:list[str] = []
   if type_or_tag: words.append(f'`{type_or_tag.__name__}`' if isinstance(type_or_tag, type) else repr(type_or_tag))
@@ -917,22 +917,22 @@ def single_child_property(constructor:Callable[[_Self],_Child]) -> property:
 
 
 # Note: these are declared below Mu so that they can be used with `isinstance`.
-MuChild = Union[str,EscapedStr,Mu]
-MuChildLax = Union[MuChild,int,float]
+MuChild = str|EscapedStr|Mu
+MuChildLax = MuChild|int|float
 MuChildren = list[MuChild]
 MuChildrenLax = list[MuChildLax]
-MuChildOrChildren = Union[MuChild,Iterable[MuChild]]
-MuChildOrChildrenLax = Union[MuChildLax,Iterable[MuChildLax]]
+MuChildOrChildren = MuChild|Iterable[MuChild]
+MuChildOrChildrenLax = MuChildLax|Iterable[MuChildLax]
 
 
 @overload
 def prefer_int(v:int) -> int: ...
 @overload
-def prefer_int(v:float) -> Union[int,float]: ...
+def prefer_int(v:float) -> int|float: ...
 @overload
 def prefer_int(v:str) -> str: ...
 
-def prefer_int(v:Union[float,int,str]) -> Union[float,int,str]:
+def prefer_int(v:float|int|str) -> float|int|str:
   'Convert integral floats to int.'
   if isinstance(v, float):
     i = int(v)

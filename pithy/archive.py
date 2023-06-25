@@ -3,14 +3,14 @@
 from functools import total_ordering
 from io import TextIOBase, TextIOWrapper
 from tarfile import TarFile
-from typing import Any, BinaryIO, Callable, cast, Iterable, Type, Union
+from typing import Any, BinaryIO, Callable, cast, Iterable, Type
 from zipfile import BadZipFile, ZipFile
 
 from .fs import path_ext
 from .util import lazy_property
 
 
-FileOrPath = Union[BinaryIO, str] # TODO: support other pathlike objects.
+FileOrPath = BinaryIO|str # TODO: support other pathlike objects.
 Opener = Callable[[], BinaryIO]
 
 

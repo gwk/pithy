@@ -11,7 +11,7 @@ class Default(Enum):
   '''
   Singleton class and value to indicate a default parameter value,
   for cases where None is a meaningful user provided value.
-  For example: `def f(x:Union[int, Default]=Default._): ...`
+  For example: `def f(x:int|Default=Default._): ...`
 
   see: https://www.python.org/dev/peps/pep-0484/#support-for-singleton-types-in-unions
   '''
@@ -26,4 +26,4 @@ class Raise(Enum):
   _ = 0
 
 
-RaiseOr = Union[Raise, _T]
+RaiseOr = Union[Raise,_T]

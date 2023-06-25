@@ -1,15 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import ItemsView, Iterable, Iterator, Mapping, Union
+from typing import ItemsView, Iterable, Iterator, Mapping, TypeAlias
 
 
-Num = Union[float,int]
+Num:TypeAlias = float|int
 
 
 class Histogram(Mapping[Num,int]):
 
-  def __init__(self, iterable_or_mapping:Union[Iterable[Num],Mapping[Num,int]]=(), *, bin_width:Num):
+  def __init__(self, iterable_or_mapping:Iterable[Num]|Mapping[Num,int]=(), *, bin_width:Num):
     self.bin_width = bin_width
     self.counter = Counter[Num]()
     self.update(iterable_or_mapping)
@@ -36,7 +36,7 @@ class Histogram(Mapping[Num,int]):
     items = ', '.join(f'{k!r}:{v!r}' for k, v in sorted(self.items()))
     return f'{self.__class__.__name__}({{{items}}}, bin_width={self.bin_width!r})'
 
-  def update(self, iterable_or_mapping:Union[Iterable[Num],Mapping[Num,int]]) -> None:
+  def update(self, iterable_or_mapping:Iterable[Num]|Mapping[Num,int]) -> None:
     if isinstance(iterable_or_mapping, Mapping):
       for x, count in iterable_or_mapping.items():
         self.increment(x, count)

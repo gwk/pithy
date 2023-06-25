@@ -5,7 +5,7 @@ from pprint import pprint
 from shlex import quote as sh_quote
 from string import Template as _Template
 from sys import stderr, stdin, stdout
-from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar, Union
+from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar
 
 from .desc import errD, outD, writeD
 from .reprs import repr_ml
@@ -223,7 +223,7 @@ def errM(*labels_and_obj:Any, **opts) -> None:
   writeM(stderr, *labels_and_obj, **opts)
 
 
-def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_suffix='', frequency:Union[float,int]=0.1,
+def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_suffix='', frequency:int|float=0.1,
  limit=0) -> Iterator[_T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
@@ -314,7 +314,7 @@ def read_line_from_path(path: str, line_index=0, keep_end=False, default: str|No
     return default
 
 
-def write_to_path(path:str, text:Union[str,bytes,bytearray]) -> None:
+def write_to_path(path:str, text:str|bytes|bytearray) -> None:
   'Writes `string` to file at `path`.'
   if isinstance(text, str):
     with open(path, 'w') as f: f.write(text)
@@ -358,7 +358,7 @@ class AsyncLineReader(ContextManager):
     Attempt to return a complete line from the input stream.
     If there is not enough data available, return ''.
     '''
-    line:Union[bytes,bytearray]
+    line:bytes|bytearray
 
     # The buffer might already contain a complete line.
     buffer_line_end = self.buffer.find(0x0a) + 1 # 0 if no newline found.
