@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import Counter, Optional
+from collections import Counter
+from typing import Optional
 
 from pithy.types import is_a
 from utest import utest

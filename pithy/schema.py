@@ -4,8 +4,8 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
-from collections import defaultdict
-from typing import Any, cast, Counter, NamedTuple, Optional, TextIO, TypeVar
+from collections import Counter, defaultdict
+from typing import Any, cast, NamedTuple, Optional, TextIO, TypeVar
 
 from .string import iter_excluding_str
 
