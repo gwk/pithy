@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Type
 
 from pithy.eon import parse_eon_or_fail
 from utest import utest
@@ -30,7 +30,7 @@ b:
   3
   4
 ''',
-  to=Dict[str,Tuple[int,int]])
+  to=Dict[str,tuple[int,int]])
 
 utest(dict(a=[(1,2), (3,4)]), parse, '''
 a:
@@ -39,4 +39,4 @@ a:
   - 3
     4
 ''',
-  to=Dict[str,List[Tuple[int,int]]])
+  to=Dict[str,List[tuple[int,int]]])

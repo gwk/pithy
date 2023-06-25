@@ -8,7 +8,7 @@ from cProfile import Profile
 from os.path import dirname
 from pstats import Stats
 from sys import argv, exc_info, path as sys_path, stderr, stdout
-from typing import Any, Dict, Iterable, List, Optional, Set, TextIO, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, TextIO, Union
 
 from pithy.fs import path_for_cmd
 from pithy.path import path_rel_to_current_or_abs
@@ -106,7 +106,7 @@ sort_keys = {
 }
 
 
-Func = Tuple[str,int,str]
+Func = tuple[str,int,str]
 Selector = Union[str,float,int]
 
 
@@ -173,7 +173,7 @@ class CustomStats(Stats):
     self.print('\n')
 
 
-  def eval_display_amount(self, sel:Selector, stat_list:List[Func], msg:str) -> Tuple[List[Func], str]:
+  def eval_display_amount(self, sel:Selector, stat_list:List[Func], msg:str) -> tuple[List[Func], str]:
     new_list = stat_list
     if isinstance(sel, str):
       try:
@@ -199,7 +199,7 @@ class CustomStats(Stats):
     return new_list, msg
 
 
-  def get_display_list(self, sel_list:Iterable[Selector]) -> Tuple[int, List[Func]]:
+  def get_display_list(self, sel_list:Iterable[Selector]) -> tuple[int, List[Func]]:
     stat_list = list(self.fcn_list[:]) if self.fcn_list else list(self.stats.keys())
 
     width = self.max_name_len

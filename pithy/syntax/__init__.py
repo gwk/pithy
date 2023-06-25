@@ -1,10 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass
-from typing import Any, Iterable, Iterator, Tuple
+from typing import Any, Iterable, Iterator
 
 
-SyntaxStack = Tuple['Syntax', ...]
+SyntaxStack = tuple['Syntax', ...]
 
 
 @dataclass(frozen=True)

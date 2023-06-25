@@ -15,7 +15,7 @@ the branches are TagTree instances, which are subclasses of tuple.
 
 import re
 from itertools import chain
-from typing import Callable, Dict, Iterable, Iterator, List, Match, Sequence, Tuple, Union
+from typing import Callable, Dict, Iterable, Iterator, List, Match, Sequence, Union
 
 from .ansi import RST_TXT, TXT_R, TXT_Y
 from .buffer import Buffer
@@ -43,7 +43,7 @@ class TagParser():
 
 
   def _parse(self, leaf_replacements: Dict[str, str], text: str, match_stream: Buffer[Match],
-    pos: int, depth: int, subs: List, close_pred: Callable, parent_close_pred: Callable) -> Tuple['TagTree', int]:
+    pos: int, depth: int, subs: List, close_pred: Callable, parent_close_pred: Callable) -> tuple['TagTree', int]:
 
     def append_leaf(leaf: str) -> None:
       subs.append(leaf_replacements.get(leaf, leaf))

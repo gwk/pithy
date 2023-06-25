@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from itertools import groupby
 from os import environ
 from sys import stderr, stdout
-from typing import Any, Dict, List, Match, Optional, Set, Tuple
+from typing import Any, Dict, List, Match, Optional, Set
 
 from pithy.ansi import BG, cBOLD, cRST_BOLD, cRST_TXT, FILL, gray26, rgb6, RST, sanitize_for_console, sgr, TXT
 from pithy.diff import calc_diff
@@ -226,7 +226,7 @@ def handle_file_lines(lines:List[DiffLine], interactive:bool, dbg:bool) -> None:
   # This approach simplifies the token diffing process so that it is a reasonably
   # straightforward comparison of a rem block to an add block.
 
-  def chunk_key(line:DiffLine) -> Tuple[bool, int, bool]:
+  def chunk_key(line:DiffLine) -> tuple[bool, int, bool]:
     return (line.is_src, line.chunk_idx, (line.old_num in old_moved_nums or line.new_num in new_moved_nums))
 
   for ((is_src, chunk_idx, is_moved), _chunk) in groupby(lines, key=chunk_key):

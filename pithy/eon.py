@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from functools import singledispatch
 from inspect import Parameter, signature
 from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, List,
-  Optional, Tuple, Type, TypeVar, Union)
+  Optional, Type, TypeVar, Union)
 
 from tolkien import HasSlc, slc_str, Source, Token
 
@@ -39,13 +39,13 @@ class EonEmpty(EonContainer):
 
 
 class EonDict(EonContainer):
-  def __init__(self, slc:slice, items:List[Tuple[Token,'EonSyntax']]):
+  def __init__(self, slc:slice, items:List[tuple[Token,'EonSyntax']]):
     self.slc = slc
     self.items = items
 
   def __repr__(self) -> str: return f'{type(self).__name__}({self.slc_str}, <{len(self.items)} items>)'
 
-  def __iter__(self) -> Iterator[Tuple[Token,EonSyntax]]: return iter(self.items)
+  def __iter__(self) -> Iterator[tuple[Token,EonSyntax]]: return iter(self.items)
 
 
 class EonList(EonContainer):
@@ -182,7 +182,7 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
 
 
 @memoize
-def _list_type_info(to:Type) -> Tuple[type,Any,Optional[Tuple[Any,...]],bool]:
+def _list_type_info(to:Type) -> tuple[type,Any,Optional[tuple[Any,...]],bool]:
   'Returns (rtt, el_type, field_types, as_seq).'
   if to in (Any, object): return (list, Any, None, True)
   rtt = get_origin(to) or to
@@ -240,7 +240,7 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
 
 
 @memoize
-def _dict_type_info(to:Type) -> Tuple[bool,type,Any,Any,Dict[str,Any]]:
+def _dict_type_info(to:Type) -> tuple[bool,type,Any,Any,Dict[str,Any]]:
   'Returns (is_mapping, rtt, key_type, val_type, parameters).'
   if to in (Any, object): return (True, dict, Any, Any, {})
 
@@ -411,7 +411,7 @@ def _build_eon_parser() -> Parser:
 # Parser transformers.
 
 
-def transform_items(source:Source, slc:slice, items:List[Tuple[Any,Any]]) -> EonContainer:
+def transform_items(source:Source, slc:slice, items:List[tuple[Any,Any]]) -> EonContainer:
   is_dict:bool
   vals:List[Any] = []
   for token, p in items:
@@ -434,7 +434,7 @@ def transform_items(source:Source, slc:slice, items:List[Tuple[Any,Any]]) -> Eon
     return EonList(slc=slc, els=vals)
 
 
-def transform_item(source:Source, slc:slice, label:str, item:Any) -> Tuple[slice,Any]:
+def transform_item(source:Source, slc:slice, label:str, item:Any) -> tuple[slice,Any]:
   if label == 'keylike_item':
     assert len(item) == 3
     return (slc, (item.key, item.newline_or_colon_body))

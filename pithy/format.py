@@ -3,7 +3,7 @@
 'Parse Python format strings and generate corresponding regular expressions.'
 
 import re
-from typing import Any, Iterable, Match, Pattern, Tuple
+from typing import Any, Iterable, Match, Pattern
 
 from .string import line_col_1
 
@@ -62,7 +62,7 @@ def count_formatters(fmt: str) -> int:
   return count
 
 
-def parse_formatters(fmt: str) -> Iterable[Tuple[str, str, str, type]]:
+def parse_formatters(fmt: str) -> Iterable[tuple[str, str, str, type]]:
   for match in gen_format_matches(fmt):
     formatter = match.group('formatter')
     if formatter is not None:

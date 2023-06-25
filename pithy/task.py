@@ -8,7 +8,7 @@ from shlex import quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from time import time as _now
-from typing import AnyStr, BinaryIO, cast, Dict, IO, Iterator, List, NoReturn, Optional, Sequence, Tuple, Union
+from typing import AnyStr, BinaryIO, cast, Dict, IO, Iterator, List, NoReturn, Optional, Sequence, Union
 
 from .alarm import Alarm, Timeout
 
@@ -36,7 +36,7 @@ def exec(cmd:Cmd) -> NoReturn:
 
 
 def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None, files:Sequence[File]=(),
- note_cmd=False, lldb=False) -> Tuple[Tuple[str, ...], _Popen, Optional[bytes]]:
+ note_cmd=False, lldb=False) -> tuple[tuple[str, ...], _Popen, Optional[bytes]]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
@@ -139,7 +139,7 @@ def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
       raise TaskLaunchError(path) from e # open or read failed; raise the original exception.
 
 
-def communicate(proc: _Popen, input_bytes: bytes|None=None, timeout: int=0) -> Tuple[int, bytes, bytes]:
+def communicate(proc: _Popen, input_bytes: bytes|None=None, timeout: int=0) -> tuple[int, bytes, bytes]:
   '''
   Communicate with and wait for a task.
   Returns (exit_code, out_bytes, err_bytes).
@@ -249,7 +249,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
 
 
 def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None, timeout:int=0,
- files:Sequence[File]=(), exp:TaskCodeExpectation=0,note_cmd=False, lldb=False, exits:ExitOpt=False) -> Tuple[int, str, str]:
+ files:Sequence[File]=(), exp:TaskCodeExpectation=0,note_cmd=False, lldb=False, exits:ExitOpt=False) -> tuple[int, str, str]:
   '''
   Run a command and return (exit_code, std_out, std_err).
   '''
@@ -260,7 +260,7 @@ def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, ou
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
 
 
-def _check_exp(cmd: Tuple[str, ...], exp: TaskCodeExpectation, code: int, exits:ExitOpt) -> None:
+def _check_exp(cmd: tuple[str, ...], exp: TaskCodeExpectation, code: int, exits:ExitOpt) -> None:
   if exp is None: return
   elif isinstance(exp, NonzeroCodeExpectation):
     if code != 0: return
@@ -276,7 +276,7 @@ def fmt_cmd(cmd: Sequence[str]) -> str: return ' '.join(sh_quote(word) for word 
 
 
 def runCOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
- timeout:int=0, files:Sequence[File]=(), note_cmd=False, lldb=False) -> Tuple[int, str, str]:
+ timeout:int=0, files:Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str, str]:
   'Run a command and return exit code, std out, std err.'
   return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=None,
     note_cmd=note_cmd, lldb=lldb)
@@ -295,7 +295,7 @@ def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, o
 
 
 def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:BinaryIO|None=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> Tuple[int, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=None,
@@ -305,7 +305,7 @@ def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
 
 
 def runCE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:BinaryIO|None=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> Tuple[int, str]:
+ timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=None,
@@ -316,7 +316,7 @@ def runCE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
 
 def runOE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) \
- -> Tuple[str, str]:
+ -> tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE,
     timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
@@ -354,7 +354,7 @@ class ExecutableNotFound(ValueError): pass
 
 class UnexpectedExit(Exception):
   'Exception indicating that a subprocess exit code did not match the code expectation.'
-  def __init__(self, msg: str, cmd: Tuple[str, ...], exp: TaskCodeExpectation, act: int):
+  def __init__(self, msg: str, cmd: tuple[str, ...], exp: TaskCodeExpectation, act: int):
     super().__init__(msg)
     self.cmd = cmd
     self.exp = exp

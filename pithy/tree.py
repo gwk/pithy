@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from types import GeneratorType
-from typing import Callable, Generator, Iterable, Iterator, List, Optional, Protocol, Tuple, TypeVar, Union
+from typing import Callable, Generator, Iterable, Iterator, List, Optional, Protocol, TypeVar, Union
 
 from .exceptions import OmitNode
 from .iterable import iter_values
@@ -11,7 +11,7 @@ _C = TypeVar('_C')
 _T = TypeVar('_T', contravariant=True)
 _R = TypeVar('_R')
 
-_Stack = Tuple[_T, ...]
+_Stack = tuple[_T, ...]
 _VisitResult = Union[_R, Generator[_R, None, None]]
 
 class _GetChildrenFn(Protocol[_C]):

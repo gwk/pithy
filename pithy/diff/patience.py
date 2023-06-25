@@ -1,13 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from bisect import bisect
-from typing import Dict, List, Optional, Sequence, Tuple, TypeVar
+from typing import Dict, List, Optional, Sequence, TypeVar
 
 
 _T = TypeVar('_T')
 
-Alignment = List[Tuple[int, int]]
-Diff = List[Tuple[range, range]]
+Alignment = List[tuple[int, int]]
+Diff = List[tuple[range, range]]
 
 
 def align_patience(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> Alignment:
@@ -19,7 +19,7 @@ def align_patience(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> Alignment:
   return alignment
 
 
-def _align(seq_a:Sequence[_T], seq_b:Sequence[_T], pos_a:int, pos_b:int, end_a:int, end_b:int, alignment:List[Tuple[int, int]]) -> None:
+def _align(seq_a:Sequence[_T], seq_b:Sequence[_T], pos_a:int, pos_b:int, end_a:int, end_b:int, alignment:List[tuple[int, int]]) -> None:
   '''
   Find alignment between `seq_a` and `seq_b`.
   Results accumulate in `alignment` as (idx_a, idx_b) pairs.
@@ -60,7 +60,7 @@ def _align(seq_a:Sequence[_T], seq_b:Sequence[_T], pos_a:int, pos_b:int, end_a:i
   alignment.extend(reversed(end_alignment))
 
 
-def unique_lcs(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> List[Tuple[int, int]]:
+def unique_lcs(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> List[tuple[int, int]]:
   '''
   Find the longest common subset for unique elements.
   See http://en.wikipedia.org/wiki/Patience_sorting
@@ -94,7 +94,7 @@ def unique_lcs(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> List[Tuple[int, int]]:
 
   if not piles: return []
 
-  result:List[Tuple[int, int]] = []
+  result:List[tuple[int, int]] = []
   last:Optional[int] = lasts[-1]
   while last is not None:
     o_a = b_to_a[last]

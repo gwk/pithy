@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from typing import Any, cast, ContextManager, IO, List, Tuple, Union
+from typing import Any, cast, ContextManager, IO, List, Union
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -45,17 +45,17 @@ class DuplexPipe(ContextManager):
     return cast(IO, f)
 
   @property
-  def left_fds(self) -> Tuple[int, int]:
+  def left_fds(self) -> tuple[int, int]:
     return (self._fd(BR), self._fd(FW))
 
   @property
-  def right_fds(self) -> Tuple[int, int]:
+  def right_fds(self) -> tuple[int, int]:
     return (self._fd(FR), self._fd(BW))
 
-  def left_files(self, **kwargs:Any) -> Tuple[IO, IO]:
+  def left_files(self, **kwargs:Any) -> tuple[IO, IO]:
     return (self._file(BR, mode='r', **kwargs), self._file(FW, mode='w', **kwargs))
 
-  def right_files(self, **kwargs:Any) -> Tuple[IO, IO]:
+  def right_files(self, **kwargs:Any) -> tuple[IO, IO]:
     return (self._file(FR, mode='r', **kwargs), self._file(BW, mode='w', **kwargs))
 
   def close_right(self) -> None:

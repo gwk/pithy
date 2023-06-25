@@ -3,7 +3,7 @@
 import re
 from datetime import date, datetime
 from functools import lru_cache
-from typing import Any, get_args, Iterable, Match, NamedTuple, Tuple, Type
+from typing import Any, get_args, Iterable, Match, NamedTuple, Type
 
 from ..json import render_json
 from .keywords import sqlite_keywords
@@ -94,7 +94,7 @@ def default_to_json(obj:Any) -> Any:
   return render_json(obj, indent=None)
 
 
-def fields_of(class_:type) -> Tuple[str, ...]:
+def fields_of(class_:type) -> tuple[str, ...]:
   if issubclass(class_, NamedTuple): return class_._fields
   # TODO: support dataclasses.
   raise TypeError(class_)

@@ -6,7 +6,7 @@ from os import fspath as _fspath, PathLike, sep
 from os.path import (abspath as _abspath, basename as _basename, commonpath as _commonpath, dirname as _dirname,
   expanduser as _expand_user, isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split,
   splitext as _splitext)
-from typing import List, Tuple, Union
+from typing import List, Union
 
 
 Path = Union[str, PathLike]
@@ -125,7 +125,7 @@ def path_compound_ext(path: Path) -> str:
   return ''.join(path_exts(path))
 
 
-def path_descendants(start_path: Path, end_path: Path, include_start=True, include_end=True) -> Tuple[str, ...]:
+def path_descendants(start_path: Path, end_path: Path, include_start=True, include_end=True) -> tuple[str, ...]:
   '''
   Return a tuple of paths from `start_path` to `end_path`.
   By default, `include_start` and `include_end` are both True.
@@ -161,7 +161,7 @@ def path_ext(path: Path) -> str:
   return split_stem_ext(path)[1]
 
 
-def path_exts(path: Path) -> Tuple[str, ...]:
+def path_exts(path: Path) -> tuple[str, ...]:
   exts = []
   while True:
     path, ext = split_stem_ext(path)
@@ -258,19 +258,19 @@ def replace_first_dir(path: Path, replacement: str) -> str:
   return path_join(*parts)
 
 
-def split_dir_name(path: Path) -> Tuple[str, str]:
+def split_dir_name(path: Path) -> tuple[str, str]:
   "Split the path into dir and name (possibly including an extension) components, e.g. 'dir/name'."
   return _split(str_path(path))
 
 
-def split_dir_stem_ext(path: Path) -> Tuple[str, str, str]:
+def split_dir_stem_ext(path: Path) -> tuple[str, str, str]:
   'Split the path into a (dir, stem, ext) triple.'
   dir, name = split_dir_name(path)
   stem, ext = split_stem_ext(name)
   return dir, stem, ext
 
 
-def split_stem_ext(path: Path) -> Tuple[str, str]:
+def split_stem_ext(path: Path) -> tuple[str, str]:
   '''
   Split the path into stem (possibly spanning directories) and extension components, e.g. 'stem.ext'.
   '''

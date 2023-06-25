@@ -5,8 +5,7 @@ from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
-from typing import (Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional, Set, Tuple, TypeVar,
-  Union)
+from typing import Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, List, Mapping, Optional, Set, TypeVar, Union
 
 from .types import Comparable
 
@@ -132,7 +131,7 @@ def joinRT(iterable:Iterable) -> str:
   return '\t'.join(map(repr, iterable))
 
 
-def extent(iterable: Iterable[_C], key: Callable[[_C], _CK]|None=None, default:_C|None=None) -> Tuple[_C, _C]:
+def extent(iterable: Iterable[_C], key: Callable[[_C], _CK]|None=None, default:_C|None=None) -> tuple[_C, _C]:
   'Return the min and max.'
   it = iter(iterable)
   first = next(it) if default is None else next(it, default)
@@ -165,7 +164,7 @@ def count_by_pred(iterable: Iterable[_T], pred: Callable[[_T], Any]) -> int:
   return count
 
 
-def closed_int_intervals(iterable: Iterable[int]) -> Iterable[Tuple[int, int]]:
+def closed_int_intervals(iterable: Iterable[int]) -> Iterable[tuple[int, int]]:
   'Given `iterable` of integers, yield a sequence of closed intervals.'
   it = iter(iterable)
   try: first = next(it)
@@ -186,12 +185,12 @@ def closed_int_intervals(iterable: Iterable[int]) -> Iterable[Tuple[int, int]]:
   yield interval
 
 
-_RangeTypes = Union[int, range, Tuple[int, int]]
+_RangeTypes = Union[int, range, tuple[int, int]]
 
-def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[Tuple[int, int]]:
+def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[tuple[int, int]]:
   'Given `iterable`, yield range pair tuples.'
 
-  def pair_for_el(el: _RangeTypes) -> Tuple[int, int]:
+  def pair_for_el(el: _RangeTypes) -> tuple[int, int]:
     if isinstance(el, range): return (el.start, el.stop)
     if isinstance(el, int): return (el, el + 1)
     assert isinstance(el, tuple)
@@ -238,9 +237,9 @@ def fan_by_index_fn(iterable: Iterable[_T], index: Callable[[_T], int], min_len=
   return l
 
 
-def fan_by_pred(iterable: Iterable[_T], pred: Callable[[_T], bool]) -> Tuple[List[_T], List[_T]]:
+def fan_by_pred(iterable: Iterable[_T], pred: Callable[[_T], bool]) -> tuple[List[_T], List[_T]]:
   'Fan out `iterable` into a pair of lists by applying `pred` to each element.'
-  fan: Tuple[List[_T], List[_T]] = ([], [])
+  fan: tuple[List[_T], List[_T]] = ([], [])
   for el in iterable:
     if pred(el):
       fan[1].append(el)
@@ -414,7 +413,7 @@ def frozenset_from(iterables:Iterable[Iterable[_K]]) -> FrozenSet[_K]:
   return frozenset(set_from(iterables))
 
 
-def split_els(iterable:Iterable[_T], split=Callable[[_T], Optional[Tuple[_T, _T]]]) -> Iterator[_T]:
+def split_els(iterable:Iterable[_T], split=Callable[[_T], Optional[tuple[_T, _T]]]) -> Iterator[_T]:
   '''
   Repeatedly split the current element using the `split` function until it returns None.
   '''
@@ -427,7 +426,7 @@ def split_els(iterable:Iterable[_T], split=Callable[[_T], Optional[Tuple[_T, _T]
     yield el
 
 
-def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iterable[Tuple[bool, List[_T]]]:
+def split_by_preds(iterable: Iterable[_T], *preds: Callable[[_T], bool]) -> Iterable[tuple[bool, List[_T]]]:
   '''
   Split the sequence whenever the sequence of predicates has consecutively matched.
   Each yielded chunk is a pair (is_split_seq, seq).
@@ -457,7 +456,7 @@ def transpose(iterable: Iterable[Iterable[_T]]) -> Iterable[list[_T]]:
   return map(list, zip(*iterable))
 
 
-def window_iter(iterable: Iterable[_T], width=2) -> Iterator[Tuple[_T, ...]]:
+def window_iter(iterable: Iterable[_T], width=2) -> Iterator[tuple[_T, ...]]:
   'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
   # TODO: use tee? might be faster.
   assert width > 0
@@ -469,7 +468,7 @@ def window_iter(iterable: Iterable[_T], width=2) -> Iterator[Tuple[_T, ...]]:
       del buffer[0]
 
 
-def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[Tuple[_T, Optional[_T]]]:
+def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[tuple[_T, Optional[_T]]]:
   'Yield pairs of adjacent elements in `seq`, including a final pair consisting of the last element and `tail`.'
   it = iter(iterable)
   try: head = next(it)

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, NamedTuple, Tuple
+from typing import Callable, NamedTuple
 
 
 class Ctx(NamedTuple):
@@ -12,4 +12,4 @@ class Ctx(NamedTuple):
   parse_only: bool
   proj_dir: str
   show_times: bool
-  top_paths: Tuple[str, ...]
+  top_paths: tuple[str, ...]

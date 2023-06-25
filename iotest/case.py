@@ -5,7 +5,7 @@ import re
 import shlex
 from itertools import zip_longest
 from string import Template
-from typing import Any, Callable, cast, Dict, List, NamedTuple, Optional, Pattern, Set, TextIO, Tuple, Union
+from typing import Any, Callable, cast, Dict, List, NamedTuple, Optional, Pattern, Set, TextIO, Union
 
 from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
@@ -51,14 +51,14 @@ class FileExpectation:
       self.match_pattern_pairs = self.compile_match_lines(self.val)
     else:
       self.match_pattern_pairs = []
-    self.match_error: Optional[Tuple[int,Pattern|None, str]] = None
+    self.match_error: Optional[tuple[int,Pattern|None, str]] = None
 
 
-  def compile_match_lines(self, text: str) -> List[Tuple[str, Pattern]]:
+  def compile_match_lines(self, text: str) -> List[tuple[str, Pattern]]:
     return [self.compile_match_line(i, line) for i, line in enumerate(text.splitlines(True), 1)]
 
 
-  def compile_match_line(self, i: int, line: str) -> Tuple[str, Pattern]:
+  def compile_match_line(self, i: int, line: str) -> tuple[str, Pattern]:
     prefix = line[:2]
     contents = line[2:]
     valid_prefixes = ('|', '|\n', '| ', '~', '~\n', '~ ')
@@ -111,8 +111,8 @@ class Case:
     self.test_failed_previously: bool = False
     self.test_in: Optional[str] = None
     self.test_expectations: List[FileExpectation] = []
-    self.test_links: List[Tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
-    self.test_par_args: Dict[str, Tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
+    self.test_links: List[tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
+    self.test_par_args: Dict[str, tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
     # configurable properties.
     self.args: Optional[List[str]] = None # arguments to follow the file under test.
     self.cmd: Optional[List[str]] = None # command string/list with which to invoke the test.
@@ -147,7 +147,7 @@ class Case:
         if not m: continue
         for key, val in par_config.items():
           self.add_val_for_key(ctx, key, val)
-        self.test_par_args[par_stem] = cast(Tuple[str, ...], m.groups()) # Save the strings matching the parameters to use as arguments.
+        self.test_par_args[par_stem] = cast(tuple[str, ...], m.groups()) # Save the strings matching the parameters to use as arguments.
         par_stems_used.add(par_stem) # Mark this parameterized config as used.
 
       for key, val in config.items():
@@ -387,7 +387,7 @@ def validate_links_dict(key: str, val: Any) -> None:
     if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {link}")
 
 
-case_key_validators: Dict[str, Tuple[str, Callable[[Any], bool], Optional[Callable[[str, Any], None]]]] = {
+case_key_validators: Dict[str, tuple[str, Callable[[Any], bool], Optional[Callable[[str, Any], None]]]] = {
   # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list,     None),
   'cmd':      ('string or list of strings', is_str_or_list,     None),
