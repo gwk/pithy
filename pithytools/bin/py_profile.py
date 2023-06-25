@@ -8,7 +8,7 @@ from cProfile import Profile
 from os.path import dirname
 from pstats import Stats
 from sys import argv, exc_info, path as sys_path, stderr, stdout
-from typing import Any, Iterable, Optional, Set, TextIO, Union
+from typing import Any, Iterable, Optional, TextIO, Union
 
 from pithy.fs import path_for_cmd
 from pithy.path import path_rel_to_current_or_abs
@@ -120,7 +120,7 @@ class CustomStats(Stats):
   sort_type:str
   stats:dict[Func,Any]
   stream:TextIO
-  top_level:Set[Func]
+  top_level:set[Func]
   total_calls:int
   total_tt:float
 

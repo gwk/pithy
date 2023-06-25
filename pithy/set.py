@@ -3,13 +3,13 @@
 
 'Set utilities.'
 
-from typing import Set, TypeVar
+from typing import TypeVar
 
 
 _T = TypeVar('_T')
 
 
-def is_present_then_remove(s: Set[_T], el: _T) -> bool:
+def is_present_then_remove(s: set[_T], el: _T) -> bool:
   try: s.remove(el)
   except KeyError: return False
   else: return True

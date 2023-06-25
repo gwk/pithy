@@ -4,7 +4,7 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
-from typing import Any, cast, Counter, DefaultDict, NamedTuple, Optional, Set, TextIO, TypeVar
+from typing import Any, cast, Counter, DefaultDict, NamedTuple, Optional, TextIO, TypeVar
 
 from .string import iter_excluding_str
 
@@ -57,7 +57,7 @@ class Schema(NamedTuple):
       self.dicts.update(collapsed_dicts)
 
 
-class Keys(Set):
+class Keys(set):
   def __hash__(self) -> int: return id(self) # type: ignore[override]
 
 

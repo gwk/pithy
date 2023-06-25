@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Hashable, Iterable, Set, TypeVar
+from typing import Callable, Hashable, Iterable, TypeVar
 
 
 _H = TypeVar('_H', bound=Hashable)
 
-def visit_nodes(start_nodes:Iterable[_H], visitor:Callable[[_H], Iterable[_H]]) -> Set[_H]:
+def visit_nodes(start_nodes:Iterable[_H], visitor:Callable[[_H], Iterable[_H]]) -> set[_H]:
   '''
   Starting with `start_nodes`, call `visitor` with each node.
   `visitor` should return discovered nodes to be visited.

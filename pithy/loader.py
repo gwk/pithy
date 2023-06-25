@@ -5,7 +5,7 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, TextIOWrapper
-from typing import Any, BinaryIO, Callable, cast, IO, Iterable, Set, TextIO, Union
+from typing import Any, BinaryIO, Callable, cast, IO, Iterable, TextIO, Union
 
 
 __all__ = [
@@ -86,7 +86,7 @@ def add_loader(ext:str, fn:LoadFn, _dflt=False) -> None:
 
 
 _loaders:dict[str,LoadFn] = {}
-_dflt_loaders:Set[LoadFn] = set()
+_dflt_loaders:set[LoadFn] = set()
 
 
 def load_archive(f:FileOrPath, single_name=None, single_ext=None, **kwargs:Any) -> Any:

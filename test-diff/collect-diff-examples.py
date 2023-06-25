@@ -22,7 +22,7 @@ def main() -> None:
     outL()
     commits = runO('git --no-pager log --format=%H', cwd=repo).split('\n')
     outL(f'{name}: {len(commits)} commits.')
-    objects:Set[str] = set()
+    objects:set[str] = set()
     pairs:list[str] = []
     for commit in err_progress(commits, label='commit'):
       diff = runO(f'git --no-pager show --raw --abbrev=16 {commit}', cwd=repo) # only show modified files.
@@ -40,7 +40,7 @@ def main() -> None:
     outL(f'{len(pairs)} pairs.')
 
 
-def save_obj(repo:str, objects:Set[str], obj:str) -> None:
+def save_obj(repo:str, objects:set[str], obj:str) -> None:
   if obj not in objects:
     objects.add(obj)
     path = f'{build_dir}/objects/{obj[:2]}/{obj}'
