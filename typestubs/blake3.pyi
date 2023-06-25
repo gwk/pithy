@@ -2,10 +2,10 @@
 from array import array
 from ctypes import _CData
 from mmap import mmap
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar
 
 
-ReadableBuffer = Union[bytes, bytearray, memoryview, array[Any], mmap, _CData]
+ReadableBuffer = bytes|bytearray|memoryview|array[Any]|mmap|_CData
 #^ Derived from typeshed/stdlib/typeshed/__init__.py.
 
 _Self = TypeVar("_Self")

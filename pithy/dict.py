@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, TypeVar, Union
+from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, TypeVar
 
 
 _K = TypeVar('_K', bound=Hashable)
@@ -79,7 +79,7 @@ def dict_list_extend(d: dict[_K, list[_V]], k: _K, v: Iterable[_V]) -> dict[_K, 
   return d
 
 
-def dict_set_defaults(d: MutableMapping[_K, _V], defaults: Union[Mapping[_K, _V], Iterable[tuple[_K, _V]]]) -> MutableMapping[_K, _V]:
+def dict_set_defaults(d: MutableMapping[_K, _V], defaults: Mapping[_K, _V]|Iterable[tuple[_K, _V]]) -> MutableMapping[_K, _V]:
   '''
   Call setdefault on the dictionary for each item in `defaults`,
   which can be either dictionary-like object implementing `items()` or a sequence of pairs.
@@ -99,7 +99,7 @@ _VH = TypeVar('_VH', bound=Hashable)
 _S = set[_VH]
 _I = Iterable[_VH]
 
-def dict_update_sets(d:MutableMapping[_K,_S], update:Union[Mapping[_K, _I],Iterable[tuple[_K,_I]]]) -> MutableMapping[_K, _S]:
+def dict_update_sets(d:MutableMapping[_K,_S], update:Mapping[_K, _I]|Iterable[tuple[_K,_I]]) -> MutableMapping[_K, _S]:
   it:Iterable[tuple[_K,_I]]
   if isinstance(update, Mapping):
     it = update.items()
@@ -134,7 +134,7 @@ def dict_remap_keys(d:Mapping[_K,_V], remap:dict[_K,_K]) -> dict[_K,_V]:
   return { remap.get(k, k) : v for k, v in d.items() }
 
 
-def dict_remap_keys_mut(d:dict[_K,_V], remap:Union[Mapping[_K,_K],Iterable[tuple[_K,_K]]]) -> dict[_K,_V]:
+def dict_remap_keys_mut(d:dict[_K,_V], remap:Mapping[_K,_K]|Iterable[tuple[_K,_K]]) -> dict[_K,_V]:
   '''
   Remap the keys of `d` using the mapping `remap`, modifying `d` in place.
   `remap` can be a dictionary or an iterable of pairs.

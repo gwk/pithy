@@ -9,7 +9,7 @@ from http import HTTPStatus
 from http.client import HTTPMessage
 from io import BufferedReader
 from os import fstat as os_fstat
-from typing import Any, BinaryIO, TextIO, Union
+from typing import Any, BinaryIO, TextIO
 from urllib.parse import parse_qs, unquote as url_unquote, urlsplit as url_split
 
 from ..http import http_methods, may_send_body
@@ -21,9 +21,9 @@ from ..util import lazy_property
 pithy_web_static_dir_path = sys.modules[__name__].__path__[0] + '/static'
 
 
-ResponseBody = Union[None,str,bytes,bytearray,BufferedReader,Mu]
+ResponseBody = str|bytes|bytearray|BufferedReader|Mu|None
 
-BinaryResponseBody = Union[None,bytes,bytearray,BufferedReader]
+BinaryResponseBody = bytes|bytearray|BufferedReader|None
 #^ Note: normally we would use the abstract BinaryIO type
 #  but mypy does not understand the difference between the unions when testing the runtime file type.
 # TODO: support iterable[bytes]?

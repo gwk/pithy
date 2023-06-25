@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from functools import singledispatch
-from typing import Iterable, Iterator, Union
+from typing import Iterable, Iterator
 
 from tolkien import Source, Token
 
@@ -19,7 +19,7 @@ class EonNode:
     return section_rank_leaf
 
 
-EonSyntax = Union[Token,EonNode]
+EonSyntax = Token|EonNode
 
 
 def eon_syntax_token(syntax:EonSyntax) -> Token:

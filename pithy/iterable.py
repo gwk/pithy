@@ -5,7 +5,7 @@ from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
-from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, TypeVar, Union
+from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, TypeVar
 
 from .types import Comparable
 
@@ -185,7 +185,7 @@ def closed_int_intervals(iterable: Iterable[int]) -> Iterable[tuple[int, int]]:
   yield interval
 
 
-_RangeTypes = Union[int, range, tuple[int, int]]
+_RangeTypes = int|range|tuple[int,int]
 
 def int_tuple_ranges(iterable: Iterable[_RangeTypes]) -> Iterable[tuple[int, int]]:
   'Given `iterable`, yield range pair tuples.'
@@ -480,7 +480,7 @@ def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[tuple[_
 
 
 _PrefixTreeTerminator = TypeVar('_PrefixTreeTerminator', bound=Hashable)
-PrefixTree = dict[Union[_K, _PrefixTreeTerminator], dict|None] # mypy cannot handle recursive types.
+PrefixTree = dict[_K|_PrefixTreeTerminator, dict|None] # mypy cannot handle recursive types.
 
 
 def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator|None=None, update:PrefixTree|None=None) -> PrefixTree:

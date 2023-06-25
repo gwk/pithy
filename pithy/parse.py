@@ -75,7 +75,7 @@ def append(list_:list[_T], el:_T) -> list[_T]:
   return list_
 
 
-def append_or_list(list_or_el:Union[_T,list[_T]], el:_T) -> list[_T]:
+def append_or_list(list_or_el:_T|list[_T], el:_T) -> list[_T]:
   'Create a list from two elements, or if the left element is already a list, append the right element to it and return it.'
   if isinstance(list_or_el, list):
     list_or_el.append(el)
@@ -675,7 +675,7 @@ class Precedence(Rule):
   'An operator precedence rule, consisting of groups of operators.'
   type_desc = 'precedence rule'
 
-  def __init__(self, leaves:Union[RuleRef,Iterable[RuleRef]], *groups:Group,
+  def __init__(self, leaves:RuleRef|Iterable[RuleRef], *groups:Group,
    field='', drop:Iterable[str]=(), transform:UniTransform=uni_val) -> None:
 
     # Keep track of the distinction between subs that came from leaves vs groups.

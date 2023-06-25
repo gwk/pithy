@@ -9,8 +9,7 @@ import re
 from collections.abc import Mapping
 from functools import singledispatch
 from inspect import Parameter, signature
-from typing import (Any, Callable, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, Type, TypeVar,
-  Union)
+from typing import Any, Callable, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, Type, TypeVar
 
 from tolkien import HasSlc, slc_str, Source, Token
 
@@ -28,7 +27,7 @@ class EonContainer:
   @property
   def slc_str(self) -> str: return slc_str(self.slc)
 
-EonSyntax = Union[Token,EonContainer]
+EonSyntax = Token|EonContainer
 
 
 class EonEmpty(EonContainer):

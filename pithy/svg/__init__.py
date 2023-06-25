@@ -5,19 +5,19 @@ SVG writer.
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from typing import Any, ClassVar, Iterable, Optional, Type, Union
+from typing import Any, ClassVar, Iterable, Optional, Type
 
 from ..markup import (_Mu, add_opt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError,
   prefer_int)
 from ..range import Num, NumRange
 
 
-Dim = Union[int, float, str]
-Vec = tuple[Num, Num]
-VecOrNum = Union[Vec, Num]
-F2 = tuple[float, float]
-F2OrF = Union[F2, float]
-BoundsF2 = tuple[F2, F2]
+Dim = int|float|str
+Vec = tuple[Num,Num]
+VecOrNum = Vec|Num
+F2 = tuple[float,float]
+F2OrF = F2|float
+BoundsF2 = tuple[F2,F2]
 PathCommand = tuple
 
 

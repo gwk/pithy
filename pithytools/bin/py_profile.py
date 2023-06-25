@@ -8,7 +8,7 @@ from cProfile import Profile
 from os.path import dirname
 from pstats import Stats
 from sys import argv, exc_info, path as sys_path, stderr, stdout
-from typing import Any, Iterable, TextIO, Union
+from typing import Any, Iterable, TextIO
 
 from pithy.fs import path_for_cmd
 from pithy.path import path_rel_to_current_or_abs
@@ -107,7 +107,7 @@ sort_keys = {
 
 
 Func = tuple[str,int,str]
-Selector = Union[str,float,int]
+Selector = str|float|int
 
 
 class CustomStats(Stats):

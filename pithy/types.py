@@ -23,7 +23,7 @@ class Comparable(Protocol):
   def __eq__(self, other:Any) -> bool: ...
 
 
-def is_a(val:Any, T:Union[type,tuple[type,...]]) -> bool:
+def is_a(val:Any, T:type|tuple[type,...]) -> bool:
   '''
   Test if `val` is of `T`.
   Unlike `isinstance`, this function works with basic generic types.
@@ -150,7 +150,7 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
-def req_type(obj: _T, expected:Union[type,tuple[type,...]]) -> _T:
+def req_type(obj: _T, expected:type|tuple[type,...]) -> _T:
   'Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.'
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')

@@ -6,7 +6,7 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Sequence, TextIO, Union
+from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Sequence, TextIO
 
 from .encode import all_slots, encode_obj, EncodeObj
 
@@ -14,14 +14,14 @@ from .encode import all_slots, encode_obj, EncodeObj
 JsonAny = Any # TODO: remove this once recursive types work.
 JsonList = list[JsonAny]
 JsonDict = dict[str, JsonAny]
-Json = Union[None, int, float, str, bool, JsonList, JsonDict]
+Json = None|int|float|str|bool|JsonList|JsonDict
 
-JsonText = Union[str,bytes,bytearray]
+JsonText = str|bytes|bytearray
 
 class JSONEmptyDocument(JSONDecodeError): pass
 
 ObjDecodeFn = Callable[[dict],Any]
-ObjDecodeHook = Union[type, tuple[AbstractSet[str],Union[type,ObjDecodeFn]]]
+ObjDecodeHook = type|tuple[AbstractSet[str],type|ObjDecodeFn]
 ObjDecodeHooks = Sequence[ObjDecodeHook]
 
 _Seps = tuple[str,str]|None
@@ -195,7 +195,7 @@ def _hook_type_fn(t:type) -> ObjDecodeFn:
 
 
 
-def format_json_bytes(bytes_or_file: Union[BinaryIO, bytes], out_raw: BinaryIO) -> None:
+def format_json_bytes(bytes_or_file:BinaryIO|bytes, out_raw:BinaryIO) -> None:
   file: BinaryIO = bytes_or_file if hasattr(bytes_or_file, 'read') else BytesIO(bytes_or_file) # type: ignore[assignment]
 
   s_start, s_open, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(8)

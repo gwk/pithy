@@ -5,17 +5,17 @@
 import re
 from html import escape as html_escape
 from sys import stdout
-from typing import Any, Callable, Iterable, Mapping, TextIO, Union
+from typing import Any, Callable, Iterable, Mapping, TextIO
 
 
-GraphvizName = Union[int, float, str]
+GraphvizName = int|float|str
 
 GraphvizAttrs = Mapping[str,GraphvizName]
 GraphvizValAttrs = tuple[GraphvizName,GraphvizAttrs]
-GraphvizValues = Union[Iterable[GraphvizName], Iterable[GraphvizValAttrs], Mapping[GraphvizName,GraphvizAttrs]]
+GraphvizValues = Iterable[GraphvizName]|Iterable[GraphvizValAttrs]|Mapping[GraphvizName,GraphvizAttrs]
 GraphvizAdjacencyIterable = Iterable[tuple[GraphvizName,GraphvizValues]]
 GraphvizAdjacencyMapping = Mapping[GraphvizName,GraphvizValues]
-GraphvizAdjacency = Union[GraphvizAdjacencyIterable,GraphvizAdjacencyMapping]
+GraphvizAdjacency = GraphvizAdjacencyIterable|GraphvizAdjacencyMapping
 GraphvizNodes = Mapping[GraphvizName,GraphvizAttrs]
 
 dot_bare_id_re = re.compile(r'[_a-zA-Z][_a-zA-Z0-9]*')

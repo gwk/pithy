@@ -5,7 +5,7 @@ Token and Source classes for implementing lexers and parsers.
 '''
 
 from dataclasses import dataclass
-from typing import Generic, NoReturn, Protocol, runtime_checkable, TypeVar, Union
+from typing import Generic, NoReturn, Protocol, runtime_checkable, TypeVar
 
 
 @runtime_checkable
@@ -73,7 +73,7 @@ class Token:
 
 SyntaxMsg = tuple[Syntax,str]
 
-SourceText = Union[str,bytes,bytearray]
+SourceText = str|bytes|bytearray
 _Text = TypeVar('_Text', bound=SourceText)
 
 

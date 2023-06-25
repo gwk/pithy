@@ -1,12 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from typing import Any, cast, ContextManager, IO, Union
+from typing import Any, cast, ContextManager, IO
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
-File = Union[None, int, IO]
+File = int|IO|None
 
 
 FR, FW, BR, BW = range(4)
