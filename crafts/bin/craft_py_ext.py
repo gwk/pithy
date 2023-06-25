@@ -74,7 +74,7 @@ type_infos = { t.type : t for t in [
 ]}
 
 
-TypeAnn = str|type[Any]|None
+TypeAnn = str|type|None
 
 
 @dataclass
@@ -116,7 +116,7 @@ class Func:
 @dataclass
 class Var:
   name:str
-  type:type[Any]
+  type:type
 
 
 Decl = Union['Class',Func,Var]
