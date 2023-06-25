@@ -8,7 +8,7 @@ import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from sys import argv
-from typing import Callable, cast, FrozenSet, Iterable, Iterator, Optional, TextIO
+from typing import Callable, cast, Iterable, Iterator, Optional, TextIO
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
@@ -212,7 +212,7 @@ def move_file(path:Path, to:str, overwrite=False, create_dirs=False) -> None:
   _os.replace(path, to)
 
 
-def name_has_any_ext(name:str, exts:FrozenSet[str]) -> bool:
+def name_has_any_ext(name:str, exts:frozenset[str]) -> bool:
   '''
   Returns True if `exts` is empty or any element of `exts` is a strict suffix of `path`.
   '''
@@ -223,7 +223,7 @@ def name_has_any_ext(name:str, exts:FrozenSet[str]) -> bool:
   return False
 
 
-def normalize_exts(exts:Iterable[str]) -> FrozenSet[str]:
+def normalize_exts(exts:Iterable[str]) -> frozenset[str]:
   if isinstance(exts, str):
     return frozenset((exts,))
   for ext in exts:
@@ -340,7 +340,7 @@ def walk_dirs_and_files(*dir_paths:Path, make_abs=False, include_hidden=False, f
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
 
 
-def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:FrozenSet[str], files_as_paths:bool) -> Iterator[tuple[str, list[str]]]:
+def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:frozenset[str], files_as_paths:bool) -> Iterator[tuple[str, list[str]]]:
   sub_dirs = []
   files = []
   assert dir_path.endswith('/')
@@ -393,7 +393,7 @@ def walk_paths(*paths:Path, make_abs=False, yield_files=True, yield_dirs=True, i
       yield path
 
 
-def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hidden:bool, file_exts:FrozenSet[str]) -> Iterator[str]:
+def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hidden:bool, file_exts:frozenset[str]) -> Iterator[str]:
   'yield paths; directory paths are distinguished by trailing slash.'
   assert dir_path.endswith('/')
   if yield_dirs:

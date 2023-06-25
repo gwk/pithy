@@ -6,7 +6,7 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, BinaryIO, Callable, FrozenSet, IO, Iterable, Optional, Sequence, TextIO, Union
+from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Optional, Sequence, TextIO, Union
 
 from .encode import all_slots, encode_obj, EncodeObj
 
@@ -150,7 +150,7 @@ def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Optional[Callable[[
   if not hooks: return hook
   dflt_hook:ObjDecodeFn = lambda d: d if hook is None else hook
 
-  type_map:dict[FrozenSet[str],Any] = {}
+  type_map:dict[frozenset[str],Any] = {}
   for h in hooks:
 
     fn:ObjDecodeFn

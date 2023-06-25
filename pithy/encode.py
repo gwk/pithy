@@ -2,7 +2,7 @@
 
 from dataclasses import asdict, is_dataclass
 from functools import singledispatch
-from typing import Any, Callable, FrozenSet, Type
+from typing import Any, Callable, Type
 
 from .util import memoize
 
@@ -58,7 +58,7 @@ def _(obj:type) -> Any: return obj.__name__
 
 
 @memoize()
-def all_slots(type: Type) -> FrozenSet[str]:
+def all_slots(type: Type) -> frozenset[str]:
   '''
   Subclasses of slots classes may define their own slots,
   which hold just the additions to the parent class.
