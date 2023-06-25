@@ -489,7 +489,7 @@ class Col(HtmlNoContent):
   '''
   Defines a column within a table and is used for defining common semantics on all common cells. It is generally found within a <colgroup> element.
 
-  Contexts for use: As a child of a colgroup element that doesn't have a span attribute.
+  Contexts for use: As a child of a colgroup element that does not have a span attribute.
   '''
 
 
@@ -1498,7 +1498,7 @@ class Template(HtmlFlow, HtmlMetadata, HtmlPhrasing):
   Content model:
     Nothing (for clarification, see example): None.
 
-  Contexts for use: As a child of a colgroup element that doesn't have a span attribute, Phrasing, Where metadata content is expected, Where script-supporting elements are expected.
+  Contexts for use: As a child of a colgroup element that does not have a span attribute, Phrasing, Where metadata content is expected, Where script-supporting elements are expected.
   '''
 
 

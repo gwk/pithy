@@ -104,7 +104,7 @@ def parse_eon_or_fail(path:str, text:str, to:type[_T]) -> Any:
 
 
 @singledispatch
-def convert_eon(syntax:EonSyntax, source:Source, to:type[_T]) -> Any: # TODO: this should return _T but mypy doesn't understand.
+def convert_eon(syntax:EonSyntax, source:Source, to:type[_T]) -> Any: # TODO: this should return _T but mypy does not understand.
   'Convert eon AST to a generic data value.'
   raise NotImplementedError(f'unimplemented syntax type: {syntax}')
 
