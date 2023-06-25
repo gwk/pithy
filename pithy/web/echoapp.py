@@ -50,7 +50,7 @@ def main() -> None:
         '--workers=2',
         '--access-logfile=-',
         '--reload',
-        'pithy.http.echoapp:EchoApp()']
+        'pithy.web.echoapp:EchoApp()']
       exec(cmd)
     case 'pithy':
       from ..http.server import HttpServer
