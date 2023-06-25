@@ -6,7 +6,7 @@
 
 import re
 from argparse import ArgumentParser
-from typing import Set, Tuple, Union
+from typing import Set, Union
 
 from pithy.ansi import FILL, RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt
@@ -102,7 +102,7 @@ diag_head_kinds = {'error', 'warning', 'unknown_error', 'unknown_warning'}
 diag_kinds = {*diag_head_kinds, 'note'}
 
 
-def key_by_splitting_ints(string:str) -> Tuple[Union[str,int],...]:
+def key_by_splitting_ints(string:str) -> tuple[Union[str,int],...]:
   return tuple(int(s) if s.isnumeric() else s for s in int_re.split(string))
 
 int_re = re.compile(r'(\d+)')

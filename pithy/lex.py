@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import cast, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Pattern, Tuple, Union
+from typing import cast, Container, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Pattern, Union
 
 from tolkien import Source, Token
 
@@ -41,7 +41,7 @@ class KindPair(NamedTuple):
 
 LexTransKind = Union[str,KindPair]
 LexTransKinds = Union[LexTransKind,Iterable[LexTransKind]]
-LexTransTuple = Tuple[KindPair,...]
+LexTransTuple = tuple[KindPair,...]
 
 class LexTrans:
   def __init__(self, base:Iterable[str], *, kind:LexTransKinds, mode:str, pop:LexTransKinds, consume:bool):
@@ -162,7 +162,7 @@ class Lexer:
     # Validate transitions.
     assert main is not None
     self.main:str = main
-    self.transitions:Dict[Tuple[str,str],Tuple[LexTrans,str]] = {}
+    self.transitions:Dict[tuple[str,str],tuple[LexTrans,str]] = {}
     for trans in transitions:
       if not isinstance(trans, LexTrans): raise Lexer.DefinitionError(f'expected `LexTrans`; received {trans!r}')
       for base in trans.bases:
@@ -201,7 +201,7 @@ class Lexer:
     return Token(pos=p, end=e, mode=mode, kind=kind)
 
 
-  def _lex(self, stack:List[Tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
+  def _lex(self, stack:List[tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
    ) -> Iterator[Token]:
     assert isinstance(source, Source)
     prev_kind = ''
@@ -272,7 +272,7 @@ class Lexer:
     return self._lex(stack=[self.root_frame(mode=self.main)], source=source, pos=pos, end=_e, drop=drop, eot=eot)
 
 
-  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[Tuple[Source[str], Token]]:
+  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[tuple[Source[str], Token]]:
     '''
     Note: the yielded Token objects have positions relative to input string that each was lexed from.
     TODO: fix the line numbers.
@@ -288,7 +288,7 @@ class Lexer:
       yield (source, eot_token(source, mode=stack[-1][0].mode))
 
 
-  def root_frame(self, mode:str) -> Tuple[LexTrans,Token]:
+  def root_frame(self, mode:str) -> tuple[LexTrans,Token]:
     'The root frame is degenerate; because it has an empty pops set it will never get popped; base and kind are never accessed.'
     return (LexTrans(base='', kind='', mode=mode, pop=frozenset(), consume=False), Token(0, 0, mode='', kind=''))
 

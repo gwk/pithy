@@ -1,12 +1,12 @@
 
 
-from typing import List, Sequence, Tuple, TypeVar
+from typing import List, Sequence, TypeVar
 
 
 _T = TypeVar('_T')
 
 
-def ranges_without_common_ends(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> Tuple[range, range]:
+def ranges_without_common_ends(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> tuple[range, range]:
   pre_idx = 0
   for pre_idx, (el_a, el_b) in enumerate(zip(seq_a, seq_b)):
     if el_a != el_b: break
@@ -20,7 +20,7 @@ def ranges_without_common_ends(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> Tuple[
   return (range(pre_idx, post_a), range(pre_idx, post_b))
 
 
-def trim_common_ends(a:List[_T], b:List[_T]) -> Tuple[List[_T], List[_T]]:
+def trim_common_ends(a:List[_T], b:List[_T]) -> tuple[List[_T], List[_T]]:
   r_a, r_b = ranges_without_common_ends(a, b)
   return a[r_a.start:r_a.stop], b[r_b.start:r_b.stop]
 

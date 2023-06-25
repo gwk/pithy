@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 from html.parser import HTMLParser
 from sys import stdin
-from typing import List, Optional, TextIO, Tuple
+from typing import List, Optional, TextIO
 
 
 def main() -> None:
@@ -22,7 +22,7 @@ def main() -> None:
     parser.check_completeness()
 
 
-Pos = Tuple[int, int]
+Pos = tuple[int, int]
 
 
 class Parser(HTMLParser):
@@ -30,17 +30,17 @@ class Parser(HTMLParser):
   def __init__(self, path: str):
     super().__init__(convert_charrefs=True)
     self.path = path
-    self.stack: List[Tuple[Pos, str]] = []
+    self.stack: List[tuple[Pos, str]] = []
     self.found_leading_doctype = False
 
   def check_completeness(self) -> None:
     if not self.found_leading_doctype:
       self.msg("did not find '<!DOCTYPE html>' declaration in leading position.", pos=(0,0))
 
-  def handle_startendtag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+  def handle_startendtag(self, tag: str, attrs: List[tuple[str, Optional[str]]]) -> None:
     pass
 
-  def handle_starttag(self, tag: str, attrs: List[Tuple[str,Optional[str]]]) -> None:
+  def handle_starttag(self, tag: str, attrs: List[tuple[str,Optional[str]]]) -> None:
     self.stack.append((self.pos, tag))
 
   def handle_endtag(self, tag: str) -> None:

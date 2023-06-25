@@ -3,13 +3,13 @@
 import inspect
 from importlib.machinery import ModuleSpec
 from inspect import FrameInfo
-from typing import Any, Callable, cast, Dict, Iterable, List, Mapping, Optional, Tuple, TypeVar
+from typing import Any, Callable, cast, Dict, Iterable, List, Mapping, Optional, TypeVar
 
 
 class MetaprogrammingError(Exception): pass
 
 
-def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_prefix=True, frame='<module>') -> List[Tuple[str, Any]]:
+def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_prefix=True, frame='<module>') -> List[tuple[str, Any]]:
   '''
   Return (name, value) pairs of bindings from the specified frame,
   that match the specified prefix and val_type filters.

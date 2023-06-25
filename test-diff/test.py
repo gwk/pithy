@@ -32,7 +32,7 @@ def main() -> None:
   outL(f'not same: {d}; time: {t0:0.3f} -> {t1:0.3f}')
 
 
-def test_pair(obj_a:str, obj_b:str) -> Tuple[int, float, float]:
+def test_pair(obj_a:str, obj_b:str) -> tuple[int, float, float]:
   seq_a = list(open(f'{build_dir}/objects/{obj_a[:2]}/{obj_a}'))
   seq_b = list(open(f'{build_dir}/objects/{obj_b[:2]}/{obj_b}'))
 

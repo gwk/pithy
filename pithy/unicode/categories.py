@@ -1,13 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Counter, Dict, List, NamedTuple, Tuple
+from typing import Counter, Dict, List, NamedTuple
 
 
 class UnicodeCategory(NamedTuple):
   key:str
   name:str
   desc:str
-  subcategories:Tuple[str, ...]
+  subcategories:tuple[str, ...]
 
 
 def _mk_cat(key:str, name:str, desc:str) -> UnicodeCategory:

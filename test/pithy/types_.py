@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Counter, Dict, FrozenSet, List, Optional, Set, Tuple
+from typing import Counter, Dict, FrozenSet, List, Optional, Set
 
 from pithy.types import is_a
 from utest import utest
@@ -24,7 +24,7 @@ utest(True, is_a, frozenset(), frozenset)
 
 utest(True, is_a, [], List)
 utest(True, is_a, {}, Dict)
-utest(True, is_a, (), Tuple)
+utest(True, is_a, (), tuple)
 utest(True, is_a, set(), Set)
 utest(True, is_a, frozenset(), FrozenSet)
 
@@ -53,9 +53,9 @@ utest(True, is_a, None, Optional[None]) # Resolves to NoneType.
 utest(True, is_a, None, Optional[int])
 utest(False, is_a, 0, Optional[str])
 
-utest(False, is_a, (), Tuple[int,int])
-utest(True, is_a, (0,0), Tuple[int,int])
-utest(True, is_a, (0,0), Tuple[int,...])
+utest(False, is_a, (), tuple[int,int])
+utest(True, is_a, (0,0), tuple[int,int])
+utest(True, is_a, (0,0), tuple[int,...])
 
-utest(False, is_a, ('',0), Tuple[int,int])
-utest(False, is_a, ('',0), Tuple[int,...])
+utest(False, is_a, ('',0), tuple[int,int])
+utest(False, is_a, ('',0), tuple[int,...])

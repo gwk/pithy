@@ -2,7 +2,6 @@
 
 from argparse import ArgumentParser
 from sys import stdin, stdout
-from typing import Tuple
 
 from pithy.io import errSL
 
@@ -12,7 +11,7 @@ from .. import default_css, default_js, minify_css, minify_js, writeup, writeup_
 __all__ = ['main', 'writeup', 'writeup_dependencies']
 
 
-SrcLine = Tuple[int, str]
+SrcLine = tuple[int, str]
 
 
 def main() -> None:

@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import (Any, Callable, cast, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, Tuple,
+from typing import (Any, Callable, cast, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence,
   TypeAlias, TypeVar)
 from urllib.parse import quote as url_quote
 
@@ -73,7 +73,7 @@ class Row(sqlite3.Row):
     try: return self[key]
     except IndexError as e: raise AttributeError(key) from e
 
-  def items(self) -> Iterator[Tuple[str, Any]]:
+  def items(self) -> Iterator[tuple[str, Any]]:
     'Return an iterator of (key, value) pairs.'
     for key in self.keys():
       yield key, self[key]

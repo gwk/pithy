@@ -9,8 +9,7 @@ from collections import Counter
 from functools import wraps
 from inspect import get_annotations
 from itertools import chain
-from typing import (Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, Tuple, Type,
-  TypeVar, Union)
+from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, Type, TypeVar, Union
 from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -28,7 +27,7 @@ _T = TypeVar('_T')
 
 # Attr values are currently Any so that we can preserve exact numerical values.
 MuAttrs = dict[str,Any]
-MuAttrItem = Tuple[str,Any]
+MuAttrItem = tuple[str,Any]
 
 _Mu = TypeVar('_Mu', bound='Mu')
 _MuChild = TypeVar('_MuChild', bound='MuChild')
@@ -250,7 +249,7 @@ class Mu:
     return type(self)(tag=self.tag, attrs=self.attrs, _=self._, _orig=self, _parent=parent)
 
 
-  def child_items(self, ws=False, traversable=False) -> Iterator[Tuple[int,'MuChild']]:
+  def child_items(self, ws=False, traversable=False) -> Iterator[tuple[int,'MuChild']]:
     'Yield (index, child) pairs. If `ws` is False, then children that are purely whitespace will be filtered out.'
     for i, c in enumerate(self._):
       if isinstance(c, Mu):
@@ -724,7 +723,7 @@ class Mu:
       return f"'{text}'"
 
 
-  def fmt_attr_items(self, items:Iterable[Tuple[str,Any]]) -> str:
+  def fmt_attr_items(self, items:Iterable[tuple[str,Any]]) -> str:
     'Return a string that is either empty or with a leading space, containing all of the formatted items.'
     parts: list[str] = []
     for k, v in sorted(items, key=lambda item: self.attr_sort_ranks.get(item[0], 0)):

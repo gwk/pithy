@@ -5,7 +5,7 @@
 import re
 from decimal import Decimal
 from string import Template
-from typing import Any, Iterable, Iterator, Sequence, Tuple, TypeVar
+from typing import Any, Iterable, Iterator, Sequence, TypeVar
 
 
 _T = TypeVar('_T')
@@ -89,7 +89,7 @@ def clip_first_prefix(string:str, prefixes:Sequence[str], req=True) -> str:
   else: return string
 
 
-def clip_common(strings:Sequence[str], prefix=True, suffix=True) -> Tuple[str,...]:
+def clip_common(strings:Sequence[str], prefix=True, suffix=True) -> tuple[str,...]:
   if not strings: return ()
   if len(strings) == 1: return ('',)
   first = strings[0]
@@ -106,7 +106,7 @@ def clip_common(strings:Sequence[str], prefix=True, suffix=True) -> Tuple[str,..
   return tuple(s[i:l] for s in strings)
 
 
-def replace_first_prefix(string:str, prefixes:Sequence[Tuple[str,str]], req=True) -> str:
+def replace_first_prefix(string:str, prefixes:Sequence[tuple[str,str]], req=True) -> str:
   'Replace the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
   for prefix, replacement in prefixes:
     try:
@@ -212,14 +212,14 @@ def format_byte_count(count:int, prec=3, abbr=True) -> str:
   return f'{c:.{prec}f} {label}{s}'
 
 
-def line_col_0(string:str, pos:int) -> Tuple[int, int]:
+def line_col_0(string:str, pos:int) -> tuple[int, int]:
   if pos < 0 or pos > len(string): raise IndexError(pos)
   line = string.count('\n', 0, pos) # number of newlines preceeding pos.
   last_line_start = string.rfind('\n', 0, pos) + 1 # rfind returns -1 for no match; `+ 1` happens to work perfectly.
   return (line, pos - last_line_start)
 
 
-def line_col_1(string:str, pos:int) -> Tuple[int, int]:
+def line_col_1(string:str, pos:int) -> tuple[int, int]:
   l, c = line_col_0(string, pos)
   return (l + 1, c + 1)
 

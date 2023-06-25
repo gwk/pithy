@@ -2,8 +2,7 @@
 
 from abc import abstractmethod
 from dataclasses import is_dataclass
-from typing import (Any, Callable, Counter, Dict, get_args, get_origin, Optional, Protocol, runtime_checkable, Tuple, TypeVar,
-  Union)
+from typing import Any, Callable, Counter, Dict, get_args, get_origin, Optional, Protocol, runtime_checkable, TypeVar, Union
 
 
 _T = TypeVar('_T')
@@ -54,7 +53,7 @@ def is_a(val:Any, T:Union[type,tuple[type,...]]) -> bool:
   raise TypeError(f'{T} is not a single-parameter generic type; origin type: {RTT}')
 
 
-_Args = Tuple[type, ...]
+_Args = tuple[type, ...]
 
 
 def _is_a_Tuple(v:Any, args:_Args) -> bool:
@@ -148,7 +147,7 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
-def req_type(obj: _T, expected:Union[type,Tuple[type,...]]) -> _T:
+def req_type(obj: _T, expected:Union[type,tuple[type,...]]) -> _T:
   'Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.'
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')

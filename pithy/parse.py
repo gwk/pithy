@@ -26,8 +26,7 @@ from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
-from typing import (Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Tuple, Type, TypeVar,
-  Union)
+from typing import Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, NoReturn, Optional, Type, TypeVar, Union
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 
@@ -107,15 +106,15 @@ def uni_text(source:Source, slc:slice, val:Any) -> str: return source[slc]
 
 SuffixTransform = Callable[[Source,Token,Any],Any]
 def suffix_val(source:Source, token:Token, val:Any) -> Any: return val
-def suffix_text_val_pair(source:Source, token:Token, val:Any) -> Tuple[str,Any]: return (source[token], val)
+def suffix_text_val_pair(source:Source, token:Token, val:Any) -> tuple[str,Any]: return (source[token], val)
 
 def suffix_text(source:Source, token:Token, val:Any) -> str:
   assert isinstance(val, str)
   return val + source[token]
 
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
-def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> Tuple[str,Any,Any]: return (source[token], left, right)
-def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> Tuple[Any,Any]: return (left, right)
+def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> tuple[str,Any,Any]: return (source[token], left, right)
+def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> tuple[Any,Any]: return (left, right)
 def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> List[Any]: return append_or_list(left, right)
 
 QuantityTransform = Callable[[Source,slice,List[Any]],Any]
@@ -124,7 +123,7 @@ def quantity_syn(source:Source, slc:slice, elements:List[Any]) -> Syn: return Sy
 def quantity_text(source:Source, slc:slice, elements:List[Any]) -> str: return source[slc]
 
 StructTransform = Callable[[Source,slice,List[Any]],Any]
-def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> Tuple[Any,...]: return tuple(fields)
+def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> tuple[Any,...]: return tuple(fields)
 def struct_syn(source:Source, slc:slice, fields:list[Any]): return Syn(slc, fields)
 def struct_text(source:Source, slc:slice, fields:list[Any]) -> str: return source[slc]
 
@@ -151,9 +150,9 @@ class Rule:
   #^ A value of '' (the default) causes the rule name or else a default field name to be used.
   #^ An explicit value of None causes the field to be omitted.
   type_desc:str # Type description for diagnostic descriptions.
-  sub_refs:Tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
-  subs:Tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
-  heads:Tuple[TokenKind,...] # Set of leading token kinds for this rule.
+  sub_refs:tuple[RuleRef,...] = () # The rules or references (name strings) that this rule refers to.
+  subs:tuple['Rule',...] = () # Sub-rules, obtained by linking sub_refs.
+  heads:tuple[TokenKind,...] # Set of leading token kinds for this rule.
   transform:Callable
 
 
@@ -533,13 +532,13 @@ class Choice(Rule):
 
 class Operator:
   'An operator that composes a part of a Precedence rule.'
-  sub_refs:Tuple[RuleRef,...] = ()
+  sub_refs:tuple[RuleRef,...] = ()
 
   # TODO: spacing requirement options, e.g. no space, some space, symmetrical space.
 
 
   @property
-  def kinds(self) -> Tuple[TokenKind,...]:
+  def kinds(self) -> tuple[TokenKind,...]:
     return ()
 
 
@@ -561,7 +560,7 @@ class Suffix(Operator):
 
 
   @property
-  def kinds(self) -> Tuple[TokenKind,...]:
+  def kinds(self) -> tuple[TokenKind,...]:
     return (self.suffix,)
 
 
@@ -588,7 +587,7 @@ class SuffixRule(Operator):
 
 
   @property
-  def kinds(self) -> Tuple[TokenKind,...]:
+  def kinds(self) -> tuple[TokenKind,...]:
     return tuple(self.suffix.heads)
 
 
@@ -611,7 +610,7 @@ class Adjacency(BinaryOp):
 
 
   @property
-  def kinds(self) -> Tuple[TokenKind,...]:
+  def kinds(self) -> tuple[TokenKind,...]:
     raise _AllLeafKinds
 
 
@@ -635,7 +634,7 @@ class Infix(BinaryOp):
 
 
   @property
-  def kinds(self) -> Tuple[TokenKind,...]:
+  def kinds(self) -> tuple[TokenKind,...]:
     return (self.kind,)
 
 
@@ -694,7 +693,7 @@ class Precedence(Rule):
     self.transform = transform
     self.groups = groups
     self.head_table:Dict[TokenKind,Rule] = {}
-    self.tail_table:Dict[TokenKind,Tuple[Group,Operator]] = {}
+    self.tail_table:Dict[TokenKind,tuple[Group,Operator]] = {}
 
 
   def token_kinds(self) -> Iterable[str]:
@@ -879,7 +878,7 @@ class Parser:
       rule.__dict__.clear() # Break all references between rules.
 
 
-  def _mk_struct_transform(self, name:str, subs:Tuple[Rule,...]) -> StructTransform:
+  def _mk_struct_transform(self, name:str, subs:tuple[Rule,...]) -> StructTransform:
 
     includes = [((sub.field is not None) and (bool(sub.field) or (sub.name not in self.literals))) for sub in subs]
     #^ Bool for each sub position.

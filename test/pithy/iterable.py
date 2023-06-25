@@ -54,8 +54,8 @@ utest({0, 1}, set_from, iter([(0,), (0, 1)]))
 
 utest(frozenset({0, 1}), frozenset_from, iter([(0,), (0, 1)]))
 
-F2 = Tuple[float, float]
-def split_pair(pair:F2) -> Optional[Tuple[F2, F2]]:
+F2 = tuple[float, float]
+def split_pair(pair:F2) -> Optional[tuple[F2, F2]]:
   s, e = pair
   assert s <= e
   si = int(s)

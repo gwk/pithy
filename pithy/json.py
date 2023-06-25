@@ -6,8 +6,7 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import (AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, IO, Iterable, List, Optional, Sequence, TextIO,
-  Tuple, Union)
+from typing import AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, IO, Iterable, List, Optional, Sequence, TextIO, Union
 
 from .encode import all_slots, encode_obj, EncodeObj
 
@@ -22,10 +21,10 @@ JsonText = Union[str,bytes,bytearray]
 class JSONEmptyDocument(JSONDecodeError): pass
 
 ObjDecodeFn = Callable[[Dict],Any]
-ObjDecodeHook = Union[type, Tuple[AbstractSet[str],Union[type,ObjDecodeFn]]]
+ObjDecodeHook = Union[type, tuple[AbstractSet[str],Union[type,ObjDecodeFn]]]
 ObjDecodeHooks = Sequence[ObjDecodeHook]
 
-_Seps = Optional[Tuple[str,str]]
+_Seps = Optional[tuple[str,str]]
 
 
 def render_json(item:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, **kwargs) -> str:

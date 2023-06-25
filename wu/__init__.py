@@ -3,8 +3,7 @@
 import re
 from html import escape as html_escape
 from os import environ
-from typing import (Any, Callable, cast, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Tuple,
-  Union)
+from typing import Any, Callable, cast, DefaultDict, Dict, Iterable, Iterator, List, Match, NoReturn, Optional, TextIO, Union
 
 import pygments
 import pygments.lexers
@@ -20,7 +19,7 @@ from pygments.token import Token
 __all__ = ['writeup', 'writeup_dependencies', 'default_css', 'minify_css', 'minify_js', 'default_js']
 
 
-SrcLine = Tuple[int, str]
+SrcLine = tuple[int, str]
 
 
 def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, author: str,
@@ -92,7 +91,7 @@ class Span:
   def __repr__(self) -> str:
     return f'{self.__class__.__name__}({self.text!r})'
 
-Spans = Tuple[Span, ...]
+Spans = tuple[Span, ...]
 
 
 class CodeSpan(Span):
@@ -120,7 +119,7 @@ class BoldSpan(AttrSpan):
 
 
 class EmbedSpan(AttrSpan):
-  def __init__(self, text: str, attrs: Dict[str, str], path: str, contents: Tuple[str, ...]):
+  def __init__(self, text: str, attrs: Dict[str, str], path: str, contents: tuple[str, ...]):
     super().__init__(text=text, attrs=attrs)
     self.path = path
     self.contents = contents
@@ -184,7 +183,7 @@ class Block:
 
 
 class Section(Block):
-  def __init__(self, section_depth: int, quote_depth: int, index_path: Tuple[int, ...], title: Spans):
+  def __init__(self, section_depth: int, quote_depth: int, index_path: tuple[int, ...], title: Spans):
     self.section_depth = section_depth
     self.quote_depth = quote_depth
     self.index_path = index_path
@@ -516,7 +515,7 @@ class Ctx:
       style_string = ''.join(f'{style};' for style in styles)
       yield f'{selector}{{{style_string}}}'
 
-  def msg(self, src: SrcLine, label: str, items: Tuple[Any, ...], col: Optional[int]) -> None:
+  def msg(self, src: SrcLine, label: str, items: tuple[Any, ...], col: Optional[int]) -> None:
     line, txt = src
     if col is None: col = 0
     errSL(f'{self.src_path}:{line+1}:{col+1}: {label}:', *items)
@@ -631,7 +630,7 @@ def writeup_line(ctx: Ctx, src: SrcLine, state: int, m: Match) -> None:
     if m['section_indents']: ctx.error(src, 'section header cannot be indented.')
     check_whitespace(ctx, src, len_exp=1, m=m, key='section_spaces', msg_suffix=' following `#`')
     section_depth = len(m['section_hashes'])
-    index_path: Tuple[int, ...]
+    index_path: tuple[int, ...]
     if not ctx.stack: # first/intro case only.
       index_path = (0,) # intro section is 0-indexed (`s0`); everything else is 1-indexed.
     elif section_depth > ctx.depth + 1:
@@ -725,7 +724,7 @@ def parse_spans(ctx: Ctx, src: SrcLine, text: str) -> Spans:
   return tuple(spans)
 
 
-def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> Tuple[str, Dict[str,str], List[str]]:
+def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> tuple[str, Dict[str,str], List[str]]:
   tag, colon, post_tag_text = text.lstrip().partition(':')
   if colon is None: ctx.error(src, f'missing colon after tag: {text!r}')
 

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Union
 
 from pithy.typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -102,9 +102,9 @@ IterOrDict = Union[Iterable, Dict]
 
 class Cursor:
 
-  description:Tuple[Tuple[str,str],...]
+  description:tuple[tuple[str,str],...]
 
-  def __iter__(self) -> Iterator[Tuple]: ...
+  def __iter__(self) -> Iterator[tuple]: ...
 
   def close(self, force=False) -> None: ...
 
@@ -118,7 +118,7 @@ class Cursor:
 
   def getconnection(self) -> Connection: ...
 
-  def getdescription(self) -> Tuple[Tuple[str,str],...]: ...
+  def getdescription(self) -> tuple[tuple[str,str],...]: ...
 
   def getexectrace(self) -> Optional[Callable]: ...
 
@@ -359,7 +359,7 @@ def sqlite3_sourceid() -> str: ...
 
 def sqlitelibversion() -> None: ...
 
-def status(op:int, reset=False) -> Tuple[int, int]: ...
+def status(op:int, reset=False) -> tuple[int, int]: ...
 
 def vfsnames() -> List[str]: ...
 
@@ -635,7 +635,7 @@ SQLITE_VERSION_NUMBER: int
 SQLITE_VTAB_CONSTRAINT_SUPPORT: int
 SQLITE_WARNING: int
 SQLITE_WARNING_AUTOINDEX: int
-compile_options: Tuple[str,...]
+compile_options: tuple[str,...]
 connection_hooks:List[Callable[[Connection],None]]
 mapping_access: Any
 mapping_authorizer_function: Any

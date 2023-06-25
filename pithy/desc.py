@@ -8,7 +8,7 @@ like `pprint` but streaming, and with a more compact, minimal style.
 import re
 from dataclasses import fields as _dc_fields, is_dataclass
 from sys import stderr, stdout
-from typing import Any, Iterable, Iterator, List, NamedTuple, Set, TextIO, Tuple, Union
+from typing import Any, Iterable, Iterator, List, NamedTuple, Set, TextIO, Union
 
 from .iterable import known_leaf_types
 
@@ -184,7 +184,7 @@ def _iterable_desc(obj:Any, prefix:str, visited_ids:Set[int], it:Iterator, simpl
   return _Desc(opener=prefix+opener, closer=closer, it=it, buffer=[])
 
 
-_Items = Iterator[Tuple[Any,Any]]
+_Items = Iterator[tuple[Any,Any]]
 
 
 def _mapping_desc(obj:Any, prefix:str, visited_ids:Set[int], items:_Items, simple_keys:bool) -> _Desc:

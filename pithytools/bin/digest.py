@@ -5,7 +5,7 @@
 import hashlib
 from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
-from typing import Any, ByteString, Callable, Dict, List, Optional, Tuple, TypeVar
+from typing import Any, ByteString, Callable, Dict, List, Optional, TypeVar
 
 import blake3
 from pithy.encodings import enc_lep62, enc_lep128_to_utf8
@@ -53,7 +53,7 @@ def main() -> None:
 
   parser.add_argument('paths', nargs='+', help='files to hash.')
   args = parser.parse_args()
-  encoders:List[Tuple[str,_Encoder]] = []
+  encoders:List[tuple[str,_Encoder]] = []
   if args.lep128: encoders.append(('lep128', enc_lep128_to_utf8))
   if args.lep62:  encoders.append(('lep62', enc_lep62))
   if args.b16:    encoders.append(('b16', b16encode))

@@ -5,15 +5,15 @@
 import re
 from html import escape as html_escape
 from sys import stdout
-from typing import Any, Callable, Dict, Iterable, Mapping, Optional, TextIO, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, TextIO, Union
 
 
 GraphvizName = Union[int, float, str]
 
 GraphvizAttrs = Mapping[str,GraphvizName]
-GraphvizValAttrs = Tuple[GraphvizName,GraphvizAttrs]
+GraphvizValAttrs = tuple[GraphvizName,GraphvizAttrs]
 GraphvizValues = Union[Iterable[GraphvizName], Iterable[GraphvizValAttrs], Mapping[GraphvizName,GraphvizAttrs]]
-GraphvizAdjacencyIterable = Iterable[Tuple[GraphvizName,GraphvizValues]]
+GraphvizAdjacencyIterable = Iterable[tuple[GraphvizName,GraphvizValues]]
 GraphvizAdjacencyMapping = Mapping[GraphvizName,GraphvizValues]
 GraphvizAdjacency = Union[GraphvizAdjacencyIterable,GraphvizAdjacencyMapping]
 GraphvizNodes = Mapping[GraphvizName,GraphvizAttrs]

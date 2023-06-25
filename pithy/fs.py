@@ -8,7 +8,7 @@ import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from sys import argv
-from typing import Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, Optional, TextIO, Tuple
+from typing import Callable, cast, Dict, FrozenSet, Iterable, Iterator, List, Optional, TextIO
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
@@ -77,7 +77,7 @@ def abbreviate_user(path:Path) -> str: return str_path(path).replace(home_dir(),
 def expand_user(path:Path) -> str: return _expanduser(str_path(path))
 
 
-default_project_signifiers: Tuple[str, ...] = (
+default_project_signifiers: tuple[str, ...] = (
   '.git',
   '.project-root',
   'Package.swift',
@@ -328,7 +328,7 @@ def walk_dirs(*paths:Path, make_abs=False, include_hidden=False, file_exts:Itera
 
 
 def walk_dirs_and_files(*dir_paths:Path, make_abs=False, include_hidden=False, file_exts:Iterable[str]=(),
- files_as_paths=False) -> Iterator[Tuple[str, List[str]]]:
+ files_as_paths=False) -> Iterator[tuple[str, List[str]]]:
   '''
   yield (dir_path, files) pairs.
   files is an array of either names (default) or paths, depending on the files_as_paths option.
@@ -340,7 +340,7 @@ def walk_dirs_and_files(*dir_paths:Path, make_abs=False, include_hidden=False, f
     yield from _walk_dirs_and_files(dir_path, include_hidden, file_exts, files_as_paths)
 
 
-def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:FrozenSet[str], files_as_paths:bool) -> Iterator[Tuple[str, List[str]]]:
+def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:FrozenSet[str], files_as_paths:bool) -> Iterator[tuple[str, List[str]]]:
   sub_dirs = []
   files = []
   assert dir_path.endswith('/')
@@ -414,9 +414,9 @@ class DirEntries:
     self.exts  = normalize_exts(exts)
     self.hidden = hidden
     self.pred = (lambda entry:True) if pred is None else pred
-    self._entries:Dict[str,Tuple[DirEntry,...]] = {}
+    self._entries:Dict[str,tuple[DirEntry,...]] = {}
 
-  def __getitem__(self, dir_path:str) -> Tuple[DirEntry,...]:
+  def __getitem__(self, dir_path:str) -> tuple[DirEntry,...]:
     try: return self._entries[dir_path]
     except KeyError: pass
 

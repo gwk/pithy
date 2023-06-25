@@ -195,7 +195,7 @@ def _repr_ml_gen_iterable_lines(typename:str, opener:str, reprs:list[Iterable[st
     yield nl_indent
     if isinstance(el, str): yield el
     else: yield from el
-  if single_el and not typename and opener == '(': # Tuple requires a trailing comma.
+  if single_el and not typename and opener == '(': # tuple requires a trailing comma.
     yield colors.sep
     yield ','
   yield colors.paren

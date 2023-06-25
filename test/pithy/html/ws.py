@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import List, Tuple
+from typing import List
 
 from pithy.html import Body, Html, HtmlNode
 from pithy.io import outL
@@ -8,7 +8,7 @@ from pithy.string import clip_prefix, clip_suffix
 from utest import utest
 
 
-ws_normalizations:List[Tuple[str|HtmlNode,str]] = [
+ws_normalizations:List[tuple[str|HtmlNode,str]] = [
   ( '',
     ''),
   ( ' Leading and trailing space. ',

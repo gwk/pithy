@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
 from inspect import Parameter, Signature, signature
-from typing import Any, ByteString, Callable, Dict, Iterator, List, NoReturn, Optional, TextIO, Tuple, Type, Union
+from typing import Any, ByteString, Callable, Dict, Iterator, List, NoReturn, Optional, TextIO, Type, Union
 
 from mypy_extensions import VarArg
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
@@ -196,7 +196,7 @@ class ScopeSource(SourceReporter):
     return doc
 
 
-  def __iter__(self) -> Iterator[Tuple[str,AST,Any]]:
+  def __iter__(self) -> Iterator[tuple[str,AST,Any]]:
     'Iterate over a source and return (name, AST statement, runtime value) triples.'
 
     for stmt in self.body:
@@ -333,7 +333,7 @@ def _(syntax:ClassDef, name:str, obj:Any, scope:Scope, global_vals:Dict[str,Any]
 
 # Code generation.
 
-_Writers = Tuple[Callable[[VarArg(str)],None],...] # Cheap hack to provied convenience writer functions.
+_Writers = tuple[Callable[[VarArg(str)],None],...] # Cheap hack to provied convenience writer functions.
 
 def write_module(mod:ExtMod, c:TextIO, h:TextIO) -> None:
   'Generate code for a module.'
