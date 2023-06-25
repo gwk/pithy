@@ -15,7 +15,7 @@ from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, 
 from tolkien import HasSlc, slc_str, Source, Token
 
 from .lex import Lexer, LexMode, LexTrans
-from .parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore, choice_val
+from .parse import Choice, choice_val, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
 from .util import memoize
 
 

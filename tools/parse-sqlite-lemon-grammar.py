@@ -2,14 +2,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from typing import Iterator, Any, NamedTuple
+from typing import Any, Iterator
 
+from pithy.ansi import BG_C, BG_R, RST, TXT_B, TXT_C, TXT_G, TXT_Y
+from pithy.iterable import fan_items, joinSCS
 from pithy.lex import Lexer, LexMode, LexTrans
-from pithy.parse import Choice, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore, Atom, atom_text, choice_val
+from pithy.parse import Atom, atom_text, Choice, choice_val, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
 from pithy.path import vscode_path
 from tolkien import Source, Token
-from pithy.ansi import BG_R, RST, TXT_G, TXT_Y, TXT_B, TXT_C, BG_C
-from pithy.iterable import joinSCS, fan_items
 
 
 def main() -> None:
