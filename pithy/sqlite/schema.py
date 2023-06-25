@@ -499,9 +499,9 @@ def prefigure_Table(class_:type, table:Input, source:Source) -> dict[str,Any]:
 
   def_ = table.def_
   if not isinstance(def_, sql_parser.types.TableDef): raise ValueError(f'Expected a table_def; received {def_!r}')
-  column_defs = def_.column_defs
-  constraints = dict(_parse_table_constraint(tc, source) for tc in def_.table_constraints)
-  table_options = def_.table_options
+  column_defs = def_.column_defs # type: ignore[attr-defined]
+  constraints = dict(_parse_table_constraint(tc, source) for tc in def_.table_constraints) # type: ignore[attr-defined]
+  table_options = def_.table_options # type: ignore[attr-defined]
 
   return dict(
     name=table_name_parts[-1], # NOTE: we currently discard the schema name if it is present.

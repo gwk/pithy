@@ -2,8 +2,9 @@ from array import array
 from ctypes import _CData
 from mmap import mmap
 from pickle import PickleBuffer
-from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, TextIO
+from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, Sized, TextIO
 
+from typing_extensions import Buffer
 from zstandard import ZstdCompressor
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -66,7 +67,7 @@ class ZstWriterBase:
     return self.compressed_byte_count / self.input_byte_count
 
 
-BytesLike = bytes|bytearray|memoryview|array|mmap|_CData|PickleBuffer
+BytesLike = bytes|Buffer
 
 class ZstWriter(ZstWriterBase, BinaryIO):
 
@@ -75,8 +76,8 @@ class ZstWriter(ZstWriterBase, BinaryIO):
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.close()
 
-  def write(self, data:BytesLike) -> int:
-    if isinstance(data, (array, mmap, _CData, PickleBuffer)): data = bytes(data)
+  def write(self, data:BytesLike, /) -> int:
+    if not isinstance(data, Sized): data = bytes(data)
     l = len(data)
     self.input_byte_count += l
     self._write_chunks(self.chunker.compress(data))
