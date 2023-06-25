@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import (Any, Callable, cast, Dict, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence,
-  TypeAlias, TypeVar)
+from typing import (Any, Callable, cast, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, TypeAlias,
+  TypeVar)
 from urllib.parse import quote as url_quote
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
@@ -215,18 +215,18 @@ class Cursor(sqlite3.Cursor):
 
   @overload
   def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...],
-   args:Dict[str, Any], defaults:Dict[str,Any]=...) -> Row: ...
+   args:dict[str, Any], defaults:dict[str,Any]=...) -> Row: ...
 
   @overload
   def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:str,
-   args:Dict[str,Any], defaults:Dict[str,Any]=...) -> Any: ...
+   args:dict[str,Any], defaults:dict[str,Any]=...) -> Any: ...
 
   @overload
   def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None,returning:None=None,
-   args:Dict[str,Any], defaults:Dict[str,Any]=...) -> None: ...
+   args:dict[str,Any], defaults:dict[str,Any]=...) -> None: ...
 
   def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...]|str|None=None,
-   args:Dict[str,Any], defaults:Dict[str,Any]={}) -> Any:
+   args:dict[str,Any], defaults:dict[str,Any]={}) -> Any:
     '''
     Execute an insert of the dictionary `args`, synthesized from `into` (the table name) and `fields`.
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;

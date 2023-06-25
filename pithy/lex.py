@@ -5,7 +5,7 @@ Simple lexing using python regular expressions.
 '''
 
 import re
-from typing import cast, Container, Dict, FrozenSet, Iterable, Iterator, NamedTuple, Pattern, Union
+from typing import cast, Container, FrozenSet, Iterable, Iterator, NamedTuple, Pattern, Union
 
 from tolkien import Source, Token
 
@@ -67,8 +67,8 @@ def _mk_pairs_tuple(pop:LexTransKinds) -> LexTransTuple:
   return tuple(KindPair.mk(el) for el in pop)
 
 
-def _mk_trans_pop_dict(pops:LexTransTuple) -> Dict[str,str]:
-  d:Dict[str,str] = {}
+def _mk_trans_pop_dict(pops:LexTransTuple) -> dict[str,str]:
+  d:dict[str,str] = {}
   for pair in pops:
     if pair.curr in d:
       raise Lexer.DefinitionError(f'repeated pop kind key: {pair.curr!r}')
@@ -86,7 +86,7 @@ class Lexer:
 
   class DefinitionError(Exception): pass
 
-  def __init__(self, *, flags='', patterns:Dict[str,str], modes:Iterable[LexMode]=(),
+  def __init__(self, *, flags='', patterns:dict[str,str], modes:Iterable[LexMode]=(),
    transitions:Iterable[LexTrans]=()) -> None:
 
     # Validate flags.
@@ -98,7 +98,7 @@ class Lexer:
 
     # Validate patterns.
     if not patterns: raise Lexer.DefinitionError('Lexer instance must define at least one pattern')
-    self.patterns: Dict[str,str] = {}
+    self.patterns: dict[str,str] = {}
     for n, v in patterns.items():
       validate_name(n)
       if n == 'invalid':
@@ -122,7 +122,7 @@ class Lexer:
     # Validate and compile modes.
     if not modes:
       modes = [LexMode('main', kinds=self.patterns)]
-    self.modes: Dict[str,LexMode] = {}
+    self.modes: dict[str,LexMode] = {}
     main = None
     for mode in modes:
       if not isinstance(mode, LexMode): raise Lexer.DefinitionError(f'expected LexMode; received: {mode!r}')
@@ -162,7 +162,7 @@ class Lexer:
     # Validate transitions.
     assert main is not None
     self.main:str = main
-    self.transitions:Dict[tuple[str,str],tuple[LexTrans,str]] = {}
+    self.transitions:dict[tuple[str,str],tuple[LexTrans,str]] = {}
     for trans in transitions:
       if not isinstance(trans, LexTrans): raise Lexer.DefinitionError(f'expected `LexTrans`; received {trans!r}')
       for base in trans.bases:

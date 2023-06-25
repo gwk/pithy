@@ -8,13 +8,13 @@ from shlex import quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from time import time as _now
-from typing import AnyStr, BinaryIO, cast, Dict, IO, Iterator, NoReturn, Optional, Sequence, Union
+from typing import AnyStr, BinaryIO, cast, IO, Iterator, NoReturn, Optional, Sequence, Union
 
 from .alarm import Alarm, Timeout
 
 
 Cmd = Union[str, Sequence[str]]
-Env = Dict[str, str]
+Env = dict[str, str]
 Input = Union[None, int, str, bytes, BinaryIO] # int primarily for DEVNULL; could also be raw file descriptor?
 File = Union[int, IO]
 ExitOpt = Union[bool, int, str]

@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 from dataclasses import is_dataclass
-from typing import Any, Callable, Counter, Dict, get_args, get_origin, Optional, Protocol, runtime_checkable, TypeVar, Union
+from typing import Any, Callable, Counter, get_args, get_origin, Optional, Protocol, runtime_checkable, TypeVar, Union
 
 
 _T = TypeVar('_T')
@@ -70,7 +70,7 @@ def _is_a_Union(v:Any, args:_Args) -> bool:
   return any(is_a(v, Member) for Member in args)
 
 
-_generic_type_predicates: Dict[Any, Callable[[Any, _Args], bool]] = {
+_generic_type_predicates: dict[Any, Callable[[Any, _Args], bool]] = {
   tuple: _is_a_Tuple,
   Union: _is_a_Union,
 }

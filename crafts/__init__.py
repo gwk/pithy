@@ -3,7 +3,7 @@
 import os
 import os.path
 import re
-from typing import Any, cast, Dict, NamedTuple
+from typing import Any, cast, NamedTuple
 
 from pithy.eon import parse_eon_or_fail
 from pithy.fs import find_project_dir, list_dir, path_for_cmd, real_path
@@ -25,12 +25,12 @@ class CraftConfig(NamedTuple):
   product_identifier: str|None = None
   product_name: str|None = None
   project_dir: str = '' # Derived.
-  resources: Dict[str, str] = {}
+  resources: dict[str, str] = {}
   sources: str = 'src'
   swift_path: str = '' # Derived.
   swift_version: str = None # type: ignore[assignment] # TODO
   target_macOS: str = None # type: ignore[assignment] # TODO
-  ts_modules: Dict[str, str] = {}
+  ts_modules: dict[str, str] = {}
   xcode_dev_dir: str = '' # Derived.
   xcode_toolchain_dir: str = '' # Derived.
 
@@ -93,18 +93,18 @@ def load_craft_config() -> CraftConfig:
   return c
 
 
-def parse_craft(path:str) -> Dict[str,Any]:
+def parse_craft(path:str) -> dict[str,Any]:
   try: f = open(path)
   except FileNotFoundError: exit(f'craft error: craft file does not exist: {path!r}')
   if path_ext(path) != '.eon': exit('craft error: craft file must be a `.eon` file.') # TODO: relax this restriction.
   with f: text = f.read()
-  d = parse_eon_or_fail(path=path, text=text, to=Dict[str,Any])
+  d = parse_eon_or_fail(path=path, text=text, to=dict[str,Any])
   for k, v in d.items():
     if k in craft_nonconfigurable_keys: exit(f'craft error: key is not configurable: {k!r}')
     if k not in craft_configurable_keys: exit(f'craft error: invalid craft config key: {k!r}')
   missing_keys = craft_required_keys.difference(d)
   if missing_keys: exit('\n  '.join([f'craft error: missing required keys in {path!r}:', *sorted(missing_keys)]))
-  return cast(Dict[str,Any], d)
+  return cast(dict[str,Any], d)
 
 
 craft_required_keys = frozenset({

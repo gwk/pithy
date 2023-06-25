@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Dict, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, Set, TypeVar, Union
+from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, Set, TypeVar, Union
 
 
 _K = TypeVar('_K', bound=Hashable)
@@ -46,7 +46,7 @@ def idemput(d:MutableMapping[_K,_V], k:_K, v:_V) -> MutableMapping[_K,_V]:
   return d
 
 
-def dict_list_append(d: Dict[_K, list[_V]], k: _K, v: _V) -> Dict[_K, list[_V]]:
+def dict_list_append(d: dict[_K, list[_V]], k: _K, v: _V) -> dict[_K, list[_V]]:
   '''
   Append a value to the list stored under the specified key in the dictionary.
   If the key is not present, an empty list is first inserted.
@@ -57,7 +57,7 @@ def dict_list_append(d: Dict[_K, list[_V]], k: _K, v: _V) -> Dict[_K, list[_V]]:
   return d
 
 
-def dict_list_append_items(d:Dict[_K, list[_V]], items:Iterable[tuple[_K,_V]]) -> Dict[_K, list[_V]]:
+def dict_list_append_items(d:dict[_K, list[_V]], items:Iterable[tuple[_K,_V]]) -> dict[_K, list[_V]]:
   '''
   Append each value in the iterable to the list stored under the specified key in the dictionary.
   If the key is not present, an empty list is first inserted.
@@ -68,7 +68,7 @@ def dict_list_append_items(d:Dict[_K, list[_V]], items:Iterable[tuple[_K,_V]]) -
   return d
 
 
-def dict_list_extend(d: Dict[_K, list[_V]], k: _K, v: Iterable[_V]) -> Dict[_K, list[_V]]:
+def dict_list_extend(d: dict[_K, list[_V]], k: _K, v: Iterable[_V]) -> dict[_K, list[_V]]:
   '''
   Extend a value on the list stored under the specified key in the dictionary.
   If the key is not present, an empty list is first inserted.
@@ -114,9 +114,9 @@ def dict_update_sets(d:MutableMapping[_K,_S], update:Union[Mapping[_K, _I],Itera
   return d
 
 
-def dict_fan_by_key_pred(d: Mapping[_K, _V], pred: Callable[[_K], bool]) -> tuple[Dict[_K, _V], Dict[_K, _V]]:
+def dict_fan_by_key_pred(d: Mapping[_K, _V], pred: Callable[[_K], bool]) -> tuple[dict[_K, _V], dict[_K, _V]]:
   'Fan out `d` into a pair of dictionaries by applying `pred` to each key in `d`.'
-  fan: tuple[Dict[_K, _V], Dict[_K, _V]] = ({}, {})
+  fan: tuple[dict[_K, _V], dict[_K, _V]] = ({}, {})
   for k, v in d.items():
     if pred(k):
       fan[1][k] = v
@@ -159,9 +159,9 @@ def dict_remap_keys_mut(d:dict[_K,_V], remap:Union[Mapping[_K,_K],Iterable[tuple
 class RemapKeyError(Exception): pass
 
 
-class DefaultByKeyDict(Dict[_K,_V]):
+class DefaultByKeyDict(dict[_K,_V]):
   '''
-  Subclass of Dict, similar to DefaultDict.
+  Subclass of dict, similar to DefaultDict.
   When a key is missing, default_factory is called with the key as the sole argument.
   '''
   def __init__(self, default_factory:Callable[[_K], _V], *args, **kwargs):

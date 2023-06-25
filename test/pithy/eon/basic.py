@@ -54,7 +54,7 @@ utest([[1]], parse, '- 1\n')
 utest([[1]], parse, '-\n  1\n')
 utest([[1, 2]], parse, '- 1\n  2\n')
 
-# Dict inline / multiline combinations.
+# dict inline / multiline combinations.
 utest([{1:2}], parse, '~ 1:2\n')
 utest([{1:2}], parse, '~\n  1:2\n')
 utest([{1:2, 3:4}], parse, '~ 1:2\n  3:4\n')

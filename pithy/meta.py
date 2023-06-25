@@ -3,7 +3,7 @@
 import inspect
 from importlib.machinery import ModuleSpec
 from inspect import FrameInfo
-from typing import Any, Callable, cast, Dict, Iterable, Mapping, Optional, TypeVar
+from typing import Any, Callable, cast, Iterable, Mapping, Optional, TypeVar
 
 
 class MetaprogrammingError(Exception): pass
@@ -53,7 +53,7 @@ def dispatcher_for_defs(*, prefix:str, default: Callable|None=None, base:Mapping
 
   _exclude = {exclude} if isinstance(exclude, str) else set(exclude)
 
-  bindings:Dict[str,Callable] = dict(base)
+  bindings:dict[str,Callable] = dict(base)
   for name, fn in bindings_matching(prefix=prefix, frame='<module>', strip_prefix=True):
     if (name in bindings) or (name in _exclude) or (not callable(fn)): continue
     bindings[name] = fn

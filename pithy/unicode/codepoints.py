@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Dict, Iterable, Set
+from typing import Iterable, Set
 
 from . import CodeRange
 
@@ -42,7 +42,7 @@ def code_desc(c:int) -> str:
   try: return code_descriptions[c]
   except KeyError: return f'\\{c:02x}/'
 
-code_descriptions:Dict[int, str] = {
+code_descriptions:dict[int, str] = {
   -1: 'Ø',
   ord('\a'): '\\a',
   ord('\b'): '\\b',

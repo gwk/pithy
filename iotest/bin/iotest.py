@@ -6,7 +6,7 @@ import shlex
 import time
 from ast import literal_eval
 from sys import stderr, stdout
-from typing import DefaultDict, Dict, Iterable, Optional, Pattern, Set
+from typing import DefaultDict, Iterable, Optional, Pattern, Set
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
@@ -70,7 +70,7 @@ def main() -> None:
     show_times=(not args.no_times),
     top_paths=tuple(args.paths))
 
-  cases_dict: Dict[str, Case] = {} # keyed by actual path stem, as opposed to logical contraction of 'd/_' to 'd'.
+  cases_dict: dict[str, Case] = {} # keyed by actual path stem, as opposed to logical contraction of 'd/_' to 'd'.
 
   for raw_path in ctx.top_paths:
     path = norm_path(raw_path)
@@ -145,13 +145,13 @@ def collect_proto(ctx: Ctx, end_dir_path: str) -> Optional[Case]:
   proto = None
   for dir_path in path_descendants(ctx.proj_dir, abs_path(end_dir_path), include_end=False):
     file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem(name) == '_default']
-    cases_dict: Dict[str, Case] = {}
+    cases_dict: dict[str, Case] = {}
     proto = create_cases(ctx, cases_dict, proto, dir_path, file_paths)
     assert not cases_dict, cases_dict
   return proto
 
 
-def collect_cases(ctx:Ctx, cases_dict:Dict[str, Case], proto: Optional[Case], dir_path: str, specified_name_prefix: Optional[str]) -> None:
+def collect_cases(ctx:Ctx, cases_dict:dict[str, Case], proto: Optional[Case], dir_path: str, specified_name_prefix: Optional[str]) -> None:
   '''
   Recursively find all test cases within the directory tree rooted at `dir_path`,
   and collect them into `cases_dict`.
@@ -182,13 +182,13 @@ def collect_cases(ctx:Ctx, cases_dict:Dict[str, Case], proto: Optional[Case], di
     exit(f'iotest error: argument path does not match any files: {p!r}.')
 
 
-def create_proto_case(ctx:Ctx, proto: Optional[Case], stem: str, config: Dict) -> Optional[Case]:
+def create_proto_case(ctx:Ctx, proto: Optional[Case], stem: str, config: dict) -> Optional[Case]:
   if not config:
     return proto
   return Case(ctx, proto=proto, stem=stem, config=config, par_configs=[], par_stems_used=set())
 
 
-def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Case], dir_path: str, file_paths: list[str]) -> Optional[Case]:
+def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto: Optional[Case], dir_path: str, file_paths: list[str]) -> Optional[Case]:
   '''
   Create Case objects from the paths in the given directory.
   Each case is defined by the collection of file paths that share a common stem (which implies the case name)
@@ -204,7 +204,7 @@ def create_cases(ctx:Ctx, cases_dict:Dict[str, Case], parent_proto: Optional[Cas
   Each case must have one non-parameterized contributing file; otherwise there is no way to infer its existence.
   '''
 
-  configs = DefaultDict[str,Dict](dict)
+  configs = DefaultDict[str,dict](dict)
   val_paths, iot_paths = fan_by_pred(file_paths, pred=lambda p: path_ext(p) == '.iot')
   for path in iot_paths:
     add_iot_configs(configs=configs, path=path)
@@ -246,7 +246,7 @@ def case_stem_for_path(path:str) -> str:
   return stem
 
 
-def add_iot_configs(configs: Dict, path: str) -> None:
+def add_iot_configs(configs: dict, path: str) -> None:
   stem = case_stem_for_path(path)
   if '.' in stem: exit(f"iotest error: .iot name stem cannot contain '.': {stem!r}; path: {path!r}.")
   text = read_from_path(path)
@@ -280,7 +280,7 @@ def add_iot_configs(configs: Dict, path: str) -> None:
     exit(f'iotest error: {stem}: case iot contents is not a dictionary: {path!r}')
 
 
-def add_std_file(config: Dict, path: str) -> None:
+def add_std_file(config: dict, path: str) -> None:
   'Add a standard file (i.e. `.in`, `.out`, `.err`).'
   ext = path_ext(path)
   if ext in config: # TODO: this check should occur in add_iot_configs.
@@ -441,7 +441,7 @@ def run_case(ctx:Ctx, coverage_cases:list[Case], case: Case) -> bool:
   return status and exps_ok
 
 
-def run_cmd(ctx:Ctx, coverage_cases: Optional[list[Case]], case: Case, label: str, cmd: list[str], cwd: str, env: Dict[str, str], in_path: str, out_path: str, err_path: str, timeout: int, exp_code: int) -> Optional[bool]:
+def run_cmd(ctx:Ctx, coverage_cases: Optional[list[Case]], case: Case, label: str, cmd: list[str], cwd: str, env: dict[str, str], in_path: str, out_path: str, err_path: str, timeout: int, exp_code: int) -> Optional[bool]:
   'returns True for success, False for failure, and None for abort.'
   cmd_head = cmd[0]
   #cmd_path = path_rel_to_current_or_abs(cmd_head) # For diagnostics.

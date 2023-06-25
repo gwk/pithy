@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from difflib import SequenceMatcher
-from typing import Any, Callable, Dict, Sequence, TypeVar
+from typing import Any, Callable, Sequence, TypeVar
 
 from .patience import align_patience, Alignment, Diff
 
@@ -91,7 +91,7 @@ def align_difflib(seq_a:Sequence[_T], seq_b:Sequence[_T], isjunk:Callable[[str],
   return [(i_a+j, i_b+j) for (i_a, i_b, l) in blocks for j in range(l)]
 
 
-alignment_fns: Dict[str, Callable[..., Alignment]] = {
+alignment_fns: dict[str, Callable[..., Alignment]] = {
   'difflib': align_difflib,
   'patience': align_patience,
 }

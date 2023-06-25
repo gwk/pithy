@@ -12,7 +12,7 @@ from os.path import relpath as _rel_path
 from sys import stderr as _stderr
 from traceback import format_exc, format_exception as _format_exception
 from types import TracebackType
-from typing import Any, Callable, Dict, Iterable, Type, TypeVar
+from typing import Any, Callable, Iterable, Type, TypeVar
 
 
 __all__ = [
@@ -212,7 +212,7 @@ def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit=Fal
 
 
 def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:Any=None, subj:Any=None,
- args:tuple[Any,...]=(), kwargs:Dict[str,Any]={}) -> None:
+ args:tuple[Any,...]=(), kwargs:dict[str,Any]={}) -> None:
 
   global _utest_failure_count
   assert subj is not None

@@ -26,7 +26,7 @@ from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
-from typing import Any, Callable, cast, Dict, FrozenSet, Iterable, Iterator, NoReturn, Optional, Type, TypeVar, Union
+from typing import Any, Callable, cast, FrozenSet, Iterable, Iterator, NoReturn, Optional, Type, TypeVar, Union
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 
@@ -500,7 +500,7 @@ class Choice(Rule):
     self.drop = frozenset(iter_str(drop))
     if transform is None: raise ValueError('Choice requires an explicit transform')
     self.transform = transform
-    self.head_table:Dict[TokenKind,Rule] = {}
+    self.head_table:dict[TokenKind,Rule] = {}
 
 
   def head_subs(self) -> Iterable[Rule]: return self.subs
@@ -692,8 +692,8 @@ class Precedence(Rule):
     self.drop = frozenset(iter_str(drop))
     self.transform = transform
     self.groups = groups
-    self.head_table:Dict[TokenKind,Rule] = {}
-    self.tail_table:Dict[TokenKind,tuple[Group,Operator]] = {}
+    self.head_table:dict[TokenKind,Rule] = {}
+    self.tail_table:dict[TokenKind,tuple[Group,Operator]] = {}
 
 
   def token_kinds(self) -> Iterable[str]:
@@ -802,7 +802,7 @@ class Parser:
 
 
   def __init__(self, lexer:Lexer, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
-   literals:Iterable[TokenKind]=(), rules:Dict[RuleName,Rule], simplify:bool=False, atom_transform:AtomTransform|None=None,
+   literals:Iterable[TokenKind]=(), rules:dict[RuleName,Rule], simplify:bool=False, atom_transform:AtomTransform|None=None,
    transforms:dict[RuleName,Callable]|None=None):
     self.lexer = lexer
     self.preprocessor = preprocessor
@@ -813,7 +813,7 @@ class Parser:
     rules = None # type: ignore[assignment] # Forget the original dict. This protects from misuse in the code below.
 
     self.module_name = caller_module_name(1) # Get the calling module name to use for synthesized NamedTuple types.
-    self._struct_types:Dict[str,Type] = {}
+    self._struct_types:dict[str,Type] = {}
 
     self.simplify = simplify
     self.atom_transform = atom_transform

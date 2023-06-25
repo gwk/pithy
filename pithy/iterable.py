@@ -5,7 +5,7 @@ from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
-from typing import Any, Callable, Dict, FrozenSet, Hashable, Iterable, Iterator, Mapping, Optional, Set, TypeVar, Union
+from typing import Any, Callable, FrozenSet, Hashable, Iterable, Iterator, Mapping, Optional, Set, TypeVar, Union
 
 from .types import Comparable
 
@@ -248,12 +248,12 @@ def fan_by_pred(iterable: Iterable[_T], pred: Callable[[_T], bool]) -> tuple[lis
   return fan
 
 
-def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> Dict[_K, list[_T]]:
+def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> dict[_K, list[_T]]:
   '''
   Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element.
   returns a dictionary of lists.
   '''
-  groups: Dict[_K, list[_T]] = {}
+  groups: dict[_K, list[_T]] = {}
   for el in iterable:
     k = key(el)
     try:
@@ -277,13 +277,13 @@ def fan_items(iterable:Iterable[tuple[_K,_V]]) -> dict[_K,list[_V]]:
   return groups
 
 
-def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], transform:Callable[[_T],_R]) -> Dict[_K, list[_R]]:
+def fan_by_key_fn_and_transform(iterable:Iterable[_T], key:Callable[[_T],_K], transform:Callable[[_T],_R]) -> dict[_K, list[_R]]:
   '''
   Fan out `iterable` into a dictionary by applying a function `key` that returns a group key for each element,
   applying `transform` to each element.
   returns a dictionary of lists of transformed elements.
   '''
-  groups: Dict[_K, list[_R]] = {}
+  groups: dict[_K, list[_R]] = {}
   for el in iterable:
     k = key(el)
     try:
@@ -480,7 +480,7 @@ def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[tuple[_
 
 
 _PrefixTreeTerminator = TypeVar('_PrefixTreeTerminator', bound=Hashable)
-PrefixTree = Dict[Union[_K, _PrefixTreeTerminator], Optional[Dict]] # mypy cannot handle recursive types.
+PrefixTree = dict[Union[_K, _PrefixTreeTerminator], Optional[dict]] # mypy cannot handle recursive types.
 
 
 def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator|None=None, update:PrefixTree|None=None) -> PrefixTree:

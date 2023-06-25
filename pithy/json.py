@@ -6,21 +6,21 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, IO, Iterable, Optional, Sequence, TextIO, Union
+from typing import AbstractSet, Any, BinaryIO, Callable, FrozenSet, IO, Iterable, Optional, Sequence, TextIO, Union
 
 from .encode import all_slots, encode_obj, EncodeObj
 
 
 JsonAny = Any # TODO: remove this once recursive types work.
 JsonList = list[JsonAny]
-JsonDict = Dict[str, JsonAny]
+JsonDict = dict[str, JsonAny]
 Json = Union[None, int, float, str, bool, JsonList, JsonDict]
 
 JsonText = Union[str,bytes,bytearray]
 
 class JSONEmptyDocument(JSONDecodeError): pass
 
-ObjDecodeFn = Callable[[Dict],Any]
+ObjDecodeFn = Callable[[dict],Any]
 ObjDecodeHook = Union[type, tuple[AbstractSet[str],Union[type,ObjDecodeFn]]]
 ObjDecodeHooks = Sequence[ObjDecodeHook]
 
@@ -143,14 +143,14 @@ def load_jsons(file:TextIO, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=())
   return parse_jsons(file.read(), hook=hook, hooks=hooks)
 
 
-def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Optional[Callable[[Dict[Any,Any]],Any]]:
+def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Optional[Callable[[dict[Any,Any]],Any]]:
   '''
   Provide a hook function to deserialize JSON into the provided types.
   '''
   if not hooks: return hook
   dflt_hook:ObjDecodeFn = lambda d: d if hook is None else hook
 
-  type_map:Dict[FrozenSet[str],Any] = {}
+  type_map:dict[FrozenSet[str],Any] = {}
   for h in hooks:
 
     fn:ObjDecodeFn
@@ -169,7 +169,7 @@ def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Optional[Callable[[
       raise ValueError(f'conflicting type hooks for key set {keys}:\n  {type_map[keys]}\n  {fn}')
     type_map[keys] = fn
 
-  def types_object_hook(d:Dict) -> Any:
+  def types_object_hook(d:dict) -> Any:
     keys = frozenset(d.keys())
     try: record_type = type_map[keys]
     except KeyError: return dflt_hook(d)

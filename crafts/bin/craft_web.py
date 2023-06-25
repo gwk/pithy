@@ -7,7 +7,6 @@
 
 import re
 from sys import argv
-from typing import Dict
 
 from crafts import load_craft_config
 from pithy.ansi import RST, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
@@ -62,7 +61,7 @@ def main() -> None:
       make_dirs(path_dir(dst_path))
       copy_path(res_path, dst_path)
 
-def transpile_js(ts_path:str, dst_path:str, modules_map:Dict[str,str]) -> None:
+def transpile_js(ts_path:str, dst_path:str, modules_map:dict[str,str]) -> None:
   lines = list(open(ts_path))
   for line_idx, line in enumerate(lines):
     m = import_regex.fullmatch(line)

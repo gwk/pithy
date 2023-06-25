@@ -1,14 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from sys import stdout
-from typing import Any, BinaryIO, Callable, Dict
+from typing import Any, BinaryIO, Callable
 
 from msgpack import dump as _dump, ExtraData, FormatError, load as _load, OutOfData, StackError, Unpacker # type: ignore[import]
 
 from .encode import EncodeObj, encode_obj
 
 
-ObjectHook = Callable[[Dict[str,Any]], Any]
+ObjectHook = Callable[[dict[str,Any]], Any]
 ObjectPairsHook = Callable[[list[tuple[str,Any]]], Any]
 ListHook = Callable[[list[Any]], Any]
 ExtHook = Any # TODO

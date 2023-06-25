@@ -3,7 +3,7 @@
 import re
 from html import escape as html_escape
 from os import environ
-from typing import Any, Callable, cast, DefaultDict, Dict, Iterable, Iterator, Match, NoReturn, Optional, TextIO, Union
+from typing import Any, Callable, cast, DefaultDict, Iterable, Iterator, Match, NoReturn, Optional, TextIO, Union
 
 import pygments
 import pygments.lexers
@@ -105,7 +105,7 @@ class CodeSpan(Span):
 
 
 class AttrSpan(Span):
-  def __init__(self, text: str, attrs: Dict[str, str]):
+  def __init__(self, text: str, attrs: dict[str, str]):
     super().__init__(text=text)
     self.attrs = attrs
 
@@ -119,7 +119,7 @@ class BoldSpan(AttrSpan):
 
 
 class EmbedSpan(AttrSpan):
-  def __init__(self, text: str, attrs: Dict[str, str], path: str, contents: tuple[str, ...]):
+  def __init__(self, text: str, attrs: dict[str, str], path: str, contents: tuple[str, ...]):
     super().__init__(text=text, attrs=attrs)
     self.path = path
     self.contents = contents
@@ -141,7 +141,7 @@ class EmbedSpan(AttrSpan):
 
 class GenericSpan(AttrSpan):
 
-  def __init__(self, text:str, attrs:Dict[str,str], tag:str):
+  def __init__(self, text:str, attrs:dict[str,str], tag:str):
     super().__init__(text=text, attrs=attrs)
     self.tag = tag
 
@@ -155,7 +155,7 @@ class ImgSpan(AttrSpan):
 
 
 class LinkSpan(AttrSpan):
-  def __init__(self, text: str, attrs: Dict[str, str], tag: str, words: list[str], ctx: 'Ctx', src: SrcLine):
+  def __init__(self, text: str, attrs: dict[str, str], tag: str, words: list[str], ctx: 'Ctx', src: SrcLine):
     super().__init__(text=text, attrs=attrs)
     self.tag = tag
     if not words:
@@ -301,7 +301,7 @@ class LangBlock(LeafBlock):
     super().__init__()
     self.lang = ''
     self.lines:list[str] = []
-    self.attrs:Dict[str,str] = {}
+    self.attrs:dict[str,str] = {}
 
   def finish(self, ctx: 'Ctx') -> None:
     lang_src = self.src_lines[0]
@@ -724,7 +724,7 @@ def parse_spans(ctx: Ctx, src: SrcLine, text: str) -> Spans:
   return tuple(spans)
 
 
-def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> tuple[str, Dict[str,str], list[str]]:
+def parse_tag_attrs_body(ctx:Ctx, src:SrcLine, text:str) -> tuple[str, dict[str,str], list[str]]:
   tag, colon, post_tag_text = text.lstrip().partition(':')
   if colon is None: ctx.error(src, f'missing colon after tag: {text!r}')
 
@@ -816,7 +816,7 @@ span_re = re.compile('|'.join(p for p, _ in span_pairs))
 # Embed.
 
 
-def embed(ctx: Ctx, src: SrcLine, text: str, attrs: Dict[str, str]) -> Span:
+def embed(ctx: Ctx, src: SrcLine, text: str, attrs: dict[str, str]) -> Span:
   'convert an `embed` span into html.'
   words = text.split()
   dep = words[0]
@@ -843,12 +843,12 @@ def embed(ctx: Ctx, src: SrcLine, text: str, attrs: Dict[str, str]) -> Span:
   return EmbedSpan(text=text, attrs=attrs, path=path, contents=contents)
 
 
-def embed_css(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
+def embed_css(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   css = f.read()
   return [f'<style type="text/css">{html_esc(css)}</style>']
 
 
-def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
+def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   from csv import reader
   csv_reader = reader(f)
   it = iter(csv_reader)
@@ -869,7 +869,7 @@ def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,s
   return lines
 
 
-def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> Iterator[str]:
+def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> Iterator[str]:
   lines = list(f)
   first = lines[0] if lines else ''
   lexer = pygments.lexers.guess_lexer_for_filename(f.name, first)
@@ -886,13 +886,13 @@ def render_token(ctx: Ctx, kind: pygments.token._TokenType, text: str) -> str:
   return f'<span class="{class_}">{html_esc(text)}</span>'
 
 
-def embed_direct(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
+def embed_direct(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   return list(filter(None, (xml_processing_instruction_re.sub('', line.rstrip()) for line in f)))
 
 xml_processing_instruction_re = re.compile(r'<\?[^>]*>')
 
 
-def embed_html(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
+def embed_html(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   lines = list(f)
   head = ''
   for head in lines:
@@ -911,11 +911,11 @@ html_doc_re = re.compile(r'''(?xi)
 ''')
 
 
-def embed_img(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
+def embed_img(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   return [f'<img src={html_esc(f.name)}>']
 
 
-def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
+def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   data = load_json(f)
   for i, arg in enumerate(args):
     acc = '.'.join(args[:i+1])
@@ -932,7 +932,7 @@ def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:list[str], attrs:Dict[str,st
   return [str(data)]
 
 
-def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,str]) -> list[str]:
+def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   embed_ctx = Ctx(
     src_path=f.name,
     project_dir=ctx.project_dir,
@@ -944,9 +944,9 @@ def embed_wu(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:Dict[str,st
   return list(embed_ctx.emit_body(depth=0))
 
 
-_EmbedFn = Callable[[Ctx, SrcLine, TextIO, list[str], Dict[str,str]], Iterable[str]]
+_EmbedFn = Callable[[Ctx, SrcLine, TextIO, list[str], dict[str,str]], Iterable[str]]
 
-embed_dispatch: Dict[str, _EmbedFn] = {
+embed_dispatch: dict[str, _EmbedFn] = {
   '.css'  : embed_css,
   '.csv'  : embed_csv,
   '.json' : embed_json,
@@ -964,13 +964,13 @@ _add_embed(embed_img, '.gif', '.jpeg', '.jpg', '.png')
 sym_re = re.compile(r'[-_\w]+')
 
 
-def attrs_bool(attrs: Dict[str, str], key: str) -> bool:
+def attrs_bool(attrs: dict[str, str], key: str) -> bool:
   return attrs.get(key) in {'true', 'yes'}
 
 
 # HTML output.
 
-def fmt_attrs(attrs:Dict[str,str]) -> str:
+def fmt_attrs(attrs:dict[str,str]) -> str:
   return ''.join(f' {html_esc_attr(attr_subs.get(k, k))}="{html_esc_attr(v)}"' for k, v in attrs.items())
 
 attr_subs = {

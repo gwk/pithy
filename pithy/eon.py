@@ -9,8 +9,8 @@ import re
 from collections.abc import Mapping
 from functools import singledispatch
 from inspect import Parameter, signature
-from typing import (Any, Callable, Dict, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, Optional,
-  Type, TypeVar, Union)
+from typing import (Any, Callable, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, Optional, Type,
+  TypeVar, Union)
 
 from tolkien import HasSlc, slc_str, Source, Token
 
@@ -135,7 +135,7 @@ def convert_eon_str(syntax:EonStr, source:Source, to:Type[_T]) -> _T:
 
 _bools = [('false', False), ('no', False), ('true', True), ('yes', True)]
 
-_bool_vals:Dict[str,bool] = { kx : v
+_bool_vals:dict[str,bool] = { kx : v
   for k, v in _bools
     for kx in [k, k.capitalize(), k.upper(), k[0], k[0].upper()] }
 
@@ -222,7 +222,7 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
     except Exception as e:
       raise ConversionError(source, syntax, f'expected {_fmt_type(to)}; received dict.\n{_fmt_exc(e)}') from e
   else:
-    args:Dict[str,Any] = {}
+    args:dict[str,Any] = {}
     try:
       for sk, sv in syntax.items:
         k:str = convert_eon(sk, source, str)
@@ -240,7 +240,7 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
 
 
 @memoize
-def _dict_type_info(to:Type) -> tuple[bool,type,Any,Any,Dict[str,Any]]:
+def _dict_type_info(to:Type) -> tuple[bool,type,Any,Any,dict[str,Any]]:
   'Returns (is_mapping, rtt, key_type, val_type, parameters).'
   if to in (Any, object): return (True, dict, Any, Any, {})
 

@@ -100,7 +100,7 @@ def _(shape:MapShape, name:str) -> None:
   v = shape.value
   kt = shape_type_names_to_py_types[k.type_name]
   vt = shape_type_names_to_py_types[v.type_name]
-  outZ(f'  {name}:Dict[{kt.__name__}, {vt.__name__}]')
+  outZ(f'  {name}:dict[{kt.__name__}, {vt.__name__}]')
 
 @handle_input.register
 def _(shape:ListShape, name:str) -> None:
@@ -131,7 +131,7 @@ def _(shape:MapShape, name:str) -> None:
   v = shape.value
   kt = shape_type_names_to_py_types[k.type_name]
   vt = shape_type_names_to_py_types[v.type_name]
-  outZ(f'  {name!r}:Dict[{kt.__name__}, {vt.__name__}]')
+  outZ(f'  {name!r}:dict[{kt.__name__}, {vt.__name__}]')
 
 @handle_output.register
 def _(shape:ListShape, name:str) -> None:
