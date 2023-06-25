@@ -9,7 +9,7 @@ from html import escape as _escape
 from io import BytesIO, StringIO
 from itertools import chain
 from os import PathLike
-from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, TextIO, Type, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, TextIO, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
@@ -110,7 +110,7 @@ def html_id_for(title:str) -> str:
 html_id_invalid_re = re.compile(r'[^-.\w]+')
 
 
-def _tag(Subclass:Type[_Mu]) -> Type[_Mu]:
+def _tag(Subclass:type[_Mu]) -> type[_Mu]:
   'Decorator for associating a concrete subclass with the lowercase tag matching its name.'
   assert issubclass(Subclass, Mu)
   Subclass.tag = Subclass.__name__.lower()
@@ -763,7 +763,7 @@ class H5(Heading):
 class H6(Heading):
   'H6 heading.'
 
-_heading_classes:list[Type[Heading]] = [H1, H2, H3, H4, H5, H6]
+_heading_classes:list[type[Heading]] = [H1, H2, H3, H4, H5, H6]
 
 
 @_tag

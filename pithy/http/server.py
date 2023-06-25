@@ -23,7 +23,7 @@ from socket import socket as Socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info, stderr
 from traceback import print_exception
-from typing import cast, IO, TextIO, Type
+from typing import cast, IO, TextIO
 from urllib.parse import SplitResult as Url, urlsplit as url_split
 
 from ..web import Request, Response, ResponseError
@@ -51,7 +51,7 @@ class HttpServer(ThreadingTCPServer):
   allow_reuse_address = True # See cpython/Lib/socketserver.py.
   #^ Controls whether `self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)` is called.
 
-  unrecoverable_exception_types:tuple[Type,...] = (
+  unrecoverable_exception_types:tuple[type,...] = (
     AttributeError,
     ImportError,
     MemoryError,

@@ -12,7 +12,7 @@ from os.path import relpath as _rel_path
 from sys import stderr as _stderr
 from traceback import format_exc, format_exception as _format_exception
 from types import TracebackType
-from typing import Any, Callable, Iterable, Type, TypeVar
+from typing import Any, Callable, Iterable, TypeVar
 
 
 __all__ = [

@@ -3,7 +3,7 @@
 import re
 from functools import singledispatch
 from inspect import Parameter, signature
-from typing import Any, Callable, get_args as get_type_args, get_origin, get_type_hints, Mapping, Type, TypeVar
+from typing import Any, Callable, get_args as get_type_args, get_origin, get_type_hints, Mapping, TypeVar
 
 from tolkien import Source, Token
 
@@ -16,13 +16,13 @@ _T = TypeVar('_T')
 
 
 @singledispatch
-def convert_eon(syntax:EonSyntax, source:Source, to:Type[_T]) -> _T:
+def convert_eon(syntax:EonSyntax, source:Source, to:type[_T]) -> _T:
   'Convert eon AST to a generic data value.'
   raise NotImplementedError(f'unimplemented syntax type: {syntax}')
 
 
 @convert_eon.register
-def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
+def convert_eon_token(syntax:Token, source:Source, to:type[_T]) -> _T:
   text = source[syntax]
   if to is str: return text
   if to is bool: return _bool_vals[text]
@@ -38,7 +38,7 @@ def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
 
 
 @convert_eon.register
-def convert_eon_str(syntax:EonStr, source:Source, to:Type[_T]) -> _T:
+def convert_eon_str(syntax:EonStr, source:Source, to:type[_T]) -> _T:
   if to not in (str, Any, object):
     raise ConversionError(source, syntax, f'expected {to}; received {syntax.token.kind}.')
   return syntax.value(source) # type: ignore
@@ -52,7 +52,7 @@ _bool_vals:dict[str,bool] = { kx : v
 
 
 @convert_eon.register
-def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
+def convert_eon_list(syntax:EonList, source:Source, to:type[_T]) -> _T:
   converter_fn = _list_converter_fn(to)
   return converter_fn(syntax, source)
 
@@ -60,7 +60,7 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
 
 
 @memoize
-def _list_converter_fn(to:Type) -> Callable[[EonList,Source],Any]:
+def _list_converter_fn(to:type) -> Callable[[EonList,Source],Any]:
   'Returns the memoized converter function for the argument type.'
 
   if to in (Any, object, list): return convert_eon_to_plain_list
@@ -82,12 +82,12 @@ def _list_converter_fn(to:Type) -> Callable[[EonList,Source],Any]:
   el_type = type_args[0] if type_args else Any
   return (rtt, el_type, None, True)
 
-def _list_to_seq_converter_fn(runtime_type:Type, el_type:Type) -> Callable[[EonList,Source],Any]:
+def _list_to_seq_converter_fn(runtime_type:type, el_type:type) -> Callable[[EonList,Source],Any]:
   def convert_eon_to_seq(syntax:EonList, source:Source) -> Any:
     return runtime_type(convert_eon(el, source, el_type) for el in syntax.els)
   return convert_eon_to_seq
 
-def _list_to_struct_converter_fn(to:Type, rtt:Type) -> Callable[[EonList,Source],Any]:
+def _list_to_struct_converter_fn(to:type, rtt:type) -> Callable[[EonList,Source],Any]:
   ''
 
 def convert_eon_to_plain_list(syntax:EonList, source:Source) -> list:
@@ -126,9 +126,9 @@ def thing():
 
 '''
 @convert_eon.register
-def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
+def convert_eon_dict(syntax:EonDict, source:Source, to:type[_T]) -> _T:
 
-  rtt:Type[_T]
+  rtt:type[_T]
   try: is_mapping, rtt, key_type, val_type, pars = _dict_type_info(to)
   except _SignatureError as e:
     msg = e.args[0]
@@ -161,7 +161,7 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
 '''
 
 @memoize
-def _dict_type_info(to:Type) -> tuple[bool,type,Any,Any,dict[str,Any]]:
+def _dict_type_info(to:type) -> tuple[bool,type,Any,Any,dict[str,Any]]:
   'Returns (is_mapping, rtt, key_type, val_type, parameters).'
   if to in (Any, object): return (True, dict, Any, Any, {})
 

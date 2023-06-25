@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Type
+from typing import Any
 
 from pithy.eon import parse_eon_or_fail
 from utest import utest
 
 
-def parse(text:str, to:Type) -> Any:
+def parse(text:str, to:type) -> Any:
   return parse_eon_or_fail(path='<test>', text=text, to=to)
 
 

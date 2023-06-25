@@ -9,7 +9,7 @@ from collections import Counter
 from functools import wraps
 from inspect import get_annotations
 from itertools import chain
-from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, Type, TypeVar
+from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, TypeVar
 from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -185,7 +185,7 @@ class Mu:
 
 
   @classmethod
-  def from_raw(cls:Type[_Mu], raw:dict) -> _Mu:
+  def from_raw(cls:type[_Mu], raw:dict) -> _Mu:
     'Create a Mu object (or possibly a subclass instance chosen by tag) from a raw data dictionary.'
     tag = raw['tag']
     attrs = raw['attrs']
@@ -207,7 +207,7 @@ class Mu:
 
 
   @classmethod
-  def from_etree(cls:Type[_Mu], el:Element) -> _Mu:
+  def from_etree(cls:type[_Mu], el:Element) -> _Mu:
     '''
     Create a Mu object (possibly subclass by tag) from a standard library element tree.
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
@@ -449,7 +449,7 @@ class Mu:
   # Picking and finding.
 
   @overload
-  def pick_all(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Mu]: ...
+  def pick_all(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Mu]: ...
 
   @overload
   def pick_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Mu']: ...
@@ -461,7 +461,7 @@ class Mu:
 
 
   @overload
-  def find_all(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Mu]: ...
+  def find_all(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Mu]: ...
 
   @overload
   def find_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Mu']: ...
@@ -497,7 +497,7 @@ class Mu:
 
 
   @overload
-  def pick_first(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def pick_first(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
 
   @overload
   def pick_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
@@ -510,7 +510,7 @@ class Mu:
 
 
   @overload
-  def find_first(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def find_first(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
 
   @overload
   def find_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
@@ -522,7 +522,7 @@ class Mu:
 
 
   @overload
-  def pick(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def pick(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
 
   @overload
   def pick(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
@@ -545,7 +545,7 @@ class Mu:
 
 
   @overload
-  def find(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def find(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
 
   @overload
   def find(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
@@ -570,7 +570,7 @@ class Mu:
   # Traversal.
 
   @overload
-  def next(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def next(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
 
   @overload
   def next(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
@@ -590,7 +590,7 @@ class Mu:
 
 
   @overload
-  def prev(self, type_or_tag:Type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def prev(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
 
   @overload
   def prev(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
@@ -828,7 +828,7 @@ def xml_child_summary(child:'MuChild', text_limit:int) -> str:
   return ' ' + repr_lim(text, limit=text_limit)
 
 
-def xml_pred(type_or_tag:str|Type[_Mu]='', *, cl:str='', text:str='', attrs:dict[str,Any]={}) -> MuPred:
+def xml_pred(type_or_tag:str|type[_Mu]='', *, cl:str='', text:str='', attrs:dict[str,Any]={}) -> MuPred:
   'Update _attrs with items from other arguments, then construct a predicate that tests Mu nodes.'
 
   tag_pred:Callable

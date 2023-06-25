@@ -89,7 +89,7 @@ class ConversionError(ParseError):
   error_prefix = 'conversion'
 
 
-def parse_eon(path:str, text:str, to:Type[_T]) -> Any:
+def parse_eon(path:str, text:str, to:type[_T]) -> Any:
   '''
   Parse source text as EON data format.
   '''
@@ -98,19 +98,19 @@ def parse_eon(path:str, text:str, to:Type[_T]) -> Any:
   return convert_eon(syntax, source, to)
 
 
-def parse_eon_or_fail(path:str, text:str, to:Type[_T]) -> Any:
+def parse_eon_or_fail(path:str, text:str, to:type[_T]) -> Any:
   try: return parse_eon(path, text, to)
   except ParseError as e: e.fail()
 
 
 @singledispatch
-def convert_eon(syntax:EonSyntax, source:Source, to:Type[_T]) -> Any: # TODO: this should return _T but mypy doesn't understand.
+def convert_eon(syntax:EonSyntax, source:Source, to:type[_T]) -> Any: # TODO: this should return _T but mypy doesn't understand.
   'Convert eon AST to a generic data value.'
   raise NotImplementedError(f'unimplemented syntax type: {syntax}')
 
 
 @convert_eon.register
-def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
+def convert_eon_token(syntax:Token, source:Source, to:type[_T]) -> _T:
   text = source[syntax]
   if to is str: return text # type: ignore[return-value] # TODO: handle quoted strings.
   if to is bool: return _bool_vals[text] # type: ignore[return-value]
@@ -126,7 +126,7 @@ def convert_eon_token(syntax:Token, source:Source, to:Type[_T]) -> _T:
 
 
 @convert_eon.register
-def convert_eon_str(syntax:EonStr, source:Source, to:Type[_T]) -> _T:
+def convert_eon_str(syntax:EonStr, source:Source, to:type[_T]) -> _T:
   if to not in (str, Any, object):
     raise ConversionError(source, syntax, f'expected {to}; received str?')
   return syntax.value(source) # type: ignore[return-value]
@@ -140,7 +140,7 @@ _bool_vals:dict[str,bool] = { kx : v
 
 
 @convert_eon.register
-def convert_eon_empty(syntax:EonEmpty, source:Source, to:Type[_T]) -> _T:
+def convert_eon_empty(syntax:EonEmpty, source:Source, to:type[_T]) -> _T:
   if to in (Any, object, None): return None # type: ignore[return-value]
   rtt = get_origin(to) or to
   try: return rtt()
@@ -149,7 +149,7 @@ def convert_eon_empty(syntax:EonEmpty, source:Source, to:Type[_T]) -> _T:
 
 
 @convert_eon.register
-def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
+def convert_eon_list(syntax:EonList, source:Source, to:type[_T]) -> _T:
   rtt, el_type, field_types, as_seq = _list_type_info(to)
 
   if field_types is None: # Use single element type.
@@ -181,7 +181,7 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
 
 
 @memoize
-def _list_type_info(to:Type) -> tuple[type,Any,tuple[Any,...]|None,bool]:
+def _list_type_info(to:type) -> tuple[type,Any,tuple[Any,...]|None,bool]:
   'Returns (rtt, el_type, field_types, as_seq).'
   if to in (Any, object): return (list, Any, None, True)
   rtt = get_origin(to) or to
@@ -204,9 +204,9 @@ def _list_type_info(to:Type) -> tuple[type,Any,tuple[Any,...]|None,bool]:
 
 
 @convert_eon.register
-def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
+def convert_eon_dict(syntax:EonDict, source:Source, to:type[_T]) -> _T:
 
-  rtt:Type[_T]
+  rtt:type[_T]
   try: is_mapping, rtt, key_type, val_type, pars = _dict_type_info(to)
   except _SignatureError as e:
     msg = e.args[0]
@@ -239,12 +239,12 @@ def convert_eon_dict(syntax:EonDict, source:Source, to:Type[_T]) -> _T:
 
 
 @memoize
-def _dict_type_info(to:Type) -> tuple[bool,type,Any,Any,dict[str,Any]]:
+def _dict_type_info(to:type) -> tuple[bool,type,Any,Any,dict[str,Any]]:
   'Returns (is_mapping, rtt, key_type, val_type, parameters).'
   if to in (Any, object): return (True, dict, Any, Any, {})
 
   # Determine if `to` is a runtime type, and get the rtt regardless.
-  rtt = get_origin(to) or to
+  rtt:Type = get_origin(to) or to
 
   if issubclass(rtt, Mapping):
     type_args = get_type_args(to)

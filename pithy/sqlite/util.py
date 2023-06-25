@@ -3,7 +3,7 @@
 import re
 from datetime import date, datetime
 from functools import lru_cache
-from typing import Any, get_args, Iterable, Match, NamedTuple, Type
+from typing import Any, get_args, Iterable, Match, NamedTuple
 
 from ..json import render_json
 from .keywords import sqlite_keywords
@@ -62,7 +62,7 @@ def sql_col_placeholders(dataclass:type) -> str:
   return ', '.join(f':{n}' for n in fields_of(dataclass))
 
 
-def sql_col_decls(class_:Type[NamedTuple], primary:str) -> str:
+def sql_col_decls(class_:type[NamedTuple], primary:str) -> str:
   '''
   Given a dataclass or NamedTuple subclass, yield a sequence of SQL column declarations for use in a CREATE TABLE statement.
   '''
