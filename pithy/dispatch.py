@@ -1,8 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import inspect
+from collections import defaultdict
 from functools import wraps
-from typing import Any, Callable, DefaultDict
+from typing import Any, Callable
 
 from .default import Default
 
@@ -11,7 +12,7 @@ class DispatchKeyError(KeyError): pass
 
 
 # module_name -> method_name -> (dispatcher_method, key).
-_keyed_dispatch_registries = DefaultDict[str, dict[str, tuple[Callable, dict[Any, Callable]]]](dict)
+_keyed_dispatch_registries = defaultdict[str, dict[str, tuple[Callable, dict[Any, Callable]]]](dict)
 
 def key_dispatched(key_fn:Callable[[Any], Any]|None=None, *, key:Any=Default._) -> Callable[[Callable], Callable]:
   '''
