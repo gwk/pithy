@@ -1,9 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
+from collections import defaultdict
 from html import escape as html_escape
 from os import environ
-from typing import Any, Callable, cast, DefaultDict, Iterable, Iterator, Match, NoReturn, Optional, TextIO, Union
+from typing import Any, Callable, cast, Iterable, Iterator, Match, NoReturn, Optional, TextIO, Union
 
 import pygments
 import pygments.lexers
@@ -411,7 +412,7 @@ class Ctx:
     self.dependencies: list[str] = []
     self.section_ids: list[str] = [] # accumulated list of all section ids.
     self.paging_ids: list[str] = [] # accumulated list of all paging (level 1 & 2) section ids.
-    self.css = DefaultDict[str, list[str]](list)
+    self.css = defaultdict[str, list[str]](list)
     self.found_target_section = False
     self.title = ''
     self.open_div = False

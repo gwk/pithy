@@ -4,10 +4,11 @@
 # official data is found here: http://www.unicode.org/Public/zipped/9.0.0/UCD.zip
 
 from argparse import ArgumentParser
+from collections import defaultdict
 from itertools import chain
 from os.path import join as path_join
 from sys import stderr
-from typing import DefaultDict, Iterator, NamedTuple
+from typing import Iterator, NamedTuple
 
 from pithy.unicode import coalesce_sorted_ranges
 
@@ -39,7 +40,7 @@ def main() -> None:
     print('  {!r}: {},'.format(name, repr_pair(codes)))
   print('}\n\n')
 
-  category_ranges = DefaultDict[str,list[CodeRange]](list)
+  category_ranges = defaultdict[str,list[CodeRange]](list)
   for codes, (cat,) in parse_rows(categories_path):
     category_ranges[cat].append(codes)
 
@@ -57,7 +58,7 @@ def main() -> None:
   assert len(coalesced_range) == 1 and coalesced_range[0] == (0, 0x110000)
 
 # Generate terminal double width ranges.
-  east_asian_widths_to_codes = DefaultDict[str,list[CodeRange]](list)
+  east_asian_widths_to_codes = defaultdict[str,list[CodeRange]](list)
   double_codes = []
   for codes, (width,) in parse_rows(east_asian_path):
     if width == 'N': continue # this is the default for omitted codes, but also appears often in the table.

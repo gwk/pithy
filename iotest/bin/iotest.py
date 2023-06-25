@@ -5,8 +5,9 @@ import re
 import shlex
 import time
 from ast import literal_eval
+from collections import defaultdict
 from sys import stderr, stdout
-from typing import DefaultDict, Iterable, Optional, Pattern
+from typing import Iterable, Optional, Pattern
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
@@ -204,7 +205,7 @@ def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto: Optional[Cas
   Each case must have one non-parameterized contributing file; otherwise there is no way to infer its existence.
   '''
 
-  configs = DefaultDict[str,dict](dict)
+  configs = defaultdict[str,dict](dict)
   val_paths, iot_paths = fan_by_pred(file_paths, pred=lambda p: path_ext(p) == '.iot')
   for path in iot_paths:
     add_iot_configs(configs=configs, path=path)

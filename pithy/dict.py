@@ -161,7 +161,7 @@ class RemapKeyError(Exception): pass
 
 class DefaultByKeyDict(dict[_K,_V]):
   '''
-  Subclass of dict, similar to DefaultDict.
+  Subclass of dict, similar to defaultdict.
   When a key is missing, default_factory is called with the key as the sole argument.
   '''
   def __init__(self, default_factory:Callable[[_K], _V], *args, **kwargs):

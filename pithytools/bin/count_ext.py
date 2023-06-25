@@ -14,7 +14,7 @@
 
 
 from argparse import ArgumentParser
-from typing import DefaultDict
+from collections import defaultdict
 
 from pithy.fs import path_ext, walk_files
 
@@ -24,7 +24,7 @@ def main() -> None:
   parser.add_argument('paths', nargs='+', help='Directories to explore.')
   args = parser.parse_args()
 
-  ext_counts = DefaultDict[str,int](int)
+  ext_counts = defaultdict[str,int](int)
 
   for path in walk_files(*args.paths):
     ext = path_ext(path)
