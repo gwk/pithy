@@ -6,7 +6,7 @@ This format syntax is intended for use in file names.
 '''
 
 import re
-from typing import Any, Iterable, Iterator, NamedTuple, Optional, Pattern, Union
+from typing import Any, Iterable, Iterator, NamedTuple, Pattern, Union
 
 from .string import line_col_1
 

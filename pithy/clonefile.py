@@ -5,7 +5,7 @@ from ctypes import c_char_p, c_int, c_uint, CDLL, set_errno
 from errno import ENOENT, ENOTSUP
 from os import strerror
 from os.path import dirname, isdir
-from typing import Callable, Optional
+from typing import Callable
 
 
 __all__ = ['clone', 'volume_supports_clone']

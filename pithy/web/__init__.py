@@ -9,7 +9,7 @@ from http import HTTPStatus
 from http.client import HTTPMessage
 from io import BufferedReader
 from os import fstat as os_fstat
-from typing import Any, BinaryIO, Optional, TextIO, Union
+from typing import Any, BinaryIO, TextIO, Union
 from urllib.parse import parse_qs, unquote as url_unquote, urlsplit as url_split
 
 from ..http import http_methods, may_send_body
@@ -220,7 +220,7 @@ class ResponseError(Exception):
     '''
     Create the response for an error.
     '''
-    body:Optional[ResponseBody] = None
+    body:ResponseBody|None = None
     media_type = ''
     if may_send_body(method, self.status):
       body = error_html_format.format(code=self.status.value, reason=html_escape(self.reason or self.status.phrase, quote=False))

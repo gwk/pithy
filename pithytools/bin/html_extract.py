@@ -3,7 +3,6 @@
 from argparse import ArgumentParser
 from html.parser import HTMLParser
 from sys import stdin
-from typing import Optional
 
 
 def main() -> None:
@@ -30,7 +29,7 @@ class Parser(HTMLParser):
     self.id = id
     self.lines = lines
     self.stack: list[tuple[Pos, str]] = []
-    self.extract_start_pos: Optional[Pos] = None
+    self.extract_start_pos: Pos|None = None
 
   def extract(self) -> None:
     for line in self.lines:
@@ -39,7 +38,7 @@ class Parser(HTMLParser):
     if self.extract_start_pos: exit('specified element was found but unterminated.')
     else: exit('specified element was not found.')
 
-  def handle_starttag(self, tag: str, attrs: list[tuple[str,Optional[str]]]):
+  def handle_starttag(self, tag: str, attrs: list[tuple[str,str|None]]):
     self.stack.append((self.pos, tag))
     d = dict(attrs)
     if d.get('id') == self.id:

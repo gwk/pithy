@@ -8,7 +8,7 @@ from cProfile import Profile
 from os.path import dirname
 from pstats import Stats
 from sys import argv, exc_info, path as sys_path, stderr, stdout
-from typing import Any, Iterable, Optional, TextIO, Union
+from typing import Any, Iterable, TextIO, Union
 
 from pithy.fs import path_for_cmd
 from pithy.path import path_rel_to_current_or_abs
@@ -112,7 +112,7 @@ Selector = Union[str,float,int]
 
 class CustomStats(Stats):
 
-  all_callees:Optional[dict]
+  all_callees:dict|None
   files:list[TextIO]
   max_name_len:int
   fcn_list:list[Func]

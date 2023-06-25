@@ -5,7 +5,7 @@
 import hashlib
 from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
-from typing import Any, ByteString, Callable, Optional, TypeVar
+from typing import Any, ByteString, Callable, TypeVar
 
 import blake3
 from pithy.encodings import enc_lep62, enc_lep128_to_utf8
@@ -88,7 +88,7 @@ def main() -> None:
     print(f'{args.hash} {path:{path_width}}', *msgs)
 
 
-def digest(hasher:Any, path:str, hash_size:Optional[int]) -> bytes:
+def digest(hasher:Any, path:str, hash_size:int|None) -> bytes:
   hash_chunk_size = 1 << 16
   #^ a quick timing experiment suggested that chunk sizes larger than this are not faster.
   try: f = open(path, 'rb')

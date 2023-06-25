@@ -3,7 +3,7 @@
 from argparse import ArgumentParser
 from html.parser import HTMLParser
 from sys import stdin
-from typing import Optional, TextIO
+from typing import TextIO
 
 
 def main() -> None:
@@ -37,10 +37,10 @@ class Parser(HTMLParser):
     if not self.found_leading_doctype:
       self.msg("did not find '<!DOCTYPE html>' declaration in leading position.", pos=(0,0))
 
-  def handle_startendtag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+  def handle_startendtag(self, tag: str, attrs: list[tuple[str, str|None]]) -> None:
     pass
 
-  def handle_starttag(self, tag: str, attrs: list[tuple[str,Optional[str]]]) -> None:
+  def handle_starttag(self, tag: str, attrs: list[tuple[str,str|None]]) -> None:
     self.stack.append((self.pos, tag))
 
   def handle_endtag(self, tag: str) -> None:

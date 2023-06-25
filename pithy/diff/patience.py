@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from bisect import bisect
-from typing import Optional, Sequence, TypeVar
+from typing import Sequence, TypeVar
 
 
 _T = TypeVar('_T')
@@ -69,9 +69,9 @@ def unique_lcs(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> list[tuple[int, int]]:
   index_a = index_uniques(seq_a)
   index_b = index_uniques(seq_b)
 
-  b_to_a:list[Optional[int]] = [None if index_b[el] is None else index_a.get(el) for el in seq_b]
+  b_to_a:list[int|None] = [None if index_b[el] is None else index_a.get(el) for el in seq_b]
 
-  back_refs:list[Optional[int]] = [None] * len(seq_b)
+  back_refs:list[int|None] = [None] * len(seq_b)
   piles:list[int] = []
   lasts:list[int] = []
   pile_idx = 0
@@ -95,7 +95,7 @@ def unique_lcs(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> list[tuple[int, int]]:
   if not piles: return []
 
   result:list[tuple[int, int]] = []
-  last:Optional[int] = lasts[-1]
+  last:int|None = lasts[-1]
   while last is not None:
     o_a = b_to_a[last]
     assert o_a is not None
@@ -105,8 +105,8 @@ def unique_lcs(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> list[tuple[int, int]]:
   return result
 
 
-def index_uniques(seq:Sequence[_T]) -> dict[_T, Optional[int]]:
-  index:dict[_T, Optional[int]] = {}
+def index_uniques(seq:Sequence[_T]) -> dict[_T, int|None]:
+  index:dict[_T, int|None] = {}
   for i, el in enumerate(seq):
     index[el] = None if el in index else i
   return index

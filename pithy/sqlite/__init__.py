@@ -1,8 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import (Any, Callable, cast, Iterable, Iterator, Mapping, Optional, overload, Protocol, Self, Sequence, TypeAlias,
-  TypeVar)
+from typing import Any, Callable, cast, Iterable, Iterator, Mapping, overload, Protocol, Self, Sequence, TypeAlias, TypeVar
 from urllib.parse import quote as url_quote
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
@@ -135,9 +134,9 @@ class Cursor(sqlite3.Cursor):
     return self.execute(sql, args)
 
 
-  def opt(self) -> Optional[Row]:
+  def opt(self) -> Row|None:
     'Return a single, optional row.'
-    return cast(Optional[Row], self.fetchone())
+    return cast(Row|None, self.fetchone())
 
 
   def one(self) -> Row:

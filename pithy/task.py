@@ -8,7 +8,7 @@ from shlex import quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from time import time as _now
-from typing import AnyStr, BinaryIO, cast, IO, Iterator, NoReturn, Optional, Sequence, Union
+from typing import AnyStr, BinaryIO, cast, IO, Iterator, NoReturn, Sequence, Union
 
 from .alarm import Alarm, Timeout
 
@@ -36,7 +36,7 @@ def exec(cmd:Cmd) -> NoReturn:
 
 
 def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None, files:Sequence[File]=(),
- note_cmd=False, lldb=False) -> tuple[tuple[str, ...], _Popen, Optional[bytes]]:
+ note_cmd=False, lldb=False) -> tuple[tuple[str, ...], _Popen, bytes|None]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
@@ -55,7 +55,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
     cmd = tuple(sh_split(cmd))
   else:
     cmd = tuple(cmd)
-  input_bytes: Optional[bytes]
+  input_bytes: bytes|None
   f_in: Input
   if isinstance(stdin, str):
     f_in = PIPE
@@ -157,8 +157,8 @@ def communicate(proc: _Popen, input_bytes: bytes|None=None, timeout: int=0) -> t
 
 def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:int=0, exp:TaskCodeExpectation=0,
  as_lines=True, as_text=True, merge_err=False, exits:ExitOpt=False) -> Iterator[AnyStr]:
-  send: Optional[int] = None
-  recv: Optional[int] = None
+  send: int|None = None
+  recv: int|None = None
   if stdin == PIPE:
     stdin, send = _os.pipe()
   recv, out = _os.pipe()
@@ -180,7 +180,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
     recv_bytes = b''
 
     while recv_bytes or sel.get_map():
-      time_rem: Optional[float]
+      time_rem: float|None
       if timeout > 0:
         time_rem = timeout - (_now() - time_start)
         if time_rem <= 0:

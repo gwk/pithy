@@ -2,7 +2,7 @@
 from array import array
 from ctypes import _CData
 from mmap import mmap
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar, Union
 
 
 ReadableBuffer = Union[bytes, bytearray, memoryview, array[Any], mmap, _CData]

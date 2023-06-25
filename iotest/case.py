@@ -51,7 +51,7 @@ class FileExpectation:
       self.match_pattern_pairs = self.compile_match_lines(self.val)
     else:
       self.match_pattern_pairs = []
-    self.match_error: Optional[tuple[int,Pattern|None, str]] = None
+    self.match_error: tuple[int,Pattern|None,str]|None = None
 
 
   def compile_match_lines(self, text: str) -> list[tuple[str, Pattern]]:
@@ -101,7 +101,7 @@ class Case:
     self.stem: str = self.dir if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
     self.name: str = path_name(self.stem)
     # derived properties.
-    self.multi_index: Optional[int] = None
+    self.multi_index: int|None = None
     self.test_info_paths: set[str] = set() # the files that comprise the test case.
     self.dflt_src_paths: list[str] = []
     self.coverage_targets: list[str] = []
@@ -109,33 +109,33 @@ class Case:
     self.test_cmd: list[str] = []
     self.test_env: dict[str, str] = {}
     self.test_failed_previously: bool = False
-    self.test_in: Optional[str] = None
+    self.test_in: str|None = None
     self.test_expectations: list[FileExpectation] = []
     self.test_links: list[tuple[str, str]] = [] # sequence of (orig-name, link-name) pairs.
     self.test_par_args: dict[str, tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
     # configurable properties.
-    self.args: Optional[list[str]] = None # arguments to follow the file under test.
-    self.cmd: Optional[list[str]] = None # command string/list with which to invoke the test.
-    self.coverage: Optional[list[str]] = None # list of names to include in code coverage analysis.
-    self.code: Optional[int] = None # the expected exit code.
-    self.compile: Optional[list[Any]] = None # the optional list of compile commands, each a string or list of strings.
-    self.compile_timeout: Optional[int] = None
-    self.desc: Optional[str] = None # description.
-    self.env: Optional[dict[str, str]] = None # environment variables.
-    self.err_mode: Optional[str] = None # comparison mode for stderr expectation.
-    self.err_path: Optional[str] = None # file path for stderr expectation.
-    self.err_val: Optional[str] = None # stderr expectation value (mutually exclusive with err_path).
-    self.files: Optional[dict[str, dict[str, str]]] = None # additional file expectations.
-    self.in_: Optional[str] = None # stdin as text.
-    self.interpreter: Optional[str] = None # interpreter to prepend to cmd.
-    self.interpreter_args: Optional[list[str]] = None # interpreter args.
+    self.args: list[str]|None = None # arguments to follow the file under test.
+    self.cmd: list[str]|None = None # command string/list with which to invoke the test.
+    self.coverage: list[str]|None = None # list of names to include in code coverage analysis.
+    self.code: int|None = None # the expected exit code.
+    self.compile: list[Any]|None = None # the optional list of compile commands, each a string or list of strings.
+    self.compile_timeout: int|None = None
+    self.desc: str|None = None # description.
+    self.env: dict[str,str]|None = None # environment variables.
+    self.err_mode: str|None = None # comparison mode for stderr expectation.
+    self.err_path: str|None = None # file path for stderr expectation.
+    self.err_val: str|None = None # stderr expectation value (mutually exclusive with err_path).
+    self.files: dict[str,dict[str,str]]|None = None # additional file expectations.
+    self.in_: str|None = None # stdin as text.
+    self.interpreter: str|None = None # interpreter to prepend to cmd.
+    self.interpreter_args: list[str]|None = None # interpreter args.
     self.links: Union[None, str, set[str], dict[str, str]] = None # symlinks to be made into the test directory.
     #^ Written as a str, set or dict.
-    self.out_mode: Optional[str] = None # comparison mode for stdout expectation.
-    self.out_path: Optional[str] = None # file path for stdout expectation.
-    self.out_val: Optional[str] = None # stdout expectation value (mutually exclusive with out_path).
-    self.skip: Optional[str] = None
-    self.timeout: Optional[int] = None
+    self.out_mode: str|None = None # comparison mode for stdout expectation.
+    self.out_path: str|None = None # file path for stdout expectation.
+    self.out_val: str|None = None # stdout expectation value (mutually exclusive with out_path).
+    self.skip: str|None = None
+    self.timeout: int|None = None
 
     try:
       if proto is not None:
@@ -316,7 +316,7 @@ class Case:
 
     self.test_in = expand_str(self.in_) if self.in_ is not None else None
 
-    def add_std_exp(name:str, mode:Optional[str], path:Optional[str], val:Optional[str]) -> None:
+    def add_std_exp(name:str, mode:str|None, path:str|None, val:str|None) -> None:
       info = {}
       if mode is not None: info['mode'] = mode
       if path is not None: info['path'] = path
@@ -387,7 +387,7 @@ def validate_links_dict(key: str, val: Any) -> None:
     if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {link}")
 
 
-case_key_validators: dict[str, tuple[str, Callable[[Any], bool], Optional[Callable[[str, Any], None]]]] = {
+case_key_validators: dict[str, tuple[str, Callable[[Any], bool], Callable[[str,Any],None]|None]] = {
   # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list,     None),
   'cmd':      ('string or list of strings', is_str_or_list,     None),

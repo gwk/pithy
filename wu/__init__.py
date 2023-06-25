@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 from html import escape as html_escape
 from os import environ
-from typing import Any, Callable, cast, Iterable, Iterator, Match, NoReturn, Optional, TextIO, Union
+from typing import Any, Callable, cast, Iterable, Iterator, Match, NoReturn, TextIO, Union
 
 import pygments
 import pygments.lexers
@@ -24,7 +24,7 @@ SrcLine = tuple[int, str]
 
 
 def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, author: str,
-  css_lines: Optional[Iterator[str]], js: Optional[str], emit_doc: bool, target_section: Optional[str], emit_dbg: bool) -> Iterable[str]:
+  css_lines:Iterator[str]|None, js: str|None, emit_doc: bool, target_section: str|None, emit_dbg: bool) -> Iterable[str]:
   'generate a complete html document from a writeup file (or stream of lines).'
 
   ctx = Ctx(src_path=src_path, should_embed=True, emit_dbg=emit_dbg)
@@ -516,7 +516,7 @@ class Ctx:
       style_string = ''.join(f'{style};' for style in styles)
       yield f'{selector}{{{style_string}}}'
 
-  def msg(self, src: SrcLine, label: str, items: tuple[Any, ...], col: Optional[int]) -> None:
+  def msg(self, src: SrcLine, label: str, items: tuple[Any, ...], col: int|None) -> None:
     line, txt = src
     if col is None: col = 0
     errSL(f'{self.src_path}:{line+1}:{col+1}: {label}:', *items)
@@ -691,7 +691,7 @@ def writeup_line(ctx: Ctx, src: SrcLine, state: int, m: Match) -> None:
   else: ctx.error(src, f'bad state: {state}')
 
 
-def check_whitespace(ctx: Ctx, src: SrcLine, len_exp: Optional[int], m: Match, key: str, msg_suffix='') -> bool:
+def check_whitespace(ctx: Ctx, src: SrcLine, len_exp: int|None, m: Match, key: str, msg_suffix='') -> bool:
   col = m.start(key)
   string = m[key]
   i = 0

@@ -8,7 +8,7 @@ from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
 from types import UnionType
-from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Optional, Type, TypeVar, Union
+from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Type, TypeVar, Union
 
 from .types import is_namedtuple, is_type_namedtuple
 
@@ -358,7 +358,7 @@ class Transtructor:
 
 
   @cache
-  def selector_fn_for(self, datatype:type) -> Optional[SelectorFn]:
+  def selector_fn_for(self, datatype:type) -> SelectorFn|None:
     '''
     Returns the selector function for the given datatype, or None if no selector function is registered.
     This method uses the MRO of the datatype to find base class implementations and caches the result.
@@ -372,7 +372,7 @@ class Transtructor:
     return None
 
 
-  def prefigure_fn_for(self, datatype:type) -> Optional[PrefigureFn]:
+  def prefigure_fn_for(self, datatype:type) -> PrefigureFn|None:
     '''
     Returns the prefigure function for the given datatype, or None if no prefigure function is registered.
     This method uses the MRO of the datatype to find base class implementations and caches the result.
@@ -426,12 +426,12 @@ def transtruct_type(v:Any, ctx:Ctx) -> type:
 
 def bool_for_val(val:Any) -> bool: return bool_vals[val]
 
-def opt_bool(val:Any) -> Optional[bool]:
+def opt_bool(val:Any) -> bool|None:
   if val in (None, ''): return None
   return bool_vals.get(val)
 
 
-def opt_int(val:Any) -> Optional[int]:
+def opt_int(val:Any) -> int|None:
   if val in (None, ''): return None
   return int(val)
 

@@ -15,7 +15,7 @@
 import re
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from typing import Match, Optional
+from typing import Match
 
 from pithy.io import outL, outZ
 from pithy.iterable import fan_by_key_fn
@@ -49,10 +49,10 @@ class Totals:
   def parse_timesheet(self, path:str):
 
     curr_blocks:list[TimeBlock] = []
-    start_minutes:Optional[int] = None
-    prev_minutes:Optional[int] = None
-    end_minutes:Optional[int] = None
-    prev_rate:Optional[int] = None
+    start_minutes:int|None = None
+    prev_minutes:int|None = None
+    end_minutes:int|None = None
+    prev_rate:int|None = None
 
     try: f = open(path)
     except FileNotFoundError: exit(f'bad path: {path}')

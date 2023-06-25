@@ -26,7 +26,7 @@ from collections import namedtuple
 from copy import deepcopy
 from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
-from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Optional, Type, TypeVar, Union
+from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Type, TypeVar, Union
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 
@@ -367,7 +367,7 @@ class Quantity(_QuantityRule):
     self.sub_refs = (body,)
     self.heads = ()
     self.sep = sep if sep is None else validate_name(sep)
-    self.sep_at_end:Optional[bool] = sep_at_end
+    self.sep_at_end:bool|None = sep_at_end
     self.repeated_seps = repeated_seps
     self.min = min
     self.max = max

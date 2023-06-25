@@ -3,7 +3,7 @@
 import inspect
 from importlib.machinery import ModuleSpec
 from inspect import FrameInfo
-from typing import Any, Callable, cast, Iterable, Mapping, Optional, TypeVar
+from typing import Any, Callable, cast, Iterable, Mapping, TypeVar
 
 
 class MetaprogrammingError(Exception): pass
@@ -17,7 +17,7 @@ def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_pr
   or a string (the name of the target frame's function, or '<module>', the default).
   '''
   stack = inspect.stack()
-  info: Optional[FrameInfo]
+  info: FrameInfo|None
   if isinstance(frame, int):
     info = stack[frame]
   elif isinstance(frame, str):
@@ -115,7 +115,7 @@ def caller_module_spec(steps:int) -> ModuleSpec:
   return spec
 
 
-def caller_module_name(steps:int) -> Optional[str]:
+def caller_module_name(steps:int) -> str|None:
   '''
   Get the module name of the caller name, `steps` number of frames from the immediate caller.
   steps=0 is useful when called from the module scope.

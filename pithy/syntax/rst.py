@@ -3,7 +3,7 @@
 import re
 from dataclasses import dataclass
 from functools import singledispatchmethod
-from typing import Iterable, Optional
+from typing import Iterable
 
 from docutils import frontend as _frontend, nodes as _nodes
 from docutils.nodes import Node as Node, Text
@@ -27,7 +27,7 @@ def parse_rst(path:str, text:str) -> Syntax:
 @dataclass
 class Ref:
   text: Syntax
-  target: Optional[Syntax]
+  target: Syntax|None
 
   def __iter__(self):
     yield self.text

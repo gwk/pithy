@@ -9,8 +9,8 @@ import re
 from collections.abc import Mapping
 from functools import singledispatch
 from inspect import Parameter, signature
-from typing import (Any, Callable, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, Optional, Type,
-  TypeVar, Union)
+from typing import (Any, Callable, get_args as get_type_args, get_origin, get_type_hints, Iterable, Iterator, Type, TypeVar,
+  Union)
 
 from tolkien import HasSlc, slc_str, Source, Token
 
@@ -182,7 +182,7 @@ def convert_eon_list(syntax:EonList, source:Source, to:Type[_T]) -> _T:
 
 
 @memoize
-def _list_type_info(to:Type) -> tuple[type,Any,Optional[tuple[Any,...]],bool]:
+def _list_type_info(to:Type) -> tuple[type,Any,tuple[Any,...]|None,bool]:
   'Returns (rtt, el_type, field_types, as_seq).'
   if to in (Any, object): return (list, Any, None, True)
   rtt = get_origin(to) or to

@@ -371,7 +371,7 @@ class Mu:
     return { id for id, count in ids.items() if count == 1 }
 
 
-  def unique_id(self, unique_id_set:set[str]) -> Optional[str]:
+  def unique_id(self, unique_id_set:set[str]) -> str|None:
     id = self.id
     return id if id in unique_id_set else None
 
@@ -532,7 +532,7 @@ class Mu:
     Pick the matching child of this node.
     Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
     '''
-    first_match:Optional[Mu] = None
+    first_match:Mu|None = None
     for c in self.pick_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first_match is None: first_match = c
       else:
@@ -555,7 +555,7 @@ class Mu:
     Find the matching node of this node's subtree.
     Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
     '''
-    first_match:Optional[Mu] = None
+    first_match:Mu|None = None
     for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       if first_match is None: first_match = c
       else:
@@ -670,7 +670,7 @@ class Mu:
     if pre is not None: pre(self)
 
     modified_children:list[MuChild] = []
-    first_mod_idx:Optional[int] = None
+    first_mod_idx:int|None = None
     for i, c in enumerate(self._):
       if isinstance(c, Mu):
         if traversable: c = c.subnode(self)

@@ -5,7 +5,7 @@ from io import IOBase
 from itertools import tee
 from operator import le
 from random import shuffle
-from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, Optional, TypeVar, Union
+from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, TypeVar, Union
 
 from .types import Comparable
 
@@ -413,7 +413,7 @@ def frozenset_from(iterables:Iterable[Iterable[_K]]) -> frozenset[_K]:
   return frozenset(set_from(iterables))
 
 
-def split_els(iterable:Iterable[_T], split=Callable[[_T], Optional[tuple[_T, _T]]]) -> Iterator[_T]:
+def split_els(iterable:Iterable[_T], split=Callable[[_T], tuple[_T,_T]|None]) -> Iterator[_T]:
   '''
   Repeatedly split the current element using the `split` function until it returns None.
   '''
@@ -468,7 +468,7 @@ def window_iter(iterable: Iterable[_T], width=2) -> Iterator[tuple[_T, ...]]:
       del buffer[0]
 
 
-def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[tuple[_T, Optional[_T]]]:
+def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[tuple[_T, _T|None]]:
   'Yield pairs of adjacent elements in `seq`, including a final pair consisting of the last element and `tail`.'
   it = iter(iterable)
   try: head = next(it)
@@ -480,7 +480,7 @@ def window_pairs(iterable: Iterable[_T], tail: _T|None=None) -> Iterator[tuple[_
 
 
 _PrefixTreeTerminator = TypeVar('_PrefixTreeTerminator', bound=Hashable)
-PrefixTree = dict[Union[_K, _PrefixTreeTerminator], Optional[dict]] # mypy cannot handle recursive types.
+PrefixTree = dict[Union[_K, _PrefixTreeTerminator], dict|None] # mypy cannot handle recursive types.
 
 
 def prefix_tree(iterables:Iterable[Iterable[_K]], terminator:_PrefixTreeTerminator|None=None, update:PrefixTree|None=None) -> PrefixTree:
