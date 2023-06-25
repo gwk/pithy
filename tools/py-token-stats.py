@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
+from collections import Counter
 from math import ceil, log10
 from sys import argv
-from typing import Counter
 
 from pithy.io import *
 from pithy.lex import Lexer

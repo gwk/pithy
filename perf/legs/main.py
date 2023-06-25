@@ -1,7 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections import Counter
 from sys import argv
-from typing import Counter
+
 from legs import Source
 
 

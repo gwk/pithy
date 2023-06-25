@@ -1,8 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from abc import abstractmethod
+from collections import Counter
 from dataclasses import is_dataclass
-from typing import Any, Callable, Counter, get_args, get_origin, Optional, Protocol, runtime_checkable, TypeVar, Union
+from typing import Any, Callable, get_args, get_origin, Optional, Protocol, runtime_checkable, TypeVar, Union
 
 
 _T = TypeVar('_T')
