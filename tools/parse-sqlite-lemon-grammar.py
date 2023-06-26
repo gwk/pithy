@@ -41,7 +41,7 @@ def main() -> None:
   try: grammar = parser.parse('grammar', source)
   except ParseError as e: e.fail()
 
-  rules = fan_items(c for c in grammar if isinstance(c, parser.types.Rule))
+  rules = fan_items((c.sym, c.seq) for c in grammar if isinstance(c, parser.types.Rule)) # type: ignore[attr-defined]
 
   for name, choices in rules.items():
     print(f'\n{name}')
