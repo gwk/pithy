@@ -267,7 +267,7 @@ def fan_by_key_fn(iterable:Iterable[_T], key:Callable[[_T],_K]) -> dict[_K, list
 
 def fan_items(iterable:Iterable[tuple[_K,_V]]) -> dict[_K,list[_V]]:
   '''
-  Fan out `iterable` of key/value pair itmems into a dictionary of lists of values.
+  Fan out `iterable` of key/value pair items into a dictionary of lists of values.
   '''
   groups:dict[_K,list[_V]] = {}
   for k, v in iterable:
