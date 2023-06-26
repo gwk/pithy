@@ -44,7 +44,7 @@ docs:
 	craft-docs
 
 isort:
-	isort $(packages) test
+	isort $(packages) test tools
 
 gen: gen-data gen-grammars
 
@@ -85,7 +85,7 @@ test-diff-data:
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
 typecheck: gen
-	mypy $(packages) test
+	mypy $(packages) test tools
 
 typecheck-clear-cache:
 	rm -rf _build/mypy_cache
