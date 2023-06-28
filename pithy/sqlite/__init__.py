@@ -72,6 +72,10 @@ class Row(sqlite3.Row):
     try: return self[key]
     except IndexError as e: raise AttributeError(key) from e
 
+  def get(self, key:str, default:Any=None) -> Any:
+    try: return self[key]
+    except IndexError: return default
+
   def items(self) -> Iterator[tuple[str, Any]]:
     'Return an iterator of (key, value) pairs.'
     for key in self.keys():
