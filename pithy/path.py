@@ -135,9 +135,7 @@ def path_descendants(start_path: Path, end_path: Path, include_start=True, inclu
   if not prefix: raise NotAPathError(start_path)
   if not comps: raise NotAPathError(end_path)
   if prefix == comps:
-    if include_start or include_end:
-      return (str_path(start_path),)
-    return ()
+    return (str_path(start_path),) if include_start or include_end else ()
   if prefix != comps[:len(prefix)]:
     raise PathIsNotDescendantError(end_path, start_path)
   start_i = len(prefix) + (1 if include_start else 0)
