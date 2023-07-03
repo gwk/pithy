@@ -12,6 +12,7 @@ Path = str|PathLike
 PathOrFd = Path|int
 
 
+class AbsolutePathError(Exception): pass
 class MixedAbsoluteAndRelativePathsError(Exception): pass
 class NotAPathError(Exception): pass
 class PathIsNotDescendantError(Exception): pass
@@ -168,8 +169,14 @@ def path_exts(path: Path) -> tuple[str, ...]:
 
 
 def path_join(first: Path, *additional: Path) -> str:
-  'Join the path with the system path separator.'
-  # TODO: path_join should not use os.path.join, which behaves dangerously for absolute paths.
+  '''
+  Join the paths using the system path separator.
+  Unlike `os.path.join`, this implementation does not allow subsequent absolute paths to replace the preceding path.
+  Currently it does not allow absolute paths at all.
+  TODO: perhaps we should join subsequent absolute paths as if they were relative?
+  '''
+  for p in additional:
+    if is_path_abs(p): raise AbsolutePathError(p)
   return _join(str_path(first), *[str_path(p) for p in additional])
 
 
