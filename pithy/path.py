@@ -168,16 +168,16 @@ def path_exts(path: Path) -> tuple[str, ...]:
   return tuple(exts)
 
 
-def path_join(first: Path, *additional: Path) -> str:
+def path_join(first: Path, *subsequent: Path) -> str:
   '''
   Join the paths using the system path separator.
   Unlike `os.path.join`, this implementation does not allow subsequent absolute paths to replace the preceding path.
   Currently it does not allow absolute paths at all.
   TODO: perhaps we should join subsequent absolute paths as if they were relative?
   '''
-  for p in additional:
+  for p in subsequent:
     if is_path_abs(p): raise AbsolutePathError(p)
-  return _join(str_path(first), *[str_path(p) for p in additional])
+  return _join(str_path(first), *[str_path(p) for p in subsequent])
 
 
 def path_name(path: Path) -> str:
