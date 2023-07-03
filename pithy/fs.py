@@ -364,7 +364,7 @@ def walk_dirs_up(path:Path, top:Path, include_top=True) -> Iterable[str]:
     dir_path = path_dir(path)
     if not dir_path:
       raise PathHasNoDirError(path)
-  return reversed(path_descendants(top, dir_path))
+  return reversed(path_descendants(top, dir_path, include_start=include_top))
 
 
 def walk_files(*paths:Path, make_abs=False, include_hidden=False, file_exts:Iterable[str]=()) -> Iterator[str]:
