@@ -5,7 +5,6 @@ from typing import Any
 
 from pithy.desc import outD
 from pithy.io import outL
-from utest import utest
 
 
 l_empty:list[Any] = [] # Noncyclical; referenced multiple times.
