@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+'''
+Note: these tests are run under iotest instead of utest because they create files.
+'''
+
+
 from os import chmod
 
 from pithy.fs import make_dir, make_link, touch_path
