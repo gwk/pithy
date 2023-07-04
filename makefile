@@ -72,6 +72,7 @@ lint:
 	pyflakes $(packages)
 
 test: gen
+	python3 -m utest
 	iotest -fail-fast
 
 test/%: _phony

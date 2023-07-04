@@ -50,7 +50,7 @@ utest(None, encode_obj, None)
 utest(False, encode_obj, False)
 utest(1, encode_obj, 1)
 utest('a', encode_obj, 'a')
-utest("<class 'type'>", encode_obj, type)
+utest('type', encode_obj, type)
 
 utest('Ellipsis', encode_obj, ...)  # Falls back to `str(obj)`.
 
