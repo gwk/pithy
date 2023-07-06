@@ -1,11 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from typing import Any, Callable, cast, Iterable, Iterator, Mapping, overload, Protocol, Self, Sequence, TypeAlias, TypeVar
+from contextlib import AbstractContextManager
+from typing import (Any, Callable, cast, Iterable, Iterator, Literal, Mapping, overload, Protocol, Self, Sequence, TypeAlias,
+  TypeVar)
 from urllib.parse import quote as url_quote
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
+from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .util import default_to_json, insert_values_stmt, sql_quote_entity, types_natively_converted_by_sqlite
 
 
@@ -100,7 +103,27 @@ _row_qdi_colors = {
 }
 
 
-class Cursor(sqlite3.Cursor):
+class Cursor(sqlite3.Cursor, AbstractContextManager):
+
+
+  def __enter__(self) -> Self:
+    '''
+    On context manager enter, Cursor begins a transaction.
+    '''
+    super().execute('BEGIN')
+    return self
+
+
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
+    '''
+    On context manager exit, Cursor commits or rolls back, then closes itself.
+    '''
+    if exc_type: # Exception raised.
+      super().execute('ROLLBACK')
+    else:
+      super().execute('COMMIT')
+    self.close()
+
 
   def execute(self, query:str, args:_SqlParameters=()) -> Self:
     '''
@@ -287,10 +310,29 @@ class Connection(sqlite3.Connection):
       path = f'file:{url_quote(path)}?mode=ro'
       uri = True
 
+    if isolation_level not in (None, 'DEFERRED', 'IMMEDIATE', 'EXCLUSIVE'): raise ValueError(isolation_level)
+
     super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
       check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri)
 
     self.row_factory = Row # Default for convenience.
+
+
+
+  def __enter__(self) -> Self:
+    '''
+    On context manager enter, Connection does nothing.
+    '''
+    return self
+
+
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> Literal[False]:
+    '''
+    On context manager exit, Connection closes itself.
+    This differs from the behavior of sqlite3.Connection, which performs commit/rollback on exit, but does not close.
+    '''
+    self.close()
+    return False
 
 
   def validate(self, query:str) -> None:
