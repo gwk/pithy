@@ -7,8 +7,8 @@ from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
 from typing import Any, Callable, IO
 
-from boto3 import Session # type: ignore[import]
-from botocore.exceptions import ClientError # type: ignore[import]
+from boto3 import Session
+from botocore.exceptions import ClientError
 
 from ..fs import file_status, make_dirs, path_dir, path_ext, path_join, walk_files
 from ..json import parse_json, render_json
@@ -208,7 +208,9 @@ class S3MockClient(S3Client):
           'HTTPStatusCode': 404,
         }
     }
-    raise ClientError(error_response=error_response, operation_name='GetObject')
+    raise ClientError(
+      error_response=error_response, # type: ignore [arg-type]
+      operation_name='GetObject')
 
 
   def list_objects_v2(self, Bucket:str) -> dict[str,Any]:
