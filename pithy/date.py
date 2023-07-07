@@ -134,7 +134,8 @@ def parse_date(string: str, fmt:str|None=None) -> Date:
   return Date.fromisoformat(string)
 
 
-def dt_for_utc_ts(ts:float) -> DateTime:
+def dt_from_ts_utc(ts:float) -> DateTime:
+  'Create a DateTime from a UTC timestamp.'
   return DateTime.fromtimestamp(ts, TimeZone.utc)
 
 
