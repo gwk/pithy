@@ -8,7 +8,7 @@ from random import randbytes
 from sqlite3 import connect, Row
 from statistics import fmean, median, stdev, variance
 from time import perf_counter
-from typing import Iterable, Any
+from typing import Any
 
 
 path = 'insertion-tests.db'
