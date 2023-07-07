@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import (date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone,
-  tzinfo as TZInfo)
+  tzinfo as TZInfo, UTC as tz_utc)
 from typing import Iterator, overload, Sequence, TypeVar
 
 
@@ -136,7 +136,7 @@ def parse_date(string: str, fmt:str|None=None) -> Date:
 
 def dt_from_ts_utc(ts:float) -> DateTime:
   'Create a DateTime from a UTC timestamp.'
-  return DateTime.fromtimestamp(ts, TimeZone.utc)
+  return DateTime.fromtimestamp(ts, tz_utc)
 
 
 def dt_from(*, date:Date, hours:int=0, minutes:int=0, seconds:int=0, tzinfo:TZInfo|None=None) -> DateTime:
