@@ -124,7 +124,7 @@ class DateRange(Sequence[Date]):
 
 
 
-def parse_datetime(string: str, fmt:str|None=None) -> DateTime:
+def parse_dt(string: str, fmt:str|None=None) -> DateTime:
   if fmt: return DateTime.strptime(string, fmt)
   return DateTime.fromisoformat(string)
 
