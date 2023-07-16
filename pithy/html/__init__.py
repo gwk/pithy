@@ -1503,7 +1503,7 @@ class Template(HtmlFlow, HtmlMetadata, HtmlPhrasing):
 
 
 @_tag
-class Textarea(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTextContent):
+class TextArea(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTextContent):
   '''
   Represents a multi-line plain-text editing control, useful when you want to allow users to enter a sizeable amount of free-form text, for example a comment on a review or feedback form.
 
