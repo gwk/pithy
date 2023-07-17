@@ -14,6 +14,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from ..date import Date
 from ..html import HtmlNode
 from ..markup import MuChildLax
+from ..transtruct import bool_str_vals
 from ..url import fmt_url
 
 
@@ -50,6 +51,16 @@ def get_form_str(form_data:FormData, key:str) -> str:
   '''
   v = form_data.get(key)
   return v if isinstance(v, str) else ''
+
+
+def get_form_bool(form_data:FormData, key:str) -> bool|None:
+  '''
+  Get a boolean value from a request's FormData.
+  If the key is not present, is not a str (i.e. UploadFile), or does not equal one of the common boolean strings, return None.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): return None
+  return bool_str_vals.get(v)
 
 
 def csv_response(*, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> CsvResponse:

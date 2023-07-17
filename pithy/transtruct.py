@@ -482,12 +482,12 @@ named_types = {
 
 _bool_cap_items:list[tuple[str,bool]] = [
   ('True', True),
-  ('Yes', True),
-  ('On', True),
-  ('1', True),
   ('False', False),
+  ('Yes', True),
   ('No', False),
+  ('On', True),
   ('Off', False),
+  ('1', True),
   ('0', False),
   ('T', True),
   ('F', False),
@@ -496,13 +496,18 @@ _bool_cap_items:list[tuple[str,bool]] = [
 ]
 
 
+bool_str_vals:dict[str,bool] = dict([
+  ('', False),
+  *_bool_cap_items,
+  *[(s.lower(), b) for (s, b) in _bool_cap_items],
+  *[(s.upper(), b) for (s, b) in _bool_cap_items],
+])
+
+
 bool_vals:dict[Any,bool] = dict([
   (False, False),
   (True, True),
   (0, False),
   (1, True),
-  ('', False),
-  *_bool_cap_items,
-  *[(s.lower(), b) for (s, b) in _bool_cap_items],
-  *[(s.upper(), b) for (s, b) in _bool_cap_items],
+  *bool_str_vals.items(),
 ])
