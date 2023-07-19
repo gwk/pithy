@@ -161,9 +161,9 @@ def sql_comment_lines(comment:str, indent='') -> list[str]:
 
 
 def sql_comment_inline(comment:str) -> str:
-  if '\n' in comment: raise ValueError(f'Cannot inline comment containing newline: {comment!r}')
-  s = re.sub(r'\s+', ' ', comment)
-  return ' -- ' + s
+  comment = re.sub(r'\n+\s*', ' ', comment)
+  comment = re.sub(r'\s+', ' ', comment)
+  return ' -- ' + comment.strip()
 
 
 def sql_fuzzy_match_words(query:str) -> str:
