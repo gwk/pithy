@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 from typing import ByteString
 
 
@@ -143,3 +144,24 @@ def dec_lep128_from_utf8(val:ByteString) -> bytes:
   'Decode a UTF-8 byte string using the little endian punctuated base128 alphabet.'
   if not isinstance(val, (bytes, bytearray)): val = bytes(val) # memoryview does not have the decode() method.
   return dec_lep128(val.decode('utf8').encode('latin1'))
+
+
+def enc_b64url(val:ByteString, pad=False) -> bytes:
+  '''
+  Encode a byte string using the base64url alphabet (ending in "-_").
+  If `pad` is False (the default), then trailing "=" characters are removed from the result.
+  '''
+  b = urlsafe_b64encode(val)
+  if not pad: b = b.rstrip(b'=')
+  return b
+
+
+def dec_b64url(val:ByteString) -> bytes:
+  '''
+  Decode a byte string using the base64url alphabet (ending in "-_").
+  If the input is not a multiple of 4 bytes, then "=" characters are added to the end prior to passing to `urlsafe_b64decode`.
+  '''
+  mod4 = len(val) % 4
+  if mod4:
+    val = bytes(val) + b'=' * (4 - mod4)
+  return urlsafe_b64decode(val)
