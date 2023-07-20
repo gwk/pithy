@@ -1,8 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-
+import re
 from os import environ
 from typing import Iterable, Iterator
+
+
+class EnvParseError(ValueError): pass
 
 
 def parse_env_lines(name:str, lines:Iterable[str]) -> Iterator[tuple[str,str]]:
@@ -14,13 +17,21 @@ def parse_env_lines(name:str, lines:Iterable[str]) -> Iterator[tuple[str,str]]:
   for line_num, line in enumerate(lines, 1):
     line = line.strip()
     if not line or line.startswith('#'): continue
-    if line.startswith('export '): line = line[7:].lstrip()
-    key, _, value = line.partition('=')
-    if key.rstrip() != key: raise ValueError(f'{name}:{line_num}: key has trailing whitespace: {key!r}.')
-    value, _, _ = value.partition('#')
-    value = value.rstrip()
-    if value.lstrip() != value: raise ValueError(f'{name}:{line_num}: value has leading whitespace: {value!r}.')
-    yield key, value
+    m = _env_line_re.fullmatch(line)
+    if not m: raise EnvParseError(f'{name}:{line_num}: invalid line: {line!r}')
+    yield m['key'], m['value']
+
+
+_env_line_re = re.compile(r'''(?x)
+  ^
+  (?P<export> export \s+ )?
+  (?P<key> [A-Za-z_][A-Za-z0-9_]* )
+  =
+  (?P<value> [^#'"\n\s]* )
+  \s*
+  (?P<comment> [#].* )?
+  $
+''')
 
 
 def load_env(path:str) -> None:
