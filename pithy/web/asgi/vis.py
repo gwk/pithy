@@ -7,7 +7,7 @@ from typing import Any, Callable
 from pithy.sqlite.parse import sql_parse_schema_table_column
 
 from ...html import Td
-from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
+from ...sqlite.util import sql_quote_entity as qe, sql_quote_qual_entity as qqe, sql_quote_val as qv
 
 
 ValRenderFn = Callable[[Any],Any]
@@ -29,7 +29,7 @@ class Vis:
     if self.join or self.col:
       if not (self.join and self.col): raise ValueError(f'`join` requires that `col` is also specified: {self}')
       s, t, c = parts = sql_parse_schema_table_column(self.join)
-      if not all(parts): raise ValueError(f'`join` must specify schema, table and column: {self.join!r}')
+      if not (t and c): raise ValueError(f'`join` must specify table and column (schema optional): {self.join!r}')
       _setattr(self, 'schema', s)
       _setattr(self, 'table', t)
       _setattr(self, 'join_col', c)
@@ -41,5 +41,4 @@ class Vis:
 
   @cached_property
   def schema_table(self) -> str:
-    if self.schema: return f'{qe(self.schema)}.{qe(self.table)}'
-    return qe(self.table)
+    return qqe(self.schema, self.table)
