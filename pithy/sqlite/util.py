@@ -176,6 +176,10 @@ def sql_fuzzy_search_words(query:str) -> str:
   return f'%{"%".join(words)}%'
 
 
+def sql_quote_qual_entity(*entity_parts:str) -> str:
+  return '.'.join(sql_quote_entity(p) for p in entity_parts if p)
+
+
 def sql_quote_entity(entity:str, always=False) -> str:
   if always or entity.upper() in sqlite_keywords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', entity):
     return sql_quote_entity_always(entity)
