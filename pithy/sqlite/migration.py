@@ -7,16 +7,16 @@ from pithy.iterable import fan_by_key_fn, joinR
 from ..parse import ParseError
 from . import Connection, Cursor, Row
 from .schema import Column, Index, Schema, Table, TableDepStructure
-from .util import sql_quote_entity_always as qea
+from .util import sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
 
 
 class GenMigrationError(Exception):
 
   @classmethod
-  def confusing_column_changes(cls, removed:Iterable[Column], added:Iterable[Column]) -> 'GenMigrationError':
+  def confusing_column_changes(cls, *, table_name:str, removed:Iterable[Column], added:Iterable[Column]) -> 'GenMigrationError':
     removed_str = joinR('\n    ', sorted(removed))
     added_str = joinR('\n    ', sorted(added))
-    return cls(f'Confusing column changes:\n  removed:\n    {removed_str}\n  added:\n    {added_str}\n')
+    return cls(f'Confusing column changes for table {table_name}:\n  removed:\n    {removed_str}\n  added:\n    {added_str}\n')
 
   def fail(self) -> NoReturn: exit(str(self))
 
@@ -94,7 +94,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
 
   if removed and added: # Assume this is a rename.
     if len(new.columns) != len(old.columns):
-      raise GenMigrationError.confusing_column_changes(removed=removed, added=added)
+      raise GenMigrationError.confusing_column_changes(table_name=qqe(schema_name, new.name), removed=removed, added=added)
     return False, gen_rename_columns(qname=qname, new=new, old=old, matched_cols=matched_cols)
 
   stmts = []
