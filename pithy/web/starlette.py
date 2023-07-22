@@ -44,13 +44,13 @@ class DateConverter(Convertor):
     register_url_convertor(name, cls())
 
 
-def get_form_str(form_data:FormData, key:str) -> str:
+def get_form_str(form_data:FormData, key:str, default:str|None=None) -> str|None:
   '''
   Get a string value from a request's FormData.
-  If the key is not present or the value is not a str (i.e. UploadFile), return an empty string.
+  If the key is not present or the value is not a str (i.e. UploadFile), return `default` (None if not specified).
   '''
   v = form_data.get(key)
-  return v if isinstance(v, str) else ''
+  return v if isinstance(v, str) else default
 
 
 def get_form_bool(form_data:FormData, key:str) -> bool|None:
