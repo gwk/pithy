@@ -8,7 +8,7 @@ from pithy.csv import render_csv
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData
 from starlette.exceptions import HTTPException
-from starlette.requests import HTTPConnection
+from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from ..date import Date
@@ -42,6 +42,27 @@ class DateConverter(Convertor):
   @classmethod
   def  register(cls, name='date') -> None:
     register_url_convertor(name, cls())
+
+
+def req_query_int(request:Request, key:str) -> int:
+  '''
+  Get an int value from a request's query string.
+  If the key is not present or the value is not an int, raise 400.
+  '''
+  v = request.query_params.get(key)
+  if v is None: raise HTTPException(400, f'missing query parameter: {key}')
+  try: return int(v)
+  except ValueError: raise HTTPException(400, f'invalid query parameter: {key}={v!r}')
+
+
+def req_query_str(request:Request, key:str) -> str:
+  '''
+  Get a string value from a request's query string.
+  If the key is not present, raise 400.
+  '''
+  v = request.query_params.get(key)
+  if v is None: raise HTTPException(400, f'missing query parameter: {key}')
+  return v
 
 
 def get_form_str(form_data:FormData, key:str, default:str|None=None) -> str|None:
