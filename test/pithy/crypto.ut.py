@@ -19,8 +19,8 @@ for i in range(1, 32): # Empty data input is disallowed by the library.
 
 
 owc = OneWordCryptor(key=OneWordCryptor.generate_key())
-for p in range(64):
-  i = 1<<p
+for n in range(64):
+  i = 1<<n
   e = owc.encrypt_int(i)
-  d = owc.decrypt_int(e)
-  utest_val(i, d, i)
+  i_d = owc.decrypt_int(e)
+  utest_val(i, i_d, i)
