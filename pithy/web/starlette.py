@@ -44,25 +44,58 @@ class DateConverter(Convertor):
     register_url_convertor(name, cls())
 
 
+def req_query_bool(request:Request, key:str) -> bool:
+  '''
+  Get a boolean value from a request's query string.
+  If the key is not present or does not equal one of the common boolean strings, raise a 400 exception.
+  '''
+  v = request.query_params.get(key)
+  if v is None: raise HTTPException(400, f'missing query parameter: {key}')
+  try: return bool_str_vals[v]
+  except KeyError: raise HTTPException(400, f'invalid boolean query parameter: {key}={v!r}')
+
+
 def req_query_int(request:Request, key:str) -> int:
   '''
   Get an int value from a request's query string.
-  If the key is not present or the value is not an int, raise 400.
+  If the key is not present or the value is not an int, raise a 400 exception.
   '''
   v = request.query_params.get(key)
   if v is None: raise HTTPException(400, f'missing query parameter: {key}')
   try: return int(v)
-  except ValueError: raise HTTPException(400, f'invalid query parameter: {key}={v!r}')
+  except ValueError: raise HTTPException(400, f'invalid integer query parameter: {key}={v!r}')
 
 
 def req_query_str(request:Request, key:str) -> str:
   '''
   Get a string value from a request's query string.
-  If the key is not present, raise 400.
+  If the key is not present, raise a 400 exception.
   '''
   v = request.query_params.get(key)
   if v is None: raise HTTPException(400, f'missing query parameter: {key}')
   return v
+
+
+def get_form_bool(form_data:FormData, key:str, default:bool|None=None) -> bool|None:
+  '''
+  Get a boolean value from a request's FormData.
+  If the key is not present, is not a str (i.e. UploadFile), or does not equal one of the common boolean strings,
+  return `default` (None if not specified).
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): return default
+  return bool_str_vals.get(v, default)
+
+
+def get_form_int(form_data:FormData, key:str, default:int|None=None) -> int|None:
+  '''
+  Get an int value from a request's FormData.
+  If the key is not present or the value is not an int, return `default` (None if not specified).
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): return default
+  try: return int(v)
+  except ValueError: return default
 
 
 def get_form_str(form_data:FormData, key:str, default:str|None=None) -> str|None:
@@ -74,14 +107,37 @@ def get_form_str(form_data:FormData, key:str, default:str|None=None) -> str|None
   return v if isinstance(v, str) else default
 
 
-def get_form_bool(form_data:FormData, key:str) -> bool|None:
+def req_form_bool(form_data:FormData, key:str) -> bool:
   '''
   Get a boolean value from a request's FormData.
-  If the key is not present, is not a str (i.e. UploadFile), or does not equal one of the common boolean strings, return None.
+  If the key is not present, is not a str (i.e. UploadFile), or does not equal one of the common boolean strings,
+  raise a 400 exception.
   '''
   v = form_data.get(key)
-  if not isinstance(v, str): return None
-  return bool_str_vals.get(v)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  try: return bool_str_vals[v]
+  except KeyError: raise HTTPException(400, f'invalid boolean form field: {key}={v!r}')
+
+
+def req_form_int(form_data:FormData, key:str) -> int:
+  '''
+  Get an int value from a request's FormData.
+  If the key is not present or the value is not an int, raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  try: return int(v)
+  except ValueError: raise HTTPException(400, f'invalid integer form field: {key}={v!r}')
+
+
+def req_form_str(form_data:FormData, key:str) -> str:
+  '''
+  Get a string value from a request's FormData.
+  If the key is not present or the value is not a str (i.e. UploadFile), raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  return v
 
 
 def csv_response(*, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> CsvResponse:
