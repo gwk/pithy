@@ -1,12 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import cast, Iterable, NoReturn
+from typing import Iterable, NoReturn
 
-from pithy.iterable import fan_by_key_fn, joinR
+from pithy.iterable import joinR
 
 from ..parse import ParseError
 from . import Connection, Cursor, Row
-from .schema import Column, Index, Schema, Table, TableDepStructure
+from .schema import Column, Schema, Table, TableDepStructure
 from .util import sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
 
 

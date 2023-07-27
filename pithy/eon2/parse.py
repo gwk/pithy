@@ -5,7 +5,7 @@ from typing import Any
 from pithy.parse import Alias, Choice, OneOrMore, Opt, Parser, Struct, ZeroOrMore
 from tolkien import Source, Token
 
-from ..parse import ParseError, choice_val
+from ..parse import choice_val, ParseError
 from .lex import lexer
 from .syntax import eon_syntax_token, EonBinding, EonList, EonNode, EonStr, EonSyntax, render_eon_syntax, section_rank_leaf
 
@@ -133,8 +133,6 @@ def main() -> None:
   Parse specified files (or stdin) as EON and print each result.'
   '''
   from sys import argv
-
-  from ..io import outD
 
   args = argv[1:] or ['/dev/stdin']
   for path in args:

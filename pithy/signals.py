@@ -1,6 +1,6 @@
 
 import os
-from signal import Handlers, SIG_DFL, SIGHUP, SIGINT, signal as register_signal_handler, Signals, SIGTERM
+from signal import SIG_DFL, SIGHUP, SIGINT, signal as register_signal_handler, Signals, SIGTERM
 from types import FrameType
 from typing import Any, Callable, Iterable
 

@@ -10,8 +10,7 @@ import re as _re
 from os import getcwd as _getcwd
 from os.path import relpath as _rel_path
 from sys import stderr as _stderr
-from traceback import format_exc, format_exception as _format_exception
-from types import TracebackType
+from traceback import format_exception as _format_exception
 from typing import Any, Callable, Iterable, TypeVar
 
 
@@ -240,7 +239,7 @@ def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, r
     res_label_colon = f'returned {ret_label}:'
     res = ret
   if exc is not None: # Unexpected exception.
-    res_label_colon = f'raised exception:'
+    res_label_colon = 'raised exception:'
     res = exc
   width = max(len(exp_label_colon),len(res_label_colon))
 

@@ -346,7 +346,7 @@ class SvgBranch(SvgNode):
     y_start = y + off_y
     x_end = x + w
     y_end = y + h
-    cl = kwargs.setdefault('cl', 'grid')
+    _= kwargs.setdefault('cl', 'grid')
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
     g = self.append(G(**kwargs))
     for tick in NumRange(x_start, x_end, sx): g.line((tick, y), (tick, y_end)) # Vertical lines.
@@ -430,7 +430,7 @@ class Marker(SvgBranch):
   def __init__(self, id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
    vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, markerUnits='strokeWidth', orient:str='auto',
    _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if not id: raise ValueError(f'Marker requires an `id` string')
+    if not id: raise ValueError('Marker requires an `id` string')
     if pos is not None:
       assert x is None
       assert y is None

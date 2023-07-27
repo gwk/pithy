@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 
-from pithy.html import Div, Html, Style
+from pithy.html import Html, Style
 from pithy.html.charts import BarSeries, chart_css, chart_figure, LinearAxis
 from pithy.markup import EscapedStr
 from starlette.applications import Starlette

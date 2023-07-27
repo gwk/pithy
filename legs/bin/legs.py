@@ -104,7 +104,7 @@ def main() -> None:
     named_patterns = sorted((kind, patterns[kind]) for kind in pattern_kinds)
     nfa = build_nfa(name=mode, named_patterns=named_patterns, encoding=args.encoding)
     if dbg: nfa.describe('NFA')
-    if dbg or args.stats: nfa.describe_stats(f'NFA Stats')
+    if dbg or args.stats: nfa.describe_stats('NFA Stats')
     msgs = nfa.validate()
     if msgs:
       errLL(*msgs)

@@ -18,6 +18,18 @@ from .path import (abs_or_norm_path, abs_path, is_path_abs, MixedAbsoluteAndRela
 from .util import memoize
 
 
+file_ctime = file_ctime
+file_inode = file_inode
+file_size = file_size
+file_stat = file_stat
+is_file = is_file
+is_file_executable_by_owner = is_file_executable_by_owner
+is_link = is_link
+is_link_to_dir = is_link_to_dir
+is_link_to_file = is_link_to_file
+is_mount = is_mount
+
+
 class PathAlreadyExists(Exception): pass
 class PathHasNoDirError(Exception): pass
 

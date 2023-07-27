@@ -3,7 +3,7 @@
 import re
 from datetime import date, datetime
 from functools import lru_cache
-from typing import Any, get_args, Iterable, Match, NamedTuple
+from typing import Any, get_args, Iterable, NamedTuple
 
 from ..json import render_json
 from .keywords import sqlite_keywords

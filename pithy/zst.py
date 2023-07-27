@@ -1,8 +1,6 @@
-from array import array
-from ctypes import _CData
-from mmap import mmap
-from pickle import PickleBuffer
-from typing import AnyStr, BinaryIO, IO, Iterable, Iterator, Sized, TextIO
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+from typing import AnyStr, BinaryIO, Iterable, Iterator, Sized, TextIO
 
 from typing_extensions import Buffer
 from zstandard import ZstdCompressor

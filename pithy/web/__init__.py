@@ -3,13 +3,11 @@
 import sys
 from cgi import parse_header as cgi_parse_header, parse_multipart
 from dataclasses import dataclass
-from email.utils import formatdate as format_email_date
 from html import escape as html_escape
 from http import HTTPStatus
-from http.client import HTTPMessage
 from io import BufferedReader
 from os import fstat as os_fstat
-from typing import Any, BinaryIO, TextIO
+from typing import BinaryIO, TextIO
 from urllib.parse import parse_qs, unquote as url_unquote, urlsplit as url_split
 
 from ..http import http_methods, may_send_body

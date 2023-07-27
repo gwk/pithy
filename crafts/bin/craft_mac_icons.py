@@ -10,7 +10,7 @@
 
 from argparse import ArgumentParser
 
-from PIL import ImageDraw, ImageFilter
+from PIL import ImageDraw
 from PIL.Image import ANTIALIAS, Image, new as Image_new, open as Image_open
 from pithy.path import split_stem_ext
 

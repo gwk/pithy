@@ -13,6 +13,8 @@ from typing import AnyStr, BinaryIO, cast, IO, Iterator, NoReturn, Sequence
 from .alarm import Alarm, Timeout
 
 
+DEVNULL = DEVNULL
+
 Cmd = str|Sequence[str]
 Env = dict[str, str]
 Input = int|str|bytes|BinaryIO|None # int primarily for DEVNULL; could also be raw file descriptor?
