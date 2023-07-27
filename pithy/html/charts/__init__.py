@@ -139,7 +139,7 @@ class BarSeries(ChartSeries):
     for p in self.points:
       vx = transform_x(p[self.x])
       vy = transform_y(p[self.y])
-      style = f'--vx:{vx};--vy:{vy};'
+      style = f'--vx:{vx:.4f};--vy:{vy:.4f};'
       div.append(Div(style=style))
 
 
@@ -354,7 +354,7 @@ class LinearAxis(NumericalAxis):
         if self.tick_count < 2: raise ValueError('tick_count must be at least 2')
         self.tick_step = (self.max - self.min) / self.tick_count
       ticks.extend(NumRange(self.min, self.max, self.tick_step, closed=True))
-    return [Div(style=f'--v:{self.transform(v)}', _=Div(str(self.tick_fmt(v)))) for v in ticks]
+    return [Div(style=f'--v:{self.transform(v):.4f}', _=Div(str(self.tick_fmt(v)))) for v in ticks]
 
 
 
@@ -442,7 +442,6 @@ def calc_min_max(values:list[Any]) -> V2F|None:
     if min_ > v: min_ = v
     if max_ < v: max_ = v
   return (min_, max_)
-
 
 
 def calc_min_max_keyed(points:list[Any], key:Any) -> V2F|None:
