@@ -1,18 +1,20 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-
-from pithy.html import Html, Style
-from pithy.html.charts import BarSeries, chart_css, chart_figure, LinearAxis
-from pithy.markup import EscapedStr
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 from starlette.routing import Route
 
+from ...html import Html, Style
+from ...markup import EscapedStr
+from ...web.starlette import mount_for_static_pithy
+from ..charts import BarSeries, chart_figure, LinearAxis
+
 
 def app() -> Starlette:
 
   routes = [
+    mount_for_static_pithy(),
     Route('/', home_page),
   ]
   return Starlette(routes=routes, debug=True)
@@ -22,7 +24,7 @@ async def home_page(request:Request) -> HTMLResponse:
   html = Html.doc(title='TEST')
 
   html.head.append(Style(EscapedStr('*, *::before, *::after { box-sizing: border-box; }')))
-  html.head.append(Style(EscapedStr(chart_css)))
+  html.head.add_stylesheet('/static/pithy/charts.css')
 
 
   figure = chart_figure(title='CHART',

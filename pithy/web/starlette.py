@@ -4,14 +4,17 @@ from http import HTTPStatus
 from time import sleep
 from typing import Iterable, Sequence
 
-from pithy.csv import render_csv
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
+from starlette.routing import Mount
+from starlette.staticfiles import StaticFiles
 
+from ..csv import render_csv
 from ..date import Date
+from ..fs import is_dir, real_path
 from ..html import HtmlNode
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
@@ -177,3 +180,10 @@ def redirect_to_signin_response(conn:HTTPConnection, exc:Exception|None=None) ->
   '''
   signin_url = fmt_url('/signin', next=conn.url.path)
   return RedirectResponse(url=signin_url, status_code=HTTPStatus.SEE_OTHER)
+
+
+def mount_for_static_pithy(*, path:str='/static/pithy', name='static_pithy') -> Mount:
+  from . import static
+  module_dir = real_path(static.__path__[0])
+  assert is_dir(module_dir, follow=False), module_dir
+  return Mount(path, app=StaticFiles(directory=module_dir, follow_symlink=True), name=name)
