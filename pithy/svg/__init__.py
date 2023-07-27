@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-SVG writer.
+SVG types based on Markup (`Mu` class family).
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
@@ -359,8 +359,6 @@ class SvgBranch(SvgNode):
 @_tag
 class Svg(SvgBranch):
   '''
-  Svg is an XmlWriter class that outputs SVG code.
-
   HTML contexts for use: Phrasing.
   '''
 
