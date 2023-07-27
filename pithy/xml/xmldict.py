@@ -38,6 +38,9 @@ from lxml.etree import _Element as LxmlElement, Comment, fromstring as parse_xml
 from ..exceptions import DeleteNode, FlattenNode, OmitNode
 
 
+DeleteNode = DeleteNode
+FlattenNode = FlattenNode
+
 XmlDict = dict[str,str|list[dict[str,Any]]] # The "Any" compensates for lack of recursive types in mypy.
 
 XmlDictChild = str|dict[str,Any] # The interleaved strategy has more a complex child type.

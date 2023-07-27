@@ -17,6 +17,15 @@ from ..svg import Svg
 from . import semantics
 
 
+ConflictingValues = ConflictingValues
+DeleteNode = DeleteNode
+FlattenNode = FlattenNode
+MultipleMatchesError = MultipleMatchesError
+NoMatchError = NoMatchError
+MuChild = MuChild
+Present = Present
+
+
 _LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
 _LxmlFileReadSource = _LxmlFilePath | BinaryIO | TextIO
 

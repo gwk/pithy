@@ -66,10 +66,9 @@ def main() -> None:
   '''
   from sys import argv
 
-  from tolkien import Source, Token
+  from tolkien import Source
 
   from ..ansi import RST, TXT_R
-  from ..io import outD
 
   args = argv[1:] or ['/dev/stdin']
   for path in args:
@@ -85,4 +84,3 @@ def main() -> None:
 
 
 if __name__ == '__main__': main()
-

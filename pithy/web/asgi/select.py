@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import Any, Callable, cast, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 from warnings import warn
 
 from pithy.string import str_tree, str_tree_pairs
@@ -218,7 +218,7 @@ class SelectApp:
     if is_ok:
       try:
         count = c.run(f'{select_head} COUNT() {from_clause}{where_clause}').one_col()
-      except SqliteError as e:
+      except SqliteError:
         is_ok = False
 
     rows = []

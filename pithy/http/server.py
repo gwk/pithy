@@ -12,12 +12,11 @@ curl -X POST -H 'Expect: 100-continue' -d "user=name&pass=12345" http://localhos
 '''
 
 import sys
-import time
 from datetime import datetime as DateTime
 from http import HTTPStatus
 from http.client import HTTPException, HTTPMessage, parse_headers
 from io import BufferedIOBase, BufferedReader
-from os import close, environ
+from os import environ
 from shutil import copyfileobj
 from socket import socket as Socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
@@ -148,7 +147,7 @@ class HttpRequestHandler(StreamRequestHandler):
       self.reset()
       self.reuse_count += 1
       try: self.handle_one_request()
-      except ConnectionResetError as e:
+      except ConnectionResetError:
         self.log_message(f'Connection reset by peer after {self.reuse_count} requests.', file=self.server.err)
         self.close_connection = True
       except TimeoutError as e:

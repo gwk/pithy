@@ -13,6 +13,12 @@ from .transtruct import bool_for_val
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+QUOTE_ALL = QUOTE_ALL
+QUOTE_MINIMAL = QUOTE_MINIMAL
+QUOTE_NONE = QUOTE_NONE
+QUOTE_NONNUMERIC = QUOTE_NONNUMERIC
+
+
 def write_csv(f:TextIO, *, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> None:
   'Write CSV to a file.'
   if quoting is None: quoting = QUOTE_MINIMAL

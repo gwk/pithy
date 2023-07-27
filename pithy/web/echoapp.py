@@ -18,7 +18,7 @@ class EchoApp(WebApp):
         rb = '\n'.join(f'{k!r} : {v!r}' for k, v in request.post_params_single.items())
       else:
         lines = request.body_bytes.split(b'\n')
-        body_repr = '\n'.join(repr(line) for line in lines)
+        rb = '\n'.join(repr(line) for line in lines)
     else:
       rb = ''
     if rb: rb = '\n\nbody:\n' + rb

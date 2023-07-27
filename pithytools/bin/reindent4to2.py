@@ -10,6 +10,9 @@ from pithy.fs import is_file, move_file, path_exists
 from pithy.io import errL, outL
 
 
+_ = move_file # TEMPORARY to silence lint.
+
+
 def main() -> None:
 
   for path in sys.argv[1:]:

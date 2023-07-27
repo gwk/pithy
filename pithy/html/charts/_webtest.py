@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from pithy.html import Div, Html, Style
+from pithy.html import Html, Style
 from pithy.html.charts import BarSeries, chart_css, chart_figure, LinearAxis
 from pithy.markup import EscapedStr
 from starlette.applications import Starlette

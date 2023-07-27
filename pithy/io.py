@@ -12,6 +12,11 @@ from .reprs import repr_ml
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
+errD = errD
+outD = outD
+writeD = writeD
+
+
 _T = TypeVar('_T')
 
 # basic printing.

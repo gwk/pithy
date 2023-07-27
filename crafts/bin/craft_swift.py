@@ -13,7 +13,7 @@ from pithy.io import errL, outZ, stdout
 from pithy.iterable import group_by_heads, OnHeadless
 from pithy.lex import Lexer
 from pithy.path import path_rel_to_current_or_abs
-from pithy.task import run_gen, runCO
+from pithy.task import runCO
 from tolkien import Source, Token
 
 from .. import load_craft_config
