@@ -11,13 +11,13 @@ Test that we can embed SVG in HTML and that the SVG elements are parsed as SvgNo
 html = Html(_=[
   Head(_=[
     Style('svg { background: #eee; }'),
-    Script('/* HTML Script */.')]),
+    Script('/* HTML Script. */')]),
   Body(_=[
     Div(_=[
       'HTML.',
       Svg(_=[
         svg_Style('svg { background: #ddd; }'),
-        svg_Script('/* SVG Script */.')])])])])
+        svg_Script('/* SVG Script. */')])])])])
 
 html_str = html.render_str()
 parsed = Html.parse(html_str)
