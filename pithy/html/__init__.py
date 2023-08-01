@@ -796,6 +796,9 @@ class Head(HtmlMetadataContent):
   def add_stylesheet(self, url:str, media='all') -> None:
     self.append(Link(rel='stylesheet', type='text/css', media=media, href=url))
 
+  def add_js(self, *, url:str, defer=True, async_=False) -> None:
+    self.append(Script(type='text/javascript', src=url, defer=Present(defer), async_=Present(async_)))
+
 
 @_tag
 class Header(HtmlFlow, HtmlPalpable, HtmlFlowContent):
