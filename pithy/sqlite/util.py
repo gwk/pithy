@@ -48,21 +48,21 @@ def insert_values_stmt(*, with_='', or_='FAIL', into:str, named:bool, fields:tup
     return stmt
 
 
-def sql_col_names(dataclass:type) -> str:
+def col_names_for_dc(dataclass:type) -> str:
   '''
   Given a dataclass or NamedTuple subclass, return a string of comma-separated field names.
   '''
   return ', '.join(fields_of(dataclass))
 
 
-def sql_col_placeholders(dataclass:type) -> str:
+def col_placeholders_for_dc(dataclass:type) -> str:
   '''
   Given a dataclass or NamedTuple subclass, return a string of comma-separated SQL named placeholders.
   '''
   return ', '.join(f':{n}' for n in fields_of(dataclass))
 
 
-def sql_col_decls(class_:type[NamedTuple], primary:str) -> str:
+def col_decls_for_dc(class_:type[NamedTuple], primary:str) -> str:
   '''
   Given a dataclass or NamedTuple subclass, yield a sequence of SQL column declarations for use in a CREATE TABLE statement.
   '''
