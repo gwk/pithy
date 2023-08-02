@@ -144,15 +144,15 @@ def utest_items(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _ute
   _utest_test_count += 1
   exp = list(exp_seq) # convert to a list for referential isolation and consistent string repr.
   try:
-    ret_seq = fn(*args, **kwargs)
+    ret_mapping = fn(*args, **kwargs)
   except BaseException as exc:
     _utest_failure(_utest_depth, exp_label='items', exp=exp, exc=exc, subj=fn, args=args, kwargs=kwargs)
     if _exit: raise
     return
   try:
-    ret = list(ret_seq.items())
+    ret = list(ret_mapping.items())
   except BaseException as exc:
-    _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='value', ret=ret_seq, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='value', ret=ret_mapping, exc=exc, subj=fn, args=args, kwargs=kwargs)
     return
   if exp != ret:
     _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='items', ret=ret, subj=fn, args=args, kwargs=kwargs)
@@ -166,8 +166,8 @@ def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_dep
   global _utest_test_count
   _utest_test_count += 1
   try:
-    ret_seq = fn(*args, **kwargs)
-    ret = list(ret_seq.items())
+    ret_mapping = fn(*args, **kwargs)
+    ret = list(ret_mapping.items())
   except BaseException as exc:
     if not _compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
