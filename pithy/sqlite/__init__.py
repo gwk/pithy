@@ -285,7 +285,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     self.execute(stmt, values)
 
 
-  def count_all_tables(self, schema:str='main', omit_empty=False) -> list[tuple[str, int]]:
+  def count_all_tables(self, *, schema:str='main', omit_empty=False) -> list[tuple[str, int]]:
     'Return an iterable of (table, count) pairs.'
     schema_q = sql_quote_entity(schema)
     table_names = list(self.execute(f"SELECT name FROM {schema_q}.sqlite_schema WHERE type = 'table' ORDER BY name").col())
