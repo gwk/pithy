@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import List
-
 from pithy.html import Body, Html, HtmlNode
 from pithy.io import outL
-from pithy.string import clip_prefix, clip_suffix
-from utest import utest
 
 
 ws_normalizations:list[tuple[str|HtmlNode,str]] = [
@@ -35,7 +31,7 @@ for src, exp, in ws_normalizations:
   else:
     html = Html.parse(src)
 
-  assert isinstance(html, Html), html
+  assert isinstance(html, Html)
   html.clean()
   body = html.body
   res = body.render_children_str()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from pithy.html import Div, Html, MultipleMatchesError, NoMatchError, P
-from utest import utest, utest_exc, utest_seq, utest_val
+from utest import utest, utest_exc, utest_seq, utest_val, utest_val_type
 
 
 src = '''
@@ -33,8 +33,8 @@ utest(head, html.pick, 'head')
 utest(head.title, html.find, 'title')
 
 div0, div1 = body.child_nodes()
-utest(True, isinstance, div0, Div)
-utest(True, isinstance, div1, Div)
+utest_val_type(Div, div0)
+utest_val_type(Div, div1)
 
 utest(div0, body.pick_first, Div)
 utest(div0, html.find_first, Div)

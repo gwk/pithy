@@ -2,6 +2,7 @@
 
 from pithy.html import Body, Div, Head, Html, Script, Style
 from pithy.svg import Script as svg_Script, Style as svg_Style, Svg
+from utest import utest_type, utest_val_type
 
 
 '''
@@ -23,10 +24,10 @@ html_str = html.render_str()
 parsed = Html.parse(html_str)
 
 head = parsed.head
-assert isinstance(head.pick('style'), Style)
-assert isinstance(head.pick('script'), Script)
+utest_type(Style, head.pick, 'style')
+utest_type(Script, head.pick, 'script')
 
 svg = parsed.body.pick('div').pick('svg')
-assert isinstance(svg, Svg)
-assert isinstance(svg.pick('style'), svg_Style), type(svg.pick('style'))
-assert isinstance(svg.pick('script'), svg_Script)
+utest_val_type(Svg, svg)
+utest_type(svg_Style, svg.pick, 'style')
+utest_type(svg_Script, svg.pick, 'script')
