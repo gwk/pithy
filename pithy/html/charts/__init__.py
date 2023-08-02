@@ -15,7 +15,7 @@ import re
 from typing import Any, Callable, Iterable
 
 from ...range import Num, NumRange
-from .. import Div, Figcaption, Figure, MuChildOrChildrenLax
+from .. import Div, Figcaption, Figure, MuChildOrChildrenLax, Script, Span
 
 
 Dim = int|float|str
@@ -56,13 +56,6 @@ class ChartSeries:
 
 
   @property
-  def data_class(self) -> str:
-    cx = 'numerical' if self.bounds[0][0] else 'categorical'
-    cy = 'numerical' if self.bounds[1][0] else 'categorical'
-    return f'{cx}-{cy}'
-
-
-  @property
   def kind_class(self) -> str: raise NotImplementedError # e.g. 'bar', 'line', 'scatter'.
 
 
@@ -88,7 +81,7 @@ class ChartSeries:
     Creates the div for the series visualization.
     Subclasses should typically leave this as is and instead override `fill_vis_div`.
     '''
-    div = Div(cl=('series', self.data_class, self.kind_class, self.cl))
+    div = Div(cl=('series', self.kind_class, self.cl))
     self.fill_vis_div(div=div, transform_x=transform_x, transform_y=transform_y)
     return div
 
@@ -98,7 +91,7 @@ class ChartSeries:
     Create the div for the series legend item.
     Subclasses should typically leave this as is and instead override `fill_legend_item_div`.
     '''
-    div = Div(cl=('legend-item', self.data_class, self.kind_class, self.cl))
+    div = Div(cl=('legend-item', self.kind_class, self.cl))
     self.fill_legend_item_div(div)
     return div
 
@@ -135,11 +128,10 @@ class BarSeries(ChartSeries):
     '''
     Fill the series visualization div with html representing the data.
     '''
-    div['style'] = f'--n:{len(self.points)};'
     for p in self.points:
-      vx = transform_x(p[self.x])
-      vy = transform_y(p[self.y])
-      style = f'--vx:{vx:.4f};--vy:{vy:.4f};'
+      i = transform_x(p[self.x])
+      v = transform_y(p[self.y])
+      style = f'--i:{i};--v:{v:.4f};'
       div.append(Div(style=style))
 
 
@@ -169,7 +161,7 @@ class ChartAxis:
     raise NotImplementedError
 
 
-  def transform(self, v:Any) -> Any:
+  def transform(self, v:Any) -> float:
     '''
     Transform a value on this axis for visualization.
     '''
@@ -183,11 +175,7 @@ class ChartAxis:
     raise NotImplementedError
 
 
-  def ticks_x_style(self) -> str:
-    return ''
-
-
-  def ticks_y_style(self) -> str:
+  def style(self) -> str:
     return ''
 
 
@@ -225,8 +213,9 @@ class CategoricalAxis(ChartAxis):
   def kind_class(self) -> str: return '' # No kind class for categorical axes.
 
 
-  def transform(self, v:Any) -> Any:
-    return self.labels.index(v) / len(self.labels)
+  def transform(self, v:Any) -> float:
+    'Categorical axis returns the index of the category label.'
+    return self.labels.index(v)
 
 
   def configure(self, series:list['ChartSeries']) -> None:
@@ -258,17 +247,15 @@ class CategoricalAxis(ChartAxis):
       self.labels = sorted(labels_set, key=self.label_sort_key)
 
 
-  def ticks_x_style(self) -> str:
-    return f'--n:{len(self.labels)};'
-
-
-  def ticks_y_style(self) -> str:
-    return f'--n:{len(self.labels)};'
+  def style(self) -> str:
+    d = 'x' if self.idx == 0 else 'y'
+    return f'--n{d}:{len(self.labels)};'
 
 
   def tick_divs(self) -> list[Div]:
-    l = len(self.labels)
-    return [Div(style=f'--v:{i/l:0.3f}',  _=Div(str(label))) for (i, label) in enumerate(self.labels)]
+    return [
+      Div(style=f'--i:{i}',  _=[Span(cl='tick'), Span(cl='label', _=str(label))])
+     for (i, label) in enumerate(self.labels)]
 
 
 
@@ -343,7 +330,8 @@ class LinearAxis(NumericalAxis):
     super().configure(series)
 
 
-  def transform(self, v:Any) -> Any:
+  def transform(self, v:Any) -> float:
+    assert isinstance(v, (int, float))
     return round((v - self.min) * self.scale, 4)
 
 
@@ -354,7 +342,9 @@ class LinearAxis(NumericalAxis):
         if self.tick_count < 2: raise ValueError('tick_count must be at least 2')
         self.tick_step = (self.max - self.min) / self.tick_count
       ticks.extend(NumRange(self.min, self.max, self.tick_step, closed=True))
-    return [Div(style=f'--v:{self.transform(v):.4f}', _=Div(str(self.tick_fmt(v)))) for v in ticks]
+    return [
+      Div(style=f'--v:{self.transform(v):.4f}', _=[Span(cl='tick'), Span(cl='label', _=str(self.tick_fmt(v)))])
+     for v in ticks]
 
 
 
@@ -401,7 +391,13 @@ def chart_figure(*,
       y.max = x.max
     else: raise ValueError('cannot force symmetric axes for categorical data')
 
-  chart = Figure(cl=cl, attrs=kw_attrs)
+  data_class = f'{x.data_class}-{y.data_class}'
+  _cl = [data_class]
+  if isinstance(cl, str): _cl.append(cl)
+  elif cl is not None: _cl.extend(cl)
+  attrs_style = kw_attrs.pop('style', '')
+  style = f'{x.style()}{y.style()}{attrs_style}'
+  chart = Figure(cl=_cl, style=style, attrs=kw_attrs)
   chart.prepend_class('chart')
 
   if title is not None: chart.append(Figcaption(_=title))
@@ -412,13 +408,24 @@ def chart_figure(*,
   legend = chart.append(Div(cl='legend'))
 
   grid.append(Div(cl='origin')) # By default this box is empty.
-  grid.append(Div(cl='ticks-x-scroll', _=Div(cl=['ticks-x', x.data_class, x.kind_class], style=x.ticks_x_style(), _=x.tick_divs())))
-  grid.append(Div(cl='ticks-y-scroll', _=Div(cl=['ticks-y', y.data_class, y.kind_class], style=y.ticks_y_style(), _=y.tick_divs())))
 
-  print(x, x.kind_class)
-  print(y, y.kind_class)
+  grid.append(Div(cl='ticks-x-scroll', _=Div(cl=['ticks', 'x', x.data_class, x.kind_class], _=x.tick_divs())))
+
+  y_tick_divs = y.tick_divs()
+  for d in y_tick_divs: d._.reverse() # Flip the tick and label so that the tick is on the right.
+  grid.append(Div(cl=['ticks', 'y', y.data_class, y.kind_class], _=y_tick_divs))
+
   grid.append(Div(cl='vis-scroll',
     _=Div(cl='vis', _=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series])))
+
+  grid.append(Script('''
+  "use strict";
+  const current_script = document.currentScript;
+  const visGrid = current_script.parentElement;
+  addEventListener('DOMContentLoaded', () => {
+    chartsLinkScrollX(visGrid);
+  })
+  '''))
 
   legend._ = [s.make_legend_item_div() for s in series]
 

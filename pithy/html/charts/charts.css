@@ -3,6 +3,12 @@
 /* Chart layout. */
 figure.chart {
 }
+
+figure.chart.categorical-numerical {
+  --bar-width: max(1em - 1px, calc(((100% - 1px) / var(--nx)) - 1px));
+  --vis-width: max(calc(100%), calc(1em * var(--nx) + 1px));
+}
+
 figure.chart > figcaption {
 }
 figure.chart > .legend {
@@ -17,8 +23,8 @@ figure.chart > .vis-grid {
   grid-row-gap: 0px;
 }
 
-/* Quadrant scroll containers. */
-figure.chart .ticks-y-scroll { /* The y-axis tick marks on the left. */
+/* Quadrant containers. */
+figure.chart .ticks.y { /* The y-axis tick marks on the left. */
   grid-area: 1 / 1 / 2 / 2; /* row-start / column-start / row-end / column-end */
 }
 figure.chart .vis-scroll { /* The data visualization scolling container. */
@@ -31,97 +37,109 @@ figure.chart .ticks-x-scroll { /* The x-axis tick marks on the bottom. */
   grid-area: 2 / 2 / 3 / 3;
 }
 
-/* Quadrant scrolling container sizing. */
+/* X-axis scrolling. Y-axis scrolling is unnecessary and prevents the tick text from overflowing. */
 figure.chart :is(.vis-scroll, .ticks-x-scroll) {
   overflow-x: auto;
-  scrollbar-height: none; /* Hide scrollbar for Firefox. */
 }
-figure.chart :is(.vis-scroll, .ticks-y-scroll) {
-  overflow-y: auto;
-  scrollbar-width: none; /* Hide scrollbar for Firefox. */
+
+@supports(scrollbar-width:none) {
+  figure.chart :is(.vis-scroll, .ticks-x-scroll) {
+    scrollbar-width: none; /* Hide scrollbar for Firefox. */
+  }
 }
+
 figure.chart :is(.vis-scroll, .ticks-x-scroll)::-webkit-scrollbar { /* Hide scrollbar for Chrome, Safari, and Opera. */
   height: 0;
-}
-figure.chart :is(.vis-scroll, .ticks-y-scroll)::-webkit-scrollbar { /* Hide scrollbar for Chrome, Safari, and Opera. */
-  width: 0;
+  overscroll-behavior: contain;
 }
 
 /* Quadrant scroll content sizing. */
-figure.chart :is(.vis, .ticks-x) {
+figure.chart :is(.vis, .ticks.x) {
   min-width: 100%;
-  width: calc(1em * var(--vis-w));
+  width: 100%;
+  /*width: calc(1em * var(--vis-w));*/
 }
-figure.chart :is(.vis, .ticks-y) {
+figure.chart :is(.vis, .ticks.y) {
   min-height: 100%;
-  height: calc(1em * var(--vis-h));
+  height: 100%;
+  /*height: calc(1em * var(--vis-h));*/
 }
 
-/* Tick marks positioning trick:
-We use relative positioning so that the tick elements participate in document layout and influence the sizes of the gutters
-(height for ticks-x, width for ticks-y).
-The zero width/height lets us use the CSS variable to position the tick mark itself.
-If we instead used absolute positioning, then the tick text would not participate in document layout.
-Because of this trick, we are obliged to use a child div to hold the text.
-The parent div has zero height, so the text hangs below the specified vertical position.
-The child div allows us to transform the text and center it around the specified position.
-*/
+/* Tick gutters. */
+figure.chart .ticks {
+  position: relative;
+}
+
+figure.chart .ticks > div {
+  font-size: 1em;
+  line-height: 1.15em; /* TEMP: 1.15em appears to be the safari default.*/
+}
+
+figure.chart .ticks > div > span {
+  display: inline-block;
+}
+figure.chart .ticks > div > span.label {
+  vertical-align: top;
+}
+
+figure.chart .ticks > div > span.tick {
+  vertical-align: top;
+}
+
+figure.chart .ticks.x > div > span.label {
+  transform-origin: center left;
+  transform: rotate(45deg);
+  position: absolute;
+}
+figure.chart .ticks.x > div > span.tick {
+  position: absolute;
+}
+
+figure.chart .ticks.y > div > span.label {
+  /* We a use a child span to hold the text.
+  Because the parent div has zero height, the text hangs below the specified vertical position.
+  The child span allows us to transform the text and center it around the specified position. */
+  transform: translateY(-50%);
+}
+figure.chart .ticks.y > div > span.tick {
+  vertical-align: top;
+  transform: translateY(-50%); /* Half pixel translation up. TODO: only on retina? */
+}
+
 
 /* The x-axis tick mark gutter on the bottom. */
-figure.chart .ticks-x {
-  position: relative;
+figure.chart .ticks.x {
+  width: var(--vis-width);
+  height: 2em; /* TEMP. */
+  overflow-x: hidden; /* Prevents the tick text from adding weird trailing space on the right side. */
 }
-figure.chart .ticks-x > div {
-  display: inline-block;
-  float: left; /* Prevent syntactic whitespace between divs from showing, which breaks the relative spacing trick. */
-  margin: 0;
-  padding: 0;
-  position: relative;
-  width: 0;
-  background-color: red;
-  left: calc(100% * calc(var(--v)));
-}
-figure.chart .ticks-x > div > div {
-  display: inline-block;
-  vertical-align: top;
-  writing-mode: vertical-rl;
-  transform-origin: center;
-  transform: rotate(180deg);
-  border: 1px solid black;
-  background-color: white;
+figure.chart .ticks.x > div { /*TODO: categorical-numerical. */
+  position: absolute;
+  left: calc(1px + var(--bar-width) * 0.5 +  var(--i) * max(1em, (100% - 1px) / var(--nx)));
 }
 
-figure.chart .ticks-x > div > div::after {
-  /* This ::after element is used to render the tick mark. */
-  /* TODO
-  content: '\\a0'; /* A nonbreaking space to prevent the div from collapsing. */
-  margin-left: 0.125em;
-  clip-path: polygon(0 calc(50% - 0.5px), 0 calc(50% + 0.5px), 100% calc(50% + 0.5px), 100% calc(50% - 0.5px));
-  */
-}
-
-/* The y-axis tick mark gutter on the left. */
-figure.chart .ticks-y {
-  position: relative;
+/*
+The y-axis tick mark gutter on the left.
+Y-axis tick marks positioning trick:
+We use relative positioning so that the tick elements participate in document layout and influence the sizes of the left gutter.
+We use a height of zero so that the CSS variable can position the tick mark exactly,
+without having to account for the sizes stacking up.
+If we instead try to use absolute positioning, then the tick text and mark do not affect the gutter width.
+Because of the zero size trick, we use a child span to hold the text.
+The parent div has zero height, so the text hangs below the specified vertical position.
+The child span allows us to transform the text and center it around the specified position.
+*/
+figure.chart .ticks.y {
   /* TODO: negative padding and compensation so that the start and end tick text does not clip, but stays aligned. */
 }
-figure.chart .ticks-y > div {
+figure.chart .ticks.y > div {
   position: relative;
   height: 0;
   top: calc(100% * calc(1 - var(--v)));
+  white-space: nowrap;
+  vertical-align: middle;
 }
-figure.chart .ticks-y > div > div {
-  /* We are obliged to use a child div to hold the text.
-  Because the parent div has zero height, the text hangs below the specified vertical position.
-  The child div allows us to transform the text and center it around the specified position. */
-  transform: translateY(-50%);
-}
-figure.chart .ticks-y > div > div::after {
-  /* This ::after element is used to render the tick mark. */
-  content: '\\a0'; /* A nonbreaking space to prevent the div from collapsing. */
-  margin-left: 0.125em;
-  clip-path: polygon(0 calc(50% - 0.5px), 0 calc(50% + 0.5px), 100% calc(50% + 0.5px), 100% calc(50% - 0.5px));
-}
+
 
 figure.chart .vis { /* The data visualization area. */
   position: relative;
@@ -131,15 +149,23 @@ figure.chart .vis > .series {
   width: 100%;
   height: 100%;
 }
-figure.chart .series.categorical-numerical > div {
+
+figure.chart.categorical-numerical .vis > .series.bar {
+  width: var(--vis-width);
+}
+
+figure.chart.categorical-numerical .vis > .series.bar > div {
   position: absolute;
-  width: 1em;
-  min-width: 1em;
-  height: calc(100% * calc(var(--vy)));
-  left: calc(100% * calc(var(--vx)));
+  min-width: 4px;
+  height: calc(100% * calc(var(--v)));
+  width: max(1em - 1px, calc(((100% - 1px) / var(--nx)) - 1px));
+  left: calc(1px + var(--i) * max(1em, (100% - 1px) / var(--nx)));
   bottom: 0;
   background-color: var(--series-color);
+  border-width: var(--chart-bar-border-width);
+  border-style: solid;
 }
+
 .swatch {
   display: inline-block;
   background-color: var(--series-color);
@@ -148,6 +174,7 @@ figure.chart .series.categorical-numerical > div {
 /* User style. */
 figure.chart * {
   box-sizing: border-box;
+  --chart-bar-border-width: 1px;
 }
 figure.chart {
   width: 96%;
@@ -172,29 +199,40 @@ figure.chart .origin {
 figure.chart .vis-scroll {
   height: 24em;
 }
-figure.chart .ticks-x {
+figure.chart .ticks.x {
   background-color: lightgreen;
 }
+figure.chart .ticks.x > div > span.label {
+  /*border: 1px solid black;*/
 
-figure.chart .ticks-x > div > div {
-
 }
-figure.chart .ticks-y {
-  background-color: #8DD;
-}
-figure.chart .ticks-y > div {
-  text-align: right;
-}
-figure.chart .ticks-y.numerical > div > div::after {
-  /* This ::after element is used to render the tick mark. */
-  width: 0.25em;
+figure.chart .ticks > div > span.tick {
   background-color: black;
 }
+figure.chart .ticks.y {
+  background-color: #8DD;
+}
+figure.chart .ticks.y > div {
+  text-align: right;
+}
+figure.chart .ticks > div > span.tick {
+  background-color: black;
+}
+figure.chart .ticks.x > div > span.tick {
+  height: 0.5em;
+  width: 1px;
+}
+figure.chart .ticks.y > div > span.tick {
+  margin-left: 0.125em;
+  width: 0.25em;
+  height: 1px;
+}
+
 figure.chart .series {
   column-gap: 4px;
 }
 figure.chart .series > div {
-    border: 1px solid black;
+    border-color: black;
 }
 
 figure.chart .Series0 {

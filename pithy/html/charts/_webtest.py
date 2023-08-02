@@ -5,8 +5,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 from starlette.routing import Route
 
-from ...html import Html, Style
-from ...markup import EscapedStr
+from ...html import Css, Html
 from ...web.starlette import mount_for_static_pithy
 from ..charts import BarSeries, chart_figure, LinearAxis
 
@@ -23,16 +22,17 @@ def app() -> Starlette:
 async def home_page(request:Request) -> HTMLResponse:
   html = Html.doc(title='TEST')
 
-  html.head.append(Style(EscapedStr('*, *::before, *::after { box-sizing: border-box; }')))
+  html.head.append(Css('*, *::before, *::after { box-sizing: border-box; }'))
   html.head.add_stylesheet('/static/pithy/charts.css')
+  html.head.add_js(url='/static/pithy/charts.js')
 
-
-  figure = chart_figure(title='CHART',
-  y=LinearAxis(tick_step=10),
-  series=[
-    BarSeries(name='Series0', points=[(str(i), i) for i in range(101)]),
-    #BarSeries(name='Series1', points=[('a', 4), ('b', 5), ('c', 6)]),
-  ])
+  figure = chart_figure(
+    title='CHART 1',
+    y=LinearAxis(tick_step=10),
+    series=[
+      BarSeries(name='Series0', points=[(str(i), i) for i in range(51)]),
+      #BarSeries(name='Series1', points=[('a', 4), ('b', 5), ('c', 6)]),
+    ])
 
   html.body.append(figure)
 
