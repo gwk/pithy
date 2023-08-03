@@ -9,7 +9,7 @@ from urllib.parse import quote as url_quote
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..json import render_json
 from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
-from .util import default_to_json, insert_values_stmt, sql_quote_entity, types_natively_converted_by_sqlite
+from .util import default_to_json, insert_values_stmt, sql_quote_entity, types_natively_converted_by_sqlite, update_stmt
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -296,6 +296,17 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
       pairs.append((name, count))
     return pairs
 
+
+  def update(self, table:str, *, with_='', or_='FAIL', by:str|tuple[str,...], **kwargs:Any) -> None:
+    '''
+    Execute an UPDATE statement.
+    TODO: support returning clause.
+    '''
+    if isinstance(by, str): by = (by,)
+    where = ' AND '.join(f'{sql_quote_entity(k)} = :{k}' for k in by)
+    fields = tuple(k for k in kwargs if k not in by)
+    stmt = update_stmt(with_=with_, or_=or_, table=table, named=True, fields=fields, where=where)
+    self.execute(stmt, kwargs)
 
 
 class Connection(sqlite3.Connection):
