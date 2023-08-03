@@ -34,8 +34,8 @@ def insert_values_stmt(*, with_='', or_='FAIL', into:str, named:bool, fields:tup
     '''
     head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
     if fields:
-      fields_joined = ', '.join((f':{f}' if named else '?') for f in fields)
-      values_clause = f' VALUES ({fields_joined})'
+      placeholders = ', '.join(placeholders_for_fields(fields, named))
+      values_clause = f' VALUES ({placeholders})'
     else:
       values_clause = ' DEFAULT VALUES'
     stmt = head + values_clause
@@ -46,6 +46,33 @@ def insert_values_stmt(*, with_='', or_='FAIL', into:str, named:bool, fields:tup
       stmt += f' RETURNING {r}'
 
     return stmt
+
+
+@lru_cache
+def update_stmt(*, with_='', or_='FAIL', table:str, named:bool, fields:tuple[str,...], where:str='') -> str:
+  '''
+  Create an UPDATE statement that uses positional or named placeholders for values.
+  '''
+  assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLCE', 'ROLLBACK'}
+  assert fields
+  assignments = ', '.join(f'{f}={p}' for (f, p) in zip(fields, placeholders_for_fields(fields, named)))
+  with_space = ' ' if with_ else ''
+  where_space_ = ' ' if where else ''
+  return f'{with_}{with_space}UPDATE OR {or_} {table} SET {assignments}{where_space_}{where}'
+
+
+def placeholders_for_fields(fields:tuple[str,...], named:bool) -> list[str]:
+  '''
+  Given a sequence of field names, return a string of comma-separated placeholders.
+  '''
+  if named:
+    placeholders = []
+    for f in fields:
+      if not f.isidentifier(): raise ValueError(f'field name cannot be used as placeholder: {f!r}')
+      placeholders.append(':' + f)
+  else:
+    placeholders = ['?'] * len(fields)
+  return placeholders
 
 
 def col_names_for_dc(dataclass:type) -> str:
