@@ -391,6 +391,9 @@ def chart_figure(*,
       y.max = x.max
     else: raise ValueError('cannot force symmetric axes for categorical data')
 
+  vis_w = 0
+  vis_h = 0
+
   data_class = f'{x.data_class}-{y.data_class}'
   _cl = [data_class]
   if isinstance(cl, str): _cl.append(cl)
@@ -401,9 +404,6 @@ def chart_figure(*,
   chart.prepend_class('chart')
 
   if title is not None: chart.append(Figcaption(_=title))
-
-  vis_w = 0
-  vis_h = 0
   grid = chart.append(Div(cl='vis-grid', style=f'--vis-w:{vis_w}; --vis-h:{vis_h};'))
   legend = chart.append(Div(cl='legend'))
 
