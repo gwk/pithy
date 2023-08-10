@@ -219,7 +219,7 @@ figure.chart .ticks > div > span.tick {
   background-color: black;
 }
 figure.chart .ticks.x > div > span.tick {
-  height: 0.5em;
+  height: 0.25em;
   width: 1px;
 }
 figure.chart .ticks.y > div > span.tick {
