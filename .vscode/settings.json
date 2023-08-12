@@ -3,7 +3,14 @@
     ".git": true,
     "_build": true,
     "_misc": true,
-    "pkg/**": true,
+    "pkg/crafts/**": true,
+    "pkg/iotest/**": true,
+    "pkg/legs/**": true,
+    "pkg/pithy/**": true,
+    "pkg/pithytools/**": true,
+    "pkg/tolkien/**": true,
+    "pkg/utest/**": true,
+    "pkg/wu/**": true
   },
   "mypy.targets": [
     "crafts",
@@ -24,6 +31,13 @@
     },
   },
   "files.exclude": {
-    "pkg/**": true
+    "pkg/crafts/**": true,
+    "pkg/iotest/**": true,
+    "pkg/legs/**": true,
+    "pkg/pithy/**": true,
+    "pkg/pithytools/**": true,
+    "pkg/tolkien/**": true,
+    "pkg/utest/**": true,
+    "pkg/wu/**": true
   },
 }
