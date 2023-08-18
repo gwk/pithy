@@ -2,6 +2,9 @@
 
 /* Chart layout. */
 figure.chart {
+  display: flex;
+  flex-direction: column;
+  grid-template-rows: min-content auto min-content;
 }
 
 figure.chart.categorical-numerical {
@@ -14,6 +17,7 @@ figure.chart > figcaption {
 figure.chart > .legend {
 }
 figure.chart > .vis-grid {
+  flex-grow: 1; /* Expand to fill remaining space of chart. */
   /* This 2x2 grid allocates minimum space for the gutter/tick areas,
   and devotes the remaining space to the data visualization area. */
   display: grid;
@@ -29,6 +33,8 @@ figure.chart .ticks.y { /* The y-axis tick marks on the left. */
 }
 figure.chart .vis-scroll { /* The data visualization scolling container. */
   grid-area: 1 / 2 / 2 / 3;
+  min-width: 4em;
+  min-height: 1em;
 }
 figure.chart .origin { /* The small square at the lower-left origin. */
   grid-area: 2 / 1 / 3 / 2;
@@ -57,12 +63,10 @@ figure.chart :is(.vis-scroll, .ticks-x-scroll)::-webkit-scrollbar { /* Hide scro
 figure.chart :is(.vis, .ticks.x) {
   min-width: 100%;
   width: 100%;
-  /*width: calc(1em * var(--vis-w));*/
 }
 figure.chart :is(.vis, .ticks.y) {
   min-height: 100%;
   height: 100%;
-  /*height: calc(1em * var(--vis-h));*/
 }
 
 /* Tick gutters. */
@@ -174,12 +178,13 @@ figure.chart.categorical-numerical .vis > .series.bar > div {
 /* User style. */
 figure.chart * {
   box-sizing: border-box;
-  --chart-bar-border-width: 1px;
 }
 figure.chart {
-  width: 96%;
-  margin: 0 auto;
-  background-color: red;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  --chart-bar-border-width: 1px;
   --series-color: gray; /* Default, can be overridden per series. */
 }
 figure.chart > figcaption {
@@ -197,14 +202,17 @@ figure.chart .origin {
   background-color: #DDF;
 }
 figure.chart .vis-scroll {
-  height: 24em;
+  position: relative;
+  height: auto;
 }
 figure.chart .ticks.x {
   background-color: lightgreen;
 }
 figure.chart .ticks.x > div > span.label {
   /*border: 1px solid black;*/
-
+}
+figure.chart .ticks span.label {
+  font-size: 0.5em;
 }
 figure.chart .ticks > div > span.tick {
   background-color: black;
