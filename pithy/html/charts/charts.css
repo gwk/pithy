@@ -8,8 +8,8 @@ figure.chart {
 }
 
 figure.chart.categorical-numerical {
-  --bar-width: max(1em - 1px, calc(((100% - 1px) / var(--nx)) - 1px));
-  --vis-width: max(calc(100%), calc(1em * var(--nx) + 1px));
+  --bar-width: max(1em - 1px, ((100% - 1px) / var(--nx)) - 1px);
+   --vis-width: max(100%, 1em * var(--nx) + 1px);
 }
 
 figure.chart > figcaption {
@@ -128,7 +128,7 @@ figure.chart .ticks.y {
 figure.chart .ticks.y > div {
   position: relative;
   height: 0;
-  top: calc(100% * calc(1 - var(--v)));
+  top: calc(100% * (1 - var(--v)));
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -161,8 +161,8 @@ figure.chart.categorical-numerical .vis > .series.bar {
 figure.chart.categorical-numerical .vis > .series.bar > div {
   position: absolute;
   min-width: 4px;
-  height: calc(100% * calc(var(--v)));
-  width: max(1em - 1px, calc(((100% - 1px) / var(--nx)) - 1px));
+  height: calc(100% * var(--v));
+  width: max(1em - 1px, ((100% - 1px) / var(--nx)) - 1px);
   left: calc(1px + var(--i) * max(1em, (100% - 1px) / var(--nx)));
   bottom: 0;
   background-color: var(--series-color);
