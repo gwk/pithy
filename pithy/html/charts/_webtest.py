@@ -22,7 +22,15 @@ def app() -> Starlette:
 async def home_page(request:Request) -> HTMLResponse:
   html = Html.doc(title='TEST')
 
-  html.head.append(Css('*, *::before, *::after { box-sizing: border-box; }'))
+  html.head.append(Css('''
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    padding: 0.5em;
+    font-family: sans-serif;
+  }
+  '''))
   html.head.add_stylesheet('/static/pithy/charts.css')
   html.head.add_js(url='/static/pithy/charts.js')
 
