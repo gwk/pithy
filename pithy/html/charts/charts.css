@@ -90,26 +90,6 @@ figure.chart .ticks > div > span.tick {
   vertical-align: top;
 }
 
-figure.chart .ticks.x > div > span.label {
-  transform-origin: center left;
-  transform: rotate(45deg);
-  position: absolute;
-}
-figure.chart .ticks.x > div > span.tick {
-  position: absolute;
-}
-
-figure.chart .ticks.y > div > span.label {
-  /* We a use a child span to hold the text.
-  Because the parent div has zero height, the text hangs below the specified vertical position.
-  The child span allows us to transform the text and center it around the specified position. */
-  transform: translateY(-50%);
-}
-figure.chart .ticks.y > div > span.tick {
-  vertical-align: top;
-  transform: translateY(-50%); /* Half pixel translation up. TODO: only on retina? */
-}
-
 
 /* The x-axis tick mark gutter on the bottom. */
 figure.chart .ticks.x {
@@ -122,16 +102,25 @@ figure.chart .ticks.x > div { /*TODO: categorical-numerical. */
   left: calc(1px + var(--bar-width) * 0.5 +  var(--i) * max(1em, (100% - 1px) / var(--nx)));
 }
 
+figure.chart .ticks.x > div > span.label {
+  transform-origin: center left;
+  transform: rotate(45deg);
+  position: absolute;
+}
+figure.chart .ticks.x > div > span.tick {
+  position: absolute;
+}
+
+
 /*
 The y-axis tick mark gutter on the left.
 Y-axis tick marks positioning trick:
 We use relative positioning so that the tick elements participate in document layout and influence the sizes of the left gutter.
-We use a height of zero so that the CSS variable can position the tick mark exactly,
-without having to account for the sizes stacking up.
+We use a height of zero to position the tick mark as if it were absolute, without having to account for the sizes stacking up.
 If we instead try to use absolute positioning, then the tick text and mark do not affect the gutter width.
 Because of the zero size trick, we use a child span to hold the text.
 The parent div has zero height, so the text hangs below the specified vertical position.
-The child span allows us to transform the text and center it around the specified position.
+The child span allows us to use a transform that centers it around the specified position.
 */
 figure.chart .ticks.y {
   /* TODO: negative padding and compensation so that the start and end tick text does not clip, but stays aligned. */
@@ -142,6 +131,17 @@ figure.chart .ticks.y > div {
   top: calc(100% * calc(1 - var(--v)));
   white-space: nowrap;
   vertical-align: middle;
+}
+
+figure.chart .ticks.y > div > span.label {
+  /* We a use a child span to hold the text.
+  Because the parent div has zero height, the text hangs below the specified vertical position.
+  The child span allows us to transform the text and center it around the specified position. */
+  transform: translateY(-50%);
+}
+figure.chart .ticks.y > div > span.tick {
+  vertical-align: top;
+  transform: translateY(-50%); /* Half pixel translation up. TODO: only on retina? */
 }
 
 
