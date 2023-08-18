@@ -20,7 +20,7 @@ def app() -> Starlette:
 
 
 async def home_page(request:Request) -> HTMLResponse:
-  html = Html.doc(title='TEST')
+  html = Html.doc(title='Chart Test')
 
   html.head.append(Css('''
   *, *::before, *::after { box-sizing: border-box; }

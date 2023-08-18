@@ -189,24 +189,26 @@ figure.chart {
 }
 figure.chart > figcaption {
   padding: 0.5em 0;
-  background-color: #8D6;
+  background-color: lightgray;
 }
 figure.chart > .legend {
   padding: 0.5em 0;
   background-color: lightgray;
 }
 figure.chart .vis-grid {
-  background-color: yellow;
 }
 figure.chart .origin {
-  background-color: #DDF;
+  background-color: #EFE;
 }
 figure.chart .vis-scroll {
   position: relative;
   height: auto;
 }
 figure.chart .ticks.x {
-  background-color: lightgreen;
+  background-color: #FEE;
+}
+figure.chart .ticks.y {
+  background-color: #EEF;
 }
 figure.chart .ticks.x > div > span.label {
   /*border: 1px solid black;*/
@@ -216,9 +218,6 @@ figure.chart .ticks span.label {
 }
 figure.chart .ticks > div > span.tick {
   background-color: black;
-}
-figure.chart .ticks.y {
-  background-color: #8DD;
 }
 figure.chart .ticks.y > div {
   text-align: right;
@@ -244,10 +243,10 @@ figure.chart .series > div {
 }
 
 figure.chart .Series0 {
-  --series-color: coral;
+  --series-color: #888;
 }
 figure.chart .Series1 {
-  --series-color: lightblue;
+  --series-color: #999;
 }
 .swatch {
   width: 1em;
