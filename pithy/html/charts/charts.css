@@ -8,8 +8,9 @@ figure.chart {
 }
 
 figure.chart.categorical-numerical {
-  --bar-width: max(1em - 1px, ((100% - 1px) / var(--nx)) - 1px);
-   --vis-width: max(100%, 1em * var(--nx) + 1px);
+  --bar-step: max(1em, (100% - 1px) / var(--nx));
+  --bar-width: calc(var(--bar-step) - 1px);
+  --vis-width: max(1em * var(--nx) + 1px, 100%);
 }
 
 figure.chart > figcaption {
@@ -99,7 +100,7 @@ figure.chart .ticks.x {
 }
 figure.chart .ticks.x > div { /*TODO: categorical-numerical. */
   position: absolute;
-  left: calc(1px + var(--bar-width) * 0.5 +  var(--i) * max(1em, (100% - 1px) / var(--nx)));
+  left: calc(1px + var(--bar-width) * 0.5 + var(--i) * var(--bar-step));
 }
 
 figure.chart .ticks.x > div > span.label {
@@ -163,7 +164,7 @@ figure.chart.categorical-numerical .vis > .series.bar > div {
   min-width: 4px;
   height: calc(100% * var(--v));
   width: max(1em - 1px, ((100% - 1px) / var(--nx)) - 1px);
-  left: calc(1px + var(--i) * max(1em, (100% - 1px) / var(--nx)));
+  left: calc(1px + var(--i) * var(--bar-step));
   bottom: 0;
   background-color: var(--series-color);
   border-width: var(--chart-bar-border-width);
