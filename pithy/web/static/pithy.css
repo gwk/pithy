@@ -221,7 +221,6 @@ table.dense tbody tr:nth-child(odd) {
 /* HTMX interaction indicators. */
 
 .block-emoji-icon, .inline-emoji-icon {
-  font-display: block;
   font-family: 'Noto Emoji';
   text-align: center;
 }
@@ -241,7 +240,6 @@ table.dense tbody tr:nth-child(odd) {
 /* Emoji icons. */
 
 .icon {
-  font-display: block;
   font-family: 'Noto Emoji';
 }
 a.icon {
