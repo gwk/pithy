@@ -249,7 +249,11 @@ class CategoricalAxis(ChartAxis):
 
   def style(self) -> str:
     d = 'x' if self.idx == 0 else 'y'
-    return f'--n{d}:{len(self.labels)};'
+    lll = ''
+    if self.idx == 0:
+      last_len = len(self.labels[-1])
+      lll = f'--{d}-last-label-len:{last_len}ch;'
+    return f'--n{d}:{len(self.labels)};{lll}'
 
 
   def tick_divs(self) -> list[Div]:
@@ -347,6 +351,13 @@ class LinearAxis(NumericalAxis):
      for v in ticks]
 
 
+def get_tick_div_label_len(div:Div) -> int:
+  label_span = div._[1]
+  assert isinstance(label_span, Span)
+  label_text = label_span._[0]
+  assert isinstance(label_text, str)
+  return len(label_text)
+
 
 def chart_figure(*,
  cl:Iterable[str]|None=None,
@@ -409,7 +420,12 @@ def chart_figure(*,
 
   grid.append(Div(cl='origin')) # By default this box is empty.
 
-  grid.append(Div(cl='ticks-x-scroll', _=Div(cl=['ticks', 'x', x.data_class, x.kind_class], _=x.tick_divs())))
+  x_tick_divs = x.tick_divs()
+  max_x_tick_label_len = max(get_tick_div_label_len(d) for d in x_tick_divs)
+  x_ticks_style = f'--max-tick-label-len:{max_x_tick_label_len}ch;'
+
+  grid.append(Div(cl='ticks-x-scroll',
+    _=Div(cl=['ticks', 'x', x.data_class, x.kind_class], style=x_ticks_style, _=x_tick_divs)))
 
   y_tick_divs = y.tick_divs()
   for d in y_tick_divs: d._.reverse() # Flip the tick and label so that the tick is on the right.

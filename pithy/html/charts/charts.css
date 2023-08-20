@@ -8,15 +8,27 @@ figure.chart {
 }
 
 figure.chart.categorical-numerical {
-  --bar-step: max(1em, (100% - 1px) / var(--nx));
+  --tick-len: 0.25rem;
+  --tick-font-scale: 0.5;
+  --last-label-width: calc(0.707 * var(--x-last-label-len) * var(--tick-font-scale) + 1ch);
+  /* "packed" means the width calculations when there are enough bars that we cannot fit them all on the screen. */
+  --packed-bar-step: 1rem; /* The minimum bar step. */
+  --packed-bar-half: calc(0.5 * var(--packed-bar-step));
+  --packed-last-half: max(var(--packed-bar-half), var(--last-label-width));
+  --packed-bars-width: calc(var(--packed-bar-half) * (2*var(--nx) - 1) + var(--packed-last-half));
+  --packed-vis-width: calc(var(--packed-bars-width) + 1px);
+  /* "wide" means the width calculations when there are not enough bars to fill the screen. */
+  --wide-vis-width: 100%;
+  --wide-bars-width: calc(var(--wide-vis-width) - 1px);
+  --wide-bar-half-ideal: calc(var(--wide-bars-width) / (var(--nx) * 2));
+  --wide-bar-half-spill: calc((var(--wide-bars-width) - var(--last-label-width)) / (var(--nx) * 2 - 1));
+  --wide-bar-half: min(var(--wide-bar-half-ideal), var(--wide-bar-half-spill));
+
+  --bar-step: calc(2 * max(var(--packed-bar-half), var(--wide-bar-half)));
   --bar-width: calc(var(--bar-step) - 1px);
-  --vis-width: max(1em * var(--nx) + 1px, 100%);
+  --vis-width: max(var(--packed-vis-width), var(--wide-vis-width));
 }
 
-figure.chart > figcaption {
-}
-figure.chart > .legend {
-}
 figure.chart > .vis-grid {
   flex-grow: 1; /* Expand to fill remaining space of chart. */
   /* This 2x2 grid allocates minimum space for the gutter/tick areas,
@@ -34,8 +46,8 @@ figure.chart .ticks.y { /* The y-axis tick marks on the left. */
 }
 figure.chart .vis-scroll { /* The data visualization scolling container. */
   grid-area: 1 / 2 / 2 / 3;
-  min-width: 4em;
-  min-height: 1em;
+  min-width: 4rem;
+  min-height: 1rem;
 }
 figure.chart .origin { /* The small square at the lower-left origin. */
   grid-area: 2 / 1 / 3 / 2;
@@ -75,11 +87,6 @@ figure.chart .ticks {
   position: relative;
 }
 
-figure.chart .ticks > div {
-  font-size: 1em;
-  line-height: 1.15em; /* TEMP: 1.15em appears to be the safari default.*/
-}
-
 figure.chart .ticks > div > span {
   display: inline-block;
 }
@@ -95,21 +102,25 @@ figure.chart .ticks > div > span.tick {
 /* The x-axis tick mark gutter on the bottom. */
 figure.chart .ticks.x {
   width: var(--vis-width);
-  height: 2em; /* TEMP. */
-  overflow-x: hidden; /* Prevents the tick text from adding weird trailing space on the right side. */
+  height: calc(0.707 * var(--tick-font-scale) * var(--max-tick-label-len) + var(--tick-len) + 0.5rem);
+  overflow: hidden; /* Prevents the tick text from adding weird trailing space on the right side. */
 }
 figure.chart .ticks.x > div { /*TODO: categorical-numerical. */
   position: absolute;
-  left: calc(1px + var(--bar-width) * 0.5 + var(--i) * var(--bar-step));
+  left: calc(1px + (var(--i) + 0.5) * (var(--bar-step)));
 }
 
 figure.chart .ticks.x > div > span.label {
   transform-origin: center left;
   transform: rotate(45deg);
+  padding-top: 1px;
+  padding-left: 1px;
   position: absolute;
+  white-space: nowrap;
 }
 figure.chart .ticks.x > div > span.tick {
   position: absolute;
+  height: var(--tick-len);
 }
 
 
@@ -141,12 +152,14 @@ figure.chart .ticks.y > div > span.label {
   transform: translateY(-50%);
 }
 figure.chart .ticks.y > div > span.tick {
+  width: var(--tick-len);
   vertical-align: top;
   transform: translateY(-50%); /* Half pixel translation up. TODO: only on retina? */
 }
 
 
 figure.chart .vis { /* The data visualization area. */
+  width: var(--vis-width);
   position: relative;
 }
 figure.chart .vis > .series {
@@ -163,7 +176,7 @@ figure.chart.categorical-numerical .vis > .series.bar > div {
   position: absolute;
   min-width: 4px;
   height: calc(100% * var(--v));
-  width: max(1em - 1px, ((100% - 1px) / var(--nx)) - 1px);
+  width: var(--bar-width);
   left: calc(1px + var(--i) * var(--bar-step));
   bottom: 0;
   background-color: var(--series-color);
@@ -189,11 +202,11 @@ figure.chart {
   --series-color: gray; /* Default, can be overridden per series. */
 }
 figure.chart > figcaption {
-  padding: 0.5em 0;
+  padding: 0.5rem 0;
   background-color: lightgray;
 }
 figure.chart > .legend {
-  padding: 0.5em 0;
+  padding: 0.5rem 0;
   background-color: lightgray;
 }
 figure.chart .vis-grid {
@@ -202,7 +215,6 @@ figure.chart .origin {
   background-color: #EFE;
 }
 figure.chart .vis-scroll {
-  position: relative;
   height: auto;
 }
 figure.chart .ticks.x {
@@ -211,11 +223,9 @@ figure.chart .ticks.x {
 figure.chart .ticks.y {
   background-color: #EEF;
 }
-figure.chart .ticks.x > div > span.label {
-  /*border: 1px solid black;*/
-}
-figure.chart .ticks span.label {
-  font-size: 0.5em;
+figure.chart .ticks > div > span.label {
+  font-size: calc(1em * var(--tick-font-scale));
+  /* ^ Note: the font-size must be set using --tick-font-scale so that both the height and final half step calculations work. */
 }
 figure.chart .ticks > div > span.tick {
   background-color: black;
@@ -227,12 +237,10 @@ figure.chart .ticks > div > span.tick {
   background-color: black;
 }
 figure.chart .ticks.x > div > span.tick {
-  height: 0.25em;
   width: 1px;
 }
 figure.chart .ticks.y > div > span.tick {
-  margin-left: 0.125em;
-  width: 0.25em;
+  margin-left: 0.125rem;
   height: 1px;
 }
 
@@ -250,9 +258,9 @@ figure.chart .Series1 {
   --series-color: #999;
 }
 .swatch {
-  width: 1em;
-  height: 1em;
-  margin-right: 0.5em;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
   vertical-align: middle;
-  border-radius: 0.25em;
+  border-radius: 0.25rem;
 }
