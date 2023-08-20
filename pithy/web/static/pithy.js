@@ -22,7 +22,6 @@ addEventListener('DOMContentLoaded', () => {
 
 function createStyle(title, selectorText) {
   style = document.createElement('style');
-  style.type = 'text/css';
   style.title = title;
   style.innerHTML = selectorText;
   document.head.appendChild(style);
