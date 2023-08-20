@@ -42,7 +42,7 @@ def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, autho
       '<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=" />', # empty icon.
     ]
     if css_lines is not None:
-      yield '<style type="text/css">'
+      yield '<style>'
       yield from css_lines
       yield from ctx.render_css()
       yield '</style>'
@@ -846,7 +846,7 @@ def embed(ctx: Ctx, src: SrcLine, text: str, attrs: dict[str, str]) -> Span:
 
 def embed_css(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
   css = f.read()
-  return [f'<style type="text/css">{html_esc(css)}</style>']
+  return [f'<style>{html_esc(css)}</style>']
 
 
 def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
