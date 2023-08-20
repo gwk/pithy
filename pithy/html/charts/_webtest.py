@@ -28,7 +28,7 @@ async def home_page(request:Request) -> HTMLResponse:
   body {
     margin: 0;
     padding: 0.5em;
-    font-family: sans-serif;
+    font-family: monospace;
   }
   '''))
   html.head.add_stylesheet('/static/pithy/charts.css')
@@ -38,7 +38,7 @@ async def home_page(request:Request) -> HTMLResponse:
     title='CHART 1',
     y=LinearAxis(tick_step=10),
     series=[
-      BarSeries(name='Series0', points=[(str(i), i) for i in range(51)]),
+      BarSeries(name='Series0', points=[(f'{i}', i) for i in range(51)]),
       #BarSeries(name='Series1', points=[('a', 4), ('b', 5), ('c', 6)]),
     ])
 
