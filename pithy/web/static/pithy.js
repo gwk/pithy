@@ -35,7 +35,7 @@ addEventListener('DOMContentLoaded', () => {
 
 
 function createStyle(title, selectorText) {
-  style = document.createElement('style');
+  const style = document.createElement('style');
   style.title = title;
   style.innerHTML = selectorText;
   document.head.appendChild(style);
@@ -43,7 +43,7 @@ function createStyle(title, selectorText) {
 
 
 function createPithyDynamicStyle() {
-  css = `:root {
+  const css = `:root {
     --scrollbar-width: ${scrollbarWidth}px;
   }`;
   createStyle('pithy-dynamic', css);
@@ -93,7 +93,7 @@ function clearValueForSelectorAll(selector) {
 function resetValueForSelector(selector) {
   const element = document.querySelector(selector);
   if (element) {
-    default_ = element.getAttribute('default');
+    const default_ = element.getAttribute('default');
     if (default_ === null) {
       element.removeAttribute('value');
     } else {
@@ -105,7 +105,7 @@ function resetValueForSelector(selector) {
 
 function resetValueForSelectorAll(selector) {
   for (const element of document.querySelectorAll(selector)) {
-    default_ = element.getAttribute('default');
+    const default_ = element.getAttribute('default');
     if (default_ === null) {
       element.removeAttribute('value');
     } else {
@@ -167,7 +167,7 @@ function validateAtLeastOneCheckbox(span) {
   for (const input of inputs) {
     any_checked = any_checked || input.checked
   }
-  first_input = span.querySelector('input')
+  const first_input = span.querySelector('input')
   const desc = span.desc || 'option'
   first_input.setCustomValidity(any_checked ? '' : `Select at least one ${desc}`)
 }
