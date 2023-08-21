@@ -87,6 +87,8 @@ test-diff-data:
 
 typecheck: gen
 	mypy $(packages) test tools
+	tsc
+
 
 typecheck-clear-cache:
 	rm -rf _build/mypy_cache

@@ -2,19 +2,33 @@
 
 "use strict";
 
+const assert = console.assert;
 const log = console.log;
 
 let scrollbarWidth = 0;
 
+/**
+ * @template T
+ * @param {T} val - A possibly null/undefined value.
+ * @returns {NonNullable<T>} - The value, asserting that it is not null or undefined.
+ */
+function nonopt(val) {
+  assert(val !== null);
+  assert(val !== undefined);
+  // @ts-ignore
+  return val;
+}
+
 
 addEventListener('DOMContentLoaded', () => {
   // Set safari class on body if browser is Safari.
+  // @ts-ignore: ts(2339): 'safari' does not exist.
   if (window.safari !== undefined) {
     document.body.classList.add('safari');
   }
 
   // Calculate the width of the scrollbar.
-  const body = document.querySelector('body');
+  const body = nonopt(document.querySelector('body'));
   scrollbarWidth = window.innerWidth - body.clientWidth + 0.1; // Adding a fraction more prevents the horizontal scrollbar.
   createPithyDynamicStyle();
 });
