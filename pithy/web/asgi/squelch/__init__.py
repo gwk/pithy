@@ -218,7 +218,7 @@ class SquelchApp:
     if not error:
       try:
         count = c.run(f'{select_head} COUNT() {from_clause}{where_clause}').one_col()
-      except SqliteError:
+      except SqliteError as e:
         error = f'Count query failed: {e}'
 
     rows = []
