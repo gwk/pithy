@@ -322,8 +322,8 @@ a.icon:visited {
   margin-right: 0.5em;
 }
 
-#squelch_app #query {
-  margin: 1em 0;
+#squelch_app .detail {
+  margin-bottom: 1em;
 }
 
 #squelch_app .pagination-control span.msg {

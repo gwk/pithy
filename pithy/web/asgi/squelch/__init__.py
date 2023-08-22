@@ -231,14 +231,14 @@ class SquelchApp:
 
 
     parts:list[HtmlNode] = [
-      Details(Summary('Query'), _=Pre(id='select_query', hx_swap_oob='innerHTML', _=query)),
+      Details(Summary('Query'), _=Pre(cl='detail', hx_swap_oob='innerHTML', _=query)),
     ]
 
     if plan:
-      parts.append(Details(Summary('Plan'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan)))
+      parts.append(Details(Summary('Plan'), Pre(cl='detail', hx_swap_oob='innerHTML', _=plan)))
 
     if error:
-      parts.append(Details(Summary('Error'), Pre(id='select_error', _=error), open=''))
+      parts.append(Details(Summary('Error'), Pre(cl='detail', _=error), open=''))
     else:
       pagination = Div(id='pagination', cl='kv-grid-max',  _=[pagination_control(count, limit, offset, params)])
       parts.extend([
