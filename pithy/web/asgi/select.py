@@ -207,39 +207,50 @@ class SelectApp:
 
     conn = self.get_conn()
     c = conn.cursor()
+    error = ''
     try:
       plan = repr(tuple(c.run(f'EXPLAIN QUERY PLAN {query}').one()))
-      is_ok = True
     except Exception as e:
-      plan = f'Explain query failed: {e}\n{query}'
-      is_ok = False
+      error = f'Explain query failed: {e}'
+      plan = ''
 
     count:int|None = None
-    if is_ok:
+    if not error:
       try:
         count = c.run(f'{select_head} COUNT() {from_clause}{where_clause}').one_col()
       except SqliteError:
-        is_ok = False
+        error = f'Count query failed: {e}'
 
     rows = []
-    if is_ok:
+    if not error:
       try: c = c.run(query)
       except Exception as e:
-        plan = f'Query failed: {e}\n{query}'
-        is_ok = False
+        error = f'Query failed: {e}'
       else:
         rows = [Tr(_=[rcf(row) for rcf in render_cell_fns]) for row in c]
 
-    return [
-      Div(id='query', _=[
-        Details(Summary('Query'), _=Pre(id='select_query', hx_swap_oob='innerHTML', _=query)),
-        Details(Summary('Plan'), _=Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan)),
-      ]),
-      Div(id='pagination', cl='kv-grid-max',  _=[pagination_control(count, limit, offset, params)]),
-      Div(id='results', _=HtmlTable(cl='dense', _=[
-        Thead(Tr(_=[Th(Div(name)) for name in header_names])),
-        Tbody(_=rows)])),
+
+    parts:list[HtmlNode] = [
+      Details(Summary('Query'), _=Pre(id='select_query', hx_swap_oob='innerHTML', _=query)),
     ]
+
+    if plan:
+      parts.append(Details(Summary('Plan'), Pre(id='select_plan', hx_swap_oob='innerHTML', _=plan)))
+
+    if error:
+      parts.append(Details(Summary('Error'), Pre(id='select_error', _=error), open=''))
+    else:
+      pagination = Div(id='pagination', cl='kv-grid-max',  _=[pagination_control(count, limit, offset, params)])
+      parts.extend([
+        pagination,
+        Div(id='results', _=HtmlTable(cl='dense', _=[
+          Thead(Tr(_=[Th(Div(name)) for name in header_names])),
+          Tbody(_=rows)])),
+        pagination,
+      ])
+
+    return parts
+
 
 
 def fmt_select_cols(schema:str, table:str, cols:list[Column], table_vis:dict[str,Vis]) -> tuple[str,str,list[str],list[CellRenderFn]]:
