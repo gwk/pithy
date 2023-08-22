@@ -28,8 +28,8 @@ ValRenderFn = Callable[[Any],Any]
 CellRenderFn = Callable[[Any],Td]
 
 
-class SelectApp:
-  'An ASGI app that provides a web interface for running SELECT queries.'
+class SquelchApp:
+  'An ASGI app that provides a web interface for running SQL queries.'
 
   def __init__(self,
     get_conn:Callable[[],Connection],
@@ -116,7 +116,7 @@ class SelectApp:
     table_names = [f'{qe(s.name)}.{qe(t.name)}' for s in self.schemas.values() for t in s.tables]
     if table_name: assert table_name in table_names # Sanity check that these generated table names match the parsed table name.
 
-    main = Main(id='pithy_select_app', cl='bfull')
+    main = Main(id='squelch_app', cl='bfull')
 
     main.append(main_script())
     main.append(H1('SELECT'))
