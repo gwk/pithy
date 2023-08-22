@@ -302,56 +302,56 @@ a.icon:visited {
 }
 
 
-/* SelectApp. */
+/* SquelchApp. */
 
-#pithy_select_app form {
+#squelch_app form {
   margin: 1em 0;
 }
 
-#pithy_select_app form #columns {
+#squelch_app form #columns {
   display: flex;
   flex-wrap: wrap;
   column-gap: 1em;
 }
 
-#pithy_select_app form span.en-col {
+#squelch_app form span.en-col {
   white-space: nowrap;
 }
 
-#pithy_select_app form span.en-col input {
+#squelch_app form span.en-col input {
   margin-right: 0.5em;
 }
 
-#pithy_select_app #query {
+#squelch_app #query {
   margin: 1em 0;
 }
 
-#pithy_select_app .pagination-control span.msg {
+#squelch_app .pagination-control span.msg {
   margin-left: 0.5em;
 }
 
-#pithy_select_app #results {
+#squelch_app #results {
   width: 100%;
   overflow-x: scroll;
 }
 
-#pithy_select_app #results > table {
+#squelch_app #results > table {
   table-layout: auto;
 }
 
-#pithy_select_app #results > table th {
+#squelch_app #results > table th {
   resize: horizontal;
   overflow: clip;
 }
 
-#pithy_select_app .error {
+#squelch_app .error {
   color: #800;
 }
 
-#pithy_select_app .null {
+#squelch_app .null {
   color: #888;
 }
 
-#pithy_select_app .unjoined {
+#squelch_app .unjoined {
   color: #840;
 }
