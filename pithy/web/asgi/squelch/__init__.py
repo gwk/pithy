@@ -86,6 +86,7 @@ class SquelchApp:
     '''
     The main page for the SELECT app.
     '''
+    path = request.url.path
     params = request.query_params
 
     if nst := self.get_schema_table(params):
@@ -121,7 +122,7 @@ class SquelchApp:
     main.append(main_script())
     main.append(H1('SELECT'))
 
-    form = main.append(Form(cl='kv-grid-max', action='./select', autocomplete='off'))
+    form = main.append(Form(cl='kv-grid-max', action=path, autocomplete='off'))
     #^ autocomplete off is important for the table select input,
     #^ which otherwise remembers the current value when the user presses the back button.
 
@@ -159,7 +160,8 @@ class SquelchApp:
     if table_name:
       assert schema
       assert table
-      main.extend(self.render_table(schema, table, en_col_names, order_by, request.query_params))
+      main.extend(
+        self.render_table(schema=schema, table=table, path=path, params=params, en_col_names=en_col_names, order_by=order_by))
 
     return self.html_response(request, main)
 
@@ -181,7 +183,8 @@ class SquelchApp:
     return full_name, schema, table
 
 
-  def render_table(self, schema:Schema, table:Table, en_col_names:set[str], order_by:str, params:QueryParams) -> list[HtmlNode]:
+  def render_table(self, *, schema:Schema, table:Table, path:str, params:QueryParams, en_col_names:set[str], order_by:str
+   ) -> list[HtmlNode]:
 
     assert en_col_names # Need at least one column to render.
 
@@ -197,7 +200,7 @@ class SquelchApp:
     table_vis = self.vis[schema.name][table.name]
 
     columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
-      schema=schema.name, table=table.name, cols=en_cols, table_vis=table_vis)
+      schema=schema.name, table=table.name, path=path, cols=en_cols, table_vis=table_vis)
 
     select_head = 'SELECT' + (' DISTINCT' if distinct else '')
     where_clause = f'\nWHERE {where}' if where else ''
@@ -253,7 +256,8 @@ class SquelchApp:
 
 
 
-def fmt_select_cols(schema:str, table:str, cols:list[Column], table_vis:dict[str,Vis]) -> tuple[str,str,list[str],list[CellRenderFn]]:
+def fmt_select_cols(schema:str, table:str, path:str, cols:list[Column], table_vis:dict[str,Vis]
+ ) -> tuple[str,str,list[str],list[CellRenderFn]]:
   '''
   Return "SELECT [cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
   '''
@@ -314,7 +318,7 @@ def fmt_select_cols(schema:str, table:str, cols:list[Column], table_vis:dict[str
       append_select_part(f'{join_key} AS {qe(join_key)}') # The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
       append_select_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
       from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {join_table} ON {qual_col} = {join_key}')
-      cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, render_fn=vis.render)
+      cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, app_path=path, render_fn=vis.render)
     else:
       head_name = qe(col.name)
       append_select_part(qual_col)
@@ -352,7 +356,8 @@ def mk_cell_rendered(col:Column, render_fn:ValRenderFn) -> CellRenderFn:
   return cell_rendered
 
 
-def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_table_primary_abbr:str, render_fn:ValRenderFn|None) -> CellRenderFn:
+def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_table_primary_abbr:str, app_path:str,
+ render_fn:ValRenderFn|None) -> CellRenderFn:
   '''
   Create a cell value rendering function for the given column, with a join and possibly a custom render function.
   '''
@@ -378,7 +383,7 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
       cl = ''
       display_val = str(joined_val)
     where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
-    return Td(cl=('joined', cl), _=A(href=fmt_url('./select', table=vis.schema_table, where=where), title=val, _=display_val))
+    return Td(cl=('joined', cl), _=A(href=fmt_url(app_path, table=vis.schema_table, where=where), title=val, _=display_val))
 
   return cell_joined
 
