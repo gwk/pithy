@@ -314,11 +314,11 @@ a.icon:visited {
   column-gap: 1em;
 }
 
-#squelch_app form span.en-col {
+#squelch_app form label.en-col {
   white-space: nowrap;
 }
 
-#squelch_app form span.en-col input {
+#squelch_app form label.en-col input {
   margin-right: 0.5em;
 }
 
