@@ -98,9 +98,9 @@ class SquelchApp:
         or [table.columns[0].name])
 
       en_col_spans = [
-        Span(cl='en-col', _=[
+        Label(cl='en-col', _=[
           Input(name=f'c-{col.name}', type='checkbox', checked=Present(col.name in en_col_names)),
-          Label(col.name)])
+          col.name])
         for col in table.columns]
 
       order_by = params.get('order_by', '') or self.order_by[schema.name].get(table.name, '')
