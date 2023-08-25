@@ -55,8 +55,8 @@ class HtmlNode(Mu):
     tree = etree.parse(file, parser)
     root = tree.getroot()
     if root is None: # Empty or whitespace strings produce None.
-      return Html(Body())
-    html = HtmlNode.from_etree(root)
+      return Html(Body()) # type: ignore[unreachable]
+    html = HtmlNode.from_etree(root) # type: ignore[arg-type]
     assert isinstance(html, Html), html
     return html
 
