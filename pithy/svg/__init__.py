@@ -59,7 +59,7 @@ class SvgNode(Mu):
       elif not isinstance(_, list):
           _ = list(_)
       _.append(Title(_=title))
-    super().__init__(tag=tag, attrs=attrs, _=_, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)
+    super().__init__(tag=tag, attrs=attrs, _=_, cl=cl, _orig=_orig, _parent=_parent, *_mu_positional_children, **kw_attrs)
 
 
   @property
