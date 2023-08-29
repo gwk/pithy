@@ -12,6 +12,10 @@ This repository contains the source code for several Python packages:
 
 All code is dedicated to the public domain under CC0. Opinions vary, but this approach to licensing arguably creates the least burden for users who copy, modify, and intermix the code. Attribution is nonetheless appreciated!
 
+# Packaging Status
+
+Please note that the packages published to PyPI frequently lag behind the state of this repository. If you are interested in a using a package via PyPI, please get in touch.
+
 
 # Packaging and Installation
 
@@ -23,7 +27,7 @@ For these commands, the makefile simply invokes the shell scripts with all packa
 
 ## Details
 
-The various package sources reside in the top level directory, e.g. `pithy/`, `pithytools/`, etc. I like this because it reduces file path length, and preserves the git history from when each package lived in a separate repository. Unfortunately the layout runs afoul of the Python packaging convention, because the `pyproject.toml` files would all collide at the root level, and cannot (as far as I can tell) be made to live inside their own source directories. The workaround is to create conventionally structured directories in `pkg/`, e.g. `pkg/pithy/`. Project files are generated using a short script, `build/gen-pyproject-toml.py`, which merges common values from `pkg/_common.toml` with the `pkg/{package}.toml` for the package in question to generate `pkg/{package}/pyproject.toml`. Each package subdirectory then contains a symlink of the same name that points to the corresponding source directory in the repository root. This appears to satisfy pip and hatch at least.
+The various package sources reside in the top level directory, e.g. `pithy/`, `pithytools/`, etc. This layout reduces file path length and preserves the git history from when each package lived in a separate repository. Unfortunately the layout runs afoul of the Python packaging convention, because the `pyproject.toml` files would all collide at the root level, and cannot (as far as I can tell) be made to live inside their own source directories. The workaround is to create conventionally structured directories in `pkg/`, e.g. `pkg/pithy/`. Project files are generated using a short script, `build/gen-pyproject-toml.py`, which merges common values from `pkg/_common.toml` with the `pkg/{package}.toml` for the package in question to generate `pkg/{package}/pyproject.toml`. Each package subdirectory then contains a symlink of the same name that points to the corresponding source directory in the repository root. This appears to satisfy pip and hatch at least.
 
 
 # Packages
@@ -53,13 +57,18 @@ Legs is a lexer generator. It is currently in an experimental state.
 ## Pithy Tools
 `pithytools` This is a set of miscellaneous command line tools. They were split out from `pithy` so that the core libary no longer installs command line executables.
 
+
 ## Tolkien
-`tolkien` is a very small library that defines a Token type for writing parsers in Python. It was factored out of Legs so that I could use the same structure type independenly of the lexer generator.
+`tolkien` is a very small library that defines a Token type for writing parsers in Python. It was factored out of Legs so that I could use the same structure type independently of the lexer generator.
+
+
+## UnicodeData
+`unicode-data` holds historical versions of the unicode character database.
 
 
 ## UTest
-`utest` is a small, standalone library that provides basic unit testing. It can be used in conjunction with `iotest`.
+`utest` is a small, standalone library that provides basic unit testing. It can be used in conjunction with `iotest`. More recently it gained a standalone harness option: `python3 -m utest [paths...]` will search the given tests for `*.ut.py` and run those.
 
 
 ## Writeup
-A markup language similar to Markdown. This is currently in an experimental state. I have plans to rewrite it but it has been on the back burner for several years.
+A markup language similar to Markdown. This is currently in an experimental state. I have plans to rewrite it but it has been on the back burner for years.
