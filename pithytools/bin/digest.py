@@ -41,7 +41,7 @@ hash_docs_str = ', '.join(hashes)
 
 
 def main() -> None:
-  parser = ArgumentParser(description='Count lines of source code.')
+  parser = ArgumentParser(description='Calculate hash digests of files.')
   parser.add_argument('-hash', default='blake3', help=f'Hash algorithm to use: {hash_docs_str}.')
   parser.add_argument('-size', default=32, type=int, help='Digest size in bytes.')
   parser.add_argument('-lep128', action='store_true', help='Show lep128 result (default).')
