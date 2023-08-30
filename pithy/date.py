@@ -127,6 +127,11 @@ class DateRange(Sequence[Date]):
   def __len__(self) -> int: return len(self._seq)
 
 
+def dt_IMp(dt:DateTime|Time, compact=False) -> str:
+  if compact and not dt.minute:
+    return f'{dt:%I%p}'.lstrip('0') # 04AM.lstrip('0') => 4AM
+  return f'{dt:%I:%M%p}'.lstrip('0') # 04:30.lstrip('0') => 4:30AM
+
 
 def parse_dt(string: str, fmt:str|None=None) -> DateTime:
   if fmt: return DateTime.strptime(string, fmt)
