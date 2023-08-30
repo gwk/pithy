@@ -2,6 +2,12 @@
 
 '''
 `markup` provides the `Mu` class, a base class for representing HTML, SVG, XML, SGML, and other document tree formats.
+
+These classes are designed to be used both to create document trees and also to parse and manipulate them. Some use cases include:
+* serving dynamic pages or fragments (e.g. HTMX endpoints) from a web server;
+* generating static HTML pages;
+* parsing HTML, SVG and XML documents for data extraction, validation or scraping purposes;
+* parsing HTML, SVG and XML documents and then modifying and rerendering them.
 '''
 
 import re
