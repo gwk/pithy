@@ -114,7 +114,7 @@ class Mu:
 
     Normally, nodes do not hold a reference to parent; this makes Mu trees acyclic.
     However, various Mu methods have a `traversable` option, which will return subtrees with the _orig/_parent refs set.
-    Such "subtree nodes" can use the `next` and `prev` methods in addition to `pick` and friends.
+    Such "subtree nodes" can use the `next` and `prev` methods to access sibling elements.
     '''
 
     assert 'ch' not in kw_attrs, 'Use `_` instead of `ch` for children.'
