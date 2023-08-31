@@ -154,7 +154,6 @@ sqlite_keywords = frozenset({
   'WITHOUT',
 })
 
-
 sqlite_leading_keywords = frozenset({
   'ALTER',
   'ANALYZE',
@@ -181,3 +180,17 @@ sqlite_leading_keywords = frozenset({
   'VALUES',
   'WITH',
 })
+
+sqlite_key_phrases = [
+  'IS DISTINCT FROM',
+  'IS NOT DISTINCT FROM', # Must precede 'IS NOT' so that longer phrase is matched first.
+  'IS NOT',
+  'IS NULL',
+  'NOT BETWEEN',
+  'NOT GLOB',
+  'NOT IN',
+  'NOT LIKE',
+  'NOT MATCH',
+  'NOT NULL',
+  'NOT REGEXP',
+]

@@ -7,9 +7,9 @@ from tolkien import Source, Token
 
 from ..lex import Lexer
 from ..parse import (Alias, Atom, atom_text, AtomTransform, Choice, choice_label, choice_labeled, choice_val, Infix, Left,
-  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, SuffixRule, uni_syn, uni_text,
-  ZeroOrMore)
-from .keywords import sqlite_keywords
+  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, SuffixRule, uni_syn,
+  uni_text, ZeroOrMore)
+from .keywords import sqlite_key_phrases, sqlite_keywords
 
 
 sqlite_entity_pattern = r''' # Note: in the SQLite grammar this is called "id" (identifier).
@@ -86,6 +86,10 @@ def parse_sqlite(path:str, text:str) -> list[Any]: # Actual return type is list[
   return cast(list, stmts)
 
 
+sqlite_key_phrase_patterns = { p.replace(' ', '_') : p.replace(' ', r'\s+')
+  for p in sorted(sqlite_key_phrases, reverse=True) }
+
+
 lexer = Lexer(flags='mxi', # SQL is case-insensitive.
   patterns=dict(
     newline = r'\n',
@@ -96,8 +100,11 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
     bitnot = r'~',
     comma = r',',
     dot = r'\.',
+    de = r'==',
     eq = r'=',
     lp = r'\(',
+    extract_json = '->',
+    extract_val = r'->>',
     minus = r'-',
     ne = r'!=',
     plus = r'\+',
@@ -108,6 +115,7 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
     star = r'\*',
     qmark = r'\?',
 
+    ineq = r'<>',
     le = r'<=',
     lshift = r'<<',
     lt = r'<',
@@ -120,6 +128,8 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
     bitor = r'\|',
 
     **{k:rf'\b{k}\b' for k in sorted(sqlite_keywords, reverse=True)}, # Note: reverse to ensure that longer keywords are matched first.
+
+    **sqlite_key_phrase_patterns, # Note: order ensures that longer phrases are matched first.
 
     blob = r"x'[0-9a-fA-F]*'", # Must precede `name`.
     float = r'([0-9]+\.[0-9]* | \.[0-9]+) ([eE][+-]?[0-9]+)?', # Must precede `integer`.
@@ -226,30 +236,41 @@ expr_rules = dict(
   expr = Precedence(
     ( 'blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', # The "literal-value" tokens.
       'signed_number',
+      # Bitwise inversion.
       # bind-parameter
       'schema_table_column_name',
-      'paren_expr',
+      'paren_exprs',
       'cast_expr',
       'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
     ),
-    Left(Infix('eq'), Infix('ne'), Infix('lt'), Infix('le'), Infix('gt'), Infix('ge')),
-    Left(Infix('concat')),
+    Left(Infix('OR')),
+    Left(Infix('AND')),
+    # TODO: NOT.
+    Left(
+      Infix('de'), Infix('eq'), Infix('ineq'), Infix('ne'),
+      Infix('IS'), Infix('IS_NOT'), Infix('IS_DISTINCT_FROM'), Infix('IS_NOT_DISTINCT_FROM'),
+      #SuffixRule(Struct('BETWEEN', ...)), # TODO.
+      Infix('GLOB'), Infix('NOT_GLOB'),
+      Infix('IN'), Infix('NOT_IN'),
+      Infix('LIKE'), Infix('NOT_LIKE'),
+      Infix('MATCH'), Infix('NOT_MATCH'),
+      Infix('REGEXP'), Infix('NOT_REGEXP'),
+      Suffix('ISNULL'), Suffix('NOTNULL'), Suffix('NOT_NULL'),
+    ),
+    Left(Infix('lt'), Infix('le'), Infix('gt'), Infix('ge')),
+    # TODO: [expr] ESCAPE (escape-character-expr).
+    Left(Infix('bitand'), Infix('bitor'), Infix('lshift'), Infix('rshift')),
     Left(Infix('plus'), Infix('minus')),
     Left(Infix('star'), Infix('slash'), Infix('rem')),
+    Left(Infix('concat'), Infix('extract_json'), Infix('extract_val')),
+    # TODO: [expr] COLLATE (collation-name).
     Left(
-      SuffixRule(Struct('lp', 'expr', 'rp', field='expr'), transform=lambda s, t, l, r: ('()', l, r)),
+      # Function call syntax. This appears to be overly general, in that the left expr is required to be a name.
+      # Furthermore, it is clearly not correct for aggregate and window functions. see https://www.sqlite.org/lang_expr.html#functioncalls.
+      SuffixRule(Struct('lp', OneOrMore('expr', sep='comma'), 'rp', field='exprs'), transform=lambda s, t, l, r: ('()', l, r)),
     ),
   ),
 
-  # unary-operator expr
-  # expr binary-operator expr
-  # function-name ...
-  # expr COLLATE collation-name
-  # expr NOT LIKE|GLOB|REGEXP|MATCH expr
-  # expr ISNULL, NOTNULL, NOT NULL
-  # expr IS NOT DISTINCT FROM expr
-  # expr NOT BETWEEEN expr AND expr
-  # expr NOT IN (expr, expr, ...)
   # NOT EXISTS ( SELECT ... ) # Note: this will conflict with `( expr, ... )` above; refactor to separate NOT EXISTS and EXISTS, and ( SELECT ..).
   # CASE expr WHEN expr THEN expr ELSE expr END
   # raise-function
@@ -260,6 +281,7 @@ expr_rules = dict(
     transform=struct_text),
 
   paren_expr = Struct('lp', 'expr', 'rp', field='expr'),
+  paren_exprs = Struct('lp', OneOrMore('expr', sep='comma'), 'rp', field='exprs'),
   cast_expr =  Struct('CAST', 'lp', 'expr', 'AS', 'name', 'rp'),
 
   exists_prefix = Opt(Choice('EXISTS', 'not_exists', transform=choice_label)),
@@ -315,7 +337,7 @@ def mk_sql_parser(simplify:bool=False, atom_transform:AtomTransform|None=None, t
   return Parser(lexer,
     drop=('comment', 'spaces', 'newline'),
     literals=(
-      'bitand', 'bitnot', 'comma', 'dot', 'eq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash', 'star', 'qmark',
+      'bitand', 'bitnot', 'comma', 'deq', 'dot', 'eq', 'ineq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash', 'star', 'qmark',
       'le', 'lshift', 'lt', 'ge', 'rshift', 'gt', 'concat', 'bitor', *sqlite_keywords),
     rules=rules,
     simplify=simplify,
