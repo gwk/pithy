@@ -119,6 +119,19 @@ body > * { /* By default, all direct children of body are bpage. */
 .text-start { text-align: start; }
 .text-end { text-align: end; }
 
+.font-smaller { font-size: small; }
+.font-larger { font-size: large; }
+
+.list-style-none { list-style: none; }
+.list-style-inside { list-style-position: inside; }
+.list-style-outside { list-style-position: outside; }
+
+
+/* NOTE: summary disclosure styling works differently between Chrome and Safari. */
+
+summary.disclosure-none { list-style-type: none; } /* Chrome. */
+summary.disclosure-none::-webkit-details-marker { display: none; } /* Safari. */
+
 
 /* Forms. */
 
