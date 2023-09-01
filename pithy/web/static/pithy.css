@@ -165,7 +165,7 @@ table {
   border-style: solid;
   border-width: 1px;
   border-color: #AAA;
-  border-spacing: 1rem 0.5rem;
+  border-collapse: collapse;
 }
 
 table caption {
@@ -175,26 +175,19 @@ table caption {
 }
 
 th, td {
+  padding: 0.25rem 0.5rem;
+  border-color: #AAA;
+  border-style: solid;
+  border-width: 1px;
   text-align: left;
   vertical-align: top;
 }
 
-table.dense {
-  border-collapse: collapse;
-}
-
-table.dense :is(td, th) {
-  border-color: #AAA;
-  border-style: solid;
-  border-width: 1px;
-  padding: 0.25rem 0.5rem;
-}
-
-table.dense tbody tr:nth-child(even) {
+table tbody tr:nth-child(even) {
   background-color: var(--clr-table-even);
 }
 
-table.dense tbody tr:nth-child(odd) {
+table tbody tr:nth-child(odd) {
   background-color: var(--clr-table-odd);
 }
 
