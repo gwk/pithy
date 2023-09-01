@@ -26,6 +26,11 @@ addEventListener('DOMContentLoaded', () => {
   if (window.safari !== undefined) {
     document.body.classList.add('safari');
   }
+  // @ts-ignore: ts(2339): 'chrome' does not exist.
+  if (!!window.chrome) {
+    document.body.classList.add('chrome');
+  }
+
 
   // Calculate the width of the scrollbar.
   const body = nonopt(document.querySelector('body'));
