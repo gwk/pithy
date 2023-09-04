@@ -127,10 +127,29 @@ body > * { /* By default, all direct children of body are bpage. */
 .list-style-outside { list-style-position: outside; }
 
 
+/* Details, Summary. */
 /* NOTE: summary disclosure styling works differently between Chrome and Safari. */
+/* First, hide the default disclosure marker. */
+summary { list-style-type: none; } /* Chrome. */
+summary::-webkit-details-marker { display: none; } /* Safari. */
 
-summary.disclosure-none { list-style-type: none; } /* Chrome. */
-summary.disclosure-none::-webkit-details-marker { display: none; } /* Safari. */
+/* Use Black Right-pointing Small Triangle, Black Down-pointing Small Triangle. */
+details summary::before {
+  content: "▸";
+  display: inline-block;
+  position: relative;
+  width: 1.5ch;
+}
+
+details[open] summary::before { content: "▾"; }
+
+details summary.disclosure-flush::before {
+  position: absolute;
+  left: -1.25ch;
+  vertical-align: baseline;
+}
+
+
 
 
 /* Forms. */
