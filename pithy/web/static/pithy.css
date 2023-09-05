@@ -151,7 +151,29 @@ details summary.disclosure-flush::before {
   vertical-align: baseline;
 }
 
+/* Links. */
 
+:is(A.button, A.button:visited, A.button:hover, A.button:active)  {
+  color: #000;
+  text-decoration: none;
+}
+
+A.button {
+  appearance: button;
+  background-color: #FFF;
+  border-radius: 4px;
+  box-shadow: 0 0.5px 1.5px #999;
+  display: inline-block;
+  font-family: system-ui;
+  font-size: 11px;
+  padding: 0 1ch;
+  vertical-align: baseline;
+}
+
+A.button:active {
+  color: #000;
+  background-color: #F0F0F0;
+}
 
 
 /* Forms. */
@@ -197,6 +219,13 @@ body.chrome select { /* Emulates the Safari default style. */
   box-shadow: 0 0.5px 1.5px #999;
 }
 
+/* Spans. */
+span.controls {
+  display: flex;
+  flex-direction: row;
+  gap: 1em;
+  align-items: center;
+}
 
 /* Tables. */
 
