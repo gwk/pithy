@@ -63,12 +63,14 @@ body {
 
 .bfull {
   width: 100%;
-  padding: 0 var(--cp);
+  padding-left: var(--cp);
+  padding-right: var(--cp);
 }
 
 .bfull-bleed-bg {
   width: 100%;
-  padding: 0 max(var(--cp), calc(var(--cp) + 50vw - 0.5*var(--cw)));
+  padding-left: max(var(--cp), calc(var(--cp) + 50vw - 0.5*var(--cw)));
+  padding-right: max(var(--cp), calc(var(--cp) + 50vw - 0.5*var(--cw)));
 }
 
 .bpage {
