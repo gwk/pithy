@@ -56,9 +56,9 @@ def update_stmt(*, with_='', or_='FAIL', table:str, named:bool, fields:tuple[str
   assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLCE', 'ROLLBACK'}
   assert fields
   assignments = ', '.join(f'{f}={p}' for (f, p) in zip(fields, placeholders_for_fields(fields, named)))
-  with_space = ' ' if with_ else ''
-  where_space_ = ' ' if where else ''
-  return f'{with_}{with_space}UPDATE OR {or_} {table} SET {assignments}{where_space_}{where}'
+  with_phrase= f'WITH {with_} ' if with_ else ''
+  where_phrase = f' WHERE {where}' if where else ''
+  return f'{with_phrase}UPDATE OR {or_} {table} SET {assignments}{where_phrase}'
 
 
 def placeholders_for_fields(fields:tuple[str,...], named:bool) -> list[str]:
