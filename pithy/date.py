@@ -33,6 +33,16 @@ month_days = {
 }
 
 
+def now_utc() -> DateTime:
+  'Return a DateTime for the current moment in the UTC timezone.'
+  return DateTime.now(tz_utc)
+
+
+def today_utc() -> Date:
+  'Return a Date for the current moment in the UTC timezone.'
+  return now_utc().date()
+
+
 def num_days_of_month(year:int, month:int) -> int:
   if month == 2 and is_leap_year(year): return 29
   return month_days[month]
