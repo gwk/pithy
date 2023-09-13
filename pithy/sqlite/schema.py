@@ -272,6 +272,11 @@ class Index(TableDepStructure):
   desc:str = ''
   columns:tuple[str,...] = ()
 
+  def __post_init__(self) -> None:
+    if not isinstance(self.columns, tuple):
+      # Without this, a single str passed as `columns` will be iterated over, resulting in erroneous single-char columns.
+      raise TypeError(f'Index.columns must be a tuple; received: {self.columns!r}')
+
 
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
