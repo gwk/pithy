@@ -4,6 +4,7 @@ from http import HTTPStatus
 from time import sleep
 from typing import Iterable, Sequence
 
+from starlette.background import BackgroundTask
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData
 from starlette.exceptions import HTTPException
@@ -152,7 +153,7 @@ def csv_response(*, quoting:int|None=None, header:Sequence[str]|None, rows:Itera
   return CsvResponse(content=render_csv(quoting=quoting, header=header, rows=rows))
 
 
-def htmx_response(*content:MuChildLax, FAKE_LATENCY=0.0) -> HTMLResponse:
+def htmx_response(*content:MuChildLax, background:BackgroundTask|None=None, FAKE_LATENCY=0.0) -> HTMLResponse:
   '''
   Return a response for one or more HTMX fragments.
   The first fragment is swapped into the target element.
@@ -160,7 +161,7 @@ def htmx_response(*content:MuChildLax, FAKE_LATENCY=0.0) -> HTMLResponse:
   `FAKE_LATENCY` is a float in seconds to simulate a slow response.
   '''
   if FAKE_LATENCY: sleep(FAKE_LATENCY)
-  return HTMLResponse(content='\n\n'.join(HtmlNode.render_child(c) for c in content))
+  return HTMLResponse(content='\n\n'.join(HtmlNode.render_child(c) for c in content), background=background)
 
 
 def empty_favicon(HTMLRequest) -> Response:
