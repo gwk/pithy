@@ -514,3 +514,24 @@ def shuffled(iterable:Iterable[_T]) -> list[_T]:
   l = list(iterable)
   shuffle(l)
   return l
+
+
+class CountingIterator(Iterator[_T]):
+  '''
+  An iterator that counts the number of elements it has yielded.
+  '''
+
+  def __init__(self, iterator:Iterator[_T]) -> None:
+    self._iterator = iterator
+    self._count = 0
+
+  def __iter__(self) -> Iterator[_T]:
+    return self
+
+  def __next__(self) -> _T:
+    self._count += 1
+    return next(self._iterator)
+
+  @property
+  def count(self) -> int:
+    return self._count
