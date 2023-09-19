@@ -6,17 +6,13 @@ from typing import Any, Generic, Iterator, TypeVar
 
 _T = TypeVar('_T')
 
-_setattr = object.__setattr__
-
 
 class Immutable(Generic[_T]):
   'Untyped immutable object.'
 
-  def __init__(self, obj:Any|None=None, **kw:Any):
-    if obj is not None:
-      vars(self).update(obj)
-    for k, v in kw.items():
-      _setattr(self, k, v)
+  def __init__(self, /, __dict:dict[str,_T]={}, **kwargs:_T):
+    vars(self).update(__dict)
+    vars(self).update(kwargs)
 
   def __repr__(self) -> str:
     args = ', '.join(f'{k if _is_identifier(k) else repr(k)}={v!r}' for k, v in vars(self).items())
