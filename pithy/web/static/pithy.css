@@ -103,6 +103,7 @@ body > * { /* By default, all direct children of body are bpage. */
 
 .bold { font-weight: bold; }
 
+.hidden { display: none; }
 .block { display: block; }
 .inline { display: inline; }
 .inline-block { display: inline-block; }
