@@ -22,6 +22,14 @@ from ..transtruct import bool_str_vals
 from ..url import fmt_url
 
 
+class ClientError(Exception):
+  '''
+  Indicates some kind of error in the client request.
+  Use this in cases where the client error is caught and handled in application logic,
+  as opposed to a true HTTPException with an error code.
+  '''
+
+
 class CsvResponse(Response):
     media_type = 'text/csv'
 
@@ -77,6 +85,7 @@ def req_query_str(request:Request, key:str) -> str:
   '''
   v = request.query_params.get(key)
   if v is None: raise HTTPException(400, f'missing query parameter: {key}')
+  assert isinstance(v, str)
   return v
 
 
@@ -97,7 +106,7 @@ def get_form_int(form_data:FormData, key:str, default:int|None=None) -> int|None
   If the key is not present or the value is not an int, return `default` (None if not specified).
   '''
   v = form_data.get(key)
-  if not isinstance(v, str): return default
+  if not isinstance(v, str) or v == '': return default
   try: return int(v)
   except ValueError: return default
 
