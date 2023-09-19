@@ -2,7 +2,7 @@
 
 import re
 from datetime import date, datetime
-from functools import lru_cache
+from functools import cache, lru_cache
 from typing import Any, get_args, Iterable, NamedTuple
 
 from ..json import render_json
@@ -212,6 +212,11 @@ def sql_quote_entity(entity:str, always=False) -> str:
     return sql_quote_entity_always(entity)
   else:
     return entity
+
+
+@cache
+def sql_cache_quote_col_names(col_names:tuple[str]) -> str:
+  return ', '.join(sql_quote_entity(c) for c in col_names)
 
 
 def sql_quote_entity_always(entity:str) -> str:
