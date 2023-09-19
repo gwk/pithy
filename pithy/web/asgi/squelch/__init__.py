@@ -13,8 +13,8 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
-from ....html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Span,
-  Summary, Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
+from ....html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Summary,
+  Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ....html.parse import linkify
 from ....html.parts import pagination_control
 from ....sqlite import Connection, Row, SqliteError
