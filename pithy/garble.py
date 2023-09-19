@@ -2,9 +2,7 @@
 
 from math import ceil, log2
 from random import choice, getrandbits
-from typing import Any, Callable, Iterable, NamedTuple, TypeVar
-
-from .iterable import extent
+from typing import TypeVar
 
 
 _T = TypeVar('_T')
