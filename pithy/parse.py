@@ -875,7 +875,7 @@ class Parser:
     for rule in self.nodes:
       rule.compile(parser=self)
 
-    self.types:Immutable[type] = Immutable(**self._struct_types)
+    self.types:Immutable[type] = Immutable(self._struct_types)
 
 
   def __del__(self) -> None:
