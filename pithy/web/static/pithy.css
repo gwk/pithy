@@ -44,8 +44,8 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   --scrollbar-width: 0px; /* Updated by javascript. */
   --vw-sb: calc(100vw - var(--scrollbar-width));
 
-  --clr-table-even: #FFF;
-  --clr-table-odd: #EEE;
+  --tr-even-background-color: #FFF;
+  --tr-odd-background-color: #EEE;
 }
 
 
@@ -255,11 +255,11 @@ th, td {
 }
 
 table tbody tr:nth-child(even) {
-  background-color: var(--clr-table-even);
+  background-color: var(--tr-even-background-color);
 }
 
 table tbody tr:nth-child(odd) {
-  background-color: var(--clr-table-odd);
+  background-color: var(--tr-odd-background-color);
 }
 
 
