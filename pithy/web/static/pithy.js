@@ -21,14 +21,14 @@ function nonopt(val) {
 
 
 addEventListener('DOMContentLoaded', () => {
-  // Set safari class on body if browser is Safari.
+  // Set `safari` class on the root element if browser is Safari; `chrome` for Chrome.
   // @ts-ignore: ts(2339): 'safari' does not exist.
   if (window.safari !== undefined) {
-    document.body.classList.add('safari');
+    document.documentElement.classList.add('safari');
   }
   // @ts-ignore: ts(2339): 'chrome' does not exist.
   if (!!window.chrome) {
-    document.body.classList.add('chrome');
+    document.documentElement.classList.add('chrome');
   }
 
 
