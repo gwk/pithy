@@ -39,9 +39,9 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
 
 /* Root vars. */
 :root {
-  --cw: 64rem; /* Content width. */
-  --cp: 0.5rem; /* Content padding. */;
-  --scrollbar-width: 0px; /* Updated by javascript. */
+  --page-width: 64rem; /* Content width. */
+  --page-padding: 0.5rem; /* Content padding. */;
+  --scrollbar-width: 0px; /* Updated by pithy.js. */
   --vw-sb: calc(100vw - var(--scrollbar-width));
 
   --tr-even-background-color: #FFF;
@@ -49,11 +49,14 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
 }
 
 
-/* Page layout. */
+/* Layout.
+"page" refers to setting a fixed width content area for body child elements.
+"full" refers to full width body child elements.
+*/
 
 * { position: relative; }
 
-html { overflow-y: scroll; } /* Prevents centered layout from jittering between when scroll bar appears. */
+html { overflow-y: scroll; } /* Prevents centered layout from jittering when scroll bar appears. */
 
 body {
   display: flex;
@@ -61,35 +64,30 @@ body {
   width: 100%;
 }
 
-.bfull {
+.body-child-full {
   width: 100%;
-  padding-left: var(--cp);
-  padding-right: var(--cp);
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
 }
 
-.bfull-bleed-bg {
+.body-child-page-bleed-bg {
   width: 100%;
-  padding-left: max(var(--cp), calc(var(--cp) + 50vw - 0.5*var(--cw)));
-  padding-right: max(var(--cp), calc(var(--cp) + 50vw - 0.5*var(--cw)));
+  padding-left: max(var(--page-padding), calc(var(--page-padding) + 50vw - 0.5*var(--page-width)));
+  padding-right: max(var(--page-padding), calc(var(--page-padding) + 50vw - 0.5*var(--page-width)));
 }
 
-.bpage {
-  width: min(100%, var(--cw));
-  padding: 0 var(--cp);
+.body-child-page {
+  width: min(100%, var(--page-width));
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
   align-self: center;
 }
 
-body > * { /* By default, all direct children of body are bpage. */
-  width: min(100%, var(--cw));
-  padding: 0 var(--cp);
-  align-self: center;
-}
+.page-width { width: var(--page-width); }
 
-.wc { width: var(--cw); }
-
-.pc {
-  padding-left:var(--cp);
-  padding-right:var(--cp);
+.page-padding {
+  padding-left:var(--page-padding);
+  padding-right:var(--page-padding);
 }
 
 
