@@ -214,7 +214,7 @@ label.input-label, .input-labels-inline > label { /* A label that wraps an input
 }
 
 
-body.chrome select { /* Emulates the Safari default style. */
+html.chrome select { /* Emulates the Safari default style. */
   border-radius: 4px;
   border: none;
   box-shadow: 0 0.5px 1.5px #999;
