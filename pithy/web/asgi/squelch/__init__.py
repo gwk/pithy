@@ -412,7 +412,7 @@ def capital_letters_abbr(s:str) -> str:
 def main_script() -> Script:
   return Script('''
   function updateAllColCheckboxes(checked) {
-    const checkboxes = document.querySelectorAll('span.en-col input[type="checkbox"]');
+    const checkboxes = document.querySelectorAll('.en-col input[type="checkbox"]');
     checkboxes.forEach(el => el.checked = checked);
   }
   ''')
