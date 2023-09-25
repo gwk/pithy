@@ -39,8 +39,8 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
 
 /* Root vars. */
 :root {
-  --page-width: 64rem; /* Content width. */
-  --page-padding: 0.5rem; /* Content padding. */;
+  --page-width: 64rem;
+  --page-padding: 0.5rem;
   --scrollbar-width: 0px; /* Updated by pithy.js. */
   --vw-sb: calc(100vw - var(--scrollbar-width));
 
