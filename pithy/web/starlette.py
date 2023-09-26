@@ -2,7 +2,7 @@
 
 from http import HTTPStatus
 from time import sleep
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 from starlette.background import BackgroundTask
 from starlette.convertors import Convertor, register_url_convertor
@@ -31,7 +31,103 @@ class ClientError(Exception):
 
 
 class CsvResponse(Response):
-    media_type = 'text/csv'
+  media_type = 'text/csv'
+
+  def __init__(self,
+    status_code:int=200,
+    *,
+    headers:Mapping[str,str]|None=None,
+    background:BackgroundTask|None=None,
+    quoting:int|None=None,
+    head:Sequence[str]|None,
+    rows:Iterable[Sequence],
+    **kwargs) -> None:
+
+    '''
+    A CSV response.
+    `head` is a tuple of column names.
+    `rows` is an iterable of tuples of row values.
+    '''
+
+    super().__init__(
+      content=render_csv(quoting=quoting, header=head, rows=rows),
+      status_code=status_code,
+      headers=headers,
+      background=background,
+      **kwargs)
+
+
+def csv_response(*args, **kwargs) -> CsvResponse: return CsvResponse(*args, **kwargs)
+
+
+class HtmlResponse(HTMLResponse):
+
+    def __init__(self,
+      content:HtmlNode,
+      *,
+      status_code:int=200,
+      headers:Mapping[str,str]|None=None,
+      background:BackgroundTask|None=None,
+      **kwargs) -> None:
+
+      '''
+      An HTML response.
+      '''
+
+      super().__init__(
+        status_code=status_code,
+        content=content.render_str(),
+        headers=headers,
+        background=background,
+        **kwargs)
+
+
+class HtmxResponse(HTMLResponse):
+
+  def __init__(self,
+    *content:MuChildLax,
+    status_code:int=200,
+    headers:Mapping[str,str]|None=None,
+    background:BackgroundTask|None=None,
+    hx_push:str='',
+    hx_refresh:bool=False,
+    hx_redirect:str='',
+    hx_location:str='',
+    hx_trigger:str='',
+    hx_trigger_after_swap:str='',
+    hx_trigger_after_settle:str='',
+    FAKE_LATENCY=0.0,
+    **kwargs) -> None:
+
+    '''
+    A response for one or more HTMX fragments.
+    Fragments can be used to swap other targets 'out-of-band' via the `hx-swap-oob` attribute.
+    `FAKE_LATENCY` is a float in seconds used to simulate a slow response.
+    '''
+
+    if any((hx_push, hx_redirect, hx_location, hx_refresh, hx_trigger, hx_trigger_after_swap, hx_trigger_after_settle)):
+      headers = {**headers} if headers else {}
+      if hx_refresh: headers['HX-Refresh'] = 'true'
+      if hx_push: headers['HX-Push'] = hx_push
+      if hx_redirect: headers['HX-Redirect'] = hx_redirect
+      if hx_location: headers['HX-Location'] = hx_location
+      if hx_trigger: headers['HX-Trigger'] = hx_trigger
+      if hx_trigger_after_swap: headers['HX-Trigger-After-Swap'] = hx_trigger_after_swap
+      if hx_trigger_after_settle: headers['HX-Trigger-After-Settle'] = hx_trigger_after_settle
+
+    if FAKE_LATENCY: sleep(FAKE_LATENCY)
+
+    super().__init__(
+      status_code=status_code,
+      content='\n\n'.join(HtmlNode.render_child(c) for c in content),
+      headers=headers,
+      background=background,
+      **kwargs)
+
+
+def htmx_response(*content:MuChildLax, background:BackgroundTask|None=None, FAKE_LATENCY=0.0) -> HtmxResponse:
+  return HtmxResponse(*content, background=background, FAKE_LATENCY=FAKE_LATENCY)
+
 
 
 class DateConverter(Convertor):
@@ -151,26 +247,6 @@ def req_form_str(form_data:FormData, key:str) -> str:
   v = form_data.get(key)
   if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
   return v
-
-
-def csv_response(*, quoting:int|None=None, header:Sequence[str]|None, rows:Iterable[Sequence]) -> CsvResponse:
-  '''
-  Return a CSV response.
-  `head` is a tuple of column names.
-  `rows` is an iterable of tuples of row values.
-  '''
-  return CsvResponse(content=render_csv(quoting=quoting, header=header, rows=rows))
-
-
-def htmx_response(*content:MuChildLax, background:BackgroundTask|None=None, FAKE_LATENCY=0.0) -> HTMLResponse:
-  '''
-  Return a response for one or more HTMX fragments.
-  The first fragment is swapped into the target element.
-  Subsequent fragments can be used to swap other targets 'out-of-band' via the `hx-swap-oob` attribute.
-  `FAKE_LATENCY` is a float in seconds to simulate a slow response.
-  '''
-  if FAKE_LATENCY: sleep(FAKE_LATENCY)
-  return HTMLResponse(content='\n\n'.join(HtmlNode.render_child(c) for c in content), background=background)
 
 
 def empty_favicon(HTMLRequest) -> Response:
