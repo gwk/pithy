@@ -1,14 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass, field
-from datetime import (date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, timezone as TimeZone,
-  tzinfo as TZInfo, UTC as tz_utc)
+from datetime import date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, tzinfo as TZInfo, UTC as tz_utc
 from typing import Iterator, overload, Sequence, TypeVar
 
 
 Time = Time
-TimeZone = TimeZone
-
 
 sec_per_min = 60
 sec_per_hour = sec_per_min * 60

@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-from datetime import datetime as DateTime, timezone as TimeZone
+from datetime import datetime as DateTime, UTC as tz_utc
 from gzip import compress as gz_compress, decompress as gz_expand
 from io import BytesIO
 from mimetypes import guess_type as guess_mime_type
@@ -225,7 +225,7 @@ class S3MockClient(S3Client):
       contents.append({
         'Key': key,
         'Size': s.size,
-        'LastModified': DateTime.fromtimestamp(s.mtime, tz=TimeZone.utc),
+        'LastModified': DateTime.fromtimestamp(s.mtime, tz=tz_utc),
       })
     return {
       'KeyCount': len(contents),

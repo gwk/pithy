@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from datetime import datetime as DateTime, timezone as TimeZone, UTC as tz_utc
+from datetime import datetime as DateTime, tzinfo as TZInfo, UTC as tz_utc
 
 
 class TimeZoneError(ValueError): pass
@@ -29,7 +29,7 @@ def parse_dt_naive_utc(date_str:str) -> DateTime:
   return dt.replace(tzinfo=tz_utc)
 
 
-def parse_dt_naive(date_str:str, tz:TimeZone|None=None) -> DateTime:
+def parse_dt_naive(date_str:str, tz:TZInfo|None=None) -> DateTime:
   '''
   Parse a naive (no timezone) datetime string.
   If `tz` is provided, the parsed datetime will be given that timezone.
