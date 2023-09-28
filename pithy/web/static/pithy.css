@@ -109,7 +109,10 @@ body {
 .flex-row { display: flex; flex-direction: row; }
 .flex-col { display: flex; flex-direction: column; }
 
-.mv1em { margin-top: 1em; margin-bottom: 1em; }
+.gap-1ch { gap: 1ch; }
+.gap-1em { gap: 1em; }
+
+.mv-1em { margin-top: 1em; margin-bottom: 1em; }
 
 .o50 { opacity: 0.5; }
 
