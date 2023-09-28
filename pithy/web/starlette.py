@@ -57,9 +57,6 @@ class CsvResponse(Response):
       **kwargs)
 
 
-def csv_response(*args, **kwargs) -> CsvResponse: return CsvResponse(*args, **kwargs)
-
-
 class HtmlResponse(HTMLResponse):
 
     def __init__(self,
