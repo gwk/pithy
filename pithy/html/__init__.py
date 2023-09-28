@@ -9,7 +9,7 @@ from html import escape as _escape
 from io import BytesIO, StringIO
 from itertools import chain
 from os import PathLike
-from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, TextIO, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, Self, TextIO, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
@@ -1115,6 +1115,22 @@ class Optgroup(HtmlNode):
   Contexts for use: As a child of a select element.
   '''
 
+  def __call__(self, *options:Any) -> Self:
+    '''
+    Call an instance to configure it with options.
+    '''
+    for o in options:
+      if isinstance(o, Option):
+        self.append(o)
+      elif isinstance(o, tuple):
+        if len(o) != 2: raise ValueError(f'Optgroup tuple option must be a pair; received: {o}')
+        v = str(o[0])
+        self.append(Option(value=v, _=str(o[1])))
+      else:
+        v = str(o)
+        self.append(Option(value=v, _=v))
+    return self
+
 
 @_tag
 class Option(HtmlTextContent):
@@ -1331,17 +1347,30 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
 
     has_selected = False
     for o in options:
-      if isinstance(o, tuple):
+      option:Option|Optgroup
+      if isinstance(o, Option):
+        v = o['value']
+        option = o
+      elif isinstance(o, Optgroup):
+        v = None
+        option = o
+        for oo in o:
+          if not isinstance(oo, Option): raise ValueError(f'optgroup must contain only Option elements; received: {oo!r}')
+          if value is not None and oo['value'] == value:
+            oo['selected'] = ''
+            has_selected = True
+      elif isinstance(o, tuple):
         if len(o) != 2: raise ValueError(f'tuple option must be a pair; received: {o}')
         v = str(o[0])
         option = Option(value=v, _=str(o[1]))
       else:
         v = str(o)
         option = Option(value=v, _=v)
-      if v == value:
+      if v is not None and v == value: # Always excludes an Optgroup.
         option['selected'] = ''
         has_selected = True
       select.append(option)
+
     if pho is not None and not has_selected:
       pho['selected'] = ''
 
