@@ -9,7 +9,8 @@
 .SUFFIXES: # Disable implicit rules.
 
 .PHONY: _default _phony build clean clean-grammars clean-legs-data cov cov-meta develop docs gen gen-data gen-grammars \
-  gen-vscode help install-vscode pip-uninstall test test-diff test-diff-data typecheck, typecheck-clear-cache, typecheck-clean
+  gen-vscode help install-vscode pip-uninstall test test-diff test-diff-data typecheck, typecheck-py, typecheck-js \
+  typecheck-clear-cache, typecheck-clean uninstall vscode-links vscode-insider-links
 
 # First target of a makefile is the default.
 _default: help
@@ -85,10 +86,13 @@ test-diff-data:
 	rm -rf _build/test-diff/*
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
-typecheck: gen
-	mypy $(packages) test tools
-	tsc
+typecheck: gen typecheck-py
 
+typecheck-py:
+	mypy $(packages) test tools
+
+typecheck-js:
+	tsc
 
 typecheck-clear-cache:
 	rm -rf _build/mypy_cache
