@@ -14,7 +14,7 @@ from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
 from ..csv import render_csv
-from ..date import Date
+from ..date import Date, DateTime, TZInfo
 from ..fs import is_dir, real_path
 from ..html import HtmlNode
 from ..markup import MuChildLax
@@ -183,6 +183,18 @@ def req_query_str(request:Request, key:str) -> str:
   if v is None: raise HTTPException(400, f'missing query parameter: {key}')
   assert isinstance(v, str)
   return v
+
+
+def get_query_date_or_today(request:Request, *, key:str='date', tz:TZInfo) -> Date:
+  '''
+  Get a date value from a request's query string, using `key` (which defaults to 'date').
+  If the key is not present, return today's date according to the given timezone. `tz`.
+  If the value is not a valid date, raise a 400 exception.
+  '''
+  v = request.query_params.get(key)
+  if v is None: return DateTime.now(tz=tz).date()
+  try: return Date.fromisoformat(v)
+  except ValueError: raise HTTPException(400, f'invalid date query parameter: {key}={v!r}')
 
 
 def get_form_bool(form_data:FormData, key:str, default:bool|None=None) -> bool|None:
