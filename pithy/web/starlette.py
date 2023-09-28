@@ -14,7 +14,7 @@ from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
 from ..csv import render_csv
-from ..date import Date, DateTime, TZInfo
+from ..date import Date, DateTime, parse_time_12hmp, Time, TZInfo
 from ..fs import is_dir, real_path
 from ..html import HtmlNode
 from ..markup import MuChildLax
@@ -237,6 +237,17 @@ def req_form_bool(form_data:FormData, key:str) -> bool:
   except KeyError: raise HTTPException(400, f'invalid boolean form field: {key}={v!r}')
 
 
+def req_form_date(form_data:FormData, key:str) -> Date:
+  '''
+  Get a date value from a request's FormData.
+  If the key is not present or the value is not a valid date, raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  try: return Date.fromisoformat(v)
+  except ValueError as e: raise HTTPException(400, f'invalid date form field: {key}={v!r}') from e
+
+
 def req_form_int(form_data:FormData, key:str) -> int:
   '''
   Get an int value from a request's FormData.
@@ -256,6 +267,19 @@ def req_form_str(form_data:FormData, key:str) -> str:
   v = form_data.get(key)
   if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
   return v
+
+
+def req_form_time_12hmp(form_data:FormData, key:str, tz:TZInfo|None=None) -> Time:
+  '''
+  Get a time value from a request's FormData, requiring 12-hour (with AM/PM) time formats.
+  If the key is not present or the value is not a valid time, raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+
+  try: return parse_time_12hmp(v, tz=tz)
+  except ValueError as e:
+    raise HTTPException(400, f'invalid time form field: {key}={v!r}') from e
 
 
 def empty_favicon(HTMLRequest) -> Response:
