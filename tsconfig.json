@@ -3,6 +3,8 @@
     "_misc/**",
     "dist/**",
     "node/**",
+    "pithy/web/static/htmx.js",
+    "pithy/web/static/htmx.min.js",
     "pkg/**",
     "vscode/legs/src/extension.ts",
     "vscode/legs/built/extension.js",
