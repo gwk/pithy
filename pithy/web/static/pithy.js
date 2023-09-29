@@ -31,12 +31,36 @@ addEventListener('DOMContentLoaded', () => {
     document.documentElement.classList.add('chrome');
   }
 
-
   // Calculate the width of the scrollbar.
   const body = nonopt(document.querySelector('body'));
   scrollbarWidth = window.innerWidth - body.clientWidth + 0.1; // Adding a fraction more prevents the horizontal scrollbar.
   createPithyDynamicStyle();
+
+  _setupHtmx();
 });
+
+
+function _setupHtmx() {
+  document.body.addEventListener('htmx:beforeSwap', function (event) {
+    // @ts-ignore: ts(2339): 'detail' does not exist on type 'Event'.
+    const detail = event.detail;
+    const code = detail.xhr.status;
+    if (code === 404) {
+      alert(`Error 404: resource not found: ${detail.pathInfo.finalRequestPath}`);
+    } else if (code === 422) {
+      // As suggested by HTMX documentation, use 422 responses to signal that a form was submitted with bad data.
+      // The esponse should contain the result to be rendered.
+      detail.shouldSwap = true;
+      detail.isError = false; // Do not log errors in the console.
+    } else if (code >= 500) {
+      alert(`Server error ${code}: ${detail.xhr.statusText}\n\n${detail.xhr.responseText}`);
+      log(detail);
+    } else if (code >= 400) {
+      alert(`Client error ${code}: ${detail.xhr.statusText}\n\n${detail.xhr.responseText}`);
+      log(detail);
+    }
+  });
+}
 
 
 function createStyle(title, selectorText) {
@@ -122,7 +146,7 @@ function resetValueForSelectorAll(selector) {
 
 
 function setupReloadingDateInput(input) {
-  // Configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
+  // Usage: configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
   input.onfocus = null; // This handler is a lazy initializer; remove it.
   let dateValueOnFocus = input.value;
   input.addEventListener('focus', (event) => {
@@ -145,15 +169,16 @@ function setupReloadingDateInput(input) {
 
 
 function setupBeforeSendClearHxTargetContent(element) {
-  // Configure an element with an event handler so that before an htmx request is sent,
+  // Configures an element with an event handler so that before an htmx request is sent,
   // the content of the target element is cleared.
-  // Configure an element with this handler: `onfocus='setupBeforeSendClearHxTargetContent(this)'`.
+  // Usage: configure an element with this handler: `onfocus='setupBeforeSendClearHxTargetContent(this)'`.
   element.onfocus = null; // This handler is a lazy initializer; remove it.
   const hx_target_sel = element.getAttribute('hx-target');
   if (!hx_target_sel) {
     log('ERROR: setupBeforeSendClearHxTargetContent: element has no hx-target attribute:', element);
     return;
   }
+  // @ts-ignore: ts(2304): cannot find name 'htmx'.
   htmx.on(element, 'htmx:beforeSend', (event) => {
     const hx_target = document.querySelector(hx_target_sel);
     if (!hx_target) {
