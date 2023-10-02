@@ -11,5 +11,5 @@ for package in "$@"; do
   cd "$proj"
   build/gen-pyproject-toml.py "$package"
   cd "pkg/$package"
-  pip install -e .
+  pip --disable-pip-version-check install -e .
 done
