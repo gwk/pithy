@@ -7,13 +7,13 @@
 import re
 from argparse import ArgumentParser
 
-from pithy.ansi import FILL, RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
+from pithy.ansi import RST, RST_TXT, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt
 from pithy.io import errL, outZ, stdout
 from pithy.iterable import group_by_heads, OnHeadless
 from pithy.lex import Lexer
 from pithy.path import path_rel_to_current_or_abs
-from pithy.task import runCO
+from pithy.task import runC, runCO
 from tolkien import Source, Token
 
 from .. import load_craft_config
@@ -41,44 +41,43 @@ def main() -> None:
   errL(TXT_D, ' '.join(cmd), RST)
 
   with ExitOnKeyboardInterrupt():
-    # As of Swift 5.1.2 (2019/11), swift build generates duplicate build messages. Deduplicate these.
-    c, o = runCO(cmd)
-    source = Source(name='swift', text=o)
-    token_stream = lexer.lex(source)
-    head_texts:set[str] = set()
-    for g in group_by_heads(token_stream, is_head=is_pair_group_head, headless=OnHeadless.keep):
-      head_token = g[0]
-      head_text = source[head_token]
-      if head_text in head_texts:
-        continue
-      head_texts.add(head_text)
-      for token in g:
-        kind = token.kind
-        text = source[token]
-        if kind == 'top_step': # Print as overwriteable.
-          outZ(TXT_M, text[:-1], FILL, '\r')
-        elif kind in diag_kinds:
-          diag_m = diag_re.fullmatch(text)
-          if diag_m:
-            path_abs, pos, msg = diag_m.groups()
-            path = path_rel_to_current_or_abs(path_abs)
-            color = colors[kind]
-            outZ(TXT_L, path, pos, color, msg, RST)
-          else:
-            outZ(text)
-        else:
+    should_filter = True
+    if should_filter:
+      # As of Swift 5.9.0 (2023-09-30), swift build generates duplicate build messages. Deduplicate these.
+      c, o = runCO(cmd)
+      source = Source(name='swift', text=o)
+      token_stream = lexer.lex(source)
+      head_texts:set[str] = set()
+      for g in group_by_heads(token_stream, is_head=is_pair_group_head, headless=OnHeadless.keep):
+        head_token = g[0]
+        head_text = source[head_token]
+        if head_text in head_texts:
+          continue
+        head_texts.add(head_text)
+        for token in g:
+          kind = token.kind
+          text = source[token]
           color = colors[kind]
-          rst = color or RST
-          outZ(color, text, rst)
-        stdout.flush()
-    print() # Newline moves past last overwriteable line.
+          if kind in diag_kinds:
+            if diag_m := diag_re.fullmatch(text):
+              path_abs, pos, msg = diag_m.groups()
+              path = path_rel_to_current_or_abs(path_abs)
+              outZ(TXT_L, path, pos, color, msg, RST)
+            else:
+              outZ(color, text, RST)
+          else:
+            rst = color or RST
+            outZ(color, text, rst)
+          stdout.flush()
+    else:
+      c = runC(cmd)
     exit(c)
 
 
 lexer = Lexer(
   patterns=dict(
     newline   = r'\n',
-    top_step  = r'\[\d+/\d+\] .+\n', # Need trailing newline to make this line erasable.
+    top_step  = r'\[\d+/\d+\] .+',
     error     = r'[^:\n]+:\d+:\d+: error: .+',
     warning   = r'[^:\n]+:\d+:\d+: warning: .+',
     note      = r'[^:\n]+:\d+:\d+: note: .+',
