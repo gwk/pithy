@@ -3,6 +3,7 @@
 import os
 import os.path
 import re
+from tomllib import load as load_toml, TOMLDecodeError
 from typing import Any, cast, NamedTuple
 
 from pithy.eon import parse_eon_or_fail
@@ -74,39 +75,57 @@ def load_craft_config() -> CraftConfig:
     os.environ[XCODE_TOOLCHAIN_DIR] = xcode_toolchain_dir
 
   config = parse_craft(config_path)
-  config['config-path'] = config_path
-  config['project-dir'] = project_dir
-  config['swift-path'] = swift_path
-  config['xcode-dev-dir'] = xcode_dev_dir
-  config['xcode-toolchain-dir'] = xcode_toolchain_dir
+  config['config_path'] = config_path
+  config['project_dir'] = project_dir
+  config['swift_path'] = swift_path
+  config['xcode_dev_dir'] = xcode_dev_dir
+  config['xcode_toolchain_dir'] = xcode_toolchain_dir
 
-  c = CraftConfig(**{k.replace('-', '_'): v for (k, v) in config.items()}) # TODO: validate types.
+  c = CraftConfig(**config) # TODO: validate types.
 
-  if not is_sub_path(c.build_dir): exit(f'craft error: build-dir must be a subpath: {c.build_dir!r}')
+  if not is_sub_path(c.build_dir): exit(f'craft error: build_dir must be a subpath: {c.build_dir!r}')
 
   if c.swift_version and not re.fullmatch(r'\d+(\.\d+)?', c.swift_version):
-    exit(f"craft error: swift-version should be 'MAJOR' or MAJOR.MINOR' number; received {c.swift_version!r}")
+    exit(f"craft error: swift_version should be 'MAJOR' or MAJOR.MINOR' number; received {c.swift_version!r}")
 
   if c.target_macOS and not re.fullmatch(r'\d+\.\d+', c.target_macOS):
-    exit(f"craft error: target-macOS should be 'MAJOR.MINOR' number; received {c.target_macOS!r}")
+    exit(f"craft error: target_macOS should be 'MAJOR.MINOR' number; received {c.target_macOS!r}")
 
   return c
 
 
 def parse_craft(path:str) -> dict[str,Any]:
-  try: f = open(path)
-  except FileNotFoundError: exit(f'craft error: craft file does not exist: {path!r}')
-  if path_ext(path) != '.eon': exit('craft error: craft file must be a `.eon` file.') # TODO: relax this restriction.
-  with f: text = f.read()
-  d = parse_eon_or_fail(path=path, text=text, to=dict[str,Any])
+  try:
+    with open(path, 'rb') as f:
+      if path_ext(path) == '.toml':
+        d = load_toml(f)
+      else:
+        exit('craft error: craft file must be a `.toml` file.') # TODO: relax this restriction.
+  except FileNotFoundError:
+    exit(f'craft error: craft file does not exist: {path!r}')
+  except TOMLDecodeError as e:
+    fail_on_toml_error(path, e)
+
   for k, v in d.items():
     if k in craft_nonconfigurable_keys: exit(f'craft error: key is not configurable: {k!r}')
     if k not in craft_configurable_keys: exit(f'craft error: invalid craft config key: {k!r}')
+
   missing_keys = craft_required_keys.difference(d)
   if missing_keys: exit('\n  '.join([f'craft error: missing required keys in {path!r}:', *sorted(missing_keys)]))
-  return cast(dict[str,Any], d)
+
+  return d
 
 
+def fail_on_toml_error(path:str, e:TOMLDecodeError) -> None:
+  m = toml_error_re.fullmatch(str(e))
+  if m:
+    msg, line, col = m.groups()
+    exit(f'{path}:{line}:{col}: toml error: {msg}.')
+  else:
+    exit(f'{path}: toml error: {e}.')
+
+
+toml_error_re = re.compile(r'(.+) \(at line (\d+), column (\d+)\)')
 craft_required_keys = frozenset({
   'copyright'
 })
@@ -116,19 +135,19 @@ craft_required_keys = frozenset({
 craft_configurable_keys = frozenset({
   *craft_required_keys,
   'copyright',
-  'product-name',
-  'product-identifier',
+  'product_name',
+  'product_identifier',
   'sources',
-  'swift-version',
+  'swift_version',
   'resources',
-  'target-macOS',
-  'ts-modules',
+  'target_macOS',
+  'ts_modules',
 })
 
 craft_nonconfigurable_keys = frozenset({
-  'config-path',
-  'project-dir',
-  'xcode-dev-dir',
+  'config_path',
+  'project_dir',
+  'xcode_dev_dir',
 })
 
 
