@@ -312,7 +312,7 @@ class Mu:
 
   def text_clean_ws(self, nl=False) -> str:
     'Return the text of the tree joined as a single string, with whitespace collapsed.'
-    return re.sub('\s+', newline_or_space_for_ws if nl else ' ', self.text.strip())
+    return re.sub(r'\s+', newline_or_space_for_ws if nl else ' ', self.text.strip())
 
 
   @property
