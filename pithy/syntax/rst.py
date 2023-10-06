@@ -35,7 +35,7 @@ class Ref:
 
 
 def _get_children(node:Node) -> Iterable[Node]:
-  if hasattr(node, 'childeren'): return node.children # type: ignore[attr-defined,no-any-return]
+  if hasattr(node, 'childeren'): return node.children
   return ()
 
 
