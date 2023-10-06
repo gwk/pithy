@@ -11,7 +11,7 @@
 from argparse import ArgumentParser
 
 from PIL import ImageDraw
-from PIL.Image import ANTIALIAS, Image, new as Image_new, open as Image_open
+from PIL.Image import Image, LANCZOS, new as Image_new, open as Image_open
 from pithy.path import split_stem_ext
 
 
@@ -50,8 +50,8 @@ def round_icon(path:str, img:Image, dst_width:int, rounded=bool) -> None:
   draw.rounded_rectangle(((0,0), ms_size), radius=r*multisamples, fill=255)
 
   # Downsample the image and the mask to the desired size.
-  img_ds = img.resize(size=dst_size, resample=ANTIALIAS)
-  mask_ds = mask_ms.resize(size=dst_size, resample=ANTIALIAS)
+  img_ds = img.resize(size=dst_size, resample=LANCZOS)
+  mask_ds = mask_ms.resize(size=dst_size, resample=LANCZOS)
 
   # Mask the image by creating a new blank and using `paste` with a mask.
   dst = Image_new(mode='RGBA', size=dst_size, color=(0,0,0,0)) # Transparent black background.
