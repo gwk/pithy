@@ -281,7 +281,7 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
     See also pithy.html.parse.linkify.
     '''
     if text.startswith('http://') or text.startswith('https://'):
-      if m := re.search('[.,;:]?\s', text):
+      if m := re.search(r'[.,;:]?\s', text):
         url_end = m.start()
       else:
         url_end = len(text)
