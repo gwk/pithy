@@ -10,6 +10,7 @@ import re
 from argparse import ArgumentParser, Namespace
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
+from tomllib import load as load_toml
 from typing import Any, Callable, Iterable, Iterator, TextIO
 
 from pithy.dict import dict_remap_keys_mut
@@ -20,7 +21,6 @@ from pithy.string import truncate_repr_with_ellipsis
 from pithy.transtruct import bool_vals, Ctx, Transtructor
 from pithy.xml.datatypes import ChildAttrInfo
 from pithy.xml.xmldict import XmlDict, XmlDictParser, XmlError
-from tomli import load as load_toml
 
 
 def main() -> None:
