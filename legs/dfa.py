@@ -424,7 +424,7 @@ def calc_backtrack_order(name:str, match_node_kinds:dict[int,set[str]], kind_mat
   def order_key(kind:str) -> tuple:
     '''
     The ordering heuristic attempts to accommodate the following cases:
-    * For cyclical patterns, subset patterns should come first. These require additional assertions. e.g. 'kw' and '\w+'.
+    * For cyclical patterns, subset patterns should come first. These require additional assertions. e.g. 'kw' and '\\w+'.
     * Otherwise, longer (reachable) patterns should come first to utilize the backtracker, e.g. '==' before '='.
     We choose to place unorderable patterns first because they require attention.
     '''
