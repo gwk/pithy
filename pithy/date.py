@@ -141,6 +141,11 @@ def dt_IMp(dt:DateTime|Time, compact=False) -> str:
   return f'{dt:%I:%M%p}'.lstrip('0') # 04:30.lstrip('0') => 4:30AM
 
 
+def dt_Ymd_IMp(dt:DateTime|Time) -> str:
+  return f'{dt:%Y-%m-%d %I:%M%p}'.lstrip('0') # 04:30.lstrip('0') => 4:30AM
+
+
+
 def parse_dt(string: str, fmt:str|None=None) -> DateTime:
   if fmt: return DateTime.strptime(string, fmt)
   return DateTime.fromisoformat(string)
