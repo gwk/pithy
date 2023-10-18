@@ -21,7 +21,7 @@ def parse_rst(path:str, text:str) -> Syntax:
   document = _new_document(path, settings=settings)
   parser.parse(text, document)
   ctx = _Ctx(path=path, text=text, lines=text.splitlines(keepends=True))
-  return transform_tree(document, _get_children, ctx.visit)
+  return transform_tree(document, _get_children, ctx.visit) # type: ignore[no-any-return]
 
 
 @dataclass

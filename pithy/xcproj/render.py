@@ -19,7 +19,7 @@ class Renderer:
     self.objects = root.objects
 
     list_owners = [(k, v) for (k, v) in self.objects.items() if hasattr(v, 'buildConfigurationList')]
-    self.configurationList_owners = { v.buildConfigurationList : k for (k, v) in list_owners } # type: ignore
+    self.configurationList_owners = { v.buildConfigurationList : k for (k, v) in list_owners }
 
     phases = [v for v in  self.objects.values() if isinstance(v, _BuildPhase)]
     self.buildFile_phases = {file_id : phase for phase in phases for file_id in phase.files}
@@ -43,7 +43,7 @@ class Renderer:
     'Special handling for the main objects list.'
     yield '{\n'
     groups = groupby(sorted(objects.items(), key=lambda kv:(kv[1].type_name, kv[0])),
-       key= lambda kv: kv[1].type_name) # type: ignore
+       key= lambda kv: kv[1].type_name)
     for type_name, g in groups:
       yield f'\n/* Begin {type_name} section */\n'
       for k, v in g:
@@ -130,9 +130,9 @@ class Renderer:
 
     if isinstance(pbx, PBXBuildFile):
       if file_ref := pbx.fileRef:
-        name = path_name(self.objects[file_ref].path) # type: ignore
+        name = path_name(self.objects[file_ref].path) # type: ignore[attr-defined]
       elif product_ref := pbx.productRef:
-        name = self.objects[product_ref].productName # type: ignore
+        name = self.objects[product_ref].productName # type: ignore[attr-defined]
       else:
         name = '???'
       phase = self.buildFile_phases[ref]
@@ -155,7 +155,7 @@ class Renderer:
     if isinstance(pbx, XCConfigurationList):
       owner_key = self.configurationList_owners[ref]
       owner = self.objects[owner_key]
-      name = self.proj_name if isinstance(owner, PBXProject) else owner.name # type: ignore
+      name = self.proj_name if isinstance(owner, PBXProject) else owner.name # type: ignore[attr-defined]
       return f'Build configuration list for {owner.type_name} "{name}"'
 
     if isinstance(pbx, XCLocalSwiftPackageReference):

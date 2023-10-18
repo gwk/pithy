@@ -16,7 +16,7 @@ from ..json import parse_json, render_json
 
 br_MODE_TEXT = -1
 try:
-  from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore[import, no-redef]
+  from brotli import compress as br_compress, decompress as br_expand, MODE_TEXT as br_MODE_TEXT # type: ignore[import-untyped, no-redef]
 except ImportError:
   # Brotli compression is supported by major browsers and AWS. Pithy treats it as optional.
   def br_compress(data:bytes, mode:int=0) -> bytes: raise Exception('brotli module failed to import')

@@ -102,7 +102,7 @@ class HttpServer(ThreadingTCPServer):
     print('Exception while handling request from client:', client_address, file=self.err)
     e_type, exc, traceback = exc_info()
     if isinstance(exc, self.unrecoverable_exception_types):
-      raise UnrecoverableServerError from exc
+      raise UnrecoverableServerError from exc # type: ignore[misc]
     else:
       print_exception(e_type, exc, traceback)
       print('-'*40, file=self.err)
