@@ -12,7 +12,7 @@ def add_homebrew_to_dyld_paths() -> None:
 
   if os.name == "posix" and sys.platform == "darwin": # macOS.
 
-    from ctypes.macholib.dyld import DEFAULT_FRAMEWORK_FALLBACK, DEFAULT_LIBRARY_FALLBACK  # type: ignore[import]
+    from ctypes.macholib.dyld import DEFAULT_FRAMEWORK_FALLBACK, DEFAULT_LIBRARY_FALLBACK  # type: ignore[import-not-found]
 
     # Insert the homebrew path after the user home path, but before the system paths.
     DEFAULT_FRAMEWORK_FALLBACK.insert(1, '/opt/homebrew/frameworks')

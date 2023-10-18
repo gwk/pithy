@@ -202,7 +202,7 @@ def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[s
 
 
 def load_xls(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from openpyxl import load_workbook  # type: ignore[import]
+  from openpyxl import load_workbook  # type: ignore[import-untyped]
   if isinstance(f, str):
     return load_workbook(filename=f, **kwargs)
   else:
