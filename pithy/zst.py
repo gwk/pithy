@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import AnyStr, BinaryIO, Iterable, Iterator, Sized, TextIO
+from typing import Any, BinaryIO, Iterable, NoReturn, TextIO
 
 from typing_extensions import Buffer
 from zstandard import ZstdCompressor
@@ -19,15 +19,11 @@ class ZstWriterBase:
     self.input_byte_count = 0
     self.compressed_byte_count = 0
 
-  def __iter__(self) -> Iterator[AnyStr]: raise TypeError
-
-  def __next__(self) -> AnyStr: raise TypeError
-
   def fileno(self) -> int: return self.file.fileno()
 
   def isatty(self) -> bool: return self.file.isatty()
 
-  def readable(self) -> bool: return self.file.readable()
+  def readable(self) -> bool: return False
 
   def writable(self) -> bool: return self.file.writable()
 
@@ -35,11 +31,11 @@ class ZstWriterBase:
 
   def truncate(self, size:int|None=None) -> int: return self.file.truncate()
 
-  def read(self, size=-1) -> AnyStr: raise TypeError
+  def read(self, size=-1) -> NoReturn: raise TypeError
 
-  def readline(self, size=-1) -> AnyStr: raise TypeError
+  def readline(self, size=-1) -> NoReturn: raise TypeError
 
-  def readlines(self, size=-1) -> list[AnyStr]: raise TypeError
+  def readlines(self, size=-1) -> NoReturn: raise TypeError
 
   def seek(self, offset:int, whence=0) -> int: return self.file.seek(offset, whence)
 
@@ -65,8 +61,6 @@ class ZstWriterBase:
     return self.compressed_byte_count / self.input_byte_count
 
 
-BytesLike = bytes|Buffer
-
 class ZstWriter(ZstWriterBase, BinaryIO):
 
   def __enter__(self) -> 'ZstWriter': return self
@@ -74,14 +68,14 @@ class ZstWriter(ZstWriterBase, BinaryIO):
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.close()
 
-  def write(self, data:BytesLike, /) -> int:
-    if not isinstance(data, Sized): data = bytes(data)
+  def write(self, data:bytes|bytearray|memoryview|Buffer, /) -> int:
+    if not isinstance(data, (bytes, bytearray, memoryview)): data = bytes(data)
     l = len(data)
     self.input_byte_count += l
     self._write_chunks(self.chunker.compress(data))
     return l
 
-  def writelines(self, lines:Iterable[BytesLike]) -> None:
+  def writelines(self, lines:Iterable[bytes|Buffer]) -> None:
     for line in lines: self.write(line)
 
 
@@ -97,7 +91,8 @@ class ZstTextWriter(ZstWriterBase, TextIO):
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     self.close()
 
-  def write(self, text:str) -> int:
+  def write(self, text:str|Buffer|Any) -> int:
+    assert isinstance(text, str)
     data = text.encode(self.encoding)
     self.input_byte_count += len(data)
     self._write_chunks(self.chunker.compress(data))
