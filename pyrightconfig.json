@@ -1,6 +1,16 @@
 {
-  "exclude": ["_build", "_misc"],
-  "include": ["craft", "iotest", "pithy", "test", "test-meta", "writeup"],
+  "exclude": [
+    "_build",
+    "_misc"
+  ],
+  "include": [
+    "craft",
+    "iotest",
+    "pithy",
+    "test",
+    "test-meta",
+    "writeup"
+  ],
   "pythonVersion": "3.11",
   "reportGeneralTypeIssues": "none",
   "reportInvalidTypeVarUse": "none",
