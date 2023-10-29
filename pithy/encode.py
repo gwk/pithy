@@ -28,7 +28,7 @@ def encode_obj(obj:Any) -> Any:
   if hasattr(obj, '__slots__'):
     slots = all_slots(type(obj))
     slots = slots.union(getattr(obj, '__dict__', ())) # Slots classes may also have backing dicts.
-    return {a: getattr(obj, a) for a in slots}
+    return {a: getattr(obj, a) for a in slots if not a.startswith('_')}
 
   try: d = obj.__dict__ # Treat other classes as dicts by default.
   except AttributeError: pass
@@ -38,7 +38,7 @@ def encode_obj(obj:Any) -> Any:
     else:
       return d
 
-  return str(obj) # convert to string as last resort.
+  raise TypeError(f'cannot encode object of type {type(obj).__qualname__}')
 
 
 @encode_obj.register
