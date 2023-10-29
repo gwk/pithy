@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
+from types import EllipsisType
+from typing import Any
 
 from pithy.encode import all_slots, encode_obj
-from utest import utest
+from utest import utest, utest_call, utest_exc
 
 
 @dataclass
@@ -52,7 +54,14 @@ utest(1, encode_obj, 1)
 utest('a', encode_obj, 'a')
 utest('type', encode_obj, type)
 
-utest('Ellipsis', encode_obj, ...)  # Falls back to `str(obj)`.
+
+utest_exc(TypeError('cannot encode object of type ellipsis'), encode_obj, ...) # Ellipsis is not registered by default.
+
+@encode_obj.register
+def _(obj:EllipsisType) -> Any: return str(obj)
+
+utest('Ellipsis', encode_obj, ...) # Now the Ellipsis type is registered.
+
 
 utest([None], encode_obj, [None])
 

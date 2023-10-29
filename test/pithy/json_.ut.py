@@ -64,7 +64,7 @@ utest('{"x":1}', render_json, SlotX(x=1), indent=None)
 utest('{"x":1,"y":2}', render_json, SlotXY(x=1, y=2), indent=None)
 utest('{"x":1,"y":2,"z":3}', render_json, SlotXYZ(x=1, y=2, z=3), indent=None)
 
-utest('"Ellipsis"', render_json, ...) # `str` fallback.
+utest_exc(TypeError , render_json, ...) # Ellipsis type does not encode by default.
 
 
 # Parse.
