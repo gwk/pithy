@@ -7,9 +7,8 @@ from typing import (Any, Callable, cast, Iterable, Iterator, Literal, Mapping, o
 from urllib.parse import quote as url_quote
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
-from ..json import render_json
 from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
-from .util import default_to_json, insert_values_stmt, sql_quote_entity, types_natively_converted_by_sqlite, update_stmt
+from .util import default_to_json, insert_values_stmt, sql_quote_entity, update_stmt, update_to_json
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -154,9 +153,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     Execute a query with parameter values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to Json.
     '''
-    for k, v in args.items(): # Convert non-native values to Json.
-      if not isinstance(v, types_natively_converted_by_sqlite): # Note: this is a conditional inlining of `default_to_json`.
-        args[k] = render_json(v, indent=None)
+    args = update_to_json(args)
     if _dbg: print(f'query: {sql.strip()}\n  args: {args}')
     return self.execute(sql, args)
 
@@ -215,24 +212,21 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
 
   @overload
-  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:tuple[str,...], **kwargs:Any) -> Row: ...
+  def insert(self, *, with_='', or_='FAIL', into:str, returning:tuple[str,...], **kwargs:Any) -> Row: ...
 
   @overload
-  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:str, **kwargs:Any) -> Any: ...
+  def insert(self, *, with_='', or_='FAIL', into:str, returning:str, **kwargs:Any) -> Any: ...
 
   @overload
-  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:None=None, **kwargs:Any) -> None: ...
+  def insert(self, *, with_='', or_='FAIL', into:str, returning:None=None, **kwargs:Any) -> None: ...
 
-  def insert(self, *, with_='', or_='FAIL', into:str, as_json=False, returning:tuple[str,...]|str|None=None, **kwargs:Any):
+  def insert(self, *, with_='', or_='FAIL', into:str, returning:tuple[str,...]|str|None=None, _dbg=False, **kwargs:Any):
     '''
     Execute an insert statement with the kwargs key/value pairs passed as named arguments.
     If `returning` is a tuple, return a single row; if it is a string, return a single column.
     '''
     stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=True, fields=tuple(kwargs.keys()), returning=returning)
-    if as_json and not all(isinstance(v, types_natively_converted_by_sqlite) for v in kwargs.values()):
-      kwargs = {k: default_to_json(v) for k, v in kwargs.items()}
-
-    self.execute(stmt, kwargs)
+    self.run(stmt, _dbg=_dbg, **kwargs)
 
     if isinstance(returning, tuple): return self.one()
     elif isinstance(returning, str): return self.one_col()
@@ -258,6 +252,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;
     a KeyError is raised if one of the fields is not provided in either of these sources.
     If `returning` is a tuple, return a single row; if it is a string, return a single column.
+    TODO: support json.
     '''
     if fields is None: fields = args.keys()
     stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields), returning=returning)
@@ -297,7 +292,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     return pairs
 
 
-  def update(self, table:str, *, with_='', or_='FAIL', by:str|tuple[str,...], **kwargs:Any) -> None:
+  def update(self, table:str, *, with_='', or_='FAIL', by:str|tuple[str,...], _dbg=False, **kwargs:Any) -> None:
     '''
     Execute an UPDATE statement.
     TODO: support returning clause.
@@ -307,7 +302,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     where = ' AND '.join(f'{sql_quote_entity(k)} = :{k}' for k in by)
     fields = tuple(k for k in kwargs if k not in by)
     stmt = update_stmt(with_=with_, or_=or_, table=table, named=True, fields=fields, where=where)
-    self.execute(stmt, kwargs)
+    self.run(stmt, _dbg=_dbg, **kwargs)
 
 
 class Connection(sqlite3.Connection):

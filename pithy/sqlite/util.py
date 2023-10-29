@@ -121,6 +121,13 @@ def default_to_json(obj:Any) -> Any:
   return render_json(obj, indent=None)
 
 
+def update_to_json(d:dict[str,Any]) -> dict[str,Any]:
+  for k, v in d.items():
+    if isinstance(v, types_natively_converted_by_sqlite): continue
+    d[k] = render_json(v, indent=None)
+  return d
+
+
 def fields_of(class_:type) -> tuple[str, ...]:
   if issubclass(class_, NamedTuple): return class_._fields
   # TODO: support dataclasses.
