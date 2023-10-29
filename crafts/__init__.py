@@ -4,9 +4,8 @@ import os
 import os.path
 import re
 from tomllib import load as load_toml, TOMLDecodeError
-from typing import Any, cast, NamedTuple
+from typing import Any, NamedTuple
 
-from pithy.eon import parse_eon_or_fail
 from pithy.fs import find_project_dir, list_dir, path_for_cmd, real_path
 from pithy.path import is_sub_path, norm_path, path_ext, path_join, path_name_stem, path_split, rel_path
 from pithy.task import runO
