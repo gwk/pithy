@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 from operator import eq
+from typing import NamedTuple
 
 from pithy.iterable import *
-from utest import utest, utest_exc, utest_seq, utest_seq_exc
+from utest import utest, utest_call, utest_exc, utest_seq, utest_seq_exc
 
 
 utest(True, is_sorted, [])
@@ -30,6 +31,18 @@ utest_seq([], int_tuple_ranges, [])
 utest_seq([(0,1), (2,4), (5,9), (10,11)], int_tuple_ranges, [0, (2,4), range(5,7), (7,8), 8, 10])
 
 utest_seq([-1, -3], filtermap_with_mapping, [0, 1, 2, 3], {1: -1, 3: -3})
+
+@utest_call
+def test_fan_by_attr():
+  class Pair(NamedTuple):
+    x:int
+    y:int
+
+  a, b, c = pairs = [Pair(0, 0), Pair(0, 1), Pair(1, 2)]
+
+  utest({}, fan_by_attr, [], attr='x')
+  utest({0:[a, b], 1:[c]}, fan_by_attr, pairs, attr='x')
+
 
 utest([], fan_by_index_fn, [], index=int)
 utest([[], [1]], fan_by_index_fn, [1], index=lambda el: el, min_len=2)
