@@ -182,6 +182,19 @@ def req_query_str(request:Request, key:str) -> str:
   return v
 
 
+def get_query_int(request:Request, key:str, default:int|None=None) -> int|None:
+  '''
+  Get an int value from a request's query string.
+  If the key is not present return `default`.
+  If the value is not an int, raise a 400 exception.
+  '''
+  v = request.query_params.get(key)
+  if v is None: return default
+  try: return int(v)
+  except ValueError as e: raise HTTPException(400, f'invalid integer query parameter: {key}={v!r}') from e
+
+
+
 def get_query_date_or_today(request:Request, *, key:str='date', tz:TZInfo) -> Date:
   '''
   Get a date value from a request's query string, using `key` (which defaults to 'date').
