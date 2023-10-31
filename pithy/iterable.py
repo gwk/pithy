@@ -220,6 +220,22 @@ def filtermap_with_mapping(iterable: Iterable[_K], mapping: Mapping[_K, _V]) -> 
     except KeyError: pass
 
 
+def fan_by_attr(iterable:Iterable[_T], attr:str) -> dict[Any,list[_T]]:
+  '''
+  Fan out `iterable` into a dictionary by using the `attr` attribute of each element as a key.
+  '''
+  groups:dict[Any,list[_T]] = {}
+  for el in iterable:
+    k = getattr(el, attr)
+    try:
+      group = groups[k]
+    except KeyError:
+      group = []
+      groups[k] = group
+    group.append(el)
+  return groups
+
+
 def fan_by_index_fn(iterable: Iterable[_T], index: Callable[[_T], int], min_len=0) -> list[list[_T]]:
   '''
   Fan out `iterable` into a list of lists, with a minimum length of `min_len`,
