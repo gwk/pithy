@@ -1,7 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections.abc import Hashable
-from typing import Iterator, Sequence
+from typing import Any, Iterator, Sequence, TypeVar
+
+from .types import Comparable
 
 
 Num = int|float
@@ -57,3 +59,23 @@ class NumRange(Sequence[Num], Hashable):
 
   def __eq__(self, other:object) -> bool:
     return type(self) == type(other) and vars(self) == vars(other)
+
+
+_B = TypeVar('_B', bound=Comparable) # A bound type.
+
+
+def do_ranges_overlap(a:tuple[_B,_B], b:tuple[_B,_B]) -> bool:
+  'Return whether the two ranges overlap.'
+  return bool(a[0] < b[1] and b[0] < a[1])
+
+
+
+def do_ranges_from_attrs_overlap(a:Any, b:Any, start_attr:str, end_attr) -> bool:
+  '''
+  Return whether the two objecet'ranges overlap, given the names of their start and end attributes.
+  '''
+  a_s = getattr(a, start_attr)
+  a_e = getattr(a, end_attr)
+  b_s = getattr(b, start_attr)
+  b_e = getattr(b, end_attr)
+  return bool(a_s < b_e and b_s < a_e)
