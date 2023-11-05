@@ -2,7 +2,7 @@
 
 from http import HTTPStatus
 from time import sleep
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Mapping, overload, Sequence
 
 from starlette.background import BackgroundTask
 from starlette.convertors import Convertor, register_url_convertor
@@ -182,6 +182,12 @@ def req_query_str(request:Request, key:str) -> str:
   return v
 
 
+@overload
+def get_query_int(request:Request, key:str, default:int) -> int: ...
+
+@overload
+def get_query_int(request:Request, key:str, default:None=None) -> int|None: ...
+
 def get_query_int(request:Request, key:str, default:int|None=None) -> int|None:
   '''
   Get an int value from a request's query string.
@@ -217,6 +223,12 @@ def get_form_bool(form_data:FormData, key:str, default:bool|None=None) -> bool|N
   if not isinstance(v, str): return default
   return bool_str_vals.get(v, default)
 
+
+@overload
+def get_form_int(form_data:FormData, key:str, default:int) -> int: ...
+
+@overload
+def get_form_int(form_data:FormData, key:str, default:None=None) -> int|None: ...
 
 def get_form_int(form_data:FormData, key:str, default:int|None=None) -> int|None:
   '''
