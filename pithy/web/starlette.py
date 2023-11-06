@@ -149,6 +149,89 @@ class DateConverter(Convertor):
     register_url_convertor(name, cls())
 
 
+def req_form_bool(form_data:FormData, key:str) -> bool:
+  '''
+  Get a boolean value from a request's FormData.
+  If the key is not present, is not a str (i.e. UploadFile), or does not equal one of the common boolean strings,
+  raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  try: return bool_str_vals[v]
+  except KeyError: raise HTTPException(400, f'invalid boolean form field: {key}={v!r}')
+
+
+@overload
+def get_form_int(form_data:FormData, key:str, default:int) -> int: ...
+
+@overload
+def get_form_int(form_data:FormData, key:str, default:None=None) -> int|None: ...
+
+def get_form_int(form_data:FormData, key:str, default:int|None=None) -> int|None:
+  '''
+  Get an int value from a request's FormData.
+  If the key is not present or the value is not an int, return `default` (None if not specified).
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str) or v == '': return default
+  try: return int(v)
+  except ValueError: return default
+
+
+def req_form_int(form_data:FormData, key:str) -> int:
+  '''
+  Get an int value from a request's FormData.
+  If the key is not present or the value is not an int, raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  try: return int(v)
+  except ValueError: raise HTTPException(400, f'invalid integer form field: {key}={v!r}')
+
+
+def req_form_date(form_data:FormData, key:str) -> Date:
+  '''
+  Get a date value from a request's FormData.
+  If the key is not present or the value is not a valid date, raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  try: return Date.fromisoformat(v)
+  except ValueError as e: raise HTTPException(400, f'invalid date form field: {key}={v!r}') from e
+
+
+def get_form_str(form_data:FormData, key:str, default:str|None=None) -> str|None:
+  '''
+  Get a string value from a request's FormData.
+  If the key is not present or the value is not a str (i.e. UploadFile), return `default` (None if not specified).
+  '''
+  v = form_data.get(key)
+  return v if isinstance(v, str) else default
+
+
+def req_form_str(form_data:FormData, key:str) -> str:
+  '''
+  Get a string value from a request's FormData.
+  If the key is not present or the value is not a str (i.e. UploadFile), raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+  return v
+
+
+def req_form_time_12hmp(form_data:FormData, key:str, tz:TZInfo|None=None) -> Time:
+  '''
+  Get a time value from a request's FormData, requiring 12-hour (with AM/PM) time formats.
+  If the key is not present or the value is not a valid time, raise a 400 exception.
+  '''
+  v = form_data.get(key)
+  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
+
+  try: return parse_time_12hmp(v, tz=tz)
+  except ValueError as e:
+    raise HTTPException(400, f'invalid time form field: {key}={v!r}') from e
+
+
 def req_query_bool(request:Request, key:str) -> bool:
   '''
   Get a boolean value from a request's query string.
@@ -158,6 +241,24 @@ def req_query_bool(request:Request, key:str) -> bool:
   if v is None: raise HTTPException(400, f'missing query parameter: {key}')
   try: return bool_str_vals[v]
   except KeyError: raise HTTPException(400, f'invalid boolean query parameter: {key}={v!r}')
+
+
+@overload
+def get_query_int(request:Request, key:str, default:int) -> int: ...
+
+@overload
+def get_query_int(request:Request, key:str, default:None=None) -> int|None: ...
+
+def get_query_int(request:Request, key:str, default:int|None=None) -> int|None:
+  '''
+  Get an int value from a request's query string.
+  If the key is not present return `default`.
+  If the value is not an int, raise a 400 exception.
+  '''
+  v = request.query_params.get(key)
+  if v is None: return default
+  try: return int(v)
+  except ValueError as e: raise HTTPException(400, f'invalid integer query parameter: {key}={v!r}') from e
 
 
 def req_query_int(request:Request, key:str) -> int:
@@ -182,24 +283,6 @@ def req_query_str(request:Request, key:str) -> str:
   return v
 
 
-@overload
-def get_query_int(request:Request, key:str, default:int) -> int: ...
-
-@overload
-def get_query_int(request:Request, key:str, default:None=None) -> int|None: ...
-
-def get_query_int(request:Request, key:str, default:int|None=None) -> int|None:
-  '''
-  Get an int value from a request's query string.
-  If the key is not present return `default`.
-  If the value is not an int, raise a 400 exception.
-  '''
-  v = request.query_params.get(key)
-  if v is None: return default
-  try: return int(v)
-  except ValueError as e: raise HTTPException(400, f'invalid integer query parameter: {key}={v!r}') from e
-
-
 
 def get_query_date_or_today(request:Request, *, key:str='date', tz:TZInfo) -> Date:
   '''
@@ -222,89 +305,6 @@ def get_form_bool(form_data:FormData, key:str, default:bool|None=None) -> bool|N
   v = form_data.get(key)
   if not isinstance(v, str): return default
   return bool_str_vals.get(v, default)
-
-
-@overload
-def get_form_int(form_data:FormData, key:str, default:int) -> int: ...
-
-@overload
-def get_form_int(form_data:FormData, key:str, default:None=None) -> int|None: ...
-
-def get_form_int(form_data:FormData, key:str, default:int|None=None) -> int|None:
-  '''
-  Get an int value from a request's FormData.
-  If the key is not present or the value is not an int, return `default` (None if not specified).
-  '''
-  v = form_data.get(key)
-  if not isinstance(v, str) or v == '': return default
-  try: return int(v)
-  except ValueError: return default
-
-
-def get_form_str(form_data:FormData, key:str, default:str|None=None) -> str|None:
-  '''
-  Get a string value from a request's FormData.
-  If the key is not present or the value is not a str (i.e. UploadFile), return `default` (None if not specified).
-  '''
-  v = form_data.get(key)
-  return v if isinstance(v, str) else default
-
-
-def req_form_bool(form_data:FormData, key:str) -> bool:
-  '''
-  Get a boolean value from a request's FormData.
-  If the key is not present, is not a str (i.e. UploadFile), or does not equal one of the common boolean strings,
-  raise a 400 exception.
-  '''
-  v = form_data.get(key)
-  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
-  try: return bool_str_vals[v]
-  except KeyError: raise HTTPException(400, f'invalid boolean form field: {key}={v!r}')
-
-
-def req_form_date(form_data:FormData, key:str) -> Date:
-  '''
-  Get a date value from a request's FormData.
-  If the key is not present or the value is not a valid date, raise a 400 exception.
-  '''
-  v = form_data.get(key)
-  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
-  try: return Date.fromisoformat(v)
-  except ValueError as e: raise HTTPException(400, f'invalid date form field: {key}={v!r}') from e
-
-
-def req_form_int(form_data:FormData, key:str) -> int:
-  '''
-  Get an int value from a request's FormData.
-  If the key is not present or the value is not an int, raise a 400 exception.
-  '''
-  v = form_data.get(key)
-  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
-  try: return int(v)
-  except ValueError: raise HTTPException(400, f'invalid integer form field: {key}={v!r}')
-
-
-def req_form_str(form_data:FormData, key:str) -> str:
-  '''
-  Get a string value from a request's FormData.
-  If the key is not present or the value is not a str (i.e. UploadFile), raise a 400 exception.
-  '''
-  v = form_data.get(key)
-  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
-  return v
-
-
-def req_form_time_12hmp(form_data:FormData, key:str, tz:TZInfo|None=None) -> Time:
-  '''
-  Get a time value from a request's FormData, requiring 12-hour (with AM/PM) time formats.
-  If the key is not present or the value is not a valid time, raise a 400 exception.
-  '''
-  v = form_data.get(key)
-  if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
-
-  try: return parse_time_12hmp(v, tz=tz)
-  except ValueError as e:
-    raise HTTPException(400, f'invalid time form field: {key}={v!r}') from e
 
 
 def empty_favicon(HTMLRequest) -> Response:
