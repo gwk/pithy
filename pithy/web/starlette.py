@@ -232,6 +232,17 @@ def req_form_time_12hmp(form_data:FormData, key:str, tz:TZInfo|None=None) -> Tim
     raise HTTPException(400, f'invalid time form field: {key}={v!r}') from e
 
 
+def req_path_int(request:Request, key:str) -> int:
+  '''
+  Get an int value from a request's path parameters.
+  If the key is not present or the value is not an int, raise a 400 exception.
+  '''
+  v = request.path_params.get(key)
+  if v is None: raise HTTPException(400, f'missing path parameter: {key}')
+  try: return int(v)
+  except ValueError: raise HTTPException(400, f'invalid integer path parameter: {key}={v!r}')
+
+
 def req_query_bool(request:Request, key:str) -> bool:
   '''
   Get a boolean value from a request's query string.
