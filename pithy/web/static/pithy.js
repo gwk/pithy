@@ -147,20 +147,46 @@ function resetValueForSelectorAll(selector) {
 
 function setupReloadingDateInput(input) {
   // Usage: configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
+
   input.onfocus = null; // This handler is a lazy initializer; remove it.
-  let dateValueOnFocus = input.value;
-  input.addEventListener('focus', (event) => {
-    //log('focus', event);
-    dateValueOnFocus = input.value;
-  });
-  input.addEventListener('blur', (event) => {
-    //log('blur', event);
-    if (dateValueOnFocus !== input.value) {
+
+  // There are two ways to change the value of a date input:
+  // * By typing into the input.
+  // * By clicking on a calendar date.
+  // We want to submit the form when the user is done with either of these.
+  // The 'change' event takes care of the click case, but fires prematurely for the typing case.
+
+  let valueOnFocus = input.value;
+  let isUserTyping = false;
+
+  function submitIfChanged() {
+    if (valueOnFocus !== input.value) {
+      //log('value changed; submitting.')
       input.form.submit();
     }
+  }
+
+  input.addEventListener('focus', (event) => {
+    //log('focus.', event);
+    valueOnFocus = input.value;
+  });
+  input.addEventListener('blur', (event) => {
+    //log('blur.', event);
+    submitIfChanged();
+  });
+  input.addEventListener('change', (event) => {
+    //log('change.', event);
+    if (!isUserTyping) {
+      submitIfChanged();
+    }
+  });
+  input.addEventListener('click', (event) => {
+    //log('click.', event);
+    isUserTyping = false;
   });
   input.addEventListener('keydown', (event) => {
-    //log('keydown', event);
+    //log('keydown.', event);
+    isUserTyping = true;
     if (event.key == 'Enter') {
       input.blur();
     }
