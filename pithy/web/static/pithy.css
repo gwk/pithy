@@ -217,6 +217,15 @@ label.input-label, .input-labels-inline > label { /* A label that wraps an input
   align-self: center;
 }
 
+html.chrome input[type='date'] {
+  min-width: 7rem; /* Otherwise the calendar icon gets clipped. */
+}
+
+html.chrome input[type='text'] {
+  border: none;
+  box-shadow: 0 0.5px 1.5px #999;
+}
+
 
 html.chrome select { /* Emulates the Safari default style. */
   border-radius: 4px;
