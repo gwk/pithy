@@ -5,8 +5,8 @@
     '/* comment "contents" () / *. */',
     "'single quoted.' \"double quoted.\"",
     '/* nested /* comment. */ */',
-    "'sq \(a) interpolated.'",
-    '"dq \(a) interpolated."',
-    "'sq \(nested \"interpolated \(a)\").'",
+    "'sq \\(a) interpolated.'",
+    '"dq \\(a) interpolated."',
+    "'sq \\(nested \"interpolated \\(a)\").'",
   ],
 }
