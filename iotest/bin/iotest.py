@@ -8,6 +8,7 @@ from ast import literal_eval
 from collections import defaultdict
 from sys import stderr, stdout
 from typing import Iterable, Pattern
+from warnings import filterwarnings
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
@@ -22,6 +23,9 @@ from pithy.task import run, runC, TaskLaunchError, Timeout, UnexpectedExit
 
 from ..case import Case, file_expectation_fns, FileExpectation, ParConfig, TestCaseError
 from ..ctx import Ctx
+
+
+filterwarnings('error', category=SyntaxWarning) # Fail on SyntaxWarning.
 
 
 def main() -> None:
