@@ -15,7 +15,7 @@ class FileStatus(NamedTuple):
   * omits atime and atime_ns (which are not useful due to modern `noatime` semantics);
   * splits `mode` into `type` and `perms` fields.
   '''
-  birth_time: int
+  birth_time: float
   block_count: int
   block_size: int
   ctime: float
