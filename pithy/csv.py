@@ -147,18 +147,18 @@ class CsvLoader(Iterable, ContextManager):
         if remap_keys:
           rm = remap_keys # Alias for type-safe use in lambda.
           row_seq_fn = lambda row: { rm.get(key, key) : try_cell_ctor(cell_ctor, cell, key)
-            for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
+            for (key, cell_ctor), cell in zip(cols.items(), row)
             if cell_ctor is not None and (preserve_empty_vals or cell) }
         else:
           row_seq_fn = lambda row: { key : try_cell_ctor(cell_ctor, cell, key)
-            for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
+            for (key, cell_ctor), cell in zip(cols.items(), row)
             if cell_ctor is not None and (preserve_empty_vals or cell) }
     else: # Sequence.
       if cols is None:
         row_seq_fn = lambda row: row
       else:
         row_seq_fn = lambda row: [try_cell_ctor(cell_ctor, cell, key)
-          for (key, cell_ctor), cell in zip(cols.items(), row) # type: ignore[union-attr]
+          for (key, cell_ctor), cell in zip(cols.items(), row)
           if cell_ctor is not None]
 
     if row_ctor is not None:
@@ -166,9 +166,9 @@ class CsvLoader(Iterable, ContextManager):
         if as_dicts:
           row_fn = lambda row: row_ctor(**row_seq_fn(row)) # type: ignore[arg-type]
         else:
-          row_fn = lambda row: row_ctor(*row_seq_fn(row)) # type: ignore[misc]
+          row_fn = lambda row: row_ctor(*row_seq_fn(row))
       else:
-        row_fn = lambda row: row_ctor(row_seq_fn(row)) # type: ignore[misc]
+        row_fn = lambda row: row_ctor(row_seq_fn(row))
     else:
       row_fn = row_seq_fn
 
