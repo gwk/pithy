@@ -839,7 +839,7 @@ def xml_pred(type_or_tag:str|type[_Mu]='', *, cl:str='', text:str='', attrs:dict
 
   tag_pred:Callable
   if not type_or_tag: tag_pred = lambda node: True
-  elif isinstance(type_or_tag, type): tag_pred = lambda node: isinstance(node, type_or_tag) # type: ignore[arg-type]
+  elif isinstance(type_or_tag, type): tag_pred = lambda node: isinstance(node, type_or_tag)
   else: tag_pred = lambda node: node.tag == type_or_tag
 
   def predicate(node:Mu) -> bool:
