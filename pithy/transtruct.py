@@ -62,7 +62,7 @@ class Transtructor:
 
 
   def transtruct(self, desired_type:type[Desired], val:Input, ctx:Ctx=None, dbg=False) -> Desired:
-    transtructor = self.transtructor_for(desired_type) # type: ignore[arg-type]
+    transtructor:Callable[[Input,Ctx],Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
     if dbg: print(f'transtructor for type:{desired_type!r}: {transtructor!r}')
     return transtructor(val, ctx)
 
@@ -96,7 +96,7 @@ class Transtructor:
         if not issubclass(subtype, type_):
           raise TranstructorError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}', static_type, val)
         type_ = subtype
-      transtructor = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
+      transtructor:Callable[[Input,Ctx],Desired] = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
       return transtructor(val, ctx)
 
     return transtruct_with_selector
