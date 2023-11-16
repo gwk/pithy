@@ -35,9 +35,19 @@ def capitalize_first(string:str) -> str:
   return string[0].upper() + string[1:]
 
 
+def split_camelcase(string:str) -> list[str]:
+  'Split a camel-case string (e.g. "camelCase", "CamelCase") into a list of chunks (e.g. ["camel", "Case"]).'
+  return [chunk for chunk in re.split(r'([A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$)))', string) if chunk]
+
+
 def typecase_from_snakecase(string:str) -> str:
-  'Convert a snake_case string to a TypeCase string.'
+  'Convert a snake-case string (e.g. "snake_case") to type-case (e.g. "TypeCase").'
   return ''.join(s.capitalize() for s in string.split('_'))
+
+
+def snakecase_from_camelcase(string:str) -> str:
+  'Convert a camel-case string (e.g. "camelCase", "CamelCase") to snake-case (e.g. "snake_case").'
+  return '_'.join(s.lower() for s in split_camelcase(string))
 
 
 def clip_prefix(string:str, prefix:str, req=True) -> str:

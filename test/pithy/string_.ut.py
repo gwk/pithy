@@ -3,8 +3,8 @@
 from itertools import permutations
 
 from pithy.string import (append_to_nonempty, clip_common, clip_first_prefix, clip_prefix, clip_suffix, format_byte_count,
-  format_nonempty, iter_excluding_str, line_col_0, line_col_1, pluralize, prepend_to_nonempty, render_template, str_tree,
-  str_tree_insert, str_tree_iter)
+  format_nonempty, iter_excluding_str, line_col_0, line_col_1, pluralize, prepend_to_nonempty, render_template, split_camelcase,
+  str_tree, str_tree_insert, str_tree_iter)
 from utest import utest, utest_exc, utest_seq
 
 
@@ -92,6 +92,21 @@ utest_exc(IndexError(1), line_col_0, '', 1)
 utest_exc(IndexError(2), line_col_0, 'a', 2)
 
 utest((1, 1), line_col_1, '', 0)
+
+
+# split_camelcase.
+
+utest([], split_camelcase, '')
+utest(['a'], split_camelcase, 'a')
+utest(['a', 'B'], split_camelcase, 'aB')
+utest(['a', 'Bc'], split_camelcase, 'aBc')
+utest(['a', 'BC'], split_camelcase, 'aBC')
+utest(['AB'], split_camelcase, 'AB')
+utest(['A', 'Bc'], split_camelcase, 'ABc')
+utest(['ABC'], split_camelcase, 'ABC')
+utest(['AB', 'Cd'], split_camelcase, 'ABCd')
+
+utest(['A1B2'], split_camelcase, 'A1B2')
 
 
 # str_tree.
