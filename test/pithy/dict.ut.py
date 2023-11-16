@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.dict import (ConflictingValues, DefaultByKeyDict, dict_list_append, dict_list_extend, dict_put, dict_set_defaults,
   dict_update_sets, idemput, KeyExistingIncoming)
