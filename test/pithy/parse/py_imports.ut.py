@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.parse import (Atom, atom_text, binary_to_list, Choice, choice_labeled, Infix, Left, Opt, Parser, Precedence, Struct,
   struct_fields_tuple, ZeroOrMore)
