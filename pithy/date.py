@@ -136,14 +136,17 @@ class DateRange(Sequence[Date]):
 
 
 def dt_IMp(dt:DateTime|Time, compact=False) -> str:
+  'Format a DateTime or Time as e.g. "4:30PM", or "4PM" if compact is True.'
   if compact and not dt.minute:
-    return f'{dt:%I%p}'.lstrip('0') # 04AM.lstrip('0') => 4AM
-  return f'{dt:%I:%M%p}'.lstrip('0') # 04:30.lstrip('0') => 4:30AM
+    return f'{dt:%I%p}'.lstrip('0') # '04AM'.lstrip('0') => 4AM
+  return f'{dt:%I:%M%p}'.lstrip('0') # '04:30AM'.lstrip('0') => 4:30AM
 
 
-def dt_Ymd_IMp(dt:DateTime|Time) -> str:
-  return f'{dt:%Y-%m-%d %I:%M%p}'.lstrip('0') # 04:30.lstrip('0') => 4:30AM
-
+def dt_Ymd_IMp(dt:DateTime|Time, include_at:bool=False) -> str:
+  'Format a DateTime or Time as e.g. "2020-01-01 4:30PM".'
+  time = dt_IMp(dt)
+  at = ' at ' if include_at else ' '
+  return f'{dt:%Y-%m-%d}{at}{time}'
 
 
 def parse_dt(string: str, fmt:str|None=None) -> DateTime:
