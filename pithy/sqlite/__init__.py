@@ -305,6 +305,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     self.run(stmt, _dbg=_dbg, **kwargs)
 
 
+
 class Connection(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None=None,
