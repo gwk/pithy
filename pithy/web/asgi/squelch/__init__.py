@@ -202,11 +202,11 @@ class SquelchApp:
     columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
       schema=schema.name, table=table.name, path=path, cols=en_cols, table_vis=table_vis)
 
-    select_head = 'SELECT' + (' DISTINCT' if distinct else '')
+    distinct_clause = (' DISTINCT' if distinct else '')
     where_clause = f'\nWHERE {where}' if where else ''
     order_by_clause = f'\nORDER BY {order_by}' if order_by else ''
 
-    query = f'{select_head}{columns_part}{from_clause}{where_clause}{order_by_clause}\nLIMIT {limit} OFFSET {offset}'
+    query = f'SELECT{distinct_clause}{columns_part}{from_clause}{where_clause}{order_by_clause}\nLIMIT {limit} OFFSET {offset}'
 
     conn = self.get_conn()
     c = conn.cursor()
@@ -217,13 +217,6 @@ class SquelchApp:
       error = f'Explain query failed: {e}'
       plan = ''
 
-    count:int|None = None
-    if not error:
-      try:
-        count = c.run(f'{select_head} COUNT() {from_clause}{where_clause}').one_col()
-      except SqliteError as e:
-        error = f'Count query failed: {e}'
-
     rows = []
     if not error:
       try: c = c.run(query)
@@ -231,6 +224,20 @@ class SquelchApp:
         error = f'Query failed: {e}'
       else:
         rows = [Tr(_=[rcf(row) for rcf in render_cell_fns]) for row in c]
+
+    count:int|None = None
+    if not error:
+      if 0 < len(rows) < limit: count = offset + len(rows)
+      else:
+        try:
+          if distinct:
+            if len(en_cols) == 1: count_query = f'SELECT COUNT(DISTINCT{columns_part}){from_clause}{where_clause}'
+            else: count_query = f'SELECT COUNT() FROM (SELECT DISTINCT {columns_part}{from_clause}{where_clause})'
+          else:
+            count_query = f'SELECT COUNT(){from_clause}{where_clause}'
+          count = c.run(count_query).one_col()
+        except SqliteError as e:
+          error = f'Count query failed: {e}'
 
 
     parts:list[HtmlNode] = [
@@ -259,7 +266,9 @@ class SquelchApp:
 def fmt_select_cols(schema:str, table:str, path:str, cols:list[Column], table_vis:dict[str,Vis]
  ) -> tuple[str,str,list[str],list[CellRenderFn]]:
   '''
-  Return "SELECT [cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
+  Return "[cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
+  The columns string has a leading space.
+  The from string has a leading newline.
   '''
 
   schema_abbrs = abbreviate_schema_names({schema, *(vis.schema for vis in table_vis.values())})
