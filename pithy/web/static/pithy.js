@@ -209,6 +209,10 @@ function setupReloadingDateInput(input) {
 }
 
 
+
+/**
+ * @param {HTMLElement} element
+ */
 function setupBeforeSendClearHxTargetContent(element) {
   // Configures an element with an event handler so that before an htmx request is sent,
   // the content of the target element is cleared.
