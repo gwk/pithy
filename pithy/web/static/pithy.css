@@ -218,7 +218,19 @@ label.input-label, .input-labels-inline > label { /* A label that wraps an input
 }
 
 html.chrome input[type='date'] {
-  min-width: 7rem; /* Otherwise the calendar icon gets clipped. */
+  min-width: 7rem; /* Otherwise the chrome calendar icon gets clipped. */
+}
+
+input[type='date'] {
+  border: none;
+  box-shadow: 0 0.5px 1.5px #999;
+  border-radius: 2px;
+}
+
+html.safari input[type='date']::after {
+  content: '🗓️';
+  padding: 0.25em;
+  font-family: 'Noto Emoji';
 }
 
 html.chrome input[type='text'] {
