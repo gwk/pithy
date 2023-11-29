@@ -246,3 +246,44 @@ function validateAtLeastOneCheckbox(span) {
   const desc = span.desc || 'option'
   first_input.setCustomValidity(any_checked ? '' : `Select at least one ${desc}`)
 }
+
+
+function nextDate(date) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + 1);
+  return next;
+}
+
+function prevDate(date) {
+  const prev = new Date(date);
+  prev.setDate(prev.getDate() - 1);
+  return prev;
+}
+
+
+/**
+ * Decrements the date value of the input element's form by one day and submits the form.
+ * @param {HTMLInputElement} input - The input element triggering the function.
+ */
+function decrementDateAndSubmit(input, days = 1) {
+  const form = req_instance(input.closest('form'), HTMLFormElement);
+  const date_input = req_instance(form.querySelector('input[type=date]'), HTMLInputElement);
+  const date = nonopt(date_input.valueAsDate);
+  date.setUTCDate(date.getUTCDate() - days); // Note: must use UTCDate or else will get hung up on daylight savings transitions.
+  date_input.valueAsDate = date;
+  form.submit();
+}
+
+
+/**
+ * Increments the date value of the input element's form by one day and submits the form.
+ * @param {HTMLInputElement} input - The input element triggering the function.
+ */
+function incrementDateAndSubmit(input, days = 1) {
+  const form = req_instance(input.closest('form'), HTMLFormElement);
+  const date_input = req_instance(form.querySelector('input[type=date]'), HTMLInputElement);
+  const date = nonopt(date_input.valueAsDate);
+  date.setUTCDate(date.getUTCDate() + days); // Note: must use UTCDate or else will get hung up on daylight savings transitions.
+  date_input.valueAsDate = date;
+  form.submit();
+}
