@@ -322,6 +322,7 @@ table tbody tr:nth-child(odd) {
 a.icon {
   color: #000;
   text-decoration: none;
+  cursor: pointer;
 }
 a.icon:active {
   color: #000;
