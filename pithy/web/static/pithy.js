@@ -13,10 +13,25 @@ let scrollbarWidth = 0;
  * @returns {NonNullable<T>} - The value, asserting that it is not null or undefined.
  */
 function nonopt(val) {
-  assert(val !== null);
-  assert(val !== undefined);
+  if (val === null) throw new Error(`Unexpected null value`);
+  if (val === undefined) throw new Error(`Unexpected undefined value`);
   // @ts-ignore
   return val;
+}
+
+
+/**
+ * Require that a value is an instance of a given type.
+ * Throws an exception if the value is not an instance of the expected type.
+ *
+ * @template T The expected type of the value.
+ * @param {any} val - The value to check.
+ * @param {{ new (): T; prototype: T; }} type - The expected type of the value.
+ * @returns {T} - The value, asserting that it is an instance of the expected type.
+ */
+function req_instance(val, type) {
+  if (val instanceof type) return val;
+  throw new Error(`Type mismatch: expected ${type}; received type: ${typeof val}; val: \`${val}\`.`);
 }
 
 
