@@ -418,6 +418,26 @@ def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headle
   if group: yield group
 
 
+def list_nonopt(iterable: Iterable[_T|None]) -> list[_T]:
+  'Return a list of the non-None elements of `iterable`.'
+  return [el for el in iterable if el is not None]
+
+
+def list_truthy(iterable: Iterable[_T]) -> list[_T]:
+  'Return a list of the truthy elements of `iterable`.'
+  return [el for el in iterable if el]
+
+
+def tuple_nonopt(iterable: Iterable[_T|None]) -> tuple[_T, ...]:
+  'Return a tuple of the non-None elements of `iterable`.'
+  return tuple(el for el in iterable if el is not None)
+
+
+def tuple_truthy(iterable: Iterable[_T]) -> tuple[_T, ...]:
+  'Return a tuple of the truthy elements of `iterable`.'
+  return tuple(el for el in iterable if el)
+
+
 def set_from(iterables:Iterable[Iterable[_K]]) -> set[_K]:
   s:set[_K] = set()
   for el in iterables:
