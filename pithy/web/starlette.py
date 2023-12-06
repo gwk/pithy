@@ -254,6 +254,18 @@ def req_query_bool(request:Request, key:str) -> bool:
   except KeyError: raise HTTPException(400, f'invalid boolean query parameter: {key}={v!r}')
 
 
+def req_query_date(request:Request, *, key:str='date', tz:TZInfo) -> Date:
+  '''
+  Get a date value from a request's query string, using `key` (which defaults to 'date').
+  If the key is not present, return today's date according to the given timezone `tz`.
+  If the value is not a valid date, raise a 400 exception.
+  '''
+  try: v = request.query_params[key]
+  except KeyError as e: raise HTTPException(400, f'missing query parameter: {key}') from e
+  try: return Date.fromisoformat(v)
+  except ValueError: raise HTTPException(400, f'invalid date query parameter: {key}={v!r}')
+
+
 @overload
 def get_query_int(request:Request, key:str, default:int) -> int: ...
 
