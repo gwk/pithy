@@ -408,7 +408,9 @@ def confirm(question:str) -> bool:
 
 
 def confirm_or_exit(question:str) -> None:
-  if not confirm(question): exit(1)
+  try:
+    if not confirm(question): exit(1)
+  except KeyboardInterrupt: exit(1)
 
 
 def assert_eq(a: Any, b: Any):
