@@ -114,6 +114,7 @@ body {
 
 .mv-1em { margin-top: 1em; margin-bottom: 1em; }
 
+.o0 { opacity: 0; }
 .o50 { opacity: 0.5; }
 
 .table-auto { table-layout: auto; }
