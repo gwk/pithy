@@ -235,15 +235,19 @@ function setupBeforeSendClearHxTargetContent(element) {
 }
 
 
-function validateAtLeastOneCheckbox(span) {
+/**
+* Validates that the container contains at least one checked checkbox.
+* @param {HTMLElement} container - A container of checkboxes.
+ */
+function validateAtLeastOneCheckbox(container) {
   /* Require at least one checkbox be selected. */
   let any_checked = false
-  const inputs = span.getElementsByTagName('input')
+  const inputs = container.getElementsByTagName('input')
   for (const input of inputs) {
     any_checked = any_checked || input.checked
   }
-  const first_input = span.querySelector('input')
-  const desc = span.desc || 'option'
+  const first_input = nonopt(container.querySelector('input'))
+  const desc = container.getAttribute('desc') || 'option'
   first_input.setCustomValidity(any_checked ? '' : `Select at least one ${desc}`)
 }
 
