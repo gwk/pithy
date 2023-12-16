@@ -164,7 +164,7 @@ def iter_excluding_str(iterable:Iterable[_T]) -> Iterator[_T]:
 
 def pluralize(count:int, name:str, plural:str|None=None, spec='') -> str:
   '''
-  Simple English pluralization.
+  Simple English pluralization for a count/noun pair.
   Return a string of format "{count} {name}s", with optional custom plural form and numerical format spec.
   '''
   if count == 1:
