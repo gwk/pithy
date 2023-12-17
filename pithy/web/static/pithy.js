@@ -34,8 +34,19 @@ function req_instance(val, type) {
   throw new Error(`Type mismatch: expected ${type}; received type: ${typeof val}; val: \`${val}\`.`);
 }
 
+/**
+ * Set up the browser environment.
+*/
+function _setupPithy() {
+  _setupWindow();
+  _setupHtmx();
+}
 
-addEventListener('DOMContentLoaded', () => {
+
+addEventListener('DOMContentLoaded', _setupPithy);
+
+
+function _setupWindow() {
   // Set `safari` class on the root element if browser is Safari; `chrome` for Chrome.
   // @ts-ignore: ts(2339): 'safari' does not exist.
   if (window.safari !== undefined) {
@@ -50,12 +61,17 @@ addEventListener('DOMContentLoaded', () => {
   const body = nonopt(document.querySelector('body'));
   scrollbarWidth = window.innerWidth - body.clientWidth + 0.1; // Adding a fraction more prevents the horizontal scrollbar.
   createPithyDynamicStyle();
+}
 
-  _setupHtmx();
-});
 
+let _htmx;
 
 function _setupHtmx() {
+  // @ts-ignore: ts(2304): cannot find name 'htmx'.
+  _htmx = htmx;
+  assert(_htmx !== undefined, 'htmx is undefined.');
+
+  // Error handling configuration.
   document.body.addEventListener('htmx:beforeSwap', function (event) {
     // @ts-ignore: ts(2339): 'detail' does not exist on type 'Event'.
     const detail = event.detail;
@@ -75,6 +91,39 @@ function _setupHtmx() {
       log(detail);
     }
   });
+
+  // Configure universal 'once' callback for all DOM elements that define that attribute.
+  _onload_run_once_attrs(document.body); // Call immediately.
+  _htmx.onLoad(_onload_run_once_attrs);
+}
+
+/**
+ * This function performs exactly-once initialization of nodes using the 'once' attribute.
+ *
+ * @param {HTMLElement} root_el
+ * @returns {void}
+ */
+function _onload_run_once_attrs(root_el) {
+
+  for (let el of _htmx.findAll(root_el, '[once]')) {
+    let once_src = el.getAttribute('once');
+    if (!once_src) { continue; }
+    el.removeAttribute('once');
+    let once_fn;
+    try { once_fn = Function(once_src).bind(el); }
+    catch (exc) {
+      el.setAttribute('once-failed', once_src);
+      log(`ERROR: _htmx.onLoad: 'once' compilation failed for element: ${el}\n  exc: ${exc}`);
+      continue
+    }
+    try { once_fn(); }
+    catch (exc) {
+      el.setAttribute('once-failed', once_src);
+      log(`ERROR: _htmx.onLoad: 'once' function failed for element: "${el}"\n  exc: ${exc}`);
+      continue
+    }
+    el.setAttribute('once-done', once_src);
+  }
 }
 
 
@@ -223,8 +272,7 @@ function setupBeforeSendClearHxTargetContent(element) {
     log('ERROR: setupBeforeSendClearHxTargetContent: element has no hx-target attribute:', element);
     return;
   }
-  // @ts-ignore: ts(2304): cannot find name 'htmx'.
-  htmx.on(element, 'htmx:beforeSend', (event) => {
+  _htmx.on(element, 'htmx:beforeSend', (event) => {
     const hx_target = document.querySelector(hx_target_sel);
     if (!hx_target) {
       log('ERROR: setupBeforeSendClearHxTargetContent: hx-target not found:', hx_target_sel);
@@ -236,19 +284,36 @@ function setupBeforeSendClearHxTargetContent(element) {
 
 
 /**
-* Validates that the container contains at least one checked checkbox.
-* @param {HTMLElement} container - A container of checkboxes.
+ * Validates that the container contains at least one checked checkbox.
+ * @param {HTMLElement} container - A container of checkboxes.
  */
 function validateAtLeastOneCheckbox(container) {
   /* Require at least one checkbox be selected. */
   let any_checked = false
-  const inputs = container.getElementsByTagName('input')
-  for (const input of inputs) {
-    any_checked = any_checked || input.checked
+  /** @type {NodeListOf<HTMLInputElement>} box */
+  const checkboxes = container.querySelectorAll('input[type=checkbox]')
+  if (checkboxes.length === 0) { throw new Error(`validateAtLeastOneCheckbox: no checkboxes found in container: ${container}`) }
+  for (const box of checkboxes) {
+    any_checked = any_checked || box.checked
   }
-  const first_input = nonopt(container.querySelector('input'))
+  /** @type {HTMLInputElement} */
+  const first = nonopt(checkboxes[0])
   const desc = container.getAttribute('desc') || 'option'
-  first_input.setCustomValidity(any_checked ? '' : `Select at least one ${desc}`)
+  first.setCustomValidity(any_checked ? '' : `Select at least one ${desc}`)
+}
+
+
+/**
+ * Configures an element with the `validateAtLeastOneCheckbox` handler.
+ * Usage: configure an element with this handler: `once='setupValidateAtLeastOneCheckbox(this)'`.
+ * @param {HTMLElement} container - A container of checkboxes.
+ */
+function setupValidateAtLeastOneCheckbox(container) {
+  validateAtLeastOneCheckbox(container); // Call immediately to set initial validity.
+  container.addEventListener("change", (event) => {
+    // @ts-ignore: ts(2345): Argument of type null is not assignable to parameter of type 'HTMLElement'.
+    validateAtLeastOneCheckbox(event.currentTarget)
+  });
 }
 
 
