@@ -310,7 +310,7 @@ def req_query_str(request:Request, key:str) -> str:
 def get_query_date_or_today(request:Request, *, key:str='date', tz:TZInfo) -> Date:
   '''
   Get a date value from a request's query string, using `key` (which defaults to 'date').
-  If the key is not present, return today's date according to the given timezone. `tz`.
+  If the key is not present, return today's date according to the given timezone `tz`.
   If the value is not a valid date, raise a 400 exception.
   '''
   v = request.query_params.get(key)
