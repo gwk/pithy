@@ -400,6 +400,11 @@ def clip_newlines(iterable:Iterable[str]) -> Iterable[str]:
 
 
 def confirm(question:str) -> bool:
+  '''
+  Prompt the user to confirm a question with a "y" response.
+  "y" returns True; any other response returns False.
+  The question is printed to stdout, followed by a question mark and prompt.
+  '''
   from .term import CBreakMode
   print(f'{question}? press "y" to confirm: ', end='', flush=True)
   with CBreakMode(): response = stdin.read(1)
@@ -408,6 +413,11 @@ def confirm(question:str) -> bool:
 
 
 def confirm_or_exit(question:str) -> None:
+  '''
+  Prompt the user to confirm a question with a "y" response.
+  "y" returns; any other response exits with status 1.
+  The question is printed to stdout, followed by a question mark and prompt.
+  '''
   try:
     if not confirm(question): exit(1)
   except KeyboardInterrupt: exit(1)
