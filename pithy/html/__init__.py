@@ -1482,6 +1482,14 @@ class Table(HtmlFlow, HtmlPalpable):
   def simple(cls, *inline_rows:Iterable[MuChildLax], caption:MuChildLax='', cols:Iterable[Union[Col,'Template']]=(),
     head:'Thead'|Iterable[MuChildLax]=(), rows:Iterable[Iterable[MuChildLax]], **kwargs:Any) -> 'Table':
 
+    '''
+    Build an HTML table from `rows`, which can be plain python data or instances of `Tr`.
+    The rows are placed in a `Tbody` instance for correctness.
+    If `cols` is provided, create a `Colgroup` with the given columns.
+    If `head` is provided, it can either be a fully formed `Thead` or else an iterable of `Th` or content with which `Th` are constructed.
+    '''
+
+
     table = cls(**kwargs)
     if caption:
       table.append(Caption(caption))
