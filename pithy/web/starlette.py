@@ -149,6 +149,7 @@ class DateConverter(Convertor):
     register_url_convertor(name, cls())
 
 
+
 def req_form_bool(form_data:FormData, key:str) -> bool:
   '''
   Get a boolean value from a request's FormData.
@@ -158,7 +159,7 @@ def req_form_bool(form_data:FormData, key:str) -> bool:
   v = form_data.get(key)
   if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
   try: return bool_str_vals[v]
-  except KeyError: raise HTTPException(400, f'invalid boolean form field: {key}={v!r}')
+  except KeyError as e: raise HTTPException(400, f'invalid boolean form field: {key}={v!r}') from e
 
 
 @overload
@@ -186,7 +187,7 @@ def req_form_int(form_data:FormData, key:str) -> int:
   v = form_data.get(key)
   if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
   try: return int(v)
-  except ValueError: raise HTTPException(400, f'invalid integer form field: {key}={v!r}')
+  except ValueError as e: raise HTTPException(400, f'invalid integer form field: {key}={v!r}') from e
 
 
 def req_form_date(form_data:FormData, key:str) -> Date:
@@ -228,8 +229,7 @@ def req_form_time_12hmp(form_data:FormData, key:str, tz:TZInfo|None=None) -> Tim
   if not isinstance(v, str): raise HTTPException(400, f'missing form field: {key}')
 
   try: return parse_time_12hmp(v, tz=tz)
-  except ValueError as e:
-    raise HTTPException(400, f'invalid time form field: {key}={v!r}') from e
+  except ValueError as e: raise HTTPException(400, f'invalid time form field: {key}={v!r}') from e
 
 
 def req_path_int(request:Request, key:str) -> int:
@@ -240,7 +240,7 @@ def req_path_int(request:Request, key:str) -> int:
   v = request.path_params.get(key)
   if v is None: raise HTTPException(400, f'missing path parameter: {key}')
   try: return int(v)
-  except ValueError: raise HTTPException(400, f'invalid integer path parameter: {key}={v!r}')
+  except ValueError as e: raise HTTPException(400, f'invalid integer path parameter: {key}={v!r}') from e
 
 
 def req_query_bool(request:Request, key:str) -> bool:
@@ -251,7 +251,7 @@ def req_query_bool(request:Request, key:str) -> bool:
   v = request.query_params.get(key)
   if v is None: raise HTTPException(400, f'missing query parameter: {key}')
   try: return bool_str_vals[v]
-  except KeyError: raise HTTPException(400, f'invalid boolean query parameter: {key}={v!r}')
+  except KeyError as e: raise HTTPException(400, f'invalid boolean query parameter: {key}={v!r}') from e
 
 
 def req_query_date(request:Request, *, key:str='date', tz:TZInfo) -> Date:
@@ -263,7 +263,7 @@ def req_query_date(request:Request, *, key:str='date', tz:TZInfo) -> Date:
   try: v = request.query_params[key]
   except KeyError as e: raise HTTPException(400, f'missing query parameter: {key}') from e
   try: return Date.fromisoformat(v)
-  except ValueError: raise HTTPException(400, f'invalid date query parameter: {key}={v!r}')
+  except ValueError as e: raise HTTPException(400, f'invalid date query parameter: {key}={v!r}') from e
 
 
 @overload
@@ -292,7 +292,7 @@ def req_query_int(request:Request, key:str) -> int:
   v = request.query_params.get(key)
   if v is None: raise HTTPException(400, f'missing query parameter: {key}')
   try: return int(v)
-  except ValueError: raise HTTPException(400, f'invalid integer query parameter: {key}={v!r}')
+  except ValueError as e: raise HTTPException(400, f'invalid integer query parameter: {key}={v!r}') from e
 
 
 def req_query_str(request:Request, key:str) -> str:
@@ -306,7 +306,6 @@ def req_query_str(request:Request, key:str) -> str:
   return v
 
 
-
 def get_query_date_or_today(request:Request, *, key:str='date', tz:TZInfo) -> Date:
   '''
   Get a date value from a request's query string, using `key` (which defaults to 'date').
@@ -316,7 +315,7 @@ def get_query_date_or_today(request:Request, *, key:str='date', tz:TZInfo) -> Da
   v = request.query_params.get(key)
   if v is None: return DateTime.now(tz=tz).date()
   try: return Date.fromisoformat(v)
-  except ValueError: raise HTTPException(400, f'invalid date query parameter: {key}={v!r}')
+  except ValueError as e: raise HTTPException(400, f'invalid date query parameter: {key}={v!r}') from e
 
 
 def get_form_bool(form_data:FormData, key:str, default:bool|None=None) -> bool|None:
