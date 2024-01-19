@@ -164,7 +164,7 @@ def get_form_str(form_data:FormData, key:str, default:str|None=None) -> str|None
   If the value is not a str (i.e. UploadFile), raise a 400 exception.
   '''
   try: v = form_data[key]
-  except KeyError as e: return default
+  except KeyError: return default
   if not isinstance(v, str): raise HTTPException(400, f'Invalid form field type: {key}={v!r}')
   return v
 
