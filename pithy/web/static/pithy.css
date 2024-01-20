@@ -117,6 +117,8 @@ body {
 .o0 { opacity: 0; }
 .o50 { opacity: 0.5; }
 
+.overflow-x-scroll { overflow-x: scroll; }
+
 .table-auto { table-layout: auto; }
 .table-fixed { table-layout: fixed; }
 
