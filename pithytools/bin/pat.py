@@ -19,10 +19,7 @@ def main() -> None:
   parser = ArgumentParser(prog='pat', description='create or apply a .pat patch file.')
   parser.epilog = "for help with a specific command, pass '-h' to that command."
 
-  subs = parser.add_subparsers()
-  subs.required = True
-  subs.dest = 'command'
-
+  subs = parser.add_subparsers(required=True, dest='command')
 
   sub_create = subs.add_parser('create',
     help='[original] [modified] [patch]: create an empty .pat file at [patch] referencing [original], and copy [original] to [modified].')
