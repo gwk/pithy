@@ -81,9 +81,8 @@ def dict_list_extend(d: dict[_K, list[_V]], k: _K, v: Iterable[_V]) -> dict[_K, 
 
 def dict_set_defaults(d: MutableMapping[_K, _V], defaults: Mapping[_K, _V]|Iterable[tuple[_K, _V]]) -> MutableMapping[_K, _V]:
   '''
-  Call setdefault on the dictionary for each item in `defaults`,
-  which can be either dictionary-like object implementing `items()` or a sequence of pairs.
-  Returns the dictionary.
+  Call setdefault on the dictionary `d` for each item in `defaults` and return `d`.
+  `defaults` can be either dictionary-like object implementing `items()` or a sequence of pairs.
   '''
   it: Iterable[tuple[_K, _V]]
   if isinstance(defaults, Mapping):
@@ -100,6 +99,11 @@ _S = set[_VH]
 _I = Iterable[_VH]
 
 def dict_update_sets(d:MutableMapping[_K,_S], update:Mapping[_K, _I]|Iterable[tuple[_K,_I]]) -> MutableMapping[_K, _S]:
+  '''
+  Given a mutable mapping `d` and a mapping or iterable of pairs `update`,
+  update the sets in `d` with the values in the incoming sets.
+  For each key in `update`, if the key is not present in `d`, a new set is created.
+  '''
   it:Iterable[tuple[_K,_I]]
   if isinstance(update, Mapping):
     it = update.items()
