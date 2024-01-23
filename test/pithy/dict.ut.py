@@ -1,9 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.dict import (ConflictingValues, DefaultByKeyDict, dict_list_append, dict_list_extend, dict_put, dict_set_defaults,
-  dict_update_sets, idemput, KeyExistingIncoming)
+from pithy.dict import (ConflictingValues, DefaultByKeyDict, dict_dag_inverse, dict_dag_inverse_with_all_keys, dict_list_append,
+  dict_list_extend, dict_put, dict_set_defaults, dict_update_sets, idemput, KeyExistingIncoming)
 from utest import utest, utest_exc
 
+
+utest({}, dict_dag_inverse, {})
+utest({ 0:set('ab'), 1:set('bc'), 2:set('c') }, dict_dag_inverse, { 'a':[0], 'b':[0, 1], 'c':[1, 2], 'd': [] })
+
+utest({}, dict_dag_inverse_with_all_keys, {})
+utest({ 0:set(), 1:{0}, 2:{0,1}, }, dict_dag_inverse_with_all_keys, { 0:[1,2], 1:[2] })
 
 utest({'k': 0}, dict_put, {}, 'k', 0)
 utest_exc(KeyError('k'), dict_put, {'k': 0}, 'k', 1)

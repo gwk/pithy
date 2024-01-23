@@ -5,6 +5,7 @@ from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, N
 
 _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
+_VH = TypeVar('_VH', bound=Hashable)
 
 
 class ConflictingValues(KeyError): pass
@@ -15,6 +16,29 @@ class KeyExistingIncoming(NamedTuple):
   key:Any
   existing:Any
   incoming:Any
+
+
+def dict_dag_inverse(d:Mapping[_K,Iterable[_VH]]) -> dict[_VH,set[_K]]:
+  '''
+  Given a mapping from keys to iterables of hashable values, return a mapping from values to sets of keys.
+  '''
+  inverse:dict[_VH,set[_K]] = {}
+  for k, vs in d.items():
+    for v in vs:
+      dict_update_set(inverse, v, k)
+  return inverse
+
+
+def dict_dag_inverse_with_all_keys(d:Mapping[_K,Iterable[_K]]) -> dict[_K,set[_K]]:
+  '''
+  Given a mapping from keys to iterables of keys, return an inverse mapping from keys to sets of keys,
+  including all of the original keys that mapped to empty iterables.
+  '''
+  inverse:dict[_K,set[_K]] = { k: set() for k in d }
+  for k, ks in d.items():
+    for v in ks:
+      dict_update_set(inverse, v, k)
+  return inverse
 
 
 def dict_discard(d:MutableMapping[_K,_V], k:_K) -> None:
@@ -94,9 +118,20 @@ def dict_set_defaults(d: MutableMapping[_K, _V], defaults: Mapping[_K, _V]|Itera
   return d
 
 
-_VH = TypeVar('_VH', bound=Hashable)
 _S = set[_VH]
 _I = Iterable[_VH]
+
+def dict_update_set(d:MutableMapping[_K,_S], k:_K, el:_VH) -> None:
+  '''
+  Given a mutable mapping `d` of keys:_K to sets of hashable elements:_VH,
+  add `el` to the set at `k`.
+  '''
+  try: s = d[k]
+  except KeyError:
+    s = set()
+    d[k] = s
+  s.add(el)
+
 
 def dict_update_sets(d:MutableMapping[_K,_S], update:Mapping[_K, _I]|Iterable[tuple[_K,_I]]) -> MutableMapping[_K, _S]:
   '''
