@@ -7,7 +7,7 @@
 import re
 from argparse import ArgumentParser
 
-from pithy.ansi import RST, RST_TXT, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
+from pithy.ansi import RST, TXT_B, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.interactive import ExitOnKeyboardInterrupt
 from pithy.io import errL, outZ, stdout
 from pithy.iterable import group_by_heads, OnHeadless
