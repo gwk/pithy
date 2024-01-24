@@ -122,10 +122,6 @@ class HtmxResponse(HTMLResponse):
       **kwargs)
 
 
-def htmx_response(*content:MuChildLax, background:BackgroundTask|None=None, FAKE_LATENCY=0.0) -> HtmxResponse:
-  return HtmxResponse(*content, background=background, FAKE_LATENCY=FAKE_LATENCY)
-
-
 
 class DateConverter(Convertor):
   '''
