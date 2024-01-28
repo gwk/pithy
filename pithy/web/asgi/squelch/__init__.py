@@ -327,12 +327,13 @@ def fmt_select_cols(schema:str, table:str, path:str, cols:list[Column], table_vi
       append_select_part(f'{join_key} AS {qe(join_key)}') # The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
       append_select_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
       from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {join_table} ON {qual_col} = {join_key}')
-      cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, app_path=path, render_fn=vis.render)
+      cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, app_path=path, render_fn=vis.render,
+        renders_row=vis.renders_row)
     else:
       head_name = qe(col.name)
       append_select_part(qual_col)
       if vis.render:
-        cell_fn = mk_cell_rendered(col, render_fn=vis.render)
+        cell_fn = mk_cell_rendered(col, render_fn=vis.render, renders_row=vis.renders_row)
       else:
         cell_fn = mk_cell_plain(col)
     header_names.append(head_name)
@@ -353,20 +354,21 @@ def mk_cell_plain(col:Column) -> CellRenderFn:
   return cell_plain
 
 
-def mk_cell_rendered(col:Column, render_fn:ValRenderFn) -> CellRenderFn:
+def mk_cell_rendered(col:Column, render_fn:ValRenderFn, renders_row:bool) -> CellRenderFn:
   '''
   Create a cell value rendering function for the given column, with no join but a custom render function.
   '''
+
   def cell_rendered(row:Row) -> Td:
     val = row[col.name]
-    cl, display_val = try_vis_render(render_fn, val)
+    cl, display_val = try_vis_render(render_fn, val, row if renders_row else val)
     return Td(cl=cl, _=display_val)
 
   return cell_rendered
 
 
 def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_table_primary_abbr:str, app_path:str,
- render_fn:ValRenderFn|None) -> CellRenderFn:
+ render_fn:ValRenderFn|None, renders_row:bool) -> CellRenderFn:
   '''
   Create a cell value rendering function for the given column, with a join and possibly a custom render function.
   '''
@@ -386,7 +388,7 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
         return Td(cl='unjoined', _=val)
     joined_val = row[join_col_name]
     if render_fn:
-      cl, display_val = try_vis_render(render_fn, joined_val)
+      cl, display_val = try_vis_render(render_fn, joined_val, row if renders_row else joined_val)
     elif joined_val is None:
       cl = 'null'
       display_val = 'NULL'
@@ -399,10 +401,10 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
   return cell_joined
 
 
-def try_vis_render(render_fn:ValRenderFn, val:Any) -> tuple[str,MuChild]:
+def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,MuChild]:
   if val is None: return ('null', 'NULL')
   try:
-    rendered = render_fn(val)
+    rendered = render_fn(render_arg)
     if not isinstance(rendered, MuChild): rendered = str(rendered) # type: ignore[misc, arg-type]
     return ('', rendered)
   except Exception as e:
