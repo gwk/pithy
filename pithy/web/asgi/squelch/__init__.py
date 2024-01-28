@@ -371,10 +371,12 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
   Create a cell value rendering function for the given column, with a join and possibly a custom render function.
   '''
   assert vis.join
+  assert join_col_name
+  assert join_table_primary_abbr
+
+  q_join_col = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}'
 
   def cell_joined(row:Row) -> Td:
-    assert join_col_name
-    assert join_table_primary_abbr
     val = row[col.name]
     joined_key_val = row[join_key]
     if joined_key_val is None: # The join did not match.
@@ -391,7 +393,7 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
     else:
       cl = ''
       display_val = str(joined_val)
-    where = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}={qv(val)}'
+    where = f'{q_join_col}={qv(val)}'
     return Td(cl=('joined', cl), _=A(href=fmt_url(app_path, table=vis.schema_table, where=where), title=val, _=display_val))
 
   return cell_joined
