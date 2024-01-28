@@ -74,7 +74,7 @@ def transpile_js(ts_path:str, dst_path:str, modules_map:dict[str,str]) -> None:
         if orig_module.startswith('.'): # local path.
           web_module = orig_module + '.js'
         else:
-          exit(f'{TXT_L}{ts_path}:{line_num}:{col}: error: external module is not mapped in craft.eon ts-modules: {orig_module}{RST}')
+          exit(f'{TXT_L}{ts_path}:{line_num}:{col}: error: external module is not mapped in craft.toml ts-modules: {orig_module}{RST}')
       outL(f'{TXT_L}{ts_path}:{line_num}:{col}: note: fixing import: {orig_module} -> {web_module}{RST}')
       lines[line_idx] = f"{prefix}'{web_module}'{suffix}"
   make_dirs(path_dir_or_dot(dst_path))

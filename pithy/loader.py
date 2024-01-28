@@ -175,13 +175,6 @@ def load_plist(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
   return _load_plist(binary_file_for(file_or_path), **kwargs)
 
 
-def load_eon(file_or_path:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from .eon import parse_eon
-  with text_file_for(file_or_path) as f:
-    text = f.read()
-    return parse_eon(path=f.name, text=text, **kwargs)
-
-
 def load_pyl(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   'Load a python literal AST file (Python equivalent of JSON).'
   from ast import literal_eval
@@ -237,7 +230,6 @@ add_loader('',          load_binary,    _dflt=True)
 add_loader('.css',      load_txt,       _dflt=True)
 add_loader('.csv',      load_csv,       _dflt=True)
 add_loader('.gz',       load_gz,        _dflt=True)
-add_loader('.eon',      load_eon,       _dflt=True)
 add_loader('.html',     load_html,      _dflt=True)
 add_loader('.json',     load_json,      _dflt=True)
 add_loader('.jsonl',    load_jsonl,     _dflt=True)
