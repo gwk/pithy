@@ -14,6 +14,7 @@ ValRenderFn = Callable[[Any],Any]
 CellRenderFn = Callable[[Any],Td]
 _setattr = object.__setattr__
 
+
 @dataclass(frozen=True)
 class Vis:
   show:bool = True # Whether to show the column by default.
@@ -23,6 +24,7 @@ class Vis:
   table:str = ''
   join_col:str = ''
   render:Callable[[Any],Any]|None = None
+  renders_row:bool = False
 
 
   def __post_init__(self) -> None:
