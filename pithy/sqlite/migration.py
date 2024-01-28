@@ -6,8 +6,8 @@ from pithy.iterable import joinR
 
 from ..parse import ParseError
 from . import Connection, Cursor, Row
-from .schema import Column, Schema, Table, TableDepStructure
-from .util import sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
+from .schema import Column, render_column_default, Schema, Table, TableDepStructure
+from .util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
 
 
 class GenMigrationError(Exception):
@@ -121,7 +121,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   needs_rebuild = bool(diff_hints)
   if needs_rebuild:
     stmts.append(f'-- Rebuilding {qname} due to {", ".join(diff_hints)}.')
-    stmts.extend(gen_table_rebuild(schema_name=schema_name, qname=qname, table=new))
+    stmts.extend(gen_table_rebuild(schema_name=schema_name, qname=qname, new=new, old=old))
 
   return needs_rebuild, stmts
 
@@ -142,17 +142,31 @@ def gen_rename_columns(*, qname:str, new:Table, old:Table, matched_cols:dict[str
   return stmts
 
 
-def gen_table_rebuild(*, schema_name:str, qname:str, table:Table) -> list[str]:
+def gen_table_rebuild(*, schema_name:str, qname:str, new:Table, old:Table) -> list[str]:
   '''
   Steps 4-7.
   '''
-  tmp_name = table.name + '__rebuild_in_progress'
+  tmp_name = new.name + '__rebuild_in_progress'
   qname_tmp = f'{schema_name}.{qea(tmp_name)}'
+
+  selected_column_exprs = []
+  for col_name in new.material_column_names:
+    new_col = new.columns_dict[col_name]
+    old_col = old.columns_dict[col_name]
+    if old_col.is_opt and not new_col.is_opt and new_col.default is not None:
+      default_expr = render_column_default(new_col.default)
+      col_expr = f'COALESCE({qe(col_name)}, {default_expr})'
+    else:
+      col_expr = qe(col_name)
+    selected_column_exprs.append(col_expr)
+
+  selected_columns_str = ', '.join(selected_column_exprs)
+
   stmts = []
-  stmts.append(table.sql(schema=schema_name, name=tmp_name)) # 4. Create a new table with the desired schema and temporary name.
-  stmts.append(f'INSERT INTO {qname_tmp} SELECT {table.quoted_material_columns_str} FROM {qname}') # 5. Copy the data.
+  stmts.append(new.sql(schema=schema_name, name=tmp_name)) # 4. Create a new table with the desired schema and temporary name.
+  stmts.append(f'INSERT INTO {qname_tmp} SELECT {selected_columns_str} FROM {qname}') # 5. Copy the data.
   stmts.append(f'DROP TABLE {qname}') # 6. Remove the old table.
-  stmts.append(f'ALTER TABLE {qname_tmp} RENAME TO {table.quoted_name}') # 7.
+  stmts.append(f'ALTER TABLE {qname_tmp} RENAME TO {new.quoted_name}') # 7.
 
   return stmts
 
