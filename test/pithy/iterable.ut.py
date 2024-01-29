@@ -3,7 +3,10 @@
 from operator import eq
 from typing import NamedTuple
 
-from pithy.iterable import *
+from pithy.iterable import (closed_int_intervals, fan_by_attr, fan_by_index_fn, fan_by_key_fn, fan_by_pred,
+  filtermap_with_mapping, first_el, frozenset_from, group_by_cmp, group_by_heads, int_tuple_ranges, is_sorted, iter_from,
+  iter_interleave, iter_interleave_sep, NoElements, OnHeadless, prefix_tree, set_from, split_by_preds, split_els, transpose,
+  window_iter, window_pairs)
 from utest import utest, utest_call, utest_exc, utest_seq, utest_seq_exc
 
 
@@ -23,6 +26,16 @@ utest_seq([], iter_from, [], 0)
 utest_seq([], iter_from, [], 1)
 utest_seq([0], iter_from, [0], 0)
 utest_seq([1], iter_from, [0, 1], 1)
+
+utest_seq([], iter_interleave, [])
+utest_seq([], iter_interleave, [], [])
+utest_seq([], iter_interleave, [0], [])
+utest_seq([], iter_interleave, [], [10])
+utest_seq([0, 10, 1, 11], iter_interleave, [0, 1], [10, 11])
+
+utest_seq([], iter_interleave_sep, [], sep=9)
+utest_seq([0], iter_interleave_sep, [0], sep=9)
+utest_seq([0, 9, 1, 9, 2], iter_interleave_sep, [0, 1, 2], sep=9)
 
 utest_seq([], closed_int_intervals, [])
 utest_seq([(0,0), (2,3), (5,7)], closed_int_intervals, [0, 2,3, 5,6,7])

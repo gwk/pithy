@@ -2,7 +2,7 @@
 
 from enum import Enum
 from io import IOBase
-from itertools import tee
+from itertools import chain, tee
 from operator import le
 from random import shuffle
 from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, TypeVar
@@ -66,6 +66,14 @@ def iter_from(iterable: Iterable[_T], start: int) -> Iterator[_T]:
     except StopIteration: break
     c -= 1
   return it
+
+
+def iter_interleave(*iterables: Iterable[_T]) -> Iterator[_T]:
+  '''
+  Yield the elements of `iterables` in order, interleaved.
+  Like zip, the iterator stops as soon as any input is exhausted.
+  '''
+  return chain.from_iterable(zip(*iterables))
 
 
 def iter_interleave_sep(iterable: Iterable[_T], sep: _T) -> Iterator[_T]:
