@@ -317,6 +317,24 @@ function setupValidateAtLeastOneCheckbox(container) {
 }
 
 
+/**
+ * Register a callback that skips confirmation if the element is not checked.
+ * This function should be called using the `once` attribute.
+ */
+function setupHtmxConfirmIfChecked(element) {
+  _htmx.on(element, 'htmx:confirm', (event) => {
+    event.preventDefault();
+    if (element.checked) { /* Show a confirmation. */
+      if (!window.confirm(event.detail.question)) { /* Cancel and reset the checkbox. */
+        element.checked = false;
+        return;
+      }
+    }
+    event.detail.issueRequest(true); /* Skip normal confirmation dialog. */
+  });
+}
+
+
 function nextDate(date) {
   const next = new Date(date);
   next.setDate(next.getDate() + 1);
