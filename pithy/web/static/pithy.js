@@ -113,13 +113,13 @@ function _onload_run_once_attrs(root_el) {
     try { once_fn = Function(once_src).bind(el); }
     catch (exc) {
       el.setAttribute('once-failed', once_src);
-      log(`ERROR: _htmx.onLoad: 'once' compilation failed for element: ${el}\n  exc: ${exc}`);
+      log(`ERROR: htmx.onLoad: 'once' compilation failed for element: ${el}\n  exc: ${exc}`);
       continue
     }
     try { once_fn(); }
     catch (exc) {
       el.setAttribute('once-failed', once_src);
-      log(`ERROR: _htmx.onLoad: 'once' function failed for element: "${el}"\n  exc: ${exc}`);
+      log(`ERROR: htmx.onLoad: 'once' function failed for element: "${el}"\n  exc: ${exc}`);
       continue
     }
     el.setAttribute('once-done', once_src);
