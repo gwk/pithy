@@ -376,6 +376,28 @@ a.icon:visited {
   100% { opacity: 1; }
 }
 
+.stripe-indicator {
+  min-height: 100%;
+  background-image: none;
+  background-size: 1rem 1rem;
+}
+
+.stripe-indicator.htmx-request {
+  background-image: repeating-linear-gradient(135deg,
+    #FFF 0rem,
+    #FFF 0.3535rem,
+    #EEE 0.3535rem,
+    #EEE 0.7071rem
+  );
+  animation: stripe-indicator 1s infinite linear;
+}
+
+@keyframes stripe-indicator {
+  0% { background-position: 0 0; }
+  100% { background-position: 1rem 0; }
+}
+
+
 /* Htmx emoji clock indicator. */
 
 .with-spinner-after::after, .with-spinner-before::before {
