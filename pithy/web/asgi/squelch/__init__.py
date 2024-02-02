@@ -120,7 +120,7 @@ class SquelchApp:
     main = Main(id='squelch_app', cl='bfull')
 
     main.append(main_script())
-    main.append(H1('SELECT'))
+    main.append(H1(A(href=path, _='SELECT')))
 
     form = main.append(Form(cl='kv-grid-max', action=path, autocomplete='off'))
     #^ autocomplete off is important for the table select input,
