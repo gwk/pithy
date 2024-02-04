@@ -129,8 +129,8 @@ body {
 .text-start { text-align: start; }
 .text-end { text-align: end; }
 
-.font-smaller { font-size: small; }
-.font-larger { font-size: large; }
+.font-large { font-size: large; }
+.font-small { font-size: small; }
 
 .list-style-none { list-style: none; }
 .list-style-inside { list-style-position: inside; }
