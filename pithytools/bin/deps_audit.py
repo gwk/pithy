@@ -2,24 +2,20 @@
 
 'Audit dependencies for various package managers.'
 
-from argparse import ArgumentParser, Namespace
-
+from pithy.argparse import CommandParser, Namespace
 from pithy.dict import dict_dag_inverse_with_all_keys
 from pithy.io import outL
 from pithy.task import runO
 
 
 def main() -> None:
-  parser = ArgumentParser(description='Audit dependencies for various package managers.')
-  parser.epilog = "for help with a specific command, pass '-h' to that command."
+  parser = CommandParser(description='Audit dependencies for various package managers.')
 
-  subs = parser.add_subparsers(required=True, dest='command')
-
-  sub_create = subs.add_parser('brew', help='Audit homebrew dependencies.')
-  sub_create.set_defaults(handler=main_brew)
+  command_brew = parser.add_command(main_brew, help='Audit homebrew dependencies.')
+  command_brew.set_defaults(main=main_brew)
 
   args = parser.parse_args()
-  args.handler(args)
+  args.main(args)
 
 
 def main_brew(args:Namespace) -> None:
