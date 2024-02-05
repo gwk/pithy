@@ -159,9 +159,6 @@ def main_diff(args) -> None:
     em_end_o = end_o
 
 
-# version pattern is applied to the first line of documents;
-# programs processing input strings may or may not check for a version as appropriate.
-version_re = re.compile(r'pat v(\d+)\n')
 def main_apply(args) -> None:
   'apply command entry point.'
   f_patch = args.patch
@@ -231,6 +228,11 @@ def main_apply(args) -> None:
   while orig_index < len_orig:
     f_out.write(orig_line())
     orig_index += 1
+
+
+# version pattern is applied to the first line of documents;
+# programs processing input strings may or may not check for a version as appropriate.
+version_re = re.compile(r'pat v(\d+)\n')
 
 
 if __name__ == '__main__': main()
