@@ -125,6 +125,7 @@ class SquelchApp:
     if nst := self.get_schema_table(params):
       table_name, schema, table = nst
       table_vis = self.vis[schema.name][table.name]
+      abbrs = TableAbbrs(schema=schema.name, all_vis=table_vis.values())
 
       en_col_names = set(
         [k[2:] for k in params if k.startswith('c-')]
@@ -137,12 +138,20 @@ class SquelchApp:
           col.name])
         for col in table.columns]
 
-      order_by = params.get('order_by', '') or self.order_by[schema.name].get(table.name, '')
+      order_by:str = params.get('order_by', '') or self.order_by[schema.name].get(table.name, '')
+
+      if not order_by:
+        if table.primary_key:
+          order_by = '' # Use implied ordering for complex keys.
+        elif primary_col := next((c for c in table.columns if c.is_primary), None):
+          if primary_col.datatype == int: # Order by descending to see most recent rows first.
+            order_by = f'{abbrs.unique_abbr(schema.name, table.name)}.{primary_col.name} DESC'
 
     else:
       table_name = ''
       schema = None
       table = None
+      abbrs = None
       en_col_names = set()
       en_col_spans = []
       order_by = ''
@@ -193,8 +202,11 @@ class SquelchApp:
     if table_name:
       assert schema
       assert table
+      assert abbrs is not None
+      assert order_by is not None
       main.extend(
-        self.render_table(schema=schema, table=table, path=path, params=params, en_col_names=en_col_names, order_by=order_by))
+        self.render_table(schema=schema, table=table, abbrs=abbrs, path=path, params=params, en_col_names=en_col_names,
+          order_by=order_by))
 
     return self.html_response(request, main)
 
@@ -216,8 +228,8 @@ class SquelchApp:
     return full_name, schema, table
 
 
-  def render_table(self, *, schema:Schema, table:Table, path:str, params:QueryParams, en_col_names:set[str], order_by:str
-   ) -> list[HtmlNode]:
+  def render_table(self, *, schema:Schema, table:Table, abbrs:TableAbbrs, path:str, params:QueryParams, en_col_names:set[str],
+    order_by:str) -> list[HtmlNode]:
 
     assert en_col_names # Need at least one column to render.
 
@@ -233,7 +245,7 @@ class SquelchApp:
     table_vis = self.vis[schema.name][table.name]
 
     columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
-      schema=schema.name, table=table.name, path=path, cols=en_cols, table_vis=table_vis)
+      schema=schema.name, table=table.name, abbrs=abbrs, path=path, cols=en_cols, table_vis=table_vis)
 
     distinct_clause = (' DISTINCT' if distinct else '')
     where_clause = f'\nWHERE {where}' if where else ''
@@ -296,7 +308,7 @@ class SquelchApp:
 
 
 
-def fmt_select_cols(schema:str, table:str, path:str, cols:list[Column], table_vis:dict[str,Vis]
+def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list[Column], table_vis:dict[str,Vis]
  ) -> tuple[str,str,list[str],list[CellRenderFn]]:
   '''
   Return "[cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
