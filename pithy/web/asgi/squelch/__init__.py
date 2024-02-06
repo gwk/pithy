@@ -28,6 +28,39 @@ ValRenderFn = Callable[[Any],Any]
 CellRenderFn = Callable[[Any],Td]
 
 
+class TableAbbrs:
+
+  def __init__(self, *, schema:str, all_vis:Iterable[Vis]) -> None:
+    self.schema_abbrs = TableAbbrs.abbreviate_schema_names({schema, *(vis.schema for vis in all_vis)})
+    self.table_abbrs = Counter[str]()
+
+  @staticmethod
+  def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
+    if len(schema_names) <= 1: return { n : '' for n in schema_names } # If only one schema is present then we can omit it entirely.
+    tree = str_tree(sorted(schema_names))
+    # We abbreviate by adding the first unique letter to each common prefix.
+    return { prefix+suffix : prefix+suffix[:1] for prefix, suffix in str_tree_pairs(tree) }
+
+  def simple_abbr(self, schema:str, table:str) -> str:
+    'Generate a table abbreviation without concern for collision with other tables.'
+    s = self.schema_abbrs[schema]
+    t = capital_letters_abbr(table)
+    return f'{s}{t}'
+
+  def unique_abbr(self, schema:str, table:str) -> str:
+    '''
+    Generate a unique table abbreviation for use within the query.
+    Where simple_abbr would collide with a previously issued abbreviation, adds a numer suffix.
+    '''
+    abbr = self.simple_abbr(schema, table)
+    if n := self.table_abbrs[abbr]:
+      abbrN = abbr + str(n)
+    else: abbrN = abbr
+    self.table_abbrs[abbr] += 1
+    return abbrN
+
+
+
 class SquelchApp:
   'An ASGI app that provides a web interface for running SQL queries.'
 
@@ -270,25 +303,8 @@ def fmt_select_cols(schema:str, table:str, path:str, cols:list[Column], table_vi
   The columns string has a leading space.
   The from string has a leading newline.
   '''
-
-  schema_abbrs = abbreviate_schema_names({schema, *(vis.schema for vis in table_vis.values())})
-  table_abbrs = Counter[str]()
-
-  def simple_table_abbr(schema:str, table:str) -> str:
-    'Generate a table abbreviation without concern for collision with other tables.'
-    s = schema_abbrs[schema]
-    t = capital_letters_abbr(table)
-    return f'{s}{t}'
-
-  def table_abbr(schema:str, table:str) -> str:
-    'Generate a unique table abbreviation for use within the query.'
-    abbr = simple_table_abbr(schema, table)
-    if n := table_abbrs[abbr]: abbrN = abbr + str(n)
-    else: abbrN = abbr
-    table_abbrs[abbr] += 1
-    return abbrN
-
-  t_abbr = table_abbr(schema, table)
+  abbrs = TableAbbrs(schema=schema, all_vis=table_vis.values())
+  t_abbr = abbrs.unique_abbr(schema, table) # Take the first, non-numbered abbreviation for the primary table.
 
   column_parts:list[str] = []
   line_len = 0
@@ -318,11 +334,12 @@ def fmt_select_cols(schema:str, table:str, path:str, cols:list[Column], table_vi
     if vis.join:
       # Generate a join to show the desired visualization column.
       # We need to select two columns: the actual column value (for the tooltip and link), and the joined value for the visible text.
-      join_table = table_abbr(vis.schema, vis.table)
+      join_table = abbrs.unique_abbr(vis.schema, vis.table)
       join_key = f'{join_table}.{qe(vis.join_col)}' # The joined table key.
       head_name = f'{col.name}: {vis.table}.{vis.col}' # The column header name.
       join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
-      join_table_primary_abbr = simple_table_abbr(vis.schema, vis.table) # The join table abbrev when it is the primary table, for the link WHERE clause.
+      join_table_primary_abbr = abbrs.simple_abbr(vis.schema, vis.table)
+      #^ The join table abbreviation when it is the primary table, for the WHERE clause in the link.
       append_select_part(qual_col) # The actual column value is needed to render the tooltip and link.
       append_select_part(f'{join_key} AS {qe(join_key)}') # The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
       append_select_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
@@ -411,12 +428,6 @@ def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,
     warn(f'error rendering {val!r} with {render_fn}: {e}')
     return ('error', str(val))
 
-
-def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
-  if len(schema_names) <= 1: return { n : '' for n in schema_names } # If only one schema is present then we can omit it entirely.
-  tree = str_tree(sorted(schema_names))
-  # We abbreviate by adding the first unique letter to each common prefix.
-  return { prefix+suffix : prefix+suffix[:1] for prefix, suffix in str_tree_pairs(tree) }
 
 
 def capital_letters_abbr(s:str) -> str:
