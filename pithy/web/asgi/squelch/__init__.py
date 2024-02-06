@@ -413,8 +413,9 @@ def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,
 
 
 def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
-  if len(schema_names) < 2: return { n : '' for n in schema_names } # If only one schema is present then we can omit it entirely.
+  if len(schema_names) <= 1: return { n : '' for n in schema_names } # If only one schema is present then we can omit it entirely.
   tree = str_tree(sorted(schema_names))
+  # We abbreviate by adding the first unique letter to each common prefix.
   return { prefix+suffix : prefix+suffix[:1] for prefix, suffix in str_tree_pairs(tree) }
 
 
