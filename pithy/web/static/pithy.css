@@ -129,6 +129,9 @@ body {
 .text-start { text-align: start; }
 .text-end { text-align: end; }
 
+.align-items-center { align-items: center; }
+.align-items-baseline { align-items: baseline; }
+
 .font-large { font-size: large; }
 .font-small { font-size: small; }
 
