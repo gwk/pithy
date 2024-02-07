@@ -209,6 +209,20 @@ function resetValueForSelectorAll(selector) {
 }
 
 
+function collapseAllDetails(selector) {
+  for (const element of document.querySelectorAll(selector + ' details[open]')) {
+    element.removeAttribute('open');
+  }
+}
+
+
+function expandAllDetails(selector) {
+  for (const element of document.querySelectorAll(selector + ' details:not([open])')) {
+    element.setAttribute('open', '');
+  }
+}
+
+
 function setupReloadingDateInput(input) {
   // Usage: configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
 
@@ -256,7 +270,6 @@ function setupReloadingDateInput(input) {
     }
   });
 }
-
 
 
 /**
