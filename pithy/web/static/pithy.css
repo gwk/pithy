@@ -157,8 +157,9 @@ details summary::before {
 details[open] summary::before { content: "▾"; }
 
 details summary.disclosure-flush::before {
+  font-size: small;
   position: absolute;
-  left: -1.25ch;
+  left: -1.1ch;
   vertical-align: baseline;
 }
 
