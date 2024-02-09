@@ -135,11 +135,26 @@ class DateRange(Sequence[Date]):
   def __len__(self) -> int: return len(self._seq)
 
 
+def dt_IM(dt:DateTime|Time, compact=False) -> str:
+  'Format a DateTime or Time as e.g. "4:00".'
+  return f'{dt:%I:%M}'.lstrip('0') # '04:00'.lstrip('0') => '4:00'.
+
+
+def dtp_IM(start:DateTime|Time, end:DateTime|Time) -> str:
+  'Format a DateTime or Time range as e.g. "4:00-5:00".'
+  return f'{dt_IM(start)}-{dt_IM(end)}'
+
+
 def dt_IMp(dt:DateTime|Time, compact=False) -> str:
-  'Format a DateTime or Time as e.g. "4:30PM", or "4PM" if compact is True.'
+  'Format a DateTime or Time as e.g. "4:00PM", or "4PM" if compact is True.'
   if compact and not dt.minute:
-    return f'{dt:%I%p}'.lstrip('0') # '04AM'.lstrip('0') => 4AM
-  return f'{dt:%I:%M%p}'.lstrip('0') # '04:30AM'.lstrip('0') => 4:30AM
+    return f'{dt:%I%p}'.lstrip('0') # '04AM'.lstrip('0') => '4AM'.
+  return f'{dt:%I:%M%p}'.lstrip('0') # '04:30AM'.lstrip('0') => '4:30AM'.
+
+
+def dtp_IMp(start:DateTime|Time, end:DateTime|Time, compact=False) -> str:
+  'Format a DateTime or Time range as e.g. "4:00PM-5:00PM", or "4PM-5PM" if compact is True.'
+  return f'{dt_IMp(start, compact)}-{dt_IMp(end, compact)}'
 
 
 def dt_Ymd_IMp(dt:DateTime|Time, include_at:bool=False) -> str:
