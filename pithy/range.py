@@ -73,7 +73,7 @@ def do_ranges_overlap(a:tuple[_B,_B], b:tuple[_B,_B]) -> bool:
 
 
 
-def do_ranges_from_attrs_overlap(a:Any, b:Any, start_attr:str, end_attr) -> bool:
+def do_ranges_from_attrs_overlap(a:Any, b:Any, start_attr:str, end_attr:str) -> bool:
   '''
   Return whether the two object's ranges overlap, given the names of their start and end attributes.
   '''
