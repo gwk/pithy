@@ -64,24 +64,26 @@
 <line x1='0.0' y1='496' x2='512' y2='496'/>
 <rect class='grid-border' fill='none' x='0.0' y='0.0' width='512' height='512'/>
 </g>
-<g transform='translate(0,0)'>
+<g transform='translate(16,16)'>
 <rect x='0' y='0' width='64' height='32' rx='8' ry='8'><title>rect0: radius=8</title></rect>
 <rect stroke='gray' fill='white' x='80' y='0' width='64' height='32' rx='16' ry='8'><title>rect1: radius=(16, 8)</title></rect>
 </g>
-<g transform='translate(0,48)'>
+<g transform='translate(16,64)'>
 <circle cx='16' cy='16' r='16'><title>circle0</title></circle>
 <circle stroke='gray' fill='white' cx='64' cy='16' r='16'><title>circle1</title></circle>
 </g>
-<g transform='translate(0,96)'>
+<g transform='translate(16,112)'>
 <line stroke='black' x1='0' y1='0' x2='32' y2='32'><title>line0</title></line>
 <line stroke='black' x1='32' y1='0' x2='64' y2='32'><title>line1</title></line>
 </g>
-<g transform='translate(0,144)'><path stroke='black' fill='none' d='M0,0 L32,32 l32,-32'><title>path0</title></path></g>
-<g transform='translate(0,192)'><polyline stroke='black' fill='none' points='0,0 32,32 64,0'><title>polyline0</title></polyline></g>
-<text x='0' y='240'>TEXT</text>
-<image href='data:image/png;base64,R0lGODdhBAAEAIAAAAAAAP///yH5BAQAAAAALAAAAAAEAAQAAAIFRHxnuAUAOw==' x='0' y='256' width='16' height='16'><title>image0</title></image>
-<image href='data:image/png;base64,R0lGODdhBAAEAIAAAAAAAP///yH5BAQAAAAALAAAAAAEAAQAAAIFRHxnuAUAOw==' x='32' y='256' width='32' height='32'><title>image1</title></image>
-<g transform='translate(0,304)'>
+<g transform='translate(16,160)'><path stroke='black' fill='none' d='M0,0 L32,32 l32,-32'><title>path0</title></path></g>
+<g transform='translate(16,208)'><polyline stroke='black' fill='none' points='0,0 32,32 64,0'><title>polyline0</title></polyline></g>
+<g transform='translate(16,256)'><text x='0' y='0'>TEXT</text></g>
+<g transform='translate(16,272)'>
+<image href='data:image/png;base64,R0lGODdhBAAEAIAAAAAAAP///yH5BAQAAAAALAAAAAAEAAQAAAIFRHxnuAUAOw==' x='0' y='0' width='16' height='16'><title>image0</title></image>
+<image href='data:image/png;base64,R0lGODdhBAAEAIAAAAAAAP///yH5BAQAAAAALAAAAAAEAAQAAAIFRHxnuAUAOw==' x='40' y='0' width='32' height='32'><title>image1</title></image>
+</g>
+<g transform='translate(16,320)'>
 <symbol id='sym' viewBox='0 0 32 32'>
 <rect stroke='black' fill='none' x='8' y='8' width='16' height='16'/>
 <rect stroke='black' fill='none' x='0' y='0' width='32' height='32'/>
@@ -89,7 +91,7 @@
 <use href='#sym' x='0' y='0' width='32' height='32'/>
 <use href='#sym' x='48' y='0' width='16' height='16'/>
 </g>
-<g transform='translate(16,352)'>
+<g transform='translate(16,368)'>
 <marker id='dot' refX='4' refY='4' markerWidth='8' markerHeight='8' viewBox='0 0 8 8' markerUnits='strokeWidth' orient='auto'><circle cx='4' cy='4' r='4'/></marker>
 <polyline stroke='black' marker-start='url(#dot)' marker-mid='url(#dot)' marker-end='url(#dot)' points='0,0 16,0 32,0'><title>Polyline with marker dots</title></polyline>
 </g>
