@@ -158,10 +158,11 @@ details summary::before {
 details[open] summary::before { content: "▾"; }
 
 details summary.disclosure-flush::before {
-  font-size: small;
+  font-size: 0.75em;
   position: absolute;
-  left: -1.1ch;
+  left: -1.25ch;
   vertical-align: baseline;
+  transform: translateY(0.125em);
 }
 
 /* Links. */
