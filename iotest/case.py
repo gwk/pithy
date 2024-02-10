@@ -16,10 +16,6 @@ from pithy.types import (is_bool, is_dict, is_dict_of_str, is_int, is_list, is_l
 from .ctx import Ctx
 
 
-#from pithy.types import *
-
-
-
 coverage_name = '_.coven'
 
 

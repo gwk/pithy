@@ -108,7 +108,6 @@ def main() -> None:
     outL(f'TESTS PARSED: {count}.')
     exit()
 
-
   skipped_count = 0
   failed_count = 0
   for case in cases:
