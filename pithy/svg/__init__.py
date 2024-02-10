@@ -9,12 +9,12 @@ from typing import Any, ClassVar, Iterable, Optional
 
 from ..markup import (_Mu, add_opt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError,
   prefer_int)
-from ..range import Num, NumRange
+from ..range import NumRange
 
 
 Dim = int|float|str
-Vec = tuple[Num,Num]
-VecOrNum = Vec|Num
+Vec = tuple[float,float]
+VecOrNum = Vec|float
 F2 = tuple[float,float]
 F2OrF = F2|float
 BoundsF2 = tuple[F2,F2]
@@ -97,7 +97,7 @@ class Style(SvgNode):
 @_tag
 class Circle(SvgNode):
 
-  def __init__(self, *, pos:Vec|None=None, r:Num|None=None, x:Num|None=None, y:Num|None=None,
+  def __init__(self, *, pos:Vec|None=None, r:float|None=None, x:float|None=None, y:float|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
@@ -110,7 +110,7 @@ class Circle(SvgNode):
 @_tag
 class Image(SvgNode):
 
-  def __init__(self, pos:Vec|None=None, *, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
+  def __init__(self, pos:Vec|None=None, *, size:VecOrNum|None=None, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
@@ -127,7 +127,7 @@ class Image(SvgNode):
 @_tag
 class Line(SvgNode):
 
-  def __init__(self, a:Vec|None=None, b:Vec|None=None, *, x1:Num|None=None, y1:Num|None=None, x2:Num|None=None, y2:Num|None=None,
+  def __init__(self, a:Vec|None=None, b:Vec|None=None, *, x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if a is not None:
       assert x1 is None
@@ -187,7 +187,7 @@ class Polyline(SvgPoly):
 class Rect(SvgNode):
   'Rect element.'
 
-  def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, r:VecOrNum|None=None,
+  def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, r:VecOrNum|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
@@ -197,8 +197,8 @@ class Rect(SvgNode):
       assert w is None
       assert h is None
       w, h = unpack_VecOrNum(size)
-    rx:Num|None
-    ry:Num|None
+    rx:float|None
+    ry:float|None
     if isinstance(r, tuple):
       rx, ry = r
     else:
@@ -211,7 +211,7 @@ class Rect(SvgNode):
 class Text(SvgNode):
   tag = 'text'
 
-  def __init__(self, _='', pos:Vec|None=None, x:Num|None=None, y:Num|None=None, alignment_baseline:str|None=None,
+  def __init__(self, _='', pos:Vec|None=None, x:float|None=None, y:float|None=None, alignment_baseline:str|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
@@ -236,7 +236,7 @@ class TSpan(SvgNode):
 class Use(SvgNode):
   tag = 'use'
 
-  def __init__(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
+  def __init__(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     assert id
     if id[0] != '#': id = '#' + id
@@ -257,7 +257,7 @@ class SvgBranch(SvgNode):
   'An abstract class for SVG nodes that can contain other nodes.'
 
 
-  def circle(self, pos:Vec|None=None, r:Num|None=None, x:Num|None=None, y:Num|None=None, **kwargs:Any) -> Circle:
+  def circle(self, pos:Vec|None=None, r:float|None=None, x:float|None=None, y:float|None=None, **kwargs:Any) -> Circle:
     'Create a child `circle` element.'
     return self.append(Circle(pos=pos, r=r, x=x, y=y, **kwargs))
 
@@ -277,18 +277,18 @@ class SvgBranch(SvgNode):
     return self.append(G(transform=transform, **kwargs))
 
 
-  def image(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, **kwargs:Any) -> Image:
+  def image(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, **kwargs:Any) -> Image:
     'Create a child `image` element.'
     return self.append(Image(pos=pos, size=size, x=x, y=y, w=w, h=h, **kwargs))
 
 
-  def line(self, a:Vec|None=None, b:Vec|None=None, *, x1:Num|None=None, y1:Num|None=None, x2:Num|None=None, y2:Num|None=None, **kwargs:Any) -> Line:
+  def line(self, a:Vec|None=None, b:Vec|None=None, *, x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None, **kwargs:Any) -> Line:
     'Create a child `line` element.'
     return self.append(Line(a=a, b=b, x1=x1, y1=y1, x2=x2, y2=y2, **kwargs))
 
 
-  def marker(self, _=(), id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
-   vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
+  def marker(self, _=(), id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
+   vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None, markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
     'Create a child `marker` element.'
     return self.append(Marker(_=_, id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh,
       markerUnits=markerUnits, orient=orient, **kwargs))
@@ -309,7 +309,7 @@ class SvgBranch(SvgNode):
     return self.append(Polyline(points=points, **kwargs))
 
 
-  def rect(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, r:VecOrNum|None=None, **kwargs:Any) -> Rect:
+  def rect(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, r:VecOrNum|None=None, **kwargs:Any) -> Rect:
     'Create a child `rect` element.'
     return self.append(Rect(pos=pos, size=size, x=x, y=y, w=w, h=h, r=r, **kwargs))
 
@@ -324,12 +324,12 @@ class SvgBranch(SvgNode):
     return self.append(Style(_=text, **kwargs))
 
 
-  def symbol(self, id:str, _=(), vx:Num|None=None, vy:Num|None=None, vw:Num=-1, vh:Num=-1, **kwargs:Any) -> 'Symbol':
+  def symbol(self, id:str, _=(), vx:float|None=None, vy:float|None=None, vw:float=-1, vh:float=-1, **kwargs:Any) -> 'Symbol':
     'Create a child `symbol` element.'
     return self.append(Symbol(_=_, id=id, vx=vx, vy=vy, vw=vw, vh=vh, **kwargs))
 
 
-  def use(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None, **kwargs:Any) -> Use:
+  def use(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, **kwargs:Any) -> Use:
     'Create a child `use` element to use a previously defined symbol.'
     return self.append(Use(id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, **kwargs))
 
@@ -363,7 +363,7 @@ class Svg(SvgBranch):
   '''
 
   def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Dim|None=None, y:Dim|None=None, w:Dim|None=None, h:Dim|None=None,
-   vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, attrs:MuAttrs|None=None, **kwargs:Any) -> None:
+   vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None, attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if pos is not None:
       assert x is None
       assert y is None
@@ -425,8 +425,8 @@ class G(SvgBranch):
 class Marker(SvgBranch):
   'Marker element.'
 
-  def __init__(self, id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:Num|None=None, y:Num|None=None, w:Num|None=None, h:Num|None=None,
-   vx:Num=0, vy:Num=0, vw:Num|None=None, vh:Num|None=None, markerUnits='strokeWidth', orient:str='auto',
+  def __init__(self, id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
+   vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None, markerUnits='strokeWidth', orient:str='auto',
    _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if not id: raise ValueError('Marker requires an `id` string')
     if pos is not None:
@@ -445,7 +445,7 @@ class Marker(SvgBranch):
 @_tag
 class Symbol(SvgBranch):
 
-  def __init__(self, id:str, vx:Num|None=None, vy:Num|None=None, vw:Num=-1, vh:Num=-1,
+  def __init__(self, id:str, vx:float|None=None, vy:float|None=None, vw:float=-1, vh:float=-1,
    _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     if vx is None: vx = 0
     if vy is None: vy = 0
@@ -458,9 +458,9 @@ class Symbol(SvgBranch):
 
 # Transforms.
 
-def scale(x:Num=1, y:Num=1) -> str: return f'scale({x},{y})'
-def rotate(degrees:Num, x:Num=0, y:Num=0) -> str: return f'rotate({prefer_int(degrees)},{prefer_int(x)},{prefer_int(y)})'
-def translate(x:Num=0, y:Num=0) -> str: return f'translate({prefer_int(x)},{prefer_int(y)})'
+def scale(x:float=1, y:float=1) -> str: return f'scale({x},{y})'
+def rotate(degrees:float, x:float=0, y:float=0) -> str: return f'rotate({prefer_int(degrees)},{prefer_int(x)},{prefer_int(y)})'
+def translate(x:float=0, y:float=0) -> str: return f'translate({prefer_int(x)},{prefer_int(y)})'
 
 
 # Miscellaneous.
@@ -485,7 +485,7 @@ def _validate_unit(unit: str):
     raise Exception(f'Invalid SVG unit: {unit!r}; should be one of {sorted(valid_units)}')
 
 
-def fmt_viewBox(vx:Num|None, vy:Num|None, vw:Num|None, vh:Num|None) -> str|None:
+def fmt_viewBox(vx:float|None, vy:float|None, vw:float|None, vh:float|None) -> str|None:
   if vw is None and vh is None:
     return None
   else:

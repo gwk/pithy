@@ -14,12 +14,12 @@ An axis can be categorical or numeric.
 import re
 from typing import Any, Callable, Iterable
 
-from ...range import Num, NumRange
+from ...range import NumRange
 from .. import Div, Figcaption, Figure, MuChildOrChildrenLax, Script, Span
 
 
 Dim = int|float|str
-Vec = tuple[Num,Num]
+Vec = tuple[float,float]
 V2F = tuple[float,float]
 V2FOrF = V2F|float
 BoundsF2 = tuple[V2F,V2F]
@@ -271,15 +271,15 @@ class NumericalAxis(ChartAxis):
   def __init__(self,
    visible_origin=False,
    symmetric=False,
-   min:Num|None=None,
-   max:Num|None=None,
+   min:float|None=None,
+   max:float|None=None,
    show_grid=True,
-   grid:Iterable[Num]=(),
-   grid_step:Num=0,
+   grid:Iterable[float]=(),
+   grid_step:float=0,
    show_ticks=True,
-   ticks:Iterable[Num]=(),
+   ticks:Iterable[float]=(),
    tick_count=8,
-   tick_step:Num=0,
+   tick_step:float=0,
    tick_fmt:TickFmt=str,
   ) -> None:
 

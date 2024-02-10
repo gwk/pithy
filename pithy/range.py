@@ -6,24 +6,21 @@ from typing import Any, Iterator, Sequence, TypeVar
 from .types import Comparable
 
 
-Num = int|float
-
-
 _setattr = object.__setattr__
 
 
-class NumRange(Sequence[Num], Hashable):
+class NumRange(Sequence[float], Hashable):
   '''
   A range type that supports int and float boundaries.'
   '''
 
-  start:Num
-  stop:Num
-  step:Num
+  start:float
+  stop:float
+  step:float
   closed:bool
   _len:int
 
-  def __init__(self, start:Num, stop:Num|None=None, step:Num=1, *, closed=False):
+  def __init__(self, start:float, stop:float|None=None, step:float=1, *, closed=False):
     if stop is None: # Imitate `range`; `start` is actually `stop`.
       _setattr(self, 'start', 0)
       _setattr(self, 'stop', start)
@@ -40,7 +37,7 @@ class NumRange(Sequence[Num], Hashable):
   def __len__(self):
     return self._len
 
-  def __getitem__(self, i:int|slice) -> Num: # type: ignore[override]
+  def __getitem__(self, i:int|slice) -> float: # type: ignore[override]
     if isinstance(i, int):
       if i >= 0 and i >= self._len: raise IndexError(i)
       return self.start + self.step * (i if i >= 0 else (self._len+i))
@@ -48,7 +45,7 @@ class NumRange(Sequence[Num], Hashable):
       raise NotImplementedError('NumRange does not support extended slicing')
     raise TypeError(f'NumRange indices must be integers; received: {i!r}')
 
-  def __iter__(self) -> Iterator[Num]:
+  def __iter__(self) -> Iterator[float]:
     return (self.start + self.step * i for i in range(self._len))
 
   def __repr__(self):
