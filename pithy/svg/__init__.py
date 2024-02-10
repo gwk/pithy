@@ -29,7 +29,6 @@ class SvgNode(Mu):
   tag_types:ClassVar[dict[str,type['Mu']]] = {} # Dispatch table mapping tag names to Mu subtypes.
 
   replaced_attrs = {
-    'href': 'xlink:href', # safari Version 11.1.1 requires this, even though xlink is deprecated in svg 2 standard.
     'w': 'width',
     'h': 'height',
   }
@@ -384,9 +383,8 @@ class Svg(SvgBranch):
     self.vw = vw
     self.vh = vh
     self.viewBox = fmt_viewBox(vx, vy, vw, vh)
-    kwargs = { # Put the xml nonsense up front.
+    kwargs = { # Put the xmlns declaration first.
       'xmlns': 'http://www.w3.org/2000/svg',
-      'xmlns:xlink': 'http://www.w3.org/1999/xlink', # Safari does not yet support SVG 2.
       **kwargs
     }
     add_opt_attrs(kwargs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
