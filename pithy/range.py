@@ -13,6 +13,9 @@ _setattr = object.__setattr__
 
 
 class NumRange(Sequence[Num], Hashable):
+  '''
+  A range type that supports int and float boundaries.'
+  '''
 
   start:Num
   stop:Num
@@ -72,7 +75,7 @@ def do_ranges_overlap(a:tuple[_B,_B], b:tuple[_B,_B]) -> bool:
 
 def do_ranges_from_attrs_overlap(a:Any, b:Any, start_attr:str, end_attr) -> bool:
   '''
-  Return whether the two objecet'ranges overlap, given the names of their start and end attributes.
+  Return whether the two object's ranges overlap, given the names of their start and end attributes.
   '''
   a_s = getattr(a, start_attr)
   a_e = getattr(a, end_attr)
