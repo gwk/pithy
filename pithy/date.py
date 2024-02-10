@@ -6,8 +6,6 @@ from datetime import date as Date, datetime as DateTime, time as Time, timedelta
 from typing import Iterator, overload, Sequence, TypeVar
 
 
-Time = Time
-
 sec_per_min = 60
 sec_per_hour = sec_per_min * 60
 sec_per_day = sec_per_hour * 24
