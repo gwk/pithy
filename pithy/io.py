@@ -228,14 +228,19 @@ def errM(*labels_and_obj:Any, **opts) -> None:
   writeM(stderr, *labels_and_obj, **opts)
 
 
-def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_suffix='', frequency:int|float=0.1,
+def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_suffix='', every:int=1, frequency:float=0.1,
  limit=0) -> Iterator[_T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.
+  If `frequency` is > 0, print a message every `frequency` seconds.
+  Otherwise, print a message every `every` elements.
+  If either `frequency` or `every` are 0, or stderr is not a TTY, return `iterable` unchanged.
   '''
-  assert frequency >= 0
-  if not frequency or not stderr.isatty():
+  if not (every >= 0): raise ValueError(f'every must be >= 0; received {every!r}.')
+  if not (frequency >= 0): raise ValueError(f'frequency must be >= 0; received {frequency!r}.')
+
+  if every == 0 or frequency == 0 or not stderr.isatty():
     return iter(iterable)
 
   ERASE_LINE = '\x1b[2K'
@@ -255,41 +260,58 @@ def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_s
     width = len(ls)
     total = '/' + ls
 
-  if type(frequency) is float: # Use `is` instead of `isinstance` or else type checker thinks `else` branch is unreachable.
+  if frequency > 0:
     from time import monotonic as timer  # on macOS, monotomic and perf_counter both perform slightly better than `time`.
 
-    # A previous version attempted to reduce the number of calls to the timer to reduce overhead.
-    # However this was susceptible to visual stalling when the iteration times varied widely.
     # On macOS, calling the timer on every iteration induces ~1.3x overhead for a `x += 1` loop,
     # compared to the same loop with a very large integer frequency.
-    # Since most loop bodies are more expensive, this seems acceptable.
-    def err_progress_gen() -> Iterator[_T]:
-      prev_t = -1.0
-      completed_count = 0
-      for el in iterable:
-        if limit and completed_count == limit: break
-        t = timer()
-        d = t - prev_t
-        if d >= frequency:
-          print(f'{pre}{completed_count:{width},}{total}{post}', end='', file=stderr, flush=True)
-          prev_t = t
-        yield el
-        completed_count += 1
+    # Since most loop bodies are more expensive, this seems broadly acceptable.
+    # However, if the user wants to reduce this overhead, they can specify both `every` and `frequency`.
+    # In that case, we check only check the timer every `every` iterations.
 
-      print(f'{pre}{completed_count:{width},}{total}{final}', file=stderr)
+    if every == 1:
+      def err_progress_gen_frequency() -> Iterator[_T]:
+        prev_t = -1.0
+        completed_count = 0
+        for el in iterable:
+          if limit and completed_count == limit: break
+          t = timer()
+          d = t - prev_t
+          if d >= frequency:
+            print(f'{pre}{completed_count:{width},}{total}{post}', end='', file=stderr, flush=True)
+            prev_t = t
+          yield el
+          completed_count += 1
+        print(f'{pre}{completed_count:{width},}{total}{final}', file=stderr)
+      return err_progress_gen_frequency()
 
-  else: # frequency is an int.
-    def err_progress_gen() -> Iterator[_T]:
-      completed_count = 0
-      for el in iterable:
-        if limit and completed_count >= limit: break
-        if completed_count % frequency == 0:
-          print(f'{pre}{completed_count:{width},}{total}{post}', end='', file=stderr, flush=True)
-        yield el
-        completed_count += 1
-      print(f'{pre}{completed_count:{width},}{total}{final}', file=stderr)
+    else:
+      def err_progress_gen_frequency_every() -> Iterator[_T]:
+        prev_t = -1.0
+        completed_count = 0
+        for el in iterable:
+          if limit and completed_count == limit: break
+          if completed_count % every == 0:
+            t = timer()
+            d = t - prev_t
+            if d >= frequency:
+              print(f'{pre}{completed_count:{width},}{total}{post}', end='', file=stderr, flush=True)
+              prev_t = t
+          yield el
+          completed_count += 1
+        print(f'{pre}{completed_count:{width},}{total}{final}', file=stderr)
+      return err_progress_gen_frequency_every()
 
-  return err_progress_gen()
+  def err_progress_gen_every() -> Iterator[_T]:
+    completed_count = 0
+    for el in iterable:
+      if limit and completed_count >= limit: break
+      if completed_count % every == 0:
+        print(f'{pre}{completed_count:{width},}{total}{post}', end='', file=stderr, flush=True)
+      yield el
+      completed_count += 1
+    print(f'{pre}{completed_count:{width},}{total}{final}', file=stderr)
+  return err_progress_gen_every()
 
 
 # convenience read/write.
