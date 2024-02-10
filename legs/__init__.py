@@ -96,7 +96,7 @@ class RegexLexerBase(LexerBase):
     m = pattern.search(text, pos)
     assert m is not None
     if not m: # Emit an incomplete token to end.
-      self.pos = len_text
+      self.pos = len_text # type: ignore[unreachable] # Due to assert above.
       return Token(pos=pos, end=len_text, mode=mode, kind='incomplete')
     start = m.start()
     if start > pos: # Emit an incomplete token up to the match; the next search will find the same match (inefficient).
