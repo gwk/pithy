@@ -112,6 +112,7 @@ body {
 .gap-1ch { gap: 1ch; }
 .gap-1em { gap: 1em; }
 
+.mv-05em { margin-top: 0.5em; margin-bottom: 0.5em; }
 .mv-1em { margin-top: 1em; margin-bottom: 1em; }
 
 .o0 { opacity: 0; }
