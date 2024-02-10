@@ -93,7 +93,7 @@ class ParConfig(NamedTuple):
 
 
 class Case:
-  'Case represents a single test case, or a default.'
+  'Case represents a single test case, or a set of defaults.'
 
   def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: dict, par_configs: list[ParConfig],
    par_stems_used: set[str]) -> None:
