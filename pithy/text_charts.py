@@ -23,10 +23,8 @@ full_block = '\u2588'
 _min = min
 _max = max
 
-_Num = int|float
 
-
-def chart_inline(values:Iterable[_Num], max:_Num=0, width:int=0) -> str:
+def chart_inline(values:Iterable[float], max:float=0, width:int=0) -> str:
   'Create an inline chart out of vertical fractional bar characters.'
   values = tuple(values)
   if not values: return ''
@@ -53,7 +51,7 @@ class ChartMode(Enum):
 Normalized, Total, Cumulative = tuple(ChartMode)
 
 
-def chart_items(data:Mapping[Any,_Num]|Iterable[tuple[Any,_Num]], mode=ChartMode.Normalized, threshold=0.0,
+def chart_items(data:Mapping[Any,float]|Iterable[tuple[Any,float]], mode=ChartMode.Normalized, threshold=0.0,
  sort_by_val=False, reverse=False, val_width=0, val_prec=16, bar_width=64, show_ratio=False, prefix='  ') -> str:
   '''
   Create a chart from a mapping or iterable of key/value pairs.
