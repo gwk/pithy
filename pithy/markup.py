@@ -863,7 +863,7 @@ def fmt_xml_predicate_args(type_or_tag:type|str, cl:str, text:str, attrs:dict[st
 
 
 def add_opt_attrs(attrs:dict[str,Any], **items:Any) -> None:
-  'Add the items in `**items` attrs, excluding any None values.'
+  'Add the items in `**items`  to `attrs`, excluding any None values.'
   for k, v in items.items():
     if v is None: continue
     assert k not in attrs, k
