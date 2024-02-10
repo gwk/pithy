@@ -102,9 +102,6 @@ class Totals:
 
         # Match an inline subtotal, e.g. '12:00 finished = 1:00'.
         if subtotal_match := subtotal_re.search(line):
-          if not time_match:
-            outL()
-            exit('timesheet error: subtotal line does not specify a time.')
           if start_minutes is None or end_minutes is None:
             outL()
             exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
