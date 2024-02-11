@@ -55,7 +55,7 @@ class NumRange(Sequence[float], Hashable):
     raise AttributeError('NumRange attributes are readonly')
 
   def __hash__(self) -> int:
-    return hash(self.start)^hash(self.stop)^hash(self.step)^int(self.closed)
+    return hash((self.start, self.stop, self.step, self.closed))
 
   def __eq__(self, other:object) -> bool:
     return type(self) == type(other) and vars(self) == vars(other)

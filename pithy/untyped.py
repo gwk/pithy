@@ -31,10 +31,7 @@ class Immutable(Generic[_T]):
     return vars(self)[key] # type: ignore[no-any-return]
 
   def __hash__(self) -> int:
-    h = 0
-    for p in vars(self).items():
-      h ^= hash(p)
-    return h
+    return hash(tuple(vars(self).items()))
 
   def __eq__(self, other:Any) -> bool:
     return type(self) == type(other) and vars(self) == vars(other)
