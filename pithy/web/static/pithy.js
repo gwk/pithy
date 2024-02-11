@@ -387,3 +387,16 @@ function incrementDateAndSubmit(input, days = 1) {
   date_input.valueAsDate = date;
   form.submit();
 }
+
+
+/**
+ * Set the date value of the input element's form to today and submit the form.
+ * @param {HTMLInputElement} input - The input element triggering the function.
+ * @param {string} date: The date to set the input to.
+ */
+function setDateAndSubmit(input, date) {
+  const form = req_instance(input.closest('form'), HTMLFormElement);
+  const date_input = req_instance(form.querySelector('input[type=date]'), HTMLInputElement);
+  date_input.value = date;
+  form.submit();
+}
