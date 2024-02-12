@@ -134,10 +134,12 @@ class Case:
     self.timeout: int|None = None
 
     try:
+      # Set prototype atttributes.
       if proto is not None:
         for key in case_key_validators:
           setattr(self, key, getattr(proto, key))
 
+      # Set parameterized attributes.
       for par_stem, par_re, par_config in par_configs:
         m = par_re.fullmatch(stem)
         if not m: continue
@@ -146,17 +148,18 @@ class Case:
         self.test_par_args[par_stem] = cast(tuple[str, ...], m.groups()) # Save the strings matching the parameters to use as arguments.
         par_stems_used.add(par_stem) # Mark this parameterized config as used.
 
+      # Set configured attributes.
       for key, val in config.items():
         self.add_val_for_key(ctx, key, val)
 
-      # do all additional computations now, so as to fail as quickly as possible.
+      # Do all additional computations now, so as to fail as quickly as possible.
       self.derive_info(ctx)
 
     except Exception as e:
       outL(f'iotest error: broken test case: {stem}')
       outL(f'  exception: {type(e).__name__}: {e}.')
-      # not sure if it makes sense to describe cases for some exceptions;
-      # for now, just carve out the ones for which it is definitely useless.
+      # Not sure if it makes sense to describe cases for some exceptions;
+      # For now, just carve out the ones for which it is definitely useless.
       if not isinstance(e, IotParseError):
         self.describe(stdout)
         outL()
@@ -212,7 +215,7 @@ class Case:
 
 
   def derive_info(self, ctx: Ctx) -> None:
-    if self.name == '_default': return # do not process prototype cases.
+    if self.name == '_default': return # No derived info for prototype cases.
     rel_dir, _, multi_index = self.stem.partition('.')
     self.multi_index = int(multi_index) if multi_index else None
     self.test_dir = path_join(ctx.build_dir, rel_dir)
