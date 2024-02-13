@@ -3,7 +3,7 @@
 
 name = "crafts"
 description = "Crafts is a set of custom build tools."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = ["pithy"]
 

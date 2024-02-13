@@ -3,7 +3,7 @@
 
 name = "legs"
 description = "Legs is a lexer generator."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = []
 
