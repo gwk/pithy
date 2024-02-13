@@ -17,7 +17,7 @@ class FilenameFormatterError(Exception): pass
 fmt_re = re.compile(r'''(?x)
 %
 (?P<width>\d*)
-(?P<type>[cdosxX%]?)
+(?P<type>[cdiosxX%]?)
 ''')
 
 
