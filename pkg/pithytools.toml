@@ -3,9 +3,10 @@
 
 name = "pithytools"
 description = "Pithytools is a collection of comamnd line utilities that depend on the `pithy` package."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = [
+  "pithy",
   "Pillow", "types-Pillow",
 ]
 

@@ -3,9 +3,9 @@
 
 name = "iotest"
 description = "IOTest is a process/integration test harness that captures standard IO as the basis for test validation."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
-dependencies = []
+dependencies = ["pithy"]
 
 keywords = [
   "io",
