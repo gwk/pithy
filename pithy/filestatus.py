@@ -147,23 +147,12 @@ class FileStatus(NamedTuple):
   @property
   def type_desc(self) -> str: return _type_descs[self.type]
 
-
   @property
-  def perms_string(self) -> str:
-    parts = [] # user, group, other.
-    for part_char, part_table in _perm_chars:
-        chars = part_char
-        for bit, char in part_table:
-          chars += char if (self.perms & bit) else '-'
-        parts.append(chars)
-    if self.is_suid: parts.append('suid')
-    if self.is_guid: parts.append('sgid')
-    if self.is_sticky: parts.append('sticky')
-    return ' '.join(parts)
+  def perms_desc(self) -> str: return perms_desc(self.perms)
 
   @property
   def mode_str(self) -> str:
-    return f'{self.type_char} {self.perms_string}'
+    return f'{self.type_char} {self.perms_desc}'
 
 
 def dir_entry_type_char(entry: DirEntry) -> str:
@@ -254,6 +243,21 @@ def path_exists(path_or_fd:Path, *, follow:bool) -> bool:
   try: _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError: return False
   else: return True
+
+
+def perms_desc(perms:int) -> str:
+  '''
+  Returns a permissions string similar to `ls -l` output, but with the following differences:
+  * each user/group/other section is separated by '_'.
+  * each section has a fourth column, for the suid/sgid/sticky bit.
+  '''
+  parts = [] # user, group, other.
+  for part_char, part_table in _perm_chars:
+      chars = part_char
+      for bit, char in part_table:
+        chars += char if (perms & bit) else '-'
+      parts.append(chars)
+  return ' '.join(parts)
 
 
 PERM_MASK = 0o7777
