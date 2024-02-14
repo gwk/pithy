@@ -226,7 +226,7 @@ class Case:
     env['BUILD'] = ctx.build_dir
     env['NAME'] = self.name
     env['PROJ'] = abs_path(ctx.proj_dir)
-    env['SRC'] = self.dflt_src_paths[0] if len(self.dflt_src_paths) == 1 else 'NONE'
+    env['SRC'] = self.dflt_src_paths[0] if len(self.dflt_src_paths) == 1 else 'NONE' # TODO: remove because of circular expansion logic.
     env['STEM'] = self.stem
     env['DIR'] = self.dir
 
