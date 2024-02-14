@@ -44,7 +44,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
 
   The underlying Subprocess shell option is not supported
   because the rules regarding splitting strings are complex.
-  User code is made clearer by just specifying the complete shell command.
+  User code is made clearer by just specifying the complete shell invocation.
 
   If `cmd` is a list, it is used as is. If `cmd` is a string it is split by shlex.split.
 
