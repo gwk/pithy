@@ -290,13 +290,16 @@ _perm_chars = (
   ('u:', (
     (S_IRUSR, 'r'),
     (S_IWUSR, 'w'),
-    (S_IXUSR, 'x'))),
+    (S_IXUSR, 'x'),
+    (S_ISUID, 's'))),
   ('g:', (
     (S_IRGRP, 'r'),
     (S_IWGRP, 'w'),
-    (S_IXGRP, 'x'))),
+    (S_IXGRP, 'x'),
+    (S_ISGID, 's'))),
   ('o:', (
     (S_IROTH, 'r'),
     (S_IWOTH, 'w'),
-    (S_IXOTH, 'x'))),
+    (S_IXOTH, 'x'),
+    (S_ISVTX, 't'))),
 )
