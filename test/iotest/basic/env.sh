@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+echo "BUILD: $BUILD"
+echo "DIR: $DIR"
 echo "NAME: $NAME"
-echo "SRC: $SRC"
 echo "PROJ: $PROJ"
+echo "STEM: $STEM"
