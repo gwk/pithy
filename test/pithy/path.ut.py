@@ -3,7 +3,7 @@
 from random import choice as rand_choice, seed as rand_seed
 
 from pithy.path import (abs_or_norm_path, abs_path, insert_path_stem_suffix, is_norm_path, is_path_abs, is_sub_path, norm_path,
-  path_descendants, path_rel_to_dir, PathIsNotDescendantError)
+  path_descendants, path_rel_to_dir, PathIsNotDescendantError, split_stem_ext, split_stem_multi_ext)
 from utest import utest, utest_exc
 
 
@@ -15,6 +15,26 @@ utest('/', abs_or_norm_path, '//', True)
 utest('/', abs_path, '//')
 
 utest('a-s.ext', insert_path_stem_suffix, 'a.ext', '-s')
+
+# split_stem_ext.
+utest(('', ''), split_stem_ext, '')
+utest(('a', ''), split_stem_ext, 'a')
+utest(('a', '.'), split_stem_ext, 'a.')
+utest(('a', '.ext'), split_stem_ext, 'a.ext')
+utest(('a.b', '.ext'), split_stem_ext, 'a.b.ext')
+utest(('d/a.b', '.ext'), split_stem_ext, 'd/a.b.ext')
+utest(('d/.a', ''), split_stem_ext, 'd/.a')
+utest(('d/.a', '.ext'), split_stem_ext, 'd/.a.ext')
+
+# split_stem_multi_ext.
+utest(('', ''), split_stem_multi_ext, '')
+utest(('a', ''), split_stem_multi_ext, 'a')
+utest(('a', '.'), split_stem_multi_ext, 'a.')
+utest(('a', '.ext'), split_stem_multi_ext, 'a.ext')
+utest(('a', '.b.ext'), split_stem_multi_ext, 'a.b.ext')
+utest(('d/a', '.b.ext'), split_stem_multi_ext, 'd/a.b.ext')
+utest(('d/.a', ''), split_stem_multi_ext, 'd/.a')
+utest(('d/.a', '.ext'), split_stem_multi_ext, 'd/.a.ext')
 
 
 # is_norm_path.

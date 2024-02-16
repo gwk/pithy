@@ -2,10 +2,9 @@
 
 import re as _re
 from itertools import zip_longest as _zip_longest
-from os import fspath as _fspath, PathLike, sep
+from os import fspath as _fspath, PathLike
 from os.path import (abspath as _abspath, basename as _basename, commonpath as _commonpath, dirname as _dirname,
-  expanduser as _expand_user, isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split,
-  splitext as _splitext)
+  expanduser as _expand_user, isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split)
 
 
 Path = str|PathLike
@@ -242,7 +241,7 @@ def path_split(path: Path) -> list[str]:
   np = norm_path(path)
   if np == '/': return ['/']
   assert not np.endswith('/')
-  return [comp or '/' for comp in np.split(sep)]
+  return [comp or '/' for comp in np.split('/')]
 
 
 def path_stem(path: Path) -> str:
@@ -276,12 +275,46 @@ def split_dir_stem_ext(path: Path) -> tuple[str, str, str]:
 
 def split_stem_ext(path: Path) -> tuple[str, str]:
   '''
-  Split the path into stem (possibly spanning directories) and extension components, e.g. 'stem.ext'.
+  Split `path` into (stem, extension) components.
+  'stem.ext' -> ('stem', '.ext').
+  'stem.ext.ext' -> ('stem.ext', '.ext').
+  The stem can include slashes. The extension may be empty.
+  Extension is everything from the last dot to the end, ignoring leading dots in the file name.
+  It is always true that `path == root + ext`.
   '''
-  return _splitext(str_path(path))
+  path = str_path(path)
+  slash_idx = path.rfind('/') # -1 if not found.
+  dot_idx = path.rfind('.') # -1 if not found.
+  if slash_idx < dot_idx: # Found a dot after the last slash, if any slash exists. Skip all leading dots in the name.
+    name_idx = slash_idx + 1 # Start of the file name.
+    while name_idx < dot_idx:
+      if path[name_idx] != '.': # Found a non-dot character in the name.
+        return path[:dot_idx], path[dot_idx:]
+      name_idx += 1 # Skip the dot.
+  return path, ''
 
 
-def str_path(path: Path) -> str:
+def split_stem_multi_ext(path: Path) -> tuple[str, str]:
+  '''
+  Split `path` into (stem, multi-extension) components.
+  'stem.ext' -> ('stem', '.ext').
+  'stem.ext.ext' -> ('stem', '.ext.ext').
+  The stem can include slashes. The extension may be empty.
+  The multi-extension is everything from the first dot in the file name to the end, ignoring leading dots in the file name.
+  It is always true that `path == root + ext`.
+  '''
+  path = str_path(path)
+  slash_idx = path.rfind('/') # -1 if not found.
+  name_idx = slash_idx + 1 # Start of the file name.
+  dot_find_start_idx = name_idx
+  while dot_find_start_idx < len(path) and path[dot_find_start_idx] == '.': # Skip leading dots in the file name.
+    dot_find_start_idx += 1
+  dot_idx = path.find('.', dot_find_start_idx)
+  if dot_idx == -1: return path, ''
+  return path[:dot_idx], path[dot_idx:]
+
+
+def str_path(path:Path) -> str:
   p = _fspath(path)
   if isinstance(p, str): return p
   assert isinstance(p, bytes)
