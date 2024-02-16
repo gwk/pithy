@@ -164,6 +164,7 @@ def path_exts(path: Path) -> tuple[str, ...]:
     path, ext = split_stem_ext(path)
     if not ext: break
     exts.append(ext)
+  exts.reverse()
   return tuple(exts)
 
 
@@ -185,8 +186,13 @@ def path_name(path: Path) -> str:
 
 
 def path_name_stem(path: Path) -> str:
-  'The file name without extension; the name stem will not span directories.'
+  'The file name without the final extension; the name stem will not span directories.'
   return path_stem(path_name(path))
+
+
+def path_name_stem_sans_exts(path: Path) -> str:
+  'The file name without any extensions; the name stem will not span directories.'
+  return path_stem_sans_exts(path_name(path))
 
 
 def path_rel_to_dir(path:Path, dir:Path) -> str:
@@ -245,8 +251,13 @@ def path_split(path: Path) -> list[str]:
 
 
 def path_stem(path: Path) -> str:
-  'The path without the file extension; the stem may span multiple directories.'
+  'The path without the final file extension; the stem may span multiple directories.'
   return split_stem_ext(path)[0]
+
+
+def path_stem_sans_exts(path: Path) -> str:
+  'The path without any file extensions; the stem may span multiple directories.'
+  return split_stem_multi_ext(path)[0]
 
 
 def rel_path(path: Path, start: Path='.') -> str:

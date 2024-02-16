@@ -7,7 +7,7 @@ import time
 from ast import literal_eval
 from collections import defaultdict
 from sys import stderr, stdout
-from typing import Iterable, Pattern
+from typing import Pattern
 from warnings import filterwarnings
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
@@ -17,8 +17,8 @@ from pithy.fs import (copy_path, file_status, find_project_dir, is_dir, is_pytho
   open_new, path_exists, remove_dir_contents, remove_file_if_exists)
 from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_path, write_to_path
 from pithy.iterable import fan_by_pred
-from pithy.path import (abs_path, norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_join, path_name,
-  path_name_stem, path_rel_to_current_or_abs, path_stem, rel_path, split_dir_name)
+from pithy.path import (abs_path, norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_exts, path_join,
+  path_name_stem_sans_exts, path_rel_to_current_or_abs, path_stem_sans_exts, rel_path, split_dir_name)
 from pithy.task import run, runC, TaskLaunchError, Timeout, UnexpectedExit
 
 from ..case import Case, file_expectation_fns, FileExpectation, ParConfig, TestCaseError
@@ -89,7 +89,7 @@ def main() -> None:
       dir_path = path_dir_or_dot(path) + '/'
       if not is_dir(dir_path, follow=True):
         exit('iotest error: argument path directory does not exist: {dir_path!r}.')
-      specified_name_prefix = path_name_stem(path)
+      specified_name_prefix = path_name_stem_sans_exts(path)
     proto = collect_proto(ctx, dir_path)
     collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix)
 
@@ -148,7 +148,7 @@ def collect_proto(ctx: Ctx, end_dir_path: str) -> Case|None:
   '''
   proto = None
   for dir_path in path_descendants(ctx.proj_dir, abs_path(end_dir_path), include_end=False):
-    file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem(name) == '_default']
+    file_paths = [path_join(dir_path, name) for name in list_dir(dir_path) if path_stem_sans_exts(name) == '_default']
     cases_dict: dict[str, Case] = {}
     proto = create_cases(ctx, cases_dict, proto, dir_path, file_paths)
     assert not cases_dict, cases_dict
@@ -172,7 +172,7 @@ def collect_cases(ctx:Ctx, cases_dict:dict[str, Case], proto: Case|None, dir_pat
       elif path_ext(name):
         file_paths.append(path)
     else: # Look for specified_name_prefix; do not collect dirs.
-      stem = path_stem(name)
+      stem = path_stem_sans_exts(name)
       if stem == '_default':
         trivial = [path]
       if stem == '_default' or stem.startswith(specified_name_prefix):
@@ -207,15 +207,14 @@ def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto: Case|None, d
   that applies over multiple cases.
   Each case must have one non-parameterized contributing file; otherwise there is no way to infer its existence.
   '''
-
   configs = defaultdict[str,dict](dict)
   val_paths, iot_paths = fan_by_pred(file_paths, pred=lambda p: path_ext(p) == '.iot')
   for path in iot_paths:
     add_iot_configs(configs=configs, path=path)
   for path in val_paths:
     stem = case_stem_for_path(path)
-    if path_ext(path) in implied_case_exts:
-      add_std_file(config=configs[stem], path=path)
+    if std_ext := std_file_ext(path):
+      add_std_file(config=configs[stem], path=path, std_ext=std_ext)
     else:
       configs[stem].setdefault('.dflt_src_paths', []).append(path)
 
@@ -243,7 +242,7 @@ def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto: Case|None, d
 
 
 def case_stem_for_path(path:str) -> str:
-  stem = path_stem(path)
+  stem = path_stem_sans_exts(path)
   dir, name = split_dir_name(stem)
   if name == '_': return dir
   if name.isnumeric(): return f'{dir}.{name}' # Synthesize subcase stem.
@@ -271,7 +270,7 @@ def add_iot_configs(configs: dict, path: str) -> None:
     configs[stem].setdefault('.test_info_paths', set()).add(path)
     configs[stem].update(val)
   elif isinstance(val, list):
-    if path_name(stem) == '_default':
+    if path_name_stem_sans_exts(stem) == '_default':
       exit(f'iotest error: default case cannot specify a multicase (list of subcases): {path!r}')
     for i, el in enumerate(val):
       sub = f'{stem}.{i}' # Synthesize the subcase stem from the multicase stem and the index.
@@ -284,29 +283,35 @@ def add_iot_configs(configs: dict, path: str) -> None:
     exit(f'iotest error: {stem}: case iot contents is not a dictionary: {path!r}')
 
 
-def add_std_file(config: dict, path: str) -> None:
-  'Add a standard file (i.e. `.in`, `.out`, `.err`).'
-  ext = path_ext(path)
-  if ext in config: # TODO: this check should occur in add_iot_configs.
-    exit(f'iotest error: {path}: test case configuration contains reserved key: {ext!r}')
-  assert ext in ('.in', '.out', '.err'), ext
+implied_case_exts = frozenset({'.iot', '.out', '.err'})
+std_case_exts = frozenset({'.out', '.err'}) # TODO: support '.in.'
+
+def std_file_ext(path:str) -> str|None:
+  '''
+  If `path` looks like it has a standard file extension, return that extension.
+  Standard files can have any number of extensions, e.g. 'some-test-stem.out.svg'.
+  We expect the first (innerrmost) extension to be one of the standard case extensions.
+  The outer extension is tolerated to support syntax highlighting, viewing with standard tools, etc.
+  '''
+  exts = path_exts(path) # May have a compound extension, e.g. '.out.svg'.
+  if not exts: return None
+  ext0 = exts[0]
+  return ext0 if ext0 in std_case_exts else None
+
+
+def add_std_file(config:dict, path:str, std_ext:str) -> None:
+  'Add a standard file (i.e. `.in`, `.out`, `.err`, possibly with additional extensions).'
+  if std_ext in config: # TODO: this check should occur in add_iot_configs.
+    exit(f'iotest error: {path}: test case configuration contains reserved key: {std_ext!r}')
+  assert std_ext in ('.in', '.out', '.err'), std_ext
   config.setdefault('.test_info_paths', set()).add(path)
-  config[ext] = path
+  config[std_ext] = path
 
 
 def compile_par_stem_re(stem: str) -> Pattern[str]:
   try: return regex_for_fnf_str(stem, allow_empty=False)
   except FilenameFormatterError as e:
     exit(f'iotest error: invalid parameterized case stem: {stem}\n  {e}')
-
-
-implied_case_exts = frozenset({'.iot', '.out', '.err'})
-
-def is_case_implied(paths: Iterable[str]) -> bool:
-  'one of the standard test file extensions must be present to imply a test case.'
-  for p in paths:
-    if path_ext(p) in implied_case_exts: return True
-  return False
 
 
 def report_coverage(coverage_cases: list[Case]) -> None:
@@ -401,8 +406,7 @@ def run_case(ctx:Ctx, coverage_cases:list[Case], case: Case) -> bool:
       return False
 
   if case.in_ is not None:
-    # TODO: if specified as a .in file, just read from that location,
-    # instead of reading/writing text from/to disk.
+    # TODO: if specified as a .in file, just read from that location instead of reading/writing the expected text from/to disk.
     in_path = path_join(case.test_dir, 'in')
     write_to_path(in_path, case.in_)
   else:
