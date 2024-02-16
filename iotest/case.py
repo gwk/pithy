@@ -9,7 +9,7 @@ from typing import Any, Callable, cast, NamedTuple, Optional, Pattern, TextIO
 
 from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
-from pithy.path import path_stem
+from pithy.path import path_stem_sans_exts
 from pithy.types import (is_bool, is_dict, is_dict_of_str, is_int, is_list, is_list_of_str, is_pos_int, is_set, is_set_of_str,
   is_str, is_str_or_list)
 
@@ -290,7 +290,7 @@ class Case:
       prefix = '' if cmd else './'
       cmd.append(prefix + dflt_name)
       if self.args is None:
-        par_args = list(self.test_par_args.get(path_stem(dflt_path), ()))
+        par_args = list(self.test_par_args.get(path_stem_sans_exts(dflt_path), ()))
         cmd += par_args
 
     if self.args:
@@ -330,6 +330,7 @@ class Case:
       self.test_expectations.append(exp)
 
 
+# TODO: this is confusing. It should be replaced or else documented.
 iot_key_subs = {
   '.in' : 'in_',
   '.err' : 'err_path',
