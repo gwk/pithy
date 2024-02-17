@@ -38,6 +38,10 @@ def gen_migration(*, conn:Connection, schema:Schema) -> list[str]:
   if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
 
   c = conn.cursor()
+
+  if not c.run("select count() from pragma_database_list WHERE name = :name", name=schema.name):
+    exit(f'Schema {schema.name!r} does not exist; was it attached?')
+
   old_table_sqls:dict[str,str] = dict(
     c.run(f"SELECT name, sql FROM {schema.name}.sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"))
 
@@ -52,7 +56,7 @@ def gen_migration(*, conn:Connection, schema:Schema) -> list[str]:
     needs_rebuild, table_stmts = gen_table_migration(schema_name=schema.name, qname=qname, new=table, old=old_sql)
     stmts.extend(table_stmts)
 
-    old_deps:dict[str,Row] = dict((row.name, row) for row in
+    old_deps = dict((row.name, row) for row in
       c.run(f'''
         SELECT type, name, sql FROM {schema.name}.sqlite_schema
         WHERE type != 'table' AND tbl_name = :name AND name NOT LIKE 'sqlite_%'
