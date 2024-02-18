@@ -11,7 +11,7 @@ def fmt_url(url:str, *path_parts:str, **params:Any) -> str:
   Path parts and params are escaped.
   '''
   if path_parts:
-    url = '/'.join(tuple(url, *(quote(part) for part in path_parts)))
+    url = '/'.join((url.rstrip('/'), *(quote(part) for part in path_parts)))
   if params:
     url = f'{url}?{urlencode(tuple((k, str(v)) for k, v in params.items()))}'
   return url
