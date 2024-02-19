@@ -105,6 +105,8 @@ class Mu:
     * avoid excess copying during deserialization from json, msgpack, or similar;
     * allow for creation of subtree nodes (with _orig/_parent set) that alias the `attr` and `_` collections.
 
+    `attrs` keys are used as-is; the keyword `kw_attrs` keys have underscores replaced with hyphens.
+
     The `_` property represents the node children list, and is typed as MuChildOrChildrenLax to allow for numeric values.
     These are converted to strings during initialization.
     If the `_` argument is a list and contains numeric values, it is mutated in place.
