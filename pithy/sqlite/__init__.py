@@ -109,7 +109,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     '''
     On context manager enter, Cursor begins a transaction.
     '''
-    super().execute('BEGIN')
+    self.execute('BEGIN')
     return self
 
 
@@ -118,9 +118,9 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     On context manager exit, Cursor commits or rolls back, then closes itself.
     '''
     if exc_type: # Exception raised.
-      super().execute('ROLLBACK')
+      self.execute('ROLLBACK')
     else:
-      super().execute('COMMIT')
+      self.execute('COMMIT')
     self.close()
 
 
