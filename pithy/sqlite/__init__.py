@@ -2,6 +2,8 @@
 
 import sqlite3
 from contextlib import AbstractContextManager
+from sqlite3 import (DatabaseError, DataError, IntegrityError, InterfaceError, InternalError, NotSupportedError,
+  OperationalError, ProgrammingError)
 from typing import (Any, Callable, cast, Iterable, Iterator, Literal, Mapping, overload, Protocol, Self, Sequence, TypeAlias,
   TypeVar)
 from urllib.parse import quote as url_quote
@@ -9,6 +11,14 @@ from urllib.parse import quote as url_quote
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .util import default_to_json, insert_values_stmt, sql_quote_entity, update_stmt, update_to_json
+
+
+SqliteError:TypeAlias = sqlite3.Error
+SqliteWarning:TypeAlias = sqlite3.Warning
+
+# Silence linter by referencing imported names.
+_ = (DatabaseError, DataError, IntegrityError, InterfaceError, InternalError, NotSupportedError, OperationalError,
+  ProgrammingError)
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -41,30 +51,6 @@ sqlite_threadsafe_desc = sqlite_threadsafe_dbapi_id_descs[sqlite_threadsafe_dbap
 
 
 BackupProgressFn = Callable[[int,int,int],object]
-
-
-class SqliteError(Exception):
-
-  @classmethod
-  def from_error(self, e:sqlite3.Error, query:str) -> 'SqliteError':
-    orig_msg = e.args[0]
-    msg = f'{orig_msg}\n  Query: {query!r}'
-    prefix = e.args[0].partition(':')[0]
-    match prefix:
-      case 'UNIQUE constraint failed': return SqliteUniqueConstraintError(msg)
-      case 'FOREIGN KEY constraint failed': return SqliteForeignKeyConstraintError(msg)
-      case 'NOT NULL constraint failed': return SqliteNotNullConstraintError(msg)
-      case _: return SqliteError(msg)
-
-
-class SqliteIntegrityError(SqliteError): pass
-
-class SqliteForeignKeyConstraintError(SqliteIntegrityError): pass
-
-class SqliteNotNullConstraintError(SqliteIntegrityError): pass
-
-class SqliteUniqueConstraintError(SqliteIntegrityError): pass
-
 
 
 class Row(sqlite3.Row):
@@ -126,32 +112,44 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
   def execute(self, query:str, args:_SqlParameters=()) -> Self:
     '''
-    Override execute in order to raise an SqliteError with the complete query string.
+    Execute a single SQL statement, optionally binding Python values using placeholders.
+
+    Override execute in order to set `query` on any resulting sqlite3.Error.
     '''
     try: return super().execute(query, args)
-    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
+    except sqlite3.Error as e:
+      setattr(e, 'query', query)
+      raise
 
 
   def executemany(self, query:str, it_args:Iterable[_SqlParameters]) -> Self:
     '''
-    Override executemany in order to raise an SqliteError with the complete query string.
+    For every item in `it_args`, repeatedly execute the parameterized DML SQL statement sql.
+
+    Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
     try: return super().executemany(query, it_args)
-    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
+    except sqlite3.Error as e:
+      setattr(e, 'query', query)
+      raise
 
 
   def executescript(self, sql_script:str) -> Self:
     '''
-    Override executescript in order to raise an SqliteError with the complete query string.
+    Execute the SQL statements in sql_script. If the autocommit is LEGACY_TRANSACTION_CONTROL and there is a pending transaction, an implicit COMMIT statement is executed first. No other implicit transaction control is performed; any transaction control must be added to sql_script.
+
+    Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
     try: return cast(Self, super().executescript(sql_script))
-    except sqlite3.Error as e: raise SqliteError.from_error(e, sql_script) from e
+    except sqlite3.Error as e:
+      setattr(e, 'query', sql_script)
+      raise
 
 
   def run(self, sql:str, *, _dbg=False, **args:Any) -> Self:
     '''
     Execute a query with parameter values provided by keyword arguments.
-    Argument values whose types are not sqlite-compatible are automatically converted to Json.
+    Argument values whose types are not sqlite-compatible are automatically converted to JSON.
     '''
     args = update_to_json(args)
     if _dbg: print(f'query: {sql.strip()}\n  args: {args}')
@@ -358,27 +356,32 @@ class Connection(sqlite3.Connection):
 
   def execute(self, query:str, args:_SqlParameters=()) -> Cursor:
     '''
-    Override execute in order to raise an SqliteError with the complete query string.
+    Execute a single SQL statement, optionally binding Python values using placeholders.
+
+    Override execute in order to set `query` on any resulting sqlite3.Error.
     '''
-    try: return cast(Cursor, super().execute(query, args))
-    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
+    with self.cursor() as c:
+      return c.execute(query, args)
 
 
   def executemany(self, query:str, it_args:Iterable[_SqlParameters]) -> Cursor:
     '''
-    Override executemany in order to raise an SqliteError with the complete query string.
+    For every item in `it_args`, repeatedly execute the parameterized DML SQL statement sql.
+
+    Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
-    try: return cast(Cursor, super().executemany(query, it_args))
-    except sqlite3.Error as e: raise SqliteError.from_error(e, query) from e
+    with self.cursor() as c:
+      return c.executemany(query, it_args)
 
 
   def executescript(self, sql_script:str) -> Cursor:
     '''
-    Override executescript in order to raise an SqliteError with the complete query string,
-    and to return pithy.sqlite.Cursor instead of sqlite3.Cursor.
+    Execute the SQL statements in sql_script. If the autocommit is LEGACY_TRANSACTION_CONTROL and there is a pending transaction, an implicit COMMIT statement is executed first. No other implicit transaction control is performed; any transaction control must be added to sql_script.
+
+    Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
-    try: return self.cursor().executescript(sql_script)
-    except sqlite3.Error as e: raise SqliteError.from_error(e, sql_script) from e
+    with self.cursor() as c:
+      return c.executescript(sql_script)
 
 
   def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,
