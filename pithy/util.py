@@ -8,8 +8,9 @@ _T = TypeVar('_T')
 
 class lazy_property(object):
   '''
-  Lazy property decorator.
-  This should probably be removed in favor of functools.cached_property, which is more complex but provindes thread safety.
+  Lazy property decorator. This is similar to functools.cached_property, but more simplistic.
+  This is not thread safe. As of Python 3.12, neither is cached_property.
+  Thus we could conceivably retire lazy_property entirely.
   '''
 
   def __init__(self, acc_fn:Callable):
