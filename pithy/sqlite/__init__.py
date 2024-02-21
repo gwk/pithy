@@ -307,13 +307,13 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 class Connection(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None=None,
-   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, readonly=False) -> None:
+   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, mode='') -> None:
 
     self.path = path
-    self.readonly = readonly
-    if readonly:
-      if uri: raise ValueError('Cannot use URI with readonly=True')
-      path = f'file:{url_quote(path)}?mode=ro'
+    self.mode = mode
+    if mode:
+      if uri: raise ValueError('Cannot specify both `uri` and `mode`')
+      path = sqlite_file_uri(path, mode=mode)
       uri = True
 
     if isolation_level not in (None, 'DEFERRED', 'IMMEDIATE', 'EXCLUSIVE'): raise ValueError(isolation_level)
@@ -322,7 +322,6 @@ class Connection(sqlite3.Connection):
       check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri)
 
     self.row_factory = Row # Default for convenience.
-
 
 
   def __enter__(self) -> Self:
@@ -339,6 +338,15 @@ class Connection(sqlite3.Connection):
     '''
     self.close()
     return False
+
+
+  def attach(self, path:str, *, name:str, mode='') -> None:
+    '''
+    Attach another database to this one using the URI syntax with the specified mode.
+    `mode` must be one of '' (default, omitted in the SQL statement), 'ro', 'rw', 'rwc', or 'memory'.
+    '''
+    uri = sqlite_file_uri(path, mode=mode)
+    super().execute(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
 
 
   def validate(self, query:str) -> None:
@@ -416,3 +424,18 @@ class Connection(sqlite3.Connection):
       if close: target.close()
 
     if progress: print(f'Backup {path}:{name} complete.')
+
+
+def sqlite_file_uri(path:str, *, mode:str='') -> str:
+  '''
+  Format an SQLite file URI.
+  Mode must be one of '' (default, omitted), 'ro', 'rw', 'rwc', or 'memory'.
+  TODO: suppport the other documented attributes: https://www.sqlite.org/uri.html.
+
+  '''
+  valid_modes = ('', 'ro', 'rw', 'rwc', 'memory')
+  if mode not in valid_modes: raise ValueError(mode)
+  uri = f'file:{url_quote(path)}'
+  if mode:
+    uri += f'?mode={mode}'
+  return uri
