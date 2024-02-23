@@ -101,7 +101,7 @@ class CsvLoader(Iterable, ContextManager):
    as_dicts:bool=False,
    remap_keys:dict[str,str]|None=None,
    preserve_empty_vals:bool=False,
-   cols:dict[str,Callable|None]|None=None) -> None:
+   cols:Mapping[str,Callable|None]|None=None) -> None:
 
     # Filter out the unspecified options so that the dialect defaults are respected.
     opts:dict[str,Any] = { k : v for (k, v) in [
