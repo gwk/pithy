@@ -2,7 +2,7 @@
 
 import sys
 from ctypes import c_char_p, c_int, c_uint, CDLL, set_errno
-from errno import ENOENT, ENOTSUP
+from errno import EEXIST, ENOENT, ENOTSUP
 from os import strerror
 from os.path import dirname, isdir
 from typing import Callable
@@ -40,6 +40,8 @@ def clone(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True,
   elif en == ENOENT: # one of the files or intervening directories does not exist.
     dst_dir = dirname(dst)
     if dst_dir and not isdir(dst_dir): raise NotADirectoryError(dst_dir)
+  elif en == EEXIST:
+    raise FileExistsError(dst)
   # TODO: more elaborate diagnosis.
   raise OSError(en, strerror(en), src)
 
