@@ -8,6 +8,8 @@ from typing import (Any, Callable, cast, Iterable, Iterator, Literal, Mapping, o
   TypeVar)
 from urllib.parse import quote as url_quote
 
+from pithy.url import url_path
+
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .util import default_to_json, insert_values_stmt, sql_quote_entity, update_stmt, update_to_json
@@ -306,20 +308,31 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
 class Conn(sqlite3.Connection):
 
-  def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None=None,
-   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, mode='') -> None:
+  def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None='DEFERRED',
+   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, autocommit:bool=True, closing:bool=True,
+   mode='') -> None:
+    '''
+    Note: as of Python 3.12, the `autocommit` parameter is preferred over the `isolation_level` parameter.
+    sqlite3.Connection `autocommit` defaults to LEGACY_TRANSACTION_CONTROL, in which case `isolation_level` takes effect.
+    This subclass defaults to autocommit=True, so by default `isolation_level` is ignored.
 
-    self.path = path
+    If `closing` is True (the default), the Conn will close itself when used as a context manager.
+    This is different from the superclass, which does not close itself on context manager exit.
+    '''
+
+    self.path = url_path(path) if uri else path
+    self.closing = closing
     self.mode = mode
     if mode:
       if uri: raise ValueError('Cannot specify both `uri` and `mode`')
+      #^ TODO: this could be relaxed by parsing, validating and updating the URI, taking care to raise in event of a conflict of query parameters.
       path = sqlite_file_uri(path, mode=mode)
       uri = True
 
     if isolation_level not in (None, 'DEFERRED', 'IMMEDIATE', 'EXCLUSIVE'): raise ValueError(isolation_level)
 
     super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
-      check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri)
+      check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit) # type: ignore[call-arg] # autocommit not yet in typeshed.
 
     self.row_factory = Row # Default for convenience.
 
@@ -333,11 +346,12 @@ class Conn(sqlite3.Connection):
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> Literal[False]:
     '''
-    On context manager exit, Conn closes itself.
-    This differs from the behavior of sqlite3.Connection, which performs commit/rollback on exit, but does not close.
+    On context manager exit, Conn.closing == True, it closes itself after performing the superclass commit/rollback behavior.
+    In contrast, the superclass `sqlite3.Connection` performs commit/rollback exit, but does not close.
     '''
-    self.close()
-    return False # Propagate any exceptions. The return of False instead of None is required to match that super().
+    res = super().__exit__(exc_type, exc_value, traceback)
+    if self.closing: self.close()
+    return res
 
 
   def attach(self, path:str, *, name:str, mode='') -> None:
