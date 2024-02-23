@@ -400,10 +400,10 @@ class Conn(sqlite3.Connection):
     '''
     if target is None: target = self.path + '.backup'
 
-    close = False
+    should_close_target = False
     if isinstance(target, str):
       target = sqlite3.connect(target)
-      close = True
+      should_close_target = True
 
     path = getattr(target, 'path', '')
 
@@ -421,7 +421,7 @@ class Conn(sqlite3.Connection):
     try:
       super().backup(target, pages=pages, progress=progress_fn, name=name, sleep=sleep)
     finally:
-      if close: target.close()
+      if should_close_target: target.close()
 
     if progress: print(f'Backup {path}:{name} complete.')
 
