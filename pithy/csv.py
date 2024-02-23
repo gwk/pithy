@@ -7,7 +7,7 @@ from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
 from functools import cached_property
 from io import StringIO
 from sys import stdout
-from typing import Any, Callable, ContextManager, Iterable, Iterator, Sequence, TextIO
+from typing import Any, Callable, ContextManager, Iterable, Iterator, Mapping, Sequence, TextIO
 
 from .transtruct import bool_for_val
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -53,7 +53,7 @@ def load_csv(file: TextIO, *,
  spread_args:bool=False,
  as_dicts:bool=False,
  preserve_empty_vals:bool=False,
- cols:dict[str,Callable|None]|None=None) -> 'CsvLoader':
+ cols:Mapping[str,Callable|None]|None=None) -> 'CsvLoader':
 
   return CsvLoader(
     file=file,
