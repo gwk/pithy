@@ -2,7 +2,7 @@
 
 from argparse import ArgumentParser
 
-from pithy.sqlite import Connection
+from pithy.sqlite import Conn
 
 
 def main() -> None:
@@ -12,8 +12,8 @@ def main() -> None:
   parser.add_argument('path_b', help='Path to the second database file.')
 
   args = parser.parse_args()
-  cn_a = Connection(args.path_a)
-  cn_b = Connection(args.path_b)
+  cn_a = Conn(args.path_a)
+  cn_b = Conn(args.path_b)
 
   a_tables = set(cn_a.cursor().run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
   b_tables = set(cn_a.cursor().run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
@@ -29,7 +29,7 @@ def main() -> None:
     diff_table(cn_a, cn_b, table)
 
 
-def diff_table(cn_a:Connection, cn_b:Connection, table: str):
+def diff_table(cn_a:Conn, cn_b:Conn, table: str):
   ca = cn_a.cursor()
   cb = cn_b.cursor()
   a_sql = ca.run("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = :table", table=table).one_col()
