@@ -304,7 +304,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
 
 
-class Connection(sqlite3.Connection):
+class Conn(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None=None,
    check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, mode='') -> None:
@@ -326,14 +326,14 @@ class Connection(sqlite3.Connection):
 
   def __enter__(self) -> Self:
     '''
-    On context manager enter, Connection does nothing.
+    On context manager enter, Conn does nothing.
     '''
     return self
 
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> Literal[False]:
     '''
-    On context manager exit, Connection closes itself.
+    On context manager exit, Conn closes itself.
     This differs from the behavior of sqlite3.Connection, which performs commit/rollback on exit, but does not close.
     '''
     self.close()

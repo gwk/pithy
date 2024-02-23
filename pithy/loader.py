@@ -182,10 +182,10 @@ def load_pyl(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_sqlite(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from .sqlite import Connection
+  from .sqlite import Conn
   if not isinstance(f, str):
     raise ValueError(f'load: sqlite files can only be opened with a string path; received {f!r}')
-  return Connection(f, mode='ro', **kwargs)
+  return Conn(f, mode='ro', **kwargs)
 
 
 def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[str]:
