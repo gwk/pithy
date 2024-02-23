@@ -337,7 +337,7 @@ class Connection(sqlite3.Connection):
     This differs from the behavior of sqlite3.Connection, which performs commit/rollback on exit, but does not close.
     '''
     self.close()
-    return False
+    return False # Propagate any exceptions. The return of False instead of None is required to match that super().
 
 
   def attach(self, path:str, *, name:str, mode='') -> None:
