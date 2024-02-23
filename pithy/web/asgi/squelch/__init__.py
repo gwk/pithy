@@ -17,7 +17,7 @@ from ....html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, Main, M
   Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ....html.parse import linkify
 from ....html.parts import pagination_control
-from ....sqlite import Connection, Row, SqliteError
+from ....sqlite import Conn, Row, SqliteError
 from ....sqlite.parse import sql_parse_schema_table
 from ....sqlite.schema import Column, Schema, Table
 from ....sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
@@ -65,7 +65,7 @@ class SquelchApp:
   'An ASGI app that provides a web interface for running SQL queries.'
 
   def __init__(self,
-    get_conn:Callable[[],Connection],
+    get_conn:Callable[[],Conn],
     html_response:Callable[[Request,Main],HTMLResponse],
     schemas:Iterable[Schema],
     vis: dict[str,dict[str,dict[str,Vis|bool]]], # Maps schema -> table -> column -> Vis|bool.

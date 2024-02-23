@@ -5,7 +5,7 @@ from typing import Iterable, NoReturn
 from pithy.iterable import joinR
 
 from ..parse import ParseError
-from . import Connection, Cursor, Row
+from . import Conn, Cursor, Row
 from .schema import Column, render_column_default, Schema, Table, TableDepStructure
 from .util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
 
@@ -33,7 +33,7 @@ class ReorderColumns(MigrationStep):
   pass
 
 
-def gen_migration(*, conn:Connection, schema:Schema) -> list[str]:
+def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
 
   if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
 
@@ -199,7 +199,7 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
   return stmts
 
 
-def run_migration(conn:Connection, migration:list[str], max_errors=100, backup=True) -> None:
+def run_migration(conn:Conn, migration:list[str], max_errors=100, backup=True) -> None:
   '''
   12 migration steps: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes
   '''
