@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import ItemsView, Iterable, Iterator, Mapping, TypeAlias
+from typing import ItemsView, Iterable, Iterator, Mapping
 
 
 class Histogram(Mapping[float,int]):
