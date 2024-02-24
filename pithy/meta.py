@@ -110,6 +110,17 @@ def caller_frame(steps:int) -> FrameType:
   return f
 
 
+def caller_src_loc(steps:int) -> tuple[str,int,str]:
+  '''
+  Returns the source location of the caller, `steps` number of frames from the immediate caller.
+  The return value is (file_path, line_number, function_name).
+  steps=0 is useful when this function is called from the module scope.
+  steps=1 is useful when this function is called from a function that wants to know about its own caller.
+  '''
+  f = caller_frame(steps)
+  return f.f_code.co_filename, f.f_lineno, f.f_code.co_name
+
+
 def caller_module_spec(steps:int) -> ModuleSpec:
   '''
   Returns the ModuleSpec of the parent module `steps` number of frames from the immediate caller.
