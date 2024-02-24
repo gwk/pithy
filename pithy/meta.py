@@ -3,6 +3,7 @@
 import inspect
 from importlib.machinery import ModuleSpec
 from inspect import FrameInfo
+from types import FrameType
 from typing import Any, Callable, cast, Iterable, Mapping, TypeVar
 
 
@@ -92,20 +93,30 @@ def rename(obj:_A, name:str|None=None, module:str|None=None) -> _A:
   return obj
 
 
+def caller_frame(steps:int) -> FrameType:
+  '''
+  Returns the call frame `steps` above the immediate caller.
+  steps=0 is useful when calling this function from the module scope.
+  steps=1 is useful when calling this function from a function that wants to know about its own caller.
+  '''
+  f = inspect.currentframe() # This frame.
+  if f is None: raise MetaprogrammingError('no current frame')
+  f = f.f_back # Immediate caller's frame.
+  if f is None: raise MetaprogrammingError('no caller frame')
+  for i in range(steps):
+    p = f
+    f = f.f_back
+    if f is None: raise MetaprogrammingError(f'no caller frame (step {i+1}); previous: {p!r}')
+  return f
+
+
 def caller_module_spec(steps:int) -> ModuleSpec:
   '''
   Returns the ModuleSpec of the parent module `steps` number of frames from the immediate caller.
   steps=0 is useful when this function is called from the module scope.
   steps=1 is useful when this function is called from a function that wants to know about its own caller.
   '''
-  f = inspect.currentframe() # This frame.
-  if f is None: raise MetaprogrammingError('no current frame')
-  f = f.f_back # Immediate caller's frame; caller already knows this.
-  if f is None: raise MetaprogrammingError('no caller frame')
-  for i in range(steps):
-    p = f
-    f = f.f_back
-    if f is None: raise MetaprogrammingError(f'no caller frame (step {i+1}); previous: {p!r}')
+  f = caller_frame(steps)
   spec = f.f_globals['__spec__']
   if spec is None:
     desc = f'{f.f_code.co_filename}:{f.f_lineno}:{f.f_code.co_name}'
@@ -121,13 +132,8 @@ def caller_module_name(steps:int) -> str|None:
   steps=0 is useful when called from the module scope.
   steps=1 is useful when called from a function that wants to know the name of the caller's module.
   '''
-  f = inspect.currentframe() # This frame.
-  if f is None: return None
-  f = f.f_back # Immediate caller's frame.
-  if f is None: return None
-  for i in range(steps):
-    f = f.f_back
-    if f is None: return None
+  try: f = caller_frame(steps)
+  except MetaprogrammingError: return None
   spec = f.f_globals['__spec__']
   if spec: return cast(str, spec.name)
   else: return cast(str, f.f_globals['__name__'])
@@ -139,16 +145,9 @@ def caller_pkg_path(steps:int) -> str:
   steps=0 is useful when called from the module scope.
   steps=1 is useful when called from a function that wants to know the path of the caller's package.
   '''
-  f = inspect.currentframe() # This frame.
-  if f is None: raise MetaprogrammingError('no current frame')
-  f = f.f_back # Immediate caller's frame; caller already knows this.
-  if f is None: raise MetaprogrammingError('no caller frame')
-  for i in range(steps):
-    p = f
-    f = f.f_back
-    if f is None: raise MetaprogrammingError(f'no caller frame (step {i+1}); previous: {p!r}')
+  f = caller_frame(steps)
   spec = f.f_globals['__spec__']
-  if not spec: raise MetaprogrammingError(f'no module spec for caller frame: {f!r}')
+  if spec is None: raise MetaprogrammingError(f'no module spec for caller frame: {f!r}')
   locations = spec.submodule_search_locations
   if locations is None:
     desc = f'{f.f_code.co_filename}:{f.f_lineno}:{f.f_code.co_name}()'
