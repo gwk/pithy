@@ -64,6 +64,10 @@ class DateDelta:
   months:int = 0
 
 
+  def __neg__(self) -> 'DateDelta':
+    return DateDelta(-self.years, -self.months)
+
+
   def __add__(self, other:DateLike) -> DateLike:
     if isinstance(other, DateDelta):
       carry_years, months = divmod(self.months + other.months, 12)
@@ -74,8 +78,8 @@ class DateDelta:
       date_month = other.month
       date_day = other.day
       date_replace = other.replace
-    except AttributeError as e:
-      raise TypeError(f'cannot add DateDelta to {type(other).__name__!r}') from e
+    except AttributeError:
+      return NotImplemented
     carry_years, month0 = divmod(date_month + self.months - 1, 12)
     year = date_year + self.years + carry_years
     month = month0 + 1
@@ -86,15 +90,18 @@ class DateDelta:
       return date_replace(year=year, month=month)
 
 
-  def __neg__(self) -> 'DateDelta':
-    return DateDelta(-self.years, -self.months)
-
-
   def __sub__(self, other:DateLike) -> DateLike:
     if isinstance(other, DateDelta):
       return DateDelta(self.years - other.years, self.months - other.months)
-    raise TypeError(f'cannot subtract {type(other).__name__!r} from DateDelta')
+    return NotImplemented
 
+
+  def __radd__(self, other:DateLike) -> DateLike:
+    return self.__add__(other)
+
+
+  def __rsub__(self, other:DateLike) -> DateLike:
+    return (-self).__add__(other)
 
 
 @dataclass(frozen=True)
@@ -112,7 +119,7 @@ class DateRange(Sequence[Date]):
     d = start
     while d < end:
       self._seq.append(d)
-      d = self.step + d # Add in this order to accommodate DateDelta.
+      d += self.step
 
 
   def __contains__(self, value: object) -> bool:
