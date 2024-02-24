@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
+from sys import stderr
 from typing import Any, Callable, Iterable, Literal, Mapping, Protocol, Self, TypeAlias, TypeVar
 from urllib.parse import quote as url_quote
 
@@ -44,6 +45,7 @@ class Conn(sqlite3.Connection):
 
     self.path = url_path(path) if uri else path
     self.closing = closing
+    self.closed = False
     self.mode = mode
     if mode:
       if uri: raise ValueError('Cannot specify both `uri` and `mode`')
@@ -57,6 +59,14 @@ class Conn(sqlite3.Connection):
       check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit) # type: ignore[call-arg] # autocommit not yet in typeshed.
 
     self.row_factory = Row # Default for convenience.
+
+
+  def __del__(self) -> None:
+    '''
+    On deletion, if `self.closing and not self.closed`, print a warning message.
+    '''
+    if self.closing and not self.closed:
+      print(f'WARNING: Conn.__del__: connection should have been closed already; id={id(self)}.', file=stderr)
 
 
   def __enter__(self) -> Self:
@@ -90,6 +100,14 @@ class Conn(sqlite3.Connection):
     Validate a query string by calling the undocumented sqlite3 API to compile a statement.
     '''
     super().__call__(query)
+
+
+  def close(self) -> None:
+    '''
+    Close the connection. This override sets `self.closed` to True prior to calling `super().close()`.
+    '''
+    self.closed = True
+    super().close()
 
 
   def cursor(self, factory:type[Cursor]|None=None) -> Cursor: # type: ignore[override]
