@@ -3,7 +3,7 @@
 
 name = "tolkien"
 description = "Tolkien provides a simple `Token` type to allow various tokenizers to conform to the same interface."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = []
 
