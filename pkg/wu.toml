@@ -3,7 +3,7 @@
 
 name = "wu"
 description = "Writeup is a document language that transforms to HTML."
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = ["pithy"]
 
