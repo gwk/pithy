@@ -35,6 +35,9 @@ def main() -> None:
 
   merged = merge_toml((), common, project)
 
+  if not is_dir(f'pkg/{name}'):
+    exit(f'Error: package subdirectory not found: pkg/{name}. Please create the subdirectory and symlink the source directory.')
+
   with open(f'pkg/{name}/pyproject.toml', 'wb') as f:
     dump_toml(merged, f)
 
