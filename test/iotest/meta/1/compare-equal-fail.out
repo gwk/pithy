@@ -6,7 +6,7 @@ actual.
 
 git diff --exit-code --no-index --no-prefix --no-renames --histogram --color=auto --ws-error-highlight=old,new _b/test-meta/1/compare-equal-fail/compare-equal-fail.out.expected _b/test-meta/1/compare-equal-fail/compare-equal-fail.out
 diff --git _b/test-meta/1/compare-equal-fail/compare-equal-fail.out.expected _b/test-meta/1/compare-equal-fail/compare-equal-fail.out
-index d2a4c92..9091bb0 100644
+index d2a4c923..9091bb00 100644
 --- _b/test-meta/1/compare-equal-fail/compare-equal-fail.out.expected
 +++ _b/test-meta/1/compare-equal-fail/compare-equal-fail.out
 @@ -1 +1 @@
