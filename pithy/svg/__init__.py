@@ -455,10 +455,39 @@ class Symbol(SvgBranch):
 
 
 # Transforms.
+# Note: SVG syntax allows spaces or commas between numbers in transform strings. We use commas exclusively in our output.
 
-def scale(x:float=1, y:float=1) -> str: return f'scale({x},{y})'
-def rotate(degrees:float, x:float=0, y:float=0) -> str: return f'rotate({prefer_int(degrees)},{prefer_int(x)},{prefer_int(y)})'
-def translate(x:float=0, y:float=0) -> str: return f'translate({prefer_int(x)},{prefer_int(y)})'
+def scale(x:float, y:float|None=None) -> str:
+  if y is None:
+    return f'scale({x})'
+  return f'scale({x},{y})'
+
+
+def rotate(degrees:float, x:float=0, y:float=0) -> str:
+  if x == 0 and y == 0:
+    return f'rotate({prefer_int(degrees)})'
+  return f'rotate({prefer_int(degrees)},{prefer_int(x)},{prefer_int(y)})'
+
+
+def translate(x:float=0, y:float=0) -> str:
+  return f'translate({prefer_int(x)},{prefer_int(y)})'
+
+
+def matrix(a:float, b:float, c:float, d:float, e:float, f:float) -> str:
+  return f'matrix({a},{b},{c},{d},{e},{f})'
+
+
+def apply_transforms(svg:SvgNode, transforms:Iterable[str]) -> SvgNode:
+  '''
+  Apply transforms to an SVG node.
+  This function modifies the "transform" attribute of the node, applying the given transforms ahead of any existing transforms.
+  '''
+  transforms = [transforms] if isinstance(transforms, str) else list(transforms)
+  if transforms:
+    if existing := svg.attrs.get('transform'):
+      transforms += existing
+  svg.attrs['transform'] = ' '.join(transforms)
+  return svg
 
 
 # Miscellaneous.
