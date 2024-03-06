@@ -4,6 +4,11 @@
 Various exception classes.
 '''
 
+from contextlib import AbstractContextManager, ContextDecorator
+from traceback import print_exception
+
+from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+
 
 class ConflictingValues(ValueError):
   '''
@@ -27,3 +32,35 @@ class MultipleMatchesError(KeyError):
 
 class NoMatchError(KeyError):
   'Raised when a query matches no children.'
+
+
+
+class print_traceback_and_suppress(AbstractContextManager, ContextDecorator):
+  '''
+  Context manager to suppress specified exceptions, printing a traceback to stderr if an exception is suppressed.
+
+  After the exception is suppressed, execution proceeds with the next statement following the with statement.
+
+  This context manager can also be used as a decorator.
+
+  This implementation is derived from the `suppress` context manager in the Python standard library.
+  '''
+
+  def __init__(self, *exceptions:type[BaseException]) -> None:
+    self._exceptions = exceptions
+
+  def __enter__(self):
+    pass
+
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> bool:
+    if exc_type is None: return False
+    if issubclass(exc_type, self._exceptions):
+      print_exception(exc_type, exc_value, traceback)
+      return True
+    if isinstance(exc_value, BaseExceptionGroup):
+      match, rest = exc_value.split(self._exceptions)
+      if rest is not None:
+        raise rest
+      print_exception(match)
+      return True
+    return False
