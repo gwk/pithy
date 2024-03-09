@@ -70,6 +70,22 @@ def utest_repr(exp_repr:str, fn:Callable, *args:Any, _exit=False, _utest_depth=0
       _utest_failure(_utest_depth, exp_label='repr', exp=exp_repr, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
+def utest_type(exp_type:type, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+  '''
+  Invoke `fn` with `args` and `kwargs`.
+  Log a test failure if an exception is raised or the returned value is not an instance of `exp_type`.
+  '''
+  global _utest_test_count
+  _utest_test_count += 1
+  try: ret = fn(*args, **kwargs)
+  except BaseException as exc:
+    _utest_failure(_utest_depth, exp_label='type', exp=exp_type, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    if _exit: raise
+  else:
+    if not isinstance(ret, exp_type):
+      _utest_failure(_utest_depth, exp_label='instance of type', exp=exp_type, ret_label='value', ret=ret, subj=fn, args=args,
+        kwargs=kwargs)
+
 
 def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
   '''
@@ -196,23 +212,6 @@ def utest_val_ne(exp_val:Any, act_val:Any, desc='<value>') -> None:
   _utest_test_count += 1
   if exp_val == act_val:
     _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
-
-
-def utest_type(exp_type:type, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
-  '''
-  Invoke `fn` with `args` and `kwargs`.
-  Log a test failure if an exception is raised or the returned value is not an instance of `exp_type`.
-  '''
-  global _utest_test_count
-  _utest_test_count += 1
-  try: ret = fn(*args, **kwargs)
-  except BaseException as exc:
-    _utest_failure(_utest_depth, exp_label='type', exp=exp_type, exc=exc, subj=fn, args=args, kwargs=kwargs)
-    if _exit: raise
-  else:
-    if not isinstance(ret, exp_type):
-      _utest_failure(_utest_depth, exp_label='instance of type', exp=exp_type, ret_label='value', ret=ret, subj=fn, args=args,
-        kwargs=kwargs)
 
 
 def utest_val_type(exp_val_type:Any, act_val:Any, desc='<value>') -> None:
