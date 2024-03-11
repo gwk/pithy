@@ -18,7 +18,7 @@ VecOrNum = Vec|float
 F2 = tuple[float,float]
 F2OrF = F2|float
 BoundsF2 = tuple[F2,F2]
-PathCommand = tuple
+PathCommand = tuple|str
 
 
 class SvgNode(Mu):
@@ -146,15 +146,21 @@ class Path(SvgNode):
   def __init__(self, d:Iterable[PathCommand],
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
     assert (attrs is None or 'd' not in attrs)
-    cmd_strs:list[str] = []
-    for c in d:
-      try: code = c[0]
-      except IndexError: continue
-      try: exp_len = _path_command_lens[code]
-      except KeyError as e: raise Exception(f'bad path command code: {c!r}') from e
-      if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
-      cmd_strs.append(code + ','.join(str(prefer_int(n)) for n in c[1:]))
-    kwargs['d'] = ' '.join(cmd_strs)
+    if isinstance(d, str):
+      kwargs['d'] = d
+    else:
+      cmd_strs:list[str] = []
+      for c in d:
+        if isinstance(c, str):
+          cmd_strs.append(c)
+          continue
+        try: code = c[0]
+        except IndexError: continue
+        try: exp_len = _path_command_lens[code]
+        except KeyError as e: raise Exception(f'bad path command code: {c!r}') from e
+        if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
+        cmd_strs.append(code + ','.join(str(prefer_int(n)) for n in c[1:]))
+      kwargs['d'] = ' '.join(cmd_strs)
     super().__init__(attrs=attrs, **kwargs)
 
 
