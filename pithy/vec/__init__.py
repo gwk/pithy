@@ -8,6 +8,11 @@ from typing import Union
 h_pi = pi * 0.5
 
 
+def _fmt_float(f:float) -> str:
+  i = int(f)
+  return str(i) if f == i else str(f)
+
+
 @dataclass(frozen=True, slots=True)
 class V:
   '''
@@ -23,8 +28,8 @@ class V:
 
   def __str__(self) -> str:
     if self.z == 0:
-      return f'({self.x},{self.y})'
-    return f'({self.x},{self.y},{self.z})'
+      return f'({_fmt_float(self.x)},{_fmt_float(self.y)})'
+    return f'({_fmt_float(self.x)},{_fmt_float(self.y)},{_fmt_float(self.z)})'
 
 
   def __repr__(self) -> str: return f'V{self}'
