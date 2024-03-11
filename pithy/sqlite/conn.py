@@ -2,7 +2,7 @@
 
 import sqlite3
 from sys import stderr
-from typing import Any, Callable, Iterable, Literal, Mapping, Protocol, Self, TypeAlias, TypeVar
+from typing import Any, Callable, Iterable, Literal, Self
 from urllib.parse import quote as url_quote
 
 from pithy.url import url_path

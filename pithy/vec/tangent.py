@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from math import asin, pi
+from math import asin
 
 from . import h_pi, V
 
