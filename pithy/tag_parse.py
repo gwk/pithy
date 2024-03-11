@@ -102,7 +102,7 @@ class TagTree(tuple):
   def __new__(cls, *args: Node) -> 'TagTree':
     for el in args:
       if not isinstance(el, (str, TagTree)): raise ValueError(el)
-    return super().__new__(cls, args) # type: ignore[arg-type]
+    return super().__new__(cls, args)
 
   def __repr__(self) -> str:
     return '{}({})'.format(type(self).__name__, ', '.join(repr(el) for el in self))
