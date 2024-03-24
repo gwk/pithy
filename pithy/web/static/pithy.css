@@ -492,6 +492,10 @@ a.icon:visited {
   overflow: clip;
 }
 
+#squelch_app #results > table td {
+  max-width: 95vw;
+}
+
 #squelch_app .error {
   color: #800;
 }
