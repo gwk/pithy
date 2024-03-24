@@ -127,6 +127,7 @@ class SquelchApp:
       table_vis = self.vis[schema.name][table.name]
       abbrs = TableAbbrs(schema=schema.name, all_vis=table_vis.values())
 
+      # Enabled columns.
       en_col_names = set(
         [k[2:] for k in params if k.startswith('c-')]
         or [c.name for c in table.columns if table_vis[c.name].show]
@@ -244,7 +245,7 @@ class SquelchApp:
 
     table_vis = self.vis[schema.name][table.name]
 
-    columns_part, from_clause, header_names, render_cell_fns = fmt_select_cols(
+    columns_part, from_clause, col_headers, render_cell_fns = fmt_select_cols(
       schema=schema.name, table=table.name, abbrs=abbrs, path=path, cols=en_cols, table_vis=table_vis)
 
     distinct_clause = (' DISTINCT' if distinct else '')
@@ -299,7 +300,7 @@ class SquelchApp:
       parts.extend([
         pagination,
         Div(id='results', _=HtmlTable(cl='dense', _=[
-          Thead(Tr(_=[Th(Div(name)) for name in header_names])),
+          Thead(Tr(_=col_headers)),
           Tbody(_=rows)])),
         pagination,
       ])
@@ -309,7 +310,7 @@ class SquelchApp:
 
 
 def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list[Column], table_vis:dict[str,Vis]
- ) -> tuple[str,str,list[str],list[CellRenderFn]]:
+ ) -> tuple[str,str,list[Th],list[CellRenderFn]]:
   '''
   Return "[cols...]", "FROM/JOIN ...", the rendered table header names, and a list of render functions for each column.
   The columns string has a leading space.
@@ -336,7 +337,7 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
 
   from_parts:list[str] = [f'\nFROM {qe(schema)}.{qe(table)} AS {t_abbr}']
 
-  header_names = []
+  col_headers = []
   render_cell_fns:list[CellRenderFn] = []
 
   for col in cols:
@@ -348,7 +349,7 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
       # We need to select two columns: the actual column value (for the tooltip and link), and the joined value for the visible text.
       join_table = abbrs.unique_abbr(vis.schema, vis.table)
       join_key = f'{join_table}.{qe(vis.join_col)}' # The joined table key.
-      head_name = f'{col.name}: {vis.table}.{vis.col}' # The column header name.
+      th = Th(Details(Summary(cl='disclosure-flush', _=qcol), f'{qe(vis.table)}.{qe(vis.col)}')) # The column header.
       join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
       join_table_primary_abbr = abbrs.simple_abbr(vis.schema, vis.table)
       #^ The join table abbreviation when it is the primary table, for the WHERE clause in the link.
@@ -359,16 +360,16 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
       cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, app_path=path, render_fn=vis.render,
         renders_row=vis.renders_row)
     else:
-      head_name = qe(col.name)
+      th = Th(col.name)
       append_select_part(qual_col)
       if vis.render:
         cell_fn = mk_cell_rendered(col, render_fn=vis.render, renders_row=vis.renders_row)
       else:
         cell_fn = mk_cell_plain(col)
-    header_names.append(head_name)
+    col_headers.append(th)
     render_cell_fns.append(cell_fn)
 
-  return ''.join(column_parts), ''.join(from_parts), header_names, render_cell_fns
+  return ''.join(column_parts), ''.join(from_parts), col_headers, render_cell_fns
 
 
 def mk_cell_plain(col:Column) -> CellRenderFn:
