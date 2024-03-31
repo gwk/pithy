@@ -4,6 +4,7 @@ from dataclasses import asdict, is_dataclass
 from functools import singledispatch
 from typing import Any, Callable
 
+from .date import Date, DateTime, Time
 from .util import memoize
 
 
@@ -55,6 +56,16 @@ def _(obj:str) -> Any: return obj
 
 @encode_obj.register
 def _(obj:type) -> Any: return obj.__name__
+
+
+@encode_obj.register
+def _(obj:Date) -> Any: return obj.isoformat()
+
+@encode_obj.register
+def _(obj:DateTime) -> Any: return obj.isoformat()
+
+@encode_obj.register
+def _(obj:Time) -> Any: return obj.isoformat()
 
 
 @memoize()
