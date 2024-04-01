@@ -110,11 +110,6 @@ class SquelchApp:
     await response(scope, receive, send)
 
 
-  def should_show(self, schema:str, table:str, col:str) -> bool:
-    try: return self.vis[schema][table][col].show
-    except KeyError: return True
-
-
   def render_page(self, request:Request) -> HTMLResponse:
     '''
     The main page for the SELECT app.
