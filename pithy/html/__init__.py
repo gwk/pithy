@@ -1489,7 +1489,6 @@ class Table(HtmlFlow, HtmlPalpable):
     If `head` is provided, it can either be a fully formed `Thead` or else an iterable of `Th` or content with which `Th` are constructed.
     '''
 
-
     table = cls(**kwargs)
     if caption:
       table.append(Caption(caption))
