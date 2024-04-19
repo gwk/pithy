@@ -126,9 +126,9 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, inl_comma:str, 
     if not obj: return opener + closer
 
     # If the container is unordered, sort it.
-    els = sorted(obj, key=lambda el: (type(el).__name__, el)) if isinstance(obj, (frozenset, set)) else obj
+    els = sorted(obj, key=lambda el: (type(el).__name__, str(el))) if isinstance(obj, (frozenset, set)) else obj
 
-    reprs = [_repr_ml(el, True, child_indent, width-2, inl_comma, colors) for el in obj]
+    reprs = [_repr_ml(el, True, child_indent, width-2, inl_comma, colors) for el in els]
 
     if all(isinstance(el, str) for el in reprs): # All inline.
       str_reprs = cast(list[str], reprs)
