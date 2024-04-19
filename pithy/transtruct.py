@@ -440,6 +440,7 @@ def opt_int(val:Any) -> int|None:
 NoneType = type(None)
 
 primitive_transtructors = {
+  Any: transtruct_object,
   bool: transtruct_bool,
   bytes: transtruct_bytes,
   float: transtruct_float,
