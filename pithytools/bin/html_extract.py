@@ -14,14 +14,14 @@ def main() -> None:
 
   try: file = open(path) if path is not None else stdin
   except FileNotFoundError as e: exit(f'file not found: {e.filename}')
-  parser = Parser(path=file.name, id=args.id, lines=list(file))
+  parser = HtmlExtractParser(path=file.name, id=args.id, lines=list(file))
   parser.extract()
 
 
 Pos = tuple[int, int]
 
 
-class Parser(HTMLParser):
+class HtmlExtractParser(HTMLParser):
 
   def __init__(self, path: str, id=str, lines=list[str]):
     super().__init__(convert_charrefs=True)
