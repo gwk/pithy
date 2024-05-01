@@ -16,7 +16,7 @@ def main() -> None:
   if not files: files = [stdin]
 
   for file in files:
-    parser = Parser(path=file.name)
+    parser = HtmlCheckParser(path=file.name)
     parser.feed(file.read())
     parser.close()
     parser.check_completeness()
@@ -25,7 +25,7 @@ def main() -> None:
 Pos = tuple[int, int]
 
 
-class Parser(HTMLParser):
+class HtmlCheckParser(HTMLParser):
 
   def __init__(self, path: str):
     super().__init__(convert_charrefs=True)
