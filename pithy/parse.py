@@ -5,9 +5,9 @@ A simple parser library based on recursive descent and operator precedence parsi
 Recursive decent is performed by looking at the next token,
 and then dispatching through a table of token kinds to select the appropriate Rule.
 
-Upon parsing, each type of rule produces a generic result, which is then passed to a user-provided transformer function.
-Different rule types have different result and transformer function types to match the shape of the parsed structure.
-Transformers can return results of any type.
+Upon parsing, each type of rule produces a generic result object, the type of which is dependent on the rule type.
+The result is then passed to a user-provided transformer function, whose signature also depends on the rule type.
+Transformer functions can return results of any type.
 
 Several types of rules are available:
 * Atom: a single token kind.
@@ -17,7 +17,7 @@ Several types of rules are available:
 * Precedence: a family of binary precedence operators.
 
 The main design feature of Parser is that operators are not first-class rules:
-they are parsed within the context of a Precedence rule.
+instead they are parsed within the context of a Precedence rule.
 This allows us to use the operator-precedence parsing algorithm,
 while expressing other aspects of a grammar using straightforward recursive descent.
 '''
@@ -81,7 +81,10 @@ def append(list_:list[_T], el:_T) -> list[_T]:
 
 
 def append_or_list(list_or_el:_T|list[_T], el:_T) -> list[_T]:
-  'Create a list from two elements, or if the left element is already a list, append the right element to it and return it.'
+  '''
+  Create a list from two elements, or if the left element is already a list, append the right element to it and return it.
+  This is useful for converting a chain of nested right-associative syntactic elements (traditional linked list) into a python list.
+  '''
   if isinstance(list_or_el, list):
     list_or_el.append(el)
     return list_or_el
@@ -351,7 +354,7 @@ class Opt(_QuantityRule):
 
   @property
   def field_name(self) -> str:
-    'Override to default to passing through the subrule field name.'
+    'Override to pass through the subrule field name.'
     return super().field_name or self.body.field_name
 
 
