@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
 from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, TypeVar, Union
 
-from tolkien import Source, Syntax, SyntaxMsg, Token
+from tolkien import HasSlc, Source, Syntax, SyntaxMsg, Token
 
 from .buffer import Buffer
 from .graph import visit_nodes
@@ -93,9 +93,14 @@ def append_or_list(list_or_el:_T|list[_T], el:_T) -> list[_T]:
 
 
 @dataclass(frozen=True)
-class Syn:
+class Syn(HasSlc):
+  '''
+  A Syn instance is a node in a syntax tree.
+  It contains a slice `slc` representing the position in the source, a label string `lbl`, and a value `val`.
+  '''
   slc:slice
-  val:Any
+  lbl:str = ''
+  val:Any = None
 
 
 AtomTransform = Callable[[Source,Token],Any]
@@ -109,7 +114,7 @@ def _atom_transform_placeholder(source, token:Token):
 
 UniTransform = Callable[[Source,slice,Any],Any]
 def uni_val(source:Source, slc:slice, val:Any) -> Any: return val
-def uni_syn(source:Source, slc:slice, val:Any) -> Syn: return Syn(slc, val)
+def uni_syn(source:Source, slc:slice, val:Any) -> Syn: return Syn(slc, '', val)
 def uni_text(source:Source, slc:slice, val:Any) -> str: return source[slc]
 
 SuffixTransform = Callable[[Source,Token,Any],Any]
@@ -127,12 +132,12 @@ def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list[Any]
 
 QuantityTransform = Callable[[Source,slice,list[Any]],Any]
 def quantity_els(source:Source, slc:slice, elements:list[Any]) -> list[Any]: return elements
-def quantity_syn(source:Source, slc:slice, elements:list[Any]) -> Syn: return Syn(slc, elements)
+def quantity_syn(source:Source, slc:slice, elements:list[Any]) -> Syn: return Syn(slc, '', elements)
 def quantity_text(source:Source, slc:slice, elements:list[Any]) -> str: return source[slc]
 
 StructTransform = Callable[[Source,slice,list[Any]],Any]
 def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> tuple[Any,...]: return tuple(fields)
-def struct_syn(source:Source, slc:slice, fields:list[Any]): return Syn(slc, fields)
+def struct_syn(source:Source, slc:slice, fields:list[Any]): return Syn(slc, '', fields)
 def struct_text(source:Source, slc:slice, fields:list[Any]) -> str: return source[slc]
 
 
@@ -143,7 +148,7 @@ ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
 def choice_val(source:Source, slc:slice, label:RuleName, val:Any) -> Any: return val
 def choice_label(source:Source, slc:slice, label:RuleName, val:Any) -> str: return label
 def choice_labeled(source:Source, slc:slice, label:RuleName, val:Any) -> tuple[str,Any]: return (label, val)
-def choice_syn(source:Source, slc:slice, label:RuleName, val:Any) -> Syn: return Syn(slc, val)
+def choice_syn(source:Source, slc:slice, label:RuleName, val:Any) -> Syn: return Syn(slc, label, val)
 def choice_text(source:Source, slc:slice, label:RuleName, val:Any) -> str: return source[slc]
 
 _sentinel_kind = '!SENTINEL'
