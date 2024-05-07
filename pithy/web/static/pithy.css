@@ -209,23 +209,28 @@ form.inline {
   gap: 1ch;
 }
 
+.input-labels { /* A div containing input/label pairs. The labels contain the inputs, followed by label text. */
+  display: flex;
+  flex-direction: column;
+}
+
 .input-labels-inline { /* An inline span containing input/label pairs. The labels contain the inputs, followed by label text. */
   display: flex;
   flex-direction: row;
   gap: 1.5ch;
 }
 
-label.input-label, .input-labels-inline > label { /* A label that wraps an input (e.g. radio or checkbox) followed by the label text. */
+label.input-label, .input-labels label, .input-labels-inline label { /* A label that wraps an input (e.g. radio or checkbox) followed by the label text. */
   display: flex;
   flex-direction: row;
   white-space: nowrap;
 }
 
-:is(label.input-label, .input-labels-inline > label) > input:first-child {
+:is(label.input-label, .input-labels label, .input-labels-inline label) > input:first-child {
   margin-right: 0.5ch; /* Add space between the input and its label text. */
 }
 
-:is(label.input-label, .input-labels-inline > label) > input:first-child:where([type='checkbox'], [type='radio']) {
+:is(label.input-label, .input-labels label, .input-labels-inline label) > input:first-child:where([type='checkbox'], [type='radio']) {
   align-self: center;
 }
 
