@@ -224,14 +224,11 @@ label.input-label, .input-labels label, .input-labels-inline label { /* A label 
   display: flex;
   flex-direction: row;
   white-space: nowrap;
+  align-items: center;
 }
 
 :is(label.input-label, .input-labels label, .input-labels-inline label) > input:first-child {
   margin-right: 0.5ch; /* Add space between the input and its label text. */
-}
-
-:is(label.input-label, .input-labels label, .input-labels-inline label) > input:first-child:where([type='checkbox'], [type='radio']) {
-  align-self: center;
 }
 
 input[type='date'] {
