@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from keyword import iskeyword, issoftkeyword
 from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, TypeVar, Union
 
-from tolkien import HasSlc, Source, Syntax, SyntaxMsg, Token
+from tolkien import Source, Syntax, SyntaxMsg, Token
 
 from .buffer import Buffer
 from .graph import visit_nodes
@@ -93,10 +93,11 @@ def append_or_list(list_or_el:_T|list[_T], el:_T) -> list[_T]:
 
 
 @dataclass(frozen=True)
-class Syn(HasSlc):
+class Syn:
   '''
   A Syn instance is a node in a syntax tree.
   It contains a slice `slc` representing the position in the source, a label string `lbl`, and a value `val`.
+  This class implements the runtime protocol tolkien.HasSlc.
   '''
   slc:slice
   lbl:str = ''
