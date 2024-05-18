@@ -181,6 +181,8 @@ class Mu:
     return self.render_str().encode('utf-8')
 
 
+  def __contains__(self, key:str) -> bool: return key in self.attrs
+
   def __delitem__(self, key:str) -> Any: del self.attrs[key]
 
   def __getitem__(self, key:str) -> Any: return self.attrs[key]
