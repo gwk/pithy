@@ -1,11 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.lex import Lexer
-from tolkien import Source, Token
+from tolkien import Source
 from utest import utest
 
-
-# Token.diagnostic.
 
 word_lexer = Lexer(patterns=dict(
   word = r'\w+',
