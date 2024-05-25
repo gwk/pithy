@@ -30,6 +30,11 @@ _setattr = object.__setattr__
 
 @dataclass(frozen=True)
 class Token:
+  '''
+  The `Token` class references a slice of a source text, labeling it with `mode` and `kind` strings.
+  Therefore to retreive the text content of a token, one must also have a reference to the source text.
+  '''
+
   slc:slice
   mode:str
   kind:str
@@ -89,8 +94,8 @@ class Source(Generic[_Text]):
     self.newline_positions:list[int] = []
 
 
-  def update_line_positions(self, pos:int) -> None:
-    'Lazily update newline positions array up to `pos`. `pos` must be less than or equal to the text length.'
+  def update_newline_positions(self, pos:int) -> None:
+    'Lazily update the newline positions array up to `pos`. `pos` must be less than or equal to the text length.'
     start = self.newline_positions[-1] + 1 if self.newline_positions else 0
     newline_char = '\n' if isinstance(self.text, str) else b'\n'
     for i in range(start, pos):
@@ -105,7 +110,7 @@ class Source(Generic[_Text]):
     text = self.text
     length = len(text)
     if not (0 <= pos <= length): raise IndexError(pos)
-    self.update_line_positions(pos)
+    self.update_newline_positions(pos)
     if pos == length:
       newline_count = self.line_idx_start + len(self.newline_positions)
       newline_char = '\n' if isinstance(text, str) else b'\n'
@@ -146,6 +151,7 @@ class Source(Generic[_Text]):
     if isinstance(line, str): return line
     assert isinstance(line, (bytes, bytearray))
     return line.decode(errors='replace')
+
 
   def eot_token(self) -> Token:
     end = len(self.text)
