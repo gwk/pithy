@@ -4,6 +4,7 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
+from bisect import bisect_right
 from dataclasses import dataclass
 from typing import Generic, NoReturn, Protocol, runtime_checkable, TypeVar
 
@@ -88,12 +89,12 @@ class Source(Generic[_Text]):
     self.newline_positions:list[int] = []
 
 
-  def update_line_positions(self) -> None:
-    'Lazily update newline positions array. This is not quite optimal and should be optimized eventually.'
+  def update_line_positions(self, pos:int) -> None:
+    'Lazily update newline positions array up to `pos`. `pos` must be less than or equal to the text length.'
     start = self.newline_positions[-1] + 1 if self.newline_positions else 0
-    n = '\n' if isinstance(self.text, str) else b'\n'
-    for i in range(start, len(self.text)):
-      if self.text[i] == n: self.newline_positions.append(i)
+    newline_char = '\n' if isinstance(self.text, str) else b'\n'
+    for i in range(start, pos):
+      if self.text[i] == newline_char: self.newline_positions.append(i)
 
 
   def __repr__(self):
@@ -101,19 +102,16 @@ class Source(Generic[_Text]):
 
 
   def get_line_index(self, pos:int) -> int:
-    self.update_line_positions()
-    for (index, newline_pos) in enumerate(self.newline_positions, start=self.line_idx_start):
-      if pos <= newline_pos:
-        return index
-
-    newline_count = self.line_idx_start + len(self.newline_positions)
     text = self.text
-    if isinstance(text, str):
-      if pos == len(text) and text.endswith('\n'): return newline_count - 1
-    else:
-      assert isinstance(text, (bytes, bytearray))
-      if pos == len(text) and text.endswith(b'\n'): return newline_count -1
-    return newline_count
+    length = len(text)
+    if not (0 <= pos <= length): raise IndexError(pos)
+    self.update_line_positions(pos)
+    if pos == length:
+      newline_count = self.line_idx_start + len(self.newline_positions)
+      newline_char = '\n' if isinstance(text, str) else b'\n'
+      return (newline_count - 1) if (text and text[-1] == newline_char) else newline_count
+      #^ Special case so that the EOF position does not get a line index beyond the last line.
+    return self.line_idx_start + bisect_right(self.newline_positions, pos)
 
 
   def get_line_start(self, pos:int) -> int:
