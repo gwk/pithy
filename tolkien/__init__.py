@@ -79,8 +79,7 @@ class Token:
 
 SyntaxMsg = tuple[Syntax,str]
 
-SourceText = str|bytes|bytearray
-_Text = TypeVar('_Text', bound=SourceText)
+_Text = TypeVar('_Text', str, bytes, bytearray)
 
 
 class Source(Generic[_Text]):
