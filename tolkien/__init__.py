@@ -6,7 +6,7 @@ Token and Source classes for implementing lexers and parsers.
 
 from bisect import bisect_right
 from dataclasses import dataclass
-from typing import Generic, NoReturn, Protocol, runtime_checkable, TypeVar
+from typing import Generic, Iterator, NoReturn, Protocol, runtime_checkable, TypeVar
 
 
 @runtime_checkable
@@ -23,6 +23,17 @@ def get_syntax_slc(syntax:Syntax) -> slice:
 
 
 def slc_str(slc:slice) -> str: return f'{slc.start}-{slc.stop}'
+
+
+class SyntaxError(Exception):
+
+  syntax:Syntax
+  msg:str
+
+  def __init__(self, syntax:Syntax, msg:str):
+    self.syntax = syntax
+    self.msg = msg
+    super().__init__(msg)
 
 
 _setattr = object.__setattr__
@@ -83,6 +94,12 @@ _Text = TypeVar('_Text', str, bytes, bytearray)
 
 
 class Source(Generic[_Text]):
+
+  name:str
+  text:_Text
+  line_idx_start:int
+  show_missing_newline:bool
+  newline_positions:list[int]
 
   def __init__(self, name:str, text:_Text, *, line_idx_start:int=0, show_missing_newline:bool=True):
     assert isinstance(text, (str,bytes,bytearray))
@@ -150,6 +167,22 @@ class Source(Generic[_Text]):
     if isinstance(line, str): return line
     assert isinstance(line, (bytes, bytearray))
     return line.decode(errors='replace')
+
+
+  def line_slices(self) -> Iterator[slice]:
+    self.update_newline_positions(len(self.text))
+    prev_newline_pos = -1
+    for newline_pos in self.newline_positions:
+      yield slice(prev_newline_pos+1, newline_pos+1)
+      prev_newline_pos = newline_pos
+    if prev_newline_pos < len(self.text) - 1:
+      yield slice(prev_newline_pos+1, len(self.text))
+
+
+  def line_texts(self) -> Iterator[_Text]:
+    text:_Text = self.text
+    for slc in self.line_slices():
+      yield text[slc]
 
 
   def eot_token(self) -> Token:
