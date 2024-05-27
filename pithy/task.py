@@ -8,7 +8,7 @@ from shlex import quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen
 from sys import stderr, stdout
 from time import time as _now
-from typing import AnyStr, BinaryIO, cast, IO, Iterator, NoReturn, Sequence
+from typing import AnyStr, BinaryIO, cast, Generator, IO, NoReturn, Sequence
 
 from .alarm import Alarm, Timeout
 
@@ -158,7 +158,7 @@ def communicate(proc: _Popen, input_bytes: bytes|None=None, timeout: int=0) -> t
 
 
 def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:int=0, exp:TaskCodeExpectation=0,
- as_lines=True, as_text=True, merge_err=False, exits:ExitOpt=False) -> Iterator[AnyStr]:
+ as_lines=True, as_text=True, merge_err=False, exits:ExitOpt=False) -> Generator[AnyStr,None,int]:
   send: int|None = None
   recv: int|None = None
   if stdin == PIPE:
