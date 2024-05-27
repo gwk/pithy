@@ -16,7 +16,7 @@ The project is hosted at 'https://github.com/gwk/pithy'.
 * <https://github.com/gwk/pithy/blob/master/pithy/format.py format> Python format string parsing utilities.
 * <https://github.com/gwk/pithy/blob/master/pithy/fs.py fs> File system utilities.
 * <https://github.com/gwk/pithy/blob/master/pithy/graph_utils.py graph_utils> Graph (as in network, not chart) utilities.
-* <https://github.com/gwk/pithy/blob/master/pithy/immutable.py immutable> Immutable object utilitise.
+* <https://github.com/gwk/pithy/blob/master/pithy/immutable.py immutable> Immutable object utilities.
 * <https://github.com/gwk/pithy/blob/master/pithy/io.py io> IO utilites, including shorthand functions for printing to stdout and stderr.
 * <https://github.com/gwk/pithy/blob/master/pithy/iterable.py iterable> Iterable utilities.
 * <https://github.com/gwk/pithy/blob/master/pithy/json_utils.py json_utils> JSON, JSONL (per-line JSON), and JSONS (concatenated/streamable JSON) utilities.
