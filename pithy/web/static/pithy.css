@@ -130,6 +130,13 @@ body {
 .text-start { text-align: start; }
 .text-end { text-align: end; }
 
+.vertical-baseline { vertical-align: baseline; }
+.vertical-top { vertical-align: top; }
+.vertical-middle { vertical-align: middle; }
+.vertical-bottom { vertical-align: bottom; }
+.vertical-sub { vertical-align: sub; }
+.vertical-text-top { vertical-align: text-top; }
+
 .align-items-center { align-items: center; }
 .align-items-baseline { align-items: baseline; }
 
