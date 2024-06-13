@@ -57,7 +57,7 @@ class Conn(sqlite3.Connection):
     if isolation_level not in (None, 'DEFERRED', 'IMMEDIATE', 'EXCLUSIVE'): raise ValueError(isolation_level)
 
     super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
-      check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit) # type: ignore[call-arg] # autocommit not yet in typeshed.
+      check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit)
 
     self.row_factory = Row # Default for convenience.
 
