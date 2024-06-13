@@ -195,7 +195,7 @@ class Mu:
 
 
   @classmethod
-  def from_raw(cls:type[_Mu], raw:dict) -> _Mu:
+  def from_raw(cls:type['Mu'], raw:dict) -> 'Mu':
     'Create a Mu object (or possibly a subclass instance chosen by tag) from a raw data dictionary.'
     tag = raw['tag']
     attrs = raw['attrs']
@@ -213,11 +213,11 @@ class Mu:
       #^ Note: we use the dynamically chosen TagClass when recursing,
       # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       else: raise ValueError(f'Mu child must be `str`, `EscapedStr`, `Mu`, or `dict`; received: {c!r}')
-    return cast(_Mu, TagClass(tag=tag, attrs=attrs, _=children))
+    return TagClass(tag=tag, attrs=attrs, _=children)
 
 
   @classmethod
-  def from_etree(cls:type[_Mu], el:Element) -> _Mu:
+  def from_etree(cls:type['Mu'], el:Element) -> 'Mu':
     '''
     Create a Mu object (possibly subclass by tag) from a standard library element tree.
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
@@ -236,7 +236,7 @@ class Mu:
       # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       text = child.tail
       if text: children.append(text)
-    return cast(_Mu, TagClass(tag=tag, attrs=attrs, _=children))
+    return TagClass(tag=tag, attrs=attrs, _=children)
 
 
   @property
