@@ -34,7 +34,7 @@ class Conn(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None='DEFERRED',
    check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, autocommit:bool=True, closing:bool=True,
-   mode='', trace_caller:int=0) -> None:
+   mode='', trace_caller_level:int=0) -> None:
     '''
     Note: as of Python 3.12, the `autocommit` parameter is preferred over the `isolation_level` parameter.
     sqlite3.Connection `autocommit` defaults to LEGACY_TRANSACTION_CONTROL, in which case `isolation_level` takes effect.
@@ -61,10 +61,8 @@ class Conn(sqlite3.Connection):
 
     self.row_factory = Row # Default for convenience.
 
-    if trace_caller:
-      self.caller_trace_loc:tuple[str,int,str]|None = caller_src_loc(trace_caller)
-      #file_path, line_number, fn_name = self.caller_trace_loc
-      #print(f'Conn: trace_caller: {file_path}:{line_number}:{fn_name}')
+    if trace_caller_level:
+      self.caller_trace_loc:tuple[str,int,str]|None = caller_src_loc(trace_caller_level)
     else:
       self.caller_trace_loc = None
 
