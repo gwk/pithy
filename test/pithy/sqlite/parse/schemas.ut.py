@@ -10,7 +10,7 @@ from utest import utest
 
 s1 = Schema('s1',
   desc='s1 test schema.',
-  tables=[
+  structures=[
 
     Table('Meta',
       is_strict=True,
@@ -39,6 +39,8 @@ s1 = Schema('s1',
       Column(name='role', datatype=str),
   )),
 
+  Index('User_email', table='User', columns=('email',)),
+
   Table('UserPrivilege',
     is_strict=True,
     without_rowid=True,
@@ -47,10 +49,6 @@ s1 = Schema('s1',
       Column(name='user_id', datatype=int),
       Column(name='privilege_id', datatype=int),
   )),
-  ],
-
-  indexes=[
-    Index('User_email', table='User', columns=('email',)),
   ]
 )
 

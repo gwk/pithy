@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, Container, Iterable, Self
 
@@ -120,7 +120,7 @@ class Column:
 
 class Structure:
   '''
-  Top-level SQL objects, i.e. Index, Table, Trigger, View.
+  Top-level SQL "database objects", i.e. Index, Table, Trigger, View.
 
   We use `sql_quote_entity_always` to quote all structure names because SQLite 3.40 always quotes renamed tables.
   By quoting names in the generated statements, we reduce syntactic discrepancies caused by rename operations.
@@ -304,21 +304,28 @@ class Index(TableDepStructure):
     return hints
 
 
-@dataclass
 class Schema:
-  name:str = ''
-  desc:str = ''
-  tables:list[Table] = field(default_factory=list)
-  indexes:list[Index] = field(default_factory=list)
+  name:str
+  desc:str
+  tables:list[Table]
+  indexes:list[Index]
 
 
-  def __post_init__(self) -> None:
-    if self.name and not self.name.isidentifier(): raise ValueError(f'Invalid schema name: {self.name!r}')
+  def __init__(self, name:str='', desc:str='', structures:Iterable[Structure]=()) -> None:
+    if name and not name.isidentifier(): raise ValueError(f'Invalid schema name: {self.name!r}')
+
+    self.name = name
+    self.desc = desc
+    self.tables = []
+    self.indexes = []
 
     names = set()
-    for s in self.structures:
+    for s in structures:
       if s.name in names: raise ValueError(f'Structure {s} has a duplicate name.')
       names.add(s.name)
+      if isinstance(s, Table): self.tables.append(s)
+      elif isinstance(s, Index): self.indexes.append(s)
+      else: raise ValueError(f'Invalid Structure type: {s!r}')
 
 
   @property
