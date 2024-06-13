@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import _SubParsersAction, ArgumentParser, Namespace
-from typing import Callable
+from typing import Callable, Sequence
 
 from .util import lazy_property
 
@@ -30,6 +30,7 @@ class CommandParser(ArgParser):
   def add_command(self, main_fn:Callable[[Namespace],None], name:str|None=None, **kwargs) -> 'CommandParser':
     '''
     Add a command to the parser.
+    By default, `name` will be derived from `main_fn` by removing the 'main_' prefix and replacing underscores with hyphens.
     '''
     if not name:
       name = main_fn.__name__.removeprefix('main_').replace('_', '-')
@@ -37,3 +38,12 @@ class CommandParser(ArgParser):
     command = self.commands.add_parser(name, **kwargs)
     command.set_defaults(main=main_fn)
     return command # type: ignore[no-any-return]
+
+
+  def parse_and_run_command(self, args:Sequence[str]|None=None) -> Namespace:
+    '''
+    Parse arguments and run the command.
+    '''
+    ns = self.parse_args(args)
+    ns.main(ns)
+    return ns
