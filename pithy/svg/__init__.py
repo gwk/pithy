@@ -7,7 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from typing import Any, ClassVar, Iterable, Optional
 
-from ..markup import (_Mu, add_opt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError,
+from ..markup import (_Mu, add_nonopt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError,
   prefer_int)
 from ..range import NumRange
 
@@ -102,7 +102,7 @@ class Circle(SvgNode):
       assert x is None
       assert y is None
       x, y = pos
-    add_opt_attrs(kwargs, cx=x, cy=y, r=r)
+    add_nonopt_attrs(kwargs, cx=x, cy=y, r=r)
     super().__init__(attrs=attrs, **kwargs)
 
 
@@ -119,7 +119,7 @@ class Image(SvgNode):
       assert w is None
       assert h is None
       w, h = unpack_VecOrNum(size)
-    add_opt_attrs(kwargs, x=x, y=y, width=w, height=h)
+    add_nonopt_attrs(kwargs, x=x, y=y, width=w, height=h)
     super().__init__(attrs=attrs, **kwargs)
 
 
@@ -136,7 +136,7 @@ class Line(SvgNode):
       assert x2 is None
       assert y2 is None
       x2, y2 = b
-    add_opt_attrs(kwargs, x1=x1, y1=y1, x2=x2, y2=y2)
+    add_nonopt_attrs(kwargs, x1=x1, y1=y1, x2=x2, y2=y2)
     super().__init__(attrs=attrs, **kwargs)
 
 
@@ -208,7 +208,7 @@ class Rect(SvgNode):
       rx, ry = r
     else:
       rx = ry = r
-    add_opt_attrs(kwargs, x=x, y=y, width=w, height=h, rx=rx, ry=ry)
+    add_nonopt_attrs(kwargs, x=x, y=y, width=w, height=h, rx=rx, ry=ry)
     super().__init__(attrs=attrs, **kwargs)
 
 
@@ -223,7 +223,7 @@ class Text(SvgNode):
       assert y is None
       x, y = pos
     if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
-    add_opt_attrs(kwargs, x=x, y=y, alignment_baseline=alignment_baseline)
+    add_nonopt_attrs(kwargs, x=x, y=y, alignment_baseline=alignment_baseline)
     super().__init__(_=_, attrs=attrs, **kwargs)
 
 
@@ -253,7 +253,7 @@ class Use(SvgNode):
       assert w is None
       assert h is None
       w, h = unpack_VecOrNum(size)
-    add_opt_attrs(kwargs, href=id, x=x, y=y, width=w, height=h)
+    add_nonopt_attrs(kwargs, href=id, x=x, y=y, width=w, height=h)
     super().__init__(attrs=attrs, **kwargs)
 
 
@@ -393,7 +393,7 @@ class Svg(SvgBranch):
       'xmlns': 'http://www.w3.org/2000/svg',
       **kwargs
     }
-    add_opt_attrs(kwargs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
+    add_nonopt_attrs(kwargs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
     super().__init__(attrs=attrs, **kwargs)
 
 
@@ -441,7 +441,7 @@ class Marker(SvgBranch):
       assert w is None
       assert h is None
       w, h = unpack_VecOrNum(size)
-    add_opt_attrs(kwargs, id=id, refX=x, refY=y, markerWidth=w, markerHeight=h,
+    add_nonopt_attrs(kwargs, id=id, refX=x, refY=y, markerWidth=w, markerHeight=h,
       viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
     super().__init__(_=_, attrs=attrs, **kwargs)
 
@@ -456,7 +456,7 @@ class Symbol(SvgBranch):
     # TODO: figure out if no viewBox is legal and at all useful.
     assert vw >= 0
     assert vh >= 0
-    add_opt_attrs(kwargs, id=id, viewBox=f'{prefer_int(vx)} {prefer_int(vy)} {prefer_int(vw)} {prefer_int(vh)}')
+    add_nonopt_attrs(kwargs, id=id, viewBox=f'{prefer_int(vx)} {prefer_int(vy)} {prefer_int(vw)} {prefer_int(vh)}')
     super().__init__(_=_, attrs=attrs, **kwargs)
 
 
