@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import importlib
 from typing import Any, Callable, Iterable, NamedTuple, TypeVar
 
 
@@ -20,6 +21,13 @@ class lazy_property(object):
     val = self.acc_fn(obj)
     setattr(obj, self.acc_fn.__name__, val)
     return val
+
+
+def load_and_execute(module_name:str, function_name:str, /, *args, **kwargs):
+  'Load a module and execute the specified function.'
+  module = importlib.import_module(module_name)
+  func = getattr(module, function_name)
+  return func(*args, **kwargs)
 
 
 def memoize(_fn:Callable|None=None, sentinel:Any=Ellipsis) -> Callable:
@@ -60,4 +68,6 @@ def nonopt(optional:_T|None) -> _T:
   return optional
 
 
-def once(fn:Callable[[],_T]) -> _T: return fn()
+def once(fn:Callable[[],_T]) -> _T:
+  'Call the decorated function and return its result.'
+  return fn()
