@@ -450,6 +450,20 @@ def confirm_or_exit(question:str) -> None:
   except KeyboardInterrupt: exit(1)
 
 
+def err_call_io(func):
+  'A decorator to print argument and return values of a function to stderr.'
+
+  def wrapper(*args, **kwargs):
+    errL(f'DBG: Calling function {func.__name__!r}:')
+    errL(f'DBG:   args: {args!r}')
+    errL(f'DBG:   kwargs: {kwargs!r}')
+    result = func(*args, **kwargs)
+    errL(f'DBG:   returned: {result!r}')
+    return result
+
+  return wrapper
+
+
 def shell_cmd_str(cmd:Iterable[str]) -> str:
   return ' '.join(sh_quote(word) for word in cmd)
 
