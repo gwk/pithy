@@ -44,8 +44,6 @@ def main() -> None:
 
   args = arg_parser.parse_args()
 
-  if args.dbg: errL('iotest: DEBUG MODE ON.')
-
   if not args.coverage and args.no_coverage_report:
     exit('iotest error: `-no-coverage-report` is only valid in combination with `-coverage`.')
 
@@ -54,6 +52,11 @@ def main() -> None:
     exit("iotest error: could not find .git or .project-root in current directory or its parents.")
 
   build_dir = args.build_dir or path_join(proj_dir, dflt_build_dir)
+
+  if args.interactive:
+    args.no_times = True # Times are not accurate in interactive mode so we do not show them.
+
+  if args.dbg: errL('iotest: DEBUG MODE ON.')
 
   if args.dbg:
     def fail_fast(e:Exception|None=None) -> None:
