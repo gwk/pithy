@@ -7,7 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from typing import Any, cast, ClassVar, Iterable, Optional, Self
 
-from ..markup import _Mu, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError, prefer_int
+from ..markup import _Mu, Mu, MuAttrs, NoMatchError, prefer_int
 from ..range import NumRange
 from ..vec import V
 
@@ -29,41 +29,44 @@ class SvgNode(Mu):
   replaced_attrs = {}
 
 
-  def __init__(self:_Mu,
-   *_mu_positional_children:'MuChildLax', # Children can be passed as positional arguments.
-   _:'MuChildOrChildrenLax'=(), # Children can also be passed to the named underscore parameter.
-   tag:str='',
-   cl:Iterable[str]|None=None,
-   _orig:_Mu|None=None,
-   _parent:Optional['Mu']=None,
-   title:str|None=None, # See docstring.
-   attrs:MuAttrs|None=None,
-   **kw_attrs:Any) -> None:
+  def __init__(self, *args, title:str|None=None, **kwargs) -> None:
     '''
     SvgNode constructor.
-    The `title` parameter is a special attribute that is not included in the `attrs` parameter.
-    It is converted into a `title` child element.
+    The `title` parameter is treated as a special attribute that is converted into a `title` child element.
     This is convenient because for many elements the title is the only child element.
     '''
-
+    super().__init__(*args, **kwargs)
     if title is not None:
-      assert _orig is None and _parent is None # Should not be setting `title` for a subtree node.
-      if isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
-        _ = [_]
-      elif not isinstance(_, list):
-          _ = list(_)
-      _.append(Title(_=title))
-    super().__init__(tag=tag, attrs=attrs, _=_, cl=cl, _orig=_orig, _parent=_parent, *_mu_positional_children, **kw_attrs)
+      self.title = title
 
 
   @property
   def title(self) -> str|None:
-    '''
-    Get the title child element.
-    TODO: implement setter.
-    '''
+    'Get the title text from the title child element. If it does not exist return None.'
     try: return self.pick('title').text
     except NoMatchError: return None
+
+  @title.deleter
+  def title(self) -> None:
+    'Remove the title child element.'
+    try: title_el = self.pick('title')
+    except NoMatchError as e: raise AttributeError('title') from e
+    else: self._.remove(title_el)
+
+  @title.setter
+  def title(self, title:str|None):
+    'Add a title child element to the head of the children list.'
+    try:
+      title_el = self.pick('title')
+    except NoMatchError:
+      if title is not None:
+        self._.insert(0, Title(_=title))
+    else:
+      if title is None:
+        self._.remove(title_el)
+      else:
+        title_el._ = [title]
+
 
 
 SvgNode.generic_tag_type = SvgNode # Note: this creates a circular reference.
