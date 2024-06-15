@@ -6,7 +6,7 @@ from pithy.svg import *
 
 w = 512
 h = 512
-svg = Svg(w=w, h=h)
+svg = Svg(width=w, height=h)
 svg.grid(size=(w, h), stroke='#E0E0E0', fill='white', stroke_width=0.5)
 
 x = 16
@@ -14,12 +14,12 @@ y = 16
 
 g = svg.g(transform=translate(x=x, y=y))
 g.rect((0, 0), (64, 32), r=8, title='rect0: radius=8')
-g.rect(x=80, y=0, w=64, h=32, r=(16, 8), stroke='gray', fill='white', title='rect1: radius=(16, 8)')
+g.rect(x=80, y=0, width=64, height=32, r=(16, 8), stroke='gray', fill='white', title='rect1: radius=(16, 8)')
 y += 48
 
 g = svg.g(transform=translate(x=x, y=y))
-g.circle((16, 16), 16, title='circle0')
-g.circle(x=64, y=16, r=16, stroke='gray', fill='white', title='circle1')
+g.circle((16, 16), r=16, title='circle0')
+g.circle(cx=64, cy=16, r=16, stroke='gray', fill='white', title='circle1')
 y += 48
 
 g = svg.g(transform=translate(x=x, y=y))
@@ -44,15 +44,15 @@ img_base64 = 'data:image/png;base64,R0lGODdhBAAEAIAAAAAAAP///yH5BAQAAAAALAAAAAAE
 
 g = svg.g(transform=translate(x=x, y=y))
 g.image((0, 0), (16,16), href=img_base64, title='image0')
-g.image(x=40, y=0, w=32, h=32, href=img_base64, title='image1')
+g.image(x=40, y=0, width=32, height=32, href=img_base64, title='image1')
 y += 48
 
 g = svg.g(transform=translate(x=x, y=y))
 g1 = g.symbol(id='sym', vw=32, vh=32)
 g1.rect(pos=(8, 8), size=(16, 16), stroke='black', fill=None)
 g1.rect(pos=(0, 0), size=(32, 32), stroke='black', fill=None)
-g.use('sym', (0,0), size=32)
-g.use('sym', (48,0), size=16)
+g.use('#sym', (0,0), size=32)
+g.use('#sym', (48,0), size=16)
 y += 48
 
 g = svg.g(transform=translate(x=x, y=y))

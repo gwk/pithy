@@ -5,19 +5,17 @@ SVG types based on Markup (`Mu` class family).
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from typing import Any, ClassVar, Iterable, Optional
+from typing import Any, cast, ClassVar, Iterable, Optional, Self
 
-from ..markup import (_Mu, add_nonopt_attrs, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError,
-  prefer_int)
+from ..markup import _Mu, Mu, mu_child_classes_lax, MuAttrs, MuChildLax, MuChildOrChildrenLax, NoMatchError, prefer_int
 from ..range import NumRange
+from ..vec import V
 
 
 Dim = int|float|str
-Vec = tuple[float,float]
+Vec = tuple[float,float]|V
 VecOrNum = Vec|float
-F2 = tuple[float,float]
-F2OrF = F2|float
-BoundsF2 = tuple[F2,F2]
+BoundsF2 = tuple[tuple[float,float],tuple[float,float]]
 PathCommand = tuple|str
 
 
@@ -28,10 +26,7 @@ class SvgNode(Mu):
 
   tag_types:ClassVar[dict[str,type['Mu']]] = {} # Dispatch table mapping tag names to Mu subtypes.
 
-  replaced_attrs = {
-    'w': 'width',
-    'h': 'height',
-  }
+  replaced_attrs = {}
 
 
   def __init__(self:_Mu,
@@ -74,6 +69,33 @@ class SvgNode(Mu):
 SvgNode.generic_tag_type = SvgNode # Note: this creates a circular reference.
 
 
+class _MixinPos:
+  'Mixin for SVG elements that have x and y attributes.'
+
+  def pos(self, pos:Vec) -> Self:
+    'Set the x and y attributes from the provided `pos` vector.'
+    unpack_Vec_and_set(cast(SvgNode, self).attrs, 'x', 'y', pos)
+    return self
+
+
+class _MixinSize:
+  'Mixin for SVG elements that have width and height attributes.'
+
+  def size(self, size:VecOrNum) -> Self:
+    'Set the width and height attributes from the provided `size` vector or number.'
+    unpack_VecOrNum_and_set(cast(SvgNode, self).attrs, 'width', 'height', size)
+    return self
+
+
+class _MixinViewBox:
+  'Mixin for SVG elements that have a viewBox attribute.'
+
+  def viewbox(self, vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None) -> Self:
+    'Set the viewBox attribute.'
+    cast(SvgNode, self).attrs['viewBox'] = fmt_viewBox(vx, vy, vw, vh)
+    return self
+
+
 def _tag(Subclass:type[_Mu]) -> type[_Mu]:
   'Decorator for associating a concrete subclass with the lowercase tag matching its name.'
   assert issubclass(Subclass, Mu)
@@ -97,89 +119,69 @@ class Style(SvgNode):
 class Circle(SvgNode):
   'SVG Circle element.'
 
-  def __init__(self, *, pos:Vec|None=None, r:float|None=None, x:float|None=None, y:float|None=None,
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    add_nonopt_attrs(kwargs, cx=x, cy=y, r=r)
-    super().__init__(attrs=attrs, **kwargs)
+  def c(self, *, c:Vec) -> Self:
+    'Set the cx and cy attributes from the provided `c` vector.'
+    unpack_Vec_and_set(self.attrs, 'cx', 'cy', c)
+    return self
 
 
 @_tag
-class Image(SvgNode):
-
-  def __init__(self, pos:Vec|None=None, *, size:VecOrNum|None=None, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    if size is not None:
-      assert w is None
-      assert h is None
-      w, h = unpack_VecOrNum(size)
-    add_nonopt_attrs(kwargs, x=x, y=y, width=w, height=h)
-    super().__init__(attrs=attrs, **kwargs)
+class Image(SvgNode, _MixinPos, _MixinSize):
+  'SVG Image element.'
 
 
 @_tag
 class Line(SvgNode):
   'SVG Line element.'
 
-  def __init__(self, a:Vec|None=None, b:Vec|None=None, *, x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None,
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if a is not None:
-      assert x1 is None
-      assert y1 is None
-      x1, y1 = a
-    if b is not None:
-      assert x2 is None
-      assert y2 is None
-      x2, y2 = b
-    add_nonopt_attrs(kwargs, x1=x1, y1=y1, x2=x2, y2=y2)
-    super().__init__(attrs=attrs, **kwargs)
+  def p1(self, p1:Vec) -> Self:
+    unpack_Vec_and_set(self.attrs, 'x1', 'y1', p1)
+    return self
+
+  def p2(self, p2:Vec) -> Self:
+    unpack_Vec_and_set(self.attrs, 'x2', 'y2', p2)
+    return self
 
 
 @_tag
 class Path(SvgNode):
   'SVG Path element.'
 
-  def __init__(self, d:Iterable[PathCommand],
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    assert (attrs is None or 'd' not in attrs)
-    if isinstance(d, str):
-      kwargs['d'] = d
-    else:
-      cmd_strs:list[str] = []
+  def __init__(self, *args, d:Iterable[PathCommand], **kwargs) -> None:
+
+    if not isinstance(d, str):
+      cmd_strs = []
       for c in d:
         if isinstance(c, str):
           cmd_strs.append(c)
           continue
         try: code = c[0]
-        except IndexError: continue
+        except IndexError: continue # Ignore empty strings.
         try: exp_len = _path_command_lens[code]
         except KeyError as e: raise Exception(f'bad path command code: {c!r}') from e
         if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
         cmd_strs.append(code + ','.join(str(prefer_int(n)) for n in c[1:]))
-      kwargs['d'] = ' '.join(cmd_strs)
-    super().__init__(attrs=attrs, **kwargs)
+      d = ' '.join(cmd_strs)
+    super().__init__(*args, d=d, **kwargs)
 
 
 @_tag
 class SvgPoly(SvgNode):
   'Abstract class for SVG polygon and polyline elements.'
 
-  def __init__(self, points:Iterable[Vec],
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    assert (attrs is None or 'points' not in attrs)
-    point_strs:list[str] = []
-    for p in points:
-      if len(p) < 2: raise Exception(f'bad point for {self.tag}: {p}')
-      point_strs.append(f'{prefer_int(p[0])},{prefer_int(p[1])}')
-    kwargs['points'] = ' '.join(point_strs)
-    super().__init__(attrs=attrs, **kwargs)
+  def __init__(self, *args, points:str|Iterable[str|Vec], **kwargs) -> None:
+
+    if not isinstance(points, str):
+      point_strs = []
+      for p in points:
+        if isinstance(p, str):
+          point_strs.append(p)
+        elif len(p) < 2: raise Exception(f'invalid point for {self.tag}: {p!r}')
+        else:
+          point_strs.append(f'{prefer_int(p[0])},{prefer_int(p[1])}')
+      points = ' '.join(point_strs)
+
+    super().__init__(*args, points=points, **kwargs)
 
 
 @_tag
@@ -193,42 +195,24 @@ class Polyline(SvgPoly):
 
 
 @_tag
-class Rect(SvgNode):
-  'Rect element.'
+class Rect(SvgNode, _MixinPos, _MixinSize):
+  'SVG Rect element.'
 
-  def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, r:VecOrNum|None=None,
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    if size is not None:
-      assert w is None
-      assert h is None
-      w, h = unpack_VecOrNum(size)
-    rx:float|None
-    ry:float|None
-    if isinstance(r, tuple):
-      rx, ry = r
-    else:
-      rx = ry = r
-    add_nonopt_attrs(kwargs, x=x, y=y, width=w, height=h, rx=rx, ry=ry)
-    super().__init__(attrs=attrs, **kwargs)
+  def r(self, r:VecOrNum) -> Self:
+    'Set the rx and ry (corner rounding) attributes from the provided `r` vector or number.'
+    unpack_VecOrNum_and_set(self.attrs, 'rx', 'ry', r)
+    return self
 
 
 @_tag
-class Text(SvgNode):
-  tag = 'text'
+class Text(SvgNode, _MixinPos):
+  'SVG Text element.'
 
-  def __init__(self, _='', pos:Vec|None=None, x:float|None=None, y:float|None=None, alignment_baseline:str|None=None,
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    if alignment_baseline is not None and alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
-    add_nonopt_attrs(kwargs, x=x, y=y, alignment_baseline=alignment_baseline)
-    super().__init__(_=_, attrs=attrs, **kwargs)
+  def alignment_baseline(self, alignment_baseline:str|None) -> Self:
+    if alignment_baseline:
+      if alignment_baseline not in alignment_baselines: raise ValueError(alignment_baseline)
+      self.attrs['alignment-baseline'] = alignment_baseline
+    return self
 
 
 @_tag
@@ -238,27 +222,12 @@ class Title(SvgNode):
 
 @_tag
 class TSpan(SvgNode):
-  tag = 'tspan'
+  'SVG TSpan element.'
 
 
 @_tag
-class Use(SvgNode):
-  tag = 'use'
-
-  def __init__(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
-   attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    assert id
-    if id[0] != '#': id = '#' + id
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    if size is not None:
-      assert w is None
-      assert h is None
-      w, h = unpack_VecOrNum(size)
-    add_nonopt_attrs(kwargs, href=id, x=x, y=y, width=w, height=h)
-    super().__init__(attrs=attrs, **kwargs)
+class Use(SvgNode, _MixinPos, _MixinSize):
+  'SVG Use element.'
 
 
 
@@ -266,9 +235,12 @@ class SvgBranch(SvgNode):
   'An abstract class for SVG nodes that can contain other nodes.'
 
 
-  def circle(self, pos:Vec|None=None, r:float|None=None, x:float|None=None, y:float|None=None, **kwargs:Any) -> Circle:
+  def circle(self, c:Vec|None=None, *, cx:float|None=None, cy:float|None=None, r:float|None=None, **kwargs:Any) -> Circle:
     'Create a child `circle` element.'
-    return self.append(Circle(pos=pos, r=r, x=x, y=y, **kwargs))
+    if c is not None:
+      assert cx is None and cy is None
+      cx, cy = unpack_Vec(c)
+    return self.append(Circle(cx=cx, cy=cy, r=r, **kwargs))
 
 
   def clip_path(self, **kwargs:Any) -> 'ClipPath':
@@ -286,21 +258,54 @@ class SvgBranch(SvgNode):
     return self.append(G(transform=transform, **kwargs))
 
 
-  def image(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, **kwargs:Any) -> Image:
+  def image(self, pos:Vec|None=None, size:VecOrNum|None=None, *,
+   x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None, **kwargs:Any) -> Image:
     'Create a child `image` element.'
-    return self.append(Image(pos=pos, size=size, x=x, y=y, w=w, h=h, **kwargs))
+    if pos is not None:
+      assert x is None and y is None
+      x, y = unpack_Vec(pos)
+    if size is not None:
+      assert width is None and height is None
+      width, height = unpack_VecOrNum(size)
+    if x is not None: kwargs['x'] = x
+    if y is not None: kwargs['y'] = y
+    if width is not None: kwargs['width'] = width
+    if height is not None: kwargs['height'] = height
+    return self.append(Image(**kwargs))
 
 
-  def line(self, a:Vec|None=None, b:Vec|None=None, *, x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None, **kwargs:Any) -> Line:
+  def line(self, p1:Vec|None=None, p2:Vec|None=None, *,
+   x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None, **kwargs:Any) -> Line:
     'Create a child `line` element.'
-    return self.append(Line(a=a, b=b, x1=x1, y1=y1, x2=x2, y2=y2, **kwargs))
+    if p1 is not None:
+      assert x1 is None and y1 is None
+      x1, y1 = unpack_Vec(p1)
+    if p2 is not None:
+      assert x2 is None and y2 is None
+      x2, y2 = unpack_VecOrNum(p2)
+    return self.append(Line(x1=x1, y1=y1, x2=x2, y2=y2, **kwargs))
 
 
-  def marker(self, _=(), id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
-   vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None, markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
+  def marker(self, *, id:str='', pos:Vec|None=None, size:VecOrNum|None=None,
+   refX:float|None=None, refY:float|None=None, markerWidth:float|None=None, markerHeight:float|None=None,
+   vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None,
+   markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
     'Create a child `marker` element.'
-    return self.append(Marker(_=_, id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, vx=vx, vy=vy, vw=vw, vh=vh,
-      markerUnits=markerUnits, orient=orient, **kwargs))
+    if pos is not None:
+      assert refX is None and refY is None
+      refX, refY = unpack_Vec(pos)
+    if size is not None:
+      assert markerWidth is None and markerHeight is None
+      markerWidth, markerHeight = unpack_VecOrNum(size)
+    if id: kwargs['id'] = id
+    if refX is not None: kwargs['refX'] = refX
+    if refY is not None: kwargs['refY'] = refY
+    if markerWidth is not None: kwargs['markerWidth'] = markerWidth
+    if markerHeight is not None: kwargs['markerHeight'] = markerHeight
+    if markerUnits: kwargs['markerUnits'] = markerUnits
+    if orient: kwargs['orient'] = orient
+    return self.append(
+      Marker(**kwargs).viewbox(vx, vy, vw, vh))
 
 
   def path(self, d:Iterable[PathCommand], **kwargs:Any) -> Path:
@@ -318,9 +323,22 @@ class SvgBranch(SvgNode):
     return self.append(Polyline(points=points, **kwargs))
 
 
-  def rect(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, r:VecOrNum|None=None, **kwargs:Any) -> Rect:
+  def rect(self, pos:Vec|None=None, size:VecOrNum|None=None, *, r:VecOrNum|None=None,
+   x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None,
+   rx:float|None=None, ry:float|None=None, **kwargs:Any) -> Rect:
     'Create a child `rect` element.'
-    return self.append(Rect(pos=pos, size=size, x=x, y=y, w=w, h=h, r=r, **kwargs))
+    if pos is not None:
+      assert x is None and y is None
+      x, y = unpack_Vec(pos)
+    if size is not None:
+      assert width is None and height is None
+      width, height = unpack_VecOrNum(size)
+    if r is not None:
+      assert rx is None and ry is None
+      rx, ry = unpack_VecOrNum(r)
+    if rx is not None: kwargs['rx'] = rx
+    if ry is not None: kwargs['ry'] = ry
+    return self.append(Rect(x=x, y=y, width=width, height=height, **kwargs))
 
 
   def script(self, *text:str, **kwargs,) -> Script:
@@ -333,135 +351,100 @@ class SvgBranch(SvgNode):
     return self.append(Style(_=text, **kwargs))
 
 
-  def symbol(self, id:str, _=(), vx:float|None=None, vy:float|None=None, vw:float=-1, vh:float=-1, **kwargs:Any) -> 'Symbol':
+  def symbol(self, *, _=(), id:str, vx:float=0, vy:float=0, vw:float, vh:float, **kwargs:Any) -> 'Symbol':
     'Create a child `symbol` element.'
-    return self.append(Symbol(_=_, id=id, vx=vx, vy=vy, vw=vw, vh=vh, **kwargs))
+    return self.append(Symbol(_=_, id=id, **kwargs).viewbox(vx=vx, vy=vy, vw=vw, vh=vh))
 
 
-  def use(self, id:str, pos:Vec|None=None, size:VecOrNum|None=None, *, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None, **kwargs:Any) -> Use:
+  def use(self, href:str, pos:Vec|None=None, size:VecOrNum|None=None, *,
+   x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None, **kwargs:Any) -> Use:
     'Create a child `use` element to use a previously defined symbol.'
-    return self.append(Use(id=id, pos=pos, size=size, x=x, y=y, w=w, h=h, **kwargs))
+    if pos is not None:
+      assert x is None and y is None
+      x, y = unpack_Vec(pos)
+    if size is not None:
+      assert width is None and height is None
+      width, height = unpack_VecOrNum(size)
+    if x is not None: kwargs['x'] = x
+    if y is not None: kwargs['y'] = y
+    if width is not None: kwargs['width'] = width
+    if height is not None: kwargs['height'] = height
+    return self.append(Use(href=href, **kwargs))
 
 
   def grid(self, pos:Vec=(0,0), size:VecOrNum=(256,256), *,
-   step:VecOrNum=16, offset:Vec=(0, 0), corner_radius:VecOrNum|None=None, **kwargs:Any) -> 'G':
-    x, y = f2_for_vec(pos)
-    w, h = unpack_VecOrNum(size)
+   step:VecOrNum=16, offset:Vec=(0, 0), r:VecOrNum|None=None, **kwargs:Any) -> 'G':
+    x, y = unpack_Vec(pos)
+    width, height = unpack_VecOrNum(size)
     sx, sy = unpack_VecOrNum(step)
-    off_x, off_y = f2_for_vec(offset)
+    off_x, off_y = unpack_Vec(offset)
     if off_x <= 0: off_x = sx # Do not emit line at 0, because that is handled by border.
     if off_y <= 0: off_y = sy # Do not emit line at 0, because that is handled by border.
     x_start = x + off_x
     y_start = y + off_y
-    x_end = x + w
-    y_end = y + h
+    x_end = x + width
+    y_end = y + height
     _= kwargs.setdefault('cl', 'grid')
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
     g = self.append(G(**kwargs))
     for tick in NumRange(x_start, x_end, sx): g.line((tick, y), (tick, y_end)) # Vertical lines.
     for tick in NumRange(y_start, y_end, sy): g.line((x, tick), (x_end, tick)) # Horizontal lines.
-    g.rect(cl='grid-border', x=x, y=y, w=w, h=h, r=corner_radius, fill='none')
+    g.rect(cl='grid-border', x=x, y=y, width=width, height=height, r=r, fill='none')
     return g
 
 
-
 @_tag
-class Svg(SvgBranch):
+class Svg(SvgBranch, _MixinPos, _MixinSize, _MixinViewBox):
   '''
+  SVG element.
   HTML contexts for use: Phrasing.
   '''
 
-  def __init__(self, pos:Vec|None=None, size:VecOrNum|None=None, *, x:Dim|None=None, y:Dim|None=None, w:Dim|None=None, h:Dim|None=None,
-   vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None, attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    if size is not None:
-      assert w is None
-      assert h is None
-      if isinstance(size, tuple):
-        w, h = size
-      else:
-        w = h = size
-    self.x = x
-    self.y = y
-    self.w = w
-    self.h = h
-    self.vx = vx
-    self.vy = vy
-    self.vw = vw
-    self.vh = vh
-    self.viewBox = fmt_viewBox(vx, vy, vw, vh)
-    kwargs = { # Put the xmlns declaration first.
-      'xmlns': 'http://www.w3.org/2000/svg',
-      **kwargs
-    }
-    add_nonopt_attrs(kwargs, x=x, y=y, width=w, height=h, viewBox=self.viewBox)
-    super().__init__(attrs=attrs, **kwargs)
+  def __init__(self, *args, **kwargs) -> None:
+    '''
+    Add the xmlns as the first attribute.
+    If the user wants to override this, they can do so by passing `xmlns` as a keyword argument.
+    '''
+    super().__init__(*args, xmlns='http://www.w3.org/2000/svg', **kwargs)
 
 
 # SVG branch elements.
 
 @_tag
 class ClipPath(SvgBranch):
-  'ClipPath element.'
+  'SVG ClipPath element.'
 
 
 @_tag
 class Defs(SvgBranch):
-  'Defs element.'
+  'SVG Defs element.'
 
 
 @_tag
 class G(SvgBranch):
-  'Group element.'
+  'SVG Group element.'
 
-  def __init__(self, transform:Iterable[str]='',
-   _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    t:str = ''
-    if isinstance(transform, str):
-      t = transform
-    else:
-      t = ' '.join(transform)
-    if t:
-      kwargs['transform'] = t
-    super().__init__(_=_, attrs=attrs, **kwargs)
+  def __call__(self, transform:Iterable[str]|None=None) -> Self:
 
-
-@_tag
-class Marker(SvgBranch):
-  'Marker element.'
-
-  def __init__(self, id:str='', pos:Vec|None=None, size:VecOrNum|None=None, x:float|None=None, y:float|None=None, w:float|None=None, h:float|None=None,
-   vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None, markerUnits='strokeWidth', orient:str='auto',
-   _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if not id: raise ValueError('Marker requires an `id` string')
-    if pos is not None:
-      assert x is None
-      assert y is None
-      x, y = pos
-    if size is not None:
-      assert w is None
-      assert h is None
-      w, h = unpack_VecOrNum(size)
-    add_nonopt_attrs(kwargs, id=id, refX=x, refY=y, markerWidth=w, markerHeight=h,
-      viewBox=fmt_viewBox(vx, vy, vw, vh), markerUnits=markerUnits, orient=orient)
-    super().__init__(_=_, attrs=attrs, **kwargs)
+    if transform is not None:
+      t:str = ''
+      if isinstance(transform, str):
+        t = transform
+      else:
+        t = ' '.join(transform)
+      if t:
+        self.attrs['transform'] = t
+    return self
 
 
 @_tag
-class Symbol(SvgBranch):
+class Marker(SvgBranch, _MixinPos, _MixinSize, _MixinViewBox):
+  'SVG Marker element.'
 
-  def __init__(self, id:str, vx:float|None=None, vy:float|None=None, vw:float=-1, vh:float=-1,
-   _:Iterable[SvgNode]=(), attrs:MuAttrs|None=None, **kwargs:Any) -> None:
-    if vx is None: vx = 0
-    if vy is None: vy = 0
-    # TODO: figure out if no viewBox is legal and at all useful.
-    assert vw >= 0
-    assert vh >= 0
-    add_nonopt_attrs(kwargs, id=id, viewBox=f'{prefer_int(vx)} {prefer_int(vy)} {prefer_int(vw)} {prefer_int(vh)}')
-    super().__init__(_=_, attrs=attrs, **kwargs)
+
+@_tag
+class Symbol(SvgBranch, _MixinViewBox):
+  'SVG Symbol element.'
 
 
 # Transforms.
@@ -516,35 +499,50 @@ _path_command_lens = {
 
 valid_units = frozenset({'em', 'ex', 'px', 'pt', 'pc', 'cm', 'mm', '%', ''})
 
-def _validate_unit(unit: str):
-  'Ensure that `unit` is a valid unit string.'
+def validate_unit(unit: str) -> str:
+  'Ensure that `unit` is a valid unit string and return it.'
   if unit not in valid_units:
     raise Exception(f'Invalid SVG unit: {unit!r}; should be one of {sorted(valid_units)}')
+  return unit
 
 
-def fmt_viewBox(vx:float|None, vy:float|None, vw:float|None, vh:float|None) -> str|None:
+def fmt_viewBox(vx:float, vy:float, vw:float|None, vh:float|None) -> str|None:
   if vw is None and vh is None:
     return None
+  assert vw is not None and vw > 0
+  assert vh is not None and vh > 0
+  return f'{prefer_int(vx)} {prefer_int(vy)} {prefer_int(vw)} {prefer_int(vh)}'
+
+
+def unpack_Vec(v:Vec) -> tuple[float, float]:
+  if isinstance(v, tuple):
+    x, y = v
+    return float(x), float(y)
   else:
-    if vx is None: vx = 0
-    if vy is None: vy = 0
-    assert vw is not None and vw > 0
-    assert vh is not None and vh > 0
-    return f'{prefer_int(vx)} {prefer_int(vy)} {prefer_int(vw)} {prefer_int(vh)}'
+    return v.x, v.y
 
 
-def f2_for_vec(v:Vec) -> F2:
-  x, y = v
-  return (float(x), float(y))
+def unpack_Vec_and_set(attrs:MuAttrs, kx:str, ky:str, v:Vec) -> None:
+  x, y = unpack_Vec(v)
+  attrs[kx] = x
+  attrs[ky] = y
 
 
 def unpack_VecOrNum(vn:VecOrNum) -> tuple[float, float]:
   if isinstance(vn, tuple):
     x, y = vn
     return float(x), float(y)
+  elif isinstance(vn, V):
+    return vn.x, vn.y
   else:
     s = float(vn)
     return (s, s)
+
+
+def unpack_VecOrNum_and_set(attrs:MuAttrs, kx:str, ky:str, vn:VecOrNum) -> None:
+  x, y = unpack_VecOrNum(vn)
+  attrs[kx] = x
+  attrs[ky] = y
 
 
 def expand_opt_bounds(l:BoundsF2|None, r:BoundsF2|None) -> BoundsF2|None:
