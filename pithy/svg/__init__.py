@@ -84,17 +84,18 @@ def _tag(Subclass:type[_Mu]) -> type[_Mu]:
 
 @_tag
 class Script(SvgNode):
-  'Script element. Note that Html also has a subclass of the same name.'
+  'SVG Script element. Note that Html also has a subclass of the same name.'
 
 @_tag
 class Style(SvgNode):
-  'Style element. Note that Html also has a subclass of the same name.'
+  'SVG Style element. Note that Html also has a subclass of the same name.'
 
 
 # SVG leaf elements.
 
 @_tag
 class Circle(SvgNode):
+  'SVG Circle element.'
 
   def __init__(self, *, pos:Vec|None=None, r:float|None=None, x:float|None=None, y:float|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
@@ -125,6 +126,7 @@ class Image(SvgNode):
 
 @_tag
 class Line(SvgNode):
+  'SVG Line element.'
 
   def __init__(self, a:Vec|None=None, b:Vec|None=None, *, x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None,
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
@@ -142,6 +144,7 @@ class Line(SvgNode):
 
 @_tag
 class Path(SvgNode):
+  'SVG Path element.'
 
   def __init__(self, d:Iterable[PathCommand],
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
@@ -166,6 +169,7 @@ class Path(SvgNode):
 
 @_tag
 class SvgPoly(SvgNode):
+  'Abstract class for SVG polygon and polyline elements.'
 
   def __init__(self, points:Iterable[Vec],
    attrs:MuAttrs|None=None, **kwargs:Any) -> None:
@@ -180,12 +184,12 @@ class SvgPoly(SvgNode):
 
 @_tag
 class Polygon(SvgPoly):
-  'Polygon element.'
+  'SVG Polygon element.'
 
 
 @_tag
 class Polyline(SvgPoly):
-  'Polyline element.'
+  'SVG Polyline element.'
 
 
 @_tag
