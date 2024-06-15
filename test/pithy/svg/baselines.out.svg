@@ -1,30 +1,30 @@
 <svg xmlns='http://www.w3.org/2000/svg' width='800' height='800'>
-<line stroke='#E0E0E0' x1='8' y1='48' x2='256' y2='48'/>
+<line x1='8' y1='48' x2='256' y2='48' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='48'>X -- None</text>
-<line stroke='#E0E0E0' x1='8' y1='96' x2='256' y2='96'/>
+<line x1='8' y1='96' x2='256' y2='96' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='96' alignment-baseline='after-edge'>X -- after-edge</text>
-<line stroke='#E0E0E0' x1='8' y1='144' x2='256' y2='144'/>
+<line x1='8' y1='144' x2='256' y2='144' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='144' alignment-baseline='alphabetic'>X -- alphabetic</text>
-<line stroke='#E0E0E0' x1='8' y1='192' x2='256' y2='192'/>
+<line x1='8' y1='192' x2='256' y2='192' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='192' alignment-baseline='auto'>X -- auto</text>
-<line stroke='#E0E0E0' x1='8' y1='240' x2='256' y2='240'/>
+<line x1='8' y1='240' x2='256' y2='240' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='240' alignment-baseline='baseline'>X -- baseline</text>
-<line stroke='#E0E0E0' x1='8' y1='288' x2='256' y2='288'/>
+<line x1='8' y1='288' x2='256' y2='288' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='288' alignment-baseline='before-edge'>X -- before-edge</text>
-<line stroke='#E0E0E0' x1='8' y1='336' x2='256' y2='336'/>
+<line x1='8' y1='336' x2='256' y2='336' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='336' alignment-baseline='central'>X -- central</text>
-<line stroke='#E0E0E0' x1='8' y1='384' x2='256' y2='384'/>
+<line x1='8' y1='384' x2='256' y2='384' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='384' alignment-baseline='hanging'>X -- hanging</text>
-<line stroke='#E0E0E0' x1='8' y1='432' x2='256' y2='432'/>
+<line x1='8' y1='432' x2='256' y2='432' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='432' alignment-baseline='ideographic'>X -- ideographic</text>
-<line stroke='#E0E0E0' x1='8' y1='480' x2='256' y2='480'/>
+<line x1='8' y1='480' x2='256' y2='480' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='480' alignment-baseline='inherit'>X -- inherit</text>
-<line stroke='#E0E0E0' x1='8' y1='528' x2='256' y2='528'/>
+<line x1='8' y1='528' x2='256' y2='528' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='528' alignment-baseline='mathematical'>X -- mathematical</text>
-<line stroke='#E0E0E0' x1='8' y1='576' x2='256' y2='576'/>
+<line x1='8' y1='576' x2='256' y2='576' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='576' alignment-baseline='middle'>X -- middle</text>
-<line stroke='#E0E0E0' x1='8' y1='624' x2='256' y2='624'/>
+<line x1='8' y1='624' x2='256' y2='624' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='624' alignment-baseline='text-after-edge'>X -- text-after-edge</text>
-<line stroke='#E0E0E0' x1='8' y1='672' x2='256' y2='672'/>
+<line x1='8' y1='672' x2='256' y2='672' stroke='#E0E0E0'/>
 <text style='font-size: 24px; background-color: blue' x='8' y='672' alignment-baseline='text-before-edge'>X -- text-before-edge</text>
 </svg>
