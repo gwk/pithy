@@ -11,10 +11,10 @@ def main() -> None:
   parser = CommandParser(description='Audit dependencies for various package managers.')
 
   command_brew = parser.add_command(main_brew, help='Audit homebrew dependencies.')
-  command_brew = parser.add_command(main_pip, help='Audit pip dependencies.')
+  command_pip = parser.add_command(main_pip, help='Audit pip dependencies.')
+  _ = (command_brew, command_pip) # Silence unused variable warning.
 
-  args = parser.parse_args()
-  args.main(args)
+  parser.parse_and_run_command()
 
 
 if __name__ == '__main__': main()
