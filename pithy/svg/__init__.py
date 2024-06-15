@@ -150,7 +150,7 @@ class Line(SvgNode):
 class Path(SvgNode):
   'SVG Path element.'
 
-  def __init__(self, *args, d:Iterable[PathCommand], **kwargs) -> None:
+  def __init__(self, *args, d:Iterable[PathCommand], **kw_attrs) -> None:
 
     if not isinstance(d, str):
       cmd_strs = []
@@ -165,14 +165,14 @@ class Path(SvgNode):
         if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
         cmd_strs.append(code + ','.join(str(prefer_int(n)) for n in c[1:]))
       d = ' '.join(cmd_strs)
-    super().__init__(*args, d=d, **kwargs)
+    super().__init__(*args, d=d, **kw_attrs)
 
 
 @_tag
 class SvgPoly(SvgNode):
   'Abstract class for SVG polygon and polyline elements.'
 
-  def __init__(self, *args, points:str|Iterable[str|Vec], **kwargs) -> None:
+  def __init__(self, *args, points:str|Iterable[str|Vec], **kw_attrs) -> None:
 
     if not isinstance(points, str):
       point_strs = []
@@ -184,7 +184,7 @@ class SvgPoly(SvgNode):
           point_strs.append(f'{prefer_int(p[0])},{prefer_int(p[1])}')
       points = ' '.join(point_strs)
 
-    super().__init__(*args, points=points, **kwargs)
+    super().__init__(*args, points=points, **kw_attrs)
 
 
 @_tag
@@ -238,31 +238,31 @@ class SvgBranch(SvgNode):
   'An abstract class for SVG nodes that can contain other nodes.'
 
 
-  def circle(self, c:Vec|None=None, *, cx:float|None=None, cy:float|None=None, r:float|None=None, **kwargs:Any) -> Circle:
+  def circle(self, c:Vec|None=None, *, cx:float|None=None, cy:float|None=None, r:float|None=None, **kw_attrs:Any) -> Circle:
     'Create a child `circle` element.'
     if c is not None:
       assert cx is None and cy is None
       cx, cy = unpack_Vec(c)
-    return self.append(Circle(cx=cx, cy=cy, r=r, **kwargs))
+    return self.append(Circle(cx=cx, cy=cy, r=r, **kw_attrs))
 
 
-  def clip_path(self, **kwargs:Any) -> 'ClipPath':
+  def clip_path(self, **kw_attrs:Any) -> 'ClipPath':
     'Create a child `clipPath` element.'
-    return self.append(ClipPath(**kwargs))
+    return self.append(ClipPath(**kw_attrs))
 
 
-  def defs(self, **kwargs:Any) -> 'Defs':
+  def defs(self, **kw_attrs:Any) -> 'Defs':
     'Create a child `defs` element.'
-    return self.append(Defs(**kwargs))
+    return self.append(Defs(**kw_attrs))
 
 
-  def g(self, transform:Iterable[str]='', **kwargs:Any) -> 'G':
+  def g(self, transform:Iterable[str]='', **kw_attrs:Any) -> 'G':
     'Create child `g` element.'
-    return self.append(G(transform=transform, **kwargs))
+    return self.append(G(transform=transform, **kw_attrs))
 
 
   def image(self, pos:Vec|None=None, size:VecOrNum|None=None, *,
-   x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None, **kwargs:Any) -> Image:
+   x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None, **kw_attrs:Any) -> Image:
     'Create a child `image` element.'
     if pos is not None:
       assert x is None and y is None
@@ -270,15 +270,15 @@ class SvgBranch(SvgNode):
     if size is not None:
       assert width is None and height is None
       width, height = unpack_VecOrNum(size)
-    if x is not None: kwargs['x'] = x
-    if y is not None: kwargs['y'] = y
-    if width is not None: kwargs['width'] = width
-    if height is not None: kwargs['height'] = height
-    return self.append(Image(**kwargs))
+    if x is not None: kw_attrs['x'] = x
+    if y is not None: kw_attrs['y'] = y
+    if width is not None: kw_attrs['width'] = width
+    if height is not None: kw_attrs['height'] = height
+    return self.append(Image(**kw_attrs))
 
 
   def line(self, p1:Vec|None=None, p2:Vec|None=None, *,
-   x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None, **kwargs:Any) -> Line:
+   x1:float|None=None, y1:float|None=None, x2:float|None=None, y2:float|None=None, **kw_attrs:Any) -> Line:
     'Create a child `line` element.'
     if p1 is not None:
       assert x1 is None and y1 is None
@@ -286,13 +286,13 @@ class SvgBranch(SvgNode):
     if p2 is not None:
       assert x2 is None and y2 is None
       x2, y2 = unpack_VecOrNum(p2)
-    return self.append(Line(x1=x1, y1=y1, x2=x2, y2=y2, **kwargs))
+    return self.append(Line(x1=x1, y1=y1, x2=x2, y2=y2, **kw_attrs))
 
 
   def marker(self, *, id:str='', pos:Vec|None=None, size:VecOrNum|None=None,
    refX:float|None=None, refY:float|None=None, markerWidth:float|None=None, markerHeight:float|None=None,
    vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None,
-   markerUnits='strokeWidth', orient:str='auto', **kwargs:Any) -> 'Marker':
+   markerUnits='strokeWidth', orient:str='auto', **kw_attrs:Any) -> 'Marker':
     'Create a child `marker` element.'
     if pos is not None:
       assert refX is None and refY is None
@@ -300,35 +300,35 @@ class SvgBranch(SvgNode):
     if size is not None:
       assert markerWidth is None and markerHeight is None
       markerWidth, markerHeight = unpack_VecOrNum(size)
-    if id: kwargs['id'] = id
-    if refX is not None: kwargs['refX'] = refX
-    if refY is not None: kwargs['refY'] = refY
-    if markerWidth is not None: kwargs['markerWidth'] = markerWidth
-    if markerHeight is not None: kwargs['markerHeight'] = markerHeight
-    if markerUnits: kwargs['markerUnits'] = markerUnits
-    if orient: kwargs['orient'] = orient
+    if id: kw_attrs['id'] = id
+    if refX is not None: kw_attrs['refX'] = refX
+    if refY is not None: kw_attrs['refY'] = refY
+    if markerWidth is not None: kw_attrs['markerWidth'] = markerWidth
+    if markerHeight is not None: kw_attrs['markerHeight'] = markerHeight
+    if markerUnits: kw_attrs['markerUnits'] = markerUnits
+    if orient: kw_attrs['orient'] = orient
     return self.append(
-      Marker(**kwargs).viewbox(vx, vy, vw, vh))
+      Marker(**kw_attrs).viewbox(vx, vy, vw, vh))
 
 
-  def path(self, d:Iterable[PathCommand], **kwargs:Any) -> Path:
+  def path(self, d:Iterable[PathCommand], **kw_attrs:Any) -> Path:
     'Create a child `path` element.'
-    return self.append(Path(d=d, **kwargs))
+    return self.append(Path(d=d, **kw_attrs))
 
 
-  def polygon(self, points:Iterable[Vec], **kwargs:Any) -> Polygon:
+  def polygon(self, points:Iterable[Vec], **kw_attrs:Any) -> Polygon:
     'Create a child `polygon` element.'
-    return self.append(Polygon(points=points, **kwargs))
+    return self.append(Polygon(points=points, **kw_attrs))
 
 
-  def polyline(self, points:Iterable[Vec], **kwargs:Any) -> Polyline:
+  def polyline(self, points:Iterable[Vec], **kw_attrs:Any) -> Polyline:
     'Create a child `polyline` element.'
-    return self.append(Polyline(points=points, **kwargs))
+    return self.append(Polyline(points=points, **kw_attrs))
 
 
   def rect(self, pos:Vec|None=None, size:VecOrNum|None=None, *, r:VecOrNum|None=None,
    x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None,
-   rx:float|None=None, ry:float|None=None, **kwargs:Any) -> Rect:
+   rx:float|None=None, ry:float|None=None, **kw_attrs:Any) -> Rect:
     'Create a child `rect` element.'
     if pos is not None:
       assert x is None and y is None
@@ -339,28 +339,28 @@ class SvgBranch(SvgNode):
     if r is not None:
       assert rx is None and ry is None
       rx, ry = unpack_VecOrNum(r)
-    if rx is not None: kwargs['rx'] = rx
-    if ry is not None: kwargs['ry'] = ry
-    return self.append(Rect(x=x, y=y, width=width, height=height, **kwargs))
+    if rx is not None: kw_attrs['rx'] = rx
+    if ry is not None: kw_attrs['ry'] = ry
+    return self.append(Rect(x=x, y=y, width=width, height=height, **kw_attrs))
 
 
-  def script(self, *text:str, **kwargs,) -> Script:
+  def script(self, *text:str, **kw_attrs,) -> Script:
     'Create a child `script` element.'
-    return self.append(Script(_=text, **kwargs))
+    return self.append(Script(_=text, **kw_attrs))
 
 
-  def style(self, *text:str, **kwargs,) -> Style:
+  def style(self, *text:str, **kw_attrs,) -> Style:
     'Create a child `style` element.'
-    return self.append(Style(_=text, **kwargs))
+    return self.append(Style(_=text, **kw_attrs))
 
 
-  def symbol(self, *, _=(), id:str, vx:float=0, vy:float=0, vw:float, vh:float, **kwargs:Any) -> 'Symbol':
+  def symbol(self, *, _=(), id:str, vx:float=0, vy:float=0, vw:float, vh:float, **kw_attrs:Any) -> 'Symbol':
     'Create a child `symbol` element.'
-    return self.append(Symbol(_=_, id=id, **kwargs).viewbox(vx=vx, vy=vy, vw=vw, vh=vh))
+    return self.append(Symbol(_=_, id=id, **kw_attrs).viewbox(vx=vx, vy=vy, vw=vw, vh=vh))
 
 
   def use(self, href:str, pos:Vec|None=None, size:VecOrNum|None=None, *,
-   x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None, **kwargs:Any) -> Use:
+   x:float|None=None, y:float|None=None, width:float|None=None, height:float|None=None, **kw_attrs:Any) -> Use:
     'Create a child `use` element to use a previously defined symbol.'
     if pos is not None:
       assert x is None and y is None
@@ -368,15 +368,15 @@ class SvgBranch(SvgNode):
     if size is not None:
       assert width is None and height is None
       width, height = unpack_VecOrNum(size)
-    if x is not None: kwargs['x'] = x
-    if y is not None: kwargs['y'] = y
-    if width is not None: kwargs['width'] = width
-    if height is not None: kwargs['height'] = height
-    return self.append(Use(href=href, **kwargs))
+    if x is not None: kw_attrs['x'] = x
+    if y is not None: kw_attrs['y'] = y
+    if width is not None: kw_attrs['width'] = width
+    if height is not None: kw_attrs['height'] = height
+    return self.append(Use(href=href, **kw_attrs))
 
 
   def grid(self, pos:Vec=(0,0), size:VecOrNum=(256,256), *,
-   step:VecOrNum=16, offset:Vec=(0, 0), r:VecOrNum|None=None, **kwargs:Any) -> 'G':
+   step:VecOrNum=16, offset:Vec=(0, 0), r:VecOrNum|None=None, **kw_attrs:Any) -> 'G':
     x, y = unpack_Vec(pos)
     width, height = unpack_VecOrNum(size)
     sx, sy = unpack_VecOrNum(step)
@@ -387,9 +387,9 @@ class SvgBranch(SvgNode):
     y_start = y + off_y
     x_end = x + width
     y_end = y + height
-    _= kwargs.setdefault('cl', 'grid')
+    kw_attrs.setdefault('cl', 'grid')
     # TODO: if we are really going to support rounded corners then the border rect should clip the interior lines.
-    g = self.append(G(**kwargs))
+    g = self.append(G(**kw_attrs))
     for tick in NumRange(x_start, x_end, sx): g.line((tick, y), (tick, y_end)) # Vertical lines.
     for tick in NumRange(y_start, y_end, sy): g.line((x, tick), (x_end, tick)) # Horizontal lines.
     g.rect(cl='grid-border', x=x, y=y, width=width, height=height, r=r, fill='none')
@@ -403,12 +403,12 @@ class Svg(SvgBranch, _MixinPos, _MixinSize, _MixinViewBox):
   HTML contexts for use: Phrasing.
   '''
 
-  def __init__(self, *args, **kwargs) -> None:
+  def __init__(self, *args, **kw_attrs) -> None:
     '''
     Add the xmlns as the first attribute.
     If the user wants to override this, they can do so by passing `xmlns` as a keyword argument.
     '''
-    super().__init__(*args, xmlns='http://www.w3.org/2000/svg', **kwargs)
+    super().__init__(*args, xmlns='http://www.w3.org/2000/svg', **kw_attrs)
 
 
 # SVG branch elements.
