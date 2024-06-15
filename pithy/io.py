@@ -416,6 +416,11 @@ class AsyncLineReader(ContextManager):
 
 # misc.
 
+
+def assert_eq(a: Any, b: Any):
+  if a != b:
+    raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
+
 def clip_newlines(iterable:Iterable[str]) -> Iterable[str]:
   for line in iterable:
     yield line.rstrip('\n')
@@ -443,11 +448,6 @@ def confirm_or_exit(question:str) -> None:
   try:
     if not confirm(question): exit(1)
   except KeyboardInterrupt: exit(1)
-
-
-def assert_eq(a: Any, b: Any):
-  if a != b:
-    raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
 
 
 def shell_cmd_str(cmd:Iterable[str]) -> str:
