@@ -734,14 +734,17 @@ class Mu:
 
 
   def fmt_attr_items(self, items:Iterable[tuple[str,Any]]) -> str:
-    'Return a string that is either empty or with a leading space, containing all of the formatted items.'
+    'Return a string that is either empty or else a leading space followed by the formatted items.'
     parts: list[str] = []
     for k, v in sorted(items, key=lambda item: self.attr_sort_ranks.get(item[0], 0)):
       k = self.replaced_attrs.get(k, k)
-      if v in (None, True, False): v = str(v).lower() # TODO: look up values in a dict for speed?
-      elif isinstance(v, Present):
-        if v.is_present: v = ''
-        else: continue
+      match v:
+        case None: v = 'none'
+        case True: v = 'true'
+        case False: v = 'false'
+        case Present():
+          if v.is_present: v = ''
+          else: continue
       parts.append(f" {k}={self.quote_attr_val(str(prefer_int(v)))}")
     return ''.join(parts)
 
