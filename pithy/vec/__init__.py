@@ -1,8 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import atan2, cos, isfinite, pi, sin, sqrt
-from typing import Union
+from typing import overload, Union
 
 
 h_pi = pi * 0.5
@@ -14,7 +15,7 @@ def _fmt_float(f:float) -> str:
 
 
 @dataclass(frozen=True, slots=True)
-class V:
+class V(Sequence[float]):
   '''
   V is a 3D vector type.
   The components are named x, y, and z.
@@ -66,6 +67,29 @@ class V:
     if not isinstance(r, (int, float)): return NotImplemented # type: ignore[unreachable]
     return V(self.x / r, self.y / r, self.z / r)
 
+
+  def __len__(self) -> int: return 3
+
+
+  def __iter__(self):
+    yield self.x
+    yield self.y
+    yield self.z
+
+
+  @overload
+  def __getitem__(self, i:int) -> float: ...
+
+  @overload
+  def __getitem__(self, i:slice) -> tuple[float]: ...
+
+  def __getitem__(self, i):
+    match i:
+      case 0: return self.x
+      case 1: return self.y
+      case 2: return self.z
+      case _: # Assume that `i` is a slice.
+        return (self.x, self.y, self.z)[i]
 
   @property
   def xy(self) -> 'V': return V(self.x, self.y)
