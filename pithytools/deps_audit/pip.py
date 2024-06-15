@@ -2,13 +2,11 @@
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
 
-from packaging._parser import Op, Value, Variable
 from packaging.requirements import Marker, Requirement
 from packaging.utils import canonicalize_name
 from pithy.argparse import Namespace
-from pithy.io import outL, outM
+from pithy.io import outM
 from pithy.json import parse_json
 from pithy.task import runO
 from pithy.transtruct import Transtructor
