@@ -78,7 +78,7 @@ class Mu:
   ws_sensitive_tags:ClassVar[frozenset[str]] = frozenset() # Set of tags that are whitespace sensitive.
   replaced_attrs:ClassVar[dict[str,str]] = {} # Map of attribute names to replacement values for rendering.
 
-  attr_sort_ranks = {
+  attr_sort_ranks:ClassVar[dict[str,int]] = {
     'id': -2,
     'class': -1,
   }
