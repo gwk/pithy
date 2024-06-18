@@ -50,8 +50,19 @@ class Present:
   https://html.spec.whatwg.org/multipage/syntax.html#attributes-2.
   For attributes that are unconditionally set, just use `key=''`.
   '''
+  is_present:bool
+
   def __init__(self, is_present:Any):
-    self.is_present = bool(is_present)
+    object.__setattr__(self, 'is_present', bool(is_present))
+
+  def __repr__(self) -> str:
+    return f'Present({self.is_present})'
+
+  def __setattr__(self, __name: str, __value: Any) -> None:
+    raise AttributeError('`Present` object is immutable')
+
+
+not_present = Present(False)
 
 
 class Mu:
