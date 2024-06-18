@@ -17,13 +17,7 @@ from ..svg import Svg
 from . import semantics
 
 
-ConflictingValues = ConflictingValues
-DeleteNode = DeleteNode
-FlattenNode = FlattenNode
-MultipleMatchesError = MultipleMatchesError
-NoMatchError = NoMatchError
-MuChild = MuChild
-Present = Present
+_convenience_exports = (ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError, MuChild)
 
 
 _LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
