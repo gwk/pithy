@@ -8,9 +8,8 @@ from msgpack import dump as _dump, ExtraData, FormatError, load as _load, OutOfD
 from .encode import EncodeObj, encode_obj
 
 
-ExtraData = ExtraData
-FormatError = FormatError
-StackError = StackError
+_convenience_exports = (ExtraData, FormatError, StackError)
+
 
 ObjectHook = Callable[[dict[str,Any]], Any]
 ObjectPairsHook = Callable[[list[tuple[str,Any]]], Any]
