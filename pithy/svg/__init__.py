@@ -5,8 +5,9 @@ SVG types based on Markup (`Mu` class family).
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from typing import Any, cast, ClassVar, Iterable, Optional, Self
+from typing import Any, cast, ClassVar, Iterable, Self
 
+from ..default import Default
 from ..markup import _Mu, Mu, MuAttrs, NoMatchError, prefer_int
 from ..range import NumRange
 from ..vec import V
@@ -16,7 +17,7 @@ Dim = int|float|str
 Vec = tuple[float,float]|V
 VecOrNum = Vec|float
 BoundsF2 = tuple[tuple[float,float],tuple[float,float]]
-PathCommand = tuple|str
+PathCommand = str|tuple[int|float|str,...]
 
 
 class SvgNode(Mu):
@@ -150,21 +151,36 @@ class Line(SvgNode):
 class Path(SvgNode):
   'SVG Path element.'
 
-  def __init__(self, *args, d:Iterable[PathCommand], **kw_attrs) -> None:
+  def __init__(self, *args, d:Iterable[PathCommand]|Default=Default._, **kw_attrs) -> None:
+
+    if d is Default._:
+      super().__init__(*args, **kw_attrs)
+      return
 
     if not isinstance(d, str):
       cmd_strs = []
+
       for c in d:
+
         if isinstance(c, str):
-          cmd_strs.append(c)
+          if c: cmd_strs.append(c) # Ignore empty strings.
           continue
+
         try: code = c[0]
-        except IndexError: continue # Ignore empty strings.
+        except IndexError: continue # Ignore empty tuples.
+
+        if not isinstance(code, str): raise Exception(f'path command code must be a string; received command: {c!r}')
+
         try: exp_len = _path_command_lens[code]
-        except KeyError as e: raise Exception(f'bad path command code: {c!r}') from e
-        if len(c) != exp_len + 1: raise Exception(f'path command requires {exp_len} arguments: {c}')
+        except KeyError as e: raise Exception(f'bad path command code: {code!r}; received command: {c!r}') from e
+
+        if len(c) != exp_len + 1:
+          raise Exception(f'path command code {code!r} requires {exp_len} arguments; received command: {c!r}')
+
         cmd_strs.append(code + ','.join(str(prefer_int(n)) for n in c[1:]))
+
       d = ' '.join(cmd_strs)
+
     super().__init__(*args, d=d, **kw_attrs)
 
 
@@ -172,14 +188,19 @@ class Path(SvgNode):
 class SvgPoly(SvgNode):
   'Abstract class for SVG polygon and polyline elements.'
 
-  def __init__(self, *args, points:str|Iterable[str|Vec], **kw_attrs) -> None:
+  def __init__(self, *args, points:str|Iterable[str|Vec]|Default=Default._, **kw_attrs) -> None:
+
+    if points is Default._:
+      super().__init__(*args, **kw_attrs)
+      return
 
     if not isinstance(points, str):
       point_strs = []
       for p in points:
         if isinstance(p, str):
           point_strs.append(p)
-        elif len(p) < 2: raise Exception(f'invalid point for {self.tag}: {p!r}')
+        elif len(p) < 2:
+          raise Exception(f'invalid point for {self.tag}: {p!r}')
         else:
           point_strs.append(f'{prefer_int(p[0])},{prefer_int(p[1])}')
       points = ' '.join(point_strs)
