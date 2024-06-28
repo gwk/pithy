@@ -320,7 +320,7 @@ def runOE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) \
  -> tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE,
+  _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE,
     timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
   return o, e
 
@@ -329,7 +329,7 @@ def runO(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err,
+  _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err,
     timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
   assert e == ''
   return o
@@ -339,7 +339,7 @@ def runE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not PIPE
-  c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE,
+  _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE,
     timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
   assert o ==  ''
   return e

@@ -84,7 +84,7 @@ def _attr_urls_visit(node:HtmlNode) -> Iterator[str]:
     if k in attr_keys_for_url_vals:
       if k == 'srcset':
         for el in v.split(','):
-          src, space, descriptor = el.partition(' ')
+          src, _space, _descriptor = el.partition(' ')
           yield src
       else:
         yield v

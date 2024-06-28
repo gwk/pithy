@@ -134,7 +134,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
   def contains(self, table:str, *, where:str, **args:Any) -> bool:
     'Execute a SELECT query, returning True if the `where` SQL clause results in at least one row.`'
 
-    for row in self.execute(f'SELECT 1 FROM {table} WHERE {where} LIMIT 1', args):
+    for _ in self.execute(f'SELECT 1 FROM {table} WHERE {where} LIMIT 1', args):
       return True
     return False
 

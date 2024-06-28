@@ -72,7 +72,7 @@ def parse_formatters(fmt: str) -> Iterable[tuple[str, str, str, type]]:
       if spec:
         spec_match = fmt_spec_re.fullmatch(spec)
         if not spec_match: raise _exc(fmt, match.start(), f'invalid format spec: {spec!r}')
-        fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
+        _fill, _align, _sign, _alt, _zero, _width, _grouping, _precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
         if type_:
           try: value_type = spec_types[type_]
@@ -111,7 +111,7 @@ def format_to_re(fmt: str, allow_empty=False, greedy=False) -> Pattern[str]:
         spec_match = fmt_spec_re.fullmatch(spec)
         if not spec_match: raise exc(f'invalid format spec: {spec!r}')
 
-        fill, align, sign, alt, zero, width, grouping, precision, type_ = spec_match.group(
+        _fill, _align, _sign, _alt, _zero, _width, _grouping, _precision, type_ = spec_match.group(
           'fill', 'align', 'sign', 'alt', 'zero', 'width', 'grouping', 'precision', 'type')
 
         if type_:

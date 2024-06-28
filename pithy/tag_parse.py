@@ -85,7 +85,7 @@ class TagParser():
 
   def parse(self, text: str, leaf_replacements: dict[str, str]|None=None) -> 'Node':
     match_stream = Buffer(self.lexer.finditer(text))
-    res, pos = self._parse(leaf_replacements or {}, text, match_stream, pos=0, depth=0,
+    res, _pos = self._parse(leaf_replacements or {}, text, match_stream, pos=0, depth=0,
       subs=[], close_pred=lambda i, t: False, parent_close_pred=lambda i, t: False)
     return res
 
