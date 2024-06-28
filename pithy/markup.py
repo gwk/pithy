@@ -213,7 +213,7 @@ class Mu:
     raw_children = raw['_']
     if not isinstance(tag, str): raise ValueError(tag)
     if not isinstance(attrs, dict): raise ValueError(attrs)
-    for k, v in attrs.items():
+    for k in attrs:
       if not isinstance(k, str):
         raise ValueError(f'Mu attr key must be `str`; received: {k!r}')
     children:MuChildren = []
@@ -714,7 +714,7 @@ class Mu:
   def iter_visit(self, *, pre:MuIterVisitor|None=None, post:MuIterVisitor|None=None, traversable=False) -> Iterator[_T]:
     if pre is not None: yield from pre(self)
 
-    for i, c in enumerate(self._):
+    for c in self._:
       if isinstance(c, Mu):
         if traversable: c = c.subnode(self)
         yield from c.iter_visit(pre=pre, post=post, traversable=traversable)
