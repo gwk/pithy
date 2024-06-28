@@ -74,5 +74,5 @@ def url_assuming_netloc(url:str) -> str:
   u = url_split(url)
   if u.netloc: return url
   # The URL does not have a netloc. This is usually because it was not preceded with the "//" prefix.
-  netloc, slash, path = u.path.partition('/')
+  netloc, _slash, path = u.path.partition('/')
   return url_unsplit(u._replace(netloc=netloc, path=path))
