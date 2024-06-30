@@ -147,6 +147,7 @@ body {
 .list-style-inside { list-style-position: inside; }
 .list-style-outside { list-style-position: outside; }
 
+.error-red { color: #800; }
 
 /* Details, Summary. */
 /* NOTE: summary disclosure styling works differently between Chrome and Safari. */
