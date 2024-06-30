@@ -1472,40 +1472,36 @@ class Table(HtmlFlow, HtmlPalpable):
   # TODO: def caption
 
 
-  @classmethod
-  def simple(cls, *inline_rows:Iterable[MuChildLax], caption:MuChildLax='', cols:Iterable[Union[Col,'Template']]=(),
-    head:'Thead'|Iterable[MuChildLax]=(), rows:Iterable[Iterable[MuChildLax]], **kwargs:Any) -> 'Table':
+  def caption(self, caption:MuChildLax) -> Self:
+    if not isinstance(caption, Caption):
+      caption = Caption(caption)
+    self.append(caption)
+    return self
 
-    '''
-    Build an HTML table from `rows`, which can be plain python data or instances of `Tr`.
-    The rows are placed in a `Tbody` instance for correctness.
-    If `cols` is provided, create a `Colgroup` with the given columns.
-    If `head` is provided, it can either be a fully formed `Thead` or else an iterable of `Th` or content with which `Th` are constructed.
-    '''
 
-    table = cls(**kwargs)
-    if caption:
-      table.append(Caption(caption))
+  def cols(self, *cols:Col) -> Self:
+    self.append(Colgroup(_=cols))
+    return self
 
-    if cols:
-      table.append(Colgroup(_=cols))
 
-    if head:
-      if isinstance(head, Thead):
-        table.append(head)
-      else:
-        table.append(Thead(_=Tr(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head])))
+  def head(self, head:Union['Thead',Iterable[MuChildLax]]) -> Self:
+    'Head can be a fully formed `Thead` or else an iterable of `Td|Th` or content with which `Th` are constructed.'
+    if not isinstance(head, Thead):
+      head = Thead(_=Tr(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head]))
+    self.append(head)
+    return self
 
-    tbody = table.append(Tbody())
 
-    for row in chain(inline_rows, rows):
+  def rows(self, rows:Iterable[Iterable[MuChildLax]]) -> Self:
+    tbody = Tbody()
+    for row in rows:
       if isinstance(row, Tr):
         tr = row
       else:
         tr = Tr(_=[cell if isinstance(cell, (Td, Th)) else Td(_=cell) for cell in row])
       tbody.append(tr)
-
-    return table
+    self.append(tbody)
+    return self
 
 
 @_tag
