@@ -166,8 +166,9 @@ class SquelchApp:
 
     form.extend(
       Label('Table:'),
-      Div(Select.simple(name='table', placeholder='Table', value=table_name, options=table_names,
-        onchange='emptyFirstForSelector("#columns"); resetValueForSelectorAll(".clear-on-table-change", "value"); this.form.submit()')),
+      Div(Select(name='table',
+        onchange='emptyFirstForSelector("#columns"); resetValueForSelectorAll(".clear-on-table-change", "value"); this.form.submit()')
+        .options(placeholder='Table', value=table_name, options=table_names)),
 
       Label('Distinct:'),
       Div(Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),

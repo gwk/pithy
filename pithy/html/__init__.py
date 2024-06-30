@@ -1326,13 +1326,11 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
   Contexts for use: Phrasing.
   '''
 
-  @staticmethod
-  def simple(options:Iterable[Any], placeholder=None, value=None, **kwargs) -> 'Select':
 
-    select = Select(**kwargs)
+  def options(self, options:Iterable[Any], placeholder=None, value=None) -> Self:
 
     if placeholder is not None:
-      pho = select.append(Option(disabled='', value='', _=str(placeholder)))
+      pho = self.append(Option(disabled='', value='', _=str(placeholder)))
     else:
       pho = None
 
@@ -1363,12 +1361,12 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
       if v is not None and v == value: # Always excludes an Optgroup.
         option['selected'] = ''
         has_selected = True
-      select.append(option)
+      self.append(option)
 
     if pho is not None and not has_selected:
       pho['selected'] = ''
 
-    return select
+    return self
 
 
 @_tag
