@@ -174,6 +174,20 @@ def parse_dt(string: str, fmt:str|None=None) -> DateTime:
   return DateTime.fromisoformat(string)
 
 
+def parse_dt_utc(string: str, fmt:str|None=None) -> DateTime:
+  if fmt: dt = DateTime.strptime(string, fmt)
+  else: dt = DateTime.fromisoformat(string)
+  if dt.tzinfo != tz_utc: raise ValueError(f'parse_dt_utc: expected UTC timezone: {string!r}')
+  return dt
+
+
+def parse_dt_naive_utc(string: str, fmt:str|None=None) -> DateTime:
+  if fmt: dt = DateTime.strptime(string, fmt)
+  else: dt = DateTime.fromisoformat(string)
+  if dt.tzinfo is not None: raise ValueError(f'parse_dt_utc: expected naive datetime string: {string!r}')
+  return dt.replace(tzinfo=tz_utc)
+
+
 def parse_date(string: str, fmt:str|None=None) -> Date:
   if fmt: return DateTime.strptime(string, fmt).date()
   return Date.fromisoformat(string)
