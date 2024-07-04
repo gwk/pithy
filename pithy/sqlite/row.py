@@ -1,12 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
+from collections.abc import Sequence
 from typing import Any, Iterator
 
 from ..ansi import RST_TXT, TXT_B, TXT_C, TXT_D, TXT_G, TXT_M, TXT_R, TXT_Y
 
 
-class Row(sqlite3.Row):
+class Row(sqlite3.Row, Sequence):
   'A row of a query result. Subclasses sqlite3.Row to add property access.'
 
   def __getattr__(self, key:str) -> Any:
