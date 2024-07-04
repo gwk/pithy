@@ -64,10 +64,9 @@ class NumRange(Sequence[float], Hashable):
 _B = TypeVar('_B', bound=Comparable) # A bound type.
 
 
-def do_ranges_overlap(a:tuple[_B,_B], b:tuple[_B,_B]) -> bool:
-  'Return whether the two ranges overlap.'
+def do_range_tuples_overlap(a:tuple[_B,_B], b:tuple[_B,_B]) -> bool:
+  'Return whether the two ranges overlap, where the ranges are represented as tuple pairs.'
   return bool(a[0] < b[1] and b[0] < a[1])
-
 
 
 def do_ranges_from_attrs_overlap(a:Any, b:Any, start_attr:str, end_attr:str) -> bool:
