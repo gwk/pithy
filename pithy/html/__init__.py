@@ -7,7 +7,6 @@ Html type hierarchy.
 import re
 from html import escape as _escape
 from io import BytesIO, StringIO
-from itertools import chain
 from os import PathLike
 from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, Self, TextIO, Union
 
