@@ -4,7 +4,7 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import is_dataclass
 from types import UnionType
-from typing import Any, Callable, get_args, get_origin, Protocol, runtime_checkable, TypeVar, Union
+from typing import Any, Callable, cast, get_args, get_origin, Protocol, runtime_checkable, TypeVar, Union
 
 
 _T = TypeVar('_T')
@@ -149,8 +149,8 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
-def req_type(obj: _T, expected:type|tuple[type,...]) -> _T:
+def req_type(obj:Any, expected:type[_T]) -> _T:
   'Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.'
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')
-  return obj
+  return cast(_T, obj)
