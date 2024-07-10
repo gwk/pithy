@@ -49,23 +49,27 @@ def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
 
   for table in schema.tables:
     assert isinstance(table, Table), table
-
     qname = f'{schema.name}.{qea(table.name)}'
 
-    old_sql = old_table_sqls.get(table.name)
-    needs_rebuild, table_stmts = gen_table_migration(schema_name=schema.name, qname=qname, new=table, old=old_sql)
-    stmts.extend(table_stmts)
+    try:
+      old_sql = old_table_sqls.get(table.name)
+      needs_rebuild, table_stmts = gen_table_migration(schema_name=schema.name, qname=qname, new=table, old=old_sql)
+      stmts.extend(table_stmts)
 
-    old_deps = dict((row.name, row) for row in
-      c.run(f'''
-        SELECT type, name, sql FROM {schema.name}.sqlite_schema
-        WHERE type != 'table' AND tbl_name = :name AND name NOT LIKE 'sqlite_%'
-        ''', name=table.name))
+      old_deps = dict((row.name, row) for row in
+        c.run(f'''
+          SELECT type, name, sql FROM {schema.name}.sqlite_schema
+          WHERE type != 'table' AND tbl_name = :name AND name NOT LIKE 'sqlite_%'
+          ''', name=table.name))
 
-    new_deps = schema.table_deps[table.name]
+      new_deps = schema.table_deps[table.name]
 
-    stmts.extend(
-      gen_deps_migration(schema_name=schema.name, new_deps=new_deps, old_deps=old_deps, needs_rebuild=needs_rebuild))
+      stmts.extend(
+        gen_deps_migration(schema_name=schema.name, new_deps=new_deps, old_deps=old_deps, needs_rebuild=needs_rebuild))
+
+    except Exception as e:
+      e.add_note(f'Failed to generate migration for table {qname}.')
+      raise
 
   # TODO: handle table drops.
 
