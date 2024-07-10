@@ -141,11 +141,11 @@ class Structure:
 
 
   @classmethod
-  def parse(cls, path:str, text:str) -> Self:
+  def parse(cls, name:str, text:str) -> Self:
     '''
     Parse a schema definition from a string.
     '''
-    source = Source(path, text)
+    source = Source(name, text)
     ast = sql_parser.parse('create_stmt', source)
     return schema_transtructor.transtruct(cls, ast, ctx=source)
 

@@ -86,7 +86,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   if not old: return False, [new.sql(schema=schema_name)]
 
   if isinstance(old, str):
-    try: old = Table.parse(new.name + '(old)', old)
+    try: old = Table.parse(new.name + '(old)', text=old)
     except ParseError as e: e.fail()
 
 
