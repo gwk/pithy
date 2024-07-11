@@ -160,8 +160,8 @@ def gen_table_rebuild(*, schema_name:str, qname:str, new:Table, old:Table) -> li
   selected_column_exprs = []
   for col_name in new.material_column_names:
     new_col = new.columns_dict[col_name]
-    old_col = old.columns_dict[col_name]
-    if old_col.is_opt and not new_col.is_opt and new_col.default is not None:
+    old_col = old.columns_dict.get(col_name)
+    if old_col is not None and old_col.is_opt and not new_col.is_opt and new_col.default is not None:
       default_expr = render_column_default(new_col.default)
       col_expr = f'COALESCE({qe(col_name)}, {default_expr})'
     else:
