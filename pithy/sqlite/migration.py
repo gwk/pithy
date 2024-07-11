@@ -122,7 +122,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
 
   diff_hints = []
   for (nc, c) in zip(new.columns, cols):
-    if dh := nc.diff_hint(c, exact_type=False):
+    if dh := nc.diff_hint(c, include_name=True, exact_type=False):
       diff_hints.append(f'{qea(nc.name)} {dh}')
       if dh.endswith('order'): break
 
@@ -139,7 +139,7 @@ def gen_rename_columns(*, qname:str, new:Table, old:Table, matched_cols:dict[str
   stmts = ['-- Renaming columns.']
   for i, (nc, oc) in enumerate(zip(new.columns, old.columns)):
     if nc.name == oc.name:
-      if dh := nc.diff_hint(oc, exact_type=False):
+      if dh := nc.diff_hint(oc, include_name=True, exact_type=False):
         raise GenMigrationError(f'Rename migration failed: {nc.name!r} semantic details differ ({dh}):\n  old: {oc}\n  new: {nc}')
       continue
     is_nc_matched = nc.name in matched_cols

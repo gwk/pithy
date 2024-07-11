@@ -68,7 +68,7 @@ class Column:
     return (self.is_opt, self.is_primary, self.is_unique, self.virtual, self.default_rendered)
 
 
-  def diff_hint(self, other:'Column', exact_type:bool) -> str:
+  def diff_hint(self, other:'Column', *, include_name:bool, exact_type:bool) -> str:
     '''
     Return a reason that this column is different from another, ignoring attributes that are not semantically relevant:
     * allow_kw
@@ -79,7 +79,7 @@ class Column:
     in the sense of `nonstrict_to_strict_types_for_sqlite`.
     This allows us to compare a current self from a python schema to a previous version parsed from sqlite_schema.
     '''
-    if self.name != other.name: return f'/ {qea(other.name)} order'
+    if include_name and self.name != other.name: return f'/ {qea(other.name)} order'
     if self.datatype != other.datatype:
       if exact_type or nonstrict_to_strict_types_for_sqlite.get(self.datatype) != other.datatype:
         return 'datatype'
@@ -259,7 +259,8 @@ class Table(Structure):
     matches = self.match_columns_by_name(other)
     if self.column_names != tuple(matches): hints.append('columns')
     else:
-      hints.extend(filter(None, (c.diff_hint(oc, exact_type=False) for c, oc in zip(self.columns, other.columns))))
+      hints.extend(filter(None,
+        (c.diff_hint(oc, include_name=True,  exact_type=False) for c, oc in zip(self.columns, other.columns))))
     return hints
 
 
