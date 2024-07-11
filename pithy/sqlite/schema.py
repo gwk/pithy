@@ -173,7 +173,7 @@ class Table(Structure):
   def __post_init__(self) -> None:
     if len(self.columns_dict) != len(self.column_names):
       counter = Counter(self.column_names)
-      dups = [n for n in counter if counter[n] > 1]
+      dups = [n for n, c in counter.items() if c > 1]
       raise ValueError(f'Table {self} has duplicate column names: {dups!r}')
 
   @cached_property
@@ -245,6 +245,7 @@ class Table(Structure):
     for c in self.columns:
       try: oc = od[c.name]
       except KeyError: continue
+      assert c.name not in matches
       matches[c.name] = oc
 
     return matches
