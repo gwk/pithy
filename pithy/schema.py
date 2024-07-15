@@ -4,13 +4,25 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
+from __future__ import annotations
+
 from collections import Counter, defaultdict
-from typing import Any, cast, NamedTuple, Optional, TextIO
+from dataclasses import dataclass, field
+from typing import Any, cast, Iterable, Optional, TextIO
 
 from .string import iter_excluding_str
 
 
-class Schema(NamedTuple):
+def _mk_schema() -> Schema:
+  return Schema()
+
+
+def _dd_of_schemas() -> defaultdict:
+  return defaultdict(_mk_schema)
+
+
+@dataclass
+class Schema:
   '''
   A schema represents the aggregate of values occurring at a structural position in a set of data trees.
   atoms: counts atom values.
@@ -19,9 +31,17 @@ class Schema(NamedTuple):
   All sequence types are lumped together.
   All dict classes are lumped together.
   '''
-  atoms: Counter
-  seqs: defaultdict
-  dicts: defaultdict # defaultdict of keys to defaultdict of value schemas.
+  atoms: Counter = field(default_factory=Counter)
+  seqs: defaultdict = field(default_factory=_dd_of_schemas)
+  dicts: defaultdict  = field(default_factory=lambda: defaultdict(_dd_of_schemas))
+
+
+  def __repr__(self) -> str:
+    return f'Schema(atoms=<len({self.atoms})>, seqs=<len({self.seqs})>, dicts=<len({self.dicts})>)'
+
+
+  def __bool__(self) -> bool:
+    return any((self.atoms, self.seqs, self.dicts))
 
 
   def update(self: 'Schema', other: Optional['Schema']) -> None:
@@ -62,13 +82,6 @@ class Keys(set):
   def __hash__(self) -> int: return id(self) # type: ignore[override]
 
 
-def _mk_schema() -> Schema:
-  return Schema(atoms=Counter(), seqs=defaultdict(_mk_schema), dicts=defaultdict(_dd_of_schemas))
-
-def _dd_of_schemas() -> defaultdict:
-  return defaultdict(_mk_schema)
-
-
 def _compile_schema(node: Any, schema: Schema):
   if isinstance(node, dict):
     # dict schemas have two layers: node key and node val type.
@@ -85,7 +98,7 @@ def _compile_schema(node: Any, schema: Schema):
         _compile_schema(el, schema.seqs[type(el)])
 
 
-def compile_schema(*nodes: Any, schema: Schema|None=None) -> Schema:
+def compile_schema(nodes:Iterable[Any], schema: Schema|None=None) -> Schema:
   '''
   Generate or update a `Schema` from one or more example objects.
   Each object (JSON or similar generic collections) is explored
@@ -125,7 +138,7 @@ def _write_schema(file: TextIO, schema: Schema, *, all_keys: bool, count_atoms: 
       put(prefix, symbol, t.__name__)
       _write_schema(file, subschema, all_keys=all_keys, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
 
-  if not any(schema): # should only happen for root; other schemas are created on demand.
+  if not schema: # should only happen for root; other schemas are created on demand.
     put(indent, 'empty')
     return
   if count_atoms and schema.atoms:
@@ -165,3 +178,39 @@ def write_schema(file: TextIO, schema: Schema|None=None, *, all_keys=False, coun
   else:
     _write_schema(file, schema=schema, all_keys=all_keys, count_atoms=count_atoms, inline=inline, indent='\n' + indent, root=True)
   file.write(end)
+
+
+def main() -> None:
+  from argparse import ArgumentParser, FileType
+
+  from pithy.loader import load
+
+
+  parser = ArgumentParser(description=__doc__)
+  parser.add_argument('files', nargs='+', type=FileType('r'), help='Input files to generate schemas from.')
+
+  parser.add_argument('-output', type=FileType('w'), default='-',
+    help='Output file to write schemas to. Default: stdout.')
+
+  parser.add_argument('-all-keys', action='store_true',
+    help='Show all keys in dictionaries, rather than just the first few.')
+
+  parser.add_argument('-count-atoms', action='store_true',
+    help='Show histograms of atom values.')
+
+  parser.add_argument('-inline', action='store_true',
+    help='Inline monomorphic type names, resulting in shorter but less regular output.')
+
+  parser.add_argument('-indent', default='', help='Leading indentation for each line.')
+
+  args = parser.parse_args()
+
+  schema = Schema()
+  for file in args.files:
+    nodes = load(file)
+    compile_schema(nodes, schema)
+
+  write_schema(args.output, schema, all_keys=args.all_keys, count_atoms=args.count_atoms, inline=args.inline, indent=args.indent)
+
+
+if __name__ == '__main__': main()
