@@ -1,10 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date as Date, datetime as DateTime, time as Time, timedelta as TimeDelta, tzinfo as TZInfo, UTC as tz_utc
 from typing import Iterator, overload, Sequence, TypeVar
 
+
+_setattr = object.__setattr__
 
 sec_per_min = 60
 sec_per_hour = sec_per_min * 60
@@ -108,18 +110,22 @@ class DateDelta:
 class DateRange(Sequence[Date]):
   start:Date
   end:Date
-  step:DateDelta|TimeDelta = TimeDelta(days=1)
-  _seq:list[Date] = field(default_factory=list, compare=False, init=False, repr=False)
+  step:DateDelta|TimeDelta
+  _seq:tuple[Date,...]
 
 
-  def __post_init__(self):
-    start = self.start
+  def __init__(self, start:Date, end:Date, step:DateDelta|TimeDelta=TimeDelta(days=1)) -> None:
+    _setattr(self, 'start', start)
+    _setattr(self, 'end', end)
+    _setattr(self, 'step', step)
     end = self.end
     if start > end: raise ValueError(f'start > end: start={start}; end={end}.')
+    seq:list[Date] = []
     d = start
     while d < end:
-      self._seq.append(d)
+      seq.append(d)
       d += self.step
+    _setattr(self, '_seq', tuple(seq))
 
 
   def __contains__(self, value: object) -> bool:
