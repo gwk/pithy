@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
-from pithy.json import parse_json, render_json
+from pithy.json import parse_json, render_json, req_json_dict, req_json_list, req_opt_json_dict, req_opt_json_list
 from pithy.untyped import Immutable
 from utest import utest, utest_exc
 
@@ -81,3 +81,20 @@ utest_exc(TypeError("SlotXYZ.__init__() missing 1 required positional argument: 
 
 utest({'x': 1, 'y': 2, 'z': 3},
   parse_json, '{"x":1, "y":2, "z":3}', hooks=[SlotXYZ]) # not recognized because slots of SlotXYZ are only x,y.
+
+
+# req_ functions.
+
+utest({}, req_json_dict, {})
+utest_exc(TypeError, req_json_dict, [])
+
+utest([], req_json_list, [])
+utest_exc(TypeError, req_json_list, {})
+
+utest(None, req_opt_json_dict, None)
+utest({}, req_opt_json_dict, {})
+utest_exc(TypeError, req_opt_json_dict, [])
+
+utest(None, req_opt_json_list, None)
+utest([], req_opt_json_list, [])
+utest_exc(TypeError, req_opt_json_list, {})

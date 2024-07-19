@@ -197,8 +197,10 @@ def _hook_type_fn(t:type) -> ObjDecodeFn:
   except AttributeError: return t
 
 
-
 def format_json_bytes(bytes_or_file:BinaryIO|bytes, out_raw:BinaryIO) -> None:
+  '''
+  Format JSON bytes. This is useful for pretty-printing JSON that is malformed.
+  '''
   file: BinaryIO = bytes_or_file if hasattr(bytes_or_file, 'read') else BytesIO(bytes_or_file) # type: ignore[assignment]
 
   s_start, s_open, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(8)
@@ -260,6 +262,28 @@ def format_json_bytes(bytes_or_file:BinaryIO|bytes, out_raw:BinaryIO) -> None:
   out_raw.flush()
   if indent != 0:
     print(f'WARNING: unbalanced levels: {indent}', file=stderr)
+
+
+def req_json_list(obj:Json) -> JsonList:
+  if not isinstance(obj, list): raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+
+def req_json_dict(obj:Json) -> JsonDict:
+  if not isinstance(obj, dict): raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+
+def req_opt_json_list(obj:Json) -> JsonList|None:
+  if not (obj is None or isinstance(obj, list)):
+    raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+
+def req_opt_json_dict(obj:Json) -> JsonDict|None:
+  if not (obj is None or isinstance(obj, dict)):
+    raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
+  return obj
 
 
 _ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
