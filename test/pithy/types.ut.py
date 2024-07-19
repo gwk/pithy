@@ -3,8 +3,9 @@
 from collections import Counter
 from typing import Optional
 
-from pithy.types import is_a
-from utest import utest
+from pithy.types import (is_a, req_bool, req_dict, req_float, req_int, req_list, req_opt_bool, req_opt_dict, req_opt_float,
+  req_opt_int, req_opt_list, req_opt_str, req_str)
+from utest import utest, utest_exc
 
 
 utest(True, is_a, None, type(None))
@@ -60,3 +61,46 @@ utest(True, is_a, (0,0), tuple[int,...])
 
 utest(False, is_a, ('',0), tuple[int,int])
 utest(False, is_a, ('',0), tuple[int,...])
+
+
+utest(True, req_bool, True)
+utest_exc(TypeError, req_bool, 0)
+
+utest(0, req_int, 0)
+utest_exc(TypeError, req_int, '')
+
+utest(1.5, req_float, 1.5)
+utest_exc(TypeError, req_float, 0)
+
+utest('', req_str, '')
+utest_exc(TypeError, req_str, 0)
+
+utest([], req_list, [])
+utest_exc(TypeError, req_list, '')
+
+utest({}, req_dict, {})
+utest_exc(TypeError, req_dict, '')
+
+utest(None, req_opt_bool, None)
+utest(True, req_opt_bool, True)
+utest_exc(TypeError, req_opt_bool, '')
+
+utest(None, req_opt_int, None)
+utest(0, req_opt_int, 0)
+utest_exc(TypeError, req_opt_int, '')
+
+utest(None, req_opt_float, None)
+utest(1.5, req_opt_float, 1.5)
+utest_exc(TypeError, req_opt_float, '')
+
+utest(None, req_opt_str, None)
+utest('', req_opt_str, '')
+utest_exc(TypeError, req_opt_str, 0)
+
+utest(None, req_opt_list, None)
+utest([], req_opt_list, [])
+utest_exc(TypeError, req_opt_list, '')
+
+utest(None, req_opt_dict, None)
+utest({}, req_opt_dict, {})
+utest_exc(TypeError, req_opt_dict, '')

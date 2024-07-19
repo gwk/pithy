@@ -154,3 +154,59 @@ def req_type(obj:Any, expected:type[_T]) -> _T:
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')
   return cast(_T, obj)
+
+
+def req_bool(obj:Any) -> bool:
+  if not isinstance(obj, bool): raise TypeError(f'expected type: bool; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_int(obj:Any) -> int:
+  if not isinstance(obj, int): raise TypeError(f'expected type: int; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_float(obj:Any) -> float:
+  if not isinstance(obj, float): raise TypeError(f'expected type: float; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_str(obj:Any) -> str:
+  if not isinstance(obj, str): raise TypeError(f'expected type: str; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_list(obj:Any) -> list:
+  if not isinstance(obj, list): raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_dict(obj:Any) -> dict:
+  if not isinstance(obj, dict): raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+
+def req_opt_bool(obj:Any) -> bool|None:
+  if not (obj is None or isinstance(obj, bool)):
+    raise TypeError(f'expected type: bool; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_opt_int(obj:Any) -> int|None:
+  if not (obj is None or isinstance(obj, int)):
+    raise TypeError(f'expected type: int; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_opt_float(obj:Any) -> float|None:
+  if not (obj is None or isinstance(obj, float)):
+    raise TypeError(f'expected type: float; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_opt_str(obj:Any) -> str|None:
+  if not (obj is None or isinstance(obj, str)):
+    raise TypeError(f'expected type: str; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_opt_list(obj:Any) -> list|None:
+  if not (obj is None or isinstance(obj, list)):
+    raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
+  return obj
+
+def req_opt_dict(obj:Any) -> dict|None:
+  if not (obj is None or isinstance(obj, dict)):
+    raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
+  return obj
