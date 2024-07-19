@@ -1,21 +1,21 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.dispatch import key_dispatched
+from pithy.dispatch import key_dispatched_method
 from utest import utest
 
 
 class KeyDispatcher:
 
-  @key_dispatched(lambda k: k)
+  @key_dispatched_method(lambda k: k)
   def echo(self, key:str) -> str:
     return key
 
-  @key_dispatched(key='a') # type: ignore[no-redef]
-  def echo(self, key:str) -> str:
+  @echo.register(key='a')
+  def _(self, key:str) -> str:
     return 'A'
 
-  @key_dispatched(key='b') # type: ignore[no-redef]
-  def echo(self, key:str) -> str:
+  @echo.register(key='b')
+  def _(self, key:str) -> str:
     return 'B'
 
 
