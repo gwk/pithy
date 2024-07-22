@@ -4,7 +4,7 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import is_dataclass
 from types import UnionType
-from typing import Any, Callable, cast, get_args, get_origin, Protocol, runtime_checkable, TypeVar, Union
+from typing import Any, Callable, cast, get_args, get_origin, overload, Protocol, runtime_checkable, TypeVar, Union
 
 
 _T = TypeVar('_T')
@@ -170,14 +170,6 @@ def req_str(obj:Any) -> str:
   if not isinstance(obj, str): raise TypeError(f'expected type: str; actual type: {type(obj)}; value: {obj!r}')
   return obj
 
-def req_list(obj:Any) -> list:
-  if not isinstance(obj, list): raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
-  return obj
-
-def req_dict(obj:Any) -> dict:
-  if not isinstance(obj, dict): raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
-  return obj
-
 
 def req_opt_bool(obj:Any) -> bool|None:
   if not (obj is None or isinstance(obj, bool)):
@@ -199,12 +191,76 @@ def req_opt_str(obj:Any) -> str|None:
     raise TypeError(f'expected type: str; actual type: {type(obj)}; value: {obj!r}')
   return obj
 
-def req_opt_list(obj:Any) -> list|None:
-  if not (obj is None or isinstance(obj, list)):
-    raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
+
+_El = TypeVar('_El')
+
+
+@overload
+def req_list(obj:Any) -> list: ...
+
+@overload
+def req_list(obj:Any, of:type[_El]) -> list[_El]: ...
+
+def req_list(obj:Any, of:type[_El]|None=None) -> list[_El]:
+  if not isinstance(obj, list): raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
+  if of is not None:
+    for el in obj:
+      if not isinstance(el, of):
+        raise TypeError(f'expected type: {of}; actual type: {type(el)}; value: {el!r}')
   return obj
 
-def req_opt_dict(obj:Any) -> dict|None:
-  if not (obj is None or isinstance(obj, dict)):
-    raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
+
+@overload
+def req_opt_list(obj:Any) -> list: ...
+
+@overload
+def req_opt_list(obj:Any, of:type[_El]) -> list[_El]: ...
+
+def req_opt_list(obj:Any, of:type[_El]|None=None) -> list|None:
+  if obj is None: return None
+  if not isinstance(obj, list):
+    raise TypeError(f'expected type: list|None; actual type: {type(obj)}; value: {obj!r}')
+  if of is not None:
+    for el in obj:
+      if not isinstance(el, of):
+        raise TypeError(f'expected type: {of}; actual type: {type(el)}; value: {el!r}')
+  return obj
+
+
+_K = TypeVar('_K')
+_V = TypeVar('_V')
+
+@overload
+def req_dict(obj:Any) -> dict: ...
+
+@overload
+def req_dict(obj:Any, K:type[_K], V:type[_V]) -> dict[_K,_V]: ...
+
+def req_dict(obj:Any, K:type=object, V:type=object) -> dict:
+  if not isinstance(obj, dict): raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
+  if K is not object or V is not object:
+    for k, v in obj.items():
+      if not isinstance(k, K):
+        raise TypeError(f'expected key type: {K}; actual type: {type(k)}; value: {k!r}')
+      if not isinstance(v, V):
+        raise TypeError(f'expected value type: {V}; actual type: {type(v)}; value: {v!r}')
+  return obj
+
+
+@overload
+def req_opt_dict(obj:Any) -> dict|None: ...
+
+@overload
+def req_opt_dict(obj:Any, K:type[_K], V:type[_V]) -> dict[_K,_V]|None: ...
+
+def req_opt_dict(obj:Any, K:type=object, V:type=object) -> dict|None:
+  if obj is None: return None
+  if not isinstance(obj, dict):
+    raise TypeError(f'expected type: dict|None; actual type: {type(obj)}; value: {obj!r}')
+  if K is not object or V is not object:
+    for k, v in obj.items():
+      if not isinstance(k, K):
+        raise TypeError(f'expected key type: {K}; actual type: {type(k)}; value: {k!r}')
+      if not isinstance(v, V):
+        raise TypeError(f'expected value type: {V}; actual type: {type(v)}; value: {v!r}')
   return obj
