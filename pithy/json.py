@@ -21,6 +21,9 @@ JsonCo:TypeAlias = None|int|float|str|bool|JsonSequence|JsonMapping
 
 JsonText = str|bytes|bytearray
 
+json_types = (type(None), bool, int, float, str, list, dict)
+
+
 class JSONEmptyDocument(JSONDecodeError): pass
 
 ObjDecodeFn = Callable[[dict],Any]
@@ -276,13 +279,13 @@ def req_json_dict(obj:Json) -> JsonDict:
 
 def req_opt_json_list(obj:Json) -> JsonList|None:
   if not (obj is None or isinstance(obj, list)):
-    raise TypeError(f'expected type: list; actual type: {type(obj)}; value: {obj!r}')
+    raise TypeError(f'expected type: JsonList|None; actual type: {type(obj)}; value: {obj!r}')
   return obj
 
 
 def req_opt_json_dict(obj:Json) -> JsonDict|None:
   if not (obj is None or isinstance(obj, dict)):
-    raise TypeError(f'expected type: dict; actual type: {type(obj)}; value: {obj!r}')
+    raise TypeError(f'expected type: JsonDict|None; actual type: {type(obj)}; value: {obj!r}')
   return obj
 
 
