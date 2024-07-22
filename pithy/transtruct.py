@@ -62,7 +62,11 @@ class Transtructor:
 
 
   def transtruct(self, desired_type:type[Desired], val:Input, ctx:Ctx=None, dbg=False) -> Desired:
-    transtructor:Callable[[Input,Ctx],Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
+    try:
+      transtructor:Callable[[Input,Ctx],Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
+    except TypeError as e:
+      e.add_note(f'transtruct argument 1 should be the desired type; received: `{repr(desired_type)[:64]}…`')
+      raise
     if dbg: print(f'transtructor for type:{desired_type!r}: {transtructor!r}')
     return transtructor(val, ctx)
 
