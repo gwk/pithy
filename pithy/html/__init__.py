@@ -1302,6 +1302,24 @@ class Script(HtmlFlow, HtmlMetadata, HtmlPhrasing):
   '''
 
 
+  @classmethod
+  def strict(cls, script:str, **attrs:Any) -> 'Script':
+    if not (script.startswith('\'use strict\';') or script.startswith('"use strict";')):
+      script = "'use strict';\n" + script
+    return Script(script, **attrs)
+
+
+  @classmethod
+  def onDomLoaded(cls, script:str, **attrs:Any) -> 'Script':
+    '''
+    Embed the script in `script` into a callback function that runs when the DOM is loaded.
+    The callback function takes a single argument named `event`.
+    Strict mode is automatically enabled.
+    '''
+    script = f"'use strict';\ndocument.addEventListener('DOMContentLoaded', (event) => {{\n{script}\n}});"
+    return Script(script, **attrs)
+
+
 @_tag
 class Section(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
   '''
