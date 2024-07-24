@@ -75,6 +75,22 @@ class HtmlNode(Mu):
    return self.iter_visit(pre=_attr_urls_visit)
 
 
+  def get_value(self) -> Any:
+    '''
+    The default implementation of `get_value` simply gets the attribute stored under 'value.'
+    This is overridden for Select elements, which return the value of the selected option.
+    '''
+    return self.get('value')
+
+
+  def set_value(self, value:Any) -> None:
+    '''
+    The default implementation of `set_value` simply sets the attribute stored under 'value.'
+    This is overridden for Select elements, which set the value of the selected option.
+    '''
+    self['value'] = value
+
+
 HtmlNode.generic_tag_type = HtmlNode # Note: this creates a circular reference.
 
 
@@ -1345,7 +1361,9 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
 
 
   def options(self, options:Iterable[Any], placeholder=None, value=None) -> Self:
-
+    '''
+    Configure the select element with `options`, an optional `placeholder`, and an optional selected `value`.
+    '''
     if placeholder is not None:
       pho = self.append(Option(disabled='', value='', _=str(placeholder)))
     else:
@@ -1384,6 +1402,39 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
       pho['selected'] = ''
 
     return self
+
+
+  def get_value(self) -> Any:
+    '''
+    `Select` overrides the default implementation of `get_value` and returns the value of the selected option or `None`.
+
+    Note the documented behavior in https://developer.mozilla.org/en-US/docs/Web/HTML/Element/select:
+    > If no value attribute is included, the value defaults to the text contained inside the element.
+
+    We do not attempt to imitate the default behavior, because if we wanted to make it accurate across all form controls
+    we would need to also implement the default behavior for the various kinds of `Input`, e.g. return "on" for checkboxes.
+    This is possible but requires more careful research, documentation and testing.
+    '''
+    for o in self:
+      if not isinstance(o, Option): continue
+      if 'selected' not in o.attrs: continue
+      return o.get('value')
+    return None
+
+
+  def set_value(self, value:Any) -> None:
+    '''
+    `Select` overrides the default implementation of `set_value` and sets the option with the given value as selected.
+    '''
+    found = False
+    for o in self:
+      if not isinstance(o, Option): continue
+      if o.get('value') == value:
+        o['selected'] = ''
+        found = True
+      else:
+        o.attrs.pop('selected', None)
+    if not found and value is not None: raise ValueError(f'Option with value {value!r} not found in Select.')
 
 
 @_tag
