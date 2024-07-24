@@ -15,7 +15,7 @@ from collections import Counter
 from functools import wraps
 from inspect import get_annotations
 from itertools import chain
-from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Match, Optional, overload, TypeVar
+from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Mapping, Match, Optional, overload, TypeVar
 from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -203,6 +203,15 @@ class Mu:
   def get(self, key:str, default=None) -> Any: return self.attrs.get(key, default)
 
   def __iter__(self) -> Iterator['MuChild']: return iter(self._)
+
+
+  def update(self, attrs:Iterable[tuple[str,Any]]|Mapping[str,Any]=(), **kwargs:Any) -> None:
+    '''
+    Update the node attributes with the provided dictionary and/or kwargs.
+    If kwargs are provided, those keys will have underscores replaced with hyphens.
+    '''
+    kwargs = { k.replace('_', '-'): v for k, v in kwargs.items() }
+    self.attrs.update(attrs, **kwargs)
 
 
   @classmethod
