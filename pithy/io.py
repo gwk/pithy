@@ -9,6 +9,7 @@ from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Size
 
 from .desc import errD, outD, writeD
 from .reprs import repr_ml
+from .string import ConvFn, fmt_rows
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
@@ -83,6 +84,17 @@ def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_ite
 
 
 # Pretty printing.
+
+def write_rows(file:TextIO, rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
+ max_col_width=64, flush=False) -> None:
+  '''
+  Write rows of cells to file after calculating column widths to justify each cell.
+  This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
+  See `fmt_rows` for the underlying implementation.
+  '''
+  for s in fmt_rows(rows, convs, rjust, max_col_width):
+    writeL(file, s, flush=flush)
+
 
 def writeP(file:TextIO, *labels_and_obj: Any, indent=2, **opts:Any) -> None:
   'Write labels and pretty-print object to file.'
@@ -171,6 +183,16 @@ def outP(*labels_and_obj:Any, **opts: Any) -> None:
 def outM(*labels_and_obj:Any, **opts: Any) -> None:
   'Multiline repr to std out.'
   writeM(stdout, *labels_and_obj, **opts)
+
+
+def out_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
+  max_col_width=64, flush=False) -> None:
+    '''
+    Write rows of cells to std out after calculating column widths to justify each cell.
+    This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
+    See `fmt_rows` for the underlying implementation.
+    '''
+    write_rows(stdout, rows, convs, rjust, max_col_width, flush)
 
 
 # std err.

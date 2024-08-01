@@ -5,7 +5,9 @@
 import re
 from decimal import Decimal
 from string import Template
-from typing import Any, Iterable, Iterator, Sequence, TypeVar
+from typing import Any, Callable, cast, Iterable, Iterator, Sequence, TypeVar
+
+from .defaultlist import DefaultList
 
 
 _T = TypeVar('_T')
@@ -141,6 +143,47 @@ def indent_lines(lines:Iterable[str], depth=1) -> Iterator[str]:
   for line in lines:
     nl = '' if line.endswith('\n') else '\n'
     yield f'{ind}{line}{nl}'
+
+
+ConvFn = Callable[[Any], str]
+
+def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
+ max_col_width=64) -> Iterable[str]:
+  '''
+  Format rows of cells to after calculating column widths to justify each cell.
+  This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
+  '''
+  # Convert all cells to repr or str representations.
+  if callable(convs):
+    rows = list(tuple(convs(cell) for cell in row) for row in rows)
+  else:
+    convs = list(convs)
+    dflt_conv:ConvFn = cast(ConvFn, convs[-1] if convs else str)
+    convs = DefaultList(lambda _: dflt_conv, convs)
+    rows = list(tuple(convs[i](cell) for i, cell in enumerate(row)) for row in rows)
+
+  col_widths = DefaultList(lambda _: 0)
+
+  for row in rows: # Get the max width of each column.
+    for i, cell in enumerate(row):
+      col_widths[i] = max(col_widths[i], len(cell))
+
+  for i, width in enumerate(col_widths): # Clip each column width to max_col_width.
+    col_widths[i] = min(width, max_col_width)
+
+  # Determine rjust bool values for each column.
+  if isinstance(rjust, bool):
+    rjust = [rjust] * len(col_widths)
+  else:
+    rjust = list(rjust)
+    if not rjust: rjust = [False]
+    while len(rjust) < len(col_widths): rjust.append(rjust[-1])
+
+  just_fns = [(str.rjust if rj else str.ljust) for rj in rjust]
+
+  for row in rows: # Emit formatted row strings.
+    yield '  '.join(just_fn(cell, width) for just_fn, cell, width in zip(just_fns, row, col_widths))
+
 
 
 def iter_str(iterable:Iterable[str]) -> Iterable[str]:
