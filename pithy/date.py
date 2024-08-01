@@ -168,11 +168,12 @@ def dtp_IMp(start:DateTime|Time, end:DateTime|Time, compact=False) -> str:
   return f'{dt_IMp(start, compact)}-{dt_IMp(end, compact)}'
 
 
-def dt_Ymd_IMp(dt:DateTime|Time, include_at:bool=False) -> str:
+def dt_Ymd_IMp(dt:DateTime|Time, *, sep:str='') -> str:
   'Format a DateTime or Time as e.g. "2020-01-01 4:30PM".'
   time = dt_IMp(dt)
-  at = ' at ' if include_at else ' '
-  return f'{dt:%Y-%m-%d}{at}{time}'
+  if not sep:
+    sep = '  ' if len(time) < 7 else ' '
+  return f'{dt:%Y-%m-%d}{sep}{time}'
 
 
 def parse_dt(string: str, fmt:str|None=None) -> DateTime:
