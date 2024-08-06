@@ -423,16 +423,26 @@ a.icon:visited {
 /* Htmx emoji clock indicator. */
 
 .with-spinner-after::after, .with-spinner-before::before {
-  font-family: 'Noto Emoji';
+  display: inline-block;
+  font-family: 'Noto Emoji', sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
   opacity: 0;
+  content: '\00a0';
   transition: opacity 250ms ease-in;
   text-align: center;
-  display: inline-block;
-  /* TODO: figure out how to align spinner with rest of input-label pair. */
+  vertical-align: baseline;
+  font-size: 90%;
+  /* TODO: figure out how to better align spinner with rest of input-label pair. */
 }
 
+/* 2024-08-06: macOS Safari appears broken (regressed) when using Noto Emoji. Using a system font name fixes this. */
+.safari .with-spinner-after::after { font-family: 'Menlo', sans-serif; }
+.safari .with-spinner-before::before { font-family: 'Menlo', sans-serif; }
+
 .with-spinner-before::before {
-  transform: translateX(-3ch);
+  transform: translateX(-2.5ch);
 }
 
 .with-spinner-after.htmx-request::after, .with-spinner-before.htmx-request::before {
