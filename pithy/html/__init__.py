@@ -1691,15 +1691,28 @@ class Tr(HtmlNode):
   Contexts for use: As a child of a table element, after any caption, colgroup, and thead elements, but only if there are no tbody elements that are children of the table element, As a child of a tbody element, As a child of a tfoot element, As a child of a thead element.
   '''
 
-  @classmethod
-  def tds(cls, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
-    'Build a table row from the arguments, each of which is either a Td/Th or else becomes the content of a Td.'
-    return cls(_=[cell if isinstance(cell, (Td, Th)) else Td(_=cell) for cell in cells], **kwargs)
+  def tds(self, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
+    '''
+    Add Td child elements from the arguments, each of which is either a Td/Th or else becomes the content of a new Td.
+    Each child is updated with the given `kwargs`.
+    '''
+    for c in cells:
+      cell = c if isinstance(c, (Td, Th)) else Td(_=c)
+      cell.update(**kwargs)
+      self.append(cell)
+    return self
 
-  @classmethod
-  def ths(cls, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
-    'Build a table row from the arguments, each of which is either a Td/Th or else becomes the content of a Th.'
-    return cls(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in cells], **kwargs)
+
+  def ths(self, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
+    '''
+    Add Th child elements from the arguments, each of which is either a Td/Th or else becomes the content of a Th.
+    Each child is updated with the given `kwargs`.
+    '''
+    for c in cells:
+      cell = c if isinstance(c, (Td, Th)) else Th(_=c)
+      cell.update(**kwargs)
+      self.append(cell)
+    return self
 
 
 @_tag
