@@ -155,7 +155,7 @@ class SquelchApp:
     table_names = [f'{qe(s.name)}.{qe(t.name)}' for s in self.schemas.values() for t in s.tables]
     if table_name: assert table_name in table_names # Sanity check that these generated table names match the parsed table name.
 
-    main = Main(id='squelch_app', cl='bfull')
+    main = Main(id='squelch_app', cl='body-child-full')
 
     main.append(main_script())
     main.append(H1(A(href=path, _='SELECT')))
@@ -295,9 +295,9 @@ class SquelchApp:
       pagination = Div(id='pagination', cl='kv-grid-max',  _=[pagination_control(count, limit, offset, params)])
       parts.extend([
         pagination,
-        Div(id='results', _=HtmlTable(cl='dense', _=[
+        Div(id='results', _=HtmlTable(
           Thead(Tr(_=col_headers)),
-          Tbody(_=rows)])),
+          Tbody(_=rows))),
         pagination,
       ])
 
