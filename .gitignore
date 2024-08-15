@@ -5,19 +5,14 @@
 
 # Python.
 __pycache__/
-*.egg-info/
-.dmypy.json
 dist/
-
-# VSCode.
-.vscode/tags
 
 # Project.
 _build/
 _misc/
 _repro.wu
 docs/_muck
-todo.txt
+todo.md
 typeshed
 
 # Packaging pyproject.toml files are generated from smaller project.toml.
