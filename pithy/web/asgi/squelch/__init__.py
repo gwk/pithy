@@ -283,11 +283,11 @@ class SquelchApp:
 
 
     parts:list[HtmlNode] = [
-      Details(Summary('Query'), _=Pre(cl='detail', hx_swap_oob='innerHTML', _=query)),
+      Details(Summary('Query'), _=Pre(cl='detail', _=query)),
     ]
 
     if plan:
-      parts.append(Details(Summary('Plan'), Pre(cl='detail', hx_swap_oob='innerHTML', _=plan)))
+      parts.append(Details(Summary('Plan'), Pre(cl='detail', _=plan)))
 
     if error:
       parts.append(Details(Summary('Error'), Pre(cl='detail', _=error), open=''))
