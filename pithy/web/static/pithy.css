@@ -189,7 +189,6 @@ details summary.disclosure-flush::before {
   border-radius: 3px;
   box-shadow: 0 0.5px 1.5px #999;
   display: inline-block;
-  font-family: system-ui;
   font-size: 0.75rem;
   font-weight: 400;
   line-height: inherit;
