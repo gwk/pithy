@@ -278,6 +278,11 @@ def parse_time_12hmp(string:str, tz:TZInfo|None=None) -> Time:
 time_12hmp_re = re.compile(r'(1[012]|[1-9]):([0-5][0-9]) ?([AaPp][Mm])')
 
 
+def parse_dt_Ymd_IMp(string:str) -> DateTime:
+  'Parse a string in the format "2020-01-01 4:30PM".'
+  return DateTime.strptime(string, '%Y-%m-%d %I:%M%p')
+
+
 def dt_from_ts_utc(ts:float) -> DateTime:
   'Create a DateTime from a UTC timestamp.'
   return DateTime.fromtimestamp(ts, tz_utc)
