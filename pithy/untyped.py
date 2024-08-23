@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from typing import Any, Generic, Iterator, TypeVar
+from typing import Any, Generic, Iterable, Iterator, Mapping, TypeVar
 
 
 _T = TypeVar('_T')
@@ -10,7 +10,7 @@ _T = TypeVar('_T')
 class Immutable(Generic[_T]):
   'Untyped immutable object.'
 
-  def __init__(self, /, __dict:dict[str,_T]={}, **kwargs:_T):
+  def __init__(self, /, __dict:Mapping[str,_T]|Iterable[tuple[str,_T]]={}, **kwargs:_T):
     vars(self).update(__dict)
     vars(self).update(kwargs)
 
