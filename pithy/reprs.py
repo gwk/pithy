@@ -2,9 +2,11 @@
 
 import re
 from collections.abc import Mapping
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
 from functools import cache
 from typing import Any, cast, Iterable, NamedTuple
+
+from pithy.types import is_dataclass_instance
 
 from .ansi import RST_TXT, TXT_B, TXT_C, TXT_G, TXT_M, TXT_R, TXT_Y
 from .types import is_dataclass_or_namedtuple
@@ -100,7 +102,7 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, inl_comma:str, 
 
     if is_mapping:
       items = [(repr(k), _el_repr(v)) for k, v in obj.items()]
-    elif is_dataclass(obj):
+    elif is_dataclass_instance(obj):
       items = [(f.name, _el_repr(getattr(obj, f.name))) for f in fields(obj) if getattr(obj, f.name) != f.default]
     else:
       items = [(name, _el_repr(val)) for name, val in zip(obj._fields, obj) if val != obj._field_defaults.get(name, _not_present)]

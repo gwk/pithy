@@ -1,10 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict
 from functools import singledispatch
 from typing import Any, Callable
 
 from .date import Date, DateTime, Time
+from .types import is_dataclass_instance
 from .util import memoize
 
 
@@ -24,7 +25,7 @@ def encode_obj(obj:Any) -> Any:
   except TypeError: pass
   else: return list(it)
 
-  if is_dataclass(obj): return asdict(obj)
+  if is_dataclass_instance(obj): return asdict(obj)
 
   if hasattr(obj, '__slots__'):
     slots = all_slots(type(obj))
