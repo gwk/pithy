@@ -15,7 +15,8 @@ from collections import Counter
 from functools import wraps
 from inspect import get_annotations
 from itertools import chain
-from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Mapping, Match, Optional, overload, TypeVar
+from typing import (Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Mapping, Match, Optional, overload, Self,
+  TypeVar)
 from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -100,12 +101,12 @@ class Mu:
   attrs:MuAttrs
   _:list['MuChild']
 
-  def __init__(self:_Mu,
+  def __init__(self,
    *_mu_positional_children:'MuChildLax', # Children can be passed as positional arguments.
    _:'MuChildOrChildrenLax'=(), # Children can also be passed to the named underscore parameter.
    tag:str='',
    cl:Iterable[str]|None=None,
-   _orig:_Mu|None=None, # _orig is set by methods that are called with the `traversable` option.
+   _orig:Self|None=None, # _orig is set by methods that are called with the `traversable` option.
    _parent:Optional['Mu']=None, # _parent is set by methods that are called with the `traversable` option.
    attrs:MuAttrs|None=None,
    **kw_attrs:Any # Additional attrs can be passed as keyword arguments. These take precedence over keys in `attrs`.
@@ -408,8 +409,8 @@ class Mu:
 
   def append(self, child:_MuChild) -> _MuChild:
     if isinstance(child, Mu) and child._orig is not None:
-      child = child._orig
-      assert child._orig is None
+      assert child._orig._orig is None
+      child = cast(_MuChild, child._orig)
     if not isinstance(child, mu_child_classes): raise TypeError(child)
     self._.append(child)
     return child # The type of child._orig is the same as child.
