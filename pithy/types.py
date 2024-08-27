@@ -2,9 +2,11 @@
 
 from abc import abstractmethod
 from collections import Counter
-from dataclasses import is_dataclass
+from dataclasses import Field, is_dataclass
 from types import UnionType
-from typing import Any, Callable, cast, get_args, get_origin, overload, Protocol, runtime_checkable, TypeVar, Union
+from typing import Any, Callable, cast, ClassVar, get_args, get_origin, overload, Protocol, runtime_checkable, TypeVar, Union
+
+from typing_extensions import TypeIs
 
 
 _T = TypeVar('_T')
@@ -86,6 +88,27 @@ def is_type_namedtuple(t:type) -> bool:
   return issubclass(t, tuple) and namedtuple_type_expected_attrs.intersection(t.__dict__) == namedtuple_type_expected_attrs
 
 namedtuple_type_expected_attrs = frozenset({'_asdict', '_field_defaults', '_fields', '_make', '_replace'})
+
+
+def is_type_dataclass(t:type) -> bool:
+  return issubclass(t, tuple) and is_dataclass(t)
+
+
+class DataclassInstance(Protocol):
+  'Copied from typeshed/stdlib/_typeshed/__init__.py.'
+  __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
+
+
+def is_dataclass_instance(obj:Any) -> TypeIs[DataclassInstance]:
+  '''
+  Returns `True` if `obj` is a dataclass instance. Returns `False` for all type objects.
+  It is often more correct to use this function rather than `is_dataclass`
+  it is easy to forget that `is_dataclass` returns `True` for types
+  and many use cases do not intend to let type objects through.
+  This function is annotated as returning `TypeIs[DataclassInstance]`
+  to aid the type checker in narrowing the type of `obj`.
+  '''
+  return not isinstance(obj, type) and is_dataclass(obj)
 
 
 def is_namedtuple(obj:Any) -> bool:

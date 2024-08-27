@@ -6,9 +6,11 @@ like `pprint` but streaming, and with a more compact, minimal style.
 '''
 
 import re
-from dataclasses import fields as _dc_fields, is_dataclass
+from dataclasses import fields as _dc_fields
 from sys import stderr, stdout
 from typing import Any, Iterable, Iterator, NamedTuple, TextIO, Union
+
+from pithy.types import is_dataclass_instance
 
 from .iterable import known_leaf_types
 
@@ -129,7 +131,7 @@ def _obj_desc(obj:Any, prefix:str, visited_ids:set[int], simple_keys:bool) -> _D
 
   # TODO: add singledispatch override here?
 
-  if is_dataclass(obj):
+  if is_dataclass_instance(obj):
     visited_ids1 = visited_ids.copy()
     visited_ids1.add(i)
     items:_Items = ((f.name, getattr(obj, f.name, '<?>')) for f in _dc_fields(obj))

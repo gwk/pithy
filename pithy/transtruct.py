@@ -3,14 +3,14 @@
 
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping
-from dataclasses import asdict as dataclass_asdict, is_dataclass
+from dataclasses import asdict as dataclass_asdict
 from datetime import date, datetime
 from functools import cache
 from itertools import zip_longest
 from types import UnionType
 from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, TypeVar, Union
 
-from .types import is_namedtuple, is_type_namedtuple
+from .types import is_dataclass_instance, is_namedtuple, is_type_namedtuple
 
 
 Desired = TypeVar('Desired')
@@ -160,7 +160,7 @@ class Transtructor:
         if type(args) is class_: return args
 
         try:
-          if is_dataclass(args): return class_(**dataclass_asdict(args))
+          if is_dataclass_instance(args): return class_(**dataclass_asdict(args))
           if is_namedtuple(args): return class_(**args._asdict())
           if isinstance(args, Mapping): return class_(**args)
 
@@ -190,7 +190,7 @@ class Transtructor:
       if type(args) is class_: return args # Already the correct type. Note that this causes referential aliasing.
 
       if is_type_namedtuple(type(args)): args = args._asdict()
-      elif is_dataclass(args): args = dataclass_asdict(args)
+      elif is_dataclass_instance(args): args = dataclass_asdict(args)
 
       if isinstance(args, Mapping):
         typed_kwargs:dict[str,Any] = {}
