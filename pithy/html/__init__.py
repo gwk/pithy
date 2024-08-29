@@ -8,7 +8,7 @@ import re
 from html import escape as _escape
 from io import BytesIO, StringIO
 from os import PathLike
-from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, NoReturn, Self, TextIO, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, Mapping, NoReturn, Self, TextIO, Union
 
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
@@ -1360,7 +1360,7 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
   '''
 
 
-  def options(self, options:Iterable[Any], placeholder=None, value=None) -> Self:
+  def options(self, options:Iterable[Any]|Mapping[str,Any], placeholder=None, value=None) -> Self:
     '''
     Configure the select element with `options`, an optional `placeholder`, and an optional selected `value`.
     '''
@@ -1371,6 +1371,8 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
 
     if value is not None:
       value = str(value)
+
+    if isinstance(options, Mapping): options = options.items()
 
     has_selected = False
     for o in options:
