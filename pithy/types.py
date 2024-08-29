@@ -4,7 +4,8 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import Field, is_dataclass
 from types import UnionType
-from typing import Any, Callable, cast, ClassVar, get_args, get_origin, overload, Protocol, runtime_checkable, TypeVar, Union
+from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol, runtime_checkable,
+  TypeVar, Union)
 
 from typing_extensions import TypeIs
 
@@ -168,6 +169,17 @@ def is_str_or_list(val: Any) -> bool: return is_str(val) or is_list_of_str(val)
 def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
+
+
+def is_literal(val:Any, of_type:Any) -> bool:
+  '''
+  Return `True` if `val` is a member of the `of_type` literal type.
+  Unfortunately mypy treats `literal['x']` as a <typing special form>  and not a type,
+  so `of_type` cannot be declared as `type` or `type[Literal]`.
+  Furthermore it appears impossible to implement a generic `req_literal` function as of mypy 1.11.
+  '''
+  if get_origin(of_type) != Literal: raise TypeError(f'expected Literal type; received: {of_type!r}')
+  return val in get_args(of_type)
 
 
 def req_type(obj:Any, expected:type[_T]) -> _T:
