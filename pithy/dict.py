@@ -1,21 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, TypeVar
+from typing import Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, TypeVar
+
+from .exceptions import ConflictingValues
 
 
 _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
 _VH = TypeVar('_VH', bound=Hashable)
-
-
-class ConflictingValues(KeyError): pass
-
-
-class KeyExistingIncoming(NamedTuple):
-  'Triple of (key, existing, incoming) for reporting conflicting values.'
-  key:Any
-  existing:Any
-  incoming:Any
 
 
 def dict_dag_inverse(d:Mapping[_K,Iterable[_VH]]) -> dict[_VH,set[_K]]:
@@ -60,12 +52,12 @@ def dict_put(d:MutableMapping[_K,_V], k: _K, v: _V) -> MutableMapping[_K,_V]:
 def idemput(d:MutableMapping[_K,_V], k:_K, v:_V) -> MutableMapping[_K,_V]:
   '''
   Put a new key and value in the dictionary;
-  raise err KeyError if the key already exists and the existing value is not equal to the incoming one.
+  raise `ConflictingValues` if the key already exists and the existing value is not equal to the incoming one.
   '''
   try: existing = d[k]
   except KeyError: pass
   else:
-    if v != existing: raise ConflictingValues(KeyExistingIncoming(k, existing, v))
+    if v != existing: raise ConflictingValues(key=k, existing=existing, incoming=v)
   d[k] = v
   return d
 

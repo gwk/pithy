@@ -6,15 +6,23 @@ Various exception classes.
 
 from contextlib import AbstractContextManager, ContextDecorator
 from traceback import print_exception
+from typing import Any
 
 from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
-class ConflictingValues(ValueError):
+class ConflictingValues(KeyError):
   '''
   Raised when an incoming value collides with an existing value.
-  In one sense, it is both a KeyError and a ValueError.
+  In one sense, it is similar to both a key error and a value error.
+  Since it arises from a key lookup, it subclasses KeyError.
   '''
+  def __init__(self, *, key:Any, existing:Any, incoming:Any) -> None:
+    self.key = key
+    self.existing = existing
+    self.incoming = incoming
+    super().__init__(key) # Initialized like a KeyError.
+
 
 class DeleteNode(Exception):
   'Signals a traverser to delete the current node.'
