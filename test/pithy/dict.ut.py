@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.dict import (ConflictingValues, DefaultByKeyDict, dict_dag_inverse, dict_dag_inverse_with_all_keys, dict_list_append,
-  dict_list_extend, dict_put, dict_set_defaults, dict_update_sets, idemput, KeyExistingIncoming)
+  dict_list_extend, dict_put, dict_set_defaults, dict_update_sets, idemput)
 from utest import utest, utest_exc
 
 
@@ -16,7 +16,7 @@ utest_exc(KeyError('k'), dict_put, {'k': 0}, 'k', 1)
 
 utest({'k': 0}, idemput, {}, 'k', 0)
 utest({'k': 0}, idemput, {'k': 0}, 'k', 0)
-utest_exc(ConflictingValues(KeyExistingIncoming(key='k', existing=0, incoming=1)), idemput, {'k': 0}, 'k', 1)
+utest_exc(ConflictingValues(key='k', existing=0, incoming=1), idemput, {'k': 0}, 'k', 1)
 
 
 utest({'k': [0]}, dict_list_append, {}, 'k', 0)

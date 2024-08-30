@@ -148,7 +148,7 @@ class Mu:
     if cl is not None:
       if not isinstance(cl, str): cl = ' '.join(filter(None, cl))
       if cl != attrs.setdefault('class', cl):
-        raise ConflictingValues((attrs['class'], cl))
+        raise ConflictingValues(key='class', existing=attrs['class'], incoming=cl)
 
     self._orig = _orig
     self._parent = _parent
