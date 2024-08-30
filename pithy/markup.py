@@ -553,6 +553,48 @@ class Mu:
 
 
   @overload
+  def pick_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional[_Mu]: ...
+
+  @overload
+  def pick_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional['Mu']: ...
+
+  def pick_opt(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    '''
+    Pick the matching child of this node.
+    Returns None if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
+    '''
+    first_match:Mu|None = None
+    for c in self.pick_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
+      if first_match is None: first_match = c
+      else:
+        args_msg = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
+        subsequent_match = c # Alias improves readablity of the following line in stack traces.
+        raise MultipleMatchesError(self, args_msg, first_match, subsequent_match)
+    return first_match
+
+
+  @overload
+  def find_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional[_Mu]: ...
+
+  @overload
+  def find_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional['Mu']: ...
+
+  def find_opt(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+    '''
+    Find the matching node in the subtree rooted at this node.
+    Returns None if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
+    '''
+    first_match:Mu|None = None
+    for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
+      if first_match is None: first_match = c
+      else:
+        args_msg = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
+        subsequent_match = c # Alias improves readablity of the following line in stack traces.
+        raise MultipleMatchesError(self, args_msg, first_match, subsequent_match)
+    return first_match
+
+
+  @overload
   def pick(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
 
   @overload
@@ -563,16 +605,10 @@ class Mu:
     Pick the matching child of this node.
     Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
     '''
-    first_match:Mu|None = None
-    for c in self.pick_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
-      if first_match is None: first_match = c
-      else:
-        args_msg = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
-        subsequent_match = c # Alias improves readablity of the following line in stack traces.
-        raise MultipleMatchesError(self, args_msg, first_match, subsequent_match)
-    if first_match is None:
+    opt_match = self.pick_opt(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs)
+    if opt_match is None:
       raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
-    return first_match
+    return opt_match
 
 
   @overload
@@ -586,16 +622,10 @@ class Mu:
     Find the matching node of this node's subtree.
     Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
     '''
-    first_match:Mu|None = None
-    for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
-      if first_match is None: first_match = c
-      else:
-        args_msg = fmt_xml_predicate_args(type_or_tag, cl, text, attrs)
-        subsequent_match = c # Alias improves readablity of the following line in stack traces.
-        raise MultipleMatchesError(self, args_msg, first_match, subsequent_match)
-    if first_match is None:
+    opt_match = self.find_opt(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs)
+    if opt_match is None:
       raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
-    return first_match
+    return opt_match
 
 
   # Traversal.

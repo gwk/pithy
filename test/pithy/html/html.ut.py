@@ -32,6 +32,9 @@ utest('en-us', html.get, 'lang')
 utest(head, html.pick, 'head')
 utest(head.title, html.find, 'title')
 
+utest(head, html.pick_opt, 'head')
+utest(head.title, html.find_opt, 'title')
+
 div0, div1 = body.child_nodes()
 utest_val_type(Div, div0)
 utest_val_type(Div, div1)
@@ -49,6 +52,9 @@ utest(div1, html.find_first, id='d1')
 
 p1:P = div1.pick(P)
 utest(p1, html.find, text='P1')
+
+utest(None, html.pick_opt, tag='nonexistent')
+utest(None, html.find_opt, tag='nonexistent')
 
 utest_exc(NoMatchError, html.pick, tag='nonexistent')
 utest_exc(NoMatchError, html.find, tag='nonexistent')
