@@ -1569,15 +1569,18 @@ class Table(HtmlFlow, HtmlPalpable):
     return self
 
 
-  def rows(self, rows:Iterable[Iterable[MuChildLax]]) -> Self:
-    tbody = Tbody()
+  def rows(self, rows:Iterable['Tr'|Iterable[MuChildLax]]) -> Self:
+    '''
+    Create a `Tbody` and add `Tr` elements to it, each of which is constructed from the elements of the corresponding row.
+    Elements of `rows` that are not `Tr` elements must be iterables either `Td`, `Th` or content with which `Td` are constructed.
+    '''
+    tbody = self.append(Tbody())
     for row in rows:
       if isinstance(row, Tr):
         tr = row
       else:
         tr = Tr(_=[cell if isinstance(cell, (Td, Th)) else Td(_=cell) for cell in row])
       tbody.append(tr)
-    self.append(tbody)
     return self
 
 
