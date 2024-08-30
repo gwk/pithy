@@ -5,7 +5,10 @@ name = "pithy"
 description = "Pithy is a collection of utility libraries for Python 3."
 requires-python = ">=3.12"
 
-dependencies = []
+dependencies = [
+  "mypy >= 1.11.2",
+  "typing_extensions >= 4.12.2",
+]
 
 keywords = [
   "ansi",
