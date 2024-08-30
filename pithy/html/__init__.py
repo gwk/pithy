@@ -1537,7 +1537,6 @@ class Table(HtmlFlow, HtmlPalpable):
 
   Contexts for use: Flow.
   '''
-  # TODO: def caption
 
 
   def caption(self, caption:MuChildLax, *els:MuChildLax) -> Self:
