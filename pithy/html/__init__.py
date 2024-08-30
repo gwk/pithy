@@ -1554,10 +1554,18 @@ class Table(HtmlFlow, HtmlPalpable):
 
 
   def head(self, head:Union['Thead',Iterable[MuChildLax]]) -> Self:
-    'Head can be a fully formed `Thead` or else an iterable of `Td|Th` or content with which `Th` are constructed.'
-    if not isinstance(head, Thead):
-      head = Thead(_=Tr(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head]))
-    self.append(head)
+    '''
+    The `head` argument can be a fully formed `Thead` or else an iterable of `Td|Th` or content with which `Th` are constructed.
+    If `head` is a `Thead` object and another `Thead` child is present, raise ConflictingValues.
+    Otherwise use the existing `Thead` or create a new one and add the elements of `head` to it.
+    '''
+    thead = self.pick_opt(Thead) # Raise MultipleMatchesError if more than one Thead is present (against the HTML spec).
+    if isinstance(head, Thead):
+      if thead: raise ConflictingValues(key=Thead, existing=thead, incoming=head)
+      self.append(head)
+    else:
+      if thead is None: thead = self.append(Thead())
+      thead.append(Tr(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head]))
     return self
 
 
