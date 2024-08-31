@@ -4,14 +4,6 @@
   "presentation": {},
   "tasks": [
     {
-      "label": "typecheck-current",
-      "command": "craft-py-check",
-      "args": ["-print-ok", "${relativeFile}"],
-      "group": {"kind": "build", "isDefault": true},
-      "problemMatcher": "$crafts",
-      "presentation": {"showReuseMessage": false}
-    },
-    {
       "label": "typecheck",
       "command": "make",
       "args": ["typecheck"],
