@@ -41,6 +41,8 @@ s1 = Schema('s1',
 
   Index('User_email', table='User', columns=('email',)),
 
+  Index('User_email__active', table='User', columns=('email',), where='is_active'),
+
   Table('UserPrivilege',
     is_strict=True,
     without_rowid=True,
