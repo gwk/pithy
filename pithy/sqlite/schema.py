@@ -273,6 +273,7 @@ class Index(TableDepStructure):
   is_unique:bool = False
   desc:str = ''
   columns:tuple[str,...] = ()
+  where:str = ''
 
   def __post_init__(self) -> None:
     if not isinstance(self.columns, tuple):
@@ -294,6 +295,10 @@ class Index(TableDepStructure):
     lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
     columns_str = ', '.join(qe(c) for c in self.columns)
     lines.append(f'  ON {qea(self.table)} ({columns_str})')
+
+    if self.where:
+      lines.append(f'  WHERE {self.where}')
+
     return '\n'.join(lines)
 
 
