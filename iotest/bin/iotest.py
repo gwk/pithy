@@ -6,8 +6,8 @@ import shlex
 import time
 from ast import literal_eval
 from collections import defaultdict
+from re import Pattern
 from sys import stderr, stdout
-from typing import Pattern
 from warnings import filterwarnings
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
