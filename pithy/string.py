@@ -152,6 +152,9 @@ def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rj
   '''
   Format rows of cells to after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
+  `convs` is a single conversion function or a list of conversion functions, one for each column.
+  `rjust` is a single boolean or a list of booleans, one for each column.
+  `max_col_width` is the maximum width of each column.
   '''
   # Convert all cells to repr or str representations.
   if callable(convs):
@@ -184,6 +187,10 @@ def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rj
   for row in rows: # Emit formatted row strings.
     yield '  '.join(just_fn(cell, width) for just_fn, cell, width in zip(just_fns, row, col_widths))
 
+
+def fmt_tabbed_rows(rows:Iterable[str], rjust:bool|Iterable[bool]=False, max_col_width=64) -> Iterable[str]:
+  'Format rows of tab-separated strings by splitting on tabs and then passing those sequences to fmt_rows.'
+  return fmt_rows((row.split('\t') for row in rows), rjust=rjust, max_col_width=max_col_width)
 
 
 def iter_str(iterable:Iterable[str]) -> Iterable[str]:
