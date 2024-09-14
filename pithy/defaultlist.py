@@ -1,12 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Generic, Iterable, overload, SupportsIndex, TypeVar
+from typing import Callable, Iterable, overload, SupportsIndex, TypeVar
 
 
 _T = TypeVar('_T')
 
 
-class DefaultList(list[_T], Generic[_T]):
+class DefaultList(list[_T]):
   '''
   A subclass of `list` that adds default elements produced by a factory function
   when an out-of-bounds element is accessed.
