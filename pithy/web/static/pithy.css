@@ -340,6 +340,10 @@ table tbody tr:nth-child(odd) {
   font-family: 'Noto Emoji';
   text-align: center;
 }
+.safari :is(.block-emoji-icon, .inline-emoji-icon) { /* 2024-08-06: macOS Safari appears broken (regressed) when using Noto Emoji. Using a system font name fixes this. */
+  font-family: 'Menlo', sans-serif;
+  filter: grayscale(100%);
+}
 
 .block-emoji-icon {
   display: block;
@@ -358,6 +362,12 @@ table tbody tr:nth-child(odd) {
 .icon {
   font-family: 'Noto Emoji';
 }
+/* 2024-08-06: macOS Safari appears broken (regressed) when using Noto Emoji. Using a system font name fixes this. */
+.safari .icon {
+  font-family: 'Menlo', sans-serif;
+  filter: grayscale(100%);
+}
+
 a.icon {
   color: #000;
   text-decoration: none;
@@ -439,9 +449,14 @@ a.icon:visited {
   /* TODO: figure out how to better align spinner with rest of input-label pair. */
 }
 
-/* 2024-08-06: macOS Safari appears broken (regressed) when using Noto Emoji. Using a system font name fixes this. */
-.safari .with-spinner-after::after { font-family: 'Menlo', sans-serif; }
-.safari .with-spinner-before::before { font-family: 'Menlo', sans-serif; }
+.safari .with-spinner-after::after { /* 2024-08-06: macOS Safari appears broken (regressed) when using Noto Emoji. Using a system font name fixes this. */
+   font-family: 'Menlo', sans-serif;
+   filter: grayscale(100%);
+}
+.safari .with-spinner-before::before { /* 2024-08-06: macOS Safari appears broken (regressed) when using Noto Emoji. Using a system font name fixes this. */
+   font-family: 'Menlo', sans-serif;
+   filter: grayscale(100%);
+}
 
 .with-spinner-before::before {
   transform: translateX(-2.5ch);
