@@ -145,6 +145,18 @@ class DateConverter(Convertor):
     register_url_convertor(name, cls())
 
 
+# Path parameter access.
+
+def req_path_int(conn:HTTPConnection, key:str) -> int:
+  '''
+  Get an int value from a path parameter.
+  If the key is not present or the value is not an int, raise a 400 exception.
+  '''
+  try: return int(conn.path_params[key])
+  except KeyError as e: raise HTTPException(400, f'Missing path parameter: {key}') from e
+  except ValueError as e: raise HTTPException(400, f'Path parameter must be an integer: {key}') from e
+
+
 # Form parameter access.
 
 @overload
