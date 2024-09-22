@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, Protocol, Sequence
 from warnings import warn
 
 from pithy.string import str_tree, str_tree_pairs
@@ -61,12 +61,17 @@ class TableAbbrs:
 
 
 
+class SquelchResponseFn(Protocol):
+
+  def __call__(self, request:Request, main:Main, *, title:str) -> HTMLResponse: ...
+
+
 class SquelchApp:
   'An ASGI app that provides a web interface for running SQL queries.'
 
   def __init__(self,
     get_conn:Callable[[],Conn],
-    html_response:Callable[[Request,Main],HTMLResponse],
+    html_response:SquelchResponseFn,
     schemas:Iterable[Schema],
     vis: dict[str,dict[str,dict[str,Vis|bool]]], # Maps schema -> table -> column -> Vis|bool.
     order_by: dict[str,dict[str,str]]|None=None,
@@ -205,7 +210,11 @@ class SquelchApp:
         self.render_table(schema=schema, table=table, abbrs=abbrs, path=path, params=params, en_col_names=en_col_names,
           order_by=order_by))
 
-    return self.html_response(request, main)
+    title = 'Query'
+    if table_name: title += f' {table_name}'
+    if where := params.get('where'):
+      title += f' WHERE {where}'
+    return self.html_response(request, main, title=title)
 
 
   def get_schema_table(self, params:QueryParams) -> tuple[str,Schema,Table]|None:
