@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Hashable, Iterable, Mapping, MutableMapping, NamedTuple, TypeVar
+from typing import Callable, Hashable, Iterable, Mapping, MutableMapping, TypeVar
 
 from .exceptions import ConflictingValues
 
