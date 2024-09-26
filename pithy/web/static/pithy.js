@@ -7,6 +7,39 @@ const log = console.log;
 
 let scrollbarWidth = 0;
 
+
+/**
+ * Get the element with the given selector.
+ * @param {string} selector - The selector of the element to retrieve.
+ */
+function get_el(selector) {
+  const el = document.querySelector(selector);
+  if (!el) { throw new Error(`Element not found: ${selector}`); }
+  return el;
+}
+
+
+/**
+ * Get the element with the given id.
+ * @param {string} id - The id of the element to retrieve.
+ */
+function get_el_by_id(id) {
+  const el = document.getElementById(id);
+  if (!el) { throw new Error(`Element not found: ${id}`); }
+  return el;
+}
+
+
+/**
+ * Remove an element from its parent.
+ * @param {HTMLElement} el - The element to remove.
+ */
+function remove_from_parent(el) {
+  const parent = el.parentNode;
+  if (parent) { parent.removeChild(el); }
+}
+
+
 /**
  * @template T
  * @param {T} val - A possibly null/undefined value.
