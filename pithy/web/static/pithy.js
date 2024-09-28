@@ -434,3 +434,17 @@ function setDateAndSubmit(input, date) {
   date_input.value = date;
   form.submit();
 }
+
+
+/**
+ * Dismiss the topmost modal from the top level .modals container.
+ * @param {HTMLElement} element - The element triggering the function.
+ * @param {Event} event - The event object.
+  */
+function dismissModal(element, event) {
+  if (element !== event.target) { return; } // Ignore events that bubble up from children.
+  event.stopPropagation;
+  const modal = element.closest('.modal');
+  if (!modal) { throw new Error('No modal found to dismiss.'); }
+  remove_from_parent(modal);
+}
