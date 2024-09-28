@@ -490,6 +490,35 @@ a.icon:visited {
 }
 
 
+/* Modal panes. */
+
+.modal { /* Outer modal div that covers the entire screen with a translucent background. */
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(128, 128, 128, 0.5);
+}
+
+.modal > .pane {
+  min-width: 16rem;
+  min-height: 8rem;
+  max-width: 90%;
+  max-height: 90%;
+  width: 80%; /* Could be more or less, depending on screen size */
+  overflow: auto;
+  padding: 2em;
+  border: 1px solid #888;
+  border-radius: 0.25em;
+  background-color: #EEE;
+}
+
+
 /* SquelchApp. */
 
 #squelch_app form {
