@@ -293,6 +293,7 @@ def dt_from(*, date:Date, hours:int=0, minutes:int=0, seconds:int=0, tzinfo:TZIn
 
 
 _DateOrDateTime = TypeVar('_DateOrDateTime', Date, DateTime)
+#^ Note: DateTime is a subclass of Date but this is still necessary to express the sameness of the return type.
 
 def next_day(date_: _DateOrDateTime) -> _DateOrDateTime:
   return date_ + TimeDelta(days=1)
