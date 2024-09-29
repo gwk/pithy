@@ -159,6 +159,17 @@ def req_path_int(conn:HTTPConnection, key:str) -> int:
 
 # Form parameter access.
 
+def form_dict(form_data:FormData) -> dict[str,str]:
+  '''
+  Convert a FormData (e.g. request.form) to a dict, raising a 400 exception if any value is not a str.
+  '''
+  d = {}
+  for k, v in form_data.items():
+    if not isinstance(v, str): raise HTTPException(400, f'Invalid form field type: {k}={v!r}')
+    d[k] = v
+  return d
+
+
 @overload
 def get_form_str(form_data:FormData, key:str, default:str) -> str: ...
 
