@@ -9,65 +9,6 @@ let scrollbarWidth = 0;
 
 
 /**
- * Get the element with the given selector.
- * @param {string} selector - The selector of the element to retrieve.
- */
-function get_el(selector) {
-  const el = document.querySelector(selector);
-  if (!el) { throw new Error(`Element not found: ${selector}`); }
-  return el;
-}
-
-
-/**
- * Get the element with the given id.
- * @param {string} id - The id of the element to retrieve.
- */
-function get_el_by_id(id) {
-  const el = document.getElementById(id);
-  if (!el) { throw new Error(`Element not found: ${id}`); }
-  return el;
-}
-
-
-/**
- * Remove an element from its parent.
- * @param {HTMLElement} el - The element to remove.
- */
-function remove_from_parent(el) {
-  const parent = el.parentNode;
-  if (parent) { parent.removeChild(el); }
-}
-
-
-/**
- * @template T
- * @param {T} val - A possibly null/undefined value.
- * @returns {NonNullable<T>} - The value, asserting that it is not null or undefined.
- */
-function nonopt(val) {
-  if (val === null) throw new Error(`Unexpected null value`);
-  if (val === undefined) throw new Error(`Unexpected undefined value`);
-  // @ts-ignore
-  return val;
-}
-
-
-/**
- * Require that a value is an instance of a given type.
- * Throws an exception if the value is not an instance of the expected type.
- *
- * @template T The expected type of the value.
- * @param {any} val - The value to check.
- * @param {{ new (): T; prototype: T; }} type - The expected type of the value.
- * @returns {T} - The value, asserting that it is an instance of the expected type.
- */
-function req_instance(val, type) {
-  if (val instanceof type) return val;
-  throw new Error(`Type mismatch: expected ${type}; received type: ${typeof val}; val: \`${val}\`.`);
-}
-
-/**
  * Set up the browser environment.
 */
 function _setupPithy() {
@@ -173,6 +114,66 @@ function createPithyDynamicStyle() {
     --scrollbar-width: ${scrollbarWidth}px;
   }`;
   createStyle('pithy-dynamic', css);
+}
+
+
+/**
+ * Get the element with the given selector.
+ * @param {string} selector - The selector of the element to retrieve.
+ */
+function get_el(selector) {
+  const el = document.querySelector(selector);
+  if (!el) { throw new Error(`Element not found: ${selector}`); }
+  return el;
+}
+
+
+/**
+ * Get the element with the given id.
+ * @param {string} id - The id of the element to retrieve.
+ */
+function get_el_by_id(id) {
+  const el = document.getElementById(id);
+  if (!el) { throw new Error(`Element not found: ${id}`); }
+  return el;
+}
+
+
+/**
+ * Remove an element from its parent.
+ * @param {HTMLElement} el - The element to remove.
+ */
+function remove_from_parent(el) {
+  const parent = el.parentNode;
+  if (parent) { parent.removeChild(el); }
+}
+
+
+/**
+ * @template T
+ * @param {T} val - A possibly null/undefined value.
+ * @returns {NonNullable<T>} - The value, asserting that it is not null or undefined.
+ */
+function nonopt(val) {
+  if (val === null) throw new Error(`Unexpected null value`);
+  if (val === undefined) throw new Error(`Unexpected undefined value`);
+  // @ts-ignore
+  return val;
+}
+
+
+/**
+ * Require that a value is an instance of a given type.
+ * Throws an exception if the value is not an instance of the expected type.
+ *
+ * @template T The expected type of the value.
+ * @param {any} val - The value to check.
+ * @param {{ new (): T; prototype: T; }} type - The expected type of the value.
+ * @returns {T} - The value, asserting that it is an instance of the expected type.
+ */
+function req_instance(val, type) {
+  if (val instanceof type) return val;
+  throw new Error(`Type mismatch: expected ${type}; received type: ${typeof val}; val: \`${val}\`.`);
 }
 
 
