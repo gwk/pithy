@@ -86,6 +86,7 @@ class HtmxResponse(HTMLResponse):
     status_code:int=200,
     headers:Mapping[str,str]|None=None,
     background:BackgroundTask|None=None,
+    cache:bool=False,
     hx_push:str='',
     hx_refresh:bool=False,
     hx_redirect:str='',
@@ -98,12 +99,14 @@ class HtmxResponse(HTMLResponse):
 
     '''
     A response for one or more HTMX fragments.
-    Fragments can be used to swap other targets 'out-of-band' via the `hx-swap-oob` attribute.
+    Fragments can be used to swap additional targets 'out-of-band' via the `hx-swap-oob` attribute.
+    If `cache` is false the response will contain a `Cache-Control: no-store` header.
     `FAKE_LATENCY` is a float in seconds used to simulate a slow response.
     '''
 
-    if any((hx_push, hx_redirect, hx_location, hx_refresh, hx_trigger, hx_trigger_after_swap, hx_trigger_after_settle)):
+    if any((cache, hx_push, hx_redirect, hx_location, hx_refresh, hx_trigger, hx_trigger_after_swap, hx_trigger_after_settle)):
       headers = {**headers} if headers else {}
+      if not cache: headers['Cache-Control'] = 'no-store'
       if hx_refresh: headers['HX-Refresh'] = 'true'
       if hx_push: headers['HX-Push'] = hx_push
       if hx_redirect: headers['HX-Redirect'] = hx_redirect
