@@ -141,7 +141,7 @@ function get_el_by_id(id) {
 
 /**
  * Remove an element from its parent.
- * @param {HTMLElement} el - The element to remove.
+ * @param {Element} el - The element to remove.
  */
 function remove_from_parent(el) {
   const parent = el.parentNode;
