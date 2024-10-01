@@ -21,6 +21,7 @@ from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from .iterable import window_iter, window_pairs
+from .json import render_json
 from .reprs import repr_lim
 from .string import EscapedStr
 
@@ -32,7 +33,7 @@ except ImportError: Comment = object() # type: ignore[assignment] # Comment is a
 
 _T = TypeVar('_T')
 
-# Attr values are currently Any so that we can preserve exact numerical values.
+# Attr values are currently Any so that we can preserve exact numerical values and pass lists/dicts as JSON.
 MuAttrs = dict[str,Any]
 MuAttrItem = tuple[str,Any]
 
@@ -123,7 +124,7 @@ class Mu:
     These are converted to strings during initialization.
     If the `_` argument is a list and contains numeric values, it is mutated in place.
 
-    The `cl` initializer argument is a special shorthand for htm `class` attributes.
+    The `cl` initializer argument is a special shorthand for the html `class` attributes.
     It accepts an iterable of strings, which are joined with spaces and set as the `class` attribute.
 
     Normally, nodes do not hold a reference to parent; this makes Mu trees acyclic.
@@ -342,7 +343,7 @@ class Mu:
 
   @property
   def cl(self) -> str:
-    '`cl` is shortand for the `class` attribute.'
+    '`cl` is shortand for the `class` attribute. See also `classes`.'
     return str(self.attrs.get('class', ''))
 
   @cl.deleter
@@ -354,7 +355,7 @@ class Mu:
 
   @property
   def classes(self) -> list[str]:
-    'The `class` attribute split into individual words.'
+    'The `class` attribute split into individual words. See also `cl`.'
     return cast(str, self.attrs.get('class', '')).split()
 
   @classes.deleter
@@ -793,6 +794,7 @@ class Mu:
         case None: v = 'none'
         case True: v = 'true'
         case False: v = 'false'
+        case list() | dict(): v = render_json(v, sort=False, indent=None)
         case Present():
           if v.is_present: v = ''
           else: continue
