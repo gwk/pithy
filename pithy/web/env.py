@@ -2,6 +2,7 @@
 
 from os import environ
 
+from ..default import Raise
 from ..transtruct import bool_str_vals
 
 
@@ -30,12 +31,16 @@ def is_web_https() -> bool:
   return bool_str_vals[environ.get('WEB_HTTPS', '0')]
 
 
-def web_external_addr() -> str:
+def web_external_addr(default:str|Raise=Raise._) -> str:
   '''
   Return the external address of the web server, specified by the environment variables WEB_EXTERNAL_ADDR.
-  Defaults to the empty string.
+  Returns default if specified (and not `Raise._`) or else raises KeyError.
   '''
-  return environ.get('WEB_EXTERNAL_ADDR', '')
+  try:
+    return environ['WEB_EXTERNAL_ADDR']
+  except KeyError:
+    if default is Raise._: raise
+    return default
 
 
 def web_dev_uid() -> int:
