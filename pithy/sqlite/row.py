@@ -12,7 +12,7 @@ class Row(sqlite3.Row, Sequence):
 
   def __getattr__(self, key:str) -> Any:
     try: return self[key]
-    except IndexError as e: raise AttributeError(key) from e
+    except IndexError as e: raise AttributeError(f'{key!r}; keys: {self.keys()}') from e
 
   def get(self, key:str, default:Any=None) -> Any:
     try: return self[key]
