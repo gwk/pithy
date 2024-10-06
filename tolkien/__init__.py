@@ -110,8 +110,9 @@ class Source(Generic[_Text]):
     self.newline_positions:list[int] = []
 
 
-  def update_newline_positions(self, pos:int) -> None:
+  def update_newline_positions(self, pos:int|None=None) -> None:
     'Lazily update the newline positions array up to `pos`. `pos` must be less than or equal to the text length.'
+    if pos is None: pos = len(self.text)
     start = self.newline_positions[-1] + 1 if self.newline_positions else 0
     newline_char = '\n' if isinstance(self.text, str) else b'\n'
     for i in range(start, pos):
@@ -170,7 +171,7 @@ class Source(Generic[_Text]):
 
 
   def line_slices(self) -> Iterator[slice]:
-    self.update_newline_positions(len(self.text))
+    self.update_newline_positions()
     prev_newline_pos = -1
     for newline_pos in self.newline_positions:
       yield slice(prev_newline_pos+1, newline_pos+1)
