@@ -7,6 +7,8 @@ from typing import Any, Callable, Iterable, NamedTuple, TypeVar
 _T = TypeVar('_T')
 
 
+_setattr = object.__setattr__
+
 class lazy_property(object):
   '''
   Lazy property decorator. This is similar to functools.cached_property, but more simplistic.
@@ -19,7 +21,7 @@ class lazy_property(object):
 
   def __get__(self, obj:Any, cls:type) -> Any:
     val = self.acc_fn(obj)
-    setattr(obj, self.acc_fn.__name__, val)
+    _setattr(obj, self.acc_fn.__name__, val)
     return val
 
 
