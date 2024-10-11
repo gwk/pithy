@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from base64 import urlsafe_b64decode, urlsafe_b64encode
+from base64 import standard_b64decode, standard_b64encode, urlsafe_b64decode, urlsafe_b64encode
 from typing import ByteString
 
 
@@ -165,3 +165,14 @@ def dec_b64url(val:ByteString) -> bytes:
   if mod4:
     val = bytes(val) + b'=' * (4 - mod4)
   return urlsafe_b64decode(val)
+
+
+def enc_b64std_str(s:str|ByteString) -> str:
+  'Encode a string as base64 using the standard alphabet, returning a string.'
+  if isinstance(s, str): s = s.encode()
+  return standard_b64encode(s).decode()
+
+
+def dec_b64std_str(s:str) -> str:
+  'Decode a base64 string, returning another string.'
+  return standard_b64decode(s).decode()
