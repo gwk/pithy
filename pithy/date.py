@@ -146,6 +146,13 @@ class DateRange(Sequence[Date]):
   def __len__(self) -> int: return len(self._seq)
 
 
+  @property
+  def last(self) -> Date:
+    last = self.end - self.step
+    if last < self.start: raise ValueError(f'last < start: last={last}; start={self.start}.')
+    return last
+
+
 def dt_IM(dt:DateTime|Time, compact=False) -> str:
   'Format a DateTime or Time as e.g. "4:00".'
   return f'{dt:%I:%M}'.lstrip('0') # '04:00'.lstrip('0') => '4:00'.
