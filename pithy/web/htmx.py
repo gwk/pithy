@@ -5,13 +5,16 @@ from ..html import HtmlNode
 
 def configure_htmx_event_replaced_attrs() -> None:
   '''
-  Update `HtmlNode.replaced_attrs` with spellable versions of all hx-on::{event} attributes.
-  e.g. 'hx-on-click' -> 'hx-on::click'.
+  Update `HtmlNode.replaced_attrs` with single-hyphen versions of all hx-on--{event} attributes.
+  e.g. 'hx-on-click' -> 'hx-on--click'.
+  Note that the canonical form is 'hx-on:htmx:before-request'.
+  This can be simplified to 'hx-on::before-request'.
+  Furthermore, hyphens can replace colons, leading to 'hx-on--before-request'.
   See:
   * https://htmx.org/attributes/hx-on/
   * https://htmx.org/reference/#events
   '''
-  HtmlNode.replaced_attrs.update({f'hx-on-{e.replace(":", "_")}' : f'hx-on::{e}' for e in htmx_kebab_events })
+  HtmlNode.replaced_attrs.update({f'hx-on-{ke}' : f'hx-on--{ke}' for ke in htmx_kebab_events })
 
 
 htmx_events = [
@@ -97,11 +100,11 @@ htmx_kebab_events = [
   'swap-error',
   'target-error',
   'timeout',
-  'validation:validate',
-  'validation:failed',
-  'validation:halted',
-  'xhr:abort',
-  'xhr:loadend',
-  'xhr:loadstart',
-  'xhr:progress',
+  'validation-validate',
+  'validation-failed',
+  'validation-halted',
+  'xhr-abort',
+  'xhr-loadend',
+  'xhr-loadstart',
+  'xhr-progress',
 ]
