@@ -10,6 +10,18 @@ _V = TypeVar('_V')
 _VH = TypeVar('_VH', bound=Hashable)
 
 
+def dict_strict_inverse(d:Mapping[_K,_V]) -> dict[_V,_K]:
+  '''
+  Given a mapping from keys to values, return a mapping from values to keys.
+  Raises `ConflictingValues` if the values are not unique.
+  '''
+  inverse:dict[_V,_K] = {}
+  for k, v in d.items():
+    if v in inverse: raise ConflictingValues(key=v, existing=inverse[v], incoming=k)
+    inverse[v] = k
+  return inverse
+
+
 def dict_dag_inverse(d:Mapping[_K,Iterable[_VH]]) -> dict[_VH,set[_K]]:
   '''
   Given a mapping from keys to iterables of hashable values, return a mapping from values to sets of keys.
