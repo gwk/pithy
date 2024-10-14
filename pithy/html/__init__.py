@@ -10,6 +10,7 @@ from io import BytesIO, StringIO
 from os import PathLike
 from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, Mapping, NoReturn, Self, TextIO, Union
 
+from ..default import Default
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
 from ..svg import Svg
@@ -233,7 +234,58 @@ class HtmlPhrasingContent(HtmlNode):
   '''
   Phrasing content model: all node types that can contain phrasing content.
   '''
-  # TODO: all phrasing constructor methods.
+
+
+  def labeled_checkboxes(self, *, require_one:bool, desc_singular:str='', choices:Iterable[Any]|Mapping[str,Any],
+   checked:Iterable[Any]|Mapping[str,Any]=()) -> Self:
+    '''
+    Add a sequence of checkboxes to the node.
+    '''
+    if require_one:
+      self['once'] = 'setupValidateAtLeastOneCheckbox(this)'
+    if desc_singular:
+      self['desc-singular'] = desc_singular
+
+    if isinstance(choices, Mapping): choices = choices.items()
+
+    if isinstance(checked, Mapping):
+      checked_set = frozenset(k for k, v in checked.items() if v)
+    else:
+      checked_set = frozenset(checked)
+
+    for c in choices:
+      if isinstance(c, tuple):
+        name, desc = c
+      else:
+        name = desc = c
+      is_checked = (name in checked_set)
+      self.append(Label(
+        Input(type='checkbox', name=name, checked=Present(is_checked)),
+        desc))
+    return self
+
+
+  def labeled_radios(self, name:str, *, is_opt:bool=False, checked:Any=Default._, choices:Iterable[Any]|Mapping[str,Any]) \
+   -> Self:
+    '''
+    Add a sequence of radio buttons to the node.
+    If `is_opt` is False, the radio buttons will have the `required` attribute (set to the empty string).
+    If `checked` is provided, the radio button with the corresponding value will be checked.
+    If `choices` is a mapping or a sequence of pairs, the keys will be used as the radio button values and the values as the radio button labels.
+    If `choices` is a sequence of non-tuple values, the values will be used as both the radio button values and labels.
+    '''
+    if isinstance(choices, Mapping): choices = choices.items()
+    for c in choices:
+      if isinstance(c, tuple):
+        value, desc = c
+      else:
+        value = desc = c
+      is_checked = (value == checked) and checked != Default._
+      self.append(
+        Label(Input(type='radio', name=name, value=value, required=Present(not is_opt), checked=Present(is_checked)),
+        desc))
+    return self
+
 
 
 class HtmlScriptSupporting(HtmlNode):
