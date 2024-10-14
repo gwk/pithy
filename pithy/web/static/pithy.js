@@ -345,8 +345,8 @@ function validateAtLeastOneCheckbox(container) {
   }
   /** @type {HTMLInputElement} */
   const first = nonopt(checkboxes[0])
-  const desc = container.getAttribute('desc') || 'option'
-  first.setCustomValidity(any_checked ? '' : `Select at least one ${desc}`)
+  const desc_singular = container.getAttribute('desc-singular') || 'option'
+  first.setCustomValidity(any_checked ? '' : `Select at least one ${desc_singular}`)
 }
 
 
