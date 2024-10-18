@@ -377,8 +377,7 @@ def get_query_date(query_params:QueryParams, key:str, default:Date|None=None) ->
 def req_query_date(query_params:QueryParams, key:str) -> Date:
   '''
   Get a required date value from a QueryParams (e.g. request.query_params).
-  If the key is not present, return `default`.
-  If the value is not a valid date, raise a 400 exception.
+  If the key is not present or the value is not a valid date, raise a 400 exception.
   '''
   v = req_query_str(query_params, key)
   try: return Date.fromisoformat(v)
