@@ -20,6 +20,13 @@ http_methods = frozenset({
 })
 
 
+non_body_statuses = (
+  HTTPStatus.NO_CONTENT,
+  HTTPStatus.RESET_CONTENT, # Note: RFC 7230 3.3 does not mention 205 RESET CONTENT but RFC 7231 6.3.6 does.
+  HTTPStatus.NOT_MODIFIED,
+)
+
+
 def may_send_body(method:str, status:HTTPStatus) -> bool:
   '''
   Return True if the body of the response should be sent.
@@ -30,8 +37,7 @@ def may_send_body(method:str, status:HTTPStatus) -> bool:
   if method == 'HEAD': return False
   if method == 'CONNECT' and 200 <= status < 300: return False # Successful connect responses.
   if 100 <= status < 200: return False # Informational responses.
-  if status in (HTTPStatus.NO_CONTENT, HTTPStatus.RESET_CONTENT, HTTPStatus.NOT_MODIFIED): return False
-  #^ Note: RFC 7230 3.3 does not mention 205 RESET CONTENT but RFC 7231 6.3.6 does.
+  if status in non_body_statuses: return False
   return True
 
 
