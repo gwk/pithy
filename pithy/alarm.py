@@ -13,6 +13,11 @@ class Timeout(Exception):
 class Alarm(ContextManager):
 
   def __init__(self, timeout:int, msg:str='alarm timed out after {timeout} seconds', on_signal:Callable[[],None]|None=None):
+    '''
+    Alarm is a context manager that sets up a SIGALRM signal handler and raises a Timeout exception.
+    if the block takes longer than the specified timeout.
+    If `timeout` is 0, the alarm is disabled. This allows us to wrap a block in an alarm that is only conditionally enabled.
+    '''
     if not isinstance(timeout, int): raise TypeError(f'timeout must be an int; received: {timeout!r}')
     if timeout < 0: raise TypeError(f'timeout must be nonnegative; received: {timeout!r}')
     self.timeout = timeout
