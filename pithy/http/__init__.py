@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import time
 from email.utils import formatdate as format_email_date
 from http import HTTPStatus
+from time import time as unix_epoch_time
 
 
 http_status_response_strings = { s : f'{s.value} {s.phrase}'  for s in HTTPStatus }
@@ -37,5 +37,5 @@ def may_send_body(method:str, status:HTTPStatus) -> bool:
 
 def format_header_date(timestamp:float|None=None) -> str:
   'Format `timestamp` or now for an HTTP header value.'
-  if timestamp is None: timestamp = time.time()
+  if timestamp is None: timestamp = unix_epoch_time()
   return format_email_date(timestamp, usegmt=True)
