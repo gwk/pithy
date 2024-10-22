@@ -42,8 +42,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
-  The underlying Subprocess shell option is not supported
-  because the rules regarding splitting strings are complex.
+  The underlying Subprocess shell option is not supported because the rules regarding splitting strings are complex.
   User code is made clearer by just specifying the complete shell invocation.
 
   If `cmd` is a list, it is used as is. If `cmd` is a string it is split by shlex.split.
@@ -107,6 +106,8 @@ def preexec_launch_lldb():
   This is not perfect; if the child process crashes very fast then LLDB might not attach in time.
   However if we try to sleep here then LLDB stops once the exec occurs, which is useless.
   GDB has something called `follow-fork-mode` that sounds like it would address this, but sticking with LLDB for now.
+  TODO: LLDB now supposedly supports follow-fork-mode:
+  https://stackoverflow.com/questions/19204395/lldb-equivalent-of-gdbs-follow-fork-mode-or-detach-on-fork.
   '''
   pid_str = str(_getpid())
   lldb_cmd = ['PATH=/usr/bin', 'lldb', '--batch', '--one-line', 'continue', '--attach-pid', pid_str]
@@ -253,7 +254,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
 def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None, timeout:int=0,
  files:Sequence[File]=(), exp:TaskCodeExpectation=0,note_cmd=False, lldb=False, exits:ExitOpt=False) -> tuple[int, str, str]:
   '''
-  Run a command and return (exit_code, std_out, std_err).
+  Run a command, check the exit expectation, and return (exit_code, std_out, std_err).
   '''
   cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd,
     lldb=lldb)
