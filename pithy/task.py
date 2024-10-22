@@ -5,20 +5,23 @@ from os import access as _access, execvp, getpid as _getpid, R_OK, supports_effe
 from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file, join as _path_join
 from selectors import EVENT_READ, EVENT_WRITE, PollSelector as _PollSelector
 from shlex import quote as sh_quote, split as sh_split
-from subprocess import DEVNULL, PIPE, Popen as _Popen
+from subprocess import DEVNULL, PIPE, Popen as _Popen, STDOUT
 from sys import stderr, stdout
 from time import time as _now
-from typing import AnyStr, BinaryIO, cast, Generator, IO, NoReturn, Sequence
+from typing import AnyStr, cast, Generator, IO, Literal, NoReturn, Sequence
 
 from .alarm import Alarm, Timeout
 
 
-DEVNULL = DEVNULL
+_convenience_exports = (DEVNULL, STDOUT)
+
+Lit_DEVNULL = Literal[-3]; assert DEVNULL == -3 # Literal only accepts the integer value.
+Lit_STDOUT = Literal[-2]; assert STDOUT == -2 # Literal only accepts the integer value.
 
 Cmd = str|Sequence[str]
 Env = dict[str, str]
-Input = int|str|bytes|BinaryIO|None # int primarily for DEVNULL; could also be raw file descriptor?
-File = int|IO
+Input = str|bytes|int|IO # Input can be an int file descriptor, or special DEVNULL. PIPE should not be specified; pass str or bytes instead.
+File = int|IO # File can be an int file descriptor, or special DEVNULL or STDOUT.
 ExitOpt = bool|int|str
 
 
@@ -37,8 +40,8 @@ def exec(cmd:Cmd) -> NoReturn:
   execvp(cmd[0], cmd)
 
 
-def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None, files:Sequence[File]=(),
- note_cmd=False, lldb=False) -> tuple[tuple[str, ...], _Popen, bytes|None]:
+def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
+ files:Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[tuple[str, ...], _Popen, bytes|None]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
@@ -57,7 +60,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   else:
     cmd = tuple(cmd)
   input_bytes: bytes|None
-  f_in: Input
+  f_in: Input|None
   if isinstance(stdin, str):
     f_in = PIPE
     input_bytes = stdin.encode('utf-8')
@@ -251,8 +254,9 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
     raise
 
 
-def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None, timeout:int=0,
- files:Sequence[File]=(), exp:TaskCodeExpectation=0,note_cmd=False, lldb=False, exits:ExitOpt=False) -> tuple[int, str, str]:
+def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None,
+ err:File|None=None, timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0,note_cmd=False,
+ lldb=False, exits:ExitOpt=False) -> tuple[int, str, str]:
   '''
   Run a command, check the exit expectation, and return (exit_code, std_out, std_err).
   '''
@@ -285,8 +289,8 @@ def runCOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
     note_cmd=note_cmd, lldb=lldb)
 
 
-def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:BinaryIO|None=None, err:BinaryIO|None=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> int:
+def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
+ err:IO|None=None, timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not PIPE
   assert err is not PIPE
@@ -297,7 +301,7 @@ def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, o
   return c
 
 
-def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:BinaryIO|None=None,
+def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:IO|None=None,
  timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not PIPE
@@ -307,7 +311,7 @@ def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
   return c, o
 
 
-def runCE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:BinaryIO|None=None,
+def runCE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
  timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not PIPE
@@ -326,7 +330,7 @@ def runOE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   return o, e
 
 
-def runO(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:BinaryIO|None=None,
+def runO(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:IO|None=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not PIPE
@@ -336,7 +340,7 @@ def runO(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
   return o
 
 
-def runE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:BinaryIO|None=None,
+def runE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
  timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not PIPE
