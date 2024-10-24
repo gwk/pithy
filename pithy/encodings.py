@@ -97,7 +97,8 @@ def enc_lep128(val:ByteSeq) -> bytes:
   a = base128_alphabet # Local alias for brevity.
   res = bytearray()
   i = -7
-  for i in range(0, len(val)//7, 7): # Step over 7 bytes at a time.
+  chunk_end = (len(val) // 7) * 7
+  for i in range(0, chunk_end, 7): # Step over 7 bytes at a time.
     n = int.from_bytes(val[i:i+7], byteorder='little')
     res.append(a[n & 0x7f]) # Low 7 bits of n.
     res.append(a[(n >> 7) & 0x7f])
@@ -108,6 +109,7 @@ def enc_lep128(val:ByteSeq) -> bytes:
     res.append(a[(n >> 42) & 0x7f])
     res.append(a[(n >> 49)])
   tail = val[i+7:] # Get the remaining bytes.
+  assert len(tail) < 7
   n = int.from_bytes(tail, byteorder='little') + (1<<(len(tail)*8)) # Append the terminating bit.
   while n:
     n, r = divmod(n, 128)
