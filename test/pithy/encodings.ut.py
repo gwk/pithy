@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from random import randrange
+from random import randbytes
 from typing import ByteString, Callable
 
 from pithy.encodings import (dec_b64url, dec_lep62, dec_lep128, enc_b64url, enc_lep62, enc_lep128, enc_lep128_to_str,
@@ -31,7 +31,7 @@ coders:list[tuple[Callable[[ByteString],bytes], Callable[[bytes],bytes]]] = [
 ]
 
 for enc, dec in coders:
-  for width in range(1, 33):
+  for width in range(1, 65):
     for _ in range(16):
-      b = bytes(randrange(0x100) for _ in range(width))
+      b = randbytes(width)
       utest(b, dec, enc(b))
