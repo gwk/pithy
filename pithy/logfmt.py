@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any
+from typing import Any, Iterable, Mapping
 
 
 '''
@@ -57,16 +57,16 @@ def logfmt_escape(value:str) -> str:
   return value
 
 
-
-def logfmt_params(params:dict[str, Any]) -> str:
+def logfmt_items(items:Iterable[tuple[str,Any]]|Mapping[str,Any]) -> str:
   '''
-  Format a dictionary of parameters into a logfmt string.
+  Format an iterable or mapping of parameters into a logfmt string.
   '''
-  return ' '.join(f'{logfmt_key(k)}={logfmt_val(v)}' for k, v in params.items())
+  if isinstance(items, Mapping): items = items.items()
+  return ' '.join(f'{logfmt_key(k)}={logfmt_val(v)}' for k, v in items)
 
 
 def logfmt(**kwargs:Any) -> str:
   '''
   Format a logfmt string from keyword arguments.
   '''
-  return logfmt_params(kwargs)
+  return logfmt_items(kwargs)
