@@ -1,6 +1,5 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from numbers import Number
 from typing import Any
 
 
@@ -35,7 +34,7 @@ _logfmt_key_trans = str.maketrans(dict.fromkeys([c for c in _latin1 if (not c.is
 def logfmt_val(value:Any) -> str:
   try: return logfmt_prim_val_strs[value]
   except KeyError: pass
-  if isinstance(value, Number): return str(value)
+  if isinstance(value, float): return str(value)
   return logfmt_escape(str(value))
 
 
