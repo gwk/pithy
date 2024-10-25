@@ -4,13 +4,13 @@ import sys
 from cgi import parse_header as cgi_parse_header, parse_multipart
 from dataclasses import dataclass
 from html import escape as html_escape
-from http import HTTPStatus
+from http import HTTPMethod, HTTPStatus
 from io import BufferedReader
 from os import fstat as os_fstat
 from typing import BinaryIO, TextIO
 from urllib.parse import parse_qs, unquote as url_unquote, urlsplit as url_split
 
-from ..http import http_methods, may_send_body
+from ..http import may_send_body
 from ..markup import Mu
 from ..path import norm_path, path_ext
 from ..util import lazy_property
@@ -44,7 +44,7 @@ class Request:
 
 
   def __post_init__(self) -> None:
-    if self.method not in http_methods: raise BadRequest('Unrecognized method.')
+    if self.method not in HTTPMethod: raise BadRequest('Unrecognized method.')
     if self.content_length < 0:
       try: self.content_length = int(self.headers.get('Content-Length', 0))
       except KeyError: pass
@@ -220,7 +220,7 @@ class ResponseError(Exception):
     '''
     body:ResponseBody|None = None
     media_type = ''
-    if may_send_body(method, self.status):
+    if may_send_body(HTTPMethod[method], self.status):
       body = error_html_format.format(code=self.status.value, reason=html_escape(self.reason or self.status.phrase, quote=False))
       #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       media_type = error_media_type

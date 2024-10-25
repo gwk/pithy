@@ -12,26 +12,23 @@ def main() -> None:
 
   parser = ArgumentParser(description='Serve files from a directory.')
   parser.add_argument('root', default='.', nargs='?', help='Root directory to serve from')
-  parser.add_argument('-port', default=8000, type=int, help='Port to listen on')
+  parser.add_argument('-port', default=0, type=int, help='Port to listen on')
   add_browser_args(parser, add_browse=True)
   args = parser.parse_args()
 
   root = args.root
   host = 'localhost'
   port = args.port
-  #address = (host, port)
-  addr_str = f'http://{host}:{port}'
-  print(f'Serving {root!r} on {addr_str}…')
 
   #ignored_paths = { 'apple-touch-icon-precomposed.png' }
 
   app = LocalFileApp(local_dir=root, prevent_client_caching=True, map_bare_names_to_html=False)
-  server = HttpServer(host=host, port=port, app=app)
+  server = HttpServer(host=host, port=port, label=repr(root), app=app)
   server_thread = Thread(target=server.serve_forever)
 
   server_thread.start()
 
-  if args.browser: launch_browser(addr_str, args.browser)
+  if args.browser: launch_browser(server.url, args.browser)
 
   try:
     server_thread.join()

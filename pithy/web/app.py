@@ -10,7 +10,7 @@ from urllib.parse import quote as url_quote, unquote as url_unquote
 from pithy.path import path_ext, path_join
 
 from ..fs import is_dir, path_exists, scan_dir
-from ..http import format_header_date, http_status_response_strings
+from ..http import http_status_response_strings, response_header_date_value
 from . import compute_local_path, html_media_type, norm_url_path, Request, Response, ResponseError
 
 
@@ -125,7 +125,7 @@ class WebApp:
     if status != HTTPStatus.CONTINUE and status != HTTPStatus.SWITCHING_PROTOCOLS:
       # According to https://datatracker.ietf.org/doc/html/rfc2616#section-14.18:
       # 100 and 101 may optionally include date. Otherwise it is required.
-      headers['Date'] = format_header_date()
+      headers['Date'] = response_header_date_value().decode('latin1') # TEMP.
 
     if close_connection:
       headers['Connection'] = 'close'
