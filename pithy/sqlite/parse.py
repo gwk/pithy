@@ -156,9 +156,9 @@ create_rules = dict(
     Opt('UNIQUE', field='is_unique'),
     'INDEX',
     Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists', transform=lambda s, slc, f: True),
-    Alias('schema_table_name', field='name'),
+    Alias('schema_struct_name', field='name'),
     'ON',
-    Alias('schema_table_name', field='table'),
+    Alias('schema_struct_name', field='table'),
     'lp',
     'indexed_columns',
     'rp',
@@ -170,7 +170,7 @@ create_rules = dict(
     #^ Note: CREATE VIRTUAL TABLE is technically a separate rule. This hack requires post-parse validation to ensure that VIRTUAL has a matching USING choice below.
     'TABLE',
     Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists'),
-    Alias('schema_table_name', field='name'),
+    Alias('schema_struct_name', field='name'),
     Choice('table_def', 'as_select', 'virtual_using', field='def', transform=choice_val)
   ),
 
@@ -306,7 +306,7 @@ rules=dict(
   literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', transform=choice_val),
   #^ NOTE: This is strict and does not allow entities as strings. See https://www.sqlite.org/lang_keywords.html.
 
-  schema_table_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
+  schema_struct_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
   table_column_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
   schema_table_column_name = Quantity('name', min=1, max=3, sep='dot', sep_at_end=False),
 
