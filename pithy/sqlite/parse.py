@@ -167,7 +167,8 @@ create_rules = dict(
 
   create_table = Struct(
     Opt(Choice('TEMP', 'TEMPORARY', 'VIRTUAL', transform=choice_label), field='temp_or_virtual'),
-    #^ Note: CREATE VIRTUAL TABLE is technically a separate rule. This hack requires post-parse validation to ensure that VIRTUAL has a matching USING choice below.
+    #^ Note: CREATE VIRTUAL TABLE is technically a separate rule.
+    #^ This hack requires post-parse validation to ensure that VIRTUAL has a matching USING choice below.
     'TABLE',
     Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists'),
     Alias('schema_struct_name', field='name'),
