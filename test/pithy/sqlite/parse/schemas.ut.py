@@ -12,7 +12,7 @@ s1 = Schema('s1',
   desc='s1 test schema.',
   structures=[
 
-    Table('Meta',
+    Table('KeyVal',
       is_strict=True,
       without_rowid=True,
       columns=(
@@ -20,43 +20,39 @@ s1 = Schema('s1',
         Column(name='val', datatype=object, is_opt=True, desc='The value, whose type is treated as dynamic.'),
     )),
 
-  Table('Privilege',
-    desc='A user privilege.',
-    is_strict=True,
-    columns=(
-      Column(name='id', datatype=int, is_primary=True, is_unique=True),
-      Column(name='name', datatype=str, is_unique=True),
-      Column(name='description', datatype=str, default=''),
-  )),
+    Table('Privilege',
+      desc='A user privilege.',
+      is_strict=True,
+      columns=(
+        Column(name='id', datatype=int, is_primary=True, is_unique=True),
+        Column(name='name', datatype=str, is_unique=True),
+        Column(name='description', datatype=str, default=''),
+    )),
 
-  Table('User',
-    is_strict=True,
-    columns=(
-      Column(name='id', datatype=int, is_primary=True, is_unique=True),
-      Column(name='email', datatype=str, is_unique=True),
-      Column(name='name', datatype=str, is_unique=True),
-      Column(name='is_active', datatype=bool),
-      Column(name='role', datatype=str),
-  )),
+    Table('User',
+      is_strict=True,
+      columns=(
+        Column(name='id', datatype=int, is_primary=True, is_unique=True),
+        Column(name='email', datatype=str, is_unique=True),
+        Column(name='name', datatype=str, is_unique=True),
+        Column(name='is_active', datatype=bool),
+        Column(name='role', datatype=str),
+    )),
 
-  Index('User_email', table='User', columns=('email',)),
+    Index('User_email', table='User', columns=('email',)),
 
-  Index('User_email__active', table='User', columns=('email',), where='is_active'),
+    Index('User_email__active', table='User', columns=('email',), where='is_active'),
 
-  Table('UserPrivilege',
-    is_strict=True,
-    without_rowid=True,
-    primary_key=('user_id', 'privilege_id'),
-    columns=(
-      Column(name='user_id', datatype=int),
-      Column(name='privilege_id', datatype=int),
-  )),
+    Table('UserPrivilege',
+      is_strict=True,
+      without_rowid=True,
+      primary_key=('uid', 'privilege_id'),
+      columns=(
+        Column(name='uid', datatype=int),
+        Column(name='privilege_id', datatype=int),
+    )),
   ]
 )
-
-
-def plan_migration(table:Table, current_sql:str) -> None:
-  pass
 
 
 def test_schema_parse(table:Table) -> None:
