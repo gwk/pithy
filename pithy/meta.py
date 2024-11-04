@@ -27,7 +27,7 @@ def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_pr
       if info.function == frame:
         break
     if info is None:
-      raise ValueError('call stack does not contain a matching frame: {}'.format(frame))
+      raise ValueError(f'call stack does not contain a matching frame: {frame!r}')
   else:
     raise TypeError("frame parameter must be either an int (depth; immediate caller is 1), "
       "or a string (the name of the target frame's function, or '<module>', the default).")
