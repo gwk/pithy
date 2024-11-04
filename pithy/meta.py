@@ -84,7 +84,7 @@ class DispatchException(Exception): pass
 _A = TypeVar('_A', bound=Any)
 
 def rename(obj:_A, name:str|None=None, module:str|None=None) -> _A:
-  'Returns `obj`, after renaming name and/or module.'
+  'Returns `obj`, after renaming its name and/or module.'
   if name is not None:
     obj.__name__ = name
     obj.__qualname__ = name
