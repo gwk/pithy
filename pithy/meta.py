@@ -117,7 +117,7 @@ def caller_src_loc(steps:int) -> tuple[str,int,str]:
   steps=0 is useful when this function is called from the module scope.
   steps=1 is useful when this function is called from a function that wants to know about its own caller.
   '''
-  f = caller_frame(steps)
+  f = caller_frame(steps+1)
   return f.f_code.co_filename, f.f_lineno, f.f_code.co_name
 
 
@@ -127,7 +127,7 @@ def caller_module_spec(steps:int) -> ModuleSpec:
   steps=0 is useful when this function is called from the module scope.
   steps=1 is useful when this function is called from a function that wants to know about its own caller.
   '''
-  f = caller_frame(steps)
+  f = caller_frame(steps+1)
   spec = f.f_globals['__spec__']
   if spec is None:
     desc = f'{f.f_code.co_filename}:{f.f_lineno}:{f.f_code.co_name}'
@@ -143,7 +143,7 @@ def caller_module_name(steps:int) -> str|None:
   steps=0 is useful when called from the module scope.
   steps=1 is useful when called from a function that wants to know the name of the caller's module.
   '''
-  try: f = caller_frame(steps)
+  try: f = caller_frame(steps+1)
   except MetaprogrammingError: return None
   spec = f.f_globals['__spec__']
   if spec: return cast(str, spec.name)
@@ -156,7 +156,7 @@ def caller_pkg_path(steps:int) -> str:
   steps=0 is useful when called from the module scope.
   steps=1 is useful when called from a function that wants to know the path of the caller's package.
   '''
-  f = caller_frame(steps)
+  f = caller_frame(steps+1)
   spec = f.f_globals['__spec__']
   if spec is None: raise MetaprogrammingError(f'no module spec for caller frame: {f!r}')
   locations = spec.submodule_search_locations
