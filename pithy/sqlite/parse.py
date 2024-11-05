@@ -338,8 +338,8 @@ def mk_sql_parser(simplify:bool=False, atom_transform:AtomTransform|None=None, t
   return Parser(lexer,
     drop=('comment', 'spaces', 'newline'),
     literals=(
-      'bitand', 'bitnot', 'comma', 'deq', 'dot', 'eq', 'ineq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash', 'star', 'qmark',
-      'le', 'lshift', 'lt', 'ge', 'rshift', 'gt', 'concat', 'bitor', *sqlite_keywords),
+      'bitand', 'bitnot', 'comma', 'deq', 'dot', 'eq', 'ineq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash',
+      'star', 'qmark', 'le', 'lshift', 'lt', 'ge', 'rshift', 'gt', 'concat', 'bitor', *sqlite_keywords),
     rules=rules,
     simplify=simplify,
     atom_transform=atom_transform,
