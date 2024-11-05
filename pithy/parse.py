@@ -824,7 +824,7 @@ class Parser:
     self.literals = frozenset(iter_str(literals))
 
     self.rules = deepcopy(rules)
-    rules = None # type: ignore[assignment] # Forget the original dict. This protects from misuse in the code below.
+    del rules # Forget the original dict. This protects from misuse in the code below.
 
     self.module_name = caller_module_name(1) # Get the calling module name to use for synthesized NamedTuple types.
     self._struct_types:dict[str,type[GeneratedStruct]] = {}
