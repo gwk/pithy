@@ -799,16 +799,6 @@ Preprocessor = Callable[[Source, Iterator[Token]], Iterable[Token]]
 
 
 class Parser:
-  '''
-  drop: a set of token kinds to be dropped from the input token stream.
-
-  literals: a set of token kinds that are fixed strings and should not be included in output structures.
-  For example we might parse "(1 2 3)" with a rule like `Struct('paren_o', ZeroOrMore('expr'), 'paren_c')`.
-  There is no utility in including the parenthesis tokens in the returned structure, because their string content is known.
-
-  rules: a dict of rule names to rules.
-  This dictionary is deep copied so that different parsers can attach different transforms to the same rule set.
-  '''
 
   class DefinitionError(Exception):
     def __init__(self, *msgs:Any):
@@ -818,6 +808,27 @@ class Parser:
   def __init__(self, lexer:Lexer, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
    literals:Iterable[TokenKind]=(), rules:dict[RuleName,Rule], simplify:bool=False, atom_transform:AtomTransform|None=None,
    transforms:dict[RuleName,Callable]|None=None):
+
+    '''
+    lexer: the lexer to use.
+    preprocessor: a function that can modify the input token stream.
+
+    drop: a set of token kinds to be dropped from the input token stream.
+
+    literals: a set of token kinds that are fixed strings and should not be included in output structures.
+    For example we might parse "(1 2 3)" with a rule like `Struct('paren_o', ZeroOrMore('expr'), 'paren_c')`.
+    There is no utility in including the parenthesis tokens in the returned structure, because their string content is known.
+
+    rules: a dict of rule names to rules.
+    This dictionary is deep copied so that different parsers can attach different transforms to the same rule set.
+
+    simplify: if True, the default transforms produce simpler output structures.
+
+    atom_transform: if provided, this transform is the default transformer for atom rules.
+
+    transforms: a dict of rule names to transforms.
+    '''
+
     self.lexer = lexer
     self.preprocessor = preprocessor
     self.drop = frozenset(iter_str(drop))
