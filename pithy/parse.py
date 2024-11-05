@@ -953,10 +953,11 @@ class Parser:
     except KeyError: pass
     else:
       if existing._fields != field_names:
-        raise Parser.DefinitionError(f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {field_names}')
+        raise Parser.DefinitionError(
+          f'conflicting fields for synthesized struct type {name}:\n  {existing._fields}\n  {field_names}')
       return existing
 
-    struct_type = cast(type[GeneratedStruct], namedtuple(type_name, field_names, rename=True, module=self.module_name or '?'))
+    struct_type = cast(type[GeneratedStruct], namedtuple(type_name, field_names, rename=True, module=(self.module_name or '?')))
     self._struct_types[type_name] = struct_type
     return struct_type
 
