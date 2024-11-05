@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from datetime import datetime as DateTime
+
 from pithy.io import outL, outM
 from pithy.sqlite.parse import Source, sql_parser
 from pithy.sqlite.schema import Column, Index, Schema, Table
@@ -51,11 +53,25 @@ s1 = Schema('s1',
         Column(name='uid', datatype=int),
         Column(name='privilege_id', datatype=int),
     )),
+
+    Table('UserPrivilegeDelta',
+      is_strict=True,
+      columns=(
+        Column(name='id', datatype=int, is_primary=True, is_unique=True),
+        Column(name='up_id', datatype=int),
+        Column(name='changed_by', datatype=int, desc='The user who made the change.'),
+        Column(name='changed_at', datatype=DateTime, default="(CURRENT_TIMESTAMP||'Z')",
+          desc='The time the change was made in UTC.'),
+        Column(name='kind', datatype=str, desc='The kind of change: "I" (insert) | "U" (update) | "D" (delete).'),
+        Column(name='changes', datatype=dict, desc='The changed items.'),
+        Column(name='previous', datatype=dict, desc='The previous items.'),
+    )),
   ]
 )
 
 
 def test_schema_parse(table:Table) -> None:
+
   sql = table.sql()
   sql_lines = sql.split('\n')
   source = Source(name=table.name, text=sql)
@@ -67,7 +83,7 @@ def test_schema_parse(table:Table) -> None:
     outM('\nAST', ast, color=True)
     raise e
 
-  if hints := table.diff_hints(parsed_table):
+  if _hints := table.diff_hints(parsed_table):
     outL('\nParsed table does not match original table.')
     outM('\nOriginal', table)
     outM('\nParsed', parsed_table)
