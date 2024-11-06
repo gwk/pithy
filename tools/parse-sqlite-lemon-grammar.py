@@ -28,7 +28,8 @@ def main() -> None:
       match token.kind:
         case 'invalid': bg, rst = (BG_R, RST)
         case 'sym': bg, rst = (TXT_Y, RST)
-        case 'default_type'|'destructor'|'endif'|'extra_context'|'ifdef'|'ifndef'|'include'|'left'|'name'|'nonassoc'|'right'|'stack_overflow'|'syntax_error'|'token'|'token_class'|'token_prefix'|'token_type'|'type':
+        case 'default_type'|'destructor'|'endif'|'extra_context'|'ifdef'|'ifndef'|'include'|'left'|'name'|'nonassoc'|'right' \
+         |'stack_overflow'|'syntax_error'|'token'|'token_class'|'token_prefix'|'token_type'|'type':
           bg, rst = (TXT_G, RST)
         #case 'spaces': bg, rst = (BG_C, RST)
         case _: bg, rst = ('', '')
