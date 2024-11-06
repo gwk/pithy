@@ -166,7 +166,7 @@ class Table(Structure):
   desc:str = ''
   is_strict:bool = False
   without_rowid:bool = False
-  primary_key:tuple[str,...] = () # The compound primary key, if any.
+  primary_key:tuple[str,...] = () # The compound primary key, if any. Each string is an SQL expr, not a parsed column name.
   # TODO: foreign keys.
   columns:tuple[Column,...] = ()
 
@@ -532,7 +532,8 @@ def prefigure_Table(class_:type, table:Input, source:Source) -> dict[str,Any]:
 
 
 def _parse_table_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
-  if constraint.constraint_name is not None: raise NotImplementedError(f'Cannot parse constraint_name: {constraint.constraint_name!r}')
+  if constraint.constraint_name is not None:
+    raise NotImplementedError(f'Cannot parse constraint_name: {constraint.constraint_name!r}')
   label, val = constraint.kind
   match label:
     case 'primary_key':
