@@ -271,6 +271,13 @@ class Alias(Rule):
     return slc, self.transform(source, slc, res)
 
 
+  @property
+  def field_name(self) -> str:
+    'Alias overrides `field_name` to pass through the aliased field name if not otherwise specified.'
+    return super().field_name or self.subs[0].field_name
+
+
+
 
 class Atom(Rule):
   '''
@@ -361,7 +368,7 @@ class Opt(_QuantityRule):
 
   @property
   def field_name(self) -> str:
-    'Override to pass through the subrule field name.'
+    'Opt overrides `field_name` to pass through the subrule field name if not otherwise specified.'
     return super().field_name or self.body.field_name
 
 
