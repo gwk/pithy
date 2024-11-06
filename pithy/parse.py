@@ -6,7 +6,8 @@ Recursive decent is performed by looking at the next token,
 and then dispatching through a table of token kinds to select the appropriate Rule.
 
 Upon parsing, each type of rule produces a generic result object, the type of which is dependent on the rule type.
-The result is then passed to a user-provided transformer function, whose signature also depends on the rule type.
+For example, a Struct rule returns a list of results, whereas a Choice rule returns the choice label and a single result.
+The result is then passed to a user-provided (or default) transformer function, whose signature also depends on the rule type.
 Transformer functions can return results of any type.
 
 Several types of rules are available:
