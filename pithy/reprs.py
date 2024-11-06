@@ -4,7 +4,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import fields
 from functools import cache
-from typing import Any, cast, Iterable, NamedTuple
+from typing import Any, Callable, cast, Iterable, NamedTuple
 
 from pithy.types import is_dataclass_instance
 
@@ -70,6 +70,7 @@ def len_clr(s:str) -> int:
   '''
   Returns the length of s, ignoring ANSI color codes.
   Note: this assumes that each color code is 5 characters long.
+  The more correct approach would be to calculate the visible length by coalescing each grapheme cluster.
   '''
   return len(s) - s.count('\x1b[') * 5
 
@@ -150,7 +151,18 @@ def _repr_ml(obj:Any, at_line_start:bool, indent:str, width:int, inl_comma:str, 
   if isinstance(obj, type): return obj.__qualname__
 
   # Default for all other types.
-  return colors.rst + repr(obj)
+  return colors.rst + custom_reprs.get(type(obj), repr)(obj)
+
+
+def repr_slice(slc:slice) -> str:
+  'Return a repr for `slc`.'
+  if slc.step is None: return f'slice({slc.start},{slc.stop})'
+  return repr(slc)
+
+
+custom_reprs:dict[type,Callable[[Any],str]] = {
+  slice: repr_slice
+}
 
 
 _not_present = object()
