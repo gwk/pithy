@@ -6,7 +6,7 @@ from pithy.iterable import joinR
 
 from ..parse import ParseError
 from . import Conn, Cursor, Row
-from .schema import Column, render_column_default, Schema, Table, TableDepStructure
+from .schema import Column, Schema, Table, TableDepStructure
 from .util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
 
 
@@ -162,7 +162,7 @@ def gen_table_rebuild(*, schema_name:str, qname:str, new:Table, old:Table) -> li
     new_col = new.columns_dict[col_name]
     old_col = old.columns_dict.get(col_name)
     if old_col is not None and old_col.is_opt and not new_col.is_opt and new_col.default is not None:
-      default_expr = render_column_default(new_col.default)
+      default_expr = new_col.default_rendered
       col_expr = f'COALESCE({qe(col_name)}, {default_expr})'
     else:
       col_expr = qe(col_name)
