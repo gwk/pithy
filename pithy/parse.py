@@ -257,8 +257,8 @@ class Alias(Rule):
 
   def __init__(self, alias:str, field='', transform:UniTransform=uni_val):
     self.name = ''
-    self.field = field
     self.alias = alias
+    self.field = field
     self.sub_refs = (alias,)
     self.heads = ()
     self.transform = transform
