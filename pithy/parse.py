@@ -885,7 +885,7 @@ class Parser:
 
     atom_transform: if provided, this transform is the default transformer for atom rules.
 
-    transforms: a dict of rule names to transforms.
+    transforms: a dict of rule names to transforms. These override the transforms specified in the rules.
     '''
 
     self.lexer = lexer
