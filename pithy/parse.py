@@ -233,6 +233,8 @@ class Rule:
     if self.name: parts.append(f'name={self.name!r}')
     if self.field: parts.append(f'field={self.field!r}')
     parts.extend((repr(s) for s in self.sub_refs))
+    parts.append(f'heads={self.heads!r}')
+    parts.append(f'transform={self.transform!r}')
     s = ', '.join(parts)
     return f'{type(self).__name__}({s})'
 
