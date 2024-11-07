@@ -5,9 +5,7 @@ from datetime import datetime as DateTime
 from pithy.io import outL, outM
 from pithy.sqlite.parse import Source, sql_parser
 from pithy.sqlite.schema import Column, Index, Schema, Table
-from pithy.sqlite.util import nonstrict_to_strict_types_for_sqlite
 from pithy.transtruct import TranstructorError
-from utest import utest
 
 
 s1 = Schema('s1',
@@ -76,6 +74,7 @@ def test_schema_parse(table:Table) -> None:
   sql_lines = sql.split('\n')
   source = Source(name=table.name, text=sql)
   ast = sql_parser.parse('create_stmt', source)
+
   try:
     parsed_table = Table.parse(table.name, sql)
   except TranstructorError as e:
@@ -83,14 +82,16 @@ def test_schema_parse(table:Table) -> None:
     outM('\nAST', ast, color=True)
     raise e
 
-  if _hints := table.diff_hints(parsed_table):
-    outL('\nParsed table does not match original table.')
+  if hints := table.diff_hints(parsed_table):
+    hints_str = ', '.join(hints)
+    outL(f'\nParsed table does not match original table: {hints_str}.')
     outM('\nOriginal', table)
     outM('\nParsed', parsed_table)
+
     for pc, oc in zip(parsed_table.columns, table.columns):
       if pc.name != oc.name: break
       if pc != oc:
-        outM('Orig Column', oc, color=True)
+        outM('Orig   Column', oc, color=True)
         outM('Parsed Column', pc, color=True)
 
 
