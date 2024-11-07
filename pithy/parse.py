@@ -536,7 +536,7 @@ class Struct(Rule):
 
   def compile(self, parser:'Parser') -> None:
     if self.transform is _struct_transform_placeholder:
-      self.transform = parser._mk_struct_transform(name=self.name, subs=self.subs)
+      self.transform = parser._mk_struct_transform(name=(self.name or self.field or ''), subs=self.subs)
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
