@@ -6,9 +6,9 @@ from typing import Any, Callable, cast, Match
 from tolkien import Source, Token
 
 from ..lex import Lexer
-from ..parse import (Alias, Atom, atom_text, AtomTransform, Choice, choice_label, choice_labeled, choice_val, Infix, Left,
-  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, SuffixRule, uni_syn,
-  uni_text, ZeroOrMore)
+from ..parse import (Alias, Atom, AtomTransform, Choice, choice_label, choice_syn, choice_val, Infix, Left, OneOrMore, Opt,
+  ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, SuffixRule, Syn, uni_bool, uni_syn, uni_text,
+  ZeroOrMore)
 from .keywords import sqlite_key_phrases, sqlite_keywords
 
 
@@ -150,30 +150,70 @@ lexer = Lexer(flags='mxi', # SQL is case-insensitive.
 
 create_rules = dict(
 
-  create_stmt = Struct('CREATE', Choice('create_index', 'create_table', transform=choice_val)),
+  create_stmt = Struct('CREATE', Choice('create_index', 'create_temporary', 'create_virtual_table', transform=choice_val)),
 
   create_index = Struct(
     Opt('UNIQUE', field='is_unique'),
     'INDEX',
-    Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists', transform=lambda s, slc, f: True),
+    Alias('if_not_exists'),
     Alias('schema_struct_name', field='name'),
     'ON',
     Alias('schema_struct_name', field='table'),
     'lp',
     'indexed_columns',
     'rp',
-    Opt('where_clause', field='where'),
-  ),
+    Opt('where_clause', field='where')),
+
+  create_temporary = Struct(
+    Opt('TEMPORARY', field='is_temporary', transform=uni_bool),
+    Choice('create_table', 'create_trigger', 'create_view', field='structure', transform=choice_val)),
 
   create_table = Struct(
-    Opt(Choice('TEMP', 'TEMPORARY', 'VIRTUAL', transform=choice_label), field='temp_or_virtual'),
-    #^ Note: CREATE VIRTUAL TABLE is technically a separate rule.
-    #^ This hack requires post-parse validation to ensure that VIRTUAL has a matching USING choice below.
     'TABLE',
-    Opt(Struct('IF', 'NOT', 'EXISTS'), field='if_not_exists'),
+    Alias('if_not_exists'),
     Alias('schema_struct_name', field='name'),
-    Choice('table_def', 'as_select', 'virtual_using', field='def', transform=choice_val)
+    Choice('table_def', 'as_select', field='def', transform=choice_val)),
+
+  create_trigger = Struct(
+    'TRIGGER',
+    Alias('if_not_exists'),
+    Alias('schema_struct_name', field='name'),
+    'trigger_def',
   ),
+
+  create_view = Struct(
+    'VIEW',
+    Alias('if_not_exists'),
+    Alias('schema_struct_name', field='name'),
+    'paren_column_names',
+    'as_select'),
+
+  create_virtual_table = Struct(
+    'VIRTUAL', 'TABLE',
+    Alias('if_not_exists'),
+    Alias('schema_struct_name', field='name'),
+    'USING',
+    'name', # module-name.
+    Opt(Struct('lp', ZeroOrMore('name', field='module_arguments'), 'rp'))),
+
+  if_not_exists = Opt(Struct('IF', 'NOT', 'EXISTS', field='if_not_exists'), transform=uni_bool),
+)
+
+
+def transform_table_option_without_rowid(source:Source, slc:slice, val:list[Any]) -> str:
+  _without, name_token = val
+  name = source[name_token].upper()
+  if name != 'ROWID': raise ParseError(source, slc, f"expected 'ROWID'; received {name!r}.")
+  return 'WITHOUT_ROWID'
+
+
+def transform_table_option_word(source:Source, token:Token) -> str:
+  name = source[token].upper()
+  if name != 'STRICT': raise ParseError(source, token, f"expected 'STRICT'; received {name!r}.")
+  return name
+
+
+table_def_rules = dict(
 
   table_def = Struct(
     'lp',
@@ -190,7 +230,7 @@ create_rules = dict(
   column_constraint = Struct(
     Opt(Struct('CONSTRAINT', 'name'), field='constraint_name'),
     Choice(
-      Struct('PRIMARY', 'KEY', Opt('asc_desc'), 'on_conflict', Opt('AUTOINCREMENT'), field='primary_key'),
+      Struct('PRIMARY', 'KEY', Opt('asc_desc'), 'on_conflict', Opt('AUTOINCREMENT'), field='col_primary_key'),
       Struct('NOT', 'NULL', 'on_conflict', field='not_null'),
       Struct('UNIQUE', 'on_conflict', field='unique'),
       Struct('CHECK', 'paren_expr', field='check'),
@@ -199,10 +239,10 @@ create_rules = dict(
       # TODO: foreign-key-clause.
       'generated_constraint',
       field='kind',
-      transform=choice_labeled)),
+      transform=choice_syn)),
 
   default_expr = Choice('paren_expr', 'literal_value', 'signed_number', 'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
-    transform=choice_val),
+    transform=choice_val), # https://www.sqlite.org/lang_createtable.html#the_default_clause
 
   generated_constraint = Struct(
     Opt(Struct('GENERATED', 'ALWAYS'), field=None),
@@ -215,21 +255,37 @@ create_rules = dict(
   table_constraint = Struct(
     Opt(Struct('CONSTRAINT', 'name'), field='constraint_name'),
     Choice(
-      Struct('PRIMARY', 'KEY', 'lp', 'indexed_columns', 'rp', 'on_conflict', field='primary_key'),
+      Struct('PRIMARY', 'KEY', 'lp', 'indexed_columns', 'rp', 'on_conflict', field='table_primary_key'),
       Struct('UNIQUE', 'lp', 'indexed_columns', 'rp', 'on_conflict', field='unique'),
       Struct('CHECK', 'paren_expr', field='check'),
       Struct('FOREIGN', 'KEY', 'lp', OneOrMore('name', field='columns'), 'rp', 'foreign_key_clause', field='foreign_key'),
       field='kind',
-      transform=choice_labeled)),
+      transform=choice_syn)),
 
   table_option = Choice(
-    Struct('WITHOUT', Atom('name', field='rowid'), transform=lambda s, slc, f: 'WITHOUT ROWID'), # TODO: the transform should raise ParseError if the name is not "ROWID".
-    Atom('name', field='strict', transform=atom_text),
+    Struct('WITHOUT', Atom('name', field='rowid'), transform=transform_table_option_without_rowid),
+    Atom('name', field='word', transform=transform_table_option_word),
     transform=choice_val),
+)
+
+
+trigger_def_rules = dict(
+  trigger_def = Struct(
+    Opt(Choice('BEFORE', 'AFTER', Struct('INSTEAD', 'OF', transform=lambda s, slc, f: 'INSTEAD_OF'), transform=choice_val)),
+    Choice(
+      'DELETE',
+      'INSERT',
+      Struct('UPDATE', 'OF', 'column_names', field='update_of'),
+      transform=choice_val),
+    'ON',
+    Alias('name', field='table_name'),
+    Opt(Struct('FOR', 'EACH', 'ROW', field='for_each_row'), transform=lambda s, slc, f: True),
+    Opt(Struct('WHEN', 'expr'), field='when_clause'),
+    'BEGIN',
+    OneOrMore('siud_stmt', sep='semi', repeated_seps=True, sep_at_end=True),
+    'END'),
 
   as_select = Struct('AS', 'select_stmt'),
-
-  virtual_using = Struct('USING', 'name', Opt(Struct('lp', ZeroOrMore('name', field='module_arguments'), 'rp'))),
 )
 
 
@@ -270,7 +326,7 @@ expr_rules = dict(
       # Furthermore, it is clearly not correct for aggregate and window functions. see https://www.sqlite.org/lang_expr.html#functioncalls.
       SuffixRule(Struct('lp', OneOrMore('expr', sep='comma'), 'rp', field='exprs'), transform=lambda s, t, l, r: ('()', l, r)),
     ),
-  ),
+    transform=uni_syn),
 
   # NOT EXISTS ( SELECT ... ) # Note: this will conflict with `( expr, ... )` above; refactor to separate NOT EXISTS and EXISTS, and ( SELECT ..).
   # CASE expr WHEN expr THEN expr ELSE expr END
@@ -281,8 +337,12 @@ expr_rules = dict(
     Choice('float', 'integer', field='number', transform=choice_val),
     transform=struct_text),
 
-  paren_expr = Struct('lp', 'expr', 'rp', field='expr'),
-  paren_exprs = Struct('lp', OneOrMore('expr', sep='comma'), 'rp', field='exprs'),
+  paren_expr = Struct('lp', 'expr', 'rp', field='expr',
+    transform=lambda s, slc, f: Syn(slc, lbl='paren_expr', val=f[1])),
+
+  paren_exprs = Struct('lp', OneOrMore('expr', sep='comma', field='exprs'), 'rp',
+    transform=lambda s, slc, f: ('()', Syn(slc, lbl='paren_exprs', val=f[1]))),
+
   cast_expr =  Struct('CAST', 'lp', 'expr', 'AS', 'name', 'rp'),
 
   exists_prefix = Opt(Choice('EXISTS', 'not_exists', transform=choice_label)),
@@ -298,11 +358,44 @@ select_rules = dict(
 )
 
 
+insert_rules = dict(
+  insert_stmt = Struct(
+    'INSERT',
+    'INTO',
+    Alias('name', field='table_name'),
+    'paren_column_names',
+    'select_stmt'),
+)
+
+
+update_rules = dict(
+  update_stmt = Struct(
+    'UPDATE',
+    Alias('name', field='table_name'),
+    'SET',
+    OneOrMore('set_clause', sep='comma', sep_at_end=False),
+    'where_clause'),
+
+  set_clause = Struct('name', 'eq', 'expr'),
+)
+
+
+delete_rules = dict(
+  delete_stmt = Struct(
+    'DELETE',
+    'FROM',
+    Alias('name', field='table_name'),
+    'where_clause'),
+)
+
+
 rules=dict(
 
   stmts = ZeroOrMore('stmt', sep='semi', repeated_seps=True),
 
-  stmt = Choice('create_stmt', 'select_stmt', transform=choice_val),
+  stmt = Choice('create_stmt', 'siud_stmt', transform=choice_val),
+
+  siud_stmt = Choice('select_stmt','insert_stmt', 'update_stmt', 'delete_stmt', transform=choice_val),
 
   literal_value = Choice('blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', transform=choice_val),
   #^ NOTE: This is strict and does not allow entities as strings. See https://www.sqlite.org/lang_keywords.html.
@@ -310,6 +403,9 @@ rules=dict(
   schema_struct_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
   table_column_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
   schema_table_column_name = Quantity('name', min=1, max=3, sep='dot', sep_at_end=False),
+
+  column_names = OneOrMore('name', sep='comma', sep_at_end=False),
+  paren_column_names = Struct('lp', OneOrMore('name', sep='comma', sep_at_end=False), 'rp', field='column_names'),
 
   foreign_key_clause = Struct(
     'REFERENCES',
@@ -327,9 +423,14 @@ rules=dict(
 
   where_clause = Struct('WHERE', 'expr'),
 
-  **create_rules,
   **expr_rules,
+  **create_rules,
+  **table_def_rules,
+  **trigger_def_rules,
   **select_rules,
+  **insert_rules,
+  **update_rules,
+  **delete_rules,
 )
 
 

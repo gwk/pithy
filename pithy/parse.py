@@ -165,6 +165,7 @@ def _atom_transform_placeholder(source, token:Token):
 
 UniTransform = Callable[[Source,slice,Any],Any]
 def uni_val(source:Source, slc:slice, val:Any) -> Any: return val
+def uni_bool(source:Source, slc:slice, val:Any) -> bool: return bool(val)
 def uni_syn(source:Source, slc:slice, val:Any) -> Syn: return Syn(slc, '', val)
 def uni_text(source:Source, slc:slice, val:Any) -> str: return source[slc]
 

@@ -7,6 +7,7 @@ from typing import Any, Container, Iterable, Self
 
 from tolkien import Source
 
+from ..parse import Syn
 from ..transtruct import Input, Transtructor
 from .keywords import sqlite_keywords
 from .parse import sql_parse_entity, sql_parser
@@ -87,7 +88,7 @@ class Column:
     if self.is_primary != other.is_primary: return 'is_primary'
     if self.is_unique != other.is_unique: return 'is_unique'
     if self.virtual != other.virtual: return f'virtual ({self.virtual!r} != {other.virtual!r})'
-    if self.default_rendered != other.default_rendered: return 'default'
+    if self.default != other.default: return 'default'
     return ''
 
 
@@ -463,7 +464,7 @@ def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
   type_name = source[column.type_name]
   datatype = strict_sqlite_to_types[type_name]
   constraints = dict(_parse_column_constraint(cc, source) for cc in column.constraints)
-  is_primary = constraints.get('primary_key', False)
+  is_primary = constraints.get('col_primary_key', False)
   is_opt = not constraints.get('not_null', False) and not is_primary
   is_unique = constraints.get('unique', False) or is_primary
   virtual = constraints.get('virtual')
@@ -483,22 +484,24 @@ def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
 
 def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
   if constraint.constraint_name is not None: raise NotImplementedError(f'column_constraint named constraint: {constraint.constraint_name!r}')
-  label, val = constraint.kind
-  match label:
-    case 'primary_key':
+  kind = constraint.kind
+  lbl = kind.lbl
+  val = kind.val
+  match lbl:
+    case 'col_primary_key':
       if val.asc_desc is not None: raise NotImplementedError(f'column_constraint primary_key asc_desc: {constraint!r}')
       if val.on_conflict is not None: raise NotImplementedError(f'column_constraint primary_key on_conflict: {constraint!r}')
       if val.AUTOINCREMENT is not None: raise NotImplementedError(f'column_constraint primary_key autoincrement: {constraint!r}')
-      return label, True
+      return lbl, True
     case 'not_null' | 'unique':
       on_conflict = val
       if on_conflict is not None: raise NotImplementedError(f'column_constraint primary_key on_conflict: {constraint!r}')
-      return label, True
+      return lbl, True
     case 'check':
       raise NotImplementedError(f'column_constraint check: {constraint!r}')
     case 'default':
       default_val = unrender_column_default(source[val])
-      return label, default_val
+      return lbl, default_val
     case 'collate':
       raise NotImplementedError(f'column_constraint collate: {constraint!r}')
     case 'generated_constraint':
@@ -514,42 +517,63 @@ def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
 
 
 @schema_transtructor.prefigure(Table)
-def prefigure_Table(class_:type, table:Input, source:Source) -> dict[str,Any]:
+def prefigure_Table(class_:type, create_temporary:Input, source:Source) -> dict[str,Any]:
+  #_is_temporary = create_temporary.is_temporary # TODO: use this.
+  table = create_temporary.structure
+
   table_name_parts = [sql_parse_entity(source[t]) for t in table.name]
 
   def_ = table.def_
   if not isinstance(def_, sql_parser.types.TableDef): raise ValueError(f'Expected a table_def; received {def_!r}')
-  column_defs = def_.column_defs # type: ignore[attr-defined]
-  constraints = dict(_parse_table_constraint(tc, source) for tc in def_.table_constraints) # type: ignore[attr-defined]
   table_options = def_.table_options # type: ignore[attr-defined]
+  constraints = dict(_parse_table_constraint(tc, source) for tc in def_.table_constraints) # type: ignore[attr-defined]
+  if primary_key := constraints.get('table_primary_key'):
+    primary_key_names = tuple(c.expr for c in primary_key)
+    print('primary_key_names', primary_key_names)
+  else:
+    primary_key_names = ()
+
+  column_defs = def_.column_defs # type: ignore[attr-defined]
 
   return dict(
     name=table_name_parts[-1], # NOTE: we currently discard the schema name if it is present.
     is_strict=('STRICT' in table_options),
-    without_rowid=('WITHOUT ROWID' in table_options),
-    primary_key=constraints.get('primary_key', ()),
+    without_rowid=('WITHOUT_ROWID' in table_options),
+    primary_key=primary_key_names,
     columns=column_defs,
   )
 
 
 def _parse_table_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
+  '''
+  Parse a table constraint. constraint is a TableConstraint generated struct.
+  '''
   if constraint.constraint_name is not None:
     raise NotImplementedError(f'Cannot parse constraint_name: {constraint.constraint_name!r}')
-  label, val = constraint.kind
-  match label:
-    case 'primary_key':
-      col_names = tuple(_parse_indexed_column(c, source) for c in val.indexed_columns)
-      if val.on_conflict is not None: raise NotImplementedError(f'Cannot parse on_conflict: {val.on_conflict!r}')
-      return label, col_names
-    case _: raise NotImplementedError(f'Cannot parse table constraint {label!r}: {constraint!r}')
+  kind:Syn = constraint.kind # A Syn wrapper around the Choice result.
+  match kind.lbl:
+    case 'table_primary_key':
+      indexed_cols = tuple(_parse_indexed_column(c, source) for c in kind.val.indexed_columns)
+      if kind.val.on_conflict is not None: raise NotImplementedError(f'Cannot yet parse on_conflict: {kind.val.on_conflict!r}')
+      return kind.lbl, indexed_cols
+    case _: raise NotImplementedError(f'Cannot parse table constraint {kind.lbl!r}: {constraint!r}')
 
 
-def _parse_indexed_column(column:Input, source:Source) -> str:
-  expr = column.expr
-  assert column.collate is None
-  assert column.asc_desc is None
-  assert isinstance(expr, list) and len(expr) == 1
-  return sql_parse_entity(source[expr[0]])
+@dataclass(frozen=True)
+class IndexedColumn:
+  expr:str
+  collate:str|None
+  asc_desc:str|None
+
+
+def _parse_indexed_column(column:Input, source:Source) -> IndexedColumn:
+  '''
+  The `indexed-column` syntax accepts either a column name or an arbitrary expression.
+  see: https://www.sqlite.org/syntax/indexed-column.html
+  '''
+  expr_syn = column.expr
+  expr_text = source[expr_syn]
+  return IndexedColumn(expr=expr_text, collate=column.collate, asc_desc=column.asc_desc)
 
 
 def clean_row_record(table:Table, *, record:dict[str,Any], renamed_keys:dict[str,str]|None=None, keep_keys:Container[str]=()
