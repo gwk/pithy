@@ -260,8 +260,8 @@ class Table(Structure):
     matches = self.match_columns_by_name(other)
     if self.column_names != tuple(matches): hints.append('columns')
     else:
-      hints.extend(filter(None,
-        (c.diff_hint(oc, include_name=True,  exact_type=False) for c, oc in zip(self.columns, other.columns))))
+      col_hints = [(c, c.diff_hint(oc, include_name=True, exact_type=False)) for c, oc in zip(self.columns, other.columns)]
+      hints.extend(f'{c.name}.{dh}' for c, dh in col_hints if dh)
     return hints
 
 
