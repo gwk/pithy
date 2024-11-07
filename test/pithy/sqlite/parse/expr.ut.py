@@ -2,17 +2,18 @@
 
 from typing import Any
 
+from pithy.parse import syn_skeleton
 from pithy.sqlite.parse import mk_sql_parser
 from tolkien import Source
 from utest import utest
 
 
-simple_sql_parser = mk_sql_parser(simplify=True)
+simple_sql_parser = mk_sql_parser()
 
 
 def parse_expr(s:str) -> Any:
   source = Source('<expr>', s)
-  return simple_sql_parser.parse('expr', source)
+  return syn_skeleton(simple_sql_parser.parse('expr', source), source=source)
 
 # Strings.
 utest("''" , parse_expr, "''")

@@ -25,7 +25,7 @@ while expressing other aspects of a grammar using straightforward recursive desc
 
 from collections import namedtuple
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, fields as dc_fields, is_dataclass
 from keyword import iskeyword, issoftkeyword
 from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, TypeVar, Union
 
@@ -91,6 +91,50 @@ def append_or_list(list_or_el:_T|list[_T], el:_T) -> list[_T]:
     return list_or_el
   else:
     return [list_or_el, el]
+
+
+
+def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=frozenset()) -> Any:
+  '''
+  Produce a simplified skeleton of a syntax tree by recursively removing or simplifying Syn nodes.
+  This is particularly useful for building test cases, where the `slc` position information is not relevant.
+
+  If `source` is provided, then Tokens are replaced with their source text.
+  Otherwise, Tokens are replaced with their kind or mode.kind.
+
+  `keep_lbls` is an iterable of labels for which to preserve Syn nodes.
+  Otherwise, Syn nodes are replaced with their recursively simplified values.
+  '''
+
+  if source:
+    def _skeleton_for_token(token:Token) -> Any:
+      return source[token]
+  else:
+    def _skeleton_for_token(token:Token) -> Any:
+      if token.mode == 'main': return token.kind
+      else: return token.mode_kind
+
+  if keep_lbls:
+    if not isinstance(keep_lbls, frozenset): keep_lbls = frozenset(keep_lbls)
+    def _skeleton_for_syn(syn:Syn) -> Any:
+      return Syn(syn.slc, syn.lbl, _skeleton(syn.val)) if (syn.lbl in keep_lbls) else _skeleton(syn.val)
+  else:
+    def _skeleton_for_syn(syn:Syn) -> Any:
+      return _skeleton(syn.val)
+
+  def _skeleton(node:Any) -> Any:
+    match node:
+      case Token(): return _skeleton_for_token(node)
+      case Syn(): return _skeleton_for_syn(node)
+      case list(): return [_skeleton(el) for el in node]
+      case tuple(): return tuple(_skeleton(el) for el in node)
+      case dict(): return {k: _skeleton(v) for k, v in node.items()}
+    if is_dataclass(node):
+      dc = node.__class__
+      return dc(**{f.name: _skeleton(getattr(node, f.name)) for f in dc_fields(node)})
+    return node
+
+  return _skeleton(node)
 
 
 @dataclass(frozen=True)
