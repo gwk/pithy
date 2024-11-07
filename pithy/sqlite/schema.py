@@ -419,8 +419,9 @@ class Schema:
 
 def render_column_default(val:bool|int|float|str|None) -> str:
   match val:
-    case None: return ''
-    case bool()|int()|float(): return str(val)
+    case None: return 'NULL'
+    case bool(): return str(val).upper()
+    case int()|float(): return str(val)
     case '': return "''" # Special affordance for the empty string as shorthand.
     case 'CURRENT_DATE'|'CURRENT_TIME'|'CURRENT_TIMESTAMP': return val
     case str():
@@ -433,12 +434,12 @@ def render_column_default(val:bool|int|float|str|None) -> str:
 
 def unrender_column_default(val:str) -> bool|int|float|str|None:
   '''
-  Convert the rendered default value back to a python value.
+  Convert the rendered SQL default value back to a python value.
   This function does not completely validate the rendered string, just converts it back to a python value.
   '''
-  if val == '': return None
+  if val == 'NULL': return None
   if val == "''": return '' # Special affordance for the empty string as shorthand.
-  try: return _bool_repr_to_vals[val.capitalize()]
+  try: return _bool_repr_to_vals[val.upper()]
   except KeyError: pass
   c = val[0]
   if c in '0123456789.+-': return float(val) if '.' in val else int(val)
@@ -448,7 +449,7 @@ def unrender_column_default(val:str) -> bool|int|float|str|None:
   raise ValueError(f'Invalid Column default rendered string: {val!r}')
 
 
-_bool_repr_to_vals = {'True': True, 'False': False}
+_bool_repr_to_vals = {'TRUE': True, 'FALSE': False}
 
 
 
