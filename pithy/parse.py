@@ -104,6 +104,11 @@ class Syn:
   lbl:str = ''
   val:Any = None
 
+  def __post_init__(self) -> None:
+    assert isinstance(self.slc, slice)
+    assert isinstance(self.lbl, str)
+
+
 
 AtomTransform = Callable[[Source,Token],Any]
 
