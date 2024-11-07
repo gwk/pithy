@@ -4,6 +4,9 @@ from base64 import (b16decode, b16encode, b32decode, b32encode, b85decode, b85en
   urlsafe_b64decode, urlsafe_b64encode)
 
 
+_convenience_exports = (b16decode, b16encode, b32decode, b32encode, b85decode, b85encode)
+
+
 ByteSeq = bytes|bytearray|memoryview
 
 
