@@ -208,7 +208,11 @@ _sentinel_kind = '!SENTINEL'
 
 
 class Rule:
-  'A parser rule. A complete parser is created from a graph of rules.'
+  '''
+  A parser rule. A complete parser is created from a graph of rules.
+  Parser graphs may have cycles, so rules can be constructed with named references to other rules.
+  These references are resolved when the parser is compiled.
+  '''
 
   name:str # Optional name, used to link the rule graph.
   field:str|None # Optional field name, used for generated structures.
@@ -351,7 +355,7 @@ class Atom(Rule):
 
   def compile(self, parser:'Parser') -> None:
     if self.transform is _atom_transform_placeholder:
-      self.transform = parser.atom_transform or (atom_text if parser.simplify else atom_token)
+      self.transform = parser.atom_transform or atom_token
 
 
   def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
@@ -866,7 +870,7 @@ class Parser:
 
 
   def __init__(self, lexer:Lexer, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
-   literals:Iterable[TokenKind]=(), rules:dict[RuleName,Rule], simplify:bool=False, atom_transform:AtomTransform|None=None,
+   literals:Iterable[TokenKind]=(), rules:dict[RuleName,Rule], atom_transform:AtomTransform|None=None,
    transforms:dict[RuleName,Callable]|None=None):
 
     '''
@@ -881,8 +885,6 @@ class Parser:
 
     rules: a dict of rule names to rules.
     This dictionary is deep copied so that different parsers can attach different transforms to the same rule set.
-
-    simplify: if True, the default transforms produce simpler output structures.
 
     atom_transform: if provided, this transform is the default transformer for atom rules.
 
@@ -900,7 +902,6 @@ class Parser:
     self.module_name = caller_module_name(1) # Get the calling module name to use for synthesized NamedTuple types.
     self._struct_types:dict[str,type[GeneratedStruct]] = {}
 
-    self.simplify = simplify
     self.atom_transform = atom_transform
 
     if transforms is None: transforms = {}
@@ -977,19 +978,12 @@ class Parser:
       return single_transform
 
     raw_field_names = [sub.field_name for sub, should_inlude in zip(subs, includes) if should_inlude]
-    field_names = tuple(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names))
-
-    if not self.simplify:
-      field_names = ('slc', *field_names)
+    field_names = ('slc',) + tuple(self._mk_clean_field_name(n, i) for i, n in enumerate(raw_field_names))
 
     struct_type = self._mk_struct_type(name, field_names=field_names)
 
-    if self.simplify:
-      def transform(source:Source, slc:slice, fields:list[Any]) -> Any:
-        return struct_type(*(f for f, should_include in zip(fields, includes) if should_include))
-    else:
-      def transform(source:Source, slc:slice, fields:list[Any]) -> Any:
-        return struct_type(slc, *(f for f, should_include in zip(fields, includes) if should_include))
+    def transform(source:Source, slc:slice, fields:list[Any]) -> Any:
+      return struct_type(slc, *(f for f, should_include in zip(fields, includes) if should_include))
 
     return transform
 

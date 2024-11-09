@@ -434,7 +434,7 @@ rules=dict(
 )
 
 
-def mk_sql_parser(simplify:bool=False, atom_transform:AtomTransform|None=None, transforms:dict[RuleName,Callable]|None=None
+def mk_sql_parser(atom_transform:AtomTransform|None=None, transforms:dict[RuleName,Callable]|None=None
  ) -> Parser:
   return Parser(lexer,
     drop=('comment', 'spaces', 'newline'),
@@ -442,7 +442,6 @@ def mk_sql_parser(simplify:bool=False, atom_transform:AtomTransform|None=None, t
       'bitand', 'bitnot', 'comma', 'deq', 'dot', 'eq', 'ineq', 'lp', 'minus', 'ne', 'plus', 'rem', 'rp', 'semi', 'slash',
       'star', 'qmark', 'le', 'lshift', 'lt', 'ge', 'rshift', 'gt', 'concat', 'bitor', *sqlite_keywords),
     rules=rules,
-    simplify=simplify,
     atom_transform=atom_transform,
     transforms=transforms)
 
