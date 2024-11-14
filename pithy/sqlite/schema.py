@@ -3,10 +3,11 @@
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Container, Iterable, Self
+from typing import Any, Callable, Iterable, Self
 
 from tolkien import Source
 
+from ..dict import dict_strict_inverse
 from ..parse import Syn
 from ..transtruct import Input, Transtructor
 from .keywords import sqlite_keywords
@@ -529,7 +530,6 @@ def prefigure_Table(class_:type, create_temporary:Input, source:Source) -> dict[
   constraints = dict(_parse_table_constraint(tc, source) for tc in def_.table_constraints) # type: ignore[attr-defined]
   if primary_key := constraints.get('table_primary_key'):
     primary_key_names = tuple(c.expr for c in primary_key)
-    print('primary_key_names', primary_key_names)
   else:
     primary_key_names = ()
 
@@ -576,20 +576,47 @@ def _parse_indexed_column(column:Input, source:Source) -> IndexedColumn:
   return IndexedColumn(expr=expr_text, collate=column.collate, asc_desc=column.asc_desc)
 
 
-def clean_row_record(table:Table, *, record:dict[str,Any], renamed_keys:dict[str,str]|None=None, keep_keys:Container[str]=()
- ) -> dict[str,Any]:
+def build_clean_row_record_fn(table:Table, renamed_keys:dict[str,str]|None=None, keep_keys:Iterable[str]=()) \
+ -> Callable[[dict[str,Any]],dict[str,Any]]:
   '''
-  Clean a record dict in preparation for inserting it into a database table.
-  `renamed_keys` maps the record key to the desired table column name.
-  `keep_keys` is a container of keys to keep in the record, even if they are not in the table.
-  This is useful if a following transformation step requires some additional items.
+  Create a function that cleans a record dict in preparation for inserting it into the specified database table.
+  `renamed_keys` maps record keys to desired table column names.
+  `keep_keys` is a container of renamed record keys that are not material column names but should be kept in the result.
+  All values in `renamed_keys` must be either names of material columns or new names that are present in `keep_keys`.
+  All elements in `keep_keys` must not be material column names.
+  This rule is enforced so that `keep_keys` is a clear list of exceptional keys.
   '''
-  columns_dict = table.columns_dict
-  def replace_none_with_empty(k:str, v:Any) -> Any:
-    return '' if v is None and columns_dict[k].is_non_opt_str else v
+  if renamed_keys is None: renamed_keys = {}
+  keep_keys = tuple(keep_keys)
+  mat_cols = table.material_column_names
 
-  if renamed_keys:
-    return { rk: replace_none_with_empty(rk, v) for rk, v in ((renamed_keys.get(k, k), v) for k, v in record.items())
-      if (rk in columns_dict or rk in keep_keys) }
-  else:
-    return { k: replace_none_with_empty(k, v) for k, v in record.items() if (k in columns_dict or k in keep_keys) }
+  for k, v in renamed_keys.items():
+    if v not in mat_cols and v not in keep_keys:
+      raise ValueError(f'Invalid renamed key; column name is not a material column of {table.name!r}: {k!r} -> {v!r}')
+
+  for kk in keep_keys:
+    if kk in mat_cols:
+      raise ValueError(f'Invalid (redundant) keep_keys name; key name is a material column of {table.name!r}: {kk!r}')
+
+  renamed_keys_inv = dict_strict_inverse(renamed_keys) # Columns to record keys.
+  for c in mat_cols: # Add in all material columns that are not in renamed_keys.
+    if c not in renamed_keys_inv:
+      renamed_keys_inv[c] = c
+  keys_map = dict_strict_inverse(renamed_keys_inv) # Record keys to columns.
+
+  for kk in keep_keys:
+    if kk not in keys_map:
+      keys_map[kk] = kk
+
+  replace_none_with_empty_map = {
+    c: (table.columns_dict[c].is_non_opt_str if (c in mat_cols) else False) for c in keys_map.values() }
+
+  def build_clean_row_record(record:dict[str,Any]) -> dict[str,Any]:
+    d = {}
+    for k, v in record.items():
+      try: rk = keys_map[k]
+      except KeyError: continue
+      d[rk] = '' if v is None and replace_none_with_empty_map[k] else v
+    return d
+
+  return build_clean_row_record
