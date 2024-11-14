@@ -1,14 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sys
-from cgi import parse_header as cgi_parse_header, parse_multipart
 from dataclasses import dataclass
 from html import escape as html_escape
 from http import HTTPStatus
 from io import BufferedReader
 from os import fstat as os_fstat
 from typing import BinaryIO, TextIO
-from urllib.parse import parse_qs, unquote as url_unquote, urlsplit as url_split
+from urllib.parse import unquote as url_unquote, urlsplit as url_split
 
 from ..http import http_methods, may_send_body
 from ..markup import Mu
@@ -74,25 +73,8 @@ class Request:
     due to the stdlib implementation of parse_multipart.
     '''
 
-    media_type_val = self.headers.get('Content-Type', '')
-    try: media_type, pdict = cgi_parse_header(media_type_val)
-    except Exception as exc: raise BadRequest(f'Invalid Content-Type header: {media_type_val!r}') from exc
-
-    if media_type == 'application/x-www-form-urlencoded':
-      body = self.body_bytes
-      try: text = body.decode()
-      except Exception as exc: raise BadRequest('Failed to decode urlencoded form.') from exc
-      try: return parse_qs(text)
-      except Exception as exc: raise BadRequest('Failed to read request body.') from exc
-
-    elif media_type == 'multipart/form-data':
-      # TODO: use cgi.FieldStorage instead?
-      try: content = parse_multipart(self.body_file, pdict=pdict) # type: ignore[arg-type] # TODO: fix or explain this type error.
-      except Exception as exc: raise BadRequest('Failed to read/parse POST multipart/form-data request body') from exc
-
-    else: raise BadRequest(f'Unsupported Content-Type: {media_type!r}')
-
-    return content
+    #media_type_val = self.headers.get('Content-Type', '')
+    raise NotImplementedError('TODO: implement post_params_multi (cgi was removed in Python 3.13)')
 
 
   @lazy_property
