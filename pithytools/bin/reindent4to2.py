@@ -9,9 +9,6 @@ from pithy.fs import is_file, move_file, path_exists
 from pithy.io import errL, outL
 
 
-_ = move_file # TEMPORARY to silence lint.
-
-
 def main() -> None:
 
   for path in sys.argv[1:]:
@@ -28,17 +25,17 @@ def reindent(path: str) -> None:
   if not is_file(path, follow=False): raise PassableException('path is not a file.')
 
   reindent_path = path + '.reindent'
-  #orig_path = path + '.orig'
-  #if path_exists(reindent_path, follow=False): raise PassableException(f'temporary path already exists: {reindent_path!r}')
-  #if path_exists(orig_path, follow=False): raise PassableException(f'temporary path already exists: {orig_path!r}')
+  orig_path = path + '.orig'
+  if path_exists(reindent_path, follow=False): raise PassableException(f'temporary path already exists: {reindent_path!r}')
+  if path_exists(orig_path, follow=False): raise PassableException(f'temporary path already exists: {orig_path!r}')
 
   is_perfect = True
   with open(path, 'r') as f_in, open(reindent_path, 'w') as f_out:
     for line_idx, line in enumerate(f_in):
       is_perfect &= reindent_line(path, f_out, line_idx, line)
 
-  #move_file(path=path, to=orig_path)
-  #move_file(path=reindent_path, to=path)
+  move_file(path=path, to=orig_path)
+  move_file(path=reindent_path, to=path)
 
 
 def reindent_line(path: str, f_out: TextIO, line_idx: int, line: str) -> bool:
