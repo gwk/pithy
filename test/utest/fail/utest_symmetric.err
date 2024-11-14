@@ -23,10 +23,10 @@
 | Traceback (most recent call last):
 ~   File ".+/utest/__init__.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
-|                ^^^^^^^^^^^^^^^^^^^
+|                ~~^^^^^^^^^^^^^^^^^
 ~   File "./utest_symmetric.py", line \d+, in add
 |     def add(a, b): return int(a) + int(b)
-|                           ^^^^^^
+|                           ~~~^^^
 | ValueError: invalid literal for int() with base 10: 'a'
 |
 |
@@ -40,10 +40,10 @@
 | Traceback (most recent call last):
 ~   File ".+/utest/__init__.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
-|                ^^^^^^^^^^^^^^^^^^^
+|                ~~^^^^^^^^^^^^^^^^^
 ~   File "./utest_symmetric.py", line \d+, in add
 |     def add(a, b): return int(a) + int(b)
-|                           ^^^^^^
+|                           ~~~^^^
 | ValueError: invalid literal for int() with base 10: 'a'
 |
 |
@@ -74,10 +74,10 @@
 | Traceback (most recent call last):
 ~   File ".+/utest/__init__.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
-|                ^^^^^^^^^^^^^^^^^^^
+|                ~~^^^^^^^^^^^^^^^^^
 ~   File "./utest_symmetric.py", line \d+, in a_plus_bc
 |     def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
-|                                             ^^^^^^
+|                                             ~~~^^^
 | ValueError: invalid literal for int() with base 10: 'a'
 |
 |
@@ -92,10 +92,10 @@
 | Traceback (most recent call last):
 ~   File ".+/utest/__init__.py", line \d+, in utest_exc
 |     try: ret = fn(*args, **kwargs)
-|                ^^^^^^^^^^^^^^^^^^^
+|                ~~^^^^^^^^^^^^^^^^^
 ~   File "./utest_symmetric.py", line \d+, in a_plus_bc
 |     def a_plus_bc(a, b, c): return int(a) + int(b) * int(c)
-|                                             ^^^^^^
+|                                             ~~~^^^
 | ValueError: invalid literal for int() with base 10: 'a'
 |
 |

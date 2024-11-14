@@ -27,7 +27,6 @@
 | Traceback (most recent call last):
 ~   File ".+/utest/__init__.py", line \d+, in utest_seq
 |     ret = list(ret_seq)
-|           ^^^^^^^^^^^^^
 | TypeError: 'int' object is not iterable
 |
 |
@@ -45,7 +44,6 @@
 | Traceback (most recent call last):
 ~   File ".+/utest/__init__.py", line \d+, in utest_seq_exc
 |     ret = list(ret_seq)
-|           ^^^^^^^^^^^^^
 | TypeError: 'int' object is not iterable
 |
 |
@@ -58,7 +56,6 @@
 | Traceback (most recent call last):
 ~   File ".+/utest/__init__.py", line \d+, in utest_seq_exc
 |     ret = list(ret_seq)
-|           ^^^^^^^^^^^^^
 ~   File "./various.py", line \d+, in yield_then_raise
 |     raise Exception('unexpected')
 | Exception: unexpected
