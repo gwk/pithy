@@ -119,7 +119,7 @@ def format_swift(ctx:Ctx):
   for line_idx in range(line_idx, len(lines)):
     line = lines[line_idx]
     if not line:
-      clean_line = line
+      clean_line:str = line
     else:
       clean_line = format_line(ctx, line_idx, line)
     ctx.clean_lines.append(clean_line)

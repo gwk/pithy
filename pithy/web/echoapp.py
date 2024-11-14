@@ -57,7 +57,7 @@ def main() -> None:
       server = HttpServer(host=host, port=port, app=EchoApp())
       server.serve_forever()
     case 'werkzeug':
-      from werkzeug.serving import run_simple
+      from werkzeug.serving import run_simple  # type: ignore[import-not-found]
       run_simple(hostname=host, port=port, application=EchoApp(), use_reloader=True, reloader_type='watchdog')
     case _:
       raise ValueError(arg)

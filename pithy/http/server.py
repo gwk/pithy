@@ -15,14 +15,14 @@ import sys
 from datetime import datetime as DateTime
 from http import HTTPStatus
 from http.client import HTTPException, HTTPMessage, parse_headers
-from io import BufferedIOBase, BufferedReader
+from io import BufferedReader
 from os import environ
 from shutil import copyfileobj
 from socket import socket as Socket
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from sys import exc_info, stderr
 from traceback import print_exception
-from typing import cast, IO, TextIO
+from typing import BinaryIO, cast, IO, TextIO
 from urllib.parse import SplitResult as Url, urlsplit as url_split
 
 from ..web import Request, Response, ResponseError
@@ -174,7 +174,7 @@ class HttpRequestHandler(StreamRequestHandler):
         port=self.server.port,
         path=self.url.path,
         query=self.url.query,
-        body_file=self.rfile,
+        body_file=cast(BinaryIO, self.rfile),
         err=self.server.err,
         is_multiprocess=False,
         is_multithread=True,
@@ -242,7 +242,7 @@ class HttpRequestHandler(StreamRequestHandler):
     except ValueError: pass
 
     # Parse headers.
-    try: raw_headers = parse_headers(cast(BufferedIOBase, self.rfile), _class=HTTPMessage)
+    try: raw_headers = parse_headers(cast(BinaryIO, self.rfile), _class=HTTPMessage)
     except HTTPException as exc:
       raise ResponseError(HTTPStatus.REQUEST_HEADER_FIELDS_TOO_LARGE, f'{type(exc)}: {exc}')
     for key, val in raw_headers.items():

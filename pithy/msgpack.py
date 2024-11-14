@@ -3,9 +3,9 @@
 from sys import stdout
 from typing import Any, BinaryIO, Callable
 
-from msgpack import dump as _dump, ExtraData, FormatError, load as _load, OutOfData, StackError, Unpacker # type: ignore[import-untyped]
+from msgpack import dump as _dump, ExtraData, ExtType, FormatError, load as _load, OutOfData, StackError, Unpacker
 
-from .encode import EncodeObj, encode_obj
+from .encode import encode_obj, EncodeObj
 
 
 _convenience_exports = (ExtraData, FormatError, StackError)
@@ -14,31 +14,31 @@ _convenience_exports = (ExtraData, FormatError, StackError)
 ObjectHook = Callable[[dict[str,Any]], Any]
 ObjectPairsHook = Callable[[list[tuple[str,Any]]], Any]
 ListHook = Callable[[list[Any]], Any]
-ExtHook = Any # TODO
+ExtHook = Callable[[int,bytes], Any] # Arguments are integer code [0-127], bytes data.
 
 _ml = 2147483647
 
 
 def load_msgpack(file:BinaryIO, use_list=False, raw=False, strict_map_key=False,
  object_hook:ObjectHook|None=None, object_pairs_hook:ObjectPairsHook|None=None, list_hook:ListHook|None=None,
- encoding:str|None=None, unicode_errors:str|None=None, ext_hook:ExtHook|None=None,
+ unicode_errors:str|None=None, ext_hook:ExtHook=ExtType,
  max_str_len=_ml, max_bin_len=_ml, max_array_len=_ml, max_map_len=_ml, max_ext_len=_ml) -> Any:
   # Omitted: read_size=0, max_buffer_size=0.
   return _load(file, use_list=use_list, raw=raw, strict_map_key=strict_map_key,
     object_hook=object_hook, object_pairs_hook=object_pairs_hook, list_hook=list_hook,
-    encoding=encoding, unicode_errors=unicode_errors, ext_hook=ext_hook,
+    unicode_errors=unicode_errors, ext_hook=ext_hook,
     max_str_len=max_str_len, max_bin_len=max_bin_len, max_array_len=max_array_len,
     max_map_len=max_map_len, max_ext_len=max_ext_len)
 
 
 def load_msgpacks(file:BinaryIO, use_list=False, raw=False, strict_map_key=False,
  object_hook:ObjectHook|None=None, object_pairs_hook:ObjectPairsHook|None=None, list_hook:ListHook|None=None,
- encoding:str|None=None, unicode_errors:str|None=None, ext_hook=None,
+ unicode_errors:str|None=None, ext_hook=ExtType,
  max_str_len=_ml, max_bin_len=_ml, max_array_len=_ml, max_map_len=_ml, max_ext_len=_ml) -> Any:
 
   return Unpacker(file, use_list=use_list, raw=raw, strict_map_key=strict_map_key,
     object_hook=object_hook, object_pairs_hook=object_pairs_hook, list_hook=list_hook,
-    encoding=encoding, unicode_errors=unicode_errors, ext_hook=ext_hook,
+    unicode_errors=unicode_errors, ext_hook=ext_hook,
     max_str_len=max_str_len, max_bin_len=max_bin_len, max_array_len=max_array_len,
     max_map_len=max_map_len, max_ext_len=max_ext_len)
 
