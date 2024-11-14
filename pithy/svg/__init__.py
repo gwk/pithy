@@ -5,7 +5,8 @@ SVG types based on Markup (`Mu` class family).
 SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element.
 '''
 
-from typing import Any, cast, ClassVar, Iterable, Self
+from os import PathLike
+from typing import Any, BinaryIO, cast, ClassVar, Iterable, Self, TextIO
 
 from ..default import Default
 from ..markup import _Mu, Mu, MuAttrs, NoMatchError, prefer_int
@@ -19,6 +20,8 @@ VecOrNum = Vec|float
 BoundsF2 = tuple[tuple[float,float],tuple[float,float]]
 PathCommand = str|tuple[int|float|str,...]
 
+_LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
+_LxmlFileReadSource = _LxmlFilePath | BinaryIO | TextIO
 
 class SvgNode(Mu):
   '''
@@ -67,6 +70,18 @@ class SvgNode(Mu):
         self._.remove(title_el)
       else:
         title_el._ = [title]
+
+
+  @classmethod
+  def parse_file(cls, file:_LxmlFileReadSource,  **kwargs:Any) -> 'SvgNode':
+    from lxml import etree
+    tree = etree.parse(file)
+    root = tree.getroot()
+    if root is None: # Empty or whitespace strings produce None.
+      return Svg() # type: ignore[unreachable]
+    node = SvgNode.from_etree(root) # type: ignore[arg-type]
+    assert isinstance(node, SvgNode), node
+    return node
 
 
 
