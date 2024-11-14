@@ -33,7 +33,7 @@ The tag is always first, followed by sorted attributes, followed by the children
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from lxml.etree import _Element as LxmlElement, Comment, fromstring as parse_xml_data, XMLSyntaxError
+from lxml.etree import _Element as LxmlElement, Comment, fromstring as parse_xml_data, QName, XMLSyntaxError
 
 from ..exceptions import DeleteNode, FlattenNode, OmitNode
 
@@ -88,12 +88,7 @@ class XmlDictParser:
 
   def _build_from_etree(self, el:LxmlElement) -> XmlDict:
     'Recursive helper method for parse.'
-    tag = el.tag
-    if tag == Comment:
-      if self.comment_tag:
-        tag = self.comment_tag
-      else:
-        raise OmitNode()
+    tag = convert_etree_tag_to_str(el.tag, self.comment_tag)
     res:XmlDict = {'': tag}
     res.update(sorted(el.items()))
     children:list[dict[str,Any]] = []
@@ -111,12 +106,7 @@ class XmlDictParser:
 
   def _build_interleaved_from_etree(self, el:LxmlElement) -> XmlInterleavedDict:
     'Recursive helper method for parse_interleaved.'
-    tag = el.tag
-    if tag == Comment:
-      if self.comment_tag:
-        tag = self.comment_tag
-      else:
-        raise OmitNode()
+    tag = convert_etree_tag_to_str(el.tag, self.comment_tag)
     res:XmlInterleavedDict = {'': tag}
     res.update(sorted(el.items()))
     children:list[XmlDictChild] = []
@@ -133,3 +123,43 @@ class XmlDictParser:
     if children:
       res[self.children_key] = children
     return res
+
+
+def convert_etree_tag_to_str(tag:str|bytes|bytearray|QName|Callable, comment_tag:str) -> str:
+  match tag:
+    case str(): return tag
+    case bytes()|bytearray(): return tag.decode()
+    case QName(): return tag.text
+    case _:
+      if tag == Comment: # Note: `Comment` is a function object, not a type
+        if comment_tag:
+          return comment_tag
+        else:
+          raise OmitNode()
+      raise TypeError(f'Invalid tag type: {type(tag).__name__}; tag: {tag!r}')
+
+
+def main() -> None:
+  from argparse import ArgumentParser
+  from sys import stdin
+
+  from pithy.io import outM
+
+  arg_parser = ArgumentParser(description='Convert XML to an xmldict dictionary and render it to stdout.')
+  arg_parser.add_argument('paths', nargs='+', help='XML files to convert. Pass "-" to read from stdin.')
+  arg_parser.add_argument('-interleaved', action='store_true', help='Use the interleaved strategy.')
+  args = arg_parser.parse_args()
+  for path in args.paths:
+    if path == '-':
+      path = '<stdin>'
+      data = stdin.read()
+    else:
+      with open(path, 'rb') as f:
+        data = f.read()
+    parser = XmlDictParser(children_key='-', comment_tag='!--')
+    parse = parser.parse_interleaved if args.interleaved else parser.parse
+    xmldict = parse(data)
+    outM(path, xmldict)
+
+
+if __name__ == '__main__': main()
