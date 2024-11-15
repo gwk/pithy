@@ -187,11 +187,11 @@ def dec_b64url(val:ByteSeq) -> bytes:
 
 
 def enc_b64std_str(s:str|ByteSeq) -> str:
-  'Encode a string as base64 using the standard alphabet, returning a string.'
+  'Encode a string or bytes as base64 using the standard alphabet, returning a string.'
   if isinstance(s, str): s = s.encode()
   return standard_b64encode(s).decode()
 
 
-def dec_b64std_str(s:str) -> str:
-  'Decode a base64 string, returning another string.'
+def dec_b64std_str(s:str|ByteSeq) -> str:
+  'Decode a base64 string or bytes in the standard alphabet, returning another string.'
   return standard_b64decode(s).decode()
