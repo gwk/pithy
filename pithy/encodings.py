@@ -165,33 +165,36 @@ def dec_lep128_from_utf8(val:ByteSeq) -> bytes:
   return dec_lep128(val.decode('utf8').encode('latin1'))
 
 
-def enc_b64url(val:ByteSeq, pad=False) -> bytes:
+def enc_b64url(val:str|ByteSeq, pad=False) -> bytes:
   '''
   Encode a byte string using the base64url alphabet (ending in "-_").
   If `pad` is False (the default), then trailing "=" characters are removed from the result.
+  See: https://datatracker.ietf.org/doc/html/rfc4648#section-5.
   '''
+  if isinstance(val, str): val = val.encode()
   b = urlsafe_b64encode(val)
   if not pad: b = b.rstrip(b'=')
   return b
 
 
-def dec_b64url(val:ByteSeq) -> bytes:
+def dec_b64url(val:str|ByteSeq) -> bytes:
   '''
   Decode a byte string using the base64url alphabet (ending in "-_").
   If the input is not a multiple of 4 bytes, then "=" characters are added to the end prior to passing to `urlsafe_b64decode`.
   '''
+  if isinstance(val, str): val = val.encode()
   mod4 = len(val) % 4
   if mod4:
     val = bytes(val) + b'=' * (4 - mod4)
   return urlsafe_b64decode(val)
 
 
-def enc_b64std_str(s:str|ByteSeq) -> str:
+def enc_b64std_str(val:str|ByteSeq) -> str:
   'Encode a string or bytes as base64 using the standard alphabet, returning a string.'
-  if isinstance(s, str): s = s.encode()
-  return standard_b64encode(s).decode()
+  if isinstance(val, str): val = val.encode()
+  return standard_b64encode(val).decode()
 
 
-def dec_b64std_str(s:str|ByteSeq) -> str:
+def dec_b64std_str(val:str|ByteSeq) -> str:
   'Decode a base64 string or bytes in the standard alphabet, returning another string.'
-  return standard_b64decode(s).decode()
+  return standard_b64decode(val).decode()
