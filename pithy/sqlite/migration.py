@@ -106,6 +106,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
     return False, gen_rename_columns(qname=qname, new=new, old=old, matched_cols=matched_cols)
 
   stmts = []
+  rebuild_reasons = []
   cols = list(old.columns)
 
   # Drop columns.
@@ -116,19 +117,20 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   # Add columns.
   for col in added:
     stmts.append(f'ALTER TABLE {qname} ADD COLUMN {col.sql()}')
+    if not col.is_opt and col.default is None:
+      rebuild_reasons.append(f'Added column {qea(col.name)} is not optional and has no default value.')
     cols.append(col)
 
   assert set(nc.name for nc in new.columns) == set(c.name for c in cols)
 
-  diff_hints = []
   for (nc, c) in zip(new.columns, cols):
     if dh := nc.diff_hint(c, include_name=True, exact_type=False):
-      diff_hints.append(f'{qea(nc.name)} {dh}')
+      rebuild_reasons.append(f'{qea(nc.name)} {dh}')
       if dh.endswith('order'): break
 
-  needs_rebuild = bool(diff_hints)
+  needs_rebuild = bool(rebuild_reasons)
   if needs_rebuild:
-    stmts.append(f'-- Rebuilding {qname} due to {", ".join(diff_hints)}.')
+    stmts.append(f'-- Rebuilding {qname} due to {", ".join(rebuild_reasons)}.')
     stmts.extend(gen_table_rebuild(schema_name=schema_name, qname=qname, new=new, old=old))
 
   return needs_rebuild, stmts
