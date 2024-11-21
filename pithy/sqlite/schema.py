@@ -78,7 +78,7 @@ class Column:
 
     Note that this is not a symmetric operation if exact_type is False:
     we allow self.datatype to be a nonstrict equivalent type to other.datatype,
-    in the sense of `nonstrict_to_strict_types_for_sqlite`.
+    in the sense defined by `nonstrict_to_strict_types_for_sqlite`.
     This allows us to compare a current self from a python schema to a previous version parsed from sqlite_schema.
     '''
     if include_name and self.name != other.name: return f'/ {qea(other.name)} order'
@@ -585,6 +585,7 @@ def build_clean_row_record_fn(table:Table, renamed_keys:dict[str,str]|None=None,
   All values in `renamed_keys` must be either names of material columns or new names that are present in `keep_keys`.
   All elements in `keep_keys` must not be material column names.
   This rule is enforced so that `keep_keys` is a clear list of exceptional keys.
+  Kept keys do not need to be present in `renamed_keys`.
   '''
   if renamed_keys is None: renamed_keys = {}
   keep_keys = tuple(keep_keys)
