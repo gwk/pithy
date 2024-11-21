@@ -57,6 +57,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     try: return super().execute(query, args)
     except sqlite3.Error as e:
       setattr(e, 'query', query)
+      e.add_note(f'query: {query}')
       raise
 
 
@@ -69,6 +70,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     try: return super().executemany(query, it_args)
     except sqlite3.Error as e:
       setattr(e, 'query', query)
+      e.add_note(f'query: {query}')
       raise
 
 
@@ -81,6 +83,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     try: return cast(Self, super().executescript(sql_script))
     except sqlite3.Error as e:
       setattr(e, 'query', sql_script)
+      e.add_note(f'script: {sql_script}')
       raise
 
 
