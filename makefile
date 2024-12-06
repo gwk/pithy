@@ -9,8 +9,8 @@
 .SUFFIXES: # Disable implicit rules.
 
 .PHONY: _default _phony build clean clean-grammars clean-legs-data cov cov-meta develop docs gen gen-data gen-grammars \
-  gen-vscode help install-vscode pip-uninstall test test-diff test-diff-data typecheck, typecheck-py, typecheck-js \
-  typecheck-clear-cache, typecheck-clean uninstall vscode-links vscode-insider-links
+  gen-vscode help install-vscode iotest test test-diff test-diff-data typecheck, typecheck-py, typecheck-js \
+  typecheck-clear-cache, typecheck-clean uninstall vscode-links vscode-insider-links utest
 
 # First target of a makefile is the default.
 _default: help
@@ -69,12 +69,13 @@ help: # Summarize the targets of this makefile.
 install:
 	sh/install.sh $(packages)
 
+iotest:
+	iotest -fail-fast
+
 lint:
 	pyflakes $(packages)
 
-test: gen
-	python3 -m utest
-	iotest -fail-fast
+test: gen utest iotest
 
 test/%: _phony
 	iotest -fail-fast $@
@@ -108,6 +109,8 @@ vscode-links:
 vscode-insider-links:
 	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
 
+utest:
+	python3 -m utest $(packages) test
 
 # Targets.
 
