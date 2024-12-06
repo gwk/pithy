@@ -1,9 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import _SubParsersAction, ArgumentParser, Namespace
+from functools import cached_property
 from typing import Callable, Sequence
-
-from .util import lazy_property
 
 
 class ArgParser(ArgumentParser):
@@ -20,7 +19,7 @@ class CommandParser(ArgParser):
   '''
 
 
-  @lazy_property
+  @cached_property
   def commands(self) -> _SubParsersAction:
     commands = self.add_subparsers(required=True, dest='command', help='Available commands.')
     self.epilog = "For help with a specific command, pass '-h' to that command."
