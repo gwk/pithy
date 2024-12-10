@@ -197,6 +197,13 @@ class Table(Structure):
   def quoted_material_columns_str(self) -> str: return ', '.join(qe(n) for n in self.material_column_names)
 
 
+  @cached_property
+  def primary_column(self) -> Column|None:
+    for c in self.columns:
+      if c.is_primary: return c
+    return None
+
+
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
