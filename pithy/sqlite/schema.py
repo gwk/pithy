@@ -624,7 +624,8 @@ def build_clean_row_record_fn(table:Table, renamed_keys:dict[str,str]|None=None,
     for k, v in record.items():
       try: rk = keys_map[k]
       except KeyError: continue
-      d[rk] = '' if v is None and replace_none_with_empty_map[k] else v
+      if v is None and replace_none_with_empty_map[k]: v = ''
+      d[rk] = v
     return d
 
   return build_clean_row_record
