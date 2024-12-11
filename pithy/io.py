@@ -453,7 +453,8 @@ def confirm(question:str) -> bool:
   The question is printed to stdout, followed by a question mark and prompt.
   '''
   from .term import CBreakMode
-  print(f'{question}? press "y" to confirm: ', end='', flush=True)
+  if not question.endswith('?'): question += '?'
+  print(f'{question} press "y" to confirm: ', end='', flush=True)
   with CBreakMode(): response = stdin.read(1)
   print(response)
   return (response == 'y')
