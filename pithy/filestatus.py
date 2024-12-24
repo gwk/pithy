@@ -176,6 +176,9 @@ def file_permissions(path_or_fd:PathOrFd, *, follow:bool=True) -> int:
   # TODO: might be useful to OR the permissions of a symlink and its destination together; perhaps a separate function.
   return _stat(path_or_fd, follow_symlinks=follow).st_mode & PERM_MASK
 
+def file_perms_desc(path_or_fd:PathOrFd, *, follow:bool=True) -> str:
+  return perms_desc(file_permissions(path_or_fd, follow=follow))
+
 def file_size(path_or_fd:PathOrFd, *, follow:bool=True) -> int: return _stat(path_or_fd, follow_symlinks=follow).st_size
 
 def file_stat(path_or_fd:PathOrFd, *, follow:bool) -> StatResult: return _stat(path_or_fd, follow_symlinks=follow)
