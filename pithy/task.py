@@ -4,10 +4,10 @@ import os as _os
 from os import access as _access, execvp, getpid as _getpid, R_OK, supports_effective_ids as _supports_effective_ids, X_OK
 from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file, join as _path_join
 from selectors import EVENT_READ, EVENT_WRITE, PollSelector as _PollSelector
-from shlex import quote as sh_quote, split as sh_split
+from shlex import join as sh_join, quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen, STDOUT
 from sys import stderr, stdout
-from time import time as _now
+from time import sleep, time as _now
 from typing import AnyStr, cast, Generator, IO, Literal, NoReturn, Sequence
 
 from .alarm import Alarm, Timeout
@@ -108,16 +108,15 @@ def preexec_launch_lldb():
   Note: this relies on a race condition to work: the spawn is slow, which gives this process time to exec.
   This is not perfect; if the child process crashes very fast then LLDB might not attach in time.
   However if we try to sleep here then LLDB stops once the exec occurs, which is useless.
-  GDB has something called `follow-fork-mode` that sounds like it would address this, but sticking with LLDB for now.
-  TODO: LLDB now supposedly supports follow-fork-mode:
-  https://stackoverflow.com/questions/19204395/lldb-equivalent-of-gdbs-follow-fork-mode-or-detach-on-fork.
+  LLDB and GDB both have a mode called `follow-fork-mode` that helps with this problem, but it is not supported on macOS LLDB.
+  `target.process.follow-fork-mode child; continue` would be the one-line command.
   '''
   pid_str = str(_getpid())
   lldb_cmd = ['PATH=/usr/bin', 'lldb', '--batch', '--one-line', 'continue', '--attach-pid', pid_str]
-  lldb_str = ' '.join(lldb_cmd)
+  lldb_str = sh_join(lldb_cmd)
   script = f'tell application "Terminal" to do script "{lldb_str}"'
-  _os.spawnvp(_os.P_WAIT, 'osascript', ['osascript', '-e', script])
-  #^ Use spawn because subprocess is complex and preexec_fn is documented to be incompatible with threading.
+  _os.spawnvp(_os.P_NOWAIT, 'osascript', ['osascript', '-e', script])
+
 
 
 def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
