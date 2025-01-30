@@ -97,10 +97,10 @@ def append_or_list(list_or_el:_T|list[_T], el:_T) -> list[_T]:
 def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=frozenset()) -> Any:
   '''
   Produce a simplified skeleton of a syntax tree by recursively removing or simplifying Syn nodes.
-  This is particularly useful for building test cases, where the `slc` position information is not relevant.
+  This is particularly useful for building test cases, where the `slc` position information creates visual clutter.
 
   If `source` is provided, then Tokens are replaced with their source text.
-  Otherwise, Tokens are replaced with their kind or mode.kind.
+  Otherwise, Tokens are replaced with their kind or mode and kind.
 
   `keep_lbls` is an iterable of labels for which to preserve Syn nodes.
   Otherwise, Syn nodes are replaced with their recursively simplified values.
