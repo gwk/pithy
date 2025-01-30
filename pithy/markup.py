@@ -154,6 +154,8 @@ class Mu:
     self._orig = _orig
     self._parent = _parent
 
+    # TODO: disallow both positional children and `_` arguments.
+
     if isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
       children:MuChildrenLax = [_]
     elif isinstance(_, list):
