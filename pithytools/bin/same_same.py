@@ -32,13 +32,13 @@ For a description of LESSANSIENDCHARS, see: https://major.io/2013/05/21/handling
 
 
 class DiffLine:
-  'A line of input from the traditional diff program, classfied.'
+  'A line of input from the git diff program, classified.'
 
   def __init__(self, kind:str, match:Match):
     self.kind = kind # The name from `diff_pat` named capture groups.
     self.match = match
-    self.old_num = 0 # 1-indexed.
-    self.new_num = 0 # ".
+    self.old_num = 0 # 1-indexed. This is the first parent line number from the chunk header.
+    self.new_num = 0 # 1-indexed.
     self.chunk_idx = 0 # Positive for rem/add.
     self.is_src = False # Is source code text; True for ctx/rem/add.
     self.text = match[0] # Final text. Some cases update this.
