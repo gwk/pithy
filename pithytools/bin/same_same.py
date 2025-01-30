@@ -174,14 +174,17 @@ def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
         new_num += 1
     elif kind == 'loc':
       is_loc_colored = bool(line.match['git_color'])
-      o = int(match['old_num'])
-      if o > 0:
-        assert o > old_num, (o, old_num, match.string)
-        old_num = o
-      n = int(match['new_num'])
-      if n > 0:
-        assert n > new_num
-        new_num = n
+      old_ranges = parse_ranges(match['old_ranges'])
+      old_range = old_ranges[0] # For now simply use the first parent.
+      new_range = parse_range(match['new_range'])
+      on = old_range[0]
+      nn = new_range[0]
+      if on > 0:
+        assert on > old_num, (on, old_num, match.string)
+        old_num = on
+      if nn > 0:
+        assert nn > new_num
+        new_num = nn
       line.set_text(key='loc')
     elif kind == 'diff': # Not the best way to parse paths, because paths with spaces are ambiguous.
       paths = clip_reset(match['diff_paths']).split(' ') # Split into words, then guess at old and new split as best we can.
@@ -258,7 +261,7 @@ def handle_file_lines(lines:list[DiffLine], interactive:bool, dbg:bool) -> None:
         if interactive:
           print(text)
         else:
-          new_num = match['new_num']
+          new_num, _new_len = parse_range(match['new_range'])
           snippet = clip_reset(match['parent_snippet'])
           s = ' ' + C_SNIPPET if snippet else ''
           print(C_LOC, new_path, ':', new_num, ':', s, snippet, C_END, sep='')
@@ -372,25 +375,40 @@ def is_token_junk(token:str) -> bool:
   return token.isspace() and token != '\n'
 
 
+def parse_range(s:str) -> tuple[int,int]:
+  s = s.lstrip(' -+')
+  try: line_num, length = s.split(',')
+  except ValueError: return (int(s), 1)
+  else: return (int(line_num), int(length))
+
+
+def parse_ranges(s:str) -> list[tuple[int,int]]:
+  return [parse_range(r) for r in s.split()]
+
+
 git_diff_graph_mode_pat = re.compile(r'(?x) [ /\*\|\\]*') # space is treated as literal inside of brackets, even in extended mode.
 
+sgr_color_pat = r'(?: \x1b \[ \d* m )'
+sgr_rst_pat = r'(?: \x1b \[ m )'
+range_pat = r'(?: \d+ (?:,\d+)? )' # The length is omitted if it is 1.
+
 diff_pat = re.compile(r'''(?x)
-(?P<git_color> \x1b \[ \d* m)*
+(?P<git_color> &SGR_COLOR)*
 (?:
-  (?P<empty>    $ )
-| (?P<commit>   commit\ [0-9a-z]{40} )
-| (?P<author>   Author: )
-| (?P<date>     Date:   )
-| (?P<diff>     diff\ --git\ (?P<diff_paths>.+) )
-| (?P<idx>      index   )
-| (?P<old>      ---     \ (?P<old_path>.+) )
-| (?P<new>      \+\+\+  \ (?P<new_path>.+) )
-| (?P<loc>      @@\ -(?P<old_num>\d+)(?P<old_len>,\d+)?\ \+(?P<new_num>\d+)(?P<new_len>,\d+)?\ @@
-    (?:\x1b\[m)? \ ? (?:\x1b\[m)? (?P<parent_snippet>.*) ) # Note the RST SPACE RST sequence.
-| (?P<ctx>      \  (?P<ctx_text>.*) )
-| (?P<rem>      -  (?P<rem_text>.*) )
-| (?P<add>      \+(?:\x1b\[m\x1b\[32m)? (?P<add_text>.*) ) # Hack to remove extra color sequences that git 2.19.2 shows for these lines only.
-| (?P<submodule> Submodule\ \w+\ [0-9a-f]{7,}\.\.[0-9a-f]{7,}: )
+  (?P<empty>      $ )
+| (?P<commit>     commit\ [0-9a-z]{40} )
+| (?P<author>     Author: )
+| (?P<date>       Date:   )
+| (?P<diff>       diff\ (?P<diff_args>(?:--git|--cc)*)\ (?P<diff_paths>.+) )
+| (?P<idx>        index   )
+| (?P<old>        ---     \ (?P<old_path>.+) )
+| (?P<new>        \+\+\+  \ (?P<new_path>.+) )
+| (?P<loc>        @(?P<loc_parents>@+) (?P<old_ranges>(?:\ -&RANGE)+) (?P<new_range>\ \+&RANGE)
+                    \ @@+ &SGR_RST? \ ? &SGR_RST? (?P<parent_snippet>.*) ) # Note the RST SPACE RST sequence.
+| (?P<ctx>        \  (?P<ctx_text>.*) )
+| (?P<rem>        -  (?P<rem_text>.*) )
+| (?P<add>        \+ (?P<add_text>.*) )
+| (?P<submodule>  Submodule\ \w+\ [0-9a-f]{7,}\.\.[0-9a-f]{7,}: )
 | (?P<meta>
   ( old\ mode
   | new\ mode
@@ -403,8 +421,10 @@ diff_pat = re.compile(r'''(?x)
   | similarity\ index
   | dissimilarity\ index ) )
 | (?P<other> .* )
-)
-''')
+)'''
+.replace('&SGR_COLOR', sgr_color_pat)
+.replace('&SGR_RST', sgr_rst_pat)
+.replace('&RANGE', range_pat))
 
 
 token_pat = re.compile(r'''(?x)
