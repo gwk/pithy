@@ -446,10 +446,7 @@ C_END = FILL
 
 
 def clip_reset(text:str) -> str:
-  return text[:-len(reset_sgr)] if text.endswith(reset_sgr) else text
-
-reset_sgr = '\x1b[m' # Git uses the short version with "0" code omitted.
-
+  return text.removesuffix('\x1b[m') # Git uses the short version with "0" code omitted.
 
 
 def errL(*items:Any) -> None: print(*items, sep='', file=stderr)
