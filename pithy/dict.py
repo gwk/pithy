@@ -128,7 +128,7 @@ _I = Iterable[_VH]
 def dict_update_set(d:MutableMapping[_K,_S], k:_K, el:_VH) -> None:
   '''
   Given a mutable mapping `d` of keys:_K to sets of hashable elements:_VH,
-  add `el` to the set at `k`.
+  add `el` to the set at `k`. If `k` is not present in `d`, a new set is created.
   '''
   try: s = d[k]
   except KeyError:
