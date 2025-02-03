@@ -3,7 +3,7 @@
 'Graphviz dot utliities.'
 
 import re
-from html import escape as html_escape
+from html import escape as html_escape, unescape as html_unescape
 from sys import stdout
 from typing import Any, Callable, Iterable, Mapping, TextIO
 
@@ -38,6 +38,44 @@ def dot_id_quote(name:GraphvizName) -> str:
   if dot_bare_id_re.fullmatch(name) and name not in dot_keywords: return name
   if dot_quotable_id_re.fullmatch(name): return f'"{name}"'
   return f'<{html_escape(name)}>'
+
+
+dot_id_re = re.compile(r'''(?x)
+  (?P<symbol>[a-zA-Z\u0200-\u0377_][a-zA-Z\u0200-\u0377_0-9]*)
+| (?P<numeric>-?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?))
+| (?P<quoted>"(?:[^"]|\\")+")
+| (?P<html><[^>]*>)
+''')
+
+
+def parse_dot_id(s:str) -> GraphvizName:
+  m = dot_id_re.match(s)
+  if not m: raise ValueError(f'invalid dot identifier: {s!r}')
+  match m.lastgroup:
+    case 'symbol': return m.group('symbol')
+    case 'numeric':
+      f = float(m.group('numeric'))
+      if f.is_integer(): return int(f)
+      return f
+    case 'quoted':
+      quoted = m.group('quoted')
+      assert len(quoted) >= 2 and quoted[0] == '"' and quoted[-1] == '"'
+      return quoted[1:-1].replace('\\"', '"')
+    case 'html':
+      html = m.group('html')
+      assert html.startswith('<') and html.endswith('>')
+      return html_unescape(html[1:-1])
+    case _: raise ValueError(f'invalid dot identifier: {s!r}')
+
+
+def parse_dot_adjacency_contents(s:str|Iterable[str]) -> Iterable[tuple[GraphvizName,GraphvizName]]:
+  if isinstance(s, str):
+    s = s.splitlines()
+  for line in s:
+    line = line.strip()
+    if not line: continue
+    src, _, dst = line.partition(' -> ')
+    yield parse_dot_id(src), parse_dot_id(dst)
 
 
 def write_dot_digraph_adjacency_contents(f: TextIO, adjacency:GraphvizAdjacency) -> None:
