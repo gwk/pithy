@@ -7,7 +7,7 @@ from selectors import EVENT_READ, EVENT_WRITE, PollSelector as _PollSelector
 from shlex import join as sh_join, quote as sh_quote, split as sh_split
 from subprocess import DEVNULL, PIPE, Popen as _Popen, STDOUT
 from sys import stderr, stdout
-from time import sleep, time as _now
+from time import time as _now
 from typing import AnyStr, cast, Generator, IO, Literal, NoReturn, Sequence
 
 from .alarm import Alarm, Timeout
