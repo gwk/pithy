@@ -72,13 +72,14 @@ def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:Gr
   f.write('}\n')
 
 
+def out_dot_digraph_adjacency(adjacency:GraphvizAdjacency, **kwargs) -> None:
+  write_dot_digraph_adjacency(stdout, adjacency=adjacency, **kwargs)
+
+
 def fmt_dot_attrs(attrs:GraphvizAttrs|None) -> str:
   if not attrs: return ''
   s = ', '.join(f'{k}={dot_id_quote(v)}' for k, v in attrs.items())
   return f' [{s}]'
-
-def out_dot_digraph_adjacency(adjacency:GraphvizAdjacency, **kwargs) -> None:
-  write_dot_digraph_adjacency(stdout, adjacency=adjacency, **kwargs)
 
 
 graph_prop_validators: dict[str, Callable[[Any], bool]] = {
