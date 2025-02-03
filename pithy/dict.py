@@ -22,6 +22,17 @@ def dict_strict_inverse(d:Mapping[_K,_V]) -> dict[_V,_K]:
   return inverse
 
 
+def dict_graph_from_adjacency(adjacency:Iterable[tuple[_K,_K]]) -> dict[_K,set[_K]]:
+  '''
+  Given an iterable of pairs of keys, return a mapping from keys to sets of keys.
+  '''
+  graph:dict[_K,set[_K]] = {}
+  for src, dst in adjacency:
+    dict_update_set(graph, src, dst)
+  return graph
+
+
+
 def dict_dag_inverse(d:Mapping[_K,Iterable[_VH]]) -> dict[_VH,set[_K]]:
   '''
   Given a mapping from keys to iterables of hashable values, return a mapping from values to sets of keys.
