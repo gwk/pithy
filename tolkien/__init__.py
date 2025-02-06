@@ -114,7 +114,7 @@ class Source(Generic[_Text]):
     'Lazily update the newline positions array up to `pos`. `pos` must be less than or equal to the text length.'
     if pos is None: pos = len(self.text)
     start = self.newline_positions[-1] + 1 if self.newline_positions else 0
-    newline_char = '\n' if isinstance(self.text, str) else b'\n'
+    newline_char = '\n' if isinstance(self.text, str) else 0xa
     for i in range(start, pos):
       if self.text[i] == newline_char: self.newline_positions.append(i)
 
