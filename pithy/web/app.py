@@ -85,7 +85,7 @@ class WebApp:
     if isinstance(response.body, BufferedReader):
       return [response.body.read()] # TODO: consider iterating over large chunks.
     elif response.body:
-      return [response.body]
+      return [bytes(response.body)]
     else:
       return ()
 

@@ -282,7 +282,7 @@ class Source(Generic[_Text]):
       return text[token.pos+offset:token.end].encode()
     else:
       assert isinstance(text, (bytes, bytearray))
-      return text[token.pos+offset:token.end]
+      return bytes(text[token.pos+offset:token.end])
 
 
   def str_for(self, token:Token, offset=0) -> str:
