@@ -24,14 +24,16 @@ description = '''
 Legs is a lexer generator: it takes as input a `.legs` grammar file,
 and outputs code that tokenizes text, converting a stream of characters into a stream of chunks of text called tokens.
 
-The grammar file defines the kinds of tokens and the patterns of text that they match.
-The patterns are similar to regular expressions but with several important differences:
-* character classes are specified using their Unicode names. (TODO: provide documentation)
-* the pattern language is limited to the semantics of formal regular languages.
+A grammar file defines the kinds of tokens and the patterns of text that they match.
+The patterns are similar to python regular expressions but with several important differences:
+* Character classes are specified using their Unicode names. (TODO: provide documentation)
+* The pattern language is limited to the semantics of formal regular languages.
+* Order does not matter. The pattern compilation process works in terms of sets of patterns,
+  and detects ambiguities in overlapping patterns.
 
 There are two special token kinds:
 * `invalid` indicates a sequence of bytes for which the lexer could not start matching;
-* `incomplete` indicating a token that began to match but did not complete.
+* `incomplete` indicates a token that began to match but did not complete.
 This distinction is important for error reporting;
 lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
 '''
