@@ -33,17 +33,20 @@ class SectIndices:
 
 
 @overload
-def parse_sections(source:Source[_Text], *, symbol:str|bytes, raises:Literal[False]) -> Iterator[SectIndices|SyntaxError]: ...
+def parse_sections(source:Source[_Text], *, symbol:str|bytes, numbered:bool, raises:Literal[False]) -> Iterator[SectIndices|SyntaxError]: ...
 
 @overload
-def parse_sections(source:Source[_Text], *, symbol:str|bytes, raises:Literal[True]) -> Iterator[SectIndices]: ...
+def parse_sections(source:Source[_Text], *, symbol:str|bytes, numbered:bool, raises:Literal[True]) -> Iterator[SectIndices]: ...
 
 
-def parse_sections(source:Source, *, symbol:str|bytes, raises=False) -> Iterator[SectIndices|SyntaxError]:
+def parse_sections(source:Source, *, symbol:str|bytes, numbered:bool, raises=False) -> Iterator[SectIndices|SyntaxError]:
   '''
   Given a text source, yield SectIndices elements.
-  If raises is True, SyntaxError exceptions are raised for syntax errors.
-  If raises is False, SyntaxError exceptions are yielded, interleaved with SectIndices elements.
+  `symbol` is the section header symbol, which may be a multi-character string or a bytes sequence.
+  If `numbered` is True, the section symbol is followed by a number, which is the section depth.
+  If `numbered` is False, the number of repeated `symbol` characters indicates the section depth.
+  If `raises` is True, SyntaxError exceptions are raised for syntax errors.
+  If `raises` is False, SyntaxError exceptions are yielded, interleaved with SectIndices elements.
   '''
   text = source.text
 
@@ -81,7 +84,10 @@ def parse_sections(source:Source, *, symbol:str|bytes, raises=False) -> Iterator
     return SectIndices(level, section_idx, parent_idx, slice(title_pos, title_end), slice(body_pos, body_end))
 
   for line_slc in source.line_slices():
-    next_level, section_header_level_end = section_header_level(text, line_slc=line_slc, symbol=symbol)
+    if numbered:
+      next_level, section_header_level_end = numbered_section_header_level(text, line_slc, symbol)
+    else:
+      next_level, section_header_level_end = repeated_section_header_level(text, line_slc, symbol)
 
     if not next_level: continue # Body text.
 
@@ -117,14 +123,36 @@ def parse_sections(source:Source, *, symbol:str|bytes, raises=False) -> Iterator
   yield emit_section(len(text)) # Emit the final section.
 
 
-def section_header_level(text:str|bytes|bytearray, line_slc:slice, symbol:str|bytes) -> tuple[int,int]:
+def repeated_section_header_level(text:str|bytes|bytearray, line_slc:slice, symbol:str|bytes) -> tuple[int,int]:
   '''
   Count the number of leading section symbols in a line.
   '''
   sym_len = len(symbol)
-  count = 0
+  level = 0
   pos = line_slc.start
   for pos in range(line_slc.start, line_slc.stop, sym_len):
     if text.find(symbol, pos, pos+sym_len) == -1: break # type: ignore[arg-type]
-    count += 1
-  return count, pos
+    level += 1
+  return (level, pos)
+
+
+def numbered_section_header_level(text:str|bytes|bytearray, line_slc:slice, symbol:str|bytes) -> tuple[int,int]:
+  '''
+  Parse a section header line in the form 'symbol number title'.
+  '''
+  sym_len = len(symbol)
+  start_pos = line_slc.start
+  pos = start_pos
+  if text.find(symbol, pos, pos+sym_len) == -1: return (0, start_pos) # type: ignore[arg-type]
+  pos += sym_len
+
+  # Parse the number.
+  num_pos = pos
+  while pos < line_slc.stop and text[pos:pos+1].isdigit():
+    pos += 1
+
+  if num_pos < pos:
+    level = int(text[num_pos:pos])
+    return (level, pos)
+  else:
+    return (0, pos)
