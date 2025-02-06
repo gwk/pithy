@@ -33,25 +33,26 @@ class SectIndices:
 
 
 @overload
-def parse_sections(source:Source[_Text], *, symbol:str|bytes|None=None, raises:Literal[False]) -> Iterator[SectIndices|SyntaxError]: ...
+def parse_sections(source:Source[_Text], *, symbol:str|bytes, raises:Literal[False]) -> Iterator[SectIndices|SyntaxError]: ...
 
 @overload
-def parse_sections(source:Source[_Text], *, symbol:str|bytes|None=None, raises:Literal[True]) -> Iterator[SectIndices]: ...
+def parse_sections(source:Source[_Text], *, symbol:str|bytes, raises:Literal[True]) -> Iterator[SectIndices]: ...
 
 
-def parse_sections(source:Source, *, symbol:str|bytes|None=None, raises=False) -> Iterator[SectIndices|SyntaxError]:
+def parse_sections(source:Source, *, symbol:str|bytes, raises=False) -> Iterator[SectIndices|SyntaxError]:
   '''
   Given a text source, yield SectIndices elements.
   If raises is True, SyntaxError exceptions are raised for syntax errors.
   If raises is False, SyntaxError exceptions are yielded, interleaved with SectIndices elements.
   '''
   text = source.text
-  if symbol is None:
-    symbol = '$' if isinstance(source.text, str) else b'$'
-  if len(symbol) != 1: raise ValueError(f'Header symbol must be a single character; received: {symbol!r}.')
-  assert type(symbol) == type(text)
 
-  raw_symbol:str|int = symbol if isinstance(symbol, str) else symbol[0]
+  if isinstance(text, (bytes, bytearray)) and isinstance(symbol, str):
+    symbol = symbol.encode()
+
+  text_type = type(text[0:0])
+  if type(symbol) != text_type:
+    raise ValueError(f'Symbol type {type(symbol)} does not match text type {text_type}.')
 
   source.update_newline_positions() # Calculate all line positions.
 
@@ -68,11 +69,11 @@ def parse_sections(source:Source, *, symbol:str|bytes|None=None, raises=False) -
   def emit_section(body_end:int) -> SectIndices:
     nonlocal body_pos
     # Trim whitespace from the body.
-    while body_end > body_pos and text[body_end-1].isspace():
+    while body_end > body_pos and text[body_end-1:body_end].isspace():
       body_end -= 1
-    while body_pos < body_end and text[body_pos] == newline_char:
+    while body_pos < body_end and text[body_pos:body_pos+1] == newline_char:
       body_pos += 1
-    if body_end and text[body_end] == newline_char:
+    if body_end and text[body_end:body_end+1] == newline_char:
       body_end += 1 # Keep a single terminating newline at the end of the body.
 
     parent_level, parent_idx = parent_stack[-1]
@@ -80,11 +81,11 @@ def parse_sections(source:Source, *, symbol:str|bytes|None=None, raises=False) -
     return SectIndices(level, section_idx, parent_idx, slice(title_pos, title_end), slice(body_pos, body_end))
 
   for line_slc in source.line_slices():
-    next_level, section_header_level_end = section_header_level(text, line_slc=line_slc, symbol=raw_symbol)
+    next_level, section_header_level_end = section_header_level(text, line_slc=line_slc, symbol=symbol)
 
     if not next_level: continue # Body text.
 
-    section = emit_section(line_slc.start - 1) # Emit the previous section, closed by the current title.
+    section = emit_section(line_slc.start - 1) # Emit the previous section, closed by the current section title line.
     yield section
     section_idx += 1
 
@@ -106,9 +107,9 @@ def parse_sections(source:Source, *, symbol:str|bytes|None=None, raises=False) -
     title_end = line_slc.stop
 
     # Trim whitespace from the title.
-    while title_end > title_pos and text[title_end-1].isspace():
+    while title_end > title_pos and text[title_end-1:title_end].isspace():
       title_end -= 1
-    while title_pos < title_end and text[title_pos].isspace():
+    while title_pos < title_end and text[title_pos:title_pos+1].isspace():
       title_pos += 1
 
     body_pos = line_slc.stop
@@ -116,16 +117,14 @@ def parse_sections(source:Source, *, symbol:str|bytes|None=None, raises=False) -
   yield emit_section(len(text)) # Emit the final section.
 
 
-def section_header_level(text:str|bytes|bytearray, line_slc:slice, symbol:str|int) -> tuple[int,int]:
+def section_header_level(text:str|bytes|bytearray, line_slc:slice, symbol:str|bytes) -> tuple[int,int]:
   '''
-  Count the number of leading hash characters in a line, plus the numerical value following the symbol.
+  Count the number of leading section symbols in a line.
   '''
+  sym_len = len(symbol)
   count = 0
   pos = line_slc.start
-  for pos in range(line_slc.start, line_slc.stop):
-    c = text[pos]
-    if c == symbol:
-      count += 1
-    else:
-      break
+  for pos in range(line_slc.start, line_slc.stop, sym_len):
+    if text.find(symbol, pos, pos+sym_len) == -1: break # type: ignore[arg-type]
+    count += 1
   return count, pos
