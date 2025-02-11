@@ -1590,6 +1590,7 @@ class Table(HtmlFlow, HtmlPalpable):
   Contexts for use: Flow.
   '''
 
+  _th_classes: list[str] = [] # Track the classes of the cells in the last row added by `head()`.
 
   def caption(self, caption:MuChildLax, *els:MuChildLax) -> Self:
     if not isinstance(caption, Caption):
@@ -1609,6 +1610,9 @@ class Table(HtmlFlow, HtmlPalpable):
     The `head` argument can be a fully formed `Thead` or else an iterable of `Td|Th` or content with which `Th` are constructed.
     If `head` is a `Thead` object and another `Thead` child is present, raise ConflictingValues.
     Otherwise use the existing `Thead` or create a new one and add the elements of `head` to it.
+
+    The classes of each cell in the last row added by `head()` are recorded in a private attribute.
+    These classes are applied to the corresponding cells in the last row added by `rows()`.
     '''
     thead = self.pick_opt(Thead) # Raise MultipleMatchesError if more than one Thead is present (against the HTML spec).
     if isinstance(head, Thead):
@@ -1616,7 +1620,14 @@ class Table(HtmlFlow, HtmlPalpable):
       self.append(head)
     else:
       if thead is None: thead = self.append(Thead())
-      thead.append(Tr(_=[cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head]))
+      cells = [cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head]
+      thead.append(Tr(_=cells))
+      del self._th_classes[:]
+      for cell in cells:
+        cl = cell.get('class')
+        colspan = cell.get('colspan', 1)
+        for _ in range(colspan):
+          self._th_classes.append(cl)
     return self
 
 
@@ -1632,6 +1643,18 @@ class Table(HtmlFlow, HtmlPalpable):
       else:
         tr = Tr(_=[cell if isinstance(cell, (Td, Th)) else Td(_=cell) for cell in row])
       tbody.append(tr)
+      th_cl_i = 0
+      for cell in tr._:
+        assert isinstance(cell, (Td, Th))
+        colspan = cell.get('colspan', 1)
+        try: th_cl = self._th_classes[th_cl_i]
+        except IndexError: th_cl = None
+        if th_cl:
+          if existing_cl := cell.get('class'):
+            cell['class'] = f'{th_cl} {existing_cl}'
+          else:
+            cell['class'] = th_cl
+        th_cl_i += colspan
     return self
 
 
