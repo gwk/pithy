@@ -180,12 +180,12 @@ details summary.disclosure-flush::before {
 
 /* Links. */
 
-:is(A.button, A.button:visited, A.button:hover, A.button:active)  {
+:where(A.button, A.button:visited, A.button:hover, A.button:active) {
   color: #000;
   text-decoration: none;
 }
 
-:is(a.button, button) {
+:where(a.button, button) {
   appearance: none;
   background-color: #FFF;
   border: none;
@@ -199,7 +199,7 @@ details summary.disclosure-flush::before {
   vertical-align: baseline;
 }
 
-:is(a.button, button):active {
+:where(a.button, button):active {
   color: #000;
   background-color: #F0F0F0;
 }
