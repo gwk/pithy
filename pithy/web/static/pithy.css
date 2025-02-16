@@ -154,6 +154,26 @@ body {
 
 .error-red { color: #800; }
 
+
+/* Buttons. */
+
+button.dangerous {
+  background-color: #cc0000;
+  border: 1px solid #880000;
+  color: white;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+button.dangerous:hover {
+  background-color: #bb0000;
+}
+
+button.dangerous:active {
+  background-color: #990000;
+}
+
+
 /* Details, Summary. */
 /* NOTE: summary disclosure styling works differently between Chrome and Safari. */
 /* First, hide the default disclosure marker. */
@@ -494,11 +514,10 @@ a.icon:visited {
 }
 
 .modal > .pane {
-  min-width: 16rem;
-  min-height: 8rem;
+  min-width: 8rem;
+  min-height: 4rem;
   max-width: 90%;
   max-height: 90%;
-  width: 80%; /* Could be more or less, depending on screen size */
   overflow: auto;
   padding: 2em;
   border: 1px solid #888;
@@ -506,6 +525,10 @@ a.icon:visited {
   background-color: #EEE;
 }
 
+.modal > .pane.error {
+  border: 2px solid #880000;
+  font-weight: 600;
+}
 
 /* SquelchApp. */
 
