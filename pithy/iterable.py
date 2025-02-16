@@ -389,6 +389,29 @@ def group_by_attr(iterable:Iterable[_T], attr:str) -> Iterable[list[_T]]:
   yield group
 
 
+def group_by_attrs(iterable:Iterable[_T], *attrs:str) -> Iterable[list[_T]]:
+  '''
+  Group elements of `iterable`, which must already be sorted,
+  by comparing the tuple of attributes of each element formed from each of the named attributes in `attrs`.
+  Consecutive elements for which the attribute values are equal will be grouped together;
+  a group is yielded whenever comparison fails.
+  '''
+  it = iter(iterable)
+  try: first = next(it)
+  except StopIteration: return
+  group = [first]
+  prev_attrs = tuple(getattr(first, attr) for attr in attrs)
+  for el in it:
+    curr_attrs = tuple(getattr(el, attr) for attr in attrs)
+    if curr_attrs == prev_attrs:
+      group.append(el)
+    else:
+      yield group
+      group = [el]
+    prev_attrs = curr_attrs
+  yield group
+
+
 class OnHeadless(Enum):
   error, drop, keep = range(3)
 
