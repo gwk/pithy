@@ -664,6 +664,19 @@ class Div(HtmlFlow, HtmlPalpable, HtmlFlowContent):
   Contexts for use: As a child of a dl element, Flow.
   '''
 
+  @classmethod
+  def modal(cls, *args:Any, onclick:str='', **kw_attrs:Any) -> Self:
+    '''
+    Create a div with the 'modal' class, and a child div with the 'pane' class.
+    If specified, the `onclick` attribute will be appended to an 'event.stopPropagation()' call on the pane.
+    The modal will call `dismissModal(this, event)` on click.
+    All other attributes are passed to the pane.
+    '''
+    pane = Div(*args, **kw_attrs)
+    pane.prepend_class('pane')
+    pane['onclick'] = f'event.stopPropagation(); {onclick}'.strip()
+    return cls(cl='modal', onclick='dismissModal(this, event)', _=pane)
+
 
 @_tag
 class Dl(HtmlFlow, HtmlPalpable):
