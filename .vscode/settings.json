@@ -41,11 +41,6 @@
     "pkg/utest/**": true,
     "pkg/wu/**": true
   },
-  "python.analysis.typeEvaluation.strictSetInference": true,
-  "python.analysis.typeEvaluation.strictListInference": true,
-  "python.analysis.typeEvaluation.strictDictionaryInference": true,
-  "python.analysis.typeEvaluation.enableReachabilityAnalysis": true,
-  "python.analysis.typeEvaluation.deprecateTypingAliases": false,
   "python.analysis.diagnosticMode": "workspace",
   "python.analysis.exclude": [
     "_build/**",
@@ -59,6 +54,12 @@
     "test",
     "wu"
   ],
-  "python.analysis.experimentalserver": false,
   "python.analysis.typeCheckingMode": "off",
+  "[json]": {
+    "editor.formatOnSave": false
+  },
+  "[jsonc]": {
+    "editor.formatOnSave": false
+  },
+  "json.format.enable": false
 }
