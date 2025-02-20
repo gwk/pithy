@@ -448,7 +448,7 @@ def clip_newlines(iterable:Iterable[str]) -> Iterable[str]:
 
 def confirm(question:str) -> bool:
   '''
-  Prompt the user to confirm a question with a "y" response.
+  Prompt the user to confirm a question with a "y" response on terminal stdin.
   "y" returns True; any other response returns False.
   The question is printed to stdout, followed by a question mark and prompt.
   '''
@@ -462,7 +462,7 @@ def confirm(question:str) -> bool:
 
 def confirm_or_exit(question:str) -> None:
   '''
-  Prompt the user to confirm a question with a "y" response.
+  Prompt the user to confirm a question with a "y" response on terminal stdin.
   "y" returns; any other response exits with status 1.
   The question is printed to stdout, followed by a question mark and prompt.
   '''
