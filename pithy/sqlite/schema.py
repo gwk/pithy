@@ -37,7 +37,6 @@ class Column:
     if not self.allow_kw and self.name.upper() in sqlite_keywords:
       raise ValueError(f'Column name {self.name!r} is an SQLite keyword. Use `allow_kw=True` to override.')
     if self.is_primary:
-      if self.is_opt: raise ValueError(f'Primary key column {self} cannot be optional.')
       if not self.is_unique: raise ValueError(f'Primary key column {self} must be unique.')
     if self.virtual is not None:
       if self.is_primary: raise ValueError(f'Virtual column {self} cannot be primary key.')
@@ -98,7 +97,7 @@ class Column:
     type_ = types_to_strict_sqlite[self.datatype]
     primary_key = ' PRIMARY KEY' if self.is_primary else ''
     unique = ' UNIQUE' if (self.is_unique and not self.is_primary) else ''
-    not_null = '' if (self.is_opt or self.is_primary) else ' NOT NULL'
+    not_null = '' if self.is_opt else ' NOT NULL'
 
     if self.default is not None:
       d = self.default
@@ -473,7 +472,7 @@ def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
   datatype = strict_sqlite_to_types[type_name]
   constraints = dict(_parse_column_constraint(cc, source) for cc in column.constraints)
   is_primary = constraints.get('col_primary_key', False)
-  is_opt = not constraints.get('not_null', False) and not is_primary
+  is_opt = not constraints.get('not_null', False)
   is_unique = constraints.get('unique', False) or is_primary
   virtual = constraints.get('virtual')
   stored = constraints.get('stored')
