@@ -111,11 +111,13 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
 
   # Drop columns.
   for col in removed:
+    stmts.append(f'-- Dropping column {qea(col.name)}.')
     stmts.append(f'ALTER TABLE {qname} DROP COLUMN {qea(col.name)}')
     cols.remove(col)
 
   # Add columns.
   for col in added:
+    stmts.append(f'-- Adding column {qea(col.name)}.')
     stmts.append(f'ALTER TABLE {qname} ADD COLUMN {col.sql()}')
     if not col.is_opt and col.default is None:
       rebuild_reasons.append(f'Added column {qea(col.name)} is not optional and has no default value.')
