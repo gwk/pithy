@@ -44,7 +44,8 @@ class Column:
     if self.default is not None:
       if strict_type := nonstrict_to_strict_types_for_sqlite.get(self.datatype):
         if not isinstance(self.default, strict_type):
-          raise ValueError(f'Column {self} default value {self.default!r} is not of strict type {strict_type.__name__} for datatype {self.datatype.__name__}.')
+          raise ValueError(f'Column {self} default value {self.default!r} is not of strict type {strict_type.__name__}'
+            f' for datatype {self.datatype.__name__}.')
       elif not isinstance(self.default, self.datatype):
         raise ValueError(f'Column {self} default value {self.default!r} is not of datatype {self.datatype.__name__}.')
 
