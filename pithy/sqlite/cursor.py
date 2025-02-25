@@ -119,12 +119,12 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
       yield row[0]
 
 
-  def opt_col(self) -> Any:
+  def opt_col(self, default:Any=None) -> Any:
     if row := self.fetchone():
       assert len(row) == 1
       return row[0]
     else:
-      return None
+      return default
 
 
   def one_col(self) -> Any:
