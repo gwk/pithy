@@ -278,6 +278,12 @@ class Table(Structure):
 
 @dataclass(frozen=True, order=True)
 class Index(TableDepStructure):
+  '''
+  A table index.
+  `columns` is a tuple of column names or SQL expressions. Note that unlike table columns,
+  index columns are not quoted because they can be arbitrary SQL expressions.
+  '''
+
   name:str
   table:str
   is_unique:bool = False
@@ -294,7 +300,7 @@ class Index(TableDepStructure):
   def sql(self, *, schema='', name='', if_not_exists=False) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
-    qual_name = f'{schema}{schema and "."}{qea(self.name)}'
+    qual_name = f'{schema}{schema and "."}{qea(name or self.name)}'
     lines = []
     if self.desc:
       lines.append(f'-- {qual_name}')
@@ -303,7 +309,7 @@ class Index(TableDepStructure):
     if_not_exists_str = 'IF NOT EXISTS ' if if_not_exists else ''
     unique_str = 'UNIQUE ' if self.is_unique else ''
     lines.append(f'CREATE {unique_str}INDEX {if_not_exists_str}{qual_name}')
-    columns_str = ', '.join(qe(c) for c in self.columns)
+    columns_str = ', '.join(self.columns)
     lines.append(f'  ON {qea(self.table)} ({columns_str})')
 
     if self.where:
