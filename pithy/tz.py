@@ -1,6 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from datetime import datetime as DateTime, tzinfo as TZInfo, UTC as tz_utc
+from zoneinfo import ZoneInfo
+
+
+tz_et = ZoneInfo('US/Eastern')
+tz_pt = ZoneInfo('US/Pacific')
 
 
 class TimeZoneError(ValueError): pass
