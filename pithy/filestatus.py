@@ -41,15 +41,15 @@ class FileStatus(NamedTuple):
     s = stat_result
     mode = s.st_mode
     return FileStatus(
-      birth_time=s.st_birthtime,
+      birth_time=getattr(s, 'st_birthtime', 0), # macOS only.
       block_count=s.st_blocks,
       block_size=s.st_blksize,
       ctime=s.st_ctime,
       ctime_ns=s.st_ctime_ns,
       device=s.st_dev,
       device_type=s.st_rdev,
-      flags=s.st_flags,
-      generation=s.st_gen,
+      flags=getattr(s, 'st_flags', 0), # macOS only.
+      generation=getattr(s, 'st_gen', 0), # macOS only.
       group_id=s.st_gid,
       inode=s.st_ino,
       link_count=s.st_nlink,
