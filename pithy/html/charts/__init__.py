@@ -15,7 +15,7 @@ import re
 from typing import Any, Callable, Iterable
 
 from ...range import NumRange
-from .. import Div, Figcaption, Figure, MuChildOrChildrenLax, Script, Span
+from .. import Div, Figcaption, Figure, MuChildOrChildrenLax, Span
 
 
 Dim = int|float|str
@@ -415,7 +415,7 @@ def chart_figure(*,
   chart.prepend_class('chart')
 
   if title is not None: chart.append(Figcaption(_=title))
-  grid = chart.append(Div(cl='vis-grid', style=f'--vis-w:{vis_w}; --vis-h:{vis_h};'))
+  grid = chart.append(Div(cl='vis-grid', style=f'--vis-w:{vis_w}; --vis-h:{vis_h};', once='chartsLinkScrollX(this);'))
   legend = chart.append(Div(cl='legend'))
 
   grid.append(Div(cl='origin')) # By default this box is empty.
@@ -433,15 +433,6 @@ def chart_figure(*,
 
   grid.append(Div(cl='vis-scroll',
     _=Div(cl='vis', _=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series])))
-
-  grid.append(Script('''
-  "use strict";
-  const current_script = document.currentScript;
-  const visGrid = current_script.parentElement;
-  addEventListener('DOMContentLoaded', () => {
-    chartsLinkScrollX(visGrid);
-  })
-  '''))
 
   legend._ = [s.make_legend_item_div() for s in series]
 
