@@ -41,9 +41,13 @@ function _setupWindow() {
 let _htmx;
 
 function _setupHtmx() {
-  // @ts-ignore: ts(2304): cannot find name 'htmx'.
-  _htmx = htmx;
-  assert(_htmx !== undefined, 'htmx is undefined.');
+  try {
+    // @ts-ignore: ts(2552): cannot find name 'htmx'.
+    _htmx = htmx;
+  } catch (exc) {
+    log('htmx is undefined.');
+    return;
+  }
 
   // Error handling configuration.
   document.body.addEventListener('htmx:beforeSwap', function (event) {
