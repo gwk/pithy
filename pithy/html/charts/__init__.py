@@ -481,8 +481,3 @@ def calc_min_max_of_ranges(ranges:Iterable[V2F|None], min_:float|None=None, max_
     return (0, 1)
   assert max_ is not None
   return (min_, max_)
-
-
-chart_js = '''
-
-'''
