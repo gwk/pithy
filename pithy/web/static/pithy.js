@@ -454,3 +454,36 @@ function dismissModal(element, event) {
   if (!modal) { throw new Error('No modal found to dismiss.'); }
   remove_from_parent(modal);
 }
+
+
+/**
+ * Link the scroll of the vis-scroll and ticks-x-scroll elements.
+ * @param {HTMLElement} visGrid - The grid containing the vis-scroll and ticks-x-scroll elements.
+ */
+function chartsLinkScrollX(visGrid) {
+  let activeDiv = null;
+  const visScroll = visGrid.querySelector('.vis-scroll');
+  const ticksXScroll = visGrid.querySelector('.ticks-x-scroll');
+
+  /**
+   * Link the scroll of two elements.
+   * @param {Element|null} div - The element to link the scroll of.
+   * @param {Element|null} other - The element to link the scroll to.
+   */
+  function linkScrolling(div, other) {
+    if (div === null) return;
+    if (other === null) return;
+    div.addEventListener('mouseenter', (e) => {
+      activeDiv = e.target;
+    });
+    div.addEventListener("scroll", (e) => {
+      if (e.target !== activeDiv) return;
+      if (e.target === null) return;
+      const target = /** @type {HTMLElement} */ (e.target);
+      other.scrollLeft = target.scrollLeft;
+    });
+  }
+
+  linkScrolling(visScroll, ticksXScroll);
+  linkScrolling(ticksXScroll, visScroll);
+}
