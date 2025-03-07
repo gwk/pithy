@@ -58,7 +58,7 @@ function _setupHtmx() {
       alert(`Error 404: resource not found: ${detail.pathInfo.finalRequestPath}`);
     } else if (code === 422) {
       // As suggested by HTMX documentation, use 422 responses to signal that a form was submitted with bad data.
-      // The esponse should contain the result to be rendered.
+      // The response should contain the result to be rendered.
       detail.shouldSwap = true;
       detail.isError = false; // Do not log errors in the console.
     } else if (code >= 500) {
