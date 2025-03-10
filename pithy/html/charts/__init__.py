@@ -168,7 +168,7 @@ class ChartAxis:
     raise NotImplementedError
 
 
-  def configure(self, series:list['ChartSeries']) -> None:
+  def configure(self, series:list['ChartSeries']) -> Self:
     '''
     Compute the bounds of the axis.
     '''
@@ -218,7 +218,7 @@ class CategoricalAxis(ChartAxis):
     return self.labels.index(v)
 
 
-  def configure(self, series:list['ChartSeries']) -> None:
+  def configure(self, series:list['ChartSeries']) -> Self:
     '''
     Compute the bounds of the categorical axis.
     '''
@@ -238,6 +238,7 @@ class CategoricalAxis(ChartAxis):
             labels_list.append(label)
             labels_set.add(label)
       self.labels = labels_list
+
     else:
       labels_set = set(self.labels)
       for s in series:
@@ -245,6 +246,8 @@ class CategoricalAxis(ChartAxis):
         assert isinstance(series_labels, list)
         labels_set.update(series_labels)
       self.labels = sorted(labels_set, key=self.label_sort_key)
+
+    return self
 
 
   def style(self) -> str:
@@ -304,7 +307,7 @@ class NumericalAxis(ChartAxis):
   def data_class(self) -> str: return 'numerical'
 
 
-  def configure(self, series:list['ChartSeries']) -> None:
+  def configure(self, series:list['ChartSeries']) -> Self:
     min_, max_ = calc_min_max_of_ranges((s.bounds[self.idx][1] for s in series), min_=self._opt_min, max_=self._opt_max)
 
     if self.symmetric:
@@ -318,6 +321,8 @@ class NumericalAxis(ChartAxis):
     self.max = max_
     self.scale = 1.0 / (max_ - min_)
 
+    return self
+
 
 
 class LinearAxis(NumericalAxis):
@@ -328,10 +333,6 @@ class LinearAxis(NumericalAxis):
 
   @property
   def kind_class(self) -> str: return 'linear'
-
-
-  def configure(self, series:list['ChartSeries']) -> None:
-    super().configure(series)
 
 
   def transform(self, v:Any) -> float:
