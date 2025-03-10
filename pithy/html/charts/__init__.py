@@ -269,7 +269,7 @@ class NumericalAxis(ChartAxis):
   '''
 
   def __init__(self,
-   visible_origin=False,
+   show_origin=False,
    symmetric=False,
    min:float|None=None,
    max:float|None=None,
@@ -283,7 +283,7 @@ class NumericalAxis(ChartAxis):
    tick_fmt:TickFmt=str,
   ) -> None:
 
-    self.visible_origin = visible_origin
+    self.show_origin = show_origin
     self.symmetric = symmetric
     self._opt_min = None if min is None else float(min)
     self._opt_max = None if max is None else float(max)
@@ -310,7 +310,7 @@ class NumericalAxis(ChartAxis):
     if self.symmetric:
       max_ = max(max_, -min_)
       min_ = -max_
-    elif self.visible_origin:
+    elif self.show_origin:
       if min_ > 0.0: min_ = 0.0
       elif max_ < 0.0: max_ = 0.0
 
