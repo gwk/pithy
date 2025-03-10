@@ -4,7 +4,6 @@
 figure.chart {
   display: flex;
   flex-direction: column;
-  grid-template-rows: min-content auto min-content;
 }
 
 figure.chart.categorical-numerical {
