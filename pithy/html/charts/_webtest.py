@@ -26,6 +26,9 @@ async def home_page(request:Request) -> HTMLResponse:
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
     margin: 0;
     padding: 0.5em;
     font-family: monospace;
