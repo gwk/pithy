@@ -35,14 +35,22 @@ async def home_page(request:Request) -> HTMLResponse:
   html.head.add_js(url='/static/pithy/pithy.js')
   html.head.add_js(url='/static/pithy/htmx.js')
 
-  figure = chart_figure(
+  body = html.body
+
+  body.append(chart_figure(
     title='CHART 1',
-    y=LinearAxis(tick_step=10),
+    y=LinearAxis(show_origin=True),
     series=[
       BarSeries(name='Series0', points=[(f'{i}', i) for i in range(51)]),
-      #BarSeries(name='Series1', points=[('a', 4), ('b', 5), ('c', 6)]),
-    ])
+    ]))
 
-  html.body.append(figure)
+  body.append(chart_figure(
+    title='CHART 2',
+    y=LinearAxis(show_origin=True),
+    style='max-width:24em; max-height:24em;',
+
+    series=[
+      BarSeries(name='Series1', points=[('a', 4), ('b', 5), ('c', 6), ('d', 7)]),
+    ]))
 
   return HTMLResponse(content=html.render_str())

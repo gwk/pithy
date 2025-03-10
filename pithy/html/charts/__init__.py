@@ -12,7 +12,8 @@ An axis can be categorical or numeric.
 '''
 
 import re
-from typing import Any, Callable, Iterable
+from math import ceil, floor, log10
+from typing import Any, Callable, Iterable, Self
 
 from ...range import NumRange
 from .. import Div, Figcaption, Figure, MuChildOrChildrenLax, Span
@@ -281,10 +282,12 @@ class NumericalAxis(ChartAxis):
    grid_step:float=0,
    show_ticks=True,
    ticks:Iterable[float]=(),
-   tick_count=8,
+   ticks_max=11,
    tick_step:float=0,
    tick_fmt:TickFmt=str,
   ) -> None:
+
+    if ticks_max < 0: raise ValueError(f'ticks_max must be >= 0: {ticks_max!r}.')
 
     self.show_origin = show_origin
     self.symmetric = symmetric
@@ -295,11 +298,9 @@ class NumericalAxis(ChartAxis):
     self.grid_step = grid_step
     self.show_ticks = show_ticks
     self.ticks = list(ticks)
-    self.tick_count = tick_count
+    self.ticks_max = ticks_max
     self.tick_step = tick_step
     self.tick_fmt = tick_fmt
-    self.min = 0.0
-    self.max = 1.0
     self.scale = 1.0
     super().__init__()
 
@@ -343,13 +344,47 @@ class LinearAxis(NumericalAxis):
   def tick_divs(self) -> list[Div]:
     ticks = self.ticks
     if not ticks:
-      if not self.tick_step:
-        if self.tick_count < 2: raise ValueError('tick_count must be at least 2')
-        self.tick_step = (self.max - self.min) / self.tick_count
-      ticks.extend(NumRange(self.min, self.max, self.tick_step, closed=True))
+      self.fill_ticks()
     return [
       Div(style=f'--v:{self.transform(v):.4f}', _=[Span(cl='tick'), Span(cl='label', _=str(self.tick_fmt(v)))])
      for v in ticks]
+
+
+  def tick_min(self, step:float) -> float:
+    '''
+    The tick cannot be less than min or else it would not be visible.
+    '''
+    return ceil(self.min / step) * step
+
+
+  def tick_max(self, step:float) -> float:
+    '''
+    The tick cannot be greater than max or else it would not be visible.
+    '''
+    return floor(self.max / step) * step
+
+
+  def fill_ticks(self) -> None:
+    if self.ticks_max < 1:
+      self.ticks = []
+      return
+    if not self.tick_step:
+      self.choose_ticks_step()
+    self.ticks.extend(NumRange(self.tick_min(self.tick_step), self.tick_max(self.tick_step), self.tick_step, closed=True))
+
+
+  def choose_ticks_step(self) -> float:
+    delta = self.max - self.min
+    perfect_step = delta / self.ticks_max
+    mag = 10 ** floor(log10(perfect_step))
+    for scale in (1, 2, 5, 10):
+      step:float = scale * mag
+      min_ = self.tick_min(step)
+      max_ = self.tick_max(step)
+      count = ceil((1 + max_ - min_) / step)
+      if count <= self.ticks_max: break
+    self.tick_step = step
+    return step
 
 
 def get_tick_div_label_len(div:Div) -> int:
