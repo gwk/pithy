@@ -432,10 +432,8 @@ def chart_figure(*,
 
   if symmetric_xy:
     if isinstance(x, NumericalAxis) and isinstance(y, NumericalAxis):
-      x.min = min(x.min, y.min)
-      y.min = x.min
-      x.max = max(x.max, y.max)
-      y.max = x.max
+      x.min = y.min = min(x.min, y.min)
+      x.max = y.max = max(x.max, y.max)
     else: raise ValueError('cannot force symmetric axes for categorical data')
 
   vis_w = 0
@@ -473,7 +471,6 @@ def chart_figure(*,
   legend._ = [s.make_legend_item_div() for s in series]
 
   return chart
-
 
 
 def clean_class_for_name(name:str) -> str:
