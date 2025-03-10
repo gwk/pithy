@@ -471,8 +471,8 @@ function chartsLinkScrollX(visGrid) {
    * @param {Element|null} other - The element to link the scroll to.
    */
   function linkScrolling(div, other) {
-    if (div === null) return;
-    if (other === null) return;
+    if (div === null) { log("error: chartsLinkScrollX: div is null"); return; }
+    if (other === null) { log("error: chartsLinkScrollX: other is null"); return; }
     div.addEventListener('mouseenter', (e) => {
       activeDiv = e.target;
     });
