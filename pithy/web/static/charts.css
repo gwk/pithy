@@ -8,7 +8,7 @@ figure.chart {
 
 figure.chart.categorical-numerical {
   --tick-len: 0.25rem;
-  --tick-font-scale: 0.5;
+  --tick-font-scale: 0.75;
   --last-label-width: calc(0.707 * var(--x-last-label-len) * var(--tick-font-scale) + 1ch);
   /* "packed" means the width calculations when there are enough bars that we cannot fit them all on the screen. */
   --packed-bar-step: 1rem; /* The minimum bar step. */
