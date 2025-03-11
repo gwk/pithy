@@ -439,34 +439,41 @@ def chart_figure(*,
   vis_w = 0
   vis_h = 0
 
+  x_tick_divs = x.tick_divs()
+  y_tick_divs = y.tick_divs()
+
+  max_tick_x_label_len = max(get_tick_div_label_len(d) for d in x_tick_divs)
+
   data_class = f'{x.data_class}-{y.data_class}'
   _cl = [data_class]
   if isinstance(cl, str): _cl.append(cl)
   elif cl is not None: _cl.extend(cl)
   attrs_style = kw_attrs.pop('style', '')
   style = f'{x.style()}{y.style()}{attrs_style}'
+
   chart = Figure(cl=_cl, style=style, attrs=kw_attrs)
   chart.prepend_class('chart')
 
   if title is not None: chart.append(Figcaption(_=title))
-  grid = chart.append(Div(cl='vis-grid', style=f'--vis-w:{vis_w}; --vis-h:{vis_h};', once='chartsLinkScrollX(this);'))
+
+  row = chart.append(Div(cl='vis-row',
+    style=f'--vis-w:{vis_w}; --vis-h:{vis_h}; '
+      f'--max-tick-x-label-len:{max_tick_x_label_len}ch; --tick-y-count:{len(y_tick_divs)}'))
+
   legend = chart.append(Div(cl='legend'))
 
-  grid.append(Div(cl='origin')) # By default this box is empty.
+  gutter_left = row.append(Div(cl='gutter-left'))
 
-  x_tick_divs = x.tick_divs()
-  max_x_tick_label_len = max(get_tick_div_label_len(d) for d in x_tick_divs)
-  x_ticks_style = f'--max-tick-label-len:{max_x_tick_label_len}ch;'
+  gutter_left.append(Div(cl='origin')) # Empty box.
 
-  grid.append(Div(cl='ticks-x-scroll',
-    _=Div(cl=['ticks', 'x', x.data_class, x.kind_class], style=x_ticks_style, _=x_tick_divs)))
-
-  y_tick_divs = y.tick_divs()
+  gutter_left.append(Div(cl=['ticks', 'y', y.data_class, y.kind_class], _=y_tick_divs))
   for d in y_tick_divs: d._.reverse() # Flip the tick and label so that the tick is on the right.
-  grid.append(Div(cl=['ticks', 'y', y.data_class, y.kind_class], _=y_tick_divs))
 
-  grid.append(Div(cl='vis-scroll',
-    _=Div(cl='vis', _=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series])))
+  vis_scroll = row.append(Div(cl='vis-scroll'))
+
+  vis_scroll.append(Div(cl=['ticks', 'x', x.data_class, x.kind_class], _=x_tick_divs))
+
+  vis_scroll.append(Div(cl='vis', _=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series]))
 
   legend._ = [s.make_legend_item_div() for s in series]
 

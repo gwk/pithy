@@ -35,8 +35,6 @@ async def home_page(request:Request) -> HTMLResponse:
   }
   '''))
   html.head.add_stylesheet('/static/pithy/charts.css')
-  html.head.add_js(url='/static/pithy/pithy.js')
-  html.head.add_js(url='/static/pithy/htmx.js')
 
   body = html.body
 
