@@ -436,9 +436,6 @@ def chart_figure(*,
       x.max = y.max = max(x.max, y.max)
     else: raise ValueError('cannot force symmetric axes for categorical data')
 
-  vis_w = 0
-  vis_h = 0
-
   x_tick_divs = x.tick_divs()
   y_tick_divs = y.tick_divs()
 
@@ -457,8 +454,7 @@ def chart_figure(*,
   if title is not None: chart.append(Figcaption(_=title))
 
   row = chart.append(Div(cl='vis-row',
-    style=f'--vis-w:{vis_w}; --vis-h:{vis_h}; '
-      f'--max-tick-x-label-len:{max_tick_x_label_len}ch; --tick-y-count:{len(y_tick_divs)}'))
+    style=f'--max-tick-x-label-len:{max_tick_x_label_len}ch; --tick-y-count:{len(y_tick_divs)}'))
 
   legend = chart.append(Div(cl='legend'))
 
