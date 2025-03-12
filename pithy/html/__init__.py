@@ -1605,9 +1605,10 @@ class Table(HtmlFlow, HtmlPalpable):
 
   _th_classes: list[str] = [] # Track the classes of the cells in the last row added by `head()`.
 
-  def caption(self, caption:MuChildLax, *els:MuChildLax) -> Self:
+  def caption(self, caption:MuChildLax, *els:MuChildLax, **attrs:str) -> Self:
     if not isinstance(caption, Caption):
       caption = Caption(caption)
+    caption.update(**attrs)
     self.append(caption)
     caption.extend(els)
     return self
