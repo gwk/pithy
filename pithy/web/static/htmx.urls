@@ -1,2 +1,3 @@
-https://github.com/bigskysoftware/htmx/releases/download/v2.0.2/htmx.js
-https://github.com/bigskysoftware/htmx/releases/download/v2.0.2/htmx.min.js
+https://unpkg.com/htmx.org@2.0.4/dist/htmx.esm.d.ts
+https://unpkg.com/htmx.org@2.0.4/dist/htmx.js
+https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js

@@ -1,4 +1,4 @@
-var htmx = (function() {
+var htmx = (function () {
   'use strict'
 
   // Public API
@@ -33,7 +33,7 @@ var htmx = (function() {
      * @param {HttpVerb} type the request type (e.g. **get** or **post**) non-GET's will include the enclosing form of the element. Defaults to **post**
      * @returns {Object}
      */
-    values: function(elt, type) {
+    values: function (elt, type) {
       const inputValues = getInputValues(elt, type || 'post')
       return inputValues.values
     },
@@ -277,7 +277,7 @@ var htmx = (function() {
     parseInterval: null,
     /** @type {typeof internalEval} */
     _: null,
-    version: '2.0.3'
+    version: '2.0.4'
   }
   // Tsc madness part 2
   htmx.onLoad = onLoadHelper
@@ -333,7 +333,7 @@ var htmx = (function() {
   }
 
   const VERBS = ['get', 'post', 'put', 'delete', 'patch']
-  const VERB_SELECTOR = VERBS.map(function(verb) {
+  const VERB_SELECTOR = VERBS.map(function (verb) {
     return '[hx-' + verb + '], [data-hx-' + verb + ']'
   }).join(', ')
 
@@ -470,7 +470,7 @@ var htmx = (function() {
    */
   function getClosestAttributeValue(elt, attributeName) {
     let closestAttr = null
-    getClosestMatch(elt, function(e) {
+    getClosestMatch(elt, function (e) {
       return !!(closestAttr = getAttributeValueWithDisinheritance(elt, asElement(e), attributeName))
     })
     if (closestAttr !== 'unset') {
@@ -529,7 +529,7 @@ var htmx = (function() {
    */
   function duplicateScript(script) {
     const newScript = getDocument().createElement('script')
-    forEach(script.attributes, function(attr) {
+    forEach(script.attributes, function (attr) {
       newScript.setAttribute(attr.name, attr.value)
     })
     newScript.textContent = script.textContent
@@ -556,7 +556,7 @@ var htmx = (function() {
    * @param {DocumentFragment} fragment
    */
   function normalizeScriptTags(fragment) {
-    Array.from(fragment.querySelectorAll('script')).forEach(/** @param {HTMLScriptElement} script */ (script) => {
+    Array.from(fragment.querySelectorAll('script')).forEach(/** @param {HTMLScriptElement} script */(script) => {
       if (isJavaScriptScriptNode(script)) {
         const newScript = duplicateScript(script)
         const parent = script.parentNode
@@ -693,6 +693,7 @@ var htmx = (function() {
    * @property {XMLHttpRequest} [xhr]
    * @property {(() => void)[]} [queuedRequests]
    * @property {boolean} [abortable]
+   * @property {boolean} [firstInitCompleted]
    *
    * Event data
    * @property {HtmxTriggerSpecification} [triggerSpec]
@@ -754,17 +755,14 @@ var htmx = (function() {
   }
 
   /**
+   * Checks whether the element is in the document (includes shadow roots).
+   * This function this is a slight misnomer; it will return true even for elements in the head.
+   *
    * @param {Node} elt
    * @returns {boolean}
    */
   function bodyContains(elt) {
-    // IE Fix
-    const rootNode = elt.getRootNode && elt.getRootNode()
-    if (rootNode && rootNode instanceof window.ShadowRoot) {
-      return getDocument().body.contains(rootNode.host)
-    } else {
-      return getDocument().body.contains(elt)
-    }
+    return elt.getRootNode({ composed: true }) === document
   }
 
   /**
@@ -852,7 +850,7 @@ var htmx = (function() {
    * @returns {any}
    */
   function internalEval(str) {
-    return maybeEval(getDocument().body, function() {
+    return maybeEval(getDocument().body, function () {
       return eval(str)
     })
   }
@@ -866,7 +864,7 @@ var htmx = (function() {
    * @returns {EventListener}
    */
   function onLoadHelper(callback) {
-    const value = htmx.on('htmx:load', /** @param {CustomEvent} evt */ function(evt) {
+    const value = htmx.on('htmx:load', /** @param {CustomEvent} evt */ function (evt) {
       callback(evt.detail.elt)
     })
     return value
@@ -878,7 +876,7 @@ var htmx = (function() {
    * @see https://htmx.org/api/#logAll
    */
   function logAll() {
-    htmx.logger = function(elt, event, data) {
+    htmx.logger = function (elt, event, data) {
       if (console) {
         console.log(event, elt, data)
       }
@@ -941,7 +939,7 @@ var htmx = (function() {
   function removeElement(elt, delay) {
     elt = resolveTarget(elt)
     if (delay) {
-      getWindow().setTimeout(function() {
+      getWindow().setTimeout(function () {
         removeElement(elt)
         elt = null
       }, delay)
@@ -997,7 +995,7 @@ var htmx = (function() {
       return
     }
     if (delay) {
-      getWindow().setTimeout(function() {
+      getWindow().setTimeout(function () {
         addClassToElement(elt, clazz)
         elt = null
       }, delay)
@@ -1021,7 +1019,7 @@ var htmx = (function() {
       return
     }
     if (delay) {
-      getWindow().setTimeout(function() {
+      getWindow().setTimeout(function () {
         removeClassFromElement(elt, clazz)
         elt = null
       }, delay)
@@ -1059,7 +1057,7 @@ var htmx = (function() {
    */
   function takeClassForElement(elt, clazz) {
     elt = resolveTarget(elt)
-    forEach(elt.parentElement.children, function(child) {
+    forEach(elt.parentElement.children, function (child) {
       removeClassFromElement(child, clazz)
     })
     addClassToElement(asElement(elt), clazz)
@@ -1128,34 +1126,77 @@ var htmx = (function() {
    * @returns {(Node|Window)[]}
    */
   function querySelectorAllExt(elt, selector, global) {
-    elt = resolveTarget(elt)
-    if (selector.indexOf('closest ') === 0) {
-      return [closest(asElement(elt), normalizeSelector(selector.substr(8)))]
-    } else if (selector.indexOf('find ') === 0) {
-      return [find(asParentNode(elt), normalizeSelector(selector.substr(5)))]
-    } else if (selector === 'next') {
-      return [asElement(elt).nextElementSibling]
-    } else if (selector.indexOf('next ') === 0) {
-      return [scanForwardQuery(elt, normalizeSelector(selector.substr(5)), !!global)]
-    } else if (selector === 'previous') {
-      return [asElement(elt).previousElementSibling]
-    } else if (selector.indexOf('previous ') === 0) {
-      return [scanBackwardsQuery(elt, normalizeSelector(selector.substr(9)), !!global)]
-    } else if (selector === 'document') {
-      return [document]
-    } else if (selector === 'window') {
-      return [window]
-    } else if (selector === 'body') {
-      return [document.body]
-    } else if (selector === 'root') {
-      return [getRootNode(elt, !!global)]
-    } else if (selector === 'host') {
-      return [(/** @type ShadowRoot */(elt.getRootNode())).host]
-    } else if (selector.indexOf('global ') === 0) {
+    if (selector.indexOf('global ') === 0) {
       return querySelectorAllExt(elt, selector.slice(7), true)
-    } else {
-      return toArray(asParentNode(getRootNode(elt, !!global)).querySelectorAll(normalizeSelector(selector)))
     }
+
+    elt = resolveTarget(elt)
+
+    const parts = []
+    {
+      let chevronsCount = 0
+      let offset = 0
+      for (let i = 0; i < selector.length; i++) {
+        const char = selector[i]
+        if (char === ',' && chevronsCount === 0) {
+          parts.push(selector.substring(offset, i))
+          offset = i + 1
+          continue
+        }
+        if (char === '<') {
+          chevronsCount++
+        } else if (char === '/' && i < selector.length - 1 && selector[i + 1] === '>') {
+          chevronsCount--
+        }
+      }
+      if (offset < selector.length) {
+        parts.push(selector.substring(offset))
+      }
+    }
+
+    const result = []
+    const unprocessedParts = []
+    while (parts.length > 0) {
+      const selector = normalizeSelector(parts.shift())
+      let item
+      if (selector.indexOf('closest ') === 0) {
+        item = closest(asElement(elt), normalizeSelector(selector.substr(8)))
+      } else if (selector.indexOf('find ') === 0) {
+        item = find(asParentNode(elt), normalizeSelector(selector.substr(5)))
+      } else if (selector === 'next' || selector === 'nextElementSibling') {
+        item = asElement(elt).nextElementSibling
+      } else if (selector.indexOf('next ') === 0) {
+        item = scanForwardQuery(elt, normalizeSelector(selector.substr(5)), !!global)
+      } else if (selector === 'previous' || selector === 'previousElementSibling') {
+        item = asElement(elt).previousElementSibling
+      } else if (selector.indexOf('previous ') === 0) {
+        item = scanBackwardsQuery(elt, normalizeSelector(selector.substr(9)), !!global)
+      } else if (selector === 'document') {
+        item = document
+      } else if (selector === 'window') {
+        item = window
+      } else if (selector === 'body') {
+        item = document.body
+      } else if (selector === 'root') {
+        item = getRootNode(elt, !!global)
+      } else if (selector === 'host') {
+        item = (/** @type ShadowRoot */(elt.getRootNode())).host
+      } else {
+        unprocessedParts.push(selector)
+      }
+
+      if (item) {
+        result.push(item)
+      }
+    }
+
+    if (unprocessedParts.length > 0) {
+      const standardSelector = unprocessedParts.join(',')
+      const rootNode = asParentNode(getRootNode(elt, !!global))
+      result.push(...toArray(rootNode.querySelectorAll(standardSelector)))
+    }
+
+    return result
   }
 
   /**
@@ -1164,7 +1205,7 @@ var htmx = (function() {
    * @param {boolean} global
    * @returns {Element}
    */
-  var scanForwardQuery = function(start, match, global) {
+  var scanForwardQuery = function (start, match, global) {
     const results = asParentNode(getRootNode(start, global)).querySelectorAll(match)
     for (let i = 0; i < results.length; i++) {
       const elt = results[i]
@@ -1180,7 +1221,7 @@ var htmx = (function() {
    * @param {boolean} global
    * @returns {Element}
    */
-  var scanBackwardsQuery = function(start, match, global) {
+  var scanBackwardsQuery = function (start, match, global) {
     const results = asParentNode(getRootNode(start, global)).querySelectorAll(match)
     for (let i = results.length - 1; i >= 0; i--) {
       const elt = results[i]
@@ -1266,7 +1307,7 @@ var htmx = (function() {
    * @returns {EventListener}
    */
   function addEventListenerImpl(arg1, arg2, arg3, arg4) {
-    ready(function() {
+    ready(function () {
       const eventArgs = processEventArgs(arg1, arg2, arg3, arg4)
       eventArgs.target.addEventListener(eventArgs.event, eventArgs.listener, eventArgs.options)
     })
@@ -1285,7 +1326,7 @@ var htmx = (function() {
    * @returns {EventListener}
    */
   function removeEventListenerImpl(arg1, arg2, arg3) {
-    ready(function() {
+    ready(function () {
       const eventArgs = processEventArgs(arg1, arg2, arg3)
       eventArgs.target.removeEventListener(eventArgs.event, eventArgs.listener)
     })
@@ -1325,7 +1366,7 @@ var htmx = (function() {
    * @returns {Element|null}
    */
   function findThisElement(elt, attribute) {
-    return asElement(getClosestMatch(elt, function(elt) {
+    return asElement(getClosestMatch(elt, function (elt) {
       return getAttributeValue(asElement(elt), attribute) != null
     }))
   }
@@ -1371,12 +1412,12 @@ var htmx = (function() {
    * @param {Element} mergeFrom
    */
   function cloneAttributes(mergeTo, mergeFrom) {
-    forEach(mergeTo.attributes, function(attr) {
+    forEach(mergeTo.attributes, function (attr) {
       if (!mergeFrom.hasAttribute(attr.name) && shouldSettleAttribute(attr.name)) {
         mergeTo.removeAttribute(attr.name)
       }
     })
-    forEach(mergeFrom.attributes, function(attr) {
+    forEach(mergeFrom.attributes, function (attr) {
       if (shouldSettleAttribute(attr.name)) {
         mergeTo.setAttribute(attr.name, attr.value)
       }
@@ -1418,8 +1459,8 @@ var htmx = (function() {
     if (oobValue === 'true') {
       // do nothing
     } else if (oobValue.indexOf(':') > 0) {
-      swapStyle = oobValue.substr(0, oobValue.indexOf(':'))
-      selector = oobValue.substr(oobValue.indexOf(':') + 1, oobValue.length)
+      swapStyle = oobValue.substring(0, oobValue.indexOf(':'))
+      selector = oobValue.substring(oobValue.indexOf(':') + 1)
     } else {
       swapStyle = oobValue
     }
@@ -1430,7 +1471,7 @@ var htmx = (function() {
     if (targets) {
       forEach(
         targets,
-        function(target) {
+        function (target) {
           let fragment
           const oobElementClone = oobElement.cloneNode(true)
           fragment = getDocument().createDocumentFragment()
@@ -1448,7 +1489,7 @@ var htmx = (function() {
             swapWithStyle(swapStyle, target, target, fragment, settleInfo)
             restorePreservedElements()
           }
-          forEach(settleInfo.elts, function(elt) {
+          forEach(settleInfo.elts, function (elt) {
             triggerEvent(elt, 'htmx:oobAfterSwap', beforeSwapDetails)
           })
         }
@@ -1478,7 +1519,7 @@ var htmx = (function() {
    * @param {DocumentFragment|ParentNode} fragment
    */
   function handlePreservedElements(fragment) {
-    forEach(findAll(fragment, '[hx-preserve], [data-hx-preserve]'), function(preservedElt) {
+    forEach(findAll(fragment, '[hx-preserve], [data-hx-preserve]'), function (preservedElt) {
       const id = getAttributeValue(preservedElt, 'id')
       const existingElement = getDocument().getElementById(id)
       if (existingElement != null) {
@@ -1504,7 +1545,7 @@ var htmx = (function() {
    * @param {HtmxSettleInfo} settleInfo
    */
   function handleAttributes(parentNode, fragment, settleInfo) {
-    forEach(fragment.querySelectorAll('[id]'), function(newNode) {
+    forEach(fragment.querySelectorAll('[id]'), function (newNode) {
       const id = getRawAttribute(newNode, 'id')
       if (id && id.length > 0) {
         const normalizedId = id.replace("'", "\\'")
@@ -1514,7 +1555,7 @@ var htmx = (function() {
         if (oldNode && oldNode !== parentElt) {
           const newAttributes = newNode.cloneNode()
           cloneAttributes(newNode, oldNode)
-          settleInfo.tasks.push(function() {
+          settleInfo.tasks.push(function () {
             cloneAttributes(newNode, newAttributes)
           })
         }
@@ -1527,7 +1568,7 @@ var htmx = (function() {
    * @returns {HtmxSettleTask}
    */
   function makeAjaxLoadTask(child) {
-    return function() {
+    return function () {
       removeClassFromElement(child, htmx.config.addedClass)
       processNode(asElement(child))
       processFocus(asParentNode(child))
@@ -1621,14 +1662,14 @@ var htmx = (function() {
       clearTimeout(internalData.timeout)
     }
     if (internalData.listenerInfos) {
-      forEach(internalData.listenerInfos, function(info) {
+      forEach(internalData.listenerInfos, function (info) {
         if (info.on) {
           removeEventListenerImpl(info.on, info.trigger, info.listener)
         }
       })
     }
     deInitOnHandlers(element)
-    forEach(Object.keys(internalData), function(key) { delete internalData[key] })
+    forEach(Object.keys(internalData), function (key) { if (key !== 'firstInitCompleted') delete internalData[key] })
   }
 
   /**
@@ -1641,7 +1682,7 @@ var htmx = (function() {
     // noinspection JSUnresolvedReference
     if (element.children) { // IE
       // @ts-ignore
-      forEach(element.children, function(child) { cleanUpElement(child) })
+      forEach(element.children, function (child) { cleanUpElement(child) })
     }
   }
 
@@ -1667,7 +1708,7 @@ var htmx = (function() {
     } else {
       newElt = eltBeforeNewContent.nextSibling
     }
-    settleInfo.elts = settleInfo.elts.filter(function(e) { return e !== target })
+    settleInfo.elts = settleInfo.elts.filter(function (e) { return e !== target })
     // scan through all newly added content and add all elements to the settle info so we trigger
     // events properly on them
     while (newElt && newElt !== target) {
@@ -1815,7 +1856,7 @@ var htmx = (function() {
    */
   function findAndSwapOobElements(fragment, settleInfo, rootNode) {
     var oobElts = findAll(fragment, '[hx-swap-oob], [data-hx-swap-oob]')
-    forEach(oobElts, function(oobElement) {
+    forEach(oobElts, function (oobElement) {
       if (htmx.config.allowNestedOobSwaps || oobElement.parentElement === null) {
         const oobValue = getAttributeValue(oobElement, 'hx-swap-oob')
         if (oobValue != null) {
@@ -1864,7 +1905,7 @@ var htmx = (function() {
     // For text content swaps, don't parse the response as HTML, just insert it
     if (swapSpec.swapStyle === 'textContent') {
       target.textContent = content
-    // Otherwise, make the fragment and process it
+      // Otherwise, make the fragment and process it
     } else {
       let fragment = makeFragment(content)
 
@@ -1888,8 +1929,8 @@ var htmx = (function() {
       }
       // oob swaps
       findAndSwapOobElements(fragment, settleInfo, rootNode)
-      forEach(findAll(fragment, 'template'), /** @param {HTMLTemplateElement} template */function(template) {
-        if (findAndSwapOobElements(template.content, settleInfo, rootNode)) {
+      forEach(findAll(fragment, 'template'), /** @param {HTMLTemplateElement} template */function (template) {
+        if (template.content && findAndSwapOobElements(template.content, settleInfo, rootNode)) {
           // Avoid polluting the DOM with empty templates that were only used to encapsulate oob swap
           template.remove()
         }
@@ -1898,7 +1939,7 @@ var htmx = (function() {
       // normal swap
       if (swapOptions.select) {
         const newFragment = getDocument().createDocumentFragment()
-        forEach(fragment.querySelectorAll(swapOptions.select), function(node) {
+        forEach(fragment.querySelectorAll(swapOptions.select), function (node) {
           newFragment.appendChild(node)
         })
         fragment = newFragment
@@ -1929,7 +1970,7 @@ var htmx = (function() {
     }
 
     target.classList.remove(htmx.config.swappingClass)
-    forEach(settleInfo.elts, function(elt) {
+    forEach(settleInfo.elts, function (elt) {
       if (elt.classList) {
         elt.classList.add(htmx.config.settlingClass)
       }
@@ -1945,11 +1986,11 @@ var htmx = (function() {
     }
 
     // settle
-    const doSettle = function() {
-      forEach(settleInfo.tasks, function(task) {
+    const doSettle = function () {
+      forEach(settleInfo.tasks, function (task) {
         task.call()
       })
-      forEach(settleInfo.elts, function(elt) {
+      forEach(settleInfo.elts, function (elt) {
         if (elt.classList) {
           elt.classList.remove(htmx.config.settlingClass)
         }
@@ -2028,7 +2069,7 @@ var htmx = (function() {
         while (SYMBOL_CONT.exec(str.charAt(position + 1))) {
           position++
         }
-        tokens.push(str.substr(startPosition, position - startPosition + 1))
+        tokens.push(str.substring(startPosition, position + 1))
       } else if (STRINGISH_START.indexOf(str.charAt(position)) !== -1) {
         const startChar = str.charAt(position)
         var startPosition = position
@@ -2039,7 +2080,7 @@ var htmx = (function() {
           }
           position++
         }
-        tokens.push(str.substr(startPosition, position - startPosition + 1))
+        tokens.push(str.substring(startPosition, position + 1))
       } else {
         const symbol = str.charAt(position)
         tokens.push(symbol)
@@ -2088,10 +2129,10 @@ var htmx = (function() {
             tokens.shift()
             conditionalSource += ')})'
             try {
-              const conditionFunction = maybeEval(elt, function() {
+              const conditionFunction = maybeEval(elt, function () {
                 return Function(conditionalSource)()
               },
-              function() { return true })
+                function () { return true })
               conditionFunction.source = conditionalSource
               return conditionFunction
             } catch (e) {
@@ -2277,7 +2318,7 @@ var htmx = (function() {
    */
   function processPolling(elt, handler, spec) {
     const nodeData = getInternalData(elt)
-    nodeData.timeout = getWindow().setTimeout(function() {
+    nodeData.timeout = getWindow().setTimeout(function () {
       if (bodyContains(elt) && nodeData.cancelled !== true) {
         if (!maybeFilterEvent(spec, elt, makeEvent('hx:poll:trigger', {
           triggerSpec: spec,
@@ -2323,12 +2364,17 @@ var htmx = (function() {
         const rawAttribute = getRawAttribute(elt, 'method')
         verb = (/** @type HttpVerb */(rawAttribute ? rawAttribute.toLowerCase() : 'get'))
         path = getRawAttribute(elt, 'action')
+        if (path == null || path === '') {
+          // if there is no action attribute on the form set path to current href before the
+          // following logic to properly clear parameters on a GET (not on a POST!)
+          path = getDocument().location.href
+        }
         if (verb === 'get' && path.includes('?')) {
           path = path.replace(/\?[^#]+/, '')
         }
       }
-      triggerSpecs.forEach(function(triggerSpec) {
-        addEventListener(elt, function(node, evt) {
+      triggerSpecs.forEach(function (triggerSpec) {
+        addEventListener(elt, function (node, evt) {
           const elt = asElement(node)
           if (eltIsDisabled(elt)) {
             cleanUpElement(elt)
@@ -2354,7 +2400,8 @@ var htmx = (function() {
       if (elt.tagName === 'FORM') {
         return true
       }
-      if (matches(elt, 'input[type="submit"], button') && closest(elt, 'form') !== null) {
+      if (matches(elt, 'input[type="submit"], button') &&
+        (matches(elt, '[form]') || closest(elt, 'form') !== null)) {
         return true
       }
       if (elt instanceof HTMLAnchorElement && elt.href &&
@@ -2417,7 +2464,7 @@ var htmx = (function() {
       if (!('lastValue' in elementData)) {
         elementData.lastValue = new WeakMap()
       }
-      eltsToListenOn.forEach(function(eltToListenOn) {
+      eltsToListenOn.forEach(function (eltToListenOn) {
         if (!elementData.lastValue.has(triggerSpec)) {
           elementData.lastValue.set(triggerSpec, new WeakMap())
         }
@@ -2425,9 +2472,9 @@ var htmx = (function() {
         elementData.lastValue.get(triggerSpec).set(eltToListenOn, eltToListenOn.value)
       })
     }
-    forEach(eltsToListenOn, function(eltToListenOn) {
+    forEach(eltsToListenOn, function (eltToListenOn) {
       /** @type EventListener */
-      const eventListener = function(evt) {
+      const eventListener = function (evt) {
         if (!bodyContains(elt)) {
           eltToListenOn.removeEventListener(triggerSpec.trigger, eventListener)
           return
@@ -2484,12 +2531,12 @@ var htmx = (function() {
             if (!elementData.throttle) {
               triggerEvent(elt, 'htmx:trigger')
               handler(elt, evt)
-              elementData.throttle = getWindow().setTimeout(function() {
+              elementData.throttle = getWindow().setTimeout(function () {
                 elementData.throttle = null
               }, triggerSpec.throttle)
             }
           } else if (triggerSpec.delay > 0) {
-            elementData.delayed = getWindow().setTimeout(function() {
+            elementData.delayed = getWindow().setTimeout(function () {
               triggerEvent(elt, 'htmx:trigger')
               handler(elt, evt)
             }, triggerSpec.delay)
@@ -2515,15 +2562,15 @@ var htmx = (function() {
   let scrollHandler = null
   function initScrollHandler() {
     if (!scrollHandler) {
-      scrollHandler = function() {
+      scrollHandler = function () {
         windowIsScrolling = true
       }
       window.addEventListener('scroll', scrollHandler)
       window.addEventListener('resize', scrollHandler)
-      setInterval(function() {
+      setInterval(function () {
         if (windowIsScrolling) {
           windowIsScrolling = false
-          forEach(getDocument().querySelectorAll("[hx-trigger*='revealed'],[data-hx-trigger*='revealed']"), function(elt) {
+          forEach(getDocument().querySelectorAll("[hx-trigger*='revealed'],[data-hx-trigger*='revealed']"), function (elt) {
             maybeReveal(elt)
           })
         }
@@ -2542,7 +2589,7 @@ var htmx = (function() {
         triggerEvent(elt, 'revealed')
       } else {
         // if the node isn't initialized, wait for it before triggering the request
-        elt.addEventListener('htmx:afterProcessNode', function() { triggerEvent(elt, 'revealed') }, { once: true })
+        elt.addEventListener('htmx:afterProcessNode', function () { triggerEvent(elt, 'revealed') }, { once: true })
       }
     }
   }
@@ -2556,9 +2603,10 @@ var htmx = (function() {
    * @param {number} delay
    */
   function loadImmediately(elt, handler, nodeData, delay) {
-    const load = function() {
+    const load = function () {
       if (!nodeData.loaded) {
         nodeData.loaded = true
+        triggerEvent(elt, 'htmx:trigger')
         handler(elt)
       }
     }
@@ -2577,14 +2625,14 @@ var htmx = (function() {
    */
   function processVerbs(elt, nodeData, triggerSpecs) {
     let explicitAction = false
-    forEach(VERBS, function(verb) {
+    forEach(VERBS, function (verb) {
       if (hasAttribute(elt, 'hx-' + verb)) {
         const path = getAttributeValue(elt, 'hx-' + verb)
         explicitAction = true
         nodeData.path = path
         nodeData.verb = verb
-        triggerSpecs.forEach(function(triggerSpec) {
-          addTriggerHandler(elt, triggerSpec, nodeData, function(node, evt) {
+        triggerSpecs.forEach(function (triggerSpec) {
+          addTriggerHandler(elt, triggerSpec, nodeData, function (node, evt) {
             const elt = asElement(node)
             if (closest(elt, htmx.config.disableSelector)) {
               cleanUpElement(elt)
@@ -2623,7 +2671,7 @@ var htmx = (function() {
       if (triggerSpec.threshold) {
         observerOptions.threshold = parseFloat(triggerSpec.threshold)
       }
-      const observer = new IntersectionObserver(function(entries) {
+      const observer = new IntersectionObserver(function (entries) {
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i]
           if (entry.isIntersecting) {
@@ -2634,7 +2682,7 @@ var htmx = (function() {
       }, observerOptions)
       observer.observe(asElement(elt))
       addEventListener(asElement(elt), handler, nodeData, triggerSpec)
-    } else if (triggerSpec.trigger === 'load') {
+    } else if (!nodeData.firstInitCompleted && triggerSpec.trigger === 'load') {
       if (!maybeFilterEvent(triggerSpec, elt, makeEvent('load', { elt }))) {
         loadImmediately(asElement(elt), handler, nodeData, triggerSpec.delay)
       }
@@ -2787,8 +2835,8 @@ var htmx = (function() {
     }
     let func
     /** @type EventListener */
-    const listener = function(e) {
-      maybeEval(elt, function() {
+    const listener = function (e) {
+      maybeEval(elt, function () {
         if (eltIsDisabled(elt)) {
           return
         }
@@ -2841,11 +2889,12 @@ var htmx = (function() {
       return
     }
     const nodeData = getInternalData(elt)
-    if (nodeData.initHash !== attributeHash(elt)) {
+    const attrHash = attributeHash(elt)
+    if (nodeData.initHash !== attrHash) {
       // clean up any previously processed info
       deInitNode(elt)
 
-      nodeData.initHash = attributeHash(elt)
+      nodeData.initHash = attrHash
 
       triggerEvent(elt, 'htmx:beforeProcessNode')
 
@@ -2856,9 +2905,9 @@ var htmx = (function() {
         if (getClosestAttributeValue(elt, 'hx-boost') === 'true') {
           boostElement(elt, nodeData, triggerSpecs)
         } else if (hasAttribute(elt, 'hx-trigger')) {
-          triggerSpecs.forEach(function(triggerSpec) {
+          triggerSpecs.forEach(function (triggerSpec) {
             // For "naked" triggers, don't do anything at all
-            addTriggerHandler(elt, triggerSpec, nodeData, function() {
+            addTriggerHandler(elt, triggerSpec, nodeData, function () {
             })
           })
         }
@@ -2870,6 +2919,7 @@ var htmx = (function() {
         initButtonTracking(elt)
       }
 
+      nodeData.firstInitCompleted = true
       triggerEvent(elt, 'htmx:afterProcessNode')
     }
   }
@@ -2888,7 +2938,7 @@ var htmx = (function() {
       return
     }
     initNode(elt)
-    forEach(findElementsToProcess(elt), function(child) { initNode(child) })
+    forEach(findElementsToProcess(elt), function (child) { initNode(child) })
     forEach(findHxOnWildcardElements(elt), processHxOnWildcard)
   }
 
@@ -2949,7 +2999,7 @@ var htmx = (function() {
    * @returns void
    */
   function withExtensions(elt, toDo) {
-    forEach(getExtensions(elt), function(extension) {
+    forEach(getExtensions(elt), function (extension) {
       try {
         toDo(extension)
       } catch (e) {
@@ -2996,7 +3046,7 @@ var htmx = (function() {
       const kebabedEvent = makeEvent(kebabName, event.detail)
       eventResult = eventResult && elt.dispatchEvent(kebabedEvent)
     }
-    withExtensions(asElement(elt), function(extension) {
+    withExtensions(asElement(elt), function (extension) {
       eventResult = eventResult && (extension.onEvent(eventName, event) !== false && !event.defaultPrevented)
     })
     return eventResult
@@ -3102,11 +3152,11 @@ var htmx = (function() {
   function cleanInnerHtmlForHistory(elt) {
     const className = htmx.config.requestClass
     const clone = /** @type Element */ (elt.cloneNode(true))
-    forEach(findAll(clone, '.' + className), function(child) {
+    forEach(findAll(clone, '.' + className), function (child) {
       removeClassFromElement(child, className)
     })
     // remove the disabled attribute for any element disabled due to an htmx request
-    forEach(findAll(clone, '[data-disabled-by-htmx]'), function(child) {
+    forEach(findAll(clone, '[data-disabled-by-htmx]'), function (child) {
       child.removeAttribute('disabled')
     })
     return clone.innerHTML
@@ -3125,7 +3175,7 @@ var htmx = (function() {
     try {
       disableHistoryCache = getDocument().querySelector('[hx-history="false" i],[data-hx-history="false" i]')
     } catch (e) {
-    // IE11: insensitive modifier not supported so fallback to case sensitive selector
+      // IE11: insensitive modifier not supported so fallback to case sensitive selector
       disableHistoryCache = getDocument().querySelector('[hx-history="false"],[data-hx-history="false"]')
     }
     if (!disableHistoryCache) {
@@ -3140,7 +3190,7 @@ var htmx = (function() {
    * @param {string} path
    */
   function pushUrlIntoHistory(path) {
-  // remove the cache buster parameter, if any
+    // remove the cache buster parameter, if any
     if (htmx.config.getCacheBusterParam) {
       path = path.replace(/org\.htmx\.cache-buster=[^&]*&?/, '')
       if (endsWith(path, '&') || endsWith(path, '?')) {
@@ -3165,7 +3215,7 @@ var htmx = (function() {
    * @param {HtmxSettleTask[]} tasks
    */
   function settleImmediately(tasks) {
-    forEach(tasks, function(task) {
+    forEach(tasks, function (task) {
       task.call(undefined)
     })
   }
@@ -3181,7 +3231,7 @@ var htmx = (function() {
     request.setRequestHeader('HX-Request', 'true')
     request.setRequestHeader('HX-History-Restore-Request', 'true')
     request.setRequestHeader('HX-Current-URL', getDocument().location.href)
-    request.onload = function() {
+    request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         triggerEvent(getDocument().body, 'htmx:historyCacheMissLoad', details)
         const fragment = makeFragment(this.response)
@@ -3220,7 +3270,7 @@ var htmx = (function() {
       swapInnerHTML(historyElement, fragment, settleInfo)
       restorePreservedElements()
       settleImmediately(settleInfo.tasks)
-      getWindow().setTimeout(function() {
+      getWindow().setTimeout(function () {
         window.scrollTo(0, cached.scroll)
       }, 0) // next 'tick', so browser has time to render layout
       currentPathForHistory = path
@@ -3245,7 +3295,7 @@ var htmx = (function() {
     if (indicators == null) {
       indicators = [elt]
     }
-    forEach(indicators, function(ic) {
+    forEach(indicators, function (ic) {
       const internalData = getInternalData(ic)
       internalData.requestCount = (internalData.requestCount || 0) + 1
       ic.classList.add.call(ic.classList, htmx.config.requestClass)
@@ -3262,7 +3312,7 @@ var htmx = (function() {
     if (disabledElts == null) {
       disabledElts = []
     }
-    forEach(disabledElts, function(disabledElement) {
+    forEach(disabledElts, function (disabledElement) {
       const internalData = getInternalData(disabledElement)
       internalData.requestCount = (internalData.requestCount || 0) + 1
       disabledElement.setAttribute('disabled', '')
@@ -3276,17 +3326,17 @@ var htmx = (function() {
    * @param {Element[]} disabled
    */
   function removeRequestIndicators(indicators, disabled) {
-    forEach(indicators.concat(disabled), function(ele) {
+    forEach(indicators.concat(disabled), function (ele) {
       const internalData = getInternalData(ele)
       internalData.requestCount = (internalData.requestCount || 1) - 1
     })
-    forEach(indicators, function(ic) {
+    forEach(indicators, function (ic) {
       const internalData = getInternalData(ic)
       if (internalData.requestCount === 0) {
         ic.classList.remove.call(ic.classList, htmx.config.requestClass)
       }
     })
-    forEach(disabled, function(disabledElement) {
+    forEach(disabled, function (disabledElement) {
       const internalData = getInternalData(disabledElement)
       if (internalData.requestCount === 0) {
         disabledElement.removeAttribute('disabled')
@@ -3340,7 +3390,7 @@ var htmx = (function() {
   function addValueToFormData(name, value, formData) {
     if (name != null && value != null) {
       if (Array.isArray(value)) {
-        value.forEach(function(v) { formData.append(name, v) })
+        value.forEach(function (v) { formData.append(name, v) })
       } else {
         formData.append(name, value)
       }
@@ -3381,7 +3431,7 @@ var htmx = (function() {
       // @ts-ignore value will be undefined for non-input elements, which is fine
       let value = elt.value
       if (elt instanceof HTMLSelectElement && elt.multiple) {
-        value = toArray(elt.querySelectorAll('option:checked')).map(function(e) { return (/** @type HTMLOptionElement */(e)).value })
+        value = toArray(elt.querySelectorAll('option:checked')).map(function (e) { return (/** @type HTMLOptionElement */(e)).value })
       }
       // include file inputs
       if (elt instanceof HTMLInputElement && elt.files) {
@@ -3393,7 +3443,7 @@ var htmx = (function() {
       }
     }
     if (elt instanceof HTMLFormElement) {
-      forEach(elt.elements, function(input) {
+      forEach(elt.elements, function (input) {
         if (processed.indexOf(input) >= 0) {
           // The input has already been processed and added to the values, but the FormData that will be
           //  constructed right after on the form, will include it once again. So remove that input's value
@@ -3406,7 +3456,7 @@ var htmx = (function() {
           validateElement(input, errors)
         }
       })
-      new FormData(elt).forEach(function(value, name) {
+      new FormData(elt).forEach(function (value, name) {
         if (value instanceof File && value.name === '') {
           return // ignore no-name files
         }
@@ -3441,7 +3491,7 @@ var htmx = (function() {
     for (const key of donor.keys()) {
       receiver.delete(key)
     }
-    donor.forEach(function(value, key) {
+    donor.forEach(function (value, key) {
       receiver.append(key, value)
     })
     return receiver
@@ -3481,7 +3531,7 @@ var htmx = (function() {
 
     // if a button or submit was clicked last, include its value
     if (internalData.lastButtonClicked || elt.tagName === 'BUTTON' ||
-    (elt.tagName === 'INPUT' && getRawAttribute(elt, 'type') === 'submit')) {
+      (elt.tagName === 'INPUT' && getRawAttribute(elt, 'type') === 'submit')) {
       const button = internalData.lastButtonClicked || (/** @type HTMLInputElement|HTMLButtonElement */(elt))
       const name = getRawAttribute(button, 'name')
       addValueToFormData(name, button.value, priorityFormData)
@@ -3489,11 +3539,11 @@ var htmx = (function() {
 
     // include any explicit includes
     const includes = findAttributeTargets(elt, 'hx-include')
-    forEach(includes, function(node) {
+    forEach(includes, function (node) {
       processInputValue(processed, formData, errors, asElement(node), validate)
       // if a non-form is included, include any input values within it
       if (!matches(node, 'form')) {
-        forEach(asParentNode(node).querySelectorAll(INPUT_SELECTOR), function(descendant) {
+        forEach(asParentNode(node).querySelectorAll(INPUT_SELECTOR), function (descendant) {
           processInputValue(processed, formData, errors, descendant, validate)
         })
       }
@@ -3530,7 +3580,7 @@ var htmx = (function() {
   function urlEncode(values) {
     values = formDataFromObject(values)
     let returnStr = ''
-    values.forEach(function(value, key) {
+    values.forEach(function (value, key) {
       returnStr = appendParam(returnStr, key, value)
     })
     return returnStr
@@ -3581,17 +3631,17 @@ var htmx = (function() {
       } else if (paramsValue === '*') {
         return inputValues
       } else if (paramsValue.indexOf('not ') === 0) {
-        forEach(paramsValue.substr(4).split(','), function(name) {
+        forEach(paramsValue.slice(4).split(','), function (name) {
           name = name.trim()
           inputValues.delete(name)
         })
         return inputValues
       } else {
         const newValues = new FormData()
-        forEach(paramsValue.split(','), function(name) {
+        forEach(paramsValue.split(','), function (name) {
           name = name.trim()
           if (inputValues.has(name)) {
-            inputValues.getAll(name).forEach(function(value) { newValues.append(name, value) })
+            inputValues.getAll(name).forEach(function (value) { newValues.append(name, value) })
           }
         })
         return newValues
@@ -3631,15 +3681,15 @@ var htmx = (function() {
         for (let i = 0; i < split.length; i++) {
           const value = split[i]
           if (value.indexOf('swap:') === 0) {
-            swapSpec.swapDelay = parseInterval(value.substr(5))
+            swapSpec.swapDelay = parseInterval(value.slice(5))
           } else if (value.indexOf('settle:') === 0) {
-            swapSpec.settleDelay = parseInterval(value.substr(7))
+            swapSpec.settleDelay = parseInterval(value.slice(7))
           } else if (value.indexOf('transition:') === 0) {
-            swapSpec.transition = value.substr(11) === 'true'
+            swapSpec.transition = value.slice(11) === 'true'
           } else if (value.indexOf('ignoreTitle:') === 0) {
-            swapSpec.ignoreTitle = value.substr(12) === 'true'
+            swapSpec.ignoreTitle = value.slice(12) === 'true'
           } else if (value.indexOf('scroll:') === 0) {
-            const scrollSpec = value.substr(7)
+            const scrollSpec = value.slice(7)
             var splitSpec = scrollSpec.split(':')
             const scrollVal = splitSpec.pop()
             var selectorVal = splitSpec.length > 0 ? splitSpec.join(':') : null
@@ -3647,14 +3697,14 @@ var htmx = (function() {
             swapSpec.scroll = scrollVal
             swapSpec.scrollTarget = selectorVal
           } else if (value.indexOf('show:') === 0) {
-            const showSpec = value.substr(5)
+            const showSpec = value.slice(5)
             var splitSpec = showSpec.split(':')
             const showVal = splitSpec.pop()
             var selectorVal = splitSpec.length > 0 ? splitSpec.join(':') : null
             swapSpec.show = showVal
             swapSpec.showTarget = selectorVal
           } else if (value.indexOf('focus-scroll:') === 0) {
-            const focusScrollVal = value.substr('focus-scroll:'.length)
+            const focusScrollVal = value.slice('focus-scroll:'.length)
             swapSpec.focusScroll = focusScrollVal == 'true'
           } else if (i == 0) {
             swapSpec.swapStyle = value
@@ -3673,7 +3723,7 @@ var htmx = (function() {
    */
   function usesFormData(elt) {
     return getClosestAttributeValue(elt, 'hx-encoding') === 'multipart/form-data' ||
-    (matches(elt, 'form') && getRawAttribute(elt, 'enctype') === 'multipart/form-data')
+      (matches(elt, 'form') && getRawAttribute(elt, 'enctype') === 'multipart/form-data')
   }
 
   /**
@@ -3684,7 +3734,7 @@ var htmx = (function() {
    */
   function encodeParamsForBody(xhr, elt, filteredParameters) {
     let encodedParameters = null
-    withExtensions(elt, function(extension) {
+    withExtensions(elt, function (extension) {
       if (encodedParameters == null) {
         encodedParameters = extension.encodeParameters(xhr, filteredParameters, elt)
       }
@@ -3776,10 +3826,10 @@ var htmx = (function() {
         return null
       }
       if (str.indexOf('javascript:') === 0) {
-        str = str.substr(11)
+        str = str.slice(11)
         evaluateValue = true
       } else if (str.indexOf('js:') === 0) {
-        str = str.substr(3)
+        str = str.slice(3)
         evaluateValue = true
       }
       if (str.indexOf('{') !== 0) {
@@ -3787,7 +3837,7 @@ var htmx = (function() {
       }
       let varsValues
       if (evaluateValue) {
-        varsValues = maybeEval(elt, function() { return Function('return (' + str + ')')() }, {})
+        varsValues = maybeEval(elt, function () { return Function('return (' + str + ')')() }, {})
       } else {
         varsValues = parseJSON(str)
       }
@@ -3853,7 +3903,7 @@ var htmx = (function() {
       try {
         xhr.setRequestHeader(header, headerValue)
       } catch (e) {
-      // On an exception, try to set the header URI encoded instead
+        // On an exception, try to set the header URI encoded instead
         xhr.setRequestHeader(header, encodeURIComponent(headerValue))
         xhr.setRequestHeader(header + '-URI-AutoEncoded', 'true')
       }
@@ -3865,7 +3915,7 @@ var htmx = (function() {
    * @return {string}
    */
   function getPathFromResponse(xhr) {
-  // NB: IE11 does not support this stuff
+    // NB: IE11 does not support this stuff
     if (xhr.responseURL && typeof (URL) !== 'undefined') {
       try {
         const url = new URL(xhr.responseURL)
@@ -3905,9 +3955,9 @@ var htmx = (function() {
         })
       } else {
         let resolvedTarget = resolveTarget(context.target)
-        // If target is supplied but can't resolve OR both target and source can't be resolved
+        // If target is supplied but can't resolve OR source is supplied but both target and source can't be resolved
         // then use DUMMY_ELT to abort the request with htmx:targetError to avoid it replacing body by mistake
-        if ((context.target && !resolvedTarget) || (!resolvedTarget && !resolveTarget(context.source))) {
+        if ((context.target && !resolvedTarget) || (context.source && !resolvedTarget && !resolveTarget(context.source))) {
           resolvedTarget = DUMMY_ELT
         }
         return issueAjaxRequest(verb, path, resolveTarget(context.source), context.event,
@@ -3955,7 +4005,7 @@ var htmx = (function() {
       const origin = document.location.origin
       sameHost = origin === url.origin
     } else {
-    // IE11 doesn't support URL
+      // IE11 doesn't support URL
       url = path
       sameHost = startsWith(path, document.location.origin)
     }
@@ -3978,7 +4028,7 @@ var htmx = (function() {
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
         if (obj[key] && typeof obj[key].forEach === 'function') {
-          obj[key].forEach(function(v) { formData.append(key, v) })
+          obj[key].forEach(function (v) { formData.append(key, v) })
         } else if (typeof obj[key] === 'object' && !(obj[key] instanceof Blob)) {
           formData.append(key, JSON.stringify(obj[key]))
         } else {
@@ -3998,20 +4048,20 @@ var htmx = (function() {
   function formDataArrayProxy(formData, name, array) {
     // mutating the array should mutate the underlying form data
     return new Proxy(array, {
-      get: function(target, key) {
+      get: function (target, key) {
         if (typeof key === 'number') return target[key]
         if (key === 'length') return target.length
         if (key === 'push') {
-          return function(value) {
+          return function (value) {
             target.push(value)
             formData.append(name, value)
           }
         }
         if (typeof target[key] === 'function') {
-          return function() {
+          return function () {
             target[key].apply(target, arguments)
             formData.delete(name)
-            target.forEach(function(v) { formData.append(name, v) })
+            target.forEach(function (v) { formData.append(name, v) })
           }
         }
 
@@ -4021,10 +4071,10 @@ var htmx = (function() {
           return target[key]
         }
       },
-      set: function(target, index, value) {
+      set: function (target, index, value) {
         target[index] = value
         formData.delete(name)
-        target.forEach(function(v) { formData.append(name, v) })
+        target.forEach(function (v) { formData.append(name, v) })
         return true
       }
     })
@@ -4036,10 +4086,18 @@ var htmx = (function() {
    */
   function formDataProxy(formData) {
     return new Proxy(formData, {
-      get: function(target, name) {
+      get: function (target, name) {
         if (typeof name === 'symbol') {
           // Forward symbol calls to the FormData itself directly
-          return Reflect.get(target, name)
+          const result = Reflect.get(target, name)
+          // Wrap in function with apply to correctly bind the FormData context, as a direct call would result in an illegal invocation error
+          if (typeof result === 'function') {
+            return function () {
+              return result.apply(formData, arguments)
+            }
+          } else {
+            return result
+          }
         }
         if (name === 'toJSON') {
           // Support JSON.stringify call on proxy
@@ -4048,7 +4106,7 @@ var htmx = (function() {
         if (name in target) {
           // Wrap in function with apply to correctly bind the FormData context, as a direct call would result in an illegal invocation error
           if (typeof target[name] === 'function') {
-            return function() {
+            return function () {
               return formData[name].apply(formData, arguments)
             }
           } else {
@@ -4065,13 +4123,13 @@ var htmx = (function() {
           return formDataArrayProxy(target, name, array)
         }
       },
-      set: function(target, name, value) {
+      set: function (target, name, value) {
         if (typeof name !== 'string') {
           return false
         }
         target.delete(name)
         if (value && typeof value.forEach === 'function') {
-          value.forEach(function(v) { target.append(name, v) })
+          value.forEach(function (v) { target.append(name, v) })
         } else if (typeof value === 'object' && !(value instanceof Blob)) {
           target.append(name, JSON.stringify(value))
         } else {
@@ -4079,17 +4137,17 @@ var htmx = (function() {
         }
         return true
       },
-      deleteProperty: function(target, name) {
+      deleteProperty: function (target, name) {
         if (typeof name === 'string') {
           target.delete(name)
         }
         return true
       },
       // Support Object.assign call from proxy
-      ownKeys: function(target) {
+      ownKeys: function (target) {
         return Reflect.ownKeys(Object.fromEntries(target))
       },
-      getOwnPropertyDescriptor: function(target, prop) {
+      getOwnPropertyDescriptor: function (target, prop) {
         return Reflect.getOwnPropertyDescriptor(Object.fromEntries(target), prop)
       }
     })
@@ -4109,7 +4167,7 @@ var htmx = (function() {
     let reject = null
     etc = etc != null ? etc : {}
     if (etc.returnPromise && typeof Promise !== 'undefined') {
-      var promise = new Promise(function(_resolve, _reject) {
+      var promise = new Promise(function (_resolve, _reject) {
         resolve = _resolve
         reject = _reject
       })
@@ -4121,7 +4179,7 @@ var htmx = (function() {
     const select = etc.select || null
 
     if (!bodyContains(elt)) {
-    // do not issue requests for elements removed from the DOM
+      // do not issue requests for elements removed from the DOM
       maybeCall(resolve)
       return promise
     }
@@ -4143,7 +4201,7 @@ var htmx = (function() {
 
       const buttonVerb = getRawAttribute(submitter, 'formmethod')
       if (buttonVerb != null) {
-      // ignore buttons with formmethod="dialog"
+        // ignore buttons with formmethod="dialog"
         if (buttonVerb.toLowerCase() !== 'dialog') {
           verb = (/** @type HttpVerb */(buttonVerb))
         }
@@ -4153,7 +4211,7 @@ var htmx = (function() {
     const confirmQuestion = getClosestAttributeValue(elt, 'hx-confirm')
     // allow event-based confirmation w/ a callback
     if (confirmed === undefined) {
-      const issueRequest = function(skipConfirmation) {
+      const issueRequest = function (skipConfirmation) {
         return issueAjaxRequest(verb, path, elt, event, etc, !!skipConfirmation)
       }
       const confirmDetails = { target, elt, path, verb, triggeringEvent: event, etc, issueRequest, question: confirmQuestion }
@@ -4215,16 +4273,16 @@ var htmx = (function() {
           eltData.queuedRequests = []
         }
         if (queueStrategy === 'first' && eltData.queuedRequests.length === 0) {
-          eltData.queuedRequests.push(function() {
+          eltData.queuedRequests.push(function () {
             issueAjaxRequest(verb, path, elt, event, etc)
           })
         } else if (queueStrategy === 'all') {
-          eltData.queuedRequests.push(function() {
+          eltData.queuedRequests.push(function () {
             issueAjaxRequest(verb, path, elt, event, etc)
           })
         } else if (queueStrategy === 'last') {
           eltData.queuedRequests = [] // dump existing queue
-          eltData.queuedRequests.push(function() {
+          eltData.queuedRequests.push(function () {
             issueAjaxRequest(verb, path, elt, event, etc)
           })
         }
@@ -4236,11 +4294,11 @@ var htmx = (function() {
     const xhr = new XMLHttpRequest()
     eltData.xhr = xhr
     eltData.abortable = abortable
-    const endRequestLock = function() {
+    const endRequestLock = function () {
       eltData.xhr = null
       eltData.abortable = false
       if (eltData.queuedRequests != null &&
-      eltData.queuedRequests.length > 0) {
+        eltData.queuedRequests.length > 0) {
         const queuedRequest = eltData.queuedRequests.shift()
         queuedRequest()
       }
@@ -4250,7 +4308,7 @@ var htmx = (function() {
       var promptResponse = prompt(promptQuestion)
       // prompt returns null if cancelled and empty string if accepted with no entry
       if (promptResponse === null ||
-      !triggerEvent(elt, 'htmx:prompt', { prompt: promptResponse, target })) {
+        !triggerEvent(elt, 'htmx:prompt', { prompt: promptResponse, target })) {
         maybeCall(resolve)
         endRequestLock()
         return promise
@@ -4378,7 +4436,7 @@ var htmx = (function() {
 
     // request headers
     if (requestAttrValues.noHeaders) {
-    // ignore all headers
+      // ignore all headers
     } else {
       for (const header in headers) {
         if (headers.hasOwnProperty(header)) {
@@ -4404,7 +4462,7 @@ var htmx = (function() {
       }
     }
 
-    xhr.onload = function() {
+    xhr.onload = function () {
       try {
         const hierarchy = hierarchyForElt(elt)
         responseInfo.pathInfo.responsePath = getPathFromResponse(xhr)
@@ -4436,21 +4494,21 @@ var htmx = (function() {
         throw e
       }
     }
-    xhr.onerror = function() {
+    xhr.onerror = function () {
       removeRequestIndicators(indicators, disableElts)
       triggerErrorEvent(elt, 'htmx:afterRequest', responseInfo)
       triggerErrorEvent(elt, 'htmx:sendError', responseInfo)
       maybeCall(reject)
       endRequestLock()
     }
-    xhr.onabort = function() {
+    xhr.onabort = function () {
       removeRequestIndicators(indicators, disableElts)
       triggerErrorEvent(elt, 'htmx:afterRequest', responseInfo)
       triggerErrorEvent(elt, 'htmx:sendAbort', responseInfo)
       maybeCall(reject)
       endRequestLock()
     }
-    xhr.ontimeout = function() {
+    xhr.ontimeout = function () {
       removeRequestIndicators(indicators, disableElts)
       triggerErrorEvent(elt, 'htmx:afterRequest', responseInfo)
       triggerErrorEvent(elt, 'htmx:timeout', responseInfo)
@@ -4465,9 +4523,9 @@ var htmx = (function() {
     var indicators = addRequestIndicatorClasses(elt)
     var disableElts = disableElements(elt)
 
-    forEach(['loadstart', 'loadend', 'progress', 'abort'], function(eventName) {
-      forEach([xhr, xhr.upload], function(target) {
-        target.addEventListener(eventName, function(event) {
+    forEach(['loadstart', 'loadend', 'progress', 'abort'], function (eventName) {
+      forEach([xhr, xhr.upload], function (target) {
+        target.addEventListener(eventName, function (event) {
           triggerEvent(elt, 'htmx:xhr:' + eventName, {
             lengthComputable: event.lengthComputable,
             loaded: event.loaded,
@@ -4549,7 +4607,7 @@ var htmx = (function() {
     }
 
     if (path) {
-    // false indicates no push, return empty object
+      // false indicates no push, return empty object
       if (path === 'false') {
         return {}
       }
@@ -4642,7 +4700,7 @@ var htmx = (function() {
         redirectPath = redirectSwapSpec.path
         delete redirectSwapSpec.path
       }
-      ajaxHelper('get', redirectPath, redirectSwapSpec).then(function() {
+      ajaxHelper('get', redirectPath, redirectSwapSpec).then(function () {
         pushUrlIntoHistory(redirectPath)
       })
       return
@@ -4729,7 +4787,7 @@ var htmx = (function() {
         cancelPolling(elt)
       }
 
-      withExtensions(elt, function(extension) {
+      withExtensions(elt, function (extension) {
         serverResponse = extension.transformResponse(serverResponse, xhr, elt)
       })
 
@@ -4761,7 +4819,7 @@ var htmx = (function() {
       const selectOOB = getClosestAttributeValue(elt, 'hx-select-oob')
       const select = getClosestAttributeValue(elt, 'hx-select')
 
-      let doSwap = function() {
+      let doSwap = function () {
         try {
           // if we need to save history, do so, before swapping so that relative resources have the correct base URL
           if (historyUpdate.type) {
@@ -4781,7 +4839,7 @@ var htmx = (function() {
             eventInfo: responseInfo,
             anchor: responseInfo.pathInfo.anchor,
             contextElement: elt,
-            afterSwapCallback: function() {
+            afterSwapCallback: function () {
               if (hasHeader(xhr, /HX-Trigger-After-Swap:/i)) {
                 let finalElt = elt
                 if (!bodyContains(elt)) {
@@ -4790,7 +4848,7 @@ var htmx = (function() {
                 handleTriggerHeader(xhr, 'HX-Trigger-After-Swap', finalElt)
               }
             },
-            afterSettleCallback: function() {
+            afterSettleCallback: function () {
               if (hasHeader(xhr, /HX-Trigger-After-Settle:/i)) {
                 let finalElt = elt
                 if (!bodyContains(elt)) {
@@ -4814,19 +4872,19 @@ var htmx = (function() {
       }
 
       if (shouldTransition &&
-              triggerEvent(elt, 'htmx:beforeTransition', responseInfo) &&
-              typeof Promise !== 'undefined' &&
-              // @ts-ignore experimental feature atm
-              document.startViewTransition) {
-        const settlePromise = new Promise(function(_resolve, _reject) {
+        triggerEvent(elt, 'htmx:beforeTransition', responseInfo) &&
+        typeof Promise !== 'undefined' &&
+        // @ts-ignore experimental feature atm
+        document.startViewTransition) {
+        const settlePromise = new Promise(function (_resolve, _reject) {
           settleResolve = _resolve
           settleReject = _reject
         })
         // wrap the original doSwap() in a call to startViewTransition()
         const innerDoSwap = doSwap
-        doSwap = function() {
+        doSwap = function () {
           // @ts-ignore experimental feature atm
-          document.startViewTransition(function() {
+          document.startViewTransition(function () {
             innerDoSwap()
             return settlePromise
           })
@@ -4857,13 +4915,13 @@ var htmx = (function() {
    */
   function extensionBase() {
     return {
-      init: function(api) { return null },
-      getSelectors: function() { return null },
-      onEvent: function(name, evt) { return true },
-      transformResponse: function(text, xhr, elt) { return text },
-      isInlineSwap: function(swapStyle) { return false },
-      handleSwap: function(swapStyle, target, fragment, settleInfo) { return false },
-      encodeParameters: function(xhr, parameters, elt) { return null }
+      init: function (api) { return null },
+      getSelectors: function () { return null },
+      onEvent: function (name, evt) { return true },
+      transformResponse: function (text, xhr, elt) { return text },
+      isInlineSwap: function (swapStyle) { return false },
+      handleSwap: function (swapStyle, target, fragment, settleInfo) { return false },
+      encodeParameters: function (xhr, parameters, elt) { return null }
     }
   }
 
@@ -4873,7 +4931,7 @@ var htmx = (function() {
    * @see https://htmx.org/api/#defineExtension
    *
    * @param {string} name the extension name
-   * @param {HtmxExtension} extension the extension definition
+   * @param {Partial<HtmxExtension>} extension the extension definition
    */
   function defineExtension(name, extension) {
     if (extension.init) {
@@ -4913,7 +4971,7 @@ var htmx = (function() {
     }
     const extensionsForElement = getAttributeValue(elt, 'hx-ext')
     if (extensionsForElement) {
-      forEach(extensionsForElement.split(','), function(extensionName) {
+      forEach(extensionsForElement.split(','), function (extensionName) {
         extensionName = extensionName.replace(/ /g, '')
         if (extensionName.slice(0, 7) == 'ignore:') {
           extensionsToIgnore.push(extensionName.slice(7))
@@ -4934,7 +4992,7 @@ var htmx = (function() {
   // Initialization
   //= ===================================================================
   var isReady = false
-  getDocument().addEventListener('DOMContentLoaded', function() {
+  getDocument().addEventListener('DOMContentLoaded', function () {
     isReady = true
   })
 
@@ -4985,7 +5043,7 @@ var htmx = (function() {
   }
 
   // initialize the document
-  ready(function() {
+  ready(function () {
     mergeMetaConfig()
     insertIndicatorStyles()
     let body = getDocument().body
@@ -4993,7 +5051,7 @@ var htmx = (function() {
     const restoredElts = getDocument().querySelectorAll(
       "[hx-trigger='restored'],[data-hx-trigger='restored']"
     )
-    body.addEventListener('htmx:abort', function(evt) {
+    body.addEventListener('htmx:abort', function (evt) {
       const target = evt.target
       const internalData = getInternalData(target)
       if (internalData && internalData.xhr) {
@@ -5003,10 +5061,10 @@ var htmx = (function() {
     /** @type {(ev: PopStateEvent) => any} */
     const originalPopstate = window.onpopstate ? window.onpopstate.bind(window) : null
     /** @type {(ev: PopStateEvent) => any} */
-    window.onpopstate = function(event) {
+    window.onpopstate = function (event) {
       if (event.state && event.state.htmx) {
         restoreHistory()
-        forEach(restoredElts, function(elt) {
+        forEach(restoredElts, function (elt) {
           triggerEvent(elt, 'htmx:restored', {
             document: getDocument(),
             triggerEvent
@@ -5018,7 +5076,7 @@ var htmx = (function() {
         }
       }
     }
-    getWindow().setTimeout(function() {
+    getWindow().setTimeout(function () {
       triggerEvent(body, 'htmx:load', {}) // give ready handlers a chance to load up before firing this event
       body = null // kill reference for gc
     }, 0)
