@@ -1608,7 +1608,7 @@ class Table(HtmlFlow, HtmlPalpable):
   def caption(self, caption:MuChildLax, *els:MuChildLax, **attrs:str) -> Self:
     if not isinstance(caption, Caption):
       caption = Caption(caption)
-    caption.update(**attrs)
+    caption.update(attrs)
     self.append(caption)
     caption.extend(els)
     return self
