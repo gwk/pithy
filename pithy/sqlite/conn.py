@@ -8,7 +8,7 @@ from urllib.parse import quote as url_quote
 from pithy.url import url_path
 
 from ..meta import caller_src_loc
-from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .cursor import Cursor, SqlParameters
 from .row import Row
 from .util import sql_quote_entity

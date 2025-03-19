@@ -11,7 +11,7 @@ from sys import stderr, stdout
 from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, tcgetattr,
   TCSADRAIN, TCSAFLUSH, TCSANOW, tcsetattr, TIOCGWINSZ, VMIN, VTIME)
 
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 def window_size(f=stdout):

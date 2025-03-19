@@ -3,7 +3,7 @@
 import signal
 from typing import Callable, ContextManager
 
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class Timeout(Exception):

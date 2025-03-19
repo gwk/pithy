@@ -6,10 +6,10 @@ from dataclasses import fields
 from functools import cache
 from typing import Any, Callable, cast, Iterable, NamedTuple
 
-from pithy.types import is_dataclass_instance
+from pithy.type_utils import is_dataclass_instance
 
 from .ansi import RST_TXT, TXT_B, TXT_C, TXT_G, TXT_M, TXT_R, TXT_Y
-from .types import is_dataclass_or_namedtuple
+from .type_utils import is_dataclass_or_namedtuple
 
 
 def repr_clean(obj:Any) -> str:

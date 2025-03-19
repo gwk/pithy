@@ -10,7 +10,7 @@ from dataclasses import fields as _dc_fields
 from sys import stderr, stdout
 from typing import Any, Iterable, Iterator, NamedTuple, TextIO, Union
 
-from pithy.types import is_dataclass_instance
+from pithy.type_utils import is_dataclass_instance
 
 from .iterable import known_leaf_types
 

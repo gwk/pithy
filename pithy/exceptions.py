@@ -8,7 +8,7 @@ from contextlib import AbstractContextManager, ContextDecorator
 from traceback import print_exception
 from typing import Any
 
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class ConflictingValues(KeyError):

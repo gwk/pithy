@@ -10,7 +10,7 @@ from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Size
 from .desc import errD, outD, writeD
 from .reprs import repr_ml
 from .string import ConvFn, fmt_rows
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 _convenience_exports = (errD, outD, writeD)

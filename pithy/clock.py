@@ -4,7 +4,7 @@ from sys import stderr
 from time import perf_counter as now
 from typing import Self
 
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class Clock:

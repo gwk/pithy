@@ -3,7 +3,7 @@
 import os
 from typing import Any, cast, ContextManager, IO
 
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 File = int|IO|None

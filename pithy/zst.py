@@ -5,7 +5,7 @@ from typing import Any, BinaryIO, Iterable, NoReturn, TextIO
 from typing_extensions import Buffer
 from zstandard import ZstdCompressor
 
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class ZstWriterBase:

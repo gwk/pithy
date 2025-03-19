@@ -3,7 +3,7 @@
 from collections import Counter
 from typing import Optional
 
-from pithy.types import (is_a, req_bool, req_dict, req_float, req_int, req_list, req_opt_bool, req_opt_dict, req_opt_float,
+from pithy.type_utils import (is_a, req_bool, req_dict, req_float, req_int, req_list, req_opt_bool, req_opt_dict, req_opt_float,
   req_opt_int, req_opt_list, req_opt_str, req_str)
 from utest import utest, utest_exc
 

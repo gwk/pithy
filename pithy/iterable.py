@@ -7,7 +7,7 @@ from operator import le
 from random import shuffle
 from typing import Any, Callable, Hashable, Iterable, Iterator, Mapping, TypeVar
 
-from .types import Comparable
+from .type_utils import Comparable
 
 
 _T = TypeVar('_T')

@@ -4,7 +4,7 @@ import sqlite3
 from contextlib import AbstractContextManager
 from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeAlias, TypeVar
 
-from ..typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .row import Row
 from .util import default_to_json, insert_values_stmt, sql_quote_entity, update_stmt, update_to_json
 

@@ -3,7 +3,7 @@
 from typing import Any, Callable, ContextManager, Generic, Iterable, TextIO, TypeVar
 
 from .io import err_progress, errL, writeL
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 _T = TypeVar('_T')

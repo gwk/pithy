@@ -10,7 +10,7 @@ from itertools import zip_longest
 from types import UnionType
 from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, TypeVar, Union
 
-from .types import is_dataclass_instance, is_namedtuple, is_type_namedtuple
+from .type_utils import is_dataclass_instance, is_namedtuple, is_type_namedtuple
 
 
 Desired = TypeVar('Desired')

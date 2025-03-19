@@ -5,7 +5,7 @@ from functools import singledispatch
 from typing import Any, Callable
 
 from .date import Date, DateTime, Time
-from .types import is_dataclass_instance
+from .type_utils import is_dataclass_instance
 from .util import memoize
 
 

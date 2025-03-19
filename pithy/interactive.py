@@ -6,7 +6,7 @@ from code import InteractiveInterpreter
 from typing import Any, ContextManager
 
 from .io import errSL
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class Interpreter(InteractiveInterpreter):

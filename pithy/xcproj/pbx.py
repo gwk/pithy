@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Callable, cast, Dict, get_type_hints, List, Type
 
-from pithy.types import is_a
+from pithy.type_utils import is_a
 from tolkien import Token
 
 

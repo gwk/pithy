@@ -10,7 +10,7 @@ from sys import stdout
 from typing import Any, Callable, ContextManager, Iterable, Iterator, Mapping, Sequence, TextIO
 
 from .transtruct import bool_for_val
-from .typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 _convenience_exports = (QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC)

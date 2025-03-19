@@ -3,7 +3,7 @@
 from collections.abc import Hashable
 from typing import Any, Iterator, Sequence, TypeVar
 
-from .types import Comparable
+from .type_utils import Comparable
 
 
 _setattr = object.__setattr__
