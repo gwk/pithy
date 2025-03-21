@@ -350,6 +350,15 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
     return text
 
 
+  def new_tab(self) -> Self:
+    '''
+    Set the necessary attributes make the link to prevent phishing vulnerabilities.
+    '''
+    self['target'] = '_blank'
+    self['rel'] = 'noopener noreferrer'
+    return self
+
+
 @_tag
 class Abbr(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
