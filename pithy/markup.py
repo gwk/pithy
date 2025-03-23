@@ -369,16 +369,18 @@ class Mu:
     self.attrs['class'] = val
 
 
-  def prepend_class(self, cl:str) -> None:
+  def prepend_class(self, cl:str) -> Self:
     try: existing = self.attrs['class']
     except KeyError: self.attrs['class'] = cl
     else: self.attrs['class'] = f'{cl} {existing}'
+    return self
 
 
-  def append_class(self, cl:str) -> None:
+  def append_class(self, cl:str) -> Self:
     try: existing = self.attrs['class']
     except KeyError: self.attrs['class'] = cl
     else: self.attrs['class'] = f'{existing} {cl}'
+    return self
 
 
   @property
