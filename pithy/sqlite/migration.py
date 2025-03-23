@@ -110,13 +110,13 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
   cols = list(old.columns)
 
   # Drop columns.
-  for col in removed:
+  for col in sorted(removed, key=lambda c: not c.virtual): # Drop virtual columns first in case of dependency.
     stmts.append(f'-- Dropping column {qea(col.name)}.')
     stmts.append(f'ALTER TABLE {qname} DROP COLUMN {qea(col.name)}')
     cols.remove(col)
 
   # Add columns.
-  for col in added:
+  for col in sorted(added, key=lambda c: bool(c.virtual)): # Add virtual columns last in case of dependency.
     stmts.append(f'-- Adding column {qea(col.name)}.')
     stmts.append(f'ALTER TABLE {qname} ADD COLUMN {col.sql()}')
     if not col.is_opt and col.default is None:
