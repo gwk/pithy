@@ -628,11 +628,11 @@ def build_clean_row_record_fn(table:Table, renamed_keys:dict[str,str]|None=None,
 
   def build_clean_row_record(record:dict[str,Any]) -> dict[str,Any]:
     d = {}
-    for k, v in record.items():
-      try: rk = keys_map[k]
+    for orig_k, v in record.items():
+      try: clean_k = keys_map[orig_k]
       except KeyError: continue
-      if v is None and replace_none_with_empty_map[k]: v = ''
-      d[rk] = v
+      if v is None and replace_none_with_empty_map[clean_k]: v = ''
+      d[clean_k] = v
     return d
 
   return build_clean_row_record
