@@ -86,7 +86,6 @@ class Totals:
         m = minutes_for(time_match)
         if start_minutes is None:
           start_minutes = m
-          block_str = ''
         else:
           end_minutes = m # Cumulative from last start.
           assert prev_minutes is not None
@@ -94,10 +93,9 @@ class Totals:
           block = TimeBlock(start=prev_minutes, end=end_minutes, rate=prev_rate)
           self.all_blocks.append(block)
           curr_blocks.append(block)
-          block_str = f' {block}'
         prev_minutes = m
         prev_rate = rate
-        outZ(f'|{m:4}{block_str}')
+        outZ(f'| {m:4}')
 
         # Match an inline subtotal, e.g. '12:00 finished = 1:00'.
         if subtotal_match := subtotal_re.search(line):
@@ -105,10 +103,11 @@ class Totals:
             outL()
             exit(f'timesheet error: subtotal line has invalid time: {subtotal_match[0]!r}')
           sub_minutes = end_minutes - start_minutes
-          m = minutes_for(subtotal_match)
-          outZ(f' = {sub_minutes:4}m')
-          if m != sub_minutes:
-            outZ(f' *** found: {m}; calculated: {sub_minutes}')
+          match_minutes = minutes_for(subtotal_match)
+          h, m = divmod(sub_minutes, 60)
+          outZ(f' = {h:}:{m:02}')
+          if match_minutes != sub_minutes:
+            outZ(f' *** MISMATCH')
             self.is_valid = False
           if sub_minutes <= 0:
             outL()
