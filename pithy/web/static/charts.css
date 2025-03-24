@@ -36,20 +36,20 @@ figure.chart > .vis-row {
   column-gap: 0;
 }
 
-figure.chart > .vis-row > :is(.gutter-left, .vis-scroll) {
-  flex-direction: column-reverse;
-  display: flex;
-  row-gap: 0;
-}
-
 figure.chart > .vis-row > .gutter-left {
   flex: 0 0 auto; /* Shrink to fit; equivalent to min-content in grid. */
+  display: flex;
+  flex-direction: column-reverse;
+  row-gap: 0;
 }
 
 figure.chart > .vis-row > .vis-scroll {
   /* X-axis scrollable area containing the visualization and the gutter-bottom.
   Y-axis scrolling is unnecessary and would prevent the tick text from overflowing properly. */
   flex: 1 1 auto; /* Fill space; equivalent to auto in grid. */
+  display: flex;
+  flex-direction: column-reverse;
+  row-gap: 0;
   min-width: 4rem;
   min-height: 1rem;
   overflow-x: auto;
