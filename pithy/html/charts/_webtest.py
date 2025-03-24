@@ -22,6 +22,8 @@ def app() -> Starlette:
 async def home_page(request:Request) -> HTMLResponse:
   html = Html.doc(title='Chart Test')
 
+  html.head.add_stylesheet('/static/pithy/charts.css')
+
   html.head.append(Css('''
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; }
@@ -33,8 +35,10 @@ async def home_page(request:Request) -> HTMLResponse:
     padding: 0.5em;
     font-family: monospace;
   }
+  figure.chart {
+    height: 24em;
+  }
   '''))
-  html.head.add_stylesheet('/static/pithy/charts.css')
 
   body = html.body
 

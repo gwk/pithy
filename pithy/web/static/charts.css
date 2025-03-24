@@ -2,30 +2,38 @@
 
 /* Chart layout. */
 figure.chart {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+}
+
+figure.chart * {
+  box-sizing: border-box;
 }
 
 figure.chart.categorical-numerical {
   --tick-len: 0.25rem;
   --tick-font-scale: 0.75;
   --last-label-width: calc(0.707 * (var(--x-last-label-len) + 0.5em) * var(--tick-font-scale));
-  /* "packed" indicates the width calculations for the minimum bar width, potentially overflowing into a scrollable area. */
+  /* "packed" indicates the width calculations for the minimum bar width, potentially overflowing into a scrollable area.
+  The last half of the last bar can be wider if the slanted label is long. */
   --packed-bar-step: 1rem; /* The minimum start-to-start distance between bars. */
   --packed-bar-half: calc(0.5 * var(--packed-bar-step));
   --packed-last-half: max(var(--packed-bar-half), var(--last-label-width));
   --packed-bars-width: calc(var(--packed-bar-half) * (2*var(--nx) - 1) + var(--packed-last-half));
   --packed-vis-width: calc(var(--packed-bars-width) + 1px);
-  /* "wide" indicates the width calculations for expanded bar widths, when the packed bars would not fill the view. */
-  --wide-vis-width: 100%;
-  --wide-bars-width: calc(var(--wide-vis-width) - 1px);
-  --wide-bar-half-ideal: calc(var(--wide-bars-width) / (var(--nx) * 2));
-  --wide-bar-half-spill: calc((var(--wide-bars-width) - var(--last-label-width)) / (var(--nx) * 2 - 1));
-  --wide-bar-half: min(var(--wide-bar-half-ideal), var(--wide-bar-half-spill));
-
-  --bar-step: calc(2 * max(var(--packed-bar-half), var(--wide-bar-half))); /* Distance from start-to-start of adjacent bars. */
+  /* "stretched" indicates the width calculations for expanded bar widths, when the packed bars would not fill the view.
+  As it turns out, the "stretched" bar width is always the true width,
+  because it is derived from the 100% (parent) width of the view.
+  It is the choice of vis-width between parent width vs the packed width that determines the scroll spill. */
+  --vis-width: max(var(--packed-vis-width), 100%); /* The width of the vis area. */
+  --bars-width: calc(100% - 1px);
+  /* The "ideal" width of a bar (short last label), and the "spill" width of a bar (long last label). */
+  --bar-half-ideal: calc(var(--bars-width) / (var(--nx) * 2));
+  --bar-half-spill: calc((var(--bars-width) - var(--last-label-width)) / (var(--nx) * 2 - 1));
+  --bar-half: min(var(--bar-half-ideal), var(--bar-half-spill));
+  --bar-step: calc(2 * var(--bar-half)); /* Distance from start-to-start of adjacent bars. */
   --bar-width: calc(var(--bar-step) - 1px); /* Width of a single bar. */
-  --vis-width: max(var(--packed-vis-width), var(--wide-vis-width)); /* The width of the vis area. */
 }
 
 figure.chart > .vis-row {
@@ -49,6 +57,7 @@ figure.chart > .vis-row > .vis-scroll {
   flex: 1 1 auto; /* Fill space; equivalent to auto in grid. */
   display: flex;
   flex-direction: column-reverse;
+  position: relative;
   row-gap: 0;
   min-width: 4rem;
   min-height: 1rem;
@@ -149,9 +158,32 @@ figure.chart .ticks.y > div > span.tick {
 
 
 figure.chart .vis { /* The data visualization area. */
-  width: var(--vis-width);
   position: relative;
+  left: 0;
+  top: 0;
+  width: var(--vis-width);
+  /*height: 100%;*/
+  background-color: green;
 }
+
+figure.chart .vis > .dbg {
+  position: absolute;
+  left: 0;
+  height: 1em;
+}
+
+figure.chart .vis > .dbg.packed-bar-step {
+  top: 0;
+  width: var(--packed-bar-step);
+  background-color: rgba(0,255,0,0.25);
+}
+
+figure.chart .vis > .dbg.bar-step {
+  top: 1em;
+  width: var(--bar-step);
+  background-color: rgba(0,0,255,0.25);
+}
+
 figure.chart .vis > .series {
   position: absolute;
   width: 100%;
@@ -160,11 +192,11 @@ figure.chart .vis > .series {
 
 figure.chart.categorical-numerical .vis > .series.bar {
   width: var(--vis-width);
+  background-color: rgba(0,0,255,0.25);
 }
 
 figure.chart.categorical-numerical .vis > .series.bar > div {
   position: absolute;
-  min-width: 4px;
   height: calc(100% * var(--v));
   width: var(--bar-width);
   left: calc(1px + var(--i) * var(--bar-step));
@@ -190,15 +222,14 @@ figure.chart {
   height: 100%;
   margin: 0;
   --chart-bar-border-width: 1px;
+  background-color: #EEE;
   --series-color: gray; /* Default, can be overridden per series. */
 }
 figure.chart > figcaption {
   padding: 0.5rem 0;
-  background-color: lightgray;
 }
 figure.chart > .legend {
   padding: 0.5rem 0;
-  background-color: lightgray;
 }
 figure.chart .vis-row {
 }

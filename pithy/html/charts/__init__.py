@@ -77,7 +77,7 @@ class ChartSeries:
       return (False, els)
 
 
-  def make_vis_div(self, transform_x:Callable[[Any],Any], transform_y:Callable[[Any],Any]) -> Div:
+  def make_series_div(self, transform_x:Callable[[Any],Any], transform_y:Callable[[Any],Any]) -> Div:
     '''
     Creates the div for the series visualization.
     Subclasses should typically leave this as is and instead override `fill_vis_div`.
@@ -469,7 +469,13 @@ def chart_figure(*,
 
   vis_scroll.append(Div(cl=['ticks', 'x', x.data_class, x.kind_class], _=x_tick_divs))
 
-  vis_scroll.append(Div(cl='vis', _=[s.make_vis_div(transform_x=x.transform, transform_y=y.transform) for s in series]))
+  vis = vis_scroll.append(Div(cl='vis',
+    _=[s.make_series_div(transform_x=x.transform, transform_y=y.transform) for s in series]))
+
+  if dbg:
+    vis.extend([
+      Div(cl='dbg packed-bar-step'),
+      Div(cl='dbg bar-step')])
 
   legend._ = [s.make_legend_item_div() for s in series]
 
