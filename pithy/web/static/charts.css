@@ -10,22 +10,22 @@ figure.chart.categorical-numerical {
   --tick-len: 0.25rem;
   --tick-font-scale: 0.75;
   --last-label-width: calc(0.707 * (var(--x-last-label-len) + 0.5em) * var(--tick-font-scale));
-  /* "packed" means the width calculations when there are enough bars that we cannot fit them all on the screen. */
-  --packed-bar-step: 1rem; /* The minimum bar step. */
+  /* "packed" indicates the width calculations for the minimum bar width, potentially overflowing into a scrollable area. */
+  --packed-bar-step: 1rem; /* The minimum start-to-start distance between bars. */
   --packed-bar-half: calc(0.5 * var(--packed-bar-step));
   --packed-last-half: max(var(--packed-bar-half), var(--last-label-width));
   --packed-bars-width: calc(var(--packed-bar-half) * (2*var(--nx) - 1) + var(--packed-last-half));
   --packed-vis-width: calc(var(--packed-bars-width) + 1px);
-  /* "wide" means the width calculations when there are not enough bars to fill the screen. */
+  /* "wide" indicates the width calculations for expanded bar widths, when the packed bars would not fill the view. */
   --wide-vis-width: 100%;
   --wide-bars-width: calc(var(--wide-vis-width) - 1px);
   --wide-bar-half-ideal: calc(var(--wide-bars-width) / (var(--nx) * 2));
   --wide-bar-half-spill: calc((var(--wide-bars-width) - var(--last-label-width)) / (var(--nx) * 2 - 1));
   --wide-bar-half: min(var(--wide-bar-half-ideal), var(--wide-bar-half-spill));
 
-  --bar-step: calc(2 * max(var(--packed-bar-half), var(--wide-bar-half)));
-  --bar-width: calc(var(--bar-step) - 1px);
-  --vis-width: max(var(--packed-vis-width), var(--wide-vis-width));
+  --bar-step: calc(2 * max(var(--packed-bar-half), var(--wide-bar-half))); /* Distance from start-to-start of adjacent bars. */
+  --bar-width: calc(var(--bar-step) - 1px); /* Width of a single bar. */
+  --vis-width: max(var(--packed-vis-width), var(--wide-vis-width)); /* The width of the vis area. */
 }
 
 figure.chart > .vis-row {
