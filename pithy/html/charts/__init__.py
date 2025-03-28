@@ -284,7 +284,7 @@ class NumericalAxis(ChartAxis):
    ticks:Iterable[float]=(),
    ticks_max=11,
    tick_step:float=0,
-   tick_fmt:TickFmt=str,
+   tick_fmt:TickFmt=lambda v: f'{v:,.0f}',
   ) -> None:
 
     if ticks_max < 0: raise ValueError(f'ticks_max must be >= 0: {ticks_max!r}.')
