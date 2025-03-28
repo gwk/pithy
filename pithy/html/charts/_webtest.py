@@ -39,14 +39,24 @@ async def home_page(request:Request) -> HTMLResponse:
   body = html.body
 
   body.append(chart_figure(
-    title='CHART 1',
+    dbg=True,
+    title='Full Width - Short Labels',
     y=LinearAxis(show_origin=True),
     series=[
-      BarSeries(name='Series0', points=[(f'{i}', i) for i in range(51)]),
+      BarSeries(name='Series0', points=[(f'{i}', i) for i in reversed(range(51))]),
     ]))
 
   body.append(chart_figure(
-    title='CHART 2',
+    dbg=True,
+    title='Full Width - Long Labels',
+    y=LinearAxis(show_origin=True),
+    series=[
+      BarSeries(name='Series0', points=[(f'{i:,}', i) for i in range(0, 50_001, 1000)]),
+    ]))
+
+  body.append(chart_figure(
+    dbg=True,
+    title='Limited Width - Short Labels',
     y=LinearAxis(show_origin=True),
     style='max-width:24em; max-height:24em;',
 
