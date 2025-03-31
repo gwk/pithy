@@ -86,6 +86,13 @@ def iter_interleave_sep(iterable: Iterable[_T], sep: _T) -> Iterator[_T]:
     yield el
 
 
+def iter_replace(iterable: Iterable[_T], old: _T, new: _T) -> Iterator[_T]:
+  'Yield the elements of `iterable`, replacing `old` with `new`.'
+  for el in iterable:
+    if el == old: yield new
+    else: yield el
+
+
 def iter_unique(iterable: Iterable[_T]) -> Iterator[_T]:
   'Drop repeated elements, like unix `uniq`. TODO: rename to `iter_drop_repeated`.'
   prev:Any = object()
