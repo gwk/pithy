@@ -584,6 +584,10 @@ a.icon:visited {
   color: #888;
 }
 
+#squelch_app .empty {
+  color: #8A8;
+}
+
 #squelch_app .unjoined {
   color: #840;
 }

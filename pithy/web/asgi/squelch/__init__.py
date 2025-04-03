@@ -427,6 +427,9 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
     elif joined_val is None:
       cl = 'null'
       display_val = 'NULL'
+    elif joined_val == '':
+      cl = 'empty'
+      display_val = 'EMPTY'
     else:
       cl = ''
       display_val = str(joined_val)
