@@ -107,7 +107,7 @@ class Totals:
           h, m = divmod(sub_minutes, 60)
           outZ(f' = {h:}:{m:02}')
           if match_minutes != sub_minutes:
-            outZ(f' *** MISMATCH')
+            outZ(' *** MISMATCH')
             self.is_valid = False
           if sub_minutes <= 0:
             outL()
