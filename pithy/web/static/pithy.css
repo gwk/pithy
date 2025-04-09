@@ -532,62 +532,62 @@ a.icon:visited {
 
 /* SquelchApp. */
 
-#squelch_app form {
+.squelch form {
   margin: 1em 0;
 }
 
-#squelch_app form #columns {
+.squelch form #columns {
   display: flex;
   flex-wrap: wrap;
   column-gap: 1em;
 }
 
-#squelch_app form label.en-col {
+.squelch form label.en-col {
   white-space: nowrap;
 }
 
-#squelch_app form label.en-col input {
+.squelch form label.en-col input {
   margin-right: 0.5em;
 }
 
-#squelch_app .detail {
+.squelch .detail {
   margin-bottom: 1em;
 }
 
-#squelch_app .pagination-control span.msg {
+.squelch .pagination-control span.msg {
   margin-left: 0.5em;
 }
 
-#squelch_app #results {
+.squelch #results {
   width: 100%;
   overflow-x: scroll;
 }
 
-#squelch_app #results > table {
+.squelch #results > table {
   table-layout: auto;
 }
 
-#squelch_app #results > table th {
+.squelch #results > table th {
   resize: horizontal;
   overflow: clip;
 }
 
-#squelch_app #results > table td {
+.squelch #results > table td {
   max-width: 95vw;
 }
 
-#squelch_app .error {
+.squelch .error {
   color: #800;
 }
 
-#squelch_app .null {
+.squelch .null {
   color: #888;
 }
 
-#squelch_app .empty {
+.squelch .empty {
   color: #8A8;
 }
 
-#squelch_app .unjoined {
+.squelch .unjoined {
   color: #840;
 }

@@ -1,19 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import Any, Callable, Iterable, Protocol, Sequence
+from typing import Any, Callable, Iterable
 from warnings import warn
 
 from pithy.string import str_tree, str_tree_pairs
 from pithy.url import fmt_url
-from starlette.authentication import has_required_scope
-from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import QueryParams
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import HTMLResponse
 
-from ...html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, Main, MuChild, Pre, Present, Script, Select, Summary,
+from ...html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, MuChild, Pre, Present, Script, Select, Summary,
   Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ...html.parse import linkify
 from ...html.parts import pagination_control
@@ -61,25 +58,15 @@ class TableAbbrs:
 
 
 
-class SquelchResponseFn(Protocol):
-
-  def __call__(self, request:Request, main:Main, *, title:str) -> HTMLResponse: ...
-
-
-class SquelchApp:
-  'An ASGI app that provides a web interface for running SQL queries.'
+class Squelch:
+  'An object that provides a web interface for running SQL queries.'
 
   def __init__(self,
-    get_conn:Callable[[],Conn],
-    html_response:SquelchResponseFn,
     schemas:Iterable[Schema],
     vis: dict[str,dict[str,dict[str,Vis|bool]]], # Maps schema -> table -> column -> Vis|bool.
     order_by: dict[str,dict[str,str]]|None=None,
-    requires:str|Sequence[str]=()
   ) -> None:
 
-    self.get_conn = get_conn
-    self.html_response = html_response
     self.schemas = { s.name : s for s in schemas }
 
     def _vis_for(schema:str, table:str, col:str) -> Vis:
@@ -103,21 +90,10 @@ class SquelchApp:
             raise ValueError(f'invalid `order_by` table name in schema {schema_name!r}: {table_name!r}; valid names: {schema.tables_dict.keys()}')
           self.order_by[schema_name][table_name] = order_by_clause
 
-    self.requires = (requires,) if isinstance(requires, str) else tuple(requires)
-    # TODO: optional table restrictions.
 
-
-  async def __call__(self, scope, receive, send):
-    'ASGI app interface.'
-    request = Request(scope, receive)
-    if not has_required_scope(request, self.requires): raise HTTPException(status_code=403)
-    response = await run_in_threadpool(self.render_page, request)
-    await response(scope, receive, send)
-
-
-  def render_page(self, request:Request) -> HTMLResponse:
+  def render(self, request:Request, conn:Conn) -> Div:
     '''
-    The main page for the SELECT app.
+    Render a div representing the controls and optionally the DB query result from the request.
     '''
     path = request.url.path
     params = request.query_params
@@ -160,12 +136,12 @@ class SquelchApp:
     table_names = [f'{qe(s.name)}.{qe(t.name)}' for s in self.schemas.values() for t in s.tables]
     if table_name: assert table_name in table_names # Sanity check that these generated table names match the parsed table name.
 
-    main = Main(id='squelch_app', cl='body-child-full')
+    div = Div(cl='squelch')
 
-    main.append(main_script())
-    main.append(H1(A(href=path, _='SELECT')))
+    div.append(squelch_ui_script())
+    div.append(H1(A(href=path, _='SELECT')))
 
-    form = main.append(Form(cl='kv-grid-max', action=path, autocomplete='off'))
+    form = div.append(Form(cl='kv-grid-max', action=path, autocomplete='off'))
     #^ autocomplete off is important for the table select input,
     #^ which otherwise remembers the current value when the user presses the back button.
 
@@ -206,15 +182,15 @@ class SquelchApp:
       assert table
       assert abbrs is not None
       assert order_by is not None
-      main.extend(
-        self.render_table(schema=schema, table=table, abbrs=abbrs, path=path, params=params, en_col_names=en_col_names,
+      div.extend(
+        self.render_table(conn=conn, schema=schema, table=table, abbrs=abbrs, path=path, params=params, en_col_names=en_col_names,
           order_by=order_by))
 
     title = 'Query'
     if table_name: title += f' {table_name}'
     if where := params.get('where'):
       title += f' WHERE {where}'
-    return self.html_response(request, main, title=title)
+    return div
 
 
   def get_schema_table(self, params:QueryParams) -> tuple[str,Schema,Table]|None:
@@ -234,7 +210,7 @@ class SquelchApp:
     return full_name, schema, table
 
 
-  def render_table(self, *, schema:Schema, table:Table, abbrs:TableAbbrs, path:str, params:QueryParams, en_col_names:set[str],
+  def render_table(self, *, conn:Conn, schema:Schema, table:Table, abbrs:TableAbbrs, path:str, params:QueryParams, en_col_names:set[str],
     order_by:str) -> list[HtmlNode]:
 
     assert en_col_names # Need at least one column to render.
@@ -259,7 +235,6 @@ class SquelchApp:
 
     query = f'SELECT{distinct_clause}{columns_part}{from_clause}{where_clause}{order_by_clause}\nLIMIT {limit} OFFSET {offset}'
 
-    conn = self.get_conn()
     c = conn.cursor()
     error = ''
     try:
@@ -455,7 +430,7 @@ def capital_letters_abbr(s:str) -> str:
   return ''.join(c for c in s if c.isupper())
 
 
-def main_script() -> Script:
+def squelch_ui_script() -> Script:
   return Script('''
   function updateAllColCheckboxes(checked) {
     const checkboxes = document.querySelectorAll('.en-col input[type="checkbox"]');
