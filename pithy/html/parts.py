@@ -38,7 +38,9 @@ def pagination_control(count:int|None, limit:int, offset:int, params:Mapping[str
 
   if count is None:
     msg.append('Query failed.')
-  elif count > 0:
+  elif count == 0:
+    msg.append('No results.')
+  else:
     if count > limit:
       s = offset + 1
       l = min(offset + limit, count)
@@ -48,11 +50,11 @@ def pagination_control(count:int|None, limit:int, offset:int, params:Mapping[str
         first['href'] = f'?{qp}'
         prev['href']  = f'?{qp}&offset={offset - limit}'
       if l < count:
+        rem = count % limit
+        last_offset = count - (rem or limit)
         next_['href'] = f'?{qp}&offset={offset + limit}'
-        last['href']  = f'?{qp}&offset={count - limit}'
+        last['href']  = f'?{qp}&offset={last_offset}'
     else:
       msg.append(f'{count} results.')
-  else:
-    msg.append('No results.')
 
   return div
