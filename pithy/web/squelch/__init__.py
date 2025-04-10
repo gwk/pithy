@@ -276,7 +276,8 @@ class Squelch:
     if error:
       parts.append(Details(Summary('Error'), Pre(cl='detail', _=error), open=''))
     else:
-      pagination = Div(id='pagination', cl='kv-grid-max',  _=[pagination_control(count, limit, offset, params)])
+      pagination = Div(id='pagination', cl='kv-grid-max',
+        _=pagination_control(count=count, limit=limit, offset=offset, params=params))
       parts.extend([
         pagination,
         Div(id='results', _=HtmlTable(

@@ -536,6 +536,14 @@ a.icon:visited {
   font-weight: 600;
 }
 
+
+/* pagination-control. */
+
+.pagination-control span.msg {
+  margin-left: 0.5em;
+}
+
+
 /* SquelchApp. */
 
 .squelch form {
@@ -558,10 +566,6 @@ a.icon:visited {
 
 .squelch .detail {
   margin-bottom: 1em;
-}
-
-.squelch .pagination-control span.msg {
-  margin-left: 0.5em;
 }
 
 .squelch #results {
