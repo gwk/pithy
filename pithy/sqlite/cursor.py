@@ -147,7 +147,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     where_clause = f' WHERE {where}' if where else ''
     for row in self.execute(f'SELECT COUNT() FROM {table}{where_clause}', args):
       return row[0] # type: ignore[no-any-return]
-    return 0
+    raise Exception(f'No row returned from COUNT query: {table}{where_clause}')
 
 
   @overload
