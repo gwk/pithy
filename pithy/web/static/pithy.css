@@ -389,8 +389,15 @@ table tbody tr:nth-child(odd) {
 a.icon {
   color: #000;
   text-decoration: none;
-  cursor: pointer;
+  /* The following are overridden by following rule for links with any destination attr. */
+  cursor: default;
+  opacity: 0.5;
 }
+a.icon:is([href], [hx-delete], [hx-get], [hx-patch], [hx-post], [hx-put]) {
+  cursor: pointer;
+  opacity: 1;
+}
+
 a.icon:active {
   color: #000;
   text-decoration: none;
@@ -403,7 +410,6 @@ a.icon:visited {
   color: rgb(0, 0, 0);
   text-decoration: none;
 }
-
 
 /* Htmx request disables events. */
 .request-disables-clicks.htmx-request {

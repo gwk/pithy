@@ -55,6 +55,4 @@ def pagination_control(count:int|None, limit:int, offset:int, params:Mapping[str
   else:
     msg.append('No results.')
 
-  for icon in icons:
-    if 'href' not in icon.attrs: icon.append_class('o50')
   return div
