@@ -50,17 +50,19 @@ class Present:
   The Present class is used to only set an attribute key if `is_present` evaluates to True.
   If an attribute has a `Present(True)` value, then the markup output will have an empty value set.
   https://html.spec.whatwg.org/multipage/syntax.html#attributes-2.
-  For attributes that are unconditionally set, just use `key=''`.
+  For attributes that are unconditionally set, it is more appropriate to use `key=''`.
   '''
   is_present:bool
+  val:Any
 
-  def __init__(self, is_present:Any):
+  def __init__(self, is_present:Any, *, val:Any=''):
     object.__setattr__(self, 'is_present', bool(is_present))
+    object.__setattr__(self, 'val', val)
 
   def __repr__(self) -> str:
     return f'Present({self.is_present})'
 
-  def __setattr__(self, __name: str, __value: Any) -> None:
+  def __setattr__(self, _name: str, _value: Any) -> None:
     raise AttributeError('`Present` object is immutable')
 
 
@@ -794,15 +796,16 @@ class Mu:
     parts: list[str] = []
     for k, v in sorted(items, key=lambda item: self.attr_sort_ranks.get(item[0], 0)):
       k = self.replaced_attrs.get(k, k)
+      if isinstance(v, Present):
+        if v.is_present: v = v.val
+        else: continue
       match v:
         case None: v = 'none'
         case True: v = 'true'
         case False: v = 'false'
+        case float(): v = prefer_int(v)
         case list() | dict(): v = render_json(v, sort=False, indent=None)
-        case Present():
-          if v.is_present: v = ''
-          else: continue
-      parts.append(f" {k}={self.quote_attr_val(str(prefer_int(v)))}")
+      parts.append(f" {k}={self.quote_attr_val(str(v))}")
     return ''.join(parts)
 
 
