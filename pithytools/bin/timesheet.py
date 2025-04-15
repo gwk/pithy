@@ -90,6 +90,8 @@ class Totals:
           end_minutes = m # Cumulative from last start.
           assert prev_minutes is not None
           assert prev_rate is not None
+          if prev_minutes > end_minutes:
+            exit('timesheet error: negative time block')
           block = TimeBlock(start=prev_minutes, end=end_minutes, rate=prev_rate)
           self.all_blocks.append(block)
           curr_blocks.append(block)
@@ -182,7 +184,6 @@ class TimeBlock:
     self.start = start
     self.end = end
     self.minutes = end - start
-    assert self.minutes > 0
     self.rate = rate
 
   @property
