@@ -113,6 +113,7 @@ body {
 
 .gap-1ch { gap: 1ch; }
 .gap-1em { gap: 1em; }
+.gap-2em { gap: 2em; }
 .gap-05em { gap: 0.5em; }
 
 .mv-05em { margin-top: 0.5em; margin-bottom: 0.5em; }
