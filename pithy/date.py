@@ -153,34 +153,47 @@ class DateRange(Sequence[Date]):
     return last
 
 
-def dt_IM(dt:DateTime|Time, compact=False) -> str:
+def dt_IM(dt:DateTime|Time) -> str:
   'Format a DateTime or Time as e.g. "4:00".'
   return f'{dt:%I:%M}'.lstrip('0') # '04:00'.lstrip('0') => '4:00'.
 
 
-def dtp_IM(start:DateTime|Time, end:DateTime|Time) -> str:
-  'Format a DateTime or Time range as e.g. "4:00-5:00".'
-  return f'{dt_IM(start)}-{dt_IM(end)}'
-
-
-def dt_IMp(dt:DateTime|Time, compact=False) -> str:
+def dt_IMp(dt:DateTime|Time, *, compact=False) -> str:
   'Format a DateTime or Time as e.g. "4:00PM", or "4PM" if compact is True.'
   if compact and not dt.minute:
     return f'{dt:%I%p}'.lstrip('0') # '04AM'.lstrip('0') => '4AM'.
   return f'{dt:%I:%M%p}'.lstrip('0') # '04:30AM'.lstrip('0') => '4:30AM'.
 
 
-def dtp_IMp(start:DateTime|Time, end:DateTime|Time, compact=False) -> str:
-  'Format a DateTime or Time range as e.g. "4:00PM-5:00PM", or "4PM-5PM" if compact is True.'
-  return f'{dt_IMp(start, compact)}-{dt_IMp(end, compact)}'
-
-
-def dt_Ymd_IMp(dt:DateTime|Time, *, sep:str='') -> str:
-  'Format a DateTime or Time as e.g. "2020-01-01 4:30PM".'
-  time = dt_IMp(dt)
+def dt_Ymd_IMp(dt:DateTime|Time, *, compact=False, sep:str='') -> str:
+  '''
+  Format a DateTime or Time as e.g. "2020-01-01 4:30PM".
+  If `sep` is not provided, then it defaults to one or two spaces, depending on the length of the time portion.
+  '''
+  time = dt_IMp(dt, compact=compact)
   if not sep:
     sep = '  ' if len(time) < 7 else ' '
   return f'{dt:%Y-%m-%d}{sep}{time}'
+
+
+def dt_interval_IM(start:DateTime|Time, end:DateTime|Time) -> str:
+  'Format a DateTime or Time range as e.g. "4:00-5:00".'
+  return f'{dt_IM(start)}-{dt_IM(end)}'
+
+
+def dt_interval_IMp(start:DateTime|Time, end:DateTime|Time, *, compact=False) -> str:
+  'Format a DateTime or Time range as e.g. "4:00PM-5:00PM", or "4PM-5PM" if compact is True.'
+  return f'{dt_IMp(start, compact=compact)}-{dt_IMp(end, compact=compact)}'
+
+
+def dt_interval_Ymd_IMp_IMp(start:DateTime, end:DateTime|Time, compact=False) -> str:
+  '''
+  Format a DateTime or Time range as e.g. "2020-01-01 4:00PM-5:00PM", or "2020-01-01 4PM-5PM" if compact is True.
+  If the date values of start and end are not the same, then the full end date is included.
+  '''
+  if isinstance(end, Time) or start.date() == end.date():
+    return f'{dt_Ymd_IMp(start, compact=compact)}-{dt_IMp(end, compact=compact)}'
+  return f'{dt_Ymd_IMp(start, compact=compact)} - {dt_Ymd_IMp(end, compact=compact)}'
 
 
 def parse_dt(string: str, fmt:str|None=None) -> DateTime:
