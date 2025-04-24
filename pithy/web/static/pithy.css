@@ -202,12 +202,12 @@ details summary.disclosure-flush::before {
 
 /* Links. */
 
-:where(A.button, A.button:visited, A.button:hover, A.button:active) {
+A.button, A.button:visited, A.button:hover, A.button:active {
   color: #000;
   text-decoration: none;
 }
 
-:where(a.button, button) {
+a.button, button {
   appearance: none;
   background-color: #FFF;
   border: none;
