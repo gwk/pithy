@@ -5,7 +5,7 @@ import re
 import shlex
 from itertools import zip_longest
 from string import Template
-from typing import Any, Callable, cast, NamedTuple, Optional, Pattern, TextIO
+from typing import Any, Callable, cast, NamedTuple, Pattern, TextIO
 
 from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
 from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
@@ -26,7 +26,7 @@ class IotParseError(TestCaseError): pass
 
 class FileExpectation:
 
-  def __init__(self, path: str, info: dict[str, str], expand_str_fn: Callable):
+  def __init__(self, path:str, info:dict[str,str], expand_str_fn:Callable):
     if path.find('..') != -1:
       raise TestCaseError(f"file expectation {path}: cannot contain '..'")
     self.path = expand_str_fn(path)
@@ -50,11 +50,11 @@ class FileExpectation:
     self.match_error: tuple[int,Pattern|None,str]|None = None
 
 
-  def compile_match_lines(self, text: str) -> list[tuple[str, Pattern]]:
+  def compile_match_lines(self, text:str) -> list[tuple[str,Pattern]]:
     return [self.compile_match_line(i, line) for i, line in enumerate(text.splitlines(True), 1)]
 
 
-  def compile_match_line(self, i: int, line: str) -> tuple[str, Pattern]:
+  def compile_match_line(self, i:int, line:str) -> tuple[str, Pattern]:
     prefix = line[:2]
     contents = line[2:]
     valid_prefixes = ('|', '|\n', '| ', '~', '~\n', '~ ')
@@ -91,8 +91,8 @@ class ParConfig(NamedTuple):
 class Case:
   'Case represents a single test case, or a set of defaults.'
 
-  def __init__(self, ctx:Ctx, proto: Optional['Case'], stem: str, config: dict, par_configs: list[ParConfig],
-   par_stems_used: set[str]) -> None:
+  def __init__(self, ctx:Ctx, proto:'Case|None', stem:str, config:dict, par_configs:list[ParConfig], par_stems_used:set[str]) \
+   -> None:
     self.dir: str = path_dir(stem)
     self.stem: str = self.dir if path_name(stem) == '_' else stem # TODO: better naming for 'logical stem' (see code in main).
     self.name: str = path_name(self.stem)
@@ -183,10 +183,10 @@ class Case:
     coven_cmd.append('--')
     return coven_cmd
 
-  def std_name(self, std: str) -> str: return f'{self.name}.{std}'
+  def std_name(self, std:str) -> str: return f'{self.name}.{std}'
 
 
-  def describe(self, file: TextIO) -> None:
+  def describe(self, file:TextIO) -> None:
     def stable_repr(val: Any) -> str:
       if is_dict(val):
         return '{{{}}}'.format(', '.join(f'{k!r}:{v!r}' for k, v in sorted(val.items()))) # sort dict representations. TODO: factor out.
@@ -214,7 +214,7 @@ class Case:
     setattr(self, name, val)
 
 
-  def derive_info(self, ctx: Ctx) -> None:
+  def derive_info(self, ctx:Ctx) -> None:
     if self.name == '_default': return # No derived info for prototype cases.
     rel_dir, _, multi_index = self.stem.partition('.')
     self.multi_index = int(multi_index) if multi_index else None
@@ -229,7 +229,7 @@ class Case:
     env['STEM'] = self.stem
     env['DIR'] = self.dir
 
-    def default_to_env(key: str) -> None:
+    def default_to_env(key:str) -> None:
       if key not in env and key in os.environ:
         env[key] = os.environ[key]
 
@@ -240,11 +240,11 @@ class Case:
     default_to_env('PYTHONPATH')
     default_to_env('SDKROOT')
 
-    def expand_str(val: Any) -> str:
+    def expand_str(val:Any) -> str:
       t = Template(val)
       return t.safe_substitute(env)
 
-    def expand(val: Any) -> list[str]:
+    def expand(val:Any) -> list[str]:
       if val is None:
         return []
       if is_str(val):
@@ -340,24 +340,24 @@ iot_key_subs = {
   'in' : 'in_',
 }
 
-def is_int_or_ellipsis(val: Any) -> bool:
+def is_int_or_ellipsis(val:Any) -> bool:
   return val is Ellipsis or is_int(val)
 
-def is_compile_cmd(val: Any) -> bool:
+def is_compile_cmd(val:Any) -> bool:
   return is_list(val) and all(is_str_or_list(el) for el in val)
 
-def is_valid_links(val: Any) -> bool:
+def is_valid_links(val:Any) -> bool:
   return is_str(val) or is_set_of_str(val) or is_dict_of_str(val)
 
-def validate_path(key: str, path: Any) -> None:
+def validate_path(key:str, path:Any) -> None:
   if not path: raise TestCaseError(f'key: {key}: path is empty: {path!r}')
   if '.' in path: raise TestCaseError(f"key: {key}: path cannot contain '.': {path!r}")
 
-def validate_exp_mode(key: str, mode: str) -> None:
+def validate_exp_mode(key:str, mode:str) -> None:
   if mode not in file_expectation_fns:
     raise TestCaseError(f'key: {key}: invalid file expectation mode: {mode}')
 
-def validate_exp_dict(key: str, val: Any) -> None:
+def validate_exp_dict(key:str, val:Any) -> None:
   if not is_dict(val):
     raise TestCaseError(f'file expectation: {key}: value must be a dictionary; recieved {val!r}')
   for k in val:
@@ -365,7 +365,7 @@ def validate_exp_dict(key: str, val: Any) -> None:
       raise TestCaseError(f'file expectation: {key}: invalid expectation property: {k}')
 
 
-def validate_files_dict(key: str, val: Any) -> None:
+def validate_files_dict(key:str, val:Any) -> None:
   if not is_dict(val):
     raise TestCaseError(f'file expectation: {key}: value must be a dictionary; recieved {val!r}')
   for k, exp_dict in val.items():
@@ -373,7 +373,7 @@ def validate_files_dict(key: str, val: Any) -> None:
       raise TestCaseError(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val)')
     validate_exp_dict(k, exp_dict)
 
-def validate_links_dict(key: str, val: Any) -> None:
+def validate_links_dict(key:str, val:Any) -> None:
   if is_str(val):
     items = [(val, val)]
   elif is_set(val):
@@ -386,7 +386,7 @@ def validate_links_dict(key: str, val: Any) -> None:
     if link.find('..') != -1: raise TestCaseError(f"key: {key}: link location contains '..': {link}")
 
 
-case_key_validators: dict[str, tuple[str, Callable[[Any], bool], Callable[[str,Any],None]|None]] = {
+case_key_validators: dict[str,tuple[str,Callable[[Any],bool], Callable[[str,Any],None]|None]] = {
   # key => msg, validator_predicate, validator_fn.
   'args':     ('string or list of strings', is_str_or_list,     None),
   'cmd':      ('string or list of strings', is_str_or_list,     None),
@@ -416,13 +416,13 @@ case_key_validators: dict[str, tuple[str, Callable[[Any], bool], Callable[[str,A
 
 # file expectation functions.
 
-def compare_equal(exp: FileExpectation, val: str) -> bool:
+def compare_equal(exp:FileExpectation, val:str) -> bool:
   return exp.val == val # type: ignore[no-any-return]
 
-def compare_contain(exp: FileExpectation, val: str) -> bool:
+def compare_contain(exp:FileExpectation, val:str) -> bool:
   return val.find(exp.val) != -1
 
-def compare_match(exp: FileExpectation, val: str) -> bool:
+def compare_match(exp:FileExpectation, val:str) -> bool:
   lines: list[str] = val.splitlines(True)
   for i, (pair, line) in enumerate(zip_longest(exp.match_pattern_pairs, lines), 1):
     if pair is None:
@@ -435,7 +435,7 @@ def compare_match(exp: FileExpectation, val: str) -> bool:
   return True
 
 
-def compare_ignore(exp: FileExpectation, val: str) -> bool:
+def compare_ignore(exp:FileExpectation, val:str) -> bool:
   return True
 
 
