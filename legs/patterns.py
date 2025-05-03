@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import defaultdict
-from typing import Callable, Iterable, Iterator, Optional, Sequence
+from typing import Callable, Iterable, Iterator, Sequence
 
 from pithy.io import errL
 from pithy.string import clip_suffix
@@ -63,7 +63,7 @@ class LegsPattern:
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
 
-  def gen_incomplete(self) -> Optional['LegsPattern']: raise NotImplementedError(self)
+  def gen_incomplete(self) -> 'LegsPattern|None': raise NotImplementedError(self)
 
 
 class StructPattern(LegsPattern):

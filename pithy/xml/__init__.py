@@ -4,7 +4,7 @@
 Xml Mu/markup type.
 '''
 
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, Union
 
 from ..markup import _Mu, Mu, MuAttrs, MuChildOrChildrenLax
 
@@ -31,6 +31,6 @@ class Xml(Mu):
    _:MuChildOrChildrenLax=(),
    cl:Iterable[str]|None=None,
    _orig:_Mu|None=None,
-   _parent:Optional['Mu']=None,
+   _parent:'Mu|None'=None,
    **kw_attrs:Any) -> None:
     super().__init__(tag=tag, attrs=attrs, _=_, cl=cl, _orig=_orig, _parent=_parent, **kw_attrs)

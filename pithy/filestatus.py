@@ -3,7 +3,7 @@
 from os import DirEntry, stat as _stat, stat_result as StatResult
 from stat import (S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFMT, S_IFREG, S_IFSOCK, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG,
   S_IRWXO, S_IRWXU, S_ISGID, S_ISUID, S_ISVTX, S_IWGRP, S_IWOTH, S_IWUSR, S_IXGRP, S_IXOTH, S_IXUSR)
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 from .path import Path, PathOrFd
 
@@ -63,7 +63,7 @@ class FileStatus(NamedTuple):
       user_id=s.st_uid)
 
   @classmethod
-  def from_dir_entry(class_, entry: DirEntry, *, follow:bool) -> Optional['FileStatus']:
+  def from_dir_entry(class_, entry: DirEntry, *, follow:bool) -> 'FileStatus|None':
     return class_.from_stat_result(entry.path, entry.stat(follow_symlinks=follow))
 
 

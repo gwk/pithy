@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from typing import Any, cast, Iterable, Optional, TextIO
+from typing import Any, cast, Iterable, TextIO
 
 from .string import iter_excluding_str
 
@@ -44,7 +44,7 @@ class Schema:
     return any((self.atoms, self.seqs, self.dicts))
 
 
-  def update(self: 'Schema', other: Optional['Schema']) -> None:
+  def update(self: 'Schema', other: 'Schema|None') -> None:
     if other is None: return
     self.atoms.update(other.atoms) # Counter accumulates the counts automatically.
     for et, es in other.seqs.items(): # Recursively update sequence element type schemas.

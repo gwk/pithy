@@ -15,8 +15,7 @@ from collections import Counter
 from functools import wraps
 from inspect import get_annotations
 from itertools import chain
-from typing import (Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Mapping, Match, Optional, overload, Self,
-  TypeVar)
+from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Mapping, Match, overload, Self, TypeVar
 from xml.etree.ElementTree import Element
 
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -110,7 +109,7 @@ class Mu:
    tag:str='',
    cl:Iterable[str]|None=None,
    _orig:Self|None=None, # _orig is set by methods that are called with the `traversable` option.
-   _parent:Optional['Mu']=None, # _parent is set by methods that are called with the `traversable` option.
+   _parent:'Mu|None'=None, # _parent is set by methods that are called with the `traversable` option.
    attrs:MuAttrs|None=None,
    **kw_attrs:Any # Additional attrs can be passed as keyword arguments. These take precedence over keys in `attrs`.
    ) -> None:
@@ -560,10 +559,10 @@ class Mu:
 
 
   @overload
-  def pick_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional[_Mu]: ...
+  def pick_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu|None: ...
 
   @overload
-  def pick_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional['Mu']: ...
+  def pick_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu|None': ...
 
   def pick_opt(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     '''
@@ -581,10 +580,10 @@ class Mu:
 
 
   @overload
-  def find_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional[_Mu]: ...
+  def find_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu|None: ...
 
   @overload
-  def find_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Optional['Mu']: ...
+  def find_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu|None': ...
 
   def find_opt(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
     '''
