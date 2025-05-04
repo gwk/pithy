@@ -235,10 +235,10 @@ class Case:
 
     default_to_env('HOME') # otherwise git fails with "error: Could not expand include path '~/.gitcinclude'".
     default_to_env('LANG') # necessary to make std file handles unicode-aware.
-    default_to_env('NODE_PATH')
+    default_to_env('NODE_PATH') # Node (JS).
     default_to_env('PATH')
     default_to_env('PYTHONPATH')
-    default_to_env('SDKROOT')
+    default_to_env('SDKROOT') # Swift.
 
     def expand_str(val:Any) -> str:
       t = Template(val)
@@ -256,7 +256,7 @@ class Case:
         return [expand_str(el) for el in val]
       raise TestCaseError(f'expand received unexpected value: {val}')
 
-    # add the case env one item at a time.
+    # add the case env items one at a time.
     # sorted because we want expansion to be deterministic;
     # TODO: should probably expand everything with just the builtins;
     # otherwise would need some dependency resolution between vars.
@@ -284,6 +284,7 @@ class Case:
     elif len(self.dflt_src_paths) < 1:
       raise TestCaseError('no `cmd` specified and no default source path found')
     else:
+      # Have single default source path.
       dflt_path = self.dflt_src_paths[0]
       dflt_name = path_name(dflt_path)
       self.test_links.append((dflt_path, dflt_name))
