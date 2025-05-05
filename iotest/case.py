@@ -332,7 +332,10 @@ class Case:
       self.test_expectations.append(exp)
 
 
-# TODO: this is confusing. It should be replaced or else documented.
+# Attribute name substitutions.
+# 'in' is a valid iot dictionary key that is mapped to 'in_' because it is a python keyword.
+# '.in', '.out', '.err' are file ext strings and are mapped.
+# '.default_src_paths', 'test_info_paths' are explicitly set in create_cases.
 iot_key_subs = {
   '.in' : 'in_',
   '.err' : 'err_path',
