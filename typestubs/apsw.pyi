@@ -2,7 +2,7 @@
 
 from typing import Any, Callable, Iterable, Iterator
 
-from pithy.typing import OptBaseExc, OptTraceback, OptTypeBaseExc
+from pithy.typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 class Error(Exception): ...
