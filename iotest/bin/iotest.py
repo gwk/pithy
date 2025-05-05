@@ -206,8 +206,7 @@ def create_cases(ctx:Ctx, cases_dict:dict[str, Case], parent_proto:Case|None, di
   A list implies a series of tests which are consecutively named `<stem>.<index>`.
 
   ## Parameterized files
-  A case file may contain `%` formatters and will then be interpreted as a parameterized name
-  that applies over multiple cases.
+  A case file may contain `%` formatters and will then be interpreted as a parameterized name that applies over multiple cases.
   Each case must have one non-parameterized contributing file; otherwise there is no way to infer its existence.
   '''
   configs = defaultdict[str,dict](dict)
