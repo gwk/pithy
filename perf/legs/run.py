@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-from os import environ
 from sys import argv
 from typing import Any
 
 from perf import Runner  # type: ignore
-from pithy.io import errSL
 from pithy.path import path_name
 
 

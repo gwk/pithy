@@ -6,7 +6,7 @@ import Foundation
 var counts:[TokenKind:Int] = [:]
 
 func parse(path: String) {
-  let string = try! String(contentsOfFile: path)
+  let string = try! String(contentsOfFile: path, encoding: .utf8)
   let text = Array(string.utf8)
   let source = Source(name: path, text: text)
   for token in Lexer(source: source) {
