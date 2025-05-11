@@ -237,6 +237,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     TODO: support returning clause.
     '''
     if isinstance(by, str): by = (by,)
+    if not isinstance(by, tuple): raise TypeError('`by` argument must be a string or tuple of strings.')
     if not by: raise ValueError('`by` argument must not be empty for safety.')
     where = ' AND '.join(f'{sql_quote_entity(k)} = :{k}' for k in by)
     fields = tuple(k for k in kwargs if k not in by)
