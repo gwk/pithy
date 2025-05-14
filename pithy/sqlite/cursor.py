@@ -190,8 +190,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     Execute an insert of the dictionary `args`, synthesized from `into` (the table name) and `fields`.
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;
     a KeyError is raised if one of the fields is not provided in either of these sources.
-    If `returning` is a tuple, return a single row; if it is a string, return a single column.
-    TODO: support json.
+    If `returning` is a tuple, return a single row; if it is a string, return a single field value.
     '''
     if fields is None: fields = args.keys()
     stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields), returning=returning)
