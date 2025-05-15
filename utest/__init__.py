@@ -7,7 +7,7 @@ import atexit as _atexit
 import inspect as _inspect
 import pathlib as _pathlib
 import re as _re
-from os import getcwd as _getcwd
+from os import environ as _environ, getcwd as _getcwd
 from os.path import relpath as _rel_path
 from sys import stderr as _stderr
 from traceback import format_exception as _format_exception
@@ -251,7 +251,8 @@ def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, r
   try: name = subj.__qualname__
   except AttributeError: name = str(subj)
 
-  path = _rel_path(info.filename)
+  path = _rel_path(info.filename, start=_work_dir)
+
   if '/' not in path: path = f'./{path}'
   _errL(f'\n{path}:{info.lineno}: utest failure: {name}')
 
@@ -296,6 +297,16 @@ def _compare_exceptions(exp:Any, act:Any) -> bool:
 def _errL(*items:Any) -> None: print(*items, sep='', file=_stderr)
 
 
+def _fmt_path(path:str) -> str:
+  if path.startswith(_starting_work_dir_slash):
+    rel_file = path.removeprefix(_starting_work_dir_slash)
+    path = ('' if ('/' in rel_file) else './') + rel_file
+  elif path.startswith(_home_dir_slash):
+    rel_file = path.removeprefix(_home_dir_slash)
+    path = '~/' + rel_file
+  return path
+
+
 def _print_exception(exc: BaseException) -> Any:
 
   messages = _format_exception(type(exc), exc, tb=exc.__traceback__, limit=None, chain=True)
@@ -306,12 +317,7 @@ def _print_exception(exc: BaseException) -> Any:
       s_in = m['stack_in'] or ''
       fn = m['stack_fn']
       code = m['stack_code']
-      if file.startswith(_starting_work_dir_slash):
-        rel_file = file[len(_starting_work_dir_slash):]
-        file = ('' if ('/' in rel_file) else './') + rel_file
-      elif file.startswith(_home_dir_slash):
-        rel_file = file[len(_home_dir_slash):]
-        file = '~/' + rel_file
+      file = _fmt_path(file)
       _stderr.write(f'  File "{file}", line {line}{s_in}{fn}{code}')
     else:
       _stderr.write(msg)
@@ -321,7 +327,7 @@ def _print_exception(exc: BaseException) -> Any:
 _home_dir = str(_pathlib.Path.home())
 _home_dir_slash = _home_dir + ('' if _home_dir.endswith('/') else '/')
 
-_work_dir = _getcwd()
+_work_dir = _environ.get('UTEST_WORK_DIR', '') or _getcwd()
 _starting_work_dir_slash = _work_dir + ('' if _work_dir.endswith('/') else '/')
 
 _exc_msg_re = _re.compile(r'''(?sx) # s=Dotall; each message can contain newlines.
