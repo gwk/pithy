@@ -1,0 +1,14 @@
+// See: https://zed.dev/docs/configuring-zed#settings-files
+{
+  "languages": {
+    "Python": {
+      "tab_size": 2,
+      "formatter": {
+        "external": {
+          "command": "isort",
+          "arguments": ["-", "--stdout"]
+        }
+      }
+    }
+  }
+}
