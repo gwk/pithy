@@ -61,7 +61,7 @@ class Transtructor:
     self.prefigures:dict[type,PrefigureFn] = {}
 
 
-  def transtruct(self, desired_type:type[Desired], val:Input, ctx:Ctx=None, dbg=False) -> Desired:
+  def transtruct(self, desired_type:type[Desired], val:Input, *, ctx:Ctx=None, dbg=False) -> Desired:
     try:
       transtructor:Callable[[Input,Ctx],Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
     except TypeError as e:
