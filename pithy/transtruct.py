@@ -432,7 +432,16 @@ def transtruct_type(v:Any, ctx:Ctx) -> type:
   raise ValueError(f'Expected type name (str); received {v}.')
 
 
-def bool_for_val(val:Any) -> bool: return bool_vals[val]
+def bool_for_val(val:Any) -> bool:
+  '''
+  Return the corresponding boolean value for the small set of well-known bool, int, float and str values.
+  Raises ValueError for all other arguments.
+  '''
+  try:
+    return bool_vals[val]
+  except Exception as e:
+    raise ValueError(val) from e
+
 
 def opt_bool(val:Any) -> bool|None:
   if val in (None, ''): return None
@@ -515,7 +524,7 @@ bool_str_vals:dict[str,bool] = dict([
 bool_vals:dict[Any,bool] = dict([
   (False, False),
   (True, True),
-  (0, False),
-  (1, True),
+  (0, False), # Also matches 0.0.
+  (1, True), # Also matches 1.0.
   *bool_str_vals.items(),
 ])
