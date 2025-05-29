@@ -53,7 +53,10 @@ class Transtructor:
   such as an attribute whose type is a union or base class.
 
   Prefigures are functions that take a raw input value and return an altered value.
-  Whether or not the alteration is a mutation of the original input value is up to the programmer for their specific case.
+  Whether or not the alteration is a mutation of the original input value is up to the programmer to decide.
+  Mutating original values can be faster, but care must be taken to avoid aliasing problems.
+  For example, mutating a list/dict from a JSON tree is safe so long as the JSON library does not reuse
+  substructure, and the transtructor is the only consumer of the tree.
   '''
 
   def __init__(self) -> None:
