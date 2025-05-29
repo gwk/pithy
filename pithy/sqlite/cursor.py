@@ -150,6 +150,11 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     raise Exception(f'No row returned from COUNT query: {table}{where_clause}')
 
 
+  def exists(self, table:str, *, where:str, **args) -> bool:
+    'Execute a SELECT EXISTS (SELECT ...) query, returning True if at least one result matches the query.'
+    return bool(self.execute(f'SELECT EXISTS (SELECT 1 FROM {table} WHERE {where})', args))
+
+
   @overload
   def insert(self, *, with_='', or_='FAIL', into:str, returning:tuple[str,...], **kwargs:Any) -> Row: ...
 
