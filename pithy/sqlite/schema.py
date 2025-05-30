@@ -35,20 +35,26 @@ class Column:
 
 
   def __post_init__(self) -> None:
-    if not self.allow_kw and self.name.upper() in sqlite_keywords:
-      raise ValueError(f'Column name {self.name!r} is an SQLite keyword. Use `allow_kw=True` to override.')
+
+    name = self.name
+
+    if not self.allow_kw and name.upper() in sqlite_keywords:
+      raise ValueError(f'Column name {name!r} is an SQLite keyword. Use `allow_kw=True` to override.')
+
     if self.is_primary:
-      if not self.is_unique: raise ValueError(f'Primary key column {self} must be unique.')
+      if not self.is_unique: raise ValueError(f'Primary key column {name!r} must be unique.')
+
     if self.virtual is not None:
-      if self.is_primary: raise ValueError(f'Virtual column {self} cannot be primary key.')
-      if self.default is not None: raise ValueError(f'Virtual column {self} cannot have a default value.')
+      if self.is_primary: raise ValueError(f'Virtual column {name!r} cannot be primary key.')
+      if self.default is not None: raise ValueError(f'Virtual column {name!r} cannot have a default value.')
+
     if self.default is not None:
       if strict_type := nonstrict_to_strict_types_for_sqlite.get(self.datatype):
         if not isinstance(self.default, strict_type):
-          raise ValueError(f'Column {self} default value {self.default!r} is not of strict type {strict_type.__name__}'
+          raise ValueError(f'Column {name!r} default value {self.default!r} is not of strict type {strict_type.__name__}'
             f' for datatype {self.datatype.__name__}.')
       elif not isinstance(self.default, self.datatype):
-        raise ValueError(f'Column {self} default value {self.default!r} is not of datatype {self.datatype.__name__}.')
+        raise ValueError(f'Column {name!r} default value {self.default!r} is not of datatype {self.datatype.__name__}.')
 
 
   @cached_property
