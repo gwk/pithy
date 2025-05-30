@@ -107,9 +107,15 @@ class Column:
     unique = ' UNIQUE' if (self.is_unique and not self.is_primary) else ''
     not_null = '' if self.is_opt else ' NOT NULL'
 
+    if self.virtual is not None:
+      virtual = f' AS ({self.virtual}) VIRTUAL'
+    else:
+      virtual = ''
+
     if self.default is not None:
       d = self.default
-      if isinstance(d, (int, float)): ds = str(self.default)
+      if isinstance(d, (int, float)):
+        ds = str(self.default)
       else:
         assert isinstance(d, str)
         if d == '': ds = "''" # Special affordance for the empty string as shorthand.
@@ -118,12 +124,10 @@ class Column:
         elif d in ('CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP'): ds = d # Special value.
         else: raise ValueError(f'Invalid Column default SQL expression: {d!r}')
       default = f' DEFAULT {ds}'
-    elif self.virtual is not None:
-      default = f' AS ({self.virtual}) VIRTUAL'
     else:
       default = ''
 
-    return f'{name} {type_}{primary_key}{unique}{not_null}{default}'
+    return f'{name} {type_}{primary_key}{unique}{not_null}{virtual}{default}'
 
 
 
