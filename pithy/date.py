@@ -153,6 +153,12 @@ class DateRange(Sequence[Date]):
     return last
 
 
+def dt_Ymd_HMS_Z(dt:DateTime) -> str:
+  'Format a DateTime in UTC as e.g. 2000-01-01 00:00:00Z.'
+  dtz = dt.astimezone(tz_utc)
+  return f'{dtz:%Y-%m-%d %H:%M:%SZ}'
+
+
 def dt_IM(dt:DateTime|Time) -> str:
   'Format a DateTime or Time as e.g. "4:00".'
   return f'{dt:%I:%M}'.lstrip('0') # '04:00'.lstrip('0') => '4:00'.
