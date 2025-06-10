@@ -45,7 +45,7 @@ def web_external_host(default:str|Raise=Raise._) -> str:
   try:
     return environ['WEB_EXTERNAL_HOST']
   except KeyError:
-    if default is Raise._: raise
+    if isinstance(default, Raise): raise
     return default
 
 

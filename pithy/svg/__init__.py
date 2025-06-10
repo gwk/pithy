@@ -50,13 +50,6 @@ class SvgNode(Mu):
     try: return self.pick('title').text
     except NoMatchError: return None
 
-  @title.deleter
-  def title(self) -> None:
-    'Remove the title child element.'
-    try: title_el = self.pick('title')
-    except NoMatchError as e: raise AttributeError('title') from e
-    else: self._.remove(title_el)
-
   @title.setter
   def title(self, title:str|None):
     'Add a title child element to the head of the children list.'
@@ -70,6 +63,13 @@ class SvgNode(Mu):
         self._.remove(title_el)
       else:
         title_el._ = [title]
+
+  @title.deleter
+  def title(self) -> None:
+    'Remove the title child element.'
+    try: title_el = self.pick('title')
+    except NoMatchError as e: raise AttributeError('title') from e
+    else: self._.remove(title_el)
 
 
   @classmethod
@@ -168,7 +168,7 @@ class Path(SvgNode):
 
   def __init__(self, *args, d:Iterable[PathCommand]|Default=Default._, **kw_attrs) -> None:
 
-    if d is Default._:
+    if isinstance(d, Default):
       super().__init__(*args, **kw_attrs)
       return
 
@@ -205,7 +205,7 @@ class SvgPoly(SvgNode):
 
   def __init__(self, *args, points:str|Iterable[str|Vec]|Default=Default._, **kw_attrs) -> None:
 
-    if points is Default._:
+    if isinstance(points, Default):
       super().__init__(*args, **kw_attrs)
       return
 

@@ -349,11 +349,11 @@ class Mu:
     '`cl` is shortand for the `class` attribute. See also `classes`.'
     return str(self.attrs.get('class', ''))
 
-  @cl.deleter
-  def cl(self) -> None: del self.attrs['class']
-
   @cl.setter
   def cl(self, val:str) -> None: self.attrs['class'] = val
+
+  @cl.deleter
+  def cl(self) -> None: del self.attrs['class']
 
 
   @property
@@ -361,13 +361,13 @@ class Mu:
     'The `class` attribute split into individual words. See also `cl`.'
     return cast(str, self.attrs.get('class', '')).split()
 
-  @classes.deleter
-  def classes(self) -> None: del self.attrs['class']
-
   @classes.setter
   def classes(self, val:str|Iterable[str]) -> None:
     if not isinstance(val, str): val = ' '.join(val)
     self.attrs['class'] = val
+
+  @classes.deleter
+  def classes(self) -> None: del self.attrs['class']
 
 
   def prepend_class(self, cl:str) -> Self:
