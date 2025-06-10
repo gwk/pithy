@@ -247,3 +247,10 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     fields = tuple(k for k in kwargs if k not in by)
     stmt = update_stmt(with_=with_, or_=or_, table=table, named=True, fields=fields, where=where)
     self.run(stmt, _dbg=_dbg, **kwargs)
+
+
+  def user_version(self, namespace:str='main') -> int:
+    'Return the integer value stored in the user_version pragma.'
+    user_version = self.run('PRAGMA user_version').one_col()
+    assert isinstance(user_version, int), user_version
+    return user_version
