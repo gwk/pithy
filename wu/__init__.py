@@ -876,7 +876,7 @@ def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,
   lexer = pygments.lexers.guess_lexer_for_filename(f.name, first)
   yield '<div class="code-block">'
   for line in lines:
-    content = ''.join(render_token(ctx, *t) for t in pygments.lex(line, lexer)) # type: ignore[arg-type]
+    content = ''.join(render_token(ctx, *t) for t in pygments.lex(line, lexer))
     yield f'<code class="line">{content}</code>'
   yield '</div>'
 

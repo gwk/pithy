@@ -542,7 +542,7 @@ def cat_file(path: str, limit=-1) -> None:
       if i == limit: return #!cov-ignore.
       outN(*sanitize_for_console(line, allow_sgr=is_out_tty, escape=ESCAPE_OUT, unescape=UNESCAPE_OUT))
   if line is None:
-    outL(QUOTE_END, '(empty)', FILL_OUT) # type: ignore[unreachable] # Spurious 'Statement is unreachable'.
+    outL(QUOTE_END, '(empty)', FILL_OUT)
   elif not line.endswith('\n'):
     outL(QUOTE_END, '(missing final newline)', FILL_OUT) #!cov-ignore.
   else:
