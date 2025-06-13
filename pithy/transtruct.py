@@ -17,9 +17,9 @@ Desired = TypeVar('Desired')
 Ctx = Any
 Input = Any
 
-SelectorFn = Callable[[type,Input,Ctx],type] # A function that takes raw input data and returns the appropriate output datatype.
-PrefigureFn = Callable[[type,Input,Ctx],Input] # A function that takes raw input data and modifies or replaces it before transtruction.
-TranstructFn = Callable[[Input,Ctx],Desired] # A function thta takes raw input data and returns transtructed output data.
+type SelectorFn = Callable[[type,Input,Ctx],type] # A function that takes raw input data and returns the appropriate output datatype.
+type PrefigureFn = Callable[[type,Input,Ctx],Input] # A function that takes raw input data and modifies or replaces it before transtruction.
+type TranstructFn[Desired] = Callable[[Input,Ctx],Desired] # A function thta takes raw input data and returns transtructed output data.
 
 
 class TranstructorError(Exception):
@@ -66,7 +66,7 @@ class Transtructor:
 
   def transtruct(self, desired_type:type[Desired], val:Input, *, ctx:Ctx=None, dbg=False) -> Desired:
     try:
-      transtructor:Callable[[Input,Ctx],Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
+      transtructor:TranstructFn[Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
     except TypeError as e:
       e.add_note(f'transtruct argument 1 should be the desired type; received: `{repr(desired_type)[:64]}…`')
       raise
@@ -75,7 +75,7 @@ class Transtructor:
 
 
   @cache
-  def transtructor_for(self, desired_type:type[Desired]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for(self, desired_type:type[Desired]) -> TranstructFn[Desired]:
     '''
     Return a "transtructor" function for the desired output type.
     A transtructor function takes a single argument value and returns a transformed value of the desired output type.
@@ -89,7 +89,7 @@ class Transtructor:
     return self.transtructor_post_selector_for(desired_type) # type: ignore[arg-type]
 
 
-  def transtructor_for_selector(self, static_type:type[Desired]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_selector(self, static_type:type[Desired]) -> TranstructFn[Desired]:
 
     def transtruct_with_selector(val:Input, ctx:Ctx) -> Desired:
       type_ = static_type
@@ -103,14 +103,14 @@ class Transtructor:
         if not issubclass(subtype, type_):
           raise TranstructorError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}', static_type, val)
         type_ = subtype
-      transtructor:Callable[[Input,Ctx],Desired] = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
+      transtructor:TranstructFn[Desired] = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
       return transtructor(val, ctx)
 
     return transtruct_with_selector
 
 
   @cache
-  def transtructor_post_selector_for(self, desired_type:type[Desired]) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_post_selector_for(self, desired_type:type[Desired]) -> TranstructFn[Desired]:
     '''
     Choose a transtructor for the desired output type, but after any selector has been applied.
     This prevents infinite recursion for types whose selectors return the original type,
@@ -142,7 +142,7 @@ class Transtructor:
 
 
   def transtructor_for_unannotated_type(self, class_:type[Desired], prefigure_fn:PrefigureFn|None
-   ) -> Callable[[Input,Ctx],Desired]:
+   ) -> TranstructFn[Desired]:
 
       def transtruct_unannotated_type(val:Input, ctx:Ctx) -> Desired:
         if prefigure_fn: val = prefigure_fn(class_, val, ctx)
@@ -155,7 +155,7 @@ class Transtructor:
 
 
   def transtructor_for_unannotated_namedtuple(self, class_:type[Desired], prefigure_fn:PrefigureFn|None
-   ) -> Callable[[Input,Ctx],Desired]:
+   ) -> TranstructFn[Desired]:
 
       def transtruct_unannotated_namedtuple(args:Any, ctx:Ctx) -> Desired:
         if prefigure_fn: args = prefigure_fn(class_, args, ctx)
@@ -179,7 +179,7 @@ class Transtructor:
 
 
   def transtructor_for_annotated_class(self, class_:type[Desired], prefigure_fn:PrefigureFn|None, annotations:dict[str,type]
-   ) -> Callable[[Input,Ctx],Desired]:
+   ) -> TranstructFn[Desired]:
 
     # TODO: this should use __init__ annotations if they exist.
     constructor_annotations = { k:v for k, v in annotations.items()
@@ -231,7 +231,7 @@ class Transtructor:
 
 
   def transtructor_for_generic_type(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None, origin:type[Desired],
-   type_args:tuple[type,...]) -> Callable[[Input,Ctx],Desired]:
+   type_args:tuple[type,...]) -> TranstructFn[Desired]:
 
     # The origin type is usually a runtime type, but not in the case of Union.
 
@@ -276,8 +276,8 @@ class Transtructor:
     raise NotImplementedError(f'Transtructor for generic type {desired_type} not implemented; origin: {origin}.')
 
 
-  def transtructor_for_tuple_type(self, type_:type, prefigure_fn:PrefigureFn|None, rtt:type, types:tuple[type,...]
-   ) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_tuple_type(self, type_:type[Desired], prefigure_fn:PrefigureFn|None, rtt:type, types:tuple[type,...]
+   ) -> TranstructFn[Desired]:
 
     if len(types) == 2 and types[1] is cast(type, Ellipsis):
       el_transtructor = self.transtructor_for(types[0])
@@ -306,8 +306,8 @@ class Transtructor:
     return transtruct_tuple
 
 
-  def transtructor_for_union_type(self, desired_type:type, prefigure_fn:PrefigureFn|None, types:frozenset[type]
-   ) -> Callable[[Input,Ctx],Desired]:
+  def transtructor_for_union_type(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None, types:frozenset[type]
+   ) -> TranstructFn[Desired]:
 
     if len(types) == 2 and type(None) in types:
       variant_type = next(t for t in types if t is not type(None))
