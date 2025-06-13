@@ -1,6 +1,6 @@
 // See: https://zed.dev/docs/configuring-zed#settings-files
 {
-  "ignore": [
+  "file_scan_exclusions": [
     "pkg/crafts/**",
     "pkg/iotest/**",
     "pkg/legs/**",
