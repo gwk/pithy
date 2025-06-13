@@ -6,18 +6,18 @@ from dataclasses import fields, is_dataclass
 from io import BytesIO
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Sequence, TextIO, TypeAlias
+from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Sequence, TextIO
 
 from .encode import all_slots, encode_obj, EncodeObj
 
 
-JsonList:TypeAlias = list['Json']
-JsonDict:TypeAlias = dict[str, 'Json']
-Json:TypeAlias = None|int|float|str|bool|JsonList|JsonDict
+type JsonList = list['Json']
+type JsonDict = dict[str, 'Json']
+type Json = None|int|float|str|bool|JsonList|JsonDict
 
-JsonSequence:TypeAlias = Sequence['JsonCo']
-JsonMapping:TypeAlias = dict[str, 'JsonCo']
-JsonCo:TypeAlias = None|int|float|str|bool|JsonSequence|JsonMapping
+type JsonSequence = Sequence['JsonCo']
+type JsonMapping = dict[str, 'JsonCo']
+type JsonCo = None|int|float|str|bool|JsonSequence|JsonMapping
 
 JsonText = str|bytes|bytearray
 

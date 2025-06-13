@@ -5,7 +5,7 @@ File open/load dispatch by file extension.
 '''
 
 from io import BufferedReader, TextIOWrapper
-from typing import Any, BinaryIO, Callable, cast, IO, Iterable, TextIO, TypeAlias
+from typing import Any, BinaryIO, Callable, cast, IO, Iterable, TextIO
 
 
 __all__ = [
@@ -16,8 +16,8 @@ __all__ = [
   'LoadFn',
 ]
 
-FileOrPath:TypeAlias = IO|str
-LoadFn:TypeAlias = Callable[..., Any]
+type FileOrPath = IO|str
+type LoadFn = Callable[..., Any]
 
 
 def load(file_or_path:FileOrPath, ext:str|None=None, **kwargs:Any) -> Any:

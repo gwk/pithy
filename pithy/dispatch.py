@@ -13,7 +13,7 @@ class DispatchKeyError(KeyError):
 _O = TypeVar('_O') # Object type (the class defining the method).
 _A = TypeVar('_A') # The type of the first argument to the method (not including `self` or `cls`).
 _K = TypeVar('_K') # The key type derived from the first argument.
-_KF:TypeAlias = Callable[[_A], _K] # Key function.
+type _KF[_A,_K] = Callable[[_A], _K] # Key function.
 _P = ParamSpec('_P') # The type of the additional parameters to the method.
 _R = TypeVar('_R') # The return type of the method.
 _BM:TypeAlias = Callable[Concatenate[_A, _P], _R] # Bound method.

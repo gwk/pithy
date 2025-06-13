@@ -2,7 +2,7 @@
 
 import sqlite3
 from contextlib import AbstractContextManager
-from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeAlias, TypeVar
+from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeVar
 
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .row import Row
@@ -15,14 +15,14 @@ class _SupportsLenAndGetItemByInt(Protocol[_T_co]):
   def __len__(self) -> int: ...
   def __getitem__(self, __k:int) -> _T_co: ...
 
-_ReadableBuffer:TypeAlias = bytes | bytearray | memoryview # | array.array[Any] | mmap.mmap | ctypes._CData | pickle.PickleBuffer
+type _ReadableBuffer = bytes | bytearray | memoryview # | array.array[Any] | mmap.mmap | ctypes._CData | pickle.PickleBuffer
 
-_SqliteData:TypeAlias = str | _ReadableBuffer | int | float | None
+type _SqliteData = str | _ReadableBuffer | int | float | None
 
-_AdaptedInputData:TypeAlias = _SqliteData | Any
+type _AdaptedInputData = _SqliteData | Any
 #^ Data that is passed through adapters can be of any type accepted by an adapter.
 
-SqlParameters: TypeAlias = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[str, _AdaptedInputData]
+type SqlParameters = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[str, _AdaptedInputData]
 #^ The Mapping must really be a dict, but making it invariant is too annoying.
 
 
