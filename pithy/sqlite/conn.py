@@ -177,9 +177,10 @@ class Conn(sqlite3.Connection):
       if callable(progress):
         progress_fn = progress
       else:
-        def progress_fn(_status:int, remaining:int, total:int):
+        def _progress_fn(_status:int, remaining:int, total:int):
           frac = (total - remaining) / total
           print(f'Backup {path}:{name}: {frac:0.1%}…', end='\r')
+        progress_fn = _progress_fn
 
       print(f'Backup {path}:{name}…', end='\r')
 
