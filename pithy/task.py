@@ -168,7 +168,6 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
     stdin, send = _os.pipe()
   recv, out = _os.pipe()
   def cleanup() -> None:
-    nonlocal send, recv
     if send is not None: _os.close(send)
     if recv is not None: _os.close(recv)
 
