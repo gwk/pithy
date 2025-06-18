@@ -296,6 +296,19 @@ def req_form_int(form_data:FormData, key:str) -> int:
   except ValueError as e: raise HTTPException(400, f'Invalid integer form field value: {key}={v!r}') from e
 
 
+def get_form_date(form_data:FormData, key:str, default:Date|None=None) -> Date|None:
+  '''
+  Get an optional date value from a FormData (e.g. request.form).
+  If the key is not present or the value is the empty string, return `default`.
+  Otheriwise if the value is not an isoformat date, raise a 400 exception.
+  '''
+  v = get_form_str(form_data, key, default='')
+  if v == '': return default
+  try: return Date.fromisoformat(v)
+  except ValueError as e: raise HTTPException(400, f'Invalid date form field value: {key}={v!r}') from e
+
+
+
 def req_form_date(form_data:FormData, key:str) -> Date:
   '''
   Get an optional date value from a FormData (e.g. request.form).
