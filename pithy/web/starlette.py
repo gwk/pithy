@@ -277,7 +277,7 @@ def get_form_int(form_data:FormData, key:str, default:None=None) -> int|None: ..
 def get_form_int(form_data:FormData, key:str, default:int|None=None) -> int|None:
   '''
   Get an optional int value from a FormData (e.g. request.form).
-  If the key is not present or is the empty string, return `default` (None if not specified).
+  If the key is not present or the value is the empty string, return `default` (None if not specified).
   If the value is not convertible to an int, raise a 400 exception.
   '''
   v = get_form_str(form_data, key, default='')
