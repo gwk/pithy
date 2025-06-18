@@ -192,7 +192,7 @@ class Conn(sqlite3.Connection):
     if progress: print(f'Backup {path}:{name} complete.')
 
 
-  def run(self, sql:str, *, _dbg=False, **args:Any) -> Cursor:
+  def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Cursor:
     '''
     Execute a query with parameter values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to JSON.
