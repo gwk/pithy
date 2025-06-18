@@ -150,6 +150,36 @@ class DateConverter(Convertor):
 
 # Path parameter access.
 
+def get_path_str(conn:HTTPConnection, key:str) -> str:
+  '''
+  Get a str value from a path parameter, or return the empty string.
+  If the returned value is not a string then raise a TypeError.
+  '''
+  try: s = conn.path_params[key]
+  except KeyError: return ''
+  if not isinstance(s, str): raise TypeError(s)
+  return s
+
+
+@overload
+def get_path_int(conn:HTTPConnection, key:str, default:int) -> int: ...
+
+@overload
+def get_path_int(conn:HTTPConnection, key:str, default:int|None=None) -> int|None: ...
+
+def get_path_int(conn:HTTPConnection, key:str, default:int|None=None) -> int|None:
+  '''
+  Get an int value from a path parameter.
+  If the key is not present or the value is the empty string, return the default value.
+  Otherwise if the value is not convertible to an integer, raise a 400 exception.
+  '''
+  try: s = conn.path_params[key]
+  except KeyError: return default
+  if s == '': return default
+  try: return int(s)
+  except ValueError as e: raise HTTPException(400, f'Path parameter must be an integer: {key}') from e
+
+
 def req_path_int(conn:HTTPConnection, key:str) -> int:
   '''
   Get an int value from a path parameter.
