@@ -240,6 +240,12 @@ class HtmlPhrasingContent(HtmlNode):
    checked:Iterable[Any]|Mapping[str,Any]=()) -> Self:
     '''
     Add a sequence of checkboxes to the node.
+    `require_one` adds client side validation to require that at least one box is checked.
+    `desc_singular` is used to for the client side validation message.
+    `choices` can be an Iterable or a mapping, which will be treated as an iterable of pairs.
+    For each choice element, if it is a pair, the key is is used as the input name and the value is used as the label description.
+    Otherwise the choice is used as both the key and the description.
+    Similarly, `checked` can be a dictionary mapping from keys to truthy values, or simply a set of keys that are checked.
     '''
     if require_one:
       self['once'] = 'setupValidateAtLeastOneCheckbox(this)'
