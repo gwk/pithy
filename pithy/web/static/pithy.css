@@ -229,7 +229,7 @@ a.button, button {
 
 /* Forms. */
 
-form.grid {
+form.grid, .form_grid {
   width: 100%;
   margin: 1em 0;
   display: grid;
