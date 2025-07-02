@@ -11,6 +11,9 @@
     "pkg/wu/**"
   ],
   "languages": {
+    "CSS": {
+      "format_on_save": "off"
+    },
     "Python": {
       "tab_size": 2,
       "formatter": {
@@ -19,6 +22,9 @@
           "arguments": ["-", "--stdout"]
         }
       }
+    },
+    "TOML": {
+      "format_on_save": "off"
     }
   }
 }
