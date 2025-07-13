@@ -61,5 +61,19 @@
   "[jsonc]": {
     "editor.formatOnSave": false
   },
-  "json.format.enable": false
+  "json.format.enable": false,
+  "cursorpyright.analysis.diagnosticMode": "workspace",
+  "cursorpyright.analysis.exclude": [
+    "_build/**",
+    "_misc/**"
+  ],
+  "cursorpyright.analysis.include": [
+    "crafts",
+    "iotest",
+    "pithy",
+    "test-meta",
+    "test",
+    "wu"
+  ],
+  "cursorpyright.analysis.typeCheckingMode": "off"
 }
