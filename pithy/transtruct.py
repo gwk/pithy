@@ -86,7 +86,7 @@ class Transtructor:
     if self.selector_fn_for(desired_type): # type: ignore[arg-type]
       return self.transtructor_for_selector(desired_type)
 
-    return self.transtructor_post_selector_for(desired_type) # type: ignore[arg-type]
+    return try_transtruct(self.transtructor_post_selector_for(desired_type)) # type: ignore[arg-type]
 
 
   def transtructor_for_selector(self, static_type:type[Desired]) -> TranstructFn[Desired]:
@@ -252,7 +252,7 @@ class Transtructor:
         try: items = val.items()
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
         try: return origin((key_ctor(k, ctx), val_ctor(v, ctx)) for k, v in items) # type: ignore[return-value]
-        except ValueError as e:
+        except (ValueError, TypeError) as e:
           raise TranstructorError(f'failed to transtruct items of type {type(val).__name__!r}', desired_type, val) from e
 
       return transtruct_dict
@@ -390,6 +390,21 @@ class Transtructor:
       try: return self.prefigures[t]
       except KeyError: pass
     return None
+
+
+def try_transtruct(tf:TranstructFn) -> TranstructFn:
+  '''
+  A function wrapper that takes an existing transtruct function wraps it in a try clause.
+  If an exception is raised, attach a note describing the input.
+  '''
+  def _try_transtruct(v:Input, ctx:Ctx) -> Any:
+    try: return tf(v, ctx)
+    except Exception as e:
+      v_desc = repr(v)
+      if len(v_desc) >= 100: v_desc = f'{v_desc[:99]}…'
+      e.add_note(f'note: {tf.__name__}: input: {v_desc}')
+      raise
+  return _try_transtruct
 
 
 def transtruct_bool(v:Input, ctx:Ctx) -> bool:
