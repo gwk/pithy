@@ -3,11 +3,12 @@
 '''
 `markup` provides the `Mu` class, a base class for representing HTML, SVG, XML, SGML, and other document tree formats.
 
-These classes are designed to be used both to create document trees and also to parse and manipulate them. Some use cases include:
-* serving dynamic pages or fragments (e.g. HTMX endpoints) from a web server;
+These classes are designed to be used both to create document trees and also to parse and manipulate them.
+Some use cases include:
+* serving dynamic HTML pages or fragments (e.g. HTMX endpoints) from a web server;
 * generating static HTML pages;
-* parsing HTML, SVG and XML documents for data extraction, validation or scraping purposes;
-* parsing HTML, SVG and XML documents and then modifying and rerendering them.
+* parsing HTML/XML documents for data extraction, validation or scraping purposes;
+* parsing HTML/XML documents, then modifying and re-rendering them.
 '''
 
 import re
@@ -48,8 +49,13 @@ class Present:
   '''
   The Present class is used to only set an attribute key if `is_present` evaluates to True.
   If an attribute has a `Present(True)` value, then the markup output will have an empty value set.
-  https://html.spec.whatwg.org/multipage/syntax.html#attributes-2.
-  For attributes that are unconditionally set, it is more appropriate to use `key=''`.
+  If an attribute has a `Present(False)` value, then the markup output will not have that attribute key present.
+  This is necessary for attributes that are conditionally set.
+  For example, `Input(type='checkbox', checked=Present(True))` will render as u`<input type="checkbox" checked>`,
+  whereas `Input(type='checkbox', checked=Present(False))` will render as `<input type="checkbox">`.
+
+  For attributes that are unconditionally set, it is more appropriate to use `key=''` instead.
+  See also: https://html.spec.whatwg.org/multipage/syntax.html#attributes-2.
   '''
   is_present:bool
   val:Any
