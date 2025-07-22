@@ -146,6 +146,10 @@ body {
 .align-items-center { align-items: center; }
 .align-items-baseline { align-items: baseline; }
 
+.justify-self-start { justify-self: start; }
+.justify-self-center { justify-self: center; }
+.justify-self-end { justify-self: end; }
+
 .font-large { font-size: large; }
 .font-small { font-size: small; }
 
