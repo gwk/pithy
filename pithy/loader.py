@@ -4,7 +4,7 @@
 File open/load dispatch by file extension.
 '''
 
-from io import BufferedReader, TextIOWrapper
+from io import BufferedRandom, BufferedReader, FileIO, TextIOWrapper
 from typing import Any, BinaryIO, Callable, cast, IO, Iterable, TextIO
 
 
@@ -60,12 +60,9 @@ def text_file_for(f:FileOrPath, **kwargs:Any) -> TextIO:
 
 
 def binary_file_for(f:FileOrPath) -> BinaryIO:
-  if isinstance(f, BufferedReader): return f
-  #^ Not sure about the reachability error above. Has to do with the relationship between abstract IO and concrete BufferedReader.
+  if isinstance(f, (BufferedReader, BufferedRandom, FileIO)): return f
   if isinstance(f, str): return open(f, 'rb')
-  try: return BufferedReader(f) # type: ignore[arg-type]
-  except Exception as e:
-    raise ValueError(f'load: required binary file or path; received {f!r}') from e
+  raise ValueError(f'load: required readable binary file or path; received {f!r}')
 
 
 def add_loader(ext:str, fn:LoadFn, _dflt=False) -> None:
