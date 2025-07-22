@@ -251,7 +251,7 @@ class Transtructor:
 
         try: items = val.items()
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
-        try: return origin((key_ctor(k, ctx), val_ctor(v, ctx)) for k, v in items) # type: ignore[return-value]
+        try: return origin((key_ctor(k, ctx), val_ctor(v, ctx)) for k, v in items)
         except (ValueError, TypeError) as e:
           raise TranstructorError(f'failed to transtruct items of type {type(val).__name__!r}', desired_type, val) from e
 
@@ -263,7 +263,7 @@ class Transtructor:
       el_ttor = self.transtructor_for(el_type)
 
       def transtruct_collection(val:Input, ctx:Ctx) -> Desired:
-        return origin(el_ttor(e, ctx) for e in val) # type: ignore[return-value]
+        return origin(el_ttor(e, ctx) for e in val)
 
       return transtruct_collection
 

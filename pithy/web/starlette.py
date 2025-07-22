@@ -13,7 +13,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
-from ..csv import render_csv
+from ..csv import Quoting, render_csv
 from ..date import Date, parse_time_12hmp, Time, TZInfo
 from ..fs import is_dir, real_path
 from ..html import HtmlNode
@@ -38,7 +38,7 @@ class CsvResponse(Response):
     *,
     headers:Mapping[str,str]|None=None,
     background:BackgroundTask|None=None,
-    quoting:int|None=None,
+    quoting:Quoting|None=None,
     head:Sequence[str]|None,
     rows:Iterable[Sequence],
     **kwargs) -> None:
