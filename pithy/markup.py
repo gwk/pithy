@@ -211,7 +211,7 @@ class Mu:
 
   def __setitem__(self, key:str, val:Any) -> Any: self.attrs[key] = val
 
-  def get(self, key:str, default=None) -> Any: return self.attrs.get(key, default)
+  def get(self, key:str, default:Any=None) -> Any: return self.attrs.get(key, default)
 
   def __iter__(self) -> Iterator['MuChild']: return iter(self._)
 
@@ -290,7 +290,7 @@ class Mu:
     return type(self)(tag=self.tag, attrs=self.attrs, _=self._, _orig=self, _parent=parent)
 
 
-  def child_items(self, ws=False, traversable=False) -> Iterator[tuple[int,'MuChild']]:
+  def child_items(self, ws:bool=False, traversable:bool=False) -> Iterator[tuple[int,'MuChild']]:
     'Yield (index, child) pairs. If `ws` is False, then children that are purely whitespace will be filtered out.'
     for i, c in enumerate(self._):
       if isinstance(c, Mu):
@@ -302,7 +302,7 @@ class Mu:
       yield (i, c)
 
 
-  def children(self, ws=False, traversable=False) -> Iterator['MuChild']:
+  def children(self, ws:bool=False, traversable:bool=False) -> Iterator['MuChild']:
     'Yield child nodes and text. If `ws` is False, then children that are purely whitespace will be filtered out.'
     for c in self._:
       if isinstance(c, Mu):
@@ -314,7 +314,7 @@ class Mu:
       yield c
 
 
-  def child_nodes(self, traversable=False) -> Iterator['Mu']:
+  def child_nodes(self, traversable:bool=False) -> Iterator['Mu']:
     'Yield child Mu nodes.'
     return ((c.subnode(self) if traversable else c) for c in self._ if isinstance(c, Mu))
 
@@ -345,7 +345,7 @@ class Mu:
     return ''.join(self.texts)
 
 
-  def text_clean_ws(self, nl=False) -> str:
+  def text_clean_ws(self, nl:bool=False) -> str:
     'Return the text of the tree joined as a single string, with whitespace collapsed.'
     return re.sub(r'\s+', newline_or_space_for_ws if nl else ' ', self.text.strip())
 
@@ -441,7 +441,7 @@ class Mu:
           self.append(el)
 
 
-  def clean(self, deep=True) -> None:
+  def clean(self, deep:bool=True) -> None:
     # Consolidate consecutive strings.
     children:list[MuChild] = []
     for c in self._:
@@ -492,10 +492,11 @@ class Mu:
   # Picking and finding.
 
   @overload
-  def pick_all(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Mu]: ...
+  def pick_all(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> Iterator[_Mu]:
+    ...
 
   @overload
-  def pick_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Mu']: ...
+  def pick_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> Iterator['Mu']: ...
 
   def pick_all(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str
    ) -> Iterator['Mu']:
@@ -703,7 +704,7 @@ class Mu:
     return _needs_space
 
 
-  def summary_text(self, limit=0) -> str:
+  def summary_text(self, limit:int=0) -> str:
     if not limit: return ''.join(self.summary_texts())
     parts:list[str] = []
     length = 0
@@ -716,7 +717,7 @@ class Mu:
 
   # Text summary.
 
-  def summarize(self, levels=1, indent=0, all_attrs=True) -> str:
+  def summarize(self, levels:int=1, indent:int=0, all_attrs:bool=True) -> str:
     nl_indent = '\n' + '  ' * indent
     return ''.join(self._summarize(levels, nl_indent, all_attrs=all_attrs))
 
@@ -742,7 +743,7 @@ class Mu:
     except KeyError: pass
 
 
-  def visit(self, *, pre:MuVisitor|None=None, post:MuVisitor|None=None, traversable=False) -> None:
+  def visit(self, *, pre:MuVisitor|None=None, post:MuVisitor|None=None, traversable:bool=False) -> None:
     if pre is not None: pre(self)
 
     modified_children:list[MuChild] = []
@@ -766,7 +767,7 @@ class Mu:
     if post is not None: post(self)
 
 
-  def iter_visit(self, *, pre:MuIterVisitor|None=None, post:MuIterVisitor|None=None, traversable=False) -> Iterator[_T]:
+  def iter_visit(self, *, pre:MuIterVisitor|None=None, post:MuIterVisitor|None=None, traversable:bool=False) -> Iterator[_T]:
     if pre is not None: yield from pre(self)
 
     for c in self._:
@@ -817,7 +818,7 @@ class Mu:
     return ''.join(parts)
 
 
-  def render(self, newline=True) -> Iterator[str]:
+  def render(self, newline:bool=True) -> Iterator[str]:
     'Render the tree as a stream of text lines.'
     yield from self._render()
     if newline: yield '\n'
@@ -874,12 +875,12 @@ class Mu:
     else: raise TypeError(child)
 
 
-  def render_str(self, newline=True) -> str:
+  def render_str(self, newline:bool=True) -> str:
     'Render the tree into a single string.'
     return ''.join(self.render(newline=newline))
 
 
-  def render_children_str(self, newline=True) -> str:
+  def render_children_str(self, newline:bool=True) -> str:
     'Render the children into a single string.'
     return ''.join(self.render_children())
 

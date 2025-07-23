@@ -20,8 +20,10 @@ class HTTPError(Exception):
     self.status_code = status_code
 
 
-def fetch(url:str, cache_path:str='', params:dict[str, str]={}, headers:dict[str, str]={}, expected_status_code=200, timeout=30, delay=0, delay_range=0, spoof_ua=False) -> str:
+def fetch(url:str, cache_path:str='', params:dict[str, str]={}, headers:dict[str, str]={}, expected_status_code:int=200,
+ timeout:int=30, delay:int=0, delay_range:int=0, spoof_ua:bool=False) -> str:
   "Fetch the data at `url` and save it to a path in the '_fetch' directory derived from the URL."
+  # TODO: implement timeout.
   if params:
     if '?' in url: raise ValueError("params specified but url already contains '?'")
     url += '?' + urlencode(params)
@@ -61,7 +63,8 @@ def fetch(url:str, cache_path:str='', params:dict[str, str]={}, headers:dict[str
   return path
 
 
-def load_url(url:str, ext:str='', cache_path:str='', params:dict[str, str]={}, headers:dict[str, str]={}, expected_status_code=200, timeout=30, delay=0, delay_range=0, spoof_ua=False, **kwargs:Any) -> Any:
+def load_url(url:str, ext:str='', cache_path:str='', params:dict[str, str]={}, headers:dict[str, str]={},
+ expected_status_code:int=200, timeout:int=30, delay:int=0, delay_range:int=0, spoof_ua:bool=False, **kwargs:Any) -> Any:
   'Fetch the data at `url` and then load using `loader.load`.'
   from .loader import load
   if not ext:

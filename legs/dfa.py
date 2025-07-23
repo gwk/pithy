@@ -144,7 +144,7 @@ class DFA:
         pairs.append((dst, codes_desc(byte_ranges)))
       yield (src, pairs)
 
-  def describe(self, label='') -> None:
+  def describe(self, label:str='') -> None:
     errL(self.name, (label and f': {label}'), ':')
     errL(f' start_node:{self.start_node} end_node:{self.end_node}')
     errL(' match_node_kind_sets:')
@@ -161,7 +161,7 @@ class DFA:
           errSL(f'    {codes_range_desc(*letter_range)} --> {dst}')
     errL()
 
-  def describe_stats(self, label='') -> None:
+  def describe_stats(self, label:str='') -> None:
     errL(self.name, (label and f': {label}'), ':')
     errSL(f'  nodes: {len(self.transitions):_}')
     errSL(f'  match nodes: {len(self.match_node_kind_sets):_}')

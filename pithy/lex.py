@@ -16,7 +16,7 @@ class LexError(Exception): pass
 
 
 class LexMode:
-  def __init__(self, name:str, kinds:Iterable[str], *, indents=False):
+  def __init__(self, name:str, kinds:Iterable[str], *, indents:bool=False):
     self.name = name
     self.kinds = list(iter_str(kinds))
     self.indents = indents
@@ -86,7 +86,7 @@ class Lexer:
 
   class DefinitionError(Exception): pass
 
-  def __init__(self, *, flags='', patterns:dict[str,str], modes:Iterable[LexMode]=(),
+  def __init__(self, *, flags:str='', patterns:dict[str,str], modes:Iterable[LexMode]=(),
    transitions:Iterable[LexTrans]=()) -> None:
 
     # Validate flags.
@@ -259,7 +259,7 @@ class Lexer:
       yield eot_token(source, mode=stack[-1][0].mode)
 
 
-  def lex(self, source:Source[str], pos:int=0, end:int|None=None, drop:Container[str]=(), eot=False) -> Iterator[Token]:
+  def lex(self, source:Source[str], pos:int=0, end:int|None=None, drop:Container[str]=(), eot:bool=False) -> Iterator[Token]:
     if not isinstance(source, Source): raise TypeError(source)
     text = source.text
     if pos < 0:
@@ -272,7 +272,8 @@ class Lexer:
     return self._lex(stack=[self.root_frame(mode=self.main)], source=source, pos=pos, end=_e, drop=drop, eot=eot)
 
 
-  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot=False) -> Iterator[tuple[Source[str], Token]]:
+  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot:bool=False
+   ) -> Iterator[tuple[Source[str], Token]]:
     '''
     Note: the yielded Token objects have positions relative to input string that each was lexed from.
     TODO: fix the line numbers.

@@ -47,7 +47,7 @@ class TermMode:
   If no file descriptor is provided, it defaults to stdout.
   '''
 
-  def __init__(self, fd:int|None=None, when:int=TCSAFLUSH, min_bytes=1, delay=0):
+  def __init__(self, fd:int|None=None, when:int=TCSAFLUSH, min_bytes:int=1, delay:int=0):
     assert when in when_vals, when
     if fd is None:
       fd = stdout.fileno()

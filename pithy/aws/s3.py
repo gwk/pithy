@@ -50,7 +50,7 @@ def get_text(client:Any, bucket:str, key:str) -> Any:
   return get_bytes(client=client, bucket=bucket, key=key).decode()
 
 
-def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str='', is_utf8_hint=False) -> None:
+def put_bytes(client:Any, data:bytes, bucket:str, key:str, content_encode:str='', is_utf8_hint:bool=False) -> None:
   '''
   `content_encode` specifies an optional compression encoding, either `gzip` or `br`.
   '''

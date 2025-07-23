@@ -10,7 +10,7 @@ __all__ = [
 ]
 
 
-def codes_desc(code_ranges:Iterable[CodeRange], raw=False) -> str:
+def codes_desc(code_ranges:Iterable[CodeRange], raw:bool=False) -> str:
   if raw:
     return ' '.join(codes_range_desc(*p) for p in code_ranges) or 'Ø'
   # Calculate single-character subtraction simplifications for ranges.

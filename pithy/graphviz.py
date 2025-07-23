@@ -92,7 +92,7 @@ def write_dot_digraph_adjacency_contents(f: TextIO, adjacency:GraphvizAdjacency)
       f.write(f'{src_quoted} -> {dot_id_quote(dst)}{attrs_str};\n')
 
 
-def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:GraphvizNodes|None=None, **kwargs) -> None:
+def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:GraphvizNodes|None=None, **kwargs:Any) -> None:
   label = dot_id_quote(kwargs.get('label', ''))
   if label: label += ' '
   f.write(f'strict digraph {label}{{\n')
@@ -110,7 +110,7 @@ def write_dot_digraph_adjacency(f: TextIO, adjacency:GraphvizAdjacency, nodes:Gr
   f.write('}\n')
 
 
-def out_dot_digraph_adjacency(adjacency:GraphvizAdjacency, **kwargs) -> None:
+def out_dot_digraph_adjacency(adjacency:GraphvizAdjacency, **kwargs:Any) -> None:
   write_dot_digraph_adjacency(stdout, adjacency=adjacency, **kwargs)
 
 

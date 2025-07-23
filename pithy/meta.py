@@ -10,7 +10,8 @@ from typing import Any, Callable, cast, Iterable, Mapping, TypeVar
 class MetaprogrammingError(Exception): pass
 
 
-def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_prefix=True, frame='<module>') -> list[tuple[str, Any]]:
+def bindings_matching(*, prefix:str|None=None, val_type:type|None=None, strip_prefix:bool=True, frame:str|int='<module>'
+ ) -> list[tuple[str,Any]]:
   '''
   Return (name, value) pairs of bindings from the specified frame,
   that match the specified prefix and val_type filters.

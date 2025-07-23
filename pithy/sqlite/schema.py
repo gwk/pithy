@@ -149,7 +149,7 @@ class Structure:
   def quoted_name(self) -> str: return qea(self.name)
 
 
-  def sql(self, *, schema='', name='', if_not_exists=False) -> str:
+  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False) -> str:
     raise NotImplementedError
 
 
@@ -215,7 +215,7 @@ class Table(Structure):
     return None
 
 
-  def sql(self, *, schema='', name='', if_not_exists=False) -> str:
+  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
     qual_name = f'{schema}{schema and "."}{qea(name or self.name)}'
@@ -307,7 +307,7 @@ class Index(TableDepStructure):
       raise TypeError(f'Index.columns must be a tuple; received: {self.columns!r}')
 
 
-  def sql(self, *, schema='', name='', if_not_exists=False) -> str:
+  def sql(self, *, schema:str='', name:str='', if_not_exists:bool=False) -> str:
     if schema and not schema.isidentifier(): raise ValueError(f'Invalid schema name: {schema!r}')
 
     qual_name = f'{schema}{schema and "."}{qea(name or self.name)}'
@@ -396,7 +396,7 @@ class Schema:
 
 
 
-  def sql(self, *, name='', if_not_exists=False) -> Iterable[str]:
+  def sql(self, *, name:str='', if_not_exists:bool=False) -> Iterable[str]:
     name = name or self.name
     if name and not name.isidentifier(): raise ValueError(f'Invalid schema name: {name!r}')
 
@@ -412,7 +412,7 @@ class Schema:
       yield '\n'
 
 
-  def write_module_sql(self, if_not_exists=False, steps=1) -> None:
+  def write_module_sql(self, if_not_exists:bool=False, steps:int=1) -> None:
     '''
     Write an SQL schema file for this schema to the package directory of the caller.
     This is typically called from the main() of a module defining a schema.

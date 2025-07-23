@@ -74,7 +74,7 @@ class HttpServer(ThreadingTCPServer):
   err:TextIO
 
 
-  def __init__(self, *, host:str, port:int, app:WebApp, err=stderr, bind_and_activate=True):
+  def __init__(self, *, host:str, port:int, app:WebApp, err:TextIO=stderr, bind_and_activate:bool=True) -> None:
 
     self.host = host
     self.port = port

@@ -10,7 +10,7 @@ from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 class ZstWriterBase:
 
-  def __init__(self, file:BinaryIO, level=6, threads=1, chunk_size=32768):
+  def __init__(self, file:BinaryIO, level:int=6, threads:int=1, chunk_size:int=32768):
     self.file = file
     self.compressor = ZstdCompressor(level=level, threads=1)
     self.chunker = self.compressor.chunker(chunk_size=chunk_size)
@@ -31,13 +31,13 @@ class ZstWriterBase:
 
   def truncate(self, size:int|None=None) -> int: return self.file.truncate()
 
-  def read(self, size=-1) -> NoReturn: raise TypeError
+  def read(self, size:int=-1) -> NoReturn: raise TypeError
 
-  def readline(self, size=-1) -> NoReturn: raise TypeError
+  def readline(self, size:int=-1) -> NoReturn: raise TypeError
 
-  def readlines(self, size=-1) -> NoReturn: raise TypeError
+  def readlines(self, size:int=-1) -> NoReturn: raise TypeError
 
-  def seek(self, offset:int, whence=0) -> int: return self.file.seek(offset, whence)
+  def seek(self, offset:int, whence:int=0) -> int: return self.file.seek(offset, whence)
 
   def seekable(self) -> bool: return self.file.seekable()
 
@@ -81,7 +81,8 @@ class ZstWriter(ZstWriterBase, BinaryIO):
 
 class ZstTextWriter(ZstWriterBase, TextIO):
 
-  def __init__(self, file:BinaryIO, encoding:str|None=None, errors:str|None=None, level=6, threads=1, chunk_size=32768):
+  def __init__(self, file:BinaryIO, encoding:str|None=None, errors:str|None=None, level:int=6, threads:int=1,
+   chunk_size:int=32768) -> None:
     self._encoding = encoding or 'utf-8'
     self._errors = errors or 'strict'
     super().__init__(file=file, level=level, threads=threads, chunk_size=chunk_size)

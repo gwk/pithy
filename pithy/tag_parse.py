@@ -15,7 +15,7 @@ the branches are TagTree instances, which are subclasses of tuple.
 
 import re
 from itertools import chain
-from typing import Callable, Iterable, Iterator, Match, Sequence, Union
+from typing import Any, Callable, Iterable, Iterator, Match, Sequence, Union
 
 from .ansi import RST_TXT, TXT_R, TXT_Y
 from .buffer import Buffer
@@ -110,7 +110,7 @@ class TagTree(tuple):
   def __str__(self) -> str:
     return ''.join(self.walk_all())
 
-  def __getitem__(self, key) -> Node: # type: ignore[override]
+  def __getitem__(self, key:int|slice) -> Node: # type: ignore[override]
     if isinstance(key, slice):
       return type(self)(*super().__getitem__(key)) # create a TagTree as the slice.
     return super().__getitem__(key) # type: ignore[no-any-return]
@@ -176,7 +176,7 @@ class TagTree(tuple):
         el._structured_desc(res, d)
         spacer = nest_spacer
 
-  def structured_desc(self, depth=0) -> str:
+  def structured_desc(self, depth:int=0) -> str:
     res: list[str] = []
     self._structured_desc(res, depth)
     return ''.join(res)
@@ -202,7 +202,7 @@ class TagTreeUnexpected(TagTreeFlawed):
   sgr_color = TXT_R
   sgr_reset = RST_TXT
 
-  def __new__(cls, *args) -> 'TagTreeUnexpected':
+  def __new__(cls, *args:Any) -> 'TagTreeUnexpected':
     assert len(args) == 1
     return super().__new__(cls, *args) # type: ignore[return-value]
 

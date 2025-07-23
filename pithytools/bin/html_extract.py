@@ -23,7 +23,7 @@ Pos = tuple[int, int]
 
 class HtmlExtractParser(HTMLParser):
 
-  def __init__(self, path: str, id=str, lines=list[str]):
+  def __init__(self, path:str, id:str, lines:list[str]) -> None:
     super().__init__(convert_charrefs=True)
     self.path = path
     self.id = id
@@ -38,7 +38,7 @@ class HtmlExtractParser(HTMLParser):
     if self.extract_start_pos: exit('specified element was found but unterminated.')
     else: exit('specified element was not found.')
 
-  def handle_starttag(self, tag: str, attrs: list[tuple[str,str|None]]):
+  def handle_starttag(self, tag:str, attrs:list[tuple[str,str|None]]) -> None:
     self.stack.append((self.pos, tag))
     d = dict(attrs)
     if d.get('id') == self.id:

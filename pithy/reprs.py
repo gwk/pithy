@@ -25,7 +25,7 @@ _literal_repr_types = { bytes,str,list,dict,set,tuple }
 _decent_repr_re = re.compile(r'[a-zA-Z][.\w]*\(.*\)')
 
 
-def repr_lim(obj:Any, limit=64) -> str:
+def repr_lim(obj:Any, limit:int=64) -> str:
   'Return a repr of `obj` that is at most `limit` characters long.'
   r = repr(obj)
   if limit > 2 and len(r) > limit:
@@ -75,7 +75,7 @@ def len_clr(s:str) -> int:
   return len(s) - s.count('\x1b[') * 5
 
 
-def repr_ml(obj:Any, at_line_start:bool=False, *, indent:int=0, width=128, spaced=True, color=False) -> str:
+def repr_ml(obj:Any, at_line_start:bool=False, *, indent:int=0, width:int=128, spaced:bool=True, color:bool=False) -> str:
   '''
   Format a compact, multiline repr of `obj`.'
   This is similar to pprint.pformat but with a different indentation style.

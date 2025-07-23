@@ -160,7 +160,7 @@ def atom_token(source:Source, token:Token) -> Token: return token
 def atom_kind(source:Source, token:Token) -> str: return token.kind
 def atom_text(source:Source, token:Token) -> str: return source[token]
 
-def _atom_transform_placeholder(source, token:Token):
+def _atom_transform_placeholder(source:Source, token:Token) -> NoReturn:
   raise Exception('_atom_transform_placeholder should have been replaced by a real transform')
 
 UniTransform = Callable[[Source,slice,Any],Any]
@@ -189,11 +189,11 @@ def quantity_text(source:Source, slc:slice, elements:list[Any]) -> str: return s
 
 StructTransform = Callable[[Source,slice,list[Any]],Any]
 def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> tuple[Any,...]: return tuple(fields)
-def struct_syn(source:Source, slc:slice, fields:list[Any]): return Syn(slc, '', fields)
+def struct_syn(source:Source, slc:slice, fields:list[Any]) -> Syn: return Syn(slc, '', fields)
 def struct_text(source:Source, slc:slice, fields:list[Any]) -> str: return source[slc]
 
 
-def _struct_transform_placeholder(source, slc:slice, fields:list[Any]):
+def _struct_transform_placeholder(source:Source, slc:slice, fields:list[Any]) -> NoReturn:
   raise Exception('_struct_transform_placeholder should have been replaced by a real transform')
 
 ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
@@ -311,7 +311,7 @@ class Alias(Rule):
 
   type_desc = 'alias'
 
-  def __init__(self, alias:str, field='', transform:UniTransform=uni_val):
+  def __init__(self, alias:str, field:str|None='', transform:UniTransform=uni_val):
     self.name = ''
     self.alias = alias
     self.field = field
@@ -341,7 +341,7 @@ class Atom(Rule):
   '''
   type_desc = 'atom'
 
-  def __init__(self, kind:TokenKind, field='', transform:AtomTransform|None=None):
+  def __init__(self, kind:TokenKind, field:str|None='', transform:AtomTransform|None=None):
     self.name = ''
     self.field = field
     self.heads = (kind,) # Pre-fill heads; compile_heads will return without calling head_subs, which Atom does not implement.
@@ -398,7 +398,7 @@ class Opt(_QuantityRule):
   type_desc = 'optional'
   min = 0
 
-  def __init__(self, body:RuleRef, field='', drop:Iterable[str]=(), dflt=None, transform:UniTransform=uni_val):
+  def __init__(self, body:RuleRef, field:str|None='', drop:Iterable[str]=(), dflt:Any=None, transform:UniTransform=uni_val):
     self.name = ''
     self.field = field
     self.sub_refs = (body,)
@@ -435,8 +435,8 @@ class Quantity(_QuantityRule):
   '''
   type_desc = 'sequence'
 
-  def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
-   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
+  def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None,
+   repeated_seps:bool=False, field:str|None='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
     if min < 0: raise ValueError(min)
     if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
     if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is `None` but `sep_at_end` is `{sep_at_end}`')
@@ -498,8 +498,8 @@ class Quantity(_QuantityRule):
 
 class ZeroOrMore(Quantity):
 
-  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
-   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
+  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps:bool=False,
+   field:str|None='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
 
     super().__init__(body=body, min=0, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps,
       field=field, drop=drop, transform=transform)
@@ -508,8 +508,8 @@ class ZeroOrMore(Quantity):
 
 class OneOrMore(Quantity):
 
-  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps=False,
-   field='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
+  def __init__(self, body:RuleRef, sep:TokenKind|None=None, sep_at_end:bool|None=None, repeated_seps:bool=False,
+   field:str|None='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
 
     super().__init__(body=body, min=1, max=None, sep=sep, sep_at_end=sep_at_end, repeated_seps=repeated_seps,
       field=field, drop=drop, transform=transform)
@@ -522,7 +522,7 @@ class Struct(Rule):
   '''
   type_desc = 'structure'
 
-  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), field='', transform:StructTransform|None=None):
+  def __init__(self, *fields:RuleRef, drop:Iterable[str]=(), field:str|None='', transform:StructTransform|None=None):
     if not fields: raise ValueError('Struct requires at least one field')
     self.name = ''
     self.field = field
@@ -570,7 +570,7 @@ class Choice(Rule):
   '''
   type_desc = 'choice'
 
-  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field='', transform:ChoiceTransform|None=None):
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field:str|None='', transform:ChoiceTransform|None=None):
     self.name = ''
     self.field = field
     self.sub_refs = choices
@@ -754,7 +754,7 @@ class Precedence(Rule):
   type_desc = 'precedence rule'
 
   def __init__(self, leaves:RuleRef|Iterable[RuleRef], *groups:Group,
-   field='', drop:Iterable[str]=(), transform:UniTransform=uni_val) -> None:
+   field:str|None='', drop:Iterable[str]=(), transform:UniTransform=uni_val) -> None:
 
     # Keep track of the distinction between subs that came from leaves vs groups.
     # We catenate them all together to sub_refs, so they all get correctly linked,
@@ -843,7 +843,7 @@ class Precedence(Rule):
 
 class SubParser(Rule):
 
-  def __init__(self, parser:'Parser', rule_name:str, field='', transform:UniTransform=uni_val):
+  def __init__(self, parser:'Parser', rule_name:str, field:str|None='', transform:UniTransform=uni_val):
     self.name = ''
     self.field = field
     self.sub_refs = ()
@@ -1024,7 +1024,7 @@ class Parser:
     return Buffer(stream)
 
 
-  def parse(self, rule_name:RuleName, source:Source, ignore_excess=False, dbg_tokens=False) -> Any:
+  def parse(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, dbg_tokens:bool=False) -> Any:
     rule = self.rules[rule_name]
     buffer = self.make_buffer(source, dbg_tokens)
     token = next(buffer)
@@ -1035,12 +1035,12 @@ class Parser:
     return result
 
 
-  def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess=False, dbg_tokens=False) -> Any:
+  def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, dbg_tokens:bool=False) -> Any:
     try: return self.parse(rule_name=rule_name, source=source, ignore_excess=ignore_excess, dbg_tokens=dbg_tokens)
     except ParseError as e: e.fail()
 
 
-  def parse_all(self, rule_name:RuleName, source:Source, dbg_tokens=False) -> Iterator[Any]:
+  def parse_all(self, rule_name:RuleName, source:Source, dbg_tokens:bool=False) -> Iterator[Any]:
     rule = self.rules[rule_name]
     buffer = self.make_buffer(source, dbg_tokens=dbg_tokens)
     while True:

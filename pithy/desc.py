@@ -27,7 +27,7 @@ _Quitter = type(quit) # Also the type of `exit`.
 _BadRepr = (_Printer, _Quitter)
 
 
-def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:
+def writeD(file:TextIO, *labels_and_obj:Any, indent:str='', exact:bool=False) -> None:
   'Write a description to a file.'
   labels = labels_and_obj[:-1]
   obj = labels_and_obj[-1]
@@ -37,12 +37,12 @@ def writeD(file:TextIO, *labels_and_obj:Any, indent='', exact=False) -> None:
   print(file=file)
 
 
-def errD(*labels_and_obj:Any, indent='', exact=False) -> None:
+def errD(*labels_and_obj:Any, indent:str='', exact:bool=False) -> None:
   'Write a description to `stderr`.'
   writeD(stderr, *labels_and_obj, indent=indent, exact=exact)
 
 
-def outD(*labels_and_obj:Any, indent='', exact=False) -> None:
+def outD(*labels_and_obj:Any, indent:str='', exact:bool=False) -> None:
   'Write a description to `stdout`.'
   writeD(stdout, *labels_and_obj, indent=indent, exact=exact)
 
@@ -73,7 +73,7 @@ class _Desc(NamedTuple):
     yield from self.it
 
 
-def gen_desc(obj:Any, indent:str='', exact=False) -> Iterator[str]:
+def gen_desc(obj:Any, indent:str='', exact:bool=False) -> Iterator[str]:
   '''
   Generate description parts. Does not include final newline.
   '''

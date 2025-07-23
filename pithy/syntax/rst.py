@@ -50,7 +50,7 @@ class _Ctx:
   @property
   def curr_line_text(self) -> str: return self.lines[self.line]
 
-  def match_text(self, text:str, skip_leading:bool, label:str, raises=False) -> Syntax.Pos:
+  def match_text(self, text:str, skip_leading:bool, label:str, raises:bool=False) -> Syntax.Pos:
     'Match a single line of text, advancing self.line and self.col.'
     if skip_leading:
       while rst_syntax_re.fullmatch(self.curr_line_text, self.col):

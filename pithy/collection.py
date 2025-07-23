@@ -4,7 +4,7 @@ from types import MappingProxyType
 from typing import Any
 
 
-def freeze(value: Any, dicts=True, lists=True, sets=True, bytearrays=True) -> Any:
+def freeze(value: Any, dicts:bool=True, lists:bool=True, sets:bool=True, bytearrays:bool=True) -> Any:
   if dicts and isinstance(value, dict):
     return MappingProxyType({k: freeze(v) for k, v in value.items()})
   if lists and isinstance(value, list):

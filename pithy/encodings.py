@@ -165,7 +165,7 @@ def dec_lep128_from_utf8(val:ByteSeq) -> bytes:
   return dec_lep128(val.decode('utf8').encode('latin1'))
 
 
-def enc_b64url(val:str|ByteSeq, pad=False) -> bytes:
+def enc_b64url(val:str|ByteSeq, pad:bool=False) -> bytes:
   '''
   Encode a byte string using the base64url alphabet (ending in "-_").
   If `pad` is False (the default), then trailing "=" characters are removed from the result.

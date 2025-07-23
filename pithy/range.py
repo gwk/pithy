@@ -20,7 +20,7 @@ class NumRange(Sequence[float], Hashable):
   closed:bool
   _len:int
 
-  def __init__(self, start:float, stop:float|None=None, step:float=1, *, closed=False):
+  def __init__(self, start:float, stop:float|None=None, step:float=1, *, closed:bool=False) -> None:
     if stop is None: # Imitate `range`; `start` is actually `stop`.
       _setattr(self, 'start', 0)
       _setattr(self, 'stop', start)

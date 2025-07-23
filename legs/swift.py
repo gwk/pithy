@@ -282,7 +282,7 @@ def swift_escape_literal_char(c:str) -> str:
 def swift_esc_str(string:str) -> str:
   return ''.join(swift_escape_literal_char(c) for c in string)
 
-def swift_repr(obj:Any, indent=0) -> str:
+def swift_repr(obj:Any, indent:int=0) -> str:
   if isinstance(obj, int): return repr(obj)
   if isinstance(obj, str): return f'"{swift_esc_str(obj)}"'
   if isinstance(obj, SwiftEnum): return obj.swift_repr

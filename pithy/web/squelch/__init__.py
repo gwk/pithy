@@ -302,7 +302,7 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
 
   column_parts:list[str] = []
   line_len = 0
-  def append_select_part(col_name:str):
+  def append_select_part(col_name:str) -> None:
     'Append a column name to the SELECT clause, wrapping lines as needed.'
     nonlocal line_len
     if column_parts:

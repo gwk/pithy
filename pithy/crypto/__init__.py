@@ -65,14 +65,14 @@ class OneWordCryptor:
     return urandom(16)
 
 
-  def encrypt_int(self, val:int, signed=False) -> bytes:
+  def encrypt_int(self, val:int, signed:bool=False) -> bytes:
     'Encrypt a single 64 bit integer, either unsigned (default) or signed.'
     val_bytes = val.to_bytes(8, byteorder='little', signed=signed)
     encryptor = self.cipher.encryptor()
     return encryptor.update(val_bytes * 2) + encryptor.finalize()
 
 
-  def decrypt_int(self, encrypted:bytes, signed=False) -> int:
+  def decrypt_int(self, encrypted:bytes, signed:bool=False) -> int:
     'Decrypt a single 64 bit integer, either unsigned (default) or signed.'
 
     if len(encrypted) != 16: raise ValueError('The encrypted value must be 16 bytes long')

@@ -124,7 +124,7 @@ class CustomStats(Stats):
   total_tt:float
 
 
-  def print(self, *items:Any, sep=' ', end='\n') -> None:
+  def print(self, *items:Any, sep:str=' ', end:str='\n') -> None:
     print(*items, file=self.stream, sep=sep, end=end)
 
 

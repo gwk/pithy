@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Hashable, Iterable, Mapping, MutableMapping, TypeVar
+from typing import Any, Callable, Hashable, Iterable, Mapping, MutableMapping, TypeVar
 
 from .exceptions import ConflictingValues
 
@@ -218,7 +218,7 @@ class DefaultByKeyDict(dict[_K,_V]):
   Subclass of dict, similar to defaultdict.
   When a key is missing, default_factory is called with the key as the sole argument.
   '''
-  def __init__(self, default_factory:Callable[[_K], _V], *args, **kwargs):
+  def __init__(self, default_factory:Callable[[_K], _V], *args:Any, **kwargs:Any):
     self.default_factory = default_factory
     super().__init__(*args, **kwargs)
 

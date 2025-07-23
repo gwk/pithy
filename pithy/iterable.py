@@ -33,7 +33,7 @@ known_leaf_types = (bool, bytearray, bytes, complex, float, int, str, type(None)
 # The remaining members are a speculative optimization.
 
 
-def is_sorted(iterable: Iterable, cmp=le) -> bool:
+def is_sorted(iterable: Iterable, cmp:Callable[[Any,Any],bool]=le) -> bool:
   'Test whether `iterable` is sorted according to `cmp` (default = `operator.le`).'
   a, b = tee(iterable)
   next(b, None) # map works like zip: stops as soon as any input is exhausted. The default `None` is ignored here.
@@ -251,7 +251,7 @@ def fan_by_attr(iterable:Iterable[_T], attr:str) -> dict[Any,list[_T]]:
   return groups
 
 
-def fan_by_index_fn(iterable: Iterable[_T], index: Callable[[_T], int], min_len=0) -> list[list[_T]]:
+def fan_by_index_fn(iterable: Iterable[_T], index: Callable[[_T], int], min_len:int=0) -> list[list[_T]]:
   '''
   Fan out `iterable` into a list of lists, with a minimum length of `min_len`,
   according to the index returned by applying `index` to each element.
@@ -423,8 +423,8 @@ class OnHeadless(Enum):
   error, drop, keep = range(3)
 
 
-def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headless=OnHeadless.error, keep_heads=True) \
- -> Iterator[list[_T]]:
+def group_by_heads(iterable: Iterable[_T], is_head: Callable[[_T], bool], headless:OnHeadless=OnHeadless.error,
+ keep_heads:bool=True) -> Iterator[list[_T]]:
   '''
   Group elements of `iterable` by creating a new group every time the `is_head` predicate evaluates to true.
   If the first element of the stream is not a head, the behavior is specified by `headless`.
@@ -530,7 +530,7 @@ def transpose(iterable: Iterable[Iterable[_T]]) -> Iterable[list[_T]]:
   return map(list, zip(*iterable))
 
 
-def window_iter(iterable: Iterable[_T], width=2) -> Iterator[tuple[_T, ...]]:
+def window_iter(iterable: Iterable[_T], width:int=2) -> Iterator[tuple[_T, ...]]:
   'Yield tuples of the specified `width` (default 2), consisting of adjacent elements in `seq`.'
   # TODO: use tee? might be faster.
   assert width > 0

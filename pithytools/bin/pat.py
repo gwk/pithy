@@ -85,7 +85,7 @@ def main_create(args: Namespace) -> None:
   copyfile(original, modified)
 
 
-def main_diff(args) -> None:
+def main_diff(args:Namespace) -> None:
   'diff command entry point.'
   original = args.original
   modified = args.modified
@@ -159,12 +159,12 @@ def main_diff(args) -> None:
     em_end_o = end_o
 
 
-def main_apply(args) -> None:
+def main_apply(args:Namespace) -> None:
   'apply command entry point.'
   f_patch = args.patch
   f_out = args.out
 
-  def patch_fail(line_num, msg) -> NoReturn:
+  def patch_fail(line_num:int, msg:str) -> NoReturn:
     exit(f'{f_patch.name}:{line_num+1}: {msg}')
 
   version_line = f_patch.readline()

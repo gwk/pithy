@@ -249,7 +249,8 @@ def show_cursor(show_cursor: Any) -> str:
   return CURSOR_SHOW if show_cursor else CURSOR_HIDE
 
 
-def sanitize_for_console(*text:str, allow_sgr=False, allow_tab=False, escape=INVERT, unescape=RST_INVERT) -> list[str]:
+def sanitize_for_console(*text:str, allow_sgr:bool=False, allow_tab:bool=False, escape:str=INVERT, unescape:str=RST_INVERT
+ ) -> list[str]:
   sanitized = []
   for t in text:
     for m in _sanitize_re.finditer(t):

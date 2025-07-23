@@ -2,7 +2,7 @@
 
 from argparse import _SubParsersAction, ArgumentParser, Namespace
 from functools import cached_property
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence
 
 
 class ArgParser(ArgumentParser):
@@ -34,7 +34,7 @@ class CommandParser(ArgParser):
         'use `add_parent_command()` instead of `add_command()` to create intermediate parent parsers.')
 
 
-  def add_command(self, main_fn:Callable[[Namespace],None], name:str|None=None, **kwargs) -> 'CommandParser':
+  def add_command(self, main_fn:Callable[[Namespace],None], name:str|None=None, **kwargs:Any) -> 'CommandParser':
     '''
     Add a command to the parser.
     By default, `name` will be derived from `main_fn` by removing any 'main_' prefix and replacing underscores with hyphens.
@@ -50,7 +50,7 @@ class CommandParser(ArgParser):
     return command
 
 
-  def add_parent_command(self, name:str, **kwargs) -> 'CommandParser':
+  def add_parent_command(self, name:str, **kwargs:Any) -> 'CommandParser':
     '''
     Add a parent command to the parser.
     '''

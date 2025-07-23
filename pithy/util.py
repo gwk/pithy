@@ -25,7 +25,7 @@ class lazy_property(object):
     return val
 
 
-def load_and_execute(module_name:str, function_name:str, /, *args, **kwargs):
+def load_and_execute(module_name:str, function_name:str, /, *args:Any, **kwargs:Any) -> Any:
   'Load a module and execute the specified function.'
   module = importlib.import_module(module_name)
   func = getattr(module, function_name)

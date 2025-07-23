@@ -87,7 +87,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
       raise
 
 
-  def run(self, sql:str, *, _dbg=False, **args:Any) -> Self:
+  def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Self:
     '''
     Execute a query with parameter values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to JSON.
@@ -142,7 +142,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     return False
 
 
-  def count(self, table:str, *, where='', **args:Any) -> int:
+  def count(self, table:str, *, where:str='', **args:Any) -> int:
     'Execute a SELECT COUNT() query, returning the number of rows.'
     where_clause = f' WHERE {where}' if where else ''
     for row in self.execute(f'SELECT COUNT() FROM {table}{where_clause}', args):
@@ -150,21 +150,22 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     raise Exception(f'No row returned from COUNT query: {table}{where_clause}')
 
 
-  def exists(self, table:str, *, where:str, **args) -> bool:
+  def exists(self, table:str, *, where:str, **args:Any) -> bool:
     'Execute a SELECT EXISTS (SELECT ...) query, returning True if at least one result matches the query.'
     return bool(self.execute(f'SELECT EXISTS (SELECT 1 FROM {table} WHERE {where})', args))
 
 
   @overload
-  def insert(self, *, with_='', or_='FAIL', into:str, returning:tuple[str,...], **kwargs:Any) -> Row: ...
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:tuple[str,...], **kwargs:Any) -> Row: ...
 
   @overload
-  def insert(self, *, with_='', or_='FAIL', into:str, returning:str, **kwargs:Any) -> Any: ...
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:str, **kwargs:Any) -> Any: ...
 
   @overload
-  def insert(self, *, with_='', or_='FAIL', into:str, returning:None=None, **kwargs:Any) -> None: ...
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:None=None, **kwargs:Any) -> None: ...
 
-  def insert(self, *, with_='', or_='FAIL', into:str, returning:tuple[str,...]|str|None=None, _dbg=False, **kwargs:Any):
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:tuple[str,...]|str|None=None, _dbg:bool=False,
+   **kwargs:Any) -> Row|Any|None:
     '''
     Execute an insert statement with the kwargs key/value pairs passed as named arguments.
     If `returning` is a tuple, return a single row; if it is a string, return a single column.
@@ -178,18 +179,18 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
 
   @overload
-  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...],
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...],
    args:dict[str, Any], defaults:dict[str,Any]=...) -> Row: ...
 
   @overload
-  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:str,
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None, returning:str,
    args:dict[str,Any], defaults:dict[str,Any]=...) -> Any: ...
 
   @overload
-  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None,returning:None=None,
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None,returning:None=None,
    args:dict[str,Any], defaults:dict[str,Any]=...) -> None: ...
 
-  def insert_dict(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...]|str|None=None,
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...]|str|None=None,
    args:dict[str,Any], defaults:dict[str,Any]={}) -> Any:
     '''
     Execute an insert of the dictionary `args`, synthesized from `into` (the table name) and `fields`.
@@ -214,7 +215,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     else: return None
 
 
-  def insert_seq(self, *, with_='', or_='FAIL', into:str, fields:Iterable[str], seq:Sequence[Any]) -> None:
+  def insert_seq(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str], seq:Sequence[Any]) -> None:
     '''
     Execute an insert of the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
@@ -223,7 +224,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     self.execute(stmt, values)
 
 
-  def count_all_tables(self, *, schema:str='main', omit_empty=False) -> list[tuple[str, int]]:
+  def count_all_tables(self, *, schema:str='main', omit_empty:bool=False) -> list[tuple[str, int]]:
     'Return an iterable of (table, count) pairs.'
     schema_q = sql_quote_entity(schema)
     table_names = list(self.execute(f"SELECT name FROM {schema_q}.sqlite_schema WHERE type = 'table' ORDER BY name").col())
@@ -235,7 +236,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     return pairs
 
 
-  def update(self, table:str, *, with_='', or_='FAIL', by:str|tuple[str,...], _dbg=False, **kwargs:Any) -> None:
+  def update(self, table:str, *, with_:str='', or_:str='FAIL', by:str|tuple[str,...], _dbg:bool=False, **kwargs:Any) -> None:
     '''
     Execute an UPDATE statement.
     TODO: support returning clause.

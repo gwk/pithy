@@ -29,14 +29,14 @@ def main() -> None:
     diff_table(cn_a, cn_b, table)
 
 
-def diff_table(cn_a:Conn, cn_b:Conn, table: str):
+def diff_table(cn_a:Conn, cn_b:Conn, table:str) -> None:
   ca = cn_a.cursor()
   cb = cn_b.cursor()
   a_sql = ca.run("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = :table", table=table).one_col()
   b_sql = cb.run("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = :table", table=table).one_col()
 
   first = True
-  def msg(*msg:str):
+  def msg(*msg:str) -> None:
     nonlocal first
     if first:
       print(f'\nTable {table}:')

@@ -77,7 +77,7 @@ class Buffer(Iterator[_T]):
     return els
 
 
-  def take(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> list[_T]:
+  def take(self, count: int, short:bool=False, default: RaiseOr[_T]=Raise._) -> list[_T]:
     els = []
     for _ in range(count):
       try: els.append(next(self))
@@ -88,7 +88,7 @@ class Buffer(Iterator[_T]):
     return els
 
 
-  def peeks(self, count: int, short=False, default: RaiseOr[_T]=Raise._) -> list[_T]:
+  def peeks(self, count: int, short:bool=False, default: RaiseOr[_T]=Raise._) -> list[_T]:
     if 0 < count <= len(self.buffer):
       return list(reversed(self.buffer[-count:]))
     els = []

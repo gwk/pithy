@@ -2,13 +2,13 @@
 
 from http import HTTPStatus
 from time import sleep
-from typing import Iterable, Mapping, overload, Sequence
+from typing import Any, Iterable, Mapping, overload, Sequence
 
 from starlette.background import BackgroundTask
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData, QueryParams
 from starlette.exceptions import HTTPException
-from starlette.requests import HTTPConnection
+from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
@@ -41,7 +41,7 @@ class CsvResponse(Response):
     quoting:Quoting|None=None,
     head:Sequence[str]|None,
     rows:Iterable[Sequence],
-    **kwargs) -> None:
+    **kwargs:Any) -> None:
 
     '''
     A CSV response.
@@ -65,7 +65,7 @@ class HtmlResponse(HTMLResponse):
       status_code:int=200,
       headers:Mapping[str,str]|None=None,
       background:BackgroundTask|None=None,
-      **kwargs) -> None:
+      **kwargs:Any) -> None:
 
       '''
       An HTML response.
@@ -94,8 +94,8 @@ class HtmxResponse(HTMLResponse):
     hx_trigger:str='',
     hx_trigger_after_swap:str='',
     hx_trigger_after_settle:str='',
-    FAKE_LATENCY=0.0,
-    **kwargs) -> None:
+    FAKE_LATENCY:float=0.0,
+    **kwargs:Any) -> None:
 
     '''
     A response for one or more HTMX fragments.
@@ -144,7 +144,7 @@ class DateConverter(Convertor):
 
 
   @classmethod
-  def  register(cls, name='date') -> None:
+  def  register(cls, name:str='date') -> None:
     register_url_convertor(name, cls())
 
 
@@ -432,7 +432,7 @@ def req_query_date(query_params:QueryParams, key:str) -> Date:
 
 # Miscellaneous.
 
-def empty_favicon(HTMLRequest) -> Response:
+def empty_favicon(request:Request) -> Response:
   '''
   Return an empty favicon; this should be used as a fallback route for '/favicon.ico'.
   Using this prevents 404s getting logged for favicon requests.
@@ -451,7 +451,7 @@ def redirect_to_signin_response(conn:HTTPConnection, exc:Exception|None=None) ->
   return RedirectResponse(url=signin_url, status_code=HTTPStatus.SEE_OTHER)
 
 
-def mount_for_static_pithy(*, path:str='/static/pithy', name='static_pithy') -> Mount:
+def mount_for_static_pithy(*, path:str='/static/pithy', name:str='static_pithy') -> Mount:
   from . import static
   module_dir = real_path(static.__path__[0])
   assert is_dir(module_dir, follow=False), module_dir

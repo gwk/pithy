@@ -37,7 +37,7 @@ def render_csv(*, quoting:Quoting|None=None, header:Sequence[str]|None, rows:Ite
     return f.getvalue()
 
 
-def load_csv(file: TextIO, *,
+def load_csv(file:TextIO, *,
  dialect:str|Dialect|type[Dialect]='excel',
  delimiter:str|None=None,
  doublequote:bool|None=None,
@@ -46,7 +46,7 @@ def load_csv(file: TextIO, *,
  quoting:int=QUOTE_MINIMAL,
  skipinitialspace:bool|None=None,
  strict:bool=True,
- has_header=True,
+ has_header:bool=True,
  row_ctor:Callable|None=None,
  spread_args:bool=False,
  as_dicts:bool=False,
@@ -84,7 +84,7 @@ def load_csv(file: TextIO, *,
 
 class CsvLoader(Iterable, ContextManager):
 
-  def __init__(self, file: TextIO, *,
+  def __init__(self, file:TextIO, *,
    dialect:str|Dialect|type[Dialect]='excel',
    delimiter:str|None=None,
    doublequote:bool|None=None,
@@ -93,7 +93,7 @@ class CsvLoader(Iterable, ContextManager):
    quoting:int|None=None,
    skipinitialspace:bool|None=None,
    strict:bool|None=None,
-   has_header=True,
+   has_header:bool=True,
    row_ctor:Callable|None=None,
    spread_args:bool=False,
    as_dicts:bool=False,

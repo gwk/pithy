@@ -96,7 +96,7 @@ def format_partial(fmt: str, *args: str, **kwargs: Any) -> str:
   return ''.join(format_frag(m) for m in gen_format_matches(fmt))
 
 
-def format_to_re(fmt: str, allow_empty=False, greedy=False) -> Pattern[str]:
+def format_to_re(fmt: str, allow_empty:bool=False, greedy:bool=False) -> Pattern[str]:
   'Translate a format string into a regular expression pattern.'
   quantifier = ('*' if allow_empty else '+') + ('' if greedy else '?')
 

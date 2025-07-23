@@ -33,14 +33,16 @@ ObjDecodeHooks = Sequence[ObjDecodeHook]
 _Seps = tuple[str,str]|None
 
 
-def render_json(item:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, **kwargs) -> str:
+def render_json(item:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:int|None=2, separators:_Seps|None=None,
+ **kwargs:Any) -> str:
   'Render `item` as a json string.'
   if not separators:
     separators = (',', ': ') if indent else (',', ':')
   return _json.dumps(item, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
 
 
-def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, end='\n', flush=False, **kwargs) -> None:
+def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:int|None=2,
+ separators:_Seps|None=None, end:str='\n', flush:bool=False, **kwargs:Any) -> None:
   'Write each item in `items` as json to file.'
   try: write = file.write # If the `file` argument was omitted, the first `item` may have taken its place.
   except AttributeError as e: # We must check for this or else `items` could be empty and we will silently fail.
@@ -54,16 +56,19 @@ def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True,
     if flush: file.flush()
 
 
-def err_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, end='\n', flush=False, **kwargs) -> None:
+def err_json(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:int|None=2, separators:_Seps|None=None,
+ end:str='\n', flush:bool=False, **kwargs:Any) -> None:
   'Write items as json to std err.'
   write_json(stderr, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def out_json(*items:Any, default:EncodeObj=encode_obj, sort=True, indent:int|None=2, separators:_Seps|None=None, end='\n', flush=False, **kwargs) -> None:
+def out_json(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:int|None=2, separators:_Seps|None=None,
+ end:str='\n', flush:bool=False, **kwargs:Any) -> None:
   write_json(stdout, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps|None=None, flush=False, **kwargs) -> None:
+def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort:bool=True, separators:_Seps|None=None,
+ flush:bool=False, **kwargs:Any) -> None:
   'Write each item in `items` as jsonl to file.'
   if separators:
     assert '\n' not in separators[0]
@@ -76,12 +81,14 @@ def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort=True
     if flush: file.flush()
 
 
-def err_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps|None=None, flush=False, **kwargs) -> None:
+def err_jsonl(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, separators:_Seps|None=None, flush:bool=False,
+ **kwargs:Any) -> None:
   'Write items as jsonl to std err.'
   write_jsonl(stderr, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 
 
-def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort=True, separators:_Seps|None=None, flush=False, **kwargs) -> None:
+def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, separators:_Seps|None=None, flush:bool=False,
+ **kwargs:Any) -> None:
   'Write items as jsonl to std out.'
   write_jsonl(stdout, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 

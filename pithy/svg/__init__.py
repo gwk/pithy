@@ -33,7 +33,7 @@ class SvgNode(Mu):
   replaced_attrs = {}
 
 
-  def __init__(self, *args, title:str|None=None, **kwargs) -> None:
+  def __init__(self, *args:Any, title:str|None=None, **kwargs:Any) -> None:
     '''
     SvgNode constructor.
     The `title` parameter is treated as a special attribute that is converted into a `title` child element.
@@ -51,7 +51,7 @@ class SvgNode(Mu):
     except NoMatchError: return None
 
   @title.setter
-  def title(self, title:str|None):
+  def title(self, title:str|None) -> None:
     'Add a title child element to the head of the children list.'
     try:
       title_el = self.pick('title')
@@ -166,7 +166,7 @@ class Line(SvgNode):
 class Path(SvgNode):
   'SVG Path element.'
 
-  def __init__(self, *args, d:Iterable[PathCommand]|Default=Default._, **kw_attrs) -> None:
+  def __init__(self, *args:Any, d:Iterable[PathCommand]|Default=Default._, **kw_attrs:Any) -> None:
 
     if isinstance(d, Default):
       super().__init__(*args, **kw_attrs)
@@ -203,7 +203,7 @@ class Path(SvgNode):
 class SvgPoly(SvgNode):
   'Abstract class for SVG polygon and polyline elements.'
 
-  def __init__(self, *args, points:str|Iterable[str|Vec]|Default=Default._, **kw_attrs) -> None:
+  def __init__(self, *args:Any, points:str|Iterable[str|Vec]|Default=Default._, **kw_attrs:Any) -> None:
 
     if isinstance(points, Default):
       super().__init__(*args, **kw_attrs)
@@ -328,7 +328,7 @@ class SvgBranch(SvgNode):
   def marker(self, *, id:str='', pos:Vec|None=None, size:VecOrNum|None=None,
    refX:float|None=None, refY:float|None=None, markerWidth:float|None=None, markerHeight:float|None=None,
    vx:float=0, vy:float=0, vw:float|None=None, vh:float|None=None,
-   markerUnits='strokeWidth', orient:str='auto', **kw_attrs:Any) -> 'Marker':
+   markerUnits:str='strokeWidth', orient:str='auto', **kw_attrs:Any) -> 'Marker':
     'Create a child `marker` element.'
     if pos is not None:
       assert refX is None and refY is None
@@ -380,17 +380,17 @@ class SvgBranch(SvgNode):
     return self.append(Rect(x=x, y=y, width=width, height=height, **kw_attrs))
 
 
-  def script(self, *text:str, **kw_attrs,) -> Script:
+  def script(self, *text:str, **kw_attrs:Any) -> Script:
     'Create a child `script` element.'
     return self.append(Script(_=text, **kw_attrs))
 
 
-  def style(self, *text:str, **kw_attrs,) -> Style:
+  def style(self, *text:str, **kw_attrs:Any) -> Style:
     'Create a child `style` element.'
     return self.append(Style(_=text, **kw_attrs))
 
 
-  def symbol(self, *, _=(), id:str, vx:float=0, vy:float=0, vw:float, vh:float, **kw_attrs:Any) -> 'Symbol':
+  def symbol(self, *, _:Iterable[Any]=(), id:str, vx:float=0, vy:float=0, vw:float, vh:float, **kw_attrs:Any) -> 'Symbol':
     'Create a child `symbol` element.'
     return self.append(Symbol(_=_, id=id, **kw_attrs).viewbox(vx=vx, vy=vy, vw=vw, vh=vh))
 
@@ -439,7 +439,7 @@ class Svg(SvgBranch, _MixinPos, _MixinSize, _MixinViewBox):
   HTML contexts for use: Phrasing.
   '''
 
-  def __init__(self, *args, **kw_attrs) -> None:
+  def __init__(self, *args:Any, **kw_attrs:Any) -> None:
     '''
     Add the xmlns as the first attribute.
     If the user wants to override this, they can do so by passing `xmlns` as a keyword argument.

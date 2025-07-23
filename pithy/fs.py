@@ -8,7 +8,7 @@ import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from sys import argv
-from typing import Callable, cast, Iterable, Iterator, TextIO
+from typing import Any, Callable, cast, Iterable, Iterator, TextIO
 
 from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
@@ -45,11 +45,11 @@ def change_dir_to_src() -> None:
   change_dir(path_dir(argv[0]))
 
 
-def clone_or_hardlink(src:str, dst:str, follow_symlinks=True, preserve_owner=True) -> None:
+def clone_or_hardlink(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True) -> None:
   clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=None) # TODO
 
 
-def clone_or_symlink(src:str, dst:str, follow_symlinks=True, preserve_owner=True) -> None:
+def clone_or_symlink(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True) -> None:
   clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=None) # TODO
 
 
@@ -91,7 +91,7 @@ default_project_signifiers: tuple[str, ...] = (
   'pyproject.toml',
 )
 
-def find_project_dir(start_dir:Path='.', top:Path|None=None, include_top=False,
+def find_project_dir(start_dir:Path='.', top:Path|None=None, include_top:bool=False,
  project_signifiers:Iterable[str]=default_project_signifiers) -> str|None:
   '''
   find a project root directory, as denoted by the presence of a file/directory in `project_signifiers`.
@@ -117,7 +117,7 @@ def find_project_dir(start_dir:Path='.', top:Path|None=None, include_top=False,
 def home_dir() -> str: return _expanduser('~')
 
 
-def is_python_file(path:Path, always_read=False) -> bool:
+def is_python_file(path:Path, always_read:bool=False) -> bool:
   '''
   Guess if a file is a python file, based first on path extension, or if that is not present on shebang line.
   TODO: support more than just '#!/usr/bin/env python'
@@ -134,7 +134,7 @@ def is_python_file(path:Path, always_read=False) -> bool:
   except (FileNotFoundError, IsADirectoryError): return False
 
 
-def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden=False) -> list[str]:
+def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden:bool=False) -> list[str]:
   '''
   Return a list of the names in the directory at `path`,
   optionally filtering by extensions in `exts`, and the `hidden` flag (defaults to False, excluding names beginning with '.').
@@ -146,7 +146,7 @@ def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden=False) -> list[str]:
   return [n for n in names if name_has_any_ext(n, exts) and (hidden or not n.startswith('.'))]
 
 
-def list_dir_paths(path:Path, exts:Iterable[str]=(), hidden=False) -> list[str]:
+def list_dir_paths(path:Path, exts:Iterable[str]=(), hidden:bool=False) -> list[str]:
   return [path_join(path, name) for name in list_dir(path, exts=exts, hidden=hidden)]
 
 
@@ -154,7 +154,7 @@ def make_dir(path:Path) -> None:
   return _mkdir(path)
 
 
-def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
+def make_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
   '''
   Like os.makedirs, except:
   * uses `mode` to make all intermediate directories.
@@ -184,13 +184,13 @@ def make_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
     return # The directory already exists.
 
 
-def make_parent_dirs(path:Path, mode=0o777, exist_ok=True) -> None:
+def make_parent_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
   dir = path_dir(path)
   if dir: make_dirs(dir, exist_ok=exist_ok)
 
 
-def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, overwrite=False, create_dirs=False,
- perms:int|None=None) -> None:
+def make_link(orig:Path, *, link:Path, absolute:bool=False, allow_nonexistent:bool=False, overwrite:bool=False,
+ create_dirs:bool=False, perms:int|None=None) -> None:
   if perms is not None: raise NotImplementedError # TODO
   abs_orig = abs_path(orig)
   if abs_orig == abs_path(link): raise ValueError(f'cannot create link to self: orig: {orig!r}; link: {link!r}')
@@ -209,7 +209,7 @@ def make_link(orig:Path, *, link:Path, absolute=False, allow_nonexistent=False, 
   return _os.symlink(_orig, link)
 
 
-def move_file(path:Path, to:str, overwrite=False, create_dirs=False) -> None:
+def move_file(path:Path, to:str, overwrite:bool=False, create_dirs:bool=False) -> None:
   if not overwrite and path_exists(to, follow=False):
     raise Exception('destination path already exists: {}'.format(to))
   if create_dirs: make_parent_dirs(path)
@@ -236,7 +236,7 @@ def normalize_exts(exts:Iterable[str]) -> frozenset[str]:
   return frozenset(exts)
 
 
-def open_new(path:Path, create_dirs:bool=True, **open_args) -> TextIO:
+def open_new(path:Path, create_dirs:bool=True, **open_args:Any) -> TextIO:
   if path_exists(path, follow=False):
     raise PathAlreadyExists(path)
   if create_dirs: make_parent_dirs(path)
@@ -272,12 +272,12 @@ def remove_dir(path:Path) -> None:
   _os.rmdir(path)
 
 
-def remove_dir_contents(path:Path, hidden=False) -> None:
+def remove_dir_contents(path:Path, hidden:bool=False) -> None:
   for n in list_dir_paths(path, hidden=hidden):
     remove_path(n)
 
 
-def remove_dir_contents_if_exists(path:Path, hidden=False) -> None:
+def remove_dir_contents_if_exists(path:Path, hidden:bool=False) -> None:
   if path_exists(path, follow=True): remove_dir_contents(path, hidden=hidden)
 
 
@@ -304,7 +304,7 @@ def remove_path_if_exists(path:Path) -> None:
     remove_path(path)
 
 
-def scan_dir(path:Path, exts:Iterable[str]=(), hidden=False) -> list[DirEntry]:
+def scan_dir(path:Path, exts:Iterable[str]=(), hidden:bool=False) -> list[DirEntry]:
   exts = normalize_exts(exts)
   entries = sorted(_os.scandir(str_path(path)), key=lambda e: e.name)
   if not exts and hidden: return entries
@@ -320,19 +320,19 @@ def set_mtime(path:PathOrFd, mtime:float|None) -> None:
   _os.utime(path, None if mtime is None else (_time.time(), mtime))
 
 
-def touch_path(path:Path, mode=0o666) -> None:
+def touch_path(path:Path, mode:int=0o666) -> None:
   fd = _os.open(path, flags=_os.O_CREAT|_os.O_APPEND, mode=mode)
   try: _os.utime(fd)
   finally: _os.close(fd)
 
 
-def walk_dirs(*paths:Path, make_abs=False, include_hidden=False, file_exts:Iterable[str]=()) -> Iterator[str]:
+def walk_dirs(*paths:Path, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=()) -> Iterator[str]:
   return walk_paths(*paths, make_abs=make_abs, yield_files=False, yield_dirs=True,
     include_hidden=include_hidden, file_exts=file_exts)
 
 
-def walk_dirs_and_files(*dir_paths:Path, make_abs=False, include_hidden=False, file_exts:Iterable[str]=(),
- files_as_paths=False) -> Iterator[tuple[str, list[str]]]:
+def walk_dirs_and_files(*dir_paths:Path, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=(),
+ files_as_paths:bool=False) -> Iterator[tuple[str, list[str]]]:
   '''
   yield (dir_path, files) pairs.
   files is an array of either names (default) or paths, depending on the files_as_paths option.
@@ -359,7 +359,7 @@ def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:frozenset[
     yield from _walk_dirs_and_files(sub_dir, include_hidden, file_exts, files_as_paths)
 
 
-def walk_dirs_up(path:Path, top:Path, include_top=True) -> Iterable[str]:
+def walk_dirs_up(path:Path, top:Path, include_top:bool=True) -> Iterable[str]:
   if is_path_abs(path) ^ is_path_abs(top):
     raise MixedAbsoluteAndRelativePathsError((path, top))
   if is_dir(path, follow=True):
@@ -371,13 +371,13 @@ def walk_dirs_up(path:Path, top:Path, include_top=True) -> Iterable[str]:
   return reversed(path_descendants(top, dir_path, include_start=include_top))
 
 
-def walk_files(*paths:Path, make_abs=False, include_hidden=False, file_exts:Iterable[str]=()) -> Iterator[str]:
+def walk_files(*paths:Path, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=()) -> Iterator[str]:
   return walk_paths(*paths, make_abs=make_abs, yield_files=True, yield_dirs=False,
     include_hidden=include_hidden, file_exts=file_exts)
 
 
-def walk_paths(*paths:Path, make_abs=False, yield_files=True, yield_dirs=True, include_hidden=False,
-  file_exts:Iterable[str]=(), pass_dash=True) -> Iterator[str]:
+def walk_paths(*paths:Path, make_abs:bool=False, yield_files:bool=True, yield_dirs:bool=True, include_hidden:bool=False,
+  file_exts:Iterable[str]=(), pass_dash:bool=True) -> Iterator[str]:
   '''
   Generate file and/or dir paths, optionally filtering hidden names and/or by file extension.
   Treats `-` as a special symbol for stdin, and returns it unaltered and unfiltered as a special case.
@@ -414,7 +414,7 @@ def _walk_paths_rec(dir_path:str, yield_files:bool, yield_dirs:bool, include_hid
 
 class DirEntries:
 
-  def __init__(self, exts:Iterable[str]=(), hidden=False, pred:Callable[[DirEntry],bool]|None=None):
+  def __init__(self, exts:Iterable[str]=(), hidden:bool=False, pred:Callable[[DirEntry],bool]|None=None):
     self.exts  = normalize_exts(exts)
     self.hidden = hidden
     self.pred = (lambda entry:True) if pred is None else pred

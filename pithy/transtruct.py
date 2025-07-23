@@ -64,7 +64,7 @@ class Transtructor:
     self.prefigures:dict[type,PrefigureFn] = {}
 
 
-  def transtruct(self, desired_type:type[Desired], val:Input, *, ctx:Ctx=None, dbg=False) -> Desired:
+  def transtruct(self, desired_type:type[Desired], val:Input, *, ctx:Ctx|None=None, dbg:bool=False) -> Desired:
     try:
       transtructor:TranstructFn[Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
     except TypeError as e:
@@ -282,7 +282,7 @@ class Transtructor:
     if len(types) == 2 and types[1] is cast(type, Ellipsis):
       el_transtructor = self.transtructor_for(types[0])
 
-      def transtruct_seq_tuple(args:Any, ctx) -> Any:
+      def transtruct_seq_tuple(args:Any, ctx:Ctx) -> Any:
         if prefigure_fn: args = prefigure_fn(type_, args, ctx)
         return rtt(el_transtructor(a, ctx) for a in args)
 

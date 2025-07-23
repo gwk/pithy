@@ -276,7 +276,7 @@ class Source(Generic[_Text]):
     return f'{pre}{name_colon}{line_idx+1}:{col}:{msg_space}{msg}\n{src_bar}{src_line}\n  {underline}\n'
 
 
-  def bytes_for(self, token:Token, offset=0) -> bytes:
+  def bytes_for(self, token:Token, offset:int=0) -> bytes:
     text = self.text
     if isinstance(text, str):
       return text[token.pos+offset:token.end].encode()
@@ -285,7 +285,7 @@ class Source(Generic[_Text]):
       return bytes(text[token.pos+offset:token.end])
 
 
-  def str_for(self, token:Token, offset=0) -> str:
+  def str_for(self, token:Token, offset:int=0) -> str:
     text = self.text
     if isinstance(text, str):
       return text[token.pos+offset:token.end]

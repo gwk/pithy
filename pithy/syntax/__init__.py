@@ -20,7 +20,7 @@ class Syntax:
     end_line: int
     end_col: int
 
-    def __init__(self, *, line=-1, col=-1, end_line=-1, end_col=-1, enclosed:Iterable[Any]=()):
+    def __init__(self, *, line:int=-1, col:int=-1, end_line:int=-1, end_col:int=-1, enclosed:Iterable[Any]=()):
       for el in enclosed:
         if el is None: continue
         pos = el if isinstance(el, Syntax.Pos) else el.pos # `enclosed` elements should either be a `Pos` or have a `pos`.
@@ -58,7 +58,7 @@ class Syntax:
     return path if ('<' in path or '/' in path) else './' + path
 
   @staticmethod
-  def diagnostic(path:str, *, line:int, col:int, end_line=-1, end_col=-1, msg='') -> str:
+  def diagnostic(path:str, *, line:int, col:int, end_line:int=-1, end_col:int=-1, msg:str='') -> str:
     s = ' ' if msg else ''
     return f'{Syntax.path_with_slash(path)}:{Syntax.Pos(line=line, col=col, end_line=end_line, end_col=end_col)}:{s}{msg}'
 
@@ -79,7 +79,7 @@ class Syntax:
     return self.children
 
 
-  def describe(self, *, prefix='', depth=0) -> Iterator[str]:
+  def describe(self, *, prefix:str='', depth:int=0) -> Iterator[str]:
     'Generate lines (without terminating newlines) describing the receiver.'
     spaces = '  ' * depth
     kind = f' {self.kind}:' if self.kind else ''

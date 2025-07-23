@@ -38,7 +38,7 @@ def utest_call(callable:_C) -> _C:
   return callable
 
 
-def utest(exp:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest(exp:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is raised or the returned value does not equal `exp`.
@@ -54,7 +54,7 @@ def utest(exp:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs
       _utest_failure(_utest_depth, exp_label='value', exp=exp, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_repr(exp_repr:str, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_repr(exp_repr:str, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is raised or the returned value's `repr` does not equal `exp_repr`.
@@ -70,7 +70,7 @@ def utest_repr(exp_repr:str, fn:Callable, *args:Any, _exit=False, _utest_depth=0
       _utest_failure(_utest_depth, exp_label='repr', exp=exp_repr, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_type(exp_type:type, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_type(exp_type:type, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is raised or the returned value is not an instance of `exp_type`.
@@ -87,7 +87,7 @@ def utest_type(exp_type:type, fn:Callable, *args:Any, _exit=False, _utest_depth=
         kwargs=kwargs)
 
 
-def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -103,7 +103,8 @@ def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, 
     _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='value', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest_depth=0, _sort=False, **kwargs:Any) -> None:
+def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, _sort:bool=False,
+ **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is raised,
@@ -132,7 +133,7 @@ def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest
     _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -147,10 +148,11 @@ def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
       if _exit: raise
   else:
-    _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='sequence', ret=ret, subj=fn, args=args,
+      kwargs=kwargs)
 
 
-def utest_items(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_items(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting mapping into a key/value items sequence.
   Log a test failure if an exception is raised,
@@ -168,13 +170,14 @@ def utest_items(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit=False, _ute
   try:
     ret = list(ret_mapping.items())
   except BaseException as exc:
-    _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='value', ret=ret_mapping, exc=exc, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='value', ret=ret_mapping, exc=exc, subj=fn, args=args,
+      kwargs=kwargs)
     return
   if exp != ret:
     _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='items', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a key/value items sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -189,10 +192,11 @@ def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit=False, _utest_dep
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
       if _exit: raise
   else:
-    _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='items', ret=ret, subj=fn, args=args, kwargs=kwargs)
+    _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, ret_label='items', ret=ret, subj=fn, args=args,
+      kwargs=kwargs)
 
 
-def utest_val(exp_val:Any, act_val:Any, desc='<value>') -> None:
+def utest_val(exp_val:Any, act_val:Any, desc:Any='<value>') -> None:
   '''
   Log a test failure if `act_val` is  not equal to `exp_val`.
   Describe the test with the optional `desc`.
@@ -203,7 +207,7 @@ def utest_val(exp_val:Any, act_val:Any, desc='<value>') -> None:
     _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def utest_val_ne(exp_val:Any, act_val:Any, desc='<value>') -> None:
+def utest_val_ne(exp_val:Any, act_val:Any, desc:Any='<value>') -> None:
   '''
   Log a test failure if `act_val` equals `exp_val`.
   Describe the test with the optional `desc`.
@@ -214,7 +218,7 @@ def utest_val_ne(exp_val:Any, act_val:Any, desc='<value>') -> None:
     _utest_failure(depth=0, exp_label='value', exp=exp_val, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def utest_val_type(exp_val_type:Any, act_val:Any, desc='<value>') -> None:
+def utest_val_type(exp_val_type:Any, act_val:Any, desc:Any='<value>') -> None:
   '''
   Log a test failure if `act_val` is not an instance of `exp_val_type`.
   Describe the test with the optional `desc`.
@@ -225,7 +229,8 @@ def utest_val_type(exp_val_type:Any, act_val:Any, desc='<value>') -> None:
     _utest_failure(depth=0, exp_label='instance of type', exp=exp_val_type, ret_label='value', ret=act_val, subj=repr(desc))
 
 
-def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit=False, _utest_depth=0, **kwargs:Any) -> None:
+def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any
+ ) -> None:
   '''
   Apply `test_fn` to the provided arguments,
   then again to the same arguments but with the last two positional parameters swapped.

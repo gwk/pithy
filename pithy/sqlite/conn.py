@@ -34,7 +34,7 @@ class Conn(sqlite3.Connection):
 
   def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None='DEFERRED',
    check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, autocommit:bool=True, closing:bool=True,
-   mode='', trace_caller_level:int=0) -> None:
+   mode:str='', trace_caller_level:int=0) -> None:
     '''
     Note: as of Python 3.12, the `autocommit` parameter is preferred over the `isolation_level` parameter.
     sqlite3.Connection `autocommit` defaults to LEGACY_TRANSACTION_CONTROL, in which case `isolation_level` takes effect.
@@ -97,7 +97,7 @@ class Conn(sqlite3.Connection):
     return res
 
 
-  def attach(self, path:str, *, name:str, mode='') -> None:
+  def attach(self, path:str, *, name:str, mode:str='') -> None:
     '''
     Attach another database to this one using the URI syntax with the specified mode.
     `mode` must be one of '' (default, omitted in the SQL statement), 'ro', 'rw', 'rwc', or 'memory'.
@@ -158,7 +158,7 @@ class Conn(sqlite3.Connection):
 
 
   def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,
-   name='main', sleep=0.250) -> None:
+   name:str='main', sleep:float=0.250) -> None:
     '''
     Backup this database to the target database, optionally printing progress to stdout.
     This is an override of sqlite3.Connection.backup, adding the `progress` argument for convenience.
@@ -177,7 +177,7 @@ class Conn(sqlite3.Connection):
       if callable(progress):
         progress_fn = progress
       else:
-        def _progress_fn(_status:int, remaining:int, total:int):
+        def _progress_fn(_status:int, remaining:int, total:int) -> None:
           frac = (total - remaining) / total
           print(f'Backup {path}:{name}: {frac:0.1%}…', end='\r')
         progress_fn = _progress_fn

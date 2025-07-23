@@ -52,7 +52,7 @@ def snakecase_from_camelcase(string:str) -> str:
   return '_'.join(s.lower() for s in split_camelcase(string))
 
 
-def clip_prefix(string:str, prefix:str, req=True) -> str:
+def clip_prefix(string:str, prefix:str, req:bool=True) -> str:
   'Remove `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):
     return string[len(prefix):]
@@ -61,7 +61,7 @@ def clip_prefix(string:str, prefix:str, req=True) -> str:
   return string
 
 
-def clip_suffix(string:str, suffix:str, req=True) -> str:
+def clip_suffix(string:str, suffix:str, req:bool=True) -> str:
   'Remove `suffix`if it is present, or raise ValueError, unless `req` is False.'
   if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
@@ -71,7 +71,7 @@ def clip_suffix(string:str, suffix:str, req=True) -> str:
   return string
 
 
-def replace_prefix(string:str, prefix:str, replacement:str, req=True) -> str:
+def replace_prefix(string:str, prefix:str, replacement:str, req:bool=True) -> str:
   'Replace `prefix` if it is present, or raise ValueError, unless `req` is False.'
   if string.startswith(prefix):
     return replacement + string[len(prefix):]
@@ -80,7 +80,7 @@ def replace_prefix(string:str, prefix:str, replacement:str, req=True) -> str:
   return string
 
 
-def replace_suffix(string:str, suffix:str, replacement:str, req=True) -> str:
+def replace_suffix(string:str, suffix:str, replacement:str, req:bool=True) -> str:
   'Replace `suffix`if it is present, or raise ValueError, unless `req` is False.'
   if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
@@ -90,7 +90,7 @@ def replace_suffix(string:str, suffix:str, replacement:str, req=True) -> str:
   return string
 
 
-def clip_first_prefix(string:str, prefixes:Sequence[str], req=True) -> str:
+def clip_first_prefix(string:str, prefixes:Sequence[str], req:bool=True) -> str:
   'Remove the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
   for p in prefixes:
     try:
@@ -101,7 +101,7 @@ def clip_first_prefix(string:str, prefixes:Sequence[str], req=True) -> str:
   else: return string
 
 
-def clip_common(strings:Sequence[str], prefix=True, suffix=True) -> tuple[str,...]:
+def clip_common(strings:Sequence[str], prefix:bool=True, suffix:bool=True) -> tuple[str,...]:
   if not strings: return ()
   if len(strings) == 1: return ('',)
   first = strings[0]
@@ -118,7 +118,7 @@ def clip_common(strings:Sequence[str], prefix=True, suffix=True) -> tuple[str,..
   return tuple(s[i:l] for s in strings)
 
 
-def replace_first_prefix(string:str, prefixes:Sequence[tuple[str,str]], req=True) -> str:
+def replace_first_prefix(string:str, prefixes:Sequence[tuple[str,str]], req:bool=True) -> str:
   'Replace the first matching prefix in `prefixes` from `string`, or raise ValueError, unless `req is False`.'
   for prefix, replacement in prefixes:
     try:
@@ -130,7 +130,7 @@ def replace_first_prefix(string:str, prefixes:Sequence[tuple[str,str]], req=True
   return string
 
 
-def find_and_clip_suffix(string:str, suffix:str, req=True) -> str:
+def find_and_clip_suffix(string:str, suffix:str, req:bool=True) -> str:
   idx = string.find(suffix)
   if idx == -1:
     if req: raise ValueError(string)
@@ -138,7 +138,7 @@ def find_and_clip_suffix(string:str, suffix:str, req=True) -> str:
   return string[:idx]
 
 
-def indent_lines(lines:Iterable[str], depth=1) -> Iterator[str]:
+def indent_lines(lines:Iterable[str], depth:int=1) -> Iterator[str]:
   ind = '  '*depth
   for line in lines:
     nl = '' if line.endswith('\n') else '\n'
@@ -148,7 +148,7 @@ def indent_lines(lines:Iterable[str], depth=1) -> Iterator[str]:
 ConvFn = Callable[[Any], str]
 
 def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
- max_col_width=64) -> Iterable[str]:
+ max_col_width:int=64) -> Iterable[str]:
   '''
   Format rows of cells to after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
@@ -188,7 +188,7 @@ def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rj
     yield '  '.join(just_fn(cell, width) for just_fn, cell, width in zip(just_fns, row, col_widths))
 
 
-def fmt_tabbed_rows(rows:Iterable[str], rjust:bool|Iterable[bool]=False, max_col_width=64) -> Iterable[str]:
+def fmt_tabbed_rows(rows:Iterable[str], rjust:bool|Iterable[bool]=False, max_col_width:int=64) -> Iterable[str]:
   'Format rows of tab-separated strings by splitting on tabs and then passing those sequences to fmt_rows.'
   return fmt_rows((row.split('\t') for row in rows), rjust=rjust, max_col_width=max_col_width)
 
@@ -212,7 +212,7 @@ def iter_excluding_str(iterable:Iterable[_T]) -> Iterator[_T]:
   return iter(iterable) # raises TypeError for non-iterables.
 
 
-def pluralize(count:int, name:str, plural:str|None=None, spec='') -> str:
+def pluralize(count:int, name:str, plural:str|None=None, spec:str='') -> str:
   '''
   Simple English pluralization for a count/noun pair.
   Return a string of format "{count} {name}s", with optional custom plural form and numerical format spec.
@@ -251,7 +251,7 @@ _byte_count_dec_magnitudes = [
   ('YB', 'yottabyte'),
 ]
 
-def format_byte_count(count:int, prec=3, abbr=True) -> str:
+def format_byte_count(count:int, prec:int=3, abbr:bool=True) -> str:
   "Format a string for the given number of bytes, using the largest appropriate prefix (e.g. 'kB')"
   count = int(count)
   if count < 1000:
@@ -306,7 +306,7 @@ def simplify_punctuation(text:str) -> str:
 
 StrTree = dict[str,Union['StrTree',None]]
 
-def str_tree(strings:Iterable[str], update:dict[str,dict|None]|None=None, dbg=False) -> StrTree:
+def str_tree(strings:Iterable[str], update:dict[str,dict|None]|None=None, dbg:bool=False) -> StrTree:
   if dbg:
     strings = list(strings)
     print(f'DBG: str_tree: {strings}')
@@ -316,7 +316,7 @@ def str_tree(strings:Iterable[str], update:dict[str,dict|None]|None=None, dbg=Fa
   return tree
 
 
-def str_tree_insert(tree:StrTree, s:str, dbg=False) -> None:
+def str_tree_insert(tree:StrTree, s:str, dbg:bool=False) -> None:
   if dbg: print(f'inserting {s!r} into {tree!r}')
   # Look for a nonempty key prefix, starting with the whole string.
   for lp in range(len(s), 0, -1):
@@ -349,14 +349,14 @@ def str_tree_insert(tree:StrTree, s:str, dbg=False) -> None:
   tree[s] = None
 
 
-def str_tree_iter(tree:StrTree, prefix='') -> Iterator[str]:
+def str_tree_iter(tree:StrTree, prefix:str='') -> Iterator[str]:
   for k, sub in tree.items():
     if sub is None: yield prefix + k
     else:
       yield from str_tree_iter(sub, prefix + k)
 
 
-def str_tree_pairs(tree:StrTree, prefix='') -> Iterator[tuple[str,str]]:
+def str_tree_pairs(tree:StrTree, prefix:str='') -> Iterator[tuple[str,str]]:
   'Iterate over the tree elements, yielding (shared prefix, unique suffix) pairs.'
   for k, sub in tree.items():
     if sub is None: yield (prefix, k)

@@ -207,7 +207,7 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
   return stmts
 
 
-def run_migration(conn:Conn, migration:list[str], max_errors=100, backup=True) -> None:
+def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:bool=True) -> None:
   '''
   12 migration steps: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes
   '''
@@ -234,7 +234,7 @@ def run_migration(conn:Conn, migration:list[str], max_errors=100, backup=True) -
     c.execute('PRAGMA foreign_keys = ON') # 12.
 
 
-def run_check(cursor:Cursor, check:str, args:str='', max_errors=100) -> None:
+def run_check(cursor:Cursor, check:str, args:str='', max_errors:int=100) -> None:
   args_str = f'({args})' if args else ''
   stmt = f'PRAGMA {check}{args_str}'
   print(f'Running {stmt!r}.')

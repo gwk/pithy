@@ -10,7 +10,7 @@ from .keywords import sqlite_keywords
 
 
 @lru_cache
-def insert_head_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -> str:
+def insert_head_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str,...]) -> str:
     '''
     Create the first part of an INSERT statement, up to the VALUES/SELECT/DEFAULT clause.
 
@@ -27,7 +27,7 @@ def insert_head_stmt(*, with_='', or_='FAIL', into:str, fields:tuple[str,...]) -
 
 
 @lru_cache
-def insert_values_stmt(*, with_='', or_='FAIL', into:str, named:bool, fields:tuple[str,...],
+def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, named:bool, fields:tuple[str,...],
  returning:tuple[str,...]|str|None=None) -> str:
     '''
     Create an INSERT statement that uses positional or named placeholders for values.
@@ -49,7 +49,7 @@ def insert_values_stmt(*, with_='', or_='FAIL', into:str, named:bool, fields:tup
 
 
 @lru_cache
-def update_stmt(*, with_='', or_='FAIL', table:str, named:bool, fields:tuple[str,...], where:str='') -> str:
+def update_stmt(*, with_:str='', or_:str='FAIL', table:str, named:bool, fields:tuple[str,...], where:str='') -> str:
   '''
   Create an UPDATE statement that uses positional or named placeholders for values.
   '''
@@ -189,7 +189,7 @@ def type_for_lax_sql(sql_type:str) -> type:
   return object # Note: the default affinity is 'NUMERIC', but it makes more sense to default to 'object'.
 
 
-def sql_comment_lines(comment:str, indent='') -> list[str]:
+def sql_comment_lines(comment:str, indent:str='') -> list[str]:
   if indent and not indent.isspace(): raise ValueError(f'Indent must be whitespace: {indent!r}')
   return [f'{indent}-- {l.rstrip()}' for l in comment.strip().splitlines()]
 
@@ -214,7 +214,7 @@ def sql_quote_qual_entity(*entity_parts:str) -> str:
   return '.'.join(sql_quote_entity(p) for p in entity_parts if p)
 
 
-def sql_quote_entity(entity:str, always=False) -> str:
+def sql_quote_entity(entity:str, always:bool=False) -> str:
   if always or entity.upper() in sqlite_keywords or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', entity):
     return sql_quote_entity_always(entity)
   else:

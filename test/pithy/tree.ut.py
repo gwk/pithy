@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from functools import singledispatch
+from typing import Any, Iterable
 
 from pithy.tree import *
 from utest import utest, utest_call
@@ -10,7 +11,7 @@ from utest import utest, utest_call
 def test_transform_tree_0():
 
   @singledispatch
-  def get_children(node: Iterable) -> Iterable|None:
+  def get_children(node:Iterable[Any]) -> Iterable[Any]|None:
     try: return iter(node)
     except TypeError: return None
 
@@ -18,11 +19,11 @@ def test_transform_tree_0():
   def _(node:dict) -> Iterable: return node.values()
 
   @singledispatch
-  def visit(node, stack, results):
+  def visit(node:Any, stack:list[Any], results:list[Any]) -> tuple[str,Any]:
     return (type(node).__name__, *results)
 
   @visit.register
-  def _(node:int, stack, results):
+  def _(node:int, stack:list[Any], results:list[Any]) -> tuple[str,Any]:
     return ('int', node)
 
   input = {
@@ -47,15 +48,15 @@ def test_transform_tree_1():
     return None if isinstance(node, (int, str)) else node
 
   @singledispatch
-  def visit(node: Iterable, stack, results):
+  def visit(node:Any, stack:list[Any], results:list[Any]) -> Any:
     return results or node
 
   @visit.register
-  def _(node:tuple, stack, results):
+  def _(node:tuple, stack:list[Any], results:list[Any]) -> Any:
     yield from results # flatten tuples out.
 
   @visit.register
-  def _(node:str, stack, results):
+  def _(node:str, stack:list[Any], results:list[Any]) -> Any:
     raise OmitNode
 
   input = [

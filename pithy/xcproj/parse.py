@@ -58,7 +58,7 @@ def parse(source:Source, buffer:Buffer[Token]) -> Any:
     raise ParseError(token, f'unexpected token: {token.kind}')
 
 
-def parse_obj(source:Source, buffer:Buffer[Token], head:Token, is_root=False) -> Any:
+def parse_obj(source:Source, buffer:Buffer[Token], head:Token, is_root:bool=False) -> Any:
   d:Dict[str,Any] = {}
   while True:
     token = next(buffer)

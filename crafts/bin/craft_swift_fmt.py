@@ -109,7 +109,7 @@ def check_format_swift(args:Namespace, conf:CraftConfig, path:str) -> None:
     exit(1)
 
 
-def format_swift(ctx:Ctx):
+def format_swift(ctx:Ctx) -> None:
   'Format lines of swift code.'
   lines = ctx.lines
   while lines and not lines[-1]: lines.pop() # Jettison empty lines at end of file.

@@ -9,7 +9,7 @@ from .patience import align_patience, Alignment, Diff
 _T = TypeVar('_T')
 
 
-def calc_diff(seq_a:Sequence[_T], seq_b:Sequence[_T], algorithm='patience', **kwargs:Any):
+def calc_diff(seq_a:Sequence[_T], seq_b:Sequence[_T], algorithm:str='patience', **kwargs:Any) -> Diff:
   alignment = alignment_fns[algorithm](seq_a, seq_b, **kwargs)
   improve_alignment(seq_a, seq_b, alignment)
   return diff_for_alignment(alignment, len(seq_a), len(seq_b))
@@ -63,7 +63,7 @@ def improve_alignment(seq_a:Sequence[_T], seq_b:Sequence[_T], alignment:Alignmen
     prev_b = b
 
 
-def validate_diff(seq_a:Sequence[_T], seq_b:Sequence[_T], diff:Diff, allow_empty=False) -> None:
+def validate_diff(seq_a:Sequence[_T], seq_b:Sequence[_T], diff:Diff, allow_empty:bool=False) -> None:
   i_a = 0
   i_b = 0
   for r_a, r_b in diff:
@@ -84,7 +84,7 @@ def validate_diff(seq_a:Sequence[_T], seq_b:Sequence[_T], diff:Diff, allow_empty
   assert i_b == len(seq_b)
 
 
-def align_difflib(seq_a:Sequence[_T], seq_b:Sequence[_T], isjunk:Callable[[str], bool]=str.isspace, **kwargs) -> Alignment:
+def align_difflib(seq_a:Sequence[_T], seq_b:Sequence[_T], isjunk:Callable[[str],bool]=str.isspace, **kwargs:Any) -> Alignment:
   'Diff using Python difflib.SequenceMatcher.'
   blocks:list[tuple[int, int, int]] = SequenceMatcher(isjunk=isjunk, a=seq_a, b=seq_b, **kwargs).get_matching_blocks() # type: ignore[arg-type, assignment]
   assert blocks[-1] == (len(seq_a), len(seq_b), 0)

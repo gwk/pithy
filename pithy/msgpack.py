@@ -19,10 +19,10 @@ ExtHook = Callable[[int,bytes], Any] # Arguments are integer code [0-127], bytes
 _ml = 2147483647
 
 
-def load_msgpack(file:BinaryIO, use_list=False, raw=False, strict_map_key=False,
+def load_msgpack(file:BinaryIO, use_list:bool=False, raw:bool=False, strict_map_key:bool=False,
  object_hook:ObjectHook|None=None, object_pairs_hook:ObjectPairsHook|None=None, list_hook:ListHook|None=None,
  unicode_errors:str|None=None, ext_hook:ExtHook=ExtType,
- max_str_len=_ml, max_bin_len=_ml, max_array_len=_ml, max_map_len=_ml, max_ext_len=_ml) -> Any:
+ max_str_len:int=_ml, max_bin_len:int=_ml, max_array_len:int=_ml, max_map_len:int=_ml, max_ext_len:int=_ml) -> Any:
   # Omitted: read_size=0, max_buffer_size=0.
   return _load(file, use_list=use_list, raw=raw, strict_map_key=strict_map_key,
     object_hook=object_hook, object_pairs_hook=object_pairs_hook, list_hook=list_hook,
@@ -31,10 +31,10 @@ def load_msgpack(file:BinaryIO, use_list=False, raw=False, strict_map_key=False,
     max_map_len=max_map_len, max_ext_len=max_ext_len)
 
 
-def load_msgpacks(file:BinaryIO, use_list=False, raw=False, strict_map_key=False,
+def load_msgpacks(file:BinaryIO, use_list:bool=False, raw:bool=False, strict_map_key:bool=False,
  object_hook:ObjectHook|None=None, object_pairs_hook:ObjectPairsHook|None=None, list_hook:ListHook|None=None,
- unicode_errors:str|None=None, ext_hook=ExtType,
- max_str_len=_ml, max_bin_len=_ml, max_array_len=_ml, max_map_len=_ml, max_ext_len=_ml) -> Any:
+ unicode_errors:str|None=None, ext_hook:ExtHook=ExtType,
+ max_str_len:int=_ml, max_bin_len:int=_ml, max_array_len:int=_ml, max_map_len:int=_ml, max_ext_len:int=_ml) -> Any:
 
   return Unpacker(file, use_list=use_list, raw=raw, strict_map_key=strict_map_key,
     object_hook=object_hook, object_pairs_hook=object_pairs_hook, list_hook=list_hook,
@@ -52,15 +52,15 @@ def count_msgpacks(file:BinaryIO) -> int:
     i += 1
 
 
-def write_msgpack(file:BinaryIO, obj:Any, default:EncodeObj=encode_obj, unicode_errors='strict',
- use_single_float=False, autoreset=False, use_bin_type=True, strict_types=False) -> None:
+def write_msgpack(file:BinaryIO, obj:Any, default:EncodeObj=encode_obj, unicode_errors:str='strict',
+ use_single_float:bool=False, autoreset:bool=False, use_bin_type:bool=True, strict_types:bool=False) -> None:
 
   _dump(obj, file, default=encode_obj, unicode_errors=unicode_errors,
     use_single_float=use_single_float, use_bin_type=use_bin_type, strict_types=strict_types)
 
 
-def out_msgpack(obj:Any, default:EncodeObj=encode_obj, unicode_errors='strict',
- use_single_float=False, autoreset=False, use_bin_type=True, strict_types=False) -> None:
+def out_msgpack(obj:Any, default:EncodeObj=encode_obj, unicode_errors:str='strict',
+ use_single_float:bool=False, autoreset:bool=False, use_bin_type:bool=True, strict_types:bool=False) -> None:
 
   _dump(obj, stdout.buffer, default=encode_obj, unicode_errors=unicode_errors,
     use_single_float=use_single_float, use_bin_type=use_bin_type, strict_types=strict_types)

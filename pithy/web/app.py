@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class WebApp:
 
-  def __init__(self, local_dir:str|None=None, prevent_client_caching:bool=False, map_bare_names_to_html=False):
+  def __init__(self, local_dir:str|None=None, prevent_client_caching:bool=False, map_bare_names_to_html:bool=False) -> None:
 
     self.local_dir = local_dir
     self.prevent_client_caching = prevent_client_caching
@@ -132,7 +132,7 @@ class WebApp:
 
 
 
-  def serve_content_from_local_fs(self, request:Request, *, raw_path='') -> Response:
+  def serve_content_from_local_fs(self, request:Request, *, raw_path:str='') -> Response:
     '''
     Return the content of a local file or a directory listing.
     This method should be called by `handle_request` implementations to serve content from the local file system.

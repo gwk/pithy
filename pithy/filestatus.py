@@ -183,7 +183,7 @@ def file_size(path_or_fd:PathOrFd, *, follow:bool=True) -> int: return _stat(pat
 
 def file_stat(path_or_fd:PathOrFd, *, follow:bool) -> StatResult: return _stat(path_or_fd, follow_symlinks=follow)
 
-def file_status(path_or_fd:PathOrFd, *, follow:bool, raises=False) -> FileStatus|None:
+def file_status(path_or_fd:PathOrFd, *, follow:bool, raises:bool=False) -> FileStatus|None:
   try: s = _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError:
     if raises: raise
@@ -194,18 +194,18 @@ def file_status(path_or_fd:PathOrFd, *, follow:bool, raises=False) -> FileStatus
 def file_mtime(path_or_fd:PathOrFd, *, follow:bool) -> float:
   return _stat(path_or_fd, follow_symlinks=follow).st_mtime
 
-def file_mtime_or_zero(path_or_fd:str, *, follow:bool) -> float:
+def file_mtime_or_zero(path_or_fd:PathOrFd, *, follow:bool) -> float:
   try: return file_mtime(path_or_fd, follow=follow)
   except FileNotFoundError: return 0
 
-def is_dir(path_or_fd:Path, *, follow:bool, raises=False) -> bool|None:
+def is_dir(path_or_fd:Path, *, follow:bool, raises:bool=False) -> bool|None:
   try: s = _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError:
     if raises: raise
     return None
   return s.st_mode&TYPE_MASK == S_IFDIR
 
-def is_file(path_or_fd:Path, *, follow:bool, raises=False) -> bool|None:
+def is_file(path_or_fd:Path, *, follow:bool, raises:bool=False) -> bool|None:
   try: s = _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError:
     if raises: raise
@@ -215,27 +215,27 @@ def is_file(path_or_fd:Path, *, follow:bool, raises=False) -> bool|None:
 def is_file_executable_by_owner(path_or_fd:Path, *, follow:bool=True) -> bool:
   return bool(file_permissions(path_or_fd, follow=follow) & S_IXUSR)
 
-def is_link(path_or_fd:Path, *, raises=False) -> bool|None:
+def is_link(path_or_fd:Path, *, raises:bool=False) -> bool|None:
   try: s = _stat(path_or_fd, follow_symlinks=False)
   except FileNotFoundError:
     if raises: raise
     return None
   return s.st_mode&TYPE_MASK == S_IFLNK
 
-def is_link_to_dir(path_or_fd:Path, *, raises=False) -> bool|None:
+def is_link_to_dir(path_or_fd:Path, *, raises:bool=False) -> bool|None:
   return is_link(path_or_fd, raises=raises) and is_dir(path_or_fd, follow=True, raises=raises)
 
-def is_link_to_file(path_or_fd:Path, *, raises=False) -> bool|None:
+def is_link_to_file(path_or_fd:Path, *, raises:bool=False) -> bool|None:
   return is_link(path_or_fd, raises=raises) and is_file(path_or_fd, follow=True, raises=raises)
 
-def is_mount(path_or_fd:Path, *, follow:bool=True, raises=False) -> bool|None:
+def is_mount(path_or_fd:Path, *, follow:bool=True, raises:bool=False) -> bool|None:
   try: s = _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError:
     if raises: raise
     return None
   return s.st_mode&TYPE_MASK == S_IFMT
 
-def is_sticky(path_or_fd:Path, *, follow:bool, raises=False) -> bool|None:
+def is_sticky(path_or_fd:Path, *, follow:bool, raises:bool=False) -> bool|None:
   try: s = _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError:
     if raises: raise

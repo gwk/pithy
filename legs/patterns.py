@@ -34,7 +34,7 @@ class LegsPattern:
 
   precedence:int = -1
 
-  def describe(self, name:str|None, depth=0) -> None: raise NotImplementedError
+  def describe(self, name:str|None, depth:int=0) -> None: raise NotImplementedError
 
   @property
   def desc_type(self) -> str: return clip_suffix(type(self).__name__, 'Pattern')
@@ -70,7 +70,7 @@ class StructPattern(LegsPattern):
 
   def __iter__(self) -> Iterator[LegsPattern]: raise NotImplementedError
 
-  def describe(self, name:str|None, depth=0) -> None:
+  def describe(self, name:str|None, depth:int=0) -> None:
     n = name + ' ' if name else ''
     subs = tuple(self)
     errL('  ' * depth, n, self.desc_type, ':', '' if subs else ' Ø')
@@ -251,7 +251,7 @@ class CharsetPattern(LegsPattern):
   def __repr__(self) -> str:
     return f'{type(self).__name__}< {codes_desc(self.ranges)} >'
 
-  def describe(self, name:str|None, depth=0) -> None:
+  def describe(self, name:str|None, depth:int=0) -> None:
     n = name + ' ' if name else ''
     errL('  ' * depth, n, self.desc_type, ': ', codes_desc(self.ranges))
 

@@ -4,7 +4,7 @@ import re
 from typing import Match
 
 
-def is_ref(string) -> bool:
+def is_ref(string:str) -> bool:
   return bool(re.fullmatch(r'[0-9A-F]{24}', string))
 
 

@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Any
+from typing import Any, Iterator
 
 from pithy.lex import *
 from utest import utest_exc, utest_seq, utest_seq_exc
@@ -8,7 +8,7 @@ from utest import utest_exc, utest_seq, utest_seq_exc
 
 # Lexer.
 
-def run_lexer(lexer, string:str, **kwargs:Any) -> Iterator[tuple[str,str]]:
+def run_lexer(lexer:Lexer, string:str, **kwargs:Any) -> Iterator[tuple[str,str]]:
   'Run `lexer` on `string`, yielding (kind, text) pairs.'
   source = Source(name='test', text=string)
   for token in lexer.lex(source, **kwargs):

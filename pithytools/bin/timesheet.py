@@ -45,7 +45,7 @@ class Totals:
     self.is_valid = True
 
 
-  def parse_timesheet(self, path:str):
+  def parse_timesheet(self, path:str) -> None:
 
     curr_blocks:list[TimeBlock] = []
     start_minutes:int|None = None

@@ -75,7 +75,7 @@ class Crawler:
       self.crawl_url(url=url)
 
 
-  def crawl_url(self, url:str, redirects=0) -> None:
+  def crawl_url(self, url:str, redirects:int=0) -> None:
     assert url not in self.remaining
     assert url not in self.visited
 

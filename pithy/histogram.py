@@ -42,7 +42,7 @@ class Histogram(Mapping[float,int]):
         self.increment(x)
 
 
-  def increment(self, x:float, count=1) -> None:
+  def increment(self, x:float, count:int=1) -> None:
     key = (x // self.bin_width) * self.bin_width
     self.counter[key] += count
 

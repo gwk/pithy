@@ -135,7 +135,7 @@ def ploy_repr(string: str) -> str:
 # Legs testing.
 
 
-def test_main(LexerClass) -> None:
+def test_main(LexerClass:type[LexerBase]) -> None:
   from sys import argv
   for index, arg in enumerate(argv):
     if index == 0: continue

@@ -882,10 +882,10 @@ class Head(HtmlMetadataContent):
   @single_child_property
   def title(self) -> 'Title': return Title()
 
-  def add_stylesheet(self, url:str, media='all') -> None:
+  def add_stylesheet(self, url:str, media:str='all') -> None:
     self.append(Link(rel='stylesheet', media=media, href=url))
 
-  def add_js(self, *, url:str, defer=True, async_=False) -> None:
+  def add_js(self, *, url:str, defer:bool=True, async_:bool=False) -> None:
     self.append(Script(type='text/javascript', src=url, defer=Present(defer), async_=Present(async_)))
 
 
@@ -944,7 +944,7 @@ class Html(HtmlNode):
   def head(self) -> Head: return Head()
 
   @staticmethod
-  def doc(*, lang='en', charset='utf-8', title:str='') -> 'Html':
+  def doc(*, lang:str='en', charset:str='utf-8', title:str='') -> 'Html':
     html = Html(lang=lang)
     head = html.head
     head.append(Meta(charset=charset))
@@ -1440,7 +1440,7 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
   '''
 
 
-  def options(self, options:Iterable[Any]|Mapping[str,Any], placeholder=None, value=None) -> Self:
+  def options(self, options:Iterable[Any]|Mapping[str,Any], placeholder:Any=None, value:Any=None) -> Self:
     '''
     Configure the select element with `options`, an optional `placeholder`, and an optional selected `value`.
     '''

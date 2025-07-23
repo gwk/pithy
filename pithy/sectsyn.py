@@ -33,13 +33,14 @@ class SectIndices:
 
 
 @overload
-def parse_sections(source:Source[_Text], *, symbol:str|bytes, numbered:bool, raises:Literal[False]) -> Iterator[SectIndices|SyntaxError]: ...
+def parse_sections(source:Source[_Text], *, symbol:str|bytes, numbered:bool, raises:Literal[False]
+ ) -> Iterator[SectIndices|SyntaxError]: ...
 
 @overload
 def parse_sections(source:Source[_Text], *, symbol:str|bytes, numbered:bool, raises:Literal[True]) -> Iterator[SectIndices]: ...
 
 
-def parse_sections(source:Source, *, symbol:str|bytes, numbered:bool, raises=False) -> Iterator[SectIndices|SyntaxError]:
+def parse_sections(source:Source, *, symbol:str|bytes, numbered:bool, raises:bool=False) -> Iterator[SectIndices|SyntaxError]:
   '''
   Given a text source, yield SectIndices elements.
   `symbol` is the section header symbol, which may be a multi-character string or a bytes sequence.

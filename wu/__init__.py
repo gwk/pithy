@@ -72,7 +72,7 @@ def writeup(src_path: str, src_lines: Iterable[SrcLine], description: str, autho
     yield '</body>\n</html>'
 
 
-def writeup_dependencies(src_path:str, text_lines: Iterable[str], emit_dbg=False) -> list[str]:
+def writeup_dependencies(src_path:str, text_lines:Iterable[str], emit_dbg:bool=False) -> list[str]:
   '''
   Return a list of dependencies from the writeup in `src_lines`.
   '''
@@ -392,8 +392,8 @@ class Ctx:
   Converts input writeup source text to output html lines and dependencies.
   '''
 
-  def __init__(self, *, src_path:str, should_embed:bool, project_dir:str='', is_versioned=True,
-   warn_missing_final_newline=True, quote_depth=0, line_offset=0, emit_dbg=False) -> None:
+  def __init__(self, *, src_path:str, should_embed:bool, project_dir:str='', is_versioned:bool=True,
+   warn_missing_final_newline:bool=True, quote_depth:int=0, line_offset:int=0, emit_dbg:bool=False) -> None:
     self.src_path = src_path
     self.title = path_name_stem(src_path)
     self.should_embed = should_embed
@@ -507,7 +507,7 @@ class Ctx:
     if '?' in dependency: raise ValueError(dependency)
     self.dependencies.append(dependency)
 
-  def add_css(self, class_, style) -> None:
+  def add_css(self, class_:str, style:str) -> None:
     l = self.css[class_] # get list from default dict.
     if style not in l: l.append(style) # deduplicate but preserve order.
 
@@ -691,7 +691,7 @@ def writeup_line(ctx: Ctx, src: SrcLine, state: int, m: Match) -> None:
   else: ctx.error(src, f'bad state: {state}')
 
 
-def check_whitespace(ctx: Ctx, src: SrcLine, len_exp: int|None, m: Match, key: str, msg_suffix='') -> bool:
+def check_whitespace(ctx: Ctx, src: SrcLine, len_exp: int|None, m: Match, key: str, msg_suffix:str='') -> bool:
   col = m.start(key)
   string = m[key]
   i = 0

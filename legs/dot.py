@@ -7,7 +7,7 @@ from pithy.graphviz import GraphvizAttrs, GraphvizName, GraphvizNodes, write_dot
 from .dfa import DFA
 
 
-def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str], license:str, args:Namespace):
+def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str], license:str, args:Namespace) -> None:
 
   for dfa in dfas:
     path = f'{path_stem}-{dfa.name}.dot'

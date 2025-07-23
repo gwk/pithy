@@ -97,7 +97,7 @@ class NFA:
           remaining.add(dst)
     return frozenset(nodes)
 
-  def describe(self, label=None) -> None:
+  def describe(self, label:str|None=None) -> None:
     errL(self.name, (label and f': {label}'), ':')
     errL(' match_node_kinds:')
     for node, kind in sorted(self.match_node_kinds.items()):
@@ -114,7 +114,7 @@ class NFA:
         errL('    ', codes_desc(byte_ranges), ' ==> ', dst)
     errL()
 
-  def describe_stats(self, label=None) -> None:
+  def describe_stats(self, label:str|None=None) -> None:
     errL(self.name, (label and f': {label}'), ':')
     errSL(f'  match nodes: {len(self.match_node_kinds):_}')
     errSL(f'  nodes: {len(self.transitions):_}')

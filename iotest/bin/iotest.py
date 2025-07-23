@@ -534,7 +534,7 @@ def check_file_exp(ctx:Ctx, case:Case, exp:FileExpectation) -> bool:
 diff_cmd = 'git diff --exit-code --no-index --no-prefix --no-renames --histogram --color=auto --ws-error-highlight=old,new'.split()
 
 
-def cat_file(path: str, limit=-1) -> None:
+def cat_file(path:str, limit:int=-1) -> None:
   outL(QUOTE, 'cat ', rel_path(path), FILL_OUT)
   line:str|None = None
   with open(path) as f:

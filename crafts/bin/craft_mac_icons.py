@@ -31,7 +31,7 @@ def main() -> None:
     round_icon(path=path, img=img, dst_width=dst_width, rounded=rounded)
 
 
-def round_icon(path:str, img:Image, dst_width:int, rounded=bool) -> None:
+def round_icon(path:str, img:Image, dst_width:int, rounded:bool) -> None:
 
   stem, ext = split_stem_ext(path)
 

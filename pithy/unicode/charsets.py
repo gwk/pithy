@@ -8,7 +8,7 @@ from .categories import unicode_categories, unicode_category_aliases
 from .data_11_00 import blocks, category_ranges
 
 
-def is_code_in_charset(code, charset:CodeRanges) -> bool:
+def is_code_in_charset(code:int, charset:CodeRanges) -> bool:
   p = (code, code)
   i = bisect(charset, p)
   if i < len(charset):

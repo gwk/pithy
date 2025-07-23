@@ -44,7 +44,7 @@ main_pattern_names = list(patterns.keys())
 
 str_pattern_names:dict[str,list[str]] = {}
 
-def add_str_patterns(quote:str, label:str, multiline:bool):
+def add_str_patterns(quote:str, label:str, multiline:bool) -> None:
   '''
   Note about lexing string literals:
   general pattern for quoting with escapes is Q([^EQ]|EQ|EE)*Q.

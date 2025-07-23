@@ -273,16 +273,16 @@ class NumericalAxis(ChartAxis):
   '''
 
   def __init__(self,
-   show_origin=False,
-   symmetric=False,
+   show_origin:bool=False,
+   symmetric:bool=False,
    min:float|None=None,
    max:float|None=None,
-   show_grid=True,
+   show_grid:bool=True,
    grid:Iterable[float]=(),
    grid_step:float=0,
-   show_ticks=True,
+   show_ticks:bool=True,
    ticks:Iterable[float]=(),
-   ticks_max=11,
+   ticks_max:int=11,
    tick_step:float=0,
    tick_fmt:TickFmt=lambda v: f'{v:,.0f}',
   ) -> None:
@@ -401,8 +401,8 @@ def chart_figure(*,
  x:ChartAxis|None=None,
  y:ChartAxis|None=None,
  series:Iterable[ChartSeries]=(),
- symmetric_xy=False,
- dbg=False,
+ symmetric_xy:bool=False,
+ dbg:bool=False,
  **kw_attrs:Any) -> Figure:
 
   '''

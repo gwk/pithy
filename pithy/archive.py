@@ -16,7 +16,7 @@ Opener = Callable[[], BinaryIO]
 
 class Archive:
 
-  def __init__(self, file_or_path:FileOrPath, ext=None):
+  def __init__(self, file_or_path:FileOrPath, ext:str|None=None):
     self.name: str = getattr(file_or_path, 'name', str(file_or_path))
     if ext is None:
       ext = path_ext(self.name)
@@ -71,7 +71,7 @@ class ArchiveFile(ArchiveMember):
   def seekable(self):
     return getattr(self._file, 'seekable', False)
 
-  def text(self, encoding='UTF-8', errors=None, newline=None) -> TextIOWrapper:
+  def text(self, encoding:str='UTF-8', errors:str|None=None, newline:str|None=None) -> TextIOWrapper:
     'Returns a TextIOWrapper around the underlying binary buffer.'
     return TextIOWrapper(self._file, encoding=encoding, errors=errors, newline=newline)
 

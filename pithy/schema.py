@@ -44,7 +44,7 @@ class Schema:
     return any((self.atoms, self.seqs, self.dicts))
 
 
-  def update(self: 'Schema', other: 'Schema|None') -> None:
+  def update(self:'Schema', other:'Schema|None') -> None:
     if other is None: return
     self.atoms.update(other.atoms) # Counter accumulates the counts automatically.
     for et, es in other.seqs.items(): # Recursively update sequence element type schemas.
@@ -59,7 +59,7 @@ class Schema:
       self._collapse(path)
 
 
-  def _collapse(self, path: tuple[str,...]) -> None:
+  def _collapse(self, path:tuple[str,...]) -> None:
       if path:
         key = path[0]
         tail = path[1:]
@@ -82,7 +82,7 @@ class Keys(set):
   def __hash__(self) -> int: return id(self) # type: ignore[override]
 
 
-def _compile_schema(node: Any, schema: Schema):
+def _compile_schema(node:Any, schema:Schema) -> None:
   if isinstance(node, dict):
     # dict schemas have two layers: node key and node val type.
     for k, v in node.items():
@@ -124,16 +124,16 @@ def _unique_el(counter: Counter) -> Any:
   raise ValueError(counter)
 
 
-def _write_schema(file: TextIO, schema: Schema, *, all_keys: bool, count_atoms: bool, inline: bool, indent: str, root: bool) -> None:
+def _write_schema(file:TextIO, schema:Schema, *, all_keys:bool, count_atoms:bool, inline:bool, indent:str, root:bool) -> None:
   '''
   Note: _write_schema expects its caller to not have emitted a trailing newline.
   This allows it to decide whether or not to inline monomorphic type information.
   '''
 
-  def put(*items: Any):
+  def put(*items:Any) -> None:
     print(*items, sep='', end='', file=file)
 
-  def put_types(prefix: str, symbol: str, subindent: str, types: dict):
+  def put_types(prefix:str, symbol:str, subindent:str, types:dict) -> None:
     for t, subschema, in sorted(types.items(), key=lambda item: cast(str, item[0].__name__)):
       put(prefix, symbol, t.__name__)
       _write_schema(file, subschema, all_keys=all_keys, count_atoms=count_atoms, inline=inline, indent=subindent, root=False)
@@ -165,7 +165,8 @@ def _write_schema(file: TextIO, schema: Schema, *, all_keys: bool, count_atoms: 
       put_types(prefix=prefix, symbol=': ', subindent=(indent + '. '), types=types)
 
 
-def write_schema(file: TextIO, schema: Schema|None=None, *, all_keys=False, count_atoms=False, inline=True, indent='', end='\n') -> None:
+def write_schema(file:TextIO, schema:Schema|None=None, *, all_keys:bool=False, count_atoms:bool=False, inline:bool=True,
+ indent:str='', end:str='\n') -> None:
   '''
   Write `schema` to file `file`.
   If `count_atoms` is true, then histograms of atom values are emitted.

@@ -51,8 +51,9 @@ class ChartMode(Enum):
 Normalized, Total, Cumulative = tuple(ChartMode)
 
 
-def chart_items(data:Mapping[Any,float]|Iterable[tuple[Any,float]], mode=ChartMode.Normalized, threshold=0.0,
- sort_by_val=False, reverse=False, val_width=0, val_prec=16, bar_width=64, show_ratio=False, prefix='  ') -> str:
+def chart_items(data:Mapping[Any,float]|Iterable[tuple[Any,float]], mode:ChartMode=ChartMode.Normalized, threshold:float=0.0,
+ sort_by_val:bool=False, reverse:bool=False, val_width:int=0, val_prec:int=16, bar_width:int=64, show_ratio:bool=False,
+ prefix:str='  ') -> str:
   '''
   Create a chart from a mapping or iterable of key/value pairs.
   Keys are converted to string labels.
@@ -120,8 +121,8 @@ def chart_items(data:Mapping[Any,float]|Iterable[tuple[Any,float]], mode=ChartMo
 
 Ratio = tuple[int,int]
 
-def chart_ratio_items(data:Mapping[Any,Ratio]|Iterable[tuple[Any,Ratio]], threshold=0, sort_by_val=False,
- reverse=False, val_width=0, bar_width=64, show_ratio=False, prefix='  ') -> str:
+def chart_ratio_items(data:Mapping[Any,Ratio]|Iterable[tuple[Any,Ratio]], threshold:float=0, sort_by_val:bool=False,
+ reverse:bool=False, val_width:int=0, bar_width:int=64, show_ratio:bool=False, prefix:str='  ') -> str:
   '''
   Create a chart from a mapping or iterable of key/value pairs, where the values are pairs of integers representing a ratio.
   This is useful for displaying ratios where the denominator might be zero; zero denominators are treated as zero values.
@@ -160,8 +161,8 @@ def chart_ratio_items(data:Mapping[Any,Ratio]|Iterable[tuple[Any,Ratio]], thresh
   return ''.join(lines)
 
 
-def chart_line(name:str, val:str, ratio:float, name_width:int, val_width:int, bar_width:int, show_ratio:bool, prefix='  ',
- suffix='') -> str:
+def chart_line(name:str, val:str, ratio:float, name_width:int, val_width:int, bar_width:int, show_ratio:bool, prefix:str='  ',
+ suffix:str='') -> str:
   'create a string for a single line of a chart.'
   b = bar_str(ratio, bar_width)
   ratio_str = f'  {ratio:.3f}' if show_ratio else ''

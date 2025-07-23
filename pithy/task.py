@@ -41,7 +41,7 @@ def exec(cmd:Cmd) -> NoReturn:
 
 
 def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
- files:Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[tuple[str, ...], _Popen, bytes|None]:
+ files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[tuple[str,...],_Popen,bytes|None]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
@@ -144,7 +144,7 @@ def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
       raise TaskLaunchError(path) from e # open or read failed; raise the original exception.
 
 
-def communicate(proc: _Popen, input_bytes: bytes|None=None, timeout: int=0) -> tuple[int, bytes, bytes]:
+def communicate(proc:_Popen, input_bytes:bytes|None=None, timeout:int=0) -> tuple[int,bytes,bytes]:
   '''
   Communicate with and wait for a task.
   Returns (exit_code, out_bytes, err_bytes).
@@ -160,8 +160,8 @@ def communicate(proc: _Popen, input_bytes: bytes|None=None, timeout: int=0) -> t
   return proc.returncode, (b'' if out_bytes is None else out_bytes), (b'' if err_bytes is None else err_bytes)
 
 
-def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:int=0, exp:TaskCodeExpectation=0,
- as_lines=True, as_text=True, merge_err=False, exits:ExitOpt=False) -> Generator[AnyStr,None,int]:
+def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, timeout:int=0, exp:TaskCodeExpectation=0,
+ as_lines:bool=True, as_text:bool=True, merge_err:bool=False, exits:ExitOpt=False) -> Generator[AnyStr,None,int]:
   send: int|None = None
   recv: int|None = None
   if stdin == PIPE:
@@ -256,9 +256,9 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
     raise
 
 
-def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None,
- err:File|None=None, timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0,note_cmd=False,
- lldb=False, exits:ExitOpt=False) -> tuple[int, str, str]:
+def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
+ ) -> tuple[int, str, str]:
   '''
   Run a command, check the exit expectation, and return (exit_code, std_out, std_err).
   '''
@@ -269,7 +269,7 @@ def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, ou
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
 
 
-def _check_exp(cmd: tuple[str, ...], exp: TaskCodeExpectation, code: int, exits:ExitOpt) -> None:
+def _check_exp(cmd:tuple[str,...], exp:TaskCodeExpectation, code:int, exits:ExitOpt) -> None:
   if exp is None: return
   elif isinstance(exp, NonzeroCodeExpectation):
     if code != 0: return
@@ -281,18 +281,18 @@ def _check_exp(cmd: tuple[str, ...], exp: TaskCodeExpectation, code: int, exits:
   raise UnexpectedExit(exp_desc, cmd, exp, code)
 
 
-def fmt_cmd(cmd: Sequence[str]) -> str: return ' '.join(sh_quote(word) for word in cmd)
+def fmt_cmd(cmd:Sequence[str]) -> str: return ' '.join(sh_quote(word) for word in cmd)
 
 
 def runCOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
- timeout:int=0, files:Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str, str]:
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int, str, str]:
   'Run a command and return exit code, std out, std err.'
   return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=None,
     note_cmd=note_cmd, lldb=lldb)
 
 
-def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
- err:IO|None=None, timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> int:
+def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None, err:IO|None=None,
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not PIPE
   assert err is not PIPE
@@ -304,7 +304,7 @@ def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, o
 
 
 def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:IO|None=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str]:
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int,str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=None,
@@ -313,8 +313,8 @@ def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
   return c, o
 
 
-def runCE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
- timeout: int=0, files: Sequence[File]=(), note_cmd=False, lldb=False) -> tuple[int, str]:
+def runCE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int,str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=None,
@@ -323,17 +323,18 @@ def runCE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   return c, e
 
 
-def runOE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) \
- -> tuple[str, str]:
+def runOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False,
+ exits:ExitOpt=False) -> tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE,
     timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
   return o, e
 
 
-def runO(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:IO|None=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
+def runO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:IO|None=None,
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
+ ) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not PIPE
   _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err,
@@ -342,8 +343,9 @@ def runO(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
   return o
 
 
-def runE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
- timeout: int=0, files: Sequence[File]=(), exp: TaskCodeExpectation=0, note_cmd=False, lldb=False, exits:ExitOpt=False) -> str:
+def runE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
+ ) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not PIPE
   _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE,
@@ -352,7 +354,7 @@ def runE(cmd: Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
   return e
 
 
-def _is_permitted(path: str, mode: int) -> bool:
+def _is_permitted(path:str, mode:int) -> bool:
   return _access(path, mode, effective_ids=(_access in _supports_effective_ids))
 
 
@@ -363,7 +365,7 @@ class ExecutableNotFound(ValueError): pass
 
 class UnexpectedExit(Exception):
   'Exception indicating that a subprocess exit code did not match the code expectation.'
-  def __init__(self, msg: str, cmd: tuple[str, ...], exp: TaskCodeExpectation, act: int):
+  def __init__(self, msg:str, cmd:tuple[str,...], exp:TaskCodeExpectation, act:int):
     super().__init__(msg)
     self.cmd = cmd
     self.exp = exp

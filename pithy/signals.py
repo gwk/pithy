@@ -20,7 +20,7 @@ class DeferSignals:
     self.previous_handlers:dict[Signals,Callable[[int,FrameType|None],Any]|int] = {}
 
 
-  def defer_signal(self, sig:int, _current_stack_frame:FrameType|None):
+  def defer_signal(self, sig:int, _current_stack_frame:FrameType|None) -> None:
     'The signal handler that buffers signals.'
     self.deferred_signals.append(sig)
 

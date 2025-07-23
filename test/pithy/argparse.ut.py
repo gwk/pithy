@@ -6,7 +6,7 @@ from utest import utest_val
 
 parser = CommandParser()
 
-def main_cmdB(ns:Namespace):
+def main_cmdB(ns:Namespace) -> None:
   assert 0 # Not called.
 
 cmdA_parser = parser.add_parent_command('cmdA')
@@ -15,11 +15,11 @@ cmdA_parser.add_argument('-a_arg', help='An argument.')
 cmdB_parser = parser.add_parent_command('cmdB')
 cmdB_parser.add_argument('-b_arg', help='A second argument.')
 
-def main_cmdAA(ns:Namespace):
+def main_cmdAA(ns:Namespace) -> None:
   utest_val(ns.a_arg, 'arg1')
   utest_val(ns.aa_arg, 'arg2')
 
-def main_cmdBB(ns:Namespace):
+def main_cmdBB(ns:Namespace) -> None:
   assert 0 # Not called.
 
 cmdAA_parser = cmdA_parser.add_command(main_cmdAA)

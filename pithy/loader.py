@@ -65,7 +65,7 @@ def binary_file_for(f:FileOrPath) -> BinaryIO:
   raise ValueError(f'load: required readable binary file or path; received {f!r}')
 
 
-def add_loader(ext:str, fn:LoadFn, _dflt=False) -> None:
+def add_loader(ext:str, fn:LoadFn, _dflt:bool=False) -> None:
   '''
   Register a loader function, which will be called by `load` for matching `ext`.
   `_dflt` is used to mark the default loaders as such so that they can be overridden without triggering an error.
@@ -86,7 +86,7 @@ _loaders:dict[str,LoadFn] = {}
 _dflt_loaders:set[LoadFn] = set()
 
 
-def load_archive(f:FileOrPath, single_name=None, single_ext=None, **kwargs:Any) -> Any:
+def load_archive(f:FileOrPath, single_name:str|None=None, single_ext:str|None=None, **kwargs:Any) -> Any:
   from .archive import Archive
   archive = Archive(binary_file_for(f))
   if single_name is None and single_ext is None:
@@ -189,7 +189,7 @@ def load_svg(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .svg.loader import load_svg
   return load_svg(f, **kwargs)
 
-def load_txt(f:FileOrPath, ext:str, clip_ends=False, **kwargs:Any) -> Iterable[str]:
+def load_txt(f:FileOrPath, ext:str, clip_ends:bool=False, **kwargs:Any) -> Iterable[str]:
   f = text_file_for(f, **kwargs)
   if clip_ends: return (line.rstrip('\n\r') for line in f)
   return f

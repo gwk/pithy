@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import signal
+from types import FrameType
 from typing import Callable, ContextManager
 
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -32,7 +33,7 @@ class Alarm(ContextManager):
     if prev is not signal.SIG_DFL:
       raise Exception(f'task.run encountered previously installed signal handler: {prev}')
 
-    def alarm_handler(signum, current_stack_frame) -> None:
+    def alarm_handler(signum:int, current_stack_frame:FrameType|None) -> None:
       # since signal handlers carry reentrancy concerns; do not do any IO within the handler.
       self.timed_out = True
       if self.on_signal: self.on_signal() # callback must respect reentrancy limitations.

@@ -20,52 +20,52 @@ _T = TypeVar('_T')
 
 # basic printing.
 
-def writeZ(file: TextIO, *items: Any, sep='', end='', flush=False) -> None:
+def writeZ(file:TextIO, *items:Any, sep:str='', end:str='', flush:bool=False) -> None:
   "Write `items` to file; default sep='', end=''."
   print(*items, sep=sep, end=end, file=file, flush=flush)
 
-def writeS(file: TextIO, *items: Any, sep='', flush=False) -> None:
+def writeS(file:TextIO, *items:Any, sep:str='', flush:bool=False) -> None:
   "Write `items` to file; sep='', end=' '."
   print(*items, sep=sep, end=' ', file=file, flush=flush)
 
-def writeSZ(file: TextIO, *items: Any, flush=False) -> None:
+def writeSZ(file:TextIO, *items:Any, flush:bool=False) -> None:
   "Write `items` to file; sep=' ', end=''."
   print(*items, sep=' ', end='', file=file, flush=flush)
 
-def writeSS(file: TextIO, *items: Any, flush=False) -> None:
+def writeSS(file:TextIO, *items:Any, flush:bool=False) -> None:
   "Write `items` to file; sep=' ', end=''."
   print(*items, sep=' ', end=' ', file=file, flush=flush)
 
-def writeL(file: TextIO, *items: Any, sep='', flush=False) -> None:
+def writeL(file:TextIO, *items:Any, sep:str='', flush:bool=False) -> None:
   "Write `items` to file; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=file, flush=flush)
 
-def writeN(file: TextIO, *items: Any, sep='', flush=False) -> None:
+def writeN(file:TextIO, *items:Any, sep:str='', flush:bool=False) -> None:
   "Write `items` to file; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
   end = ('' if items and items[-1].endswith('\n') else '\n')
   print(*items, sep=sep, end=end, file=file, flush=flush)
 
-def writeSL(file: TextIO, *items: Any, flush=False) -> None:
+def writeSL(file:TextIO, *items:Any, flush:bool=False) -> None:
   "Write `items` to file; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=file, flush=flush)
 
-def writeSN(file: TextIO, *items: Any, flush=False) -> None:
+def writeSN(file:TextIO, *items:Any, flush:bool=False) -> None:
   "Write `items` to file; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
   end = ('' if items and items[-1].endswith('\n') else '\n')
   print(*items, sep=' ', end=end, file=file, flush=flush)
 
-def writeLL(file: TextIO, *items: Any, flush=False) -> None:
+def writeLL(file:TextIO, *items:Any, flush:bool=False) -> None:
   "Write `items` to file; sep='\\n', end='\\n'."
   print(*items, sep='\n', end='\n', file=file, flush=flush)
 
-def writeLSSL(file: TextIO, *items: Any, flush=False) -> None:
+def writeLSSL(file:TextIO, *items:Any, flush:bool=False) -> None:
   "Write `items` to file; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=file, flush=flush)
 
 
 # templated format printing.
 
-def writeTF(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_items:Any) -> None:
+def writeTF(file:TextIO, template_fmt:str, *items:Any, flush:bool=False, **keyed_items:Any) -> None:
   """
   Expand the format string with keyed_items, then format the string; end=''.
   Useful for constructing dynamic format strings.
@@ -74,7 +74,7 @@ def writeTF(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_item
   print(fmt.format(*items, **keyed_items, end='', file=file, flush=flush))
 
 
-def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_items:Any) -> None:
+def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush:bool=False, **keyed_items:Any) -> None:
   """
   Expand the format string template with keyed_items, then format the string; end='\\n'
   Useful for constructing dynamic format strings.
@@ -86,7 +86,7 @@ def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush=False, **keyed_ite
 # Pretty printing.
 
 def write_rows(file:TextIO, rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
- max_col_width=64, flush=False) -> None:
+ max_col_width:int=64, flush:bool=False) -> None:
   '''
   Write rows of cells to file after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
@@ -96,7 +96,7 @@ def write_rows(file:TextIO, rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[
     writeL(file, s, flush=flush)
 
 
-def writeP(file:TextIO, *labels_and_obj: Any, indent=2, **opts:Any) -> None:
+def writeP(file:TextIO, *labels_and_obj:Any, indent:int=2, **opts:Any) -> None:
   'Write labels and pretty-print object to file.'
   labels = labels_and_obj[:-1]
   obj = labels_and_obj[-1]
@@ -116,49 +116,49 @@ def writeM(file:TextIO, *labels_and_obj:Any, at_line_start:bool|None=None, color
 
 # std out.
 
-def outZ(*items: Any, sep='', end='', flush=False) -> None:
+def outZ(*items:Any, sep:str='', end:str='', flush:bool=False) -> None:
   "Write `items` to std out; sep='', end=''."
   print(*items, sep=sep, end=end, flush=flush)
 
-def outS(*items: Any, sep='', flush=False) -> None:
+def outS(*items:Any, sep:str='', flush:bool=False) -> None:
   "Write `items` to std out; sep='', end=' '."
   print(*items, sep=sep, end=' ', flush=flush)
 
-def outSZ(*items: Any, flush=False) -> None:
+def outSZ(*items:Any, flush:bool=False) -> None:
   "Write `items` to std out; sep=' ', end=''."
   print(*items, sep=' ', end='', flush=flush)
 
-def outSS(*items: Any, flush=False) -> None:
+def outSS(*items:Any, flush:bool=False) -> None:
   "Write `items` to std out; sep=' ', end=' '."
   print(*items, end=' ', flush=flush)
 
-def outL(*items: Any, sep='', flush=False) -> None:
+def outL(*items:Any, sep:str='', flush:bool=False) -> None:
   "Write `items` to std out; sep='', end='\\n'."
   print(*items, sep=sep, flush=flush)
 
-def outN(*items: Any, sep='', flush=False) -> None:
+def outN(*items:Any, sep:str='', flush:bool=False) -> None:
   "Write `items` to std out; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
   end = ('' if items and items[-1].endswith('\n') else '\n')
   print(*items, sep=sep, end=end, flush=flush)
 
-def outSL(*items: Any, flush=False) -> None:
+def outSL(*items:Any, flush:bool=False) -> None:
   "Write `items` to std out; sep=' ', end='\\n'."
   print(*items, flush=flush)
 
-def outSN(*items: Any, flush=False) -> None:
+def outSN(*items:Any, flush:bool=False) -> None:
   "Write `items` to std out; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
   end = ('' if items and items[-1].endswith('\n') else '\n')
   print(*items, sep=' ', end=end, flush=flush)
 
-def outLL(*items: Any, flush=False) -> None:
+def outLL(*items:Any, flush:bool=False) -> None:
   "Write `items` to std out; sep='\\n', end='\\n'."
   print(*items, sep='\n', flush=flush)
 
-def outLSSL(*items: Any, flush=False) -> None:
+def outLSSL(*items:Any, flush:bool=False) -> None:
   "Write `items` to std out; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', flush=flush)
 
-def outR(*items: Any, sep='', is_tty:bool|None=None, flush=False) -> None:
+def outR(*items:Any, sep:str='', is_tty:bool|None=None, flush:bool=False) -> None:
   '''
   Write `items` to std out. sep=''.
   If `is_tty`, end=ERASE_LINE_F+'\\r'; otherwise, end='\\n'.
@@ -167,7 +167,7 @@ def outR(*items: Any, sep='', is_tty:bool|None=None, flush=False) -> None:
   if is_tty is None: is_tty = stdout.isatty()
   print(*items, sep=sep, end=('\x1b[0K\r' if is_tty else '\n'), flush=flush)
 
-def outSR(*items: Any, is_tty:bool|None=None, flush=False) -> None:
+def outSR(*items:Any, is_tty:bool|None=None, flush:bool=False) -> None:
   '''
   Write `items` to std out; sep=' '.
   If `is_tty`, end=ERASE_LINE_F+'\\r'; otherwise, end='\\n'.
@@ -176,17 +176,17 @@ def outSR(*items: Any, is_tty:bool|None=None, flush=False) -> None:
   if is_tty is None: is_tty = stdout.isatty()
   print(*items, sep=' ', end=('\x1b[0K\r' if is_tty else '\n'), flush=flush)
 
-def outP(*labels_and_obj:Any, **opts: Any) -> None:
+def outP(*labels_and_obj:Any, **opts:Any) -> None:
   'Pretty print to std out.'
   writeP(stdout, *labels_and_obj, **opts)
 
-def outM(*labels_and_obj:Any, **opts: Any) -> None:
+def outM(*labels_and_obj:Any, **opts:Any) -> None:
   'Multiline repr to std out.'
   writeM(stdout, *labels_and_obj, **opts)
 
 
 def out_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
-  max_col_width=64, flush=False) -> None:
+  max_col_width:int=64, flush:bool=False) -> None:
     '''
     Write rows of cells to std out after calculating column widths to justify each cell.
     This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
@@ -197,59 +197,59 @@ def out_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rj
 
 # std err.
 
-def errZ(*items: Any, sep='', end='', flush=False) -> None:
+def errZ(*items:Any, sep:str='', end:str='', flush:bool=False) -> None:
   "Write items to std err; default sep='', end=''."
   print(*items, sep=sep, end=end, file=stderr, flush=flush)
 
-def errS(*items: Any, sep='', flush=False) -> None:
+def errS(*items:Any, sep:str='', flush:bool=False) -> None:
   "Write items to std err; sep='', end=' '."
   print(*items, sep=sep, end=' ', file=stderr, flush=flush)
 
-def errSZ(*items: Any, flush=False) -> None:
+def errSZ(*items:Any, flush:bool=False) -> None:
   "Write items to std err; sep=' ', end=''."
   print(*items, sep=' ', end='', file=stderr, flush=flush)
 
-def errSS(*items: Any, flush=False) -> None:
+def errSS(*items:Any, flush:bool=False) -> None:
   "Write items to std err; sep=' ', end=''."
   print(*items, sep=' ', end=' ', file=stderr, flush=flush)
 
-def errL(*items: Any, sep='', flush=False) -> None:
+def errL(*items:Any, sep:str='', flush:bool=False) -> None:
   "Write items to std err; sep='', end='\\n'."
   print(*items, sep=sep, end='\n', file=stderr, flush=flush)
 
-def errN(*items: Any, sep='', flush=False) -> None:
+def errN(*items:Any, sep:str='', flush:bool=False) -> None:
   "Write `items` to std err; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
   end = ('' if items and items[-1].endswith('\n') else '\n')
   print(*items, sep=sep, end=end, file=stderr, flush=flush)
 
-def errSL(*items: Any, flush=False) -> None:
+def errSL(*items:Any, flush:bool=False) -> None:
   "Write items to std err; sep=' ', end='\\n'."
   print(*items, sep=' ', end='\n', file=stderr, flush=flush)
 
-def errSN(*items: Any, flush=False) -> None:
+def errSN(*items:Any, flush:bool=False) -> None:
   "Write `items` to std err; sep='', end=('' if items and items[-1].endswith('\\n') else '\\n')."
   end = ('' if items and items[-1].endswith('\n') else '\n')
   print(*items, sep=' ', end=end, file=stderr, flush=flush)
 
-def errLL(*items: Any, flush=False) -> None:
+def errLL(*items:Any, flush:bool=False) -> None:
   "Write items to std err; sep='\\n', end='\\n'."
   print(*items, sep='\n', end='\n', file=stderr, flush=flush)
 
-def errLSSL(*items: Any, flush=False) -> None:
+def errLSSL(*items:Any, flush:bool=False) -> None:
   "Write items to std err; sep='\\n  ', end='\\n'."
   print(*items, sep='\n  ', end='\n', file=stderr, flush=flush)
 
-def errP(*labels_and_obj:Any, **opts) -> None:
+def errP(*labels_and_obj:Any, **opts:Any) -> None:
   'Pretty print to std err.'
   writeP(stderr, *labels_and_obj, **opts)
 
-def errM(*labels_and_obj:Any, **opts) -> None:
+def errM(*labels_and_obj:Any, **opts:Any) -> None:
   'Multiline repr to std err.'
   writeM(stderr, *labels_and_obj, **opts)
 
 
-def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_suffix='', every:int=1, frequency:float=0.1,
- limit=0) -> Iterator[_T]:
+def err_progress(iterable:Iterable[_T], label:str|None='progress', *, suffix:str='', final_suffix:str='', every:int=1,
+ frequency:float=0.1, limit:int=0) -> Iterator[_T]:
   '''
   For interactive terminals, return a generator that yields the elements of `iterable`
   and displays a progress indicator on std err.
@@ -337,7 +337,7 @@ def err_progress(iterable: Iterable[_T], label='progress', *, suffix='', final_s
 # convenience read/write.
 
 
-def read_from_path(path: str, default: str|None=None) -> str:
+def read_from_path(path:str, default:str|None=None) -> str:
   'Read all text from file at `path`.'
   try:
     with open(path) as f:
@@ -347,7 +347,7 @@ def read_from_path(path: str, default: str|None=None) -> str:
     return default
 
 
-def read_line_from_path(path: str, line_index=0, keep_end=False, default: str|None=None) -> str:
+def read_line_from_path(path:str, line_index:int=0, keep_end:bool=False, default:str|None=None) -> str:
   'Read a single line of text from file at `path`.'
   try:
     with open(path) as f:
@@ -371,8 +371,8 @@ def write_to_path(path:str, text:str|bytes|bytearray) -> None:
 
 # Opener utility.
 
-def mk_opener(flags:int, mode=0o777, dir_fd:int|None=None) -> Callable[[str, int], int]:
-  def _opener(path:str, _flags:int, mode=mode, dir_fd=dir_fd) -> int: return os_open(path,_flags&flags)
+def mk_opener(flags:int, mode:int=0o777, dir_fd:int|None=None) -> Callable[[str, int], int]:
+  def _opener(path:str, _flags:int, mode:int=mode, dir_fd:int|None=dir_fd) -> int: return os_open(path,_flags&flags)
   return _opener
 
 nonblock_opener = mk_opener(O_NONBLOCK)
@@ -437,7 +437,7 @@ class AsyncLineReader(ContextManager):
 # misc.
 
 
-def assert_eq(a: Any, b: Any):
+def assert_eq(a:Any, b:Any) -> None:
   if a != b:
     raise AssertionError(f'not equal:\n  {a!r}\n  {b!r}')
 
