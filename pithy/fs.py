@@ -257,7 +257,7 @@ def path_for_cmd(cmd:str) -> str|None:
   return None
 
 
-def product_needs_update(product=PathOrFd, source=PathOrFd) -> bool:
+def product_needs_update(product:PathOrFd, source:PathOrFd) -> bool:
   return file_mtime_or_zero(product, follow=True) <= file_mtime(source, follow=True)
 
 
