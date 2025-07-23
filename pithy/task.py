@@ -173,8 +173,12 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin=None, timeout:i
 
   try:
     cmd, proc, _ = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=(out if merge_err else None))
-    if send: _os.close(stdin)
-    if recv: _os.close(out)
+    if send:
+      assert isinstance(stdin, int)
+      _os.close(stdin)
+    if recv:
+      assert isinstance(out, int)
+      _os.close(out)
 
     sel = _PollSelector()
     if send: sel.register(send, EVENT_WRITE)
