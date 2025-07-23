@@ -153,6 +153,6 @@ parser = Parser(lexer,
 
     pred=Choice('type_pred', transform=choice_val),
 
-    type_pred=Atom('name', mk_type_pred),
+    type_pred=Atom('name', transform=mk_type_pred),
   ),
 )
