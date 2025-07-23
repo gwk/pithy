@@ -14,13 +14,13 @@ class Interpreter(InteractiveInterpreter):
   Similar to code.InteractiveConsole.
   '''
 
-  def __init__(self, locals:dict[str,Any]|None=None, filename='<interact>'):
+  def __init__(self, locals:dict[str,Any]|None=None, filename:str='<interact>') -> None:
     super().__init__(locals=locals)
     self.buffer:list[str] = []
     self.filename = filename
 
 
-  def interact(self, banner='Entering interactive loop...', exit_msg='Exited interactive loop.') -> None:
+  def interact(self, banner:str='Entering interactive loop...', exit_msg:str='Exited interactive loop.') -> None:
     try: sys.ps1
     except AttributeError: sys.ps1 = '> '
     try: sys.ps2
@@ -40,10 +40,9 @@ class Interpreter(InteractiveInterpreter):
         needs_more_input = 0
       else:
         needs_more_input = self.push(line)
-    if exit_msg is None:
-      self.write('now exiting %s...\n' % self.__class__.__name__)
-    elif exit_msg != '':
-      self.write('%s\n' % exit_msg)
+    if exit_msg:
+      self.write(f'{exit_msg}\n')
+
 
   def push(self, line:str) -> bool:
     '''
