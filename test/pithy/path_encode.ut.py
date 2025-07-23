@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from typing import Any
 from urllib.parse import urlsplit
 
 from pithy.path_encode import COMP, OMIT, path_encode, path_for_url, SPLIT, SQUASH
@@ -62,9 +63,9 @@ utest('+2e.', path_encode, '..')
 
 # path_for_url.
 
-m_squash = dict(scheme=COMP, host=SQUASH, path=SQUASH, query=SQUASH, fragment=SQUASH)
-m_comp = dict(scheme=COMP, host=COMP, path=COMP, query=COMP, fragment=COMP)
-m_split = dict(scheme=COMP, host=COMP, path=SPLIT, query=COMP, fragment=COMP)
+m_squash = dict[str,Any](scheme=COMP, host=SQUASH, path=SQUASH, query=SQUASH, fragment=SQUASH)
+m_comp = dict[str,Any](scheme=COMP, host=COMP, path=COMP, query=COMP, fragment=COMP)
+m_split = dict[str,Any](scheme=COMP, host=COMP, path=SPLIT, query=COMP, fragment=COMP)
 
 utest(':,,',    path_for_url, '', **m_squash)
 utest(':/,,/+',  path_for_url, '', **m_comp)
