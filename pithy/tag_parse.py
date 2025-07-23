@@ -149,11 +149,11 @@ class TagTree(tuple):
         yield from el.walk_contents()
 
 
-  def walk_branches(self, should_enter_tag_fn=lambda tag: True) -> Iterator['TagTree']:
+  def walk_branches(self, should_enter_tag_fn:Callable[[str], bool]=lambda tag: True) -> Iterator['TagTree']:
     for el in self:
       if isinstance(el, TagTree):
         yield el
-        if should_enter_tag_fn(el[0]):
+        if should_enter_tag_fn(el[0]): # type: ignore[arg-type] # TODO: this appears broken.
           yield from el.walk_branches(should_enter_tag_fn=should_enter_tag_fn)
 
 
