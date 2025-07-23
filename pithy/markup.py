@@ -497,19 +497,22 @@ class Mu:
   @overload
   def pick_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Mu']: ...
 
-  def pick_all(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def pick_all(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str
+   ) -> Iterator['Mu']:
     'Pick all matching children of this node.'
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     return ((c.subnode(self) if traversable else c) for c in self._ if isinstance(c, Mu) and pred(c))
 
 
   @overload
-  def find_all(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator[_Mu]: ...
+  def find_all(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> Iterator[_Mu]:
+    ...
 
   @overload
-  def find_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> Iterator['Mu']: ...
+  def find_all(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> Iterator['Mu']: ...
 
-  def find_all(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def find_all(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str
+  ) -> Iterator['Mu']:
     'Find matching nodes in the subtree rooted at this node.'
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     if text: return self._find_all_text(pred, traversable)
@@ -540,12 +543,12 @@ class Mu:
 
 
   @overload
-  def pick_first(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def pick_first(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu: ...
 
   @overload
-  def pick_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
+  def pick_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu': ...
 
-  def pick_first(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def pick_first(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu':
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     for c in self._:
       if isinstance(c, Mu) and pred(c): return (c.subnode(self) if traversable else c)
@@ -553,24 +556,24 @@ class Mu:
 
 
   @overload
-  def find_first(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def find_first(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu: ...
 
   @overload
-  def find_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
+  def find_first(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu': ...
 
-  def find_first(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def find_first(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu':
     for c in self.find_all(type_or_tag=type_or_tag, cl=cl, text=text, traversable=traversable, **attrs):
       return c
     raise NoMatchError(self, fmt_xml_predicate_args(type_or_tag, cl, text, attrs))
 
 
   @overload
-  def pick_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu|None: ...
+  def pick_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu|None: ...
 
   @overload
-  def pick_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu|None': ...
+  def pick_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu|None': ...
 
-  def pick_opt(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def pick_opt(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu|None':
     '''
     Pick the matching child of this node.
     Returns None if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
@@ -586,12 +589,12 @@ class Mu:
 
 
   @overload
-  def find_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu|None: ...
+  def find_opt(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu|None: ...
 
   @overload
-  def find_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu|None': ...
+  def find_opt(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu|None': ...
 
-  def find_opt(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def find_opt(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu|None':
     '''
     Find the matching node in the subtree rooted at this node.
     Returns None if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
@@ -607,12 +610,12 @@ class Mu:
 
 
   @overload
-  def pick(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def pick(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu: ...
 
   @overload
-  def pick(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
+  def pick(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu': ...
 
-  def pick(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def pick(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu':
     '''
     Pick the matching child of this node.
     Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
@@ -624,12 +627,12 @@ class Mu:
 
 
   @overload
-  def find(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def find(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu: ...
 
   @overload
-  def find(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
+  def find(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu': ...
 
-  def find(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def find(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu':
     '''
     Find the matching node of this node's subtree.
     Raises NoMatchError if no matching node is found, and MultipleMatchesError if multiple matching nodes are found.
@@ -643,12 +646,12 @@ class Mu:
   # Traversal.
 
   @overload
-  def next(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def next(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu: ...
 
   @overload
-  def next(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
+  def next(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu': ...
 
-  def next(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def next(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu':
     if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     found_orig = False
@@ -663,12 +666,12 @@ class Mu:
 
 
   @overload
-  def prev(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable=False, **attrs:str) -> _Mu: ...
+  def prev(self, type_or_tag:type[_Mu], *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> _Mu: ...
 
   @overload
-  def prev(self, type_or_tag:str='', *, cl:str='', text:str='', traversable=False, **attrs:str) -> 'Mu': ...
+  def prev(self, type_or_tag:str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu': ...
 
-  def prev(self, type_or_tag='', *, cl:str='', text:str='', traversable=False, **attrs:str):
+  def prev(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str) -> 'Mu':
     if self._orig is None or self._parent is None: raise ValueError(f'cannot traverse non-subnode: {self}')
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     found_orig = False
