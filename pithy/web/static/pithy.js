@@ -127,7 +127,7 @@ function createPithyDynamicStyle() {
  * Get the element with the given selector.
  * @param {string} selector - The selector of the element to retrieve.
  */
-function get_el(selector) {
+function getElBySel(selector) {
   const el = document.querySelector(selector);
   if (!el) { throw new Error(`Element not found: ${selector}`); }
   return el;
@@ -138,7 +138,7 @@ function get_el(selector) {
  * Get the element with the given id.
  * @param {string} id - The id of the element to retrieve.
  */
-function get_el_by_id(id) {
+function getElById(id) {
   const el = document.getElementById(id);
   if (!el) { throw new Error(`Element not found: ${id}`); }
   return el;
@@ -149,7 +149,7 @@ function get_el_by_id(id) {
  * Remove an element from its parent.
  * @param {Element} el - The element to remove.
  */
-function remove_from_parent(el) {
+function removeFromParent(el) {
   const parent = el.parentNode;
   if (parent) { parent.removeChild(el); }
 }
@@ -177,7 +177,7 @@ function nonopt(val) {
  * @param {{ new (): T; prototype: T; }} type - The expected type of the value.
  * @returns {T} - The value, asserting that it is an instance of the expected type.
  */
-function req_instance(val, type) {
+function reqInstance(val, type) {
   if (val instanceof type) return val;
   throw new Error(`Type mismatch: expected ${type}; received type: ${typeof val}; val: \`${val}\`.`);
 }
@@ -187,6 +187,7 @@ function emptyFirstForSelector(selector) {
   const element = document.querySelector(selector);
   if (element) { element.innerHTML = ''; }
 }
+
 
 function emptyAllForSelector(selector) {
   for (const element of document.querySelectorAll(selector)) {
@@ -406,8 +407,8 @@ function prevDate(date) {
  * @param {HTMLInputElement} input - The input element triggering the function.
  */
 function decrementDateAndSubmit(input, days = 1) {
-  const form = req_instance(input.closest('form'), HTMLFormElement);
-  const date_input = req_instance(form.querySelector('input[type=date]'), HTMLInputElement);
+  const form = reqInstance(input.closest('form'), HTMLFormElement);
+  const date_input = reqInstance(form.querySelector('input[type=date]'), HTMLInputElement);
   const date = nonopt(date_input.valueAsDate);
   date.setUTCDate(date.getUTCDate() - days); // Note: must use UTCDate or else will get hung up on daylight savings transitions.
   date_input.valueAsDate = date;
@@ -420,8 +421,8 @@ function decrementDateAndSubmit(input, days = 1) {
  * @param {HTMLInputElement} input - The input element triggering the function.
  */
 function incrementDateAndSubmit(input, days = 1) {
-  const form = req_instance(input.closest('form'), HTMLFormElement);
-  const date_input = req_instance(form.querySelector('input[type=date]'), HTMLInputElement);
+  const form = reqInstance(input.closest('form'), HTMLFormElement);
+  const date_input = reqInstance(form.querySelector('input[type=date]'), HTMLInputElement);
   const date = nonopt(date_input.valueAsDate);
   date.setUTCDate(date.getUTCDate() + days); // Note: must use UTCDate or else will get hung up on daylight savings transitions.
   date_input.valueAsDate = date;
@@ -435,8 +436,8 @@ function incrementDateAndSubmit(input, days = 1) {
  * @param {string} date: The date to set the input to.
  */
 function setDateAndSubmit(input, date) {
-  const form = req_instance(input.closest('form'), HTMLFormElement);
-  const date_input = req_instance(form.querySelector('input[type=date]'), HTMLInputElement);
+  const form = reqInstance(input.closest('form'), HTMLFormElement);
+  const date_input = reqInstance(form.querySelector('input[type=date]'), HTMLInputElement);
   date_input.value = date;
   form.submit();
 }
@@ -452,7 +453,7 @@ function dismissModal(element, event) {
   event.stopPropagation();
   const modal = element.closest('.modal');
   if (!modal) { throw new Error('No modal found to dismiss.'); }
-  remove_from_parent(modal);
+  removeFromParent(modal);
 }
 
 
