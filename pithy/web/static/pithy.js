@@ -244,7 +244,6 @@ function resetValueForSelectorAll(selector) {
     if (default_ === null) {
       element.removeAttribute('value');
     } else {
-      log('resetValueForSelectorAll:', selector, 'default:', default_);
       element.setAttribute('value', default_);
     }
   }
