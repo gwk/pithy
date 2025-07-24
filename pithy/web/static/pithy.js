@@ -124,38 +124,6 @@ function createPithyDynamicStyle() {
 
 
 /**
- * Get the element with the given selector.
- * @param {string} selector - The selector of the element to retrieve.
- */
-function getElBySel(selector) {
-  const el = document.querySelector(selector);
-  if (!el) { throw new Error(`Element not found: ${selector}`); }
-  return el;
-}
-
-
-/**
- * Get the element with the given id.
- * @param {string} id - The id of the element to retrieve.
- */
-function getElById(id) {
-  const el = document.getElementById(id);
-  if (!el) { throw new Error(`Element not found: ${id}`); }
-  return el;
-}
-
-
-/**
- * Remove an element from its parent.
- * @param {Element} el - The element to remove.
- */
-function removeFromParent(el) {
-  const parent = el.parentNode;
-  if (parent) { parent.removeChild(el); }
-}
-
-
-/**
  * @template T
  * @param {T} val - A possibly null/undefined value.
  * @returns {NonNullable<T>} - The value, asserting that it is not null or undefined.
@@ -181,6 +149,39 @@ function reqInstance(val, type) {
   if (val instanceof type) return val;
   throw new Error(`Type mismatch: expected ${type}; received type: ${typeof val}; val: \`${val}\`.`);
 }
+
+
+/**
+ * Remove an element from its parent.
+ * @param {Element} el - The element to remove.
+ */
+function removeFromParent(el) {
+  const parent = el.parentNode;
+  if (parent) { parent.removeChild(el); }
+}
+
+
+/**
+ * Get the element with the given id.
+ * @param {string} id - The id of the element to retrieve.
+ */
+function getElById(id) {
+  const el = document.getElementById(id);
+  if (!el) { throw new Error(`Element not found: ${id}`); }
+  return el;
+}
+
+
+/**
+ * Get the element with the given selector.
+ * @param {string} selector - The selector of the element to retrieve.
+ */
+function getElBySel(selector) {
+  const el = document.querySelector(selector);
+  if (!el) { throw new Error(`Element not found: ${selector}`); }
+  return el;
+}
+
 
 
 function emptyFirstForSelector(selector) {
