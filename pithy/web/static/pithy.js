@@ -71,8 +71,8 @@ function _setupHtmx() {
   });
 
   // Configure universal 'once' callback for all DOM elements that define that attribute.
-  _onload_run_once_attrs(document.body); // Call immediately.
-  _htmx.onLoad(_onload_run_once_attrs);
+  _onLoadRunOnceAttrs(document.body); // Call immediately.
+  _htmx.onLoad(_onLoadRunOnceAttrs);
 }
 
 /**
@@ -81,7 +81,7 @@ function _setupHtmx() {
  * @param {HTMLElement} root_el
  * @returns {void}
  */
-function _onload_run_once_attrs(root_el) {
+function _onLoadRunOnceAttrs(root_el) {
 
   for (let el of _htmx.findAll(root_el, '[once]')) {
     if (el.hasAttribute('once-ran')) { continue; }
