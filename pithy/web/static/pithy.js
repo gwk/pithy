@@ -102,7 +102,7 @@ function _onLoadRunOnceAttrs(root_el) {
       el.setAttribute('once-ran', err);
       continue
     }
-    el.setAttribute('once-ran', once_src);
+    el.setAttribute('once-ran', '');
   }
 }
 
