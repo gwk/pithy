@@ -176,7 +176,7 @@ function getElById(id) {
  * Get the element with the given selector.
  * @param {string} selector - The selector of the element to retrieve.
  */
-function getElBySel(selector) {
+function getForSel(selector) {
   const el = document.querySelector(selector);
   if (!el) { throw new Error(`Element not found: ${selector}`); }
   return el;
