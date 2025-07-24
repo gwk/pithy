@@ -183,34 +183,33 @@ function getForSel(selector) {
 }
 
 
-
-function emptyFirstForSelector(selector) {
+function emptyFirstForSel(selector) {
   const element = document.querySelector(selector);
   if (element) { element.innerHTML = ''; }
 }
 
 
-function emptyAllForSelector(selector) {
+function emptyAllForSel(selector) {
   for (const element of document.querySelectorAll(selector)) {
     element.innerHTML = '';
   }
 }
 
 
-function removeAttrForSelector(selector, attr) {
+function removeAttrForSel(selector, attr) {
   const element = document.querySelector(selector);
   if (element) { element.removeAttribute(attr); }
 }
 
 
-function removeAttrForSelectorAll(selector, attr) {
+function removeAttrForSelAll(selector, attr) {
   for (const element of document.querySelectorAll(selector)) {
     element.removeAttribute(attr);
   }
 }
 
 
-function clearValueForSelector(selector) {
+function clearValueForSel(selector) {
   const element = document.querySelector(selector);
   if (element) {
     element.removeAttribute('value');
@@ -218,14 +217,14 @@ function clearValueForSelector(selector) {
 }
 
 
-function clearValueForSelectorAll(selector) {
+function clearValueForSelAll(selector) {
   for (const element of document.querySelectorAll(selector)) {
     element.removeAttribute('value');
   }
 }
 
 
-function resetValueForSelector(selector) {
+function resetValueForSel(selector) {
   const element = document.querySelector(selector);
   if (element) {
     const default_ = element.getAttribute('default');
@@ -238,7 +237,7 @@ function resetValueForSelector(selector) {
 }
 
 
-function resetValueForSelectorAll(selector) {
+function resetValueForSelAll(selector) {
   for (const element of document.querySelectorAll(selector)) {
     const default_ = element.getAttribute('default');
     if (default_ === null) {
