@@ -75,6 +75,7 @@ function _setupHtmx() {
   _htmx.onLoad(_onLoadRunOnceAttrs);
 }
 
+
 /**
  * This function performs exactly-once initialization of nodes using the 'once' attribute.
  *
@@ -162,12 +163,13 @@ function removeFromParent(el) {
 
 
 /**
- * Get the element with the given id.
+ * Get the element with the given id; throws an error if the element is not found.
  * @param {string} id - The id of the element to retrieve.
+ * @returns {HTMLElement} - The first element with the given id.
  */
-function getElById(id) {
+function getById(id) {
   const el = document.getElementById(id);
-  if (!el) { throw new Error(`Element not found: ${id}`); }
+  if (!el) { throw new Error(`Element not found for id: ${id}`); }
   return el;
 }
 
