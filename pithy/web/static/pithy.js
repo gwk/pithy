@@ -143,7 +143,6 @@ function createPithyDynamicStyle() {
 function nonopt(val) {
   if (val === null) throw new Error(`Unexpected null value`);
   if (val === undefined) throw new Error(`Unexpected undefined value`);
-  // @ts-ignore
   return val;
 }
 
@@ -174,11 +173,11 @@ function removeFromParent(el) {
 
 
 /**
- * Get the element with the given id; throws an error if the element is not found.
+ * Find the element with the given id in the document; throws an error if the element is not found.
  * @param {string} id - The id of the element to retrieve.
- * @returns {HTMLElement} - The first element with the given id.
+ * @returns {HTMLElement} - The element with the given id.
  */
-function getById(id) {
+function findId(id) {
   const el = document.getElementById(id);
   if (!el) { throw new Error(`Element not found for id: ${id}`); }
   return el;
@@ -186,78 +185,61 @@ function getById(id) {
 
 
 /**
- * Get the element with the given selector.
- * @param {string} selector - The selector of the element to retrieve.
+ * Find the element with the given id in the document or return null if not found.
+ * @param {string} id - The id of the element to retrieve.
+ * @returns {HTMLElement|null} - The element with the given id or null if not found.
  */
-function getForSel(selector) {
-  const el = document.querySelector(selector);
-  if (!el) { throw new Error(`Element not found: ${selector}`); }
+function findIdOpt(id) {
+  return document.getElementById(id);
+}
+
+
+/**
+ * Find the element with the given selector; throws an error if the element is not found.
+ * @param {string} selector - The selector of the element to retrieve.
+ * @param {Document|Element} root - The element to query.
+ * @returns {Element} - The first element with the given selector.
+*/
+function findSel(selector, root = document) {
+  const el = root.querySelector(selector);
+  if (!el) { throw new Error(`Element not found for selector: ${selector}; root: ${root}`); }
   return el;
 }
 
 
-function emptyFirstForSel(selector) {
-  const element = document.querySelector(selector);
-  if (element) { element.innerHTML = ''; }
+/**
+ * Find the element with the given selector or return null if not found.
+ * @param {string} selector - The selector of the element to retrieve.
+ * @param {Document|Element} root - The element to query.
+ * @returns {Element|null} - The first element with the given selector or null if not found.
+*/
+function findSelOpt(selector, root = document) {
+  return root.querySelector(selector);
 }
 
 
-function emptyAllForSel(selector) {
-  for (const element of document.querySelectorAll(selector)) {
-    element.innerHTML = '';
-  }
+/**
+ * Find all elements with the given selector.
+ * @param {string} selector - The selector of the elements to retrieve.
+ * @param {Document|Element} root - The element to query.
+ * @returns {NodeListOf<Element>} - The elements with the given selector.
+*/
+function findSelAll(selector, root = document) {
+  return root.querySelectorAll(selector);
 }
 
 
-function removeAttrForSel(selector, attr) {
-  const element = document.querySelector(selector);
-  if (element) { element.removeAttribute(attr); }
-}
-
-
-function removeAttrForSelAll(selector, attr) {
-  for (const element of document.querySelectorAll(selector)) {
-    element.removeAttribute(attr);
-  }
-}
-
-
-function clearValueForSel(selector) {
-  const element = document.querySelector(selector);
-  if (element) {
-    element.removeAttribute('value');
-  }
-}
-
-
-function clearValueForSelAll(selector) {
-  for (const element of document.querySelectorAll(selector)) {
-    element.removeAttribute('value');
-  }
-}
-
-
-function resetValueForSel(selector) {
-  const element = document.querySelector(selector);
-  if (element) {
-    const default_ = element.getAttribute('default');
-    if (default_ === null) {
-      element.removeAttribute('value');
-    } else {
-      element.setAttribute('value', default_);
-    }
-  }
-}
-
-
-function resetValueForSelAll(selector) {
-  for (const element of document.querySelectorAll(selector)) {
-    const default_ = element.getAttribute('default');
-    if (default_ === null) {
-      element.removeAttribute('value');
-    } else {
-      element.setAttribute('value', default_);
-    }
+/**
+ * Reset the value of an element to its default value or remove the value if no default is set.
+ * @param {Element} el - The element to reset the value of.
+ * @returns {void}
+ */
+function resetValueOfEl(el) {
+  const default_ = el.getAttribute('default');
+  if (default_ === null) {
+    el.removeAttribute('value');
+  } else {
+    el.setAttribute('value', default_);
   }
 }
 

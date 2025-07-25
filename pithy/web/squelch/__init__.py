@@ -148,7 +148,9 @@ class Squelch:
     form.extend(
       Label('Table:'),
       Div(Select(name='table',
-        onchange='emptyFirstForSel("#columns"); resetValueForSelAll(".clear-on-table-change"); this.form.submit()')
+        onchange='findId("columns").replaceChildren(); \
+          findSelAll(".clear-on-table-change").forEach(resetValueOfEl); \
+          this.form.submit()')
         .options(placeholder='Table', value=table_name, options=table_names)),
 
       Label('Distinct:'),
