@@ -690,7 +690,12 @@ class Div(HtmlFlow, HtmlPalpable, HtmlFlowContent):
     pane = Div(*args, **kw_attrs)
     pane.prepend_class('pane')
     pane['onclick'] = f'event.stopPropagation(); {onclick}'.strip()
-    return cls(cl='modal', onclick='dismissModal(this, event)', _=pane)
+    return cls(cl='modal',
+      onclick='dismissModal(this, event)',
+      onkeyup="if (event.key == 'Escape' || event.keyCode == 27) dismissModal(this, event)",
+      once='this.focus()',
+      tabindex="-1",
+      _=pane)
 
 
 @_tag
