@@ -514,7 +514,7 @@ class Mu:
 
   def find_all(self, type_or_tag:type[_Mu]|str='', *, cl:str='', text:str='', traversable:bool=False, **attrs:str
   ) -> Iterator['Mu']:
-    'Find matching nodes in the subtree rooted at this node.'
+    'Find all matching nodes in the subtree rooted at this node.'
     pred = xml_pred(type_or_tag=type_or_tag, cl=cl, text=text, attrs=attrs)
     if text: return self._find_all_text(pred, traversable)
     else: return self._find_all(pred, traversable)
