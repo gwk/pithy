@@ -79,32 +79,43 @@ function _setupHtmx() {
 /**
  * This function performs exactly-once initialization of nodes using the 'once' attribute.
  *
- * @param {HTMLElement} root_el
+ * @param {Element} rootEl
  * @returns {void}
  */
-function _onLoadRunOnceAttrs(root_el) {
-
-  for (let el of _htmx.findAll(root_el, '[once]')) {
-    if (el.hasAttribute('once-ran')) { continue; }
-    let once_src = el.getAttribute('once');
-    if (!once_src) { continue; }
-    let once_fn;
-    try { once_fn = Function(once_src).bind(el); }
-    catch (exc) {
-      let err = `error: 'once' compilation failed for element: ${el}\n  exc: ${exc}`;
-      log(err);
-      el.setAttribute('once-ran', err);
-      continue
-    }
-    try { once_fn(); }
-    catch (exc) {
-      let err = `error: 'once' function failed for element: ${el}\n  exc: ${exc}`;
-      log(err);
-      el.setAttribute('once-ran', err);
-      continue
-    }
-    el.setAttribute('once-ran', '');
+function _onLoadRunOnceAttrs(rootEl) {
+  _runOnceAttr(rootEl);
+  for (let el of rootEl.querySelectorAll('[once]')) {
+    _runOnceAttr(el);
   }
+}
+
+
+/**
+ * Helper function for _onLoadRunOnceAttrs. Performs exactly-once initialization of a node using the 'once' attribute.
+ *
+ * @param {Element} el
+ * @returns {void}
+ */
+function _runOnceAttr(el) {
+  if (el.hasAttribute('once-ran')) { return; }
+  let once_src = el.getAttribute('once');
+  if (!once_src) { return; }
+  let once_fn;
+  try { once_fn = Function(once_src).bind(el); }
+  catch (exc) {
+    let err = `error: 'once' compilation failed for element: ${el}\n  exc: ${exc}`;
+    log(err);
+    el.setAttribute('once-ran', err);
+    return;
+  }
+  try { once_fn(); }
+  catch (exc) {
+    let err = `error: 'once' function failed for element: ${el}\n  exc: ${exc}`;
+    log(err);
+    el.setAttribute('once-ran', err);
+    return;
+  }
+  el.setAttribute('once-ran', '');
 }
 
 
