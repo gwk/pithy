@@ -155,30 +155,67 @@ class Syn:
 
 AtomTransform = Callable[[Source,Token],Any]
 
-def atom_token(source:Source, token:Token) -> Token: return token
-def atom_kind(source:Source, token:Token) -> str: return token.kind
-def atom_text(source:Source, token:Token) -> str: return source[token]
+def atom_token(source:Source, token:Token) -> Token:
+  'Return the atom token.'
+  return token
+
+def atom_kind(source:Source, token:Token) -> str:
+  'Return the atom token kind.'
+  return token.kind
+
+def atom_text(source:Source, token:Token) -> str:
+  'Return the source text for the token.'
+  return source[token]
 
 def _atom_transform_placeholder(source:Source, token:Token) -> NoReturn:
+  'This transform function is replaced by the parser `atom_transform` or `atom_token`.'
   raise Exception('_atom_transform_placeholder should have been replaced by a real transform')
 
+
 UniTransform = Callable[[Source,slice,Any],Any]
-def uni_val(source:Source, slc:slice, val:Any) -> Any: return val
-def uni_bool(source:Source, slc:slice, val:Any) -> bool: return bool(val)
-def uni_syn(source:Source, slc:slice, val:Any) -> Syn: return Syn(slc, '', val)
-def uni_text(source:Source, slc:slice, val:Any) -> str: return source[slc]
+
+def uni_val(source:Source, slc:slice, val:Any) -> Any:
+  'Return the value as is.'
+  return val
+
+def uni_bool(source:Source, slc:slice, val:Any) -> bool:
+  'Return the value as a boolean.'
+  return bool(val)
+
+def uni_syn(source:Source, slc:slice, val:Any) -> Syn:
+  'Return the value as an unlabeled Syn node.'
+  return Syn(slc, '', val)
+
+def uni_text(source:Source, slc:slice, val:Any) -> str:
+  'Return the source text for the slice.'
+  return source[slc]
+
 
 SuffixTransform = Callable[[Source,Token,Any],Any]
-def suffix_val(source:Source, token:Token, val:Any) -> Any: return val
-def suffix_text_val_pair(source:Source, token:Token, val:Any) -> tuple[str,Any]: return (source[token], val)
+
+def suffix_val(source:Source, token:Token, val:Any) -> Any:
+  'Return the value as is.'
+  return val
+
+def suffix_text_val_pair(source:Source, token:Token, val:Any) -> tuple[str,Any]:
+  'Return a pair tuple of source text for the token and the value.'
+  return (source[token], val)
 
 def suffix_text(source:Source, token:Token, val:Any) -> str:
+  'Return the value as a string, appending the source text for the token.'
   assert isinstance(val, str)
   return val + source[token]
 
+
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
-def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> tuple[str,Any,Any]: return (source[token], left, right)
-def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> tuple[Any,Any]: return (left, right)
+
+def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> tuple[str,Any,Any]:
+  'Return a triple tuple of source text for the token, the left value, and the right value.'
+  return (source[token], left, right)
+
+def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> tuple[Any,Any]:
+  'Return a pair tuple of the left value and the right value.'
+  return (left, right)
 
 def left_binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list[Any]:
   '''
@@ -207,25 +244,63 @@ def right_binary_to_stack(source:Source, token:Token, left:Any, right:Any) -> St
 
 
 QuantityTransform = Callable[[Source,slice,list[Any]],Any]
-def quantity_els(source:Source, slc:slice, elements:list[Any]) -> list[Any]: return elements
-def quantity_syn(source:Source, slc:slice, elements:list[Any]) -> Syn: return Syn(slc, '', elements)
-def quantity_text(source:Source, slc:slice, elements:list[Any]) -> str: return source[slc]
+
+def quantity_els(source:Source, slc:slice, elements:list[Any]) -> list[Any]:
+  'Return the list of parsed elements from a quantity rule.'
+  return elements
+
+def quantity_syn(source:Source, slc:slice, elements:list[Any]) -> Syn:
+  'Return a Syn node with the parsed elements from a quantity rule.'
+  return Syn(slc, '', elements)
+
+def quantity_text(source:Source, slc:slice, elements:list[Any]) -> str:
+  'Return the source text for the slice from a quantity rule.'
+  return source[slc]
+
 
 StructTransform = Callable[[Source,slice,list[Any]],Any]
-def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> tuple[Any,...]: return tuple(fields)
-def struct_syn(source:Source, slc:slice, fields:list[Any]) -> Syn: return Syn(slc, '', fields)
-def struct_text(source:Source, slc:slice, fields:list[Any]) -> str: return source[slc]
+
+def struct_fields_tuple(source:Source, slc:slice, fields:list[Any]) -> tuple[Any,...]:
+  'Return a tuple of the parsed fields from a struct rule.'
+  return tuple(fields)
+
+def struct_syn(source:Source, slc:slice, fields:list[Any]) -> Syn:
+  'Return a Syn node with the parsed fields from a struct rule.'
+  return Syn(slc, '', fields)
+
+def struct_text(source:Source, slc:slice, fields:list[Any]) -> str:
+  'Return the source text for the slice from a struct rule.'
+  return source[slc]
 
 
 def _struct_transform_placeholder(source:Source, slc:slice, fields:list[Any]) -> NoReturn:
+  'This transform function is replaced by a dynamically generated transform for the struct rule.'
   raise Exception('_struct_transform_placeholder should have been replaced by a real transform')
 
+
 ChoiceTransform = Callable[[Source,slice,RuleName,Any],Any]
-def choice_val(source:Source, slc:slice, label:RuleName, val:Any) -> Any: return val
-def choice_label(source:Source, slc:slice, label:RuleName, val:Any) -> str: return label
-def choice_labeled(source:Source, slc:slice, label:RuleName, val:Any) -> tuple[str,Any]: return (label, val)
-def choice_syn(source:Source, slc:slice, label:RuleName, val:Any) -> Syn: return Syn(slc, label, val)
-def choice_text(source:Source, slc:slice, label:RuleName, val:Any) -> str: return source[slc]
+
+def choice_val(source:Source, slc:slice, label:RuleName, val:Any) -> Any:
+  'Return the choseen value without choice metadata.'
+  return val
+
+def choice_label(source:Source, slc:slice, label:RuleName, val:Any) -> str:
+  'Return the choice label as is.'
+  return label
+
+
+def choice_labeled(source:Source, slc:slice, label:RuleName, val:Any) -> tuple[str,Any]:
+  'Return a pair tuple of the choice label and the value.'
+  return (label, val)
+
+def choice_syn(source:Source, slc:slice, label:RuleName, val:Any) -> Syn:
+  'Return a Syn node with the choice label and value.'
+  return Syn(slc, label, val)
+
+def choice_text(source:Source, slc:slice, label:RuleName, val:Any) -> str:
+  'Return the source text for the slice from a choice rule.'
+  return source[slc]
+
 
 _sentinel_kind = '!SENTINEL'
 
