@@ -36,6 +36,7 @@ from .graph import visit_nodes
 from .io import tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import caller_module_name
+from .stack import Stack
 from .string import indent_lines, iter_str, pluralize, typecase_from_snakecase
 from .type_utils import is_namedtuple
 from .untyped import Immutable
@@ -80,18 +81,6 @@ def append(list_:list[_T], el:_T) -> list[_T]:
   'Append an element to a list and return the list. Useful when writing transform lambdas.'
   list_.append(el)
   return list_
-
-
-def append_or_list(list_or_el:_T|list[_T], el:_T) -> list[_T]:
-  '''
-  Create a list from two elements, or if the left element is already a list, append the right element to it and return it.
-  This is useful for converting a chain of nested right-associative syntactic elements (traditional linked list) into a python list.
-  '''
-  if isinstance(list_or_el, list):
-    list_or_el.append(el)
-    return list_or_el
-  else:
-    return [list_or_el, el]
 
 
 
@@ -190,7 +179,32 @@ def suffix_text(source:Source, token:Token, val:Any) -> str:
 BinaryTransform = Callable[[Source,Token,Any,Any],Any]
 def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> tuple[str,Any,Any]: return (source[token], left, right)
 def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> tuple[Any,Any]: return (left, right)
-def binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list[Any]: return append_or_list(left, right)
+
+def left_binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list[Any]:
+  '''
+  Return a List of the values parsed by a left-associative list rule.
+  If `left` is already a list, append `right` to it and return it.
+  If `left` is not a list, return a list of `left` and `right`.
+  '''
+  if isinstance(left, list):
+    left.append(right)
+    return left
+  else:
+    return [left, right]
+
+
+def right_binary_to_stack(source:Source, token:Token, left:Any, right:Any) -> Stack[Any]:
+  '''
+  Return a Stack of the values parsed by a right-associative list rule.
+  If `right` is already a Stack, push `left` onto it and return it.
+  Otherwise, return a Stack of `left` and `right`.
+  '''
+  if isinstance(right, Stack):
+    right.push(left)
+    return right
+  else:
+    return Stack((left, right))
+
 
 QuantityTransform = Callable[[Source,slice,list[Any]],Any]
 def quantity_els(source:Source, slc:slice, elements:list[Any]) -> list[Any]: return elements

@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import (Atom, atom_text, binary_to_list, Choice, choice_labeled, Infix, Left, Opt, Parser, Precedence, Struct,
-  struct_fields_tuple, ZeroOrMore)
+from pithy.parse import (Atom, atom_text, Choice, choice_labeled, Infix, Left, left_binary_to_list, Opt, Parser, Precedence,
+  Struct, struct_fields_tuple, ZeroOrMore)
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest
@@ -25,7 +25,7 @@ basic = Parser(lexer,
     as_name=Opt(Struct('kw_as', 'name')),
     path=Precedence(
       ('name',),
-      Left(Infix('dot', transform=binary_to_list)),
+      Left(Infix('dot', transform=left_binary_to_list)),
     ),
   ),
 )
