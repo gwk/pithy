@@ -675,7 +675,7 @@ class Choice(Rule):
     self.sub_refs = choices
     self.heads = ()
     self.drop = frozenset(iter_str(drop))
-    if transform is None: raise ValueError('Choice requires an explicit transform')
+    if transform is None: raise ValueError(f'Choice constructor requires an explicit transform; choices: {choices}')
     self.transform = transform
     self.head_table:dict[TokenKind,Rule] = {}
 
