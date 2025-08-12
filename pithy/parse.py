@@ -156,6 +156,12 @@ class Syn:
     assert isinstance(self.slc, slice)
     assert isinstance(self.lbl, str)
 
+  def __repr__(self) -> str:
+    slc = self.slc
+    lbl = self.lbl
+    val = self.val
+    if lbl: return f'Syn({slc.start}:{slc.stop}, {lbl=!r}, {val=!r})'
+    return f'Syn({slc.start}:{slc.stop}, {val=!r})'
 
 
 AtomTransform = Callable[[Source,Token],Any]
