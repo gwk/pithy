@@ -37,6 +37,7 @@ from .io import tee_to_err
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import caller_module_name
 from .string import indent_lines, iter_str, pluralize, typecase_from_snakecase
+from .type_utils import is_namedtuple
 from .untyped import Immutable
 
 
@@ -106,7 +107,7 @@ def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=f
   Otherwise, Syn nodes are replaced with their recursively simplified values.
   '''
 
-  if source:
+  if source is not None:
     def _skeleton_for_token(token:Token) -> Any:
       return source[token]
   else:
@@ -127,7 +128,10 @@ def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=f
       case Token(): return _skeleton_for_token(node)
       case Syn(): return _skeleton_for_syn(node)
       case list(): return [_skeleton(el) for el in node]
-      case tuple(): return tuple(_skeleton(el) for el in node)
+      case tuple():
+        if is_namedtuple(node) and node and isinstance(node[0], slice):
+          node = node[1:]
+        return tuple(_skeleton(el) for el in node)
       case dict(): return {k: _skeleton(v) for k, v in node.items()}
     if is_dataclass(node):
       dc = node.__class__
