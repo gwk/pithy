@@ -30,13 +30,13 @@ utest('1.0e1', parse_expr, '1.0e1')
 utest('1.0e-1', parse_expr, '1.0e-1')
 utest('1.0e+1', parse_expr, '1.0e+1')
 
-utest(['a'], parse_expr, 'a')
-utest(['a', 'b'], parse_expr, 'a.b')
+utest('a', parse_expr, 'a')
+utest(('a', 'b'), parse_expr, 'a.b')
 
-utest(['"a"'], parse_expr, '"a"')
+utest('"a"', parse_expr, '"a"')
 
 
 utest(('||', "'a'", "'b'"), parse_expr, "'a' || 'b'")
 
-utest(('()', ['a'], [['b']]), parse_expr, 'a(b)')
-utest(('()', ['a'], [['b'], ['c']]), parse_expr, 'a(b, c)')
+utest(('a', ['b']), parse_expr, 'a(b)')
+utest(('a', ['b', 'c']), parse_expr, 'a(b, c)')

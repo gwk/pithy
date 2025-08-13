@@ -1,14 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from typing import Any, Callable, cast, Match
+from sys import stdin
+from typing import Any, Callable, Match
 
 from tolkien import Source, Token
 
 from ..lex import Lexer
-from ..parse import (Alias, Atom, AtomTransform, Choice, choice_label, choice_syn, choice_val, Infix, Left, OneOrMore, Opt,
-  ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, SuffixRule, Syn, uni_bool, uni_syn, uni_text,
-  ZeroOrMore)
+from ..parse import (Alias, Atom, AtomTransform, Choice, choice_label, choice_labeled, choice_syn, choice_val, Infix, Left,
+  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, SuffixRule, Syn,
+  syn_skeleton, uni_bool, uni_syn, uni_text, ZeroOrMore)
 from .keywords import sqlite_key_phrases, sqlite_keywords
 
 
@@ -74,16 +75,6 @@ def sql_parse_str(s:str) -> str:
   m = sqlite_string_re.fullmatch(s)
   if not m: raise ValueError(f'SQL string is malformed: {s!r}')
   return m[1].replace("''", "'")
-
-
-def parse_sqlite(path:str, text:str) -> list[Any]: # Actual return type is list[parser.types.Stmt].
-  '''
-  Parse the SQLite source given in `text`.
-  '''
-  source = Source(name=path, text=text)
-  try: stmts = sql_parser.parse('stmts', source)
-  except ParseError as e: e.fail()
-  return cast(list, stmts)
 
 
 sqlite_key_phrase_patterns = { p.replace(' ', '_') : p.replace(' ', r'\s+')
@@ -247,7 +238,7 @@ table_def_rules = dict(
   generated_constraint = Struct(
     Opt(Struct('GENERATED', 'ALWAYS'), field=None),
     'AS',
-    Alias('paren_expr', transform=uni_syn, field='expr'),
+    Alias('paren_expr', field='expr'),
     Opt(Choice('STORED', 'VIRTUAL', transform=choice_val), field='stored_or_virtual', transform=uni_text)),
 
   asc_desc = Choice('ASC', 'DESC', transform=choice_val),
@@ -289,13 +280,43 @@ trigger_def_rules = dict(
 )
 
 
+def _transform_leading_name(source:Source, slc:slice, val:Any) -> Any:
+  name, choice_labeled_val = val
+  if choice_labeled_val is None: return name
+  lbl, choice_val = choice_labeled_val
+  match lbl:
+    case 'dot_name_dot_name':
+      return Syn(slc, lbl='dotted_name', val=(name, *choice_val))
+    case 'fn_call':
+      return Syn(slc, lbl='fn_call', val=(name, choice_val))
+    case _:
+      raise ValueError(val)
+
+
+leading_name = Struct('name', Opt(Choice('dot_name_dot_name', 'fn_call', transform=choice_labeled)),
+  transform=_transform_leading_name)
+
+
+def _transform_dot_name_dot_name(source:Source, slc:slice, val:Any) -> Any:
+  _slc, name, suffix = val
+  if suffix is None: return (name,)
+  return (name, suffix)
+
+dot_name_dot_name = Struct('dot', 'name', Opt(Struct('dot', 'name')), transform=_transform_dot_name_dot_name)
+
+
+fn_call = Struct('lp', ZeroOrMore('expr', sep='comma', sep_at_end=False), 'rp')
+
+
+
+
 expr_rules = dict(
   expr = Precedence(
     ( 'blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', # The "literal-value" tokens.
       'signed_number',
       # Bitwise inversion.
       # bind-parameter
-      'schema_table_column_name',
+      'leading_name',
       'paren_exprs',
       'cast_expr',
       'CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
@@ -306,7 +327,7 @@ expr_rules = dict(
     Left(
       Infix('de'), Infix('eq'), Infix('ineq'), Infix('ne'),
       Infix('IS'), Infix('IS_NOT'), Infix('IS_DISTINCT_FROM'), Infix('IS_NOT_DISTINCT_FROM'),
-      #SuffixRule(Struct('BETWEEN', ...)), # TODO.
+      Infix('BETWEEN'), Infix('NOT_BETWEEN'),
       Infix('GLOB'), Infix('NOT_GLOB'),
       Infix('IN'), Infix('NOT_IN'),
       Infix('LIKE'), Infix('NOT_LIKE'),
@@ -321,12 +342,7 @@ expr_rules = dict(
     Left(Infix('star'), Infix('slash'), Infix('rem')),
     Left(Infix('concat'), Infix('extract_json'), Infix('extract_val')),
     # TODO: [expr] COLLATE (collation-name).
-    Left(
-      # Function call syntax. This appears to be overly general, in that the left expr is required to be a name.
-      # Furthermore, it is clearly not correct for aggregate and window functions. see https://www.sqlite.org/lang_expr.html#functioncalls.
-      SuffixRule(Struct('lp', OneOrMore('expr', sep='comma'), 'rp', field='exprs'), transform=lambda s, t, l, r: ('()', l, r)),
-    ),
-    transform=uni_syn),
+  ),
 
   # NOT EXISTS ( SELECT ... ) # Note: this will conflict with `( expr, ... )` above; refactor to separate NOT EXISTS and EXISTS, and ( SELECT ..).
   # CASE expr WHEN expr THEN expr ELSE expr END
@@ -336,6 +352,10 @@ expr_rules = dict(
     Choice('plus', 'minus', field='sign', transform=choice_val),
     Choice('float', 'integer', field='number', transform=choice_val),
     transform=struct_text),
+
+  leading_name = leading_name,
+  dot_name_dot_name = dot_name_dot_name,
+  fn_call = fn_call,
 
   paren_expr = Struct('lp', 'expr', 'rp', field='expr',
     transform=lambda s, slc, f: Syn(slc, lbl='paren_expr', val=f[1])),
@@ -460,9 +480,14 @@ def test_lex(path:str, text:str) -> None:
     prev = token
 
 
-def test_parse(path:str, text:str) -> None:
-  'Test the parser.'
-  ast = parse_sqlite(path, text=open(path).read())
+def test_parse_sqlite(path:str, text:str, rule:str, skeleton:bool) -> None:
+  '''
+  Parse the SQLite source given in `text`; on parse error, print and exit.
+  '''
+  source = Source(name=path, text=text)
+  try: ast = sql_parser.parse(rule, source)
+  except ParseError as e: e.fail()
+  if skeleton: ast = syn_skeleton(ast, source=source)
   print(ast)
 
 
@@ -470,11 +495,16 @@ def main() -> None:
   from argparse import ArgumentParser
 
   argparser = ArgumentParser(description='Test the pithy sqlite parser.')
-  argparser.add_argument('paths', nargs='+', help='paths to parse.')
+  argparser.add_argument('paths', nargs='*', help='paths to parse.')
+  argparser.add_argument('-rule', default='stmts', help='rule to parse.')
+  argparser.add_argument('-skeleton', action='store_true', help='print the only the skeleton of the AST.')
   args = argparser.parse_args()
 
   for path in args.paths:
-    test_parse(path, open(path).read())
+    test_parse_sqlite(path, text=open(path).read(), rule=args.rule, skeleton=args.skeleton)
+
+  if not args.paths:
+    test_parse_sqlite(path='<stdin>', text=stdin.read(), rule=args.rule, skeleton=args.skeleton)
 
 
 if __name__ == '__main__': main()
