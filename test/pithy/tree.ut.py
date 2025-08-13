@@ -3,7 +3,7 @@
 from functools import singledispatch
 from typing import Any, Iterable
 
-from pithy.tree import *
+from pithy.tree import OmitNode, transform_tree
 from utest import utest, utest_call
 
 
@@ -44,7 +44,7 @@ def test_transform_tree_0():
 @utest_call
 def test_transform_tree_1():
 
-  def get_children(node: Iterable) -> Iterable|None:
+  def get_children(node:Any) -> Iterable|None:
     return None if isinstance(node, (int, str)) else node
 
   @singledispatch
