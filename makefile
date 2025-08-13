@@ -8,20 +8,10 @@
 .SECONDARY: # Disable deletion of intermediate products.
 .SUFFIXES: # Disable implicit rules.
 
-.PHONY: _default _phony build clean clean-grammars clean-legs-data cov cov-meta develop docs gen gen-data gen-grammars \
-  gen-vscode help install-vscode iotest test test-diff test-diff-data typecheck, typecheck-py, typecheck-js \
-  typecheck-clear-cache, typecheck-clean uninstall vscode-links vscode-insider-links utest
+.PHONY: clean clean-grammars clean-legs-data gen gen-data gen-grammars gen-sqlite-extracted-sql gen-vscode-legs help vscode-links vscode-insider-links
 
 # First target of a makefile is the default.
 _default: help
-
-_phony: # Used to mark pattern rules as phony.
-
-# Pithy must come first for manual installation, or else pip will download the PyPI version.
-packages := pithy crafts iotest legs pithytools tolkien utest wu
-
-build:
-	sh/build.sh $(packages)
 
 clean:
 	rm -rf _build/*
@@ -31,21 +21,6 @@ clean-grammars:
 
 clean-legs-data:
 	rm legs/data_*.py
-
-cov:
-	iotest -fail-fast -coverage
-
-cov-meta:
-	test-meta/meta-coverage.sh
-
-develop:
-	sh/develop.sh $(packages)
-
-docs:
-	craft-docs
-
-isort:
-	isort $(packages) test tools
 
 gen: gen-data gen-grammars
 
@@ -65,52 +40,6 @@ gen-vscode-legs: vscode/legs/syntaxes/legs.json
 
 help: # Summarize the targets of this makefile.
 	@GREP_COLOR="1;32" egrep --color=always '^[a-zA-Z][^ :]+:' makefile | sort
-
-install:
-	sh/install.sh $(packages)
-
-iotest:
-	iotest -fail-fast
-
-lint:
-	pyflakes $(packages)
-
-test: gen utest iotest
-
-test/%: _phony
-	iotest -fail-fast $@
-
-test-diff:
-	test-diff/test.py
-
-test-diff-data:
-	rm -rf _build/test-diff/*
-	test-diff/collect-diff-examples.py ../pithy ../quilt
-
-typecheck: gen typecheck-py
-
-typecheck-py:
-	mypy $(packages) test tools
-
-typecheck-js:
-	tsc
-
-typecheck-clear-cache:
-	rm -rf _build/mypy_cache
-
-typecheck-clean: typecheck-clear-cache typecheck
-
-uninstall:
-	pip3 uninstall --yes $(packages)
-
-vscode-links:
-	ln -fs $$PWD/vscode/* ~/.vscode/extensions
-
-vscode-insider-links:
-	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
-
-utest:
-	python3 -m utest $(packages) test
 
 # Targets.
 
