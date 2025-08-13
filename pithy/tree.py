@@ -41,7 +41,7 @@ def transform_tree(root:_T, get_children:_GetChildrenFn[_T], visit:_TransformVis
 
 
 def _transform_tree(node:_T, get_children:_GetChildrenFn, visit:_TransformVisitor, stack:_Stack) -> _VisitResult:
-  results: list[_R] = [] # type: ignore[valid-type]
+  results:list[_R] = [] # type: ignore[valid-type]
   children = get_children(node)
   if children:
     child_stack = (*stack, node)
