@@ -55,7 +55,7 @@ function _setupHtmx() {
     const detail = event.detail;
     const code = detail.xhr.status;
     if (code === 404) {
-      alert(`Error 404: resource not found: ${detail.pathInfo.finalRequestPath}`);
+      alert(`Error 404: resource not found: ${detail.pathInfo.finalRequestPath}\n\n${detail.xhr.responseText}`);
     } else if (code === 422) {
       // As suggested by HTMX documentation, use 422 responses to signal that a form was submitted with bad data.
       // The response should contain the result to be rendered.
