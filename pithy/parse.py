@@ -172,7 +172,7 @@ def _atom_transform_placeholder(source:Source, token:Token) -> NoReturn:
   raise Exception('_atom_transform_placeholder should have been replaced by a real transform')
 
 
-UniTransform = Callable[[Source,slice,Any],Any]
+UniTransform = Callable[[Source,slice,Any],Any] # Used by Opt, Precedence, and SubParser.
 
 def uni_val(source:Source, slc:slice, val:Any) -> Any:
   'Return the value as is.'
