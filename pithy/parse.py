@@ -482,7 +482,18 @@ class Atom(Rule):
 
 
 
-class _QuantityRule(Rule):
+class _DropRule(Rule):
+  'A rule with a `drop` parameter that can be used to skip tokens.'
+
+  drop:frozenset[str]
+
+  def validate_drop(self) -> None:
+    if drop_heads_intersect := self.drop.intersection(self.heads):
+      raise Parser.DefinitionError(f'{self} drop kinds and head kinds intersect: {drop_heads_intersect}')
+
+
+
+class _QuantityRule(_DropRule):
   'Base class for Opt and Quantity.'
   min:int
   body_heads:frozenset[str]
@@ -499,10 +510,6 @@ class _QuantityRule(Rule):
 
   def compile(self, parser:'Parser') -> None:
     self.body_heads = frozenset(self.body.heads)
-    drop_body_intersect = self.body_heads & self.drop
-    if drop_body_intersect:
-      raise Parser.DefinitionError(f'{self} drop kinds and body head kinds intersect: {drop_body_intersect}')
-
 
 
 class Opt(_QuantityRule):
@@ -685,7 +692,7 @@ class OneOrMore(Quantity):
 
 
 
-class Struct(Rule):
+class Struct(_DropRule):
   '''
   A rule that matches a sequence of sub rules, producing a tuple of values.
   '''
@@ -732,7 +739,7 @@ class Struct(Rule):
 
 
 
-class Choice(Rule):
+class Choice(_DropRule):
   '''
   A rule that matches one of a set of choices, which must have unambiguous heads.
   '''
@@ -921,7 +928,7 @@ class Right(Group):
 
 
 
-class Precedence(Rule):
+class Precedence(_DropRule):
   'An operator precedence rule, consisting of groups of operators.'
   type_desc = 'precedence rule'
 
@@ -1124,6 +1131,7 @@ class Parser:
     # Compile.
     for rule in self.nodes:
       rule.compile(parser=self)
+      if isinstance(rule, _DropRule): rule.validate_drop()
 
     self.types:Immutable[type] = Immutable(self._struct_types)
 
