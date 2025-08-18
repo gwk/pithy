@@ -2,7 +2,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
 
 from pithy.ansi import BG_C, BG_R, RST, TXT_B, TXT_C, TXT_G, TXT_Y
 from pithy.iterable import fan_items, joinSCS
@@ -125,8 +125,8 @@ lexer = Lexer(flags='msx', # m: ^ and $ match every line; s: dot matches newline
 )
 
 
-def preprocess(source:Source, stream:Iterator[Token]) -> Iterator[Token]:
-
+def preprocess(source:Source, stream:Iterable[Token]) -> Iterator[Token]:
+  stream = iter(stream)
   cond_stack:list[tuple[Token,Token|None]] = [] # (if_token, cond_token)
 
   def expect_newline(preceding:Token) -> None:

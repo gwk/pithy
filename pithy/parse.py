@@ -31,9 +31,8 @@ from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, 
 
 from tolkien import Source, Syntax, SyntaxMsg, Token
 
-from .buffer import Buffer
 from .graph import visit_nodes
-from .io import tee_to_err
+from .io import errL
 from .lex import Lexer, reserved_names, valid_name_re
 from .meta import caller_module_name
 from .stack import Stack
@@ -308,6 +307,12 @@ def choice_text(source:Source, slc:slice, label:RuleName, val:Any) -> str:
 _sentinel_kind = '!SENTINEL'
 
 
+@dataclass(frozen=True)
+class ParseCtx:
+  source:Source
+  tokens:list[Token]
+
+
 
 class Rule:
   '''
@@ -383,20 +388,28 @@ class Rule:
   def compile(self, parser:'Parser') -> None: pass
 
 
-  def expect(self, source:Source, token:Token, kind:str) -> Token:
-    if token.kind != kind: raise ParseError(source, token, f'{self} expects {kind}; received {token.kind}.')
-    return token
-
-
-  def parse(self, parent:'Rule', source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+  def parse(self, ctx:ParseCtx, *, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
+    '''
+    Parse the rule. This is implemented by subclasses.
+    Returns:
+    * The position of the next token to parse. This is used by the caller to resume parsing.
+    * A slice indexing into the source text that was parsed.
+    * The result value of the rule.
+    '''
     raise NotImplementedError(self)
 
 
-  def parse_sub(self, sub:'Rule', source:Source, start:Token, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+  def parse_sub(self, ctx:ParseCtx, *, sub:'Rule', pos:int, start_pos:int) -> tuple[int,slice,Any]:
+    '''
+    Invoke a sub-rule. This wrapper is used in a mutually recursive fashion instead of directly recursing into parse
+    so that we can add parse error notes when an error occurs.
+    `pos` is the token position for the subrule to parse from.
+    `start_pos` is the token position that is the start of the current rule (for error reporting).
+    '''
     try:
-      return sub.parse(self, source, token, buffer)
+      return sub.parse(ctx=ctx, parent=self, pos=pos)
     except ParseError as e:
-      e.add_in_note(start, self)
+      e.add_in_note(ctx.tokens[start_pos], self)
       raise
 
 
@@ -424,9 +437,9 @@ class Alias(Rule):
   def head_subs(self) -> Iterable['Rule']:
     return self.subs
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    slc, res = self.parse_sub(self.subs[0], source, token, token, buffer)
-    return slc, self.transform(source, slc, res)
+  def parse(self, ctx:ParseCtx, *, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
+    pos, slc, res = self.parse_sub(ctx=ctx, sub=self.subs[0], pos=pos, start_pos=pos)
+    return pos, slc, self.transform(ctx.source, slc, res)
 
 
   @property
@@ -460,11 +473,12 @@ class Atom(Rule):
       self.transform = parser.atom_transform or atom_token
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    parent.expect(source, token=token, kind=self.kind)
-    #^ We use `parent` and not `self` to expect the token for a more contextualized error message.
+  def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
+    token = ctx.tokens[pos]
+    if token.kind != self.kind: raise ParseError(ctx.source, token, f'{parent} expects {self.kind}; received {token.kind}.')
+    #^ We use `parent` and not `self` to create a meaningful error message.
     #^ Using `self` we would get messages like "'newline' atom expects newline".
-    return token.slc, self.transform(source, token)
+    return pos + 1, token.slc, self.transform(ctx.source, token)
 
 
 
@@ -511,17 +525,15 @@ class Opt(_QuantityRule):
     self.transform = transform
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    while token.kind in self.drop:
-      token = next(buffer)
+  def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
+    while ctx.tokens[pos].kind in self.drop: pos += 1
+    token = ctx.tokens[pos]
     if token.kind in self.body_heads:
-      slc, res = self.parse_sub(self.body, source, token, token, buffer)
+      pos, slc, res = self.parse_sub(ctx, sub=self.body, pos=pos, start_pos=pos)
     else:
-      pos = token.pos
-      slc = slice(pos, pos)
+      slc = slice(token.pos, token.pos)
       res = self.dflt
-      buffer.push(token)
-    return slc, self.transform(source, slc, res)
+    return pos, slc, self.transform(ctx.source, slc, res)
 
 
   @property
@@ -530,17 +542,24 @@ class Opt(_QuantityRule):
     return super().field_name or self.body.field_name
 
 
+_max = max
 
 class Quantity(_QuantityRule):
   '''
   A rule that matches some quantity of another rule.
+  `sep` is on optional token kind that separates successive elements.
+  `sep_at_end` is a three-valued flag:
+    * `None` (the default) means that the separator is optional at the end of the sequence.
+    * `False` means that the separator is not allowed at the end of the sequence.
+    * `True` means that the separator is required at the end of the sequence.
+  `repeated_seps` is a boolean flag that controls whether multiple consecutive separators are allowed.
   '''
   type_desc = 'sequence'
 
   def __init__(self, body:RuleRef, min:int, max:int|None, sep:TokenKind|None=None, sep_at_end:bool|None=None,
    repeated_seps:bool=False, field:str|None='', drop:Iterable[str]=(), transform:QuantityTransform=quantity_els) -> None:
     if min < 0: raise ValueError(min)
-    if max is not None and max < 1: raise ValueError(max) # The rule must consume at least one token; see `parse` implementation.
+    if max is not None and max < 1: raise ValueError(f'Quantity rule must consume at least one element: {max=}')
     if sep is None and sep_at_end is not None: raise ValueError(f'`sep` is `None` but `sep_at_end` is `{sep_at_end}`')
     self.name = ''
     self.field = field
@@ -552,8 +571,46 @@ class Quantity(_QuantityRule):
     self.min = min
     self.max = max
     self.body_heads = frozenset() # Replaced by compile.
-    self.drop = frozenset(iter_str(drop))
+    self.drop = _drops = frozenset(iter_str(drop))
     self.transform = transform
+
+    # `consume_seps` returns a tuple of (first_sep_pos, last_sep_end, next_pos).
+    if self.sep is None:
+      def consume_seps(tokens:list[Token], pos:int) -> tuple[int|None,int,int]:
+        'Consume dropped tokens only.'
+        while tokens[pos].kind in _drops: pos += 1
+        return None, pos, pos
+
+    elif self.repeated_seps:
+      def consume_seps(tokens:list[Token], pos:int) -> tuple[int|None,int,int]:
+        'Consume any dropped and separator tokens; tracks the position of the first separator only.'
+        first_sep_pos = None
+        last_sep_end = pos
+        while True:
+          kind = tokens[pos].kind
+          if kind in _drops: pos += 1
+          elif kind == self.sep:
+            if first_sep_pos is None: first_sep_pos = pos
+            pos += 1
+            last_sep_end = pos
+          else:
+            break
+        return first_sep_pos, _max(last_sep_end, pos), pos
+
+    else:
+      def consume_seps(tokens:list[Token], pos:int) -> tuple[int|None,int,int]:
+        'Consume dropped tokens, possibly a single separator, and any subsequent dropped tokens.'
+        first_sep_pos = None
+        while tokens[pos].kind in _drops: pos += 1
+        last_sep_end = pos
+        if tokens[pos].kind == self.sep:
+          first_sep_pos = pos
+          pos += 1
+          last_sep_end = pos
+        while tokens[pos].kind in _drops: pos += 1
+        return first_sep_pos, _max(last_sep_end, pos), pos
+
+    self.consume_seps = consume_seps
 
 
   def token_kinds(self) -> Iterable[str]:
@@ -562,39 +619,49 @@ class Quantity(_QuantityRule):
     yield from self.drop
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+  def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
     els:list[Any] = []
-    sep_token:Token|None = None
-    start = token
-    end = start.pos
-    while True:
-      while token.kind in self.drop:
-        token = next(buffer)
-      if len(els) == self.max or token.kind not in self.body_heads: break
-      el_slc, el = self.parse_sub(self.body, source, start, token, buffer)
-      end = el_slc.stop
+
+    while ctx.tokens[pos].kind in self.drop: pos += 1 # Consume leading dropped tokens.
+
+    start_pos = end_pos = pos
+    slc_start = slc_stop = ctx.tokens[pos].pos
+
+    first_sep_pos = None
+    last_sep_end = pos
+
+    while len(els) != self.max: # Always true when max is None.
+      if ctx.tokens[pos].kind not in self.body_heads:
+        break
+      # Parse the next element.
+      pos, el_slc, el = self.parse_sub(ctx, sub=self.body, pos=pos, start_pos=start_pos)
+      end_pos = pos
+      slc_stop = el_slc.stop
       els.append(el)
-      token = next(buffer)
-      if self.sep is not None: # Parse separator.
-        sep_token = token if (token.kind == self.sep) else None
-        if sep_token:
-          token = next(buffer)
-        elif self.sep_at_end:
-          raise ParseError(source, token, f'{self} expects {self.sep} separator; received {token.kind}.')
-        else:
-          break
-        if self.repeated_seps:
-          while token.kind == self.sep:
-            token = next(buffer)
+
+      first_sep_pos, last_sep_end, pos = self.consume_seps(ctx.tokens, pos)
+
+    # Handle end conditions.
+
+    if first_sep_pos is None:
+      if self.sep_at_end is True:
+        raise ParseError(ctx.source, ctx.tokens[pos],
+          f'{self} expects final {self.sep} separator; received {ctx.tokens[pos].kind}.')
+
+    elif self.sep_at_end is False:
+      # Do not consume any separators. Alternatively, we could raise an error here.
+      end_pos = first_sep_pos
+
+    else:
+      end_pos = last_sep_end
 
     if len(els) < self.min:
       body_plural = pluralize(self.min, f'{self.body} element')
-      raise ParseError(source, token, f'{self} expects at least {body_plural}; received {token.kind}.')
+      raise ParseError(ctx.source, ctx.tokens[start_pos],
+        f'{self} expects at least {body_plural}; received {ctx.tokens[start_pos].kind}.')
 
-    buffer.push(token)
-    if self.sep_at_end is False and sep_token: buffer.push(sep_token)
-    slc = slice(start.pos, end)
-    return slc, self.transform(source, slc, els)
+    slc = slice(slc_start, slc_stop)
+    return end_pos,slc, self.transform(ctx.source, slc, els)
 
 
 
@@ -646,23 +713,22 @@ class Struct(Rule):
       self.transform = parser._mk_struct_transform(name=(self.name or self.field or ''), subs=self.subs)
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
+  def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
     vals:list[Any] = []
-    while token.kind in self.drop:
-      token = next(buffer)
-    start = token
-    end = start.pos
+    while ctx.tokens[pos].kind in self.drop: pos += 1
+    start_pos = pos
+    token = ctx.tokens[pos]
+    slc_start = token.pos
+    slc_stop = token.pos
     for i, field in enumerate(self.subs):
       if i:
-        token = next(buffer)
-        while token.kind in self.drop:
-          token = next(buffer)
-      field_slc, val = self.parse_sub(field, source, start, token, buffer)
+        while ctx.tokens[pos].kind in self.drop: pos += 1
+      pos, field_slc, val = self.parse_sub(ctx, sub=field, pos=pos, start_pos=start_pos)
       vals.append(val)
-      end = field_slc.stop
+      slc_stop = field_slc.stop
     assert self.transform is not None
-    slc = slice(start.pos, end)
-    return slc, self.transform(source, slc, vals)
+    slc = slice(slc_start, slc_stop)
+    return pos, slc, self.transform(ctx.source, slc, vals)
 
 
 
@@ -696,17 +762,16 @@ class Choice(Rule):
       self.head_table[head] = matching_subs[0]
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    start = token
-    while token.kind in self.drop:
-      token = next(buffer)
-    try: sub = self.head_table[token.kind]
+  def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
+    while ctx.tokens[pos].kind in self.drop: pos += 1
+    start_pos = pos
+    try: sub = self.head_table[ctx.tokens[pos].kind]
     except KeyError: pass
     else:
-      slc, val = self.parse_sub(sub, source, start, token, buffer)
-      return slc, self.transform(source, slc, sub.field_name, val)
+      pos,slc, val = self.parse_sub(ctx, sub=sub, pos=pos, start_pos=start_pos)
+      return pos,slc, self.transform(ctx.source, slc, sub.field_name, val)
     exp = self.name or f'any of {self.subs_desc}'
-    raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
+    raise ParseError(ctx.source, ctx.tokens[pos], f'{parent} expects {exp}; received {ctx.tokens[pos].kind}.')
 
 
 
@@ -726,7 +791,8 @@ class Operator:
     raise Exception(f'abstract base class: {self}')
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+    'Returns (pos, slc_stop, right_val).'
     raise NotImplementedError(self)
 
 
@@ -744,8 +810,9 @@ class Suffix(Operator):
     return (self.suffix,)
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
-    return op_token.end, self.transform(source, op_token, left) # No right-hand side.
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+    suffix_token = ctx.tokens[pos]
+    return pos+1, suffix_token.slc.stop, self.transform(ctx.source, suffix_token, left) # No right-hand side.
 
 
 
@@ -756,7 +823,7 @@ class SuffixRule(Operator):
   `suffix` must be a constructed rule and not a string reference.
   '''
 
-  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_text_vals_triple): # TODO: transform should take slc.
+  def __init__(self, suffix:Rule, transform:BinaryTransform=binary_vals_pair): # TODO: transform should take slc.
     if isinstance(suffix, str): raise TypeError('SuffixRule requires a constructed rule, not a string reference.') # type: ignore[unreachable]
     self.sub_refs = (suffix,)
     self.transform = transform
@@ -771,9 +838,10 @@ class SuffixRule(Operator):
     return tuple(self.suffix.heads)
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
-    slc, right = parent.parse_sub(self.suffix, source, op_token, op_token, buffer)
-    return slc.stop, self.transform(source, op_token.pos_token(), left, right)
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+    start_pos = pos
+    pos, slc, right = parent.parse_sub(ctx, sub=self.suffix, pos=pos, start_pos=start_pos) # TODO: start_pos is wrong.
+    return pos, slc.stop, self.transform(ctx.source, ctx.tokens[start_pos].pos_token(), left, right)
 
 
 
@@ -794,9 +862,10 @@ class Adjacency(BinaryOp):
     raise _AllLeafKinds
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
-    slc, right = parse_level(parent=parent, source=source, token=op_token, buffer=buffer, level=level)
-    return slc.stop, self.transform(source, op_token.pos_token(), left, right)
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+    start_pos = pos
+    pos, slc, right = parse_level(ctx=ctx, parent=parent, pos=pos, level=level)
+    return pos, slc.stop, self.transform(ctx.source, ctx.tokens[start_pos].pos_token(), left, right)
 
 
 
@@ -818,9 +887,10 @@ class Infix(BinaryOp):
     return (self.kind,)
 
 
-  def parse_right(self, parent:Rule, source:Source, left:Any, op_token:Token, buffer:Buffer[Token], parse_level:Callable, level:int) -> tuple[int,Any]:
-    slc, right = parse_level(parent=parent, source=source, token=next(buffer), buffer=buffer, level=level)
-    return slc.stop, self.transform(source, op_token, left, right)
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+    infix_pos = pos
+    pos, slc, right = parse_level(ctx=ctx, parent=parent, pos=pos+1, level=level)
+    return pos, slc.stop, self.transform(ctx.source, ctx.tokens[infix_pos], left, right)
 
 
 
@@ -908,38 +978,35 @@ class Precedence(Rule):
           self.tail_table[kind] = (group, op)
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    slc, val = self.parse_level(parent, source, token, buffer, 0)
-    return slc, self.transform(source, slc, val)
+  def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
+    pos, slc, val = self.parse_level(ctx, parent, pos, 0)
+    return pos, slc, self.transform(ctx.source, slc, val)
 
 
-  def parse_level(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token], level:int) -> tuple[slice,Any]:
-    left_slc, left = self.parse_leaf(parent, source, token, buffer)
-    end = left_slc.stop
+  def parse_level(self, ctx:ParseCtx, parent:Rule, pos:int, level:int) -> tuple[int,slice,Any]:
+    pos, left_slc, left = self.parse_leaf(ctx, parent, pos)
+    slc_stop = left_slc.stop
     while True:
-      op_token = next(buffer)
-      while op_token.kind in self.drop:
-        op_token = next(buffer)
+      while ctx.tokens[pos].kind in self.drop: pos += 1
+      op_token = ctx.tokens[pos]
       try:
         group, op = self.tail_table[op_token.kind]
       except KeyError:
         break # op_token is not an operator.
       if group.level < level: break # This operator is at a lower precedence.
-      end, left = op.parse_right(parent, source, left, op_token, buffer, self.parse_level, level=group.level+group.level_bump)
-    # op_token is either not an operator, or of a lower precedence level.
-    buffer.push(op_token) # Put it back.
-    return slice(left_slc.start, end), left
+      pos, slc_stop, left = op.parse_right(ctx, parent, pos, left, self.parse_level, level=group.level+group.level_bump)
+    # Current token is either not an operator or of a lower precedence level.
+    return pos, slice(left_slc.start, slc_stop), left
 
 
-  def parse_leaf(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    start = token
-    while token.kind in self.drop:
-      token = next(buffer)
-    try: sub = self.head_table[token.kind]
+  def parse_leaf(self, ctx:ParseCtx, parent:Rule, pos:int) -> tuple[int,slice,Any]:
+    while ctx.tokens[pos].kind in self.drop: pos += 1
+    try: sub = self.head_table[ctx.tokens[pos].kind]
     except KeyError: pass
-    else: return self.parse_sub(sub, source, start, token, buffer)
+    else:
+      return self.parse_sub(ctx, sub=sub, pos=pos, start_pos=pos)
     exp = self.name or f'any of {self.subs_desc}'
-    raise ParseError(source, token, f'{parent} expects {exp}; received {token.kind}.')
+    raise ParseError(ctx.source, ctx.tokens[pos], f'{parent} expects {exp}; received {ctx.tokens[pos].kind}.')
 
 
 
@@ -955,13 +1022,13 @@ class SubParser(Rule):
     self.transform = transform
 
 
-  def parse(self, parent:Rule, source:Source, token:Token, buffer:Buffer[Token]) -> tuple[slice,Any]:
-    slc, sub_res = self.rule.parse(self, source, token, buffer)
-    return slc, self.transform(source, slc, sub_res)
+  def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
+    pos, slc, sub_res = self.rule.parse(ctx=ctx, parent=self, pos=pos)
+    return pos, slc, self.transform(ctx.source, slc, sub_res)
 
 
 
-Preprocessor = Callable[[Source, Iterator[Token]], Iterable[Token]]
+Preprocessor = Callable[[Source, Iterable[Token]], Iterable[Token]]
 
 
 class Parser:
@@ -1118,20 +1185,22 @@ class Parser:
     return struct_type
 
 
-  def make_buffer(self, source:Source, dbg_tokens:bool) -> Buffer[Token]:
-    stream = self.lexer.lex(source, drop=self.drop, eot=True)
-    if self.preprocessor: stream = iter(self.preprocessor(source, stream))
+  def lex_and_preprocess(self, source:Source, dbg_tokens:bool) -> list[Token]:
+    stream:Iterable[Token] = self.lexer.lex(source, drop=self.drop, eot=True)
+    if self.preprocessor: stream = self.preprocessor(source, stream)
+    tokens = list(stream)
     if dbg_tokens:
-      stream = tee_to_err(stream, label='Parser dbg_tokens', transform=lambda t: f'{t}: {source[t]!r}')
-    return Buffer(stream)
+      for i, t in enumerate(tokens):
+        errL(f'Parser tokens[{i}]: {t}: {source[t]!r}')
+    return tokens
 
 
   def parse(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, dbg_tokens:bool=False) -> Any:
     rule = self.rules[rule_name]
-    buffer = self.make_buffer(source, dbg_tokens)
-    token = next(buffer)
-    _, result = rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
-    excess_token = next(buffer) # Must exist because end_of_text cannot be consumed by a legal parser.
+    tokens = self.lex_and_preprocess(source, dbg_tokens)
+    ctx = ParseCtx(source=source, tokens=tokens)
+    pos, slc, result = rule.parse(ctx=ctx, parent=rule, pos=0) # Top rule is passed as its own parent.
+    excess_token = ctx.tokens[pos] # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
       raise ExcessToken(source, excess_token, f'excess token: {excess_token.mode_kind}.')
     return result
@@ -1144,11 +1213,14 @@ class Parser:
 
   def parse_all(self, rule_name:RuleName, source:Source, dbg_tokens:bool=False) -> Iterator[Any]:
     rule = self.rules[rule_name]
-    buffer = self.make_buffer(source, dbg_tokens=dbg_tokens)
+    tokens = self.lex_and_preprocess(source, dbg_tokens)
+    ctx = ParseCtx(source=source, tokens=tokens)
+    pos = 0
     while True:
-      token = next(buffer)
-      if token.kind == 'end_of_text': return
-      yield rule.parse(parent=rule, source=source, token=token, buffer=buffer) # Top rule is passed as its own parent.
+      if ctx.tokens[pos].kind == 'end_of_text': return
+      pos, slc, result = rule.parse(ctx=ctx, parent=rule, pos=pos) # Top rule is passed as its own parent.
+      pos = slc.stop
+      yield result
 
 
 
