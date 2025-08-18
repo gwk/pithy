@@ -8,8 +8,8 @@ from tolkien import Source, Token
 
 from ..lex import Lexer
 from ..parse import (Alias, Atom, AtomTransform, Choice, choice_label, choice_labeled, choice_syn, choice_val, Infix, Left,
-  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, SuffixRule, Syn,
-  syn_skeleton, uni_bool, uni_syn, uni_text, ZeroOrMore)
+  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, Syn, syn_skeleton, uni_bool,
+  uni_text, ZeroOrMore)
 from .keywords import sqlite_key_phrases, sqlite_keywords
 
 
