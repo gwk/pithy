@@ -22,7 +22,7 @@ def diff_for_alignment(alignment:Alignment, len_a:int, len_b:int) -> Diff:
   start_b = 0
   match_len = 0
   def flush(a:int, b:int) -> None:
-    nonlocal start_a, start_b, match_len
+    nonlocal start_a, start_b
     stop_a = start_a + match_len
     stop_b = start_b + match_len
     if match_len:

@@ -85,7 +85,6 @@ def main() -> None:
   buffer:list[DiffLine] = []
 
   def flush_buffer() -> None:
-    nonlocal buffer
     if buffer:
       if dbg: errL('SAMESAME: FLUSH')
       handle_file_lines(buffer, interactive=args.interactive, dbg=dbg)
