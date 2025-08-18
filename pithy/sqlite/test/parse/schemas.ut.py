@@ -27,6 +27,8 @@ s1 = Schema('s1',
         Column(name='id', datatype=int, is_primary=True, is_unique=True),
         Column(name='name', datatype=str, is_unique=True),
         Column(name='description', datatype=str, default=''),
+
+        Column(name='name_lower', datatype=str, virtual='lower(name)'), # Test function call.
     )),
 
     Table('User',

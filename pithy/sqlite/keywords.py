@@ -257,3 +257,7 @@ sqlite_builtin_functions = frozenset({
   'UPPER',
   'ZEROBLOB',
 })
+
+
+sqlite_keyword_builtin_functions = frozenset({'GLOB', 'IF', 'LIKE', 'REPLACE'}) # The built-in functions that are also keywords.
+assert sqlite_keyword_builtin_functions == sqlite_keywords & sqlite_builtin_functions

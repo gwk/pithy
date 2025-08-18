@@ -29,7 +29,7 @@ from dataclasses import dataclass, fields as dc_fields, is_dataclass
 from keyword import iskeyword, issoftkeyword
 from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, TypeVar, Union
 
-from tolkien import Source, Syntax, SyntaxMsg, Token
+from tolkien import get_syntax_slc, Source, Syntax, SyntaxMsg, Token
 
 from .graph import visit_nodes
 from .io import errL
@@ -781,6 +781,58 @@ class Choice(_DropRule):
     raise ParseError(ctx.source, ctx.tokens[pos], f'{parent} expects {exp}; received {ctx.tokens[pos].kind}.')
 
 
+class OrderedChoice(_DropRule):
+  '''
+  A rule that matches one of a set of choices that have identical heads.
+  The first choice that matches is returned.
+  Note that this rule is not yet optimized: for a PEG parser to perform well generally, it must cache successful sub-parses.
+  '''
+  type_desc = 'ordered choice'
+
+  def __init__(self, *choices:RuleRef, drop:Iterable[str]=(), field:str|None='', transform:ChoiceTransform|None=None):
+    self.name = ''
+    self.field = field
+    self.sub_refs = choices
+    self.heads = ()
+    self.drop = frozenset(iter_str(drop))
+    if not choices: raise ValueError('OrderedChoice requires at least one choice')
+    if transform is None: raise ValueError(f'OrderedChoice constructor requires an explicit transform; choices: {choices}')
+    self.transform = transform
+    self.head_table:dict[TokenKind,Rule] = {}
+
+
+  def head_subs(self) -> Iterable[Rule]: return self.subs
+
+
+  def compile(self, parser:'Parser') -> None:
+    pass
+
+
+  def parse(self, ctx:ParseCtx, parent:Rule, pos:int) -> tuple[int,slice,Any]:
+
+    while ctx.tokens[pos].kind in self.drop: pos += 1
+    token = ctx.tokens[pos]
+    furthest_parse_error:ParseError|None = None
+
+    for sub in self.subs:
+      if token.kind not in sub.heads: continue
+      try:
+        # Note: `pos` does not advance; we try each sub-rule from the same position.
+        end_pos, slc, val = self.parse_sub(ctx, sub=sub, pos=pos, start_pos=pos)
+      except ParseError as e:
+        if furthest_parse_error is None or get_syntax_slc(e.syntax).start > get_syntax_slc(furthest_parse_error.syntax).start:
+          furthest_parse_error = e
+        continue
+      else:
+        return end_pos, slc, self.transform(ctx.source, slc, sub.field_name, val)
+
+    # All choices failed.
+    if furthest_parse_error is None:
+      exp = self.name or f'any of {self.subs_desc}'
+      raise ParseError(ctx.source, token, f'{parent} expects {exp}; received {ctx.tokens[pos].kind}.')
+    else:
+      raise furthest_parse_error
+
 
 class Operator:
   'An operator that composes a part of a Precedence rule.'
@@ -1207,7 +1259,7 @@ class Parser:
     rule = self.rules[rule_name]
     tokens = self.lex_and_preprocess(source, dbg_tokens)
     ctx = ParseCtx(source=source, tokens=tokens)
-    pos, slc, result = rule.parse(ctx=ctx, parent=rule, pos=0) # Top rule is passed as its own parent.
+    pos, _slc, result = rule.parse(ctx=ctx, parent=rule, pos=0) # Top rule is passed as its own parent.
     excess_token = ctx.tokens[pos] # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
       raise ExcessToken(source, excess_token, f'excess token: {excess_token.mode_kind}.')

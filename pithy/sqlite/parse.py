@@ -7,10 +7,11 @@ from typing import Any, Callable, Match
 from tolkien import Source, Token
 
 from ..lex import Lexer
-from ..parse import (Alias, Atom, AtomTransform, Choice, choice_label, choice_labeled, choice_syn, choice_val, Infix, Left,
-  OneOrMore, Opt, ParseError, Parser, Precedence, Quantity, RuleName, Struct, struct_text, Suffix, Syn, syn_skeleton, uni_bool,
-  uni_text, ZeroOrMore)
-from .keywords import sqlite_key_phrases, sqlite_keywords
+from ..parse import (Alias, Atom, AtomTransform, Choice, choice_label, choice_syn, choice_val, Infix, Left, OneOrMore, Opt,
+  OrderedChoice, ParseError, Parser, Precedence, Quantity, Rule, RuleName, Struct, struct_text, Suffix, Syn, syn_skeleton,
+  uni_bool, uni_text, ZeroOrMore)
+from ..type_utils import req_type
+from .keywords import sqlite_key_phrases, sqlite_keyword_builtin_functions, sqlite_keywords
 
 
 sqlite_entity_pattern = r''' # Note: in the SQLite grammar this is called "id" (identifier).
@@ -280,39 +281,10 @@ trigger_def_rules = dict(
 )
 
 
-def _transform_leading_name(source:Source, slc:slice, val:Any) -> Any:
-  name, choice_labeled_val = val
-  if choice_labeled_val is None: return name
-  lbl, choice_val = choice_labeled_val
-  match lbl:
-    case 'dot_name_dot_name':
-      return Syn(slc, lbl='dotted_name', val=(name, *choice_val))
-    case 'fn_call':
-      return Syn(slc, lbl='fn_call', val=(name, choice_val))
-    case _:
-      raise ValueError(val)
-
-
-leading_name = Struct('name', Opt(Choice('dot_name_dot_name', 'fn_call', transform=choice_labeled)),
-  transform=_transform_leading_name)
-
-
-def _transform_dot_name_dot_name(source:Source, slc:slice, val:Any) -> Any:
-  _slc, name, suffix = val
-  if suffix is None: return (name,)
-  return (name, suffix)
-
-dot_name_dot_name = Struct('dot', 'name', Opt(Struct('dot', 'name')), transform=_transform_dot_name_dot_name)
-
-
-fn_call = Struct('lp', ZeroOrMore('expr', sep='comma', sep_at_end=False), 'rp')
-
-
-
-
 expr_rules = dict(
   expr = Precedence(
     ( 'blob', 'float', 'integer', 'string', 'FALSE', 'TRUE', 'NULL', # The "literal-value" tokens.
+      'star', # TODO: this is a hack; star is not allowed in all expr contexts.
       'signed_number',
       # Bitwise inversion.
       # bind-parameter
@@ -353,9 +325,11 @@ expr_rules = dict(
     Choice('float', 'integer', field='number', transform=choice_val),
     transform=struct_text),
 
-  leading_name = leading_name,
-  dot_name_dot_name = dot_name_dot_name,
-  fn_call = fn_call,
+  leading_name = OrderedChoice('call', 'schema_table_column_name', transform=choice_val),
+
+  call = Struct(Choice('name', *sqlite_keyword_builtin_functions, transform=choice_val), 'lp', 'call_args', 'rp'),
+
+  call_args = ZeroOrMore('expr', sep='comma', sep_at_end=False), # TODO: incorrect; see https://www.sqlite.org/syntax/function-arguments.html.
 
   paren_expr = Struct('lp', 'expr', 'rp', field='expr',
     transform=lambda s, slc, f: Syn(slc, lbl='paren_expr', val=f[1])),
@@ -409,7 +383,12 @@ delete_rules = dict(
 )
 
 
-rules=dict(
+def transform_schema_table_column_name(source:Source, slc:slice, val:list[Any]) -> Token|tuple[Token, ...]:
+  if len(val) == 1: return req_type(val[0], Token)
+  return tuple(val)
+
+
+rules:dict[str,Rule] = dict(
 
   stmts = ZeroOrMore('stmt', sep='semi', repeated_seps=True),
 
@@ -422,7 +401,9 @@ rules=dict(
 
   schema_struct_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
   table_column_name = Quantity('name', min=1, max=2, sep='dot', sep_at_end=False),
-  schema_table_column_name = Quantity('name', min=1, max=3, sep='dot', sep_at_end=False),
+
+  schema_table_column_name = Quantity('name', min=1, max=3, sep='dot', sep_at_end=False,
+    transform=transform_schema_table_column_name),
 
   column_names = OneOrMore('name', sep='comma', sep_at_end=False),
   paren_column_names = Struct('lp', OneOrMore('name', sep='comma', sep_at_end=False), 'rp', field='column_names'),

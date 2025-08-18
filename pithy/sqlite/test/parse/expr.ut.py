@@ -40,3 +40,17 @@ utest(('||', "'a'", "'b'"), parse_expr, "'a' || 'b'")
 
 utest(('a', ['b']), parse_expr, 'a(b)')
 utest(('a', ['b', 'c']), parse_expr, 'a(b, c)')
+
+# Function calls.
+utest(('LOWER', ['a']), parse_expr, 'LOWER(a)')
+utest(('LOWER', ['a', 'b']), parse_expr, 'LOWER(a, b)')
+
+# 'GLOB', 'IF', 'LIKE', 'REPLACE' are keywords and function names.
+utest(('GLOB', ['a']), parse_expr, 'GLOB(a)')
+utest(('IF', ['a', 'b', 'c']), parse_expr, 'IF(a, b, c)')
+utest(('LIKE', ['a', 'b']), parse_expr, 'LIKE(a, b)')
+utest(('REPLACE', ['a', 'b', 'c']), parse_expr, 'REPLACE(a, b, c)')
+
+# Dotted names.
+utest(('a', 'b'), parse_expr, 'a.b')
+utest(('a', 'b', 'c'), parse_expr, 'a.b.c')
