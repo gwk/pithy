@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Iterable, NoReturn
+from typing import Iterable, NoReturn, Self
 
 from pithy.iterable import joinR
 
@@ -13,7 +13,7 @@ from .util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_qu
 class GenMigrationError(Exception):
 
   @classmethod
-  def confusing_column_changes(cls, *, table_name:str, removed:Iterable[Column], added:Iterable[Column]) -> 'GenMigrationError':
+  def confusing_column_changes(cls, *, table_name:str, removed:Iterable[Column], added:Iterable[Column]) -> Self:
     removed_str = joinR('\n    ', sorted(removed))
     added_str = joinR('\n    ', sorted(added))
     return cls(f'Confusing column changes for table {table_name}:\n  removed:\n    {removed_str}\n  added:\n    {added_str}\n')
