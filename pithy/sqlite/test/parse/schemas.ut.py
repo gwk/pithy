@@ -39,9 +39,9 @@ s1 = Schema('s1',
         Column(name='role', datatype=str),
     )),
 
-    Index('User_email', table='User', columns=('email',)),
-
-    Index('User_email__active', table='User', columns=('email',), where='is_active'),
+    Index('User__email', table='User', columns=('email',)),
+    Index('User__role__email', table='User', columns=('role', 'email')),
+    Index('User__email__active', table='User', columns=('email',), where='is_active'),
 
     Table('UserPrivilege',
       is_strict=True,
