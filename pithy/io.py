@@ -85,14 +85,14 @@ def writeTFL(file:TextIO, template_fmt:str, *items:Any, flush:bool=False, **keye
 
 # Pretty printing.
 
-def write_rows(file:TextIO, rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
- max_col_width:int=64, flush:bool=False) -> None:
+def write_rows(file:TextIO, rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, convs:ConvFn|Iterable[ConvFn]=str,
+ rjust:bool|Iterable[bool]=False, max_col_width:int=64, flush:bool=False) -> None:
   '''
   Write rows of cells to file after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
   See `fmt_rows` for the underlying implementation.
   '''
-  for s in fmt_rows(rows, convs, rjust, max_col_width):
+  for s in fmt_rows(rows, head=head, convs=convs, rjust=rjust, max_col_width=max_col_width):
     writeL(file, s, flush=flush)
 
 
@@ -185,14 +185,14 @@ def outM(*labels_and_obj:Any, **opts:Any) -> None:
   writeM(stdout, *labels_and_obj, **opts)
 
 
-def out_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
-  max_col_width:int=64, flush:bool=False) -> None:
+def out_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, convs:ConvFn|Iterable[ConvFn]=str,
+  rjust:bool|Iterable[bool]=False, max_col_width:int=64, flush:bool=False) -> None:
     '''
     Write rows of cells to std out after calculating column widths to justify each cell.
     This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
     See `fmt_rows` for the underlying implementation.
     '''
-    write_rows(stdout, rows, convs, rjust, max_col_width, flush)
+    write_rows(stdout, rows, head=head, convs=convs, rjust=rjust, max_col_width=max_col_width, flush=flush)
 
 
 # std err.

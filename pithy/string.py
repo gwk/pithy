@@ -147,8 +147,8 @@ def indent_lines(lines:Iterable[str], depth:int=1) -> Iterator[str]:
 
 ConvFn = Callable[[Any], str]
 
-def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rjust:bool|Iterable[bool]=False,
- max_col_width:int=64) -> Iterable[str]:
+def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, convs:ConvFn|Iterable[ConvFn]=str,
+ rjust:bool|Iterable[bool]=False, max_col_width:int=64) -> Iterable[str]:
   '''
   Format rows of cells to after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
@@ -167,6 +167,10 @@ def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rj
 
   col_widths = DefaultList(lambda _: 0)
 
+  if head is not None:
+    for i, cell in enumerate(head):
+      col_widths[i] = len(cell)
+
   for row in rows: # Get the max width of each column.
     for i, cell in enumerate(row):
       col_widths[i] = max(col_widths[i], len(cell))
@@ -183,6 +187,9 @@ def fmt_rows(rows:Iterable[Iterable[Any]], convs:ConvFn|Iterable[ConvFn]=str, rj
     while len(rjust) < len(col_widths): rjust.append(rjust[-1])
 
   just_fns = [(str.rjust if rj else str.ljust) for rj in rjust]
+
+  if head is not None:
+    yield '  '.join(just_fn(cell, width) for just_fn, cell, width in zip(just_fns, head, col_widths))
 
   for row in rows: # Emit formatted row strings.
     yield '  '.join(just_fn(cell, width) for just_fn, cell, width in zip(just_fns, row, col_widths))
