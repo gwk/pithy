@@ -593,6 +593,7 @@ a.icon:visited {
 
 .squelch #results > table td {
   max-width: 95vw;
+  overflow-wrap: break-word;
 }
 
 .squelch .error {
