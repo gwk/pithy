@@ -244,8 +244,8 @@ form.grid, .form_grid {
   gap: 1em;
 }
 
-:is(form.grid, .form_grid) > :is(input, select) {
-  justify-self: start; /* Make inputs align to the left and not stretch to fill the grid cell. */
+:is(form.grid, .form_grid) > * {
+  justify-self: start; /* Align items to the left and do not stretch them to fill the grid cell. */
 }
 
 form.inline {
