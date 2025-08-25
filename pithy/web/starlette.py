@@ -1,6 +1,5 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from http import HTTPStatus
 from time import sleep
 from typing import Any, Iterable, Mapping, overload, Sequence
 
@@ -9,7 +8,7 @@ from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData, QueryParams
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection, Request
-from starlette.responses import HTMLResponse, RedirectResponse, Response
+from starlette.responses import HTMLResponse, Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
@@ -19,7 +18,6 @@ from ..fs import is_dir, real_path
 from ..html import HtmlNode
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
-from ..url import fmt_url
 
 
 class ClientError(Exception):
@@ -438,17 +436,6 @@ def empty_favicon(request:Request) -> Response:
   Using this prevents 404s getting logged for favicon requests.
   '''
   return HTMLResponse(content=b'', media_type='image/x-icon')
-
-
-def redirect_to_signin_response(conn:HTTPConnection, exc:Exception|None=None) -> RedirectResponse:
-  '''
-  Return a response that redirects to the signin page, encoding the current URL as the `next` query parameter.
-  The usage of `next` matches that of Starlette's `requires` decorator when `redirect` is specified.
-  The exception argument is ignored; it exists to make this function compatible with Starlette.exception_handlers,
-  and is intended for 403 Forbidden exceptions.
-  '''
-  signin_url = fmt_url('/signin', next=conn.url.path)
-  return RedirectResponse(url=signin_url, status_code=HTTPStatus.SEE_OTHER)
 
 
 def mount_for_static_pithy(*, path:str='/static/pithy', name:str='static_pithy') -> Mount:
