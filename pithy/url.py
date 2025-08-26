@@ -63,16 +63,25 @@ def url_compose(scheme:str='', netloc:str='', path:str='', query:str='', fragmen
 
 def url_assuming_netloc(url:str) -> str:
   '''
-  Sanitize a URL string by assuming that it has a netloc/host.
-  This is important because a string like 'x.com' will be treated by urlparse/urlsplit as consisting only of a path,
-  whereas a human assumes that it represents a host.
+  Disambiguate a URL string by assuming that it has a netloc/host.
+  This is useful because humans will interpret "a.com/b" as having a netloc, but `urlparse` will not.
 
-  This is essentially in direct contravention of urlparse compliance with the RFC:
+  Examples:
+  * 'a.com' -> '//a.com'
+  * '/a.com' -> '//a.com'
+  * '//a.com' -> '//a.com'
+  * 'https://a.com' -> 'https://a.com'
+
+  Note that a leading slash is interpreted as an absolute path.
+
+  Otherwise, the behavior is in direct contravention of `urlparse`'s compliance with the RFC:
   > Following the syntax specifications in RFC 1808, urlparse recognizes a netloc only if it is properly introduced by "//".
   > Otherwise the input is presumed to be a relative URL and thus to start with a path component.
   '''
   u = url_split(url)
-  if u.netloc: return url
-  # The URL does not have a netloc. This is usually because it was not preceded with the "//" prefix.
-  netloc, _slash, path = u.path.partition('/')
-  return url_unsplit(u._replace(netloc=netloc, path=path))
+  if url.startswith('/') or u.scheme or u.netloc: pass
+  else:
+    # The URL does not have a scheme, netloc, or leading slash.
+    netloc, _slash, path = u.path.partition('/')
+    u = u._replace(netloc=netloc, path=path)
+  return url_unsplit(u)
