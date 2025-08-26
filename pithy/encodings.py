@@ -190,7 +190,7 @@ def dec_b64url(val:str|ByteSeq) -> bytes:
 
 
 def enc_b64std_str(val:str|ByteSeq) -> str:
-  'Encode a string or bytes as base64 using the standard alphabet, returning a string.'
+  'Encode a string or bytes as base64 using the standard alphabet (ending in "+/"), returning a string.'
   if isinstance(val, str): val = val.encode()
   return standard_b64encode(val).decode()
 
