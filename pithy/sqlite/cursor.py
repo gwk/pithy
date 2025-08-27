@@ -255,3 +255,9 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     user_version = self.run('PRAGMA user_version').one_col()
     assert isinstance(user_version, int), user_version
     return user_version
+
+
+  def set_user_version(self, version:int) -> None:
+    'Set the integer value stored in the user_version pragma.'
+    assert isinstance(version, int), version
+    self.run(f'PRAGMA user_version = {version}')
