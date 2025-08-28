@@ -812,9 +812,10 @@ class Mu:
         case None: v = 'none'
         case True: v = 'true'
         case False: v = 'false'
-        case float(): v = prefer_int(v)
+        case float(): v = str(prefer_int(v))
         case list() | dict(): v = render_json(v, sort=False, indent=None)
-      parts.append(f" {k}={self.quote_attr_val(str(v))}")
+        case _: v = str(v)
+      parts.append(f" {k}={self.quote_attr_val(v)}")
     return ''.join(parts)
 
 

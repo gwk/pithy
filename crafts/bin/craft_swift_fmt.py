@@ -69,7 +69,7 @@ def check_git_status(git_status:dict[str,str], path:str) -> str:
     case ' ': return '' # Staged.
     case '?': return 'not tracked by git'
     case 'M': return 'modified in work tree'
-  return f'git status: {s!r}'
+    case _: return f'git status: {s!r}'
 
 
 class Ctx(NamedTuple):

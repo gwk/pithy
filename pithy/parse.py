@@ -124,10 +124,11 @@ def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=f
           node = node[1:]
         return tuple(_skeleton(el) for el in node)
       case dict(): return {k: _skeleton(v) for k, v in node.items()}
-    if is_dataclass(node):
-      dc = node.__class__
-      return dc(**{f.name: _skeleton(getattr(node, f.name)) for f in dc_fields(node)})
-    return node
+      case _:
+        if is_dataclass(node):
+          dc = node.__class__
+          return dc(**{f.name: _skeleton(getattr(node, f.name)) for f in dc_fields(node)})
+        return node
 
   return _skeleton(node)
 
