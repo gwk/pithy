@@ -308,30 +308,6 @@ function setupReloadingDateInput(input) {
 
 
 /**
- * @param {HTMLElement} element
- */
-function setupBeforeSendClearHxTargetContent(element) {
-  // Configures an element with an event handler so that before an htmx request is sent,
-  // the content of the target element is cleared.
-  // Usage: configure an element with this handler: `onfocus='setupBeforeSendClearHxTargetContent(this)'`.
-  element.onfocus = null; // This handler is a lazy initializer; remove it.
-  const hx_target_sel = element.getAttribute('hx-target');
-  if (!hx_target_sel) {
-    log('ERROR: setupBeforeSendClearHxTargetContent: element has no hx-target attribute:', element);
-    return;
-  }
-  _htmx.on(element, 'htmx:beforeSend', (event) => {
-    const hx_target = document.querySelector(hx_target_sel);
-    if (!hx_target) {
-      log('ERROR: setupBeforeSendClearHxTargetContent: hx-target not found:', hx_target_sel);
-      return;
-    }
-    hx_target.innerHTML = '';
-  });
-}
-
-
-/**
  * Validates that the container contains at least one checked checkbox.
  * @param {HTMLElement} container - A container of checkboxes.
  */
