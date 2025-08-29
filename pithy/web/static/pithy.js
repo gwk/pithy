@@ -49,6 +49,11 @@ function _setupHtmx() {
     return;
   }
 
+  if (window.location.hostname == 'localhost') {
+    // htmx.logAll() is too noisy for general use.
+    _htmx.logger = _htmxLogger;
+  }
+
   // Error handling configuration.
   document.body.addEventListener('htmx:beforeSwap', function (event) {
     // @ts-ignore: ts(2339): 'detail' does not exist on type 'Event'.
@@ -73,6 +78,25 @@ function _setupHtmx() {
   // Configure universal 'once' callback for all DOM elements that define that attribute.
   _onLoadRunOnceAttrs(document.body); // Call immediately.
   _htmx.onLoad(_onLoadRunOnceAttrs);
+}
+
+
+let htmxEventsToLog = new Set([
+  'htmx:trigger',
+  'htmx:beforeSwap',
+])
+
+
+/**
+ * A custom logger for htmx events.
+ * @param {Element} elt - The element that triggered the event.
+ * @param {string} event - The event type.
+ * @param {any} data - The event data.
+ */
+function _htmxLogger(elt, event, data) {
+  if (htmxEventsToLog.has(event)) {
+    console.log(event, elt, data)
+  }
 }
 
 
