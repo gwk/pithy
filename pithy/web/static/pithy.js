@@ -75,6 +75,18 @@ function _setupHtmx() {
     }
   });
 
+  // Show modal dialogs after they are swapped in.
+  document.body.addEventListener('htmx:afterSwap', (event) => {
+    // @ts-ignore: ts(2339): 'detail' does not exist on type 'Event'.
+    const detail = event.detail;
+    const target = detail.target;
+    for (const modal of target.querySelectorAll('dialog.modal')) {
+      if (modal instanceof HTMLDialogElement) {
+        modal.showModal();
+      }
+    }
+  });
+
   // Configure universal 'once' callback for all DOM elements that define that attribute.
   _onLoadRunOnceAttrs(document.body); // Call immediately.
   _htmx.onLoad(_onLoadRunOnceAttrs);
@@ -438,16 +450,89 @@ function setDateAndSubmit(input, date) {
 
 
 /**
- * Dismiss the topmost modal element.
- * @param {HTMLElement} element - The element triggering the function.
+ * Close the dialog.modal element closest to the event target, including the target itself.
+ * @param {Event} event - The event object.
+ * This function can be registered as a click event listener for a child of the modal, e.g. a close button.
+  */
+function closeClosestModal(event) {
+  const target = event.target
+  if (!(target instanceof Element)) { throw new Error('closeClosestModal: non-element target.') }
+  const modal = target.closest('dialog.modal');
+  if (!(modal instanceof HTMLDialogElement)) { throw new Error('No modal found to dismiss.'); }
+  event.stopPropagation();
+  modal.close();
+  removeFromParent(modal);
+}
+
+
+/**
+ * Close and remove the dialog.modal element targeted by this event. Used as a 'click' handler on modal dialogs.
  * @param {Event} event - The event object.
   */
-function dismissModal(element, event) {
-  if (element !== event.target) { return; } // Ignore events that bubble up from children.
-  event.stopPropagation();
-  const modal = element.closest('.modal');
-  if (!modal) { throw new Error('No modal found to dismiss.'); }
-  removeFromParent(modal);
+function closeTargetModal(event) {
+  event.stopPropagation(); // Always stop propagation; clicking on a modal should not affect the non-modal content behind.
+  const target = event.target
+  if (target != event.currentTarget) return // Ignore clicks on the pane; we only want to respond to ::backdrop clicks.
+  if (!(target instanceof HTMLDialogElement)) { throw new Error('closeTargetModal: non-dialog target.') }
+  target.close();
+}
+
+
+/**
+ * IF the escape key is pressed, call closeAndRemoveClosestModal;
+ * @param {Event} event - The event object.
+ * This function is intended to be registered as a keyup event listener.'
+ */
+function onCloseRemoveTargetModal(event) {
+  const target = event.target
+  if (!(target instanceof HTMLDialogElement)) { throw new Error('onCloseRemoveTargetModal: non-dialog target.') }
+  removeFromParent(target);
+}
+
+
+/**
+ * Create a modal dialog.
+ * @param {...(string|Node)} contents - The content elements to add to the modal.
+ * @returns {HTMLDialogElement} The created modal element.
+ * The modal is immediately added to the document body and shown.
+ * The modal is closed and removed from its parent when the user clicks on the backdrop.
+ */
+function createModal(...contents) {
+  const modal = document.createElement('dialog');
+  modal.className = 'modal';
+  // As of 2025-08, closedBy is not supported by Safari. Therefore we need to implement our own close handler.
+  modal.addEventListener('click', closeTargetModal);
+  modal.addEventListener('close', onCloseRemoveTargetModal);
+  /* In order to distinguish between the visible modal and the dialog::backdrop, we need to add the pane. */
+  const pane = document.createElement('div');
+  modal.appendChild(pane);
+  pane.className = 'pane';
+  pane.setAttribute('tabindex', '-1');
+  for (const content of contents) {
+    let el;
+    if (typeof content === 'string') {
+      el = document.createTextNode(content);
+    } else if (content instanceof Node) {
+      el = content;
+    } else {
+      throw new Error(`createModal: invalid content type: ${typeof content}`);
+    }
+    pane.appendChild(el);
+  }
+  return modal;
+}
+
+
+/**
+ * Create a modal dialog, insert it into the document body, and show it.
+ * @param {...(string|Node)} contents - The content elements to add to the modal.
+ * @returns {HTMLDialogElement} The created modal element.
+ */
+function createAndShowModal(...contents) {
+  const modal = createModal(...contents);
+  document.body.appendChild(modal);
+  modal.showModal();
+  return modal;
 }
 
 

@@ -666,6 +666,29 @@ class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowContent):
   Contexts for use: Flow.
   '''
 
+  @classmethod
+  def modal(cls, *args:Any, **kw_attrs:Any) -> Self:
+    '''
+    Create a dialog with the 'modal' class, and a child div with the 'pane' class.
+    All children and attributes are passed to the pane.
+    '''
+    script = Script(
+      "m = document.currentScript.parentElement; ",
+      "m.addEventListener('click', closeTargetModal); ",
+      #^ As of 2025-08 Safari does not support the "closedBy" HTMLDialogElement attribute.
+      #^ If/when it does we could potentially remove the click handler.
+      "m.addEventListener('close', onCloseRemoveTargetModal); ",
+      #^ We use two separate handlers because when the user presses the escape key, the close event is fired.
+    )
+
+    pane = Div(*args, **kw_attrs)
+    if 'tabindex' not in pane.attrs:
+      pane.attrs['tabindex'] = '-1'
+      #^ This prevents the first element (e.g. a link) in the pane from being focused, which can be visually confusing.
+      #^ Tabbing will still work.
+    pane.prepend_class('pane')
+    return cls(cl='modal', _=[script, pane])
+
 
 @_tag
 class Div(HtmlFlow, HtmlPalpable, HtmlFlowContent):
@@ -678,24 +701,6 @@ class Div(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 
   Contexts for use: As a child of a dl element, Flow.
   '''
-
-  @classmethod
-  def modal(cls, *args:Any, onclick:str='', **kw_attrs:Any) -> Self:
-    '''
-    Create a div with the 'modal' class, and a child div with the 'pane' class.
-    If specified, the `onclick` attribute will be appended to an 'event.stopPropagation()' call on the pane.
-    The modal will call `dismissModal(this, event)` on click.
-    All other attributes are passed to the pane.
-    '''
-    pane = Div(*args, **kw_attrs)
-    pane.prepend_class('pane')
-    pane['onclick'] = f'event.stopPropagation(); {onclick}'.strip()
-    return cls(cl='modal',
-      onclick='dismissModal(this, event)',
-      onkeyup="if (event.key == 'Escape' || event.keyCode == 27) dismissModal(this, event)",
-      once='this.focus()',
-      tabindex="-1",
-      _=pane)
 
 
 @_tag
