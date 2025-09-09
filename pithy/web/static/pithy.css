@@ -341,6 +341,10 @@ th, td {
   border-width: 1px;
 }
 
+th.isodate, td.isodate {
+  white-space: nowrap;
+}
+
 th.datetime, td.datetime {
   white-space: nowrap;
 }
