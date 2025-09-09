@@ -523,6 +523,7 @@ a.icon:visited {
 /* Modal panes. */
 
 dialog.modal {
+  position: fixed; /* Prevents document from scrolling to top when a modal dialog is opened. */
   margin: auto;
   overflow: auto;
   width: fit-content;
