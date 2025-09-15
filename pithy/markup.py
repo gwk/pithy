@@ -181,6 +181,29 @@ class Mu:
     self._ = cast(list[MuChild], children)
 
 
+  def __replace__(self, **kwargs:Any) -> Self:
+
+    if 'tag' not in kwargs and self.tag != self.__class__.tag:
+      kwargs['tag'] = self.tag
+
+    if '_' not in kwargs:
+      kwargs['_'] = list(self._) # Copy the children list.
+
+    if 'attrs' not in kwargs:
+      kwargs['attrs'] = dict(self.attrs) # Copy the attributes dict.
+
+    # 'cl' is a specialy synonym of the 'class' attr, handled by __init__.
+    # If we pass it in kwargs, then it may cause a ConflictingValues error in the constructor.
+    # To avoid this, we delete the 'class' item from the existing attrs.
+    if 'cl' in kwargs and 'attrs' in kwargs:
+      del kwargs['attrs']['class']
+
+    kwargs.setdefault('_orig', self._orig)
+    kwargs.setdefault('_parent', self._parent)
+
+    return type(self)(**kwargs)
+
+
   def __repr__(self) -> str: return f'{type(self).__name__}{self}'
 
 
