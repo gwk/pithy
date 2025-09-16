@@ -89,7 +89,7 @@ class Mu:
   or perhaps a subclass representing invalid nodes that sets the tag per node.
   '''
 
-  tag = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
+  tag:str = '' # Subclasses can override the class tag, or give each instance its own tag attribute.
 
   tag_types:ClassVar[dict[str,type['Mu']]] = {} # Dispatch table mapping tag names to Mu subtypes.
   generic_tag_type:ClassVar[type['Mu']] # The subtype to use for tags that are not in `tag_types`. Set to `Mu` below.
@@ -142,11 +142,7 @@ class Mu:
     assert 'ch' not in kw_attrs, 'Use `_` instead of `ch` for children.'
 
     if tag:
-      if cls_tag := getattr(self, 'tag', None):
-        if cls_tag != tag:
-           raise ValueError(f'Mu subclass {type(self)!r} already has tag: {self.tag!r}; instance tag: {tag!r}')
-      else:
-        self.tag = tag
+      self.tag = tag # Raises AttributeError for Mu and subclasses that do not provide a 'tag' slot. Use `TagMu` instead.
 
     if attrs is None: attrs = {} # Important: use existing dict ref if provided.
     for k, v in kw_attrs.items():
@@ -214,6 +210,15 @@ class Mu:
   def get(self, key:str, default:Any=None) -> Any: return self.attrs.get(key, default)
 
   def __iter__(self) -> Iterator['MuChild']: return iter(self._)
+
+
+  def __eq__(self, other:Any) -> bool:
+    return (type(self) == type(other)
+     and self.tag == other.tag
+     and self.attrs == other.attrs
+     and self._ == other._
+     and self._orig == other._orig
+     and self._parent == other._parent)
 
 
   def update(self, attrs:Iterable[tuple[str,Any]]|Mapping[str,Any]=(), **kwargs:Any) -> None:
@@ -884,6 +889,15 @@ class Mu:
   def render_children_str(self, newline:bool=True) -> str:
     'Render the children into a single string.'
     return ''.join(self.render_children())
+
+
+
+class TagMu(Mu):
+  'A Mu subclass that has a `tag` attribute.'
+
+  __slots__ = ('tag')
+
+  tag:str
 
 
 Mu.generic_tag_type = Mu # Note: this creates a circular reference.
