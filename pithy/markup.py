@@ -142,7 +142,7 @@ class Mu:
     assert 'ch' not in kw_attrs, 'Use `_` instead of `ch` for children.'
 
     if tag:
-      self.tag = tag # Raises AttributeError for Mu and subclasses that do not provide a 'tag' slot. Use `TagMu` instead.
+      self.tag = tag # type: ignore[misc] # AttributeError for classes that do not have a 'tag' slot. Use `TagMu` instead.
 
     if attrs is None: attrs = {} # Important: use existing dict ref if provided.
     for k, v in kw_attrs.items():
