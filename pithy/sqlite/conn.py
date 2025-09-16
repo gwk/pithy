@@ -14,6 +14,8 @@ from .row import Row
 from .util import sql_quote_entity
 
 
+IsolationLevel = Literal['DEFERRED', 'EXCLUSIVE', 'IMMEDIATE']
+
 sqlite_version = sqlite3.sqlite_version
 sqlite_threadsafe_dbapi_id = sqlite3.threadsafety
 
@@ -32,7 +34,7 @@ BackupProgressFn = Callable[[int,int,int],object]
 
 class Conn(sqlite3.Connection):
 
-  def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:str|None='DEFERRED',
+  def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:IsolationLevel|None='DEFERRED',
    check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, autocommit:bool=True, closing:bool=True,
    mode:str='', trace_caller_level:int=0) -> None:
     '''
