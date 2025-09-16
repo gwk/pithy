@@ -395,12 +395,25 @@ function setupHtmxConfirmIfChecked(element) {
 }
 
 
+
+
+/**
+ * Increment the date by one day.
+ * @param {Date} date - The date to increment.
+ * @returns {Date} - The incremented date.
+*/
 function nextDate(date) {
   const next = new Date(date);
   next.setDate(next.getDate() + 1);
   return next;
 }
 
+
+/**
+ * Decrement the date by one day.
+ * @param {Date} date - The date to decrement.
+ * @returns {Date} - The decremented date.
+ */
 function prevDate(date) {
   const prev = new Date(date);
   prev.setDate(prev.getDate() - 1);
