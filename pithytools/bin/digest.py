@@ -2,12 +2,11 @@
 
 'Print file hashes. The first argument is the format; remaining args are the paths.'
 
-import hashlib
 from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
 from typing import Any, ByteString, Callable, TypeVar
 
-import blake3
+from pithy.digest import digest_fns
 from pithy.encodings import enc_lep62, enc_lep128_to_utf8
 from pithy.io import errSL
 
@@ -15,29 +14,12 @@ from pithy.io import errSL
 _ByteString = TypeVar('_ByteString', ByteString, bytes, bytearray, memoryview) # Hack around the typeshed defs from base64.
 _Encoder = Callable[[_ByteString], bytes]
 
-hashes:dict[str,Any] = {
-  'blake2b'   : hashlib.blake2b,
-  'blake2s'   : hashlib.blake2s,
-  'blake3'    : blake3.blake3,
-  'md5'       : hashlib.md5,
-  'sha1'      : hashlib.sha1,
-  'sha224'    : hashlib.sha224,
-  'sha256'    : hashlib.sha256,
-  'sha3_224'  : hashlib.sha3_224,
-  'sha3_256'  : hashlib.sha3_256,
-  'sha3_384'  : hashlib.sha3_384,
-  'sha3_512'  : hashlib.sha3_512,
-  'sha384'    : hashlib.sha384,
-  'sha512'    : hashlib.sha512,
-  'shake_128' : hashlib.shake_128,
-  'shake_256' : hashlib.shake_256,
-}
 
 variable_size_hashes = { 'blake2b', 'blake2s', 'shake_128', 'shake_256' }
 variable_constructor_hashes = { 'blake2b', 'blake2s' }
 variable_digest_arg_hashes = { 'shake_128', 'shake_256' }
 
-hash_docs_str = ', '.join(hashes)
+hash_docs_str = ', '.join(digest_fns)
 
 
 def main() -> None:
@@ -64,10 +46,10 @@ def main() -> None:
     encoders.append(('lep128', enc_lep128_to_utf8))
 
   try:
-    hash_class = hashes[args.hash]
+    hash_class = digest_fns[args.hash]
   except KeyError:
     errSL('error: invalid hash name:', args.hash)
-    errSL('note: available hash functions:', *hashes)
+    errSL('note: available hash functions:', *digest_fns)
     exit(1)
 
   hash_size = args.size
