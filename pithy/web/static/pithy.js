@@ -395,6 +395,24 @@ function setupHtmxConfirmIfChecked(element) {
 }
 
 
+/**
+ * Configure a table to be collapsible.
+ * @param {HTMLElement} table - The table to configure.
+ */
+function makeTableCollapsible(table, collapsed = false) {
+  const caption = table.querySelector('caption');
+  if (!caption) {
+    throw new Error('makeTableCollapsible: table has no caption.');
+  }
+  table.classList.add('collapsible');
+  if (collapsed) {
+    table.classList.add('collapsed');
+  }
+  caption.addEventListener('click', (event) => {
+    event.preventDefault();
+    table.classList.toggle('collapsed');
+  });
+}
 
 
 /**

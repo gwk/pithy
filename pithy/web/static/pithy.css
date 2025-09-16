@@ -358,6 +358,29 @@ table tbody tr:nth-child(odd) {
 }
 
 
+/* Collapsible tables. */
+
+table.collapsible caption {
+  padding-left: 1.5ch;
+  cursor: pointer;
+  white-space: nowrap; /* Otherwise the caption width shrinks when the table is collapsed. */
+}
+
+table.collapsible caption::before {
+  content: "▾";
+  position: absolute;
+  left: 0;
+  transition: transform 0.25s;
+}
+
+table.collapsible.collapsed caption::before {
+  transform: rotate(-90deg);
+}
+
+table.collapsible.collapsed :is(tbody, thead, tfoot) {
+  display: none;
+}
+
 /* Grids. */
 
 .kv-grid-min {
