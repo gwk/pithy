@@ -45,11 +45,16 @@ class Conn(sqlite3.Connection):
     If `closing` is True (the default), the Conn will close itself when used as a context manager.
     This is different from the superclass, which does not close itself on context manager exit.
     '''
-
-    self.path = url_path(path) if uri else path
+    # Set all the attributes used in __del__ first to prevent AttributeErrors on early failures in __init__.
     self.closing = closing
-    self.closed = False
+    self.closed = True
+    self.caller_trace_loc = None
+
+    if trace_caller_level:
+      self.caller_trace_loc:tuple[str,int,str]|None = caller_src_loc(trace_caller_level) # type: ignore[no-redef]
+
     self.mode = mode
+    self.path = url_path(path) if uri else path
     if mode:
       if uri: raise ValueError('Cannot specify both `uri` and `mode`')
       #^ TODO: this could be relaxed by parsing, validating and updating the URI, taking care to raise in event of a conflict of query parameters.
@@ -61,12 +66,9 @@ class Conn(sqlite3.Connection):
     super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
       check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit)
 
-    self.row_factory = Row # Default for convenience.
+    self.closed = False # type: ignore[no-redef]
 
-    if trace_caller_level:
-      self.caller_trace_loc:tuple[str,int,str]|None = caller_src_loc(trace_caller_level)
-    else:
-      self.caller_trace_loc = None
+    self.row_factory = Row # Default for convenience.
 
 
   def __del__(self) -> None:
