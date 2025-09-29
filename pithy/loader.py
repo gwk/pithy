@@ -189,6 +189,12 @@ def load_svg(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
   from .svg.loader import load_svg
   return load_svg(f, **kwargs)
 
+
+def load_tsv(f:FileOrPath, ext:str, encoding:str|None=None, **kwargs:Any) -> Iterable[list[str]]:
+  from .tsv import parse_tsv
+  return parse_tsv(text_file_for(f), **kwargs)
+
+
 def load_txt(f:FileOrPath, ext:str, clip_ends:bool=False, **kwargs:Any) -> Iterable[str]:
   f = text_file_for(f, **kwargs)
   if clip_ends: return (line.rstrip('\n\r') for line in f)
@@ -245,6 +251,7 @@ add_loader('.sqlite',   load_sqlite,    _dflt=True)
 add_loader('.sqlite3',  load_sqlite,    _dflt=True)
 add_loader('.svg',      load_svg,       _dflt=True)
 add_loader('.tar',      load_archive,   _dflt=True)
+add_loader('.tsv',      load_tsv,       _dflt=True)
 add_loader('.txt',      load_txt,       _dflt=True)
 add_loader('.xls',      load_xls,       _dflt=True)
 add_loader('.xlsx',     load_xls,       _dflt=True)
