@@ -410,9 +410,10 @@ function makeContainerValidateAtLeastOneCheckbox(container) {
 
 /**
  * Register a callback that skips confirmation if the element is not checked.
- * This function should be called using the `once` attribute.
+ * Usage: `<input type='checkbox' hx-confirm='Are you sure?' once='makeElementHtmxConfirmIfChecked(this)'>`.
+ * @param {HTMLInputElement} element - A checkbox input element.
  */
-function setupHtmxConfirmIfChecked(element) {
+function makeElementHtmxConfirmIfChecked(element) {
   _htmx.on(element, 'htmx:confirm', (event) => {
     event.preventDefault();
     if (element.checked) { /* Show a confirmation. */
