@@ -128,8 +128,8 @@ class DateRange(Sequence[Date]):
     _setattr(self, '_seq', tuple(seq))
 
 
-  def __contains__(self, value: object) -> bool:
-    return super().__contains__(value)
+  def __contains__(self, value:object) -> bool:
+    return value in self._seq
 
 
   @overload
@@ -148,9 +148,8 @@ class DateRange(Sequence[Date]):
 
   @property
   def last(self) -> Date:
-    last = self.end - self.step
-    if last < self.start: raise ValueError(f'last < start: last={last}; start={self.start}.')
-    return last
+    return self._seq[-1]
+
 
 
 def dt_Ymd_HMS_Z(dt:DateTime) -> str:
