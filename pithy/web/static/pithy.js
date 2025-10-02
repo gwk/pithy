@@ -328,10 +328,10 @@ function expandAllDetails(selector) {
 
 /**
  * Configure an element with a date input to submit its form when the user is done editing the date.
+ * Usage: `<input type='date' onfocus='makeDateInputReloading(this)'>`.
  * @param {HTMLInputElement} input - A date input element.
  */
-function setupReloadingDateInput(input) {
-  // Usage: configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
+function makeDateInputReloading(input) {
 
   input.onfocus = null; // This handler is a lazy initializer; remove it.
 
