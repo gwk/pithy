@@ -115,6 +115,11 @@ class DateRange(Sequence[Date]):
 
 
   def __init__(self, start:Date, end:Date, step:DateDelta|TimeDelta=TimeDelta(days=1)) -> None:
+
+    if not isinstance(start, Date): raise TypeError(f'expected start to be a Date: {start!r}')
+    if not isinstance(end, Date): raise TypeError(f'expected end to be a Date: {end!r}')
+    if not isinstance(step, (DateDelta, TimeDelta)): raise TypeError(f'expected step to be a DateDelta or TimeDelta: {step!r}')
+
     _setattr(self, 'start', start)
     _setattr(self, 'end', end)
     _setattr(self, 'step', step)
