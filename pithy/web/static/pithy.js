@@ -23,6 +23,9 @@ function _configurePithy() {
 addEventListener('DOMContentLoaded', _configurePithy);
 
 
+/**
+ * Configure the window environment.
+ */
 function _configureWindow() {
   // Set `safari` class on the root element if browser is Safari; `chrome` for Chrome.
   // @ts-ignore: ts(2339): 'safari' does not exist.
@@ -43,6 +46,10 @@ function _configureWindow() {
 
 let _htmx;
 
+/**
+ * Configure htmx if it is available.
+ * If htmx is not available, this function prints a message exits.
+ */
 function _configureHtmx() {
   try {
     // @ts-ignore: ts(2552): cannot find name 'htmx'.
@@ -163,6 +170,11 @@ function _runOnceAttr(el) {
 }
 
 
+/**
+ * Create and insert a style element into the document head.
+ * @param {string} title - The title of the style element.
+ * @param {string} selectorText - The CSS text to insert into the style element.
+ */
 function createStyle(title, selectorText) {
   const style = document.createElement('style');
   style.title = title;
@@ -171,6 +183,10 @@ function createStyle(title, selectorText) {
 }
 
 
+/**
+ * Create the pithy-dynamic style element.
+ * This element contains CSS variables that depend on runtime values.
+ */
 function createPithyDynamicStyle() {
   const css = `:root {
     --scrollbar-width: ${scrollbarWidth}px;
@@ -288,6 +304,10 @@ function resetValueOfEl(el) {
 }
 
 
+/**
+ * Collapse all open <details> elements matching the given selector.
+ * @param {string} selector - The selector to match <details> elements.
+ */
 function collapseAllDetails(selector) {
   for (const element of document.querySelectorAll(selector + ' details[open]')) {
     element.removeAttribute('open');
@@ -295,6 +315,10 @@ function collapseAllDetails(selector) {
 }
 
 
+/**
+ * Expand all closed <details> elements matching the given selector.
+ * @param {string} selector - The selector to match <details> elements.
+ */
 function expandAllDetails(selector) {
   for (const element of document.querySelectorAll(selector + ' details:not([open])')) {
     element.setAttribute('open', '');
@@ -302,6 +326,10 @@ function expandAllDetails(selector) {
 }
 
 
+/**
+ * Configure an element with a date input to submit its form when the user is done editing the date.
+ * @param {HTMLInputElement} input - A date input element.
+ */
 function setupReloadingDateInput(input) {
   // Usage: configure a date input with this handler: `onfocus='setupReloadingDateInput(this)'`.
 
