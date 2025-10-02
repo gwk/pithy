@@ -248,7 +248,7 @@ class HtmlPhrasingContent(HtmlNode):
     Similarly, `checked` can be a dictionary mapping from keys to truthy values, or simply a set of keys that are checked.
     '''
     if require_one:
-      self['once'] = 'setupValidateAtLeastOneCheckbox(this)'
+      self.append(Script(_='once(makeContainerValidateAtLeastOneCheckbox);'))
     if desc_singular:
       self['desc-singular'] = desc_singular
 

@@ -1,5 +1,14 @@
 // Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+/*
+pithy.js is a general-purpose JavaScript library for use by pithy web applications.
+It is intended to be included in the HTML head element as follows:
+<script src="/static/pithy.js"></script>
+It expects HTMX to also be loaded.
+pithy.js cannot be loaded using async/defer because the `once()` function must be available to inline script elements.
+Other libraries can be loaded using async/defer.
+*/
+
 "use strict";
 
 const assert = console.assert;
@@ -167,6 +176,30 @@ function _runOnceAttr(el) {
     return;
   }
   el.setAttribute('once-ran', '');
+}
+
+/**
+ * Run a function once from inside a script element, passing the parent of the script element as the sole argument.
+ * Usage: `<script>once(() => { ... });</script>`.
+ * @param {(el:HTMLElement) => void} fn - The function to run once.
+ * This is intended to facilitate running initialization code exactly once from inside a script element,
+ * either on document load or when the script is swapped in by htmx.
+ * It can be used as a replacement for the 'once' attribute on elements,
+ * so that multiple initialization steps can be factored out into library implementations.
+ */
+function once(fn) {
+  let parent_el = reqInstance(document.currentScript?.parentElement, HTMLElement);
+  let has_run = false;
+  let once_wrapper = () => {
+    if (has_run) { return; }
+    has_run = true;
+    fn(parent_el);
+  }
+  if (document.readyState === 'complete') {
+    once_wrapper();
+  } else {
+    window.addEventListener('load', once_wrapper);
+  }
 }
 
 
