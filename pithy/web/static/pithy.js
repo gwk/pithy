@@ -396,10 +396,10 @@ function validateAtLeastOneCheckbox(container) {
 
 /**
  * Configures an element with the `validateAtLeastOneCheckbox` handler.
- * Usage: configure an element with this handler: `once='setupValidateAtLeastOneCheckbox(this)'`.
+ * Usage: `<div once='makeContainerValidateAtLeastOneCheckbox(this)'>...</div>`.
  * @param {HTMLElement} container - A container of checkboxes.
  */
-function setupValidateAtLeastOneCheckbox(container) {
+function makeContainerValidateAtLeastOneCheckbox(container) {
   validateAtLeastOneCheckbox(container); // Call immediately to set initial validity.
   container.addEventListener("change", (event) => {
     // @ts-ignore: ts(2345): Argument of type null is not assignable to parameter of type 'HTMLElement'.
