@@ -11,19 +11,19 @@ let scrollbarWidth = 0;
 /**
  * Set up the browser environment.
 */
-function _setupPithy() {
-  _setupWindow();
-  _setupHtmx();
+function _configurePithy() {
+  _configureWindow();
+  _configureHtmx();
   for (const thead of document.querySelectorAll('table thead')) {
     makeElementSelectTableContentsOnDoubleClick(thead);
   }
 }
 
 
-addEventListener('DOMContentLoaded', _setupPithy);
+addEventListener('DOMContentLoaded', _configurePithy);
 
 
-function _setupWindow() {
+function _configureWindow() {
   // Set `safari` class on the root element if browser is Safari; `chrome` for Chrome.
   // @ts-ignore: ts(2339): 'safari' does not exist.
   if (window.safari !== undefined) {
@@ -43,7 +43,7 @@ function _setupWindow() {
 
 let _htmx;
 
-function _setupHtmx() {
+function _configureHtmx() {
   try {
     // @ts-ignore: ts(2552): cannot find name 'htmx'.
     _htmx = htmx;
