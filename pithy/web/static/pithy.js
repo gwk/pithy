@@ -14,6 +14,9 @@ let scrollbarWidth = 0;
 function _setupPithy() {
   _setupWindow();
   _setupHtmx();
+  for (const thead of document.querySelectorAll('table thead')) {
+    makeElementSelectTableContentsOnDoubleClick(thead);
+  }
 }
 
 
@@ -84,6 +87,11 @@ function _setupHtmx() {
       if (modal instanceof HTMLDialogElement) {
         modal.showModal();
       }
+    }
+
+    // Add double-click handlers to table theads in swapped-in content.
+    for (const thead of target.querySelectorAll('table thead')) {
+      makeElementSelectTableContentsOnDoubleClick(thead);
     }
   });
 
@@ -564,6 +572,29 @@ function createAndShowModal(...contents) {
   document.body.appendChild(modal);
   modal.showModal();
   return modal;
+}
+
+
+/**
+ * Make the specified element (or child) select its parent table when double-clicked.
+ * @param {Element} element - The element to add the double-click handler to.
+ */
+function makeElementSelectTableContentsOnDoubleClick(element) {
+  log(`makeElementSelectTableContentsOnDoubleClick: element: ${element}`);
+  element.addEventListener('dblclick', (event) => {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) { throw new Error('makeElementSelectTableContentsOnDoubleClick: bad target.'); }
+    const table = target.closest('table');
+    if (!(table instanceof HTMLTableElement)) {
+      throw new Error('makeElementSelectTableContentsOnDoubleClick: non-table target.');
+    }
+    const range = document.createRange();
+    const selection = window.getSelection();
+    if (!selection) { throw new Error('No selection available.'); }
+    range.selectNodeContents(table);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
 }
 
 
