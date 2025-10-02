@@ -414,13 +414,12 @@ function makeDateInputReloading(input) {
 function validateAtLeastOneCheckbox(container) {
   /* Require at least one checkbox be selected. */
   let any_checked = false
-  /** @type {NodeListOf<HTMLInputElement>} box */
+  /** @type {NodeListOf<HTMLInputElement>} */
   const checkboxes = container.querySelectorAll('input[type=checkbox]')
   if (checkboxes.length === 0) { throw new Error(`validateAtLeastOneCheckbox: no checkboxes found in container: ${container}`) }
   for (const box of checkboxes) {
     any_checked = any_checked || box.checked
   }
-  /** @type {HTMLInputElement} */
   const first = nonopt(checkboxes[0])
   const desc_singular = container.getAttribute('desc-singular') || 'option'
   first.setCustomValidity(any_checked ? '' : `Select at least one ${desc_singular}`)
