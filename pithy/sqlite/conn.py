@@ -66,7 +66,7 @@ class Conn(sqlite3.Connection):
     super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
       check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit)
 
-    self.closed = False # type: ignore[no-redef]
+    self.closed = False
 
     self.row_factory = Row # Default for convenience.
 
