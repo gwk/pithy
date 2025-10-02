@@ -346,31 +346,26 @@ function setupReloadingDateInput(input) {
 
   function submitIfChanged() {
     if (valueOnFocus !== input.value) {
-      //log('value changed; submitting.')
+      if (input.form === null) { throw new Error('Input has no form.'); }
       input.form.submit();
     }
   }
 
   input.addEventListener('focus', (event) => {
-    //log('focus.', event);
     valueOnFocus = input.value;
   });
   input.addEventListener('blur', (event) => {
-    //log('blur.', event);
     submitIfChanged();
   });
   input.addEventListener('change', (event) => {
-    //log('change.', event);
     if (!isUserTyping) {
       submitIfChanged();
     }
   });
   input.addEventListener('click', (event) => {
-    //log('click.', event);
     isUserTyping = false;
   });
   input.addEventListener('keydown', (event) => {
-    //log('keydown.', event);
     isUserTyping = true;
     if (event.key == 'Enter') {
       input.blur();
