@@ -2,13 +2,14 @@
 
 from pithy.html import Body, Html, HtmlNode
 from pithy.io import outL
+from pithy.string import pluralize
 
 
 ws_normalizations:list[tuple[str|HtmlNode,str]] = [
   ( '',
     ''),
   ( ' Leading and trailing space. ',
-    '<p>Leading and trailing space.</p>'),
+    'Leading and trailing space.'),
   ( '<p>Paragraph 0.</p>',
     '<p>Paragraph 0.</p>'),
 
@@ -24,6 +25,7 @@ top
 </section>''')
 ]
 
+failures = 0
 
 for src, exp, in ws_normalizations:
   if isinstance(src, HtmlNode):
@@ -39,3 +41,8 @@ for src, exp, in ws_normalizations:
     outL(f'test failure: normalization of: {src!r}')
     outL('\n------\nexpected:\n', exp)
     outL('\n------\nactual:\n', res)
+    failures += 1
+
+if failures:
+  outL(f'\n{failures} test {pluralize(failures, "failure")}.\n')
+  exit(1)
