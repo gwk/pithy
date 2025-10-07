@@ -8,8 +8,11 @@ packages := 'pithy crafts iotest legs pithytools tolkien utest wu'
 list-recipes:
   @just --list --unsorted
 
+list-packages:
+	@echo {{packages}}
+
 build:
-	sh/build.sh $(packages)
+	sh/build.sh {{packages}}
 
 check: lint typecheck test
 
@@ -20,7 +23,7 @@ cov-meta:
 	test-meta/meta-coverage.sh
 
 develop:
-	sh/develop.sh $(packages)
+	sh/develop.sh {{packages}}
 
 docs:
 	craft-docs
