@@ -5,7 +5,11 @@ name = "wu"
 description = "Writeup is a document language that transforms to HTML."
 requires-python = ">=3.12"
 
-dependencies = ["pithy"]
+dependencies = [
+  "pithy",
+  "pygments >= 2.19.2",
+  "types-pygments >= 2.19.0.20250809",
+]
 
 keywords = [
   "HTML",

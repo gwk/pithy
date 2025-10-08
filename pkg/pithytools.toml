@@ -7,7 +7,8 @@ requires-python = ">=3.12"
 
 dependencies = [
   "pithy",
-  "Pillow", "types-Pillow",
+  "pillow >= 11.3.0",
+  "packaging >= 25.0",
 ]
 
 keywords = [
