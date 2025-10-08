@@ -1,9 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections.abc import MutableSequence
-from typing import Iterable, overload, TypeVar
-
-from typing_extensions import Any
+from typing import Any, Iterable, overload, TypeVar
 
 
 _El = TypeVar('_El', covariant=True)

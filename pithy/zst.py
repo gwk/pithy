@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections.abc import Buffer
 from typing import Any, BinaryIO, Iterable, NoReturn, TextIO
 
-from typing_extensions import Buffer
 from zstandard import ZstdCompressor
 
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc

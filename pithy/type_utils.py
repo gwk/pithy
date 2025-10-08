@@ -4,10 +4,8 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import Field, is_dataclass
 from types import UnionType
-from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol, runtime_checkable,
+from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol, runtime_checkable, TypeIs,
   TypeVar, Union)
-
-from typing_extensions import TypeIs
 
 
 _T = TypeVar('_T')
