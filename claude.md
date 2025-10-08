@@ -24,7 +24,7 @@ This repository contains code for several python packages:
 
 ## Code Style
 - Dedicated to public domain (CC0) - add license comment as first line to all python files.
-- Python 3.13 compatible with strict type annotations.
+- Python 3.14 compatible with strict type annotations.
 - 2-space indentation (not 4-space).
 - Type hints required.
 - Use isort to normalize imports.
