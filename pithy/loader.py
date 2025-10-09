@@ -227,10 +227,9 @@ def load_yaml(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
 
 
 def load_zst(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
-  from zstandard import ZstdDecompressor
-  decompressor = ZstdDecompressor()
-  d = decompressor.stream_reader(binary_file_for(f))
-  return load(d, ext=_sub_ext(ext), **kwargs)
+  from compression.zstd import ZstdFile
+  zstd_file = ZstdFile(binary_file_for(f))
+  return load(cast(IO[bytes], zstd_file), ext=_sub_ext(ext), **kwargs)
 
 
 add_loader('',          load_binary,    _dflt=True)
