@@ -15,13 +15,14 @@ The idea is to let the implementor fill out the inner funcntion, and keep most o
 
 import re
 from argparse import ArgumentParser
-from ast import (AnnAssign, Assign, AST, AsyncFunctionDef, ClassDef, Expr as ExprStmt, FunctionDef, Import, ImportFrom, Module,
-  Name, parse, stmt as Stmt, Str)
+from ast import (AnnAssign, Assign, AST, AsyncFunctionDef, ClassDef, Constant, Expr as ExprStmt, FunctionDef, Import,
+  ImportFrom, Module, Name, parse, stmt as Stmt)
+from collections.abc import Buffer
 from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
 from inspect import Parameter, Signature, signature
-from typing import Any, ByteString, Callable, Iterator, NoReturn, TextIO, Union
+from typing import Any, Callable, Iterator, NoReturn, TextIO, Union
 
 from mypy_extensions import VarArg
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
@@ -69,7 +70,7 @@ type_infos = { t.type : t for t in [
     c_type='void ', c_init='', c_arg_parser_fmt='', return_conv=None),
   TypeInfo(bytes,
     c_type='PyBytesObject *', c_init='NULL', c_arg_parser_fmt='S', return_conv='(PyObject *)'),
-  TypeInfo(Union[str,ByteString],
+  TypeInfo(Union[str,Buffer],
     c_type='Py_buffer ', c_init='{.buf=NULL, .obj=NULL, .len=0}', c_arg_parser_fmt='s*', return_conv=None),
 ]}
 
@@ -185,16 +186,22 @@ class ScopeSource(SourceReporter):
   @property
   def doc(self) -> str:
     body = self.body
-    if not (body and isinstance(body[0], ExprStmt) and isinstance(body[0].value, Str)):
-      self.error(self.node, 'missing docstring')
-    doc_expr = body[0].value
-    doc = doc_expr.s
-    assert isinstance(doc, str)
-    m = invalid_doc_re.search(doc)
+    if not body:
+      self.error(self.node, 'missing body')
+    docstring_stmt = body[0]
+    if not isinstance(docstring_stmt, ExprStmt):
+      self.error(self.node, 'missing docstring statement')
+    docstring_const = docstring_stmt.value
+    if not isinstance(docstring_const, Constant):
+      self.error(docstring_const, 'missing docstring constant')
+    docstring = docstring_const.value
+    if not isinstance(docstring, str):
+      self.error(docstring_const, 'docstring is not a string')
+    m = invalid_doc_re.search(docstring)
     if m:
       s, e = m.span()
-      self.error(doc_expr, f'invalid docstring: {m[0]!r}')
-    return doc
+      self.error(docstring_const, f'invalid docstring: {m[0]!r}')
+    return docstring
 
 
   def __iter__(self) -> Iterator[tuple[str,AST,Any]]:
@@ -208,7 +215,7 @@ class ScopeSource(SourceReporter):
         name = stmt.name
       elif isinstance(stmt, (Assign, Import, ImportFrom)):
         continue
-      elif isinstance(stmt, ExprStmt) and isinstance(stmt.value, Str):
+      elif isinstance(stmt, ExprStmt) and isinstance(stmt.value, Constant): # TODO Constant was Str
         continue # Docstring.
       else:
         type_name = type(stmt).__name__
