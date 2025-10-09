@@ -35,6 +35,7 @@ assert len(base62_alphabet) == 62
 # In VSCode, the double-click behavior also works for the numeric characters '²³¹¼½¾',
 # but in macOS applications only the ten ASCII digits will double-click as a block.
 # Older versions of macOS had problems outputting the 'ÿ' on the command line, but this appears to be fixed as of 2024-10.
+# I believe this was a bug in editline/libedit.
 base128_alphabet = (
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzª'
   'µºÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ').encode('latin1')
