@@ -2,12 +2,11 @@
 
 from base64 import (b16decode, b16encode, b32decode, b32encode, b85decode, b85encode, standard_b64decode, standard_b64encode,
   urlsafe_b64decode, urlsafe_b64encode)
+from collections.abc import Buffer
+from typing import Iterable, Sequence, Sized
 
 
 _convenience_exports = (b16decode, b16encode, b32decode, b32encode, b85decode, b85encode)
-
-
-ByteSeq = bytes|bytearray|memoryview
 
 
 def _byte_index(alphabet:bytes, char:int) -> int:
@@ -44,16 +43,17 @@ base128_alphabet_inverse = bytes(_byte_index(base128_alphabet, c) for c in range
 assert len(base128_alphabet) == 128
 
 
-def lep_int_from_bytes(val:ByteSeq) -> int:
+def lep_int_from_bytes(val:Sequence[int]) -> int:
   '''
   Create a (possibly very big) integer from the little endian interpretation of the bytes,
-  and then add the equivalent of a final 1 bit, which acts as a terminator when decoding.
+  and then add the equivalent of a final (most significant) 1 bit, which acts as a terminator when decoding.
   '''
   n = int.from_bytes(val, byteorder='little')
-  return n + (1<<(len(val)*8))
+  bit_count = len(val)*8
+  return n + (1<<bit_count)
 
 
-def lep_encode(val:ByteSeq, alphabet:bytes) -> bytes:
+def lep_encode(val:Sequence[int], alphabet:bytes) -> bytes:
   'Encode a byte string using the specified base alphabet using the "little endian punctuated" scheme.'
   m = len(alphabet)
   res = bytearray()
@@ -64,7 +64,7 @@ def lep_encode(val:ByteSeq, alphabet:bytes) -> bytes:
   return bytes(res)
 
 
-def lep_decode(encoded:ByteSeq, alphabet:bytes, alphabet_inverse:bytes) -> bytes:
+def lep_decode(encoded:Iterable[int], alphabet:bytes, alphabet_inverse:bytes) -> bytes:
   '''
   Decode a byte string using the specified base alphabet and its inverse lookup table using the "little-endian punctuated"
   scheme.
@@ -84,19 +84,19 @@ def lep_decode(encoded:ByteSeq, alphabet:bytes, alphabet_inverse:bytes) -> bytes
   return bytes(res)
 
 
-def enc_lep62(val:ByteSeq) -> bytes:
+def enc_lep62(val:Sequence[int]) -> bytes:
   '''
   Encode a byte string using the little endian punctuated base62 alphabet.
   WARNING: this is currently very slow for large inputs.
   '''
   return lep_encode(val, alphabet=base62_alphabet)
 
-def dec_lep62(val:ByteSeq) -> bytes:
+def dec_lep62(val:Iterable[int]) -> bytes:
   'Decode a byte string using the little endian punctuated base62 alphabet.'
   return lep_decode(val, alphabet=base62_alphabet, alphabet_inverse=base62_alphabet_inverse)
 
 
-def enc_lep128(val:ByteSeq) -> bytes:
+def enc_lep128(val:Sequence[int]) -> bytes:
   'Encode a byte string using the little endian punctuated base128 alphabet.'
   a = base128_alphabet # Local alias for brevity.
   res = bytearray()
@@ -121,7 +121,7 @@ def enc_lep128(val:ByteSeq) -> bytes:
   return bytes(res)
 
 
-def dec_lep128(encoded:ByteSeq) -> bytes:
+def dec_lep128(encoded:Sequence[int]) -> bytes:
   'Decode a byte string using the little endian punctuated base128 alphabet.'
   res = bytearray()
   i = -1
@@ -145,7 +145,7 @@ def dec_lep128(encoded:ByteSeq) -> bytes:
   return bytes(res)
 
 
-def enc_lep128_to_str(val:ByteSeq) -> str:
+def enc_lep128_to_str(val:Sequence[int]) -> str:
   'Encode a byte string using the little endian punctuated base128 alphabet, returning a string.'
   return enc_lep128(val).decode('latin1')
 
@@ -155,18 +155,18 @@ def dec_lep128_from_str(val:str) -> bytes:
   return dec_lep128(val.encode('latin1'))
 
 
-def enc_lep128_to_utf8(val:ByteSeq) -> bytes:
+def enc_lep128_to_utf8(val:Sequence[int]) -> bytes:
   'Encode a byte string using the little endian punctuated base128 alphabet, returning a UTF-8 byte string.'
   return enc_lep128(val).decode('latin1').encode('utf8')
 
 
-def dec_lep128_from_utf8(val:ByteSeq) -> bytes:
+def dec_lep128_from_utf8(val:Sequence[int]) -> bytes:
   'Decode a UTF-8 byte string using the little endian punctuated base128 alphabet.'
   if not isinstance(val, (bytes, bytearray)): val = bytes(val) # memoryview does not have the decode() method.
   return dec_lep128(val.decode('utf8').encode('latin1'))
 
 
-def enc_b64url(val:str|ByteSeq, pad:bool=False) -> bytes:
+def enc_b64url(val:str|Buffer, pad:bool=False) -> bytes:
   '''
   Encode a byte string using the base64url alphabet (ending in "-_").
   If `pad` is False (the default), then trailing "=" characters are removed from the result.
@@ -178,24 +178,31 @@ def enc_b64url(val:str|ByteSeq, pad:bool=False) -> bytes:
   return b
 
 
-def dec_b64url(val:str|ByteSeq) -> bytes:
+def dec_b64url(val:str|Buffer) -> bytes:
   '''
   Decode a byte string using the base64url alphabet (ending in "-_").
   If the input is not a multiple of 4 bytes, then "=" characters are added to the end prior to passing to `urlsafe_b64decode`.
   '''
   if isinstance(val, str): val = val.encode()
-  mod4 = len(val) % 4
+
+  if isinstance(val, Sized):
+    length = len(val)
+  else:
+    mv = memoryview(val)
+    assert mv.ndim == 1 and mv.itemsize == 1
+    length = mv.nbytes
+  mod4 = length % 4
   if mod4:
     val = bytes(val) + b'=' * (4 - mod4)
   return urlsafe_b64decode(val)
 
 
-def enc_b64std_str(val:str|ByteSeq) -> str:
+def enc_b64std_str(val:str|Buffer) -> str:
   'Encode a string or bytes as base64 using the standard alphabet (ending in "+/"), returning a string.'
   if isinstance(val, str): val = val.encode()
   return standard_b64encode(val).decode()
 
 
-def dec_b64std_str(val:str|ByteSeq) -> str:
+def dec_b64std_str(val:str|Buffer) -> str:
   'Decode a base64 string or bytes in the standard alphabet, returning another string.'
   return standard_b64decode(val).decode()

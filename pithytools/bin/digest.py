@@ -4,15 +4,14 @@
 
 from argparse import ArgumentParser
 from base64 import b16encode, b32encode, b64encode, urlsafe_b64encode
-from typing import Any, ByteString, Callable, TypeVar
+from typing import Any, Callable
 
 from pithy.digest import digest_fns
 from pithy.encodings import enc_lep62, enc_lep128_to_utf8
 from pithy.io import errSL
 
 
-_ByteString = TypeVar('_ByteString', ByteString, bytes, bytearray, memoryview) # Hack around the typeshed defs from base64.
-_Encoder = Callable[[_ByteString], bytes]
+_Encoder = Callable[[bytes], bytes]
 
 
 variable_size_hashes = { 'blake2b', 'blake2s', 'shake_128', 'shake_256' }

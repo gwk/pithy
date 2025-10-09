@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from random import randbytes
-from typing import ByteString, Callable
+from typing import Callable
 
 from pithy.encodings import (dec_b64url, dec_lep62, dec_lep128, enc_b64url, enc_lep62, enc_lep128, enc_lep128_to_str,
   lep_int_from_bytes)
@@ -24,7 +24,7 @@ utest('02', enc_lep128_to_str, b'\x00')
 utest('12', enc_lep128_to_str, b'\x01')
 
 
-coders:list[tuple[Callable[[ByteString],bytes], Callable[[bytes],bytes]]] = [
+coders:list[tuple[Callable[[bytes],bytes], Callable[[bytes],bytes]]] = [
   (enc_b64url, dec_b64url),
   (enc_lep62, dec_lep62),
   (enc_lep128, dec_lep128),
