@@ -36,6 +36,7 @@ def main() -> None:
     if args.xz:   pack(path, ext='.xz', **kwargs)
     if args.zst:  pack(path, ext='.zst', **kwargs)
 
+
 def pack(path:str, ext:str, overwrite:bool, level:str|None, show_stats:bool) -> None:
   dst = path + ext
   pack_fn = formats[ext]
