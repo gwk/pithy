@@ -38,6 +38,40 @@ utest(('+', ('*', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), right.parse, 'expr', 
   skeletonize=True)
 
 
+left_right = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
+    name=Atom('name'),
+    expr=Precedence(
+      ('name',),
+      Left(Infix('plus')),
+      Right(Infix('star')),
+ )))
+
+utest(('+', ('+', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), left_right.parse, 'expr',
+  Source('', 'a + b + c * d * e'), skeletonize=True)
+
+utest(('+', ('+', ('*', 'a', ('*', 'b', 'c')), 'd'), 'e'), left_right.parse, 'expr',
+  Source('', 'a * b * c + d + e'), skeletonize=True)
+
+
+right_left = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
+    name=Atom('name'),
+    expr=Precedence(
+      ('name',),
+      Right(Infix('plus')),
+      Left(Infix('star')),
+  )))
+
+utest(('+', 'a', ('+', 'b', ('*', ('*', 'c', 'd'), 'e'))), right_left.parse, 'expr',
+  Source('', 'a + b + c * d * e'), skeletonize=True)
+
+utest(('+', ('*', ('*', 'a', 'b'), 'c'), ('+', 'd', 'e')), right_left.parse, 'expr',
+  Source('', 'a * b * c + d + e'), skeletonize=True)
+
+
 left_adj_dot = Parser(lexer,
   drop=('spaces',),
   rules=dict(
