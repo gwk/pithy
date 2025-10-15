@@ -1081,8 +1081,18 @@ class Precedence(_DropRule):
 
 
   def parse_level(self, ctx:ParseCtx, parent:Rule, pos:int, level:int) -> tuple[int,slice,Any]:
-    pos, left_slc, left = self.parse_leaf(ctx, parent, pos)
+
+    while ctx.tokens[pos].kind in self.drop: pos += 1
+
+    token = ctx.tokens[pos]
+    sub = self.head_table.get(token.kind)
+    if sub is None:
+      exp = self.name or f'any of {self.subs_desc}'
+      raise ParseError(ctx.source, token, f'{parent} expects {exp}; received {token.kind}.')
+
+    pos, left_slc, left = self.parse_sub(ctx, sub=sub, pos=pos, start_pos=pos)
     #^ `left` is the left-hand side value.
+
     slc_stop = left_slc.stop
     while True:
       while ctx.tokens[pos].kind in self.drop: pos += 1
@@ -1095,16 +1105,6 @@ class Precedence(_DropRule):
       pos, slc_stop, left = op.parse_right(ctx, parent, pos, left_slc.start, left, self.parse_level, level=op.sub_level)
     # Current token is either not an operator or of a lower precedence level.
     return pos, slice(left_slc.start, slc_stop), left
-
-
-  def parse_leaf(self, ctx:ParseCtx, parent:Rule, pos:int) -> tuple[int,slice,Any]:
-    while ctx.tokens[pos].kind in self.drop: pos += 1
-    try: sub = self.head_table[ctx.tokens[pos].kind]
-    except KeyError: pass
-    else:
-      return self.parse_sub(ctx, sub=sub, pos=pos, start_pos=pos)
-    exp = self.name or f'any of {self.subs_desc}'
-    raise ParseError(ctx.source, ctx.tokens[pos], f'{parent} expects {exp}; received {ctx.tokens[pos].kind}.')
 
 
 
