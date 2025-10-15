@@ -11,17 +11,17 @@ basic = Parser(lexer,
   drop=('newline', 'spaces'),
   literals=('kw_as', 'kw_import', 'kw_from'),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
 
     import_=Choice('import_modules', 'import_from', transform=choice_labeled),
     import_modules=Struct('kw_import', 'path_as_exprs'),
-    import_from=Struct('kw_from', 'path', 'kw_import', 'name_as_exprs', transform=lambda s, slc, f: (f[1], f[3])),
+    import_from=Struct('kw_from', 'path', 'kw_import', 'name_as_exprs'),
 
     path_as_exprs=ZeroOrMore('path_as_expr', sep='comma'),
-    path_as_expr=Struct('path', 'as_name', transform=struct_fields_tuple),
+    path_as_expr=Struct('path', 'as_name'),
 
     name_as_exprs=ZeroOrMore('name_as_expr', sep='comma'),
-    name_as_expr=Struct('name', 'as_name', transform=struct_fields_tuple),
+    name_as_expr=Struct('name', 'as_name'),
     as_name=Opt(Struct('kw_as', 'name')),
     path=Precedence(
       ('name',),
@@ -32,9 +32,7 @@ basic = Parser(lexer,
 
 
 utest(('import_modules', [('m', '_m'), ('n', None)]),
-  basic.parse,
-  'import_', Source('', 'import m as _m, n'))
+  basic.parse, 'import_', Source('', 'import m as _m, n'), skeletonize=True)
 
 utest(('import_from', (['m','n','o'], [('a', None), ('b', '_b')])),
-  basic.parse,
-  'import_', Source('', 'from m.n.o import a, b as _b'))
+  basic.parse, 'import_', Source('', 'from m.n.o import a, b as _b'), skeletonize=True)

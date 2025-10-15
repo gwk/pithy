@@ -9,7 +9,7 @@ from utest import utest
 left = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Left(Infix('plus')),
@@ -18,14 +18,16 @@ left = Parser(lexer,
   ),
 )
 
-utest(('+', ('+', 'a', ('*', 'b', 'c')), 'd'), left.parse, 'expr', Source('', 'a + b * c + d'))
-utest(('+', ('*', 'a', 'b'), ('*', ('*', 'c', 'd'), 'e')), left.parse, 'expr', Source('', 'a * b + c * d * e'))
+utest(('+', ('+', 'a', ('*', 'b', 'c')), 'd'), left.parse, 'expr', Source('', 'a + b * c + d'), skeletonize=True)
+
+utest(('+', ('*', 'a', 'b'), ('*', ('*', 'c', 'd'), 'e')), left.parse, 'expr', Source('', 'a * b + c * d * e'),
+  skeletonize=True)
 
 
 right = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Right(Infix('plus')),
@@ -34,14 +36,16 @@ right = Parser(lexer,
   ),
 )
 
-utest(('+', 'a', ('+', ('*', 'b', 'c'), 'd')), right.parse, 'expr', Source('', 'a + b * c + d'))
-utest(('+', ('*', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), right.parse, 'expr', Source('', 'a * b + c * d * e'))
+utest(('+', 'a', ('+', ('*', 'b', 'c'), 'd')), right.parse, 'expr', Source('', 'a + b * c + d'), skeletonize=True)
+
+utest(('+', ('*', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), right.parse, 'expr', Source('', 'a * b + c * d * e'),
+  skeletonize=True)
 
 
 left_adj_dot = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Left(Adjacency()),
@@ -50,14 +54,14 @@ left_adj_dot = Parser(lexer,
   ),
 )
 
-utest(((('.', 'a', 'b'), 'c'), 'd'), left_adj_dot.parse, 'expr', Source('', 'a.b c d'))
-utest((('a', ('.', 'b', 'c')), 'd'), left_adj_dot.parse, 'expr', Source('', 'a b.c d'))
+utest(((('.', 'a', 'b'), 'c'), 'd'), left_adj_dot.parse, 'expr', Source('', 'a.b c d'), skeletonize=True)
+utest((('a', ('.', 'b', 'c')), 'd'), left_adj_dot.parse, 'expr', Source('', 'a b.c d'), skeletonize=True)
 
 
 left_dot_adj = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Left(Infix('dot')),
@@ -66,14 +70,14 @@ left_dot_adj = Parser(lexer,
   ),
 )
 
-utest(('.', 'a', (('b', 'c'), 'd')), left_dot_adj.parse, 'expr', Source('', 'a . b c d'))
-utest(('.', (('a', 'b'), 'c'), 'd'), left_dot_adj.parse, 'expr', Source('', 'a b c . d'))
+utest(('.', 'a', (('b', 'c'), 'd')), left_dot_adj.parse, 'expr', Source('', 'a . b c d'), skeletonize=True)
+utest(('.', (('a', 'b'), 'c'), 'd'), left_dot_adj.parse, 'expr', Source('', 'a b c . d'), skeletonize=True)
 
 
 right_adj_dot = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Right(Adjacency()),
@@ -82,14 +86,14 @@ right_adj_dot = Parser(lexer,
   ),
 )
 
-utest((('.', 'a', 'b'), ('c', 'd')), right_adj_dot.parse, 'expr', Source('', 'a.b c d'))
-utest(('a', (('.', 'b', 'c'), 'd')), right_adj_dot.parse, 'expr', Source('', 'a b.c d'))
+utest((('.', 'a', 'b'), ('c', 'd')), right_adj_dot.parse, 'expr', Source('', 'a.b c d'), skeletonize=True)
+utest(('a', (('.', 'b', 'c'), 'd')), right_adj_dot.parse, 'expr', Source('', 'a b.c d'), skeletonize=True)
 
 
 right_dot_adj = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Right(Infix('dot')),
@@ -98,14 +102,14 @@ right_dot_adj = Parser(lexer,
   ),
 )
 
-utest(('.', 'a', ('b', ('c', 'd'))), right_dot_adj.parse, 'expr', Source('', 'a . b c d'))
-utest(('.', ('a', ('b', 'c')), 'd'), right_dot_adj.parse, 'expr', Source('', 'a b c . d'))
+utest(('.', 'a', ('b', ('c', 'd'))), right_dot_adj.parse, 'expr', Source('', 'a . b c d'), skeletonize=True)
+utest(('.', ('a', ('b', 'c')), 'd'), right_dot_adj.parse, 'expr', Source('', 'a b c . d'), skeletonize=True)
 
 
 right_adj_qmark = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Right(Adjacency()),
@@ -114,13 +118,13 @@ right_adj_qmark = Parser(lexer,
   ),
 )
 
-utest(('a', (('?', 'b'), 'c')), right_adj_qmark.parse, 'expr', Source('', 'a b? c'))
+utest(('a', (('?', 'b'), 'c')), right_adj_qmark.parse, 'expr', Source('', 'a b? c'), skeletonize=True)
 
 
 right_qmark_adj = Parser(lexer,
   drop=('spaces',),
   rules=dict(
-    name=Atom('name', transform=atom_text),
+    name=Atom('name'),
     expr=Precedence(
       ('name',),
       Right(Suffix('qmark')),
@@ -129,4 +133,4 @@ right_qmark_adj = Parser(lexer,
   ),
 )
 
-utest(('?', ('a', 'b')), right_qmark_adj.parse, 'expr', Source('', 'a b ?'))
+utest(('?', ('a', 'b')), right_qmark_adj.parse, 'expr', Source('', 'a b ?'), skeletonize=True)

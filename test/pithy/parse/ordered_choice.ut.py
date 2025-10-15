@@ -21,7 +21,7 @@ parser = Parser(lexer,
 def parse_skel(s:str, rule:str='expr') -> Any:
   source = Source('expr', s)
   #return parser.parse('expr', source)
-  return syn_skeleton(parser.parse(rule, source), source=source)
+  return parser.parse(rule, source, skeletonize=True)
 
 
 utest(('call', 'f'), parse_skel, 'f()')

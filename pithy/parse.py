@@ -86,6 +86,16 @@ def append(list_:list[_T], el:_T) -> list[_T]:
 
 
 
+class Skeletonizable(Protocol):
+  '''
+  An object that implements `skeletonize` to produce a simplified version of itself.
+  This is useful for writing test expectations; we can omit details like token/slice positions,
+  but specify the structure of the syntax tree.
+  '''
+  def skeletonize(self) -> Any: ... # Return a simplified syntactic skeleton of the object.
+
+
+
 def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=frozenset()) -> Any:
   '''
   Produce a simplified skeleton of a syntax tree by recursively removing or simplifying Syn nodes.
@@ -95,7 +105,14 @@ def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=f
   Otherwise, Tokens are replaced with their kind or mode and kind.
 
   `keep_lbls` is an iterable of labels for which to preserve Syn nodes.
-  Otherwise, Syn nodes are replaced with their recursively simplified values.
+  All other Syn nodes are replaced with their recursively simplified values.
+
+  This function operates by creating a recursive helper function.
+
+  If a node implements the `skeletonize` method, it should have the following signature:
+  `def skeletonize(self, skeletonize_sub:Callable) -> Self: ...`
+
+  `skeletonize` is prefentially used to produce the skeleton; the recursive helper is passed as `skeletonize_sub`.
   '''
 
   if source is not None:
@@ -115,6 +132,9 @@ def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=f
       return _skeleton(syn.val)
 
   def _skeleton(node:Any) -> Any:
+    try: skeletonize = node.skeletonize
+    except AttributeError: pass
+    else: return skeletonize(_skeleton)
     match node:
       case Token(): return _skeleton_for_token(node)
       case Syn(): return _skeleton_for_syn(node)
@@ -124,11 +144,11 @@ def syn_skeleton(node:Any, *, source:Source|None=None, keep_lbls:Iterable[str]=f
           node = node[1:]
         return tuple(_skeleton(el) for el in node)
       case dict(): return {k: _skeleton(v) for k, v in node.items()}
-      case _:
-        if is_dataclass(node):
-          dc = node.__class__
-          return dc(**{f.name: _skeleton(getattr(node, f.name)) for f in dc_fields(node)})
-        return node
+      case _: pass
+    if is_dataclass(node):
+      dc = node.__class__
+      return dc(**{f.name: _skeleton(getattr(node, f.name)) for f in dc_fields(node)})
+    return node
 
   return _skeleton(node)
 
@@ -1256,7 +1276,8 @@ class Parser:
     return tokens
 
 
-  def parse(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, dbg_tokens:bool=False) -> Any:
+  def parse(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, skeletonize:bool=False, dbg_tokens:bool=False
+   ) -> Any:
     rule = self.rules[rule_name]
     tokens = self.lex_and_preprocess(source, dbg_tokens)
     ctx = ParseCtx(source=source, tokens=tokens)
@@ -1264,23 +1285,31 @@ class Parser:
     excess_token = ctx.tokens[pos] # Must exist because end_of_text cannot be consumed by a legal parser.
     if not ignore_excess and excess_token.kind != 'end_of_text':
       raise ExcessToken(source, excess_token, f'excess token: {excess_token.mode_kind}.')
+    if skeletonize:
+      result = syn_skeleton(result, source=source)
     return result
 
 
-  def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, dbg_tokens:bool=False) -> Any:
-    try: return self.parse(rule_name=rule_name, source=source, ignore_excess=ignore_excess, dbg_tokens=dbg_tokens)
+  def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, skeletonize:bool=False,
+   dbg_tokens:bool=False) -> Any:
+    try:
+      return self.parse(rule_name=rule_name, source=source, ignore_excess=ignore_excess, skeletonize=skeletonize,
+        dbg_tokens=dbg_tokens)
     except ParseError as e: e.fail()
 
 
-  def parse_all(self, rule_name:RuleName, source:Source, dbg_tokens:bool=False) -> Iterator[Any]:
+  def parse_all(self, rule_name:RuleName, source:Source, skeletonize:bool=False, dbg_tokens:bool=False) -> Iterator[Any]:
     rule = self.rules[rule_name]
     tokens = self.lex_and_preprocess(source, dbg_tokens)
     ctx = ParseCtx(source=source, tokens=tokens)
     pos = 0
     while True:
       if ctx.tokens[pos].kind == 'end_of_text': return
-      pos, slc, result = rule.parse(ctx=ctx, parent=rule, pos=pos) # Top rule is passed as its own parent.
+      pos, slc, result = rule.parse(ctx=ctx, parent=rule, pos=pos)
+      #^ Top rule is passed as its own parent.
       pos = slc.stop
+      if skeletonize:
+        result = syn_skeleton(result, source=source)
       yield result
 
 
