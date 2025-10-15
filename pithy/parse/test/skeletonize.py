@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pithy.parse import Atom, Choice, choice_syn, Parser, Struct, syn_skeleton, ZeroOrMore
+from pithy.parse import Atom, Choice, choice_syn, Parser, Struct, ZeroOrMore
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest
@@ -19,8 +19,7 @@ parser = Parser(lexer,
 
 def parse_skel(s:str) -> Any:
   source = Source('expr', s)
-  #return parser.parse('expr', source)
-  return syn_skeleton(parser.parse('expr', source), source=source)
+  return parser.parse('expr', source, skeletonize=True)
 
 
 utest('a', parse_skel, 'a')
