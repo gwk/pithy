@@ -252,6 +252,19 @@ def get_form_bool(form_data:FormData, key:str, default:bool|None=None) -> bool|N
   except KeyError as e: raise HTTPException(400, f'Invalid boolean form field value: {key}={v!r}') from e
 
 
+def get_form_checkbox_bool(form_data:FormData, key:str) -> bool:
+  '''
+  Get a checkbox boolean value from a FormData (e.g. request.form).
+  If the key is not present, return False.
+  If the value is not a str (i.e. UploadFile) or does not equal the default "on" value,
+  raise a 400 exception.
+  '''
+  v = get_form_str(form_data, key, default='')
+  if v == '': return False
+  if v == 'on': return True
+  raise HTTPException(400, f'Invalid boolean form field value: {key}={v!r}')
+
+
 def req_form_bool(form_data:FormData, key:str) -> bool:
   '''
   Get a required boolean value from a FormData (e.g. request.form).
