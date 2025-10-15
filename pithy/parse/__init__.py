@@ -31,14 +31,14 @@ from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, 
 
 from tolkien import get_syntax_slc, Source, Syntax, SyntaxMsg, Token
 
-from .graph import visit_nodes
-from .io import errL
-from .lex import Lexer, reserved_names, valid_name_re
-from .meta import caller_module_name
-from .stack import Stack
-from .string import indent_lines, iter_str, pluralize, typecase_from_snakecase
-from .type_utils import is_namedtuple
-from .untyped import Immutable
+from ..graph import visit_nodes
+from ..io import errL
+from ..lex import Lexer, reserved_names, valid_name_re
+from ..meta import caller_module_name
+from ..stack import Stack
+from ..string import indent_lines, iter_str, pluralize, typecase_from_snakecase
+from ..type_utils import is_namedtuple
+from ..untyped import Immutable
 
 
 TokenKind = str
