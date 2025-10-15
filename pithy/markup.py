@@ -65,7 +65,8 @@ class Present:
     object.__setattr__(self, 'val', val)
 
   def __repr__(self) -> str:
-    return f'Present({self.is_present})'
+    val_str = '' if self.val == '' else f', val={self.val!r}'
+    return f'Present({self.is_present}{val_str})'
 
   def __setattr__(self, _name: str, _value: Any) -> None:
     raise AttributeError('`Present` object is immutable')
