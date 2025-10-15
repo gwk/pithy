@@ -22,7 +22,7 @@ def get_syntax_slc(syntax:Syntax) -> slice:
   return syntax if isinstance(syntax, slice) else syntax.slc
 
 
-def slc_str(slc:slice) -> str: return f'{slc.start}-{slc.stop}'
+def slc_str(slc:slice) -> str: return f'{slc.start}…{slc.stop}'
 
 
 class SyntaxError(Exception):
