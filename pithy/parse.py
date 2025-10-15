@@ -243,7 +243,7 @@ def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> tuple[A
 def left_binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list[Any]:
   '''
   Return a List of the values parsed by a left-associative list rule.
-  If `left` is already a list, append `right` to it and return it.
+  If `left` is already a list, append `right` to `left` and return `left`.
   If `left` is not a list, return a list of `left` and `right`.
   '''
   if isinstance(left, list):
@@ -256,7 +256,7 @@ def left_binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list
 def right_binary_to_stack(source:Source, token:Token, left:Any, right:Any) -> Stack[Any]:
   '''
   Return a Stack of the values parsed by a right-associative list rule.
-  If `right` is already a Stack, push `left` onto it and return it.
+  If `right` is already a Stack, push `left` onto `right` and return `right`.
   Otherwise, return a Stack of `left` and `right`.
   '''
   if isinstance(right, Stack):
