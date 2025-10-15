@@ -131,9 +131,9 @@ def build_legs_grammar_parser() -> Parser:
         Right(Infix('bar', transform=transform_choice)),
         Right(Adjacency(transform=transform_adj)),
         Right(
-          Suffix('qmark', transform=lambda s, t, v: OptPattern(v)),
-          Suffix('star',  transform=lambda s, t, v: StarPattern(v)),
-          Suffix('plus',  transform=lambda s, t, v: PlusPattern(v))),
+          Suffix('qmark', transform=lambda s, slc, t, v: OptPattern(v)),
+          Suffix('star',  transform=lambda s, slc, t, v: StarPattern(v)),
+          Suffix('plus',  transform=lambda s, slc, t, v: PlusPattern(v))),
         drop=('newline', 'indent', 'dedent'),
       ),
 
@@ -149,10 +149,10 @@ def build_legs_grammar_parser() -> Parser:
       charset_expr=Precedence(
         ('charset', 'char_cs', 'esc_cs', 'ref_cs'),
         Left(
-          Infix('amp',    transform=lambda s, t, l, r: l & r),
-          Infix('caret',  transform=lambda s, t, l, r: l ^ r),
-          Infix('dash',   transform=lambda s, t, l, r: l - r)),
-        Right(Adjacency(  transform=lambda s, t, l, r: l | r)),
+          Infix('amp',    transform=lambda s, slc, t, l, r: l & r),
+          Infix('caret',  transform=lambda s, slc, t, l, r: l ^ r),
+          Infix('dash',   transform=lambda s, slc, t, l, r: l - r)),
+        Right(Adjacency(  transform=lambda s, slc, t, l, r: l | r)),
         transform=uni_val),
 
       # Pattern atoms.
@@ -221,17 +221,17 @@ def transform_grammar(source:Source, slc:slice, sections:list) -> Grammar:
   return Grammar(license=license, patterns=patterns, modes=modes, transitions=dict(transitions))
 
 
-def transform_pattern(source:Source, slice:slice, fields:list) -> tuple[Token,LegsPattern]:
+def transform_pattern(source:Source, slc:slice, fields:list) -> tuple[Token,LegsPattern]:
   sym, pattern = fields
   if pattern is None:
     pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in source[sym]])
   return (sym, pattern)
 
 
-def transform_choice(source:Source, token:Token, l:LegsPattern, r:LegsPattern) -> ChoicePattern:
+def transform_choice(source:Source, slc:slice, token:Token, l:LegsPattern, r:LegsPattern) -> ChoicePattern:
   return ChoicePattern(l, r)
 
-def transform_adj(source:Source, token:Token, l:LegsPattern, r:LegsPattern) -> SeqPattern:
+def transform_adj(source:Source, slc:slice, token:Token, l:LegsPattern, r:LegsPattern) -> SeqPattern:
   return SeqPattern(l, r)
 
 

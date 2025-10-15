@@ -145,7 +145,7 @@ parser = Parser(lexer,
     query=Precedence(
       ('filter', 'search'),
       Left(
-        Adjacency(transform=lambda s, t, l, r: ChildQuery(l, r))
+        Adjacency(transform=lambda s, slc, t, l, r: ChildQuery(l, r))
       ),
     ),
     search=Choice('pred', transform=lambda s, slc, name, predicate: SearchQuery(predicate)),

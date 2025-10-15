@@ -214,33 +214,38 @@ def uni_text(source:Source, slc:slice, val:Any) -> str:
   return source[slc]
 
 
-SuffixTransform = Callable[[Source,Token,Any],Any]
+SuffixTransform = Callable[[Source,slice,Token,Any],Any]
 
-def suffix_val(source:Source, token:Token, val:Any) -> Any:
+def suffix_val(source:Source, slc:slice, token:Token, val:Any) -> Any:
   'Return the value as is.'
   return val
 
-def suffix_text_val_pair(source:Source, token:Token, val:Any) -> tuple[str,Any]:
+def suffix_syn(source:Source, slc:slice, token:Token, val:Any) -> Syn:
+  'Return a Syn node.'
+  return Syn(slc, lbl=token.kind, val=val)
+
+
+def suffix_text_val_pair(source:Source, slc:slice, token:Token, val:Any) -> tuple[str,Any]:
   'Return a pair tuple of source text for the token and the value.'
   return (source[token], val)
 
-def suffix_text(source:Source, token:Token, val:Any) -> str:
-  'Return the value as a string, appending the source text for the token.'
+def suffix_text(source:Source, slc:slice, token:Token, val:Any) -> str:
+  'Return the value (must be a string) with the suffix text appended.'
   assert isinstance(val, str)
   return val + source[token]
 
 
-BinaryTransform = Callable[[Source,Token,Any,Any],Any]
+BinaryTransform = Callable[[Source,slice,Token,Any,Any],Any]
 
-def binary_text_vals_triple(source:Source, token:Token, left:Any, right:Any) -> tuple[str,Any,Any]:
+def binary_text_vals_triple(source:Source, slc:slice, token:Token, left:Any, right:Any) -> tuple[str,Any,Any]:
   'Return a triple tuple of source text for the token, the left value, and the right value.'
   return (source[token], left, right)
 
-def binary_vals_pair(source:Source, token:Token, left:Any, right:Any) -> tuple[Any,Any]:
+def binary_vals_pair(source:Source, slc:slice, token:Token, left:Any, right:Any) -> tuple[Any,Any]:
   'Return a pair tuple of the left value and the right value.'
   return (left, right)
 
-def left_binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list[Any]:
+def left_binary_to_list(source:Source, slc:slice, token:Token, left:Any, right:Any) -> list[Any]:
   '''
   Return a List of the values parsed by a left-associative list rule.
   If `left` is already a list, append `right` to `left` and return `left`.
@@ -252,8 +257,7 @@ def left_binary_to_list(source:Source, token:Token, left:Any, right:Any) -> list
   else:
     return [left, right]
 
-
-def right_binary_to_stack(source:Source, token:Token, left:Any, right:Any) -> Stack[Any]:
+def right_binary_to_stack(source:Source, slc:slice, token:Token, left:Any, right:Any) -> Stack[Any]:
   '''
   Return a Stack of the values parsed by a right-associative list rule.
   If `right` is already a Stack, push `left` onto `right` and return `right`.
@@ -871,7 +875,8 @@ class Operator:
     raise Exception(f'abstract base class: {self}')
 
 
-  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
+   ) -> tuple[int,int,Any]:
     'Returns (pos, slc_stop, right_val).'
     raise NotImplementedError(self)
 
@@ -890,9 +895,11 @@ class Suffix(Operator):
     return (self.suffix,)
 
 
-  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
+   ) -> tuple[int,int,Any]:
     suffix_token = ctx.tokens[pos]
-    return pos+1, suffix_token.slc.stop, self.transform(ctx.source, suffix_token, left) # No right-hand side.
+    slc = slice(left_start, suffix_token.slc.stop)
+    return pos+1, suffix_token.slc.stop, self.transform(ctx.source, slc, suffix_token, left) # No right-hand side.
 
 
 
@@ -918,10 +925,12 @@ class SuffixRule(Operator):
     return tuple(self.suffix.heads)
 
 
-  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
+   ) -> tuple[int,int,Any]:
     start_pos = pos
-    pos, slc, right = parent.parse_sub(ctx, sub=self.suffix, pos=pos, start_pos=start_pos) # TODO: start_pos is wrong.
-    return pos, slc.stop, self.transform(ctx.source, ctx.tokens[start_pos].pos_token(), left, right)
+    pos, right_slc, right = parent.parse_sub(ctx, sub=self.suffix, pos=pos, start_pos=start_pos) # TODO: start_pos is wrong.
+    slc = slice(left_start, right_slc.stop)
+    return pos, slc.stop, self.transform(ctx.source, slc, ctx.tokens[start_pos].pos_token(), left, right)
 
 
 
@@ -942,10 +951,12 @@ class Adjacency(BinaryOp):
     raise _AllLeafKinds
 
 
-  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
+   ) -> tuple[int,int,Any]:
     start_pos = pos
-    pos, slc, right = parse_level(ctx=ctx, parent=parent, pos=pos, level=level)
-    return pos, slc.stop, self.transform(ctx.source, ctx.tokens[start_pos].pos_token(), left, right)
+    pos, right_slc, right = parse_level(ctx=ctx, parent=parent, pos=pos, level=level)
+    slc = slice(left_start, right_slc.stop)
+    return pos, slc.stop, self.transform(ctx.source, slc, ctx.tokens[start_pos].pos_token(), left, right)
 
 
 
@@ -967,10 +978,12 @@ class Infix(BinaryOp):
     return (self.kind,)
 
 
-  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left:Any, parse_level:Callable, level:int) -> tuple[int,int,Any]:
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
+   ) -> tuple[int,int,Any]:
     infix_pos = pos
-    pos, slc, right = parse_level(ctx=ctx, parent=parent, pos=pos+1, level=level)
-    return pos, slc.stop, self.transform(ctx.source, ctx.tokens[infix_pos], left, right)
+    pos, right_slc, right = parse_level(ctx=ctx, parent=parent, pos=pos+1, level=level)
+    slc = slice(left_start, right_slc.stop)
+    return pos, slc.stop, self.transform(ctx.source, slc, ctx.tokens[infix_pos], left, right)
 
 
 
@@ -1065,6 +1078,7 @@ class Precedence(_DropRule):
 
   def parse_level(self, ctx:ParseCtx, parent:Rule, pos:int, level:int) -> tuple[int,slice,Any]:
     pos, left_slc, left = self.parse_leaf(ctx, parent, pos)
+    #^ `left` is the left-hand side value.
     slc_stop = left_slc.stop
     while True:
       while ctx.tokens[pos].kind in self.drop: pos += 1
@@ -1074,7 +1088,8 @@ class Precedence(_DropRule):
       except KeyError:
         break # op_token is not an operator.
       if group.level < level: break # This operator is at a lower precedence.
-      pos, slc_stop, left = op.parse_right(ctx, parent, pos, left, self.parse_level, level=group.level+group.level_bump)
+      pos, slc_stop, left = op.parse_right(ctx, parent, pos, left_slc.start, left, self.parse_level,
+        level=group.level+group.level_bump)
     # Current token is either not an operator or of a lower precedence level.
     return pos, slice(left_slc.start, slc_stop), left
 
