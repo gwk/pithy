@@ -229,11 +229,6 @@ def suffix_text_val_pair(source:Source, slc:slice, token:Token, val:Any) -> tupl
   'Return a pair tuple of source text for the token and the value.'
   return (source[token], val)
 
-def suffix_text(source:Source, slc:slice, token:Token, val:Any) -> str:
-  'Return the value (must be a string) with the suffix text appended.'
-  assert isinstance(val, str)
-  return val + source[token]
-
 
 BinaryTransform = Callable[[Source,slice,Token,Any,Any],Any]
 
