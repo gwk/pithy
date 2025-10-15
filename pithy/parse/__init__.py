@@ -861,6 +861,8 @@ class OrderedChoice(_DropRule):
 
 class Operator:
   'An operator that composes a part of a Precedence rule.'
+  level:int = -1 # The precedence level of the operator's group, multiplied by ten.
+  sub_level:int = -1 # The `level`, with the group `level_bump` added.
   sub_refs:tuple[RuleRef,...] = ()
 
   # TODO: spacing requirement options, e.g. no space, some space, symmetrical space.
@@ -1036,7 +1038,7 @@ class Precedence(_DropRule):
     self.transform = transform
     self.groups = groups
     self.head_table:dict[TokenKind,Rule] = {}
-    self.tail_table:dict[TokenKind,tuple[Group,Operator]] = {}
+    self.tail_table:dict[TokenKind,Operator] = {}
 
 
   def token_kinds(self) -> Iterable[str]:
@@ -1062,13 +1064,15 @@ class Precedence(_DropRule):
     for i, group in enumerate(self.groups):
       group.level = i*10 # Multiplying by ten lets level_bump increase the level by one to achieve left-associativity.
       for op in group.ops:
+        op.level = group.level
+        op.sub_level = group.level + group.level_bump
         try: kinds = op.kinds
         except _AllLeafKinds: kinds = tuple(self.head_table)
         for kind in kinds:
           try: existing = self.tail_table[kind]
           except KeyError: pass
           else: raise Parser.DefinitionError(f'{self} contains ambiguous operators for token {kind!r}:\n', existing, op)
-          self.tail_table[kind] = (group, op)
+          self.tail_table[kind] = op
 
 
   def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
@@ -1084,12 +1088,11 @@ class Precedence(_DropRule):
       while ctx.tokens[pos].kind in self.drop: pos += 1
       op_token = ctx.tokens[pos]
       try:
-        group, op = self.tail_table[op_token.kind]
+        op = self.tail_table[op_token.kind]
       except KeyError:
         break # op_token is not an operator.
-      if group.level < level: break # This operator is at a lower precedence.
-      pos, slc_stop, left = op.parse_right(ctx, parent, pos, left_slc.start, left, self.parse_level,
-        level=group.level+group.level_bump)
+      if op.level < level: break # This operator is at a lower precedence.
+      pos, slc_stop, left = op.parse_right(ctx, parent, pos, left_slc.start, left, self.parse_level, level=op.sub_level)
     # Current token is either not an operator or of a lower precedence level.
     return pos, slice(left_slc.start, slc_stop), left
 
