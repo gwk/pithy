@@ -224,10 +224,9 @@ def unary_syn(source:Source, slc:slice, token:Token, val:Any) -> Syn:
   'Return a Syn node.'
   return Syn(slc, lbl=token.kind, val=val)
 
-
-def unary_text_val_pair(source:Source, slc:slice, token:Token, val:Any) -> tuple[str,Any]:
-  'Return a pair tuple of source text for the token and the value.'
-  return (source[token], val)
+def unary_text_val_syn(source:Source, slc:slice, token:Token, val:Any) -> Syn:
+  'Return a Syn node with the source text for the token and the value.'
+  return Syn(slc, lbl=token.kind, val=(source[token], val))
 
 
 BinaryTransform = Callable[[Source,slice,Token,Any,Any],Any]
@@ -882,7 +881,7 @@ class Operator:
 class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
 
-  def __init__(self, suffix:TokenKind, transform:UnaryTransform=unary_text_val_pair): # TODO: transform should take slc and token?
+  def __init__(self, suffix:TokenKind, transform:UnaryTransform=unary_text_val_syn):
     self.suffix = validate_name(suffix)
     self.transform = transform
 
