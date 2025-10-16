@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import Adjacency, Atom, atom_text, Infix, Left, Parser, Precedence, Right, Suffix
+from pithy.parse import Adjacency, Atom, Infix, Left, Parser, Precedence, Right, Suffix
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest

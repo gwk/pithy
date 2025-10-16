@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import (Atom, atom_text, Choice, choice_labeled, Infix, Left, left_binary_to_list, Opt, Parser, Precedence,
-  Struct, struct_fields_tuple, ZeroOrMore)
+from pithy.parse import (Atom, Choice, choice_labeled, Infix, Left, left_binary_to_list, Opt, Parser, Precedence, Struct,
+  ZeroOrMore)
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest

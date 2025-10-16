@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pithy.parse import Atom, choice_labeled, OneOrMore, OrderedChoice, Parser, Quantity, Struct, syn_skeleton, ZeroOrMore
+from pithy.parse import Atom, choice_labeled, OneOrMore, OrderedChoice, Parser, Struct
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest
