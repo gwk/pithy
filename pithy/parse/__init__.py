@@ -872,10 +872,35 @@ class Operator:
 
 
   def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
-   ) -> tuple[int,int,Any]:
+   ) -> tuple[int,slice,Any]:
     'Returns (pos, slc_stop, right_val).'
     raise NotImplementedError(self)
 
+
+class Prefix(Operator):
+  'A prefix operator: the prefix precedes the primary expression. E.g. `-` in `-A`.'
+
+  def __init__(self, prefix:TokenKind, transform:UnaryTransform=unary_text_val_syn):
+    self.prefix = validate_name(prefix)
+    self.transform = transform
+
+
+  def __str__(self) -> str:
+    return f'{self.prefix!r} prefix op'
+
+
+  @property
+  def kinds(self) -> tuple[TokenKind,...]:
+    return (self.prefix,)
+
+
+  def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
+   ) -> tuple[int,slice,Any]:
+    assert left is None
+    prefix_token = ctx.tokens[pos]
+    pos, right_slc, right = parse_level(ctx=ctx, parent=parent, pos=pos+1, level=level)
+    slc = slice(left_start, right_slc.stop)
+    return pos, slc, self.transform(ctx.source, slc, prefix_token, right)
 
 
 class Suffix(Operator):
@@ -896,10 +921,10 @@ class Suffix(Operator):
 
 
   def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
-   ) -> tuple[int,int,Any]:
+   ) -> tuple[int,slice,Any]:
     suffix_token = ctx.tokens[pos]
     slc = slice(left_start, suffix_token.slc.stop)
-    return pos+1, suffix_token.slc.stop, self.transform(ctx.source, slc, suffix_token, left) # No right-hand side.
+    return pos+1, slc, self.transform(ctx.source, slc, suffix_token, left) # No right-hand side.
 
 
 
@@ -930,11 +955,11 @@ class SuffixRule(Operator):
 
 
   def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
-   ) -> tuple[int,int,Any]:
+   ) -> tuple[int,slice,Any]:
     start_pos = pos
     pos, right_slc, right = parent.parse_sub(ctx, sub=self.suffix, pos=pos, start_pos=start_pos) # TODO: start_pos is wrong.
     slc = slice(left_start, right_slc.stop)
-    return pos, slc.stop, self.transform(ctx.source, slc, ctx.tokens[start_pos].pos_token(), left, right)
+    return pos, slc, self.transform(ctx.source, slc, ctx.tokens[start_pos].pos_token(), left, right)
 
 
 
@@ -960,11 +985,11 @@ class Adjacency(BinaryOp):
 
 
   def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
-   ) -> tuple[int,int,Any]:
+   ) -> tuple[int,slice,Any]:
     start_pos = pos
     pos, right_slc, right = parse_level(ctx=ctx, parent=parent, pos=pos, level=level)
     slc = slice(left_start, right_slc.stop)
-    return pos, slc.stop, self.transform(ctx.source, slc, ctx.tokens[start_pos].pos_token(), left, right)
+    return pos, slc, self.transform(ctx.source, slc, ctx.tokens[start_pos].pos_token(), left, right)
 
 
 
@@ -991,11 +1016,11 @@ class Infix(BinaryOp):
 
 
   def parse_right(self, ctx:ParseCtx, parent:Rule, pos:int, left_start:int, left:Any, parse_level:Callable, level:int
-   ) -> tuple[int,int,Any]:
+   ) -> tuple[int,slice,Any]:
     infix_pos = pos
     pos, right_slc, right = parse_level(ctx=ctx, parent=parent, pos=pos+1, level=level)
     slc = slice(left_start, right_slc.stop)
-    return pos, slc.stop, self.transform(ctx.source, slc, ctx.tokens[infix_pos], left, right)
+    return pos, slc, self.transform(ctx.source, slc, ctx.tokens[infix_pos], left, right)
 
 
 
@@ -1047,7 +1072,7 @@ class Precedence(_DropRule):
     self.drop = frozenset(iter_str(drop))
     self.transform = transform
     self.groups = groups
-    self.head_table:dict[TokenKind,Rule] = {}
+    self.head_table:dict[TokenKind,Rule|Prefix] = {}
     self.tail_table:dict[TokenKind,Operator] = {}
 
 
@@ -1071,18 +1096,30 @@ class Precedence(_DropRule):
           *indent_lines(str(s) for s in matching_subs))
       self.head_table[head] = matching_subs[0]
 
+    second_pass_ops = []
     for i, group in enumerate(self.groups):
       group.level = i*10 # Multiplying by ten lets level_bump increase the level by one to achieve left-associativity.
       for op in group.ops:
         op.level = group.level
         op.sub_level = group.level + group.level_bump
-        try: kinds = op.kinds
-        except _AllLeafKinds: kinds = tuple(self.head_table)
-        for kind in kinds:
-          try: existing = self.tail_table[kind]
-          except KeyError: pass
-          else: raise Parser.DefinitionError(f'{self} contains ambiguous operators for token {kind!r}:\n', existing, op)
-          self.tail_table[kind] = op
+        # Handle prefix operators in the first pass because they influence the set of head_table token kinds.
+        if isinstance(op, Prefix):
+          for kind in op.kinds:
+            try: existing_hd = self.head_table[kind]
+            except KeyError: pass
+            else: raise Parser.DefinitionError(f'{self} contains ambiguous operators for token {kind!r}:\n', existing_hd, op)
+            self.head_table[kind] = op
+        else:
+          second_pass_ops.append(op)
+
+    for op in second_pass_ops:
+      try: kinds = op.kinds
+      except _AllLeafKinds: kinds = tuple(self.head_table)
+      for kind in kinds:
+        try: existing_tl = self.tail_table[kind]
+        except KeyError: pass
+        else: raise Parser.DefinitionError(f'{self} contains ambiguous operators for token {kind!r}:\n', existing_tl, op)
+        self.tail_table[kind] = op
 
 
   def parse(self, ctx:ParseCtx, parent:'Rule', pos:int) -> tuple[int,slice,Any]:
@@ -1095,26 +1132,32 @@ class Precedence(_DropRule):
     while ctx.tokens[pos].kind in self.drop: pos += 1
 
     token = ctx.tokens[pos]
-    sub = self.head_table.get(token.kind)
-    if sub is None:
+    leaf_or_pre = self.head_table.get(token.kind)
+
+    if leaf_or_pre is None:
       exp = self.name or f'any of {self.subs_desc}'
       raise ParseError(ctx.source, token, f'{parent} expects {exp}; received {token.kind}.')
 
-    pos, left_slc, left = self.parse_sub(ctx, sub=sub, pos=pos, start_pos=pos)
-    #^ `left` is the left-hand side value.
+    if isinstance(leaf_or_pre, Rule): # Leaf rule.
+      leaf = leaf_or_pre
+      pos, left_slc, val = self.parse_sub(ctx, sub=leaf, pos=pos, start_pos=pos)
+    else:
+      assert isinstance(leaf_or_pre, Prefix) # Prefix operator.
+      pre_op = leaf_or_pre
+      pos, left_slc, val = pre_op.parse_right(ctx, parent, pos, token.pos, None, self.parse_level, level=pre_op.sub_level)
 
     slc_stop = left_slc.stop
     while True:
       while ctx.tokens[pos].kind in self.drop: pos += 1
-      op_token = ctx.tokens[pos]
+      token = ctx.tokens[pos]
       try:
-        op = self.tail_table[op_token.kind]
+        op = self.tail_table[token.kind]
       except KeyError:
-        break # op_token is not an operator.
+        break # token is not an operator.
       if op.level < level: break # This operator is at a lower precedence.
-      pos, slc_stop, left = op.parse_right(ctx, parent, pos, left_slc.start, left, self.parse_level, level=op.sub_level)
+      pos, slc_stop, val = op.parse_right(ctx, parent, pos, left_slc.start, val, self.parse_level, level=op.sub_level)
     # Current token is either not an operator or of a lower precedence level.
-    return pos, slice(left_slc.start, slc_stop), left
+    return pos, slice(left_slc.start, slc_stop), val
 
 
 

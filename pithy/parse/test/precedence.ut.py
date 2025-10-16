@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import Adjacency, Atom, Infix, Left, Parser, Precedence, Right, Suffix
+from pithy.parse import Adjacency, Atom, Infix, Left, Parser, Precedence, Prefix, Right, Suffix
 from pithy.py.lex import lexer
 from tolkien import Source
 from utest import utest
@@ -141,7 +141,7 @@ right_adj_qmark = Parser(lexer,
 utest(('a', (('?', 'b'), 'c')), right_adj_qmark.parse, 'expr', Source('', 'a b? c'), skeletonize=True)
 
 
-right_qmark_adj = Parser(lexer,
+qmark_right_adj = Parser(lexer,
   drop=('spaces',),
   rules=dict(
     name=Atom('name'),
@@ -151,4 +151,30 @@ right_qmark_adj = Parser(lexer,
       Right(Adjacency()),
  )))
 
-utest(('?', ('a', 'b')), right_qmark_adj.parse, 'expr', Source('', 'a b ?'), skeletonize=True)
+utest(((('?', ('a', 'b')), 'c')), qmark_right_adj.parse, 'expr', Source('', 'a b ? c'), skeletonize=True)
+
+
+right_adj_dash = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
+    name=Atom('name'),
+    expr=Precedence(
+      ('name',),
+      Right(Adjacency()),
+      Right(Prefix('dash')),
+ )))
+
+utest(('a', (('-', 'b'), 'c')), right_adj_dash.parse, 'expr', Source('', 'a -b c'), skeletonize=True)
+
+
+dash_right_adj = Parser(lexer,
+  drop=('spaces',),
+  rules=dict(
+    name=Atom('name'),
+    expr=Precedence(
+      ('name',),
+      Right(Prefix('dash')),
+      Right(Adjacency()),
+ )))
+
+utest(('a', ('-', ('b', 'c'))), dash_right_adj.parse, 'expr', Source('', 'a - b c'), skeletonize=True)
