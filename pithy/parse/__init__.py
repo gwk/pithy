@@ -886,6 +886,10 @@ class Suffix(Operator):
     self.transform = transform
 
 
+  def __str__(self) -> str:
+    return f'{self.suffix!r} suffix op'
+
+
   @property
   def kinds(self) -> tuple[TokenKind,...]:
     return (self.suffix,)
@@ -910,6 +914,10 @@ class SuffixRule(Operator):
     if isinstance(suffix, str): raise TypeError('SuffixRule requires a constructed rule, not a string reference.') # type: ignore[unreachable]
     self.sub_refs = (suffix,)
     self.transform = transform
+
+
+  def __str__(self) -> str:
+    return f'{self.suffix!r} suffix rule op'
 
 
   @property
@@ -942,6 +950,10 @@ class Adjacency(BinaryOp):
     self.transform = transform
 
 
+  def __str__(self) -> str:
+    return 'adjacency op'
+
+
   @property
   def kinds(self) -> tuple[TokenKind,...]:
     raise _AllLeafKinds
@@ -967,6 +979,10 @@ class Infix(BinaryOp):
   def __init__(self, kind:TokenKind, transform:BinaryTransform=binary_text_vals_triple):
     self.kind = validate_name(kind)
     self.transform = transform
+
+
+  def __str__(self) -> str:
+    return f'{self.kind!r} infix op'
 
 
   @property
