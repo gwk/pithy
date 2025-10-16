@@ -214,18 +214,18 @@ def uni_text(source:Source, slc:slice, val:Any) -> str:
   return source[slc]
 
 
-SuffixTransform = Callable[[Source,slice,Token,Any],Any]
+UnaryTransform = Callable[[Source,slice,Token,Any],Any]
 
-def suffix_val(source:Source, slc:slice, token:Token, val:Any) -> Any:
+def unary_val(source:Source, slc:slice, token:Token, val:Any) -> Any:
   'Return the value as is.'
   return val
 
-def suffix_syn(source:Source, slc:slice, token:Token, val:Any) -> Syn:
+def unary_syn(source:Source, slc:slice, token:Token, val:Any) -> Syn:
   'Return a Syn node.'
   return Syn(slc, lbl=token.kind, val=val)
 
 
-def suffix_text_val_pair(source:Source, slc:slice, token:Token, val:Any) -> tuple[str,Any]:
+def unary_text_val_pair(source:Source, slc:slice, token:Token, val:Any) -> tuple[str,Any]:
   'Return a pair tuple of source text for the token and the value.'
   return (source[token], val)
 
@@ -882,7 +882,7 @@ class Operator:
 class Suffix(Operator):
   'A suffix/postfix operator: the suffix follows the primary expression. E.g. `*` in `A*`.'
 
-  def __init__(self, suffix:TokenKind, transform:SuffixTransform=suffix_text_val_pair): # TODO: transform should take slc and token?
+  def __init__(self, suffix:TokenKind, transform:UnaryTransform=unary_text_val_pair): # TODO: transform should take slc and token?
     self.suffix = validate_name(suffix)
     self.transform = transform
 
