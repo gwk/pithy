@@ -1,12 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import Atom, atom_text, Infix, Left, Parser, Precedence, Right, Struct, SuffixRule
+from typing import Any
+
+from pithy.parse import Atom, atom_text, Infix, Left, parse_skel, Parser, Precedence, Right, Struct, SuffixRule
 from pithy.py.lex import lexer
-from tolkien import Source
 from utest import utest
 
 
-arithmetic = Parser(lexer,
+parser = Parser(lexer,
   drop=('newline', 'spaces'),
   literals=('brack_o', 'brack_c', 'paren_o', 'paren_c'),
   rules=dict(
@@ -28,24 +29,26 @@ arithmetic = Parser(lexer,
   ),
 )
 
+def parse(s:str) -> Any: return parse_skel(parser, 'expr', s)
 
-utest(0, arithmetic.parse, 'expr', Source('', '0'))
-utest('x', arithmetic.parse, 'expr', Source('', 'x'))
 
-utest(('+',0,1), arithmetic.parse, 'expr', Source('', '0+1'))
+utest(0, parse, '0')
+utest('x', parse, 'x')
 
-utest(('+', ('+',0,1), 2), arithmetic.parse, 'expr', Source('', '0+1+2')) # Left associative.
+utest(('+',0,1), parse, '0+1')
 
-utest(('+', 0, ('+',1,2)), arithmetic.parse, 'expr', Source('', '0+(1+2)')) # Parenthetical.
+utest(('+', ('+',0,1), 2), parse, '0+1+2') # Left associative.
 
-utest(('**', 2, ('**',1,2)), arithmetic.parse, 'expr', Source('', '2**1**2')) # Right associative.
+utest(('+', 0, ('+',1,2)), parse, '0+(1+2)') # Parenthetical.
 
-utest(('+', ('+', 0, ('*',1,2)), 3), arithmetic.parse, 'expr', Source('', '0+1*2+3'))
+utest(('**', 2, ('**',1,2)), parse, '2**1**2') # Right associative.
 
-utest(('+', ('*',0,1), ('*',2,3)), arithmetic.parse, 'expr', Source('', '0*1+2*3'))
+utest(('+', ('+', 0, ('*',1,2)), 3), parse, '0+1*2+3')
 
-utest(('[]', ('[]', 'a', 0), 1), arithmetic.parse, 'expr', Source('', 'a[0][1]'))
+utest(('+', ('*',0,1), ('*',2,3)), parse, '0*1+2*3')
 
-utest(('()', ('()', 'a', 0), 1), arithmetic.parse, 'expr', Source('', 'a(0)(1)'))
+utest(('[]', ('[]', 'a', 0), 1), parse, 'a[0][1]')
 
-utest(('[]', ('()', 'a', 0), 1), arithmetic.parse, 'expr', Source('', 'a(0)[1]'))
+utest(('()', ('()', 'a', 0), 1), parse, 'a(0)(1)')
+
+utest(('[]', ('()', 'a', 0), 1), parse, 'a(0)[1]')

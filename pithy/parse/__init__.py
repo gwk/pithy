@@ -1384,6 +1384,10 @@ class Parser:
       yield result
 
 
+def parse_skel(parser:Parser, rule:str, text:str) -> Any:
+  'Parse a string with `parser`, passing `skeletonize=True`. This is useful for constructing unit test cases.'
+  return parser.parse(rule, Source(rule, text), skeletonize=True)
+
 
 def validate_name(name:Any) -> str:
   if not isinstance(name, str):

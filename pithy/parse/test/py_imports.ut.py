@@ -1,9 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import (Atom, Choice, choice_labeled, Infix, Left, left_binary_to_list, Opt, Parser, Precedence, Struct,
-  ZeroOrMore)
+from pithy.parse import (Atom, Choice, choice_labeled, Infix, Left, left_binary_to_list, Opt, parse_skel, Parser, Precedence,
+  Struct, ZeroOrMore)
 from pithy.py.lex import lexer
-from tolkien import Source
 from utest import utest
 
 
@@ -31,8 +30,7 @@ basic = Parser(lexer,
 )
 
 
-utest(('import_modules', [('m', '_m'), ('n', None)]),
-  basic.parse, 'import_', Source('', 'import m as _m, n'), skeletonize=True)
+utest(('import_modules', [('m', '_m'), ('n', None)]), parse_skel, basic, 'import_', 'import m as _m, n')
 
 utest(('import_from', (['m','n','o'], [('a', None), ('b', '_b')])),
-  basic.parse, 'import_', Source('', 'from m.n.o import a, b as _b'), skeletonize=True)
+  parse_skel, basic, 'import_', 'from m.n.o import a, b as _b')

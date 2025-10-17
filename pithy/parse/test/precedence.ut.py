@@ -1,8 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import Adjacency, Atom, Infix, Left, Parser, Precedence, Prefix, Right, Suffix
+from pithy.parse import Adjacency, Atom, Infix, Left, parse_skel, Parser, Precedence, Prefix, Right, Suffix
 from pithy.py.lex import lexer
-from tolkien import Source
 from utest import utest
 
 
@@ -16,10 +15,10 @@ left = Parser(lexer,
       Left(Infix('star')),
  )))
 
-utest(('+', ('+', 'a', ('*', 'b', 'c')), 'd'), left.parse, 'expr', Source('', 'a + b * c + d'), skeletonize=True)
 
-utest(('+', ('*', 'a', 'b'), ('*', ('*', 'c', 'd'), 'e')), left.parse, 'expr', Source('', 'a * b + c * d * e'),
-  skeletonize=True)
+utest(('+', ('+', 'a', ('*', 'b', 'c')), 'd'), parse_skel, left, 'expr', 'a + b * c + d')
+
+utest(('+', ('*', 'a', 'b'), ('*', ('*', 'c', 'd'), 'e')), parse_skel, left, 'expr', 'a * b + c * d * e')
 
 
 right = Parser(lexer,
@@ -32,10 +31,9 @@ right = Parser(lexer,
       Right(Infix('star')),
  )))
 
-utest(('+', 'a', ('+', ('*', 'b', 'c'), 'd')), right.parse, 'expr', Source('', 'a + b * c + d'), skeletonize=True)
+utest(('+', 'a', ('+', ('*', 'b', 'c'), 'd')), parse_skel, right, 'expr', 'a + b * c + d')
 
-utest(('+', ('*', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), right.parse, 'expr', Source('', 'a * b + c * d * e'),
-  skeletonize=True)
+utest(('+', ('*', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), parse_skel, right, 'expr', 'a * b + c * d * e')
 
 
 left_right = Parser(lexer,
@@ -48,11 +46,9 @@ left_right = Parser(lexer,
       Right(Infix('star')),
  )))
 
-utest(('+', ('+', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), left_right.parse, 'expr',
-  Source('', 'a + b + c * d * e'), skeletonize=True)
+utest(('+', ('+', 'a', 'b'), ('*', 'c', ('*', 'd', 'e'))), parse_skel, left_right, 'expr', 'a + b + c * d * e')
 
-utest(('+', ('+', ('*', 'a', ('*', 'b', 'c')), 'd'), 'e'), left_right.parse, 'expr',
-  Source('', 'a * b * c + d + e'), skeletonize=True)
+utest(('+', ('+', ('*', 'a', ('*', 'b', 'c')), 'd'), 'e'), parse_skel, left_right, 'expr', 'a * b * c + d + e')
 
 
 right_left = Parser(lexer,
@@ -65,11 +61,9 @@ right_left = Parser(lexer,
       Left(Infix('star')),
   )))
 
-utest(('+', 'a', ('+', 'b', ('*', ('*', 'c', 'd'), 'e'))), right_left.parse, 'expr',
-  Source('', 'a + b + c * d * e'), skeletonize=True)
+utest(('+', 'a', ('+', 'b', ('*', ('*', 'c', 'd'), 'e'))), parse_skel, right_left, 'expr', 'a + b + c * d * e')
 
-utest(('+', ('*', ('*', 'a', 'b'), 'c'), ('+', 'd', 'e')), right_left.parse, 'expr',
-  Source('', 'a * b * c + d + e'), skeletonize=True)
+utest(('+', ('*', ('*', 'a', 'b'), 'c'), ('+', 'd', 'e')), parse_skel, right_left, 'expr', 'a * b * c + d + e')
 
 
 left_adj_dot = Parser(lexer,
@@ -82,8 +76,8 @@ left_adj_dot = Parser(lexer,
       Left(Infix('dot')),
  )))
 
-utest(((('.', 'a', 'b'), 'c'), 'd'), left_adj_dot.parse, 'expr', Source('', 'a.b c d'), skeletonize=True)
-utest((('a', ('.', 'b', 'c')), 'd'), left_adj_dot.parse, 'expr', Source('', 'a b.c d'), skeletonize=True)
+utest(((('.', 'a', 'b'), 'c'), 'd'), parse_skel, left_adj_dot, 'expr', 'a.b c d')
+utest((('a', ('.', 'b', 'c')), 'd'), parse_skel, left_adj_dot, 'expr', 'a b.c d')
 
 
 left_dot_adj = Parser(lexer,
@@ -96,8 +90,8 @@ left_dot_adj = Parser(lexer,
       Left(Adjacency()),
  )))
 
-utest(('.', 'a', (('b', 'c'), 'd')), left_dot_adj.parse, 'expr', Source('', 'a . b c d'), skeletonize=True)
-utest(('.', (('a', 'b'), 'c'), 'd'), left_dot_adj.parse, 'expr', Source('', 'a b c . d'), skeletonize=True)
+utest(('.', 'a', (('b', 'c'), 'd')), parse_skel, left_dot_adj, 'expr', 'a . b c d')
+utest(('.', (('a', 'b'), 'c'), 'd'), parse_skel, left_dot_adj, 'expr', 'a b c . d')
 
 
 right_adj_dot = Parser(lexer,
@@ -110,8 +104,8 @@ right_adj_dot = Parser(lexer,
       Right(Infix('dot')),
  )))
 
-utest((('.', 'a', 'b'), ('c', 'd')), right_adj_dot.parse, 'expr', Source('', 'a.b c d'), skeletonize=True)
-utest(('a', (('.', 'b', 'c'), 'd')), right_adj_dot.parse, 'expr', Source('', 'a b.c d'), skeletonize=True)
+utest((('.', 'a', 'b'), ('c', 'd')), parse_skel, right_adj_dot, 'expr', 'a.b c d')
+utest(('a', (('.', 'b', 'c'), 'd')), parse_skel, right_adj_dot, 'expr', 'a b.c d')
 
 
 right_dot_adj = Parser(lexer,
@@ -124,8 +118,8 @@ right_dot_adj = Parser(lexer,
       Right(Adjacency()),
  )))
 
-utest(('.', 'a', ('b', ('c', 'd'))), right_dot_adj.parse, 'expr', Source('', 'a . b c d'), skeletonize=True)
-utest(('.', ('a', ('b', 'c')), 'd'), right_dot_adj.parse, 'expr', Source('', 'a b c . d'), skeletonize=True)
+utest(('.', 'a', ('b', ('c', 'd'))), parse_skel, right_dot_adj, 'expr', 'a . b c d')
+utest(('.', ('a', ('b', 'c')), 'd'), parse_skel, right_dot_adj, 'expr', 'a b c . d')
 
 
 right_adj_qmark = Parser(lexer,
@@ -138,7 +132,7 @@ right_adj_qmark = Parser(lexer,
       Right(Suffix('qmark')),
  )))
 
-utest(('a', (('?', 'b'), 'c')), right_adj_qmark.parse, 'expr', Source('', 'a b? c'), skeletonize=True)
+utest(('a', (('?', 'b'), 'c')), parse_skel, right_adj_qmark, 'expr', 'a b? c')
 
 
 qmark_right_adj = Parser(lexer,
@@ -151,7 +145,7 @@ qmark_right_adj = Parser(lexer,
       Right(Adjacency()),
  )))
 
-utest(((('?', ('a', 'b')), 'c')), qmark_right_adj.parse, 'expr', Source('', 'a b ? c'), skeletonize=True)
+utest(((('?', ('a', 'b')), 'c')), parse_skel, qmark_right_adj, 'expr', 'a b ? c')
 
 
 right_adj_dash = Parser(lexer,
@@ -164,7 +158,7 @@ right_adj_dash = Parser(lexer,
       Right(Prefix('dash')),
  )))
 
-utest(('a', (('-', 'b'), 'c')), right_adj_dash.parse, 'expr', Source('', 'a -b c'), skeletonize=True)
+utest(('a', (('-', 'b'), 'c')), parse_skel, right_adj_dash, 'expr', 'a -b c')
 
 
 dash_right_adj = Parser(lexer,
@@ -177,4 +171,4 @@ dash_right_adj = Parser(lexer,
       Right(Adjacency()),
  )))
 
-utest(('a', ('-', ('b', 'c'))), dash_right_adj.parse, 'expr', Source('', 'a - b c'), skeletonize=True)
+utest(('a', ('-', ('b', 'c'))), parse_skel, dash_right_adj, 'expr', 'a - b c')

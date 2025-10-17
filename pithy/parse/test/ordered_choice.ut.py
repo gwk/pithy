@@ -2,9 +2,8 @@
 
 from typing import Any
 
-from pithy.parse import Atom, choice_labeled, OneOrMore, OrderedChoice, Parser, Struct
+from pithy.parse import Atom, choice_labeled, OneOrMore, OrderedChoice, parse_skel, Parser, Struct
 from pithy.py.lex import lexer
-from tolkien import Source
 from utest import utest
 
 
@@ -18,12 +17,8 @@ parser = Parser(lexer,
     expr=OrderedChoice('call', 'dotted', transform=choice_labeled)))
 
 
-def parse_skel(s:str, rule:str='expr') -> Any:
-  source = Source('expr', s)
-  #return parser.parse('expr', source)
-  return parser.parse(rule, source, skeletonize=True)
+def parse(s:str) -> Any: return parse_skel(parser, 'expr', s)
 
-
-utest(('call', 'f'), parse_skel, 'f()')
-utest(('dotted', ['a']), parse_skel, 'a')
-utest(('dotted', ['a', 'b']), parse_skel, 'a.b')
+utest(('call', 'f'), parse, 'f()')
+utest(('dotted', ['a']), parse, 'a')
+utest(('dotted', ['a', 'b']), parse, 'a.b')

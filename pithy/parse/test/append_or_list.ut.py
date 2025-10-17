@@ -1,13 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.parse import Atom, atom_text, Infix, Left, left_binary_to_list, Parser, Precedence, Right, right_binary_to_stack
+from typing import Any
+
+from pithy.parse import (Atom, atom_text, Infix, Left, left_binary_to_list, parse_skel, Parser, Precedence, Right,
+  right_binary_to_stack)
 from pithy.py.lex import lexer
 from pithy.stack import Stack
-from tolkien import Source
 from utest import utest
 
 
-linked_lists = Parser(lexer,
+parser = Parser(lexer,
   drop=('newline', 'spaces'),
   literals=(),
   rules=dict(
@@ -20,8 +22,10 @@ linked_lists = Parser(lexer,
   ),
 )
 
-utest('x', linked_lists.parse, 'expr', Source('', 'x'))
+def parse(s:str) -> Any: return parse_skel(parser, 'expr', s)
 
-utest(['a', 'b', 'c', 'd'], linked_lists.parse, 'expr', Source('', 'a < b < c < d'))
+utest('x', parse, 'x')
 
-utest(Stack(['w', 'x', 'y', 'z']), linked_lists.parse, 'expr', Source('', 'w > x > y > z'))
+utest(['a', 'b', 'c', 'd'], parse, 'a < b < c < d')
+
+utest(Stack(['w', 'x', 'y', 'z']), parse, 'w > x > y > z')
