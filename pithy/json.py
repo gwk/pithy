@@ -134,14 +134,14 @@ def parse_jsons(string:str, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=())
   '''
   hook = _mk_hook(hook, hooks)
   decoder = _json.JSONDecoder(object_hook=hook)
-  m = _ws_re.match(string, 0)
+  m = _json_ws_re.match(string, 0)
   assert m is not None
   idx = m.end() # must consume leading whitespace for the decoder.
 
   while idx < len(string):
     obj, end = decoder.raw_decode(string, idx)
     yield obj
-    m = _ws_re.match(string, end)
+    m = _json_ws_re.match(string, end)
     assert m is not None
     idx = m.end()
 
@@ -296,4 +296,4 @@ def req_opt_json_dict(obj:Json) -> JsonDict|None:
   return obj
 
 
-_ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
+_json_ws_re = re.compile(r'[ \t\n\r]*') # identical to json.decoder.WHITESPACE.
