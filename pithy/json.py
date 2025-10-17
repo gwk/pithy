@@ -3,10 +3,10 @@
 import json as _json
 import re
 from dataclasses import fields, is_dataclass
-from io import BytesIO
+from io import BytesIO, Reader, Writer
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, BinaryIO, Callable, IO, Iterable, Sequence, TextIO
+from typing import AbstractSet, Any, Callable, Iterable, Sequence
 
 from .encode import all_slots, encode_obj, EncodeObj
 
@@ -41,7 +41,7 @@ def render_json(item:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:i
   return _json.dumps(item, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
 
 
-def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:int|None=2,
+def write_json(file:Writer[str], *items:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:int|None=2,
  separators:_Seps|None=None, end:str='\n', flush:bool=False, **kwargs:Any) -> None:
   'Write each item in `items` as json to file.'
   try: write = file.write # If the `file` argument was omitted, the first `item` may have taken its place.
@@ -53,7 +53,10 @@ def write_json(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort:bool=
   for item in items:
     _json.dump(item, file, indent=indent, default=default, sort_keys=sort, separators=separators, **kwargs)
     if end: write(end)
-    if flush: file.flush()
+    if flush:
+      try: flush_fn = file.flush # type: ignore[attr-defined]
+      except AttributeError: pass
+      else: flush_fn()
 
 
 def err_json(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:int|None=2, separators:_Seps|None=None,
@@ -67,7 +70,7 @@ def out_json(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, indent:in
   write_json(stdout, *items, default=default, sort=sort, indent=indent, separators=separators, end=end, flush=flush, **kwargs)
 
 
-def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort:bool=True, separators:_Seps|None=None,
+def write_jsonl(file:Writer[str], *items:Any, default:EncodeObj=encode_obj, sort:bool=True, separators:_Seps|None=None,
  flush:bool=False, **kwargs:Any) -> None:
   'Write each item in `items` as jsonl to file.'
   if separators:
@@ -78,7 +81,10 @@ def write_jsonl(file:TextIO, *items:Any, default:EncodeObj=encode_obj, sort:bool
   for item in items:
     _json.dump(item, file, indent=None, default=default, sort_keys=sort, separators=separators, **kwargs)
     file.write('\n')
-    if flush: file.flush()
+    if flush:
+      try: flush_fn = file.flush # type: ignore[attr-defined]
+      except AttributeError: pass
+      else: flush_fn()
 
 
 def err_jsonl(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, separators:_Seps|None=None, flush:bool=False,
@@ -103,7 +109,7 @@ def parse_json(text:JsonText|None, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHo
   return None if text is None else _json.loads(text, object_hook=_mk_hook(hook, hooks))
 
 
-def load_json(file:IO, hook: ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
+def load_json(file:Reader, hook: ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
   '''
   Read json from `file`.
   '''
@@ -146,7 +152,7 @@ def parse_jsons(string:str, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=())
     idx = m.end()
 
 
-def load_jsons(file:TextIO, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+def load_jsons(file:Reader[str], hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
   # TODO: it seems like we ought to be able to stream the file into the parser,
   # but JSONDecoder requires the entire string for a single JSON segment.
   # Therefore in order to stream we would need to read into a buffer,
@@ -207,11 +213,11 @@ def _hook_type_fn(t:type) -> ObjDecodeFn:
   except AttributeError: return t
 
 
-def format_json_bytes(bytes_or_file:BinaryIO|bytes, out_raw:BinaryIO) -> None:
+def format_json_bytes(bytes_or_file:Reader[bytes]|bytes, out_raw:Writer[bytes]) -> None:
   '''
   Format JSON bytes. This is useful for pretty-printing JSON that is malformed.
   '''
-  file: BinaryIO = bytes_or_file if hasattr(bytes_or_file, 'read') else BytesIO(bytes_or_file) # type: ignore[assignment]
+  file:Reader[bytes] = BytesIO(bytes_or_file) if isinstance(bytes_or_file, bytes) else bytes_or_file
 
   s_start, s_open, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(8)
 
@@ -269,8 +275,11 @@ def format_json_bytes(bytes_or_file:BinaryIO|bytes, out_raw:BinaryIO) -> None:
   if state != s_start:
     out_raw.write(b'\n')
 
-  out_raw.flush()
   if indent != 0:
+    # Flush stdout before writing warning to avoid mixing with stderr.
+    try: flush_fn = out_raw.flush # type: ignore[attr-defined]
+    except AttributeError: pass
+    else: flush_fn()
     print(f'WARNING: unbalanced levels: {indent}', file=stderr)
 
 
