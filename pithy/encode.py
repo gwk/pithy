@@ -21,7 +21,9 @@ def encode_obj(obj:Any) -> Any:
   because the namedtuple gets converted to a list without ever calling `default`.
   '''
 
-  try: it = iter(obj) # Try to convert to a sequence first.
+  try: # Try to convert to a sequence first.
+    _ = len(obj) # Check that length is implemented first; we do not want to encode infinite iterators.
+    it = iter(obj)
   except TypeError: pass
   else: return list(it)
 
