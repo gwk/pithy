@@ -8,7 +8,7 @@ from .exceptions import ConflictingValues
 _K = TypeVar('_K', bound=Hashable)
 _V = TypeVar('_V')
 _VH = TypeVar('_VH', bound=Hashable)
-
+_MM = MutableMapping[_K,_V]
 
 def dict_strict_inverse(d:Mapping[_K,_V]) -> dict[_V,_K]:
   '''
@@ -56,10 +56,13 @@ def dict_dag_inverse_with_all_keys(d:Mapping[_K,Iterable[_K]]) -> dict[_K,set[_K
   return inverse
 
 
-def dict_discard(d:MutableMapping[_K,_V], k:_K) -> None:
-  'Discard the element at `k` if it exists.'
-  try: del d[k]
-  except KeyError: pass
+
+def dict_discard(m:_MM, *keys:_K) -> _MM:
+  'Discard all elements with the specified keys from the mutable mapping `m` and return `m`.'
+  for k in keys:
+    try: del m[k]
+    except KeyError: pass
+  return m
 
 
 def dict_put(d:MutableMapping[_K,_V], k: _K, v: _V) -> MutableMapping[_K,_V]:
