@@ -33,7 +33,9 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     '''
     On context manager enter, Cursor begins a transaction.
     '''
-    self.execute('BEGIN')
+    conn:Any = self.connection
+    is_rw = (conn.mode != 'ro')
+    self.execute('BEGIN IMMEDIATE' if is_rw else 'BEGIN')
     return self
 
 
