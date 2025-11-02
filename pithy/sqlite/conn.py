@@ -57,6 +57,7 @@ class Conn(sqlite3.Connection):
     self.path = url_path(path) if uri else path
     if mode:
       if uri: raise ValueError('Cannot specify both `uri` and `mode`')
+      if mode not in ('', 'ro', 'rw', 'rwc', 'memory'): raise ValueError(mode)
       #^ TODO: this could be relaxed by parsing, validating and updating the URI, taking care to raise in event of a conflict of query parameters.
       path = sqlite_file_uri(path, mode=mode)
       uri = True
