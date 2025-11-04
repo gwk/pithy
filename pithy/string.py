@@ -279,6 +279,16 @@ def format_byte_count(count:int, prec:int=3, abbr:bool=True) -> str:
   return f'{c:.{prec}f} {label}{s}'
 
 
+def join_strs(els:Iterable[Any], *, sep:str) -> str:
+  'Join the `str` representations of `els` with `sep` separator.'
+  return sep.join(str(e) for e in els)
+
+
+def join_reprs(els:Iterable[Any], *, sep:str) -> str:
+  'Join the `repr` representations of `els` with `sep` separator.'
+  return sep.join(repr(e) for e in els)
+
+
 def line_col_0(string:str, pos:int) -> tuple[int, int]:
   if pos < 0 or pos > len(string): raise IndexError(pos)
   line = string.count('\n', 0, pos) # number of newlines preceeding pos.
