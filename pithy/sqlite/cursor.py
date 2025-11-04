@@ -95,7 +95,9 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     Argument values whose types are not sqlite-compatible are automatically converted to JSON.
     '''
     args = update_to_json(args)
-    if _dbg: print(f'query: {sql.strip()}\n  args: {args}')
+    if _dbg:
+      print(f'query: {sql.strip()}\n  args: {args}')
+      print(f' plan: {tuple(self.execute(f'EXPLAIN QUERY PLAN {sql}', args).fetchone())}')
     return self.execute(sql, args)
 
 
