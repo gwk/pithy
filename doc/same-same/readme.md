@@ -59,9 +59,9 @@ As an alternative or in addition to `core.pager`, you can set any of `pager.log`
 
 If `same-same` misbehaves, please report the problem (with a repro if possible) as a GitHub issue.
 
-To put `same-same` in passthrough mode, set the environment variable `SAME_SAME_OFF`.
+To put `same-same` in passthrough mode, set the environment variable `SAMESAME=0`.
 
-To put `same-same` in debug mode (just classify each line, then print its kind and repr), set `SAME_SAME_DBG`.
+To put `same-same` in debug mode (just classify each line, then print its kind and repr), set `SAMESAME=2`.
 
 
 # Algorithms
