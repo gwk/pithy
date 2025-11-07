@@ -180,6 +180,12 @@ def is_literal(val:Any, of_type:Any) -> bool:
   return val in get_args(of_type)
 
 
+def req_literal(val:Any, expected:Any) -> Any:
+  if val not in get_args(expected):
+    raise TypeError(f'expected literal value in {expected!r}; received: {val!r}')
+  return val
+
+
 def req_type(obj:Any, expected:type[_T]) -> _T:
   'Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.'
   if not is_a(obj, expected):
