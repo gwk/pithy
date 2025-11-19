@@ -305,7 +305,7 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
 
   column_parts:list[str] = []
   line_len = 0
-  def append_select_part(col_name:str) -> None:
+  def append_col_part(col_name:str) -> None:
     'Append a column name to the SELECT clause, wrapping lines as needed.'
     nonlocal line_len
     if column_parts:
@@ -337,15 +337,16 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
       join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
       join_table_primary_abbr = abbrs.simple_abbr(vis.schema, vis.table)
       #^ The join table abbreviation when it is the primary table, for the WHERE clause in the link.
-      append_select_part(qual_col) # The actual column value is needed to render the tooltip and link.
-      append_select_part(f'{join_key} AS {qe(join_key)}') # The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
-      append_select_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
+      append_col_part(qual_col) # The actual column value is needed to render the tooltip and link.
+      append_col_part(f'{join_key} AS {qe(join_key)}')
+      #^ The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
+      append_col_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
       from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {join_table} ON {qual_col} = {join_key}')
       cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, app_path=path, render_fn=vis.render,
         renders_row=vis.renders_row)
     else:
       th = Th(col.name)
-      append_select_part(qual_col)
+      append_col_part(qual_col)
       if vis.render:
         cell_fn = mk_cell_rendered(col, render_fn=vis.render, renders_row=vis.renders_row)
       else:
