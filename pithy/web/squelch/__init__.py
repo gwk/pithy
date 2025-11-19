@@ -28,7 +28,7 @@ CellRenderFn = Callable[[Any],Td]
 class TableAbbrs:
 
   def __init__(self, *, schema:str, all_vis:Iterable[Vis]) -> None:
-    self.schema_abbrs = TableAbbrs.abbreviate_schema_names({schema, *(vis.schema for vis in all_vis)})
+    self.schema_abbrs = TableAbbrs.abbreviate_schema_names({schema, *(vis.fk_schema for vis in all_vis)})
     self.table_abbrs = Counter[str]()
 
   @staticmethod
@@ -328,20 +328,21 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
     qcol = qe(col.name)
     qual_col = f'{t_abbr}.{qcol}'
     vis = table_vis[col.name]
-    if vis.join:
+    if vis.key:
       # Generate a join to show the desired visualization column.
-      # We need to select two columns: the actual column value (for the tooltip and link), and the joined value for the visible text.
-      join_table = abbrs.unique_abbr(vis.schema, vis.table)
-      join_key = f'{join_table}.{qe(vis.join_col)}' # The joined table key.
-      th = Th(Details(Summary(cl='disclosure-flush', _=qcol), f'{qe(vis.table)}.{qe(vis.col)}')) # The column header.
-      join_col_name = f'{col.name}:{vis.schema}.{vis.table}.{vis.col}' # The join column needs a unique name.
-      join_table_primary_abbr = abbrs.simple_abbr(vis.schema, vis.table)
+      # We need to select two columns: the actual column value (for the tooltip and link),
+      # and the joined value for the visible text.
+      join_table = abbrs.unique_abbr(vis.fk_schema, vis.fk_table)
+      join_key = f'{join_table}.{qe(vis.fk_col)}' # The joined table key.
+      th = Th(Details(Summary(cl='disclosure-flush', _=qcol), f'{qe(vis.fk_table)}.{qe(vis.col)}')) # The column header.
+      join_col_name = f'{col.name}:{vis.fk_schema}.{vis.fk_table}.{vis.col}' # The join column needs a unique name.
+      join_table_primary_abbr = abbrs.simple_abbr(vis.fk_schema, vis.fk_table)
       #^ The join table abbreviation when it is the primary table, for the WHERE clause in the link.
       append_col_part(qual_col) # The actual column value is needed to render the tooltip and link.
       append_col_part(f'{join_key} AS {qe(join_key)}')
       #^ The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
       append_col_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
-      from_parts.append(f'\nLEFT JOIN {vis.schema_table} AS {join_table} ON {qual_col} = {join_key}')
+      from_parts.append(f'\nLEFT JOIN {vis.fk_schema_table} AS {join_table} ON {qual_col} = {join_key}')
       cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, app_path=path, render_fn=vis.render,
         renders_row=vis.renders_row)
     else:
@@ -387,11 +388,11 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
   '''
   Create a cell value rendering function for the given column, with a join and possibly a custom render function.
   '''
-  assert vis.join
+  assert vis.key
   assert join_col_name
   assert join_table_primary_abbr
 
-  q_join_col = f'{qe(join_table_primary_abbr)}.{qe(vis.join_col)}'
+  q_join_col = f'{qe(join_table_primary_abbr)}.{qe(vis.fk_col)}'
 
   def cell_joined(row:Row) -> Td:
     val = row[col.name]
@@ -414,7 +415,7 @@ def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_ta
       cl = ''
       display_val = str(joined_val)
     where = f'{q_join_col}={qv(val)}'
-    return Td(cl=('joined', cl), _=A(href=fmt_url(app_path, table=vis.schema_table, where=where), title=val, _=display_val))
+    return Td(cl=('joined', cl), _=A(href=fmt_url(app_path, table=vis.fk_schema_table, where=where), title=val, _=display_val))
 
   return cell_joined
 
