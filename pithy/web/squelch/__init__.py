@@ -197,7 +197,8 @@ class Squelch:
 
   def get_schema_table(self, params:QueryParams) -> tuple[str,Schema,Table]|None:
 
-    try: full_name = params['table'] # The 'table' param is qualified and quoted, (e.g. 'schema.table' or '"some schema"."some table"').
+    # The 'table' param is qualified and quoted, (e.g. 'schema.table' or '"some schema"."some table"').
+    try: full_name = params['table']
     except KeyError: return None
 
     try: schema_name, table_name = sql_parse_schema_table(full_name)
@@ -212,8 +213,8 @@ class Squelch:
     return full_name, schema, table
 
 
-  def render_table(self, *, conn:Conn, schema:Schema, table:Table, abbrs:TableAbbrs, path:str, params:QueryParams, en_col_names:set[str],
-    order_by:str) -> list[HtmlNode]:
+  def render_table(self, *, conn:Conn, schema:Schema, table:Table, abbrs:TableAbbrs, path:str, params:QueryParams,
+   en_col_names:set[str], order_by:str) -> list[HtmlNode]:
 
     assert en_col_names # Need at least one column to render.
 
