@@ -292,6 +292,8 @@ class Squelch:
     return parts
 
 
+sentinel_str = '\x10\xf8'
+sentinel_sql = 'char(0x10, 0xF8)'
 
 def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list[Column], table_vis:dict[str,Vis]
  ) -> tuple[str,str,list[Th],list[CellRenderFn]]:
@@ -300,8 +302,6 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
   The columns string has a leading space.
   The from string has a leading newline.
   '''
-  abbrs = TableAbbrs(schema=schema, all_vis=table_vis.values())
-  t_abbr = abbrs.unique_abbr(schema, table) # Take the first, non-numbered abbreviation for the primary table.
 
   column_parts:list[str] = []
   line_len = 0
@@ -319,6 +319,9 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
     column_parts.append(col_name)
     line_len += len(col_name)
 
+  abbrs = TableAbbrs(schema=schema, all_vis=table_vis.values())
+  t_abbr = abbrs.unique_abbr(schema, table) # Take the first, non-numbered abbreviation for the primary table.
+
   from_parts:list[str] = [f'\nFROM {qe(schema)}.{qe(table)} AS {t_abbr}']
 
   col_headers = []
@@ -329,25 +332,23 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
     qual_col = f'{t_abbr}.{qcol}'
     vis = table_vis[col.name]
     if vis.key:
-      # Generate a join to show the desired visualization column.
+      # Generate a scalar subquery to show the desired visualization column.
       # We need to select two columns: the actual column value (for the tooltip and link),
-      # and the joined value for the visible text.
-      join_table = abbrs.unique_abbr(vis.fk_schema, vis.fk_table)
-      join_key = f'{join_table}.{qe(vis.fk_col)}' # The joined table key.
+      # and the subquery value for the visible text.
       th = Th(Details(Summary(cl='disclosure-flush', _=qcol), f'{qe(vis.fk_table)}.{qe(vis.col)}')) # The column header.
-      join_col_name = f'{col.name}:{vis.fk_schema}.{vis.fk_table}.{vis.col}' # The join column needs a unique name.
-      join_table_primary_abbr = abbrs.simple_abbr(vis.fk_schema, vis.fk_table)
-      #^ The join table abbreviation when it is the primary table, for the WHERE clause in the link.
-      append_col_part(qual_col) # The actual column value is needed to render the tooltip and link.
-      append_col_part(f'{join_key} AS {qe(join_key)}')
-      #^ The joined key lets us distinguish between no match and null joined value, because the key itself cannot be null.
-      append_col_part(f'{join_table}.{qe(vis.col)} AS {qe(join_col_name)}') # The joined value.
-      from_parts.append(f'\nLEFT JOIN {vis.fk_schema_table} AS {join_table} ON {qual_col} = {join_key}')
-      cell_fn = mk_cell_joined(col, vis, join_key, join_col_name, join_table_primary_abbr, app_path=path, render_fn=vis.render,
-        renders_row=vis.renders_row)
+      sq_col_name = f'{col.name}:{vis.fk_schema}.{vis.fk_table}.{vis.col}' # The subquery column needs a unique name.
+      sq_t_abbr = abbrs.unique_abbr(vis.fk_schema, vis.fk_table)
+      #^ The subquery table abbreviation when it is the primary table, for the WHERE clause in the link.
+      append_col_part(qcol) # The actual column value is needed to render the tooltip and link.
+
+      append_col_part(f'(SELECT IFNULL({vis.col}, {sentinel_sql}) FROM {vis.fk_schema_table} AS {sq_t_abbr}'
+        f' WHERE {sq_t_abbr}.{vis.fk_col}={qual_col}) AS {qe(sq_col_name)}')
+
+      #from_parts.append(f'\nLEFT JOIN {vis.fk_schema_table} AS {sq_table} ON {qual_col} = {sq_key}')
+      cell_fn = mk_cell_sq(col, vis, sq_col_name=sq_col_name, app_path=path, render_fn=vis.render, renders_row=vis.renders_row)
     else:
       th = Th(col.name)
-      append_col_part(qual_col)
+      append_col_part(qcol)
       if vis.render:
         cell_fn = mk_cell_rendered(col, render_fn=vis.render, renders_row=vis.renders_row)
       else:
@@ -383,44 +384,46 @@ def mk_cell_rendered(col:Column, render_fn:ValRenderFn, renders_row:bool) -> Cel
   return cell_rendered
 
 
-def mk_cell_joined(col:Column, vis:Vis, join_key:str, join_col_name:str, join_table_primary_abbr:str, app_path:str,
- render_fn:ValRenderFn|None, renders_row:bool) -> CellRenderFn:
+def mk_cell_sq(col:Column, vis:Vis, *, sq_col_name:str, app_path:str, render_fn:ValRenderFn|None, renders_row:bool) \
+ -> CellRenderFn:
   '''
-  Create a cell value rendering function for the given column, with a join and possibly a custom render function.
+  Create a cell value rendering function for the given column (with subquery), and possibly a custom render function.
   '''
   assert vis.key
-  assert join_col_name
-  assert join_table_primary_abbr
+  assert sq_col_name
 
-  q_join_col = f'{qe(join_table_primary_abbr)}.{qe(vis.fk_col)}'
-
-  def cell_joined(row:Row) -> Td:
+  def cell_sq(row:Row) -> Td:
     val = row[col.name]
-    joined_key_val = row[join_key]
-    if joined_key_val is None: # The join did not match.
+    sq_val = row[sq_col_name]
+    if sq_val is None: # The subquery returned no match.
       if val is None:
-        return Td(cl='null unjoined', _='NULL')
+        return Td(cl='unjoined null', _='NULL')
       else:
         return Td(cl='unjoined', _=val)
-    joined_val = row[join_col_name]
-    if render_fn:
-      cl, display_val = try_vis_render(render_fn, joined_val, row if renders_row else joined_val)
-    elif joined_val is None:
+    display_val: MuChild
+    if sq_val == sentinel_str: # The subquery matched but the value was NULL, converted to the sentinel string.
       cl = 'null'
       display_val = 'NULL'
-    elif joined_val == '':
+    elif render_fn:
+      cl, display_val = try_vis_render(render_fn, sq_val, row if renders_row else sq_val)
+    elif sq_val == '':
       cl = 'empty'
       display_val = 'EMPTY'
     else:
       cl = ''
-      display_val = str(joined_val)
-    where = f'{q_join_col}={qv(val)}'
+      display_val = str(sq_val)
+    where = f'{qe(vis.fk_col)}={qv(val)}'
     return Td(cl=('joined', cl), _=A(href=fmt_url(app_path, table=vis.fk_schema_table, where=where), title=val, _=display_val))
 
-  return cell_joined
+  return cell_sq
 
 
 def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,MuChild]:
+  '''
+  Try to render the given value using the given render function.
+  Returns (css_class, rendered_value).
+  Catches and logs exceptions, returning an error class/value pair.
+  '''
   if val is None: return ('null', 'NULL')
   try:
     rendered = render_fn(render_arg)
