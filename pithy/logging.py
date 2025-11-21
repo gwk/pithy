@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from json import dumps as render_json
+from logging import Formatter, LogRecord
 from sys import stdout
 from typing import Any, Literal
 
@@ -21,6 +22,15 @@ log_level_colors = {
   'info': TXT_G,
   'warn': TXT_Y,
   'error': TXT_R,
+}
+
+std_log_levels_simplified:dict[str,LogLevel] = {
+  'NOTSET': 'error',
+  'DEBUG': 'debug',
+  'INFO': 'info',
+  'WARNING': 'warn',
+  'ERROR': 'error',
+  'CRITICAL': 'error',
 }
 
 
@@ -99,3 +109,34 @@ def render_log_json(level:str, _:str='', **kwargs:Any) -> str:
 
 
 render_log_fn = render_log_text if is_log_tty else render_log_json
+
+
+class PithyLogFormatter(Formatter):
+  '''
+  A very simple log formatter for use with the python standard logging module.
+  '''
+
+  def format(self, record:LogRecord) -> str:
+    level = std_log_levels_simplified.get(record.levelname, 'error')
+
+    if is_log_tty:
+      try: msg_fmt = getattr(record, 'color_message') # Note: this is probably Uvicorn-specific; should be refactored.
+      except AttributeError: msg_fmt = record.msg
+    else:
+      msg_fmt = record.msg
+
+    msg = (msg_fmt % record.args) if record.args else msg_fmt
+
+    extra_fields = self.get_extra_fields(record)
+    return render_log_fn(level, _=msg, **extra_fields)
+
+
+  def get_extra_fields(self, record:LogRecord) -> dict[str,Any]:
+    '''
+    Get extra fields from the log record.
+    '''
+    return {k:v for k,v in vars(record).items() if k not in _std_LogRecord_fields}
+
+
+_std_LogRecord_fields = set(vars(LogRecord('name', 0, 'pathname', 0, 'msg', (), None)).keys())
+_std_LogRecord_fields.add('color_message')
