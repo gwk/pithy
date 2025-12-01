@@ -62,7 +62,7 @@ def clip_prefix(string:str, prefix:str, req:bool=True) -> str:
 
 
 def clip_suffix(string:str, suffix:str, req:bool=True) -> str:
-  'Remove `suffix`if it is present, or raise ValueError, unless `req` is False.'
+  'Remove `suffix` if it is present, or raise ValueError, unless `req` is False.'
   if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
     return string[:-len(suffix)]
@@ -81,7 +81,7 @@ def replace_prefix(string:str, prefix:str, replacement:str, req:bool=True) -> st
 
 
 def replace_suffix(string:str, suffix:str, replacement:str, req:bool=True) -> str:
-  'Replace `suffix`if it is present, or raise ValueError, unless `req` is False.'
+  'Replace `suffix` if it is present, or raise ValueError, unless `req` is False.'
   if len(suffix) == 0: return string # need this case because string[:-0] == ''.
   if string.endswith(suffix):
     return string[:-len(suffix)] + replacement
