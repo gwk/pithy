@@ -279,6 +279,12 @@ def format_byte_count(count:int, prec:int=3, abbr:bool=True) -> str:
   return f'{c:.{prec}f} {label}{s}'
 
 
+def identifier_or_repr(val:Any) -> str:
+  'Return `val` if it is a valid Python identifier, else return `repr(val)`.'
+  if isinstance(val, str) and val.isidentifier(): return val
+  return repr(val)
+
+
 def join_strs(els:Iterable[Any], *, sep:str) -> str:
   'Join the `str` representations of `els` with `sep` separator.'
   return sep.join(str(e) for e in els)
