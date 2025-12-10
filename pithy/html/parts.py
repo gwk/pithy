@@ -8,7 +8,9 @@ Reusable functions that generate HTML parts.
 from typing import Any, Mapping
 from urllib.parse import urlencode
 
-from . import A, Div, MuAttrs, Span
+from ..json import Json, parse_json
+from ..string import identifier_or_repr
+from . import A, Div, Li, MuAttrs, Ol, Span, Ul
 
 
 def pagination_control(*, count:int|None, limit:int, offset:int, href:str='', hx_get:str='', params:Mapping[str,Any],
@@ -77,3 +79,37 @@ def pagination_control(*, count:int|None, limit:int, offset:int, href:str='', hx
       last[url_key]  = f'{url}offset={last_offset}'
 
   return div
+
+
+def hl_for_json(json:Json) -> Ol|Ul|Span:
+  '''
+  Generate an HTML representation of JSON data, returning either an Ol, Ul, or Span element.
+  * Ordered lists are used for JSON arrays.
+  * Unordered lists are used for JSON objects.
+  * Spans are used for primitive JSON values (strings, numbers, booleans, null).
+  '''
+  if not isinstance(json, (dict, list)):
+    return Span(repr(json))
+  res = _hl_for_json(json)
+  assert isinstance(res, (Ol, Ul))
+  return res
+
+
+def _hl_for_json(json:Json) -> Ol|Ul|int|float|str|bool:
+  if isinstance(json, list):
+    return  Ol(cl='json-array', start=0, _=[Li(_hl_for_json(el)) for el in json])
+  if isinstance(json, dict):
+    return Ul(cl='json-object',
+      _=[Li(Span(cl='json-key', _=identifier_or_repr(k)), ': ', _hl_for_json(v))  for k, v in json.items()])
+  return repr(json)
+
+
+def hl_for_json_str(json_str:str) -> Ol|Ul|Span:
+  '''
+  Generate an HTML representation of JSON data from a JSON string, returning either an Ol, Ul, or Span element.
+  If the string does not parse, return a Span with the string repr.
+  Otherwise, return the result of `hl_for_json`.
+  '''
+  try: json = parse_json(json_str)
+  except Exception: return Span(repr(json_str))
+  else: return hl_for_json(json)

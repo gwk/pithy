@@ -400,6 +400,13 @@ table.collapsible.collapsed :is(tbody, thead, tfoot) {
 }
 
 
+/* Rendering. */
+
+.json-key {
+  font-weight: 500;
+}
+
+
 /* HTMX interaction indicators. */
 
 .block-emoji-icon, .inline-emoji-icon {
