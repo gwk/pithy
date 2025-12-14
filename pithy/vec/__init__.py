@@ -45,26 +45,26 @@ class V(Sequence[float]):
 
 
   def __add__(self, r:'V') -> 'V':
-    if not isinstance(r, V): return NotImplemented # type: ignore[unreachable]
+    if not isinstance(r, V): return NotImplemented
     return V(self.x+r.x, self.y+r.y, self.z+r.z)
 
 
   def __sub__(self, r:'V') -> 'V':
-    if not isinstance(r, V): return NotImplemented # type: ignore[unreachable]
+    if not isinstance(r, V): return NotImplemented
     return V(self.x - r.x, self.y - r.y, self.z - r.z)
 
 
   def __mul__(self, s:Union[float,'V']) -> 'V':
     if isinstance(s, V): # Elementwise multiplication
       return V(self.x*s.x, self.y*s.y, self.z*s.z)
-    if not isinstance(s, (int, float)): return NotImplemented # type: ignore[unreachable]
+    if not isinstance(s, (int, float)): return NotImplemented
     return V(self.x*s, self.y*s, self.z*s)
 
 
   def __truediv__(self, r:Union[float,'V']) -> 'V':
     if isinstance(r, V): # Elementwise division
       return V(self.x / r.x, self.y / r.y, self.z / r.z)
-    if not isinstance(r, (int, float)): return NotImplemented # type: ignore[unreachable]
+    if not isinstance(r, (int, float)): return NotImplemented
     return V(self.x / r, self.y / r, self.z / r)
 
 
