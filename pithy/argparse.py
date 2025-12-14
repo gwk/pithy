@@ -44,6 +44,8 @@ class CommandParser(ArgParser):
     if not name:
       name = main_fn.__name__.removeprefix('main_').replace('_', '-')
 
+    if 'help' not in kwargs: kwargs['help'] = main_fn.__doc__
+
     command = self._commands_subparsers.add_parser(name, **kwargs)
     assert isinstance(command, CommandParser)
     command.set_defaults(main_fn=main_fn)
