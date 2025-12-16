@@ -136,7 +136,7 @@ def is_python_file(path:Path, always_read:bool=False) -> bool:
 
 def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden:bool=False) -> list[str]:
   '''
-  Return a list of the names in the directory at `path`,
+  Return a sorted list of the names in the directory at `path`,
   optionally filtering by extensions in `exts`, and the `hidden` flag (defaults to False, excluding names beginning with '.').
   '''
   exts = normalize_exts(exts)
