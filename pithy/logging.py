@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from .ansi import RST, TXT_C, TXT_G, TXT_N, TXT_R, TXT_Y
 from .encode import encode_obj
+from .string import identifier_or_repr
 
 
 '''
@@ -90,7 +91,7 @@ def render_log_text(level:str, _:str='', **kwargs:Any) -> str:
   The output format is logfmt.
   '''
   msg = (' ' + _) if _ else ''
-  pairs = '  '.join(f'{TXT_N}{k}{RST}:{v!r}' for k,v in kwargs.items())
+  pairs = '  '.join(f'{TXT_N}{identifier_or_repr(k)}{RST}:{v!r}' for k, v in kwargs.items())
   if pairs: pairs = '  ' + pairs
   clr = log_level_colors.get(level, '')
   rst = RST if clr else ''
