@@ -3,6 +3,8 @@
 from json import dumps as render_json
 from logging import Formatter, LogRecord
 from sys import stdout
+from traceback import TracebackException
+from types import TracebackType
 from typing import Any, Literal
 
 from .ansi import RST, TXT_C, TXT_G, TXT_N, TXT_R, TXT_Y
@@ -13,6 +15,8 @@ from .string import identifier_or_repr
 '''
 This is a very lightweight logging implementation.
 '''
+
+ExcInfo = tuple[type[BaseException],BaseException,TracebackType|None]|tuple[None,None,None]
 
 LogLevel = Literal['debug', 'info', 'warn', 'error']
 
@@ -84,8 +88,7 @@ def _log(level:str, _:str, **kwargs:Any) -> None:
   print(render_log_fn(level, _, **kwargs), flush=True)
 
 
-
-def render_log_text(level:str, _:str='', **kwargs:Any) -> str:
+def render_log_text(level:str, _:str='', __exc_info:ExcInfo|None=None, **kwargs:Any) -> str:
   '''
   Log a message at the given level with optional key-value pairs.
   The output format is logfmt.
@@ -95,21 +98,42 @@ def render_log_text(level:str, _:str='', **kwargs:Any) -> str:
   if pairs: pairs = '  ' + pairs
   clr = log_level_colors.get(level, '')
   rst = RST if clr else ''
-  return f'{clr}{level}{rst}:{msg}{pairs}'
+  exc_text = ''
+  if __exc_info is not None:
+    exc_text = f'\n{fmt_exc_info_text(__exc_info)}'
+
+  return f'{clr}{level}{rst}:{msg}{pairs}{exc_text}'
 
 
-def render_log_json(level:str, _:str='', **kwargs:Any) -> str:
+def render_log_json(level:str, _:str='', __exc_info:ExcInfo|None=None, **kwargs:Any) -> str:
   '''
   Render a log message as a JSON string.
   '''
   # Construct the log record so that level and message are rendered first.
-  items = {'level': level}
+  items:dict[str,Any] = {'level': level}
   if _: items['_'] = _
+  if __exc_info is not None:
+    items['__exc_info'] = fmt_exc_info_json(__exc_info)
   items.update(kwargs)
   return render_json(items, ensure_ascii=False, indent=None, separators=(',', ':'), default=encode_obj)
 
 
 render_log_fn = render_log_text if is_log_tty else render_log_json
+
+
+def fmt_exc_info_text(exc_info:ExcInfo) -> str:
+  '''
+  Format exception information as text.
+  '''
+  te = TracebackException(*exc_info).format(colorize=True) # type: ignore[call-arg]
+  return ''.join(te)
+
+
+def fmt_exc_info_json(exc_info:ExcInfo) -> list[str]:
+  '''
+  Format exception information as a JSON-serializable dict.
+  '''
+  return list(TracebackException(*exc_info).format(colorize=True)) # type: ignore[call-arg]
 
 
 class PithyLogFormatter(Formatter):
@@ -129,6 +153,10 @@ class PithyLogFormatter(Formatter):
     msg = (msg_fmt % record.args) if record.args else msg_fmt
 
     extra_fields = self.get_extra_fields(record)
+
+    if exc_info := record.exc_info:
+      extra_fields['__exc_info'] = exc_info
+
     return render_log_fn(level, _=msg, **extra_fields)
 
 
