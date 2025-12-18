@@ -122,6 +122,11 @@ body {
 .mv-05em { margin-top: 0.5em; margin-bottom: 0.5em; }
 .mv-1em { margin-top: 1em; margin-bottom: 1em; }
 
+.mt0 { margin-top: 0; }
+.mb0 { margin-bottom: 0; }
+.ml0 { margin-left: 0; }
+.mr0 { margin-right: 0; }
+
 .nowrap { white-space: nowrap; }
 
 .o0 { opacity: 0; }
