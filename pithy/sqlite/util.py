@@ -11,41 +11,41 @@ from .keywords import sqlite_keywords
 
 @lru_cache
 def insert_head_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str,...]) -> str:
-    '''
-    Create the first part of an INSERT statement, up to the VALUES/SELECT/DEFAULT clause.
+  '''
+  Create the first part of an INSERT statement, up to the VALUES/SELECT/DEFAULT clause.
 
-    '''
-    assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
-    if fields:
-      if not all(f.isidentifier() for f in fields): raise ValueError(f'invalid field names: {fields!r}')
-      fields_joined = ', '.join(sql_quote_entity(f) for f in fields)
-      fields_clause = f' ({fields_joined})'
-    else:
-      fields_clause = ''
-    with_space = ' ' if with_ else ''
-    return f'{with_}{with_space}INSERT OR {or_} INTO {into}{fields_clause}'
+  '''
+  assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
+  if fields:
+    if not all(f.isidentifier() for f in fields): raise ValueError(f'invalid field names: {fields!r}')
+    fields_joined = ', '.join(sql_quote_entity(f) for f in fields)
+    fields_clause = f' ({fields_joined})'
+  else:
+    fields_clause = ''
+  with_space = ' ' if with_ else ''
+  return f'{with_}{with_space}INSERT OR {or_} INTO {into}{fields_clause}'
 
 
 @lru_cache
 def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, named:bool, fields:tuple[str,...],
  returning:tuple[str,...]|str|None=None) -> str:
-    '''
-    Create an INSERT statement that uses positional or named placeholders for values.
-    '''
-    head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
-    if fields:
-      placeholders = ', '.join(placeholders_for_fields(fields, named))
-      values_clause = f' VALUES ({placeholders})'
-    else:
-      values_clause = ' DEFAULT VALUES'
-    stmt = head + values_clause
+  '''
+  Create an INSERT statement that uses positional or named placeholders for values.
+  '''
+  head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
+  if fields:
+    placeholders = ', '.join(placeholders_for_fields(fields, named))
+    values_clause = f' VALUES ({placeholders})'
+  else:
+    values_clause = ' DEFAULT VALUES'
+  stmt = head + values_clause
 
-    if returning:
-      if isinstance(returning, tuple): r = ', '.join(returning)
-      elif isinstance(returning, str): r = returning
-      stmt += f' RETURNING {r}'
+  if returning:
+    if isinstance(returning, tuple): r = ', '.join(returning)
+    elif isinstance(returning, str): r = returning
+    stmt += f' RETURNING {r}'
 
-    return stmt
+  return stmt
 
 
 @lru_cache
