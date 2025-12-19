@@ -100,7 +100,8 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     args = update_to_json(args)
     if _dbg:
       print(f'query: {sql.strip()}\n  args: {args}')
-      print(f' plan: {tuple(self.execute(f'EXPLAIN QUERY PLAN {sql}', args).fetchone())}')
+      if plan := self.execute(f'EXPLAIN QUERY PLAN {sql}', args).fetchone():
+        print(f' plan: {tuple(plan)}')
     return self.execute(sql, args)
 
 
