@@ -9,6 +9,9 @@ from ..json import render_json
 from .keywords import sqlite_keywords
 
 
+OnConflictTarget  = str|tuple[str,...]
+
+
 @lru_cache
 def insert_head_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str,...]) -> str:
   '''
@@ -28,24 +31,51 @@ def insert_head_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str
 
 @lru_cache
 def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, named:bool, fields:tuple[str,...],
- returning:tuple[str,...]|str|None=None) -> str:
+ on_conflict:OnConflictTarget='', returning:tuple[str,...]|str|None=None) -> str:
   '''
   Create an INSERT statement that uses positional or named placeholders for values.
   '''
   head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
   if fields:
     placeholders = ', '.join(placeholders_for_fields(fields, named))
-    values_clause = f' VALUES ({placeholders})'
+    values_clause = f'VALUES ({placeholders})'
   else:
-    values_clause = ' DEFAULT VALUES'
-  stmt = head + values_clause
+    values_clause = 'DEFAULT VALUES'
+  parts = [head, values_clause]
+
+  if on_conflict:
+    if isinstance(on_conflict, (str, tuple)):
+      parts.append(on_conflict_clause(on_conflict, named=named, fields=fields))
+    else:
+      raise NotImplementedError('Multiple ON CONFLICT clauses are not supported yet.')
 
   if returning:
     if isinstance(returning, tuple): r = ', '.join(returning)
     elif isinstance(returning, str): r = returning
-    stmt += f' RETURNING {r}'
+    parts.append(f'RETURNING {r}')
 
-  return stmt
+  return ' '.join(parts)
+
+
+def on_conflict_clause(str_or_pair:str|tuple[str,...], named:bool, fields:tuple[str,...]) -> str:
+  'Create an ON CONFLICT clause for an INSERT statement.'
+  if isinstance(str_or_pair, str):
+    conflict_targets:tuple[str,...] = (str_or_pair,)
+  else:
+    conflict_targets = str_or_pair
+    if not conflict_targets: raise ValueError('ON CONFLICT target columns cannot be empty')
+  included_cols = tuple(f for f in fields if f not in conflict_targets)
+
+  parts = ['ON CONFLICT', '(', ', '.join(conflict_targets), ')', 'DO']
+
+  if included_cols:
+    parts.append('UPDATE SET')
+    assignments = ', '.join(f'{col}={p}' for (col, p) in zip(included_cols, placeholders_for_fields(included_cols, named)))
+    parts.append(assignments)
+  else:
+    parts.append('NOTHING')
+
+  return ' '.join(parts)
 
 
 @lru_cache

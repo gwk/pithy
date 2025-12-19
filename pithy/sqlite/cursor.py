@@ -6,7 +6,7 @@ from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Seque
 
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .row import Row
-from .util import default_to_json, insert_values_stmt, sql_quote_entity, update_stmt, update_to_json
+from .util import default_to_json, insert_values_stmt, OnConflictTarget, sql_quote_entity, update_stmt, update_to_json
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -164,21 +164,26 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
 
   @overload
-  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:tuple[str,...], **kwargs:Any) -> Row: ...
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, on_conflict:OnConflictTarget='', returning:tuple[str,...],
+   **kwargs:Any) -> Row: ...
 
   @overload
-  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:str, **kwargs:Any) -> Any: ...
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, on_conflict:OnConflictTarget='', returning:str, **kwargs:Any) \
+   -> Any: ...
 
   @overload
-  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:None=None, **kwargs:Any) -> None: ...
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, on_conflict:OnConflictTarget='', returning:None=None,
+   **kwargs:Any) -> None: ...
 
-  def insert(self, *, with_:str='', or_:str='FAIL', into:str, returning:tuple[str,...]|str|None=None, _dbg:bool=False,
-   **kwargs:Any) -> Row|Any|None:
+  def insert(self, *, with_:str='', or_:str='FAIL', into:str, on_conflict:OnConflictTarget='',
+    returning:tuple[str,...]|str|None=None, _dbg:bool=False, **kwargs:Any) -> Row|Any|None:
     '''
     Execute an insert statement with the kwargs key/value pairs passed as named arguments.
     If `returning` is a tuple, return a single row; if it is a string, return a single column.
     '''
-    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=True, fields=tuple(kwargs.keys()), returning=returning)
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=True, fields=tuple(kwargs.keys()), on_conflict=on_conflict,
+      returning=returning)
+
     self.run(stmt, _dbg=_dbg, **kwargs)
 
     if isinstance(returning, tuple): return self.one()
@@ -187,19 +192,20 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
 
   @overload
-  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...],
-   args:dict[str, Any], defaults:dict[str,Any]=...) -> Row: ...
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None,
+   on_conflict:OnConflictTarget='', returning:tuple[str,...], args:dict[str, Any], defaults:dict[str,Any]=...) -> Row: ...
 
   @overload
-  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None, returning:str,
-   args:dict[str,Any], defaults:dict[str,Any]=...) -> Any: ...
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None,
+   on_conflict:OnConflictTarget='', returning:str, args:dict[str,Any], defaults:dict[str,Any]=...) -> Any: ...
 
   @overload
-  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None,returning:None=None,
-   args:dict[str,Any], defaults:dict[str,Any]=...) -> None: ...
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None,
+   on_conflict:OnConflictTarget='', returning:None=None, args:dict[str,Any], defaults:dict[str,Any]=...) -> None: ...
 
-  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None, returning:tuple[str,...]|str|None=None,
-   args:dict[str,Any], defaults:dict[str,Any]={}) -> Any:
+  def insert_dict(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str]|None=None,
+   on_conflict:OnConflictTarget='', returning:tuple[str,...]|str|None=None, args:dict[str,Any], defaults:dict[str,Any]={}
+   ) -> Any:
     '''
     Execute an insert of the dictionary `args`, synthesized from `into` (the table name) and `fields`.
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;
@@ -207,7 +213,8 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     If `returning` is a tuple, return a single row; if it is a string, return a single field value.
     '''
     if fields is None: fields = args.keys()
-    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields), returning=returning)
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields), on_conflict=on_conflict,
+      returning=returning)
 
     def arg_for(f:str) -> Any:
       try: return args[f]
