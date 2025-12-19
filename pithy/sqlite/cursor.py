@@ -78,7 +78,10 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
   def executescript(self, sql_script:str) -> Self:
     '''
-    Execute the SQL statements in sql_script. If the autocommit is LEGACY_TRANSACTION_CONTROL and there is a pending transaction, an implicit COMMIT statement is executed first. No other implicit transaction control is performed; any transaction control must be added to sql_script.
+    Execute the SQL statements in sql_script.
+    If the autocommit is LEGACY_TRANSACTION_CONTROL and there is a pending transaction,
+    an implicit COMMIT statement is executed first.
+    No other implicit transaction control is performed; any transaction control must be added to sql_script.
 
     Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
