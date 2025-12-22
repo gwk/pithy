@@ -2,8 +2,7 @@
 
 from typing import Iterable, Self
 
-from pithy.iterable import joinR
-
+from ..iterable import joinR
 from ..parse import ParseError
 from . import Conn, Cursor, Row
 from .schema import Column, Schema, Table, TableDepStructure
