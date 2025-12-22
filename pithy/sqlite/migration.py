@@ -207,7 +207,7 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
 
   try:
     c.execute('PRAGMA foreign_keys = OFF') # 1.
-    c.execute('BEGIN TRANSACTION') # 2.
+    c.execute('BEGIN IMMEDIATE') # 2.
     # 3 is implicit: the schema contains all indexes, triggers, and views associated with the table, so we can rebuild them.
     for step in migration: c.execute(step) # 4-9.
     run_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.
