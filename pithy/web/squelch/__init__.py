@@ -430,7 +430,7 @@ def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,
     if not isinstance(rendered, MuChild): rendered = str(rendered)
     return ('', rendered)
   except Exception as e:
-    warn(f'error rendering {val!r} with {render_fn}: {e}')
+    warn(f'vis render error; fn={render_fn.__qualname__}; exc={e}; {val=!r}')
     return ('error', str(val))
 
 

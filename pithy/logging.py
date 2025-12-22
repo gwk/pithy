@@ -136,6 +136,23 @@ def fmt_exc_info_json(exc_info:ExcInfo) -> list[str]:
   return list(TracebackException(*exc_info).format(colorize=True)) # type: ignore[call-arg]
 
 
+# stdlib warnings formatting.
+
+def formatwarning(message:Warning|str, category:type[Warning], filename:str, lineno:int, line:str|None=None) -> str:
+  '''
+  Override for warnings.formatwarning to produce pithy-style warning messages.
+  '''
+  return render_log_fn('warn', str(message), type=category.__name__, loc=f'{filename}:{lineno}') + '\n'
+
+
+def install_warnings_formatter() -> None:
+  '''
+  Install the pithy warnings formatter.
+  '''
+  import warnings
+  warnings.formatwarning = formatwarning
+
+
 class PithyLogFormatter(Formatter):
   '''
   A very simple log formatter for use with the python standard logging module.
