@@ -21,15 +21,6 @@ class GenMigrationError(Exception):
 class MigrationError(Exception): pass
 
 
-class MigrationStep:
-
-  def sql(self) -> str: raise NotImplementedError
-
-
-class ReorderColumns(MigrationStep):
-  pass
-
-
 def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
 
   if not schema.name.isidentifier(): raise ValueError(f'Invalid schema name: {schema.name!r}')
