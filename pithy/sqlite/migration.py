@@ -3,6 +3,7 @@
 from typing import Iterable, Self
 
 from ..iterable import joinR
+from ..logging import logE, logI
 from ..parse import ParseError
 from . import Conn, Cursor, Row
 from .schema import Column, Schema, Table, TableDepStructure
@@ -201,7 +202,7 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
   '''
 
   if backup: conn.backup(progress=True)
-  print('Migrating…')
+  logI('Migrating.')
   c = conn.cursor()
 
   try:
@@ -211,13 +212,13 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
     for step in migration: c.execute(step) # 4-9.
     run_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.
 
-  except Exception:
+  except Exception as e:
     c.execute('ROLLBACK')
-    print('Migration failed.')
+    logE('Migration failed.', exc=e)
     raise
   else:
     c.execute('COMMIT') # 11.
-    print('Migration complete.')
+    logI('Migration complete.')
   finally:
     c.execute('PRAGMA foreign_keys = ON') # 12.
 
@@ -225,12 +226,12 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
 def run_check(cursor:Cursor, check:str, args:str='', max_errors:int=100) -> None:
   args_str = f'({args})' if args else ''
   stmt = f'PRAGMA {check}{args_str}'
-  print(f'Running {stmt!r}.')
   n = 0
   for n, error in enumerate(cursor.execute(stmt), 1):
-    print(f'{check} error:', *error, sep='\t')
+    logE('run_check error', check=check, error=error)
     if n >= max_errors: break
   if n:
     s = 's' if n > 1 else ''
     plus = '+' if n >= max_errors else ''
+    logE('run_check failed', stmt=stmt)
     raise MigrationError(f'{check} failed with {n}{plus} error{s}.')
