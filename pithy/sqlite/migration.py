@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Iterable, NoReturn, Self
+from typing import Iterable, Self
 
 from pithy.iterable import joinR
 
@@ -17,8 +17,6 @@ class GenMigrationError(Exception):
     removed_str = joinR('\n    ', sorted(removed))
     added_str = joinR('\n    ', sorted(added))
     return cls(f'Confusing column changes for table {table_name}:\n  removed:\n    {removed_str}\n  added:\n    {added_str}\n')
-
-  def fail(self) -> NoReturn: exit(str(self))
 
 
 class MigrationError(Exception): pass
@@ -87,7 +85,7 @@ def gen_table_migration(*, schema_name:str, qname:str, new:Table, old:str|Table|
 
   if isinstance(old, str):
     try: old = Table.parse(new.name + '(old)', text=old)
-    except ParseError as e: e.fail()
+    except ParseError as e: exit(str(e))
 
 
   assert new.name == old.name
