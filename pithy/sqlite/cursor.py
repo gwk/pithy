@@ -2,6 +2,7 @@
 
 import sqlite3
 from contextlib import AbstractContextManager
+from time import monotonic as get_time
 from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeVar
 
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -28,12 +29,19 @@ type SqlParameters = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[st
 
 class Cursor(sqlite3.Cursor, AbstractContextManager):
 
+  execute_time:float = 0
+  transaction_start:float = 0
+  transaction_time:float = 0
+  transaction_pre_rollback_time:float = 0
+
 
   def __enter__(self) -> Self:
     '''
     On context manager enter, Cursor begins a transaction.
     '''
-    conn:Any = self.connection
+    self.transaction_start = get_time()
+    self.transaction_time = 0
+    conn:Any = self.connection # pithy.sqlite.Connection is not visible in this module, so we use Any.
     is_rw = (conn.mode != 'ro')
     self.execute('BEGIN IMMEDIATE' if is_rw else 'BEGIN')
     return self
@@ -44,9 +52,15 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     On context manager exit, Cursor commits or rolls back, then closes itself.
     '''
     if exc_type: # Exception raised.
+      self.transaction_pre_rollback_time = get_time() - self.transaction_start
       self.execute('ROLLBACK')
     else:
       self.execute('COMMIT')
+    self.transaction_time = get_time() - self.transaction_start
+    if exc_value is not None:
+      setattr(exc_value, 'transaction_time', self.transaction_time)
+      exc_value.add_note(
+        f'transaction_time: {self.transaction_time:.5f}s; pre_rollback_time: {self.transaction_pre_rollback_time:.5f}s.')
     self.close()
 
 
@@ -56,11 +70,19 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
     Override execute in order to set `query` on any resulting sqlite3.Error.
     '''
-    try: return super().execute(query, args)
+    execute_start = get_time()
+    try:
+      res = super().execute(query, args)
     except sqlite3.Error as e:
+      self.execute_time = get_time() - execute_start
+      setattr(e, 'execute_time', self.execute_time)
+      e.add_note(f'execute_time: {self.execute_time:.5f}s.')
       setattr(e, 'query', query)
       e.add_note(f'query: {query}')
       raise
+    else:
+      self.execute_time = get_time() - execute_start
+      return res
 
 
   def executemany(self, query:str, it_args:Iterable[SqlParameters]) -> Self:
@@ -69,11 +91,19 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
     Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
-    try: return super().executemany(query, it_args)
+    execute_start = get_time()
+    try:
+      res = super().executemany(query, it_args)
     except sqlite3.Error as e:
+      self.execute_time = get_time() - execute_start
+      setattr(e, 'execute_time', self.execute_time)
+      e.add_note(f'execute_time: {self.execute_time:.5f}s.')
       setattr(e, 'query', query)
       e.add_note(f'query: {query}')
       raise
+    else:
+      self.execute_time = get_time() - execute_start
+      return res
 
 
   def executescript(self, sql_script:str) -> Self:
@@ -85,11 +115,19 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
 
     Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
-    try: return cast(Self, super().executescript(sql_script))
+    execute_start = get_time()
+    try:
+      res = cast(Self, super().executescript(sql_script))
     except sqlite3.Error as e:
+      self.execute_time = get_time() - execute_start
+      setattr(e, 'execute_time', self.execute_time)
+      e.add_note(f'execute_time: {self.execute_time:.5f}s.')
       setattr(e, 'query', sql_script)
       e.add_note(f'script: {sql_script}')
       raise
+    else:
+      self.execute_time = get_time() - execute_start
+      return res
 
 
   def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Self:
