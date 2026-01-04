@@ -13,7 +13,7 @@ from .string import identifier_or_repr
 
 
 '''
-This is a very lightweight logging implementation.
+A lightweight logging system.
 '''
 
 ExcInfo = tuple[type[BaseException],BaseException,TracebackType|None]|tuple[None,None,None]
@@ -134,6 +134,26 @@ def fmt_exc_info_json(exc_info:ExcInfo) -> list[str]:
   Format exception information as a JSON-serializable dict.
   '''
   return list(TracebackException(*exc_info).format(colorize=True)) # type: ignore[call-arg]
+
+
+# excepthooks.
+
+def main_excepthook(exc_type:type[BaseException], exc_value:BaseException, traceback:TracebackType|None) -> None:
+  'Logging function for sys.excepthook.'
+  logE('Uncaught exception', __exc_info=(exc_type, exc_value, traceback))
+
+
+def threading_excepthook(args:Any) -> None:
+  'Logging function for threading.excepthook.'
+  logE('Uncaught threading exception', __exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+
+
+def install_excepthooks() -> None:
+  'Install both sys and threading excepthooks.'
+  import sys
+  import threading
+  sys.excepthook = main_excepthook
+  threading.excepthook = threading_excepthook
 
 
 # stdlib warnings formatting.
