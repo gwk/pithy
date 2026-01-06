@@ -120,8 +120,8 @@ def load_binary(f:FileOrPath, ext:str, **kwargs:Any) -> BinaryIO:
 
 
 def load_csv(f:FileOrPath, ext:str, encoding:str|None=None, **kwargs:Any) -> Iterable[list[str]]:
-  from .csv import load_csv as _load_csv
-  return _load_csv(text_file_for(f, newline='', encoding=encoding), **kwargs)
+  from .csv import CsvParser
+  return CsvParser(text_file_for(f, newline='', encoding=encoding), **kwargs)
 
 
 def load_html(f:FileOrPath, ext:str, encoding:str='utf8', **kwargs:Any) -> Any:

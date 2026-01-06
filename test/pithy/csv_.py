@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pithy.csv import load_csv, out_csv, write_csv
+from pithy.csv import out_csv, parse_csv, write_csv
 from utest import utest_seq
 
 
@@ -18,7 +18,7 @@ with open('test-no-header.csv', 'w') as f:
   write_csv(f, header=None, rows=rows)
 
 with open('test-no-header.csv', 'r') as f:
-  utest_seq(rows_as_strs, load_csv, f, has_header=False)
+  utest_seq(rows_as_strs, parse_csv, f, has_header=False)
 
 
 # With header.
@@ -27,10 +27,10 @@ with open('test.csv', 'w') as f:
   write_csv(f, header=header, rows=rows)
 
 with open('test.csv', 'r') as f:
-  utest_seq(rows_as_strs, load_csv, f)
+  utest_seq(rows_as_strs, parse_csv, f)
 
 with open('test.csv', 'r') as f:
-  utest_seq(rows, load_csv, f, cols=dict(str=str, int=int, float=float))
+  utest_seq(rows, parse_csv, f, cols=dict(str=str, int=int, float=float))
 
 with open('test.csv', 'r') as f:
-  utest_seq(rows_as_dicts, load_csv, f, as_dicts=True, cols=dict(str=str, int=int, float=float))
+  utest_seq(rows_as_dicts, parse_csv, f, as_dicts=True, cols=dict(str=str, int=int, float=float))

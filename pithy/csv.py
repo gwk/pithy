@@ -7,10 +7,9 @@ from csv import Dialect, QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC
 from functools import cached_property
 from io import StringIO
 from sys import stdout
-from typing import Any, Callable, ContextManager, Iterable, Iterator, Literal, Mapping, Sequence, TextIO, TypeAlias
+from typing import Any, Callable, Iterable, Iterator, Literal, Mapping, Sequence, TextIO, TypeAlias
 
 from .transtruct import bool_for_val
-from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 _convenience_exports = (QUOTE_ALL, QUOTE_MINIMAL, QUOTE_NONE, QUOTE_NONNUMERIC)
@@ -37,7 +36,7 @@ def render_csv(*, quoting:Quoting|None=None, header:Sequence[str]|None, rows:Ite
     return f.getvalue()
 
 
-def load_csv(file:TextIO, *,
+def parse_csv(iterable:Iterable[str], *,
  dialect:str|Dialect|type[Dialect]='excel',
  delimiter:str|None=None,
  doublequote:bool|None=None,
@@ -51,10 +50,10 @@ def load_csv(file:TextIO, *,
  spread_args:bool=False,
  as_dicts:bool=False,
  preserve_empty_vals:bool=False,
- cols:Mapping[str,Callable|None]|None=None) -> 'CsvLoader':
+ cols:Mapping[str,Callable|None]|None=None) -> 'CsvParser':
 
-  return CsvLoader(
-    file=file,
+  return CsvParser(
+    iterable=iterable,
     dialect=dialect,
     delimiter=delimiter,
     doublequote=doublequote,
@@ -71,20 +70,9 @@ def load_csv(file:TextIO, *,
     cols=cols)
 
 
-'''
-    assert keys is not None or header is not None and not isinstance(header, bool)
-    if keys is not None:
-      row_keys = keys
-    else:
-      row_keys = header
+class CsvParser(Iterable):
 
-    row_ctor = lambda row: { key : col for key, col in zip(row_keys, row) if key is not None }
-'''
-
-
-class CsvLoader(Iterable, ContextManager):
-
-  def __init__(self, file:TextIO, *,
+  def __init__(self, iterable:Iterable[str], *,
    dialect:str|Dialect|type[Dialect]='excel',
    delimiter:str|None=None,
    doublequote:bool|None=None,
@@ -101,6 +89,8 @@ class CsvLoader(Iterable, ContextManager):
    preserve_empty_vals:bool=False,
    cols:Mapping[str,Callable|None]|None=None) -> None:
 
+    remap_keys = remap_keys or {}
+
     # Filter out the unspecified options so that the dialect defaults are respected.
     opts:dict[str,Any] = { k : v for (k, v) in [
       ('delimiter', delimiter),
@@ -116,14 +106,14 @@ class CsvLoader(Iterable, ContextManager):
       # Replace any `bool` types with a useful constructor.
       cols = { k : (bool_for_val if v is bool else v) for k, v in cols.items() }
 
-    if isinstance(file, str):
-      raise ValueError('file must be an iterable of strings, not a string.')
+    if isinstance(iterable, str):
+      iterable = iterable.splitlines()
 
-    self._reader = csv.reader(file, dialect, **opts)
-    self.file = file
+    self._reader = csv.reader(iterable, dialect, **opts)
+    self.iterable = iterable
     self.row_ctor = row_ctor
     self.cols = cols
-    self.remap_keys = remap_keys or {}
+    self.remap_keys = remap_keys
 
     if has_header:
       try: self.header:list[str]|None = [str(raw_cell) for raw_cell in next(self._reader)]
@@ -132,7 +122,7 @@ class CsvLoader(Iterable, ContextManager):
         if cols is not None: # Match expected header against actual.
           col_names = list(cols)
           if self.header != col_names:
-            raise ValueError(f'load_csv expected header row:\n{col_names}\nreceived:\n{self.header}')
+            raise ValueError(f'CsvParser expected header row:\n{col_names}\nreceived:\n{self.header}')
     else:
       self.header = None
 
@@ -140,11 +130,10 @@ class CsvLoader(Iterable, ContextManager):
     row_seq_fn:Callable[[Sequence[Any]],Any]
     if as_dicts:
       if cols is None:
-        raise ValueError('load_csv: as_dicts option requires cols argument to be provided.')
+        raise ValueError('CsvParser: `as_dicts` option requires `cols` argument to be provided.')
       else:
         if remap_keys:
-          rm = remap_keys # Alias for type-safe use in lambda.
-          row_seq_fn = lambda row: { rm.get(key, key) : try_cell_ctor(cell_ctor, cell, key)
+          row_seq_fn = lambda row: { remap_keys.get(key, key) : try_cell_ctor(cell_ctor, cell, key)
             for (key, cell_ctor), cell in zip(cols.items(), row)
             if cell_ctor is not None and (preserve_empty_vals or cell) }
         else:
@@ -175,14 +164,6 @@ class CsvLoader(Iterable, ContextManager):
 
   def __iter__(self) -> Iterator[Any]:
     return (self.row_fn(row) for row in self._reader) # type: ignore[no-untyped-call]
-
-
-  def __enter__(self) -> 'CsvLoader':
-    return self
-
-
-  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
-    self.file.close()
 
 
   @cached_property
