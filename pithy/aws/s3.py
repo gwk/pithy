@@ -263,4 +263,4 @@ def s3_client(session:Session, **kwargs:Any) -> S3Client:
       if b in bucket_paths: raise KeyError(f'S3_MOCK_CLIENT repeated bucket: {b!r}')
       bucket_paths[b] = p
     return S3MockClient(bucket_paths=bucket_paths, **kwargs)
-  return session.client('s3', **kwargs) # type: ignore[no-any-return]
+  return session.client('s3', **kwargs) # type: ignore[return-value]
