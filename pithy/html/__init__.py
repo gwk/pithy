@@ -1671,6 +1671,26 @@ class Table(HtmlFlow, HtmlPalpable):
     return self
 
 
+  def foot(self, foot:Union['Tfoot',Iterable[MuChildLax]]) -> Self:
+    '''
+    The `foot` argument can be a fully formed `Tfoot` or else an iterable of `Td|Th` or content with which `Th` are constructed.
+    If `foot` is a `Tfoot` object and another `Tfoot` child is present, raise ConflictingValues.
+    Otherwise use the existing `Tfoot` or create a new one and add the elements of `foot` to it.
+    '''
+    tfoot = self.pick_opt(Tfoot) # Raise MultipleMatchesError if more than one Tfoot is present.
+    if isinstance(foot, Tfoot):
+      if tfoot: raise ConflictingValues(key=Tfoot, existing=tfoot, incoming=foot)
+      self.append(foot)
+    else:
+      if isinstance(foot, Mu): foot = [foot]
+      if tfoot is None: tfoot = self.append(Tfoot())
+      print("FOOT", foot)
+      cells = [cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in foot]
+      print("CELLS", cells)
+      tfoot.append(Tr(_=cells))
+    return self
+
+
   def rows(self, rows:Iterable['Tr'|Iterable[MuChildLax]]) -> Self:
     '''
     Create a `Tbody` and add `Tr` elements to it, each of which is constructed from the elements of the corresponding row.
