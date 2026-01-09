@@ -1653,11 +1653,12 @@ class Table(HtmlFlow, HtmlPalpable):
     The classes of each cell in the last row added by `head()` are recorded in a private attribute.
     These classes are applied to the corresponding cells in the last row added by `rows()`.
     '''
-    thead = self.pick_opt(Thead) # Raise MultipleMatchesError if more than one Thead is present (against the HTML spec).
+    thead = self.pick_opt(Thead) # Raise MultipleMatchesError if more than one Thead is present.
     if isinstance(head, Thead):
       if thead: raise ConflictingValues(key=Thead, existing=thead, incoming=head)
       self.append(head)
     else:
+      if isinstance(head, Mu): head = [head]
       if thead is None: thead = self.append(Thead())
       cells = [cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in head]
       thead.append(Tr(_=cells))
