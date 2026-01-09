@@ -5,10 +5,10 @@ from sys import stderr
 from typing import Any, Callable, Iterable, Literal, Self
 from urllib.parse import quote as url_quote
 
-from pithy.url import url_path
-
+from ..logging import logW
 from ..meta import caller_src_loc
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
+from ..url import url_path
 from .cursor import Cursor, SqlParameters
 from .row import Row
 from .util import sql_quote_entity
@@ -79,10 +79,10 @@ class Conn(sqlite3.Connection):
     if self.closing and not self.closed:
       if self.caller_trace_loc:
         file_path, line_number, fn_name = self.caller_trace_loc
-        trace_msg = f'; {file_path}:{line_number}:{fn_name}'
+        trace_loc = f'{file_path}:{line_number}:{fn_name}'
       else:
-        trace_msg = ''
-      print(f'WARNING: Conn.__del__: connection should have been closed already; id={id(self)}{trace_msg}.', file=stderr)
+        trace_loc = ''
+      logW('Conn.__del__: connection should have been closed already.', trace_loc=trace_loc)
 
 
   def __enter__(self) -> Self:
