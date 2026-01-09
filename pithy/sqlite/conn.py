@@ -34,9 +34,9 @@ BackupProgressFn = Callable[[int,int,int],object]
 
 class Conn(sqlite3.Connection):
 
-  def __init__(self, path:str, timeout:float=5.0, detect_types:int=0, isolation_level:IsolationLevel|None='DEFERRED',
-   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, *, autocommit:bool=True, closing:bool=True,
-   mode:str='', trace_caller_level:int=0) -> None:
+  def __init__(self, path:str, *, timeout:float=5.0, detect_types:int=0, isolation_level:IsolationLevel|None='DEFERRED',
+   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, autocommit:bool=True, mode:str='', closing:bool=True,
+   trace_caller_level:int=0) -> None:
     '''
     Note: as of Python 3.12, the `autocommit` parameter is preferred over the `isolation_level` parameter.
     sqlite3.Connection `autocommit` defaults to LEGACY_TRANSACTION_CONTROL, in which case `isolation_level` takes effect.
