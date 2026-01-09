@@ -64,8 +64,12 @@ class Conn(sqlite3.Connection):
 
     if isolation_level not in (None, 'DEFERRED', 'IMMEDIATE', 'EXCLUSIVE'): raise ValueError(isolation_level)
 
-    super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
-      check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit)
+    try:
+      super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
+        check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit)
+    except Exception as e:
+      e.add_note(f'path: {path!r}.')
+      raise
 
     self.closed = False
 
