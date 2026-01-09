@@ -7,6 +7,7 @@ from urllib.parse import quote as url_quote
 
 from ..logging import logW
 from ..meta import caller_src_loc
+from ..path import path_name
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 from ..url import url_path
 from .cursor import Cursor, SqlParameters
@@ -167,38 +168,65 @@ class Conn(sqlite3.Connection):
 
 
   def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,
-   name:str='main', sleep:float=0.250) -> None:
+   name:str='main', sleep:float=0.25) -> None:
     '''
-    Backup this database to the target database, optionally printing progress to stdout.
-    This is an override of sqlite3.Connection.backup, adding the `progress` argument for convenience.
+    Back up this database to the `target` (backup destination) database, optionally printing progress to stdout.
+    If `target` is a string:
+      * if `target` ends with '/', it is interpreted as the backup destination directory, and the name of `self.path` is used.
+      * a new Connection will be opened to that path and closed after the backup.
+    If `target` is an existing Connection, it will not be closed after the backup.
+    If `target` is None, a backup will be made to a file at `self.path + '.backup'`.
+
+    This is an override of sqlite3.Connection.backup. It adds handling of `target:str` and the default progress function.
     '''
+
     if target is None: target = self.path + '.backup'
 
     should_close_target = False
     if isinstance(target, str):
-      target = sqlite3.connect(target)
       should_close_target = True
+      if target.endswith('/'):
+        src_name = path_name(self.path)
+        if not src_name:
+          raise ValueError('Cannot back up to directory when source database has no path name.')
+        target += name
+        if target == self.path:
+          raise ValueError('Cannot back up to same path as source database.')
+      target = Conn(target)
 
-    path = getattr(target, 'path', '')
+    tty_progress = False
+    try: # Once target is (possibly) opened, we must guard it with try/finally to ensure it gets closed.
 
-    progress_fn:BackupProgressFn|None = None
-    if progress:
-      if callable(progress):
-        progress_fn = progress
+      name_suffix = '' if name == 'main' else (':' + name)
+      if target_path := getattr(target, 'path', None):
+        target_label = f' -> {target_path}'
       else:
-        def _progress_fn(_status:int, remaining:int, total:int) -> None:
-          frac = (total - remaining) / total
-          print(f'Backup {path}:{name}: {frac:0.1%}…', end='\r')
-        progress_fn = _progress_fn
+        target_label = ''
+      label = f'Backup {self.path}{name_suffix}{target_label}'
 
-      print(f'Backup {path}:{name}…', end='\r')
+      progress_fn:BackupProgressFn|None = None
+      if progress:
+        if pages == -1: pages = 4096 # Need to set pages to get progress callbacks.
+        if callable(progress):
+          progress_fn = progress
+        else:
+          tty_progress = stderr.isatty()
+          progress_end = '\r' if tty_progress else '\n'
+          def _progress_fn(_status:int, remaining:int, total:int) -> None:
+            frac = (total - remaining) / total
+            print(f'{label}: {frac:0.1%}…', end=progress_end, file=stderr)
+          progress_fn = _progress_fn
 
-    try:
+
+      if tty_progress: print(f'{label}…', end='\r', file=stderr)
       super().backup(target, pages=pages, progress=progress_fn, name=name, sleep=sleep)
+    except BaseException:
+      if tty_progress: print(f'{label} INCOMPLETE.', file=stderr)
+      raise
+    else:
+      if tty_progress: print(f'{label} complete.', file=stderr)
     finally:
       if should_close_target: target.close()
-
-    if progress: print(f'Backup {path}:{name} complete.')
 
 
   def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Cursor:
