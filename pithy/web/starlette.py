@@ -159,6 +159,17 @@ def get_path_str(conn:HTTPConnection, key:str) -> str:
   return s
 
 
+def req_path_str(conn:HTTPConnection, key:str) -> str:
+  '''
+  Get a str value from a path parameter.
+  If the key is not present or the value is not a string, raise a 400 exception.
+  '''
+  try: s = conn.path_params[key]
+  except KeyError as e: raise HTTPException(400, f'Missing path parameter: {key}') from e
+  if not isinstance(s, str): raise TypeError(s)
+  return s
+
+
 @overload
 def get_path_int(conn:HTTPConnection, key:str, default:int) -> int: ...
 
