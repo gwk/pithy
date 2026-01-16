@@ -290,7 +290,7 @@ def join_strs(els:Iterable[Any], *, sep:str) -> str:
   return sep.join(str(e) for e in els)
 
 
-def join_reprs(els:Iterable[Any], *, sep:str) -> str:
+def join_reprs(els:Iterable[Any], *, sep:str=', ') -> str:
   'Join the `repr` representations of `els` with `sep` separator.'
   return sep.join(repr(e) for e in els)
 
