@@ -136,6 +136,7 @@ def fmt_exc_info_json(exc_info:ExcInfo) -> list[str]:
   return list(TracebackException(*exc_info).format(colorize=True)) # type: ignore[call-arg]
 
 
+
 # excepthooks.
 
 def main_excepthook(exc_type:type[BaseException], exc_value:BaseException, traceback:TracebackType|None) -> None:
