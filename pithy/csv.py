@@ -171,7 +171,7 @@ class CsvParser(Iterable):
     for i, row in enumerate(self._reader):
       try: yield self.row_fn(row) # type: ignore[no-untyped-call]
       except Exception as e:
-        e.add_note(f'Error parsing row {i+1}: {row!r}.')
+        e.add_note(f'Error in row {i+1}: {row!r}.')
         raise
 
 
@@ -186,5 +186,5 @@ class CsvParser(Iterable):
 def try_cell_ctor(ctor:Callable, cell:Any, col:str) -> Any:
   try: return ctor(cell)
   except Exception as e:
-    e.add_note(f'Error parsing cell {cell!r} in column {col!r}.')
+    e.add_note(f'Error in column {col!r}: cell value: {cell!r}.')
     raise
