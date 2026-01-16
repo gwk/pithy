@@ -20,6 +20,7 @@ class Vis:
   show:bool = True # Whether to show the column by default.
   key:str = '' # The schema.table.column that this foreign key refers to, typically the other column's primary key.
   col:str = '' # The column in the joined table to display instead of the actual column.
+  nonzero:bool = False # Whether to suppress subqueries on zero foreign keys.
   fk_schema:str = '' # Filled in automatically.
   fk_table:str = '' # Filled in automatically.
   fk_col:str = '' # Filled in automatically.
