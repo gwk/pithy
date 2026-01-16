@@ -136,7 +136,7 @@ class CsvParser(Iterable):
           row_seq_fn = lambda row: { remap_keys.get(key, key) : try_cell_ctor(cell_ctor, cell, key)
             for (key, cell_ctor), cell in zip(cols.items(), row)
             if cell_ctor is not None and (preserve_empty_vals or cell) }
-        else:
+        else: # No remap_keys.
           row_seq_fn = lambda row: { key : try_cell_ctor(cell_ctor, cell, key)
             for (key, cell_ctor), cell in zip(cols.items(), row)
             if cell_ctor is not None and (preserve_empty_vals or cell) }
@@ -144,9 +144,14 @@ class CsvParser(Iterable):
       if cols is None:
         row_seq_fn = lambda row: row
       else:
-        row_seq_fn = lambda row: [try_cell_ctor(cell_ctor, cell, key)
-          for (key, cell_ctor), cell in zip(cols.items(), row)
-          if cell_ctor is not None]
+        len_cols = len(cols)
+        def row_seq_fn(row:Sequence[Any]) -> list[Any]:
+          if len(row) != len_cols:
+            raise ValueError(f'CsvParser:\n  expected {len_cols} columns: {list(cols.keys())};\n'
+              f'  received {len(row)} columns: {row!r}.')
+          return [try_cell_ctor(cell_ctor, cell, key)
+            for (key, cell_ctor), cell in zip(cols.items(), row)
+            if cell_ctor is not None]
 
     if row_ctor is not None:
       if spread_args:
@@ -154,9 +159,9 @@ class CsvParser(Iterable):
           row_fn = lambda row: row_ctor(**row_seq_fn(row)) # type: ignore[arg-type]
         else:
           row_fn = lambda row: row_ctor(*row_seq_fn(row))
-      else:
+      else: # No spread_args.
         row_fn = lambda row: row_ctor(row_seq_fn(row))
-    else:
+    else: # No row_ctor.
       row_fn = row_seq_fn
 
     self.row_fn = row_fn
@@ -164,7 +169,7 @@ class CsvParser(Iterable):
 
   def __iter__(self) -> Iterator[Any]:
     for i, row in enumerate(self._reader):
-      try: yield self.row_fn(row)
+      try: yield self.row_fn(row) # type: ignore[no-untyped-call]
       except Exception as e:
         e.add_note(f'Error parsing row {i+1}: {row!r}.')
         raise
