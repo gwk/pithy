@@ -181,8 +181,8 @@ def dt_Ymd_IMp(dt:DateTime|Time, *, compact:bool=False, sep:str='') -> str:
   If `sep` is not provided, then it defaults to one or two spaces, depending on the length of the time portion.
   '''
   time = dt_IMp(dt, compact=compact)
-  if not sep:
-    sep = '  ' if len(time) < 7 else ' '
+  if not sep: # Use a figure space where the leading zero would be.
+    sep = ' \u2007' if len(time) < 7 else ' '
   return f'{dt:%Y-%m-%d}{sep}{time}'
 
 
