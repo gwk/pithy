@@ -217,6 +217,8 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     returning:tuple[str,...]|str|None=None, _dbg:bool=False, **kwargs:Any) -> Row|Any|None:
     '''
     Execute an insert statement with the kwargs key/value pairs passed as named arguments.
+    If `on_conflict` is specified, it must be a column name or a tuple of column names.
+    In that case it an ON CONFLICT clause is generated for those column names, that updates all other provided columns.
     If `returning` is a tuple, return a single row; if it is a string, return a single column.
     '''
     stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=True, fields=tuple(kwargs.keys()), on_conflict=on_conflict,
