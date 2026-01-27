@@ -13,13 +13,20 @@ def parse_env_lines(name:str, lines:Iterable[str]) -> Iterator[tuple[str,str]]:
   Parse shell-style environment variable lines of the form "KEY=value" or "export KEY=value".'
   Comments indicated by `#` are ignored.
   Quoted strings are not supported.
+  Duplicate keys raise EnvParseError.
   '''
+  keys:set[str] = set()
   for line_num, line in enumerate(lines, 1):
     line = line.strip()
     if not line or line.startswith('#'): continue
     m = _env_line_re.fullmatch(line)
     if not m: raise EnvParseError(f'{name}:{line_num}: invalid line: {line!r}')
-    yield m['key'], m['value']
+    k = m['key']
+    v = m['value']
+    if k in keys:
+      raise EnvParseError(f'{name}:{line_num}: duplicate key: {k!r}.')
+    keys.add(k)
+    yield (k, v)
 
 
 _env_line_re = re.compile(r'''(?x)
@@ -34,7 +41,16 @@ _env_line_re = re.compile(r'''(?x)
 ''')
 
 
-def load_env(path:str) -> None:
+def load_env(path:str) -> dict[str,str]:
+  '''
+  Load shell-style environment definitions from `path` into a dictionary.
+  See `parse_env_lines` for details.
+  '''
+  with open(path) as f:
+    return dict(parse_env_lines(path, f))
+
+
+def load_env_into_environ(path:str) -> None:
   '''
   Load shell-style environment definitions from `path` into `os.environ`.
   See `parse_env_lines` for details.
