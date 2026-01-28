@@ -156,6 +156,9 @@ class DateRange(Sequence[Date]):
     return self._seq[-1]
 
 
+def dt_Ymd_HMS(dt:DateTime) -> str:
+  return f'{dt:%Y-%m-%d %H:%M:%S}'
+
 
 def dt_Ymd_HMS_Z(dt:DateTime) -> str:
   'Format a DateTime in UTC as e.g. 2000-01-01 00:00:00Z.'
