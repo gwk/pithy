@@ -338,6 +338,51 @@ function resetValueOfEl(el) {
 
 
 /**
+ * Determine if an element is visible according to its computed style.
+ * @param {HTMLElement} element - The element to check.
+ * @param {boolean} recursive - Whether to check ancestor elements as well.
+ * @param {boolean} computeStyle - Whether to use computed style to determine visibility.
+ * @returns {boolean} - True if the element is visible.
+ */
+function isVisible(element, recursive = false, computeStyle = false) {
+  if (element.hidden) { return false; }
+  if (computeStyle) {
+    const style = getComputedStyle(element);
+    if (style.display === 'none' || style.visibility === 'hidden') { return false; }
+  }
+  if (!recursive || element.parentElement === null) { return true; }
+  return isVisible(element.parentElement, true, computeStyle);
+}
+
+
+/**
+ * Observe changes to an element that may affect visibility.
+ * Note that this function does not directly calculate visibility; it only sets up observation.
+ * @param {HTMLElement} element - The element to observe.
+ * @param {boolean} recursive - Whether to observe ancestor elements as well.
+ * @param {() => void} callback - The callback to invoke when any visibility changes.
+ * @returns {MutationObserver} - The created MutationObserver.
+*/
+function observeVisibility(element, recursive, callback) {
+  /* For the recursive mode, we observe each ancestor individually. */
+  const observer = new MutationObserver(callback);
+  const options = { attributes: true, attributeFilter: ['style', 'class', 'hidden'] };
+
+  if (recursive) {
+    /** @type {HTMLElement | null} */
+    let el = element;
+    while (el && el !== document.documentElement) {
+      observer.observe(el, options);
+      el = el.parentElement;
+    }
+  } else {
+    observer.observe(element, options);
+  }
+  return observer;
+}
+
+
+/**
  * Collapse all open <details> elements matching the given selector.
  * @param {string} selector - The selector to match <details> elements.
  */
@@ -408,21 +453,45 @@ function makeDateInputReloading(input) {
 
 
 /**
- * Validates that the container contains at least one checked checkbox.
+ * Require at least one checkbox in the container to be selected.
  * @param {HTMLElement} container - A container of checkboxes.
  */
 function validateAtLeastOneCheckbox(container) {
-  /* Require at least one checkbox be selected. */
-  let any_checked = false
+
   /** @type {NodeListOf<HTMLInputElement>} */
   const checkboxes = container.querySelectorAll('input[type=checkbox]')
   if (checkboxes.length === 0) { throw new Error(`validateAtLeastOneCheckbox: no checkboxes found in container: ${container}`) }
+
+  const desc_singular = container.getAttribute('desc-singular') || 'option'
+
+  /**
+   * @param {boolean} ok - Whether to set the validity of all checkboxes to valid.
+   */
+  function setValidity(ok) {
+    log('validateAtLeastOneCheckbox: setValidity:', ok)
+    for (const box of checkboxes) {
+      box.setCustomValidity(ok ? '' : `Select at least one ${desc_singular}`);
+    }
+  }
+
+  let any_visible = false
+  let any_checked = false
   for (const box of checkboxes) {
+    if (!isVisible(box, true)) { /* Ignore invisible checkboxes. */
+      continue
+    }
+    any_visible = true
     any_checked = any_checked || box.checked
   }
-  const first = nonopt(checkboxes[0])
-  const desc_singular = container.getAttribute('desc-singular') || 'option'
-  first.setCustomValidity(any_checked ? '' : `Select at least one ${desc_singular}`)
+
+  /* If no checkboxes are visible, consider the input valid.
+  This is necessary because as of 2026-01, on Safari if a checkbox is hidden via display:none and has a validity message set,
+  then the validity message will not display but the form will not submit, so the UI appears broken. */
+  if (!any_visible) {
+    setValidity(true)
+  } else {
+    setValidity(any_checked)
+  }
 }
 
 
@@ -436,6 +505,9 @@ function makeContainerValidateAtLeastOneCheckbox(container) {
   container.addEventListener("change", (event) => {
     // @ts-ignore: ts(2345): Argument of type null is not assignable to parameter of type 'HTMLElement'.
     validateAtLeastOneCheckbox(event.currentTarget)
+  });
+  observeVisibility(container, true, (_isVisible) => {
+    validateAtLeastOneCheckbox(container);
   });
 }
 
