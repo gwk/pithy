@@ -156,6 +156,16 @@ class DateRange(Sequence[Date]):
     return self._seq[-1]
 
 
+def dt_Ymd_HM(dt:DateTime) -> str:
+  return f'{dt:%Y-%m-%d %H:%M}'
+
+
+def dt_Ymd_HM_Z(dt:DateTime) -> str:
+  'Format a DateTime in UTC as e.g. 2000-01-01 00:00Z.'
+  dtz = dt.astimezone(tz_utc)
+  return f'{dtz:%Y-%m-%d %H:%MZ}'
+
+
 def dt_Ymd_HMS(dt:DateTime) -> str:
   return f'{dt:%Y-%m-%d %H:%M:%S}'
 
@@ -164,6 +174,11 @@ def dt_Ymd_HMS_Z(dt:DateTime) -> str:
   'Format a DateTime in UTC as e.g. 2000-01-01 00:00:00Z.'
   dtz = dt.astimezone(tz_utc)
   return f'{dtz:%Y-%m-%d %H:%M:%SZ}'
+
+
+def dt_HM(dt:DateTime|Time) -> str:
+  'Format a DateTime or Time as e.g. "14:30".'
+  return f'{dt:%H:%M}'
 
 
 def dt_IM(dt:DateTime|Time) -> str:
