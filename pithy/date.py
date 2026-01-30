@@ -354,3 +354,11 @@ def time_delta(a:Time, b:Time) -> TimeDelta:
   'Subtract two times, returning a timedelta.'
   return TimeDelta(hours=a.hour - b.hour, minutes=a.minute - b.minute, seconds=a.second - b.second,
     microseconds=a.microsecond - b.microsecond)
+
+
+def time_add(time:Time, delta:TimeDelta) -> Time:
+  'Add a timedelta to a time, returning a time.'
+  date = Date(2000, 1, 1)
+  dt = DateTime.combine(date, time) + delta
+  if dt.date() != date: raise ValueError(f'time_add: result is out of range (different date); {time=}, {delta=}.')
+  return dt.time()
