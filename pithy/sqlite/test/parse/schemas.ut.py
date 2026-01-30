@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from datetime import datetime as DateTime
+from datetime import date as Date, datetime as DateTime, time as Time
 
 from pithy.io import outL, outM
 from pithy.sqlite.parse import Source, sql_parser
@@ -65,6 +65,17 @@ s1 = Schema('s1',
         Column(name='kind', datatype=str, desc='The kind of change: "I" (insert) | "U" (update) | "D" (delete).'),
         Column(name='changes', datatype=dict, desc='The changed items.'),
         Column(name='previous', datatype=dict, desc='The previous items.'),
+    )),
+
+    Table('Event',
+     is_strict=True,
+      columns=(
+        Column(name='id', datatype=int, is_primary=True, is_unique=True),
+        Column(name='title', datatype=str),
+        Column(name='date', datatype=Date, desc='The event date.'),
+        Column(name='start_time', datatype=Time, desc='The event start time.'),
+        Column(name='end_time', datatype=Time, desc='The event end time.'),
+        Column(name='metadata', datatype=dict, is_opt=True, desc='Additional event metadata.'),
     )),
   ]
 )

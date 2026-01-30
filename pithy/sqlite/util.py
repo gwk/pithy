@@ -146,15 +146,19 @@ def _wrapped_type_for_optional(static_type:type) -> type:
   return [a for a in args if a is not NoneType][0] # type: ignore[no-any-return]
 
 
-def default_to_json(obj:Any) -> Any:
+def sqlite_native_val(obj:Any) -> Any:
   if isinstance(obj, types_natively_converted_by_sqlite): return obj
+  if isinstance(obj, time): return str(obj)
   return render_json(obj, indent=None)
 
 
-def update_to_json(d:dict[str,Any]) -> dict[str,Any]:
+def update_to_sqlite_native_val(d:dict[str,Any]) -> dict[str,Any]:
   for k, v in d.items():
     if isinstance(v, types_natively_converted_by_sqlite): continue
-    d[k] = render_json(v, indent=None)
+    if isinstance(v, time):
+      d[k] = str(v)
+    else:
+      d[k] = render_json(v, indent=None)
   return d
 
 
@@ -177,14 +181,17 @@ types_to_strict_sqlite:dict[type,str] = {
   list: 'TEXT',
   object: 'ANY', # Necessary for expressing ANY columns for STRICT tables.
   str: 'TEXT',
+  time: 'TEXT',
   NoneType: 'BLOB', # None gets treated as NULL. 'BLOB' is considered the most generic type.
 }
 
-# The set of types that are converted by the native sqlite3 module. All others are rendered as JSON, defaulting to their repr.
+# The set of types that are converted by the native sqlite3 module.
+# `time` is handled specially; all others are rendered as JSON, defaulting to their repr.
 types_natively_converted_by_sqlite = (bool, bytes, date, datetime, float, int, str, NoneType)
 
 static_types_to_strict_sqlite:dict[Any,str] = {
   Any: 'ANY',
+  time: 'TEXT',
   **types_to_strict_sqlite,
 }
 

@@ -7,7 +7,8 @@ from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Seque
 
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .row import Row
-from .util import default_to_json, insert_values_stmt, OnConflictTarget, sql_quote_entity, update_stmt, update_to_json
+from .util import (insert_values_stmt, OnConflictTarget, sql_quote_entity, sqlite_native_val, update_stmt,
+  update_to_sqlite_native_val)
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -135,7 +136,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     Execute a query with parameter values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to JSON.
     '''
-    args = update_to_json(args)
+    args = update_to_sqlite_native_val(args)
     if _dbg:
       print(f'query: {sql.strip()}\n  args: {args}')
       if plan := self.execute(f'EXPLAIN QUERY PLAN {sql}', args).fetchone():
@@ -261,7 +262,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
       except KeyError: pass
       return defaults[f]
 
-    values = [default_to_json(arg_for(f)) for f in fields]
+    values = [sqlite_native_val(arg_for(f)) for f in fields]
 
     self.execute(stmt, values)
 
@@ -275,7 +276,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     Execute an insert of the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
     stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields))
-    values = [default_to_json(v) for v in seq]
+    values = [sqlite_native_val(v) for v in seq]
     self.execute(stmt, values)
 
 
