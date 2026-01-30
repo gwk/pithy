@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from datetime import datetime as DateTime, tzinfo as TZInfo, UTC as tz_utc
+from datetime import date as Date, datetime as DateTime, tzinfo as TZInfo, UTC as tz_utc
 from zoneinfo import ZoneInfo
 
 
@@ -43,3 +43,23 @@ def parse_dt_naive(date_str:str, tz:TZInfo|None=None) -> DateTime:
   if dt.tzinfo is not None: raise TimeZoneError(f'Expected naive Eastern time; received {date_str!r}')
   if tz is not None: dt = dt.replace(tzinfo=tz)
   return dt
+
+
+def now_et() -> DateTime:
+  'Returns the current DateTime in the US Eastern timezone.'
+  return DateTime.now(tz_et)
+
+
+def now_pt() -> DateTime:
+  'Returns the current DateTime in the US Pacific timezone.'
+  return DateTime.now(tz_pt)
+
+
+def today_et() -> Date:
+  'Returns the current Date in the US Eastern timezone.'
+  return now_et().date()
+
+
+def today_pt() -> Date:
+  'Returns the current Date in the US Pacific timezone.'
+  return now_pt().date()
