@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, time
 from functools import cache, lru_cache
 from typing import Any, get_args, Iterable, NamedTuple
 
@@ -202,6 +202,7 @@ nonstrict_to_strict_types_for_sqlite = {
   bool: int,
   date: str,
   datetime: str,
+  time: str,
   dict: str,
   list: str,
 }
