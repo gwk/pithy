@@ -193,9 +193,9 @@ def dt_IMp(dt:DateTime|Time, *, compact:bool=False) -> str:
   return f'{dt:%I:%M%p}'.lstrip('0') # '04:30AM'.lstrip('0') => '4:30AM'.
 
 
-def dt_Ymd_IMp(dt:DateTime|Time, *, compact:bool=False, sep:str='') -> str:
+def dt_Ymd_IMp(dt:DateTime, *, compact:bool=False, sep:str='') -> str:
   '''
-  Format a DateTime or Time as e.g. "2020-01-01 4:30PM".
+  Format a DateTime as e.g. "2020-01-01 4:30PM".
   If `sep` is not provided, then it defaults to one or two spaces, depending on the length of the time portion.
   '''
   time = dt_IMp(dt, compact=compact)
