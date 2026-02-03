@@ -4,8 +4,8 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import Field, is_dataclass
 from types import UnionType
-from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol, runtime_checkable, TypeIs,
-  TypeVar, Union)
+from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol, runtime_checkable, Type,
+  TypeIs, TypeVar, Union)
 
 
 _T = TypeVar('_T')
@@ -77,6 +77,12 @@ _generic_type_predicates: dict[Any, Callable[[Any, _Args], bool]] = {
   Union: _is_a_Union,
   UnionType: _is_a_Union,
 }
+
+
+def is_type_python_defined(type_:Type) -> bool:
+  'Heap types are typically Python-defined.'
+  # From cpython/Include/object.h: Py_TPFLAGS_HEAPTYPE = 1 << 9
+  return bool(type_.__flags__ & (1 << 9))
 
 
 def is_type_namedtuple(t:type) -> bool:
