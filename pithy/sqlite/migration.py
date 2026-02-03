@@ -210,7 +210,7 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
     c.execute('BEGIN IMMEDIATE') # 2.
     # 3 is implicit: the schema contains all indexes, triggers, and views associated with the table, so we can rebuild them.
     for step in migration: c.execute(step) # 4-9.
-    run_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.
+    run_migration_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.
 
   except Exception as e:
     c.execute('ROLLBACK')
@@ -223,15 +223,15 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
     c.execute('PRAGMA foreign_keys = ON') # 12.
 
 
-def run_check(cursor:Cursor, check:str, args:str='', max_errors:int=100) -> None:
+def run_migration_check(cursor:Cursor, check:str, args:str='', max_errors:int=100) -> None:
   args_str = f'({args})' if args else ''
   stmt = f'PRAGMA {check}{args_str}'
   n = 0
   for n, error in enumerate(cursor.execute(stmt), 1):
-    logE('run_check error', check=check, error=error)
+    logE('run_migration_check error', check=check, error=error)
     if n >= max_errors: break
   if n:
     s = 's' if n > 1 else ''
     plus = '+' if n >= max_errors else ''
-    logE('run_check failed', stmt=stmt)
+    logE('run_migration_check failed', stmt=stmt)
     raise MigrationError(f'{check} failed with {n}{plus} error{s}.')
