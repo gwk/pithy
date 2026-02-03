@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
-import os.path
 import re
 from tomllib import load as load_toml, TOMLDecodeError
 from typing import Any, NamedTuple
