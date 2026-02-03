@@ -70,3 +70,7 @@ utest({'x':1}, encode_obj, Basic(x=1)) # __dict__ only.
 utest({'x':1}, encode_obj, SlotX(x=1))
 utest({'x':1,'y':2}, encode_obj, SlotXY(x=1, y=2))
 utest({'x':1,'y':2,'z':3}, encode_obj, SlotXYZ(x=1, y=2, z=3))
+
+# Exceptions.
+utest({'args': ()}, encode_obj, Exception())
+utest({'args': ('test',)}, encode_obj, Exception('test'))

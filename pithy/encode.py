@@ -2,11 +2,12 @@
 
 from dataclasses import asdict as dc_asdict
 from functools import singledispatch
-from typing import Any, Callable
+from types import GetSetDescriptorType, MemberDescriptorType
+from typing import Any, Callable, Type
 
 from .date import Date, DateTime, Time
-from .type_slots import all_slots
 from .type_utils import is_dataclass_instance
+from .util import memoize
 
 
 EncodeObj = Callable[[Any],Any]
@@ -29,20 +30,17 @@ def encode_obj(obj:Any) -> Any:
 
   if is_dataclass_instance(obj): return dc_asdict(obj)
 
-  if hasattr(obj, '__slots__'):
-    slots = all_slots(type(obj))
-    if d := getattr(obj, '__dict__', None):
-      slots += tuple(k for k in d.keys() if k not in slots)
+  # Attempt to determine generic data attributes.
+  d = {}
+  for name in get_data_attr_names(type(obj)):
+    try: d[name] = getattr(obj, name)
+    except AttributeError: pass
 
-    return {a: getattr(obj, a) for a in slots if not a.startswith('_')}
+  if instance_dict := getattr(obj, '__dict__', None):
+    for k, v in instance_dict.items():
+      d[k] = v
 
-  try: d = obj.__dict__ # Treat other classes as dicts by default.
-  except AttributeError: pass
-  else:
-    if any(k.startswith('_') for k in d): # Only create a new dictionary if necessary.
-      return {k:v for k,v in d.items() if not k.startswith('_')}
-    else:
-      return d
+  if d: return d
 
   raise TypeError(f'cannot encode object of type {type(obj).__qualname__}')
 
@@ -71,3 +69,18 @@ def _(obj:DateTime) -> Any: return obj.isoformat(sep=' ')
 
 @encode_obj.register
 def _(obj:Time) -> Any: return obj.isoformat()
+
+
+@memoize
+def get_data_attr_names(cls:Type) -> tuple[str,...]:
+  '''
+  Attempt to get the names of apparent data attributes of a class.
+  '''
+  names = []
+  for name in dir(cls):
+    if name.startswith('_'): continue
+    try: type_attr = getattr(cls, name)
+    except AttributeError: continue
+    if isinstance(type_attr, (MemberDescriptorType, GetSetDescriptorType)):
+      names.append(name)
+  return tuple(names)
