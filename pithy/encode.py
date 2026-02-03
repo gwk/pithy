@@ -82,7 +82,7 @@ def all_slots(type: type) -> frozenset[str]:
   slots: set[str] = set()
   for t in type.__mro__:
     try: s = t.__slots__ # type: ignore[attr-defined]
-    except AttributeError: break
+    except AttributeError: break # A subclass that does not define its own slots will have that of its parent; ok to stop.
     else:
       if isinstance(s, str): slots.add(s) # single slot.
       else:
