@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from dataclasses import asdict
+from dataclasses import asdict as dc_asdict
 from functools import singledispatch
 from typing import Any, Callable
 
@@ -27,7 +27,7 @@ def encode_obj(obj:Any) -> Any:
   except TypeError: pass
   else: return list(it)
 
-  if is_dataclass_instance(obj): return asdict(obj)
+  if is_dataclass_instance(obj): return dc_asdict(obj)
 
   if hasattr(obj, '__slots__'):
     slots = all_slots(type(obj))
