@@ -261,6 +261,7 @@ def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, ou
  ) -> tuple[int, str, str]:
   '''
   Run a command, check the exit expectation, and return (exit_code, std_out, std_err).
+  `exits` specifies the string or exit code to use to `exit()` this program if the expectation is not met.
   '''
   cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd,
     lldb=lldb)
