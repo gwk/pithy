@@ -8,7 +8,8 @@ from json.decoder import JSONDecodeError
 from sys import stderr, stdout
 from typing import AbstractSet, Any, Callable, Iterable, Sequence
 
-from .encode import all_slots, encode_obj, EncodeObj
+from .encode import encode_obj, EncodeObj
+from .type_slots import all_slots
 
 
 type JsonList = list['Json']

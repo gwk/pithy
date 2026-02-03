@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from types import EllipsisType
 from typing import Any
 
-from pithy.encode import all_slots, encode_obj
+from pithy.encode import encode_obj
 from utest import utest, utest_exc
 
 
@@ -40,14 +40,6 @@ class SlotXYZ(SlotXY):
   def __init__(self, x: int, y: int, z: int):
     super().__init__(x=x, y=y)
     self.z = z
-
-
-# all_slots.
-utest((), all_slots, Basic)
-utest(('x',), all_slots, SlotX)
-utest(('x',), all_slots, SlotXSub)
-utest(('x', 'y'), all_slots, SlotXY)
-utest(('x', 'y'), all_slots, SlotXYZ)
 
 
 # encode_obj.
