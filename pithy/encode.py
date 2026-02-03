@@ -65,7 +65,7 @@ def _(obj:type) -> Any: return obj.__name__
 def _(obj:Date) -> Any: return obj.isoformat()
 
 @encode_obj.register
-def _(obj:DateTime) -> Any: return obj.isoformat()
+def _(obj:DateTime) -> Any: return obj.isoformat(sep=' ')
 
 @encode_obj.register
 def _(obj:Time) -> Any: return obj.isoformat()
