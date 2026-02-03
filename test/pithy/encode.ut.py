@@ -5,7 +5,7 @@ from types import EllipsisType
 from typing import Any
 
 from pithy.encode import all_slots, encode_obj
-from utest import utest, utest_call, utest_exc
+from utest import utest, utest_exc
 
 
 @dataclass
@@ -24,7 +24,11 @@ class SlotX:
     self.x = x
 
 
-class SlotXY(SlotX):
+class SlotXSub(SlotX):
+  'Subclass of slots class with no additional slots.'
+
+
+class SlotXY(SlotXSub):
   __slots__ = ['y']
   def __init__(self, x: int, y: int):
     super().__init__(x=x)
@@ -39,10 +43,11 @@ class SlotXYZ(SlotXY):
 
 
 # all_slots.
-utest(frozenset(), all_slots, Basic)
-utest(frozenset({'x'}), all_slots, SlotX)
-utest(frozenset({'x', 'y'}), all_slots, SlotXY)
-utest(frozenset({'x', 'y'}), all_slots, SlotXYZ)
+utest((), all_slots, Basic)
+utest(('x',), all_slots, SlotX)
+utest(('x',), all_slots, SlotXSub)
+utest(('x', 'y'), all_slots, SlotXY)
+utest(('x', 'y'), all_slots, SlotXYZ)
 
 
 # encode_obj.

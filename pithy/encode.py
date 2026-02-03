@@ -31,7 +31,9 @@ def encode_obj(obj:Any) -> Any:
 
   if hasattr(obj, '__slots__'):
     slots = all_slots(type(obj))
-    slots = slots.union(getattr(obj, '__dict__', ())) # Slots classes may also have backing dicts.
+    if d := getattr(obj, '__dict__', None):
+      slots += tuple(k for k in d.keys() if k not in slots)
+
     return {a: getattr(obj, a) for a in slots if not a.startswith('_')}
 
   try: d = obj.__dict__ # Treat other classes as dicts by default.
@@ -72,19 +74,25 @@ def _(obj:Time) -> Any: return obj.isoformat()
 
 
 @memoize()
-def all_slots(type: type) -> frozenset[str]:
+def all_slots(type:type) -> tuple[str,...]:
   '''
-  Subclasses of slots classes may define their own slots,
-  which hold just the additions to the parent class.
+  Subclasses of slots classes may define their own slots, which hold just the additions to the parent class.
   Therefore we need to iterate over the inheritance chain to get all slot names.
-  We use __mro__ here, and hope for the best regarding multiple inheritance.
+  See: https://docs.python.org/3/reference/datamodel.html#slots.
+  Note: a slot in a child class masks a slot of the same name in a parent class.
+  The slots are returned in the order they are defined, from parent to child.
   '''
-  slots: set[str] = set()
-  for t in type.__mro__:
-    try: s = t.__slots__ # type: ignore[attr-defined]
+  slots_set: set[str] = set()
+  slots_seq = []
+  for t in type.__mro__: # Iterate from child to parent.
+    try: raw_slots = t.__slots__ # type: ignore[attr-defined]
     except AttributeError: break # A subclass that does not define its own slots will have that of its parent; ok to stop.
     else:
-      if isinstance(s, str): slots.add(s) # single slot.
-      else:
-        slots.update(s)
-  return frozenset(slots)
+      slots = (raw_slots.split() if isinstance(raw_slots, str) else raw_slots)
+      for s in reversed(slots):
+        if s not in slots_set: # Child slots mask parents.
+          # Note: this assumes that the slot is not repeated within the class. If it is, the order will be last-wins.
+          slots_set.add(s)
+          slots_seq.append(s)
+
+  return tuple(reversed(slots_seq))
