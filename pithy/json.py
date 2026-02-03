@@ -99,7 +99,7 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, separato
   write_jsonl(stdout, *items, default=default, sort=sort, separators=separators, flush=flush, **kwargs)
 
 
-# input.
+# Input.
 
 
 def parse_json(text:JsonText|None, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
