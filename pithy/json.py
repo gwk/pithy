@@ -177,10 +177,10 @@ def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Callable[[dict[Any,
       keys_raw = _hook_type_keys(h)
       fn = _hook_type_fn(h)
     else:
-      try: keys_raw, fn_raw = h # Explicit pair.
+      try: keys_raw, type_or_fn = h # Explicit pair.
       except Exception as e:
         raise ValueError(f'malformed decoder hook; expected (keys, constructor) pair; received: {h!r}') from e
-      fn = _hook_type_fn(fn_raw) if isinstance(fn_raw, type) else fn_raw
+      fn = _hook_type_fn(type_or_fn) if isinstance(type_or_fn, type) else type_or_fn
       if isinstance(keys_raw, str): raise TypeError(keys_raw) # type: ignore[unreachable]
 
     keys = frozenset(keys_raw)
