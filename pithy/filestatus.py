@@ -172,14 +172,25 @@ def file_ctime(path_or_fd:PathOrFd, *, follow:bool) -> float: return _stat(path_
 
 def file_inode(path_or_fd:PathOrFd, *, follow:bool) -> int: return _stat(path_or_fd, follow_symlinks=follow).st_ino
 
-def file_permissions(path_or_fd:PathOrFd, *, follow:bool=True) -> int:
+
+def file_permissions(path_or_fd:PathOrFd, *, follow:bool) -> int:
+  '''
+  Return the permissions bits of the file, as an integer.
+  The type bits of `st_mode` are masked out, so the result is only the permission bits and suid/sgid/sticky bits.
+  '''
   # TODO: might be useful to OR the permissions of a symlink and its destination together; perhaps a separate function.
   return _stat(path_or_fd, follow_symlinks=follow).st_mode & PERM_MASK
 
-def file_perms_desc(path_or_fd:PathOrFd, *, follow:bool=True) -> str:
+
+def file_perms_desc(path_or_fd:PathOrFd, *, follow:bool) -> str:
   return perms_desc(file_permissions(path_or_fd, follow=follow))
 
-def file_size(path_or_fd:PathOrFd, *, follow:bool=True) -> int: return _stat(path_or_fd, follow_symlinks=follow).st_size
+def file_size(path_or_fd:PathOrFd, *, follow:bool=True) -> int:
+  '''
+  Return the size of the file in bytes, or the length of the symlink target if `follow=False` and the path is a symlink.
+  `follow` defaults to `True`.
+  '''
+  return _stat(path_or_fd, follow_symlinks=follow).st_size
 
 def file_stat(path_or_fd:PathOrFd, *, follow:bool) -> StatResult: return _stat(path_or_fd, follow_symlinks=follow)
 
@@ -228,7 +239,7 @@ def is_link_to_dir(path_or_fd:Path, *, raises:bool=False) -> bool|None:
 def is_link_to_file(path_or_fd:Path, *, raises:bool=False) -> bool|None:
   return is_link(path_or_fd, raises=raises) and is_file(path_or_fd, follow=True, raises=raises)
 
-def is_mount(path_or_fd:Path, *, follow:bool=True, raises:bool=False) -> bool|None:
+def is_mount(path_or_fd:Path, *, follow:bool, raises:bool=False) -> bool|None:
   try: s = _stat(path_or_fd, follow_symlinks=follow)
   except FileNotFoundError:
     if raises: raise
