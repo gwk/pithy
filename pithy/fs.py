@@ -44,12 +44,11 @@ def change_dir_to_src() -> None:
   change_dir(path_dir(argv[0]))
 
 
-def clone_or_symlink(src:Path, dst:Path, follow:bool=True, preserve_meta:bool=True) -> None:
+def clone_or_symlink(src:Path, dst:Path, *, follow:bool, preserve_meta:bool=True) -> None:
   raise NotImplementedError()
 
 
-def copy_path(src:Path, dst:Path, overwrite:bool=True, create_dirs:bool=False, follow:bool=True, preserve_meta:bool=False) \
- -> None:
+def copy_path(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) -> None:
   if overwrite and path_exists(dst, follow=False):
     remove_path(dst)
   if create_dirs:
@@ -57,7 +56,7 @@ def copy_path(src:Path, dst:Path, overwrite:bool=True, create_dirs:bool=False, f
   _Path(src).copy(dst, follow_symlinks=follow, preserve_metadata=preserve_meta)
 
 
-def copy_to_dir(src:Path, dst:Path, overwrite:bool=True, create_dirs:bool=False, follow:bool=True, preserve_meta:bool=False) \
+def copy_to_dir(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) \
  -> None:
   if create_dirs:
     make_dirs(dst)

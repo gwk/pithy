@@ -57,7 +57,7 @@ def build(args:Namespace, conf:CraftConfig) -> None:
   # Copy executable.
   exe_src = f'{mode_dir}/{conf.product_name}'
   exe_dst = f'{macos_path}/{conf.product_name}'
-  copy_path(exe_src, exe_dst)
+  copy_path(exe_src, exe_dst, follow=True)
 
   # Compile image assets.
   img_deps_path = f'{mode_dir}/image-deps.txt'
@@ -108,7 +108,7 @@ def build(args:Namespace, conf:CraftConfig) -> None:
       outSL(res_path, '->', dst_path)
       if res_mtime < dst_mtime: exit(f'resource build copy was subsequently modified: {dst_path}')
       make_dirs(path_dir(dst_path))
-      copy_path(res_path, dst_path)
+      copy_path(res_path, dst_path, follow=True)
 
   # Touch the bundle.
   run(['touch', '-c', bundle_path], exits=True)

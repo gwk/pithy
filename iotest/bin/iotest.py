@@ -524,7 +524,7 @@ def check_file_exp(ctx:Ctx, case:Case, exp:FileExpectation) -> bool:
   if ctx.interactive:
     if exp.src_path:
       if confirm(f'update expectation to match result ({path} -> {exp.src_path})'):
-        copy_path(path, exp.src_path)
+        copy_path(path, exp.src_path, follow=True)
     else:
       outSL('note: cannot update expectation:', exp)
   outSL('-' * bar_width)

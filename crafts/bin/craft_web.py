@@ -47,7 +47,7 @@ def main() -> None:
       transpile_js(ts_path=ts_path, dst_path=dst_path, modules_map=conf.ts_modules)
     else:
       outSL(ts_path, '->', dst_path)
-      copy_path(src=ts_path, dst=dst_path)
+      copy_path(src=ts_path, dst=dst_path, follow=True)
 
   for res_root, dst_root in conf.resources.items():
     build_dst_root = path_join(build_dir, dst_root)
@@ -59,7 +59,7 @@ def main() -> None:
       outSL(res_path, '->', dst_path)
       if res_mtime < dst_mtime: exit(f'resource build copy was subsequently modified: {dst_path}')
       make_dirs(path_dir(dst_path))
-      copy_path(res_path, dst_path)
+      copy_path(res_path, dst_path, follow=True)
 
 def transpile_js(ts_path:str, dst_path:str, modules_map:dict[str,str]) -> None:
   lines = list(open(ts_path))
