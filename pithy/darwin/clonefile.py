@@ -7,7 +7,6 @@ from ctypes import c_char_p, c_int, c_uint, CDLL, set_errno
 from errno import EEXIST, ENOENT, ENOTSUP
 from os import strerror
 from os.path import dirname, isdir
-from typing import Callable
 
 
 __all__ = ['clonefile', 'volume_supports_clone']
@@ -27,19 +26,21 @@ CLONE_NOFOLLOW = 1 # Int32
 CLONE_NOOWNERCOPY = 2 # Int32
 
 
-def clonefile(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True, fallback:Callable[..., None]|None=None) \
- -> None:
+class CloneNotSupportedError(OSError): pass
+
+
+def clonefile(src:str, dst:str, *, follow:bool, preserve_owner:bool=True) -> None:
   '''
   Clone a file using the file system's copy-on-write semantics if available (e.g. APFS, BTRFS, XFS); otherwise copy.
   '''
-  flags = (0 if follow_symlinks else CLONE_NOFOLLOW) | (0 if preserve_owner else CLONE_NOOWNERCOPY)
+  flags = (0 if follow else CLONE_NOFOLLOW) | (0 if preserve_owner else CLONE_NOOWNERCOPY)
   res = _clonefile(src.encode(), dst.encode(), flags)
   if res == 0: return
   assert res == -1
   en = set_errno(0)
   assert en != 0, (src, dst, res, en)
-  if en == ENOTSUP and fallback is not None: # cloning not supported.
-    fallback(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner)
+  if en == ENOTSUP:
+    raise CloneNotSupportedError(en, strerror(en), src)
   elif en == ENOENT: # one of the files or intervening directories does not exist.
     dst_dir = dirname(dst)
     if dst_dir and not isdir(dst_dir): raise NotADirectoryError(dst_dir)
