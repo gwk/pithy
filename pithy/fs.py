@@ -2,15 +2,14 @@
 
 import os as _os
 import re as _re
-import shutil as _shutil
 import stat as _stat
 import time as _time
 from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
+from pathlib import Path as _Path
 from sys import argv
 from typing import Any, Callable, cast, Iterable, Iterator, TextIO
 
-from .clonefile import clone
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
   file_status, is_dir, is_file, is_file_executable_by_owner, is_link, is_link_to_dir, is_link_to_file, is_mount, path_exists)
 from .path import (abs_or_norm_path, abs_path, is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, Path,
@@ -45,35 +44,25 @@ def change_dir_to_src() -> None:
   change_dir(path_dir(argv[0]))
 
 
-def clone_or_hardlink(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True) -> None:
-  clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=None) # TODO
+def clone_or_symlink(src:Path, dst:Path, follow:bool=True, preserve_meta:bool=True) -> None:
+  raise NotImplementedError()
 
 
-def clone_or_symlink(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True) -> None:
-  clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=None) # TODO
-
-
-def copy_eagerly(src:str, dst:str, follow_symlinks:bool=True, preserve_owner:bool=True) -> None:
-  # TODO: implementation that more precisely matches semantics of APFS clonefile.
-  # TODO: test on other platforms, figure out appropriate cross platform semantics. In particular, look at BTRFS and ZFS.
-  _shutil.copytree(src=src, dst=dst)
-
-
-def copy_path(src:str, dst:str, overwrite:bool=True, create_dirs:bool=False, follow_symlinks:bool=True,
- preserve_owner:bool=True) -> None:
+def copy_path(src:Path, dst:Path, overwrite:bool=True, create_dirs:bool=False, follow:bool=True, preserve_meta:bool=False) \
+ -> None:
   if overwrite and path_exists(dst, follow=False):
     remove_path(dst)
   if create_dirs:
     make_parent_dirs(dst)
-  clone(src=src, dst=dst, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner, fallback=copy_eagerly)
+  _Path(src).copy(dst, follow_symlinks=follow, preserve_metadata=preserve_meta)
 
 
-def copy_to_dir(src:str, dst:str,  overwrite:bool=True, create_dirs:bool=False, follow_symlinks:bool=True,
- preserve_owner:bool=True) -> None:
+def copy_to_dir(src:Path, dst:Path, overwrite:bool=True, create_dirs:bool=False, follow:bool=True, preserve_meta:bool=False) \
+ -> None:
   if create_dirs:
     make_dirs(dst)
-  return copy_path(src=src, dst=path_join(dst, path_name(src)),
-    overwrite=overwrite, create_dirs=False, follow_symlinks=follow_symlinks, preserve_owner=preserve_owner)
+  return copy_path(src=src, dst=path_join(dst, path_name(src)), overwrite=overwrite, create_dirs=False, follow=follow,
+    preserve_meta=preserve_meta)
 
 
 def abbreviate_user(path:Path) -> str: return str_path(path).replace(home_dir(), '~')
