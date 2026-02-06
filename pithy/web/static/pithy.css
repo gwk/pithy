@@ -595,6 +595,10 @@ dialog.modal {
 
 /* SquelchApp. */
 
+.squelch {
+  font-size: small;
+}
+
 .squelch form {
   margin: 1em 0;
 }
