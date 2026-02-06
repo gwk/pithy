@@ -355,6 +355,8 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
       else:
         cell_fn = mk_cell_plain(col)
     col_headers.append(th)
+    if vis.cl:
+      cell_fn = mk_cl_wrapper(cell_fn, vis.cl)
     render_cell_fns.append(cell_fn)
 
   return ''.join(column_parts), ''.join(from_parts), col_headers, render_cell_fns
@@ -417,6 +419,18 @@ def mk_cell_sq(col:Column, vis:Vis, *, sq_col_name:str, app_path:str, render_fn:
     return Td(cl=('joined', cl), _=A(href=fmt_url(app_path, table=vis.fk_schema_table, where=where), title=val, _=display_val))
 
   return cell_sq
+
+
+def mk_cl_wrapper(cell_fn:CellRenderFn, cl:str) -> CellRenderFn:
+  '''
+  Create a cell value rendering function that wraps the given cell function and adds the given CSS class to the result cell.
+  '''
+  def cell_cl_wrapper(row:Row) -> Td:
+    td = cell_fn(row)
+    td.append_class(cl)
+    return td
+
+  return cell_cl_wrapper
 
 
 def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,MuChild]:
