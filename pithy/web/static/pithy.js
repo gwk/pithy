@@ -556,7 +556,6 @@ function makeTableCollapsible(table, collapsed = false) {
  * @param {Element} element - The element to add the double-click handler to.
  */
 function makeElementSelectTableContentsOnDoubleClick(element) {
-  log(`makeElementSelectTableContentsOnDoubleClick: element: ${element}`);
   element.addEventListener('dblclick', (event) => {
     const target = event.currentTarget;
     if (!(target instanceof HTMLElement)) { throw new Error('makeElementSelectTableContentsOnDoubleClick: bad target.'); }
