@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 from pithy.sqlite.parse import sql_parse_schema_table_column
 
-from ...html import Td
+from ...html import Span, Td
 from ...sqlite.util import sql_quote_qual_entity as qqe
 
 
@@ -46,3 +46,9 @@ class Vis:
   @cached_property
   def fk_schema_table(self) -> str:
     return qqe(self.fk_schema, self.fk_table)
+
+
+def dt_split_wrap(dts:str) -> Span:
+  d, _, t = dts.partition(' ')
+  if not t: return Span(_=d)
+  return Span(_=[Span(cl='nowrap', _=d), ' ', Span(cl='nowrap', _=t)])
