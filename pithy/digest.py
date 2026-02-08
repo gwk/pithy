@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-'Print file hashes. The first argument is the format; remaining args are the paths.'
+'Digest functions by name.'
 
 import hashlib
 from typing import Callable
