@@ -96,9 +96,9 @@ def dl_edit_distance(seq_a:Sequence[_T], seq_b:Sequence[_T]) -> int:
     for j in range(1, lb + 1):
       cost = 0 if seq_a[i - 1] == seq_b[j - 1] else 1
       d[i][j] = min(
-        d[i - 1][j] + 1, # Deletion
-        d[i][j - 1] + 1, # Insertion
-        d[i - 1][j - 1] + cost # Substitution
+        d[i - 1][j] + 1, # Deletion.
+        d[i][j - 1] + 1, # Insertion.
+        d[i - 1][j - 1] + cost # Substitution.
       )
       if i > 1 and j > 1 and seq_a[i - 1] == seq_b[j - 2] and seq_a[i - 2] == seq_b[j - 1]:
         d[i][j] = min(d[i][j], d[i - 2][j - 2] + cost)
