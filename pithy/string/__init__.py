@@ -7,7 +7,7 @@ from decimal import Decimal
 from string import Template
 from typing import Any, Callable, cast, Iterable, Iterator, Sequence, TypeVar, Union
 
-from .defaultlist import DefaultList
+from ..defaultlist import DefaultList
 
 
 _T = TypeVar('_T')
