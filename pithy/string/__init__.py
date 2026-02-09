@@ -5,7 +5,7 @@
 import re
 from decimal import Decimal
 from string import Template
-from typing import Any, Callable, cast, Iterable, Iterator, Sequence, TypeVar, Union
+from typing import Any, Callable, cast, Iterable, Iterator, Sequence, TypeVar
 
 from ..defaultlist import DefaultList
 
@@ -327,7 +327,8 @@ def simplify_punctuation(text:str) -> str:
   return text
 
 
-StrTree = dict[str,Union['StrTree',None]]
+type StrTree = dict[str, StrTree|None]
+
 
 def str_tree(strings:Iterable[str], update:dict[str,dict|None]|None=None, dbg:bool=False) -> StrTree:
   if dbg:
