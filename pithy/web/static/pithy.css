@@ -246,7 +246,7 @@ form.grid, .form_grid {
   margin: 1em 0;
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 1em;
+  gap: 0.5em;
 }
 
 :is(form.grid, .form_grid) > * {
