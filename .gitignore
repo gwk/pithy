@@ -15,5 +15,8 @@ docs/_muck
 todo.md
 typeshed
 
+# Claude files are symlinks to AGENTS.md everywhere.
+CLAUDE.md
+
 # Packaging pyproject.toml files are generated from smaller project.toml.
 pkg/*/pyproject.toml

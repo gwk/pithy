@@ -41,6 +41,9 @@ install:
 iotest:
 	iotest -fail-fast
 
+link-claude-md:
+	find . -name 'AGENTS.md' -print0 | xargs -0 -I {} sh -c 'ln -sf "$(basename {})" "$(dirname {})/CLAUDE.md"'
+
 lint:
 	pyflakes {{packages}}
 
