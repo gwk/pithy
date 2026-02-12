@@ -7,7 +7,7 @@ from pithy.iterable import (closed_int_intervals, fan_by_attr, fan_by_index_fn, 
   filtermap_with_mapping, first_el, frozenset_from, group_by_cmp, group_by_heads, int_tuple_ranges, is_sorted, iter_from,
   iter_interleave, iter_interleave_sep, NoElements, OnHeadless, prefix_tree, set_from, split_by_preds, split_els, transpose,
   window_iter, window_pairs)
-from utest import utest, utest_call, utest_exc, utest_seq, utest_seq_exc
+from utest import utest, utest_exc, utest_run, utest_seq, utest_seq_exc
 
 
 utest(True, is_sorted, [])
@@ -45,7 +45,7 @@ utest_seq([(0,1), (2,4), (5,9), (10,11)], int_tuple_ranges, [0, (2,4), range(5,7
 
 utest_seq([-1, -3], filtermap_with_mapping, [0, 1, 2, 3], {1: -1, 3: -3})
 
-@utest_call
+@utest_run
 def test_fan_by_attr():
   class Pair(NamedTuple):
     x:int

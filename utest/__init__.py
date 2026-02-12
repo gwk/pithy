@@ -11,12 +11,12 @@ from os import environ as _environ, getcwd as _getcwd
 from os.path import relpath as _rel_path
 from sys import stderr as _stderr
 from traceback import format_exception as _format_exception
-from typing import Any, Callable, Iterable, TypeVar
+from typing import Any, Callable, Iterable
 
 
 __all__ = [
   'utest',
-  'utest_call',
+  'utest_run',
   'utest_exc',
   'utest_repr',
   'utest_seq',
@@ -31,9 +31,12 @@ _utest_test_count = 0
 _utest_failure_count = 0
 
 
-_C = TypeVar('_C', bound=Callable)
-def utest_call(callable:_C) -> _C:
-  'A function decorator to call the defined function immediately. Useful for wrapping test state in a local function scope.'
+def utest_run(callable:Callable[[],None]) -> Callable[[],None]:
+  '''
+  A function decorator to run the decorated function immediately.
+  The function must take no arguments; it is intended to serve only as a scoped block.
+  This is useful for running tests inside of a local scope to compartmentalize test variables.
+  '''
   callable()
   return callable
 
