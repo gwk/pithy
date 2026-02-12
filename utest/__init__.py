@@ -1,5 +1,44 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
 '''
 utest is a tiny unit testing library.
+The test functions mostly take the form of `utest(expectation, fn, *args, **kwargs)`,
+where `expectation` is the expected value or exception, and `fn` is a callable under test, and `args`/`kwargs` are arguments.
+The idea is that this reads similar to an `assert expectation == fn(*args, **kwargs)`,
+but with more flexible expectations and the ability to print out the argument and result values on failure.
+
+* `utest_run` is a function decorator to execute the decorated function immediately,
+  essentially creating a local scope for a group of tests and any necessary test variables.
+* `utest` performs an equality test on the result.
+* `utest_exc` expects an exception to be raised, and checks that the exception is as expected via `compare_exceptions`.
+* `utest_repr` performs a test on the `repr` of the result.
+* `utest_type` performs an `isinstance` test on the result.
+* `utest_seq` and `utest_seq_exc` are like `utest` and `utest_exc`, but convert the result to a list before comparison.
+* `utest_items` and `utest_items_exc` are like `utest_seq` and `utest_seq_exc`, but convert the result to a list of items before
+  comparison.
+* `utest_val`, `utest_val_ne`, and `utest_val_type` are like `utest`, but with a custom description and no function under test;
+  they are intended for cases where a value has already been produced and there is no function to call.
+
+Examples:
+
+```
+utest(0, int, '0') # Asserting that 0 == int('0').
+
+utest_exc('ValueError("invalid literal for int() with base 10: \'a\'")', int, 'a') # Check for an exact exception repr.
+#^ Note that in some cases it is not possible to construct a private exception instance so this is the next best option.
+
+utest_exc(ValueError, int, 'a') # Check that a ValueError is raised, without checking the args.
+
+utest_exc(ValueError("invalid literal for int() with base 10: 'a'"), int, 'a') # Check exception type and args.
+
+utest_seq([0, 1, 2], range, 3) # Check the values in an iterable result.
+
+utest_seq(range(1, 4), range, 3, 0, -1, _sort=True) # Check the values in an iterable, sorting the result.
+
+utest_items([('a', 0), ('b', 1)], dict, a=0, b=1) # Check the items in a mapping result.
+
+utest_val(0, len(''), desc='length of empty string') # Check a value without a function, with a custom description.
+```
 '''
 
 
@@ -94,12 +133,13 @@ def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_dept
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
+  See `compare_exceptions` for the exact comparison method.
   '''
   global _utest_test_count
   _utest_test_count += 1
   try: ret = fn(*args, **kwargs)
   except BaseException as exc:
-    if not _compare_exceptions(exp_exc, exc):
+    if not compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
       if _exit: raise
   else:
@@ -112,6 +152,7 @@ def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit:bool=False, _
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is raised,
   or if any items of the returned seqence do not equal the items of `exp`.
+  If `_sort` is True, then sort the result sequence before comparison.
   '''
   global _utest_test_count
   _utest_test_count += 1
@@ -140,6 +181,7 @@ def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
+  See `compare_exceptions` for the exact comparison method.
   '''
   global _utest_test_count
   _utest_test_count += 1
@@ -147,7 +189,7 @@ def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_
     ret_seq = fn(*args, **kwargs)
     ret = list(ret_seq)
   except BaseException as exc:
-    if not _compare_exceptions(exp_exc, exc):
+    if not compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
       if _exit: raise
   else:
@@ -184,6 +226,7 @@ def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utes
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a key/value items sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
+  See `compare_exceptions` for the exact comparison method.
   '''
   global _utest_test_count
   _utest_test_count += 1
@@ -191,7 +234,7 @@ def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utes
     ret_mapping = fn(*args, **kwargs)
     ret = list(ret_mapping.items())
   except BaseException as exc:
-    if not _compare_exceptions(exp_exc, exc):
+    if not compare_exceptions(exp_exc, exc):
       _utest_failure(_utest_depth, exp_label='exception', exp=exp_exc, exc=exc, subj=fn, args=args, kwargs=kwargs)
       if _exit: raise
   else:
@@ -235,7 +278,7 @@ def utest_val_type(exp_val_type:Any, act_val:Any, desc:Any='<value>') -> None:
 def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any
  ) -> None:
   '''
-  Apply `test_fn` to the provided arguments,
+  Apply `test_fn` (e.g. `utest`, `utest_exc`, etc.) to the provided arguments,
   then again to the same arguments but with the last two positional parameters swapped.
   '''
   head = args[:-2]
@@ -243,6 +286,23 @@ def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit:boo
   args_swapped = head + (argB, argA)
   test_fn(exp, fn, *args, _exit=_exit, _utest_depth=_utest_depth+1, **kwargs)
   test_fn(exp, fn, *args_swapped, _exit=_exit, _utest_depth=_utest_depth+1, **kwargs)
+
+
+def compare_exceptions(exp:Any, act:Any) -> bool:
+  '''
+  Compare two exceptions for approximate value equality.
+  Since Python exceptions do not implement value equality, we offer several methods of comparison:
+  * if `exp` is a string, then compare it to the repr of `act`.
+  * if `exp` is a type, then test if `act` is an instance of `exp`.
+  * otherwise, compare the types and args of `act` (which must be an exception instance) to `exp`.
+  '''
+  if isinstance(exp, str): return exp == repr(act)
+  if isinstance(exp, type): return isinstance(act, exp)
+
+  assert isinstance(exp, BaseException), \
+    f'Expected exception must be an exception instance, type, or string; received {type(exp)}.'
+
+  return type(exp) == type(act) and exp.args == act.args
 
 
 def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:Any=None, subj:Any=None,
@@ -287,19 +347,6 @@ def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, r
     _errL()
     _print_exception(exc)
   _errL()
-
-
-def _compare_exceptions(exp:Any, act:Any) -> bool:
-  '''
-  Compare two exceptions for approximate value equality.
-  Since Python exceptions do not implement value equality, we offer several methods of comparison:
-  * if `exp` is a string, then compare it to the repr of `act`.
-  * if `exp` is a type, then test if `act` is an instance of `exp`.
-  * otherwise, compare the types and args of `act` (which must be an exception instance) to `exp`.
-  '''
-  if isinstance(exp, str): return exp == repr(act)
-  if isinstance(exp, type): return isinstance(act, exp)
-  return type(exp) == type(act) and exp.args == act.args
 
 
 def _errL(*items:Any) -> None: print(*items, sep='', file=_stderr)
