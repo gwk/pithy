@@ -25,6 +25,9 @@ This repository contains code for several python packages:
 ## Code Style
 - Python 3.14+, strict typeing with mypy.
 - 2-space indentation (not 4-space).
+- Double newlines between functions.
+- Double newlines between methods, except for very compact classes where no methods have blank lines.
+- Triple newlines between classes that have double-newline method separation.
 - Type hints required.
 - Use the modern `type` keyword wherever appropriate.
 - Type declarations omit spaces after colons and inside of types, e.g `def f(x:dict[str,int]) -> None: ...`.
