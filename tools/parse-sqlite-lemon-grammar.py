@@ -4,8 +4,8 @@
 from argparse import ArgumentParser
 from typing import Any, Iterable, Iterator
 
-from pithy.ansi import BG_C, BG_R, RST, TXT_B, TXT_C, TXT_G, TXT_Y
-from pithy.iterable import fan_items, joinSCS
+from pithy.ansi import BG_R, RST, TXT_G, TXT_Y
+from pithy.iterable import fan_items
 from pithy.lex import Lexer, LexMode, LexTrans
 from pithy.parse import Atom, atom_text, Choice, choice_val, OneOrMore, Opt, ParseError, Parser, Struct, ZeroOrMore
 from pithy.path import vscode_path
@@ -23,7 +23,6 @@ def main() -> None:
 
   dbg_lexer = False
   if dbg_lexer:
-    prev_kind = ''
     for token in lexer.lex(source, drop=['comment', 'c_syntax']):
       match token.kind:
         case 'invalid': bg, rst = (BG_R, RST)
@@ -153,18 +152,18 @@ def preprocess(source:Source, stream:Iterable[Token]) -> Iterator[Token]:
         cond_stack.append((if_token, None))
 
       case 'else_':
-        if not cond_stack: source.fail((token, f'preprocess error: %else without preceding conditional.'))
+        if not cond_stack: source.fail((token, 'preprocess error: %else without preceding conditional.'))
         expect_newline(token)
 
       case 'endif':
-        if not cond_stack: source.fail((token, f'preprocess error: %endif without preceding conditional.'))
+        if not cond_stack: source.fail((token, 'preprocess error: %endif without preceding conditional.'))
         _, opt_cond_token = cond_stack[-1]
         end_cond_token = next(stream)
         if end_cond_token.kind == 'bang':
           end_cond_token = next(stream)
         if end_cond_token.kind != 'newline': # End condition is not always specified.
           if opt_cond_token and source[opt_cond_token] != source[end_cond_token]:
-            source.fail((opt_cond_token, 'note: opening condition.'), (end_cond_token, f'preprocess error: mismatched %endif condition.'))
+            source.fail((opt_cond_token, 'note: opening condition.'), (end_cond_token, 'preprocess error: mismatched %endif condition.'))
           expect_newline(end_cond_token)
         cond_stack.pop()
 

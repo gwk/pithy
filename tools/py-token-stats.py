@@ -4,10 +4,9 @@ from collections import Counter
 from math import ceil, log10
 from sys import argv
 
-from pithy.io import *
-from pithy.lex import Lexer
+from pithy.io import errL
 from pithy.py.lex import lexer
-from tolkien import Source, Token
+from tolkien import Source
 
 
 def main() -> None:

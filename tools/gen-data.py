@@ -7,7 +7,6 @@ from argparse import ArgumentParser
 from collections import defaultdict
 from itertools import chain
 from os.path import join as path_join
-from sys import stderr
 from typing import Iterator, NamedTuple
 
 from pithy.unicode import coalesce_sorted_ranges
@@ -72,7 +71,7 @@ def main() -> None:
     print((' ' if i % 4 else '\n  '), repr_pair(codes), ',', sep='', end='')
   print('\n]')
 
-  data = parse_data(data_path)
+  parse_data(data_path)
 
 
 Row = tuple[CodeRange, tuple[str,...]]

@@ -2,9 +2,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from typing import NamedTuple
-from pithy.unicode.charsets import ascii_charsets
+
 from pithy.unicode.categories import unicode_categories
+from pithy.unicode.charsets import ascii_charsets
 
 
 def main() -> None:
