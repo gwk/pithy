@@ -4,16 +4,13 @@ import signal
 from types import FrameType
 from typing import Callable, ContextManager
 
+from .exceptions import Timeout
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
-
-
-class Timeout(Exception):
-  'Exception indicating that an Alarm timed out.'
 
 
 class Alarm(ContextManager):
 
-  def __init__(self, timeout:int, msg:str='alarm timed out after {timeout} seconds', on_signal:Callable[[],None]|None=None):
+  def __init__(self, timeout:int, msg:str='Alarm timed out after {timeout} seconds', on_signal:Callable[[],None]|None=None):
     '''
     Alarm is a context manager that sets up a SIGALRM signal handler and raises a Timeout exception.
     if the block takes longer than the specified timeout.
@@ -22,7 +19,7 @@ class Alarm(ContextManager):
     if not isinstance(timeout, int): raise TypeError(f'timeout must be an int; received: {timeout!r}')
     if timeout < 0: raise TypeError(f'timeout must be nonnegative; received: {timeout!r}')
     self.timeout = timeout
-    self.msg = msg
+    self.msg = msg.format(timeout=timeout) # Format now so that any error is raised at construction time.
     self.on_signal = on_signal
     self.timed_out = False
 
@@ -47,4 +44,4 @@ class Alarm(ContextManager):
     signal.alarm(0) # disable alarm.
     signal.signal(signal.SIGALRM, signal.SIG_DFL) # uninstall handler.
     if exc_type: return # exception will be reraised.
-    if self.timed_out: raise Timeout(self.msg.format(timeout=self.timeout))
+    if self.timed_out: raise Timeout(self.msg)

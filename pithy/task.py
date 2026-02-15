@@ -10,7 +10,8 @@ from sys import stderr, stdout
 from time import time as _now
 from typing import AnyStr, cast, Generator, IO, Literal, NoReturn, Sequence
 
-from .alarm import Alarm, Timeout
+from .alarm import Alarm
+from .exceptions import Timeout
 
 
 _convenience_exports = (DEVNULL, STDOUT)
