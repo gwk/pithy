@@ -167,6 +167,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None
   if stdin == PIPE:
     stdin, send = _os.pipe()
   recv, out = _os.pipe()
+
   def cleanup() -> None:
     if send is not None: _os.close(send)
     if recv is not None: _os.close(recv)
@@ -359,9 +360,10 @@ def _is_permitted(path:str, mode:int) -> bool:
   return _access(path, mode, effective_ids=(_access in _supports_effective_ids))
 
 
-class ExecutableNotFound(ValueError): pass
-
 # Exceptions.
+
+
+class ExecutableNotFound(ValueError): pass
 
 
 class UnexpectedExit(Exception):
