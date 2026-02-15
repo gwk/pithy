@@ -9,6 +9,9 @@ but with more flexible expectations and the ability to print out the argument an
 
 * `utest_run` is a function decorator to execute the decorated function immediately,
   essentially creating a local scope for a group of tests and any necessary test variables.
+  Any exception raised by the decorated function is caught and reported as a test failure.
+* `utest_run_exc` is a parameterized function decorator to execute the decorated function immediately,
+  expecting a specific exception to be raised. See `compare_exceptions` for the exact comparison method.
 * `utest` performs an equality test on the result.
 * `utest_exc` expects an exception to be raised, and checks that the exception is as expected via `compare_exceptions`.
 * `utest_repr` performs a test on the `repr` of the result.
@@ -56,6 +59,7 @@ from typing import Any, Callable, Iterable
 __all__ = [
   'utest',
   'utest_run',
+  'utest_run_exc',
   'utest_exc',
   'utest_repr',
   'utest_seq',
@@ -75,9 +79,34 @@ def utest_run(callable:Callable[[],None]) -> Callable[[],None]:
   A function decorator to run the decorated function immediately.
   The function must take no arguments; it is intended to serve only as a scoped block.
   This is useful for running tests inside of a local scope to compartmentalize test variables.
+  Any exception raised by the decorated function is caught and reported as a test failure.
   '''
-  callable()
+  global _utest_test_count
+  _utest_test_count += 1
+  try: callable()
+  except BaseException as exc:
+    _utest_failure(0, exp_label='completion', exp='<no exception>', exc=exc, subj=callable)
   return callable
+
+
+def utest_run_exc(exp_exc:Any) -> Callable[[Callable[[],None]],Callable[[],None]]:
+  '''
+  A parameterized function decorator to run the decorated function immediately and expect an exception.
+  The function must take no arguments; it is intended to serve only as a scoped block.
+  Log a test failure if no exception is raised or if the raised exception does not match `exp_exc`.
+  See `compare_exceptions` for the exact comparison method.
+  '''
+  def decorator(callable:Callable[[],None]) -> Callable[[],None]:
+    global _utest_test_count
+    _utest_test_count += 1
+    try: callable()
+    except BaseException as exc:
+      if not compare_exceptions(exp_exc, exc):
+        _utest_failure(0, exp_label='exception', exp=exp_exc, exc=exc, subj=callable)
+    else:
+      _utest_failure(0, exp_label='exception', exp=exp_exc, ret_label='value', ret='<no exception>', subj=callable)
+    return callable
+  return decorator
 
 
 def utest(exp:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
