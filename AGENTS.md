@@ -10,6 +10,9 @@ This repository contains code for several python packages:
 - utest: a simple unit test system.
 - wu: a markdown-like document format and associated tool.
 
+## Platform Support
+This project targets Python 3.14+ on modern Unix platforms. Windows is not supported.
+
 ## Build Commands
 - Check everything: `just check`; runs lint, typecheck, test.
 - Lint: `just lint`
