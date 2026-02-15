@@ -42,6 +42,8 @@ This repository contains code for several python packages:
 - Line length: 128 characters max; wrap long function declarations past that length, not per parameter.
 - Docstrings: single quotes for brief docs, triple single-quotes for multi-line.
 - Full sentences with periods in comments and docstrings.
+- Do not put non-ascii characters like em-dashes or fancy quotes in code comments or docstrings unless there is is a specific
+  reason to, for example if you were describing what the character is.
 - Add the following standard license text as a comment to all files that support comments:
   `Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.`
 
