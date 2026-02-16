@@ -88,7 +88,7 @@ def utest_run(callable:Callable[[],None]) -> Callable[[],None]:
   _utest_test_count += 1
   try: callable()
   except BaseException as exc:
-    _utest_failure(0, exp_label='clean run', exp=None, exc=exc, subj=callable)
+    _utest_failure(0, exp_label='clean run', exp=None, exc=exc, use_traceback=True, subj=callable)
   return callable
 
 
@@ -105,7 +105,7 @@ def utest_run_exc(exp_exc:ExpectedException) -> Callable[[Callable[[],None]],Cal
     try: callable()
     except BaseException as exc:
       if not compare_exceptions(exp_exc, exc):
-        _utest_failure(0, exp_label='exception', exp=exp_exc, exc=exc, subj=callable)
+        _utest_failure(0, exp_label='exception', exp=exp_exc, exc=exc, use_traceback=True, subj=callable)
     else:
       _utest_failure(0, exp_label='exception', exp=exp_exc, ret_label='value', ret='<no exception>', subj=callable)
     return callable
@@ -338,13 +338,24 @@ def compare_exceptions(exp:ExpectedException, act:Any) -> bool:
 
 
 def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:BaseException|None=None,
- subj:Any=None, args:tuple[Any,...]=(), kwargs:dict[str,Any]={}) -> None:
+ use_traceback:bool=False, subj:Any=None, args:tuple[Any,...]=(), kwargs:dict[str,Any]={}) -> None:
+  '''
+  Report a test failure. `depth` is the number of extra stack frames between this function and the test call site.
+  If `use_traceback` is True, the failure location is derived from the innermost frame of the exception traceback
+  rather than the call stack; this is used by `utest_run` where the exception may originate from an arbitrary frame.
+  '''
 
   global _utest_failure_count
   assert subj is not None
   _utest_failure_count += 1
 
-  frame = _getframe(2 + depth) # Caller of caller.
+  if use_traceback:
+    assert exc is not None and exc.__traceback__ is not None
+    tb = exc.__traceback__
+    while tb.tb_next is not None: tb = tb.tb_next # Innermost frame.
+    frame = tb.tb_frame
+  else:
+    frame = _getframe(2 + depth) # Caller of caller.
 
   try: name = subj.__qualname__
   except AttributeError: name = str(subj)
