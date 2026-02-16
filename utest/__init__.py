@@ -46,11 +46,11 @@ utest_val(0, len(''), desc='length of empty string') # Check a value without a f
 
 
 import atexit as _atexit
-import inspect as _inspect
 import pathlib as _pathlib
 import re as _re
 from os import environ as _environ, getcwd as _getcwd
 from os.path import relpath as _rel_path
+from sys import _getframe as _getframe
 from sys import stderr as _stderr
 from traceback import format_exception as _format_exception
 from typing import Any, Callable, Iterable
@@ -344,17 +344,15 @@ def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, r
   assert subj is not None
   _utest_failure_count += 1
 
-  frame_record = _inspect.stack()[2 + depth] # caller of caller.
-  frame = frame_record[0]
-  info = _inspect.getframeinfo(frame)
+  frame = _getframe(2 + depth) # Caller of caller.
 
   try: name = subj.__qualname__
   except AttributeError: name = str(subj)
 
-  path = _rel_path(info.filename, start=_work_dir)
+  path = _rel_path(frame.f_code.co_filename, start=_work_dir)
 
   if '/' not in path: path = f'./{path}'
-  _errL(f'\n{path}:{info.lineno}: utest failure: {name}')
+  _errL(f'\n{path}:{frame.f_lineno}: utest failure: {name}')
 
   for i, el in enumerate(args):
     _errL(f'  arg {i} = {el!r}')
