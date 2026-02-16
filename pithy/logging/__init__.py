@@ -16,8 +16,6 @@ from ..string import identifier_or_repr
 A lightweight logging system.
 '''
 
-ExcInfo = tuple[type[BaseException],BaseException,TracebackType|None]|tuple[None,None,None]
-
 LogLevel = Literal['debug', 'info', 'warn', 'error']
 
 log_levels:tuple[str,...] = LogLevel.__args__ # type: ignore[attr-defined]
@@ -88,7 +86,7 @@ def _log(level:str, _:str, **kwargs:Any) -> None:
   print(render_log_fn(level, _, **kwargs), flush=True)
 
 
-def render_log_text(level:str, _:str='', __exc_info:ExcInfo|None=None, **kwargs:Any) -> str:
+def render_log_text(level:str, _:str='', exc:BaseException|None=None, **kwargs:Any) -> str:
   '''
   Log a message at the given level with optional key-value pairs.
   The output format is logfmt.
@@ -99,21 +97,21 @@ def render_log_text(level:str, _:str='', __exc_info:ExcInfo|None=None, **kwargs:
   clr = log_level_colors.get(level, '')
   rst = RST if clr else ''
   exc_text = ''
-  if __exc_info is not None:
-    exc_text = f'\n{fmt_exc_info_text(__exc_info)}'
+  if exc is not None:
+    exc_text = f'\n{fmt_exc_text(exc)}'
 
   return f'{clr}{level}{rst}:{msg}{pairs}{exc_text}'
 
 
-def render_log_json(level:str, _:str='', __exc_info:ExcInfo|None=None, **kwargs:Any) -> str:
+def render_log_json(level:str, _:str='', exc:BaseException|None=None, **kwargs:Any) -> str:
   '''
   Render a log message as a JSON string.
   '''
   # Construct the log record so that level and message are rendered first.
   items:dict[str,Any] = {'level': level}
   if _: items['_'] = _
-  if __exc_info is not None:
-    items['__exc_info'] = fmt_exc_info_json(__exc_info)
+  if exc is not None:
+    items['exc'] = fmt_exc_json(exc)
   items.update(kwargs)
   return render_json(items, ensure_ascii=False, indent=None, separators=(',', ':'), default=encode_obj)
 
@@ -121,32 +119,32 @@ def render_log_json(level:str, _:str='', __exc_info:ExcInfo|None=None, **kwargs:
 render_log_fn = render_log_text if is_log_tty else render_log_json
 
 
-def fmt_exc_info_text(exc_info:ExcInfo) -> str:
+def fmt_exc_text(exc:BaseException) -> str:
   '''
   Format exception information as text.
   '''
-  te = TracebackException(*exc_info).format(colorize=True) # type: ignore[call-arg]
+  te = TracebackException.from_exception(exc).format(colorize=True) # type: ignore[call-arg]
   return ''.join(te)
 
 
-def fmt_exc_info_json(exc_info:ExcInfo) -> list[str]:
+def fmt_exc_json(exc:BaseException) -> list[str]:
   '''
   Format exception information as a JSON-serializable dict.
   '''
-  return list(TracebackException(*exc_info).format(colorize=True)) # type: ignore[call-arg]
+  return list(TracebackException.from_exception(exc).format(colorize=True)) # type: ignore[call-arg]
 
 
 
 # excepthooks.
 
 def main_excepthook(exc_type:type[BaseException], exc_value:BaseException, traceback:TracebackType|None) -> None:
-  'Logging function for sys.excepthook.'
-  logE('Uncaught exception', __exc_info=(exc_type, exc_value, traceback))
+  'Logging function for sys.excepthook. Note that only the exc_value is used.'
+  logE('Uncaught exception', exc=exc_value)
 
 
 def threading_excepthook(args:Any) -> None:
   'Logging function for threading.excepthook.'
-  logE('Uncaught threading exception', __exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+  logE('Uncaught threading exception', exc=args.exc_value)
 
 
 def install_excepthooks() -> None:
@@ -193,7 +191,7 @@ class PithyLogFormatter(Formatter):
     extra_fields = self.get_extra_fields(record)
 
     if exc_info := record.exc_info:
-      extra_fields['__exc_info'] = exc_info
+      extra_fields['exc'] = exc_info[1]
 
     return render_log_fn(level, _=msg, **extra_fields)
 
