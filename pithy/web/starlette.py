@@ -355,6 +355,17 @@ def req_form_time_12hmp(form_data:FormData, key:str, tz:TZInfo|None=None) -> Tim
 
 # Query parameter access.
 
+def get_query_str(query_params:QueryParams, key:str, default:str) -> str:
+  '''
+  Get a string value from a QueryParams (e.g. request.query_params).
+  If the key is not present, return `default`.
+  Note that this is merely a wrapper around QueryParams.get.
+  It is provided for consistency with the other get_query_* functions so that we can more easily audit for usage of
+  query_params.get as an indication of potentially unchecked query parameter access.
+  '''
+  return query_params.get(key, default)
+
+
 def req_query_str(query_params:QueryParams, key:str) -> str:
   '''
   Get a string value from a QueryParams (e.g. request.query_params).
