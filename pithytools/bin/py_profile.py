@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 from cProfile import Profile
 from os.path import dirname
 from pstats import Stats
-from sys import argv, exc_info, path as sys_path, stderr, stdout
+from sys import argv, path as sys_path, stderr, stdout
 from typing import Any, Iterable, TextIO
 
 from pithy.fs import path_for_cmd
@@ -59,11 +59,11 @@ def main() -> None:
     profile.runctx(code, globals=globals_, locals=globals_) # type: ignore[arg-type]
   except SystemExit as e:
     exit_code = e.code
-  except BaseException:
+  except BaseException as exc:
     from traceback import TracebackException
     exit_code = 1 # exit code that Python returns when an exception raises to toplevel.
     # Format the traceback as it would appear when run standalone.
-    traceback = TracebackException(*exc_info())
+    traceback = TracebackException.from_exception(exc)
     # note: the traceback will contain stack frames from the host.
     # this can be avoided with a fixup function, but does not seem necessary at this point. See coven.py for an example.
     #fixup_traceback(traceback)
