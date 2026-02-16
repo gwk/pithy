@@ -7,9 +7,9 @@ from traceback import TracebackException
 from types import TracebackType
 from typing import Any, Literal
 
-from .ansi import RST, TXT_C, TXT_G, TXT_N, TXT_R, TXT_Y
-from .encode import encode_obj
-from .string import identifier_or_repr
+from ..ansi import RST, TXT_C, TXT_G, TXT_N, TXT_R, TXT_Y
+from ..encode import encode_obj
+from ..string import identifier_or_repr
 
 
 '''
