@@ -85,7 +85,7 @@ def utest_run(callable:Callable[[],None]) -> Callable[[],None]:
   _utest_test_count += 1
   try: callable()
   except BaseException as exc:
-    _utest_failure(0, exp_label='completion', exp='<no exception>', exc=exc, subj=callable)
+    _utest_failure(0, exp_label='clean run', exp=None, exc=exc, subj=callable)
   return callable
 
 
