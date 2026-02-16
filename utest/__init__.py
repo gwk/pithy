@@ -74,6 +74,9 @@ _utest_test_count = 0
 _utest_failure_count = 0
 
 
+type ExpectedException = str|type[BaseException]|BaseException
+
+
 def utest_run(callable:Callable[[],None]) -> Callable[[],None]:
   '''
   A function decorator to run the decorated function immediately.
@@ -89,7 +92,7 @@ def utest_run(callable:Callable[[],None]) -> Callable[[],None]:
   return callable
 
 
-def utest_run_exc(exp_exc:Any) -> Callable[[Callable[[],None]],Callable[[],None]]:
+def utest_run_exc(exp_exc:ExpectedException) -> Callable[[Callable[[],None]],Callable[[],None]]:
   '''
   A parameterized function decorator to run the decorated function immediately and expect an exception.
   The function must take no arguments; it is intended to serve only as a scoped block.
@@ -158,7 +161,7 @@ def utest_type(exp_type:type, fn:Callable, *args:Any, _exit:bool=False, _utest_d
         kwargs=kwargs)
 
 
-def utest_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
+def utest_exc(exp_exc:ExpectedException, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -206,7 +209,7 @@ def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit:bool=False, _
     _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_seq_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
+def utest_seq_exc(exp_exc:ExpectedException, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -251,7 +254,7 @@ def utest_items(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit:bool=False,
     _utest_failure(_utest_depth, exp_label='items', exp=exp, ret_label='items', ret=ret, subj=fn, args=args, kwargs=kwargs)
 
 
-def utest_items_exc(exp_exc:Any, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
+def utest_items_exc(exp_exc:ExpectedException, fn:Callable, *args:Any, _exit:bool=False, _utest_depth:int=0, **kwargs:Any) -> None:
   '''
   Invoke `fn` with `args` and `kwargs`, and convert the resulting iterable into a key/value items sequence.
   Log a test failure if an exception is not raised or if the raised exception type and args not match `exp_exc`.
@@ -317,7 +320,7 @@ def utest_symmetric(test_fn:Callable, exp:Any, fn:Callable, *args:Any, _exit:boo
   test_fn(exp, fn, *args_swapped, _exit=_exit, _utest_depth=_utest_depth+1, **kwargs)
 
 
-def compare_exceptions(exp:Any, act:Any) -> bool:
+def compare_exceptions(exp:ExpectedException, act:Any) -> bool:
   '''
   Compare two exceptions for approximate value equality.
   Since Python exceptions do not implement value equality, we offer several methods of comparison:
@@ -334,8 +337,8 @@ def compare_exceptions(exp:Any, act:Any) -> bool:
   return type(exp) == type(act) and exp.args == act.args
 
 
-def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:Any=None, subj:Any=None,
- args:tuple[Any,...]=(), kwargs:dict[str,Any]={}) -> None:
+def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:BaseException|None=None,
+ subj:Any=None, args:tuple[Any,...]=(), kwargs:dict[str,Any]={}) -> None:
 
   global _utest_failure_count
   assert subj is not None
@@ -391,7 +394,7 @@ def _fmt_path(path:str) -> str:
   return path
 
 
-def _print_exception(exc: BaseException) -> Any:
+def _print_exception(exc:BaseException) -> Any:
 
   messages = _format_exception(type(exc), exc, tb=exc.__traceback__, limit=None, chain=True)
   for msg in messages:
