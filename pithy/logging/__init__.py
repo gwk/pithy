@@ -1,8 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from io import TextIOWrapper
 from json import dumps as render_json
 from logging import Formatter, LogRecord
-from sys import stdout
+from sys import stderr, stdout
 from traceback import TracebackException
 from types import TracebackType
 from typing import Any, Literal
@@ -170,6 +171,13 @@ def install_warnings_formatter() -> None:
   '''
   import warnings
   warnings.formatwarning = formatwarning
+
+
+def configure_stdio_for_line_logging() -> None:
+  'Ensure log output is flushed per-line when stdout/stderr are not TTYs.'
+  if not stdout.isatty() and isinstance(stdout, TextIOWrapper): stdout.reconfigure(line_buffering=True)
+  if not stderr.isatty() and isinstance(stderr, TextIOWrapper): stderr.reconfigure(line_buffering=True)
+
 
 
 class PithyLogFormatter(Formatter):
