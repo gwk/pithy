@@ -176,7 +176,7 @@ class TestProcess:
       self._read_fds = []
 
 
-  def wait_for_pattern(self, pattern:str|Pattern[str], timeout:float=30) -> re.Match[str]:
+  def wait_for_pattern(self, pattern:str|Pattern[str], timeout:float=5) -> re.Match[str]:
     '''
     Block until pattern is found in the accumulated stdout, then return the match object.
     Searches the decoded as UTF-8 (with replacement for errors).
