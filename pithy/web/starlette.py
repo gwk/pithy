@@ -377,13 +377,7 @@ def req_query_str(query_params:QueryParams, key:str) -> str:
   return v
 
 
-@overload
-def get_query_bool(query_params:QueryParams, key:str, default:bool) -> bool: ...
-
-@overload
-def get_query_bool(query_params:QueryParams, key:str, default:None=None) -> bool|None: ...
-
-def get_query_bool(query_params:QueryParams, key:str, default:bool|None=None) -> bool|None:
+def get_query_bool(query_params:QueryParams, key:str, default:bool=False) -> bool:
   '''
   Get an optional boolean value from a QueryParams (e.g. request.query_params).
   If the key is not present or is the empty string, return `default`.
@@ -402,7 +396,7 @@ def req_query_bool(query_params:QueryParams, key:str) -> bool:
   '''
   v = req_query_str(query_params, key)
   try:
-    if v == '': raise ValueError
+    if v == '': raise ValueError # Caught below.
     return bool_str_vals[v]
   except (KeyError, ValueError) as e: raise HTTPException(400, f'Invalid boolean query parameter: {key}={v!r}') from e
 
