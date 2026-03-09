@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from argparse import ArgumentParser, FileType
+import sys
+from argparse import ArgumentParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import BinaryIO
@@ -12,7 +13,7 @@ def main() -> None:
 
   parser = ArgumentParser(description='Serve a file or `stdin` to a browser.')
   parser.add_argument('-port', type=int, default=8000, help='The port to serve on.')
-  parser.add_argument('file', nargs='?', type=FileType('rb'), default='-', help='The file path to serve (defaults to stdin).')
+  parser.add_argument('file', nargs='?', default=None, help='The file path to serve (defaults to stdin).')
 
   add_browser_args(parser)
   args = parser.parse_args()
@@ -21,8 +22,13 @@ def main() -> None:
   host, port = address
   addr_str = f'http://{host}:{port}'
 
-  f_in:BinaryIO = args.file
-  print(f'Serving {f_in.name} on {addr_str}.')
+  if args.file is None:
+    f_in:BinaryIO = sys.stdin.buffer
+    name = '<stdin>'
+  else:
+    f_in = open(args.file, 'rb')
+    name = args.file
+  print(f'Serving {name} on {addr_str}.')
 
   server_thread = ServerThread(address, f_in)
   server_thread.start()
