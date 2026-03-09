@@ -1,11 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
+from sys import platform, stderr
 
 from pithy.task import run
 
 
-def add_browser_args(parser:ArgumentParser, add_browse:bool=False) -> None:
+def add_browser_args(parser:ArgumentParser, add_browse:bool=True) -> None:
   '''
   Add browser selection arguments to the parser.
   '''
@@ -26,6 +27,10 @@ def add_browser_args(parser:ArgumentParser, add_browse:bool=False) -> None:
 
 
 def launch_browser(url:str, browser:str|None) -> None:
+
+  if platform != 'darwin':
+    print('Note: launch_browser is only implemented for macOS.', file=stderr)
+    return
 
   # Note: this is macOS specific. It is simpler than the webbrowser module, which uses osascript.
   cmd = ['open']
