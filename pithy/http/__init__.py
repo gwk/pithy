@@ -20,6 +20,10 @@ http_methods = frozenset({
 })
 
 
+http_method_bytes_to_strs = { m.encode('ascii'): m for m in http_methods }
+http_methods_strs_to_bytes = { m: m.encode('ascii') for m in http_methods }
+
+
 non_body_statuses = (
   HTTPStatus.NO_CONTENT,
   HTTPStatus.RESET_CONTENT, # Note: RFC 7230 3.3 does not mention 205 RESET CONTENT but RFC 7231 6.3.6 does.

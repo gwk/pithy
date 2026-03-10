@@ -14,10 +14,10 @@ from starlette.staticfiles import StaticFiles
 
 from ..csv import Quoting, render_csv
 from ..date import Date, parse_time_12hmp, Time, TZInfo
-from ..fs import is_dir, real_path
 from ..html import HtmlNode
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
+from .static import pithy_web_static_dir_path
 
 
 class ClientError(Exception):
@@ -468,7 +468,4 @@ def empty_favicon(request:Request) -> Response:
 
 
 def mount_for_static_pithy(*, path:str='/static/pithy', name:str='static_pithy') -> Mount:
-  from . import static
-  module_dir = real_path(static.__path__[0])
-  assert is_dir(module_dir, follow=False), module_dir
-  return Mount(path, app=StaticFiles(directory=module_dir, follow_symlink=True), name=name)
+  return Mount(path, app=StaticFiles(directory=pithy_web_static_dir_path(), follow_symlink=True), name=name)
