@@ -45,7 +45,10 @@
   "python.analysis.diagnosticMode": "workspace",
   "python.analysis.exclude": [
     "_build/**",
-    "_misc/**"
+    "_misc/**",
+    "**/__pycache__",
+    "**/.*",
+    "**/node_modules",
   ],
   "python.analysis.include": [
     "crafts",
@@ -55,6 +58,8 @@
     "test",
     "wu"
   ],
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.pythonProjects": [],
   "python.analysis.typeCheckingMode": "off",
   "[json]": {
     "editor.formatOnSave": false
