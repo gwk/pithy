@@ -3,20 +3,170 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from http import HTTPStatus
-from io import BufferedReader, BytesIO
+from io import BufferedReader
 from queue import Full as QueueFull, LifoQueue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
 from threading import Event, Thread
-from typing import cast
-from urllib.parse import SplitResult as Url, urlsplit as url_split
+from typing import cast, Literal
+from urllib.parse import urlsplit as url_split
 
-import h11
-from pithy.logging import logI
+from h11 import (Connection as h11_Connection, ConnectionClosed as h11_ConnectionClosed, Data as h11_Data, DONE as h11_DONE,
+  EndOfMessage as h11_EndOfMessage, IDLE as h11_IDLE, InformationalResponse as h11_InformationalResponse,
+  NEED_DATA as h11_NEED_DATA, ProtocolError as h11_ProtocolError, RemoteProtocolError as h11_RemoteProtocolError,
+  Request as h11_Request, Response as h11_Response, SEND_BODY as h11_SEND_BODY, SEND_RESPONSE as h11_SEND_RESPONSE,
+  SERVER as h11_SERVER)
+from pithy.logging import logE, logI
 
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
-from .request import AddrPair, Request
+from .request import AddrPair, Request, RequestConn
 from .response import Response, ResponseError
+
+
+BAD_REQUEST = HTTPStatus.BAD_REQUEST
+
+
+class HttpStateError(Exception):
+  'Raised when H11 is in an unexpected state.'
+
+
+class BodyAlreadyReadError(Exception):
+  'Raised when the request body has already been read.'
+
+
+class BodyTooLargeError(Exception):
+  'Raised when the request body is larger than the maximum allowed size.'
+
+  def __init__(self, *, length:int, max_bytes:int) -> None:
+    super().__init__(f'{length=}; {max_bytes=}.')
+    self.length = length
+    self.max_bytes = max_bytes
+
+
+@dataclass(slots=True)
+class _Conn():
+  client_addr:AddrPair
+  socket:Socket
+  h11_conn:h11_Connection
+  recv_size:int
+  error:h11_ProtocolError|TimeoutError|None = None # Set when an error occurs.
+
+
+  def handle_need_data(self) -> bool:
+    '''
+    Handle a h11_NEED_DATA event by receiving data from the socket and feeding it to h11.
+    Returns True on success.
+    If an error occurs, `self.error` is set and False is returned.
+    '''
+    try:
+      data = self.socket.recv(self.recv_size)
+      self.h11_conn.receive_data(data)
+      return True
+    except (TimeoutError, h11_RemoteProtocolError) as e:
+      self.error = e
+      return False
+
+
+  def next_request(self) -> h11_Request|None:
+    '''
+    Returns the next Request.
+    If an error occurs, `self.error` is set and None is returned.
+    '''
+    assert self.h11_conn.our_state is h11_IDLE
+    while True:
+      event = self.h11_conn.next_event()
+      if event is h11_NEED_DATA:
+        if self.handle_need_data(): continue
+        return None # Error set.
+      if isinstance(event, h11_ConnectionClosed): return None # No error set.
+      if isinstance(event, h11_Request): return event
+      else: raise HttpStateError(f'next_request expected Request event; received: {event!r}.')
+
+
+  def next_data(self) -> h11_Data|None:
+    '''
+    Returns the next Data event, or None if the end of the body is reached.
+    If an error occurs, `self.error` is set and None is returned.
+    '''
+    assert self.h11_conn.their_state is h11_SEND_BODY
+    while True:
+      event = self.h11_conn.next_event()
+      if event is h11_NEED_DATA:
+        if self.handle_need_data(): continue
+        return None # Error set.
+      if isinstance(event, h11_Data):
+        assert event.data
+        return event
+      if isinstance(event, h11_EndOfMessage): return None # End of body reached; no error set.
+      else: raise HttpStateError(f'next_data expected Data event; received: {event!r}.')
+
+
+  def next_completion(self) -> h11_EndOfMessage|None:
+    '''
+    Returns the EndOfMessage event indicating the end of the request/response cycle.
+    If an error occurs, `self.error` is set and None is returned.
+    '''
+    assert self.h11_conn.our_state in (h11_SEND_RESPONSE, h11_SEND_BODY)
+    while True:
+      event = self.h11_conn.next_event()
+      if event is h11_NEED_DATA:
+        if self.handle_need_data(): continue
+        return None # Error set.
+      if isinstance(event, h11_EndOfMessage): return event
+      else: raise HttpStateError(f'next_completion expected EndOfMessage event; received: {event!r}.')
+
+
+  def recycle(self) -> bool:
+    '''
+    Recycle the connection for the next request/response cycle if possible.
+    If True is returned, then the connection is ready for the next request/response cycle.
+    If False is returned, then the connection must be closed.
+    If an error occurred, logs the error, clear it, and return False.
+    '''
+    if self.error:
+      logE('Connection error.', error=self.error, client_addr=self.client_addr)
+      self.error = None
+      return False
+    if self.h11_conn.our_state is h11_DONE and self.h11_conn.their_state is h11_DONE:
+      self.h11_conn.start_next_cycle()
+      return True
+    return False
+
+
+class WebServerRequestConn(RequestConn):
+
+  def __init__(self, content_length:int|None, _conn:_Conn) -> None:
+    self.content_length = content_length
+    self._conn = _conn
+    self._bytes_read = 0
+    self._was_body_read = False
+
+
+  def read_some(self, max_bytes:int) -> bytes:
+
+    if self._was_body_read: raise BodyAlreadyReadError('Request body has already been read.')
+
+    if self.content_length is not None and self.content_length > max_bytes:
+      raise BodyTooLargeError(length=self.content_length, max_bytes=max_bytes)
+
+    event = self._conn.next_data()
+    if isinstance(event, h11_Data):
+      self._bytes_read += len(event.data)
+      if self._bytes_read > max_bytes:
+        raise BodyTooLargeError(length=self._bytes_read, max_bytes=max_bytes)
+      return event.data
+    return b''
+
+
+  def read_body(self, max_bytes:int) -> bytes:
+    chunks = []
+    while True:
+      chunk = self.read_some(max_bytes)
+      if not chunk: break
+      chunks.append(chunk)
+    return b''.join(chunks)
+
+
 
 
 @dataclass(slots=True, frozen=True)
@@ -107,7 +257,7 @@ class WebServer:
         try:
           self._conn_queue.put_nowait((conn_sock, client_addr))
         except QueueFull:
-          logI('Connection queue full; dropping connection.', client_addr=client_addr)
+          logI('Queue full; dropping connection.', client_addr=client_addr)
           conn_sock.close()
     except KeyboardInterrupt:
       logI('Interrupted.')
@@ -135,182 +285,119 @@ class WebServer:
 
   def _handle_connection(self, socket:Socket, client_addr:AddrPair) -> None:
     'Handle a single client connection in a worker thread.'
-    h11_conn = h11.Connection(h11.SERVER)
     socket.settimeout(self.config.conn_timeout)
+    h11_conn = h11_Connection(h11_SERVER)
+    conn = _Conn(client_addr=client_addr, socket=socket, h11_conn=h11_conn, recv_size=self.config.recv_size)
 
     try:
-      while event := self._next_event(h11_conn, socket, client_addr):
-        if isinstance(event, h11.ConnectionClosed): break
-
-        assert isinstance(event, h11.Request), \
-          f'Unexpected event in connection loop (Data/EndOfMessage should be consumed by _read_body): {event!r}'
-
-        if event.http_version != b'1.1':
-          http_version_str = event.http_version.decode('ascii', errors='replace')
-          self._send_error(h11_conn, socket, client_addr, HTTPStatus.HTTP_VERSION_NOT_SUPPORTED,
-            f'Only HTTP 1.1 is supported; received {http_version_str!r}.')
-          break
-
-        method = http_method_bytes_to_strs.get(event.method)
-        if method is None:
-          self._send_error(h11_conn, socket, client_addr, HTTPStatus.NOT_IMPLEMENTED,
-            f'Method not implemented: {event.method.decode("ascii", errors="replace")!r}.')
-          break
-
-        close_connection = True
-
-        try: request_path = url_split(event.target.decode('ascii', errors='replace')).path
-        except UnicodeDecodeError, ValueError: request_path = '?'
-
-        try:
-          request = self._build_request(event, method, h11_conn, socket, client_addr)
-          response = self.app.handle_request(request)
-          close_connection = self._should_close(request.headers)
-        except EarlyResponse as exc:
-          response = exc.response
-          request = exc.request
-          # Body was not read, so the connection cannot be reused.
-        except ResponseError as exc:
-          response = Response.from_error(exc, method=method)
-
-        if close_connection:
-          response.set_connection_close_header()
-
-        self._send_response(h11_conn, socket, response, method)
-        if self.config.log_access:
-          logI('Request.', client=client_addr[0], method=method, path=request_path, status=response.status.value)
-        if close_connection: break
-        h11_conn.start_next_cycle()
-
+      while event := conn.next_request():
+        method = http_method_bytes_to_strs.get(event.method, '')
+        response = self._handle_connection_cycle(conn, event, method)
+        self._send_response(conn, response, method=method)
+        if not conn.recycle(): break
     finally:
       try: socket.close()
       except OSError: pass
 
 
-  def _build_request(self, event:h11.Request, method:str, h11_conn:h11.Connection, socket:Socket, client_addr:AddrPair) -> Request:
+  def _handle_connection_cycle(self, conn:_Conn, event:h11_Request, method:str) -> Response:
+    '''
+    Handles a single request/response cycle on the connection.
+    Returns a Response object.
+    '''
+
+    if event.http_version != b'1.1':
+      http_version_str = event.http_version.decode('ascii', errors='replace')
+      return Response(HTTPStatus.HTTP_VERSION_NOT_SUPPORTED,
+        body=f'Only HTTP 1.1 is supported; received {http_version_str!r}.').set_connection_close()
+
+    if not method:
+      return Response(HTTPStatus.NOT_IMPLEMENTED,
+        body=f'Non-standard method: {event.method.decode("ascii", errors="replace")!r}.').set_connection_close()
+
+    try:
+      target = event.target.decode('ascii') # A UnicodeDecodeError here is unexpected since h11 should have validated it.
+      url = url_split(target) # A ValueError here is unlikely given that h11 has already validated, and urlsplit is permissive.
+    except (UnicodeDecodeError, ValueError):
+      return Response(BAD_REQUEST, body=f'Bad target/path: {event.target.decode("ascii", errors="replace")!r}.'
+        ).set_connection_close()
+
     headers = self._headers_dict(event.headers)
 
-    target = event.target.decode('ascii', errors='replace')
-    url = url_split(target)
+    content_length:int|None = None
+    if cl_str := headers.get('content-length'):
+      content_length = int(cl_str) # Assume that h11 has already validated the content-length value.
 
-    if self._expects_body(headers):
-      expect = headers.get('expect', '').lower()
-      if expect == '100-continue':
-        preview = self._preview_request(method, url, headers, client_addr)
-        expect_response = self.app.handle_expect_100_continue(preview)
-        if expect_response.status == HTTPStatus.CONTINUE:
-          self._send_informational(h11_conn, socket, expect_response)
-        else:
-          raise EarlyResponse(preview, expect_response)
-    # Always consume through EndOfMessage so h11 reaches DONE on both sides,
-    # which is required for start_next_cycle() to work on keep-alive connections.
-    # For no-body requests h11 returns EndOfMessage immediately with empty data.
-    body = self._read_body(h11_conn, socket, client_addr)
-
-    content_length = len(body)
-    body_file = BytesIO(body)
-
-    return Request(
+    request = Request(
+      client_addr=conn.client_addr,
       method=method,
       scheme='http',
       host=self.config.host,
       port=self.config.port,
       path=url.path or '/',
       query=url.query,
-      body_file=body_file,
       headers=headers,
-      client_addr=client_addr,
-      content_length=content_length)
+      content_length=content_length,
+      conn=WebServerRequestConn(content_length=content_length, _conn=conn))
+
+    if conn.h11_conn.client_is_waiting_for_100_continue:
+      expect_response = self.app.handle_expect_100_continue(request)
+      if expect_response.status == HTTPStatus.CONTINUE:
+        self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
+      else:
+        return expect_response.set_connection_close() # The body was not read, so the connection cannot be reused.
+
+    try:
+      response = self.app.handle_request(request)
+      # The app may or may not read the body.
+      if conn.h11_conn.their_state is h11_SEND_BODY: # The app did not read the body.
+        response.set_connection_close() # The connection cannot be reused since the body was not read.
+
+    except ResponseError as exc:
+      response = Response.from_error(exc, method=method)
+
+    return response
 
 
-  def _preview_request(self, method:str, url:Url, headers:dict[str,str], client_addr:AddrPair) -> Request:
-    return Request(
-      method=method,
-      scheme='http',
-      host=self.config.host,
-      port=self.config.port,
-      path=url.path or '/',
-      query=url.query,
-      body_file=BytesIO(b''),
-      headers=headers,
-      client_addr=client_addr,
-      content_length=0)
-
-
-  def _read_body(self, h11_conn:h11.Connection, socket:Socket, client_addr:AddrPair) -> bytes:
-    parts:list[bytes] = []
-    while True:
-      event = self._next_event(h11_conn, socket, client_addr)
-      if event is None: break
-      if isinstance(event, h11.Data):
-        parts.append(event.data)
-      elif isinstance(event, h11.EndOfMessage):
-        break
-      elif isinstance(event, h11.ConnectionClosed):
-        break
-    return b''.join(parts)
-
-
-  def _next_event(self, h11_conn:h11.Connection, socket:Socket, client_addr:AddrPair) \
-   -> h11.Request|h11.Data|h11.EndOfMessage|h11.ConnectionClosed|None:
-    while True:
-      try:
-        event = h11_conn.next_event()
-      except h11.RemoteProtocolError:
-        self._send_error(h11_conn, socket, client_addr, HTTPStatus.BAD_REQUEST, 'Bad request')
-        return None
-      if event is h11.NEED_DATA:
-        try: data = socket.recv(self.config.recv_size)
-        except TimeoutError:
-          return None
-        if not data:
-          return None
-        try: h11_conn.receive_data(data)
-        except h11.RemoteProtocolError:
-          self._send_error(h11_conn, socket, client_addr, HTTPStatus.BAD_REQUEST, 'Bad request')
-          return None
-        continue
-      if event is h11.PAUSED:
-        return None
-      return cast(h11.Request|h11.Data|h11.EndOfMessage|h11.ConnectionClosed, event)
-
-
-  def _send_error(self, h11_conn:h11.Connection, socket:Socket, client_addr:AddrPair, status:HTTPStatus, reason:str) -> None:
+  def _send_error(self, conn:_Conn, status:HTTPStatus, reason:str) -> Literal[False]:
     response = Response(status=status, body=reason, media_type='text/plain')
-    response.set_connection_close_header()
-    self._send_response(h11_conn, socket, response, 'GET')
+    response.set_connection_close()
+    self._send_response(conn, response, 'GET')
+    return False
 
 
-  def _should_close(self, headers:dict[str,str]) -> bool:
+  def _send_bad_req(self, conn:_Conn, reason:str) -> Literal[False]:
+    return self._send_error(conn, HTTPStatus.BAD_REQUEST, reason)
+
+
+  def _request_wants_connection_close(self, headers:dict[str,str]) -> bool:
     'Return True if the connection should be closed after the current response.'
     return 'close' in {t.strip() for t in headers.get('connection', '').lower().split(',')}
 
 
   def _headers_dict(self, headers:Sequence[tuple[bytes,bytes]]) -> dict[str,str]:
+    '''
+    Converts the sequence of bytes pairs from h11 into a dict of strings with keys lowercased.
+    If there are multiple headers with the same name, their values are combined into a single comma-separated string.
+    '''
     result:dict[str,str] = {}
     for key_b, val_b in headers:
-      key = key_b.decode('ascii', errors='replace').lower()
-      val = val_b.decode('latin1', errors='replace')
+      key = key_b.decode('ascii').lower() # Ascii key has already been validated by h11_
+      val = val_b.decode('latin1') # Decode cannot fail.
       try: result[key] = f'{result[key]}, {val}'
       except KeyError: result[key] = val
     return result
 
 
-  def _expects_body(self, headers:dict[str,str]) -> bool:
-    if 'content-length' in headers:
-      try: return int(headers['content-length']) > 0
-      except ValueError: return True
-    return headers.get('transfer-encoding', '').lower() == 'chunked'
-
-
-
-  def _send_informational(self, h11_conn:h11.Connection, socket:Socket, response:Response) -> None:
-    event = h11.InformationalResponse(status_code=response.status.value, headers=response.headers_bytes_list())
+  def _send_informational_response(self, h11_conn:h11_Connection, socket:Socket, response:Response) -> None:
+    event = h11_InformationalResponse(status_code=response.status.value, headers=response.headers_bytes_list())
     socket.sendall(h11_conn.send(event))
 
 
-  def _send_response(self, h11_conn:h11.Connection, socket:Socket, response:Response, method:str) -> None:
-    event = h11.Response(status_code=response.status.value, headers=response.headers_bytes_list())
+  def _send_response(self, conn:_Conn, response:Response, method:str) -> None:
+    event = h11_Response(status_code=response.status.value, headers=response.headers_bytes_list())
+    h11_conn = conn.h11_conn
+    socket = conn.socket
 
     socket.sendall(h11_conn.send(event))
 
@@ -320,22 +407,16 @@ class WebServer:
         self._send_body_file(h11_conn, socket, body)
         body.close()
       elif body:
-        socket.sendall(h11_conn.send(h11.Data(data=cast(bytes, body))))
-        # bytearray is bytes-like, so passing it as bytes is safe; the cast avoids a spurious type error.
+        socket.sendall(h11_conn.send(h11_Data(data=cast(bytes, body))))
+        #^ bytearray is bytes-like; h11.Data is documented to accept any bytes-like object despite the type being `bytes`.
 
-    socket.sendall(h11_conn.send(h11.EndOfMessage()))
+    socket.sendall(h11_conn.send(h11_EndOfMessage()))
 
 
-  def _send_body_file(self, h11_conn:h11.Connection, socket:Socket, file:BufferedReader) -> None:
+  def _send_body_file(self, h11_conn:h11_Connection, socket:Socket, file:BufferedReader) -> None:
     while True:
       chunk = file.read(self.config.recv_size)
       if not chunk: break
-      socket.sendall(h11_conn.send(h11.Data(data=chunk)))
-
-
-class EarlyResponse(Exception):
-  'Accept 100-continue handling.'
-  def __init__(self, request:Request, response:Response) -> None:
-    self.request = request
-    self.response = response
-    super().__init__(f'Early response: {response.status}')
+      socket.sendall(h11_conn.send(h11_Data(data=chunk)))
+      if not chunk: break
+      socket.sendall(h11_conn.send(h11_Data(data=chunk)))

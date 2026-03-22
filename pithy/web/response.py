@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from dataclasses import dataclass
 from html import escape as html_escape
 from http import HTTPStatus
 from io import BufferedReader
@@ -18,11 +19,12 @@ BinaryResponseBody = bytes|bytearray|BufferedReader|None
 # TODO: support iterable[bytes]?
 
 
-class Response:
+@dataclass(slots=True)
+class Response():
   '''
-  Response encapsulates all of the information needed to respond to an HTTP request:
+  `Response` encapsulates all of the information needed to respond to an HTTP request:
   * status: The HTTP status code (default: OK).
-  * headers: a dictionary of HTTP headers.
+  * headers: a dictionary of HTTP headers. The dictionary will be copied by the constructor.
   * body: The response body.
 
   Additionally, there are keyword parameters for some common headers:
@@ -38,12 +40,26 @@ class Response:
   headers:ResponseHeadersDict
   body:BinaryResponseBody
 
-
   def __init__(self, status:HTTPStatus=HTTPStatus.OK, *, headers:ResponseHeadersDict|None=None,
    body:ResponseBody|None=None, media_type:str='', last_modified:float=0.0) -> None:
 
     self.status = status
-    self.headers = {} if headers is None else headers
+
+    if headers is None: headers = {}
+    else:
+      headers = headers.copy()
+      for k in headers.keys():
+        if not k.islower(): raise ValueError(f'Response header name must be lowercase: {k!r}.')
+
+    self.headers = headers
+
+    if media_type:
+      assert 'content-type' not in headers
+      headers['content-type'] = media_type
+
+    if last_modified:
+      assert 'last-modified' not in headers
+      headers['last-modified'] = format_header_date(last_modified)
 
     if body is not None:
       if 100 <= status < 200 or status in non_body_statuses:
@@ -53,51 +69,26 @@ class Response:
         # 304: https://www.rfc-editor.org/rfc/rfc7232#section-4.1
         raise ValueError(f'{status} response must not have a body.')
 
-    if 'date' not in self.headers and status != HTTPStatus.CONTINUE and status != HTTPStatus.SWITCHING_PROTOCOLS:
-      self.headers['date'] = format_header_date()
-
     # Convert body to bytes if necessary.
     if isinstance(body, str):
-      binary_body:BinaryResponseBody = body.encode('utf-8', errors='replace')
+      binary_body:BinaryResponseBody = body.encode('utf-8')
     elif isinstance(body, Mu):
       binary_body = bytes(body)
     else:
       binary_body = body
     self.body = binary_body
 
-    if isinstance(binary_body, BufferedReader):
-      content_length = content_length_for_file(binary_body)
-    elif binary_body is not None: # Non-file body.
-      content_length = len(binary_body)
+    if isinstance(self.body, BufferedReader):
+      content_length = content_length_for_file(self.body)
+    elif self.body is not None: # Non-file body.
+      content_length = len(self.body)
     else:
       content_length = 0
 
-    assert 'content-length' not in self.headers
-    self.headers['content-length'] = content_length
+    assert 'content-length' not in headers
+    headers['content-length'] = content_length
 
-    if media_type:
-      assert 'content-type' not in self.headers
-      self.headers['content-type'] = media_type
-
-    if last_modified:
-      assert 'last-modified' not in self.headers
-      self.headers['last-modified'] = last_modified
-
-
-  @classmethod
-  def from_error(self, error:ResponseError, method:str) -> Self:
-    '''
-    Create the response for an error.
-    '''
-    body:ResponseBody|None = None
-    media_type = ''
-    if may_send_body(method, self.status):
-      body = error_html_format.format(code=self.status.value, reason=html_escape(error.reason or error.status.phrase, quote=False))
-      #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
-      media_type = error_media_type
-    return self(error.status, headers=error.headers, body=body, media_type=media_type)
-
-
+    assert 'connection' not in headers
 
 
   def headers_bytes_list(self) -> list[tuple[bytes,bytes]]:
@@ -105,8 +96,24 @@ class Response:
       for (k, v) in self.headers.items()]
 
 
-  def set_connection_close_header(self) -> None:
+  def set_connection_close(self) -> Self:
     self.headers['connection'] = 'close'
+    return self
+
+
+  @classmethod
+  def from_error(cls, error:ResponseError, method:str) -> Self:
+    '''
+    Create the response for an error.
+    '''
+    body:ResponseBody|None = None
+    media_type = ''
+    if may_send_body(method, error.status):
+      body = error_html_format.format(code=error.status.value,
+        reason=html_escape(error.reason or error.status.phrase, quote=False))
+      #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
+      media_type = error_media_type
+    return cls(error.status, headers=error.headers, body=body, media_type=media_type)
 
 
   def set_no_cache_headers(self) -> None:
@@ -137,8 +144,7 @@ error_html_format = '''\
   <title>Error: {code}</title>
 </head>
 <body>
-  <h1>Error: {code}</h1>
-  <p>{reason}.</p>
+  <p>{code}: {reason}.</p>
 </body>
 </html>
 '''
