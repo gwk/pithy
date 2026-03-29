@@ -73,7 +73,7 @@ def add_scripts(pkg_name:str, project_scripts:dict[str,Any]) -> None:
   if not is_dir(bin_path): return
   for script_name in list_dir(bin_path):
     stem, ext = split_ext(script_name)
-    if ext != '.py' or stem.startswith('.') or stem.startswith('_'): continue
+    if ext != '.py' or stem.startswith('.') or stem.startswith('_') or stem.endswith('.ut'): continue
     script_name = stem.replace('_', '-')
     project_scripts[script_name] = f'{pkg_name}.bin.{stem}:main'
 
