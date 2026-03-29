@@ -5,6 +5,18 @@ from typing import Iterator
 from warnings import warn
 
 
+# Iterating over chunks of bytes ints instead of individual BytesIO bytes objects yields ~2x speedup.
+_chunk_size = 16 * 1024
+_b_dquote = ord('"')
+_b_backslash = ord('\\')
+_b_comma = ord(',')
+_b_colon = ord(':')
+_b_ws = frozenset(b' \n\t\r')
+_b_open = frozenset(b'{[')
+_b_close = frozenset(b'}]')
+_byte_table = [bytes([i]) for i in range(256)]  # Avoid per-byte allocation when yielding; ~15% speedup.
+
+
 def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
   '''
   Format JSON bytes. The JSON input does not have to be well-formed.
@@ -29,55 +41,56 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
 
   indent = 0
   state = s_start
-  while byte := file.read(1):
-    prev_state = state
+  while chunk := file.read(_chunk_size):
+    for b in chunk:
+      prev_state = state
 
-    if state == s_str_esc:
-      state = s_str
-    elif state == s_str:
-      if byte == b'"':
-        state = s_mid
-      elif byte == b'\\':
-        state = s_str_esc
+      if state == s_str_esc:
+        state = s_str
+      elif state == s_str:
+        if b == _b_dquote:
+          state = s_mid
+        elif b == _b_backslash:
+          state = s_str_esc
 
-    elif byte in b' \n\t\r':
-      continue
-    elif byte == b'"':
-      state = s_str
-    elif byte in b'{[':
-      # Open brackets preceded by a newline or the document start inline their first child.
-      # s_open_inline propagates: consecutive inline opens all inline their first child.
-      # s_open_break precedes a newline, so the following open is inlined.
-      # s_comma and s_close both trigger a newline before the next token, so the following item can is inlined.
-      # All other predecessors (s_colon, s_mid, s_str) are mid-line, requiring s_open_break.
-      if prev_state in (s_start, s_open_inline, s_open_break, s_comma, s_close):
-        state = s_open_inline
+      elif b in _b_ws:
+        continue
+      elif b == _b_dquote:
+        state = s_str
+      elif b in _b_open:
+        # Open brackets preceded by a newline or the document start inline their first child.
+        # s_open_inline propagates: consecutive inline opens all inline their first child.
+        # s_open_break precedes a newline, so the following open is inlined.
+        # s_comma and s_close both trigger a newline before the next token, so the following item can is inlined.
+        # All other predecessors (s_colon, s_mid, s_str) are mid-line, requiring s_open_break.
+        if prev_state in (s_start, s_open_inline, s_open_break, s_comma, s_close):
+          state = s_open_inline
+        else:
+          state = s_open_break
+      elif b in _b_close:
+        state = s_close
+      elif b == _b_comma:
+        state = s_comma
+      elif b == _b_colon:
+        state = s_colon
       else:
-        state = s_open_break
-    elif byte in b'}]':
-      state = s_close
-    elif byte == b',':
-      state = s_comma
-    elif byte == b':':
-      state = s_colon
-    else:
-      state = s_mid
+        state = s_mid
 
-    if (
-     prev_state == s_colon or
-     prev_state == s_open_inline or
-     (prev_state not in (s_open_inline, s_open_break, s_close) and state == s_close)):
-      yield b' '
-    elif prev_state in (s_open_break, s_comma, s_close) and state not in (s_comma, s_close):
-      yield b'\n'
-      yield b'  ' * indent
+      if (
+       prev_state == s_colon or
+       prev_state == s_open_inline or
+       (prev_state not in (s_open_inline, s_open_break, s_close) and state == s_close)):
+        yield b' '
+      elif prev_state in (s_open_break, s_comma, s_close) and state not in (s_comma, s_close):
+        yield b'\n'
+        yield b'  ' * indent
 
-    yield byte
+      yield _byte_table[b]
 
-    if state in (s_open_inline, s_open_break):
-      indent += 1
-    elif state == s_close:
-      indent -= 1
+      if state in (s_open_inline, s_open_break):
+        indent += 1
+      elif state == s_close:
+        indent -= 1
 
   # Final newline for non-empty output.
   if state != s_start:
