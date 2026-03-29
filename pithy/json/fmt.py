@@ -68,11 +68,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
      prev_state == s_open_inline or
      (prev_state not in (s_open_inline, s_open_break, s_close) and state == s_close)):
       yield b' '
-    elif prev_state == s_open_break and state != s_close:
-      yield b'\n'
-      yield b'  ' * indent
-
-    if prev_state in (s_comma, s_close) and state not in (s_comma, s_close): # Done closing; emit newline/indent.
+    elif prev_state in (s_open_break, s_comma, s_close) and state not in (s_comma, s_close):
       yield b'\n'
       yield b'  ' * indent
 
