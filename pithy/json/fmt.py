@@ -7,6 +7,8 @@ from warnings import warn
 
 # Iterating over chunks of bytes ints instead of individual BytesIO bytes objects yields ~2x speedup.
 _chunk_size = 16 * 1024
+_b_newline = ord('\n')
+_b_space = ord(' ')
 _b_dquote = ord('"')
 _b_backslash = ord('\\')
 _b_comma = ord(',')
@@ -15,6 +17,7 @@ _b_ws = frozenset(b' \n\t\r')
 _b_open = frozenset(b'{[')
 _b_close = frozenset(b'}]')
 _byte_table = [bytes([i]) for i in range(256)]  # Avoid per-byte allocation when yielding; ~15% speedup.
+_b_indent = b'  '
 
 
 def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
@@ -42,6 +45,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
   indent = 0
   state = s_start
   while chunk := file.read(_chunk_size):
+    output = bytearray() # ~15% speedup over yielding individual bytes when building the output.
     for b in chunk:
       prev_state = state
 
@@ -80,17 +84,19 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
        prev_state == s_colon or
        prev_state == s_open_inline or
        (prev_state not in (s_open_inline, s_open_break, s_close) and state == s_close)):
-        yield b' '
+        output.append(_b_space)
       elif prev_state in (s_open_break, s_comma, s_close) and state not in (s_comma, s_close):
-        yield b'\n'
-        yield b'  ' * indent
+        output.append(_b_newline)
+        output.extend(_b_indent * indent)
 
-      yield _byte_table[b]
+      output.append(b)
 
       if state in (s_open_inline, s_open_break):
         indent += 1
       elif state == s_close:
         indent -= 1
+
+    yield bytes(output)
 
   # Final newline for non-empty output.
   if state != s_start:
