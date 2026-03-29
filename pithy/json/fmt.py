@@ -19,7 +19,7 @@ _byte_table = [bytes([i]) for i in range(256)]  # Avoid per-byte allocation when
 _b_indent = b'  '
 
 
-def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Generator[bytes,None,int]:
+def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=False) -> Generator[bytes,None,int]:
   '''
   Format JSON bytes. The JSON input does not have to be well-formed.
   This is useful for pretty-printing JSON, including input that is malformed.
@@ -42,26 +42,27 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Generator[bytes,None,in
   # s_str: inside a string.
   # s_str_esc: a backslash token inside of a string.
 
+  prev_state = s_start
+  prev_byte = -1
   indent = 0
-  state = s_start
+
   while chunk := file.read(_chunk_size):
     output = bytearray() # ~15% speedup over yielding individual bytes when building the output.
-    for b in chunk:
-      prev_state = state
+    for byte in chunk:
 
-      if state == s_str_esc:
+      if prev_state == s_str_esc:
         state = s_str
-      elif state == s_str:
-        if b == _b_dquote:
+      elif prev_state == s_str:
+        if byte == _b_dquote:
           state = s_mid
-        elif b == _b_backslash:
+        elif byte == _b_backslash:
           state = s_str_esc
 
-      elif b in _b_ws:
+      elif byte in _b_ws:
         continue
-      elif b == _b_dquote:
+      elif byte == _b_dquote:
         state = s_str
-      elif b in _b_open:
+      elif byte in _b_open:
         # Open brackets preceded by a newline or the document start inline their first child.
         # s_open_inline propagates: consecutive inline opens all inline their first child.
         # s_open_break precedes a newline, so the following open is inlined.
@@ -71,14 +72,17 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Generator[bytes,None,in
           state = s_open_inline
         else:
           state = s_open_break
-      elif b in _b_close:
+      elif byte in _b_close:
         state = s_close
-      elif b == _b_comma:
+      elif byte == _b_comma:
         state = s_comma
-      elif b == _b_colon:
+      elif byte == _b_colon:
         state = s_colon
       else:
         state = s_mid
+
+      if prev_byte != -1 and not (omit_trailing_commas and prev_state == s_comma and state == s_close):
+        output.append(prev_byte)
 
       if (
        prev_state == s_colon or
@@ -89,7 +93,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Generator[bytes,None,in
         output.append(_b_newline)
         output.extend(_b_indent * indent)
 
-      output.append(b)
+      prev_byte = byte
+      prev_state = state
 
       if state in (s_open_inline, s_open_break):
         indent += 1
@@ -99,7 +104,9 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Generator[bytes,None,in
     yield bytes(output)
 
   # Final newline for non-empty output.
-  if state != s_start:
+  if prev_byte != -1 and not (omit_trailing_commas and prev_state == s_comma):
+    yield _byte_table[prev_byte]
+  if prev_state != s_start:
     yield b'\n'
 
   return indent

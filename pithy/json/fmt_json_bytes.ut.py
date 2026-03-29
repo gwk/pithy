@@ -1,10 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from typing import Any
+
 from pithy.json.fmt import fmt_json_bytes
 from utest import utest
 
 
-examples = [
+clean_examples = [
   b'',
   b'null\n',
   b'"a"\n',
@@ -34,13 +36,23 @@ b'''\
 ''',
 
 b'''\
+[ 0,
+  1 ]
+''',
+
+b'''\
+{ "a": 1,
+  "b": 2 }
+''',
+
+b'''\
 { "a": [
     0 ]}
 ''',
 ]
 
 
-malformed = [
+malformed_examples = [
   b'[\n',
   b'{\n',
   b'[ 0\n',
@@ -57,23 +69,49 @@ b'''\
 ]
 
 
-trailing_commas = [
-  b'[ 0, ]\n',
-  b'{ "a": 1, }\n',
-]
+trailing_commas = {
+  b'[ 0, ]\n' : b'[ 0 ]\n',
+  b'{ "a": 1, }\n' : b'{ "a": 1 }\n',
+
+b'''\
+[ { "a": 1, },
+  { "b": 2, }, ],
+''': b'''\
+[ { "a": 1 },
+  { "b": 2 } ]
+''',
 
 
-def test_fmt(bytes:bytes) -> bytes:
-  return b''.join(fmt_json_bytes(bytes))
+b'''\
+{ "a": [
+    0,
+    1, ],
+  "b": {
+    "x": 0,
+    "y": 1, }, ]
+''' : b'''\
+{ "a": [
+    0,
+    1 ],
+  "b": {
+    "x": 0,
+    "y": 1 } ]
+''',
+}
 
 
-for example in examples:
-  utest(example, test_fmt, example)
+def test_fmt(bytes:bytes, **opts:Any) -> bytes:
+  return b''.join(fmt_json_bytes(bytes, **opts))
 
 
-for example in malformed:
-  utest(example, test_fmt, example)
+for clean in clean_examples:
+  utest(clean, test_fmt, clean)
 
 
-for example in trailing_commas:
-  utest(example, test_fmt, example)
+for malformed in malformed_examples:
+  utest(malformed, test_fmt, malformed)
+
+
+for malformed, fixed in trailing_commas.items():
+  utest(malformed, test_fmt, malformed)
+  utest(fixed, test_fmt, malformed, omit_trailing_commas=True)
