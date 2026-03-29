@@ -2,7 +2,7 @@
 
 from sys import argv, stdin, stdout
 
-from pithy.json import format_json_bytes
+from pithy.json.fmt import write_formatted_json_bytes
 
 
 def main() -> None:
@@ -11,10 +11,10 @@ def main() -> None:
   if args:
     for path in args:
       with open(path, 'rb') as f:
-        format_json_bytes(f, out_raw)
+        write_formatted_json_bytes(out_raw, f)
   else:
     in_raw = stdin.buffer
-    format_json_bytes(in_raw, out_raw)
+    write_formatted_json_bytes(out_raw, in_raw)
 
 
 if __name__ == '__main__': main()

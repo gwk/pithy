@@ -3,13 +3,13 @@
 import json as _json
 import re
 from dataclasses import fields, is_dataclass
-from io import BytesIO, Reader, Writer
+from io import Reader, Writer
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
 from typing import AbstractSet, Any, Callable, Iterable, Sequence
 
-from .encode import encode_obj, EncodeObj
-from .type_slots import all_slots
+from ..encode import encode_obj, EncodeObj
+from ..type_slots import all_slots
 
 
 type JsonList = list['Json']
@@ -213,75 +213,6 @@ def _hook_type_fn(t:type) -> ObjDecodeFn:
   try: return t.from_json # type: ignore[attr-defined, no-any-return]
   except AttributeError: return t
 
-
-def format_json_bytes(bytes_or_file:Reader[bytes]|bytes, out_raw:Writer[bytes]) -> None:
-  '''
-  Format JSON bytes. This is useful for pretty-printing JSON that is malformed.
-  '''
-  file:Reader[bytes] = BytesIO(bytes_or_file) if isinstance(bytes_or_file, bytes) else bytes_or_file
-
-  s_start, s_open, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(8)
-
-  indent = 0
-  state = s_start
-  is_open_fresh = True
-  while byte := file.read(1):
-    prev_state = state
-
-    if state == s_str_esc:
-      state = s_str
-    elif state == s_str:
-      if byte == b'"':
-        state = s_mid
-      elif byte == b'\\':
-        state = s_str_esc
-
-    elif byte in b' \n\t\r':
-      continue
-    elif byte == b'"':
-      state = s_str
-    elif byte in b'{[':
-      state = s_open
-    elif byte in b'}]':
-      state = s_close
-    elif byte == b',':
-      state = s_comma
-    elif byte == b':':
-      state = s_colon
-    else:
-      state = s_mid
-
-    if prev_state == s_colon or (prev_state == s_open and is_open_fresh) or (prev_state not in (s_open, s_close) and state == s_close):
-      out_raw.write(b' ')
-    elif prev_state == s_open and state != s_close:
-      out_raw.write(b'\n')
-      out_raw.write(b'  ' * indent)
-      is_open_fresh = True
-
-    if prev_state in (s_comma, s_close) and state not in (s_comma, s_close): # Done closing; emit newline.
-      out_raw.write(b'\n')
-      out_raw.write(b'  ' * indent)
-      is_open_fresh = True
-
-    out_raw.write(byte)
-
-    if state == s_open:
-      indent += 1
-    elif state == s_close:
-      indent -= 1
-    if state != s_open:
-      is_open_fresh = False
-
-  # Final newline for non-empty output.
-  if state != s_start:
-    out_raw.write(b'\n')
-
-  if indent != 0:
-    # Flush stdout before writing warning to avoid mixing with stderr.
-    try: flush_fn = out_raw.flush # type: ignore[attr-defined]
-    except AttributeError: pass
-    else: flush_fn()
-    print(f'WARNING: unbalanced levels: {indent}', file=stderr)
 
 
 def req_json_list(obj:Json) -> JsonList:
