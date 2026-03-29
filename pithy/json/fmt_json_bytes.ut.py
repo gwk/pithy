@@ -5,13 +5,15 @@ from utest import utest
 
 
 examples = [
-  b'none\n',
+  b'',
+  b'null\n',
   b'"a"\n',
   b'1\n',
   b'[ ]\n',
   b'{ }\n',
   b'[ 0 ]\n',
   b'{ "a": 1 }\n',
+  b'[ { }]\n',
 
 b'''\
 [ 0,
@@ -38,9 +40,40 @@ b'''\
 ]
 
 
-def fmt(bytes:bytes) -> bytes:
+malformed = [
+  b'[\n',
+  b'{\n',
+  b'[ 0\n',
+  b'[ 0 ]]\n',
+  b'{ "a": 1\n',
+  b'[ [ 0\n',
+  b'[ { "a": 1\n',
+
+b'''\
+{ "a": [
+    0 }]
+''',
+
+]
+
+
+trailing_commas = [
+  b'[ 0, ]\n',
+  b'{ "a": 1, }\n',
+]
+
+
+def test_fmt(bytes:bytes) -> bytes:
   return b''.join(fmt_json_bytes(bytes))
 
 
 for example in examples:
-  utest(example, fmt, example)
+  utest(example, test_fmt, example)
+
+
+for example in malformed:
+  utest(example, test_fmt, example)
+
+
+for example in trailing_commas:
+  utest(example, test_fmt, example)

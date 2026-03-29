@@ -1,8 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from io import BytesIO, Reader, Writer
-from typing import Iterator
-from warnings import warn
+from typing import Generator
 
 
 # Iterating over chunks of bytes ints instead of individual BytesIO bytes objects yields ~2x speedup.
@@ -20,13 +19,14 @@ _byte_table = [bytes([i]) for i in range(256)]  # Avoid per-byte allocation when
 _b_indent = b'  '
 
 
-def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
+def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Generator[bytes,None,int]:
   '''
   Format JSON bytes. The JSON input does not have to be well-formed.
   This is useful for pretty-printing JSON, including input that is malformed.
   The output identical to the input, with the following changes:
   * space, '\n', '\r', '\t' are replaced with formatted whitespace (spaces and newlines only).
   The output style is lispy, with closing braces/brackets on the same line as the last item.
+  Returns the indent level; use `GenRes` to obtain the indent level and output together.
   '''
   file:Reader[bytes] = BytesIO(bytes_or_file) if isinstance(bytes_or_file, bytes) else bytes_or_file
 
@@ -102,8 +102,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes]) -> Iterator[bytes]:
   if state != s_start:
     yield b'\n'
 
-  if indent != 0:
-    warn(f'Unbalanced JSON levels: {indent}')
+  return indent
+
 
 
 def write_formatted_json_bytes(file:Writer[bytes], bytes_or_file:bytes|Reader[bytes]) -> None:
