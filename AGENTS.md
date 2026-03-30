@@ -61,6 +61,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - Read the entirety of `utest/__init__.py` as context for writing tests.
 - Unit tests have the compound suffix `.ut.py` and should be placed in the source tree next to the module under test.
 - If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
+- Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.
 
 
 # Claude Code Restrictions
