@@ -63,10 +63,10 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
       elif byte == _b_dquote:
         state = s_str
       elif byte in _b_open:
-        # Open brackets preceded by a newline or the document start inline their first child.
-        # s_open_inline propagates: consecutive inline opens all inline their first child.
-        # s_open_break precedes a newline, so the following open is inlined.
-        # s_comma and s_close both trigger a newline before the next token, so the following item can is inlined.
+        # Open brackets on a new line are followed by an inlined first child.
+        # s_open_inline propagates: consecutive inline opens are allowed.
+        # s_open_break precedes a newline, so a following open is inlined.
+        # s_comma and s_close both trigger a newline before the next token, so the following item is inlined.
         # All other predecessors (s_colon, s_mid, s_str) are mid-line, requiring s_open_break.
         if prev_state in (s_start, s_open_inline, s_open_break, s_comma, s_close):
           state = s_open_inline
@@ -86,7 +86,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
 
       if (
        prev_state == s_colon or
-       prev_state == s_open_inline or
+       (prev_state == s_open_inline and state != s_close) or
        (prev_state not in (s_open_inline, s_open_break, s_close) and state == s_close)):
         output.append(_b_space)
       elif prev_state in (s_open_break, s_comma, s_close) and state not in (s_comma, s_close):
