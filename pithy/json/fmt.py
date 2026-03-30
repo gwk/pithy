@@ -21,10 +21,11 @@ _b_indent = b'  '
 
 def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=False) -> Generator[bytes,None,int]:
   '''
-  Format JSON bytes. The JSON input does not have to be well-formed.
+  Format JSON bytes. The JSON input does not have to be syntactically well-formed.
   This is useful for pretty-printing JSON, including input that is malformed.
   The output identical to the input, with the following changes:
-  * space, '\n', '\r', '\t' are replaced with formatted whitespace (spaces and newlines only).
+  * JSON whitespace (only space, '\n', '\r', '\t') is altered; the output whitespace is spaces and newlines only.
+  * Trailing commas are omitted.
   The output style is lispy, with closing braces/brackets on the same line as the last item.
   Returns the indent level; use `GenRes` to obtain the indent level and output together.
   '''
