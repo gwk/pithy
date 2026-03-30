@@ -37,13 +37,15 @@ class Response():
   '''
 
   status:HTTPStatus
+  reason:str
   headers:ResponseHeadersDict
   body:BinaryResponseBody
 
-  def __init__(self, status:HTTPStatus=HTTPStatus.OK, *, headers:ResponseHeadersDict|None=None,
+  def __init__(self, status:HTTPStatus=HTTPStatus.OK, *, reason:str='', headers:ResponseHeadersDict|None=None,
    body:ResponseBody|None=None, media_type:str='', last_modified:float=0.0) -> None:
 
     self.status = status
+    self.reason = reason
 
     if headers is None: headers = {}
     else:
@@ -113,7 +115,7 @@ class Response():
         reason=html_escape(error.reason or error.status.phrase, quote=False))
       #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       media_type = error_media_type
-    return cls(error.status, headers=error.headers, body=body, media_type=media_type)
+    return cls(error.status, reason=error.reason, headers=error.headers, body=body, media_type=media_type)
 
 
   def set_no_cache_headers(self) -> None:

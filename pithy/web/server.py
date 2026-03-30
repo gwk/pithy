@@ -293,7 +293,7 @@ class WebServer:
       while event := conn.next_request():
         method = http_method_bytes_to_strs.get(event.method, '')
         response = self._handle_connection_cycle(conn, event, method)
-        self._send_response(conn, response, method=method)
+        self._send_response(conn, response=response, method=method)
         if not conn.recycle(): break
     finally:
       try: socket.close()
@@ -362,7 +362,7 @@ class WebServer:
   def _send_error(self, conn:_Conn, status:HTTPStatus, reason:str) -> Literal[False]:
     response = Response(status=status, body=reason, media_type='text/plain')
     response.set_connection_close()
-    self._send_response(conn, response, 'GET')
+    self._send_response(conn, response=response, method='GET')
     return False
 
 
@@ -394,8 +394,8 @@ class WebServer:
     socket.sendall(h11_conn.send(event))
 
 
-  def _send_response(self, conn:_Conn, response:Response, method:str) -> None:
-    event = h11_Response(status_code=response.status.value, headers=response.headers_bytes_list())
+  def _send_response(self, conn:_Conn, *, response:Response, method:str) -> None:
+    event = h11_Response(status_code=response.status.value, headers=response.headers_bytes_list(), reason=response.reason)
     h11_conn = conn.h11_conn
     socket = conn.socket
 
