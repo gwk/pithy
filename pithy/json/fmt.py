@@ -19,13 +19,13 @@ _byte_table = [bytes([i]) for i in range(256)]  # Avoid per-byte allocation when
 _b_indent = b'  '
 
 
-def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=False) -> Generator[bytes,None,int]:
+def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:bool=False) -> Generator[bytes,None,int]:
   '''
   Format JSON bytes. The JSON input does not have to be syntactically well-formed.
   This is useful for pretty-printing JSON, including input that is malformed.
   The output identical to the input, with the following changes:
   * JSON whitespace (only space, '\n', '\r', '\t') is altered; the output whitespace is spaces and newlines only.
-  * Trailing commas are omitted.
+  * Trailing commas are omitted unless `allow_trailing_commas` is `True`.
   The output style is lispy, with closing braces/brackets on the same line as the last item.
   Returns the indent level; use `GenRes` to obtain the indent level and output together.
   '''
@@ -84,7 +84,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
       else:
         state = s_mid
 
-      if prev_byte != -1 and not (omit_trailing_commas and prev_state is s_comma and state is s_close):
+      if prev_byte != -1 and (allow_trailing_commas or not (prev_state is s_comma and state is s_close)):
         output.append(prev_byte)
 
       if prev_state is s_open_inline:
@@ -121,7 +121,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
     yield bytes(output)
 
   # Final newline for non-empty output.
-  if prev_byte != -1 and not (omit_trailing_commas and prev_state is s_comma):
+  if prev_byte != -1:
     yield _byte_table[prev_byte]
   if prev_state != s_start:
     yield b'\n'

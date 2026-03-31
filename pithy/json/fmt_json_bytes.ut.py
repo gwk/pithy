@@ -82,7 +82,7 @@ trailing_commas = {
 
 b'''\
 [ { "a": 1, },
-  { "b": 2, }, ],
+  { "b": 2, }, ]
 ''': b'''\
 [ { "a": 1 },
   { "b": 2 } ]
@@ -112,13 +112,13 @@ def test_fmt(bytes:bytes, **opts:Any) -> bytes:
 
 
 for clean in clean_examples:
-  utest(clean, test_fmt, clean)
+  utest(clean, test_fmt, clean, allow_trailing_commas=True)
 
 
 for malformed in malformed_examples:
-  utest(malformed, test_fmt, malformed)
+  utest(malformed, test_fmt, malformed, allow_trailing_commas=True)
 
 
 for malformed, fixed in trailing_commas.items():
-  utest(malformed, test_fmt, malformed)
-  utest(fixed, test_fmt, malformed, omit_trailing_commas=True)
+  utest(malformed, test_fmt, malformed, allow_trailing_commas=True)
+  utest(fixed, test_fmt, malformed, allow_trailing_commas=False)
