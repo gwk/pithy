@@ -88,7 +88,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
       if (
        prev_state == s_colon or
        (prev_state == s_open_inline and state != s_close) or
-       (prev_state not in (s_open_inline, s_open_break, s_close) and state == s_close)):
+       (prev_state in (s_comma, s_mid, s_str) and state == s_close)):
         output.append(_b_space)
       elif prev_state in (s_open_break, s_comma, s_close) and state not in (s_comma, s_close):
         output.append(_b_newline)
