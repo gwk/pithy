@@ -43,6 +43,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
   # s_str: inside a string.
   # s_str_esc: a backslash token inside of a string.
 
+  inline_states = frozenset((s_start, s_open_inline, s_open_break, s_comma, s_close))
+
   prev_state = s_start
   prev_byte = -1
   indent = 0
@@ -51,9 +53,9 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
     output = bytearray() # ~15% speedup over yielding individual bytes when building the output.
     for byte in chunk:
 
-      if prev_state == s_str_esc:
+      if prev_state is s_str_esc:
         state = s_str
-      elif prev_state == s_str:
+      elif prev_state is s_str:
         if byte == _b_dquote:
           state = s_mid
         elif byte == _b_backslash:
@@ -69,7 +71,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
         # s_open_break precedes a newline, so a following open is inlined.
         # s_comma and s_close both trigger a newline before the next token, so the following item is inlined.
         # All other predecessors (s_colon, s_mid, s_str) are mid-line, requiring s_open_break.
-        if prev_state in (s_start, s_open_inline, s_open_break, s_comma, s_close):
+        if prev_state in inline_states:
           state = s_open_inline
         else:
           state = s_open_break
@@ -82,30 +84,44 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], omit_trailing_commas:bool=
       else:
         state = s_mid
 
-      if prev_byte != -1 and not (omit_trailing_commas and prev_state == s_comma and state == s_close):
+      if prev_byte != -1 and not (omit_trailing_commas and prev_state is s_comma and state is s_close):
         output.append(prev_byte)
 
-      if (
-       prev_state == s_colon or
-       (prev_state == s_open_inline and state != s_close) or
-       (prev_state in (s_comma, s_mid, s_str) and state == s_close)):
+      if prev_state is s_open_inline:
+        if state != s_close:
+          output.append(_b_space)
+      elif prev_state is s_open_break:
+        if state != s_close:
+          output.append(_b_newline)
+          output.extend(_b_indent * indent)
+      elif prev_state is s_close:
+        if state is not s_comma and state is not s_close:
+          output.append(_b_newline)
+          output.extend(_b_indent * indent)
+      elif prev_state is s_comma:
+        if state is s_close:
+          output.append(_b_space)
+        elif state != s_comma:
+          output.append(_b_newline)
+          output.extend(_b_indent * indent)
+      elif prev_state is s_colon:
         output.append(_b_space)
-      elif prev_state in (s_open_break, s_comma, s_close) and state not in (s_comma, s_close):
-        output.append(_b_newline)
-        output.extend(_b_indent * indent)
+      elif prev_state is s_mid or prev_state is s_str:
+        if state is s_close:
+          output.append(_b_space)
 
       prev_byte = byte
       prev_state = state
 
-      if state in (s_open_inline, s_open_break):
+      if state is s_open_inline or state is s_open_break:
         indent += 1
-      elif state == s_close:
+      elif state is s_close:
         indent -= 1
 
     yield bytes(output)
 
   # Final newline for non-empty output.
-  if prev_byte != -1 and not (omit_trailing_commas and prev_state == s_comma):
+  if prev_byte != -1 and not (omit_trailing_commas and prev_state is s_comma):
     yield _byte_table[prev_byte]
   if prev_state != s_start:
     yield b'\n'
