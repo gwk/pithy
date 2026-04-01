@@ -8,13 +8,15 @@ from pithy.json.fmt import write_formatted_json_bytes
 def main() -> None:
   out_raw = stdout.buffer
   args = argv[1:]
-  if args:
-    for path in args:
-      with open(path, 'rb') as f:
-        write_formatted_json_bytes(out_raw, f)
-  else:
-    in_raw = stdin.buffer
-    write_formatted_json_bytes(out_raw, in_raw)
+  if not args:
+    args = ['-']
+  for path in args:
+    if path == '-':
+      f = stdin.buffer
+    else:
+      f = open(path, 'rb')
+    with f:
+      write_formatted_json_bytes(out_raw, f, fix=False)
 
 
 if __name__ == '__main__': main()

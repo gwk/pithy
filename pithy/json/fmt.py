@@ -4,7 +4,7 @@ from io import BytesIO, Reader, Writer
 from typing import Generator
 
 
-# Iterating over chunks of bytes ints instead of individual BytesIO bytes objects yields ~2x speedup.
+# Iterating over bytes chunks and their ints instead of individual BytesIO bytes objects yields ~2x speedup.
 _chunk_size = 16 * 1024
 _b_newline = ord('\n')
 _b_space = ord(' ')
@@ -19,10 +19,19 @@ _byte_table = [bytes([i]) for i in range(256)]  # Avoid per-byte allocation when
 _b_indent = b'  '
 
 
-def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:bool=False) -> Generator[bytes,None,int]:
+def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailing_commas:bool=False,
+ ) -> Generator[bytes,None,int]:
   '''
   Format JSON bytes. The JSON input does not have to be syntactically well-formed.
   This is useful for pretty-printing JSON, including input that is malformed.
+
+  If `fix` is `True` then the output is modified to try to make it well-formed JSON:
+  * Missing commas are added where appropriate.
+  * Multiple consecutive commas are reduced to a single comma.
+  * A final comma before a closing brace/bracket is removed unless `allow_trailing_commas` is `True`.
+
+  `allow_trailing_commas` has no effect if `fix` is `False`.
+
   The output identical to the input, with the following changes:
   * JSON whitespace (only space, '\n', '\r', '\t') is altered; the output whitespace is spaces and newlines only.
   * Trailing commas are omitted unless `allow_trailing_commas` is `True`.
@@ -32,7 +41,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:b
   file:Reader[bytes] = BytesIO(bytes_or_file) if isinstance(bytes_or_file, bytes) else bytes_or_file
 
   s_start, s_open_inline, s_open_break, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(9)
-  # States:
+  # States are specified as local ints. This is faster than looking up global vars.
+  # It is also much faster than using a global Enum object, but prevents us from using the `match` statement.
   # s_start: before any tokens have been seen.
   # s_open_inline: an open token (`{` or `[`) whose first child will be on the same line.
   # s_open_break: an open token (`{` or `[`) whose first child will be on the next line.
@@ -45,8 +55,10 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:b
 
   inline_states = frozenset((s_start, s_open_inline, s_open_break, s_comma, s_close))
 
+  prev2_state = s_start
   prev_state = s_start
   prev_byte = -1
+  prev_had_ws = False
   indent = 0
 
   while chunk := file.read(_chunk_size):
@@ -62,6 +74,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:b
           state = s_str_esc
 
       elif byte in _b_ws:
+        prev_had_ws = True
         continue
       elif byte == _b_dquote:
         state = s_str
@@ -84,7 +97,14 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:b
       else:
         state = s_mid
 
-      if prev_byte != -1 and (allow_trailing_commas or not (prev_state is s_comma and state is s_close)):
+      if fix and prev_state is s_comma:
+        if state is s_comma: # Multiple consecutive commas; omit all but the first, leaving prev_state alone.
+          continue
+        if state is s_close and not allow_trailing_commas: # Omit the comma; state will transition to s_close.
+          prev_state = prev2_state
+          prev_byte = -1
+
+      if prev_byte != -1:
         output.append(prev_byte)
 
       if prev_state is s_open_inline:
@@ -96,12 +116,14 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:b
           output.extend(_b_indent * indent)
       elif prev_state is s_close:
         if state is not s_comma and state is not s_close:
+          if fix:
+            output.append(_b_comma)
           output.append(_b_newline)
           output.extend(_b_indent * indent)
       elif prev_state is s_comma:
-        if state is s_close:
-          output.append(_b_space)
-        elif state != s_comma:
+        if state is s_comma: # When not in fix mode, do not add newline/indent to consecutive commas.
+          assert not fix # In `fix` mode, multiple consecutive commas should have been handled above.
+        elif state is not s_close:
           output.append(_b_newline)
           output.extend(_b_indent * indent)
       elif prev_state is s_colon:
@@ -109,9 +131,16 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:b
       elif prev_state is s_mid or prev_state is s_str:
         if state is s_close:
           output.append(_b_space)
+        elif (state is s_mid or state is s_str) and prev_had_ws: # Two tokens with intervening whitespace; missing comma.
+          if fix:
+            output.append(_b_comma)
+          output.append(_b_newline)
+          output.extend(_b_indent * indent)
 
       prev_byte = byte
+      prev2_state = prev_state
       prev_state = state
+      prev_had_ws = False
 
       if state is s_open_inline or state is s_open_break:
         indent += 1
@@ -120,16 +149,17 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, allow_trailing_commas:b
 
     yield bytes(output)
 
-  # Final newline for non-empty output.
-  if prev_byte != -1:
+  if prev_byte != -1: # If the final byte is a comma then the output is invalid so we emit it regardless.
     yield _byte_table[prev_byte]
-  if prev_state != s_start:
+  if prev_state != s_start: # Final newline for non-empty output.
     yield b'\n'
 
   return indent
 
 
 
-def write_formatted_json_bytes(file:Writer[bytes], bytes_or_file:bytes|Reader[bytes]) -> None:
-  for b in fmt_json_bytes(bytes_or_file):
+def write_formatted_json_bytes(file:Writer[bytes], bytes_or_file:bytes|Reader[bytes], fix:bool,\
+ allow_trailing_commas:bool=False) -> None:
+
+  for b in fmt_json_bytes(bytes_or_file, fix=fix, allow_trailing_commas=allow_trailing_commas):
     file.write(b)

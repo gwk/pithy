@@ -6,6 +6,10 @@ from pithy.json.fmt import fmt_json_bytes
 from utest import utest
 
 
+def test_fmt(bytes:bytes, **opts:Any) -> bytes:
+  return b''.join(fmt_json_bytes(bytes, **opts))
+
+
 clean_examples = [
   b'',
   b'null\n',
@@ -19,7 +23,6 @@ clean_examples = [
   b'[ [ 0 ]]\n',
   b'[ { "a": 1 }]\n',
 
-
 b'''\
 [ 0,
   1 ]
@@ -28,6 +31,11 @@ b'''\
 b'''\
 { "a": 1,
   "b": 2 }
+''',
+
+b'''\
+[ [],
+  []]
 ''',
 
 b'''\
@@ -49,7 +57,6 @@ b'''\
     "d": 4 }]
 ''',
 
-
 b'''\
 { "a": [
     0 ],
@@ -57,6 +64,9 @@ b'''\
     "x": 0 }}
 ''',
 ]
+
+for clean in clean_examples:
+  utest(clean, test_fmt, clean, fix=False)
 
 
 malformed_examples = [
@@ -67,58 +77,102 @@ malformed_examples = [
   b'{ "a": 1\n',
   b'[ [ 0\n',
   b'[ { "a": 1\n',
+  b'[ ,\n',
+  b',]\n',
+  b'"a""b"\n',
 
 b'''\
 { "a": [
     0 }]
 ''',
 
+b'''\
+[ 0
+  0 ]
+''',
 ]
 
+for malformed in malformed_examples:
+  utest(malformed, test_fmt, malformed, fix=False)
 
-trailing_commas = {
-  b'[ 0, ]\n' : b'[ 0 ]\n',
-  b'{ "a": 1, }\n' : b'{ "a": 1 }\n',
 
+fix_examples = {
 b'''\
-[ { "a": 1, },
-  { "b": 2, }, ]
-''': b'''\
-[ { "a": 1 },
-  { "b": 2 } ]
+[]
+0
+''' : b'''\
+[],
+0
 ''',
 
+b'''\
+[ "a"
+  "b" ]
+''' : b'''\
+[ "a",
+  "b" ]
+''',
+
+b'''\
+[ []
+  []]
+''' : b'''\
+[ [],
+  []]
+''',
+
+b'''\
+[ { "a": 1 }
+  { "b": 2 }]
+''' : b'''\
+[ { "a": 1 },
+  { "b": 2 }]
+''',
+
+b'''\
+[ 0,,
+  1 ]
+''' : b'''\
+[ 0,
+  1 ]
+''',
+}
+
+for malformed, fixed in fix_examples.items():
+  utest(malformed, test_fmt, malformed, fix=False)
+  utest(fixed, test_fmt, malformed, fix=True)
+
+
+trailing_commas_examples = {
+  b'[ 0,]\n' : b'[ 0 ]\n',
+  b'{ "a": 1,}\n' : b'{ "a": 1 }\n',
+
+b'''\
+[ { "a": 1,},
+  { "b": 2,},]
+''': b'''\
+[ { "a": 1 },
+  { "b": 2 }]
+''',
 
 b'''\
 { "a": [
     0,
-    1, ],
+    1,],
   "b": {
     "x": 0,
-    "y": 1, }, ]
+    "y": 1,},]
 ''' : b'''\
 { "a": [
     0,
     1 ],
   "b": {
     "x": 0,
-    "y": 1 } ]
+    "y": 1 }]
 ''',
 }
 
 
-def test_fmt(bytes:bytes, **opts:Any) -> bytes:
-  return b''.join(fmt_json_bytes(bytes, **opts))
-
-
-for clean in clean_examples:
-  utest(clean, test_fmt, clean, allow_trailing_commas=True)
-
-
-for malformed in malformed_examples:
-  utest(malformed, test_fmt, malformed, allow_trailing_commas=True)
-
-
-for malformed, fixed in trailing_commas.items():
-  utest(malformed, test_fmt, malformed, allow_trailing_commas=True)
-  utest(fixed, test_fmt, malformed, allow_trailing_commas=False)
+for with_trailing, without_trailing in trailing_commas_examples.items():
+  utest(with_trailing, test_fmt, with_trailing, fix=True, allow_trailing_commas=True)
+  utest(without_trailing, test_fmt, with_trailing, fix=True, allow_trailing_commas=False)
