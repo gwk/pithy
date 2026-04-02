@@ -12,6 +12,8 @@ _b_dquote = ord('"')
 _b_backslash = ord('\\')
 _b_comma = ord(',')
 _b_colon = ord(':')
+_b_slash = ord('/')
+_b_star = ord('*')
 _b_ws = frozenset(b' \n\t\r')
 _b_open = frozenset(b'{[')
 _b_close = frozenset(b'}]')
@@ -20,7 +22,7 @@ _b_indent = b'  '
 
 
 def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailing_commas:bool=False,
- ) -> Generator[bytes,None,int]:
+ allow_comments:bool=False) -> Generator[bytes,None,int]:
   '''
   Format JSON bytes. The JSON input does not have to be syntactically well-formed.
   This is useful for pretty-printing JSON, including input that is malformed.
@@ -32,9 +34,14 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
   `allow_trailing_commas` has no effect if `fix` is `False`.
 
+  JavaScript-style comments (`//` line and `/* */` block) are recognized.
+  When `fix` is `True`, comments are stripped unless `allow_comments` is `True`.
+  When `fix` is `False`, comments are always preserved.
+
   The output identical to the input, with the following changes:
   * JSON whitespace (only space, '\n', '\r', '\t') is altered; the output whitespace is spaces and newlines only.
   * Trailing commas are omitted unless `allow_trailing_commas` is `True`.
+  * Comments are stripped when `fix` is `True` and `allow_comments` is `False`.
   The output style is lispy, with closing braces/brackets on the same line as the last item.
   Returns the indent level; use `GenRes` to obtain the indent level and output together.
   '''
@@ -55,15 +62,118 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
   inline_states = frozenset((s_start, s_open_inline, s_open_break, s_comma, s_close))
 
+  c_none, c_pending, c_line, c_block, c_block_star = range(5)
+  comment = c_none
+  strip_comments = fix and not allow_comments
+  unterminated_block_buffer = bytearray() # In strip mode, captures the current block comment so it can be re-emitted on EOF if unterminated.
+
   prev2_state = s_start
   prev_state = s_start
   prev_byte = -1
   prev_had_ws = False
+  post_line_comment_nl = False # True when a preserved `//` comment just emitted its terminating newline; suppresses the next transition's leading newline.
   indent = 0
 
   while chunk := file.read(_chunk_size):
     output = bytearray() # ~15% speedup over yielding individual bytes when building the output.
     for byte in chunk:
+
+      # Handle comment states.
+      if comment is not c_none:
+        if comment is c_pending:
+          comment = c_none
+          if byte == _b_slash:
+            comment = c_line
+            if not strip_comments:
+              if prev_byte != -1:
+                output.append(prev_byte)
+                output.append(_b_space)
+                prev_byte = -1
+              output.extend(b'//')
+            prev_had_ws = True
+            continue
+          if byte == _b_star:
+            comment = c_block
+            if not strip_comments:
+              if prev_byte != -1:
+                output.append(prev_byte)
+                output.append(_b_space)
+                prev_byte = -1
+              output.extend(b'/*')
+            else:
+              unterminated_block_buffer.extend(b'/*')
+            prev_had_ws = True
+            continue
+          # Not a comment start. Emit the orphan `/` as a literal s_mid byte so it is preserved.
+          # Run prev_state -> s_mid transition for the slash, then queue it as prev_byte; the
+          # current byte then flows through normal processing as if `/` were just another token.
+          if prev_byte != -1:
+            output.append(prev_byte)
+          if prev_state is s_open_inline:
+            output.append(_b_space)
+          elif prev_state is s_open_break:
+            if not post_line_comment_nl:
+              output.append(_b_newline)
+            output.extend(_b_indent * indent)
+          elif prev_state is s_close:
+            if fix:
+              output.append(_b_comma)
+            if not post_line_comment_nl:
+              output.append(_b_newline)
+            output.extend(_b_indent * indent)
+          elif prev_state is s_comma:
+            if not post_line_comment_nl:
+              output.append(_b_newline)
+            output.extend(_b_indent * indent)
+          elif prev_state is s_colon:
+            output.append(_b_space)
+          elif (prev_state is s_mid or prev_state is s_str) and prev_had_ws:
+            if fix:
+              output.append(_b_comma)
+            if not post_line_comment_nl:
+              output.append(_b_newline)
+            output.extend(_b_indent * indent)
+          prev2_state = prev_state
+          prev_state = s_mid
+          prev_byte = _b_slash
+          prev_had_ws = False
+          post_line_comment_nl = False
+          # Fall through to normal processing of current byte.
+        elif comment is c_line:
+          if byte == _b_newline:
+            comment = c_none
+            if not strip_comments:
+              output.append(_b_newline)
+              post_line_comment_nl = True
+          elif not strip_comments:
+            output.append(byte)
+          prev_had_ws = True
+          continue
+        elif comment is c_block:
+          if not strip_comments:
+            output.append(byte)
+          else:
+            unterminated_block_buffer.append(byte)
+          if byte == _b_star:
+            comment = c_block_star
+          prev_had_ws = True
+          continue
+        else: # c_block_star.
+          if byte == _b_slash:
+            comment = c_none
+            if not strip_comments:
+              output.append(byte)
+            else:
+              unterminated_block_buffer.clear() # Comment closed; discard the safety buffer.
+            prev_had_ws = True
+            continue
+          comment = c_block_star if byte == _b_star else c_block
+          if not strip_comments:
+            output.append(byte)
+          else:
+            unterminated_block_buffer.append(byte)
+          prev_had_ws = True
+          continue
 
       if prev_state is s_str_esc:
         state = s_str
@@ -75,6 +185,9 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
       elif byte in _b_ws:
         prev_had_ws = True
+        continue
+      elif byte == _b_slash:
+        comment = c_pending
         continue
       elif byte == _b_dquote:
         state = s_str
@@ -112,19 +225,22 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
           output.append(_b_space)
       elif prev_state is s_open_break:
         if state != s_close:
-          output.append(_b_newline)
+          if not post_line_comment_nl:
+            output.append(_b_newline)
           output.extend(_b_indent * indent)
       elif prev_state is s_close:
         if state is not s_comma and state is not s_close:
           if fix:
             output.append(_b_comma)
-          output.append(_b_newline)
+          if not post_line_comment_nl:
+            output.append(_b_newline)
           output.extend(_b_indent * indent)
       elif prev_state is s_comma:
         if state is s_comma: # When not in fix mode, do not add newline/indent to consecutive commas.
           assert not fix # In `fix` mode, multiple consecutive commas should have been handled above.
         elif state is not s_close:
-          output.append(_b_newline)
+          if not post_line_comment_nl:
+            output.append(_b_newline)
           output.extend(_b_indent * indent)
       elif prev_state is s_colon:
         output.append(_b_space)
@@ -134,13 +250,15 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
         elif (state is s_mid or state is s_str) and prev_had_ws: # Two tokens with intervening whitespace; missing comma.
           if fix:
             output.append(_b_comma)
-          output.append(_b_newline)
+          if not post_line_comment_nl:
+            output.append(_b_newline)
           output.extend(_b_indent * indent)
 
       prev_byte = byte
       prev2_state = prev_state
       prev_state = state
       prev_had_ws = False
+      post_line_comment_nl = False
 
       if state is s_open_inline or state is s_open_break:
         indent += 1
@@ -151,7 +269,9 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
   if prev_byte != -1: # If the final byte is a comma then the output is invalid so we emit it regardless.
     yield _byte_table[prev_byte]
-  if prev_state != s_start: # Final newline for non-empty output.
+  if unterminated_block_buffer: # Strip mode reached EOF inside an unterminated block comment; preserve it rather than swallowing input.
+    yield bytes(unterminated_block_buffer)
+  if prev_state != s_start and not post_line_comment_nl: # Final newline for non-empty output, unless a preserved line comment already ended with one.
     yield b'\n'
 
   return indent
@@ -159,7 +279,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
 
 def write_formatted_json_bytes(file:Writer[bytes], bytes_or_file:bytes|Reader[bytes], fix:bool,\
- allow_trailing_commas:bool=False) -> None:
+ allow_trailing_commas:bool=False, allow_comments:bool=False) -> None:
 
-  for b in fmt_json_bytes(bytes_or_file, fix=fix, allow_trailing_commas=allow_trailing_commas):
+  for b in fmt_json_bytes(bytes_or_file, fix=fix, allow_trailing_commas=allow_trailing_commas,
+   allow_comments=allow_comments):
     file.write(b)
