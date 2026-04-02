@@ -66,6 +66,8 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 
 # Claude Code Restrictions
 
+Do not alter git state unless explicitly requested. Always ask before doing a reset.
+
 Claude Code will sometimes be run as the `agent` user, which should have its permissions restricted.
 For example, source files will belong to `agent:agent` with permissions `660` to allow the agent to modify the code,
 or `640` for read-only permissions.
