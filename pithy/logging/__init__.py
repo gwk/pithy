@@ -6,7 +6,7 @@ from logging import Formatter, LogRecord
 from sys import stderr, stdout
 from traceback import TracebackException
 from types import TracebackType
-from typing import Any, Literal
+from typing import Any, get_args, Literal
 
 from ..ansi import RST, TXT_C, TXT_G, TXT_N, TXT_R, TXT_Y
 from ..encode import encode_obj
@@ -19,7 +19,7 @@ A lightweight logging system.
 
 LogLevel = Literal['debug', 'info', 'warn', 'error']
 
-log_levels:tuple[str,...] = LogLevel.__args__ # type: ignore[attr-defined]
+log_levels:tuple[str,...] = get_args(LogLevel)
 
 log_level_colors = {
   'debug': TXT_C,
