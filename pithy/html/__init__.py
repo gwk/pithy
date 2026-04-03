@@ -1008,6 +1008,22 @@ class Input(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlNoContent
   Contexts for use: Phrasing.
   '''
 
+  @classmethod
+  def checkbox(cls, *, is_checked:bool, **kwargs:Any) -> Self:
+    '''
+    Create a checkbox input element.
+    '''
+    assert 'value' not in kwargs, 'The value attribute is not used for checkboxes.'
+    return cls(type='checkbox', checked=Present(is_checked), **kwargs)
+
+
+  @classmethod
+  def int_field(cls, *, value:int|None=None, **kwargs:Any) -> Self:
+    '''
+    Create a number input element suitable for integer input.
+    '''
+    return cls(type='number', value=('' if value is None else value), **kwargs)
+
 
 @_tag
 class Ins(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
