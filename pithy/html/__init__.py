@@ -41,8 +41,8 @@ class HtmlNode(Mu):
   ws_sensitive_tags = semantics.ws_sensitive_tags
 
 
-  @classmethod
-  def parse_file(cls, file:_LxmlFileReadSource,  **kwargs:Any) -> 'Html':
+  @staticmethod
+  def parse_file(file:_LxmlFileReadSource,  **kwargs:Any) -> Html:
     from lxml import etree
     if 'treebuilder' in kwargs: raise ValueError('HtmlNode.parse() requires default `lxml` treebuilder option.')
     parser = etree.HTMLParser(**kwargs)
@@ -56,7 +56,7 @@ class HtmlNode(Mu):
 
 
   @classmethod
-  def parse(cls, source:bytes|str, **kwargs:Any) -> 'Html':
+  def parse(cls, source:bytes|str, **kwargs:Any) -> Html:
     if isinstance(source, bytes):
       kwargs['transport_encoding'] = 'utf-8'
       f:BytesIO|StringIO = BytesIO(source)
@@ -340,7 +340,7 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
   '''
 
   @classmethod
-  def maybe(cls, text:str, transform:Callable[[str],str]|None=None) -> Union['A',str]:
+  def maybe(cls, text:str, transform:Callable[[str],str]|None=None) -> Union[Self,str]:
     '''
     Create a link element if the text looks like it starts with a URL. Otherwise, return the plain text as-is.
     If the URL does not appear to span the entire text, create a link element with the entire text as its content.
@@ -841,8 +841,8 @@ class Heading(HtmlPhrasingContent):
   Contexts for use: As a child of an hgroup element, Flow.
   '''
 
-  @classmethod
-  def for_level(cls, level:int, *, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'Heading':
+  @staticmethod
+  def for_level(level:int, *, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> Heading:
     c = _heading_classes[min(level, 6) - 1]
     return c(attrs=attrs, _=_, cl=cl, **kw_attrs)
 
@@ -954,7 +954,7 @@ class Html(HtmlNode):
   def head(self) -> Head: return Head()
 
   @staticmethod
-  def doc(*, lang:str='en', charset:str='utf-8', title:str='') -> 'Html':
+  def doc(*, lang:str='en', charset:str='utf-8', title:str='') -> Html:
     html = Html(lang=lang)
     head = html.head
     head.append(Meta(charset=charset))
@@ -1409,21 +1409,21 @@ class Script(HtmlFlow, HtmlMetadata, HtmlPhrasing):
 
 
   @classmethod
-  def strict(cls, script:str, **attrs:Any) -> 'Script':
+  def strict(cls, script:str, **attrs:Any) -> Self:
     if not (script.startswith('\'use strict\';') or script.startswith('"use strict";')):
       script = "'use strict';\n" + script
-    return Script(script, **attrs)
+    return cls(script, **attrs)
 
 
   @classmethod
-  def onDomLoaded(cls, script:str, **attrs:Any) -> 'Script':
+  def onDomLoaded(cls, script:str, **attrs:Any) -> Self:
     '''
     Embed the script in `script` into a callback function that runs when the DOM is loaded.
     The callback function takes a single argument named `event`.
     Strict mode is automatically enabled.
     '''
     script = f"'use strict';\ndocument.addEventListener('DOMContentLoaded', (event) => {{\n{script}\n}});"
-    return Script(script, **attrs)
+    return cls(script, **attrs)
 
 
 @_tag
