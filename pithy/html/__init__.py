@@ -140,32 +140,67 @@ def _tag(Subclass:type[_Mu]) -> type[_Mu]:
 # Categories.
 
 class HtmlEmbedded(HtmlNode):
-  'Embedded content category.'
+  '''
+  Embedded content category: elements that import another resource or insert content from another markup language.
+  Members: Audio, Canvas, Embed, Iframe, Img, Object, Picture, Video.
+  '''
 
 
 class HtmlFlow(HtmlNode):
-  'Flow content category.'
+  '''
+  Flow content category: the broad category of elements used in the body of a document.
+  Most elements that are used in the body of documents and applications are categorized as flow content.
+
+  Members: A, Abbr, Address, Area (if it is a descendant of a Map element), Article, Aside, Audio, B, Bdi, Bdo, Blockquote, Br,
+  Button, Canvas, Cite, Code, Data, Datalist, Del, Details, Dfn, Dialog, Div, Dl, Em, Embed, Fieldset, Figure, Footer, Form,
+  H1, H2, H3, H4, H5, H6, Header, Hgroup, Hr, I, Iframe, Img, Input, Ins, Kbd, Label, Link (if it is allowed in the body),
+  Main (if it is a hierarchically correct main element), Map, Mark, Mathml Math, Menu,
+  Meta (if the itemprop attribute is present), Meter, Nav, Noscript, Object, Ol, Output, P, Picture, Pre, Progress, Q, Ruby, S,
+  Samp, Script, Search, Section, Select, Slot, Small, Span, Strong, Sub, Sup, Svg, Table, Template, Textarea, Time, U, Ul, Var,
+  Video, Wbr, Text, and autonomous custom elements.
+  '''
 
 
 class HtmlHeading(HtmlNode):
-  'Heading content category.'
+  '''
+  Heading content category: elements that define the heading of a section.
+  Members: Hgroup, H1-H6.
+
+  Note: the superclass of H1-H6 heading elements is the artificial `Heading` class.
+  '''
 
 
 class HtmlInteractive(HtmlNode):
-  'Interactive content category.'
+  '''
+  Interactive content category: elements specifically designed for user interaction.
+  Members: A, Audio, Button, Details, Embed, Iframe, Img, Input, Label, Object, Select, TextArea, Video.
+
+  Note: Some are only interactive conditionally (e.g. A requires an href attribute, Audio/Video require controls).
+  '''
 
 
 class HtmlMetadata(HtmlNode):
-  'Metadata content category: all node types that are metadata.'
+  '''
+  Metadata content category: elements that set up the presentation or behavior of the rest of the content,
+  or set up the relationship of the document with other documents, or convey other out-of-band information.
+  Members: Base, Link, Meta, Noscript, Script, Style, Template, Title.
+  '''
 
 
 class HtmlPalpable(HtmlNode):
-  'Palbable content category.'
+  '''
+  Palpable content category: as a general rule, elements whose content model allows any flow content or phrasing content should
+  have at least one node in its contents that is palpable content and that does not have the hidden attribute specified.
+
+  This requirement is not a hard requirement, however, as there are many cases where an element can be empty legitimately,
+  for example when it is used as a placeholder which will later be filled in by a script,
+  or when the element is part of a template and would on most pages be filled in but on some pages is not relevant.
+  '''
 
 
 class HtmlPhrasing(HtmlNode):
   '''
-  Phrasing content category: all node types that are phrasing content.
+  Phrasing content category: content that defines the text and the inline-level markup within a document.
   Mnemonic: "If it can be inside a sentence, it's phrasing content."
   '''
   @property
@@ -173,11 +208,17 @@ class HtmlPhrasing(HtmlNode):
 
 
 class HtmlSectioning(HtmlNode):
-  'All node types that are sectioning content.'
+  '''
+  Sectioning content category: elements that define the scope of header and footer elements.
+  Members: Article, Aside, Nav, Section.
+  '''
 
 
 class HtmlSectioningRoot(HtmlNode):
-  'All node types that are sectioning roots.'
+  '''
+  Sectioning root category: elements that can have their own outline independent of the main document outline.
+  Members: Blockquote, Body, Details, Dialog, Fieldset, Figure, Td.
+  '''
 
 
 # Content models.
@@ -243,7 +284,8 @@ class HtmlPhrasingContent(HtmlNode):
     `require_one` adds client side validation to require that at least one box is checked.
     `desc_singular` is used to for the client side validation message.
     `choices` can be an Iterable or a mapping, which will be treated as an iterable of pairs.
-    For each choice element, if it is a pair, the key is is used as the input name and the value is used as the label description.
+    For each choice element, if it is a pair, the key is is used as the input name and the value is used as the label
+    description.
     Otherwise the choice is used as both the key and the description.
     Similarly, `checked` can be a dictionary mapping from keys to truthy values, or simply a set of keys that are checked.
     '''
@@ -277,7 +319,8 @@ class HtmlPhrasingContent(HtmlNode):
     Add a sequence of radio buttons to the node.
     If `is_opt` is False, the radio buttons will have the `required` attribute (set to the empty string).
     If `checked` is provided, the radio button with the corresponding value will be checked.
-    If `choices` is a mapping or a sequence of pairs, the keys will be used as the radio button values and the values as the radio button labels.
+    If `choices` is a mapping or a sequence of pairs, the keys will be used as the radio button values and the values as the
+    radio button labels.
     If `choices` is a sequence of non-tuple values, the values will be used as both the radio button values and labels.
     '''
     if isinstance(choices, Mapping): choices = choices.items()
@@ -368,7 +411,8 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
 @_tag
 class Abbr(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Represents an abbreviation or acronym; the optional title attribute can provide an expansion or description for the abbreviation.
+  Represents an abbreviation or acronym; the optional title attribute can provide an expansion or description for the
+  abbreviation.
 
   Contexts for use: Phrasing.
   '''
@@ -380,7 +424,8 @@ class Address(HtmlFlow, HtmlPalpable, HtmlFlowContent):
   Indicates that the enclosed HTML provides contact information for a person or people, or for an organization.
 
   Content model:
-    Flow: with no heading content descendants, no sectioning content descendants, and no header, footer, or address element descendants.
+    Flow: with no heading content descendants, no sectioning content descendants, and no header, footer,
+    or address element descendants.
 
   Contexts for use: Flow.
   '''
@@ -389,7 +434,8 @@ class Address(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 @_tag
 class Area(HtmlFlow, HtmlPhrasing, HtmlNoContent):
   '''
-  Defines a hot-spot region on an image, and optionally associates it with a hypertext link. This is used only within a <map> element.
+  Defines a hot-spot region on an image, and optionally associates it with a hypertext link.
+  This is used only within a <map> element.
 
   Contexts for use: Where phrasing content is expected, but only if there is a map element ancestor.
   '''
@@ -398,7 +444,8 @@ class Area(HtmlFlow, HtmlPhrasing, HtmlNoContent):
 @_tag
 class Article(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
   '''
-  Represents a self-contained composition in a document, page, application, or site, which is intended to be independently distributable or reusable.
+  Represents a self-contained composition in a document, page, application, or site,
+  which is intended to be independently distributable or reusable.
 
   Contexts for use: Flow.
   '''
@@ -416,15 +463,19 @@ class Aside(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
 @_tag
 class Audio(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
   '''
-  Used to embed sound content in documents. It may contain one or more audio sources, represented using the src attribute or the <source> element: the browser will choose the most suitable one. It can also be the destination for streamed media, using a MediaStream.
+  Used to embed sound content in documents. It may contain one or more audio sources,
+  represented using the src attribute or the <source> element: the browser will choose the most suitable one.
+  It can also be the destination for streamed media, using a MediaStream.
 
   Categories:
     Interactive: if the element has a controls attribute.
     Palpable: if the element has a controls attribute.
 
   Content model:
-    Zero or more source elements, then zero or more track elements, then transparent, but with no media element descendants: if the element does not have a src attribute.
-    Zero or more track elements, then transparent, but with no media element descendants: if the element has a src attribute.
+    If the element does not have a src attribute:
+      Zero or more source elements, then zero or more track elements, then transparent, but with no media element descendants.
+    If the element has a src attribute:
+      Zero or more track elements, then transparent, but with no media element descendants.
 
   Contexts for use: Embedded.
   '''
@@ -442,7 +493,8 @@ class B(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 @_tag
 class Base(HtmlMetadata, HtmlNoContent):
   '''
-  Specifies the base URL to use for all relative URLs contained within a document. There can be only one <base> element in a document.
+  Specifies the base URL to use for all relative URLs contained within a document.
+  There can be only one <base> element in a document.
 
   Contexts for use: In a head element containing no other base elements.
   '''
@@ -469,7 +521,9 @@ class Bdo(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 @_tag
 class Blockquote(HtmlFlow, HtmlPalpable, HtmlSectioningRoot, HtmlFlowContent):
   '''
-  Indicates that the enclosed text is an extended quotation. Usually, this is rendered visually by indentation (see Notes for how to change it). A URL for the source of the quotation may be given using the cite attribute, while a text representation of the source can be given using the <cite> element.
+  Indicates that the enclosed text is an extended quotation. Usually, this is rendered visually by indentation.
+  A URL for the source of the quotation may be given using the cite attribute,
+  while a text representation of the source can be given using the <cite> element.
 
   Contexts for use: Flow.
   '''
@@ -501,7 +555,8 @@ class Body(HtmlSectioningRoot, HtmlFlowContent):
 @_tag
 class Br(HtmlFlow, HtmlPhrasing, HtmlNoContent):
   '''
-  Produces a line break in text (carriage-return). It is useful for writing a poem or an address, where the division of lines is significant.
+  Produces a line break in text (carriage-return).
+  It is useful for writing a poem or an address, where the division of lines is significant.
 
   Contexts for use: Phrasing.
   '''
@@ -515,7 +570,7 @@ class Br(HtmlFlow, HtmlPhrasing, HtmlNoContent):
 @_tag
 class Button(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Represents a clickable button, which can be used in forms or anywhere in a document that needs simple, standard button functionality.
+  Represents a clickable button, which can be used in forms or anywhere in a document that needs a simple, standard button.
 
   Categories:
     Listed, labelable, submittable, and autocapitalize-inheriting form-associated element: None.
@@ -533,7 +588,10 @@ class Canvas(HtmlEmbedded, HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparent
   Used with either the canvas scripting API or the WebGL API to draw graphics and animations.
 
   Content model:
-    Transparent: with no interactive content descendants except for a elements, img elements with usemap attributes, button elements, input elements whose type attribute are in the Checkbox or Radio Button states, input elements that are buttons, select elements with a multiple attribute or a display size greater than 1, and elements that would not be interactive content except for having the tabindex attribute specified.
+    Transparent: with no interactive content descendants except for a elements, img elements with usemap attributes,
+    button elements, input elements whose type attribute are in the Checkbox or Radio Button states,
+    input elements that are buttons, select elements with a multiple attribute or a display size greater than 1,
+    and elements that would not be interactive content except for having the tabindex attribute specified.
 
   Contexts for use: Embedded.
   '''
@@ -572,7 +630,8 @@ class Code(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 @_tag
 class Col(HtmlNoContent):
   '''
-  Defines a column within a table and is used for defining common semantics on all common cells. It is generally found within a <colgroup> element.
+  Defines a column within a table and is used for defining common semantics on all common cells.
+  It is generally found within a <colgroup> element.
 
   Contexts for use: As a child of a colgroup element that does not have a span attribute.
   '''
@@ -587,14 +646,16 @@ class Colgroup(HtmlNode):
     No: if the span attribute is present.
     Zero or more col and template elements: if the span attribute is absent.
 
-  Contexts for use: As a child of a table element, after any caption elements and before any thead, tbody, tfoot, and tr elements.
+  Contexts for use: As a child of a table element, after any caption elements and before any thead, tbody, tfoot,
+  and tr elements.
   '''
 
 
 @_tag
 class Data(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Links a given content with a machine-readable translation. If the content is time- or date-related, the <time> element must be used.
+  Links a given content with a machine-readable translation.
+  If the content is time- or date-related, the <time> element must be used.
 
   Contexts for use: Phrasing.
   '''
@@ -618,7 +679,8 @@ class Dd(HtmlFlowContent):
   '''
   Provides the details about or the definition of the preceding term (<dt>) in a description list (<dl>).
 
-  Contexts for use: After dt or dd elements inside div elements that are children of a dl element, After dt or dd elements inside dl elements.
+  Contexts for use: After dt or dd elements inside div elements that are children of a dl element,
+  after dt or dd elements inside dl elements.
   '''
 
 
@@ -696,8 +758,10 @@ class Div(HtmlFlow, HtmlPalpable, HtmlFlowContent):
   The generic container for flow content. It has no effect on the content or layout until styled using CSS.
 
   Content model:
-    Flow: if the element is not a child of a dl element.
-    One or more dt elements followed by one or more dd elements, optionally intermixed with script-supporting elements: if the element is a child of a dl element.
+    If the element is not a child of a dl element:
+      flow.
+    If the element is a child of a dl element:
+      One or more dt elements followed by one or more dd elements, optionally intermixed with script-supporting elements.
 
   Contexts for use: As a child of a dl element, Flow.
   '''
@@ -706,13 +770,16 @@ class Div(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 @_tag
 class Dl(HtmlFlow, HtmlPalpable):
   '''
-  Represents a description list. The element encloses a list of groups of terms (specified using the <dt> element) and descriptions (provided by <dd> elements). Common uses for this element are to implement a glossary or to display metadata (a list of key-value pairs).
+  Represents a description list.
+  The element encloses a list of groups of terms (using the <dt> element) and descriptions (using the <dd> element).
+  Common uses for this element are to implement a glossary or to display metadata (a list of key-value pairs).
 
   Categories:
     Palpable: if the element's children include at least one name-value group.
 
   Content model:
-    Either: Zero or more groups each consisting of one or more dt elements followed by one or more dd elements, optionally intermixed with script-supporting elements: None.
+    Either: Zero or more groups each consisting of one or more dt elements followed by one or more dd elements,
+    optionally intermixed with script-supporting elements: None.
     Or: One or more div elements, optionally intermixed with script-supporting elements: None.
 
   Contexts for use: Flow.
@@ -746,18 +813,21 @@ class Dl(HtmlFlow, HtmlPalpable):
 class Dt(HtmlFlowContent):
   '''
   Specifies a term in a description list, and as such must be used inside a <dl> element.
+  Note: HtmlFlowParent is overly permissive.
 
   Content model:
     Flow: with no header, footer, sectioning content, or heading content descendants.
 
-  Contexts for use: Before dd or dt elements inside div elements that are children of a dl element, Before dd or dt elements inside dl elements.
+  Contexts for use: Before dd or dt elements inside div elements that are children of a dl element,
+  before dd or dt elements inside dl elements.
   '''
 
 
 @_tag
 class Em(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Marks text that has stress emphasis. The <em> element can be nested, with each level of nesting indicating a greater degree of emphasis.
+  Marks text that has stress emphasis.
+  The <em> element can be nested, with each level of nesting indicating a greater degree of emphasis.
 
   Contexts for use: Phrasing.
   '''
@@ -766,7 +836,8 @@ class Em(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 @_tag
 class Embed(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlNoContent):
   '''
-  Embeds external content at the specified point in the document. This content is provided by an external application or other source of interactive content such as a browser plug-in.
+  Embeds external content at the specified point in the document.
+  This content is provided by an external application or other source of interactive content such as a browser plug-in.
 
   Contexts for use: Embedded.
   '''
@@ -813,7 +884,8 @@ class Figure(HtmlFlow, HtmlPalpable, HtmlSectioningRoot):
 @_tag
 class Footer(HtmlFlow, HtmlPalpable, HtmlFlowContent):
   '''
-  Represents a footer for its nearest sectioning content or sectioning root element. A footer typically contains information about the author of the section, copyright data or links to related documents.
+  Represents a footer for its nearest sectioning content or sectioning root element.
+  A footer typically contains information about the author of the section, copyright data or links to related documents.
 
   Content model:
     Flow: with no header or footer element descendants.
@@ -836,7 +908,8 @@ class Form(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 
 class Heading(HtmlPhrasingContent):
   '''
-  Parent class for H1-H6 heading elements, which represent six levels of section headings. <h1> is the highest section level and <h6> is the lowest.
+  Parent class for H1-H6 heading elements, which represent six levels of section headings.
+  `<h1>` is the highest section level and `<h6>` is the lowest.
 
   Contexts for use: As a child of an hgroup element, Flow.
   '''
@@ -880,8 +953,10 @@ class Head(HtmlMetadataContent):
   Contains machine-readable information (metadata) about the document, like its title, scripts, and style sheets.
 
   Content model:
-    Zero or more elements of metadata content, of which no more than one is a title element and no more than one is a base element: if the document is an iframe srcdoc document or if title information is available from a higher-level protocol.
-    One or more elements of metadata content, of which exactly one is a title element and no more than one is a base element: Otherwise.
+    Zero or more elements of metadata content.
+    If the document is an iframe srcdoc document or if title information is available from a higher-level protocol,
+    then no more than one child is a title element and no more than one is a base element.
+    Otherwise, exactly one child must be a title element and no more than one is a base element.
 
   Contexts for use: As the first element in an html element.
   '''
@@ -902,7 +977,8 @@ class Head(HtmlMetadataContent):
 @_tag
 class Header(HtmlFlow, HtmlPalpable, HtmlFlowContent):
   '''
-  Represents introductory content, typically a group of introductory or navigational aids. It may contain some heading elements but also a logo, a search form, an author name, and other elements.
+  Represents introductory content, typically a group of introductory or navigational aids.
+  It may contain some heading elements but also a logo, a search form, an author name, and other elements.
 
   Content model:
     Flow: with no header or footer element descendants.
@@ -914,7 +990,7 @@ class Header(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 @_tag
 class Hgroup(HtmlFlow, HtmlHeading, HtmlPalpable):
   '''
-  Represents a multi-level heading for a section of a document. It groups a set of <h1>–<h6> elements.
+  Represents a multi-level heading for a section of a document. It groups a set of <h1> ... <h6> elements.
 
   Content model:
     One or more h1, h2, h3, h4, h5, h6 elements, optionally intermixed with script-supporting elements: None.
@@ -926,7 +1002,8 @@ class Hgroup(HtmlFlow, HtmlHeading, HtmlPalpable):
 @_tag
 class Hr(HtmlFlow, HtmlNoContent):
   '''
-  Represents a thematic break between paragraph-level elements: for example, a change of scene in a story, or a shift of topic within a section.
+  Represents a thematic break between paragraph-level elements.
+  For example, a change of scene in a story, or a shift of topic within a section.
 
   Contexts for use: Flow.
   '''
@@ -935,7 +1012,8 @@ class Hr(HtmlFlow, HtmlNoContent):
 @_tag
 class Html(HtmlNode):
   '''
-  Represents the root (top-level element) of an HTML document, so it is also referred to as the root element. All other elements must be descendants of this element.
+  Represents the root (top-level element) of an HTML document, so it is also referred to as the root element.
+  All other elements must be descendants of this element.
 
   Content model:
     A head element followed by a body element: None.
@@ -966,7 +1044,9 @@ class Html(HtmlNode):
 @_tag
 class I(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Represents a range of text that is set off from the normal text for some reason. Some examples include technical terms, foreign language phrases, or fictional character thoughts. It is typically displayed in italic type.
+  Represents a range of text that is set off from the normal text for some reason.
+  Some examples include technical terms, foreign language phrases, or fictional character thoughts.
+  It is typically displayed in italic type.
 
   Contexts for use: Phrasing.
   '''
@@ -997,12 +1077,15 @@ class Img(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, H
 @_tag
 class Input(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlNoContent):
   '''
-  Used to create interactive controls for web-based forms in order to accept data from the user; a wide variety of types of input data and control widgets are available, depending on the device and user agent.
+  Used to create interactive controls for web-based forms in order to accept data from the user;
+  a wide variety of types of input data and control widgets are available, depending on the device and user agent.
 
   Categories:
     Interactive: if the type attribute is not in the hidden state.
-    Listed, labelable, submittable, resettable, and autocapitalize-inheriting form-associated element: if the type attribute is not in the hidden state.
-    Listed, submittable, resettable, and autocapitalize-inheriting form-associated element: if the type attribute is in the hidden state.
+    If the type attribute is not in the hidden state:
+      Listed, labelable, submittable, resettable, and autocapitalize-inheriting form-associated element.
+    If the type attribute is in the hidden state:
+      Listed, submittable, resettable, and autocapitalize-inheriting form-associated element.
     Palpable: if the type attribute is not in the hidden state.
 
   Contexts for use: Phrasing.
@@ -1049,7 +1132,8 @@ class Label(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingC
   Represents a caption for an item in a user interface.
 
   Content model:
-    Phrasing: with no descendant labelable elements unless it is the element's labeled control, and no descendant label elements.
+    Phrasing: with no descendant labelable elements unless it is the element's labeled control,
+    and no descendant label elements.
 
   Contexts for use: Phrasing.
   '''
@@ -1076,20 +1160,25 @@ class Li(HtmlFlowContent):
 @_tag
 class Link(HtmlFlow, HtmlMetadata, HtmlPhrasing, HtmlNoContent):
   '''
-  The HTML External Resource Link element (<link>) specifies relationships between the current document and an external resource. This element is most commonly used to link to stylesheets, but is also used to establish site icons (both "favicon" style icons and icons for the home screen and apps on mobile devices) among other things.
+  The HTML External Resource Link element specifies relationships between the current document and an external resource.
+  This element is most commonly used to link to stylesheets, but is also used to establish site icons
+  (both "favicon" style icons and icons for the home screen and apps on mobile devices) among other things.
 
   Categories:
     Flow: if the element is allowed in the body.
     Phrasing: if the element is allowed in the body.
 
-  Contexts for use: If the element is allowed in the body: where phrasing content is expected, In a noscript element that is a child of a head element, Where metadata content is expected.
+  Contexts for use: If the element is allowed in the body: where phrasing content is expected,
+  In a noscript element that is a child of a head element, Where metadata content is expected.
   '''
 
 
 @_tag
 class Main(HtmlFlow, HtmlPalpable, HtmlFlowContent):
   '''
-  Represents the dominant content of the <body> of a document. The main content area consists of content that is directly related to or expands upon the central topic of a document, or the central functionality of an application.
+  Represents the dominant content of the <body> of a document.
+  The main content area consists of content that is directly related to or expands upon the central topic of a document,
+  or the central functionality of an application.
 
   Contexts for use: Where flow content is expected, but only if it is a hierarchically correct main element.
   '''
@@ -1107,7 +1196,8 @@ class Map(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
 @_tag
 class Mark(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Represents text which is marked or highlighted for reference or notation purposes, due to the marked passage's relevance or importance in the enclosing context.
+  Represents text which is marked or highlighted for reference or notation purposes,
+  due to the marked passage's relevance or importance in the enclosing context.
 
   Contexts for use: Phrasing.
   '''
@@ -1125,7 +1215,9 @@ class Math(HtmlNode):
 @_tag
 class Menu(HtmlFlow, HtmlPalpable):
   '''
-  Represents a group of commands that a user can perform or activate. This includes both list menus, which might appear across the top of a screen, as well as context menus, such as those that might appear underneath a button after it has been clicked.
+  Represents a group of commands that a user can perform or activate.
+  This includes both list menus, which might appear across the top of a screen, as well as context menus,
+  such as those that might appear underneath a button after it has been clicked.
 
   Categories:
     Palpable: if the element's children include at least one li element.
@@ -1140,13 +1232,12 @@ class Menu(HtmlFlow, HtmlPalpable):
 @_tag
 class Meta(HtmlFlow, HtmlMetadata, HtmlPhrasing, HtmlNoContent):
   '''
-  Represents metadata that cannot be represented by other HTML meta-related elements, like <base>, <link>, <script>, <style> or <title>.
+  Represents metadata that cannot be represented by other HTML meta-related elements, like <base>, <link>, <script>, <style>
+  or <title>.
 
   Categories:
     Flow: if the itemprop attribute is present.
     Phrasing: if the itemprop attribute is present.
-
-  Contexts for use: If the charset attribute is present, or if the element's http-equiv attribute is in the Encoding declaration state: in a head element, If the http-equiv attribute is present but not in the Encoding declaration state: in a head element, If the http-equiv attribute is present but not in the Encoding declaration state: in a noscript element that is a child of a head element, If the itemprop attribute is present: where metadata content is expected, If the itemprop attribute is present: where phrasing content is expected, If the name attribute is present: where metadata content is expected.
   '''
 
 
@@ -1168,7 +1259,9 @@ class Meter(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 @_tag
 class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
   '''
-  Represents a section of a page whose purpose is to provide navigation links, either within the current document or to other documents. Common examples of navigation sections are menus, tables of contents, and indexes.
+  Represents a section of a page whose purpose is to provide navigation links,
+  either within the current document or to other documents.
+  Common examples of navigation sections are menus, tables of contents, and indexes.
 
   Contexts for use: Flow.
   '''
@@ -1177,21 +1270,24 @@ class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
 @_tag
 class Noscript(HtmlFlow, HtmlMetadata, HtmlPhrasing):
   '''
-  Defines a section of HTML to be inserted if a script type on the page is unsupported or if scripting is currently turned off in the browser.
+  Defines a section of HTML to be inserted if a script type on the page is unsupported or if scripting is currently turned off.
 
   Content model:
-    Otherwise: text that conforms to the requirements given in the prose: None.
-    When scripting is disabled, in a head element: in any order, zero or more link elements, zero or more style elements, and zero or more meta elements: None.
+    When scripting is disabled, in a head element: in any order, zero or more link elements, zero or more style elements,
+    and zero or more meta elements: None.
     When scripting is disabled, not in a head element: transparent: there must be no noscript element descendants.
+    Otherwise: text that conforms to the requirements given in the prose: None.
 
-  Contexts for use: In a head element of an HTML document, if there are no ancestor noscript elements, Where phrasing content is expected in HTML documents, if there are no ancestor noscript elements.
+  Contexts for use: In a head element of an HTML document, if there are no ancestor noscript elements,
+  Where phrasing content is expected in HTML documents, if there are no ancestor noscript elements.
   '''
 
 
 @_tag
 class Object(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
   '''
-  Represents an external resource, which can be treated as an image, a nested browsing context, or a resource to be handled by a plugin.
+  Represents an external resource, which can be treated as an image, a nested browsing context,
+  or a resource to be handled by a plugin.
 
   Categories:
     Interactive: if the element has a usemap attribute.
@@ -1250,7 +1346,8 @@ class Optgroup(HtmlNode):
 @_tag
 class Option(HtmlTextContent):
   '''
-  Used to define an item contained in a <select>, an <optgroup>, or a <datalist> element. As such, <option> can represent menu items in popups and other lists of items in an HTML document.
+  Used to define an item contained in a <select>, an <optgroup>, or a <datalist> element.
+  As such, <option> can represent menu items in popups and other lists of items in an HTML document.
 
   Content model:
     No: if the element has a label attribute and a value attribute.
@@ -1300,7 +1397,7 @@ class Param(HtmlNoContent):
 @_tag
 class Picture(HtmlEmbedded, HtmlFlow, HtmlPhrasing):
   '''
-  Contains zero or more <source> elements and one <img> element to provide versions of an image for different display/device scenarios.
+  Contains zero or more <source> elements and one <img> element to provide versions of an image for different display scenarios.
 
   Content model:
     Zero or more source elements, followed by one img element, optionally intermixed with script-supporting elements: None.
@@ -1393,7 +1490,9 @@ class Ruby(HtmlFlow, HtmlPalpable, HtmlPhrasing):
 @_tag
 class S(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Renders text with a strikethrough, or a line through it. Use the <s> element to represent things that are no longer relevant or no longer accurate. However, <s> is not appropriate when indicating document edits; for that, use the <del> and <ins> elements, as appropriate.
+  Renders text with a strikethrough, or a line through it.
+  Use the <s> element to represent things that are no longer relevant or no longer accurate.
+  However, <s> is not appropriate when indicating document edits; for that, use the <del> and <ins> elements, as appropriate.
 
   Contexts for use: Phrasing.
   '''
@@ -1417,8 +1516,9 @@ class Script(HtmlFlow, HtmlMetadata, HtmlPhrasing):
     Script-supporting element: None.
 
   Content model:
-    : if there is a src attribute, the element must be either empty or contain only script documentation that also matches script content restrictions.
-    : if there is no src attribute, depends on the value of the type attribute, but must match script content restrictions.
+    If there is a src attribute, the element must be either empty or contain only script documentation that also matches script
+    content restrictions.
+    If there is no src attribute, depends on the value of the type attribute, but must match script content restrictions.
 
   Contexts for use: Phrasing, Where metadata content is expected, Where script-supporting elements are expected.
   '''
@@ -1548,7 +1648,8 @@ class Select(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
 @_tag
 class Slot(HtmlFlow, HtmlPhrasing, HtmlTransparentContent):
   '''
-  Used as a placeholder inside a web component that you can fill with your own markup, which lets you create separate DOM trees and present them together.
+  Used as a placeholder inside a web component that you can fill with your own markup,
+  which lets you create separate DOM trees and present them together.
 
   Contexts for use: Phrasing.
   '''
@@ -1557,7 +1658,10 @@ class Slot(HtmlFlow, HtmlPhrasing, HtmlTransparentContent):
 @_tag
 class Small(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Makes the text font size one size smaller (for example, from large to medium, or from small to x-small) down to the browser's minimum font size.  In HTML5, this element is repurposed to represent side-comments and small print, including copyright and legal text, independent of its styled presentation.
+  Makes the text font size one size smaller (for example, from large to medium, or from small to x-small) down to the browser's
+  minimum font size.
+  In HTML5, this element is repurposed to represent side-comments and small print, including copyright and legal text,
+  independent of its styled presentation.
 
   Contexts for use: Phrasing.
   '''
@@ -1568,14 +1672,17 @@ class Source(HtmlNoContent):
   '''
   Specifies multiple media resources for the <picture>, the <audio> element, or the <video> element.
 
-  Contexts for use: As a child of a media element, before any flow content or track elements, As a child of a picture element, before the img element.
+  Contexts for use: As a child of a media element, before any flow content or track elements,
+  As a child of a picture element, before the img element.
   '''
 
 
 @_tag
 class Span(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  A generic inline container for phrasing content, which does not inherently represent anything. It can be used to group elements for styling purposes (using the class or id attributes), or because they share attribute values, such as lang.
+  A generic inline container for phrasing content, which does not inherently represent anything.
+  It can be used to group elements for styling purposes (using the class or id attributes),
+  or because they share attribute values, such as lang.
 
   Contexts for use: Phrasing.
   '''
@@ -1584,7 +1691,8 @@ class Span(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 @_tag
 class Strong(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
   '''
-  Indicates that its contents have strong importance, seriousness, or urgency. Browsers typically render the contents in bold type.
+  Indicates that its contents have strong importance, seriousness, or urgency.
+  Browsers typically render the contents in bold type.
 
   Contexts for use: Phrasing.
   '''
@@ -1636,10 +1744,13 @@ class Sup(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 @_tag
 class Table(HtmlFlow, HtmlPalpable):
   '''
-  Represents tabular data: information presented in a two-dimensional table comprised of rows and columns of cells containing data.
+  Represents tabular data: information presented in a two-dimensional table comprised of rows and columns of cells containing
+  data.
 
   Content model:
-    In this order: optionally a caption element, followed by zero or more colgroup elements, followed optionally by a thead element, followed by either zero or more tbody elements or one or more tr elements, followed optionally by a tfoot element, optionally intermixed with one or more script-supporting elements: None.
+    In this order: optionally a caption element, followed by zero or more colgroup elements,
+    followed optionally by a thead element, followed by either zero or more tbody elements or one or more tr elements,
+    followed optionally by a tfoot element, optionally intermixed with one or more script-supporting elements: None.
 
   Contexts for use: Flow.
   '''
@@ -1710,7 +1821,8 @@ class Table(HtmlFlow, HtmlPalpable):
   def rows(self, rows:Iterable['Tr'|Iterable[MuChildLax]]) -> Self:
     '''
     Create a `Tbody` and add `Tr` elements to it, each of which is constructed from the elements of the corresponding row.
-    Elements of `rows` that are not `Tr` elements must be iterables either `Td`, `Th` or content with which `Td` are constructed.
+    Elements of `rows` that are not `Tr` elements must be iterables of either `Td`, `Th` or content with which `Td` are
+    constructed.
     '''
     tbody = self.append(Tbody())
     for row in rows:
@@ -1742,7 +1854,8 @@ class Tbody(HtmlNode):
   Content model:
     Zero or more tr and script-supporting elements: None.
 
-  Contexts for use: As a child of a table element, after any caption, colgroup, and thead elements, but only if there are no tr elements that are children of the table element.
+  Contexts for use: As a child of a table element, after any caption, colgroup, and thead elements,
+  but only if there are no tr elements that are children of the table element.
   '''
 
 
@@ -1758,7 +1871,8 @@ class Td(HtmlSectioningRoot, HtmlFlowContent):
 @_tag
 class Template(HtmlFlow, HtmlMetadata, HtmlPhrasing):
   '''
-  Used to hold HTML that is not to be rendered immediately when a page is loaded but may be instantiated subsequently during runtime using JavaScript.
+  Used to hold HTML that is not to be rendered immediately when a page is loaded but may be instantiated subsequently during
+  runtime using JavaScript.
 
   Categories:
     Script-supporting element: None.
@@ -1766,14 +1880,16 @@ class Template(HtmlFlow, HtmlMetadata, HtmlPhrasing):
   Content model:
     Nothing (for clarification, see example): None.
 
-  Contexts for use: As a child of a colgroup element that does not have a span attribute, Phrasing, Where metadata content is expected, Where script-supporting elements are expected.
+  Contexts for use: As a child of a colgroup element that does not have a span attribute,
+  Phrasing, Where metadata content is expected, Where script-supporting elements are expected.
   '''
 
 
 @_tag
 class TextArea(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTextContent):
   '''
-  Represents a multi-line plain-text editing control, useful when you want to allow users to enter a sizeable amount of free-form text, for example a comment on a review or feedback form.
+  Represents a multi-line plain-text editing control, useful when you want to allow users to enter a sizeable amount of
+  free-form text, for example a comment on a review or feedback form.
 
   Categories:
     Listed, labelable, submittable, resettable, and autocapitalize-inheriting form-associated element: None.
@@ -1790,14 +1906,17 @@ class Tfoot(HtmlNode):
   Content model:
     Zero or more tr and script-supporting elements: None.
 
-  Contexts for use: As a child of a table element, after any caption, colgroup, thead, tbody, and tr elements, but only if there are no other tfoot elements that are children of the table element.
+  Contexts for use: As a child of a table element, after any caption, colgroup, thead, tbody, and tr elements,
+  but only if there are no other tfoot elements that are children of the table element.
   '''
 
 
 @_tag
 class Th(HtmlFlowContent):
   '''
-  Defines a cell as header of a group of table cells. The exact nature of this group is defined by the scope and headers attributes.
+  Defines a cell as header of a group of table cells.
+  The exact nature of this group is defined by the scope and headers attributes.
+  Note: HtmlFlowParent is overly permissive.
 
   Content model:
     Flow: with no header, footer, sectioning content, or heading content descendants.
@@ -1814,7 +1933,8 @@ class Thead(HtmlNode):
   Content model:
     Zero or more tr and script-supporting elements: None.
 
-  Contexts for use: As a child of a table element, after any caption, and colgroup elements and before any tbody, tfoot, and tr elements, but only if there are no other thead elements that are children of the table element.
+  Contexts for use: As a child of a table element, after any caption, and colgroup elements and before any tbody, tfoot,
+  and tr elements, but only if there are no other thead elements that are children of the table element.
   '''
 
 
@@ -1846,12 +1966,15 @@ class Title(HtmlMetadata):
 @_tag
 class Tr(HtmlNode):
   '''
-  Defines a row of cells in a table. The row's cells can then be established using a mix of <td> (data cell) and <th> (header cell) elements.
+  Defines a row of cells in a table.
+  The row's cells can then be established using a mix of <td> (data cell) and <th> (header cell) elements.
 
   Content model:
     Zero or more td, th, and script-supporting elements: None.
 
-  Contexts for use: As a child of a table element, after any caption, colgroup, and thead elements, but only if there are no tbody elements that are children of the table element, As a child of a tbody element, As a child of a tfoot element, As a child of a thead element.
+  Contexts for use: As a child of a table element, after any caption, colgroup, and thead elements,
+  but only if there are no tbody elements that are children of the table element, As a child of a tbody element,
+  As a child of a tfoot element, As a child of a thead element.
   '''
 
   def tds(self, *cells:MuChildLax, **kwargs:Any) -> 'Tr':
@@ -1881,7 +2004,9 @@ class Tr(HtmlNode):
 @_tag
 class Track(HtmlNoContent):
   '''
-  Used as a child of the media elements <audio> and <video>. It lets you specify timed text tracks (or time-based data), for example to automatically handle subtitles. The tracks are formatted in WebVTT format (.vtt files) — Web Video Text Tracks or Timed Text Markup Language (TTML).
+  Used as a child of the media elements <audio> and <video>. It lets you specify timed text tracks (or time-based data),
+  for example to automatically handle subtitles.
+  The tracks are formatted in WebVTT format (.vtt files) — Web Video Text Tracks or Timed Text Markup Language (TTML).
 
   Contexts for use: As a child of a media element, before any flow content.
   '''
@@ -1929,8 +2054,10 @@ class Video(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing)
     Interactive: if the element has a controls attribute.
 
   Content model:
-    Zero or more source elements, then zero or more track elements, then transparent, but with no media element descendants: if the element does not have a src attribute.
-    Zero or more track elements, then transparent, but with no media element descendants: if the element has a src attribute.
+    if the element does not have a src attribute:
+      Zero or more source elements, then zero or more track elements, then transparent, but with no media element descendants.
+    if the element has a src attribute:
+      Zero or more track elements, then transparent, but with no media element descendants.
 
   Contexts for use: Embedded.
   '''
@@ -1939,7 +2066,8 @@ class Video(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing)
 @_tag
 class Wbr(HtmlFlow, HtmlPhrasing, HtmlNoContent):
   '''
-  Represents a word break opportunity: a position within text where the browser may optionally break a line, even if its line-breaking rules would not otherwise create a break at that location.
+  Represents a word break opportunity: a position within text where the browser may optionally break a line,
+  even if its line-breaking rules would not otherwise create a break at that location.
 
   Contexts for use: Phrasing.
   '''
