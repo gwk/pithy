@@ -207,6 +207,18 @@ class HtmlPhrasing(HtmlNode):
   def is_phrasing(self) -> bool: return True # Note: this is overridden for certain special cases.
 
 
+class HtmlScriptSupporting(HtmlNode):
+  '''
+  Script-supporting elements are those that do not represent anything themselves (they are not rendered),
+  but are used to support scripts.
+
+  Members: Script, Template.
+'''
+
+  def script(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'Script':
+    return self.append(Script(attrs=attrs, _=_, cl=cl, **kw_attrs))
+
+
 class HtmlSectioning(HtmlNode):
   '''
   Sectioning content category: elements that define the scope of header and footer elements.
@@ -234,11 +246,23 @@ class HtmlNoContent(HtmlNode):
     raise TypeError(f'element cannot have child content: {self!r}')
 
 
-class HtmlHeadingContent(HtmlNode):
+class HtmlTextContent(HtmlNode):
+  'All node types that can contain text content.'
+
+
+class HtmlTransparentContent(HtmlNode):
+  '''
+  Some elements are described as transparent; they have "transparent" in the description of their content model.
+  The content model of a transparent element is derived from the content model of its parent element:
+  the elements required in the part of the content model that is "transparent" are the same elements as required
+  in the part of the content model of the parent of the transparent element in which the transparent element finds itself.
+  '''
+
+
+class HtmlHeadingParent(HtmlNode):
   '''
   Heading content model: all node types that can contain heading elements.
   Note: this class represents <em: parents> of heading elements.
-  The superclass of H1-H6 heading elements themselves is `Heading`.
   '''
 
   def h1(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H1':
@@ -260,18 +284,13 @@ class HtmlHeadingContent(HtmlNode):
     return self.append(H6(attrs=attrs, _=_, cl=cl, **kw_attrs))
 
   @property
-  def heading(self) -> HtmlNode|None:
+  def heading(self) -> Heading|None:
     for el in self._:
-      if isinstance(el, Heading): return el
+      if isinstance(el, _heading_classes): return el
     return None
 
 
-class HtmlMetadataContent(HtmlNode):
-  'Metadata content model: all node types that can contain metadata.'
-  # TODO: metadata constructor methods.
-
-
-class HtmlPhrasingContent(HtmlNode):
+class HtmlPhrasingParent(HtmlNode):
   '''
   Phrasing content model: all node types that can contain phrasing content.
   '''
@@ -336,19 +355,10 @@ class HtmlPhrasingContent(HtmlNode):
     return self
 
 
-
-class HtmlScriptSupporting(HtmlNode):
-
-  def script(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'Script':
-    return self.append(Script(attrs=attrs, _=_, cl=cl, **kw_attrs))
-
-
-class HtmlTextContent(HtmlNode):
-  'All node types that can contain text content.'
-
-
-class HtmlTransparentContent(HtmlNode):
-  'Transparent content elements.'
+class HtmlFlowParent(HtmlHeadingParent, HtmlPhrasingParent):
+  '''
+  All elements that can contain flow content.
+  '''
 
 
 class HtmlTransparentPhrasing(HtmlTransparentContent):
@@ -358,18 +368,12 @@ class HtmlTransparentPhrasing(HtmlTransparentContent):
     return all((not isinstance(c, Html) or c.is_phrasing) for c in self._)
 
 
-class HtmlFlowContent(HtmlHeadingContent, HtmlPhrasingContent):
-  '''
-  All elements that can contain flow content.
-  '''
-  # TODO: flow constructor methods.
-
 
 # Elements.
 
 
 @_tag
-class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
+class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentPhrasing):
   '''
   Creates a hyperlink to other web pages, files, locations within the same page, email addresses, or any other URL.
 
@@ -409,7 +413,7 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentCo
 
 
 @_tag
-class Abbr(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Abbr(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents an abbreviation or acronym; the optional title attribute can provide an expansion or description for the
   abbreviation.
@@ -419,7 +423,7 @@ class Abbr(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Address(HtmlFlow, HtmlPalpable, HtmlFlowContent):
+class Address(HtmlFlow, HtmlPalpable, HtmlFlowParent):
   '''
   Indicates that the enclosed HTML provides contact information for a person or people, or for an organization.
 
@@ -442,7 +446,7 @@ class Area(HtmlFlow, HtmlPhrasing, HtmlNoContent):
 
 
 @_tag
-class Article(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
+class Article(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
   '''
   Represents a self-contained composition in a document, page, application, or site,
   which is intended to be independently distributable or reusable.
@@ -452,7 +456,7 @@ class Article(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
 
 
 @_tag
-class Aside(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
+class Aside(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
   '''
   Represents a portion of a document whose content is only indirectly related to the document's main content.
 
@@ -461,7 +465,7 @@ class Aside(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
 
 
 @_tag
-class Audio(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
+class Audio(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
   '''
   Used to embed sound content in documents. It may contain one or more audio sources,
   represented using the src attribute or the <source> element: the browser will choose the most suitable one.
@@ -482,7 +486,7 @@ class Audio(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing)
 
 
 @_tag
-class B(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class B(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Used to draw the reader's attention to the element's contents, which are not otherwise granted special importance.
 
@@ -501,7 +505,7 @@ class Base(HtmlMetadata, HtmlNoContent):
 
 
 @_tag
-class Bdi(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Bdi(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Tells the browser's bidirectional algorithm to treat the text it contains in isolation from its surrounding text.
 
@@ -510,7 +514,7 @@ class Bdi(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Bdo(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Bdo(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Overrides the current directionality of text, so that the text within is rendered in a different direction.
 
@@ -519,7 +523,7 @@ class Bdo(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Blockquote(HtmlFlow, HtmlPalpable, HtmlSectioningRoot, HtmlFlowContent):
+class Blockquote(HtmlFlow, HtmlPalpable, HtmlSectioningRoot, HtmlFlowParent):
   '''
   Indicates that the enclosed text is an extended quotation. Usually, this is rendered visually by indentation.
   A URL for the source of the quotation may be given using the cite attribute,
@@ -530,7 +534,7 @@ class Blockquote(HtmlFlow, HtmlPalpable, HtmlSectioningRoot, HtmlFlowContent):
 
 
 @_tag
-class Body(HtmlSectioningRoot, HtmlFlowContent):
+class Body(HtmlSectioningRoot, HtmlFlowParent):
   '''
   Represents the content of an HTML document. There can be only one <body> element in a document.
 
@@ -568,7 +572,7 @@ class Br(HtmlFlow, HtmlPhrasing, HtmlNoContent):
 
 
 @_tag
-class Button(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Button(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents a clickable button, which can be used in forms or anywhere in a document that needs a simple, standard button.
 
@@ -583,7 +587,7 @@ class Button(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasing
 
 
 @_tag
-class Canvas(HtmlEmbedded, HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
+class Canvas(HtmlEmbedded, HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentPhrasing):
   '''
   Used with either the canvas scripting API or the WebGL API to draw graphics and animations.
 
@@ -598,7 +602,7 @@ class Canvas(HtmlEmbedded, HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparent
 
 
 @_tag
-class Caption(HtmlFlowContent):
+class Caption(HtmlFlowParent):
   '''
   Specifies the caption (or title) of a table, and if used is always the first child of a <table>.
 
@@ -610,7 +614,7 @@ class Caption(HtmlFlowContent):
 
 
 @_tag
-class Cite(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Cite(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Used to describe a reference to a cited creative work, and must include the title of that work.
 
@@ -619,7 +623,7 @@ class Cite(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Code(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Code(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Displays its contents styled in a fashion intended to indicate that the text is a short fragment of computer code.
 
@@ -652,7 +656,7 @@ class Colgroup(HtmlNode):
 
 
 @_tag
-class Data(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Data(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Links a given content with a machine-readable translation.
   If the content is time- or date-related, the <time> element must be used.
@@ -675,7 +679,7 @@ class Datalist(HtmlFlow, HtmlPhrasing):
 
 
 @_tag
-class Dd(HtmlFlowContent):
+class Dd(HtmlFlowParent):
   '''
   Provides the details about or the definition of the preceding term (<dt>) in a description list (<dl>).
 
@@ -685,7 +689,7 @@ class Dd(HtmlFlowContent):
 
 
 @_tag
-class Del(HtmlFlow, HtmlPhrasing, HtmlTransparentContent):
+class Del(HtmlFlow, HtmlPhrasing, HtmlTransparentPhrasing):
   '''
   Represents a range of text that has been deleted from a document.
 
@@ -694,7 +698,7 @@ class Del(HtmlFlow, HtmlPhrasing, HtmlTransparentContent):
 
 
 @_tag
-class Details(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlSectioningRoot):
+class Details(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlSectioningRoot, HtmlFlowParent):
   '''
   Creates a disclosure widget in which information is visible only when the widget is toggled into an "open" state.
 
@@ -707,7 +711,7 @@ class Details(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlSectioningRoot):
 
 
 @_tag
-class Dfn(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Dfn(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Used to indicate the term being defined within the context of a definition phrase or sentence.
 
@@ -721,7 +725,7 @@ class Dfn(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowContent):
+class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowParent):
   '''
   Represents a dialog box or other interactive component, such as an inspector or window.
 
@@ -753,7 +757,7 @@ class Dialog(HtmlFlow, HtmlSectioningRoot, HtmlFlowContent):
 
 
 @_tag
-class Div(HtmlFlow, HtmlPalpable, HtmlFlowContent):
+class Div(HtmlFlow, HtmlPalpable, HtmlFlowParent):
   '''
   The generic container for flow content. It has no effect on the content or layout until styled using CSS.
 
@@ -810,7 +814,7 @@ class Dl(HtmlFlow, HtmlPalpable):
 
 
 @_tag
-class Dt(HtmlFlowContent):
+class Dt(HtmlFlowParent):
   '''
   Specifies a term in a description list, and as such must be used inside a <dl> element.
   Note: HtmlFlowParent is overly permissive.
@@ -824,7 +828,7 @@ class Dt(HtmlFlowContent):
 
 
 @_tag
-class Em(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Em(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Marks text that has stress emphasis.
   The <em> element can be nested, with each level of nesting indicating a greater degree of emphasis.
@@ -844,7 +848,7 @@ class Embed(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing,
 
 
 @_tag
-class Fieldset(HtmlFlow, HtmlPalpable, HtmlSectioningRoot):
+class Fieldset(HtmlFlow, HtmlPalpable, HtmlSectioningRoot, HtmlFlowParent):
   '''
   Used to group several controls as well as labels (<label>) within a web form.
 
@@ -859,7 +863,7 @@ class Fieldset(HtmlFlow, HtmlPalpable, HtmlSectioningRoot):
 
 
 @_tag
-class Figcaption(HtmlFlowContent):
+class Figcaption(HtmlFlowParent):
   '''
   Represents a caption or legend describing the rest of the contents of its parent <figure> element.
 
@@ -868,7 +872,7 @@ class Figcaption(HtmlFlowContent):
 
 
 @_tag
-class Figure(HtmlFlow, HtmlPalpable, HtmlSectioningRoot):
+class Figure(HtmlFlow, HtmlPalpable, HtmlSectioningRoot, HtmlFlowParent):
   '''
   Represents self-contained content, potentially with an optional caption, which is specified using the (<figcaption>) element.
 
@@ -882,7 +886,7 @@ class Figure(HtmlFlow, HtmlPalpable, HtmlSectioningRoot):
 
 
 @_tag
-class Footer(HtmlFlow, HtmlPalpable, HtmlFlowContent):
+class Footer(HtmlFlow, HtmlPalpable, HtmlFlowParent):
   '''
   Represents a footer for its nearest sectioning content or sectioning root element.
   A footer typically contains information about the author of the section, copyright data or links to related documents.
@@ -895,7 +899,7 @@ class Footer(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 
 
 @_tag
-class Form(HtmlFlow, HtmlPalpable, HtmlFlowContent):
+class Form(HtmlFlow, HtmlPalpable, HtmlFlowParent):
   '''
   Represents a document section that contains interactive controls for submitting information to a web server.
 
@@ -906,18 +910,13 @@ class Form(HtmlFlow, HtmlPalpable, HtmlFlowContent):
   '''
 
 
-class Heading(HtmlPhrasingContent):
+class Heading(HtmlFlow, HtmlPalpable, HtmlPhrasingParent):
   '''
   Parent class for H1-H6 heading elements, which represent six levels of section headings.
   `<h1>` is the highest section level and `<h6>` is the lowest.
 
   Contexts for use: As a child of an hgroup element, Flow.
   '''
-
-  @staticmethod
-  def for_level(level:int, *, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> Heading:
-    c = _heading_classes[min(level, 6) - 1]
-    return c(attrs=attrs, _=_, cl=cl, **kw_attrs)
 
 
 @_tag
@@ -944,11 +943,12 @@ class H5(Heading):
 class H6(Heading):
   'H6 heading.'
 
-_heading_classes:list[type[Heading]] = [H1, H2, H3, H4, H5, H6]
+
+_heading_classes:tuple[type[Heading],...] = (H1, H2, H3, H4, H5, H6)
 
 
 @_tag
-class Head(HtmlMetadataContent):
+class Head(HtmlNode):
   '''
   Contains machine-readable information (metadata) about the document, like its title, scripts, and style sheets.
 
@@ -975,7 +975,7 @@ class Head(HtmlMetadataContent):
 
 
 @_tag
-class Header(HtmlFlow, HtmlPalpable, HtmlFlowContent):
+class Header(HtmlFlow, HtmlPalpable, HtmlFlowParent):
   '''
   Represents introductory content, typically a group of introductory or navigational aids.
   It may contain some heading elements but also a logo, a search form, an author name, and other elements.
@@ -988,7 +988,7 @@ class Header(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 
 
 @_tag
-class Hgroup(HtmlFlow, HtmlHeading, HtmlPalpable):
+class Hgroup(HtmlFlow, HtmlHeading, HtmlHeadingParent, HtmlPalpable):
   '''
   Represents a multi-level heading for a section of a document. It groups a set of <h1> ... <h6> elements.
 
@@ -1042,7 +1042,7 @@ class Html(HtmlNode):
 
 
 @_tag
-class I(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class I(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents a range of text that is set off from the normal text for some reason.
   Some examples include technical terms, foreign language phrases, or fictional character thoughts.
@@ -1109,7 +1109,7 @@ class Input(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlNoContent
 
 
 @_tag
-class Ins(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
+class Ins(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentPhrasing):
   '''
   Represents a range of text that has been added to a document.
 
@@ -1118,7 +1118,7 @@ class Ins(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
 
 
 @_tag
-class Kbd(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Kbd(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents a span of inline text denoting textual user input from a keyboard, voice input, or any other text entry device.
 
@@ -1127,7 +1127,7 @@ class Kbd(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Label(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Label(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents a caption for an item in a user interface.
 
@@ -1140,7 +1140,7 @@ class Label(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlPhrasingC
 
 
 @_tag
-class Legend(HtmlPhrasingContent):
+class Legend(HtmlPhrasingParent):
   '''
   Represents a caption for the content of its parent <fieldset>.
 
@@ -1149,7 +1149,7 @@ class Legend(HtmlPhrasingContent):
 
 
 @_tag
-class Li(HtmlFlowContent):
+class Li(HtmlFlowParent):
   '''
   Used to represent an item in a list.
 
@@ -1174,7 +1174,7 @@ class Link(HtmlFlow, HtmlMetadata, HtmlPhrasing, HtmlNoContent):
 
 
 @_tag
-class Main(HtmlFlow, HtmlPalpable, HtmlFlowContent):
+class Main(HtmlFlow, HtmlPalpable, HtmlFlowParent):
   '''
   Represents the dominant content of the <body> of a document.
   The main content area consists of content that is directly related to or expands upon the central topic of a document,
@@ -1185,7 +1185,7 @@ class Main(HtmlFlow, HtmlPalpable, HtmlFlowContent):
 
 
 @_tag
-class Map(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
+class Map(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentPhrasing):
   '''
   Used with <area> elements to define an image map (a clickable link area).
 
@@ -1194,7 +1194,7 @@ class Map(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
 
 
 @_tag
-class Mark(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Mark(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents text which is marked or highlighted for reference or notation purposes,
   due to the marked passage's relevance or importance in the enclosing context.
@@ -1242,7 +1242,7 @@ class Meta(HtmlFlow, HtmlMetadata, HtmlPhrasing, HtmlNoContent):
 
 
 @_tag
-class Meter(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Meter(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents either a scalar value within a known range or a fractional value.
 
@@ -1257,7 +1257,7 @@ class Meter(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
+class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
   '''
   Represents a section of a page whose purpose is to provide navigation links,
   either within the current document or to other documents.
@@ -1360,7 +1360,7 @@ class Option(HtmlTextContent):
 
 
 @_tag
-class Output(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Output(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Used to inject the results of a calculation or the outcome of a user action.
 
@@ -1372,7 +1372,7 @@ class Output(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class P(HtmlFlow, HtmlPalpable, HtmlPhrasingContent):
+class P(HtmlFlow, HtmlPalpable, HtmlPhrasingParent):
   '''
   Represents a paragraph.
 
@@ -1383,15 +1383,6 @@ class P(HtmlFlow, HtmlPalpable, HtmlPhrasingContent):
   def texts(self) -> Iterator[str]:
     yield from super().texts
     yield '\n\n'
-
-
-@_tag
-class Param(HtmlNoContent):
-  '''
-  Defines parameters for an <object> element.
-
-  Contexts for use: As a child of an object element, before any flow content.
-  '''
 
 
 @_tag
@@ -1407,7 +1398,7 @@ class Picture(HtmlEmbedded, HtmlFlow, HtmlPhrasing):
 
 
 @_tag
-class Pre(HtmlFlow, HtmlPalpable, HtmlPhrasingContent):
+class Pre(HtmlFlow, HtmlPalpable, HtmlPhrasingParent):
   '''
   Represents preformatted text which is to be presented exactly as written in the HTML file.
 
@@ -1416,7 +1407,7 @@ class Pre(HtmlFlow, HtmlPalpable, HtmlPhrasingContent):
 
 
 @_tag
-class Progress(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Progress(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Displays an indicator showing the completion progress of a task, typically displayed as a progress bar.
 
@@ -1431,20 +1422,12 @@ class Progress(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Q(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Q(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
-  Indicates that the enclosed text is a short inline quotation. Most modern browsers implement this by surrounding the text in quotation marks.
+  Indicates that the enclosed text is a short inline quotation.
+  Most modern browsers implement this by surrounding the text in quotation marks.
 
   Contexts for use: Phrasing.
-  '''
-
-
-@_tag
-class Rb(HtmlTextContent):
-  '''
-  Used to delimit the base text component of a <ruby> annotation, i.e. the text that is being annotated.
-
-  Contexts for use: As a child of a ruby element.
   '''
 
 
@@ -1458,18 +1441,10 @@ class Rp(HtmlTextContent):
 
 
 @_tag
-class Rt(HtmlPhrasingContent):
+class Rt(HtmlPhrasingParent):
   '''
-  Specifies the ruby text component of a ruby annotation, which is used to provide pronunciation, translation, or transliteration information for East Asian typography. The <rt> element must always be contained within a <ruby> element.
-
-  Contexts for use: As a child of a ruby element.
-  '''
-
-
-@_tag
-class Rtc(HtmlPhrasingContent):
-  '''
-  Embraces semantic annotations of characters presented in a ruby of <rb> elements used inside of <ruby> element. <rb> elements can have both pronunciation (<rt>) and semantic (<rtc>) annotations.
+  Specifies the ruby text component of a ruby annotation, which is used to provide pronunciation, translation,
+  or transliteration information for East Asian typography. The <rt> element must always be contained within a <ruby> element.
 
   Contexts for use: As a child of a ruby element.
   '''
@@ -1488,7 +1463,7 @@ class Ruby(HtmlFlow, HtmlPalpable, HtmlPhrasing):
 
 
 @_tag
-class S(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class S(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Renders text with a strikethrough, or a line through it.
   Use the <s> element to represent things that are no longer relevant or no longer accurate.
@@ -1499,7 +1474,7 @@ class S(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Samp(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Samp(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Used to enclose inline text which represents sample (or quoted) output from a computer program.
 
@@ -1508,7 +1483,7 @@ class Samp(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Script(HtmlFlow, HtmlMetadata, HtmlPhrasing):
+class Script(HtmlFlow, HtmlMetadata, HtmlPhrasing, HtmlScriptSupporting):
   '''
   Used to embed or reference executable code; this is typically used to embed or refer to JavaScript code.
 
@@ -1543,7 +1518,7 @@ class Script(HtmlFlow, HtmlMetadata, HtmlPhrasing):
 
 
 @_tag
-class Section(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowContent):
+class Section(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
   '''
   Represents a standalone section which does not have a more specific semantic element to represent it.
 
@@ -1656,7 +1631,7 @@ class Slot(HtmlFlow, HtmlPhrasing, HtmlTransparentContent):
 
 
 @_tag
-class Small(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Small(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Makes the text font size one size smaller (for example, from large to medium, or from small to x-small) down to the browser's
   minimum font size.
@@ -1678,7 +1653,7 @@ class Source(HtmlNoContent):
 
 
 @_tag
-class Span(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Span(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   A generic inline container for phrasing content, which does not inherently represent anything.
   It can be used to group elements for styling purposes (using the class or id attributes),
@@ -1689,7 +1664,7 @@ class Span(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Strong(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Strong(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Indicates that its contents have strong importance, seriousness, or urgency.
   Browsers typically render the contents in bold type.
@@ -1711,7 +1686,7 @@ class Style(HtmlMetadata):
 
 
 @_tag
-class Sub(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Sub(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Specifies inline text which should be displayed as subscript for solely typographical reasons.
 
@@ -1720,7 +1695,7 @@ class Sub(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Summary(HtmlPhrasing):
+class Summary(HtmlPhrasingParent):
   '''
   Specifies a summary, caption, or legend for a <details> element's disclosure box.
 
@@ -1733,7 +1708,7 @@ class Summary(HtmlPhrasing):
 
 
 @_tag
-class Sup(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Sup(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Specifies inline text which is to be displayed as superscript for solely typographical reasons.
 
@@ -1860,7 +1835,7 @@ class Tbody(HtmlNode):
 
 
 @_tag
-class Td(HtmlSectioningRoot, HtmlFlowContent):
+class Td(HtmlSectioningRoot, HtmlFlowParent):
   '''
   Defines a cell of a table that contains data. It participates in the table model.
 
@@ -1869,7 +1844,7 @@ class Td(HtmlSectioningRoot, HtmlFlowContent):
 
 
 @_tag
-class Template(HtmlFlow, HtmlMetadata, HtmlPhrasing):
+class Template(HtmlFlow, HtmlMetadata, HtmlPhrasing, HtmlScriptSupporting):
   '''
   Used to hold HTML that is not to be rendered immediately when a page is loaded but may be instantiated subsequently during
   runtime using JavaScript.
@@ -1912,7 +1887,7 @@ class Tfoot(HtmlNode):
 
 
 @_tag
-class Th(HtmlFlowContent):
+class Th(HtmlFlowParent):
   '''
   Defines a cell as header of a group of table cells.
   The exact nature of this group is defined by the scope and headers attributes.
@@ -1939,7 +1914,7 @@ class Thead(HtmlNode):
 
 
 @_tag
-class Time(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Time(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents a specific period in time.
 
@@ -2013,7 +1988,7 @@ class Track(HtmlNoContent):
 
 
 @_tag
-class U(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class U(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents a span of inline text which should be rendered in a way that indicates that it has a non-textual annotation.
 
@@ -2037,7 +2012,7 @@ class Ul(HtmlFlow, HtmlPalpable):
 
 
 @_tag
-class Var(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
+class Var(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingParent):
   '''
   Represents the name of a variable in a mathematical expression or a programming context.
 
@@ -2046,7 +2021,7 @@ class Var(HtmlFlow, HtmlPalpable, HtmlPhrasing, HtmlPhrasingContent):
 
 
 @_tag
-class Video(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing):
+class Video(HtmlEmbedded, HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentContent):
   '''
   Embeds a media player which supports video playback into the document.
 
