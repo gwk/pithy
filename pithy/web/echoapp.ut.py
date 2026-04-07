@@ -29,5 +29,14 @@ def _() -> None:
     utest('GET: /search?q=test', fetch, '/search?q=test')
     utest('GET: /multi?a=1&b=2', fetch, '/multi?a=1&b=2')
 
+    def post(path:str, body:str) -> str:
+      'Post a body to the test server and return the response body as a string.'
+      resp = requests.post(f'{base_url}{path}', data=body.encode(), headers={'Content-Type': 'text/plain'}, timeout=2)
+      resp.raise_for_status()
+      return resp.text
+
+    # POST with body.
+    utest('POST: /\n\nhello world', post, '/', 'hello world')
+
     # Verify the server process is still healthy.
     _ = server_proc.flush_merged()

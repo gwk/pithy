@@ -119,3 +119,12 @@ class Request:
     This should be called by handle_request to enforce the allowed methods.
     '''
     if self.method not in methods: raise ResponseError(status=HTTPStatus.METHOD_NOT_ALLOWED)
+
+
+  def read_body(self, max_bytes:int) -> bytes:
+    '''
+    Read the request body.
+    If the body is more than `max_bytes`, the server should close the connection and return an error response.
+    '''
+    if self.conn is None: raise ValueError('Request connection is not set.')
+    return self.conn.read_body(max_bytes)

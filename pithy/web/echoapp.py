@@ -10,6 +10,9 @@ class EchoApp(WebApp):
   def handle_request(self, request:Request) -> Response:
     query = f'?{request.query}' if request.query else ''
     body = f'{request.method}: {request.path}{query}'
+    req_body_str = request.read_body(max_bytes=16_384).decode()
+    if req_body_str:
+      body += f'\n\n{req_body_str}'
     return Response(body=body, media_type='text/plain')
 
 
