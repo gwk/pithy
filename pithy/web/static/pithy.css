@@ -112,6 +112,8 @@ body {
 .flex-row { display: flex; flex-direction: row; }
 .flex-col { display: flex; flex-direction: column; }
 
+.font-small { font-size: small; }
+
 .gap-1ch { gap: 1ch; }
 .gap-1em { gap: 1em; }
 .gap-2em { gap: 2em; }
@@ -465,6 +467,11 @@ a.icon:hover {
 a.icon:visited {
   color: rgb(0, 0, 0);
   text-decoration: none;
+}
+
+/* JSON rendering. */
+ol.json-array {
+  list-style-type: decimal;
 }
 
 /* Htmx request disables events. */
