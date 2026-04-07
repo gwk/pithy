@@ -9,10 +9,14 @@ class EchoApp(WebApp):
 
   def handle_request(self, request:Request) -> Response:
     query = f'?{request.query}' if request.query else ''
-    body = f'{request.method}: {request.path}{query}'
+    lines = [f'{request.method}: {request.path}{query}']
+    for name, value in sorted(request.headers.items()):
+      lines.append(f'{name}: {value}')
     req_body_str = request.read_body(max_bytes=16_384).decode()
     if req_body_str:
-      body += f'\n\n{req_body_str}'
+      lines.append('')
+      lines.append(req_body_str)
+    body = '\n'.join(lines)
     return Response(body=body, media_type='text/plain')
 
 
