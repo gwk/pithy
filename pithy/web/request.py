@@ -1,12 +1,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import io
 from dataclasses import dataclass
+from functools import cached_property
 from http import HTTPStatus
 from typing import Iterator
+from urllib.parse import parse_qs
+
+from python_multipart import parse_form
+from python_multipart.multipart import Field, File
 
 from ..http import http_methods
-from ..util import lazy_property
-from .errors import BadRequest
+from ..json import parse_json
+from .errors import bad_request, decode_or_bad_request
 from .response import ResponseError
 
 
@@ -19,6 +25,14 @@ class BodyAlreadyReadError(Exception):
 
 class BodyTooLargeError(Exception):
   'Raised when the request body is larger than the maximum allowed size.'
+
+
+@dataclass(slots=True, frozen=True)
+class UploadedFile:
+  field_name:str
+  filename:str
+  data:bytes
+  content_type:str
 
 
 class RequestConn:
@@ -77,12 +91,12 @@ class Request:
 
 
   def __post_init__(self) -> None:
-    if self.method not in http_methods: raise BadRequest('Unrecognized method.')
+    if self.method not in http_methods: raise bad_request('Unrecognized method.')
     if self.content_length:
-      if self.content_length < 0: raise BadRequest('Negative content-length.')
+      if self.content_length < 0: raise bad_request('Negative content-length.')
 
 
-  @lazy_property
+  @cached_property
   def path_parts(self) -> list[str]:
     assert self.path.startswith('/')
     parts = self.path.split('/')
@@ -91,26 +105,64 @@ class Request:
     return parts
 
 
-  @lazy_property
-  def post_params_multi(self) -> dict[str,list[str]]:
-    '''
-    Parse the request body as POST.
-    In the case of multipart/form-data, this consumes the request input file,
-    due to the stdlib implementation of parse_multipart.
-    '''
-
-    #media_type_val = self.headers.get('content-type', '')
-    raise NotImplementedError('TODO: implement post_params_multi (cgi was removed in Python 3.13)')
+  @cached_property
+  def content_type(self) -> str:
+    return self.headers.get('content-type', '')
 
 
-  @lazy_property
-  def post_params_single(self) -> dict[str,str]:
-    params_multi = self.post_params_multi
-    single = {}
-    for k, vs in params_multi.items():
-      if len(vs) != 1: raise BadRequest(f'POST parameter {k!r} has multiple values.')
-      single[k] = vs[0]
-    return single
+  @cached_property
+  def media_type(self) -> str:
+    _media_type, _, _ = self.content_type.partition(';')
+    return _media_type.strip().lower()
+
+
+  def parse_multipart(self, max_bytes:int) -> dict[str,list[str|UploadedFile]]:
+    '''Parse a multipart/form-data body. Text fields become str values; file parts become UploadedFile values.'''
+    if self.media_type != 'multipart/form-data':
+      raise ValueError(f'parse_multipart: expected media type multipart/form-data; received: {self.media_type!r}')
+    body = self.read_body(max_bytes=max_bytes)
+    result:dict[str,list[str|UploadedFile]] = {}
+
+    def on_field(field:Field) -> None:
+      if field.field_name is None: raise bad_request('parse_multipart: field part missing name parameter')
+      key = decode_or_bad_request(field.field_name, desc='parse_multipart: field name')
+      val = decode_or_bad_request(field.value or b'', desc='parse_multipart: field value')
+      result.setdefault(key, []).append(val)
+
+    def on_file(file:File) -> None:
+      if file.field_name is None: raise bad_request('parse_multipart: file part missing name parameter')
+      file.file_object.seek(0)
+      key = decode_or_bad_request(file.field_name, desc='parse_multipart: file field name')
+      filename = decode_or_bad_request(file.file_name or b'', desc='parse_multipart: file name')
+      result.setdefault(key, []).append(UploadedFile(
+        field_name=key,
+        filename=filename,
+        data=file.file_object.read(),
+        content_type=file.content_type or 'application/octet-stream',
+      ))
+
+    headers:dict[str,bytes] = {
+      'Content-Type': self.headers.get('content-type', '').encode(),
+      'Content-Length': str(len(body)).encode(),
+    }
+    parse_form(headers, io.BytesIO(body), on_field, on_file)
+    return result
+
+
+  def parse_urlencoded(self, max_bytes:int) -> dict[str,list[str]]:
+    '''Parse an application/x-www-form-urlencoded body.'''
+    if self.media_type != 'application/x-www-form-urlencoded':
+      raise ValueError(f'parse_urlencoded: expected media type application/x-www-form-urlencoded; received: {self.media_type!r}')
+    body = self.read_body(max_bytes=max_bytes)
+    return parse_qs(decode_or_bad_request(body, desc='parse_urlencoded: body'), keep_blank_values=True)
+
+
+  def parse_json(self, max_bytes:int) -> object:
+    '''Parse an application/json body.'''
+    if self.media_type != 'application/json':
+      raise ValueError(f'parse_json: expected media type application/json; received: {self.media_type!r}')
+    body = self.read_body(max_bytes=max_bytes)
+    return parse_json(decode_or_bad_request(body, desc='parse_json: body'))
 
 
   def allow_methods(self, *methods:str) -> None:

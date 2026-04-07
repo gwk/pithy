@@ -28,5 +28,12 @@ ResponseNotFound = ResponseError(HTTPStatus.NOT_FOUND)
 ResponseNotImplemented = ResponseError(HTTPStatus.NOT_IMPLEMENTED)
 
 
-def BadRequest(reason:str='') -> ResponseError:
+def bad_request(reason:str='') -> ResponseError:
   return ResponseError(HTTPStatus.BAD_REQUEST, reason=reason)
+
+
+def decode_or_bad_request(data:bytes, desc:str) -> str:
+  try:
+    return data.decode()
+  except UnicodeDecodeError as e:
+    raise bad_request(f'{desc}: invalid UTF-8: {e}') from e
