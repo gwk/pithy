@@ -4,7 +4,7 @@ import io
 from dataclasses import dataclass
 from functools import cached_property
 from http import HTTPStatus
-from typing import Iterator
+from typing import Any, Iterator
 from urllib.parse import parse_qs
 
 from python_multipart import parse_form
@@ -78,6 +78,21 @@ class RequestConn:
 
 @dataclass
 class Request:
+  '''
+  An HTTP request.
+  * method: HTTP method, e.g. 'GET', 'POST', etc.
+  * scheme: URL scheme, e.g. 'http' or 'https'.
+  * host: Host header value.
+  * port: Port number.
+  * path: URL path, e.g. '/items/42'.
+  * query: URL query string, e.g. 'foo=bar&baz=qu. TODO: should be parsed.
+  * headers: HTTP headers.
+    * Keys are normalized to lower case.
+    * Values may be comma-separated combinations of multiple header values in the original header line.
+  * client_addr: Remote (host, port) of the connected client.
+  * content_length: Content-Length header value; None if not present or using chunked transfer encoding.
+  * conn: RequestConn object for reading the request body. TODO: privatize.
+  '''
   method:str
   scheme:str
   host:str
@@ -85,9 +100,10 @@ class Request:
   path:str
   query:str
   headers:dict[str,str]
-  client_addr:AddrPair  # Remote (host, port) of the connected client.
-  content_length:int|None # None indicates chunked transfer encoding.
+  client_addr:AddrPair
+  content_length:int|None
   conn:RequestConn|None = None
+  path_params:dict[str,Any]|None = None
 
 
   def __post_init__(self) -> None:
@@ -168,7 +184,7 @@ class Request:
   def allow_methods(self, *methods:str) -> None:
     '''
     If the current request method is one of the specified methods, return. Otherwise raise 405 Method Not Allowed.
-    This should be called by handle_request to enforce the allowed methods.
+    This should be called by handle_request() to enforce the allowed methods.
     '''
     if self.method not in methods: raise ResponseError(status=HTTPStatus.METHOD_NOT_ALLOWED)
 
