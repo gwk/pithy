@@ -24,6 +24,7 @@
     "utest",
     "wu"
   ],
+  "mypy.extraArguments": ["--cache-dir=_build/mypy_vscode_cache"],
   "python.analysis.importFormat": "relative",
   "[python]": {
     "editor.codeActionsOnSave": {
