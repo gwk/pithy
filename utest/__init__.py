@@ -50,8 +50,7 @@ import pathlib as _pathlib
 import re as _re
 from os import environ as _environ, getcwd as _getcwd
 from os.path import relpath as _rel_path
-from sys import _getframe as _getframe
-from sys import stderr as _stderr
+from sys import _getframe as _getframe, stderr as _stderr
 from traceback import format_exception as _format_exception
 from typing import Any, Callable, Iterable
 
