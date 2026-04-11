@@ -1,0 +1,6 @@
+{
+  'cmd': 'json-view',
+  'links': {
+    'test/pithytools/json_view/fixtures',
+  },
+}

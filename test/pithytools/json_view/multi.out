@@ -1,0 +1,11 @@
+
+fixtures/simple.json:
+* name: 'alice'
+* age: 30
+* admin: True
+
+fixtures/nested.json:
+* root:
+  * child:
+    0. 1
+    1. 2

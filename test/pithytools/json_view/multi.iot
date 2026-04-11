@@ -1,0 +1,3 @@
+{
+  'args': ['fixtures/simple.json', 'fixtures/nested.json'],
+}
