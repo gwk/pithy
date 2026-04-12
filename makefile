@@ -20,14 +20,14 @@ clean-grammars:
 	rm grammars/{ascii,unicode}.legs
 
 clean-legs-data:
-	rm legs/data_*.py
+	rm legs_/legs/data_*.py
 
 gen: gen-data gen-grammars
 
 gen-data: \
-	pithy/unicode/data_09_00.py \
-	pithy/unicode/data_10_00.py \
-	pithy/unicode/data_11_00.py \
+	pithy_/pithy/unicode/data_09_00.py \
+	pithy_/pithy/unicode/data_10_00.py \
+	pithy_/pithy/unicode/data_11_00.py \
 
 gen-sqlite-extracted-sql:
 	tools/gen-sqlite-test-sql.py -i ~/external/sqlite -o _misc/sqlite-extracted-stmts
@@ -49,7 +49,7 @@ grammars/ascii.legs: tools/gen-charset-grammar.py
 grammars/unicode.legs: tools/gen-charset-grammar.py
 	./$^ unicode > $@
 
-legs/data_%.py: tools/gen-data.py
+legs_/legs/data_%.py: tools/gen-data.py
 	./$^ data/$* > $@
 
 vscode/legs/syntaxes/legs.json: grammars/legs.legs

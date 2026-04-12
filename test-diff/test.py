@@ -4,10 +4,10 @@ import re
 from itertools import chain
 from sys import argv
 from time import time
-from typing import *
+from typing import Any
 
 from pithy.ansi import *
-from pithy.diff import *
+from pithy.diff import calc_diff, Diff, trim_common_ends, validate_diff
 from pithy.fs import *
 from pithy.io import *
 from pithy.task import *  # type: ignore

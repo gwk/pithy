@@ -20,22 +20,21 @@ Please note that the packages published to PyPI frequently lag behind the state 
 # Packaging and Installation
 
 ## Quick Start
-* Installation: `make install` for all packages; `sh/install.sh {package} ...` for specific packages. Invokes `pip install`.
-* Development: `make develop` for all packages; `sh/develop.sh {package} ...` for specific packages. Invokes `pip install -e`.
+* Installation: `just install` for all packages; `sh/install.sh {package} ...` for specific packages. Invokes `pip install`.
+* Development: `just develop` for all packages; `sh/develop.sh {package} ...` for specific packages. Invokes `pip install -e`.
 
-For these commands, the makefile simply invokes the shell scripts with all package names.
+For these commands, the justfile invokes the shell scripts with all package names.
 
 ## Details
 
-The various package sources reside in the top level directory, e.g. `pithy/`, `pithytools/`, etc. This layout reduces file path length and preserves the git history from when each package lived in a separate repository. Unfortunately the layout runs afoul of the Python packaging convention, because the `pyproject.toml` files would all collide at the root level, and cannot (as far as I can tell) be made to live inside their own source directories. The workaround is to create conventionally structured directories in `pkg/`, e.g. `pkg/pithy/`. Project files are generated using a short script, `build/gen-pyproject-toml.py`, which merges common values from `pkg/_common.toml` with the `pkg/{package}.toml` for the package in question to generate `pkg/{package}/pyproject.toml`. Each package subdirectory then contains a symlink of the same name that points to the corresponding source directory in the repository root. This appears to satisfy pip and hatch at least.
+For each project, pyproject.toml is generated using a short script, `build/gen-pyproject-toml.py`, which merges common values from `common.toml` with the `$PKG/$PKG.toml` to generate `$PKG/pyproject.toml`.
 
 
 # Packages
 
-These packages used to live in separate repositories but got merged together when versioning became too laborious. As a result the git history is somewhat unusual.
-
-Each package has its own readme in its source directory.
-
+These packages used to live in separate repositories but got merged together when versioning became too laborious.
+More recently, we moved the package source directories into package subdirectories to be more conventional.
+As a result the git history is somewhat unusual.
 
 ## Pithy
 
@@ -62,13 +61,15 @@ Legs is a lexer generator. It is currently in an experimental state.
 `tolkien` is a very small library that defines a Token type for writing parsers in Python. It was factored out of Legs so that I could use the same structure type independently of the lexer generator.
 
 
-## UnicodeData
-`unicode-data` holds historical versions of the unicode character database.
-
-
 ## UTest
 `utest` is a small, standalone library that provides basic unit testing. It can be used in conjunction with `iotest`. More recently it gained a standalone harness option: `python3 -m utest [paths...]` will search the given tests for `*.ut.py` and run those.
 
 
 ## Writeup
 A markup language similar to Markdown. This is currently in an experimental state. I have plans to rewrite it but it has been on the back burner for years.
+
+
+# Misc
+
+## UnicodeData
+`unicode-data` holds historical versions of the unicode character database.

@@ -1,34 +1,34 @@
 [project]
 license = "CC0-1.0"
+readme = "readme.md"
 authors = [
-    { name = "George King", email = "george@theorypractice.dev" },
+  { name = "George King", email = "george@theorypractice.dev" },
 ]
 dynamic = [
-    "version",
+  "version",
 ]
-readme = "wu/readme.md"
 name = "wu"
 description = "Writeup is a document language that transforms to HTML."
 requires-python = ">=3.14"
 dependencies = [
-    "pithy",
-    "pygments >= 2.19.2",
-    "types-pygments >= 2.19.0.20250809",
+  "pithy",
+  "pygments >= 2.19.2",
+  "types-pygments >= 2.19.0.20250809",
 ]
 keywords = [
-    "HTML",
-    "hypertext",
-    "language",
-    "markdown",
-    "markup",
-    "template",
-    "writeup",
+  "HTML",
+  "hypertext",
+  "language",
+  "markdown",
+  "markup",
+  "template",
+  "writeup",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
-    "Typing :: Typed",
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+  "Typing :: Typed",
 ]
 
 [project.urls]
@@ -36,22 +36,33 @@ Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
 Documentation = "https://github.com/gwk/pithy/tree/main/wu#readme"
 
+[project.optional-dependencies]
+dev = [
+  "mypy >= 1.20.1",
+  "pyflakes >= 3.4.0",
+  "isort >= 8.0.1",
+]
+
 [project.scripts]
 writeup = "wu.bin.writeup:main"
 
+[project.package-data]
+wu = [
+  "py.typed",
+]
+
 [build-system]
 requires = [
-    "hatchling",
+  "hatchling",
 ]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
-    "wu/**/*",
+  "wu/**/*",
 ]
 exclude = [
-    "wu/**/__pycache__/**/*",
-    "wu/project.toml",
+  "wu/**/__pycache__/**/*",
 ]
 
 [tool.hatch.version]

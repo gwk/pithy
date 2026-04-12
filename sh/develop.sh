@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 function fail { echo "error: $@" 1>&2; exit 1; }
 
 [[ -n "$@" ]] || fail "usage: $0 [packages ...]"
 
-proj="$PWD"
+cd "$(dirname $0)/.."
+proj_dir="$PWD"
+
 for package in "$@"; do
-  cd "$proj"
   build/gen-pyproject-toml.py "$package"
-  cd "pkg/$package"
+  cd "${package}_"
   pip --disable-pip-version-check install -e .
+  cd "$proj_dir"
 done

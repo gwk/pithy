@@ -1,18 +1,19 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 # Pithy must come first for manual installation, or else pip will download the PyPI version.
-packages := 'pithy crafts iotest legs pithytools tolkien utest wu'
+pkgs := 'crafts iotest legs pithy pithytools tolkien utest wu'
 
+pkg_srcs := 'crafts_/crafts iotest_/iotest legs_/legs pithy_/pithy pithytools_/pithytools tolkien_/tolkien utest_/utest wu_/wu'
 
 # List all recipes; the default.
 list-recipes:
   @just --list --unsorted
 
 list-packages:
-	@echo {{packages}}
+	@echo {{pkgs}}
 
 build:
-	sh/build.sh {{packages}}
+	sh/build.sh {{pkgs}}
 
 check: lint typecheck test
 
@@ -23,7 +24,7 @@ cov-meta:
 	test-meta/meta-coverage.sh
 
 develop:
-	sh/develop.sh {{packages}}
+	sh/develop.sh {{pkgs}}
 
 docs:
 	craft-docs
@@ -32,11 +33,10 @@ gen:
   make gen
 
 isort:
-	isort {{packages}} test tools
-
+	isort {{pkg_srcs}} test tools
 
 install:
-	sh/install.sh {{packages}}
+	sh/install.sh {{pkgs}}
 
 iotest:
 	iotest -fail-fast
@@ -45,7 +45,7 @@ link-claude-md:
 	find . -name 'AGENTS.md' -print0 | xargs -0 -I {} sh -c 'ln -sf "$(basename {})" "$(dirname {})/CLAUDE.md"'
 
 lint:
-	pyflakes {{packages}} tools
+	pyflakes {{pkg_srcs}} tools
 
 test: gen utest iotest
 
@@ -56,10 +56,13 @@ test-diff-data:
 	rm -rf _build/test-diff/*
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
-typecheck: gen typecheck-py
+typecheck: gen typecheck-py-packages typecheck-py-test
 
-typecheck-py:
-	mypy {{packages}} test tools
+typecheck-py-packages:
+	mypy {{pkg_srcs}}
+
+typecheck-py-test:
+	mypy test
 
 typecheck-js:
 	tsc
@@ -70,7 +73,7 @@ typecheck-clear-cache:
 typecheck-clean: typecheck-clear-cache typecheck
 
 uninstall:
-	pip3 uninstall --yes {{packages}}
+	pip3 uninstall --yes {{pkgs}}
 
 vscode-links:
 	ln -fs $$PWD/vscode/* ~/.vscode/extensions
@@ -79,4 +82,4 @@ vscode-insider-links:
 	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
 
 utest:
-	python3 -m utest {{packages}}
+	python3 -m utest {{pkg_srcs}} test/utest/pass.ut.py

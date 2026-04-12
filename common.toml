@@ -1,6 +1,8 @@
 
 [project]
 license = "CC0-1.0"
+readme = "readme.md"
+
 authors = [{ name = "George King", email = "george@theorypractice.dev" }]
 
 dynamic = ["version"]

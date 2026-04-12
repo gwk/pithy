@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
 cd $(dirname $0)/..
 local_commit=$(git rev-parse HEAD)
 remote_commit=$(git ls-remote -h origin main  | cut -f1)

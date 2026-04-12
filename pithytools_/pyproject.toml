@@ -1,31 +1,38 @@
 [project]
 license = "CC0-1.0"
+readme = "readme.md"
 authors = [
-    { name = "George King", email = "george@theorypractice.dev" },
+  { name = "George King", email = "george@theorypractice.dev" },
 ]
 dynamic = [
-    "version",
+  "version",
 ]
-readme = "pithytools/readme.md"
 name = "pithytools"
 description = "Pithytools is a collection of comamnd line utilities that depend on the `pithy` package."
 requires-python = ">=3.14"
 dependencies = [
-    "packaging >= 25.0",
-    "pillow >= 12.0.0",
-    "pithy",
+  "packaging >= 25.0",
+  "pillow >= 12.0.0",
+  "pithy",
 ]
 keywords = []
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
-    "Typing :: Typed",
+  "Development Status :: 3 - Alpha",
+  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+  "Typing :: Typed",
 ]
 
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
 Documentation = "https://github.com/gwk/pithy/tree/main/pithytools#readme"
+
+[project.optional-dependencies]
+dev = [
+  "mypy >= 1.20.1",
+  "pyflakes >= 3.4.0",
+  "isort >= 8.0.1",
+]
 
 [project.scripts]
 pack = "pithytools.bin.pack:main"
@@ -63,19 +70,23 @@ html-check = "pithytools.bin.html_check:main"
 same-same = "pithytools.bin.same_same:main"
 lc-ext = "pithytools.bin.lc_ext:main"
 
+[project.package-data]
+pithytools = [
+  "py.typed",
+]
+
 [build-system]
 requires = [
-    "hatchling",
+  "hatchling",
 ]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
-    "pithytools/**/*",
+  "pithytools/**/*",
 ]
 exclude = [
-    "pithytools/**/__pycache__/**/*",
-    "pithytools/project.toml",
+  "pithytools/**/__pycache__/**/*",
 ]
 
 [tool.hatch.version]

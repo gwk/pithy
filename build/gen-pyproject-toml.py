@@ -21,30 +21,26 @@ def main() -> None:
   proj_dir = dir_name(dir_name(__file__))
   chdir(proj_dir)
 
-  pyproject_path = f'pkg/{name}/pyproject.toml'
+  pyproject_path = f'{name}_/pyproject.toml'
 
   print(f'\nGenerating {pyproject_path}.')
 
-  with open(f'pkg/_common.toml', 'rb') as f:
+  with open(f'common.toml', 'rb') as f:
     common = load_toml(f)
 
-  with open(f'pkg/{name}.toml', 'rb') as f:
+  with open(f'{name}_/{name}.toml', 'rb') as f:
     project = load_toml(f)
 
   add_properties(name, common)
 
   merged = merge_toml((), common, project)
 
-  if not is_dir(f'pkg/{name}'):
-    exit(f'Error: package subdirectory not found: pkg/{name}. Please create the subdirectory and symlink the source directory.')
-
-  with open(f'pkg/{name}/pyproject.toml', 'wb') as f:
-    dump_toml(merged, f)
+  with open(pyproject_path, 'wb') as f:
+    dump_toml(merged, f, indent=2)
 
 
 def add_properties(name:str, common:dict[str,Any]) -> None:
   project = common.setdefault('project', {})
-  project['readme'] = f'{name}/readme.md'
 
   project_urls = project.setdefault('urls', {})
   project_urls['Documentation'] = f'https://github.com/gwk/pithy/tree/main/{name}#readme'
@@ -52,7 +48,9 @@ def add_properties(name:str, common:dict[str,Any]) -> None:
   project_scripts = project.setdefault('scripts', {})
   add_scripts(name, project_scripts)
 
-  # project.package_data = { 'wu': ['py.typed'] }
+  package_data = project.setdefault('package-data', {})
+  package_data_list = package_data.setdefault(name, [])
+  package_data_list.append('py.typed')
 
   tool = common.setdefault('tool', {})
   tool_hatch = tool.setdefault('hatch', {})
@@ -61,7 +59,6 @@ def add_properties(name:str, common:dict[str,Any]) -> None:
   tool_hatch_build['include'] = [f'{name}/**/*']
   tool_hatch_build['exclude'] = [
     f'{name}/**/__pycache__/**/*',
-    f'{name}/project.toml',
   ]
 
   tool_hatch_version = tool_hatch.setdefault('version', {})
@@ -69,7 +66,7 @@ def add_properties(name:str, common:dict[str,Any]) -> None:
 
 
 def add_scripts(pkg_name:str, project_scripts:dict[str,Any]) -> None:
-  bin_path = f'{pkg_name}/bin'
+  bin_path = f'{pkg_name}_/{pkg_name}/bin'
   if not is_dir(bin_path): return
   for script_name in list_dir(bin_path):
     stem, ext = split_ext(script_name)

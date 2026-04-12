@@ -1,34 +1,41 @@
 [project]
 license = "CC0-1.0"
+readme = "readme.md"
 authors = [
-    { name = "George King", email = "george@theorypractice.dev" },
+  { name = "George King", email = "george@theorypractice.dev" },
 ]
 dynamic = [
-    "version",
+  "version",
 ]
-readme = "readme.md"
 name = "crafts"
 description = "Crafts is a set of custom build tools."
 requires-python = ">=3.14"
 dependencies = [
-    "pithy",
-    "PyYAML >= 6.0.3",
+  "pithy",
+  "PyYAML >= 6.0.3",
 ]
 keywords = [
-    "build",
-    "tool",
+  "build",
+  "tool",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
-    "Typing :: Typed",
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+  "Typing :: Typed",
 ]
 
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
 Documentation = "https://github.com/gwk/pithy/tree/main/crafts#readme"
+
+[project.optional-dependencies]
+dev = [
+  "mypy >= 1.20.1",
+  "pyflakes >= 3.4.0",
+  "isort >= 8.0.1",
+]
 
 [project.scripts]
 craft-vscode-ext = "crafts.bin.craft_vscode_ext:main"
@@ -43,19 +50,23 @@ craft-mac-app = "crafts.bin.craft_mac_app:main"
 craft-swift = "crafts.bin.craft_swift:main"
 craft-xml-datatypes = "crafts.bin.craft_xml_datatypes:main"
 
+[project.package-data]
+crafts = [
+  "py.typed",
+]
+
 [build-system]
 requires = [
-    "hatchling",
+  "hatchling",
 ]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
-    "crafts/**/*",
+  "crafts/**/*",
 ]
 exclude = [
-    "crafts/**/__pycache__/**/*",
-    "crafts/project.toml",
+  "crafts/**/__pycache__/**/*",
 ]
 
 [tool.hatch.version]

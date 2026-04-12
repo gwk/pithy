@@ -3,28 +3,22 @@
     ".git": true,
     "_build": true,
     "_misc": true,
-    "pkg/crafts/**": true,
-    "pkg/iotest/**": true,
-    "pkg/legs/**": true,
-    "pkg/pithy/**": true,
-    "pkg/pithytools/**": true,
-    "pkg/tolkien/**": true,
-    "pkg/utest/**": true,
-    "pkg/wu/**": true
   },
   "mypy.targets": [
-    "crafts",
-    "iotest",
-    "legs",
-    "pithy",
-    "pithytools",
-    "test",
-    "tolkien",
+    "crafts_",
+    "iotest_",
+    "legs_",
+    "pithy_",
+    "pithytools_",
+    "tolkien_",
     "tools",
-    "utest",
-    "wu"
+    "utest_",
+    "wu_"
   ],
   "mypy.extraArguments": ["--cache-dir=_build/mypy_vscode_cache"],
+  "python.analysis.extraPaths": [
+    "pithy_/test/meta/"
+  ],
   "python.analysis.importFormat": "relative",
   "[python]": {
     "editor.codeActionsOnSave": {
@@ -34,19 +28,12 @@
   "files.exclude": {
     "**/CLAUDE.md": true,
     "dist/**": true,
-    "pkg/crafts/**": true,
-    "pkg/iotest/**": true,
-    "pkg/legs/**": true,
-    "pkg/pithy/**": true,
-    "pkg/pithytools/**": true,
-    "pkg/tolkien/**": true,
-    "pkg/utest/**": true,
-    "pkg/wu/**": true
   },
   "python.analysis.diagnosticMode": "workspace",
   "python.analysis.exclude": [
     "_build/**",
     "_misc/**",
+    "dist/**",
     "**/__pycache__",
     "**/.*",
     "**/node_modules",

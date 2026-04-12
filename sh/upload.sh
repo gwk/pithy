@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 function fail { echo "error: $@" 1>&2; exit 1; }
 
@@ -17,8 +17,10 @@ else
   url="https://test.pypi.org/legacy/"
 fi
 
+cd "$(dirname $0)/.."
+
 echo "package: $package"
-cd "pkg/$package"
+cd "$package"
 regex=".*/$package-[0-9.]*\.tar\.gz"
 dist_files=$(find dist/ -regex "$regex")
 echo "distribution files:" $dist_files
