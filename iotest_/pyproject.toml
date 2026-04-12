@@ -6,7 +6,7 @@ authors = [
 dynamic = [
     "version",
 ]
-readme = "iotest/readme.md"
+readme = "readme.md"
 name = "iotest"
 description = "IOTest is a process/integration test harness that captures standard IO as the basis for test validation."
 requires-python = ">=3.14"
