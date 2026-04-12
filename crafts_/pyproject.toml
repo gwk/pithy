@@ -6,7 +6,7 @@ authors = [
 dynamic = [
     "version",
 ]
-readme = "crafts/readme.md"
+readme = "readme.md"
 name = "crafts"
 description = "Crafts is a set of custom build tools."
 requires-python = ">=3.14"
