@@ -6,7 +6,7 @@ authors = [
 dynamic = [
     "version",
 ]
-readme = "legs/readme.md"
+readme = "readme.md"
 name = "legs"
 description = "Legs is a lexer generator."
 requires-python = ">=3.14"
