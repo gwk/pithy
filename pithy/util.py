@@ -7,24 +7,6 @@ from typing import Any, Callable, Iterable, NamedTuple, TypeVar
 _T = TypeVar('_T')
 
 
-_setattr = object.__setattr__
-
-class lazy_property(object):
-  '''
-  Lazy property decorator. This is similar to functools.cached_property, but more simplistic.
-  This is not thread safe. As of Python 3.12, neither is cached_property.
-  Thus we could conceivably retire lazy_property entirely.
-  '''
-
-  def __init__(self, acc_fn:Callable):
-    self.acc_fn = acc_fn
-
-  def __get__(self, obj:Any, cls:type) -> Any:
-    val = self.acc_fn(obj)
-    _setattr(obj, self.acc_fn.__name__, val)
-    return val
-
-
 def load_and_execute(module_name:str, function_name:str, /, *args:Any, **kwargs:Any) -> Any:
   'Load a module and execute the specified function.'
   module = importlib.import_module(module_name)

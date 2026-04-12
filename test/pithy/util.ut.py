@@ -3,24 +3,9 @@
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from pithy.util import lazy_property, memoize, nt_items
+from pithy.util import memoize, nt_items
 from utest import utest, utest_seq, utest_val
 
-
-# lazy_property.
-
-class C:
-
-  @lazy_property
-  def p(self) -> object: return object()
-
-
-c = C()
-o1 = c.p
-utest_val(o1, c.p, 'subsequent call to lazy property returns same value.')
-o2 = object()
-c.p = o2
-utest_val(o2, c.p, 'lazy property can be set to new value.')
 
 # memoize.
 

@@ -1,13 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from functools import total_ordering
+from functools import cached_property, total_ordering
 from io import TextIOBase, TextIOWrapper
 from tarfile import TarFile
 from typing import Any, BinaryIO, Callable, cast, Iterable
 from zipfile import BadZipFile, ZipFile
 
 from .fs import path_ext
-from .util import lazy_property
 
 
 FileOrPath = BinaryIO|str # TODO: support other pathlike objects.
@@ -58,7 +57,7 @@ class ArchiveFile(ArchiveMember):
     super().__init__(archive=archive, name=name)
     self._opener = opener
 
-  @lazy_property
+  @cached_property
   def _file(self): return self._opener()
 
   def __iter__(self): return iter(self._file)
