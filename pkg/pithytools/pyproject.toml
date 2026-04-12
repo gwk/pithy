@@ -1,0 +1,82 @@
+[project]
+license = "CC0-1.0"
+authors = [
+    { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+    "version",
+]
+readme = "pithytools/readme.md"
+name = "pithytools"
+description = "Pithytools is a collection of comamnd line utilities that depend on the `pithy` package."
+requires-python = ">=3.14"
+dependencies = [
+    "packaging >= 25.0",
+    "pillow >= 12.0.0",
+    "pithy",
+]
+keywords = []
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/pithytools#readme"
+
+[project.scripts]
+pack = "pithytools.bin.pack:main"
+crawl = "pithytools.bin.crawl:main"
+digest = "pithytools.bin.digest:main"
+pat = "pithytools.bin.pat:main"
+sqlite-diff = "pithytools.bin.sqlite_diff:main"
+add = "pithytools.bin.add:main"
+html-esc = "pithytools.bin.html_esc:main"
+conv-img = "pithytools.bin.conv_img:main"
+time-runs = "pithytools.bin.time_runs:main"
+lc-name = "pithytools.bin.lc_name:main"
+py-profile = "pithytools.bin.py_profile:main"
+html-extract = "pithytools.bin.html_extract:main"
+deps-audit = "pithytools.bin.deps_audit:main"
+summarize-syntax = "pithytools.bin.summarize_syntax:main"
+json-view = "pithytools.bin.json_view:main"
+rename-files = "pithytools.bin.rename_files:main"
+xcproj = "pithytools.bin.xcproj:main"
+fmt-pithy-logs = "pithytools.bin.fmt_pithy_logs:main"
+gen-password = "pithytools.bin.gen_password:main"
+py-lldb = "pithytools.bin.py_lldb:main"
+json-schema = "pithytools.bin.json_schema:main"
+serve-dir = "pithytools.bin.serve_dir:main"
+count-ext = "pithytools.bin.count_ext:main"
+reindent4to2 = "pithytools.bin.reindent4to2:main"
+json-fmt-in-place = "pithytools.bin.json_fmt_in_place:main"
+html-view = "pithytools.bin.html_view:main"
+oq = "pithytools.bin.oq:main"
+pyt-fmt = "pithytools.bin.pyt_fmt:main"
+tab = "pithytools.bin.tab:main"
+json-fmt = "pithytools.bin.json_fmt:main"
+timesheet = "pithytools.bin.timesheet:main"
+html-check = "pithytools.bin.html_check:main"
+same-same = "pithytools.bin.same_same:main"
+lc-ext = "pithytools.bin.lc_ext:main"
+
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "pithytools/**/*",
+]
+exclude = [
+    "pithytools/**/__pycache__/**/*",
+    "pithytools/project.toml",
+]
+
+[tool.hatch.version]
+path = "pithytools/__about__.py"

@@ -1,0 +1,62 @@
+[project]
+license = "CC0-1.0"
+authors = [
+    { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+    "version",
+]
+readme = "crafts/readme.md"
+name = "crafts"
+description = "Crafts is a set of custom build tools."
+requires-python = ">=3.14"
+dependencies = [
+    "pithy",
+    "PyYAML >= 6.0.3",
+]
+keywords = [
+    "build",
+    "tool",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/crafts#readme"
+
+[project.scripts]
+craft-vscode-ext = "crafts.bin.craft_vscode_ext:main"
+craft-docs = "crafts.bin.craft_docs:main"
+craft-web = "crafts.bin.craft_web:main"
+craft-py-ext = "crafts.bin.craft_py_ext:main"
+craft-swift-fmt = "crafts.bin.craft_swift_fmt:main"
+craft-mac-icons = "crafts.bin.craft_mac_icons:main"
+craft-project = "crafts.bin.craft_project:main"
+craft-swift-utest = "crafts.bin.craft_swift_utest:main"
+craft-mac-app = "crafts.bin.craft_mac_app:main"
+craft-swift = "crafts.bin.craft_swift:main"
+craft-xml-datatypes = "crafts.bin.craft_xml_datatypes:main"
+
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "crafts/**/*",
+]
+exclude = [
+    "crafts/**/__pycache__/**/*",
+    "crafts/project.toml",
+]
+
+[tool.hatch.version]
+path = "crafts/__about__.py"

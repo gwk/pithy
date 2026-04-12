@@ -1,0 +1,49 @@
+[project]
+license = "CC0-1.0"
+authors = [
+    { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+    "version",
+]
+readme = "utest/readme.md"
+name = "utest"
+description = "UTest is a simple unit-testing library."
+requires-python = ">=3.14"
+dependencies = []
+keywords = [
+    "unit",
+    "test",
+    "testing",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/utest#readme"
+
+[project.scripts]
+
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "utest/**/*",
+]
+exclude = [
+    "utest/**/__pycache__/**/*",
+    "utest/project.toml",
+]
+
+[tool.hatch.version]
+path = "utest/__about__.py"

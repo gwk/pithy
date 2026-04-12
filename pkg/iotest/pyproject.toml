@@ -1,0 +1,53 @@
+[project]
+license = "CC0-1.0"
+authors = [
+    { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+    "version",
+]
+readme = "iotest/readme.md"
+name = "iotest"
+description = "IOTest is a process/integration test harness that captures standard IO as the basis for test validation."
+requires-python = ">=3.14"
+dependencies = [
+    "pithy",
+]
+keywords = [
+    "io",
+    "test",
+    "testing",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/iotest#readme"
+
+[project.scripts]
+iotest = "iotest.bin.iotest:main"
+
+[build-system]
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "iotest/**/*",
+]
+exclude = [
+    "iotest/**/__pycache__/**/*",
+    "iotest/project.toml",
+]
+
+[tool.hatch.version]
+path = "iotest/__about__.py"
