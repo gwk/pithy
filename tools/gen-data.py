@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# official data is found here: http://www.unicode.org/Public/zipped/9.0.0/UCD.zip
+# official data is found here: http://www.unicode.org/Public/${version}/ucd/UCD.zip
 
 from argparse import ArgumentParser
 from collections import defaultdict
