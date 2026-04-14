@@ -12,7 +12,7 @@ from python_multipart.multipart import Field, File
 
 from ..http import http_methods
 from ..json import parse_json
-from .errors import bad_request, decode_or_bad_request
+from .errors import BadRequestError, decode_or_bad_request
 from .response import ResponseError
 
 
@@ -107,9 +107,9 @@ class Request:
 
 
   def __post_init__(self) -> None:
-    if self.method not in http_methods: raise bad_request('Unrecognized method.')
+    if self.method not in http_methods: raise BadRequestError('Unrecognized method.')
     if self.content_length:
-      if self.content_length < 0: raise bad_request('Negative content-length.')
+      if self.content_length < 0: raise BadRequestError('Negative content-length.')
 
 
   @cached_property
@@ -140,13 +140,13 @@ class Request:
     result:dict[str,list[str|UploadedFile]] = {}
 
     def on_field(field:Field) -> None:
-      if field.field_name is None: raise bad_request('parse_multipart: field part missing name parameter')
+      if field.field_name is None: raise BadRequestError('parse_multipart: field part missing name parameter')
       key = decode_or_bad_request(field.field_name, desc='parse_multipart: field name')
       val = decode_or_bad_request(field.value or b'', desc='parse_multipart: field value')
       result.setdefault(key, []).append(val)
 
     def on_file(file:File) -> None:
-      if file.field_name is None: raise bad_request('parse_multipart: file part missing name parameter')
+      if file.field_name is None: raise BadRequestError('parse_multipart: file part missing name parameter')
       file.file_object.seek(0)
       key = decode_or_bad_request(file.field_name, desc='parse_multipart: file field name')
       filename = decode_or_bad_request(file.file_name or b'', desc='parse_multipart: file name')

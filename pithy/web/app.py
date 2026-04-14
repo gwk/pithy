@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from http import HTTPStatus
 
-from .errors import ResponseError, ResponseNotFound
+from .errors import NotFoundError, ResponseError
 from .request import Request
 from .response import Response
 from .router import Router
@@ -19,7 +19,7 @@ class WebApp:
   def handle_expect_100_continue(self, request:Request) -> Response:
     if self.router is not None:
       result = self.router.endpoint_for_path(request.path)
-      if result is None: raise ResponseNotFound
+      if result is None: raise NotFoundError
       _, path_params = result
       request.path_params = path_params
     return Response(status=HTTPStatus.CONTINUE)
@@ -28,7 +28,7 @@ class WebApp:
   def handle_request(self, request:Request) -> Response:
     if self.router is not None:
       result = self.router.endpoint_for_path(request.path)
-      if result is None: raise ResponseNotFound
+      if result is None: raise NotFoundError
       endpoint, path_params = result
       request.path_params = path_params
       return endpoint.handle(request)
