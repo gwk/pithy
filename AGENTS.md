@@ -26,7 +26,8 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - Generate code: `just gen`
 
 ## Code Style
-- Python 3.14+, strict typeing with mypy.
+- Python 3.14+, strict typing with mypy.
+- Do not import __future__ annotations; 3.14 supports deferred annotations.
 - 2-space indentation (not 4-space).
 - Double newlines between functions.
 - Double newlines between methods, except for very compact classes where no methods have blank lines.
@@ -57,7 +58,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - Run `just help` and `make help` to list available commands.
 
 ## Unit Tests
-- Write unit tests using our in-house library `utest`.
+- Write unit tests using our own library `utest`.
 - Read the entirety of `utest/__init__.py` as context for writing tests.
 - Unit tests have the compound suffix `.ut.py` and should be placed in the source tree next to the module under test.
 - If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
