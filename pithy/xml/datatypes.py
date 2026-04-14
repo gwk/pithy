@@ -4,8 +4,6 @@
 Base class and utilities for generated Xml datatypes; see the craft-xml-datatypes script for context.
 '''
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Callable, ClassVar, Iterable, TypeVar
 

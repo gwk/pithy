@@ -4,8 +4,6 @@
 Generate and print informative schemas from sets of example object trees.
 '''
 
-from __future__ import annotations
-
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any, cast, Iterable, TextIO

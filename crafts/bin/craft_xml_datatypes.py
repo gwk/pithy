@@ -4,8 +4,6 @@
 `craft-xml-datatypes` is a tool to generate dataclasses from a collection of XML example documents.
 '''
 
-from __future__ import annotations
-
 import re
 from argparse import ArgumentParser, Namespace
 from collections import Counter, defaultdict
