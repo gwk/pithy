@@ -3,6 +3,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+from packaging._parser import MarkerList
 from packaging.requirements import Marker, Requirement
 from packaging.utils import canonicalize_name
 from pithy.ansi import BOLD_OUT, RST_OUT
@@ -100,7 +101,7 @@ def extract_extra_from_marker(marker:Marker|None) -> str:
   return extract_extra_from_markers_list(marker._markers)
 
 
-def extract_extra_from_markers_list(l:list[str|list|tuple]) -> str:
+def extract_extra_from_markers_list(l:MarkerList) -> str:
   if 'or' in l: return '' # Cannot easily handle 'or' combinations.
   for m in l:
     if isinstance(m, str):
