@@ -64,8 +64,22 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
 - Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.
 
+## Coding Principles
 
-# Claude Code Restrictions
+### Error Masking
+Do not mask errors. Prefer to raise an exception in ambiguous situations, provide explicit flags indicating how to resolve,
+or when appropriate log errors/warnings.
+Some examples:
+- Catching exceptions in an overly broad manner.
+- Silently taking the first or last of colliding value when constructing a dictionary.
+  Instead provide control flags or explicit APIs for getting multi-value represenations (e.g. dict of lists of values).
+
+### Typing
+When a function has a polymorphic return type dictated by the input,
+consider splitting it several more narrowly typed functions, or else using `@overload` typing.
+
+
+# Coding Agent Restrictions
 
 Do not alter git state unless explicitly requested. Always ask before doing a reset.
 
