@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from functools import cached_property
 from http import HTTPStatus
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, parse_qsl
 
 from python_multipart import parse_form
 from python_multipart.multipart import Field, File
 
 from ..http import http_methods
-from ..json import parse_json
+from ..json import Json, parse_json
 from .errors import BadRequestError, decode_or_bad_request
 from .requestconn import AddrPair, RequestConn
 from .response import ResponseError
@@ -42,25 +42,31 @@ class Request:
   * host: Host header value.
   * port: Port number.
   * path: URL path, e.g. '/items/42'.
-  * query: URL query string, e.g. 'foo=bar&baz=qu. TODO: should be parsed.
+  * query_str: raw URL query string, e.g. 'foo=bar&baz=qux'.
   * headers: HTTP headers.
     * Keys are normalized to lower case.
     * Values may be comma-separated combinations of multiple header values in the original header line.
   * client_addr: Remote (host, port) of the connected client.
   * content_length: Content-Length header value; None if not present or using chunked transfer encoding.
   * conn: RequestConn object for reading the request body. TODO: privatize.
+
+  * path_parts: URL path split into parts by '/', e.g. ['items', '42'] for path '/items/42' (cached property).
+  * content_type: Content-Type header value (cached property).
+  * media_type: Content-Type without parameters, e.g. 'application/json' (cached property).
+  * query: Parsed query parameters (cached property). Raises BadRequestError if any parameter has multiple values.
+  * query_multi: Parsed query parameters as dict of lists (cached property).
+  * query_items: Parsed query parameters as list of (key, value) pairs (cached property).
   '''
   method:str
   scheme:str
   host:str
   port:int
   path:str
-  query:str
+  query_str:str
   headers:dict[str,str]
   client_addr:AddrPair
   content_length:int|None
   conn:RequestConn|None = None
-  path_params:dict[str,Any]|None = None
 
 
   def __post_init__(self) -> None:
@@ -87,6 +93,59 @@ class Request:
   def media_type(self) -> str:
     _media_type, _, _ = self.content_type.partition(';')
     return _media_type.strip().lower()
+
+
+  @cached_property
+  def query_items(self) -> list[tuple[str,str]]:
+    'Parse and cache the query string into a list of (key, value) pairs, taking the first value for each key.'
+    if not self.query_str: return []
+    return parse_qsl(self.query_str, keep_blank_values=True)
+
+
+  @cached_property
+  def query_multi(self) -> dict[str,list[str]]:
+    'Parse and cache the query string into a dict of lists, preserving all values for each key.'
+    qm:dict[str,list[str]] = {}
+    for k, v in self.query_items:
+      try: qm[k].append(v)
+      except KeyError: qm[k] = [v]
+    return qm
+
+
+  @cached_property
+  def query(self) -> dict[str,str]:
+    '''
+    Parse and cache the query string into a dict, enforcing that each key has only one value.
+    If a key has multiple values, BadRequestError is raised.
+    '''
+    q = {}
+    for k, v in self.query_items:
+      if k in q: raise BadRequestError(f'Multiple values for query parameter {k!r}.')
+      q[k] = v
+    return q
+
+
+  def body_params(self, max_bytes:int) -> dict[str,Any]:
+    'Parse and cache the request body based on media type and return a flat dict of parameters.'
+    match self.media_type:
+      case 'application/x-www-form-urlencoded':
+        multi = self.parse_urlencoded(max_bytes=max_bytes)
+        return {k: vs[0] for k, vs in multi.items() if vs}
+      case 'application/json':
+        data = self.parse_json(max_bytes=max_bytes)
+        if isinstance(data, dict): return data
+        raise BadRequestError('Expected JSON object in request body.')
+      case 'multipart/form-data':
+        parts = self.parse_multipart(max_bytes=max_bytes)
+        result:dict[str,Any] = {}
+        for k, vs in parts.items():
+          for v in vs:
+            if isinstance(v, str):
+              result[k] = v
+              break
+        return result
+      case _:
+        raise ResponseError(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE, reason=f'Unsupported media type: {self.media_type!r}.')
 
 
   def parse_multipart(self, max_bytes:int) -> dict[str,list[str|UploadedFile]]:
@@ -130,7 +189,7 @@ class Request:
     return parse_qs(decode_or_bad_request(body, desc='parse_urlencoded: body'), keep_blank_values=True)
 
 
-  def parse_json(self, max_bytes:int) -> object:
+  def parse_json(self, max_bytes:int) -> Json:
     '''Parse an application/json body.'''
     if self.media_type != 'application/json':
       raise ValueError(f'parse_json: expected media type application/json; received: {self.media_type!r}')

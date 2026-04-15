@@ -8,7 +8,7 @@ from .response import Response
 class EchoApp(WebApp):
 
   def handle_request(self, request:Request) -> Response:
-    query = f'?{request.query}' if request.query else ''
+    query = f'?{request.query_str}' if request.query_str else ''
     lines = [f'{request.method}: {request.path}{query}']
     for name, value in sorted(request.headers.items()):
       lines.append(f'{name}: {value}')

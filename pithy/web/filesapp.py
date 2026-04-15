@@ -60,7 +60,7 @@ class FilesApp(WebApp):
     if is_dir(local_path, follow=True):
       if not norm_path.endswith('/'): # Redirect browser to path with slash (same behavior as Apache).
         assert norm_path.startswith('/')
-        query = '?' + request.query if request.query else ''
+        query = '?' + request.query_str if request.query_str else ''
         new_url = f'{norm_path}/{query}'
         raise ResponseError(status=HTTPStatus.MOVED_PERMANENTLY, headers={'Location':new_url})
       index_path = path_join(local_path, 'index.html')

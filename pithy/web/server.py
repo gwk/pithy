@@ -45,6 +45,11 @@ class BodyTooLargeError(Exception):
 
 @dataclass(slots=True)
 class _Conn():
+  '''
+  _Conn represents the internal state of a client connection through one or more connection keep-alive cycles.
+  It exists to encapsulate the underlying H11 calls by narrowing the return type from next_event() for each stage,
+  and to provide a handle through which the WebServerRequestConn can read the request body.
+  '''
   client_addr:AddrPair
   socket:Socket
   h11_conn:h11_Connection
@@ -154,7 +159,9 @@ class WebServerRequestConn(RequestConn):
       self._bytes_read += len(event.data)
       if self._bytes_read > max_bytes:
         raise BodyTooLargeError(length=self._bytes_read, max_bytes=max_bytes)
+      self._bytes_read += len(event.data)
       return event.data
+    self._was_body_read = True
     return b''
 
 
@@ -165,7 +172,6 @@ class WebServerRequestConn(RequestConn):
       if not chunk: break
       chunks.append(chunk)
     return b''.join(chunks)
-
 
 
 
@@ -335,22 +341,25 @@ class WebServer:
       host=self.config.host,
       port=self.config.port,
       path=url.path or '/',
-      query=url.query,
+      query_str=url.query,
       headers=headers,
       content_length=content_length,
       conn=WebServerRequestConn(content_length=content_length, _conn=conn))
 
-    if conn.h11_conn.client_is_waiting_for_100_continue:
-      expect_response = self.app.handle_expect_100_continue(request)
-      if expect_response.status == HTTPStatus.CONTINUE:
-        self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
-      else:
-        return expect_response.set_connection_close() # The body was not read, so the connection cannot be reused.
-
     try:
-      response = self.app.handle_request(request)
-      # The app may or may not read the body.
-      if conn.h11_conn.their_state is h11_SEND_BODY: # The app did not read the body.
+      handler = self.app.resolve_handler(request)
+
+      if conn.h11_conn.client_is_waiting_for_100_continue:
+        expect_response = handler.handle_expect_100_continue(request)
+        if expect_response.status == HTTPStatus.CONTINUE:
+          self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
+        else:
+          return expect_response.set_connection_close() # The body was not read, so the connection cannot be reused.
+
+      handler.prepare(request)
+      response = handler.handle_request(request)
+      # The handler may or may not read the body.
+      if conn.h11_conn.their_state is h11_SEND_BODY: # The handler did not read the body.
         response.set_connection_close() # The connection cannot be reused since the body was not read.
 
     except ResponseError as exc:
