@@ -4,7 +4,7 @@ import io
 from dataclasses import dataclass
 from functools import cached_property
 from http import HTTPStatus
-from typing import Any, Iterator
+from typing import Any
 from urllib.parse import parse_qs
 
 from python_multipart import parse_form
@@ -13,10 +13,8 @@ from python_multipart.multipart import Field, File
 from ..http import http_methods
 from ..json import parse_json
 from .errors import BadRequestError, decode_or_bad_request
+from .requestconn import AddrPair, RequestConn
 from .response import ResponseError
-
-
-type AddrPair = tuple[str,int]
 
 
 class BodyAlreadyReadError(Exception):
@@ -33,47 +31,6 @@ class UploadedFile:
   filename:str
   data:bytes
   content_type:str
-
-
-class RequestConn:
-  '''
-  Abstract base class for the Request object's connection, used to read the request body.
-  The actual implementation is server-specific.
-  '''
-  content_length:int|None # None implies chunked transfer encoding.
-  transfer_encoding_compression:str|None
-
-
-  def read_some(self, max_bytes:int) -> bytes:
-    '''
-    Read some bytes from the request body.
-    `max_bytes` is the total number of bytes to be read.
-    '''
-    raise NotImplementedError
-
-
-  def read_body(self, max_bytes:int) -> bytes:
-    '''
-    Read the request body.
-    If the body is more than `max_bytes`, the server should close the connection and return an error response.
-    '''
-    raise NotImplementedError
-
-
-  def read_body_to_file_path(self, max_bytes:int, file_path:str='') -> str:
-    '''
-    Read the request body and write it to a file at `file_path`.
-    If the body is more than `max_bytes`, the server should close the connection and return an error response.
-    '''
-    raise NotImplementedError
-
-
-  def stream_body(self, max_bytes:int, chunk_size:int=16_384) -> Iterator[bytes]:
-    '''
-    Stream the request body in chunks of `chunk_size` bytes.
-    If the body is more than `max_bytes`, the server should close the connection and return an error response.
-    '''
-    raise NotImplementedError
 
 
 @dataclass
