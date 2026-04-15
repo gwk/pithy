@@ -2,14 +2,12 @@
 
 import json as _json
 import re
-from dataclasses import fields, is_dataclass
 from io import Reader, Writer
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import AbstractSet, Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, overload, Sequence
 
 from ..encode import encode_obj, EncodeObj
-from ..type_slots import all_slots
 
 
 type JsonList = list['Json']
@@ -25,11 +23,9 @@ JsonText = str|bytes|bytearray
 json_types = (type(None), bool, int, float, str, list, dict)
 
 
-class JSONEmptyDocument(JSONDecodeError): pass
+class JsonEmptyError(JSONDecodeError): pass
 
 ObjDecodeFn = Callable[[dict],Any]
-ObjDecodeHook = type|tuple[AbstractSet[str],type|ObjDecodeFn]
-ObjDecodeHooks = Sequence[ObjDecodeHook]
 
 _Seps = tuple[str,str]|None
 
@@ -103,44 +99,72 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, separato
 # Input.
 
 
-def parse_json(text:JsonText|None, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
+@overload
+def parse_json(text:JsonText|None, object_hook:ObjDecodeFn) -> Any: ...
+
+@overload
+def parse_json(text:JsonText|None, object_hook:None=None) -> Json: ...
+
+def parse_json(text:JsonText|None, object_hook:ObjDecodeFn|None=None) -> Any:
   '''
   Parse json from `text`.
   '''
-  return None if text is None else _json.loads(text, object_hook=_mk_hook(hook, hooks))
+  return None if text is None else _json.loads(text, object_hook=object_hook)
 
 
-def load_json(file:Reader, hook: ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Any:
+@overload
+def load_json(file:Reader, object_hook:ObjDecodeFn) -> Any: ...
+
+@overload
+def load_json(file:Reader, object_hook:None=None) -> Json: ...
+
+def load_json(file:Reader, object_hook:ObjDecodeFn|None=None) -> Any:
   '''
   Read json from `file`.
   '''
   try:
-    return _json.load(file, object_hook=_mk_hook(hook, hooks))
+    return _json.load(file, object_hook=object_hook)
   except JSONDecodeError as e:
     if e.pos == 0 and e.msg == 'Expecting value':
-      raise JSONEmptyDocument(msg=e.msg, doc=e.doc, pos=e.pos) from e
+      raise JsonEmptyError(msg=e.msg, doc=e.doc, pos=e.pos) from e
     else:
       raise
 
 
-def parse_jsonl(text:JsonText, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
-  return load_jsonl(text.splitlines(), hook=hook, hooks=hooks)
+@overload
+def parse_jsonl(text:JsonText, object_hook:ObjDecodeFn) -> Iterable[Any]: ...
+
+@overload
+def parse_jsonl(text:JsonText, object_hook:None=None) -> Iterable[Json]: ...
+
+def parse_jsonl(text:JsonText, object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
+  return load_jsonl(text.splitlines(), object_hook=object_hook)
 
 
-def load_jsonl(stream:Iterable[JsonText], hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+@overload
+def load_jsonl(stream:Iterable[JsonText], object_hook:ObjDecodeFn) -> Iterable[Any]: ...
+
+@overload
+def load_jsonl(stream:Iterable[JsonText], object_hook:None=None) -> Iterable[Json]: ...
+
+def load_jsonl(stream:Iterable[JsonText], object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
   if isinstance(stream, (str,bytes,bytearray)): raise TypeError('`stream` argument must be an iterable of text.')
-  hook = _mk_hook(hook, hooks)
   for line in stream:
     if not line or line.isspace(): continue
-    yield _json.loads(line, object_hook=hook)
+    yield _json.loads(line, object_hook=object_hook)
 
 
-def parse_jsons(string:str, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+@overload
+def parse_jsons(string:str, object_hook:ObjDecodeFn) -> Iterable[Any]: ...
+
+@overload
+def parse_jsons(string:str, object_hook:None=None) -> Iterable[Json]: ...
+
+def parse_jsons(string:str, object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
   '''
-  hook = _mk_hook(hook, hooks)
-  decoder = _json.JSONDecoder(object_hook=hook)
+  decoder = _json.JSONDecoder(object_hook=object_hook)
   m = _json_ws_re.match(string, 0)
   assert m is not None
   idx = m.end() # must consume leading whitespace for the decoder.
@@ -153,66 +177,20 @@ def parse_jsons(string:str, hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=())
     idx = m.end()
 
 
-def load_jsons(file:Reader[str], hook:ObjDecodeFn|None=None, hooks:ObjDecodeHooks=()) -> Iterable[Any]:
+@overload
+def load_jsons(file:Reader[str], object_hook:ObjDecodeFn) -> Iterable[Any]: ...
+
+@overload
+def load_jsons(file:Reader[str], object_hook:None=None) -> Iterable[Json]: ...
+
+def load_jsons(file:Reader[str], object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
   # TODO: it seems like we ought to be able to stream the file into the parser,
   # but JSONDecoder requires the entire string for a single JSON segment.
   # Therefore in order to stream we would need to read into a buffer,
   # count nesting tokens (accounting for strings and escaped characters inside of them),
   # identify object boundaries and create substrings to pass to the decoder.
   # For now just read the whole thing at once.
-  return parse_jsons(file.read(), hook=hook, hooks=hooks)
-
-
-def _mk_hook(hook:ObjDecodeFn|None, hooks:ObjDecodeHooks) -> Callable[[dict[Any,Any]],Any]|None:
-  '''
-  Provide a hook function to deserialize JSON into the provided types.
-  '''
-  if not hooks: return hook
-  dflt_hook:ObjDecodeFn = lambda d: d if hook is None else hook
-
-  type_map:dict[frozenset[str],Any] = {}
-  for h in hooks:
-
-    fn:ObjDecodeFn
-    if isinstance(h, type):
-      keys_raw = _hook_type_keys(h)
-      fn = _hook_type_fn(h)
-    else:
-      try: keys_raw, type_or_fn = h # Explicit pair.
-      except Exception as e:
-        raise ValueError(f'malformed decoder hook; expected (keys, constructor) pair; received: {h!r}') from e
-      fn = _hook_type_fn(type_or_fn) if isinstance(type_or_fn, type) else type_or_fn
-      if isinstance(keys_raw, str): raise TypeError(keys_raw) # type: ignore[unreachable]
-
-    keys = frozenset(keys_raw)
-    if keys in type_map:
-      raise ValueError(f'conflicting type hooks for key set {keys}:\n  {type_map[keys]}\n  {fn}')
-    type_map[keys] = fn
-
-  def types_object_hook(d:dict) -> Any:
-    keys = frozenset(d.keys())
-    try: record_type = type_map[keys]
-    except KeyError: return dflt_hook(d)
-    return record_type(**d)
-
-  return types_object_hook
-
-
-def _hook_type_keys(t:type) -> AbstractSet[str]:
-  if is_dataclass(t): return frozenset(f.name for f in fields(t))
-
-  try: return frozenset(t._fields) # type: ignore[attr-defined] # NamedTuple.
-  except AttributeError: pass
-
-  slots = all_slots(t)
-  if slots: return frozenset(slots)
-  else: raise TypeError(f'type must be either a dataclass, namedtuple, or define `__slots__`: {type}')
-
-
-def _hook_type_fn(t:type) -> ObjDecodeFn:
-  try: return t.from_json # type: ignore[attr-defined, no-any-return]
-  except AttributeError: return t
-
+  return parse_jsons(file.read(), object_hook=object_hook)
 
 
 def req_json_list(obj:Json) -> JsonList:

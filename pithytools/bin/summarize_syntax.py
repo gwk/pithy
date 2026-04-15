@@ -2,6 +2,7 @@
 
 import plistlib
 from sys import argv, stdout
+from typing import Any
 
 import yaml
 from pithy.fs import walk_files
@@ -17,7 +18,7 @@ def main() -> None:
   for path in walk_files(*argv[1:], file_exts=['.json', '.plist', '.yaml']):
     outL(path)
     if path.endswith('.json'):
-      syntax = load_json(open(path))
+      syntax:Any = load_json(open(path))
     elif path.endswith('.plist'):
       syntax = plistlib.load(open(path, 'rb'))
     elif path.endswith('.yaml'):
@@ -28,4 +29,5 @@ def main() -> None:
   schema = compile_schema(*syntaxes)
 
   outL()
+  write_schema(stdout, schema)
   write_schema(stdout, schema)

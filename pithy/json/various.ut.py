@@ -1,15 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass
-from typing import Any, NamedTuple
+from typing import Any
 
 from pithy.json import parse_json, render_json, req_json_dict, req_json_list, req_opt_json_dict, req_opt_json_list
-from pithy.untyped import Immutable
 from utest import utest, utest_exc
-
-
-class NT(NamedTuple):
-  x: int
 
 
 @dataclass
@@ -68,19 +63,9 @@ utest_exc(TypeError , render_json, ...) # Ellipsis type does not encode by defau
 
 
 # Parse.
-utest(Immutable(x=Immutable(y=0)), parse_json, '{"x": {"y":0}}', hook=Immutable)
-utest(DC(x=1), parse_json, '{"x":1}', hooks=[DC])
-utest(NT(x=1), parse_json, '{"x":1}', hooks=[NT])
-utest(SlotX(x=1), parse_json, '{"x":1}', hooks=[SlotX])
-utest(SlotXY(x=1, y=2), parse_json, '{"x":1, "y":2}', hooks=[SlotXY])
-
-utest_exc(Exception, parse_json, '{"x":1}', hooks=[DC, NT])
-
-utest_exc(TypeError("SlotXYZ.__init__() missing 1 required positional argument: 'z'"),
-  parse_json, '{"x":1, "y":2}', hooks=[SlotXYZ]) # Not picked up because?
-
-utest({'x': 1, 'y': 2, 'z': 3},
-  parse_json, '{"x":1, "y":2, "z":3}', hooks=[SlotXYZ]) # not recognized because slots of SlotXYZ are only x,y.
+utest(None, parse_json, None)
+utest({'x': {'x': 0}}, parse_json, '{"x": {"x":0}}')
+utest(DC(x=0), parse_json, '{"x":0}', object_hook=lambda d: DC(**d))
 
 
 # req_ functions.

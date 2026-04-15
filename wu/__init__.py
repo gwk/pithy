@@ -926,8 +926,9 @@ def embed_json(ctx:Ctx, src:SrcLine, f:TextIO, args:list[str], attrs:dict[str,st
     elif isinstance(data, list):
       try: index = int(arg)
       except ValueError: ctx.error(src, f'{f.name}:{acc}: data is a list; key is not an index.')
-      try: data = data[index]
+      try: el = data[index]
       except IndexError: ctx.error(src, f'{f.name}:{acc}: data has {len(data)} items; index is out of bounds.')
+      data = el
     else:
       ctx.error(src, f'{f.name}:{acc}: data is not a collection.')
   return [str(data)]
