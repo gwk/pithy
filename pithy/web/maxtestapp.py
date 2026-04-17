@@ -1,10 +1,11 @@
 from pithy.html import Button, Div, Html, Input, Main, P, Script, Table, Tbody, Td, Th, Thead, Tr
 from pithy.web.app import WebApp
+from pithy.web.errors import NotFoundError
 from pithy.web.request import Request
 from pithy.web.response import Response
 
 
-def full_page_basic():
+def full_page_basic() -> Html:
   'Html document skeleton common to all pages, including unauthenticated pages.'
 
   html = Html.doc(title='Cheesesteak Club Members DB')
@@ -17,7 +18,9 @@ def full_page_basic():
   return html
 
 
-members = [
+type MemberTuple = tuple[int,str,int,str]  # (id, name, cheesesteaks eaten, member since).
+
+members: list[MemberTuple] = [
   (1, 'Pat Olivieri', 51, '1930-01-01'),
   (2, 'Geno Vento', 35, '1966-03-15'),
   (3, 'Carmen DiNardo', 24, '1971-07-04'),
@@ -26,15 +29,15 @@ members = [
 ]
 
 
-def find_member(member_id: int):
-    for m in members:
-        if m[0] == member_id:
-            return m
-    return None
+def find_member(member_id:int) -> MemberTuple|None:
+  for m in members:
+    if m[0] == member_id: return m
+  return None
 
 
 class MaxTestApp(WebApp):
-  def info_table(self):
+
+  def info_table(self) -> Div:
     thead = Thead(Tr(Th('ID'), Th('Name'), Th('Cheesesteaks Eaten'), Th('Member Since')))
     tbody = Tbody()
     for member_id, name, cs_eaten, since in members:
@@ -43,7 +46,9 @@ class MaxTestApp(WebApp):
 
   def edit_row_htmx(self, request: Request) -> Response:
     member_id = int(request.path[len('/member/'):])
-    _, name, cs_eaten, since = find_member(member_id)
+    member = find_member(member_id)
+    if not member: raise NotFoundError
+    _, name, cs_eaten, since = member
 
     save_button = Button('Save', hx_trigger='click', hx_target='closest tr', hx_swap='outerHTML', hx_post=f'/member/edit/{member_id}', hx_include='closest tr', onclick='event.stopPropagation()')
     delete_button = Button('Delete', hx_trigger='click', hx_target='closest tr', hx_swap='outerHTML', hx_delete=f'/member/{member_id}', onclick='event.stopPropagation()')
@@ -54,8 +59,9 @@ class MaxTestApp(WebApp):
       media_type='text/html;charset=utf-8',
     )
 
-  def update_members_data(self, member_id: int, name, cs_eaten, since):
+  def update_members_data(self, member_id:int, name:str, cs_eaten:int, since:str) -> None:
     old = find_member(member_id)
+    if not old: raise NotFoundError
     idx = members.index(old)
     members[idx] = (member_id, name or old[1], cs_eaten or old[2], since or old[3])
 
@@ -70,10 +76,7 @@ class MaxTestApp(WebApp):
 
     new_row = Tr(Td(str(member_id)), Td(name), Td(str(cs_eaten)), Td(since), hx_trigger='click', hx_swap='outerHTML', hx_get=f'/member/{member_id}', id=member_id)
 
-    return Response(
-      body=new_row,
-      media_type='text/html;charset=utf-8',
-    )
+    return Response(body=new_row, media_type='text/html;charset=utf-8')
 
   def delete_row_htmx(self, request: Request) -> Response:
     member_id = int(request.path[len('/member/'):])
@@ -82,17 +85,21 @@ class MaxTestApp(WebApp):
     return Response(body=updated_count, media_type='text/html;charset=utf-8')
 
   def handle_request(self, request: Request) -> Response:
-    if request.method == 'GET':
-      if request.path.startswith('/member/'):
-        return self.edit_row_htmx(request)
-      else:
-        return self.page()
-    elif request.method == 'POST':
-      if request.path.startswith('/member/edit/'):
-        return self.save_row_htmx(request)
-    elif request.method == 'DELETE':
-      if request.path.startswith('/member/'):
-        return self.delete_row_htmx(request)
+    match request.method:
+      case 'GET':
+        if request.path.startswith('/member/'):
+          return self.edit_row_htmx(request)
+        else:
+          return self.page()
+      case 'POST':
+        if request.path.startswith('/member/edit/'):
+          return self.save_row_htmx(request)
+      case 'DELETE':
+        if request.path.startswith('/member/'):
+          return self.delete_row_htmx(request)
+      case _: pass
+    raise NotFoundError()
+
 
   def page(self) -> Response:
     main = Main(P(f'Click a member to edit. Total current members: {len(members)}', id='count', hx_swap_oob='true'))
