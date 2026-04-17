@@ -7,7 +7,7 @@ from io import BufferedReader
 from queue import Full as QueueFull, LifoQueue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
 from threading import Event, Thread
-from typing import cast, Literal
+from typing import cast
 from urllib.parse import urlsplit as url_split
 
 from h11 import (Connection as h11_Connection, ConnectionClosed as h11_ConnectionClosed, Data as h11_Data, DONE as h11_DONE,
@@ -366,17 +366,6 @@ class WebServer:
       response = Response.from_error(exc, method=method)
 
     return response
-
-
-  def _send_error(self, conn:_Conn, status:HTTPStatus, reason:str) -> Literal[False]:
-    response = Response(status=status, body=reason, media_type='text/plain')
-    response.set_connection_close()
-    self._send_response(conn, response=response, method='GET')
-    return False
-
-
-  def _send_bad_req(self, conn:_Conn, reason:str) -> Literal[False]:
-    return self._send_error(conn, HTTPStatus.BAD_REQUEST, reason)
 
 
   def _request_wants_connection_close(self, headers:dict[str,str]) -> bool:
