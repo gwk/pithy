@@ -283,7 +283,7 @@ class Mu:
     Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
     '''
     tag = el.tag
-    if tag is Comment: tag = '!COMMENT' # `Comment` is a cython object; convert it to a string.
+    if tag is Comment: tag = '!COMMENT' # type: ignore[unreachable] # `Comment` is a cython object; convert it to a string.
     # Collect children.
     attrs = el.attrib
     children:MuChildren = []

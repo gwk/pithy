@@ -79,8 +79,8 @@ def parse_dot_adjacency_contents(s:str|Iterable[str]) -> Iterable[tuple[Graphviz
 
 
 def write_dot_digraph_adjacency_contents(f: TextIO, adjacency:GraphvizAdjacency) -> None:
-  if isinstance(adjacency, dict): adjacency = adjacency.items()
-  for src, dsts in adjacency: # type: ignore[misc]
+  adj:GraphvizAdjacencyIterable = adjacency.items() if isinstance(adjacency, Mapping) else adjacency
+  for src, dsts in adj:
     if isinstance(dsts, dict): dsts = dsts.items()
     src_quoted = dot_id_quote(src)
     for dst in dsts:

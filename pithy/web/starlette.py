@@ -383,7 +383,7 @@ def get_query_bool(query_params:QueryParams, key:str, default:bool=False) -> boo
   If the key is not present or is the empty string, return `default`.
   If the value is not a str or does not equal one of the common boolean strings, raise a 400 exception.
   '''
-  v = query_params.get(key, default='')
+  v = query_params.get(key, default='') # type: ignore[call-overload]
   if v == '': return default
   try: return bool_str_vals[v]
   except KeyError as e: raise HTTPException(400, f'Invalid boolean query parameter: {key}={v!r}') from e
@@ -413,7 +413,7 @@ def get_query_int(query_params:QueryParams, key:str, default:int|None=None) -> i
   If the key is not present or is the empty string return `default`.
   If the value is not an int, raise a 400 exception.
   '''
-  v = query_params.get(key, default='')
+  v = query_params.get(key, default='') # type: ignore[call-overload]
   if v == '': return default
   try: return int(v)
   except ValueError as e: raise HTTPException(400, f'Invalid integer query parameter: {key}={v!r}') from e
@@ -441,7 +441,7 @@ def get_query_date(query_params:QueryParams, key:str, default:Date|None=None) ->
   If the key is not present, return today's date according to the given timezone `tz`.
   If the value is not a valid date, raise a 400 exception.
   '''
-  v = query_params.get(key, default='')
+  v = query_params.get(key, default='') # type: ignore[call-overload]
   if v == '': return default
   try: return Date.fromisoformat(v)
   except ValueError as e: raise HTTPException(400, f'Invalid date query parameter: {key}={v!r}') from e
