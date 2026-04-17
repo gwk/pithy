@@ -79,4 +79,4 @@ vscode-insider-links:
 	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
 
 utest:
-	python3 -m utest {{packages}} test
+	python3 -m utest {{packages}}
