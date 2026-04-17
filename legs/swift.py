@@ -8,7 +8,7 @@ from typing import Any, cast
 
 from pithy.fs import path_dir, path_join
 from pithy.iterable import closed_int_intervals
-from pithy.string import render_template
+from pithy.strings import render_template
 
 from . import ModeTransitions
 from .dfa import DFA

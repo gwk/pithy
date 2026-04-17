@@ -5,7 +5,7 @@
 '''
 
 from pithy.fs import copy_path, remove_dir_contents, walk_files
-from pithy.string import replace_prefix
+from pithy.strings import replace_prefix
 from pithy.task import run
 
 

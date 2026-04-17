@@ -23,7 +23,7 @@ from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatc
 from .iterable import window_iter, window_pairs
 from .json import render_json
 from .reprs import repr_lim
-from .string import EscapedStr
+from .strings import EscapedStr
 
 
 # If lxml is available, import the special Comment value that is used as the tag for comments.

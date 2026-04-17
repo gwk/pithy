@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from urllib.parse import urlencode
 
 from ..json import Json, parse_json
-from ..string import identifier_or_repr
+from ..strings import identifier_or_repr
 from . import A, Div, Li, MuAttrs, Ol, Span, Ul
 
 

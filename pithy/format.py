@@ -5,7 +5,7 @@
 import re
 from typing import Any, Iterable, Match, Pattern
 
-from .string import line_col_1
+from .strings import line_col_1
 
 
 class FormatError(Exception): pass

@@ -9,7 +9,7 @@ from typing import cast, Container, Iterable, Iterator, NamedTuple, Pattern
 
 from tolkien import Source, Token
 
-from .string import iter_str
+from .strings import iter_str
 
 
 class LexError(Exception): pass

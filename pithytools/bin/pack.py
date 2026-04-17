@@ -6,7 +6,7 @@ from typing import Callable
 
 from pithy.fs import file_size, path_exists, remove_path
 from pithy.io import confirm, outL, outZ, stderr, stdin
-from pithy.string import format_byte_count
+from pithy.strings import format_byte_count
 from pithy.task import run, UnexpectedExit
 
 

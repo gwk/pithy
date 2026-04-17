@@ -9,7 +9,7 @@ from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Size
 
 from .desc import errD, outD, writeD
 from .reprs import repr_ml
-from .string import ConvFn, fmt_rows
+from .strings import ConvFn, fmt_rows
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 

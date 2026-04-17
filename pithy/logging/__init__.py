@@ -10,7 +10,7 @@ from typing import Any, get_args, Literal
 
 from ..ansi import RST, TXT_C, TXT_G, TXT_N, TXT_R, TXT_Y
 from ..encode import encode_obj
-from ..string import identifier_or_repr
+from ..strings import identifier_or_repr
 
 
 '''

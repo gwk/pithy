@@ -4,7 +4,7 @@ from collections import Counter
 from typing import Any, Callable, Iterable
 from warnings import warn
 
-from pithy.string import str_tree, str_tree_pairs
+from pithy.strings import str_tree, str_tree_pairs
 from pithy.url import fmt_url
 from starlette.datastructures import QueryParams
 from starlette.exceptions import HTTPException

@@ -13,7 +13,7 @@ from typing import Iterable
 
 from pithy.io import errL, errSL
 from pithy.iterable import filtermap_with_mapping, frozenset_from, int_tuple_ranges, set_from
-from pithy.string import prepend_to_nonempty
+from pithy.strings import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
 
 

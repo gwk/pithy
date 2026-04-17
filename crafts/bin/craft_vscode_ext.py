@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 
 from pithy.fs import copy_path, expand_user, is_dir, remove_dir_contents_if_exists, walk_files
 from pithy.io import errSL
-from pithy.string import replace_prefix
+from pithy.strings import replace_prefix
 
 
 def main() -> None:

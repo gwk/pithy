@@ -8,7 +8,7 @@ This format syntax is intended for use in file names.
 import re
 from typing import Any, Iterable, Iterator, NamedTuple, Pattern
 
-from .string import line_col_1
+from .strings import line_col_1
 
 
 class FilenameFormatterError(Exception): pass

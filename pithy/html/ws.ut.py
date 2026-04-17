@@ -2,7 +2,7 @@
 
 from pithy.html import Body, Html, HtmlNode
 from pithy.io import outL
-from pithy.string import pluralize
+from pithy.strings import pluralize
 
 
 ws_normalizations:list[tuple[str|HtmlNode,str]] = [

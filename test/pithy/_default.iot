@@ -7,7 +7,7 @@
     'pithy.format',
     'pithy.iterable',
     'pithy.lex',
-    'pithy.string',
+    'pithy.strings',
     'pithy.util',
   ]
 }

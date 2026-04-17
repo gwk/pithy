@@ -8,7 +8,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any, cast, Iterable, TextIO
 
-from .string import iter_excluding_str
+from .strings import iter_excluding_str
 
 
 def _mk_schema() -> Schema:

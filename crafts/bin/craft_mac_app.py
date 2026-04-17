@@ -16,7 +16,7 @@ from pithy.filestatus import file_mtime, file_mtime_or_zero
 from pithy.fs import copy_path, make_dirs, path_dir, path_exists, walk_files
 from pithy.io import outSL, shell_cmd_str
 from pithy.path import norm_path, path_join
-from pithy.string import replace_prefix
+from pithy.strings import replace_prefix
 from pithy.task import run, runO
 
 

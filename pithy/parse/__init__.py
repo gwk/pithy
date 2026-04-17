@@ -36,7 +36,7 @@ from ..io import errL
 from ..lex import Lexer, reserved_names, valid_name_re
 from ..meta import caller_module_name
 from ..stack import Stack
-from ..string import indent_lines, iter_str, pluralize, typecase_from_snakecase
+from ..strings import indent_lines, iter_str, pluralize, typecase_from_snakecase
 from ..type_utils import is_namedtuple
 from ..untyped import Immutable
 

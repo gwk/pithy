@@ -5,7 +5,7 @@ from argparse import Namespace
 
 from pithy.optional import unwrap
 from pithy.reprs import repr_ml
-from pithy.string import render_template
+from pithy.strings import render_template
 
 from . import ModeData, ModeTransitions
 from .dfa import DFA

@@ -1,4 +1,4 @@
-from pithy.string import fmt_rows
+from pithy.strings import fmt_rows
 from utest import utest_seq
 
 

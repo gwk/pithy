@@ -13,7 +13,7 @@ from pithy.ansi import RST, TXT_D, TXT_L, TXT_M, TXT_R, TXT_Y
 from pithy.fs import copy_path, file_mtime, file_mtime_or_zero, make_dirs, make_link, path_exists, walk_files
 from pithy.io import outL, outSL
 from pithy.path import norm_path, path_dir, path_dir_or_dot, path_join
-from pithy.string import replace_prefix
+from pithy.strings import replace_prefix
 from pithy.task import runCO
 
 

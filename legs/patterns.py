@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Callable, Iterable, Iterator, Sequence
 
 from pithy.io import errL
-from pithy.string import clip_suffix
+from pithy.strings import clip_suffix
 from pithy.unicode import CodeRange, codes_for_ranges, ranges_for_codes
 from pithy.unicode.codepoints import codes_desc
 

@@ -7,7 +7,7 @@ from time import perf_counter
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
-from pithy.string import pluralize
+from pithy.strings import pluralize
 
 from ..build import build_dfa, build_nfa
 from ..dfa import DFA, minimize_dfa

@@ -15,7 +15,7 @@ from pithy.dict import dict_remap_keys_mut
 from pithy.io import errL
 from pithy.iterable import single_el
 from pithy.py import sanitize_for_py_keywords_and_type_names
-from pithy.string import truncate_repr_with_ellipsis
+from pithy.strings import truncate_repr_with_ellipsis
 from pithy.transtruct import bool_vals, Ctx, Transtructor
 from pithy.xml.datatypes import ChildAttrInfo
 from pithy.xml.xmldict import XmlDict, XmlDictParser, XmlError

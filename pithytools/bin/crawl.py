@@ -13,7 +13,7 @@ from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_li
 from pithy.io import errL, errSL, outL
 from pithy.iterable import prefix_tree
 from pithy.path_encode import COMP, OMIT, path_for_url, SPLIT, SQUASH
-from pithy.string import clip_first_prefix
+from pithy.strings import clip_first_prefix
 from pithy.task import runO
 
 
