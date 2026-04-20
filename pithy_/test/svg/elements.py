@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from pithy.io import outZ
-from pithy.svg import *
+from pithy.svg import Svg, Text, translate
 
 
 w = 512

@@ -3,8 +3,7 @@
 
 from pithy.csv import write_csv
 from pithy.json import write_json, write_jsonl
-from pithy.loader import *
-from pithy.loader import _last_ext, _path_cmpd_ext, _sub_ext
+from pithy.loader import _last_ext, _path_cmpd_ext, _sub_ext, load
 from pithy.task import run
 from utest import utest, utest_seq
 
