@@ -35,7 +35,7 @@ gen:
   make gen
 
 isort:
-	isort {{pkg_srcs}} tools
+	isort {{pkg_srcs}} test-diff tools
 
 install:
 	sh/install.sh {{pkgs}}
@@ -58,13 +58,13 @@ test-diff-data:
 	rm -rf _build/test-diff/*
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
-typecheck: gen typecheck-py-packages typecheck-tools
+typecheck: gen typecheck-py-packages typecheck-other
 
 typecheck-py-packages:
 	mypy {{pkg_srcs}}
 
-typecheck-tools:
-	mypy tools
+typecheck-other:
+	mypy test-diff tools
 
 typecheck-js:
 	tsc

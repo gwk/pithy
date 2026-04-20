@@ -2,11 +2,10 @@
 
 import re
 from sys import argv
-from typing import *
 
-from pithy.fs import *
-from pithy.io import *
-from pithy.task import *
+from pithy.fs import make_dirs, path_name
+from pithy.io import err_progress, outL
+from pithy.task import run, runO
 
 
 build_dir = '_build/test-diff'
@@ -23,7 +22,7 @@ def main() -> None:
     commits = runO('git --no-pager log --format=%H', cwd=repo).split('\n')
     outL(f'{name}: {len(commits)} commits.')
     objects:set[str] = set()
-    pairs:list[str] = []
+    pairs:list[tuple[str,str]] = []
     for commit in err_progress(commits, label='commit'):
       diff = runO(f'git --no-pager show --raw --abbrev=16 {commit}', cwd=repo) # only show modified files.
       for line in diff.split('\n'):

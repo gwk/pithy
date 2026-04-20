@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 
-import re
-from itertools import chain
 from sys import argv
 from time import time
-from typing import Any
+from typing import TypeVar
 
-from pithy.ansi import *
-from pithy.diff import calc_diff, Diff, trim_common_ends, validate_diff
-from pithy.fs import *
-from pithy.io import *
-from pithy.task import *  # type: ignore
+from pithy.ansi import RST, TXT_D, TXT_G, TXT_R
+from pithy.diff import calc_diff, Diff, validate_diff
+from pithy.diff.util import trim_common_ends
+from pithy.fs import list_dir_paths
+from pithy.io import err_progress, outL, outZ
 
 
 _T = TypeVar('_T')
@@ -20,8 +18,8 @@ build_dir = '_build/test-diff'
 def main() -> None:
   args = argv[1:]
   d = 0
-  t0 = 0
-  t1 = 0
+  t0 = 0.0
+  t1 = 0.0
   pairs = args or [line.strip() for pairs_path in list_dir_paths(f'{build_dir}/pairs') for line in open(pairs_path)]
   for pair_str in err_progress(pairs):
     obj_a, obj_b = pair_str.split('_')
