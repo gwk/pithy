@@ -5,7 +5,8 @@ pkgs := 'crafts iotest legs pithy pithytools tolkien utest wu'
 
 pkg_srcs := 'crafts_/crafts iotest_/iotest legs_/legs pithy_/pithy pithytools_/pithytools tolkien_/tolkien utest_/utest wu_/wu'
 
-pkg_tests := 'iotest_/test legs_/test pithy_/test pithytools_/test utest_/test wu_/test'
+pkg_tests_fast := 'pithy_/test pithytools_/test utest_/test'
+pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
 
 # List all recipes; the default.
 list-recipes:
@@ -17,10 +18,12 @@ list-packages:
 build:
 	sh/build.sh {{pkgs}}
 
-check: lint typecheck test
+check: isort lint typecheck test
+
+check-full: isort lint typecheck test-full
 
 cov:
-	iotest {{pkg_tests}} -coverage
+	iotest {{pkg_tests_full}} -coverage
 
 cov-meta:
 	iotest_/test-meta/meta-coverage.sh
@@ -41,7 +44,11 @@ install:
 	sh/install.sh {{pkgs}}
 
 iotest:
-	iotest {{pkg_tests}}
+	iotest {{pkg_tests_fast}}
+
+iotest-full:
+  iotest {{pkg_tests_full}}
+
 
 link-claude-md:
 	find . -name 'AGENTS.md' -print0 | xargs -0 -I {} sh -c 'ln -sf "$(basename {})" "$(dirname {})/CLAUDE.md"'
@@ -49,7 +56,9 @@ link-claude-md:
 lint:
 	pyflakes {{pkg_srcs}} tools
 
-test: gen utest iotest
+test: utest iotest
+
+test-full: utest iotest-full
 
 test-diff:
 	test-diff/test.py
