@@ -5,6 +5,8 @@ pkgs := 'crafts iotest legs pithy pithytools tolkien utest wu'
 
 pkg_srcs := 'crafts_/crafts iotest_/iotest legs_/legs pithy_/pithy pithytools_/pithytools tolkien_/tolkien utest_/utest wu_/wu'
 
+pkg_tests := 'iotest_/test legs_/test pithy_/test pithytools_/test utest_/test wu_/test'
+
 # List all recipes; the default.
 list-recipes:
   @just --list --unsorted
@@ -18,10 +20,10 @@ build:
 check: lint typecheck test
 
 cov:
-	iotest -fail-fast -coverage
+	iotest {{pkg_tests}} -coverage
 
 cov-meta:
-	test-meta/meta-coverage.sh
+	iotest_/test-meta/meta-coverage.sh
 
 develop:
 	sh/develop.sh {{pkgs}}
@@ -33,13 +35,13 @@ gen:
   make gen
 
 isort:
-	isort {{pkg_srcs}} test tools
+	isort {{pkg_srcs}} tools
 
 install:
 	sh/install.sh {{pkgs}}
 
 iotest:
-	iotest -fail-fast
+	iotest {{pkg_tests}}
 
 link-claude-md:
 	find . -name 'AGENTS.md' -print0 | xargs -0 -I {} sh -c 'ln -sf "$(basename {})" "$(dirname {})/CLAUDE.md"'
@@ -56,13 +58,13 @@ test-diff-data:
 	rm -rf _build/test-diff/*
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
-typecheck: gen typecheck-py-packages typecheck-py-test
+typecheck: gen typecheck-py-packages typecheck-tools
 
 typecheck-py-packages:
 	mypy {{pkg_srcs}}
 
-typecheck-py-test:
-	mypy test
+typecheck-tools:
+	mypy tools
 
 typecheck-js:
 	tsc
@@ -82,4 +84,4 @@ vscode-insider-links:
 	ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
 
 utest:
-	python3 -m utest {{pkg_srcs}} test/utest/pass.ut.py
+	python3 -m utest {{pkg_srcs}}

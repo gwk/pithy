@@ -1,0 +1,7 @@
+{
+  'cmd': 'writeup -deps embed.wu',
+  'links': {
+    'wu_/test/1/html/embed.wu',
+    'wu_/test/assets',
+  },
+}

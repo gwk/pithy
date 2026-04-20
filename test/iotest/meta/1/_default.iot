@@ -1,4 +1,0 @@
-{
-  'cmd': 'iotest -build-dir _b -no-times test-meta/1/$NAME.iot',
-  'links' : {'test-meta'},
-}

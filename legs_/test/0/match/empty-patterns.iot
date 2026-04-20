@@ -1,0 +1,9 @@
+{
+  'cmd': 'legs',
+  'links': { 'legs_/test/0/empty-patterns.legs' },
+  'args': ['empty-patterns.legs', '-match',
+    '',
+    'a',
+    'ab',
+  ],
+}

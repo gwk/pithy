@@ -1,0 +1,12 @@
+{
+  'compile': ['mkdir patches'],
+  'cmd': 'pat diff',
+  'files': {
+    'patches/$NAME.pat': { 'path': 'pithy_/test/pat/patches/$NAME.pat'},
+  },
+  'links': {
+    'pithy_/test/pat/fixtures',
+    # Note: 'patches' dir is not linked for the diff tests; instead, it created by the diff operation.
+    # This is necessary so that the "original" src line in the produced patch matches the fixtures in test/pat/patches.
+  }
+}

@@ -1,0 +1,5 @@
+{
+  'cmd': 'legs $NAME.legs -output $NAME',
+  'links': { '$STEM.legs' },
+  'timeout': 15, # swift compiler and interpreter can take a long time to load. Subsequent runs are usually less than 2 seconds.
+}

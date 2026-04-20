@@ -38,14 +38,6 @@
     "**/.*",
     "**/node_modules",
   ],
-  "python.analysis.include": [
-    "crafts",
-    "iotest",
-    "pithy",
-    "test-meta",
-    "test",
-    "wu"
-  ],
   "python-envs.defaultEnvManager": "ms-python.python:system",
   "python-envs.pythonProjects": [],
   "python.analysis.typeCheckingMode": "off",

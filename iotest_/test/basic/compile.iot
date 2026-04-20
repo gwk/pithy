@@ -1,0 +1,5 @@
+{
+  'compile' : ['basic/compile.py'],
+  'links' : {'iotest_/test/basic'},
+  'out_val': 'output from compiled script.\n',
+}

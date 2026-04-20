@@ -1,0 +1,8 @@
+{
+  'cmd': 'pat apply',
+  'args': ['patches/$NAME.pat'],
+  'links': {
+    'pithy_/test/pat/fixtures',
+    'pithy_/test/pat/patches',
+  }
+}

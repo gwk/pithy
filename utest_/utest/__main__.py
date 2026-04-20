@@ -13,7 +13,7 @@ def main() -> None:
   arg_parser = ArgumentParser(description='Find and run utest unit tests with the extension ".ut.py", defaulting to  "test/".')
   arg_parser.add_argument('paths', nargs='*', default=['test'])
   args = arg_parser.parse_args()
-  paths = walk_files(*args.paths, file_exts='.ut.py')
+  paths = list(walk_files(*args.paths, file_exts='.ut.py'))
 
   env = dict(environ)
   env.setdefault('UTEST_WORK_DIR', getcwd())
@@ -21,6 +21,7 @@ def main() -> None:
   utest_cwd = '_build/_utest'
   make_dirs(utest_cwd)
   ok = True
+
   for path in paths:
     print(path)
     exe_path = path_rel_to_dir(path, utest_cwd)

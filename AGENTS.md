@@ -20,7 +20,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - All tests: `just test`
 - Unit tests: `just utest`
 - Integration tests: `just iotest`
-- Test a specific file: `iotest test/path/to/test` or `python -m utest test/path/to/test.ut.py`
+- Test a specific file: `iotest path/to/test` or `python -m utest path/to/test.ut.py`
 - Integration tests: `just iotest` or `iotest -fail-fast [path]`
 - Format imports: `just isort`
 - Generate code: `just gen`

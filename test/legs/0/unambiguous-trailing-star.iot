@@ -1,4 +1,0 @@
-{
-    'cmd': 'legs $STEM.legs -describe',
-    'code': 0,
-}
