@@ -11,7 +11,6 @@ from utest import utest, utest_seq, utest_val
 f_args:list[tuple[int,int]] = []
 @memoize()
 def f1(x:int, y:int) -> int:
-  global f_args
   f_args.append((x, y))
   return x + y
 
