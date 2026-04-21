@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import meta_test_consumer
-from meta_test_consumer import test_consumer
-from meta_test_lib import test_caller_module_info
-from pithy.meta import bindings_matching, caller_frame, caller_module_name, caller_src_loc, dispatcher_for_defs
+import mt_consumer as mt_consumer
+from mt_consumer import test_consumer
+from mt_lib import test_caller_module_info
+from pithy.meta import bindings_matching, caller_src_loc, dispatcher_for_defs
 from utest import utest, utest_val
 
 
@@ -28,7 +29,7 @@ utest('B: y', disp, 'b', 'y')
 # Test caller_src_loc. Note that these tests are sensitive to source line numbers.
 
 module_caller_src_loc = caller_src_loc(0)
-utest_val((__file__, 30, '<module>'), module_caller_src_loc)
+utest_val((__file__, 31, '<module>'), module_caller_src_loc)
 
 
 def test_caller_src_loc_reporter() -> tuple:
@@ -37,7 +38,7 @@ def test_caller_src_loc_reporter() -> tuple:
 
 test_caller_src_loc_reporter_res = test_caller_src_loc_reporter()
 
-utest_val((__file__, 38, '<module>'), test_caller_src_loc_reporter_res)
+utest_val((__file__, 39, '<module>'), test_caller_src_loc_reporter_res)
 
 
 # Test caller_module_spec.
@@ -45,5 +46,5 @@ utest_val((__file__, 38, '<module>'), test_caller_src_loc_reporter_res)
 test_consumer()
 utest_val(1, len(test_caller_module_info))
 test_caller_name, test_caller_spec = test_caller_module_info[0]
-utest_val('meta_test_consumer', test_caller_name)
-utest_val(meta_test_consumer.__file__, test_caller_spec.origin)
+utest_val('mt_consumer', test_caller_name)
+utest_val(mt_consumer.__file__, test_caller_spec.origin)
