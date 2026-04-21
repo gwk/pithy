@@ -5,7 +5,7 @@ from sys import stderr
 from typing import Any, Callable, Iterable, Literal, Self
 from urllib.parse import quote as url_quote
 
-from ..logging import logW
+from ..logs import logW
 from ..meta import caller_src_loc
 from ..path import path_name
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc

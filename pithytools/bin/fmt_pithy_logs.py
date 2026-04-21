@@ -3,7 +3,7 @@
 from json import loads as parse_json
 from sys import stdin, stdout
 
-from pithy.logging import render_log_text
+from pithy.logs import render_log_text
 
 
 def main() -> None:

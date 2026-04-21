@@ -6,5 +6,5 @@ from uvicorn.config import LOGGING_CONFIG
 
 
 log_config = deepcopy(LOGGING_CONFIG)
-log_config['formatters']['default'] = {'()': 'pithy.logging.PithyLogFormatter'}
-log_config['formatters']['access'] = {'()': 'pithy.logging.PithyLogFormatter'}
+log_config['formatters']['default'] = {'()': 'pithy.logs.PithyLogFormatter'}
+log_config['formatters']['access'] = {'()': 'pithy.logs.PithyLogFormatter'}

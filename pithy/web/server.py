@@ -15,7 +15,7 @@ from h11 import (Connection as h11_Connection, ConnectionClosed as h11_Connectio
   NEED_DATA as h11_NEED_DATA, ProtocolError as h11_ProtocolError, RemoteProtocolError as h11_RemoteProtocolError,
   Request as h11_Request, Response as h11_Response, SEND_BODY as h11_SEND_BODY, SEND_RESPONSE as h11_SEND_RESPONSE,
   SERVER as h11_SERVER)
-from pithy.logging import logE, logI
+from pithy.logs import logE, logI
 
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp

@@ -8,7 +8,7 @@ from typing import cast
 from urllib.parse import quote as url_quote, unquote as url_unquote
 
 from ..fs import is_dir, path_exists, scan_dir
-from ..logging import logE
+from ..logs import logE
 from ..path import path_ext, path_join
 from .app import WebApp
 from .errors import ResponseError

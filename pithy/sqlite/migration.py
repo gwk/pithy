@@ -3,7 +3,7 @@
 from typing import Iterable, Self
 
 from ..iterable import joinR
-from ..logging import logE, logI
+from ..logs import logE, logI
 from ..parse import ParseError
 from . import Conn, Cursor, Row
 from .schema import Column, Schema, Table, TableDepStructure
