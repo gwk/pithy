@@ -3,7 +3,7 @@
 from copy import replace
 
 from pithy.markup import Mu, TagMu
-from utest import utest, utest_exc
+from utest import utest
 
 
 utest(Mu(), Mu)

@@ -7,7 +7,7 @@ from packaging._parser import MarkerList
 from packaging.requirements import Marker, Requirement
 from packaging.utils import canonicalize_name
 from pithy.ansi import BOLD_OUT, RST_OUT
-from pithy.argparse import Namespace
+from pithy.argparser import Namespace
 from pithy.dict import dict_dag_inverse_with_all_keys
 from pithy.io import outL
 from pithy.json import parse_json

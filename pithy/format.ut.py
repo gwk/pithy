@@ -1,6 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.format import *
+import re
+
+from pithy.format import count_formatters, format_partial, format_to_re, FormatError, has_formatter, parse_formatters
 from utest import utest, utest_exc, utest_seq
 
 

@@ -4,7 +4,7 @@ import re
 
 from pithy.filenamefmt import (count_fnf_str_formatters, FilenameFormatterError, fnf_str_has_formatter, format_fnf_str,
   regex_for_fnf_str)
-from utest import utest, utest_exc, utest_seq
+from utest import utest, utest_exc
 
 
 utest(False, fnf_str_has_formatter, '')

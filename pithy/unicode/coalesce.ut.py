@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.unicode import *
+from pithy.unicode import coalesce_sorted_ranges, CodeRange, intersect_sorted_ranges, union_sorted_ranges
 from utest import utest_seq
 
 

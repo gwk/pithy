@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.buffer import *
+from pithy.buffer import Buffer
 from utest import utest, utest_exc, utest_seq, utest_val
 
 

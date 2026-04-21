@@ -2,7 +2,7 @@
 
 'Audit dependencies for various package managers.'
 
-from pithy.argparse import CommandParser
+from pithy.argparser import CommandParser
 from pithytools.deps_audit.brew import main_brew
 from pithytools.deps_audit.pip import main_pip
 

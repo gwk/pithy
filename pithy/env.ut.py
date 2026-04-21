@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.env import EnvParseError, parse_env_lines
-from utest import utest, utest_seq, utest_seq_exc
+from utest import utest_seq, utest_seq_exc
 
 
 utest_seq([], parse_env_lines, 'test', [])

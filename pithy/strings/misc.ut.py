@@ -4,7 +4,7 @@ from itertools import permutations
 
 from pithy.strings import (append_to_nonempty, clip_common, clip_first_prefix, clip_prefix, clip_suffix, format_byte_count,
   format_nonempty, iter_excluding_str, line_col_0, line_col_1, pluralize, prepend_to_nonempty, render_template, split_camelcase,
-  str_tree, str_tree_insert, str_tree_iter)
+  str_tree, str_tree_iter)
 from utest import utest, utest_exc, utest_seq
 
 

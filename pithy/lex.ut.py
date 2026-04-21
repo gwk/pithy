@@ -2,7 +2,7 @@
 
 from typing import Any, Iterator
 
-from pithy.lex import *
+from pithy.lex import Lexer, LexMode, LexTrans, Source
 from utest import utest_exc, utest_seq, utest_seq_exc
 
 
