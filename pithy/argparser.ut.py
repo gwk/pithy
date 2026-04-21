@@ -1,6 +1,6 @@
-from sys import argv
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.argparse import CommandParser, Namespace
+from pithy.argparser import CommandParser, Namespace
 from utest import utest_val
 
 
