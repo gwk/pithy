@@ -3,8 +3,8 @@
 from sys import argv
 from typing import Any
 
-from perf import Runner  # type: ignore
 from pithy.path import path_name
+from pyperf import Runner  # type: ignore[import-untyped]
 
 
 def main() -> None:

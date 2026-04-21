@@ -6,8 +6,12 @@ from pithy.encodings import (b16decode, b16encode, b32decode, b32encode, b85deco
   standard_b64decode, standard_b64encode, urlsafe_b64decode, urlsafe_b64encode)
 
 
-test_enc_fns = [enc_lep128, b85encode, standard_b64encode, urlsafe_b64encode, b32encode, b16encode]
-test_dec_fns = [dec_lep128, b85decode, standard_b64decode, urlsafe_b64decode, b32decode, b16decode]
+test_enc_fns:list[Callable[[bytes], bytes]] = [
+  enc_lep128, b85encode, standard_b64encode, urlsafe_b64encode, b32encode, b16encode]
+
+test_dec_fns:list[Callable[[bytes], bytes]] = [
+  dec_lep128, b85decode, standard_b64decode, urlsafe_b64decode, b32decode, b16decode]
+
 alg_names = ['lep128', 'b85', 'b64std', 'b64url', 'b32', 'b16']
 
 def main() -> None:
@@ -18,8 +22,6 @@ def main() -> None:
     reps = 1_000_000 // size
     print(f'\n\nsize: {size}; reps: {reps}')
     test_bytes = randbytes(size)
-
-    bests = {}
 
     for alg_name, fn in zip(alg_names, test_enc_fns):
       name = fn.__name__

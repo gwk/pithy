@@ -33,7 +33,7 @@ def main() -> None:
   if not args.leave_db and path_exists(path): remove_file(path)
 
 
-def run_insertion_test(num_rows:int, el_size:int, verbose:bool) -> None:
+def run_insertion_test(num_rows:int, el_size:int, verbose:bool) -> float:
   if path_exists(path): remove_file(path)
   conn = connect(path, isolation_level=None)
   conn.row_factory = Row

@@ -19,7 +19,7 @@ def main() -> None:
 def parse(path:str, counts:Counter[str]) -> None:
   text = open(path, 'rb').read()
   source = Source(name=path, text=text)
-  for token in Lexer(source=source):
+  for token in Lexer(source=source): # type: ignore[name-defined] # Lexer is defined in code that is prepended to this file.
     counts[token.kind] += 1
     if token.kind == 'invalid':
       print(source.diagnostic((token, 'invalid')))

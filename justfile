@@ -73,7 +73,7 @@ typecheck-py-packages:
 	mypy {{pkg_srcs}}
 
 typecheck-other:
-	mypy test-diff tools
+	mypy perf test-diff tools
 
 typecheck-js:
 	tsc
