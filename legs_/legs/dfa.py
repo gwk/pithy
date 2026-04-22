@@ -247,7 +247,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         pl = parts[j]
         assert pl.isdisjoint(pr), (pl, pr)
 
-  PartIntersections = defaultdict[int, set[int]] # Optimization: types in hot functions can waste time.
+  type PartIntersections = defaultdict[int, set[int]] # Optimization: types in hot functions can waste time.
   def refine(refining_set:set[int]) -> list[tuple[set[int], set[int]]]:
     '''
     Given refining set B, refine each set A in the partition to a pair of sets: A & B and A - B.
