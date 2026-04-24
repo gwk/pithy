@@ -1,13 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http import HTTPStatus
 from io import BufferedReader
 from queue import Full as QueueFull, LifoQueue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
 from threading import Event, Thread
-from typing import cast
+from typing import cast, Self
 from urllib.parse import urlsplit as url_split
 
 from h11 import (Connection as h11_Connection, ConnectionClosed as h11_ConnectionClosed, Data as h11_Data, DONE as h11_DONE,
@@ -19,6 +19,7 @@ from pithy.logs import logE, logI
 
 from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
+from .env import web_host, web_port
 from .request import AddrPair, Request, RequestConn
 from .response import Response, ResponseError
 
@@ -175,7 +176,7 @@ class WebServerRequestConn(RequestConn):
 
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class ServerConfig:
   '''
   host: the hostname or IP address to bind to; defaults to 'localhost'.
@@ -190,8 +191,8 @@ class ServerConfig:
 
   Note: to read the actual port, use WebServer.port after initializing the server, since it may be dynamically assigned.
   '''
-  host:str = 'localhost'
-  port:int = 0
+  host:str = field(default_factory=web_host)
+  port:int = field(default_factory=web_port)
   backlog:int = 128
   recv_size:int = 64 * 1024
   conn_timeout:float = 10.0
@@ -199,6 +200,37 @@ class ServerConfig:
   max_queued:int = 64
   thread_name_prefix:str = 'WebServer'
   log_access:bool = True
+
+
+  @classmethod
+  def parse_args(cls, description:str='Web server configuration.') -> Self:
+    'Parse command-line arguments to create a ServerConfig object.'
+    import argparse
+
+    parser = argparse.ArgumentParser(description=description)
+
+    default_host = web_host()
+    default_port = web_port()
+    parser.add_argument('-host', type=str, default=default_host,
+      help=f'Hostname or IP address to bind to; default: {default_host!r} (from $WEB_HOST).')
+    parser.add_argument('-port', type=int, default=default_port,
+      help=f'Port number to bind to; default: {default_port} (from $WEB_PORT).')
+    parser.add_argument('-backlog', type=int, default=cls.backlog,
+      help=f'Number of unaccepted connections allowed before refusing new connections; default: {cls.backlog}.')
+    parser.add_argument('-recv-size', type=int, default=cls.recv_size,
+      help=f'Maximum number of bytes to receive at once from client connections; default: {cls.recv_size}.')
+    parser.add_argument('-conn-timeout', type=float, default=cls.conn_timeout,
+      help=f'Timeout in seconds for blocking operations on client connections; default: {cls.conn_timeout}.')
+    parser.add_argument('-num-threads', type=int, default=cls.num_threads,
+      help=f'Number of worker threads in the thread pool; default: {cls.num_threads}.')
+    parser.add_argument('-max-queued', type=int, default=cls.max_queued,
+      help=('Maximum number of connections waiting in the queue; excess connections are dropped immediately; '
+        f'default: {cls.max_queued}.')),
+    parser.add_argument('-log-access', action='store_true', help='Whether to log each request after it is handled.')
+
+    args = parser.parse_args()
+    return cls(host=args.host, port=args.port, backlog=args.backlog, recv_size=args.recv_size, conn_timeout=args.conn_timeout,
+      num_threads=args.num_threads, max_queued=args.max_queued, log_access=args.log_access)
 
 
 type ConnQueueItem = tuple[Socket,AddrPair]
