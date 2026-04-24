@@ -967,11 +967,11 @@ class Head(HtmlNode):
   @single_child_property
   def title(self) -> 'Title': return Title()
 
-  def add_stylesheet(self, url:str, media:str='all') -> None:
-    self.append(Link(rel='stylesheet', media=media, href=url))
+  def add_stylesheet(self, href:str, *, media:str='all') -> None:
+    self.append(Link(rel='stylesheet', href=href, media=media))
 
-  def add_js(self, *, url:str, defer:bool=True, async_:bool=False) -> None:
-    self.append(Script(type='text/javascript', src=url, defer=Present(defer), async_=Present(async_)))
+  def add_js(self, src:str, *, defer:bool=True, async_:bool=False) -> None:
+    self.append(Script(type='text/javascript', src=src, defer=Present(defer), async_=Present(async_)))
 
 
 @_tag
