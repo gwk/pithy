@@ -2,20 +2,19 @@
 
 import pithy
 
-from ..endpoint import Endpoint
 from ..reload import serve_with_reload
 from ..router import Router, RouterApp
 from ..server import ServerConfig, WebServer
-from .basic import EchoId, EchoName, Hello
+from .routes import routes
 
 
 '''
-TestApp is a web app for integration tests.
-For various developer demonstrations, see `pithy.web.dev`.
+DevApp is a web app for devolpers to explore the web framework.
+For integration tests, see `pithy.web.testapp`.
 '''
 
 
-description = 'TestApp web server.'
+description = 'DevApp web server.'
 
 
 def main() -> None:
@@ -29,22 +28,16 @@ def main() -> None:
 def run() -> None:
   'The child process (reloaded) entrypoint.'
   config = ServerConfig.parse_args(description=description)
-  app = TestApp()
+  app = DevApp()
   server = WebServer(app=app, config=config)
   server.serve_forever()
 
 
-class TestApp(RouterApp):
+class DevApp(RouterApp):
 
   def __init__(self) -> None:
     super().__init__(router=Router(routes))
 
-
-routes:dict[str,type[Endpoint]] = {
-  '/': Hello,
-  '/items/{id:nat}': EchoId,
-  '/users/{name}': EchoName,
-}
 
 
 if __name__ == '__main__': main()

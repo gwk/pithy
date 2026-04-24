@@ -7,6 +7,8 @@ from io import BufferedReader
 from os import fstat as os_fstat
 from typing import Self
 
+from pithy.json import render_json
+
 from ..http import format_header_date, may_send_body, non_body_statuses
 from ..markup import Mu
 from .errors import ResponseError
@@ -154,3 +156,36 @@ error_html_format = '''\
 
 html_media_type = 'text/html;charset=utf-8'
 error_media_type = html_media_type
+
+
+class HtmlResponse(Response):
+  'A Response subclass for HTML responses.'
+
+  def __init__(self, body:Mu|str, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
+   last_modified:float=0.0) -> None:
+    super().__init__(status=status, reason=reason, headers=headers, body=body, media_type=html_media_type,
+     last_modified=last_modified)
+
+
+class JsonResponse(Response):
+  'A Response subclass for JSON responses. The `body` object is serialized to JSON'
+
+  def __init__(self, body:str, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
+   last_modified:float=0.0, prerendered:bool=False) -> None:
+
+    if prerendered:
+      if not isinstance(body, str): raise ValueError('prerendered body must be a string.')
+      json_body = body
+    else:
+        json_body = render_json(body)
+    super().__init__(status=status, reason=reason, headers=headers, body=json_body, media_type='application/json',
+     last_modified=last_modified)
+
+
+class TextResponse(Response):
+  'A Response subclass for plain text responses.'
+
+  def __init__(self, body:str, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
+   last_modified:float=0.0) -> None:
+    super().__init__(status=status, reason=reason, headers=headers, body=body, media_type='text/plain;charset=utf-8',
+     last_modified=last_modified)
