@@ -27,8 +27,8 @@ def web_host() -> str:
 
 
 def web_port() -> int:
-  'Get the server port specified by the environment variable WEB_PORT. Defaults to 8000.'
-  return int(environ.get('WEB_PORT', '8000'))
+  'Get the server port specified by the environment variable WEB_PORT. Defaults to 0 (dynamically assigned).'
+  return int(environ.get('WEB_PORT', '0'))
 
 
 def web_addr() -> str:
