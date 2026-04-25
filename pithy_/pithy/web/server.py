@@ -448,5 +448,3 @@ class WebServer:
       chunk = file.read(self.config.recv_size)
       if not chunk: break
       socket.sendall(h11_conn.send(h11_Data(data=chunk)))
-      if not chunk: break
-      socket.sendall(h11_conn.send(h11_Data(data=chunk)))
