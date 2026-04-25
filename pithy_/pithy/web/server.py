@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from io import BufferedReader
+from os import _exit as os_exit
 from queue import Full as QueueFull, LifoQueue
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
 from threading import Event, Thread
@@ -318,7 +319,11 @@ class WebServer:
       item = self._conn_queue.get()
       if item is None: break
       socket, client_addr = item
-      self._handle_connection(socket, client_addr)
+      try:
+        self._handle_connection(socket, client_addr)
+      except BaseException as exc:
+        logE('Uncaught worker exception; exiting process.', exc=exc, client_addr=client_addr)
+        os_exit(1)
 
 
   def _handle_connection(self, socket:Socket, client_addr:AddrPair) -> None:
@@ -333,6 +338,8 @@ class WebServer:
         response = self._handle_connection_cycle(conn, event, method)
         self._send_response(conn, response=response, method=method)
         if not conn.recycle(): break
+    except Exception as exc:
+      logE('Connection handling error.', exc=exc, client_addr=client_addr)
     finally:
       try: socket.close()
       except OSError: pass
@@ -395,9 +402,23 @@ class WebServer:
         response.set_connection_close() # The connection cannot be reused since the body was not read.
 
     except ResponseError as exc:
-      response = Response.from_error(exc, method=method)
+      try:
+        response = Response.from_error(exc, method=method)
+      except Exception as conversion_exc:
+        logE('Failed to convert ResponseError to response.', exc=conversion_exc, original_exc=exc,
+          client_addr=conn.client_addr, method=method, path=request.path)
+        response = self._internal_server_error_response(method=method).set_connection_close()
+    except Exception as exc:
+      logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
+      response = self._internal_server_error_response(method=method).set_connection_close()
 
     return response
+
+
+  def _internal_server_error_response(self, *, method:str) -> Response:
+    'Return a simple 500 response.'
+    body = 'Internal Server Error' if may_send_body(method, HTTPStatus.INTERNAL_SERVER_ERROR) else None
+    return Response(HTTPStatus.INTERNAL_SERVER_ERROR, body=body, media_type='text/plain;charset=utf-8')
 
 
   def _request_wants_connection_close(self, headers:dict[str,str]) -> bool:
@@ -434,8 +455,8 @@ class WebServer:
     if may_send_body(method, response.status):
       body = response.body
       if isinstance(body, BufferedReader):
-        self._send_body_file(h11_conn, socket, body)
-        body.close()
+        try: self._send_body_file(h11_conn, socket, body)
+        finally: body.close()
       elif body:
         socket.sendall(h11_conn.send(h11_Data(data=cast(bytes, body))))
         #^ bytearray is bytes-like; h11.Data is documented to accept any bytes-like object despite the type being `bytes`.
