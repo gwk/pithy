@@ -10,6 +10,21 @@ This repository contains code for several python packages:
 - utest: a simple unit test system.
 - wu: a markdown-like document format and associated tool.
 
+Each package is wrapped in an intermediate directory with an underscore suffix to isolate pyproject.toml files:
+```
+pithy/ (the git/project root, not the package root)
+  pithy_/ (the pithy intermediate)
+    pyproject.toml
+    pithy (the pithy package root)
+  pithytools_/
+    pyproject.toml
+    pithytools/ (the pithytools package root)
+  ...
+```
+
+So for example when we refer to `pithy.web.server`, it is `pithy_/pithy/web/server.py` relative to the project.
+If we refer to `.web.server`, we probably mean within the pithy package, or whatever package we are discussing.
+
 ## Platform Support
 This project targets Python 3.14+ on modern Unix platforms. Windows is not supported.
 
