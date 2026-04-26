@@ -3,7 +3,7 @@
 import pithy
 
 from ..reload import serve_with_reload
-from ..router import Router, RouterApp
+from ..router import RouterApp
 from ..server import ServerConfig, WebServer
 from .routes import routes
 
@@ -36,7 +36,7 @@ def run() -> None:
 class DevApp(RouterApp):
 
   def __init__(self) -> None:
-    super().__init__(router=Router(routes))
+    super().__init__(routes=routes)
 
 
 

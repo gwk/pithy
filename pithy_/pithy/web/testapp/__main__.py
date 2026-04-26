@@ -4,7 +4,7 @@ import pithy
 
 from ..endpoint import Endpoint
 from ..reload import serve_with_reload
-from ..router import Router, RouterApp
+from ..router import RouterApp
 from ..server import ServerConfig, WebServer
 from .basic import EchoId, EchoName, Hello
 
@@ -37,7 +37,7 @@ def run() -> None:
 class TestApp(RouterApp):
 
   def __init__(self) -> None:
-    super().__init__(router=Router(routes))
+    super().__init__(routes=routes)
 
 
 routes:dict[str,type[Endpoint]] = {

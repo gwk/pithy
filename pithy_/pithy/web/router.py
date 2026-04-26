@@ -46,7 +46,14 @@ class Router:
 class RouterApp(WebApp):
   'A WebApp that uses a Router to dispatch requests to Endpoints.'
 
-  def __init__(self, router:Router) -> None:
+  router:Router
+
+
+  def __init__(self, routes:dict[str,type[Endpoint]]|Router) -> None:
+    if isinstance(routes, Router):
+      router = routes
+    else:
+      router = Router(routes)
     self.router = router
 
 
