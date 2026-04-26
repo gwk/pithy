@@ -407,7 +407,7 @@ class WebServer:
       except NotImplementedError as exc:
         logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
         response = (
-          Response(HTTPStatus.NOT_IMPLEMENTED, body='Not Implemented', media_type='text/plain;charset=utf-8')
+          Response(HTTPStatus.NOT_IMPLEMENTED, body='Not Implemented', media_type='text/plain')
           .set_connection_close())
     except Exception as exc:
       logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
@@ -419,7 +419,7 @@ class WebServer:
   def _internal_server_error_response(self, *, method:str) -> Response:
     'Return a simple 500 response.'
     body = 'Internal Server Error' if may_send_body(method, HTTPStatus.INTERNAL_SERVER_ERROR) else None
-    return Response(HTTPStatus.INTERNAL_SERVER_ERROR, body=body, media_type='text/plain;charset=utf-8')
+    return Response(HTTPStatus.INTERNAL_SERVER_ERROR, body=body, media_type='text/plain')
 
 
   def _request_wants_connection_close(self, headers:dict[str,str]) -> bool:

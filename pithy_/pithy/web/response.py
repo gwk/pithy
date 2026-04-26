@@ -30,7 +30,9 @@ class Response():
   * body: The response body.
 
   Additionally, there are keyword parameters for some common headers:
-  * media_type: The Content-Type header.
+  * media_type: The Content-Type header value.
+    Pass the bare `type/subtype` form (e.g. `'text/plain'`); for `text/*` types `;charset=utf-8` is appended automatically
+    if no charset is already present. To set a non-utf-8 charset, include it explicitly (e.g. `'text/plain;charset=latin1'`).
   * last_modified: The Last-Modified header.
 
   'Content-Length' is automatically set based on the status and body.
@@ -59,6 +61,8 @@ class Response():
 
     if media_type:
       assert 'content-type' not in headers
+      if media_type.startswith('text/') and 'charset=' not in media_type.lower():
+        media_type = f'{media_type};charset=utf-8'
       headers['content-type'] = media_type
 
     if last_modified:
@@ -154,7 +158,7 @@ error_html_format = '''\
 '''
 
 
-html_media_type = 'text/html;charset=utf-8'
+html_media_type = 'text/html'
 error_media_type = html_media_type
 
 
@@ -187,5 +191,5 @@ class TextResponse(Response):
 
   def __init__(self, body:str, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
    last_modified:float=0.0) -> None:
-    super().__init__(status=status, reason=reason, headers=headers, body=body, media_type='text/plain;charset=utf-8',
+    super().__init__(status=status, reason=reason, headers=headers, body=body, media_type='text/plain',
      last_modified=last_modified)

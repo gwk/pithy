@@ -51,8 +51,10 @@ class Request:
   * conn: RequestConn object for reading the request body. TODO: privatize.
 
   * path_parts: URL path split into parts by '/', e.g. ['items', '42'] for path '/items/42' (cached property).
-  * content_type: Content-Type header value (cached property).
-  * media_type: Content-Type without parameters, e.g. 'application/json' (cached property).
+  * content_type: Full Content-Type header value, including any parameters, e.g. 'application/json;charset=utf-8' (cached property).
+  * media_type: The bare type/subtype portion of the Content-Type, e.g. 'application/json' (cached property).
+    Note: per RFC 9110 the term "media type" includes parameters, but in this codebase `media_type` consistently refers to the
+    bare type/subtype to support matching; use `content_type` when the parameters are needed.
   * query: Parsed query parameters (cached property). Raises BadRequestError if any parameter has multiple values.
   * query_multi: Parsed query parameters as dict of lists (cached property).
   * query_items: Parsed query parameters as list of (key, value) pairs (cached property).
