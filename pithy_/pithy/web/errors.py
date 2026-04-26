@@ -36,12 +36,6 @@ class NotFoundError(ResponseError):
     super().__init__(HTTPStatus.NOT_FOUND, reason=reason, headers=headers)
 
 
-class NotImplementedResponseError(ResponseError):
-  'A ResponseError with status 501 Not Implemented.'
-  def __init__(self, reason:str='', *, headers:ResponseHeadersDict|None=None):
-    super().__init__(HTTPStatus.NOT_IMPLEMENTED, reason=reason, headers=headers)
-
-
 def decode_or_bad_request(data:bytes, desc:str) -> str:
   'Decode bytes to a string, or raise BadRequestError if the bytes are not valid UTF-8.'
   try:

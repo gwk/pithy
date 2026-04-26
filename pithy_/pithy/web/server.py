@@ -385,29 +385,30 @@ class WebServer:
       content_length=content_length,
       conn=WebServerRequestConn(content_length=content_length, _conn=conn))
 
-    try:
-      handler = self.app.resolve_handler(request)
+    try: # Outer: 500 server error; unhandled application error.
+      try: # Inner: ResponseError, NotImplementedError.
+        handler = self.app.resolve_handler(request)
 
-      if conn.h11_conn.client_is_waiting_for_100_continue:
-        expect_response = handler.handle_expect_100_continue(request)
-        if expect_response.status == HTTPStatus.CONTINUE:
-          self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
-        else:
-          return expect_response.set_connection_close() # The body was not read, so the connection cannot be reused.
+        if conn.h11_conn.client_is_waiting_for_100_continue:
+          expect_response = handler.handle_expect_100_continue(request)
+          if expect_response.status == HTTPStatus.CONTINUE:
+            self._send_informational_response(conn.h11_conn, conn.socket, expect_response)
+          else:
+            return expect_response.set_connection_close() # The body was not read, so the connection cannot be reused.
 
-      handler.prepare(request)
-      response = handler.handle_request(request)
-      # The handler may or may not read the body.
-      if conn.h11_conn.their_state is h11_SEND_BODY: # The handler did not read the body.
-        response.set_connection_close() # The connection cannot be reused since the body was not read.
+        handler.prepare(request)
+        response = handler.handle_request(request)
+        # The handler may or may not read the body.
+        if conn.h11_conn.their_state is h11_SEND_BODY: # The handler did not read the body.
+          response.set_connection_close() # The connection cannot be reused since the body was not read.
 
-    except ResponseError as exc:
-      try:
+      except ResponseError as exc:
         response = Response.from_error(exc, method=method)
-      except Exception as conversion_exc:
-        logE('Failed to convert ResponseError to response.', exc=conversion_exc, original_exc=exc,
-          client_addr=conn.client_addr, method=method, path=request.path)
-        response = self._internal_server_error_response(method=method).set_connection_close()
+      except NotImplementedError as exc:
+        logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
+        response = (
+          Response(HTTPStatus.NOT_IMPLEMENTED, body='Not Implemented', media_type='text/plain;charset=utf-8')
+          .set_connection_close())
     except Exception as exc:
       logE('Unhandled application exception.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
       response = self._internal_server_error_response(method=method).set_connection_close()

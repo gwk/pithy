@@ -5,6 +5,7 @@ from sys import argv
 
 import requests
 from pithy.web.app import WebApp
+from pithy.web.errors import BadRequestError
 from pithy.web.request import Request
 from pithy.web.response import Response
 from pithy.web.server import ServerConfig, WebServer
@@ -26,14 +27,16 @@ class ServerExceptionTestApp(WebApp):
     match request.path:
       case '/ok': return Response(body='ok', media_type='text/plain')
       case '/raise': raise RuntimeError('handler failed')
+      case '/raise-not-implemented': raise NotImplementedError('not yet')
+      case '/raise-not-implemented-empty': raise NotImplementedError
+      case '/raise-bad-request': raise BadRequestError('bad input')
       case '/broken-response': return BrokenResponse(body='unreachable', media_type='text/plain')
       case _: return Response(body='not found', status=HTTPStatus.NOT_FOUND, media_type='text/plain')
 
 
 
 def serve() -> None:
-  app = ServerExceptionTestApp()
-  server = WebServer(app=app, config=ServerConfig(host='localhost', port=0, num_threads=1))
+  server = WebServer(app=ServerExceptionTestApp(), config=ServerConfig(num_threads=1))
   server.serve_forever()
 
 
@@ -50,6 +53,16 @@ def test_server_exceptions() -> None:
     base_url = m.group(1)
 
     utest((500, 'Internal Server Error'), get_status_body, base_url, '/raise')
+    utest((200, 'ok'), get_status_body, base_url, '/ok')
+    # NotImplementedError: 501 with a fixed body that does not leak the exception message.
+    utest((501, 'Not Implemented'), get_status_body, base_url, '/raise-not-implemented')
+    utest((200, 'ok'), get_status_body, base_url, '/ok')
+    utest((501, 'Not Implemented'), get_status_body, base_url, '/raise-not-implemented-empty')
+    utest((200, 'ok'), get_status_body, base_url, '/ok')
+    # BadRequestError (a ResponseError): 400 with HTML body containing the reason.
+    status, body = get_status_body(base_url, '/raise-bad-request')
+    utest(400, int, status)
+    utest(True, lambda b: 'bad input' in b, body)
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # A broken Response causes _send_response to fail; the server closes the connection without replying.
     utest_exc(requests.exceptions.ConnectionError, get_status_body, base_url, '/broken-response')

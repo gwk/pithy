@@ -7,7 +7,7 @@ from http import HTTPStatus
 from typing import Any, ClassVar, get_args, get_origin, get_type_hints
 
 from ..transtruct import bool_str_vals
-from .errors import BadRequestError, NotImplementedResponseError
+from .errors import BadRequestError
 from .handler import RequestHandler
 from .request import Request
 from .response import Response
@@ -118,7 +118,7 @@ class Endpoint(RequestHandler):
 
 
   def handle_request(self, request:Request) -> Response:
-    raise NotImplementedResponseError
+    raise NotImplementedError
 
 
   def _fill_param(self, name:str, raw:object, source:str) -> None:

@@ -108,7 +108,7 @@ class Response():
   @classmethod
   def from_error(cls, error:ResponseError, method:str) -> Self:
     '''
-    Create the response for an error.
+    Create a response for a raised ResponseError.
     '''
     body:ResponseBody|None = None
     media_type = ''
