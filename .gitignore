@@ -14,6 +14,3 @@ _repro.wu
 docs/_muck
 todo.md
 typeshed
-
-# Claude files are symlinks to AGENTS.md everywhere.
-CLAUDE.md
