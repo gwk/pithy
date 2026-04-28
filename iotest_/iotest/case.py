@@ -240,6 +240,7 @@ class Case:
     default_to_env('PATH')
     default_to_env('PYTHONPATH')
     default_to_env('SDKROOT') # Swift.
+    default_to_env('TMPDIR') # macOS sets a per-user temp dir via launchd; tools like Swift need it for cache files.
 
     def expand_str(val:Any) -> str:
       t = Template(val)
