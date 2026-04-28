@@ -113,7 +113,7 @@ class Conn(sqlite3.Connection):
     `mode` must be one of '' (default, omitted in the SQL statement), 'ro', 'rw', 'rwc', or 'memory'.
     '''
     uri = sqlite_file_uri(path, mode=mode)
-    super().execute(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
+    self.execute(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
 
 
   def validate(self, query:str) -> None:

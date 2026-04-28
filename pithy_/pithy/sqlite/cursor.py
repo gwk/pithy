@@ -69,7 +69,7 @@ class Cursor(sqlite3.Cursor, AbstractContextManager):
     '''
     Execute a single SQL statement, optionally binding Python values using placeholders.
 
-    Override execute in order to set `query` on any resulting sqlite3.Error.
+    Override execute in order add `execute_time` and `query` attributes/notes on any resulting sqlite3.Error.
     '''
     execute_start = get_time()
     try:
