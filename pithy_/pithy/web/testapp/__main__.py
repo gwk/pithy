@@ -1,9 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import pithy
-
 from ..endpoint import Endpoint
-from ..reload import serve_with_reload
 from ..router import RouterApp
 from ..server import ServerConfig, WebServer
 from .basic import EchoId, EchoName, Hello
@@ -19,15 +16,6 @@ description = 'TestApp web server.'
 
 
 def main() -> None:
-  'Parent process (watcher) entrypoint.'
-  serve_with_reload(
-    target=f'{__package__}.__main__.run',
-    watch=[pithy],
-    description=description)
-
-
-def run() -> None:
-  'The child process (reloaded) entrypoint.'
   config = ServerConfig.parse_args(description=description)
   app = TestApp()
   server = WebServer(app=app, config=config)
