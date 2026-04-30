@@ -48,4 +48,5 @@
     "editor.formatOnSave": false
   },
   "json.format.enable": false,
+  "git.addAICoAuthor": "off",
 }
