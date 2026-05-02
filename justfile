@@ -20,7 +20,7 @@ build:
 
 check: isort lint typecheck test
 
-check-full: isort lint typecheck test-full
+check-full: gen isort lint typecheck test-full
 
 cov:
 	iotest {{pkg_tests_full}} -coverage
@@ -67,7 +67,7 @@ test-diff-data:
 	rm -rf _build/test-diff/*
 	test-diff/collect-diff-examples.py ../pithy ../quilt
 
-typecheck: gen typecheck-py-packages typecheck-other
+typecheck: typecheck-py-packages typecheck-other
 
 typecheck-py-packages:
 	mypy {{pkg_srcs}}
