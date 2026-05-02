@@ -11,7 +11,7 @@ proj_dir="$PWD"
 
 for package in "$@"; do
   build/gen-pyproject-toml.py "$package"
-  cd "$package"
-  pip install .
+  cd "${package}_"
+  pip --disable-pip-version-check install .
   cd "$proj_dir"
 done
