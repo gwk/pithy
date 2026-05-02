@@ -11,9 +11,10 @@ def is_web_dbg() -> bool:
   return bool_str_vals[environ.get('WEB_DBG', '0')]
 
 
-def web_data_dir() -> str:
-  'Get the data directory specified by the environment variable WEB_DATA_DIR. Defaults to `./data`.'
-  return environ.get('WEB_DATA_DIR', './data')
+def web_data_dir(default:str='') -> str:
+  'Get the data directory specified by the environment variable WEB_DATA_DIR, or return the default, or raise.'
+  if web_data_dir := environ.get('WEB_DATA_DIR', default): return web_data_dir
+  raise ValueError('WEB_DATA_DIR not set')
 
 
 def web_proto() -> str:
