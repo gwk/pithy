@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from os import urandom
+from secrets import token_bytes
 from typing import Iterable
 
 from cryptography.hazmat.backends import default_backend
@@ -61,8 +61,8 @@ class OneWordCryptor:
 
   @staticmethod
   def generate_key() -> bytes:
-    'Generate a suitable 16 byte secret key.'
-    return urandom(16)
+    'Generate a suitable 16 byte (128 bit) secret key.'
+    return token_bytes(16)
 
 
   def encrypt_int(self, val:int, signed:bool=False) -> bytes:
