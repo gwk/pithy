@@ -4,7 +4,7 @@ import os as _os
 import re as _re
 import stat as _stat
 import time as _time
-from os import DirEntry, get_exec_path as _get_exec_path, mkdir as _mkdir, scandir as _scandir
+from os import DirEntry, get_exec_path as _get_exec_path, getcwd as _getcwd, mkdir as _mkdir, scandir as _scandir
 from os.path import expanduser as _expanduser, realpath as _realpath
 from pathlib import Path as _Path
 from sys import argv
@@ -67,6 +67,9 @@ def copy_to_dir(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_
 def contract_home_dir(path:Path) -> str: return str_path(path).replace(home_dir(), '~')
 
 def expand_home_dir(path:Path) -> str: return _expanduser(str_path(path))
+
+
+def current_dir() -> str: return _getcwd()
 
 
 default_project_signifiers: tuple[str, ...] = (
