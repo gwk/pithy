@@ -72,6 +72,20 @@ def expand_home_dir(path:Path) -> str: return _expanduser(str_path(path))
 def current_dir() -> str: return _getcwd()
 
 
+def find_file_up(name:str, start_dir:Path='.', top:Path|None=None, include_top:bool=False) -> str|None:
+  start_dir = abs_path(start_dir)
+  if top is None:
+    top = home_dir()
+  else:
+    top = abs_path(top)
+  if not start_dir.startswith(top):
+    raise ValueError(f'start_dir {start_dir} is not within top {top}')
+  for dir_path in walk_dirs_up(start_dir, top=top, include_top=include_top):
+    file_path = path_join(dir_path, name)
+    if path_exists(file_path, follow=False): return file_path
+  return None
+
+
 default_project_signifiers: tuple[str, ...] = (
   '.git',
   '.project-root',
@@ -97,7 +111,7 @@ def find_project_dir(start_dir:Path='.', top:Path|None=None, include_top:bool=Fa
   else:
     top = abs_path(top)
   if not start_dir.startswith(top):
-    raise Exception(f'find_project_dir: start_dir is not a subdirectory of top:\n  start_dir: {start_dir}\n  top: {top}')
+    raise Exception(f'find_project_dir: start_dir is not within top:\n  start_dir: {start_dir}\n  top: {top}')
   for path in walk_dirs_up(start_dir, top=top, include_top=include_top):
     for name in list_dir(path, hidden=True):
       if signifier_re.fullmatch(name):
