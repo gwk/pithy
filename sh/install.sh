@@ -7,11 +7,10 @@ function fail { echo "error: $@" 1>&2; exit 1; }
 [[ -n "$@" ]] || fail "usage: $0 [packages ...]"
 
 cd "$(dirname $0)/.."
-proj_dir="$PWD"
 
+pkg_dirs=()
 for package in "$@"; do
-  build/gen-pyproject-toml.py "$package"
-  cd "${package}_"
-  pip --disable-pip-version-check install .
-  cd "$proj_dir"
+  pkg_dirs+=("./${package}_")
 done
+
+pip --disable-pip-version-check install "${pkg_dirs[@]}"
