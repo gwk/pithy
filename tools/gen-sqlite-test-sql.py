@@ -6,7 +6,7 @@ from argparse import ArgumentParser, Namespace
 from sys import stderr
 from typing import Iterator
 
-from pithy.fs import abbreviate_user, list_dir, make_dirs
+from pithy.fs import contract_home_dir, list_dir, make_dirs
 from pithy.iterable import fan_items
 from pithy.path import path_join, path_name
 from pithy.sqlite.keywords import sqlite_leading_keywords
@@ -43,7 +43,7 @@ def parse_all_paths(all_paths:list[str]) -> Iterator[tuple[str,tuple[str,str]]]:
   Generate a stream of (keyword, (loc_str, stmt)) tuples.
   '''
   for path in all_paths:
-    abbr_path = abbreviate_user(path)
+    abbr_path = contract_home_dir(path)
 
     #print(f'\n{abbr_path}:')
     with open(path) as f: lines = list(f)

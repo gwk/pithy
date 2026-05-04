@@ -43,7 +43,7 @@ def executable_path() -> str:
   return _realpath(path)
 
 
-def expand_user(path:Path) -> str:
+def expand_home_dir(path:Path) -> str:
   return _expand_user(path)
 
 

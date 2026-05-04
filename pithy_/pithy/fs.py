@@ -64,9 +64,9 @@ def copy_to_dir(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_
     preserve_meta=preserve_meta)
 
 
-def abbreviate_user(path:Path) -> str: return str_path(path).replace(home_dir(), '~')
+def contract_home_dir(path:Path) -> str: return str_path(path).replace(home_dir(), '~')
 
-def expand_user(path:Path) -> str: return _expanduser(str_path(path))
+def expand_home_dir(path:Path) -> str: return _expanduser(str_path(path))
 
 
 default_project_signifiers: tuple[str, ...] = (

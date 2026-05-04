@@ -7,7 +7,7 @@
 
 from argparse import ArgumentParser
 
-from pithy.fs import copy_path, expand_user, is_dir, remove_dir_contents_if_exists, walk_files
+from pithy.fs import copy_path, expand_home_dir, is_dir, remove_dir_contents_if_exists, walk_files
 from pithy.io import errSL
 from pithy.strings import replace_prefix
 
@@ -23,7 +23,7 @@ def main() -> None:
   for s in ('..', '/'):
     if s in name: exit(f'invalid name (contains {s!r}): {name!r}')
 
-  dst = expand_user(f'~/.vscode/extensions/{name}')
+  dst = expand_home_dir(f'~/.vscode/extensions/{name}')
   remove_dir_contents_if_exists(dst)
 
   src_path = f'{src}/package.json'
