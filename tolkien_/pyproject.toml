@@ -40,7 +40,7 @@ Documentation = "https://github.com/gwk/pithy/tree/main/tolkien#readme"
 
 [project.optional-dependencies]
 dev = [
-  "mypy >= 1.20.1",
+  "mypy >= 1.20.2",
   "pyflakes >= 3.4.0",
   "isort >= 8.0.1",
 ]
