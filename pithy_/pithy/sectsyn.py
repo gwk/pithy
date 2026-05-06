@@ -5,7 +5,7 @@
 SectIndices (Section Syntax).
 
 SS is a simple syntax using header lines to define nested sections.
-It is similar to Markdown but concerned only with nested section structure, and defaults to using '$' as the header symbol.
+It is similar to Markdown section syntax but can use an arbitrary symbol.
 The idea is to return the section text ranges so that different parsers can be called for each section.
 In this way, a single file can contain multiple types of syntax, each with its own parser.
 
@@ -30,6 +30,10 @@ class SectIndices:
   parent_idx:int
   title:slice
   body:slice
+
+  @property
+  def slc(self) -> slice: # HasSlc conformance.
+    return slice(self.title.start, self.body.stop)
 
 
 @overload
