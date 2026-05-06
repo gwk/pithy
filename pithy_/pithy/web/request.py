@@ -99,7 +99,7 @@ class Request:
 
   @cached_property
   def query_items(self) -> list[tuple[str,str]]:
-    'Parse and cache the query string into a list of (key, value) pairs, taking the first value for each key.'
+    'Parse and cache the query string into a list of (key, value) pairs.'
     if not self.query_str: return []
     return parse_qsl(self.query_str, keep_blank_values=True)
 
