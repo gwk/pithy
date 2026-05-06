@@ -93,6 +93,9 @@ Some examples:
 When a function has a polymorphic return type dictated by the input,
 consider splitting it several more narrowly typed functions, or else using `@overload` typing.
 
+## Development FLow
+Do not alter or remove test cases unless the change makes sense for the semantics of the feature.
+It is ok to leave a test broken, stop and discuss the problem rather than pushing blindly forward.
 
 # Coding Agent Restrictions
 
