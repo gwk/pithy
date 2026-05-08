@@ -40,18 +40,25 @@ utest(('d/.a', '.ext'), split_stem_multi_ext, 'd/.a.ext')
 # is_norm_path.
 
 utest(True, is_norm_path, '/')
-utest(True, is_norm_path, '.')
-utest(True, is_norm_path, '/')
 utest(True, is_norm_path, '/...')
 utest(True, is_norm_path, '.')
 utest(True, is_norm_path, '..')
 utest(True, is_norm_path, '...')
+utest(True, is_norm_path, 'a')
+utest(True, is_norm_path, 'a/b')
+utest(True, is_norm_path, '../a')
+utest(True, is_norm_path, '.h')
+utest(True, is_norm_path, 'a/.h')
+utest(True, is_norm_path, '.h/b')
+utest(True, is_norm_path, '.h/.h')
+utest(True, is_norm_path, '../.h')
 
 utest(False, is_norm_path, '//')
 utest(False, is_norm_path, '/.')
 utest(False, is_norm_path, '/..')
 utest(False, is_norm_path, './')
-utest(False, is_norm_path, './')
+utest(False, is_norm_path, 'a//b')
+utest(False, is_norm_path, 'a/./b')
 
 utest(True, is_path_abs, '/')
 utest(False, is_path_abs, '.')
@@ -61,6 +68,12 @@ utest(True, is_sub_path, 'a/.../b')
 utest(True, is_sub_path, 'a/../b')
 utest(True, is_sub_path, 'a/..')
 utest(False, is_sub_path, 'a/../..')
+utest(True, is_sub_path, 'a')
+utest(True, is_sub_path, '.')
+utest(False, is_sub_path, '..')
+utest(False, is_sub_path, '/a')
+utest(False, is_sub_path, '/a/b')
+utest(False, is_sub_path, '../a')
 
 # norm_path.
 
@@ -81,6 +94,11 @@ utest('/a', norm_path, '//a//')
 utest('a', norm_path, 'a')
 utest('a', norm_path, './a')
 utest('a', norm_path, 'a/.')
+utest('a', norm_path, 'a/b/..')
+utest('a/b/c', norm_path, 'a/b/c')
+utest('../a', norm_path, '../a')
+utest('../../a', norm_path, '../../a')
+utest('..', norm_path, '../a/..')
 
 
 # Randomized test of norm_path against is_norm_path.
