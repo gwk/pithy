@@ -124,7 +124,7 @@ def path_compound_ext(path:Path) -> str:
   return ''.join(path_exts(path))
 
 
-def path_descendants(start_path:Path, end_path:Path, include_start:bool=True, include_end:bool=True) -> tuple[str, ...]:
+def path_descendants(start_path:Path, end_path:Path, *, include_start:bool=True, include_end:bool=True) -> tuple[str, ...]:
   '''
   Return a tuple of paths from `start_path` to `end_path`.
   By default, `include_start` and `include_end` are both True.
