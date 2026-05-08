@@ -88,6 +88,7 @@ def is_sub_path(path:Path) -> bool:
 def norm_path(path:Path) -> str:
   '''
   Normalize `path`.
+  * Empty string is treated as '.'.
   * trailing slashes are removed.
   * duplicate slashes (empty components) and '.' components are removed.
   * '..' components are simplified, or dropped if it implies a location beyond the root '/'.
