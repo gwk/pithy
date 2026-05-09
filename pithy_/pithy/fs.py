@@ -72,7 +72,7 @@ def expand_home_dir(path:Path) -> str: return _expanduser(str_path(path))
 def current_dir() -> str: return _getcwd()
 
 
-def find_file_up(name:str, start_dir:Path='.', top:Path|None=None, include_top:bool=False) -> str|None:
+def find_file_up(name:str, start_dir:Path='.', top:Path|None=None, include_top:bool=True) -> str|None:
   start_dir = abs_path(start_dir)
   if top is None:
     top = home_dir()
