@@ -129,12 +129,13 @@ def path_descendants(start_path:Path, end_path:Path, *, include_start:bool=True,
   '''
   Return a tuple of paths from `start_path` to `end_path`.
   By default, `include_start` and `include_end` are both True.
-  TODO: normalize paths, and deal with '..' case.
   '''
-  prefix = path_split(start_path)
-  comps = path_split(end_path)
-  if not prefix: raise NotAPathError(start_path)
-  if not comps: raise NotAPathError(end_path)
+  prefix = path_split(norm_path(start_path))
+  comps = path_split(norm_path(end_path))
+  assert prefix
+  assert comps
+  if prefix[0].startswith('..') or comps[0].startswith('..'):
+    raise ValueError(f"'..' dir components in end_path are not supported: {end_path!r}")
   if prefix == comps:
     return (str_path(start_path),) if include_start or include_end else ()
   if prefix != comps[:len(prefix)]:
