@@ -4,6 +4,7 @@ from collections import Counter, defaultdict, namedtuple
 from dataclasses import dataclass
 from typing import NamedTuple
 
+from pithy.frozendicts import frozendict
 from pithy.transtruct import Transtructor
 from utest import utest
 
@@ -69,6 +70,9 @@ utest({'a':1}, ttor.transtruct, dict[str,int], Counter({'a':1}))
 utest({'a':1}, ttor.transtruct, dict[str,int], defaultdict(lambda: 0, {'a':1}))
 
 utest(Counter({'a':1}), ttor.transtruct, Counter[str], {'a':'1'})
+
+utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], {'a':'1'})
+utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], frozendict({'a':'1'}))
 
 
 utest(0, ttor.transtruct, int|str|None, 0)

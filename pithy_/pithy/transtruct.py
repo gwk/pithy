@@ -10,6 +10,7 @@ from itertools import zip_longest
 from types import UnionType
 from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, TypeVar, Union
 
+from .frozendicts import frozendict
 from .type_utils import is_dataclass_instance, is_namedtuple, is_type_namedtuple
 
 
@@ -241,7 +242,7 @@ class Transtructor:
     if issubclass(origin, tuple):
       return self.transtructor_for_tuple_type(desired_type, prefigure_fn, origin, type_args)
 
-    if issubclass(origin, dict) and len(type_args) > 1: # Excludes Counter.
+    if issubclass(origin, (dict, frozendict)) and len(type_args) > 1: # Excludes Counter.
       key_type, val_type = type_args
       key_ctor = self.transtructor_for(key_type)
       val_ctor = self.transtructor_for(val_type)
@@ -497,6 +498,7 @@ named_types = {
   'double': float,
   'enum': str,
   'float': float,
+  'frozendict': frozendict,
   'frozenset': frozenset,
   'id': int,
   'int': int,
