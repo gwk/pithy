@@ -39,19 +39,18 @@ class Transtructor:
 
   Transtructor attempts to provide automatic conversions of many structural types while not being too magicial.
 
-  A Transtructor instance is first configured in order to customize the transformation.
+  A Transtructor instance is first (optionally) configured in order to customize the transformation.
   It is then invoked using `transtructor_for` or `transtruct`.
 
   `transtructor_for` takes a desired type and returns a transtructor function.
   A transtructor function takes a generic value, e.g. a JSON value or a CSV row, and returns a well typed value.
 
-  `transtruct` simply calls `transtructor_for` and then invokes the transtructor function.
+  `transtruct` simply calls `transtructor_for` and then invokes the transtructor function on the provided value.
 
   Use @selector and @prefigure to register custom helper functions on a transtructor instance.
 
   Selectors are functions that take a raw input value and return a type.
-  These are necessary for polymorphic objects,
-  such as an attribute whose type is a union or base class.
+  These are necessary for polymorphic objects such as an attribute whose type is a union or base class.
 
   Prefigures are functions that take a raw input value and return an altered value.
   Whether or not the alteration is a mutation of the original input value is up to the programmer to decide.
