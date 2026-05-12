@@ -78,3 +78,21 @@ utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], frozendict({'a'
 utest(0, ttor.transtruct, int|str|None, 0)
 utest('0', ttor.transtruct, int|str|None, '0')
 utest(None, ttor.transtruct, int|str|None, None)
+
+
+class CustomInit:
+  'Custom __init__ with parameters that differ from class-level annotations; transtruct uses the __init__ annotations.'
+
+  data:dict[str,int]
+
+  def __init__(self, key:str, val:int) -> None:
+    self.data = {key: val}
+
+  def __eq__(self, other:object) -> bool:
+    return isinstance(other, CustomInit) and self.data == other.data
+
+  def __repr__(self) -> str:
+    return f'CustomInit({self.data!r})'
+
+
+utest(CustomInit(key='a', val=1), ttor.transtruct, CustomInit, {'key': 'a', 'val': 1})

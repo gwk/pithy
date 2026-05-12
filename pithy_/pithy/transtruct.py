@@ -132,6 +132,13 @@ class Transtructor:
     if origin and type_args: # Generic types have an origin type and a tuple of type arguments.
       return self.transtructor_for_generic_type(desired_type, prefigure_fn, origin=origin, type_args=type_args)
 
+    init = getattr(desired_type, '__init__', None)
+    if init and init is not object.__init__:
+      init_hints = get_type_hints(init)
+      init_hints.pop('return', None)
+      if init_hints:
+        return self.transtructor_for_annotated_class(desired_type, prefigure_fn, init_hints)
+
     if annotations := get_type_hints(desired_type): # Note: annotated NamedTuple will return hints.
       return self.transtructor_for_annotated_class(desired_type, prefigure_fn, annotations)
 
@@ -181,7 +188,6 @@ class Transtructor:
   def transtructor_for_annotated_class(self, class_:type[Desired], prefigure_fn:PrefigureFn|None, annotations:dict[str,type]
    ) -> TranstructFn[Desired]:
 
-    # TODO: this should use __init__ annotations if they exist.
     constructor_annotations = { k:v for k, v in annotations.items()
       if k != 'return' and not k.startswith('_') and get_origin(v) != ClassVar }
 
