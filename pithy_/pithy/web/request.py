@@ -4,8 +4,9 @@ import io
 from dataclasses import dataclass
 from functools import cached_property
 from http import HTTPStatus
+from json import JSONDecodeError
 from typing import Any
-from urllib.parse import parse_qs, parse_qsl
+from urllib.parse import parse_qsl
 
 from python_multipart import parse_form
 from python_multipart.multipart import Field, File
@@ -17,20 +18,23 @@ from .requestconn import AddrPair, RequestConn
 from .response import ResponseError
 
 
-class BodyAlreadyReadError(Exception):
-  'Raised when the request body has already been read.'
-
-
-class BodyTooLargeError(Exception):
-  'Raised when the request body is larger than the maximum allowed size.'
-
-
 @dataclass(slots=True, frozen=True)
 class UploadedFile:
   field_name:str
   filename:str
   data:bytes
   content_type:str
+
+  def __str__(self) -> str: return f'{self.filename} ({self.content_type}, {len(self.data)} bytes)'
+
+type MultipartVal = str | UploadedFile
+
+def _add_to_param_dict[V](d:dict[str,V|list[V]], k:str, v:V) -> None:
+  try: existing = d[k]
+  except KeyError: d[k] = v # Add first value as scalar.
+  else: # Existing value.
+    if isinstance(existing, list): existing.append(v)
+    else: d[k] = [existing, v]
 
 
 @dataclass
@@ -127,48 +131,48 @@ class Request:
     return q
 
 
-  def body_params(self, max_bytes:int) -> dict[str,Any]:
-    'Parse and cache the request body based on media type and return a flat dict of parameters.'
+  def body_params(self, max_bytes:int, *, body_field:str='') -> dict[str,Any]:
+    '''
+    Parse and cache the request body based on media type and return a dict mapping parameter names to values.
+    If `body_field` is non-empty, the entire parsed body is returned as a single param under that key, regardless of
+    media type; for JSON this skips the requirement that the body be an object, so any JSON value (object, array, or
+    scalar) becomes the single param.
+    '''
     match self.media_type:
       case 'application/x-www-form-urlencoded':
-        multi = self.parse_urlencoded(max_bytes=max_bytes)
-        return {k: vs[0] for k, vs in multi.items() if vs}
+        data:Any = self.parse_urlencoded(max_bytes=max_bytes)
       case 'application/json':
         data = self.parse_json(max_bytes=max_bytes)
-        if isinstance(data, dict): return data
-        raise BadRequestError('Expected JSON object in request body.')
+        if not body_field and not isinstance(data, dict):
+          raise BadRequestError('Expected JSON object in request body.')
       case 'multipart/form-data':
-        parts = self.parse_multipart(max_bytes=max_bytes)
-        result:dict[str,Any] = {}
-        for k, vs in parts.items():
-          for v in vs:
-            if isinstance(v, str):
-              result[k] = v
-              break
-        return result
+        data = self.parse_multipart(max_bytes=max_bytes)
       case _:
         raise ResponseError(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE, reason=f'Unsupported media type: {self.media_type!r}.')
+    return {body_field: data} if body_field else data
 
 
-  def parse_multipart(self, max_bytes:int) -> dict[str,list[str|UploadedFile]]:
+  def parse_multipart(self, max_bytes:int) -> dict[str,MultipartVal|list[MultipartVal]]:
     '''Parse a multipart/form-data body. Text fields become str values; file parts become UploadedFile values.'''
     if self.media_type != 'multipart/form-data':
       raise ValueError(f'parse_multipart: expected media type multipart/form-data; received: {self.media_type!r}')
     body = self.read_body(max_bytes=max_bytes)
-    result:dict[str,list[str|UploadedFile]] = {}
+    result:dict[str,MultipartVal|list[MultipartVal]] = {}
+
 
     def on_field(field:Field) -> None:
       if field.field_name is None: raise BadRequestError('parse_multipart: field part missing name parameter')
       key = decode_or_bad_request(field.field_name, desc='parse_multipart: field name')
       val = decode_or_bad_request(field.value or b'', desc='parse_multipart: field value')
-      result.setdefault(key, []).append(val)
+      _add_to_param_dict(result, key, val)
 
     def on_file(file:File) -> None:
       if file.field_name is None: raise BadRequestError('parse_multipart: file part missing name parameter')
       file.file_object.seek(0)
       key = decode_or_bad_request(file.field_name, desc='parse_multipart: file field name')
       filename = decode_or_bad_request(file.file_name or b'', desc='parse_multipart: file name')
-      result.setdefault(key, []).append(UploadedFile(
+      if filename == '': return
+      _add_to_param_dict(result, key, UploadedFile(
         field_name=key,
         filename=filename,
         data=file.file_object.read(),
@@ -183,12 +187,16 @@ class Request:
     return result
 
 
-  def parse_urlencoded(self, max_bytes:int) -> dict[str,list[str]]:
+  def parse_urlencoded(self, max_bytes:int) -> dict[str,str|list[str]]:
     '''Parse an application/x-www-form-urlencoded body.'''
     if self.media_type != 'application/x-www-form-urlencoded':
       raise ValueError(f'parse_urlencoded: expected media type application/x-www-form-urlencoded; received: {self.media_type!r}')
     body = self.read_body(max_bytes=max_bytes)
-    return parse_qs(decode_or_bad_request(body, desc='parse_urlencoded: body'), keep_blank_values=True)
+    parsed_list = parse_qsl(decode_or_bad_request(body, desc='parse_urlencoded: body'), keep_blank_values=True)
+    result:dict[str,str|list[str]] = {}
+    for (k, v) in parsed_list:
+      _add_to_param_dict(result, k, v)
+    return result
 
 
   def parse_json(self, max_bytes:int) -> Json:
@@ -196,7 +204,9 @@ class Request:
     if self.media_type != 'application/json':
       raise ValueError(f'parse_json: expected media type application/json; received: {self.media_type!r}')
     body = self.read_body(max_bytes=max_bytes)
-    return parse_json(decode_or_bad_request(body, desc='parse_json: body'))
+    try: return parse_json(decode_or_bad_request(body, desc='parse_json: body'))
+    except JSONDecodeError as e:
+      raise BadRequestError(f'Invalid JSON in request body: {e}') from e
 
 
   def allow_methods(self, *methods:str) -> None:

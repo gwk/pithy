@@ -26,6 +26,9 @@ class ServerExceptionTestApp(WebApp):
   def handle_request(self, request:Request) -> Response:
     match request.path:
       case '/ok': return Response(body='ok', media_type='text/plain')
+      case '/read-small-body':
+        request.read_body(max_bytes=8)
+        return Response(body='read ok', media_type='text/plain')
       case '/raise': raise RuntimeError('handler failed')
       case '/raise-not-implemented': raise NotImplementedError('not yet')
       case '/raise-not-implemented-empty': raise NotImplementedError
@@ -42,6 +45,11 @@ def serve() -> None:
 
 def get_status_body(base_url:str, path:str) -> tuple[int,str]:
   resp = requests.get(f'{base_url}{path}', timeout=2)
+  return (resp.status_code, resp.text)
+
+
+def post_status_body(base_url:str, path:str, data:bytes) -> tuple[int,str]:
+  resp = requests.post(f'{base_url}{path}', data=data, timeout=2)
   return (resp.status_code, resp.text)
 
 
@@ -63,6 +71,10 @@ def test_server_exceptions() -> None:
     status, body = get_status_body(base_url, '/raise-bad-request')
     utest(400, int, status)
     utest(True, lambda b: 'bad input' in b, body)
+    utest((200, 'ok'), get_status_body, base_url, '/ok')
+    # BodyTooLargeError: 413 with connection close; a small body still succeeds.
+    utest((200, 'read ok'), post_status_body, base_url, '/read-small-body', b'tiny')
+    utest((413, 'Content Too Large'), post_status_body, base_url, '/read-small-body', b'0123456789ABCDEF')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # A broken Response causes _send_response to fail; the server closes the connection without replying.
     utest_exc(requests.exceptions.ConnectionError, get_status_body, base_url, '/broken-response')

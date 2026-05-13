@@ -1,15 +1,18 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from datetime import date, datetime
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import date, datetime, time
 from enum import Enum
 from http import HTTPStatus
 from typing import Any
 from urllib.parse import urlencode
 
-from pithy.web.endpoint import Endpoint
+from pithy.transtruct import Transtructor
+from pithy.web.endpoint import _unwrap_field_type, Endpoint
 from pithy.web.errors import ResponseError
-from pithy.web.request import Request
-from pithy.web.requestconn import BytesConn
+from pithy.web.request import Request, UploadedFile
+from pithy.web.requestconn import BodyTooLargeError, BytesConn
 from pithy.web.response import Response
 from utest import utest, utest_exc, utest_run, utest_val
 
@@ -25,9 +28,21 @@ def _make_request(query:dict[str,str|int]|None=None, *, media_type:str='', body:
     client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
 
 
+# _unwrap_field_type: decompose into (element_type, is_optional, is_list).
+utest((int, False, False), _unwrap_field_type, int)
+utest((int, True, False), _unwrap_field_type, int|None)
+utest((int, False, True), _unwrap_field_type, list[int])
+utest((int, True, True), _unwrap_field_type, list[int]|None)
+utest((str, True, False), _unwrap_field_type, str|None)
+utest_exc(TypeError, _unwrap_field_type, int|str) # Unsupported multi-member union.
+utest_exc(TypeError, _unwrap_field_type, int|str|None) # Unsupported optional union.
+utest_exc(TypeError, _unwrap_field_type, list[int,str]) # type: ignore[misc] # Unsupported multi-parameter list (invalid statically).
+
+
 # Basic field types.
 
 class IntEndpoint(Endpoint):
+  max_body_bytes = 1024
   id:int
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.id}')
@@ -60,7 +75,14 @@ class DatetimeEndpoint(Endpoint):
     return Response(body=f'{self.dt}')
 
 
+class TimeEndpoint(Endpoint):
+  t:time
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.t}')
+
+
 class BoolEndpoint(Endpoint):
+  max_body_bytes = 1024
   flag:bool
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.flag}')
@@ -81,6 +103,7 @@ utest(dict(name='alice', tag='admin'), endpoint_fields, OptionalEndpoint, name='
 utest(dict(name='alice', tag=None), endpoint_fields, OptionalEndpoint, name='alice')
 utest(dict(d=date(2026, 3, 14)), endpoint_fields, DateEndpoint, d='2026-03-14')
 utest(dict(dt=datetime(2026, 3, 14, 12, 0)), endpoint_fields, DatetimeEndpoint, dt='2026-03-14T12:00:00')
+utest(dict(t=time(12, 30)), endpoint_fields, TimeEndpoint, t='12:30:00')
 
 # Error cases.
 utest_exc(ResponseError, endpoint_fields, IntEndpoint) # Missing required param.
@@ -98,7 +121,11 @@ def _() -> None:
     utest_val(False, ep.flag, desc=f'bool from {s!r}')
 
 
-# Custom converters.
+# Invalid bool string raises BadRequestError (inherited from the tightened transtruct_bool).
+utest_exc(ResponseError, BoolEndpoint, _make_request(), dict(flag='maybe'))
+
+
+# Custom per-field-name converters.
 
 class Color(Enum):
   red = 'red'
@@ -107,7 +134,7 @@ class Color(Enum):
 
 
 class CustomConverterEndpoint(Endpoint):
-  _converters = {Color: lambda s: Color(s)}
+  _converters = {'color': lambda raw: Color(raw)}
   color:Color
 
   def handle_request(self, request:Request) -> Response:
@@ -118,20 +145,39 @@ utest(dict(color=Color.red), endpoint_fields, CustomConverterEndpoint, color='re
 utest_exc(ResponseError, CustomConverterEndpoint, _make_request(), dict(color='purple'))
 
 
-# Custom converter inheritance.
+# Direct subclassing is enforced: intermediate Endpoint subclasses raise TypeError.
 
-class BaseConverterEndpoint(Endpoint):
-  _converters = {Color: lambda s: Color(s)}
+def _make_sub_subclass() -> type[Endpoint]:
+  class SubIntEndpoint(IntEndpoint):
+    extra:str
+  return SubIntEndpoint
+
+utest_exc(TypeError, _make_sub_subclass)
 
 
-class InheritedConverterEndpoint(BaseConverterEndpoint):
+# Field names may not shadow Endpoint base attributes.
+
+def _make_shadowing_endpoint() -> type[Endpoint]:
+  class ShadowEndpoint(Endpoint):
+    max_body_bytes:int # type: ignore[misc]
+  return ShadowEndpoint
+
+utest_exc(TypeError, _make_shadowing_endpoint)
+
+
+# Shared converters are composed as plain dicts in the class body; there is no converter inheritance.
+
+_color_converters:dict[str,Callable[[object],object]] = {'color': lambda raw: Color(raw)}
+
+class ComposedConverterEndpoint(Endpoint):
+  _converters = _color_converters | {'name': lambda raw: str(raw).upper()}
   color:Color
   name:str
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.color.value},{self.name}')
 
 
-utest(dict(color=Color.green, name='test'), endpoint_fields, InheritedConverterEndpoint, color='green', name='test')
+utest(dict(color=Color.green, name='TEST'), endpoint_fields, ComposedConverterEndpoint, color='green', name='test')
 
 
 # No-field endpoint.
@@ -197,6 +243,13 @@ class BodyEndpoint(Endpoint):
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.name},{self.tag}')
 
+class ListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  tags:list[str]
+  counts:list[int]
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.tags},{self.counts}')
+
 
 @utest_run
 def _() -> None:
@@ -232,3 +285,491 @@ def _() -> None:
   req = _make_request()
   ep = BodyEndpoint(req, path_params={})
   utest_exc(ResponseError, ep.prepare, req)
+
+
+# JSON body with non-string value types.
+
+@utest_run
+def _() -> None:
+  'Endpoint: prepare fills int field from JSON body with integer value.'
+  req = _make_request(media_type='application/json', body=b'{"id":3}')
+  ep = IntEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(3, ep.id)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: str field rejects JSON integer value.'
+  req = _make_request(media_type='application/json', body=b'{"name":123}')
+  ep = BodyEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: prepare fills list fields from JSON body with array values.'
+  req = _make_request(media_type='application/json', body=b'{"tags":["a","b"],"counts":[1,2]}')
+  ep = ListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(['a', 'b'], ep.tags)
+  utest_val([1, 2], ep.counts)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: bool field filled from JSON true value.'
+  req = _make_request(media_type='application/json', body=b'{"flag":true}')
+  ep = BoolEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(True, ep.flag)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: malformed JSON body raises BadRequestError.'
+  req = _make_request(media_type='application/json', body=b'{not json')
+  ep = BodyEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: body exceeding max_body_bytes raises BodyTooLargeError.'
+  req = _make_request(media_type='application/json', body=b'{"name":"' + b'x'*2000 + b'"}')
+  ep = BodyEndpoint(req, path_params={})
+  utest_exc(BodyTooLargeError, ep.prepare, req)
+
+
+# Nested dataclass fields.
+
+@dataclass
+class Point:
+  x:int
+  y:int
+
+
+class NestedEndpoint(Endpoint):
+  max_body_bytes = 1024
+  point:Point
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.point}')
+
+
+class NestedListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  points:list[Point]
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.points}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: nested dataclass field filled from JSON body.'
+  req = _make_request(media_type='application/json', body=b'{"point":{"x":1,"y":2}}')
+  ep = NestedEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Point(1, 2), ep.point)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[dataclass] field filled from JSON body.'
+  req = _make_request(media_type='application/json', body=b'{"points":[{"x":1,"y":2},{"x":3,"y":4}]}')
+  ep = NestedListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val([Point(1, 2), Point(3, 4)], ep.points)
+
+
+# List fields.
+
+
+
+class OptionalListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  tags:list[str]|None
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.tags}')
+
+
+def _urlencoded_request(body:str) -> Request:
+  return _make_request(media_type='application/x-www-form-urlencoded', body=body.encode())
+
+
+def _multipart_request(boundary:str, *parts:bytes) -> Request:
+  b = boundary.encode()
+  body = b''
+  for part in parts:
+    body += b'--' + b + b'\r\n' + part + b'\r\n'
+  body += b'--' + b + b'--\r\n'
+  return _make_request(media_type=f'multipart/form-data; boundary={boundary}', body=body)
+
+
+def endpoint_body_fields(cls:type[Endpoint], body:str) -> dict[str,Any]:
+  'Construct an endpoint with a urlencoded body, prepare it, and return the populated field values.'
+  req = _urlencoded_request(body)
+  ep = cls(req, path_params={})
+  ep.prepare(req)
+  return {k: getattr(ep, k) for k in ep._fields}
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str] field filled from urlencoded body with multiple values.'
+  result = endpoint_body_fields(ListEndpoint, 'tags=a&tags=b&tags=c&counts=1&counts=2')
+  utest_val(['a', 'b', 'c'], result['tags'])
+  utest_val([1, 2], result['counts'])
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str]|None field with values present.'
+  result = endpoint_body_fields(OptionalListEndpoint, 'tags=x&tags=y')
+  utest_val(['x', 'y'], result['tags'])
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str]|None field absent from body is None.'
+  result = endpoint_body_fields(OptionalListEndpoint, '')
+  utest_val(None, result['tags'])
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str] required but not submitted raises BadRequestError.'
+  req = _urlencoded_request('')
+  ep = ListEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list field same name from query and body raises BadRequestError.'
+  req = _make_request(query=dict(tags='a'), media_type='application/x-www-form-urlencoded', body=b'tags=b&counts=1')
+  ep = ListEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: scalar field receiving multiple values raises BadRequestError.'
+  req = _urlencoded_request('name=a&name=b')
+  ep = BodyEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+# UploadedFile fields.
+
+class UploadedFileEndpoint(Endpoint):
+  max_body_bytes = 4096
+  file:UploadedFile
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.file.filename}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: UploadedFile field filled from multipart body.'
+  part = b'Content-Disposition: form-data; name="file"; filename="hello.txt"\r\nContent-Type: application/octet-stream\r\n\r\nhello'
+  req = _multipart_request('boundary123', part)
+  ep = UploadedFileEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val('hello.txt', ep.file.filename)
+  utest_val(b'hello', ep.file.data)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: UploadedFile field raises BadRequestError when given a string value.'
+  req = _urlencoded_request('file=not-a-file')
+  ep = UploadedFileEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: UploadedFile field rejects a JSON dict with matching keys (prefigure guard).'
+  body = b'{"file":{"field_name":"file","filename":"x.txt","data":"hi","content_type":"text/plain"}}'
+  req = _make_request(media_type='application/json', body=body)
+  ep = UploadedFileEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+class MultiFileEndpoint(Endpoint):
+  max_body_bytes = 8192
+  files:list[UploadedFile]
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.files}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[UploadedFile] field filled from multiple multipart file parts.'
+  part_a = b'Content-Disposition: form-data; name="files"; filename="a.txt"\r\nContent-Type: text/plain\r\n\r\nAAA'
+  part_b = b'Content-Disposition: form-data; name="files"; filename="b.txt"\r\nContent-Type: text/plain\r\n\r\nBBB'
+  req = _multipart_request('boundary123', part_a, part_b)
+  ep = MultiFileEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(['a.txt', 'b.txt'], [f.filename for f in ep.files])
+  utest_val([b'AAA', b'BBB'], [f.data for f in ep.files])
+
+
+class MixedMultipartEndpoint(Endpoint):
+  max_body_bytes = 8192
+  note:str
+  file:UploadedFile
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.note}:{self.file.filename}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: multipart body fills both text and file fields.'
+  text_part = b'Content-Disposition: form-data; name="note"\r\n\r\nhello'
+  file_part = b'Content-Disposition: form-data; name="file"; filename="f.bin"\r\nContent-Type: application/octet-stream\r\n\r\n\x00\x01'
+  req = _multipart_request('boundary123', text_part, file_part)
+  ep = MixedMultipartEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val('hello', ep.note)
+  utest_val('f.bin', ep.file.filename)
+  utest_val(b'\x00\x01', ep.file.data)
+
+
+# _body_field mode: the whole parsed body fills a single named field.
+
+class ListBodyFieldEndpoint(Endpoint):
+  max_body_bytes = 1024
+  _body_field = 'payload'
+  payload:list[int]
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.payload}')
+
+
+class IntBodyFieldEndpoint(Endpoint):
+  max_body_bytes = 1024
+  _body_field = 'payload'
+  payload:int
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.payload}')
+
+
+class PointBodyFieldEndpoint(Endpoint):
+  max_body_bytes = 1024
+  _body_field = 'payload'
+  payload:Point
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.payload}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: _body_field fills a list field from a JSON array body.'
+  req = _make_request(media_type='application/json', body=b'[1,2,3]')
+  ep = ListBodyFieldEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val([1, 2, 3], ep.payload)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: _body_field fills a scalar field from a JSON scalar body.'
+  req = _make_request(media_type='application/json', body=b'42')
+  ep = IntBodyFieldEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(42, ep.payload)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: _body_field fills a dataclass field from a JSON object body.'
+  req = _make_request(media_type='application/json', body=b'{"x":1,"y":2}')
+  ep = PointBodyFieldEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Point(1, 2), ep.payload)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: _body_field fills a dataclass field from a urlencoded body.'
+  req = _urlencoded_request('x=1&y=2')
+  ep = PointBodyFieldEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Point(1, 2), ep.payload)
+
+
+class MixedBodyFieldEndpoint(Endpoint):
+  max_body_bytes = 1024
+  _body_field = 'payload'
+  payload:Point
+  label:str
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.label}:{self.payload}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: _body_field endpoint still fills other fields from query params.'
+  req = _make_request(query=dict(label='a'), media_type='application/json', body=b'{"x":1,"y":2}')
+  ep = MixedBodyFieldEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val('a', ep.label)
+  utest_val(Point(1, 2), ep.payload)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: query param sharing the _body_field name raises duplicate error at prepare.'
+  req = _make_request(query=dict(payload='1'), media_type='application/json', body=b'2')
+  ep = IntBodyFieldEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+def _make_bad_body_field_endpoint() -> type[Endpoint]:
+  class BadBodyFieldEndpoint(Endpoint):
+    _body_field = 'payload'
+    other:int
+    def handle_request(self, request:Request) -> Response:
+      return Response(body='')
+  return BadBodyFieldEndpoint
+
+
+# Class definition raises when _body_field does not name a declared field.
+utest_exc(TypeError, _make_bad_body_field_endpoint)
+
+
+# _body_field with a custom Transtructor: a selector chooses a concrete subtype from the top-level body.
+# This is the motivating case for _body_field: custom interpretation of the whole body as one object.
+
+@dataclass
+class Shape:
+  kind:str
+
+
+@dataclass
+class Circle(Shape):
+  radius:int
+
+
+@dataclass
+class Rect(Shape):
+  w:int
+  h:int
+
+
+shape_transtructor = Transtructor()
+
+@shape_transtructor.selector(Shape)
+def _select_shape(static_type:type, val:Any, ctx:Any) -> type:
+  match val:
+    case {'kind': 'circle'}: return Circle
+    case {'kind': 'rect'}: return Rect
+    case _: return static_type
+
+
+class ShapeBodyEndpoint(Endpoint):
+  max_body_bytes = 1024
+  _body_field = 'shape'
+  _converters = {'shape': lambda raw: shape_transtructor.transtruct(Shape, raw)}
+  shape:Shape
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.shape}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: _body_field with a selector Transtructor constructs the concrete subtype.'
+  req = _make_request(media_type='application/json', body=b'{"kind":"circle","radius":3}')
+  ep = ShapeBodyEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Circle(kind='circle', radius=3), ep.shape)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: _body_field with a selector Transtructor constructs an alternate subtype.'
+  req = _make_request(media_type='application/json', body=b'{"kind":"rect","w":2,"h":3}')
+  ep = ShapeBodyEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Rect(kind='rect', w=2, h=3), ep.shape)
+
+
+# Per-class transtructor customization via the prefigure/selector classmethod decorators.
+
+class PrefiguredPointEndpoint(Endpoint):
+  max_body_bytes = 1024
+  point:Point
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.point}')
+
+
+@PrefiguredPointEndpoint.prefigure(Point)
+def _prefigure_point(cls:type, val:Any, ctx:Any) -> Any:
+  if isinstance(val, str):
+    x, _, y = val.partition(',')
+    return {'x': x, 'y': y}
+  return val
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: per-class prefigure reshapes a string into a Point.'
+  req = _make_request(media_type='application/json', body=b'{"point":"3,4"}')
+  ep = PrefiguredPointEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Point(3, 4), ep.point)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: per-class prefigure does not affect other endpoints using the same type.'
+  req = _make_request(media_type='application/json', body=b'{"point":"3,4"}')
+  ep = NestedEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+class ShapeSelectorEndpoint(Endpoint):
+  max_body_bytes = 1024
+  _body_field = 'shape'
+  shape:Shape
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.shape}')
+
+
+@ShapeSelectorEndpoint.selector(Shape)
+def _select_shape_for_endpoint(static_type:type, val:Any, ctx:Any) -> type:
+  match val:
+    case {'kind': 'circle'}: return Circle
+    case {'kind': 'rect'}: return Rect
+    case _: return static_type
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: per-class selector constructs the concrete subtype from the body.'
+  req = _make_request(media_type='application/json', body=b'{"kind":"rect","w":4,"h":5}')
+  ep = ShapeSelectorEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Rect(kind='rect', w=4, h=5), ep.shape)
+
+
+# Customization is mediated: not on Endpoint itself, and not after a class has handled a request.
+
+utest_exc(TypeError, Endpoint.prefigure, Point)
+utest_exc(TypeError, Endpoint.selector, Point)
+
+
+class LateCustomizationEndpoint(Endpoint):
+  n:int
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.n}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: customizing after the class has handled a request raises TypeError.'
+  req = _make_request(query=dict(n='1'))
+  ep = LateCustomizationEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(1, ep.n)
+  utest_exc(TypeError, LateCustomizationEndpoint.prefigure, Point)

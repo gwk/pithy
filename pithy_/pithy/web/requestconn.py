@@ -6,6 +6,19 @@ from typing import Iterator
 type AddrPair = tuple[str,int]
 
 
+class BodyAlreadyReadError(Exception):
+  'Raised when the request body has already been read.'
+
+
+class BodyTooLargeError(Exception):
+  'Raised when the request body is larger than the maximum allowed size.'
+
+  def __init__(self, *, length:int, max_bytes:int) -> None:
+    super().__init__(f'{length=}; {max_bytes=}.')
+    self.length = length
+    self.max_bytes = max_bytes
+
+
 
 class RequestConn:
   '''
@@ -57,18 +70,22 @@ class BytesConn(RequestConn):
     self.content_length = len(body)
     self.body = body
 
+  def _check_size(self, max_bytes:int) -> None:
+    if len(self.body) > max_bytes: raise BodyTooLargeError(length=len(self.body), max_bytes=max_bytes)
+
   def read_some(self, max_bytes:int) -> bytes:
-    del max_bytes
+    self._check_size(max_bytes)
     return self.body
 
   def read_body(self, max_bytes:int) -> bytes:
-    del max_bytes
+    self._check_size(max_bytes)
     return self.body
 
   def read_body_to_file_path(self, max_bytes:int, file_path:str='') -> str:
-    del max_bytes
+    self._check_size(max_bytes)
     return file_path
 
   def stream_body(self, max_bytes:int, chunk_size:int=16_384) -> Iterator[bytes]:
-    del max_bytes, chunk_size
+    del chunk_size
+    self._check_size(max_bytes)
     yield self.body

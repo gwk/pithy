@@ -5,6 +5,12 @@ from .request import Request
 from .response import Response
 
 
+def _fmt_param_val(v:object) -> str:
+  'Format a scalar-or-list param value, using str() for each element so UploadedFile renders via __str__.'
+  if isinstance(v, list): return ', '.join(str(el) for el in v)
+  return str(v)
+
+
 class EchoApp(WebApp):
 
   def handle_request(self, request:Request) -> Response:
@@ -17,7 +23,7 @@ class EchoApp(WebApp):
       case 'application/x-www-form-urlencoded':
         params = request.parse_urlencoded(max_bytes=16_384)
         if params:
-          req_body_str = '\n'.join(f'{k}: {v}' for k, vs in params.items() for v in vs)
+          req_body_str = '\n'.join(f'{k}: {_fmt_param_val(vs)}' for k, vs in params.items())
       case 'application/json':
         data = request.parse_json(max_bytes=16_384)
         # TODO: use a nicer json renderer implemented in pithy.json.render.
@@ -29,14 +35,7 @@ class EchoApp(WebApp):
       case 'multipart/form-data':
         parts = request.parse_multipart(max_bytes=16_384)
         if parts:
-          part_lines = []
-          for k, vs in parts.items():
-            for v in vs:
-              if isinstance(v, str):
-                part_lines.append(f'{k}: {v}')
-              else:
-                part_lines.append(f'{k}: {v.filename} ({v.content_type}, {len(v.data)} bytes)')
-          req_body_str = '\n'.join(part_lines)
+          req_body_str = '\n'.join(f'{k}: {_fmt_param_val(vs)}' for k, vs in parts.items())
       case _:
         raw = request.read_body(max_bytes=16_384)
         if raw: req_body_str = f'[unknown content type: {request.content_type}, {len(raw)} bytes]'

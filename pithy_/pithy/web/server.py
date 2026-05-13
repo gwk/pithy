@@ -22,6 +22,7 @@ from ..http import http_method_bytes_to_strs, may_send_body
 from .app import WebApp
 from .env import web_host, web_port
 from .request import AddrPair, Request, RequestConn
+from .requestconn import BodyAlreadyReadError, BodyTooLargeError
 from .response import Response, ResponseError
 
 
@@ -30,19 +31,6 @@ BAD_REQUEST = HTTPStatus.BAD_REQUEST
 
 class HttpStateError(Exception):
   'Raised when H11 is in an unexpected state.'
-
-
-class BodyAlreadyReadError(Exception):
-  'Raised when the request body has already been read.'
-
-
-class BodyTooLargeError(Exception):
-  'Raised when the request body is larger than the maximum allowed size.'
-
-  def __init__(self, *, length:int, max_bytes:int) -> None:
-    super().__init__(f'{length=}; {max_bytes=}.')
-    self.length = length
-    self.max_bytes = max_bytes
 
 
 @dataclass(slots=True)
@@ -161,7 +149,6 @@ class WebServerRequestConn(RequestConn):
       self._bytes_read += len(event.data)
       if self._bytes_read > max_bytes:
         raise BodyTooLargeError(length=self._bytes_read, max_bytes=max_bytes)
-      self._bytes_read += len(event.data)
       return event.data
     self._was_body_read = True
     return b''
@@ -404,6 +391,10 @@ class WebServer:
 
       except ResponseError as exc:
         response = Response.from_error(exc, method=method)
+      except BodyTooLargeError:
+        response = (
+          Response(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
+          .set_connection_close()) # The body was not fully read, so the connection cannot be reused.
       except NotImplementedError as exc:
         logE('Not implemented.', exc=exc, client_addr=conn.client_addr, method=method, path=request.path)
         response = (
