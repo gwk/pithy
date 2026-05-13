@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from enum import Enum
 from http import HTTPStatus
 from typing import Any
@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 from pithy.web.endpoint import Endpoint
 from pithy.web.errors import ResponseError
-from pithy.web.request import Request
+from pithy.web.request import Request, UploadedFile
 from pithy.web.requestconn import BytesConn
 from pithy.web.response import Response
 from utest import utest, utest_exc, utest_run, utest_val
@@ -60,6 +60,12 @@ class DatetimeEndpoint(Endpoint):
     return Response(body=f'{self.dt}')
 
 
+class TimeEndpoint(Endpoint):
+  t:time
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.t}')
+
+
 class BoolEndpoint(Endpoint):
   flag:bool
   def handle_request(self, request:Request) -> Response:
@@ -81,6 +87,7 @@ utest(dict(name='alice', tag='admin'), endpoint_fields, OptionalEndpoint, name='
 utest(dict(name='alice', tag=None), endpoint_fields, OptionalEndpoint, name='alice')
 utest(dict(d=date(2026, 3, 14)), endpoint_fields, DateEndpoint, d='2026-03-14')
 utest(dict(dt=datetime(2026, 3, 14, 12, 0)), endpoint_fields, DatetimeEndpoint, dt='2026-03-14T12:00:00')
+utest(dict(t=time(12, 30)), endpoint_fields, TimeEndpoint, t='12:30:00')
 
 # Error cases.
 utest_exc(ResponseError, endpoint_fields, IntEndpoint) # Missing required param.
@@ -232,3 +239,108 @@ def _() -> None:
   req = _make_request()
   ep = BodyEndpoint(req, path_params={})
   utest_exc(ResponseError, ep.prepare, req)
+
+
+# List fields.
+
+class ListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  tags: list[str]
+  counts: list[int]
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.tags},{self.counts}')
+
+
+class OptionalListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  tags: list[str]|None
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.tags}')
+
+
+def _urlencoded_request(body:str) -> Request:
+  return _make_request(media_type='application/x-www-form-urlencoded', body=body.encode())
+
+
+def _multipart_request(boundary:str, *parts:bytes) -> Request:
+  b = boundary.encode()
+  body = b''
+  for part in parts:
+    body += b'--' + b + b'\r\n' + part + b'\r\n'
+  body += b'--' + b + b'--\r\n'
+  return _make_request(media_type=f'multipart/form-data; boundary={boundary}', body=body)
+
+
+def endpoint_body_fields(cls:type[Endpoint], body:str) -> dict[str,Any]:
+  'Construct an endpoint with a urlencoded body, prepare it, and return the populated field values.'
+  req = _urlencoded_request(body)
+  ep = cls(req, path_params={})
+  ep.prepare(req)
+  return {k: getattr(ep, k) for k in ep._fields}
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str] field filled from urlencoded body with multiple values.'
+  result = endpoint_body_fields(ListEndpoint, 'tags=a&tags=b&tags=c&counts=1&counts=2')
+  utest_val(['a', 'b', 'c'], result['tags'])
+  utest_val([1, 2], result['counts'])
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str]|None field with values present.'
+  result = endpoint_body_fields(OptionalListEndpoint, 'tags=x&tags=y')
+  utest_val(['x', 'y'], result['tags'])
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str]|None field absent from body is None.'
+  result = endpoint_body_fields(OptionalListEndpoint, '')
+  utest_val(None, result['tags'])
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[str] required but not submitted raises BadRequestError.'
+  req = _urlencoded_request('')
+  ep = ListEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list field same name from query and body raises BadRequestError.'
+  req = _make_request(query=dict(tags='a'), media_type='application/x-www-form-urlencoded', body=b'tags=b&counts=1')
+  ep = ListEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+# UploadedFile fields.
+
+class UploadedFileEndpoint(Endpoint):
+  max_body_bytes = 4096
+  file:UploadedFile
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.file.filename}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: UploadedFile field filled from multipart body.'
+  part = b'Content-Disposition: form-data; name="file"; filename="hello.txt"\r\nContent-Type: application/octet-stream\r\n\r\nhello'
+  req = _multipart_request('boundary123', part)
+  ep = UploadedFileEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val('hello.txt', ep.file.filename)
+  utest_val(b'hello', ep.file.data)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: UploadedFile field raises BadRequestError when given a string value.'
+  req = _urlencoded_request('file=not-a-file')
+  ep = UploadedFileEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+

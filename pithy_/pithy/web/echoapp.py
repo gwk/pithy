@@ -17,7 +17,7 @@ class EchoApp(WebApp):
       case 'application/x-www-form-urlencoded':
         params = request.parse_urlencoded(max_bytes=16_384)
         if params:
-          req_body_str = '\n'.join(f'{k}: {v}' for k, vs in params.items() for v in vs)
+          req_body_str = '\n'.join(f'{k}: {vs}' for k, vs in params.items())
       case 'application/json':
         data = request.parse_json(max_bytes=16_384)
         # TODO: use a nicer json renderer implemented in pithy.json.render.
@@ -31,11 +31,7 @@ class EchoApp(WebApp):
         if parts:
           part_lines = []
           for k, vs in parts.items():
-            for v in vs:
-              if isinstance(v, str):
-                part_lines.append(f'{k}: {v}')
-              else:
-                part_lines.append(f'{k}: {v.filename} ({v.content_type}, {len(v.data)} bytes)')
+            part_lines.append(f'{k}: {vs}')
           req_body_str = '\n'.join(part_lines)
       case _:
         raw = request.read_body(max_bytes=16_384)

@@ -2,14 +2,17 @@
 
 import types
 from collections.abc import Mapping
-from datetime import date, datetime
+from dataclasses import dataclass
+from datetime import date, datetime, time
 from http import HTTPStatus
 from typing import Any, ClassVar, get_args, get_origin, get_type_hints
+
+from pithy.type_utils import is_a
 
 from ..transtruct import bool_str_vals
 from .errors import BadRequestError
 from .handler import RequestHandler
-from .request import Request
+from .request import Request, UploadedFile
 from .response import Response
 
 
@@ -21,6 +24,8 @@ class Endpoint(RequestHandler):
   The field types determine how raw values are converted.
 
   Use `T|None` to mark a field as optional (None if the parameter is absent).
+  Use `list[T]` to collect multiple values for one key (e.g. multi-select).
+  Use `list[T]|None` for an optional multi-value field (None if no values are submitted).
 
   To add custom type converters, define `_converters` as a class variable mapping types to callables:
     class MyEndpoint(Endpoint):
@@ -69,11 +74,15 @@ class Endpoint(RequestHandler):
     for name, hint in hints.items():
       if name.startswith('_'): continue
       base_type, is_optional = _unwrap_optional(hint)
+      inner = base_type if base_type is not None else hint
+      is_list = get_origin(inner) is list
+      if is_list:
+        base_type = get_args(inner)[0]
       if base_type is None: continue
       converter = converters.get(base_type)
       if converter is None:
         raise TypeError(f'{cls.__qualname__}.{name}: no converter registered for type {base_type!r}.')
-      fields[name] = _FieldInfo(name=name, type_=base_type, is_optional=is_optional, converter=converter)
+      fields[name] = _FieldInfo(name=name, type=base_type, is_optional=is_optional, is_list=is_list, converter=converter)
     cls._fields = fields
 
 
@@ -128,6 +137,20 @@ class Endpoint(RequestHandler):
     if field is None:
       raise BadRequestError(f'Unknown parameter {name!r} in {source}.')
     self._fill_param_sources[name] = source
+
+    # list fields
+    if field.is_list:
+      if not isinstance(raw, list): raw = [raw]
+      if is_a(raw, list[field.type]):  # type: ignore[name-defined]
+        setattr(self, field.name, raw)
+        return
+      try:
+        setattr(self, field.name, [field.converter(r) for r in raw])
+      except (ValueError, TypeError) as e:
+        raise BadRequestError(f'Invalid value for parameter {name!r}: {raw!r}.') from e
+      return
+
+    # scalar fields
     if isinstance(raw, field.type):
       setattr(self, field.name, raw)
       return
@@ -137,15 +160,14 @@ class Endpoint(RequestHandler):
       raise BadRequestError(f'Invalid value for parameter {name!r}: {raw!r}.') from e
 
 
+@dataclass(slots=True, frozen=True)
 class _FieldInfo:
   'Metadata for a single declared field on an Endpoint subclass.'
-  __slots__ = ('name', 'type', 'is_optional', 'converter')
-
-  def __init__(self, name:str, type_:type, is_optional:bool, converter:Any) -> None:
-    self.name = name
-    self.type = type_
-    self.is_optional = is_optional
-    self.converter = converter
+  name: str
+  type: type
+  is_optional: bool
+  is_list: bool
+  converter: Any
 
 
 def _unwrap_optional(hint:Any) -> tuple[type|None,bool]:
@@ -167,11 +189,17 @@ def _parse_bool(s:str) -> bool:
   except KeyError: raise ValueError(f'Invalid bool value: {s!r}.')
 
 
+def _require_uploaded_file(x:Any) -> UploadedFile:
+  raise ValueError(f'Expected a file upload, got {type(x).__name__!r}.')
+
+
 _default_converters:dict[type,Any] = {
   str: str,
   int: int,
   float: float,
   bool: _parse_bool,
   date: date.fromisoformat,
+  time: time.fromisoformat,
   datetime: datetime.fromisoformat,
+  UploadedFile: _require_uploaded_file,
 }
