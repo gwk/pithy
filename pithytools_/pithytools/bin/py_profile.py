@@ -9,8 +9,7 @@ from pstats import Stats
 from sys import argv, path as sys_path, stderr, stdout
 from typing import Any, Iterable, TextIO
 
-from pithy.fs import path_for_cmd
-from pithy.path import path_rel_to_current_or_abs
+from pithy.fs import path_for_cmd, path_rel_to_current_or_abs
 
 
 def main() -> None:

@@ -4,8 +4,7 @@
 from argparse import ArgumentParser
 from os import environ, getcwd
 
-from pithy.fs import make_dirs, walk_files
-from pithy.path import path_rel_to_dir
+from pithy.fs import make_dirs, path_rel_to_dir, walk_files
 from pithy.task import runC
 
 

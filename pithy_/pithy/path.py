@@ -1,11 +1,15 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re as _re
-from itertools import zip_longest as _zip_longest
 from os import fspath as _fspath, PathLike
-from os.path import (abspath as _abspath, basename as _basename, commonpath as _commonpath, dirname as _dirname,
-  expanduser as _expand_user, isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split)
+from os.path import (basename as _basename, commonpath as _commonpath, dirname as _dirname, expanduser as _expand_user,
+  isabs as _isabs, join as _join, realpath as _realpath, relpath as _relpath, split as _split)
 
+
+'''
+The path module defines those operations on paths that are pure string operations.
+For path operations that require systems calls, see pithy.filestatus and pithy.fs.
+'''
 
 Path = str|PathLike
 PathOrFd = Path|int
@@ -14,20 +18,7 @@ PathOrFd = Path|int
 class AbsolutePathError(Exception): pass
 class MixedAbsoluteAndRelativePathsError(Exception): pass
 class NotAPathError(Exception): pass
-class PathIsNotDescendantError(Exception): pass
-
-
-def abs_or_norm_path(path:Path, make_abs: bool) -> str:
-  'Return the absolute path if make_abs is True. If make_abs is False, return a normalized path.'
-  return abs_path(path) if make_abs else norm_path(path)
-
-
-def abs_path(path:Path) -> str:
-  'Return the absolute path corresponding to `path`.'
-  return _abspath(norm_path(path))
-
-
-def current_dir() -> str: return abs_path('.')
+class PathIsNotDescendentError(Exception): pass
 
 
 def executable_dir() -> str:
@@ -111,9 +102,6 @@ def norm_path(path:Path) -> str:
   return (lead_slash + '/'.join(comps)) or '.'
 
 
-def parent_dir() -> str: return abs_path('..')
-
-
 def path_common_prefix(*paths:Path) -> str:
   'Return the common path prefix for a sequence of paths.'
   try: return _commonpath([str_path(p) for p in paths])
@@ -139,7 +127,7 @@ def path_descendants(start_path:Path, end_path:Path, *, include_start:bool=True,
   if prefix == comps:
     return (str_path(start_path),) if include_start or include_end else ()
   if prefix != comps[:len(prefix)]:
-    raise PathIsNotDescendantError(end_path, start_path)
+    raise PathIsNotDescendentError(end_path, start_path)
   start_i = len(prefix) + (0 if include_start else 1)
   end_i = len(comps) + (1 if include_end else 0)
   return tuple(path_join(*comps[:i]) for i in range(start_i, end_i))
@@ -197,18 +185,6 @@ def path_name_stem_sans_exts(path:Path) -> str:
   return path_stem_sans_exts(path_name(path))
 
 
-def path_rel_to_dir(path:Path, dir:Path) -> str:
-  comps:list[str] = []
-  parent_comps = 0
-  for p, r in _zip_longest(path_split(abs_path(path)), path_split(abs_path(dir))):
-    if not parent_comps and p == r: continue
-    if p is not None: comps.append(p)
-    if r is not None: parent_comps += 1
-  comps = ['..']*parent_comps + comps
-  if not comps: return '.'
-  return path_join(*comps)
-
-
 def path_rel_to_ancestor(path:Path, ancestor:str, dot:bool=False) -> str:
   '''
   Return the path relative to `ancestor`.
@@ -220,28 +196,10 @@ def path_rel_to_ancestor(path:Path, ancestor:str, dot:bool=False) -> str:
   prefix = path_split(ancestor)
   if comps == prefix:
     if dot: return '.'
-    raise PathIsNotDescendantError(path, ancestor)
+    raise PathIsNotDescendentError(path, ancestor)
   if prefix == comps[:len(prefix)]:
     return path_join(*comps[len(prefix):])
-  raise PathIsNotDescendantError(path, ancestor)
-
-
-def path_rel_to_ancestor_or_abs(path:Path, ancestor:str, dot:bool=False) -> str:
-  '''
-  Return the path relative to `ancestor` if `path` is a descendant,
-  or else the corresponding absolute path.
-  `dot` has the same effect as in `path_rel_to_ancestor`.
-  '''
-  ap = abs_path(path)
-  aa = abs_path(ancestor)
-  try:
-    return path_rel_to_ancestor(ap, aa, dot=dot)
-  except PathIsNotDescendantError:
-    return ap
-
-
-def path_rel_to_current_or_abs(path:Path, dot:bool=False) -> str:
-  return path_rel_to_ancestor_or_abs(path, current_dir(), dot=dot)
+  raise PathIsNotDescendentError(path, ancestor)
 
 
 def path_split(path:Path) -> list[str]:

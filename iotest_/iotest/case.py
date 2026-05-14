@@ -5,11 +5,13 @@ import re
 import shlex
 from itertools import zip_longest
 from string import Template
+from sys import stdout
 from typing import Any, Callable, cast, NamedTuple, Pattern, TextIO
 
-from pithy.fs import abs_path, path_dir, path_exists, path_join, path_name
-from pithy.io import errL, outL, read_from_path, stdout, writeLSSL
-from pithy.path import path_stem_sans_exts
+from pithy.filestatus import path_exists
+from pithy.fs import abs_path
+from pithy.io import errL, outL, read_from_path, writeLSSL
+from pithy.path import path_dir, path_join, path_name, path_stem_sans_exts
 from pithy.type_utils import (is_bool, is_dict, is_dict_of_str, is_int, is_list, is_list_of_str, is_pos_int, is_set,
   is_set_of_str, is_str, is_str_or_list)
 

@@ -12,14 +12,16 @@ from warnings import filterwarnings
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
+from pithy.exceptions import Timeout
 from pithy.filenamefmt import FilenameFormatterError, fnf_str_has_formatter, regex_for_fnf_str
-from pithy.fs import (copy_path, file_status, find_project_dir, is_dir, is_python_file, list_dir, make_dirs, make_link,
-  open_new, path_exists, remove_dir_contents, remove_file_if_exists)
+from pithy.filestatus import file_status, is_dir, path_exists
+from pithy.fs import (abs_path, copy_path, find_project_dir, is_python_file, list_dir, make_dirs, make_link, open_new,
+  path_rel_to_current_or_abs, remove_dir_contents, remove_file_if_exists)
 from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_path, write_to_path
 from pithy.iterable import fan_by_pred
-from pithy.path import (abs_path, norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_exts, path_join,
-  path_name_stem_sans_exts, path_rel_to_current_or_abs, path_stem_sans_exts, rel_path, split_dir_name)
-from pithy.task import run, runC, TaskLaunchError, Timeout, UnexpectedExit
+from pithy.path import (norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_exts, path_join,
+  path_name_stem_sans_exts, path_stem_sans_exts, rel_path, split_dir_name)
+from pithy.task import run, runC, TaskLaunchError, UnexpectedExit
 
 from ..case import Case, file_expectation_fns, FileExpectation, ParConfig, TestCaseError
 from ..ctx import Ctx

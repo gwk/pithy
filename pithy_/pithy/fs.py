@@ -4,16 +4,19 @@ import os as _os
 import re as _re
 import stat as _stat
 import time as _time
-from os import DirEntry, get_exec_path as _get_exec_path, getcwd as _getcwd, mkdir as _mkdir, scandir as _scandir
-from os.path import expanduser as _expanduser, realpath as _realpath
+from itertools import zip_longest
+from os import (DirEntry, fspath as _fspath, get_exec_path as _get_exec_path, getcwd as _getcwd, mkdir as _mkdir,
+  scandir as _scandir)
+from os.path import abspath as _abspath, expanduser as _expanduser, realpath as _realpath
 from pathlib import Path as _Path
 from sys import argv
 from typing import Any, Callable, cast, Iterable, Iterator, TextIO
 
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
   file_status, is_dir, is_file, is_file_executable_by_owner, is_link, is_link_to_dir, is_link_to_file, is_mount, path_exists)
-from .path import (abs_or_norm_path, abs_path, is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, Path,
-  path_descendants, path_dir, path_ext, path_join, path_name, PathOrFd, rel_path, split_dir_name, str_path)
+from .path import (is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, Path, path_descendants, path_dir, path_ext,
+  path_join, path_name, path_rel_to_ancestor, path_split, PathIsNotDescendentError, PathOrFd, rel_path, split_dir_name,
+  str_path)
 from .util import memoize
 
 
@@ -23,6 +26,16 @@ _convenience_exports = ( file_ctime, file_inode, file_size, file_stat, is_file_e
 
 class PathAlreadyExists(Exception): pass
 class PathHasNoDirError(Exception): pass
+
+
+def abs_or_norm_path(path:Path, make_abs: bool) -> str:
+  'Return the absolute path if make_abs is True. If make_abs is False, return a normalized path.'
+  return abs_path(path) if make_abs else norm_path(path)
+
+
+def abs_path(path:Path) -> str:
+  'Return the absolute path corresponding to `path`.'
+  return _abspath(norm_path(path))
 
 
 def add_file_execute_permissions(path:PathOrFd, *, follow:bool) -> None:
@@ -260,6 +273,36 @@ def path_for_cmd(cmd:str) -> str|None:
     for entry in entries:
       if entry.name == cmd and entry.is_file(follow_symlinks=True): return path_join(dir, cmd)
   return None
+
+
+def path_rel_to_ancestor_or_abs(path:Path, ancestor:str, dot:bool=False) -> str:
+  '''
+  Return the path relative to `ancestor` if `path` is a descendant,
+  or else the corresponding absolute path.
+  `dot` has the same effect as in `path_rel_to_ancestor`.
+  '''
+  ap = abs_path(path)
+  aa = abs_path(ancestor)
+  try:
+    return path_rel_to_ancestor(ap, aa, dot=dot)
+  except PathIsNotDescendentError:
+    return ap
+
+
+def path_rel_to_current_or_abs(path:Path, dot:bool=False) -> str:
+  return path_rel_to_ancestor_or_abs(path, current_dir(), dot=dot)
+
+
+def path_rel_to_dir(path:Path, dir:Path) -> str:
+  comps:list[str] = []
+  parent_comps = 0
+  for p, r in zip_longest(path_split(abs_path(path)), path_split(abs_path(dir))):
+    if not parent_comps and p == r: continue
+    if p is not None: comps.append(p)
+    if r is not None: parent_comps += 1
+  comps = ['..']*parent_comps + comps
+  if not comps: return '.'
+  return path_join(*comps)
 
 
 def product_needs_update(product:PathOrFd, source:PathOrFd) -> bool:

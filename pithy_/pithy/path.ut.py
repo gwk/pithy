@@ -2,17 +2,10 @@
 
 from random import choice as rand_choice, seed as rand_seed
 
-from pithy.path import (abs_or_norm_path, abs_path, insert_path_stem_suffix, is_norm_path, is_path_abs, is_sub_path, norm_path,
-  path_descendants, path_rel_to_dir, PathIsNotDescendantError, split_stem_ext, split_stem_multi_ext)
+from pithy.path import (insert_path_stem_suffix, is_norm_path, is_path_abs, is_sub_path, norm_path, path_descendants,
+  PathIsNotDescendentError, split_stem_ext, split_stem_multi_ext)
 from utest import utest, utest_exc
 
-
-# abs_or_norm_path normalizes inputs.
-utest('.', abs_or_norm_path, './', False)
-utest('/', abs_or_norm_path, '//', True)
-
-# abs_path normalizes inputs.
-utest('/', abs_path, '//')
 
 utest('a-s.ext', insert_path_stem_suffix, 'a.ext', '-s')
 
@@ -113,7 +106,7 @@ for i in range(1<<10):
 
 
 # path_descendants.
-utest_exc(PathIsNotDescendantError, path_descendants, 'a', 'b')
+utest_exc(PathIsNotDescendentError, path_descendants, 'a', 'b')
 
 utest(('a',), path_descendants, 'a', 'a')
 utest(('a',), path_descendants, 'a', 'a', include_start=False)
@@ -124,13 +117,3 @@ utest(('a', 'a/b', 'a/b/c'), path_descendants, 'a/', 'a/b/c')
 utest(('a/b', 'a/b/c'), path_descendants, 'a/', 'a/b/c', include_start=False)
 utest(('a', 'a/b'), path_descendants, 'a/', 'a/b/c', include_end=False)
 utest(('a/b',), path_descendants, 'a/', 'a/b/c', include_start=False, include_end=False)
-
-# path_rel_to_dir.
-utest('.', path_rel_to_dir, '', '')
-utest('a', path_rel_to_dir, 'a', '')
-utest('a', path_rel_to_dir, 'a', '.')
-
-utest('b', path_rel_to_dir, 'a/b', 'a/')
-
-utest('b', path_rel_to_dir, '/a/b', '/a/')
-utest('../b', path_rel_to_dir, '/a/b', '/a/c')

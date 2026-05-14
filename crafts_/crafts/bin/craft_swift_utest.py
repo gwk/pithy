@@ -9,10 +9,10 @@ from argparse import ArgumentParser
 from typing import Iterator, NamedTuple
 
 from crafts import CraftConfig, load_craft_config
-from pithy.fs import make_dirs, remove_dir_contents, walk_files
+from pithy.fs import make_dirs, path_rel_to_dir, remove_dir_contents, walk_files
 from pithy.io import errL, errSL, outL
 from pithy.iterable import fan_by_key_fn
-from pithy.path import is_sub_path, path_ext, path_join, path_name, path_rel_to_dir, path_stem, rel_path, replace_first_dir
+from pithy.path import is_sub_path, path_ext, path_join, path_name, path_stem, rel_path, replace_first_dir
 from pithy.swift.demangle import parse_nm_line
 from pithy.task import run, runC, runCO
 from yaml import safe_load as load_yaml

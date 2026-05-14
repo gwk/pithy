@@ -8,8 +8,9 @@ from shutil import copyfile
 from typing import NoReturn
 
 from pithy.diff import calc_diff
-from pithy.fs import is_file, path_exists
-from pithy.path import norm_path, path_dir, path_join, path_rel_to_dir
+from pithy.filestatus import is_file, path_exists
+from pithy.fs import path_rel_to_dir
+from pithy.path import norm_path, path_dir, path_join
 
 
 pat_version = '0'
