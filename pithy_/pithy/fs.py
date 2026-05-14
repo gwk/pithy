@@ -203,6 +203,11 @@ def make_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
 
 
 def make_parent_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
+  '''
+  Note: paths ending with '/' are rejected due to the semantics of path_dir().
+  '''
+  path = _fspath(path)
+  if path.endswith('/'): raise ValueError("Path ending with '/' is ambiguous: {path!r}")
   dir = path_dir(path)
   if dir: make_dirs(dir, exist_ok=exist_ok)
 
