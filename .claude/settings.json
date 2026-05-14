@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(echo:*)",
+      "Bash(find:*)",
       "Bash(git:*)",
+      "Bash(grep:*)",
       "Bash(iotest:*)",
       "Bash(just check:*)",
       "Bash(just isort:*)",
@@ -12,7 +14,8 @@
       "Bash(just utest:*)",
       "Bash(mypy:*)",
       "Bash(python -m utest:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "WebSearch"
     ]
   },
   "sandbox": {
