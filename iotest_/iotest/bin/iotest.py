@@ -23,8 +23,9 @@ from pithy.path import (norm_path, path_descendants, path_dir, path_dir_or_dot, 
   path_name_stem_sans_exts, path_stem_sans_exts, rel_path, split_dir_name)
 from pithy.task import run, runC, TaskLaunchError, UnexpectedExit
 
-from ..case import Case, file_expectation_fns, FileExpectation, ParConfig, TestCaseError
+from ..case import Case, FileExpectation, ParConfig, TestCaseError
 from ..ctx import Ctx
+from ..file_expectation import file_expectation_fns
 
 
 filterwarnings('error', category=SyntaxWarning) # Fail on SyntaxWarning.
