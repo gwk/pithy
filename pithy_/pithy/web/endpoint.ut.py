@@ -204,6 +204,13 @@ class BodyEndpoint(Endpoint):
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.name},{self.tag}')
 
+class ListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  tags: list[str]
+  counts: list[int]
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.tags},{self.counts}')
+
 
 @utest_run
 def _() -> None:
@@ -241,14 +248,37 @@ def _() -> None:
   utest_exc(ResponseError, ep.prepare, req)
 
 
+# JSON body with non-string value types.
+
+@utest_run
+def _() -> None:
+  'Endpoint: prepare fills int field from JSON body with integer value.'
+  req = _make_request(media_type='application/json', body=b'{"id":3}')
+  ep = IntEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(3, ep.id)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: prepare fills list fields from JSON body with array values.'
+  req = _make_request(media_type='application/json', body=b'{"tags":["a","b"],"counts":[1,2]}')
+  ep = ListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(['a', 'b'], ep.tags)
+  utest_val([1, 2], ep.counts)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: prepare raises on nested dict value in JSON body.'
+  req = _make_request(media_type='application/json', body=b'{"name":{"first":"alice"}}')
+  ep = BodyEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
 # List fields.
 
-class ListEndpoint(Endpoint):
-  max_body_bytes = 1024
-  tags: list[str]
-  counts: list[int]
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.tags},{self.counts}')
 
 
 class OptionalListEndpoint(Endpoint):

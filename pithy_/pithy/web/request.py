@@ -4,7 +4,7 @@ import io
 from dataclasses import dataclass
 from functools import cached_property
 from http import HTTPStatus
-from typing import cast
+from typing import Any, cast
 from urllib.parse import parse_qsl
 
 from python_multipart import parse_form
@@ -12,7 +12,6 @@ from python_multipart.multipart import Field, File
 
 from ..http import http_methods
 from ..json import Json, parse_json
-from ..type_utils import is_a
 from .errors import BadRequestError, decode_or_bad_request
 from .requestconn import AddrPair, RequestConn
 from .response import ResponseError
@@ -139,16 +138,15 @@ class Request:
     return q
 
 
-  def body_params(self, max_bytes:int) -> dict[str,MultipartVal|list[MultipartVal]]:
+  def body_params(self, max_bytes:int) -> dict[str,Any]:
     'Parse and cache the request body based on media type and return a dict mapping parameter names to values.'
     match self.media_type:
       case 'application/x-www-form-urlencoded':
         return cast(dict[str,MultipartVal|list[MultipartVal]], self.parse_urlencoded(max_bytes=max_bytes))
       case 'application/json':
         data = self.parse_json(max_bytes=max_bytes)
-        # TODO: currently only string values are supported in JSON bodies; revisit if we want to support int/bool/nested types.
-        if not is_a(data, dict[str,str]): raise BadRequestError('Expected JSON object with string values in request body.')
-        return cast(dict[str,MultipartVal|list[MultipartVal]], data)
+        if isinstance(data, dict): return data
+        raise BadRequestError('Expected JSON object in request body.')
       case 'multipart/form-data':
         return self.parse_multipart(max_bytes=max_bytes)
       case _:

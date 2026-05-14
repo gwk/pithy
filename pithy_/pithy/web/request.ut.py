@@ -106,13 +106,6 @@ def _() -> None:
   utest_exc(BadRequestError, req.body_params, max_bytes=1024)
 
 
-@utest_run
-def _() -> None:
-  'body_params: JSON object with non-string value raises BadRequestError.'
-  req = _make_request('application/json', b'{"count":3}')
-  utest_exc(BadRequestError, req.body_params, max_bytes=1024)
-
-
 # parse_multipart
 
 @utest_run

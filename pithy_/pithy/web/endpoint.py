@@ -154,6 +154,9 @@ class Endpoint(RequestHandler):
     if isinstance(raw, field.type):
       setattr(self, field.name, raw)
       return
+    # Reject nested JSON objects; str() would silently stringify them rather than raising.
+    if isinstance(raw, dict):
+      raise BadRequestError(f'Invalid value for parameter {name!r}: nested objects are not supported.')
     try:
       setattr(self, field.name, field.converter(raw))
     except (ValueError, TypeError) as e:
