@@ -113,6 +113,12 @@ class Source(Generic[_Text]):
     self.newline_positions:list[int] = []
 
 
+  @staticmethod
+  def from_path(path:str) -> Source[str]:
+    with open(path) as f:
+      return Source(name=path, text=f.read())
+
+
   def update_newline_positions(self, pos:int|None=None) -> None:
     'Lazily update the newline positions array up to `pos`. `pos` must be less than or equal to the text length.'
     if pos is None: pos = len(self.text)
