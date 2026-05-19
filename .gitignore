@@ -12,5 +12,6 @@ _build/
 _misc/
 _repro.wu
 docs/_muck
+prompt.md
 todo.md
 typeshed
