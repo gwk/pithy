@@ -3,12 +3,13 @@
 from time import sleep
 from typing import Any, Iterable, Mapping, overload, Sequence
 
+from starlette.authentication import requires
 from starlette.background import BackgroundTask
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData, QueryParams
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection, Request
-from starlette.responses import HTMLResponse, Response
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
@@ -18,6 +19,12 @@ from ..html import HtmlNode
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
 from .static import pithy_web_static_dir_path
+
+
+_convenience_exports = (
+  requires,
+  RedirectResponse,
+)
 
 
 class ClientError(Exception):
