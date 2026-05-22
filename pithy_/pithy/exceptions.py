@@ -60,8 +60,8 @@ class print_traceback_and_suppress(AbstractContextManager, ContextDecorator):
   def __init__(self, *exceptions:type[BaseException]) -> None:
     self._exceptions = exceptions
 
-  def __enter__(self):
-    pass
+  def __enter__(self) -> print_traceback_and_suppress:
+    return self
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> bool:
     if exc_type is None: return False

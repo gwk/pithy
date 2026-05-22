@@ -25,7 +25,7 @@ class DeferSignals:
     self.deferred_signals.append(sig)
 
 
-  def __enter__(self):
+  def __enter__(self) -> DeferSignals:
     # Replace existing handlers with deferred handler.
     for sig in self.signals:
       prev_handler = register_signal_handler(sig, self.defer_signal) or SIG_DFL # use SIG_DFL instead of None.
@@ -34,7 +34,7 @@ class DeferSignals:
     return self
 
 
-  def __exit__(self, *args):
+  def __exit__(self, *args:Any) -> None:
     # Restore previous handlers.
     for sig, handler in self.previous_handlers.items():
       register_signal_handler(sig, handler)

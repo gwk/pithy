@@ -46,7 +46,7 @@ utest_seq([(0,1), (2,4), (5,9), (10,11)], int_tuple_ranges, [0, (2,4), range(5,7
 utest_seq([-1, -3], filtermap_with_mapping, [0, 1, 2, 3], {1: -1, 3: -3})
 
 @utest_run
-def test_fan_by_attr():
+def test_fan_by_attr() -> None:
   class Pair(NamedTuple):
     x:int
     y:int
@@ -94,8 +94,8 @@ utest_seq([(0.0, 0.1), (0.9, 1.0), (1.9, 2.0), (2.0, 2.1), (2.9, 3.0), (3.0, 4.0
   split_els, [(0.0, 0.1), (0.9, 1.0), (1.9, 2.1), (2.9, 4.1)], split=split_pair)
 
 
-def is_zero(i): return i == 0
-def is_one(i): return i == 1
+def is_zero(i:int) -> bool: return i == 0
+def is_one(i:int) -> bool: return i == 1
 
 utest_seq([], split_by_preds, [], is_zero)
 utest_seq([(False, [0, 0])], split_by_preds, [0, 0], is_zero, is_one)

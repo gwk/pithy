@@ -10,11 +10,12 @@ from copy import deepcopy
 from sys import stderr, stdout
 from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, tcgetattr,
   TCSADRAIN, TCSAFLUSH, TCSANOW, tcsetattr, TIOCGWINSZ, VMIN, VTIME)
+from typing import Any
 
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
-def window_size(f=stdout):
+def window_size(f:Any=stdout) -> tuple[int,int]:
   '''
   TODO: replace with shutil.get_terminal_size()?
   '''
@@ -62,7 +63,7 @@ class TermMode:
       if self.vtime <= 0: raise ValueError(f'delay must be 0 or greater than 0.1s; received: {delay}')
     self.alter_attrs()
 
-  def __enter__(self):
+  def __enter__(self) -> None:
     tcsetattr(self.fd, self.when, self.attrs)
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:

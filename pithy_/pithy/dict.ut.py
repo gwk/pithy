@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from typing import Callable
+
 from pithy.dict import (ConflictingValues, DefaultByKeyDict, dict_dag_inverse, dict_dag_inverse_with_all_keys, dict_list_append,
   dict_list_extend, dict_put, dict_set_defaults, dict_update_sets, idemput)
 from utest import utest, utest_exc
@@ -35,7 +37,7 @@ utest({'k': {1}}, dict_update_sets, {}, [('k',{1})])
 utest({'k': {1, 2}}, dict_update_sets, {'k':{1}}, {'k':{2}})
 
 
-def DefaultByKeyDict_test(factory, test_keys):
+def DefaultByKeyDict_test(factory:Callable[[int], int], test_keys:list[int]) -> DefaultByKeyDict[int,int]:
   d = DefaultByKeyDict(factory)
   for k in test_keys:
     d[k]

@@ -29,7 +29,7 @@ class Ref:
   text: Syntax
   target: Syntax|None
 
-  def __iter__(self):
+  def __iter__(self) -> Iterable[Syntax]:
     yield self.text
     if self.target: yield self.target
 

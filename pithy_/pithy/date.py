@@ -141,9 +141,9 @@ class DateRange(Sequence[Date]):
   def __getitem__(self, index:int) -> Date: ...
 
   @overload
-  def __getitem__(self, index:slice) -> Sequence[Date]: ...
+  def __getitem__(self, index:slice) -> tuple[Date,...]: ...
 
-  def __getitem__(self, index): return self._seq[index]
+  def __getitem__(self, index:int|slice) -> Date|tuple[Date,...]: return self._seq[index]
 
 
   def __iter__(self) -> Iterator[Date]: return iter(self._seq)

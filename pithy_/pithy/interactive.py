@@ -70,7 +70,7 @@ class Interpreter(InteractiveInterpreter):
     return input(prompt)
 
 
-def interact(banner=None, locals=None):
+def interact(banner:str='', locals:dict[str,Any]|None=None) -> None:
   if locals is None:
     stack = inspect.stack()
     parent_frame_info = stack[1]
@@ -83,7 +83,7 @@ def interact(banner=None, locals=None):
       rv = rv[:max_width-1] + '…'
     errSL(f'  {k:<16}: {rv}')
   interpreter = Interpreter(locals=locals)
-  interpreter.interact()
+  interpreter.interact(banner=banner)
 
 
 class ExitOnKeyboardInterrupt(ContextManager):

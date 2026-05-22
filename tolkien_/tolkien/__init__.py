@@ -119,7 +119,7 @@ class Source(Generic[_Text]):
       if self.text[i] == newline_char: self.newline_positions.append(i)
 
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'{self.__class__.__name__}({self.name!r}, text=<{type(self.text).__name__}[{len(self.text)}]>)'
 
 

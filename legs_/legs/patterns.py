@@ -160,10 +160,10 @@ class SeqPattern(StructPattern):
     return ChoicePattern.from_opts(reversed(incs))
 
   @property
-  def is_literal(self): return all(sub.is_literal for sub in self)
+  def is_literal(self) -> bool: return all(sub.is_literal for sub in self)
 
   @property
-  def literal_pattern(self): return ''.join(sub.literal_pattern for sub in self)
+  def literal_pattern(self) -> str: return ''.join(sub.literal_pattern for sub in self)
 
   @staticmethod
   def from_list(els:list[LegsPattern]) -> LegsPattern:

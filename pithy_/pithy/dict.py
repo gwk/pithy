@@ -225,7 +225,7 @@ class DefaultByKeyDict(dict[_K,_V]):
     self.default_factory = default_factory
     super().__init__(*args, **kwargs)
 
-  def __missing__(self, key):
+  def __missing__(self, key:_K) -> _V:
     val = self.default_factory(key)
     self[key] = val
     return val

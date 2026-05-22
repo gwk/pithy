@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from pithy.util import memoize, nt_items
 from utest import utest, utest_seq, utest_val
@@ -22,7 +22,7 @@ f1(0, 2)
 utest_val([(0, 1), (0, 2)], f_args, desc='@memoize call history')
 
 @memoize # test that memoize decorator also works without parens.
-def f2(x): return x
+def f2(x:Any) -> Any: return x
 
 utest(0, f2, 0)
 

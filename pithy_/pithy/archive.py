@@ -26,7 +26,7 @@ class Archive:
   def __repr__(self) -> str:
     return f'{self.__class__.__name__}(name={self.name!r})'
 
-  def __iter__(self) -> Iterable['ArchiveFile']:
+  def __iter__(self) -> Iterable[ArchiveFile]:
     return self._handler.files(self)
 
   @property
@@ -58,16 +58,16 @@ class ArchiveFile(ArchiveMember):
     self._opener = opener
 
   @cached_property
-  def _file(self): return self._opener()
+  def _file(self) -> BinaryIO: return self._opener()
 
-  def __iter__(self): return iter(self._file)
+  def __iter__(self) -> Any: return iter(self._file)
 
-  def __getattr__(self, name):
+  def __getattr__(self, name:str) -> Any:
     # note: dunder attribute access is never forwarded to this method.
     if name.startswith('_'): raise AttributeError(name)
     return getattr(self._file, name)
 
-  def seekable(self):
+  def seekable(self) -> bool:
     return getattr(self._file, 'seekable', False)
 
   def text(self, encoding:str='UTF-8', errors:str|None=None, newline:str|None=None) -> TextIOWrapper:

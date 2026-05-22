@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from math import atan2, cos, isfinite, pi, sin, sqrt
-from typing import overload, Union
+from typing import Iterator, overload, Union
 
 
 h_pi = pi * 0.5
@@ -71,7 +71,7 @@ class V(Sequence[float]):
   def __len__(self) -> int: return 3
 
 
-  def __iter__(self):
+  def __iter__(self) -> Iterator[float]:
     yield self.x
     yield self.y
     yield self.z
@@ -83,7 +83,7 @@ class V(Sequence[float]):
   @overload
   def __getitem__(self, i:slice) -> tuple[float]: ...
 
-  def __getitem__(self, i):
+  def __getitem__(self, i:int|slice) -> float|tuple[float,...]:
     match i:
       case 0: return self.x
       case 1: return self.y

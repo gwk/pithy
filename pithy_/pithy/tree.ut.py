@@ -8,7 +8,7 @@ from utest import utest, utest_run
 
 
 @utest_run
-def test_transform_tree_0():
+def test_transform_tree_0() -> None:
 
   @singledispatch
   def get_children(node:Iterable[Any]) -> Iterable[Any]|None:
@@ -42,7 +42,7 @@ def test_transform_tree_0():
 
 
 @utest_run
-def test_transform_tree_1():
+def test_transform_tree_1() -> None:
 
   def get_children(node:Any) -> Iterable|None:
     return None if isinstance(node, (int, str)) else node

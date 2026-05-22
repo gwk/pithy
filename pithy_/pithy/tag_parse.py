@@ -63,7 +63,7 @@ class TagParser():
       elif match_index <= self.last_open_index: # found a start token (groups are 1-indexed).
         open_close_tokens_match_fn = self.open_close_tokens_match_fns[match_index - 1]
         exp_index = match_index + self.last_open_index
-        def child_close_pred(close_match_index, close_token):
+        def child_close_pred(close_match_index:int, close_token:str) -> bool:
           return (close_match_index == exp_index
            and (open_close_tokens_match_fn is None
              or open_close_tokens_match_fn(token, close_token)))

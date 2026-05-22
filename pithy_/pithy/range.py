@@ -34,7 +34,7 @@ class NumRange(Sequence[float], Hashable):
     extra = 1 if (closed or steps % 1) else 0
     _setattr(self, '_len', int(steps) + extra)
 
-  def __len__(self):
+  def __len__(self) -> int:
     return self._len
 
   def __getitem__(self, i:int|slice) -> float: # type: ignore[override]
@@ -48,7 +48,7 @@ class NumRange(Sequence[float], Hashable):
   def __iter__(self) -> Iterator[float]:
     return (self.start + self.step * i for i in range(self._len))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return '{}({}, {}, {})'.format(type(self).__name__, self.start, self.stop, self.step)
 
   def __setattr__(self, name:str, val:str) -> None:

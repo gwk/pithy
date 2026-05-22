@@ -36,7 +36,7 @@ class Syntax:
       set_('end_line', end_line)
       set_('end_col', end_col)
 
-    def __str__(self): return f'{self.line+1:04}:{self.col+1:03}-{self.end_line+1:04}:{self.end_col+1:03}'
+    def __str__(self) -> str: return f'{self.line+1:04}:{self.col+1:03}-{self.end_line+1:04}:{self.end_col+1:03}'
 
     def expand(self, pos:'Syntax.Pos') -> 'Syntax.Pos':
       line = self.line

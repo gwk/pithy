@@ -28,7 +28,7 @@ ExitOpt = bool|int|str
 
 class NonzeroCodeExpectation:
   'Type for a special marker value NONZERO, which matches any nonzero process exit code.'
-  def __repr__(self): return 'NONZERO'
+  def __repr__(self) -> str: return 'NONZERO'
 
 NONZERO = NonzeroCodeExpectation()
 
@@ -104,7 +104,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
     raise TaskLaunchUndiagnosedError(path) from e # Default.
 
 
-def preexec_launch_lldb():
+def preexec_launch_lldb() -> None:
   '''
   Note: this relies on a race condition to work: the spawn is slow, which gives this process time to exec.
   This is not perfect; if the child process crashes very fast then LLDB might not attach in time.

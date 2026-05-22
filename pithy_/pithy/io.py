@@ -471,10 +471,10 @@ def confirm_or_exit(question:str) -> None:
   except KeyboardInterrupt: exit(1)
 
 
-def err_call_io(func):
+def err_call_io(func:Callable[...,Any]) -> Callable[...,Any]:
   'A decorator to print argument and return values of a function to stderr.'
 
-  def wrapper(*args, **kwargs):
+  def wrapper(*args:Any, **kwargs:Any) -> Any:
     errL(f'DBG: Calling function {func.__name__!r}:')
     errL(f'DBG:   args: {args!r}')
     errL(f'DBG:   kwargs: {kwargs!r}')

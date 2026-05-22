@@ -61,12 +61,12 @@ def dispatcher_for_defs(*, prefix:str, default: Callable|None=None, base:Mapping
     bindings[name] = fn
 
   if default is None:
-    def dispatch_fn(name, *args, **kwargs):
+    def dispatch_fn(name:str, *args:Any, **kwargs:Any) -> Any:
       fn = bindings[name]
       try: return fn(*args, **kwargs)
       except TypeError as exc: raise DispatchException(fn) from exc
   else:
-    def dispatch_fn(name, *args, **kwargs):
+    def dispatch_fn(name:str, *args:Any, **kwargs:Any) -> Any:
       try: fn = bindings[name]
       except KeyError: pass # Handled below.
       else:
