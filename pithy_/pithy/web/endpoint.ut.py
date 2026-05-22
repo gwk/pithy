@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from dataclasses import dataclass
 from datetime import date, datetime, time
 from enum import Enum
 from http import HTTPStatus
@@ -77,7 +78,7 @@ def endpoint_fields(cls:type[Endpoint], **kwargs:str) -> dict[str,Any]:
   request = _make_request()
   ep = cls(request=request, path_params=kwargs)
   ep.prepare(request)
-  return {k: getattr(ep, k) for k in ep._fields}
+  return {k: getattr(ep, k) for k in ep._field_transtructors}
 
 
 # Field parsing from path params (string conversion).
@@ -105,7 +106,7 @@ def _() -> None:
     utest_val(False, ep.flag, desc=f'bool from {s!r}')
 
 
-# Custom converters.
+# Custom prefigures.
 
 class Color(Enum):
   red = 'red'
@@ -113,32 +114,32 @@ class Color(Enum):
   blue = 'blue'
 
 
-class CustomConverterEndpoint(Endpoint):
-  _converters = {Color: lambda s: Color(s)}
+class CustomPrefigureEndpoint(Endpoint):
+  _prefigures = {Color: lambda cls, val, ctx: Color(val)}
   color:Color
 
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.color.value}')
 
 
-utest(dict(color=Color.red), endpoint_fields, CustomConverterEndpoint, color='red')
-utest_exc(ResponseError, CustomConverterEndpoint, _make_request(), dict(color='purple'))
+utest(dict(color=Color.red), endpoint_fields, CustomPrefigureEndpoint, color='red')
+utest_exc(ResponseError, CustomPrefigureEndpoint, _make_request(), dict(color='purple'))
 
 
-# Custom converter inheritance.
+# Custom prefigure inheritance.
 
-class BaseConverterEndpoint(Endpoint):
-  _converters = {Color: lambda s: Color(s)}
+class BasePrefigureEndpoint(Endpoint):
+  _prefigures = {Color: lambda cls, val, ctx: Color(val)}
 
 
-class InheritedConverterEndpoint(BaseConverterEndpoint):
+class InheritedPrefigureEndpoint(BasePrefigureEndpoint):
   color:Color
   name:str
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.color.value},{self.name}')
 
 
-utest(dict(color=Color.green, name='test'), endpoint_fields, InheritedConverterEndpoint, color='green', name='test')
+utest(dict(color=Color.green, name='test'), endpoint_fields, InheritedPrefigureEndpoint, color='green', name='test')
 
 
 # No-field endpoint.
@@ -261,6 +262,14 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
+  'Endpoint: str field rejects JSON integer value.'
+  req = _make_request(media_type='application/json', body=b'{"name":123}')
+  ep = BodyEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
   'Endpoint: prepare fills list fields from JSON body with array values.'
   req = _make_request(media_type='application/json', body=b'{"tags":["a","b"],"counts":[1,2]}')
   ep = ListEndpoint(req, path_params={})
@@ -269,12 +278,44 @@ def _() -> None:
   utest_val([1, 2], ep.counts)
 
 
+# Nested dataclass fields.
+
+@dataclass
+class Point:
+  x:int
+  y:int
+
+
+class NestedEndpoint(Endpoint):
+  max_body_bytes = 1024
+  point:Point
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.point}')
+
+
+class NestedListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  points:list[Point]
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.points}')
+
+
 @utest_run
 def _() -> None:
-  'Endpoint: prepare raises on nested dict value in JSON body.'
-  req = _make_request(media_type='application/json', body=b'{"name":{"first":"alice"}}')
-  ep = BodyEndpoint(req, path_params={})
-  utest_exc(ResponseError, ep.prepare, req)
+  'Endpoint: nested dataclass field filled from JSON body.'
+  req = _make_request(media_type='application/json', body=b'{"point":{"x":1,"y":2}}')
+  ep = NestedEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Point(1, 2), ep.point)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list[dataclass] field filled from JSON body.'
+  req = _make_request(media_type='application/json', body=b'{"points":[{"x":1,"y":2},{"x":3,"y":4}]}')
+  ep = NestedListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val([Point(1, 2), Point(3, 4)], ep.points)
 
 
 # List fields.
@@ -306,7 +347,7 @@ def endpoint_body_fields(cls:type[Endpoint], body:str) -> dict[str,Any]:
   req = _urlencoded_request(body)
   ep = cls(req, path_params={})
   ep.prepare(req)
-  return {k: getattr(ep, k) for k in ep._fields}
+  return {k: getattr(ep, k) for k in ep._field_transtructors}
 
 
 @utest_run
@@ -354,7 +395,6 @@ class UploadedFileEndpoint(Endpoint):
   file:UploadedFile
   def handle_request(self, request:Request) -> Response:
     return Response(body=f'{self.file.filename}')
-
 
 @utest_run
 def _() -> None:

@@ -1,15 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-import types
 from collections.abc import Mapping
-from dataclasses import dataclass
 from datetime import date, datetime, time
 from http import HTTPStatus
-from typing import Any, ClassVar, get_args, get_origin, get_type_hints
+from inspect import get_annotations
+from typing import Any, ClassVar, get_origin, get_type_hints
 
-from pithy.type_utils import is_a
-
-from ..transtruct import bool_str_vals
+from ..transtruct import PrefigureFn, TranstructFn, Transtructor, TranstructorError
 from .errors import BadRequestError
 from .handler import RequestHandler
 from .request import Request, UploadedFile
@@ -27,9 +24,9 @@ class Endpoint(RequestHandler):
   Use `list[T]` to collect multiple values for one key (e.g. multi-select).
   Use `list[T]|None` for an optional multi-value field (None if no values are submitted).
 
-  To add custom type converters, define `_converters` as a class variable mapping types to callables:
+  To add custom type conversions, define `_prefigures` as a class variable mapping types to prefigure functions:
     class MyEndpoint(Endpoint):
-      _converters = {MyType: MyType.from_string}
+      _prefigures = {MyType: lambda cls, val, ctx: MyType.from_string(val)}
       my_field: MyType
 
   All Endpoint classes take the following constructor parameters:
@@ -48,8 +45,8 @@ class Endpoint(RequestHandler):
 
   max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters.
 
-  _fields:ClassVar[dict[str,_FieldInfo]]
-  _converters:ClassVar[dict[type,Any]]
+  _field_transtructors:ClassVar[dict[str,TranstructFn[Any]]]
+  _prefigures:ClassVar[dict[type,PrefigureFn]]
 
   path_params:Mapping[str,object]
 
@@ -59,31 +56,19 @@ class Endpoint(RequestHandler):
   def __init_subclass__(cls, **kwargs:Any) -> None:
     super().__init_subclass__(**kwargs)
 
-    # Build converters: start with defaults, layer in any _converters defined on classes in the MRO.
-    converters:dict[type,Any] = dict(_default_converters)
+    # Build a per-class transtructor seeded with module-level defaults, then layer in _prefigures from the MRO.
+    ttor = Transtructor()
+    ttor.prefigures.update(endpoint_transtructor.prefigures)
     for base in reversed(cls.__mro__):
       if base is Endpoint: continue
-      base_conv = base.__dict__.get('_converters')
-      if base_conv:
-        converters.update(base_conv)
-    cls._converters = converters
+      for type_, fn in base.__dict__.get('_prefigures', {}).items():
+        ttor.prefigures[type_] = fn
 
-    # Introspect type hints to build field metadata.
-    hints = get_type_hints(cls)
-    fields:dict[str,_FieldInfo] = {}
-    for name, hint in hints.items():
-      if name.startswith('_'): continue
-      base_type, is_optional = _unwrap_optional(hint)
-      inner = base_type if base_type is not None else hint
-      is_list = get_origin(inner) is list
-      if is_list:
-        base_type = get_args(inner)[0]
-      if base_type is None: continue
-      converter = converters.get(base_type)
-      if converter is None:
-        raise TypeError(f'{cls.__qualname__}.{name}: no converter registered for type {base_type!r}.')
-      fields[name] = _FieldInfo(name=name, type=base_type, is_optional=is_optional, is_list=is_list, converter=converter)
-    cls._fields = fields
+    fields:dict[str,TranstructFn[Any]] = {}
+    for name, hint in get_type_hints(cls).items():
+      if name.startswith('_') or name in _endpoint_annotations or get_origin(hint) is ClassVar: continue
+      fields[name] = ttor.transtructor_for(hint)
+    cls._field_transtructors = fields
 
 
   def __init__(self, request:Request, path_params:Mapping[str,object]) -> None:
@@ -118,12 +103,12 @@ class Endpoint(RequestHandler):
       for name, raw in request.body_params(self.max_body_bytes).items():
         self._fill_param(name=name, raw=raw, source='body')
 
-    # Check for missing required fields and set optional fields to None.
-    for name, field in self._fields.items():
+    # Check for missing fields; let the transtructor determine if None is acceptable.
+    for name, transtructor in self._field_transtructors.items():
       if hasattr(self, name): continue
-      if not field.is_optional:
+      try: setattr(self, name, transtructor(None, None))
+      except (ValueError, TypeError, TranstructorError):
         raise BadRequestError(f'Missing required parameter: {name!r}.')
-      setattr(self, name, None)
 
 
   def handle_request(self, request:Request) -> Response:
@@ -133,76 +118,49 @@ class Endpoint(RequestHandler):
   def _fill_param(self, name:str, raw:object, source:str) -> None:
     if prev_source := self._fill_param_sources.get(name):
       raise BadRequestError(f'Duplicate parameter {name!r} in {prev_source} and {source}.')
-    field = self._fields.get(name)
-    if field is None:
+    transtructor = self._field_transtructors.get(name)
+    if transtructor is None:
       raise BadRequestError(f'Unknown parameter {name!r} in {source}.')
     self._fill_param_sources[name] = source
 
-    # list fields
-    if field.is_list:
-      if not isinstance(raw, list): raw = [raw]
-      if is_a(raw, list[field.type]):  # type: ignore[name-defined]
-        setattr(self, field.name, raw)
-        return
-      try:
-        setattr(self, field.name, [field.converter(r) for r in raw])
-      except (ValueError, TypeError) as e:
-        raise BadRequestError(f'Invalid value for parameter {name!r}: {raw!r}.') from e
-      return
-
-    # scalar fields
-    if isinstance(raw, field.type):
-      setattr(self, field.name, raw)
-      return
-    # Reject nested JSON objects; str() would silently stringify them rather than raising.
-    if isinstance(raw, dict):
-      raise BadRequestError(f'Invalid value for parameter {name!r}: nested objects are not supported.')
     try:
-      setattr(self, field.name, field.converter(raw))
-    except (ValueError, TypeError) as e:
+      setattr(self, name, transtructor(raw, None))
+    except (ValueError, TypeError, TranstructorError) as e:
       raise BadRequestError(f'Invalid value for parameter {name!r}: {raw!r}.') from e
 
 
-@dataclass(slots=True, frozen=True)
-class _FieldInfo:
-  'Metadata for a single declared field on an Endpoint subclass.'
-  name: str
-  type: type
-  is_optional: bool
-  is_list: bool
-  converter: Any
+# Declare module-level transtructor that can be imported and extended by endpoint consumers if
+# there's desired behavior for all endpoints.
+endpoint_transtructor = Transtructor()
+
+# Used so we can reliably ignore fields set on endpoint class.
+_endpoint_annotations = frozenset(get_annotations(Endpoint).keys())
+
+@endpoint_transtructor.prefigure(list)
+def _prefigure_list(cls:type, val:Any, ctx:Any) -> list:
+  if isinstance(val, str): return [val]
+  return val
+
+@endpoint_transtructor.prefigure(date)
+def _prefigure_date(cls:type, val:Any, ctx:Any) -> date:
+  if isinstance(val, date) and not isinstance(val, datetime): return val
+  return date.fromisoformat(val)
 
 
-def _unwrap_optional(hint:Any) -> tuple[type|None,bool]:
-  'Extract the base type and whether the hint is optional (T | None). Returns (None, False) for unsupported hints.'
-  origin = get_origin(hint)
-  if origin is types.UnionType:
-    args = get_args(hint)
-    non_none = [a for a in args if a is not type(None)]
-    if type(None) in args and len(non_none) == 1:
-      return (non_none[0], True)
-    return (None, False)
-  if isinstance(hint, type):
-    return (hint, False)
-  return (None, False)
+@endpoint_transtructor.prefigure(time)
+def _prefigure_time(cls:type, val:Any, ctx:Any) -> time:
+  if isinstance(val, time): return val
+  return time.fromisoformat(val)
 
 
-def _parse_bool(s:str) -> bool:
-  try: return bool_str_vals[s]
-  except KeyError: raise ValueError(f'Invalid bool value: {s!r}.')
+@endpoint_transtructor.prefigure(datetime)
+def _prefigure_datetime(cls:type, val:Any, ctx:Any) -> datetime:
+  if isinstance(val, datetime): return val
+  return datetime.fromisoformat(val)
 
-
-def _require_uploaded_file(x:Any) -> UploadedFile:
-  raise ValueError(f'Expected a file upload, got {type(x).__name__!r}.')
-
-
-_default_converters:dict[type,Any] = {
-  str: str,
-  int: int,
-  float: float,
-  bool: _parse_bool,
-  date: date.fromisoformat,
-  time: time.fromisoformat,
-  datetime: datetime.fromisoformat,
-  UploadedFile: _require_uploaded_file,
-}
+# This is here so that JSON dicts with the exact keys as UploadedFile dataclass
+# don't silently get converted.
+@endpoint_transtructor.prefigure(UploadedFile)
+def _prefigure_uploaded_file(cls:type, val:Any, ctx:Any) -> UploadedFile:
+  if isinstance(val, UploadedFile): return val
+  raise ValueError(f'Expected a file upload, got {type(val).__name__!r}.')

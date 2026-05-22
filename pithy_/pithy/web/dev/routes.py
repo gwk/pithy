@@ -50,7 +50,7 @@ class DevControls(Endpoint):
   file: UploadedFile | None
 
   def _items(self) -> dict[str, str | list[str]]:
-    return {name: v for name in self._fields if (v := getattr(self, name))}
+    return {name: v for name in self._field_transtructors if (v := getattr(self, name))}
 
   def handle_request(self, request:Request) -> Response:
     main = Main(
