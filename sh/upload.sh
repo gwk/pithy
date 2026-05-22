@@ -17,7 +17,7 @@ else
   url="https://test.pypi.org/legacy/"
 fi
 
-cd "$(dirname $0)/.."
+cd "$(dirname "$0")/.."
 
 echo "package: $package"
 cd "$package"
