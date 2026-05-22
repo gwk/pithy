@@ -122,10 +122,16 @@ class Transtructor:
     This means that the transtructor instance must not be further customized after the first call to this method.
     '''
 
-    try: return primitive_transtructors[desired_type] # type: ignore[return-value]
-    except KeyError: pass
-
     prefigure_fn = self.prefigure_fn_for(desired_type)
+
+    try: primitive = primitive_transtructors[desired_type] # type: ignore[index]
+    except KeyError: pass
+    else:
+      if not prefigure_fn: return primitive # type: ignore[return-value]
+      def transtruct_primitive_with_prefigure(val:Input, ctx:Ctx) -> Desired:
+        val = prefigure_fn(desired_type, val, ctx)
+        return primitive(val, ctx) # type: ignore[return-value]
+      return transtruct_primitive_with_prefigure
 
     origin = get_origin(desired_type)
     type_args = get_args(desired_type)
@@ -263,6 +269,7 @@ class Transtructor:
       el_ttor = self.transtructor_for(el_type)
 
       def transtruct_collection(val:Input, ctx:Ctx) -> Desired:
+        if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
         return origin(el_ttor(e, ctx) for e in val)
 
       return transtruct_collection
@@ -436,7 +443,8 @@ def transtruct_object(v:Input, ctx:Ctx) -> object:
 
 
 def transtruct_str(v:Input, ctx:Ctx) -> str:
-  return str(v)
+  if isinstance(v, str): return v
+  raise ValueError(f'Expected str; received {type(v).__name__} {v!r}.')
 
 
 def transtruct_type(v:Any, ctx:Ctx) -> type:

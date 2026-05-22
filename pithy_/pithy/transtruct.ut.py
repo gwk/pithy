@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from pithy.transtruct import Transtructor
-from utest import utest
+from utest import utest, utest_exc
 
 
 ttor = Transtructor()
@@ -22,8 +22,8 @@ utest(0.0, ttor.transtruct, float, 0)
 utest(0.0, ttor.transtruct, float, '0.0')
 
 utest('0', ttor.transtruct, str, '0')
-utest('0', ttor.transtruct, str, 0)
-utest('0.0', ttor.transtruct, str, 0.0)
+utest_exc(ValueError, ttor.transtruct, str, 0)
+utest_exc(ValueError, ttor.transtruct, str, 0.0)
 
 utest(1, ttor.transtruct, object, 1) # object passes any value through.
 
@@ -74,3 +74,23 @@ utest(Counter({'a':1}), ttor.transtruct, Counter[str], {'a':'1'})
 utest(0, ttor.transtruct, int|str|None, 0)
 utest('0', ttor.transtruct, int|str|None, '0')
 utest(None, ttor.transtruct, int|str|None, None)
+
+
+# Prefigure tests.
+
+ptor = Transtructor()
+
+# Change 1: prefigure intercepts primitive types.
+
+@ptor.prefigure(str)
+def _strict_str(cls:type, val:object, ctx:object) -> str:
+  'Reject non-strings rather than coercing.'
+  if not isinstance(val, str): raise TypeError(f'Expected str, got {type(val).__name__!r}.')
+  return val
+
+utest('hello', ptor.transtruct, str, 'hello')        # str passes through.
+utest_exc(TypeError, ptor.transtruct, str, 42)        # int rejected by prefigure.
+utest_exc(TypeError, ptor.transtruct, str, 3.14)      # float rejected by prefigure.
+
+utest(['a', 'b'], ptor.transtruct, list[str], ['a', 'b'])   # list[str] with valid elements.
+utest_exc(TypeError, ptor.transtruct, list[str], ['a', 1])  # int element rejected by str prefigure.
