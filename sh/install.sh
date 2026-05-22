@@ -4,13 +4,20 @@ set -euo pipefail
 
 function fail { echo "error: $@" 1>&2; exit 1; }
 
-[[ -n "$@" ]] || fail "usage: $0 [packages ...]"
+(( $# )) || fail "usage: $0 [pip-flags ...] [packages ...]"
 
-cd "$(dirname $0)/.."
+cd "$(dirname "$0")/.."
 
+flags=()
 pkg_dirs=()
-for package in "$@"; do
-  pkg_dirs+=("./${package}_")
+for arg in "$@"; do
+  if [[ "$arg" == -* ]]; then
+    flags+=("$arg")
+  else
+    pkg_dirs+=("./${arg}_")
+  fi
 done
 
-pip --disable-pip-version-check install "${pkg_dirs[@]}"
+(( ${#pkg_dirs[@]} )) || fail "no packages specified."
+
+pip --disable-pip-version-check install "${flags[@]}" "${pkg_dirs[@]}"
