@@ -1,5 +1,5 @@
 
-module_names = [
+stdlib_module_names = [
   '_thread',
   'abc',
   'annotationlib',
