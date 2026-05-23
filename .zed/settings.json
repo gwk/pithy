@@ -1,10 +1,13 @@
 // See: https://zed.dev/docs/configuring-zed#settings-files
 {
-  "project_name": "pithy",
-  "file_scan_exclusions": [],
+  "file_scan_exclusions": ["**/.DS_Store"],
+  "file_scan_inclusions": ["todo.md"],
   "tab_size": 2,
   "languages": {
     "CSS": {
+      "format_on_save": "off",
+    },
+    "JSON": {
       "format_on_save": "off",
     },
     "Just": {
@@ -21,5 +24,8 @@
     "TOML": {
       "format_on_save": "off",
     },
+  },
+  "edit_predictions": {
+    "disabled_globs": [],
   },
 }
