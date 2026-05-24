@@ -31,7 +31,9 @@ def is_a(val:Any, T:type|tuple[type,...]) -> bool:
   if isinstance(T, tuple): return any(is_a(val, t) for t in T)
 
   args = get_args(T)
-  if not args: return isinstance(val, T)
+  if not args:
+    if T is Any: return True # Any cannot be used with isinstance.
+    return isinstance(val, T)
   RTT = get_origin(T)
 
   if RTT is None: raise TypeError(f'{T} has no origin type')
