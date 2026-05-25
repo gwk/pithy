@@ -317,7 +317,7 @@ def validate_files_dict(key:str, val:Any) -> None:
     raise TestCaseError(f'file expectation: {key}: value must be a dictionary; recieved {val!r}')
   for k, exp_dict in val.items():
     if k in ('out', 'err'):
-      raise TestCaseError(f'key: {key}: {k}: use the standard properties instead ({k}_mode, {k}_path, {k}_val)')
+      raise TestCaseError(f'key: {key}: {k}: use the standard out/err properties instead ({k}_mode, {k}_path, {k}_val)')
     validate_exp_dict(k, exp_dict)
 
 def validate_links_dict(key:str, val:Any) -> None:
