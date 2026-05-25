@@ -55,7 +55,7 @@ class Case:
     self.test_par_args: dict[str, tuple[str, ...]] = {} # the match groups that resulted from applying the regex for the given parameterized stem.
     # configurable properties.
     self.args: list[str]|None = None # arguments to follow the file under test.
-    self.cmd: list[str]|None = None # command string/list with which to invoke the test.
+    self.cmd: str|list[str]|None = None # command string/list with which to invoke the test.
     self.coverage: list[str]|None = None # list of names to include in code coverage analysis.
     self.code: int|None = None # the expected exit code.
     self.compile: list[Any]|None = None # the optional list of compile commands, each a string or list of strings.
@@ -67,8 +67,8 @@ class Case:
     self.err_val: str|None = None # stderr expectation value (mutually exclusive with err_path).
     self.files: dict[str,dict[str,str]]|None = None # additional file expectations.
     self.in_: str|None = None # stdin as text.
-    self.interpreter: str|None = None # interpreter to prepend to cmd.
-    self.interpreter_args: list[str]|None = None # interpreter args.
+    self.interpreter: str|list[str]|None = None # interpreter to prepend to cmd.
+    self.interpreter_args: str|list[str]|None = None # interpreter args.
     self.links: str|set[str]|dict[str, str]|None = None # symlinks to be made into the test directory.
     #^ Written as a str, set or dict.
     self.out_mode: str|None = None # comparison mode for stdout expectation.
