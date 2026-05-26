@@ -1,4 +1,4 @@
-# Pithy Codebase Guidelines
+# Pithy Agents Guide
 
 This repository contains code for several python packages:
 - pithy: general purpose utility library.
@@ -10,26 +10,16 @@ This repository contains code for several python packages:
 - utest: a simple unit test system.
 - wu: a markdown-like document format and associated tool.
 
-Each package is wrapped in an intermediate directory with an underscore suffix to isolate pyproject.toml files:
-```
-pithy/ (the git/project root, not the package root)
-  pithy_/ (the pithy intermediate)
-    pyproject.toml
-    pithy (the pithy package root)
-  pithytools_/
-    pyproject.toml
-    pithytools/ (the pithytools package root)
-  ...
-```
-
-So for example when we refer to `pithy.web.server`, it is `pithy_/pithy/web/server.py` relative to the project.
-If we refer to `.web.server`, we probably mean within the pithy package, or whatever package we are discussing.
-
 ## Platform Support
 This project targets Python 3.14+ on modern Unix platforms. Windows is not supported.
 
+## Agent Development Flow
+- Always run `just check` before declaring done.
+- Verify file changes with `git status` and `git diff`.
+- New modules should follow existing patterns in similar files.
+
 ## Build Commands
-- Check everything: `just check`; runs lint, typecheck, test.
+- Check everything: `just check`; runs isort, lint, typecheck, test.
 - Lint: `just lint`
 - Typecheck: `just typecheck`
 - All tests: `just test`
@@ -69,8 +59,8 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 
 ## Build System
 - `just` is used for high-level development commands.
-- `make` is used for build steps that have dependencies that need to be managed.
-- Run `just help` and `make help` to list available commands.
+- `make` is used for build steps that have build product dependencies.
+- Run `just` and `make help` to list available commands.
 
 ## Unit Tests
 - Write unit tests using our own library `utest`.
@@ -79,32 +69,20 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
 - Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.
 
-## Coding Principles
 
-### Error Masking
-Do not mask errors. Prefer to raise an exception in ambiguous situations, provide explicit flags indicating how to resolve,
-or when appropriate log errors/warnings.
-Some examples:
-- Catching exceptions in an overly broad manner.
-- Silently taking the first or last of colliding value when constructing a dictionary.
-  Instead provide control flags or explicit APIs for getting multi-value represenations (e.g. dict of lists of values).
+# Pithy Project Layout
 
-### Typing
-When a function has a polymorphic return type dictated by the input,
-consider splitting it several more narrowly typed functions, or else using `@overload` typing.
+Each package is wrapped in an intermediate directory with an underscore suffix to isolate pyproject.toml files:
+```
+pithy/ (the git/project root, not the package root)
+  pithy_/ (the pithy intermediate)
+    pyproject.toml
+    pithy (the pithy package root)
+  pithytools_/
+    pyproject.toml
+    pithytools/ (the pithytools package root)
+  ...
+```
 
-## Development FLow
-Do not alter or remove test cases unless the change makes sense for the semantics of the feature.
-It is ok to leave a test broken, stop and discuss the problem rather than pushing blindly forward.
-
-# Coding Agent Restrictions
-
-Do not alter git state unless explicitly requested. Always ask before doing a reset.
-
-Claude Code will sometimes be run as the `agent` user, which should have its permissions restricted.
-For example, source files will belong to `agent:agent` with permissions `660` to allow the agent to modify the code,
-or `640` for read-only permissions.
-
-IMPORTANT: if Claude encounters a permission error, IT MUST stop and notify the user. DO NOT ATTEMPT TO ALTER FILE PERMISSIONS.
-
-When in doubt, stop and ask questions!
+So for example when we refer to `pithy.web.server`, it is `pithy_/pithy/web/server.py` relative to the project.
+If we refer to `.web.server`, we probably mean within the pithy package, or whatever package we are discussing.
