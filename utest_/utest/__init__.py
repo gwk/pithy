@@ -2,6 +2,7 @@
 
 '''
 utest is a tiny unit testing library.
+
 The test functions mostly take the form of `utest(expectation, fn, *args, **kwargs)`,
 where `expectation` is the expected value or exception, and `fn` is a callable under test, and `args`/`kwargs` are arguments.
 The idea is that this reads similar to an `assert expectation == fn(*args, **kwargs)`,
@@ -44,6 +45,7 @@ utest_val(0, len(''), desc='length of empty string') # Check a value without a f
 ```
 '''
 
+__version__ = '0.0.5'
 
 import atexit as _atexit
 import pathlib as _pathlib

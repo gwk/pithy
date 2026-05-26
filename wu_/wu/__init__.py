@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+__version__ = '0.0.0'
+
 import re
 from collections import defaultdict
 from html import escape as html_escape

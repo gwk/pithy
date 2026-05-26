@@ -19,7 +19,6 @@ keywords = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
-  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
   "Typing :: Typed",
 ]
 
@@ -30,31 +29,15 @@ Documentation = "https://github.com/gwk/pithy/tree/main/utest#readme"
 
 [project.optional-dependencies]
 dev = [
-  "mypy >= 1.20.2",
+  "mypy >= 2.1.0",
   "pyflakes >= 3.4.0",
   "isort >= 8.0.1",
 ]
 
 [project.scripts]
 
-[project.package-data]
-utest = [
-  "py.typed",
-]
-
 [build-system]
 requires = [
-  "hatchling",
+  "flit_core >= 3.12",
 ]
-build-backend = "hatchling.build"
-
-[tool.hatch.build]
-include = [
-  "utest/**/*",
-]
-exclude = [
-  "utest/**/__pycache__/**/*",
-]
-
-[tool.hatch.version]
-path = "utest/__about__.py"
+build-backend = "flit_core.buildapi"

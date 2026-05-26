@@ -2,11 +2,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from argparse import ArgumentParser
-from typing import Any
-from os import listdir as list_dir, chdir
-from os.path import isdir as is_dir, splitext as split_ext, dirname as dir_name
-
+from os import chdir, listdir as list_dir
+from os.path import dirname as dir_name, isdir as is_dir, splitext as split_ext
 from tomllib import load as load_toml
+from typing import Any
+
 from tomli_w import dump as dump_toml
 
 
@@ -47,22 +47,6 @@ def add_properties(name:str, common:dict[str,Any]) -> None:
 
   project_scripts = project.setdefault('scripts', {})
   add_scripts(name, project_scripts)
-
-  package_data = project.setdefault('package-data', {})
-  package_data_list = package_data.setdefault(name, [])
-  package_data_list.append('py.typed')
-
-  tool = common.setdefault('tool', {})
-  tool_hatch = tool.setdefault('hatch', {})
-
-  tool_hatch_build = tool_hatch.setdefault('build', {})
-  tool_hatch_build['include'] = [f'{name}/**/*']
-  tool_hatch_build['exclude'] = [
-    f'{name}/**/__pycache__/**/*',
-  ]
-
-  tool_hatch_version = tool_hatch.setdefault('version', {})
-  tool_hatch_version['path'] = f'{name}/__about__.py'
 
 
 def add_scripts(pkg_name:str, project_scripts:dict[str,Any]) -> None:

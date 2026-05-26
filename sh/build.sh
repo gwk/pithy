@@ -11,7 +11,7 @@ proj_dir="$PWD"
 
 for package in "$@"; do
   build/gen-pyproject-toml.py "$package"
-  cd "$package"
-  hatch build
+  cd "${package}_"
+  flit build
   cd "$proj_dir"
 done

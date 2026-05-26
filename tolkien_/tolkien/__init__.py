@@ -4,6 +4,9 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
+__version__ = '0.0.2'
+
+
 from bisect import bisect_right
 from dataclasses import dataclass
 from typing import Generic, Iterator, NoReturn, Protocol, runtime_checkable, TypeVar

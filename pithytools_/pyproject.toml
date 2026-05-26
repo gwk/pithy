@@ -18,7 +18,6 @@ dependencies = [
 keywords = []
 classifiers = [
   "Development Status :: 3 - Alpha",
-  "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
   "Typing :: Typed",
 ]
 
@@ -29,7 +28,7 @@ Documentation = "https://github.com/gwk/pithy/tree/main/pithytools#readme"
 
 [project.optional-dependencies]
 dev = [
-  "mypy >= 1.20.2",
+  "mypy >= 2.1.0",
   "pyflakes >= 3.4.0",
   "isort >= 8.0.1",
 ]
@@ -70,24 +69,8 @@ html-check = "pithytools.bin.html_check:main"
 same-same = "pithytools.bin.same_same:main"
 lc-ext = "pithytools.bin.lc_ext:main"
 
-[project.package-data]
-pithytools = [
-  "py.typed",
-]
-
 [build-system]
 requires = [
-  "hatchling",
+  "flit_core >= 3.12",
 ]
-build-backend = "hatchling.build"
-
-[tool.hatch.build]
-include = [
-  "pithytools/**/*",
-]
-exclude = [
-  "pithytools/**/__pycache__/**/*",
-]
-
-[tool.hatch.version]
-path = "pithytools/__about__.py"
+build-backend = "flit_core.buildapi"
