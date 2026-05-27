@@ -181,6 +181,10 @@ class V(Sequence[float]):
     return self.x*r.x + self.y*r.y + self.z*r.z
 
 
+  def lerp(self, r:V, t:float) -> V:
+    return self + (r - self) * t
+
+
   def mid(self, r:'V') -> 'V':
     'Midpoint between two vectors.'
     return (self + r) * 0.5
