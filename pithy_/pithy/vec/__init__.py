@@ -8,6 +8,7 @@ from typing import Iterator, overload, Union
 
 h_pi = pi * 0.5
 
+_setattr = object.__setattr__
 
 def _fmt_float(f:float) -> str:
   i = int(f)
@@ -207,3 +208,36 @@ class V(Sequence[float]):
       self.x*cos(rad) - self.y*sin(rad),
       self.x*sin(rad) + self.y*cos(rad),
       self.z)
+
+
+
+@dataclass(frozen=True, slots=True)
+class VecBounds:
+  l:V
+  h:V
+
+  def __init__(self, first:V|VecBounds, *rest:V|VecBounds) -> None:
+    if isinstance(first, V):
+      l = h = first
+    else:
+      l = first.l
+      h = first.h
+    if rest:
+      lx, ly, lz = l
+      hx, hy, hz = h
+      for el in rest:
+        if isinstance(el, V):
+          l = h = el
+        else:
+          l = el.l
+          h = el.h
+        lx = min(lx, l.x)
+        ly = min(ly, l.y)
+        lz = min(lz, l.z)
+        hx = max(hx, h.x)
+        hy = max(hy, h.y)
+        hz = max(hz, h.z)
+      l = V(lx, ly, lz)
+      h = V(hx, hy, hz)
+    _setattr(self, 'l', l)
+    _setattr(self, 'h', h)
