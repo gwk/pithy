@@ -32,7 +32,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 
 ## Code Style
 - Python 3.14+, strict typing with mypy.
-- Do not import __future__ annotations; 3.14 supports deferred annotations.
+- Do not import __future__ annotations or use strings for types; 3.14 supports deferred annotations.
 - 2-space indentation (not 4-space).
 - Double newlines between functions.
 - Double newlines between methods, except for very compact classes where no methods have blank lines.
