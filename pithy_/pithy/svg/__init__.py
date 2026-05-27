@@ -12,6 +12,7 @@ from ..default import Default
 from ..markup import _Mu, Mu, MuAttrs, NoMatchError, prefer_int
 from ..range import NumRange
 from ..vec import V
+from ..vec.affine import AffineMat
 
 
 Dim = int|float|str
@@ -506,8 +507,8 @@ def translate(x:float=0, y:float=0) -> str:
   return f'translate({prefer_int(x)},{prefer_int(y)})'
 
 
-def matrix(a:float, b:float, c:float, d:float, e:float, f:float) -> str:
-  return f'matrix({a},{b},{c},{d},{e},{f})'
+def matrix(mat:AffineMat) -> str:
+  return mat.to_svg_matrix()
 
 
 def apply_transforms(svg:SvgNode, transforms:Iterable[str]) -> SvgNode:
