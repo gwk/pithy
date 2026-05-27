@@ -517,7 +517,10 @@ def apply_transforms(svg:SvgNode, transforms:Iterable[str]) -> SvgNode:
   transforms = [transforms] if isinstance(transforms, str) else list(transforms)
   if transforms:
     if existing := svg.attrs.get('transform'):
-      transforms += existing
+      if isinstance(existing, str):
+        transforms.append(existing)
+      else:
+        transforms += existing
   svg.attrs['transform'] = ' '.join(transforms)
   return svg
 
