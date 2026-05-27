@@ -23,6 +23,7 @@ PathCommand = str|tuple[int|float|str,...]
 _LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
 _LxmlFileReadSource = _LxmlFilePath | BinaryIO | TextIO
 
+
 class SvgNode(Mu):
   '''
   Abstract class for SVG elements.
