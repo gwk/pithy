@@ -9,7 +9,7 @@ from urllib.parse import quote as url_quote, unquote as url_unquote
 
 from ..fs import is_dir, path_exists, scan_dir
 from ..logs import logE
-from ..path import path_ext, path_join
+from ..path import norm_path, path_ext, path_join
 from .app import WebApp
 from .errors import ResponseError
 from .request import Request
@@ -20,9 +20,9 @@ from .util import norm_url_path
 class FilesApp(WebApp):
 
 
-  def __init__(self, local_dir:str|None=None, prevent_client_caching:bool=False, map_bare_names_to_html:bool=False) -> None:
+  def __init__(self, local_dir:str, prevent_client_caching:bool=False, map_bare_names_to_html:bool=False) -> None:
 
-    self.local_dir = local_dir
+    self.local_dir = norm_path(local_dir)
     self.prevent_client_caching = prevent_client_caching
     self.map_bare_names_to_html = map_bare_names_to_html
 
@@ -49,7 +49,6 @@ class FilesApp(WebApp):
     Return the content of a local file or a directory listing.
     This method should be called by `handle_request` implementations to serve content from the local file system.
     '''
-    if not self.local_dir: raise ResponseError(status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     if not raw_path: raw_path = request.path
     norm_path = norm_url_path(raw_path)
@@ -124,8 +123,7 @@ def compute_local_path(*, local_dir:str, norm_path:str, map_bare_names_to_html:b
   Compute local_path from a normalized url path (result of `norm_url_path`).
   If `map_bare_names_to_html` is True, then a path without a file extension has '.html' appended.
   '''
-
-  if not local_dir or local_dir.endswith('/'): raise ValueError(local_dir)
+  assert local_dir and not local_dir.endswith('/'), local_dir
 
   if not norm_path.startswith('/'): raise ValueError(norm_path)
   if '..' in norm_path: raise ResponseError(HTTPStatus.FORBIDDEN)
