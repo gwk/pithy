@@ -873,12 +873,17 @@ class Mu:
 
 
   def render_children(self) -> Iterator[str]:
+    def is_block(el:MuChild) -> bool: return isinstance(el, Mu) and (el.tag not in self.inline_tags)
+
+    # Only manufacture structural newlines when this node forms a block formatting context:
+    # when it contains at least one block-level child).
+    # Inserting newlines into a purely inline (phrasing) context would introduce significant whitespace,
+    # so those children render verbatim.
     child_newlines = (
       len(self._) > 1 and
       (self.tag not in self.ws_sensitive_tags) and
-      (self.tag not in self.inline_tags))
-
-    def is_block(el:MuChild) -> bool: return isinstance(el, Mu) and (el.tag not in self.inline_tags)
+      (self.tag not in self.inline_tags) and
+      any(is_block(c) for c in self._))
 
     if child_newlines:
       yield '\n'

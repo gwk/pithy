@@ -24,12 +24,9 @@ utest(dedent('''\
 utest(dedent('''\
   <p>hello</p>'''), Mu.render_str, TagMu(tag='p', _='hello'), False)
 
-# Two text children: child_newlines=True for TagMu (no inline_tags), leading newline, trailing newline after last.
-# Adjacent text children that are not block elements get no inter-child newline.
+# Two text children: no block-level children, so this is an inline context and no newlines are manufactured.
 utest(dedent('''\
-  <div>
-  ab
-  </div>
+  <div>ab</div>
   '''), Mu.render_str, TagMu(tag='div', _=['a', 'b']))
 
 # HTML elements: Div is a block; P is a block; Span is inline (in phrasing_tags).
@@ -47,11 +44,9 @@ utest(dedent('''\
   </div>
   '''), Mu.render_str, Div(_=[P('one'), P('two')]))
 
-# Div with two Span children: Span is inline so no inter-child newlines (only leading/trailing).
+# Div with two Span children: all children are inline, so this is an inline context and renders on one line.
 utest(dedent('''\
-  <div>
-  <span>a</span><span>b</span>
-  </div>
+  <div><span>a</span><span>b</span></div>
   '''), Mu.render_str, Div(_=[Span('a'), Span('b')]))
 
 # Mixed: text then block child.
@@ -74,6 +69,11 @@ utest(dedent('''\
 utest(dedent('''\
   <span>ab</span>
   '''), Mu.render_str, Span(_=['a', 'b']))
+
+# Block parent (P) whose children are all phrasing content: no block children, so it renders inline.
+utest(dedent('''\
+  <p>The <span>pre</span> module.</p>
+  '''), Mu.render_str, P(_=['The ', Span('pre'), ' module.']))
 
 # Nested blocks: outer Div with single inner Div → no extra newlines (1 child).
 utest(dedent('''\
