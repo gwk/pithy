@@ -68,6 +68,32 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - Unit tests have the compound suffix `.ut.py` and should be placed in the source tree next to the module under test.
 - If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
 - Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.
+- When tests are executed with the `utest` program, they will be run from `_build/_utest` as a simple precaution against
+  working directory mistakes.
+
+## IOTest
+- `iotest` is a program for running file-based input/output tests.
+- Each test is run in its own directory rooted in `_build/` plus the path stem for the test.
+- The stdout and stderr are captured as `.out` and `.err`; ather file outputs are presumed to be relative to the test directory.
+- The outputs are left in place so that if a test fails the user can inspect them.
+
+## Ad-hoc Testing and Inscrutable Scripting
+
+Agents often try to run ad-hoc bash commands using /tmp or other directories.
+They can run afoul of sandboxing this way, and/or trip guards requiring manual permissions.
+Instead, run expermients like this in `_build/agent_scratch/`.
+It is ok to remove prior files in that scratch directory; just be aware that their might be prior junk in there.
+If you want to run some code, write it to a scratch file and then run it.
+**DO NOT** pipe code directly into interpreters through bash where it creates an extra hazard of escapes and expansion.
+
+**DO NOT** write/run bash scripts that are even marginally complex to do risky things like removing files.
+These kinds of actions cause safety mechanisms (e.g. harness static analysis) to trip and require manual review.
+If I see a loop with `rm -f` anywhere I have to stop the run; it is a huge waste of time.
+If files accidentally get produced in tree that need to be cleaned up,
+then list them out and `rm` them with an explanation of what happened.
+If I deny permission to run a command, do not then attempt to run some other similar command; instead ask for help.
+You are more productive if you stop and ask for help to clean up a mess rather than trying to script your way forward.
+
 
 
 # Pithy Project Layout
