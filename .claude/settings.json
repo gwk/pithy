@@ -1,25 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(echo:*)",
-      "Bash(find:*)",
-      "Bash(git:*)",
-      "Bash(grep:*)",
-      "Bash(iotest:*)",
-      "Bash(just check:*)",
-      "Bash(just isort:*)",
-      "Bash(just lint:*)",
-      "Bash(just test:*)",
-      "Bash(just typecheck:*)",
-      "Bash(just utest:*)",
-      "Bash(mypy:*)",
-      "Bash(python -m utest:*)",
-      "Bash(python:*)",
       "WebSearch"
     ]
   },
   "sandbox": {
     "enabled": true,
+    "failIfUnavailable": true,
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": false,
     "network": {
