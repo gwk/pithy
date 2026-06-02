@@ -18,9 +18,9 @@ Desired = TypeVar('Desired')
 Ctx = Any
 Input = Any
 
-type SelectorFn = Callable[[type,Input,Ctx],type] # A function that takes raw input data and returns the appropriate output datatype.
-type PrefigureFn = Callable[[type,Input,Ctx],Input] # A function that takes raw input data and modifies or replaces it before transtruction.
-type TranstructFn[Desired] = Callable[[Input,Ctx],Desired] # A function thta takes raw input data and returns transtructed output data.
+type SelectorFn = Callable[[type,Input,Ctx],type] # Takes the desired type, raw input, and context; returns the concrete output type to construct.
+type PrefigureFn = Callable[[type,Input,Ctx],Input] # Takes the desired type, raw input, and context; returns input reshaped for transtruction.
+type TranstructFn[Desired] = Callable[[Input,Ctx],Desired] # Takes raw input and context; returns transtructed output of the desired type.
 
 
 class TranstructorError(Exception):
@@ -47,12 +47,20 @@ class Transtructor:
 
   `transtruct` simply calls `transtructor_for` and then invokes the transtructor function on the provided value.
 
-  Use @selector and @prefigure to register custom helper functions on a transtructor instance.
+  Use @transtructor.selector and @transtructor.prefigure to register custom helper functions on a transtructor instance.
+  Both dispatch on the desired (output) type, not on the runtime type of the input value.
+  Registration is keyed by a type, and lookup walks that desired type's MRO, so a function registered on a base class
+  also applies when constructing its subclasses.
 
-  Selectors are functions that take a raw input value and return a type.
-  These are necessary for polymorphic objects such as an attribute whose type is a union or base class.
+  Selectors are functions that choose the concrete output type from the raw input value.
+  These are necessary for polymorphic outputs such as an attribute whose declared type is a union or base class:
+  the declared type alone does not determine what to construct, so the selector inspects the input to decide.
+  A selector receives the current desired type, the raw input, and the context, and returns the type to construct.
+  Selection iterates: the returned subtype is itself looked up for a selector, allowing progressive refinement,
+  until a selector returns the type it was passed or no further selector is registered.
 
-  Prefigures are functions that take a raw input value and return an altered value.
+  Prefigures are functions that reshape the raw input value before the desired type is constructed.
+  A prefigure receives the desired type, the raw input, and the context, and returns the altered input.
   Whether or not the alteration is a mutation of the original input value is up to the programmer to decide.
   Mutating original values can be faster, but care must be taken to avoid aliasing problems.
   For example, mutating a list/dict from a JSON tree is safe so long as the JSON library does not reuse
@@ -349,9 +357,14 @@ class Transtructor:
 
   def selector(self, datatype:type) -> Callable[[SelectorFn],SelectorFn]:
     '''
-    Function decorator that registers a selector function for the given datatype.
-    A selector is a function called on the input data that returns the type to construct.
-    This is the method by which transtructors can handle polymorphic input data.
+    Function decorator that registers a selector function for the given desired (output) type.
+    Dispatch is on the desired type, not the input value: the selector is consulted whenever a value is
+    transtructed to `datatype` or one of its subclasses (lookup walks the desired type's MRO).
+    The selector is called with the current desired type, the raw input value, and the context, and returns the
+    concrete type to construct; it must return `datatype`, a subclass of it, or the type it was passed (to stop
+    refinement).
+    This is the method by which transtructors can handle polymorphic output, e.g. an attribute whose declared type
+    is a union or base class.
     '''
     def selector_decorator(fn:SelectorFn) -> SelectorFn:
         self.selectors[datatype] = fn
@@ -361,8 +374,11 @@ class Transtructor:
 
   def prefigure(self, datatype:type) -> Callable[[PrefigureFn],PrefigureFn]:
     '''
-    Function decorator that registers a prefigure function for the given datatype.
-    The decorated function takes input data and manipulates it prior to being passed to the constructor.
+    Function decorator that registers a prefigure function for the given desired (output) type.
+    Dispatch is on the desired type, not the input value: the prefigure is applied whenever a value is
+    transtructed to `datatype` or one of its subclasses (lookup walks the desired type's MRO).
+    The decorated function is called with the desired type, the raw input value, and the context, and returns input
+    reshaped for the constructor (for example, a dict of keyword arguments).
     This is the method by which transtructors can handle misshapen or otherwise raw data.
     '''
     def prefigure_decorator(fn:PrefigureFn) -> PrefigureFn:
@@ -374,10 +390,12 @@ class Transtructor:
   @cache
   def selector_fn_for(self, datatype:type) -> SelectorFn|None:
     '''
-    Returns the selector function for the given datatype, or None if no selector function is registered.
-    This method uses the MRO of the datatype to find base class implementations and caches the result.
+    Returns the selector function for the given desired type, or None if no selector function is registered.
+    This method uses the MRO of the desired type to find base class implementations, so a selector registered on a
+    base class applies to its subclasses.
 
-    This method is cached per constructor instance because it is called by the `transtruct_with_selector` closure.
+    This method is cached per Transtructor instance because it is called repeatedly by the `transtruct_with_selector`
+    closure.
     '''
     mro = getattr(datatype, '__mro__', (datatype,))
     for t in mro:
@@ -388,8 +406,9 @@ class Transtructor:
 
   def prefigure_fn_for(self, datatype:type) -> PrefigureFn|None:
     '''
-    Returns the prefigure function for the given datatype, or None if no prefigure function is registered.
-    This method uses the MRO of the datatype to find base class implementations and caches the result.
+    Returns the prefigure function for the given desired type, or None if no prefigure function is registered.
+    This method uses the MRO of the desired type to find base class implementations, so a prefigure registered on a
+    base class applies to its subclasses.
     '''
     mro = getattr(datatype, '__mro__', (datatype,))
     for t in mro:
