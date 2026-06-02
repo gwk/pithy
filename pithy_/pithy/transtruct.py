@@ -461,7 +461,8 @@ def transtruct_object(v:Input, ctx:Ctx) -> object:
 
 
 def transtruct_str(v:Input, ctx:Ctx) -> str:
-  return str(v)
+  if isinstance(v, str): return v
+  raise ValueError(f'Expected str; received {type(v).__qualname__}: {v!r}.')
 
 
 def transtruct_type(v:Any, ctx:Ctx) -> type:

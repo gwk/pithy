@@ -6,7 +6,7 @@ from typing import NamedTuple
 
 from pithy.frozendicts import frozendict
 from pithy.transtruct import Transtructor
-from utest import utest
+from utest import utest, utest_exc
 
 
 ttor = Transtructor()
@@ -23,8 +23,8 @@ utest(0.0, ttor.transtruct, float, 0)
 utest(0.0, ttor.transtruct, float, '0.0')
 
 utest('0', ttor.transtruct, str, '0')
-utest('0', ttor.transtruct, str, 0)
-utest('0.0', ttor.transtruct, str, 0.0)
+utest_exc(ValueError, ttor.transtruct, str, 0)
+utest_exc(ValueError, ttor.transtruct, str, 0.0)
 
 utest(1, ttor.transtruct, object, 1) # object passes any value through.
 
