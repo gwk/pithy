@@ -15,7 +15,7 @@ ttor = Transtructor()
 
 utest(0, ttor.transtruct, int, 0)
 utest(0, ttor.transtruct, int, 0.0)
-utest(0, ttor.transtruct, int, 0.9)
+utest_exc(ValueError, ttor.transtruct, int, 0.9) # Fractional floats are rejected.
 utest(0, ttor.transtruct, int, '0')
 
 utest(0.0, ttor.transtruct, float, 0.0)
@@ -27,6 +27,39 @@ utest_exc(ValueError, ttor.transtruct, str, 0)
 utest_exc(ValueError, ttor.transtruct, str, 0.0)
 
 utest(1, ttor.transtruct, object, 1) # object passes any value through.
+
+# Bool conversion accepts only well-known values; unknown values raise ValueError.
+utest(True, ttor.transtruct, bool, True)
+utest(False, ttor.transtruct, bool, False)
+utest(True, ttor.transtruct, bool, 'true')
+utest(False, ttor.transtruct, bool, 'false')
+utest(True, ttor.transtruct, bool, '1')
+utest(False, ttor.transtruct, bool, '0')
+utest(True, ttor.transtruct, bool, 'yes')
+utest(False, ttor.transtruct, bool, 'no')
+utest(False, ttor.transtruct, bool, '') # Empty string maps to False.
+utest(False, ttor.transtruct, bool, 0)
+utest(True, ttor.transtruct, bool, 1)
+utest_exc(ValueError, ttor.transtruct, bool, 'maybe')
+utest_exc(ValueError, ttor.transtruct, bool, 2)
+utest_exc(ValueError, ttor.transtruct, bool, 2.5)
+utest_exc(ValueError, ttor.transtruct, bool, None)
+
+# bool passes through to int/float because bool is a subclass of int.
+utest(1, ttor.transtruct, int, True)
+utest(0, ttor.transtruct, int, False)
+utest(1.0, ttor.transtruct, float, True)
+utest(0.0, ttor.transtruct, float, False)
+
+# Strings that spell booleans must not double-convert through bool into int/float.
+utest_exc(ValueError, ttor.transtruct, int, 'True')
+utest_exc(ValueError, ttor.transtruct, int, 'yes')
+utest_exc(ValueError, ttor.transtruct, float, 'True')
+utest_exc(ValueError, ttor.transtruct, float, 'yes')
+
+# Genuine numeric strings still convert directly.
+utest(1, ttor.transtruct, int, '1')
+utest(1.0, ttor.transtruct, float, '1')
 
 
 @dataclass

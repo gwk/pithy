@@ -434,8 +434,8 @@ def try_transtruct(tf:TranstructFn) -> TranstructFn:
 
 def transtruct_bool(v:Input, ctx:Ctx) -> bool:
   try: return bool_vals[v]
-  except KeyError: pass
-  return bool(v)
+  except (KeyError, TypeError):
+    raise ValueError(f'Expected bool; received {type(v).__qualname__}: {v!r}.')
 
 
 def transtruct_bytes(v:Input, ctx:Ctx) -> bytes:
@@ -444,6 +444,8 @@ def transtruct_bytes(v:Input, ctx:Ctx) -> bytes:
 
 
 def transtruct_int(v:Input, ctx:Ctx) -> int:
+  if isinstance(v, float) and not v.is_integer():
+    raise ValueError(f'Expected int; received non-integral float: {v!r}.')
   return int(v)
 
 
