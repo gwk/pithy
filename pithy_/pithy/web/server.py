@@ -226,7 +226,7 @@ class ServerConfig:
       help=f'Number of worker threads in the thread pool; default: {cls.num_threads}.')
     parser.add_argument('-max-queued', type=int, default=cls.max_queued,
       help=('Maximum number of connections waiting in the queue; excess connections are dropped immediately; '
-        f'default: {cls.max_queued}.')),
+        f'default: {cls.max_queued}.'))
     parser.add_argument('-log-access', action='store_true', help='Whether to log each request after it is handled.')
 
     args = parser.parse_args()
