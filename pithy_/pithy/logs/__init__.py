@@ -8,9 +8,12 @@ from traceback import TracebackException
 from types import TracebackType
 from typing import Any, get_args, Literal
 
-from ..ansi import RST, TXT_C, TXT_G, TXT_N, TXT_R, TXT_Y
+from ..ansi import RST, TXT_C, TXT_G, TXT_M, TXT_N, TXT_R, TXT_Y
+from ..date import DateTime
 from ..encode import encode_obj
+from ..json import JsonDict, parse_json
 from ..strings import identifier_or_repr
+from ..type_utils import req_type
 
 
 '''
@@ -26,6 +29,7 @@ log_level_colors = {
   'info': TXT_G,
   'warn': TXT_Y,
   'error': TXT_R,
+  'other': TXT_M,
 }
 
 std_log_levels_simplified:dict[str,LogLevel] = {
@@ -133,6 +137,61 @@ def fmt_exc_json(exc:BaseException) -> list[str]:
   Format exception information as a JSON-serializable dict.
   '''
   return list(TracebackException.from_exception(exc).format(colorize=True)) # type: ignore[call-arg]
+
+
+# Rendering stored logs.
+
+def render_log_record_as_text(record:str|JsonDict, infer_journald:bool=True) -> str:
+  'Format an in-memory JSON record (unparsed str or parsed dict) as human-readable text.'
+
+  if isinstance(record, str):
+    parsed = parse_json(record)
+    if not isinstance(parsed, dict):
+      raise TypeError(f'render_log_record_as_text expected JSON dict; received: {parsed!r}')
+    record = parsed
+
+  if infer_journald and 'level' not in record and 'MESSAGE' in record: # Looks like a journald record.
+    return render_journald_record_as_text(record)
+
+  level = req_type(record.get('level', 'other'), str)
+  msg = req_type(record.get('_', ''), str)
+
+  # Note: exc is stored as pre-formatted lines in JSON, so we catenate it separately.
+  exc_lines = req_type(record.get('exc', []), list[str])
+  kwargs = {k:v for k, v in record.items() if k not in ('level', '_', 'exc')}
+
+  text = render_log_text(level, msg, exc=None, **kwargs)
+  if exc_lines:
+    text += '\n' + ''.join(exc_lines)
+  return text
+
+
+def render_journald_record_as_text(record:JsonDict) -> str:
+  keys = set(record)
+
+  ts = ''
+  if '__REALTIME_TIMESTAMP' in keys:
+    rtts = req_type(record['__REALTIME_TIMESTAMP'], str)
+    try: ts = DateTime.fromtimestamp(int(rtts)/1_000_000).isoformat(sep=' ')
+    except Exception: pass
+    else: keys.remove('__REALTIME_TIMESTAMP')
+
+  msg = ''
+  if 'MESSAGE' in keys:
+    message = req_type(record['MESSAGE'], str) # TODO: journald can output an array of numbers for non-utf8.
+    if message.startswith('{') and message.endswith('}'): # Looks like JSON.
+      try: msg = render_log_record_as_text(message, infer_journald=False)
+      except Exception: pass
+      else: keys.remove('MESSAGE')
+
+  if keys:
+    # Journald emits unordered json records so we sort them.
+    sorted_keys = sorted(keys, key=lambda k: k.replace('_', ' ')) # Make underscore sort before capital letters.
+    pairs = '  '.join(f'{TXT_N}{identifier_or_repr(k)}{RST}:{record[k]!r}' for k in sorted_keys)
+    return f'{ts}  {pairs}  {msg}'.strip()
+  else:
+    return f'{ts}  {msg}'.strip()
+
 
 
 
