@@ -32,3 +32,11 @@ sqlite_threadsafe_dbapi_id_descs = [
 ]
 
 sqlite_threadsafe_desc = sqlite_threadsafe_dbapi_id_descs[sqlite_threadsafe_dbapi_id]
+
+
+def enable_resource_warnings() -> None:
+  '''
+  Enabling resource warnings will cause messages about leaked SQLite connections, which can cause serious availability problems.
+  '''
+  from warnings import filterwarnings
+  filterwarnings("default", category=ResourceWarning)
