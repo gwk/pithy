@@ -15,8 +15,6 @@ from .row import Row
 from .util import sql_quote_entity
 
 
-IsolationLevel = Literal['DEFERRED', 'EXCLUSIVE', 'IMMEDIATE']
-
 sqlite_version = sqlite3.sqlite_version
 sqlite_threadsafe_dbapi_id = sqlite3.threadsafety
 
@@ -35,13 +33,11 @@ BackupProgressFn = Callable[[int,int,int],object]
 
 class Conn(sqlite3.Connection):
 
-  def __init__(self, path:str, *, timeout:float=5.0, detect_types:int=0, isolation_level:IsolationLevel|None='DEFERRED',
-   check_same_thread:bool=True, cached_statements:int=100, uri:bool=False, autocommit:bool=True, mode:str='', closing:bool=True,
-   trace_caller_level:int=0) -> None:
+  def __init__(self, path:str, *, timeout:float=5.0, detect_types:int=0, check_same_thread:bool=True, cached_statements:int=100,
+   uri:bool=False, mode:str='', closing:bool=True, trace_caller_level:int=0) -> None:
     '''
-    Note: as of Python 3.12, the `autocommit` parameter is preferred over the `isolation_level` parameter.
-    sqlite3.Connection `autocommit` defaults to LEGACY_TRANSACTION_CONTROL, in which case `isolation_level` takes effect.
-    This subclass defaults to autocommit=True, so by default `isolation_level` is ignored.
+    This subclass always uses `autocommit=True`, leaving transaction control to the caller.
+    With WAL mode, write transactions should use `BEGIN IMMEDIATE` to acquire the write lock up front.
 
     If `closing` is True (the default), the Conn will close itself when used as a context manager.
     This is different from the superclass, which does not close itself on context manager exit.
@@ -63,11 +59,9 @@ class Conn(sqlite3.Connection):
       path = sqlite_file_uri(path, mode=mode)
       uri = True
 
-    if isolation_level not in (None, 'DEFERRED', 'IMMEDIATE', 'EXCLUSIVE'): raise ValueError(isolation_level)
-
     try:
-      super().__init__(path, timeout=timeout, detect_types=detect_types, isolation_level=isolation_level,
-        check_same_thread=check_same_thread, cached_statements=cached_statements, uri=uri, autocommit=autocommit)
+      super().__init__(path, timeout=timeout, detect_types=detect_types, check_same_thread=check_same_thread,
+        cached_statements=cached_statements, uri=uri, autocommit=True)
     except Exception as e:
       e.add_note(f'path: {path!r}.')
       raise
