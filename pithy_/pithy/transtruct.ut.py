@@ -2,7 +2,8 @@
 
 from collections import Counter, defaultdict, namedtuple
 from dataclasses import dataclass
-from typing import NamedTuple
+from datetime import date, datetime, time
+from typing import Any, NamedTuple
 
 from pithy.frozendicts import frozendict
 from pithy.transtruct import Transtructor
@@ -129,3 +130,45 @@ class CustomInit:
 
 
 utest(CustomInit(key='a', val=1), ttor.transtruct, CustomInit, {'key': 'a', 'val': 1})
+
+
+# Scalar date/datetime/time types: parse isoformat strings by default.
+utest(date(2026, 12, 31), ttor.transtruct, date, '2026-12-31')
+utest(datetime(2026, 12, 31, 12, 30), ttor.transtruct, datetime, '2026-12-31T12:30:00')
+utest(time(12, 30), ttor.transtruct, time, '12:30:00')
+
+# Already-typed values pass through.
+utest(date(2026, 12, 31), ttor.transtruct, date, date(2026, 12, 31))
+utest(datetime(2026, 12, 31, 12, 30), ttor.transtruct, datetime, datetime(2026, 12, 31, 12, 30))
+utest(time(12, 30), ttor.transtruct, time, time(12, 30))
+
+# A datetime is truncated to a pure date (datetime is a date subclass).
+utest(date(2026, 12, 31), ttor.transtruct, date, datetime(2026, 12, 31, 12, 30))
+
+# Unparseable strings raise ValueError.
+utest_exc(ValueError, ttor.transtruct, date, 'not-a-date')
+
+# Non-string, non-temporal inputs raise ValueError rather than a bare fromisoformat TypeError.
+utest_exc(ValueError, ttor.transtruct, date, 123)
+utest_exc(ValueError, ttor.transtruct, datetime, 123)
+utest_exc(ValueError, ttor.transtruct, time, 123)
+
+# Scalars compose inside collections and optionals.
+utest([date(2026, 12, 30), date(2026, 12, 31)], ttor.transtruct, list[date], ['2026-12-30', '2026-12-31'])
+utest(date(2026, 12, 31), ttor.transtruct, date|None, '2026-12-31')
+utest(None, ttor.transtruct, date|None, None)
+
+
+# A prefigure can override the default scalar format; it reshapes the raw input before the default parser runs.
+prefigure_date_ttor = Transtructor()
+
+@prefigure_date_ttor.prefigure(date)
+def _prefigure_us_date(cls:type, val:Any, ctx:Any) -> Any:
+  if isinstance(val, str): # Reshape 'MM/DD/YYYY' into an isoformat string for the default parser.
+    month, day, year = val.split('/')
+    return f'{year}-{month}-{day}'
+  return val
+
+utest(date(2026, 12, 31), prefigure_date_ttor.transtruct, date, '12/31/2026')
+# The prefigure applies tree-wide to every `date` element.
+utest([date(2026, 12, 30), date(2026, 12, 31)], prefigure_date_ttor.transtruct, list[date], ['12/30/2026', '12/31/2026'])

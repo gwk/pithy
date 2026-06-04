@@ -4,7 +4,7 @@
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import asdict as dataclass_asdict
-from datetime import date, datetime
+from datetime import date, datetime, time
 from functools import cache
 from itertools import zip_longest
 from types import UnionType
@@ -130,10 +130,24 @@ class Transtructor:
     This means that the transtructor instance must not be further customized after the first call to this method.
     '''
 
+    # Primitive types are excluded from prefigure because they are the hottest path
+    # and it usually does not make sense to alter their handling across an entire value tree.
     try: return primitive_transtructors[desired_type] # type: ignore[return-value]
     except KeyError: pass
 
     prefigure_fn = self.prefigure_fn_for(desired_type)
+
+    # Other scalar types (e.g. date/datetime/time) can be customized via prefigure.
+    try: scalar_fn = scalar_transtructors[desired_type]
+    except KeyError: pass
+    else:
+      if prefigure_fn:
+        def prefigure_and_transtruct_scalar(val:Input, ctx:Ctx) -> Any:
+          val = prefigure_fn(desired_type, val, ctx)
+          return scalar_fn(val, ctx)
+        return prefigure_and_transtruct_scalar
+      else:
+        return scalar_fn
 
     origin = get_origin(desired_type)
     type_args = get_args(desired_type)
@@ -467,6 +481,25 @@ def transtruct_str(v:Input, ctx:Ctx) -> str:
   raise ValueError(f'Expected str; received {type(v).__qualname__}: {v!r}.')
 
 
+def transtruct_date(v:Input, ctx:Ctx) -> date:
+  if isinstance(v, datetime): return v.date() # datetime is a date subclass; truncate to a pure date.
+  if isinstance(v, date): return v
+  if isinstance(v, str): return date.fromisoformat(v)
+  raise ValueError(f'Expected date; received {type(v).__qualname__}: {v!r}.')
+
+
+def transtruct_datetime(v:Input, ctx:Ctx) -> datetime:
+  if isinstance(v, datetime): return v
+  if isinstance(v, str): return datetime.fromisoformat(v)
+  raise ValueError(f'Expected datetime; received {type(v).__qualname__}: {v!r}.')
+
+
+def transtruct_time(v:Input, ctx:Ctx) -> time:
+  if isinstance(v, time): return v
+  if isinstance(v, str): return time.fromisoformat(v)
+  raise ValueError(f'Expected time; received {type(v).__qualname__}: {v!r}.')
+
+
 def transtruct_type(v:Any, ctx:Ctx) -> type:
   if isinstance(v, type): return v
   if isinstance(v, str):
@@ -511,6 +544,16 @@ primitive_transtructors = {
 }
 
 
+# Scalar types whose default transtructor parses a canonical format but which, unlike primitives,
+# allow a prefigure to reshape the raw input first. Keyed on the exact type (no MRO walk),
+# so e.g. `datetime` does not resolve to `date`'s entry by inheritance.
+scalar_transtructors:dict[type,TranstructFn[Any]] = {
+  date: transtruct_date,
+  datetime: transtruct_datetime,
+  time: transtruct_time,
+}
+
+
 named_types = {
   'blob': bytes,
   'bool': bool,
@@ -537,6 +580,7 @@ named_types = {
   'set': set,
   'str': str,
   'string': str,
+  'time': time,
   'tuple': tuple,
 }
 
