@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import contextlib
 import sqlite3
 from sys import stderr
 from time import monotonic as get_time
@@ -49,8 +50,8 @@ class Conn(sqlite3.Connection):
     issues COMMIT, or ROLLBACK if an exception propagated. The same Conn can be used as a context manager
     repeatedly to run successive transactions.
 
-    The connection is not closed on context manager exit. To guarantee closing, wrap the Conn in
-    `contextlib.closing`, e.g. `with closing(Conn(path)) as conn: ...`.
+    The connection is not closed on context manager exit. To guarantee closing, use `Conn.closing`,
+    e.g. `with Conn(path).closing() as conn: ...`, or equivalently wrap the Conn in `contextlib.closing`.
     If a Conn is garbage-collected without having been closed, `__del__` logs a warning; pass a nonzero
     `trace_caller_level` to record the construction site for inclusion in that warning.
     '''
@@ -148,6 +149,14 @@ class Conn(sqlite3.Connection):
     '''
     self.closed = True
     super().close()
+
+
+  def closing(self) -> contextlib.closing[Self]:
+    '''
+    Return a context manager that closes this connection on exit, as a convenience for `contextlib.closing(self)`.
+    This only closes the connection; it does not run a transaction. Nest `with conn:` inside to run a transaction.
+    '''
+    return contextlib.closing(self)
 
 
   def commit(self) -> None:
