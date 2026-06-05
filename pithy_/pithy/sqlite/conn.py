@@ -150,6 +150,26 @@ class Conn(sqlite3.Connection):
     super().close()
 
 
+  def commit(self) -> None:
+    '''
+    Unsupported: this Conn always runs in sqlite autocommit mode, where Connection.commit() is a silent
+    no-op. Use the Conn as a context manager to run an explicit transaction, or issue COMMIT directly via
+    `execute_control('COMMIT')`.
+    '''
+    raise sqlite3.ProgrammingError(
+      'Conn.commit() is unsupported in autocommit mode; use the Conn as a context manager or execute_control("COMMIT").')
+
+
+  def rollback(self) -> None:
+    '''
+    Unsupported: this Conn always runs in sqlite autocommit mode, where Connection.rollback() is a silent
+    no-op. Use the Conn as a context manager to roll back on exception, or issue ROLLBACK directly via
+    `execute_control('ROLLBACK')`.
+    '''
+    raise sqlite3.ProgrammingError(
+      'Conn.rollback() is unsupported in autocommit mode; use the Conn as a context manager or execute_control("ROLLBACK").')
+
+
   def cursor(self, factory:type[Cursor]|None=None) -> Cursor: # type: ignore[override]
     if factory is None: factory = Cursor
     assert issubclass(factory, Cursor)

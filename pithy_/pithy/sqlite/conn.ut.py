@@ -58,6 +58,14 @@ def _test_transaction_is_open() -> None:
       utest_exc(sqlite3.OperationalError, conn.execute_control, 'BEGIN')
 
 
+# commit() and rollback() are unsupported in autocommit mode and raise rather than silently no-op.
+@utest_run
+def _test_commit_rollback_unsupported() -> None:
+  with closing(make_conn()) as conn:
+    utest_exc(sqlite3.ProgrammingError, conn.commit)
+    utest_exc(sqlite3.ProgrammingError, conn.rollback)
+
+
 # contextlib.closing closes the connection on exit.
 @utest_run
 def _test_closing() -> None:
