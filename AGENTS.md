@@ -82,6 +82,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 Agents often try to run ad-hoc bash commands using /tmp or other directories.
 They can run afoul of sandboxing this way, and/or trip guards requiring manual permissions.
 Instead, run expermients like this in `_build/agent_scratch/`.
+**IMPORTANT**: when you write test scripts, **use the Write tool**, not bash, heredocs, or other obfuscating tricks.
 It is ok to remove prior files in that scratch directory; just be aware that their might be prior junk in there.
 If you want to run some code, write it to a scratch file and then run it.
 **DO NOT** pipe code directly into interpreters through bash where it creates an extra hazard of escapes and expansion.
@@ -94,6 +95,7 @@ then list them out and `rm` them with an explanation of what happened.
 If I deny permission to run a command, do not then attempt to run some other similar command; instead ask for help.
 You are more productive if you stop and ask for help to clean up a mess rather than trying to script your way forward.
 
+**Again: use the Write tool to write scratch scripts!**
 
 
 # Pithy Project Layout

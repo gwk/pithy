@@ -1,11 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import sqlite3
-from contextlib import AbstractContextManager
 from time import monotonic as get_time
 from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeVar
 
-from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 from .row import Row
 from .util import (insert_values_stmt, OnConflictTarget, sql_quote_entity, sqlite_native_val, update_stmt,
   update_to_sqlite_native_val)
@@ -28,24 +26,9 @@ type SqlParameters = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[st
 #^ The Mapping must really be a dict, but making it invariant is too annoying.
 
 
-class Cursor(sqlite3.Cursor, AbstractContextManager):
+class Cursor(sqlite3.Cursor):
 
   execute_time:float = 0
-
-
-  def __enter__(self) -> Self:
-    '''
-    On context manager enter, Cursor does nothing.
-    Transactions are scoped to the connection; use the Conn context manager for BEGIN/COMMIT/ROLLBACK.
-    '''
-    return self
-
-
-  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
-    '''
-    On context manager exit, Cursor closes itself.
-    '''
-    self.close()
 
 
   def execute(self, query:str, args:SqlParameters=()) -> Self:
