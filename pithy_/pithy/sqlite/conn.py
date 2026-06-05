@@ -2,8 +2,10 @@
 
 import contextlib
 import sqlite3
+from random import random
+from sqlite3 import OperationalError, ProgrammingError, SQLITE_BUSY
 from sys import stderr
-from time import monotonic as get_time
+from time import monotonic as get_time, sleep
 from typing import Any, Callable, Iterable, Literal, Self
 from urllib.parse import quote as url_quote
 
@@ -39,6 +41,12 @@ class Conn(sqlite3.Connection):
   transaction_time:float = 0
   transaction_pre_rollback_time:float = 0
 
+  retry_base_sec:float = 0.001
+  retry_max_sec:float = 0.050
+
+  retry_count:int = 0
+  last_retry_error_code:int|None = None
+
 
   def __init__(self, path:str, *, timeout:float=5.0, detect_types:int=0, check_same_thread:bool=True, cached_statements:int=100,
    uri:bool=False, mode:str='', trace_caller_level:int=0) -> None:
@@ -63,6 +71,7 @@ class Conn(sqlite3.Connection):
       self.caller_trace_loc:tuple[str,int,str]|None = caller_src_loc(trace_caller_level) # type: ignore[no-redef]
 
     self.mode = mode
+    self.timeout = timeout
     self.path = url_path(path) if uri else path
     if mode:
       if uri: raise ValueError('Cannot specify both `uri` and `mode`')
@@ -99,32 +108,75 @@ class Conn(sqlite3.Connection):
   def __enter__(self) -> Self:
     '''
     On context manager enter, begin an explicit transaction.
-    Read-write connections use BEGIN IMMEDIATE to acquire the write lock up front; read-only connections use BEGIN.
+    Read-only connections use BEGIN (DEFERRED).
+    Read-write connections use BEGIN IMMEDIATE with retry on the SQLITE_BUSY family.
     '''
+    if self.in_transaction: raise ProgrammingError('Conn.__enter__: a transaction is already active.')
     self.transaction_start = get_time()
     self.transaction_time = 0
     self.transaction_pre_rollback_time = 0
-    is_rw = (self.mode != 'ro')
-    self.execute_control('BEGIN IMMEDIATE' if is_rw else 'BEGIN')
+    if self.mode != 'ro':
+      self._begin_immediate()
+    else:
+      self.execute_control('BEGIN')
     return self
 
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> Literal[False]:
     '''
     On context manager exit, commit the transaction, or roll back if an exception propagated.
-    The connection is not closed; wrap the Conn in `contextlib.closing` to guarantee closing.
+    The exit is guarded by `in_transaction` so a failed BEGIN (no active transaction) does not issue a spurious ROLLBACK.
+    The connection is not closed; use `Conn.closing()` to guarantee closing.
     '''
-    if exc_type: # Exception raised.
-      self.transaction_pre_rollback_time = get_time() - self.transaction_start
-      self.execute_control('ROLLBACK')
-    else:
-      self.execute_control('COMMIT')
+    if self.in_transaction:
+      if exc_type: # Exception raised.
+        self.transaction_pre_rollback_time = get_time() - self.transaction_start
+        self.execute_control('ROLLBACK')
+      else:
+        self.execute_control('COMMIT')
     self.transaction_time = get_time() - self.transaction_start
     if exc_value is not None:
       setattr(exc_value, 'transaction_time', self.transaction_time)
       exc_value.add_note(
         f'transaction_time: {self.transaction_time:.5f}s; pre_rollback_time: {self.transaction_pre_rollback_time:.5f}s.')
     return False
+
+
+  def _begin_immediate(self) -> None:
+    '''
+    Issue BEGIN IMMEDIATE to acquire the write lock, retrying on any SQLITE_BUSY family errors.
+
+    Under WAL, BEGIN IMMEDIATE internally takes a read snapshot then upgrades it to the write lock.
+    If another connection commits a write between those two steps, the snapshot is already stale and SQLite raises
+    SQLITE_BUSY_SNAPSHOT without invoking the busy handler; busy_timeout cannot help, so the only correct response is to retry
+    the failed BEGIN, which takes a fresh snapshot.
+    A write lock held by another writer can also cause a true timeout, resulting in SQLITE_BUSY or another subcode.
+    Regardless of subcode, we retry with exponential backoff and full jitter until we exceed `self.timeout`.
+    Retrying only the BEGIN is sufficient and safe for the context-manager protocol:
+    once it succeeds this connection holds the write lock, so no further snapshot conflict can arise.
+    '''
+    deadline = get_time() + self.timeout
+    attempt = 0
+    self.retry_count = 0
+    self.last_retry_error_code = None
+    while True:
+      try:
+        self.execute_control('BEGIN IMMEDIATE')
+        return
+      except OperationalError as e:
+        if not _is_busy(e): raise
+        self.last_retry_error_code = getattr(e, 'sqlite_errorcode', None)
+        remaining = deadline - get_time()
+        if remaining <= 0:
+          e.add_note(
+            f'BEGIN IMMEDIATE failed after {self.retry_count} retries; '
+            f'last sqlite_errorcode: {self.last_retry_error_code}; retry budget of {self.timeout:.5f}s exhausted.')
+          raise
+        backoff_ceiling = _backoff_ceiling(self.retry_max_sec, self.retry_base_sec, attempt)
+        backoff_sec = min(remaining, backoff_ceiling * random())
+        sleep(backoff_sec)
+        attempt += 1
+        self.retry_count += 1
 
 
   def attach(self, path:str, *, name:str, mode:str='') -> None:
@@ -165,7 +217,7 @@ class Conn(sqlite3.Connection):
     no-op. Use the Conn as a context manager to run an explicit transaction, or issue COMMIT directly via
     `execute_control('COMMIT')`.
     '''
-    raise sqlite3.ProgrammingError(
+    raise ProgrammingError(
       'Conn.commit() is unsupported in autocommit mode; use the Conn as a context manager or execute_control("COMMIT").')
 
 
@@ -175,7 +227,7 @@ class Conn(sqlite3.Connection):
     no-op. Use the Conn as a context manager to roll back on exception, or issue ROLLBACK directly via
     `execute_control('ROLLBACK')`.
     '''
-    raise sqlite3.ProgrammingError(
+    raise ProgrammingError(
       'Conn.rollback() is unsupported in autocommit mode; use the Conn as a context manager or execute_control("ROLLBACK").')
 
 
@@ -300,6 +352,24 @@ class Conn(sqlite3.Connection):
     Argument values whose types are not sqlite-compatible are automatically converted to JSON.
     '''
     return self.cursor().run(sql, _dbg=_dbg, **args)
+
+
+def _is_busy(exc:OperationalError) -> bool:
+  '''
+  Return True if `exc` is a retryable busy error, i.e. any member of the SQLITE_BUSY family:
+  * SQLITE_BUSY (primary code 5)
+  * SQLITE_BUSY_RECOVERY (extended code 261): another process is recovering a hot journal/WAL.
+  * SQLITE_BUSY_SNAPSHOT (extended code 517): the read snapshot went stale before the write-lock upgrade.
+  * SQLITE_BUSY_TIMEOUT (extended code 773): a VFS-level lock timeout expired.
+  All arrive as OperationalError. `sqlite_errorcode` is the extended result code;
+  masking it with 0xFF reduces it to the primary code, matching so comparing to SQLITE_BUSY matches the whole family, including future subcodes.
+  '''
+  code = getattr(exc, 'sqlite_errorcode', None) # Only conditionally set.
+  return code is not None and (code & 0xFF) == SQLITE_BUSY
+
+
+def _backoff_ceiling(retry_max_sec:float, retry_base_sec:float, attempt:int) -> float:
+  return min(retry_max_sec, retry_base_sec * (1 << attempt))
 
 
 def sqlite_file_uri(path:str, *, mode:str='') -> str:
