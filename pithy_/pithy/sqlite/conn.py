@@ -2,6 +2,7 @@
 
 import sqlite3
 from sys import stderr
+from time import monotonic as get_time
 from typing import Any, Callable, Iterable, Literal, Self
 from urllib.parse import quote as url_quote
 
@@ -33,17 +34,27 @@ BackupProgressFn = Callable[[int,int,int],object]
 
 class Conn(sqlite3.Connection):
 
-  def __init__(self, path:str, *, timeout:float=5.0, detect_types:int=0, check_same_thread:bool=True, cached_statements:int=100,
-   uri:bool=False, mode:str='', closing:bool=True, trace_caller_level:int=0) -> None:
-    '''
-    This subclass always uses `autocommit=True`, leaving transaction control to the caller.
-    With WAL mode, write transactions should use `BEGIN IMMEDIATE` to acquire the write lock up front.
+  transaction_start:float = 0
+  transaction_time:float = 0
+  transaction_pre_rollback_time:float = 0
 
-    If `closing` is True (the default), the Conn will close itself when used as a context manager.
-    This is different from the superclass, which does not close itself on context manager exit.
+
+  def __init__(self, path:str, *, timeout:float=5.0, detect_types:int=0, check_same_thread:bool=True, cached_statements:int=100,
+   uri:bool=False, mode:str='', trace_caller_level:int=0) -> None:
+    '''
+    This subclass always uses `autocommit=True`.
+
+    Using a Conn as a context manager runs an explicit transaction: `__enter__` issues a BEGIN
+    (BEGIN IMMEDIATE for read-write connections, to acquire the write lock up front under WAL), and `__exit__`
+    issues COMMIT, or ROLLBACK if an exception propagated. The same Conn can be used as a context manager
+    repeatedly to run successive transactions.
+
+    The connection is not closed on context manager exit. To guarantee closing, wrap the Conn in
+    `contextlib.closing`, e.g. `with closing(Conn(path)) as conn: ...`.
+    If a Conn is garbage-collected without having been closed, `__del__` logs a warning; pass a nonzero
+    `trace_caller_level` to record the construction site for inclusion in that warning.
     '''
     # Set all the attributes used in __del__ first to prevent AttributeErrors on early failures in __init__.
-    self.closing = closing
     self.closed = True
     self.caller_trace_loc = None
 
@@ -73,9 +84,9 @@ class Conn(sqlite3.Connection):
 
   def __del__(self) -> None:
     '''
-    On deletion, if `self.closing and not self.closed`, print a warning message.
+    On deletion, if the connection was never closed, log a warning.
     '''
-    if self.closing and not self.closed:
+    if not self.closed:
       if self.caller_trace_loc:
         file_path, line_number, fn_name = self.caller_trace_loc
         trace_loc = f'{file_path}:{line_number}:{fn_name}'
@@ -86,19 +97,33 @@ class Conn(sqlite3.Connection):
 
   def __enter__(self) -> Self:
     '''
-    On context manager enter, Conn does nothing.
+    On context manager enter, begin an explicit transaction.
+    Read-write connections use BEGIN IMMEDIATE to acquire the write lock up front; read-only connections use BEGIN.
     '''
+    self.transaction_start = get_time()
+    self.transaction_time = 0
+    self.transaction_pre_rollback_time = 0
+    is_rw = (self.mode != 'ro')
+    self.execute_control('BEGIN IMMEDIATE' if is_rw else 'BEGIN')
     return self
 
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> Literal[False]:
     '''
-    On context manager exit, Conn.closing == True, it closes itself after performing the superclass commit/rollback behavior.
-    In contrast, the superclass `sqlite3.Connection` performs commit/rollback exit, but does not close.
+    On context manager exit, commit the transaction, or roll back if an exception propagated.
+    The connection is not closed; wrap the Conn in `contextlib.closing` to guarantee closing.
     '''
-    res = super().__exit__(exc_type, exc_value, traceback)
-    if self.closing: self.close()
-    return res
+    if exc_type: # Exception raised.
+      self.transaction_pre_rollback_time = get_time() - self.transaction_start
+      self.execute_control('ROLLBACK')
+    else:
+      self.execute_control('COMMIT')
+    self.transaction_time = get_time() - self.transaction_start
+    if exc_value is not None:
+      setattr(exc_value, 'transaction_time', self.transaction_time)
+      exc_value.add_note(
+        f'transaction_time: {self.transaction_time:.5f}s; pre_rollback_time: {self.transaction_pre_rollback_time:.5f}s.')
+    return False
 
 
   def attach(self, path:str, *, name:str, mode:str='') -> None:
@@ -107,7 +132,7 @@ class Conn(sqlite3.Connection):
     `mode` must be one of '' (default, omitted in the SQL statement), 'ro', 'rw', 'rwc', or 'memory'.
     '''
     uri = sqlite_file_uri(path, mode=mode)
-    self.cursor().execute(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
+    self.execute_control(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
 
 
   def validate(self, query:str) -> None:
@@ -131,34 +156,51 @@ class Conn(sqlite3.Connection):
     return super().cursor(factory)
 
 
+  def execute_control(self, query:str, args:SqlParameters=()) -> None:
+    '''
+    Execute a control or DML statement whose result rows are not needed, closing the cursor immediately.
+    Closing in a `finally` finalizes the underlying SQLite statement deterministically, even if the cursor would
+    otherwise be kept alive by an exception traceback retaining the frame. Used for BEGIN/COMMIT/ROLLBACK and ATTACH.
+    '''
+    c = self.cursor()
+    try:
+      c.execute(query, args)
+    finally:
+      c.close()
+
+
   def execute(self, query:str, args:SqlParameters=()) -> Cursor:
     '''
     Execute a single SQL statement, optionally binding Python values using placeholders.
 
-    Override execute in order to set `query` on any resulting sqlite3.Error.
+    Create a fresh cursor and return it open, like sqlite3.Connection.execute.
+    The caller is responsible for closing the returned cursor; for statements with no result rows,
+    use `execute_control` instead.
+    The Cursor override sets `query` and `execute_time` on any resulting sqlite3.Error.
     '''
-    with self.cursor() as c:
-      return c.execute(query, args)
+    return self.cursor().execute(query, args)
 
 
   def executemany(self, query:str, it_args:Iterable[SqlParameters]) -> Cursor:
     '''
     For every item in `it_args`, repeatedly execute the parameterized DML SQL statement sql.
 
-    Override executemany in order to set `query` on any resulting sqlite3.Error.
+    Create a fresh cursor and return it open, like sqlite3.Connection.executemany.
+    The Cursor override sets `query` and `execute_time` on any resulting sqlite3.Error.
     '''
-    with self.cursor() as c:
-      return c.executemany(query, it_args)
+    return self.cursor().executemany(query, it_args)
 
 
   def executescript(self, sql_script:str) -> Cursor:
     '''
-    Execute the SQL statements in sql_script. If the autocommit is LEGACY_TRANSACTION_CONTROL and there is a pending transaction, an implicit COMMIT statement is executed first. No other implicit transaction control is performed; any transaction control must be added to sql_script.
+    Execute the SQL statements in sql_script.
+    Since this Conn always uses autocommit=True, no implicit transaction control is performed;
+    any transaction control must be added to sql_script.
 
-    Override executemany in order to set `query` on any resulting sqlite3.Error.
+    Create a fresh cursor and return it open, like sqlite3.Connection.executescript.
+    The Cursor override sets `script` and `execute_time` on any resulting sqlite3.Error.
     '''
-    with self.cursor() as c:
-      return c.executescript(sql_script)
+    return self.cursor().executescript(sql_script)
 
 
   def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,

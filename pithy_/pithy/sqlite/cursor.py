@@ -31,37 +31,20 @@ type SqlParameters = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[st
 class Cursor(sqlite3.Cursor, AbstractContextManager):
 
   execute_time:float = 0
-  transaction_start:float = 0
-  transaction_time:float = 0
-  transaction_pre_rollback_time:float = 0
 
 
   def __enter__(self) -> Self:
     '''
-    On context manager enter, Cursor begins a transaction.
+    On context manager enter, Cursor does nothing.
+    Transactions are scoped to the connection; use the Conn context manager for BEGIN/COMMIT/ROLLBACK.
     '''
-    self.transaction_start = get_time()
-    self.transaction_time = 0
-    conn:Any = self.connection # pithy.sqlite.Connection is not visible in this module, so we use Any.
-    is_rw = (conn.mode != 'ro')
-    self.execute('BEGIN IMMEDIATE' if is_rw else 'BEGIN')
     return self
 
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     '''
-    On context manager exit, Cursor commits or rolls back, then closes itself.
+    On context manager exit, Cursor closes itself.
     '''
-    if exc_type: # Exception raised.
-      self.transaction_pre_rollback_time = get_time() - self.transaction_start
-      self.execute('ROLLBACK')
-    else:
-      self.execute('COMMIT')
-    self.transaction_time = get_time() - self.transaction_start
-    if exc_value is not None:
-      setattr(exc_value, 'transaction_time', self.transaction_time)
-      exc_value.add_note(
-        f'transaction_time: {self.transaction_time:.5f}s; pre_rollback_time: {self.transaction_pre_rollback_time:.5f}s.')
     self.close()
 
 
