@@ -5,6 +5,7 @@ from os import access as _access, execvp, getpid as _getpid, R_OK, supports_effe
 from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file, join as _path_join
 from selectors import EVENT_READ, EVENT_WRITE, PollSelector as _PollSelector
 from shlex import join as sh_join, quote as sh_quote, split as sh_split
+from signal import SIGKILL
 from subprocess import DEVNULL, PIPE, Popen as _Popen, STDOUT, TimeoutExpired
 from sys import stderr, stdout
 from time import time as _now
@@ -41,7 +42,8 @@ def exec(cmd:Cmd) -> NoReturn:
 
 
 def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
- files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[tuple[str,...],_Popen,bytes|None]:
+ files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False, new_session:bool=True
+ ) -> tuple[tuple[str,...],_Popen,bytes|None]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
 
@@ -49,6 +51,9 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   User code is made clearer by just specifying the complete shell invocation.
 
   If `cmd` is a list, it is used as is. If `cmd` is a string it is split by shlex.split.
+
+  If `new_session` is true (the default), the child starts a new session and process group,
+  so that a timeout kill can reap the entire descendant tree; see `_kill`.
 
   TODO: Popen supports both text and binary files; we should too.
   TODO: support bufsize parameter.
@@ -88,6 +93,7 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
       shell=False,
       env=env,
       pass_fds=fds,
+      start_new_session=new_session,
       preexec_fn=(preexec_launch_lldb if lldb else None))
 
     return cmd, proc, input_bytes
@@ -144,6 +150,22 @@ def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
       raise TaskLaunchError(path) from e # open or read failed; raise the original exception.
 
 
+def _kill(proc:_Popen) -> None:
+  '''
+  Kill a subprocess. If the process is its own process group leader (as when launched with `new_session`),
+  kill the whole group so that descendant processes are also reaped;  otherwise kill just the process.
+  Safe to call on an already-dead process.
+  '''
+  try:
+    pid = proc.pid
+    if _os.getpgid(pid) == pid: # Process is its own group leader; kill the whole group.
+      _os.killpg(pid, SIGKILL)
+    else:
+      proc.kill()
+  except ProcessLookupError:
+    pass # Process already exited.
+
+
 def communicate(proc:_Popen, input_bytes:bytes|None=None, timeout:int=0) -> tuple[int,bytes,bytes]:
   '''
   Communicate with and wait for a task.
@@ -154,7 +176,7 @@ def communicate(proc:_Popen, input_bytes:bytes|None=None, timeout:int=0) -> tupl
     # Popen.communicate uses a thread-safe selector/deadline timeout, but does not kill the child on expiry.
     out_bytes, err_bytes = proc.communicate(input_bytes, timeout=(timeout or None)) # waits for process to complete.
   except TimeoutExpired:
-    proc.kill()
+    _kill(proc)
     proc.communicate() # reap the killed process to avoid a zombie.
     raise Timeout(f'process timed out after {timeout} seconds and was killed')
 
@@ -194,7 +216,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None
       if timeout > 0:
         time_rem = timeout - (_now() - time_start)
         if time_rem <= 0:
-          proc.kill()
+          _kill(proc)
           raise Timeout(f'process timed out after {timeout} seconds and was killed')
       else:
         time_rem = None
@@ -253,20 +275,20 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None
     _check_exp(cmd, exp, code, exits)
     return code # generator will raise StopIteration(code).
   except BaseException:
-    proc.kill()
+    _kill(proc)
     cleanup()
     raise
 
 
 def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
- timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
- ) -> tuple[int, str, str]:
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False,
+ new_session:bool=True) -> tuple[int, str, str]:
   '''
   Run a command, check the exit expectation, and return (exit_code, std_out, std_err).
   `exits` specifies the string or exit code to use to `exit()` this program if the expectation is not met.
   '''
   cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd,
-    lldb=lldb)
+    lldb=lldb, new_session=new_session)
   code, out_bytes, err_bytes = communicate(proc, input_bytes, timeout)
   _check_exp(cmd, exp, code, exits)
   return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
