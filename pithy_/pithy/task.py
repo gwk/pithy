@@ -5,12 +5,11 @@ from os import access as _access, execvp, getpid as _getpid, R_OK, supports_effe
 from os.path import dirname as _dir_name, exists as _path_exists, isfile as _is_file, join as _path_join
 from selectors import EVENT_READ, EVENT_WRITE, PollSelector as _PollSelector
 from shlex import join as sh_join, quote as sh_quote, split as sh_split
-from subprocess import DEVNULL, PIPE, Popen as _Popen, STDOUT
+from subprocess import DEVNULL, PIPE, Popen as _Popen, STDOUT, TimeoutExpired
 from sys import stderr, stdout
 from time import time as _now
 from typing import AnyStr, cast, Generator, IO, Literal, NoReturn, Sequence
 
-from .alarm import Alarm
 from .exceptions import Timeout
 
 
@@ -149,14 +148,15 @@ def communicate(proc:_Popen, input_bytes:bytes|None=None, timeout:int=0) -> tupl
   '''
   Communicate with and wait for a task.
   Returns (exit_code, out_bytes, err_bytes).
+  A `timeout` of 0 disables the timeout; otherwise it is interpreted as seconds.
   '''
-
-  # Note: Popen provides its own timeout mechanism, based on select.
-  # However, the CPython implementation of communicate() has an optimized path that is only used
-  # when the timeout feature is not used.
-  # The tradeoff between that implementation and this alarm-based one should be examined further.
-  with Alarm(timeout=timeout, msg='process timed out after {timeout} seconds and was killed', on_signal=proc.kill):
-    out_bytes, err_bytes = proc.communicate(input_bytes) # waits for process to complete.
+  try:
+    # Popen.communicate uses a thread-safe selector/deadline timeout, but does not kill the child on expiry.
+    out_bytes, err_bytes = proc.communicate(input_bytes, timeout=(timeout or None)) # waits for process to complete.
+  except TimeoutExpired:
+    proc.kill()
+    proc.communicate() # reap the killed process to avoid a zombie.
+    raise Timeout(f'process timed out after {timeout} seconds and was killed')
 
   return proc.returncode, (b'' if out_bytes is None else out_bytes), (b'' if err_bytes is None else err_bytes)
 
