@@ -274,12 +274,14 @@ class Cursor(sqlite3.Cursor):
 
   def user_version(self, namespace:str='main') -> int:
     'Return the integer value stored in the user_version pragma.'
-    user_version = self.run('PRAGMA user_version').one_col()
+    if not namespace.isidentifier(): raise ValueError(f'Invalid namespace: {namespace}')
+    user_version = self.run(f'PRAGMA {namespace}.user_version').one_col()
     assert isinstance(user_version, int), user_version
     return user_version
 
 
-  def set_user_version(self, version:int) -> None:
+  def set_user_version(self, namespace:str, version:int) -> None:
     'Set the integer value stored in the user_version pragma.'
+    if not namespace.isidentifier(): raise ValueError(f'Invalid namespace: {namespace}')
     assert isinstance(version, int), version
-    self.run(f'PRAGMA user_version = {version}')
+    self.run(f'PRAGMA {namespace}.user_version = {version}')
