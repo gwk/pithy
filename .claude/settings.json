@@ -1,14 +1,19 @@
 {
   "permissions": {
+    "defaultMode": "auto",
     "allow": [
       "WebSearch"
-    ]
+    ],
+    "additionalDirectories": []
   },
   "sandbox": {
     "enabled": true,
     "failIfUnavailable": true,
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": false,
+    "fileSystem": {
+      "allowRead": []
+    },
     "network": {
       "allowLocalBinding": true
     }
