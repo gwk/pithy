@@ -42,7 +42,7 @@ def exec(cmd:Cmd) -> NoReturn:
 
 
 def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
- files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False, new_session:bool=True
+ files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False, new_session:bool=True, bufsize:int=-1, pipesize:int=-1
  ) -> tuple[tuple[str,...],_Popen,bytes|None]:
   '''
   Launch a subprocess, returning the normalized command as a tuple, the subprocess.Popen object and the optional input bytes.
@@ -55,8 +55,9 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   If `new_session` is true (the default), the child starts a new session and process group,
   so that a timeout kill can reap the entire descendant tree; see `_kill`.
 
+  `bufsize` and `pipesize` are passed through to Popen; -1 selects the system default.
+
   TODO: Popen supports both text and binary files; we should too.
-  TODO: support bufsize parameter.
   '''
 
   if note_cmd: print('cmd:', fmt_cmd(cmd), file=stderr)
@@ -94,6 +95,8 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
       env=env,
       pass_fds=fds,
       start_new_session=new_session,
+      bufsize=bufsize,
+      pipesize=pipesize,
       preexec_fn=(preexec_launch_lldb if lldb else None))
 
     return cmd, proc, input_bytes
