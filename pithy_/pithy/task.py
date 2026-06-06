@@ -11,8 +11,6 @@ from sys import stderr, stdout
 from time import time as _now
 from typing import cast, Generator, IO, Literal, NoReturn, overload, Sequence
 
-from .exceptions import Timeout
-
 
 _convenience_exports = (DEVNULL, STDOUT)
 
@@ -181,7 +179,7 @@ def communicate(proc:_Popen, input_bytes:bytes|None=None, timeout:int=0) -> tupl
   except TimeoutExpired:
     _kill(proc)
     proc.communicate() # reap the killed process to avoid a zombie.
-    raise Timeout(f'process timed out after {timeout} seconds and was killed')
+    raise TaskTimeout(cast(tuple[str,...], proc.args), timeout)
 
   return proc.returncode, (b'' if out_bytes is None else out_bytes), (b'' if err_bytes is None else err_bytes)
 
@@ -237,7 +235,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None
         time_rem = timeout - (_now() - time_start)
         if time_rem <= 0:
           _kill(proc)
-          raise Timeout(f'process timed out after {timeout} seconds and was killed')
+          raise TaskTimeout(cmd, timeout)
       else:
         time_rem = None
 
@@ -436,6 +434,14 @@ class UnexpectedExit(Exception):
     self.cmd = cmd
     self.exp = exp
     self.act = act
+
+
+class TaskTimeout(Exception):
+  'Exception indicating that a subprocess exceeded its timeout and was killed.'
+  def __init__(self, cmd:tuple[str,...], timeout:int):
+    super().__init__(f'process timed out after {timeout} seconds and was killed; command: `{fmt_cmd(cmd)}`')
+    self.cmd = cmd
+    self.timeout = timeout
 
 
 class TaskLaunchError(Exception):

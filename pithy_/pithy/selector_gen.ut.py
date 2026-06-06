@@ -2,8 +2,7 @@
 
 import os
 
-from pithy.exceptions import Timeout
-from pithy.selector_gen import read_fds
+from pithy.selector_gen import read_fds, SelectorTimeout
 from utest import utest, utest_run, utest_run_exc, utest_seq
 
 
@@ -37,9 +36,9 @@ def _() -> None:
     os.close(r1)
 
 
-@utest_run_exc(Timeout)
+@utest_run_exc(SelectorTimeout)
 def _() -> None:
-  'Test with timeout: no data available, should raise Timeout.'
+  'Test with timeout: no data available, should raise SelectorTimeout.'
 
   r0, w0 = os.pipe()
   try:

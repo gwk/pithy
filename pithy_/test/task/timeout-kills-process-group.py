@@ -10,8 +10,7 @@ Run under iotest rather than utest because it spawns real subprocesses and write
 import os
 from time import sleep
 
-from pithy.exceptions import Timeout
-from pithy.task import communicate, launch
+from pithy.task import communicate, launch, TaskTimeout
 from utest import utest, utest_exc
 
 
@@ -35,7 +34,7 @@ for _ in range(500): # Up to ~5s.
 assert grandchild_pid, 'grandchild pid was not recorded'
 
 # The timeout fires and kills the whole group.
-utest_exc(Timeout('process timed out after 1 seconds and was killed'), communicate, proc, input_bytes, 1)
+utest_exc(TaskTimeout, communicate, proc, input_bytes, 1)
 
 
 def grandchild_alive() -> bool:

@@ -42,10 +42,6 @@ class NoMatchError(KeyError):
   'Raised when a query matches no children.'
 
 
-class Timeout(Exception):
-  'Exception indicating that a task timed out.'
-
-
 class print_traceback_and_suppress(AbstractContextManager, ContextDecorator):
   '''
   Context manager to suppress specified exceptions, printing a traceback to stderr if an exception is suppressed.

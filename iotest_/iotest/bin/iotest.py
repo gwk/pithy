@@ -12,7 +12,6 @@ from warnings import filterwarnings
 
 from pithy.ansi import BG, FILL_OUT, gray26, INVERT, is_out_tty, RST_INVERT, sanitize_for_console, sgr, TTY_OUT
 from pithy.dict import dict_fan_by_key_pred
-from pithy.exceptions import Timeout
 from pithy.filenamefmt import FilenameFormatterError, fnf_str_has_formatter, regex_for_fnf_str
 from pithy.filestatus import file_status, is_dir, path_exists
 from pithy.fs import (abs_path, copy_path, find_project_dir, is_python_file, list_dir, make_dirs, make_link, open_new,
@@ -21,7 +20,7 @@ from pithy.io import confirm, errL, errSL, outL, outN, outSL, outZ, read_from_pa
 from pithy.iterable import fan_by_pred
 from pithy.path import (norm_path, path_descendants, path_dir, path_dir_or_dot, path_ext, path_exts, path_join,
   path_name_stem_sans_exts, path_stem_sans_exts, rel_path, split_dir_name)
-from pithy.task import run, runC, TaskLaunchError, UnexpectedExit
+from pithy.task import run, runC, TaskLaunchError, TaskTimeout, UnexpectedExit
 
 from ..case import Case, FileExpectation, ParConfig, TestCaseError
 from ..ctx import Ctx
@@ -482,7 +481,7 @@ def run_cmd(ctx:Ctx, coverage_cases:list[Case]|None, case:Case, label:str, cmd:l
       return False
     except TaskLaunchError as e:
       outL(f'\n{label} process launch failed; {e.diagnosis}')
-    except Timeout:
+    except TaskTimeout:
       outL(f'\n{label} process timed out ({timeout} sec) and was killed.')
     return None
 

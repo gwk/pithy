@@ -4,7 +4,9 @@ import os
 from collections.abc import Generator, Sequence
 from selectors import DefaultSelector, EVENT_READ
 
-from .exceptions import Timeout
+
+class SelectorTimeout(Exception):
+  'Exception indicating that `read_fds` timed out with no file descriptors ready.'
 
 
 def read_fds(fds:Sequence[int], timeout:float|None=None) -> Generator[tuple[int,bytes], None, None]:
@@ -18,7 +20,7 @@ def read_fds(fds:Sequence[int], timeout:float|None=None) -> Generator[tuple[int,
 
   If `timeout` is None, the selector will block indefinitely until at least one fd is ready.
   If `timeout` is not None, it is passed to selector.select() as the timeout in seconds.
-  When the timeout expires with no fds ready, a Timeout exception is raised.
+  When the timeout expires with no fds ready, a SelectorTimeout exception is raised.
   '''
   sel = DefaultSelector()
   try:
@@ -26,7 +28,7 @@ def read_fds(fds:Sequence[int], timeout:float|None=None) -> Generator[tuple[int,
       sel.register(fd, EVENT_READ, idx)
     while sel.get_map():
       ready = sel.select(timeout)
-      if not ready: raise Timeout(f'read_fds timed out after {timeout} seconds with no fds ready')
+      if not ready: raise SelectorTimeout(f'read_fds timed out after {timeout} seconds with no fds ready')
       for key, _events in ready:
         try:
           chunk = os.read(key.fd, 0x10000)
