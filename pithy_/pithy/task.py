@@ -9,7 +9,7 @@ from signal import SIGKILL
 from subprocess import DEVNULL, PIPE, Popen as _Popen, STDOUT, TimeoutExpired
 from sys import stderr, stdout
 from time import time as _now
-from typing import AnyStr, cast, Generator, IO, Literal, NoReturn, Sequence
+from typing import cast, Generator, IO, Literal, NoReturn, overload, Sequence
 
 from .exceptions import Timeout
 
@@ -183,8 +183,25 @@ def communicate(proc:_Popen, input_bytes:bytes|None=None, timeout:int=0) -> tupl
   return proc.returncode, (b'' if out_bytes is None else out_bytes), (b'' if err_bytes is None else err_bytes)
 
 
+@overload
 def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, timeout:int=0, exp:TaskCodeExpectation=0,
- as_lines:bool=True, as_text:bool=True, merge_err:bool=False, exits:ExitOpt=False) -> Generator[AnyStr,None,int]:
+ as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, *, encoding:str=..., errors:str=...
+ ) -> Generator[str,bytes|None,int]: ...
+
+@overload
+def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, timeout:int=0, exp:TaskCodeExpectation=0,
+ as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, *, encoding:None, errors:None=...
+ ) -> Generator[bytes,bytes|None,int]: ...
+
+def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, timeout:int=0, exp:TaskCodeExpectation=0,
+ as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, encoding:str|None='utf-8', errors:str|None='strict'
+ ) -> Generator[str|bytes,bytes|None,int]:
+  '''
+  If `encoding` is not None, yielded out is decoded with `encoding` and `errors`; otherwise it is yielded as bytes.
+  When `encoding` is None, `errors` must also be None.
+  '''
+  if encoding is None:
+    if errors is not None: raise ValueError('task.run_gen: when `encoding` is None, `errors` must also be None.')
   send: int|None = None
   recv: int|None = None
   if stdin == PIPE:
@@ -254,7 +271,7 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None
         recv_bytes = b''
 
       if yield_bytes or send_ready:
-        send_bytes = yield cast(AnyStr, yield_bytes.decode('utf8') if as_text else yield_bytes)
+        send_bytes = yield (yield_bytes.decode(encoding, errors or 'strict') if encoding is not None else yield_bytes)
         if send_bytes is not None:
           send_buffer.append(send_bytes)
 
@@ -280,18 +297,38 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None
     raise
 
 
+@overload
 def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
  timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False,
- new_session:bool=True) -> tuple[int, str, str]:
+ new_session:bool=True, *, encoding:str=..., errors:str=...) -> tuple[int,str,str]: ...
+
+@overload
+def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False,
+ new_session:bool=True, *, encoding:None, errors:None=...) -> tuple[int,bytes,bytes]: ...
+
+def run(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False,
+ new_session:bool=True, *, encoding:str|None='utf-8', errors:str|None='strict') -> tuple[int,str,str]|tuple[int,bytes,bytes]:
   '''
   Run a command, check the exit expectation, and return (exit_code, std_out, std_err).
   `exits` specifies the string or exit code to use to `exit()` this program if the expectation is not met.
+  If `encoding` is not None (the default), out and err are decoded with `encoding` and `errors`;
+  otherwise they are returned as bytes.
+  `encoding` and `errors` must be strings for text output, and None for bytes output.
   '''
+  if encoding is None:
+    if errors is not None:
+      raise ValueError('task.run: when `encoding` is None, `errors` must also be None.')
+  elif errors is None:
+    raise ValueError('task.run: when `errors` is specified, `encoding` must also be specified.')
+
   cmd, proc, input_bytes = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, files=files, note_cmd=note_cmd,
     lldb=lldb, new_session=new_session)
   code, out_bytes, err_bytes = communicate(proc, input_bytes, timeout)
   _check_exp(cmd, exp, code, exits)
-  return code, out_bytes.decode('utf8'), err_bytes.decode('utf8')
+  if encoding is None: return code, out_bytes, err_bytes
+  return code, out_bytes.decode(encoding, errors or 'strict'), err_bytes.decode(encoding, errors or 'strict')
 
 
 def _check_exp(cmd:tuple[str,...], exp:TaskCodeExpectation, code:int, exits:ExitOpt) -> None:
