@@ -12,7 +12,6 @@ _build/
 _misc/
 _repro.wu
 docs/_muck
-plan.md
-prompt.md
-todo.md
-typeshed
+_plan.md
+_prompt.md
+_todo.md
