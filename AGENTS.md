@@ -48,7 +48,8 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - Prefer single quotes for strings.
 - Always ask before adding external dependencies.
 - Error handling: early returns, custom exceptions where they clarify intent or need to be caught, explicit error messages.
-- Line length: 128 characters max; wrap long function declarations past that length, not per parameter.
+- Line length: 128 characters; wrap long function declarations past that length, not per parameter.
+- Do not wrap at shorter lengths; 128 is our page width.
 - Docstrings: single quotes for brief docs, triple single-quotes for multi-line.
 - Full sentences with periods in comments and docstrings.
 - Do not put non-ascii characters like em-dashes or fancy quotes in code comments or docstrings unless there is is a specific
