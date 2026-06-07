@@ -1,0 +1,206 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+from dataclasses import dataclass
+from typing import Iterable, Self
+
+from ..frozendicts import frozendict
+from ..fs import file_size, is_file, move_file, path_exists
+from ..logs import logI, logW
+from ..path import path_join
+from ..sqlite import Conn, Cursor, Mode, Row
+from ..strings import format_byte_count
+from ..task import run
+
+
+_convenience_exports = (Cursor, Row)
+
+
+@dataclass(frozen=True)
+class DbConfig:
+  'Configuration for a collection of SQLite database files managed together.'
+
+  names: tuple[str, ...]  # Logical db names; must start with 'main'.
+  data_dir: str           # Directory containing the .db files.
+  user_version: int       # Static schema version for migration tracking.
+  cache_mb: int = 256
+  synchronous_full: bool = False  # True: fully durable WAL; False: NORMAL (default).
+
+  def __post_init__(self) -> None:
+    if not self.names or self.names[0] != 'main':
+      raise ValueError(f'DbConfig.names must start with "main"; got {self.names!r}.')
+
+  def path(self, name:str) -> str:
+    return path_join(self.data_dir, f'{name}.db')
+
+  @property
+  def paths(self) -> frozendict[str,str]:
+    return frozendict({name: self.path(name) for name in self.names})
+
+
+class Database:
+
+  def __init__(self, config:DbConfig, *, rw:bool=False, trace_caller_level:int=3) -> None:
+    self.config = config
+    mode:Mode = 'rw' if rw else 'ro'
+    self.conn = _connect(config, mode=mode, trace_caller_level=trace_caller_level)
+
+    try: # Close the conn if version validation fails; otherwise the conn would leak.
+      c = self.conn.cursor()
+      main_user_version:int = c.user_version()
+
+      if main_user_version < config.user_version:
+        logI('Database stored user_version is behind.', stored=main_user_version, static=config.user_version)
+      elif main_user_version > config.user_version:
+        logW('Database stored user_version is ahead.', stored=main_user_version, static=config.user_version)
+
+      for name in config.names:
+        stored = c.user_version(name)
+        if stored != main_user_version:
+          logW(f'Attached user_version is out of sync: {name}:{stored} < main:{main_user_version}.')
+    except BaseException:
+      self.conn.close()
+      raise
+
+
+  @classmethod
+  def ro(cls, config:DbConfig) -> Self:
+    'Create a read-only database handle.'
+    return cls(config, rw=False, trace_caller_level=4)
+
+
+  @classmethod
+  def rw(cls, config:DbConfig) -> Self:
+    'Create a read-write database handle.'
+    return cls(config, rw=True, trace_caller_level=4)
+
+
+  @staticmethod
+  def initialize(config:DbConfig) -> None:
+    'Create and initialize each database file, setting WAL mode. Idempotent: safe to call on existing files.'
+    for name, path in config.paths.items():
+      logI('Initializing database.', name=name, path=path)
+      with Conn(path, mode='rwc').closing() as conn:
+        result = conn.run('PRAGMA journal_mode = WAL').one_col()
+        if result != 'wal':
+          raise Exception(f'Failed to set WAL mode on {path!r} (db: {name!r}); got {result!r}.')
+
+
+  def __enter__(self) -> Self:
+    return self
+
+
+  def __exit__(self, exc_type:object, exc_val:object, exc_tb:object) -> None:
+    self.conn.close()
+
+
+  def backup_all(self, backup_dir:str) -> list[str]:
+    return [self.backup_db(name=name, backup_dir=backup_dir) for name in self.config.names]
+
+
+  def backup_db(self, name:str, backup_dir:str) -> str:
+    '''
+    Back up a single database file using VACUUM INTO.
+    Produces a compacted copy whose underlying pages differ from the original.
+    '''
+    db_path = self.config.path(name)
+    backup_path = path_join(backup_dir, f'{name}.db')
+    if db_path == backup_path:
+      raise ValueError(f'Backup path {backup_path!r} is the same as the database path {db_path!r}.')
+
+    if path_exists(backup_path, follow=False):
+      prev_path = backup_path + '.prev'
+      logI('Backup database path already exists; moving to .prev.', backup_path=backup_path, prev_path=prev_path)
+      move_file(path=backup_path, to=prev_path, overwrite=True)
+
+    logI('Backing up database.', name=name)
+
+    with Conn(db_path, mode='ro').closing() as src_conn:
+      src_conn.run('VACUUM INTO :backup_path', backup_path=backup_path)
+
+    with Conn(backup_path, mode='rw').closing() as backup_conn:
+      backup_conn.cursor().run('PRAGMA journal_mode = WAL')
+
+    size = file_size(backup_path)
+    logI('Database backup complete.', name=name, backup_path=backup_path, size_bytes=format_byte_count(size))
+    return backup_path
+
+
+  def sync_db(self, name:str, sync_dir:str) -> str:
+    '''
+    Sync a database to a replica using sqlite3_rsync (transactional, page-by-page).
+    Successive syncs are usually much faster than a full backup.
+    '''
+    db_path = self.config.path(name)
+    sync_path = path_join(sync_dir, f'{name}.sync.db')
+    if db_path == sync_path:
+      raise ValueError(f'Sync path {sync_path!r} is the same as the database path {db_path!r}.')
+
+    logI('Syncing database.', name=name, db_path=db_path, sync_path=sync_path)
+    run(['sqlite3_rsync', db_path, sync_path])
+    size = file_size(sync_path)
+    logI('Database sync complete.', name=name, sync_path=sync_path, size_bytes=format_byte_count(size))
+    return sync_path
+
+
+  def cleanup_db(self, name:str) -> None:
+    'Run `wal_checkpoint(TRUNCATE)` to clean up -wal and -shm files for the named database.'
+    with Conn(self.config.path(name), mode='rw').closing() as conn:
+      conn.cursor().run('PRAGMA wal_checkpoint(TRUNCATE)')
+
+
+  def cleanup_all(self) -> None:
+    for name in self.config.names:
+      self.cleanup_db(name)
+
+
+  def get_file_sizes(self) -> dict[str,int]:
+    return {name: file_size(path) for name, path in self.config.paths.items()}
+
+
+def set_all_user_versions(c:Cursor, names:Iterable[str], version:int) -> None:
+  'Set the `user_version` pragma on each named database.'
+  for name in names:
+    c.set_user_version(name, version)
+
+
+def _connect(config:DbConfig, *, mode:Mode, trace_caller_level:int) -> Conn:
+
+  for name, path in config.paths.items():
+    if not is_file(path, follow=True): exit(f'error: database file not found: {path!r} (db: {name!r}).')
+
+  conn = Conn(config.paths[config.names[0]], mode=mode, check_same_thread=False,
+    trace_caller_level=trace_caller_level)
+
+  try: # Close the conn on any failure during setup.
+    for name in config.names[1:]:
+      path = config.path(name)
+      try: conn.attach(path, name=name, mode=mode)
+      except Exception as e:
+        e.add_note(f'error: failed to attach database file: {path!r}.')
+        raise
+
+    c = conn.cursor()
+
+    for name in config.names:
+      journal_mode = c.run(f'PRAGMA {name}.journal_mode').one_col()
+      if journal_mode != 'wal':
+        raise Exception(
+          f'Database {name!r} is not in WAL mode (found {journal_mode!r}); '
+          f'use Database.initialize() to set up a new database.')
+
+    if mode == 'ro': c.run('PRAGMA query_only = 1')
+
+    c.run(f'PRAGMA cache_size = {-1024 * config.cache_mb}')
+
+    if config.synchronous_full:
+      c.run('PRAGMA synchronous = FULL')
+    else:
+      c.run('PRAGMA synchronous = NORMAL')
+
+    c.run('PRAGMA temp_store = memory')
+
+  except BaseException:
+    conn.close()
+    raise
+
+  return conn
