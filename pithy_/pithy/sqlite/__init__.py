@@ -5,14 +5,14 @@ from sqlite3 import (DatabaseError, DataError, IntegrityError, InterfaceError, I
   OperationalError, ProgrammingError)
 from typing import TypeAlias
 
-from .conn import Conn
+from .conn import Conn, Mode
 from .cursor import Cursor
 from .row import Row
 
 
 # Silence linter by referencing imported names.
 
-_:tuple = (Row, Cursor, Conn)
+_:tuple = (Row, Cursor, Conn, Mode)
 
 _ = (DatabaseError, DataError, IntegrityError, InterfaceError, InternalError, NotSupportedError, OperationalError,
   ProgrammingError)

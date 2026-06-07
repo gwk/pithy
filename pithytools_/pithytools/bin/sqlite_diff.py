@@ -12,8 +12,8 @@ def main() -> None:
   parser.add_argument('path_b', help='Path to the second database file.')
 
   args = parser.parse_args()
-  cn_a = Conn(args.path_a)
-  cn_b = Conn(args.path_b)
+  cn_a = Conn(args.path_a, mode='ro')
+  cn_b = Conn(args.path_b, mode='ro')
 
   a_tables = set(cn_a.cursor().run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())
   b_tables = set(cn_a.cursor().run("SELECT name FROM sqlite_schema WHERE type = 'table'").col())

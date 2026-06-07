@@ -13,7 +13,6 @@ from ..logs import logW
 from ..meta import caller_src_loc
 from ..path import path_name
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
-from ..url import url_path
 from .cursor import Cursor, SqlParameters
 from .row import Row
 from .util import sql_quote_entity
@@ -34,6 +33,8 @@ sqlite_threadsafe_desc = sqlite_threadsafe_dbapi_id_descs[sqlite_threadsafe_dbap
 
 BackupProgressFn = Callable[[int,int,int],object]
 
+type Mode = Literal['ro','rw','rwc','memory']
+
 
 class Conn(sqlite3.Connection):
 
@@ -48,8 +49,9 @@ class Conn(sqlite3.Connection):
   last_retry_error_code:int|None = None
 
 
-  def __init__(self, path:str, *, timeout:float=5.0, detect_types:int=0, check_same_thread:bool=True, cached_statements:int=100,
-   uri:bool=False, mode:str='', trace_caller_level:int=0) -> None:
+  def __init__(self, path:str, *, mode:Mode, timeout:float=5.0, detect_types:int=0,
+   check_same_thread:bool=True, cached_statements:int=100, immutable:bool=False, modeof:str='', psow:bool|None=None, vfs:str='',
+   trace_caller_level:int=0) -> None:
     '''
     This subclass always uses `autocommit=True`.
 
@@ -62,6 +64,14 @@ class Conn(sqlite3.Connection):
     e.g. `with Conn(path).closing() as conn: ...`, or equivalently wrap the Conn in `contextlib.closing`.
     If a Conn is garbage-collected without having been closed, `__del__` logs a warning; pass a nonzero
     `trace_caller_level` to record the construction site for inclusion in that warning.
+
+    URI parameters (https://www.sqlite.org/uri.html):
+    - `immutable`: assert that the file is on read-only media; skips locking and change detection.
+    - `modeof`: (Unix) set new file permissions to match the specified existing file path.
+    - `psow`: override the power-safe overwrite property (True/False).
+    - `vfs`: name of the VFS to use.
+    The `cache` URI parameter is not exposed (SQLite shared cache is deprecated).
+    The `nolock` URI parameter is not exposed (disabling locking risks database corruption).
     '''
     # Set all the attributes used in __del__ first to prevent AttributeErrors on early failures in __init__.
     self.closed = True
@@ -72,17 +82,12 @@ class Conn(sqlite3.Connection):
 
     self.mode = mode
     self.timeout = timeout
-    self.path = url_path(path) if uri else path
-    if mode:
-      if uri: raise ValueError('Cannot specify both `uri` and `mode`')
-      if mode not in ('', 'ro', 'rw', 'rwc', 'memory'): raise ValueError(mode)
-      #^ TODO: this could be relaxed by parsing, validating and updating the URI, taking care to raise in event of a conflict of query parameters.
-      path = sqlite_file_uri(path, mode=mode)
-      uri = True
+    self.path = path
+    uri = sqlite_file_uri(path, mode=mode, immutable=immutable, modeof=modeof, psow=psow, vfs=vfs)
 
     try:
-      super().__init__(path, timeout=timeout, detect_types=detect_types, check_same_thread=check_same_thread,
-        cached_statements=cached_statements, uri=uri, autocommit=True)
+      super().__init__(uri, timeout=timeout, detect_types=detect_types, check_same_thread=check_same_thread,
+        cached_statements=cached_statements, uri=True, autocommit=True)
     except Exception as e:
       e.add_note(f'path: {path!r}.')
       raise
@@ -179,12 +184,10 @@ class Conn(sqlite3.Connection):
         self.retry_count += 1
 
 
-  def attach(self, path:str, *, name:str, mode:str='') -> None:
-    '''
-    Attach another database to this one using the URI syntax with the specified mode.
-    `mode` must be one of '' (default, omitted in the SQL statement), 'ro', 'rw', 'rwc', or 'memory'.
-    '''
-    uri = sqlite_file_uri(path, mode=mode)
+  def attach(self, path:str, *, name:str, mode:Mode,
+   immutable:bool=False, modeof:str='', psow:bool|None=None, vfs:str='') -> None:
+    'Attach another database to this one using the URI syntax.'
+    uri = sqlite_file_uri(path, mode=mode, immutable=immutable, modeof=modeof, psow=psow, vfs=vfs)
     self.execute_control(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
 
 
@@ -332,7 +335,7 @@ class Conn(sqlite3.Connection):
           print(f'{label}: {frac:0.1%}…', end=progress_end, file=stderr)
         progress_fn = _progress_fn
 
-    if isinstance(target, str): target = Conn(target)
+    if isinstance(target, str): target = Conn(target, mode='rwc')
 
     try: # Once target is (possibly) opened, we must guard it with try/finally to ensure it gets closed.
       if tty_progress: print(f'{label}…', end='\r', file=stderr)
@@ -372,16 +375,16 @@ def _backoff_ceiling(retry_max_sec:float, retry_base_sec:float, attempt:int) -> 
   return min(retry_max_sec, retry_base_sec * (1 << attempt))
 
 
-def sqlite_file_uri(path:str, *, mode:str='') -> str:
+def sqlite_file_uri(path:str, *, mode:Mode,
+ immutable:bool=False, modeof:str='', psow:bool|None=None, vfs:str='') -> str:
   '''
-  Format an SQLite file URI.
-  Mode must be one of '' (default, omitted), 'ro', 'rw', 'rwc', or 'memory'.
-  TODO: suppport the other documented attributes: https://www.sqlite.org/uri.html.
-
+  Format an SQLite file URI. See https://www.sqlite.org/uri.html for parameter documentation.
+  The `cache` parameter is not exposed (SQLite shared cache is deprecated).
+  The `nolock` parameter is not exposed (disabling locking risks database corruption).
   '''
-  valid_modes = ('', 'ro', 'rw', 'rwc', 'memory')
-  if mode not in valid_modes: raise ValueError(mode)
-  uri = f'file:{url_quote(path)}'
-  if mode:
-    uri += f'?mode={mode}'
-  return uri
+  params:list[str] = [f'mode={mode}']
+  if immutable: params.append('immutable=1')
+  if modeof: params.append(f'modeof={url_quote(modeof)}')
+  if psow is not None: params.append(f'psow={int(psow)}')
+  if vfs: params.append(f'vfs={url_quote(vfs)}')
+  return f'file:{url_quote(path)}?{"&".join(params)}'

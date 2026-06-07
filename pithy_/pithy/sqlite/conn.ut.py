@@ -9,7 +9,7 @@ from utest import utest_exc, utest_run, utest_val
 
 def make_conn() -> Conn:
   'Create an in-memory connection with a single-column table `t`.'
-  conn = Conn(':memory:')
+  conn = Conn(':memory:', mode='memory')
   conn.execute_control('CREATE TABLE t (x INT)')
   return conn
 
