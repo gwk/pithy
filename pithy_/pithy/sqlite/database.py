@@ -33,6 +33,11 @@ class DbConfig:
     return path_join(self.data_dir, f'{name}.db')
 
   @property
+  def lock_path(self) -> str:
+    'Path to the advisory lock sentinel file for this database cluster.'
+    return path_join(self.data_dir, '_db.lock')
+
+  @property
   def paths(self) -> frozendict[str,str]:
     return frozendict({name: self.path(name) for name in self.names})
 
