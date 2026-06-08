@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from dataclasses import dataclass
-from typing import Iterable, Self
+from typing import Callable, ClassVar, Iterable, Self
 
 from ..frozendicts import frozendict
 from ..fs import file_size, is_file, move_file, path_exists
@@ -44,7 +44,38 @@ class DbConfig:
 
 class Database:
 
-  def __init__(self, config:DbConfig, *, rw:bool=False, trace_caller_level:int=3) -> None:
+  _global_config:ClassVar[DbConfig|None] = None
+  _global_config_lazy:ClassVar[tuple[Callable[[],DbConfig],]|None] = None # Wrapped in a tuple to avoid binding errors.
+
+
+  @classmethod
+  def set_global_config(cls, config:DbConfig|Callable[[],DbConfig]) -> None:
+    'Set global config or a zero-argument factory callable used when no explicit config is passed.'
+    if callable(config):
+      cls._global_config_lazy = (config,)
+    else:
+      assert isinstance(config, DbConfig)
+      cls._global_config = config
+
+
+  @classmethod
+  def global_config(cls) -> DbConfig:
+    '''
+    Return the global configuration if set.
+    Otherwise, if there is a lazy config callable, evaluate it, set the global configuration, and return it.
+    Otherwise raise a ValueError.
+    '''
+    if cfg := cls._global_config: return cfg
+    if cfg_fn_tuple := cls._global_config_lazy:
+      cfg_fn = cfg_fn_tuple[0]
+      cfg = cfg_fn()
+      cls._global_config = cfg
+      return cfg
+    raise ValueError('Database: no global config is set.')
+
+
+  def __init__(self, config:DbConfig|None=None, *, rw:bool=False, trace_caller_level:int=3) -> None:
+    config = config or self.global_config()
     self.config = config
     mode:Mode = 'rw' if rw else 'ro'
     self.conn = _connect(config, mode=mode, trace_caller_level=trace_caller_level)
@@ -68,20 +99,21 @@ class Database:
 
 
   @classmethod
-  def ro(cls, config:DbConfig) -> Self:
+  def ro(cls, config:DbConfig|None=None) -> Self:
     'Create a read-only database handle.'
     return cls(config, rw=False, trace_caller_level=4)
 
 
   @classmethod
-  def rw(cls, config:DbConfig) -> Self:
+  def rw(cls, config:DbConfig|None=None) -> Self:
     'Create a read-write database handle.'
     return cls(config, rw=True, trace_caller_level=4)
 
 
-  @staticmethod
-  def initialize(config:DbConfig) -> None:
+  @classmethod
+  def initialize(cls, config:DbConfig|None=None) -> None:
     'Create and initialize each database file, setting WAL mode. Idempotent: safe to call on existing files.'
+    config = config or cls.global_config()
     for name, path in config.paths.items():
       logI('Initializing database.', name=name, path=path)
       with Conn(path, mode='rwc').closing() as conn:
