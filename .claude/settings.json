@@ -2,7 +2,12 @@
   "permissions": {
     "defaultMode": "auto",
     "allow": [
-      "WebSearch"
+      "Edit",
+      "Monitor",
+      "WebFetch",
+      "WebSearch",
+      "Write"
+
     ],
     "additionalDirectories": []
   },
