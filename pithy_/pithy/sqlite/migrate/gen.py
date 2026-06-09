@@ -2,12 +2,11 @@
 
 from typing import Iterable, Self
 
-from ..iterable import joinR
-from ..logs import logE, logI
-from ..parse import ParseError
-from . import Conn, Cursor, Row
-from .schema import Column, Schema, Table, TableDepStructure
-from .util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
+from ...iterable import joinR
+from ...parse import ParseError
+from .. import Conn, Row
+from ..schema import Column, Schema, Table, TableDepStructure
+from ..util import sql_quote_entity as qe, sql_quote_entity_always as qea, sql_quote_qual_entity as qqe
 
 
 class GenMigrationError(Exception):
@@ -17,9 +16,6 @@ class GenMigrationError(Exception):
     removed_str = joinR('\n    ', sorted(removed))
     added_str = joinR('\n    ', sorted(added))
     return cls(f'Confusing column changes for table {table_name}:\n  removed:\n    {removed_str}\n  added:\n    {added_str}\n')
-
-
-class MigrationError(Exception): pass
 
 
 def gen_migration(*, conn:Conn, schema:Schema) -> list[str]:
@@ -194,44 +190,3 @@ def gen_deps_migration(*, schema_name:str, new_deps:tuple[TableDepStructure,...]
     stmts.append(new.sql(schema=schema_name)) # Note: the SQL we execute does have an explicit schema name.
 
   return stmts
-
-
-def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:bool=True) -> None:
-  '''
-  12 migration steps: https://www.sqlite.org/lang_altertable.html#making_other_kinds_of_table_schema_changes
-  '''
-
-  if backup: conn.backup(progress=True)
-  logI('Migrating.')
-  c = conn.cursor()
-
-  try:
-    c.execute('PRAGMA foreign_keys = OFF') # 1. TODO: query and save; only turn off if they are on.
-    c.execute('BEGIN IMMEDIATE') # 2.
-    # 3 is implicit: the schema contains all indexes, triggers, and views associated with the table, so we can rebuild them.
-    for step in migration: c.execute(step) # 4-9.
-    run_migration_check(c, 'foreign_key_check', max_errors=max_errors) # 10. Check for foreign key errors.
-
-  except Exception as e:
-    c.execute('ROLLBACK')
-    logE('Migration failed.', exc=e)
-    raise
-  else:
-    c.execute('COMMIT') # 11.
-    logI('Migration complete.')
-  finally:
-    c.execute('PRAGMA foreign_keys = ON') # 12. TODO: only turn on if they were originally on.
-
-
-def run_migration_check(cursor:Cursor, check:str, args:str='', max_errors:int=100) -> None:
-  args_str = f'({args})' if args else ''
-  stmt = f'PRAGMA {check}{args_str}'
-  n = 0
-  for n, error in enumerate(cursor.execute(stmt), 1):
-    logE('run_migration_check error', check=check, error=error)
-    if n >= max_errors: break
-  if n:
-    s = 's' if n > 1 else ''
-    plus = '+' if n >= max_errors else ''
-    logE('run_migration_check failed', stmt=stmt)
-    raise MigrationError(f'{check} failed with {n}{plus} error{s}.')
