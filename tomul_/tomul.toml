@@ -1,0 +1,16 @@
+[project]
+name = "tomul"
+description = "Tomul is a small library for reading and writing TOML files."
+requires-python = ">=3.14"
+
+dependencies = []
+
+
+keywords = [
+  "toml"
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Typing :: Typed",
+]

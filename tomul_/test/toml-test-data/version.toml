@@ -1,0 +1,6 @@
+# Update with:
+#     rm -r [this-dir]
+#     toml-test copy -toml=1.0.0 [this-dir]
+src          = 'https://github.com/toml-lang/toml-test'
+version      = 'v2.2.0'
+toml-version = '1.0.0'

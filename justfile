@@ -1,9 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# Pithy must come first for manual installation, or else pip will download the PyPI version.
-pkgs := 'pithy utest iotest tolkien pithytools crafts wu legs'
+# Packages are ordered by interdependencies.
+pkgs := 'tolkien tomul pithy utest iotest pithytools crafts wu legs'
 
-pkg_srcs := 'pithy_/pithy utest_/utest iotest_/iotest tolkien_/tolkien pithytools_/pithytools crafts_/crafts wu_/wu legs_/legs'
+pkg_srcs := 'tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest pithytools_/pithytools crafts_/crafts wu_/wu legs_/legs'
 
 pkg_tests_fast := 'pithy_/test pithytools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
