@@ -337,6 +337,16 @@ def err_progress(iterable:Iterable[_T], label:str|None='progress', *, suffix:str
 # convenience read/write.
 
 
+def read_bytes_from_path(path:str, default:bytes|None=None) -> bytes:
+  'Read all text from file at `path`.'
+  try:
+    with open(path, 'rb') as f:
+      return f.read()
+  except (FileNotFoundError, IsADirectoryError):
+    if default is None: raise
+    return default
+
+
 def read_from_path(path:str, default:str|None=None) -> str:
   'Read all text from file at `path`.'
   try:
