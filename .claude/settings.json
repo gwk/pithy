@@ -2,12 +2,13 @@
   "permissions": {
     "defaultMode": "auto",
     "allow": [
+      "Bash(git --no-pager status:*)",
+      "Bash(git status:*)",
+      "Bash(just:*)",
       "Edit",
       "Monitor",
-      "WebFetch",
       "WebSearch",
       "Write"
-
     ],
     "additionalDirectories": []
   },
