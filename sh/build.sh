@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 proj_dir="$PWD"
 
 for package in "$@"; do
-  build/gen-pyproject-toml.py "$package"
+  build/check-pyproject.py "$package"
   cd "${package}_"
   flit build
   cd "$proj_dir"

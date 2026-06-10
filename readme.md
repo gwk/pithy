@@ -27,7 +27,7 @@ For these commands, the justfile invokes the shell scripts with all package name
 
 ## Details
 
-For each project, pyproject.toml is generated using a short script, `build/gen-pyproject-toml.py`, which merges common values from `common.toml` with the `$PKG/$PKG.toml` to generate `$PKG/pyproject.toml`.
+Each package's `$PKG_/pyproject.toml` is checked in and edited by hand. A short script, `build/check-pyproject.py`, verifies each one: values shared across packages must match `common.toml`, and `project.scripts` must match the scripts in the package `bin` directory. The check runs as part of `just check` and in the build/develop shell scripts.
 
 
 # Packages

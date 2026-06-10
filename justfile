@@ -18,9 +18,12 @@ list-packages:
 build:
 	sh/build.sh {{pkgs}}
 
-check: isort lint typecheck test
+check: check-pyproject isort lint typecheck test
 
-check-full: gen isort lint typecheck test-full
+check-full: gen check-pyproject isort lint typecheck test-full
+
+check-pyproject:
+	build/check-pyproject.py {{pkgs}}
 
 cov:
 	iotest {{pkg_tests_full}} -coverage
