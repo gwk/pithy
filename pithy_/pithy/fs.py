@@ -317,7 +317,9 @@ def product_needs_update(product:PathOrFd, source:PathOrFd) -> bool:
 read_link = _os.readlink
 
 
-def real_path(path:Path) -> str: return _realpath(str_path(path))
+def real_path(path:Path) -> str:
+  'Return the canonical path of the specified filename, eliminating any symbolic links encountered in the path.'
+  return _realpath(str_path(path))
 
 
 def remove_dir(path:Path) -> None:
