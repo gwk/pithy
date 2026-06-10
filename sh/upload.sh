@@ -4,28 +4,40 @@ set -euo pipefail
 
 function fail { echo "error: $@" 1>&2; exit 1; }
 
-[[ -n "$1" ]] || fail "usage: $0 [package]"
+[[ $# -ge 1 ]] || fail "usage: $0 [-live] package"
 
 package="$1"
 
 if [[ "$package" == "-live" ]]; then
   echo "Upload to LIVE..."
   shift
-  url="https://upload.pypi.org/legacy/"
+  [[ $# -ge 1 ]] || fail "usage: $0 [-live] package"
+  package="$1"
+  repository="pypi"
 else
   echo "Upload to TEST..."
-  url="https://test.pypi.org/legacy/"
+  repository="testpypi"
 fi
+
+[[ -n "$package" ]] || fail "package name is empty."
 
 cd "$(dirname "$0")/.."
 
 echo "package: $package"
-cd "$package"
+[[ -d "${package}_" ]] || fail "package directory not found: ${package}_"
+cd "${package}_"
+[[ -d dist ]] || fail "dist directory not found: ${package}_/dist"
+
 regex=".*/$package-[0-9.]*\.tar\.gz"
 dist_files=$(find dist/ -regex "$regex")
-echo "distribution files:" $dist_files
-[[ $dist_files = *' '* ]] && fail "found multiple distribution files: $dist_files"
+[[ -n "$dist_files" ]] || fail "no distribution files found matching: $regex"
+
+dist_count=$(echo "$dist_files" | wc -l)
+[[ "$dist_count" -eq 1 ]] || fail "found multiple distribution files:
+$dist_files"
+
+echo "distribution file: $dist_files"
 
 set -x
-twine upload --verbose --repository-url "$url" $dist_files
+twine upload --verbose --repository "$repository" "$dist_files"
 set +x
