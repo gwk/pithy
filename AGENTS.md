@@ -98,6 +98,10 @@ You are more productive if you stop and ask for help to clean up a mess rather t
 
 **Again: use the Write tool to write scratch scripts!**
 
+## Commits
+Do not commit unless explicitly instructed to do so.
+When writing commit messages do not add agent attribution lines like "Co-authored by ...".
+
 
 # Pithy Project Layout
 
