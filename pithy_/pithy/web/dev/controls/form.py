@@ -15,6 +15,8 @@ from ..pages import page_html
 
 class DevControlsForm(Endpoint):
   'Demonstrates form controls.'
+
+  methods = ('GET', 'POST')
   max_body_bytes = 64 * 1024
 
   class Fields:

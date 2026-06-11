@@ -32,6 +32,7 @@ def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:
 
 class ControlsHtmxUpdate(Endpoint):
   'Handles any field update from the HTMX DevControls page.'
+  methods = 'POST'
   max_body_bytes = 64 * 1024
 
   class Fields:

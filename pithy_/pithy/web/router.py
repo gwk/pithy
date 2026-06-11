@@ -4,7 +4,7 @@ from typing import Any
 
 from .app import WebApp
 from .endpoint import Endpoint
-from .errors import NotFoundError
+from .errors import MethodNotAllowedError, NotFoundError
 from .handler import RequestHandler
 from .request import Request
 from .routetree import build_route_tree, RouteTree
@@ -30,10 +30,12 @@ class Router:
 
 
   def resolve_handler(self, request:Request) -> Endpoint:
-    'Dispatch the request path and return a constructed Endpoint, or raise NotFoundError.'
+    'Dispatch the request path and return a constructed Endpoint, or raise NotFoundError/MethodNotAllowedError.'
     result = self.endpoint_for_path(request.path)
     if result is None: raise NotFoundError
     endpoint_cls, path_params = result
+    if request.method not in endpoint_cls._methods:
+      raise MethodNotAllowedError(endpoint_cls._methods)
     return endpoint_cls(request=request, path_params=path_params)
 
 

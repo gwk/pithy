@@ -1,12 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from http import HTTPStatus
 from inspect import get_annotations
 from types import GenericAlias, UnionType
 from typing import Any, ClassVar, get_args, get_origin
 
+from ..http import endpoint_methods
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
 from .errors import BadRequestError
 from .handler import RequestHandler
@@ -100,6 +101,9 @@ class Endpoint(RequestHandler):
 
   max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters.
 
+  methods:ClassVar[str|Iterable[str]] = 'GET' # Accepted HTTP methods; normalized to _methods by __init_subclass__.
+  _methods:ClassVar[frozenset[str]] = frozenset({'GET'})
+
   # Top-level customization: per-field-name converters, collected from the class body only. Signature: (raw) -> value.
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.
   converters:ClassVar[dict[str,Callable[[object],object]]] = {}
@@ -165,6 +169,15 @@ class Endpoint(RequestHandler):
 
     if cls.body_field and cls.body_field not in fields:
       raise TypeError(f'{cls.__qualname__}: body_field {cls.body_field!r} does not name a declared field.')
+
+    methods_val = cls.methods
+    method_set:set[str] = {methods_val} if isinstance(methods_val, str) else set(methods_val)
+    if not method_set:
+      raise TypeError(f'{cls.__qualname__}: methods must not be empty.')
+    for m in method_set:
+      if m not in endpoint_methods:
+        raise TypeError(f'{cls.__qualname__}: invalid HTTP method {m!r}; valid endpoint methods are {sorted(endpoint_methods)}.')
+    cls._methods = frozenset(method_set)
 
 
   @classmethod

@@ -3,21 +3,16 @@
 from email.utils import formatdate as format_email_date
 from http import HTTPStatus
 from time import time as unix_epoch_time
+from typing import get_args, Literal
 
 
 http_status_response_strings = { s : f'{s.value} {s.phrase}'  for s in HTTPStatus }
 
-http_methods = frozenset({
-  'CONNECT',
-  'DELETE',
-  'GET',
-  'HEAD',
-  'OPTIONS',
-  'PATCH',
-  'POST',
-  'PUT',
-  'TRACE',
-})
+HttpEndpointMethod = Literal['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT', 'TRACE']
+endpoint_methods:frozenset[str] = frozenset(get_args(HttpEndpointMethod))
+
+HttpMethod = HttpEndpointMethod | Literal['CONNECT']
+http_methods = endpoint_methods | {'CONNECT'}
 
 
 http_method_bytes_to_strs = { m.encode('ascii'): m for m in http_methods }

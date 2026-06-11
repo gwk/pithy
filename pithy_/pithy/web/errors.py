@@ -36,6 +36,14 @@ class NotFoundError(ResponseError):
     super().__init__(HTTPStatus.NOT_FOUND, reason=reason, headers=headers)
 
 
+class MethodNotAllowedError(ResponseError):
+  'A ResponseError with status 405 Method Not Allowed. Includes the mandatory Allow header.'
+  def __init__(self, allowed:frozenset[str], reason:str='', *, headers:ResponseHeadersDict|None=None):
+    allow_header:ResponseHeadersDict = {'allow': ', '.join(sorted(allowed))}
+    combined:ResponseHeadersDict = dict(headers or {}) | allow_header
+    super().__init__(HTTPStatus.METHOD_NOT_ALLOWED, reason=reason, headers=combined)
+
+
 def decode_or_bad_request(data:bytes, desc:str) -> str:
   'Decode bytes to a string, or raise BadRequestError if the bytes are not valid UTF-8.'
   try:

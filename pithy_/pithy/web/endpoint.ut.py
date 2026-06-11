@@ -10,10 +10,11 @@ from urllib.parse import urlencode
 
 from pithy.transtruct import Transtructor
 from pithy.web.endpoint import _unwrap_field_type, Endpoint
-from pithy.web.errors import ResponseError
+from pithy.web.errors import MethodNotAllowedError, ResponseError
 from pithy.web.request import Request, UploadedFile
 from pithy.web.requestconn import BodyTooLargeError, BytesConn
 from pithy.web.response import Response
+from pithy.web.router import Router
 from utest import utest, utest_exc, utest_run, utest_val
 
 
@@ -913,3 +914,66 @@ def _() -> None:
   ep.prepare(req)
   utest_val(1, ep.fields.n)
   utest_exc(TypeError, LateCustomizationEndpoint.prefigure, Point)
+
+
+# methods class var: normalizes to _methods frozenset.
+
+class PostEndpoint(Endpoint):
+  methods = 'POST'
+  max_body_bytes = 1024
+  class Fields:
+    name:str
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=self.fields.name)
+
+
+class MultiMethodEndpoint(Endpoint):
+  methods = ['GET', 'POST']
+  class Fields:
+    tag:str|None
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.tag}')
+
+
+utest(frozenset({'POST'}), lambda: PostEndpoint._methods)
+utest(frozenset({'GET', 'POST'}), lambda: MultiMethodEndpoint._methods)
+utest(frozenset({'GET'}), lambda: IntEndpoint._methods) # Default is GET.
+
+
+def _make_invalid_method_endpoint() -> type[Endpoint]:
+  class ConnectEndpoint(Endpoint):
+    methods = 'CONNECT'
+    def handle_request(self, request:Request) -> Response:
+      return Response(body='')
+  return ConnectEndpoint
+
+utest_exc(TypeError, _make_invalid_method_endpoint)
+
+
+def _make_empty_methods_endpoint() -> type[Endpoint]:
+  class EmptyMethodsEndpoint(Endpoint):
+    methods = []
+    def handle_request(self, request:Request) -> Response:
+      return Response(body='')
+  return EmptyMethodsEndpoint
+
+utest_exc(TypeError, _make_empty_methods_endpoint)
+
+
+# Router raises MethodNotAllowedError when the request method is not in the endpoint's _methods.
+
+utest_exc(MethodNotAllowedError, Router({'/' : PostEndpoint}).resolve_handler, _make_request()) # GET vs POST-only.
+
+
+@utest_run
+def _() -> None:
+  'Router: MethodNotAllowedError includes Allow header.'
+  try:
+    Router({'/' : PostEndpoint}).resolve_handler(_make_request())
+  except MethodNotAllowedError as exc:
+    assert exc.headers is not None
+    utest_val('POST', exc.headers.get('allow'))
+  else:
+    raise AssertionError('expected MethodNotAllowedError')
