@@ -18,14 +18,18 @@ class EpAbout(Endpoint):
     return Response(body='about')
 
 class EpUser(Endpoint):
-  id:int
+  class Fields:
+    id:int
+  fields:Fields
   def handle_request(self, request:Request) -> Response:
-    return Response(body=f'user:{self.id}')
+    return Response(body=f'user:{self.fields.id}')
 
 class EpStatic(Endpoint):
-  p:str
+  class Fields:
+    p:str
+  fields:Fields
   def handle_request(self, request:Request) -> Response:
-    return Response(body=f'files:{self.p}')
+    return Response(body=f'files:{self.fields.p}')
 
 
 @utest_run

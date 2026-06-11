@@ -34,30 +34,33 @@ class ControlsHtmxUpdate(Endpoint):
   'Handles any field update from the HTMX DevControls page.'
   max_body_bytes = 64 * 1024
 
-  text: str | None
-  email: str | None
-  number: str | None
-  password: str | None
-  tel: str | None
-  url: str | None
-  search: str | None
-  textarea: str | None
-  checkbox: str | None
-  radio: str | None
-  select: str | None
-  date: dt.date | None
-  time: dt.time | None
-  datetime_local: dt.datetime | None
-  month: str | None
-  week: str | None
-  color: str | None
-  range: int | None
-  select_multiple: list[str] | None
-  file: UploadedFile | None
+  class Fields:
+    text: str | None
+    email: str | None
+    number: str | None
+    password: str | None
+    tel: str | None
+    url: str | None
+    search: str | None
+    textarea: str | None
+    checkbox: str | None
+    radio: str | None
+    select: str | None
+    date: dt.date | None
+    time: dt.time | None
+    datetime_local: dt.datetime | None
+    month: str | None
+    week: str | None
+    color: str | None
+    range: int | None
+    select_multiple: list[str] | None
+    file: UploadedFile | None
+
+  fields: Fields
 
   def handle_request(self, request:Request) -> Response:
     for name in self._fields:
-      val = getattr(self, name)
+      val = getattr(self.fields, name)
       if val is None:
         continue
       display = name.replace('_', '-')

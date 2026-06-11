@@ -6,7 +6,7 @@ from datetime import date, datetime, time
 from typing import Any, NamedTuple
 
 from pithy.frozendicts import frozendict
-from pithy.transtruct import Transtructor
+from pithy.transtruct import Transtructor, TranstructorError
 from utest import utest, utest_exc
 
 
@@ -130,6 +130,36 @@ class CustomInit:
 
 
 utest(CustomInit(key='a', val=1), ttor.transtruct, CustomInit, {'key': 'a', 'val': 1})
+
+
+class BareAnnotated:
+  'Annotation-only class with no custom __init__ or __new__; transtruct instantiates it and sets attributes directly.'
+
+  x:int
+  y:int
+  note:str = 'default'
+
+  def __eq__(self, other:object) -> bool:
+    return isinstance(other, BareAnnotated) and (self.x, self.y, self.note) == (other.x, other.y, other.note)
+
+  def __repr__(self) -> str:
+    return f'BareAnnotated(x={self.x!r}, y={self.y!r}, note={self.note!r})'
+
+
+def _bare_annotated(x:int, y:int, note:str='default') -> BareAnnotated:
+  b = BareAnnotated()
+  b.x = x
+  b.y = y
+  b.note = note
+  return b
+
+
+utest(_bare_annotated(1, 2), ttor.transtruct, BareAnnotated, {'x': 1, 'y': '2'})
+utest(_bare_annotated(1, 2, 'hi'), ttor.transtruct, BareAnnotated, {'x': 1, 'y': 2, 'note': 'hi'})
+utest(_bare_annotated(1, 2), ttor.transtruct, BareAnnotated, [1, 2]) # Positional sequence fills annotations in order.
+
+# A missing key with no class-level default raises TranstructorError.
+utest_exc(TranstructorError, ttor.transtruct, BareAnnotated, {'x': 1})
 
 
 # Scalar date/datetime/time types: parse isoformat strings by default.

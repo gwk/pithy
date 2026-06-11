@@ -17,31 +17,34 @@ class DevControlsForm(Endpoint):
   'Demonstrates form controls.'
   max_body_bytes = 64 * 1024
 
-  text: str | None
-  email: str | None
-  hidden: str | None
-  number: str | None
-  password: str | None
-  tel: str | None
-  url: str | None
-  search: str | None
-  textarea: str | None
-  checkbox: str | None
-  radio: str | None
-  select: str | None
-  date: str | None
-  time: str | None
-  color: str | None
-  range: str | None
-  submit: str | None
-  week: str | None
-  month: str | None
-  datetime_local: str | None
-  select_multiple: list[str] | None
-  file: UploadedFile | None
+  class Fields:
+    text: str | None
+    email: str | None
+    hidden: str | None
+    number: str | None
+    password: str | None
+    tel: str | None
+    url: str | None
+    search: str | None
+    textarea: str | None
+    checkbox: str | None
+    radio: str | None
+    select: str | None
+    date: str | None
+    time: str | None
+    color: str | None
+    range: str | None
+    submit: str | None
+    week: str | None
+    month: str | None
+    datetime_local: str | None
+    select_multiple: list[str] | None
+    file: UploadedFile | None
+
+  fields: Fields
 
   def _items(self) -> dict[str, str | list[str]]:
-    return {name: v for name in self._fields if (v := getattr(self, name))}
+    return {name: v for name in self._fields if (v := getattr(self.fields, name))}
 
   def handle_request(self, request:Request) -> Response:
     main = Main(

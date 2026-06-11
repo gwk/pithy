@@ -14,15 +14,21 @@ class Hello(Endpoint):
 
 class EchoId(Endpoint):
   'Returns the matched integer id as plain text.'
-  id:int
+
+  class Fields:
+    id:int
+  fields:Fields
 
   def handle_request(self, request:Request) -> TextResponse:
-    return TextResponse(body=f'id={self.id}')
+    return TextResponse(body=f'id={self.fields.id}')
 
 
 class EchoName(Endpoint):
   'Returns the matched string name as plain text.'
-  name:str
+
+  class Fields:
+    name:str
+  fields:Fields
 
   def handle_request(self, request:Request) -> TextResponse:
-    return TextResponse(body=f'name={self.name}')
+    return TextResponse(body=f'name={self.fields.name}')

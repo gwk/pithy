@@ -215,6 +215,9 @@ class Transtructor:
 
     transtructors = { k: self.transtructor_for(v) for k, v in constructor_annotations.items() }
 
+    # Plain annotation-only classes (have neither __init__ nor __new__) must be constructed manually.
+    is_bare = class_.__init__ is object.__init__ and class_.__new__ is object.__new__
+
     def transtruct_annotated_class(args:Any, ctx:Ctx) -> Desired:
       if prefigure_fn: args = prefigure_fn(class_, args, ctx)
 
@@ -229,6 +232,7 @@ class Transtructor:
           try: transtructor = transtructors[name]
           except KeyError: continue # TODO: raise error unless this element is explicitly ignored.
           typed_kwargs[name] = transtructor(val, ctx)
+        if is_bare: return _instantiate_bare(class_, constructor_annotations, typed_kwargs)
         try: return class_(**typed_kwargs)
         except Exception as e: raise TranstructorError(e, class_, typed_kwargs) from e
 
@@ -246,6 +250,7 @@ class Transtructor:
           raise ValueError(f'{class_}: transtruct argument {idx} exceeds parameters: {constructor_annotations}')
         name, transtructor = pair
         typed_args.append(transtructor(arg, ctx))
+      if is_bare: return _instantiate_bare(class_, constructor_annotations, dict(zip(constructor_annotations, typed_args)))
       try:
         if is_type_namedtuple(class_):
           # For named tuple types, the args are passed as a single iterable.
@@ -429,6 +434,23 @@ class Transtructor:
       try: return self.prefigures[t]
       except KeyError: pass
     return None
+
+
+def _instantiate_bare(class_:type[Desired], annotations:dict[str,type], typed_kwargs:dict[str,Any]) -> Desired:
+  '''
+  Instantiate an annotation-only class (no custom __init__ or __new__) and set converted values as attributes.
+  Annotations absent from the input fall back to class-level defaults; an annotation with neither raises TranstructorError,
+  consistent with the required-argument behavior of constructor-based classes.
+  '''
+  obj = class_()
+  for name in annotations:
+    try: val = typed_kwargs[name]
+    except KeyError:
+      if not hasattr(class_, name):
+        raise TranstructorError(f'missing required key {name!r}', class_, typed_kwargs) from None
+      continue
+    setattr(obj, name, val)
+  return obj
 
 
 def try_transtruct(tf:TranstructFn) -> TranstructFn:

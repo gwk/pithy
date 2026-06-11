@@ -24,29 +24,43 @@ class _FieldInfo:
 
 
 
+class NoFields:
+  'Default fields class for endpoints that declare no inner Fields class.'
+
+
+
 class Endpoint(RequestHandler):
   '''
   Base class for request endpoints. An Endpoint instance is created for each request.
 
-  Subclasses declare typed fields that are automatically populated from request parameters (path, query, body).
+  Subclasses declare an inner `Fields` class whose typed annotations are automatically populated from request
+  parameters (path, query, body). A fresh `Fields` instance is created per request and exposed as `self.fields`.
   The field types determine how raw values are converted.
 
+  The inner `Fields` class must derive directly from object, making it a pure data holder:
+  its namespace contains no framework names, so every annotated name in its body is a field,
+  including underscore-prefixed names such as `_debug`. Fields are collected from the `Fields` class body only.
+  A subclass that declares `Fields` must also annotate `fields:Fields` so that static type checkers see the
+  precise type of `self.fields`; this is enforced at class definition time.
+  Any other public annotation in the endpoint class body raises TypeError,
+  because it is most likely a field mistakenly declared outside of `Fields`.
+
   Subclasses must derive directly from Endpoint; defining an intermediate Endpoint subclass raises TypeError.
-  Fields and `_converters` are collected from the class body only, so that everything an endpoint accepts is
-  plainly expressed in one place.
+  Converters are collected from the class body only.
 
   Use `T|None` to mark a field as optional (None if the parameter is absent).
   Use `list[T]` to collect multiple values for one key (e.g. multi-select).
   Use `list[T]|None` for an optional multi-value field (None if no values are submitted).
 
-  For each field of the Endpoint subclass, value conversion of raw request data is handled by a per-class Transtructor,
-  or optionally by a per-field converter.
+  For each field, value conversion of raw request data is handled by a per-class Transtructor or a custom per-field converter.
 
-  To customize conversion for a specific field, define `_converters` as a class variable mapping field names to
-  converter callables of the form `(raw) -> value`:
+  To customize conversion for a specific field, define `_converters` in the endpoint class body as a class variable
+  mapping field names to converter callables of the form `(raw) -> value`:
     class MyEndpoint(Endpoint):
       _converters = dict(my_field=lambda raw: MyType.from_string(raw))
-      my_field:MyType
+      class Fields:
+        my_field:MyType
+      fields:Fields
   To share converters across endpoints, compose module-level dicts in the class body,
   e.g. `_converters = common_converters | dict(...)`.
 
@@ -75,10 +89,10 @@ class Endpoint(RequestHandler):
   * `path_params:dict[str,object]`
 
   Request handling flow:
-  * The server constructs the endpoint, which fills fields from path and query params.
+  * The server constructs the endpoint, which creates `self.fields` and fills it from path and query params.
     Duplicates across path and query, excess params not corresponding to fields, and conversion failures raise BadRequestError.
   * If the client sent `Expect: 100-continue`, the server calls `handle_expect_100_continue`, which by default returns CONTINUE.
-    At this stage body fields are not yet filled; accessing them raises AttributeError.
+    At this stage body fields are not yet filled; accessing them on `self.fields` raises AttributeError.
   * The server calls `prepare`, which reads the body (if any), fills body fields, and performs final validation:
     duplicate params across sources, excess body params, missing required fields.
   * The server calls `handle_request`, which subclasses must implement to return a Response.
@@ -90,8 +104,7 @@ class Endpoint(RequestHandler):
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.
   _converters:ClassVar[dict[str,Callable[[object],object]]] = {}
 
-  # When non-empty, the whole parsed request body fills the single field of this name (any media type).
-  _body_field:ClassVar[str] = ''
+  _body_field:ClassVar[str] = '' # If specified, the whole parsed request body fills the single field of this name.
 
   # Private per-subclass Transtructor, created lazily by the prefigure/selector classmethods.
   # Subclasses with no customizations leave this None and resolve against the shared default.
@@ -100,8 +113,14 @@ class Endpoint(RequestHandler):
   # Set per-subclass once field converters have been resolved; customization is an error afterwards.
   _converters_resolved:ClassVar[bool] = False
 
-  # Built by __init_subclass__.
+  # Built by __init_subclass__ from the inner Fields class body.
   _fields:ClassVar[dict[str,_FieldInfo]]
+
+  # The class used to create the per-request `fields` instance: the inner Fields class, set by __init_subclass__.
+  _fields_class:ClassVar[type[Any]] = NoFields
+
+  # The per-request fields instance. Subclasses that declare an inner Fields class re-annotate this as `fields:Fields`.
+  fields:Any
 
   path_params:Mapping[str,object]
 
@@ -116,14 +135,29 @@ class Endpoint(RequestHandler):
         raise TypeError(
           f'{cls.__qualname__}: Endpoint subclasses must derive directly from Endpoint; {base.__qualname__} is an intermediate Endpoint subclass.')
 
-    # Converters and fields are collected from the class body only; bases and mixins do not contribute.
+    cls_annotations = get_annotations(cls)
+    for name, hint in cls_annotations.items():
+      if name == 'fields' or name.startswith('_') or hint is ClassVar or get_origin(hint) is ClassVar: continue
+      raise TypeError(
+        f'{cls.__qualname__}.{name}: unexpected public annotation in Endpoint subclass body; declare request fields in the inner Fields class.')
+
+    fields_class:type[Any] = cls.__dict__.get('Fields', NoFields)
+    if fields_class is NoFields:
+      if 'fields' in cls_annotations:
+        raise TypeError(f'{cls.__qualname__}: `fields` annotation is present but no inner Fields class is declared.')
+    else:
+      if not isinstance(fields_class, type) or fields_class.__bases__ != (object,):
+        raise TypeError(f'{cls.__qualname__}.Fields must be a class deriving directly from object.')
+      if cls_annotations.get('fields') is not fields_class:
+        raise TypeError(f'{cls.__qualname__}: declare `fields:Fields` so that the fields instance is precisely typed.')
+    cls._fields_class = fields_class
+
+    # Converters are collected from their class bodies only; bases and mixins do not contribute.
     converters:dict[str,Callable[[object],object]] = cls.__dict__.get('_converters', {})
 
     fields:dict[str,_FieldInfo] = {}
-    for name, hint in get_annotations(cls).items():
-      if name.startswith('_') or hint is ClassVar or get_origin(hint) is ClassVar: continue
-      if name in _endpoint_reserved_names:
-        raise TypeError(f'{cls.__qualname__}.{name}: field name shadows an Endpoint base attribute.')
+    for name, hint in get_annotations(fields_class).items():
+      if hint is ClassVar or get_origin(hint) is ClassVar: continue
       element_type, is_optional, is_list = _unwrap_field_type(hint)
       # Per-field converters bind now; transtructor-backed converters resolve lazily on the first request,
       # so that prefigure/selector customizations registered after the class body are honored.
@@ -188,11 +222,12 @@ class Endpoint(RequestHandler):
 
   def __init__(self, request:Request, path_params:Mapping[str,object]) -> None:
     '''
-    Fill fields from path and query params. Body fields are filled later by `prepare`.
+    Create the fields instance and fill it from path and query params. Body fields are filled later by `prepare`.
     Raises BadRequestError for duplicate, excess, or unconvertible params.
     '''
     cls = type(self)
     if not cls._converters_resolved: cls._resolve_converters()
+    self.fields = cls._fields_class()
     self.path_params = path_params
     self._fill_param_sources = {}
     for name, raw in path_params.items():
@@ -219,10 +254,10 @@ class Endpoint(RequestHandler):
       for name, raw in request.body_params(self.max_body_bytes, body_field=self._body_field).items():
         self._fill_param(name=name, raw=raw, source='body')
     for name, field in self._fields.items():
-      if hasattr(self, name): continue
+      if hasattr(self.fields, name): continue
       if not field.is_optional:
         raise BadRequestError(f'Missing required parameter: {name!r}.')
-      setattr(self, name, None)
+      setattr(self.fields, name, None)
 
 
   def handle_request(self, request:Request) -> Response:
@@ -241,9 +276,9 @@ class Endpoint(RequestHandler):
     try:
       if field.is_list:
         items = raw if isinstance(raw, list) else [raw]
-        setattr(self, name, [convert(el) for el in items])
+        setattr(self.fields, name, [convert(el) for el in items])
       else:
-        setattr(self, name, convert(raw))
+        setattr(self.fields, name, convert(raw))
     except (ValueError, TypeError, TranstructorError) as e:
       # Truncate the raw value so that a large or whole-body value is not reflected back in the error response.
       raise BadRequestError(f'Invalid value for parameter {name!r}: {repr(raw)[:64]}.') from e
@@ -296,6 +331,3 @@ def _new_endpoint_transtructor() -> Transtructor:
 
 # Private shared transtructor used by endpoint subclasses that register no prefigure/selector customizations.
 _shared_endpoint_transtructor = _new_endpoint_transtructor()
-
-# Names of Endpoint base attributes and annotations; declared fields must not shadow them.
-_endpoint_reserved_names = frozenset(dir(Endpoint)) | frozenset(get_annotations(Endpoint))
