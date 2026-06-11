@@ -54,15 +54,15 @@ class Endpoint(RequestHandler):
 
   For each field, value conversion of raw request data is handled by a per-class Transtructor or a custom per-field converter.
 
-  To customize conversion for a specific field, define `_converters` in the endpoint class body as a class variable
+  To customize conversion for a specific field, define `converters` in the endpoint class body as a class variable
   mapping field names to converter callables of the form `(raw) -> value`:
     class MyEndpoint(Endpoint):
-      _converters = dict(my_field=lambda raw: MyType.from_string(raw))
+      converters = dict(my_field=lambda raw: MyType.from_string(raw))
       class Fields:
         my_field:MyType
       fields:Fields
   To share converters across endpoints, compose module-level dicts in the class body,
-  e.g. `_converters = common_converters | dict(...)`.
+  e.g. `converters = common_converters | dict(...)`.
 
   To customize conversion by type, register prefigure/selector functions on the endpoint class after its body:
     @MyEndpoint.prefigure(MyType)
@@ -78,7 +78,7 @@ class Endpoint(RequestHandler):
   e.g. a JSON array or scalar body, or a top-level object that requires custom interpretation.
   In particular, it allows conversion to be configured for the top-level body type,
   either by registering prefigure/selector functions via the classmethod decorators,
-  or by supplying a `_converters` entry for the field that wraps its own Transtructor.
+  or by supplying a `converters` entry for the field that wraps its own Transtructor.
   For JSON bodies this lifts the requirement that the body be an object;
   for urlencoded and multipart bodies the field receives the whole params dict.
   Other declared fields are still filled from path and query params as usual;
@@ -102,7 +102,7 @@ class Endpoint(RequestHandler):
 
   # Top-level customization: per-field-name converters, collected from the class body only. Signature: (raw) -> value.
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.
-  _converters:ClassVar[dict[str,Callable[[object],object]]] = {}
+  converters:ClassVar[dict[str,Callable[[object],object]]] = {}
 
   _body_field:ClassVar[str] = '' # If specified, the whole parsed request body fills the single field of this name.
 
@@ -153,7 +153,7 @@ class Endpoint(RequestHandler):
     cls._fields_class = fields_class
 
     # Converters are collected from their class bodies only; bases and mixins do not contribute.
-    converters:dict[str,Callable[[object],object]] = cls.__dict__.get('_converters', {})
+    converters:dict[str,Callable[[object],object]] = cls.__dict__.get('converters', {})
 
     fields:dict[str,_FieldInfo] = {}
     for name, hint in get_annotations(fields_class).items():

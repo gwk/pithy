@@ -163,7 +163,7 @@ class Color(Enum):
 
 
 class CustomConverterEndpoint(Endpoint):
-  _converters = {'color': lambda raw: Color(raw)}
+  converters = {'color': lambda raw: Color(raw)}
   class Fields:
     color:Color
   fields:Fields
@@ -234,10 +234,10 @@ utest_exc(TypeError, _make_fields_annotation_only_endpoint)
 
 # Shared converters are composed as plain dicts in the class body; there is no converter inheritance.
 
-_color_converters:dict[str,Callable[[object],object]] = {'color': lambda raw: Color(raw)}
+color_converters:dict[str,Callable[[object],object]] = {'color': lambda raw: Color(raw)}
 
 class ComposedConverterEndpoint(Endpoint):
-  _converters = _color_converters | {'name': lambda raw: str(raw).upper()}
+  converters = color_converters | {'name': lambda raw: str(raw).upper()}
   class Fields:
     color:Color
     name:str
