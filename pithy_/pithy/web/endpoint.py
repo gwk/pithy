@@ -122,8 +122,6 @@ class Endpoint(RequestHandler):
   # The per-request fields instance. Subclasses that declare an inner Fields class re-annotate this as `fields:Fields`.
   fields:Any
 
-  path_params:Mapping[str,object]
-
   _fill_param_sources:dict[str,str]
 
 
@@ -228,7 +226,6 @@ class Endpoint(RequestHandler):
     cls = type(self)
     if not cls._converters_resolved: cls._resolve_converters()
     self.fields = cls._fields_class()
-    self.path_params = path_params
     self._fill_param_sources = {}
     for name, raw in path_params.items():
       self._fill_param(name=name, raw=raw, source='path')
