@@ -621,11 +621,11 @@ def _() -> None:
   utest_val(b'\x00\x01', ep.fields.file.data)
 
 
-# _body_field mode: the whole parsed body fills a single named field.
+# body_field mode: the whole parsed body fills a single named field.
 
 class ListBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
-  _body_field = 'payload'
+  body_field = 'payload'
   class Fields:
     payload:list[int]
   fields:Fields
@@ -635,7 +635,7 @@ class ListBodyFieldEndpoint(Endpoint):
 
 class IntBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
-  _body_field = 'payload'
+  body_field = 'payload'
   class Fields:
     payload:int
   fields:Fields
@@ -645,7 +645,7 @@ class IntBodyFieldEndpoint(Endpoint):
 
 class PointBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
-  _body_field = 'payload'
+  body_field = 'payload'
   class Fields:
     payload:Point
   fields:Fields
@@ -655,7 +655,7 @@ class PointBodyFieldEndpoint(Endpoint):
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field fills a list field from a JSON array body.'
+  'Endpoint: body_field fills a list field from a JSON array body.'
   req = _make_request(media_type='application/json', body=b'[1,2,3]')
   ep = ListBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
@@ -664,7 +664,7 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field fills a scalar field from a JSON scalar body.'
+  'Endpoint: body_field fills a scalar field from a JSON scalar body.'
   req = _make_request(media_type='application/json', body=b'42')
   ep = IntBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
@@ -673,7 +673,7 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field fills a dataclass field from a JSON object body.'
+  'Endpoint: body_field fills a dataclass field from a JSON object body.'
   req = _make_request(media_type='application/json', body=b'{"x":1,"y":2}')
   ep = PointBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
@@ -682,7 +682,7 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field fills a dataclass field from a urlencoded body.'
+  'Endpoint: body_field fills a dataclass field from a urlencoded body.'
   req = _urlencoded_request('x=1&y=2')
   ep = PointBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
@@ -691,7 +691,7 @@ def _() -> None:
 
 class MixedBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
-  _body_field = 'payload'
+  body_field = 'payload'
   class Fields:
     payload:Point
     label:str
@@ -702,7 +702,7 @@ class MixedBodyFieldEndpoint(Endpoint):
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field endpoint still fills other fields from query params.'
+  'Endpoint: body_field endpoint still fills other fields from query params.'
   req = _make_request(query=dict(label='a'), media_type='application/json', body=b'{"x":1,"y":2}')
   ep = MixedBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
@@ -712,7 +712,7 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Endpoint: query param sharing the _body_field name raises duplicate error at prepare.'
+  'Endpoint: query param sharing the body_field name raises duplicate error at prepare.'
   req = _make_request(query=dict(payload='1'), media_type='application/json', body=b'2')
   ep = IntBodyFieldEndpoint(req, path_params={})
   utest_exc(ResponseError, ep.prepare, req)
@@ -720,7 +720,7 @@ def _() -> None:
 
 def _make_bad_body_field_endpoint() -> type[Endpoint]:
   class BadBodyFieldEndpoint(Endpoint):
-    _body_field = 'payload'
+    body_field = 'payload'
     class Fields:
       other:int
     fields:Fields
@@ -729,11 +729,11 @@ def _make_bad_body_field_endpoint() -> type[Endpoint]:
   return BadBodyFieldEndpoint
 
 
-# Class definition raises when _body_field does not name a declared field.
+# Class definition raises when body_field does not name a declared field.
 utest_exc(TypeError, _make_bad_body_field_endpoint)
 
 
-# _body_field with an annotation-only payload class: transtruct instantiates it bare and sets attributes directly.
+# body_field with an annotation-only payload class: transtruct instantiates it bare and sets attributes directly.
 
 class BarePayload:
   x:int
@@ -743,7 +743,7 @@ class BarePayload:
 
 class BarePayloadEndpoint(Endpoint):
   max_body_bytes = 1024
-  _body_field = 'payload'
+  body_field = 'payload'
   class Fields:
     payload:BarePayload
   fields:Fields
@@ -753,7 +753,7 @@ class BarePayloadEndpoint(Endpoint):
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field fills an annotation-only payload class from a JSON object body.'
+  'Endpoint: body_field fills an annotation-only payload class from a JSON object body.'
   req = _make_request(media_type='application/json', body=b'{"x":1,"y":2}')
   ep = BarePayloadEndpoint(req, path_params={})
   ep.prepare(req)
@@ -770,8 +770,8 @@ def _() -> None:
   utest_exc(ResponseError, ep.prepare, req)
 
 
-# _body_field with a custom Transtructor: a selector chooses a concrete subtype from the top-level body.
-# This is the motivating case for _body_field: custom interpretation of the whole body as one object.
+# body_field with a custom Transtructor: a selector chooses a concrete subtype from the top-level body.
+# This is the motivating case for body_field: custom interpretation of the whole body as one object.
 
 @dataclass
 class Shape:
@@ -801,8 +801,8 @@ def _select_shape(static_type:type, val:Any, ctx:Any) -> type:
 
 class ShapeBodyEndpoint(Endpoint):
   max_body_bytes = 1024
-  _body_field = 'shape'
-  _converters = {'shape': lambda raw: shape_transtructor.transtruct(Shape, raw)}
+  body_field = 'shape'
+  converters = {'shape': lambda raw: shape_transtructor.transtruct(Shape, raw)}
   class Fields:
     shape:Shape
   fields:Fields
@@ -812,7 +812,7 @@ class ShapeBodyEndpoint(Endpoint):
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field with a selector Transtructor constructs the concrete subtype.'
+  'Endpoint: body_field with a selector Transtructor constructs the concrete subtype.'
   req = _make_request(media_type='application/json', body=b'{"kind":"circle","radius":3}')
   ep = ShapeBodyEndpoint(req, path_params={})
   ep.prepare(req)
@@ -821,7 +821,7 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
-  'Endpoint: _body_field with a selector Transtructor constructs an alternate subtype.'
+  'Endpoint: body_field with a selector Transtructor constructs an alternate subtype.'
   req = _make_request(media_type='application/json', body=b'{"kind":"rect","w":2,"h":3}')
   ep = ShapeBodyEndpoint(req, path_params={})
   ep.prepare(req)
@@ -866,7 +866,7 @@ def _() -> None:
 
 class ShapeSelectorEndpoint(Endpoint):
   max_body_bytes = 1024
-  _body_field = 'shape'
+  body_field = 'shape'
   class Fields:
     shape:Shape
   fields:Fields

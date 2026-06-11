@@ -72,7 +72,7 @@ class Endpoint(RequestHandler):
   Field converters are resolved lazily when the class first handles a request;
   registering a customization after that point raises TypeError.
 
-  Set `_body_field` to the name of a single declared field to fill that field with the entire parsed request body,
+  Set `body_field` to the name of a single declared field to fill that field with the entire parsed request body,
   rather than treating the body as a mapping of parameter names to values.
   This is an escape hatch for when the body is best represented as a single object,
   e.g. a JSON array or scalar body, or a top-level object that requires custom interpretation.
@@ -104,7 +104,7 @@ class Endpoint(RequestHandler):
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.
   converters:ClassVar[dict[str,Callable[[object],object]]] = {}
 
-  _body_field:ClassVar[str] = '' # If specified, the whole parsed request body fills the single field of this name.
+  body_field:ClassVar[str] = '' # If specified, the whole parsed request body fills the single field of this name.
 
   # Private per-subclass Transtructor, created lazily by the prefigure/selector classmethods.
   # Subclasses with no customizations leave this None and resolve against the shared default.
@@ -165,8 +165,8 @@ class Endpoint(RequestHandler):
         convert=converters.get(name))
     cls._fields = fields
 
-    if cls._body_field and cls._body_field not in fields:
-      raise TypeError(f'{cls.__qualname__}: _body_field {cls._body_field!r} does not name a declared field.')
+    if cls.body_field and cls.body_field not in fields:
+      raise TypeError(f'{cls.__qualname__}: body_field {cls.body_field!r} does not name a declared field.')
 
 
   @classmethod
@@ -251,7 +251,7 @@ class Endpoint(RequestHandler):
     Raises BadRequestError on excess body params, duplicate params across sources, or missing required fields.
     '''
     if request.media_type:
-      for name, raw in request.body_params(self.max_body_bytes, body_field=self._body_field).items():
+      for name, raw in request.body_params(self.max_body_bytes, body_field=self.body_field).items():
         self._fill_param(name=name, raw=raw, source='body')
     for name, field in self._fields.items():
       if hasattr(self.fields, name): continue
