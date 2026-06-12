@@ -15,7 +15,7 @@ def page_html(*, title:str, main:Main) -> HtmlResponse:
   html = Html().doc(title=title)
   head = html.head
   head.add_stylesheet(href='/pithy.css')
-  head.add_js(src='https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta1/dist/htmx.min.js')
+  head.add_js(src='https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta4/dist/htmx.min.js')
   html.append(main)
   return HtmlResponse(body=html)
 
