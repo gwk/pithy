@@ -1,0 +1,63 @@
+
+/* SquelchApp. */
+
+.squelch {
+  font-size: small;
+}
+
+.squelch form {
+  margin: 1em 0;
+}
+
+.squelch form #columns {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1em;
+}
+
+.squelch form label.en-col {
+  white-space: nowrap;
+}
+
+.squelch form label.en-col input {
+  margin-right: 0.5em;
+}
+
+.squelch .detail {
+  margin-bottom: 1em;
+}
+
+.squelch #results {
+  width: 100%;
+  overflow-x: scroll;
+}
+
+.squelch #results > table {
+  table-layout: auto;
+}
+
+.squelch #results > table th {
+  resize: horizontal;
+  overflow: clip;
+}
+
+.squelch #results > table td {
+  max-width: 95vw;
+  overflow-wrap: break-word;
+}
+
+.squelch .error {
+  color: #800;
+}
+
+.squelch .null {
+  color: #888;
+}
+
+.squelch .empty {
+  color: #8A8;
+}
+
+.squelch .unjoined {
+  color: #840;
+}
