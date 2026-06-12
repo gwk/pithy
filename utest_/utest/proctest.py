@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 from collections.abc import Sequence
 from pty import openpty
 from re import Pattern
@@ -90,20 +91,21 @@ class TestProcess:
   '''
 
 
-  def __init__(self, cmd:Sequence[str], *, merge_stderr:bool, use_pty:bool=False, term_timeout:float=5,
-   drain_join_timeout:float=5, **popen_kwargs:Any) -> None:
+  def __init__(self, cmd:Sequence[str], *, module:bool=False, merge_stderr:bool, use_pty:bool=False,
+   term_timeout:float=5, drain_join_timeout:float=5, **popen_kwargs:Any) -> None:
     '''
     Args:
       cmd: Command and arguments, as for subprocess.Popen.
-      use_pty: Use a PTY for stdout so the child sees a TTY.
+      module: If True, prefix the command with the current Python interpreter and `-m`.
       merge_stderr: If False, stderr is given a separate pipe and can be flushed independently.
         If True, stderr uses the same pipe as stdout.
+      use_pty: Use a PTY for stdout so the child sees a TTY.
       term_timeout: Seconds to wait after SIGTERM before sending SIGKILL.
       drain_join_timeout: Seconds to wait for drainer thread to join.
       **popen_kwargs: Additional keyword arguments passed to Popen.
         stdout, stderr, and close_fds are overridden and cannot be set.
     '''
-    self.cmd = cmd
+    self.cmd = [sys.executable, '-m', *cmd] if module else list(cmd)
     self.merge_stderr = merge_stderr
     self.use_pty = use_pty
     self.term_timeout = term_timeout
@@ -138,7 +140,7 @@ class TestProcess:
         stderr_read_fd = stderr_r
         stderr_child_fd = stderr_w
 
-      self._proc = Popen(cmd, stdout=stdout_child_fd, stderr=stderr_child_fd, close_fds=True, **popen_kwargs)
+      self._proc = Popen(self.cmd, stdout=stdout_child_fd, stderr=stderr_child_fd, close_fds=True, **popen_kwargs)
     except Exception:
       for fd in fds_to_close_on_error:
         os.close(fd)
