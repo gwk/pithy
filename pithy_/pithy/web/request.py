@@ -8,8 +8,7 @@ from json import JSONDecodeError
 from typing import Any
 from urllib.parse import parse_qsl
 
-from python_multipart import parse_form
-from python_multipart.multipart import Field, File
+from multipart import MultipartError, MultipartParser, parse_options_header
 
 from ..http import http_methods
 from ..json import Json, parse_json
@@ -156,34 +155,32 @@ class Request:
     '''Parse a multipart/form-data body. Text fields become str values; file parts become UploadedFile values.'''
     if self.media_type != 'multipart/form-data':
       raise ValueError(f'parse_multipart: expected media type multipart/form-data; received: {self.media_type!r}')
+    _, options = parse_options_header(self.content_type)
+    boundary = options.get('boundary', '')
+    if not boundary: raise BadRequestError('parse_multipart: missing boundary parameter in Content-Type header')
     body = self.read_body(max_bytes=max_bytes)
     result:dict[str,MultipartVal|list[MultipartVal]] = {}
-
-
-    def on_field(field:Field) -> None:
-      if field.field_name is None: raise BadRequestError('parse_multipart: field part missing name parameter')
-      key = decode_or_bad_request(field.field_name, desc='parse_multipart: field name')
-      val = decode_or_bad_request(field.value or b'', desc='parse_multipart: field value')
-      _add_to_param_dict(result, key, val)
-
-    def on_file(file:File) -> None:
-      if file.field_name is None: raise BadRequestError('parse_multipart: file part missing name parameter')
-      file.file_object.seek(0)
-      key = decode_or_bad_request(file.field_name, desc='parse_multipart: file field name')
-      filename = decode_or_bad_request(file.file_name or b'', desc='parse_multipart: file name')
-      if filename == '': return
-      _add_to_param_dict(result, key, UploadedFile(
-        field_name=key,
-        filename=filename,
-        data=file.file_object.read(),
-        content_type=file.content_type or 'application/octet-stream',
-      ))
-
-    headers:dict[str,bytes] = {
-      'Content-Type': self.headers.get('content-type', '').encode(),
-      'Content-Length': str(len(body)).encode(),
-    }
-    parse_form(headers, io.BytesIO(body), on_field, on_file)
+    # Setting spool_limit and memory_limit to the body size keeps all parts in memory without tripping either limit,
+    # since part payloads are strictly smaller than the body.
+    parser = MultipartParser(io.BytesIO(body), boundary=boundary, content_length=len(body), spool_limit=len(body),
+      memory_limit=len(body))
+    try:
+      for part in parser:
+        if part.name is None: raise BadRequestError('parse_multipart: part missing name parameter')
+        if part.filename is None: # Text field.
+          try: val = part.value
+          except (UnicodeDecodeError, LookupError) as e: raise BadRequestError(f'parse_multipart: field value: {e}') from e
+          _add_to_param_dict(result, part.name, val)
+        elif part.filename == '': continue # File input was left empty; skip it.
+        else:
+          _add_to_param_dict(result, part.name, UploadedFile(
+            field_name=part.name,
+            filename=part.filename,
+            data=part.raw,
+            content_type=part.content_type,
+          ))
+    except MultipartError as e:
+      raise BadRequestError(f'parse_multipart: {e}') from e
     return result
 
 

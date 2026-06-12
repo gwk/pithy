@@ -1,0 +1,49 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+from typing import BinaryIO, Callable, Iterator
+
+
+class MultipartError(ValueError): ...
+
+class ParserError(MultipartError): ...
+class ParserLimitReached(MultipartError): ...
+class ParserStateError(MultipartError): ...
+class StrictParserError(ParserError): ...
+
+
+class MultipartPart:
+  name:str|None
+  filename:str|None
+  size:int
+  charset:str
+  headerlist:list[tuple[str,str]]
+
+  @property
+  def content_type(self) -> str: ...
+
+  @property
+  def value(self) -> str: ...
+
+  @property
+  def raw(self) -> bytes: ...
+
+  def close(self) -> None: ...
+
+
+class MultipartParser:
+
+  def __init__(self, stream:BinaryIO, boundary:str|bytes, content_length:int=-1, charset:str='utf8', strict:bool=False,
+   buffer_size:int=..., header_limit:int=..., headersize_limit:int=..., part_limit:int=..., partsize_limit:float=...,
+   spool_limit:int=..., memory_limit:float=..., disk_limit:float=...) -> None: ...
+
+  def __iter__(self) -> Iterator[MultipartPart]: ...
+
+  def parts(self) -> list[MultipartPart]: ...
+
+  def get(self, name:str, default:MultipartPart|None=None) -> MultipartPart|None: ...
+
+  def get_all(self, name:str) -> list[MultipartPart]: ...
+
+
+def parse_options_header(header:str, options:dict[str,str]|None=None, unquote:Callable[[str,bool],str]=...,
+ ) -> tuple[str,dict[str,str]]: ...
