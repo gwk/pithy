@@ -54,7 +54,7 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:Serv
   If the resulting port is 0, a free port is picked so that successive child processes reuse it.
   `$WEB_PORT` is exported before spawning so that the child observes the same port.
   '''
-  from watchfiles import run_process
+  from watchfiles import Change, run_process
 
   if config is None: config = ServerConfig.parse_args(description=description)
   port = config.port or _pick_free_port()
@@ -62,12 +62,17 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:Serv
 
   watch_paths = [_resolve_watch(w) for w in watch]
   errL(f'Serving port {port}; watching {watch_paths!r}.')
-  run_process(*watch_paths, target=target, target_type='function', callback=_watch_callback)
 
+  def _watch_filter(change:Change, path:str) -> bool:
+    return not path.endswith('.isorted')
 
-def _watch_callback(changes:set[tuple[Any,str]]) -> None:
-  changed_files = sorted(path for _change, path in changes)
-  errL(f'Changes detected: {changed_files}.')
+  def _watch_callback(changes:set[tuple[Any,str]]) -> None:
+    changed_files = sorted(path for _change, path in changes)
+    msg = f'Changes detected: {changed_files}'
+    errL(msg)
+
+  run_process(*watch_paths, target=target, target_type='function', watch_filter=_watch_filter, callback=_watch_callback)
+
 
 
 def _pick_free_port() -> int:
