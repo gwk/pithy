@@ -12,7 +12,7 @@ from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_li
   path_ext, path_join, remove_path, remove_path_if_exists)
 from pithy.io import errL, errSL, outL
 from pithy.iterable import prefix_tree
-from pithy.path_encode import COMP, OMIT, path_for_url, SPLIT, SQUASH
+from pithy.path_encode import COMP, OMIT, path_encode_url, SPLIT, SQUASH
 from pithy.strings import clip_first_prefix
 from pithy.task import runO
 
@@ -161,13 +161,13 @@ class Crawler:
 
 
   def path_for_url(self, url:str) -> str:
-    p = path_for_url(url, normalize=True, scheme=OMIT, host=COMP, path=SPLIT, query=SQUASH, fragment=OMIT)
+    p = path_encode_url(url, normalize=True, scheme=OMIT, host=COMP, path=SPLIT, query=SQUASH, fragment=OMIT)
     p = clip_first_prefix(p, self.clip_paths, req=False)
     return self.resolve_dir_collisions(path_join(self.dir, p))
 
 
   def tmp_path_for_url(self, url:str) -> str:
-    p = path_for_url(url, normalize=True, scheme=OMIT, host=COMP, path=SQUASH, query=SQUASH, fragment=OMIT)
+    p = path_encode_url(url, normalize=True, scheme=OMIT, host=COMP, path=SQUASH, query=SQUASH, fragment=OMIT)
     return path_join(self.dir, p) + '.tmp'
 
 

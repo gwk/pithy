@@ -55,7 +55,8 @@ SQUASH = PartMode.SQUASH
 COMP = PartMode.COMP
 SPLIT = PartMode.SPLIT
 
-def path_for_url(url:str, *, normalize:bool=True,
+# TODO: rename to path_encode_url.
+def path_encode_url(url:str, *, normalize:bool=True,
  scheme:PartMode=OMIT, host:PartMode=COMP, path:PartMode=COMP, query:PartMode=SQUASH, fragment:PartMode=OMIT) -> str:
   '''
   Return a path encoded from a url by first splitting the url into parts

@@ -9,7 +9,7 @@ from urllib.parse import urlencode, urlparse
 
 from .fs import make_dirs, move_file, path_dir, path_exists, path_ext, path_join
 from .io import errSL
-from .path_encode import path_for_url
+from .path_encode import path_encode_url
 from .task import runCO
 
 
@@ -28,7 +28,7 @@ def fetch(url:str, cache_path:str='', params:dict[str, str]={}, headers:dict[str
     if '?' in url: raise ValueError("params specified but url already contains '?'")
     url += '?' + urlencode(params)
   if not cache_path:
-    cache_path = path_for_url(url)
+    cache_path = path_encode_url(url)
   path = path_join('_fetch', cache_path)
   path_tmp = path_join('_fetch/tmp', cache_path)
   if not path_exists(path, follow=False):
