@@ -3,8 +3,7 @@
     "_misc/**",
     "dist/**",
     "node/**",
-    "pithy/web/static/htmx.js",
-    "pithy/web/static/htmx.min.js",
+    "pithy/web/static/htmx/**",
     "pkg/**",
     "vscode/legs/src/extension.ts",
     "vscode/legs/built/extension.js",
@@ -19,11 +18,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "es2020"
-    ], // Get intellisense for the available platform APIs.
+    "lib": ["dom", "dom.iterable", "es2020"], // Get intellisense for the available platform APIs.
     "target": "es2022",
-  }
+  },
 }
