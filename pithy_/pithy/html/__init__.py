@@ -13,6 +13,7 @@ from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, Mappin
 from ..default import Default
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
+from ..path import path_join, path_split
 from ..svg import Svg
 from . import semantics
 
@@ -1265,6 +1266,19 @@ class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
 
   Contexts for use: Flow.
   '''
+
+  @classmethod
+  def for_path(cls, path:str, include_tip:bool=False, root_name:str='/') -> Self:
+    assert path.startswith('/')
+    comps = path_split(path)
+    assert comps[0] == '/'
+    els = []
+    end_idx = len(comps)
+    if not include_tip: end_idx -= 1
+    for idx in range(end_idx):
+      name = comps[idx] if idx else root_name
+      els.append(A(href=path_join(*comps[:idx+1]), _=name))
+    return cls(_=els)
 
 
 @_tag
