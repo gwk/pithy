@@ -10,6 +10,9 @@
       "WebSearch",
       "Write"
     ],
+    "deny": [
+      "Bash(npx:*)"
+    ],
     "additionalDirectories": []
   },
   "sandbox": {
