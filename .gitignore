@@ -13,8 +13,9 @@ dist/
 # Project.
 _build/
 _misc/
-_repro.wu
+_screenshots/
 docs/_muck
+_repro.wu
 _plan.md
 _prompt.md
 _todo.md
