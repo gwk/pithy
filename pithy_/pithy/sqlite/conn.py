@@ -258,9 +258,9 @@ class Conn(sqlite3.Connection):
     Execute a single SQL statement, optionally binding Python values using placeholders.
 
     Create a fresh cursor and return it open, like sqlite3.Connection.execute.
-    The caller is responsible for closing the returned cursor; for statements with no result rows,
-    use `execute_control` instead.
     The Cursor override sets `query` and `execute_time` on any resulting sqlite3.Error.
+    The caller is responsible for closing the returned cursor;
+    for statements with no result rows, use `execute_control` instead.
     '''
     return self.cursor().execute(query, args)
 
