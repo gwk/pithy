@@ -240,19 +240,6 @@ class Conn(sqlite3.Connection):
     return super().cursor(factory)
 
 
-  def execute_control(self, query:str, args:SqlParameters=()) -> None:
-    '''
-    Execute a control or DML statement whose result rows are not needed, closing the cursor immediately.
-    Closing in a `finally` finalizes the underlying SQLite statement deterministically, even if the cursor would
-    otherwise be kept alive by an exception traceback retaining the frame. Used for BEGIN/COMMIT/ROLLBACK and ATTACH.
-    '''
-    c = self.cursor()
-    try:
-      c.execute(query, args)
-    finally:
-      c.close()
-
-
   def execute(self, query:str, args:SqlParameters=()) -> Cursor:
     '''
     Execute a single SQL statement, optionally binding Python values using placeholders.
@@ -285,6 +272,27 @@ class Conn(sqlite3.Connection):
     The Cursor override sets `script` and `execute_time` on any resulting sqlite3.Error.
     '''
     return self.cursor().executescript(sql_script)
+
+
+  def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Cursor:
+    '''
+    Execute a query with parameter values provided by keyword arguments.
+    Argument values whose types are not sqlite-compatible are automatically converted to JSON.
+    '''
+    return self.cursor().run(sql, _dbg=_dbg, **args)
+
+
+  def execute_control(self, query:str, args:SqlParameters=()) -> None:
+    '''
+    Execute a control or DML statement whose result rows are not needed, closing the cursor immediately.
+    Closing in a `finally` finalizes the underlying SQLite statement deterministically, even if the cursor would
+    otherwise be kept alive by an exception traceback retaining the frame. Used for BEGIN/COMMIT/ROLLBACK and ATTACH.
+    '''
+    c = self.cursor()
+    try:
+      c.execute(query, args)
+    finally:
+      c.close()
 
 
   def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,
@@ -347,14 +355,6 @@ class Conn(sqlite3.Connection):
       if tty_progress: print(f'{label} complete.', file=stderr)
     finally:
       if should_close_target: target.close()
-
-
-  def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Cursor:
-    '''
-    Execute a query with parameter values provided by keyword arguments.
-    Argument values whose types are not sqlite-compatible are automatically converted to JSON.
-    '''
-    return self.cursor().run(sql, _dbg=_dbg, **args)
 
 
 def _is_busy(exc:OperationalError) -> bool:
