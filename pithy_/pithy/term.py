@@ -4,26 +4,28 @@
 TODO: register a signal handler for SIGWINCH to update sizes.
 '''
 
-import fcntl as _fcntl
-import struct as _struct
 from copy import deepcopy
-from sys import stderr, stdout
+from fcntl import ioctl
+from struct import unpack as struct_unpack
+from sys import stderr, stdin, stdout
 from termios import (BRKINT, CS8, CSIZE, ECHO, ICANON, ICRNL, IEXTEN, INPCK, ISIG, ISTRIP, IXON, OPOST, PARENB, tcgetattr,
   TCSADRAIN, TCSAFLUSH, TCSANOW, tcsetattr, TIOCGWINSZ, VMIN, VTIME)
-from typing import Any
+from typing import Any, cast, Self
 
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 def window_size(f:Any=stdout) -> tuple[int,int]:
   '''
+  Return the terminal window size attached to `f` as `(width, height)` in character cells.
+  If `f` is not a tty, return (128, 0).
   TODO: replace with shutil.get_terminal_size()?
   '''
   if not f.isatty():
     return (128, 0)
   try:
-    cr = _struct.unpack('hh', _fcntl.ioctl(f, TIOCGWINSZ, b'xxxx')) # arg string length indicates length of return bytes
-  except:
+    cr = struct_unpack('hh', ioctl(f, TIOCGWINSZ, b'xxxx')) # arg string length indicates length of return bytes
+  except OSError:
     print('pithy.term.window_size: ioctl failed', file=stderr)
     raise
   return int(cr[1]), int(cr[0])
@@ -45,26 +47,34 @@ when_vals = (TCSANOW, TCSAFLUSH, TCSADRAIN)
 class TermMode:
   '''
   A context manager for altering terminal modes.
-  If no file descriptor is provided, it defaults to stdout.
+  If no file descriptor is provided, it defaults to stdin, because these modes govern input.
+  The terminal attributes are read and altered on `__enter__` and restored on `__exit__`,
+  so an instance may be entered more than once.
+  * delay is specified in seconds, and converted to `vtime` in deciseconds (1-255).
   '''
 
-  def __init__(self, fd:int|None=None, when:int=TCSAFLUSH, min_bytes:int=1, delay:int=0):
-    assert when in when_vals, when
+  def __init__(self, fd:int|None=None, when:int=TCSAFLUSH, min_bytes:int=1, delay:float=0):
+    if when not in when_vals: raise ValueError(f'invalid `when`; received: {when!r}')
     if fd is None:
-      fd = stdout.fileno()
-    self.fd = fd
+      fd = cast(int, stdin.fileno())
+    self.fd:int = fd
     self.when = when
     self.min_bytes = min_bytes
-    self.original_attrs = tcgetattr(fd)
-    self.attrs = deepcopy(self.original_attrs)
     self.vtime = 0
     if delay > 0:
-      self.vtime = int(delay * 10)
-      if self.vtime <= 0: raise ValueError(f'delay must be 0 or greater than 0.1s; received: {delay}')
-    self.alter_attrs()
+      vtime = round(delay * 10)
+      if vtime < 1: raise ValueError(f'delay must be 0 or >= 0.1; received: {delay}.')
+      if vtime > 255: raise ValueError(f'delay must be <= 25.5; received: {delay}.')
+      self.vtime = vtime
+    self.original_attrs:list[Any] = []
+    self.attrs:list[Any] = []
 
-  def __enter__(self) -> None:
+  def __enter__(self) -> Self:
+    self.original_attrs = tcgetattr(self.fd)
+    self.attrs = deepcopy(self.original_attrs)
+    self.alter_attrs()
     tcsetattr(self.fd, self.when, self.attrs)
+    return self
 
   def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> None:
     tcsetattr(self.fd, self.when, self.original_attrs)
