@@ -123,7 +123,7 @@ class Conn(sqlite3.Connection):
     if self.mode != 'ro':
       self._begin_immediate()
     else:
-      self.execute_control('BEGIN')
+      self.run_effect('BEGIN')
     return self
 
 
@@ -136,9 +136,9 @@ class Conn(sqlite3.Connection):
     if self.in_transaction:
       if exc_type: # Exception raised.
         self.transaction_pre_rollback_time = get_time() - self.transaction_start
-        self.execute_control('ROLLBACK')
+        self.run_effect('ROLLBACK')
       else:
-        self.execute_control('COMMIT')
+        self.run_effect('COMMIT')
     self.transaction_time = get_time() - self.transaction_start
     if exc_value is not None:
       setattr(exc_value, 'transaction_time', self.transaction_time)
@@ -166,7 +166,7 @@ class Conn(sqlite3.Connection):
     self.last_retry_error_code = None
     while True:
       try:
-        self.execute_control('BEGIN IMMEDIATE')
+        self.run_effect('BEGIN IMMEDIATE')
         return
       except OperationalError as e:
         if not _is_busy(e): raise
@@ -188,7 +188,7 @@ class Conn(sqlite3.Connection):
    immutable:bool=False, modeof:str='', psow:bool|None=None, vfs:str='') -> None:
     'Attach another database to this one using the URI syntax.'
     uri = sqlite_file_uri(path, mode=mode, immutable=immutable, modeof=modeof, psow=psow, vfs=vfs)
-    self.execute_control(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
+    self.run_effect(f'ATTACH DATABASE {sql_quote_entity(uri)} AS {sql_quote_entity(name)}')
 
 
   def validate(self, query:str) -> None:
@@ -218,20 +218,20 @@ class Conn(sqlite3.Connection):
     '''
     Unsupported: this Conn always runs in sqlite autocommit mode, where Connection.commit() is a silent
     no-op. Use the Conn as a context manager to run an explicit transaction, or issue COMMIT directly via
-    `execute_control('COMMIT')`.
+    `run_effect('COMMIT')`.
     '''
     raise ProgrammingError(
-      'Conn.commit() is unsupported in autocommit mode; use the Conn as a context manager or execute_control("COMMIT").')
+      'Conn.commit() is unsupported in autocommit mode; use the Conn as a context manager or run_effect("COMMIT").')
 
 
   def rollback(self) -> None:
     '''
     Unsupported: this Conn always runs in sqlite autocommit mode, where Connection.rollback() is a silent
     no-op. Use the Conn as a context manager to roll back on exception, or issue ROLLBACK directly via
-    `execute_control('ROLLBACK')`.
+    `run_effect('ROLLBACK')`.
     '''
     raise ProgrammingError(
-      'Conn.rollback() is unsupported in autocommit mode; use the Conn as a context manager or execute_control("ROLLBACK").')
+      'Conn.rollback() is unsupported in autocommit mode; use the Conn as a context manager or run_effect("ROLLBACK").')
 
 
   def cursor(self, factory:type[Cursor]|None=None) -> Cursor: # type: ignore[override]
@@ -247,7 +247,7 @@ class Conn(sqlite3.Connection):
     Create a fresh cursor and return it open, like sqlite3.Connection.execute.
     The Cursor override sets `query` and `execute_time` on any resulting sqlite3.Error.
     The caller is responsible for closing the returned cursor;
-    for statements with no result rows, use `execute_control` instead.
+    for statements with no result rows, use `run_effect` instead.
     '''
     return self.cursor().execute(query, args)
 
@@ -282,17 +282,13 @@ class Conn(sqlite3.Connection):
     return self.cursor().run(sql, _dbg=_dbg, **args)
 
 
-  def execute_control(self, query:str, args:SqlParameters=()) -> None:
+  def run_effect(self, query:str, *, _dbg:bool=False, **args:Any) -> None:
     '''
     Execute a control or DML statement whose result rows are not needed, closing the cursor immediately.
-    Closing in a `finally` finalizes the underlying SQLite statement deterministically, even if the cursor would
-    otherwise be kept alive by an exception traceback retaining the frame. Used for BEGIN/COMMIT/ROLLBACK and ATTACH.
     '''
     c = self.cursor()
-    try:
-      c.execute(query, args)
-    finally:
-      c.close()
+    try: c.run(query, _dbg=_dbg, **args)
+    finally: c.close()
 
 
   def backup(self, target:sqlite3.Connection|str|None=None, *, pages:int=-1, progress:BackupProgressFn|bool|None=None,

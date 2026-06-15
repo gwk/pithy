@@ -2,6 +2,7 @@
 
 import sqlite3
 from contextlib import closing
+from typing import Any
 
 from pithy.sqlite.conn import _backoff_ceiling, _is_busy, Conn
 from utest import utest_exc, utest_run, utest_val
@@ -10,7 +11,7 @@ from utest import utest_exc, utest_run, utest_val
 def make_conn() -> Conn:
   'Create an in-memory connection with a single-column table `t`.'
   conn = Conn(':memory:', mode='memory')
-  conn.execute_control('CREATE TABLE t (x INT)')
+  conn.run_effect('CREATE TABLE t (x INT)')
   return conn
 
 
@@ -19,7 +20,7 @@ def make_conn() -> Conn:
 def _test_commit() -> None:
   with closing(make_conn()) as conn:
     with conn:
-      conn.execute_control('INSERT INTO t (x) VALUES (1)')
+      conn.run_effect('INSERT INTO t (x) VALUES (1)')
     utest_val(1, conn.execute('SELECT count() FROM t').one_col(), 'committed row count')
     utest_val(True, conn.transaction_time > 0, 'transaction_time recorded')
 
@@ -31,7 +32,7 @@ def _test_rollback() -> None:
     class Boom(Exception): pass
     try:
       with conn:
-        conn.execute_control('INSERT INTO t (x) VALUES (2)')
+        conn.run_effect('INSERT INTO t (x) VALUES (2)')
         raise Boom()
     except Boom as e:
       utest_val(True, hasattr(e, 'transaction_time'), 'exception annotated with transaction_time attribute')
@@ -44,9 +45,9 @@ def _test_rollback() -> None:
 def _test_successive_transactions() -> None:
   with closing(make_conn()) as conn:
     with conn:
-      conn.execute_control('INSERT INTO t (x) VALUES (1)')
+      conn.run_effect('INSERT INTO t (x) VALUES (1)')
     with conn:
-      conn.execute_control('INSERT INTO t (x) VALUES (2)')
+      conn.run_effect('INSERT INTO t (x) VALUES (2)')
     utest_val(2, conn.execute('SELECT count() FROM t').one_col(), 'two committed rows')
 
 
@@ -55,7 +56,7 @@ def _test_successive_transactions() -> None:
 def _test_transaction_is_open() -> None:
   with closing(make_conn()) as conn:
     with conn:
-      utest_exc(sqlite3.OperationalError, conn.execute_control, 'BEGIN')
+      utest_exc(sqlite3.OperationalError, conn.run_effect, 'BEGIN')
 
 
 # commit() and rollback() are unsupported in autocommit mode and raise rather than silently no-op.
@@ -76,17 +77,17 @@ def _test_closing() -> None:
   utest_val(True, conn.closed, 'closed after closing')
 
 
-# execute returns an open, usable cursor; execute_control returns None.
+# execute returns an open, usable cursor; run_effect returns None.
 @utest_run
 def _test_cursor_lifecycle() -> None:
   with closing(make_conn()) as conn:
     with conn:
-      conn.execute_control('INSERT INTO t (x) VALUES (42)')
+      conn.run_effect('INSERT INTO t (x) VALUES (42)')
     cursor = conn.execute('SELECT x FROM t')
     utest_val(42, cursor.one_col(), 'fetch from open cursor returned by execute')
     cursor.close()
-    conn.execute_control('DELETE FROM t')
-    utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'execute_control applied the statement')
+    conn.run_effect('DELETE FROM t')
+    utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'run_effect applied the statement')
 
 
 # Re-entering a Conn that already holds a transaction raises.
@@ -102,11 +103,11 @@ def _test_reenter_active_transaction_raises() -> None:
 def _test_ro_path_uses_plain_begin() -> None:
   with closing(make_conn()) as conn:
     statements:list[str] = []
-    orig = conn.execute_control
-    def record(query:str, args:object=()) -> None:
+    orig = conn.run_effect
+    def record(query:str, _db:bool=False, **args:Any) -> None:
       statements.append(query)
-      orig(query, args) # type: ignore[arg-type]
-    conn.execute_control = record # type: ignore[method-assign]
+      orig(query, **args)
+    conn.run_effect = record # type: ignore[method-assign]
 
     # Read-write path (default mode '').
     with conn: pass
@@ -159,7 +160,7 @@ def _test_exit_transaction_handling() -> None:
   # Clean exit commits.
   with closing(make_conn()) as conn:
     with conn:
-      conn.execute_control('INSERT INTO t (x) VALUES (1)')
+      conn.run_effect('INSERT INTO t (x) VALUES (1)')
     utest_val(1, conn.execute('SELECT count() FROM t').one_col(), 'clean exit committed')
 
   # Exception rolls back.
@@ -167,7 +168,7 @@ def _test_exit_transaction_handling() -> None:
     class Boom(Exception): pass
     try:
       with conn:
-        conn.execute_control('INSERT INTO t (x) VALUES (1)')
+        conn.run_effect('INSERT INTO t (x) VALUES (1)')
         raise Boom()
     except Boom: pass
     utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'No value committed.')
