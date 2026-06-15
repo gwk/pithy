@@ -94,7 +94,7 @@ class Transtructor:
     if self.selector_fn_for(desired_type): # type: ignore[arg-type]
       return self.transtructor_for_selector(desired_type)
 
-    return try_transtruct(self.transtructor_post_selector_for(desired_type)) # type: ignore[arg-type]
+    return try_transtruct(self.transtructor_post_selector_for(desired_type), desired_type) # type: ignore[arg-type]
 
 
   def transtructor_for_selector(self, static_type:type[Desired]) -> TranstructFn[Desired]:
@@ -453,17 +453,17 @@ def _instantiate_bare(class_:type[Desired], annotations:dict[str,type], typed_kw
   return obj
 
 
-def try_transtruct(tf:TranstructFn) -> TranstructFn:
+def try_transtruct(tf:TranstructFn, desired_type:type) -> TranstructFn:
   '''
   A function wrapper that takes an existing transtruct function wraps it in a try clause.
-  If an exception is raised, attach a note describing the input.
+  If an exception is raised, attach a note describing the desired type and the input.
   '''
   def _try_transtruct(v:Input, ctx:Ctx) -> Any:
     try: return tf(v, ctx)
     except Exception as e:
       v_desc = repr(v)
       if len(v_desc) >= 100: v_desc = f'{v_desc[:99]}…'
-      e.add_note(f'note: {tf.__name__}: input: {v_desc}')
+      e.add_note(f'note: {tf.__name__}: desired: {desired_type}; input: {v_desc}')
       raise
   return _try_transtruct
 
