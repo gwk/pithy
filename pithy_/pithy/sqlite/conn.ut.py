@@ -170,4 +170,4 @@ def _test_exit_transaction_handling() -> None:
         conn.execute_control('INSERT INTO t (x) VALUES (1)')
         raise Boom()
     except Boom: pass
-    utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'exception rolled back')
+    utest_val(0, conn.execute('SELECT count() FROM t').one_col(), 'No value committed.')
