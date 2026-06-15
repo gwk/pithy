@@ -102,7 +102,8 @@ class Cursor(sqlite3.Cursor):
     Execute a query with parameter values provided by keyword arguments.
     Argument values whose types are not sqlite-compatible are automatically converted to JSON.
     '''
-    args = update_to_sqlite_native_val(args)
+    if args:
+      args = update_to_sqlite_native_val(args)
     if _dbg:
       print(f'query: {sql.strip()}\n  args: {args}')
       if plan := self.execute(f'EXPLAIN QUERY PLAN {sql}', args).fetchone():
