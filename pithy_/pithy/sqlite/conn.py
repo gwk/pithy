@@ -169,7 +169,7 @@ class Conn(sqlite3.Connection):
         self.run_effect('BEGIN IMMEDIATE')
         return
       except OperationalError as e:
-        if not _is_busy(e): raise
+        if not _is_exc_sqlite_busy_family(e): raise
         self.last_retry_error_code = getattr(e, 'sqlite_errorcode', None)
         remaining = deadline - get_time()
         if remaining <= 0:
@@ -353,7 +353,7 @@ class Conn(sqlite3.Connection):
       if should_close_target: target.close()
 
 
-def _is_busy(exc:OperationalError) -> bool:
+def _is_exc_sqlite_busy_family(exc:OperationalError) -> bool:
   '''
   Return True if `exc` is a retryable busy error, i.e. any member of the SQLITE_BUSY family:
   * SQLITE_BUSY (primary code 5)

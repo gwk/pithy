@@ -4,7 +4,7 @@ import sqlite3
 from contextlib import closing
 from typing import Any
 
-from pithy.sqlite.conn import _backoff_ceiling, _is_busy, Conn
+from pithy.sqlite.conn import _backoff_ceiling, _is_exc_sqlite_busy_family, Conn
 from utest import utest_exc, utest_run, utest_val
 
 
@@ -120,18 +120,18 @@ def _test_ro_path_uses_plain_begin() -> None:
     utest_val(False, any('IMMEDIATE' in s for s in statements), 'ro path does not issue BEGIN IMMEDIATE')
 
 
-# _is_busy matches SQLITE_BUSY (5) and SQLITE_BUSY_SNAPSHOT (517), but not other or absent error codes.
+# _is_exc_sqlite_busy_family matches SQLITE_BUSY (5) and SQLITE_BUSY_SNAPSHOT (517), but not other or absent error codes.
 @utest_run
-def _test_is_busy() -> None:
+def _test_is_exc_sqlite_busy_family() -> None:
   def exc_with_code(code:int|None) -> sqlite3.OperationalError:
     e = sqlite3.OperationalError('test')
     if code is not None: e.sqlite_errorcode = code
     return e
-  utest_val(True, _is_busy(exc_with_code(5)), 'SQLITE_BUSY is busy')
-  utest_val(True, _is_busy(exc_with_code(517)), 'SQLITE_BUSY_SNAPSHOT is busy')
-  utest_val(False, _is_busy(exc_with_code(1)), 'SQLITE_ERROR is not busy')
-  utest_val(False, _is_busy(exc_with_code(6)), 'SQLITE_LOCKED is not busy')
-  utest_val(False, _is_busy(exc_with_code(None)), 'no sqlite_errorcode is not busy')
+  utest_val(True, _is_exc_sqlite_busy_family(exc_with_code(5)), 'SQLITE_BUSY is busy')
+  utest_val(True, _is_exc_sqlite_busy_family(exc_with_code(517)), 'SQLITE_BUSY_SNAPSHOT is busy')
+  utest_val(False, _is_exc_sqlite_busy_family(exc_with_code(1)), 'SQLITE_ERROR is not busy')
+  utest_val(False, _is_exc_sqlite_busy_family(exc_with_code(6)), 'SQLITE_LOCKED is not busy')
+  utest_val(False, _is_exc_sqlite_busy_family(exc_with_code(None)), 'no sqlite_errorcode is not busy')
 
 
 # _backoff_ceiling is the deterministic per-attempt cap (jitter is applied at the call site):
