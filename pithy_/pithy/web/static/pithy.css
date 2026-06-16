@@ -1,5 +1,18 @@
 /* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
 
+/*
+# Semantic guidelines
+
+## Units
+* rem: for the type scale and root-level spacing, so the whole system honors user preferences.
+* em: deliberately at component boundaries, e.g. button padding in em so the button scales as a unit its font-size changes.
+  Beware of the compounding scaling as em values nest.
+* ch: for text measure. It is the advance width of the "0" glyph in the current font, so it is font-dependent.
+  It is good for capping text-column width (the readable-measure pattern, max-width: 65ch), but not very useful beyond that.
+* px for things that must stay constant: borders, hairlines, sometimes shadow offsets.
+*/
+
+
 @import url('https://fonts.googleapis.com/css2?family=Noto+Emoji&display=block');
 
 
@@ -9,7 +22,8 @@
 
 * { margin: 0; } /* Remove all default margins. */
 
-html, body { height: 100%; } /* Allow percentage-based heights in the application. See: https://www.joshwcomeau.com/css/custom-css-reset/#digit-percentage-based-heights. */
+html, body { height: 100%; } /* Allow percentage-based heights in the application.
+See: https://www.joshwcomeau.com/css/custom-css-reset/#digit-percentage-based-heights. */
 
 html:focus-within { scroll-behavior: smooth; }
 
