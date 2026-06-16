@@ -165,7 +165,7 @@ def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, conv
     convs = DefaultList(lambda _: dflt_conv, convs)
     rows = list(tuple(convs[i](cell) for i, cell in enumerate(row)) for row in rows)
 
-  col_widths = DefaultList(lambda _: 0)
+  col_widths = DefaultList[int](lambda _: 0)
 
   if head is not None:
     for i, cell in enumerate(head):
