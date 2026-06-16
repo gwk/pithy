@@ -1,16 +1,19 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections.abc import Awaitable, Callable
+from http import HTTPStatus
 from time import sleep
-from typing import Any, Iterable, Mapping, overload, Sequence
+from typing import Any, cast, Iterable, Mapping, overload, Sequence
 
 from starlette.authentication import requires
 from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData, QueryParams
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
-from starlette.routing import Mount
+from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from ..csv import Quoting, render_csv
@@ -18,6 +21,11 @@ from ..date import Date, parse_time_12hmp, Time, TZInfo
 from ..html import HtmlNode
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
+from .endpoint import Endpoint
+from .errors import ResponseError
+from .request import Request as PithyRequest
+from .requestconn import BodyTooLargeError, BytesConn
+from .response import Response as PithyResponse
 from .static import pithy_web_static_dir_path
 
 
@@ -463,3 +471,108 @@ def empty_favicon(request:Request) -> Response:
 
 def mount_for_static_pithy(*, path:str='/static/pithy', name:str='static_pithy') -> Mount:
   return Mount(path, app=StaticFiles(directory=pithy_web_static_dir_path(), follow_symlink=True), name=name)
+
+
+def request_from_starlette(s_request:Request, conn:BytesConn) -> PithyRequest:
+  '''
+  Build a pithy Request from a Starlette request, using head information only.
+  `conn` is the BytesConn that will serve the body once it has been read and set via `conn.set_body`.
+  '''
+  # Combine duplicate header lines into a single comma-separated value, matching the native server's `_headers_dict`.
+  headers:dict[str,str] = {}
+  for k, v in s_request.headers.items(): # Starlette lowercases keys and yields each raw header line separately.
+    headers[k] = f'{headers[k]}, {v}' if k in headers else v
+
+  cl_str = s_request.headers.get('content-length')
+  content_length = int(cl_str) if cl_str is not None else None # A valid integer is guaranteed by uvicorn's HTTP parsing.
+
+  client = s_request.client
+  client_addr = (client.host, client.port) if client else ('', 0)
+
+  url = s_request.url
+  scheme = url.scheme
+
+  # Application/integration state injected by Starlette middleware.
+  # Read from the scope rather than the Starlette request .user or .session properties,
+  # which raise AssertionError when their middleware is absent.
+  # `session` is passed by reference so endpoint mutations propagate back to SessionMiddleware's cookie.
+  ctx:dict[str,Any] = {}
+  scope = s_request.scope
+  if (user := scope.get('user')) is not None: ctx['user'] = user
+  if (auth := scope.get('auth')) is not None: ctx['auth'] = auth
+  if (session := scope.get('session')) is not None: ctx['session'] = session
+  if cookies := s_request.cookies: ctx['cookies'] = cookies
+
+  return PithyRequest(
+    method=s_request.method,
+    scheme=scheme,
+    host=url.hostname or '',
+    port=url.port or (443 if scheme == 'https' else 80),
+    path=url.path,
+    query_str=url.query,
+    headers=headers,
+    client_addr=client_addr,
+    content_length=content_length,
+    conn=conn,
+    ctx=ctx,
+  )
+
+
+def convert_response(p_response:PithyResponse) -> Response:
+  'Convert a pithy Response into a Starlette Response, preserving the exact status and headers.'
+  body = p_response.body
+  content = b'' if body is None else bytes(body)
+  # Note: BufferedReader (file) bodies are not yet supported; pithy endpoints in rha return in-memory bodies.
+  # When first needed, wrap the reader in a Starlette StreamingResponse.
+  response = Response(content=content, status_code=p_response.status.value)
+  response.raw_headers = p_response.headers_bytes_list() # Use pithy's exact wire headers (incl. content-length/type).
+  return response
+
+
+def _run_body(endpoint:Endpoint, request:PithyRequest) -> PithyResponse:
+  '''
+  Synchronous body phase, run in a threadpool: parse the body, fill body fields, and handle the request.
+  Exceptions (ResponseError, BodyTooLargeError) propagate to the adapter's single catch site.
+  '''
+  endpoint.prepare(request)
+  return endpoint.handle_request(request)
+
+
+def endpoint_adapter(endpoint_cls:type[Endpoint], *, privileges:tuple[str,...]) -> Callable[[Request],Awaitable[Response]]:
+  '''
+  Adapt a pithy Endpoint subclass into an async callable suitable for a Starlette Route.
+  `privileges` names the Starlette auth scopes the request must hold; an empty tuple declares the endpoint public.
+  Declared privileges are enforced by applying Starlette's `requires` decorator, so a privileged adapter carries
+  `__wrapped__` just like a decorated function endpoint, and a public adapter does not.
+  '''
+
+  # The parameter must be named `request`: `requires` inspects the signature for a parameter named
+  # `request` or `websocket` and raises at decoration time otherwise.
+  async def adapted(request:Request) -> Response:
+    try:
+      conn = BytesConn(b'')
+      p_request = request_from_starlette(request, conn)
+      endpoint = endpoint_cls(p_request, dict(request.path_params)) # Validates head params; may raise ResponseError.
+      conn.set_body(await request.body()) # The body is only available here, in the async function.
+      response = await run_in_threadpool(_run_body, endpoint, p_request)
+    except ResponseError as e:
+      response = PithyResponse.from_error(e, method=request.method)
+    except BodyTooLargeError:
+      response = PithyResponse(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
+    return convert_response(response)
+
+  # Wrap only when privileged: wrapping a public endpoint would give it a `__wrapped__` and break the invariant
+  # that wrapped implies privileged.
+  if privileges: return cast(Callable[[Request],Awaitable[Response]], requires(list(privileges))(adapted))
+  return adapted
+
+
+def endpoint_route(path:str, endpoint_cls:type[Endpoint], *, privileges:tuple[str,...]) -> Route:
+  '''
+  Build a Starlette Route that dispatches to a pithy Endpoint via the adapter, with methods taken from the Endpoint.
+  `privileges` is passed through to the adapter; see `endpoint_adapter`.
+  The Route is named for the Endpoint class so that each converted route has a distinct name rather than the
+  adapter closure's name.
+  '''
+  return Route(path, endpoint_adapter(endpoint_cls, privileges=privileges), methods=sorted(endpoint_cls._methods),
+    name=endpoint_cls.__name__)
