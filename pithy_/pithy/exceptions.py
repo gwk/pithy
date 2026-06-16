@@ -44,9 +44,9 @@ class NoMatchError(KeyError):
 
 class print_traceback_and_suppress(AbstractContextManager, ContextDecorator):
   '''
-  Context manager to suppress specified exceptions, printing a traceback to stderr if an exception is suppressed.
+  Context manager to catch and suppress specified exceptions, printing the traceback to stderr.
 
-  After the exception is suppressed, execution proceeds with the next statement following the with statement.
+  After the exception is printed, execution proceeds with the next statement following the with statement.
 
   This context manager can also be used as a decorator.
 
@@ -65,9 +65,9 @@ class print_traceback_and_suppress(AbstractContextManager, ContextDecorator):
       print_exception(exc_type, exc_value, traceback)
       return True
     if isinstance(exc_value, BaseExceptionGroup):
-      match, rest = exc_value.split(self._exceptions)
-      if rest is not None:
-        raise rest
-      print_exception(match)
-      return True
+      _, rest = exc_value.split(self._exceptions)
+      if rest is None: # Every leaf matched: report the whole group and suppress.
+        print_exception(exc_value)
+        return True
+      return False # Some leaf did not match: propagate the original group unchanged.
     return False
