@@ -408,14 +408,6 @@ def _() -> None:
   utest_exc(ResponseError, ep.prepare, req)
 
 
-@utest_run
-def _() -> None:
-  'Endpoint: body exceeding max_body_bytes raises BodyTooLargeError.'
-  req = _make_request(media_type='application/json', body=b'{"name":"' + b'x'*2000 + b'"}')
-  ep = BodyEndpoint(req, path_params={})
-  utest_exc(BodyTooLargeError, ep.prepare, req)
-
-
 # Nested dataclass fields.
 
 @dataclass
@@ -978,3 +970,32 @@ def _() -> None:
     utest_val('POST', exc.headers.get('allow'))
   else:
     raise AssertionError('expected MethodNotAllowedError')
+
+
+# Body size validation at construction (the content_length head check).
+
+def _make_body_request(*, content_length:int|None, headers:dict[str,str]|None=None) -> Request:
+  return Request(method='POST', scheme='http', host='localhost', port=80, path='/', query_str='id=1',
+    headers=headers or {}, client_addr=('127.0.0.1', 0), content_length=content_length, conn=None)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint construction rejects a declared body larger than max_body_bytes.'
+  # IntEndpoint.max_body_bytes is 1024.
+  utest_exc(BodyTooLargeError, IntEndpoint, _make_body_request(content_length=2000), {})
+
+
+@utest_run
+def _() -> None:
+  'Endpoint construction allows a declared body within max_body_bytes.'
+  endpoint = IntEndpoint(_make_body_request(content_length=10), {})
+  utest_val(1, endpoint.fields.id)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint construction allows a body with no declared length (content_length None, e.g. chunked); the size cap is'
+  ' enforced later while reading.'
+  endpoint = IntEndpoint(_make_body_request(content_length=None, headers={'transfer-encoding': 'chunked'}), {})
+  utest_val(1, endpoint.fields.id)

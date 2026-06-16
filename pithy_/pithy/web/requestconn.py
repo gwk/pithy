@@ -25,7 +25,7 @@ class RequestConn:
   Abstract base class for the Request object's connection, used to read the request body.
   The actual implementation is server-specific.
   '''
-  content_length:int|None # None implies chunked transfer encoding.
+  content_length:int|None # None when the body length is not known in advance (e.g. chunked); read up to max_bytes.
 
 
   def read_some(self, max_bytes:int) -> bytes:
@@ -63,7 +63,9 @@ class RequestConn:
 
 class BytesConn(RequestConn):
   '''
-  A mock RequestConn that serves a fixed bytes body, for testing Endpoint field parsing from body params.
+  A RequestConn that serves a fixed bytes body from memory.
+  Used for testing Endpoint field parsing from body params, and the Starlette adapter
+  which buffers the whole body before handing it to a synchronous Endpoint.
   '''
 
   def __init__(self, body:bytes) -> None:

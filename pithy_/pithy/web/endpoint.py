@@ -13,6 +13,7 @@ from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, Tr
 from .errors import BadRequestError
 from .handler import RequestHandler
 from .request import Request, UploadedFile
+from .requestconn import BodyTooLargeError
 from .response import Response
 
 
@@ -245,6 +246,10 @@ class Endpoint(RequestHandler):
       self._fill_param(name=name, raw=raw, source='path')
     for name, raw in request.query.items():
       self._fill_param(name=name, raw=raw, source='query')
+
+    if request.content_length is not None and request.content_length > self.max_body_bytes:
+      # Reject a declared body that exceeds the declared max before it is read.
+      raise BodyTooLargeError(length=request.content_length, max_bytes=self.max_body_bytes)
 
 
   def handle_expect_100_continue(self, request:Request) -> Response:
