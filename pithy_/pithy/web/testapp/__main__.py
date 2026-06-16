@@ -3,7 +3,7 @@
 from ..endpoint import Endpoint
 from ..router import RouterApp
 from ..server import ServerConfig, WebServer
-from .basic import EchoId, EchoName, Hello
+from .basic import EchoBody, EchoId, EchoName, Hello
 
 
 '''
@@ -32,6 +32,7 @@ routes:dict[str,type[Endpoint]] = {
   '/': Hello,
   '/items/{id:nat}': EchoId,
   '/users/{name}': EchoName,
+  '/echo': EchoBody,
 }
 
 

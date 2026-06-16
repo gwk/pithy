@@ -32,3 +32,17 @@ class EchoName(Endpoint):
 
   def handle_request(self, request:Request) -> TextResponse:
     return TextResponse(body=f'name={self.fields.name}')
+
+
+class EchoBody(Endpoint):
+  'Parses a urlencoded `name` field from the body'
+
+  methods = 'POST'
+  max_body_bytes = 32
+
+  class Fields:
+    name:str
+  fields:Fields
+
+  def handle_request(self, request:Request) -> TextResponse:
+    return TextResponse(body=f'name={self.fields.name}')
