@@ -87,6 +87,15 @@ class BytesConn(RequestConn):
     self._check_size(max_bytes)
     return file_path
 
+  def set_body(self, body:bytes) -> None:
+    '''
+    Replace the body after construction.
+    This supports adapters that must construct the Request (and validate head params) before the body is available,
+    then fill the body in once it has been read.
+    '''
+    self.content_length = len(body)
+    self.body = body
+
   def stream_body(self, max_bytes:int, chunk_size:int=16_384) -> Iterator[bytes]:
     del chunk_size
     self._check_size(max_bytes)
