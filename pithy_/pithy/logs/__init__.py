@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from contextlib import AbstractContextManager, ContextDecorator
 from io import TextIOWrapper
 from json import dumps as render_json
 from logging import Formatter, LogRecord
@@ -14,6 +15,7 @@ from ..encode import encode_obj
 from ..json import JsonDict, parse_json
 from ..strings import identifier_or_repr
 from ..type_utils import req_type
+from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
 
 '''
@@ -272,3 +274,34 @@ class PithyLogFormatter(Formatter):
 
 _std_LogRecord_fields = set(vars(LogRecord('name', 0, 'pathname', 0, 'msg', (), None)).keys())
 _std_LogRecord_fields.add('color_message')
+
+
+class log_exc_and_suppress(AbstractContextManager, ContextDecorator):
+  '''
+  Context manager to catch and suppress specified exceptions, logging the exceptions.
+
+  After the exception is logged, execution proceeds with the next statement following the with statement.
+
+  This context manager can also be used as a decorator.
+
+  This implementation is derived from the `suppress` context manager in the Python standard library.
+  '''
+
+  def __init__(self, *exceptions:type[BaseException]) -> None:
+    self._exceptions = exceptions
+
+  def __enter__(self) -> log_exc_and_suppress:
+    return self
+
+  def __exit__(self, exc_type:OptTypeBaseExc, exc_value:OptBaseExc, traceback:OptTraceback) -> bool:
+    if exc_type is None: return False
+    if issubclass(exc_type, self._exceptions):
+      logE('exception suppressed', exc=exc_value)
+      return True
+    if isinstance(exc_value, BaseExceptionGroup):
+      _, rest = exc_value.split(self._exceptions)
+      if rest is None: # Every leaf matched: report the whole group and suppress.
+        logE('exception suppressed', exc=exc_value)
+        return True
+      return False # Some leaf did not match: propagate the original group unchanged.
+    return False
