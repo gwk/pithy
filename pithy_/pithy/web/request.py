@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import io
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from http import HTTPStatus
 from json import JSONDecodeError
@@ -52,7 +52,7 @@ class Request:
   * client_addr: Remote (host, port) of the connected client.
   * content_length: Content-Length header value; None if not present or using chunked transfer encoding.
   * conn: RequestConn object for reading the request body. TODO: privatize.
-
+  * ctx: an empty dictionary for applications to attach request state.
   * path_parts: URL path split into parts by '/', e.g. ['items', '42'] for path '/items/42' (cached property).
   * content_type: Full Content-Type header value, including any parameters, e.g. 'application/json;charset=utf-8' (cached property).
   * media_type: The bare type/subtype portion of the Content-Type, e.g. 'application/json' (cached property).
@@ -72,6 +72,7 @@ class Request:
   client_addr:AddrPair
   content_length:int|None
   conn:RequestConn|None = None
+  ctx:dict[str,Any] = field(default_factory=dict)
 
 
   def __post_init__(self) -> None:

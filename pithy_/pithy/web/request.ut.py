@@ -202,3 +202,21 @@ def _() -> None:
   'read_body: body equal to max_bytes is allowed.'
   req = _make_request('text/plain', b'01234')
   utest_val(b'01234', req.read_body(max_bytes=5))
+
+
+# ctx
+
+@utest_run
+def _() -> None:
+  'Request.ctx defaults to an empty dict.'
+  req = _make_request()
+  utest_val({}, req.ctx)
+
+
+@utest_run
+def _() -> None:
+  'Request.ctx is per-instance, not a shared mutable default.'
+  a = _make_request()
+  b = _make_request()
+  a.ctx['user'] = 'alice'
+  utest_val({}, b.ctx)
