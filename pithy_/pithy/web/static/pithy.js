@@ -512,6 +512,93 @@ function makeContainerValidateAtLeastOneCheckbox(container) {
 }
 
 
+const _time12_re = /^(1[012]|[1-9]):([0-5][0-9]) ?([AaPp][Mm])$/;
+const _time24_re = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+
+/**
+ * Parse a time string in 12-hour ("4:30AM") or 24-hour ("16:30") format to minutes since midnight.
+ * @param {string} s - A time string.
+ * @returns {number} - Minutes since midnight.
+ */
+function parseTimeStr(s) {
+  let m12 = _time12_re.exec(s);
+  if (m12) {
+    let h = parseInt(m12[1]);
+    const m = parseInt(m12[2]);
+    const ampm = m12[3].toLowerCase();
+    if (ampm === 'am') { if (h === 12) h = 0; }
+    else { if (h !== 12) h += 12; }
+    return h * 60 + m;
+  }
+  let m24 = _time24_re.exec(s);
+  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+  throw new Error(`parseTimeStr: invalid time string: ${JSON.stringify(s)}`);
+}
+
+
+/**
+ * Validate that the end time select's value is strictly after the start time select's value.
+ * Sets a custom validity message on endSel if the constraint is violated.
+ * @param {HTMLSelectElement} startSel - The start time select element.
+ * @param {HTMLSelectElement} endSel - The end time select element.
+ */
+function validateTimeRange(startSel, endSel) {
+  if (!startSel.value || !endSel.value) {
+    endSel.setCustomValidity('');
+    return;
+  }
+  const ok = parseTimeStr(endSel.value) > parseTimeStr(startSel.value);
+  endSel.setCustomValidity(ok ? '' : 'End time must be after start time');
+}
+
+
+/**
+ * Validate that a date input's value is on or after the start date input's value.
+ * Clears the error when endInput is not visible.
+ * @param {HTMLInputElement} startInput - The start date input element.
+ * @param {HTMLInputElement} endInput - The end date input element.
+ */
+function validateDateRange(startInput, endInput) {
+  if (!isVisible(endInput, true)) {
+    endInput.setCustomValidity('');
+    return;
+  }
+  if (!startInput.value || !endInput.value) {
+    endInput.setCustomValidity('');
+    return;
+  }
+  const ok = endInput.value >= startInput.value;
+  endInput.setCustomValidity(ok ? '' : 'Last date must be on or after the start date');
+}
+
+
+/**
+ * Configure start and end date inputs to validate that end is on or after start.
+ * Clears the error when endInput is not visible.
+ * @param {HTMLInputElement} startInput - The start date input element.
+ * @param {HTMLInputElement} endInput - The end date input element.
+ */
+function makeInputPairValidateDateRange(startInput, endInput) {
+  validateDateRange(startInput, endInput);
+  startInput.addEventListener('change', () => validateDateRange(startInput, endInput));
+  endInput.addEventListener('change', () => validateDateRange(startInput, endInput));
+  observeVisibility(endInput, true, () => validateDateRange(startInput, endInput));
+}
+
+
+/**
+ * Configure start and end time selects to validate that end is strictly after start.
+ * Usage: call with the two select elements; registers change listeners on both.
+ * @param {HTMLSelectElement} startSel - The start time select element.
+ * @param {HTMLSelectElement} endSel - The end time select element.
+ */
+function makeSelectPairValidateTimeRange(startSel, endSel) {
+  validateTimeRange(startSel, endSel);
+  startSel.addEventListener('change', () => validateTimeRange(startSel, endSel));
+  endSel.addEventListener('change', () => validateTimeRange(startSel, endSel));
+}
+
+
 /**
  * Register a callback that skips confirmation if the element is not checked.
  * Usage: `<input type='checkbox' hx-confirm='Are you sure?' once='makeElementHtmxConfirmIfChecked(this)'>`.
