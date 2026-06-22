@@ -1,13 +1,13 @@
 // Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 /*
-pithy.js is a general-purpose JavaScript library for use by pithy web applications.
-It is intended to be included in the HTML head element as follows:
-<script src="/static/pithy.js"></script>
-It expects HTMX to also be loaded.
-pithy.js cannot be loaded using async/defer because the `once()` function must be available to inline script elements.
-Other libraries can be loaded using async/defer.
-*/
+ * pithy.js is a general-purpose JavaScript library for use by pithy web applications.
+ * It is intended to be included in the HTML head element as follows:
+ * <script src="/static/pithy.js"></script>
+ * It expects HTMX to also be loaded.
+ * pithy.js cannot be loaded using async/defer because the `once()` function must be available to inline script elements.
+ * Other libraries can be loaded using async/defer.
+ */
 
 "use strict";
 
@@ -19,7 +19,7 @@ let scrollbarWidth = 0;
 
 /**
  * Set up the browser environment.
-*/
+ */
 function _configurePithy() {
   _configureWindow();
   _configureHtmx();
