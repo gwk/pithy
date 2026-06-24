@@ -57,7 +57,7 @@ link-claude-md:
 	find . -name 'AGENTS.md' -print0 | xargs -0 -I {} sh -c 'ln -sf "$(basename {})" "$(dirname {})/CLAUDE.md"'
 
 lint:
-	pyflakes {{pkg_srcs}} tools
+	pyflakes {{pkg_srcs}} test-diff tools
 
 test: utest iotest
 
