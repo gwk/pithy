@@ -19,7 +19,7 @@ def main() -> None:
       cmd = cmd[:i]
       break
   if not cmd:
-    exit(f'error: no command specified; usage: run.py [CMD...] [PERF FLAGS...].')
+    exit('error: no command specified; usage: run.py [CMD...] [PERF FLAGS...].')
 
   name = path_name(cmd[0])
 

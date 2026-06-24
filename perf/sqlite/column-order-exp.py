@@ -132,14 +132,14 @@ def main() -> None:
 
 def query_f(c:Cursor) -> float:
   start = perf_counter()
-  n = c.execute('SELECT count(1) FROM TF WHERE n0 = 0').fetchone()[0]
+  _ = c.execute('SELECT count(1) FROM TF WHERE n0 = 0').fetchone()[0]
   dur = perf_counter() - start
   #print(f'query_f counted {n} rows in {dur:.3f} seconds.')
   return dur
 
 def query_b(c:Cursor) -> float:
   start = perf_counter()
-  n = c.execute('SELECT count(1) FROM TB WHERE n0 = 0').fetchone()[0]
+  _ = c.execute('SELECT count(1) FROM TB WHERE n0 = 0').fetchone()[0]
   dur = perf_counter() - start
   #print(f'query_b counted {n} rows in {dur:.3f} seconds.')
   return dur

@@ -8,7 +8,6 @@ from random import random
 from sqlite3 import connect, Connection
 from statistics import fmean, median, stdev, variance
 from time import perf_counter
-from typing import Iterable
 
 
 path = 'time-series-avg.db'
