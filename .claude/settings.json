@@ -3,15 +3,18 @@
     "defaultMode": "auto",
     "allow": [
       "Bash(git --no-pager status:*)",
+      "Bash(git show:*)",
       "Bash(git status:*)",
       "Bash(just:*)",
       "Edit",
       "Monitor",
+      "WebFetch(domain:api.github.com)",
       "WebSearch",
       "Write"
     ],
     "deny": [
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Skill(code-review)"
     ],
     "additionalDirectories": []
   },
