@@ -1268,7 +1268,11 @@ class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
   '''
 
   @classmethod
-  def for_path(cls, path:str, include_tip:bool=False, root_name:str='/') -> Self:
+  def for_path(cls, path:str, *, root:str, include_tip:bool=False) -> Self:
+    '''
+    `root`: the name to use for root, e..g 'Home' or '/'. The empty string omits the root element.
+    `include_tip`: whether to include the whole path as the final element. Defaults to `False`.
+    '''
     assert path.startswith('/')
     comps = path_split(path)
     assert comps[0] == '/'
@@ -1276,7 +1280,9 @@ class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
     end_idx = len(comps)
     if not include_tip: end_idx -= 1
     for idx in range(end_idx):
-      name = comps[idx] if idx else root_name
+      if idx: name = comps[idx]
+      elif root: name = root
+      else: continue
       els.append(A(href=path_join(*comps[:idx+1]), _=name))
     return cls(_=els)
 

@@ -22,7 +22,7 @@ def page_html(*, title:str, path:str, main:Main) -> HtmlResponse:
   head.add_js(src='https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta4/dist/htmx.min.js')
   body = html.body
   if path != '/':
-    body.append(Nav.for_path(path))
+    body.append(Nav.for_path(path, root='/'))
   body.append(main)
   return HtmlResponse(body=html)
 
