@@ -10,6 +10,9 @@
     "JSON": {
       "format_on_save": "off",
     },
+    "JSONC": {
+      "format_on_save": "off",
+    },
     "Just": {
       "format_on_save": "off",
     },
