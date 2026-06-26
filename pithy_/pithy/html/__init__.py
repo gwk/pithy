@@ -13,7 +13,6 @@ from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, Mappin
 from ..default import Default
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
-from ..path import path_join, path_split
 from ..svg import Svg
 from . import semantics
 
@@ -1267,24 +1266,15 @@ class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
   Contexts for use: Flow.
   '''
 
+
   @classmethod
-  def for_path(cls, path:str, *, root:str, include_tip:bool=False) -> Self:
+  def breadcrumbs(cls, els:Iterable[tuple[str,MuChildLax]]) -> Self:
     '''
-    `root`: the name to use for root, e..g 'Home' or '/'. The empty string omits the root element.
-    `include_tip`: whether to include the whole path as the final element. Defaults to `False`.
+    Return a nav.breadcrumbs element that presents a list of links.
+    Each element of `els` is a (href, content) pair.
+    Each `A` element is wrapped in a span so that the separators added by the stylesheet are not part of the link.
     '''
-    assert path.startswith('/')
-    comps = path_split(path)
-    assert comps[0] == '/'
-    els = []
-    end_idx = len(comps)
-    if not include_tip: end_idx -= 1
-    for idx in range(end_idx):
-      if idx: name = comps[idx]
-      elif root: name = root
-      else: continue
-      els.append(A(href=path_join(*comps[:idx+1]), _=name))
-    return cls(_=els)
+    return cls(cl='breadcrumbs', _=[Span(A(href=href, _=content)) for (href, content) in els])
 
 
 @_tag

@@ -53,7 +53,8 @@ class DevControlsForm(Endpoint):
       H1('Form Controls'),
       posted_values_div(self._items()),
       controls_form(self._items()))
-    return page_html(title='Dev Controls', path=request.path, main=main)
+    return page_html(title='Dev Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/form', 'Form')],
+      main=main)
 
 
 def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:

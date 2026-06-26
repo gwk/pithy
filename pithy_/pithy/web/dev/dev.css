@@ -1,6 +1,9 @@
 
-body > nav {
-  display: flex;
-  flex-direction: row;
-  gap: 1em;
+body {
+  padding: 1rem;
+}
+
+ol {
+  padding-left: 0;
+  list-style-position: inside; /* if you want numbers flush too */
 }

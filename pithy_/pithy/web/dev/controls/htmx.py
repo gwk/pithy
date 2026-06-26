@@ -22,7 +22,8 @@ class DevControlsHtmx(Endpoint):
       H1('HTMX Controls'),
       posted_values_div(),
       controls_htmx())
-    return page_html(title='Dev Controls', path=request.path, main=main)
+    return page_html(title='Dev Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/htmx', 'HTMX')],
+      main=main)
 
 
 def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:

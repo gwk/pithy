@@ -613,6 +613,26 @@ dialog.modal {
   }
 }
 
+
+/* Nav breadcrumbs. */
+
+nav.breadcrumbs {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem;
+}
+
+.breadcrumbs span + span::before {
+  content: "›";
+  margin-inline: 0.25rem;
+  color: color-mix(in srgb, currentColor 50%, transparent);
+
+
+.breadcrumbs [aria-current="page"] {
+  font-weight: 500;
+}
+
+
 /* pagination-control. */
 
 .pagination-control span.msg {

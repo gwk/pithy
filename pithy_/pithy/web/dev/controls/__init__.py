@@ -17,4 +17,6 @@ class DevControlsIndex(Endpoint):
       if not path.startswith('/controls/') or path.endswith('.htmx'): continue
       text = (': ' + endpoint.__doc__) if endpoint.__doc__ else ''
       links.append(Li(A(href=path, _=path), text))
-    return page_html(title='Controls', path=request.path, main=Main(H1('Controls'), Ul(_=links)))
+
+    return page_html(title='Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls')],
+      main=Main(H1('Controls'), Ul(_=links)))
