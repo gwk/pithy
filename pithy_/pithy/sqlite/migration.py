@@ -206,7 +206,7 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
   c = conn.cursor()
 
   try:
-    c.execute('PRAGMA foreign_keys = OFF') # 1.
+    c.execute('PRAGMA foreign_keys = OFF') # 1. TODO: query and save; only turn off if they are on.
     c.execute('BEGIN IMMEDIATE') # 2.
     # 3 is implicit: the schema contains all indexes, triggers, and views associated with the table, so we can rebuild them.
     for step in migration: c.execute(step) # 4-9.
@@ -220,7 +220,7 @@ def run_migration(conn:Conn, migration:list[str], max_errors:int=100, backup:boo
     c.execute('COMMIT') # 11.
     logI('Migration complete.')
   finally:
-    c.execute('PRAGMA foreign_keys = ON') # 12.
+    c.execute('PRAGMA foreign_keys = ON') # 12. TODO: only turn on if they were originally on.
 
 
 def run_migration_check(cursor:Cursor, check:str, args:str='', max_errors:int=100) -> None:
