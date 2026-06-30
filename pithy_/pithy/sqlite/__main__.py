@@ -8,25 +8,36 @@ This mirrors the Python standard library `sqlite3.__main__` module, but builds t
 '''
 
 import sqlite3
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from sys import stderr
 
+from ..filestatus import is_dir
+from ..fs import is_file
 from ..interactive import Interpreter
+from ..path import path_join
 from . import sqlite_version, SqliteError
 from .conn import Conn, Mode, valid_modes
 from .cursor import Cursor
+from .database import Database, DbConfig, manifest_filename
 
 
 def main() -> None:
   parser = ArgumentParser(prog='pithy.sqlite', description='Pithy sqlite3 CLI.')
   parser.add_argument('filename', nargs='?', default=':memory:',
-    help="SQLite database to open (defaults to ':memory:'). A new database is created if the file does not exist.")
+    help="SQLite database file or group directory to open (defaults to ':memory:'). "
+      'A new file is created if a file path does not exist. '
+      f'A directory containing a {manifest_filename!r} manifest is opened as an attached group; see pithy.sqlite.Database.')
   parser.add_argument('sql', nargs='?', help='An SQL query to execute. Any returned rows are printed to stdout.')
   parser.add_argument('-mode', choices=valid_modes, default=None,
-    help="Connection mode. Defaults to 'memory' for an in-memory database, or 'ro' when a file is given.")
+    help="Connection mode. Defaults to 'memory' for an in-memory database, or 'ro' for a file or group. "
+      "A group accepts only 'ro' or 'rw'.")
   parser.add_argument('-version', action='version', version=f'SQLite version {sqlite_version}',
     help='Print the underlying SQLite library version.')
   args = parser.parse_args()
+
+  if args.filename != ':memory:' and is_dir(args.filename, follow=True):
+    run_group(args)
+    return
 
   if args.filename == ':memory:':
     mode:Mode = args.mode or 'memory'
@@ -36,19 +47,39 @@ def main() -> None:
     db_desc = repr(args.filename)
 
   with Conn(args.filename, mode=mode).closing() as conn:
-    if args.sql:
-      ok = execute(conn.cursor(), args.sql)
-      exit(0 if ok else 1)
-    else:
-      try:
-        import readline
-        _ = readline # Enable line editing and history if available.
-      except ImportError: pass
-      banner = '\n'.join([
-        f'pithy.sqlite shell, running on SQLite version {sqlite_version}; connected to {db_desc}.',
-        'Type ".quit" or CTRL-D to quit; type ".help" for more help.',])
-      interpreter = SqliteInterpreter(conn)
-      interpreter.interact(banner=banner, exit_msg='')
+    run_repl_or_sql(conn, args.sql, db_desc)
+
+
+def run_group(args:Namespace) -> None:
+  'Open an attached group directory described by its manifest, attaching all member databases.'
+  data_dir = args.filename
+  manifest_path = path_join(data_dir, manifest_filename)
+  if not is_file(manifest_path, follow=True):
+    exit(f'error: database directory has no {manifest_filename!r} manifest: {data_dir!r}.')
+  mode = args.mode or 'ro'
+  if mode not in ('ro', 'rw'):
+    exit(f"error: database group accepts only 'ro' or 'rw' modes; got {mode!r}.")
+  config = DbConfig.load_manifest(data_dir)
+  db = Database.rw(config) if mode == 'rw' else Database.ro(config)
+  with db:
+    db_desc = f'{data_dir!r} (group {mode}: {", ".join(config.names)})'
+    run_repl_or_sql(db.conn, args.sql, db_desc)
+
+
+def run_repl_or_sql(conn:Conn, sql:str|None, db_desc:str) -> None:
+  'Execute `sql` and exit, or run the interactive REPL against `conn`.'
+  if sql:
+    ok = execute(conn.cursor(), sql)
+    exit(0 if ok else 1)
+  try:
+    import readline
+    _ = readline # Enable line editing and history if available.
+  except ImportError: pass
+  banner = '\n'.join([
+    f'pithy.sqlite shell, running on SQLite version {sqlite_version}; connected to {db_desc}.',
+    'Type ".quit" or CTRL-D to quit; type ".help" for more help.',])
+  interpreter = SqliteInterpreter(conn)
+  interpreter.interact(banner=banner, exit_msg='')
 
 
 def execute(c:Cursor, sql:str) -> bool:

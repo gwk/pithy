@@ -2,11 +2,12 @@
 
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Iterable, Self
+from typing import Any, Callable, cast, ClassVar, Iterable, Self
 
 from ..advisory_lock import acquire_advisory_lock, advisory_lock, release_advisory_lock
 from ..frozendicts import frozendict
 from ..fs import file_size, is_file, move_file, path_exists
+from ..json import Json, load_json, write_json
 from ..logs import logI, logW
 from ..path import path_join
 from ..sqlite import Conn, Cursor, Mode, Row
@@ -15,6 +16,8 @@ from ..task import run
 
 
 _convenience_exports = (Cursor, Row)
+
+manifest_filename = '_db_manifest.json' # Serialized DbConfig, written into the data dir for discovery by generic tools.
 
 
 @dataclass(frozen=True)
@@ -40,7 +43,7 @@ class DbConfig:
 
   @property
   def lock_path(self) -> str:
-    'Path to the advisory lock sentinel file for this database cluster.'
+    'Path to the advisory lock sentinel file for this database group.'
     return path_join(self.data_dir, '_db.lock')
 
 
@@ -49,14 +52,75 @@ class DbConfig:
     return frozendict({name: self.path(name) for name in self.names})
 
 
+  @property
+  def manifest_path(self) -> str:
+    'Path to the serialized config manifest for this database group.'
+    return path_join(self.data_dir, manifest_filename)
+
+
+  def manifest_dict(self) -> dict[str,Json]:
+    '''
+    Serializable representation of this config.
+
+    `data_dir` is omitted because it is the manifest's own location; it is reinjected by `load_manifest`,
+    which keeps the group directory relocatable. The remaining fields describe layout and connection policy
+    so that a tool without the owning application's code can open the group.
+    '''
+    return {
+      'names': list(self.names),
+      'user_version': self.user_version,
+      'cache_mb': self.cache_mb,
+      'synchronous_full': self.synchronous_full,
+      'lock_allow_group': self.lock_allow_group,
+    }
+
+
+  def write_manifest(self) -> None:
+    'Atomically write the serialized config to `manifest_path` for discovery by tools.'
+    tmp_path = self.manifest_path + '.tmp'
+    with open(tmp_path, 'w') as f:
+      write_json(f, self.manifest_dict())
+    move_file(tmp_path, self.manifest_path, overwrite=True)
+
+
+  def is_manifest_current(self) -> bool:
+    'True if the on-disk manifest exists and equals the current config serialization.'
+    if not is_file(self.manifest_path, follow=True): return False
+    with open(self.manifest_path) as f:
+      return load_json(f) == self.manifest_dict()
+
+
+  @classmethod
+  def load_manifest(cls, data_dir:str) -> Self:
+    '''
+    Construct a DbConfig by reading the manifest in `data_dir`.
+
+    `data_dir` is taken from the argument rather than the file, so a copied or moved group directory loads correctly.
+    '''
+    manifest_path = path_join(data_dir, manifest_filename)
+    with open(manifest_path) as f:
+      raw = load_json(f)
+    if not isinstance(raw, dict):
+      raise ValueError(f'DbConfig manifest is not a JSON object: {manifest_path!r}.')
+    d = cast(dict[str,Any], raw)
+    return cls(
+      names=tuple(str(name) for name in d['names']),
+      data_dir=data_dir,
+      user_version=int(d['user_version']),
+      cache_mb=int(d.get('cache_mb', 256)),
+      synchronous_full=bool(d.get('synchronous_full', False)),
+      lock_allow_group=bool(d.get('lock_allow_group', True)),
+    )
+
+
   def shared_lock(self, *, blocking:bool=True) -> AbstractContextManager[None]:
-    'Context manager holding the shared cluster advisory lock without opening a connection.'
+    'Context manager holding the shared group advisory lock without opening a connection.'
     return advisory_lock(self.lock_path, exclusive=False, blocking=blocking, allow_group=self.lock_allow_group)
 
 
   def exclusive_lock(self, *, blocking:bool=True) -> AbstractContextManager[None]:
     '''
-    Context manager holding the exclusive cluster advisory lock without opening a connection.
+    Context manager holding the exclusive group advisory lock without opening a connection.
 
     For offline operations that manipulate the database files directly, such as restoring from a backup,
     where a connection must not be held. Blocks until all other handles release, then excludes them for the block's duration.
@@ -98,7 +162,7 @@ class Database:
 
   def __init__(self, config:DbConfig|None=None, *, rw:bool=False, exclusive:bool=False, trace_caller_level:int=3) -> None:
     '''
-    Open a handle to the database cluster, holding a cluster-wide advisory lock for the handle's lifetime.
+    Open a handle to the database group, holding a group-wide advisory lock for the handle's lifetime.
 
     Normal handles take a shared lock (`exclusive=False`); concurrent handles coexist while a shared lock is held.
     File maintenance operations (e.g. backup restorations, movement, WAL cleanup) must use `exclusive=True`,
@@ -163,6 +227,7 @@ class Database:
           result = conn.run('PRAGMA journal_mode = WAL').one_col()
           if result != 'wal':
             raise Exception(f'Failed to set WAL mode on {path!r} (db: {name!r}); got {result!r}.')
+      config.write_manifest()
 
 
   def _release_lock(self) -> None:
