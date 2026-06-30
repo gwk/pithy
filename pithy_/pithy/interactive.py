@@ -56,18 +56,20 @@ class Interpreter(InteractiveInterpreter):
       return False
     return True
 
+
   def raw_input(self, prompt:str) -> str:
-    '''Write a prompt and read a line.
+    '''
+    Write a prompt and read a line.
 
     The returned line does not include the trailing newline.
     When the user enters the EOF key sequence, EOFError is raised.
 
-    The base implementation uses the built-in function
-    input(); a subclass may replace this with a different
-    implementation.
+    The base implementation uses the built-in function input();
+    a subclass may replace this with a different implementation.
 
     '''
     return input(prompt)
+
 
 
 def interact(banner:str='', locals:dict[str,Any]|None=None) -> None:
@@ -84,6 +86,7 @@ def interact(banner:str='', locals:dict[str,Any]|None=None) -> None:
     errSL(f'  {k:<16}: {rv}')
   interpreter = Interpreter(locals=locals)
   interpreter.interact(banner=banner)
+
 
 
 class ExitOnKeyboardInterrupt(ContextManager):
