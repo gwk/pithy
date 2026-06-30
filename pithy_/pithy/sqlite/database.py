@@ -237,15 +237,14 @@ class Database:
     return sync_path
 
 
-  def cleanup_db(self, name:str) -> None:
-    'Run `wal_checkpoint(TRUNCATE)` to clean up -wal and -shm files for the named database.'
-    with Conn(self.config.path(name), mode='rw').closing() as conn:
-      conn.cursor().run('PRAGMA wal_checkpoint(TRUNCATE)')
-
-
-  def cleanup_all(self) -> None:
-    for name in self.config.names:
-      self.cleanup_db(name)
+  def truncate_wal(self, *names:str) -> None:
+    'Run `wal_checkpoint(TRUNCATE)` to clean up -wal and -shm files for the named databases, or all if none are named.'
+    names = names or self.config.names
+    c = self.conn.cursor()
+    for name in names:
+      if name not in self.config.names:
+        raise ValueError(f'Database.truncate_wal: unknown database name: {name!r}; known names: {self.config.names}.')
+      c.run(f'PRAGMA {name}.wal_checkpoint(TRUNCATE)')
 
 
   def get_file_sizes(self) -> dict[str,int]:
