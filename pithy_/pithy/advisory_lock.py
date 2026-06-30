@@ -5,8 +5,23 @@ from contextlib import contextmanager
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_SH
 from os import close as os_close, O_CREAT, O_RDWR, open as os_open
 from os.path import realpath
+from threading import Lock
 
 from pithy.logs import logI
+
+
+class AdvisoryLockError(Exception):
+  'Raised when an advisory lock acquisition would deadlock the current process against a lock it already holds.'
+
+
+# Process-wide registry of advisory locks held via this module, used to detect intra-process self-deadlock.
+# The two maps form a single logical structure and must be read and written together under `_advisory_locks_mutex`:
+# every registered fd appears in both, and a partial update would let one thread observe a torn, inconsistent state.
+#   `_advisory_lock_path_holders`: realpath -> {fd: exclusive}; the forward map, queried for conflict detection by path.
+#   `_advisory_lock_fd_paths`: fd -> realpath; the reverse map, so `release_advisory_lock` can locate the path from an fd.
+_advisory_locks_mutex = Lock()
+_advisory_lock_path_holders:dict[str,dict[int,bool]] = {}
+_advisory_lock_fd_paths:dict[int,str] = {}
 
 
 def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_group:bool=False) -> int:
@@ -42,10 +57,32 @@ def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, 
 
   On any failure to acquire, the fd is closed before the exception propagates.
   Keep the lock file on a local filesystem; flock over NFS is unreliable.
+
+  The lock is tracked in a process-wide registry keyed by the file's `realpath`. If this process already holds a lock
+  on the same file via another fd, and the requested mode is incompatible with it (exclusive against any holder, or
+  shared against an exclusive holder), this raises `AdvisoryLockError` immediately rather than blocking forever against
+  a lock the process cannot release. The path is resolved with `realpath`, so aliased paths (symlinks, relative vs.
+  absolute) are detected; hardlinks to one inode via distinct paths are not. To upgrade a held shared lock to exclusive,
+  re-flock the same fd rather than acquiring a second one; this module does not provide that.
   '''
+  real_path = realpath(lock_path)
   mode = 0o660 if allow_group else 0o600
   flags = LOCK_EX if exclusive else LOCK_SH
-  fd = os_open(lock_path, O_RDWR | O_CREAT, mode)
+  fd = os_open(real_path, O_RDWR | O_CREAT, mode)
+  try:
+    # Register the intended lock before the (possibly blocking) flock, so a concurrent thread acquiring a conflicting
+    # lock on the same file sees this holder and fails fast instead of both threads deadlocking in the kernel.
+    with _advisory_locks_mutex:
+      holders = _advisory_lock_path_holders.get(real_path)
+      if holders and (exclusive or any(holders.values())):
+        lock_kind = 'exclusive' if exclusive else 'shared'
+        raise AdvisoryLockError(
+          f'advisory_lock: process already holds a conflicting lock; cannot acquire {lock_kind} lock for path: {lock_path!r}')
+      _advisory_lock_fd_paths[fd] = real_path
+      _advisory_lock_path_holders.setdefault(real_path, {})[fd] = exclusive
+  except BaseException:
+    os_close(fd)
+    raise
   try:
     if blocking:
       try:
@@ -57,21 +94,32 @@ def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, 
     else:
       flock(fd, flags | LOCK_NB)
   except BaseException:
-    os_close(fd)
+    release_advisory_lock(fd)  # Unregister and close.
     raise
   return fd
 
 
 def release_advisory_lock(fd:int) -> None:
   '''
-  Release the advisory lock held on `fd` (as returned by `acquire_advisory_lock`) by closing the fd.
+  Release the advisory lock held on `fd` (as returned by `acquire_advisory_lock`) by unregistering and closing the fd.
 
-  Closing the fd is sufficient: an flock lock belongs to the open file description,
+  Closing the fd is sufficient to release the kernel lock: an flock lock belongs to the open file description,
   and the kernel releases it when the last fd referencing that description is closed.
   This assumes the fd is the sole reference to its description;
   a forked or duped descriptor would keep the lock held until it too is closed.
   The module does not currently support sharing fds across `fork`.
+
+  The fd is also removed from the process-wide registry so that the file is no longer treated as held for conflict
+  detection. Passing an fd that was not registered (e.g. already released) closes it but is otherwise a no-op.
   '''
+  with _advisory_locks_mutex:
+    real_path = _advisory_lock_fd_paths.pop(fd, None)
+    if real_path is not None:
+      holders = _advisory_lock_path_holders.get(real_path)
+      if holders is not None:
+        holders.pop(fd, None)
+        if not holders:
+          del _advisory_lock_path_holders[real_path]
   os_close(fd)
 
 
@@ -95,21 +143,14 @@ def hold_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, all
   Acquire a shared or exclusive advisory flock on the file at `lock_path` and hold it for the remaining lifetime of the process.
 
   Unlike the `advisory_lock` context manager, this returns with the lock held and does not relieve it; the open fd is retained
-  intentionally and released only when the process exits (the kernel closes all fds on process death).
+  intentionally in the process-wide registry and released only when the process exits (the kernel closes all fds on process
+  death).
 
-  Raises `ValueError` if this process already holds a lock acquired here for the same file;
-  re-locking the same file via a second fd in one process can deadlock.
-  The path is resolved with `realpath` before comparison, so aliased paths (symlinks, relative vs. absolute) are detected.
-  See `acquire_advisory_lock` for the parameter semantics.
+  Because the lock stays registered, a later attempt to acquire a conflicting lock on the same file raises
+  `AdvisoryLockError` rather than deadlocking. See `acquire_advisory_lock` for the parameter and conflict semantics.
   '''
-  real_path = realpath(lock_path)
-  if real_path in _held_advisory_locks:
-    raise ValueError(f'advisory_lock: process already holds a lifetime lock for path: {lock_path!r}')
-  fd = acquire_advisory_lock(real_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group)
-  _held_advisory_locks[real_path] = fd
-
-
-_held_advisory_locks:dict[str,int] = {}
+  # Discard the returned fd intentionally: the registry retains it, holding the lock for the process lifetime.
+  acquire_advisory_lock(lock_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group)
 
 
 def is_advisory_locked(lock_path:str, *, allow_group:bool=False) -> bool:
