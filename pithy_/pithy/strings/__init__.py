@@ -150,7 +150,7 @@ ConvFn = Callable[[Any], str]
 def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, convs:ConvFn|Iterable[ConvFn]=str,
  rjust:bool|Iterable[bool]=False, max_col_width:int=64) -> Iterable[str]:
   '''
-  Format rows of cells to after calculating column widths to justify each cell.
+  Format rows of cells to be column-aligned after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
   `convs` is a single conversion function or a list of conversion functions, one for each column.
   `rjust` is a single boolean or a list of booleans, one for each column.
