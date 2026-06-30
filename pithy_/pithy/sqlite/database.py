@@ -1,8 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Callable, ClassVar, Iterable, Self
 
+from ..advisory_lock import acquire_advisory_lock, advisory_lock, release_advisory_lock
 from ..frozendicts import frozendict
 from ..fs import file_size, is_file, move_file, path_exists
 from ..logs import logI, logW
@@ -24,22 +26,42 @@ class DbConfig:
   user_version: int       # Static schema version for migration tracking.
   cache_mb: int = 256
   synchronous_full: bool = False  # True: fully durable WAL; False: NORMAL (default).
+  lock_allow_group: bool = True   # Create the advisory lock sentinel group-accessible (mode 0o660).
+
 
   def __post_init__(self) -> None:
     if not self.names or self.names[0] != 'main':
       raise ValueError(f'DbConfig.names must start with "main"; got {self.names!r}.')
 
+
   def path(self, name:str) -> str:
     return path_join(self.data_dir, f'{name}.db')
+
 
   @property
   def lock_path(self) -> str:
     'Path to the advisory lock sentinel file for this database cluster.'
     return path_join(self.data_dir, '_db.lock')
 
+
   @property
   def paths(self) -> frozendict[str,str]:
     return frozendict({name: self.path(name) for name in self.names})
+
+
+  def shared_lock(self, *, blocking:bool=True) -> AbstractContextManager[None]:
+    'Context manager holding the shared cluster advisory lock without opening a connection.'
+    return advisory_lock(self.lock_path, exclusive=False, blocking=blocking, allow_group=self.lock_allow_group)
+
+
+  def exclusive_lock(self, *, blocking:bool=True) -> AbstractContextManager[None]:
+    '''
+    Context manager holding the exclusive cluster advisory lock without opening a connection.
+
+    For offline operations that manipulate the database files directly, such as restoring from a backup,
+    where a connection must not be held. Blocks until all other handles release, then excludes them for the block's duration.
+    '''
+    return advisory_lock(self.lock_path, exclusive=True, blocking=blocking, allow_group=self.lock_allow_group)
 
 
 class Database:
@@ -74,27 +96,47 @@ class Database:
     raise ValueError('Database: no global config is set.')
 
 
-  def __init__(self, config:DbConfig|None=None, *, rw:bool=False, trace_caller_level:int=3) -> None:
+  def __init__(self, config:DbConfig|None=None, *, rw:bool=False, exclusive:bool=False, trace_caller_level:int=3) -> None:
+    '''
+    Open a handle to the database cluster, holding a cluster-wide advisory lock for the handle's lifetime.
+
+    Normal handles take a shared lock (`exclusive=False`); concurrent handles coexist while a shared lock is held.
+    File maintenance operations (e.g. backup restorations, movement, WAL cleanup) must use `exclusive=True`,
+    which blocks until all shared holders release and excludes all other handles for its duration.
+
+    Within a single process, opening a handle whose lock conflicts with one already open raises `AdvisoryLockError`:
+    * exclusive against any open handle
+    * shared against an open exclusive handle
+    Two shared handles coexist. See `acquire_advisory_lock` for the conflict semantics.
+    '''
     config = config or self.global_config()
     self.config = config
-    mode:Mode = 'rw' if rw else 'ro'
-    self.conn = _connect(config, mode=mode, trace_caller_level=trace_caller_level)
+    # Acquire the advisory lock before connecting and hold it for the lifetime of this handle.
+    self._lock_fd:int|None = acquire_advisory_lock(config.lock_path, exclusive=exclusive, blocking=True,
+      allow_group=config.lock_allow_group)
 
-    try: # Close the conn if version validation fails; otherwise the conn would leak.
-      c = self.conn.cursor()
-      main_user_version:int = c.user_version()
+    try: # Release the lock on any failure during connection or validation; otherwise it would leak.
+      mode:Mode = 'rw' if rw else 'ro'
+      self.conn = _connect(config, mode=mode, trace_caller_level=trace_caller_level)
 
-      if main_user_version < config.user_version:
-        logI('Database stored user_version is behind.', stored=main_user_version, static=config.user_version)
-      elif main_user_version > config.user_version:
-        logW('Database stored user_version is ahead.', stored=main_user_version, static=config.user_version)
+      try: # Close the conn if version validation fails; otherwise the conn would leak.
+        c = self.conn.cursor()
+        main_user_version:int = c.user_version()
 
-      for name in config.names:
-        stored = c.user_version(name)
-        if stored != main_user_version:
-          logW(f'Attached user_version is out of sync: {name}:{stored} < main:{main_user_version}.')
+        if main_user_version < config.user_version:
+          logI('Database stored user_version is behind.', stored=main_user_version, static=config.user_version)
+        elif main_user_version > config.user_version:
+          logW('Database stored user_version is ahead.', stored=main_user_version, static=config.user_version)
+
+        for name in config.names:
+          stored = c.user_version(name)
+          if stored != main_user_version:
+            logW(f'Attached user_version is out of sync: {name}:{stored} < main:{main_user_version}.')
+      except BaseException:
+        self.conn.close()
+        raise
     except BaseException:
-      self.conn.close()
+      self._release_lock()
       raise
 
 
@@ -105,21 +147,37 @@ class Database:
 
 
   @classmethod
-  def rw(cls, config:DbConfig|None=None) -> Self:
+  def rw(cls, config:DbConfig|None=None, *, exclusive:bool=False) -> Self:
     'Create a read-write database handle.'
-    return cls(config, rw=True, trace_caller_level=4)
+    return cls(config, rw=True, exclusive=exclusive, trace_caller_level=4)
 
 
   @classmethod
   def initialize(cls, config:DbConfig|None=None) -> None:
     'Create and initialize each database file, setting WAL mode. Idempotent: safe to call on existing files.'
     config = config or cls.global_config()
-    for name, path in config.paths.items():
-      logI('Initializing database.', name=name, path=path)
-      with Conn(path, mode='rwc').closing() as conn:
-        result = conn.run('PRAGMA journal_mode = WAL').one_col()
-        if result != 'wal':
-          raise Exception(f'Failed to set WAL mode on {path!r} (db: {name!r}); got {result!r}.')
+    with config.exclusive_lock():
+      for name, path in config.paths.items():
+        logI('Initializing database.', name=name, path=path)
+        with Conn(path, mode='rwc').closing() as conn:
+          result = conn.run('PRAGMA journal_mode = WAL').one_col()
+          if result != 'wal':
+            raise Exception(f'Failed to set WAL mode on {path!r} (db: {name!r}); got {result!r}.')
+
+
+  def _release_lock(self) -> None:
+    'Release the held advisory lock, if any. Idempotent.'
+    if self._lock_fd is not None:
+      release_advisory_lock(self._lock_fd)
+      self._lock_fd = None
+
+
+  def close(self) -> None:
+    'Close the connection and release the held advisory lock.'
+    try:
+      self.conn.close()
+    finally:
+      self._release_lock()
 
 
   def __enter__(self) -> Self:
@@ -127,7 +185,7 @@ class Database:
 
 
   def __exit__(self, exc_type:object, exc_val:object, exc_tb:object) -> None:
-    self.conn.close()
+    self.close()
 
 
   def backup_all(self, backup_dir:str) -> list[str]:
