@@ -33,7 +33,7 @@ class TableAbbrs:
 
   @staticmethod
   def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
-    if len(schema_names) <= 1: return { n : '' for n in schema_names } # If only one schema is present then we can omit it entirely.
+    if len(schema_names) <= 1: return { n : '' for n in schema_names } # If only one schema is present then we can omit it.
     tree = str_tree(sorted(schema_names))
     # We abbreviate by adding the first unique letter to each common prefix.
     return { prefix+suffix : prefix+suffix[:1] for prefix, suffix in str_tree_pairs(tree) }
@@ -83,11 +83,13 @@ class Squelch:
     self.order_by:dict[str,dict[str,str]] = { s.name : {} for s in schemas }
     if order_by:
       for schema_name, schema_d in order_by.items():
-        if schema_name not in self.order_by: raise ValueError(f'invalid `order_by` schema name: {schema_name!r}; valid names: {self.schemas.keys()}')
+        if schema_name not in self.order_by:
+          raise ValueError(f'invalid `order_by` schema name: {schema_name!r}; valid names: {self.schemas.keys()}')
         schema = self.schemas[schema_name]
         for table_name, order_by_clause in schema_d.items():
           if table_name not in schema.tables_dict:
-            raise ValueError(f'invalid `order_by` table name in schema {schema_name!r}: {table_name!r}; valid names: {schema.tables_dict.keys()}')
+            raise ValueError(f'invalid `order_by` table name in schema {schema_name!r}: {table_name!r}; '
+              f'valid names: {schema.tables_dict.keys()}')
           self.order_by[schema_name][table_name] = order_by_clause
 
 
@@ -185,8 +187,8 @@ class Squelch:
       assert abbrs is not None
       assert order_by is not None
       div.extend(
-        self.render_table(conn=conn, schema=schema, table=table, abbrs=abbrs, path=path, params=params, en_col_names=en_col_names,
-          order_by=order_by))
+        self.render_table(conn=conn, schema=schema, table=table, abbrs=abbrs, path=path, params=params,
+          en_col_names=en_col_names, order_by=order_by))
 
     title = 'Query'
     if table_name: title += f' {table_name}'
@@ -216,7 +218,7 @@ class Squelch:
   def render_table(self, *, conn:Conn, schema:Schema, table:Table, abbrs:TableAbbrs, path:str, params:QueryParams,
    en_col_names:set[str], order_by:str) -> list[HtmlNode]:
 
-    assert en_col_names # Need at least one column to render.
+    assert en_col_names # Need at least one enabled column to render.
 
     distinct = bool(params.get('distinct'))
 
