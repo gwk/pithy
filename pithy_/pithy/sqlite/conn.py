@@ -6,7 +6,7 @@ from random import random
 from sqlite3 import OperationalError, ProgrammingError, SQLITE_BUSY
 from sys import stderr
 from time import monotonic as get_time, sleep
-from typing import Any, Callable, Iterable, Literal, Self
+from typing import Any, Callable, get_args, Iterable, Literal, Self
 from urllib.parse import quote as url_quote
 
 from ..logs import logW
@@ -34,6 +34,8 @@ sqlite_threadsafe_desc = sqlite_threadsafe_dbapi_id_descs[sqlite_threadsafe_dbap
 BackupProgressFn = Callable[[int,int,int],object]
 
 type Mode = Literal['ro','rw','rwc','memory']
+
+valid_modes = get_args(Mode.__value__)
 
 
 class Conn(sqlite3.Connection):
