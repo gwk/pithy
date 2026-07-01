@@ -26,10 +26,10 @@ class DbConfig:
 
   names: tuple[str, ...]  # Logical db names; must start with 'main'.
   data_dir: str           # Directory containing the .db files.
-  user_version: int       # Static schema version for migration tracking.
-  cache_mb: int = 256
-  synchronous_full: bool = False  # True: fully durable WAL; False: NORMAL (default).
-  lock_allow_group: bool = True   # Create the advisory lock sentinel group-accessible (mode 0o660).
+  user_version: int|None = None   # Static schema version for migration tracking; None skips verification.
+  cache_mb: int|None = None       # Default page-cache ceiling in MiB for connections; None uses SQLite's ~2 MB default.
+  synchronous_full: bool = False  # True: fully durable WAL; False: NORMAL.
+  lock_allow_group: bool = True   # Create the advisory lock sentinel as group-accessible (mode 0o660).
 
 
   def __post_init__(self) -> None:
@@ -62,14 +62,16 @@ class DbConfig:
     '''
     Serializable representation of this config.
 
-    `data_dir` is omitted because it is the manifest's own location; it is reinjected by `load_manifest`,
-    which keeps the group directory relocatable. The remaining fields describe layout and connection policy
+    Only fields describing where and how the data is stored are serialized,
     so that a tool without the owning application's code can open the group.
+
+    `data_dir` is omitted because it is the manifest's own location;
+    it is reinjected by `load_manifest`, which keeps the group directory relocatable.
+    `user_version` is a schema concern already recorded in each database file.
+    `cache_mb` is a per-process performance knob.
     '''
     return {
       'names': list(self.names),
-      'user_version': self.user_version,
-      'cache_mb': self.cache_mb,
       'synchronous_full': self.synchronous_full,
       'lock_allow_group': self.lock_allow_group,
     }
@@ -79,7 +81,7 @@ class DbConfig:
     'Atomically write the serialized config to `manifest_path` for discovery by tools.'
     tmp_path = self.manifest_path + '.tmp'
     with open(tmp_path, 'w') as f:
-      write_json(f, self.manifest_dict())
+      write_json(f, self.manifest_dict(), sort=False)
     move_file(tmp_path, self.manifest_path, overwrite=True)
 
 
@@ -106,8 +108,6 @@ class DbConfig:
     return cls(
       names=tuple(str(name) for name in d['names']),
       data_dir=data_dir,
-      user_version=int(d['user_version']),
-      cache_mb=int(d.get('cache_mb', 256)),
       synchronous_full=bool(d.get('synchronous_full', False)),
       lock_allow_group=bool(d.get('lock_allow_group', True)),
     )
@@ -160,7 +160,8 @@ class Database:
     raise ValueError('Database: no global config is set.')
 
 
-  def __init__(self, config:DbConfig|None=None, *, rw:bool=False, exclusive:bool=False, trace_caller_level:int=3) -> None:
+  def __init__(self, config:DbConfig|None=None, *, rw:bool=False, exclusive:bool=False, cache_mb:int|None=None,
+      trace_caller_level:int=3) -> None:
     '''
     Open a handle to the database group, holding a group-wide advisory lock for the handle's lifetime.
 
@@ -181,16 +182,17 @@ class Database:
 
     try: # Release the lock on any failure during connection or validation; otherwise it would leak.
       mode:Mode = 'rw' if rw else 'ro'
-      self.conn = _connect(config, mode=mode, trace_caller_level=trace_caller_level)
+      self.conn = _connect(config, mode=mode, cache_mb=cache_mb, trace_caller_level=trace_caller_level)
 
       try: # Close the conn if version validation fails; otherwise the conn would leak.
         c = self.conn.cursor()
         main_user_version:int = c.user_version()
 
-        if main_user_version < config.user_version:
-          logI('Database stored user_version is behind.', stored=main_user_version, static=config.user_version)
-        elif main_user_version > config.user_version:
-          logW('Database stored user_version is ahead.', stored=main_user_version, static=config.user_version)
+        if (static_version := config.user_version) is not None: # Only compare when the config carries a static version.
+          if main_user_version < static_version:
+            logI('Database stored user_version is behind.', stored=main_user_version, static=static_version)
+          elif main_user_version > static_version:
+            logW('Database stored user_version is ahead.', stored=main_user_version, static=static_version)
 
         for name in config.names:
           stored = c.user_version(name)
@@ -205,15 +207,15 @@ class Database:
 
 
   @classmethod
-  def ro(cls, config:DbConfig|None=None) -> Self:
+  def ro(cls, config:DbConfig|None=None, *, cache_mb:int|None=None) -> Self:
     'Create a read-only database handle.'
-    return cls(config, rw=False, trace_caller_level=4)
+    return cls(config, rw=False, cache_mb=cache_mb, trace_caller_level=4)
 
 
   @classmethod
-  def rw(cls, config:DbConfig|None=None, *, exclusive:bool=False) -> Self:
+  def rw(cls, config:DbConfig|None=None, *, exclusive:bool=False, cache_mb:int|None=None) -> Self:
     'Create a read-write database handle.'
-    return cls(config, rw=True, exclusive=exclusive, trace_caller_level=4)
+    return cls(config, rw=True, exclusive=exclusive, cache_mb=cache_mb, trace_caller_level=4)
 
 
   @classmethod
@@ -322,7 +324,7 @@ def set_all_user_versions(c:Cursor, names:Iterable[str], version:int) -> None:
     c.set_user_version(name, version)
 
 
-def _connect(config:DbConfig, *, mode:Mode, trace_caller_level:int) -> Conn:
+def _connect(config:DbConfig, *, mode:Mode, cache_mb:int|None, trace_caller_level:int) -> Conn:
 
   for name, path in config.paths.items():
     if not is_file(path, follow=True): exit(f'error: database file not found: {path!r} (db: {name!r}).')
@@ -349,7 +351,9 @@ def _connect(config:DbConfig, *, mode:Mode, trace_caller_level:int) -> Conn:
 
     if mode == 'ro': c.run('PRAGMA query_only = 1')
 
-    c.run(f'PRAGMA cache_size = {-1024 * config.cache_mb}')
+    if cache_mb is None: cache_mb = config.cache_mb
+    if cache_mb is not None: # Otherwise leave SQLite's own default cache size (~2 MB) in place.
+      c.run(f'PRAGMA cache_size = {-1024 * cache_mb}')
 
     if config.synchronous_full:
       c.run('PRAGMA synchronous = FULL')
