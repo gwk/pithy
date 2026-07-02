@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from contextlib import AbstractContextManager, ContextDecorator
+from collections.abc import Iterator
+from contextlib import AbstractContextManager, ContextDecorator, contextmanager
 from io import TextIOWrapper
 from json import dumps as render_json
 from logging import Formatter, LogRecord
@@ -22,9 +23,17 @@ from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 A lightweight logging system.
 '''
 
-LogLevel = Literal['debug', 'info', 'warn', 'error']
+LogLevel = Literal['silent', 'error', 'warn', 'info', 'debug']
 
 log_levels:tuple[str,...] = get_args(LogLevel)
+
+# Numeric levels. Higher numbers are louder (more verbose).
+(_ll_silent, _ll_error, _ll_warn, _ll_info, _ll_debug) = range(len(log_levels))
+
+_log_level_indexes = {level:num for num, level in enumerate(log_levels)}
+
+# The current threshold: a message is emitted only when its numeric level is <= logging_level. Defaults to the loudest level.
+logging_level:int = _ll_debug
 
 log_level_colors = {
   'debug': TXT_C,
@@ -54,28 +63,43 @@ def logD(_:str, **kwargs:Any) -> None:
   '''
   Log a debug message.
   '''
-  _log('debug', _, **kwargs)
+  if _ll_debug <= logging_level: _log('debug', _, **kwargs)
 
 
 def logI(_:str, **kwargs:Any) -> None:
   '''
   Log an info message.
   '''
-  _log('info', _, **kwargs)
+  if _ll_info <= logging_level: _log('info', _, **kwargs)
 
 
 def logW(_:str, **kwargs:Any) -> None:
   '''
   Log a warning message.
   '''
-  _log('warn', _, **kwargs)
+  if _ll_warn <= logging_level: _log('warn', _, **kwargs)
 
 
 def logE(_:str, **kwargs:Any) -> None:
   '''
   Log an error message.
   '''
-  _log('error', _, **kwargs)
+  if _ll_error <= logging_level: _log('error', _, **kwargs)
+
+
+@contextmanager
+def adjust_log_level(level:LogLevel) -> Iterator[None]:
+  '''
+  Temporarily set the logging level for the duration of the with-block, restoring the previous level on exit.
+  Nested uses restore correctly because each saves and restores the prior value, which acts as a stack.
+  '''
+  global logging_level
+  prev = logging_level
+  logging_level = _log_level_indexes[level]
+  try:
+    yield
+  finally:
+    logging_level = prev
 
 
 def log(level:str, _:str, **kwargs:Any) -> None:
