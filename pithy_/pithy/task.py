@@ -52,6 +52,8 @@ def launch(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
 
   If `new_session` is true (the default), the child starts a new session and process group,
   so that a timeout kill can reap the entire descendant tree; see `_kill`.
+  A new session has no controlling terminal, so programs that prompt via /dev/tty (e.g. interactive sudo) will fail;
+  pass `new_session=False` for such commands.
 
   `bufsize` and `pipesize` are passed through to Popen; -1 selects the system default.
 
@@ -186,17 +188,17 @@ def communicate(proc:_Popen, input_bytes:bytes|None=None, timeout:int=0) -> tupl
 
 @overload
 def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, timeout:int=0, exp:TaskCodeExpectation=0,
- as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, *, encoding:str=..., errors:str=...
+ as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, new_session:bool=True, *, encoding:str=..., errors:str=...
  ) -> Generator[str,bytes|None,int]: ...
 
 @overload
 def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, timeout:int=0, exp:TaskCodeExpectation=0,
- as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, *, encoding:None, errors:None=...
+ as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, new_session:bool=True, *, encoding:None, errors:None=...
  ) -> Generator[bytes,bytes|None,int]: ...
 
 def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, timeout:int=0, exp:TaskCodeExpectation=0,
- as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, encoding:str|None='utf-8', errors:str|None='strict'
- ) -> Generator[str|bytes,bytes|None,int]:
+ as_lines:bool=True, merge_err:bool=False, exits:ExitOpt=False, new_session:bool=True, encoding:str|None='utf-8',
+ errors:str|None='strict') -> Generator[str|bytes,bytes|None,int]:
   '''
   If `encoding` is not None, yielded out is decoded with `encoding` and `errors`; otherwise it is yielded as bytes.
   When `encoding` is None, `errors` must also be None.
@@ -214,7 +216,8 @@ def run_gen(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None
     if recv is not None: _os.close(recv)
 
   try:
-    cmd, proc, _ = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=(out if merge_err else None))
+    cmd, proc, _ = launch(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=(out if merge_err else None),
+      new_session=new_session)
     if send:
       assert isinstance(stdin, int)
       _os.close(stdin)
@@ -348,71 +351,71 @@ def fmt_cmd(cmd:Sequence[str]) -> str: return ' '.join(sh_quote(word) for word i
 
 
 def runCOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
- timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int, str, str]:
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False, new_session:bool=True) -> tuple[int, str, str]:
   'Run a command and return exit code, std out, std err.'
   return run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE, timeout=timeout, files=files, exp=None,
-    note_cmd=note_cmd, lldb=lldb)
+    note_cmd=note_cmd, lldb=lldb, new_session=new_session)
 
 
 def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
- timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> int:
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False, new_session:bool=True) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not PIPE
   assert err is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=err, timeout=timeout, files=files, exp=None,
-    note_cmd=note_cmd, lldb=lldb)
+    note_cmd=note_cmd, lldb=lldb, new_session=new_session)
   assert e == ''
   assert o == ''
   return c
 
 
 def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:File|None=None,
- timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int,str]:
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False, new_session:bool=True) -> tuple[int,str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err, timeout=timeout, files=files, exp=None,
-    note_cmd=note_cmd, lldb=lldb)
+    note_cmd=note_cmd, lldb=lldb, new_session=new_session)
   assert e == '', repr(e)
   return c, o
 
 
 def runCE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None,
- timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int,str]:
+ timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False, new_session:bool=True) -> tuple[int,str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not PIPE
   c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE, timeout=timeout, files=files, exp=None,
-    note_cmd=note_cmd, lldb=lldb)
+    note_cmd=note_cmd, lldb=lldb, new_session=new_session)
   assert o == ''
   return c, e
 
 
 def runOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
  timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False,
- exits:ExitOpt=False) -> tuple[str, str]:
+ exits:ExitOpt=False, new_session:bool=True) -> tuple[str, str]:
   'Run a command and return (stdout, stderr) as strings; optional code expectation `exp`.'
   _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=PIPE,
-    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits, new_session=new_session)
   return o, e
 
 
 def runO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:File|None=None,
- timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
- ) -> str:
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False,
+ new_session:bool=True) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
   assert err is not PIPE
   _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=PIPE, err=err,
-    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits, new_session=new_session)
   assert e == ''
   return o
 
 
 def runE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None,
- timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
- ) -> str:
+ timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False,
+ new_session:bool=True) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
   assert out is not PIPE
   _c, o, e = run(cmd=cmd, cwd=cwd, env=env, stdin=stdin, out=out, err=PIPE,
-    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits)
+    timeout=timeout, files=files, exp=exp, note_cmd=note_cmd, lldb=lldb, exits=exits, new_session=new_session)
   assert o ==  ''
   return e
 
