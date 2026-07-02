@@ -354,7 +354,7 @@ def runCOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
     note_cmd=note_cmd, lldb=lldb)
 
 
-def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None, err:IO|None=None,
+def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None, err:File|None=None,
  timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> int:
   'Run a command and return exit code; optional out and err.'
   assert out is not PIPE
@@ -366,7 +366,7 @@ def runC(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, o
   return c
 
 
-def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:IO|None=None,
+def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:File|None=None,
  timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int,str]:
   'Run a command and return exit code, std out; optional err.'
   assert err is not PIPE
@@ -376,7 +376,7 @@ def runCO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, 
   return c, o
 
 
-def runCE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
+def runCE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None,
  timeout:int=0, files:Sequence[File]=(), note_cmd:bool=False, lldb:bool=False) -> tuple[int,str]:
   'Run a command and return exit code, std err; optional out.'
   assert out is not PIPE
@@ -395,7 +395,7 @@ def runOE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None,
   return o, e
 
 
-def runO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:IO|None=None,
+def runO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, err:File|None=None,
  timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
  ) -> str:
   'Run a command and return stdout as a string; optional err and code expectation `exp`.'
@@ -406,7 +406,7 @@ def runO(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, e
   return o
 
 
-def runE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:IO|None=None,
+def runE(cmd:Cmd, cwd:str|None=None, env:Env|None=None, stdin:Input|None=None, out:File|None=None,
  timeout:int=0, files:Sequence[File]=(), exp:TaskCodeExpectation=0, note_cmd:bool=False, lldb:bool=False, exits:ExitOpt=False
  ) -> str:
   'Run a command and return stderr as a string; optional out and code expectation `exp`.'
