@@ -15,6 +15,7 @@ dist/
 
 # Project.
 _build/
+perf/pithy/json/fmt/data/
 _misc/
 _screenshots/
 docs/_muck

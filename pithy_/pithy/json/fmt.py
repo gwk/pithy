@@ -1,5 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+JSON formatting.
+
+# Development
+
+See `perf/pithy/json/fmt/perf-test-json-fmt.py` for a simple perf test.
+'''
+
 from io import BytesIO, Reader, Writer
 from typing import Generator
 
