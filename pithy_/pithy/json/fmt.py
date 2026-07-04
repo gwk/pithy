@@ -73,8 +73,9 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
   # The machine is structured as super-states guarded at the top of the inner loop:
   # comments, strings, and finally the structural dispatch, which handles one token-initial byte per pass.
-  # Comment bodies, string content, whitespace runs, and s_mid runs each step through a tight per-byte loop,
-  # so they skip the classification and separator-emission logic entirely.
+  # String content and comment bodies are scanned with `bytes.find` and copied as slices at C speed;
+  # whitespace runs and s_mid runs (which have no single-byte find target) step through tight per-byte loops.
+  # All of these skip the classification and separator-emission logic entirely.
   # Each super-state is resumable: when the chunk runs out mid-token, the persisted state re-enters the same block.
   #
   # Emission invariant: every token's FINAL byte stays deferred in `prev_byte`, so that fix-mode can drop a
@@ -168,41 +169,28 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
           post_line_comment_nl = False
           continue # Do not consume: the loop top re-dispatches chunk[i], which always makes progress.
         elif comment is c_line:
-          if strip_comments:
-            while i < n:
-              byte = chunk[i]
-              i += 1
-              if byte == _b_newline:
-                comment = c_none
-                break
+          j = chunk.find(_b_newline, i)
+          if j < 0: # The comment runs to the end of the chunk; c_line persists into the next chunk.
+            if not strip_comments:
+              output += chunk[i:]
+            i = n
           else:
-            while i < n:
-              byte = chunk[i]
-              i += 1
-              if byte == _b_newline:
-                comment = c_none
-                output.append(_b_newline)
-                post_line_comment_nl = True
-                break
-              output.append(byte)
-          continue # If the chunk ran out mid-comment, c_line persists into the next chunk.
+            comment = c_none
+            if not strip_comments:
+              output += chunk[i:j+1] # The body plus the terminating newline.
+              post_line_comment_nl = True
+            i = j + 1
+          continue
         elif comment is c_block:
+          j = chunk.find(_b_star, i)
+          e = n if j < 0 else j + 1 # Copy through the star, if found; otherwise c_block persists into the next chunk.
           if strip_comments:
-            while i < n:
-              byte = chunk[i]
-              i += 1
-              unterminated_block_buffer.append(byte)
-              if byte == _b_star:
-                comment = c_block_star
-                break
+            unterminated_block_buffer += chunk[i:e]
           else:
-            while i < n:
-              byte = chunk[i]
-              i += 1
-              output.append(byte)
-              if byte == _b_star:
-                comment = c_block_star
-                break
+            output += chunk[i:e]
+          if j >= 0:
+            comment = c_block_star
+          i = e
           continue
         else: # c_block_star: a single byte; handles `*/`, `**`, and the chunk-boundary split.
           byte = chunk[i]
@@ -233,20 +221,27 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
           i += 1
           prev_state = s_str
         while i < n:
-          byte = chunk[i]
-          i += 1
-          if byte == _b_dquote: # The closing quote is deferred, like every token-final byte.
-            prev_byte = _b_dquote
-            prev2_state = s_str
-            prev_state = s_mid
-            break
-          output.append(byte) # String content is emitted eagerly.
-          if byte == _b_backslash:
+          q = chunk.find(_b_dquote, i) # Candidate closing quote.
+          e = chunk.find(_b_backslash, i, q if q >= 0 else n) # An escape before the candidate quote?
+          if e >= 0:
+            output += chunk[i:e+1] # Content plus the backslash, emitted eagerly.
+            i = e + 1
             if i < n:
               output.append(chunk[i]) # The escaped byte cannot close the string; emit it raw.
               i += 1
-            else:
-              prev_state = s_str_esc # The chunk ended immediately after the backslash.
+              continue
+            prev_state = s_str_esc # The chunk ended immediately after the backslash.
+            break
+          if q < 0: # The rest of the chunk is string content; s_str persists into the next chunk.
+            output += chunk[i:]
+            i = n
+            break
+          output += chunk[i:q] # Content, emitted eagerly.
+          i = q + 1
+          prev_byte = _b_dquote # The closing quote is deferred, like every token-final byte.
+          prev2_state = s_str
+          prev_state = s_mid
+          break
         continue
 
       # Structural dispatch: one token-initial byte per pass.
