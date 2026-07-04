@@ -305,6 +305,5 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 def write_formatted_json_bytes(file:Writer[bytes], bytes_or_file:bytes|Reader[bytes], fix:bool,\
  allow_trailing_commas:bool=False, allow_comments:bool=False) -> None:
 
-  for b in fmt_json_bytes(bytes_or_file, fix=fix, allow_trailing_commas=allow_trailing_commas,
-   allow_comments=allow_comments):
+  for b in fmt_json_bytes(bytes_or_file, fix=fix, allow_trailing_commas=allow_trailing_commas, allow_comments=allow_comments):
     file.write(b)
