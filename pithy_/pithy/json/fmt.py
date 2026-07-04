@@ -185,6 +185,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
           state = s_mid
         elif byte == _b_backslash:
           state = s_str_esc
+        else:
+          state = s_str
 
       elif byte in _b_ws:
         prev_had_ws = True
