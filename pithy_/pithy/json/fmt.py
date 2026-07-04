@@ -27,6 +27,10 @@ _b_open = frozenset(b'{[')
 _b_close = frozenset(b'}]')
 _b_specials = frozenset(b' \n\t\r{}[],:"/')
 #^ Bytes that terminate an s_mid run. Must exactly mirror the structural dispatch chain below.
+_ws_mask_table = bytes(1 if b in _b_ws else 0 for b in range(256))
+#^ Translate table for locating the end of a whitespace run: ws bytes map to 1, all others to 0.
+_mid_mask_table = bytes(0 if b in _b_specials else 1 for b in range(256))
+#^ Translate table for locating the end of an s_mid run: delimiter bytes map to 0, all others to 1.
 _byte_table = [bytes([i]) for i in range(256)]  # Avoid per-byte allocation when yielding; ~15% speedup.
 _b_indent = b'  '
 
@@ -73,8 +77,9 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
   # The machine is structured as super-states guarded at the top of the inner loop:
   # comments, strings, and finally the structural dispatch, which handles one token-initial byte per pass.
-  # String content and comment bodies are scanned with `bytes.find` and copied as slices at C speed;
-  # whitespace runs and s_mid runs (which have no single-byte find target) step through tight per-byte loops.
+  # String content and comment bodies are scanned with `bytes.find` and copied as slices at C speed.
+  # Whitespace runs and s_mid runs have no single-byte find target, so their ends are located by running
+  # `bytes.find` over a per-chunk class mask computed lazily with `bytes.translate`.
   # All of these skip the classification and separator-emission logic entirely.
   # Each super-state is resumable: when the chunk runs out mid-token, the persisted state re-enters the same block.
   #
@@ -102,6 +107,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
   while chunk := file.read(_chunk_size):
     n = len(chunk)
     output = bytearray() # ~15% speedup over yielding individual bytes when building the output.
+    ws_mask:bytes|None = None # Lazily computed per chunk, on first whitespace run.
+    mid_mask:bytes|None = None # Lazily computed per chunk, on first s_mid run.
     i = 0
     while i < n:
 
@@ -246,13 +253,15 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
       # Structural dispatch: one token-initial byte per pass.
       byte = chunk[i]
-      i += 1
 
       if byte in _b_ws:
         prev_had_ws = True
-        while i < n and chunk[i] in _b_ws:
-          i += 1
+        if ws_mask is None:
+          ws_mask = chunk.translate(_ws_mask_table)
+        j = ws_mask.find(0, i+1) # The first non-ws byte after this one.
+        i = n if j < 0 else j
         continue
+      i += 1
       if byte == _b_slash:
         comment = c_pending
         continue
@@ -332,16 +341,19 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
       elif state is s_close:
         indent -= 1
 
-      if state is s_mid: # Tight run loop for constants and other non-delimiter bytes; maintains last-byte deferral.
-        # prev2_state is not updated per byte: it is only read when prev_state is s_comma,
+      if state is s_mid: # Bulk-extend the rest of the constant/junk run; maintains last-byte deferral.
+        # prev2_state is not updated for run bytes: it is only read when prev_state is s_comma,
         # and every comma's dispatch tail rewrites it before that read.
-        while i < n:
-          b = chunk[i]
-          if b in _b_specials:
-            break
-          output.append(prev_byte)
-          prev_byte = b
-          i += 1
+        if mid_mask is None:
+          mid_mask = chunk.translate(_mid_mask_table)
+        j = mid_mask.find(0, i) # The first delimiter byte at or after i.
+        if j < 0:
+          j = n
+        if j > i:
+          output.append(prev_byte) # The first byte of the run.
+          output += chunk[i:j-1] # The interior, emitted eagerly.
+          prev_byte = chunk[j-1] # The final byte stays deferred.
+          i = j
 
     yield bytes(output)
 
