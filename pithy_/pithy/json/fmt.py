@@ -272,6 +272,16 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
     yield bytes(output)
 
+  if comment is c_pending: # Reached EOF just after a bare `/`; emit the orphan slash rather than dropping it.
+    if prev_byte != -1:
+      yield _byte_table[prev_byte]
+      if prev_had_ws:
+        yield b' '
+      prev_byte = -1
+    yield b'/'
+    prev_state = s_mid # Ensure the final newline is emitted even if the slash was the only token.
+    post_line_comment_nl = False
+
   if prev_byte != -1: # If the final byte is a comma then the output is invalid so we emit it regardless.
     yield _byte_table[prev_byte]
   if unterminated_block_buffer: # Reached EOF inside an unterminated block comment; preserve it rather than swallowing input.

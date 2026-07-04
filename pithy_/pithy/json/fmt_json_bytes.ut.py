@@ -222,5 +222,11 @@ for with_comments, expected in comment_whitespace_examples.items():
 # A bare `/` not followed by `/` or `*` is preserved as a literal token rather than silently dropped.
 utest(b'[ 1/2 ]\n', test_fmt, b'[1/2]', fix=True)
 
+# A bare `/` at EOF is preserved rather than dropped.
+utest(b'/\n', test_fmt, b'/', fix=False)
+utest(b'5/\n', test_fmt, b'5/', fix=False)
+utest(b'5 /\n', test_fmt, b'5 /', fix=False)
+utest(b'[ 1/\n', test_fmt, b'[1/', fix=True)
+
 # An unterminated `/* ...` block comment is preserved at EOF rather than swallowing the remaining input.
 utest(b'/* never closed\n[1]', test_fmt, b'/* never closed\n[1]', fix=True)
