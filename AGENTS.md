@@ -50,7 +50,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 * Error handling: early returns, custom exceptions where they clarify intent or need to be caught, explicit error messages.
 * Line length: 128 characters; wrap long function declarations past that length, not per parameter.
 * Do not wrap at shorter lengths; 128 is our page width.
-* Docstrings: single quotes for brief docs, triple single-quotes for multi-line.
+* Docstrings: single quotes for brief docs, triple single-quotes for multi-line. Use markdown syntax, not rst.
 * Use proper capitalization and periods in comments and docstrings.
 * Do not put non-ascii characters like em-dashes, arrows or fancy quotes in code comments or docstrings
   unless there is is a specific reason, for example if you were describing a unicode character.

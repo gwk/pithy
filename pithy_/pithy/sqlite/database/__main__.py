@@ -8,10 +8,11 @@ each command takes a dotted `app` spec naming the module that defines it. See `l
 '''
 
 from argparse import Namespace
-from importlib import import_module
+from types import ModuleType
 
 from ...argparser import CommandParser
 from ...logs import logI
+from ...util import resolve_module_spec
 from . import Database, DbConfig
 
 
@@ -63,13 +64,9 @@ def load_config(spec:str) -> DbConfig:
   if it is not already a DbConfig but is callable, it is called with no arguments.
   This supports apps that expose a config object or factory directly.
   '''
-  module_name, _, attr = spec.partition(':')
-  module = import_module(module_name)
-  if not attr:
+  obj:object = resolve_module_spec(spec)
+  if isinstance(obj, ModuleType): # A module was passed in and loaded; the global config should now be ready.
     return Database.global_config()
-  obj:object = module
-  for part in attr.split('.'):
-    obj = getattr(obj, part)
   if isinstance(obj, DbConfig): return obj
   if callable(obj):
     result = obj()

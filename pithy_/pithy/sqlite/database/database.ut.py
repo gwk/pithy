@@ -9,18 +9,18 @@ from utest import utest, utest_exc, utest_val
 # `manifest_dict` omits `data_dir` and serializes only the storage-layout and policy fields.
 # `user_version` (a schema concern) and `cache_mb` (a per-process knob) are intentionally excluded.
 config = DbConfig(names=('main', 'aux'), data_dir='/some/dir', user_version=3, synchronous_full=True,
-  lock_allow_group=False)
+  is_lock_group_accessible=False)
 utest({
   'names': ['main', 'aux'],
   'synchronous_full': True,
-  'lock_allow_group': False,
+  'is_lock_group_accessible': False,
 }, config.manifest_dict)
 
 
 # Round-trip through the manifest file reconstructs a config with the serialized fields; `data_dir` is taken from the
 # load directory and `user_version` defaults to None since it is not serialized.
 data_dir = mkdtemp(prefix='dbconfig_ut')
-config_here = DbConfig(names=('main', 'aux'), data_dir=data_dir, synchronous_full=True, lock_allow_group=False)
+config_here = DbConfig(names=('main', 'aux'), data_dir=data_dir, synchronous_full=True, is_lock_group_accessible=False)
 config_here.write_manifest()
 utest(config_here, DbConfig.load_manifest, data_dir)
 

@@ -14,6 +14,22 @@ def load_and_execute(module_name:str, function_name:str, /, *args:Any, **kwargs:
   return func(*args, **kwargs)
 
 
+def resolve_module_spec(spec:str, *, default_attr:str='') -> Any:
+  '''
+  Resolve a `module[:attr]` spec string to an object.
+  The module is imported by its full dotted path, so its containing package initializes normally.
+  `attr` may itself be dotted; if it is omitted, `default_attr` is used when provided, otherwise the module is returned.
+  '''
+  module_name, _, attr = spec.partition(':')
+  module = importlib.import_module(module_name)
+  if not attr: attr = default_attr
+  obj:Any = module
+  if attr:
+    for part in attr.split('.'):
+      obj = getattr(obj, part)
+  return obj
+
+
 def memoize(_fn:Callable|None=None, sentinel:Any=Ellipsis) -> Callable:
   '''
   recursive function memoization decorator.

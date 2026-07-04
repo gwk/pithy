@@ -29,7 +29,7 @@ class DbConfig:
   user_version: int|None = None   # Static schema version for migration tracking; None skips verification.
   cache_mb: int|None = None       # Default page-cache ceiling in MiB for connections; None uses SQLite's ~2 MB default.
   synchronous_full: bool = False  # True: fully durable WAL; False: NORMAL.
-  lock_allow_group: bool = True   # Create the advisory lock sentinel as group-accessible (mode 0o660).
+  is_lock_group_accessible: bool = True   # Create the advisory lock sentinel as group-accessible (mode 0o660).
 
 
   def __post_init__(self) -> None:
@@ -73,7 +73,7 @@ class DbConfig:
     return {
       'names': list(self.names),
       'synchronous_full': self.synchronous_full,
-      'lock_allow_group': self.lock_allow_group,
+      'is_lock_group_accessible': self.is_lock_group_accessible,
     }
 
 
@@ -109,13 +109,13 @@ class DbConfig:
       names=tuple(str(name) for name in d['names']),
       data_dir=data_dir,
       synchronous_full=bool(d.get('synchronous_full', False)),
-      lock_allow_group=bool(d.get('lock_allow_group', True)),
+      is_lock_group_accessible=bool(d.get('is_lock_group_accessible', True)),
     )
 
 
   def shared_lock(self, *, blocking:bool=True) -> AbstractContextManager[None]:
     'Context manager holding the shared group advisory lock without opening a connection.'
-    return advisory_lock(self.lock_path, exclusive=False, blocking=blocking, allow_group=self.lock_allow_group)
+    return advisory_lock(self.lock_path, exclusive=False, blocking=blocking, allow_group=self.is_lock_group_accessible)
 
 
   def exclusive_lock(self, *, blocking:bool=True) -> AbstractContextManager[None]:
@@ -125,7 +125,7 @@ class DbConfig:
     For offline operations that manipulate the database files directly, such as restoring from a backup,
     where a connection must not be held. Blocks until all other handles release, then excludes them for the block's duration.
     '''
-    return advisory_lock(self.lock_path, exclusive=True, blocking=blocking, allow_group=self.lock_allow_group)
+    return advisory_lock(self.lock_path, exclusive=True, blocking=blocking, allow_group=self.is_lock_group_accessible)
 
 
 class Database:
@@ -178,7 +178,7 @@ class Database:
     self.config = config
     # Acquire the advisory lock before connecting and hold it for the lifetime of this handle.
     self._lock_fd:int|None = acquire_advisory_lock(config.lock_path, exclusive=exclusive, blocking=True,
-      allow_group=config.lock_allow_group)
+      allow_group=config.is_lock_group_accessible)
 
     try: # Release the lock on any failure during connection or validation; otherwise it would leak.
       mode:Mode = 'rw' if rw else 'ro'
