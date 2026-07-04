@@ -49,7 +49,8 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
   s_start, s_open_inline, s_open_break, s_close, s_comma, s_colon, s_mid, s_str, s_str_esc = range(9)
   # States are specified as local ints. This is faster than looking up global vars.
-  # It is also much faster than using a global Enum object, but prevents us from using the `match` statement.
+  # It is also much faster than using a global Enum object.
+  # Enums would allow us to use the `match` statement, but that also appears to be slower in practice.
   # s_start: before any tokens have been seen.
   # s_open_inline: an open token (`{` or `[`) whose first child will be on the same line.
   # s_open_break: an open token (`{` or `[`) whose first child will be on the next line.
@@ -65,13 +66,15 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
   c_none, c_pending, c_line, c_block, c_block_star = range(5)
   comment = c_none
   strip_comments = fix and not allow_comments
-  unterminated_block_buffer = bytearray() # In strip mode, captures the current block comment so it can be re-emitted on EOF if unterminated.
+  unterminated_block_buffer = bytearray()
+  #^ In strip mode, captures the current block comment so it can be re-emitted on EOF if unterminated.
 
   prev2_state = s_start
   prev_state = s_start
   prev_byte = -1
   prev_had_ws = False
-  post_line_comment_nl = False # True when a preserved `//` comment just emitted its terminating newline; suppresses the next transition's leading newline.
+  post_line_comment_nl = False
+  #^ True when a preserved `//` comment just emitted its terminating newline; suppresses the next transition's leading newline.
   indent = 0
 
   while chunk := file.read(_chunk_size):
@@ -269,9 +272,10 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
   if prev_byte != -1: # If the final byte is a comma then the output is invalid so we emit it regardless.
     yield _byte_table[prev_byte]
-  if unterminated_block_buffer: # Strip mode reached EOF inside an unterminated block comment; preserve it rather than swallowing input.
+  if unterminated_block_buffer: # Reached EOF inside an unterminated block comment; preserve it rather than swallowing input.
     yield bytes(unterminated_block_buffer)
-  if prev_state != s_start and not post_line_comment_nl: # Final newline for non-empty output, unless a preserved line comment already ended with one.
+  if prev_state != s_start and not post_line_comment_nl:
+    # Final newline for non-empty output, unless a preserved line comment already ended with one.
     yield b'\n'
 
   return indent
