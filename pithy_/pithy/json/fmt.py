@@ -52,11 +52,17 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
   When `fix` is `True`, comments are stripped unless `allow_comments` is `True`.
   When `fix` is `False`, comments are always preserved.
 
+  Preserved comments are placed as follows:
+  * A comment on the same line as a preceding token is attached to it with a single space.
+  * A comment preceded by a newline is placed on its own line at the current indent.
+  * A single blank line is preserved between a line comment and a following comment.
+
   The output identical to the input, with the following changes:
   * JSON whitespace (only space, '\n', '\r', '\t') is altered; the output whitespace is spaces and newlines only.
   * Trailing commas are omitted unless `allow_trailing_commas` is `True`.
   * Comments are stripped when `fix` is `True` and `allow_comments` is `False`.
   The output style is lispy, with closing braces/brackets on the same line as the last item.
+  Non-empty output always ends with a newline.
   Returns the indent level; use `GenRes` to obtain the indent level and output together.
   '''
   file:Reader[bytes] = BytesIO(bytes_or_file) if isinstance(bytes_or_file, bytes) else bytes_or_file
@@ -87,6 +93,11 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
   # trailing comma and the comment/EOF paths can flush or re-queue it. Token INTERIORS (string content,
   # s_mid run interiors, comment bodies) are emitted eagerly, because no whitespace/comment/drop logic can
   # intervene mid-token.
+  #
+  # Preserved-comment placement needs to know whether the whitespace before a `/` contained a newline.
+  # `ws_run_start` remembers where the last whitespace run began within the current chunk, and the newline
+  # scan runs only at slash dispatch, so comment-free input pays nothing beyond one index store per run.
+  # `ws_nl_carry` extends the answer across chunk boundaries; it is folded into `slash_ws_nl` at dispatch.
 
   inline_states = frozenset((s_start, s_open_inline, s_open_break, s_comma, s_close))
 
@@ -102,13 +113,28 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
   prev_had_ws = False
   post_line_comment_nl = False
   #^ True when a preserved `//` comment just emitted its terminating newline; suppresses the next transition's leading newline.
+  ws_nl_carry = False
+  #^ True when the whitespace run in progress at a chunk boundary contained a newline; extends slash_ws_nl across chunks.
+  #^ Captured into `carry_in` at chunk start; it only applies while `ws_run_start` is still 0 (a run touching the chunk start).
+  slash_ws_nl = False
+  #^ True when the whitespace preceding a just-seen `/` contained a newline; a following comment goes on its own line.
+  last_byte = -1
+  #^ The last byte emitted so far, across chunks; -1 when nothing has been emitted. Governs the final newline.
   indent = 0
 
-  while chunk := file.read(_chunk_size):
+  while True:
+    chunk = file.read(_chunk_size)
+    if not chunk:
+      if comment is not c_pending:
+        break
+      chunk = b'\n' # EOF just after a bare `/`: synthesize whitespace so the slash flows through the normal orphan path.
     n = len(chunk)
     output = bytearray() # ~15% speedup over yielding individual bytes when building the output.
     ws_mask:bytes|None = None # Lazily computed per chunk, on first whitespace run.
     mid_mask:bytes|None = None # Lazily computed per chunk, on first s_mid run.
+    ws_run_start = 0 # Start of the most recent whitespace run within this chunk; scanned for a newline at slash dispatch.
+    carry_in = ws_nl_carry # Newline status of the whitespace run left in progress by the previous chunk, if any.
+    ws_nl_carry = False
     i = 0
     while i < n:
 
@@ -116,27 +142,32 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
       if comment is not c_none:
         if comment is c_pending:
           byte = chunk[i]
-          if byte == _b_slash:
-            comment = c_line
-            if not strip_comments:
-              if prev_byte != -1:
-                output.append(prev_byte)
-                output.append(_b_space)
-                prev_byte = -1
-              output.extend(b'//')
-            prev_had_ws = True
-            i += 1
-            continue
-          if byte == _b_star:
-            comment = c_block
-            if not strip_comments:
-              if prev_byte != -1:
-                output.append(prev_byte)
-                output.append(_b_space)
-                prev_byte = -1
-              output.extend(b'/*')
+          if byte == _b_slash or byte == _b_star:
+            comment = c_line if byte == _b_slash else c_block
+            if strip_comments:
+              if byte == _b_star:
+                unterminated_block_buffer.extend(b'/*')
             else:
-              unterminated_block_buffer.extend(b'/*')
+              # Comment placement, per the docstring: at line start after a line comment, indent
+              # (preserving a single blank line); a comment preceded by a newline goes on its own line,
+              # indented; otherwise attach to the previous token or comment with a single space.
+              if post_line_comment_nl:
+                if slash_ws_nl:
+                  output.append(_b_newline)
+                output.extend(_b_indent * indent)
+              elif slash_ws_nl and (output or prev_byte != -1 or last_byte != -1):
+                if prev_byte != -1:
+                  output.append(prev_byte)
+                  prev_byte = -1
+                output.append(_b_newline)
+                output.extend(_b_indent * indent)
+              elif prev_byte != -1:
+                output.append(prev_byte)
+                output.append(_b_space)
+                prev_byte = -1
+              elif prev_had_ws and (output or last_byte != -1):
+                output.append(_b_space)
+              output.extend(b'//' if byte == _b_slash else b'/*')
             prev_had_ws = True
             i += 1
             continue
@@ -146,15 +177,19 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
           if prev_byte != -1:
             output.append(prev_byte)
           if prev_state is s_open_inline:
-            output.append(_b_space)
+            if post_line_comment_nl:
+              output.extend(_b_indent * indent)
+            else:
+              output.append(_b_space)
           elif prev_state is s_open_break:
             if not post_line_comment_nl:
               output.append(_b_newline)
             output.extend(_b_indent * indent)
           elif prev_state is s_close:
-            if fix:
+            if fix: # An inserted comma at line start gets its own line; see the main dispatch note.
               output.append(_b_comma)
-            if not post_line_comment_nl:
+              output.append(_b_newline)
+            elif not post_line_comment_nl:
               output.append(_b_newline)
             output.extend(_b_indent * indent)
           elif prev_state is s_comma:
@@ -162,13 +197,20 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
               output.append(_b_newline)
             output.extend(_b_indent * indent)
           elif prev_state is s_colon:
-            output.append(_b_space)
+            if post_line_comment_nl:
+              output.extend(_b_indent * indent)
+            else:
+              output.append(_b_space)
           elif (prev_state is s_mid or prev_state is s_str) and prev_had_ws:
             if fix:
               output.append(_b_comma)
-            if not post_line_comment_nl:
+              output.append(_b_newline)
+            elif not post_line_comment_nl:
               output.append(_b_newline)
             output.extend(_b_indent * indent)
+          elif prev_state is s_start:
+            if prev_had_ws and not post_line_comment_nl and (output or last_byte != -1):
+              output.append(_b_space)
           prev2_state = prev_state
           prev_state = s_mid
           prev_byte = _b_slash
@@ -187,6 +229,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
               output += chunk[i:j+1] # The body plus the terminating newline.
               post_line_comment_nl = True
             i = j + 1
+            ws_run_start = i # The preceding whitespace was consumed by the comment; restart the slash_ws_nl window.
           continue
         elif comment is c_block:
           j = chunk.find(_b_star, i)
@@ -209,6 +252,7 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
             else:
               unterminated_block_buffer.clear() # Comment closed; discard the safety buffer.
             prev_had_ws = True
+            ws_run_start = i # The preceding whitespace was consumed by the comment; restart the slash_ws_nl window.
             continue
           comment = c_block_star if byte == _b_star else c_block
           if not strip_comments:
@@ -256,14 +300,21 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
       if byte in _b_ws:
         prev_had_ws = True
+        ws_run_start = i
         if ws_mask is None:
           ws_mask = chunk.translate(_ws_mask_table)
         j = ws_mask.find(0, i+1) # The first non-ws byte after this one.
-        i = n if j < 0 else j
+        if j < 0: # The run reaches the chunk end; carry its newline status into the next chunk.
+          ws_nl_carry = (i == 0 and carry_in) or chunk.find(_b_newline, i) != -1
+          i = n
+        else:
+          i = j
         continue
       i += 1
       if byte == _b_slash:
         comment = c_pending
+        slash_ws_nl = prev_had_ws and not strip_comments and (
+          (carry_in and ws_run_start == 0) or chunk.find(_b_newline, ws_run_start, i-1) != -1)
         continue
       if byte == _b_dquote:
         state = s_str
@@ -298,7 +349,10 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
 
       if prev_state is s_open_inline:
         if state != s_close:
-          output.append(_b_space)
+          if post_line_comment_nl: # The first child follows a preserved line comment; indent it.
+            output.extend(_b_indent * indent)
+          else:
+            output.append(_b_space)
       elif prev_state is s_open_break:
         if state != s_close:
           if not post_line_comment_nl:
@@ -307,8 +361,11 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
       elif prev_state is s_close:
         if state is not s_comma and state is not s_close:
           if fix:
+            # An inserted comma always gets a following newline: when at line start after a comment,
+            # this puts the comma on its own line, which is this machine's fixed point for that shape.
             output.append(_b_comma)
-          if not post_line_comment_nl:
+            output.append(_b_newline)
+          elif not post_line_comment_nl:
             output.append(_b_newline)
           output.extend(_b_indent * indent)
       elif prev_state is s_comma:
@@ -319,16 +376,23 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
             output.append(_b_newline)
           output.extend(_b_indent * indent)
       elif prev_state is s_colon:
-        output.append(_b_space)
+        if post_line_comment_nl: # The value follows a preserved line comment; indent it.
+          output.extend(_b_indent * indent)
+        else:
+          output.append(_b_space)
       elif prev_state is s_mid or prev_state is s_str:
         if state is s_close:
           output.append(_b_space)
         elif (state is s_mid or state is s_str) and prev_had_ws: # Two tokens with intervening whitespace; missing comma.
-          if fix:
+          if fix: # See the inserted-comma note above.
             output.append(_b_comma)
-          if not post_line_comment_nl:
+            output.append(_b_newline)
+          elif not post_line_comment_nl:
             output.append(_b_newline)
           output.extend(_b_indent * indent)
+      else: # s_start: the first token needs a space only when it follows a preserved leading block comment.
+        if prev_had_ws and not post_line_comment_nl and (output or last_byte != -1):
+          output.append(_b_space)
 
       prev_byte = byte
       prev2_state = prev_state
@@ -355,24 +419,17 @@ def fmt_json_bytes(bytes_or_file:bytes|Reader[bytes], *, fix:bool, allow_trailin
           prev_byte = chunk[j-1] # The final byte stays deferred.
           i = j
 
+    if output:
+      last_byte = output[-1]
     yield bytes(output)
-
-  if comment is c_pending: # Reached EOF just after a bare `/`; emit the orphan slash rather than dropping it.
-    if prev_byte != -1:
-      yield _byte_table[prev_byte]
-      if prev_had_ws:
-        yield b' '
-      prev_byte = -1
-    yield b'/'
-    prev_state = s_mid # Ensure the final newline is emitted even if the slash was the only token.
-    post_line_comment_nl = False
 
   if prev_byte != -1: # If the final byte is a comma then the output is invalid so we emit it regardless.
     yield _byte_table[prev_byte]
+    last_byte = prev_byte
   if unterminated_block_buffer: # Reached EOF inside an unterminated block comment; preserve it rather than swallowing input.
     yield bytes(unterminated_block_buffer)
-  if prev_state != s_start and not post_line_comment_nl:
-    # Final newline for non-empty output, unless a preserved line comment already ended with one.
+    last_byte = unterminated_block_buffer[-1]
+  if last_byte != -1 and last_byte != _b_newline: # Ensure that non-empty output ends with a newline.
     yield b'\n'
 
   return indent
