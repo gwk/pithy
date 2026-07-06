@@ -5,9 +5,10 @@ import re
 from io import Reader, Writer
 from json.decoder import JSONDecodeError
 from sys import stderr, stdout
-from typing import Any, Callable, Iterable, overload, Sequence
+from typing import Any, Callable, Iterable, Literal, overload, Sequence
 
 from ..encode import encode_obj, EncodeObj
+from .fmt import fmt_json_bytes
 
 
 type JsonList = list['Json']
@@ -19,6 +20,8 @@ type JsonMapping = dict[str, 'JsonCo']
 type JsonCo = None|int|float|str|bool|JsonSequence|JsonMapping
 
 JsonText = str|bytes|bytearray
+
+type Syntax = Literal['json', 'jsonc']
 
 json_types = (type(None), bool, int, float, str, list, dict)
 
@@ -100,29 +103,37 @@ def out_jsonl(*items:Any, default:EncodeObj=encode_obj, sort:bool=True, separato
 
 
 @overload
-def parse_json(text:JsonText|None, object_hook:ObjDecodeFn) -> Any: ...
+def parse_json(text:JsonText|None, object_hook:ObjDecodeFn, syntax:Syntax='json') -> Any: ...
 
 @overload
-def parse_json(text:JsonText|None, object_hook:None=None) -> Json: ...
+def parse_json(text:JsonText|None, object_hook:None=None, syntax:Syntax='json') -> Json: ...
 
-def parse_json(text:JsonText|None, object_hook:ObjDecodeFn|None=None) -> Any:
+def parse_json(text:JsonText|None, object_hook:ObjDecodeFn|None=None, syntax:Syntax='json') -> Any:
   '''
   Parse json from `text`.
+  If `syntax` is `'jsonc'`, `text` is first preprocessed to strip comments and fix commas.
   '''
-  return None if text is None else _json.loads(text, object_hook=object_hook)
+  if text is None: return None
+  if syntax == 'jsonc':
+    data = text.encode() if isinstance(text, str) else bytes(text)
+    text = b''.join(fmt_json_bytes(data, fix=True))
+  return _json.loads(text, object_hook=object_hook)
 
 
 @overload
-def load_json(file:Reader, object_hook:ObjDecodeFn) -> Any: ...
+def load_json(file:Reader, object_hook:ObjDecodeFn, syntax:Syntax='json') -> Any: ...
 
 @overload
-def load_json(file:Reader, object_hook:None=None) -> Json: ...
+def load_json(file:Reader, object_hook:None=None, syntax:Syntax='json') -> Json: ...
 
-def load_json(file:Reader, object_hook:ObjDecodeFn|None=None) -> Any:
+def load_json(file:Reader, object_hook:ObjDecodeFn|None=None, syntax:Syntax='json') -> Any:
   '''
   Read json from `file`.
+  If `syntax` is `'jsonc'`, the file contents are first preprocessed to strip comments and fix commas.
   '''
   try:
+    if syntax == 'jsonc':
+      return parse_json(file.read(), object_hook=object_hook, syntax=syntax)
     return _json.load(file, object_hook=object_hook)
   except JSONDecodeError as e:
     if e.pos == 0 and e.msg == 'Expecting value':
@@ -132,38 +143,41 @@ def load_json(file:Reader, object_hook:ObjDecodeFn|None=None) -> Any:
 
 
 @overload
-def parse_jsonl(text:JsonText, object_hook:ObjDecodeFn) -> Iterable[Any]: ...
+def parse_jsonl(text:JsonText, object_hook:ObjDecodeFn, syntax:Syntax='json') -> Iterable[Any]: ...
 
 @overload
-def parse_jsonl(text:JsonText, object_hook:None=None) -> Iterable[Json]: ...
+def parse_jsonl(text:JsonText, object_hook:None=None, syntax:Syntax='json') -> Iterable[Json]: ...
 
-def parse_jsonl(text:JsonText, object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
-  return load_jsonl(text.splitlines(), object_hook=object_hook)
+def parse_jsonl(text:JsonText, object_hook:ObjDecodeFn|None=None, syntax:Syntax='json') -> Iterable[Any]:
+  return load_jsonl(text.splitlines(), object_hook=object_hook, syntax=syntax)
 
-
-@overload
-def load_jsonl(stream:Iterable[JsonText], object_hook:ObjDecodeFn) -> Iterable[Any]: ...
 
 @overload
-def load_jsonl(stream:Iterable[JsonText], object_hook:None=None) -> Iterable[Json]: ...
+def load_jsonl(stream:Iterable[JsonText], object_hook:ObjDecodeFn, syntax:Syntax='json') -> Iterable[Any]: ...
 
-def load_jsonl(stream:Iterable[JsonText], object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
+@overload
+def load_jsonl(stream:Iterable[JsonText], object_hook:None=None, syntax:Syntax='json') -> Iterable[Json]: ...
+
+def load_jsonl(stream:Iterable[JsonText], object_hook:ObjDecodeFn|None=None, syntax:Syntax='json') -> Iterable[Any]:
   if isinstance(stream, (str,bytes,bytearray)): raise TypeError('`stream` argument must be an iterable of text.')
   for line in stream:
     if not line or line.isspace(): continue
-    yield _json.loads(line, object_hook=object_hook)
+    yield parse_json(line, object_hook=object_hook, syntax=syntax)
 
 
 @overload
-def parse_jsons(string:str, object_hook:ObjDecodeFn) -> Iterable[Any]: ...
+def parse_jsons(string:str, object_hook:ObjDecodeFn, syntax:Syntax='json') -> Iterable[Any]: ...
 
 @overload
-def parse_jsons(string:str, object_hook:None=None) -> Iterable[Json]: ...
+def parse_jsons(string:str, object_hook:None=None, syntax:Syntax='json') -> Iterable[Json]: ...
 
-def parse_jsons(string:str, object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
+def parse_jsons(string:str, object_hook:ObjDecodeFn|None=None, syntax:Syntax='json') -> Iterable[Any]:
   '''
   Parse multiple json objects from `string`.
+  If `syntax` is `'jsonc'`, `string` is first preprocessed to strip comments and fix commas.
   '''
+  if syntax == 'jsonc':
+    string = b''.join(fmt_json_bytes(string.encode(), fix=True)).decode()
   decoder = _json.JSONDecoder(object_hook=object_hook)
   m = _json_ws_re.match(string, 0)
   assert m is not None
@@ -172,25 +186,27 @@ def parse_jsons(string:str, object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
   while idx < len(string):
     obj, end = decoder.raw_decode(string, idx)
     yield obj
+    if syntax == 'jsonc' and end < len(string) and string[end] == ',':
+      end += 1 # `fmt_json_bytes` inserts commas between sibling top-level values; skip over them.
     m = _json_ws_re.match(string, end)
     assert m is not None
     idx = m.end()
 
 
 @overload
-def load_jsons(file:Reader[str], object_hook:ObjDecodeFn) -> Iterable[Any]: ...
+def load_jsons(file:Reader[str], object_hook:ObjDecodeFn, syntax:Syntax='json') -> Iterable[Any]: ...
 
 @overload
-def load_jsons(file:Reader[str], object_hook:None=None) -> Iterable[Json]: ...
+def load_jsons(file:Reader[str], object_hook:None=None, syntax:Syntax='json') -> Iterable[Json]: ...
 
-def load_jsons(file:Reader[str], object_hook:ObjDecodeFn|None=None) -> Iterable[Any]:
+def load_jsons(file:Reader[str], object_hook:ObjDecodeFn|None=None, syntax:Syntax='json') -> Iterable[Any]:
   # TODO: it seems like we ought to be able to stream the file into the parser,
   # but JSONDecoder requires the entire string for a single JSON segment.
   # Therefore in order to stream we would need to read into a buffer,
   # count nesting tokens (accounting for strings and escaped characters inside of them),
   # identify object boundaries and create substrings to pass to the decoder.
   # For now just read the whole thing at once.
-  return parse_jsons(file.read(), object_hook=object_hook)
+  return parse_jsons(file.read(), object_hook=object_hook, syntax=syntax)
 
 
 def req_json_list(obj:Json) -> JsonList:
