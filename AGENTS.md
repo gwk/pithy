@@ -78,29 +78,16 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - The stdout and stderr are captured as `.out` and `.err`; ather file outputs are presumed to be relative to the test directory.
 - The outputs are left in place so that if a test fails the user can inspect them.
 
-## Ad-hoc Testing and Inscrutable Scripting
+## Git State and Commits
+Note the presence of staged changes, unstaged changes and untracked files before making edits.
+I try to commit or at least stage prior changes before asking you to make changes,
+so if changes are lying around it is often an oversight on my part.
 
-Agents often try to run ad-hoc bash commands using /tmp or other directories.
-They can run afoul of sandboxing this way, and/or trip guards requiring manual permissions.
-Instead, run expermients like this in `_build/agent_scratch/`.
-**IMPORTANT**: when you write test scripts, **use the Write tool**, not bash, heredocs, or other obfuscating tricks.
-It is ok to remove prior files in that scratch directory; just be aware that their might be prior junk in there.
-If you want to run some code, write it to a scratch file and then run it.
-**DO NOT** pipe code directly into interpreters through bash where it creates an extra hazard of escapes and expansion.
-
-**DO NOT** write/run bash scripts that are even marginally complex to do risky things like removing files.
-These kinds of actions cause safety mechanisms (e.g. harness static analysis) to trip and require manual review.
-If I see a loop with `rm -f` anywhere I have to stop the run; it is a huge waste of time.
-If files accidentally get produced in tree that need to be cleaned up,
-then list them out and `rm` them with an explanation of what happened.
-If I deny permission to run a command, do not then attempt to run some other similar command; instead ask for help.
-You are more productive if you stop and ask for help to clean up a mess rather than trying to script your way forward.
-
-**Again: use the Write tool to write scratch scripts!**
-
-## Commits
 Do not commit unless explicitly instructed to do so.
-When writing commit messages do not add agent attribution lines like "Co-authored by ...".
+When writing commit messages:
+* Do not add agent attribution lines like "Co-authored by ...".
+* If the changes are scoped to a submodule or package, begin with the dotted name, like 'some.deep.submodule: ...'
+* If there is only one package in the repo you can leave the top level off, like '.deep.submodule: ...'
 
 
 # Pithy Project Layout
