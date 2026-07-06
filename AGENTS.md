@@ -58,6 +58,18 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 - Add the following standard license text as a comment to all files that support comments:
   `Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.`
 
+## Markdown Style
+When authoring markdown:
+* Use `#` only, never the underline syntax.
+* Use `*`, not `-` for lists.
+* For prose text:
+  * Unlike source code, do not hard-wrap lines at a fixed column; you can rely on soft wrap.
+  * Especially do not hard-wrap blockquote text.
+  * You can however use line breaks after sentences.
+* Wrap source code at 128 characters like we do everywhere else.
+* Do not use excessive emphasis bold/italics. Only use the asterisk syntax for emphasis.
+* Never use tab characters for code blocks.
+
 ## Build System
 - `just` is used for high-level development commands.
 - `make` is used for build steps that have build product dependencies.
