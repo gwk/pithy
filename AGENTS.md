@@ -89,17 +89,6 @@ When authoring markdown:
 * The stdout and stderr are captured as `.out` and `.err`; ather file outputs are presumed to be relative to the test directory.
 * The outputs are left in place so that if a test fails the user can inspect them.
 
-## Git State and Commits
-Note the presence of staged changes, unstaged changes and untracked files before making edits.
-I try to commit or at least stage prior changes before asking you to make changes,
-so if changes are lying around it is often an oversight on my part.
-
-Do not commit unless explicitly instructed to do so.
-When writing commit messages:
-* Do not add agent attribution lines like "Co-authored by ...".
-* If the changes are scoped to a submodule or package, begin with the dotted name, like 'some.deep.submodule: ...'
-* If there is only one package in the repo you can leave the top level off, like '.deep.submodule: ...'
-
 
 # Pithy Project Layout
 
@@ -117,3 +106,19 @@ pithy/ (the git/project root, not the package root)
 
 So for example when we refer to `pithy.web.server`, it is `pithy_/pithy/web/server.py` relative to the project.
 If we refer to `.web.server`, we probably mean within the pithy package, or whatever package we are discussing.
+
+
+# Git State and Commits
+
+Note the presence of staged changes, unstaged changes and untracked files before making edits.
+I try to commit or at least stage prior changes before asking you to make changes,
+so if changes are lying around it is often an oversight on my part.
+
+Do not commit unless explicitly instructed to do so.
+If you are asked to commit and are currently on `main`, you can make a new branch at your discrection.
+Note that committing is not "shipping"; the commits will be reviewed and possibly reworked or squashed.
+
+When writing commit messages:
+* Do not add agent attribution lines like "Co-authored by ...".
+* If the changes are scoped to a submodule or package, begin with the dotted name, like 'some.deep.submodule: ...'
+* If there is only one package in the repo you can leave the top level off, like '.deep.submodule: ...'
