@@ -32,7 +32,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 
 ## Code Style
 * Python 3.14+, strict typing with mypy.
-* Do not import __future__ annotations or use strings for types; 3.14 supports deferred annotations.
+* Do not import `__future__` annotations or use strings for types; 3.14 supports deferred annotations.
 * 2-space indentation (not 4-space).
 * Double newlines between functions.
 * Double newlines between methods, except for very compact classes where no methods have blank lines.
@@ -119,6 +119,11 @@ If you are asked to commit and are currently on `main`, you can make a new branc
 Note that committing is not "shipping"; the commits will be reviewed and possibly reworked or squashed.
 
 When writing commit messages:
+* Be concise. Do not write elaborate parentheticals.
 * Do not add agent attribution lines like "Co-authored by ...".
 * If the changes are scoped to a submodule or package, begin with the dotted name, like 'some.deep.submodule: ...'
 * If there is only one package in the repo you can leave the top level off, like '.deep.submodule: ...'
+* Do not write '.: ' for something pertaining to the top level; use a sensible description (colon is not mandatory).
+* The first (summary) line should end with a period.
+* As with markdown, do not insert hard wrap newlines in the commit message body; I rely on viewers to softwrap.
+* Feel free to put newlines after sentences and even semicolons when the lines get long though.
