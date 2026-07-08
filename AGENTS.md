@@ -55,8 +55,15 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 * Do not put non-ascii characters like em-dashes, arrows or fancy quotes in code comments or docstrings
   unless there is is a specific reason, for example if you were describing a unicode character.
 * `if __name__ == '__main__': main()` should always be inlined, not two lines.
-* Add the following standard license text as a comment to all files that support comments:
-  `Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.`
+* If you encounter circular import problems:
+  * Factor out interdependent code from `__init__` into leaf submodules. This reduces the most common circularity problems.
+  * Consider reorganizing packages/modules so that they are less circular. This usually deserves some discussion and approval.
+  * Use lazy imports within functions as a last resort; doing so delays imports and can therefore hide problems.
+* Add standard license text as a comment to all files that support comments:
+  * For pithy and other CC0 projects:
+    `Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.`
+  * For proprietary projects, write the proper owner into this standard copyright notice:
+    `# © {OWNER}. All Rights Reserved.`
 
 ## Markdown Style
 When authoring markdown:
