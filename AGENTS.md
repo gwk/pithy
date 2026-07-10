@@ -1,4 +1,4 @@
-# Pithy Agents Guide
+# Pithy
 
 This repository contains code for several python packages:
 * pithy: general purpose utility library.
@@ -30,6 +30,13 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 * Format imports: `just isort`
 * Generate code: `just gen`
 
+## Prose Style
+
+Use succinct language.
+Adjectives like "genuine" and "honest" are not be necessary; the entire discourse should have those qualities.
+Do not use excessive jargon, industry speak, flattery, signposting, performative cognition, affective framing, folksy idioms,
+filler, or marketing/casual/feel-good language.
+
 ## Code Style
 * Python 3.14+, strict typing with mypy.
 * Do not import `__future__` annotations or use strings for types; 3.14 supports deferred annotations.
@@ -38,7 +45,7 @@ This project targets Python 3.14+ on modern Unix platforms. Windows is not suppo
 * Double newlines between methods, except for very compact classes where no methods have blank lines.
 * Triple newlines between classes that have double-newline method separation.
 * Type hints required.
-* Use the modern `type` keyword wherever appropriate.
+* Use the modern `type` keyword and forward references wherever appropriate.
 * Type declarations omit spaces after colons and inside of types, e.g `def f(x:dict[str,int]) -> None: ...`.
 * Use `just isort` to normalize imports.
 * Use descriptive, concise variable names.
