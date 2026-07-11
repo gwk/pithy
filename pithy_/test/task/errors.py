@@ -6,11 +6,17 @@ Note: these tests are run under iotest instead of utest because they create file
 
 
 from os import chmod
+from sys import platform
 
 from pithy.fs import make_dir, make_link, touch_path
 from pithy.task import (run, TaskFileHashbangIllFormed, TaskFileHashbangMissing, TaskFileInvokedAsInstalledCommand,
   TaskFileNotExecutable, TaskFileNotFound, TaskFileNotReadable, TaskInstalledCommandNotFound, TaskNotAFile)
 from utest import utest_exc
+
+
+def strip_acls(path:str) -> None:
+  'Remove any inherited ACL entries (e.g. from an ACL on an ancestor directory) that would defeat the mode bit expectations.'
+  if platform == 'darwin': run(['/bin/chmod', '-N', path])
 
 
 utest_exc(TaskInstalledCommandNotFound('nonexistent'), run, 'nonexistent')
@@ -25,6 +31,7 @@ utest_exc(TaskNotAFile('./dir.link'), run, './dir.link')
 
 
 touch_path('empty.py')
+strip_acls('empty.py')
 make_link(orig='empty.py', link='empty.link')
 
 utest_exc(TaskFileInvokedAsInstalledCommand('empty.py'), run, 'empty.py')

@@ -135,7 +135,9 @@ def _diagnose_launch_error(path:str, cmd_path:str, e:OSError) -> None:
 
   if not _path_exists(path): raise TaskFileNotFound(path) from e
   if not _is_file(path): raise TaskNotAFile(path) from e
-  if not _is_permitted(path, X_OK): raise TaskFileNotExecutable(path) from e
+  # access() honors ACLs, but the macOS kernel refuses to exec any file lacking a POSIX x bit, regardless of an ACL grant.
+  # For details, se exec_check_permissions in xnu/bsd/kern/kern_exec.c.
+  if not _is_permitted(path, X_OK) or not (_os.stat(path).st_mode & 0o111): raise TaskFileNotExecutable(path) from e
 
   bad_format = (e.strerror == 'Exec format error')
   if bad_format and not _is_permitted(path, R_OK): raise TaskFileNotReadable(path) from e # Read bit is necessary for scripts.
