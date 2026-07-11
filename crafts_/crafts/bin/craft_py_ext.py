@@ -22,9 +22,8 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatch
 from inspect import Parameter, Signature, signature
-from typing import Any, Callable, Iterator, NoReturn, TextIO, Union
+from typing import Any, Iterator, NoReturn, Protocol, TextIO, Union
 
-from mypy_extensions import VarArg
 from pithy.io import errL, errSL, read_from_path, read_line_from_path
 from pithy.path import path_name, path_stem
 
@@ -341,7 +340,11 @@ def _(syntax:ClassDef, name:str, obj:Any, scope:Scope, global_vals:dict[str,Any]
 
 # Code generation.
 
-_Writers = tuple[Callable[[VarArg(str)],None],...] # Cheap hack to provied convenience writer functions.
+class _Writer(Protocol):
+  'Convenience writer function that accepts variadic string arguments.'
+  def __call__(self, *strings:str) -> None: ...
+
+_Writers = tuple[_Writer,...]
 
 def write_module(mod:ExtMod, c:TextIO, h:TextIO) -> None:
   'Generate code for a module.'
