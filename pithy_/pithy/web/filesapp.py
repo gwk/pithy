@@ -41,7 +41,9 @@ class FilesApp(WebApp):
 
   def handle_request(self, request:Request) -> Response:
     request.allow_methods('GET', 'HEAD')
-    return self.serve_content_from_local_fs(request)
+    response = self.serve_content_from_local_fs(request)
+    if self.prevent_client_caching: response.set_no_cache_headers()
+    return response
 
 
   def serve_content_from_local_fs(self, request:Request, *, raw_path:str='') -> Response:
