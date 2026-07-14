@@ -2,13 +2,16 @@
 
 import mimetypes
 from collections.abc import Mapping
+from email.utils import parsedate_to_datetime
 from html import escape as html_escape
 from http import HTTPStatus
 from io import BufferedReader
+from os import fstat as os_fstat, stat_result
 from typing import cast
 from urllib.parse import quote as url_quote, unquote as url_unquote
 
 from ..fs import is_dir, path_exists, scan_dir
+from ..http import format_header_date
 from ..logs import logE
 from ..path import norm_path, path_ext, path_join
 from .app import WebApp
@@ -35,6 +38,42 @@ def _build_ext_media_types() -> dict[str,str]:
 
 
 ext_media_types = _build_ext_media_types()
+
+
+def file_etag(stat:stat_result) -> str:
+  'A strong entity tag derived from the file size and modification time.'
+  return f'"{stat.st_size:x}-{stat.st_mtime_ns:x}"'
+
+
+def is_request_modified(request:Request, *, etag:str, mtime:float) -> bool:
+  '''
+  Return True if the request's conditional headers do not show the client's cached copy to be current.
+  If-None-Match takes precedence over If-Modified-Since (RFC 9110).
+  '''
+  if_none_match = request.headers.get('if-none-match')
+  if if_none_match is not None:
+    return not _does_header_match_etag(if_none_match, etag)
+  if_modified_since = request.headers.get('if-modified-since')
+  if if_modified_since is not None:
+    since = _parse_http_date(if_modified_since)
+    if since is not None:
+      return int(mtime) > since
+  return True
+
+
+def _does_header_match_etag(header:str, etag:str) -> bool:
+  'Compare an If-None-Match header value (a comma list, or `*`) against `etag` using weak comparison.'
+  candidates = [c.strip() for c in header.split(',')]
+  if '*' in candidates: return True
+  target = etag.removeprefix('W/')
+  return any(c.removeprefix('W/') == target for c in candidates)
+
+
+def _parse_http_date(text:str) -> int|None:
+  'Parse an HTTP date header into an integer unix timestamp, or None if it cannot be parsed.'
+  try: dt = parsedate_to_datetime(text)
+  except (TypeError, ValueError): return None
+  return int(dt.timestamp())
 
 
 class _FilesServing:
@@ -88,7 +127,21 @@ class _FilesServing:
     except (FileNotFoundError, PermissionError): raise ResponseError(status=HTTPStatus.NOT_FOUND)
 
     assert isinstance(file, BufferedReader)
-    return self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
+
+    if self.prevent_client_caching:
+      # No-store development mode: never emit validators or 304s, so the client always refetches.
+      return self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
+
+    stat = os_fstat(file.fileno())
+    etag = file_etag(stat)
+    if not is_request_modified(request, etag=etag, mtime=stat.st_mtime):
+      file.close()
+      return Response(status=HTTPStatus.NOT_MODIFIED, headers={'etag':etag}, last_modified=stat.st_mtime)
+
+    response = self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
+    response.headers.setdefault('etag', etag)
+    response.headers.setdefault('last-modified', format_header_date(stat.st_mtime))
+    return response
 
 
   def transform_file_from_local_fs(self, request:Request, norm_path:str, local_path:str, file:BufferedReader) -> Response:
