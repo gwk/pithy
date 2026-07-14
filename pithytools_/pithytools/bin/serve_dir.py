@@ -5,7 +5,7 @@ from threading import Thread
 
 from pithy.path import norm_path
 from pithy.web.browser import add_browser_args, launch_browser
-from pithy.web.filesapp import FilesApp
+from pithy.web.files import FilesApp
 from pithy.web.server import ServerConfig, WebServer
 
 

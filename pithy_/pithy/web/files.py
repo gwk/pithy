@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import mimetypes
+from collections.abc import Mapping
 from html import escape as html_escape
 from http import HTTPStatus
 from io import BufferedReader
@@ -12,36 +13,47 @@ from ..logs import logE
 from ..path import norm_path, path_ext, path_join
 from .app import WebApp
 from .errors import ResponseError
+from .handler import RoutableHandler
 from .request import Request
 from .response import html_media_type, Response
 from .util import norm_url_path
 
 
-class FilesApp(WebApp):
+def _build_ext_media_types() -> dict[str,str]:
+  'Build the extension-to-media-type map once, at import time rather than per request.'
+  if not mimetypes.inited: mimetypes.init()
+  types = { ext : mime_type for (ext, mime_type) in mimetypes.types_map.items() }
+  types.update({
+    '': 'text/plain', # Default.
+    '.bz2': 'application/x-bzip2',
+    '.gz': 'application/gzip',
+    '.sh': 'text/plain', # Show text instead of prompting a download.
+    '.xz': 'application/x-xz',
+    '.z': 'application/octet-stream',
+    })
+  return types
 
 
-  def __init__(self, local_dir:str, prevent_client_caching:bool=False, map_bare_names_to_html:bool=False) -> None:
-
-    self.local_dir = norm_path(local_dir)
-    self.prevent_client_caching = prevent_client_caching
-    self.map_bare_names_to_html = map_bare_names_to_html
-
-    if not mimetypes.inited: mimetypes.init()
-
-    self.ext_media_types = { ext : mime_type for (ext, mime_type) in mimetypes.types_map.items() }
-    self.ext_media_types.update({
-      '': 'text/plain', # Default.
-      '.bz2': 'application/x-bzip2',
-      '.gz': 'application/gzip',
-      '.sh': 'text/plain', # Show text instead of prompting a download.
-      '.xz': 'application/x-xz',
-      '.z': 'application/octet-stream',
-      })
+ext_media_types = _build_ext_media_types()
 
 
-  def handle_request(self, request:Request) -> Response:
-    request.allow_methods('GET', 'HEAD')
-    response = self.serve_content_from_local_fs(request)
+class _FilesServing:
+  '''
+  Shared local file serving logic, mixed into both FilesApp (whole application) and FilesHandler (mounted route target).
+  Configuration is read from `self`: `local_dir`, `prevent_client_caching`, `map_bare_names_to_html`, and `ext_media_types`.
+  '''
+
+  local_dir:str
+  prevent_client_caching:bool
+  map_bare_names_to_html:bool
+
+  # The shared default map; subclasses override with their own mapping to add or alter media types.
+  ext_media_types:Mapping[str,str] = ext_media_types
+
+
+  def serve(self, request:Request, raw_path:str='') -> Response:
+    'Serve content from the local file system, applying no-cache headers when configured.'
+    response = self.serve_content_from_local_fs(request, raw_path=raw_path)
     if self.prevent_client_caching: response.set_no_cache_headers()
     return response
 
@@ -49,20 +61,22 @@ class FilesApp(WebApp):
   def serve_content_from_local_fs(self, request:Request, *, raw_path:str='') -> Response:
     '''
     Return the content of a local file or a directory listing.
-    This method should be called by `handle_request` implementations to serve content from the local file system.
+    `raw_path` selects the url path to map into `local_dir`; it defaults to the full request path.
+    Mounted handlers pass the sub-path below their prefix so that only that portion maps into `local_dir`.
     '''
 
     if not raw_path: raw_path = request.path
     norm_path = norm_url_path(raw_path)
-    local_path = compute_local_path(local_dir=self.local_dir, norm_path=norm_path, map_bare_names_to_html=self.map_bare_names_to_html)
+    local_path = compute_local_path(local_dir=self.local_dir, norm_path=norm_path,
+      map_bare_names_to_html=self.map_bare_names_to_html)
 
     if not local_path: raise ValueError(local_path) # Should never end up with an empty string.
 
     if is_dir(local_path, follow=True):
       if not norm_path.endswith('/'): # Redirect browser to path with slash (same behavior as Apache).
-        assert norm_path.startswith('/')
+        url_path = norm_url_path(request.path) # The full request path, so mounted handlers redirect within their prefix.
         query = '?' + request.query_str if request.query_str else ''
-        new_url = f'{norm_path}/{query}'
+        new_url = f'{url_path}/{query}'
         raise ResponseError(status=HTTPStatus.MOVED_PERMANENTLY, headers={'location':new_url})
       index_path = path_join(local_path, 'index.html')
       if path_exists(index_path, follow=False):
@@ -114,9 +128,50 @@ class FilesApp(WebApp):
 
   def guess_media_type(self, path:str) -> str:
     'Guess the mime type for a file path.'
+    media_types = self.ext_media_types
     ext = path_ext(path).lower()
-    try: return self.ext_media_types[ext]
-    except KeyError: return self.ext_media_types['']
+    try: return media_types[ext]
+    except KeyError: return media_types['']
+
+
+
+class FilesApp(_FilesServing, WebApp):
+  'Serve a local directory as an entire web application, e.g. `pithytools serve_dir`.'
+
+
+  def __init__(self, local_dir:str, prevent_client_caching:bool=False, map_bare_names_to_html:bool=False) -> None:
+    self.local_dir = norm_path(local_dir)
+    self.prevent_client_caching = prevent_client_caching
+    self.map_bare_names_to_html = map_bare_names_to_html
+
+
+  def handle_request(self, request:Request) -> Response:
+    request.allow_methods('GET', 'HEAD')
+    return self.serve(request)
+
+
+
+class FilesHandler(_FilesServing, RoutableHandler):
+  '''
+  Serve a local directory mounted under a router prefix.
+  Mount with a `{subpath:path}` tail route whose handler subclass sets `local_dir`, e.g.:
+    class MyStatic(FilesHandler): local_dir = '/path/to/assets'
+    routes = { '/static/{subpath:path}': MyStatic }
+  The captured `subpath` is mapped into `local_dir`; the full request path is used for directory redirects.
+  '''
+
+  local_dir = '' # Set by subclasses.
+  prevent_client_caching = False
+  map_bare_names_to_html = False
+  _methods = frozenset({'GET', 'HEAD'})
+
+
+  def __init__(self, request:Request, path_params:Mapping[str,object]) -> None:
+    self.subpath = str(path_params['subpath'])
+
+
+  def handle_request(self, request:Request) -> Response:
+    return self.serve(request, raw_path='/' + self.subpath)
 
 
 def compute_local_path(*, local_dir:str, norm_path:str, map_bare_names_to_html:bool) -> str:
