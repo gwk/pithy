@@ -11,8 +11,7 @@ import sqlite3
 from argparse import ArgumentParser, Namespace
 from sys import stderr
 
-from ..filestatus import is_dir
-from ..fs import is_file
+from ..filestatus import is_dir, is_file
 from ..interactive import Interpreter
 from ..path import path_join
 from . import sqlite_version, SqliteError
