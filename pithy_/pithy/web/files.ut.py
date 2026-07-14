@@ -4,7 +4,9 @@ from http import HTTPStatus
 from io import BufferedReader
 from os import mkdir
 from tempfile import TemporaryDirectory
+from time import time
 
+from pithy.http import format_header_date
 from pithy.web.errors import ResponseError
 from pithy.web.files import compute_local_path, ext_media_types, FilesApp, FilesHandler
 from pithy.web.request import Request
@@ -13,14 +15,14 @@ from pithy.web.router import Router
 from utest import utest, utest_exc, utest_run, utest_val
 
 
-def _request(path:str) -> Request:
+def _request(path:str, headers:dict[str,str]|None=None) -> Request:
   return Request(method='GET', scheme='http', host='localhost', port=80,
-    path=path, query_str='', headers={}, client_addr=('127.0.0.1', 0), content_length=None)
+    path=path, query_str='', headers=headers or {}, client_addr=('127.0.0.1', 0), content_length=None)
 
 
-def _serve(app:FilesApp, path:str) -> Response:
+def _serve(app:FilesApp, path:str, headers:dict[str,str]|None=None) -> Response:
   'Build a GET request for `path`, serve it through `app`, and return the response with its body closed.'
-  response = app.handle_request(_request(path))
+  response = app.handle_request(_request(path, headers))
   if isinstance(response.body, BufferedReader): response.body.close()
   return response
 
@@ -106,6 +108,47 @@ def _() -> None:
       return None
 
     utest('/static/sub/', redirect_location, '/static/sub')
+
+
+@utest_run
+def _() -> None:
+  'FilesApp: conditional requests emit validators and honor If-None-Match and If-Modified-Since.'
+  with TemporaryDirectory() as tmp:
+    with open(f'{tmp}/a.txt', 'w') as f: f.write('hello')
+    app = FilesApp(local_dir=tmp)
+
+    # An initial response carries the ETag and Last-Modified validators.
+    resp = _serve(app, '/a.txt')
+    etag = resp.headers.get('etag')
+    utest_val(True, isinstance(etag, str) and etag.startswith('"'), desc='etag present and quoted')
+    utest_val(True, 'last-modified' in resp.headers, desc='last-modified present')
+    assert isinstance(etag, str)
+
+    # A matching If-None-Match yields 304 with no body; a non-matching one yields 200.
+    r304 = _serve(app, '/a.txt', headers={'if-none-match': etag})
+    utest_val(HTTPStatus.NOT_MODIFIED, r304.status, desc='matching etag yields 304')
+    utest_val(None, r304.body, desc='304 has no body')
+    utest_val(etag, r304.headers.get('etag'), desc='304 echoes the etag')
+    utest_val(HTTPStatus.OK, _serve(app, '/a.txt', headers={'if-none-match': '"nope"'}).status,
+      desc='non-matching etag yields 200')
+
+    # If-Modified-Since: a future date means the client copy is current (304); the epoch means it is stale (200).
+    utest_val(HTTPStatus.NOT_MODIFIED, _serve(app, '/a.txt', headers={'if-modified-since': format_header_date(time() + 3600)}).status,
+      desc='future If-Modified-Since yields 304')
+    utest_val(HTTPStatus.OK, _serve(app, '/a.txt', headers={'if-modified-since': format_header_date(0)}).status,
+      desc='epoch If-Modified-Since yields 200')
+
+
+@utest_run
+def _() -> None:
+  'FilesApp: prevent_client_caching suppresses validators and 304s (no-store development mode).'
+  with TemporaryDirectory() as tmp:
+    with open(f'{tmp}/a.txt', 'w') as f: f.write('hello')
+    app = FilesApp(local_dir=tmp, prevent_client_caching=True)
+
+    utest_val(False, 'etag' in _serve(app, '/a.txt').headers, desc='no etag when prevent_client_caching')
+    utest_val(HTTPStatus.OK, _serve(app, '/a.txt', headers={'if-none-match': '"whatever"'}).status,
+      desc='no 304 when prevent_client_caching')
 
 
 @utest_run
