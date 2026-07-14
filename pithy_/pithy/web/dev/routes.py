@@ -4,7 +4,7 @@ from ..handler import RoutableHandler
 from .controls import DevControlsIndex
 from .controls.form import DevControlsForm
 from .controls.htmx import ControlsHtmxUpdate, DevControlsHtmx
-from .pages import IndexHtml, StaticDevCss, StaticPithyCss
+from .pages import DevStaticFiles, IndexHtml, PithyStaticFiles
 
 
 routes:dict[str,type[RoutableHandler]] = {
@@ -13,6 +13,6 @@ routes:dict[str,type[RoutableHandler]] = {
   '/controls/form': DevControlsForm,
   '/controls/htmx': DevControlsHtmx,
   '/controls/htmx/update.htmx': ControlsHtmxUpdate,
-  '/pithy.css': StaticPithyCss,
-  '/dev.css': StaticDevCss,
+  '/static/pithy/{subpath:path}': PithyStaticFiles,
+  '/static/dev/{subpath:path}': DevStaticFiles,
 }
