@@ -5,7 +5,7 @@ from typing import Any
 from .app import WebApp
 from .endpoint import Endpoint
 from .errors import MethodNotAllowedError, NotFoundError
-from .handler import RequestHandler
+from .handler import RequestHandler, RoutableHandler
 from .request import Request
 from .routetree import build_route_tree, RouteTree
 
@@ -25,27 +25,28 @@ class Router:
   Field converters are resolved on initialization so programming errors with unconstructible field types raise early.
   '''
 
-  def __init__(self, routes:dict[str,type[Endpoint]]) -> None:
-    for endpoint_cls in routes.values():
-      endpoint_cls._resolve_converters()
+  def __init__(self, routes:dict[str,type[RoutableHandler]]) -> None:
+    for handler_cls in routes.values():
+      if issubclass(handler_cls, Endpoint):
+        handler_cls._resolve_converters()
     fixed_routes, pattern_tree = build_route_tree(routes)
-    self.fixed_routes:dict[str,type[Endpoint]] = fixed_routes
-    self.pattern_tree:RouteTree[type[Endpoint]] = pattern_tree
+    self.fixed_routes:dict[str,type[RoutableHandler]] = fixed_routes
+    self.pattern_tree:RouteTree[type[RoutableHandler]] = pattern_tree
 
 
-  def resolve_handler(self, request:Request) -> Endpoint:
-    'Dispatch the request path and return a constructed Endpoint, or raise NotFoundError/MethodNotAllowedError.'
+  def resolve_handler(self, request:Request) -> RoutableHandler:
+    'Dispatch the request path and return a constructed handler, or raise NotFoundError/MethodNotAllowedError.'
     result = self.endpoint_for_path(request.path)
     if result is None: raise NotFoundError
-    endpoint_cls, path_params = result
-    if request.method not in endpoint_cls._methods:
-      raise MethodNotAllowedError(endpoint_cls._methods)
-    return endpoint_cls(request=request, path_params=path_params)
+    handler_cls, path_params = result
+    if request.method not in handler_cls._methods:
+      raise MethodNotAllowedError(handler_cls._methods)
+    return handler_cls(request=request, path_params=path_params)
 
 
-  def endpoint_for_path(self, path:str) -> tuple[type[Endpoint],dict[str,Any]]|None:
-    if endpoint := self.fixed_routes.get(path):
-      return (endpoint, {})
+  def endpoint_for_path(self, path:str) -> tuple[type[RoutableHandler],dict[str,Any]]|None:
+    if handler := self.fixed_routes.get(path):
+      return (handler, {})
     return self.pattern_tree.get(path)
 
 
@@ -55,7 +56,7 @@ class RouterApp(WebApp):
   router:Router
 
 
-  def __init__(self, routes:dict[str,type[Endpoint]]|Router) -> None:
+  def __init__(self, routes:dict[str,type[RoutableHandler]]|Router) -> None:
     if isinstance(routes, Router):
       router = routes
     else:

@@ -12,7 +12,7 @@ from ..http import endpoint_methods
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
 from ..type_utils import NoneType, nonopt_type, normalize_type_form, req_type
 from .errors import BadRequestError
-from .handler import RequestHandler
+from .handler import RoutableHandler
 from .request import Request, UploadedFile
 from .requestconn import BodyTooLargeError
 from .response import Response
@@ -33,7 +33,7 @@ class NoFields:
 
 
 
-class Endpoint(RequestHandler):
+class Endpoint(RoutableHandler):
   '''
   Base class for request endpoints. An Endpoint instance is created for each request.
 
@@ -140,7 +140,6 @@ class Endpoint(RequestHandler):
   max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters.
 
   methods:ClassVar[str|Iterable[str]] = 'GET' # Accepted HTTP methods; normalized to _methods by __init_subclass__.
-  _methods:ClassVar[frozenset[str]] = frozenset({'GET'})
 
   # Top-level customization: per-field-name converters, collected from the class body only. Signature: (raw) -> value.
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.

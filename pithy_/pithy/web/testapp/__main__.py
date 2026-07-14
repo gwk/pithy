@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from ..endpoint import Endpoint
+from ..handler import RoutableHandler
 from ..router import RouterApp
 from ..server import ServerConfig, WebServer
 from .basic import EchoBody, EchoId, EchoName, Hello
@@ -28,7 +28,7 @@ class TestApp(RouterApp):
     super().__init__(routes=routes)
 
 
-routes:dict[str,type[Endpoint]] = {
+routes:dict[str,type[RoutableHandler]] = {
   '/': Hello,
   '/items/{id:nat}': EchoId,
   '/users/{name}': EchoName,
