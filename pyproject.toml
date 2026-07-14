@@ -1,0 +1,27 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+# Virtual workspace root; each package under a `*_` directory is a workspace member.
+
+[tool.uv.workspace]
+members = [
+  "crafts_",
+  "iotest_",
+  "legs_",
+  "pithy_",
+  "pithytools_",
+  "tolkien_",
+  "tomul_",
+  "utest_",
+  "wu_",
+]
+
+[dependency-groups]
+dev = [
+  "mypy >= 2.2.0",
+  "pyflakes >= 3.4.0",
+  "pyperf >= 2.10",
+  "isort >= 8.0.1",
+  "msgpack-types >= 0.8.0",
+  "types-lxml >= 2026.2.16",
+  "types-PyYAML >= 6.0.12.20260518",
+  "types-pygments >= 2.19.0.20250809",
+]

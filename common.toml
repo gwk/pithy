@@ -14,11 +14,3 @@ Source = "https://github.com/gwk/pithy"
 [build-system]
 requires = ["flit_core >= 3.12"]
 build-backend = "flit_core.buildapi"
-
-[project.optional-dependencies]
-dev = [
-  "mypy >= 2.2.0",
-  "pyflakes >= 3.4.0",
-  "pyperf >= 2.10",
-  "isort >= 8.0.1",
-]

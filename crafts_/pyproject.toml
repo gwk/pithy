@@ -13,6 +13,7 @@ requires-python = ">=3.14"
 dependencies = [
   "pithy",
   "PyYAML >= 6.0.3",
+  "tolkien",
 ]
 keywords = [
   "build",
@@ -29,13 +30,9 @@ Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
 Documentation = "https://github.com/gwk/pithy/tree/main/crafts#readme"
 
-[project.optional-dependencies]
-dev = [
-  "mypy >= 2.2.0",
-  "pyflakes >= 3.4.0",
-  "pyperf >= 2.10",
-  "isort >= 8.0.1",
-]
+[tool.uv.sources]
+pithy = { workspace = true }
+tolkien = { workspace = true }
 
 [project.scripts]
 craft-vscode-ext = "crafts.bin.craft_vscode_ext:main"

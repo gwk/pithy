@@ -24,14 +24,6 @@ Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
 Documentation = "https://github.com/gwk/pithy/tree/main/tomul#readme"
 
-[project.optional-dependencies]
-dev = [
-  "mypy >= 2.2.0",
-  "pyflakes >= 3.4.0",
-  "pyperf >= 2.10",
-  "isort >= 8.0.1",
-]
-
 [project.scripts]
 
 [build-system]

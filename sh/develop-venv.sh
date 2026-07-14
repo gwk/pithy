@@ -8,7 +8,7 @@ function fail { echo "error: $@" 1>&2; exit 1; }
 
 cd "$(dirname "$0")/.."
 
-for package in "$@"; do
-  build/check-pyproject.py "$package"
-  uv build --package "$package" --out-dir "${package}_/dist"
-done
+build/check-pyproject.py "$@"
+
+# All workspace members are installed editable by uv sync; the dev dependency group is included by default.
+uv sync --all-packages

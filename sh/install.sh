@@ -20,4 +20,4 @@ done
 
 (( ${#pkg_dirs[@]} )) || fail "no packages specified."
 
-pip --disable-pip-version-check install "${flags[@]}" "${pkg_dirs[@]}"
+uv pip install "${flags[@]}" "${pkg_dirs[@]}"

@@ -22,7 +22,7 @@ The PyPI packages are out of date. Please install from the github repository.
 | $ cd ~/work # or wherever you prefer to keep projects.
 | $ git clone git@github.com:gwk/pithy.git
 | $ cd pithy
-| $ sh/develop.sh {packages...}
+| $ sh/develop-global.sh {packages...}
 
 
 # Development
@@ -31,7 +31,7 @@ Alternatively, you can check out the pithy project and use pip to install it in 
 | $ cd ~/work # or wherever you prefer to keep projects.
 | $ git clone git@github.com:gwk/pithy.git
 | $ cd pithy
-| $ sh/develop.sh {packages...}
+| $ sh/develop-global.sh {packages...}
 
 This method tells python to find the module at the specified  directory (in this case "pithy", where we checked out the repo).
 Changes to the code will be immediately visible to the python3 installation, with no need for reinstallation.

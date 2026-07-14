@@ -9,6 +9,7 @@
 # Python.
 __pycache__/
 dist/
+.venv/
 
 # Playwright.
 .playwright-mcp/

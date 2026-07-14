@@ -30,16 +30,11 @@ Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
 Documentation = "https://github.com/gwk/pithy/tree/main/iotest#readme"
 
-[project.optional-dependencies]
-dev = [
-  "mypy >= 2.2.0",
-  "pyflakes >= 3.4.0",
-  "pyperf >= 2.10",
-  "isort >= 8.0.1",
-]
-
 [project.scripts]
 iotest = "iotest.bin.iotest:main"
+
+[tool.uv.sources]
+pithy = { workspace = true }
 
 [build-system]
 requires = [

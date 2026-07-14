@@ -31,8 +31,11 @@ cov:
 cov-meta:
 	iotest_/test-meta/meta-coverage.sh
 
-develop:
-	sh/develop.sh {{pkgs}}
+develop-global:
+	sh/develop-global.sh {{pkgs}}
+
+develop-venv:
+	sh/develop-venv.sh {{pkgs}}
 
 docs:
 	craft-docs
