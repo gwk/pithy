@@ -1,7 +1,11 @@
 // See: https://zed.dev/docs/configuring-zed#settings-files
 {
-  "file_scan_exclusions": ["**/.DS_Store"],
-  "file_scan_inclusions": ["_todo.md", "_prompt.md", "_plan.md"],
+  "file_scan_exclusions": ["**/.DS_Store", "**/__pycache__"],
+  "file_scan_inclusions": [
+    ".claude",
+    "_todo.md",
+    "_prompt.md",
+    "_plan.md"],
   "tab_size": 2,
   "languages": {
     "CSS": {
