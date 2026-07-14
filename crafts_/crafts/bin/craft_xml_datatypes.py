@@ -229,8 +229,10 @@ def parse_path(path:str, summaries:dict[str,ElementSummary]) -> None:
   if not data:
     errL(f'{path}: empty file, skipping.')
     return
-  if b'<<<<<<<' in data:
-    errL(f'{path}: error: found "<<<<<<<" marker, skipping.')
+  conflict_marker = '<' * 7 # Prefer not to put the literal conflict string in the source or else it shows up on every search.
+  conflict_marker_bytes = conflict_marker.encode()
+  if conflict_marker_bytes in data:
+    errL(f'{path}: error: found conflict marker {conflict_marker!r}, skipping.')
     return
   try: doc = xmldict_parser.parse(data)
   except XmlError as e:
