@@ -8,11 +8,12 @@ from typing import TypeAlias
 from .conn import Conn, Mode
 from .cursor import Cursor
 from .row import Row
+from .util import forbid_default_adapters_and_converters, sqlite_native_val, SqliteDatatype
 
 
 # Silence linter by referencing imported names.
 
-_:tuple = (Row, Cursor, Conn, Mode)
+_:tuple = (Row, Cursor, Conn, Mode, forbid_default_adapters_and_converters, SqliteDatatype, sqlite_native_val)
 
 _ = (DatabaseError, DataError, IntegrityError, InterfaceError, InternalError, NotSupportedError, OperationalError,
   ProgrammingError)

@@ -5,8 +5,7 @@ from time import monotonic as get_time
 from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeVar
 
 from .row import Row
-from .util import (insert_values_stmt, OnConflictTarget, sql_quote_entity, sqlite_native_val, update_stmt,
-  update_to_sqlite_native_val)
+from .util import insert_values_stmt, OnConflictTarget, sql_quote_entity, sqlite_datatypes, sqlite_native_val, update_stmt
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -26,6 +25,18 @@ type SqlParameters = _SupportsLenAndGetItemByInt[_AdaptedInputData] | Mapping[st
 #^ The Mapping must really be a dict, but making it invariant is too annoying.
 
 
+def _sqlite_native_args(args:SqlParameters) -> SqlParameters:
+  '''
+  Convert statement argument values to sqlite-native values using `sqlite_native_val`.
+  Returns `args` unchanged if all values are already native; otherwise returns a new list or dict.
+  '''
+  if isinstance(args, Mapping):
+    if all(isinstance(v, sqlite_datatypes) for v in args.values()): return args
+    return { k: sqlite_native_val(v) for k, v in args.items() }
+  if all(isinstance(args[i], sqlite_datatypes) for i in range(len(args))): return args
+  return [sqlite_native_val(args[i]) for i in range(len(args))]
+
+
 class Cursor(sqlite3.Cursor):
 
   execute_time:float = 0
@@ -34,9 +45,11 @@ class Cursor(sqlite3.Cursor):
   def execute(self, query:str, args:SqlParameters=()) -> Self:
     '''
     Execute a single SQL statement, optionally binding Python values using placeholders.
+    Argument values are converted to sqlite-native values; see `sqlite_native_val`.
 
     Override execute in order add `execute_time` and `query` attributes/notes on any resulting sqlite3.Error.
     '''
+    args = _sqlite_native_args(args)
     execute_start = get_time()
     try:
       res = super().execute(query, args)
@@ -55,9 +68,11 @@ class Cursor(sqlite3.Cursor):
   def executemany(self, query:str, it_args:Iterable[SqlParameters]) -> Self:
     '''
     For every item in `it_args`, repeatedly execute the parameterized DML SQL statement sql.
+    Argument values are converted to sqlite-native values; see `sqlite_native_val`.
 
     Override executemany in order to set `query` on any resulting sqlite3.Error.
     '''
+    it_args = map(_sqlite_native_args, it_args)
     execute_start = get_time()
     try:
       res = super().executemany(query, it_args)
@@ -100,10 +115,8 @@ class Cursor(sqlite3.Cursor):
   def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Self:
     '''
     Execute a query with parameter values provided by keyword arguments.
-    Argument values whose types are not sqlite-compatible are automatically converted to JSON.
+    Argument values are converted to sqlite-native values by `execute`; see `sqlite_native_val`.
     '''
-    if args:
-      args = update_to_sqlite_native_val(args)
     if _dbg:
       print(f'query: {sql.strip()}\n  args: {args}')
       if plan := self.execute(f'EXPLAIN QUERY PLAN {sql}', args).fetchone():
@@ -229,7 +242,7 @@ class Cursor(sqlite3.Cursor):
       except KeyError: pass
       return defaults[f]
 
-    values = [sqlite_native_val(arg_for(f)) for f in fields]
+    values = [arg_for(f) for f in fields]
 
     self.execute(stmt, values)
 
@@ -243,8 +256,7 @@ class Cursor(sqlite3.Cursor):
     Execute an insert of the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
     stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields))
-    values = [sqlite_native_val(v) for v in seq]
-    self.execute(stmt, values)
+    self.execute(stmt, seq)
 
 
   def count_all_tables(self, *, schema:str='main', omit_empty:bool=False) -> list[tuple[str, int]]:

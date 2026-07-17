@@ -5,8 +5,15 @@ from datetime import date, datetime, time
 from functools import cache, lru_cache
 from typing import Any, get_args, Iterable, NamedTuple
 
+from ..encode import encode_obj
 from ..json import render_json
 from .keywords import sqlite_keywords
+
+
+type SqliteDatatype = None|bool|bytes|float|int|str
+#^ The set of types that sqlite3 binds natively; `bool` is included for clarity although it is a subclass of `int`.
+
+sqlite_datatypes:tuple[type,...] = get_args(SqliteDatatype.__value__)
 
 
 OnConflictTarget  = str|tuple[str,...]
@@ -146,20 +153,40 @@ def _wrapped_type_for_optional(static_type:type) -> type:
   return [a for a in args if a is not NoneType][0] # type: ignore[no-any-return]
 
 
-def sqlite_native_val(obj:Any) -> Any:
-  if isinstance(obj, types_natively_converted_by_sqlite): return obj
-  if isinstance(obj, time): return str(obj)
+def sqlite_native_val(obj:Any) -> SqliteDatatype:
+  '''
+  Convert `obj` to a value that sqlite3 binds natively.
+  `date`, `datetime` and `time` values are converted to ISO-8601 strings using the same `encode_obj` functions as JSON
+  rendering, so that a value passed as a top-level statement argument renders identically to the same value embedded in a
+  JSON document. All other non-native values are rendered as JSON.
+  '''
+  if isinstance(obj, sqlite_datatypes): return obj # type: ignore[return-value]
+  if isinstance(obj, (date, time)): return encode_obj(obj) # type: ignore[no-any-return]
   return render_json(obj, indent=None)
 
 
-def update_to_sqlite_native_val(d:dict[str,Any]) -> dict[str,Any]:
-  for k, v in d.items():
-    if isinstance(v, types_natively_converted_by_sqlite): continue
-    if isinstance(v, time):
-      d[k] = str(v)
-    else:
-      d[k] = render_json(v, indent=None)
-  return d
+def forbid_default_adapters_and_converters() -> None:
+  '''
+  Replace the deprecated sqlite3 default adapters and converters with implementations that raise TypeError.
+
+  The sqlite3 default `date` and `datetime` adapters and converters are deprecated as of Python 3.12.
+  pithy.sqlite does not rely on them and instead uses `sqlite_native_val` to convert all arguments explicitly.
+  Call this function to install `forbidden_adapter` and `forbidden_converter`,
+  which will cause any code that still relies on the sqlite3 defaults fail.
+  NOTE: adapter/converter registration is global, so this affects all sqlite3 connections in the process.
+  '''
+  from sqlite3 import register_adapter, register_converter
+
+  def forbidden_adapter(obj:date) -> str:
+    raise TypeError(f'sqlite3 default adapters are forbidden; convert values explicitly, e.g. with sqlite_native_val: {obj!r}')
+
+  def forbidden_converter(data:bytes) -> str:
+    raise TypeError(f'sqlite3 default converters are forbidden; convert column values explicitly: {data!r}')
+
+  register_adapter(date, forbidden_adapter)
+  register_adapter(datetime, forbidden_adapter)
+  register_converter('date', forbidden_converter)
+  register_converter('timestamp', forbidden_converter)
 
 
 def fields_of(class_:type) -> tuple[str, ...]:
@@ -184,10 +211,6 @@ types_to_strict_sqlite:dict[type,str] = {
   time: 'TEXT',
   NoneType: 'BLOB', # None gets treated as NULL. 'BLOB' is considered the most generic type.
 }
-
-# The set of types that are converted by the native sqlite3 module.
-# `time` is handled specially; all others are rendered as JSON, defaulting to their repr.
-types_natively_converted_by_sqlite = (bool, bytes, date, datetime, float, int, str, NoneType)
 
 static_types_to_strict_sqlite:dict[Any,str] = {
   Any: 'ANY',

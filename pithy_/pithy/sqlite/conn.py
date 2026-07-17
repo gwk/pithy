@@ -279,7 +279,7 @@ class Conn(sqlite3.Connection):
   def run(self, sql:str, *, _dbg:bool=False, **args:Any) -> Cursor:
     '''
     Execute a query with parameter values provided by keyword arguments.
-    Argument values whose types are not sqlite-compatible are automatically converted to JSON.
+    Argument values are converted to sqlite-native values; see `sqlite_native_val`.
     '''
     return self.cursor().run(sql, _dbg=_dbg, **args)
 
