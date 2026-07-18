@@ -13,6 +13,10 @@ utest_repr("frozendict({'a': 1})", frozendict, {'a': 1})
 utest_repr("frozendict({'a': 1})", frozendict, [('a', 1)])
 utest_repr("frozendict({'a': 1})", frozendict, a=1)
 
+# Kwargs-only construction type-checks as frozendict[str,V]; the utest calls above are dynamic and do not exercise the overloads.
+_kwargs_only:frozendict[str,int] = frozendict(a=1)
+utest_val(frozendict({'a': 1}), _kwargs_only, 'kwargs-only construction')
+
 # Immutability: frozendict extends Mapping (not MutableMapping), so __setitem__ is absent.
 utest_exc(AttributeError, lambda fd: fd.__setitem__('x', 0), frozendict({'a': 1}))
 

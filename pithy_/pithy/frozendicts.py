@@ -33,6 +33,9 @@ class frozendict(Mapping[_KT, _VT]):
   def __init__(self, initial:SupportsKeysAndGetItem[_KT,_VT]|Iterable[tuple[_KT,_VT]]=()) -> None: ...
 
   @overload
+  def __init__(self:frozendict[str,_VT], **kwargs:_VT) -> None: ...
+
+  @overload
   def __init__(self, initial:SupportsKeysAndGetItem[str,_VT]|Iterable[tuple[str,_VT]], **kwargs:_VT) -> None: ...
 
   def __init__(self, initial:Mapping[_KT,_VT]|Iterable[tuple[_KT,_VT]]=(), **kwargs:_VT) -> None: # type: ignore[misc]
