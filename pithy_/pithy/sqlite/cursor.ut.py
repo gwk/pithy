@@ -1,11 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import re
 import sqlite3
 from contextlib import closing
 from datetime import date as Date, datetime as DateTime, time as Time
 
 from pithy.sqlite import forbid_default_adapters_and_converters
 from pithy.sqlite.conn import Conn
+from pithy.sqlite.util import CURRENT_TIMESTAMP, CURRENT_TIMESTAMP_Z, SqlExpr
 from utest import utest_exc, utest_run, utest_seq, utest_val
 
 
@@ -96,3 +98,87 @@ def _test_insert_on_conflict() -> None:
       cursor.insert(into='r', on_conflict='id', id=1, v='b')
       cursor.insert_dict(into='r', on_conflict='id', args={'id': 1, 'v': 'c'})
     utest_seq([(1, 'c')], lambda: (tuple(row) for row in conn.execute('SELECT id, v FROM r')))
+
+
+def make_expr_conn() -> Conn:
+  'Create an in-memory connection with a keyed table `r` for SqlExpr tests.'
+  conn = Conn(':memory:', mode='memory')
+  conn.run_effect('CREATE TABLE r (id INTEGER PRIMARY KEY, v TEXT, ts TEXT)')
+  return conn
+
+
+# insert, insert_dict and insert_seq substitute SqlExpr values as raw SQL and bind the rest.
+@utest_run
+def _test_insert_exprs() -> None:
+  with closing(make_expr_conn()) as conn:
+    with closing(conn.cursor()) as cursor:
+      cursor.insert(into='r', id=1, v='a', ts=SqlExpr("'T' || (2 + 3)"))
+      cursor.insert_dict(into='r', args={'id': 2, 'v': 'b', 'ts': SqlExpr("upper('x')")})
+      cursor.insert_seq(into='r', fields=('id', 'v', 'ts'), seq=[3, 'c', SqlExpr("'T0'")])
+    utest_seq([(1, 'a', 'T5'), (2, 'b', 'X'), (3, 'c', 'T0')],
+      lambda: (tuple(row) for row in conn.execute('SELECT id, v, ts FROM r ORDER BY id')))
+
+
+# insert_seq with a SqlExpr requires seq and fields lengths to match.
+@utest_run
+def _test_insert_seq_expr_length_mismatch() -> None:
+  with closing(make_expr_conn()) as conn:
+    with closing(conn.cursor()) as cursor:
+      utest_exc(ValueError, cursor.insert_seq, into='r', fields=('id', 'v', 'ts'), seq=[1, SqlExpr("'T0'")])
+
+
+# insert with on_conflict applies SqlExpr values on conflict as well: the expr is evaluated in the VALUES clause
+# and carried into the DO UPDATE SET assignments via excluded references.
+@utest_run
+def _test_insert_on_conflict_expr() -> None:
+  with closing(make_expr_conn()) as conn:
+    with closing(conn.cursor()) as cursor:
+      cursor.insert(into='r', id=1, v='a', ts=SqlExpr("'T0'"))
+      cursor.insert(into='r', on_conflict='id', id=1, v='b', ts=SqlExpr("'T1'"))
+    utest_seq([(1, 'b', 'T1')], lambda: (tuple(row) for row in conn.execute('SELECT id, v, ts FROM r')))
+
+
+# update substitutes SqlExpr values and rejects them for `by` fields.
+@utest_run
+def _test_update_exprs() -> None:
+  with closing(make_expr_conn()) as conn:
+    with closing(conn.cursor()) as cursor:
+      cursor.insert(into='r', id=1, v='a', ts='T0')
+      cursor.update('r', by='id', id=1, v='b', ts=SqlExpr("lower('C')"))
+      utest_exc(ValueError, cursor.update, 'r', by='id', id=SqlExpr('1'), v='d')
+    utest_seq([(1, 'b', 'c')], lambda: (tuple(row) for row in conn.execute('SELECT id, v, ts FROM r')))
+
+
+# The CURRENT_TIMESTAMP constant produces a UTC 'YYYY-MM-DD HH:MM:SS' string.
+@utest_run
+def _test_current_timestamp() -> None:
+  with closing(make_expr_conn()) as conn:
+    with closing(conn.cursor()) as cursor:
+      cursor.insert(into='r', id=1, v='a', ts=CURRENT_TIMESTAMP)
+    ts = conn.execute('SELECT ts FROM r').one_col()
+    utest_val(True, bool(re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', ts)), f'CURRENT_TIMESTAMP format: {ts!r}')
+
+
+# The CURRENT_TIMESTAMP_Z constant appends a 'Z' suffix, marking the stored UTC timestamp explicitly.
+@utest_run
+def _test_current_timestamp_z() -> None:
+  with closing(make_expr_conn()) as conn:
+    with closing(conn.cursor()) as cursor:
+      cursor.insert(into='r', id=1, v='a', ts=CURRENT_TIMESTAMP_Z)
+    ts = conn.execute('SELECT ts FROM r').one_col()
+    utest_val(True, bool(re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z', ts)), f'CURRENT_TIMESTAMP_Z format: {ts!r}')
+
+
+# run and execute substitute named SqlExpr arguments into the query text; the rest are bound as usual.
+@utest_run
+def _test_run_execute_exprs() -> None:
+  with closing(make_conn()) as conn:
+    utest_val('X!', conn.run("SELECT :e || :s", e=SqlExpr("upper('x')"), s='!').one_col(), 'run substitutes SqlExpr')
+    utest_val(5, conn.execute('SELECT :e + :n', {'e': SqlExpr('2'), 'n': 3}).one_col(), 'execute substitutes SqlExpr')
+
+
+# Positional SqlExpr arguments cannot be substituted and raise.
+@utest_run
+def _test_positional_expr_raises() -> None:
+  with closing(make_conn()) as conn:
+    utest_exc(TypeError, conn.execute, 'SELECT ?', (CURRENT_TIMESTAMP,))

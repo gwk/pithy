@@ -4,8 +4,10 @@ import sqlite3
 from time import monotonic as get_time
 from typing import Any, cast, Iterable, Mapping, overload, Protocol, Self, Sequence, TypeVar
 
+from ..frozendicts import frozendict
 from .row import Row
-from .util import insert_values_stmt, OnConflictTarget, sql_quote_entity, sqlite_datatypes, sqlite_native_val, update_stmt
+from .util import (insert_values_stmt, OnConflictTarget, sql_quote_entity, sql_substitute_exprs, SqlExpr, sqlite_datatypes,
+  sqlite_native_val, update_stmt)
 
 
 _T_co = TypeVar('_T_co', covariant=True)
@@ -46,9 +48,12 @@ class Cursor(sqlite3.Cursor):
     '''
     Execute a single SQL statement, optionally binding Python values using placeholders.
     Argument values are converted to sqlite-native values; see `sqlite_native_val`.
+    Named `SqlExpr` argument values are substituted into the query as raw SQL.
 
     Override execute in order add `execute_time` and `query` attributes/notes on any resulting sqlite3.Error.
     '''
+    if isinstance(args, Mapping) and any(isinstance(v, SqlExpr) for v in args.values()):
+      query, args = sql_substitute_exprs(query, args)
     args = _sqlite_native_args(args)
     execute_start = get_time()
     try:
@@ -116,6 +121,7 @@ class Cursor(sqlite3.Cursor):
     '''
     Execute a query with parameter values provided by keyword arguments.
     Argument values are converted to sqlite-native values by `execute`; see `sqlite_native_val`.
+    `SqlExpr` argument values are substituted into the query as raw SQL.
     '''
     if _dbg:
       print(f'query: {sql.strip()}\n  args: {args}')
@@ -198,13 +204,16 @@ class Cursor(sqlite3.Cursor):
     returning:tuple[str,...]|str|None=None, _dbg:bool=False, **kwargs:Any) -> Row|Any|None:
     '''
     Execute an insert statement with the kwargs key/value pairs passed as named arguments.
+    `SqlExpr` values are substituted into the statement as raw SQL instead of being bound as arguments.
     If `on_conflict` is specified, it must be a column name or a tuple of column names.
     In that case an ON CONFLICT clause is generated for those column names, that updates all other provided columns.
     If `returning` is a tuple, return a single row object; if it is a string, return a single column.
     '''
+    exprs = frozendict((k, v) for k, v in kwargs.items() if isinstance(v, SqlExpr))
     stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(kwargs.keys()), on_conflict=on_conflict,
-      returning=returning)
+      returning=returning, exprs=exprs)
 
+    if exprs: kwargs = { k: v for k, v in kwargs.items() if k not in exprs }
     self.run(stmt, _dbg=_dbg, **kwargs)
 
     if isinstance(returning, tuple): return self.one()
@@ -231,11 +240,10 @@ class Cursor(sqlite3.Cursor):
     Execute an insert of the dictionary `args`, synthesized from `into` (the table name) and `fields`.
     Values are pulled in by name first from the `args` dictionary, then from `defaults`;
     a KeyError is raised if one of the fields is not provided in either of these sources.
+    `SqlExpr` values are substituted into the statement as raw SQL instead of being bound as arguments.
     If `returning` is a tuple, return a single row; if it is a string, return a single field value.
     '''
-    if fields is None: fields = args.keys()
-    fields = tuple(fields)
-    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=fields, on_conflict=on_conflict, returning=returning)
+    fields = tuple(args.keys()) if fields is None else tuple(fields)
 
     def arg_for(f:str) -> Any:
       try: return args[f]
@@ -243,6 +251,11 @@ class Cursor(sqlite3.Cursor):
       return defaults[f]
 
     values = {f: arg_for(f) for f in fields}
+    exprs = frozendict((f, v) for f, v in values.items() if isinstance(v, SqlExpr))
+    if exprs: values = {f: v for f, v in values.items() if f not in exprs}
+
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=fields, on_conflict=on_conflict, returning=returning,
+      exprs=exprs)
 
     self.execute(stmt, values)
 
@@ -254,10 +267,14 @@ class Cursor(sqlite3.Cursor):
   def insert_seq(self, *, with_:str='', or_:str='FAIL', into:str, fields:Iterable[str], seq:Sequence[Any]) -> None:
     '''
     Execute an insert of the sequence `args`, synthesized from `into` (the table name), and `fields`.
+    `SqlExpr` values are substituted into the statement as raw SQL instead of being bound as arguments.
     '''
     fields = tuple(fields)
-    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=fields)
-    self.execute(stmt, dict(zip(fields, seq, strict=True)))
+    values = dict(zip(fields, seq, strict=True))
+    exprs = frozendict((f, v) for f, v in values.items() if isinstance(v, SqlExpr))
+    if exprs: values = {f: v for f, v in values.items() if f not in exprs}
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=fields, exprs=exprs)
+    self.execute(stmt, values)
 
 
   def count_all_tables(self, *, schema:str='main', omit_empty:bool=False) -> list[tuple[str, int]]:
@@ -275,14 +292,20 @@ class Cursor(sqlite3.Cursor):
   def update(self, table:str, *, with_:str='', or_:str='FAIL', by:str|tuple[str,...], _dbg:bool=False, **kwargs:Any) -> None:
     '''
     Execute an UPDATE statement.
+    `SqlExpr` values are substituted into the statement as raw SQL instead of being bound as arguments;
+    they are not permitted as `by` field values.
     TODO: support returning clause.
     '''
     if isinstance(by, str): by = (by,)
     if not isinstance(by, tuple): raise TypeError('`by` argument must be a string or tuple of strings.')
     if not by: raise ValueError('`by` argument must not be empty for safety.')
+    for k in by:
+      if isinstance(kwargs.get(k), SqlExpr): raise ValueError(f'`by` field value cannot be a SqlExpr: {k!r}')
     where = ' AND '.join(f'{sql_quote_entity(k)} = :{k}' for k in by)
     fields = tuple(k for k in kwargs if k not in by)
-    stmt = update_stmt(with_=with_, or_=or_, table=table, fields=fields, where=where)
+    exprs = frozendict((k, v) for k, v in kwargs.items() if k not in by and isinstance(v, SqlExpr))
+    stmt = update_stmt(with_=with_, or_=or_, table=table, fields=fields, where=where, exprs=exprs)
+    if exprs: kwargs = { k: v for k, v in kwargs.items() if k not in exprs }
     self.run(stmt, _dbg=_dbg, **kwargs)
 
 

@@ -8,12 +8,14 @@ from typing import TypeAlias
 from .conn import Conn, Mode
 from .cursor import Cursor
 from .row import Row
-from .util import forbid_default_adapters_and_converters, sqlite_native_val, SqliteDatatype
+from .util import (CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP_Z, forbid_default_adapters_and_converters,
+  SqlExpr, sqlite_native_val, SqliteDatatype)
 
 
 # Silence linter by referencing imported names.
 
-_:tuple = (Row, Cursor, Conn, Mode, forbid_default_adapters_and_converters, SqliteDatatype, sqlite_native_val)
+_:tuple = (Row, Cursor, Conn, Mode, CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP_Z,
+  forbid_default_adapters_and_converters, SqlExpr, SqliteDatatype, sqlite_native_val)
 
 _ = (DatabaseError, DataError, IntegrityError, InterfaceError, InternalError, NotSupportedError, OperationalError,
   ProgrammingError)

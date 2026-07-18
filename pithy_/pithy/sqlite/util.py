@@ -1,11 +1,13 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
+from dataclasses import dataclass
 from datetime import date, datetime, time
 from functools import cache, lru_cache
-from typing import Any, get_args, Iterable, NamedTuple
+from typing import Any, get_args, Iterable, Mapping, NamedTuple
 
 from ..encode import encode_obj
+from ..frozendicts import frozendict
 from ..json import render_json
 from .keywords import sqlite_keywords
 
@@ -17,6 +19,27 @@ sqlite_datatypes:tuple[type,...] = get_args(SqliteDatatype.__value__)
 
 
 OnConflictTarget  = str|tuple[str,...]
+
+
+@dataclass(frozen=True)
+class SqlExpr:
+  '''
+  A raw SQL expression, substituted verbatim in place of a value placeholder in generated statements.
+  The SQL text is not escaped, so it is caller-trusted, like the `where`, `into` and `with_` statement parameters.
+  '''
+  sql:str
+
+
+CURRENT_DATE = SqlExpr('CURRENT_DATE')
+CURRENT_TIME = SqlExpr('CURRENT_TIME')
+CURRENT_TIMESTAMP = SqlExpr('CURRENT_TIMESTAMP')
+
+CURRENT_TIMESTAMP_Z = SqlExpr("(CURRENT_TIMESTAMP||'Z')")
+#^ CURRENT_TIMESTAMP is UTC but bears no timezone marker; the 'Z' suffix makes the stored timestamp explicitly UTC.
+
+
+type SqlExprs = frozendict[str,SqlExpr]
+#^ A mapping of field names to raw SQL expressions; frozendict is hashable, so it can pass through the cached statement builders.
 
 
 @lru_cache
@@ -38,13 +61,14 @@ def insert_head_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str
 
 @lru_cache
 def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str,...],
- on_conflict:OnConflictTarget='', returning:tuple[str,...]|str|None=None) -> str:
+ on_conflict:OnConflictTarget='', returning:tuple[str,...]|str|None=None, exprs:SqlExprs=frozendict()) -> str:
   '''
   Create an INSERT statement that uses named placeholders for values.
+  Fields present in `exprs` get their raw SQL text substituted in place of a placeholder.
   '''
   head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
   if fields:
-    placeholders = ', '.join(placeholders_for_fields(fields))
+    placeholders = ', '.join(placeholders_for_fields(fields, exprs))
     values_clause = f'VALUES ({placeholders})'
   else:
     values_clause = 'DEFAULT VALUES'
@@ -90,26 +114,70 @@ def on_conflict_clause(str_or_pair:str|tuple[str,...], fields:tuple[str,...]) ->
 
 
 @lru_cache
-def update_stmt(*, with_:str='', or_:str='FAIL', table:str, fields:tuple[str,...], where:str='') -> str:
+def update_stmt(*, with_:str='', or_:str='FAIL', table:str, fields:tuple[str,...], where:str='',
+ exprs:SqlExprs=frozendict()) -> str:
   '''
   Create an UPDATE statement that uses named placeholders for values.
+  Fields present in `exprs` get their raw SQL text substituted in place of a placeholder.
   '''
   assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
   assert fields
-  assignments = ', '.join(f'{f}={p}' for (f, p) in zip(fields, placeholders_for_fields(fields)))
+  assignments = ', '.join(f'{f}={p}' for (f, p) in zip(fields, placeholders_for_fields(fields, exprs)))
   with_phrase= f'WITH {with_} ' if with_ else ''
   where_phrase = f' WHERE {where}' if where else ''
   return f'{with_phrase}UPDATE OR {or_} {table} SET {assignments}{where_phrase}'
 
 
-def placeholders_for_fields(fields:tuple[str,...]) -> list[str]:
+_sql_substitute_re = re.compile(r'''(?x)
+    '(?:[^']|'')*'          # Single-quoted string literal; a doubled quote is an escape.
+  | "(?:[^"]|"")*"          # Double-quoted name; a doubled quote is an escape.
+  | --[^\n]*                # Line comment; extends to the end of the line.
+  | /\*(?s:.*?)(?:\*/|$)    # Block comment; does not nest and may be unterminated at the end of the query.
+  | :(?P<name>[A-Za-z_]\w*) # Named placeholder.
+  ''')
+
+
+def sql_substitute_exprs(query:str, args:Mapping[str,Any]) -> tuple[str,dict[str,Any]]:
+  '''
+  Replace each named `:name` placeholder in `query` whose argument value is a `SqlExpr` with the expression's raw SQL text.
+  Return the substituted query and the remaining arguments to be bound.
+  The query is scanned with a minimal lexer that recognizes single-quoted string literals, double-quoted names and comments.
+  A ValueError is raised if a `SqlExpr` argument has no matching placeholder.
+  An expression may itself reference other named placeholders, which will be bound from the remaining arguments as usual.
+  '''
+  exprs = {k: v for k, v in args.items() if isinstance(v, SqlExpr)}
+  remaining = {k: v for k, v in args.items() if not isinstance(v, SqlExpr)}
+  if not exprs: return query, remaining
+
+  substituted:set[str] = set()
+
+  def replace(m:re.Match[str]) -> str:
+    name = m['name']
+    if name is None: return m[0] # String literal, double-quoted name or comment.
+    try: expr = exprs[name]
+    except KeyError: return m[0] # A placeholder to be bound normally.
+    substituted.add(name)
+    return expr.sql
+
+  sub_query = _sql_substitute_re.sub(replace, query)
+
+  if unmatched := exprs.keys() - substituted:
+    raise ValueError(f'SqlExpr arguments have no matching placeholders: {sorted(unmatched)}; query: {query!r}')
+  return sub_query, remaining
+
+
+def placeholders_for_fields(fields:tuple[str,...], exprs:SqlExprs=frozendict()) -> list[str]:
   '''
   Given a sequence of field names, return a list of named placeholders.
+  Fields present in `exprs` get their raw SQL text instead of a placeholder.
   '''
   placeholders = []
   for f in fields:
-    if not f.isidentifier(): raise ValueError(f'field name cannot be used as placeholder: {f!r}')
-    placeholders.append(':' + f)
+    if f in exprs:
+      placeholders.append(exprs[f].sql)
+    else:
+      if not f.isidentifier(): raise ValueError(f'field name cannot be used as placeholder: {f!r}')
+      placeholders.append(':' + f)
   return placeholders
 
 
@@ -163,6 +231,9 @@ def sqlite_native_val(obj:Any) -> SqliteDatatype:
   '''
   if isinstance(obj, sqlite_datatypes): return obj # type: ignore[return-value]
   if isinstance(obj, (date, time)): return encode_obj(obj) # type: ignore[no-any-return]
+  if isinstance(obj, SqlExpr):
+    raise TypeError(
+      f'SqlExpr cannot be bound as a statement argument; substitution requires named arguments or statement generators: {obj!r}')
   return render_json(obj, indent=None)
 
 
