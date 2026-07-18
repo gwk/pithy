@@ -37,14 +37,14 @@ def insert_head_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str
 
 
 @lru_cache
-def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, named:bool, fields:tuple[str,...],
+def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, fields:tuple[str,...],
  on_conflict:OnConflictTarget='', returning:tuple[str,...]|str|None=None) -> str:
   '''
-  Create an INSERT statement that uses positional or named placeholders for values.
+  Create an INSERT statement that uses named placeholders for values.
   '''
   head = insert_head_stmt(with_=with_, or_=or_, into=into, fields=fields)
   if fields:
-    placeholders = ', '.join(placeholders_for_fields(fields, named))
+    placeholders = ', '.join(placeholders_for_fields(fields))
     values_clause = f'VALUES ({placeholders})'
   else:
     values_clause = 'DEFAULT VALUES'
@@ -69,7 +69,6 @@ def on_conflict_clause(str_or_pair:str|tuple[str,...], fields:tuple[str,...]) ->
   Create an ON CONFLICT clause for an INSERT statement.
   The DO UPDATE SET assignments reference `excluded.<col>` (the value that would have been inserted) rather than placeholders,
   so the clause adds no statement parameters.
-  This is required for positional statements, where repeated `?` placeholders would not match the bound values.
   '''
   if isinstance(str_or_pair, str):
     conflict_targets:tuple[str,...] = (str_or_pair,)
@@ -91,29 +90,26 @@ def on_conflict_clause(str_or_pair:str|tuple[str,...], fields:tuple[str,...]) ->
 
 
 @lru_cache
-def update_stmt(*, with_:str='', or_:str='FAIL', table:str, named:bool, fields:tuple[str,...], where:str='') -> str:
+def update_stmt(*, with_:str='', or_:str='FAIL', table:str, fields:tuple[str,...], where:str='') -> str:
   '''
-  Create an UPDATE statement that uses positional or named placeholders for values.
+  Create an UPDATE statement that uses named placeholders for values.
   '''
   assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
   assert fields
-  assignments = ', '.join(f'{f}={p}' for (f, p) in zip(fields, placeholders_for_fields(fields, named)))
+  assignments = ', '.join(f'{f}={p}' for (f, p) in zip(fields, placeholders_for_fields(fields)))
   with_phrase= f'WITH {with_} ' if with_ else ''
   where_phrase = f' WHERE {where}' if where else ''
   return f'{with_phrase}UPDATE OR {or_} {table} SET {assignments}{where_phrase}'
 
 
-def placeholders_for_fields(fields:tuple[str,...], named:bool) -> list[str]:
+def placeholders_for_fields(fields:tuple[str,...]) -> list[str]:
   '''
-  Given a sequence of field names, return a string of comma-separated placeholders.
+  Given a sequence of field names, return a list of named placeholders.
   '''
-  if named:
-    placeholders = []
-    for f in fields:
-      if not f.isidentifier(): raise ValueError(f'field name cannot be used as placeholder: {f!r}')
-      placeholders.append(':' + f)
-  else:
-    placeholders = ['?'] * len(fields)
+  placeholders = []
+  for f in fields:
+    if not f.isidentifier(): raise ValueError(f'field name cannot be used as placeholder: {f!r}')
+    placeholders.append(':' + f)
   return placeholders
 
 

@@ -202,7 +202,7 @@ class Cursor(sqlite3.Cursor):
     In that case an ON CONFLICT clause is generated for those column names, that updates all other provided columns.
     If `returning` is a tuple, return a single row object; if it is a string, return a single column.
     '''
-    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=True, fields=tuple(kwargs.keys()), on_conflict=on_conflict,
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=tuple(kwargs.keys()), on_conflict=on_conflict,
       returning=returning)
 
     self.run(stmt, _dbg=_dbg, **kwargs)
@@ -234,15 +234,15 @@ class Cursor(sqlite3.Cursor):
     If `returning` is a tuple, return a single row; if it is a string, return a single field value.
     '''
     if fields is None: fields = args.keys()
-    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields), on_conflict=on_conflict,
-      returning=returning)
+    fields = tuple(fields)
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=fields, on_conflict=on_conflict, returning=returning)
 
     def arg_for(f:str) -> Any:
       try: return args[f]
       except KeyError: pass
       return defaults[f]
 
-    values = [arg_for(f) for f in fields]
+    values = {f: arg_for(f) for f in fields}
 
     self.execute(stmt, values)
 
@@ -255,8 +255,9 @@ class Cursor(sqlite3.Cursor):
     '''
     Execute an insert of the sequence `args`, synthesized from `into` (the table name), and `fields`.
     '''
-    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, named=False, fields=tuple(fields))
-    self.execute(stmt, seq)
+    fields = tuple(fields)
+    stmt = insert_values_stmt(with_=with_, or_=or_, into=into, fields=fields)
+    self.execute(stmt, dict(zip(fields, seq, strict=True)))
 
 
   def count_all_tables(self, *, schema:str='main', omit_empty:bool=False) -> list[tuple[str, int]]:
@@ -281,7 +282,7 @@ class Cursor(sqlite3.Cursor):
     if not by: raise ValueError('`by` argument must not be empty for safety.')
     where = ' AND '.join(f'{sql_quote_entity(k)} = :{k}' for k in by)
     fields = tuple(k for k in kwargs if k not in by)
-    stmt = update_stmt(with_=with_, or_=or_, table=table, named=True, fields=fields, where=where)
+    stmt = update_stmt(with_=with_, or_=or_, table=table, fields=fields, where=where)
     self.run(stmt, _dbg=_dbg, **kwargs)
 
 

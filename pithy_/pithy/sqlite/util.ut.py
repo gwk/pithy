@@ -34,9 +34,6 @@ for val in (Date(2026, 7, 16), DateTime(2026, 7, 16, 12, 30, 45, 1), Time(12, 30
   assert isinstance(native, str)
   utest(f'["{native}"]', render_json, [val], indent=None, _utest_label=repr(val))
 
-# The ON CONFLICT update clause uses excluded references, adding no statement parameters;
-# in particular the positional form binds exactly len(fields) values.
-utest('INSERT OR FAIL INTO t (id, v) VALUES (?, ?) ON CONFLICT ( id ) DO UPDATE SET v=excluded.v',
-  insert_values_stmt, into='t', named=False, fields=('id', 'v'), on_conflict='id')
+# The ON CONFLICT update clause uses excluded references, adding no statement parameters.
 utest('INSERT OR FAIL INTO t (id, v) VALUES (:id, :v) ON CONFLICT ( id ) DO UPDATE SET v=excluded.v',
-  insert_values_stmt, into='t', named=True, fields=('id', 'v'), on_conflict='id')
+  insert_values_stmt, into='t', fields=('id', 'v'), on_conflict='id')
