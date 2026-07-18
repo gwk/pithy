@@ -84,3 +84,15 @@ def _test_insert_conversions() -> None:
       cursor.insert_dict(into='t', args={'v': Date(2026, 7, 16)})
       cursor.insert_seq(into='t', fields=('v',), seq=[Time(12, 30, 45)])
     utest_seq(['12:30:45', '2026-07-16', '2026-07-16 12:30:45'], conn.execute('SELECT v FROM t ORDER BY v').col)
+
+
+# insert and insert_dict support on_conflict upserts; the positional form previously emitted unbound placeholders.
+@utest_run
+def _test_insert_on_conflict() -> None:
+  with closing(Conn(':memory:', mode='memory')) as conn:
+    conn.run_effect('CREATE TABLE r (id INTEGER PRIMARY KEY, v TEXT)')
+    with closing(conn.cursor()) as cursor:
+      cursor.insert(into='r', id=1, v='a')
+      cursor.insert(into='r', on_conflict='id', id=1, v='b')
+      cursor.insert_dict(into='r', on_conflict='id', args={'id': 1, 'v': 'c'})
+    utest_seq([(1, 'c')], lambda: (tuple(row) for row in conn.execute('SELECT id, v FROM r')))

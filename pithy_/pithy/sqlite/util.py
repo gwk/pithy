@@ -52,7 +52,7 @@ def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, named:bool, fi
 
   if on_conflict:
     if isinstance(on_conflict, (str, tuple)):
-      parts.append(on_conflict_clause(on_conflict, named=named, fields=fields))
+      parts.append(on_conflict_clause(on_conflict, fields=fields))
     else:
       raise NotImplementedError('Multiple ON CONFLICT clauses are not supported yet.')
 
@@ -64,8 +64,13 @@ def insert_values_stmt(*, with_:str='', or_:str='FAIL', into:str, named:bool, fi
   return ' '.join(parts)
 
 
-def on_conflict_clause(str_or_pair:str|tuple[str,...], named:bool, fields:tuple[str,...]) -> str:
-  'Create an ON CONFLICT clause for an INSERT statement.'
+def on_conflict_clause(str_or_pair:str|tuple[str,...], fields:tuple[str,...]) -> str:
+  '''
+  Create an ON CONFLICT clause for an INSERT statement.
+  The DO UPDATE SET assignments reference `excluded.<col>` (the value that would have been inserted) rather than placeholders,
+  so the clause adds no statement parameters.
+  This is required for positional statements, where repeated `?` placeholders would not match the bound values.
+  '''
   if isinstance(str_or_pair, str):
     conflict_targets:tuple[str,...] = (str_or_pair,)
   else:
@@ -77,7 +82,7 @@ def on_conflict_clause(str_or_pair:str|tuple[str,...], named:bool, fields:tuple[
 
   if included_cols:
     parts.append('UPDATE SET')
-    assignments = ', '.join(f'{col}={p}' for (col, p) in zip(included_cols, placeholders_for_fields(included_cols, named)))
+    assignments = ', '.join(f'{col}=excluded.{col}' for col in included_cols)
     parts.append(assignments)
   else:
     parts.append('NOTHING')
