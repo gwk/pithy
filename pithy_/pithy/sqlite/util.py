@@ -90,7 +90,7 @@ def update_stmt(*, with_:str='', or_:str='FAIL', table:str, named:bool, fields:t
   '''
   Create an UPDATE statement that uses positional or named placeholders for values.
   '''
-  assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLCE', 'ROLLBACK'}
+  assert or_ in {'ABORT', 'FAIL', 'IGNORE', 'REPLACE', 'ROLLBACK'}
   assert fields
   assignments = ', '.join(f'{f}={p}' for (f, p) in zip(fields, placeholders_for_fields(fields, named)))
   with_phrase= f'WITH {with_} ' if with_ else ''
