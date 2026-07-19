@@ -325,6 +325,21 @@ def req_form_int(form_data:FormData, key:str) -> int:
   except ValueError as e: raise HTTPException(400, f'Invalid integer form field value: {key}={v!r}') from e
 
 
+def req_form_ints(form_data:FormData, key:str) -> list[int]:
+  '''
+  Get a required multi-valued int field from a FormData (e.g. request.form).
+  If no values are present or any value is not convertible to an int, raise a 400 exception.
+  '''
+  els:list[int] = []
+  for v in form_data.getlist(key):
+    if not isinstance(v, str): raise HTTPException(400, f'Invalid form field type: {key}={v!r}')
+    try: i = int(v)
+    except ValueError as e: raise HTTPException(400, f'Invalid integer form field value: {key}={v!r}') from e
+    els.append(i)
+  if not els: raise HTTPException(400, f'Missing form field: {key!r}')
+  return els
+
+
 def get_form_date(form_data:FormData, key:str, default:Date|None=None) -> Date|None:
   '''
   Get an optional date value from a FormData (e.g. request.form).
