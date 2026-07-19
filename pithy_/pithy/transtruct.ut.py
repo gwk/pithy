@@ -3,7 +3,7 @@
 from collections import Counter, defaultdict, namedtuple
 from dataclasses import dataclass
 from datetime import date, datetime, time
-from typing import Any, NamedTuple
+from typing import Any, ClassVar, NamedTuple
 
 from pithy.frozendicts import frozendict
 from pithy.transtruct import Transtructor, TranstructorError
@@ -175,6 +175,81 @@ utest_exc(TranstructorError, strict_ttor.transtruct, BareAnnotated, {'x': 1, 'y'
 utest(DC1(1, 'a'), strict_ttor.transtruct, DC1, {'a': 1, 'b': 'a'})
 utest(NT1(1, 'a'), strict_ttor.transtruct, NT1, {'a': 1, 'b': 'a'})
 utest(_bare_annotated(1, 2), strict_ttor.transtruct, BareAnnotated, {'x': 1, 'y': 2})
+
+
+# Underscore-prefixed annotations are constructible fields like any other; use ClassVar to exclude internal state.
+
+@dataclass
+class DCU:
+  _a:int
+  b:str
+
+utest(DCU(1, 'x'), ttor.transtruct, DCU, {'_a': 1, 'b': 'x'})
+utest(DCU(1, 'x'), strict_ttor.transtruct, DCU, {'_a': 1, 'b': 'x'})
+
+
+class UnderscoreInit:
+  'Custom __init__ with an underscore-prefixed parameter.'
+
+  def __init__(self, _key:str, val:int) -> None:
+    self.data = {_key: val}
+
+  def __eq__(self, other:object) -> bool:
+    return isinstance(other, UnderscoreInit) and self.data == other.data
+
+  def __repr__(self) -> str:
+    return f'UnderscoreInit({self.data!r})'
+
+
+utest(UnderscoreInit(_key='a', val=1), ttor.transtruct, UnderscoreInit, {'_key': 'a', 'val': 1})
+utest(UnderscoreInit(_key='a', val=1), strict_ttor.transtruct, UnderscoreInit, {'_key': 'a', 'val': 1})
+
+
+class BareUnderscore:
+  'Annotation-only class with an underscore field; it is constructible, and absent input falls back to the class default.'
+
+  x:int
+  _hidden:int = 0
+
+  def __eq__(self, other:object) -> bool:
+    return isinstance(other, BareUnderscore) and (self.x, self._hidden) == (other.x, other._hidden)
+
+  def __repr__(self) -> str:
+    return f'BareUnderscore(x={self.x!r}, _hidden={self._hidden!r})'
+
+
+def _bare_underscore(x:int, _hidden:int=0) -> BareUnderscore:
+  b = BareUnderscore()
+  b.x = x
+  b._hidden = _hidden
+  return b
+
+utest(_bare_underscore(1, 3), ttor.transtruct, BareUnderscore, {'x': 1, '_hidden': 3})
+utest(_bare_underscore(1, 3), strict_ttor.transtruct, BareUnderscore, {'x': 1, '_hidden': 3})
+utest(_bare_underscore(1), ttor.transtruct, BareUnderscore, {'x': 1}) # Absent underscore field uses the class default.
+
+
+class BareClassVar:
+  'A ClassVar annotation is excluded from transtruction: never settable from input, unrecognized in strict mode.'
+
+  x:int
+  _registry:ClassVar[dict[str,int]] = {}
+
+  def __eq__(self, other:object) -> bool:
+    return isinstance(other, BareClassVar) and self.x == other.x
+
+  def __repr__(self) -> str:
+    return f'BareClassVar(x={self.x!r})'
+
+
+def _bare_class_var(x:int) -> BareClassVar:
+  b = BareClassVar()
+  b.x = x
+  return b
+
+utest(_bare_class_var(1), ttor.transtruct, BareClassVar, {'x': 1, '_registry': {'a': 1}}) # Lax: ClassVar key is ignored.
+utest_exc(TranstructorError, strict_ttor.transtruct, BareClassVar, {'x': 1, '_registry': {'a': 1}})
+utest({}, lambda: BareClassVar._registry) # The class-level value is untouched.
 
 
 # Scalar date/datetime/time types: parse isoformat strings by default.

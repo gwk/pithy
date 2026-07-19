@@ -214,8 +214,10 @@ class Transtructor:
   def transtructor_for_annotated_class(self, class_:type[Desired], prefigure_fn:PrefigureFn|None, annotations:dict[str,type]
    ) -> TranstructFn[Desired]:
 
+    # Every non-ClassVar annotation is a constructible field, including underscore-prefixed names.
+    # Annotate internal class-level state as ClassVar to exclude it from transtruction.
     constructor_annotations = { k:v for k, v in annotations.items()
-      if k != 'return' and not k.startswith('_') and get_origin(v) != ClassVar }
+      if k != 'return' and get_origin(v) != ClassVar }
 
     transtructors = { k: self.transtructor_for(v) for k, v in constructor_annotations.items() }
 
