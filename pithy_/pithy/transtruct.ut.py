@@ -10,7 +10,7 @@ from pithy.transtruct import Transtructor, TranstructorError
 from utest import utest, utest_exc
 
 
-ttor = Transtructor()
+ttor = Transtructor(strict=False)
 
 # Primitive types.
 
@@ -162,6 +162,21 @@ utest(_bare_annotated(1, 2), ttor.transtruct, BareAnnotated, [1, 2]) # Positiona
 utest_exc(TranstructorError, ttor.transtruct, BareAnnotated, {'x': 1})
 
 
+# Strict mode: unrecognized keys in mapping input raise TranstructorError; lax mode ignores them.
+
+strict_ttor = Transtructor(strict=True)
+
+utest(DC1(1, 'a'), ttor.transtruct, DC1, {'a': 1, 'b': 'a', 'extra': 0}) # Lax: extra key is ignored.
+utest_exc(TranstructorError, strict_ttor.transtruct, DC1, {'a': 1, 'b': 'a', 'extra': 0})
+utest_exc(TranstructorError, strict_ttor.transtruct, NT1, {'a': 1, 'b': 'a', 'extra': 0})
+utest_exc(TranstructorError, strict_ttor.transtruct, BareAnnotated, {'x': 1, 'y': 2, 'extra': 0})
+
+# Strict mode still accepts exactly matching keys.
+utest(DC1(1, 'a'), strict_ttor.transtruct, DC1, {'a': 1, 'b': 'a'})
+utest(NT1(1, 'a'), strict_ttor.transtruct, NT1, {'a': 1, 'b': 'a'})
+utest(_bare_annotated(1, 2), strict_ttor.transtruct, BareAnnotated, {'x': 1, 'y': 2})
+
+
 # Scalar date/datetime/time types: parse isoformat strings by default.
 utest(date(2026, 12, 31), ttor.transtruct, date, '2026-12-31')
 utest(datetime(2026, 12, 31, 12, 30), ttor.transtruct, datetime, '2026-12-31T12:30:00')
@@ -190,7 +205,7 @@ utest(None, ttor.transtruct, date|None, None)
 
 
 # A prefigure can override the default scalar format; it reshapes the raw input before the default parser runs.
-prefigure_date_ttor = Transtructor()
+prefigure_date_ttor = Transtructor(strict=False)
 
 @prefigure_date_ttor.prefigure(date)
 def _prefigure_us_date(cls:type, val:Any, ctx:Any) -> Any:

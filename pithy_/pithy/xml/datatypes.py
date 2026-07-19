@@ -76,7 +76,7 @@ class XmlComment(XmlDatatype):
 
 
 
-xml_transtructor = Transtructor()
+xml_transtructor = Transtructor(strict=False)
 
 @xml_transtructor.selector(XmlDatatype)
 def xml_selector(class_:type[XmlDatatype], val:dict, ctx:Ctx) -> type:

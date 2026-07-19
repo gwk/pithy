@@ -88,7 +88,7 @@ class Hint:
 Hints = dict[str,Hint]
 
 
-hintTranstructor = Transtructor()
+hintTranstructor = Transtructor(strict=False)
 
 @hintTranstructor.prefigure(ChildAttrInfo)
 def prefigure_ChildAttrInfo(class_:type, val:dict, ctx:Ctx) -> dict:

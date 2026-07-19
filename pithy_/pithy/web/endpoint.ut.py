@@ -790,7 +790,7 @@ class Rect(Shape):
   h:int
 
 
-shape_transtructor = Transtructor()
+shape_transtructor = Transtructor(strict=False)
 
 @shape_transtructor.selector(Shape)
 def _select_shape(static_type:type, val:Any, ctx:Any) -> type:

@@ -479,7 +479,7 @@ _bool_repr_to_vals = {'TRUE': True, 'FALSE': False}
 
 
 
-schema_transtructor = Transtructor()
+schema_transtructor = Transtructor(strict=False)
 
 
 @schema_transtructor.prefigure(Column)

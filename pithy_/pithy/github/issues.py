@@ -94,7 +94,7 @@ def main() -> None:
 
   args = parser.parse_args()
 
-  transtructor = Transtructor()
+  transtructor = Transtructor(strict=False)
 
   for file in args.files:
     nodes = load(file)

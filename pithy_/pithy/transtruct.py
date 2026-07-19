@@ -39,6 +39,9 @@ class Transtructor:
 
   Transtructor attempts to provide automatic conversions of many structural types while not being too magicial.
 
+  The `strict` flag controls handling of unrecognized keys in mapping input for struct-like desired types.
+  Strict transtructors raise TranstructorError; lax ones ignore them.
+
   A Transtructor instance is first (optionally) configured in order to customize the transformation.
   It is then invoked using `transtructor_for` or `transtruct`.
 
@@ -67,7 +70,8 @@ class Transtructor:
   substructure, and the transtructor is the only consumer of the tree.
   '''
 
-  def __init__(self) -> None:
+  def __init__(self, *, strict:bool) -> None:
+    self.strict = strict
     self.selectors:dict[type,SelectorFn] = {}
     self.prefigures:dict[type,PrefigureFn] = {}
 
@@ -218,6 +222,8 @@ class Transtructor:
     # Plain annotation-only classes (have neither __init__ nor __new__) must be constructed manually.
     is_bare = class_.__init__ is object.__init__ and class_.__new__ is object.__new__
 
+    strict = self.strict
+
     def transtruct_annotated_class(args:Any, ctx:Ctx) -> Desired:
       if prefigure_fn: args = prefigure_fn(class_, args, ctx)
 
@@ -230,7 +236,9 @@ class Transtructor:
         typed_kwargs:dict[str,Any] = {}
         for name, val in args.items():
           try: transtructor = transtructors[name]
-          except KeyError: continue # TODO: raise error unless this element is explicitly ignored.
+          except KeyError:
+            if strict: raise TranstructorError(f'unrecognized key {name!r}', class_, args) from None
+            continue
           typed_kwargs[name] = transtructor(val, ctx)
         if is_bare: return _instantiate_bare(class_, constructor_annotations, typed_kwargs)
         try: return class_(**typed_kwargs)

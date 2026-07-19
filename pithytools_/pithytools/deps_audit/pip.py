@@ -118,7 +118,7 @@ def extract_extra_from_markers_list(l:MarkerList) -> str:
   return ''
 
 
-transtructor = Transtructor()
+transtructor = Transtructor(strict=False)
 
 @dataclass
 class PipMetadata:

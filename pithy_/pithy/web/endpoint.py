@@ -329,7 +329,7 @@ def _unwrap_field_type(hint:type|GenericAlias|UnionType) -> tuple[type,bool,bool
 
 def _new_endpoint_transtructor() -> Transtructor:
   'Create a Transtructor with the built-in endpoint guards installed.'
-  transtructor = Transtructor()
+  transtructor = Transtructor(strict=False)
 
   @transtructor.prefigure(UploadedFile) # Prevent silent construction from a JSON dict with matching keys.
   def _prefigure_uploaded_file(cls:type, val:Any, ctx:Any) -> Any:
