@@ -109,22 +109,41 @@ utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], {'a':'1'})
 utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], frozendict({'a':'1'}))
 
 
-# A failing element inside an iterable notes its zero-based index on the exception.
+# A failing element inside a container notes its locus on the exception: the zero-based index for iterables,
+# the key for dicts, and the field name for annotated classes.
 
-def _element_notes(desired:Any, val:Any) -> list[str]:
-  'Transtruct and return the element-index notes of the raised exception; transtruct is expected to fail.'
+def _locus_notes(desired:Any, val:Any) -> list[str]:
+  '''
+  Transtruct and return the locus notes of the raised exception chain; transtruct is expected to fail.
+  The chain is walked because dict element failures are wrapped in TranstructorError, with the notes on the cause.
+  The `desired`/`input` notes added by `try_transtruct` are excluded.
+  '''
   try: ttor.transtruct(desired, val)
-  except Exception as e: return [n for n in getattr(e, '__notes__', ()) if n.startswith('note: element ')]
+  except Exception as e:
+    notes:list[str] = []
+    exc:BaseException|None = e
+    while exc is not None:
+      notes.extend(n for n in getattr(exc, '__notes__', ()) if 'desired: ' not in n)
+      exc = exc.__cause__
+    return notes
   return ['<no exception>']
 
-utest_val(['note: element 1 of list[int]'], _element_notes(list[int], ['0', 'x']), desc='list element note')
-utest_val(['note: element 0 of set[int]'], _element_notes(set[int], ['x']), desc='set element note')
-utest_val(['note: element 2 of tuple[int, ...]'], _element_notes(tuple[int,...], ('0', '1', 'x')), desc='seq tuple element note')
-utest_val(['note: element 1 of tuple[int, str]'], _element_notes(tuple[int,str], ('0', 1)), desc='fixed tuple element note')
+utest_val(['note: element 1 of list[int]'], _locus_notes(list[int], ['0', 'x']), desc='list element note')
+utest_val(['note: element 0 of set[int]'], _locus_notes(set[int], ['x']), desc='set element note')
+utest_val(['note: element 2 of tuple[int, ...]'], _locus_notes(tuple[int,...], ('0', '1', 'x')), desc='seq tuple element note')
+utest_val(['note: element 1 of tuple[int, str]'], _locus_notes(tuple[int,str], ('0', 1)), desc='fixed tuple element note')
 
 # Nested containers accumulate notes from innermost to outermost.
 utest_val(['note: element 1 of list[int]', 'note: element 2 of list[list[int]]'],
-  _element_notes(list[list[int]], [['0'], ['1'], ['2', 'x']]), desc='nested list element notes')
+  _locus_notes(list[list[int]], [['0'], ['1'], ['2', 'x']]), desc='nested list element notes')
+
+# Dict failures note the failing key, or the key of the failing value.
+utest_val(['note: key 0 of dict[str, int]'], _locus_notes(dict[str,int], {0: 1}), desc='dict key note')
+utest_val(["note: value for key 'a' of dict[str, int]"], _locus_notes(dict[str,int], {'a': 'x'}), desc='dict value note')
+
+# Annotated class fields note the field name for mapping input, or the argument index and field name for positional input.
+utest_val([f"note: field 'a' of {DC1}"], _locus_notes(DC1, {'a': 'x', 'b': 'b'}), desc='class mapping field note')
+utest_val([f"note: argument 0 (field 'a') of {DC1}"], _locus_notes(DC1, ['x', 'b']), desc='class positional field note')
 
 
 utest(0, ttor.transtruct, int|str|None, 0)

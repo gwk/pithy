@@ -258,7 +258,10 @@ class Transtructor:
           except KeyError:
             if strict: raise TranstructorError(f'unrecognized key {name!r}', class_, args) from None
             continue
-          typed_kwargs[name] = transtructor(val, ctx)
+          try: typed_kwargs[name] = transtructor(val, ctx)
+          except Exception as e:
+            e.add_note(f'note: field {name!r} of {class_}')
+            raise
         if is_bare: return _instantiate_bare(class_, constructor_annotations, typed_kwargs)
         try: return class_(**typed_kwargs)
         except Exception as e: raise TranstructorError(e, class_, typed_kwargs) from e
@@ -276,7 +279,10 @@ class Transtructor:
         if pair is None:
           raise ValueError(f'{class_}: transtruct argument {idx} exceeds parameters: {constructor_annotations}')
         name, transtructor = pair
-        typed_args.append(transtructor(arg, ctx))
+        try: typed_args.append(transtructor(arg, ctx))
+        except Exception as e:
+          e.add_note(f'note: argument {idx} (field {name!r}) of {class_}')
+          raise
       if is_bare: return _instantiate_bare(class_, constructor_annotations, dict(zip(constructor_annotations, typed_args)))
       try:
         if is_type_namedtuple(class_):
@@ -314,7 +320,20 @@ class Transtructor:
 
         try: items = val.items()
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
-        try: return origin((key_ctor(k, ctx), val_ctor(v, ctx)) for k, v in items)
+
+        def transtruct_items() -> Iterator[tuple[Any,Any]]:
+          for k, v in items:
+            try: tk = key_ctor(k, ctx)
+            except Exception as e:
+              e.add_note(f'note: key {_limited_repr(k)} of {desired_type}')
+              raise
+            try: tv = val_ctor(v, ctx)
+            except Exception as e:
+              e.add_note(f'note: value for key {_limited_repr(k)} of {desired_type}')
+              raise
+            yield tk, tv
+
+        try: return origin(transtruct_items())
         except (ValueError, TypeError) as e:
           raise TranstructorError(f'failed to transtruct items of type {type(val).__name__!r}', desired_type, val) from e
 
@@ -576,11 +595,16 @@ def try_transtruct(tf:TranstructFn, desired_type:type) -> TranstructFn:
   def _try_transtruct(v:Input, ctx:Ctx) -> Any:
     try: return tf(v, ctx)
     except Exception as e:
-      v_desc = repr(v)
-      if len(v_desc) >= 100: v_desc = f'{v_desc[:99]}…'
-      e.add_note(f'note: {tf.__name__}: desired: {desired_type}; input: {v_desc}')
+      e.add_note(f'note: {tf.__name__}: desired: {desired_type}; input: {_limited_repr(v)}')
       raise
   return _try_transtruct
+
+
+def _limited_repr(v:Any) -> str:
+  'Return the repr of `v`, truncated to 100 characters.'
+  desc = repr(v)
+  if len(desc) >= 100: desc = f'{desc[:99]}…'
+  return desc
 
 
 def transtruct_bool(v:Input, ctx:Ctx) -> bool:
