@@ -3,7 +3,7 @@
 from collections import Counter, defaultdict, namedtuple
 from dataclasses import dataclass
 from datetime import date, datetime, time
-from typing import Any, ClassVar, NamedTuple
+from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 from pithy.frozendicts import frozendict
 from pithy.transtruct import Transtructor, TranstructorError
@@ -292,3 +292,50 @@ def _prefigure_us_date(cls:type, val:Any, ctx:Any) -> Any:
 utest(date(2026, 12, 31), prefigure_date_ttor.transtruct, date, '12/31/2026')
 # The prefigure applies tree-wide to every `date` element.
 utest([date(2026, 12, 30), date(2026, 12, 31)], prefigure_date_ttor.transtruct, list[date], ['12/30/2026', '12/31/2026'])
+
+
+# TypeForm support: Literal types, None shorthand, `type X = ...` aliases and Annotated wrappers.
+
+# Literal: exact members match directly; other inputs are coerced to a member type and must then match a member value.
+utest('n', ttor.transtruct, Literal['n', 's'], 'n')
+utest_exc(TranstructorError, ttor.transtruct, Literal['n', 's'], 'x')
+utest(1, ttor.transtruct, Literal[1, 2], 1)
+utest(1, ttor.transtruct, Literal[1, 2], '1')
+utest_exc(TranstructorError, ttor.transtruct, Literal[1, 2], '3')
+utest(True, ttor.transtruct, Literal[True], 'true')
+utest(1, ttor.transtruct, Literal[1, 2], True) # Per PEP 586 True is not a member of Literal[1], but it coerces to int 1.
+utest(None, ttor.transtruct, Literal['n', None], None) # None is permitted in Literal.
+
+# None is shorthand for NoneType.
+utest(None, ttor.transtruct, None, None)
+utest_exc(ValueError, ttor.transtruct, None, 0)
+
+# Annotated delegates to the underlying type.
+utest(1, ttor.transtruct, Annotated[int, 'meta'], '1')
+
+# Aliases are unwrapped, at the top level and nested.
+type Direction = Literal['n', 's', 'e', 'w']
+type IntList = list[int]
+type AnnotatedInt = Annotated[int, 'meta']
+type OptDirection = Direction|None
+
+utest('n', ttor.transtruct, Direction, 'n')
+utest_exc(TranstructorError, ttor.transtruct, Direction, 'x')
+utest([1, 2], ttor.transtruct, IntList, ['1', 2])
+utest(1, ttor.transtruct, AnnotatedInt, '1')
+utest('n', ttor.transtruct, OptDirection, 'n')
+utest(None, ttor.transtruct, OptDirection, None)
+
+# Literal nested in generics and unions.
+utest(['n', 's'], ttor.transtruct, list[Literal['n', 's']], ['n', 's'])
+utest('n', ttor.transtruct, Literal['n', 's']|None, 'n')
+utest(None, ttor.transtruct, Literal['n', 's']|None, None)
+
+
+@dataclass
+class Move:
+  direction:Direction
+  dist:int
+
+utest(Move('n', 2), ttor.transtruct, Move, {'direction': 'n', 'dist': '2'}) # Alias field type resolves through the annotation.
+utest_exc(TranstructorError, ttor.transtruct, Move, {'direction': 'x', 'dist': '2'})

@@ -32,6 +32,17 @@ def unwrap_type_alias(T:TypeForm[_T]) -> TypeForm[_T]:
   return cast(TypeForm[_T], U)
 
 
+def normalize_type_form(T:TypeForm[_T]) -> TypeForm[_T]:
+  '''
+  Normalize a type form: unwrap `type X = ...` aliases and Annotated wrappers, and convert None shorthand to NoneType.
+  '''
+  U:Any = unwrap_type_alias(T)
+  while get_origin(U) is Annotated:
+    U = unwrap_type_alias(get_args(U)[0]) # The first arg is the underlying type; the metadata args are discarded.
+  if U is None: U = NoneType # PEP 484 allows None as shorthand for NoneType.
+  return cast(TypeForm[_T], U)
+
+
 def is_a(val:Any, T:TypeForm[Any]|tuple[TypeForm[Any],...]) -> bool:
   '''
   Test if `val` is of `T`.
@@ -39,9 +50,7 @@ def is_a(val:Any, T:TypeForm[Any]|tuple[TypeForm[Any],...]) -> bool:
   '''
   if isinstance(T, tuple): return any(is_a(val, t) for t in T)
 
-  T = unwrap_type_alias(T)
-
-  if cast(Any, T) is None: T = NoneType # PEP 484 allows None as shorthand for NoneType. The cast avoids a false mypy unreachable warning.
+  T = normalize_type_form(T)
 
   args = get_args(T)
   if not args:
@@ -92,17 +101,11 @@ def _is_a_Literal(v:Any, args:_Args) -> bool:
   return any(v == a and type(v) is type(a) for a in args)
 
 
-def _is_a_Annotated(v:Any, args:_Args) -> bool:
-  # The first arg is the underlying type; the metadata args are ignored.
-  return is_a(v, args[0])
-
-
 _generic_type_predicates: dict[Any, Callable[[Any, _Args], bool]] = {
   tuple: _is_a_Tuple,
   Union: _is_a_Union,
   UnionType: _is_a_Union,
   Literal: _is_a_Literal,
-  Annotated: _is_a_Annotated,
 }
 
 
@@ -123,7 +126,7 @@ namedtuple_type_expected_attrs = frozenset({'_asdict', '_field_defaults', '_fiel
 
 
 def is_type_dataclass(t:type) -> bool:
-  return issubclass(t, tuple) and is_dataclass(t)
+  return isinstance(t, type) and is_dataclass(t)
 
 
 class DataclassInstance(Protocol):

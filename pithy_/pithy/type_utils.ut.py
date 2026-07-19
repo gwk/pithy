@@ -3,8 +3,8 @@
 from collections import Counter
 from typing import Annotated, Literal, Optional, Union
 
-from pithy.type_utils import (is_a, req_bool, req_dict, req_float, req_int, req_list, req_opt_bool, req_opt_dict, req_opt_float,
-  req_opt_int, req_opt_list, req_opt_str, req_str, req_type)
+from pithy.type_utils import (is_a, normalize_type_form, req_bool, req_dict, req_float, req_int, req_list, req_opt_bool,
+  req_opt_dict, req_opt_float, req_opt_int, req_opt_list, req_opt_str, req_str, req_type)
 from utest import utest, utest_exc
 
 
@@ -88,6 +88,15 @@ utest(False, is_a, 0, None)
 utest(True, is_a, 0, Annotated[int, 'meta']) # Annotated delegates to the underlying type.
 utest(False, is_a, '', Annotated[int, 'meta'])
 utest(True, is_a, [0], list[Annotated[int, 'meta']]) # Annotated nested in a generic.
+
+
+type AliasedAnnotatedDirection = Annotated[Direction, 'meta']
+
+utest(int, normalize_type_form, int)
+utest(type(None), normalize_type_form, None)
+utest(int, normalize_type_form, Annotated[int, 'meta'])
+utest(Literal['n', 's', 'e', 'w'], normalize_type_form, Direction)
+utest(Literal['n', 's', 'e', 'w'], normalize_type_form, AliasedAnnotatedDirection) # Alias of Annotated of alias.
 
 
 utest(0, req_type, 0, int)
