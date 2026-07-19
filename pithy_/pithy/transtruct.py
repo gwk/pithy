@@ -5,8 +5,9 @@ from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import asdict as dataclass_asdict
 from datetime import date, datetime, time
-from functools import cache
+from functools import cache, reduce
 from itertools import zip_longest
+from operator import or_
 from types import NoneType, UnionType
 from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Literal, TypeVar, Union
 
@@ -20,14 +21,14 @@ Desired = TypeVar('Desired')
 Ctx = Any
 Input = Any
 
-type SelectorFn = Callable[[type,Input,Ctx],type] # Takes the desired type, raw input, and context; returns the concrete output type to construct.
+type SelectorFn = Callable[[TypeForm[Any],Input,Ctx],TypeForm[Any]] # Takes the desired type form (a class or union form), raw input, and context; returns the output type form to construct.
 type PrefigureFn = Callable[[type,Input,Ctx],Input] # Takes the desired type, raw input, and context; returns input reshaped for transtruction.
 type TranstructFn[Desired] = Callable[[Input,Ctx],Desired] # Takes raw input and context; returns transtructed output of the desired type.
 
 
 class TranstructorError(Exception):
 
-  def __init__(self, error:Exception|str, class_:type, args:Any):
+  def __init__(self, error:Exception|str, class_:Any, args:Any):
     super().__init__(f'{error};\n  class: {class_};\n  args: {args!r}')
 
 
@@ -58,11 +59,19 @@ class Transtructor:
   also applies when constructing its subclasses.
 
   Selectors are functions that choose the concrete output type from the raw input value.
-  These are necessary for polymorphic outputs such as an attribute whose declared type is a union or base class:
-  the declared type alone does not determine what to construct, so the selector inspects the input to decide.
+  These are necessary for polymorphic cases such as union types and class families,
+  where desired type is polymorphic and the transtructor has to decide which subtype to choose for each input datum.
+  The declared type alone does not determine what to construct, so the selector inspects the input to decide.
   A selector receives the current desired type, the raw input, and the context, and returns the type to construct.
   Selection iterates: the returned subtype is itself looked up for a selector, allowing progressive refinement,
   until a selector returns the type it was passed or no further selector is registered.
+
+  A selector may be registered for union forms, which have no MRO and are matched exactly.
+  Unions are order-insensitive so `Circle|Rect` and `Rect|Circle` are the same key.
+  Unions with more than one non-primitive member require such a selector.
+  Values matching a primitive member pass through, and all other values are dispatched to the member chosen by the selector.
+  The lookup key is the union of just the non-primitive members,
+  so a selector registered for `Circle|Rect` also serves `Circle|Rect|None` and `Circle|Rect|str`.
 
   Prefigures are functions that reshape the raw input value before the desired type is constructed.
   A prefigure receives the desired type, the raw input, and the context, and returns the altered input.
@@ -74,7 +83,7 @@ class Transtructor:
 
   def __init__(self, *, strict:bool) -> None:
     self.strict = strict
-    self.selectors:dict[type,SelectorFn] = {}
+    self.selectors:dict[TypeForm[Any],SelectorFn] = {}
     self.prefigures:dict[type,PrefigureFn] = {}
 
 
@@ -102,25 +111,26 @@ class Transtructor:
     normalized_type = normalize_type_form(desired_type)
     if normalized_type is not desired_type: return self.transtructor_for(normalized_type) # type: ignore[arg-type]
 
-    if self.selector_fn_for(desired_type): # type: ignore[arg-type]
-      return self.transtructor_for_selector(desired_type) # type: ignore[arg-type]
+    if self.selector_fn_for(desired_type): # type: ignore[arg-type] # mypy sees the cache wrapper as requiring Hashable.
+      return self.transtructor_for_selector(desired_type)
 
     return try_transtruct(self.transtructor_post_selector_for(desired_type), desired_type) # type: ignore[arg-type]
 
 
-  def transtructor_for_selector(self, static_type:type[Desired]) -> TranstructFn[Desired]:
+  def transtructor_for_selector(self, static_type:TypeForm[Desired]) -> TranstructFn[Desired]:
 
     def transtruct_with_selector(val:Input, ctx:Ctx) -> Desired:
       type_ = static_type
       #print("transtruct_with_selector static_type:", static_type)
-      while selector := self.selector_fn_for(type_): # type: ignore[arg-type]
+      while selector := self.selector_fn_for(type_): # type: ignore[arg-type] # mypy sees the cache wrapper as requiring Hashable.
         #print("  selector:", selector)
-        subtype = selector(type_, val, ctx)
+        subtype = normalize_type_form(selector(type_, val, ctx))
         #print("  subtype:", subtype)
-        if subtype is type_:
+        if subtype == type_: # Equality rather than identity, because equal type forms need not be identical.
           break
-        if not issubclass(subtype, type_):
-          raise TranstructorError(f'selector {selector} returned non-subtype {subtype} for static type {static_type}', static_type, val)
+        if not is_type_form_refinement(subtype, type_):
+          raise TranstructorError(f'selector {selector} returned {subtype}, which does not refine static type {static_type}',
+            static_type, val)
         type_ = subtype
       transtructor:TranstructFn[Desired] = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
       return transtructor(val, ctx)
@@ -374,17 +384,17 @@ class Transtructor:
 
     non_primitive_types = types.difference(primitive_transtructors)
 
+    # Values matching a primitive member pass through unaltered; treat an Any member as object (accepts everything).
+    primitive_member_types = tuple(object if t is Any else t for t in types if t in primitive_transtructors)
+
     if len(non_primitive_types) > 1:
-      raise NotImplementedError(f'Union types with more than one non-primitive member are not yet supported: {desired_type}:\n  members: {types}')
+      return self.transtructor_for_union_with_selector(desired_type, prefigure_fn, non_primitive_types, primitive_member_types)
 
     if len(non_primitive_types) == 1:
-      for non_primitive_type in non_primitive_types: break # Get the single variant.
+      non_primitive_type = next(iter(non_primitive_types)) # Get the single variant.
       non_primitive_transtructor = self.transtructor_for(non_primitive_type)
     else:
       non_primitive_transtructor = None
-
-    # Values matching a primitive member pass through unaltered; treat an Any member as object (accepts everything).
-    primitive_member_types = tuple(object if t is Any else t for t in types if t in primitive_transtructors)
 
     def transtruct_union(val:Input, ctx:Ctx) -> Any:
       if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
@@ -394,6 +404,36 @@ class Transtructor:
       raise TranstructorError(f'expected value for type in {{{type_names}}}; received {type(val)!r}', desired_type, val)
 
     return transtruct_union
+
+
+  def transtructor_for_union_with_selector(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None,
+   non_primitive_types:frozenset[Any], primitive_member_types:tuple[type,...]) -> TranstructFn[Desired]:
+    '''
+    Unions with more than one non-primitive member cannot be resolved by trying members in turn;
+    they require a selector to choose the member type from the input value.
+    The selector is keyed on the union of just the non-primitive members,
+    so a selector registered for `Circle|Rect` also serves `Circle|Rect|None` and `Circle|Rect|str`.
+    '''
+    sub_union = reduce(or_, sorted(non_primitive_types, key=str)) # Sort for deterministic construction; union forms hash and compare as sets.
+    selector = self.selector_fn_for(sub_union)
+    if selector is None:
+      raise TranstructorError(f'union with multiple non-primitive members requires a selector registered for {sub_union}',
+        desired_type, non_primitive_types)
+
+    class_member_types = tuple(t for t in non_primitive_types if isinstance(t, type))
+
+    def transtruct_union_with_selector(val:Input, ctx:Ctx) -> Any:
+      if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
+      if isinstance(val, primitive_member_types): return val
+      member_type = normalize_type_form(selector(sub_union, val, ctx))
+      # The selector must choose a member (or a subclass of a class member); in particular it must not return the union itself.
+      if not (member_type in non_primitive_types or (isinstance(member_type, type) and issubclass(member_type, class_member_types))):
+        raise TranstructorError(f'selector {selector} returned {member_type}, which is not a non-primitive member of {desired_type}',
+          desired_type, val)
+      transtructor:TranstructFn = self.transtructor_for(member_type) # type: ignore[arg-type] # mypy sees the cache wrapper as requiring Hashable.
+      return transtructor(val, ctx)
+
+    return transtruct_union_with_selector
 
 
   def transtructor_for_literal_type(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None, literal_args:tuple[Any,...]
@@ -416,16 +456,20 @@ class Transtructor:
     return transtruct_literal
 
 
-  def selector(self, datatype:type) -> Callable[[SelectorFn],SelectorFn]:
+  def selector(self, datatype:TypeForm[Any]) -> Callable[[SelectorFn],SelectorFn]:
     '''
-    Function decorator that registers a selector function for the given desired (output) type.
-    Dispatch is on the desired type, not the input value: the selector is consulted whenever a value is
-    transtructed to `datatype` or one of its subclasses (lookup walks the desired type's MRO).
-    The selector is called with the current desired type, the raw input value, and the context, and returns the
-    concrete type to construct; it must return `datatype`, a subclass of it, or the type it was passed (to stop
-    refinement).
+    A function decorator that registers a selector function for the given desired (output) type form.
+    Dispatch is on the desired type, not the input value.
+    The selector is consulted whenever a value is transtructed to `datatype` or one of its subclasses;
+    lookup walks the desired type's MRO.
+    The selector is called with the current desired `datatype`, the raw input value, and the context, and returns the
+    concrete type to construct; it must return `datatype`, a subclass of it, or the type it was passed.
     This is the method by which transtructors can handle polymorphic output, e.g. an attribute whose declared type
     is a union or base class.
+
+    `datatype` may also be a union form; this is required for unions with more than one non-primitive member.
+    Such a selector must return a member of the union (or a subclass of a class member), never the union itself.
+    See the Transtructor class docstring for the union lookup rules.
     '''
     def selector_decorator(fn:SelectorFn) -> SelectorFn:
         self.selectors[datatype] = fn
@@ -449,11 +493,11 @@ class Transtructor:
 
 
   @cache
-  def selector_fn_for(self, datatype:type) -> SelectorFn|None:
+  def selector_fn_for(self, datatype:TypeForm[Any]) -> SelectorFn|None:
     '''
-    Returns the selector function for the given desired type, or None if no selector function is registered.
+    Returns the selector function for the given desired type form, or None if no selector function is registered.
     This method uses the MRO of the desired type to find base class implementations, so a selector registered on a
-    base class applies to its subclasses.
+    base class applies to its subclasses. Non-class forms such as unions have no MRO and are matched exactly.
 
     This method is cached per Transtructor instance because it is called repeatedly by the `transtruct_with_selector`
     closure.
@@ -493,6 +537,20 @@ def _instantiate_bare(class_:type[Desired], annotations:dict[str,type], typed_kw
       continue
     setattr(obj, name, val)
   return obj
+
+
+def is_type_form_refinement(subtype:Any, T:Any) -> bool:
+  '''
+  Return True if a selector result `subtype` is an acceptable refinement of type form `T`:
+  equal to T, a member of T if T is a union (or a subclass of a class member), or a subclass of T.
+  '''
+  if subtype == T: return True
+  if get_origin(T) in (Union, UnionType):
+    members = get_args(T)
+    if subtype in members: return True
+    class_members = tuple(m for m in members if isinstance(m, type))
+    return isinstance(subtype, type) and issubclass(subtype, class_members)
+  return isinstance(subtype, type) and isinstance(T, type) and issubclass(subtype, T)
 
 
 def try_transtruct(tf:TranstructFn, desired_type:type) -> TranstructFn:

@@ -15,6 +15,7 @@ from pithy.web.request import Request, UploadedFile
 from pithy.web.requestconn import BodyTooLargeError, BytesConn
 from pithy.web.response import Response
 from pithy.web.router import Router
+from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 from utest import utest, utest_exc, utest_run, utest_val
 
 
@@ -793,7 +794,7 @@ class Rect(Shape):
 shape_transtructor = Transtructor(strict=False)
 
 @shape_transtructor.selector(Shape)
-def _select_shape(static_type:type, val:Any, ctx:Any) -> type:
+def _select_shape(static_type:TypeForm[Any], val:Any, ctx:Any) -> TypeForm[Any]:
   match val:
     case {'kind': 'circle'}: return Circle
     case {'kind': 'rect'}: return Rect
@@ -876,7 +877,7 @@ class ShapeSelectorEndpoint(Endpoint):
 
 
 @ShapeSelectorEndpoint.selector(Shape)
-def _select_shape_for_endpoint(static_type:type, val:Any, ctx:Any) -> type:
+def _select_shape_for_endpoint(static_type:TypeForm[Any], val:Any, ctx:Any) -> TypeForm[Any]:
   match val:
     case {'kind': 'circle'}: return Circle
     case {'kind': 'rect'}: return Rect

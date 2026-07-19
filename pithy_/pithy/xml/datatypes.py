@@ -5,7 +5,9 @@ Base class and utilities for generated Xml datatypes; see the craft-xml-datatype
 '''
 
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Iterable, TypeVar
+from typing import Any, Callable, ClassVar, Iterable, TypeVar
+
+from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 from ..transtruct import Ctx, Transtructor
 
@@ -79,9 +81,10 @@ class XmlComment(XmlDatatype):
 xml_transtructor = Transtructor(strict=False)
 
 @xml_transtructor.selector(XmlDatatype)
-def xml_selector(class_:type[XmlDatatype], val:dict, ctx:Ctx) -> type:
+def xml_selector(class_:TypeForm[Any], val:dict, ctx:Ctx) -> TypeForm[Any]:
   #print("xml_selector:", class_, val[''])
-  return class_._datatypes[val['']]
+  datatypes:dict[str,type[XmlDatatype]] = class_._datatypes # Narrow from the TypeForm param; only XmlDatatype subclasses arrive here.
+  return datatypes[val['']]
 
 
 @xml_transtructor.prefigure(XmlDatatype)

@@ -348,3 +348,47 @@ class Move:
 
 utest(Move('n', 2), ttor.transtruct, Move, {'direction': 'n', 'dist': '2'}) # Alias field type resolves through the annotation.
 utest_exc(TranstructorError, ttor.transtruct, Move, {'direction': 'x', 'dist': '2'})
+
+
+# Unions with more than one non-primitive member require a selector, keyed on the union of the non-primitive members.
+
+@dataclass
+class Circle:
+  radius:float
+
+
+@dataclass
+class Rect:
+  w:float
+  h:float
+
+
+shape_ttor = Transtructor(strict=False)
+
+@shape_ttor.selector(Circle|Rect)
+def _select_shape(T:Any, val:Any, ctx:Any) -> Any:
+  return Circle if 'radius' in val else Rect
+
+
+utest(Circle(1.5), shape_ttor.transtruct, Circle|Rect, {'radius': '1.5'})
+utest(Rect(1.0, 2.0), shape_ttor.transtruct, Circle|Rect, {'w': 1, 'h': '2'})
+utest([Circle(1.0), Rect(1.0, 2.0)], shape_ttor.transtruct, list[Circle|Rect], [{'radius': 1}, {'w': 1, 'h': 2}])
+
+# The lookup key is the union of the non-primitive members, so wider unions with primitive members are also served.
+utest(None, shape_ttor.transtruct, Circle|Rect|None, None)
+utest(Circle(1.0), shape_ttor.transtruct, Circle|Rect|None, {'radius': 1})
+utest('name', shape_ttor.transtruct, Circle|Rect|str, 'name')
+utest(Rect(1.0, 2.0), shape_ttor.transtruct, Circle|Rect|str, {'w': 1, 'h': 2})
+
+# Without a registered selector, a union with multiple non-primitive members fails at transtructor construction.
+utest_exc(TranstructorError, ttor.transtruct, Circle|Rect, {'radius': 1})
+
+# A selector that returns a non-member raises for each offending value.
+bad_shape_ttor = Transtructor(strict=False)
+
+@bad_shape_ttor.selector(Circle|Rect)
+def _select_bad(T:Any, val:Any, ctx:Any) -> Any:
+  return str
+
+utest_exc(TranstructorError, bad_shape_ttor.transtruct, Circle|Rect, {'radius': 1}) # Via the selector refinement path.
+utest_exc(TranstructorError, bad_shape_ttor.transtruct, Circle|Rect|None, {'radius': 1}) # Via the union residue path.
