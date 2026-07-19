@@ -47,10 +47,12 @@ str_pattern_names:dict[str,list[str]] = {}
 def add_str_patterns(quote:str, label:str, multiline:bool) -> None:
   '''
   Note about lexing string literals:
-  general pattern for quoting with escapes is Q([^EQ]|EQ|EE)*Q.
+  A general pattern for quoting with escapes is Q([^EQ]|EQ|EE)*Q.
   It is crucial that the escape character E is excluded in the '[^EQ]' clause,
   or else when matching against 'QEQQ', the pattern greedily matches 'QEQ'.
-  To allow a trailing escape character, the 'EE' clause is also required.
+  The 'EE' clause is necessary to represent an escaped escape;
+  add additional escapable characters as necessary.
+  Excluding 'E' from the class also makes the pattern unambiguous which can prevent catastrophic backtracking.
   '''
   q = quote
   q0 = q[0]
