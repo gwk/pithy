@@ -322,7 +322,6 @@ class Transtructor:
 
     if issubclass(origin, Callable): # type: ignore[arg-type]
       return lambda val, ctx: val
-      raise NotImplementedError(f'Transtructor for callable type {desired_type} not implemented; origin: {origin}.')
 
     # TODO: further handling. At this point it does not make sense to just return origin,
     # because the args probably need to be considered to create well-typed values.
