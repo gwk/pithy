@@ -2,7 +2,7 @@
 
 
 from collections import Counter, defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict as dataclass_asdict
 from datetime import date, datetime, time
 from functools import cache, reduce
@@ -326,7 +326,7 @@ class Transtructor:
       el_ttor = self.transtructor_for(el_type)
 
       def transtruct_collection(val:Input, ctx:Ctx) -> Desired:
-        return origin(el_ttor(e, ctx) for e in val)
+        return origin(_transtruct_els(el_ttor, desired_type, val, ctx))
 
       return transtruct_collection
 
@@ -346,7 +346,7 @@ class Transtructor:
 
       def transtruct_seq_tuple(args:Any, ctx:Ctx) -> Any:
         if prefigure_fn: args = prefigure_fn(type_, args, ctx)
-        return rtt(el_transtructor(a, ctx) for a in args)
+        return rtt(_transtruct_els(el_transtructor, type_, args, ctx))
 
       return transtruct_seq_tuple
 
@@ -362,7 +362,10 @@ class Transtructor:
           raise ValueError(f'{type_}: transtructor received too few arguments: {idx}.')
         if transtructor is None:
           raise ValueError(f'{type_}: transtructor argument {idx} exceeds number of type annotations.')
-        typed_args.append(transtructor(arg, ctx))
+        try: typed_args.append(transtructor(arg, ctx))
+        except Exception as e:
+          e.add_note(f'note: element {idx} of {type_}')
+          raise
       return rtt(typed_args)
 
     return transtruct_tuple
@@ -537,6 +540,18 @@ def _instantiate_bare(class_:type[Desired], annotations:dict[str,type], typed_kw
       continue
     setattr(obj, name, val)
   return obj
+
+
+def _transtruct_els(el_ttor:TranstructFn, container_type:Any, els:Any, ctx:Ctx) -> Iterator[Any]:
+  '''
+  Transtruct each element of an iterable.
+  If an element fails, add a note to the exception giving the zero-based index of the failing element.
+  '''
+  for idx, el in enumerate(els):
+    try: yield el_ttor(el, ctx)
+    except Exception as e:
+      e.add_note(f'note: element {idx} of {container_type}')
+      raise
 
 
 def is_type_form_refinement(subtype:Any, T:Any) -> bool:

@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 from pithy.frozendicts import frozendict
 from pithy.transtruct import Transtructor, TranstructorError
-from utest import utest, utest_exc
+from utest import utest, utest_exc, utest_val
 
 
 ttor = Transtructor(strict=False)
@@ -107,6 +107,24 @@ utest(Counter({'a':1}), ttor.transtruct, Counter[str], {'a':'1'})
 
 utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], {'a':'1'})
 utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], frozendict({'a':'1'}))
+
+
+# A failing element inside an iterable notes its zero-based index on the exception.
+
+def _element_notes(desired:Any, val:Any) -> list[str]:
+  'Transtruct and return the element-index notes of the raised exception; transtruct is expected to fail.'
+  try: ttor.transtruct(desired, val)
+  except Exception as e: return [n for n in getattr(e, '__notes__', ()) if n.startswith('note: element ')]
+  return ['<no exception>']
+
+utest_val(['note: element 1 of list[int]'], _element_notes(list[int], ['0', 'x']), desc='list element note')
+utest_val(['note: element 0 of set[int]'], _element_notes(set[int], ['x']), desc='set element note')
+utest_val(['note: element 2 of tuple[int, ...]'], _element_notes(tuple[int,...], ('0', '1', 'x')), desc='seq tuple element note')
+utest_val(['note: element 1 of tuple[int, str]'], _element_notes(tuple[int,str], ('0', 1)), desc='fixed tuple element note')
+
+# Nested containers accumulate notes from innermost to outermost.
+utest_val(['note: element 1 of list[int]', 'note: element 2 of list[list[int]]'],
+  _element_notes(list[list[int]], [['0'], ['1'], ['2', 'x']]), desc='nested list element notes')
 
 
 utest(0, ttor.transtruct, int|str|None, 0)
