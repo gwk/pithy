@@ -28,13 +28,15 @@ git fetch origin
 
 # Local Package Sources for Repositories dependent on pithy
 
-Repositories that depend locally on packages developed here need a way to specify which wokrtree they depend on. A dependent repo's tracked `pyproject.toml` is identical across all of its worktrees, so it cannot hardcode a path to one specific pithy worktree. The solution is a gitignored `deps/` directory in the dependent repo, holding symlinks to the packages it needs, set up per worktree.
+Repositories that depend locally on packages developed here need a way to specify which worktree they depend on. A dependent repo's tracked `pyproject.toml` is identical across all of its worktrees, so it cannot hardcode a path to one specific pithy worktree. The solution is a gitignored `deps/` directory in the dependent repo, holding one symlink per dependency repo, each pointing at a worktree root of that repo. Package paths then reach through the link, e.g. `deps/pithy/pithy_`.
+
+Linking whole worktree roots rather than individual packages respects the intended synchrony between packages in a single repo and keeps the link script generic.
 
 Because packages in this repo source their siblings via `{ workspace = true }` (e.g. `pithy` sources `tolkien`), the dependent repo must declare a workspace of its own; uv refuses to resolve a `workspace = true` source from outside an actual workspace. For example:
 
 ```toml
 [tool.uv.workspace]
-members = ["deps/pithy", "deps/tolkien", "deps/utest"]
+members = ["deps/pithy/pithy_", "deps/pithy/tolkien_", "deps/pithy/utest_"]
 
 [tool.uv.sources]
 pithy = { workspace = true }
@@ -42,22 +44,19 @@ tolkien = { workspace = true }
 utest = { workspace = true }
 ```
 
-The link script should default to pairing with the pithy worktree of the same name as the dependent repo's current
-worktree, falling back to `main` if no matching branch exists; an environment variable lets you override the pairing
-for one-off cases.
+Each dependent repo carries a `sh/deps.sh` that takes a repo name and branch, validates them, and sets the symlink. A `deps` justfile rule sets all of the repo's dependency symlinks to the same branch, defaulting to `main`; a `develop` rule runs `deps` and then `uv sync`. See `sh/deps.sh` in the inish repo for the reference implementation.
 
-A minimal version, assuming the pithy and dependent worktrees are siblings:
+A minimal version, assuming the dependency and dependent repo dirs are siblings:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Pair with the pithy worktree of the same name, falling back to 'main'.
-worktree=$(basename "$PWD")
-pithy=../../pithy/$worktree
-[[ -d $pithy ]] || pithy=../../pithy/main
+repo=$1
+branch=$2
+target=../../$repo/$branch
+[[ -d $target ]] || { echo "error: no $repo worktree for branch '$branch'." 1>&2; exit 1; }
 
 mkdir -p deps
-ln -sfn "$pithy/pithy_" deps/pithy
-ln -sfn "$pithy/utest_" deps/utest
+ln -sfn "$(cd "$target" && pwd -P)" "deps/$repo"
 ```
