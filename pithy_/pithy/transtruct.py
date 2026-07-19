@@ -383,9 +383,12 @@ class Transtructor:
     else:
       non_primitive_transtructor = None
 
+    # Values matching a primitive member pass through unaltered; treat an Any member as object (accepts everything).
+    primitive_member_types = tuple(object if t is Any else t for t in types if t in primitive_transtructors)
+
     def transtruct_union(val:Input, ctx:Ctx) -> Any:
       if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
-      if type(val) in primitive_transtructors: return val
+      if isinstance(val, primitive_member_types): return val
       if non_primitive_transtructor is not None: return non_primitive_transtructor(val, ctx)
       type_names = ', '.join(sorted(t.__name__ if isinstance(t, type) else str(t) for t in types))
       raise TranstructorError(f'expected value for type in {{{type_names}}}; received {type(val)!r}', desired_type, val)

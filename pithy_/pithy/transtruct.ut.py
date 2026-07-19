@@ -113,6 +113,10 @@ utest(0, ttor.transtruct, int|str|None, 0)
 utest('0', ttor.transtruct, int|str|None, '0')
 utest(None, ttor.transtruct, int|str|None, None)
 
+# Union members are validated: a primitive value must be an instance of a primitive member to pass through.
+utest_exc(TranstructorError, ttor.transtruct, int|str|None, 0.5)
+utest(True, ttor.transtruct, int|str|None, True) # bool is an int subclass.
+
 
 class CustomInit:
   'Custom __init__ with parameters that differ from class-level annotations; transtruct uses the __init__ annotations.'
@@ -330,6 +334,11 @@ utest(None, ttor.transtruct, OptDirection, None)
 utest(['n', 's'], ttor.transtruct, list[Literal['n', 's']], ['n', 's'])
 utest('n', ttor.transtruct, Literal['n', 's']|None, 'n')
 utest(None, ttor.transtruct, Literal['n', 's']|None, None)
+
+# A Literal member of a union validates values that do not match a primitive member.
+utest(5, ttor.transtruct, Literal['n', 's']|int, 5)
+utest('n', ttor.transtruct, Literal['n', 's']|int, 'n')
+utest_exc(TranstructorError, ttor.transtruct, Literal['n', 's']|int, 'x')
 
 
 @dataclass
