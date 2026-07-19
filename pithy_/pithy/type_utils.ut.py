@@ -1,10 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import Optional
+from typing import Annotated, Literal, Optional, Union
 
 from pithy.type_utils import (is_a, req_bool, req_dict, req_float, req_int, req_list, req_opt_bool, req_opt_dict, req_opt_float,
-  req_opt_int, req_opt_list, req_opt_str, req_str)
+  req_opt_int, req_opt_list, req_opt_str, req_str, req_type)
 from utest import utest, utest_exc
 
 
@@ -61,6 +61,46 @@ utest(True, is_a, (0,0), tuple[int,...])
 
 utest(False, is_a, ('',0), tuple[int,int])
 utest(False, is_a, ('',0), tuple[int,...])
+
+
+type Direction = Literal['n', 's', 'e', 'w']
+
+utest(True, is_a, 'n', Direction)
+utest(False, is_a, 'x', Direction)
+utest(True, is_a, 'n', Literal['n', 's'])
+utest(False, is_a, 'x', Literal['n', 's'])
+
+utest(True, is_a, 1, Literal[1, 2])
+utest(False, is_a, True, Literal[1, 2]) # Per PEP 586, True is not a member of Literal[1].
+utest(True, is_a, True, Literal[True])
+utest(False, is_a, 1, Literal[True])
+utest(True, is_a, None, Literal['n', None]) # None is permitted in Literal.
+
+utest(True, is_a, ['n', 's'], list[Literal['n', 's']]) # Literal nested in a generic.
+utest(False, is_a, ['n', 'x'], list[Literal['n', 's']])
+utest(True, is_a, 'n', Union[int, Literal['n']]) # Literal nested in a union.
+utest(True, is_a, 'n', (int, Direction)) # Alias in a tuple of types.
+
+
+utest(True, is_a, None, None) # None is shorthand for NoneType.
+utest(False, is_a, 0, None)
+
+utest(True, is_a, 0, Annotated[int, 'meta']) # Annotated delegates to the underlying type.
+utest(False, is_a, '', Annotated[int, 'meta'])
+utest(True, is_a, [0], list[Annotated[int, 'meta']]) # Annotated nested in a generic.
+
+
+utest(0, req_type, 0, int)
+utest_exc(TypeError, req_type, '', int)
+
+utest([0], req_type, [0], list[int])
+utest_exc(TypeError, req_type, [''], list[int])
+
+utest('n', req_type, 'n', Direction)
+utest_exc(TypeError, req_type, 'x', Direction)
+
+utest(None, req_type, None, None)
+utest_exc(TypeError, req_type, 0, None)
 
 
 utest(True, req_bool, True)

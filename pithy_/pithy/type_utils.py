@@ -4,8 +4,10 @@ from abc import abstractmethod
 from collections import Counter
 from dataclasses import Field, is_dataclass
 from types import UnionType
-from typing import (Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol, runtime_checkable, Type,
-  TypeIs, TypeVar, Union)
+from typing import (Annotated, Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol,
+  runtime_checkable, Type, TypeAliasType, TypeIs, TypeVar, Union)
+
+from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 
 _T = TypeVar('_T')
@@ -23,17 +25,28 @@ class Comparable(Protocol):
   def __eq__(self, other:Any) -> bool: ...
 
 
-def is_a(val:Any, T:type|tuple[type,...]) -> bool:
+def unwrap_type_alias(T:TypeForm[_T]) -> TypeForm[_T]:
+  'Unwrap `type X = ...` aliases; runtime introspection does not see through them.'
+  U:Any = T # Use an Any local because mypy warn_unreachable wrongly thinks a TypeForm cannot be a TypeAliasType instance.
+  while isinstance(U, TypeAliasType): U = U.__value__
+  return cast(TypeForm[_T], U)
+
+
+def is_a(val:Any, T:TypeForm[Any]|tuple[TypeForm[Any],...]) -> bool:
   '''
   Test if `val` is of `T`.
-  Unlike `isinstance`, this function works with basic generic types.
+  Unlike `isinstance`, this function works with basic generic types, unions, Literal and Annotated types, and type aliases.
   '''
   if isinstance(T, tuple): return any(is_a(val, t) for t in T)
+
+  T = unwrap_type_alias(T)
+
+  if cast(Any, T) is None: T = NoneType # PEP 484 allows None as shorthand for NoneType. The cast avoids a false mypy unreachable warning.
 
   args = get_args(T)
   if not args:
     if T is Any: return True # Any cannot be used with isinstance.
-    return isinstance(val, T)
+    return isinstance(val, cast(type, T))
   RTT = get_origin(T)
 
   if RTT is None: raise TypeError(f'{T} has no origin type')
@@ -57,13 +70,13 @@ def is_a(val:Any, T:type|tuple[type,...]) -> bool:
   raise TypeError(f'{T} is not a single-parameter generic type; origin type: {RTT}; args: {args}')
 
 
-_Args = tuple[type, ...]
+_Args = tuple[Any, ...] # Loosened from tuple[type,...] because Literal args are values, not types.
 
 
 def _is_a_Tuple(v:Any, args:_Args) -> bool:
   if not isinstance(v, tuple): return False
   if len(args) == 2 and args[1] is Ellipsis:
-    E = args[0] # type: ignore[unreachable]
+    E = args[0]
     return all(is_a(el, E) for el in v)
   else:
     return len(v) == len(args) and all(is_a(el, E) for (el, E) in zip(v, args))
@@ -74,10 +87,22 @@ def _is_a_Union(v:Any, args:_Args) -> bool:
   return any(is_a(v, Member) for Member in args)
 
 
+def _is_a_Literal(v:Any, args:_Args) -> bool:
+  # Compare types as well as values per PEP 586, so that e.g. True does not match Literal[1].
+  return any(v == a and type(v) is type(a) for a in args)
+
+
+def _is_a_Annotated(v:Any, args:_Args) -> bool:
+  # The first arg is the underlying type; the metadata args are ignored.
+  return is_a(v, args[0])
+
+
 _generic_type_predicates: dict[Any, Callable[[Any, _Args], bool]] = {
   tuple: _is_a_Tuple,
   Union: _is_a_Union,
   UnionType: _is_a_Union,
+  Literal: _is_a_Literal,
+  Annotated: _is_a_Annotated,
 }
 
 
@@ -177,25 +202,12 @@ def is_str_or_pair(val: Any) -> bool: return is_str(val) or is_pair_of_str(val)
 def is_pos_int(val: Any) -> bool: return is_int(val) and bool(val > 0)
 
 
-def is_literal(val:Any, of_type:Any) -> bool:
+def req_type(obj:Any, expected:TypeForm[_T]) -> _T:
   '''
-  Return `True` if `val` is a member of the `of_type` literal type.
-  Unfortunately mypy treats `literal['x']` as a <typing special form>  and not a type,
-  so `of_type` cannot be declared as `type` or `type[Literal]`.
-  Furthermore it appears impossible to implement a generic `req_literal` function as of mypy 1.11.
+  Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.
+  `expected` is a `TypeForm` (PEP 747), so in addition to regular and generic types
+  it accepts unions, Literal and Annotated types, None as shorthand for NoneType, and `type X = ...` aliases thereof.
   '''
-  if get_origin(of_type) != Literal: raise TypeError(f'expected Literal type; received: {of_type!r}')
-  return val in get_args(of_type)
-
-
-def req_literal(val:Any, expected:Any) -> Any:
-  if val not in get_args(expected):
-    raise TypeError(f'expected literal value in {expected!r}; received: {val!r}')
-  return val
-
-
-def req_type(obj:Any, expected:type[_T]) -> _T:
-  'Return `obj` if it is of `expected` type, or else raise a descriptive TypeError.'
   if not is_a(obj, expected):
     raise TypeError(f'expected type: {expected}; actual type: {type(obj)};\n  object: {obj!r}')
   return cast(_T, obj)
