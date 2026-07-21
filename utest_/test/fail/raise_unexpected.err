@@ -46,6 +46,7 @@
 ~ .+/raise_unexpected.py:\d+: utest failure: yield_then_raise
 |   arg 0 = 1
 |   expected sequence: [0]
+~   returned value:    <generator object yield_then_raise at 0x\w+>
 |   raised exception:  Exception('unexpected')
 |     exc arg 0: 'unexpected'
 |

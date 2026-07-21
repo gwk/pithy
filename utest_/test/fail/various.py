@@ -9,6 +9,7 @@ utest_exc(Exception('expected'), lambda: True)
 
 utest_seq([0], range, 0) # unexpected sequence.
 utest_seq([0], lambda: 0) # returns non-iterable.
+utest_seq([0, 1], lambda: [1, None], _sort=True) # unorderable elements; sort raises.
 
 utest_seq_exc(Exception('expected'), range, 1) # does not raise expected.
 utest_seq_exc(Exception('expected'), lambda: 0) # returns non-iterable.

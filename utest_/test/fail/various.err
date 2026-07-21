@@ -21,6 +21,7 @@
 |
 ~ \./various.py:\d+: utest failure: <lambda>
 |   expected sequence: [0]
+|   returned value:    0
 |   raised exception:  TypeError("'int' object is not iterable")
 |     exc arg 0: "'int' object is not iterable"
 |
@@ -28,6 +29,19 @@
 ~   File ".+/utest/__init__.py", line \d+, in utest_seq
 |     ret = list(ret_seq)
 | TypeError: 'int' object is not iterable
+|
+|
+~ \./various.py:\d+: utest failure: <lambda>
+|   expected sequence: [0, 1]
+|   returned sequence: [1, None]
+|   raised exception:  TypeError("'<' not supported between instances of 'NoneType' and 'int'")
+|     exc arg 0: "'<' not supported between instances of 'NoneType' and 'int'"
+|
+| Traceback (most recent call last):
+~   File ".+/utest/__init__.py", line \d+, in utest_seq
+|     try: ret.sort()
+|          ~~~~~~~~^^
+| TypeError: '<' not supported between instances of 'NoneType' and 'int'
 |
 |
 ~ \./various.py:\d+: utest failure: range

@@ -216,7 +216,7 @@ def utest_seq(exp_seq:Iterable[Any], fn:Callable, *args:Any, _exit:bool=False, _
   if _sort:
     try: ret.sort()
     except BaseException as exc:
-      _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sort', ret=ret_seq, exc=exc, subj=fn,
+      _utest_failure(_utest_depth, exp_label='sequence', exp=exp, ret_label='sequence', ret=ret, exc=exc, subj=fn,
         label=_utest_label, args=args, kwargs=kwargs)
       return
   if exp != ret:
@@ -359,7 +359,7 @@ def compare_exceptions(exp:ExpectedException, act:Any) -> bool:
   return type(exp) == type(act) and exp.args == act.args
 
 
-def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:BaseException|None=None,
+def _utest_failure(depth:int, *, exp_label:str, exp:Any, ret_label:str|None=None, ret:Any=None, exc:BaseException|None=None,
  use_traceback:bool=False, subj:Any=None, label:str|None=None, args:tuple[Any,...]=(), kwargs:dict[str,Any]={}) -> None:
   '''
   Report a test failure. `depth` is the number of extra stack frames between this function and the test call site.
@@ -397,18 +397,19 @@ def _utest_failure(depth:int, exp_label:str, exp:Any, ret_label:str|None=None, r
   for name, val, in kwargs.items():
     _errL(f'  arg {name} = {val!r}')
 
+  if not ret_label and exc is None:
+    raise AssertionError('_utest_failure requires `ret_label` or `exc`.')
+
   exp_label_colon = f'expected {exp_label}:'
-  if ret_label: # Unexpected value.
-    res_label_colon = f'returned {ret_label}:'
-    res = ret
-  if exc is not None: # Unexpected exception.
-    res_label_colon = 'raised exception:'
-    res = exc
-  width = max(len(exp_label_colon),len(res_label_colon))
+  ret_label_colon = f'returned {ret_label}:' if ret_label else ''
+  exc_label_colon = 'raised exception:' if exc is not None else ''
+  width = max(len(exp_label_colon), len(ret_label_colon), len(exc_label_colon))
 
   _errL(f'  {exp_label_colon:{width}} {exp!r}')
-  _errL(f'  {res_label_colon:{width}} {res!r}')
-  if exc is not None: # Unexpected exception.
+  if ret_label:
+    _errL(f'  {ret_label_colon:{width}} {ret!r}')
+  if exc is not None:
+    _errL(f'  {exc_label_colon:{width}} {exc!r}')
     for i, arg in enumerate(exc.args):
       _errL(f'    exc arg {i}: {arg!r}')
     _errL()
