@@ -75,7 +75,7 @@ def m0002_gadgets(c:Cursor) -> None:
   with migrations_pkg() as (pkg, d):
     write_migration(d, 'm0001_widgets.sql', 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);')
     write_migration(d, 'm0002_gadgets.py', py)
-    main_migrate(pkg, argv=['check'])
+    with adjust_log_level('warn'): main_migrate(pkg, argv=['check'])
 
 
 # check: a .py migration missing its stem-named function raises.

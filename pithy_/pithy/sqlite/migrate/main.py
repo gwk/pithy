@@ -19,7 +19,7 @@ from argparse import Namespace
 from typing import Iterable, Sequence
 
 from ...argparser import CommandParser
-from ...logs import logW
+from ...logs import logI, logW
 from ..database import Database, DbConfig
 from ..schema import Schema
 from .transaction import MigrationError
@@ -50,7 +50,7 @@ def main_migrate(migrations:types.ModuleType|str, *, config:DbConfig|None=None, 
     'Check that the migration files are well-formed: names, version contiguity, and .py migration functions.'
     files = check_migrations(migrations)
     latest = max((f.version for f in files), default=0)
-    print(f'checked {len(files)} migration files; latest version is {latest}.')
+    logI('Checked migration files.', count=len(files), latest_version=latest)
     if config is not None and config.user_version is not None and config.user_version != latest:
       logW('Latest migration version does not match the configured user_version.', latest=latest,
         user_version=config.user_version)
