@@ -20,4 +20,9 @@ done
 
 (( ${#pkg_dirs[@]} )) || fail "no packages specified."
 
-uv pip install "${flags[@]}" "${pkg_dirs[@]}"
+# The repo root is a uv workspace.
+# `--no-sources` prevents intra-repo dependencies (e.g. tolkien for pithy) from being installed as editable.
+# Use `uv sync` for editable dev setups instead.
+# With --no-sources, an intra-repo dependency must either be listed in this same invocation or already be installed;
+# otherwise uv fetches it from PyPI.
+uv pip install --no-sources "${flags[@]}" "${pkg_dirs[@]}"
