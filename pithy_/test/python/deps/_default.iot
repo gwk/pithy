@@ -1,0 +1,6 @@
+{
+  'cmd': 'python3 -m pithy.python.deps',
+  'links': {
+    'pithy_/test/python/deps/fixtures',
+  },
+}

@@ -1,0 +1,6 @@
+Modules importing alpha.base:
+alpha  alpha.mid  alpha.tip
+
+Symbol dependents of alpha.base:
+alpha.mid.Mid: .base.Base  .base.helper
+alpha.tip.run: .base.CONST

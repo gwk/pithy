@@ -91,7 +91,6 @@ def _is_a_Tuple(v:Any, args:_Args) -> bool:
 
 
 def _is_a_Union(v:Any, args:_Args) -> bool:
-  # Union is an extra strange case, because the origin type is not a runtime type either.
   return any(is_a(v, Member) for Member in args)
 
 
@@ -324,3 +323,22 @@ def req_opt_dict(obj:Any, K:type=object, V:type=object) -> dict|None:
       if not isinstance(v, V):
         raise TypeError(f'expected value type: {V}; actual type: {type(v)}; value: {v!r}')
   return obj
+
+
+def nonopt_union(opt_type:type) -> Any: # Can return `<typing special from>`.
+  '''
+  Given a Union containing NoneType, return another Union type without NoneType,
+  or if there is only a single remaining type return it.
+  Otherwise raise TypeError.
+  '''
+  if get_origin(opt_type) == Union:
+    args = get_args(opt_type)
+    try: idx = args.index(NoneType)
+    except ValueError: pass
+    else:
+      if len(args) == 2:
+        return args[0] if idx else args[1]
+      else:
+        nonopt_args = args[:idx] + args[idx+1:]
+        return Union[tuple(nonopt_args)]
+  raise TypeError(f'expected a Union containing NoneType; received: {opt_type!r}')

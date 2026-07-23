@@ -1,0 +1,10 @@
+Modules with dependencies:
+alpha: .base
+alpha.mid: os  .base
+alpha.tip: json  .base  .mid
+
+Modules without internal dependencies:
+alpha.base
+
+Modules without dependents:
+alpha  alpha.tip

@@ -1,0 +1,3 @@
+{
+  'args': ['fixtures/alpha', '-dependencies', 'alpha.mid.Mid'],
+}
