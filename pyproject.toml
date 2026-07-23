@@ -24,4 +24,6 @@ dev = [
   "types-lxml >= 2026.2.16",
   "types-PyYAML >= 6.0.12.20260518",
   "types-pygments >= 2.19.0.20250809",
+  "uvicorn >= 0.30", # Imported by pithy.logs.uvicorn and pithy.web; optional at runtime, required for typechecking.
+  "watchfiles >= 1.0", # Imported by pithy.web.reload; optional at runtime, required for typechecking.
 ]

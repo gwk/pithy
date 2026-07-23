@@ -23,10 +23,10 @@ check: check-pyproject isort lint typecheck test
 check-full: gen check-pyproject isort lint typecheck test-full
 
 check-pyproject:
-  build/check-pyproject.py {{pkgs}}
+  uv run build/check-pyproject.py {{pkgs}}
 
 cov:
-  iotest {{pkg_tests_full}} -coverage
+  uv run iotest {{pkg_tests_full}} -coverage
 
 cov-meta:
   iotest_/test-meta/meta-coverage.sh
@@ -38,48 +38,48 @@ develop-venv:
   sh/develop-venv.sh {{pkgs}}
 
 docs:
-  craft-docs
+  uv run craft-docs
 
 gen:
   make gen
 
 isort:
-  isort {{pkg_srcs}} test-diff tools
+  uv run isort {{pkg_srcs}} test-diff tools
 
 install:
   sh/install.sh {{pkgs}}
 
 iotest:
-  iotest {{pkg_tests_fast}}
+  uv run iotest {{pkg_tests_fast}}
 
 iotest-full:
-  iotest {{pkg_tests_full}}
+  uv run iotest {{pkg_tests_full}}
 
 
 link-claude-md:
   find . -name 'AGENTS.md' -print0 | xargs -0 -I {} sh -c 'ln -sf "$(basename {})" "$(dirname {})/CLAUDE.md"'
 
 lint:
-  pyflakes {{pkg_srcs}} test-diff tools
+  uv run pyflakes {{pkg_srcs}} test-diff tools
 
 test: utest iotest
 
 test-full: utest iotest-full
 
 test-diff:
-  test-diff/test.py
+  uv run test-diff/test.py
 
 test-diff-data:
   rm -rf _build/test-diff/*
-  test-diff/collect-diff-examples.py ../pithy ../quilt
+  uv run test-diff/collect-diff-examples.py ../pithy ../quilt
 
 typecheck: typecheck-py-packages typecheck-other
 
 typecheck-py-packages:
-  mypy {{pkg_srcs}}
+  uv run mypy {{pkg_srcs}}
 
 typecheck-other:
-  mypy perf test-diff tools
+  uv run mypy perf test-diff tools
 
 typecheck-js:
   tsc
@@ -99,4 +99,4 @@ vscode-insider-links:
   ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
 
 utest:
-  python3 -m utest {{pkg_srcs}}
+  uv run python3 -m utest {{pkg_srcs}}
