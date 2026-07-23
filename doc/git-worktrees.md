@@ -60,3 +60,10 @@ target=../../$repo/$branch
 mkdir -p deps
 ln -sfn "$(cd "$target" && pwd -P)" "deps/$repo"
 ```
+
+
+# Repos That Are Both Dependents and Dependencies
+
+uv does not support nested workspaces: a workspace member may not itself declare a `[tool.uv.workspace]` table. Consequently, a repo that places its package pyproject at the repo root and declares its workspace there cannot be consumed as a workspace member by a repo that depends on it. Such a repo can instead be consumed as a path source, e.g. `b = { path = "deps/b", editable = true }`, but uv ignores the `tool.uv.sources` of a path dependency that is not a workspace member, so any local dependency of the path dep that the consuming repo does not also pin itself silently resolves from the registry instead.
+
+Therefore, any repo that other repos consume must use the virtual-root layout of this repo: packages live in `*_` subdirectories, and the root `pyproject.toml` declares only the workspace not a package. Dependent repos then list the `*_` package dirs as members, e.g. `deps/b/b_`. Member sources are honored, so a member's `{ workspace = true }` sources resolve within the consuming repo's workspace, and a missing member is a hard error at lock time rather than a silent registry fallback. Only application repos that nothing else consumes should place their package at the repo root.
