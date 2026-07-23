@@ -3,7 +3,6 @@
 from abc import abstractmethod
 from collections import Counter
 from dataclasses import Field, is_dataclass
-from types import UnionType
 from typing import (Annotated, Any, Callable, cast, ClassVar, get_args, get_origin, Literal, overload, Protocol,
   runtime_checkable, Type, TypeAliasType, TypeIs, TypeVar, Union)
 
@@ -104,7 +103,6 @@ def _is_a_Literal(v:Any, args:_Args) -> bool:
 _generic_type_predicates: dict[Any, Callable[[Any, _Args], bool]] = {
   tuple: _is_a_Tuple,
   Union: _is_a_Union,
-  UnionType: _is_a_Union,
   Literal: _is_a_Literal,
 }
 

@@ -4,8 +4,9 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from http import HTTPStatus
 from inspect import get_annotations
-from types import GenericAlias, UnionType
-from typing import Any, ClassVar, get_args, get_origin
+from types import GenericAlias
+from typing import Any, ClassVar, get_args, get_origin, Union
+from typing_extensions import TypeForm
 
 from ..http import endpoint_methods
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
@@ -302,7 +303,7 @@ def _transtruct_converter(tf:TranstructFn[Any]) -> Callable[[object],object]:
 _NoneType = type(None)
 
 
-def _unwrap_field_type(hint:type|GenericAlias|UnionType) -> tuple[type,bool,bool]:
+def _unwrap_field_type(hint:TypeForm) -> tuple[type,bool,bool]:
   '''
   Decompose an endpoint field type hint into (element_type, is_optional, is_list).
   Supports only the shapes that HTTP param semantics dictate: T, T|None, list[T], list[T]|None.
@@ -310,7 +311,7 @@ def _unwrap_field_type(hint:type|GenericAlias|UnionType) -> tuple[type,bool,bool
   Any other shape is rejected as a developer error.
   '''
   is_optional = False
-  if isinstance(hint, UnionType):
+  if get_origin(hint) is Union:
     args = get_args(hint)
     non_none = [a for a in args if a is not _NoneType]
     if _NoneType not in args or len(non_none) != 1:

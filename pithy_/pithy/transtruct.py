@@ -8,7 +8,7 @@ from datetime import date, datetime, time
 from functools import cache, reduce
 from itertools import zip_longest
 from operator import or_
-from types import NoneType, UnionType
+from types import NoneType
 from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Literal, TypeVar, Union
 
 from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
@@ -301,10 +301,13 @@ class Transtructor:
 
     # The origin type is usually a runtime type, but not in the case of Union and Literal.
 
-    if cast(Any, origin) is Literal: # The cast avoids a false mypy unreachable warning.
+    # The casts to object avoid false mypy unreachable warnings:
+    # mypy treats Literal and Union as special forms that cannot overlap with `type`.
+
+    if cast(object, origin) is Literal:
       return self.transtructor_for_literal_type(desired_type, prefigure_fn, type_args)
 
-    if origin in(Union, UnionType):
+    if cast(object, origin) is Union:
       return self.transtructor_for_union_type(desired_type, prefigure_fn, frozenset(normalize_type_form(t) for t in type_args))
 
     if issubclass(origin, tuple):
@@ -579,7 +582,7 @@ def is_type_form_refinement(subtype:Any, T:Any) -> bool:
   equal to T, a member of T if T is a union (or a subclass of a class member), or a subclass of T.
   '''
   if subtype == T: return True
-  if get_origin(T) in (Union, UnionType):
+  if get_origin(T) is Union:
     members = get_args(T)
     if subtype in members: return True
     class_members = tuple(m for m in members if isinstance(m, type))
