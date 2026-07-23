@@ -1,36 +1,8 @@
 {
   "permissions": {
-    "defaultMode": "auto",
-    "allow": [
-      "Bash(git --no-pager status:*)",
-      "Bash(git show:*)",
-      "Bash(git status:*)",
-      "Bash(just:*)",
-      "Edit",
-      "Monitor",
-      "WebFetch(domain:api.github.com)",
-      "WebSearch",
-      "Write",
-      "mcp__playwright__browser_navigate",
-      "mcp__playwright__browser_take_screenshot",
-      "mcp__playwright__browser_snapshot"
-    ],
     "deny": [
       "Bash(npx:*)",
       "Skill(code-review)"
-    ],
-    "additionalDirectories": []
-  },
-  "sandbox": {
-    "enabled": true,
-    "failIfUnavailable": true,
-    "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false,
-    "fileSystem": {
-      "allowRead": []
-    },
-    "network": {
-      "allowLocalBinding": true
-    }
+    ]
   }
 }
