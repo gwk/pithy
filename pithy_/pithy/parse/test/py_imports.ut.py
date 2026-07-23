@@ -2,7 +2,7 @@
 
 from pithy.parse import (Atom, Choice, choice_labeled, Infix, Left, left_binary_to_list, Opt, parse_skel, Parser, Precedence,
   Struct, ZeroOrMore)
-from pithy.py.lex import lexer
+from pithy.python.lex import lexer
 from utest import utest
 
 

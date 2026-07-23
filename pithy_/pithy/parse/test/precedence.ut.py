@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.parse import Adjacency, Atom, Infix, Left, parse_skel, Parser, Precedence, Prefix, Right, Suffix
-from pithy.py.lex import lexer
+from pithy.python.lex import lexer
 from utest import utest
 
 

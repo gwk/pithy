@@ -4,7 +4,7 @@ from typing import Any
 
 from pithy.parse import (Atom, atom_text, Infix, Left, left_binary_to_list, parse_skel, Parser, Precedence, Right,
   right_binary_to_stack)
-from pithy.py.lex import lexer
+from pithy.python.lex import lexer
 from pithy.stack import Stack
 from utest import utest
 

@@ -3,7 +3,7 @@
 from typing import Any
 
 from pithy.parse import Atom, choice_labeled, OneOrMore, OrderedChoice, parse_skel, Parser, Struct
-from pithy.py.lex import lexer
+from pithy.python.lex import lexer
 from utest import utest
 
 

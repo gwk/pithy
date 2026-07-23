@@ -5,7 +5,7 @@ from math import ceil, log10
 from sys import argv
 
 from pithy.io import errL
-from pithy.py.lex import lexer
+from pithy.python.lex import lexer
 from tolkien import Source
 
 
