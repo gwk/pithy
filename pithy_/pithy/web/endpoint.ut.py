@@ -842,7 +842,7 @@ class PrefiguredPointEndpoint(Endpoint):
 
 
 @PrefiguredPointEndpoint.prefigure(Point)
-def _prefigure_point(cls:type, val:Any, ctx:Any) -> Any:
+def _prefigure_point(cls:TypeForm[Any], val:Any, ctx:Any) -> Any:
   if isinstance(val, str):
     x, _, y = val.partition(',')
     return {'x': x, 'y': y}

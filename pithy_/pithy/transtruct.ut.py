@@ -7,6 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 from pithy.frozendicts import frozendict
 from pithy.transtruct import Transtructor, TranstructorError
+from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 from utest import utest, utest_exc, utest_val
 
 
@@ -324,7 +325,7 @@ utest(None, ttor.transtruct, date|None, None)
 prefigure_date_ttor = Transtructor(strict=False)
 
 @prefigure_date_ttor.prefigure(date)
-def _prefigure_us_date(cls:type, val:Any, ctx:Any) -> Any:
+def _prefigure_us_date(cls:TypeForm[Any], val:Any, ctx:Any) -> Any:
   if isinstance(val, str): # Reshape 'MM/DD/YYYY' into an isoformat string for the default parser.
     month, day, year = val.split('/')
     return f'{year}-{month}-{day}'

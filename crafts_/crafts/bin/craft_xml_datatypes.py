@@ -19,6 +19,7 @@ from pithy.strings import truncate_repr_with_ellipsis
 from pithy.transtruct import bool_vals, Ctx, Transtructor
 from pithy.xml.datatypes import ChildAttrInfo
 from pithy.xml.xmldict import XmlDict, XmlDictParser, XmlError
+from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 
 def main() -> None:
@@ -91,7 +92,7 @@ Hints = dict[str,Hint]
 hintTranstructor = Transtructor(strict=False)
 
 @hintTranstructor.prefigure(ChildAttrInfo)
-def prefigure_ChildAttrInfo(class_:type, val:dict, ctx:Ctx) -> dict:
+def prefigure_ChildAttrInfo(class_:TypeForm[Any], val:dict, ctx:Ctx) -> dict:
   return dict_remap_keys_mut(val, remap_ChildAttrInfo_keys)
 
 

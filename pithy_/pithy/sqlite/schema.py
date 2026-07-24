@@ -6,6 +6,7 @@ from functools import cached_property
 from typing import Any, Callable, Iterable, Self
 
 from tolkien import Source
+from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 from ..dict import dict_strict_inverse
 from ..parse import Syn
@@ -483,7 +484,7 @@ schema_transtructor = Transtructor(strict=False)
 
 
 @schema_transtructor.prefigure(Column)
-def prefigure_Column(class_:type, column:Input, source:Source) -> dict[str,Any]:
+def prefigure_Column(class_:TypeForm[Any], column:Input, source:Source) -> dict[str,Any]:
   name = sql_parse_entity(source[column.name])
   if column.type_name is None: raise ValueError(f'Column {name!r} has no type.')
   type_name = source[column.type_name]
@@ -542,7 +543,7 @@ def _parse_column_constraint(constraint:Input, source:Source) -> tuple[str,Any]:
 
 
 @schema_transtructor.prefigure(Table)
-def prefigure_Table(class_:type, create_temporary:Input, source:Source) -> dict[str,Any]:
+def prefigure_Table(class_:TypeForm[Any], create_temporary:Input, source:Source) -> dict[str,Any]:
   #_is_temporary = create_temporary.is_temporary # TODO: use this.
   table = create_temporary.structure
 

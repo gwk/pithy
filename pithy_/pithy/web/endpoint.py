@@ -4,8 +4,8 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from http import HTTPStatus
 from inspect import get_annotations
-from types import GenericAlias
 from typing import Any, ClassVar, get_args, get_origin, Union
+
 from typing_extensions import TypeForm
 
 from ..http import endpoint_methods
@@ -68,7 +68,7 @@ class Endpoint(RequestHandler):
 
   To customize conversion by type, register prefigure/selector functions on the endpoint class after its body:
     @MyEndpoint.prefigure(MyType)
-    def _prefigure_my_type(cls:type, val:Any, ctx:Any) -> Any: ...
+    def _prefigure_my_type(cls:TypeForm[Any], val:Any, ctx:Any) -> Any: ...
   Each subclass that registers a customization gets its own private Transtructor;
   uncustomized subclasses share a common default, so customizations never affect other endpoints.
   Field converters are resolved lazily when the class first handles a request;
@@ -333,7 +333,7 @@ def _new_endpoint_transtructor() -> Transtructor:
   transtructor = Transtructor(strict=False)
 
   @transtructor.prefigure(UploadedFile) # Prevent silent construction from a JSON dict with matching keys.
-  def _prefigure_uploaded_file(cls:type, val:Any, ctx:Any) -> Any:
+  def _prefigure_uploaded_file(cls:TypeForm[Any], val:Any, ctx:Any) -> Any:
     if isinstance(val, UploadedFile): return val
     raise ValueError(f'Expected a file upload, got {type(val).__name__!r}.')
 

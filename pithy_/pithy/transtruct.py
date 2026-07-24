@@ -22,13 +22,18 @@ Ctx = Any
 Input = Any
 
 type SelectorFn = Callable[[TypeForm[Any],Input,Ctx],TypeForm[Any]] # Takes the desired type form (a class or union form), raw input, and context; returns the output type form to construct.
-type PrefigureFn = Callable[[type,Input,Ctx],Input] # Takes the desired type, raw input, and context; returns input reshaped for transtruction.
+type PrefigureFn = Callable[[TypeForm[Any],Input,Ctx],Input] # Takes the desired type form, raw input, and context; returns input reshaped for transtruction.
 type TranstructFn[Desired] = Callable[[Input,Ctx],Desired] # Takes raw input and context; returns transtructed output of the desired type.
+
+
+def _cache[**P, R](fn:Callable[P,R]) -> Callable[P,R]:
+  'Typed wrapper for functools.cache, which erases the wrapped signature (Hashable args, unbound return TypeVars).'
+  return cache(fn) # type: ignore[return-value] # The _lru_cache_wrapper type does not parameterize over the wrapped signature.
 
 
 class TranstructorError(Exception):
 
-  def __init__(self, error:Exception|str, class_:Any, args:Any):
+  def __init__(self, error:Exception|str, class_:TypeForm[Any], args:Any):
     super().__init__(f'{error};\n  class: {class_};\n  args: {args!r}')
 
 
@@ -84,12 +89,12 @@ class Transtructor:
   def __init__(self, *, strict:bool) -> None:
     self.strict = strict
     self.selectors:dict[TypeForm[Any],SelectorFn] = {}
-    self.prefigures:dict[type,PrefigureFn] = {}
+    self.prefigures:dict[TypeForm[Any],PrefigureFn] = {}
 
 
   def transtruct(self, desired_type:TypeForm[Desired], val:Input, *, ctx:Ctx|None=None, dbg:bool=False) -> Desired:
     try:
-      transtructor:TranstructFn[Desired] = self.transtructor_for(desired_type) # type: ignore[arg-type]
+      transtructor = self.transtructor_for(desired_type)
     except TypeError as e:
       e.add_note(f'transtruct argument 1 should be the desired type; received: `{repr(desired_type)[:64]}…`')
       raise
@@ -97,7 +102,7 @@ class Transtructor:
     return transtructor(val, ctx)
 
 
-  @cache
+  @_cache
   def transtructor_for(self, desired_type:TypeForm[Desired]) -> TranstructFn[Desired]:
     '''
     Return a "transtructor" function for the desired output type.
@@ -109,12 +114,12 @@ class Transtructor:
     This means that the transtructor instance must not be further customized after the first call to this method.
     '''
     normalized_type = normalize_type_form(desired_type)
-    if normalized_type is not desired_type: return self.transtructor_for(normalized_type) # type: ignore[arg-type]
+    if normalized_type is not desired_type: return self.transtructor_for(normalized_type)
 
-    if self.selector_fn_for(desired_type): # type: ignore[arg-type] # mypy sees the cache wrapper as requiring Hashable.
+    if self.selector_fn_for(desired_type):
       return self.transtructor_for_selector(desired_type)
 
-    return try_transtruct(self.transtructor_post_selector_for(desired_type), desired_type) # type: ignore[arg-type]
+    return try_transtruct(self.transtructor_post_selector_for(desired_type), desired_type)
 
 
   def transtructor_for_selector(self, static_type:TypeForm[Desired]) -> TranstructFn[Desired]:
@@ -122,7 +127,7 @@ class Transtructor:
     def transtruct_with_selector(val:Input, ctx:Ctx) -> Desired:
       type_ = static_type
       #print("transtruct_with_selector static_type:", static_type)
-      while selector := self.selector_fn_for(type_): # type: ignore[arg-type] # mypy sees the cache wrapper as requiring Hashable.
+      while selector := self.selector_fn_for(type_):
         #print("  selector:", selector)
         subtype = normalize_type_form(selector(type_, val, ctx))
         #print("  subtype:", subtype)
@@ -132,14 +137,14 @@ class Transtructor:
           raise TranstructorError(f'selector {selector} returned {subtype}, which does not refine static type {static_type}',
             static_type, val)
         type_ = subtype
-      transtructor:TranstructFn[Desired] = self.transtructor_post_selector_for(type_) # type: ignore[arg-type]
+      transtructor = self.transtructor_post_selector_for(type_)
       return transtructor(val, ctx)
 
     return transtruct_with_selector
 
 
-  @cache
-  def transtructor_post_selector_for(self, desired_type:type[Desired]) -> TranstructFn[Desired]:
+  @_cache
+  def transtructor_post_selector_for(self, desired_type:TypeForm[Desired]) -> TranstructFn[Desired]:
     '''
     Choose a transtructor for the desired output type, but after any selector has been applied.
     This prevents infinite recursion for types whose selectors return the original type,
@@ -153,7 +158,7 @@ class Transtructor:
 
     # Primitive types are excluded from prefigure because they are the hottest path
     # and it usually does not make sense to alter their handling across an entire value tree.
-    try: return primitive_transtructors[desired_type] # type: ignore[return-value]
+    try: return primitive_transtructors[desired_type]
     except KeyError: pass
 
     prefigure_fn = self.prefigure_fn_for(desired_type)
@@ -174,6 +179,10 @@ class Transtructor:
     type_args = get_args(desired_type)
     if origin and type_args: # Generic types have an origin type and a tuple of type arguments.
       return self.transtructor_for_generic_type(desired_type, prefigure_fn, origin=origin, type_args=type_args)
+
+    # All remaining cases require an actual class; any other form (e.g. a bare TypeVar) is not constructible.
+    if not isinstance(desired_type, type):
+      raise TypeError(f'transtruction of type form {desired_type!r} is not supported')
 
     init = getattr(desired_type, '__init__', None)
     if init and init is not object.__init__:
@@ -228,8 +237,8 @@ class Transtructor:
       return transtruct_unannotated_namedtuple
 
 
-  def transtructor_for_annotated_class(self, class_:type[Desired], prefigure_fn:PrefigureFn|None, annotations:dict[str,type]
-   ) -> TranstructFn[Desired]:
+  def transtructor_for_annotated_class(self, class_:type[Desired], prefigure_fn:PrefigureFn|None,
+   annotations:dict[str,TypeForm[Any]]) -> TranstructFn[Desired]:
 
     # Every non-ClassVar annotation is a constructible field, including underscore-prefixed names.
     # Annotate internal class-level state as ClassVar to exclude it from transtruction.
@@ -296,19 +305,21 @@ class Transtructor:
     return transtruct_annotated_class
 
 
-  def transtructor_for_generic_type(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None, origin:type[Desired],
-   type_args:tuple[type,...]) -> TranstructFn[Desired]:
+  def transtructor_for_generic_type(self, desired_type:TypeForm[Desired], prefigure_fn:PrefigureFn|None, origin:TypeForm[Any],
+   type_args:tuple[Any,...]) -> TranstructFn[Desired]:
 
-    # The origin type is usually a runtime type, but not in the case of Union and Literal.
+    # The origin type is usually a runtime type, but more generally is a TypeForm (e.g. Union, Literal).
+    # The type args are usually type forms, but can also be plain values (Literal members) or Ellipsis (sequence tuples).
 
     # The casts to object avoid false mypy unreachable warnings:
-    # mypy treats Literal and Union as special forms that cannot overlap with `type`.
-
+    # mypy treats Literal and Union as special forms that cannot overlap with TypeForm.
     if cast(object, origin) is Literal:
       return self.transtructor_for_literal_type(desired_type, prefigure_fn, type_args)
 
     if cast(object, origin) is Union:
       return self.transtructor_for_union_type(desired_type, prefigure_fn, frozenset(normalize_type_form(t) for t in type_args))
+
+    assert isinstance(origin, type) # All other supported origins are runtime classes.
 
     if issubclass(origin, tuple):
       return self.transtructor_for_tuple_type(desired_type, prefigure_fn, origin, type_args)
@@ -318,7 +329,7 @@ class Transtructor:
       key_ctor = self.transtructor_for(key_type)
       val_ctor = self.transtructor_for(val_type)
 
-      def transtruct_dict(val:Input, ctx:Ctx) -> Desired:
+      def transtruct_dict(val:Input, ctx:Ctx) -> Any:
         if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
 
         try: items = val.items()
@@ -347,7 +358,7 @@ class Transtructor:
       el_type = type_args[0]
       el_ttor = self.transtructor_for(el_type)
 
-      def transtruct_collection(val:Input, ctx:Ctx) -> Desired:
+      def transtruct_collection(val:Input, ctx:Ctx) -> Any:
         return origin(_transtruct_els(el_ttor, desired_type, val, ctx))
 
       return transtruct_collection
@@ -360,10 +371,10 @@ class Transtructor:
     raise NotImplementedError(f'Transtructor for generic type {desired_type} not implemented; origin: {origin}.')
 
 
-  def transtructor_for_tuple_type(self, type_:type[Desired], prefigure_fn:PrefigureFn|None, rtt:type, types:tuple[type,...]
+  def transtructor_for_tuple_type(self, type_:TypeForm[Desired], prefigure_fn:PrefigureFn|None, rtt:type, types:tuple[Any,...]
    ) -> TranstructFn[Desired]:
 
-    if len(types) == 2 and types[1] is cast(type, Ellipsis):
+    if len(types) == 2 and types[1] is Ellipsis:
       el_transtructor = self.transtructor_for(types[0])
 
       def transtruct_seq_tuple(args:Any, ctx:Ctx) -> Any:
@@ -393,8 +404,8 @@ class Transtructor:
     return transtruct_tuple
 
 
-  def transtructor_for_union_type(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None, types:frozenset[Any]
-   ) -> TranstructFn[Desired]:
+  def transtructor_for_union_type(self, desired_type:TypeForm[Desired], prefigure_fn:PrefigureFn|None,
+   types:frozenset[TypeForm[Any]]) -> TranstructFn[Desired]:
 
     if len(types) == 2 and NoneType in types:
       variant_type = next(t for t in types if t is not NoneType)
@@ -408,9 +419,7 @@ class Transtructor:
       return transtruct_optional
 
     non_primitive_types = types.difference(primitive_transtructors)
-
-    # Values matching a primitive member pass through unaltered; treat an Any member as object (accepts everything).
-    primitive_member_types = tuple(object if t is Any else t for t in types if t in primitive_transtructors)
+    primitive_member_types = _primitive_member_types(types)
 
     if len(non_primitive_types) > 1:
       return self.transtructor_for_union_with_selector(desired_type, prefigure_fn, non_primitive_types, primitive_member_types)
@@ -431,15 +440,15 @@ class Transtructor:
     return transtruct_union
 
 
-  def transtructor_for_union_with_selector(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None,
-   non_primitive_types:frozenset[Any], primitive_member_types:tuple[type,...]) -> TranstructFn[Desired]:
+  def transtructor_for_union_with_selector(self, desired_type:TypeForm[Desired], prefigure_fn:PrefigureFn|None,
+   non_primitive_types:frozenset[TypeForm[Any]], primitive_member_types:tuple[type,...]) -> TranstructFn[Desired]:
     '''
     Unions with more than one non-primitive member cannot be resolved by trying members in turn;
     they require a selector to choose the member type from the input value.
     The selector is keyed on the union of just the non-primitive members,
     so a selector registered for `Circle|Rect` also serves `Circle|Rect|None` and `Circle|Rect|str`.
     '''
-    sub_union = reduce(or_, sorted(non_primitive_types, key=str)) # Sort for deterministic construction; union forms hash and compare as sets.
+    sub_union:TypeForm[Any] = reduce(or_, sorted(non_primitive_types, key=str)) # Sort for deterministic construction; union forms hash and compare as sets.
     selector = self.selector_fn_for(sub_union)
     if selector is None:
       raise TranstructorError(f'union with multiple non-primitive members requires a selector registered for {sub_union}',
@@ -455,17 +464,17 @@ class Transtructor:
       if not (member_type in non_primitive_types or (isinstance(member_type, type) and issubclass(member_type, class_member_types))):
         raise TranstructorError(f'selector {selector} returned {member_type}, which is not a non-primitive member of {desired_type}',
           desired_type, val)
-      transtructor:TranstructFn = self.transtructor_for(member_type) # type: ignore[arg-type] # mypy sees the cache wrapper as requiring Hashable.
+      transtructor = self.transtructor_for(member_type)
       return transtructor(val, ctx)
 
     return transtruct_union_with_selector
 
 
-  def transtructor_for_literal_type(self, desired_type:type[Desired], prefigure_fn:PrefigureFn|None, literal_args:tuple[Any,...]
-   ) -> TranstructFn[Desired]:
+  def transtructor_for_literal_type(self, desired_type:TypeForm[Desired], prefigure_fn:PrefigureFn|None,
+   literal_args:tuple[Any,...]) -> TranstructFn[Desired]:
 
     # Pair each literal member with a transtructor for its type, so that soft inputs can be coerced, e.g. '1' for Literal[1].
-    member_transtructors = tuple((a, self.transtructor_for(type(a))) for a in literal_args) # type: ignore[arg-type]
+    member_transtructors = tuple((a, self.transtructor_for(type(a))) for a in literal_args)
 
     def transtruct_literal(val:Input, ctx:Ctx) -> Any:
       if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
@@ -517,7 +526,7 @@ class Transtructor:
     return prefigure_decorator
 
 
-  @cache
+  @_cache
   def selector_fn_for(self, datatype:TypeForm[Any]) -> SelectorFn|None:
     '''
     Returns the selector function for the given desired type form, or None if no selector function is registered.
@@ -534,11 +543,12 @@ class Transtructor:
     return None
 
 
-  def prefigure_fn_for(self, datatype:type) -> PrefigureFn|None:
+  def prefigure_fn_for(self, datatype:TypeForm[Any]) -> PrefigureFn|None:
     '''
-    Returns the prefigure function for the given desired type, or None if no prefigure function is registered.
-    This method uses the MRO of the desired type to find base class implementations, so a prefigure registered on a
-    base class applies to its subclasses.
+    Returns the prefigure function for the given desired type form, or None if no prefigure function is registered.
+    This method uses the MRO of the desired type to find base class implementations,
+    so a prefigure registered on a base class applies to its subclasses.
+    Non-class forms such as generic aliases have no MRO and are matched exactly.
     '''
     mro = getattr(datatype, '__mro__', (datatype,))
     for t in mro:
@@ -547,7 +557,7 @@ class Transtructor:
     return None
 
 
-def _instantiate_bare(class_:type[Desired], annotations:dict[str,type], typed_kwargs:dict[str,Any]) -> Desired:
+def _instantiate_bare(class_:type[Desired], annotations:dict[str,TypeForm[Any]], typed_kwargs:dict[str,Any]) -> Desired:
   '''
   Instantiate an annotation-only class (no custom __init__ or __new__) and set converted values as attributes.
   Annotations absent from the input fall back to class-level defaults; an annotation with neither raises TranstructorError,
@@ -564,7 +574,22 @@ def _instantiate_bare(class_:type[Desired], annotations:dict[str,type], typed_kw
   return obj
 
 
-def _transtruct_els(el_ttor:TranstructFn, container_type:Any, els:Any, ctx:Ctx) -> Iterator[Any]:
+def _primitive_member_types(types:frozenset[TypeForm[Any]]) -> tuple[type,...]:
+  '''
+  Return the runtime classes for the primitive members of a union, for use with isinstance.
+  Values matching a primitive member pass through unaltered; an Any member becomes object (accepts everything).
+  '''
+  member_types:list[type] = []
+  for t in types:
+    if t not in primitive_transtructors: continue
+    if t is Any: member_types.append(object)
+    else:
+      assert isinstance(t, type) # Every primitive_transtructors key other than Any is a runtime class.
+      member_types.append(t)
+  return tuple(member_types)
+
+
+def _transtruct_els(el_ttor:TranstructFn[Any], container_type:TypeForm[Any], els:Input, ctx:Ctx) -> Iterator[Any]:
   '''
   Transtruct each element of an iterable.
   If an element fails, add a note to the exception giving the zero-based index of the failing element.
@@ -576,7 +601,7 @@ def _transtruct_els(el_ttor:TranstructFn, container_type:Any, els:Any, ctx:Ctx) 
       raise
 
 
-def is_type_form_refinement(subtype:Any, T:Any) -> bool:
+def is_type_form_refinement(subtype:TypeForm[Any], T:TypeForm[Any]) -> bool:
   '''
   Return True if a selector result `subtype` is an acceptable refinement of type form `T`:
   equal to T, a member of T if T is a union (or a subclass of a class member), or a subclass of T.
@@ -590,15 +615,16 @@ def is_type_form_refinement(subtype:Any, T:Any) -> bool:
   return isinstance(subtype, type) and isinstance(T, type) and issubclass(subtype, T)
 
 
-def try_transtruct(tf:TranstructFn, desired_type:type) -> TranstructFn:
+def try_transtruct[D](tf:TranstructFn[D], desired_type:TypeForm[Any]) -> TranstructFn[D]:
   '''
   A function wrapper that takes an existing transtruct function wraps it in a try clause.
   If an exception is raised, attach a note describing the desired type and the input.
   '''
-  def _try_transtruct(v:Input, ctx:Ctx) -> Any:
+  tf_name = getattr(tf, '__name__', repr(tf))
+  def _try_transtruct(v:Input, ctx:Ctx) -> D:
     try: return tf(v, ctx)
     except Exception as e:
-      e.add_note(f'note: {tf.__name__}: desired: {desired_type}; input: {_limited_repr(v)}')
+      e.add_note(f'note: {tf_name}: desired: {desired_type}; input: {_limited_repr(v)}')
       raise
   return _try_transtruct
 
@@ -693,7 +719,7 @@ def opt_int(val:Any) -> int|None:
   return int(val)
 
 
-primitive_transtructors = {
+primitive_transtructors:dict[TypeForm[Any],TranstructFn[Any]] = {
   Any: transtruct_object,
   bool: transtruct_bool,
   bytes: transtruct_bytes,
@@ -709,7 +735,7 @@ primitive_transtructors = {
 # Scalar types whose default transtructor parses a canonical format but which, unlike primitives,
 # allow a prefigure to reshape the raw input first. Keyed on the exact type (no MRO walk),
 # so e.g. `datetime` does not resolve to `date`'s entry by inheritance.
-scalar_transtructors:dict[type,TranstructFn[Any]] = {
+scalar_transtructors:dict[TypeForm[Any],TranstructFn[Any]] = {
   date: transtruct_date,
   datetime: transtruct_datetime,
   time: transtruct_time,

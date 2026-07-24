@@ -88,12 +88,12 @@ def xml_selector(class_:TypeForm[Any], val:dict, ctx:Ctx) -> TypeForm[Any]:
 
 
 @xml_transtructor.prefigure(XmlDatatype)
-def xml_prefigure(class_:type[XmlDatatype], val:dict, ctx:Ctx) -> dict:
+def xml_prefigure(class_:TypeForm[Any], val:dict, ctx:Ctx) -> dict:
   '''
   Prefigure a dict of raw xml data.
   '''
-
-  if child_attr_infos := class_._child_attr_infos:
+  child_attr_infos:dict[str,ChildAttrInfo] = class_._child_attr_infos # Narrow from the TypeForm param; only XmlDatatype subclasses arrive here.
+  if child_attr_infos:
     # Pull children out of the child array as necessary.
     try: ch = val['ch']
     except KeyError: pass
