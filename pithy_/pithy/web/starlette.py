@@ -38,28 +38,16 @@ class ClientError(Exception):
 class CsvResponse(Response):
   media_type = 'text/csv'
 
-  def __init__(self,
-    status_code:int=200,
-    *,
-    headers:Mapping[str,str]|None=None,
-    background:BackgroundTask|None=None,
-    quoting:Quoting|None=None,
-    head:Sequence[str]|None,
-    rows:Iterable[Sequence],
-    **kwargs:Any) -> None:
-
+  def __init__(self, status_code:int=200, *, headers:Mapping[str,str]|None=None, background:BackgroundTask|None=None,
+   quoting:Quoting|None=None, head:Sequence[str]|None, rows:Iterable[Sequence], **kwargs:Any) -> None:
     '''
     A CSV response.
     `head` is a tuple of column names.
     `rows` is an iterable of tuples of row values.
     '''
 
-    super().__init__(
-      content=render_csv(quoting=quoting, header=head, rows=rows),
-      status_code=status_code,
-      headers=headers,
-      background=background,
-      **kwargs)
+    super().__init__(content=render_csv(quoting=quoting, header=head, rows=rows), status_code=status_code, headers=headers,
+      background=background, **kwargs)
 
 
 class HtmlResponse(HTMLResponse):
@@ -86,22 +74,10 @@ class HtmlResponse(HTMLResponse):
 
 class HtmxResponse(HTMLResponse):
 
-  def __init__(self,
-    *content:MuChildLax,
-    status_code:int=200,
-    headers:Mapping[str,str]|None=None,
-    background:BackgroundTask|None=None,
-    cache:bool=False,
-    hx_push:str='',
-    hx_refresh:bool=False,
-    hx_redirect:str='',
-    hx_location:str='',
-    hx_trigger:str='',
-    hx_trigger_after_swap:str='',
-    hx_trigger_after_settle:str='',
-    FAKE_LATENCY:float=0.0,
-    **kwargs:Any) -> None:
-
+  def __init__(self, *content:MuChildLax, status_code:int=200, headers:Mapping[str,str]|None=None,
+   background:BackgroundTask|None=None, cache:bool=False, hx_push:str='', hx_refresh:bool=False, hx_redirect:str='',
+   hx_location:str='', hx_trigger:str='', hx_trigger_after_swap:str='', hx_trigger_after_settle:str='', FAKE_LATENCY:float=0.0,
+   **kwargs:Any) -> None:
     '''
     A response for one or more HTMX fragments.
     Fragments can be used to swap additional targets 'out-of-band' via the `hx-swap-oob` attribute.
@@ -122,12 +98,9 @@ class HtmxResponse(HTMLResponse):
 
     if FAKE_LATENCY: sleep(FAKE_LATENCY)
 
-    super().__init__(
-      status_code=status_code,
-      content='\n\n'.join(HtmlNode.render_child(c) for c in content),
-      headers=headers,
-      background=background,
-      **kwargs)
+    content_str = '\n\n'.join(HtmlNode.render_child(c) for c in content)
+
+    super().__init__(status_code=status_code, content=content_str, headers=headers, background=background, **kwargs)
 
 
 
