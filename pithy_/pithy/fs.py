@@ -85,17 +85,29 @@ def expand_home_dir(path:Path) -> str: return _expanduser(str_path(path))
 def current_dir() -> str: return _getcwd()
 
 
-def find_file_up(name:str, start_dir:Path='.', top:Path|None=None, include_top:bool=True) -> str|None:
+def _abs_start_and_top(start_dir:Path, top:Path) -> tuple[str,str]:
+  '''
+  Normalize `start_dir` and `top` to absolute paths and verify that `start_dir` descends from `top`.
+  '''
   start_dir = abs_path(start_dir)
-  if top is None:
-    top = home_dir()
-  else:
-    top = abs_path(top)
-  if not start_dir.startswith(top):
-    raise ValueError(f'start_dir {start_dir} is not within top {top}')
+  top = abs_path(top)
+  top_comps = path_split(top)
+  if path_split(start_dir)[:len(top_comps)] != top_comps:
+    raise PathIsNotDescendentError(start_dir, top)
+  return start_dir, top
+
+
+def find_file_up(name:str, start_dir:Path='.', top:Path='/', include_top:bool=True) -> str|None:
+  '''
+  Search upwards from `start_dir` for a path named `name`, stopping at `top`, which defaults to the filesystem root.
+  Return None if no such path is found, or if an ancestor that cannot be traversed bounds the search first.
+  '''
+  start_dir, top = _abs_start_and_top(start_dir, top)
   for dir_path in walk_dirs_up(start_dir, top=top, include_top=include_top):
     file_path = path_join(dir_path, name)
-    if path_exists(file_path, follow=False): return file_path
+    try:
+      if path_exists(file_path, follow=False): return file_path
+    except PermissionError: break # An ancestor that we cannot traverse bounds the search.
   return None
 
 
@@ -109,24 +121,20 @@ default_project_signifiers: tuple[str, ...] = (
   'pyproject.toml',
 )
 
-def find_project_dir(start_dir:Path='.', top:Path|None=None, include_top:bool=False,
+def find_project_dir(start_dir:Path='.', top:Path='/', include_top:bool=False,
  project_signifiers:Iterable[str]=default_project_signifiers) -> str|None:
   '''
   find a project root directory, as denoted by the presence of a file/directory in `project_signifiers`.
-  By default, stops before reaching the user's home directory.
+  The search is bounded by `top`, which defaults to the filesystem root, and by the first ancestor that cannot be read.
   If a signifier string contains any of '?*+^$[]', then it is treated as a regular expression.
   See default_project_signifiers.
   '''
   signifier_re = _re.compile('|'.join(f'({p if any(q in p for q in "?*+^$[]") else _re.escape(p)})' for p in project_signifiers))
-  start_dir = abs_path(start_dir)
-  if top is None:
-    top = home_dir()
-  else:
-    top = abs_path(top)
-  if not start_dir.startswith(top):
-    raise Exception(f'find_project_dir: start_dir is not within top:\n  start_dir: {start_dir}\n  top: {top}')
+  start_dir, top = _abs_start_and_top(start_dir, top)
   for path in walk_dirs_up(start_dir, top=top, include_top=include_top):
-    for name in list_dir(path, hidden=True):
+    try: names = list_dir(path, hidden=True)
+    except PermissionError: break # An ancestor that we cannot read bounds the search.
+    for name in names:
       if signifier_re.fullmatch(name):
         return path
   return None
