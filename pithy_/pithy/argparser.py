@@ -44,7 +44,8 @@ class CommandParser(ArgParser):
     if not name:
       name = main_fn.__name__.removeprefix('main_').replace('_', '-')
 
-    if 'help' not in kwargs: kwargs['help'] = main_fn.__doc__
+    if 'description' not in kwargs: kwargs['description'] = main_fn.__doc__
+    if 'help' not in kwargs: kwargs['help'] = kwargs['description']
 
     command = self._commands_subparsers.add_parser(name, **kwargs)
     assert isinstance(command, CommandParser)
@@ -57,6 +58,7 @@ class CommandParser(ArgParser):
     Add a parent command to the parser.
     '''
     self._check_is_valid_parent()
+    if 'help' not in kwargs: kwargs['help'] = kwargs.get('description')
     command = self._commands_subparsers.add_parser(name, **kwargs)
     assert isinstance(command, CommandParser)
     return command
