@@ -85,16 +85,15 @@ class HtmxResponse(HTMLResponse):
     `FAKE_LATENCY` is a float in seconds used to simulate a slow response.
     '''
 
-    if any((cache, hx_push, hx_redirect, hx_location, hx_refresh, hx_trigger, hx_trigger_after_swap, hx_trigger_after_settle)):
-      headers = {**headers} if headers else {}
-      if not cache: headers['Cache-Control'] = 'no-store'
-      if hx_refresh: headers['HX-Refresh'] = 'true'
-      if hx_push: headers['HX-Push'] = hx_push
-      if hx_redirect: headers['HX-Redirect'] = hx_redirect
-      if hx_location: headers['HX-Location'] = hx_location
-      if hx_trigger: headers['HX-Trigger'] = hx_trigger
-      if hx_trigger_after_swap: headers['HX-Trigger-After-Swap'] = hx_trigger_after_swap
-      if hx_trigger_after_settle: headers['HX-Trigger-After-Settle'] = hx_trigger_after_settle
+    headers = {**headers} if headers else {}
+    if not cache: headers['Cache-Control'] = 'no-store'
+    if hx_refresh: headers['HX-Refresh'] = 'true'
+    if hx_push: headers['HX-Push'] = hx_push
+    if hx_redirect: headers['HX-Redirect'] = hx_redirect
+    if hx_location: headers['HX-Location'] = hx_location
+    if hx_trigger: headers['HX-Trigger'] = hx_trigger
+    if hx_trigger_after_swap: headers['HX-Trigger-After-Swap'] = hx_trigger_after_swap
+    if hx_trigger_after_settle: headers['HX-Trigger-After-Settle'] = hx_trigger_after_settle
 
     if fake_latency: sleep(fake_latency)
 
