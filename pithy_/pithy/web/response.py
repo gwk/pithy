@@ -5,12 +5,15 @@ from html import escape as html_escape
 from http import HTTPStatus
 from io import BufferedReader
 from os import fstat as os_fstat
-from typing import Self
+from time import sleep
+from typing import Iterable, Self, Sequence
+from urllib.parse import quote as url_quote
 
 from pithy.json import render_json
 
+from ..csv import Quoting, render_csv
 from ..http import format_header_date, may_send_body, non_body_statuses
-from ..markup import Mu
+from ..markup import Mu, MuChildLax
 from .errors import ResponseError
 from .headers import add_header_item, ResponseHeadersDict
 
@@ -162,6 +165,19 @@ html_media_type = 'text/html'
 error_media_type = html_media_type
 
 
+class CsvResponse(Response):
+  'A Response subclass for CSV responses. `head` and `rows` are rendered to CSV text.'
+
+  def __init__(self, *, head:Sequence[str]|None, rows:Iterable[Sequence], status:HTTPStatus=HTTPStatus.OK, reason:str='',
+   headers:ResponseHeadersDict|None=None, last_modified:float=0.0, quoting:Quoting|None=None) -> None:
+    '''
+    `head` is a sequence of column names, or None to omit the header row.
+    `rows` is an iterable of sequences of row values.
+    '''
+    super().__init__(status=status, reason=reason, headers=headers, body=render_csv(quoting=quoting, header=head, rows=rows),
+     media_type='text/csv', last_modified=last_modified)
+
+
 class HtmlResponse(Response):
   'A Response subclass for HTML responses.'
 
@@ -169,6 +185,36 @@ class HtmlResponse(Response):
    last_modified:float=0.0) -> None:
     super().__init__(status=status, reason=reason, headers=headers, body=body, media_type=html_media_type,
      last_modified=last_modified)
+
+
+class HtmxResponse(HtmlResponse):
+  'A Response subclass for one or more HTMX fragments.'
+
+  def __init__(self, *content:MuChildLax, status:HTTPStatus=HTTPStatus.OK, reason:str='',
+   headers:ResponseHeadersDict|None=None, last_modified:float=0.0, cache:bool=False, hx_push:str='', hx_refresh:bool=False,
+   hx_redirect:str='', hx_location:str='', hx_trigger:str='', hx_trigger_after_swap:str='', hx_trigger_after_settle:str='',
+   fake_latency:float=0.0) -> None:
+    '''
+    Fragments can be used to swap additional targets 'out-of-band' via the `hx-swap-oob` attribute.
+    If `cache` is false the response will contain a `Cache-Control: no-store` header.
+    `fake_latency` is a float in seconds used to simulate a slow response.
+    '''
+
+    headers = {**headers} if headers else {}
+    if not cache: headers['cache-control'] = 'no-store'
+    if hx_refresh: headers['hx-refresh'] = 'true'
+    if hx_push: headers['hx-push'] = hx_push
+    if hx_redirect: headers['hx-redirect'] = hx_redirect
+    if hx_location: headers['hx-location'] = hx_location
+    if hx_trigger: headers['hx-trigger'] = hx_trigger
+    if hx_trigger_after_swap: headers['hx-trigger-after-swap'] = hx_trigger_after_swap
+    if hx_trigger_after_settle: headers['hx-trigger-after-settle'] = hx_trigger_after_settle
+
+    if fake_latency: sleep(fake_latency)
+
+    body = '\n\n'.join(Mu.render_child(c) for c in content)
+
+    super().__init__(body, status=status, reason=reason, headers=headers, last_modified=last_modified)
 
 
 class JsonResponse(Response):
@@ -184,6 +230,19 @@ class JsonResponse(Response):
         json_body = render_json(body)
     super().__init__(status=status, reason=reason, headers=headers, body=json_body, media_type='application/json',
      last_modified=last_modified)
+
+
+class RedirectResponse(Response):
+  'A Response subclass that redirects the client to `url` via the Location header.'
+
+  def __init__(self, url:str, *, status:HTTPStatus=HTTPStatus.TEMPORARY_REDIRECT, reason:str='',
+   headers:ResponseHeadersDict|None=None) -> None:
+
+    if not (300 <= status < 400): raise ValueError(f'Redirect status must be 3xx: {status}.')
+    headers = {**headers} if headers else {}
+    if 'location' in headers: raise ValueError('Redirect headers must not contain "location".')
+    headers['location'] = url_quote(url, safe=":/%#?=@[]!$&'()*+,;")
+    super().__init__(status=status, reason=reason, headers=headers)
 
 
 class TextResponse(Response):
