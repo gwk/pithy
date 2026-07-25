@@ -61,7 +61,7 @@ class FilesApp(WebApp):
         assert norm_path.startswith('/')
         query = '?' + request.query_str if request.query_str else ''
         new_url = f'{norm_path}/{query}'
-        raise ResponseError(status=HTTPStatus.MOVED_PERMANENTLY, headers={'Location':new_url})
+        raise ResponseError(status=HTTPStatus.MOVED_PERMANENTLY, headers={'location':new_url})
       index_path = path_join(local_path, 'index.html')
       if path_exists(index_path, follow=False):
         local_path = index_path
@@ -114,7 +114,6 @@ class FilesApp(WebApp):
     'Guess the mime type for a file path.'
     ext = path_ext(path).lower()
     try: return self.ext_media_types[ext]
-    except KeyError: return self.ext_media_types['']
     except KeyError: return self.ext_media_types['']
 
 
