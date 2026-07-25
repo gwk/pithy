@@ -76,7 +76,7 @@ class HtmxResponse(HTMLResponse):
 
   def __init__(self, *content:MuChildLax, status_code:int=200, headers:Mapping[str,str]|None=None,
    background:BackgroundTask|None=None, cache:bool=False, hx_push:str='', hx_refresh:bool=False, hx_redirect:str='',
-   hx_location:str='', hx_trigger:str='', hx_trigger_after_swap:str='', hx_trigger_after_settle:str='', FAKE_LATENCY:float=0.0,
+   hx_location:str='', hx_trigger:str='', hx_trigger_after_swap:str='', hx_trigger_after_settle:str='', fake_latency:float=0.0,
    **kwargs:Any) -> None:
     '''
     A response for one or more HTMX fragments.
@@ -96,7 +96,7 @@ class HtmxResponse(HTMLResponse):
       if hx_trigger_after_swap: headers['HX-Trigger-After-Swap'] = hx_trigger_after_swap
       if hx_trigger_after_settle: headers['HX-Trigger-After-Settle'] = hx_trigger_after_settle
 
-    if FAKE_LATENCY: sleep(FAKE_LATENCY)
+    if fake_latency: sleep(fake_latency)
 
     content_str = '\n\n'.join(HtmlNode.render_child(c) for c in content)
 
