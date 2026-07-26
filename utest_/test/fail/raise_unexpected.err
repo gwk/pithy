@@ -51,7 +51,7 @@
 |     exc arg 0: 'unexpected'
 |
 | Traceback (most recent call last):
-~   File "~.+/utest/__init__.py", line \d+, in utest_seq
+~   File ".+/utest/__init__.py", line \d+, in utest_seq
 |     ret = list(ret_seq)
 ~   File "./raise_unexpected.py", line \d+, in yield_then_raise
 |     raise Exception('unexpected')
