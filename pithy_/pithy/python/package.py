@@ -2,7 +2,7 @@
 
 from typing import Callable, Iterable
 
-from ..fs import abs_path, home_dir, path_exists, path_join, walk_dirs_up, walk_files
+from ..fs import abs_path, path_exists, path_join, walk_dirs_up, walk_files
 from ..path import path_dir
 
 
@@ -14,12 +14,15 @@ def find_package_root(path:str, *, package_roots:set[str]|None=None) -> str|None
   '''
   Find the package root directory for a Python source file or directory.
   Walks up from `path` searching for a py.typed marker file (PEP 561).
-  Returns the directory containing py.typed, or None if not found within the home directory.
+  The search is bounded by the filesystem root, and by the first ancestor that cannot be traversed.
+  Returns the directory containing py.typed, or None if no such directory is found.
   If `package_roots` is provided, any directory whose absolute path is in that set is also a stop condition.
   '''
   abs_roots = {abs_path(r) for r in package_roots} if package_roots else set()
-  for dir_path in walk_dirs_up(abs_path(path), top=home_dir(), include_top=True):
-    if path_exists(path_join(dir_path, 'py.typed'), follow=False): return dir_path
+  for dir_path in walk_dirs_up(abs_path(path), top='/', include_top=True):
+    try:
+      if path_exists(path_join(dir_path, 'py.typed'), follow=False): return dir_path
+    except PermissionError: break # An ancestor that we cannot traverse bounds the search.
     if dir_path in abs_roots: return dir_path
   return None
 
