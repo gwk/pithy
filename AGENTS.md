@@ -122,11 +122,13 @@ So for example when we refer to `pithy.web.server`, it is `pithy_/pithy/web/serv
 If we refer to `.web.server`, we probably mean within the pithy package, or whatever package we are discussing.
 
 
-# Git State and Commits
+# Git State
 
 Note the presence of staged changes, unstaged changes and untracked files before making edits.
 I try to commit or at least stage prior changes before asking you to make changes,
 so if changes are lying around it is often an oversight on my part.
+
+# Git Commits
 
 Do not commit unless explicitly instructed to do so.
 If you are asked to commit and are currently on `main`, you can make a new branch at your discrection.
@@ -136,8 +138,10 @@ When writing commit messages:
 * Be concise. Do not write elaborate parentheticals.
 * Do not add agent attribution lines like "Co-authored by ...".
 * If the changes are scoped to a submodule or package, begin with the dotted name, like 'some.deep.submodule: ...'
-* If there is only one package in the repo you can leave the top level off, like '.deep.submodule: ...'
-* Do not write '.: ' for something pertaining to the top level; use a sensible description (colon is not mandatory).
+* If there is only one package in the repo you then leave the top level off, like '.deep.submodule: ...'
+  * The dot prefix is a convention to be respected for single package repos!
+  * Do not write '.: ' for something pertaining to the top level; use a sensible description (colon is not mandatory).
+* If you are instead referring to a directory (e.g. for docs or non-python changes), use a slash, e.g. 'docs/: ...'
 * The first (summary) line should end with a period.
 * As with markdown, do not insert hard wrap newlines in the commit message body; I rely on viewers to softwrap.
 * Feel free to put newlines after sentences and even semicolons when the lines get long though.
