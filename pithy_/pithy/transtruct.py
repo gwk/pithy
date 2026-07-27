@@ -363,11 +363,38 @@ class Transtructor:
 
       return transtruct_collection
 
-    if issubclass(origin, Callable): # type: ignore[arg-type]
-      return lambda val, ctx: val
+    if origin is type:
+      # `type[T]` converts like bare `type` and then requires the result to be a subclass of T.
+      # This case must precede the Callable case below, because `type` is itself callable.
+      assert len(type_args) == 1
+      bound = normalize_type_form(type_args[0])
 
-    # TODO: further handling. At this point it does not make sense to just return origin,
-    # because the args probably need to be considered to create well-typed values.
+      def transtruct_type_arg(val:Input, ctx:Ctx) -> Any:
+        if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
+        result = transtruct_type(val, ctx)
+        # A bound that is not a plain class, e.g. Any (which is a class but not a base of anything) or a TypeVar, is not checked.
+        # TODO: an unresolved TypeVar bound arises from a field of a bare generic class, which is implicitly parameterized by
+        # Any; once parameterized generic classes are supported, substitution should resolve the TypeVar before we get here.
+        # TODO: check union bounds, e.g. `type[int|str]`, by accepting a subclass of any member.
+        if bound is not Any and isinstance(bound, type) and not issubclass(result, bound):
+          raise TranstructorError(f'expected a subclass of {bound.__qualname__}', desired_type, val)
+        return result
+
+      return transtruct_type_arg
+
+    if issubclass(origin, Callable): # type: ignore[arg-type] # collections.abc.Callable is accepted by issubclass.
+      # Callable values pass through unaltered; the signature is not checked, because runtime values do not carry one.
+
+      def transtruct_callable(val:Input, ctx:Ctx) -> Any:
+        if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
+        if callable(val): return val
+        raise TranstructorError(f'expected a callable value; received {type(val).__qualname__}', desired_type, val)
+
+      return transtruct_callable
+
+    # TODO: support parameterized generic classes, e.g. `Holder[int]`, by substituting the type args for the class TypeVars
+    # in the field annotations. Args containing unresolved TypeVars, e.g. `Holder[T]`, should be rejected as incorrect;
+    # a bare generic class is already handled by the annotated class path and is equivalent to parameterizing with Any.
     raise NotImplementedError(f'Transtructor for generic type {desired_type} not implemented; origin: {origin}.')
 
 
