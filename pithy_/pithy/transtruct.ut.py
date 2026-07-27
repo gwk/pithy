@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter, defaultdict, namedtuple
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
@@ -430,3 +431,39 @@ def _select_bad(T:Any, val:Any, ctx:Any) -> Any:
 
 utest_exc(TranstructorError, bad_shape_ttor.transtruct, Circle|Rect, {'radius': 1}) # Via the selector refinement path.
 utest_exc(TranstructorError, bad_shape_ttor.transtruct, Circle|Rect|None, {'radius': 1}) # Via the union residue path.
+
+
+# Callable type forms: callable values pass through unaltered; non-callable values are rejected.
+
+def _double(n:int) -> int: return n * 2
+
+utest(_double, ttor.transtruct, Callable[[int],int], _double)
+utest(len, ttor.transtruct, Callable[[Any],int], len)
+utest(int, ttor.transtruct, Callable[[Any],int], int) # A class is callable.
+utest_exc(TranstructorError, ttor.transtruct, Callable[[int],int], 'double')
+utest_exc(TranstructorError, ttor.transtruct, Callable[[int],int], 42)
+utest_exc(TranstructorError, ttor.transtruct, Callable[[int],int], {'n': 1})
+
+
+# A callable field of a class is validated like any other field, so soft input cannot fill it with a non-callable.
+
+@dataclass
+class Hook:
+  name:str
+  fn:Callable[[int],int]
+
+
+utest(Hook('h', _double), ttor.transtruct, Hook, {'name': 'h', 'fn': _double})
+utest_exc(TranstructorError, ttor.transtruct, Hook, {'name': 'h', 'fn': 'pwn'})
+
+
+# `type[T]` converts a type name like bare `type`, then requires the result to be a subclass of T.
+
+utest(int, ttor.transtruct, type, 'int')
+utest(int, ttor.transtruct, type[int], 'int')
+utest(bool, ttor.transtruct, type[int], 'bool') # bool is an int subclass.
+utest(int, ttor.transtruct, type[int], int) # A class value passes through the name lookup.
+utest(str, ttor.transtruct, type[Any], 'str') # An Any bound is not checked.
+utest_exc(TranstructorError, ttor.transtruct, type[int], 'str') # Not a subclass of int.
+utest_exc(TranstructorError, ttor.transtruct, type[int], str)
+utest_exc(ValueError, ttor.transtruct, type[int], 'nonsense') # Not a known type name.
