@@ -574,5 +574,7 @@ def endpoint_route(path:str, endpoint_cls:type[Endpoint], *, privileges:tuple[st
   The Route is named for the Endpoint class so that each converted route has a distinct name rather than the
   adapter closure's name.
   '''
+  # Resolve field converters now, so that an unconstructible field type raises early.
+  endpoint_cls._resolve_converters()
   return Route(path, endpoint_adapter(endpoint_cls, privileges=privileges), methods=sorted(endpoint_cls._methods),
     name=endpoint_cls.__name__)

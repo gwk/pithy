@@ -4,12 +4,13 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from http import HTTPStatus
 from inspect import get_annotations
-from typing import Any, ClassVar, get_args, get_origin, Union
+from typing import Any, ClassVar, get_args, get_origin, Literal, Union
 
 from typing_extensions import TypeForm
 
 from ..http import endpoint_methods
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
+from ..type_utils import NoneType, nonopt_type, normalize_type_form
 from .errors import BadRequestError
 from .handler import RequestHandler
 from .request import Request, UploadedFile
@@ -20,7 +21,7 @@ from .response import Response
 @dataclass(slots=True, frozen=True)
 class _FieldInfo:
   name:str
-  type:type # Element type, after unwrapping optional/list.
+  type:TypeForm[Any] # Element type form, after unwrapping optional/list.
   is_optional:bool
   is_list:bool
   convert:Callable[[object],object]|None # Element converter; None until lazily resolved against the transtructor.
@@ -36,44 +37,74 @@ class Endpoint(RequestHandler):
   '''
   Base class for request endpoints. An Endpoint instance is created for each request.
 
-  Subclasses declare an inner `Fields` class whose typed annotations are automatically populated from request
-  parameters (path, query, body). A fresh `Fields` instance is created per request and exposed as `self.fields`.
-  The field types determine how raw values are converted.
+  # Fields
 
-  The inner `Fields` class must derive directly from object, making it a pure data holder:
-  its namespace contains no framework names, so every annotated name in its body is a field,
-  including underscore-prefixed names such as `_debug`. Fields are collected from the `Fields` class body only.
-  A subclass that declares `Fields` must also annotate `fields:Fields` so that static type checkers see the
-  precise type of `self.fields`; this is enforced at class definition time.
-  Any other public annotation in the endpoint class body raises TypeError,
+  Subclasses declare an inner `Fields` class whose fields are populated from request path, query, and body parameters.
+  A fresh `Fields` instance is created per request and exposed as `self.fields`.
+  The declared field types determine how raw values are converted.
+
+  The inner `Fields` class must derive directly from `object`.
+  Its namespace contains no framework names, so every annotated name in its body is a field,
+  including names with leading underscores.
+
+  Endpoints must also redeclare the instance with their Fields subtype like fields:MyFields`,
+  so that static type checkers see the precise type of `self.fields`.
+
+  Any other public field annotation in the endpoint class body raises TypeError,
   because it is most likely a field mistakenly declared outside of `Fields`.
 
   Subclasses must derive directly from Endpoint; defining an intermediate Endpoint subclass raises TypeError.
-  Converters are collected from the class body only.
 
-  Use `T|None` to mark a field as optional (None if the parameter is absent).
-  Use `list[T]` to collect multiple values for one key (e.g. multi-select).
-  Use `list[T]|None` for an optional multi-value field (None if no values are submitted).
+  Field types are type forms (PEP 747), so Literal, union and type alias type forms are accepted and enforced.
+  A value outside of a required literal set is rejected.
 
-  For each field, value conversion of raw request data is handled by a per-class Transtructor or a custom per-field converter.
+  ## Optional and Multi-value Fields
 
-  To customize conversion for a specific field, define `converters` in the endpoint class body as a class variable
+  For each field, the outermost type form determines the HTTP parameter validation:
+  * `T|None` marks the field as optional (None if the parameter is absent);
+  * `list[T]` marks it as multi-value, collecting every value submitted for its key (e.g. multi-select).
+  * `list[T]|None` is an optional multi-value field (None if no values are submitted).
+
+  ## Unions
+
+  For form data, all incoming fields are either raw strings or file uploads.
+  Union types as supported by Transtructor are of limited value for string fields: `str|int` will always pass through the `str`.
+  Unions are more generally applicable for JSON body fields.
+  See `Transtructor` for the full details of union type conversion.
+
+  ## Converters
+
+  After the outer `None` and `list[]` are stripped, what remains is the element type that each raw value is converted to.
+  For each field, value conversion of raw request data is handled by either a per-class Transtructor or a per-field converter.
+
+  To customize conversion for a specific field, define a `converters` dict in the endpoint class body as a class variable
   mapping field names to converter callables of the form `(raw) -> value`:
     class MyEndpoint(Endpoint):
-      converters = dict(my_field=lambda raw: MyType.from_string(raw))
       class Fields:
         my_field:MyType
       fields:Fields
+      converters = dict(my_field=lambda raw: MyType.from_string(raw))
   To share converters across endpoints, compose module-level dicts in the class body,
   e.g. `converters = common_converters | dict(...)`.
+
+  Every converted value is checked against the declared element type with `req_type`.
+  A mismatch indicates a defective converter and raises TypeError, which surfaces as a server error.
+
+  ## Transtructors
+
+  In the absence of a custom converter, a per-class Transtructor is used.
 
   To customize conversion by type, register prefigure/selector functions on the endpoint class after its body:
     @MyEndpoint.prefigure(MyType)
     def _prefigure_my_type(cls:TypeForm[Any], val:Any, ctx:Any) -> Any: ...
   Each subclass that registers a customization gets its own private Transtructor;
   uncustomized subclasses share a common default, so customizations never affect other endpoints.
-  Field converters are resolved lazily when the class first handles a request;
+  Field converters are resolved when the endpoint is registered with a Router, or otherwise when it first handles a request;
   registering a customization after that point raises TypeError.
+  Registration resolves converters so that an unconstructible field type is reported at startup
+  rather than by the first request to that route.
+
+  ## Whole-body Transtruction
 
   Set `body_field` to the name of a single declared field to fill that field with the entire parsed request body,
   rather than treating the body as a mapping of parameter names to values.
@@ -86,6 +117,8 @@ class Endpoint(RequestHandler):
   for urlencoded and multipart bodies the field receives the whole params dict.
   Other declared fields are still filled from path and query params as usual;
   a path or query param sharing the body field's name raises a duplicate-param error.
+
+  # Lifecycle
 
   All Endpoint classes take the following constructor parameters:
   * `request:Request`
@@ -186,16 +219,20 @@ class Endpoint(RequestHandler):
   def prefigure(cls, datatype:type) -> Callable[[PrefigureFn],PrefigureFn]:
     '''
     Decorator factory that registers a prefigure function on this endpoint subclass private Transtructor.
-    Usage: `@MyEndpoint.prefigure(SomeType)`. Must be called before the class handles its first request.
+    Usage: `@MyEndpoint.prefigure(SomeType)`. Must be called before the class's field converters are resolved,
+    which happens when the endpoint is registered with a Router, or otherwise when it first handles a request.
     '''
     return cls._customizable_transtructor().prefigure(datatype)
 
 
   @classmethod
-  def selector(cls, datatype:type) -> Callable[[SelectorFn],SelectorFn]:
+  def selector(cls, datatype:TypeForm[Any]) -> Callable[[SelectorFn],SelectorFn]:
     '''
     Decorator factory that registers a selector function on this endpoint subclass private Transtructor.
-    Usage: `@MyEndpoint.selector(SomeType)`. Must be called before the class handles its first request.
+    Usage: `@MyEndpoint.selector(SomeType)`. Must be called before the class's field converters are resolved,
+    which happens when the endpoint is registered with a Router, or otherwise when it first handles a request.
+    `datatype` may be a union type form, e.g. `@MyEndpoint.selector(Circle|Rect)`;
+    this is required for a field whose type is a union with more than one non-primitive member.
     '''
     return cls._customizable_transtructor().selector(datatype)
 
@@ -206,7 +243,7 @@ class Endpoint(RequestHandler):
     if cls is Endpoint:
       raise TypeError('Customize a specific Endpoint subclass, not Endpoint itself.')
     if cls._converters_resolved:
-      raise TypeError(f'{cls.__qualname__}: cannot customize the transtructor after the class has handled a request.')
+      raise TypeError(f'{cls.__qualname__}: cannot customize the transtructor after its field converters are resolved.')
     transtructor = cls.__dict__.get('_transtructor')
     if transtructor is None:
       transtructor = _new_endpoint_transtructor()
@@ -218,16 +255,23 @@ class Endpoint(RequestHandler):
   def _resolve_converters(cls) -> None:
     '''
     Resolve transtructor-backed field converters against the private or shared Transtructor.
-    Deferred until the first request so that prefigure/selector customizations registered after the class body
-    (via the classmethod decorators) are honored. Idempotent; a concurrent first-request race is benign.
+    Deferred past the class body so that prefigure/selector customizations registered after it
+    (via the classmethod decorators) are honored. The Router resolves every registered endpoint at construction,
+    so that an unconstructible field type fails at startup rather than on the first request to that route.
+    Idempotent; a concurrent first-request race is benign.
     '''
+    if cls._converters_resolved: return
     transtructor = cls.__dict__.get('_transtructor') or _shared_endpoint_transtructor
     fields:dict[str,_FieldInfo] = {}
     for name, field in cls._fields.items():
       if field.convert is None:
         # Security boundary: transtruct is only ever invoked on the declared field element type, never on the
         # Endpoint (or any handler) type. Do not "simplify" this into transtructing the whole endpoint.
-        field = replace(field, convert=_transtruct_converter(transtructor.transtructor_for(field.type)))
+        try: transtruct_fn = transtructor.transtructor_for(field.type)
+        except (TypeError, TranstructorError) as e:
+          raise TypeError(
+            f'{cls.__qualname__}.Fields.{name}: no converter is available for field type {field.type!r}.') from e
+        field = replace(field, convert=_transtruct_converter(transtruct_fn))
       fields[name] = field
     cls._fields = fields
     cls._converters_resolved = True
@@ -305,32 +349,54 @@ def _transtruct_converter(tf:TranstructFn[Any]) -> Callable[[object],object]:
   return lambda raw: tf(raw, None)
 
 
-_NoneType = type(None)
-
-
-def _unwrap_field_type(hint:TypeForm) -> tuple[type,bool,bool]:
+def _unwrap_field_type(hint:TypeForm[Any]) -> tuple[TypeForm[Any],bool,bool]:
   '''
-  Decompose an endpoint field type hint into (element_type, is_optional, is_list).
-  Supports only the shapes that HTTP param semantics dictate: T, T|None, list[T], list[T]|None.
-  The optional flag marks a field as not required; the list flag marks a field that accepts multiple values per key.
-  Any other shape is rejected as a developer error.
+  Decompose an endpoint field type form hint into (element_type, is_optional, is_list).
+  Only the outermost type form sets the optional and list flags; see the Endpoint class docstring for the field type rules.
   '''
+  hint = normalize_type_form(hint)
   is_optional = False
-  if get_origin(hint) is Union:
-    args = get_args(hint)
-    non_none = [a for a in args if a is not _NoneType]
-    if _NoneType not in args or len(non_none) != 1:
-      raise TypeError(f'unsupported union field type: {hint!r}')
+  if get_origin(hint) is Union and NoneType in get_args(hint):
+    # The optional case is handled by the endpoint, which fills an absent field with None,
+    # so NoneType is stripped from the element type rather than passed to the transtructor.
     is_optional = True
-    hint = non_none[0]
+    hint = normalize_type_form(nonopt_type(hint))
   is_list = get_origin(hint) is list
   if is_list:
     args = get_args(hint)
     if len(args) != 1: raise TypeError(f'incorrect list field type: {hint!r}') # Python accepts e.g. `list[int,str]` at runtime.
-    hint = args[0]
-  if not isinstance(hint, type):
-    raise TypeError(f'unsupported field type: {hint!r}')
+    hint = normalize_type_form(args[0])
+  _check_field_type(hint)
   return (hint, is_optional, is_list)
+
+
+def _check_field_type(hint:TypeForm[Any]) -> None:
+  '''
+  Raise TypeError for normalized element type forms that make no sense as endpoint fields.
+  The transtructor is otherwise the authority on which type forms are constructible: it raises for the rest,
+  and that error surfaces when field converters are resolved.
+  Type forms whose origin is callable (covering both `Callable[...]` and `type[T]`) are rejected here
+  because the transtructor accepts them but they are developer errors for an endpoint:
+  a `Callable[...]` field would reject every request at runtime, since request values are never callable,
+  and a `type[T]` field would let the client choose a Python type by name (see `transtruct.named_types`).
+  Type forms that are neither classes nor recognized generic or special type forms are also rejected here,
+  so that the error is raised at class definition and names the offending annotation.
+  Union members are checked recursively; other nested type arguments (e.g. of a list or dict) are validated by
+  the transtructor when it builds the converter.
+  '''
+  origin = get_origin(hint)
+  if origin is None:
+    if isinstance(hint, type): return # A plain class; the transtructor decides whether it is constructible.
+    raise TypeError(f'unsupported field type: {hint!r}')
+  if origin is Union:
+    for member in get_args(hint): _check_field_type(normalize_type_form(member))
+    return
+  if origin is Literal: return
+  if isinstance(origin, type):
+    if issubclass(origin, Callable): # type: ignore[arg-type] # collections.abc.Callable is accepted by issubclass.
+      raise TypeError(f'unsupported field type: {hint!r}; callable types cannot be constructed from request params.')
+    return
+  raise TypeError(f'unsupported field type: {hint!r}')
 
 
 def _new_endpoint_transtructor() -> Transtructor:

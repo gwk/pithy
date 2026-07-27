@@ -9,7 +9,7 @@ from inspect import get_annotations, getmembers, isclass
 from typing import Any, get_args, get_origin, Union
 
 from pithy.python.sem import ast_field_types, ast_to_sem_types, SemRef
-from pithy.type_utils import nonopt_union
+from pithy.type_utils import nonopt_type
 
 
 deprecated_types = frozenset((AugLoad, AugStore, Suite, Index, ExtSlice, Param))
@@ -26,7 +26,8 @@ def sem_type_for_ast_type(ast_type:type) -> Any:
     if ast_type in (int, str, object):
       return ast_type
   if origin is Union:
-    nonopt = nonopt_union(ast_type)
+    nonopt = nonopt_type(ast_type)
+    assert isinstance(nonopt, type)
     assert get_origin(nonopt) is not Union
     return Union[(sem_type_for_ast_type(nonopt), None)]
   if origin is list:

@@ -325,7 +325,7 @@ def req_opt_dict(obj:Any, K:type=object, V:type=object) -> dict|None:
   return obj
 
 
-def nonopt_union(opt_type:type) -> Any: # Can return `<typing special from>`.
+def nonopt_type(opt_type:TypeForm) -> TypeForm:
   '''
   Given a Union containing NoneType, return another Union type without NoneType,
   or if there is only a single remaining type return it.
@@ -337,8 +337,9 @@ def nonopt_union(opt_type:type) -> Any: # Can return `<typing special from>`.
     except ValueError: pass
     else:
       if len(args) == 2:
-        return args[0] if idx else args[1]
+        nonopt_tf:TypeForm = args[0] if idx else args[1]
+        return nonopt_tf
       else:
         nonopt_args = args[:idx] + args[idx+1:]
-        return Union[tuple(nonopt_args)]
+        return cast(TypeForm, Union[tuple(nonopt_args)])
   raise TypeError(f'expected a Union containing NoneType; received: {opt_type!r}')
