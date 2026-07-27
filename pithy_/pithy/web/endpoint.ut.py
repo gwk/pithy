@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from enum import Enum
 from http import HTTPStatus
-from typing import Any
+from types import NoneType
+from typing import Annotated, Any, Literal, TypeVar
 from urllib.parse import urlencode
 
 from pithy.transtruct import Transtructor
@@ -36,9 +37,34 @@ utest((int, True, False), _unwrap_field_type, int|None)
 utest((int, False, True), _unwrap_field_type, list[int])
 utest((int, True, True), _unwrap_field_type, list[int]|None)
 utest((str, True, False), _unwrap_field_type, str|None)
-utest_exc(TypeError, _unwrap_field_type, int|str) # Unsupported multi-member union.
-utest_exc(TypeError, _unwrap_field_type, int|str|None) # Unsupported optional union.
+
+# Literal, Annotated and alias type forms are decomposed like any other type form.
+type _Ids = list[int]
+type _OptName = str|None
+
+utest((Literal['a','b'], False, False), _unwrap_field_type, Literal['a','b'])
+utest((Literal['a','b'], True, False), _unwrap_field_type, Literal['a','b']|None)
+utest((Literal['a','b'], False, True), _unwrap_field_type, list[Literal['a','b']])
+utest((Literal['a','b'], True, True), _unwrap_field_type, list[Literal['a','b']]|None)
+utest((int, False, False), _unwrap_field_type, Annotated[int,'meta'])
+utest((int, False, True), _unwrap_field_type, Annotated[list[int],'meta'])
+utest((int, False, True), _unwrap_field_type, _Ids)
+utest((int, True, True), _unwrap_field_type, _Ids|None)
+utest((str, True, False), _unwrap_field_type, _OptName)
+utest((NoneType, False, False), _unwrap_field_type, None)
+
+# A union becomes the element type; only the outer type form sets the optional and list flags.
+utest((int|str, False, False), _unwrap_field_type, int|str)
+utest((int|str, True, False), _unwrap_field_type, int|str|None)
+utest((list[int]|int, False, False), _unwrap_field_type, list[int]|int)
+# Accepted here even though the transtructor will require a selector for it when converters are resolved.
+utest((list[int]|list[str], False, False), _unwrap_field_type, list[int]|list[str])
+
+# Rejected type forms.
 utest_exc(TypeError, _unwrap_field_type, list[int,str]) # type: ignore[misc] # Unsupported multi-parameter list (invalid statically).
+utest_exc(TypeError, _unwrap_field_type, Callable[[int],int]) # Callables would pass the raw request value through unconverted.
+utest_exc(TypeError, _unwrap_field_type, type[int]) # Likewise; the origin of `type[T]` is callable.
+utest_exc(TypeError, _unwrap_field_type, TypeVar('T')) # Not a constructible type form.
 
 
 # Basic field types.
@@ -885,7 +911,177 @@ def _() -> None:
   utest_val(Rect(kind='rect', w=4, h=5), ep.fields.shape)
 
 
-# Customization is mediated: not on Endpoint itself, and not after a class has handled a request.
+# Literal and alias field types: the field holds the precise type, so handlers need no cast.
+
+type Order = Literal['asc','desc']
+
+
+class LiteralEndpoint(Endpoint):
+  class Fields:
+    order:Order
+    rank:Literal[1,2]
+    tag:Literal['a','b']|None
+    counts:Annotated[list[int],'meta']
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    order:Order = self.fields.order # Statically precise; no cast required.
+    return Response(body=f'{order},{self.fields.rank},{self.fields.tag},{self.fields.counts}')
+
+
+utest(dict(order='asc', rank=1, tag='a', counts=[3]), endpoint_fields, LiteralEndpoint,
+  order='asc', rank='1', tag='a', counts='3') # Note: rank is coerced from the raw string to the int literal member.
+utest(dict(order='desc', rank=2, tag=None, counts=[3]), endpoint_fields, LiteralEndpoint,
+  order='desc', rank='2', counts='3')
+
+utest_exc(ResponseError, endpoint_fields, LiteralEndpoint, order='sideways', rank='1', counts='3') # Not a literal member.
+utest_exc(ResponseError, endpoint_fields, LiteralEndpoint, order='asc', rank='3', counts='3')
+utest_exc(ResponseError, endpoint_fields, LiteralEndpoint, order='asc', rank='1', tag='c', counts='3')
+
+
+class LiteralListEndpoint(Endpoint):
+  max_body_bytes = 1024
+  class Fields:
+    kinds:list[Literal['a','b']]
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.kinds}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list of literals filled from a urlencoded body with multiple values.'
+  body = urlencode([('kinds','a'), ('kinds','b')]).encode()
+  req = _make_request(media_type='application/x-www-form-urlencoded', body=body)
+  ep = LiteralListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(['a', 'b'], ep.fields.kinds)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: an invalid literal element of a list field raises BadRequestError.'
+  body = urlencode([('kinds','a'), ('kinds','c')]).encode()
+  req = _make_request(media_type='application/x-www-form-urlencoded', body=body)
+  ep = LiteralListEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+# A union field with more than one non-primitive member is filled via a selector registered for the union.
+
+class ShapeUnionEndpoint(Endpoint):
+  max_body_bytes = 1024
+  body_field = 'shape'
+  class Fields:
+    shape:Circle|Rect
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.shape}')
+
+
+@ShapeUnionEndpoint.selector(Circle|Rect)
+def _select_shape_union(static_type:TypeForm[Any], val:Any, ctx:Any) -> TypeForm[Any]:
+  match val:
+    case {'kind': 'circle'}: return Circle
+    case {'kind': 'rect'}: return Rect
+    case _: return static_type
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: a union field selects the concrete member type from the body.'
+  req = _make_request(media_type='application/json', body=b'{"kind":"circle","radius":7}')
+  ep = ShapeUnionEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(Circle(kind='circle', radius=7), ep.fields.shape)
+
+
+# A union of primitive members passes a matching raw value through unconverted.
+# Since path, query and form values are always str, `int|str` yields the str,
+# and `int|float` rejects every str unless a selector chooses the member type to convert to.
+
+class IntStrUnionEndpoint(Endpoint):
+  class Fields:
+    val:int|str
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.val}')
+
+
+class IntFloatUnionEndpoint(Endpoint):
+  class Fields:
+    val:int|float
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.val}')
+
+
+utest(dict(val='1'), endpoint_fields, IntStrUnionEndpoint, val='1') # The raw str matches the str member; no int conversion.
+utest_exc(ResponseError, endpoint_fields, IntFloatUnionEndpoint, val='1') # A str matches no member of `int|float`.
+
+
+class SelectedNumUnionEndpoint(Endpoint):
+  class Fields:
+    val:int|float
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.val}')
+
+
+@SelectedNumUnionEndpoint.selector(int|float)
+def _select_num(static_type:TypeForm[Any], val:Any, ctx:Any) -> TypeForm[Any]:
+  return float if (isinstance(val, str) and '.' in val) else int
+
+
+utest(dict(val=1), endpoint_fields, SelectedNumUnionEndpoint, val='1')
+utest(dict(val=2.5), endpoint_fields, SelectedNumUnionEndpoint, val='2.5')
+
+
+# Field types that no converter can be built for are developer errors, reported when converters are resolved.
+
+class UnselectedShapeEndpoint(Endpoint):
+  max_body_bytes = 1024
+  body_field = 'shape'
+  class Fields:
+    shape:Circle|Rect
+  fields:Fields
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.shape}')
+
+
+# The Router resolves converters for every registered endpoint, so this fails at startup rather than on first request.
+utest_exc(TypeError, Router, {'/shape': UnselectedShapeEndpoint})
+utest_exc(TypeError, UnselectedShapeEndpoint, _make_request(), {}) # The same error if the class is used directly.
+
+
+@utest_run
+def _() -> None:
+  'Router: constructing a router resolves the converters of every registered endpoint.'
+  class RouterResolvedEndpoint(Endpoint):
+    class Fields:
+      n:int
+    fields:Fields
+    def handle_request(self, request:Request) -> Response:
+      return Response(body=f'{self.fields.n}')
+  utest_val(False, RouterResolvedEndpoint._converters_resolved)
+  Router({'/n': RouterResolvedEndpoint})
+  utest_val(True, RouterResolvedEndpoint._converters_resolved)
+
+
+# Callable field types are rejected at class definition: the transtructor would pass the raw value through unconverted.
+
+def _make_callable_field_endpoint() -> type[Endpoint]:
+  class CallableFieldEndpoint(Endpoint):
+    class Fields:
+      fn:Callable[[int],int]
+    fields:Fields
+    def handle_request(self, request:Request) -> Response:
+      return Response(body='')
+  return CallableFieldEndpoint
+
+utest_exc(TypeError, _make_callable_field_endpoint)
+
+
+# Customization is mediated: not on Endpoint itself, and not after a class's field converters are resolved.
 
 utest_exc(TypeError, Endpoint.prefigure, Point)
 utest_exc(TypeError, Endpoint.selector, Point)

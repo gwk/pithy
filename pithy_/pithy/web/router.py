@@ -21,9 +21,13 @@ class Router:
   The router splits the routes into fixed routes and pattern routes.
   Fixed routes are dispatched to via dictionary lookup.
   Pattern routes are stored in a prefix tree, which is traversed to find the appropriate endpoint for a given path.
+
+  Field converters are resolved on initialization so programming errors with unconstructible field types raise early.
   '''
 
   def __init__(self, routes:dict[str,type[Endpoint]]) -> None:
+    for endpoint_cls in routes.values():
+      endpoint_cls._resolve_converters()
     fixed_routes, pattern_tree = build_route_tree(routes)
     self.fixed_routes:dict[str,type[Endpoint]] = fixed_routes
     self.pattern_tree:RouteTree[type[Endpoint]] = pattern_tree

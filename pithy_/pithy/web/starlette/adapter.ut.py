@@ -157,6 +157,20 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
+  'endpoint_route: field converters are resolved when the route is built, not on the first request.'
+  class RouteResolvedEndpoint(Endpoint):
+    class Fields:
+      n:int
+    fields:Fields
+    def handle_request(self, request:PithyRequest) -> PithyResponse:
+      return PithyResponse(body=f'{self.fields.n}')
+  utest_val(False, RouteResolvedEndpoint._converters_resolved)
+  endpoint_route('/n', RouteResolvedEndpoint, privileges=())
+  utest_val(True, RouteResolvedEndpoint._converters_resolved)
+
+
+@utest_run
+def _() -> None:
   'Adapter: privileges held by the request scopes returns the endpoint response.'
   resp = _run(PrivilegedEndpoint, privileges=('Staff',), scope_extra={'auth': AuthCredentials(['Staff'])})
   utest_val(200, resp.status_code)
