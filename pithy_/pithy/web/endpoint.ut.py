@@ -20,8 +20,8 @@ from typing_extensions import TypeForm  # TODO: import from typing once we requi
 from utest import utest, utest_exc, utest_run, utest_val
 
 
-def _make_request(query:dict[str,str|int]|None=None, *, media_type:str='', body:bytes=b'') -> Request:
-  query_str = urlencode(query) if query else ''
+def _make_request(query:dict[str,str|int|list[str]]|None=None, *, media_type:str='', body:bytes=b'') -> Request:
+  query_str = urlencode(query, doseq=True) if query else '' # doseq expands list values into repeated keys.
   headers:dict[str,str] = {}
   if media_type:
     headers['content-type'] = media_type
@@ -31,31 +31,32 @@ def _make_request(query:dict[str,str|int]|None=None, *, media_type:str='', body:
     client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
 
 
-# _unwrap_field_type: decompose into (element_type, is_optional, is_list).
+# _unwrap_field_type: analyze into (field_type, is_optional, is_list).
 utest((int, False, False), _unwrap_field_type, int)
-utest((int, True, False), _unwrap_field_type, int|None)
-utest((int, False, True), _unwrap_field_type, list[int])
-utest((int, True, True), _unwrap_field_type, list[int]|None)
-utest((str, True, False), _unwrap_field_type, str|None)
+utest((int|None, True, False), _unwrap_field_type, int|None)
+utest((list[int], False, True), _unwrap_field_type, list[int])
+utest((list[int]|None, True, True), _unwrap_field_type, list[int]|None)
+utest((str|None, True, False), _unwrap_field_type, str|None)
 
 # Literal, Annotated and alias type forms are decomposed like any other type form.
 type _Ids = list[int]
 type _OptName = str|None
 
 utest((Literal['a','b'], False, False), _unwrap_field_type, Literal['a','b'])
-utest((Literal['a','b'], True, False), _unwrap_field_type, Literal['a','b']|None)
-utest((Literal['a','b'], False, True), _unwrap_field_type, list[Literal['a','b']])
-utest((Literal['a','b'], True, True), _unwrap_field_type, list[Literal['a','b']]|None)
+utest((Literal['a','b']|None, True, False), _unwrap_field_type, Literal['a','b']|None)
+utest((list[Literal['a','b']], False, True), _unwrap_field_type, list[Literal['a','b']])
+utest((list[Literal['a','b']]|None, True, True), _unwrap_field_type, list[Literal['a','b']]|None)
 utest((int, False, False), _unwrap_field_type, Annotated[int,'meta'])
-utest((int, False, True), _unwrap_field_type, Annotated[list[int],'meta'])
-utest((int, False, True), _unwrap_field_type, _Ids)
-utest((int, True, True), _unwrap_field_type, _Ids|None)
-utest((str, True, False), _unwrap_field_type, _OptName)
+utest((list[int], False, True), _unwrap_field_type, Annotated[list[int],'meta'])
+utest((list[int], False, True), _unwrap_field_type, _Ids)
+# The alias union member is not expanded by top-level normalization; is_a normalizes members recursively during validation.
+utest((_Ids|None, True, True), _unwrap_field_type, _Ids|None)
+utest((str|None, True, False), _unwrap_field_type, _OptName)
 utest((NoneType, False, False), _unwrap_field_type, None)
 
-# A union becomes the element type; only the outer type form sets the optional and list flags.
+# A union field type is converted as a whole; only the outer type form sets the optional and list flags.
 utest((int|str, False, False), _unwrap_field_type, int|str)
-utest((int|str, True, False), _unwrap_field_type, int|str|None)
+utest((int|str|None, True, False), _unwrap_field_type, int|str|None)
 utest((list[int]|int, False, False), _unwrap_field_type, list[int]|int)
 # Accepted here even though the transtructor will require a selector for it when converters are resolved.
 utest((list[int]|list[str], False, False), _unwrap_field_type, list[int]|list[str])
@@ -202,6 +203,23 @@ class CustomConverterEndpoint(Endpoint):
 
 utest(dict(color=Color.red), endpoint_fields, CustomConverterEndpoint, color='red')
 utest_exc(ResponseError, CustomConverterEndpoint, _make_request(), dict(color='purple'))
+
+
+# A converter for a multi-value field receives the whole normalized list, so it can control the list shape.
+
+def _dedupe_tags(raw:Any) -> list[str]:
+  return sorted({str(el) for el in raw})
+
+
+class ListConverterEndpoint(Endpoint):
+  max_body_bytes = 1024
+  converters = {'tags': _dedupe_tags}
+  class Fields:
+    tags:list[str]
+  fields:Fields
+
+  def handle_request(self, request:Request) -> Response:
+    return Response(body=f'{self.fields.tags}')
 
 
 # Direct subclassing is enforced: intermediate Endpoint subclasses raise TypeError.
@@ -419,6 +437,33 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
+  'Endpoint: JSON null fills an optional field with None.'
+  req = _make_request(media_type='application/json', body=b'{"name":"alice","tag":null}')
+  ep = BodyEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(None, ep.fields.tag)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: JSON null for a required field raises BadRequestError.'
+  req = _make_request(media_type='application/json', body=b'{"id":null}')
+  ep = IntEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: a single JSON scalar fills a list field as a one-element list.'
+  req = _make_request(media_type='application/json', body=b'{"tags":"a","counts":1}')
+  ep = ListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(['a'], ep.fields.tags)
+  utest_val([1], ep.fields.counts)
+
+
+@utest_run
+def _() -> None:
   'Endpoint: bool field filled from JSON true value.'
   req = _make_request(media_type='application/json', body=b'{"flag":true}')
   ep = BoolEndpoint(req, path_params={})
@@ -522,6 +567,39 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
+  'Endpoint: a multi-value field converter receives the whole list; a single value arrives as a one-element list.'
+  utest_val(dict(tags=['a', 'b']), endpoint_body_fields(ListConverterEndpoint, 'tags=b&tags=a&tags=b'))
+  utest_val(dict(tags=['x']), endpoint_body_fields(ListConverterEndpoint, 'tags=x'))
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: list fields filled from repeated query keys.'
+  req = _make_request(query=dict(tags=['a', 'b'], counts=['1', '2']))
+  ep = ListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(['a', 'b'], ep.fields.tags)
+  utest_val([1, 2], ep.fields.counts)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: a single query value fills a list field as a one-element list.'
+  req = _make_request(query=dict(tags='a', counts='1'))
+  ep = ListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(['a'], ep.fields.tags)
+  utest_val([1], ep.fields.counts)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: a repeated query key for a non-list field raises BadRequestError.'
+  utest_exc(ResponseError, IntEndpoint, _make_request(query=dict(id=['1', '2'])), {})
+
+
+@utest_run
+def _() -> None:
   'Endpoint: list[str]|None field with values present.'
   result = endpoint_body_fields(OptionalListEndpoint, 'tags=x&tags=y')
   utest_val(['x', 'y'], result['tags'])
@@ -532,6 +610,15 @@ def _() -> None:
   'Endpoint: list[str]|None field absent from body is None.'
   result = endpoint_body_fields(OptionalListEndpoint, '')
   utest_val(None, result['tags'])
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: JSON null for an optional list field is None; the null is not wrapped into a list.'
+  req = _make_request(media_type='application/json', body=b'{"tags":null}')
+  ep = OptionalListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(None, ep.fields.tags)
 
 
 @utest_run
