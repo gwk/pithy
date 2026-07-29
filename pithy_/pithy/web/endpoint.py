@@ -10,7 +10,7 @@ from typing_extensions import TypeForm
 
 from ..http import endpoint_methods
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
-from ..type_utils import NoneType, nonopt_type, normalize_type_form
+from ..type_utils import NoneType, nonopt_type, normalize_type_form, req_type
 from .errors import BadRequestError
 from .handler import RequestHandler
 from .request import Request, UploadedFile
@@ -21,10 +21,10 @@ from .response import Response
 @dataclass(slots=True, frozen=True)
 class _FieldInfo:
   name:str
-  type:TypeForm[Any] # Element type form, after unwrapping optional/list.
+  field_type:TypeForm[Any] # The declared field type form, normalized; drives conversion and validates converted values.
   is_optional:bool
   is_list:bool
-  convert:Callable[[object],object]|None # Element converter; None until lazily resolved against the transtructor.
+  convert:Callable[[object],object]|None # Whole-field converter; None until lazily resolved against the transtructor.
 
 
 
@@ -61,7 +61,7 @@ class Endpoint(RequestHandler):
   ## Optional and Multi-value Fields
 
   For each field, the outermost type form determines the HTTP parameter validation:
-  * `T|None` marks the field as optional (None if the parameter is absent);
+  * `T|None` marks the field as optional (None if the parameter is absent or an explicit JSON null);
   * `list[T]` marks it as multi-value, collecting every value submitted for its key (e.g. multi-select).
   * `list[T]|None` is an optional multi-value field (None if no values are submitted).
 
@@ -74,8 +74,10 @@ class Endpoint(RequestHandler):
 
   ## Converters
 
-  After the outer `None` and `list[]` are stripped, what remains is the element type that each raw value is converted to.
   For each field, value conversion of raw request data is handled by either a per-class Transtructor or a per-field converter.
+  The converter receives the whole field input and converts it to the full declared field type.
+  For a multi-value field, a single submitted value is first wrapped into a one-element list,
+  so the converter always receives a list (or None from an explicit JSON null).
 
   To customize conversion for a specific field, define a `converters` dict in the endpoint class body as a class variable
   mapping field names to converter callables of the form `(raw) -> value`:
@@ -87,8 +89,9 @@ class Endpoint(RequestHandler):
   To share converters across endpoints, compose module-level dicts in the class body,
   e.g. `converters = common_converters | dict(...)`.
 
-  Every converted value is checked against the declared element type with `req_type`.
+  Every converted field value is checked against the declared field type with `req_type`.
   A mismatch indicates a defective converter and raises TypeError, which surfaces as a server error.
+  A converter for an optional field may legitimately return None, since the declared type admits it.
 
   ## Transtructors
 
@@ -195,10 +198,10 @@ class Endpoint(RequestHandler):
     fields:dict[str,_FieldInfo] = {}
     for name, hint in get_annotations(fields_class).items():
       if hint is ClassVar or get_origin(hint) is ClassVar: continue
-      element_type, is_optional, is_list = _unwrap_field_type(hint)
+      field_type, is_optional, is_list = _unwrap_field_type(hint)
       # Per-field converters bind now; transtructor-backed converters resolve lazily on the first request,
       # so that prefigure/selector customizations registered after the class body are honored.
-      fields[name] = _FieldInfo(name=name, type=element_type, is_optional=is_optional, is_list=is_list,
+      fields[name] = _FieldInfo(name=name, field_type=field_type, is_optional=is_optional, is_list=is_list,
         convert=converters.get(name))
     cls._fields = fields
 
@@ -265,12 +268,12 @@ class Endpoint(RequestHandler):
     fields:dict[str,_FieldInfo] = {}
     for name, field in cls._fields.items():
       if field.convert is None:
-        # Security boundary: transtruct is only ever invoked on the declared field element type, never on the
-        # Endpoint (or any handler) type. Do not "simplify" this into transtructing the whole endpoint.
-        try: transtruct_fn = transtructor.transtructor_for(field.type)
+        # Security boundary: transtruct is only ever invoked on the declared field type, never on the Endpoint/handler type.
+        # Do not "simplify" this into transtructing the whole endpoint.
+        try: transtruct_fn = transtructor.transtructor_for(field.field_type)
         except (TypeError, TranstructorError) as e:
           raise TypeError(
-            f'{cls.__qualname__}.Fields.{name}: no converter is available for field type {field.type!r}.') from e
+            f'{cls.__qualname__}.Fields.{name}: no converter is available for field type {field.field_type!r}.') from e
         field = replace(field, convert=_transtruct_converter(transtruct_fn))
       fields[name] = field
     cls._fields = fields
@@ -288,8 +291,10 @@ class Endpoint(RequestHandler):
     self._fill_param_sources = {}
     for name, raw in path_params.items():
       self._fill_param(name=name, raw=raw, source='path')
-    for name, raw in request.query.items():
-      self._fill_param(name=name, raw=raw, source='query')
+    for name, vals in request.query_multi.items():
+      # Match the shape of the form body parsers: a single value is a scalar, repeated values are a list.
+      # A repeated key for a non-list field then fails conversion, just as it would in a form body.
+      self._fill_param(name=name, raw=(vals if len(vals) > 1 else vals[0]), source='query')
 
     if request.content_length is not None and request.content_length > self.max_body_bytes:
       # Reject a declared body that exceeds the declared max before it is read.
@@ -333,32 +338,37 @@ class Endpoint(RequestHandler):
     self._fill_param_sources[name] = source
     convert = field.convert
     assert convert is not None # Resolved by _resolve_converters at construction.
-    try:
-      if field.is_list:
-        items = raw if isinstance(raw, list) else [raw]
-        setattr(self.fields, name, [convert(el) for el in items])
-      else:
-        setattr(self.fields, name, convert(raw))
+    if field.is_list and not isinstance(raw, list) and raw is not None:
+      # A single submitted value fills a multi-value field as a one-element list.
+      # This normalization must precede conversion: transtruct would iterate a bare str into its characters.
+      # None (an explicit JSON null) is preserved for the field type union to accept or reject.
+      raw = [raw]
+    try: converted_value = convert(raw)
     except (ValueError, TypeError, TranstructorError) as e:
       # Truncate the raw value so that a large or whole-body value is not reflected back in the error response.
       raise BadRequestError(f'Invalid value for parameter {name!r}: {repr(raw)[:64]}.') from e
+    # Validate outside of the try clause above, so that a converter returning a mistyped value raises TypeError (500).
+    setattr(self.fields, name, req_type(converted_value, field.field_type))
 
 
 def _transtruct_converter(tf:TranstructFn[Any]) -> Callable[[object],object]:
-  'Adapt a transtruct function into an element converter of the form `(raw) -> value`.'
+  'Adapt a transtruct function into a field converter of the form `(raw) -> value`.'
   return lambda raw: tf(raw, None)
 
 
 def _unwrap_field_type(hint:TypeForm[Any]) -> tuple[TypeForm[Any],bool,bool]:
   '''
-  Decompose an endpoint field type form hint into (element_type, is_optional, is_list).
+  Analyze an endpoint field type form hint into (field_type, is_optional, is_list).
+  `field_type` is the normalized declared type; it drives conversion and converted values are validated against it.
   Only the outermost type form sets the optional and list flags; see the Endpoint class docstring for the field type rules.
+  The unwrapped element type is checked for developer errors but not returned; conversion operates on the full field type.
   '''
-  hint = normalize_type_form(hint)
+  field_type = normalize_type_form(hint)
+  hint = field_type
   is_optional = False
   if get_origin(hint) is Union and NoneType in get_args(hint):
-    # The optional case is handled by the endpoint, which fills an absent field with None,
-    # so NoneType is stripped from the element type rather than passed to the transtructor.
+    # The unwrapping here only determines the HTTP semantics flags and exposes the inner types for checking;
+    # the full field type, including the optional and list forms, is what gets converted and validated.
     is_optional = True
     hint = normalize_type_form(nonopt_type(hint))
   is_list = get_origin(hint) is list
@@ -367,7 +377,7 @@ def _unwrap_field_type(hint:TypeForm[Any]) -> tuple[TypeForm[Any],bool,bool]:
     if len(args) != 1: raise TypeError(f'incorrect list field type: {hint!r}') # Python accepts e.g. `list[int,str]` at runtime.
     hint = normalize_type_form(args[0])
   _check_field_type(hint)
-  return (hint, is_optional, is_list)
+  return (field_type, is_optional, is_list)
 
 
 def _check_field_type(hint:TypeForm[Any]) -> None:
