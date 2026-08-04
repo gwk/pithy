@@ -1205,7 +1205,7 @@ class PostEndpoint(Endpoint):
 
 
 class MultiMethodEndpoint(Endpoint):
-  methods = ['GET', 'POST']
+  methods = ('GET', 'POST')
   class Fields:
     tag:str|None
   fields:Fields
@@ -1230,7 +1230,7 @@ utest_exc(TypeError, _make_invalid_method_endpoint)
 
 def _make_empty_methods_endpoint() -> type[Endpoint]:
   class EmptyMethodsEndpoint(Endpoint):
-    methods = []
+    methods = ()
     def handle_request(self, request:Request) -> Response:
       return Response(body='')
   return EmptyMethodsEndpoint

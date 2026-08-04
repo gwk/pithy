@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from http import HTTPStatus
 from inspect import get_annotations
@@ -10,7 +10,7 @@ from typing_extensions import TypeForm
 
 from ..http import endpoint_methods
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
-from ..type_utils import NoneType, nonopt_type, normalize_type_form, req_type
+from ..type_utils import FixedStrSet, NoneType, nonopt_type, normalize_type_form, req_type
 from .errors import BadRequestError
 from .handler import RoutableHandler
 from .request import Request, UploadedFile
@@ -139,7 +139,7 @@ class Endpoint(RoutableHandler):
 
   max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters.
 
-  methods:ClassVar[str|Iterable[str]] = 'GET' # Accepted HTTP methods; normalized to _methods by __init_subclass__.
+  methods:ClassVar[FixedStrSet] = 'GET' # Accepted HTTP methods; normalized to _methods by __init_subclass__.
 
   # Top-level customization: per-field-name converters, collected from the class body only. Signature: (raw) -> value.
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.
@@ -207,14 +207,14 @@ class Endpoint(RoutableHandler):
     if cls.body_field and cls.body_field not in fields:
       raise TypeError(f'{cls.__qualname__}: body_field {cls.body_field!r} does not name a declared field.')
 
-    methods_val = cls.methods
-    method_set:set[str] = {methods_val} if isinstance(methods_val, str) else set(methods_val)
-    if not method_set:
+    methods_raw = cls.methods
+    methods:frozenset[str] = frozenset((methods_raw,) if isinstance(methods_raw, str) else methods_raw)
+    if not methods:
       raise TypeError(f'{cls.__qualname__}: methods must not be empty.')
-    for m in method_set:
+    for m in methods:
       if m not in endpoint_methods:
         raise TypeError(f'{cls.__qualname__}: invalid HTTP method {m!r}; valid endpoint methods are {sorted(endpoint_methods)}.')
-    cls._methods = frozenset(method_set)
+    cls._methods = frozenset(methods)
 
 
   @classmethod

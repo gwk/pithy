@@ -13,6 +13,8 @@ _T = TypeVar('_T')
 
 NoneType = type(None)
 
+type FixedStrSet = str | tuple[str,...] | frozenset[str]
+#^ A convenient but safe declaration of a str set; single str is expected to be converted by the receiver.
 
 @runtime_checkable
 class Comparable(Protocol):
