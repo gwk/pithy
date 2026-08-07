@@ -1,0 +1,56 @@
+[project]
+license = "CC0-1.0"
+readme = "readme.md"
+authors = [
+  { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+  "version",
+]
+name = "pyrrhus"
+description = "Pyrrhus is a collection of Python utilities backed by Rust extensions."
+requires-python = ">=3.14"
+dependencies = []
+keywords = [
+  "extension",
+  "native",
+  "pyo3",
+  "rust",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Rust",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/pyrrhus#readme"
+
+[project.scripts]
+
+# Unlike the pure-Python packages in this repo, pyrrhus builds a native extension and so uses maturin, not flit.
+# The version is dynamic, sourced from Cargo.toml rather than from a `__version__` in the package `__init__`.
+[tool.maturin]
+module-name = "pyrrhus._pyrrhus"
+python-packages = ["pyrrhus"]
+python-source = "."
+# The Rust sources live in the package directory, so exclude them from the wheel.
+# They must stay in the sdist, which has to be able to build the extension.
+# Unlike flit, maturin packages whatever bytecode caches it finds in the source tree, so exclude those too.
+exclude = [
+  "**/AGENT.md", "**/AGENTS.md", "**/CLAUDE.md", "**/CTX.md",
+  "**/__pycache__/**",
+  { path = "**/*.rs", format = "wheel" },
+]
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { file = "pyrrhus/**/*.rs" }, { file = "Cargo.toml" }, { file = "Cargo.lock" }]
+
+[build-system]
+requires = [
+  "maturin >= 1.0, < 2.0",
+]
+build-backend = "maturin"

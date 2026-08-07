@@ -1,0 +1,8 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Cargo discovers this file by walking up from the directory it is invoked in,
+# so it applies to every crate in this repo regardless of where cargo is run.
+# Keep Rust build products under `_build` alongside the rest of our intermediates, rather than in `target`.
+
+[build]
+target-dir = "_build/cargo"

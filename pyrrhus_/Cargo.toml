@@ -1,0 +1,44 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# This is the source of truth for the pyrrhus version; pyproject.toml declares `dynamic = ["version"]`.
+
+[package]
+name = "pyrrhus"
+version = "0.0.1"
+edition = "2024"
+license = "CC0-1.0"
+description = "Python utilities backed by Rust extensions."
+# Declared explicitly; cargo's autodetection looks for `README.md`, which on a case-insensitive
+# filesystem resolves to our `readme.md` but is then recorded under the wrong name in the sdist.
+readme = "readme.md"
+
+[profile.release]
+# Do not strip. As of Rust 1.97 on macOS 27, `-C strip` leaves the LINKEDIT string pool mis-aligned,
+# and dyld then refuses to load the extension with "mis-aligned LINKEDIT string pool".
+# Whether a given build trips this depends on the symbol table size, so it fails intermittently as the crate grows,
+# and appears or disappears with any change that alters the symbols, such as a different set of pyo3 features.
+# Re-signing with `codesign -f -s -` does not repair it; the damage is structural, not a signature mismatch.
+# The cost of keeping symbols is roughly 150KB. Revisit once the toolchain fixes this.
+strip = false
+
+[lib]
+# The extension is named after its package rather than something generic like `_core`,
+# so that it is unambiguous in tracebacks and profiles when several such packages are installed together.
+# This name must match the `tool.maturin.module-name` setting in pyproject.toml and the stem of `pyrrhus/_pyrrhus.pyi`,
+# from which the `#[pymodule]` name is generated.
+name = "_pyrrhus"
+# The crate root is in the Python package rather than the default `src/lib.rs`,
+# so that each module's Rust sources sit beside its `.pyi` interface. Cargo does not care where the sources live.
+path = "pyrrhus/lib.rs"
+# `cdylib` is necessary to produce a shared library for Python to import from.
+crate-type = ["cdylib"]
+
+[dependencies]
+# `extension-module` tells pyo3 that we want an extension module, which skips linking against libpython.
+# `abi3-py314` builds against the stable ABI, so a single wheel per platform covers all supported Python versions.
+# The floor matches our `requires-python = ">=3.14"`, which gives pyo3 the whole of the stable ABI that we can rely on.
+# A lower floor costs performance: below `abi3-py310`, pyo3 cannot borrow a `&str` argument from the Python string,
+# and copies every one into an owned `Cow<str>` instead.
+# If dyld rejects the extension with "mis-aligned LINKEDIT string pool", see `strip` above; the floor is not the cause.
+# Floors py39, py310 and py314 all load with `strip = false`, as of Rust 1.98, pyo3 0.28.3 and macOS 27.
+pyo3 = { version = "0.28.2", features = ["extension-module", "abi3-py314"] }

@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -36,10 +37,7 @@ def main() -> None:
       release = json.load(response)
   except (HTTPError, URLError) as e:
     sys.exit(f'Cannot fetch {package} {version} from {registry}: {e}')
-  wheels = [f for f in release['urls'] if f['filename'].endswith('-py3-none-any.whl') and not f['yanked']]
-  if len(wheels) != 1:
-    sys.exit(f'Expected one non-yanked pure Python wheel for {package} {version}; found {len(wheels)}.')
-  wheel = wheels[0]
+  wheel = select_wheel(package, version, files=release['urls'])
   artifact_url = f"{wheel['url']}#sha256={wheel['digests']['sha256']}"
 
   # Ignore local configuration and cooldowns, and prevent local Python modules from shadowing the installation.
@@ -53,6 +51,29 @@ def main() -> None:
     'python', '-I', str(script_dir / 'validate-installed.py'), package, version, *extra_imports,
   ], cwd=script_dir.parent, env=env)
   sys.exit(result.returncode)
+
+
+def select_wheel(package:str, version:str, files:list[dict[str,Any]]) -> dict[str,Any]:
+  '''
+  Select the wheel to validate from the files of a release.
+  A pure Python release has a single wheel. A native release has one per platform, so select the first that this interpreter
+  supports, in its order of preference; that requires `packaging`, which the project environment provides.
+  '''
+  wheels = [f for f in files if f['filename'].endswith('.whl') and not f['yanked']]
+  if len(wheels) == 1 and wheels[0]['filename'].endswith('-py3-none-any.whl'): return wheels[0]
+  if not wheels: sys.exit(f'No non-yanked wheel found for {package} {version}.')
+
+  try:
+    from packaging.tags import sys_tags
+    from packaging.utils import parse_wheel_filename
+  except ImportError:
+    sys.exit(f'Selecting a native wheel of {package} {version} requires `packaging` in the selected Python environment.')
+  wheels_by_tag = {tag: f for f in wheels for tag in parse_wheel_filename(f['filename'])[3]}
+  for tag in sys_tags():
+    try: return wheels_by_tag[tag]
+    except KeyError: pass
+  names = ', '.join(f['filename'] for f in wheels)
+  sys.exit(f'No wheel of {package} {version} supports this interpreter and platform; found: {names}.')
 
 
 if __name__ == '__main__': main()

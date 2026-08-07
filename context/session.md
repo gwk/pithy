@@ -18,6 +18,7 @@
 * Test a specific file: `iotest path/to/test` or `python -m utest path/to/test.ut.py`
 * Integration tests: `just iotest` or `iotest -fail-fast [path]`
 * Format imports: `just isort`
+* Format Rust sources: `just fmt-rust`; `just lint` includes clippy via `just lint-rust`.
 * Generate code: `just gen`
 
 ## Build System

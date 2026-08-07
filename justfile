@@ -3,9 +3,9 @@
 # Routine recipes use python3 and tools from the caller's PATH. Environment setup is explicit.
 
 # Packages are ordered by interdependencies.
-pkgs := 'tolkien tomul pithy utest iotest taptools crafts wu legs tap_backblaze'
+pkgs := 'pyrrhus tolkien tomul pithy utest iotest taptools crafts wu legs tap_backblaze'
 
-pkg_srcs := 'tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze'
+pkg_srcs := 'pyrrhus_/pyrrhus tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze'
 
 pkg_tests_fast := 'pithy_/test taptools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
@@ -40,9 +40,13 @@ publish stage package *flags:
 validate-published stage package *imports:
   python3 -I sh/validate-published.py "$@"
 
-check: check-uv-lock check-pyproject check-context isort lint typecheck test
+check: check-py-rust-exts check-uv-lock check-pyproject check-context isort lint typecheck test
 
 check-full: check-uv-lock gen check-pyproject check-context isort lint typecheck typecheck-js test-full
+
+# Check that the committed pyo3 wrappers are current with the `.pyi` interfaces, without rewriting them.
+check-py-rust-exts:
+  python3 -m crafts.bin.craft_py_rust_ext -check
 
 # Check that the uv lock file is in sync with pyproject.toml.
 check-uv-lock:
@@ -68,14 +72,22 @@ ctx:
 develop-global:
   sh/develop-global.sh {{pkgs}}
 
+# Regenerate the Rust glue, then rebuild and install pyrrhus into the caller-selected Python.
+develop-rust: gen-py-rust-exts
+  uv pip install --python "$(python3 -c 'import sys; print(sys.executable)')" --no-deps --reinstall-package pyrrhus --editable ./pyrrhus_
+
 develop-venv:
   sh/develop-venv.sh {{pkgs}}
 
 docs:
   python3 -m crafts.bin.craft_docs
 
-gen:
+gen: gen-py-rust-exts
   make gen
+
+# Generation must run before rebuilding pyrrhus, using crafts from the caller-selected Python.
+gen-py-rust-exts:
+  python3 -m crafts.bin.craft_py_rust_ext
 
 isort:
   python3 -m isort {{pkg_srcs}} ops sh tap_backblaze_/test-integration test-diff tools
@@ -92,8 +104,20 @@ iotest:
 iotest-full:
   iotest {{pkg_tests_full}}
 
-lint:
+lint: lint-py lint-rust
+
+lint-py:
   python3 -m pyflakes {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
+
+lint-rust: fmt-rust-check
+  cargo clippy --manifest-path pyrrhus_/Cargo.toml -- -D warnings
+
+# Rust sources are formatted per `rustfmt.toml`, which matches our Python indent and page width.
+fmt-rust:
+  cargo fmt --manifest-path pyrrhus_/Cargo.toml
+
+fmt-rust-check:
+  cargo fmt --manifest-path pyrrhus_/Cargo.toml --check
 
 test: utest iotest
 
