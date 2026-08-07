@@ -1,0 +1,9 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Match our Python style rather than the rustfmt defaults of 4 spaces and 100 columns.
+# rustfmt searches upward from each crate directory, so this applies to every crate in the repo,
+# as does the `.cargo/config.toml` alongside it.
+# `craft-py-rust-ext` generates code to match; keep its `-indent` argument in sync with `tab_spaces`.
+
+max_width = 128
+tab_spaces = 2

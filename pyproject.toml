@@ -14,6 +14,7 @@ members = [
   "iotest_",
   "legs_",
   "pithy_",
+  "pyrrhus_",
   "taptools_",
   "tap_backblaze_",
   "tolkien_",

@@ -20,6 +20,7 @@ members = [
     "iotest",
     "legs",
     "pithy",
+    "pyrrhus",
     "tap-backblaze",
     "taptools",
     "tolkien",
@@ -787,6 +788,10 @@ sdist = { url = "https://files.pythonhosted.org/packages/16/91/39ca77aa58f13e8c6
 wheels = [
     { url = "https://files.pythonhosted.org/packages/91/26/f7bd5e37c254c2671f4dfff316d123eba13663bdfee941a01b09ab02d72d/pyperf-2.10.0-py3-none-any.whl", hash = "sha256:79196bc4a11e3c926dd4c6b14c80136c6b37f884fe913cbc57037f37636e9841", size = 144430, upload-time = "2026-02-07T11:35:12.636Z" },
 ]
+
+[[package]]
+name = "pyrrhus"
+source = { editable = "pyrrhus_" }
 
 [[package]]
 name = "pyyaml"

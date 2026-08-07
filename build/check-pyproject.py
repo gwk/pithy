@@ -6,7 +6,7 @@ from os import chdir, listdir as list_dir
 from os.path import dirname as dir_name, isdir as is_dir, splitext as split_ext
 from sys import stderr
 from tomllib import load as load_toml
-from typing import Any
+from typing import Any, NamedTuple
 
 
 def main() -> None:
@@ -51,8 +51,59 @@ def check_package(name:str, common:dict[str,Any]) -> bool:
 
   check_scripts(name=name, actual=project.get('scripts', {}), errors=errors)
 
+  build_system = check_build_system(actual=pyproject.get('build-system', {}), errors=errors)
+  if build_system: # Otherwise the backend has been reported, and we do not know where its sdist configuration lives.
+    check_sdist_excludes(build_system, tool=pyproject.get('tool', {}), errors=errors)
+
   for error in errors: print(f'{pyproject_path}: {error}', file=stderr)
   return not errors
+
+
+class BuildSystem(NamedTuple):
+  requires:list[str] # The expected `build-system.requires`.
+  sdist_keys:tuple[str,...] # The key path under `tool` of the table whose `exclude` list configures the sdist.
+
+
+build_systems:dict[str,BuildSystem] = {
+  # Pure Python packages use flit; packages that build native extensions use maturin.
+  'flit_core.buildapi': BuildSystem(requires=['flit_core >= 4.0.2, < 5'], sdist_keys=('flit', 'sdist')),
+  'maturin': BuildSystem(requires=['maturin >= 1.0, < 2.0'], sdist_keys=('maturin',)),
+}
+
+
+sdist_excludes = ['**/AGENT.md', '**/AGENTS.md', '**/CLAUDE.md', '**/CTX.md']
+
+
+def check_build_system(actual:dict[str,Any], errors:list[str]) -> BuildSystem|None:
+  'Check that the build system is one of the supported configurations, and return it; return None if it is not recognized.'
+  expected_backends = ', '.join(repr(b) for b in build_systems)
+  backend = actual.get('build-backend')
+  if backend is None:
+    errors.append(f'build-system.build-backend: missing; expected one of {expected_backends}.')
+    return None
+  try: build_system = build_systems[backend]
+  except KeyError:
+    errors.append(f'build-system.build-backend: unsupported {backend!r}; expected one of {expected_backends}.')
+    return None
+  actual_requires = actual.get('requires')
+  if actual_requires != build_system.requires:
+    errors.append(
+      f'build-system.requires: expected {build_system.requires!r} for backend {backend!r}; found {actual_requires!r}.')
+  return build_system
+
+
+def check_sdist_excludes(build_system:BuildSystem, tool:dict[str,Any], errors:list[str]) -> None:
+  '''
+  Check that the sdist excludes the agent context files.
+  Additional patterns are allowed, because a backend's list can serve other purposes; maturin's also configures the wheel.
+  '''
+  config:Any = tool
+  for key in build_system.sdist_keys:
+    config = config.get(key, {}) if isinstance(config, dict) else {}
+  excludes = config.get('exclude', []) if isinstance(config, dict) else []
+  path = '.'.join(('tool', *build_system.sdist_keys, 'exclude'))
+  for pattern in sdist_excludes:
+    if pattern not in excludes: errors.append(f'{path}: missing {pattern!r}.')
 
 
 def check_common_keys(keys:tuple[str,...], common:dict[str,Any], actual:dict[str,Any], errors:list[str]) -> None:

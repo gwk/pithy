@@ -33,10 +33,10 @@ def main() -> None:
   latest = max((Version(v) for v in releases), default=None)
   if latest is not None:
     if current < latest:
-      sys.exit(f'Source version {version} is older than published version {latest}; increase __version__.')
+      sys.exit(f'Source version {version} is older than published version {latest}; increase the version.')
     if current == latest:
       if not republish:
-        sys.exit(f'Version {version} is already published; increase __version__ or specify -republish.')
+        sys.exit(f'Version {version} is already published; increase the version or specify -republish.')
       print(f'Republishing {package} {version}.')
       return
   print(f'New release: {package} {version}.')

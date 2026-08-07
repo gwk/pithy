@@ -10,15 +10,3 @@ dynamic = ["version"]
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
-
-[tool.flit.sdist]
-exclude = [
-  "**/AGENT.md",
-  "**/AGENTS.md",
-  "**/CLAUDE.md",
-  "**/CTX.md",
-]
-
-[build-system]
-requires = ["flit_core >= 4.0.2, < 5"]
-build-backend = "flit_core.buildapi"

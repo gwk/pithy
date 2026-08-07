@@ -4,4 +4,4 @@
 set -euo pipefail
 
 just check-uv-lock
-uv run craft-context all
+python3 -m crafts.bin.craft_context all

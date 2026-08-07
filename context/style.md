@@ -12,6 +12,7 @@ Do not use excessive jargon, industry speak, flattery, signposting, performative
 filler, or marketing/casual/feel-good language.
 
 ## Code Style
+* Rust sources are formatted with `just fmt-rust` / rustfmt / rustfmt.toml.
 * 2-space indentation (not 4-space).
 * Line length: 128 characters; wrap long function declarations past that length, not per parameter.
 * Do not wrap at shorter lengths; 128 is our page width.

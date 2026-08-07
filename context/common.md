@@ -75,6 +75,7 @@ For many stable dev tools global installation is a viable option.
 
 The pithy repository contains code for several python packages:
 * pithy: general purpose utility library.
+* pyrrhus: python utilities backed by rust extensions.
 * crafts: miscellaneous build tools.
 * iotest: a tool for writing process-based tests that specify text input and output.
 * legs: a lexer generator.
@@ -83,6 +84,11 @@ The pithy repository contains code for several python packages:
 * tolkien: a simple parse token library, factored out as a minimal dependency for other tools.
 * utest: a simple unit test system.
 * wu: a markdown-like document format and associated tool.
+
+Most of these packages are pure Python.
+Pyrrhus is a native extension built with maturin and pyo3.
+Because pyrrhus is a member of the uv workspace, a stable Rust toolchain is required to set up any package in this repository.
+Rust code targets stable Rust.
 
 Packages prefixed with `tap_` are Theory & Practice vendor integrations.
 Each one wraps a single external service so that application projects can depend on just the integrations they use.
@@ -103,11 +109,36 @@ pithy/ (the git/project root, not the package root)
   taptools_/
     pyproject.toml
     taptools/ (the taptools package root)
+  pyrrhus_/
+    pyproject.toml
+    Cargo.toml
+    pyrrhus/ (the package root, containing both Python and Rust sources)
   ...
 ```
 
 So for example when we refer to `pithy.web.server`, it is `pithy_/pithy/web/server.py` relative to the project.
 If we refer to `.web.server`, we probably mean within the pithy package, or whatever package we are discussing.
+
+## Rust
+
+Rust-based packages keep their rust sources in the package directory, interleaved with the python sources,
+so that each module's interface and implementation sit together.
+Maturin compiles the whole crate into a single `{package}._{package}` extension.
+The extension is named after its package rather than something generic like `_core`,
+so that it is unambiguous in tracebacks and profiles when several such packages are installed together.
+
+Every native module is three files:
+* `M.pyi` declares the interface and is the module's stub
+* `M.py` is generated and re-exports the module's functions from the extension, which makes the module importable
+* `M.rs` is scaffolded when missing; its implementation bodies are then hand-written and never overwritten.
+
+A crate builds exactly one extension module, so the extension is a single flat namespace: `craft-py-rust-ext` discovers
+every `.pyi` in the package and generates the pyo3 wrappers into the one committed `{package}/_{package}.gen.rs`.
+The wrappers of a merged interface `n` are exported as `n__f`,
+so that interfaces cannot collide; the `.py` re-exports restore the declared names.
+To change an interface, edit the `.pyi`, run `just gen-py-rust-exts`, then fill in the `.rs` implementation bodies. Existing `.rs` files receive stdout guidance instead of edits.
+Never edit a `.gen.rs` manually. See `pyrrhus_/readme.md` for the layout and its ramifications.
+
 
 ## Unit Tests
 * Write unit tests using our own library `utest`.
