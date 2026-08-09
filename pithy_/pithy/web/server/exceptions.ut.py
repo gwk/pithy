@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from http import HTTPStatus
-from sys import argv
+from sys import argv, executable
 
 import requests
 from pithy.web.app import WebApp
@@ -56,7 +56,7 @@ def post_status_body(base_url:str, path:str, data:bytes) -> tuple[int,str]:
 def test_server_exceptions() -> None:
   'Test that request and response exceptions do not kill worker threads.'
 
-  with TestProcess(['python', __file__, 'serve'], merge_stderr=True) as server_proc:
+  with TestProcess([executable, __file__, 'serve'], merge_stderr=True) as server_proc:
     m = server_proc.wait_for_pattern(r'"url":"(http://localhost:\d+)"')
     base_url = m.group(1)
 
