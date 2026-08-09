@@ -20,7 +20,7 @@ def filter_response(text:str, ignored_headers:set[str]=ignored_headers_default) 
 def _() -> None:
   'Test EchoApp, which exercises the basics of WebServer, WebApp, and TestProcess.'
 
-  with TestProcess(['python', '-m', 'pithy.web.echoapp'], merge_stderr=True) as server_proc:
+  with TestProcess(['pithy.web.echoapp'], module=True, merge_stderr=True) as server_proc:
 
     m = server_proc.wait_for_pattern(r'"url":"(http://localhost:\d+)"')
     base_url = m.group(1)

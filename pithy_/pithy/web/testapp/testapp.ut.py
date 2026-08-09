@@ -11,7 +11,7 @@ from utest.proctest import TestProcess
 def _() -> None:
   'Test TestApp router-based dispatch.'
 
-  with TestProcess(['python', '-m', 'pithy.web.testapp'], merge_stderr=True) as server_proc:
+  with TestProcess(['pithy.web.testapp'], module=True, merge_stderr=True) as server_proc:
 
     m = server_proc.wait_for_pattern(r'"url":"(http://localhost:\d+)"')
     base_url = m.group(1)
