@@ -2,6 +2,7 @@
   "permissions": {
     "deny": [
       "Bash(npx:*)",
+      "Bash(uvx:*)",
       "Skill(code-review)"
     ]
   }
