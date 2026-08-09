@@ -6,7 +6,7 @@ from http import HTTPStatus
 from io import BufferedReader
 from os import _exit as os_exit
 from queue import Full as QueueFull, LifoQueue
-from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
+from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
 from threading import Event, Thread
 from typing import cast, Self
 from urllib.parse import urlsplit as url_split
@@ -111,6 +111,21 @@ class _Conn():
       else: raise HttpStateError(f'next_completion expected EndOfMessage event; received: {event!r}.')
 
 
+  def drain_unread_body(self, max_bytes:int) -> bool:
+    '''
+    Read and discard the unread remainder of the request body, up to `max_bytes`.
+    Returns True if the body was fully consumed, False if the limit was reached or an error occurred.
+    See WebServer._close_connection for why this is necessary.
+    '''
+    assert self.h11_conn.their_state is h11_SEND_BODY
+    count = 0
+    while count <= max_bytes:
+      event = self.next_data()
+      if event is None: return self.error is None # End of body, or error.
+      count += len(event.data)
+    return False # The client is sending more than we are willing to read.
+
+
   def recycle(self) -> bool:
     '''
     Recycle the connection for the next request/response cycle if possible.
@@ -171,6 +186,8 @@ class ServerConfig:
   port: the port number to bind to; defaults to 0, which means the OS will choose a free port.
   backlog: the number of unaccepted connections that the system will allow before refusing new connections.
   conn_timeout: the timeout in seconds for blocking operations on client connections.
+  drain_timeout: the timeout in seconds for blocking reads while draining an unread request body before closing a connection.
+  drain_max_bytes: the maximum number of unread request body bytes to drain before closing a connection.
   max_queued: the maximum number of connections waiting in the queue; excess connections are dropped immediately.
   num_threads: the number of worker threads in the thread pool.
   recv_size: the maximum number of bytes to receive at once from client connections.
@@ -184,6 +201,8 @@ class ServerConfig:
   backlog:int = 128
   recv_size:int = 64 * 1024
   conn_timeout:float = 10.0
+  drain_timeout:float = 1.0
+  drain_max_bytes:int = 1 << 20
   num_threads:int = 4
   max_queued:int = 64
   thread_name_prefix:str = 'WebServer'
@@ -209,6 +228,10 @@ class ServerConfig:
       help=f'Maximum number of bytes to receive at once from client connections; default: {cls.recv_size}.')
     parser.add_argument('-conn-timeout', type=float, default=cls.conn_timeout,
       help=f'Timeout in seconds for blocking operations on client connections; default: {cls.conn_timeout}.')
+    parser.add_argument('-drain-timeout', type=float, default=cls.drain_timeout,
+      help=f'Timeout in seconds for draining an unread request body before closing; default: {cls.drain_timeout}.')
+    parser.add_argument('-drain-max-bytes', type=int, default=cls.drain_max_bytes,
+      help=f'Maximum number of unread request body bytes to drain before closing; default: {cls.drain_max_bytes}.')
     parser.add_argument('-num-threads', type=int, default=cls.num_threads,
       help=f'Number of worker threads in the thread pool; default: {cls.num_threads}.')
     parser.add_argument('-max-queued', type=int, default=cls.max_queued,
@@ -218,6 +241,7 @@ class ServerConfig:
 
     args = parser.parse_args()
     return cls(host=args.host, port=args.port, backlog=args.backlog, recv_size=args.recv_size, conn_timeout=args.conn_timeout,
+      drain_timeout=args.drain_timeout, drain_max_bytes=args.drain_max_bytes,
       num_threads=args.num_threads, max_queued=args.max_queued, log_access=args.log_access)
 
 
@@ -327,6 +351,33 @@ class WebServer:
         if not conn.recycle(): break
     except Exception as exc:
       logE('Connection handling error.', exc=exc, client_addr=client_addr)
+    finally:
+      self._close_connection(conn)
+
+
+  def _close_connection(self, conn:_Conn) -> None:
+    '''
+    Close a client connection, first draining any unread request body.
+
+    Closing a socket whose kernel receive buffer still holds unread data causes the kernel to send an RST instead of a FIN.
+    The RST aborts the connection at the client, which fails its remaining sends and can discard response bytes
+    that it has not yet read. This turns a well-formed error response (e.g. the 413 that we send when a body exceeds
+    the handler limit) into a connection reset error on the client, nondeterministically depending on timing.
+
+    To avoid this we half-close the socket, which tells the client that no more response data is coming
+    while still allowing it to finish uploading, and then read the rest of the body before closing.
+    The drain is bounded by `drain_max_bytes` and by `drain_timeout` per read,
+    so that a client which keeps uploading cannot occupy the worker thread indefinitely.
+    '''
+    socket = conn.socket
+    try:
+      if conn.h11_conn.their_state is h11_SEND_BODY: # The body was not fully read, so unread data may be buffered.
+        socket.shutdown(SHUT_WR)
+        socket.settimeout(self.config.drain_timeout)
+        if not conn.drain_unread_body(max_bytes=self.config.drain_max_bytes):
+          logI('Unread request body was not drained; closing connection abruptly.', client_addr=conn.client_addr)
+    except Exception as exc: # Best effort: the response has already been sent, so there is nothing left to do but close.
+      logI('Connection close error.', exc=exc, client_addr=conn.client_addr)
     finally:
       try: socket.close()
       except OSError: pass

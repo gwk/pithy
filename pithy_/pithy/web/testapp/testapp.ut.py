@@ -60,9 +60,9 @@ def _() -> None:
       return requests.post(f'{base_url}/echo', data=gen(), headers=form_headers, timeout=2)
 
     # EchoBody.max_body_bytes is 32. The streaming body-size cap itself is unit-tested in server/requestconn.ut.py;
-    # here we cover the end-to-end happy paths over a real connection, where the server reads the body and replies
-    # cleanly. (The oversized case rejects mid-upload and closes the connection, which races the response and the
-    # ensuing RST, so it is not asserted over the wire.)
+    # here we cover the end-to-end behavior over a real connection, including the oversized cases.
+    # The server rejects an oversized body mid-upload and closes the connection, but it drains the unread body first,
+    # so the client reliably receives the 413 instead of racing an RST.
 
     # Normal (Content-Length) POST within the cap parses the body.
     r = post(b'name=alice')
@@ -76,6 +76,9 @@ def _() -> None:
     r = post_chunked(b'na', b'me=', b'alice')
     utest_val(200, r.status_code)
     utest_val('name=alice', r.text)
+
+    # A chunked body over the cap is rejected mid-upload, after the server has already read part of it.
+    utest_val(413, post_chunked(b'name=', b'x'*64).status_code)
 
     # Verify the server process is still healthy.
     _ = server_proc.flush_merged()
