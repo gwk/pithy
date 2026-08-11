@@ -10,5 +10,4 @@ each command takes a dotted `app` spec naming the module that defines it. See `r
 from . import main_entry
 
 
-if __name__ == '__main__':
-  main_entry(None, prog='pithy.sqlite.backup')
+if __name__ == '__main__': main_entry(None, prog='pithy.sqlite.backup')
