@@ -37,9 +37,9 @@ only the active database files are covered by the advisory lock logic.
 
 import time
 from argparse import SUPPRESS
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from hashlib import sha1
-from typing import Callable, cast, get_args, Literal, Protocol, Sequence
+from typing import Callable, cast, get_args, Literal, Mapping, Protocol, Sequence
 
 from ...argparser import CommandParser, Namespace
 from ...date import DateTime, dt_Ymd_HMS, dt_Ymd_HMS_Z
@@ -105,8 +105,11 @@ class BackupConfig:
   The callable fields are application code; the engine only invokes them.
 
   * `backups_dir`: destination for local backup artifacts.
-  * `upload_interval`: a float in seconds, or a timespan string like '15s'|'30m'|'1h'|'never', or `None` (never).
-  * `use_utc`: phase the upload interval grid by UTC instead of by the system timezone.
+  * `upload_interval`: a positive float in seconds, a timespan string like '15s'|'30m'|'1h'|'never', or `None` (never).
+    It applies to databases not named in `upload_intervals`.
+  * `upload_intervals`: per-database upload intervals in the same forms, overriding `upload_interval`;
+    each key must be a name in `db_config.names`.
+  * `use_utc`: align the upload interval grid by UTC instead of by the server timezone.
   * `make_save_store`: read-write store factory for uploads; `None` disables uploads.
   * `make_restore_store`: read-only store factory for restores. The optional `store_name` is app-defined
     (e.g. a deployment stage); the factory validates it, including any safety guards on which stores a host may restore from.
@@ -119,20 +122,27 @@ class BackupConfig:
   db_config: DbConfig
   backups_dir: str
   upload_interval: float|str|None
+  upload_intervals: Mapping[str,float|str|None] = field(default_factory=dict)
   use_utc: bool = False
   make_save_store: Callable[[],BackupStore]|None = None
   make_restore_store: Callable[[str|None],BackupStore]|None = None
   mutate_restored: Callable[[str,str],None]|None = None
   fix_data_file_perms: Callable[[str],None] = lambda _: None
-  _upload_interval_s: float|None = None
+  # Derived by `__post_init__` from the interval fields above; not constructor arguments.
+  _upload_interval_s: float|None = field(init=False, repr=False, compare=False)
+  _upload_intervals_s: Mapping[str,float|None] = field(init=False, repr=False, compare=False)
 
   def __post_init__(self) -> None:
-    interval = self.upload_interval
-    if isinstance(interval, str):
-      interval = parse_upload_interval(interval)
-    if interval is not None and interval <= 0:
-      raise ValueError(f'BackupConfig.upload_interval must be positive or None; received {interval!r}.')
-    object.__setattr__(self, '_upload_interval_s', interval)
+    # An unrecognized name would otherwise fall back to `upload_interval` silently, hiding a typo in the config.
+    db_names = frozenset(self.db_config.names)
+    if unknown := sorted(name for name in self.upload_intervals if name not in db_names):
+      raise ValueError(f'BackupConfig.upload_intervals names unknown databases: {unknown}; '
+        f'DbConfig.names are {self.db_config.names!r}.')
+    object.__setattr__(self, '_upload_interval_s',
+      normalize_upload_interval(self.upload_interval, desc='BackupConfig.upload_interval'))
+    object.__setattr__(self, '_upload_intervals_s',
+      {name: normalize_upload_interval(interval, desc=f'BackupConfig.upload_intervals[{name!r}]')
+        for name, interval in self.upload_intervals.items()})
 
 
 def parse_upload_interval(value:str) -> float|None:
@@ -140,6 +150,14 @@ def parse_upload_interval(value:str) -> float|None:
   if value == 'never': return None
   interval = parse_timespan_as_seconds(value)
   if interval <= 0: raise ValueError(f'upload interval must be positive or "never"; received {value!r}.')
+  return interval
+
+
+def normalize_upload_interval(interval:float|str|None, *, desc:str) -> float|None:
+  'Normalize a configured upload interval to positive seconds, or `None` (never). `desc` names the field for errors.'
+  if isinstance(interval, str): interval = parse_upload_interval(interval)
+  if interval is not None and interval <= 0:
+    raise ValueError(f'{desc} must be positive or None; received {interval!r}.')
   return interval
 
 
@@ -229,18 +247,27 @@ def interval_slot(dt:DateTime, *, interval:float, use_utc:bool) -> int:
   return int((dt.timestamp() + std_offset + grid_anchor_offset) // interval)
 
 
-def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod, upload_interval:float|None) -> None:
-  'Produce a local backup artifact for each named database, then conditionally upload each, depending on `upload_interval`.'
+def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod) -> None:
+  '''
+  Produce a local backup artifact for each named database, then conditionally upload each, depending on the upload intervals.
+  Every named database is backed up locally on every call; only the uploads are conditional.
+  '''
+  intervals = {name: upload_interval_for(config, name) for name in names}
 
   store:BackupStore|None = None
-  if upload_interval is not None:
+  if any(interval is not None for interval in intervals.values()):
     if config.make_save_store is None: exit('error: backup config has no save store factory; cannot upload.')
     store = config.make_save_store()
 
   for name in names:
     path = create_local_backup(config, name, method=method)
     if store is not None:
-      maybe_upload(store, path, obj_key=f'{name}.db', interval=upload_interval, use_utc=config.use_utc)
+      maybe_upload(store, path, obj_key=f'{name}.db', interval=intervals[name], use_utc=config.use_utc)
+
+
+def upload_interval_for(config:BackupConfig, name:str) -> float|None:
+  'Resolve the upload interval in seconds for a single database; `None` means never upload.'
+  return config._upload_intervals_s.get(name, config._upload_interval_s)
 
 
 def restore_all(config:BackupConfig, names:Sequence[str], *, store_name:str|None=None) -> None:
@@ -402,7 +429,8 @@ def main_entry(config_source:ConfigSource|None=None, *, prog:str|None=None) -> N
   # `None` means "never" so the default is set to SUPPRESS.
   save_cmd.add_argument('-upload-interval', type=parse_upload_interval, default=SUPPRESS, metavar='TIMESPAN|never',
     help='Specify the timespan for uploads, e.g. 1h, 30m, 30s. The timespan must be positive. '
-      '"never" disables upload. Defaults to the config `upload_interval`.')
+      '"never" disables upload. Defaults to the config intervals. '
+      "NOTE: this overrides every per-database interval.")
 
   restore_cmd = parser.add_command(main_restore)
   if with_app_arg: restore_cmd.add_argument('app', help=app_spec_help)
@@ -421,11 +449,9 @@ def main_save(args:Namespace) -> None:
   'Produce local backup artifacts, optionally uploading them to cloud storage.'
   config = config_for_args(args)
   names = parse_db_names(args.names, config=config.db_config)
-  if 'upload_interval' in args:
-    upload_interval = args.upload_interval
-  else:
-    upload_interval = config._upload_interval_s
-  backup_and_upload(config, names, method=args.method, upload_interval=upload_interval)
+  if 'upload_interval' in args: # An explicit flag overrides the default and every per-database interval.
+    config = replace(config, upload_interval=args.upload_interval, upload_intervals={})
+  backup_and_upload(config, names, method=args.method)
 
 
 def main_restore(args:Namespace) -> None:
