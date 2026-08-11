@@ -9,15 +9,23 @@ See `inish.backblaze` for a Backblaze B2 implementation.
 Application policy is injected via `BackupConfig` callables, so each hook can run arbitrary application code.
 These include credential and bucket resolution, post-restore data mutations, file ownership normalization.
 
-A backup pipeline run has two steps: produce a local artifact by one of two methods, then optionally upload it,
-gated by an interval so that frequent local backups produce less frequent uploads.
+A backup pipeline run has two steps:
+* produce a local artifact by one of two methods (sync or vacuum);
+* maybe upload it depending on the configured time interval.
+
+Upload intervals are aligned to the clock rather than measured from the previous upload:
+* an interval of 30m uploads after the hour and half-hour;
+* an interval of 1d uploads after midnight, by the system timezone or by UTC per `BackupConfig.use_utc`.
+
+The grid is phased by standard time, so under daylight saving a daily upload happens after 01:00 local.
+This results in at most one upload per elapsed interval, including across daylight saving transitions.
 
 Local files are written to `BackupConfig.backups_dir`.
 This can be a different volume than the data dir, so a local copy survives loss of the data mount.
 Backup files:
 * `{name}.db`: vacuum backup copy; a preexisting copy is first moved to `{name}.db.prev`.
 * `{name}.sync.db`: sqlite3_rsync replica.
-* `{artifact}.cloudts`: timestamp of the last upload of the adjacent artifact, for upload interval gating.
+* `{artifact}.cloudts`: timestamp of the last upload of the adjacent artifact.
 
 Restore artifacts are colocated with the canonical database files.
 They are plain files, not coordinated by the Database advisory lock;
@@ -26,10 +34,10 @@ only the active database files are covered by the advisory lock logic.
 * `{db_path}.restoring`: working copy that is mutated and then moved into place.
 '''
 
+import time
+from argparse import SUPPRESS
 from dataclasses import dataclass
-from datetime import datetime
 from hashlib import sha1
-from math import inf, isinf
 from typing import Callable, cast, get_args, Literal, Protocol, Sequence
 
 from ...argparser import CommandParser, Namespace
@@ -93,10 +101,11 @@ class BackupConfig:
   The callable fields are application code; the engine only invokes them.
 
   * `backups_dir`: destination for local backup artifacts.
+  * `upload_interval`: a float in seconds, or a timespan string like '15s'|'30m'|'1h'|'never', or `None` (never).
+  * `use_utc`: phase the upload interval grid by UTC instead of by the system timezone.
   * `make_save_store`: read-write store factory for uploads; `None` disables uploads.
   * `make_restore_store`: read-only store factory for restores. The optional `store_name` is app-defined
     (e.g. a deployment stage); the factory validates it, including any safety guards on which stores a host may restore from.
-  * `upload_interval`: default upload gating interval in seconds; `0` always uploads; `None` never uploads.
   * `mutate_restored`: hook `(restoring_path, name)` applied to the `.restoring` copy before it is moved into place,
     e.g. to clear queued actions that a restored copy must not replay against live systems.
     The engine checkpoints the WAL and removes sidecars after the hook runs; the hook need not do so.
@@ -105,11 +114,29 @@ class BackupConfig:
 
   db_config: DbConfig
   backups_dir: str
+  upload_interval: float|str|None
+  use_utc: bool = False
   make_save_store: Callable[[],BackupStore]|None = None
   make_restore_store: Callable[[str|None],BackupStore]|None = None
-  upload_interval: float|None = None
   mutate_restored: Callable[[str,str],None]|None = None
   fix_data_file_perms: Callable[[str],None] = lambda _: None
+  _upload_interval_s: float|None = None
+
+  def __post_init__(self) -> None:
+    interval = self.upload_interval
+    if isinstance(interval, str):
+      interval = parse_upload_interval(interval)
+    if interval is not None and interval <= 0:
+      raise ValueError(f'BackupConfig.upload_interval must be positive or None; received {interval!r}.')
+    object.__setattr__(self, '_upload_interval_s', interval)
+
+
+def parse_upload_interval(value:str) -> float|None:
+  'Parse an upload interval string: "never" -> None, otherwise a positive timespan converted to seconds.'
+  if value == 'never': return None
+  interval = parse_timespan_as_seconds(value)
+  if interval <= 0: raise ValueError(f'upload interval must be positive or "never"; received {value!r}.')
+  return interval
 
 
 def resolve_backup_config(source:ConfigSource) -> BackupConfig:
@@ -139,22 +166,24 @@ def create_local_backup(config:BackupConfig, name:str, *, method:BackupMethod) -
       return db.sync_db(name=name, sync_dir=config.backups_dir)
 
 
-def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float) -> bool:
+def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|None, use_utc:bool=False) -> bool:
   '''
-  Upload `path` to `store` as `obj_key`, gated by the `.cloudts` sidecar:
-  skip if fewer than `interval` seconds have elapsed since the last recorded upload.
+  Conditionally upload `path` to `store` as `obj_key`;
+  skip if the previous upload as recorded by the adjacent `.cloudts` file falls in the same interval slot as now.
+  `interval` must be positive; `None` never uploads.
   Returns True if an upload completed.
   '''
+  if interval is None: return False
+
   cloudts_path = path + cloudts_suffix
   now = now_utc()
+  slot = interval_slot(now, interval=interval, use_utc=use_utc)
 
-  if interval > 0 and is_file(cloudts_path, follow=True):
+  if is_file(cloudts_path, follow=True):
     with open(cloudts_path) as f:
       prev_ts_str = f.read().strip()
-    prev_ts = datetime.fromisoformat(prev_ts_str)
-    elapsed = (now - prev_ts).total_seconds()
-    if elapsed < interval:
-      logI('Skipping upload; interval not elapsed.', obj_key=obj_key, elapsed_s=int(elapsed), interval_s=int(interval))
+    prev_ts = DateTime.fromisoformat(prev_ts_str)
+    if interval_slot(prev_ts, interval=interval, use_utc=use_utc) == slot:
       return False
 
   logI('Uploading to store.', store=store.name, path=path, obj_key=obj_key)
@@ -169,19 +198,44 @@ def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float) ->
   return True
 
 
+def interval_slot(dt:DateTime, *, interval:float, use_utc:bool) -> int:
+  '''
+  Identify the time slot of length `interval` seconds that contains `dt`.
+  Slots tile the timeline end to end, so consecutive slots are exactly `interval` apart in elapsed time.
+
+  The grid is anchored at the epoch, phased by UTC if `use_utc`, otherwise by the system timezone.
+  An interval that divides the day evenly aligns to the clock: 1h begins on the hour, 1d at midnight.
+  Any other interval is equally periodic but its boundaries precess through the day;
+  a whole number of days also begins at midnight, on dates fixed by the epoch, e.g. 7d falls on Thursdays.
+
+  `interval` must be positive.
+
+  The system time "phase" is always the standard-time (non-daylight-saving) offset, not the offset in effect at `dt`.
+  This way daylight saving does not perturb the grid:
+  * spring forward skips no slot;
+  * the repeated hour of the fall back is two slots rather than one.
+  Since the grid does not move, daylight saving relabels the boundaries an hour later on the local clock:
+  a daily slot begins at 01:00 local rather than midnight. An interval that divides an hour evenly is unchanged.
+  '''
+  if interval <= 0: raise ValueError(f'interval must be positive; received {interval!r} seconds.')
+  std_offset = 0.0 if use_utc else -float(time.timezone)
+  #^ `time.timezone` is the standard-time offset in seconds west of UTC, so it does not change across a DST transition.
+  #^ It does change when tzset() is called, so we access it through the module.
+  return int((dt.timestamp() + std_offset) // interval)
+
+
 def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod, upload_interval:float|None) -> None:
-  'Produce a local backup artifact for each named database, then upload each, gated by `upload_interval`.'
+  'Produce a local backup artifact for each named database, then conditionally upload each, depending on `upload_interval`.'
 
   store:BackupStore|None = None
-  if upload_interval is not None and not isinf(upload_interval):
+  if upload_interval is not None:
     if config.make_save_store is None: exit('error: backup config has no save store factory; cannot upload.')
     store = config.make_save_store()
 
   for name in names:
     path = create_local_backup(config, name, method=method)
     if store is not None:
-      assert upload_interval is not None
-      maybe_upload(store, path, obj_key=f'{name}.db', interval=upload_interval)
+      maybe_upload(store, path, obj_key=f'{name}.db', interval=upload_interval, use_utc=config.use_utc)
 
 
 def restore_all(config:BackupConfig, names:Sequence[str], *, store_name:str|None=None) -> None:
@@ -339,10 +393,11 @@ def main_entry(config_source:ConfigSource|None=None, *, prog:str|None=None) -> N
   save_cmd.add_argument('-method', choices=backup_methods, default='sync',
     help='Artifact production method: "sync" uses sqlite3_rsync (fast successive replication); '
       '"vacuum" uses VACUUM INTO (compacted copy).')
-  save_cmd.add_argument('-upload-interval', type=parse_upload_interval, default=None, metavar='TIMESPAN|always|never',
-    help='Upload the artifact to cloud storage if more than this timespan has elapsed since the last upload '
-      '(e.g. 1h, 30m, 30s); "always" uploads unconditionally, "never" disables upload. '
-      'Defaults to the config `upload_interval`.')
+
+  # `None` means "never" so the default is set to SUPPRESS.
+  save_cmd.add_argument('-upload-interval', type=parse_upload_interval, default=SUPPRESS, metavar='TIMESPAN|never',
+    help='Specify the timespan for uploads, e.g. 1h, 30m, 30s. The timespan must be positive. '
+      '"never" disables upload. Defaults to the config `upload_interval`.')
 
   restore_cmd = parser.add_command(main_restore)
   if with_app_arg: restore_cmd.add_argument('app', help=app_spec_help)
@@ -361,7 +416,10 @@ def main_save(args:Namespace) -> None:
   'Produce local backup artifacts, optionally uploading them to cloud storage.'
   config = config_for_args(args)
   names = parse_db_names(args.names, config=config.db_config)
-  upload_interval = config.upload_interval if args.upload_interval is None else args.upload_interval
+  if 'upload_interval' in args:
+    upload_interval = args.upload_interval
+  else:
+    upload_interval = config._upload_interval_s
   backup_and_upload(config, names, method=args.method, upload_interval=upload_interval)
 
 
@@ -377,10 +435,3 @@ def config_for_args(args:Namespace) -> BackupConfig:
   if source is None:
     source = cast(str, args.app)
   return resolve_backup_config(source)
-
-
-def parse_upload_interval(value:str) -> float:
-  'Parse an upload interval flag value: "always" -> 0, "never" -> infinity, otherwise a timespan in seconds.'
-  if value == 'always': return 0.0
-  if value == 'never': return inf
-  return parse_timespan_as_seconds(value)
