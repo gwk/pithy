@@ -1,5 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from dataclasses import replace
 from hashlib import sha1
 from os import environ
 from shutil import which
@@ -11,7 +12,7 @@ from pithy.fs import is_file, path_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
 from pithy.sqlite.backup import (BackupConfig, cloudts_suffix, create_local_backup, downloaded_suffix, interval_slot,
-  maybe_upload, parse_db_names, parse_upload_interval, restore_db, StoredVersion)
+  maybe_upload, parse_db_names, parse_upload_interval, restore_db, StoredVersion, upload_interval_for)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -183,6 +184,10 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_val('30m', BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_interval='30m').upload_interval,
     'upload_interval preserved')
 
+  # The normalized fields are derived, so passing one is an error rather than a value that is silently discarded.
+  utest_exc(TypeError, BackupConfig, db_config=db_config, backups_dir=backups_dir, upload_interval='30m',
+    _upload_interval_s=1800.0)
+
   vacuum_path = create_local_backup(backup_config, 'main', method='vacuum')
   utest_val(f'{backups_dir}/main.db', vacuum_path, 'vacuum artifact path')
   utest_val(['original'], read_rows(vacuum_path), 'vacuum artifact rows')
@@ -195,6 +200,30 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_val(False, maybe_upload(store, vacuum_path, 'main.db', interval=None), 'interval None never uploads')
   utest_exc(ValueError, maybe_upload, store, vacuum_path, 'main.db', interval=0.0)
   utest_val(1, len(store.versions['main.db']), 'store version count')
+
+
+  # Upload intervals resolve per database; `upload_interval` is the default and None means never.
+  # The per-database keys must name databases in the group, so these use a config with more than one name.
+  multi_config = replace(backup_config, db_config=replace(db_config, names=('main','aux','logs')))
+  intervals_config = replace(multi_config, upload_interval=hour, upload_intervals={'aux': day, 'logs': None})
+  utest(hour, upload_interval_for, intervals_config, 'main')
+  utest(day, upload_interval_for, intervals_config, 'aux')
+  utest(None, upload_interval_for, intervals_config, 'logs')
+  utest(None, upload_interval_for, replace(backup_config, upload_interval=None), 'main')
+
+  # Per-database intervals are parsed and validated like the default.
+  strs_config = replace(multi_config, upload_interval='1h', upload_intervals={'aux': '1d', 'logs': 'never'})
+  utest(hour, upload_interval_for, strs_config, 'main')
+  utest(day, upload_interval_for, strs_config, 'aux')
+  utest(None, upload_interval_for, strs_config, 'logs')
+  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': 0.0})
+  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': -hour})
+  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': 'bogus'})
+  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': '0s'})
+
+  # A key that does not name a database in the group is an error, not a silent fallback to the default interval.
+  utest_exc(ValueError, replace, backup_config, upload_intervals={'aux': hour})
+  utest_exc(ValueError, replace, multi_config, upload_intervals={'aux': day, 'bogus': hour})
 
 
   # Restore: replaces the canonical file with the latest uploaded version and applies the mutation hook.
