@@ -21,3 +21,10 @@ utest(Mu(cl='r'), replace, Mu(cl='o'), cl='r')
 utest(Mu(_=['x']), replace, Mu(_=['a', 'b']), _=['x'])
 
 utest(Mu(a='a2', b='b'), replace, Mu(a='a1', b='b'), a='a2')
+
+
+# Text and attribute values are stripped of the characters that escaping does not defend against.
+
+utest('&amp;a&lt;b', Mu.esc_text, '&a<\u202eb')
+utest('ab', Mu.esc_text, 'a\u200bb')
+utest("'ab'", Mu.quote_attr_val, 'a\u202eb')

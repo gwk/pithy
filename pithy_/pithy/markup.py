@@ -23,7 +23,7 @@ from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatc
 from .iterable import window_iter, window_pairs
 from .json import render_json
 from .reprs import repr_lim
-from .strings import EscapedStr
+from .strings import EscapedStr, strip_unsafe_chars
 
 
 # If lxml is available, import the special Comment value that is used as the tag for comments.
@@ -811,6 +811,7 @@ class Mu:
 
   @staticmethod
   def esc_text(text:str) -> str:
+    text = strip_unsafe_chars(text)
     text = text.replace("&", "&amp;") # Ampersand must be replaced first, because escapes use ampersands.
     text = text.replace("<", "&lt;")
     # Note: we do not replace ">" because it is not required and helpful to leave unescaped for embedded CSS.
@@ -819,6 +820,7 @@ class Mu:
 
   @staticmethod
   def quote_attr_val(text:str) -> str:
+    text = strip_unsafe_chars(text)
     text = text.replace("&", "&amp;") # Ampersand must be replaced first, because escapes use ampersands.
     text = text.replace("<", "&lt;")
     # Note: we do not replace ">" because it is not required and helpful to leave unescaped for inline CSS.
