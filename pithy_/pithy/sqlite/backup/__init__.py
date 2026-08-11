@@ -26,7 +26,7 @@ This can be a different volume than the data dir, so a local copy survives loss 
 Backup files:
 * `{name}.db`: vacuum backup copy; a preexisting copy is first moved to `{name}.db.prev`.
 * `{name}.sync.db`: sqlite3_rsync replica.
-* `{artifact}.cloudts`: timestamp of the last upload of the adjacent artifact.
+* `{artifact}.uploadts`: timestamp of the last upload of the adjacent artifact.
 * `{name}.backuptrigger`: request that the next run upload this database, whatever its interval.
 
 Restore artifacts are colocated with the canonical database files.
@@ -65,7 +65,7 @@ grid_anchor_offset = 4 * 24 * 60 * 60.0
 #^ The unix epoch began on a Thursday; we anchor our grid to the preceding Sunday to make weekly jobs happen Sunday at 00:00.
 
 backuptrigger_suffix = '.backuptrigger'
-cloudts_suffix = '.cloudts'
+uploadts_suffix = '.uploadts'
 downloaded_suffix = '.downloaded'
 restoring_suffix = '.restoring'
 
@@ -196,12 +196,12 @@ def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|Non
  force:bool=False) -> bool:
   '''
   Conditionally upload `path` to `store` as `obj_key`;
-  skip if the previous upload as recorded by the adjacent `.cloudts` file falls in the same interval slot as now.
+  skip if the previous upload as recorded by the adjacent `.uploadts` file falls in the same interval slot as now.
   `interval` must be positive; `None` never uploads.
   `force` uploads regardless of `interval` and the sidecar file, and still records the timestamp.
   Returns True if an upload completed.
   '''
-  cloudts_path = path + cloudts_suffix
+  uploadts_path = path + uploadts_suffix
   now = now_utc()
 
   if not force:
@@ -209,8 +209,8 @@ def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|Non
 
     slot = interval_slot(now, interval=interval, use_utc=use_utc)
 
-    if is_file(cloudts_path, follow=True):
-      with open(cloudts_path) as f:
+    if is_file(uploadts_path, follow=True):
+      with open(uploadts_path) as f:
         prev_ts_str = f.read().strip()
       prev_ts = DateTime.fromisoformat(prev_ts_str)
       if interval_slot(prev_ts, interval=interval, use_utc=use_utc) == slot:
@@ -222,9 +222,9 @@ def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|Non
     return False
 
   now_ts = dt_Ymd_HMS_Z(now)
-  with open(cloudts_path, 'w') as f:
+  with open(uploadts_path, 'w') as f:
     print(now_ts, file=f)
-  logI('Upload complete; timestamp written.', cloudts_path=cloudts_path, ts=now_ts)
+  logI('Upload complete; timestamp written.', uploadts_path=uploadts_path, ts=now_ts)
   return True
 
 

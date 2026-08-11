@@ -11,9 +11,9 @@ from pithy.date import DateTime, TimeDelta
 from pithy.fs import is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
-from pithy.sqlite.backup import (backup_and_upload, BackupConfig, clear_trigger_file, cloudts_suffix, create_local_backup,
-  downloaded_suffix, interval_slot, maybe_upload, parse_db_names, parse_upload_interval, restore_db, stat_trigger_file,
-  StoredVersion, upload_interval_for, write_trigger_file)
+from pithy.sqlite.backup import (backup_and_upload, BackupConfig, clear_trigger_file, create_local_backup, downloaded_suffix,
+  interval_slot, maybe_upload, parse_db_names, parse_upload_interval, restore_db, stat_trigger_file, StoredVersion,
+  upload_interval_for, uploadts_suffix, write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -194,9 +194,9 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_val(['original'], read_rows(vacuum_path), 'vacuum artifact rows')
 
 
-  # Upload intervals: the first upload writes the cloudts sidecar file, and the next timestamp in the same slot skips.
+  # Upload intervals: the first upload writes the uploadts sidecar file, and the next timestamp in the same slot skips.
   utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=hour), 'initial upload')
-  utest_val(True, is_file(vacuum_path + cloudts_suffix, follow=True), 'cloudts written')
+  utest_val(True, is_file(vacuum_path + uploadts_suffix, follow=True), 'uploadts written')
   utest_val(False, maybe_upload(store, vacuum_path, 'main.db', interval=hour), 'gated upload skipped')
   utest_val(False, maybe_upload(store, vacuum_path, 'main.db', interval=None), 'interval None never uploads')
   utest_exc(ValueError, maybe_upload, store, vacuum_path, 'main.db', interval=0.0)
