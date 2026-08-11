@@ -27,6 +27,7 @@ Backup files:
 * `{name}.db`: vacuum backup copy; a preexisting copy is first moved to `{name}.db.prev`.
 * `{name}.sync.db`: sqlite3_rsync replica.
 * `{artifact}.cloudts`: timestamp of the last upload of the adjacent artifact.
+* `{name}.backuptrigger`: request that the next run upload this database, whatever its interval.
 
 Restore artifacts are colocated with the canonical database files.
 They are plain files, not coordinated by the Database advisory lock;
@@ -39,11 +40,13 @@ import time
 from argparse import SUPPRESS
 from dataclasses import dataclass, field, replace
 from hashlib import sha1
+from os import getpid
 from typing import Callable, cast, get_args, Literal, Mapping, Protocol, Sequence
 
 from ...argparser import CommandParser, Namespace
 from ...date import DateTime, dt_Ymd_HMS, dt_Ymd_HMS_Z
-from ...fs import copy_path, file_size, is_file, move_file, path_exists, remove_file_if_exists
+from ...filestatus import StatResult
+from ...fs import copy_path, file_size, file_stat, is_file, move_file, path_exists, remove_file_if_exists
 from ...logs import logI
 from ...sqlite import Conn
 from ...strings import format_byte_count
@@ -61,6 +64,7 @@ backup_methods:tuple[BackupMethod,...] = get_args(BackupMethod.__value__)
 grid_anchor_offset = 4 * 24 * 60 * 60.0
 #^ The unix epoch began on a Thursday; we anchor our grid to the preceding Sunday to make weekly jobs happen Sunday at 00:00.
 
+backuptrigger_suffix = '.backuptrigger'
 cloudts_suffix = '.cloudts'
 downloaded_suffix = '.downloaded'
 restoring_suffix = '.restoring'
@@ -188,25 +192,29 @@ def create_local_backup(config:BackupConfig, name:str, *, method:BackupMethod) -
       return db.sync_db(name=name, sync_dir=config.backups_dir)
 
 
-def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|None, use_utc:bool=False) -> bool:
+def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|None, use_utc:bool=False,
+ force:bool=False) -> bool:
   '''
   Conditionally upload `path` to `store` as `obj_key`;
   skip if the previous upload as recorded by the adjacent `.cloudts` file falls in the same interval slot as now.
   `interval` must be positive; `None` never uploads.
+  `force` uploads regardless of `interval` and the sidecar file, and still records the timestamp.
   Returns True if an upload completed.
   '''
-  if interval is None: return False
-
   cloudts_path = path + cloudts_suffix
   now = now_utc()
-  slot = interval_slot(now, interval=interval, use_utc=use_utc)
 
-  if is_file(cloudts_path, follow=True):
-    with open(cloudts_path) as f:
-      prev_ts_str = f.read().strip()
-    prev_ts = DateTime.fromisoformat(prev_ts_str)
-    if interval_slot(prev_ts, interval=interval, use_utc=use_utc) == slot:
-      return False
+  if not force:
+    if interval is None: return False
+
+    slot = interval_slot(now, interval=interval, use_utc=use_utc)
+
+    if is_file(cloudts_path, follow=True):
+      with open(cloudts_path) as f:
+        prev_ts_str = f.read().strip()
+      prev_ts = DateTime.fromisoformat(prev_ts_str)
+      if interval_slot(prev_ts, interval=interval, use_utc=use_utc) == slot:
+        return False
 
   logI('Uploading to store.', store=store.name, path=path, obj_key=obj_key)
   if not store.upload(path, obj_key):
@@ -247,22 +255,87 @@ def interval_slot(dt:DateTime, *, interval:float, use_utc:bool) -> int:
   return int((dt.timestamp() + std_offset + grid_anchor_offset) // interval)
 
 
+def trigger_file_path(config:BackupConfig, name:str) -> str:
+  'Path of the marker file that triggers an upload of `name` on the next backup run.'
+  return f'{config.backups_dir}/{name}{backuptrigger_suffix}'
+
+
+def write_trigger_file(config:BackupConfig, name:str) -> str:
+  '''
+  Write the marker file corresponding to `name` to trigger an upload. Returns the file path.
+
+  The marker is written to a temporary path and renamed into place, so it appears atomically and every request is a
+  distinct file. A request made while a run is in flight therefore survives that run and is honored by the next one,
+  which is correct: the artifact that run uploads was produced before the request was made.
+
+  Only the marker's existence is meaningful; the contents are informational.
+  Note that the writer need not be the user that the backup service runs as, because creating and removing the marker requires
+  write permission on the backups dir, not on the marker itself.
+  '''
+  path = trigger_file_path(config, name)
+  tmp_path = f'{path}.{getpid()}.tmp' # Distinct per process, so that concurrent writers cannot share a temporary file.
+  with open(tmp_path, 'w') as f:
+    print(dt_Ymd_HMS_Z(now_utc()), file=f)
+  move_file(tmp_path, to=path, overwrite=True)
+  return path
+
+
+def stat_trigger_file(config:BackupConfig, name:str) -> StatResult|None:
+  '''
+  Stat the trigger marker for `name`, returning None if no upload was requested.
+  The result identifies the particular request, and is passed back to `clear_trigger_file` once it has been satisfied.
+
+  A run claims a trigger by stat'ing it, and must do so before it produces the local artifact,
+  so that the artifact it uploads is at least as new as the request it satisfies.
+  It must also clear the trigger only after the upload succeeds,
+  so that a failed or interrupted run leaves the request for the next one.
+  '''
+  try: return file_stat(trigger_file_path(config, name), follow=True)
+  except FileNotFoundError: return None
+
+
+def clear_trigger_file(config:BackupConfig, name:str, claimed:StatResult) -> None:
+  '''
+  Remove the trigger marker for `name`.
+  A marker rewritten since it was claimed is a second request, so it is left in place for the next run.
+  '''
+  path = trigger_file_path(config, name)
+  try: current = file_stat(path, follow=True)
+  except FileNotFoundError: return # Already removed, e.g. by a concurrent run.
+  if (current.st_ino, current.st_mtime_ns) != (claimed.st_ino, claimed.st_mtime_ns):
+    logI('Leaving the backup trigger in place; it was rewritten during this run.', path=path)
+    return
+  remove_file_if_exists(path)
+  logI('Backup trigger cleared.', path=path)
+
+
 def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod) -> None:
   '''
   Produce a local backup artifact for each named database, then conditionally upload each, depending on the upload intervals.
   Every named database is backed up locally on every call; only the uploads are conditional.
+  A database with a pending trigger marker is uploaded whatever its interval, including one that never uploads.
   '''
   intervals = {name: upload_interval_for(config, name) for name in names}
+  # Test for the markers up front, because a database whose interval is None still needs the store if it has been triggered.
+  # This is only a test; each marker is claimed in the loop below, so that a request arriving during the run is not missed.
+  triggered = {name for name in names if is_file(trigger_file_path(config, name), follow=True)}
 
   store:BackupStore|None = None
-  if any(interval is not None for interval in intervals.values()):
+  if any(intervals[name] is not None or name in triggered for name in names):
     if config.make_save_store is None: exit('error: backup config has no save store factory; cannot upload.')
     store = config.make_save_store()
 
   for name in names:
+    # Claim the trigger before producing the artifact, so that the artifact is at least as new as the request it satisfies.
+    claimed = stat_trigger_file(config, name)
     path = create_local_backup(config, name, method=method)
-    if store is not None:
+    if store is None: continue
+    if claimed is None:
       maybe_upload(store, path, obj_key=f'{name}.db', interval=intervals[name], use_utc=config.use_utc)
+    else:
+      logI('Backup trigger found; uploading regardless of the interval.', name=name, path=trigger_file_path(config, name))
+      if maybe_upload(store, path, obj_key=f'{name}.db', interval=intervals[name], use_utc=config.use_utc, force=True):
+        clear_trigger_file(config, name, claimed)
 
 
 def upload_interval_for(config:BackupConfig, name:str) -> float|None:
@@ -432,6 +505,10 @@ def main_entry(config_source:ConfigSource|None=None, *, prog:str|None=None) -> N
       '"never" disables upload. Defaults to the config intervals. '
       "NOTE: this overrides every per-database interval.")
 
+  trigger_cmd = parser.add_command(main_trigger)
+  if with_app_arg: trigger_cmd.add_argument('app', help=app_spec_help)
+  trigger_cmd.add_argument('names', nargs='+', help='Names of databases to request an upload for, or "all".')
+
   restore_cmd = parser.add_command(main_restore)
   if with_app_arg: restore_cmd.add_argument('app', help=app_spec_help)
   restore_cmd.add_argument('-store', default=None,
@@ -452,6 +529,17 @@ def main_save(args:Namespace) -> None:
   if 'upload_interval' in args: # An explicit flag overrides the default and every per-database interval.
     config = replace(config, upload_interval=args.upload_interval, upload_intervals={})
   backup_and_upload(config, names, method=args.method)
+
+
+def main_trigger(args:Namespace) -> None:
+  '''
+  Request that the next backup run upload the named databases, whatever their configured upload intervals.
+  This only requests an upload; it does not perform one.
+  '''
+  config = config_for_args(args)
+  names = parse_db_names(args.names, config=config.db_config)
+  for name in names:
+    logI('Backup trigger written.', path=write_trigger_file(config, name))
 
 
 def main_restore(args:Namespace) -> None:

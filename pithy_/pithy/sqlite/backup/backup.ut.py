@@ -5,14 +5,15 @@ from hashlib import sha1
 from os import environ
 from shutil import which
 from tempfile import mkdtemp
-from time import tzset
+from time import sleep, tzset
 
 from pithy.date import DateTime, TimeDelta
-from pithy.fs import is_file, path_exists
+from pithy.fs import is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
-from pithy.sqlite.backup import (BackupConfig, cloudts_suffix, create_local_backup, downloaded_suffix, interval_slot,
-  maybe_upload, parse_db_names, parse_upload_interval, restore_db, StoredVersion, upload_interval_for)
+from pithy.sqlite.backup import (backup_and_upload, BackupConfig, clear_trigger_file, cloudts_suffix, create_local_backup,
+  downloaded_suffix, interval_slot, maybe_upload, parse_db_names, parse_upload_interval, restore_db, stat_trigger_file,
+  StoredVersion, upload_interval_for, write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -201,6 +202,11 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_exc(ValueError, maybe_upload, store, vacuum_path, 'main.db', interval=0.0)
   utest_val(1, len(store.versions['main.db']), 'store version count')
 
+  # `force` uploads regardless of the interval and the sidecar file.
+  utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=hour, force=True), 'force uploads within the slot')
+  utest_val(True, maybe_upload(store, vacuum_path, 'main.db', interval=None, force=True), 'force uploads despite None')
+  utest_val(3, len(store.versions['main.db']), 'store version count after the forced uploads')
+
 
   # Upload intervals resolve per database; `upload_interval` is the default and None means never.
   # The per-database keys must name databases in the group, so these use a config with more than one name.
@@ -224,6 +230,46 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   # A key that does not name a database in the group is an error, not a silent fallback to the default interval.
   utest_exc(ValueError, replace, backup_config, upload_intervals={'aux': hour})
   utest_exc(ValueError, replace, multi_config, upload_intervals={'aux': day, 'bogus': hour})
+
+
+  # Triggers: a marker requests an upload regardless of the interval, and is cleared once the upload succeeds.
+  trigger_config = replace(backup_config, upload_interval=None) # Uploads are otherwise disabled entirely.
+  utest(None, stat_trigger_file, trigger_config, 'main')
+
+  trigger_file = write_trigger_file(trigger_config, 'main')
+  utest_val(f'{backups_dir}/main.backuptrigger', trigger_file, 'trigger path')
+  utest_val(True, is_file(trigger_file, follow=True), 'trigger written')
+
+  version_count = len(store.versions['main.db'])
+  backup_and_upload(trigger_config, ['main'], method='vacuum')
+  utest_val(version_count + 1, len(store.versions['main.db']), 'trigger uploads despite uploads being disabled')
+  utest_val(False, path_exists(trigger_file, follow=False), 'trigger cleared after a successful upload')
+
+  # Without a trigger, the same config uploads nothing.
+  backup_and_upload(trigger_config, ['main'], method='vacuum')
+  utest_val(version_count + 1, len(store.versions['main.db']), 'no trigger, no upload')
+
+  # A trigger rewritten after it was claimed is a second request; it must survive the run that was already in flight.
+  write_trigger_file(trigger_config, 'main')
+  claimed = stat_trigger_file(trigger_config, 'main')
+  assert claimed is not None
+  sleep(0.01) # So that the rewrite differs in mtime, even if it happens to reuse the freed inode.
+  write_trigger_file(trigger_config, 'main')
+  clear_trigger_file(trigger_config, 'main', claimed)
+  utest_val(True, is_file(trigger_file, follow=True), 'a trigger rewritten during the run is not cleared')
+
+  # The next run consumes it.
+  backup_and_upload(trigger_config, ['main'], method='vacuum')
+  utest_val(version_count + 2, len(store.versions['main.db']), 'the surviving trigger uploads on the next run')
+  utest_val(False, path_exists(trigger_file, follow=False), 'the surviving trigger is then cleared')
+
+  # A failed upload leaves the trigger in place for the next run.
+  write_trigger_file(trigger_config, 'main')
+  failing_store = FakeStore()
+  failing_store.upload = lambda path, obj_key: False # type: ignore[method-assign]
+  backup_and_upload(replace(trigger_config, make_save_store=lambda: failing_store), ['main'], method='vacuum')
+  utest_val(True, is_file(trigger_file, follow=True), 'a failed upload leaves the trigger in place')
+  remove_file_if_exists(trigger_file)
 
 
   # Restore: replaces the canonical file with the latest uploaded version and applies the mutation hook.
