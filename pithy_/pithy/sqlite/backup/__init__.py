@@ -112,7 +112,7 @@ class BackupConfig:
     (e.g. a deployment stage); the factory validates it, including any safety guards on which stores a host may restore from.
   * `mutate_restored`: hook `(restoring_path, name)` applied to the `.restoring` copy before it is moved into place,
     e.g. to clear queued actions that a restored copy must not replay against live systems.
-    The engine checkpoints the WAL and removes sidecars after the hook runs; the hook need not do so.
+    The engine checkpoints the WAL and removes sidecar files after the hook runs; the hook need not do so.
   * `fix_data_file_perms`: ownership/permission normalization applied to every file the engine creates in the data dir.
   '''
 
@@ -315,13 +315,13 @@ def restore_db(config:BackupConfig, store:BackupStore, name:str) -> bool:
   # Perform the restore mutations on a non-canonical `.restoring` copy, then move it into place. This keeps the pristine
   # download at `dl_path` (which may be reused) untouched, and never exposes a half-mutated database file.
   restoring_path = db_path + restoring_suffix
-  remove_wal_shm(restoring_path) # Clear any sidecars left by a prior interrupted run before copying over the file.
+  remove_wal_shm(restoring_path) # Clear any sidecar files left by a prior interrupted run before copying over the file.
   logI('Copying backup to the .restoring path.', from_path=dl_path, to_path=restoring_path)
   copy_path(dl_path, dst=restoring_path, follow=True, preserve_meta=True)
 
   finalize_restoring_db(config, restoring_path, name=name)
 
-  # Remove any stale -wal/-shm sidecars from the canonical path before moving the file in; otherwise SQLite would
+  # Remove any stale -wal/-shm sidecar files from the canonical path before moving the file in; otherwise SQLite would
   # replay the old WAL onto the restored database and corrupt it.
   remove_wal_shm(db_path)
 
@@ -336,7 +336,7 @@ def restore_db(config:BackupConfig, store:BackupStore, name:str) -> bool:
 
 def finalize_restoring_db(config:BackupConfig, restoring_path:str, *, name:str) -> None:
   '''
-  Apply the app mutation hook to the `.restoring` copy, then checkpoint the WAL and remove sidecars,
+  Apply the app mutation hook to the `.restoring` copy, then checkpoint the WAL and remove sidecar files,
   so the restoring file is a standalone database that can be moved alone.
   '''
   if config.mutate_restored is not None:
