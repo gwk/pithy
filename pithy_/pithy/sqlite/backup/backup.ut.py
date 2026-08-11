@@ -111,15 +111,16 @@ for transition_date, offset in (('2026-03-08', '-08:00'), ('2026-11-01', '-07:00
   daily = slots_from(f'{transition_date}T00:00:00{offset}', count=3, step=TimeDelta(days=1), interval=day)
   utest_val(list(range(daily[0], daily[0]+3)), daily, f'{transition_date}: daily slots across the transition')
 
-# An interval longer than a day is equally periodic; its phase is fixed by the epoch, which fell on a Thursday.
-# Pacific weekly slots therefore begin at 00:00 PST on Thursdays.
-utest_val(slot('2026-01-07T23:59:59-08:00', interval=7*day) + 1, slot('2026-01-08T00:00:00-08:00', interval=7*day),
-  'weekly slots begin at 00:00 PST on Thursday')
-weekly = slots_from('2026-01-08T00:00:00-08:00', count=4, step=TimeDelta(days=7), interval=7*day)
+# An interval longer than a day is equally periodic; the grid is anchored to the Sunday preceding the epoch,
+# so Pacific weekly slots begin at 00:00 PST on Sundays. The anchor offset is a whole number of days,
+# so it does not disturb the daily and hourly positions asserted above.
+utest_val(slot('2026-01-03T23:59:59-08:00', interval=7*day) + 1, slot('2026-01-04T00:00:00-08:00', interval=7*day),
+  'weekly slots begin at 00:00 PST on Sunday')
+weekly = slots_from('2026-01-04T00:00:00-08:00', count=4, step=TimeDelta(days=7), interval=7*day)
 utest_val(list(range(weekly[0], weekly[0]+4)), weekly, 'weekly slots advance by one per 7 elapsed days')
 
 # The standard-time phase holds for multi-day intervals too, so under daylight saving the boundary is 01:00 local.
-utest_val(slot('2026-03-12T00:59:59-07:00', interval=7*day) + 1, slot('2026-03-12T01:00:00-07:00', interval=7*day),
+utest_val(slot('2026-03-15T00:59:59-07:00', interval=7*day) + 1, slot('2026-03-15T01:00:00-07:00', interval=7*day),
   'a weekly slot under daylight saving begins at 01:00 PDT (00:00 PST)')
 
 # An interval must be positive.

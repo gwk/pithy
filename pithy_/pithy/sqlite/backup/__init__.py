@@ -15,7 +15,8 @@ A backup pipeline run has two steps:
 
 Upload intervals are aligned to the clock rather than measured from the previous upload:
 * an interval of 30m uploads after the hour and half-hour;
-* an interval of 1d uploads after midnight, by the system timezone or by UTC per `BackupConfig.use_utc`.
+* an interval of 1d uploads after midnight, by the system timezone or by UTC per `BackupConfig.use_utc`;
+* an interval of 7d uploads after midnight on Sunday.
 
 The grid is phased by standard time, so under daylight saving a daily upload happens after 01:00 local.
 This results in at most one upload per elapsed interval, including across daylight saving transitions.
@@ -56,6 +57,9 @@ type BackupMethod = Literal['sync','vacuum']
 
 backup_methods:tuple[BackupMethod,...] = get_args(BackupMethod.__value__)
 
+
+grid_anchor_offset = 4 * 24 * 60 * 60.0
+#^ The unix epoch began on a Thursday; we anchor our grid to the preceding Sunday to make weekly jobs happen Sunday at 00:00.
 
 cloudts_suffix = '.cloudts'
 downloaded_suffix = '.downloaded'
@@ -203,10 +207,11 @@ def interval_slot(dt:DateTime, *, interval:float, use_utc:bool) -> int:
   Identify the time slot of length `interval` seconds that contains `dt`.
   Slots tile the timeline end to end, so consecutive slots are exactly `interval` apart in elapsed time.
 
-  The grid is anchored at the epoch, phased by UTC if `use_utc`, otherwise by the system timezone.
+  The grid is anchored at `grid_anchor_offset` before the epoch, phased by UTC if `use_utc`,
+  otherwise by the system timezone.
   An interval that divides the day evenly aligns to the clock: 1h begins on the hour, 1d at midnight.
   Any other interval is equally periodic but its boundaries precess through the day;
-  a whole number of days also begins at midnight, on dates fixed by the epoch, e.g. 7d falls on Thursdays.
+  a whole number of days also begins at midnight, on dates fixed by the anchor, e.g. 7d falls on Sundays.
 
   `interval` must be positive.
 
@@ -221,7 +226,7 @@ def interval_slot(dt:DateTime, *, interval:float, use_utc:bool) -> int:
   std_offset = 0.0 if use_utc else -float(time.timezone)
   #^ `time.timezone` is the standard-time offset in seconds west of UTC, so it does not change across a DST transition.
   #^ It does change when tzset() is called, so we access it through the module.
-  return int((dt.timestamp() + std_offset) // interval)
+  return int((dt.timestamp() + std_offset + grid_anchor_offset) // interval)
 
 
 def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod, upload_interval:float|None) -> None:
