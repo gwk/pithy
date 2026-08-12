@@ -8,12 +8,12 @@ from tempfile import mkdtemp
 from time import sleep, tzset
 
 from pithy.date import DateTime, TimeDelta
-from pithy.fs import is_file, path_exists, remove_file_if_exists
+from pithy.fs import file_stat, is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
 from pithy.sqlite.backup import (backup_and_upload, BackupConfig, BackupFileConfig, clear_trigger_file, create_local_backup,
-  downloaded_suffix, interval_slot, maybe_upload, parse_db_names, restore_db, stat_trigger_file, StoredVersion,
-  upload_interval_for, uploadts_suffix, write_trigger_file)
+  downloaded_suffix, interval_slot, maybe_create_local_backup, maybe_upload, parse_db_names, restore_db, stat_trigger_file,
+  StoredVersion, sync_interval_for, syncts_suffix, upload_interval_for, uploadts_suffix, write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -185,8 +185,19 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   # The passed interval is preserved as passed; only the private normalized field holds seconds.
   utest_val('30m', BackupFileConfig(upload_interval='30m').upload_interval, 'upload_interval preserved')
 
-  # The normalized field is derived, so passing it is an error rather than a value that is silently discarded.
+  # The normalized fields are derived, so passing one is an error rather than a value that is silently discarded.
   utest_exc(TypeError, BackupFileConfig, upload_interval='30m', _upload_interval_s=1800.0)
+
+  # A sync interval is validated like an upload interval, but `None` means "sync on every run" rather than "never".
+  utest_val(1800.0, BackupFileConfig(sync_interval='30m')._sync_interval_s, 'sync_interval normalized')
+  utest_val(None, BackupFileConfig()._sync_interval_s, 'sync_interval defaults to every run')
+  utest_exc(ValueError, BackupFileConfig, sync_interval=0.0)
+  utest_exc(ValueError, BackupFileConfig, sync_interval='bogus')
+
+  # Sync intervals resolve per database just as upload intervals do.
+  utest(None, sync_interval_for, backup_config, 'main')
+  utest(day, sync_interval_for,
+    replace(backup_config, files=dict(_=BackupFileConfig(sync_interval=day))), 'main')
 
   vacuum_path = create_local_backup(backup_config, 'main', method='vacuum')
   utest_val(f'{backups_dir}/main.db', vacuum_path, 'vacuum artifact path')
@@ -207,11 +218,38 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_val(3, len(store.versions['main.db']), 'store version count after the forced uploads')
 
 
+  # Sync intervals gate the production of the local artifact, recorded by the adjacent syncts sidecar file.
+  # Each vacuum backup writes a new file, so the inode identifies the artifact that a call produced.
+  utest_val(vacuum_path, maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=hour), 'sync path')
+  utest_val(True, is_file(vacuum_path + syncts_suffix, follow=True), 'syncts written')
+  synced_ino = file_stat(vacuum_path, follow=True).st_ino
+
+  maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=hour)
+  utest_val(synced_ino, file_stat(vacuum_path, follow=True).st_ino, 'a gated sync leaves the artifact in place')
+
+  maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=hour, force=True)
+  forced_ino = file_stat(vacuum_path, follow=True).st_ino
+  utest_val_ne(synced_ino, forced_ino, 'force produces a fresh artifact within the slot')
+
+  maybe_create_local_backup(backup_config, 'main', method='vacuum', interval=None)
+  utest_val_ne(forced_ino, file_stat(vacuum_path, follow=True).st_ino, 'a None interval produces on every call')
+
+
+  # The two intervals are independent: a run whose sync is gated still uploads the existing artifact.
+  gated_sync_config = replace(backup_config, files=dict(_=BackupFileConfig(sync_interval=day, upload_interval=hour)))
+  remove_file_if_exists(vacuum_path + uploadts_suffix) # Make the upload due; the sync just ran, so it is not.
+  gated_ino = file_stat(vacuum_path, follow=True).st_ino
+  version_count = len(store.versions['main.db'])
+  backup_and_upload(gated_sync_config, ['main'], method='vacuum')
+  utest_val(gated_ino, file_stat(vacuum_path, follow=True).st_ino, 'the gated sync does not reproduce the artifact')
+  utest_val(version_count + 1, len(store.versions['main.db']), 'the existing artifact is uploaded')
+
+
   # Upload intervals resolve per database; the `_` entry is the default and None means never.
   # The per-database keys must name databases in the group, so these use a config with more than one name.
   multi_config = replace(backup_config, db_config=replace(db_config, names=('main','aux','logs')))
-  intervals_config = replace(multi_config, files=dict(_=BackupFileConfig(hour), aux=BackupFileConfig(day),
-    logs=BackupFileConfig(None)))
+  intervals_config = replace(multi_config, files=dict(_=BackupFileConfig(upload_interval=hour),
+    aux=BackupFileConfig(upload_interval=day), logs=BackupFileConfig(upload_interval=None)))
   utest(hour, upload_interval_for, intervals_config, 'main')
   utest(day, upload_interval_for, intervals_config, 'aux')
   utest(None, upload_interval_for, intervals_config, 'logs')
@@ -223,17 +261,19 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest(None, upload_interval_for, named_config, 'logs')
 
   # Per-database intervals are parsed and validated like the default.
-  strs_config = replace(multi_config, files=dict(_=BackupFileConfig('1h'), aux=BackupFileConfig('1d')))
+  strs_config = replace(multi_config, files=dict(_=BackupFileConfig(upload_interval='1h'),
+    aux=BackupFileConfig(upload_interval='1d')))
   utest(hour, upload_interval_for, strs_config, 'main')
   utest(day, upload_interval_for, strs_config, 'aux')
-  utest_exc(ValueError, BackupFileConfig, 0.0)
-  utest_exc(ValueError, BackupFileConfig, -hour)
-  utest_exc(ValueError, BackupFileConfig, 'bogus')
-  utest_exc(ValueError, BackupFileConfig, '0s')
+  utest_exc(ValueError, BackupFileConfig, upload_interval=0.0)
+  utest_exc(ValueError, BackupFileConfig, upload_interval=-hour)
+  utest_exc(ValueError, BackupFileConfig, upload_interval='bogus')
+  utest_exc(ValueError, BackupFileConfig, upload_interval='0s')
 
   # A key that does not name a database in the group is an error, not a silent fallback to the default entry.
-  utest_exc(ValueError, replace, backup_config, files={'aux': BackupFileConfig(hour)})
-  utest_exc(ValueError, replace, multi_config, files={'aux': BackupFileConfig(day), 'bogus': BackupFileConfig(hour)})
+  utest_exc(ValueError, replace, backup_config, files={'aux': BackupFileConfig(upload_interval=hour)})
+  utest_exc(ValueError, replace, multi_config,
+    files={'aux': BackupFileConfig(upload_interval=day), 'bogus': BackupFileConfig(upload_interval=hour)})
 
   # `_` is reserved as the default key, so it cannot also name a database.
   utest_exc(ValueError, replace, db_config, names=('main', '_'))
