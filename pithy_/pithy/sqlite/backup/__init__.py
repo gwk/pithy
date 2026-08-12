@@ -64,6 +64,8 @@ backup_methods:tuple[BackupMethod,...] = get_args(BackupMethod.__value__)
 grid_anchor_offset = 4 * 24 * 60 * 60.0
 #^ The unix epoch began on a Thursday; we anchor our grid to the preceding Sunday to make weekly jobs happen Sunday at 00:00.
 
+default_key = '_' # Key naming the default entry in mappings that are otherwise keyed by database name.
+
 backuptrigger_suffix = '.backuptrigger'
 uploadts_suffix = '.uploadts'
 downloaded_suffix = '.downloaded'
@@ -109,10 +111,10 @@ class BackupConfig:
   The callable fields are application code; the engine only invokes them.
 
   * `backups_dir`: destination for local backup artifacts.
-  * `upload_interval`: a positive float in seconds, a timespan string like '15s'|'30m'|'1h'|'never', or `None` (never).
-    It applies to databases not named in `upload_intervals`.
-  * `upload_intervals`: per-database upload intervals in the same forms, overriding `upload_interval`;
-    each key must be a name in `db_config.names`.
+  * `upload_intervals`: per-database upload intervals, each a positive float in seconds,
+    a timespan string like '15s'|'30m'|'1h'|'never', or `None` (never).
+    Each key must be a name in `db_config.names`, or the `default_key` '_', which applies to every unnamed database.
+    A database with neither an entry nor a default never uploads.
   * `use_utc`: align the upload interval grid by UTC instead of by the server timezone.
   * `make_save_store`: read-write store factory for uploads; `None` disables uploads.
   * `make_restore_store`: read-only store factory for restores. The optional `store_name` is app-defined
@@ -125,25 +127,19 @@ class BackupConfig:
 
   db_config: DbConfig
   backups_dir: str
-  upload_interval: float|str|None
   upload_intervals: Mapping[str,float|str|None] = field(default_factory=dict)
   use_utc: bool = False
   make_save_store: Callable[[],BackupStore]|None = None
   make_restore_store: Callable[[str|None],BackupStore]|None = None
   mutate_restored: Callable[[str,str],None]|None = None
   fix_data_file_perms: Callable[[str],None] = lambda _: None
-  # Derived by `__post_init__` from the interval fields above; not constructor arguments.
-  _upload_interval_s: float|None = field(init=False, repr=False, compare=False)
-  _upload_intervals_s: Mapping[str,float|None] = field(init=False, repr=False, compare=False)
+  _upload_intervals_s: Mapping[str,float|None] = field(init=False, repr=False, compare=False) # Derived, not constructed.
 
   def __post_init__(self) -> None:
-    # An unrecognized name would otherwise fall back to `upload_interval` silently, hiding a typo in the config.
     db_names = frozenset(self.db_config.names)
-    if unknown := sorted(name for name in self.upload_intervals if name not in db_names):
+    if unknown := sorted(name for name in self.upload_intervals if name not in db_names and name != default_key):
       raise ValueError(f'BackupConfig.upload_intervals names unknown databases: {unknown}; '
         f'DbConfig.names are {self.db_config.names!r}.')
-    object.__setattr__(self, '_upload_interval_s',
-      normalize_upload_interval(self.upload_interval, desc='BackupConfig.upload_interval'))
     object.__setattr__(self, '_upload_intervals_s',
       {name: normalize_upload_interval(interval, desc=f'BackupConfig.upload_intervals[{name!r}]')
         for name, interval in self.upload_intervals.items()})
@@ -340,7 +336,8 @@ def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:Backup
 
 def upload_interval_for(config:BackupConfig, name:str) -> float|None:
   'Resolve the upload interval in seconds for a single database; `None` means never upload.'
-  return config._upload_intervals_s.get(name, config._upload_interval_s)
+  intervals = config._upload_intervals_s
+  return intervals.get(name, intervals.get(default_key))
 
 
 def restore_all(config:BackupConfig, names:Sequence[str], *, store_name:str|None=None) -> None:
@@ -527,7 +524,7 @@ def main_save(args:Namespace) -> None:
   config = config_for_args(args)
   names = parse_db_names(args.names, config=config.db_config)
   if 'upload_interval' in args: # An explicit flag overrides the default and every per-database interval.
-    config = replace(config, upload_interval=args.upload_interval, upload_intervals={})
+    config = replace(config, upload_intervals={default_key: args.upload_interval})
   backup_and_upload(config, names, method=args.method)
 
 

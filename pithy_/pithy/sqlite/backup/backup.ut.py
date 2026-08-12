@@ -11,9 +11,9 @@ from pithy.date import DateTime, TimeDelta
 from pithy.fs import is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
-from pithy.sqlite.backup import (backup_and_upload, BackupConfig, clear_trigger_file, create_local_backup, downloaded_suffix,
-  interval_slot, maybe_upload, parse_db_names, parse_upload_interval, restore_db, stat_trigger_file, StoredVersion,
-  upload_interval_for, uploadts_suffix, write_trigger_file)
+from pithy.sqlite.backup import (backup_and_upload, BackupConfig, clear_trigger_file, create_local_backup,
+  downloaded_suffix, interval_slot, maybe_upload, parse_db_names, parse_upload_interval, restore_db, stat_trigger_file,
+  StoredVersion, upload_interval_for, uploadts_suffix, write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -161,13 +161,14 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     with Conn(path, mode='rw').closing() as conn:
       conn.cursor().run("INSERT INTO T VALUES ('mutated')")
 
-  backup_config = BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_interval=hour,
+  backup_config = BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_=hour),
     make_save_store=lambda: store, make_restore_store=lambda source: store, mutate_restored=mutate_restored,
     fix_data_file_perms=fixed_up_paths.append)
 
   def config_interval_s(upload_interval:float|str|None) -> float|None:
-    'Construct a config with the given upload interval and return the normalized seconds.'
-    return BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_interval=upload_interval)._upload_interval_s
+    'Construct a config whose default interval is `upload_interval` and return the interval resolved for "main".'
+    config = BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_=upload_interval))
+    return upload_interval_for(config, 'main')
 
   # The configured interval must be positive; None disables uploads.
   utest_val(hour, config_interval_s(hour), 'float interval')
@@ -181,13 +182,17 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_exc(ValueError, config_interval_s, 'bogus')
   utest_exc(ValueError, config_interval_s, '0s')
 
-  # The passed interval is preserved as passed; only the private normalized field holds seconds.
-  utest_val('30m', BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_interval='30m').upload_interval,
-    'upload_interval preserved')
+  # A database with no entry and no default never uploads.
+  utest(None, upload_interval_for, BackupConfig(db_config=db_config, backups_dir=backups_dir), 'main')
 
-  # The normalized fields are derived, so passing one is an error rather than a value that is silently discarded.
-  utest_exc(TypeError, BackupConfig, db_config=db_config, backups_dir=backups_dir, upload_interval='30m',
-    _upload_interval_s=1800.0)
+  # The passed intervals are preserved as passed; only the private normalized field holds seconds.
+  utest_val(dict(_='30m'),
+    BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_='30m')).upload_intervals,
+    'upload_intervals preserved')
+
+  # The normalized field is derived, so passing it is an error rather than a value that is silently discarded.
+  utest_exc(TypeError, BackupConfig, db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_='30m'),
+    _upload_intervals_s=dict(_=1800.0))
 
   vacuum_path = create_local_backup(backup_config, 'main', method='vacuum')
   utest_val(f'{backups_dir}/main.db', vacuum_path, 'vacuum artifact path')
@@ -208,17 +213,16 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_val(3, len(store.versions['main.db']), 'store version count after the forced uploads')
 
 
-  # Upload intervals resolve per database; `upload_interval` is the default and None means never.
+  # Upload intervals resolve per database; the `_` entry is the default and None means never.
   # The per-database keys must name databases in the group, so these use a config with more than one name.
   multi_config = replace(backup_config, db_config=replace(db_config, names=('main','aux','logs')))
-  intervals_config = replace(multi_config, upload_interval=hour, upload_intervals={'aux': day, 'logs': None})
+  intervals_config = replace(multi_config, upload_intervals=dict(_=hour, aux=day, logs=None))
   utest(hour, upload_interval_for, intervals_config, 'main')
   utest(day, upload_interval_for, intervals_config, 'aux')
   utest(None, upload_interval_for, intervals_config, 'logs')
-  utest(None, upload_interval_for, replace(backup_config, upload_interval=None), 'main')
 
   # Per-database intervals are parsed and validated like the default.
-  strs_config = replace(multi_config, upload_interval='1h', upload_intervals={'aux': '1d', 'logs': 'never'})
+  strs_config = replace(multi_config, upload_intervals=dict(_='1h', aux='1d', logs='never'))
   utest(hour, upload_interval_for, strs_config, 'main')
   utest(day, upload_interval_for, strs_config, 'aux')
   utest(None, upload_interval_for, strs_config, 'logs')
@@ -231,9 +235,12 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_exc(ValueError, replace, backup_config, upload_intervals={'aux': hour})
   utest_exc(ValueError, replace, multi_config, upload_intervals={'aux': day, 'bogus': hour})
 
+  # `_` is reserved as the default key, so it cannot also name a database.
+  utest_exc(ValueError, replace, db_config, names=('main', '_'))
+
 
   # Triggers: a marker requests an upload regardless of the interval, and is cleared once the upload succeeds.
-  trigger_config = replace(backup_config, upload_interval=None) # Uploads are otherwise disabled entirely.
+  trigger_config = replace(backup_config, upload_intervals={}) # Uploads are otherwise disabled entirely.
   utest(None, stat_trigger_file, trigger_config, 'main')
 
   trigger_file = write_trigger_file(trigger_config, 'main')
