@@ -12,8 +12,8 @@ from pithy.fs import is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
 from pithy.sqlite.backup import (backup_and_upload, BackupConfig, BackupFileConfig, clear_trigger_file, create_local_backup,
-  downloaded_suffix, interval_slot, maybe_upload, parse_db_names, parse_upload_interval, restore_db, stat_trigger_file,
-  StoredVersion, upload_interval_for, uploadts_suffix, write_trigger_file)
+  downloaded_suffix, interval_slot, maybe_upload, parse_db_names, restore_db, stat_trigger_file, StoredVersion,
+  upload_interval_for, uploadts_suffix, write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -50,14 +50,6 @@ class FakeStore:
 def read_rows(path:str) -> list[str]:
   with Conn(path, mode='ro').closing() as conn:
     return [row[0] for row in conn.run('SELECT x FROM T ORDER BY x')]
-
-
-# Interval flag parsing.
-utest(None, parse_upload_interval, 'never')
-utest(1800.0, parse_upload_interval, '30m')
-utest_exc(ValueError, parse_upload_interval, 'bogus')
-utest_exc(ValueError, parse_upload_interval, '0s')
-utest_exc(ValueError, parse_upload_interval, '-1h')
 
 
 # Interval slots.
@@ -178,11 +170,12 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_exc(ValueError, config_interval_s, 0.0)
   utest_exc(ValueError, config_interval_s, -hour)
 
-  # A configured interval string is parsed to seconds, just like the `-upload-interval` flag value.
+  # A configured interval string is parsed to seconds as a timespan.
   utest_val(1800.0, config_interval_s('30m'), 'timespan string interval')
-  utest_val(None, config_interval_s('never'), '"never" interval')
   utest_exc(ValueError, config_interval_s, 'bogus')
   utest_exc(ValueError, config_interval_s, '0s')
+  utest_exc(ValueError, config_interval_s, '-1h')
+  utest_exc(ValueError, config_interval_s, 'never')
 
   # Every database must be covered, by its own entry or by the default; an uncovered one is an error, not an implied default.
   utest_exc(ValueError, BackupConfig, db_config=db_config, backups_dir=backups_dir, files={})
@@ -230,11 +223,9 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest(None, upload_interval_for, named_config, 'logs')
 
   # Per-database intervals are parsed and validated like the default.
-  strs_config = replace(multi_config, files=dict(_=BackupFileConfig('1h'), aux=BackupFileConfig('1d'),
-    logs=BackupFileConfig('never')))
+  strs_config = replace(multi_config, files=dict(_=BackupFileConfig('1h'), aux=BackupFileConfig('1d')))
   utest(hour, upload_interval_for, strs_config, 'main')
   utest(day, upload_interval_for, strs_config, 'aux')
-  utest(None, upload_interval_for, strs_config, 'logs')
   utest_exc(ValueError, BackupFileConfig, 0.0)
   utest_exc(ValueError, BackupFileConfig, -hour)
   utest_exc(ValueError, BackupFileConfig, 'bogus')
