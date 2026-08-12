@@ -35,6 +35,9 @@ class DbConfig:
   def __post_init__(self) -> None:
     if not self.names or self.names[0] != 'main':
       raise ValueError(f'DbConfig.names must start with "main"; got {self.names!r}.')
+    # '_' is reserved as the default key in per-database mappings keyed by name, e.g. `BackupConfig.upload_intervals`.
+    if '_' in self.names:
+      raise ValueError(f'DbConfig.names must not contain the reserved name "_"; got {self.names!r}.')
 
 
   def path(self, name:str) -> str:
