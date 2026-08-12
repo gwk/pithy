@@ -9,25 +9,28 @@ See `inish.backblaze` for a Backblaze B2 implementation.
 Application policy is injected via `BackupConfig` callables, so each hook can run arbitrary application code.
 These include credential and bucket resolution, post-restore data mutations, file ownership normalization.
 
-A backup pipeline run has two steps:
-* produce a local artifact by one of two methods (sync or vacuum);
-* maybe upload it depending on the configured time interval.
+A backup pipeline run has two steps, each conditioned on the intervals in `BackupFileConfig`:
+* produce a local artifact by one of two methods (sync or vacuum), per `sync_interval`;
+* upload it, per `upload_interval`.
 
-Upload intervals are aligned to the clock rather than measured from the previous upload:
-* an interval of 30m uploads after the hour and half-hour;
-* an interval of 1d uploads after midnight, by the system timezone or by UTC per `BackupConfig.use_utc`;
-* an interval of 7d uploads after midnight on Sunday.
+Both steps read the whole database, so their runtime/IO/network costs grow with file size.
+
+Intervals are aligned to the clock rather than measured from the previous operation:
+* an interval of 30m runs after the hour and half-hour;
+* an interval of 1d runs after midnight, by the system timezone or by UTC per `BackupConfig.use_utc`;
+* an interval of 7d runs after midnight on Sunday.
 
 The grid is phased by standard time, so under daylight saving a daily upload happens after 01:00 local.
-This results in at most one upload per elapsed interval, including across daylight saving transitions.
+This results in at most one operation per elapsed interval, including across daylight saving transitions.
 
 Local files are written to `BackupConfig.backups_dir`.
 This can be a different volume than the data dir, so a local copy survives loss of the data mount.
 Backup files:
 * `{name}.db`: vacuum backup copy; a preexisting copy is first moved to `{name}.db.prev`.
 * `{name}.sync.db`: sqlite3_rsync replica.
+* `{artifact}.syncts`: timestamp of the last production of the adjacent artifact.
 * `{artifact}.uploadts`: timestamp of the last upload of the adjacent artifact.
-* `{name}.backuptrigger`: request that the next run upload this database, whatever its interval.
+* `{name}.backuptrigger`: request that the next run sync and upload, whatever its intervals.
 
 Restore artifacts are colocated with the canonical database files.
 They are plain files, not coordinated by the Database advisory lock;
@@ -66,6 +69,7 @@ grid_anchor_offset = 4 * 24 * 60 * 60.0
 default_key = '_' # Key naming the default entry in mappings that are otherwise keyed by database name.
 
 backuptrigger_suffix = '.backuptrigger'
+syncts_suffix = '.syncts'
 uploadts_suffix = '.uploadts'
 downloaded_suffix = '.downloaded'
 restoring_suffix = '.restoring'
@@ -147,20 +151,26 @@ class BackupConfig:
 class BackupFileConfig:
   '''
   Backup configuration for a single database file.
+  Each interval is a positive float in seconds or a timespan string like '15s'|'30m'|'1h'.
 
-  * `upload_interval`: a positive float in seconds, a timespan string like '15s'|'30m'|'1h', or `None` (never upload).
+  * `sync_interval`: how often to produce the local artifact; `None` produces one on every run.
+  * `upload_interval`: how often to upload the local artifact; `None` never uploads.
   '''
 
+  sync_interval: float|str|None = None
   upload_interval: float|str|None = None
-  _upload_interval_s: float|None = field(init=False, repr=False, compare=False) # Derived, not constructed.
+  _sync_interval_s: float|None = field(init=False, repr=False, compare=False)
+  _upload_interval_s: float|None = field(init=False, repr=False, compare=False)
 
   def __post_init__(self) -> None:
+    object.__setattr__(self, '_sync_interval_s',
+      normalize_interval(self.sync_interval, desc='BackupFileConfig.sync_interval'))
     object.__setattr__(self, '_upload_interval_s',
-      normalize_upload_interval(self.upload_interval, desc='BackupFileConfig.upload_interval'))
+      normalize_interval(self.upload_interval, desc='BackupFileConfig.upload_interval'))
 
 
-def normalize_upload_interval(interval:float|str|None, *, desc:str) -> float|None:
-  'Normalize a configured upload interval to positive seconds, or `None` (never upload). `desc` names the field for errors.'
+def normalize_interval(interval:float|str|None, *, desc:str) -> float|None:
+  'Normalize a configured interval to positive seconds, or `None`. `desc` names the field for errors.'
   if interval is None: return None
   seconds = parse_timespan_as_seconds(interval) if isinstance(interval, str) else interval
   if seconds <= 0: raise ValueError(f'{desc} must be positive or None; received {interval!r}.')
@@ -185,6 +195,12 @@ def resolve_backup_config(source:ConfigSource) -> BackupConfig:
     'which is not a BackupConfig or a callable returning one.')
 
 
+def local_backup_path(config:BackupConfig, name:str, *, method:BackupMethod) -> str:
+  'Path of the local backup artifact for a single database, as produced by `Database.backup_db`/`Database.sync_db`.'
+  suffix = '.db' if method == 'vacuum' else '.sync.db'
+  return f'{config.backups_dir}/{name}{suffix}'
+
+
 def create_local_backup(config:BackupConfig, name:str, *, method:BackupMethod) -> str:
   'Produce a local backup artifact for a single database in `backups_dir` and return its path.'
   with Database.ro(config.db_config) as db:
@@ -192,6 +208,32 @@ def create_local_backup(config:BackupConfig, name:str, *, method:BackupMethod) -
       return db.backup_db(name=name, backup_dir=config.backups_dir)
     else:
       return db.sync_db(name=name, sync_dir=config.backups_dir)
+
+
+def maybe_create_local_backup(config:BackupConfig, name:str, *, method:BackupMethod, interval:float|None, force:bool=False
+ ) -> str:
+  '''
+  Conditionally produce a local backup for a single database; return its path regardless.
+  Skip if the previous production as recorded by the adjacent `.syncts` file falls in the same interval slot as now.
+  `interval` must be positive; `None` produces the artifact on every call.
+  `force` produces the artifact regardless of `interval` and the sidecar file, and still records the timestamp.
+
+  A skipped production leaves the previous artifact in place, so an upload due in this run uploads that older copy.
+  '''
+  path = local_backup_path(config, name, method=method)
+  syncts_path = path + syncts_suffix
+  now = now_utc()
+
+  # A missing artifact is always produced; the timestamp alone would otherwise gate a run that has nothing to upload.
+  if not force and interval is not None and is_file(path, follow=True) \
+   and not is_interval_elapsed(syncts_path, now=now, interval=interval, use_utc=config.use_utc):
+    logI('Skipping local backup; the sync interval has not elapsed.', name=name, path=path)
+    return path
+
+  created_path = create_local_backup(config, name, method=method)
+  assert created_path == path, (created_path, path)
+  write_ts_file(syncts_path, now)
+  return path
 
 
 def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|None, use_utc:bool=False,
@@ -208,26 +250,35 @@ def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|Non
 
   if not force:
     if interval is None: return False
-
-    slot = interval_slot(now, interval=interval, use_utc=use_utc)
-
-    if is_file(uploadts_path, follow=True):
-      with open(uploadts_path) as f:
-        prev_ts_str = f.read().strip()
-      prev_ts = DateTime.fromisoformat(prev_ts_str)
-      if interval_slot(prev_ts, interval=interval, use_utc=use_utc) == slot:
-        return False
+    if not is_interval_elapsed(uploadts_path, now=now, interval=interval, use_utc=use_utc): return False
 
   logI('Uploading to store.', store=store.name, path=path, obj_key=obj_key)
   if not store.upload(path, obj_key):
     logI('Upload did not complete.', store=store.name, obj_key=obj_key)
     return False
 
-  now_ts = dt_Ymd_HMS_Z(now)
-  with open(uploadts_path, 'w') as f:
-    print(now_ts, file=f)
-  logI('Upload complete; timestamp written.', uploadts_path=uploadts_path, ts=now_ts)
+  logI('Upload complete; timestamp written.', uploadts_path=uploadts_path, ts=write_ts_file(uploadts_path, now))
   return True
+
+
+def is_interval_elapsed(ts_path:str, *, now:DateTime, interval:float, use_utc:bool) -> bool:
+  '''
+  True if the timestamp sidecar file at `ts_path` is missing, or records a time in an earlier interval slot than `now`.
+  A missing file means the operation has never run, which counts as elapsed.
+  '''
+  slot = interval_slot(now, interval=interval, use_utc=use_utc) # Computed first, so that a bad interval always raises.
+  if not is_file(ts_path, follow=True): return True
+  with open(ts_path) as f:
+    prev_ts = DateTime.fromisoformat(f.read().strip())
+  return interval_slot(prev_ts, interval=interval, use_utc=use_utc) != slot
+
+
+def write_ts_file(ts_path:str, dt:DateTime) -> str:
+  'Record `dt` in the timestamp sidecar file at `ts_path` and return the formatted timestamp.'
+  ts = dt_Ymd_HMS_Z(dt)
+  with open(ts_path, 'w') as f:
+    print(ts, file=f)
+  return ts
 
 
 def interval_slot(dt:DateTime, *, interval:float, use_utc:bool) -> int:
@@ -313,30 +364,35 @@ def clear_trigger_file(config:BackupConfig, name:str, claimed:StatResult) -> Non
 
 def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod) -> None:
   '''
-  Produce a local backup artifact for each named database, then conditionally upload each, depending on the upload intervals.
-  Every named database is backed up locally on every call; only the uploads are conditional.
-  A database with a pending trigger marker is uploaded whatever its interval, including one that never uploads.
+  For each named database, conditionally produce a local backup artifact, then conditionally upload it,
+  each step depending on the corresponding interval in the database's `BackupFileConfig`.
+  A database with a pending trigger marker is produced and uploaded whatever its intervals,
+  including one that never uploads.
   '''
-  intervals = {name: upload_interval_for(config, name) for name in names}
+  file_configs = {name: file_config_for(config, name) for name in names}
   # Test for the markers up front, because a database whose interval is None still needs the store if it has been triggered.
   # This is only a test; each marker is claimed in the loop below, so that a request arriving during the run is not missed.
   triggered = {name for name in names if is_file(trigger_file_path(config, name), follow=True)}
 
   store:BackupStore|None = None
-  if any(intervals[name] is not None or name in triggered for name in names):
+  if any(file_configs[name]._upload_interval_s is not None or name in triggered for name in names):
     if config.make_save_store is None: exit('error: backup config has no save store factory; cannot upload.')
     store = config.make_save_store()
 
   for name in names:
+    file_config = file_configs[name]
+    interval = file_config._upload_interval_s
     # Claim the trigger before producing the artifact, so that the artifact is at least as new as the request it satisfies.
+    # A trigger also forces production, for the same reason.
     claimed = stat_trigger_file(config, name)
-    path = create_local_backup(config, name, method=method)
+    path = maybe_create_local_backup(config, name, method=method, interval=file_config._sync_interval_s,
+      force=claimed is not None)
     if store is None: continue
     if claimed is None:
-      maybe_upload(store, path, obj_key=f'{name}.db', interval=intervals[name], use_utc=config.use_utc)
+      maybe_upload(store, path, obj_key=f'{name}.db', interval=interval, use_utc=config.use_utc)
     else:
       logI('Backup trigger found; uploading regardless of the interval.', name=name, path=trigger_file_path(config, name))
-      if maybe_upload(store, path, obj_key=f'{name}.db', interval=intervals[name], use_utc=config.use_utc, force=True):
+      if maybe_upload(store, path, obj_key=f'{name}.db', interval=interval, use_utc=config.use_utc, force=True):
         clear_trigger_file(config, name, claimed)
 
 
@@ -345,6 +401,11 @@ def file_config_for(config:BackupConfig, name:str) -> BackupFileConfig:
   files = config.files
   if (file_config := files.get(name)) is not None: return file_config
   return files[default_key] # BackupConfig validates that every database is covered by an entry or the default.
+
+
+def sync_interval_for(config:BackupConfig, name:str) -> float|None:
+  'Resolve the sync interval in seconds for a single database; `None` means produce an artifact on every run.'
+  return file_config_for(config, name)._sync_interval_s
 
 
 def upload_interval_for(config:BackupConfig, name:str) -> float|None:
