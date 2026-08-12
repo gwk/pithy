@@ -11,7 +11,7 @@ from pithy.date import DateTime, TimeDelta
 from pithy.fs import is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
-from pithy.sqlite.backup import (backup_and_upload, BackupConfig, clear_trigger_file, create_local_backup,
+from pithy.sqlite.backup import (backup_and_upload, BackupConfig, BackupFileConfig, clear_trigger_file, create_local_backup,
   downloaded_suffix, interval_slot, maybe_upload, parse_db_names, parse_upload_interval, restore_db, stat_trigger_file,
   StoredVersion, upload_interval_for, uploadts_suffix, write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
@@ -161,13 +161,15 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     with Conn(path, mode='rw').closing() as conn:
       conn.cursor().run("INSERT INTO T VALUES ('mutated')")
 
-  backup_config = BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_=hour),
+  backup_config = BackupConfig(db_config=db_config, backups_dir=backups_dir,
+    files=dict(_=BackupFileConfig(upload_interval=hour)),
     make_save_store=lambda: store, make_restore_store=lambda source: store, mutate_restored=mutate_restored,
     fix_data_file_perms=fixed_up_paths.append)
 
   def config_interval_s(upload_interval:float|str|None) -> float|None:
     'Construct a config whose default interval is `upload_interval` and return the interval resolved for "main".'
-    config = BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_=upload_interval))
+    config = BackupConfig(db_config=db_config, backups_dir=backups_dir,
+      files=dict(_=BackupFileConfig(upload_interval=upload_interval)))
     return upload_interval_for(config, 'main')
 
   # The configured interval must be positive; None disables uploads.
@@ -182,17 +184,16 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   utest_exc(ValueError, config_interval_s, 'bogus')
   utest_exc(ValueError, config_interval_s, '0s')
 
-  # A database with no entry and no default never uploads.
-  utest(None, upload_interval_for, BackupConfig(db_config=db_config, backups_dir=backups_dir), 'main')
+  # Every database must be covered, by its own entry or by the default; an uncovered one is an error, not an implied default.
+  utest_exc(ValueError, BackupConfig, db_config=db_config, backups_dir=backups_dir, files={})
+  utest_exc(ValueError, BackupConfig, db_config=replace(db_config, names=('main','aux')), backups_dir=backups_dir,
+    files=dict(main=BackupFileConfig()))
 
-  # The passed intervals are preserved as passed; only the private normalized field holds seconds.
-  utest_val(dict(_='30m'),
-    BackupConfig(db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_='30m')).upload_intervals,
-    'upload_intervals preserved')
+  # The passed interval is preserved as passed; only the private normalized field holds seconds.
+  utest_val('30m', BackupFileConfig(upload_interval='30m').upload_interval, 'upload_interval preserved')
 
   # The normalized field is derived, so passing it is an error rather than a value that is silently discarded.
-  utest_exc(TypeError, BackupConfig, db_config=db_config, backups_dir=backups_dir, upload_intervals=dict(_='30m'),
-    _upload_intervals_s=dict(_=1800.0))
+  utest_exc(TypeError, BackupFileConfig, upload_interval='30m', _upload_interval_s=1800.0)
 
   vacuum_path = create_local_backup(backup_config, 'main', method='vacuum')
   utest_val(f'{backups_dir}/main.db', vacuum_path, 'vacuum artifact path')
@@ -216,31 +217,39 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   # Upload intervals resolve per database; the `_` entry is the default and None means never.
   # The per-database keys must name databases in the group, so these use a config with more than one name.
   multi_config = replace(backup_config, db_config=replace(db_config, names=('main','aux','logs')))
-  intervals_config = replace(multi_config, upload_intervals=dict(_=hour, aux=day, logs=None))
+  intervals_config = replace(multi_config, files=dict(_=BackupFileConfig(hour), aux=BackupFileConfig(day),
+    logs=BackupFileConfig(None)))
   utest(hour, upload_interval_for, intervals_config, 'main')
   utest(day, upload_interval_for, intervals_config, 'aux')
   utest(None, upload_interval_for, intervals_config, 'logs')
 
+  # Naming every database is the alternative to a default entry.
+  named_config = replace(multi_config, files=dict(main=BackupFileConfig(upload_interval=hour),
+    aux=BackupFileConfig(upload_interval=day), logs=BackupFileConfig()))
+  utest(hour, upload_interval_for, named_config, 'main')
+  utest(None, upload_interval_for, named_config, 'logs')
+
   # Per-database intervals are parsed and validated like the default.
-  strs_config = replace(multi_config, upload_intervals=dict(_='1h', aux='1d', logs='never'))
+  strs_config = replace(multi_config, files=dict(_=BackupFileConfig('1h'), aux=BackupFileConfig('1d'),
+    logs=BackupFileConfig('never')))
   utest(hour, upload_interval_for, strs_config, 'main')
   utest(day, upload_interval_for, strs_config, 'aux')
   utest(None, upload_interval_for, strs_config, 'logs')
-  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': 0.0})
-  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': -hour})
-  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': 'bogus'})
-  utest_exc(ValueError, replace, backup_config, upload_intervals={'main': '0s'})
+  utest_exc(ValueError, BackupFileConfig, 0.0)
+  utest_exc(ValueError, BackupFileConfig, -hour)
+  utest_exc(ValueError, BackupFileConfig, 'bogus')
+  utest_exc(ValueError, BackupFileConfig, '0s')
 
-  # A key that does not name a database in the group is an error, not a silent fallback to the default interval.
-  utest_exc(ValueError, replace, backup_config, upload_intervals={'aux': hour})
-  utest_exc(ValueError, replace, multi_config, upload_intervals={'aux': day, 'bogus': hour})
+  # A key that does not name a database in the group is an error, not a silent fallback to the default entry.
+  utest_exc(ValueError, replace, backup_config, files={'aux': BackupFileConfig(hour)})
+  utest_exc(ValueError, replace, multi_config, files={'aux': BackupFileConfig(day), 'bogus': BackupFileConfig(hour)})
 
   # `_` is reserved as the default key, so it cannot also name a database.
   utest_exc(ValueError, replace, db_config, names=('main', '_'))
 
 
   # Triggers: a marker requests an upload regardless of the interval, and is cleared once the upload succeeds.
-  trigger_config = replace(backup_config, upload_intervals={}) # Uploads are otherwise disabled entirely.
+  trigger_config = replace(backup_config, files=dict(_=BackupFileConfig())) # Uploads are otherwise disabled entirely.
   utest(None, stat_trigger_file, trigger_config, 'main')
 
   trigger_file = write_trigger_file(trigger_config, 'main')
