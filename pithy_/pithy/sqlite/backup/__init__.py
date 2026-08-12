@@ -37,8 +37,7 @@ only the active database files are covered by the advisory lock logic.
 '''
 
 import time
-from argparse import SUPPRESS
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from hashlib import sha1
 from os import getpid
 from typing import Callable, cast, get_args, Literal, Mapping, Protocol, Sequence
@@ -149,7 +148,7 @@ class BackupFileConfig:
   '''
   Backup configuration for a single database file.
 
-  * `upload_interval`: a positive float in seconds, a timespan string like '15s'|'30m'|'1h'|'never', or `None` (never).
+  * `upload_interval`: a positive float in seconds, a timespan string like '15s'|'30m'|'1h', or `None` (never upload).
   '''
 
   upload_interval: float|str|None = None
@@ -160,20 +159,12 @@ class BackupFileConfig:
       normalize_upload_interval(self.upload_interval, desc='BackupFileConfig.upload_interval'))
 
 
-def parse_upload_interval(value:str) -> float|None:
-  'Parse an upload interval string: "never" -> None, otherwise a positive timespan converted to seconds.'
-  if value == 'never': return None
-  interval = parse_timespan_as_seconds(value)
-  if interval <= 0: raise ValueError(f'upload interval must be positive or "never"; received {value!r}.')
-  return interval
-
-
 def normalize_upload_interval(interval:float|str|None, *, desc:str) -> float|None:
-  'Normalize a configured upload interval to positive seconds, or `None` (never). `desc` names the field for errors.'
-  if isinstance(interval, str): interval = parse_upload_interval(interval)
-  if interval is not None and interval <= 0:
-    raise ValueError(f'{desc} must be positive or None; received {interval!r}.')
-  return interval
+  'Normalize a configured upload interval to positive seconds, or `None` (never upload). `desc` names the field for errors.'
+  if interval is None: return None
+  seconds = parse_timespan_as_seconds(interval) if isinstance(interval, str) else interval
+  if seconds <= 0: raise ValueError(f'{desc} must be positive or None; received {interval!r}.')
+  return seconds
 
 
 def resolve_backup_config(source:ConfigSource) -> BackupConfig:
@@ -517,12 +508,6 @@ def main_entry(config_source:ConfigSource|None=None, *, prog:str|None=None) -> N
     help='Artifact production method: "sync" uses sqlite3_rsync (fast successive replication); '
       '"vacuum" uses VACUUM INTO (compacted copy).')
 
-  # `None` means "never" so the default is set to SUPPRESS.
-  save_cmd.add_argument('-upload-interval', type=parse_upload_interval, default=SUPPRESS, metavar='TIMESPAN|never',
-    help='Specify the timespan for uploads, e.g. 1h, 30m, 30s. The timespan must be positive. '
-      '"never" disables upload. Defaults to the config intervals. '
-      "NOTE: this overrides every per-database interval.")
-
   trigger_cmd = parser.add_command(main_trigger)
   if with_app_arg: trigger_cmd.add_argument('app', help=app_spec_help)
   trigger_cmd.add_argument('names', nargs='+', help='Names of databases to request an upload for, or "all".')
@@ -544,8 +529,6 @@ def main_save(args:Namespace) -> None:
   'Produce local backup artifacts, optionally uploading them to cloud storage.'
   config = config_for_args(args)
   names = parse_db_names(args.names, config=config.db_config)
-  if 'upload_interval' in args: # An explicit flag overrides the default and every per-database interval.
-    config = replace(config, files={default_key: BackupFileConfig(upload_interval=args.upload_interval)})
   backup_and_upload(config, names, method=args.method)
 
 
