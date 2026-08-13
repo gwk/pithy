@@ -50,6 +50,7 @@ from ...date import DateTime, dt_Ymd_HMS, dt_Ymd_HMS_Z
 from ...filestatus import StatResult
 from ...fs import copy_path, file_size, file_stat, is_file, move_file, path_exists, remove_file_if_exists
 from ...logs import logI
+from ...signals import HoldSignals
 from ...sqlite import Conn
 from ...strings import format_byte_count
 from ...timespans import parse_timespan_as_seconds
@@ -362,12 +363,14 @@ def clear_trigger_file(config:BackupConfig, name:str, claimed:StatResult) -> Non
   logI('Backup trigger cleared.', path=path)
 
 
-def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod) -> None:
+def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:BackupMethod, should_stop:Callable[[],bool]|None=None
+ ) -> None:
   '''
-  For each named database, conditionally produce a local backup artifact, then conditionally upload it,
-  each step depending on the corresponding interval in the database's `BackupFileConfig`.
-  A database with a pending trigger marker is produced and uploaded whatever its intervals,
-  including one that never uploads.
+  For each named database, conditionally produce a local backup artifact, then conditionally upload it.
+  The BackupFileConfig time intervals dictate whether each step is taken.
+  A database with a pending trigger marker file is produced and uploaded regardless of the intervals, including `None` (never).
+  `should_stop` is polled before each database is processed,
+  so that a stop request takes effect between databases instead of interrupting a sync or upload.
   '''
   file_configs = {name: file_config_for(config, name) for name in names}
   # Test for the markers up front, because a database whose interval is None still needs the store if it has been triggered.
@@ -380,6 +383,9 @@ def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:Backup
     store = config.make_save_store()
 
   for name in names:
+    if should_stop is not None and should_stop():
+      logI('Stop requested.')
+      return
     file_config = file_configs[name]
     interval = file_config._upload_interval_s
     # Claim the trigger before producing the artifact, so that the artifact is at least as new as the request it satisfies.
@@ -590,7 +596,10 @@ def main_save(args:Namespace) -> None:
   'Produce local backup artifacts, optionally uploading them to cloud storage.'
   config = config_for_args(args)
   names = parse_db_names(args.names, config=config.db_config)
-  backup_and_upload(config, names, method=args.method)
+  # SIGTERM is held so that a stop request lands between databases rather than mid-write; see `backup_and_upload`.
+  # HoldSignals delivers the signal when the block exits, so the process still terminates by it.
+  with HoldSignals() as hold_signals:
+    backup_and_upload(config, names, method=args.method, should_stop=hold_signals.is_signal_on_hold)
 
 
 def main_trigger(args:Namespace) -> None:
