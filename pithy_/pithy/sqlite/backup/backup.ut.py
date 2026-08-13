@@ -367,3 +367,32 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     sync_path = create_local_backup(backup_config, 'main', method='sync')
     utest_val(f'{backups_dir}/main.sync.db', sync_path, 'sync artifact path')
     utest_val_ne([], read_rows(sync_path), 'sync artifact has rows')
+
+
+  # Stop requests are honored between databases, leaving the remaining ones for the next run.
+  # This uses a fresh two-database group, because the group above has only `main`.
+  stop_data_dir = mkdtemp(prefix='backup_ut_stop_data')
+  stop_backups_dir = mkdtemp(prefix='backup_ut_stop_backups')
+  stop_db_config = DbConfig(names=('main','aux'), data_dir=stop_data_dir)
+  Database.initialize(stop_db_config)
+  stop_store = FakeStore()
+  stop_config = BackupConfig(db_config=stop_db_config, backups_dir=stop_backups_dir,
+    files=dict(_=BackupFileConfig(upload_interval=hour)), make_save_store=lambda: stop_store)
+
+  backup_and_upload(stop_config, ['main','aux'], method='vacuum', should_stop=lambda: True)
+  utest_val(False, path_exists(f'{stop_backups_dir}/main.db', follow=False), 'a stop before the first database does nothing')
+
+  stopped = [False]
+  def stop_after_first() -> bool:
+    'Report no stop for the first database, then a stop for every one after it.'
+    was_stopped = stopped[0]
+    stopped[0] = True
+    return was_stopped
+
+  backup_and_upload(stop_config, ['main','aux'], method='vacuum', should_stop=stop_after_first)
+  utest_val(True, path_exists(f'{stop_backups_dir}/main.db', follow=False), 'the database in flight completed')
+  utest_val(False, path_exists(f'{stop_backups_dir}/aux.db', follow=False), 'the rest were left for the next run')
+  utest_val(['main.db'], sorted(stop_store.versions), 'only the completed database uploaded')
+
+  backup_and_upload(stop_config, ['main','aux'], method='vacuum')
+  utest_val(True, path_exists(f'{stop_backups_dir}/aux.db', follow=False), 'the next run picks up where it left off')
