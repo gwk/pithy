@@ -458,7 +458,7 @@ def restore_db(config:BackupConfig, store:BackupStore, name:str) -> bool:
     logI('Latest backup version has no SHA1; cannot verify a download.', obj_key=obj_key, key=latest.key)
     return False
 
-  dl_path = f'{db_path}_{latest.uploaded_at:%Y%m%d_%H%M}{downloaded_suffix}'
+  dl_path = f'{db_path}.{store.name}_{latest.uploaded_at:%Y-%m-%d_%H_%M}{downloaded_suffix}'
 
   if path_exists(dl_path, follow=False):
     existing_size = file_size(dl_path)
