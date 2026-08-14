@@ -156,6 +156,10 @@ class BackupFileConfig:
 
   * `sync_interval`: how often to produce the local artifact; `None` means never; `0` means every run.
   * `upload_interval`: how often to upload the local artifact; `None` means never; `0` means every run.
+
+  We require that sync_interval <= upload_interval.
+  An upload interval shorter than the sync interval would repeatedly upload the same artifact.
+  Triggers are exempt; a trigger file forces sync and upload regardless of either configured interval.
   '''
 
   sync_interval: float|str|None
@@ -164,10 +168,18 @@ class BackupFileConfig:
   _upload_interval_s: float|None = field(init=False, repr=False, compare=False)
 
   def __post_init__(self) -> None:
-    object.__setattr__(self, '_sync_interval_s',
-      normalize_interval(self.sync_interval, desc='BackupFileConfig.sync_interval'))
-    object.__setattr__(self, '_upload_interval_s',
-      normalize_interval(self.upload_interval, desc='BackupFileConfig.upload_interval'))
+    sync_s = normalize_interval(self.sync_interval, desc='BackupFileConfig.sync_interval')
+    upload_s = normalize_interval(self.upload_interval, desc='BackupFileConfig.upload_interval')
+    if upload_s is not None:
+      if sync_s is None:
+        raise ValueError('BackupFileConfig upload_interval requires a sync_interval; '
+          f'received sync_interval=None (never), upload_interval={self.upload_interval!r}.')
+      if upload_s < sync_s:
+        raise ValueError('BackupFileConfig upload_interval must not be shorter than sync_interval, '
+          'which would repeatedly upload the same artifact; '
+          f'received sync_interval={self.sync_interval!r}, upload_interval={self.upload_interval!r}.')
+    object.__setattr__(self, '_sync_interval_s', sync_s)
+    object.__setattr__(self, '_upload_interval_s', upload_s)
 
 
 def normalize_interval(interval:float|str|None, *, desc:str) -> float|None:
@@ -214,9 +226,9 @@ def create_local_backup(config:BackupConfig, name:str, *, method:BackupMethod) -
 def maybe_create_local_backup(config:BackupConfig, name:str, *, method:BackupMethod, interval:float|None, force:bool=False
  ) -> str:
   '''
-  Conditionally produce a local backup for a single database; return its path regardless.
+  Conditionally produce a local backup for a single database; return its path, which may not exist when `interval` is None.
   Skip if the previous production as recorded by the adjacent `.syncts` file falls in the same interval slot as now.
-  `interval` must be non-negative; `None` never produces (once an artifact exists); `0` produces on every call.
+  `interval` must be non-negative; `None` never produces; `0` produces on every call.
   `force` produces the artifact regardless of `interval` and the sidecar file, and still records the timestamp.
 
   A skipped production leaves the previous artifact in place, so an upload due in this run uploads that older copy.
@@ -225,11 +237,13 @@ def maybe_create_local_backup(config:BackupConfig, name:str, *, method:BackupMet
   syncts_path = path + syncts_suffix
   now = now_utc()
 
-  # A missing artifact is always produced; the timestamp alone would otherwise gate a run that has nothing to upload.
-  if not force and is_file(path, follow=True):
+  if not force:
+    # BackupFileConfig guarantees that no upload wants the artifact of a None (never) interval; a trigger forces production.
     if interval is None:
       return path
-    if interval > 0 and not is_interval_elapsed(syncts_path, now=now, interval=interval, use_utc=config.use_utc):
+    # A missing artifact is always produced; the timestamp alone would otherwise gate a run that has nothing to upload.
+    if is_file(path, follow=True) and interval > 0 and not is_interval_elapsed(syncts_path, now=now, interval=interval,
+     use_utc=config.use_utc):
       return path
 
   created_path = create_local_backup(config, name, method=method)
