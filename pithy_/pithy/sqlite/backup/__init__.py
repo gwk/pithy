@@ -228,10 +228,8 @@ def maybe_create_local_backup(config:BackupConfig, name:str, *, method:BackupMet
   # A missing artifact is always produced; the timestamp alone would otherwise gate a run that has nothing to upload.
   if not force and is_file(path, follow=True):
     if interval is None:
-      logI('Skipping local backup; the sync interval is None (never).', name=name, path=path)
       return path
     if interval > 0 and not is_interval_elapsed(syncts_path, now=now, interval=interval, use_utc=config.use_utc):
-      logI('Skipping local backup; the sync interval has not elapsed.', name=name, path=path)
       return path
 
   created_path = create_local_backup(config, name, method=method)
@@ -400,7 +398,7 @@ def backup_and_upload(config:BackupConfig, names:Sequence[str], *, method:Backup
     if claimed is None:
       maybe_upload(store, path, obj_key=f'{name}.db', interval=interval, use_utc=config.use_utc)
     else:
-      logI('Backup trigger found; uploading regardless of the interval.', name=name, path=trigger_file_path(config, name))
+      logI('Backup trigger found.', name=name, path=trigger_file_path(config, name))
       if maybe_upload(store, path, obj_key=f'{name}.db', interval=interval, use_utc=config.use_utc, force=True):
         clear_trigger_file(config, name, claimed)
 
