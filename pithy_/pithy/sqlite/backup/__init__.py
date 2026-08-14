@@ -152,14 +152,14 @@ class BackupConfig:
 class BackupFileConfig:
   '''
   Backup configuration for a single database file.
-  Each interval is a positive float in seconds or a timespan string like '15s'|'30m'|'1h'.
+  Each interval is a non-negative float in seconds or a timespan string like '15s'|'30m'|'1h'.
 
-  * `sync_interval`: how often to produce the local artifact; `None` produces one on every run.
-  * `upload_interval`: how often to upload the local artifact; `None` never uploads.
+  * `sync_interval`: how often to produce the local artifact; `None` means never; `0` means every run.
+  * `upload_interval`: how often to upload the local artifact; `None` means never; `0` means every run.
   '''
 
-  sync_interval: float|str|None = None
-  upload_interval: float|str|None = None
+  sync_interval: float|str|None
+  upload_interval: float|str|None
   _sync_interval_s: float|None = field(init=False, repr=False, compare=False)
   _upload_interval_s: float|None = field(init=False, repr=False, compare=False)
 
@@ -171,10 +171,10 @@ class BackupFileConfig:
 
 
 def normalize_interval(interval:float|str|None, *, desc:str) -> float|None:
-  'Normalize a configured interval to positive seconds, or `None`. `desc` names the field for errors.'
+  'Normalize a configured interval to non-negative seconds, or `None`. `desc` names the field for errors.'
   if interval is None: return None
   seconds = parse_timespan_as_seconds(interval) if isinstance(interval, str) else interval
-  if seconds <= 0: raise ValueError(f'{desc} must be positive or None; received {interval!r}.')
+  if seconds < 0: raise ValueError(f'{desc} must be zero, positive, or None; received {interval!r}.')
   return seconds
 
 
@@ -216,7 +216,7 @@ def maybe_create_local_backup(config:BackupConfig, name:str, *, method:BackupMet
   '''
   Conditionally produce a local backup for a single database; return its path regardless.
   Skip if the previous production as recorded by the adjacent `.syncts` file falls in the same interval slot as now.
-  `interval` must be positive; `None` produces the artifact on every call.
+  `interval` must be non-negative; `None` never produces (once an artifact exists); `0` produces on every call.
   `force` produces the artifact regardless of `interval` and the sidecar file, and still records the timestamp.
 
   A skipped production leaves the previous artifact in place, so an upload due in this run uploads that older copy.
@@ -226,10 +226,13 @@ def maybe_create_local_backup(config:BackupConfig, name:str, *, method:BackupMet
   now = now_utc()
 
   # A missing artifact is always produced; the timestamp alone would otherwise gate a run that has nothing to upload.
-  if not force and interval is not None and is_file(path, follow=True) \
-   and not is_interval_elapsed(syncts_path, now=now, interval=interval, use_utc=config.use_utc):
-    logI('Skipping local backup; the sync interval has not elapsed.', name=name, path=path)
-    return path
+  if not force and is_file(path, follow=True):
+    if interval is None:
+      logI('Skipping local backup; the sync interval is None (never).', name=name, path=path)
+      return path
+    if interval > 0 and not is_interval_elapsed(syncts_path, now=now, interval=interval, use_utc=config.use_utc):
+      logI('Skipping local backup; the sync interval has not elapsed.', name=name, path=path)
+      return path
 
   created_path = create_local_backup(config, name, method=method)
   assert created_path == path, (created_path, path)
@@ -242,7 +245,7 @@ def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|Non
   '''
   Conditionally upload `path` to `store` as `obj_key`;
   skip if the previous upload as recorded by the adjacent `.uploadts` file falls in the same interval slot as now.
-  `interval` must be positive; `None` never uploads.
+  `interval` must be non-negative; `None` never uploads; `0` uploads on every call.
   `force` uploads regardless of `interval` and the sidecar file, and still records the timestamp.
   Returns True if an upload completed.
   '''
@@ -251,7 +254,7 @@ def maybe_upload(store:BackupStore, path:str, obj_key:str, *, interval:float|Non
 
   if not force:
     if interval is None: return False
-    if not is_interval_elapsed(uploadts_path, now=now, interval=interval, use_utc=use_utc): return False
+    if interval > 0 and not is_interval_elapsed(uploadts_path, now=now, interval=interval, use_utc=use_utc): return False
 
   logI('Uploading to store.', store=store.name, path=path, obj_key=obj_key)
   if not store.upload(path, obj_key):
@@ -410,7 +413,7 @@ def file_config_for(config:BackupConfig, name:str) -> BackupFileConfig:
 
 
 def sync_interval_for(config:BackupConfig, name:str) -> float|None:
-  'Resolve the sync interval in seconds for a single database; `None` means produce an artifact on every run.'
+  'Resolve the sync interval in seconds for a single database; `None` means never produce an artifact.'
   return file_config_for(config, name)._sync_interval_s
 
 
