@@ -43,9 +43,16 @@ The pithy repository contains code for several python packages:
 * iotest: a tool for writing process-based tests that specify text input and output.
 * legs: a lexer generator.
 * pithytools: a collection of command-line tools built on pithy.
+* tap_backblaze: Backblaze B2 integration.
 * tolkien: a simple parse token library, factored out as a minimal dependency for other tools.
 * utest: a simple unit test system.
 * wu: a markdown-like document format and associated tool.
+
+Packages prefixed with `tap_` are Theory & Practice vendor integrations.
+Each one wraps a single external service so that application projects can depend on just the integrations they use.
+
+The repository also contains `ops/`, a tree of shell scripts for setting up macOS developer machines and Fedora Linux servers.
+It is not a python package; see `ops/readme.md`.
 
 
 # Pithy Project Layout

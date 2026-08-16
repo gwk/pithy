@@ -1,9 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 # Packages are ordered by interdependencies.
-pkgs := 'tolkien tomul pithy utest iotest pithytools crafts wu legs'
+pkgs := 'tolkien tomul pithy utest iotest pithytools crafts wu legs tap_backblaze'
 
-pkg_srcs := 'tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest pithytools_/pithytools crafts_/crafts wu_/wu legs_/legs'
+pkg_srcs := 'tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest pithytools_/pithytools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze'
 
 pkg_tests_fast := 'pithy_/test pithytools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
@@ -47,7 +47,7 @@ gen:
   make gen
 
 isort:
-  uv run isort {{pkg_srcs}} test-diff tools
+  uv run isort {{pkg_srcs}} ops test-diff tools
 
 install:
   sh/install.sh {{pkgs}}
@@ -59,7 +59,7 @@ iotest-full:
   uv run iotest {{pkg_tests_full}}
 
 lint:
-  uv run pyflakes {{pkg_srcs}} test-diff tools
+  uv run pyflakes {{pkg_srcs}} ops test-diff tools
 
 test: utest iotest
 
@@ -78,7 +78,7 @@ typecheck-py-packages:
   uv run mypy {{pkg_srcs}}
 
 typecheck-other:
-  uv run mypy perf test-diff tools
+  uv run mypy ops perf test-diff tools
 
 typecheck-js:
   tsc

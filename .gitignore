@@ -28,3 +28,7 @@ _repro.wu
 _plan.md
 _prompt.md
 _todo.md
+
+# Ops script downloads.
+ops/linux/uv/download/
+ops/linux/vector/download/

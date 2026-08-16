@@ -8,6 +8,7 @@ members = [
   "legs_",
   "pithy_",
   "pithytools_",
+  "tap_backblaze_",
   "tolkien_",
   "tomul_",
   "utest_",

@@ -1,0 +1,45 @@
+[project]
+license = "CC0-1.0"
+readme = "readme.md"
+authors = [
+  { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+  "version",
+]
+name = "tap_backblaze"
+description = "Backblaze B2 integration: credentials, application key management, and a pithy backup store."
+requires-python = ">=3.14"
+dependencies = [
+  "b2sdk >= 2.12.0",
+  "pithy",
+]
+keywords = [
+  "b2",
+  "backblaze",
+  "backup",
+  "cloud",
+  "object storage",
+  "storage",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/tap_backblaze#readme"
+
+[project.scripts]
+
+[tool.uv.sources]
+pithy = { workspace = true }
+
+[build-system]
+requires = [
+  "flit_core >= 3.12",
+]
+build-backend = "flit_core.buildapi"
