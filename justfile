@@ -31,6 +31,9 @@ cov:
 cov-meta:
   iotest_/test-meta/meta-coverage.sh
 
+ctx:
+  craft-context .
+
 develop-global:
   sh/develop-global.sh {{pkgs}}
 
@@ -54,10 +57,6 @@ iotest:
 
 iotest-full:
   uv run iotest {{pkg_tests_full}}
-
-
-link-claude-md:
-  find . -name 'AGENTS.md' -print0 | xargs -0 -I {} sh -c 'ln -sf "$(basename {})" "$(dirname {})/CLAUDE.md"'
 
 lint:
   uv run pyflakes {{pkg_srcs}} test-diff tools
