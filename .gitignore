@@ -11,6 +11,10 @@ __pycache__/
 dist/
 .venv/
 
+# Context.
+AGENTS.md
+CLAUDE.md
+
 # Playwright.
 .playwright-mcp/
 

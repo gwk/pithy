@@ -36,6 +36,7 @@ tolkien = { workspace = true }
 
 [project.scripts]
 craft-vscode-ext = "crafts.bin.craft_vscode_ext:main"
+craft-context = "crafts.bin.craft_context:main"
 craft-docs = "crafts.bin.craft_docs:main"
 craft-web = "crafts.bin.craft_web:main"
 craft-py-ext = "crafts.bin.craft_py_ext:main"
