@@ -56,6 +56,9 @@ isort:
 install:
   sh/install.sh {{pkgs}}
 
+install-git-hooks:
+  git config --local core.hooksPath .githooks
+
 iotest:
   uv run iotest {{pkg_tests_fast}}
 
