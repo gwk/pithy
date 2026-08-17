@@ -31,7 +31,7 @@ members = [
 dev = [
     { name = "isort", specifier = ">=8.0.1" },
     { name = "msgpack-types", specifier = ">=0.8.0" },
-    { name = "mypy", specifier = ">=2.2.0" },
+    { name = "mypy", specifier = ">=2.3.0" },
     { name = "pyflakes", specifier = ">=3.4.0" },
     { name = "pyperf", specifier = ">=2.10" },
     { name = "types-lxml", specifier = ">=2026.2.16" },
