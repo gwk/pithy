@@ -1,6 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 # Virtual workspace root; each package under a `*_` directory is a workspace member.
 
+[tool.uv]
+exclude-newer = "14 days"
+
+# Per-package cooldown exceptions.
+[tool.uv.exclude-newer-package]
+flit-core = "2026-08-05T00:00:00Z"
+
+
 [tool.uv.workspace]
 members = [
   "crafts_",
