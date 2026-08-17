@@ -39,6 +39,7 @@ cov:
 cov-meta:
   iotest_/test-meta/meta-coverage.sh
 
+# Generate agent context files from CTX.md.
 ctx:
   craft-context .
 
