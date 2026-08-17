@@ -2,13 +2,13 @@
 
 from argparse import Namespace
 
-from b2sdk.v3 import B2Api, Bucket, FullApplicationKey, InMemoryAccountInfo
 from pithy.argparser import CommandParser
 from pithy.filestatus import path_exists
 from pithy.frozendicts import frozendict
+from pithy.json import out_json
 from pithy.path import path_dir_or_dot
-from pithy.type_utils import req_type
 
+from .api import B2Client
 from .capabilities import all_capabilities_and_groups, file_ro_capabilities, file_rw_capabilities, file_rwd_capabilities
 from .creds import B2Creds
 
@@ -20,13 +20,13 @@ def main() -> None:
   list_cmd.add_argument('-creds', required=True, help='Path to a credentials JSON file that can list keys.')
 
   create_cmd = parser.add_command(main_create)
-  create_cmd.add_argument('name', help='The application key name.')
-  create_cmd.add_argument('-output', required=False, help='Path to output the generated key JSON; defaults to "{name}.json".')
   create_cmd.add_argument('-creds', required=True,
     help='Path to a credentials JSON file that can list buckets and create keys.')
+  create_cmd.add_argument('-name', required=True, help='The application key name.')
   create_cmd.add_argument('-buckets', nargs='+', required=True, help='Names of the buckets.')
   create_cmd.add_argument('-capabilities', nargs='+', required=True,
     help='Capabilities for the key. Special values: "file-ro", "file-rw", "file-rwd".')
+  create_cmd.add_argument('-output', required=False, help='Path to output the generated key JSON; defaults to "{name}.json".')
 
   parser.parse_and_run_command()
 
@@ -38,12 +38,10 @@ def main_list(args:Namespace) -> None:
     exit(f'Error: Credentials path does not exist: {args.creds!r}.')
 
   creds = B2Creds.load(args.creds)
-  b2 = B2Api(InMemoryAccountInfo()) # type: ignore[no-untyped-call]
-  b2.authorize_account(application_key_id=creds.key_id, application_key=creds.key_secret.val)
+  client = B2Client(creds.key_id, creds.key_secret)
 
-  keys = b2.list_keys()
-  for key in keys:
-    print(key.as_dict()) # type: ignore[no-untyped-call]
+  for key in client.list_keys():
+    out_json(key.as_json())
 
 
 def main_create(args:Namespace) -> None:
@@ -71,22 +69,20 @@ def main_create(args:Namespace) -> None:
       case _: capabilities.append(cap)
 
   creds = B2Creds.load(args.creds)
-  b2 = B2Api(InMemoryAccountInfo()) # type: ignore[no-untyped-call]
-  b2.authorize_account(application_key_id=creds.key_id, application_key=creds.key_secret.val)
+  client = B2Client(creds.key_id, creds.key_secret)
 
   bucket_names = args.buckets
   assert bucket_names
   buckets:dict[str,str] = {}
   for bucket_name in bucket_names:
-    bucket:Bucket = b2.get_bucket_by_name(bucket_name)
-    buckets[bucket_name] = req_type(bucket.id_, str)
+    buckets[bucket_name] = client.get_bucket_by_name(bucket_name).id
 
   bucket_ids = list(buckets.values())
   for name, id in buckets.items():
     print(f'bucket {name!r} -> {id!r}')
 
-  key_info:FullApplicationKey = b2.create_key(key_name=args.name, capabilities=capabilities, bucket_ids=bucket_ids)
-  creds = B2Creds.from_b2(key_info, frozendict(buckets))
+  created_key = client.create_key(args.name, capabilities, bucket_ids)
+  creds = B2Creds.from_created_key(created_key, frozendict(buckets))
   creds.save(out_path)
 
 

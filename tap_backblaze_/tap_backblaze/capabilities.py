@@ -1,9 +1,34 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from b2sdk.v3 import ALL_CAPABILITIES
-
-
-all_capabilities = tuple(ALL_CAPABILITIES)
+# The complete capability vocabulary, per https://www.backblaze.com/apidocs/b2-create-key.
+all_capabilities:tuple[str,...] = (
+  'listKeys',
+  'writeKeys',
+  'deleteKeys',
+  'listBuckets',
+  'listAllBucketNames',
+  'readBuckets',
+  'writeBuckets',
+  'deleteBuckets',
+  'readBucketEncryption',
+  'writeBucketEncryption',
+  'readBucketRetentions',
+  'writeBucketRetentions',
+  'readFileRetentions',
+  'writeFileRetentions',
+  'readFileLegalHolds',
+  'writeFileLegalHolds',
+  'readBucketReplications',
+  'writeBucketReplications',
+  'bypassGovernance',
+  'listFiles',
+  'readFiles',
+  'shareFiles',
+  'writeFiles',
+  'deleteFiles',
+  'readBucketNotifications',
+  'writeBucketNotifications',
+)
 
 all_capabilities_and_groups = all_capabilities + ('file-ro', 'file-rw', 'file-rwd')
 
