@@ -18,9 +18,13 @@ list-packages:
 build:
   sh/build.sh {{pkgs}}
 
-check: check-pyproject isort lint typecheck test
+check: check-uv-lock check-pyproject isort lint typecheck test
 
-check-full: gen check-pyproject isort lint typecheck test-full
+check-full: check-uv-lock gen check-pyproject isort lint typecheck test-full
+
+# Check that the uv lock file is in sync with pyproject.toml.
+check-uv-lock:
+  uv lock --check
 
 check-pyproject:
   uv run build/check-pyproject.py {{pkgs}}
@@ -90,6 +94,10 @@ typecheck-clean: typecheck-clear-cache typecheck
 
 uninstall:
   pip3 uninstall --yes {{pkgs}}
+
+# Update the uv lock file to match pyproject.toml.
+update-uv-lock:
+  uv lock
 
 vscode-links:
   ln -fs $$PWD/vscode/* ~/.vscode/extensions
