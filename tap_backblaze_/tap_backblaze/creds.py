@@ -4,11 +4,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Mapping, Self
 
-from b2sdk._internal.application_key import FullApplicationKey
 from pithy.frozendicts import frozendict
 from pithy.json import JsonDict, load_json, write_json
 from pithy.secrets import SecretStr
 from pithy.transtruct import Transtructor
+
+from .api.types import B2CreatedApplicationKey
 
 
 hex_re = re.compile(r'^[0-9a-fA-F]+$')
@@ -37,13 +38,13 @@ class B2Creds:
 
 
   @classmethod
-  def from_b2(cls, key:FullApplicationKey, buckets:Mapping[str,str]) -> Self:
-    'Create credentials from the `b2sdk` `FullApplicationKey` type.'
+  def from_created_key(cls, key:B2CreatedApplicationKey, buckets:Mapping[str,str]) -> Self:
+    'Create credentials from a newly created application key; the secret is only returned at creation.'
 
     return cls(
       key_name=key.key_name,
-      key_id=key.id_,
-      key_secret=SecretStr(key.application_key),
+      key_id=key.key_id,
+      key_secret=key.application_key,
       buckets=frozendict(buckets),
       capabilities=tuple(sorted(key.capabilities)))
 

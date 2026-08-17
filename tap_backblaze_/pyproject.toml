@@ -11,8 +11,8 @@ name = "tap_backblaze"
 description = "Backblaze B2 integration: credentials, application key management, and a pithy backup store."
 requires-python = ">=3.14"
 dependencies = [
-  "b2sdk >= 2.12.0",
   "pithy",
+  "requests >= 2.34.2",
 ]
 keywords = [
   "b2",

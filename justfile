@@ -8,6 +8,10 @@ pkg_srcs := 'tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iot
 pkg_tests_fast := 'pithy_/test pithytools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
 
+# Credentials for the tap_backblaze integration suite; the read-only key restores what the read-write key uploads.
+backblaze_test_creds_ro := '../creds/backblaze/tap-backblaze-test-ro.json'
+backblaze_test_creds_rwd := '../creds/backblaze/tap-backblaze-test-rwd.json'
+
 # List all recipes; the default.
 list-recipes:
   @just --list --unsorted
@@ -51,7 +55,7 @@ gen:
   make gen
 
 isort:
-  uv run isort {{pkg_srcs}} ops test-diff tools
+  uv run isort {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
 
 install:
   sh/install.sh {{pkgs}}
@@ -66,11 +70,15 @@ iotest-full:
   uv run iotest {{pkg_tests_full}}
 
 lint:
-  uv run pyflakes {{pkg_srcs}} ops test-diff tools
+  uv run pyflakes {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
 
 test: utest iotest
 
 test-full: utest iotest-full
+
+# Run the tap_backblaze integration suite; requires credentials, see tap_backblaze_/test-integration/readme.md.
+test-backblaze:
+  uv run tap_backblaze_/test-integration/test_backblaze.py {{backblaze_test_creds_ro}} {{backblaze_test_creds_rwd}}
 
 test-diff:
   uv run test-diff/test.py
@@ -85,7 +93,7 @@ typecheck-py-packages:
   uv run mypy {{pkg_srcs}}
 
 typecheck-other:
-  uv run mypy ops perf test-diff tools
+  uv run mypy ops perf tap_backblaze_/test-integration test-diff tools
 
 typecheck-js:
   tsc
