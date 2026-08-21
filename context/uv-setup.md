@@ -12,7 +12,7 @@ dependencies = [
 pithy = { workspace = true }
 ```
 
-The root `uv.lock` records the complete version state of the workspace. AS package config changes, `uv run` and `uv sync` will update uv.lock; those generated changes should be committed together with whatever triggerd them. The commands in the justfile should use `uv` uniformly to keep everything synchronized.
+The root `uv.lock` records the complete version state of the workspace. AS package config changes, `uv run` and `uv sync` will update uv.lock; those generated changes should be committed together with whatever triggered them. The commands in the justfile should use `uv` uniformly to keep everything synchronized.
 
 to create or update `.venv`, and commit changes to `uv.lock`. Use `just check-uv-lock` and `just update-uv-lock` when dependency metadata changes.
 
@@ -27,7 +27,7 @@ dependent-repo/
   uv.lock
 ```
 
-Ignore `deps/` in git. Provide a reproducible command that creates the link to the intended local worktree before any uv command. This makes pithy source changes immediately visible through uv's editable development installs, which is required for hot reloading.
+Use `craft-deps` to select local worktrees before any uv command. Note that even if `crafts` is declared as a developer dependency then it will need to be available prior to running `uv`, because `uv` needs the links to be already set up the first time it is invoked. See `craft-deps -h` for details.
 
 Declare every directly used pithy package by its distribution name. Map each one to the external workspace root:
 
