@@ -18,8 +18,8 @@ def main() -> None:
   for path in args.paths:
     f = stdin.buffer if path == '-' else open(path, 'rb')
     with f:
-      write_formatted_json_bytes(out_raw, f, fix=args.fix, allow_trailing_commas=args.allow_trailing_commas,
-        allow_comments=args.allow_comments)
+      write_formatted_json_bytes(out_raw, f, fix=args.fix, allow_trailing_commas=args.trailing_commas,
+        allow_comments=args.comments)
 
 
 if __name__ == '__main__': main()
