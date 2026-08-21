@@ -35,6 +35,7 @@ pithy = { workspace = true }
 tolkien = { workspace = true }
 
 [project.scripts]
+craft-deps = "crafts.bin.craft_deps:main"
 craft-vscode-ext = "crafts.bin.craft_vscode_ext:main"
 craft-context = "crafts.bin.craft_context:main"
 craft-docs = "crafts.bin.craft_docs:main"
