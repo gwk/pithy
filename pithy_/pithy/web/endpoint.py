@@ -1,9 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from annotationlib import Format
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from http import HTTPStatus
-from inspect import get_annotations
+from inspect import get_annotations, Parameter, signature
 from typing import Any, ClassVar, get_args, get_origin, Literal, Union
 
 from typing_extensions import TypeForm
@@ -40,15 +41,17 @@ class Endpoint(RoutableHandler):
   # Fields
 
   Subclasses declare an inner `Fields` class whose fields are populated from request path, query, and body parameters.
-  A fresh `Fields` instance is created per request and exposed as `self.fields`.
+  A fresh `Fields` instance is created per request and passed to `handle_endpoint`.
   The declared field types determine how raw values are converted.
 
   The inner `Fields` class must derive directly from `object`.
   Its namespace contains no framework names, so every annotated name in its body is a field,
   including names with leading underscores.
 
-  Endpoints must also redeclare the instance with their Fields subtype like fields:MyFields`,
-  so that static type checkers see the precise type of `self.fields`.
+  The `fields` parameter of `handle_endpoint` must be annotated with the exact inner `Fields` class.
+  This gives endpoint implementations a precisely typed fields value without exposing it as endpoint machinery.
+  An endpoint that accesses `self.fields` in other methods may additionally declare `fields:Fields` in its class body.
+  This optional declaration gives those accesses the precise type; without it, `self.fields` is typed as `object`.
 
   Any other public field annotation in the endpoint class body raises TypeError,
   because it is most likely a field mistakenly declared outside of `Fields`.
@@ -84,7 +87,7 @@ class Endpoint(RoutableHandler):
     class MyEndpoint(Endpoint):
       class Fields:
         my_field:MyType
-      fields:Fields
+      def handle_endpoint(self, request:Request, fields:Fields) -> Response: ...
       converters = dict(my_field=lambda raw: MyType.from_string(raw))
   To share converters across endpoints, compose module-level dicts in the class body,
   e.g. `converters = common_converters | dict(...)`.
@@ -128,13 +131,13 @@ class Endpoint(RoutableHandler):
   * `path_params:dict[str,object]`
 
   Request handling flow:
-  * The server constructs the endpoint, which creates `self.fields` and fills it from path and query params.
+  * The server constructs the endpoint, which creates its internal fields object and fills it from path and query params.
     Duplicates across path and query, excess params not corresponding to fields, and conversion failures raise BadRequestError.
   * If the client sent `Expect: 100-continue`, the server calls `handle_expect_100_continue`, which by default returns CONTINUE.
-    At this stage body fields are not yet filled; accessing them on `self.fields` raises AttributeError.
+    At this stage body fields are not yet filled.
   * The server calls `prepare`, which reads the body (if any), fills body fields, and performs final validation:
     duplicate params across sources, excess body params, missing required fields.
-  * The server calls `handle_request`, which subclasses must implement to return a Response.
+  * The server calls `handle_request`, which dispatches to the subclass's `handle_endpoint` implementation.
   '''
 
   max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters.
@@ -160,8 +163,8 @@ class Endpoint(RoutableHandler):
   # The class used to create the per-request `fields` instance: the inner Fields class, set by __init_subclass__.
   _fields_class:ClassVar[type[Any]] = NoFields
 
-  # The per-request fields instance. Subclasses that declare an inner Fields class re-annotate this as `fields:Fields`.
-  fields:Any
+  # The internal per-request fields instance. Subclasses may redeclare this with their precise Fields type when needed.
+  fields:object
 
   _fill_param_sources:dict[str,str]
 
@@ -181,14 +184,12 @@ class Endpoint(RoutableHandler):
         f'{cls.__qualname__}.{name}: unexpected public annotation in Endpoint subclass body; declare request fields in the inner Fields class.')
 
     fields_class:type[Any] = cls.__dict__.get('Fields', NoFields)
-    if fields_class is NoFields:
-      if 'fields' in cls_annotations:
-        raise TypeError(f'{cls.__qualname__}: `fields` annotation is present but no inner Fields class is declared.')
-    else:
-      if not isinstance(fields_class, type) or fields_class.__bases__ != (object,):
-        raise TypeError(f'{cls.__qualname__}.Fields must be a class deriving directly from object.')
-      if cls_annotations.get('fields') is not fields_class:
-        raise TypeError(f'{cls.__qualname__}: declare `fields:Fields` so that the fields instance is precisely typed.')
+    if fields_class is not NoFields and (not isinstance(fields_class, type) or fields_class.__bases__ != (object,)):
+      raise TypeError(f'{cls.__qualname__}.Fields must be a class deriving directly from object.')
+    if (fields_annotation := cls_annotations.get('fields')) is not None:
+      if fields_annotation is not fields_class:
+        raise TypeError(f'{cls.__qualname__}.fields must be annotated as {fields_class.__qualname__}.')
+    _validate_handle_endpoint(cls, fields_class)
     cls._fields_class = fields_class
 
     # Converters are collected from their class bodies only; bases and mixins do not contribute.
@@ -325,6 +326,11 @@ class Endpoint(RoutableHandler):
 
 
   def handle_request(self, request:Request) -> Response:
+    return self.handle_endpoint(request, self.fields)
+
+
+  def handle_endpoint(self, request:Request, fields:Any) -> Response:
+    'Handle the prepared request with its precisely typed fields object. Subclasses must override this method.'
     raise NotImplementedError
 
 
@@ -422,3 +428,32 @@ def _new_endpoint_transtructor() -> Transtructor:
 
 # Private shared transtructor used by endpoint subclasses that register no prefigure/selector customizations.
 _shared_endpoint_transtructor = _new_endpoint_transtructor()
+
+
+def _validate_handle_endpoint(cls:type[Endpoint], fields_class:type[Any]) -> None:
+  'Validate a concrete Endpoint subclass hook at class definition time.'
+  if 'handle_request' in cls.__dict__:
+    raise TypeError(f'{cls.__qualname__}: override `handle_endpoint`, not framework method `handle_request`.')
+  handler = cls.__dict__.get('handle_endpoint')
+  if handler is None:
+    raise TypeError(f'{cls.__qualname__}: define `handle_endpoint(self, request, fields)`.')
+  if not callable(handler):
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint must be a method.')
+  params = tuple(signature(handler, annotation_format=Format.STRING).parameters.values())
+  if len(params) != 3 or any(p.kind is not Parameter.POSITIONAL_OR_KEYWORD for p in params):
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint must have signature `(self, request, fields)`.')
+  if tuple(p.name for p in params) != ('self', 'request', 'fields'):
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint parameter names must be `(self, request, fields)`.')
+  if any(p.default is not Parameter.empty for p in params):
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint parameters must not have defaults.')
+  try: annotations = get_annotations(handler)
+  except (NameError, TypeError) as e:
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint annotations could not be evaluated: {e}') from e
+  if annotations.get('request') is not Request:
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint.request must be annotated as Request.')
+  if annotations.get('fields') is not fields_class:
+    expected = fields_class.__qualname__
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint.fields must be annotated as {expected}.')
+  response_type = annotations.get('return')
+  if not isinstance(response_type, type) or not issubclass(response_type, Response):
+    raise TypeError(f'{cls.__qualname__}.handle_endpoint return must be annotated as Response or a Response subclass.')

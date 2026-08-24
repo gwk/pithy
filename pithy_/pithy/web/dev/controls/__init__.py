@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from ....html import A, H1, Li, Main, Ul
-from ...endpoint import Endpoint
+from ...endpoint import Endpoint, NoFields
 from ...request import Request
 from ...response import HtmlResponse
 from ..pages import page_html
@@ -10,7 +10,7 @@ from ..pages import page_html
 class DevControlsIndex(Endpoint):
   'Index of developer control reference pages.'
 
-  def handle_request(self, request:Request) -> HtmlResponse:
+  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
     from ..routes import routes
     links = []
     for path, endpoint in routes.items():
