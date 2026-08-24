@@ -10,7 +10,7 @@ from typing import Annotated, Any, Literal, TypeVar
 from urllib.parse import urlencode
 
 from pithy.transtruct import Transtructor
-from pithy.web.endpoint import _unwrap_field_type, Endpoint
+from pithy.web.endpoint import _unwrap_field_type, Endpoint, NoFields
 from pithy.web.errors import MethodNotAllowedError, ResponseError
 from pithy.web.request import Request, UploadedFile
 from pithy.web.requestconn import BodyTooLargeError, BytesConn
@@ -75,8 +75,8 @@ class IntEndpoint(Endpoint):
   class Fields:
     id:int
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.id}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.id}')
 
 
 class MultiFieldEndpoint(Endpoint):
@@ -85,8 +85,8 @@ class MultiFieldEndpoint(Endpoint):
     count:int
     ratio:float
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.name},{self.fields.count},{self.fields.ratio}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.name},{fields.count},{fields.ratio}')
 
 
 class OptionalEndpoint(Endpoint):
@@ -94,32 +94,32 @@ class OptionalEndpoint(Endpoint):
     name:str
     tag:str|None
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.name},{self.fields.tag}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.name},{fields.tag}')
 
 
 class DateEndpoint(Endpoint):
   class Fields:
     d:date
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.d}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.d}')
 
 
 class DatetimeEndpoint(Endpoint):
   class Fields:
     dt:datetime
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.dt}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.dt}')
 
 
 class TimeEndpoint(Endpoint):
   class Fields:
     t:time
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.t}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.t}')
 
 
 class BoolEndpoint(Endpoint):
@@ -127,8 +127,8 @@ class BoolEndpoint(Endpoint):
   class Fields:
     flag:bool
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.flag}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.flag}')
 
 
 def endpoint_fields(cls:type[Endpoint], **kwargs:str) -> dict[str,Any]:
@@ -175,8 +175,8 @@ class UnderscoreFieldEndpoint(Endpoint):
     name:str
     _debug:bool|None
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.name},{self.fields._debug}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.name},{fields._debug}')
 
 
 utest(dict(name='a', _debug=True), endpoint_fields, UnderscoreFieldEndpoint, name='a', _debug='1')
@@ -195,10 +195,10 @@ class CustomConverterEndpoint(Endpoint):
   converters = {'color': lambda raw: Color(raw)}
   class Fields:
     color:Color
-  fields:Fields
 
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.color.value}')
+  fields:Fields
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.color.value}')
 
 
 utest(dict(color=Color.red), endpoint_fields, CustomConverterEndpoint, color='red')
@@ -216,10 +216,10 @@ class ListConverterEndpoint(Endpoint):
   converters = {'tags': _dedupe_tags}
   class Fields:
     tags:list[str]
-  fields:Fields
 
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.tags}')
+  fields:Fields
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.tags}')
 
 
 # Direct subclassing is enforced: intermediate Endpoint subclasses raise TypeError.
@@ -251,31 +251,125 @@ def _make_derived_fields_endpoint() -> type[Endpoint]:
   class DerivedFieldsEndpoint(Endpoint):
     class Fields(_FieldsBase):
       y:int
-    fields:Fields
   return DerivedFieldsEndpoint
 
 utest_exc(TypeError, _make_derived_fields_endpoint)
 
 
-# Declaring an inner Fields class requires the `fields:Fields` annotation for type checker precision.
+# Every endpoint must define the endpoint hook.
 
-def _make_unannotated_fields_endpoint() -> type[Endpoint]:
-  class UnannotatedFieldsEndpoint(Endpoint):
+def _make_missing_handler_endpoint() -> type[Endpoint]:
+  class MissingHandlerEndpoint(Endpoint):
     class Fields:
       x:int
-  return UnannotatedFieldsEndpoint
+  return MissingHandlerEndpoint
 
-utest_exc(TypeError, _make_unannotated_fields_endpoint)
+utest_exc(TypeError, _make_missing_handler_endpoint)
 
 
-# A `fields` annotation without an inner Fields class raises TypeError.
+# The hook signature and annotations are validated at class definition time.
 
-def _make_fields_annotation_only_endpoint() -> type[Endpoint]:
-  class FieldsAnnotationOnlyEndpoint(Endpoint):
+def _make_bad_handler_signature_endpoint() -> type[Endpoint]:
+  class BadHandlerSignatureEndpoint(Endpoint):
+    def handle_endpoint(self, request:Request) -> Response: # type: ignore[override] # Intentionally malformed.
+      return Response()
+  return BadHandlerSignatureEndpoint
+
+utest_exc(TypeError, _make_bad_handler_signature_endpoint)
+
+
+def _make_unannotated_handler_fields_endpoint() -> type[Endpoint]:
+  class UnannotatedHandlerFieldsEndpoint(Endpoint):
+    def handle_endpoint(self, request:Request, fields) -> Response: # type: ignore[no-untyped-def] # Intentionally malformed.
+      return Response()
+  return UnannotatedHandlerFieldsEndpoint
+
+utest_exc(TypeError, _make_unannotated_handler_fields_endpoint)
+
+
+def _make_wrong_handler_fields_endpoint() -> type[Endpoint]:
+  class WrongHandlerFieldsEndpoint(Endpoint):
+    class Fields:
+      x:int
+    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return WrongHandlerFieldsEndpoint
+
+utest_exc(TypeError, _make_wrong_handler_fields_endpoint)
+
+
+def _make_wrong_handler_request_endpoint() -> type[Endpoint]:
+  class WrongHandlerRequestEndpoint(Endpoint):
+    def handle_endpoint(self, request:object, fields:NoFields) -> Response:
+      return Response()
+  return WrongHandlerRequestEndpoint
+
+utest_exc(TypeError, _make_wrong_handler_request_endpoint)
+
+
+def _make_wrong_handler_return_endpoint() -> type[Endpoint]:
+  class WrongHandlerReturnEndpoint(Endpoint):
+    def handle_endpoint(self, request:Request, fields:NoFields) -> object: # type: ignore[override] # Intentionally malformed.
+      return object()
+  return WrongHandlerReturnEndpoint
+
+utest_exc(TypeError, _make_wrong_handler_return_endpoint)
+
+
+def _make_handle_request_override_endpoint() -> type[Endpoint]:
+  class HandleRequestOverrideEndpoint(Endpoint):
+    def handle_request(self, request:Request) -> Response:
+      return Response()
+    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return HandleRequestOverrideEndpoint
+
+utest_exc(TypeError, _make_handle_request_override_endpoint)
+
+
+# The fields attribute may be redeclared for precise access outside handle_endpoint.
+
+class TypedFieldsEndpoint(Endpoint):
+  class Fields:
+    x:int
+  fields:Fields
+  _prepared_x:int
+  def prepare(self, request:Request) -> None:
+    super().prepare(request)
+    self._prepared_x = self.fields.x
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{self._prepared_x},{fields.x}')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: optional fields redeclaration types lifecycle access.'
+  req = _make_request(query=dict(x='3'))
+  ep = TypedFieldsEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val(b'3,3', ep.handle_request(req).body)
+
+
+def _make_mismatched_fields_annotation_endpoint() -> type[Endpoint]:
+  class MismatchedFieldsAnnotationEndpoint(Endpoint):
+    class Fields:
+      x:int
+    fields:NoFields
+    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+      return Response()
+  return MismatchedFieldsAnnotationEndpoint
+
+utest_exc(TypeError, _make_mismatched_fields_annotation_endpoint)
+
+
+def _make_fields_annotation_without_fields_class_endpoint() -> type[Endpoint]:
+  class FieldsAnnotationWithoutFieldsClassEndpoint(Endpoint):
     fields:int
-  return FieldsAnnotationOnlyEndpoint
+    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return FieldsAnnotationWithoutFieldsClassEndpoint
 
-utest_exc(TypeError, _make_fields_annotation_only_endpoint)
+utest_exc(TypeError, _make_fields_annotation_without_fields_class_endpoint)
 
 
 # Shared converters are composed as plain dicts in the class body; there is no converter inheritance.
@@ -288,8 +382,8 @@ class ComposedConverterEndpoint(Endpoint):
     color:Color
     name:str
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.color.value},{self.fields.name}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.color.value},{fields.name}')
 
 
 utest(dict(color=Color.green, name='TEST'), endpoint_fields, ComposedConverterEndpoint, color='green', name='test')
@@ -298,7 +392,7 @@ utest(dict(color=Color.green, name='TEST'), endpoint_fields, ComposedConverterEn
 # No-field endpoint: the inner Fields class is optional.
 
 class NoFieldEndpoint(Endpoint):
-  def handle_request(self, request:Request) -> Response:
+  def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
     return Response(body='ok')
 
 
@@ -357,8 +451,8 @@ class BodyEndpoint(Endpoint):
     name:str
     tag:str|None
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.name},{self.fields.tag}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.name},{fields.tag}')
 
 class ListEndpoint(Endpoint):
   max_body_bytes = 1024
@@ -366,8 +460,8 @@ class ListEndpoint(Endpoint):
     tags:list[str]
     counts:list[int]
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.tags},{self.fields.counts}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.tags},{fields.counts}')
 
 
 @utest_run
@@ -492,8 +586,8 @@ class NestedEndpoint(Endpoint):
   class Fields:
     point:Point
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.point}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.point}')
 
 
 class NestedListEndpoint(Endpoint):
@@ -501,8 +595,8 @@ class NestedListEndpoint(Endpoint):
   class Fields:
     points:list[Point]
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.points}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.points}')
 
 
 @utest_run
@@ -532,8 +626,8 @@ class OptionalListEndpoint(Endpoint):
   class Fields:
     tags:list[str]|None
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.tags}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.tags}')
 
 
 def _urlencoded_request(body:str) -> Request:
@@ -652,8 +746,8 @@ class UploadedFileEndpoint(Endpoint):
   class Fields:
     file:UploadedFile
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.file.filename}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.file.filename}')
 
 
 @utest_run
@@ -689,8 +783,8 @@ class MultiFileEndpoint(Endpoint):
   class Fields:
     files:list[UploadedFile]
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.files}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.files}')
 
 
 @utest_run
@@ -711,8 +805,8 @@ class MixedMultipartEndpoint(Endpoint):
     note:str
     file:UploadedFile
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.note}:{self.fields.file.filename}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.note}:{fields.file.filename}')
 
 
 @utest_run
@@ -736,8 +830,8 @@ class ListBodyFieldEndpoint(Endpoint):
   class Fields:
     payload:list[int]
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.payload}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.payload}')
 
 
 class IntBodyFieldEndpoint(Endpoint):
@@ -746,8 +840,8 @@ class IntBodyFieldEndpoint(Endpoint):
   class Fields:
     payload:int
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.payload}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.payload}')
 
 
 class PointBodyFieldEndpoint(Endpoint):
@@ -756,8 +850,8 @@ class PointBodyFieldEndpoint(Endpoint):
   class Fields:
     payload:Point
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.payload}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.payload}')
 
 
 @utest_run
@@ -803,8 +897,8 @@ class MixedBodyFieldEndpoint(Endpoint):
     payload:Point
     label:str
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.label}:{self.fields.payload}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.label}:{fields.payload}')
 
 
 @utest_run
@@ -830,8 +924,7 @@ def _make_bad_body_field_endpoint() -> type[Endpoint]:
     body_field = 'payload'
     class Fields:
       other:int
-    fields:Fields
-    def handle_request(self, request:Request) -> Response:
+    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
       return Response(body='')
   return BadBodyFieldEndpoint
 
@@ -854,8 +947,8 @@ class BarePayloadEndpoint(Endpoint):
   class Fields:
     payload:BarePayload
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.payload}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.payload}')
 
 
 @utest_run
@@ -913,8 +1006,8 @@ class ShapeBodyEndpoint(Endpoint):
   class Fields:
     shape:Shape
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.shape}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.shape}')
 
 
 @utest_run
@@ -942,8 +1035,8 @@ class PrefiguredPointEndpoint(Endpoint):
   class Fields:
     point:Point
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.point}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.point}')
 
 
 @PrefiguredPointEndpoint.prefigure(Point)
@@ -977,8 +1070,8 @@ class ShapeSelectorEndpoint(Endpoint):
   class Fields:
     shape:Shape
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.shape}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.shape}')
 
 
 @ShapeSelectorEndpoint.selector(Shape)
@@ -1010,9 +1103,9 @@ class LiteralEndpoint(Endpoint):
     tag:Literal['a','b']|None
     counts:Annotated[list[int],'meta']
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    order:Order = self.fields.order # Statically precise; no cast required.
-    return Response(body=f'{order},{self.fields.rank},{self.fields.tag},{self.fields.counts}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    order:Order = fields.order # Statically precise; no cast required.
+    return Response(body=f'{order},{fields.rank},{fields.tag},{fields.counts}')
 
 
 utest(dict(order='asc', rank=1, tag='a', counts=[3]), endpoint_fields, LiteralEndpoint,
@@ -1030,8 +1123,8 @@ class LiteralListEndpoint(Endpoint):
   class Fields:
     kinds:list[Literal['a','b']]
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.kinds}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.kinds}')
 
 
 @utest_run
@@ -1061,8 +1154,8 @@ class ShapeUnionEndpoint(Endpoint):
   class Fields:
     shape:Circle|Rect
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.shape}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.shape}')
 
 
 @ShapeUnionEndpoint.selector(Circle|Rect)
@@ -1090,16 +1183,16 @@ class IntStrUnionEndpoint(Endpoint):
   class Fields:
     val:int|str
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.val}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.val}')
 
 
 class IntFloatUnionEndpoint(Endpoint):
   class Fields:
     val:int|float
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.val}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.val}')
 
 
 utest(dict(val='1'), endpoint_fields, IntStrUnionEndpoint, val='1') # The raw str matches the str member; no int conversion.
@@ -1110,8 +1203,8 @@ class SelectedNumUnionEndpoint(Endpoint):
   class Fields:
     val:int|float
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.val}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.val}')
 
 
 @SelectedNumUnionEndpoint.selector(int|float)
@@ -1131,8 +1224,8 @@ class UnselectedShapeEndpoint(Endpoint):
   class Fields:
     shape:Circle|Rect
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.shape}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.shape}')
 
 
 # The Router resolves converters for every registered endpoint, so this fails at startup rather than on first request.
@@ -1146,9 +1239,8 @@ def _() -> None:
   class RouterResolvedEndpoint(Endpoint):
     class Fields:
       n:int
-    fields:Fields
-    def handle_request(self, request:Request) -> Response:
-      return Response(body=f'{self.fields.n}')
+    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+      return Response(body=f'{fields.n}')
   utest_val(False, RouterResolvedEndpoint._converters_resolved)
   Router({'/n': RouterResolvedEndpoint})
   utest_val(True, RouterResolvedEndpoint._converters_resolved)
@@ -1160,8 +1252,7 @@ def _make_callable_field_endpoint() -> type[Endpoint]:
   class CallableFieldEndpoint(Endpoint):
     class Fields:
       fn:Callable[[int],int]
-    fields:Fields
-    def handle_request(self, request:Request) -> Response:
+    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
       return Response(body='')
   return CallableFieldEndpoint
 
@@ -1178,8 +1269,8 @@ class LateCustomizationEndpoint(Endpoint):
   class Fields:
     n:int
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.n}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.n}')
 
 
 @utest_run
@@ -1200,8 +1291,8 @@ class PostEndpoint(Endpoint):
   class Fields:
     name:str
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=self.fields.name)
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=fields.name)
 
 
 class MultiMethodEndpoint(Endpoint):
@@ -1209,8 +1300,8 @@ class MultiMethodEndpoint(Endpoint):
   class Fields:
     tag:str|None
   fields:Fields
-  def handle_request(self, request:Request) -> Response:
-    return Response(body=f'{self.fields.tag}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    return Response(body=f'{fields.tag}')
 
 
 utest(frozenset({'POST'}), lambda: PostEndpoint._methods)
@@ -1221,7 +1312,7 @@ utest(frozenset({'GET'}), lambda: IntEndpoint._methods) # Default is GET.
 def _make_invalid_method_endpoint() -> type[Endpoint]:
   class ConnectEndpoint(Endpoint):
     methods = 'CONNECT'
-    def handle_request(self, request:Request) -> Response:
+    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
       return Response(body='')
   return ConnectEndpoint
 
@@ -1231,7 +1322,7 @@ utest_exc(TypeError, _make_invalid_method_endpoint)
 def _make_empty_methods_endpoint() -> type[Endpoint]:
   class EmptyMethodsEndpoint(Endpoint):
     methods = ()
-    def handle_request(self, request:Request) -> Response:
+    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
       return Response(body='')
   return EmptyMethodsEndpoint
 

@@ -43,16 +43,14 @@ class DevControlsForm(Endpoint):
     select_multiple: list[str] | None
     file: UploadedFile | None
 
-  fields: Fields
+  def _items(self, fields:Fields) -> dict[str, str | list[str]]:
+    return {name: v for name in self._fields if (v := getattr(fields, name))}
 
-  def _items(self) -> dict[str, str | list[str]]:
-    return {name: v for name in self._fields if (v := getattr(self.fields, name))}
-
-  def handle_request(self, request:Request) -> Response:
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
     main = Main(
       H1('Form Controls'),
-      posted_values_div(self._items()),
-      controls_form(self._items()))
+      posted_values_div(self._items(fields)),
+      controls_form(self._items(fields)))
     return page_html(title='Dev Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/form', 'Form')],
       main=main)
 

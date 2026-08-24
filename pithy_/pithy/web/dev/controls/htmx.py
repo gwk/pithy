@@ -7,7 +7,7 @@ from typing import Any
 
 from ....html import A, Div, Form, H1, Input, Label, Li, Main, Ol, Select, Span, Strong, Sup, TextArea
 from ....markup import MuChild
-from ...endpoint import Endpoint
+from ...endpoint import Endpoint, NoFields
 from ...request import Request, UploadedFile
 from ...response import HtmlResponse, Response
 from ..pages import page_html
@@ -17,7 +17,7 @@ class DevControlsHtmx(Endpoint):
   'Demonstrates HTMX controls.'
   max_body_bytes = 1024 * 64
 
-  def handle_request(self, request:Request) -> Response:
+  def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
     main = Main(
       H1('HTMX Controls'),
       posted_values_div(),
@@ -58,11 +58,9 @@ class ControlsHtmxUpdate(Endpoint):
     select_multiple: list[str] | None
     file: UploadedFile | None
 
-  fields: Fields
-
-  def handle_request(self, request:Request) -> Response:
+  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
     for name in self._fields:
-      val = getattr(self.fields, name)
+      val = getattr(fields, name)
       if val is None:
         continue
       display = name.replace('_', '-')

@@ -4,7 +4,7 @@ from typing import Iterable
 
 from ...html import A, H1, Html, Li, Main, Nav, Ul
 from ...path import path_dir, path_join
-from ..endpoint import Endpoint
+from ..endpoint import Endpoint, NoFields
 from ..files import FilesHandler
 from ..request import Request
 from ..response import HtmlResponse
@@ -28,7 +28,7 @@ def page_html(*, title:str, breadcrumbs:Iterable[tuple[str,str]]=(), main:Main) 
 class IndexHtml(Endpoint):
   'The pithy.web.dev index page.'
 
-  def handle_request(self, request:Request) -> HtmlResponse:
+  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
     from .routes import routes
     links = []
     for path, endpoint in routes.items():

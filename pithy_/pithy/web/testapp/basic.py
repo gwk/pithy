@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from ..endpoint import Endpoint
+from ..endpoint import Endpoint, NoFields
 from ..request import Request
 from ..response import TextResponse
 
@@ -8,7 +8,7 @@ from ..response import TextResponse
 class Hello(Endpoint):
   'Returns a plain text greeting.'
 
-  def handle_request(self, request:Request) -> TextResponse:
+  def handle_endpoint(self, request:Request, fields:NoFields) -> TextResponse:
     return TextResponse(body='hello')
 
 
@@ -17,10 +17,9 @@ class EchoId(Endpoint):
 
   class Fields:
     id:int
-  fields:Fields
 
-  def handle_request(self, request:Request) -> TextResponse:
-    return TextResponse(body=f'id={self.fields.id}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> TextResponse:
+    return TextResponse(body=f'id={fields.id}')
 
 
 class EchoName(Endpoint):
@@ -28,10 +27,9 @@ class EchoName(Endpoint):
 
   class Fields:
     name:str
-  fields:Fields
 
-  def handle_request(self, request:Request) -> TextResponse:
-    return TextResponse(body=f'name={self.fields.name}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> TextResponse:
+    return TextResponse(body=f'name={fields.name}')
 
 
 class EchoBody(Endpoint):
@@ -42,7 +40,6 @@ class EchoBody(Endpoint):
 
   class Fields:
     name:str
-  fields:Fields
 
-  def handle_request(self, request:Request) -> TextResponse:
-    return TextResponse(body=f'name={self.fields.name}')
+  def handle_endpoint(self, request:Request, fields:Fields) -> TextResponse:
+    return TextResponse(body=f'name={fields.name}')

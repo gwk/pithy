@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import Mapping
 
-from pithy.web.endpoint import Endpoint
+from pithy.web.endpoint import Endpoint, NoFields
 from pithy.web.request import Request as PithyRequest
 from pithy.web.response import Response as PithyResponse
 from pithy.web.starlette import endpoint_adapter, endpoint_route
@@ -49,17 +49,15 @@ def _run(endpoint_cls:type[Endpoint], *, method:str='GET', path:str='/', query:s
 class HelloEndpoint(Endpoint):
   class Fields:
     name:str
-  fields:Fields
-  def handle_request(self, request:PithyRequest) -> PithyResponse:
-    return PithyResponse(body=f'hello {self.fields.name}')
+  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+    return PithyResponse(body=f'hello {fields.name}')
 
 
 class ItemEndpoint(Endpoint):
   class Fields:
     id:int
-  fields:Fields
-  def handle_request(self, request:PithyRequest) -> PithyResponse:
-    return PithyResponse(body=f'id={self.fields.id}')
+  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+    return PithyResponse(body=f'id={fields.id}')
 
 
 class FormEndpoint(Endpoint):
@@ -67,9 +65,8 @@ class FormEndpoint(Endpoint):
   max_body_bytes = 1024
   class Fields:
     name:str
-  fields:Fields
-  def handle_request(self, request:PithyRequest) -> PithyResponse:
-    return PithyResponse(body=self.fields.name)
+  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+    return PithyResponse(body=fields.name)
 
 
 class JsonEndpoint(Endpoint):
@@ -77,18 +74,17 @@ class JsonEndpoint(Endpoint):
   max_body_bytes = 1024
   class Fields:
     name:str
-  fields:Fields
-  def handle_request(self, request:PithyRequest) -> PithyResponse:
-    return PithyResponse(body=self.fields.name)
+  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+    return PithyResponse(body=fields.name)
 
 
 class CtxEndpoint(Endpoint):
-  def handle_request(self, request:PithyRequest) -> PithyResponse:
+  def handle_endpoint(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
     return PithyResponse(body=f"{request.ctx.get('user')}|{request.ctx.get('session')}")
 
 
 class PrivilegedEndpoint(Endpoint):
-  def handle_request(self, request:PithyRequest) -> PithyResponse:
+  def handle_endpoint(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
     return PithyResponse(body='ok')
 
 
@@ -161,9 +157,8 @@ def _() -> None:
   class RouteResolvedEndpoint(Endpoint):
     class Fields:
       n:int
-    fields:Fields
-    def handle_request(self, request:PithyRequest) -> PithyResponse:
-      return PithyResponse(body=f'{self.fields.n}')
+    def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+      return PithyResponse(body=f'{fields.n}')
   utest_val(False, RouteResolvedEndpoint._converters_resolved)
   endpoint_route('/n', RouteResolvedEndpoint, privileges=())
   utest_val(True, RouteResolvedEndpoint._converters_resolved)
