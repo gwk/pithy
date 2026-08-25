@@ -15,6 +15,7 @@ from ..date import DateTime
 from ..encode import encode_obj
 from ..json import JsonDict, parse_json
 from ..strings import identifier_or_repr
+from ..systemd import is_journal_stream
 from ..type_utils import req_type
 from ..typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
 
@@ -147,7 +148,28 @@ def render_log_json(level:str, _:str='', exc:BaseException|None=None, **kwargs:A
   return render_json(items, ensure_ascii=False, indent=None, separators=(',', ':'), default=encode_obj)
 
 
-render_log_fn = render_log_text if is_log_tty else render_log_json
+# Syslog priorities for each level, as understood by journald. Levels not listed map to notice (5).
+log_level_priorities = {
+  'debug': 7,
+  'info': 6,
+  'warn': 4,
+  'error': 3,
+}
+
+
+def render_log_journal(level:str, _:str='', exc:BaseException|None=None, **kwargs:Any) -> str:
+  '''
+  Render a JSON log line prefixed with its syslog priority, e.g. `<4>` for warn.
+  journald parses and strips this prefix from service stdout/stderr lines (SyslogLevelPrefix=true is the unit default),
+  and stores the value as the PRIORITY field, so that `journalctl -p warning` filters on our log levels.
+  Consumers of MESSAGE never see the prefix.
+  '''
+  return f'<{log_level_priorities.get(level, 5)}>' + render_log_json(level, _, exc=exc, **kwargs)
+
+
+if is_log_tty: render_log_fn = render_log_text
+elif is_journal_stream(log_file): render_log_fn = render_log_journal
+else: render_log_fn = render_log_json
 
 
 def fmt_exc_text(exc:BaseException) -> str:
