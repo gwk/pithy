@@ -8,7 +8,7 @@ import re
 from html import escape as _escape
 from io import BytesIO, StringIO
 from os import PathLike
-from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, Mapping, NoReturn, Self, TextIO, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, Literal, Mapping, NoReturn, Self, TextIO, Union
 
 from ..default import Default
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -1275,6 +1275,15 @@ class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
     Each `A` element is wrapped in a span so that the separators added by the stylesheet are not part of the link.
     '''
     return cls(cl='breadcrumbs', _=[Span(A(href=href, _=content)) for (href, content) in els])
+
+
+  @classmethod
+  def breadcrumb_heading(cls, els:Iterable[tuple[str,MuChildLax]], current:MuChildLax, H:Literal[1,2,3,4,5,6]=1) -> Self:
+    '''Return a nav.breadcrumbs element containing a heading with linked ancestors and the current page.'''
+    heading_class = _heading_classes[H - 1]
+    children = [Span(A(href=href, _=content)) for href, content in els]
+    children.append(Span(aria_current='page', _=current))
+    return cls(aria_label='Breadcrumb', cl='breadcrumbs', _=heading_class(_=children))
 
 
 @_tag
