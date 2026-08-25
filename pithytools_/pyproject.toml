@@ -66,6 +66,7 @@ timesheet = "pithytools.bin.timesheet:main"
 html-check = "pithytools.bin.html_check:main"
 same-same = "pithytools.bin.same_same:main"
 lc-ext = "pithytools.bin.lc_ext:main"
+watch-systemd-units = "pithytools.bin.watch_systemd_units:main"
 
 [build-system]
 requires = [
