@@ -17,7 +17,7 @@ so if unreleated changes are lying around it is often an oversight worth mention
 
 Do not commit unless instructed to do so. Never push or pull work unless explicitly told.
 If you are asked to commit and are currently on `main`, you can make a new branch at your discretion.
-Note that committing is not "shipping"; the commits will be reviewed and possibly reworked or squashed.
+Committing is not "shipping"; the commits will be reviewed and possibly reworked or squashed.
 
 When writing commit messages:
 * Be concise. Do not write elaborate parentheticals.
@@ -34,6 +34,12 @@ When writing commit messages:
 ## Platform Support
 This project targets Python 3.14+ on modern Unix platforms. Windows is not supported.
 
+## Package Management and Dependencies
+
+We try to keep our total dependency count low to reduce our supply chain risks.
+We depend on some node tooling.
+*DO NOT* use or recommend `uvx` or `npx`. Those are irresponsible because they dynamically install latest versions on invocation.
+For many stable dev tools global installation is a viable option.
 
 ## Pithy Contents
 
