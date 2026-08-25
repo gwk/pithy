@@ -1,6 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import os
+from contextlib import redirect_stdout
+from io import StringIO
 from tempfile import TemporaryDirectory
 
 from crafts.deps import (DepLocation, deps_local_config_trust_problem, DepsConfigError, ensure_dep_symlinks, parse_deps_config,
@@ -25,7 +27,7 @@ with TemporaryDirectory() as temp_dir:
   os.makedirs(target)
   dep = ResolvedDep('source', target)
   utest(dep, resolve_dep, project_dir, 'source', DepLocation('../target'))
-  ensure_dep_symlinks(project_dir, [dep])
+  with redirect_stdout(StringIO()): ensure_dep_symlinks(project_dir, [dep])
   utest(target, os.readlink, os.path.join(project_dir, 'deps/source'))
   utest_exc(DepsConfigError, resolve_dep, project_dir, 'missing', DepLocation('../missing'))
   write_deps_local_config(project_dir, {'source': DepLocation('../target', True)})
