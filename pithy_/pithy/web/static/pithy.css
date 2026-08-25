@@ -626,6 +626,7 @@ nav.breadcrumbs {
   content: "›";
   margin-inline: 0.25rem;
   color: color-mix(in srgb, currentColor 50%, transparent);
+}
 
 
 .breadcrumbs [aria-current="page"] {
