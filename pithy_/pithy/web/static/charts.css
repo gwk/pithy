@@ -33,7 +33,15 @@ figure.chart.categorical-numerical {
   --bar-half-spill: calc((var(--bars-width) - var(--last-label-width)) / (var(--nx) * 2 - 1));
   --bar-half: min(var(--bar-half-ideal), var(--bar-half-spill));
   --bar-step: calc(2 * var(--bar-half)); /* Distance from start-to-start of adjacent bars. */
-  --bar-cluster-width: calc(var(--bar-step) - 1px);
+}
+
+figure.chart.categorical-numerical :is(.ticks.x > div, .vis > .series.bar > div) {
+  /* Per-cluster positions, computed on the elements that define --i.
+  The bar step is generally fractional, so cluster starts are rounded to whole pixels
+  and the cluster width is derived from the rounded start of the next cluster.
+  This keeps the 1px gap between clusters exact instead of varying with pixel snapping. */
+  --cluster-start: round(1px + var(--i) * var(--bar-step), 1px);
+  --cluster-width: calc(round(1px + (var(--i) + 1) * var(--bar-step), 1px) - 1px - var(--cluster-start));
 }
 
 figure.chart > .vis-row {
@@ -154,9 +162,11 @@ figure.chart .ticks.x {
   width: var(--vis-width);
   overflow: hidden; /* Prevents the tick text from adding weird trailing space on the right side. */
 }
-figure.chart .ticks.x > div { /* TODO: categorical-numerical. */
+figure.chart .ticks.x > div {
   position: absolute;
-  left: calc(1px + (var(--i) + 0.5) * (var(--bar-step)));
+}
+figure.chart.categorical-numerical .ticks.x > div {
+  left: calc(var(--cluster-start) + round(down, (var(--cluster-width) - 1px) / 2, 1px)); /* Center the 1px tick in the cluster. */
 }
 
 figure.chart .ticks.x > div > span.label {
@@ -260,8 +270,11 @@ figure.chart.categorical-numerical .vis > .series.bar {
 figure.chart.categorical-numerical .vis > .series.bar > div {
   position: absolute;
   height: calc(100% * var(--v-size));
-  width: calc(var(--bar-cluster-width) / var(--series-n));
-  left: calc(1px + var(--i) * var(--bar-step) + var(--series-i) * var(--bar-cluster-width) / var(--series-n));
+  /* Sub-bar edges within the cluster are rounded the same way so that adjacent series bars share whole-pixel edges. */
+  --sub-start: round(var(--series-i) * var(--cluster-width) / var(--series-n), 1px);
+  --sub-end: round((var(--series-i) + 1) * var(--cluster-width) / var(--series-n), 1px);
+  width: calc(var(--sub-end) - var(--sub-start));
+  left: calc(var(--cluster-start) + var(--sub-start));
   bottom: calc(100% * var(--v-min));
   background-color: var(--series-color);
   border-width: var(--chart-bar-border-width);
