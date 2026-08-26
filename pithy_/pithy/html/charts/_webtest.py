@@ -90,4 +90,11 @@ def home_page() -> HtmlResponse:
       BarSeries(name='Series0', points=[(2022, 4), (2023, 7), (2024, 5), (2025, 8)]),
     ]))
 
+  body.append(chart_figure(
+    title='No Y-Axis Ticks',
+    y=LinearAxis(ticks_max=0),
+    series=[
+      BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
+    ]))
+
   return HtmlResponse(body=html)

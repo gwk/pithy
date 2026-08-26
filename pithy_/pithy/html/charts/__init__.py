@@ -464,7 +464,7 @@ def chart_figure(*,
   x_tick_divs = x.tick_divs()
   y_tick_divs = y.tick_divs()
 
-  max_tick_x_label_len = max(get_tick_div_label_len(d) for d in x_tick_divs)
+  max_tick_x_label_len = max((get_tick_div_label_len(d) for d in x_tick_divs), default=0)
 
   data_class = f'{x.data_class}-{y.data_class}'
   _cl = [data_class]
