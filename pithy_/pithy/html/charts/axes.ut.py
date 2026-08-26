@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.html.charts import BarSeries, chart_figure, LinearAxis
+from pithy.html.charts import BarSeries, CategoricalAxis, chart_figure, LinearAxis
 from utest import utest, utest_val
 
 
@@ -19,3 +19,10 @@ y = LinearAxis(min=0, max=20)
 chart_figure(x=x, y=y, symmetric_xy=True)
 utest_val((0.5, 1.0), (x.transform(10), x.transform(20)), desc='symmetric x transform')
 utest_val((0.5, 1.0), (y.transform(10), y.transform(20)), desc='symmetric y transform')
+
+integer_axis = CategoricalAxis(labels=[1, 20])
+integer_axis.idx = 0
+utest('--nx:2;--x-last-label-len:2ch;', integer_axis.style)
+empty_axis = CategoricalAxis()
+empty_axis.idx = 0
+utest('--nx:0;--x-last-label-len:0ch;', empty_axis.style)

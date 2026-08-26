@@ -84,4 +84,10 @@ def home_page() -> HtmlResponse:
       BarSeries(name='Series0', points=[('a', -6), ('b', -3), ('c', 0), ('d', 4), ('e', 7)]),
     ]))
 
+  body.append(chart_figure(
+    title='Integer Category Labels',
+    series=[
+      BarSeries(name='Series0', points=[(2022, 4), (2023, 7), (2024, 5), (2025, 8)]),
+    ]))
+
   return HtmlResponse(body=html)
