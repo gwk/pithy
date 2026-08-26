@@ -458,6 +458,7 @@ def chart_figure(*,
     if isinstance(x, NumericalAxis) and isinstance(y, NumericalAxis):
       x.min = y.min = min(x.min, y.min)
       x.max = y.max = max(x.max, y.max)
+      x.scale = y.scale = 1.0 / (x.max - x.min)
     else: raise ValueError('cannot force symmetric axes for categorical data')
 
   x_tick_divs = x.tick_divs()
