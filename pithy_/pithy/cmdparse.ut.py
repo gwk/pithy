@@ -79,7 +79,10 @@ def test_remainder() -> None:
 
   utest_val(Forward(verbose=True, tool='cc', args=[]), Forward.parse(['-verbose', 'cc']))
   utest_val(Forward(verbose=False, tool='cc', args=['-O2', '--', 'a.c']), Forward.parse(['cc', '-O2', '--', 'a.c']))
-  utest_val(Forward(verbose=False, tool='cc', args=['--', '-O2']), Forward.parse(['cc', '--', '-O2']))
+
+  # A `--` that begins the remainder is the separator and is consumed; writing it twice passes one through.
+  utest_val(Forward(verbose=False, tool='cc', args=['-O2']), Forward.parse(['cc', '--', '-O2']))
+  utest_val(Forward(verbose=False, tool='cc', args=['--', '-O2']), Forward.parse(['cc', '--', '--', '-O2']))
 
   # Once preceding positionals are filled, even recognized options belong to the remainder.
   utest_val(Forward(verbose=False, tool='cc', args=['-verbose', 'input']), Forward.parse(['cc', '-verbose', 'input']))
@@ -88,7 +91,9 @@ def test_remainder() -> None:
     args:list[str] = remainder()
 
   utest_val(OnlyRemainder(args=[]), OnlyRemainder.parse([]))
-  utest_val(OnlyRemainder(args=['--', '-x']), OnlyRemainder.parse(['--', '-x']))
+  utest_val(OnlyRemainder(args=[]), OnlyRemainder.parse(['--']))
+  utest_val(OnlyRemainder(args=['-x']), OnlyRemainder.parse(['--', '-x']))
+  utest_val(OnlyRemainder(args=['--', '-x']), OnlyRemainder.parse(['--', '--', '-x']))
   utest_exc(CmdError('unrecognized option: -x'), OnlyRemainder.parse, ['-x'])
 
 

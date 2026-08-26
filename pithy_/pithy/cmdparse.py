@@ -115,8 +115,11 @@ def pos(*, default:Any=MISSING, default_factory:Any=MISSING, doc:str='', parse:C
 def remainder(*, default_factory:Any=list, doc:str='', parse:Callable[[str],Any]|None=None, metavar:str='') -> Any:
   '''
   Declare a positional argument that captures every token after it begins, including option-looking tokens and `--`.
-  The field must be typed as `list[T]` and must be the last positional argument. Before capture begins, declared options
-  are still parsed normally. An empty remainder defaults to an empty list.
+  The field must be typed as `list[T]` and must be the last positional argument.
+  Before capture begins, declared options are still parsed normally.
+  Capture begins at the first token that is not a declared option; If a `--` separator is encountered, it is consumed.
+  To pass a literal leading `--` through to the remainder, write it twice.
+  An empty remainder defaults to an empty list.
   '''
   return _spec_field(ArgSpec('remainder', doc=doc, parse=parse, metavar=metavar), MISSING, default_factory)
 
@@ -404,9 +407,10 @@ def _parse_cmd(cmd:'type[Cmd]', tokens:Sequence[str], prog:str) -> 'Cmd':
 
     if pos_idx < len(schema.positionals):
       remainder_entry = schema.positionals[pos_idx]
-      if remainder_entry.spec.kind == 'remainder' and (
-          pos_idx > 0 or end_opts or not _is_option_token(token) or token == '--'):
-        for remainder_token in tokens[idx-1:]:
+      if remainder_entry.spec.kind == 'remainder' and (pos_idx > 0 or end_opts or not _is_option_token(token) or token == '--'):
+        # A `--` that begins the remainder is consumed.
+        start = idx if token == '--' else idx - 1
+        for remainder_token in tokens[start:]:
           _store(values, remainder_entry, remainder_entry.metavar,
             _convert(remainder_entry, remainder_entry.metavar, remainder_token, cmd, prog), cmd, prog)
         break
