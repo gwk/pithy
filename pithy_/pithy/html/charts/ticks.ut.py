@@ -6,3 +6,4 @@ from utest import utest
 
 utest(1, LinearAxis(min=0, max=10, ticks_max=11).configure([]).choose_ticks_step)
 utest(2, LinearAxis(min=0, max=10, ticks_max=10).configure([]).choose_ticks_step)
+utest(0.005, LinearAxis(min=0, max=0.05, ticks_max=11).configure([]).choose_ticks_step)

@@ -111,4 +111,11 @@ def home_page() -> HtmlResponse:
       BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
     ]))
 
+  body.append(chart_figure(
+    title='Automatic Fractional Ticks',
+    y=LinearAxis(tick_fmt=lambda v: f'{v:.3f}'),
+    series=[
+      BarSeries(name='Series0', points=[('a', 0.01), ('b', 0.025), ('c', 0.04), ('d', 0.05)]),
+    ]))
+
   return HtmlResponse(body=html)
