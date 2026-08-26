@@ -508,7 +508,8 @@ def chart_figure(*,
   gutter_left.append(Div(cl=['ticks', 'y', y.data_class, y.kind_class], _=y_tick_divs))
   for d in y_tick_divs: d._.reverse() # Flip the tick and label so that the tick is on the right.
 
-  vis_scroll = row.append(Div(cl='vis-scroll'))
+  vis_wrap = row.append(Div(cl='vis-wrap'))
+  vis_scroll = vis_wrap.append(Div(cl='vis-scroll'))
 
   vis_scroll.append(Div(cl=['ticks', 'x', x.data_class, x.kind_class], _=x_tick_divs))
 
