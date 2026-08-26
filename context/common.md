@@ -94,5 +94,16 @@ If we refer to `.web.server`, we probably mean within the pithy package, or what
 * The stdout and stderr are captured as `.out` and `.err`; ather file outputs are presumed to be relative to the test directory.
 * The outputs are left in place so that if a test fails the user can inspect them.
 
+## Command Line Parsing
+* Use `pithy.cmdparse` for new command-line interfaces. Do not introduce new uses of `argparse` or `pithy.argparser`.
+* When modifying an existing command-line interface, migrate it to `pithy.cmdparse` when practical and within task scope.
+* Read the `pithy.cmdparse` module documentation and tests for its grammar and examples.
+* Preserve the existing command-line interface during migration. If `pithy.cmdparse` cannot express required behavior, discuss extending it instead of silently changing behavior or falling back to `argparse`. Look out for:
+  * `choices=`
+  * option values using `nargs`
+  * `FileType`
+  * `action='version'`
+  * potentially mutually exclusive options and custom actions
+
 
 @./style.md
