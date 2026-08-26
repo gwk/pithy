@@ -186,7 +186,7 @@ The child span allows us to use a transform that centers it around the specified
 figure.chart .ticks.y > div {
   position: relative;
   height: 0;
-  top: calc(100% * (1 - var(--v)));
+  top: max(1px, 100% * (1 - var(--v))); /* Clamp so that the tick at the max value matches the grid line, which cannot draw above the vis. */
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -200,7 +200,7 @@ figure.chart .ticks.y > div > span.label {
 figure.chart .ticks.y > div > span.tick {
   width: var(--tick-len);
   vertical-align: top;
-  transform: translateY(-50%); /* Half pixel translation up. TODO: only on retina? */
+  transform: translateY(-100%); /* Occupy the pixel above the value line, matching the grid line border-bottom. */
 }
 
 
