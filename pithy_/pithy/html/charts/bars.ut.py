@@ -18,3 +18,15 @@ def negative_bar_html() -> str:
 
 utest(True, lambda html: '--v-min:0.0000;--v-size:0.5000' in html, negative_bar_html())
 utest(True, lambda html: '--v-min:0.5000;--v-size:0.5000' in html, negative_bar_html())
+
+
+def integer_labels_html() -> str:
+  'Integer x values must be treated as categories, not as a numerical axis.'
+  chart = chart_figure(series=[BarSeries(name='years', points=[(2022, 4), (2023, 7), (2024, 5)])])
+  return chart.render_str()
+
+
+utest(True, lambda html: "class='chart categorical-numerical'" in html, integer_labels_html())
+utest(True, lambda html: "--nx:3;" in html, integer_labels_html())
+utest(True, lambda html: "<span class='label'>2022</span>" in html, integer_labels_html())
+utest(True, lambda html: '--i:2;' in html, integer_labels_html()) # Bars are positioned by category index.
