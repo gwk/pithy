@@ -15,8 +15,9 @@ import re
 from math import ceil, floor, log10
 from typing import Any, Callable, Iterable, Self
 
+from ...markup import MuChildOrChildrenLax
 from ...range import NumRange
-from .. import Div, Figcaption, Figure, MuChildOrChildrenLax, Span
+from .. import Div, Figcaption, Figure, Span
 
 
 Dim = int|float|str
