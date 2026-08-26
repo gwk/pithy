@@ -210,7 +210,6 @@ figure.chart .vis { /* The data visualization area. */
   top: 0;
   width: var(--vis-width);
   /*height: 100%;*/
-  background-color: green;
 }
 
 figure.chart .vis > .grid,
@@ -256,7 +255,6 @@ figure.chart .vis > .series {
 
 figure.chart.categorical-numerical .vis > .series.bar {
   width: var(--vis-width);
-  background-color: rgba(0,0,255,0.25);
 }
 
 figure.chart.categorical-numerical .vis > .series.bar > div {
