@@ -33,7 +33,7 @@ figure.chart.categorical-numerical {
   --bar-half-spill: calc((var(--bars-width) - var(--last-label-width)) / (var(--nx) * 2 - 1));
   --bar-half: min(var(--bar-half-ideal), var(--bar-half-spill));
   --bar-step: calc(2 * var(--bar-half)); /* Distance from start-to-start of adjacent bars. */
-  --bar-width: calc(var(--bar-step) - 1px); /* Width of a single bar. */
+  --bar-cluster-width: calc(var(--bar-step) - 1px);
 }
 
 figure.chart > .vis-row {
@@ -198,8 +198,8 @@ figure.chart.categorical-numerical .vis > .series.bar {
 figure.chart.categorical-numerical .vis > .series.bar > div {
   position: absolute;
   height: calc(100% * var(--v));
-  width: var(--bar-width);
-  left: calc(1px + var(--i) * var(--bar-step));
+  width: calc(var(--bar-cluster-width) / var(--series-n));
+  left: calc(1px + var(--i) * var(--bar-step) + var(--series-i) * var(--bar-cluster-width) / var(--series-n));
   bottom: 0;
   background-color: var(--series-color);
   border-width: var(--chart-bar-border-width);
