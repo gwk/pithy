@@ -319,6 +319,15 @@ class NumericalAxis(ChartAxis):
       if min_ > 0.0: min_ = 0.0
       elif max_ < 0.0: max_ = 0.0
 
+    if min_ == max_:
+      if min_ == 0.0:
+        min_ = 0.0 if self.show_origin and not self.symmetric else -1.0
+        max_ = 1.0
+      else:
+        padding = abs(min_) * 0.5
+        min_ -= padding
+        max_ += padding
+
     self.min = min_
     self.max = max_
     self.scale = 1.0 / (max_ - min_)

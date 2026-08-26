@@ -65,4 +65,10 @@ def home_page() -> HtmlResponse:
       BarSeries(name='Series1', points=[('a', 4), ('b', 5), ('c', 6), ('d', 7)]),
     ]))
 
+  body.append(chart_figure(
+    title='Constant Zero Values',
+    series=[
+      BarSeries(name='Zero', points=[('a', 0), ('b', 0), ('c', 0), ('d', 0)]),
+    ]))
+
   return HtmlResponse(body=html)
