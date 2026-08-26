@@ -40,7 +40,6 @@ def home_page() -> HtmlResponse:
   body = html.body
 
   body.append(chart_figure(
-    dbg=True,
     title='Full Width - Short Labels',
     y=LinearAxis(show_origin=True),
     series=[
@@ -48,7 +47,6 @@ def home_page() -> HtmlResponse:
     ]))
 
   body.append(chart_figure(
-    dbg=True,
     title='Full Width - Long Labels',
     y=LinearAxis(show_origin=True),
     series=[
@@ -56,7 +54,6 @@ def home_page() -> HtmlResponse:
     ]))
 
   body.append(chart_figure(
-    dbg=True,
     title='Limited Width - Short Labels',
     y=LinearAxis(show_origin=True),
     style='max-width:24em; max-height:24em;',
