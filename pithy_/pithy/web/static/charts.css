@@ -197,10 +197,10 @@ figure.chart.categorical-numerical .vis > .series.bar {
 
 figure.chart.categorical-numerical .vis > .series.bar > div {
   position: absolute;
-  height: calc(100% * var(--v));
+  height: calc(100% * var(--v-size));
   width: calc(var(--bar-cluster-width) / var(--series-n));
   left: calc(1px + var(--i) * var(--bar-step) + var(--series-i) * var(--bar-cluster-width) / var(--series-n));
-  bottom: 0;
+  bottom: calc(100% * var(--v-min));
   background-color: var(--series-color);
   border-width: var(--chart-bar-border-width);
   border-style: solid;
