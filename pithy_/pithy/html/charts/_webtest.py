@@ -71,4 +71,11 @@ def home_page() -> HtmlResponse:
       BarSeries(name='Zero', points=[('a', 0), ('b', 0), ('c', 0), ('d', 0)]),
     ]))
 
+  body.append(chart_figure(
+    title='Clustered Series',
+    series=[
+      BarSeries(name='Series0', legend='First', points=[('a', 3), ('b', 5), ('c', 4), ('d', 7)]),
+      BarSeries(name='Series1', legend='Second', points=[('a', 6), ('b', 4), ('c', 8), ('d', 5)]),
+    ]))
+
   return HtmlResponse(body=html)

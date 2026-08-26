@@ -50,6 +50,8 @@ class ChartSeries:
     self.points = list(points)
     self.plotter = plotter
     self.attrs = attrs
+    self.kind_idx = 0
+    self.kind_count = 1
 
     self.bounds = (
       self._compute_bounds(axis_key=self.x),
@@ -133,7 +135,7 @@ class BarSeries(ChartSeries):
     for p in self.points:
       i = transform_x(p[self.x])
       v = transform_y(p[self.y])
-      style = f'--i:{i};--v:{v:.4f};'
+      style = f'--i:{i};--v:{v:.4f};--series-i:{self.kind_idx};--series-n:{self.kind_count};'
       div.append(Div(style=style))
 
 
@@ -439,6 +441,13 @@ def chart_figure(*,
 
   x.configure(series=series)
   y.configure(series=series)
+
+  series_by_kind:dict[str,list[ChartSeries]] = {}
+  for s in series: series_by_kind.setdefault(s.kind_class, []).append(s)
+  for kind_series in series_by_kind.values():
+    for i, s in enumerate(kind_series):
+      s.kind_idx = i
+      s.kind_count = len(kind_series)
 
   if symmetric_xy:
     if isinstance(x, NumericalAxis) and isinstance(y, NumericalAxis):
