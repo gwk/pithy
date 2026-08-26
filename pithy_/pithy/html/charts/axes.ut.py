@@ -26,3 +26,6 @@ utest('--nx:2;--x-last-label-len:2ch;', integer_axis.style)
 empty_axis = CategoricalAxis()
 empty_axis.idx = 0
 utest('--nx:0;--x-last-label-len:0ch;', empty_axis.style)
+
+utest(True, lambda chart: "style='--max-tick-x-label-len:0ch; --tick-y-count:0'" in chart.render_str(),
+  chart_figure(x=LinearAxis(ticks_max=0), y=LinearAxis(ticks_max=0)))
