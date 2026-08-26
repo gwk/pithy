@@ -12,7 +12,7 @@ An axis can be categorical or numeric.
 '''
 
 import re
-from math import ceil, floor, log10
+from math import ceil, floor, isclose, log10
 from typing import Any, Callable, Iterable, Self
 
 from ...markup import MuChildOrChildrenLax
@@ -306,8 +306,12 @@ class NumericalAxis(ChartAxis):
    ticks:Iterable[float]=(),
    ticks_max:int=11,
    tick_step:float=0,
-   tick_fmt:TickFmt=lambda v: f'{v:,.0f}',
+   tick_fmt:TickFmt|None=None,
   ) -> None:
+    '''
+    `tick_fmt` formats each tick value as a label.
+    If None, a decimal format is chosen with just enough fractional digits to distinguish adjacent ticks.
+    '''
 
     if ticks_max < 0: raise ValueError(f'ticks_max must be >= 0: {ticks_max!r}.')
 
@@ -320,6 +324,7 @@ class NumericalAxis(ChartAxis):
     self.grid_step = grid_step
     self.show_ticks = show_ticks
     self.ticks = list(ticks)
+    self._ticks_are_explicit = bool(self.ticks)
     self.ticks_max = ticks_max
     self.tick_step = tick_step
     self.tick_fmt = tick_fmt
@@ -328,6 +333,21 @@ class NumericalAxis(ChartAxis):
 
   @property
   def data_class(self) -> str: return 'numerical'
+
+
+  def calc_tick_fmt(self) -> TickFmt:
+    '''
+    Choose a tick format with enough fractional digits to distinguish adjacent ticks.
+    Formatting fractional ticks as integers would produce duplicate labels.
+    Call this only after the ticks have been filled in.
+    '''
+    if self.tick_fmt is not None: return self.tick_fmt
+    if self._ticks_are_explicit: # Explicit ticks are arbitrary values, so show each one.
+      frac_len = calc_frac_len(self.ticks)
+    else: # Generated ticks are multiples of the step, so the step alone determines the precision.
+      # The generated ticks themselves accumulate float error and would demand excess digits.
+      frac_len = calc_frac_len([self.tick_step]) if self.tick_step > 0 else 0
+    return lambda v: f'{v:,.{frac_len}f}'
 
 
   def configure(self, series:list['ChartSeries']) -> Self:
@@ -377,8 +397,9 @@ class LinearAxis(NumericalAxis):
     ticks = self.ticks
     if not ticks:
       self.fill_ticks()
+    tick_fmt = self.calc_tick_fmt()
     return [
-      Div(style=f'--v:{self.transform(v):.4f}', _=[Span(cl='tick'), Span(cl='label', _=str(self.tick_fmt(v)))])
+      Div(style=f'--v:{self.transform(v):.4f}', _=[Span(cl='tick'), Span(cl='label', _=str(tick_fmt(v)))])
      for v in ticks]
 
 
@@ -548,6 +569,18 @@ def clean_class_for_name(name:str) -> str:
   cl = re.sub(r'[^-_\w]+', '_', name)
   if cl[0].isdigit(): cl = f'_{cl}'
   return cl
+
+
+def calc_frac_len(values:Iterable[float], max_frac_len:int=12, rel_tol:float=1e-9) -> int:
+  '''
+  The fewest fractional digits that render every value in `values` without visible loss of precision.
+  The comparison is relative so that float representation error, e.g. 0.30000000000000004, does not demand excess digits.
+  Values that still do not match within `max_frac_len` digits, e.g. one third, are truncated to that limit.
+  '''
+  frac_len = 0
+  for v in values:
+    while frac_len < max_frac_len and not isclose(float(f'{v:.{frac_len}f}'), v, rel_tol=rel_tol): frac_len += 1
+  return frac_len
 
 
 def calc_min_max(values:list[Any]) -> V2F|None:

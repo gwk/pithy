@@ -113,7 +113,6 @@ def home_page() -> HtmlResponse:
 
   body.append(chart_figure(
     title='Automatic Fractional Ticks',
-    y=LinearAxis(tick_fmt=lambda v: f'{v:.3f}'),
     series=[
       BarSeries(name='Series0', points=[('a', 0.01), ('b', 0.025), ('c', 0.04), ('d', 0.05)]),
     ]))
