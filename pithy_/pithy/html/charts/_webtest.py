@@ -78,4 +78,10 @@ def home_page() -> HtmlResponse:
       BarSeries(name='Series1', legend='Second', points=[('a', 6), ('b', 4), ('c', 8), ('d', 5)]),
     ]))
 
+  body.append(chart_figure(
+    title='Positive and Negative Values',
+    series=[
+      BarSeries(name='Series0', points=[('a', -6), ('b', -3), ('c', 0), ('d', 4), ('e', 7)]),
+    ]))
+
   return HtmlResponse(body=html)

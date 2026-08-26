@@ -135,7 +135,10 @@ class BarSeries(ChartSeries):
     for p in self.points:
       i = transform_x(p[self.x])
       v = transform_y(p[self.y])
-      style = f'--i:{i};--v:{v:.4f};--series-i:{self.kind_idx};--series-n:{self.kind_count};'
+      origin = transform_y(0)
+      v_min = min(v, origin)
+      v_size = abs(v - origin)
+      style = f'--i:{i};--v-min:{v_min:.4f};--v-size:{v_size:.4f};--series-i:{self.kind_idx};--series-n:{self.kind_count};'
       div.append(Div(style=style))
 
 
@@ -435,6 +438,8 @@ def chart_figure(*,
 
   if x is None: x = LinearAxis() if is_x_numeric else CategoricalAxis()
   if y is None: y = LinearAxis() if is_y_numeric else CategoricalAxis()
+
+  if isinstance(y, NumericalAxis) and any(isinstance(s, BarSeries) for s in series): y.show_origin = True
 
   x.idx = 0
   y.idx = 1
