@@ -64,12 +64,14 @@ def home_page() -> HtmlResponse:
 
   body.append(chart_figure(
     title='Constant Zero Values',
+    style='max-width:24em; max-height:24em;',
     series=[
       BarSeries(name='Zero', points=[('a', 0), ('b', 0), ('c', 0), ('d', 0)]),
     ]))
 
   body.append(chart_figure(
     title='Clustered Series',
+    style='max-width:24em; max-height:24em;',
     series=[
       BarSeries(name='Series0', legend='First', points=[('a', 3), ('b', 5), ('c', 4), ('d', 7)]),
       BarSeries(name='Series1', legend='Second', points=[('a', 6), ('b', 4), ('c', 8), ('d', 5)]),
@@ -77,18 +79,21 @@ def home_page() -> HtmlResponse:
 
   body.append(chart_figure(
     title='Positive and Negative Values',
+    style='max-width:24em; max-height:24em;',
     series=[
       BarSeries(name='Series0', points=[('a', -6), ('b', -3), ('c', 0), ('d', 4), ('e', 7)]),
     ]))
 
   body.append(chart_figure(
     title='Integer Category Labels',
+    style='max-width:24em; max-height:24em;',
     series=[
       BarSeries(name='Series0', points=[(2022, 4), (2023, 7), (2024, 5), (2025, 8)]),
     ]))
 
   body.append(chart_figure(
     title='No Y-Axis Ticks',
+    style='max-width:24em; max-height:24em;',
     y=LinearAxis(ticks_max=0),
     series=[
       BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
@@ -96,6 +101,7 @@ def home_page() -> HtmlResponse:
 
   body.append(chart_figure(
     title='Independent Tick and Grid Spacing',
+    style='max-width:24em; max-height:24em;',
     y=LinearAxis(grid_step=1, tick_step=2),
     series=[
       BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
@@ -103,6 +109,7 @@ def home_page() -> HtmlResponse:
 
   body.append(chart_figure(
     title='Grid Hidden',
+    style='max-width:24em; max-height:24em;',
     y=LinearAxis(show_grid=False),
     series=[
       BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
@@ -110,6 +117,7 @@ def home_page() -> HtmlResponse:
 
   body.append(chart_figure(
     title='Automatic Fractional Ticks',
+    style='max-width:24em; max-height:24em;',
     series=[
       BarSeries(name='Series0', points=[('a', 0.01), ('b', 0.025), ('c', 0.04), ('d', 0.05)]),
     ]))
