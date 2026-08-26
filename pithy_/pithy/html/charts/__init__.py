@@ -63,6 +63,17 @@ class ChartSeries:
   def kind_class(self) -> str: raise NotImplementedError # e.g. 'bar', 'line', 'scatter'.
 
 
+  @property
+  def is_categorical_x(self) -> bool:
+    'Whether this kind of series requires a categorical x axis, regardless of the type of the x values.'
+    return False
+
+
+  def axis_values(self, axis_idx:int) -> list[Any]:
+    'The raw point values for the given axis index, in point order.'
+    return [p[self.x if axis_idx == 0 else self.y] for p in self.points]
+
+
   def _compute_bounds(self, axis_key:Any) -> tuple[bool,Any]:
     '''
     Returns (is_numeric, bounds).
@@ -126,6 +137,10 @@ class BarSeries(ChartSeries):
 
   @property
   def kind_class(self) -> str: return 'bar'
+
+
+  @property
+  def is_categorical_x(self) -> bool: return True # Bars are always spaced evenly, one cluster per distinct x value.
 
 
   def fill_vis_div(self, div:Div, transform_x:Callable[[Any],Any], transform_y:Callable[[Any],Any]) -> None:
@@ -243,9 +258,7 @@ class CategoricalAxis(ChartAxis):
           labels_list.append(label)
           labels_set.add(label)
       for s in series:
-        series_labels = s.bounds[self.idx][1]
-        assert isinstance(series_labels, list)
-        for label in series_labels:
+        for label in s.axis_values(self.idx):
           if label not in labels_set:
             labels_list.append(label)
             labels_set.add(label)
@@ -254,9 +267,7 @@ class CategoricalAxis(ChartAxis):
     else:
       labels_set = set(self.labels)
       for s in series:
-        series_labels = s.bounds[self.idx][1]
-        assert isinstance(series_labels, list)
-        labels_set.update(series_labels)
+        labels_set.update(s.axis_values(self.idx))
       self.labels = sorted(labels_set, key=self.label_sort_key)
 
     return self
@@ -454,7 +465,10 @@ def chart_figure(*,
   if not is_x_numeric and any(s.bounds[0][0] for s in series): raise ValueError('x axis mixes categorical and numerical series')
   if not is_y_numeric and any(s.bounds[1][0] for s in series): raise ValueError('y axis mixes categorical and numerical series')
 
-  if x is None: x = LinearAxis() if is_x_numeric else CategoricalAxis()
+  # Some series kinds, e.g. bars, must always plotted against evenly spaced categories, even when the x values are numbers.
+  is_x_categorical = any(s.is_categorical_x for s in series)
+
+  if x is None: x = LinearAxis() if (is_x_numeric and not is_x_categorical) else CategoricalAxis()
   if y is None: y = LinearAxis() if is_y_numeric else CategoricalAxis()
 
   if isinstance(y, NumericalAxis) and any(isinstance(s, BarSeries) for s in series): y.show_origin = True
