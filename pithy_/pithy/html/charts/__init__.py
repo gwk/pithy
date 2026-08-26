@@ -261,7 +261,7 @@ class CategoricalAxis(ChartAxis):
     d = 'x' if self.idx == 0 else 'y'
     lll = ''
     if self.idx == 0:
-      last_len = len(self.labels[-1])
+      last_len = len(str(self.labels[-1])) if self.labels else 0
       lll = f'--{d}-last-label-len:{last_len}ch;'
     return f'--n{d}:{len(self.labels)};{lll}'
 
