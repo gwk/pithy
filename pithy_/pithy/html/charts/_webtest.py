@@ -1,28 +1,25 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from starlette.applications import Starlette
-from starlette.requests import Request
-from starlette.responses import HTMLResponse
-from starlette.routing import Route
-
 from ...html import Css, Html
-from ...web.starlette import mount_for_static_pithy
+from ...web.app import WebApp
+from ...web.request import Request
+from ...web.response import HtmlResponse
+from ...web.static import pithy_web_static_dir_path
 from ..charts import BarSeries, chart_figure, LinearAxis
 
 
-def app() -> Starlette:
+class ChartTestApp(WebApp):
 
-  routes = [
-    mount_for_static_pithy(),
-    Route('/', home_page),
-  ]
-  return Starlette(routes=routes, debug=True)
+  def handle_request(self, request:Request) -> HtmlResponse:
+    request.allow_methods('GET', 'HEAD')
+    return home_page()
 
 
-async def home_page(request:Request) -> HTMLResponse:
+def home_page() -> HtmlResponse:
   html = Html.doc(title='Chart Test')
 
-  html.head.add_stylesheet('/static/pithy/charts.css')
+  with open(f'{pithy_web_static_dir_path()}/charts.css') as f:
+    html.head.append(Css(f.read()))
 
   html.head.append(Css('''
   *, *::before, *::after { box-sizing: border-box; }
@@ -68,4 +65,4 @@ async def home_page(request:Request) -> HTMLResponse:
       BarSeries(name='Series1', points=[('a', 4), ('b', 5), ('c', 6), ('d', 7)]),
     ]))
 
-  return HTMLResponse(content=html.render_str())
+  return HtmlResponse(body=html)

@@ -1,16 +1,31 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from sys import stderr
+import pithy
 
-import uvicorn
-import watchfiles  # This is an optional import for uvicorn but we want to make sure it is installed.
+from ...cmdparse import Cmd, flag, opt
+from ...web.reload import serve_with_reload
+from ...web.server import ServerConfig, WebServer
+from ._webtest import ChartTestApp
 
 
-_ = watchfiles
+class ChartTestCmd(Cmd):
+  'Serve the pithy.html.charts test page.'
+
+  port:int = opt(default=0, doc='Port to bind to; 0 selects a free port.')
+  watch:bool = flag(default=True, doc='Reload the server when pithy source files change.')
+
 
 def main() -> None:
-  print('Serving chart _webtest', file=stderr)
-  uvicorn.run("pithy.html.charts._webtest:app", host='localhost', port=8000, log_level="info", factory=True, reload=True)
+  cmd = ChartTestCmd.parse_or_exit()
+  config = ServerConfig(host='localhost', port=cmd.port)
+  if cmd.watch:
+    serve_with_reload(target=f'{__package__}.__main__.run', watch=[pithy], config=config)
+  else:
+    run(config)
+
+
+def run(config:ServerConfig|None=None) -> None:
+  WebServer(app=ChartTestApp(), config=config or ServerConfig(host='localhost')).serve_forever()
 
 
 if __name__ == '__main__': main()
