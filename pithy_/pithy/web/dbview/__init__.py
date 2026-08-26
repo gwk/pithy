@@ -58,7 +58,7 @@ class TableAbbrs:
 
 
 
-class Squelch:
+class DbView:
   'An object that provides a web interface for running SQL queries.'
 
   def __init__(self,
@@ -138,9 +138,9 @@ class Squelch:
     table_names = [f'{qe(s.name)}.{qe(t.name)}' for s in self.schemas.values() for t in s.tables]
     if table_name: assert table_name in table_names # Sanity check that these generated table names match the parsed table name.
 
-    div = Div(cl='squelch')
+    div = Div(cl='dbview')
 
-    div.append(squelch_ui_script())
+    div.append(dbview_ui_script())
     div.append(H1(A(href=path, _='SELECT')))
 
     form = div.append(Form(cl='kv-grid-max', action=path, autocomplete='off'))
@@ -456,7 +456,7 @@ def capital_letters_abbr(s:str) -> str:
   return ''.join(c for c in s if c.isupper())
 
 
-def squelch_ui_script() -> Script:
+def dbview_ui_script() -> Script:
   return Script('''
   function updateAllColCheckboxes(checked) {
     const checkboxes = document.querySelectorAll('.en-col input[type="checkbox"]');

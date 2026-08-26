@@ -1,63 +1,63 @@
 
-/* SquelchApp. */
+/* DbViewApp. */
 
-.squelch {
+.dbview {
   font-size: small;
 }
 
-.squelch form {
+.dbview form {
   margin: 1em 0;
 }
 
-.squelch form #columns {
+.dbview form #columns {
   display: flex;
   flex-wrap: wrap;
   column-gap: 1em;
 }
 
-.squelch form label.en-col {
+.dbview form label.en-col {
   white-space: nowrap;
 }
 
-.squelch form label.en-col input {
+.dbview form label.en-col input {
   margin-right: 0.5em;
 }
 
-.squelch .detail {
+.dbview .detail {
   margin-bottom: 1em;
 }
 
-.squelch #results {
+.dbview #results {
   width: 100%;
   overflow-x: scroll;
 }
 
-.squelch #results > table {
+.dbview #results > table {
   table-layout: auto;
 }
 
-.squelch #results > table th {
+.dbview #results > table th {
   resize: horizontal;
   overflow: clip;
 }
 
-.squelch #results > table td {
+.dbview #results > table td {
   max-width: 95vw;
   overflow-wrap: break-word;
 }
 
-.squelch .error {
+.dbview .error {
   color: #800;
 }
 
-.squelch .null {
+.dbview .null {
   color: #888;
 }
 
-.squelch .empty {
+.dbview .empty {
   color: #8A8;
 }
 
-.squelch .unjoined {
+.dbview .unjoined {
   color: #840;
 }
