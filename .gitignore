@@ -6,6 +6,9 @@
 # Claude
 .claude/settings.local.json
 
+# Playwright.
+.playwright-mcp/
+
 # Python.
 __pycache__/
 dist/
@@ -16,9 +19,6 @@ AGENTS.md
 CLAUDE.md
 .agents/skills
 .claude/skills
-
-# Playwright.
-.playwright-mcp/
 
 # Project.
 _build/
