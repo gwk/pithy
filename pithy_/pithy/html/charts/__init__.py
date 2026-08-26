@@ -414,7 +414,7 @@ class LinearAxis(NumericalAxis):
       step:float = scale * mag
       min_ = self.tick_min(step)
       max_ = self.tick_max(step)
-      count = ceil((1 + max_ - min_) / step)
+      count = floor((max_ - min_) / step) + 1
       if count <= self.ticks_max: break
     self.tick_step = step
     return step
