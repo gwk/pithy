@@ -97,4 +97,18 @@ def home_page() -> HtmlResponse:
       BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
     ]))
 
+  body.append(chart_figure(
+    title='Independent Tick and Grid Spacing',
+    y=LinearAxis(grid_step=1, tick_step=2),
+    series=[
+      BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
+    ]))
+
+  body.append(chart_figure(
+    title='Grid Hidden',
+    y=LinearAxis(show_grid=False),
+    series=[
+      BarSeries(name='Series0', points=[('a', 4), ('b', 7), ('c', 5), ('d', 8)]),
+    ]))
+
   return HtmlResponse(body=html)

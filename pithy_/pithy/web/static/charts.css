@@ -166,6 +166,23 @@ figure.chart .vis { /* The data visualization area. */
   background-color: green;
 }
 
+figure.chart .vis > .grid,
+figure.chart .vis > .grid > div {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+figure.chart .vis > .grid.x > div {
+  left: calc(100% * var(--v));
+  border-left: 1px solid var(--chart-grid-color);
+}
+
+figure.chart .vis > .grid.y > div {
+  bottom: calc(100% * var(--v));
+  border-bottom: 1px solid var(--chart-grid-color);
+}
+
 figure.chart .vis > .dbg {
   position: absolute;
   left: 0;
@@ -222,6 +239,7 @@ figure.chart {
   height: 100%;
   margin: 0;
   --chart-bar-border-width: 1px;
+  --chart-grid-color: #CCC;
   background-color: #EEE;
   --series-color: gray; /* Default, can be overridden per series. */
 }

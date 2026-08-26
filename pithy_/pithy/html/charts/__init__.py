@@ -193,6 +193,11 @@ class ChartAxis:
     raise NotImplementedError
 
 
+  def grid_divs(self) -> list[Div]:
+    'Create divs for grid lines associated with the axis.'
+    return []
+
+
 
 class CategoricalAxis(ChartAxis):
   '''
@@ -357,12 +362,25 @@ class LinearAxis(NumericalAxis):
 
 
   def tick_divs(self) -> list[Div]:
+    if not self.show_ticks: return []
     ticks = self.ticks
     if not ticks:
       self.fill_ticks()
     return [
       Div(style=f'--v:{self.transform(v):.4f}', _=[Span(cl='tick'), Span(cl='label', _=str(self.tick_fmt(v)))])
      for v in ticks]
+
+
+  def grid_divs(self) -> list[Div]:
+    if not self.show_grid: return []
+    grid = self.grid
+    if not grid:
+      if self.grid_step:
+        grid.extend(NumRange(self.tick_min(self.grid_step), self.tick_max(self.grid_step), self.grid_step, closed=True))
+      else:
+        if not self.ticks: self.fill_ticks()
+        grid.extend(self.ticks)
+    return [Div(style=f'--v:{self.transform(v):.4f}') for v in grid]
 
 
   def tick_min(self, step:float) -> float:
@@ -494,8 +512,11 @@ def chart_figure(*,
 
   vis_scroll.append(Div(cl=['ticks', 'x', x.data_class, x.kind_class], _=x_tick_divs))
 
-  vis = vis_scroll.append(Div(cl='vis',
-    _=[s.make_series_div(transform_x=x.transform, transform_y=y.transform) for s in series]))
+  vis = vis_scroll.append(Div(cl='vis', _=[
+    Div(cl=['grid', 'x'], _=x.grid_divs()),
+    Div(cl=['grid', 'y'], _=y.grid_divs()),
+    *[s.make_series_div(transform_x=x.transform, transform_y=y.transform) for s in series],
+  ]))
 
   if dbg:
     vis.extend([

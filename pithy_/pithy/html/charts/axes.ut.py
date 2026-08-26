@@ -29,3 +29,7 @@ utest('--nx:0;--x-last-label-len:0ch;', empty_axis.style)
 
 utest(True, lambda chart: "style='--max-tick-x-label-len:0ch; --tick-y-count:0'" in chart.render_str(),
   chart_figure(x=LinearAxis(ticks_max=0), y=LinearAxis(ticks_max=0)))
+
+utest([], LinearAxis(min=0, max=10, show_ticks=False).configure([]).tick_divs)
+utest([], LinearAxis(min=0, max=10, show_grid=False).configure([]).grid_divs)
+utest(3, len, LinearAxis(min=0, max=10, grid_step=5).configure([]).grid_divs())
