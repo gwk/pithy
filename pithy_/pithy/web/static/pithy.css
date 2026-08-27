@@ -52,10 +52,32 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   }
 }
 
-/* Root vars. */
+/* Root vars. Applications can override these to restyle. */
 :root {
+  color-scheme: light; /* Opt out of automatic dark form controls; the palette below is light-only. */
+
+  /* Type. */
+  --font: system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Spacing. See "Flow" below. */
+  --flow-gap: 1rem; /* The vertical space between ordinary siblings. */
+  --flow-gap-block: calc(1.5 * var(--flow-gap)); /* The vertical space above a large heading or nested section. */
+  --flow-gap-heading: calc(0.25 * var(--flow-gap)); /* The vertical space below a heading. */
   --page-width: 64rem;
   --page-padding: 0.5rem;
+
+  /* Color. */
+  --fg: #1A1A1A;
+  --fg-muted: #666;
+  --fg-error: #800;
+  --bg: #FFF;
+  --bg-sunken: #F2F2F2; /* Chrome for the page: header, nav, footer. */
+  --bg-raised: #FFF; /* Surfaces that sit on the page: inputs, cards, dialogs. */
+  --border: #CCC;
+  --border-strong: #AAA;
+  --accent: #06C;
+
   --scrollbar-width: 0px; /* Updated by pithy.js. */
   --vw-sb: calc(100vw - var(--scrollbar-width));
 
@@ -63,6 +85,90 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   --tr-even-background-color: #FFF;
   --tr-odd-background-color: #EEE;
 }
+
+
+/* Base typography.
+Only the root sets a font; everything else inherits, including form controls (see "Forms"). */
+
+body {
+  font-family: var(--font);
+  color: var(--fg);
+  background-color: var(--bg);
+}
+
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.375rem; }
+h3 { font-size: 1.125rem; }
+h4, h5, h6 { font-size: 1rem; }
+h5 { font-weight: 600; }
+h6 { font-weight: 500; }
+:is(h1, h2, h3, h4, h5, h6) { line-height: 1.25; }
+
+code, kbd, pre, samp { font-family: var(--font-mono); }
+
+a { color: var(--accent); }
+
+hr { border: none; border-top: 1px solid var(--border); }
+
+.muted { color: var(--fg-muted); }
+
+/* One focus treatment for everything, so no control needs its own. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+
+/* Flow.
+A flow container spaces its immediate children with a single rule.
+Only the second and later children get a margin, so margins never double up and never collapse through a parent edge.
+Normal block layout is preserved: a div still fills the width, and a table still shrinks to fit.
+*/
+/* Semantic document containers establish flow automatically; use `.flow` to opt in other containers. */
+/* The `* + *` "owl selector" is an established pattern for selecting all but the first child to style adjacent siblings. */
+:is(main, section, article, .flow) > * + * { margin-block-start: var(--flow-gap); }
+
+/* A large heading or nested section opens a new block, so it gets more space above. */
+:is(main, section, article, .flow) > * + :is(h1, h2, section, article) {
+  margin-block-start: var(--flow-gap-block);
+}
+:is(main, section, article, .flow) > * + h3 { margin-block-start: calc(1.25 * var(--flow-gap)); }
+:is(main, section, article, .flow) > * + :is(h4, h5, h6) { margin-block-start: var(--flow-gap); }
+/* A heading hugs the content that follows it. */
+:is(main, section, article, .flow) > :is(h1, h2, h3, h4, h5, h6) + * { margin-block-start: var(--flow-gap-heading); }
+/* Consecutive headings express nested structure and need more separation than a heading and its content. */
+:is(main, section, article, .flow) > :is(h1, h2, h3, h4, h5, h6) + :is(h1, h2, h3, h4, h5, h6) {
+  margin-block-start: calc(0.75 * var(--flow-gap));
+}
+
+/* The derived gaps scale with `--flow-gap`, so these modifiers retune the vertical rhythm. */
+.flow-tight { --flow-gap: 0.5rem; }
+.flow-loose { --flow-gap: 2rem; }
+
+/* Prose. */
+ul, ol {
+  padding-inline-start: 0;
+  list-style-position: inside;
+}
+
+:is(ul, ol) :is(ul, ol) { padding-inline-start: 2ch; }
+
+blockquote {
+  border-left: 2px solid var(--border);
+  padding-left: 1em;
+  color: var(--fg-muted);
+}
+
+dt { font-weight: 600; }
+dd { margin-inline-start: 2ch; }
+dl > dt + dt, dd + dt { margin-block-start: 0.5em; }
+
+pre {
+  background-color: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.5em 0.75em;
+  overflow-x: auto;
+}
+
+details > :not(summary) { margin-inline-start: 1.5ch; } /* Align disclosed content with the summary text. */
 
 
 /* Layout.
@@ -108,6 +214,72 @@ body {
   padding-left:var(--page-padding);
   padding-right:var(--page-padding);
 }
+
+
+/* Top level blocks.
+The conventional page is `header`, `nav`, `main`, `footer` as direct children of `body`.
+The header, nav and footer blocks extend to the window edges with their content inset by the page padding.
+`main` is capped at the page width.
+These defaults are written with `:where()`, giving them zero specificity,
+so any of the `.body-child-*` classes above still wins when an application wants a different arrangement.
+*/
+
+:where(body > header, body > nav, body > footer) {
+  width: 100%;
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
+  background-color: var(--bg-sunken);
+  border: 0 solid var(--border); /* Blocks meet `main` at a rule rather than across a gap, so that backgrounds stay flush. */
+}
+
+:where(body > main) {
+  width: min(100%, var(--page-width));
+  padding-left: var(--page-padding);
+  padding-right: var(--page-padding);
+  padding-block: var(--flow-gap);
+  flex: 1; /* Take up the slack, so that the footer sits at the bottom of a short page. */
+}
+
+:where(body > header) {
+  padding-block: 0.5rem;
+  border-bottom-width: 1px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+:where(body > nav) {
+  padding-block: 0.25rem;
+  border-bottom-width: 1px;
+}
+
+:where(body > footer) {
+  padding-block: 0.5rem;
+  border-top-width: 1px;
+  font-size: small;
+  color: var(--fg-muted);
+}
+
+
+/* Nav bar: a row of links, used for the top-level `body > nav`. */
+
+.navbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 1.5ch;
+  align-items: baseline;
+}
+
+.navbar a {
+  color: inherit;
+  text-decoration: none;
+  padding: 0.125rem 0.5ch;
+  border-radius: 3px;
+}
+
+.navbar a:hover { background-color: var(--bg-raised); }
+
+.navbar a[aria-current='page'] { font-weight: 600; color: var(--accent); }
 
 
 /* Utility classes. */
@@ -184,14 +356,14 @@ body {
 .list-style-inside { list-style-position: inside; }
 .list-style-outside { list-style-position: outside; }
 
-.error-red { color: #800; }
+.error-red { color: var(--fg-error); }
 
 .num { text-align: right; }
 
 /* Details, Summary. */
 /* NOTE: summary disclosure styling works differently between Chrome and Safari. */
 /* First, hide the default disclosure marker. */
-summary { list-style-type: none; } /* Chrome. */
+summary { list-style-type: none; cursor: pointer; } /* Chrome. */
 summary::-webkit-details-marker { display: none; } /* Safari. */
 
 /* Use Black Right-pointing Small Triangle, Black Down-pointing Small Triangle. */
@@ -217,10 +389,9 @@ details summary.disclosure-flush::before {
 
 a.button, button, input[type='button'], input[type='reset'], input[type='submit'] {
   appearance: none;
-  background-color: #FFF;
-  border: none;
+  background-color: var(--bg-raised);
+  border: 1px solid var(--border-strong);
   border-radius: 3px;
-  box-shadow: 0 0.5px 1.5px #999;
   color: inherit;
   display: inline-block;
   font: inherit;
@@ -230,8 +401,12 @@ a.button, button, input[type='button'], input[type='reset'], input[type='submit'
   vertical-align: baseline;
 }
 
+:where(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):hover {
+  background-color: var(--bg-sunken);
+}
+
 :where(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):active {
-  background-color: #F0F0F0;
+  background-color: #E8E8E8;
 }
 
 a.button:visited, a.button:hover, a.button:active { color: inherit; text-decoration: none; }
@@ -280,45 +455,50 @@ form.inline {
   gap: 1.5ch;
 }
 
-label.input-label, .input-labels label, .input-labels-inline label {
-  /* A label that wraps an input (e.g. radio or checkbox) followed by the label text. */
-  display: flex;
+label:has(> input) {
+  /* A label that wraps an input (e.g. a radio or checkbox) followed by the label text.
+  This is matched structurally rather than by class, so a wrapping label is spaced correctly wherever it appears
+  and neither the label nor its container has to be marked up for it. */
+  display: inline-flex;
   flex-direction: row;
-  white-space: nowrap;
   align-items: center;
+  gap: 0.5ch;
+  white-space: nowrap;
 }
 
-:is(label.input-label, .input-labels label, .input-labels-inline label) > input:first-child {
-  margin-right: 0.5ch; /* Add space between the input and its label text. */
+/* Text-like controls.
+Chrome and Safari disagree considerably about the default appearance of inputs and selects.
+Rather than patch one browser towards the other per input type (which is how the `html.chrome` / `html.safari`
+special cases multiplied), all of the text-like controls take the same explicit border here, in one rule.
+The list is written as an exclusion so that a newly standardized input type is styled without being enumerated;
+the excluded types are the ones the browser draws as something other than a text field. */
+
+input:not([type='button'], [type='checkbox'], [type='color'], [type='file'], [type='image'],
+  [type='radio'], [type='range'], [type='reset'], [type='submit']),
+select, textarea {
+  appearance: none;
+  background-color: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  padding: 0 0.25em;
 }
 
-input[type='date'] {
-  border: none;
-  box-shadow: 0 0.5px 1.5px #999;
-  border-radius: 2px;
-  line-height: 1;
-}
+select { appearance: auto; } /* Keep the drop-down indicator. */
+
+textarea { padding: 0.25em; }
+
+input[type='date'] { line-height: 1; }
 
 html.chrome input[type='date'] {
   min-width: 7rem; /* Otherwise the chrome calendar icon gets clipped. */
 }
 
 html.safari input[type='date']::after {
-  content: '🗓️';
+  content: '🗓️'; /* Safari draws no calendar affordance of its own. */
   padding: 0.25em;
   font-family: 'Noto Emoji';
-}
-
-html.chrome input[type='text'] {
-  border: none;
-  box-shadow: 0 0.5px 1.5px #999;
-}
-
-
-html.chrome select { /* Emulates the Safari default style. */
-  border-radius: 4px;
-  border: none;
-  box-shadow: 0 0.5px 1.5px #999;
 }
 
 /* Spans. */
@@ -332,10 +512,10 @@ span.controls {
 /* Tables. */
 
 table {
-  margin: 1rem 0;
+  /* No margin: vertical spacing is the flow container's job. See "Flow" above. */
   border-style: solid;
   border-width: 1px;
-  border-color: #AAA;
+  border-color: var(--border-strong);
   border-collapse: collapse;
   text-align: left;
 }
@@ -344,6 +524,12 @@ table caption {
   font-weight: bold;
   text-align: left;
   caption-side: top;
+  padding-bottom: 0.25em;
+}
+
+thead {
+  /* A header row and a subheading row are the same kind of thing, so they take the same shading. */
+  background-color: var(--tr-subheading-background-color);
 }
 
 tbody {
@@ -352,7 +538,7 @@ tbody {
 
 th, td {
   padding: 0.25rem 0.5rem;
-  border-color: #AAA;
+  border-color: var(--border-strong);
   border-style: solid;
   border-width: 1px;
 }
@@ -420,48 +606,43 @@ table.collapsible.collapsed :is(tbody, thead, tfoot) {
 }
 
 
-/* Rendering. */
-
-.json-key {
-  font-weight: 500;
-}
-
-
 /* Emoji icons. */
 
 .icon {
   font-family: 'Noto Emoji';
 }
 
-a.icon {
-  color: #000;
+a.icon, a.icon:active, a.icon:hover, a.icon:visited {
+  color: var(--fg);
   text-decoration: none;
-  /* The following are overridden by following rule for links with any destination attr. */
+}
+
+a.icon { /* An icon link with no destination is inert; the rule below reactivates the ones that have one. */
   cursor: default;
   opacity: 0.5;
 }
+
 a.icon:is([href], [hx-delete], [hx-get], [hx-patch], [hx-post], [hx-put]) {
   cursor: pointer;
   opacity: 1;
 }
 
-a.icon:active {
-  color: #000;
-  text-decoration: none;
-}
-a.icon:hover {
-  color: #222;
-  text-decoration: none;
-}
-a.icon:visited {
-  color: rgb(0, 0, 0);
-  text-decoration: none;
+
+/* JSON rendering; see pithy.html.parts. */
+
+.json-key { font-weight: 500; }
+
+ol.json-array { list-style-type: decimal; }
+
+/* Panels: a bordered box for content that is set apart from the page, such as a result or a summary. */
+
+.panel {
+  background-color: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.5rem 0.75rem;
 }
 
-/* JSON rendering. */
-ol.json-array {
-  list-style-type: decimal;
-}
 
 /* Modal panes. */
 
@@ -476,9 +657,9 @@ dialog.modal {
   max-width: 90%;
   max-height: 90%;
   padding: 0;
-  border: 1px solid #888;
+  border: 1px solid var(--border-strong);
   border-radius: 0.5em;
-  background-color: #EEE;
+  background-color: var(--bg-sunken);
 
   &::backdrop {
     background-color: rgba(128, 128, 128, 0.5);
@@ -487,7 +668,7 @@ dialog.modal {
   & > .pane {
     flex: 1;
     padding: 1em;
-    background-color: #FFF;
+    background-color: var(--bg-raised);
     &.error {
       border: 2px solid #880000;
     }
