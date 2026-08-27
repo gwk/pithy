@@ -255,8 +255,9 @@ class DbView:
       else:
         try:
           if distinct:
-            if len(en_cols) == 1: count_query = f'SELECT COUNT(DISTINCT{columns_part}){from_clause}{where_clause}'
-            else: count_query = f'SELECT COUNT() FROM (SELECT DISTINCT {columns_part}{from_clause}{where_clause})'
+            # Always count via a subquery; `COUNT(DISTINCT x)` ignores NULLs (unlike `SELECT DISTINCT`),
+            # and a single enabled column can produce multiple select columns.
+            count_query = f'SELECT COUNT() FROM (SELECT DISTINCT{columns_part}{from_clause}{where_clause})'
           else:
             count_query = f'SELECT COUNT(){from_clause}{where_clause}'
           count = c.run(count_query).one_col()
