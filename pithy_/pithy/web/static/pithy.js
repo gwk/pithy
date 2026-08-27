@@ -26,6 +26,20 @@ function _configurePithy() {
   for (const thead of document.querySelectorAll('table thead')) {
     makeElementSelectTableContentsOnDoubleClick(thead);
   }
+  _configureCollapsibleTables(document);
+}
+
+
+/**
+ * Configure the caption of each `table.collapsible` to toggle the `collapsed` class, which pithy.css styles.
+ * @param {ParentNode} rootEl - The root element to search for collapsible tables.
+ */
+function _configureCollapsibleTables(rootEl) {
+  for (const caption of rootEl.querySelectorAll('table.collapsible > caption')) {
+    caption.addEventListener('click', () => {
+      nonopt(caption.closest('table')).classList.toggle('collapsed');
+    });
+  }
 }
 
 
