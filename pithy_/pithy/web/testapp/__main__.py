@@ -1,6 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+import pithy
+
 from ..handler import RoutableHandler
+from ..reload import DevServerCmd
 from ..router import RouterApp
 from ..server import ServerConfig, WebServer
 from .basic import EchoBody, EchoId, EchoName, Hello
@@ -12,11 +15,11 @@ For various developer demonstrations, see `pithy.web.dev`.
 '''
 
 
-description = 'TestApp web server.'
-
-
 def main() -> None:
-  config = ServerConfig.parse_args(description=description)
+  DevServerCmd.parse_or_exit().serve(run, watch=[pithy])
+
+
+def run(config:ServerConfig) -> None:
   app = TestApp()
   server = WebServer(app=app, config=config)
   server.serve_forever()

@@ -8,7 +8,7 @@ from os import _exit as os_exit
 from queue import Full as QueueFull, LifoQueue
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
 from threading import Event, Thread
-from typing import cast, Self
+from typing import cast
 from urllib.parse import urlsplit as url_split
 
 from h11 import (Connection as h11_Connection, ConnectionClosed as h11_ConnectionClosed, Data as h11_Data, DONE as h11_DONE,
@@ -207,42 +207,6 @@ class ServerConfig:
   max_queued:int = 64
   thread_name_prefix:str = 'WebServer'
   log_access:bool = True
-
-
-  @classmethod
-  def parse_args(cls, description:str='Web server configuration.') -> Self:
-    'Parse command-line arguments to create a ServerConfig object.'
-    import argparse
-
-    parser = argparse.ArgumentParser(description=description)
-
-    default_host = web_host()
-    default_port = web_port()
-    parser.add_argument('-host', type=str, default=default_host,
-      help=f'Hostname or IP address to bind to; default: {default_host!r} (from $WEB_HOST).')
-    parser.add_argument('-port', type=int, default=default_port,
-      help=f'Port number to bind to; default: {default_port} (from $WEB_PORT).')
-    parser.add_argument('-backlog', type=int, default=cls.backlog,
-      help=f'Number of unaccepted connections allowed before refusing new connections; default: {cls.backlog}.')
-    parser.add_argument('-recv-size', type=int, default=cls.recv_size,
-      help=f'Maximum number of bytes to receive at once from client connections; default: {cls.recv_size}.')
-    parser.add_argument('-conn-timeout', type=float, default=cls.conn_timeout,
-      help=f'Timeout in seconds for blocking operations on client connections; default: {cls.conn_timeout}.')
-    parser.add_argument('-drain-timeout', type=float, default=cls.drain_timeout,
-      help=f'Timeout in seconds for draining an unread request body before closing; default: {cls.drain_timeout}.')
-    parser.add_argument('-drain-max-bytes', type=int, default=cls.drain_max_bytes,
-      help=f'Maximum number of unread request body bytes to drain before closing; default: {cls.drain_max_bytes}.')
-    parser.add_argument('-num-threads', type=int, default=cls.num_threads,
-      help=f'Number of worker threads in the thread pool; default: {cls.num_threads}.')
-    parser.add_argument('-max-queued', type=int, default=cls.max_queued,
-      help=('Maximum number of connections waiting in the queue; excess connections are dropped immediately; '
-        f'default: {cls.max_queued}.'))
-    parser.add_argument('-log-access', action='store_true', help='Whether to log each request after it is handled.')
-
-    args = parser.parse_args()
-    return cls(host=args.host, port=args.port, backlog=args.backlog, recv_size=args.recv_size, conn_timeout=args.conn_timeout,
-      drain_timeout=args.drain_timeout, drain_max_bytes=args.drain_max_bytes,
-      num_threads=args.num_threads, max_queued=args.max_queued, log_access=args.log_access)
 
 
 type ConnQueueItem = tuple[Socket,AddrPair]
