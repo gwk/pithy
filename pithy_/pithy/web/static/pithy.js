@@ -485,7 +485,7 @@ function makeContainerValidateAtLeastOneCheckbox(container) {
     // @ts-ignore: ts(2345): Argument of type null is not assignable to parameter of type 'HTMLElement'.
     validateAtLeastOneCheckbox(event.currentTarget)
   });
-  observeVisibility(container, true, (_isVisible) => {
+  observeVisibility(container, true, () => {
     validateAtLeastOneCheckbox(container);
   });
 }
@@ -502,15 +502,25 @@ const _time24_re = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
 function parseTimeStr(s) {
   let m12 = _time12_re.exec(s);
   if (m12) {
-    let h = parseInt(m12[1]);
-    const m = parseInt(m12[2]);
-    const ampm = m12[3].toLowerCase();
+    const [, hour, minute, suffix] = m12;
+    if (hour === undefined || minute === undefined || suffix === undefined) {
+      throw new Error(`parseTimeStr: invalid 12-hour time string: ${JSON.stringify(s)}`);
+    }
+    let h = parseInt(hour);
+    const m = parseInt(minute);
+    const ampm = suffix.toLowerCase();
     if (ampm === 'am') { if (h === 12) h = 0; }
     else { if (h !== 12) h += 12; }
     return h * 60 + m;
   }
   let m24 = _time24_re.exec(s);
-  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+  if (m24) {
+    const [, hour, minute] = m24;
+    if (hour === undefined || minute === undefined) {
+      throw new Error(`parseTimeStr: invalid 24-hour time string: ${JSON.stringify(s)}`);
+    }
+    return parseInt(hour) * 60 + parseInt(minute);
+  }
   throw new Error(`parseTimeStr: invalid time string: ${JSON.stringify(s)}`);
 }
 
