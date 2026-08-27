@@ -457,6 +457,15 @@ class Mu:
     return child # The type of child._orig is the same as child.
 
 
+  def prepend(self, child:_MuChild) -> _MuChild:
+    if isinstance(child, Mu) and child._orig is not None:
+      assert child._orig._orig is None
+      child = child._orig
+    if not isinstance(child, mu_child_classes): raise TypeError(child)
+    self._.insert(0, child)
+    return child # The type of child._orig is the same as child.
+
+
   def extend(self, *child_or_children:'MuChildOrChildrenLax') -> None:
     for c in child_or_children:
       if isinstance(c, mu_child_classes):

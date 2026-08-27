@@ -973,6 +973,9 @@ class Head(HtmlNode):
   def add_js(self, src:str, *, defer:bool=True, async_:bool=False) -> None:
     self.append(Script(type='text/javascript', src=src, defer=Present(defer), async_=Present(async_)))
 
+  def add_meta(self, *, name:str, content:str) -> None:
+    self.append(Meta(name=name, content=content))
+
 
 @_tag
 class Header(HtmlFlow, HtmlPalpable, HtmlFlowParent):
@@ -1268,13 +1271,17 @@ class Nav(HtmlFlow, HtmlPalpable, HtmlSectioning, HtmlFlowParent):
 
 
   @classmethod
-  def breadcrumbs(cls, els:Iterable[tuple[str,MuChildLax]]) -> Self:
+  def breadcrumbs(cls, els:Iterable[tuple[str,MuChildLax]], current:MuChildLax|None=None) -> Self:
     '''
     Return a nav.breadcrumbs element that presents a list of links.
     Each element of `els` is a (href, content) pair.
     Each `A` element is wrapped in a span so that the separators added by the stylesheet are not part of the link.
+    If `current` is given, it is appended as an unlinked trail element marking the current page.
     '''
-    return cls(cl='breadcrumbs', _=[Span(A(href=href, _=content)) for (href, content) in els])
+    children = [Span(A(href=href, _=content)) for (href, content) in els]
+    if current is not None:
+      children.append(Span(aria_current='page', _=current))
+    return cls(aria_label='Breadcrumb', cl='breadcrumbs', _=children)
 
 
   @classmethod
@@ -1805,9 +1812,7 @@ class Table(HtmlFlow, HtmlPalpable):
     else:
       if isinstance(foot, Mu): foot = [foot]
       if tfoot is None: tfoot = self.append(Tfoot())
-      print("FOOT", foot)
       cells = [cell if isinstance(cell, (Td, Th)) else Th(_=cell) for cell in foot]
-      print("CELLS", cells)
       tfoot.append(Tr(_=cells))
     return self
 
