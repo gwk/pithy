@@ -109,8 +109,9 @@ class DbView:
       abbrs = TableAbbrs(schema=schema.name, all_vis=table_vis.values())
 
       # Enabled columns.
+      col_names = {c.name for c in table.columns}
       en_col_names = set(
-        [k[2:] for k in params if k.startswith('c-')]
+        [k[2:] for k in params if k.startswith('c-') and k[2:] in col_names] # Ignore stale params from other tables.
         or [c.name for c in table.columns if table_vis[c.name].show]
         or [table.columns[0].name])
 
