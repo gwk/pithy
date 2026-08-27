@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pithy.web.dbview import TableAbbrs
-from utest import utest
+from utest import utest, utest_val
 
 
 utest({'main':''}, TableAbbrs.abbreviate_schema_names, {'main'})
@@ -9,7 +9,8 @@ utest({'main':'ma', 'meta':'me'}, TableAbbrs.abbreviate_schema_names, {'main', '
 utest({'a':'a', 'b':'b'}, TableAbbrs.abbreviate_schema_names, {'a', 'b'})
 
 
-abbrs = TableAbbrs(schema='main', all_vis=())
+abbrs = TableAbbrs(schema='main', table='Primary', all_vis=())
+utest_val('P', abbrs.table_abbr)
 
 utest('UE', abbrs.unique_abbr, 'main', 'UserEvent')
 utest('UE1', abbrs.unique_abbr, 'main', 'UnitEstimate')
