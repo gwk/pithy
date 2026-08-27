@@ -303,6 +303,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
 
 .flex-row { display: flex; flex-direction: row; }
 .flex-col { display: flex; flex-direction: column; }
+.flex-1 { flex: 1; } /* On a body child, takes up the slack so that a following footer sits at the bottom. */
 
 .gap-1ch { gap: 1ch; }
 .gap-1em { gap: 1em; }
@@ -412,7 +413,7 @@ a.button, button, input[type='button'], input[type='reset'], input[type='submit'
 }
 
 :where(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):active {
-  background-color: #E8E8E8;
+  background-color: color-mix(in srgb, var(--bg-sunken) 92%, var(--fg));
 }
 
 a.button:visited, a.button:hover, a.button:active { color: inherit; text-decoration: none; }
