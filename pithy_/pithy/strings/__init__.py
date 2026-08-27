@@ -42,6 +42,18 @@ def split_camelcase(string:str) -> list[str]:
   return [chunk for chunk in re.split(r'([A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$)))', string) if chunk]
 
 
+def abbr_initials(name:str) -> str:
+  '''
+  Abbreviate a name to its initials.
+  Uses the capital letters if there are any (e.g. "UserEvent" -> "UE"),
+  otherwise the first letter of each word separated by non-word characters or underscores (e.g. "user_event" -> "ue"),
+  otherwise the first character of the name.
+  '''
+  if caps := ''.join(c for c in name if c.isupper()): return caps
+  if initials := ''.join(w[0] for w in re.split(r'[\W_]+', name) if w): return initials
+  return name[:1]
+
+
 def typecase_from_snakecase(string:str) -> str:
   'Convert a snake-case string (e.g. "snake_case") to type-case (e.g. "TypeCase").'
   return ''.join(s.capitalize() for s in string.split('_'))
