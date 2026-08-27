@@ -31,16 +31,12 @@ class Vis:
 
   def __post_init__(self) -> None:
     if self.key or self.col:
-      if not (self.key and self.col): raise ValueError(f'`key` requires that `col` is also specified: {self}')
+      if not (self.key and self.col): raise ValueError(f'`key` and `col` must be specified together: {self}')
       s, t, c = sql_parse_schema_table_column(self.key)
       if not (t and c): raise ValueError(f'`key` must specify table and column (leading schema is optional): {self.key!r}')
       _setattr(self, 'fk_schema', s)
       _setattr(self, 'fk_table', t)
       _setattr(self, 'fk_col', c)
-
-
-  def __repr__(self) -> str:
-    return f'Vis(key={self.key!r}, col={self.col!r})'
 
 
   @cached_property
