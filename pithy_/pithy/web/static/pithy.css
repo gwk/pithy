@@ -78,9 +78,6 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   --border-strong: #AAA;
   --accent: #06C;
 
-  --scrollbar-width: 0px; /* Updated by pithy.js. */
-  --vw-sb: calc(100vw - var(--scrollbar-width));
-
   --tr-subheading-background-color: #DDD;
   --tr-even-background-color: #FFF;
   --tr-odd-background-color: #EEE;
@@ -178,7 +175,17 @@ details > :not(summary) { margin-inline-start: 1.5ch; } /* Align disclosed conte
 
 * { position: relative; }
 
-html { overflow-y: scroll; } /* Prevents centered layout from jittering when scroll bar appears. */
+
+/* Scrollbars.
+Viewport units resolve against the initial containing block, and per CSS Values, when the root element's `overflow`
+is `auto` the scrollbars are assumed not to exist. So under the default `auto`, `100vw` is wider than the content
+area by the width of the scrollbar gutter, which is the usual cause of a page that scrolls sideways by ~15px.
+Setting `overflow-y: scroll` here both stops a centered layout from jittering as the scrollbar comes and goes,
+*and* takes the root out of `auto`, so that `vw` measures the content area. `.bleed` below depends on this.
+Percentage lengths never had the problem: they resolve against the parent, not the viewport.
+*/
+
+html { overflow-y: scroll; }
 
 body {
   display: flex;
@@ -194,8 +201,8 @@ body {
 
 .body-child-page-bleed-bg {
   /* Full-width background, but content inset to align with `.body-child-page`.
-  The percentages resolve against the body content box, which already excludes the scrollbar gutter;
-  `50vw` would include it and misalign this content with `.body-child-page` by half the scrollbar width. */
+  The percentages resolve against the body content box, which excludes the scrollbar gutter unconditionally.
+  `50vw` also works here, but only because of the `html { overflow-y: scroll }` rule below; see "Scrollbars". */
   width: 100%;
   padding-left: max(var(--page-padding), calc(var(--page-padding) + 50% - 0.5*var(--page-width)));
   padding-right: max(var(--page-padding), calc(var(--page-padding) + 50% - 0.5*var(--page-width)));
@@ -206,6 +213,24 @@ body {
   padding-left: var(--page-padding);
   padding-right: var(--page-padding);
   align-self: center;
+}
+
+/* Full bleed: let one element inside the page column span the whole window.
+This is the counterpart to the `.body-child-*` classes above, for content that is not a child of body --
+typically a wide table sitting in `main`.
+
+The page column is left-aligned, so its content begins one `--page-padding` from the window edge. Cancel that inset
+and give the element the window width. `100vw` is the right measure here only because the root is
+`overflow-y: scroll`; see "Scrollbars" above.
+
+Only the inline-start margin is set, so this composes with the flow rule, which sets the block margin.
+Use a block wrapper so the viewport width defines a container for its content; for example, put a wide table inside
+a `.bleed` div rather than putting the class on the table itself. */
+
+.bleed {
+  width: 100vw;
+  margin-inline-start: calc(-1 * var(--page-padding));
+  padding-inline: var(--page-padding);
 }
 
 .page-width { width: var(--page-width); }
@@ -329,8 +354,9 @@ so any of the `.body-child-*` classes above still wins when an application wants
 .overflow-x-scroll { overflow-x: scroll; }
 
 /* Wrap content that cannot be made narrower, such as a wide table, so that it scrolls instead of
-widening the page. There is no way to do this from the stylesheet alone: the wrapper has to be in the markup. */
-.overflow-x-auto { overflow-x: auto; max-width: 100%; }
+widening the page. There is no way to do this from the stylesheet alone: the wrapper has to be in the markup.
+No `max-width`: a block box already fills its containing block and no more, and capping it would defeat `.bleed`. */
+.overflow-x-auto { overflow-x: auto; }
 
 .table-auto { table-layout: auto; }
 .table-fixed { table-layout: fixed; }

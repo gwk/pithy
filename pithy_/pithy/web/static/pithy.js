@@ -14,9 +14,6 @@
 const assert = console.assert;
 const log = console.log;
 
-let scrollbarWidth = 0;
-
-
 /**
  * Set up the browser environment.
  */
@@ -59,11 +56,6 @@ function _configureWindow() {
   if (!!window.chrome) {
     document.documentElement.classList.add('chrome');
   }
-
-  // Calculate the width of the scrollbar.
-  const body = nonopt(document.querySelector('body'));
-  scrollbarWidth = window.innerWidth - body.clientWidth + 0.1; // Adding a fraction more prevents the horizontal scrollbar.
-  createPithyDynamicStyle();
 }
 
 
@@ -227,18 +219,6 @@ function createStyle(title, selectorText) {
   style.title = title;
   style.innerHTML = selectorText;
   document.head.appendChild(style);
-}
-
-
-/**
- * Create the pithy-dynamic style element.
- * This element contains CSS variables that depend on runtime values.
- */
-function createPithyDynamicStyle() {
-  const css = `:root {
-    --scrollbar-width: ${scrollbarWidth}px;
-  }`;
-  createStyle('pithy-dynamic', css);
 }
 
 
