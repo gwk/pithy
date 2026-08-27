@@ -323,24 +323,6 @@ function findSelAll(selector, root = document) {
 
 
 /**
- * Reset the value of an element to its default value or remove the value if no default is set.
- * @param {Element} el - The element to reset the value of.
- * @returns {void}
- */
-function resetValueOfEl(el) {
-  // Set both the attribute and the property; once the user has edited an input, the attribute no longer affects the value.
-  const default_ = el.getAttribute('default');
-  if (default_ === null) {
-    el.removeAttribute('value');
-    el.value = '';
-  } else {
-    el.setAttribute('value', default_);
-    el.value = default_;
-  }
-}
-
-
-/**
  * Determine if an element is visible according to its computed style.
  * @param {HTMLElement} element - The element to check.
  * @param {boolean} recursive - Whether to check ancestor elements as well.
