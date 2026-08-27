@@ -25,9 +25,10 @@ from .vis import CellRenderFn, ValRenderFn, Vis
 
 class TableAbbrs:
 
-  def __init__(self, *, schema:str, all_vis:Iterable[Vis]) -> None:
+  def __init__(self, *, schema:str, table:str, all_vis:Iterable[Vis]) -> None:
     self.schema_abbrs = TableAbbrs.abbreviate_schema_names({schema, *(vis.fk_schema for vis in all_vis)})
     self.table_abbrs = Counter[str]()
+    self.table_abbr = self.unique_abbr(schema, table) # The primary table takes the first, non-numbered abbreviation.
 
   @staticmethod
   def abbreviate_schema_names(schema_names:set[str]) -> dict[str,str]:
@@ -106,7 +107,7 @@ class DbView:
     if nst := self.get_schema_table(params):
       table_name, schema, table = nst
       table_vis = self.vis[schema.name][table.name]
-      abbrs = TableAbbrs(schema=schema.name, all_vis=table_vis.values())
+      abbrs = TableAbbrs(schema=schema.name, table=table.name, all_vis=table_vis.values())
 
       # Enabled columns.
       col_names = {c.name for c in table.columns}
@@ -126,7 +127,7 @@ class DbView:
       if not order_by and not table.primary_key: # Use implied ordering for compound keys.
         if (primary_col := table.primary_column) and primary_col.datatype is int:
           # Order by descending to see most recent rows first.
-          order_by = f'{abbrs.unique_abbr(schema.name, table.name)}.{primary_col.name} DESC'
+          order_by = f'{abbrs.table_abbr}.{primary_col.name} DESC'
 
     else:
       table_name = ''
@@ -342,8 +343,7 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
     column_parts.append(col_name)
     line_len += len(col_name)
 
-  abbrs = TableAbbrs(schema=schema, all_vis=table_vis.values())
-  t_abbr = abbrs.unique_abbr(schema, table) # Take the first, non-numbered abbreviation for the primary table.
+  t_abbr = abbrs.table_abbr
 
   from_parts:list[str] = [f'\nFROM {qe(schema)}.{qe(table)} AS {t_abbr}']
 
