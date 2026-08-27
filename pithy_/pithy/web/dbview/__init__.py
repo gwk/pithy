@@ -69,6 +69,7 @@ class DbView:
   ) -> None:
 
     self.schemas = { s.name : s for s in schemas }
+    self.validate_vis(vis)
 
     def _vis_for(schema:str, table:str, col:str) -> Vis:
       try: v = vis[schema][table][col]
@@ -95,6 +96,32 @@ class DbView:
             raise ValueError(f'invalid `order_by` table name in schema {schema_name!r}: {table_name!r}; '
               f'valid names: {schema.tables_dict.keys()}')
           self.order_by[schema_name][table_name] = order_by_clause
+
+
+  def validate_vis(self, vis:dict[str,dict[str,dict[str,Vis|bool]]]) -> None:
+    'Raise ValueError for any `vis` key that does not name an existing schema, table or column, including foreign keys.'
+    for schema_name, schema_d in vis.items():
+      schema = self.schemas.get(schema_name)
+      if schema is None: raise ValueError(f'invalid `vis` schema name: {schema_name!r}; valid names: {self.schemas.keys()}')
+      for table_name, table_d in schema_d.items():
+        table = schema.tables_dict.get(table_name)
+        if table is None:
+          raise ValueError(f'invalid `vis` table name in schema {schema_name!r}: {table_name!r}; '
+            f'valid names: {schema.tables_dict.keys()}')
+        for col_name, v in table_d.items():
+          if col_name not in table.columns_dict:
+            raise ValueError(f'invalid `vis` column name in table {schema_name!r}.{table_name!r}: {col_name!r}; '
+              f'valid names: {table.columns_dict.keys()}')
+          if isinstance(v, Vis) and v.key:
+            fk_schema = self.schemas.get(v.fk_schema or schema_name)
+            if fk_schema is None: raise ValueError(f'invalid `vis` key schema for {schema_name}.{table_name}.{col_name}: {v.key!r}')
+            fk_table = fk_schema.tables_dict.get(v.fk_table)
+            if fk_table is None: raise ValueError(f'invalid `vis` key table for {schema_name}.{table_name}.{col_name}: {v.key!r}')
+            if v.fk_col not in fk_table.columns_dict:
+              raise ValueError(f'invalid `vis` key column for {schema_name}.{table_name}.{col_name}: {v.key!r}')
+            if v.col not in fk_table.columns_dict:
+              raise ValueError(f'invalid `vis` col for {schema_name}.{table_name}.{col_name}: {v.col!r}; '
+                f'valid names: {fk_table.columns_dict.keys()}')
 
 
   def render(self, request:Request, conn:Conn) -> Div:
