@@ -26,7 +26,7 @@ from .vis import CellRenderFn, ValRenderFn, Vis
 class TableAbbrs:
 
   def __init__(self, *, schema:str, table:str, all_vis:Iterable[Vis]) -> None:
-    self.schema_abbrs = TableAbbrs.abbreviate_schema_names({schema, *(vis.fk_schema for vis in all_vis)})
+    self.schema_abbrs = TableAbbrs.abbreviate_schema_names({schema, *(vis.fk_schema for vis in all_vis if vis.key)})
     self.table_abbrs = Counter[str]()
     self.table_abbr = self.unique_abbr(schema, table) # The primary table takes the first, non-numbered abbreviation.
 
