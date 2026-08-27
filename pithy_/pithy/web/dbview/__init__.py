@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
+from dataclasses import replace
 from typing import Any, Iterable
 from warnings import warn
 
@@ -72,7 +73,10 @@ class DbView:
       try: v = vis[schema][table][col]
       except KeyError: return Vis(show=True)
       else:
-        if isinstance(v, Vis): return v
+        if isinstance(v, Vis):
+          if v.key and not v.fk_schema: # Resolve an unqualified key to the schema of the table being viewed.
+            v = replace(v, key=f'{qe(schema)}.{v.key}')
+          return v
         elif isinstance(v, bool): return Vis(show=v)
         else: raise TypeError(f'invalid vis; schema={schema!r}, table={table!r}, col={col!r}; vis: {v!r}')
 
