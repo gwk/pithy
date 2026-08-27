@@ -24,6 +24,7 @@ htmx_src = 'https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta4/dist/htmx.min.js'
 # The site navigation bar. Each entry is a (path, label) pair.
 nav_links = (
   ('/', 'Home'),
+  ('/typography', 'Typography'),
   ('/controls/form', 'Form'),
   ('/controls/htmx', 'HTMX'),
 )

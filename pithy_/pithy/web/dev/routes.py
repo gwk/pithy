@@ -5,10 +5,12 @@ from .controls import DevControlsIndex
 from .controls.form import DevControlsForm
 from .controls.htmx import ControlsHtmxUpdate, DevControlsHtmx
 from .pages import DevStaticFiles, IndexHtml, PithyStaticFiles
+from .typography import DevTypography
 
 
 routes:dict[str,type[RoutableHandler]] = {
   '/': IndexHtml,
+  '/typography': DevTypography,
   '/controls': DevControlsIndex,
   '/controls/form': DevControlsForm,
   '/controls/htmx': DevControlsHtmx,
