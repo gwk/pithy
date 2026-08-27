@@ -3,11 +3,11 @@
     "_misc/**",
     "dist/**",
     "node/**",
-    "pithy/web/static/htmx/**",
+    "pithy_/pithy/web/static/htmx/**",
     "pkg/**",
     "vscode/legs/src/extension.ts",
     "vscode/legs/built/extension.js",
-    "wu/writeup.js",
+    "wu_/wu/writeup.js",
   ],
   "compilerOptions": {
     "allowJs": true,
