@@ -241,7 +241,7 @@ class DbView:
     c = conn.cursor()
     error = ''
     try:
-      plan = repr(tuple(c.run(f'EXPLAIN QUERY PLAN {query}').one()))
+      plan = fmt_query_plan(c.run(f'EXPLAIN QUERY PLAN {query}'))
     except Exception as e:
       error = f'Explain query failed: {e}'
       plan = ''
@@ -291,6 +291,17 @@ class DbView:
       ])
 
     return parts
+
+
+def fmt_query_plan(rows:Iterable[Row]) -> str:
+  'Format EXPLAIN QUERY PLAN rows (id, parent, notused, detail) as indented lines.'
+  depths = {0: 0} # The root parent id is 0.
+  lines = []
+  for id_, parent, _, detail in rows:
+    depth = depths.get(parent, 0)
+    depths[id_] = depth + 1
+    lines.append('  ' * depth + detail)
+  return '\n'.join(lines)
 
 
 def int_param(params:QueryParams, name:str, *, default:int, min:int) -> int:
