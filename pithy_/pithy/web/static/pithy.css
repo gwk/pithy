@@ -565,20 +565,18 @@ table tbody tr.subheading { /* Must follow the even/odd rules above. */
 /* Collapsible tables. */
 
 table.collapsible caption {
-  padding-left: 1.5ch;
   cursor: pointer;
   white-space: nowrap; /* Otherwise the caption width shrinks when the table is collapsed. */
 }
 
-table.collapsible caption::before {
+table.collapsible caption::after {
   content: "▾";
-  position: absolute;
-  left: 0;
-  transition: transform 0.25s;
+  display: inline-block;
+  margin-left: 0.4ch;
 }
 
-table.collapsible.collapsed caption::before {
-  transform: rotate(-90deg);
+table.collapsible.collapsed caption::after {
+  content: "▸";
 }
 
 table.collapsible.collapsed :is(tbody, thead, tfoot) {

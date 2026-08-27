@@ -25,6 +25,7 @@ htmx_src = 'https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta4/dist/htmx.min.js'
 nav_links = (
   ('/', 'Home'),
   ('/typography', 'Typography'),
+  ('/tables', 'Tables'),
   ('/controls/form', 'Form'),
   ('/controls/htmx', 'HTMX'),
 )
