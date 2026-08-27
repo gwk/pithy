@@ -19,7 +19,7 @@ from ...sqlite import Conn, Row
 from ...sqlite.keywords import sqlite_keywords
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table
-from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
+from ...sqlite.util import sql_quote_entity as qe, sql_quote_qual_entity as qqe, sql_quote_val as qv
 from .vis import CellRenderFn, ValRenderFn, Vis
 
 
@@ -82,7 +82,7 @@ class DbView:
       else:
         if isinstance(v, Vis):
           if v.key and not v.fk_schema: # Resolve an unqualified key to the schema of the table being viewed.
-            v = replace(v, key=f'{qe(schema)}.{v.key}')
+            v = replace(v, key=f'{qe(schema)}.{v.key}' if schema else v.key)
           return v
         elif isinstance(v, bool): return Vis(show=v)
         else: raise TypeError(f'invalid vis; schema={schema!r}, table={table!r}, col={col!r}; vis: {v!r}')
@@ -173,8 +173,7 @@ class DbView:
       en_col_spans = []
       order_by = ''
 
-    table_names = [f'{qe(s.name)}.{qe(t.name)}' for s in self.schemas.values() for t in s.tables]
-    if table_name: assert table_name in table_names # Sanity check that these generated table names match the parsed table name.
+    table_names = [qqe(s.name, t.name) for s in self.schemas.values() for t in s.tables]
 
     div = Div(cl='dbview')
 
@@ -234,6 +233,7 @@ class DbView:
   def get_schema_table(self, params:QueryParams) -> tuple[str,Schema,Table]|None:
 
     # The 'table' param is qualified and quoted, (e.g. 'schema.table' or '"some schema"."some table"').
+    # The returned name is normalized so that it matches the generated select options.
     try: full_name = params['table']
     except KeyError: return None
 
@@ -246,7 +246,7 @@ class DbView:
     try: table = schema.tables_dict[table_name]
     except KeyError: raise HTTPException(400, f'invalid table: {table_name!r}')
 
-    return full_name, schema, table
+    return qqe(schema.name, table.name), schema, table
 
 
   def render_table(self, *, conn:Conn, schema:Schema, table:Table, abbrs:TableAbbrs, path:str, params:QueryParams,
@@ -380,7 +380,7 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
 
   t_abbr = abbrs.table_abbr
 
-  from_parts:list[str] = [f'\nFROM {qe(schema)}.{qe(table)} AS {t_abbr}']
+  from_parts:list[str] = [f'\nFROM {qqe(schema, table)} AS {t_abbr}']
 
   col_headers = []
   render_cell_fns:list[CellRenderFn] = []
