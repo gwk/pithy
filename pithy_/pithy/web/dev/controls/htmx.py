@@ -10,7 +10,7 @@ from ....markup import MuChild
 from ...endpoint import Endpoint, NoFields
 from ...request import Request, UploadedFile
 from ...response import HtmlResponse, Response
-from ..pages import page_html
+from ..pages import dev_page
 
 
 class DevControlsHtmx(Endpoint):
@@ -22,12 +22,16 @@ class DevControlsHtmx(Endpoint):
       H1('HTMX Controls'),
       posted_values_div(),
       controls_htmx())
-    return page_html(title='Dev Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/htmx', 'HTMX')],
-      main=main)
+    return dev_page(title='HTMX Controls', main=main,
+      breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/htmx', 'HTMX')])
 
 
 def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:
-  return Div(style='background-color: #f0f4ff; padding: 1rem;', *[Div(Strong(k), f': {v}') for k, v in (values or {}).items()], id='posted-values')
+  'Return the panel that htmx swaps the most recent field update into.'
+  if not values:
+    return Div(id='posted-values', cl='panel muted', _='No updates yet. Change a control to post it.')
+  return Div(id='posted-values', cl='panel flow flow-tight',
+    _=[Div(Strong(k), f': {v}') for k, v in values.items()])
 
 
 
@@ -65,9 +69,9 @@ class ControlsHtmxUpdate(Endpoint):
         continue
       display = name.replace('_', '-')
       if isinstance(val, UploadedFile):
-        return HtmlResponse(body=Div(Strong(display), f': {val.filename} ({len(val.data)} bytes)'))
-      return HtmlResponse(body=Div(Strong(display), f': {val}'))
-    return HtmlResponse(body=Div())
+        val = f'{val.filename} ({len(val.data)} bytes)'
+      return HtmlResponse(body=posted_values_div({display: str(val)}))
+    return HtmlResponse(body=posted_values_div())
 
 
 
