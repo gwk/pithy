@@ -188,7 +188,7 @@ class DbView:
       Label('Table:'),
       Div(Select(name='table',
         onchange='findId("columns").replaceChildren(); \
-          findSelAll(".clear-on-table-change").forEach(resetValueOfEl); \
+          findSelAll("input.clear-on-table-change").forEach(el => el.value = el.dataset.default ?? ""); \
           this.form.submit()')
         .options(placeholder='Table', value=table_name, options=table_names)),
 
@@ -196,7 +196,7 @@ class DbView:
       Div(Input(name='distinct', type='checkbox', checked=Present(params.get('distinct')))),
 
       Label('Columns:'),
-      Div(id='columns', cl='clear-on-table-change', _=[
+      Div(id='columns', _=[
         *en_col_spans,
         Input(type='button', value='All', onclick='updateAllColCheckboxes(true)'),
         Input(type='button', value='None', onclick='updateAllColCheckboxes(false)'),
@@ -209,10 +209,12 @@ class DbView:
       Input(name='order_by', type='search', value=order_by,  cl='clear-on-table-change'),
 
       Label('Limit:'),
-      Div(Input(name='limit', type='search', value=params.get('limit', '100'), default=100, cl='clear-on-table-change')),
+      Div(Input(name='limit', type='search', value=params.get('limit', '100'), data_default=100,
+        cl='clear-on-table-change')),
 
       Label('Offset:'),
-      Div(Input(name='offset', type='search', value=params.get('offset', '0'), default=0,  cl='clear-on-table-change')),
+      Div(Input(name='offset', type='search', value=params.get('offset', '0'), data_default=0,
+        cl='clear-on-table-change')),
 
       Label(),
       Div(Input(type='submit', value='Run Query')),
