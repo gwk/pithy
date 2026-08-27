@@ -60,7 +60,12 @@ class TableAbbrs:
 
 
 class DbView:
-  'An object that provides a web interface for running SQL queries.'
+  '''
+  An object that provides a web interface for running SQL queries.
+  The `where` and `order_by` params are interpolated into the query as raw SQL, so the endpoint must be restricted to trusted users.
+  `render` refuses connections that do not have `PRAGMA query_only` set.
+  Note that `mode='ro'` alone is insufficient, because it still permits writes to temp tables and writable attached databases.
+  '''
 
   def __init__(self,
     schemas:Iterable[Schema],
@@ -128,6 +133,9 @@ class DbView:
     '''
     Render a div representing the controls and optionally the DB query result from the request.
     '''
+    if not conn.run('PRAGMA query_only').one_col():
+      raise ValueError('DbView.render requires a connection with PRAGMA query_only set.')
+
     path = request.url.path
     params = request.query_params
 
