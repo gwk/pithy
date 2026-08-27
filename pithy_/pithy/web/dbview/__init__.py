@@ -4,7 +4,7 @@ from collections import Counter
 from typing import Any, Iterable
 from warnings import warn
 
-from pithy.strings import str_tree, str_tree_pairs
+from pithy.strings import abbr_initials, str_tree, str_tree_pairs
 from pithy.url import fmt_url
 from starlette.datastructures import QueryParams
 from starlette.exceptions import HTTPException
@@ -15,6 +15,7 @@ from ...html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, MuChild,
 from ...html.parse import linkify
 from ...html.parts import pagination_control
 from ...sqlite import Conn, Row
+from ...sqlite.keywords import sqlite_keywords
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table
 from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
@@ -37,20 +38,22 @@ class TableAbbrs:
   def simple_abbr(self, schema:str, table:str) -> str:
     'Generate a table abbreviation without concern for collision with other tables.'
     s = self.schema_abbrs[schema]
-    t = capital_letters_abbr(table)
+    t = abbr_initials(table)
     return f'{s}{t}'
 
   def unique_abbr(self, schema:str, table:str) -> str:
     '''
     Generate a unique table abbreviation for use within the query.
-    Where simple_abbr would collide with a previously issued abbreviation, adds a numer suffix.
+    Where simple_abbr would collide with a previously issued abbreviation, adds a number suffix.
+    If the first abbreviation is an SQL keyword, it gets the suffix 0, so that the numbered sequence remains consistent.
     '''
     abbr = self.simple_abbr(schema, table)
-    if n := self.table_abbrs[abbr]:
-      abbrN = abbr + str(n)
-    else: abbrN = abbr
-    self.table_abbrs[abbr] += 1
-    return abbrN
+    key = abbr.upper() # SQL identifiers are case-insensitive.
+    n = self.table_abbrs[key]
+    self.table_abbrs[key] += 1
+    if n: return f'{abbr}{n}'
+    if key in sqlite_keywords: return f'{abbr}0'
+    return abbr
 
 
 
@@ -440,10 +443,6 @@ def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,
     warn(f'vis render error; fn={getattr(render_fn, "__qualname__", repr(render_fn))}; exc={e}; {val=!r}')
     return ('error', str(val))
 
-
-
-def capital_letters_abbr(s:str) -> str:
-  return ''.join(c for c in s if c.isupper())
 
 
 def dbview_ui_script() -> Script:
