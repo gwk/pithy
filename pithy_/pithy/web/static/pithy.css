@@ -427,25 +427,6 @@ table.collapsible.collapsed :is(tbody, thead, tfoot) {
 }
 
 
-/* HTMX interaction indicators. */
-
-.block-emoji-icon, .inline-emoji-icon {
-  font-family: 'Noto Emoji';
-  text-align: center;
-}
-
-.block-emoji-icon {
-  display: block;
-  margin: 1rem 0;
-  min-width: 1.5rem;
-}
-
-.inline-emoji-icon {
-  display: inline-block;
-  margin: 0 0.5rem;
-}
-
-
 /* Emoji icons. */
 
 .icon {
@@ -481,99 +462,6 @@ a.icon:visited {
 ol.json-array {
   list-style-type: decimal;
 }
-
-/* Htmx request disables events. */
-.request-disables-clicks.htmx-request {
-  pointer-events: none;
-}
-
-/* Htmx pulsating indicator. */
-
-.pulse-indicator {
-  opacity: 1;
-}
-
-.pulse-indicator.htmx-request {
-  animation-name: pulse-opacity;
-  animation-duration: 1s;
-  animation-iteration-count: infinite;
-}
-
-@keyframes pulse-opacity {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.stripe-indicator {
-  min-height: 100%;
-  background-image: none;
-  background-size: 1rem 1rem;
-}
-
-.stripe-indicator.htmx-request {
-  background-image: repeating-linear-gradient(135deg,
-    #FFF 0rem,
-    #FFF 0.3535rem,
-    #EEE 0.3535rem,
-    #EEE 0.7071rem
-  );
-  animation: stripe-indicator 1s infinite linear;
-}
-
-@keyframes stripe-indicator {
-  0% { background-position: 0 0; }
-  100% { background-position: 1rem 0; }
-}
-
-
-/* Htmx emoji clock indicator. */
-
-.with-spinner-after::after, .with-spinner-before::before {
-  display: inline-block;
-  font-family: 'Noto Emoji', sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 400;
-  font-style: normal;
-  opacity: 0;
-  content: '\00a0';
-  transition: opacity 250ms ease-in;
-  text-align: center;
-  vertical-align: baseline;
-  font-size: 90%;
-  /* TODO: figure out how to better align spinner with rest of input-label pair. */
-}
-
-.with-spinner-before::before {
-  transform: translateX(-2.5ch);
-}
-
-.with-spinner-after.htmx-request::after, .with-spinner-before.htmx-request::before {
-  /* The htmx-request class is added to the requesting element or specified hx-indicator element while the request is ongoing. */
-  opacity: 1;
-  content: '🕛';
-
-  animation-name: emoji-clock;
-  animation-duration: 3s;
-  animation-iteration-count: infinite;
-}
-
-@keyframes emoji-clock {
-  00.000% { content: '🕛'; }
-  08.333% { content: '🕐'; }
-  16.667% { content: '🕑'; }
-  25.000% { content: '🕒'; }
-  33.333% { content: '🕓'; }
-  41.667% { content: '🕔'; }
-  50.000% { content: '🕕'; }
-  58.333% { content: '🕖'; }
-  66.667% { content: '🕗'; }
-  75.000% { content: '🕘'; }
-  83.333% { content: '🕙'; }
-  91.667% { content: '🕚'; }
-  100.00% { content: '🕛'; }
-}
-
 
 /* Modal panes. */
 
