@@ -279,8 +279,6 @@ so any of the `.body-child-*` classes above still wins when an application wants
 
 .navbar a:hover { background-color: var(--bg-raised); }
 
-.navbar a[aria-current='page'] { font-weight: 600; color: var(--accent); }
-
 
 /* Utility classes. */
 

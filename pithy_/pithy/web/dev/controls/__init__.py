@@ -4,7 +4,7 @@ from ....html import A, H1, Li, Main, Ul
 from ...endpoint import Endpoint, NoFields
 from ...request import Request
 from ...response import HtmlResponse
-from ..pages import page_html
+from ..pages import dev_page
 
 
 class DevControlsIndex(Endpoint):
@@ -18,5 +18,5 @@ class DevControlsIndex(Endpoint):
       text = (': ' + endpoint.__doc__) if endpoint.__doc__ else ''
       links.append(Li(A(href=path, _=path), text))
 
-    return page_html(title='Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls')],
+    return dev_page(title='Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls')],
       main=Main(H1('Controls'), Ul(_=links)))

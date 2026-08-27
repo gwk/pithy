@@ -10,7 +10,7 @@ from ....markup import MuChild, Present
 from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
 from ...response import Response
-from ..pages import page_html
+from ..pages import dev_page
 
 
 class DevControlsForm(Endpoint):
@@ -51,12 +51,12 @@ class DevControlsForm(Endpoint):
       H1('Form Controls'),
       posted_values_div(self._items(fields)),
       controls_form(self._items(fields)))
-    return page_html(title='Dev Controls', breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/form', 'Form')],
-      main=main)
+    return dev_page(title='Form Controls', main=main,
+      breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/form', 'Form')])
 
 
 def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
-  'Return a Form demonstrating all standard interactive HTML form controls, optionally populated with `values`.'
+  'Build a Form demonstrating all standard interactive HTML form controls, optionally populated with `values`.'
 
   vals:dict[str,str|list[str]] = values or {}
   div = Div()
@@ -131,5 +131,8 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
 
 
 def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:
-  return Div(id='posted-values', style='background-color: #f0f4ff; padding: 1rem;',
-    _=[Div(Strong(k), f': {v}') for k, v in (values or {}).items()])
+  'Build a panel that reports POST values.'
+  if not values:
+    return Div(id='posted-values', cl='panel muted', _='No values posted yet. Fill in some fields and submit.')
+  return Div(id='posted-values', cl='panel flow flow-tight',
+    _=[Div(Strong(k), f': {v}') for k, v in values.items()])

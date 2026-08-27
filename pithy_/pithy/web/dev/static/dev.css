@@ -1,9 +1,18 @@
+/* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
 
-body {
-  padding: 1rem;
+/*
+Styling specific to the pithy.web.dev demo app.
+It should stay nearly empty: anything general enough to be useful here belongs in pithy.css instead.
+*/
+
+:root {
+  --page-width: 56rem;
 }
 
-ol {
-  padding-left: 0;
-  list-style-position: inside; /* if you want numbers flush too */
+body > header {
+  background-color: #E2E2E2;
+}
+
+body > nav a.current-nav-section-link {
+  text-decoration: underline;
 }
