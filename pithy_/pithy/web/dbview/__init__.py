@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import Counter
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 from warnings import warn
 
 from pithy.strings import str_tree, str_tree_pairs
@@ -14,15 +14,11 @@ from ...html import (A, Details, Div, Form, H1, HtmlNode, Input, Label, MuChild,
   Table as HtmlTable, Tbody, Td, Th, Thead, Tr)
 from ...html.parse import linkify
 from ...html.parts import pagination_control
-from ...sqlite import Conn, Row, SqliteError
+from ...sqlite import Conn, Row
 from ...sqlite.parse import sql_parse_schema_table
 from ...sqlite.schema import Column, Schema, Table
 from ...sqlite.util import sql_quote_entity as qe, sql_quote_val as qv
-from .vis import Vis
-
-
-ValRenderFn = Callable[[Any],Any]
-CellRenderFn = Callable[[Any],Td]
+from .vis import CellRenderFn, ValRenderFn, Vis
 
 
 class TableAbbrs:
@@ -119,12 +115,10 @@ class DbView:
 
       order_by:str = params.get('order_by', '') or self.order_by[schema.name].get(table.name, '')
 
-      if not order_by:
-        if table.primary_key:
-          order_by = '' # Use implied ordering for complex keys.
-        elif primary_col := next((c for c in table.columns if c.is_primary), None):
-          if primary_col.datatype == int: # Order by descending to see most recent rows first.
-            order_by = f'{abbrs.unique_abbr(schema.name, table.name)}.{primary_col.name} DESC'
+      if not order_by and not table.primary_key: # Use implied ordering for compound keys.
+        if (primary_col := table.primary_column) and primary_col.datatype is int:
+          # Order by descending to see most recent rows first.
+          order_by = f'{abbrs.unique_abbr(schema.name, table.name)}.{primary_col.name} DESC'
 
     else:
       table_name = ''
@@ -190,10 +184,6 @@ class DbView:
         self.render_table(conn=conn, schema=schema, table=table, abbrs=abbrs, path=path, params=params,
           en_col_names=en_col_names, order_by=order_by))
 
-    title = 'Query'
-    if table_name: title += f' {table_name}'
-    if where := params.get('where'):
-      title += f' WHERE {where}'
     return div
 
 
@@ -267,7 +257,7 @@ class DbView:
           else:
             count_query = f'SELECT COUNT(){from_clause}{where_clause}'
           count = c.run(count_query).one_col()
-        except SqliteError as e:
+        except Exception as e:
           error = f'Count query failed: {e}'
 
 
@@ -312,12 +302,13 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
     nonlocal line_len
     if column_parts:
       column_parts.append(',')
+      line_len += 1
     if line_len + len(col_name) >= 128:
       column_parts.append('\n  ')
       line_len = 2
     else:
       column_parts.append(' ')
-      line_len += 2
+      line_len += 1
     column_parts.append(col_name)
     line_len += len(col_name)
 
@@ -340,14 +331,13 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
       th = Th(Details(Summary(cl='disclosure-flush', _=qcol), f'{qe(vis.fk_table)}.{qe(vis.col)}')) # The column header.
       sq_col_name = f'{col.name}:{vis.fk_schema}.{vis.fk_table}.{vis.col}' # The subquery column needs a unique name.
       sq_t_abbr = abbrs.unique_abbr(vis.fk_schema, vis.fk_table)
-      #^ The subquery table abbreviation when it is the primary table, for the WHERE clause in the link.
+      #^ The subquery table abbreviation, used in the correlated scalar subquery.
       append_col_part(qcol) # The actual column value is needed to render the tooltip and link.
 
       nonzero_clause = f'{qual_col}!=0 AND ' if vis.nonzero else ''
       append_col_part(f'(SELECT IFNULL({vis.col}, {sentinel_sql}) FROM {vis.fk_schema_table} AS {sq_t_abbr}'
         f' WHERE {nonzero_clause}{sq_t_abbr}.{vis.fk_col}={qual_col}) AS {qe(sq_col_name)}')
 
-      #from_parts.append(f'\nLEFT JOIN {vis.fk_schema_table} AS {sq_table} ON {qual_col} = {sq_key}')
       cell_fn = mk_cell_sq(col, vis, sq_col_name=sq_col_name, app_path=path, render_fn=vis.render, renders_row=vis.renders_row)
     else:
       th = Th(col.name)
@@ -447,7 +437,7 @@ def try_vis_render(render_fn:ValRenderFn, val:Any, render_arg:Any) -> tuple[str,
     if not isinstance(rendered, MuChild): rendered = str(rendered)
     return ('', rendered)
   except Exception as e:
-    warn(f'vis render error; fn={render_fn.__qualname__}; exc={e}; {val=!r}')
+    warn(f'vis render error; fn={getattr(render_fn, "__qualname__", repr(render_fn))}; exc={e}; {val=!r}')
     return ('error', str(val))
 
 
