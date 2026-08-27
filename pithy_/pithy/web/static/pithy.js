@@ -328,11 +328,14 @@ function findSelAll(selector, root = document) {
  * @returns {void}
  */
 function resetValueOfEl(el) {
+  // Set both the attribute and the property; once the user has edited an input, the attribute no longer affects the value.
   const default_ = el.getAttribute('default');
   if (default_ === null) {
     el.removeAttribute('value');
+    el.value = '';
   } else {
     el.setAttribute('value', default_);
+    el.value = default_;
   }
 }
 
