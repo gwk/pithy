@@ -2,7 +2,7 @@
 
 from typing import Iterable, Sequence
 
-from ...html import A, Footer, H1, H2, Header, Html, Li, Main, Nav, P, Script, Ul
+from ...html import A, Footer, H1, Header, Html, Main, Nav, P, Script
 from ...path import path_dir, path_join
 from ..endpoint import Endpoint, NoFields
 from ..files import FilesHandler
@@ -31,8 +31,7 @@ nav_links = (
 )
 
 
-def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(),
- css_paths:Sequence[str]=()) -> HtmlResponse:
+def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), css_paths:Sequence[str]=()) -> HtmlResponse:
   '''
   Return the complete page for `main`, wrapped in the dev app's shell.
 
@@ -66,20 +65,10 @@ class IndexHtml(Endpoint):
   'The pithy.web.dev index page.'
 
   def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
-    from .routes import routes
-    links = []
-    for path, endpoint in routes.items():
-      if path == '/' or path.endswith('.htmx') or '{' in path: continue # Skip the index itself, htmx fragments, and mounts.
-      text = ''
-      if doc := endpoint.__doc__:
-        text = ': ' + doc
-      links.append(Li(A(href=path, _=path), text))
     main = Main(
       H1(site_name),
-      P('A reference demo of the pithy.web stack.'),
-      H2('Pages'),
-      Ul(_=links))
-    return dev_page(title='Index', main=main)
+      P('A reference demo of the pithy.web stack.'))
+    return dev_page(title='Home', main=main)
 
 
 class PithyStaticFiles(FilesHandler):
