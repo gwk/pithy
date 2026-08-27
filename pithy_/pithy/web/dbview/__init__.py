@@ -365,8 +365,8 @@ def fmt_select_cols(schema:str, table:str, abbrs:TableAbbrs, path:str, cols:list
       append_col_part(qcol) # The actual column value is needed to render the tooltip and link.
 
       nonzero_clause = f'{qual_col}!=0 AND ' if vis.nonzero else ''
-      append_col_part(f'(SELECT IFNULL({vis.col}, {sentinel_sql}) FROM {vis.fk_schema_table} AS {sq_t_abbr}'
-        f' WHERE {nonzero_clause}{sq_t_abbr}.{vis.fk_col}={qual_col}) AS {qe(sq_col_name)}')
+      append_col_part(f'(SELECT IFNULL({sq_t_abbr}.{qe(vis.col)}, {sentinel_sql}) FROM {vis.fk_schema_table} AS {sq_t_abbr}'
+        f' WHERE {nonzero_clause}{sq_t_abbr}.{qe(vis.fk_col)}={qual_col}) AS {qe(sq_col_name)}')
 
       cell_fn = mk_cell_sq(col, vis, sq_col_name=sq_col_name, app_path=path, render_fn=vis.render, renders_row=vis.renders_row)
     else:
