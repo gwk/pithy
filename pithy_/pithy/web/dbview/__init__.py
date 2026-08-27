@@ -219,8 +219,8 @@ class DbView:
 
     where = params.get('where', '')
 
-    limit = int(params.get('limit', 100) or 100)
-    offset = int(params.get('offset', 0) or 0)
+    limit = int_param(params, 'limit', default=100, min=1)
+    offset = int_param(params, 'offset', default=0, min=0)
 
     table_vis = self.vis[schema.name][table.name]
 
@@ -286,6 +286,16 @@ class DbView:
       ])
 
     return parts
+
+
+def int_param(params:QueryParams, name:str, *, default:int, min:int) -> int:
+  'Parse an optional integer query parameter, raising a 400 error if it is malformed or less than `min`.'
+  raw = params.get(name, '')
+  if not raw: return default
+  try: val = int(raw)
+  except ValueError: raise HTTPException(400, f'invalid {name}: {raw!r}')
+  if val < min: raise HTTPException(400, f'invalid {name}: {val}; must be at least {min}')
+  return val
 
 
 sentinel_str = '\x10\xf8'
