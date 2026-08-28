@@ -539,6 +539,14 @@ select { appearance: auto; } /* Keep the drop-down indicator. */
 
 textarea { padding: 0.25em; }
 
+:is(button, input, select, textarea):disabled { color: var(--fg-muted); }
+
+:is(button, input:not([type='checkbox'], [type='color'], [type='file'], [type='image'], [type='radio'], [type='range']),
+  select, textarea):disabled {
+  background-color: var(--bg-sunken);
+  border-color: var(--border);
+}
+
 input:is([type='date'], [type='datetime-local'], [type='month'], [type='time'], [type='week']) {
   width: auto;
   max-width: 100%;
