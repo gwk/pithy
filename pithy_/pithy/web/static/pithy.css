@@ -556,6 +556,10 @@ html.chrome input[type='date'] {
   min-width: 7rem; /* Otherwise the chrome calendar icon gets clipped. */
 }
 
+html.safari input[type='date'] {
+  min-width: min-content; /* Prevent flex layout from shrinking the input through the generated calendar affordance. */
+}
+
 html.safari input[type='date']::after {
   content: '🗓️'; /* Safari draws no calendar affordance of its own. */
   padding: 0.25em;
