@@ -5,7 +5,7 @@
 from typing import Any
 
 from ....default import Default
-from ....html import A, Div, Form, H1, Input, Label, Li, Main, Ol, Select, Span, Strong, Sup, TextArea
+from ....html import Div, Form, H1, H2, Input, Label, Main, P, Select, Span, Strong, TextArea
 from ....markup import MuChild, Present
 from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
@@ -71,10 +71,6 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
       form.append(Label(_=label_text))
       form.append(control)
 
-  def footnote(i:int) -> Sup:
-    'Footnote link.'
-    return Sup(_=['[', A(href=f'#fn{i}', _=i), ']'])
-
   def _v(name:str) -> Any:
     'Return a dict with value key if `name` is in `vals`, for use as kwargs.'
     v = vals.get(name)
@@ -106,29 +102,28 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
 
   _row('date', Input(type='date', name='date', **_v('date')))
   _row('time', Input(type='time', name='time', **_v('time')))
-  _row('datetime_local', Span(cl='flex-row gap-1ch',
-    _=[Input(type='datetime-local', name='datetime_local', **_v('datetime_local')), footnote(1)]))
-  _row('month', Span(cl='flex-row gap-1ch', _=[Input(type='month', name='month', **_v('month')), footnote(1)]))
-  _row('week', Span(cl='flex-row gap-1ch', _=[Input(type='week', name='week', **_v('week')), footnote(1)]))
-
+  _row('datetime_local', Input(type='datetime-local', name='datetime_local', **_v('datetime_local')))
 
   _row('color', Input(type='color', name='color', **_v('color')))
 
-  _row('range', Input(type='range', name='range', min='0', max='10', **_v('range')))
+  _row('range', Span(cl='flex-row gap-1ch',
+    _=['0', Input(type='range', name='range', min='0', max='10', **_v('range')), '10']))
 
   _row('file', Input(type='file', name='file'))
 
   _row('button', Input(type='button', value='Button'))
   _row('image', Span(Input(type='image', src='', alt='Submit image'), ' (A button with a custom image)'))
 
+  form.append(Div(cl='controls-section flow flow-tight', _=[
+    H2('Not portable across target browsers'),
+    P('These controls fall back to plain text fields in desktop Safari.'),
+  ]))
+  _row('month', Input(type='month', name='month', **_v('month')))
+  _row('week', Input(type='week', name='week', **_v('week')))
+  form.append(Div(cl='controls-section-end'))
+
   _row('reset', Input(type='reset', value='Reset'))
   _row('submit', Input(type='submit', value='Submit'))
-
-  div.append(Div(cl='flex-col font-small', _=['Notes:',
-  Ol(
-    Li(id='fn1', _='Desktop Safari falls back to a plain text field for datetime-local, month, and week input types.'
-      ' Values entered in the text fallback are not validated by the browser.'),
-  )]))
 
   return div
 

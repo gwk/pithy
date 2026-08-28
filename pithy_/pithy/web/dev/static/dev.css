@@ -25,3 +25,20 @@ body > nav a.current-nav-section-link {
 }
 
 .controls-demo-layout > .panel { margin-top: 1em; }
+
+.controls-section {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 0.5em;
+  padding-top: 0.5em;
+  border-top: 1px solid var(--border-strong);
+  font-size: small;
+}
+
+.controls-section h2 { font-size: 1rem; }
+
+.controls-section-end {
+  grid-column: 1 / -1;
+  width: 100%;
+  border-bottom: 1px solid var(--border-strong);
+}
