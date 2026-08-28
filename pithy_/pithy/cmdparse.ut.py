@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from pathlib import Path
+from typing import Literal
 
 from pithy import ansi
 from pithy.cmdparse import (Cmd, CmdDeclError, CmdError, CmdHelp, flag, format_help, format_usage, group, opt, pos, remainder,
@@ -50,6 +51,21 @@ utest(Build(common=Common(verbose=False, color=True), target='-weird', jobs=1, d
 
 # Variadic positionals and typed options.
 utest(AddUser(names=['a', 'b'], home=Path('/home')), AddUser.parse, ['a', '--home=/home', 'b'])
+
+
+@utest_run
+def test_literal_strings() -> None:
+  class Choose(Cmd):
+    actions:list[Literal['build','test']] = pos(doc='Actions to perform.')
+    color:Literal['auto','always','never'] = opt(default='auto', doc='When to use color.')
+
+  utest(Choose(actions=['build', 'test'], color='never'), Choose.parse, ['build', '--color=never', 'test'])
+  utest_exc(CmdError("{build,test}: invalid value: 'deploy'; expected one of: build, test"), Choose.parse, ['deploy'])
+  utest_exc(CmdError("--color: invalid value: 'sometimes'; expected one of: auto, always, never"),
+    Choose.parse, ['--color=sometimes', 'build'])
+  utest_val('usage: choose [options] {build,test}...', format_usage(Choose))
+  assert '  {build,test}...  Actions to perform.' in format_help(Choose)
+  assert '  -color {auto,always,never}\n                            When to use color.' in format_help(Choose)
 
 # Errors are explicit; nothing is guessed.
 utest_exc(CmdError('unrecognized option: --jobz'), Build.parse, ['--jobz=2', 'all'])
@@ -156,6 +172,13 @@ def test_decl_errors() -> None:
     BadRemainderType.parse([])
 
   utest_exc(CmdDeclError('BadRemainderType.rest: a remainder field must be typed `list[T]`.'), bad_remainder_type)
+
+  def bad_literal_type() -> None:
+    class BadLiteralType(Cmd):
+      value:Literal['one',2] = pos()
+    BadLiteralType.parse([])
+
+  utest_exc(CmdDeclError('BadLiteralType.value: Literal arguments must contain only strings.'), bad_literal_type)
 
   def bad_sub_pos() -> None:
     class BadSubPos(Cmd):

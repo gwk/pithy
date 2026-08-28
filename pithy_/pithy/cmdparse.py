@@ -258,7 +258,20 @@ def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...]
   elem_T, is_list, is_optional = _analyze_type(T)
   if spec.kind == 'flag' and (elem_T is not bool or is_list):
     raise CmdDeclError(f'{cmd.__name__}.{name}: a flag field must be typed `bool`.')
-  convert = spec.parse or _converters.get(elem_T)
+  literal_values = get_args(elem_T) if get_origin(elem_T) is Literal else ()
+  if literal_values and not all(isinstance(value, str) for value in literal_values):
+    raise CmdDeclError(f'{cmd.__name__}.{name}: Literal arguments must contain only strings.')
+  base_convert = spec.parse or (str if literal_values else _converters.get(elem_T))
+  convert:Callable[[str],Any]|None
+  if literal_values:
+    def parse_literal(s:str) -> Any:
+      assert base_convert is not None
+      value = base_convert(s)
+      if value not in literal_values: raise ValueError(f'expected one of: {", ".join(literal_values)}')
+      return value
+    convert = parse_literal
+  else:
+    convert = base_convert
   if convert is None:
     raise CmdDeclError(f'{cmd.__name__}.{name}: no converter for type {elem_T}; pass an explicit `parse` function.')
   flags = spec.flags or (() if spec.kind == 'pos' else _default_flags(name))
@@ -267,8 +280,9 @@ def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...]
     prefix = '-'.join(prefixes) + '-'
     flags = tuple('-' + prefix + flag_str[1:] for flag_str in flags)
   has_default = f.default is not MISSING or f.default_factory is not MISSING or is_optional
+  literal_metavar = '{' + ','.join(literal_values) + '}' if literal_values else ''
   return Entry(path=path, spec=spec, T=elem_T, convert=convert, is_list=is_list, has_default=has_default, flags=flags,
-    metavar=spec.metavar or _default_metavar(name, spec.kind))
+    metavar=spec.metavar or literal_metavar or _default_metavar(name, spec.kind))
 
 
 def _register_flag(schema:CmdSchema, flag_str:str, entry:Entry, negated:bool) -> None:
