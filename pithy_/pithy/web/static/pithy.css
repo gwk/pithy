@@ -523,6 +523,11 @@ select { appearance: auto; } /* Keep the drop-down indicator. */
 
 textarea { padding: 0.25em; }
 
+input:is([type='date'], [type='datetime-local'], [type='month'], [type='time'], [type='week']) {
+  width: auto;
+  max-width: 100%;
+}
+
 input[type='date'] { line-height: 1; }
 
 html.chrome input[type='date'] {
