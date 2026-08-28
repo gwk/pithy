@@ -464,11 +464,27 @@ form.grid, .form_grid {
   margin: 1em 0;
   display: grid;
   grid-template-columns: max-content 1fr;
+  align-items: baseline;
   gap: 0.5em;
 }
 
 :is(form.grid, .form_grid) > * {
   justify-self: start; /* Align items to the left and do not stretch them to fill the grid cell. */
+}
+
+/* Multiline controls align to the top of their row instead of exposing their browser-dependent baseline. */
+:is(form.grid, .form_grid) > :is(
+  label:has(+ textarea, + select[multiple], + * select[multiple]),
+  textarea,
+  select[multiple],
+  *:has(select[multiple])
+) {
+  align-self: start;
+}
+
+/* An image input is commonly paired with text in a flex wrapper, whose baseline follows the image's bottom edge. */
+:is(form.grid, .form_grid) > :is(label:has(+ * input[type='image']), *:has(> input[type='image'])) {
+  align-self: center;
 }
 
 form.inline {
