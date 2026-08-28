@@ -47,10 +47,13 @@ class DevControlsForm(Endpoint):
     return {name: v for name in self._fields if (v := getattr(fields, name))}
 
   def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    values = self._items(fields)
     main = Main(
       H1('Form Controls'),
-      posted_values_div(self._items(fields)),
-      controls_form(self._items(fields)))
+      Div(cl='controls-demo-layout', _=[
+        controls_form(values),
+        posted_values_div(values),
+      ]))
     return dev_page(title='Form Controls', main=main,
       breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/form', 'Form')])
 
@@ -86,7 +89,7 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
   _row('tel', Input(type='tel', name='tel', placeholder='+1-555-555-5555', **_v('tel')))
   _row('url', Input(type='url', name='url', placeholder='https://example.com', **_v('url')))
   _row('search', Input(type='search', name='search', placeholder='search...', **_v('search')))
-  _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4', cols='40',
+  _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4',
     _=vals.get('textarea', '')))
 
   _row('checkbox', Input(type='checkbox', name='checkbox', checked=Present('checkbox' in vals)))

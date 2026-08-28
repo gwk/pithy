@@ -16,3 +16,12 @@ body > header {
 body > nav a.current-nav-section-link {
   text-decoration: underline;
 }
+
+.controls-demo-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: var(--flow-gap);
+}
+
+.controls-demo-layout > .panel { margin-top: 1em; }

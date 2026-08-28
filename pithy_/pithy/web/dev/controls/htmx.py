@@ -20,8 +20,10 @@ class DevControlsHtmx(Endpoint):
   def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
     main = Main(
       H1('HTMX Controls'),
-      posted_values_div(),
-      controls_htmx())
+      Div(cl='controls-demo-layout', _=[
+        controls_htmx(),
+        posted_values_div(),
+      ]))
     return dev_page(title='HTMX Controls', main=main,
       breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/htmx', 'HTMX')])
 
@@ -101,7 +103,7 @@ def controls_htmx() -> Div:
   _row('tel', Input(type='tel', name='tel', placeholder='+1-555-555-5555', hx_trigger="change", hx_post=url, **_htmx_tags))
   _row('url', Input(type='url', name='url', placeholder='https://example.com', hx_trigger="change", hx_post=url, **_htmx_tags))
   _row('search', Input(type='search', name='search', placeholder='search', hx_trigger="change", hx_post=url, **_htmx_tags))
-  _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4', cols='40', hx_trigger="change", hx_post=url, **_htmx_tags))
+  _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4', hx_trigger="change", hx_post=url, **_htmx_tags))
 
   # Checkboxes must be wrapped in a <form> so HTMX uses form serialization, which omits the field when unchecked.
   # Without a form ancestor, HTMX reads input.value, which is always "on" regardless of checked state.
