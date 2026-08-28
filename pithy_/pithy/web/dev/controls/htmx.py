@@ -77,7 +77,8 @@ def controls_htmx() -> Div:
   outer = Div()
   div = outer.append(Div(cl='form_grid'))
   url = '/controls/htmx/update.htmx'
-  _htmx_tags:dict[str,Any] = {'hx_target': '#posted-values'}
+  # The update endpoint returns a complete replacement for the panel, so swap the element itself, not its contents.
+  _htmx_tags:dict[str,Any] = {'hx_target': '#posted-values', 'hx_swap': 'outerHTML'}
 
   def _row(label_text:str, *controls:MuChild) -> None:
     'Append a label and control(s) to the form grid.'
