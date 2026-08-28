@@ -128,10 +128,10 @@ class Response():
 
 
   def set_no_cache_headers(self) -> None:
-    'Should only be called for HEAD, GET, and POST responses.'
-    add_header_item(self.headers, 'Cache-Control', 'no-cache, no-store, must-revalidate')
-    add_header_item(self.headers, 'Pragma', 'no-cache')
-    add_header_item(self.headers, 'Expires', '0')
+    'Set response headers which prevent client caching.'
+    add_header_item(self.headers, 'cache-control', 'no-cache, no-store, must-revalidate')
+    add_header_item(self.headers, 'pragma', 'no-cache')
+    add_header_item(self.headers, 'expires', '0')
 
 
 

@@ -39,7 +39,7 @@ class ServerExceptionTestApp(WebApp):
 
 
 def serve() -> None:
-  server = WebServer(app=ServerExceptionTestApp(), config=ServerConfig(num_threads=1))
+  server = WebServer(app=ServerExceptionTestApp(), config=ServerConfig(num_threads=1, prevent_client_caching=True))
   server.serve_forever()
 
 
@@ -61,6 +61,8 @@ def test_server_exceptions() -> None:
     base_url = m.group(1)
 
     utest((500, 'Internal Server Error'), get_status_body, base_url, '/raise')
+    response = requests.get(f'{base_url}/ok', timeout=2)
+    utest('no-cache, no-store, must-revalidate', response.headers.get, 'cache-control')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
     # NotImplementedError: 501 with a fixed body that does not leak the exception message.
     utest((501, 'Not Implemented'), get_status_body, base_url, '/raise-not-implemented')

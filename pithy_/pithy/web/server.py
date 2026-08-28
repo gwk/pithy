@@ -192,6 +192,7 @@ class ServerConfig:
   num_threads: the number of worker threads in the thread pool.
   recv_size: the maximum number of bytes to receive at once from client connections.
   log_access: whether to log each request after it is handled.
+  prevent_client_caching: whether to prevent clients from caching responses.
   thread_name_prefix: the prefix for thread names of worker threads.
 
   Note: to read the actual port, use WebServer.port after initializing the server, since it may be dynamically assigned.
@@ -207,6 +208,7 @@ class ServerConfig:
   max_queued:int = 64
   thread_name_prefix:str = 'WebServer'
   log_access:bool = True
+  prevent_client_caching:bool = False
 
 
 type ConnQueueItem = tuple[Socket,AddrPair]
@@ -311,6 +313,7 @@ class WebServer:
       while event := conn.next_request():
         method = http_method_bytes_to_strs.get(event.method, '')
         response = self._handle_connection_cycle(conn, event, method)
+        if self.config.prevent_client_caching: response.set_no_cache_headers()
         self._send_response(conn, response=response, method=method)
         if not conn.recycle(): break
     except Exception as exc:
@@ -385,6 +388,7 @@ class WebServer:
       query_str=url.query,
       headers=headers,
       content_length=content_length,
+      prevent_client_caching=self.config.prevent_client_caching,
       conn=WebServerRequestConn(content_length=content_length, _conn=conn))
 
     try: # Outer: 500 server error; unhandled application error.
