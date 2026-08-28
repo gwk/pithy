@@ -177,16 +177,12 @@ details > :not(summary) { margin-inline-start: 1.5ch; } /* Align disclosed conte
 * { position: relative; }
 
 
-/* Scrollbars.
-Viewport units resolve against the initial containing block, and per CSS Values, when the root element's `overflow`
-is `auto` the scrollbars are assumed not to exist. So under the default `auto`, `100vw` is wider than the content
-area by the width of the scrollbar gutter, which is the usual cause of a page that scrolls sideways by ~15px.
-Setting `overflow-y: scroll` here both stops a centered layout from jittering as the scrollbar comes and goes,
-*and* takes the root out of `auto`, so that `vw` measures the content area. `.bleed` below depends on this.
-Percentage lengths never had the problem: they resolve against the parent, not the viewport.
-*/
-
-html { overflow-y: scroll; }
+/* Keep the vertical scrollbar gutter stable so centered layouts do not shift as the scrollbar comes and goes.
+The inline-size query container lets descendants use `cqw` to measure the root content box, excluding that gutter. */
+html {
+  container-type: inline-size;
+  overflow-y: scroll;
+}
 
 body {
   display: flex;
@@ -202,8 +198,7 @@ body {
 
 .body-child-page-bleed-bg {
   /* Full-width background, but content inset to align with `.body-child-page`.
-  The percentages resolve against the body content box, which excludes the scrollbar gutter unconditionally.
-  `50vw` also works here, but only because of the `html { overflow-y: scroll }` rule below; see "Scrollbars". */
+  The percentages resolve against the body content box, which excludes the scrollbar gutter. */
   width: 100%;
   padding-left: max(var(--page-padding), calc(var(--page-padding) + 50% - 0.5*var(--page-width)));
   padding-right: max(var(--page-padding), calc(var(--page-padding) + 50% - 0.5*var(--page-width)));
@@ -221,15 +216,15 @@ This is the counterpart to the `.body-child-*` classes above, for content that i
 typically a wide table sitting in `main`.
 
 The page column is left-aligned, so its content begins one `--page-padding` from the window edge. Cancel that inset
-and give the element the window width. `100vw` is the right measure here only because the root is
-`overflow-y: scroll`; see "Scrollbars" above.
+and give the element the width of the root content box. Unlike `vw`, `cqw` excludes the scrollbar gutter because
+the root is an inline-size query container.
 
 Only the inline-start margin is set, so this composes with the flow rule, which sets the block margin.
 Use a block wrapper so the viewport width defines a container for its content; for example, put a wide table inside
 a `.bleed` div rather than putting the class on the table itself. */
 
 .bleed {
-  width: 100vw;
+  width: 100cqw;
   margin-inline-start: calc(-1 * var(--page-padding));
   padding-inline: var(--page-padding);
 }
