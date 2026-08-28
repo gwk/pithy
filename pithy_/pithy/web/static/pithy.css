@@ -8,7 +8,7 @@
 * em: deliberately at component boundaries, e.g. button padding in em so the button scales as a unit its font-size changes.
   Beware of the compounding scaling as em values nest.
 * ch: for text measure. It is the advance width of the "0" glyph in the current font, so it is font-dependent.
-  It is good for capping text-column width (the readable-measure pattern, max-width: 65ch), but not very useful beyond that.
+  It is good for capping text-column width (the readable-measure pattern), but not very useful beyond that.
 * px for things that must stay constant: borders, hairlines, sometimes shadow offsets.
 */
 
@@ -60,6 +60,7 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   /* Type. */
   --font: system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --prose-width: 96ch;
 
   /* Spacing. See "Flow" below. */
   --flow-gap: 1rem; /* The vertical space between ordinary siblings. */
@@ -141,6 +142,8 @@ Normal block layout is preserved: a div still fills the width, and a table still
 .flow-loose { --flow-gap: 2rem; }
 
 /* Prose. */
+:is(p, blockquote, ul, ol, dl) { max-width: var(--prose-width); }
+
 ul, ol {
   padding-inline-start: 0;
   list-style-position: inside;
@@ -239,8 +242,7 @@ a `.bleed` div rather than putting the class on the table itself. */
 
 /* Top level blocks.
 The conventional page is `header`, `nav`, `main`, `footer` as direct children of `body`.
-The header, nav and footer blocks extend to the window edges with their content inset by the page padding.
-`main` is capped at the page width.
+All four blocks extend to the window edges with their content inset by the page padding.
 These defaults are written with `:where()`, giving them zero specificity,
 so any of the `.body-child-*` classes above still wins when an application wants a different arrangement.
 */
@@ -255,7 +257,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
 }
 
 :where(body > main) {
-  width: min(100%, var(--page-width));
+  width: 100%;
   padding-left: var(--page-padding);
   padding-right: var(--page-padding);
   padding-block: var(--flow-gap);
