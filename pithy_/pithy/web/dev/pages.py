@@ -2,7 +2,7 @@
 
 from typing import Iterable, Sequence
 
-from ...html import A, Footer, H1, Header, Html, Li, Main, Nav, Script, Ul
+from ...html import A, Footer, H1, H2, Header, Html, Li, Main, Nav, P, Script, Ul
 from ...path import path_dir, path_join
 from ..endpoint import Endpoint, NoFields
 from ..files import FilesHandler
@@ -74,7 +74,12 @@ class IndexHtml(Endpoint):
       if doc := endpoint.__doc__:
         text = ': ' + doc
       links.append(Li(A(href=path, _=path), text))
-    return dev_page(title='Index', main=Main(H1('Index'), Ul(_=links)))
+    main = Main(
+      H1(site_name),
+      P('A reference demo of the pithy.web stack.'),
+      H2('Pages'),
+      Ul(_=links))
+    return dev_page(title='Index', main=main)
 
 
 class PithyStaticFiles(FilesHandler):
