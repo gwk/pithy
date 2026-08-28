@@ -266,14 +266,11 @@ so any of the `.body-child-*` classes above still wins when an application wants
 
 :where(body > header) {
   padding-block: 0.5rem;
-  border-bottom-width: 1px;
   font-size: 1.125rem;
-  font-weight: 600;
 }
 
 :where(body > nav) {
   padding-block: 0.25rem;
-  border-bottom-width: 1px;
 }
 
 :where(body > footer) {
