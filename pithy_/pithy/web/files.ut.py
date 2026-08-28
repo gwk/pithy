@@ -34,13 +34,13 @@ def _() -> None:
     with open(f'{tmp}/a.txt', 'w') as f: f.write('hello')
 
     caching = FilesApp(local_dir=tmp)
-    utest_val(False, 'Cache-Control' in _serve(caching, '/a.txt').headers,
+    utest_val(False, 'cache-control' in _serve(caching, '/a.txt').headers,
       desc='default FilesApp does not set Cache-Control')
 
     no_caching = FilesApp(local_dir=tmp, prevent_client_caching=True)
     no_cache_headers = _serve(no_caching, '/a.txt').headers
-    utest_val(True, 'Cache-Control' in no_cache_headers, desc='prevent_client_caching sets Cache-Control')
-    utest_val(True, 'Pragma' in no_cache_headers, desc='prevent_client_caching sets Pragma')
+    utest_val(True, 'cache-control' in no_cache_headers, desc='prevent_client_caching sets Cache-Control')
+    utest_val(True, 'pragma' in no_cache_headers, desc='prevent_client_caching sets Pragma')
 
 
 @utest_run
@@ -149,6 +149,21 @@ def _() -> None:
     utest_val(False, 'etag' in _serve(app, '/a.txt').headers, desc='no etag when prevent_client_caching')
     utest_val(HTTPStatus.OK, _serve(app, '/a.txt', headers={'if-none-match': '"whatever"'}).status,
       desc='no 304 when prevent_client_caching')
+
+
+@utest_run
+def _() -> None:
+  'FilesApp: a request-scoped no-cache policy suppresses validators and 304s.'
+  with TemporaryDirectory() as tmp:
+    with open(f'{tmp}/a.txt', 'w') as f: f.write('hello')
+    app = FilesApp(local_dir=tmp)
+    request = _request('/a.txt', headers={'if-none-match':'"whatever"'})
+    request.prevent_client_caching = True
+    response = app.handle_request(request)
+    if isinstance(response.body, BufferedReader): response.body.close()
+    utest_val(HTTPStatus.OK, response.status)
+    utest_val('no-cache, no-store, must-revalidate', response.headers.get('cache-control'))
+    utest_val(False, 'etag' in response.headers)
 
 
 @utest_run

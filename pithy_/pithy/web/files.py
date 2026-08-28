@@ -93,7 +93,7 @@ class _FilesServing:
   def serve(self, request:Request, raw_path:str='') -> Response:
     'Serve content from the local file system, applying no-cache headers when configured.'
     response = self.serve_content_from_local_fs(request, raw_path=raw_path)
-    if self.prevent_client_caching: response.set_no_cache_headers()
+    if self.prevent_client_caching or request.prevent_client_caching: response.set_no_cache_headers()
     return response
 
 
@@ -128,7 +128,7 @@ class _FilesServing:
 
     assert isinstance(file, BufferedReader)
 
-    if self.prevent_client_caching:
+    if self.prevent_client_caching or request.prevent_client_caching:
       # No-store development mode: never emit validators or 304s, so the client always refetches.
       return self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
 

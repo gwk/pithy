@@ -52,7 +52,7 @@ class DevServerCmd(Cmd):
 
   @property
   def server_config(self) -> ServerConfig:
-    return ServerConfig(host='localhost', port=self.port)
+    return ServerConfig(host='localhost', port=self.port, prevent_client_caching=True)
 
 
   def serve(self, run:Callable[[ServerConfig],None], *, watch:Iterable[str|ModuleType]) -> None:

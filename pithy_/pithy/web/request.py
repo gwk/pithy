@@ -51,6 +51,7 @@ class Request:
     * Values may be comma-separated combinations of multiple header values in the original header line.
   * client_addr: Remote (host, port) of the connected client.
   * content_length: Content-Length header value; None if not present or using chunked transfer encoding.
+  * prevent_client_caching: whether handlers should avoid conditional or cacheable responses.
   * conn: RequestConn object for reading the request body. TODO: privatize.
   * ctx: an empty dictionary for applications to attach request state.
   * path_parts: URL path split into parts by '/', e.g. ['items', '42'] for path '/items/42' (cached property).
@@ -71,6 +72,7 @@ class Request:
   headers:dict[str,str]
   client_addr:AddrPair
   content_length:int|None
+  prevent_client_caching:bool = False
   conn:RequestConn|None = None
   ctx:dict[str,Any] = field(default_factory=dict)
 
