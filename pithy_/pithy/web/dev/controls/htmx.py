@@ -5,7 +5,7 @@
 import datetime as dt
 from typing import Any
 
-from ....html import A, Div, Form, H1, Input, Label, Li, Main, Ol, Select, Span, Strong, Sup, TextArea
+from ....html import A, Div, Form, H1, H2, Input, Label, Li, Main, Ol, P, Select, Span, Strong, Sup, TextArea
 from ....markup import MuChild
 from ...endpoint import Endpoint, NoFields
 from ...request import Request, UploadedFile
@@ -128,15 +128,12 @@ def controls_htmx() -> Div:
 
   _row('date', Input(type='date', name='date', hx_trigger='change', hx_post=url, **_htmx_tags))
   _row('time', Input(type='time', name='time', hx_trigger='change', hx_post=url, **_htmx_tags))
-  _row('datetime_local', Span(cl='flex-row gap-1ch',
-    _=[Input(type='datetime-local', name='datetime_local', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(3)]))
-  _row('month', Span(cl='flex-row gap-1ch', _=[Input(type='month', name='month', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(3)]))
-  _row('week', Span(cl='flex-row gap-1ch', _=[Input(type='week', name='week', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(3)]))
-
+  _row('datetime_local', Input(type='datetime-local', name='datetime_local', hx_trigger='change', hx_post=url, **_htmx_tags))
 
   _row('color', Input(type='color', name='color', hx_trigger='change', hx_post=url, **_htmx_tags))
 
-  _row('range', Input(type='range', name='range', min='0', max='10', hx_trigger='input', hx_post=url, **_htmx_tags))
+  _row('range', Span(cl='flex-row gap-1ch', _=[
+    '0', Input(type='range', name='range', min='0', max='10', hx_trigger='input', hx_post=url, **_htmx_tags), '10']))
 
 
   # HTMX reads .value off the triggering element, except when it finds a <form> ancestor,
@@ -148,6 +145,16 @@ def controls_htmx() -> Div:
     _=[Form(hx_encoding='multipart/form-data', hx_post=url, hx_trigger='change', **_htmx_tags,
       _=Input(type='file', name='file')), ftnt(4)]))
 
+  div.append(Div(cl='controls-section flow flow-tight', _=[
+    H2('Not portable across target browsers'),
+    P('These controls fall back to plain text fields in desktop Safari.'),
+  ]))
+  _row('month', Span(cl='flex-row gap-1ch',
+    _=[Input(type='month', name='month', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(3)]))
+  _row('week', Span(cl='flex-row gap-1ch',
+    _=[Input(type='week', name='week', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(3)]))
+  div.append(Div(cl='controls-section-end'))
+
   outer.append(Div(cl='flex-col font-small', _=['Notes:',
   Ol(
     Li(id='fn1', _='Checkboxes must be wrapped in a <form> so HTMX uses form serialization, which omits the field when'
@@ -155,7 +162,7 @@ def controls_htmx() -> Div:
     Li(id='fn2', _='Select-multiple inputs must be wrapped in a <form> so HTMX uses form serialization, which captures'
       ' all selected values. Without a form ancestor, HTMX reads input.value, which returns only the first selected'
       ' option rather than iterating input.selectedOptions.'),
-    Li(id='fn3', _='Desktop Safari falls back to a plain text field for datetime-local, month, and week input types.'
+    Li(id='fn3', _='Desktop Safari falls back to a plain text field for month and week input types.'
       ' Values entered in the text fallback are not validated by the browser.'),
     Li(id='fn4', _='File inputs must be wrapped in a <form> so HTMX uses the FormData API, which reads the actual file'
       ' bytes via input.files. Without a form ancestor, HTMX falls back to input.value, which is a fake path string.'),
