@@ -5,7 +5,7 @@
 from typing import Any
 
 from ....default import Default
-from ....html import Div, Form, H1, H2, Input, Label, Main, P, Select, Span, Strong, TextArea
+from ....html import Button, Div, Form, H1, H2, Input, Label, Main, P, Select, Span, Strong, TextArea
 from ....markup import MuChild, Present
 from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
@@ -111,7 +111,13 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
 
   _row('file', Input(type='file', name='file'))
 
-  _row('button', Input(type='button', value='Button'))
+  _row('button', Span(_=[
+    Input(type='button', value='Toggle popover', popovertarget='example-popover'),
+    Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
+      P('This popover uses native HTML without JavaScript.'),
+      Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
+    ]),
+  ]))
   _row('image', Span(Input(type='image', src='', alt='Submit image'), ' (A button with a custom image)'))
 
   form.append(Div(cl='controls-section flow flow-tight', _=[

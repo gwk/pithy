@@ -26,6 +26,16 @@ body > nav a.current-nav-section-link {
 
 .controls-demo-layout > .panel { margin-top: 1em; }
 
+.controls-demo-popover {
+  max-width: min(24rem, calc(100% - 2 * var(--page-padding)));
+  margin: auto;
+}
+
+.controls-demo-popover::backdrop {
+  background-color: rgb(0 0 0 / 0.15);
+  backdrop-filter: blur(3px);
+}
+
 .controls-section {
   grid-column: 1 / -1;
   width: 100%;
