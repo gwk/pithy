@@ -55,6 +55,7 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
 /* Root vars. Applications can override these to restyle. */
 :root {
   color-scheme: light; /* Opt out of automatic dark form controls; the palette below is light-only. */
+  accent-color: var(--accent);
 
   /* Type. */
   --font: system-ui, sans-serif;
