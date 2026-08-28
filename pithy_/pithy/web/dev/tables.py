@@ -29,7 +29,7 @@ rows = [
 
 def _table(wide:bool=False) -> Table:
   'Return a demo table. If `wide`, add a column that is too wide to fit the page column.'
-  head = [Th('Animal'), Th('Count', cl='num'), Th('Weight (kg)', cl='num'), Th('Nocturnal'),
+  head = [Th('Animal'), Th('Count', cl='num'), Th('Weight (kg)', cl='num nowrap'), Th('Nocturnal'),
     Th('Described', cl='isodate'), Th('Last fed', cl='isodate'), Th('Wakes at', cl='nowrap')]
   if wide: head.append(Th('Description', cl='nowrap'))
   table = Table()
