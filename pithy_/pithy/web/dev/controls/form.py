@@ -3,6 +3,7 @@
 'Developer reference page demonstrating all standard HTML form controls using traditional forms.'
 
 from typing import Any
+from urllib.parse import quote
 
 from ....default import Default
 from ....html import Button, Div, Form, H1, H2, Input, Label, Main, P, Select, Span, Strong, TextArea
@@ -11,6 +12,13 @@ from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
 from ...response import Response
 from ..pages import dev_page
+
+
+image_button_svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32" viewBox="0 0 64 32">
+  <rect width="64" height="32" rx="3" fill="black"/>
+  <path d="M8 16h48M32 4v24" fill="none" stroke="#39ff14" stroke-width="2"/>
+</svg>'''
+image_button_src = f'data:image/svg+xml,{quote(image_button_svg)}'
 
 
 class DevControlsForm(Endpoint):
@@ -37,6 +45,8 @@ class DevControlsForm(Endpoint):
     color: str | None
     range: str | None
     submit: str | None
+    x: str | None
+    y: str | None
     week: str | None
     month: str | None
     datetime_local: str | None
@@ -118,7 +128,10 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
       Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
     ]),
   ]))
-  _row('image', Span(Input(type='image', src='', alt='Submit image'), ' (A button with a custom image)'))
+  _row('image', Span(cl='flex-row gap-1ch align-items-center', _=[
+    Input(type='image', src=image_button_src, alt='Submit with image'),
+    Span(cl='font-small', _='(Submits click coordinates)'),
+  ]))
 
   form.append(Div(cl='controls-section flow flow-tight', _=[
     H2('Not portable across target browsers'),
