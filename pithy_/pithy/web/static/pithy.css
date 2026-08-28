@@ -434,11 +434,11 @@ a.button, button, input[type='button'], input[type='reset'], input[type='submit'
   vertical-align: baseline;
 }
 
-:where(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):hover {
+:is(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):hover {
   background-color: var(--bg-sunken);
 }
 
-:where(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):active {
+:is(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):active {
   background-color: color-mix(in srgb, var(--bg-sunken) 92%, var(--fg));
 }
 

@@ -5,7 +5,7 @@
 import datetime as dt
 from typing import Any
 
-from ....html import A, Div, Form, H1, H2, Input, Label, Li, Main, Ol, P, Select, Span, Strong, Sup, TextArea
+from ....html import A, Button, Div, Form, H1, H2, Input, Label, Li, Main, Ol, P, Select, Span, Strong, Sup, TextArea
 from ....markup import MuChild
 from ...endpoint import Endpoint, NoFields
 from ...request import Request, UploadedFile
@@ -144,6 +144,14 @@ def controls_htmx() -> Div:
   _row('file', Span(cl='flex-row gap-1ch',
     _=[Form(hx_encoding='multipart/form-data', hx_post=url, hx_trigger='change', **_htmx_tags,
       _=Input(type='file', name='file')), ftnt(4)]))
+
+  _row('button', Span(_=[
+    Input(type='button', value='Toggle popover', popovertarget='example-popover'),
+    Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
+      P('This popover uses native HTML without JavaScript.'),
+      Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
+    ]),
+  ]))
 
   div.append(Div(cl='controls-section flow flow-tight', _=[
     H2('Not portable across target browsers'),
