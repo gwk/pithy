@@ -226,6 +226,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
 
 :where(body > header, body > nav, body > footer) {
   width: 100%;
+  flex-shrink: 0; /* Preserve chrome padding when a tall main overflows the body's initial viewport height. */
   padding-left: var(--page-padding);
   padding-right: var(--page-padding);
   background-color: var(--bg-sunken);
@@ -266,7 +267,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 1.5ch;
+  gap: 1ch;
   align-items: baseline;
 }
 
@@ -276,6 +277,9 @@ so any of the `.body-child-*` classes above still wins when an application wants
   padding: 0.125rem 0.5ch;
   border-radius: 3px;
 }
+
+/* Cancel the first link's padding without shifting or widening the full-width nav itself. */
+.navbar a:first-child { margin-inline-start: -0.5ch; }
 
 .navbar a:hover { background-color: var(--bg-raised); }
 
