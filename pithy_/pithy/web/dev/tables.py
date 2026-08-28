@@ -90,6 +90,7 @@ class DevTables(Endpoint):
           ' gives a table that uses the whole window and scrolls only when even that is not enough.'),
         Div(cl='bleed overflow-x-auto', _=_table(wide=True).caption('Animals, full bleed')),
       ]),
+
     )
     return dev_page(title='Tables', main=main,
       breadcrumbs=[('/', 'Home'), ('/tables', 'Tables')])

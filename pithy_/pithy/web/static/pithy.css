@@ -327,6 +327,10 @@ so any of the `.body-child-*` classes above still wins when an application wants
 
 .overflow-x-scroll { overflow-x: scroll; }
 
+/* Wrap content that cannot be made narrower, such as a wide table, so that it scrolls instead of
+widening the page. There is no way to do this from the stylesheet alone: the wrapper has to be in the markup. */
+.overflow-x-auto { overflow-x: auto; max-width: 100%; }
+
 .table-auto { table-layout: auto; }
 .table-fixed { table-layout: fixed; }
 
