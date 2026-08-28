@@ -36,6 +36,9 @@ body > nav a.current-nav-section-link {
   backdrop-filter: blur(3px);
 }
 
+.footnote-ref a { text-decoration: none; }
+.footnote-ref a:hover { text-decoration: underline; }
+
 .controls-section {
   grid-column: 1 / -1;
   width: 100%;

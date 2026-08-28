@@ -94,7 +94,7 @@ def controls_htmx() -> Div:
 
   def ftnt(i:int) -> Sup:
     'Footnote link.'
-    return Sup(_=['[', A(href=f'#fn{i}', _=i), ']'])
+    return Sup(cl='footnote-ref', _=A(href=f'#fn{i}', _=f'[{i}]'))
 
   _row('text', Input(type='text', name='text', placeholder='text input', hx_trigger="change", hx_post=url, **_htmx_tags))
   _row('email', Input(type='email', name='email', placeholder='user@example.com', hx_trigger="change", hx_post=url, **_htmx_tags))
