@@ -121,12 +121,10 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
 
   _row('file', Input(type='file', name='file'))
 
-  _row('button', Span(_=[
-    Input(type='button', value='Toggle popover', popovertarget='example-popover'),
-    Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
-      P('This popover uses native HTML without JavaScript.'),
-      Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
-    ]),
+  _row('button', Input(type='button', value='Toggle popover', popovertarget='example-popover'))
+  form.append(Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
+    P('This popover uses native HTML without JavaScript.'),
+    Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
   ]))
   _row('image', Span(cl='flex-row gap-1ch align-items-center', _=[
     Input(type='image', src=image_button_src, alt='Submit with image'),

@@ -107,9 +107,8 @@ def controls_htmx() -> Div:
 
   # Checkboxes must be wrapped in a <form> so HTMX uses form serialization, which omits the field when unchecked.
   # Without a form ancestor, HTMX reads input.value, which is always "on" regardless of checked state.
-  _row('checkbox', Span(cl='flex-row gap-1ch',
-    _=[Form(hx_post=url, hx_trigger='change', **_htmx_tags,
-      _=Input(type='checkbox', name='checkbox')), ftnt(1)]))
+  _row('checkbox', Form(cl='flex-row gap-1ch', hx_post=url, hx_trigger='change', **_htmx_tags,
+    _=[Input(type='checkbox', name='checkbox'), ftnt(1)]))
 
   _row('radio', Span(cl='flex-row gap-1ch',
     _=[
@@ -122,9 +121,8 @@ def controls_htmx() -> Div:
 
   # Select-multiple inputs must be wrapped in a <form> so HTMX uses form serialization, which captures all selected values.
   # Without a form ancestor, HTMX reads input.value, which returns only the first selected option rather than iterating input.selectedOptions.
-  _row('select multiple', Span(cl='flex-row gap-1ch',
-    _=[Form(hx_post=url, hx_trigger='change delay:500ms', **_htmx_tags,
-      _=Select(name='select_multiple', multiple='').options(['Option A', 'Option B', 'Option C'])), ftnt(2)]))
+  _row('select multiple', Form(cl='flex-row gap-1ch', hx_post=url, hx_trigger='change delay:500ms', **_htmx_tags,
+    _=[Select(name='select_multiple', multiple='').options(['Option A', 'Option B', 'Option C']), ftnt(2)]))
 
   _row('date', Input(type='date', name='date', hx_trigger='change', hx_post=url, **_htmx_tags))
   _row('time', Input(type='time', name='time', hx_trigger='change', hx_post=url, **_htmx_tags))
@@ -141,16 +139,13 @@ def controls_htmx() -> Div:
   #
   # File inputs must be wrapped in a <form> because only FormData reads input.files (the actual
   # binary file handle); without it, HTMX falls back to input.value, which is just a fake path string.
-  _row('file', Span(cl='flex-row gap-1ch',
-    _=[Form(hx_encoding='multipart/form-data', hx_post=url, hx_trigger='change', **_htmx_tags,
-      _=Input(type='file', name='file')), ftnt(4)]))
+  _row('file', Form(cl='flex-row gap-1ch', hx_encoding='multipart/form-data', hx_post=url, hx_trigger='change', **_htmx_tags,
+    _=[Input(type='file', name='file'), ftnt(4)]))
 
-  _row('button', Span(_=[
-    Input(type='button', value='Toggle popover', popovertarget='example-popover'),
-    Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
-      P('This popover uses native HTML without JavaScript.'),
-      Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
-    ]),
+  _row('button', Input(type='button', value='Toggle popover', popovertarget='example-popover'))
+  div.append(Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
+    P('This popover uses native HTML without JavaScript.'),
+    Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
   ]))
 
   div.append(Div(cl='controls-section flow flow-tight', _=[
