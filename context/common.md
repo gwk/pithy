@@ -18,6 +18,8 @@ so if unreleated changes are lying around it is often an oversight worth mention
 Do not commit unless instructed to do so. Never push or pull work unless explicitly told.
 If you are asked to commit and are currently on `main`, you can make a new branch at your discretion.
 Committing is not "shipping"; the commits will be reviewed and possibly reworked or squashed.
+Err on the side of separating work into smaller commits; they should represent one conceptual step forward.
+It is much easier to squash commits together than split them apart, and smaller commits are more amenable to reordering.
 
 When writing commit messages:
 * Be concise. Do not write elaborate parentheticals.
@@ -27,7 +29,7 @@ When writing commit messages:
   * The dot prefix is a convention to be respected for single package repos!
   * Do not write '.: ' for something pertaining to the top level; use a sensible description (colon is not mandatory).
 * If you are instead referring to a directory (e.g. for docs or non-python changes), use a slash, e.g. 'docs/: ...'
-* The first (summary) line should end with a period.
+* End the first (summary) line with a period.
 * As with markdown, do not insert hard wrap newlines in the commit message body; viewers can softwrap.
 * Feel free to put newlines after sentences, semicolons and colons when the lines get long though.
 
