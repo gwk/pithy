@@ -19,11 +19,22 @@ const log = console.log;
  */
 function _configurePithy() {
   _configureWindow();
+  _configureSafariDateInputs();
   _configureHtmx();
   for (const thead of document.querySelectorAll('table thead')) {
     makeElementSelectTableContentsOnDoubleClick(thead);
   }
   _configureCollapsibleTables(document);
+}
+
+
+/** Make Safari date inputs open their picker when clicked, matching Chrome's calendar affordance. */
+function _configureSafariDateInputs() {
+  if (!document.documentElement.classList.contains('safari')) return;
+  document.addEventListener('click', event => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.type === 'date' && !target.readOnly) target.showPicker();
+  });
 }
 
 
