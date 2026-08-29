@@ -9,15 +9,15 @@ src_dir=$(dirname $0)
 cd "$src_dir"
 
 machine_arch=$(uname -m)
-vector_version='0.57.0'
+vector_version='0.58.0'
 
 case "${machine_arch}" in
-  "x86_64"|"amd64")
-    vector_arch="x86_64"
-    vector_sha256='4d156e6859e235b366f5b77121ae59d5440c93acab215c45f30f3fc839d20f65' ;;
   "aarch64"|"arm64")
     vector_arch="aarch64"
-    vector_sha256='6290f6fae406b61272cdf849e9cc9fa015761efbb592d2359d86ec4345d10aa3' ;;
+    vector_sha256='06d9f9768feb0cb5c7cdfc12e0b737b22f1220967f5455f391a395361b5799e5' ;;
+  "x86_64"|"amd64")
+    vector_arch="x86_64"
+    vector_sha256='a4634bea859a7ad7064ff3dd6f6ad7eb0e8dd4493cc41657d84da8dd66f09d09' ;;
   *)
     fail "Unsupported architecture: ${machine_arch}" ;;
 esac
