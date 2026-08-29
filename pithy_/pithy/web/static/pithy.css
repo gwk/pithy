@@ -540,7 +540,11 @@ select, textarea {
   width: min(100%, 24rem);
 }
 
-select { appearance: auto; } /* Keep the drop-down indicator. */
+select {
+  appearance: auto; /* Keep the drop-down indicator. */
+  width: auto;
+  max-width: 100%;
+}
 
 textarea { padding: 0.25em; }
 
