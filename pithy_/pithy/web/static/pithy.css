@@ -190,7 +190,10 @@ html {
 body {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  /* Let wide content establish the document width so sibling root blocks extend behind horizontal overflow.
+  Unlike `max-content`, `fit-content` still wraps ordinary text when it can fit within the window. */
+  width: fit-content;
+  min-width: 100%;
 }
 
 .body-child-full {
@@ -302,6 +305,13 @@ so any of the `.body-child-*` classes above still wins when an application wants
 .navbar a:first-child { margin-inline-start: -0.5ch; }
 
 .navbar a:hover { background-color: var(--bg-raised); }
+
+/* Push a nav item to the inline end and keep it visible when wide body content makes the document scroll horizontally. */
+.nav-end {
+  margin-inline-start: auto;
+  position: sticky;
+  inset-inline-end: var(--page-padding);
+}
 
 
 /* Utility classes. */
