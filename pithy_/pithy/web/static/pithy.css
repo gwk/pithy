@@ -668,7 +668,7 @@ table.collapsible.collapsed :is(tbody, thead, tfoot) {
 
 /* Emoji icons. */
 
-.icon {
+.icon, .icon.button {
   font-family: 'Noto Emoji';
 }
 
