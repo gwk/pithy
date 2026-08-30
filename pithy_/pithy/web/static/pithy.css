@@ -542,7 +542,7 @@ select, textarea {
 
 select {
   appearance: auto; /* Keep the drop-down indicator. */
-  width: auto;
+  width: fit-content; /* Retain intrinsic width when the select is a stretched grid or flex item. */
   max-width: 100%;
 }
 
