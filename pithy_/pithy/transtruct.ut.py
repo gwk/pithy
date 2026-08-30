@@ -7,6 +7,7 @@ from datetime import date, datetime, time
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 from pithy.frozendicts import frozendict
+from pithy.secrets import SecretStr
 from pithy.transtruct import Transtructor, TranstructorError
 from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 from utest import utest, utest_exc, utest_val
@@ -146,6 +147,25 @@ utest_val(["note: value for key 'a' of dict[str, int]"], _locus_notes(dict[str,i
 # Annotated class fields note the field name for mapping input, or the argument index and field name for positional input.
 utest_val([f"note: field 'a' of {DC1}"], _locus_notes(DC1, {'a': 'x', 'b': 'b'}), desc='class mapping field note')
 utest_val([f"note: argument 0 (field 'a') of {DC1}"], _locus_notes(DC1, ['x', 'b']), desc='class positional field note')
+
+
+@dataclass
+class SecretContainer:
+  secret:SecretStr
+  count:int
+
+
+def _failure_text(desired:Any, val:Any) -> str:
+  try: ttor.transtruct(desired, val)
+  except Exception as e:
+    return '\n'.join((str(e), *getattr(e, '__notes__', ())))
+  return '<no exception>'
+
+
+secret_failure_text = _failure_text(SecretContainer, {'secret': 'actual-secret', 'count': 'invalid'})
+utest_val(False, 'actual-secret' in secret_failure_text, desc='raw secret absent from failure')
+utest_val(True, '<redacted>' in secret_failure_text, desc='secret redaction marker present in failure')
+utest_val(True, "'count': 'invalid'" in secret_failure_text, desc='ordinary input remains visible in failure')
 
 
 utest(0, ttor.transtruct, int|str|None, 0)

@@ -14,6 +14,7 @@ from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Li
 from typing_extensions import TypeForm  # TODO: import from typing once we require Python 3.15.
 
 from .frozendicts import frozendict
+from .secrets import SecretBytes, SecretStr
 from .type_utils import is_dataclass_instance, is_namedtuple, is_type_namedtuple, normalize_type_form
 
 
@@ -34,7 +35,7 @@ def _cache[**P, R](fn:Callable[P,R]) -> Callable[P,R]:
 class TranstructorError(Exception):
 
   def __init__(self, error:Exception|str, class_:TypeForm[Any], args:Any):
-    super().__init__(f'{error};\n  class: {class_};\n  args: {args!r}')
+    super().__init__(f'{error};\n  class: {class_};\n  args: {_limited_repr(args, class_)}')
 
 
 
@@ -339,11 +340,11 @@ class Transtructor:
           for k, v in items:
             try: tk = key_ctor(k, ctx)
             except Exception as e:
-              e.add_note(f'note: key {_limited_repr(k)} of {desired_type}')
+              e.add_note(f'note: key {_limited_repr(k, key_type)} of {desired_type}')
               raise
             try: tv = val_ctor(v, ctx)
             except Exception as e:
-              e.add_note(f'note: value for key {_limited_repr(k)} of {desired_type}')
+              e.add_note(f'note: value for key {_limited_repr(k, key_type)} of {desired_type}')
               raise
             yield tk, tv
 
@@ -651,14 +652,56 @@ def try_transtruct[D](tf:TranstructFn[D], desired_type:TypeForm[Any]) -> Transtr
   def _try_transtruct(v:Input, ctx:Ctx) -> D:
     try: return tf(v, ctx)
     except Exception as e:
-      e.add_note(f'note: {tf_name}: desired: {desired_type}; input: {_limited_repr(v)}')
+      e.add_note(f'note: {tf_name}: desired: {desired_type}; input: {_limited_repr(v, desired_type)}')
       raise
   return _try_transtruct
 
 
-def _limited_repr(v:Any) -> str:
+redacted_types:frozenset[type] = frozenset((SecretBytes, SecretStr))
+
+
+class _Redacted:
+  def __repr__(self) -> str: return '<redacted>'
+
+
+_redacted = _Redacted()
+
+
+def _redact_input(v:Any, desired_type:TypeForm[Any]) -> Any:
+  if isinstance(desired_type, type) and desired_type in redacted_types: return _redacted
+
+  origin = get_origin(desired_type)
+  type_args = get_args(desired_type)
+  if origin is Union:
+    if any(_type_contains_redacted(t) for t in type_args): return _redacted
+  elif isinstance(origin, type):
+    if issubclass(origin, Mapping) and len(type_args) == 2 and isinstance(v, Mapping):
+      key_type, val_type = type_args
+      return {_redact_input(k, key_type): _redact_input(val, val_type) for k, val in v.items()}
+    if issubclass(origin, tuple) and type_args and isinstance(v, tuple):
+      if len(type_args) == 2 and type_args[1] is Ellipsis:
+        return tuple(_redact_input(el, type_args[0]) for el in v)
+      return tuple(_redact_input(el, el_type) for el, el_type in zip(v, type_args))
+    if type_args and isinstance(v, (list, set)):
+      el_type = type_args[0]
+      return type(v)(_redact_input(el, el_type) for el in v)
+
+  if isinstance(desired_type, type) and isinstance(v, Mapping):
+    try: annotations = get_type_hints(desired_type)
+    except (NameError, TypeError): return v
+    return {k: _redact_input(val, annotations.get(k, Any)) for k, val in v.items()}
+  if _type_contains_redacted(desired_type): return _redacted
+  return v
+
+
+def _type_contains_redacted(type_:TypeForm[Any]) -> bool:
+  if isinstance(type_, type) and type_ in redacted_types: return True
+  return any(_type_contains_redacted(arg) for arg in get_args(type_) if arg is not Ellipsis)
+
+
+def _limited_repr(v:Any, desired_type:TypeForm[Any]) -> str:
   'Return the repr of `v`, truncated to 100 characters.'
-  desc = repr(v)
+  desc = repr(_redact_input(v, desired_type))
   if len(desc) >= 100: desc = f'{desc[:99]}…'
   return desc
 
