@@ -16,6 +16,7 @@ def _() -> None:
 
   utest(('name', 'str', False, '', ''), parse_attrs, '{name}')
   utest(('n', 'nat', False, '', ''), parse_attrs, '{n:nat}')
+  utest(('id', 'pos_int', False, '', ''), parse_attrs, '{id:pos_int}')
   utest(('id', 'int', False, '', ''), parse_attrs, '{id:int}')
   utest(('h', 'hex', False, '', ''), parse_attrs, '{h:hex}')
   utest(('d', 'date', False, '', ''), parse_attrs, '{d:date}')
@@ -43,6 +44,13 @@ def _() -> None:
   utest(42, match_comp, '{n:nat}', '42')
   utest(None, match_comp, '{n:nat}', '-1')
   utest(None, match_comp, '{n:nat}', 'abc')
+
+  # pos_int.
+  utest(1, match_comp, '{id:pos_int}', '1')
+  utest(42, match_comp, '{id:pos_int}', '42')
+  utest(None, match_comp, '{id:pos_int}', '0')
+  utest(None, match_comp, '{id:pos_int}', '-1')
+  utest(None, match_comp, '{id:pos_int}', 'abc')
 
   # int.
   utest(42, match_comp, '{id:int}', '42')
@@ -130,6 +138,20 @@ def _() -> None:
   utest(('page', {'n': 42}), tree.get, '/pages/42')
   utest(None, tree.get, '/pages/-1')
   utest(None, tree.get, '/pages/abc')
+
+
+@utest_run
+def _() -> None:
+  'RouteTree: pos_int pattern.'
+  tree:RouteTree[str] = RouteTree()
+  tree.insert('/items/{id:pos_int}', 'item')
+  tree.finalize()
+
+  utest(('item', {'id': 1}), tree.get, '/items/1')
+  utest(('item', {'id': 42}), tree.get, '/items/42')
+  utest(None, tree.get, '/items/0')
+  utest(None, tree.get, '/items/-1')
+  utest(None, tree.get, '/items/abc')
 
 
 @utest_run
