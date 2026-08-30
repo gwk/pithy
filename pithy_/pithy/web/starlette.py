@@ -186,6 +186,26 @@ def req_path_int(conn:HTTPConnection, key:str) -> int:
   except ValueError as e: raise HTTPException(400, f'Path parameter must be an integer: {key}') from e
 
 
+def req_path_nat(conn:HTTPConnection, key:str) -> int:
+  '''
+  Get a natural number (a non-negative integer) from a path parameter.
+  If the key is not present or the value is not a natural number, raise a 400 exception.
+  '''
+  val = req_path_int(conn, key)
+  if val < 0: raise HTTPException(400, f'Path parameter must be a natural number: {key}')
+  return val
+
+
+def req_path_pos_int(conn:HTTPConnection, key:str) -> int:
+  '''
+  Get a positive integer from a path parameter.
+  If the key is not present or the value is not a positive integer, raise a 400 exception.
+  '''
+  val = req_path_int(conn, key)
+  if val <= 0: raise HTTPException(400, f'Path parameter must be a positive integer: {key}')
+  return val
+
+
 # Form parameter access.
 
 def form_dict(form_data:FormData, valid_keys:Iterable[str]=()) -> dict[str,str]:
