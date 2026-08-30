@@ -6,19 +6,20 @@ from re import Pattern
 from typing import Any, Callable, cast, Generic, get_args, Literal, Self, TypeVar
 
 
-ConverterKind = Literal['nat', 'int', 'hex', 'date', 'str', 'path']
+ConverterKind = Literal['nat', 'pos_int', 'int', 'hex', 'date', 'str', 'path']
 converter_kinds = frozenset(get_args(ConverterKind))
 
 _str_chars_pattern_ctor:tuple[frozenset[str],Pattern,Callable[[str],Any]] = (frozenset(), re.compile(r'.+'), str)
 #^ Empty chars implies all characters are allowed.
 
 converter_kind_attrs:dict[ConverterKind,tuple[frozenset[str],Pattern,Callable[[str],Any]]] = {
-  'nat':  (frozenset('0123456789'), re.compile(r'[0-9]+'), int),
-  'int':  (frozenset('+-0123456789'), re.compile(r'[+-]?[0-9]+'), int),
-  'hex':  (frozenset('0123456789abcdefABCDEF'), re.compile(r'[0-9a-fA-F]+'), str),
-  'date': (frozenset('-0123456789'), re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}'), date.fromisoformat),
-  'str':  _str_chars_pattern_ctor,
-  'path': _str_chars_pattern_ctor,
+  'nat':     (frozenset('0123456789'), re.compile(r'[0-9]+'), int),
+  'pos_int': (frozenset('0123456789'), re.compile(r'[1-9][0-9]*'), int),
+  'int':     (frozenset('+-0123456789'), re.compile(r'[+-]?[0-9]+'), int),
+  'hex':     (frozenset('0123456789abcdefABCDEF'), re.compile(r'[0-9a-fA-F]+'), str),
+  'date':    (frozenset('-0123456789'), re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}'), date.fromisoformat),
+  'str':     _str_chars_pattern_ctor,
+  'path':    _str_chars_pattern_ctor,
 }
 
 
