@@ -24,7 +24,7 @@ def main() -> None:
   for path in paths:
     print(path)
     exe_path = path_rel_to_dir(path, utest_cwd)
-    c = runC(['python3', exe_path], cwd=utest_cwd, env=env)
+    c = runC(['python3', '-P', exe_path], cwd=utest_cwd, env=env)
     if c != 0:
       ok = False
       print()
