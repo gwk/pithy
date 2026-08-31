@@ -29,19 +29,43 @@ The grammar is deliberately rigid, so that dispatch to subcommands is never ambi
 Short option clustering, such as interpreting `-xvf` as `-x -v -f`, is deliberately not supported.
 Because multi-character single-dash option names are first-class, `-xvf` always names one option.
 This explicit tradeoff removes ambiguity and keeps the parser implementation simple.
+
+# Zsh completion
+
+`Cmd.parse_or_exit` and `Cmd.main` supports dynamic zsh completion, selected by the `PITHY_CMDPARSE_MODE` environment variable.
+`PITHY_CMDPARSE_MODE=print-zsh-completion prog` prints a completion script for the executable `prog`.
+
+To use completions, `zsh/pithy-cmdparse-completion.zsh` must be sourced in `~/.zshrc`.
+
+For completion of `python -m module` invocations, source `zsh/pithy-cmdparse-module-completion.zsh` as well
+and register modules with `pithy_cmdparse_module_completion <module_names> ...`.
+
+Program completion scripts should be placed somewhere on the zsh fpath, typically `~/.zfunc`.
+If this not on the fpath, add `fpath=(~/.zfunc $fpath)` to `~/.zshrc` before `compinit` runs.
+
+For a given cmdparse based python program `prog`, emit the script as `_prog` into ~/.zfunc:
+  emit-cmdparse-completion prog
+
+This helper is defined in the sourced zsh file and is equivalent to:
+  PITHY_CMDPARSE_MODE=print-zsh-completion prog > ~/.zfunc/_prog
+
+The generated scripts call `_pithy_cmdparse_complete_request`.
+
+Then start a new shell; if completion does not immediately work, delete compinit's `~/.zcompdump` cache file.
 '''
 
 import re
 from dataclasses import dataclass, field, Field, fields, MISSING
-from pathlib import Path
+from os import environ
+from os.path import basename
 from sys import argv as sys_argv, exit as sys_exit, stderr
 from textwrap import dedent
 from types import NoneType, UnionType
-from typing import (Any, Callable, cast, ClassVar, dataclass_transform, get_args, get_origin, get_type_hints, Literal, Self,
-  Sequence, Union)
+from typing import (Annotated, Any, Callable, cast, ClassVar, dataclass_transform, get_args, get_origin, get_type_hints,
+  Literal, Self, Sequence, Union)
 
 from . import ansi
-from .type_utils import normalize_type_form
+from .type_utils import normalize_type_form, unwrap_type_alias
 
 
 _arg_key = 'pithy.cmdparse' # Key under which an ArgSpec is stored in dataclass field metadata.
@@ -54,7 +78,6 @@ class CmdDeclError(Exception):
   'A command class is malformed. This indicates a programming error, not bad user input.'
 
 
-
 class CmdError(Exception):
   'The command line arguments are invalid.'
 
@@ -65,7 +88,6 @@ class CmdError(Exception):
     self.prog = prog
 
 
-
 class CmdHelp(Exception):
   'Help was requested for the command that is being parsed.'
 
@@ -74,13 +96,19 @@ class CmdHelp(Exception):
     self.cmd = cmd
     self.prog = prog
 
-
   @property
   def text(self) -> str: return format_help(self.cmd, self.prog)
 
 
 
 type ArgKind = Literal['pos','remainder','opt','flag','sub','group']
+type CmdMode = Literal['parse','complete']
+
+
+class _PathCompletion: pass
+
+
+type Path = Annotated[str, _PathCompletion]
 
 
 @dataclass(frozen=True)
@@ -92,7 +120,6 @@ class ArgSpec:
   parse:Callable[[str],Any]|None = None
   metavar:str = ''
   prefix:str = ''
-
 
 
 def _spec_field(spec:ArgSpec, default:Any, default_factory:Any) -> Any:
@@ -108,6 +135,7 @@ def pos(*, default:Any=MISSING, default_factory:Any=MISSING, doc:str='', parse:C
   Declare a positional argument.
   A `list[T]` field is variadic; it consumes all remaining bare tokens and must be declared last.
   A field with no default is required.
+  Use the `Path` annotation for path completion while retaining a parsed `str` value.
   '''
   return _spec_field(ArgSpec('pos', doc=doc, parse=parse, metavar=metavar), default, default_factory)
 
@@ -120,6 +148,7 @@ def remainder(*, default_factory:Any=list, doc:str='', parse:Callable[[str],Any]
   Capture begins at the first token that is not a declared option; If a `--` separator is encountered, it is consumed.
   To pass a literal leading `--` through to the remainder, write it twice.
   An empty remainder defaults to an empty list.
+  Use the `Path` annotation for path completion while retaining parsed `str` values.
   '''
   return _spec_field(ArgSpec('remainder', doc=doc, parse=parse, metavar=metavar), MISSING, default_factory)
 
@@ -131,6 +160,7 @@ def opt(*flags:str, default:Any=MISSING, default_factory:Any=MISSING, doc:str=''
   `flags` defaults to the single-dash name derived from the field name.
   Pass one or more single-dash names to declare aliases; abbreviated names such as `-f` are never inferred.
   A `list[T]` field accumulates one value per occurrence; otherwise repeating the option is an error.
+  Use the `Path` annotation for path completion while retaining a parsed `str` value.
   '''
   return _spec_field(ArgSpec('opt', flags=flags, doc=doc, parse=parse, metavar=metavar), default, default_factory)
 
@@ -174,15 +204,13 @@ class Entry:
   has_default:bool
   flags:tuple[str,...]
   metavar:str
-
+  is_path:bool
 
   @property
   def name(self) -> str: return self.path[-1]
 
-
   @property
   def label(self) -> str: return self.flags[0] if self.flags else self.metavar
-
 
 
 @dataclass
@@ -198,6 +226,38 @@ class CmdSchema:
   sub_has_default:bool
 
 
+type CompletionGroup = Literal['commands','options','values']
+
+
+@dataclass(frozen=True)
+class Completion:
+  'A completion candidate, its description, and the display group it belongs to.'
+  value:str
+  doc:str = ''
+  group:CompletionGroup = 'values'
+
+
+@dataclass(frozen=True)
+class CompletionResult:
+  'Completion candidates for a partial command line, with an optional request for native path completion.'
+  candidates:tuple[Completion,...] = ()
+  path_prefix:str|None = None
+
+
+@dataclass
+class _WalkState:
+  'The mutable grammar state shared by parsing and completion.'
+  cmd:'type[Cmd]'
+  prog:str
+  schema:CmdSchema
+  mode:CmdMode
+  values:dict[tuple[str,...],Any]
+  seen:set[tuple[str,...]]
+  pos_idx:int = 0
+  end_opts:bool = False
+  pending_opt:Entry|None = None
+  remainder:Entry|None = None
+
 
 _bool_words = {'true':True, 'false':False, 'yes':True, 'no':False, '1':True, '0':False}
 
@@ -207,7 +267,18 @@ def _parse_bool(s:str) -> bool:
   except KeyError: raise ValueError(f'expected one of {sorted(_bool_words)}') from None
 
 
-_converters:dict[Any,Callable[[str],Any]] = {str:str, int:int, float:float, bool:_parse_bool, Path:Path}
+_converters:dict[Any,Callable[[str],Any]] = {str:str, int:int, float:float, bool:_parse_bool}
+
+
+def _has_path_annotation(T:Any) -> bool:
+  T = unwrap_type_alias(T)
+  origin = get_origin(T)
+  if origin is Annotated:
+    args = get_args(T)
+    return _PathCompletion in args[1:] or _has_path_annotation(args[0])
+  if origin is list or isinstance(T, UnionType) or origin is Union:
+    return any(_has_path_annotation(arg) for arg in get_args(T) if arg is not NoneType)
+  return False
 
 
 def _analyze_type(T:Any) -> tuple[Any,bool,bool]:
@@ -255,6 +326,7 @@ def _flag_spellings(flag_str:str) -> tuple[str,...]:
 
 def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...], prefixes:tuple[str,...]) -> Entry:
   name = f.name
+  is_path = _has_path_annotation(T)
   elem_T, is_list, is_optional = _analyze_type(T)
   if spec.kind == 'flag' and (elem_T is not bool or is_list):
     raise CmdDeclError(f'{cmd.__name__}.{name}: a flag field must be typed `bool`.')
@@ -282,7 +354,7 @@ def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...]
   has_default = f.default is not MISSING or f.default_factory is not MISSING or is_optional
   literal_metavar = '{' + ','.join(literal_values) + '}' if literal_values else ''
   return Entry(path=path, spec=spec, T=elem_T, convert=convert, is_list=is_list, has_default=has_default, flags=flags,
-    metavar=spec.metavar or literal_metavar or _default_metavar(name, spec.kind))
+    metavar=spec.metavar or literal_metavar or _default_metavar(name, spec.kind), is_path=is_path)
 
 
 def _register_flag(schema:CmdSchema, flag_str:str, entry:Entry, negated:bool) -> None:
@@ -322,7 +394,7 @@ def _cmd_fields(cmd:'type[Cmd]') -> tuple[Field[Any],...]:
 
 def _collect(cmd:'type[Cmd]', path:tuple[str,...], schema:CmdSchema, prefixes:tuple[str,...]=()) -> None:
   'Recursively collect the entries of `cmd` into `schema`, flattening group fields.'
-  hints = get_type_hints(cmd)
+  hints = get_type_hints(cmd, include_extras=True)
   for f in _cmd_fields(cmd):
     spec = f.metadata.get(_arg_key)
     if spec is None:
@@ -404,6 +476,93 @@ def _store(values:dict[tuple[str,...],Any], entry:Entry, label:str, val:Any, cmd
   else: values[entry.path] = val
 
 
+def _consume_value(state:_WalkState, entry:Entry, label:str, token:str) -> None:
+  state.seen.add(entry.path)
+  if state.mode == 'parse':
+    _store(state.values, entry, label, _convert(entry, label, token, state.cmd, state.prog), state.cmd, state.prog)
+
+
+def _consume_tokens(state:_WalkState, tokens:Sequence[str]) -> tuple['type[Cmd]|None',int]:
+  '''
+  Consume complete tokens and update grammar state.
+  Return a selected subcommand and the index of its first argument, or `(None, len(tokens))`.
+  In complete mode, a final option awaiting a value is recorded in `pending_opt` instead of raising an error.
+  '''
+  idx = 0
+  while idx < len(tokens):
+    token = tokens[idx]
+    idx += 1
+
+    if state.pos_idx < len(state.schema.positionals):
+      remainder_entry = state.schema.positionals[state.pos_idx]
+      if remainder_entry.spec.kind == 'remainder' and (
+       state.pos_idx > 0 or state.end_opts or not _is_option_token(token) or token == '--'):
+        start = idx if token == '--' else idx - 1
+        for remainder_token in tokens[start:]:
+          _consume_value(state, remainder_entry, remainder_entry.metavar, remainder_token)
+        state.remainder = remainder_entry
+        state.pos_idx = len(state.schema.positionals)
+        return None, len(tokens)
+
+    if not state.end_opts and token == '--':
+      state.end_opts = True
+      continue
+
+    if not state.end_opts and _is_option_token(token):
+      name, eq, inline_val = token.partition('=')
+      if name in _help_flags:
+        if state.mode == 'parse': raise CmdHelp(state.cmd, state.prog)
+        continue
+      try: entry, negated = state.schema.flag_entries[name]
+      except KeyError:
+        if state.mode == 'parse': raise CmdError(f'unrecognized option: {name}', state.cmd, state.prog) from None
+        continue
+
+      if entry.spec.kind == 'flag':
+        if eq:
+          if negated:
+            if state.mode == 'parse': raise CmdError(f'{name}: negated flag takes no value.', state.cmd, state.prog)
+            continue
+          _consume_value(state, entry, name, inline_val)
+        else:
+          state.seen.add(entry.path)
+          if state.mode == 'parse': _store(state.values, entry, name, not negated, state.cmd, state.prog)
+      elif eq:
+        _consume_value(state, entry, name, inline_val)
+      else:
+        if idx == len(tokens):
+          if state.mode == 'complete':
+            state.pending_opt = entry
+            return None, len(tokens)
+          raise CmdError(f'{name}: option requires a value.', state.cmd, state.prog)
+        next_token = tokens[idx]
+        if _is_option_token(next_token):
+          if state.mode == 'parse':
+            raise CmdError(f'{name}: option requires a value; for a value beginning with a dash, use {name}=VALUE.',
+              state.cmd, state.prog)
+          continue
+        idx += 1
+        _consume_value(state, entry, name, next_token)
+      continue
+
+    if state.pos_idx < len(state.schema.positionals):
+      entry = state.schema.positionals[state.pos_idx]
+      if not entry.is_list: state.pos_idx += 1
+      _consume_value(state, entry, entry.metavar, token)
+      continue
+
+    if state.schema.sub_cmds:
+      try: sub_cmd = state.schema.sub_cmds[token]
+      except KeyError:
+        if state.mode == 'parse': raise CmdError(f'unrecognized command: {token!r}', state.cmd, state.prog) from None
+        continue
+      return sub_cmd, idx
+
+    if state.mode == 'parse': raise CmdError(f'unexpected argument: {token!r}', state.cmd, state.prog)
+
+  return None, len(tokens)
+
+
 def _parse_cmd(cmd:'type[Cmd]', tokens:Sequence[str], prog:str) -> 'Cmd':
   '''
   Parse `tokens` as a single command, returning the constructed command instance.
@@ -411,69 +570,12 @@ def _parse_cmd(cmd:'type[Cmd]', tokens:Sequence[str], prog:str) -> 'Cmd':
   A subcommand token causes all remaining tokens to be parsed recursively, ending this level.
   '''
   schema = cmd._schema()
-  values:dict[tuple[str,...],Any] = {}
-  pos_idx = 0
-  end_opts = False
-  idx = 0
-  while idx < len(tokens):
-    token = tokens[idx]
-    idx += 1
-
-    if pos_idx < len(schema.positionals):
-      remainder_entry = schema.positionals[pos_idx]
-      if remainder_entry.spec.kind == 'remainder' and (pos_idx > 0 or end_opts or not _is_option_token(token) or token == '--'):
-        # A `--` that begins the remainder is consumed.
-        start = idx if token == '--' else idx - 1
-        for remainder_token in tokens[start:]:
-          _store(values, remainder_entry, remainder_entry.metavar,
-            _convert(remainder_entry, remainder_entry.metavar, remainder_token, cmd, prog), cmd, prog)
-        break
-
-    if not end_opts and token == '--':
-      end_opts = True
-      continue
-
-    if not end_opts and _is_option_token(token):
-      name, eq, inline_val = token.partition('=')
-      if name in _help_flags: raise CmdHelp(cmd, prog)
-      try: entry, negated = schema.flag_entries[name]
-      except KeyError: raise CmdError(f'unrecognized option: {name}', cmd, prog) from None
-
-      if entry.spec.kind == 'flag':
-        if eq:
-          if negated: raise CmdError(f'{name}: negated flag takes no value.', cmd, prog)
-          val:Any = _convert(entry, name, inline_val, cmd, prog)
-        else:
-          val = not negated
-      elif eq:
-        val = _convert(entry, name, inline_val, cmd, prog)
-      else:
-        if idx == len(tokens): raise CmdError(f'{name}: option requires a value.', cmd, prog)
-        next_token = tokens[idx]
-        if _is_option_token(next_token):
-          raise CmdError(f'{name}: option requires a value; for a value beginning with a dash, use {name}=VALUE.',
-            cmd, prog)
-        idx += 1
-        val = _convert(entry, name, next_token, cmd, prog)
-
-      _store(values, entry, name, val, cmd, prog)
-      continue
-
-    if pos_idx < len(schema.positionals):
-      entry = schema.positionals[pos_idx]
-      if not entry.is_list: pos_idx += 1 # A variadic positional consumes all remaining bare tokens.
-      _store(values, entry, entry.metavar, _convert(entry, entry.metavar, token, cmd, prog), cmd, prog)
-      continue
-
-    if schema.sub_cmds:
-      try: sub_cmd = schema.sub_cmds[token]
-      except KeyError: raise CmdError(f'unrecognized command: {token!r}', cmd, prog) from None
-      values[schema.sub_path] = _parse_cmd(sub_cmd, tokens[idx:], f'{prog} {token}')
-      break
-
-    raise CmdError(f'unexpected argument: {token!r}', cmd, prog)
-
-  return _construct(cmd, (), values, schema, prog)
+  state = _WalkState(cmd=cmd, prog=prog, schema=schema, mode='parse', values={}, seen=set())
+  sub_cmd, sub_idx = _consume_tokens(state, tokens)
+  if sub_cmd is not None:
+    sub_name = tokens[sub_idx-1]
+    state.values[schema.sub_path] = _parse_cmd(sub_cmd, tokens[sub_idx:], f'{prog} {sub_name}')
+  return _construct(cmd, (), state.values, schema, prog)
 
 
 def _default_none(kwargs:dict[str,Any], f:Field[Any]) -> None:
@@ -486,7 +588,7 @@ def _construct(cmd:'type[Cmd]', path:tuple[str,...], values:dict[tuple[str,...],
   Build the instance for `cmd` from the values collected for a single command level.
   `path` is the field path of `cmd` within that level; it is nonempty when constructing a group.
   '''
-  hints = get_type_hints(cmd)
+  hints = get_type_hints(cmd, include_extras=True)
   kwargs:dict[str,Any] = {}
   children:list[Cmd] = []
 
@@ -520,6 +622,85 @@ def _construct(cmd:'type[Cmd]', path:tuple[str,...], values:dict[tuple[str,...],
   obj = cmd(**kwargs)
   for child in children: child._cmd_parent = obj
   return obj
+
+
+def _entry_completions(entry:Entry, prefix:str, *, value_prefix:str='') -> CompletionResult:
+  literal_values = get_args(entry.T) if get_origin(entry.T) is Literal else ()
+  if literal_values:
+    return CompletionResult(tuple(Completion(value_prefix + value) for value in literal_values if value.startswith(prefix)))
+  if entry.T is bool:
+    return CompletionResult(tuple(
+      Completion(value_prefix + value) for value in _bool_words if value.startswith(prefix)))
+  if entry.is_path: return CompletionResult(path_prefix=value_prefix)
+  return CompletionResult()
+
+
+def _option_completions(state:_WalkState, prefix:str) -> tuple[Completion,...]:
+  'Offer only single-dash spellings unless the user has already typed a double dash; the aliases are redundant noise.'
+  offer_double = prefix.startswith('--')
+  completions:list[Completion] = []
+  for spelling, (entry, negated) in state.schema.flag_entries.items():
+    if spelling.startswith('--') != offer_double: continue
+    if not spelling.startswith(prefix): continue
+    if entry.path in state.seen and not entry.is_list: continue
+    suffix = '' if entry.spec.kind == 'flag' or negated else '='
+    completions.append(Completion(spelling + suffix, entry.spec.doc, group='options'))
+  for help_flag in (('--help',) if offer_double else ('-h', '-help')):
+    if help_flag.startswith(prefix): completions.append(Completion(help_flag, state.cmd.help_doc, group='options'))
+  return tuple(completions)
+
+
+def _complete_cmd(cmd:'type[Cmd]', prior:Sequence[str], current:str, prog:str) -> CompletionResult:
+  schema = cmd._schema()
+  state = _WalkState(cmd=cmd, prog=prog, schema=schema, mode='complete', values={}, seen=set())
+  sub_cmd, sub_idx = _consume_tokens(state, prior)
+  if sub_cmd is not None:
+    sub_name = prior[sub_idx-1]
+    return _complete_cmd(sub_cmd, prior[sub_idx:], current, f'{prog} {sub_name}')
+
+  if state.pending_opt is not None: return _entry_completions(state.pending_opt, current)
+  if state.remainder is not None: return _entry_completions(state.remainder, current)
+
+  if state.pos_idx < len(schema.positionals):
+    entry = schema.positionals[state.pos_idx]
+    if entry.spec.kind == 'remainder' and (state.pos_idx > 0 or state.end_opts or not _is_option_token(current)):
+      return _entry_completions(entry, current)
+
+  if not state.end_opts and _is_option_token(current):
+    name, eq, value_prefix = current.partition('=')
+    if eq:
+      found = schema.flag_entries.get(name)
+      if found is None: return CompletionResult()
+      entry, negated = found
+      if negated: return CompletionResult()
+      return _entry_completions(entry, value_prefix, value_prefix=name + '=')
+    return CompletionResult(_option_completions(state, current))
+
+  candidates:list[Completion] = []
+  path_prefix:str|None = None
+  if not state.end_opts and not current:
+    candidates.extend(_option_completions(state, current))
+
+  if state.pos_idx < len(schema.positionals):
+    positional = _entry_completions(schema.positionals[state.pos_idx], current)
+    candidates.extend(positional.candidates)
+    path_prefix = positional.path_prefix
+  elif schema.sub_cmds:
+    candidates.extend(Completion(name, _first_doc_line(sub_cmd), group='commands')
+      for name, sub_cmd in schema.sub_cmds.items() if name.startswith(current))
+
+  return CompletionResult(tuple(candidates), path_prefix)
+
+
+def _format_completion_result(result:CompletionResult) -> str:
+  'Format the line-oriented completion protocol consumed by `format_zsh_completion`.'
+  lines = []
+  for candidate in result.candidates:
+    value = candidate.value.replace('\t', ' ').replace('\n', ' ')
+    doc = candidate.doc.replace('\t', ' ').replace('\n', ' ')
+    lines.append(f'candidate\t{candidate.group}\t{value}\t{doc}')
+  if result.path_prefix is not None: lines.append(f'path\t{result.path_prefix}')
+  return '\n'.join(lines)
 
 
 @dataclass_transform(kw_only_default=True, field_specifiers=(pos, remainder, opt, flag, sub, group))
@@ -590,11 +771,32 @@ class Cmd:
 
 
   @classmethod
+  def complete(cls, args:Sequence[str], prog:str='') -> CompletionResult:
+    '''
+    Complete a partial command line.
+    `args` contains the command arguments through the word under the cursor; its final item is the current partial word.
+    An empty sequence is treated like a single empty current word.
+    '''
+    prior, current = (args[:-1], args[-1]) if args else ((), '')
+    return _complete_cmd(cls, prior, current, prog or _derive_cmd_name(cls))
+
+
+  @classmethod
   def parse_or_exit(cls, args:Sequence[str]|None=None, prog:str='') -> Self:
     'Parse `args`, defaulting to `sys.argv`; print help or an error message and exit if the arguments are unsatisfactory.'
     if args is None:
       args = sys_argv[1:]
-      prog = prog or Path(sys_argv[0]).name
+      prog = prog or basename(sys_argv[0])
+    mode = environ.get('PITHY_CMDPARSE_MODE', 'parse')
+    if mode == 'complete':
+      print(_format_completion_result(cls.complete(args, prog=prog)))
+      sys_exit(0)
+    if mode == 'print-zsh-completion':
+      print(format_zsh_completion(prog or _derive_cmd_name(cls)))
+      sys_exit(0)
+    if mode != 'parse':
+      print(f'error: invalid PITHY_CMDPARSE_MODE: {mode!r}', file=stderr)
+      sys_exit(2)
     try: return cls.parse(args, prog=prog)
     except CmdHelp as help:
       print(format_help(help.cmd, help.prog, color=ansi.is_out_tty))
@@ -718,3 +920,22 @@ def format_help(cmd:type[Cmd], prog:str='', *, color:bool=False) -> str:
 
 
 def _first_doc_line(cmd:type[Cmd]) -> str: return dedent(cmd.__doc__ or '').strip().partition('\n')[0]
+
+
+def format_zsh_completion(prog:str) -> str:
+  '''
+  Format a zsh completion function for an executable using `Cmd.parse_or_exit` or `Cmd.main`.
+  The executable is invoked dynamically for every completion request.
+  The function calls `_pithy_cmdparse_complete_request`, which is defined in zsh/pithy-cmdparse-completion.zsh.
+  '''
+  fn_name = '_' + re.sub(r'[^A-Za-z0-9_]', '_', prog)
+  return f'''\
+#compdef {prog}
+
+{fn_name}() {{
+  local -a cmdparse_invocation=("$words[1]")
+  local -a cmdparse_args=("${{(@)words[2,$CURRENT]}}")
+  _pithy_cmdparse_complete_request
+}}
+
+compdef {fn_name} {prog}'''

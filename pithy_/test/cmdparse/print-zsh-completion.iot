@@ -1,0 +1,5 @@
+{
+  'cmd': './example.py',
+  'env': {'PITHY_CMDPARSE_MODE': 'print-zsh-completion'},
+  'links': {'$DIR/example.py'},
+}
