@@ -88,6 +88,7 @@ If we refer to `.web.server`, we probably mean within the pithy package, or what
 * If there is no sensible place in the source tree they can be placed somewhere reasonable in `test/` instead.
 * Individual unit tests can be executed with `python` directly; use `python -m utest [directories...]` to find and run tests.
 * When tests are executed with the `utest` program, they will be run from `_build/_utest` as a simple precaution against working directory mistakes.
+* Unit tests should not emit stdout/stderr unless they are failing. Add log suppression flags to functions if necessary.
 
 ## IOTest
 * `iotest` is a program for running file-based input/output tests.
