@@ -1,0 +1,9 @@
+{
+  'cmd': 'zsh -f ./harness.zsh',
+  'links': {
+    '$DIR/harness.zsh',
+    '$DIR/example.py',
+    'zsh/pithy-cmdparse-completion.zsh',
+    'zsh/pithy-cmdparse-module-completion.zsh',
+  },
+}

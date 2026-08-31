@@ -1,0 +1,43 @@
+== ./example.py --j
+== ./example.py 
+compadd tag=commands heading=(Subcommands) cands=(build|deploy) disp=(build : Build the project.|deploy : Deploy the build.)
+compadd tag=options heading=(Options) cands=(-h|-help) disp=(-h : Show this help.|-help : Show this help.)
+compadd tag=options heading=(Options) cands=(-home=) suffix=() disp=(-home= : The home path.)
+== ./example.py --home 
+_files
+== ./example.py --home=src
+compset -P --home=
+_files
+== ./example.py -verbose 
+compadd tag=commands heading=(Subcommands) cands=(build|deploy) disp=(build : Build the project.|deploy : Deploy the build.)
+compadd tag=options heading=(Options) cands=(-h|-help) disp=(-h : Show this help.|-help : Show this help.)
+compadd tag=options heading=(Options) cands=(-home=) suffix=() disp=(-home= : The home path.)
+== ./example.py bu
+compadd tag=commands heading=(Subcommands) cands=(build) disp=(build : Build the project.)
+== ./example.py build 
+compadd tag=options heading=(Options) cands=(-verbose|-no-verbose|-h|-help) disp=(-verbose : Print more.|-no-verbose : Print more.|-h : Show this help.|-help : Show this help.)
+compadd tag=options heading=(Options) cands=(-jobs=) suffix=() disp=(-jobs= : Number of parallel jobs.)
+compadd tag=values heading=(Values) cands=(app|lib) disp=(app|lib)
+== ./example.py build ap
+compadd tag=values heading=(Values) cands=(app) disp=(app)
+== ./example.py build app -jobs 
+== ./example.py deploy 
+compadd tag=options heading=(Options) cands=(-h|-help) disp=(-h : Show this help.|-help : Show this help.)
+_files
+== python3 script.py 
+stock-python
+== python3 -m ex
+stock-python
+compadd cands=(example)
+== python3 -mex
+stock-python
+compset -p 2
+compadd cands=(example)
+== python3 -m example bu
+compadd tag=commands heading=(Subcommands) cands=(build) disp=(build : Build the project.)
+== python3 -mexample --j
+== python3 -m other 
+stock-python
+== emit-cmdparse-completion
+wrote ~/.zfunc/_example.py
+_example.py

@@ -1,11 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pathlib import Path
 from typing import Literal
 
 from pithy import ansi
-from pithy.cmdparse import (Cmd, CmdDeclError, CmdError, CmdHelp, flag, format_help, format_usage, group, opt, pos, remainder,
-  sub)
+from pithy.cmdparse import (Cmd, CmdDeclError, CmdError, CmdHelp, Completion, CompletionResult, flag, format_help, format_usage,
+  format_zsh_completion, group, opt, Path, pos, remainder, sub)
 from utest import utest, utest_exc, utest_run, utest_val
 
 
@@ -35,6 +34,11 @@ class Tool(Cmd):
   cmd:Build|AddUser = sub(doc='The command to run.')
 
 
+class CompletePositional(Cmd):
+  action:Literal['build','test'] = pos(doc='The action.')
+  source:Path = pos(doc='The source path.')
+
+
 utest(Build(common=Common(verbose=False, color=True), target='all', jobs=1, defines=[]), Build.parse, ['all'])
 
 utest(Build(common=Common(verbose=True, color=False), target='all', jobs=4, defines=['A=1', 'B']),
@@ -50,7 +54,7 @@ utest(Build(common=Common(verbose=False, color=True), target='-weird', jobs=1, d
   Build.parse, ['--', '-weird'])
 
 # Variadic positionals and typed options.
-utest(AddUser(names=['a', 'b'], home=Path('/home')), AddUser.parse, ['a', '--home=/home', 'b'])
+utest(AddUser(names=['a', 'b'], home='/home'), AddUser.parse, ['a', '--home=/home', 'b'])
 
 
 @utest_run
@@ -84,6 +88,46 @@ utest_exc(CmdError('--no-color: negated flag takes no value.'), Build.parse, ['-
 utest_exc(CmdError('unrecognized option: -no-v'), Build.parse, ['-no-v', 'all'])
 utest_exc(CmdError('missing required argument: TARGET'), Build.parse, [])
 utest_exc(CmdError("unexpected argument: 'extra'"), Build.parse, ['all', 'extra'])
+
+
+@utest_run
+def test_completion() -> None:
+  utest_val(CompletionResult((Completion('--jobs=', 'Number of parallel jobs.', group='options'),)), Build.complete(['--j']))
+  utest_val(CompletionResult((Completion('build', 'Build the project.', group='commands'),)), Tool.complete(['bu']))
+  utest_val(CompletionResult((Completion('build'),)), CompletePositional.complete(['bu']))
+  utest_val('', CompletePositional.complete(['build', '']).path_prefix)
+
+  # Path annotations retain string values while requesting path completion.
+  utest_val('', AddUser.complete(['--home', '']).path_prefix)
+  utest_val(CompletionResult(path_prefix='--home='), AddUser.complete(['--home=src']))
+
+  # Non-list options are omitted once seen; list options remain repeatable.
+  jobs_values = {c.value for c in Build.complete(['--jobs=2', 'all', '']).candidates}
+  assert '-jobs=' not in jobs_values and '--jobs=' not in jobs_values
+  defines_values = {c.value for c in Build.complete(['-D=A', 'all', '']).candidates}
+  assert '-D=' in defines_values
+
+  class ParentPositional(Cmd):
+    workspace:Literal['dev','prod'] = pos()
+    cmd:Build = sub()
+
+  utest_val(CompletionResult((Completion('build', 'Build the project.', group='commands'),)), ParentPositional.complete(['dev', 'bu']))
+
+  class ForwardPaths(Cmd):
+    tool:str = pos()
+    paths:list[Path] = remainder()
+
+  utest_val(CompletionResult(path_prefix=''), ForwardPaths.complete(['cc', 'input.c', '']))
+
+
+@utest_run
+def test_zsh_completion_script() -> None:
+  script = format_zsh_completion('tool')
+  assert script.startswith('#compdef tool\n')
+  # The parameter expansion flags are easy to mangle in the generating f-string; assert their exact spellings.
+  assert 'cmdparse_args=("${(@)words[2,$CURRENT]}")' in script
+  assert '_pithy_cmdparse_complete_request' in script
+  assert script.endswith('compdef _tool tool')
 
 
 @utest_run

@@ -1,0 +1,9 @@
+#compdef example.py
+
+_example_py() {
+  local -a cmdparse_invocation=("$words[1]")
+  local -a cmdparse_args=("${(@)words[2,$CURRENT]}")
+  _pithy_cmdparse_complete_request
+}
+
+compdef _example_py example.py
