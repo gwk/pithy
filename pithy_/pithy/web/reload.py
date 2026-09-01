@@ -55,21 +55,22 @@ class DevServerCmd(Cmd):
     return ServerConfig(host='localhost', port=self.port, prevent_client_caching=True)
 
 
-  def serve(self, run:Callable[[ServerConfig],None], *, watch:Iterable[str|ModuleType]) -> None:
+  def serve(self, run:Callable[[ServerConfig],None], *, watch:Iterable[str|ModuleType], quiet:bool=False) -> None:
     '''Run a local server, reloading it by default.
 
     `run` must be a module-level function taking a ServerConfig.
     When watching is disabled it is called directly;
     otherwise it is spawned in a child process by its qualified name (see `target_name`).
+    If `quiet` is true then suppress the reload startup message.
     '''
     config = self.server_config
     if self.watch:
-      serve_with_reload(target=target_name(run), watch=watch, config=config)
+      serve_with_reload(target=target_name(run), watch=watch, config=config, quiet=quiet)
     else:
       run(config)
 
 
-def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:ServerConfig|None=None) -> None:
+def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:ServerConfig|None=None, quiet:bool=False) -> None:
   '''
   Spawn a subprocess to run the function named by `target` (a dotted path string) using `watchfiles.run_process`.
   `watch` is an iterable of paths or modules to watch.
@@ -88,7 +89,7 @@ def serve_with_reload(*, target:str, watch:Iterable[str|ModuleType], config:Serv
   environ['WEB_PORT'] = str(config.port)
 
   watch_paths = [_resolve_watch(w) for w in watch]
-  errL(f'Serving port {config.port}; watching {watch_paths!r}.')
+  if not quiet: errL(f'Serving port {config.port}; watching {watch_paths!r}.')
 
   def _watch_filter(change:Change, path:str) -> bool:
     return not path.endswith('.isorted')

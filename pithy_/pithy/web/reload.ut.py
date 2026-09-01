@@ -68,7 +68,7 @@ def _() -> None:
   with (patch.object(watchfiles, 'run_process') as run_process,
         patch.dict(sys.modules, {'__main__': _patch_main('mypkg.__main__')}),
         patch.dict(environ)):
-    DevServerCmd(port=0, watch=True).serve(_run, watch=[])
+    DevServerCmd(port=0, watch=True).serve(_run, watch=[], quiet=True)
     (call,) = run_process.call_args_list
     config = call.kwargs['kwargs']['config']
     utest_val('mypkg.__main__._run', call.kwargs['target'])
