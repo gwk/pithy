@@ -2,8 +2,9 @@
 
 from datetime import datetime
 
-from pithytools.bin.watch_systemd_units import (classify_record, default_since, level_for_priority, parse_message_key_specs,
-  parse_ready_specs, parse_show_output, parse_systemd_timestamp, unit_name, UnitStatus, WatchSystemdUnitsCmd)
+from pithytools.bin.watch_systemd_units import (classify_record, default_since, interrupt_exit_code, level_for_priority,
+  parse_message_key_specs, parse_ready_specs, parse_show_output, parse_systemd_timestamp, unit_name, UnitStatus,
+  WatchSystemdUnitsCmd)
 from utest import utest, utest_val
 
 
@@ -97,3 +98,15 @@ utest_val(True, u.is_ready, 'ready when active without a pattern')
 utest_val(['result: exit-code'], u.update_from_show({'ActiveState': 'activating', 'SubState': 'auto-restart', 'Result': 'exit-code', 'NRestarts': '1'}), 'crash')
 utest_val([], u.update_from_show({'ActiveState': 'activating', 'SubState': 'auto-restart', 'Result': 'exit-code', 'NRestarts': '1'}), 'crash reported once')
 utest_val(True, u.is_failed, 'failed')
+
+
+# Interrupt exit status.
+
+ready = UnitStatus(name='ready', ready_time=0)
+waiting = UnitStatus(name='waiting')
+failed = UnitStatus(name='failed', failures=['failed'])
+errored = UnitStatus(name='errored', ready_time=0, errors=1)
+utest(0, interrupt_exit_code, [ready])
+utest(130, interrupt_exit_code, [ready, waiting])
+utest(1, interrupt_exit_code, [ready, failed])
+utest(1, interrupt_exit_code, [ready, waiting, errored])

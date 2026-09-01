@@ -5,11 +5,14 @@ from datetime import datetime, timedelta
 from json import loads as parse_json
 from queue import Empty, Queue
 from re import compile as re_compile, Pattern
+from select import select
 from subprocess import PIPE, Popen, run, STDOUT
-from sys import exit, stdout
+from sys import exit, stdin, stdout
+from termios import tcgetattr, TCSADRAIN, tcsetattr
 from threading import Thread
 from time import monotonic, sleep
-from typing import Any
+from tty import setcbreak
+from typing import Any, Iterable
 
 from pithy.ansi import CLEAR_SCREEN_F, ctrl_seq, CURSOR_HIDE, CURSOR_SHOW, RST, TXT_G, TXT_N, TXT_R, TXT_Y
 from pithy.cmdparse import Cmd, opt, pos
@@ -41,6 +44,9 @@ class WatchSystemdUnitsCmd(Cmd):
     * failed;
     * ready and has stayed clean for the settle period.
   The exit status is 0 only when every unit is ready with no failures and no error records.
+  On interruption, the exit status reflects the observed state: 0 if all units are ready and clean, 1 if any unit has a known
+  failure or error, and 130 if any unit has not yet become ready.
+  In a terminal, press `q` to quit with the same state-dependent exit status without interrupting a parent process.
   '''
 
   units:list[str] = pos(metavar='UNIT', doc='Unit names to watch; the .service suffix is optional.')
@@ -66,12 +72,11 @@ def main() -> None:
 
   watcher = Watcher(units=units, ready_patterns=ready_patterns, message_keys=message_keys, settle=args.settle,
     timeout=args.timeout, interval=args.interval)
-  try:
-    ok = watcher.run(since=args.since)
+  try: code = watcher.run(since=args.since)
   except KeyboardInterrupt:
     watcher.finish()
-    exit(130)
-  exit(0 if ok else 1)
+    code = 130
+  exit(code)
 
 
 def parse_ready_specs(specs:list[str]) -> dict[str,Pattern[str]]:
@@ -157,6 +162,14 @@ class UnitStatus:
     return added
 
 
+def interrupt_exit_code(units:Iterable[UnitStatus]) -> int:
+  'Return an exit status reflecting unit state observed before an interrupt.'
+  units = list(units)
+  if any(not unit.is_clean for unit in units): return 1
+  if all(unit.is_ready for unit in units): return 0
+  return 130
+
+
 class Watcher:
 
   def __init__(self, units:list[str], ready_patterns:dict[str,Pattern[str]], message_keys:dict[str,str], settle:float,
@@ -167,6 +180,7 @@ class Watcher:
     self.timeout = timeout
     self.interval = interval
     self.is_tty = stdout.isatty()
+    self.tty_attrs:list[Any]|None = None
     self.block_lines = 0 # Number of lines in the last drawn status block.
     self.start_time = monotonic()
     self.pending:list[str] = [] # Event lines to print above the block on the next draw.
@@ -174,12 +188,16 @@ class Watcher:
     self.proc:Popen[str]|None = None
 
 
-  def run(self, since:str|None) -> bool:
+  def run(self, since:str|None) -> int:
     show = systemctl_show(list(self.units))
     if since is None: since = default_since(show)
     self.apply_show(show)
     self.start_journal(since)
-    if self.is_tty: stdout.write(CURSOR_HIDE)
+    if self.is_tty:
+      stdout.write(CURSOR_HIDE)
+      if stdin.isatty():
+        self.tty_attrs = tcgetattr(stdin)
+        setcbreak(stdin)
     self.note(f'watching {len(self.units)} units since {since!r}; settle {self.settle:g}s; timeout {self.timeout:g}s.')
     next_poll = monotonic() + self.interval
     journal_ended = False
@@ -191,10 +209,14 @@ class Watcher:
           self.apply_show(systemctl_show(list(self.units)))
           next_poll = now + self.interval
         self.draw(now)
-        if journal_ended: return self.conclude('journal stream ended')
-        if all(u.is_terminal(now, self.settle) for u in self.units.values()): return self.conclude('all units settled or failed')
-        if now - self.start_time >= self.timeout: return self.conclude('timed out')
+        if journal_ended: return 0 if self.conclude('journal stream ended') else 1
+        if all(u.is_terminal(now, self.settle) for u in self.units.values()):
+          return 0 if self.conclude('all units settled or failed') else 1
+        if now - self.start_time >= self.timeout: return 0 if self.conclude('timed out') else 1
+        if self.quit_requested(): return self.conclude_early('quit')
         sleep(0.25)
+    except KeyboardInterrupt:
+      return self.conclude_early('interrupt')
     finally:
       self.finish()
 
@@ -203,8 +225,27 @@ class Watcher:
     if self.proc is not None and self.proc.poll() is None:
       self.proc.terminate()
       self.proc = None
+    if self.tty_attrs is not None:
+      tcsetattr(stdin, TCSADRAIN, self.tty_attrs)
+      self.tty_attrs = None
     if self.is_tty: stdout.write(CURSOR_SHOW)
     stdout.flush()
+
+
+  def quit_requested(self) -> bool:
+    if self.tty_attrs is None: return False
+    readable, _, _ = select([stdin], [], [], 0)
+    return bool(readable) and stdin.read(1).lower() == 'q'
+
+
+  def conclude_early(self, action:str) -> int:
+    self.drain_journal()
+    code = interrupt_exit_code(self.units.values())
+    if code == 0: self.note(f'{TXT_G}accepted on {action}{RST}: all units are ready and clean.')
+    elif code == 1: self.note(f'{TXT_R}not verified{RST}: {action} with known failures or errors.')
+    else: self.note(f'{TXT_R}not verified{RST}: {action} before all units became ready.')
+    self.draw(monotonic(), final=True)
+    return code
 
 
   def conclude(self, reason:str) -> bool:
@@ -311,6 +352,7 @@ class Watcher:
       counts = f'restarts:{unit.restarts} warn:{unit.warns} err:{unit.errors}'
       detail = f'  {TXT_R}{unit.failures[-1]}{RST}' if unit.failures else ''
       lines.append(f'  {unit.state_label(now, self.settle)}  {unit.name:<{width}}  {state:<20}  {counts}{detail}')
+    lines.append('Press q to quit.')
     return lines
 
 
