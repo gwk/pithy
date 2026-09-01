@@ -28,15 +28,15 @@ def test_htmx_response() -> None:
   cached = HtmxResponse(Div('a'), cache=True)
   utest_val(None, cached.headers.get('cache-control'), desc='HtmxResponse cached cache-control')
 
-  hx = HtmxResponse(hx_push='/p', hx_refresh=True, hx_redirect='/r', hx_location='/l', hx_trigger='t',
-    hx_trigger_after_swap='s', hx_trigger_after_settle='e')
-  utest_val('/p', hx.headers['hx-push'], desc='HtmxResponse hx-push')
+  hx = HtmxResponse(hx_push='/p', hx_refresh=True, hx_redirect='/r', hx_location='/l', hx_trigger='t')
+  utest_val('/p', hx.headers['hx-push-url'], desc='HtmxResponse hx-push-url')
   utest_val('true', hx.headers['hx-refresh'], desc='HtmxResponse hx-refresh')
   utest_val('/r', hx.headers['hx-redirect'], desc='HtmxResponse hx-redirect')
   utest_val('/l', hx.headers['hx-location'], desc='HtmxResponse hx-location')
   utest_val('t', hx.headers['hx-trigger'], desc='HtmxResponse hx-trigger')
-  utest_val('s', hx.headers['hx-trigger-after-swap'], desc='HtmxResponse hx-trigger-after-swap')
-  utest_val('e', hx.headers['hx-trigger-after-settle'], desc='HtmxResponse hx-trigger-after-settle')
+
+  hx_json = HtmxResponse(hx_trigger={'itemsChanged': {'id': 1}})
+  utest_val('{"itemsChanged":{"id":1}}', hx_json.headers['hx-trigger'], desc='HtmxResponse hx-trigger json')
 
 
 @utest_run
