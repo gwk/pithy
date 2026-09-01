@@ -11,8 +11,8 @@ The path module defines those operations on paths that are pure string operation
 For path operations that require systems calls, see pithy.filestatus and pithy.fs.
 '''
 
-Path = str|PathLike
-PathOrFd = Path|int
+type Pathish = str|PathLike
+type PathishOrFd = Pathish|int
 
 
 class AbsolutePathError(Exception): pass
@@ -34,17 +34,17 @@ def executable_path() -> str:
   return _realpath(path)
 
 
-def expand_home_dir(path:Path) -> str:
+def expand_home_dir(path:Pathish) -> str:
   return _expand_user(path)
 
 
-def insert_path_stem_suffix(path:Path, suffix:str) -> str:
+def insert_path_stem_suffix(path:Pathish, suffix:str) -> str:
   'Insert a suffix in between the path stem and ext.'
   stem, ext = split_stem_ext(path)
   return f'{stem}{suffix}{ext}'
 
 
-def is_norm_path(path:Path) -> bool:
+def is_norm_path(path:Pathish) -> bool:
   return bool(_norm_path_re.fullmatch(str_path(path)))
 
 
@@ -65,18 +65,18 @@ _norm_path_re = _re.compile(r'''(?x)
 ''')
 
 
-def is_path_abs(path:Path) -> bool:
+def is_path_abs(path:Pathish) -> bool:
   'Return true if `path` is an absolute path.'
   return _isabs(path)
 
 
-def is_sub_path(path:Path) -> bool:
+def is_sub_path(path:Pathish) -> bool:
   'Return true if `path` is a relative path that, after normalization, does not refer to parent directories.'
   return not is_path_abs(path) and '..' not in path_split(path)
 
 
 
-def norm_path(path:Path) -> str:
+def norm_path(path:Pathish) -> str:
   '''
   Normalize `path`.
   * Empty string is treated as '.'.
@@ -102,18 +102,18 @@ def norm_path(path:Path) -> str:
   return (lead_slash + '/'.join(comps)) or '.'
 
 
-def path_common_prefix(*paths:Path) -> str:
+def path_common_prefix(*paths:Pathish) -> str:
   'Return the common path prefix for a sequence of paths.'
   try: return _commonpath([str_path(p) for p in paths])
   except ValueError: # we want a more specific exception.
     raise MixedAbsoluteAndRelativePathsError(paths) from None
 
 
-def path_compound_ext(path:Path) -> str:
+def path_compound_ext(path:Pathish) -> str:
   return ''.join(path_exts(path))
 
 
-def path_descendants(start_path:Path, end_path:Path, *, include_start:bool=True, include_end:bool=True) -> tuple[str, ...]:
+def path_descendants(start_path:Pathish, end_path:Pathish, *, include_start:bool=True, include_end:bool=True) -> tuple[str, ...]:
   '''
   Return a tuple of paths from `start_path` to `end_path`.
   By default, `include_start` and `include_end` are both True.
@@ -133,22 +133,22 @@ def path_descendants(start_path:Path, end_path:Path, *, include_start:bool=True,
   return tuple(path_join(*comps[:i]) for i in range(start_i, end_i))
 
 
-def path_dir(path:Path) -> str:
+def path_dir(path:Pathish) -> str:
   "Return the dir portion of `path` (possibly empty), e.g. 'dir/name'."
   return _dirname(str_path(path))
 
 
-def path_dir_or_dot(path:Path) -> str:
+def path_dir_or_dot(path:Pathish) -> str:
   "Return the dir portion of a path, e.g. 'dir/name', or '.' in the case of no path."
   return path_dir(path) or '.'
 
 
-def path_ext(path:Path) -> str:
+def path_ext(path:Pathish) -> str:
   'The file extension of the path.'
   return split_stem_ext(path)[1]
 
 
-def path_exts(path:Path) -> tuple[str, ...]:
+def path_exts(path:Pathish) -> tuple[str, ...]:
   exts = []
   while True:
     path, ext = split_stem_ext(path)
@@ -158,7 +158,7 @@ def path_exts(path:Path) -> tuple[str, ...]:
   return tuple(exts)
 
 
-def path_join(first:Path, *subsequent:Path) -> str:
+def path_join(first:Pathish, *subsequent:Pathish) -> str:
   '''
   Join the paths using the system path separator.
   Unlike `os.path.join`, this implementation does not allow subsequent absolute paths to replace the preceding path.
@@ -170,22 +170,22 @@ def path_join(first:Path, *subsequent:Path) -> str:
   return _join(str_path(first), *[str_path(p) for p in subsequent])
 
 
-def path_name(path:Path) -> str:
+def path_name(path:Pathish) -> str:
   "Return the name portion of a path (possibly including an extension); the 'basename' in Unix terminology."
   return _basename(str_path(path))
 
 
-def path_name_stem(path:Path) -> str:
+def path_name_stem(path:Pathish) -> str:
   'The file name without the final extension; the name stem will not span directories.'
   return path_stem(path_name(path))
 
 
-def path_name_stem_sans_exts(path:Path) -> str:
+def path_name_stem_sans_exts(path:Pathish) -> str:
   'The file name without any extensions; the name stem will not span directories.'
   return path_stem_sans_exts(path_name(path))
 
 
-def path_rel_to_ancestor(path:Path, ancestor:str, dot:bool=False) -> str:
+def path_rel_to_ancestor(path:Pathish, ancestor:str, dot:bool=False) -> str:
   '''
   Return the path relative to `ancestor`.
   If `path` is not descended from `ancestor`, raise PathIsNotDescendantError.
@@ -202,7 +202,7 @@ def path_rel_to_ancestor(path:Path, ancestor:str, dot:bool=False) -> str:
   raise PathIsNotDescendentError(path, ancestor)
 
 
-def path_split(path:Path) -> list[str]:
+def path_split(path:Pathish) -> list[str]:
   # TODO: rename to path_comps?
   np = norm_path(path)
   if np == '/': return ['/']
@@ -210,41 +210,41 @@ def path_split(path:Path) -> list[str]:
   return [comp or '/' for comp in np.split('/')]
 
 
-def path_stem(path:Path) -> str:
+def path_stem(path:Pathish) -> str:
   'The path without the final file extension; the stem may span multiple directories.'
   return split_stem_ext(path)[0]
 
 
-def path_stem_sans_exts(path:Path) -> str:
+def path_stem_sans_exts(path:Pathish) -> str:
   'The path without any file extensions; the stem may span multiple directories.'
   return split_stem_multi_ext(path)[0]
 
 
-def rel_path(path:Path, start:Path='.') -> str:
+def rel_path(path:Pathish, start:Pathish='.') -> str:
   'Return a version of `path` relative to `start`, which defaults to the current directory.'
   return _relpath(str_path(path), str_path(start))
 
 
-def replace_first_dir(path:Path, replacement:str) -> str:
+def replace_first_dir(path:Pathish, replacement:str) -> str:
   parts = path_split(path)
   if not parts: raise Exception('replace_first_dir: path is empty')
   parts[0] = replacement
   return path_join(*parts)
 
 
-def split_dir_name(path:Path) -> tuple[str, str]:
+def split_dir_name(path:Pathish) -> tuple[str, str]:
   "Split the path into dir and name (possibly including an extension) components, e.g. 'dir/name'."
   return _split(str_path(path))
 
 
-def split_dir_stem_ext(path:Path) -> tuple[str, str, str]:
+def split_dir_stem_ext(path:Pathish) -> tuple[str, str, str]:
   'Split the path into a (dir, stem, ext) triple.'
   dir, name = split_dir_name(path)
   stem, ext = split_stem_ext(name)
   return dir, stem, ext
 
 
-def split_stem_ext(path:Path) -> tuple[str, str]:
+def split_stem_ext(path:Pathish) -> tuple[str, str]:
   '''
   Split `path` into (stem, extension) components.
   'stem.ext' -> ('stem', '.ext').
@@ -265,7 +265,7 @@ def split_stem_ext(path:Path) -> tuple[str, str]:
   return path, ''
 
 
-def split_stem_multi_ext(path:Path) -> tuple[str, str]:
+def split_stem_multi_ext(path:Pathish) -> tuple[str, str]:
   '''
   Split `path` into (stem, multi-extension) components.
   'stem.ext' -> ('stem', '.ext').
@@ -285,7 +285,7 @@ def split_stem_multi_ext(path:Path) -> tuple[str, str]:
   return path[:dot_idx], path[dot_idx:]
 
 
-def str_path(path:Path) -> str:
+def str_path(path:Pathish) -> str:
   p = _fspath(path)
   if isinstance(p, str): return p
   assert isinstance(p, bytes)

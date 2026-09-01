@@ -14,8 +14,8 @@ from typing import Any, Callable, cast, Iterable, Iterator, TextIO
 
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
   file_status, is_dir, is_file, is_file_executable_by_owner, is_link, is_link_to_dir, is_link_to_file, is_mount, path_exists)
-from .path import (is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, Path, path_descendants, path_dir, path_ext,
-  path_join, path_name, path_rel_to_ancestor, path_split, PathIsNotDescendentError, PathOrFd, rel_path, split_dir_name,
+from .path import (is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, path_descendants, path_dir, path_ext, path_join,
+  path_name, path_rel_to_ancestor, path_split, Pathish, PathishOrFd, PathIsNotDescendentError, rel_path, split_dir_name,
   str_path)
 from .util import memoize
 
@@ -28,23 +28,23 @@ class PathAlreadyExists(Exception): pass
 class PathHasNoDirError(Exception): pass
 
 
-def abs_or_norm_path(path:Path, make_abs: bool) -> str:
+def abs_or_norm_path(path:Pathish, make_abs: bool) -> str:
   'Return the absolute path if make_abs is True. If make_abs is False, return a normalized path.'
   return abs_path(path) if make_abs else norm_path(path)
 
 
-def abs_path(path:Path) -> str:
+def abs_path(path:Pathish) -> str:
   'Return the absolute path corresponding to `path`.'
   return _abspath(norm_path(path))
 
 
-def add_file_execute_permissions(path:PathOrFd, *, follow:bool) -> None:
+def add_file_execute_permissions(path:PathishOrFd, *, follow:bool) -> None:
   old_perms = file_permissions(path, follow=follow)
   new_perms = old_perms | _stat.S_IXUSR | _stat.S_IXGRP | _stat.S_IXOTH
   _os.chmod(path, new_perms, follow_symlinks=follow)
 
 
-def change_dir(path:PathOrFd) -> None: _os.chdir(path)
+def change_dir(path:PathishOrFd) -> None: _os.chdir(path)
 
 
 def change_dir_to_project() -> None:
@@ -57,11 +57,11 @@ def change_dir_to_src() -> None:
   change_dir(path_dir(argv[0]))
 
 
-def clone_or_symlink(src:Path, dst:Path, *, follow:bool, preserve_meta:bool=True) -> None:
+def clone_or_symlink(src:Pathish, dst:Pathish, *, follow:bool, preserve_meta:bool=True) -> None:
   raise NotImplementedError()
 
 
-def copy_path(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) -> None:
+def copy_path(src:Pathish, dst:Pathish, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) -> None:
   if overwrite and path_exists(dst, follow=False):
     remove_path(dst)
   if create_dirs:
@@ -69,7 +69,7 @@ def copy_path(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_di
   _Path(src).copy(dst, follow_symlinks=follow, preserve_metadata=preserve_meta)
 
 
-def copy_to_dir(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) \
+def copy_to_dir(src:Pathish, dst:Pathish, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) \
  -> None:
   if create_dirs:
     make_dirs(dst)
@@ -77,15 +77,15 @@ def copy_to_dir(src:Path, dst:Path, *, follow:bool, overwrite:bool=True, create_
     preserve_meta=preserve_meta)
 
 
-def contract_home_dir(path:Path) -> str: return str_path(path).replace(home_dir(), '~')
+def contract_home_dir(path:Pathish) -> str: return str_path(path).replace(home_dir(), '~')
 
-def expand_home_dir(path:Path) -> str: return _expanduser(str_path(path))
+def expand_home_dir(path:Pathish) -> str: return _expanduser(str_path(path))
 
 
 def current_dir() -> str: return _getcwd()
 
 
-def _abs_start_and_top(start_dir:Path, top:Path) -> tuple[str,str]:
+def _abs_start_and_top(start_dir:Pathish, top:Pathish) -> tuple[str,str]:
   '''
   Normalize `start_dir` and `top` to absolute paths and verify that `start_dir` descends from `top`.
   '''
@@ -97,7 +97,7 @@ def _abs_start_and_top(start_dir:Path, top:Path) -> tuple[str,str]:
   return start_dir, top
 
 
-def find_file_up(name:str, start_dir:Path='.', top:Path='/', include_top:bool=True) -> str|None:
+def find_file_up(name:str, start_dir:Pathish='.', top:Pathish='/', include_top:bool=True) -> str|None:
   '''
   Search upwards from `start_dir` for a path named `name`, stopping at `top`, which defaults to the filesystem root.
   Return None if no such path is found, or if an ancestor that cannot be traversed bounds the search first.
@@ -121,7 +121,7 @@ default_project_signifiers: tuple[str, ...] = (
   'pyproject.toml',
 )
 
-def find_project_dir(start_dir:Path='.', top:Path='/', include_top:bool=False,
+def find_project_dir(start_dir:Pathish='.', top:Pathish='/', include_top:bool=False,
  project_signifiers:Iterable[str]=default_project_signifiers) -> str|None:
   '''
   find a project root directory, as denoted by the presence of a file/directory in `project_signifiers`.
@@ -143,7 +143,7 @@ def find_project_dir(start_dir:Path='.', top:Path='/', include_top:bool=False,
 def home_dir() -> str: return _expanduser('~')
 
 
-def is_python_file(path:Path, always_read:bool=False) -> bool:
+def is_python_file(path:Pathish, always_read:bool=False) -> bool:
   '''
   Guess if a file is a python file, based first on path extension, or if that is not present on shebang line.
   TODO: support more than just '#!/usr/bin/env python'
@@ -160,7 +160,7 @@ def is_python_file(path:Path, always_read:bool=False) -> bool:
   except (FileNotFoundError, IsADirectoryError): return False
 
 
-def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden:bool=False) -> list[str]:
+def list_dir(path:PathishOrFd, exts:Iterable[str]=(), hidden:bool=False) -> list[str]:
   '''
   Return a sorted list of the names in the directory at `path`,
   optionally filtering by extensions in `exts`, and the `hidden` flag (defaults to False, excluding names beginning with '.').
@@ -172,15 +172,15 @@ def list_dir(path:PathOrFd, exts:Iterable[str]=(), hidden:bool=False) -> list[st
   return [n for n in names if name_has_any_ext(n, exts) and (hidden or not n.startswith('.'))]
 
 
-def list_dir_paths(path:Path, exts:Iterable[str]=(), hidden:bool=False) -> list[str]:
+def list_dir_paths(path:Pathish, exts:Iterable[str]=(), hidden:bool=False) -> list[str]:
   return [path_join(path, name) for name in list_dir(path, exts=exts, hidden=hidden)]
 
 
-def make_dir(path:Path) -> None:
+def make_dir(path:Pathish) -> None:
   return _mkdir(path)
 
 
-def make_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
+def make_dirs(path:Pathish, mode:int=0o777, exist_ok:bool=True) -> None:
   '''
   Like os.makedirs, except:
   * uses `mode` to make all intermediate directories.
@@ -210,7 +210,7 @@ def make_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
     return # The directory already exists.
 
 
-def make_parent_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
+def make_parent_dirs(path:Pathish, mode:int=0o777, exist_ok:bool=True) -> None:
   '''
   Note: paths ending with '/' are rejected due to the semantics of path_dir().
   '''
@@ -220,7 +220,7 @@ def make_parent_dirs(path:Path, mode:int=0o777, exist_ok:bool=True) -> None:
   if dir: make_dirs(dir, exist_ok=exist_ok)
 
 
-def make_link(orig:Path, *, link:Path, absolute:bool=False, allow_nonexistent:bool=False, overwrite:bool=False,
+def make_link(orig:Pathish, *, link:Pathish, absolute:bool=False, allow_nonexistent:bool=False, overwrite:bool=False,
  create_dirs:bool=False, perms:int|None=None) -> None:
   if perms is not None: raise NotImplementedError # TODO
   abs_orig = abs_path(orig)
@@ -240,7 +240,7 @@ def make_link(orig:Path, *, link:Path, absolute:bool=False, allow_nonexistent:bo
   return _os.symlink(_orig, link)
 
 
-def move_file(path:Path, to:str, overwrite:bool=False, create_dirs:bool=False) -> None:
+def move_file(path:Pathish, to:str, overwrite:bool=False, create_dirs:bool=False) -> None:
   if not overwrite and path_exists(to, follow=False):
     raise Exception('destination path already exists: {}'.format(to))
   if create_dirs: make_parent_dirs(path)
@@ -267,7 +267,7 @@ def normalize_exts(exts:Iterable[str]) -> frozenset[str]:
   return frozenset(exts)
 
 
-def open_new(path:Path, create_dirs:bool=True, **open_args:Any) -> TextIO:
+def open_new(path:Pathish, create_dirs:bool=True, **open_args:Any) -> TextIO:
   if path_exists(path, follow=False):
     raise PathAlreadyExists(path)
   if create_dirs: make_parent_dirs(path)
@@ -288,7 +288,7 @@ def path_for_cmd(cmd:str) -> str|None:
   return None
 
 
-def path_rel_to_ancestor_or_abs(path:Path, ancestor:str, dot:bool=False) -> str:
+def path_rel_to_ancestor_or_abs(path:Pathish, ancestor:str, dot:bool=False) -> str:
   '''
   Return the path relative to `ancestor` if `path` is a descendant,
   or else the corresponding absolute path.
@@ -302,11 +302,11 @@ def path_rel_to_ancestor_or_abs(path:Path, ancestor:str, dot:bool=False) -> str:
     return ap
 
 
-def path_rel_to_current_or_abs(path:Path, dot:bool=False) -> str:
+def path_rel_to_current_or_abs(path:Pathish, dot:bool=False) -> str:
   return path_rel_to_ancestor_or_abs(path, current_dir(), dot=dot)
 
 
-def path_rel_to_dir(path:Path, dir:Path) -> str:
+def path_rel_to_dir(path:Pathish, dir:Pathish) -> str:
   comps:list[str] = []
   parent_comps = 0
   for p, r in zip_longest(path_split(abs_path(path)), path_split(abs_path(dir))):
@@ -318,63 +318,63 @@ def path_rel_to_dir(path:Path, dir:Path) -> str:
   return path_join(*comps)
 
 
-def product_needs_update(product:PathOrFd, source:PathOrFd) -> bool:
+def product_needs_update(product:PathishOrFd, source:PathishOrFd) -> bool:
   return file_mtime_or_zero(product, follow=True) <= file_mtime(source, follow=True)
 
 
 read_link = _os.readlink
 
 
-def real_path(path:Path) -> str:
+def real_path(path:Pathish) -> str:
   'Return the canonical path of the specified filename, eliminating any symbolic links encountered in the path.'
   return _realpath(str_path(path))
 
 
-def remove_dir(path:Path) -> None:
+def remove_dir(path:Pathish) -> None:
   remove_dir_contents(path, hidden=True)
   _os.rmdir(path)
 
 
-def remove_dir_contents(path:Path, hidden:bool=False) -> None:
+def remove_dir_contents(path:Pathish, hidden:bool=False) -> None:
   for n in list_dir_paths(path, hidden=hidden):
     remove_path(n)
 
 
-def remove_dir_contents_if_exists(path:Path, hidden:bool=False) -> None:
+def remove_dir_contents_if_exists(path:Pathish, hidden:bool=False) -> None:
   if path_exists(path, follow=True): remove_dir_contents(path, hidden=hidden)
 
 
-def remove_file(path:Path) -> None: _os.remove(path)
+def remove_file(path:Pathish) -> None: _os.remove(path)
 
 
-def remove_file_if_exists(path:Path) -> None:
+def remove_file_if_exists(path:Pathish) -> None:
   if path_exists(path, follow=False):
     remove_file(path)
 
 
-def remove_empty_dir(path:Path) -> None: _os.rmdir(path)
+def remove_empty_dir(path:Pathish) -> None: _os.rmdir(path)
 
-def remove_empty_dirs(path:Path) -> None: _os.removedirs(path)
+def remove_empty_dirs(path:Pathish) -> None: _os.removedirs(path)
 
 
-def remove_path(path:Path) -> None:
+def remove_path(path:Pathish) -> None:
   if is_dir(path, follow=False): remove_dir(path)
   else: remove_file(path)
 
 
-def remove_path_if_exists(path:Path) -> None:
+def remove_path_if_exists(path:Pathish) -> None:
   if path_exists(path, follow=False):
     remove_path(path)
 
 
-def scan_dir(path:Path, exts:Iterable[str]=(), hidden:bool=False) -> list[DirEntry]:
+def scan_dir(path:Pathish, exts:Iterable[str]=(), hidden:bool=False) -> list[DirEntry]:
   exts = normalize_exts(exts)
   entries = sorted(_os.scandir(str_path(path)), key=lambda e: e.name)
   if not exts and hidden: return entries
   return [e for e in entries if name_has_any_ext(e.name, exts) and (hidden or not e.name.startswith('.'))]
 
 
-def set_mtime(path:PathOrFd, mtime:float|None) -> None:
+def set_mtime(path:PathishOrFd, mtime:float|None) -> None:
   '''
   Update the access and modification times of the file at `path`.
   The access time is always updated to the current time;
@@ -383,18 +383,18 @@ def set_mtime(path:PathOrFd, mtime:float|None) -> None:
   _os.utime(path, None if mtime is None else (_time.time(), mtime))
 
 
-def touch_path(path:Path, mode:int=0o666) -> None:
+def touch_path(path:Pathish, mode:int=0o666) -> None:
   fd = _os.open(path, flags=_os.O_CREAT|_os.O_APPEND, mode=mode)
   try: _os.utime(fd)
   finally: _os.close(fd)
 
 
-def walk_dirs(*paths:Path, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=()) -> Iterator[str]:
+def walk_dirs(*paths:Pathish, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=()) -> Iterator[str]:
   return walk_paths(*paths, make_abs=make_abs, yield_files=False, yield_dirs=True,
     include_hidden=include_hidden, file_exts=file_exts)
 
 
-def walk_dirs_and_files(*dir_paths:Path, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=(),
+def walk_dirs_and_files(*dir_paths:Pathish, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=(),
  files_as_paths:bool=False) -> Iterator[tuple[str, list[str]]]:
   '''
   yield (dir_path, files) pairs.
@@ -422,7 +422,7 @@ def _walk_dirs_and_files(dir_path:str, include_hidden:bool, file_exts:frozenset[
     yield from _walk_dirs_and_files(sub_dir, include_hidden, file_exts, files_as_paths)
 
 
-def walk_dirs_up(path:Path, top:Path, include_top:bool=True) -> Iterable[str]:
+def walk_dirs_up(path:Pathish, top:Pathish, include_top:bool=True) -> Iterable[str]:
   if is_path_abs(path) ^ is_path_abs(top):
     raise MixedAbsoluteAndRelativePathsError((path, top))
   if is_dir(path, follow=True):
@@ -434,12 +434,12 @@ def walk_dirs_up(path:Path, top:Path, include_top:bool=True) -> Iterable[str]:
   return reversed(path_descendants(top, dir_path, include_start=include_top))
 
 
-def walk_files(*paths:Path, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=()) -> Iterator[str]:
+def walk_files(*paths:Pathish, make_abs:bool=False, include_hidden:bool=False, file_exts:Iterable[str]=()) -> Iterator[str]:
   return walk_paths(*paths, make_abs=make_abs, yield_files=True, yield_dirs=False,
     include_hidden=include_hidden, file_exts=file_exts)
 
 
-def walk_paths(*paths:Path, make_abs:bool=False, yield_files:bool=True, yield_dirs:bool=True, include_hidden:bool=False,
+def walk_paths(*paths:Pathish, make_abs:bool=False, yield_files:bool=True, yield_dirs:bool=True, include_hidden:bool=False,
   file_exts:Iterable[str]=(), pass_dash:bool=True) -> Iterator[str]:
   '''
   Generate file and/or dir paths, optionally filtering hidden names and/or by file extension.
