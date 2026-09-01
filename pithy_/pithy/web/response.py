@@ -6,7 +6,7 @@ from http import HTTPStatus
 from io import BufferedReader
 from os import fstat as os_fstat
 from time import sleep
-from typing import Iterable, Self, Sequence
+from typing import Any, Iterable, Mapping, Self, Sequence
 from urllib.parse import quote as url_quote
 
 from pithy.json import render_json
@@ -192,11 +192,15 @@ class HtmxResponse(HtmlResponse):
 
   def __init__(self, *content:MuChildLax, status:HTTPStatus=HTTPStatus.OK, reason:str='',
    headers:ResponseHeadersDict|None=None, last_modified:float=0.0, cache:bool=False, hx_push:str='', hx_refresh:bool=False,
-   hx_redirect:str='', hx_location:str='', hx_trigger:str='', hx_trigger_after_swap:str='', hx_trigger_after_settle:str='',
-   fake_latency:float=0.0) -> None:
+   hx_redirect:str='', hx_location:str='', hx_trigger:str|Mapping[str,Any]='', hx_trigger_after_swap:str='',
+   hx_trigger_after_settle:str='', fake_latency:float=0.0) -> None:
     '''
     Fragments can be used to swap additional targets 'out-of-band' via the `hx-swap-oob` attribute.
     If `cache` is false the response will contain a `Cache-Control: no-store` header.
+    `hx_trigger` sets the `HX-Trigger` header, which makes htmx dispatch client-side events after the response is handled.
+    It is either a comma-separated string of event names, or a mapping of event names to `detail` objects, rendered as JSON.
+    A `target` key in a detail is a selector for the element to dispatch on, instead of the requesting element.
+    `hx_trigger_after_swap` and `hx_trigger_after_settle` are htmx 2 only; htmx 4 removed those headers.
     `fake_latency` is a float in seconds used to simulate a slow response.
     '''
 
@@ -206,7 +210,7 @@ class HtmxResponse(HtmlResponse):
     if hx_push: headers['hx-push'] = hx_push
     if hx_redirect: headers['hx-redirect'] = hx_redirect
     if hx_location: headers['hx-location'] = hx_location
-    if hx_trigger: headers['hx-trigger'] = hx_trigger
+    if hx_trigger: headers['hx-trigger'] = render_json(hx_trigger, indent=None) if isinstance(hx_trigger, Mapping) else hx_trigger
     if hx_trigger_after_swap: headers['hx-trigger-after-swap'] = hx_trigger_after_swap
     if hx_trigger_after_settle: headers['hx-trigger-after-settle'] = hx_trigger_after_settle
 

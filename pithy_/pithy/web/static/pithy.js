@@ -40,10 +40,13 @@ function _configureSafariDateInputs() {
 
 /**
  * Configure the caption of each `table.collapsible` to toggle the `collapsed` class, which pithy.css styles.
+ * This is idempotent, so that it can be applied to swapped-in content (including morphed content that retains existing nodes).
  * @param {ParentNode} rootEl - The root element to search for collapsible tables.
  */
 function _configureCollapsibleTables(rootEl) {
   for (const caption of rootEl.querySelectorAll('table.collapsible > caption')) {
+    if (caption.hasAttribute('data-collapsible-configured')) { continue; }
+    caption.setAttribute('data-collapsible-configured', '');
     caption.addEventListener('click', () => {
       nonopt(caption.closest('table')).classList.toggle('collapsed');
     });
@@ -71,10 +74,12 @@ function _configureWindow() {
 
 
 let _htmx;
+let _isHtmx4 = false;
 
 /**
  * Configure htmx if it is available.
  * If htmx is not available, this function prints a message exits.
+ * Both htmx 2 and htmx 4 are supported; the version is detected at runtime so that applications can opt in per page.
  */
 function _configureHtmx() {
   try {
@@ -85,6 +90,23 @@ function _configureHtmx() {
     return;
   }
 
+  _isHtmx4 = String(_htmx.version).startsWith('4.');
+  if (_isHtmx4) {
+    _configureHtmx4();
+  } else {
+    _configureHtmx2();
+  }
+
+  // Configure universal 'once' callback for all DOM elements that define that attribute.
+  _onLoadRunOnceAttrs(document.body); // Call immediately.
+  _htmx.onLoad(_onLoadRunOnceAttrs);
+}
+
+
+/**
+ * Configure htmx 2: logging, error handling, and post-swap setup.
+ */
+function _configureHtmx2() {
   if (window.location.hostname == 'localhost') {
     // htmx.logAll() is too noisy for general use.
     _htmx.logger = _htmxLogger;
@@ -92,8 +114,7 @@ function _configureHtmx() {
 
   // Error handling configuration.
   document.body.addEventListener('htmx:beforeSwap', function (event) {
-    // @ts-ignore: ts(2339): 'detail' does not exist on type 'Event'.
-    const detail = event.detail;
+    const detail = /** @type {CustomEvent} */ (event).detail;
     const code = detail.xhr.status;
     if (code === 404) {
       alert(`Error 404: resource not found: ${detail.pathInfo.finalRequestPath}\n\n${detail.xhr.responseText}`);
@@ -111,27 +132,85 @@ function _configureHtmx() {
     }
   });
 
-  // Show modal dialogs after they are swapped in.
   document.body.addEventListener('htmx:afterSwap', (event) => {
-    // @ts-ignore: ts(2339): 'detail' does not exist on type 'Event'.
-    const detail = event.detail;
-    const target = detail.target;
-    for (const modal of target.querySelectorAll('dialog.modal')) {
-      if (modal instanceof HTMLDialogElement) {
-        modal.showModal();
-      }
-    }
+    const detail = /** @type {CustomEvent} */ (event).detail;
+    _configureSwappedContent(detail.target);
+  });
+}
 
-    // Add double-click handlers to table theads in swapped-in content.
-    for (const thead of target.querySelectorAll('table thead')) {
-      makeElementSelectTableContentsOnDoubleClick(thead);
+
+/**
+ * Configure htmx 4: logging, error handling, and post-swap setup.
+ * htmx 4 differs from htmx 2 in several ways that matter here:
+ * * Event names use the `htmx:phase:action` pattern, and event details carry a request context object `ctx`.
+ * * Requests use `fetch()`; the response is `ctx.response` and the body text is `ctx.text`.
+ * * Error responses (4xx/5xx) are swapped by default; a swap is cancelled by calling `preventDefault()` on `htmx:before:swap`.
+ * * `htmx.logger` is removed; internal errors are logged via `console.error`.
+ */
+function _configureHtmx4() {
+  if (window.location.hostname == 'localhost') {
+    // htmx.config.logAll is too noisy for general use; log a few key events instead.
+    for (const eventName of htmx4EventsToLog) {
+      document.body.addEventListener(eventName, (event) => {
+        console.log(eventName, event.target, /** @type {CustomEvent} */ (event).detail);
+      });
+    }
+  }
+
+  // Error handling configuration.
+  document.body.addEventListener('htmx:before:swap', function (event) {
+    const ctx = /** @type {CustomEvent} */ (event).detail.ctx;
+    const code = ctx.response.status;
+    const statusText = ctx.response.raw.statusText;
+    if (code === 404) {
+      alert(`Error 404: resource not found: ${ctx.request.action}\n\n${ctx.text}`);
+      event.preventDefault(); // Do not swap the error response.
+    } else if (code === 422) {
+      // As suggested by HTMX documentation, use 422 responses to signal that a form was submitted with bad data.
+      // The response contains the result to be rendered; htmx 4 swaps it by default.
+    } else if (code >= 500) {
+      alert(`Server error ${code}: ${statusText}\n\n${ctx.text}`);
+      log(ctx);
+      event.preventDefault();
+    } else if (code >= 400) {
+      alert(`Client error ${code}: ${statusText}\n\n${ctx.text}`);
+      log(ctx);
+      event.preventDefault();
     }
   });
 
-  // Configure universal 'once' callback for all DOM elements that define that attribute.
-  _onLoadRunOnceAttrs(document.body); // Call immediately.
-  _htmx.onLoad(_onLoadRunOnceAttrs);
+  document.body.addEventListener('htmx:after:swap', (event) => {
+    const ctx = /** @type {CustomEvent} */ (event).detail.ctx;
+    _configureSwappedContent(ctx.target);
+  });
 }
+
+
+/**
+ * Configure content that htmx has just swapped in: show modal dialogs and set up table heads.
+ * @param {Element} target - The swap target element.
+ */
+function _configureSwappedContent(target) {
+  // Show modal dialogs after they are swapped in.
+  for (const modal of target.querySelectorAll('dialog.modal')) {
+    if (modal instanceof HTMLDialogElement) {
+      modal.showModal();
+    }
+  }
+
+  // Add double-click handlers to table theads in swapped-in content.
+  for (const thead of target.querySelectorAll('table thead')) {
+    makeElementSelectTableContentsOnDoubleClick(thead);
+  }
+
+  _configureCollapsibleTables(target);
+}
+
+
+let htmx4EventsToLog = [
+  'htmx:before:request',
+  'htmx:before:swap',
+]
 
 
 let htmxEventsToLog = new Set([
@@ -606,14 +685,16 @@ function makeSelectPairValidateTimeRange(startSel, endSel) {
  */
 function makeElementHtmxConfirmIfChecked(element) {
   _htmx.on(element, 'htmx:confirm', (event) => {
-    event.preventDefault();
-    if (element.checked) { /* Show a confirmation. */
-      if (!window.confirm(event.detail.question)) { /* Cancel and reset the checkbox. */
-        element.checked = false;
-        return;
-      }
+    event.preventDefault(); // Suppress the built-in confirmation dialog; we must call issueRequest or dropRequest ourselves.
+    const detail = /** @type {CustomEvent} */ (event).detail;
+    const question = _isHtmx4 ? detail.ctx.confirm : detail.question;
+    if (element.checked && !window.confirm(question)) { /* Cancel and reset the checkbox. */
+      element.checked = false;
+      if (_isHtmx4) { detail.dropRequest(); }
+      return;
     }
-    event.detail.issueRequest(true); /* Skip normal confirmation dialog. */
+    if (_isHtmx4) { detail.issueRequest(); }
+    else { detail.issueRequest(true); } /* Skip normal confirmation dialog. */
   });
 }
 
@@ -643,6 +724,8 @@ function makeTableCollapsible(table, collapsed = false) {
  * @param {Element} element - The element to add the double-click handler to.
  */
 function makeElementSelectTableContentsOnDoubleClick(element) {
+  if (element.hasAttribute('data-dblclick-select-configured')) { return; } // Idempotent, for swapped/morphed content.
+  element.setAttribute('data-dblclick-select-configured', '');
   element.addEventListener('dblclick', (event) => {
     const target = event.currentTarget;
     if (!(target instanceof HTMLElement)) { throw new Error('makeElementSelectTableContentsOnDoubleClick: bad target.'); }

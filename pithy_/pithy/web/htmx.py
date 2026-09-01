@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from typing import Any, Iterable
+
 from ..html import HtmlNode
 
 
@@ -15,6 +17,30 @@ def configure_htmx_event_replaced_attrs() -> None:
   * https://htmx.org/reference/#events
   '''
   HtmlNode.replaced_attrs.update({f'hx-on-{ke}' : f'hx-on--{ke}' for ke in htmx_kebab_events })
+
+
+def hx_inherited(**attrs:Any) -> dict[str,Any]:
+  '''
+  Convert `hx_*` keyword attributes to their `hx-*:inherited` forms, e.g. `hx_target` -> `hx-target:inherited`.
+  Use this to specify a set of attributes on a node that should be inherited by its children.
+  See: https://four.htmx.org/docs/#attribute-inheritance.
+  '''
+  return { k.replace('_', '-') + ':inherited' : v for k, v in attrs.items() }
+
+
+def hx_trigger_on(*events:str, from_body:str|Iterable[str]) -> str:
+  '''
+  Compose an `hx-trigger` value from local trigger clauses and event names to listen for on `body`.
+  `events` are passed through verbatim and may carry modifiers, e.g. `'load'`, `'every 30s'`, `'toggle[this.open]'`.
+  `from_body` names one or more events that will be suffixed with `from:body`,
+  so that the element refreshes whenever the event is dispatched anywhere in the document.
+  Servers dispatch such events with the `HX-Trigger` response header; see `HtmxResponse.hx_trigger`.
+  See: https://four.htmx.org/reference/attributes/hx-trigger.
+  '''
+  if isinstance(from_body, str): from_body = (from_body,)
+  clauses = [*events, *(f'{e} from:body' for e in from_body)]
+  if not clauses: raise ValueError('hx_trigger_on: no trigger clauses.')
+  return ', '.join(clauses)
 
 
 htmx_events = [
