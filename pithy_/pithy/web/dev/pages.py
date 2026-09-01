@@ -19,7 +19,7 @@ common_css_paths = (
   '/static/dev/dev.css',
 )
 
-htmx_src = 'https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-beta4/dist/htmx.min.js'
+htmx_src = '/static/pithy/htmx/htmx4.min.js'
 
 # The site navigation bar. Each entry is a (path, label) pair.
 nav_links = (
