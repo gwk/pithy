@@ -6,7 +6,7 @@ import sys
 from collections.abc import Sequence
 from pty import openpty
 from re import Pattern
-from signal import SIGTERM
+from signal import SIGKILL, SIGTERM
 from subprocess import Popen, TimeoutExpired
 from threading import Condition, Thread
 from time import monotonic
@@ -21,6 +21,9 @@ class TestProcess:
   '''
   A context manager that launches a background process and captures its output.
   This is intended to run server-like processes in tests.
+
+  The process is launched as the leader of a new process group. On exit, the entire group is terminated so subprocesses cannot
+  outlive the context or keep the captured output file descriptors open.
 
   A background drainer thread continuously reads from stdout (and optionally stderr)
   into in-memory buffers, eliminating any risk of pipe/pty buffer deadlocks.
@@ -52,7 +55,7 @@ class TestProcess:
   It exits naturally when all fds reach EOF or raise EIO (normal PTY behavior on child exit).
 
   The shutdown sequence is:
-  1. __exit__ terminates/kills the child process and calls proc.wait().
+  1. __exit__ terminates/kills the child process group and calls proc.wait() for the group leader.
   2. proc.wait() guarantees the child has exited and closed its fds.
   3. The drainer sees EOF (pipes) or EIO (PTY) on all fds, causing read_fds() to terminate.
   4. __exit__ calls thread.join() with a timeout to confirm cleanup.
@@ -103,7 +106,7 @@ class TestProcess:
       term_timeout: Seconds to wait after SIGTERM before sending SIGKILL.
       drain_join_timeout: Seconds to wait for drainer thread to join.
       **popen_kwargs: Additional keyword arguments passed to Popen.
-        stdout, stderr, and close_fds are overridden and cannot be set.
+        stdout, stderr, close_fds, and start_new_session are overridden and cannot be set.
     '''
     self.cmd = [sys.executable, '-m', *cmd] if module else list(cmd)
     self.merge_stderr = merge_stderr
@@ -140,7 +143,8 @@ class TestProcess:
         stderr_read_fd = stderr_r
         stderr_child_fd = stderr_w
 
-      self._proc = Popen(self.cmd, stdout=stdout_child_fd, stderr=stderr_child_fd, close_fds=True, **popen_kwargs)
+      self._proc = Popen(
+        self.cmd, stdout=stdout_child_fd, stderr=stderr_child_fd, close_fds=True, start_new_session=True, **popen_kwargs)
     except Exception:
       for fd in fds_to_close_on_error:
         os.close(fd)
@@ -300,11 +304,15 @@ class TestProcess:
 
 
   def _shutdown_process(self) -> None:
-    if self._proc.poll() is not None: return
-
-    self._proc.send_signal(SIGTERM)
+    try: os.killpg(self._proc.pid, SIGTERM)
+    except ProcessLookupError: pass
     try:
       self._proc.wait(timeout=self.term_timeout)
     except TimeoutExpired:
-      self._proc.kill()
+      try: os.killpg(self._proc.pid, SIGKILL)
+      except ProcessLookupError: pass
       self._proc.wait()
+    else:
+      # The leader may exit before its descendants; ensure none survive the context.
+      try: os.killpg(self._proc.pid, SIGKILL)
+      except ProcessLookupError: pass
