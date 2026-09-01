@@ -14,14 +14,17 @@ class B2BackupStore:
   Version history is provided by B2 file versioning: uploads to the same object key accumulate versions.
   '''
 
-  def __init__(self, creds:B2Creds, bucket_name:str, *, creds_desc:str='', client:B2Client|None=None) -> None:
+  def __init__(self, creds:B2Creds, bucket_name:str, *, creds_desc:str='', client:B2Client|None=None,
+   quiet:bool=False) -> None:
     '''
     `creds_desc` names the credential origin (e.g. a file path) for error messages.
     `client` is injectable for tests; the default constructs one from `creds`.
+    If `quiet` is true then user-interruption messages are suppressed.
     The bucket id is resolved from `creds.buckets` when recorded there, so a least-privilege key
     without `listBuckets` works and construction makes one fewer round trip.
     '''
     self.name = bucket_name
+    self.quiet = quiet
     self.client = client if client is not None else B2Client(creds.key_id, creds.key_secret)
     try:
       self.client.authorize()
@@ -44,7 +47,7 @@ class B2BackupStore:
         self.client.upload_file(self.bucket_id, path, obj_key, progress=progress)
       return True
     except KeyboardInterrupt:
-      logI('Upload interrupted by user.')
+      if not self.quiet: logI('Upload interrupted by user.')
       return False
 
 
@@ -58,7 +61,7 @@ class B2BackupStore:
         self.client.download_file_by_id(version.key, dst_path, progress=progress)
       return True
     except KeyboardInterrupt:
-      logI('Download interrupted by user.')
+      if not self.quiet: logI('Download interrupted by user.')
       return False
 
 

@@ -57,7 +57,7 @@ def mk_creds(buckets:dict[str,str]|None=None) -> B2Creds:
 
 
 def mk_store(fake:FakeB2Client, *, bucket_name:str='known-bucket', buckets:dict[str,str]|None=None) -> B2BackupStore:
-  return B2BackupStore(mk_creds(buckets), bucket_name, client=cast(B2Client, fake))
+  return B2BackupStore(mk_creds(buckets), bucket_name, client=cast(B2Client, fake), quiet=True)
 
 
 # Bucket id resolution: from the creds mapping when present, making no listBuckets round trip.
