@@ -301,7 +301,8 @@ class PithyLogFormatter(Formatter):
     else:
       msg_fmt = record.msg
 
-    msg = (msg_fmt % record.args) if record.args else msg_fmt
+    msg = str(msg_fmt)
+    if record.args: msg %= record.args
 
     extra_fields = self.get_extra_fields(record)
 
