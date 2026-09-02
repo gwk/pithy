@@ -441,12 +441,16 @@ class Svg(SvgBranch, _MixinPos, _MixinSize, _MixinViewBox):
   HTML contexts for use: Phrasing.
   '''
 
-  def __init__(self, *args:Any, **kw_attrs:Any) -> None:
+  def __init__(self, *args:Any, xmlns:str|Default=Default._, **kw_attrs:Any) -> None:
     '''
-    Add the xmlns as the first attribute.
-    If the user wants to override this, they can do so by passing `xmlns` as a keyword argument.
+    Add the standard `xmlns` attribute to newly constructed SVG elements.
+    Pass `xmlns` explicitly to override it. Elements constructed with `attrs_by_ref` use that mapping unchanged.
     '''
-    super().__init__(*args, xmlns='http://www.w3.org/2000/svg', **kw_attrs)
+    if isinstance(xmlns, Default):
+      if 'attrs_by_ref' in kw_attrs: super().__init__(*args, **kw_attrs)
+      else: super().__init__(*args, xmlns='http://www.w3.org/2000/svg', **kw_attrs)
+    else:
+      super().__init__(*args, xmlns=xmlns, **kw_attrs)
 
 
 # SVG branch elements.

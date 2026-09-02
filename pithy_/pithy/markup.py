@@ -117,16 +117,20 @@ class Mu:
    cl:Iterable[str]|None=None,
    _orig:Self|None=None, # _orig is set by methods that are called with the `traversable` option.
    _parent:'Mu|None'=None, # _parent is set by methods that are called with the `traversable` option.
-   attrs:MuAttrs|None=None,
-   **kw_attrs:Any # Additional attrs can be passed as keyword arguments. These take precedence over keys in `attrs`.
+   _replace_attrs:MuAttrs|None=None, # Used by __replace__.
+   attrs_by_ref:MuAttrs|None=None,
+   **kw_attrs:Any
    ) -> None:
     '''
-    Note: the initializer uses `attrs` dict and `_` (children) list references if provided, resulting in data sharing.
-    This is done for two reasons:
-    * avoid excess copying during deserialization from json, msgpack, or similar;
-    * allow for creation of subtree nodes (with _orig/_parent set) that alias the `attr` and `_` collections.
+    The initializer uses the `_` children list by reference when one is provided.
+    It likewise uses `attrs_by_ref` by reference.
+    This avoids excess copying during deserialization and allows subtree nodes to alias the original node's collections.
 
-    `attrs` keys are used as-is; the keyword `kw_attrs` keys have underscores replaced with hyphens.
+    `attrs_by_ref` cannot be combined with keyword attributes or `cl`.
+    Its keys are used as-is.
+
+    Python creates a new dictionary for keyword arguments, so that dictionary is safely used for `attrs` without copying.
+    Keyword attribute keys have underscores replaced with hyphens.
 
     The `_` property represents the node children list, and is typed as MuChildOrChildrenLax to allow for numeric values.
     These are converted to strings during initialization.
@@ -145,9 +149,26 @@ class Mu:
     if tag:
       self.tag = tag # type: ignore[misc] # AttributeError for classes that do not have a 'tag' slot. Use `TagMu` instead.
 
-    if attrs is None: attrs = {} # Important: use existing dict ref if provided.
-    for k, v in kw_attrs.items():
-      attrs[k.replace('_', '-')] = v
+    if attrs_by_ref is not None:
+      if _replace_attrs is not None: raise ValueError('Cannot combine `attrs_by_ref` with `_replace_attrs`.')
+      if kw_attrs or cl is not None: raise ValueError('`attrs_by_ref` cannot be combined with keyword attributes or `cl`.')
+      attrs = attrs_by_ref
+    elif _replace_attrs is None:
+      attrs = kw_attrs
+    else:
+      attrs = _replace_attrs
+    normalized_kw_attr_names:dict[str,str] = {}
+    for k in kw_attrs:
+      normalized_k = k.replace('_', '-')
+      if normalized_k in normalized_kw_attr_names:
+        prev_k = normalized_kw_attr_names[normalized_k]
+        raise ValueError(f'Keyword attributes {prev_k!r} and {k!r} both normalize to {normalized_k!r}.')
+      normalized_kw_attr_names[normalized_k] = k
+    if attrs is kw_attrs:
+      for normalized_k, k in normalized_kw_attr_names.items():
+        if normalized_k != k: attrs[normalized_k] = attrs.pop(k)
+    else:
+      for normalized_k, k in normalized_kw_attr_names.items(): attrs[normalized_k] = kw_attrs[k]
     self.attrs = attrs
 
     if cl is not None:
@@ -190,14 +211,13 @@ class Mu:
     if '_' not in kwargs:
       kwargs['_'] = list(self._) # Copy the children list.
 
-    if 'attrs' not in kwargs:
-      kwargs['attrs'] = dict(self.attrs) # Copy the attributes dict.
+    if 'attrs_by_ref' not in kwargs:
+      kwargs['_replace_attrs'] = dict(self.attrs)
 
-    # 'cl' is a specialy synonym of the 'class' attr, handled by __init__.
-    # If we pass it in kwargs, then it may cause a ConflictingValues error in the constructor.
-    # To avoid this, we delete the 'class' item from the existing attrs.
-    if 'cl' in kwargs and 'attrs' in kwargs:
-      del kwargs['attrs']['class']
+    # `cl` is a special synonym of the `class` attr, handled by __init__.
+    # Remove the copied value so that the replacement does not conflict with it.
+    if 'cl' in kwargs and '_replace_attrs' in kwargs:
+      kwargs['_replace_attrs'].pop('class', None)
 
     kwargs.setdefault('_orig', self._orig)
     kwargs.setdefault('_parent', self._parent)
@@ -273,7 +293,7 @@ class Mu:
       #^ Note: we use the dynamically chosen TagClass when recursing,
       # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       else: raise ValueError(f'Mu child must be `str`, `EscapedStr`, `Mu`, or `dict`; received: {c!r}')
-    return TagClass(tag=tag, attrs=attrs, _=children)
+    return TagClass(tag=tag, attrs_by_ref=attrs, _=children)
 
 
   @classmethod
@@ -296,7 +316,7 @@ class Mu:
       # so that we can transition between subclass families of Mu, particularly between HTML and SVG.
       text = child.tail
       if text: children.append(text)
-    return TagClass(tag=tag, attrs=attrs, _=children)
+    return TagClass(tag=tag, attrs_by_ref=attrs, _=children)
 
 
   @property
@@ -316,7 +336,7 @@ class Mu:
   def subnode(self:_Mu, parent:'Mu') -> _Mu:
     'Create a subnode for `self` referencing the provided `parent`.'
     if self._orig is not None: raise ValueError(f'node is already a subnode: {self}')
-    return type(self)(tag=self.tag, attrs=self.attrs, _=self._, _orig=self, _parent=parent)
+    return type(self)(tag=self.tag, attrs_by_ref=self.attrs, _=self._, _orig=self, _parent=parent)
 
 
   def child_items(self, ws:bool=False, traversable:bool=False) -> Iterator[tuple[int,'MuChild']]:
