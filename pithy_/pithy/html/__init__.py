@@ -215,8 +215,9 @@ class HtmlScriptSupporting(HtmlNode):
   Members: Script, Template.
 '''
 
-  def script(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,**kw_attrs:Any) -> 'Script':
-    return self.append(Script(attrs=attrs, _=_, cl=cl, **kw_attrs))
+  def script(self, attrs_by_ref:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None,
+   **kw_attrs:Any) -> 'Script':
+    return self.append(Script(attrs_by_ref=attrs_by_ref, _=_, cl=cl, **kw_attrs))
 
 
 class HtmlSectioning(HtmlNode):
@@ -265,23 +266,23 @@ class HtmlHeadingParent(HtmlNode):
   Note: this class represents <em: parents> of heading elements.
   '''
 
-  def h1(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H1':
-    return self.append(H1(attrs=attrs, _=_, cl=cl, **kw_attrs))
+  def h1(self, attrs_by_ref:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H1':
+    return self.append(H1(attrs_by_ref=attrs_by_ref, _=_, cl=cl, **kw_attrs))
 
-  def h2(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H2':
-    return self.append(H2(attrs=attrs, _=_, cl=cl, **kw_attrs))
+  def h2(self, attrs_by_ref:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H2':
+    return self.append(H2(attrs_by_ref=attrs_by_ref, _=_, cl=cl, **kw_attrs))
 
-  def h3(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H3':
-    return self.append(H3(attrs=attrs, _=_, cl=cl, **kw_attrs))
+  def h3(self, attrs_by_ref:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H3':
+    return self.append(H3(attrs_by_ref=attrs_by_ref, _=_, cl=cl, **kw_attrs))
 
-  def h4(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H4':
-    return self.append(H4(attrs=attrs, _=_, cl=cl, **kw_attrs))
+  def h4(self, attrs_by_ref:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H4':
+    return self.append(H4(attrs_by_ref=attrs_by_ref, _=_, cl=cl, **kw_attrs))
 
-  def h5(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H5':
-    return self.append(H5(attrs=attrs, _=_, cl=cl, **kw_attrs))
+  def h5(self, attrs_by_ref:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H5':
+    return self.append(H5(attrs_by_ref=attrs_by_ref, _=_, cl=cl, **kw_attrs))
 
-  def h6(self, attrs:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H6':
-    return self.append(H6(attrs=attrs, _=_, cl=cl, **kw_attrs))
+  def h6(self, attrs_by_ref:MuAttrs|None=None, _:MuChildOrChildrenLax=(), cl:Iterable[str]|None=None, **kw_attrs:Any) -> 'H6':
+    return self.append(H6(attrs_by_ref=attrs_by_ref, _=_, cl=cl, **kw_attrs))
 
   @property
   def heading(self) -> Heading|None:

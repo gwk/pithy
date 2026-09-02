@@ -526,7 +526,7 @@ def chart_figure(*,
   attrs_style = kw_attrs.pop('style', '')
   style = f'{x.style()}{y.style()}{attrs_style}'
 
-  chart = Figure(cl=_cl, style=style, attrs=kw_attrs)
+  chart = Figure(cl=_cl, style=style, **kw_attrs)
   chart.prepend_class('chart')
 
   if title is not None: chart.append(Figcaption(_=title))

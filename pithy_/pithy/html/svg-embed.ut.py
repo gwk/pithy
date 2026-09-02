@@ -2,7 +2,7 @@
 
 from pithy.html import Body, Div, Head, Html, Script, Style
 from pithy.svg import Script as svg_Script, Style as svg_Style, Svg
-from utest import utest_type, utest_val_type
+from utest import utest, utest_exc, utest_type, utest_val, utest_val_type
 
 
 '''
@@ -31,3 +31,14 @@ svg = parsed.body.pick('div').pick('svg')
 utest_val_type(Svg, svg)
 utest_type(svg_Style, svg.pick, 'style')
 utest_type(svg_Script, svg.pick, 'script')
+
+
+utest('http://www.w3.org/2000/svg', Svg().get, 'xmlns')
+utest('custom', Svg(xmlns='custom').get, 'xmlns')
+
+svg_attrs = {'viewBox':'0 0 1 1'}
+svg_by_ref = Svg(attrs_by_ref=svg_attrs)
+utest_val(True, svg_by_ref.attrs is svg_attrs)
+utest(None, svg_by_ref.get, 'xmlns')
+utest_exc(ValueError('`attrs_by_ref` cannot be combined with keyword attributes or `cl`.'),
+  Svg, attrs_by_ref=svg_attrs, xmlns='custom')
