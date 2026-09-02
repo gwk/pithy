@@ -19,6 +19,7 @@ from itertools import chain
 from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Mapping, Match, overload, Self, TypeVar
 from xml.etree.ElementTree import Element
 
+from .default import Default
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
 from .iterable import window_iter, window_pairs
 from .json import render_json
@@ -112,7 +113,7 @@ class Mu:
 
   def __init__(self,
    *_mu_positional_children:'MuChildLax', # Children can be passed as positional arguments.
-   _:'MuChildOrChildrenLax'=(), # Children can also be passed to the named underscore parameter.
+   _:'MuChildOrChildrenLax|Default'=Default._, # Children can instead be passed to the named underscore parameter.
    tag:str='',
    cl:Iterable[str]|None=None,
    _orig:Self|None=None, # _orig is set by methods that are called with the `traversable` option.
@@ -133,6 +134,7 @@ class Mu:
     Keyword attribute keys have underscores replaced with hyphens.
 
     The `_` property represents the node children list, and is typed as MuChildOrChildrenLax to allow for numeric values.
+    Positional children and `_` are mutually exclusive.
     These are converted to strings during initialization.
     If the `_` argument is a list and contains numeric values, it is mutated in place.
 
@@ -179,9 +181,11 @@ class Mu:
     self._orig = _orig
     self._parent = _parent
 
-    # TODO: disallow both positional children and `_` arguments.
-
-    if isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
+    if isinstance(_, Default):
+      children:MuChildrenLax = list(_mu_positional_children)
+    elif _mu_positional_children:
+      raise ValueError('Positional children and `_` are mutually exclusive.')
+    elif isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
       children:MuChildrenLax = [_]
     elif isinstance(_, list):
       children = _ # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
@@ -194,11 +198,6 @@ class Mu:
         children[i] = str(c)
       else:
         raise TypeError(f'Invalid child type: {type(c)!r}; value: {repr_lim(c)!r}')
-
-    for c in _mu_positional_children:
-      if isinstance(c, _mu_child_classes_lax_converted):
-        c = str(c)
-      children.append(c)
 
     self._ = cast(list[MuChild], children)
 
