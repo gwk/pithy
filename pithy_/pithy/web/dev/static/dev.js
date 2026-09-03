@@ -5,6 +5,6 @@
 addEventListener('DOMContentLoaded', () => {
   const currentPath = window.location.pathname;
   const currentLink = [...document.querySelectorAll('body > nav a')]
-    .find(link => link.pathname === currentPath);
+    .find(link => link instanceof HTMLAnchorElement && link.pathname === currentPath);
   if (currentLink) currentLink.classList.add('current-nav-section-link');
 });
