@@ -24,7 +24,7 @@ build:
 
 check: check-uv-lock check-pyproject isort lint typecheck test
 
-check-full: check-uv-lock gen check-pyproject isort lint typecheck test-full
+check-full: check-uv-lock gen check-pyproject isort lint typecheck typecheck-js test-full
 
 # Check that the uv lock file is in sync with pyproject.toml.
 check-uv-lock:
