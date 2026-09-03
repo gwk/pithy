@@ -1,5 +1,6 @@
 {
   "exclude": [
+    "_build/**",
     "_misc/**",
     "dist/**",
     "node/**",
