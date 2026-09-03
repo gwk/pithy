@@ -331,6 +331,33 @@ def truncate_repr_with_ellipsis(val:Any, max_len:int) -> str:
   return r[:max_len-2] + r[0] + '…'
 
 
+def normalize_newlines(text:str) -> str:
+  'Collapse `\\r\\n`, `\\r`, and the unicode line and paragraph separators to `\\n`.'
+  text = text.replace('\r\n', '\n').replace('\r', '\n')
+  return text.replace('\u2028', '\n').replace('\u2029', '\n\n')
+
+
+def strip_unsafe_chars(text:str) -> str:
+  '''
+  Remove the characters that make rendered text differ from stored text.
+
+  Escaping defends the structure of a document; it does not touch characters that are not markup.
+  `pithy.markup` applies this to all text and attribute values, so callers rendering markup do not call it themselves.
+  Apply `normalize_newlines` first to keep the line and paragraph separators as newlines rather than drop them.
+  '''
+  return text.translate(_unsafe_chars)
+
+
+_unsafe_chars:dict[int,None] = {
+  0x200b : None, # ZERO WIDTH SPACE.
+  0x2028 : None, # LINE SEPARATOR.
+  0x2029 : None, # PARAGRAPH SEPARATOR.
+  0x202d : None, # LEFT-TO-RIGHT OVERRIDE.
+  0x202e : None, # RIGHT-TO-LEFT OVERRIDE.
+  0xfeff : None, # ZERO WIDTH NO-BREAK SPACE, also the byte order mark.
+}
+
+
 def simplify_punctuation(text:str) -> str:
   text = non_ascii_hyphens_re.sub('-', text) # Replace unicode hyphens.
   text = text.replace('\u2014', '--') # Em dash.
