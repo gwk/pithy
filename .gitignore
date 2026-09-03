@@ -20,6 +20,9 @@ CLAUDE.md
 .agents/skills
 .claude/skills
 
+# Facility.
+/_facility.local.json
+
 # Project.
 _build/
 perf/pithy/json/fmt/data/
