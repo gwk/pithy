@@ -1,18 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-# Finder.
-.DS_Store
-
 # Claude
 .claude/settings.local.json
-
-# Playwright.
-.playwright-mcp/
-
-# Python.
-__pycache__/
-dist/
-.venv/
 
 # Context.
 AGENTS.md
@@ -22,6 +11,17 @@ CLAUDE.md
 
 # Facility.
 /_facility.local.json
+
+# Finder.
+.DS_Store
+
+# Playwright.
+.playwright-mcp/
+
+# Python.
+__pycache__/
+dist/
+.venv/
 
 # Project.
 _build/
@@ -34,6 +34,6 @@ _plan.md
 _prompt.md
 _todo.md
 
-# Ops script downloads.
+## Ops script downloads.
 ops/linux/uv/download/
 ops/linux/vector/download/
