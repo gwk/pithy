@@ -4,7 +4,7 @@
  * pithy.js is a general-purpose JavaScript library for use by pithy web applications.
  * It is intended to be included in the HTML head element as follows:
  * <script src="/static/pithy.js"></script>
- * It expects HTMX to also be loaded.
+ * It expects htmx 4 to also be loaded.
  * pithy.js cannot be loaded using async/defer because the `once()` function must be available to inline script elements.
  * Other libraries can be loaded using async/defer.
  */
@@ -74,12 +74,10 @@ function _configureWindow() {
 
 
 let _htmx;
-let _isHtmx4 = false;
 
 /**
- * Configure htmx if it is available.
- * If htmx is not available, this function prints a message exits.
- * Both htmx 2 and htmx 4 are supported; the version is detected at runtime so that applications can opt in per page.
+ * Configure htmx if it is available: logging, error handling, and post-swap setup.
+ * If htmx is not available, this function prints a message and returns.
  */
 function _configureHtmx() {
   try {
@@ -90,67 +88,9 @@ function _configureHtmx() {
     return;
   }
 
-  _isHtmx4 = String(_htmx.version).startsWith('4.');
-  if (_isHtmx4) {
-    _configureHtmx4();
-  } else {
-    _configureHtmx2();
-  }
-
-  // Configure universal 'once' callback for all DOM elements that define that attribute.
-  _onLoadRunOnceAttrs(document.body); // Call immediately.
-  _htmx.onLoad(_onLoadRunOnceAttrs);
-}
-
-
-/**
- * Configure htmx 2: logging, error handling, and post-swap setup.
- */
-function _configureHtmx2() {
-  if (window.location.hostname == 'localhost') {
-    // htmx.logAll() is too noisy for general use.
-    _htmx.logger = _htmxLogger;
-  }
-
-  // Error handling configuration.
-  document.body.addEventListener('htmx:beforeSwap', function (event) {
-    const detail = /** @type {CustomEvent} */ (event).detail;
-    const code = detail.xhr.status;
-    if (code === 404) {
-      alert(`Error 404: resource not found: ${detail.pathInfo.finalRequestPath}\n\n${detail.xhr.responseText}`);
-    } else if (code === 422) {
-      // As suggested by HTMX documentation, use 422 responses to signal that a form was submitted with bad data.
-      // The response should contain the result to be rendered.
-      detail.shouldSwap = true;
-      detail.isError = false; // Do not log errors in the console.
-    } else if (code >= 500) {
-      alert(`Server error ${code}: ${detail.xhr.statusText}\n\n${detail.xhr.responseText}`);
-      log(detail);
-    } else if (code >= 400) {
-      alert(`Client error ${code}: ${detail.xhr.statusText}\n\n${detail.xhr.responseText}`);
-      log(detail);
-    }
-  });
-
-  document.body.addEventListener('htmx:afterSwap', (event) => {
-    const detail = /** @type {CustomEvent} */ (event).detail;
-    _configureSwappedContent(detail.target);
-  });
-}
-
-
-/**
- * Configure htmx 4: logging, error handling, and post-swap setup.
- * htmx 4 differs from htmx 2 in several ways that matter here:
- * * Event names use the `htmx:phase:action` pattern, and event details carry a request context object `ctx`.
- * * Requests use `fetch()`; the response is `ctx.response` and the body text is `ctx.text`.
- * * Error responses (4xx/5xx) are swapped by default; a swap is cancelled by calling `preventDefault()` on `htmx:before:swap`.
- * * `htmx.logger` is removed; internal errors are logged via `console.error`.
- */
-function _configureHtmx4() {
   if (window.location.hostname == 'localhost') {
     // htmx.config.logAll is too noisy for general use; log a few key events instead.
-    for (const eventName of htmx4EventsToLog) {
+    for (const eventName of _htmxEventsToLog) {
       document.body.addEventListener(eventName, (event) => {
         console.log(eventName, event.target, /** @type {CustomEvent} */ (event).detail);
       });
@@ -158,16 +98,17 @@ function _configureHtmx4() {
   }
 
   // Error handling configuration.
+  // htmx swaps error responses (4xx/5xx) by default; calling `preventDefault()` on `htmx:before:swap` cancels the swap.
   document.body.addEventListener('htmx:before:swap', function (event) {
     const ctx = /** @type {CustomEvent} */ (event).detail.ctx;
     const code = ctx.response.status;
     const statusText = ctx.response.raw.statusText;
     if (code === 404) {
       alert(`Error 404: resource not found: ${ctx.request.action}\n\n${ctx.text}`);
-      event.preventDefault(); // Do not swap the error response.
+      event.preventDefault();
     } else if (code === 422) {
-      // As suggested by HTMX documentation, use 422 responses to signal that a form was submitted with bad data.
-      // The response contains the result to be rendered; htmx 4 swaps it by default.
+      // As suggested by htmx documentation, use 422 responses to signal that a form was submitted with bad data.
+      // The response contains the result to be rendered, so let the swap proceed.
     } else if (code >= 500) {
       alert(`Server error ${code}: ${statusText}\n\n${ctx.text}`);
       log(ctx);
@@ -183,11 +124,15 @@ function _configureHtmx4() {
     const ctx = /** @type {CustomEvent} */ (event).detail.ctx;
     _configureSwappedContent(ctx.target);
   });
+
+  // Configure universal 'once' callback for all DOM elements that define that attribute.
+  _onLoadRunOnceAttrs(document.body); // Call immediately.
+  _htmx.onLoad(_onLoadRunOnceAttrs);
 }
 
 
 /**
- * Configure content that htmx has just swapped in: show modal dialogs and set up table heads.
+ * Configure content that htmx has just swapped in: show modal dialogs and set up tables.
  * @param {Element} target - The swap target element.
  */
 function _configureSwappedContent(target) {
@@ -207,29 +152,10 @@ function _configureSwappedContent(target) {
 }
 
 
-let htmx4EventsToLog = [
+const _htmxEventsToLog = [
   'htmx:before:request',
   'htmx:before:swap',
-]
-
-
-let htmxEventsToLog = new Set([
-  'htmx:trigger',
-  'htmx:beforeSwap',
-])
-
-
-/**
- * A custom logger for htmx events.
- * @param {Element} elt - The element that triggered the event.
- * @param {string} event - The event type.
- * @param {any} data - The event data.
- */
-function _htmxLogger(elt, event, data) {
-  if (htmxEventsToLog.has(event)) {
-    console.log(event, elt, data)
-  }
-}
+];
 
 
 /**
@@ -687,14 +613,12 @@ function makeElementHtmxConfirmIfChecked(element) {
   _htmx.on(element, 'htmx:confirm', (event) => {
     event.preventDefault(); // Suppress the built-in confirmation dialog; we must call issueRequest or dropRequest ourselves.
     const detail = /** @type {CustomEvent} */ (event).detail;
-    const question = _isHtmx4 ? detail.ctx.confirm : detail.question;
-    if (element.checked && !window.confirm(question)) { /* Cancel and reset the checkbox. */
+    if (element.checked && !window.confirm(detail.ctx.confirm)) { /* Cancel and reset the checkbox. */
       element.checked = false;
-      if (_isHtmx4) { detail.dropRequest(); }
+      detail.dropRequest();
       return;
     }
-    if (_isHtmx4) { detail.issueRequest(); }
-    else { detail.issueRequest(true); } /* Skip normal confirmation dialog. */
+    detail.issueRequest();
   });
 }
 

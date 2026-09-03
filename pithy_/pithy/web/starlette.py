@@ -85,8 +85,7 @@ class HtmxResponse(HTMLResponse):
 
   def __init__(self, *content:MuChildLax, status_code:int=200, headers:Mapping[str,str]|None=None,
    background:BackgroundTask|None=None, cache:bool=False, hx_push:str='', hx_refresh:bool=False, hx_redirect:str='',
-   hx_location:str='', hx_trigger:str|Mapping[str,Any]='', hx_trigger_after_swap:str='', hx_trigger_after_settle:str='',
-   fake_latency:float=0.0, **kwargs:Any) -> None:
+   hx_location:str='', hx_trigger:str|Mapping[str,Any]='', fake_latency:float=0.0, **kwargs:Any) -> None:
     '''
     A response for one or more HTMX fragments.
     Fragments can be used to swap additional targets 'out-of-band' via the `hx-swap-oob` attribute.
@@ -94,19 +93,16 @@ class HtmxResponse(HTMLResponse):
     `hx_trigger` sets the `HX-Trigger` header, which makes htmx dispatch client-side events after the response is handled.
     It is either a comma-separated string of event names, or a mapping of event names to `detail` objects, rendered as JSON.
     A `target` key in a detail is a selector for the element to dispatch on, instead of the requesting element.
-    `hx_trigger_after_swap` and `hx_trigger_after_settle` are htmx 2 only; htmx 4 removed those headers.
     `FAKE_LATENCY` is a float in seconds used to simulate a slow response.
     '''
 
     headers = {**headers} if headers else {}
     if not cache: headers['Cache-Control'] = 'no-store'
     if hx_refresh: headers['HX-Refresh'] = 'true'
-    if hx_push: headers['HX-Push'] = hx_push
+    if hx_push: headers['HX-Push-Url'] = hx_push
     if hx_redirect: headers['HX-Redirect'] = hx_redirect
     if hx_location: headers['HX-Location'] = hx_location
     if hx_trigger: headers['HX-Trigger'] = render_json(hx_trigger, indent=None) if isinstance(hx_trigger, Mapping) else hx_trigger
-    if hx_trigger_after_swap: headers['HX-Trigger-After-Swap'] = hx_trigger_after_swap
-    if hx_trigger_after_settle: headers['HX-Trigger-After-Settle'] = hx_trigger_after_settle
 
     if fake_latency: sleep(fake_latency)
 
