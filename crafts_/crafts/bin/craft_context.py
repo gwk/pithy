@@ -63,11 +63,11 @@ def main() -> None:
     Add this conventional rule to your justfile:
     ```
     ctx:
-      craft-context .
+      craft-context
     ```'''),
     formatter_class=RawDescriptionHelpFormatter)
 
-  arg_parser.add_argument('paths', nargs='+', help=f'Input {ctx_name} files, or directories to search for them.')
+  arg_parser.add_argument('paths', nargs='*', default=['.'], help=f'Input {ctx_name} files, or directories to search for them.')
   args = arg_parser.parse_args()
 
   src_paths = find_src_paths(args.paths)
