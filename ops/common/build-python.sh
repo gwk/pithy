@@ -2,18 +2,17 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 # Download, build, and install CPython with modern openssl, readline, sqlite, and other dependencies.
-# This single script works on both macOS (a framework build) and Linux, replacing the previous
-# per-platform build/install scripts.
-#
+# This script performs a regular Unix build on both macOS and Linux, instead of a framework build for macOS.
+
 # Prerequisites:
 # * Run common/build-sqlite.sh first to install a modern sqlite into /usr/local.
 # * macOS: `brew install ca-certificates gdbm ncurses openssl pkg-config readline tcl-tk xz` then `brew upgrade`.
 # * Linux: install the usual build toolchain and headers (clang, zlib, bzip2, xz, readline, gdbm, libffi, openssl).
-#
+
 # Run this as your normal (non-root) user. It escalates with sudo only to create the install prefix.
 # The makefile compiles a large amount of stdlib bytecode during install;
 # doing that under sudo produces root-owned files in both the install tree and the build tree.
-#
+
 # Optional configure arguments are passed through, e.g. --with-pydebug or --disable-optimizations.
 # Pass -reuse-build as the first argument to skip the slow download, configure, and make steps
 # and rerun only the install steps against the existing build tree; useful for iterating on install/symlink changes.
@@ -151,7 +150,7 @@ else
     export PKG_CONFIG_PATH="$(brew_path readline lib/pkgconfig):$(brew_path xz lib/pkgconfig)"
 
     configure_flags+=(
-      --enable-framework="$prefix"
+      --disable-framework
       --with-openssl="$(brew --prefix openssl@3)"
     )
     jobs=$(sysctl -n hw.logicalcpu)
@@ -186,45 +185,25 @@ echo
 
 # altinstall installs only the versioned executables (pythonX.Y, pipX.Y), not the `python3` symlink and manpage;
 # we create the unversioned symlinks ourselves below. It also runs ensurepip, which refuses to run as root.
-# On Linux the executables land in $prefix/bin.
-# On macOS the real executables land in the framework bin, and pip likewise writes console scripts there;
-# we make $prefix/bin a symlink to that dir below, so that adding `/opt/py/bin` to PATH suffices on both platforms.
-#
-# Two make variables divert macOS install steps that would otherwise fight that layout.
-# Both are plain variables in Mac/Makefile that propagate to the `cd Mac && $(MAKE) ...` sub-make.
-# * PYTHONAPPSDIR: sends the app bundles (IDLE.app, Python Launcher.app) to a scrap dir in _build.
-#   The internal Resources/Python.app that the interpreter requires is controlled by APPINSTALLDIR and is unaffected.
-# * FRAMEWORKUNIXTOOLSPREFIX: sends the compatibility symlinks to a scrap dir; they default to $prefix/bin.
-#   The rule that installs them does `cd $prefix/bin && rm -f pythonX.Y && ln -s $BINDIR/pythonX.Y pythonX.Y`,
-#   which would follow our symlink into the framework bin and replaces the real executables there with self-referential ones.
+# Executables and pip-installed console scripts land in $prefix/bin on both platforms.
 
-if [[ $platform == mac ]]; then
-  exe make altinstall PYTHONAPPSDIR="$PWD/unused-apps" FRAMEWORKUNIXTOOLSPREFIX="$PWD/unused-unixtools"
-else
-  exe make altinstall
+grep -Eq '^PYTHONFRAMEWORKDIR=[[:space:]]*no-framework[[:space:]]*$' Makefile ||
+  fail "Framework builds are no longer supported. Rebuild without -reuse-build or --enable-framework."
+
+bin_dir="$prefix/bin"
+
+# Remove the old framework bin symlink before installing, preserving the framework and its installed packages.
+if [[ -L "$bin_dir" ]]; then
+  case "$(readlink "$bin_dir")" in
+    Python.framework/Versions/*/bin|"$prefix"/Python.framework/Versions/*/bin) exe unlink "$bin_dir" ;;
+    *) fail "Unexpected bin directory symlink: $bin_dir. Remove it before installing." ;;
+  esac
 fi
+exe make altinstall
 echo "Altinstall done."
 echo
 
-# Add the unversioned names and expose a uniform $prefix/bin across platforms.
-
-# The versioned tools (pythonX.Y, pipX.Y) live in $bin_dir. On Linux that is $prefix/bin directly;
-# on macOS it is the framework's versioned bin dir, which is also where pip installs console scripts.
-if [[ $platform == mac ]]; then
-  bin_dir="$prefix/Python.framework/Versions/$py_version/bin"
-else
-  bin_dir="$prefix/bin"
-fi
-
 [[ -x "$bin_dir/python$py_version" ]] || fail "Expected altinstall executable missing: $bin_dir/python$py_version."
-
-if [[ $platform == mac ]]; then
-  # Make sure that the FRAMEWORKUNIXTOOLSPREFIX diversion above worked.
-  # It is not a documented option; if a future version changes it, we want to fail rather than mess up the symlinks.
-  [[ -f "$bin_dir/python$py_version" && ! -L "$bin_dir/python$py_version" ]] ||
-    fail "$bin_dir/python$py_version is a symlink, not the real executable;" \
-      "the FRAMEWORKUNIXTOOLSPREFIX diversion did not take effect. Check Mac/Makefile in the CPython source."
-fi
 
 # Add the unversioned `python`/`python3` names alongside the versioned one from altinstall.
 # The targets are relative because each unversioned name sits in the same dir as its versioned target.
@@ -244,13 +223,6 @@ fi
 for name in pip pip3 "pip$py_version"; do
   [[ -x "$bin_dir/$name" ]] || fail "Expected pip executable missing: $bin_dir/$name."
 done
-
-if [[ $platform == mac ]]; then
-  # Symlink $prefix/bin to the framework bin, exposing every tool there including pip-installed console scripts.
-  # This gives parity with Linux, where $prefix/bin is itself the real bin dir.
-  exe rm -rf "$prefix/bin"
-  exe ln -s "Python.framework/Versions/$py_version/bin" "$prefix/bin"
-fi
 
 hash -r # Refresh the shell's command hash so the new python is found.
 
