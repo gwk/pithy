@@ -90,6 +90,9 @@ function _configureHtmx() {
   }
   _htmx = /** @type {Htmx} */ (window.htmx);
 
+  // Preserve browser-controlled details/dialog open state during morphs, while allowing their contents to update.
+  if (!_htmx.config.morphIgnore.includes('open')) _htmx.config.morphIgnore.push('open');
+
   if (window.location.hostname == 'localhost') {
     // htmx.config.logAll is too noisy for general use; log a few key events instead.
     for (const eventName of _htmxEventsToLog) {
