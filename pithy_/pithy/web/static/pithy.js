@@ -38,6 +38,10 @@ function _configureSafariDateInputs() {
 }
 
 
+// Track listener installation outside the DOM attributes, which morphing may remove while retaining the listeners.
+/** @type {WeakSet<Element>} */
+const _collapsibleCaptions = new WeakSet();
+
 /**
  * Configure the caption of each `table.collapsible` to toggle the `collapsed` class, which pithy.css styles.
  * This is idempotent, so that it can be applied to swapped-in content (including morphed content that retains existing nodes).
@@ -45,8 +49,8 @@ function _configureSafariDateInputs() {
  */
 function _configureCollapsibleTables(rootEl) {
   for (const caption of rootEl.querySelectorAll('table.collapsible > caption')) {
-    if (caption.hasAttribute('data-collapsible-configured')) { continue; }
-    caption.setAttribute('data-collapsible-configured', '');
+    if (_collapsibleCaptions.has(caption)) { continue; }
+    _collapsibleCaptions.add(caption);
     caption.addEventListener('click', () => {
       nonopt(caption.closest('table')).classList.toggle('collapsed');
     });
