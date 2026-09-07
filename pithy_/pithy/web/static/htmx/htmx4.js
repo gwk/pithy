@@ -2172,12 +2172,17 @@ var htmx = (() => {
             if (!this.#triggerExtensions(oldNode, "htmx:before:morph:node", {oldNode, newNode})) return;
                 
             this.#copyAttributes(oldNode, newNode);
+            // Once interacted with, a checkable input's live state no longer follows its checked attribute.
+            if (oldNode instanceof HTMLInputElement && (oldNode.type === 'checkbox' || oldNode.type === 'radio')) {
+                oldNode.checked = oldNode.defaultChecked;
+            }
             if (oldNode instanceof HTMLTextAreaElement && document.activeElement !== oldNode && oldNode.defaultValue != newNode.defaultValue) {
                 oldNode.value = newNode.value;
             }
             let skipChildren = this.config.morphSkipChildren && oldNode.matches?.(this.config.morphSkipChildren);
-            // isEqualNode does not detect template content diff so always morph templates
-            if (!skipChildren && (!oldNode.isEqualNode(newNode) || newNode.tagName === 'TEMPLATE' || newNode.querySelector?.('template'))) {
+            // isEqualNode detects neither template content nor live checked state; visit these even if markup is equal.
+            if (!skipChildren && (!oldNode.isEqualNode(newNode) || newNode.tagName === 'TEMPLATE' ||
+                newNode.querySelector?.('template, input[type="checkbox"], input[type="radio"]'))) {
                 this.#morphChildren(ctx, oldNode, newNode);
             }
         }
