@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. -->
+<meta charset="utf-8">
+<title>Collapsible table morph regression tests</title>
+<link rel="stylesheet" href="../../pithy/web/static/pithy.css">
+<script src="../../pithy/web/static/pithy.js"></script>
+<script defer src="../../pithy/web/static/htmx/htmx4.min.js"></script>
+<pre id="results">Running...</pre>
+<div id="region">
+  <table id="proposed" class="collapsible">
+    <caption>Proposed</caption>
+    <tbody><tr><td>Prebook</td></tr></tbody>
+  </table>
+</div>
+<script>
+// Serve the pithy repository root and open this page in a browser.
+addEventListener('DOMContentLoaded', () => {
+  const results = [];
+  function check(condition, message) {
+    if (!condition) throw new Error(message);
+    results.push(message);
+  }
+  function checkToggle() {
+    const table = document.querySelector('table');
+    const caption = table.querySelector('caption');
+    caption.click();
+    check(table.classList.contains('collapsed'), 'One click collapses');
+    check(getComputedStyle(table.tBodies[0]).display === 'none', 'Collapsed rows are hidden');
+    caption.click();
+    check(!table.classList.contains('collapsed'), 'Another click expands');
+    check(getComputedStyle(table.tBodies[0]).display !== 'none', 'Expanded rows are visible');
+  }
+  try {
+    let api;
+    htmx.registerExtension('caption-test', {init: value => { api = value; }});
+    const region = document.querySelector('#region');
+    const originalCaption = region.querySelector('caption');
+    function configureSwap() {
+      region.dispatchEvent(new CustomEvent('htmx:after:swap', {bubbles: true, detail: {ctx: {target: region}}}));
+    }
+    checkToggle();
+    for (let i = 0; i < 4; ++i) {
+      const template = document.createElement('template');
+      template.innerHTML = `<div id="region"><table id="proposed" class="collapsible"><caption>Proposed</caption>
+        <tbody><tr><td>Updated ${i}</td></tr></tbody></table></div>`;
+      api.morph(region, template.content, false);
+      configureSwap();
+      configureSwap(); // Setup must be idempotent even when called repeatedly.
+      check(region.querySelector('caption') === originalCaption, 'Morph retains the caption');
+      checkToggle();
+    }
+    region.innerHTML = '<table class="collapsible"><caption>New table</caption><tbody><tr><td>New</td></tr></tbody></table>';
+    configureSwap();
+    checkToggle();
+    document.querySelector('#results').textContent = `PASS: ${results.length} checks\n` + results.join('\n');
+  } catch (error) {
+    document.querySelector('#results').textContent = 'FAIL: ' + error.stack;
+    throw error;
+  }
+});
+</script>
