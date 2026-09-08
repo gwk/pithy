@@ -572,7 +572,7 @@ html.safari input[type='date'] {
 }
 
 html.safari input[type='date']::after {
-  content: '🗓️'; /* Safari draws no calendar affordance of its own. */
+  content: '🗓'; /* Safari draws no calendar affordance of its own. */
   padding: 0.25em;
   font-family: 'Noto Emoji';
 }
@@ -680,7 +680,7 @@ table.collapsible.collapsed :is(tbody, thead, tfoot) {
 }
 
 
-/* Emoji icons. */
+/* Emoji icons. Omit U+FE0F from icon text; it forces Apple color emoji even with Noto Emoji selected. */
 
 .icon, .icon.button {
   font-family: 'Noto Emoji';
