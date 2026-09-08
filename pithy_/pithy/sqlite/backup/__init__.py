@@ -35,12 +35,13 @@ Backup files:
 Restore artifacts are colocated with the canonical database files.
 They are plain files, not coordinated by the Database advisory lock;
 only the active database files are covered by the advisory lock logic.
-* `{db_path}_{timestamp}.downloaded`: verified download of a cloud backup version, cached for reuse.
+* `{db_path}.{store_name}_{timestamp}.downloaded`: verified download of a cloud backup version, cached for reuse.
 * `{db_path}.restoring`: working copy that is mutated and then moved into place.
 '''
 
 import time
 from dataclasses import dataclass, field
+from glob import escape, glob
 from hashlib import sha1
 from os import getpid
 from typing import Callable, cast, get_args, Literal, Mapping, Protocol, Sequence
@@ -122,6 +123,7 @@ class BackupConfig:
   * `make_save_store`: read-write store factory for uploads; `None` disables uploads.
   * `make_restore_store`: read-only store factory for restores. The optional `store_name` is app-defined
     (e.g. a deployment stage); the factory validates it, including any safety guards on which stores a host may restore from.
+    The factory must not access the network; local restores also invoke it to resolve the store name and validate access.
   * `mutate_restored`: hook `(restoring_path, name)` applied to the `.restoring` copy before it is moved into place,
     e.g. to clear queued actions that a restored copy must not replay against live systems.
     The engine checkpoints the WAL and removes sidecar files after the hook runs; the hook need not do so.
@@ -434,8 +436,8 @@ def upload_interval_for(config:BackupConfig, name:str) -> float|None:
   return file_config_for(config, name)._upload_interval_s
 
 
-def restore_all(config:BackupConfig, names:Sequence[str], *, store_name:str|None=None) -> None:
-  'Restore each named database from the store selected by `store_name`, holding the exclusive group lock throughout.'
+def restore_all(config:BackupConfig, names:Sequence[str], *, store_name:str|None=None, local:bool=False) -> None:
+  'Restore each named database from a store or the latest local download, holding the exclusive group lock throughout.'
 
   if config.make_restore_store is None: exit('error: backup config has no restore store factory; cannot restore.')
   store = config.make_restore_store(store_name)
@@ -445,63 +447,24 @@ def restore_all(config:BackupConfig, names:Sequence[str], *, store_name:str|None
   # all other participants block until it completes.
   with db_config.exclusive_lock():
     for name in names:
-      if not restore_db(config, store, name): exit(1)
+      if not restore_db(config, store, name, local=local): exit(1)
     # The manifest is not part of the backup, so write it here for discovery by generic tools.
     db_config.write_manifest()
     config.fix_data_file_perms(db_config.manifest_path)
 
 
-def restore_db(config:BackupConfig, store:BackupStore, name:str) -> bool:
+def restore_db(config:BackupConfig, store:BackupStore, name:str, *, local:bool=False) -> bool:
   '''
   Restore a single database from the latest version in `store`.
+  If `local` is True, use the latest local download for `store.name` without contacting the store.
   The caller must hold the exclusive group lock: the canonical database file is replaced directly.
   '''
   db_path = config.db_config.path(name)
-  obj_key = f'{name}.db'
-
-  logI('restore:', store=store.name, obj_key=obj_key)
-
-  versions = store.list_versions(obj_key)
-  if not versions:
-    logI('No backup found.', store=store.name, obj_key=obj_key)
-    return False
-
-  versions.sort(key=lambda v: v.uploaded_at)
-
-  lv = len(versions)
-  if lv > 1:
-    log_stored_version('prev', idx=lv-2, version=versions[lv-2])
-
-  latest = versions[-1]
-  log_stored_version('last', idx=lv-1, version=latest)
-
-  if not latest.sha1:
-    logI('Latest backup version has no SHA1; cannot verify a download.', obj_key=obj_key, key=latest.key)
-    return False
-
-  dl_path = f'{db_path}.{store.name}_{latest.uploaded_at:%Y-%m-%d_%H_%M}{downloaded_suffix}'
-
-  if path_exists(dl_path, follow=False):
-    existing_size = file_size(dl_path)
-    if existing_size != latest.size:
-      logI('Download path already exists but file size does not match; please remove this file.', path=dl_path,
-        existing_size=existing_size, expected_size=latest.size)
-      return False
-    existing_sha1 = sha1_for_file(dl_path)
-    if existing_sha1 != latest.sha1:
-      logI('Download path already exists but SHA1 does not match; please remove this file.', path=dl_path,
-        existing_sha1=existing_sha1, expected_sha1=latest.sha1)
-      return False
-
-    logI('Download path already exists; not downloading.', path=dl_path)
-
+  if local:
+    dl_path = latest_local_download(db_path, store_name=store.name)
   else:
-    logI('Downloading latest backup.', path=dl_path, key=latest.key)
-    if not store.download(latest, dl_path):
-      remove_file_if_exists(dl_path) # Do not leave a partial download to confuse the next attempt.
-      return False
-    # Normalize ownership at the point of creation, so every artifact in the data dir has canonical ownership.
-    config.fix_data_file_perms(dl_path)
+    dl_path = download_latest_backup(config, store, name)
+  if dl_path is None: return False
 
   # Perform the restore mutations on a non-canonical `.restoring` copy, then move it into place. This keeps the pristine
   # download at `dl_path` (which may be reused) untouched, and never exposes a half-mutated database file.
@@ -523,6 +486,76 @@ def restore_db(config:BackupConfig, store:BackupStore, name:str) -> bool:
   config.fix_data_file_perms(db_path)
 
   return True
+
+
+def latest_local_download(db_path:str, *, store_name:str) -> str|None:
+  'Find the newest cached download for the exact store name used in filenames, without contacting a store.'
+  downloads:list[tuple[DateTime,str]] = []
+  prefix = f'{db_path}.{store_name}_'
+  for path in glob(escape(prefix) + '*' + downloaded_suffix):
+    if not is_file(path, follow=True): continue
+    timestamp = path.removeprefix(prefix).removesuffix(downloaded_suffix)
+    try: uploaded_at = DateTime.strptime(timestamp, '%Y-%m-%d_%H_%M')
+    except ValueError: continue
+    downloads.append((uploaded_at, path))
+  if not downloads:
+    logI('No local download found.', db_path=db_path, store=store_name)
+    return None
+  _, path = max(downloads)
+  logI('Using latest local download.', path=path, store=store_name)
+  return path
+
+
+def download_latest_backup(config:BackupConfig, store:BackupStore, name:str) -> str|None:
+  'Download or verify the cached latest backup version from `store`, returning its path on success.'
+  db_path = config.db_config.path(name)
+  obj_key = f'{name}.db'
+
+  logI('restore:', store=store.name, obj_key=obj_key)
+
+  versions = store.list_versions(obj_key)
+  if not versions:
+    logI('No backup found.', store=store.name, obj_key=obj_key)
+    return None
+
+  versions.sort(key=lambda v: v.uploaded_at)
+
+  lv = len(versions)
+  if lv > 1:
+    log_stored_version('prev', idx=lv-2, version=versions[lv-2])
+
+  latest = versions[-1]
+  log_stored_version('last', idx=lv-1, version=latest)
+
+  if not latest.sha1:
+    logI('Latest backup version has no SHA1; cannot verify a download.', obj_key=obj_key, key=latest.key)
+    return None
+
+  dl_path = f'{db_path}.{store.name}_{latest.uploaded_at:%Y-%m-%d_%H_%M}{downloaded_suffix}'
+
+  if path_exists(dl_path, follow=False):
+    existing_size = file_size(dl_path)
+    if existing_size != latest.size:
+      logI('Download path already exists but file size does not match; please remove this file.', path=dl_path,
+        existing_size=existing_size, expected_size=latest.size)
+      return None
+    existing_sha1 = sha1_for_file(dl_path)
+    if existing_sha1 != latest.sha1:
+      logI('Download path already exists but SHA1 does not match; please remove this file.', path=dl_path,
+        existing_sha1=existing_sha1, expected_sha1=latest.sha1)
+      return None
+
+    logI('Download path already exists; not downloading.', path=dl_path)
+
+  else:
+    logI('Downloading latest backup.', path=dl_path, key=latest.key)
+    if not store.download(latest, dl_path):
+      remove_file_if_exists(dl_path) # Do not leave a partial download to confuse the next attempt.
+      return None
+    # Normalize ownership at the point of creation, so every artifact in the data dir has canonical ownership.
+    config.fix_data_file_perms(dl_path)
+
+  return dl_path
 
 
 def finalize_restoring_db(config:BackupConfig, restoring_path:str, *, name:str) -> None:
@@ -596,6 +629,8 @@ def main_entry(config_source:ConfigSource|None=None, *, prog:str|None=None) -> N
 
   restore_cmd = parser.add_command(main_restore)
   if with_app_arg: restore_cmd.add_argument('app', help=app_spec_help)
+  restore_cmd.add_argument('-local', action='store_true',
+    help='Restore the latest cached download for the configured store without network access; fail if none is present.')
   restore_cmd.add_argument('-store', default=None,
     help='Backup store label passed to the restore store factory; app-defined, e.g. a deployment stage.')
   restore_cmd.add_argument('names', nargs='+', help='Names of databases to restore, or "all".')
@@ -629,10 +664,10 @@ def main_trigger(args:Namespace) -> None:
 
 
 def main_restore(args:Namespace) -> None:
-  'Restore databases from the cloud backup store, replacing the canonical database files.'
+  'Restore databases from cloud backups or local downloads, replacing the canonical database files.'
   config = config_for_args(args)
   names = parse_db_names(args.names, config=config.db_config)
-  restore_all(config, names, store_name=args.store)
+  restore_all(config, names, store_name=args.store, local=args.local)
 
 
 def config_for_args(args:Namespace) -> BackupConfig:

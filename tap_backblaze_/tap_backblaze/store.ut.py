@@ -64,14 +64,19 @@ def mk_store(fake:FakeB2Client, *, bucket_name:str='known-bucket', buckets:dict[
 
 fake = FakeB2Client()
 store = mk_store(fake, bucket_name='any-bucket', buckets={'any-bucket': 'creds-id'})
+utest_val([], fake.calls, 'construction with a configured bucket id does not access the network')
 utest_val('creds-id', store.bucket_id, 'bucket id from creds')
 utest_val([('authorize',)], fake.calls, 'no bucket lookup when the creds record the id')
 
 # Fallback lookup by name.
 fake = FakeB2Client()
 store = mk_store(fake)
+utest_val('known-bucket', store.name, 'store name is available offline')
+utest_val([], fake.calls, 'construction without a configured bucket id does not access the network')
 utest_val('looked-up-id', store.bucket_id, 'bucket id from lookup')
 utest_val([('authorize',), ('get_bucket_by_name', 'known-bucket')], fake.calls, 'lookup call')
+utest_val('looked-up-id', store.bucket_id, 'resolved bucket id is cached')
+utest_val(2, len(fake.calls), 'cached bucket id requires no additional network calls')
 utest_val('known-bucket', store.name, 'store name')
 
 
@@ -117,6 +122,8 @@ fake = FakeB2Client()
 store = mk_store(fake)
 version = stored_version_for_b2(mk_version(), obj_key='main.db')
 utest(True, store.download, version, '/tmp/restored.db')
+utest_val([('authorize',), ('download_file_by_id', '4_fid', '/tmp/restored.db')], fake.calls,
+  'direct download authorizes lazily without a bucket lookup')
 utest_val(('download_file_by_id', '4_fid', '/tmp/restored.db'), fake.calls[-1], 'download call')
 
 fake = FakeB2Client(download_exc=KeyboardInterrupt())
