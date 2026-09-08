@@ -40,10 +40,10 @@ def pagination_control(*, count:int|None, limit:int, offset:int, href:str='', hx
 
   if link_attrs is None: link_attrs = {}
 
-  first = A(cl='icon', _='⏮️', **link_attrs)
-  prev  = A(cl='icon', _='◀️', **link_attrs)
-  next_ = A(cl='icon', _='▶️', **link_attrs)
-  last  = A(cl='icon', _='⏭️', **link_attrs)
+  first = A(cl='icon', _='⏮', **link_attrs)
+  prev  = A(cl='icon', _='◀', **link_attrs)
+  next_ = A(cl='icon', _='▶', **link_attrs)
+  last  = A(cl='icon', _='⏭', **link_attrs)
   icons = (first, prev, next_, last)
 
   msg = Span(cl='msg')
