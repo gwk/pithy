@@ -44,9 +44,9 @@ from dataclasses import dataclass, field
 from glob import escape, glob
 from hashlib import sha1
 from os import getpid
-from typing import Callable, cast, get_args, Literal, Mapping, Protocol, Sequence
+from typing import Callable, get_args, Literal, Mapping, Protocol, Sequence
 
-from ...argparser import CommandParser, Namespace
+from ...cmdparse import Cmd, flag, opt, pos, sub
 from ...date import DateTime, dt_Ymd_HMS, dt_Ymd_HMS_Z
 from ...filestatus import StatResult
 from ...fs import copy_path, file_size, file_stat, is_file, move_file, path_exists, remove_file_if_exists
@@ -607,71 +607,83 @@ def log_stored_version(msg:str, *, idx:int, version:StoredVersion) -> None:
 def main_entry(config_source:ConfigSource|None=None, *, prog:str|None=None) -> None:
   '''
   Run the backup CLI. Applications can call this with their own config source or use `python -m pithy.sqlite.backup`.
-  If `config_source` is None, each command takes an `app` module-spec positional argument instead
-  (the form used by `python3 -m pithy.sqlite.backup`); see `resolve_backup_config`.
+  If `config_source` is None, each command requires an `-app` module-spec option instead; see `resolve_backup_config`.
+  An explicit `-app` overrides the supplied `config_source`.
   '''
-  parser = CommandParser(prog=prog, description='Backup and restore a pithy.sqlite Database group.')
-  parser.set_defaults(config_source=config_source)
-  with_app_arg = config_source is None
-
-  save_cmd = parser.add_command(main_save)
-
-  if with_app_arg: save_cmd.add_argument('app', help=app_spec_help)
-
-  save_cmd.add_argument('names', nargs='+', help='Names of databases to back up, or "all".')
-  save_cmd.add_argument('-method', choices=backup_methods, default='sync',
-    help='Artifact production method: "sync" uses sqlite3_rsync (fast successive replication); '
-      '"vacuum" uses VACUUM INTO (compacted copy).')
-
-  trigger_cmd = parser.add_command(main_trigger)
-  if with_app_arg: trigger_cmd.add_argument('app', help=app_spec_help)
-  trigger_cmd.add_argument('names', nargs='+', help='Names of databases to request an upload for, or "all".')
-
-  restore_cmd = parser.add_command(main_restore)
-  if with_app_arg: restore_cmd.add_argument('app', help=app_spec_help)
-  restore_cmd.add_argument('-local', action='store_true',
-    help='Restore the latest cached download for the configured store without network access; fail if none is present.')
-  restore_cmd.add_argument('-store', default=None,
-    help='Backup store label passed to the restore store factory; app-defined, e.g. a deployment stage.')
-  restore_cmd.add_argument('names', nargs='+', help='Names of databases to restore, or "all".')
-
-  parser.parse_and_run_command()
+  Backup.parse_or_exit(prog=prog or '').run(config_source)
 
 
 app_spec_help = ('Dotted name of the application module that defines the backup config, '
   "optionally with a ':attribute' suffix (default attribute: 'load_backup_config'). See `resolve_backup_config`.")
 
 
-def main_save(args:Namespace) -> None:
+class BackupArgs(Cmd):
+  app:str|None = opt(default=None, doc=app_spec_help)
+
+  def resolve_config(self, config_source:ConfigSource|None) -> BackupConfig:
+    source = self.app if self.app is not None else config_source
+    if source is None: exit('error: -app is required when no backup config source is supplied.')
+    return resolve_backup_config(source)
+
+
+class Save(BackupArgs):
   'Produce local backup artifacts, optionally uploading them to cloud storage.'
-  config = config_for_args(args)
-  names = parse_db_names(args.names, config=config.db_config)
-  # SIGTERM is held so that a stop request lands between databases rather than mid-write; see `backup_and_upload`.
-  # HoldSignals delivers the signal when the block exits, so the process still terminates by it.
-  with HoldSignals() as hold_signals:
-    backup_and_upload(config, names, method=args.method, should_stop=hold_signals.is_signal_on_hold)
+
+  names:list[str] = pos(doc='Names of databases to back up, or "all".')
+  method:BackupMethod = opt(default='sync',
+    doc='Artifact production method: "sync" uses sqlite3_rsync (fast successive replication); '
+      '"vacuum" uses VACUUM INTO (compacted copy).')
 
 
-def main_trigger(args:Namespace) -> None:
+  def run(self, config_source:ConfigSource|None=None) -> None:
+    config = self.resolve_config(config_source)
+    names = parse_db_names(self.names, config=config.db_config)
+    # SIGTERM is held so that a stop request lands between databases rather than mid-write; see `backup_and_upload`.
+    # HoldSignals delivers the signal when the block exits, so the process still terminates by it.
+    with HoldSignals() as hold_signals:
+      backup_and_upload(config, names, method=self.method, should_stop=hold_signals.is_signal_on_hold)
+
+
+
+class Trigger(BackupArgs):
   '''
   Request that the next backup run upload the named databases, whatever their configured upload intervals.
   This only requests an upload; it does not perform one.
   '''
-  config = config_for_args(args)
-  names = parse_db_names(args.names, config=config.db_config)
-  for name in names:
-    logI('Backup trigger written.', path=write_trigger_file(config, name))
+
+  names:list[str] = pos(doc='Names of databases to request an upload for, or "all".')
 
 
-def main_restore(args:Namespace) -> None:
+  def run(self, config_source:ConfigSource|None=None) -> None:
+    config = self.resolve_config(config_source)
+    names = parse_db_names(self.names, config=config.db_config)
+    for name in names:
+      logI('Backup trigger written.', path=write_trigger_file(config, name))
+
+
+
+class Restore(BackupArgs):
   'Restore databases from cloud backups or local downloads, replacing the canonical database files.'
-  config = config_for_args(args)
-  names = parse_db_names(args.names, config=config.db_config)
-  restore_all(config, names, store_name=args.store, local=args.local)
+
+  local:bool = flag(
+    doc='Restore the latest cached download for the configured store without network access; fail if none is present.')
+  store:str|None = opt(default=None,
+    doc='Backup store label passed to the restore store factory; app-defined, e.g. a deployment stage.')
+  names:list[str] = pos(doc='Names of databases to restore, or "all".')
 
 
-def config_for_args(args:Namespace) -> BackupConfig:
-  source:ConfigSource|None = args.config_source
-  if source is None:
-    source = cast(str, args.app)
-  return resolve_backup_config(source)
+  def run(self, config_source:ConfigSource|None=None) -> None:
+    config = self.resolve_config(config_source)
+    names = parse_db_names(self.names, config=config.db_config)
+    restore_all(config, names, store_name=self.store, local=self.local)
+
+
+
+class Backup(Cmd):
+  'Backup and restore a pithy.sqlite Database group.'
+
+  cmd:Save|Trigger|Restore = sub()
+
+
+  def run(self, config_source:ConfigSource|None=None) -> None:
+    self.cmd.run(config_source)

@@ -408,7 +408,7 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   with Conn(newer_path, mode='rw').closing() as conn:
     conn.cursor().run("INSERT INTO T VALUES ('newer')")
   copyfile(cached_path, older_path)
-  with patch('sys.argv', ['backup', 'restore', '-local', '-store', 'prod', 'main']):
+  with patch('pithy.cmdparse.sys_argv', ['backup', 'restore', '-local', '-store', 'prod', 'main']):
     main_entry(local_config)
   utest_val(['fake', 'prod'], selected_labels, 'CLI passes the store label to the factory')
   utest_val(['mutated', 'newer', 'original'], read_rows(db_config.path('main')), 'CLI restores newest local backup')
@@ -421,7 +421,7 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
     restore_all(local_config, ['main'], local=True, store_name=selected_store)
     utest_val(expected, read_rows(db_config.path('main')), f'restore from {selected_store}')
   # Omitting the label uses the factory default, just as a remote restore does.
-  with patch('sys.argv', ['backup', 'restore', '-local', 'main']):
+  with patch('pithy.cmdparse.sys_argv', ['backup', 'restore', '-local', 'main']):
     main_entry(local_config)
   utest_val(None, selected_labels[-1], 'factory receives the default label')
   utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'default store restored')
