@@ -4,7 +4,7 @@
 Generic CLI for backing up and restoring a pithy.sqlite Database group.
 
 Because a BackupConfig is defined by the owning application,
-each command takes a dotted `app` spec naming the module that defines it. See `resolve_backup_config`.
+each command requires an `-app` option naming the module that defines it. See `resolve_backup_config`.
 '''
 
 from . import main_entry
