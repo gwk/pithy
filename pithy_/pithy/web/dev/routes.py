@@ -3,7 +3,8 @@
 from ..handler import RoutableHandler
 from .controls import DevControlsIndex
 from .controls.form import DevControlsForm
-from .controls.htmx import ControlsHtmxUpdate, DevControlsHtmx
+from .htmx import DevHtmxIndex
+from .htmx.controls import ControlsHtmxUpdate, DevControlsHtmx
 from .pages import DevStaticFiles, IndexHtml, PithyStaticFiles
 from .tables import DevTables
 from .typography import DevTypography
@@ -15,8 +16,9 @@ routes:dict[str,type[RoutableHandler]] = {
   '/tables': DevTables,
   '/controls': DevControlsIndex,
   '/controls/form': DevControlsForm,
-  '/controls/htmx': DevControlsHtmx,
-  '/controls/htmx/update.htmx': ControlsHtmxUpdate,
+  '/htmx': DevHtmxIndex,
+  '/htmx/controls': DevControlsHtmx,
+  '/htmx/controls/update.htmx': ControlsHtmxUpdate,
   '/static/pithy/{subpath:path}': PithyStaticFiles,
   '/static/dev/{subpath:path}': DevStaticFiles,
 }
