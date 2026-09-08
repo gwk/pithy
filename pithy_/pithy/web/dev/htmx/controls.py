@@ -25,7 +25,7 @@ class DevControlsHtmx(Endpoint):
         posted_values_div(),
       ]))
     return dev_page(title='HTMX Controls', main=main,
-      breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/htmx', 'HTMX')])
+      breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX'), ('/htmx/controls', 'Controls')])
 
 
 def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:
@@ -82,7 +82,7 @@ def controls_htmx() -> Div:
 
   outer = Div()
   div = outer.append(Div(cl='form_grid'))
-  url = '/controls/htmx/update.htmx'
+  url = '/htmx/controls/update.htmx'
   # The update endpoint returns a complete replacement for the panel, so swap the element itself, not its contents.
   _htmx_tags:dict[str,Any] = {'hx_target': '#posted-values', 'hx_swap': 'outerHTML'}
 
