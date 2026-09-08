@@ -3,17 +3,19 @@
 from dataclasses import replace
 from hashlib import sha1
 from os import environ
-from shutil import which
+from shutil import copyfile, which
 from tempfile import mkdtemp
 from time import sleep, tzset
+from unittest.mock import patch
 
 from pithy.date import DateTime, TimeDelta
 from pithy.fs import file_stat, is_file, path_exists, remove_file_if_exists
 from pithy.logs import adjust_log_level
 from pithy.sqlite import Conn
 from pithy.sqlite.backup import (backup_and_upload, BackupConfig, BackupFileConfig, clear_trigger_file, create_local_backup,
-  downloaded_suffix, interval_slot, maybe_create_local_backup, maybe_upload, parse_db_names, restore_db, stat_trigger_file,
-  StoredVersion, sync_interval_for, syncts_suffix, upload_interval_for, uploadts_suffix, write_trigger_file)
+  downloaded_suffix, interval_slot, main_entry, maybe_create_local_backup, maybe_upload, parse_db_names, restore_all,
+  restore_db, stat_trigger_file, StoredVersion, sync_interval_for, syncts_suffix, upload_interval_for, uploadts_suffix,
+  write_trigger_file)
 from pithy.sqlite.database import Database, DbConfig
 from pithy.tz import now_utc
 from utest import utest, utest_exc, utest_val, utest_val_ne
@@ -370,6 +372,68 @@ with adjust_log_level('warn'): # Silence the info-level logging that the backup 
   with db_config.exclusive_lock():
     utest_val(True, restore_db(backup_config, store, 'main'), 'cached restore succeeds')
   utest_val(1, store.download_count, 'cached restore does not download')
+
+
+  # Local restore resolves store labels and validates them through the configured factory.
+  class LocalStore(FakeStore):
+    def list_versions(self, obj_key:str) -> list[StoredVersion]:
+      raise AssertionError('Local restore must not list remote versions.')
+
+    def download(self, version:StoredVersion, dst_path:str) -> bool:
+      raise AssertionError('Local restore must not download.')
+
+  selected_labels:list[str|None] = []
+
+  def make_local_store(label:str|None) -> LocalStore:
+    selected_labels.append(label)
+    if label == 'forbidden': raise ValueError('Restore forbidden by configuration.')
+    local_store = LocalStore()
+    local_store.name = 'rha-backup-prod' if label == 'prod' else label or 'fake'
+    return local_store
+
+  local_config = replace(backup_config, make_restore_store=make_local_store)
+  cached_path = downloaded_paths[0]
+  hidden_path = cached_path + '.hidden'
+  copyfile(cached_path, hidden_path)
+  remove_file_if_exists(cached_path)
+  utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='fake')
+  utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'missing download leaves database intact')
+  copyfile(hidden_path, cached_path)
+  remove_file_if_exists(hidden_path)
+
+  # Select the newest backup within the explicit store, regardless of download order.
+  newer_path = f'{db_config.path("main")}.rha-backup-prod_2099-01-02_03_04{downloaded_suffix}'
+  older_path = f'{db_config.path("main")}.rha-backup-prod_2098-01-02_03_04{downloaded_suffix}'
+  copyfile(cached_path, newer_path)
+  with Conn(newer_path, mode='rw').closing() as conn:
+    conn.cursor().run("INSERT INTO T VALUES ('newer')")
+  copyfile(cached_path, older_path)
+  with patch('sys.argv', ['backup', 'restore', '-local', '-store', 'prod', 'main']):
+    main_entry(local_config)
+  utest_val(['fake', 'prod'], selected_labels, 'CLI passes the store label to the factory')
+  utest_val(['mutated', 'newer', 'original'], read_rows(db_config.path('main')), 'CLI restores newest local backup')
+  utest_val(['newer', 'original'], read_rows(newer_path), 'local cache stays pristine')
+  utest_val(1, store.download_count, 'local restore does not download')
+  utest_val(True, is_file(db_config.manifest_path, follow=True), 'local restore writes manifest')
+  # Switching stores repeatedly preserves each pristine cache and never selects another store's newer backup.
+  for selected_store, expected in [('fake', ['mutated', 'original']), ('prod', ['mutated', 'newer', 'original']),
+   ('fake', ['mutated', 'original'])]:
+    restore_all(local_config, ['main'], local=True, store_name=selected_store)
+    utest_val(expected, read_rows(db_config.path('main')), f'restore from {selected_store}')
+  # Omitting the label uses the factory default, just as a remote restore does.
+  with patch('sys.argv', ['backup', 'restore', '-local', 'main']):
+    main_entry(local_config)
+  utest_val(None, selected_labels[-1], 'factory receives the default label')
+  utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'default store restored')
+  utest_exc(ValueError('Restore forbidden by configuration.'), restore_all, local_config, ['main'],
+    local=True, store_name='forbidden')
+  utest_exc(SystemExit('error: backup config has no restore store factory; cannot restore.'), restore_all,
+    replace(local_config, make_restore_store=None), ['main'], local=True, store_name='prod')
+  utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='missing')
+  utest_exc(SystemExit(1), restore_all, local_config, ['main'], local=True, store_name='pro')
+  utest_val(['mutated', 'original'], read_rows(db_config.path('main')), 'failed selection leaves database intact')
+  remove_file_if_exists(newer_path)
+  remove_file_if_exists(older_path)
 
 
   # A corrupted .downloaded cache file is refused.
