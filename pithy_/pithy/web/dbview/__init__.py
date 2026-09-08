@@ -309,7 +309,7 @@ class DbView:
 
 
     parts:list[HtmlNode] = [
-      Details(Summary('Query'), _=Pre(cl='detail', _=query)),
+      Details(Summary('Query'), Pre(cl='detail', _=query)),
     ]
 
     if plan:
