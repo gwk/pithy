@@ -13,4 +13,5 @@ class DevHtmxIndex(Endpoint):
   def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
     return dev_page(title='HTMX', breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX')],
       main=Main(H1('HTMX'), Ul(
-        Li(A(href='/htmx/controls', _='HTMX Controls'), ': Standard HTML form controls using HTMX.'))))
+        Li(A(href='/htmx/controls', _='HTMX Controls'), ': Standard HTML form controls using HTMX.'),
+        Li(A(href='/htmx/modals', _='HTMX Modals'), ': A shared edit modal updating two views.'))))
