@@ -30,6 +30,12 @@ def test_cli() -> None:
         main_entry(source)
       trigger.assert_called_once_with(config, 'aux')
 
+      for requested, expected in ((['aux'], ('aux',)), (['all'], ('main', 'aux'))):
+        with patch('pithy.cmdparse.sys_argv', ['backup', 'cleanup', *app_args, *requested]), \
+         patch('pithy.sqlite.backup.cleanup_downloads') as cleanup:
+          main_entry(source)
+        cleanup.assert_called_once_with(config, expected)
+
       for options, store, local in (([], None, False), (['-local', '-store', 'prod'], 'prod', True)):
         with patch('pithy.cmdparse.sys_argv', ['backup', 'restore', *app_args, *options, 'main', 'aux']), \
          patch('pithy.sqlite.backup.restore_all') as restore:
@@ -38,15 +44,15 @@ def test_cli() -> None:
 
       # Invalid input and help must not resolve application configuration or perform backup operations.
       resolve.reset_mock()
-      for args in ([], ['save', *app_args], ['trigger', *app_args], ['restore', *app_args],
+      for args in ([], ['save', *app_args], ['trigger', *app_args], ['restore', *app_args], ['cleanup', *app_args],
        ['save', *app_args, '-method', 'invalid', 'all'], ['save', '-app']):
         with patch('pithy.cmdparse.sys_argv', ['backup', *args]), patch('pithy.cmdparse.stderr', new_callable=StringIO):
           utest_exc(SystemExit(2), main_entry, source)
       if source is None:
-        for args in (['save', 'all'], ['trigger', 'all'], ['restore', 'all']):
+        for args in (['save', 'all'], ['trigger', 'all'], ['restore', 'all'], ['cleanup', 'all']):
           with patch('pithy.cmdparse.sys_argv', ['backup', *args]), patch('pithy.cmdparse.stderr', new_callable=StringIO):
             utest_exc(SystemExit('error: -app is required when no backup config source is supplied.'), main_entry, source)
-      for args in (['-h'], ['save', '-h'], ['trigger', '-h'], ['restore', '-h']):
+      for args in (['-h'], ['save', '-h'], ['trigger', '-h'], ['restore', '-h'], ['cleanup', '-h']):
         with patch('pithy.cmdparse.sys_argv', ['backup', *args]), redirect_stdout(StringIO()):
           utest_exc(SystemExit(0), main_entry, source)
       resolve.assert_not_called()

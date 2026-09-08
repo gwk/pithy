@@ -37,6 +37,9 @@ They are plain files, not coordinated by the Database advisory lock;
 only the active database files are covered by the advisory lock logic.
 * `{db_path}.{store_name}_{timestamp}.downloaded`: verified download of a cloud backup version, cached for reuse.
 * `{db_path}.restoring`: working copy that is mutated and then moved into place.
+
+The `cleanup` command keeps the newest downloaded backup per database and store, using the filename timestamp.
+Older downloads and their -wal/-shm sidecar files are removed.
 '''
 
 import time
@@ -506,6 +509,32 @@ def latest_local_download(db_path:str, *, store_name:str) -> str|None:
   return path
 
 
+def cleanup_downloads(config:BackupConfig, names:Sequence[str]) -> None:
+  '''
+  Remove older local downloads and any sibling shm/wal files, keeping the newest backup per database and store.
+  Uses filename timestamps, not modification times. No store factory or network access is needed.
+  Holds the exclusive group lock to serialize cleanup with restores that may be using a cached download.
+  '''
+  with config.db_config.exclusive_lock():
+    for name in names:
+      prefix = config.db_config.path(name) + '.'
+      downloads:dict[str,list[tuple[DateTime,str]]] = {}
+      for path in glob(escape(prefix) + '*' + downloaded_suffix):
+        if not is_file(path, follow=False): continue
+        parts = path.removeprefix(prefix).removesuffix(downloaded_suffix).rsplit('_', 3)
+        if len(parts) != 4: continue
+        store_name, date, hour, minute = parts
+        try: uploaded_at = DateTime.strptime(f'{date}_{hour}_{minute}', '%Y-%m-%d_%H_%M')
+        except ValueError: continue
+        downloads.setdefault(store_name, []).append((uploaded_at, path))
+      for versions in downloads.values():
+        versions.sort()
+        for _, path in versions[:-1]:
+          logI('Removing older local download.', path=path)
+          remove_wal_shm(path)
+          remove_file_if_exists(path)
+
+
 def download_latest_backup(config:BackupConfig, store:BackupStore, name:str) -> str|None:
   'Download or verify the cached latest backup version from `store`, returning its path on success.'
   db_path = config.db_config.path(name)
@@ -630,10 +659,9 @@ class Save(BackupArgs):
   'Produce local backup artifacts, optionally uploading them to cloud storage.'
 
   names:list[str] = pos(doc='Names of databases to back up, or "all".')
-  method:BackupMethod = opt(default='sync',
-    doc='Artifact production method: "sync" uses sqlite3_rsync (fast successive replication); '
-      '"vacuum" uses VACUUM INTO (compacted copy).')
 
+  method:BackupMethod = opt(default='sync',
+    doc='Artifact production method: "sync" uses sqlite3_rsync (fast page sync); "vacuum" uses VACUUM INTO (compacted copy).')
 
   def run(self, config_source:ConfigSource|None=None) -> None:
     config = self.resolve_config(config_source)
@@ -644,7 +672,6 @@ class Save(BackupArgs):
       backup_and_upload(config, names, method=self.method, should_stop=hold_signals.is_signal_on_hold)
 
 
-
 class Trigger(BackupArgs):
   '''
   Request that the next backup run upload the named databases, whatever their configured upload intervals.
@@ -653,13 +680,11 @@ class Trigger(BackupArgs):
 
   names:list[str] = pos(doc='Names of databases to request an upload for, or "all".')
 
-
   def run(self, config_source:ConfigSource|None=None) -> None:
     config = self.resolve_config(config_source)
     names = parse_db_names(self.names, config=config.db_config)
     for name in names:
       logI('Backup trigger written.', path=write_trigger_file(config, name))
-
 
 
 class Restore(BackupArgs):
@@ -678,12 +703,21 @@ class Restore(BackupArgs):
     restore_all(config, names, store_name=self.store, local=self.local)
 
 
+class Cleanup(BackupArgs):
+  'Remove older local downloads and any sibling shm/wal files, keeping the newest backup per database and store.'
+
+  names:list[str] = pos(doc='Names of databases to clean up downloads for, or "all".')
+
+  def run(self, config_source:ConfigSource|None=None) -> None:
+    config = self.resolve_config(config_source)
+    names = parse_db_names(self.names, config=config.db_config)
+    cleanup_downloads(config, names)
+
 
 class Backup(Cmd):
   'Backup and restore a pithy.sqlite Database group.'
 
-  cmd:Save|Trigger|Restore = sub()
-
+  cmd:Save|Trigger|Restore|Cleanup = sub()
 
   def run(self, config_source:ConfigSource|None=None) -> None:
     self.cmd.run(config_source)
