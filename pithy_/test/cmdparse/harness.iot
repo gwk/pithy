@@ -3,7 +3,7 @@
   'links': {
     '$DIR/harness.zsh',
     '$DIR/example.py',
-    'zsh/pithy-cmdparse-completion.zsh',
-    'zsh/pithy-cmdparse-module-completion.zsh',
+    'pithy_/pithy/zsh/pithy-cmdparse-completion.zsh',
+    'pithy_/pithy/zsh/pithy-cmdparse-module-completion.zsh',
   },
 }

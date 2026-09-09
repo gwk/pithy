@@ -35,10 +35,16 @@ This explicit tradeoff removes ambiguity and keeps the parser implementation sim
 `Cmd.parse_or_exit` and `Cmd.main` supports dynamic zsh completion, selected by the `PITHY_CMDPARSE_MODE` environment variable.
 `PITHY_CMDPARSE_MODE=print-zsh-completion prog` prints a completion script for the executable `prog`.
 
-To use completions, `zsh/pithy-cmdparse-completion.zsh` must be sourced in `~/.zshrc`.
+The shared zsh scripts are installed as package data in `pithy/zsh`, for both regular and editable installs.
+Add this to `~/.zshrc`:
+```
+pithy_dir=$(python3 -P -c 'import pithy; print(pithy.__file__.rsplit("/", 1)[0])')
+source "$pithy_dir/zsh/pithy-cmdparse-completion.zsh"
+source "$pithy_dir/zsh/pithy-cmdparse-module-completion.zsh"
+```
 
-For completion of `python -m module` invocations, source `zsh/pithy-cmdparse-module-completion.zsh` as well
-and register modules with `pithy_cmdparse_module_completion <module_names> ...`.
+After `compinit`, register `python -m` modules with `pithy_cmdparse_module_completion utest iotest`.
+Repeated calls register additional cmdparse-based modules.
 
 Program completion scripts should be placed somewhere on the zsh fpath, typically `~/.zfunc`.
 If this not on the fpath, add `fpath=(~/.zfunc $fpath)` to `~/.zshrc` before `compinit` runs.
