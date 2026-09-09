@@ -14,6 +14,10 @@ class AdvisoryLockError(Exception):
   'Raised when an advisory lock acquisition would deadlock the current process against a lock it already holds.'
 
 
+class AdvisoryLockBusy(BlockingIOError):
+  'Another process holds a conflicting lock; a nonblocking acquisition can be retried later.'
+
+
 # Process-wide registry of advisory locks held via this module, used to detect intra-process self-deadlock.
 # The two maps form a single logical structure and must be read and written together under `_advisory_locks_mutex`:
 # every registered fd appears in both, and a partial update would let one thread observe a torn, inconsistent state.
@@ -46,7 +50,9 @@ def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, 
   * Blocks or raises if any other holder is present.
 
   blocking=True: wait indefinitely; logs a "waiting" message.
-  blocking=False: raise `BlockingIOError` immediately if the lock cannot be acquired.
+  blocking=False: raise `AdvisoryLockBusy` immediately if another process holds a conflicting lock.
+  `AdvisoryLockBusy` subclasses `BlockingIOError`, preserving existing exception handlers and errno,
+  and is raised from the original `BlockingIOError`.
 
   allow_group=False (mode 0o600):
   * Only the file owner can open and participate in the lock.
@@ -92,7 +98,8 @@ def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, 
         logI(f'advisory_lock: waiting for {lock_kind} lock.', lock_path=lock_path)
         flock(fd, flags)
     else:
-      flock(fd, flags | LOCK_NB)
+      try: flock(fd, flags | LOCK_NB)
+      except BlockingIOError as exc: raise AdvisoryLockBusy(*exc.args) from exc
   except BaseException:
     release_advisory_lock(fd)  # Unregister and close.
     raise
@@ -129,7 +136,7 @@ def advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_gr
   Acquire a shared or exclusive advisory flock on the file at `lock_path` for the duration of the `with` block.
 
   The lock is released when the block exits. See `acquire_advisory_lock` for the semantics of the parameters.
-  With `blocking=False`, contention with another process raises `BlockingIOError` immediately.
+  With `blocking=False`, contention with another process raises `AdvisoryLockBusy` (a `BlockingIOError`) immediately.
   A conflicting lock already held via this module in the current process raises `AdvisoryLockError`,
   regardless of `blocking`. These exceptions propagate unchanged; callers can distinguish retryable contention
   from an intra-process ownership error. Exceptions raised inside the block also propagate unchanged.
