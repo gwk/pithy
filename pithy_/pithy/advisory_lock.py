@@ -129,6 +129,10 @@ def advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_gr
   Acquire a shared or exclusive advisory flock on the file at `lock_path` for the duration of the `with` block.
 
   The lock is released when the block exits. See `acquire_advisory_lock` for the semantics of the parameters.
+  With `blocking=False`, contention with another process raises `BlockingIOError` immediately.
+  A conflicting lock already held via this module in the current process raises `AdvisoryLockError`,
+  regardless of `blocking`. These exceptions propagate unchanged; callers can distinguish retryable contention
+  from an intra-process ownership error. Exceptions raised inside the block also propagate unchanged.
   Alternatively, use `hold_advisory_lock` to hold the lock for the lifetime of the process.
   '''
   fd = acquire_advisory_lock(lock_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group)
