@@ -406,10 +406,11 @@ class A(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlTransparentPh
 
   def new_tab(self) -> Self:
     '''
-    Set the necessary attributes make the link to prevent phishing vulnerabilities.
+    Set attributes to open the link in a new tab or window, depending on browser settings, and return this element.
+    Blocks opener access to prevent reverse tabnabbing, where the linked page redirects the original tab to a phishing page.
     '''
-    self['target'] = '_blank'
-    self['rel'] = 'noopener noreferrer'
+    self['target'] = '_blank' # `target="_blank"` requests the new tab or window.
+    self['rel'] = 'noopener noreferrer' # Prevent linked page from accessing `window.opener` and suppress the Referer header.
     return self
 
 
