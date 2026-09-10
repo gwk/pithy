@@ -35,7 +35,7 @@ from textwrap import dedent
 from typing import Iterator
 
 from pithy.filestatus import is_dir, is_file, is_link, path_exists
-from pithy.fs import make_dirs, make_link, real_path, walk_files
+from pithy.fs import list_dir, make_dirs, make_link, real_path
 from pithy.io import outL
 from pithy.lex import Lexer
 from pithy.path import expand_home_dir, is_path_abs, norm_path, path_dir_or_dot, path_join, path_name, rel_path
@@ -83,7 +83,7 @@ def find_src_paths(paths:list[str]) -> list[str]:
   srcs:list[str] = []
   for path in paths:
     if is_dir(path, follow=True):
-      srcs.extend(sorted(p for p in walk_files(path, file_exts=['.md']) if path_name(p) == ctx_name))
+      srcs.extend(sorted(discover_src_paths(path)))
     elif not path_exists(path, follow=True):
       exit(f'craft-context error: input path does not exist: {path}')
     elif path_name(path) != ctx_name:
@@ -91,6 +91,24 @@ def find_src_paths(paths:list[str]) -> list[str]:
     else:
       srcs.append(path)
   return srcs
+
+
+def discover_src_paths(dir_path:str) -> Iterator[str]:
+  '''
+  Discover CTX.md files recursively, skipping inaccessible entries and hidden names.
+  Follow accessible directory symlinks, as for the general filesystem walker.
+  Permission errors from listing the input directory propagate; only discovered entries are optional.
+  Reading source files and their imports happens separately and remains strict.
+  '''
+  for name in list_dir(dir_path):
+    path = path_join(dir_path, name)
+    try:
+      if is_dir(path, follow=True):
+        yield from discover_src_paths(path)
+      elif name == ctx_name:
+        yield path
+    except PermissionError:
+      continue
 
 
 def process_path(src:str) -> None:
