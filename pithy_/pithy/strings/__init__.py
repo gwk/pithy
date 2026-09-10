@@ -160,13 +160,15 @@ def indent_lines(lines:Iterable[str], depth:int=1) -> Iterator[str]:
 ConvFn = Callable[[Any], str]
 
 def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, convs:ConvFn|Iterable[ConvFn]=str,
- rjust:bool|Iterable[bool]=False, max_col_width:int=64) -> Iterable[str]:
+ rjust:bool|Iterable[bool]=False, max_col_width:int|Iterable[int]=64) -> Iterable[str]:
   '''
   Format rows of cells to be column-aligned after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
   `convs` is a single conversion function or a list of conversion functions, one for each column.
   `rjust` is a single boolean or a list of booleans, one for each column.
-  `max_col_width` is the maximum width of each column.
+  `max_col_width` is a single maximum padding width or an iterable of maximum padding widths, one for each column.
+  A short iterable repeats its last width; an empty iterable uses 64. Extra widths are ignored.
+  Cells longer than their maximum padding width are not truncated.
   '''
   # Convert all cells to repr or str representations.
   if callable(convs):
@@ -187,8 +189,16 @@ def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, conv
     for i, cell in enumerate(row):
       col_widths[i] = max(col_widths[i], len(cell))
 
-  for i, width in enumerate(col_widths): # Clip each column width to max_col_width.
-    col_widths[i] = min(width, max_col_width)
+  # Determine maximum padding widths for each column.
+  if isinstance(max_col_width, int):
+    max_widths = [max_col_width] * len(col_widths)
+  else:
+    max_widths = list(max_col_width)
+    if not max_widths: max_widths = [64]
+    while len(max_widths) < len(col_widths): max_widths.append(max_widths[-1])
+
+  for i, width in enumerate(col_widths):
+    col_widths[i] = min(width, max_widths[i])
 
   # Determine rjust bool values for each column.
   if isinstance(rjust, bool):
@@ -207,7 +217,7 @@ def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, conv
     yield '  '.join(just_fn(cell, width) for just_fn, cell, width in zip(just_fns, row, col_widths))
 
 
-def fmt_tabbed_rows(rows:Iterable[str], rjust:bool|Iterable[bool]=False, max_col_width:int=64) -> Iterable[str]:
+def fmt_tabbed_rows(rows:Iterable[str], rjust:bool|Iterable[bool]=False, max_col_width:int|Iterable[int]=64) -> Iterable[str]:
   'Format rows of tab-separated strings by splitting on tabs and then passing those sequences to fmt_rows.'
   return fmt_rows((row.split('\t') for row in rows), rjust=rjust, max_col_width=max_col_width)
 
