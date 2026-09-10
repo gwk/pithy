@@ -49,6 +49,14 @@ craft-mac-app = "crafts.bin.craft_mac_app:main"
 craft-swift = "crafts.bin.craft_swift:main"
 craft-xml-datatypes = "crafts.bin.craft_xml_datatypes:main"
 
+[tool.flit.sdist]
+exclude = [
+  "**/AGENT.md",
+  "**/AGENTS.md",
+  "**/CLAUDE.md",
+  "**/CTX.md",
+]
+
 [build-system]
 requires = [
   "flit_core >= 4.0.2, < 5",

@@ -44,6 +44,14 @@ legs = { workspace = true }
 pithy = { workspace = true }
 tolkien = { workspace = true }
 
+[tool.flit.sdist]
+exclude = [
+  "**/AGENT.md",
+  "**/AGENTS.md",
+  "**/CLAUDE.md",
+  "**/CTX.md",
+]
+
 [build-system]
 requires = [
   "flit_core >= 4.0.2, < 5",
