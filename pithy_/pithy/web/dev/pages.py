@@ -28,12 +28,15 @@ nav_links = (
   ('/tables', 'Tables'),
   ('/form', 'Form'),
   ('/htmx', 'HTMX'),
+  ('/markdown', 'Markdown'),
 )
 
 
-def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), css_paths:Sequence[str]=()) -> HtmlResponse:
+def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), css_paths:Sequence[str]=(),
+ js_paths:Sequence[str]=()) -> HtmlResponse:
   '''
   Return the complete page for `main`, wrapped in the dev app's shell.
+  `css_paths` and `js_paths` are added to the head after the common stylesheets and scripts; scripts are deferred.
 
   This is the single entry point through which every dev endpoint renders a page,
   so that the shell (head, header, nav, footer) is defined in exactly one place.
@@ -48,6 +51,8 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
   head.append(Script(src='/static/pithy/pithy.js'))
   head.append(Script(src='/static/dev/dev.js'))
   head.add_js(src=htmx_src)
+  for js_path in js_paths:
+    head.add_js(src=js_path)
 
   body = html.body
   body.append(Header(site_name))
