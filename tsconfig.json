@@ -5,6 +5,7 @@
     "dist/**",
     "node/**",
     "pithy_/pithy/web/static/htmx/**",
+    "pithy_/pithy/web/static/overtype/**",
     "pkg/**",
     "vscode/legs/src/extension.ts",
     "vscode/legs/built/extension.js",
