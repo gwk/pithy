@@ -160,7 +160,7 @@ def indent_lines(lines:Iterable[str], depth:int=1) -> Iterator[str]:
 ConvFn = Callable[[Any], str]
 
 def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, convs:ConvFn|Iterable[ConvFn]=str,
- rjust:bool|Iterable[bool]=False, max_col_width:int|Iterable[int]=64) -> Iterable[str]:
+ rjust:bool|Iterable[bool]=False, max_col_width:int|Iterable[int]=64, truncate:bool=False) -> Iterable[str]:
   '''
   Format rows of cells to be column-aligned after calculating column widths to justify each cell.
   This function can take any iterable of iterables, but converts all non-sequences to lists/tuples before processing.
@@ -168,7 +168,9 @@ def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, conv
   `rjust` is a single boolean or a list of booleans, one for each column.
   `max_col_width` is a single maximum padding width or an iterable of maximum padding widths, one for each column.
   A short iterable repeats its last width; an empty iterable uses 64. Extra widths are ignored.
-  Cells longer than their maximum padding width are not truncated.
+  `truncate=True` shortens cells and headers to their maximum widths, ending shortened text with an ellipsis.
+  A zero width produces empty cells; negative widths are invalid when truncating.
+  By default, maximum widths only limit padding and cell contents remain intact.
   '''
   # Convert all cells to repr or str representations.
   if callable(convs):
@@ -182,6 +184,7 @@ def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, conv
   col_widths = DefaultList[int](lambda _: 0)
 
   if head is not None:
+    head = list(head)
     for i, cell in enumerate(head):
       col_widths[i] = len(cell)
 
@@ -200,6 +203,15 @@ def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, conv
   for i, width in enumerate(col_widths):
     col_widths[i] = min(width, max_widths[i])
 
+  if truncate:
+    if any(width < 0 for width in col_widths):
+      raise ValueError('fmt_rows: maximum widths must be nonnegative when truncating.')
+    def truncate_cell(cell:str, width:int) -> str:
+      return cell if len(cell) <= width else cell[:width - 1] + '…' if width else ''
+    rows = [tuple(truncate_cell(cell, width) for cell, width in zip(row, col_widths)) for row in rows]
+    if head is not None:
+      head = [truncate_cell(cell, width) for cell, width in zip(head, col_widths)]
+
   # Determine rjust bool values for each column.
   if isinstance(rjust, bool):
     rjust = [rjust] * len(col_widths)
@@ -217,9 +229,10 @@ def fmt_rows(rows:Iterable[Iterable[Any]], *, head:Iterable[str]|None=None, conv
     yield '  '.join(just_fn(cell, width) for just_fn, cell, width in zip(just_fns, row, col_widths))
 
 
-def fmt_tabbed_rows(rows:Iterable[str], rjust:bool|Iterable[bool]=False, max_col_width:int|Iterable[int]=64) -> Iterable[str]:
+def fmt_tabbed_rows(rows:Iterable[str], rjust:bool|Iterable[bool]=False, max_col_width:int|Iterable[int]=64,
+ truncate:bool=False) -> Iterable[str]:
   'Format rows of tab-separated strings by splitting on tabs and then passing those sequences to fmt_rows.'
-  return fmt_rows((row.split('\t') for row in rows), rjust=rjust, max_col_width=max_col_width)
+  return fmt_rows((row.split('\t') for row in rows), rjust=rjust, max_col_width=max_col_width, truncate=truncate)
 
 
 def iter_str(iterable:Iterable[str]) -> Iterable[str]:
