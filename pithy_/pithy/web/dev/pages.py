@@ -28,6 +28,7 @@ nav_links = (
   ('/tables', 'Tables'),
   ('/controls/form', 'Form'),
   ('/controls/htmx', 'HTMX'),
+  ('/markdown', 'Markdown'),
 )
 
 

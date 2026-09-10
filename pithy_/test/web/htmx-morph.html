@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. -->
+<meta charset="utf-8">
+<title>htmx checkable input morph regression tests</title>
+<pre id="results">Running...</pre>
+<div id="fixture"></div>
+<script>
+// Serve the pithy repository root, then open this page; add ?min to test the production bundle.
+const script = document.createElement('script');
+script.src = '../../pithy/web/static/htmx/htmx4' + (location.search === '?min' ? '.min' : '') + '.js';
+script.onload = () => {
+  let api;
+  htmx.registerExtension('morph-test', {init: value => { api = value; }});
+  const fixture = document.querySelector('#fixture');
+  const results = [];
+  function check(condition, message) {
+    if (!condition) throw new Error(message);
+    results.push(message);
+  }
+  function markup(checked, type = 'checkbox', extra = '') {
+    return `<section id="region"><div><label><input id="prepared" name="prepared" value="true"
+      type="${type}" ${checked ? 'checked' : ''} ${extra}>Prepared</label></div></section>`;
+  }
+  function morph(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    api.morph(fixture.firstElementChild, template.content, false);
+  }
+  try {
+    for (const type of ['checkbox', 'radio']) {
+      for (const initial of [false, true]) {
+        fixture.innerHTML = markup(initial, type);
+        const input = fixture.querySelector('input');
+        input.checked = !initial; // Dirty live state while all ancestor markup remains identical.
+        input.focus();
+        morph(markup(initial, type));
+        check(input.checked === initial, `${type}: identical markup restores ${initial}`);
+        check(input === fixture.querySelector('input'), `${type}: input identity survives`);
+        check(document.activeElement === input, `${type}: focus survives`);
+        for (const desired of [!initial, initial, !initial, initial]) {
+          morph(markup(desired, type));
+          check(input.checked === desired, `${type}: server changes live state to ${desired}`);
+        }
+      }
+    }
+    fixture.innerHTML = markup(false);
+    const input = fixture.querySelector('input');
+    input.click();
+    check(JSON.stringify(Array.from(api.collectFormData(input, null, null, false, false))) ===
+      '[["prepared","true"]]', 'checked input sends prepared=true without hx-vals');
+    morph(markup(true));
+    input.click();
+    check(Array.from(api.collectFormData(input, null, null, false, false)).length === 0,
+      'unchecked input omits prepared without hx-vals');
+    morph(markup(false));
+    morph(markup(true)); // A later refresh, such as an edit from another copy of the control.
+    check(input.checked, 'previously clicked input follows a later server update');
+
+    fixture.innerHTML = markup(false, 'checkbox', 'hx-morph-skip');
+    const skipped = fixture.querySelector('input');
+    skipped.checked = true;
+    morph(markup(false, 'checkbox', 'hx-morph-skip'));
+    check(skipped.checked, 'hx-morph-skip preserves live state');
+    document.querySelector('#results').textContent = `PASS: ${results.length} checks\n` + results.join('\n');
+  } catch (error) {
+    document.querySelector('#results').textContent = 'FAIL: ' + error.stack;
+    throw error;
+  }
+};
+document.head.append(script);
+</script>

@@ -55,3 +55,22 @@ body > nav a.current-nav-section-link {
   width: 100%;
   border-bottom: 1px solid var(--border-strong);
 }
+
+.markdown-settings, #markdown-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1ch;
+}
+
+.markdown-settings { margin-bottom: 1em; }
+
+#markdown-value:empty { display: none; }
+
+#markdown-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Override the component's percentage host height so it participates in normal page flow. */
+#markdown-editor { height: auto; }
