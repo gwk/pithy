@@ -131,7 +131,8 @@ class Mu:
     Its keys are used as-is.
 
     Python creates a new dictionary for keyword arguments, so that dictionary is safely used for `attrs` without copying.
-    Keyword attribute keys have underscores replaced with hyphens.
+    Keyword attribute keys are normalized by `normalize_attr_key`: a single trailing underscore is stripped,
+    so that keys colliding with Python keywords can be written e.g. `for_`, and remaining underscores become hyphens.
 
     The `_` property represents the node children list, and is typed as MuChildOrChildrenLax to allow for numeric values.
     Positional children and `_` are mutually exclusive.
@@ -161,7 +162,7 @@ class Mu:
       attrs = _replace_attrs
     normalized_kw_attr_names:dict[str,str] = {}
     for k in kw_attrs:
-      normalized_k = k.replace('_', '-')
+      normalized_k = normalize_attr_key(k)
       if normalized_k in normalized_kw_attr_names:
         prev_k = normalized_kw_attr_names[normalized_k]
         raise ValueError(f'Keyword attributes {prev_k!r} and {k!r} both normalize to {normalized_k!r}.')
@@ -267,9 +268,9 @@ class Mu:
   def update(self, attrs:Iterable[tuple[str,Any]]|Mapping[str,Any]=(), **kwargs:Any) -> None:
     '''
     Update the node attributes with the provided dictionary and/or kwargs.
-    If kwargs are provided, those keys will have underscores replaced with hyphens.
+    If kwargs are provided, those keys are normalized with `normalize_attr_key`.
     '''
-    kwargs = { k.replace('_', '-'): v for k, v in kwargs.items() }
+    kwargs = { normalize_attr_key(k): v for k, v in kwargs.items() }
     self.attrs.update(attrs, **kwargs)
 
 
@@ -965,6 +966,16 @@ _mu_child_classes_lax_converted = (int, float, bool, type(None))
 mu_child_classes_lax = mu_child_classes + _mu_child_classes_lax_converted
 
 
+def normalize_attr_key(key:str) -> str:
+  '''
+  Normalize a Python keyword argument name into a markup attribute name.
+  A single trailing underscore is stripped, so that names colliding with Python keywords can be written e.g. `for_` or `async_`.
+  Remaining underscores are replaced with hyphens, e.g. `hx_get` becomes `hx-get`.
+  '''
+  if key.endswith('_') and not key.endswith('__'): key = key[:-1]
+  return key.replace('_', '-')
+
+
 def xml_attr_summary(key:str, val:Any, *, text_limit:int, all_attrs:bool) -> str:
   ks = key if _word_re.fullmatch(key) else repr(key)
   if all_attrs or key in ('id', 'class'): return f' {ks}={repr_lim(val, text_limit)}' # Show id and class values.
@@ -994,7 +1005,7 @@ def xml_pred(type_or_tag:str|type[_Mu]='', *, cl:str='', text:str='', attrs:dict
     return (
       tag_pred(node) and
       (not cl or cl in node.classes) and
-      all(node.attrs.get(k.replace('_', '-')) == v for k, v in attrs.items()) and
+      all(node.attrs.get(normalize_attr_key(k)) == v for k, v in attrs.items()) and
       (not text or text in node.text))
 
   return predicate

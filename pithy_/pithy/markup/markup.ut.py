@@ -3,7 +3,7 @@
 from copy import replace
 from typing import Any
 
-from pithy.markup import Mu, TagMu
+from pithy.markup import Mu, normalize_attr_key, TagMu, xml_pred
 from utest import utest, utest_exc, utest_run
 
 
@@ -20,6 +20,19 @@ def mu_with_normalized_attr_collision() -> Mu:
 
 utest_exc(ValueError("Keyword attributes 'some_attr' and 'some-attr' both normalize to 'some-attr'."),
   mu_with_normalized_attr_collision)
+
+utest('for', normalize_attr_key, 'for_')
+utest('hx-get', normalize_attr_key, 'hx_get')
+utest('data-x', normalize_attr_key, 'data_x_')
+utest('a--', normalize_attr_key, 'a__')
+utest({'for': 'x', 'hx-get': '/y'}, lambda: Mu(for_='x', hx_get='/y').attrs)
+utest(True, lambda: xml_pred(attrs={'for_': 'x'})(Mu(for_='x')))
+
+@utest_run
+def update_normalizes_keys() -> None:
+  mu = Mu()
+  mu.update(for_='x')
+  utest({'for': 'x'}, lambda: mu.attrs)
 
 
 @utest_run
