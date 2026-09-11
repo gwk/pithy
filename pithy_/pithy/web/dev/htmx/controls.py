@@ -5,7 +5,7 @@
 import datetime as dt
 from typing import Any
 
-from ....html import A, Button, Div, Form, H1, H2, Input, Label, Li, Main, Ol, P, Select, Span, Strong, Sup, TextArea
+from ....html import A, Button, Div, H1, H2, Input, Label, Li, Main, Ol, P, Select, Span, Strong, Sup, TextArea
 from ....markup import MuChild
 from ...endpoint import Endpoint, NoFields
 from ...request import Request, UploadedFile
@@ -78,7 +78,7 @@ class ControlsHtmxUpdate(Endpoint):
 
 
 def controls_htmx() -> Div:
-  'Return a Form demonstrating all standard interactive HTML form controls, with HTMX.'
+  'Return a grid of the standard interactive HTML form controls, each posting its own updates with htmx.'
 
   outer = Div()
   div = outer.append(Div(cl='form_grid'))
@@ -105,10 +105,9 @@ def controls_htmx() -> Div:
   _row('search', Input(type='search', name='search', placeholder='search', hx_trigger="change", hx_post=url, **_htmx_tags))
   _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4', hx_trigger="change", hx_post=url, **_htmx_tags))
 
-  # Checkboxes must be wrapped in a <form> so HTMX uses form serialization, which omits the field when unchecked.
-  # Without a form ancestor, HTMX reads input.value, which is always "on" regardless of checked state.
-  _row('checkbox', Form(cl='flex-row gap-1ch', hx_post=url, hx_trigger='change', **_htmx_tags,
-    _=[Input(type='checkbox', name='checkbox'), ftnt(1)]))
+  # htmx 4 serializes a lone control the same way a form does: a checkbox is sent only when checked. See footnote 1.
+  _row('checkbox', Span(cl='flex-row gap-1ch',
+    _=[Input(type='checkbox', name='checkbox', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(1)]))
 
   _row('radio', Span(cl='flex-row gap-1ch',
     _=[
@@ -119,10 +118,8 @@ def controls_htmx() -> Div:
   _row('select', Select(name='select', hx_trigger='change', hx_post=url, **_htmx_tags).options(['Option A', 'Option B', 'Option C'],
     placeholder='Choose...'))
 
-  # Select-multiple inputs must be wrapped in a <form> so HTMX uses form serialization, which captures all selected values.
-  # Without a form ancestor, HTMX reads input.value, which returns only the first selected option rather than iterating input.selectedOptions.
-  _row('select multiple', Form(cl='flex-row gap-1ch', hx_post=url, hx_trigger='change delay:500ms', **_htmx_tags,
-    _=[Select(name='select_multiple', multiple='').options(['Option A', 'Option B', 'Option C']), ftnt(2)]))
+  _row('select multiple', Select(name='select_multiple', multiple='', hx_trigger='change delay:500ms', hx_post=url,
+    **_htmx_tags).options(['Option A', 'Option B', 'Option C']))
 
   _row('date', Input(type='date', name='date', hx_trigger='change', hx_post=url, **_htmx_tags))
   _row('time', Input(type='time', name='time', hx_trigger='change', hx_post=url, **_htmx_tags))
@@ -134,13 +131,9 @@ def controls_htmx() -> Div:
     '0', Input(type='range', name='range', min='0', max='10', hx_trigger='input', hx_post=url, **_htmx_tags), '10']))
 
 
-  # HTMX reads .value off the triggering element, except when it finds a <form> ancestor,
-  # in which case it uses the JS FormData API (which handles checkboxes, files, etc. correctly).
-  #
-  # File inputs must be wrapped in a <form> because only FormData reads input.files (the actual
-  # binary file handle); without it, HTMX falls back to input.value, which is just a fake path string.
-  _row('file', Form(cl='flex-row gap-1ch', hx_encoding='multipart/form-data', hx_post=url, hx_trigger='change', **_htmx_tags,
-    _=[Input(type='file', name='file'), ftnt(4)]))
+  # File inputs need `hx-encoding` for the file bytes to be sent; the default urlencoded body stringifies the File object.
+  _row('file', Span(cl='flex-row gap-1ch', _=[
+    Input(type='file', name='file', hx_encoding='multipart/form-data', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(2)]))
 
   _row('button', Input(type='button', value='Toggle popover', popovertarget='example-popover'))
   div.append(Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
@@ -160,15 +153,13 @@ def controls_htmx() -> Div:
 
   outer.append(Div(cl='flex-col font-small', _=['Notes:',
   Ol(
-    Li(id='fn1', _='Checkboxes must be wrapped in a <form> so HTMX uses form serialization, which omits the field when'
-      ' unchecked. Without a form ancestor, HTMX reads input.value, which is always "on" regardless of checked state.'),
-    Li(id='fn2', _='Select-multiple inputs must be wrapped in a <form> so HTMX uses form serialization, which captures'
-      ' all selected values. Without a form ancestor, HTMX reads input.value, which returns only the first selected'
-      ' option rather than iterating input.selectedOptions.'),
+    Li(id='fn1', _='A checkbox is only sent when it is checked, so an unchecked box is indistinguishable from an absent'
+      ' field. This is standard HTML form behavior, and htmx 4 serializes a lone control the same way it serializes a'
+      ' form, so wrapping the checkbox in a <form> does not change it.'),
+    Li(id='fn2', _='File inputs need hx-encoding="multipart/form-data". With the default urlencoded body the File object'
+      ' is stringified to "[object File]". A wrapping <form> is not required; htmx 4 reads input.files directly.'),
     Li(id='fn3', _='Desktop Safari falls back to a plain text field for month and week input types.'
       ' Values entered in the text fallback are not validated by the browser.'),
-    Li(id='fn4', _='File inputs must be wrapped in a <form> so HTMX uses the FormData API, which reads the actual file'
-      ' bytes via input.files. Without a form ancestor, HTMX falls back to input.value, which is a fake path string.'),
   )]))
 
   return outer

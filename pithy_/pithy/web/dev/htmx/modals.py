@@ -114,9 +114,9 @@ class EditModalHtmx(Endpoint):
         Select(id='edit-user-role', name='role', hx_post=url, hx_trigger='change', hx_swap='none')
           .options(roles, value=user.role),
         Label('VIP', for_='edit-user-vip'),
-        # Outside of a form HTMX reads input.value, which is always "on" for a checkbox, and inside of a form an
-        # unchecked box is omitted entirely, which the update endpoint could not distinguish from another field's update.
-        # `hx-vals` with a `js:` expression is evaluated with `this` bound to the element, so it sends the checked state.
+        # An unchecked box is omitted from the request, which the update endpoint could not distinguish from another
+        # field's update. `hx-vals` with a `js:` expression is evaluated with `this` bound to the element, so it sends
+        # the checked state explicitly.
         Input.checkbox(id='edit-user-vip', name='vip', is_checked=user.vip, hx_vals='js:{vip: this.checked}',
           hx_post=url, hx_trigger='change', hx_swap='none'),
         Label('UI'),
