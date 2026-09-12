@@ -297,17 +297,23 @@ class HtmlPhrasingParent(HtmlNode):
   '''
 
 
-  def labeled_checkboxes(self, *, require_one:bool, desc_singular:str='', choices:Iterable[Any]|Mapping[str,Any],
+  def labeled_checkboxes(self, name:str, *, require_one:bool, desc_singular:str='', choices:Iterable[Any]|Mapping[str,Any],
    checked:Iterable[Any]|Mapping[str,Any]=()) -> Self:
     '''
-    Add a sequence of checkboxes to the node.
+    Add a set of checkboxes to the node, representing a subset of `choices`.
+    All of the checkboxes share `name` and each has a distinct `value`, so the request carries the checked values as a
+    multi-value field; declare the endpoint field as `list[T]`, e.g. `list[Literal[...]]`.
+    Each checkbox has `data-pithy-checkbox="set"` to opt into pithy.js submission handling.
+    HTML sends nothing for the name when no box is checked, so pithy.js sends a single NUL character in that case,
+    which `pithy.web.endpoint` list fields accept as the empty list; see `isSetCheckbox` in pithy.js.
+    Compare `labeled_radios`, which selects exactly one of the choices, and `Input.bool_checkbox`, for a single bool.
     `require_one` adds client side validation to require that at least one box is checked.
-    `desc_singular` is used to for the client side validation message.
+    `desc_singular` is used for the client side validation message.
     `choices` can be an Iterable or a mapping, which will be treated as an iterable of pairs.
-    For each choice element, if it is a pair, the key is is used as the input name and the value is used as the label
+    For each choice element, if it is a pair, the key is used as the checkbox value and the value is used as the label
     description.
-    Otherwise the choice is used as both the key and the description.
-    Similarly, `checked` can be a dictionary mapping from keys to truthy values, or simply a set of keys that are checked.
+    Otherwise the choice is used as both the value and the description.
+    Similarly, `checked` can be a dictionary mapping from values to truthy values, or simply a set of values that are checked.
     '''
     if require_one:
       self.append(Script(_='once(makeContainerValidateAtLeastOneCheckbox);'))
@@ -323,13 +329,12 @@ class HtmlPhrasingParent(HtmlNode):
 
     for c in choices:
       if isinstance(c, tuple):
-        name, desc = c
+        value, desc = c
       else:
-        name = desc = c
-      is_checked = (name in checked_set)
-      self.append(Label(
-        Input(type='checkbox', name=name, checked=Present(is_checked)),
-        desc))
+        value = desc = c
+      is_checked = (value in checked_set)
+      self.append(Label(Input(type='checkbox', name=name, value=value, checked=Present(is_checked),
+        data_pithy_checkbox='set'), desc))
     return self
 
 
@@ -1097,12 +1102,16 @@ class Input(HtmlFlow, HtmlInteractive, HtmlPalpable, HtmlPhrasing, HtmlNoContent
   '''
 
   @classmethod
-  def checkbox(cls, *, is_checked:bool, **kwargs:Any) -> Self:
+  def bool_checkbox(cls, *, is_checked:bool, **kwargs:Any) -> Self:
     '''
-    Create a checkbox input element.
+    Create a bool checkbox input element.
+    Sets `data-pithy-checkbox="bool"` so pithy.js always sends its state as 'true' or 'false',
+    for native form submission, htmx requests and `hx-include`, so that an unchecked box is not simply absent.
+    Declare the endpoint field as `bool`, or `bool|None` for partial updates.
+    For a subset of choices sharing a name, see `labeled_checkboxes`; each of those checkboxes has a `value`.
     '''
-    assert 'value' not in kwargs, 'The value attribute is not used for checkboxes.'
-    return cls(type='checkbox', checked=Present(is_checked), **kwargs)
+    assert 'value' not in kwargs, 'The value attribute is not used for bool checkboxes.'
+    return cls(type='checkbox', checked=Present(is_checked), data_pithy_checkbox='bool', **kwargs)
 
 
   @classmethod
