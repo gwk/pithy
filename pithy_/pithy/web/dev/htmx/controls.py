@@ -52,6 +52,7 @@ class ControlsHtmxUpdate(Endpoint):
     search: str | None
     textarea: str | None
     checkbox: str | None
+    checkbox_set: list[str] | None
     radio: str | None
     select: str | None
     date: dt.date | None
@@ -105,9 +106,14 @@ def controls_htmx() -> Div:
   _row('search', Input(type='search', name='search', placeholder='search', hx_trigger="change", hx_post=url, **_htmx_tags))
   _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4', hx_trigger="change", hx_post=url, **_htmx_tags))
 
-  # htmx 4 serializes a lone control the same way a form does: a checkbox is sent only when checked. See footnote 1.
   _row('checkbox', Span(cl='flex-row gap-1ch',
-    _=[Input(type='checkbox', name='checkbox', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(1)]))
+    _=[Input.bool_checkbox(is_checked=False, name='checkbox', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(1)]))
+
+  # The containing span is the htmx source, so every member of the set is sent on each change.
+  _row('checkbox set', Span(cl='flex-row gap-1ch', _=[
+    Span(cl='flex-row gap-1ch', hx_trigger='change', hx_post=url, **_htmx_tags).labeled_checkboxes('checkbox_set',
+      require_one=False, choices={'a' : 'Option A', 'b' : 'Option B', 'c' : 'Option C'}),
+    ftnt(1)]))
 
   _row('radio', Span(cl='flex-row gap-1ch',
     _=[
@@ -153,9 +159,12 @@ def controls_htmx() -> Div:
 
   outer.append(Div(cl='flex-col font-small', _=['Notes:',
   Ol(
-    Li(id='fn1', _='A checkbox is only sent when it is checked, so an unchecked box is indistinguishable from an absent'
-      ' field. This is standard HTML form behavior, and htmx 4 serializes a lone control the same way it serializes a'
-      ' form, so wrapping the checkbox in a <form> does not change it.'),
+    Li(id='fn1', _='HTML sends a checkbox only when it is checked, so an unchecked box is indistinguishable from an'
+      ' absent field. Input.bool_checkbox marks the control with data-pithy-checkbox="bool" so pithy.js sends "true"'
+      ' or "false" for native form submission, htmx requests, and hx-include. labeled_checkboxes marks set members'
+      ' with data-pithy-checkbox="set";'
+      ' pithy.js sends a single NUL character for the set name when no member is checked, which endpoint list fields'
+      ' accept as the empty list. Unmarked checkboxes retain native submission behavior.'),
     Li(id='fn2', _='File inputs need hx-encoding="multipart/form-data". With the default urlencoded body the File object'
       ' is stringified to "[object File]". A wrapping <form> is not required; htmx 4 reads input.files directly.'),
     Li(id='fn3', _='Desktop Safari falls back to a plain text field for month and week input types.'

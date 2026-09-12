@@ -66,7 +66,10 @@ class Endpoint(RoutableHandler):
   For each field, the outermost type form determines the HTTP parameter validation:
   * `T|None` marks the field as optional (None if the parameter is absent or an explicit JSON null);
   * `list[T]` marks it as multi-value, collecting every value submitted for its key (e.g. multi-select).
-  * `list[T]|None` is an optional multi-value field (None if no values are submitted).
+    A single NUL character submitted for the key in form data or query parameters is the empty list;
+    pithy.js sends this for a set of valued checkboxes when none is checked, so that `list[T]` represents the checked subset.
+    NUL mixed with other values is rejected. Empty strings remain list elements. JSON uses an explicit empty array.
+  * `list[T]|None` is an optional multi-value field (None if the key is not submitted at all).
 
   ## Unions
 
@@ -80,7 +83,7 @@ class Endpoint(RoutableHandler):
   For each field, value conversion of raw request data is handled by either a per-class Transtructor or a per-field converter.
   The converter receives the whole field input and converts it to the full declared field type.
   For a multi-value field, a single submitted value is first wrapped into a one-element list,
-  so the converter always receives a list (or None from an explicit JSON null).
+  and the form/query NUL marker becomes the empty list, so the converter receives a list (or None from an explicit JSON null).
 
   To customize conversion for a specific field, define a `converters` dict in the endpoint class body as a class variable
   mapping field names to converter callables of the form `(raw) -> value`:
@@ -294,7 +297,7 @@ class Endpoint(RoutableHandler):
     for name, vals in request.query_multi.items():
       # Match the shape of the form body parsers: a single value is a scalar, repeated values are a list.
       # A repeated key for a non-list field then fails conversion, just as it would in a form body.
-      self._fill_param(name=name, raw=(vals if len(vals) > 1 else vals[0]), source='query')
+      self._fill_param(name=name, raw=(vals if len(vals) > 1 else vals[0]), source='query', accept_empty_list_marker=True)
 
     if request.content_length is not None and request.content_length > self.max_body_bytes:
       # Reject a declared body that exceeds the declared max before it is read.
@@ -316,8 +319,9 @@ class Endpoint(RoutableHandler):
     Raises BadRequestError on excess body params, duplicate params across sources, or missing required fields.
     '''
     if request.media_type:
+      is_form = request.media_type in ('application/x-www-form-urlencoded', 'multipart/form-data')
       for name, raw in request.body_params(self.max_body_bytes, body_field=self.body_field).items():
-        self._fill_param(name=name, raw=raw, source='body')
+        self._fill_param(name=name, raw=raw, source='body', accept_empty_list_marker=is_form)
     for name, field in self._fields.items():
       if hasattr(self.fields, name): continue
       if not field.is_optional:
@@ -334,7 +338,7 @@ class Endpoint(RoutableHandler):
     raise NotImplementedError
 
 
-  def _fill_param(self, name:str, raw:object, source:str) -> None:
+  def _fill_param(self, name:str, raw:object, source:str, *, accept_empty_list_marker:bool=False) -> None:
     if prev := self._fill_param_sources.get(name):
       raise BadRequestError(f'Duplicate parameter {name!r} in {prev} and {source}.')
     field = self._fields.get(name)
@@ -343,11 +347,15 @@ class Endpoint(RoutableHandler):
     self._fill_param_sources[name] = source
     convert = field.convert
     assert convert is not None # Resolved by _resolve_converters at construction.
-    if field.is_list and not isinstance(raw, list) and raw is not None:
+    if field.is_list and raw is not None:
       # A single submitted value fills a multi-value field as a one-element list.
       # This normalization must precede conversion: transtruct would iterate a bare str into its characters.
       # None (an explicit JSON null) is preserved for the field type union to accept or reject.
-      raw = [raw]
+      raw = raw if isinstance(raw, list) else [raw]
+      if accept_empty_list_marker and '\x00' in raw:
+        if len(raw) != 1:
+          raise BadRequestError(f'Empty-list NUL marker mixed with other values for parameter {name!r}.')
+        raw = []
     try: converted_value = convert(raw)
     except (ValueError, TypeError, TranstructorError) as e:
       # Truncate the raw value so that a large or whole-body value is not reflected back in the error response.

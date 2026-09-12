@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.html import Div, Html, MultipleMatchesError, NoMatchError, P
+from pithy.html import Div, Html, Input, MultipleMatchesError, NoMatchError, P, Span
 from utest import utest, utest_exc, utest_seq, utest_val, utest_val_type
 
 
@@ -74,3 +74,28 @@ utest_val(div1, sd1.orig, 'sd1.orig')
 
 utest(div1, sd0.next)
 utest(div0, sd1.prev)
+
+
+# Checkbox helpers.
+
+def _render(node:Input|Span) -> str: return node.render_str().rstrip('\n')
+
+utest("<input type='checkbox' checked='' name='vip' data-pithy-checkbox='bool'/>",
+  _render, Input.bool_checkbox(name='vip', is_checked=True))
+utest("<input type='checkbox' name='vip' data-pithy-checkbox='bool'/>",
+  _render, Input.bool_checkbox(name='vip', is_checked=False))
+utest("<input type='checkbox' name='vip'/>", _render, Input(type='checkbox', name='vip'))
+
+utest(
+  "<span>"
+  "<label><input type='checkbox' name='tags' value='a' data-pithy-checkbox='set'/>A</label>"
+  "<label><input type='checkbox' name='tags' value='b' checked='' data-pithy-checkbox='set'/>B</label>"
+  "</span>",
+  _render, Span().labeled_checkboxes('tags', require_one=False, choices={'a': 'A', 'b': 'B'}, checked={'b'}))
+
+utest(
+  "<span desc-singular='tag'>"
+  "<script>once(makeContainerValidateAtLeastOneCheckbox);</script>"
+  "<label><input type='checkbox' name='tags' value='a' checked='' data-pithy-checkbox='set'/>a</label>"
+  "</span>",
+  _render, Span().labeled_checkboxes('tags', require_one=True, desc_singular='tag', choices=['a'], checked={'a': True}))

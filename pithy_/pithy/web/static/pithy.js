@@ -20,6 +20,7 @@ const log = console.log;
 function _configurePithy() {
   _configureWindow();
   _configureSafariDateInputs();
+  _configureCheckboxes();
   _configureHtmx();
   for (const thead of document.querySelectorAll('table thead')) {
     makeElementSelectTableContentsOnDoubleClick(thead);
@@ -35,6 +36,125 @@ function _configureSafariDateInputs() {
     const target = event.target;
     if (target instanceof HTMLInputElement && target.type === 'date' && !target.readOnly) target.showPicker();
   });
+}
+
+
+/*
+ * Checkboxes.
+ *
+ * HTML sends a checkbox only when it is checked, so normally an unchecked box is indistinguishable from an absent field.
+ * pithy.html provides a stricter protocol via `data-pithy-checkbox`; checkboxes without that attribute retain native behavior.
+ * * Input.bool_checkbox sets `data-pithy-checkbox="bool"`; its state is always sent as the string 'true' or 'false',
+ *   and `pithy.web.endpoint` bool fields accept these.
+ * * labeled_checkboxes sets `data-pithy-checkbox="set"`; each member has a value and shares the set's name.
+ *   HTML sends the values of the checked members; when none is checked, a single NUL character is sent for the name,
+ *   and `pithy.web.endpoint` list fields accept it as the empty list.
+ *   NUL is reserved and cannot be a choice value; an empty string is an ordinary choice value.
+ *   A lone set checkbox as the htmx source element is left to htmx, because a single member cannot represent the set.
+ *
+ * Request bodies are built at two points, and both are hooked:
+ * the `formdata` event covers native form submission and `new FormData(form)`,
+ * which htmx uses when the source element has a form ancestor;
+ * `htmx:config:request` covers a lone source element and `hx-include` elements, which htmx serializes itself.
+ */
+
+/**
+ * Whether `el` is an enabled named checkbox explicitly marked as a pithy bool checkbox.
+ * @param {Element|RadioNodeList} el
+ * @returns {el is HTMLInputElement}
+ */
+function isBoolCheckbox(el) {
+  return el instanceof HTMLInputElement && el.type === 'checkbox' && el.name !== '' && el.dataset.pithyCheckbox === 'bool'
+    && !el.matches(':disabled');
+}
+
+
+/**
+ * Whether `el` is an enabled named checkbox explicitly marked as a pithy set checkbox.
+ * @param {Element|RadioNodeList} el
+ * @returns {el is HTMLInputElement}
+ */
+function isSetCheckbox(el) {
+  return el instanceof HTMLInputElement && el.type === 'checkbox' && el.name !== '' && el.dataset.pithyCheckbox === 'set'
+    && !el.matches(':disabled');
+}
+
+
+/**
+ * Set the checkbox states of `els` into `formData`: 'true'/'false' for each bool checkbox,
+ * and a NUL character for each set checkbox name that has no checked member in `formData`.
+ * @param {Iterable<Element|RadioNodeList>} els
+ * @param {FormData} formData
+ * @param {Set<string>} skip - Names to leave alone, because `hx-vals` or `htmx.ajax()` values set them explicitly.
+ */
+function _setCheckboxValues(els, formData, skip) {
+  const setNames = new Set();
+  for (const el of els) {
+    if (isBoolCheckbox(el)) { if (!skip.has(el.name)) formData.set(el.name, String(el.checked)); }
+    else if (isSetCheckbox(el)) { if (!skip.has(el.name)) setNames.add(el.name); }
+  }
+  for (const name of setNames) {
+    // FormData(form) may already have an empty-set marker, followed by checked values appended by hx-include.
+    // NUL is reserved for this protocol and cannot be a checkbox choice value.
+    const values = formData.getAll(name);
+    if (values.includes('\x00') && values.some(value => value !== '\x00')) {
+      formData.delete(name);
+      for (const value of values) { if (value !== '\x00') formData.append(name, value); }
+    }
+    if (!formData.has(name)) {
+      formData.set(name, '\x00');
+    }
+  }
+}
+
+
+/**
+ * Set the checkbox states of `el` into `formData`, mirroring how htmx collects a lone element.
+ * If the element is a bool checkbox, set its own state; otherwise, set the state of its named descendants.
+ * In order to remain consistent with htmx `#addInputValues`, we do not set state on descendants of a button or custom element.
+ * Explicit hx-include targets also include valued checkboxes; include the complete group to submit its checked subset.
+ * @param {Element} el
+ * @param {FormData} formData
+ * @param {Set<string>} skip - Names to leave alone, because `hx-vals` or `htmx.ajax()` values set them explicitly.
+ * @param {boolean} includeSelf - Include a valued checkbox when explicitly targeted by hx-include.
+ */
+function _setElementCheckboxValues(el, formData, skip, includeSelf) {
+  const isCheckbox = isBoolCheckbox(el) || (includeSelf && isSetCheckbox(el));
+  if (isCheckbox) { _setCheckboxValues([el], formData, skip); }
+  else if (el.tagName !== 'BUTTON' && !el.tagName.includes('-')) {
+    _setCheckboxValues(el.querySelectorAll('input[type=checkbox]'), formData, skip);
+  }
+}
+
+
+/** Install the `formdata` listener; the htmx listener is installed by `_configureHtmx`. */
+function _configureCheckboxes() {
+  document.addEventListener('formdata', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    _setCheckboxValues(form.elements, event.formData, new Set());
+  });
+}
+
+
+/**
+ * Look up an htmx attribute on `el`, following htmx 4 explicit inheritance:
+ * `name` or `name:inherited` on the element itself, else `name:inherited` on the nearest ancestor,
+ * with `name:append` (or `name:inherited:append`) joined onto the inherited value.
+ * `htmx.config.implicitInheritance` and `htmx.config.prefix` are not supported.
+ * This mirrors the private `#attributeValue` in htmx4.js, which has no public equivalent; keep them in sync.
+ * @param {Element} el
+ * @param {string} name
+ * @returns {string|null}
+ */
+function _hxAttributeValue(el, name) {
+  const direct = el.getAttribute(name) ?? el.getAttribute(name + ':inherited');
+  if (direct !== null) return direct;
+  const parent = el.parentElement?.closest(`[${CSS.escape(name + ':inherited')}],[${CSS.escape(name + ':inherited:append')}]`);
+  const inherited = parent ? _hxAttributeValue(parent, name) : null;
+  const append = el.getAttribute(name + ':append') ?? el.getAttribute(name + ':inherited:append');
+  if (append === null) return inherited;
+  return inherited ? inherited + ',' + append : append;
 }
 
 
@@ -132,6 +252,30 @@ function _configureHtmx() {
 
   document.body.addEventListener('htmx:after:swap', (event) => {
     _configureSwappedContent(event.detail.ctx.target);
+  });
+
+  // Send checkbox state for the elements that htmx serializes itself; see `isBoolCheckbox` and `isSetCheckbox`.
+  // The `formdata` listener handles forms; reconcile their set markers after htmx has also collected hx-include values.
+  document.body.addEventListener('htmx:config:request', (event) => {
+    const ctx = event.detail.ctx;
+    const body = ctx.request.body;
+    if (!(body instanceof FormData)) return;
+    // Explicit values take precedence: `hx-vals` (which htmx stores as the undeclared `ctx.vals`)
+    // and the `values` option of `htmx.ajax()` (copied onto the context) are both applied before this event.
+    const explicit = /** @type {{vals?:Record<string,unknown>, values?:Record<string,unknown>}} */ (/** @type {any} */ (ctx));
+    const skip = new Set([...Object.keys(explicit.vals ?? {}), ...Object.keys(explicit.values ?? {})]);
+    // Reconcile the form's empty-set markers after htmx has collected all hx-include values.
+    if (ctx.request.form) _setCheckboxValues(Array.from(ctx.request.form.elements).filter(isSetCheckbox), body, skip);
+    const source = ctx.sourceElement;
+    const usesQueryParams = /GET|DELETE/.test(ctx.request.method);
+    // htmx sends nothing for a GET from a non-control container; otherwise it collects the element and its descendants.
+    if (!ctx.request.form && (!usesQueryParams || source.matches('input,select,textarea,fieldset,button'))) {
+      _setElementCheckboxValues(source, body, skip, false);
+    }
+    const include = _hxAttributeValue(source, 'hx-include');
+    if (include) {
+      for (const el of _htmx.findAll(source, include)) _setElementCheckboxValues(el, body, skip, true);
+    }
   });
 
   // Configure universal 'once' callback for all DOM elements that define that attribute.

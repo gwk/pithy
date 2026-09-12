@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 from ....default import Default
 from ....html import Button, Div, Form, H1, H2, Input, Label, Main, P, Select, Span, Strong, TextArea
-from ....markup import MuChild, Present
+from ....markup import MuChild
 from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
 from ...response import Response
@@ -38,6 +38,7 @@ class DevControlsForm(Endpoint):
     search: str | None
     textarea: str | None
     checkbox: str | None
+    checkbox_set: list[str] | None
     radio: str | None
     select: str | None
     date: str | None
@@ -54,7 +55,8 @@ class DevControlsForm(Endpoint):
     file: UploadedFile | None
 
   def _items(self, fields:Fields) -> dict[str, str | list[str]]:
-    return {name: v for name in self._fields if (v := getattr(fields, name))}
+    'Omit absent and empty-string values; an empty list is kept to show that an unchecked checkbox set posts as empty.'
+    return {name: v for name in self._fields if (v := getattr(fields, name)) is not None and v != ''}
 
   def handle_endpoint(self, request:Request, fields:Fields) -> Response:
     values = self._items(fields)
@@ -98,7 +100,10 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
   _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4',
     _=vals.get('textarea', '')))
 
-  _row('checkbox', Input(type='checkbox', name='checkbox', checked=Present('checkbox' in vals)))
+  _row('checkbox', Input.bool_checkbox(name='checkbox', is_checked=(vals.get('checkbox') == 'true')))
+
+  _row('checkbox set', Span(cl='flex-row gap-1ch').labeled_checkboxes('checkbox_set', require_one=False,
+    choices={'a' : 'Option A', 'b' : 'Option B', 'c' : 'Option C'}, checked=vals.get('checkbox_set', ())))
 
   _row('radio', Span(cl='flex-row gap-1ch').labeled_radios('radio', is_opt=True,
     checked=vals.get('radio', Default._), choices={'a' : 'Option A', 'b' : 'Option B'}))

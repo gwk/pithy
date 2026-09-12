@@ -16,6 +16,7 @@ from ..pages import dev_page
 
 
 type UiMode = Literal['auto', 'light', 'dark']
+type Privilege = Literal['publish', 'moderate', 'billing']
 
 
 @dataclass(frozen=True)
@@ -24,14 +25,16 @@ class User:
   name:str
   role:str
   vip:bool
+  privileges:frozenset[Privilege]
   ui:UiMode
 
 
 roles = ('Admin', 'Editor', 'Viewer')
+privilege_labels:dict[Privilege,str] = {'publish': 'Publish', 'moderate': 'Moderate', 'billing': 'Billing'}
 ui_modes:tuple[UiMode,...] = get_args(UiMode.__value__)
 users = {user.id: user for user in (
-  User(1, 'Alex Morgan', 'Admin', vip=False, ui='auto'),
-  User(2, 'Sam Rivera', 'Editor', vip=False, ui='light'))}
+  User(1, 'Alex Morgan', 'Admin', vip=False, privileges=frozenset({'publish'}), ui='auto'),
+  User(2, 'Sam Rivera', 'Editor', vip=False, privileges=frozenset(), ui='light'))}
 users_lock = Lock()
 
 
@@ -43,6 +46,11 @@ def get_user(user_id:int) -> User:
 def vip_text(user:User) -> str: return 'Yes' if user.vip else 'No'
 
 
+def privileges_text(user:User) -> str:
+  'List the user privileges in canonical order, or "None".'
+  return ', '.join(label for p, label in privilege_labels.items() if p in user.privileges) or 'None'
+
+
 def ui_text(ui:UiMode) -> str: return ui.capitalize()
 
 
@@ -52,13 +60,18 @@ def edit_button(user:User) -> Button:
     hx_get=f'/htmx/modals/users/{user.id}/edit_modal.htmx', hx_target='#edit-modal', hx_swap='innerHTML')
 
 
+def user_row(user:User) -> Tr:
+  'The privileges column absorbs the remaining table width; the other cells do not wrap, so that updates do not reflow.'
+  return Tr(Td(user.name, cl='nowrap'), Td(user.role, cl='nowrap'), Td(vip_text(user), cl='nowrap'),
+    Td(privileges_text(user)), Td(ui_text(user.ui), cl='nowrap'), Td(edit_button(user)))
+
+
 def users_table() -> Div:
   return Div(id='users-table', cl='panel flow', hx_get='/htmx/modals/users.htmx',
     hx_trigger=hx_trigger_on(from_body=DomainEvent.user_updated), hx_swap='outerHTML', _=[
       H2('Users'),
-      Table(Thead(Tr(Th('Name'), Th('Role'), Th('VIP'), Th('UI'), Th('Edit'))),
-        Tbody(_=[Tr(Td(user.name), Td(user.role), Td(vip_text(user)), Td(ui_text(user.ui)), Td(edit_button(user)))
-          for user in users.values()])),
+      Table(cl='w100', _=[Thead(Tr(Th('Name'), Th('Role'), Th('VIP'), Th('Privileges', cl='w100'), Th('UI'), Th('Edit'))),
+        Tbody(_=[user_row(user) for user in users.values()])]),
     ])
 
 
@@ -67,7 +80,7 @@ def user_detail() -> Div:
   return Div(id='user-detail', cl='panel flow', hx_get='/htmx/modals/user_detail.htmx',
     hx_trigger=hx_trigger_on(from_body=DomainEvent.user_updated), hx_swap='outerHTML', _=[
       H2('Account owner'), P(f'Name: {user.name}'), P(f'Role: {user.role}'), P(f'VIP: {vip_text(user)}'),
-      P(f'UI: {ui_text(user.ui)}'), edit_button(user),
+      P(f'Privileges: {privileges_text(user)}'), P(f'UI: {ui_text(user.ui)}'), edit_button(user),
     ])
 
 
@@ -114,11 +127,13 @@ class EditModalHtmx(Endpoint):
         Select(id='edit-user-role', name='role', hx_post=url, hx_trigger='change', hx_swap='none')
           .options(roles, value=user.role),
         Label('VIP', for_='edit-user-vip'),
-        # An unchecked box is omitted from the request, which the update endpoint could not distinguish from another
-        # field's update. `hx-vals` with a `js:` expression is evaluated with `this` bound to the element, so it sends
-        # the checked state explicitly.
-        Input.checkbox(id='edit-user-vip', name='vip', is_checked=user.vip, hx_vals='js:{vip: this.checked}',
-          hx_post=url, hx_trigger='change', hx_swap='none'),
+        # A bool checkbox always sends 'true' or 'false'; see `Input.bool_checkbox` and pithy.js.
+        Input.bool_checkbox(id='edit-user-vip', name='vip', is_checked=user.vip, hx_post=url, hx_trigger='change',
+          hx_swap='none'),
+        Label('Privileges'),
+        # The span is the htmx source, so every member of the set is sent; an empty set sends the NUL marker.
+        Span(cl='input-labels-inline', hx_post=url, hx_trigger='change', hx_swap='none').labeled_checkboxes('privileges',
+          require_one=False, choices=privilege_labels, checked=user.privileges),
         Label('UI'),
         Span(cl='input-labels-inline', _=[
           Label(Input(type='radio', name='ui', value=mode, checked=Present(mode == user.ui),
@@ -139,10 +154,11 @@ class UpdateUserHtmx(Endpoint):
     name:str|None
     role:str|None
     vip:bool|None
+    privileges:list[Privilege]|None
     ui:UiMode|None
 
   def handle_endpoint(self, request:Request, fields:Fields) -> HtmxResponse:
-    provided = [f for f in (fields.name, fields.role, fields.vip, fields.ui) if f is not None]
+    provided = [f for f in (fields.name, fields.role, fields.vip, fields.privileges, fields.ui) if f is not None]
     if len(provided) != 1: raise BadRequestError('Provide exactly one field to update.')
     with users_lock:
       user = get_user(fields.user_id)
@@ -155,6 +171,8 @@ class UpdateUserHtmx(Endpoint):
         user = replace(user, role=fields.role)
       elif fields.vip is not None:
         user = replace(user, vip=fields.vip)
+      elif fields.privileges is not None:
+        user = replace(user, privileges=frozenset(fields.privileges))
       else:
         assert fields.ui is not None # The Literal field type rejects unknown modes before this point.
         user = replace(user, ui=fields.ui)

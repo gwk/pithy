@@ -717,6 +717,67 @@ def _() -> None:
 
 @utest_run
 def _() -> None:
+  'Endpoint: a single NUL fills a list field as the empty list, as pithy.js sends for an unchecked checkbox set.'
+  utest_val(dict(tags=[], counts=[]), endpoint_body_fields(ListEndpoint, 'tags=%00&counts=%00'))
+  utest_val(dict(tags=[]), endpoint_body_fields(OptionalListEndpoint, 'tags=%00'))
+  utest_val(dict(tags=[]), endpoint_body_fields(ListConverterEndpoint, 'tags=%00'))
+  req = _make_request(query=dict(tags='\x00', counts='\x00'))
+  ep = ListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val([], ep.fields.tags)
+  utest_val([], ep.fields.counts)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: empty strings remain list elements, including a single empty string.'
+  utest_val(dict(tags=['']), endpoint_body_fields(OptionalListEndpoint, 'tags='))
+  utest_val(dict(tags=['a', '']), endpoint_body_fields(OptionalListEndpoint, 'tags=a&tags='))
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: NUL mixed with other form or query values is rejected, including repeated markers.'
+  for body in ('tags=%00&tags=a', 'tags=a&tags=%00', 'tags=%00&tags=%00', 'tags=%00&tags='):
+    utest_exc(ResponseError, endpoint_body_fields, OptionalListEndpoint, body)
+  utest_exc(ResponseError, OptionalListEndpoint, _make_request(query=dict(tags=['\x00', 'a'])), {})
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: multipart text fields support the NUL marker and reject it mixed with other values.'
+  marker = b'Content-Disposition: form-data; name="tags"\r\n\r\n\x00'
+  value = b'Content-Disposition: form-data; name="tags"\r\n\r\na'
+  req = _multipart_request('boundary', marker)
+  ep = OptionalListEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val([], ep.fields.tags)
+  req = _multipart_request('boundary', marker, value)
+  ep = OptionalListEndpoint(req, path_params={})
+  utest_exc(ResponseError, ep.prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: JSON and path values do not interpret NUL as an empty-list marker.'
+  for body, expected in (
+    (b'{"tags":[]}', []),
+    (b'{"tags":""}', ['']),
+    (b'{"tags":"\\u0000"}', ['\x00']),
+    (b'{"tags":["\\u0000","a"]}', ['\x00', 'a']),
+  ):
+    req = _make_request(media_type='application/json', body=body)
+    ep = OptionalListEndpoint(req, path_params={})
+    ep.prepare(req)
+    utest_val(expected, ep.fields.tags)
+  req = _make_request()
+  ep = OptionalListEndpoint(req, path_params=dict(tags='\x00'))
+  ep.prepare(req)
+  utest_val(['\x00'], ep.fields.tags)
+
+
+@utest_run
+def _() -> None:
   'Endpoint: list[str] required but not submitted raises BadRequestError.'
   req = _urlencoded_request('')
   ep = ListEndpoint(req, path_params={})
