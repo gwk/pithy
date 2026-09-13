@@ -39,9 +39,9 @@ cov:
 cov-meta:
   iotest_/test-meta/meta-coverage.sh
 
-# Generate agent context files from CTX.md.
+# Build all project context.
 ctx:
-  craft-context .
+  craft-context all
 
 develop-global:
   sh/develop-global.sh {{pkgs}}
