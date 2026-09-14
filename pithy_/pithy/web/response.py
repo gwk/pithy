@@ -97,7 +97,9 @@ class Response():
       content_length = 0
 
     assert 'content-length' not in headers
-    headers['content-length'] = content_length
+    # 1xx and 204 prohibit Content-Length. For 304, the absent body does not determine the representation length.
+    if status >= 200 and status not in (HTTPStatus.NO_CONTENT, HTTPStatus.NOT_MODIFIED):
+      headers['content-length'] = content_length
 
     assert 'connection' not in headers
 
@@ -181,7 +183,7 @@ class CsvResponse(Response):
 class HtmlResponse(Response):
   'A Response subclass for HTML responses.'
 
-  def __init__(self, body:Mu|str, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
+  def __init__(self, body:Mu|str|None, *, status:HTTPStatus=HTTPStatus.OK, reason:str='', headers:ResponseHeadersDict|None=None,
    last_modified:float=0.0) -> None:
     super().__init__(status=status, reason=reason, headers=headers, body=body, media_type=html_media_type,
      last_modified=last_modified)
@@ -200,6 +202,7 @@ class HtmxResponse(HtmlResponse):
     It is either a comma-separated string of event names, or a mapping of event names to `detail` objects, rendered as JSON.
     A `target` key in a detail is a selector for the element to dispatch on, instead of the requesting element.
     `fake_latency` is a float in seconds used to simulate a slow response.
+    For bodyless statuses, empty rendered content becomes no body; nonempty content is rejected.
     '''
 
     headers = {**headers} if headers else {}
@@ -212,7 +215,10 @@ class HtmxResponse(HtmlResponse):
 
     if fake_latency: sleep(fake_latency)
 
-    body = '\n\n'.join(Mu.render_child(c) for c in content)
+    body:str|None = '\n\n'.join(Mu.render_child(c) for c in content)
+    if 100 <= status < 200 or status in non_body_statuses:
+      if body: raise ValueError(f'{status} response must not have a body.')
+      body = None
 
     super().__init__(body, status=status, reason=reason, headers=headers, last_modified=last_modified)
 
