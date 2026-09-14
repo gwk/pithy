@@ -192,6 +192,7 @@ class ServerConfig:
   num_threads: the number of worker threads in the thread pool.
   recv_size: the maximum number of bytes to receive at once from client connections.
   log_access: whether to log each request after it is handled.
+  startup_message: an optional info message logged immediately after the serving URL.
   prevent_client_caching: whether to prevent clients from caching responses.
   thread_name_prefix: the prefix for thread names of worker threads.
 
@@ -208,6 +209,7 @@ class ServerConfig:
   max_queued:int = 64
   thread_name_prefix:str = 'WebServer'
   log_access:bool = True
+  startup_message:str = ''
   prevent_client_caching:bool = False
 
 
@@ -255,6 +257,7 @@ class WebServer:
     'Starts the server loop; call shutdown() from another thread to stop the server and then this method will return.'
     cfg = self.config
     logI('Serving.', url=self.url)
+    if cfg.startup_message: logI(cfg.startup_message)
 
     for i in range(cfg.num_threads):
       thread = Thread(target=self._worker, daemon=False, name=f'{cfg.thread_name_prefix}-worker-{i}')
