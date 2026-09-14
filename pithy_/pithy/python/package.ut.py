@@ -1,16 +1,35 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.fs import abs_path
+from tempfile import TemporaryDirectory
+
+from pithy.fs import abs_path, make_dirs, make_link
 from pithy.path import path_dir, path_join
 from pithy.python.package import (find_package_root, qualname_rel_to, resolve_module_in_dirs, resolve_spec_paths,
-  SpecResolutionError)
-from utest import utest, utest_exc
+  SpecResolutionError, walk_module_paths)
+from utest import utest, utest_exc, utest_seq
 
 
 this_file = abs_path(__file__)
 pithy_py_dir = path_dir(this_file) # pithy_/pithy/py/.
 pithy_pkg_dir = path_dir(pithy_py_dir) # pithy_/pithy/ (has py.typed).
 proj_dir = path_dir(path_dir(pithy_pkg_dir)) # pithy/ (git root, no py.typed).
+
+
+with TemporaryDirectory() as tmp:
+  # Namespace directories and private sources remain visible, while environments and symlink cycles do not.
+  source_names = ('pkg/__init__.py', 'pkg/_private.py', 'pkg/namespace/mod.py')
+  skipped_names = ('.hidden/mod.py', 'cache/mod.py', 'env/mod.py', 'pkg/__pycache__/mod.py')
+  for name in (*source_names, *skipped_names, 'env/pyvenv.cfg'):
+    path = path_join(tmp, name)
+    make_dirs(path_dir(path))
+    with open(path, 'w') as f: f.write('raise RuntimeError("Do not import while walking.")\n')
+  make_link(tmp, link=path_join(tmp, 'pkg/cycle'))
+  make_link(path_join(tmp, 'pkg/_private.py'), link=path_join(tmp, 'alias.py'))
+  expected = [path_join(tmp, name) for name in source_names]
+  # Normalized, overlapping roots must not cause a second visit or duplicate output.
+  utest_seq(expected, walk_module_paths, tmp, path_join(tmp, 'pkg/.'), expected[0], exclude_dirs=('cache',))
+  # An explicitly requested excluded directory is still scanned.
+  utest_seq([path_join(tmp, 'cache/mod.py')], walk_module_paths, path_join(tmp, 'cache'), exclude_dirs=('cache',))
 
 
 # File in the py subpackage finds the pithy package root.

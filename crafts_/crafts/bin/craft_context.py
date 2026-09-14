@@ -27,17 +27,51 @@ Importing a generated AGENTS.md is an error. Import the CTX.md source or one of 
 # Skills
 
 We also link both .claude/skills and .agents/skills to context/skills, so the same skills are available across platforms.
+
+# Context Keywords
+
+Modules can advertise topics with a top-level literal assignment:
+```python
+_context_keywords_:list[str] = ['file locking', 'flock', 'process coordination']
+```
+The value must be a sorted list of unique strings, using Python's case-sensitive string ordering and equality.
+Each keyword must contain at least one word character; blank or punctuation-only keywords are errors.
+These keywords are read with ast.literal_eval; modules are never imported or executed.
+
+`craft-context index [paths...]` refreshes `context/index.json`.
+`context/index.lock` is an advisory lock to prevent concurrent updates. Both files are build products and should be gitignored.
+
+`craft-context validate [paths...]` performs syntactic source validation; it does not read or write the index.
+
+`craft-context query [-root project] words...` searches the indexes of the project and of each project in `deps/`;
+such dependencies are not searched recursively.
+
+Dependencies under `deps/` are excluded from the project index; each dependency is indexed at its own root.
+Paths are relative to the project root (`-root`, defaulting to the current directory).
+Dependency symlinks are followed and duplicate project roots are searched once. Dependency discovery is not recursive.
+
+Results are ranked together across all indexes.
+Matching uses case-insensitive whole words, splitting punctuation and underscores into word boundaries.
+Quoted phrases and separate words behave identically.
+Any matching word includes a module in the results; more distinct matching query words rank first.
 '''
 
+import json
 import re
-from typing import Iterator
+from ast import AnnAssign, Assign, literal_eval, Module, Name, parse as parse_ast
+from hashlib import sha256
+from os import replace
+from tempfile import TemporaryDirectory
+from typing import Iterator, TypedDict
 
-from pithy.cmdparse import Cmd, Path, pos as cmd_pos, sub
-from pithy.filestatus import is_dir, is_file, is_link, path_exists
+from pithy.advisory_lock import advisory_lock
+from pithy.cmdparse import Cmd, opt, Path, pos as cmd_pos, sub
+from pithy.filestatus import file_stat, is_dir, is_file, is_link, path_exists
 from pithy.fs import list_dir, make_dirs, make_link, real_path
-from pithy.io import outL
+from pithy.io import errL, outL
 from pithy.lex import Lexer
 from pithy.path import expand_home_dir, is_path_abs, norm_path, path_dir_or_dot, path_join, path_name, rel_path
+from pithy.python.package import walk_module_paths
 from tolkien import Source, Token
 
 
@@ -45,6 +79,8 @@ ctx_name = 'CTX.md'
 agents_name = 'AGENTS.md'
 claude_name = 'CLAUDE.md'
 skills_dir = 'context/skills'
+index_path = 'context/index.json'
+index_lock_path = 'context/index.lock'
 skills_link_dirs = ('.claude', '.agents')
 
 max_import_depth = 5 # Claude Code documents a maximum of five hops.
@@ -66,16 +102,18 @@ class CraftContext(Cmd):
     craft-context all
   ```
   '''
-  cmd:All|Instructions = sub()
+  cmd:All|Instructions|Index|Query|Validate = sub()
 
 
 class All(Cmd):
   'Build all project context.'
-  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc=f'Input {ctx_name} files, or directories to search for them.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc=f'Project directories or {ctx_name} files.')
 
 
   def run(self) -> None:
     Instructions(paths=self.paths).run()
+    roots = {path_dir_or_dot(path) if path_name(path) == ctx_name else path for path in self.paths}
+    for root in sorted(roots): Index(root=root).run()
 
 
 
@@ -97,6 +135,263 @@ class Instructions(Cmd):
     for src in src_paths:
       process_path(src)
 
+
+
+class Index(Cmd):
+  '''
+  Incrementally refresh the keyword index in context/index.json.
+
+  Scan files and directories;
+  skips hidden names, symlinks, virtual environments, `__pycache__`, `_build`, `_misc`, `deps`, `dist` and `node_modules` directories.
+  '''
+  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc='Python files or directories, relative to the project root.')
+  root:Path = opt(default='.', doc='Project root; contains context/index.json.')
+
+
+  def run(self) -> None:
+    dest = path_join(self.root, index_path)
+    make_dirs(path_dir_or_dot(dest))
+    _, written = refresh_context_index(self.root, self.paths, command='index')
+    outL(f'craft-context: {"wrote" if written else "up to date:"} {dest}')
+
+
+
+class Validate(Cmd):
+  'Validate Python sources and keyword metadata using the same scan as index, without reading or writing the index.'
+  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc='Python files or directories, relative to the project root.')
+  root:Path = opt(default='.', doc='Project root to validate.')
+
+
+  def run(self) -> None:
+    paths = [path if is_path_abs(path) else path_join(self.root, path) for path in self.paths]
+    _, errors, _ = scan_context_files(self.root, paths, command='validate', prior={}, built_ns=0)
+    if errors: exit(f'craft-context validate: {errors} source errors.')
+
+
+
+class Query(Cmd):
+  'Search the project and immediate deps/ keyword indexes, ranking modules by distinct matching words.'
+  words:list[str] = cmd_pos(doc='Topic words or phrases; any matching word includes a result.')
+  root:Path = opt(default='.', doc='Project root; searches its context/index.json and deps/*/context/index.json.')
+
+
+  def run(self) -> None:
+    try:
+      modules = load_project_context(self.root)
+      results = query_context_modules(modules, self.words)
+    except (OSError, ValueError) as e:
+      exit(f'craft-context query: {e}')
+    for _, path, keywords in results:
+      outL(f'{path}: {", ".join(keywords)}')
+    if not results: outL('No matching modules.')
+
+
+
+class ContextModule(TypedDict):
+  path:str
+  keywords:list[str]
+
+
+class FileRecord(TypedDict):
+  size:int
+  mtime_ns:int
+  sha256:str
+  keywords:list[str]
+
+
+class ContextIndex(TypedDict):
+  version:int
+  files:dict[str,FileRecord]
+
+
+index_version = 1
+scan_exclude_dirs = ('_build', '_misc', 'deps', 'dist', 'node_modules')
+
+
+def scan_context_files(root:str, paths:list[str], *, command:str, prior:dict[str,FileRecord], built_ns:int
+ ) -> tuple[dict[str,FileRecord],int,bool]:
+  '''
+  Fingerprint and extract keywords from the Python files under `paths`, keyed by path relative to `root`.
+  A prior record is reused without reading the file when its size and mtime match and the mtime precedes `built_ns`;
+  otherwise the file is hashed, and reparsed only if the hash changed.
+  Return the records, the number of source errors (reported to stderr), and whether any file was read.
+  '''
+  records:dict[str,FileRecord] = {}
+  errors = 0
+  read_any = False
+  for path in walk_module_paths(*paths, exclude_dirs=scan_exclude_dirs):
+    rel = rel_path(path, root)
+    stat = file_stat(path, follow=True)
+    size, mtime_ns = stat.st_size, stat.st_mtime_ns
+    record = prior.get(rel)
+    if record and record['size'] == size and record['mtime_ns'] == mtime_ns and mtime_ns < built_ns:
+      records[rel] = record
+      continue
+    read_any = True
+    with open(path, 'rb') as f: data = f.read()
+    digest = sha256(data).hexdigest()
+    if record and record['sha256'] == digest:
+      keywords = record['keywords']
+    else:
+      try: keywords = extract_context_keywords(parse_ast(data, filename=path))
+      except (SyntaxError, UnicodeError, ValueError) as e:
+        errL(f'craft-context {command}: {path}: {e}')
+        errors += 1
+        continue
+    records[rel] = FileRecord(size=size, mtime_ns=mtime_ns, sha256=digest, keywords=keywords)
+  return records, errors, read_any
+
+
+def refresh_context_index(root:str, paths:list[str], *, command:str) -> tuple[list[ContextModule],bool]:
+  '''
+  Refresh the records under `paths` in the index at `root` while holding an exclusive lock on context/index.lock.
+  Prior records outside of `paths` are preserved; records under `paths` for files that no longer exist are dropped.
+  Missing or invalid indexes are rebuilt. Source errors exit without writing.
+  Return the modules with keywords, relative to `root`, and whether the index was written.
+  '''
+  dest = path_join(root, index_path)
+  paths = [norm_path(path if is_path_abs(path) else path_join(root, path)) for path in paths]
+  with advisory_lock(path_join(root, index_lock_path), exclusive=True):
+    try: index, built_ns = load_context_index(dest)
+    except FileNotFoundError:
+      index, built_ns = ContextIndex(version=index_version, files={}), 0
+    except (UnicodeError, ValueError) as e:
+      errL(f'craft-context: {dest}: {e}; rebuilding.')
+      index, built_ns = ContextIndex(version=index_version, files={}), 0
+    prior = index['files']
+    records, errors, read_any = scan_context_files(root, paths, command=command, prior=prior, built_ns=built_ns)
+    if errors: exit(f'craft-context {command}: {errors} source errors; index not written.')
+    files = {rel: record for rel, record in prior.items() if not is_scanned_path(rel, root, paths)}
+    files.update(records)
+    files = dict(sorted(files.items()))
+    written = read_any or files != prior
+    if written: write_context_index(dest, ContextIndex(version=index_version, files=files))
+  modules = [ContextModule(path=rel, keywords=record['keywords']) for rel, record in files.items() if record['keywords']]
+  return modules, written
+
+
+def is_scanned_path(rel:str, root:str, paths:list[str]) -> bool:
+  'Return whether the root-relative path `rel` is one of the scanned `paths` or lies under a scanned directory.'
+  for path in paths:
+    scanned = rel_path(path, root)
+    if scanned == '.' or rel == scanned or rel.startswith(scanned + '/'): return True
+  return False
+
+
+def write_context_index(dest:str, index:ContextIndex) -> None:
+  'Write the index atomically via a temporary file in the destination directory.'
+  dest_dir = path_dir_or_dot(dest)
+  with TemporaryDirectory(prefix='.index-', dir=dest_dir) as tmp:
+    src = path_join(tmp, 'index.json')
+    with open(src, 'w', encoding='utf-8') as f:
+      json.dump(index, f, ensure_ascii=False, indent=2)
+      f.write('\n')
+    replace(src, dest)
+
+
+def load_project_context(root:str) -> list[ContextModule]:
+  '''
+  Load existing indexes of the project and its immediate dependencies, resolving module paths for the caller.
+  Reports missing indexes to stderr and skips them. Raises for invalid or unreadable indexes, or if no indexes are found.
+  '''
+  if not is_dir(root, follow=True): raise ValueError(f'not a project directory: {root!r}')
+  roots = [root]
+  deps_dir = path_join(root, 'deps')
+  if is_dir(deps_dir, follow=True):
+    roots.extend(path_join(deps_dir, name) for name in list_dir(deps_dir)
+      if is_dir(path_join(deps_dir, name), follow=True))
+  seen:set[str] = set()
+  modules:list[ContextModule] = []
+  found = False
+  for project in roots:
+    real = real_path(project)
+    if real in seen: continue
+    seen.add(real)
+    src = path_join(project, index_path)
+    try: index, _ = load_context_index(src)
+    except FileNotFoundError:
+      errL(f'craft-context query: {src}: no index; run craft-context index at the project root.')
+      continue
+    except (UnicodeError, ValueError) as e:
+      raise ValueError(f'{src}: {e}') from e
+    found = True
+    modules.extend(ContextModule(path=norm_path(path_join(project, rel)), keywords=record['keywords'])
+      for rel, record in index['files'].items() if record['keywords'])
+  if not found:
+    raise ValueError(f'no indexes found in {root!r} or its deps/ directories; use source search instead.')
+  return modules
+
+
+def load_context_index(path:str) -> tuple[ContextIndex,int]:
+  '''
+  Load the index and return it along with the mtime of the index file.
+  Raises for missing, unreadable, invalid or prior version indexes.
+  '''
+  stat = file_stat(path, follow=True)
+  with open(path, encoding='utf-8') as f: data = json.load(f)
+  if not isinstance(data, dict) or data.get('version') != index_version:
+    raise ValueError(f'expected index version {index_version}.')
+  files = data.get('files')
+  if not isinstance(files, dict): raise ValueError('expected a files object.')
+  for rel, record in files.items():
+    if (not rel or is_path_abs(rel) or not isinstance(record, dict)
+     or type(record.get('size')) is not int or type(record.get('mtime_ns')) is not int
+     or not isinstance(record.get('sha256'), str)
+     or not isinstance(record.get('keywords'), list) or not all(isinstance(k, str) for k in record['keywords'])):
+      raise ValueError(f'invalid record for {rel!r}.')
+  return ContextIndex(version=index_version, files=files), stat.st_mtime_ns
+
+
+def context_words(text:str) -> set[str]:
+  'Split case-folded text into words, treating punctuation and underscores as separators.'
+  return set(re.findall(r'[^\W_]+', text.casefold()))
+
+
+def query_context_modules(modules:list[ContextModule], words:list[str]) -> list[tuple[int,str,list[str]]]:
+  'Scan keyword records, returning scores, paths and matching phrases in descending score order.'
+  query_words = context_words(' '.join(words))
+  if not query_words: raise ValueError('expected at least one query word.')
+  results:list[tuple[int,str,list[str]]] = []
+  for module in modules:
+    matched_words:set[str] = set()
+    keywords:list[str] = []
+    for keyword in module['keywords']:
+      if matches := query_words & context_words(keyword):
+        matched_words.update(matches)
+        keywords.append(keyword)
+    if matched_words: results.append((len(matched_words), module['path'], keywords))
+  results.sort(key=lambda result: (-result[0], result[1]))
+  return results
+
+
+
+def extract_context_keywords(tree:Module) -> list[str]:
+  'Extract the optional top-level _context_keywords_ literal list, raising ValueError for invalid or repeated declarations.'
+  keywords:list[str]|None = None
+  for node in tree.body:
+    if isinstance(node, Assign):
+      if not any(isinstance(target, Name) and target.id == '_context_keywords_' for target in node.targets): continue
+    elif isinstance(node, AnnAssign):
+      if not node.simple or not isinstance(node.target, Name) or node.target.id != '_context_keywords_': continue
+    else:
+      continue
+    value_node = node.value
+    if value_node is None: continue # An annotation alone does not assign a value.
+    label = f'_context_keywords_ at line {node.lineno}'
+    if keywords is not None: raise ValueError(f'{label}: repeated declaration.')
+    try: value = literal_eval(value_node)
+    except (ValueError, TypeError, SyntaxError):
+      raise ValueError(f'{label}: expected a literal list of strings.') from None
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+      raise ValueError(f'{label}: expected a literal list of strings.')
+    seen:set[str] = set()
+    for keyword in value:
+      if not context_words(keyword): raise ValueError(f'{label}: keyword has no matchable words: {keyword!r}.')
+      if keyword in seen: raise ValueError(f'{label}: duplicate keyword: {keyword!r}.')
+      seen.add(keyword)
+    if value != sorted(value): raise ValueError(f'{label}: keywords must be in sorted order.')
+    keywords = value
+  return keywords if keywords is not None else []
 
 
 def find_src_paths(paths:list[str]) -> list[str]:
@@ -191,7 +486,7 @@ def resolve_import(source:Source[str], token:Token, import_path:str) -> str:
   return path
 
 
-# Lexing.
+# Instruction markdown lexing.
 
 # A code fence line: a run of three or more backticks or tildes, possibly indented, possibly followed by an info string.
 fence_line_re = re.compile(r'(?m)^[ \t]*(?P<fence>`{3,}|~{3,})(?P<info>[^\n]*)$')

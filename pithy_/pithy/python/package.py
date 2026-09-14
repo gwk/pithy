@@ -1,13 +1,50 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Iterator
 
-from ..fs import abs_path, path_exists, path_join, walk_dirs_up, walk_files
-from ..path import path_dir
+from ..filestatus import is_dir, is_file, is_link
+from ..fs import abs_path, list_dir, path_exists, path_join, real_path, walk_dirs_up, walk_files
+from ..path import norm_path, path_dir
 
 
 class SpecResolutionError(Exception):
   'A target spec could not be resolved to Python files.'
+
+
+def walk_module_paths(*paths:str, exclude_dirs:Iterable[str]=()) -> Iterator[str]:
+  '''
+  Yield Python source file paths recursively without importing modules or resolving dependencies.
+  Inputs are files or directories; directory trees need not contain package markers such as __init__.py.
+  Includes private modules, scripts and tests. Paths are normalized, and directory entries are sorted.
+  Overlapping inputs are deduplicated by real path. Explicit input files must have the .py suffix.
+  Skip discovered symlinks, hidden names, __pycache__, virtual environments with pyvenv.cfg,
+  and directories whose names are in `exclude_dirs`. Explicit input roots are not excluded.
+  Filesystem errors propagate.
+  '''
+  excluded = frozenset(exclude_dirs) | {'__pycache__'}
+  seen:set[str] = set()
+
+  def walk(path:str) -> Iterator[str]:
+    real = real_path(path)
+    if real in seen: return
+    seen.add(real)
+    if is_dir(path, follow=True):
+      for name in list_dir(path):
+        child = path_join(path, name)
+        if is_link(child): continue
+        if is_dir(child, follow=False):
+          if name in excluded or is_file(path_join(child, 'pyvenv.cfg'), follow=False): continue
+          yield from walk(child)
+        elif name.endswith('.py') and is_file(child, follow=False):
+          yield from walk(child)
+    elif is_file(path, follow=True):
+      if not path.endswith('.py'): raise ValueError(f'not a Python source file: {path!r}')
+      yield path
+    else:
+      raise FileNotFoundError(path)
+
+  for path in paths:
+    yield from walk(norm_path(path))
 
 
 def find_package_root(path:str, *, package_roots:set[str]|None=None) -> str|None:

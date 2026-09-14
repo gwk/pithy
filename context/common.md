@@ -3,9 +3,37 @@
 The following applies to both the pithy project itself and dependents of that project.
 
 ## Agent Development Flow
-* In general, run `just check` before declaring done. When the checks pass simply say "All checks pass."
-  This can be omitted only for changes where the agent is sure that the actions performed by `check` are irrelevant.
+* In general, run `just check` before declaring done. When the checks pass simply say "Checks pass."
+  This can be omitted for changes where the agent is sure that the actions performed by `check` are irrelevant or unchanged.
 * Verify file changes with `git status` and `git diff`.
+
+## Find Existing Functionality Before Implementing From Scratch
+
+From the working project's root, query for existing solutions using `craft-context query [keywords...]`.
+This searches for keywords that modules advertise, for both the local project and each immediate dependency under `deps/`.
+Do this even when the task does not explicitly mention a library or dependency.
+
+When you find candidates, assess the tradeoffs of using existing solutions and discuss any concerns.
+
+Modules advertise keywords via the special `_context_keywords_` documentation variable. These should include:
+* well-known technical terms, including both problem and solution terms;
+* significant standard library identifiers for which the module either offers a replacement or a higher-level alternative.
+
+Therefore when agents make queries they should include such terms.
+Example: For a file concurrency problem; `craft-context query locking concurrency mutex advisory fcntl.flock`
+
+Queries match individual words without regard to case; any matching word can return a module.
+Quoted phrases and separate words behave identically.
+
+Read relevant returned source files before deciding whether new code is necessary.
+An empty result does not establish that functionality is absent: keywords are curated and may be incomplete.
+If no indexes are available or the query reports an error, report the lookup limitation; do not silently skip discovery.
+The context query exists primarily to aid agents so they must report failures and degradation.
+
+Providers build their index with `craft-context index` (included in `craft-context all`).
+Queries only read existing indexes. Each project maintains its own index through build recipes or precommit hooks; indexing does not refresh dependencies.
+Keyword lists must contain unique, nonempty strings in Python's sorted order.
+Run `craft-context validate` to check source metadata without generating files; Pithy's `just check` includes this validation.
 
 # Git State
 
