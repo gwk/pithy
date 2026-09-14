@@ -1,9 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from http import HTTPStatus
+from json import loads
 
 from pithy.html import Div, Span
-from pithy.web.response import CsvResponse, HtmxResponse, RedirectResponse
+from pithy.web.response import CsvResponse, HtmlResponse, HtmxResponse, RedirectResponse, Response
 from utest import utest_exc, utest_run, utest_val
 
 
@@ -53,3 +54,37 @@ def test_redirect_response() -> None:
 
 utest_exc(ValueError, RedirectResponse, '/x', status=HTTPStatus.OK)
 utest_exc(ValueError, RedirectResponse, '/x', headers={'location':'/y'})
+
+
+@utest_run
+def test_bodyless_responses() -> None:
+  for status in (HTTPStatus.CONTINUE, HTTPStatus.EARLY_HINTS, HTTPStatus.NO_CONTENT,
+   HTTPStatus.RESET_CONTENT, HTTPStatus.NOT_MODIFIED):
+    response = Response(status)
+    utest_val(None, response.body, desc=f'{status} body')
+    utest_val(0 if status == HTTPStatus.RESET_CONTENT else None, response.headers.get('content-length'),
+      desc=f'{status} content-length')
+    utest_val(None, HtmlResponse(None, status=status).body)
+    # The base class still requires an explicit absent body, even for empty strings and bytes.
+    for body in ('', b'', 'content'):
+      utest_exc(ValueError, Response, status, body=body)
+
+    for content in ((), ('',)):
+      response = HtmxResponse(*content, status=status, hx_trigger={'appt_changed': {'target': 'body', 'id': 123}})
+      utest_val(None, response.body, desc=f'HTMX {status} body')
+      utest_val({'appt_changed': {'target': 'body', 'id': 123}}, loads(str(response.headers['hx-trigger'])))
+      utest_val('no-store', response.headers['cache-control'])
+      utest_val(0 if status == HTTPStatus.RESET_CONTENT else None, response.headers.get('content-length'))
+      wire_headers = dict(response.headers_bytes_list())
+      utest_val(status == HTTPStatus.RESET_CONTENT, b'content-length' in wire_headers)
+      utest_val({'appt_changed': {'target': 'body', 'id': 123}}, loads(wire_headers[b'hx-trigger']))
+    for nonempty_content in ('content', Div(), ' '):
+      utest_exc(ValueError, HtmxResponse, nonempty_content, status=status)
+
+  # Empty ordinary responses still have a zero-length body, and errors may carry HTML.
+  empty = HtmxResponse()
+  utest_val(b'', empty.body)
+  utest_val(0, empty.headers['content-length'])
+  error = HtmxResponse('Error', status=HTTPStatus.BAD_REQUEST)
+  utest_val(b'Error', error.body)
+  utest_val(5, error.headers['content-length'])
