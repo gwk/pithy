@@ -10,6 +10,9 @@ from threading import Lock
 from pithy.logs import logI
 
 
+_context_keywords_:list[str] = ['advisory lock', 'file', 'flock', 'mutex', 'mutual exclusion', 'process coordination']
+
+
 class AdvisoryLockError(Exception):
   'Raised when an advisory lock acquisition would deadlock the current process against a lock it already holds.'
 

@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-exec just check-uv-lock
+set -euo pipefail
+
+just check-uv-lock
+uv run craft-context all

@@ -22,9 +22,9 @@ list-packages:
 build:
   sh/build.sh {{pkgs}}
 
-check: check-uv-lock check-pyproject isort lint typecheck test
+check: check-uv-lock check-pyproject check-context isort lint typecheck test
 
-check-full: check-uv-lock gen check-pyproject isort lint typecheck typecheck-js test-full
+check-full: check-uv-lock gen check-pyproject check-context isort lint typecheck typecheck-js test-full
 
 # Check that the uv lock file is in sync with pyproject.toml.
 check-uv-lock:
@@ -32,6 +32,10 @@ check-uv-lock:
 
 check-pyproject:
   uv run build/check-pyproject.py {{pkgs}}
+
+# Validate context keywords without generating files.
+check-context:
+  uv run craft-context validate
 
 cov:
   uv run iotest {{pkg_tests_full}} -coverage
