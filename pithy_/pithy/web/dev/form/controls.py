@@ -3,10 +3,9 @@
 'Developer reference page demonstrating all standard HTML form controls using traditional forms.'
 
 from typing import Any
-from urllib.parse import quote
 
 from ....default import Default
-from ....html import Button, Div, Form, H1, H2, Input, Label, Main, P, Select, Span, Strong, TextArea
+from ....html import Div, Form, H1, Input, Label, Main, Select, Span, Strong, TextArea
 from ....markup import MuChild
 from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
@@ -14,18 +13,11 @@ from ...response import Response
 from ..pages import dev_page
 
 
-image_button_svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32" viewBox="0 0 64 32">
-  <rect width="64" height="32" rx="3" fill="black"/>
-  <path d="M8 16h48M32 4v24" fill="none" stroke="#39ff14" stroke-width="2"/>
-</svg>'''
-image_button_src = f'data:image/svg+xml,{quote(image_button_svg)}'
-
-
 class DevControlsForm(Endpoint):
   'Demonstrates form controls.'
 
   methods = ('GET', 'POST')
-  max_body_bytes = 64 * 1024
+  max_body_bytes = 4096
 
   class Fields:
     text: str | None
@@ -46,10 +38,6 @@ class DevControlsForm(Endpoint):
     color: str | None
     range: str | None
     submit: str | None
-    x: str | None
-    y: str | None
-    week: str | None
-    month: str | None
     datetime_local: str | None
     select_multiple: list[str] | None
     file: UploadedFile | None
@@ -125,24 +113,6 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
     _=['0', Input(type='range', name='range', min='0', max='10', **_v('range')), '10']))
 
   _row('file', Input(type='file', name='file'))
-
-  _row('button', Input(type='button', value='Toggle popover', popovertarget='example-popover'))
-  form.append(Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
-    P('This popover uses native HTML without JavaScript.'),
-    Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
-  ]))
-  _row('image', Span(cl='flex-row gap-1ch align-items-center', _=[
-    Input(type='image', src=image_button_src, alt='Submit with image'),
-    Span(cl='font-small', _='(Submits click coordinates)'),
-  ]))
-
-  form.append(Div(cl='controls-section flow flow-tight', _=[
-    H2('Not portable across target browsers'),
-    P('These controls fall back to plain text fields in desktop Safari.'),
-  ]))
-  _row('month', Input(type='month', name='month', **_v('month')))
-  _row('week', Input(type='week', name='week', **_v('week')))
-  form.append(Div(cl='controls-section-end'))
 
   _row('reset', Input(type='reset', value='Reset'))
   _row('submit', Input(type='submit', value='Submit'))
