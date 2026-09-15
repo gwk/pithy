@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import Mapping
 
-from pithy.web.endpoint import Endpoint, NoFields
+from pithy.web.endpoint import Endpoint
 from pithy.web.request import Request as PithyRequest
 from pithy.web.response import Response as PithyResponse
 from pithy.web.starlette import endpoint_adapter, endpoint_route
@@ -77,12 +77,12 @@ class JsonEndpoint(Endpoint):
 
 
 class CtxEndpoint(Endpoint):
-  def get(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
+  def get(self, request:PithyRequest, fields:None) -> PithyResponse:
     return PithyResponse(body=f"{request.ctx.get('user')}|{request.ctx.get('session')}")
 
 
 class PrivilegedEndpoint(Endpoint):
-  def get(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
+  def get(self, request:PithyRequest, fields:None) -> PithyResponse:
     return PithyResponse(body='ok')
 
 

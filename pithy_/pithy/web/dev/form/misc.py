@@ -5,7 +5,7 @@
 from urllib.parse import quote
 
 from ....html import Button, Div, Form, H1, Input, Label, Main, P, Span
-from ...endpoint import Endpoint, NoFields
+from ...endpoint import Endpoint
 from ...request import Request
 from ...response import Response
 from ..pages import dev_page
@@ -28,7 +28,7 @@ class DevFormMisc(Endpoint):
     x:int # The image button submits its click coordinates.
     y:int
 
-  def get(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:None) -> Response:
     return misc_page({})
 
   def post(self, request:Request, fields:Post) -> Response:

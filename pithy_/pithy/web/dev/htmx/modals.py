@@ -6,7 +6,7 @@ from typing import get_args, Literal
 
 from ....html import Button, Dialog, Div, H1, H2, Input, Label, Main, P, Select, Span, Table, Tbody, Td, Th, Thead, Tr
 from ....markup import Present
-from ...endpoint import Endpoint, NoFields
+from ...endpoint import Endpoint
 from ...errors import BadRequestError, NotFoundError
 from ...htmx import hx_trigger_on
 from ...request import Request
@@ -87,7 +87,7 @@ def user_detail() -> Div:
 class DevHtmxModals(Endpoint):
   'Demonstrates a shared edit modal updating independent views.'
 
-  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:None) -> HtmlResponse:
     return dev_page(title='HTMX Modals',
       breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX'), ('/htmx/modals', 'Modals')],
       main=Main(H1('HTMX Modals'),
@@ -98,13 +98,13 @@ class DevHtmxModals(Endpoint):
 
 class UsersTableHtmx(Endpoint):
 
-  def get(self, request:Request, fields:NoFields) -> HtmxResponse:
+  def get(self, request:Request, fields:None) -> HtmxResponse:
     return HtmxResponse(users_table())
 
 
 class UserDetailHtmx(Endpoint):
 
-  def get(self, request:Request, fields:NoFields) -> HtmxResponse:
+  def get(self, request:Request, fields:None) -> HtmxResponse:
     return HtmxResponse(user_detail())
 
 

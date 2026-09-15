@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from ..endpoint import Endpoint, NoFields
+from ..endpoint import Endpoint
 from ..request import Request
 from ..response import TextResponse
 
@@ -8,7 +8,7 @@ from ..response import TextResponse
 class Hello(Endpoint):
   'Returns a plain text greeting.'
 
-  def get(self, request:Request, fields:NoFields) -> TextResponse:
+  def get(self, request:Request, fields:None) -> TextResponse:
     return TextResponse(body='hello')
 
 

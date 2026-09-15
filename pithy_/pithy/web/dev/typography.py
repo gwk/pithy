@@ -4,7 +4,7 @@
 
 from ...html import (A, Blockquote, Code, Dd, Details, Dl, Dt, Em, H1, H2, H3, H4, H5, H6, Hr, Li, Main, Ol, P, Pre, Section,
   Small, Strong, Summary, Ul)
-from ..endpoint import Endpoint, NoFields
+from ..endpoint import Endpoint
 from ..request import Request
 from ..response import HtmlResponse
 from .pages import dev_page
@@ -18,7 +18,7 @@ lorem = ('Endpoints declare an inner fields class per HTTP method; the router fi
 class DevTypography(Endpoint):
   'Baseline styling of headings, text, lists and code.'
 
-  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:None) -> HtmlResponse:
     main = Main(
       H1('Typography'),
       P('Every element on this page is unstyled by the application: this is what ', Code('pithy.css'),

@@ -10,7 +10,7 @@ from typing import Annotated, Any, Literal, TypeVar
 from urllib.parse import urlencode
 
 from pithy.transtruct import Transtructor
-from pithy.web.endpoint import _unwrap_field_type, Endpoint, NoFields
+from pithy.web.endpoint import _unwrap_field_type, Endpoint
 from pithy.web.errors import MethodNotAllowedError, ResponseError
 from pithy.web.request import Request, UploadedFile
 from pithy.web.requestconn import BodyTooLargeError, BytesConn
@@ -279,7 +279,7 @@ def _make_missing_handler_endpoint() -> type[Endpoint]:
   class MissingHandlerEndpoint(Endpoint):
     class Post:
       x:int
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
   return MissingHandlerEndpoint
 
@@ -292,7 +292,7 @@ def _make_obsolete_fields_endpoint() -> type[Endpoint]:
   class ObsoleteFieldsEndpoint(Endpoint):
     class Fields:
       x:int
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
   return ObsoleteFieldsEndpoint
 
@@ -301,7 +301,7 @@ utest_exc(TypeError, _make_obsolete_fields_endpoint)
 
 def _make_obsolete_handle_endpoint_endpoint() -> type[Endpoint]:
   class ObsoleteHandleEndpoint(Endpoint):
-    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+    def handle_endpoint(self, request:Request, fields:None) -> Response:
       return Response()
   return ObsoleteHandleEndpoint
 
@@ -311,7 +311,7 @@ utest_exc(TypeError, _make_obsolete_handle_endpoint_endpoint)
 def _make_obsolete_methods_endpoint() -> type[Endpoint]:
   class ObsoleteMethodsEndpoint(Endpoint):
     methods = 'POST'
-    def post(self, request:Request, fields:NoFields) -> Response:
+    def post(self, request:Request, fields:None) -> Response:
       return Response()
   return ObsoleteMethodsEndpoint
 
@@ -320,9 +320,9 @@ utest_exc(TypeError, _make_obsolete_methods_endpoint)
 
 def _make_head_handler_endpoint() -> type[Endpoint]:
   class HeadHandlerEndpoint(Endpoint):
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
-    def head(self, request:Request, fields:NoFields) -> Response:
+    def head(self, request:Request, fields:None) -> Response:
       return Response()
   return HeadHandlerEndpoint
 
@@ -353,7 +353,7 @@ def _make_wrong_handler_fields_endpoint() -> type[Endpoint]:
   class WrongHandlerFieldsEndpoint(Endpoint):
     class Get:
       x:int
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
   return WrongHandlerFieldsEndpoint
 
@@ -362,7 +362,7 @@ utest_exc(TypeError, _make_wrong_handler_fields_endpoint)
 
 def _make_wrong_handler_request_endpoint() -> type[Endpoint]:
   class WrongHandlerRequestEndpoint(Endpoint):
-    def get(self, request:object, fields:NoFields) -> Response:
+    def get(self, request:object, fields:None) -> Response:
       return Response()
   return WrongHandlerRequestEndpoint
 
@@ -371,7 +371,7 @@ utest_exc(TypeError, _make_wrong_handler_request_endpoint)
 
 def _make_wrong_handler_return_endpoint() -> type[Endpoint]:
   class WrongHandlerReturnEndpoint(Endpoint):
-    def get(self, request:Request, fields:NoFields) -> object: # type: ignore[override] # Intentionally malformed.
+    def get(self, request:Request, fields:None) -> object: # type: ignore[override] # Intentionally malformed.
       return object()
   return WrongHandlerReturnEndpoint
 
@@ -382,7 +382,7 @@ def _make_handle_request_override_endpoint() -> type[Endpoint]:
   class HandleRequestOverrideEndpoint(Endpoint):
     def handle_request(self, request:Request) -> Response:
       return Response()
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
   return HandleRequestOverrideEndpoint
 
@@ -410,10 +410,10 @@ class ExpectEndpoint(Endpoint):
   max_body_bytes = 1024
   class Post:
     x:int
-  def expect_100_continue(self, request:Request, fields:NoFields|Post) -> Response:
+  def expect_100_continue(self, request:Request, fields:None|Post) -> Response:
     if isinstance(fields, self.Post) and fields.x < 0: return Response(status=HTTPStatus.BAD_REQUEST)
     return Response(status=HTTPStatus.CONTINUE)
-  def get(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:None) -> Response:
     return Response(body='get')
   def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.x}')
@@ -434,9 +434,9 @@ def _make_partial_expect_annotation_endpoint() -> type[Endpoint]:
   class PartialExpectAnnotationEndpoint(Endpoint):
     class Post:
       x:int
-    def expect_100_continue(self, request:Request, fields:Post) -> Response: # Omits NoFields for get.
+    def expect_100_continue(self, request:Request, fields:Post) -> Response: # Omits None for get.
       return Response(status=HTTPStatus.CONTINUE)
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
     def post(self, request:Request, fields:Post) -> Response:
       return Response()
@@ -449,7 +449,7 @@ def _make_handle_expect_override_endpoint() -> type[Endpoint]:
   class HandleExpectOverrideEndpoint(Endpoint):
     def handle_expect_100_continue(self, request:Request) -> Response:
       return Response(status=HTTPStatus.CONTINUE)
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
   return HandleExpectOverrideEndpoint
 
@@ -520,13 +520,13 @@ utest_exc(TypeError, _make_mistyped_shared_converter_endpoint)
 # No-field endpoint: the inner fields class is optional.
 
 class NoFieldEndpoint(Endpoint):
-  def get(self, request:Request, fields:NoFields) -> Response:
-    return Response(body='ok')
+  def get(self, request:Request, fields:None) -> Response:
+    return Response(body='ok' if fields is None else 'fields')
 
 
 @utest_run
 def _() -> None:
-  'Endpoint: no fields.'
+  'Endpoint: no fields; the handler receives None.'
   req = _make_request()
   ep = NoFieldEndpoint(req, path_params={})
   ep.prepare(req)
@@ -1528,7 +1528,7 @@ def _() -> None:
 def _make_bodiless_max_body_endpoint() -> type[Endpoint]:
   class BodilessMaxBodyEndpoint(Endpoint):
     max_body_bytes = 1024 # Meaningless without a body method handler.
-    def get(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:None) -> Response:
       return Response()
   return BodilessMaxBodyEndpoint
 
