@@ -3,6 +3,8 @@
 from ..handler import RoutableHandler
 from .form import DevFormIndex
 from .form.controls import DevControlsForm
+from .form.misc import DevFormMisc
+from .form.nonportable import DevFormNonportable
 from .htmx import DevHtmxIndex
 from .htmx.controls import ControlsHtmxUpdate, DevControlsHtmx
 from .htmx.modals import DevHtmxModals, EditModalHtmx, UpdateUserHtmx, UserDetailHtmx, UsersTableHtmx
@@ -17,6 +19,8 @@ routes:dict[str,type[RoutableHandler]] = {
   '/tables': DevTables,
   '/form': DevFormIndex,
   '/form/controls': DevControlsForm,
+  '/form/misc': DevFormMisc,
+  '/form/nonportable': DevFormNonportable,
   '/htmx': DevHtmxIndex,
   '/htmx/controls': DevControlsHtmx,
   '/htmx/controls/update.htmx': ControlsHtmxUpdate,

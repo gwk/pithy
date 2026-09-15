@@ -5,7 +5,7 @@
 import datetime as dt
 from typing import Any
 
-from ....html import A, Button, Div, H1, H2, Input, Label, Li, Main, Ol, P, Select, Span, Strong, Sup, TextArea
+from ....html import A, Div, H1, Input, Label, Li, Main, Ol, Select, Span, Strong, Sup, TextArea
 from ....markup import MuChild
 from ...endpoint import Endpoint, NoFields
 from ...request import Request, UploadedFile
@@ -15,7 +15,7 @@ from ..pages import dev_page
 
 class DevControlsHtmx(Endpoint):
   'Demonstrates HTMX controls.'
-  max_body_bytes = 1024 * 64
+  max_body_bytes = 4096
 
   def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
     main = Main(
@@ -40,7 +40,7 @@ def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:
 class ControlsHtmxUpdate(Endpoint):
   'Handles any field update from the HTMX DevControls page.'
   methods = 'POST'
-  max_body_bytes = 64 * 1024
+  max_body_bytes = 4096
 
   class Fields:
     text: str | None
@@ -58,8 +58,6 @@ class ControlsHtmxUpdate(Endpoint):
     date: dt.date | None
     time: dt.time | None
     datetime_local: dt.datetime | None
-    month: str | None
-    week: str | None
     color: str | None
     range: int | None
     select_multiple: list[str] | None
@@ -141,22 +139,6 @@ def controls_htmx() -> Div:
   _row('file', Span(cl='flex-row gap-1ch', _=[
     Input(type='file', name='file', hx_encoding='multipart/form-data', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(2)]))
 
-  _row('button', Input(type='button', value='Toggle popover', popovertarget='example-popover'))
-  div.append(Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
-    P('This popover uses native HTML without JavaScript.'),
-    Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
-  ]))
-
-  div.append(Div(cl='controls-section flow flow-tight', _=[
-    H2('Not portable across target browsers'),
-    P('These controls fall back to plain text fields in desktop Safari.'),
-  ]))
-  _row('month', Span(cl='flex-row gap-1ch',
-    _=[Input(type='month', name='month', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(3)]))
-  _row('week', Span(cl='flex-row gap-1ch',
-    _=[Input(type='week', name='week', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(3)]))
-  div.append(Div(cl='controls-section-end'))
-
   outer.append(Div(cl='flex-col font-small', _=['Notes:',
   Ol(
     Li(id='fn1', _='HTML sends a checkbox only when it is checked, so an unchecked box is indistinguishable from an'
@@ -167,8 +149,6 @@ def controls_htmx() -> Div:
       ' accept as the empty list. Unmarked checkboxes retain native submission behavior.'),
     Li(id='fn2', _='File inputs need hx-encoding="multipart/form-data". With the default urlencoded body the File object'
       ' is stringified to "[object File]". A wrapping <form> is not required; htmx 4 reads input.files directly.'),
-    Li(id='fn3', _='Desktop Safari falls back to a plain text field for month and week input types.'
-      ' Values entered in the text fallback are not validated by the browser.'),
   )]))
 
   return outer
