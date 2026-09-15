@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from ..handler import RoutableHandler
-from .controls import DevControlsIndex
-from .controls.form import DevControlsForm
+from .form import DevFormIndex
+from .form.controls import DevControlsForm
 from .htmx import DevHtmxIndex
 from .htmx.controls import ControlsHtmxUpdate, DevControlsHtmx
 from .htmx.modals import DevHtmxModals, EditModalHtmx, UpdateUserHtmx, UserDetailHtmx, UsersTableHtmx
@@ -15,8 +15,8 @@ routes:dict[str,type[RoutableHandler]] = {
   '/': IndexHtml,
   '/typography': DevTypography,
   '/tables': DevTables,
-  '/controls': DevControlsIndex,
-  '/controls/form': DevControlsForm,
+  '/form': DevFormIndex,
+  '/form/controls': DevControlsForm,
   '/htmx': DevHtmxIndex,
   '/htmx/controls': DevControlsHtmx,
   '/htmx/controls/update.htmx': ControlsHtmxUpdate,

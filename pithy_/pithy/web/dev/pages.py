@@ -26,7 +26,7 @@ nav_links = (
   ('/', 'Home'),
   ('/typography', 'Typography'),
   ('/tables', 'Tables'),
-  ('/controls/form', 'Form'),
+  ('/form', 'Form'),
   ('/htmx', 'HTMX'),
 )
 
