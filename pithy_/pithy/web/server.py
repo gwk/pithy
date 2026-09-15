@@ -8,6 +8,7 @@ from os import _exit as os_exit
 from queue import Full as QueueFull, LifoQueue
 from socket import AF_INET, SHUT_WR, SO_REUSEADDR, SOCK_STREAM, socket as Socket, SOL_SOCKET
 from threading import Event, Thread
+from time import monotonic
 from typing import cast
 from urllib.parse import urlsplit as url_split
 
@@ -45,6 +46,8 @@ class _Conn():
   h11_conn:h11_Connection
   recv_size:int
   error:h11_ProtocolError|TimeoutError|None = None # Set when an error occurs.
+  request:Request|None = None # Current request, if construction succeeded.
+  response_status:int = 500 # Updated once response headers have been sent.
 
 
   def handle_need_data(self) -> bool:
@@ -179,6 +182,16 @@ class WebServerRequestConn(RequestConn):
 
 
 
+def _split_target(target:bytes) -> tuple[str,str]:
+  '''
+  Split a raw request target into (path, query).
+  Raises ValueError for targets that urlsplit rejects, which is unlikely since urlsplit is permissive.
+  h11 restricts the target to printable ASCII, so UnicodeDecodeError is not expected.
+  '''
+  url = url_split(target.decode('ascii'))
+  return url.path or '/', url.query
+
+
 @dataclass(frozen=True)
 class ServerConfig:
   '''
@@ -191,7 +204,11 @@ class ServerConfig:
   max_queued: the maximum number of connections waiting in the queue; excess connections are dropped immediately.
   num_threads: the number of worker threads in the thread pool.
   recv_size: the maximum number of bytes to receive at once from client connections.
-  log_access: whether to log each request after it is handled.
+  log_access: whether to log each parsed HTTP request after response sending completes or fails.
+    Access fields are c (client), u (uid from request.ctx, default 0), m (method), p (path), q (raw query), s (status), and d (duration).
+    Duration is in seconds, from receipt of request headers through response sending, excluding connection cleanup.
+    Status is the sent response status, or 500 if no response headers were sent; it does not guarantee body delivery.
+    Malformed input rejected by h11 before a request event is produced is only covered by connection error logging.
   startup_message: an optional info message logged immediately after the serving URL.
   prevent_client_caching: whether to prevent clients from caching responses.
   thread_name_prefix: the prefix for thread names of worker threads.
@@ -314,15 +331,39 @@ class WebServer:
 
     try:
       while event := conn.next_request():
+        start_time = monotonic()
+        conn.response_status = 500
         method = http_method_bytes_to_strs.get(event.method, '')
-        response = self._handle_connection_cycle(conn, event, method)
-        if self.config.prevent_client_caching: response.set_no_cache_headers()
-        self._send_response(conn, response=response, method=method)
+        try:
+          response = self._handle_connection_cycle(conn, event, method)
+          if self.config.prevent_client_caching: response.set_no_cache_headers()
+          self._send_response(conn, response=response, method=method)
+        finally:
+          if self.config.log_access: self._log_access(conn, event, start_time)
+          conn.request = None # The request is complete; do not let it linger on the connection.
         if not conn.recycle(): break
     except Exception as exc:
       logE('Connection handling error.', exc=exc, client_addr=client_addr)
     finally:
       self._close_connection(conn)
+
+
+  def _log_access(self, conn:_Conn, event:h11_Request, start_time:float) -> None:
+    'Log at the server boundary so that application dispatch and early rejections are always covered.'
+    dur = round(monotonic() - start_time, 3)
+    request = conn.request
+    if request is None:
+      try: path, query = _split_target(event.target)
+      except (UnicodeDecodeError, ValueError): # Log the rejected target faithfully; backslashreplace emits only ASCII.
+        path, query = event.target.decode('ascii', errors='backslashreplace'), ''
+      client_addr = conn.client_addr
+      uid = 0
+    else:
+      path, query = request.path, request.query_str
+      client_addr = request.client_addr
+      uid = request.ctx.get('uid', 0)
+    logI('access', c=client_addr[0] if client_addr else '-', u=uid,
+      m=event.method.decode('ascii', errors='replace'), p=path, q=query, s=conn.response_status, d=dur)
 
 
   def _close_connection(self, conn:_Conn) -> None:
@@ -368,9 +409,7 @@ class WebServer:
       return Response(HTTPStatus.NOT_IMPLEMENTED,
         body=f'Non-standard method: {event.method.decode("ascii", errors="replace")!r}.').set_connection_close()
 
-    try:
-      target = event.target.decode('ascii') # A UnicodeDecodeError here is unexpected since h11 should have validated it.
-      url = url_split(target) # A ValueError here is unlikely given that h11 has already validated, and urlsplit is permissive.
+    try: path, query = _split_target(event.target)
     except (UnicodeDecodeError, ValueError):
       return Response(BAD_REQUEST, body=f'Bad target/path: {event.target.decode("ascii", errors="replace")!r}.'
         ).set_connection_close()
@@ -381,14 +420,14 @@ class WebServer:
     if cl_str := headers.get('content-length'):
       content_length = int(cl_str) # Assume that h11 has already validated the content-length value.
 
-    request = Request(
+    request = conn.request = Request(
       client_addr=conn.client_addr,
       method=method,
       scheme='http',
       host=self.config.host,
       port=self.config.port,
-      path=url.path or '/',
-      query_str=url.query,
+      path=path,
+      query_str=query,
       headers=headers,
       content_length=content_length,
       prevent_client_caching=self.config.prevent_client_caching,
@@ -465,6 +504,8 @@ class WebServer:
     socket = conn.socket
 
     socket.sendall(h11_conn.send(event))
+
+    conn.response_status = int(response.status)
 
     if may_send_body(method, response.status):
       body = response.body
