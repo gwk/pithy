@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 
-from pithy.web.endpoint import Endpoint, NoFields
+from pithy.web.endpoint import Endpoint
 from pithy.web.errors import MethodNotAllowedError
 from pithy.web.handler import RoutableHandler
 from pithy.web.request import Request
@@ -14,11 +14,11 @@ from utest import utest, utest_exc, utest_run
 # Test endpoints.
 
 class EpHome(Endpoint):
-  def get(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:None) -> Response:
     return Response(body='home')
 
 class EpAbout(Endpoint):
-  def get(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:None) -> Response:
     return Response(body='about')
 
 class EpUser(Endpoint):

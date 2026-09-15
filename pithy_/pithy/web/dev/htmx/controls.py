@@ -7,7 +7,7 @@ from typing import Any
 
 from ....html import A, Div, H1, Input, Label, Li, Main, Ol, Select, Span, Strong, Sup, TextArea
 from ....markup import MuChild
-from ...endpoint import Endpoint, NoFields
+from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
 from ...response import HtmlResponse, Response
 from ..pages import dev_page
@@ -16,7 +16,7 @@ from ..pages import dev_page
 class DevControlsHtmx(Endpoint):
   'Demonstrates HTMX controls.'
 
-  def get(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:None) -> Response:
     main = Main(
       H1('HTMX Controls'),
       Div(cl='controls-demo-layout', _=[

@@ -9,6 +9,7 @@ from typing import Any, ClassVar, get_args, get_origin, Literal, Union
 
 from typing_extensions import TypeForm
 
+from ..default import Default
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
 from ..type_utils import NoneType, nonopt_type, normalize_type_form, req_type
 from .errors import BadRequestError, MethodNotAllowedError
@@ -49,11 +50,6 @@ class _MethodSpec:
 
 
 
-class NoFields:
-  'Default fields class for handler methods that declare no inner fields class.'
-
-
-
 class Endpoint(RoutableHandler):
   '''
   Base class for request endpoints. An Endpoint instance is created for each request.
@@ -70,7 +66,8 @@ class Endpoint(RoutableHandler):
   A GET, HEAD or DELETE request that carries a body is rejected with BadRequestError.
 
   Each handler has the signature `(self, request:Request, fields:Get) -> Response`,
-  where the `fields` annotation is the exact inner fields class for that method (see below), or `NoFields` if none.
+  where the `fields` annotation is the exact inner fields class for that method (see below), or `None` if none.
+  A handler with no fields class receives `None` as its fields argument.
 
   # Fields
 
@@ -178,7 +175,7 @@ class Endpoint(RoutableHandler):
     which dispatches to the `expect_100_continue` hook with the fields object; by default this returns CONTINUE.
     At this stage body fields are not yet filled, so a subclass hook can reject a request from its path and query fields
     before the body is uploaded. Since the hook serves every handler, its `fields` parameter must be annotated as the union
-    of the fields classes of all handlers defined, `NoFields` included, e.g. `fields:NoFields|Post`.
+    of the fields classes of all handlers defined, e.g. `fields:None|Post` when `get` declares no fields class.
   * The server calls `prepare`, which reads the body (if any), fills body fields, and performs final validation:
     duplicate params across sources, excess body params, missing required fields.
   * The server calls `handle_request`, which dispatches to the subclass handler for the request method.
@@ -232,12 +229,12 @@ class Endpoint(RoutableHandler):
     for method, handler_name in handler_methods.items():
       class_name = method.capitalize()
       handler = cls.__dict__.get(handler_name)
-      fields_class:type[Any] = cls.__dict__.get(class_name, NoFields)
+      fields_class:type[Any] = cls.__dict__.get(class_name, NoneType) # NoneType() is None, the fields object of a handler without fields.
       if handler is None:
-        if fields_class is not NoFields:
+        if fields_class is not NoneType:
           raise TypeError(f'{cls.__qualname__}.{class_name} is declared but has no matching `{handler_name}` handler method.')
         continue
-      if fields_class is not NoFields and (not isinstance(fields_class, type) or fields_class.__bases__ != (object,)):
+      if fields_class is not NoneType and (not isinstance(fields_class, type) or fields_class.__bases__ != (object,)):
         raise TypeError(f'{cls.__qualname__}.{class_name} must be a class deriving directly from object.')
       _validate_handler(cls, handler_name=handler_name, handler=handler, fields_classes=frozenset({fields_class}))
       fields:dict[str,_FieldInfo] = {}
@@ -552,6 +549,7 @@ def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, f
   '''
   Validate a concrete Endpoint subclass handler method at class definition time.
   The `fields` parameter must be annotated as exactly the members of `fields_classes`: a single class or their union.
+  NoneType in `fields_classes` corresponds to a `None` annotation, for a handler without a fields class.
   '''
   qualname = f'{cls.__qualname__}.{handler_name}'
   if not callable(handler):
@@ -568,10 +566,13 @@ def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, f
     raise TypeError(f'{qualname} annotations could not be evaluated: {e}') from e
   if annotations.get('request') is not Request:
     raise TypeError(f'{qualname}.request must be annotated as Request.')
-  fields_hint = normalize_type_form(annotations.get('fields', NoneType))
+  fields_hint = annotations.get('fields', Default._)
+  if fields_hint is Default._:
+    raise TypeError(f'{qualname}.fields must be annotated.')
+  fields_hint = normalize_type_form(fields_hint)
   declared = frozenset(get_args(fields_hint) if get_origin(fields_hint) is Union else (fields_hint,))
   if declared != fields_classes:
-    names = ' | '.join(sorted(c.__qualname__ for c in fields_classes))
+    names = ' | '.join(sorted('None' if c is NoneType else c.__qualname__ for c in fields_classes))
     raise TypeError(f'{qualname}.fields must be annotated as {names}.')
   response_type = annotations.get('return')
   if not isinstance(response_type, type) or not issubclass(response_type, Response):

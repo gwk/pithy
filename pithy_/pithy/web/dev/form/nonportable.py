@@ -3,7 +3,7 @@
 'Developer reference page demonstrating nonportable form controls.'
 
 from ....html import Div, Form, H1, Input, Label, Main, P
-from ...endpoint import Endpoint, NoFields
+from ...endpoint import Endpoint
 from ...request import Request
 from ...response import Response
 from ..pages import dev_page
@@ -19,7 +19,7 @@ class DevFormNonportable(Endpoint):
     month:str
     week:str
 
-  def get(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:None) -> Response:
     return nonportable_page(month='', week='')
 
   def post(self, request:Request, fields:Post) -> Response:

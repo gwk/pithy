@@ -4,7 +4,7 @@ from typing import Iterable, Sequence
 
 from ...html import A, Footer, H1, Header, Html, Main, Nav, P, Script
 from ...path import path_dir, path_join
-from ..endpoint import Endpoint, NoFields
+from ..endpoint import Endpoint
 from ..files import FilesHandler
 from ..request import Request
 from ..response import HtmlResponse
@@ -64,7 +64,7 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
 class IndexHtml(Endpoint):
   'The pithy.web.dev index page.'
 
-  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:None) -> HtmlResponse:
     main = Main(
       H1(site_name),
       P('A reference demo of the pithy.web stack.'))

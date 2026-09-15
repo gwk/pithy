@@ -8,7 +8,7 @@ from typing import Any
 from ....default import Default
 from ....html import Div, Form, H1, Input, Label, Main, Select, Span, Strong, TextArea
 from ....markup import MuChild
-from ...endpoint import Endpoint, NoFields
+from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
 from ...response import Response
 from ..pages import dev_page
@@ -42,7 +42,7 @@ class DevControlsForm(Endpoint):
     select_multiple:list[str]|None # A multiple select with no selection is not sent.
     file:UploadedFile|None # An empty file input is skipped by the multipart parser.
 
-  def get(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:None) -> Response:
     return controls_page({})
 
   def post(self, request:Request, fields:Post) -> Response:

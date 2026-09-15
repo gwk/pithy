@@ -4,7 +4,7 @@
 
 from ...date import Date, DateTime, dt_IMp, dt_Ymd_IMp, Time
 from ...html import Code, Div, H1, H2, Main, P, Section, Table, Td, Th, Tr
-from ..endpoint import Endpoint, NoFields
+from ..endpoint import Endpoint
 from ..request import Request
 from ..response import HtmlResponse
 from .pages import dev_page
@@ -45,7 +45,7 @@ def _table(wide:bool=False) -> Table:
 class DevTables(Endpoint):
   'Baseline styling of tables.'
 
-  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:None) -> HtmlResponse:
     plain = _table().caption('Animals')
 
     collapsible = _table().caption('Animals')
