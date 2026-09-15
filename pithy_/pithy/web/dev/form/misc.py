@@ -5,7 +5,7 @@
 from urllib.parse import quote
 
 from ....html import Button, Div, Form, H1, Input, Label, Main, P, Span
-from ...endpoint import Endpoint
+from ...endpoint import Endpoint, NoFields
 from ...request import Request
 from ...response import Response
 from ..pages import dev_page
@@ -22,36 +22,41 @@ image_button_src = f'data:image/svg+xml,{quote(image_button_svg)}'
 class DevFormMisc(Endpoint):
   'Demonstrates a native popover button and an image submit button.'
 
-  methods = ('GET', 'POST')
   max_body_bytes = 64 * 1024
 
-  class Fields:
-    x: str|None
-    y: str|None
+  class Post:
+    x:int # The image button submits its click coordinates.
+    y:int
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
-    values = {name: val for name in ('x', 'y') if (val := getattr(fields, name)) is not None}
-    main = Main(
-      H1('Miscellaneous Buttons'),
-      Div(cl='controls-demo-layout', _=[
-        Div(
-          Div(cl='form_grid', _=[
-            Label('button'),
-            Input(type='button', value='Toggle popover', popovertarget='example-popover'),
+  def get(self, request:Request, fields:NoFields) -> Response:
+    return misc_page({})
+
+  def post(self, request:Request, fields:Post) -> Response:
+    return misc_page({'x': str(fields.x), 'y': str(fields.y)})
+
+
+def misc_page(values:dict[str,str|list[str]]) -> Response:
+  main = Main(
+    H1('Miscellaneous Buttons'),
+    Div(cl='controls-demo-layout', _=[
+      Div(
+        Div(cl='form_grid', _=[
+          Label('button'),
+          Input(type='button', value='Toggle popover', popovertarget='example-popover'),
+        ]),
+        Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
+          P('This popover uses native HTML without JavaScript.'),
+          Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
+        ]),
+        Form(cl='grid', method='post', _=[
+          Label('image'),
+          Span(cl='flex-row gap-1ch align-items-center', _=[
+            Input(type='image', src=image_button_src, alt='Submit with image'),
+            Span(cl='font-small', _='(Submits click coordinates)'),
           ]),
-          Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
-            P('This popover uses native HTML without JavaScript.'),
-            Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
-          ]),
-          Form(cl='grid', method='post', _=[
-            Label('image'),
-            Span(cl='flex-row gap-1ch align-items-center', _=[
-              Input(type='image', src=image_button_src, alt='Submit with image'),
-              Span(cl='font-small', _='(Submits click coordinates)'),
-            ]),
-          ]),
-        ),
-        posted_values_div(values),
-      ]))
-    return dev_page(title='Miscellaneous Buttons', main=main,
-      breadcrumbs=[('/', 'Home'), ('/form', 'Form'), ('/form/misc', 'Miscellaneous')])
+        ]),
+      ),
+      posted_values_div(values),
+    ]))
+  return dev_page(title='Miscellaneous Buttons', main=main,
+    breadcrumbs=[('/', 'Home'), ('/form', 'Form'), ('/form/misc', 'Miscellaneous')])

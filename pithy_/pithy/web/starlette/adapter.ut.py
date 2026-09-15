@@ -47,44 +47,42 @@ def _run(endpoint_cls:type[Endpoint], *, method:str='GET', path:str='/', query:s
 
 
 class HelloEndpoint(Endpoint):
-  class Fields:
+  class Get:
     name:str
-  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+  def get(self, request:PithyRequest, fields:Get) -> PithyResponse:
     return PithyResponse(body=f'hello {fields.name}')
 
 
 class ItemEndpoint(Endpoint):
-  class Fields:
+  class Get:
     id:int
-  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+  def get(self, request:PithyRequest, fields:Get) -> PithyResponse:
     return PithyResponse(body=f'id={fields.id}')
 
 
 class FormEndpoint(Endpoint):
-  methods = 'POST'
   max_body_bytes = 1024
-  class Fields:
+  class Post:
     name:str
-  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+  def post(self, request:PithyRequest, fields:Post) -> PithyResponse:
     return PithyResponse(body=fields.name)
 
 
 class JsonEndpoint(Endpoint):
-  methods = 'POST'
   max_body_bytes = 1024
-  class Fields:
+  class Post:
     name:str
-  def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+  def post(self, request:PithyRequest, fields:Post) -> PithyResponse:
     return PithyResponse(body=fields.name)
 
 
 class CtxEndpoint(Endpoint):
-  def handle_endpoint(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
+  def get(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
     return PithyResponse(body=f"{request.ctx.get('user')}|{request.ctx.get('session')}")
 
 
 class PrivilegedEndpoint(Endpoint):
-  def handle_endpoint(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
+  def get(self, request:PithyRequest, fields:NoFields) -> PithyResponse:
     return PithyResponse(body='ok')
 
 
@@ -155,9 +153,9 @@ def _() -> None:
 def _() -> None:
   'endpoint_route: field converters are resolved when the route is built, not on the first request.'
   class RouteResolvedEndpoint(Endpoint):
-    class Fields:
+    class Get:
       n:int
-    def handle_endpoint(self, request:PithyRequest, fields:Fields) -> PithyResponse:
+    def get(self, request:PithyRequest, fields:Get) -> PithyResponse:
       return PithyResponse(body=f'{fields.n}')
   utest_val(False, RouteResolvedEndpoint._converters_resolved)
   endpoint_route('/n', RouteResolvedEndpoint, privileges=())

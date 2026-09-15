@@ -9,14 +9,22 @@ from typing import Any, ClassVar, get_args, get_origin, Literal, Union
 
 from typing_extensions import TypeForm
 
-from ..http import endpoint_methods
 from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
-from ..type_utils import FixedStrSet, NoneType, nonopt_type, normalize_type_form, req_type
-from .errors import BadRequestError
+from ..type_utils import NoneType, nonopt_type, normalize_type_form, req_type
+from .errors import BadRequestError, MethodNotAllowedError
 from .handler import RoutableHandler
 from .request import Request, UploadedFile
 from .requestconn import BodyTooLargeError
 from .response import Response
+
+
+# HTTP methods that an Endpoint subclass handles, mapped to their handler method names.
+# The inner fields class for each is the capitalized method name, e.g. `Get`, `Post`.
+# HEAD is dispatched to the GET handler and is not a key here.
+handler_methods:dict[str,str] = {m: m.lower() for m in ('DELETE', 'GET', 'PATCH', 'POST', 'PUT')}
+
+# Method names that are reserved so that a subclass does not define one expecting it to be dispatched to.
+_reserved_method_names = frozenset({'connect', 'head', 'options', 'trace'})
 
 
 @dataclass(slots=True, frozen=True)
@@ -28,9 +36,18 @@ class _FieldInfo:
   convert:Callable[[object],object]|None # Whole-field converter; None until lazily resolved against the transtructor.
 
 
+@dataclass(slots=True, frozen=True)
+class _MethodSpec:
+  'The per-HTTP-method handler and fields schema of an Endpoint subclass, built by __init_subclass__.'
+  method:str
+  handler_name:str
+  fields_class:type[Any]
+  fields:dict[str,_FieldInfo]
+
+
 
 class NoFields:
-  'Default fields class for endpoints that declare no inner Fields class.'
+  'Default fields class for handler methods that declare no inner fields class.'
 
 
 
@@ -38,23 +55,34 @@ class Endpoint(RoutableHandler):
   '''
   Base class for request endpoints. An Endpoint instance is created for each request.
 
+  # Handler Methods
+
+  Subclasses define a handler method for each HTTP method they accept: `get`, `post`, `put`, `patch` and/or `delete`.
+  The accepted methods are derived from the handlers defined; there is no separate methods declaration.
+  HEAD requests are accepted whenever `get` is defined and are dispatched to it;
+  the server omits the response body. A `get` implementation may check `request.method == 'HEAD'`
+  and return a headers-only response early to skip rendering.
+
+  Each handler has the signature `(self, request:Request, fields:Get) -> Response`,
+  where the `fields` annotation is the exact inner fields class for that method (see below), or `NoFields` if none.
+
   # Fields
 
-  Subclasses declare an inner `Fields` class whose fields are populated from request path, query, and body parameters.
-  A fresh `Fields` instance is created per request and passed to `handle_endpoint`.
+  For each handler, a subclass may declare an inner fields class named for the HTTP method: `Get`, `Post`, `Put`,
+  `Patch` or `Delete`. Its fields are populated from request path, query, and body parameters.
+  A fresh instance is created per request and passed to the handler.
   The declared field types determine how raw values are converted.
+  A GET and POST handler sharing a route therefore declare separate schemas,
+  so that a page can render with no parameters while its form submission requires them.
+  Path parameters shared by several methods are declared in each fields class; this duplication is deliberate.
 
-  The inner `Fields` class must derive directly from `object`.
+  An inner fields class must derive directly from `object`.
   Its namespace contains no framework names, so every annotated name in its body is a field,
   including names with leading underscores.
 
-  The `fields` parameter of `handle_endpoint` must be annotated with the exact inner `Fields` class.
-  This gives endpoint implementations a precisely typed fields value without exposing it as endpoint machinery.
-  An endpoint that accesses `self.fields` in other methods may additionally declare `fields:Fields` in its class body.
-  This optional declaration gives those accesses the precise type; without it, `self.fields` is typed as `object`.
-
-  Any other public field annotation in the endpoint class body raises TypeError,
-  because it is most likely a field mistakenly declared outside of `Fields`.
+  Any public field annotation in the endpoint class body raises TypeError,
+  because it is most likely a field mistakenly declared outside of a fields class.
+  The fields object is not exposed as an attribute; handlers receive it precisely typed as their parameter.
 
   Subclasses must derive directly from Endpoint; defining an intermediate Endpoint subclass raises TypeError.
 
@@ -88,10 +116,11 @@ class Endpoint(RoutableHandler):
   To customize conversion for a specific field, define a `converters` dict in the endpoint class body as a class variable
   mapping field names to converter callables of the form `(raw) -> value`:
     class MyEndpoint(Endpoint):
-      class Fields:
+      class Get:
         my_field:MyType
-      def handle_endpoint(self, request:Request, fields:Fields) -> Response: ...
+      def get(self, request:Request, fields:Get) -> Response: ...
       converters = dict(my_field=lambda raw: MyType.from_string(raw))
+  A converter applies to the field of that name in every fields class that declares it; those fields must share one type.
   To share converters across endpoints, compose module-level dicts in the class body,
   e.g. `converters = common_converters | dict(...)`.
 
@@ -126,6 +155,7 @@ class Endpoint(RoutableHandler):
   for urlencoded and multipart bodies the field receives the whole params dict.
   Other declared fields are still filled from path and query params as usual;
   a path or query param sharing the body field's name raises a duplicate-param error.
+  The body field must be declared in at least one fields class; it applies to every fields class that declares it.
 
   # Lifecycle
 
@@ -134,18 +164,20 @@ class Endpoint(RoutableHandler):
   * `path_params:dict[str,object]`
 
   Request handling flow:
-  * The server constructs the endpoint, which creates its internal fields object and fills it from path and query params.
+  * The server constructs the endpoint, which selects the handler and fields schema for the request method,
+    creates its internal fields object and fills it from path and query params.
     Duplicates across path and query, excess params not corresponding to fields, and conversion failures raise BadRequestError.
-  * If the client sent `Expect: 100-continue`, the server calls `handle_expect_100_continue`, which by default returns CONTINUE.
-    At this stage body fields are not yet filled.
+  * If the client sent `Expect: 100-continue`, the server calls `handle_expect_100_continue`,
+    which dispatches to the `expect_100_continue` hook with the fields object; by default this returns CONTINUE.
+    At this stage body fields are not yet filled, so a subclass hook can reject a request from its path and query fields
+    before the body is uploaded. Since the hook serves every handler, its `fields` parameter must be annotated as the union
+    of the fields classes of all handlers defined, `NoFields` included, e.g. `fields:NoFields|Post`.
   * The server calls `prepare`, which reads the body (if any), fills body fields, and performs final validation:
     duplicate params across sources, excess body params, missing required fields.
-  * The server calls `handle_request`, which dispatches to the subclass's `handle_endpoint` implementation.
+  * The server calls `handle_request`, which dispatches to the subclass handler for the request method.
   '''
 
   max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters.
-
-  methods:ClassVar[FixedStrSet] = 'GET' # Accepted HTTP methods; normalized to _methods by __init_subclass__.
 
   # Top-level customization: per-field-name converters, collected from the class body only. Signature: (raw) -> value.
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.
@@ -160,15 +192,12 @@ class Endpoint(RoutableHandler):
   # Set per-subclass once field converters have been resolved; customization is an error afterwards.
   _converters_resolved:ClassVar[bool] = False
 
-  # Built by __init_subclass__ from the inner Fields class body.
-  _fields:ClassVar[dict[str,_FieldInfo]]
+  # Built by __init_subclass__ from the handler methods and inner fields classes, keyed by HTTP method.
+  _specs:ClassVar[dict[str,_MethodSpec]]
 
-  # The class used to create the per-request `fields` instance: the inner Fields class, set by __init_subclass__.
-  _fields_class:ClassVar[type[Any]] = NoFields
-
-  # The internal per-request fields instance. Subclasses may redeclare this with their precise Fields type when needed.
-  fields:object
-
+  _fields_obj:object # The per-request fields instance; handlers receive it precisely typed as their `fields` parameter.
+  _spec:_MethodSpec # The spec selected for the request method.
+  _fields:dict[str,_FieldInfo] # The field infos of the selected spec.
   _fill_param_sources:dict[str,str]
 
 
@@ -180,44 +209,62 @@ class Endpoint(RoutableHandler):
         raise TypeError(
           f'{cls.__qualname__}: Endpoint subclasses must derive directly from Endpoint; {base.__qualname__} is an intermediate Endpoint subclass.')
 
+    _check_obsolete_names(cls)
+
     cls_annotations = get_annotations(cls)
     for name, hint in cls_annotations.items():
-      if name == 'fields' or name.startswith('_') or hint is ClassVar or get_origin(hint) is ClassVar: continue
+      if name.startswith('_') or hint is ClassVar or get_origin(hint) is ClassVar: continue
       raise TypeError(
-        f'{cls.__qualname__}.{name}: unexpected public annotation in Endpoint subclass body; declare request fields in the inner Fields class.')
-
-    fields_class:type[Any] = cls.__dict__.get('Fields', NoFields)
-    if fields_class is not NoFields and (not isinstance(fields_class, type) or fields_class.__bases__ != (object,)):
-      raise TypeError(f'{cls.__qualname__}.Fields must be a class deriving directly from object.')
-    if (fields_annotation := cls_annotations.get('fields')) is not None:
-      if fields_annotation is not fields_class:
-        raise TypeError(f'{cls.__qualname__}.fields must be annotated as {fields_class.__qualname__}.')
-    _validate_handle_endpoint(cls, fields_class)
-    cls._fields_class = fields_class
+        f'{cls.__qualname__}.{name}: unexpected public annotation in Endpoint subclass body; '
+        'declare request fields in an inner fields class named for the HTTP method, e.g. Get or Post.')
 
     # Converters are collected from their class bodies only; bases and mixins do not contribute.
     converters:dict[str,Callable[[object],object]] = cls.__dict__.get('converters', {})
 
-    fields:dict[str,_FieldInfo] = {}
-    for name, hint in get_annotations(fields_class).items():
-      if hint is ClassVar or get_origin(hint) is ClassVar: continue
-      field_type, is_optional, is_list = _unwrap_field_type(hint)
-      # Per-field converters bind now; transtructor-backed converters resolve lazily on the first request,
-      # so that prefigure/selector customizations registered after the class body are honored.
-      fields[name] = _FieldInfo(name=name, field_type=field_type, is_optional=is_optional, is_list=is_list,
-        convert=converters.get(name))
-    cls._fields = fields
+    specs:dict[str,_MethodSpec] = {}
+    for method, handler_name in handler_methods.items():
+      class_name = method.capitalize()
+      handler = cls.__dict__.get(handler_name)
+      fields_class:type[Any] = cls.__dict__.get(class_name, NoFields)
+      if handler is None:
+        if fields_class is not NoFields:
+          raise TypeError(f'{cls.__qualname__}.{class_name} is declared but has no matching `{handler_name}` handler method.')
+        continue
+      if fields_class is not NoFields and (not isinstance(fields_class, type) or fields_class.__bases__ != (object,)):
+        raise TypeError(f'{cls.__qualname__}.{class_name} must be a class deriving directly from object.')
+      _validate_handler(cls, handler_name=handler_name, handler=handler, fields_classes=frozenset({fields_class}))
+      fields:dict[str,_FieldInfo] = {}
+      for name, hint in get_annotations(fields_class).items():
+        if hint is ClassVar or get_origin(hint) is ClassVar: continue
+        field_type, is_optional, is_list = _unwrap_field_type(hint)
+        # Per-field converters bind now; transtructor-backed converters resolve lazily on the first request,
+        # so that prefigure/selector customizations registered after the class body are honored.
+        fields[name] = _FieldInfo(name=name, field_type=field_type, is_optional=is_optional, is_list=is_list,
+          convert=converters.get(name))
+      specs[method] = _MethodSpec(method=method, handler_name=handler_name, fields_class=fields_class, fields=fields)
 
-    if cls.body_field and cls.body_field not in fields:
+    if not specs:
+      raise TypeError(f'{cls.__qualname__}: define at least one handler method: {", ".join(handler_methods.values())}.')
+    cls._specs = specs
+
+    if (expect_hook := cls.__dict__.get('expect_100_continue')) is not None:
+      _validate_handler(cls, handler_name='expect_100_continue', handler=expect_hook,
+        fields_classes=frozenset(spec.fields_class for spec in specs.values()))
+
+    declared_names = {name for spec in specs.values() for name in spec.fields}
+    if cls.body_field and cls.body_field not in declared_names:
       raise TypeError(f'{cls.__qualname__}: body_field {cls.body_field!r} does not name a declared field.')
+    for name in converters:
+      # A converter applies by name to every fields class declaring it, so those fields must share one type.
+      typed = [(spec.fields_class.__name__, spec.fields[name].field_type) for spec in specs.values() if name in spec.fields]
+      if not typed:
+        raise TypeError(f'{cls.__qualname__}: converter {name!r} does not name a declared field.')
+      if any(t != typed[0][1] for _, t in typed):
+        desc = ', '.join(f'{c}.{name}:{t!r}' for c, t in typed)
+        raise TypeError(f'{cls.__qualname__}: converter {name!r} applies to fields of differing types: {desc}.')
 
-    methods_raw = cls.methods
-    methods:frozenset[str] = frozenset((methods_raw,) if isinstance(methods_raw, str) else methods_raw)
-    if not methods:
-      raise TypeError(f'{cls.__qualname__}: methods must not be empty.')
-    for m in methods:
-      if m not in endpoint_methods:
-        raise TypeError(f'{cls.__qualname__}: invalid HTTP method {m!r}; valid endpoint methods are {sorted(endpoint_methods)}.')
+    methods = set(specs)
+    if 'GET' in methods: methods.add('HEAD')
     cls._methods = frozenset(methods)
 
 
@@ -268,29 +315,38 @@ class Endpoint(RoutableHandler):
     '''
     if cls._converters_resolved: return
     transtructor = cls.__dict__.get('_transtructor') or _shared_endpoint_transtructor
-    fields:dict[str,_FieldInfo] = {}
-    for name, field in cls._fields.items():
-      if field.convert is None:
-        # Security boundary: transtruct is only ever invoked on the declared field type, never on the Endpoint/handler type.
-        # Do not "simplify" this into transtructing the whole endpoint.
-        try: transtruct_fn = transtructor.transtructor_for(field.field_type)
-        except (TypeError, TranstructorError) as e:
-          raise TypeError(
-            f'{cls.__qualname__}.Fields.{name}: no converter is available for field type {field.field_type!r}.') from e
-        field = replace(field, convert=_transtruct_converter(transtruct_fn))
-      fields[name] = field
-    cls._fields = fields
+    specs:dict[str,_MethodSpec] = {}
+    for method, spec in cls._specs.items():
+      fields:dict[str,_FieldInfo] = {}
+      for name, field in spec.fields.items():
+        if field.convert is None:
+          # Security boundary: transtruct is only ever invoked on the declared field type, never on the Endpoint/handler type.
+          # Do not "simplify" this into transtructing the whole endpoint.
+          try: transtruct_fn = transtructor.transtructor_for(field.field_type)
+          except (TypeError, TranstructorError) as e:
+            raise TypeError(
+              f'{cls.__qualname__}.{spec.fields_class.__name__}.{name}: no converter is available for field type {field.field_type!r}.') from e
+          field = replace(field, convert=_transtruct_converter(transtruct_fn))
+        fields[name] = field
+      specs[method] = replace(spec, fields=fields)
+    cls._specs = specs
     cls._converters_resolved = True
 
 
   def __init__(self, request:Request, path_params:Mapping[str,object]) -> None:
     '''
-    Create the fields instance and fill it from path and query params. Body fields are filled later by `prepare`.
-    Raises BadRequestError for duplicate, excess, or unconvertible params.
+    Select the handler for the request method, then create the fields instance and fill it from path and query params.
+    Body fields are filled later by `prepare`.
+    Raises MethodNotAllowedError for an unhandled method, and BadRequestError for duplicate, excess, or unconvertible params.
     '''
     cls = type(self)
     if not cls._converters_resolved: cls._resolve_converters()
-    self.fields = cls._fields_class()
+    method = request.method
+    spec = cls._specs.get('GET' if method == 'HEAD' else method)
+    if spec is None: raise MethodNotAllowedError(cls._methods)
+    self._spec = spec
+    self._fields = spec.fields
+    self._fields_obj = spec.fields_class()
     self._fill_param_sources = {}
     for name, raw in path_params.items():
       self._fill_param(name=name, raw=raw, source='path')
@@ -305,10 +361,15 @@ class Endpoint(RoutableHandler):
 
 
   def handle_expect_100_continue(self, request:Request) -> Response:
+    'Framework method: dispatch the `Expect: 100-continue` header to the `expect_100_continue` hook with the fields object.'
+    return self.expect_100_continue(request, self._fields_obj)
+
+
+  def expect_100_continue(self, request:Request, fields:Any) -> Response:
     '''
-    Handle the `Expect: 100-continue` header.
-    Path and query params have already been validated during construction,
-    so by default this returns CONTINUE to allow the client to send the body.
+    Handle the `Expect: 100-continue` header, given the fields object filled from path and query params.
+    Those params have already been validated during construction, so by default this returns CONTINUE
+    to allow the client to send the body. Subclasses may override this to reject the request before the body is read.
     '''
     return Response(status=HTTPStatus.CONTINUE)
 
@@ -323,18 +384,36 @@ class Endpoint(RoutableHandler):
       for name, raw in request.body_params(self.max_body_bytes, body_field=self.body_field).items():
         self._fill_param(name=name, raw=raw, source='body', accept_empty_list_marker=is_form)
     for name, field in self._fields.items():
-      if hasattr(self.fields, name): continue
+      if hasattr(self._fields_obj, name): continue
       if not field.is_optional:
         raise BadRequestError(f'Missing required parameter: {name!r}.')
-      setattr(self.fields, name, None)
+      setattr(self._fields_obj, name, None)
 
 
   def handle_request(self, request:Request) -> Response:
-    return self.handle_endpoint(request, self.fields)
+    'Dispatch to the handler method selected at construction; HEAD requests dispatch to `get`.'
+    handler:Callable[[Request,Any],Response] = getattr(self, self._spec.handler_name)
+    return handler(request, self._fields_obj)
 
 
-  def handle_endpoint(self, request:Request, fields:Any) -> Response:
-    'Handle the prepared request with its precisely typed fields object. Subclasses must override this method.'
+  def get(self, request:Request, fields:Any) -> Response:
+    'Handle a GET (or HEAD) request with its precisely typed fields object. Subclasses define this to accept GET.'
+    raise NotImplementedError
+
+  def post(self, request:Request, fields:Any) -> Response:
+    'Handle a POST request with its precisely typed fields object. Subclasses define this to accept POST.'
+    raise NotImplementedError
+
+  def put(self, request:Request, fields:Any) -> Response:
+    'Handle a PUT request with its precisely typed fields object. Subclasses define this to accept PUT.'
+    raise NotImplementedError
+
+  def patch(self, request:Request, fields:Any) -> Response:
+    'Handle a PATCH request with its precisely typed fields object. Subclasses define this to accept PATCH.'
+    raise NotImplementedError
+
+  def delete(self, request:Request, fields:Any) -> Response:
+    'Handle a DELETE request with its precisely typed fields object. Subclasses define this to accept DELETE.'
     raise NotImplementedError
 
 
@@ -361,7 +440,7 @@ class Endpoint(RoutableHandler):
       # Truncate the raw value so that a large or whole-body value is not reflected back in the error response.
       raise BadRequestError(f'Invalid value for parameter {name!r}: {repr(raw)[:64]}.') from e
     # Validate outside of the try clause above, so that a converter returning a mistyped value raises TypeError (500).
-    setattr(self.fields, name, req_type(converted_value, field.field_type))
+    setattr(self._fields_obj, name, req_type(converted_value, field.field_type))
 
 
 def _transtruct_converter(tf:TranstructFn[Any]) -> Callable[[object],object]:
@@ -438,30 +517,49 @@ def _new_endpoint_transtructor() -> Transtructor:
 _shared_endpoint_transtructor = _new_endpoint_transtructor()
 
 
-def _validate_handle_endpoint(cls:type[Endpoint], fields_class:type[Any]) -> None:
-  'Validate a concrete Endpoint subclass hook at class definition time.'
-  if 'handle_request' in cls.__dict__:
-    raise TypeError(f'{cls.__qualname__}: override `handle_endpoint`, not framework method `handle_request`.')
-  handler = cls.__dict__.get('handle_endpoint')
-  if handler is None:
-    raise TypeError(f'{cls.__qualname__}: define `handle_endpoint(self, request, fields)`.')
+def _check_obsolete_names(cls:type[Endpoint]) -> None:
+  'Raise TypeError for class body names from the single-schema Endpoint design, or that would otherwise mislead.'
+  d = cls.__dict__
+  if 'handle_request' in d:
+    raise TypeError(f'{cls.__qualname__}: define per-method handlers such as `get` or `post`, not framework method `handle_request`.')
+  if 'handle_expect_100_continue' in d:
+    raise TypeError(f'{cls.__qualname__}: override `expect_100_continue`, not framework method `handle_expect_100_continue`.')
+  if 'handle_endpoint' in d:
+    raise TypeError(f'{cls.__qualname__}: `handle_endpoint` is obsolete; define per-method handlers such as `get` or `post`.')
+  if 'Fields' in d:
+    raise TypeError(f'{cls.__qualname__}.Fields is obsolete; name the inner fields class for its HTTP method, e.g. Get or Post.')
+  if 'methods' in d:
+    raise TypeError(f'{cls.__qualname__}.methods is obsolete; accepted methods are derived from the handler methods defined.')
+  for name in _reserved_method_names:
+    if name in d:
+      raise TypeError(f'{cls.__qualname__}.{name}: {name.upper()} requests are not dispatched to handler methods.')
+
+
+def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, fields_classes:frozenset[type[Any]]) -> None:
+  '''
+  Validate a concrete Endpoint subclass handler method at class definition time.
+  The `fields` parameter must be annotated as exactly the members of `fields_classes`: a single class or their union.
+  '''
+  qualname = f'{cls.__qualname__}.{handler_name}'
   if not callable(handler):
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint must be a method.')
+    raise TypeError(f'{qualname} must be a method.')
   params = tuple(signature(handler, annotation_format=Format.STRING).parameters.values())
   if len(params) != 3 or any(p.kind is not Parameter.POSITIONAL_OR_KEYWORD for p in params):
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint must have signature `(self, request, fields)`.')
+    raise TypeError(f'{qualname} must have signature `(self, request, fields)`.')
   if tuple(p.name for p in params) != ('self', 'request', 'fields'):
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint parameter names must be `(self, request, fields)`.')
+    raise TypeError(f'{qualname} parameter names must be `(self, request, fields)`.')
   if any(p.default is not Parameter.empty for p in params):
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint parameters must not have defaults.')
+    raise TypeError(f'{qualname} parameters must not have defaults.')
   try: annotations = get_annotations(handler)
   except (NameError, TypeError) as e:
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint annotations could not be evaluated: {e}') from e
+    raise TypeError(f'{qualname} annotations could not be evaluated: {e}') from e
   if annotations.get('request') is not Request:
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint.request must be annotated as Request.')
-  if annotations.get('fields') is not fields_class:
-    expected = fields_class.__qualname__
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint.fields must be annotated as {expected}.')
+    raise TypeError(f'{qualname}.request must be annotated as Request.')
+  fields_hint = normalize_type_form(annotations.get('fields', NoneType))
+  declared = frozenset(get_args(fields_hint) if get_origin(fields_hint) is Union else (fields_hint,))
+  if declared != fields_classes:
+    names = ' | '.join(sorted(c.__qualname__ for c in fields_classes))
+    raise TypeError(f'{qualname}.fields must be annotated as {names}.')
   response_type = annotations.get('return')
   if not isinstance(response_type, type) or not issubclass(response_type, Response):
-    raise TypeError(f'{cls.__qualname__}.handle_endpoint return must be annotated as Response or a Response subclass.')
+    raise TypeError(f'{qualname} return must be annotated as Response or a Response subclass.')
