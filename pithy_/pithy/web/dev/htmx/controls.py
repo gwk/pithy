@@ -15,7 +15,6 @@ from ..pages import dev_page
 
 class DevControlsHtmx(Endpoint):
   'Demonstrates HTMX controls.'
-  max_body_bytes = 4096
 
   def get(self, request:Request, fields:NoFields) -> Response:
     main = Main(

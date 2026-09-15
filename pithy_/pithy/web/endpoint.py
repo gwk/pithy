@@ -23,6 +23,9 @@ from .response import Response
 # HEAD is dispatched to the GET handler and is not a key here.
 handler_methods:dict[str,str] = {m: m.lower() for m in ('DELETE', 'GET', 'PATCH', 'POST', 'PUT')}
 
+# Methods whose requests may carry a body. A request body on any other method is rejected at construction.
+body_methods:frozenset[str] = frozenset({'PATCH', 'POST', 'PUT'})
+
 # Method names that are reserved so that a subclass does not define one expecting it to be dispatched to.
 _reserved_method_names = frozenset({'connect', 'head', 'options', 'trace'})
 
@@ -62,6 +65,9 @@ class Endpoint(RoutableHandler):
   HEAD requests are accepted whenever `get` is defined and are dispatched to it;
   the server omits the response body. A `get` implementation may check `request.method == 'HEAD'`
   and return a headers-only response early to skip rendering.
+
+  Only PATCH, POST and PUT requests may carry a body; `max_body_bytes` must be set for an endpoint to accept one.
+  A GET, HEAD or DELETE request that carries a body is rejected with BadRequestError.
 
   Each handler has the signature `(self, request:Request, fields:Get) -> Response`,
   where the `fields` annotation is the exact inner fields class for that method (see below), or `NoFields` if none.
@@ -166,7 +172,8 @@ class Endpoint(RoutableHandler):
   Request handling flow:
   * The server constructs the endpoint, which selects the handler and fields schema for the request method,
     creates its internal fields object and fills it from path and query params.
-    Duplicates across path and query, excess params not corresponding to fields, and conversion failures raise BadRequestError.
+    Duplicates across path and query, excess params not corresponding to fields, and conversion failures raise BadRequestError,
+    as does a body on a method that does not accept one.
   * If the client sent `Expect: 100-continue`, the server calls `handle_expect_100_continue`,
     which dispatches to the `expect_100_continue` hook with the fields object; by default this returns CONTINUE.
     At this stage body fields are not yet filled, so a subclass hook can reject a request from its path and query fields
@@ -177,7 +184,7 @@ class Endpoint(RoutableHandler):
   * The server calls `handle_request`, which dispatches to the subclass handler for the request method.
   '''
 
-  max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters.
+  max_body_bytes:ClassVar[int] = 0 # Must be overridden by subclasses that expect body parameters; requires a body method handler.
 
   # Top-level customization: per-field-name converters, collected from the class body only. Signature: (raw) -> value.
   # A field-specific override may wrap its own Transtructor if the shared default is insufficient.
@@ -267,6 +274,10 @@ class Endpoint(RoutableHandler):
     if 'GET' in methods: methods.add('HEAD')
     cls._methods = frozenset(methods)
 
+    if cls.max_body_bytes and not (methods & body_methods):
+      raise TypeError(f'{cls.__qualname__}: max_body_bytes is set but no body method handler is defined: '
+        f'{", ".join(handler_methods[m] for m in sorted(body_methods))}.')
+
 
   @classmethod
   def prefigure(cls, datatype:type) -> Callable[[PrefigureFn],PrefigureFn]:
@@ -344,6 +355,8 @@ class Endpoint(RoutableHandler):
     method = request.method
     spec = cls._specs.get('GET' if method == 'HEAD' else method)
     if spec is None: raise MethodNotAllowedError(cls._methods)
+    if method not in body_methods and (request.media_type or request.content_length or 'transfer-encoding' in request.headers):
+      raise BadRequestError(f'{method} request must not carry a body.')
     self._spec = spec
     self._fields = spec.fields
     self._fields_obj = spec.fields_class()
