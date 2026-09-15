@@ -67,7 +67,7 @@ class DevControlsForm(Endpoint):
         posted_values_div(values),
       ]))
     return dev_page(title='Form Controls', main=main,
-      breadcrumbs=[('/', 'Home'), ('/controls', 'Controls'), ('/controls/form', 'Form')])
+      breadcrumbs=[('/', 'Home'), ('/form', 'Form'), ('/form/controls', 'Controls')])
 
 
 def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
