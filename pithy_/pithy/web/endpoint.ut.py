@@ -27,8 +27,9 @@ def _make_request(query:dict[str,str|int|list[str]]|None=None, *, media_type:str
     headers['content-type'] = media_type
   content_length = len(body) if body else None
   conn = BytesConn(body) if media_type else None
-  return Request(method='GET', scheme='http', host='localhost', port=80, path='/', query_str=query_str, headers=headers,
-    client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
+  # A body implies POST; GET, HEAD and DELETE requests reject bodies.
+  return Request(method=('POST' if media_type else 'GET'), scheme='http', host='localhost', port=80, path='/', query_str=query_str,
+    headers=headers, client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
 
 
 def _method_request(method:str, query:dict[str,str|int|list[str]]|None=None, *, media_type:str='', body:bytes=b'') -> Request:
@@ -81,6 +82,10 @@ class IntEndpoint(Endpoint):
     id:int
   def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.id}')
+  class Post:
+    id:int
+  def post(self, request:Request, fields:Post) -> Response:
+    return Response(body=f'{fields.id}')
 
 
 class MultiFieldEndpoint(Endpoint):
@@ -126,6 +131,10 @@ class BoolEndpoint(Endpoint):
   class Get:
     flag:bool
   def get(self, request:Request, fields:Get) -> Response:
+    return Response(body=f'{fields.flag}')
+  class Post:
+    flag:bool
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.flag}')
 
 
@@ -215,10 +224,10 @@ def _dedupe_tags(raw:Any) -> list[str]:
 class ListConverterEndpoint(Endpoint):
   max_body_bytes = 1024
   converters = {'tags': _dedupe_tags}
-  class Get:
+  class Post:
     tags:list[str]
 
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.tags}')
 
 
@@ -566,10 +575,10 @@ def _() -> None:
 
 class BodyEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Get:
+  class Post:
     name:str
     tag:str|None
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.name},{fields.tag}')
 
 class ListEndpoint(Endpoint):
@@ -578,6 +587,11 @@ class ListEndpoint(Endpoint):
     tags:list[str]
     counts:list[int]
   def get(self, request:Request, fields:Get) -> Response:
+    return Response(body=f'{fields.tags},{fields.counts}')
+  class Post:
+    tags:list[str]
+    counts:list[int]
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.tags},{fields.counts}')
 
 
@@ -612,7 +626,7 @@ def _() -> None:
 @utest_run
 def _() -> None:
   'Endpoint: prepare raises on missing required field with no body.'
-  req = _make_request()
+  req = _method_request('POST')
   ep = BodyEndpoint(req, path_params={})
   utest_exc(ResponseError, ep.prepare, req)
 
@@ -700,17 +714,17 @@ class Point:
 
 class NestedEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Get:
+  class Post:
     point:Point
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.point}')
 
 
 class NestedListEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Get:
+  class Post:
     points:list[Point]
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.points}')
 
 
@@ -741,6 +755,10 @@ class OptionalListEndpoint(Endpoint):
   class Get:
     tags:list[str]|None
   def get(self, request:Request, fields:Get) -> Response:
+    return Response(body=f'{fields.tags}')
+  class Post:
+    tags:list[str]|None
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.tags}')
 
 
@@ -918,9 +936,9 @@ def _() -> None:
 
 class UploadedFileEndpoint(Endpoint):
   max_body_bytes = 4096
-  class Get:
+  class Post:
     file:UploadedFile
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.file.filename}')
 
 
@@ -954,9 +972,9 @@ def _() -> None:
 
 class MultiFileEndpoint(Endpoint):
   max_body_bytes = 8192
-  class Get:
+  class Post:
     files:list[UploadedFile]
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.files}')
 
 
@@ -974,10 +992,10 @@ def _() -> None:
 
 class MixedMultipartEndpoint(Endpoint):
   max_body_bytes = 8192
-  class Get:
+  class Post:
     note:str
     file:UploadedFile
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.note}:{fields.file.filename}')
 
 
@@ -999,27 +1017,27 @@ def _() -> None:
 class ListBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Get:
+  class Post:
     payload:list[int]
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.payload}')
 
 
 class IntBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Get:
+  class Post:
     payload:int
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.payload}')
 
 
 class PointBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Get:
+  class Post:
     payload:Point
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.payload}')
 
 
@@ -1062,10 +1080,10 @@ def _() -> None:
 class MixedBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Get:
+  class Post:
     payload:Point
     label:str
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.label}:{fields.payload}')
 
 
@@ -1112,9 +1130,9 @@ class BarePayload:
 class BarePayloadEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Get:
+  class Post:
     payload:BarePayload
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.payload}')
 
 
@@ -1170,9 +1188,9 @@ class ShapeBodyEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
   converters = {'shape': lambda raw: shape_transtructor.transtruct(Shape, raw)}
-  class Get:
+  class Post:
     shape:Shape
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1198,9 +1216,9 @@ def _() -> None:
 
 class PrefiguredPointEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Get:
+  class Post:
     point:Point
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.point}')
 
 
@@ -1232,9 +1250,9 @@ def _() -> None:
 class ShapeSelectorEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
-  class Get:
+  class Post:
     shape:Shape
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1283,9 +1301,9 @@ utest_exc(ResponseError, endpoint_fields, LiteralEndpoint, order='asc', rank='1'
 
 class LiteralListEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Get:
+  class Post:
     kinds:list[Literal['a','b']]
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.kinds}')
 
 
@@ -1313,9 +1331,9 @@ def _() -> None:
 class ShapeUnionEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
-  class Get:
+  class Post:
     shape:Circle|Rect
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1379,9 +1397,9 @@ utest(dict(val=2.5), endpoint_fields, SelectedNumUnionEndpoint, val='2.5')
 class UnselectedShapeEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
-  class Get:
+  class Post:
     shape:Circle|Rect
-  def get(self, request:Request, fields:Get) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1465,7 +1483,7 @@ class MultiMethodEndpoint(Endpoint):
 
 utest(frozenset({'POST'}), lambda: PostEndpoint._methods)
 utest(frozenset({'GET', 'HEAD', 'POST'}), lambda: MultiMethodEndpoint._methods)
-utest(frozenset({'GET', 'HEAD'}), lambda: IntEndpoint._methods)
+utest(frozenset({'GET', 'HEAD'}), lambda: DateEndpoint._methods)
 
 
 def dispatch(cls:type[Endpoint], req:Request) -> object:
@@ -1486,6 +1504,37 @@ def _() -> None:
   utest_exc(ResponseError, dispatch, MultiMethodEndpoint, _method_request('GET', dict(name='alice')))
 
 
+class DeleteEndpoint(Endpoint):
+  class Delete:
+    id:int
+  def delete(self, request:Request, fields:Delete) -> Response:
+    return Response(body='deleted')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: a body on GET, HEAD or DELETE is rejected at construction, whether declared by length, encoding or media type.'
+  body = b'{"tag":"x"}'
+  for method in ('GET', 'HEAD'):
+    utest_exc(ResponseError, MultiMethodEndpoint, _method_request(method, media_type='application/json', body=body), {})
+    req = replace(_method_request(method), content_length=3)
+    utest_exc(ResponseError, MultiMethodEndpoint, req, {})
+    req = replace(_method_request(method), headers={'transfer-encoding': 'chunked'})
+    utest_exc(ResponseError, MultiMethodEndpoint, req, {})
+  utest_exc(ResponseError, DeleteEndpoint, _method_request('DELETE', media_type='application/json', body=body), {})
+  utest_val(b'deleted', dispatch(DeleteEndpoint, _method_request('DELETE', dict(id='1'))))
+
+
+def _make_bodiless_max_body_endpoint() -> type[Endpoint]:
+  class BodilessMaxBodyEndpoint(Endpoint):
+    max_body_bytes = 1024 # Meaningless without a body method handler.
+    def get(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return BodilessMaxBodyEndpoint
+
+utest_exc(TypeError, _make_bodiless_max_body_endpoint)
+
+
 @utest_run
 def _() -> None:
   'Endpoint: HEAD dispatches to get; other unhandled methods raise MethodNotAllowedError at construction.'
@@ -1503,7 +1552,7 @@ utest_exc(MethodNotAllowedError, Router({'/' : PostEndpoint}).resolve_handler, _
 @utest_run
 def _() -> None:
   'Router: MethodNotAllowedError includes Allow header, listing HEAD alongside GET.'
-  for cls, method, allow in ((PostEndpoint, 'GET', 'POST'), (IntEndpoint, 'POST', 'GET, HEAD')):
+  for cls, method, allow in ((PostEndpoint, 'GET', 'POST'), (DateEndpoint, 'POST', 'GET, HEAD')):
     try:
       Router({'/' : cls}).resolve_handler(_method_request(method))
     except MethodNotAllowedError as exc:
