@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time
 from enum import Enum
 from http import HTTPStatus
@@ -29,6 +29,11 @@ def _make_request(query:dict[str,str|int|list[str]]|None=None, *, media_type:str
   conn = BytesConn(body) if media_type else None
   return Request(method='GET', scheme='http', host='localhost', port=80, path='/', query_str=query_str, headers=headers,
     client_addr=('127.0.0.1', 0), content_length=content_length, conn=conn)
+
+
+def _method_request(method:str, query:dict[str,str|int|list[str]]|None=None, *, media_type:str='', body:bytes=b'') -> Request:
+  req = _make_request(query, media_type=media_type, body=body)
+  return replace(req, method=method)
 
 
 # _unwrap_field_type: analyze into (field_type, is_optional, is_list).
@@ -72,63 +77,61 @@ utest_exc(TypeError, _unwrap_field_type, TypeVar('T')) # Not a constructible typ
 
 class IntEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     id:int
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.id}')
 
 
 class MultiFieldEndpoint(Endpoint):
-  class Fields:
+  class Get:
     name:str
     count:int
     ratio:float
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.name},{fields.count},{fields.ratio}')
 
 
 class OptionalEndpoint(Endpoint):
-  class Fields:
+  class Get:
     name:str
     tag:str|None
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.name},{fields.tag}')
 
 
 class DateEndpoint(Endpoint):
-  class Fields:
+  class Get:
     d:date
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.d}')
 
 
 class DatetimeEndpoint(Endpoint):
-  class Fields:
+  class Get:
     dt:datetime
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.dt}')
 
 
 class TimeEndpoint(Endpoint):
-  class Fields:
+  class Get:
     t:time
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.t}')
 
 
 class BoolEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     flag:bool
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.flag}')
+
+
+def fields_of(ep:Endpoint) -> Any:
+  'Return the private fields object of a constructed endpoint, untyped.'
+  return ep._fields_obj
 
 
 def endpoint_fields(cls:type[Endpoint], **kwargs:str) -> dict[str,Any]:
@@ -136,7 +139,7 @@ def endpoint_fields(cls:type[Endpoint], **kwargs:str) -> dict[str,Any]:
   request = _make_request()
   ep = cls(request=request, path_params=kwargs)
   ep.prepare(request)
-  return {k: getattr(ep.fields, k) for k in ep._fields}
+  return {k: getattr(ep._fields_obj, k) for k in ep._fields}
 
 
 # Field parsing from path params (string conversion).
@@ -158,24 +161,23 @@ utest_exc(ResponseError, endpoint_fields, IntEndpoint, id='5', extra='ignored') 
 def _() -> None:
   for s in ('true', '1', 'yes'):
     ep = BoolEndpoint(_make_request(), path_params=dict(flag=s))
-    utest_val(True, ep.fields.flag, desc=f'bool from {s!r}')
+    utest_val(True, fields_of(ep).flag, desc=f'bool from {s!r}')
   for s in ('false', '0', 'no', ''):
     ep = BoolEndpoint(_make_request(), path_params=dict(flag=s))
-    utest_val(False, ep.fields.flag, desc=f'bool from {s!r}')
+    utest_val(False, fields_of(ep).flag, desc=f'bool from {s!r}')
 
 
 # Invalid bool string raises BadRequestError (inherited from the tightened transtruct_bool).
 utest_exc(ResponseError, BoolEndpoint, _make_request(), dict(flag='maybe'))
 
 
-# Underscore-prefixed names are ordinary fields within the Fields namespace.
+# Underscore-prefixed names are ordinary fields within a fields class namespace.
 
 class UnderscoreFieldEndpoint(Endpoint):
-  class Fields:
+  class Get:
     name:str
     _debug:bool|None
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.name},{fields._debug}')
 
 
@@ -193,11 +195,10 @@ class Color(Enum):
 
 class CustomConverterEndpoint(Endpoint):
   converters = {'color': lambda raw: Color(raw)}
-  class Fields:
+  class Get:
     color:Color
 
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.color.value}')
 
 
@@ -214,11 +215,10 @@ def _dedupe_tags(raw:Any) -> list[str]:
 class ListConverterEndpoint(Endpoint):
   max_body_bytes = 1024
   converters = {'tags': _dedupe_tags}
-  class Fields:
+  class Get:
     tags:list[str]
 
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.tags}')
 
 
@@ -232,7 +232,7 @@ def _make_sub_subclass() -> type[Endpoint]:
 utest_exc(TypeError, _make_sub_subclass)
 
 
-# Public annotations belong in the inner Fields class; a stray field annotation on the endpoint body raises TypeError.
+# Public annotations belong in an inner fields class; a stray field annotation on the endpoint body raises TypeError.
 
 def _make_stray_annotation_endpoint() -> type[Endpoint]:
   class StrayAnnotationEndpoint(Endpoint):
@@ -242,36 +242,89 @@ def _make_stray_annotation_endpoint() -> type[Endpoint]:
 utest_exc(TypeError, _make_stray_annotation_endpoint)
 
 
-# The inner Fields class must derive directly from object.
+# An inner fields class must derive directly from object.
 
 class _FieldsBase:
   x:int
 
 def _make_derived_fields_endpoint() -> type[Endpoint]:
   class DerivedFieldsEndpoint(Endpoint):
-    class Fields(_FieldsBase):
+    class Get(_FieldsBase):
       y:int
   return DerivedFieldsEndpoint
 
 utest_exc(TypeError, _make_derived_fields_endpoint)
 
 
-# Every endpoint must define the endpoint hook.
+# Every endpoint must define at least one handler method, and an inner fields class requires its handler.
+
+def _make_no_handler_endpoint() -> type[Endpoint]:
+  class NoHandlerEndpoint(Endpoint):
+    'No handler methods.'
+  return NoHandlerEndpoint
+
+utest_exc(TypeError, _make_no_handler_endpoint)
+
 
 def _make_missing_handler_endpoint() -> type[Endpoint]:
   class MissingHandlerEndpoint(Endpoint):
-    class Fields:
+    class Post:
       x:int
+    def get(self, request:Request, fields:NoFields) -> Response:
+      return Response()
   return MissingHandlerEndpoint
 
 utest_exc(TypeError, _make_missing_handler_endpoint)
+
+
+# Names from the single-schema design and non-dispatched HTTP methods are rejected with migration hints.
+
+def _make_obsolete_fields_endpoint() -> type[Endpoint]:
+  class ObsoleteFieldsEndpoint(Endpoint):
+    class Fields:
+      x:int
+    def get(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return ObsoleteFieldsEndpoint
+
+utest_exc(TypeError, _make_obsolete_fields_endpoint)
+
+
+def _make_obsolete_handle_endpoint_endpoint() -> type[Endpoint]:
+  class ObsoleteHandleEndpoint(Endpoint):
+    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return ObsoleteHandleEndpoint
+
+utest_exc(TypeError, _make_obsolete_handle_endpoint_endpoint)
+
+
+def _make_obsolete_methods_endpoint() -> type[Endpoint]:
+  class ObsoleteMethodsEndpoint(Endpoint):
+    methods = 'POST'
+    def post(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return ObsoleteMethodsEndpoint
+
+utest_exc(TypeError, _make_obsolete_methods_endpoint)
+
+
+def _make_head_handler_endpoint() -> type[Endpoint]:
+  class HeadHandlerEndpoint(Endpoint):
+    def get(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+    def head(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return HeadHandlerEndpoint
+
+utest_exc(TypeError, _make_head_handler_endpoint)
 
 
 # The hook signature and annotations are validated at class definition time.
 
 def _make_bad_handler_signature_endpoint() -> type[Endpoint]:
   class BadHandlerSignatureEndpoint(Endpoint):
-    def handle_endpoint(self, request:Request) -> Response: # type: ignore[override] # Intentionally malformed.
+    def get(self, request:Request) -> Response: # type: ignore[override] # Intentionally malformed.
       return Response()
   return BadHandlerSignatureEndpoint
 
@@ -280,7 +333,7 @@ utest_exc(TypeError, _make_bad_handler_signature_endpoint)
 
 def _make_unannotated_handler_fields_endpoint() -> type[Endpoint]:
   class UnannotatedHandlerFieldsEndpoint(Endpoint):
-    def handle_endpoint(self, request:Request, fields) -> Response: # type: ignore[no-untyped-def] # Intentionally malformed.
+    def get(self, request:Request, fields) -> Response: # type: ignore[no-untyped-def] # Intentionally malformed.
       return Response()
   return UnannotatedHandlerFieldsEndpoint
 
@@ -289,9 +342,9 @@ utest_exc(TypeError, _make_unannotated_handler_fields_endpoint)
 
 def _make_wrong_handler_fields_endpoint() -> type[Endpoint]:
   class WrongHandlerFieldsEndpoint(Endpoint):
-    class Fields:
+    class Get:
       x:int
-    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:NoFields) -> Response:
       return Response()
   return WrongHandlerFieldsEndpoint
 
@@ -300,7 +353,7 @@ utest_exc(TypeError, _make_wrong_handler_fields_endpoint)
 
 def _make_wrong_handler_request_endpoint() -> type[Endpoint]:
   class WrongHandlerRequestEndpoint(Endpoint):
-    def handle_endpoint(self, request:object, fields:NoFields) -> Response:
+    def get(self, request:object, fields:NoFields) -> Response:
       return Response()
   return WrongHandlerRequestEndpoint
 
@@ -309,7 +362,7 @@ utest_exc(TypeError, _make_wrong_handler_request_endpoint)
 
 def _make_wrong_handler_return_endpoint() -> type[Endpoint]:
   class WrongHandlerReturnEndpoint(Endpoint):
-    def handle_endpoint(self, request:Request, fields:NoFields) -> object: # type: ignore[override] # Intentionally malformed.
+    def get(self, request:Request, fields:NoFields) -> object: # type: ignore[override] # Intentionally malformed.
       return object()
   return WrongHandlerReturnEndpoint
 
@@ -320,56 +373,78 @@ def _make_handle_request_override_endpoint() -> type[Endpoint]:
   class HandleRequestOverrideEndpoint(Endpoint):
     def handle_request(self, request:Request) -> Response:
       return Response()
-    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+    def get(self, request:Request, fields:NoFields) -> Response:
       return Response()
   return HandleRequestOverrideEndpoint
 
 utest_exc(TypeError, _make_handle_request_override_endpoint)
 
 
-# The fields attribute may be redeclared for precise access outside handle_endpoint.
+# A `fields` annotation in the endpoint body is a stray public annotation like any other.
 
-class TypedFieldsEndpoint(Endpoint):
-  class Fields:
+def _make_fields_annotation_endpoint() -> type[Endpoint]:
+  class FieldsAnnotationEndpoint(Endpoint):
+    class Get:
+      x:int
+    fields:Get
+    def get(self, request:Request, fields:Get) -> Response:
+      return Response()
+  return FieldsAnnotationEndpoint
+
+utest_exc(TypeError, _make_fields_annotation_endpoint)
+
+
+# The expect_100_continue hook receives the path and query fields of whichever method is being handled,
+# so its fields parameter is annotated as the union of every handler's fields class.
+
+class ExpectEndpoint(Endpoint):
+  max_body_bytes = 1024
+  class Post:
     x:int
-  fields:Fields
-  _prepared_x:int
-  def prepare(self, request:Request) -> None:
-    super().prepare(request)
-    self._prepared_x = self.fields.x
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
-    return Response(body=f'{self._prepared_x},{fields.x}')
+  def expect_100_continue(self, request:Request, fields:NoFields|Post) -> Response:
+    if isinstance(fields, self.Post) and fields.x < 0: return Response(status=HTTPStatus.BAD_REQUEST)
+    return Response(status=HTTPStatus.CONTINUE)
+  def get(self, request:Request, fields:NoFields) -> Response:
+    return Response(body='get')
+  def post(self, request:Request, fields:Post) -> Response:
+    return Response(body=f'{fields.x}')
 
 
 @utest_run
 def _() -> None:
-  'Endpoint: optional fields redeclaration types lifecycle access.'
-  req = _make_request(query=dict(x='3'))
-  ep = TypedFieldsEndpoint(req, path_params={})
-  ep.prepare(req)
-  utest_val(b'3,3', ep.handle_request(req).body)
+  'Endpoint: expect_100_continue can reject a request from its query fields before the body is read.'
+  req = _method_request('POST', dict(x='-1'))
+  utest_val(HTTPStatus.BAD_REQUEST, ExpectEndpoint(req, {}).handle_expect_100_continue(req).status)
+  req = _method_request('POST', dict(x='1'))
+  utest_val(HTTPStatus.CONTINUE, ExpectEndpoint(req, {}).handle_expect_100_continue(req).status)
+  req = _method_request('GET')
+  utest_val(HTTPStatus.CONTINUE, ExpectEndpoint(req, {}).handle_expect_100_continue(req).status)
 
 
-def _make_mismatched_fields_annotation_endpoint() -> type[Endpoint]:
-  class MismatchedFieldsAnnotationEndpoint(Endpoint):
-    class Fields:
+def _make_partial_expect_annotation_endpoint() -> type[Endpoint]:
+  class PartialExpectAnnotationEndpoint(Endpoint):
+    class Post:
       x:int
-    fields:NoFields
-    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    def expect_100_continue(self, request:Request, fields:Post) -> Response: # Omits NoFields for get.
+      return Response(status=HTTPStatus.CONTINUE)
+    def get(self, request:Request, fields:NoFields) -> Response:
       return Response()
-  return MismatchedFieldsAnnotationEndpoint
-
-utest_exc(TypeError, _make_mismatched_fields_annotation_endpoint)
-
-
-def _make_fields_annotation_without_fields_class_endpoint() -> type[Endpoint]:
-  class FieldsAnnotationWithoutFieldsClassEndpoint(Endpoint):
-    fields:int
-    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+    def post(self, request:Request, fields:Post) -> Response:
       return Response()
-  return FieldsAnnotationWithoutFieldsClassEndpoint
+  return PartialExpectAnnotationEndpoint
 
-utest_exc(TypeError, _make_fields_annotation_without_fields_class_endpoint)
+utest_exc(TypeError, _make_partial_expect_annotation_endpoint)
+
+
+def _make_handle_expect_override_endpoint() -> type[Endpoint]:
+  class HandleExpectOverrideEndpoint(Endpoint):
+    def handle_expect_100_continue(self, request:Request) -> Response:
+      return Response(status=HTTPStatus.CONTINUE)
+    def get(self, request:Request, fields:NoFields) -> Response:
+      return Response()
+  return HandleExpectOverrideEndpoint
+
+utest_exc(TypeError, _make_handle_expect_override_endpoint)
 
 
 # Shared converters are composed as plain dicts in the class body; there is no converter inheritance.
@@ -378,21 +453,65 @@ color_converters:dict[str,Callable[[object],object]] = {'color': lambda raw: Col
 
 class ComposedConverterEndpoint(Endpoint):
   converters = color_converters | {'name': lambda raw: str(raw).upper()}
-  class Fields:
+  class Get:
     color:Color
     name:str
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.color.value},{fields.name}')
 
 
 utest(dict(color=Color.green, name='TEST'), endpoint_fields, ComposedConverterEndpoint, color='green', name='test')
 
 
-# No-field endpoint: the inner Fields class is optional.
+# A converter must name a declared field.
+
+def _make_undeclared_converter_endpoint() -> type[Endpoint]:
+  class UndeclaredConverterEndpoint(Endpoint):
+    converters = {'colour': lambda raw: Color(raw)}
+    class Get:
+      color:Color
+    def get(self, request:Request, fields:Get) -> Response:
+      return Response()
+  return UndeclaredConverterEndpoint
+
+utest_exc(TypeError, _make_undeclared_converter_endpoint)
+
+
+# A converter shared by several fields classes requires the same-named fields to agree on type.
+
+class SharedConverterEndpoint(Endpoint):
+  max_body_bytes = 1024
+  converters = {'color': lambda raw: Color(raw)}
+  class Get:
+    color:Color
+  class Post:
+    color:Color
+  def get(self, request:Request, fields:Get) -> Response:
+    return Response(body=fields.color.value)
+  def post(self, request:Request, fields:Post) -> Response:
+    return Response(body=fields.color.value)
+
+
+def _make_mistyped_shared_converter_endpoint() -> type[Endpoint]:
+  class MistypedSharedConverterEndpoint(Endpoint):
+    converters = {'color': lambda raw: Color(raw)}
+    class Get:
+      color:Color
+    class Post:
+      color:str
+    def get(self, request:Request, fields:Get) -> Response:
+      return Response()
+    def post(self, request:Request, fields:Post) -> Response:
+      return Response()
+  return MistypedSharedConverterEndpoint
+
+utest_exc(TypeError, _make_mistyped_shared_converter_endpoint)
+
+
+# No-field endpoint: the inner fields class is optional.
 
 class NoFieldEndpoint(Endpoint):
-  def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:NoFields) -> Response:
     return Response(body='ok')
 
 
@@ -447,20 +566,18 @@ def _() -> None:
 
 class BodyEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     name:str
     tag:str|None
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.name},{fields.tag}')
 
 class ListEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     tags:list[str]
     counts:list[int]
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.tags},{fields.counts}')
 
 
@@ -508,7 +625,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"id":3}')
   ep = IntEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(3, ep.fields.id)
+  utest_val(3, fields_of(ep).id)
 
 
 @utest_run
@@ -525,8 +642,8 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"tags":["a","b"],"counts":[1,2]}')
   ep = ListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(['a', 'b'], ep.fields.tags)
-  utest_val([1, 2], ep.fields.counts)
+  utest_val(['a', 'b'], fields_of(ep).tags)
+  utest_val([1, 2], fields_of(ep).counts)
 
 
 @utest_run
@@ -535,7 +652,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"name":"alice","tag":null}')
   ep = BodyEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(None, ep.fields.tag)
+  utest_val(None, fields_of(ep).tag)
 
 
 @utest_run
@@ -552,8 +669,8 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"tags":"a","counts":1}')
   ep = ListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(['a'], ep.fields.tags)
-  utest_val([1], ep.fields.counts)
+  utest_val(['a'], fields_of(ep).tags)
+  utest_val([1], fields_of(ep).counts)
 
 
 @utest_run
@@ -562,7 +679,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"flag":true}')
   ep = BoolEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(True, ep.fields.flag)
+  utest_val(True, fields_of(ep).flag)
 
 
 @utest_run
@@ -583,19 +700,17 @@ class Point:
 
 class NestedEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     point:Point
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.point}')
 
 
 class NestedListEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     points:list[Point]
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.points}')
 
 
@@ -605,7 +720,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"point":{"x":1,"y":2}}')
   ep = NestedEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Point(1, 2), ep.fields.point)
+  utest_val(Point(1, 2), fields_of(ep).point)
 
 
 @utest_run
@@ -614,7 +729,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"points":[{"x":1,"y":2},{"x":3,"y":4}]}')
   ep = NestedListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val([Point(1, 2), Point(3, 4)], ep.fields.points)
+  utest_val([Point(1, 2), Point(3, 4)], fields_of(ep).points)
 
 
 # List fields.
@@ -623,10 +738,9 @@ def _() -> None:
 
 class OptionalListEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     tags:list[str]|None
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.tags}')
 
 
@@ -648,7 +762,7 @@ def endpoint_body_fields(cls:type[Endpoint], body:str) -> dict[str,Any]:
   req = _urlencoded_request(body)
   ep = cls(req, path_params={})
   ep.prepare(req)
-  return {k: getattr(ep.fields, k) for k in ep._fields}
+  return {k: getattr(ep._fields_obj, k) for k in ep._fields}
 
 
 @utest_run
@@ -672,8 +786,8 @@ def _() -> None:
   req = _make_request(query=dict(tags=['a', 'b'], counts=['1', '2']))
   ep = ListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(['a', 'b'], ep.fields.tags)
-  utest_val([1, 2], ep.fields.counts)
+  utest_val(['a', 'b'], fields_of(ep).tags)
+  utest_val([1, 2], fields_of(ep).counts)
 
 
 @utest_run
@@ -682,8 +796,8 @@ def _() -> None:
   req = _make_request(query=dict(tags='a', counts='1'))
   ep = ListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(['a'], ep.fields.tags)
-  utest_val([1], ep.fields.counts)
+  utest_val(['a'], fields_of(ep).tags)
+  utest_val([1], fields_of(ep).counts)
 
 
 @utest_run
@@ -712,7 +826,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"tags":null}')
   ep = OptionalListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(None, ep.fields.tags)
+  utest_val(None, fields_of(ep).tags)
 
 
 @utest_run
@@ -724,8 +838,8 @@ def _() -> None:
   req = _make_request(query=dict(tags='\x00', counts='\x00'))
   ep = ListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val([], ep.fields.tags)
-  utest_val([], ep.fields.counts)
+  utest_val([], fields_of(ep).tags)
+  utest_val([], fields_of(ep).counts)
 
 
 @utest_run
@@ -751,7 +865,7 @@ def _() -> None:
   req = _multipart_request('boundary', marker)
   ep = OptionalListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val([], ep.fields.tags)
+  utest_val([], fields_of(ep).tags)
   req = _multipart_request('boundary', marker, value)
   ep = OptionalListEndpoint(req, path_params={})
   utest_exc(ResponseError, ep.prepare, req)
@@ -769,11 +883,11 @@ def _() -> None:
     req = _make_request(media_type='application/json', body=body)
     ep = OptionalListEndpoint(req, path_params={})
     ep.prepare(req)
-    utest_val(expected, ep.fields.tags)
+    utest_val(expected, fields_of(ep).tags)
   req = _make_request()
   ep = OptionalListEndpoint(req, path_params=dict(tags='\x00'))
   ep.prepare(req)
-  utest_val(['\x00'], ep.fields.tags)
+  utest_val(['\x00'], fields_of(ep).tags)
 
 
 @utest_run
@@ -804,10 +918,9 @@ def _() -> None:
 
 class UploadedFileEndpoint(Endpoint):
   max_body_bytes = 4096
-  class Fields:
+  class Get:
     file:UploadedFile
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.file.filename}')
 
 
@@ -818,8 +931,8 @@ def _() -> None:
   req = _multipart_request('boundary123', part)
   ep = UploadedFileEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val('hello.txt', ep.fields.file.filename)
-  utest_val(b'hello', ep.fields.file.data)
+  utest_val('hello.txt', fields_of(ep).file.filename)
+  utest_val(b'hello', fields_of(ep).file.data)
 
 
 @utest_run
@@ -841,10 +954,9 @@ def _() -> None:
 
 class MultiFileEndpoint(Endpoint):
   max_body_bytes = 8192
-  class Fields:
+  class Get:
     files:list[UploadedFile]
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.files}')
 
 
@@ -856,17 +968,16 @@ def _() -> None:
   req = _multipart_request('boundary123', part_a, part_b)
   ep = MultiFileEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(['a.txt', 'b.txt'], [f.filename for f in ep.fields.files])
-  utest_val([b'AAA', b'BBB'], [f.data for f in ep.fields.files])
+  utest_val(['a.txt', 'b.txt'], [f.filename for f in fields_of(ep).files])
+  utest_val([b'AAA', b'BBB'], [f.data for f in fields_of(ep).files])
 
 
 class MixedMultipartEndpoint(Endpoint):
   max_body_bytes = 8192
-  class Fields:
+  class Get:
     note:str
     file:UploadedFile
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.note}:{fields.file.filename}')
 
 
@@ -878,9 +989,9 @@ def _() -> None:
   req = _multipart_request('boundary123', text_part, file_part)
   ep = MixedMultipartEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val('hello', ep.fields.note)
-  utest_val('f.bin', ep.fields.file.filename)
-  utest_val(b'\x00\x01', ep.fields.file.data)
+  utest_val('hello', fields_of(ep).note)
+  utest_val('f.bin', fields_of(ep).file.filename)
+  utest_val(b'\x00\x01', fields_of(ep).file.data)
 
 
 # body_field mode: the whole parsed body fills a single named field.
@@ -888,30 +999,27 @@ def _() -> None:
 class ListBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Fields:
+  class Get:
     payload:list[int]
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.payload}')
 
 
 class IntBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Fields:
+  class Get:
     payload:int
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.payload}')
 
 
 class PointBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Fields:
+  class Get:
     payload:Point
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.payload}')
 
 
@@ -921,7 +1029,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'[1,2,3]')
   ep = ListBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val([1, 2, 3], ep.fields.payload)
+  utest_val([1, 2, 3], fields_of(ep).payload)
 
 
 @utest_run
@@ -930,7 +1038,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'42')
   ep = IntBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(42, ep.fields.payload)
+  utest_val(42, fields_of(ep).payload)
 
 
 @utest_run
@@ -939,7 +1047,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"x":1,"y":2}')
   ep = PointBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Point(1, 2), ep.fields.payload)
+  utest_val(Point(1, 2), fields_of(ep).payload)
 
 
 @utest_run
@@ -948,17 +1056,16 @@ def _() -> None:
   req = _urlencoded_request('x=1&y=2')
   ep = PointBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Point(1, 2), ep.fields.payload)
+  utest_val(Point(1, 2), fields_of(ep).payload)
 
 
 class MixedBodyFieldEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Fields:
+  class Get:
     payload:Point
     label:str
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.label}:{fields.payload}')
 
 
@@ -968,8 +1075,8 @@ def _() -> None:
   req = _make_request(query=dict(label='a'), media_type='application/json', body=b'{"x":1,"y":2}')
   ep = MixedBodyFieldEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val('a', ep.fields.label)
-  utest_val(Point(1, 2), ep.fields.payload)
+  utest_val('a', fields_of(ep).label)
+  utest_val(Point(1, 2), fields_of(ep).payload)
 
 
 @utest_run
@@ -983,9 +1090,9 @@ def _() -> None:
 def _make_bad_body_field_endpoint() -> type[Endpoint]:
   class BadBodyFieldEndpoint(Endpoint):
     body_field = 'payload'
-    class Fields:
+    class Get:
       other:int
-    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    def get(self, request:Request, fields:Get) -> Response:
       return Response(body='')
   return BadBodyFieldEndpoint
 
@@ -1005,10 +1112,9 @@ class BarePayload:
 class BarePayloadEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'payload'
-  class Fields:
+  class Get:
     payload:BarePayload
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.payload}')
 
 
@@ -1018,9 +1124,9 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"x":1,"y":2}')
   ep = BarePayloadEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(1, ep.fields.payload.x)
-  utest_val(2, ep.fields.payload.y)
-  utest_val('default', ep.fields.payload.note)
+  utest_val(1, fields_of(ep).payload.x)
+  utest_val(2, fields_of(ep).payload.y)
+  utest_val('default', fields_of(ep).payload.note)
 
 
 @utest_run
@@ -1064,10 +1170,9 @@ class ShapeBodyEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
   converters = {'shape': lambda raw: shape_transtructor.transtruct(Shape, raw)}
-  class Fields:
+  class Get:
     shape:Shape
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1077,7 +1182,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"kind":"circle","radius":3}')
   ep = ShapeBodyEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Circle(kind='circle', radius=3), ep.fields.shape)
+  utest_val(Circle(kind='circle', radius=3), fields_of(ep).shape)
 
 
 @utest_run
@@ -1086,17 +1191,16 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"kind":"rect","w":2,"h":3}')
   ep = ShapeBodyEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Rect(kind='rect', w=2, h=3), ep.fields.shape)
+  utest_val(Rect(kind='rect', w=2, h=3), fields_of(ep).shape)
 
 
 # Per-class transtructor customization via the prefigure/selector classmethod decorators.
 
 class PrefiguredPointEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     point:Point
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.point}')
 
 
@@ -1114,7 +1218,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"point":"3,4"}')
   ep = PrefiguredPointEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Point(3, 4), ep.fields.point)
+  utest_val(Point(3, 4), fields_of(ep).point)
 
 
 @utest_run
@@ -1128,10 +1232,9 @@ def _() -> None:
 class ShapeSelectorEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
-  class Fields:
+  class Get:
     shape:Shape
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1149,7 +1252,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"kind":"rect","w":4,"h":5}')
   ep = ShapeSelectorEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Rect(kind='rect', w=4, h=5), ep.fields.shape)
+  utest_val(Rect(kind='rect', w=4, h=5), fields_of(ep).shape)
 
 
 # Literal and alias field types: the field holds the precise type, so handlers need no cast.
@@ -1158,13 +1261,12 @@ type Order = Literal['asc','desc']
 
 
 class LiteralEndpoint(Endpoint):
-  class Fields:
+  class Get:
     order:Order
     rank:Literal[1,2]
     tag:Literal['a','b']|None
     counts:Annotated[list[int],'meta']
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     order:Order = fields.order # Statically precise; no cast required.
     return Response(body=f'{order},{fields.rank},{fields.tag},{fields.counts}')
 
@@ -1181,10 +1283,9 @@ utest_exc(ResponseError, endpoint_fields, LiteralEndpoint, order='asc', rank='1'
 
 class LiteralListEndpoint(Endpoint):
   max_body_bytes = 1024
-  class Fields:
+  class Get:
     kinds:list[Literal['a','b']]
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.kinds}')
 
 
@@ -1195,7 +1296,7 @@ def _() -> None:
   req = _make_request(media_type='application/x-www-form-urlencoded', body=body)
   ep = LiteralListEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(['a', 'b'], ep.fields.kinds)
+  utest_val(['a', 'b'], fields_of(ep).kinds)
 
 
 @utest_run
@@ -1212,10 +1313,9 @@ def _() -> None:
 class ShapeUnionEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
-  class Fields:
+  class Get:
     shape:Circle|Rect
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1233,7 +1333,7 @@ def _() -> None:
   req = _make_request(media_type='application/json', body=b'{"kind":"circle","radius":7}')
   ep = ShapeUnionEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(Circle(kind='circle', radius=7), ep.fields.shape)
+  utest_val(Circle(kind='circle', radius=7), fields_of(ep).shape)
 
 
 # A union of primitive members passes a matching raw value through unconverted.
@@ -1241,18 +1341,16 @@ def _() -> None:
 # and `int|float` rejects every str unless a selector chooses the member type to convert to.
 
 class IntStrUnionEndpoint(Endpoint):
-  class Fields:
+  class Get:
     val:int|str
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.val}')
 
 
 class IntFloatUnionEndpoint(Endpoint):
-  class Fields:
+  class Get:
     val:int|float
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.val}')
 
 
@@ -1261,10 +1359,9 @@ utest_exc(ResponseError, endpoint_fields, IntFloatUnionEndpoint, val='1') # A st
 
 
 class SelectedNumUnionEndpoint(Endpoint):
-  class Fields:
+  class Get:
     val:int|float
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.val}')
 
 
@@ -1282,10 +1379,9 @@ utest(dict(val=2.5), endpoint_fields, SelectedNumUnionEndpoint, val='2.5')
 class UnselectedShapeEndpoint(Endpoint):
   max_body_bytes = 1024
   body_field = 'shape'
-  class Fields:
+  class Get:
     shape:Circle|Rect
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.shape}')
 
 
@@ -1298,9 +1394,9 @@ utest_exc(TypeError, UnselectedShapeEndpoint, _make_request(), {}) # The same er
 def _() -> None:
   'Router: constructing a router resolves the converters of every registered endpoint.'
   class RouterResolvedEndpoint(Endpoint):
-    class Fields:
+    class Get:
       n:int
-    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    def get(self, request:Request, fields:Get) -> Response:
       return Response(body=f'{fields.n}')
   utest_val(False, RouterResolvedEndpoint._converters_resolved)
   Router({'/n': RouterResolvedEndpoint})
@@ -1311,9 +1407,9 @@ def _() -> None:
 
 def _make_callable_field_endpoint() -> type[Endpoint]:
   class CallableFieldEndpoint(Endpoint):
-    class Fields:
+    class Get:
       fn:Callable[[int],int]
-    def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+    def get(self, request:Request, fields:Get) -> Response:
       return Response(body='')
   return CallableFieldEndpoint
 
@@ -1327,10 +1423,9 @@ utest_exc(TypeError, Endpoint.selector, Point)
 
 
 class LateCustomizationEndpoint(Endpoint):
-  class Fields:
+  class Get:
     n:int
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'{fields.n}')
 
 
@@ -1340,54 +1435,64 @@ def _() -> None:
   req = _make_request(query=dict(n='1'))
   ep = LateCustomizationEndpoint(req, path_params={})
   ep.prepare(req)
-  utest_val(1, ep.fields.n)
+  utest_val(1, fields_of(ep).n)
   utest_exc(TypeError, LateCustomizationEndpoint.prefigure, Point)
 
 
-# methods class var: normalizes to _methods frozenset.
+# Accepted methods are derived from the handler methods defined; HEAD accompanies GET.
 
 class PostEndpoint(Endpoint):
-  methods = 'POST'
   max_body_bytes = 1024
-  class Fields:
+  class Post:
     name:str
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     return Response(body=fields.name)
 
 
 class MultiMethodEndpoint(Endpoint):
-  methods = ('GET', 'POST')
-  class Fields:
+  'A GET and POST handler sharing a route declare separate schemas.'
+  max_body_bytes = 1024
+  class Get:
     tag:str|None
-  fields:Fields
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
-    return Response(body=f'{fields.tag}')
+  class Post:
+    name:str
+    tag:str|None
+  def get(self, request:Request, fields:Get) -> Response:
+    return Response(body=f'get:{fields.tag}')
+  def post(self, request:Request, fields:Post) -> Response:
+    return Response(body=f'post:{fields.name},{fields.tag}')
 
 
 utest(frozenset({'POST'}), lambda: PostEndpoint._methods)
-utest(frozenset({'GET', 'POST'}), lambda: MultiMethodEndpoint._methods)
-utest(frozenset({'GET'}), lambda: IntEndpoint._methods) # Default is GET.
+utest(frozenset({'GET', 'HEAD', 'POST'}), lambda: MultiMethodEndpoint._methods)
+utest(frozenset({'GET', 'HEAD'}), lambda: IntEndpoint._methods)
 
 
-def _make_invalid_method_endpoint() -> type[Endpoint]:
-  class ConnectEndpoint(Endpoint):
-    methods = 'CONNECT'
-    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
-      return Response(body='')
-  return ConnectEndpoint
-
-utest_exc(TypeError, _make_invalid_method_endpoint)
+def dispatch(cls:type[Endpoint], req:Request) -> object:
+  ep = cls(req, path_params={})
+  ep.prepare(req)
+  return ep.handle_request(req).body
 
 
-def _make_empty_methods_endpoint() -> type[Endpoint]:
-  class EmptyMethodsEndpoint(Endpoint):
-    methods = ()
-    def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
-      return Response(body='')
-  return EmptyMethodsEndpoint
+@utest_run
+def _() -> None:
+  'Endpoint: each method fills its own fields class and dispatches to its handler.'
+  utest_val(b'get:None', dispatch(MultiMethodEndpoint, _method_request('GET')))
+  utest_val(b'get:x', dispatch(MultiMethodEndpoint, _method_request('GET', dict(tag='x'))))
+  utest_val(b'post:alice,None',
+    dispatch(MultiMethodEndpoint, _method_request('POST', media_type='application/json', body=b'{"name":"alice"}')))
+  # `name` is required by Post but unknown to Get.
+  utest_exc(ResponseError, dispatch, MultiMethodEndpoint, _method_request('POST', media_type='application/json', body=b'{}'))
+  utest_exc(ResponseError, dispatch, MultiMethodEndpoint, _method_request('GET', dict(name='alice')))
 
-utest_exc(TypeError, _make_empty_methods_endpoint)
+
+@utest_run
+def _() -> None:
+  'Endpoint: HEAD dispatches to get; other unhandled methods raise MethodNotAllowedError at construction.'
+  utest_val(b'get:x', dispatch(MultiMethodEndpoint, _method_request('HEAD', dict(tag='x'))))
+  utest_exc(MethodNotAllowedError, PostEndpoint, _method_request('GET'), {})
+  utest_exc(MethodNotAllowedError, PostEndpoint, _method_request('HEAD'), {})
+  utest_exc(MethodNotAllowedError, MultiMethodEndpoint, _method_request('DELETE'), {})
 
 
 # Router raises MethodNotAllowedError when the request method is not in the endpoint's _methods.
@@ -1397,40 +1502,49 @@ utest_exc(MethodNotAllowedError, Router({'/' : PostEndpoint}).resolve_handler, _
 
 @utest_run
 def _() -> None:
-  'Router: MethodNotAllowedError includes Allow header.'
-  try:
-    Router({'/' : PostEndpoint}).resolve_handler(_make_request())
-  except MethodNotAllowedError as exc:
-    assert exc.headers is not None
-    utest_val('POST', exc.headers.get('allow'))
-  else:
-    raise AssertionError('expected MethodNotAllowedError')
+  'Router: MethodNotAllowedError includes Allow header, listing HEAD alongside GET.'
+  for cls, method, allow in ((PostEndpoint, 'GET', 'POST'), (IntEndpoint, 'POST', 'GET, HEAD')):
+    try:
+      Router({'/' : cls}).resolve_handler(_method_request(method))
+    except MethodNotAllowedError as exc:
+      assert exc.headers is not None
+      utest_val(allow, exc.headers.get('allow'))
+    else:
+      raise AssertionError('expected MethodNotAllowedError')
+
+
+@utest_run
+def _() -> None:
+  'Router: a HEAD request resolves to an endpoint that defines get.'
+  req = _method_request('HEAD', dict(id='7'))
+  handler = Router({'/' : IntEndpoint}).resolve_handler(req)
+  utest_val(b'7', handler.handle_request(req).body)
 
 
 # Body size validation at construction (the content_length head check).
 
 def _make_body_request(*, content_length:int|None, headers:dict[str,str]|None=None) -> Request:
-  return Request(method='POST', scheme='http', host='localhost', port=80, path='/', query_str='id=1',
+  return Request(method='POST', scheme='http', host='localhost', port=80, path='/', query_str='name=a',
     headers=headers or {}, client_addr=('127.0.0.1', 0), content_length=content_length, conn=None)
 
 
 @utest_run
 def _() -> None:
   'Endpoint construction rejects a declared body larger than max_body_bytes.'
-  # IntEndpoint.max_body_bytes is 1024.
-  utest_exc(BodyTooLargeError, IntEndpoint, _make_body_request(content_length=2000), {})
+  # PostEndpoint.max_body_bytes is 1024.
+  utest_exc(BodyTooLargeError, PostEndpoint, _make_body_request(content_length=2000), {})
 
 
 @utest_run
 def _() -> None:
   'Endpoint construction allows a declared body within max_body_bytes.'
-  endpoint = IntEndpoint(_make_body_request(content_length=10), {})
-  utest_val(1, endpoint.fields.id)
+  endpoint = PostEndpoint(_make_body_request(content_length=10), {})
+  utest_val('a', fields_of(endpoint).name)
 
 
 @utest_run
 def _() -> None:
   'Endpoint construction allows a body with no declared length (content_length None, e.g. chunked); the size cap is'
   ' enforced later while reading.'
-  endpoint = IntEndpoint(_make_body_request(content_length=None, headers={'transfer-encoding': 'chunked'}), {})
-  utest_val(1, endpoint.fields.id)
+  endpoint = PostEndpoint(_make_body_request(content_length=None, headers={'transfer-encoding': 'chunked'}), {})
+  utest_val('a', fields_of(endpoint).name)

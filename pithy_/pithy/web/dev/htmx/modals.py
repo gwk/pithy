@@ -87,7 +87,7 @@ def user_detail() -> Div:
 class DevHtmxModals(Endpoint):
   'Demonstrates a shared edit modal updating independent views.'
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
     return dev_page(title='HTMX Modals',
       breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX'), ('/htmx/modals', 'Modals')],
       main=Main(H1('HTMX Modals'),
@@ -98,22 +98,22 @@ class DevHtmxModals(Endpoint):
 
 class UsersTableHtmx(Endpoint):
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmxResponse:
+  def get(self, request:Request, fields:NoFields) -> HtmxResponse:
     return HtmxResponse(users_table())
 
 
 class UserDetailHtmx(Endpoint):
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmxResponse:
+  def get(self, request:Request, fields:NoFields) -> HtmxResponse:
     return HtmxResponse(user_detail())
 
 
 class EditModalHtmx(Endpoint):
 
-  class Fields:
+  class Get:
     user_id:int
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> HtmxResponse:
+  def get(self, request:Request, fields:Get) -> HtmxResponse:
     user = get_user(fields.user_id)
     url = f'/htmx/modals/users/{user.id}/update.htmx'
     modal = Dialog.modal(
@@ -146,10 +146,9 @@ class EditModalHtmx(Endpoint):
 
 
 class UpdateUserHtmx(Endpoint):
-  methods = 'POST'
   max_body_bytes = 4096
 
-  class Fields:
+  class Post:
     user_id:int
     name:str|None
     role:str|None
@@ -157,7 +156,7 @@ class UpdateUserHtmx(Endpoint):
     privileges:list[Privilege]|None
     ui:UiMode|None
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> HtmxResponse:
+  def post(self, request:Request, fields:Post) -> HtmxResponse:
     provided = [f for f in (fields.name, fields.role, fields.vip, fields.privileges, fields.ui) if f is not None]
     if len(provided) != 1: raise BadRequestError('Provide exactly one field to update.')
     with users_lock:

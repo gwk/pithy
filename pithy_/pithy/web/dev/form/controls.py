@@ -2,12 +2,13 @@
 
 'Developer reference page demonstrating all standard HTML form controls using traditional forms.'
 
+from inspect import get_annotations
 from typing import Any
 
 from ....default import Default
 from ....html import Div, Form, H1, Input, Label, Main, Select, Span, Strong, TextArea
 from ....markup import MuChild
-from ...endpoint import Endpoint
+from ...endpoint import Endpoint, NoFields
 from ...request import Request, UploadedFile
 from ...response import Response
 from ..pages import dev_page
@@ -16,46 +17,59 @@ from ..pages import dev_page
 class DevControlsForm(Endpoint):
   'Demonstrates form controls.'
 
-  methods = ('GET', 'POST')
   max_body_bytes = 4096
 
-  class Fields:
-    text: str | None
-    email: str | None
-    hidden: str | None
-    number: str | None
-    password: str | None
-    tel: str | None
-    url: str | None
-    search: str | None
-    textarea: str | None
-    checkbox: str | None
-    checkbox_set: list[str] | None
-    radio: str | None
-    select: str | None
-    date: str | None
-    time: str | None
-    color: str | None
-    range: str | None
-    submit: str | None
-    datetime_local: str | None
-    select_multiple: list[str] | None
-    file: UploadedFile | None
+  class Post:
+    # Native form submission always sends text-like controls, possibly empty.
+    text:str
+    email:str
+    hidden:str
+    number:str
+    password:str
+    tel:str
+    url:str
+    search:str
+    textarea:str
+    date:str
+    time:str
+    datetime_local:str
+    color:str
+    range:str
+    checkbox:bool # pithy.js sends 'true' or 'false' for a bool checkbox; see `Input.bool_checkbox`.
+    checkbox_set:list[str] # pithy.js sends the NUL marker for an empty set, which fills the field as the empty list.
+    radio:str|None # A radio group with no selection is not sent.
+    select:str|None # The disabled placeholder option is not sent.
+    select_multiple:list[str]|None # A multiple select with no selection is not sent.
+    file:UploadedFile|None # An empty file input is skipped by the multipart parser.
 
-  def _items(self, fields:Fields) -> dict[str, str | list[str]]:
-    'Omit absent and empty-string values; an empty list is kept to show that an unchecked checkbox set posts as empty.'
-    return {name: v for name in self._fields if (v := getattr(fields, name)) is not None and v != ''}
+  def get(self, request:Request, fields:NoFields) -> Response:
+    return controls_page({})
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
-    values = self._items(fields)
-    main = Main(
-      H1('Form Controls'),
-      Div(cl='controls-demo-layout', _=[
-        controls_form(values),
-        posted_values_div(values),
-      ]))
-    return dev_page(title='Form Controls', main=main,
-      breadcrumbs=[('/', 'Home'), ('/form', 'Form'), ('/form/controls', 'Controls')])
+  def post(self, request:Request, fields:Post) -> Response:
+    return controls_page(posted_items(fields))
+
+
+def posted_items(fields:DevControlsForm.Post) -> dict[str,str|list[str]]:
+  'Display values for the posted fields, omitting absent and empty-string values; an empty list is kept.'
+  items:dict[str,str|list[str]] = {}
+  for name in get_annotations(DevControlsForm.Post):
+    val = getattr(fields, name)
+    if val is None or val == '': continue
+    if isinstance(val, bool): val = 'true' if val else 'false'
+    elif isinstance(val, UploadedFile): val = f'{val.filename} ({len(val.data)} bytes)'
+    items[name] = val
+  return items
+
+
+def controls_page(values:dict[str,str|list[str]]) -> Response:
+  main = Main(
+    H1('Form Controls'),
+    Div(cl='controls-demo-layout', _=[
+      controls_form(values),
+      posted_values_div(values),
+    ]))
+  return dev_page(title='Form Controls', main=main,
+    breadcrumbs=[('/', 'Home'), ('/form', 'Form'), ('/form/controls', 'Controls')])
 
 
 def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:

@@ -8,38 +8,37 @@ from ..response import TextResponse
 class Hello(Endpoint):
   'Returns a plain text greeting.'
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> TextResponse:
+  def get(self, request:Request, fields:NoFields) -> TextResponse:
     return TextResponse(body='hello')
 
 
 class EchoId(Endpoint):
   'Returns the matched integer id as plain text.'
 
-  class Fields:
+  class Get:
     id:int
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> TextResponse:
+  def get(self, request:Request, fields:Get) -> TextResponse:
     return TextResponse(body=f'id={fields.id}')
 
 
 class EchoName(Endpoint):
   'Returns the matched string name as plain text.'
 
-  class Fields:
+  class Get:
     name:str
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> TextResponse:
+  def get(self, request:Request, fields:Get) -> TextResponse:
     return TextResponse(body=f'name={fields.name}')
 
 
 class EchoBody(Endpoint):
   'Parses a urlencoded `name` field from the body'
 
-  methods = 'POST'
   max_body_bytes = 32
 
-  class Fields:
+  class Post:
     name:str
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> TextResponse:
+  def post(self, request:Request, fields:Post) -> TextResponse:
     return TextResponse(body=f'name={fields.name}')

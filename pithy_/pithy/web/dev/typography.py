@@ -10,7 +10,7 @@ from ..response import HtmlResponse
 from .pages import dev_page
 
 
-lorem = ('Endpoints declare an inner Fields class; the router fills a fresh instance from the path, query and body'
+lorem = ('Endpoints declare an inner fields class per HTTP method; the router fills a fresh instance from the path, query and body'
   ' parameters, rejecting requests that carry the wrong ones. The intent is that a handler receives values it can'
   ' use directly, rather than a bag of strings it must validate itself.')
 
@@ -18,7 +18,7 @@ lorem = ('Endpoints declare an inner Fields class; the router fills a fresh inst
 class DevTypography(Endpoint):
   'Baseline styling of headings, text, lists and code.'
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
     main = Main(
       H1('Typography'),
       P('Every element on this page is unstyled by the application: this is what ', Code('pithy.css'),
@@ -72,9 +72,9 @@ class DevTypography(Endpoint):
           P('A ', Code('code'), ' span is monospaced.'),
           Pre(Code("class Hello(Endpoint):\n"
             "  'Say hello.'\n\n"
-            "  class Fields:\n"
+            "  class Get:\n"
             "    name: str\n\n"
-            "  def handle_endpoint(self, request, fields):\n"
+            "  def get(self, request, fields):\n"
             "    return HtmlResponse(body=P(f'Hello, {fields.name}.'))\n")),
         ]),
 

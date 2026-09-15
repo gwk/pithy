@@ -10,7 +10,7 @@ from ..pages import dev_page
 class DevHtmxIndex(Endpoint):
   'Index of HTMX developer demos.'
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
     return dev_page(title='HTMX', breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX')],
       main=Main(H1('HTMX'), Ul(
         Li(A(href='/htmx/controls', _='HTMX Controls'), ': Standard HTML form controls using HTMX.'),

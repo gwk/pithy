@@ -45,7 +45,7 @@ def _table(wide:bool=False) -> Table:
 class DevTables(Endpoint):
   'Baseline styling of tables.'
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
     plain = _table().caption('Animals')
 
     collapsible = _table().caption('Animals')

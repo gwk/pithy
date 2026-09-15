@@ -64,7 +64,7 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
 class IndexHtml(Endpoint):
   'The pithy.web.dev index page.'
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> HtmlResponse:
+  def get(self, request:Request, fields:NoFields) -> HtmlResponse:
     main = Main(
       H1(site_name),
       P('A reference demo of the pithy.web stack.'))

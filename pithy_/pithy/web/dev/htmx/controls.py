@@ -17,7 +17,7 @@ class DevControlsHtmx(Endpoint):
   'Demonstrates HTMX controls.'
   max_body_bytes = 4096
 
-  def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:NoFields) -> Response:
     main = Main(
       H1('HTMX Controls'),
       Div(cl='controls-demo-layout', _=[
@@ -39,10 +39,9 @@ def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:
 
 class ControlsHtmxUpdate(Endpoint):
   'Handles any field update from the HTMX DevControls page.'
-  methods = 'POST'
   max_body_bytes = 4096
 
-  class Fields:
+  class Post:
     text: str | None
     email: str | None
     number: str | None
@@ -63,7 +62,7 @@ class ControlsHtmxUpdate(Endpoint):
     select_multiple: list[str] | None
     file: UploadedFile | None
 
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def post(self, request:Request, fields:Post) -> Response:
     for name in self._fields:
       val = getattr(fields, name)
       if val is None:

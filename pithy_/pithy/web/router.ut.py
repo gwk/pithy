@@ -14,23 +14,23 @@ from utest import utest, utest_exc, utest_run
 # Test endpoints.
 
 class EpHome(Endpoint):
-  def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:NoFields) -> Response:
     return Response(body='home')
 
 class EpAbout(Endpoint):
-  def handle_endpoint(self, request:Request, fields:NoFields) -> Response:
+  def get(self, request:Request, fields:NoFields) -> Response:
     return Response(body='about')
 
 class EpUser(Endpoint):
-  class Fields:
+  class Get:
     id:int
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'user:{fields.id}')
 
 class EpStatic(Endpoint):
-  class Fields:
+  class Get:
     p:str
-  def handle_endpoint(self, request:Request, fields:Fields) -> Response:
+  def get(self, request:Request, fields:Get) -> Response:
     return Response(body=f'files:{fields.p}')
 
 
