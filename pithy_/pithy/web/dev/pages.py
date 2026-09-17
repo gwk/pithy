@@ -5,6 +5,7 @@ from typing import Iterable, Sequence
 from ...html import A, Footer, H1, Header, Html, Main, Nav, P, Script
 from ...path import path_dir, path_join
 from ..endpoint import Endpoint
+from ..env import is_web_dbg
 from ..files import FilesHandler
 from ..request import Request
 from ..response import HtmlResponse
@@ -18,8 +19,6 @@ common_css_paths = (
   '/static/pithy/htmx.css',
   '/static/dev/dev.css',
 )
-
-htmx_src = '/static/pithy/htmx/htmx4.min.js'
 
 # The site navigation bar. Each entry is a (path, label) pair.
 nav_links = (
@@ -50,7 +49,7 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
   # pithy.js must not be deferred: it defines `once()`, which inline script elements call as they are parsed.
   head.append(Script(src='/static/pithy/pithy.js'))
   head.append(Script(src='/static/dev/dev.js'))
-  head.add_js(src=htmx_src)
+  head.add_js(src='/static/pithy/htmx/htmx4.js' if is_web_dbg() else '/static/pithy/htmx/htmx4.min.js')
   for js_path in js_paths:
     head.add_js(src=js_path)
 
