@@ -19,8 +19,8 @@ members = [
     "iotest",
     "legs",
     "pithy",
-    "pithytools",
     "tap-backblaze",
+    "taptools",
     "tolkien",
     "tomul",
     "utest",
@@ -743,24 +743,6 @@ requires-dist = [
 ]
 
 [[package]]
-name = "pithytools"
-source = { editable = "pithytools_" }
-dependencies = [
-    { name = "packaging" },
-    { name = "pillow" },
-    { name = "pithy" },
-    { name = "tolkien" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "packaging", specifier = ">=25.0" },
-    { name = "pillow", specifier = ">=12.0.0" },
-    { name = "pithy", editable = "pithy_" },
-    { name = "tolkien", editable = "tolkien_" },
-]
-
-[[package]]
 name = "playwright"
 version = "1.61.0"
 source = { registry = "https://pypi.org/simple" }
@@ -926,6 +908,24 @@ dependencies = [
 requires-dist = [
     { name = "pithy", editable = "pithy_" },
     { name = "requests", specifier = ">=2.34.2" },
+]
+
+[[package]]
+name = "taptools"
+source = { editable = "taptools_" }
+dependencies = [
+    { name = "packaging" },
+    { name = "pillow" },
+    { name = "pithy" },
+    { name = "tolkien" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "packaging", specifier = ">=25.0" },
+    { name = "pillow", specifier = ">=12.0.0" },
+    { name = "pithy", editable = "pithy_" },
+    { name = "tolkien", editable = "tolkien_" },
 ]
 
 [[package]]

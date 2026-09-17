@@ -189,7 +189,7 @@ class _FilesServing:
 
 
 class FilesApp(_FilesServing, WebApp):
-  'Serve a local directory as an entire web application, e.g. `pithytools serve_dir`.'
+  'Serve a local directory as an entire web application, e.g. `taptools serve_dir`.'
 
 
   def __init__(self, local_dir:str, prevent_client_caching:bool=False, map_bare_names_to_html:bool=False) -> None:

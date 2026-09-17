@@ -78,7 +78,7 @@ The pithy repository contains code for several python packages:
 * crafts: miscellaneous build tools.
 * iotest: a tool for writing process-based tests that specify text input and output.
 * legs: a lexer generator.
-* pithytools: a collection of command-line tools built on pithy.
+* taptools: a collection of command-line tools built on pithy.
 * tap_backblaze: Backblaze B2 integration.
 * tolkien: a simple parse token library, factored out as a minimal dependency for other tools.
 * utest: a simple unit test system.
@@ -100,9 +100,9 @@ pithy/ (the git/project root, not the package root)
   pithy_/ (the pithy intermediate)
     pyproject.toml
     pithy (the pithy package root)
-  pithytools_/
+  taptools_/
     pyproject.toml
-    pithytools/ (the pithytools package root)
+    taptools/ (the taptools package root)
   ...
 ```
 

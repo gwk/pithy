@@ -2,5 +2,5 @@
 
 {
   'cmd': ['timesheet', 'timesheet-test.txt'],
-  'links': {'pithytools_/test/timesheet-test.txt'},
+  'links': {'taptools_/test/timesheet-test.txt'},
 }

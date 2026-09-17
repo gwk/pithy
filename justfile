@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 # Packages are ordered by interdependencies.
-pkgs := 'tolkien tomul pithy utest iotest pithytools crafts wu legs tap_backblaze'
+pkgs := 'tolkien tomul pithy utest iotest taptools crafts wu legs tap_backblaze'
 
-pkg_srcs := 'tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest pithytools_/pithytools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze'
+pkg_srcs := 'tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze'
 
-pkg_tests_fast := 'pithy_/test pithytools_/test utest_/test'
+pkg_tests_fast := 'pithy_/test taptools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
 
 # Credentials for the tap_backblaze integration suite; the read-only key restores what the read-write key uploads.

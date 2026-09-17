@@ -2,7 +2,7 @@
 
 This repository contains the source code for several Python packages:
 * `pithy`: a utility library
-* `pithytools`: command line utilities
+* `taptools`: command line utilities
 * `crafts`: build tools
 * `iotest`: an integration test harness
 * `legs`: a lexer generator
@@ -55,7 +55,7 @@ Legs is a lexer generator. It is currently in an experimental state.
 
 
 ## Pithy Tools
-`pithytools` This is a set of miscellaneous command line tools. They were split out from `pithy` so that the core libary no longer installs command line executables.
+`taptools` This is a set of miscellaneous command line tools. They were split out from `pithy` so that the core libary no longer installs command line executables.
 
 
 ## Tolkien
