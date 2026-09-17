@@ -4,6 +4,7 @@ from typing import Literal
 
 from ...html import A, Button, Div, Form, H1, H2, HtmlNode, Input, Label, Li, Main, P, Pre, Section, Select, Ul
 from ..endpoint import Endpoint
+from ..env import is_web_dbg
 from ..request import Request
 from ..response import HtmlResponse, HtmxResponse
 from .pages import dev_page
@@ -55,8 +56,9 @@ class DevMarkdown(Endpoint):
     # Lock both typing and toolbar actions until the settings response is applied, including error responses.
     settings['hx-on::before:request'] = "document.getElementById('markdown-editor').inert = true;"
     settings['hx-on::finally:request'] = "document.getElementById('markdown-editor').inert = false;"
+    overtype_src = f'/static/pithy/overtype/overtype-webcomponent{"" if is_web_dbg() else ".min"}.js'
     return dev_page(title='Markdown Editor', breadcrumbs=[('/', 'Home'), ('/markdown', 'Markdown Editor')],
-      js_paths=['/static/pithy/overtype/overtype-webcomponent.min.js', '/static/dev/markdown.js'],
+      js_paths=[overtype_src, '/static/dev/markdown.js'],
       main=Main(H1('Markdown Editor'),
         P('Write Markdown and see the preview update as you type. Try different settings with the controls below.'),
         Div(cl='markdown-settings', _=[settings,
