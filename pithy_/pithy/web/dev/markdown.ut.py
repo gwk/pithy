@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from os import environ
+from unittest.mock import patch
 from urllib.parse import urlencode
 
 from lxml.html import fromstring
@@ -35,6 +37,13 @@ def _() -> None:
   document = fromstring(page)
   utest_val(1, len(document.xpath('//form[@id="markdown-settings"]')))
   utest_val(1, len(document.xpath('//div[@popover]//pre[@id="markdown-value"]')))
+  for debug, suffix in (('0', '.min'), ('1', '')):
+    with patch.dict(environ, WEB_DBG=debug):
+      body = router.resolve_handler(req).handle_request(req).body
+    assert isinstance(body, bytes)
+    scripts = fromstring(body).xpath('//script/@src')
+    for stem in ('htmx/htmx4', 'overtype/overtype-webcomponent'):
+      utest_val([f'/static/pithy/{stem}{suffix}.js'], [src for src in scripts if src.startswith(f'/static/pithy/{stem}')])
   for markdown in ('', '## My edits\n<script>"hello"</script> & \\n'):
     for enabled in (False, True):
       flag = str(enabled).lower() # Bool checkboxes always send 'true' or 'false'; see `Input.bool_checkbox`.
