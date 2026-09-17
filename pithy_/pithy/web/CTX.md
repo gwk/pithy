@@ -11,3 +11,15 @@ Goals:
 * reject weird requests with missing or extra parameters;
 * reduce boilerplate;
 * generally make development easier while remaining simple.
+
+## Browser Regression Tests
+
+Standalone browser regression pages live in `pithy_/test/web/`, relative to the repository root.
+When changing `pithy.js` or htmx integration, run the relevant pages in both Chromium and WebKit.
+These tests are not run by `just check` or `just typecheck-js`.
+
+Serve the repository root over HTTP and open each test page at its corresponding URL, such as `/pithy_/test/web/checkbox-inclusion.html`.
+The pages load the repository's JavaScript through relative paths, run automatically, and display `PASS` with a check count or `FAIL` with error details.
+
+* `checkbox-inclusion.html`: Checks boolean and set checkbox submission through `hx-include` and prefixed attributes, including inheritance, append behavior, disabled controls, and explicit value overrides. All test requests are canceled before transmission.
+* `collapsible-tables.html`: Checks collapse toggling, hidden rows, and listener preservation across htmx morphs.

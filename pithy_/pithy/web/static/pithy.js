@@ -141,18 +141,32 @@ function _configureCheckboxes() {
  * Look up an htmx attribute on `el`, following htmx 4 explicit inheritance:
  * `name` or `name:inherited` on the element itself, else `name:inherited` on the nearest ancestor,
  * with `name:append` (or `name:inherited:append`) joined onto the inherited value.
- * `htmx.config.implicitInheritance` and `htmx.config.prefix` are not supported.
+ * Accept both `hx-` and `htmx.config.prefix` (normally `data-hx-`), preferring `hx-` when both are present.
+ * `htmx.config.implicitInheritance` and `htmx.config.metaCharacter` are not supported.
  * This mirrors the private `#attributeValue` in htmx4.js, which has no public equivalent; keep them in sync.
  * @param {Element} el
  * @param {string} name
  * @returns {string|null}
  */
 function _hxAttributeValue(el, name) {
-  const direct = el.getAttribute(name) ?? el.getAttribute(name + ':inherited');
+  const prefix = _htmx.config.prefix;
+  /** @param {string} attr */
+  const names = attr => prefix ? [attr, attr.replace('hx-', prefix)] : [attr];
+  /** @param {string} attr */
+  const value = attr => {
+    for (const spelling of names(attr)) {
+      const val = el.getAttribute(spelling);
+      if (val !== null) return val;
+    }
+    return null;
+  };
+  const direct = value(name) ?? value(name + ':inherited');
   if (direct !== null) return direct;
-  const parent = el.parentElement?.closest(`[${CSS.escape(name + ':inherited')}],[${CSS.escape(name + ':inherited:append')}]`);
+  const selector = [...names(name + ':inherited'), ...names(name + ':inherited:append')]
+    .map(attr => `[${CSS.escape(attr)}]`).join(',');
+  const parent = el.parentElement?.closest(selector);
   const inherited = parent ? _hxAttributeValue(parent, name) : null;
-  const append = el.getAttribute(name + ':append') ?? el.getAttribute(name + ':inherited:append');
+  const append = value(name + ':append') ?? value(name + ':inherited:append');
   if (append === null) return inherited;
   return inherited ? inherited + ',' + append : append;
 }

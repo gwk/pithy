@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. -->
+<meta charset="utf-8">
+<title>Checkbox inclusion regression tests</title>
+<script src="../../pithy/web/static/pithy.js"></script>
+<script defer src="../../pithy/web/static/htmx/htmx4.js"></script>
+<pre id="results">Running...</pre>
+<div id="fixture"></div>
+<script>
+// Serve the pithy repository root and open this page in a browser. All test requests are canceled before transmission.
+addEventListener('DOMContentLoaded', async () => {
+  const results = [];
+  const fixture = document.querySelector('#fixture');
+  const originalPrefix = htmx.config.prefix;
+  const bool = '<input id="flag" name="flag" type="checkbox" data-pithy-checkbox="bool">';
+  const set = '<div id="choices"><input name="tags" type="checkbox" value="a" data-pithy-checkbox="set">' +
+    '<input name="tags" type="checkbox" value="b" data-pithy-checkbox="set"></div>';
+  let captured;
+  function intercept(event) {
+    captured = [...event.detail.ctx.request.body.entries()];
+    event.preventDefault();
+  }
+  document.body.addEventListener('htmx:config:request', intercept);
+  async function check(label, html, expected, values) {
+    fixture.innerHTML = html;
+    captured = undefined;
+    await htmx.ajax('POST', '/checkbox-test-never-send', {source: fixture.querySelector('button'), values});
+    if (JSON.stringify(captured) !== JSON.stringify(expected)) {
+      throw new Error(label + ': expected ' + JSON.stringify(expected) + '; received ' + JSON.stringify(captured));
+    }
+    results.push(label);
+  }
+  try {
+    for (const attr of ['hx-include', 'data-hx-include']) {
+      const button = '<button type="button" ' + attr + '="#flag">Test</button>';
+      await check(attr + ' unchecked bool', bool + button, [['flag', 'false']]);
+      await check(attr + ' checked bool', bool.replace('type=', 'checked type=') + button, [['flag', 'true']]);
+      await check(attr + ' disabled bool', bool.replace('type=', 'disabled type=') + button, []);
+      await check(attr + ' disabled fieldset', '<fieldset disabled>' + bool + '</fieldset>' + button, []);
+      await check(attr + ' explicit value', bool + button, [['flag', 'override']], {flag: 'override'});
+      await check(attr + ' hx-vals', bool + button.replace('type=', 'hx-vals=\'{"flag":"override"}\' type='),
+        [['flag', 'override']]);
+      const setButton = '<button type="button" ' + attr + '="#choices">Test</button>';
+      await check(attr + ' empty set', set + setButton, [['tags', '\x00']]);
+      await check(attr + ' selected set', set.replaceAll('type=', 'checked type=') + setButton,
+        [['tags', 'a'], ['tags', 'b']]);
+      await check(attr + ' inherited', bool + '<div ' + attr + ':inherited="#flag"><button>Test</button></div>',
+        [['flag', 'false']]);
+      await check(attr + ' inherited append', bool + set + '<div hx-include:inherited="#flag"><div ' +
+        attr + ':inherited:append="#choices"><button>Test</button></div></div>', [['flag', 'false'], ['tags', '\x00']]);
+    }
+    await check('Mixed inherited and appended spellings', bool + set +
+      '<div data-hx-include:inherited="#flag"><button hx-include:append="#choices">Test</button></div>',
+      [['flag', 'false'], ['tags', '\x00']]);
+    await check('Unprefixed attribute takes precedence', bool + set +
+      '<button hx-include="#flag" data-hx-include="#choices">Test</button>', [['flag', 'false']]);
+    await check('Direct alias overrides inherited attribute', bool + set +
+      '<div hx-include:inherited="#choices"><button data-hx-include="#flag">Test</button></div>', [['flag', 'false']]);
+    await check('Native checkbox remains native', bool.replace('data-pithy-checkbox="bool"', '') +
+      '<button data-hx-include="#flag">Test</button>', []);
+    htmx.config.prefix = 'custom-hx-';
+    await check('Configured prefix', bool + '<button custom-hx-include="#flag">Test</button>', [['flag', 'false']]);
+    htmx.config.prefix = '';
+    await check('Prefix disabled', bool + '<button hx-include="#flag">Test</button>', [['flag', 'false']]);
+    document.querySelector('#results').textContent = 'PASS: ' + results.length + ' checks\n' + results.join('\n');
+  } catch (error) {
+    document.querySelector('#results').textContent = 'FAIL: ' + error.stack;
+    throw error;
+  } finally {
+    htmx.config.prefix = originalPrefix;
+    document.body.removeEventListener('htmx:config:request', intercept);
+    fixture.replaceChildren();
+  }
+});
+</script>
