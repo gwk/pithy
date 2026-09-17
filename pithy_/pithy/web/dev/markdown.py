@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from ...html import Button, Div, Form, H1, HtmlNode, Input, Label, Main, P, Pre, Select
+from ...html import A, Button, Div, Form, H1, H2, HtmlNode, Input, Label, Li, Main, P, Pre, Section, Select, Ul
 from ..endpoint import Endpoint
 from ..request import Request
 from ..response import HtmlResponse, HtmxResponse
@@ -56,17 +56,33 @@ class DevMarkdown(Endpoint):
     settings['hx-on::before:request'] = "document.getElementById('markdown-editor').inert = true;"
     settings['hx-on::finally:request'] = "document.getElementById('markdown-editor').inert = false;"
     return dev_page(title='Markdown Editor', breadcrumbs=[('/', 'Home'), ('/markdown', 'Markdown Editor')],
-      js_paths=['/static/pithy/overtype/overtype-webcomponent.min.js'],
+      js_paths=['/static/pithy/overtype/overtype-webcomponent.min.js', '/static/dev/markdown.js'],
       main=Main(H1('Markdown Editor'),
-        P('Write Markdown, then try different settings. Use the editor toolbar to switch between editing and preview.'),
+        P('Write Markdown and see the preview update as you type. Try different settings with the controls below.'),
         Div(cl='markdown-settings', _=[settings,
-          Button('Show Markdown value', type='button', hx_post='/markdown/value.htmx', hx_target='#markdown-value',
+          Button('Show Markdown source', type='button', popovertarget='markdown-source-popover',
+            hx_post='/markdown/value.htmx', hx_target='#markdown-value',
             hx_swap='innerHTML', hx_vals="js:{markdown: document.getElementById('markdown-editor').getValue()}"),
         ]),
-        Pre(id='markdown-value', aria_label='Markdown value', aria_live='polite'),
-        markdown_editor(markdown=sample_markdown),
-        P('Settings changes may reset undo history and selection. OverType 2.4.2 also has a known issue with literal '
-          'backslash escape sequences when settings change.')))
+        Div(cl='markdown-layout', _=[
+          Section(H2('Editor'), markdown_editor(markdown=sample_markdown)),
+          Section(H2('Preview', id='markdown-preview-heading'),
+            Div(id='markdown-preview', aria_labelledby='markdown-preview-heading')),
+        ]),
+        Div(id='markdown-source-popover', cl='panel flow', popover='', role='dialog',
+          aria_labelledby='markdown-source-heading', _=[
+            H2('Markdown source', id='markdown-source-heading'),
+            P('The editor value posted through HTMX and returned by the server as plain text.'),
+            Pre(id='markdown-value', aria_label='Markdown source', aria_live='polite'),
+            Button('Close', type='button', popovertarget='markdown-source-popover', popovertargetaction='hide', autofocus=''),
+          ]),
+        Ul(cl='font-small', _=[
+          Li('Settings changes may reset undo history and selection.'),
+          Li('OverType 2.4.2 has a ', A('known issue', href='https://github.com/panphora/overtype/issues/123'),
+            r': when settings rebuild the editor, it converts literal \n, \r, and \t sequences into newline, '
+            'carriage return, and tab characters, which can alter the Markdown.'),
+          Li('Preview checkboxes are read-only in this demo. They can be made interactive by updating the corresponding '
+            'Markdown task markers when clicked.')])))
 
 
 class MarkdownSettingsHtmx(Endpoint):
