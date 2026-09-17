@@ -718,6 +718,21 @@ ol.json-array { list-style-type: decimal; }
 }
 
 
+/* Popover panels. Set --popover-width for content that needs a wider view. */
+
+.panel[popover] {
+  width: min(var(--popover-width, 24rem), calc(100% - 2 * var(--page-padding)));
+  max-height: calc(100dvh - 2 * var(--page-padding));
+  margin: auto;
+  overflow: auto;
+}
+
+.panel[popover]::backdrop {
+  background-color: rgb(0 0 0 / 0.15);
+  backdrop-filter: blur(3px);
+}
+
+
 /* Modal panes. */
 
 dialog.modal {

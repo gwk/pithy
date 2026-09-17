@@ -26,16 +26,6 @@ body > nav a.current-nav-section-link {
 
 .controls-demo-layout > .panel { margin-top: 1em; }
 
-.controls-demo-popover {
-  max-width: min(24rem, calc(100% - 2 * var(--page-padding)));
-  margin: auto;
-}
-
-.controls-demo-popover::backdrop {
-  background-color: rgb(0 0 0 / 0.15);
-  backdrop-filter: blur(3px);
-}
-
 .footnote-ref a { text-decoration: none; }
 .footnote-ref a:hover { text-decoration: underline; }
 
@@ -48,7 +38,9 @@ body > nav a.current-nav-section-link {
 
 .markdown-settings { margin-bottom: 1em; }
 
-#markdown-value:empty { display: none; }
+#markdown-source-popover {
+  --popover-width: 48rem;
+}
 
 #markdown-value {
   white-space: pre-wrap;
@@ -56,4 +48,37 @@ body > nav a.current-nav-section-link {
 }
 
 /* Override the component's percentage host height so it participates in normal page flow. */
-#markdown-editor { height: auto; }
+#markdown-editor {
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.markdown-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  gap: var(--flow-gap);
+}
+
+.markdown-layout > section { min-width: 0; }
+
+#markdown-preview {
+  overflow-wrap: anywhere;
+}
+
+/* OverType's rendered HTML includes editing markers; hide them in the output preview. */
+#markdown-preview :is(.syntax-marker, .code-fence) { display: none; }
+#markdown-preview .code-block { white-space: pre-wrap; }
+#markdown-preview .task-list { list-style: none; }
+#markdown-preview .blockquote {
+  border-left: 2px solid var(--border);
+  padding-left: 1em;
+  color: var(--fg-muted);
+}
+#markdown-preview .hr-marker {
+  display: block;
+  border-top: 1px solid var(--border);
+  font-size: 0;
+  margin-block: 1rem;
+}
