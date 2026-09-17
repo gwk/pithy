@@ -19,6 +19,21 @@ from utest import utest, utest_run, utest_val
 program = Path(__file__).resolve().with_name('keybindings.py')
 
 
+def skip_without_pty(test_name:str) -> bool:
+  '''
+  Return True after printing a warning if pty allocation is denied.
+  The Claude command sandbox denies write access to `/dev/ptmx`; this is a known limitation of that sandbox only.
+  Probe `os.openpty` directly because `pty.openpty` masks the EPERM as 'out of pty devices'.
+  '''
+  try: master, slave = os.openpty()
+  except PermissionError:
+    print(f'warning: {test_name} skipped: pty allocation denied; known limitation of the Claude sandbox only.', file=sys.stderr)
+    return True
+  os.close(master)
+  os.close(slave)
+  return False
+
+
 @utest_run
 def test_live_bindings() -> None:
   'The wrapper captures changes absent from startup files, including custom maps and macros.'
@@ -54,6 +69,7 @@ def test_live_bindings() -> None:
 @utest_run
 def test_startup_and_terminal_restoration() -> None:
   'Read a configured shell without leaving its stty changes on the caller terminal.'
+  if skip_without_pty('test_startup_and_terminal_restoration'): return
   with TemporaryDirectory() as directory:
     root = Path(directory)
     (root / '.zshrc').write_text('''\
@@ -105,6 +121,7 @@ def test_invalid_snapshot() -> None:
 @utest_run
 def test_controlling_terminal() -> None:
   'An interactive collector must not take foreground ownership from the reporting process.'
+  if skip_without_pty('test_controlling_terminal'): return
   with TemporaryDirectory() as directory:
     (Path(directory) / '.zshrc').write_text("bindkey '^S' controlling-terminal-widget\nstty -ixon\n")
     probe = '''\
