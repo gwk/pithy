@@ -19,8 +19,24 @@ list-recipes:
 list-packages:
   @echo {{pkgs}}
 
+# Build all packages.
 build:
   sh/build.sh {{pkgs}}
+
+# Read the current version directly from package source.
+[positional-arguments]
+version package:
+  @python3 -I sh/extract-version.py "$@"
+
+# Build and publish to test or prod; pass -republish to allow the latest published version.
+[positional-arguments]
+publish stage package *flags:
+  sh/publish.sh "$@"
+
+# Install and check a published release; optionally name extra modules to import.
+[positional-arguments]
+validate-published stage package *imports:
+  python3 -I sh/validate-published.py "$@"
 
 check: check-uv-lock check-pyproject check-context isort lint typecheck test
 
@@ -60,7 +76,7 @@ gen:
   make gen
 
 isort:
-  uv run isort {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
+  uv run isort {{pkg_srcs}} ops sh tap_backblaze_/test-integration test-diff tools
 
 install:
   sh/install.sh {{pkgs}}
