@@ -44,7 +44,7 @@ def misc_page(values:dict[str,str|list[str]]) -> Response:
           Label('button'),
           Input(type='button', value='Toggle popover', popovertarget='example-popover'),
         ]),
-        Div(id='example-popover', cl='controls-demo-popover panel flow', popover='', _=[
+        Div(id='example-popover', cl='panel flow', popover='', _=[
           P('This popover uses native HTML without JavaScript.'),
           Button(type='button', popovertarget='example-popover', popovertargetaction='hide', _='Close'),
         ]),

@@ -34,7 +34,7 @@ def _() -> None:
   assert isinstance(page, bytes)
   document = fromstring(page)
   utest_val(1, len(document.xpath('//form[@id="markdown-settings"]')))
-  utest_val(1, len(document.xpath('//pre[@id="markdown-value"]/following-sibling::overtype-editor')))
+  utest_val(1, len(document.xpath('//div[@popover]//pre[@id="markdown-value"]')))
   for markdown in ('', '## My edits\n<script>"hello"</script> & \\n'):
     for enabled in (False, True):
       flag = str(enabled).lower() # Bool checkboxes always send 'true' or 'false'; see `Input.bool_checkbox`.
