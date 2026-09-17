@@ -1,0 +1,84 @@
+[project]
+license = "CC0-1.0"
+readme = "readme.md"
+authors = [
+  { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+  "version",
+]
+name = "taptools"
+description = "Taptools is a collection of comamnd line utilities that depend on the `pithy` package."
+requires-python = ">=3.14"
+dependencies = [
+  "packaging >= 25.0",
+  "pillow >= 12.0.0",
+  "pithy",
+  "tolkien",
+]
+keywords = []
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/taptools#readme"
+
+[tool.uv.sources]
+pithy = { workspace = true }
+tolkien = { workspace = true }
+
+[project.scripts]
+add = "taptools.bin.add:main"
+conv-img = "taptools.bin.conv_img:main"
+count-ext = "taptools.bin.count_ext:main"
+crawl = "taptools.bin.crawl:main"
+deps-audit = "taptools.bin.deps_audit:main"
+digest = "taptools.bin.digest:main"
+fmt-pithy-logs = "taptools.bin.fmt_pithy_logs:main"
+gen-password = "taptools.bin.gen_password:main"
+html-check = "taptools.bin.html_check:main"
+html-esc = "taptools.bin.html_esc:main"
+html-extract = "taptools.bin.html_extract:main"
+html-view = "taptools.bin.html_view:main"
+json-fmt = "taptools.bin.json_fmt:main"
+json-fmt-in-place = "taptools.bin.json_fmt_in_place:main"
+json-schema = "taptools.bin.json_schema:main"
+json-view = "taptools.bin.json_view:main"
+lc-ext = "taptools.bin.lc_ext:main"
+lc-name = "taptools.bin.lc_name:main"
+keybindings = "taptools.bin.keybindings:main"
+oq = "taptools.bin.oq:main"
+pack = "taptools.bin.pack:main"
+pat = "taptools.bin.pat:main"
+py-lldb = "taptools.bin.py_lldb:main"
+py-profile = "taptools.bin.py_profile:main"
+pyt-fmt = "taptools.bin.pyt_fmt:main"
+reindent4to2 = "taptools.bin.reindent4to2:main"
+rename-files = "taptools.bin.rename_files:main"
+same-same = "taptools.bin.same_same:main"
+serve-dir = "taptools.bin.serve_dir:main"
+sqlite-diff = "taptools.bin.sqlite_diff:main"
+summarize-syntax = "taptools.bin.summarize_syntax:main"
+tab = "taptools.bin.tab:main"
+time-runs = "taptools.bin.time_runs:main"
+timesheet = "taptools.bin.timesheet:main"
+watch-systemd-units = "taptools.bin.watch_systemd_units:main"
+xcproj = "taptools.bin.xcproj:main"
+
+[tool.flit.sdist]
+exclude = [
+  "**/AGENT.md",
+  "**/AGENTS.md",
+  "**/CLAUDE.md",
+  "**/CTX.md",
+]
+
+[build-system]
+requires = [
+  "flit_core >= 4.0.2, < 5",
+]
+build-backend = "flit_core.buildapi"

@@ -3,8 +3,8 @@
 'Audit dependencies for various package managers.'
 
 from pithy.argparser import CommandParser
-from pithytools.deps_audit.brew import main_brew
-from pithytools.deps_audit.pip import main_pip
+from taptools.deps_audit.brew import main_brew
+from taptools.deps_audit.pip import main_pip
 
 
 def main() -> None:

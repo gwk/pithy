@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from pithytools.bin.keybindings import (Binding, decode_key, Keybindings, keystrokes, mode_bindings, parse_bindings, table_rows,
+from taptools.bin.keybindings import (Binding, decode_key, Keybindings, keystrokes, mode_bindings, parse_bindings, table_rows,
   ZshState)
 from utest import utest, utest_run, utest_val
 

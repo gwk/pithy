@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pithytools.bin.watch_systemd_units import (classify_record, default_since, interrupt_exit_code, level_for_priority,
+from taptools.bin.watch_systemd_units import (classify_record, default_since, interrupt_exit_code, level_for_priority,
   parse_message_key_specs, parse_ready_specs, parse_show_output, parse_systemd_timestamp, unit_name, UnitStatus,
   WatchSystemdUnitsCmd)
 from utest import utest, utest_val
