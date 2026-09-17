@@ -4,7 +4,7 @@
 Token and Source classes for implementing lexers and parsers.
 '''
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
 from bisect import bisect_right
