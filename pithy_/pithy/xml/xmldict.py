@@ -21,7 +21,7 @@ In either case the text is omitted if it is empty,
 and the children list is omitted if the node has no children.
 
 '-' is a good choice for the children_key because it is not a legal XML name; see: https://www.w3.org/TR/xml/#NT-Name.
-All XML comments are discarded.
+XML comments are discarded unless `comment_tag` is supplied.
 
 '_' is another option, because it is unlikely to be used as an XML attribute name but is a legal python attribute,
 so it can be used to transtruct directly to python datatypes.
@@ -32,8 +32,7 @@ The tag is always first, followed by sorted attributes, followed by the children
 
 from dataclasses import dataclass
 from typing import Any, Callable
-
-from lxml.etree import _Element as LxmlElement, Comment, fromstring as parse_xml_data, QName, XMLSyntaxError
+from xml.etree.ElementTree import Comment, Element, fromstring as parse_xml_data, ParseError, QName, TreeBuilder, XMLParser
 
 from ..exceptions import DeleteNode, FlattenNode, OmitNode
 
@@ -59,34 +58,34 @@ class XmlDictParser:
   comment_tag:str = ''
 
 
-  def parse(self, xml:str|bytes|LxmlElement) -> XmlDict:
+  def parse(self, xml:str|bytes|Element) -> XmlDict:
     '''
-    Build a generic XML tree from an XML string, bytes or lxml.etree.Element.
+    Build a generic XML tree from an XML string, bytes or xml.etree.ElementTree.Element.
     Note that any text or tail on the root element is discarded.
     '''
     if isinstance(xml, (str,bytes)):
-      try: xml = parse_xml_data(xml)
-      except XMLSyntaxError as e:
+      try: xml = parse_xml_data(xml, parser=XMLParser(target=TreeBuilder(insert_comments=True, insert_pis=True)))
+      except ParseError as e:
         raise XmlError(str(e)) from e
-    assert isinstance(xml, LxmlElement)
+    assert isinstance(xml, Element)
     return self._build_from_etree(xml)
 
 
-  def parse_interleaved(self, xml:str|bytes|LxmlElement) -> XmlInterleavedDict:
+  def parse_interleaved(self, xml:str|bytes|Element) -> XmlInterleavedDict:
     '''
-    Build a generic XML tree from an XML string, bytes or lxml.etree.Element.
+    Build a generic XML tree from an XML string, bytes or xml.etree.ElementTree.Element.
     Text and tail values are interleaved with child elements.
     '''
     if isinstance(xml, (str,bytes)):
-      try: xml = parse_xml_data(xml)
-      except XMLSyntaxError as e:
+      try: xml = parse_xml_data(xml, parser=XMLParser(target=TreeBuilder(insert_comments=True, insert_pis=True)))
+      except ParseError as e:
         raise XmlError(str(e)) from e
-    assert isinstance(xml, LxmlElement)
+    assert isinstance(xml, Element)
     return self._build_interleaved_from_etree(xml)
 
 
 
-  def _build_from_etree(self, el:LxmlElement) -> XmlDict:
+  def _build_from_etree(self, el:Element) -> XmlDict:
     'Recursive helper method for parse.'
     tag = convert_etree_tag_to_str(el.tag, self.comment_tag)
     res:XmlDict = {'': tag}
@@ -104,7 +103,7 @@ class XmlDictParser:
     return res
 
 
-  def _build_interleaved_from_etree(self, el:LxmlElement) -> XmlInterleavedDict:
+  def _build_interleaved_from_etree(self, el:Element) -> XmlInterleavedDict:
     'Recursive helper method for parse_interleaved.'
     tag = convert_etree_tag_to_str(el.tag, self.comment_tag)
     res:XmlInterleavedDict = {'': tag}
@@ -129,7 +128,7 @@ def convert_etree_tag_to_str(tag:str|bytes|bytearray|QName|Callable, comment_tag
   match tag:
     case str(): return tag
     case bytes()|bytearray(): return tag.decode()
-    case QName(): return tag.text
+    case QName(): return str(tag)
     case _:
       if tag == Comment: # Note: `Comment` is a function object, not a type
         if comment_tag:
