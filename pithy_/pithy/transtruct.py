@@ -294,12 +294,7 @@ class Transtructor:
           e.add_note(f'note: argument {idx} (field {name!r}) of {class_}')
           raise
       if is_bare: return _instantiate_bare(class_, constructor_annotations, dict(zip(constructor_annotations, typed_args)))
-      try:
-        if is_type_namedtuple(class_):
-          # For named tuple types, the args are passed as a single iterable.
-          return class_(typed_args) # type: ignore[call-arg]
-        else:
-          return class_(*typed_args)
+      try: return class_(*typed_args)
       except TypeError as e:
         raise TranstructorError(e, class_, typed_args) from e
 

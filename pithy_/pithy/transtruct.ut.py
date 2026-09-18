@@ -92,6 +92,12 @@ utest(nt1, ttor.transtruct, NT1, ntu1)
 utest(ntu1, ttor.transtruct, NTU1, dc1)
 utest(ntu1, ttor.transtruct, NTU1, nt1)
 
+# Positional sequence input.
+utest(dc1, ttor.transtruct, DC1, [1, 'a'])
+utest(nt1, ttor.transtruct, NT1, [1, 'a'])
+utest(nt1, ttor.transtruct, NT1, (1, 'a'))
+utest(ntu1, ttor.transtruct, NTU1, [1, 'a'])
+
 
 utest([dc1], ttor.transtruct, list[DC1], [nt1])
 utest([dc1], ttor.transtruct, list[DC1], [ntu1])
