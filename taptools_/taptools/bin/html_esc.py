@@ -4,5 +4,9 @@ from html import escape
 from sys import argv
 
 
-for arg in argv[1:]:
-  print(escape(arg, quote=True))
+def main() -> None:
+  for arg in argv[1:]:
+    print(escape(arg, quote=True))
+
+
+if __name__ == '__main__': main()
