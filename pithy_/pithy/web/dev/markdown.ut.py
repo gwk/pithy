@@ -35,13 +35,15 @@ def _() -> None:
   page = router.resolve_handler(req).handle_request(req).body
   assert isinstance(page, bytes)
   document = fromstring(page)
-  utest_val(1, len(document.xpath('//form[@id="markdown-settings"]')))
-  utest_val(1, len(document.xpath('//div[@popover]//pre[@id="markdown-value"]')))
+  utest_val(1, sum(el.get('id') == 'markdown-settings' for el in document.iter('form')))
+  source_blocks = {el for div in document.iter('div') if 'popover' in div.attrib
+    for el in div.iter('pre') if el.get('id') == 'markdown-value'}
+  utest_val(1, len(source_blocks))
   for debug, suffix in (('0', '.min'), ('1', '')):
     with patch.dict(environ, WEB_DBG=debug):
       body = router.resolve_handler(req).handle_request(req).body
     assert isinstance(body, bytes)
-    scripts = fromstring(body).xpath('//script/@src')
+    scripts = [el.attrib['src'] for el in fromstring(body).iter('script') if 'src' in el.attrib]
     for stem in ('htmx/htmx4', 'overtype/overtype-webcomponent'):
       utest_val([f'/static/pithy/{stem}{suffix}.js'], [src for src in scripts if src.startswith(f'/static/pithy/{stem}')])
   for markdown in ('', '## My edits\n<script>"hello"</script> & \\n'):
