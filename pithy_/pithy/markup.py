@@ -27,11 +27,6 @@ from .reprs import repr_lim
 from .strings import EscapedStr
 
 
-# If lxml is available, import the special Comment value that is used as the tag for comments.
-try: from lxml.etree import Comment
-except ImportError: Comment = object() # type: ignore[assignment] # Comment is a cyfunction; fall back to a dummy object.
-
-
 _T = TypeVar('_T')
 
 # Attr values are currently Any so that we can preserve exact numerical values and pass lists/dicts as JSON.
@@ -300,10 +295,10 @@ class Mu:
   def from_etree(cls:type['Mu'], el:Element) -> 'Mu':
     '''
     Create a Mu object (possibly subclass by tag) from a standard library element tree.
-    Standard-library and lxml comments become nodes with a '!COMMENT' tag.
+    Standard-library comments become nodes with a '!COMMENT' tag.
     '''
     tag = el.tag
-    if tag is XmlComment or tag is Comment: tag = '!COMMENT' # type: ignore[unreachable] # Comment tags are function objects.
+    if tag is XmlComment: tag = '!COMMENT' # type: ignore[unreachable] # Comment tags are function objects.
     # Collect children.
     attrs = el.attrib
     children:MuChildren = []

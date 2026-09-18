@@ -4,7 +4,7 @@ from os import environ
 from unittest.mock import patch
 from urllib.parse import urlencode
 
-from lxml.html import fromstring
+from justhtml import JustHTML
 from pithy.web.dev.routes import routes
 from pithy.web.errors import BadRequestError
 from pithy.web.request import Request
@@ -34,16 +34,14 @@ def _() -> None:
     headers={}, client_addr=('127.0.0.1', 0), content_length=None)
   page = router.resolve_handler(req).handle_request(req).body
   assert isinstance(page, bytes)
-  document = fromstring(page)
-  utest_val(1, sum(el.get('id') == 'markdown-settings' for el in document.iter('form')))
-  source_blocks = {el for div in document.iter('div') if 'popover' in div.attrib
-    for el in div.iter('pre') if el.get('id') == 'markdown-value'}
-  utest_val(1, len(source_blocks))
+  document = JustHTML(page, sanitize=False)
+  utest_val(1, len(document.query('form#markdown-settings')))
+  utest_val(1, len(document.query('div[popover] pre#markdown-value')))
   for debug, suffix in (('0', '.min'), ('1', '')):
     with patch.dict(environ, WEB_DBG=debug):
       body = router.resolve_handler(req).handle_request(req).body
     assert isinstance(body, bytes)
-    scripts = [el.attrib['src'] for el in fromstring(body).iter('script') if 'src' in el.attrib]
+    scripts = [src for el in JustHTML(body, sanitize=False).query('script') if (src := (el.attrs or {}).get('src'))]
     for stem in ('htmx/htmx4', 'overtype/overtype-webcomponent'):
       utest_val([f'/static/pithy/{stem}{suffix}.js'], [src for src in scripts if src.startswith(f'/static/pithy/{stem}')])
   for markdown in ('', '## My edits\n<script>"hello"</script> & \\n'):
@@ -52,12 +50,13 @@ def _() -> None:
       settings = {'theme': 'cave', 'markdown': markdown, 'toolbar': flag, 'show_stats': flag, 'auto_resize': flag}
       body = post('/markdown/settings.htmx', settings).body
       assert isinstance(body, bytes)
-      el = fromstring(body)
-      utest_val('cave', el.get('theme'))
+      el = JustHTML(body, sanitize=False).query_one('overtype-editor')
+      assert el is not None and el.attrs is not None
+      utest_val('cave', el.attrs.get('theme'))
       for attr in ('toolbar', 'show-stats', 'auto-resize'):
-        utest_val(enabled, attr in el.attrib)
-      utest_val(markdown, el.get('value'), desc='Python returns the exact submitted Markdown')
-      utest_val(True, 'inert' in el.attrib, desc='Editor stays locked until the request finishes')
+        utest_val(enabled, attr in el.attrs)
+      utest_val(markdown, el.attrs.get('value'), desc='Python returns the exact submitted Markdown')
+      utest_val(True, 'inert' in el.attrs, desc='Editor stays locked until the request finishes')
   all_false = {'toolbar': 'false', 'show_stats': 'false', 'auto_resize': 'false'}
   utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'unknown', 'markdown': '', **all_false})
   utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'solar', **all_false})

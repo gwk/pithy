@@ -3,8 +3,8 @@
 from typing import Any, BinaryIO, cast, TextIO
 
 from ..loader import FileOrPath
-from . import HtmlNode
+from . import Html, HtmlNode
 
 
-def load_html(file_or_path:FileOrPath, encoding:str='utf8', **kwargs:Any) -> Any:
-  return HtmlNode.parse_file(cast(str|TextIO|BinaryIO, file_or_path), encoding=encoding, **kwargs)
+def load_html(file_or_path:FileOrPath, encoding:str='utf8', *, sanitize:bool, **kwargs:Any) -> Html:
+  return HtmlNode.parse_file(cast(str|TextIO|BinaryIO, file_or_path), encoding=encoding, sanitize=sanitize, **kwargs)

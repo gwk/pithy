@@ -31,7 +31,7 @@ for src, exp, in ws_normalizations:
   if isinstance(src, HtmlNode):
     html = src
   else:
-    html = Html.parse(src)
+    html = Html.parse(src, sanitize=False)
 
   assert isinstance(html, Html)
   html.clean()
