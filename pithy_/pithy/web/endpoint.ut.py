@@ -1597,3 +1597,71 @@ def _() -> None:
   ' enforced later while reading.'
   endpoint = PostEndpoint(_make_body_request(content_length=None, headers={'transfer-encoding': 'chunked'}), {})
   utest_val('a', fields_of(endpoint).name)
+
+
+# Blank values: string sources transtruct the empty string to None for optional types; JSON does not.
+
+class BlankEndpoint(Endpoint):
+  max_body_bytes = 1024
+  class Get:
+    start:datetime|None
+    count:int|None
+    tag:str|None
+    name:str
+  def get(self, request:Request, fields:Get) -> Response:
+    return Response(body='')
+  class Post:
+    start:datetime|None
+    count:int|None
+    tag:str|None
+    name:str
+    counts:list[int|None]|None
+  def post(self, request:Request, fields:Post) -> Response:
+    return Response(body='')
+
+
+class RequiredBlankEndpoint(Endpoint):
+  class Get:
+    start:datetime
+  def get(self, request:Request, fields:Get) -> Response:
+    return Response(body='')
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: a blank query value is None for optional fields and the empty string for a plain str field.'
+  req = _make_request(query=dict(start='', count='', tag='', name=''))
+  ep = BlankEndpoint(req, path_params={})
+  ep.prepare(req)
+  f = fields_of(ep)
+  utest_val((None, None, None, ''), (f.start, f.count, f.tag, f.name))
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: nonblank query values for optional fields convert as usual.'
+  req = _make_request(query=dict(start='2026-03-14T12:00', count='2', tag='t', name='n'))
+  ep = BlankEndpoint(req, path_params={})
+  ep.prepare(req)
+  f = fields_of(ep)
+  utest_val((datetime(2026, 3, 14, 12, 0), 2, 't', 'n'), (f.start, f.count, f.tag, f.name))
+
+
+# Blank urlencoded body values, including elements of a list of optionals.
+utest(dict(start=None, count=None, tag=None, name='', counts=[1, None]),
+  endpoint_body_fields, BlankEndpoint, 'start=&count=&tag=&name=&counts=1&counts=')
+
+# A blank value for a required field is still rejected.
+utest_exc(ResponseError, RequiredBlankEndpoint, _make_request(query=dict(start='')), {})
+
+
+@utest_run
+def _() -> None:
+  'Endpoint: JSON can represent null, so an empty string is not converted to None.'
+  req = _make_request(media_type='application/json', body=b'{"name":"n","tag":""}')
+  ep = BlankEndpoint(req, path_params={})
+  ep.prepare(req)
+  utest_val('', fields_of(ep).tag)
+  for body in (b'{"name":"n","start":""}', b'{"name":"n","count":""}', b'{"name":"n","counts":[1,""]}'):
+    req = _make_request(media_type='application/json', body=body)
+    utest_exc(ResponseError, BlankEndpoint(req, path_params={}).prepare, req)

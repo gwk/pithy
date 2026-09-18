@@ -37,7 +37,9 @@ class _FieldInfo:
   field_type:TypeForm[Any] # The declared field type form, normalized; drives conversion and validates converted values.
   is_optional:bool
   is_list:bool
-  convert:Callable[[object],object]|None # Whole-field converter; None until lazily resolved against the transtructor.
+  # Whole-field converters; None until lazily resolved against the transtructor. A custom converter fills both.
+  convert_str:Callable[[object],object]|None # For string sources (path, query, form data): transtructs with `blank_to_none=True`.
+  convert_typed:Callable[[object],object]|None # For typed sources (JSON): transtructs with `blank_to_none=False`.
 
 
 @dataclass(slots=True, frozen=True)
@@ -101,6 +103,17 @@ class Endpoint(RoutableHandler):
     pithy.js sends this for a set of valued checkboxes when none is checked, so that `list[T]` represents the checked subset.
     NUL mixed with other values is rejected. Empty strings remain list elements. JSON uses an explicit empty array.
   * `list[T]|None` is an optional multi-value field (None if the key is not submitted at all).
+
+  ## Blank Values
+
+  Path, query and form data are string sources: every value is a string, so they cannot represent None directly.
+  An HTML form submits the empty string for an input with no value, e.g. an unset date or number input.
+  Fields from these sources are therefore transtructed with `blank_to_none=True` (see `Transtructor`):
+  the empty string becomes None for any type that has a None member, e.g. `start:datetime|None`.
+  This includes `str|None`; declare plain `str` to receive empty strings.
+  The rule applies to nested types as well, e.g. the elements of `list[int|None]`.
+  JSON bodies can represent null, so the empty string is not converted; a JSON `""` for `datetime|None` is rejected.
+  Custom converters receive the raw value unaltered from either kind of source.
 
   ## Unions
 
@@ -243,8 +256,9 @@ class Endpoint(RoutableHandler):
         field_type, is_optional, is_list = _unwrap_field_type(hint)
         # Per-field converters bind now; transtructor-backed converters resolve lazily on the first request,
         # so that prefigure/selector customizations registered after the class body are honored.
+        convert = converters.get(name)
         fields[name] = _FieldInfo(name=name, field_type=field_type, is_optional=is_optional, is_list=is_list,
-          convert=converters.get(name))
+          convert_str=convert, convert_typed=convert)
       specs[method] = _MethodSpec(method=method, handler_name=handler_name, fields_class=fields_class, fields=fields)
 
     if not specs:
@@ -327,14 +341,16 @@ class Endpoint(RoutableHandler):
     for method, spec in cls._specs.items():
       fields:dict[str,_FieldInfo] = {}
       for name, field in spec.fields.items():
-        if field.convert is None:
+        if field.convert_str is None:
           # Security boundary: transtruct is only ever invoked on the declared field type, never on the Endpoint/handler type.
           # Do not "simplify" this into transtructing the whole endpoint.
-          try: transtruct_fn = transtructor.transtructor_for(field.field_type)
+          try:
+            str_fn = transtructor.transtructor_for(field.field_type, blank_to_none=True)
+            typed_fn = transtructor.transtructor_for(field.field_type)
           except (TypeError, TranstructorError) as e:
             raise TypeError(
               f'{cls.__qualname__}.{spec.fields_class.__name__}.{name}: no converter is available for field type {field.field_type!r}.') from e
-          field = replace(field, convert=_transtruct_converter(transtruct_fn))
+          field = replace(field, convert_str=_transtruct_converter(str_fn), convert_typed=_transtruct_converter(typed_fn))
         fields[name] = field
       specs[method] = replace(spec, fields=fields)
     cls._specs = specs
@@ -359,11 +375,12 @@ class Endpoint(RoutableHandler):
     self._fields_obj = spec.fields_class()
     self._fill_param_sources = {}
     for name, raw in path_params.items():
-      self._fill_param(name=name, raw=raw, source='path')
+      self._fill_param(name=name, raw=raw, source='path', is_str_source=True, accept_empty_list_marker=False)
     for name, vals in request.query_multi.items():
       # Match the shape of the form body parsers: a single value is a scalar, repeated values are a list.
       # A repeated key for a non-list field then fails conversion, just as it would in a form body.
-      self._fill_param(name=name, raw=(vals if len(vals) > 1 else vals[0]), source='query', accept_empty_list_marker=True)
+      self._fill_param(name=name, raw=(vals if len(vals) > 1 else vals[0]), source='query',
+        is_str_source=True, accept_empty_list_marker=True)
 
     if request.content_length is not None and request.content_length > self.max_body_bytes:
       # Reject a declared body that exceeds the declared max before it is read.
@@ -392,7 +409,7 @@ class Endpoint(RoutableHandler):
     if request.media_type:
       is_form = request.media_type in ('application/x-www-form-urlencoded', 'multipart/form-data')
       for name, raw in request.body_params(self.max_body_bytes, body_field=self.body_field).items():
-        self._fill_param(name=name, raw=raw, source='body', accept_empty_list_marker=is_form)
+        self._fill_param(name=name, raw=raw, source='body', is_str_source=is_form, accept_empty_list_marker=is_form)
     for name, field in self._fields.items():
       if hasattr(self._fields_obj, name): continue
       if not field.is_optional:
@@ -427,14 +444,19 @@ class Endpoint(RoutableHandler):
     raise NotImplementedError
 
 
-  def _fill_param(self, name:str, raw:object, source:str, *, accept_empty_list_marker:bool=False) -> None:
+  def _fill_param(self, name:str, raw:object, source:str, *, is_str_source:bool, accept_empty_list_marker:bool) -> None:
+    '''
+    Convert and set a single field. `is_str_source` is True for path, query and form data, where every value is a string.
+    Such sources transtruct with `blank_to_none=True`.
+    `accept_empty_list_marker` is True for query and form data, where a lone NUL value denotes the empty list.
+    '''
     if prev := self._fill_param_sources.get(name):
       raise BadRequestError(f'Duplicate parameter {name!r} in {prev} and {source}.')
     field = self._fields.get(name)
     if field is None:
       raise BadRequestError(f'Unknown parameter {name!r} in {source}.')
     self._fill_param_sources[name] = source
-    convert = field.convert
+    convert = field.convert_str if is_str_source else field.convert_typed
     assert convert is not None # Resolved by _resolve_converters at construction.
     if field.is_list and raw is not None:
       # A single submitted value fills a multi-value field as a one-element list.
