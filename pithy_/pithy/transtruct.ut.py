@@ -493,3 +493,86 @@ utest(str, ttor.transtruct, type[Any], 'str') # An Any bound is not checked.
 utest_exc(TranstructorError, ttor.transtruct, type[int], 'str') # Not a subclass of int.
 utest_exc(TranstructorError, ttor.transtruct, type[int], str)
 utest_exc(ValueError, ttor.transtruct, type[int], 'nonsense') # Not a known type name.
+
+
+# `blank_to_none=True` declares a string-only source: the empty string transtructs to None for any union with a None member.
+
+utest(None, ttor.transtruct, datetime|None, '', blank_to_none=True)
+utest(datetime(2026, 1, 2), ttor.transtruct, datetime|None, '2026-01-02', blank_to_none=True)
+utest(None, ttor.transtruct, date|None, '', blank_to_none=True)
+utest(None, ttor.transtruct, int|None, '', blank_to_none=True)
+utest(None, ttor.transtruct, bool|None, '', blank_to_none=True) # Takes precedence over the blank-is-False bool rule.
+utest(None, ttor.transtruct, str|None, '', blank_to_none=True) # Uniform rule: includes `str|None`.
+utest(None, ttor.transtruct, int|str|None, '', blank_to_none=True) # Precedes the primitive pass-through of the str member.
+utest(None, ttor.transtruct, Literal['a', '']|None, '', blank_to_none=True)
+utest(None, shape_ttor.transtruct, Circle|Rect|None, '', blank_to_none=True) # The union selector path.
+utest(' ', ttor.transtruct, str|None, ' ', blank_to_none=True) # Only the empty string is blank.
+
+# Types without a None member are unaffected.
+utest('', ttor.transtruct, str, '', blank_to_none=True)
+utest('', ttor.transtruct, int|str, '', blank_to_none=True)
+utest(False, ttor.transtruct, bool, '', blank_to_none=True)
+utest_exc(ValueError, ttor.transtruct, int, '', blank_to_none=True)
+utest_exc(ValueError, ttor.transtruct, datetime, '', blank_to_none=True)
+
+# With `blank_to_none=False` the same transtructor keeps the empty string distinct from None.
+utest_exc(ValueError, ttor.transtruct, datetime|None, '')
+utest_exc(ValueError, ttor.transtruct, int|None, '')
+utest('', ttor.transtruct, str|None, '')
+utest('', ttor.transtruct, int|str|None, '')
+utest_exc(ValueError, shape_ttor.transtruct, Circle|Rect|None, '')
+
+# The flag reaches optionals nested in every container kind.
+
+@dataclass
+class Span:
+  start:date|None
+  count:int|None
+  label:str
+
+
+class BareSpan:
+  start:date|None
+
+
+class SpanNT(NamedTuple):
+  start:date|None
+  num:int|None
+
+
+utest([1, None, 3], ttor.transtruct, list[int|None], ['1', '', '3'], blank_to_none=True)
+utest({1, None}, ttor.transtruct, set[int|None], ['1', ''], blank_to_none=True)
+utest({'a': 1, 'b': None}, ttor.transtruct, dict[str,int|None], {'a': '1', 'b': ''}, blank_to_none=True)
+utest((1, None), ttor.transtruct, tuple[int|None,...], ['1', ''], blank_to_none=True)
+utest((None, ''), ttor.transtruct, tuple[int|None,str], ['', ''], blank_to_none=True)
+utest(Span(None, None, ''), ttor.transtruct, Span, {'start': '', 'count': '', 'label': ''}, blank_to_none=True)
+utest(Span(None, 2, 'x'), ttor.transtruct, Span, ['', '2', 'x'], blank_to_none=True) # Positional, e.g. a CSV row.
+utest(SpanNT(None, None), ttor.transtruct, SpanNT, {'start': '', 'num': ''}, blank_to_none=True)
+utest([Span(None, None, '')], ttor.transtruct, list[Span], [['', '', '']], blank_to_none=True)
+utest_val(None, ttor.transtruct(BareSpan, {'start': ''}, blank_to_none=True).start)
+utest_exc(ValueError, ttor.transtruct, list[int|None], ['1', ''])
+utest_exc(ValueError, ttor.transtruct, Span, {'start': '', 'count': '', 'label': ''})
+
+
+# The flag reaches types constructed via a class selector, which resolves its transtructor at call time.
+
+@dataclass
+class Event:
+  kind:str
+
+
+@dataclass
+class Meeting(Event):
+  end:date|None
+
+
+blank_selector_ttor = Transtructor(strict=False)
+
+@blank_selector_ttor.selector(Event)
+def _select_event(T:Any, val:Any, ctx:Any) -> Any:
+  return Meeting
+
+
+utest(Meeting('m', None), blank_selector_ttor.transtruct, Event, {'kind': 'm', 'end': ''}, blank_to_none=True)
+utest([Meeting('m', None)], blank_selector_ttor.transtruct, list[Event], [{'kind': 'm', 'end': ''}], blank_to_none=True)
+utest_exc(ValueError, blank_selector_ttor.transtruct, Event, {'kind': 'm', 'end': ''})
