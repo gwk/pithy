@@ -42,17 +42,25 @@ Or you can install the program as a symlink to the source file in the developer 
 
 Then update your git configuration:
 
-    $ git config --global core.pager 'same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS'
+    $ git config --global core.pager 'less --RAW-CONTROL-CHARS'
+    $ git config --global pager.diff 'same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS'
+    $ git config --global pager.show 'same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS'
+    $ git config --global pager.log 'same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS'
     $ git config --global interactive.diffFilter 'same-same -interactive | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS'
 
 Or edit your `~/.gitconfig` or project `.gitconfig` by hand:
 
     [core]
-      pager = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+      pager = less --RAW-CONTROL-CHARS
+    [pager]
+      diff = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+      show = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+      log = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
     [interactive]
       diffFilter = same-same -interactive | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
 
-As an alternative or in addition to `core.pager`, you can set any of `pager.log`, `pager.show`, and `pager.diff` to use different highlighter/pager combinations for the various git commands.
+This runs Same-same for diff-producing commands while other commands use the ordinary pager.
+Same-same passes through text outside Git diffs unchanged, including commit messages and graph-prefixed output.
 
 
 # Debugging
