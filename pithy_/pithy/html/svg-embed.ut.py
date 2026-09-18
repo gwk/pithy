@@ -21,7 +21,7 @@ html = Html(_=[
         svg_Script('/* SVG Script. */')])])])])
 
 html_str = html.render_str()
-parsed = Html.parse(html_str)
+parsed = Html.parse(html_str, sanitize=False)
 
 head = parsed.head
 utest_type(Style, head.pick, 'style')

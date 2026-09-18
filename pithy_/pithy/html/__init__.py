@@ -6,22 +6,24 @@ Html type hierarchy.
 
 import re
 from html import escape as _escape
-from io import BytesIO, StringIO
 from os import PathLike
 from typing import Any, BinaryIO, Callable, ClassVar, Iterable, Iterator, Literal, Mapping, NoReturn, Self, TextIO, Union
 
+from justhtml import Comment, Element, JustHTML, Node, Template as JustHtmlTemplate, Text
+
 from ..default import Default
 from ..exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
-from ..markup import _Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property
-from ..svg import Svg
+from ..markup import (_Mu, _MuChild, Mu, MuAttrs, MuChild, MuChildLax, MuChildOrChildrenLax, Present, single_child_property,
+  TagMu)
+from ..svg import Svg, SvgNode
 from . import semantics
 
 
 _convenience_exports = (ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError, MuChild)
 
 
-_LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
-_LxmlFileReadSource = _LxmlFilePath | BinaryIO | TextIO
+_HtmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
+_HtmlFileReadSource = _HtmlFilePath | BinaryIO | TextIO
 
 DtDdPair = tuple[list['Dt'],list['Dd']]
 
@@ -41,28 +43,28 @@ class HtmlNode(Mu):
   ws_sensitive_tags = semantics.ws_sensitive_tags
 
 
-  @staticmethod
-  def parse_file(file:_LxmlFileReadSource,  **kwargs:Any) -> Html:
-    from lxml import etree
-    if 'treebuilder' in kwargs: raise ValueError('HtmlNode.parse() requires default `lxml` treebuilder option.')
-    parser = etree.HTMLParser(**kwargs)
-    tree = etree.parse(file, parser)
-    root = tree.getroot()
-    if root is None: # Empty or whitespace strings produce None.
-      return Html(Body())
-    html = HtmlNode.from_etree(root)
-    assert isinstance(html, Html), html
-    return html
-
-
   @classmethod
-  def parse(cls, source:bytes|str, **kwargs:Any) -> Html:
-    if isinstance(source, bytes):
-      kwargs['transport_encoding'] = 'utf-8'
-      f:BytesIO|StringIO = BytesIO(source)
+  def parse_file(cls, file:_HtmlFileReadSource, *, sanitize:bool, **kwargs:Any) -> Html:
+    'Parse an HTML file, explicitly choosing whether to sanitize its contents.'
+    source:bytes|str
+    if isinstance(file, (str, bytes, PathLike)):
+      with open(file, 'rb') as stream:
+        source = stream.read()
     else:
-      f = StringIO(source)
-    return cls.parse_file(f, **kwargs)
+      source = file.read()
+    return cls.parse(source, sanitize=sanitize, **kwargs)
+
+
+  @staticmethod
+  def parse(source:bytes|str, *, sanitize:bool, **kwargs:Any) -> Html:
+    'Parse an HTML document using JustHTML, with an explicit sanitization choice.'
+    document = JustHTML(source, sanitize=sanitize, **kwargs)
+    for el in document.root.children or ():
+      if isinstance(el, Element) and el.name == 'html':
+        html = _from_justhtml(el)
+        assert isinstance(html, Html), html
+        return html
+    raise ValueError('HTML parsing requires a full document with an html root.')
 
 
   @property
@@ -93,6 +95,20 @@ class HtmlNode(Mu):
 
 
 HtmlNode.generic_tag_type = HtmlNode # Note: this creates a circular reference.
+
+
+def _from_justhtml(el:Node|Text) -> MuChild:
+  'Convert a JustHTML node, preserving text order and HTML/SVG element types.'
+  if isinstance(el, Text): return el.data or ''
+  if isinstance(el, Comment):
+    assert isinstance(el.data, str) or el.data is None
+    return HtmlNode(tag='!COMMENT', _=[el.data or ''])
+  family:type[Mu] = SvgNode if el.namespace == 'svg' else HtmlNode
+  TagClass = family.tag_types.get(el.name, family.generic_tag_type) if el.namespace in ('html', 'svg') else TagMu
+  content = el.template_content if isinstance(el, JustHtmlTemplate) else el
+  children = [_from_justhtml(child) for child in (content.children or ())] if content is not None else []
+  attrs = {name: value if value is not None else '' for name, value in (el.attrs or {}).items()}
+  return TagClass(tag=el.name, attrs_by_ref=attrs, _=children)
 
 
 def _attr_urls_visit(node:HtmlNode) -> Iterator[str]:

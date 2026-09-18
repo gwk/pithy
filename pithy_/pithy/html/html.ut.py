@@ -24,7 +24,7 @@ src = '''
 '''
 
 
-html = Html.parse(src)
+html = Html.parse(src, sanitize=False)
 head = html.head
 body  = html.body
 

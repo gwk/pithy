@@ -2,7 +2,7 @@
 
 The `pithy.html` subpackage provides a DOM-like interface for building HTML object trees.
 It is primarily used for constructing HTML documents.
-It can also use `lxml` to parse HTML into a tree, and provides utilities for searching and manipulating trees.
+It can also use `justhtml` to parse HTML into a tree, and provides utilities for searching and manipulating trees.
 
 The interface is designed to be convenient to write out complex HTML by hand as well-typed Python code.
 
@@ -24,3 +24,12 @@ Families of search methods are provided:
 * `pick_all()`: find all matching direct children of this node, returning an iterator of nodes.
 * `pick_opt()`: find the first matching direct child of this node, returning an optional node.
 * `pick()`: find the first matching direct child of this node, returning a single node.
+
+HTML parsing requires an explicit keyword-only `sanitize` argument, including when loading HTML through `pithy.loader`.
+Use `sanitize=True` to apply JustHTML sanitization, or `sanitize=False` to retain document content.
+Additional parsing keyword arguments are passed to JustHTML.
+
+```python
+html = HtmlNode.parse(source, sanitize=True)
+html = HtmlNode.parse_file(path, sanitize=False)
+```

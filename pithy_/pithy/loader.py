@@ -124,10 +124,10 @@ def load_csv(f:FileOrPath, ext:str, encoding:str|None=None, **kwargs:Any) -> Ite
   return CsvParser(text_file_for(f, newline='', encoding=encoding), **kwargs)
 
 
-def load_html(f:FileOrPath, ext:str, encoding:str='utf8', **kwargs:Any) -> Any:
+def load_html(f:FileOrPath, ext:str, encoding:str='utf8', *, sanitize:bool, **kwargs:Any) -> Any:
   from .html.loader import load_html as _load_html
   bf = binary_file_for(f)
-  return _load_html(bf, encoding=encoding, **kwargs)
+  return _load_html(bf, encoding=encoding, sanitize=sanitize, **kwargs)
 
 
 def load_gz(f:FileOrPath, ext:str, **kwargs:Any) -> Any:
