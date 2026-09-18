@@ -17,7 +17,7 @@ from functools import wraps
 from inspect import get_annotations
 from itertools import chain
 from typing import Any, Callable, cast, ClassVar, Generator, Iterable, Iterator, Mapping, Match, overload, Self, TypeVar
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import Comment as XmlComment, Element
 
 from .default import Default
 from .exceptions import ConflictingValues, DeleteNode, FlattenNode, MultipleMatchesError, NoMatchError
@@ -300,10 +300,10 @@ class Mu:
   def from_etree(cls:type['Mu'], el:Element) -> 'Mu':
     '''
     Create a Mu object (possibly subclass by tag) from a standard library element tree.
-    Note: this handles lxml comment objects specially, by turning them into nodes with a '!COMMENT' tag.
+    Standard-library and lxml comments become nodes with a '!COMMENT' tag.
     '''
     tag = el.tag
-    if tag is Comment: tag = '!COMMENT' # type: ignore[unreachable] # `Comment` is a cython object; convert it to a string.
+    if tag is XmlComment or tag is Comment: tag = '!COMMENT' # type: ignore[unreachable] # Comment tags are function objects.
     # Collect children.
     attrs = el.attrib
     children:MuChildren = []
