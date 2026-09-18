@@ -3,11 +3,11 @@
 import re
 from argparse import ArgumentParser
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from shlex import quote as sh_quote
-from typing import Any, Pattern
+from typing import Callable, Pattern
 from urllib.parse import urldefrag as url_defrag, urljoin as url_join, urlsplit as url_split
 
-from lxml.html import fromstring as lxml_html_fromstring
 from pithy.fs import (file_status, is_dir, is_file, make_dir, make_dirs, make_link, move_file, path_descendants, path_dir,
   path_ext, path_join, remove_path, remove_path_if_exists)
 from pithy.io import errL, errSL, outL
@@ -137,16 +137,9 @@ class Crawler:
     except Exception as e:
       errSL(f'{path}: could not read contents as text: {e}')
       return
-    html = lxml_html_fromstring(text)
-    self.walk_html_hrefs(url=url, node=html)
-
-
-  def walk_html_hrefs(self, url:str, node:Any) -> None:
-    href = node.get('href')
-    if href is not None:
-      self.add_url(base=url, url=href)
-    for child in node:
-      self.walk_html_hrefs(url=url, node=child)
+    parser = _HrefParser(lambda href: self.add_url(base=url, url=href))
+    parser.feed(text)
+    parser.close()
 
 
   def add_url(self, base:str, url:str) -> None:
@@ -195,6 +188,22 @@ class Crawler:
     if is_dir(path, follow=False):
       exit(f'error: path collision could not be resolved. Please remove the directory at {path!r}')
     return path
+
+
+
+class _HrefParser(HTMLParser):
+
+  def __init__(self, on_href:Callable[[str],None]) -> None:
+    super().__init__(convert_charrefs=True)
+    self.on_href = on_href
+
+
+  def handle_starttag(self, tag:str, attrs:list[tuple[str,str|None]]) -> None:
+    for name, value in attrs:
+      if name == 'href':
+        self.on_href(value or '')
+        return # Use the first occurrence of a duplicate attribute.
+
 
 
 curl_output_fmt = '|'.join(f'{k}:%{{{k}}}' for k in [
