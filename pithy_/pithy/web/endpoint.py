@@ -48,6 +48,7 @@ class _MethodSpec:
   method:str
   handler_name:str
   fields_class:type[Any]
+  inline:bool
   fields:dict[str,_FieldInfo]
 
 
@@ -67,9 +68,16 @@ class Endpoint(RoutableHandler):
   Only PATCH, POST and PUT requests may carry a body; `max_body_bytes` must be set for an endpoint to accept one.
   A GET, HEAD or DELETE request that carries a body is rejected with BadRequestError.
 
-  Each handler has the signature `(self, request:Request, fields:Get) -> Response`,
-  where the `fields` annotation is the exact inner fields class for that method (see below), or `None` if none.
-  A handler with no fields class receives `None` as its fields argument.
+  Each handler starts with `(self, request:Request, ...)` and returns Response or a Response subclass.
+  Fields can be declared directly as typed handler parameters, e.g. `get(self, request:Request, myId:str) -> Response`.
+  Multiple inline fields and keyword-only fields are supported. Every field must be annotated; defaults, positional-only
+  parameters and variadic parameters are rejected. A handler with no fields can use `(self, request:Request)`.
+
+  Alternatively, declare an inner fields class and use `(self, request:Request, fields:Get) -> Response`,
+  where the `fields` annotation is the exact inner fields class for that method (see below).
+  Declaring that class requires the object form; mixing it with inline fields is rejected.
+  The legacy no-fields signature `(self, request:Request, fields:None)` still receives None.
+  Choose the form independently for each HTTP method; conversion and validation are the same for both forms.
 
   # Fields
 
@@ -87,7 +95,7 @@ class Endpoint(RoutableHandler):
 
   Any public field annotation in the endpoint class body raises TypeError,
   because it is most likely a field mistakenly declared outside of a fields class.
-  The fields object is not exposed as an attribute; handlers receive it precisely typed as their parameter.
+  The fields object is not exposed as an attribute; handlers receive typed fields as an object or as individual arguments.
 
   Subclasses must derive directly from Endpoint; defining an intermediate Endpoint subclass raises TypeError.
 
@@ -187,7 +195,9 @@ class Endpoint(RoutableHandler):
   * If the client sent `Expect: 100-continue`, the server calls `handle_expect_100_continue`,
     which dispatches to the `expect_100_continue` hook with the fields object; by default this returns CONTINUE.
     At this stage body fields are not yet filled, so a subclass hook can reject a request from its path and query fields
-    before the body is uploaded. Since the hook serves every handler, its `fields` parameter must be annotated as the union
+    before the body is uploaded. Overriding this hook requires every handler to use an explicit fields class or `fields:None`;
+    inline handlers have no public fields class and cannot be used with a custom hook.
+    Since the hook serves every handler, its `fields` parameter must be annotated as the union
     of the fields classes of all handlers defined, e.g. `fields:None|Post` when `get` declares no fields class.
   * The server calls `prepare`, which reads the body (if any), fills body fields, and performs final validation:
     duplicate params across sources, excess body params, missing required fields.
@@ -233,7 +243,7 @@ class Endpoint(RoutableHandler):
       if name.startswith('_') or hint is ClassVar or get_origin(hint) is ClassVar: continue
       raise TypeError(
         f'{cls.__qualname__}.{name}: unexpected public annotation in Endpoint subclass body; '
-        'declare request fields in an inner fields class named for the HTTP method, e.g. Get or Post.')
+        'declare request fields as typed handler parameters or in an inner fields class, e.g. Get or Post.')
 
     # Converters are collected from their class bodies only; bases and mixins do not contribute.
     converters:dict[str,Callable[[object],object]] = cls.__dict__.get('converters', {})
@@ -242,31 +252,60 @@ class Endpoint(RoutableHandler):
     for method, handler_name in handler_methods.items():
       class_name = method.capitalize()
       handler = cls.__dict__.get(handler_name)
-      fields_class:type[Any] = cls.__dict__.get(class_name, NoneType) # NoneType() is None, the fields object of a handler without fields.
+      declared_fields_class:type[Any] = cls.__dict__.get(class_name, NoneType)
       if handler is None:
-        if fields_class is not NoneType:
+        if declared_fields_class is not NoneType:
           raise TypeError(f'{cls.__qualname__}.{class_name} is declared but has no matching `{handler_name}` handler method.')
         continue
-      if fields_class is not NoneType and (not isinstance(fields_class, type) or fields_class.__bases__ != (object,)):
+      if declared_fields_class is not NoneType and (
+        not isinstance(declared_fields_class, type) or declared_fields_class.__bases__ != (object,)):
         raise TypeError(f'{cls.__qualname__}.{class_name} must be a class deriving directly from object.')
-      _validate_handler(cls, handler_name=handler_name, handler=handler, fields_classes=frozenset({fields_class}))
+
+      params, annotations = _validate_common_signature(cls, handler_name=handler_name, handler=handler)
+      # A declared fields class or `fields:None` selects the object form.
+      accepts_none_fields = (len(params) == 3 and params[2].name == 'fields'
+        and normalize_type_form(annotations.get('fields', Default._)) is NoneType)
+      inline = declared_fields_class is NoneType and not accepts_none_fields
+      fields_class = declared_fields_class
+      if inline:
+        # Parameters after self and request declare the inline fields.
+        hints:dict[str,Any] = {}
+        for param in params[2:]:
+          if param.name not in annotations:
+            raise TypeError(f'{cls.__qualname__}.{handler_name}.{param.name} must be annotated.')
+          hints[param.name] = annotations[param.name]
+        # Each request stores converted values in an instance of this private class.
+        fields_class = type(class_name, (), {'__module__': cls.__module__})
+      else:
+        _validate_object_signature(f'{cls.__qualname__}.{handler_name}', params=params, annotations=annotations,
+          fields_classes=frozenset({fields_class}))
+        hints = get_annotations(fields_class)
+
+      # Both forms use the same field types and converters.
       fields:dict[str,_FieldInfo] = {}
-      for name, hint in get_annotations(fields_class).items():
-        if hint is ClassVar or get_origin(hint) is ClassVar: continue
+      for name, hint in hints.items():
+        if hint is ClassVar or get_origin(hint) is ClassVar:
+          if inline:
+            raise TypeError(f'{cls.__qualname__}.{handler_name}.{name}: inline fields cannot be ClassVar.')
+          continue
         field_type, is_optional, is_list = _unwrap_field_type(hint)
         # Per-field converters bind now; transtructor-backed converters resolve lazily on the first request,
         # so that prefigure/selector customizations registered after the class body are honored.
         convert = converters.get(name)
         fields[name] = _FieldInfo(name=name, field_type=field_type, is_optional=is_optional, is_list=is_list,
           convert_str=convert, convert_typed=convert)
-      specs[method] = _MethodSpec(method=method, handler_name=handler_name, fields_class=fields_class, fields=fields)
+      specs[method] = _MethodSpec(method=method, handler_name=handler_name, fields_class=fields_class, inline=inline, fields=fields)
 
     if not specs:
       raise TypeError(f'{cls.__qualname__}: define at least one handler method: {", ".join(handler_methods.values())}.')
     cls._specs = specs
 
     if (expect_hook := cls.__dict__.get('expect_100_continue')) is not None:
-      _validate_handler(cls, handler_name='expect_100_continue', handler=expect_hook,
+      if any(spec.inline for spec in specs.values()):
+        raise TypeError(f'{cls.__qualname__}: overriding expect_100_continue requires explicit fields classes '
+          'or `fields:None` for every handler; inline fields are not supported by this hook.')
+      params, annotations = _validate_common_signature(cls, handler_name='expect_100_continue', handler=expect_hook)
+      _validate_object_signature(f'{cls.__qualname__}.expect_100_continue', params=params, annotations=annotations,
         fields_classes=frozenset(spec.fields_class for spec in specs.values()))
 
     declared_names = {name for spec in specs.values() for name in spec.fields}
@@ -274,7 +313,8 @@ class Endpoint(RoutableHandler):
       raise TypeError(f'{cls.__qualname__}: body_field {cls.body_field!r} does not name a declared field.')
     for name in converters:
       # A converter applies by name to every fields class declaring it, so those fields must share one type.
-      typed = [(spec.fields_class.__name__, spec.fields[name].field_type) for spec in specs.values() if name in spec.fields]
+      typed = [(spec.handler_name if spec.inline else spec.fields_class.__name__, spec.fields[name].field_type)
+        for spec in specs.values() if name in spec.fields]
       if not typed:
         raise TypeError(f'{cls.__qualname__}: converter {name!r} does not name a declared field.')
       if any(t != typed[0][1] for _, t in typed):
@@ -348,8 +388,9 @@ class Endpoint(RoutableHandler):
             str_fn = transtructor.transtructor_for(field.field_type, blank_to_none=True)
             typed_fn = transtructor.transtructor_for(field.field_type)
           except (TypeError, TranstructorError) as e:
+            schema_name = spec.handler_name if spec.inline else spec.fields_class.__name__
             raise TypeError(
-              f'{cls.__qualname__}.{spec.fields_class.__name__}.{name}: no converter is available for field type {field.field_type!r}.') from e
+              f'{cls.__qualname__}.{schema_name}.{name}: no converter is available for field type {field.field_type!r}.') from e
           field = replace(field, convert_str=_transtruct_converter(str_fn), convert_typed=_transtruct_converter(typed_fn))
         fields[name] = field
       specs[method] = replace(spec, fields=fields)
@@ -419,28 +460,30 @@ class Endpoint(RoutableHandler):
 
   def handle_request(self, request:Request) -> Response:
     'Dispatch to the handler method selected at construction; HEAD requests dispatch to `get`.'
-    handler:Callable[[Request,Any],Response] = getattr(self, self._spec.handler_name)
+    handler:Callable[...,Response] = getattr(self, self._spec.handler_name)
+    if self._spec.inline:
+      return handler(request, **{name: getattr(self._fields_obj, name) for name in self._fields})
     return handler(request, self._fields_obj)
 
 
-  def get(self, request:Request, fields:Any) -> Response:
-    'Handle a GET (or HEAD) request with its precisely typed fields object. Subclasses define this to accept GET.'
+  def get(self, request:Request, *args:Any, **kwargs:Any) -> Response:
+    'Handle a GET (or HEAD) request with its typed fields. Subclasses define this to accept GET.'
     raise NotImplementedError
 
-  def post(self, request:Request, fields:Any) -> Response:
-    'Handle a POST request with its precisely typed fields object. Subclasses define this to accept POST.'
+  def post(self, request:Request, *args:Any, **kwargs:Any) -> Response:
+    'Handle a POST request with its typed fields. Subclasses define this to accept POST.'
     raise NotImplementedError
 
-  def put(self, request:Request, fields:Any) -> Response:
-    'Handle a PUT request with its precisely typed fields object. Subclasses define this to accept PUT.'
+  def put(self, request:Request, *args:Any, **kwargs:Any) -> Response:
+    'Handle a PUT request with its typed fields. Subclasses define this to accept PUT.'
     raise NotImplementedError
 
-  def patch(self, request:Request, fields:Any) -> Response:
-    'Handle a PATCH request with its precisely typed fields object. Subclasses define this to accept PATCH.'
+  def patch(self, request:Request, *args:Any, **kwargs:Any) -> Response:
+    'Handle a PATCH request with its typed fields. Subclasses define this to accept PATCH.'
     raise NotImplementedError
 
-  def delete(self, request:Request, fields:Any) -> Response:
-    'Handle a DELETE request with its precisely typed fields object. Subclasses define this to accept DELETE.'
+  def delete(self, request:Request, *args:Any, **kwargs:Any) -> Response:
+    'Handle a DELETE request with its typed fields. Subclasses define this to accept DELETE.'
     raise NotImplementedError
 
 
@@ -567,27 +610,17 @@ def _check_obsolete_names(cls:type[Endpoint]) -> None:
       raise TypeError(f'{cls.__qualname__}.{name}: {name.upper()} requests are not dispatched to handler methods.')
 
 
-def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, fields_classes:frozenset[type[Any]]) -> None:
+def _validate_object_signature(qualname:str, *, params:tuple[Parameter,...], annotations:dict[str,Any],
+ fields_classes:frozenset[type[Any]]) -> None:
   '''
-  Validate a concrete Endpoint subclass handler method at class definition time.
+  Require `(self, request, fields)` with the expected fields class or union of classes.
   The `fields` parameter must be annotated as exactly the members of `fields_classes`: a single class or their union.
   NoneType in `fields_classes` corresponds to a `None` annotation, for a handler without a fields class.
   '''
-  qualname = f'{cls.__qualname__}.{handler_name}'
-  if not callable(handler):
-    raise TypeError(f'{qualname} must be a method.')
-  params = tuple(signature(handler, annotation_format=Format.STRING).parameters.values())
   if len(params) != 3 or any(p.kind is not Parameter.POSITIONAL_OR_KEYWORD for p in params):
     raise TypeError(f'{qualname} must have signature `(self, request, fields)`.')
   if tuple(p.name for p in params) != ('self', 'request', 'fields'):
     raise TypeError(f'{qualname} parameter names must be `(self, request, fields)`.')
-  if any(p.default is not Parameter.empty for p in params):
-    raise TypeError(f'{qualname} parameters must not have defaults.')
-  try: annotations = get_annotations(handler)
-  except (NameError, TypeError) as e:
-    raise TypeError(f'{qualname} annotations could not be evaluated: {e}') from e
-  if annotations.get('request') is not Request:
-    raise TypeError(f'{qualname}.request must be annotated as Request.')
   fields_hint = annotations.get('fields', Default._)
   if fields_hint is Default._:
     raise TypeError(f'{qualname}.fields must be annotated.')
@@ -596,6 +629,28 @@ def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, f
   if declared != fields_classes:
     names = ' | '.join(sorted('None' if c is NoneType else c.__qualname__ for c in fields_classes))
     raise TypeError(f'{qualname}.fields must be annotated as {names}.')
+
+
+def _validate_common_signature(cls:type[Endpoint], *, handler_name:str, handler:object
+ ) -> tuple[tuple[Parameter,...],dict[str,Any]]:
+  'Validate the common handler signature and evaluate its annotations at class definition time.'
+  qualname = f'{cls.__qualname__}.{handler_name}'
+  if not callable(handler):
+    raise TypeError(f'{qualname} must be a method.')
+  params = tuple(signature(handler, annotation_format=Format.STRING).parameters.values())
+  if (len(params) < 2 or tuple(p.name for p in params[:2]) != ('self', 'request')
+    or any(p.kind is not Parameter.POSITIONAL_OR_KEYWORD for p in params[:2])
+    or any(p.kind not in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY) for p in params[2:])):
+    raise TypeError(f'{qualname} must have signature `(self, request, ...)` with named field parameters.')
+  if any(p.default is not Parameter.empty for p in params):
+    raise TypeError(f'{qualname} parameters must not have defaults.')
+  try: annotations = get_annotations(handler)
+  except (NameError, TypeError) as e:
+    raise TypeError(f'{qualname} annotations could not be evaluated: {e}') from e
+  if annotations.get('request') is not Request:
+    raise TypeError(f'{qualname}.request must be annotated as Request.')
   response_type = annotations.get('return')
   if not isinstance(response_type, type) or not issubclass(response_type, Response):
     raise TypeError(f'{qualname} return must be annotated as Response or a Response subclass.')
+
+  return params, annotations
