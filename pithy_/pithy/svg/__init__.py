@@ -7,6 +7,7 @@ SVG elements reference: https://developer.mozilla.org/en-US/docs/Web/SVG/Element
 
 from os import PathLike
 from typing import Any, BinaryIO, cast, ClassVar, Iterable, Self, TextIO
+from xml.etree.ElementTree import parse as parse_xml_file, TreeBuilder, XMLParser
 
 from ..default import Default
 from ..markup import _Mu, Mu, MuAttrs, NoMatchError, prefer_int
@@ -21,8 +22,8 @@ VecOrNum = Vec|float
 BoundsF2 = tuple[tuple[float,float],tuple[float,float]]
 PathCommand = str|tuple[int|float|str,...]
 
-_LxmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
-_LxmlFileReadSource = _LxmlFilePath | BinaryIO | TextIO
+_XmlFilePath = str | bytes | PathLike[str] | PathLike[bytes]
+_XmlFileReadSource = _XmlFilePath | BinaryIO | TextIO
 
 
 class SvgNode(Mu):
@@ -75,13 +76,11 @@ class SvgNode(Mu):
 
 
   @classmethod
-  def parse_file(cls, file:_LxmlFileReadSource,  **kwargs:Any) -> 'SvgNode':
-    from lxml import etree
-    tree = etree.parse(file)
+  def parse_file(cls, file:_XmlFileReadSource, **kwargs:Any) -> 'SvgNode':
+    tree = parse_xml_file(file, parser=XMLParser(target=TreeBuilder(insert_comments=True, insert_pis=True)))
     root = tree.getroot()
-    if root is None: # Empty or whitespace strings produce None.
-      return Svg() # type: ignore[unreachable]
-    node = SvgNode.from_etree(root) # type: ignore[arg-type]
+    assert root is not None
+    node = SvgNode.from_etree(root)
     assert isinstance(node, SvgNode), node
     return node
 
