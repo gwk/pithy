@@ -6,8 +6,7 @@ exclude-newer = "14 days"
 
 # Per-package cooldown exceptions.
 [tool.uv.exclude-newer-package]
-flit-core = "2026-08-05T00:00:00Z"
-
+uvicorn = "2026-09-15T00:00:00Z"
 
 [tool.uv.workspace]
 members = [
@@ -25,13 +24,13 @@ members = [
 
 [dependency-groups]
 dev = [
-  "mypy >= 2.3.0",
+  "mypy >= 2.3.1",
   "pyflakes >= 3.4.0",
   "pyperf >= 2.10",
   "isort >= 8.0.1",
   "msgpack-types >= 0.8.0",
   "types-PyYAML >= 6.0.12.20260518",
   "types-pygments >= 2.19.0.20250809",
-  "uvicorn >= 0.30", # Imported by pithy.logs.uvicorn and pithy.web; optional at runtime, required for typechecking.
-  "watchfiles >= 1.0", # Imported by pithy.web.reload; optional at runtime, required for typechecking.
+  "uvicorn >= 0.53", # Imported by pithy.logs.uvicorn and pithy.web; optional at runtime, required for typechecking.
+  "watchfiles >= 1.2", # Imported by pithy.web.reload; optional at runtime, required for typechecking.
 ]
