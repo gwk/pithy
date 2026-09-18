@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from itertools import groupby
 from os import environ
 from sys import stderr, stdout
-from typing import Any, Match
+from typing import Any, Iterable, Match
 
 from pithy.ansi import BG, cBOLD, cRST_BOLD, cRST_TXT, FILL, gray26, rgb6, RST, sanitize_for_console, sgr, TXT
 from pithy.diff import calc_diff
@@ -17,7 +17,11 @@ same-same is a git diff highlighter.
 
 To use it, add the following configuration to your .gitconfig:
 [core]
-  pager = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+  pager = less --RAW-CONTROL-CHARS
+[pager]
+  diff = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+  show = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
+  log = same-same | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
 [interactive]
   diffFilter = same-same -interactive | LESSANSIENDCHARS=mK less --RAW-CONTROL-CHARS
 [diff]
@@ -79,19 +83,23 @@ def main() -> None:
   if dbg:
     errL("SAMESAME: DEBUG")
 
+  highlight_diff(stdin, interactive=args.interactive, dbg=dbg)
+
+
+def highlight_diff(lines:Iterable[str], interactive:bool=False, dbg:bool=False) -> None:
+  'Highlight Git diffs and pass through surrounding text unchanged.'
   # Break input into groups of lines starting with 'diff' lines.
-  # Note that the first segment might begin with any kind of line.
   # As soon as a group is complete, call flush_buffer() to render them.
   buffer:list[DiffLine] = []
 
   def flush_buffer() -> None:
     if buffer:
       if dbg: errL('SAMESAME: FLUSH')
-      handle_file_lines(buffer, interactive=args.interactive, dbg=dbg)
+      handle_file_lines(buffer, interactive=interactive, dbg=dbg)
       buffer.clear()
 
   try:
-    for line in stdin:
+    for line in lines:
       raw_text = line.rstrip('\n')
       match = diff_pat.match(raw_text)
       assert match is not None
@@ -99,9 +107,17 @@ def main() -> None:
       assert kind is not None, match
       if dbg:
         errL(f'{kind}: {raw_text!r}')
+      # Interactive filters can receive a hunk without a file header.
+      if not buffer and kind != 'diff' and not (interactive and kind == 'loc'):
+        print(line, end='')
+        continue
+      # This marker belongs to the current hunk and must not end the diff.
+      if kind == 'other' and raw_text == '\\ No newline at end of file':
+        buffer.append(DiffLine(kind, match))
+        continue
       if kind in pass_kinds:
         flush_buffer()
-        print(raw_text)
+        print(line, end='')
         continue
       if kind == 'diff':
         flush_buffer()
@@ -398,7 +414,7 @@ diff_pat = re.compile(r'''(?x)
 | (?P<commit>     commit\ [0-9a-z]{40} )
 | (?P<author>     Author: )
 | (?P<date>       Date:   )
-| (?P<diff>       diff\ (?P<diff_args>(?:--git|--cc)*)\ (?P<diff_paths>.+) )
+| (?P<diff>       diff\ (?P<diff_args>--git|--cc|--combined)\ (?P<diff_paths>.+) )
 | (?P<idx>        index   )
 | (?P<old>        ---     \ (?P<old_path>.+) )
 | (?P<new>        \+\+\+  \ (?P<new_path>.+) )
