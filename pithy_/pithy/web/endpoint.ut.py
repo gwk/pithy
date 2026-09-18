@@ -333,7 +333,7 @@ utest_exc(TypeError, _make_head_handler_endpoint)
 
 def _make_bad_handler_signature_endpoint() -> type[Endpoint]:
   class BadHandlerSignatureEndpoint(Endpoint):
-    def get(self, request:Request) -> Response: # type: ignore[override] # Intentionally malformed.
+    def get(self, request:Request, *values:int) -> Response: # Intentionally malformed.
       return Response()
   return BadHandlerSignatureEndpoint
 
@@ -1665,3 +1665,157 @@ def _() -> None:
   for body in (b'{"name":"n","start":""}', b'{"name":"n","count":""}', b'{"name":"n","counts":[1,""]}'):
     req = _make_request(media_type='application/json', body=body)
     utest_exc(ResponseError, BlankEndpoint(req, path_params={}).prepare, req)
+
+
+# Inline handler fields share the object-form conversion and validation pipeline.
+
+class InlineEndpoint(Endpoint):
+  max_body_bytes = 1024
+  def get(self, request:Request, myId:str) -> Response:
+    return Response(body=myId)
+  class Post:
+    myId:str
+  def post(self, request:Request, fields:Post) -> Response:
+    return Response(body=fields.myId)
+
+
+class InlineMultiEndpoint(Endpoint):
+  def get(self, request:Request, count:int, *, tags:list[int], note:str|None) -> Response:
+    return Response(body=f'{count}:{tags}:{note!r}')
+
+
+class InlineBodyEndpoint(Endpoint):
+  max_body_bytes = 1024
+  def post(self, request:Request, count:int, note:str|None) -> Response:
+    return Response(body=f'{count}:{note!r}')
+  def put(self, request:Request, count:int, note:str|None) -> Response:
+    return self.post(request, count, note)
+  def patch(self, request:Request, count:int, note:str|None) -> Response:
+    return self.post(request, count, note)
+  def delete(self, request:Request, count:int) -> Response:
+    return Response(body=f'{count}')
+
+
+class InlineWholeBodyEndpoint(Endpoint):
+  max_body_bytes = 1024
+  body_field = 'payload'
+  def post(self, request:Request, payload:Point, label:str) -> Response:
+    return Response(body=f'{label}:{payload.x},{payload.y}')
+
+
+class InlineEmptyEndpoint(Endpoint):
+  def get(self, request:Request) -> Response:
+    return Response(body='empty')
+
+
+def _inline_response(cls:type[Endpoint], req:Request, path_params:dict[str,object]|None=None) -> bytes:
+  ep = cls(req, path_params=path_params or {})
+  ep.prepare(req)
+  body = ep.handle_request(req).body
+  assert isinstance(body, bytes)
+  return body
+
+
+utest(b'abc', _inline_response, InlineEndpoint, _make_request(dict(myId='abc')))
+utest(b'abc', _inline_response, InlineEndpoint, _make_request(), dict(myId='abc'))
+utest(b'head', _inline_response, InlineEndpoint, _method_request('HEAD', dict(myId='head')))
+utest(b'form', _inline_response, InlineEndpoint,
+  _make_request(media_type='application/x-www-form-urlencoded', body=b'myId=form'))
+utest(b'2:[3, 4]:None', _inline_response, InlineMultiEndpoint, _make_request(dict(count=2, tags=['3', '4'])))
+utest(b'2:[]:None', _inline_response, InlineMultiEndpoint, _make_request(dict(count=2, tags='\x00', note='')))
+utest(b'empty', _inline_response, InlineEmptyEndpoint, _make_request())
+for method in ('POST', 'PUT', 'PATCH'):
+  utest(b"2:''", _inline_response, InlineBodyEndpoint,
+    _method_request(method, media_type='application/json', body=b'{"count":2,"note":""}'))
+  utest(b'2:None', _inline_response, InlineBodyEndpoint,
+    _method_request(method, media_type='application/x-www-form-urlencoded', body=b'count=2&note='))
+utest(b'2', _inline_response, InlineBodyEndpoint, _method_request('DELETE', dict(count=2)))
+utest(b'a:1,2', _inline_response, InlineWholeBodyEndpoint,
+  _make_request(dict(label='a'), media_type='application/json', body=b'{"x":1,"y":2}'))
+
+# Missing, extra, duplicate and invalid parameters retain their request-error behavior.
+utest_exc(ResponseError, _inline_response, InlineEndpoint, _make_request())
+utest_exc(ResponseError, _inline_response, InlineEndpoint, _make_request(dict(myId='a', extra='b')))
+utest_exc(ResponseError, _inline_response, InlineEndpoint, _make_request(dict(myId='a')), dict(myId='b'))
+utest_exc(ResponseError, _inline_response, InlineEndpoint, _make_request(dict(myId=['a', 'b'])))
+utest_exc(ResponseError, _inline_response, InlineMultiEndpoint, _make_request(dict(count='bad', tags='3')))
+utest_exc(ResponseError, _inline_response, InlineBodyEndpoint,
+  _make_request(dict(count=1), media_type='application/json', body=b'{"count":2}'))
+utest_exc(ResponseError, _inline_response, InlineEmptyEndpoint, _make_request(dict(extra='b')))
+
+
+@utest_run
+def _() -> None:
+  'Inline fields honor converters, type registrations and the default continue hook.'
+  class ConvertedEndpoint(Endpoint):
+    max_body_bytes = 1024
+    converters = dict(count=lambda raw: int(str(raw)) + 1)
+    def post(self, request:Request, count:int) -> Response:
+      return Response(body=f'{count}')
+  req = _make_request(media_type='application/json', body=b'{"count":2}')
+  ep = ConvertedEndpoint(req, path_params={})
+  utest_val(HTTPStatus.CONTINUE, ep.handle_expect_100_continue(req).status)
+  utest(b'3', _inline_response, ConvertedEndpoint, req)
+
+  class RegisteredEndpoint(Endpoint):
+    def get(self, request:Request, point:Point) -> Response:
+      return Response(body=f'{point.x},{point.y}')
+
+  @RegisteredEndpoint.prefigure(Point)
+  def _point(cls:TypeForm[Any], val:Any, ctx:Any) -> Any:
+    x, y = val.split(',')
+    return dict(x=int(x), y=int(y))
+
+  utest(b'1,2', _inline_response, RegisteredEndpoint, _make_request(dict(point='1,2')))
+
+
+@utest_run
+def _() -> None:
+  'Reject mixed schemas and inline fields on an endpoint with a custom continue hook.'
+  def mixed() -> type[Endpoint]:
+    class MixedEndpoint(Endpoint):
+      class Get:
+        myId:str
+      def get(self, request:Request, myId:str) -> Response:
+        return Response()
+    return MixedEndpoint
+  utest_exc(TypeError, mixed)
+
+  def custom_hook() -> type[Endpoint]:
+    class CustomHookEndpoint(Endpoint):
+      def get(self, request:Request, myId:str) -> Response:
+        return Response()
+      def expect_100_continue(self, request:Request, fields:Any) -> Response:
+        return Response()
+    return CustomHookEndpoint
+  utest_exc(TypeError, custom_hook)
+
+
+@utest_run
+def _() -> None:
+  'Reject defaults, positional-only and variadic fields, and missing annotations.'
+  def default(self:Any, request:Request, count:int=1) -> Response:
+    return Response()
+  def positional(self:Any, request:Request, count:int, /) -> Response:
+    return Response()
+  def variadic(self:Any, request:Request, **fields:int) -> Response:
+    return Response()
+  def unannotated(self:Any, request:Request, count) -> Response: # type: ignore[no-untyped-def] # Intentionally malformed.
+    return Response()
+  for handler in (default, positional, variadic, unannotated):
+    utest_exc(TypeError, type, 'InvalidInlineEndpoint', (Endpoint,), dict(get=handler))
+
+
+@utest_run
+def _() -> None:
+  'Router dispatches inline handlers and resolves unsupported types at registration.'
+  req = _make_request(dict(myId='routed'))
+  handler = Router({'/': InlineEndpoint}).resolve_handler(req)
+  handler.prepare(req)
+  utest_val(b'routed', handler.handle_request(req).body)
+
+  class UnsupportedInlineEndpoint(Endpoint):
+    def get(self, request:Request, value:Circle|Rect) -> Response:
+      return Response()
+
+  utest_exc(TypeError, Router, {'/': UnsupportedInlineEndpoint})
