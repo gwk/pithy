@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 set -euo pipefail
 
@@ -8,7 +9,7 @@ function fail { echo "error: $@" 1>&2; exit 1; }
 
 cd "$(dirname "$0")/.."
 
-flags=()
+flags=(--no-sources)
 pkg_dirs=()
 for arg in "$@"; do
   if [[ "$arg" == -* ]]; then
@@ -22,7 +23,8 @@ done
 
 # The repo root is a uv workspace.
 # `--no-sources` prevents intra-repo dependencies (e.g. tolkien for pithy) from being installed as editable.
-# Use `uv sync` for editable dev setups instead.
+# Use `just develop-global` or `just develop-venv` for editable development setups.
 # With --no-sources, an intra-repo dependency must either be listed in this same invocation or already be installed;
 # otherwise uv fetches it from PyPI.
-uv pip install --no-sources "${flags[@]}" "${pkg_dirs[@]}"
+install_python=$(python3 -c 'import sys; print(sys.executable)')
+uv pip install --python "$install_python" "${flags[@]}" "${pkg_dirs[@]}"

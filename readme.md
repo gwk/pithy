@@ -20,11 +20,17 @@ Please note that the packages published to PyPI frequently lag behind the state 
 # Packaging and Installation
 
 ## Quick Start
-* Installation: `just install` for all packages; `sh/install.sh {package} ...` for specific packages. Invokes `pip install`.
-* Development (global python): `just develop-global` for all packages; `sh/develop-global.sh {package} ...` for specific packages. Invokes `uv pip install --editable` against the global python (`/opt/py/bin/python3`, or `$GLOBAL_PYTHON` if set).
-* Development (workspace venv): `just develop-venv`; invokes `uv sync --all-packages` to install all packages editable into the local `.venv`.
+* Installation: `just install` for all packages; `sh/install.sh {package} ...` for specific packages. Invokes `uv pip install` against the interpreter selected by `python3`.
+* Development (global python): `just develop-global` for all packages; `sh/develop-global.sh {package} ...` for specific packages. Installs editable packages and the root development dependency group with `uv pip install` against the global python (`/opt/py/bin/python3`, or `$GLOBAL_PYTHON` if set).
+* Development (workspace venv): `just develop-venv`; invokes `uv sync --all-packages` to install all packages editable into the local `.venv` (or `UV_PROJECT_ENVIRONMENT`). Then run the activation command it prints.
 
 For these commands, the justfile invokes the shell scripts with all package names.
+
+Ordinary recipes such as `just check` use `python3` and tools from your `PATH`, without creating or synchronizing an environment.
+Use them directly with your global editable installation, or activate your development venv first.
+To use a prepared uv workspace environment without activation, run `uv run --no-sync just check`.
+`just install` and `just uninstall` both target the interpreter selected by `python3`.
+Global setup installs declared dependency requirements; workspace setup uses `uv.lock`.
 
 ## Details
 

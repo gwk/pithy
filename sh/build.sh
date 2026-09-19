@@ -14,6 +14,6 @@ SOURCE_DATE_EPOCH=$(git log -1 --format=%ct HEAD)
 export SOURCE_DATE_EPOCH
 
 for package in "$@"; do
-  build/check-pyproject.py "$package"
+  python3 build/check-pyproject.py "$package"
   uv build --package "$package" --no-sources --out-dir "${package}_/dist"
 done

@@ -12,9 +12,17 @@ dependencies = [
 pithy = { workspace = true }
 ```
 
-The root `uv.lock` records the complete version state of the workspace. AS package config changes, `uv run` and `uv sync` will update uv.lock; those generated changes should be committed together with whatever triggered them. The commands in the justfile should use `uv` uniformly to keep everything synchronized.
+The root `uv.lock` records the resolved workspace dependencies. Use `just check-uv-lock` and `just update-uv-lock` when dependency metadata changes, and commit corresponding lockfile changes.
 
-to create or update `.venv`, and commit changes to `uv.lock`. Use `just check-uv-lock` and `just update-uv-lock` when dependency metadata changes.
+Routine just recipes use `python3` and tools from the caller's `PATH`; they do not select, create, or synchronize a Python environment.
+Both global editable installations and activated virtual environments are supported:
+
+* `just develop-global` installs editable packages and the root development dependency group into `/opt/py/bin/python3`, or `GLOBAL_PYTHON` when set. This installs the declared requirements, rather than synchronizing the environment to `uv.lock`.
+* `just develop-venv` uses `uv sync --all-packages` to prepare the workspace environment and prints its activation command. Activate that environment before running ordinary recipes.
+* After preparing a workspace environment, `uv run --no-sync just check` selects it for the entire operation without shell activation. Do not embed project-mode `uv run` inside individual recipes.
+
+Installation and uninstallation explicitly target the interpreter selected by `python3`. Global development setup is the deliberate exception because it explicitly selects `GLOBAL_PYTHON`.
+Distribution builds and published-release validation retain their isolated environments.
 
 # Dependent Repository Setup
 
