@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+# Routine recipes use python3 and tools from the caller's PATH. Environment setup is explicit.
+
 # Packages are ordered by interdependencies.
 pkgs := 'tolkien tomul pithy utest iotest taptools crafts wu legs tap_backblaze'
 
@@ -47,21 +49,21 @@ check-uv-lock:
   uv lock --check
 
 check-pyproject:
-  uv run build/check-pyproject.py {{pkgs}}
+  python3 build/check-pyproject.py {{pkgs}}
 
 # Validate context keywords without generating files.
 check-context:
-  uv run craft-context validate
+  python3 -m crafts.bin.craft_context validate
 
 cov:
-  uv run iotest {{pkg_tests_full}} -coverage
+  iotest {{pkg_tests_full}} -coverage
 
 cov-meta:
   iotest_/test-meta/meta-coverage.sh
 
 # Build all project context.
 ctx:
-  craft-context all
+  python3 -m crafts.bin.craft_context all
 
 develop-global:
   sh/develop-global.sh {{pkgs}}
@@ -70,13 +72,13 @@ develop-venv:
   sh/develop-venv.sh {{pkgs}}
 
 docs:
-  uv run craft-docs
+  python3 -m crafts.bin.craft_docs
 
 gen:
   make gen
 
 isort:
-  uv run isort {{pkg_srcs}} ops sh tap_backblaze_/test-integration test-diff tools
+  python3 -m isort {{pkg_srcs}} ops sh tap_backblaze_/test-integration test-diff tools
 
 install:
   sh/install.sh {{pkgs}}
@@ -85,13 +87,13 @@ install-git-hooks:
   git config --local core.hooksPath .githooks
 
 iotest:
-  uv run iotest {{pkg_tests_fast}}
+  iotest {{pkg_tests_fast}}
 
 iotest-full:
-  uv run iotest {{pkg_tests_full}}
+  iotest {{pkg_tests_full}}
 
 lint:
-  uv run pyflakes {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
+  python3 -m pyflakes {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
 
 test: utest iotest
 
@@ -99,22 +101,22 @@ test-full: utest iotest-full
 
 # Run the tap_backblaze integration suite; requires credentials, see tap_backblaze_/test-integration/readme.md.
 test-backblaze:
-  uv run tap_backblaze_/test-integration/test_backblaze.py {{backblaze_test_creds_ro}} {{backblaze_test_creds_rwd}}
+  python3 tap_backblaze_/test-integration/test_backblaze.py {{backblaze_test_creds_ro}} {{backblaze_test_creds_rwd}}
 
 test-diff:
-  uv run test-diff/test.py
+  python3 test-diff/test.py
 
 test-diff-data:
   rm -rf _build/test-diff/*
-  uv run test-diff/collect-diff-examples.py ../pithy ../quilt
+  python3 test-diff/collect-diff-examples.py ../pithy ../quilt
 
 typecheck: typecheck-py-packages typecheck-other
 
 typecheck-py-packages:
-  uv run mypy {{pkg_srcs}}
+  python3 -m mypy {{pkg_srcs}}
 
 typecheck-other:
-  uv run mypy ops perf tap_backblaze_/test-integration test-diff tools
+  python3 -m mypy ops perf tap_backblaze_/test-integration test-diff tools
 
 typecheck-js:
   tsc
@@ -125,7 +127,7 @@ typecheck-clear-cache:
 typecheck-clean: typecheck-clear-cache typecheck
 
 uninstall:
-  pip3 uninstall --yes {{pkgs}}
+  uv pip uninstall --python "$(python3 -c 'import sys; print(sys.executable)')" {{pkgs}}
 
 # Update the uv lock file to match pyproject.toml.
 update-uv-lock:
@@ -138,4 +140,4 @@ vscode-insider-links:
   ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
 
 utest:
-  uv run python3 -m utest {{pkg_srcs}}
+  python3 -m utest {{pkg_srcs}}

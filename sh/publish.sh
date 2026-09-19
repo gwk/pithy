@@ -22,7 +22,7 @@ esac
 cd "$(dirname "$0")/.."
 version=$(python3 -I sh/extract-version.py "$package")
 # Require a version bump unless explicitly republishing the latest release.
-uv run --no-sync python sh/check-publish.py "$registry" "$package" "$version" "$@"
+python3 sh/check-publish.py "$registry" "$package" "$version" "$@"
 sh/build.sh "$package"
 
 files=("${package}_/dist/${package}-${version}.tar.gz" "${package}_/dist/${package}-${version}-py3-none-any.whl")

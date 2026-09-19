@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 # Install packages editable into the global python, making their libraries and scripts available system-wide.
 # Interdependent packages should be installed together so that all of them are editable;
 # otherwise workspace dependencies get installed as frozen snapshots.
@@ -13,11 +14,11 @@ cd "$(dirname "$0")/.."
 
 python="${GLOBAL_PYTHON:-/opt/py/bin/python3}"
 
-build/check-pyproject.py "$@"
+"$python" build/check-pyproject.py "$@"
 
 args=()
 for pkg in "$@"; do
   args+=(--editable "./${pkg}_")
 done
 
-uv pip install --python "$python" "${args[@]}"
+uv pip install --python "$python" --group dev "${args[@]}"
