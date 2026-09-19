@@ -9,11 +9,12 @@ from tempfile import TemporaryDirectory
 from time import time_ns
 from unittest.mock import patch
 
-from crafts.bin.craft_context import (ContextModule, CraftContext, extract_context_keywords, FileRecord, find_src_paths, Index,
-  load_context_index, load_project_context, process_path, Query, query_context_modules, refresh_context_index, Validate)
+from crafts.bin.craft_context import (ContextModule, CraftContext, extract_context_keywords, FileRecord, find_src_paths,
+  generated_warning, Index, load_context_index, load_project_context, process_path, Query, query_context_modules,
+  refresh_context_index, Validate)
 from pithy.filestatus import is_dir
 from pithy.fs import list_dir
-from utest import utest, utest_exc
+from utest import utest, utest_exc, utest_val
 
 
 # Nested assignments must not override module metadata, and a standalone annotation is not a value assignment.
@@ -326,3 +327,43 @@ with TemporaryDirectory() as tmp:
   src.write_text('@nested/CTX.md\n')
   with patch('crafts.bin.craft_context.read_src', side_effect=['@nested/CTX.md', PermissionError(13, 'Permission denied')]):
     utest_exc(PermissionError, process_path, str(src))
+
+
+# Import tokens are quoted in the generated file so that Claude Code does not import the files a second time.
+# A repeated import is quoted but emitted once; an existing code span is left alone.
+with TemporaryDirectory() as tmp:
+  root = Path(tmp)
+  src = root / 'CTX.md'
+  src.write_text('Root.\n@sub/a.md and `@literal`.\n* @sub/b.md\n')
+  sub_dir = root / 'sub'
+  sub_dir.mkdir()
+  (sub_dir / 'a.md').write_text('A.\n@./b.md\n')
+  (sub_dir / 'b.md').write_text('B.\n')
+  with patch('crafts.bin.craft_context.outL'): process_path(str(src))
+  utest('\n\n'.join([
+    generated_warning,
+    'Root.\n`@sub/a.md` and `@literal`.\n* `@sub/b.md`',
+    'Contents of sub/a.md:\n\nA.\n`@./b.md`',
+    'Contents of sub/b.md:\n\nB.']) + '\n',
+    (root / 'AGENTS.md').read_text)
+  utest(True, (root / 'CLAUDE.md').is_symlink)
+
+
+# A chain of four import hops is the deepest that Claude Code loads; a fifth hop is an error rather than a silent omission.
+with TemporaryDirectory() as tmp:
+  root = Path(tmp)
+  src = root / 'CTX.md'
+  src.write_text('@1.md\n')
+  for i in range(1, 4): (root / f'{i}.md').write_text(f'@{i+1}.md\n')
+  (root / '4.md').write_text('Four.\n')
+  with patch('crafts.bin.craft_context.outL'): process_path(str(src))
+  utest_val(True, (root / 'AGENTS.md').read_text().endswith('Contents of 4.md:\n\nFour.\n'), 'four hops are expanded')
+  (root / '4.md').write_text('@5.md\n')
+  (root / '5.md').write_text('Five.\n')
+
+  def depth_error() -> bool:
+    try: process_path(str(src))
+    except SystemExit as e: return 'import exceeds the maximum depth of 4.' in str(e)
+    return False
+
+  utest(True, depth_error)
