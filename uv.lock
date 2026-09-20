@@ -22,6 +22,7 @@ members = [
     "pyrrhus",
     "tap-backblaze",
     "tap-betterstack",
+    "tap-ops",
     "taptools",
     "tolkien",
     "tomul",
@@ -864,6 +865,16 @@ requires-dist = [
     { name = "pithy", editable = "pithy_" },
     { name = "requests", specifier = ">=2.34.2" },
 ]
+
+[[package]]
+name = "tap-ops"
+source = { editable = "tap_ops_" }
+dependencies = [
+    { name = "pithy" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pithy", editable = "pithy_" }]
 
 [[package]]
 name = "taptools"

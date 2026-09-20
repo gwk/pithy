@@ -1,0 +1,47 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+[project]
+license = "CC0-1.0"
+readme = "readme.md"
+authors = [
+  { name = "George King", email = "george@theorypractice.dev" },
+]
+dynamic = [
+  "version",
+]
+name = "tap_ops"
+description = "Service deployment and server operations."
+requires-python = ">=3.14"
+dependencies = [
+  "pithy",
+]
+keywords = ["deployment", "systemd"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Issues = "https://github.com/gwk/pithy/issues"
+Source = "https://github.com/gwk/pithy"
+Documentation = "https://github.com/gwk/pithy/tree/main/tap_ops_#readme"
+
+[project.scripts]
+
+[tool.uv.sources]
+pithy = { workspace = true }
+
+[tool.flit.sdist]
+exclude = [
+  "**/AGENT.md",
+  "**/AGENTS.md",
+  "**/CLAUDE.md",
+  "**/CTX.md",
+]
+
+[build-system]
+requires = [
+  "flit_core >= 4.0.2, < 5",
+]
+build-backend = "flit_core.buildapi"

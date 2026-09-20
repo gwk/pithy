@@ -18,6 +18,7 @@ members = [
   "taptools_",
   "tap_backblaze_",
   "tap_betterstack_",
+  "tap_ops_",
   "tolkien_",
   "tomul_",
   "utest_",

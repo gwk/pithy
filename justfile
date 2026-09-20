@@ -3,9 +3,9 @@
 # Routine recipes use python3 and tools from the caller's PATH. Environment setup is explicit.
 
 # Packages are ordered by interdependencies.
-pkgs := 'pyrrhus tolkien tomul pithy utest iotest taptools crafts wu legs tap_backblaze tap_betterstack'
+pkgs := 'pyrrhus tolkien tomul pithy utest iotest taptools crafts wu legs tap_backblaze tap_betterstack tap_ops'
 
-pkg_srcs := 'pyrrhus_/pyrrhus tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze tap_betterstack_/tap_betterstack'
+pkg_srcs := 'pyrrhus_/pyrrhus tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze tap_betterstack_/tap_betterstack tap_ops_/tap_ops'
 
 pkg_tests_fast := 'pithy_/test taptools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
