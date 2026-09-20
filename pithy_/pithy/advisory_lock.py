@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from fcntl import flock, LOCK_EX, LOCK_NB, LOCK_SH
 from os import close as os_close, O_CREAT, O_RDWR, open as os_open
@@ -31,7 +31,14 @@ _advisory_lock_path_holders:dict[str,dict[int,bool]] = {}
 _advisory_lock_fd_paths:dict[int,str] = {}
 
 
-def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_group:bool=False) -> int:
+def log_advisory_lock_wait(lock_path:str, exclusive:bool) -> None:
+  'Log that acquisition is waiting for a conflicting advisory lock to be released.'
+  lock_kind = 'exclusive' if exclusive else 'shared'
+  logI(f'advisory_lock: waiting for {lock_kind} lock.', lock_path=lock_path)
+
+
+def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_group:bool=False,
+ on_wait:Callable[[str,bool],None]|None=log_advisory_lock_wait) -> int:
   '''
   Open `lock_path`, acquire a shared or exclusive advisory flock, and return the open fd.
 
@@ -52,10 +59,14 @@ def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, 
   * Only one holder at a time.
   * Blocks or raises if any other holder is present.
 
-  blocking=True: wait indefinitely; logs a "waiting" message.
+  blocking=True: wait indefinitely; calls `on_wait` before waiting.
   blocking=False: raise `AdvisoryLockBusy` immediately if another process holds a conflicting lock.
   `AdvisoryLockBusy` subclasses `BlockingIOError`, preserving existing exception handlers and errno,
   and is raised from the original `BlockingIOError`.
+
+  `on_wait(lock_path, exclusive)` is called once on contention, immediately before the blocking flock.
+  It defaults to `log_advisory_lock_wait`, which logs the existing "waiting" message; pass None to silence it.
+  It is not called for uncontended or nonblocking acquisitions. If it raises, acquisition is aborted and cleaned up.
 
   allow_group=False (mode 0o600):
   * Only the file owner can open and participate in the lock.
@@ -97,8 +108,7 @@ def acquire_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, 
       try:
         flock(fd, flags | LOCK_NB)
       except BlockingIOError:
-        lock_kind = 'exclusive' if exclusive else 'shared'
-        logI(f'advisory_lock: waiting for {lock_kind} lock.', lock_path=lock_path)
+        if on_wait is not None: on_wait(lock_path, exclusive)
         flock(fd, flags)
     else:
       try: flock(fd, flags | LOCK_NB)
@@ -134,7 +144,8 @@ def release_advisory_lock(fd:int) -> None:
 
 
 @contextmanager
-def advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_group:bool=False) -> Iterator[None]:
+def advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_group:bool=False,
+ on_wait:Callable[[str,bool],None]|None=log_advisory_lock_wait) -> Iterator[None]:
   '''
   Acquire a shared or exclusive advisory flock on the file at `lock_path` for the duration of the `with` block.
 
@@ -145,14 +156,15 @@ def advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_gr
   from an intra-process ownership error. Exceptions raised inside the block also propagate unchanged.
   Alternatively, use `hold_advisory_lock` to hold the lock for the lifetime of the process.
   '''
-  fd = acquire_advisory_lock(lock_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group)
+  fd = acquire_advisory_lock(lock_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group, on_wait=on_wait)
   try:
     yield
   finally:
     release_advisory_lock(fd)
 
 
-def hold_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_group:bool=False) -> None:
+def hold_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, allow_group:bool=False,
+ on_wait:Callable[[str,bool],None]|None=log_advisory_lock_wait) -> None:
   '''
   Acquire a shared or exclusive advisory flock on the file at `lock_path` and hold it for the remaining lifetime of the process.
 
@@ -164,7 +176,7 @@ def hold_advisory_lock(lock_path:str, *, exclusive:bool, blocking:bool=True, all
   `AdvisoryLockError` rather than deadlocking. See `acquire_advisory_lock` for the parameter and conflict semantics.
   '''
   # Discard the returned fd intentionally: the registry retains it, holding the lock for the process lifetime.
-  acquire_advisory_lock(lock_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group)
+  acquire_advisory_lock(lock_path, exclusive=exclusive, blocking=blocking, allow_group=allow_group, on_wait=on_wait)
 
 
 def is_advisory_locked(lock_path:str, *, allow_group:bool=False) -> bool:
