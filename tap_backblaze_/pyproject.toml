@@ -31,7 +31,7 @@ classifiers = [
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
-Documentation = "https://github.com/gwk/pithy/tree/main/tap_backblaze#readme"
+Documentation = "https://github.com/gwk/pithy/tree/main/tap_backblaze_#readme"
 
 [project.scripts]
 

@@ -45,7 +45,7 @@ def check_package(name:str, common:dict[str,Any]) -> bool:
   actual_name = project.get('name', name)
   if actual_name != name: errors.append(f'project.name: expected {name!r}; found {actual_name!r}.')
 
-  doc_url = f'https://github.com/gwk/pithy/tree/main/{name}#readme'
+  doc_url = f'https://github.com/gwk/pithy/tree/main/{name}_#readme'
   actual_doc_url = project.get('urls', {}).get('Documentation')
   if actual_doc_url != doc_url: errors.append(f'project.urls.Documentation: expected {doc_url!r}; found {actual_doc_url!r}.')
 

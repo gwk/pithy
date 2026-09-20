@@ -28,7 +28,7 @@ classifiers = [
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
-Documentation = "https://github.com/gwk/pithy/tree/main/iotest#readme"
+Documentation = "https://github.com/gwk/pithy/tree/main/iotest_#readme"
 
 [project.scripts]
 iotest = "iotest.bin.iotest:main"

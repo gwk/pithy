@@ -39,7 +39,7 @@ classifiers = [
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
-Documentation = "https://github.com/gwk/pithy/tree/main/legs#readme"
+Documentation = "https://github.com/gwk/pithy/tree/main/legs_#readme"
 
 [project.scripts]
 legs = "legs.bin.legs:main"

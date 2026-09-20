@@ -33,7 +33,7 @@ classifiers = [
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
-Documentation = "https://github.com/gwk/pithy/tree/main/wu#readme"
+Documentation = "https://github.com/gwk/pithy/tree/main/wu_#readme"
 
 [project.scripts]
 writeup = "wu.bin.writeup:main"

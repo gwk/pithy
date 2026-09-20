@@ -28,7 +28,7 @@ classifiers = [
 [project.urls]
 Issues = "https://github.com/gwk/pithy/issues"
 Source = "https://github.com/gwk/pithy"
-Documentation = "https://github.com/gwk/pithy/tree/main/crafts#readme"
+Documentation = "https://github.com/gwk/pithy/tree/main/crafts_#readme"
 
 [tool.uv.sources]
 pithy = { workspace = true }
