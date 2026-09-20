@@ -533,7 +533,9 @@ def check_file_exp(ctx:Ctx, case:Case, exp:FileExpectation) -> bool:
   return False
 
 
-diff_cmd = 'git diff --exit-code --no-index --no-prefix --no-renames --histogram --color=auto --ws-error-highlight=old,new'.split()
+# The abbreviation length is fixed because git otherwise derives it from the enclosing repository, if it can discover one.
+diff_cmd = ('git diff --exit-code --no-index --no-prefix --no-renames --histogram --abbrev=8 --color=auto'
+  ' --ws-error-highlight=old,new').split()
 
 
 def cat_file(path:str, limit:int=-1) -> None:
