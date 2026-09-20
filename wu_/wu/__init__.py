@@ -8,15 +8,11 @@ from html import escape as html_escape
 from os import environ
 from typing import Any, Callable, cast, Iterable, Iterator, Match, NoReturn, TextIO
 
-import pygments
-import pygments.lexers
-import pygments.token
 from pithy.html.semantics import phrasing_tags
 from pithy.io import errSL, errSN
 from pithy.json import load_json
 from pithy.path import norm_path, path_dir, path_ext, path_join, path_name_stem, rel_path
 from pithy.url import url_path
-from pygments.token import Token
 
 
 __all__ = ['writeup', 'writeup_dependencies', 'default_css', 'minify_css', 'minify_js', 'default_js']
@@ -873,20 +869,10 @@ def embed_csv(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,s
 
 
 def embed_code(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> Iterator[str]:
-  lines = list(f)
-  first = lines[0] if lines else ''
-  lexer = pygments.lexers.guess_lexer_for_filename(f.name, first)
   yield '<div class="code-block">'
-  for line in lines:
-    content = ''.join(render_token(ctx, *t) for t in pygments.lex(line, lexer))
-    yield f'<code class="line">{content}</code>'
+  for line in f:
+    yield f'<code class="line">{html_esc(line)}</code>'
   yield '</div>'
-
-def render_token(ctx: Ctx, kind: pygments.token._TokenType, text: str) -> str:
-  class_, color = token_class_colors.get(kind, ('t', None))
-  if color is None: return text
-  ctx.add_css(f'code.line span.{class_}', style=f'color: {color}')
-  return f'<span class="{class_}">{html_esc(text)}</span>'
 
 
 def embed_direct(ctx: Ctx, src:SrcLine, f: TextIO, args:list[str], attrs:dict[str,str]) -> list[str]:
@@ -1052,94 +1038,3 @@ _src_dir = path_dir(__file__)
 
 default_css = open(path_join(_src_dir, 'writeup.css')).read()
 default_js = open(path_join(_src_dir, 'writeup.js')).read()
-
-
-# Syntax highlighting.
-
-black   = '#000000'
-blue    = '#0000E0'
-gray    = '#606060'
-magenta = '#800080'
-orange  = '#60400'
-red     = '#800000'
-yellow  = '#806000'
-green   = '#008000'
-
-token_class_colors = {
-  Token.Text                        : ('t',   None),
-  Token.Escape                      : ('esc', yellow),
-  Token.Error                       : ('err', red),
-  Token.Other                       : ('x',   black),
-  Token.Keyword                     : ('k',   magenta),
-  Token.Keyword.Constant            : ('kc',  black),
-  Token.Keyword.Declaration         : ('kd',  black),
-  Token.Keyword.Namespace           : ('kn',  magenta),
-  Token.Keyword.Pseudo              : ('kp',  black),
-  Token.Keyword.Reserved            : ('kr',  black),
-  Token.Keyword.Type                : ('kt',  black),
-  Token.Name                        : ('n',   black),
-  Token.Name.Attribute              : ('na',  black),
-  Token.Name.Builtin                : ('nb',  black),
-  Token.Name.Builtin.Pseudo         : ('bp',  black),
-  Token.Name.Class                  : ('nc',  black),
-  Token.Name.Constant               : ('no',  black),
-  Token.Name.Decorator              : ('nd',  black),
-  Token.Name.Entity                 : ('ni',  black),
-  Token.Name.Exception              : ('ne',  black),
-  Token.Name.Function               : ('nf',  black),
-  Token.Name.Function.Magic         : ('fm',  black),
-  Token.Name.Property               : ('py',  black),
-  Token.Name.Label                  : ('nl',  black),
-  Token.Name.Namespace              : ('nn',  black),
-  Token.Name.Other                  : ('nx',  black),
-  Token.Name.Tag                    : ('nt',  black),
-  Token.Name.Variable               : ('nv',  black),
-  Token.Name.Variable.Class         : ('vc',  black),
-  Token.Name.Variable.Global        : ('vg',  black),
-  Token.Name.Variable.Instance      : ('vi',  black),
-  Token.Name.Variable.Magic         : ('vm',  black),
-  Token.Literal                     : ('l',   black),
-  Token.Literal.Date                : ('ld',  green),
-  Token.Literal.String              : ('s',   green),
-  Token.Literal.String.Affix        : ('sa',  green),
-  Token.Literal.String.Backtick     : ('sb',  green),
-  Token.Literal.String.Char         : ('sc',  green),
-  Token.Literal.String.Delimiter    : ('dl',  green),
-  Token.Literal.String.Doc          : ('sd',  green),
-  Token.Literal.String.Double       : ('s2',  green),
-  Token.Literal.String.Escape       : ('se',  green),
-  Token.Literal.String.Heredoc      : ('sh',  green),
-  Token.Literal.String.Interpol     : ('si',  green),
-  Token.Literal.String.Other        : ('sx',  green),
-  Token.Literal.String.Regex        : ('sr',  green),
-  Token.Literal.String.Single       : ('s1',  green),
-  Token.Literal.String.Symbol       : ('ss',  green),
-  Token.Literal.Number              : ('m',   blue),
-  Token.Literal.Number.Bin          : ('mb',  blue),
-  Token.Literal.Number.Float        : ('mf',  blue),
-  Token.Literal.Number.Hex          : ('mh',  blue),
-  Token.Literal.Number.Integer      : ('mi',  blue),
-  Token.Literal.Number.Integer.Long : ('il',  blue),
-  Token.Literal.Number.Oct          : ('mo',  blue),
-  Token.Operator                    : ('o',   black),
-  Token.Operator.Word               : ('ow',  black),
-  Token.Punctuation                 : ('p',   black),
-  Token.Comment                     : ('c',   gray),
-  Token.Comment.Hashbang            : ('ch',  gray),
-  Token.Comment.Multiline           : ('cm',  gray),
-  Token.Comment.Preproc             : ('cp',  gray),
-  Token.Comment.PreprocFile         : ('cpf', gray),
-  Token.Comment.Single              : ('c1',  gray),
-  Token.Comment.Special             : ('cs',  gray),
-  Token.Generic                     : ('g',   black),
-  Token.Generic.Deleted             : ('gd',  black),
-  Token.Generic.Emph                : ('ge',  black),
-  Token.Generic.Error               : ('gr',  black),
-  Token.Generic.Heading             : ('gh',  black),
-  Token.Generic.Inserted            : ('gi',  black),
-  Token.Generic.Output              : ('go',  black),
-  Token.Generic.Prompt              : ('gp',  black),
-  Token.Generic.Strong              : ('gs',  black),
-  Token.Generic.Subheading          : ('gu',  black),
-  Token.Generic.Traceback           : ('gt',  orange),
-}

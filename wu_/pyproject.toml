@@ -13,7 +13,6 @@ requires-python = ">=3.14"
 dependencies = [
   "legs",
   "pithy",
-  "pygments >= 2.19.2",
   "tolkien",
 ]
 keywords = [
