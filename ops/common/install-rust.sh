@@ -2,7 +2,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 # Install a shared Rust toolchain on macOS or Fedora, as the invoking non-root user.
-# Prerequisites: `brew install rustup` on macOS; `sudo dnf install rustup gcc` on Fedora.
+# Prerequisites: `brew install rustup` on macOS; `sudo dnf install rustup clang` on Fedora.
 # macOS also requires the Xcode command line tools for linking.
 # Usage: install-rust.sh [install|upgrade] [PREFIX [TOOLCHAIN]]
 # PREFIX defaults to /opt/rust. Installation defaults to stable; upgrade defaults to the installed default.
@@ -41,7 +41,10 @@ elif command -v rustup >/dev/null 2>&1; then
 elif command -v rustup-init >/dev/null 2>&1; then
   rustup=''
 else
-  fail 'Install rustup first: `brew install rustup` on macOS or `sudo dnf install rustup gcc` on Fedora.'
+  case "$(uname)" in
+    Darwin) fail 'Install rustup first: `brew install rustup`.' ;;
+    Linux) fail 'Install rustup first: `sudo dnf install rustup clang`.' ;;
+  esac
 fi
 [[ ! -e "$CARGO_HOME/bin" || -L "$CARGO_HOME/bin" ]] || fail "$CARGO_HOME/bin exists and is not a symlink."
 [[ ! -L "$prefix" ]] || fail "Install root must not be a symlink: $prefix."
