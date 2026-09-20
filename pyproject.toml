@@ -17,6 +17,7 @@ members = [
   "pyrrhus_",
   "taptools_",
   "tap_backblaze_",
+  "tap_betterstack_",
   "tolkien_",
   "tomul_",
   "utest_",

@@ -81,6 +81,7 @@ The pithy repository contains code for several python packages:
 * legs: a lexer generator.
 * taptools: a collection of command-line tools built on pithy.
 * tap_backblaze: Backblaze B2 integration.
+* tap_betterstack: Better Stack Telemetry API client and dashboard definitions.
 * tolkien: a simple parse token library, factored out as a minimal dependency for other tools.
 * utest: a simple unit test system.
 * wu: a markdown-like document format and associated tool.
