@@ -21,7 +21,7 @@ class Vis:
   cl:str = '' # CSS classes to add to the column cells.
   key:str = '' # The schema.table.column that this foreign key refers to, typically the other column's primary key.
   col:str = '' # The column in the joined table to display instead of the actual column.
-  nonzero:bool = False # Whether to suppress subqueries on zero foreign keys.
+  is_zero_valid:bool = False # Whether zero is a valid reference to look up; otherwise treat it as unset.
   fk_schema:str = '' # Filled in automatically.
   fk_table:str = '' # Filled in automatically.
   fk_col:str = '' # Filled in automatically.
