@@ -3,8 +3,44 @@
 `pithy.web` provides an HTTP 1.1 web server framework.
 The web developer creates Endpoint subclasses, each of which defines a handler method per accepted HTTP method
 (`get`, `post`, etc.), optionally paired with an inner fields class of the same name (`Get`, `Post`, etc.).
-The router dispatches to that endpoint, and a fresh fields instance for the request method (exposed as `self.fields`) is constructed.
+The router dispatches to that endpoint, and a fresh fields instance for the request method is constructed.
 The fields object is filled and validated from path params, query params, and body params, then passed to the handler.
+
+For example, `uid` comes from the route, GET takes a `tab` query parameter, and POST takes `name` and `email` body fields:
+
+```python
+class UserEndpoint(Endpoint):
+  max_body_bytes = 4096
+
+  class Get:
+    uid:int
+    tab:str
+
+  def get(self, request:Request, fields:Get) -> Response:
+    return Response(body=f'{fields.uid}: {fields.tab}')
+
+  class Post:
+    uid:int
+    name:str
+    email:str
+
+  def post(self, request:Request, fields:Post) -> Response:
+    return Response(body=f'{fields.uid}: {fields.name} <{fields.email}>')
+
+router = Router({'/users/{uid:int}': UserEndpoint})
+```
+
+For simple GET routes, register a function directly. This is equivalent to the GET handler above:
+
+```python
+def user(request:Request, uid:int, tab:str) -> Response:
+  return Response(body=f'{uid}: {tab}')
+
+router = Router({'/users/{uid:int}': user})
+```
+
+The router adapts the function with `pithy.web.endpoint.get_endpoint`, which generates an `Endpoint` subclass accepting GET and HEAD.
+Parameters after `request` are path and query fields following the `Endpoint.Get` rules; defaults are rejected, so optional fields use `T|None`.
 
 Goals:
 * identify developer errors rather than ignore them;
