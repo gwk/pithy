@@ -11,7 +11,7 @@ from typing import Any, ClassVar, Concatenate, get_args, get_origin, Literal, Un
 from typing_extensions import TypeForm
 
 from ..default import Default
-from ..transtruct import PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
+from ..transtruct import _limited_repr, dbg_transtruct, PrefigureFn, SelectorFn, TranstructFn, Transtructor, TranstructorError
 from ..type_utils import NoneType, nonopt_type, normalize_type_form, req_type
 from .errors import BadRequestError, MethodNotAllowedError
 from .handler import RoutableHandler
@@ -461,7 +461,9 @@ class Endpoint(RoutableHandler):
       raise BadRequestError(f'Duplicate parameter {name!r} in {prev} and {source}.')
     field = self._fields.get(name)
     if field is None:
-      raise BadRequestError(f'Unknown parameter {name!r} in {source}.')
+      detail = f'Unknown parameter in {source}.'
+      if dbg_transtruct: detail += f' Name: {name!r}.'
+      raise BadRequestError(detail)
     self._fill_param_sources[name] = source
     convert = field.convert_str if is_str_source else field.convert_typed
     assert convert is not None # Resolved by _resolve_converters at construction.
@@ -476,8 +478,9 @@ class Endpoint(RoutableHandler):
         raw = []
     try: converted_value = convert(raw)
     except (ValueError, TypeError, TranstructorError) as e:
-      # Truncate the raw value so that a large or whole-body value is not reflected back in the error response.
-      raise BadRequestError(f'Invalid value for parameter {name!r}: {repr(raw)[:64]}.') from e
+      detail = f'Invalid value for parameter {name!r}.'
+      if dbg_transtruct: detail += f' Input: {_limited_repr(raw, field.field_type)}.'
+      raise BadRequestError(detail) from (e if dbg_transtruct else None)
     # Validate outside of the try clause above, so that a converter returning a mistyped value raises TypeError (500).
     setattr(self._fields_obj, name, req_type(converted_value, field.field_type))
 

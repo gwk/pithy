@@ -1,0 +1,7 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+{
+  'args': ['1'],
+  'env': {'PITHY_DBG_TRANSTRUCT': '1'},
+  'out_val': 'debug: enabled\n',
+}

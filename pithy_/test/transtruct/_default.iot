@@ -1,0 +1,7 @@
+# Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+{
+  'interpreter': 'python3',
+  'cmd': './_debug.py',
+  'links': {'$DIR/_debug.py'},
+}

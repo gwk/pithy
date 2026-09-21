@@ -8,6 +8,7 @@ from datetime import date, datetime, time
 from functools import cache, reduce
 from itertools import zip_longest
 from operator import or_
+from os import environ
 from types import NoneType
 from typing import Any, cast, ClassVar, get_args, get_origin, get_type_hints, Literal, TypeVar, Union
 
@@ -35,7 +36,25 @@ def _cache[**P, R](fn:Callable[P,R]) -> Callable[P,R]:
 class TranstructorError(Exception):
 
   def __init__(self, error:Exception|str, class_:TypeForm[Any], args:Any):
-    super().__init__(f'{error};\n  class: {class_};\n  args: {_limited_repr(args, class_)}')
+    reason = type(error).__qualname__ if isinstance(error, Exception) and not dbg_transtruct else str(error)
+    message = f'{reason}; expected: {class_}; received type: {type(args).__qualname__}'
+    if dbg_transtruct: message += f'; args: {_limited_repr(args, class_)}'
+    super().__init__(message)
+
+
+
+class _TranstructorError(TranstructorError):
+  'An internal structural error, distinguished from errors raised by user callbacks.'
+
+
+
+class _TranstructValueError(ValueError):
+  'A controlled conversion error whose message and notes contain no input data.'
+
+
+
+class _TranstructTypeError(TypeError):
+  'A controlled conversion error whose message and notes contain no input data.'
 
 
 
@@ -50,6 +69,12 @@ class Transtructor:
 
   The `strict` flag controls handling of unrecognized keys in mapping input for struct-like desired types.
   Strict transtructors raise TranstructorError; lax ones ignore them.
+
+  By default, errors describe declared types, declared fields and entry indices without formatting input values or keys.
+  Uncontrolled exception messages and chains are suppressed. Set PITHY_DBG_TRANSTRUCT=1 before importing this module
+  to include input summaries and original exception chains for development. The flag is read once at module load.
+  Summaries redact SecretStr and SecretBytes fields, but arbitrary exceptions can include data in their own messages.
+  Debuggers and traceback tools that capture locals can also expose input data.
 
   A Transtructor instance is first (optionally) configured in order to customize the transformation.
   It is then invoked using `transtructor_for` or `transtruct`.
@@ -107,7 +132,9 @@ class Transtructor:
     try:
       transtructor = self.transtructor_for(desired_type, blank_to_none=blank_to_none)
     except TypeError as e:
-      e.add_note(f'transtruct argument 1 should be the desired type; received: `{repr(desired_type)[:64]}…`')
+      detail = 'transtruct argument 1 should be the desired type.'
+      if dbg_transtruct: detail += f' Received: {_limited_repr(desired_type, Any)}'
+      e.add_note(detail)
       raise
     if dbg: print(f'transtructor for type:{desired_type!r}: {transtructor!r}')
     return transtructor(val, ctx)
@@ -128,7 +155,7 @@ class Transtructor:
     if normalized_type is not desired_type: return self.transtructor_for(normalized_type, blank_to_none=blank_to_none)
 
     if self.selector_fn_for(desired_type):
-      return self.transtructor_for_selector(desired_type, blank_to_none=blank_to_none)
+      return try_transtruct(self.transtructor_for_selector(desired_type, blank_to_none=blank_to_none), desired_type)
 
     return try_transtruct(self.transtructor_post_selector_for(desired_type, blank_to_none=blank_to_none), desired_type)
 
@@ -145,8 +172,9 @@ class Transtructor:
         if subtype == type_: # Equality rather than identity, because equal type forms need not be identical.
           break
         if not is_type_form_refinement(subtype, type_):
-          raise TranstructorError(f'selector {selector} returned {subtype}, which does not refine static type {static_type}',
-            static_type, val)
+          detail = 'selector returned a type that does not refine the declared type'
+          if dbg_transtruct: detail += f': {selector}; returned: {subtype}; declared: {static_type}'
+          raise _TranstructorError(detail, static_type, val)
         type_ = subtype
       transtructor = self.transtructor_post_selector_for(type_, blank_to_none=blank_to_none)
       return transtructor(val, ctx)
@@ -220,7 +248,7 @@ class Transtructor:
 
         if type(val) is class_: return val # Already the correct type. Note that this causes referential aliasing.
         try: return class_(val) # type: ignore[call-arg]
-        except Exception as e: raise TranstructorError(e, class_, val)
+        except Exception as e: raise _TranstructorError(e, class_, val) from (e if dbg_transtruct else None)
 
       return transtruct_unannotated_type
 
@@ -244,7 +272,7 @@ class Transtructor:
 
           return class_(args) # type: ignore[call-arg]
 
-        except Exception as e: raise TranstructorError(e, class_, args)
+        except Exception as e: raise _TranstructorError(e, class_, args) from (e if dbg_transtruct else None)
 
       return transtruct_unannotated_namedtuple
 
@@ -274,10 +302,13 @@ class Transtructor:
 
       if isinstance(args, Mapping):
         typed_kwargs:dict[str,Any] = {}
-        for name, val in args.items():
+        for idx, (name, val) in enumerate(args.items()):
           try: transtructor = transtructors[name]
           except KeyError:
-            if strict: raise TranstructorError(f'unrecognized key {name!r}', class_, args) from None
+            if strict:
+              detail = f'unrecognized key at entry {idx}'
+              if dbg_transtruct: detail += f': {_limited_repr(name, Any)}'
+              raise _TranstructorError(detail, class_, args) from None
             continue
           try: typed_kwargs[name] = transtructor(val, ctx)
           except Exception as e:
@@ -285,7 +316,7 @@ class Transtructor:
             raise
         if is_bare: return _instantiate_bare(class_, constructor_annotations, typed_kwargs)
         try: return class_(**typed_kwargs)
-        except Exception as e: raise TranstructorError(e, class_, typed_kwargs) from e
+        except Exception as e: raise _TranstructorError(e, class_, typed_kwargs) from (e if dbg_transtruct else None)
 
       if type(args) in primitive_transtructors: # Single primitive arg.
         # TODO: optimize by processing and passing directly?
@@ -293,12 +324,13 @@ class Transtructor:
 
       # Assume `args` is a positional argument sequence.
       try: args_it = iter(args)
-      except TypeError as e: raise TranstructorError('argument type is not iterable', class_, args) from e
+      except TypeError as e:
+        raise _TranstructorError('argument type is not iterable', class_, args) from (e if dbg_transtruct else None)
       typed_args:list[Any] = []
       for idx, (arg, pair) in enumerate(zip_longest(args_it, transtructors.items())):
         if arg is None: break
         if pair is None:
-          raise ValueError(f'{class_}: transtruct argument {idx} exceeds parameters: {constructor_annotations}')
+          raise _TranstructValueError(f'{class_}: transtruct argument {idx} exceeds parameters: {constructor_annotations}')
         name, transtructor = pair
         try: typed_args.append(transtructor(arg, ctx))
         except Exception as e:
@@ -307,7 +339,7 @@ class Transtructor:
       if is_bare: return _instantiate_bare(class_, constructor_annotations, dict(zip(constructor_annotations, typed_args)))
       try: return class_(*typed_args)
       except TypeError as e:
-        raise TranstructorError(e, class_, typed_args) from e
+        raise _TranstructorError(e, class_, typed_args) from (e if dbg_transtruct else None)
 
     return transtruct_annotated_class
 
@@ -344,20 +376,27 @@ class Transtructor:
         except AttributeError: items = val # Attempt to use the value as an iterable of key-value pairs.
 
         def transtruct_items() -> Iterator[tuple[Any,Any]]:
-          for k, v in items:
+          for idx, (k, v) in enumerate(items):
             try: tk = key_ctor(k, ctx)
             except Exception as e:
-              e.add_note(f'note: key {_limited_repr(k, key_type)} of {desired_type}')
+              detail = f'note: key at entry {idx} of {desired_type}'
+              if dbg_transtruct: detail += f': {_limited_repr(k, key_type)}'
+              e.add_note(detail)
               raise
             try: tv = val_ctor(v, ctx)
             except Exception as e:
-              e.add_note(f'note: value for key {_limited_repr(k, key_type)} of {desired_type}')
+              detail = f'note: value at entry {idx} of {desired_type}'
+              if dbg_transtruct: detail += f'; key: {_limited_repr(k, key_type)}'
+              e.add_note(detail)
               raise
             yield tk, tv
 
         try: return origin(transtruct_items())
         except (ValueError, TypeError) as e:
-          raise TranstructorError(f'failed to transtruct items of type {type(val).__name__!r}', desired_type, val) from e
+          error = _TranstructorError('failed to transtruct items', desired_type, val)
+          if not dbg_transtruct and isinstance(e, (_TranstructValueError, _TranstructTypeError)):
+            for note in getattr(e, '__notes__', ()): error.add_note(note)
+          raise error from (e if dbg_transtruct else None)
 
       return transtruct_dict
 
@@ -385,7 +424,7 @@ class Transtructor:
         # Any; once parameterized generic classes are supported, substitution should resolve the TypeVar before we get here.
         # TODO: check union bounds, e.g. `type[int|str]`, by accepting a subclass of any member.
         if bound is not Any and isinstance(bound, type) and not issubclass(result, bound):
-          raise TranstructorError(f'expected a subclass of {bound.__qualname__}', desired_type, val)
+          raise _TranstructorError(f'expected a subclass of {bound.__qualname__}', desired_type, val)
         return result
 
       return transtruct_type_arg
@@ -396,7 +435,7 @@ class Transtructor:
       def transtruct_callable(val:Input, ctx:Ctx) -> Any:
         if prefigure_fn: val = prefigure_fn(desired_type, val, ctx)
         if callable(val): return val
-        raise TranstructorError(f'expected a callable value; received {type(val).__qualname__}', desired_type, val)
+        raise _TranstructorError(f'expected a callable value; received {type(val).__qualname__}', desired_type, val)
 
       return transtruct_callable
 
@@ -427,9 +466,9 @@ class Transtructor:
       typed_args:list[Any] = []
       for idx, (arg, transtructor) in enumerate(zip_longest(args, transtructors)):
         if arg is None:
-          raise ValueError(f'{type_}: transtructor received too few arguments: {idx}.')
+          raise _TranstructValueError(f'{type_}: transtructor received too few arguments: {idx}.')
         if transtructor is None:
-          raise ValueError(f'{type_}: transtructor argument {idx} exceeds number of type annotations.')
+          raise _TranstructValueError(f'{type_}: transtructor argument {idx} exceeds number of type annotations.')
         try: typed_args.append(transtructor(arg, ctx))
         except Exception as e:
           e.add_note(f'note: element {idx} of {type_}')
@@ -474,7 +513,7 @@ class Transtructor:
       if isinstance(val, primitive_member_types): return val
       if non_primitive_transtructor is not None: return non_primitive_transtructor(val, ctx)
       type_names = ', '.join(sorted(t.__name__ if isinstance(t, type) else str(t) for t in types))
-      raise TranstructorError(f'expected value for type in {{{type_names}}}; received {type(val)!r}', desired_type, val)
+      raise _TranstructorError(f'expected value for type in {{{type_names}}}; received {type(val)!r}', desired_type, val)
 
     return transtruct_union
 
@@ -491,7 +530,7 @@ class Transtructor:
     sub_union:TypeForm[Any] = reduce(or_, sorted(non_primitive_types, key=str)) # Sort for deterministic construction; union forms hash and compare as sets.
     selector = self.selector_fn_for(sub_union)
     if selector is None:
-      raise TranstructorError(f'union with multiple non-primitive members requires a selector registered for {sub_union}',
+      raise _TranstructorError(f'union with multiple non-primitive members requires a selector registered for {sub_union}',
         desired_type, non_primitive_types)
 
     class_member_types = tuple(t for t in non_primitive_types if isinstance(t, type))
@@ -504,8 +543,9 @@ class Transtructor:
       member_type = normalize_type_form(selector(sub_union, val, ctx))
       # The selector must choose a member (or a subclass of a class member); in particular it must not return the union itself.
       if not (member_type in non_primitive_types or (isinstance(member_type, type) and issubclass(member_type, class_member_types))):
-        raise TranstructorError(f'selector {selector} returned {member_type}, which is not a non-primitive member of {desired_type}',
-          desired_type, val)
+        detail = 'selector returned a type outside the declared union'
+        if dbg_transtruct: detail += f': {selector}; returned: {member_type}'
+        raise _TranstructorError(detail, desired_type, val)
       transtructor = self.transtructor_for(member_type, blank_to_none=blank_to_none)
       return transtructor(val, ctx)
 
@@ -527,7 +567,7 @@ class Transtructor:
         try: coerced = transtructor(val, ctx)
         except Exception: continue
         if coerced == a and type(coerced) is type(a): return coerced
-      raise TranstructorError('value does not match any literal member', desired_type, val)
+      raise _TranstructorError('value does not match any literal member', desired_type, val)
 
     return transtruct_literal
 
@@ -610,7 +650,7 @@ def _instantiate_bare(class_:type[Desired], annotations:dict[str,TypeForm[Any]],
     try: val = typed_kwargs[name]
     except KeyError:
       if not hasattr(class_, name):
-        raise TranstructorError(f'missing required key {name!r}', class_, typed_kwargs) from None
+        raise _TranstructorError(f'missing required key {name!r}', class_, typed_kwargs) from None
       continue
     setattr(obj, name, val)
   return obj
@@ -658,16 +698,23 @@ def is_type_form_refinement(subtype:TypeForm[Any], T:TypeForm[Any]) -> bool:
 
 
 def try_transtruct[D](tf:TranstructFn[D], desired_type:TypeForm[Any]) -> TranstructFn[D]:
-  '''
-  A function wrapper that takes an existing transtruct function wraps it in a try clause.
-  If an exception is raised, attach a note describing the desired type and the input.
-  '''
-  tf_name = getattr(tf, '__name__', repr(tf))
+  'Wrap conversion errors with structural context and opt-in, secret-redacted input summaries.'
   def _try_transtruct(v:Input, ctx:Ctx) -> D:
     try: return tf(v, ctx)
-    except Exception as e:
-      e.add_note(f'note: {tf_name}: desired: {desired_type}; input: {_limited_repr(v, desired_type)}')
+    except (_TranstructorError, _TranstructValueError, _TranstructTypeError) as e:
+      detail = f'note: desired: {desired_type}; received type: {type(v).__qualname__}'
+      if dbg_transtruct:
+        detail += f'; converter: {getattr(tf, "__name__", type(tf).__qualname__)}; input: {_limited_repr(v, desired_type)}'
+      e.add_note(detail)
       raise
+    except Exception as e:
+      if dbg_transtruct:
+        e.add_note(f'note: desired: {desired_type}; input: {_limited_repr(v, desired_type)}')
+        raise
+      reason = f'conversion failed ({type(e).__qualname__}); expected: {desired_type}; received type: {type(v).__qualname__}'
+      if isinstance(e, ValueError): raise _TranstructValueError(reason) from None
+      if isinstance(e, TypeError): raise _TranstructTypeError(reason) from None
+      raise _TranstructorError(e, desired_type, v) from None
   return _try_transtruct
 
 
@@ -682,6 +729,7 @@ _redacted = _Redacted()
 
 
 def _redact_input(v:Any, desired_type:TypeForm[Any]) -> Any:
+  desired_type = normalize_type_form(desired_type)
   if isinstance(desired_type, type) and desired_type in redacted_types: return _redacted
 
   origin = get_origin(desired_type)
@@ -692,7 +740,7 @@ def _redact_input(v:Any, desired_type:TypeForm[Any]) -> Any:
     if issubclass(origin, Mapping) and len(type_args) == 2 and isinstance(v, Mapping):
       key_type, val_type = type_args
       return {_redact_input(k, key_type): _redact_input(val, val_type) for k, val in v.items()}
-    if issubclass(origin, tuple) and type_args and isinstance(v, tuple):
+    if issubclass(origin, tuple) and type_args and isinstance(v, (list, tuple)):
       if len(type_args) == 2 and type_args[1] is Ellipsis:
         return tuple(_redact_input(el, type_args[0]) for el in v)
       return tuple(_redact_input(el, el_type) for el, el_type in zip(v, type_args))
@@ -700,15 +748,27 @@ def _redact_input(v:Any, desired_type:TypeForm[Any]) -> Any:
       el_type = type_args[0]
       return type(v)(_redact_input(el, el_type) for el in v)
 
-  if isinstance(desired_type, type) and isinstance(v, Mapping):
-    try: annotations = get_type_hints(desired_type)
-    except (NameError, TypeError): return v
-    return {k: _redact_input(val, annotations.get(k, Any)) for k, val in v.items()}
+  if isinstance(desired_type, type):
+    try:
+      init = getattr(desired_type, '__init__', None)
+      annotations = get_type_hints(init) if init and init is not object.__init__ else {}
+      annotations.pop('return', None)
+      if not annotations: annotations = get_type_hints(desired_type)
+    except (NameError, TypeError): return _redacted
+    annotations = {k: t for k, t in annotations.items() if get_origin(t) is not ClassVar}
+    if is_dataclass_instance(v): v = dataclass_asdict(v)
+    elif is_namedtuple(v): v = v._asdict()
+    if isinstance(v, Mapping):
+      return {k: _redact_input(val, annotations.get(k, Any)) for k, val in v.items()}
+    if annotations and isinstance(v, (list, tuple)):
+      types = tuple(annotations.values())
+      return tuple(_redact_input(val, types[idx] if idx < len(types) else Any) for idx, val in enumerate(v))
   if _type_contains_redacted(desired_type): return _redacted
   return v
 
 
 def _type_contains_redacted(type_:TypeForm[Any]) -> bool:
+  type_ = normalize_type_form(type_)
   if isinstance(type_, type) and type_ in redacted_types: return True
   return any(_type_contains_redacted(arg) for arg in get_args(type_) if arg is not Ellipsis)
 
@@ -720,30 +780,38 @@ def _limited_repr(v:Any, desired_type:TypeForm[Any]) -> str:
   return desc
 
 
+def _parse_scalar[D](parse:Callable[[Any],D], v:Input, desired_type:type[D]) -> D:
+  try: return parse(v)
+  except Exception as e:
+    reason = f'invalid {desired_type.__qualname__}; received type: {type(v).__qualname__}'
+    if isinstance(e, TypeError): raise _TranstructTypeError(reason) from (e if dbg_transtruct else None)
+    raise _TranstructValueError(reason) from (e if dbg_transtruct else None)
+
+
 def transtruct_bool(v:Input, ctx:Ctx) -> bool:
   try: return bool_vals[v]
-  except (KeyError, TypeError):
-    raise ValueError(f'Expected bool; received {type(v).__qualname__}: {v!r}.')
+  except (KeyError, TypeError) as e:
+    raise _TranstructValueError(f'Expected bool; received {type(v).__qualname__}.') from (e if dbg_transtruct else None)
 
 
 def transtruct_bytes(v:Input, ctx:Ctx) -> bytes:
   if isinstance(v, bytes): return v
-  raise ValueError(f'Expected bytes; received {v!r}.')
+  raise _TranstructValueError(f'Expected bytes; received {type(v).__qualname__}.')
 
 
 def transtruct_int(v:Input, ctx:Ctx) -> int:
   if isinstance(v, float) and not v.is_integer():
-    raise ValueError(f'Expected int; received non-integral float: {v!r}.')
-  return int(v)
+    raise _TranstructValueError('Expected int; received non-integral float.')
+  return _parse_scalar(int, v, int)
 
 
 def transtruct_float(v:Input, ctx:Ctx) -> float:
-  return float(v)
+  return _parse_scalar(float, v, float)
 
 
 def transtruct_None(v:Input, ctx:Ctx) -> None:
   if v is None: return None
-  raise ValueError(f'Expected None; received {v!r}.')
+  raise _TranstructValueError(f'Expected None; received {type(v).__qualname__}.')
 
 
 def transtruct_object(v:Input, ctx:Ctx) -> object:
@@ -752,26 +820,26 @@ def transtruct_object(v:Input, ctx:Ctx) -> object:
 
 def transtruct_str(v:Input, ctx:Ctx) -> str:
   if isinstance(v, str): return v
-  raise ValueError(f'Expected str; received {type(v).__qualname__}: {v!r}.')
+  raise _TranstructValueError(f'Expected str; received {type(v).__qualname__}.')
 
 
 def transtruct_date(v:Input, ctx:Ctx) -> date:
   if isinstance(v, datetime): return v.date() # datetime is a date subclass; truncate to a pure date.
   if isinstance(v, date): return v
-  if isinstance(v, str): return date.fromisoformat(v)
-  raise ValueError(f'Expected date; received {type(v).__qualname__}: {v!r}.')
+  if isinstance(v, str): return _parse_scalar(date.fromisoformat, v, date)
+  raise _TranstructValueError(f'Expected date; received {type(v).__qualname__}.')
 
 
 def transtruct_datetime(v:Input, ctx:Ctx) -> datetime:
   if isinstance(v, datetime): return v
-  if isinstance(v, str): return datetime.fromisoformat(v)
-  raise ValueError(f'Expected datetime; received {type(v).__qualname__}: {v!r}.')
+  if isinstance(v, str): return _parse_scalar(datetime.fromisoformat, v, datetime)
+  raise _TranstructValueError(f'Expected datetime; received {type(v).__qualname__}.')
 
 
 def transtruct_time(v:Input, ctx:Ctx) -> time:
   if isinstance(v, time): return v
-  if isinstance(v, str): return time.fromisoformat(v)
-  raise ValueError(f'Expected time; received {type(v).__qualname__}: {v!r}.')
+  if isinstance(v, str): return _parse_scalar(time.fromisoformat, v, time)
+  raise _TranstructValueError(f'Expected time; received {type(v).__qualname__}.')
 
 
 def transtruct_type(v:Any, ctx:Ctx) -> type:
@@ -779,7 +847,7 @@ def transtruct_type(v:Any, ctx:Ctx) -> type:
   if isinstance(v, str):
     try: return named_types[v.lower()]
     except KeyError: pass
-  raise ValueError(f'Expected type name (str); received {v}.')
+  raise _TranstructValueError(f'Expected type name (str); received {type(v).__qualname__}.')
 
 
 def bool_for_val(val:Any) -> bool:
@@ -790,7 +858,7 @@ def bool_for_val(val:Any) -> bool:
   try:
     return bool_vals[val]
   except Exception as e:
-    raise ValueError(val) from e
+    raise _TranstructValueError(f'Expected bool; received {type(val).__qualname__}.') from (e if dbg_transtruct else None)
 
 
 def opt_bool(val:Any) -> bool|None:
@@ -888,3 +956,8 @@ bool_vals:dict[Any,bool] = dict([
   (1, True), # Also matches 1.0.
   *bool_str_vals.items(),
 ])
+
+
+# Read once so CLI tools and local servers can opt into detailed errors without threading a policy through calls.
+# Unset, empty, false-like and unrecognized values leave input diagnostics disabled.
+dbg_transtruct = bool_str_vals.get(environ.get('PITHY_DBG_TRANSTRUCT', ''), False)

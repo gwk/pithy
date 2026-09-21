@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 from enum import Enum
 from functools import wraps
 from http import HTTPStatus
+from traceback import format_exception
 from types import NoneType
 from typing import Annotated, Any, ClassVar, Literal, TypeVar
 from urllib.parse import urlencode
@@ -1832,3 +1833,18 @@ def _() -> None:
   utest_exc(TypeError(f'unsupported field type: {Callable[[],int]!r}; callable types cannot be constructed from request params.'),
     get_endpoint, callable_field)
   utest_exc(TypeError('expected a plain function; received int: 3.'), get_endpoint, 3)
+
+
+# Conversion failures and unknown parameter names must not reflect private input in ordinary tracebacks.
+@utest_run
+def _() -> None:
+  private_input = 'private-person@example.test'
+  for cls, params in ((IntEndpoint, {'id': private_input}), (IntEndpoint, {private_input: '1'}),
+    (CustomConverterEndpoint, {'color': private_input})):
+    try: endpoint_fields(cls, **params)
+    except BadRequestError as e:
+      text = ''.join(format_exception(e))
+      utest_val(False, private_input in text, desc='endpoint traceback omits private input')
+      if 'id' in params:
+        utest_val(True, "Invalid value for parameter 'id'." in text, desc='declared parameter remains visible')
+    else: raise AssertionError('Expected invalid endpoint input to fail.')

@@ -4,6 +4,7 @@ from collections import Counter, defaultdict, namedtuple
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time
+from traceback import format_exception
 from typing import Annotated, Any, ClassVar, Literal, NamedTuple
 
 from pithy.frozendicts import frozendict
@@ -119,13 +120,12 @@ utest(frozendict({'a':1}), ttor.transtruct, frozendict[str,int], frozendict({'a'
 
 
 # A failing element inside a container notes its locus on the exception: the zero-based index for iterables,
-# the key for dicts, and the field name for annotated classes.
+# the entry index for dicts, and the field name for annotated classes.
 
 def _locus_notes(desired:Any, val:Any) -> list[str]:
   '''
   Transtruct and return the locus notes of the raised exception chain; transtruct is expected to fail.
-  The chain is walked because dict element failures are wrapped in TranstructorError, with the notes on the cause.
-  The `desired`/`input` notes added by `try_transtruct` are excluded.
+  The `desired`/`received type` notes added by `try_transtruct` are excluded.
   '''
   try: ttor.transtruct(desired, val)
   except Exception as e:
@@ -146,9 +146,9 @@ utest_val(['note: element 1 of tuple[int, str]'], _locus_notes(tuple[int,str], (
 utest_val(['note: element 1 of list[int]', 'note: element 2 of list[list[int]]'],
   _locus_notes(list[list[int]], [['0'], ['1'], ['2', 'x']]), desc='nested list element notes')
 
-# Dict failures note the failing key, or the key of the failing value.
-utest_val(['note: key 0 of dict[str, int]'], _locus_notes(dict[str,int], {0: 1}), desc='dict key note')
-utest_val(["note: value for key 'a' of dict[str, int]"], _locus_notes(dict[str,int], {'a': 'x'}), desc='dict value note')
+# Dict failures identify the entry index and whether the key or value failed.
+utest_val(['note: key at entry 0 of dict[str, int]'], _locus_notes(dict[str,int], {0: 1}), desc='dict key note')
+utest_val(['note: value at entry 0 of dict[str, int]'], _locus_notes(dict[str,int], {'a': 'x'}), desc='dict value note')
 
 # Annotated class fields note the field name for mapping input, or the argument index and field name for positional input.
 utest_val([f"note: field 'a' of {DC1}"], _locus_notes(DC1, {'a': 'x', 'b': 'b'}), desc='class mapping field note')
@@ -161,18 +161,82 @@ class SecretContainer:
   count:int
 
 
-def _failure_text(desired:Any, val:Any) -> str:
-  try: ttor.transtruct(desired, val)
+def _failure_text(desired:Any, val:Any, transtructor:Transtructor=ttor) -> str:
+  try: transtructor.transtruct(desired, val)
   except Exception as e:
-    return '\n'.join((str(e), *getattr(e, '__notes__', ())))
-  return '<no exception>'
+    return ''.join(format_exception(e))
+  raise AssertionError('Expected conversion to fail.')
 
 
-secret_failure_text = _failure_text(SecretContainer, {'secret': 'actual-secret', 'count': 'invalid'})
-utest_val(False, 'actual-secret' in secret_failure_text, desc='raw secret absent from failure')
-utest_val(True, '<redacted>' in secret_failure_text, desc='secret redaction marker present in failure')
-utest_val(True, "'count': 'invalid'" in secret_failure_text, desc='ordinary input remains visible in failure')
+private_input = 'private-person@example.test'
+secret_failure_text = _failure_text(SecretContainer, {'secret': private_input, 'count': private_input})
+utest_val(False, private_input in secret_failure_text, desc='secret and ordinary input absent from traceback')
+utest_val(True, "field 'count'" in secret_failure_text, desc='declared field remains visible')
+utest_val(True, 'received type: str' in secret_failure_text, desc='input type remains visible')
 
+for scalar_type in (int, float, bool, bytes, None, date, datetime, time, type, Literal['allowed']):
+  utest_val(False, private_input in _failure_text(scalar_type, private_input), desc=f'private scalar absent for {scalar_type}')
+for desired, val in ((str, [private_input]), (list[int], [private_input]), (tuple[int,...], [private_input]),
+  (dict[str,int], {private_input: private_input}), (dict[int,str], {private_input: private_input}),
+  (DC1, {'a': private_input, 'b': private_input}), (DC1, [private_input, private_input])):
+  utest_val(False, private_input in _failure_text(desired, val), desc=f'private nested input absent for {desired}')
+utest_val(False, private_input in _failure_text(DC1, {private_input: 1}, Transtructor(strict=True)),
+  desc='unknown field name absent')
+
+
+class RejectInput:
+  def __init__(self, val:Any) -> None:
+    error = ValueError(val)
+    error.add_note(str(val))
+    raise error
+
+
+utest_val(False, private_input in _failure_text(RejectInput, private_input), desc='constructor message and notes suppressed')
+
+
+class UnprintableInput:
+  def __repr__(self) -> str: raise AssertionError('Input repr must not be called.')
+
+
+utest_val(True, 'received type: UnprintableInput' in _failure_text(str, UnprintableInput()),
+  desc='diagnostics do not call input repr')
+
+callback_ttor = Transtructor(strict=False)
+
+
+@callback_ttor.prefigure(RejectInput)
+def _reject_prefigure(desired:Any, val:Any, ctx:Any) -> Any:
+  raise ValueError(val)
+
+
+utest_val(False, private_input in _failure_text(RejectInput, private_input, callback_ttor),
+  desc='prefigure message suppressed')
+
+selector_ttor = Transtructor(strict=False)
+
+
+@selector_ttor.selector(RejectInput)
+def _reject_selector(desired:Any, val:Any, ctx:Any) -> Any:
+  raise ValueError(val)
+
+
+utest_val(False, private_input in _failure_text(RejectInput, private_input, selector_ttor),
+  desc='selector message suppressed')
+
+
+# User callbacks may raise the public error class with arbitrary messages and causes.
+public_error_ttor = Transtructor(strict=False)
+
+
+@public_error_ttor.prefigure(RejectInput)
+def _reject_public_error(desired:Any, val:Any, ctx:Any) -> Any:
+  try: raise ValueError(val)
+  except ValueError as e: raise TranstructorError(str(val), desired, val) from e
+
+
+utest_val(False, private_input in _failure_text(RejectInput, private_input, public_error_ttor),
+  desc='public callback error and chain suppressed')
+utest_exc(TranstructorError, ttor.transtruct, dict[str,int], {'key': private_input})
 
 utest(0, ttor.transtruct, int|str|None, 0)
 utest('0', ttor.transtruct, int|str|None, '0')
