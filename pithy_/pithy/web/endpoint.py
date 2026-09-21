@@ -583,11 +583,7 @@ def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, f
     raise TypeError(f'{qualname} parameter names must be `(self, request, fields)`.')
   if any(p.default is not Parameter.empty for p in params):
     raise TypeError(f'{qualname} parameters must not have defaults.')
-  try: annotations = get_annotations(handler)
-  except (NameError, TypeError) as e:
-    raise TypeError(f'{qualname} annotations could not be evaluated: {e}') from e
-  if annotations.get('request') is not Request:
-    raise TypeError(f'{qualname}.request must be annotated as Request.')
+  annotations = _handler_annotations(qualname, handler)
   fields_hint = annotations.get('fields', Default._)
   if fields_hint is Default._:
     raise TypeError(f'{qualname}.fields must be annotated.')
@@ -596,6 +592,16 @@ def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, f
   if declared != fields_classes:
     names = ' | '.join(sorted('None' if c is NoneType else c.__qualname__ for c in fields_classes))
     raise TypeError(f'{qualname}.fields must be annotated as {names}.')
+
+
+def _handler_annotations(qualname:str, handler:Callable[...,Any]) -> dict[str,Any]:
+  'Evaluate the annotations of a handler method or function, checking the `request` and return annotations.'
+  try: annotations = get_annotations(handler)
+  except (NameError, TypeError) as e:
+    raise TypeError(f'{qualname} annotations could not be evaluated: {e}') from e
+  if annotations.get('request') is not Request:
+    raise TypeError(f'{qualname}.request must be annotated as Request.')
   response_type = annotations.get('return')
   if not isinstance(response_type, type) or not issubclass(response_type, Response):
     raise TypeError(f'{qualname} return must be annotated as Response or a Response subclass.')
+  return annotations
