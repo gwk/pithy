@@ -1,13 +1,17 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+from collections.abc import Mapping
 from typing import Any
 
 from .app import WebApp
-from .endpoint import Endpoint
+from .endpoint import Endpoint, get_endpoint, GetHandler
 from .errors import MethodNotAllowedError, NotFoundError
 from .handler import RequestHandler, RoutableHandler
 from .request import Request
 from .routetree import build_route_tree, RouteTree
+
+
+type RouteTarget = type[RoutableHandler]|GetHandler
 
 
 class RouteNotFoundError(Exception):
@@ -16,7 +20,9 @@ class RouteNotFoundError(Exception):
 
 class Router:
   '''
-  A request router that dispatches to Endpoint classes based on the request path,
+  A request router that accepts RoutableHandler classes and typed GET functions.
+  Functions are adapted to Endpoint classes once during construction, accepting GET and HEAD.
+  The router dispatches to handler classes based on the request path,
   then instantiates them with the matched path parameters.
   The router splits the routes into fixed routes and pattern routes.
   Fixed routes are dispatched to via dictionary lookup.
@@ -25,11 +31,20 @@ class Router:
   Field converters are resolved on initialization so programming errors with unconstructible field types raise early.
   '''
 
-  def __init__(self, routes:dict[str,type[RoutableHandler]]) -> None:
-    for handler_cls in routes.values():
+  def __init__(self, routes:Mapping[str,RouteTarget]) -> None:
+    handler_routes:dict[str,type[RoutableHandler]] = {}
+    for path, target in routes.items():
+      if isinstance(target, type):
+        if not issubclass(target, RoutableHandler):
+          raise TypeError(f'Route {path!r}: handler class must derive from RoutableHandler.')
+        handler_cls = target
+      else:
+        try: handler_cls = get_endpoint(target)
+        except TypeError as e: raise TypeError(f'Route {path!r}: {e}') from e
       if issubclass(handler_cls, Endpoint):
         handler_cls._resolve_converters()
-    fixed_routes, pattern_tree = build_route_tree(routes)
+      handler_routes[path] = handler_cls
+    fixed_routes, pattern_tree = build_route_tree(handler_routes)
     self.fixed_routes:dict[str,type[RoutableHandler]] = fixed_routes
     self.pattern_tree:RouteTree[type[RoutableHandler]] = pattern_tree
 
@@ -56,7 +71,7 @@ class RouterApp(WebApp):
   router:Router
 
 
-  def __init__(self, routes:dict[str,type[RoutableHandler]]|Router) -> None:
+  def __init__(self, routes:Mapping[str,RouteTarget]|Router) -> None:
     if isinstance(routes, Router):
       router = routes
     else:
