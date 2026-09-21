@@ -51,6 +51,6 @@ cache-keys = [{ file = "pyproject.toml" }, { file = "pyrrhus/**/*.rs" }, { file 
 
 [build-system]
 requires = [
-  "maturin >= 1.0, < 2.0",
+  "maturin >= 1.15.0, < 2.0",
 ]
 build-backend = "maturin"

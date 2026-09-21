@@ -67,7 +67,7 @@ class BuildSystem(NamedTuple):
 build_systems:dict[str,BuildSystem] = {
   # Pure Python packages use flit; packages that build native extensions use maturin.
   'flit_core.buildapi': BuildSystem(requires=['flit_core >= 4.0.2, < 5'], sdist_keys=('flit', 'sdist')),
-  'maturin': BuildSystem(requires=['maturin >= 1.0, < 2.0'], sdist_keys=('maturin',)),
+  'maturin': BuildSystem(requires=['maturin >= 1.15.0, < 2.0'], sdist_keys=('maturin',)),
 }
 
 
