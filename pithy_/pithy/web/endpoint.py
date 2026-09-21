@@ -624,12 +624,14 @@ def _check_obsolete_names(cls:type[Endpoint]) -> None:
 def _validate_handler(cls:type[Endpoint], *, handler_name:str, handler:object, fields_classes:frozenset[type[Any]]) -> None:
   '''
   Validate a concrete Endpoint subclass handler method at class definition time.
+  The handler must be a plain synchronous function in the class body.
   The `fields` parameter must be annotated as exactly the members of `fields_classes`: a single class or their union.
   NoneType in `fields_classes` corresponds to a `None` annotation, for a handler without a fields class.
   '''
   qualname = f'{cls.__qualname__}.{handler_name}'
-  if not callable(handler):
-    raise TypeError(f'{qualname} must be a method.')
+  if not isfunction(handler): # Rejects staticmethod, classmethod and other descriptors or callable objects.
+    raise TypeError(f'{qualname} must be a plain method; received {type(handler).__name__}.')
+  _check_sync_function(handler)
   params = tuple(signature(handler, annotation_format=Format.STRING).parameters.values())
   if len(params) != 3 or any(p.kind is not Parameter.POSITIONAL_OR_KEYWORD for p in params):
     raise TypeError(f'{qualname} must have signature `(self, request, fields)`.')

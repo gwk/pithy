@@ -379,6 +379,53 @@ def _make_wrong_handler_return_endpoint() -> type[Endpoint]:
 utest_exc(TypeError, _make_wrong_handler_return_endpoint)
 
 
+# Handlers must be plain synchronous functions; the dispatcher calls them as bound methods and returns the result directly.
+
+def _make_async_handler_endpoint() -> type[Endpoint]:
+  class AsyncHandlerEndpoint(Endpoint):
+    async def get(self, request:Request, fields:None) -> Response: # type: ignore[override] # Intentionally malformed.
+      return Response()
+  return AsyncHandlerEndpoint
+
+def _make_generator_handler_endpoint() -> type[Endpoint]:
+  class GeneratorHandlerEndpoint(Endpoint):
+    def get(self, request:Request, fields:None) -> Response: # type: ignore[misc] # Intentionally malformed.
+      yield Response()
+  return GeneratorHandlerEndpoint
+
+def _make_async_expect_endpoint() -> type[Endpoint]:
+  class AsyncExpectEndpoint(Endpoint):
+    async def expect_100_continue(self, request:Request, fields:None) -> Response: # type: ignore[override] # Intentionally malformed.
+      return Response(status=HTTPStatus.CONTINUE)
+    def get(self, request:Request, fields:None) -> Response:
+      return Response()
+  return AsyncExpectEndpoint
+
+def _make_static_handler_endpoint() -> type[Endpoint]:
+  class StaticHandlerEndpoint(Endpoint):
+    @staticmethod
+    def get(self:Endpoint, request:Request, fields:None) -> Response: # type: ignore[override] # Intentionally malformed.
+      return Response()
+  return StaticHandlerEndpoint
+
+def _make_class_handler_endpoint() -> type[Endpoint]:
+  class ClassHandlerEndpoint(Endpoint):
+    @classmethod
+    def get(cls, request:Request, fields:None) -> Response: # Intentionally malformed; mypy accepts the override.
+      return Response()
+  return ClassHandlerEndpoint
+
+sync_msg = 'must be a synchronous function, not a coroutine or generator function.'
+for make_fn, handler_name, msg in [
+  (_make_async_handler_endpoint, 'AsyncHandlerEndpoint.get', sync_msg),
+  (_make_generator_handler_endpoint, 'GeneratorHandlerEndpoint.get', sync_msg),
+  (_make_async_expect_endpoint, 'AsyncExpectEndpoint.expect_100_continue', sync_msg),
+  (_make_static_handler_endpoint, 'StaticHandlerEndpoint.get', 'must be a plain method; received staticmethod.'),
+  (_make_class_handler_endpoint, 'ClassHandlerEndpoint.get', 'must be a plain method; received classmethod.'),
+]:
+  utest_exc(TypeError(f'{make_fn.__qualname__}.<locals>.{handler_name} {msg}'), make_fn)
+
+
 def _make_handle_request_override_endpoint() -> type[Endpoint]:
   class HandleRequestOverrideEndpoint(Endpoint):
     def handle_request(self, request:Request) -> Response:
