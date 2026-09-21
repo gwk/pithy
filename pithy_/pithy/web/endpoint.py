@@ -4,8 +4,9 @@ from annotationlib import Format
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from http import HTTPStatus
-from inspect import get_annotations, Parameter, signature
-from typing import Any, ClassVar, get_args, get_origin, Literal, Union
+from inspect import (get_annotations, isasyncgenfunction, iscoroutinefunction, isfunction, isgeneratorfunction, Parameter,
+  signature)
+from typing import Any, ClassVar, Concatenate, get_args, get_origin, Literal, Union
 
 from typing_extensions import TypeForm
 
@@ -17,6 +18,9 @@ from .handler import RoutableHandler
 from .request import Request, UploadedFile
 from .requestconn import BodyTooLargeError
 from .response import Response
+
+
+type GetHandler = Callable[Concatenate[Request,...],Response]
 
 
 # HTTP methods that an Endpoint subclass handles, mapped to their handler method names.
@@ -475,6 +479,53 @@ class Endpoint(RoutableHandler):
     setattr(self._fields_obj, name, req_type(converted_value, field.field_type))
 
 
+def get_endpoint(fn:GetHandler) -> type[Endpoint]:
+  '''
+  Adapt a typed function to a GET/HEAD route without declaring an Endpoint subclass or a Get fields class.
+
+  Example:
+    def item(request:Request, item_id:int, *, detail:bool|None) -> Response: ...
+    router = Router({'/item': item})
+
+  The first parameter must be `request:Request`; remaining parameters declare path and query fields.
+  Fields may be positional-or-keyword or keyword-only and must be annotated, with no defaults or variadic parameters.
+  Conversion and validation follow Endpoint.Get rules, including optional fields, repeated values and blank values.
+  Missing optional fields receive None. GET and HEAD accept no body; other HTTP methods are rejected.
+  The return annotation must be Response or a subclass. Only synchronous functions are supported.
+
+  Router calls this adapter automatically for function targets. It may also be called explicitly.
+  The returned class uses the normal Endpoint lifecycle and can be registered with Router.
+  The original function is unchanged and remains directly callable with its declared signature.
+  '''
+  _check_sync_function(fn)
+  qualname = fn.__qualname__
+  params = tuple(signature(fn, annotation_format=Format.STRING).parameters.values())
+  if (not params or params[0].name != 'request' or params[0].kind is not Parameter.POSITIONAL_OR_KEYWORD
+    or any(p.kind not in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY) for p in params[1:])):
+    raise TypeError(f'{qualname} must have signature `(request, ...)` with named field parameters.')
+  if any(p.default is not Parameter.empty for p in params):
+    raise TypeError(f'{qualname} parameters must not have defaults; use optional field types for missing values.')
+  annotations = _handler_annotations(qualname, fn)
+  hints:dict[str,Any] = {}
+  for param in params[1:]:
+    if param.name not in annotations:
+      raise TypeError(f'{qualname}.{param.name} must be annotated.')
+    hint = annotations[param.name]
+    if hint is ClassVar or get_origin(hint) is ClassVar:
+      raise TypeError(f'{qualname}.{param.name}: function fields cannot be ClassVar.')
+    hints[param.name] = hint
+  fields_class = type('Get', (), {
+    '__module__': fn.__module__, '__qualname__': f'{qualname}.Get', '__annotations__': hints})
+
+  def get(self:Endpoint, request:Request, fields:Any) -> Response:
+    return fn(request, **{name: getattr(fields, name) for name in hints})
+
+  # The generated method satisfies Endpoint's exact fields-class annotation contract.
+  get.__annotations__['fields'] = fields_class
+  return type(fn.__name__, (Endpoint,), {
+    '__module__': fn.__module__, '__qualname__': qualname, '__doc__': fn.__doc__, 'Get': fields_class, 'get': get})
+
+
 def _transtruct_converter(tf:TranstructFn[Any]) -> Callable[[object],object]:
   'Adapt a transtruct function into a field converter of the form `(raw) -> value`.'
   return lambda raw: tf(raw, None)
@@ -605,3 +656,14 @@ def _handler_annotations(qualname:str, handler:Callable[...,Any]) -> dict[str,An
   if not isinstance(response_type, type) or not issubclass(response_type, Response):
     raise TypeError(f'{qualname} return must be annotated as Response or a Response subclass.')
   return annotations
+
+
+def _check_sync_function(fn:object) -> None:
+  '''
+  Raise TypeError unless `fn` is a plain synchronous function.
+  This is a separate function taking `object` so that the `isfunction` type guard does not narrow the caller's typed callable.
+  '''
+  if not isfunction(fn):
+    raise TypeError(f'expected a plain function; received {type(fn).__name__}: {fn!r}.')
+  if iscoroutinefunction(fn) or isasyncgenfunction(fn) or isgeneratorfunction(fn):
+    raise TypeError(f'{fn.__qualname__} must be a synchronous function, not a coroutine or generator function.')

@@ -4,14 +4,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time
 from enum import Enum
+from functools import wraps
 from http import HTTPStatus
 from types import NoneType
-from typing import Annotated, Any, Literal, TypeVar
+from typing import Annotated, Any, ClassVar, Literal, TypeVar
 from urllib.parse import urlencode
 
 from pithy.transtruct import Transtructor
-from pithy.web.endpoint import _unwrap_field_type, Endpoint
-from pithy.web.errors import MethodNotAllowedError, ResponseError
+from pithy.web.endpoint import _unwrap_field_type, Endpoint, get_endpoint
+from pithy.web.errors import BadRequestError, MethodNotAllowedError, ResponseError
 from pithy.web.request import Request, UploadedFile
 from pithy.web.requestconn import BodyTooLargeError, BytesConn
 from pithy.web.response import Response
@@ -1665,3 +1666,122 @@ def _() -> None:
   for body in (b'{"name":"n","start":""}', b'{"name":"n","count":""}', b'{"name":"n","counts":[1,""]}'):
     req = _make_request(media_type='application/json', body=body)
     utest_exc(ResponseError, BlankEndpoint(req, path_params={}).prepare, req)
+
+
+@utest_run
+def _() -> None:
+  'Function GET routes receive path and query fields as arguments, with None for absent optional fields.'
+  def item(request:Request, item_id:int, *, tags:list[int], note:str|None) -> Response:
+    return Response(body=f'{request.method}:{item_id}:{tags}:{note!r}')
+
+  router = Router({'/items/{item_id:int}': get_endpoint(item)})
+
+  def respond(query:dict[str,str|int|list[str]], method:str='GET') -> bytes:
+    req = replace(_method_request(method, query), path='/items/7')
+    handler = router.resolve_handler(req)
+    handler.prepare(req)
+    body = handler.handle_request(req).body
+    assert isinstance(body, bytes)
+    return body
+
+  utest(b"GET:7:[2, 3]:'hi'", respond, dict(tags=['2', '3'], note='hi'))
+  utest(b'GET:7:[4]:None', respond, dict(tags='4'))
+  utest(b'HEAD:7:[4]:None', respond, dict(tags='4'), 'HEAD')
+  utest_exc(BadRequestError, respond, dict(tags='2', extra='x'))
+  utest_exc(MethodNotAllowedError, respond, dict(tags='2'), 'POST') # Only the GET spec is generated.
+
+
+@utest_run
+def _() -> None:
+  'Functions can have no fields, field names that collide with handler method parameters, and Response subclass returns.'
+  class Page(Response): pass
+
+  def home(request:Request) -> Page:
+    return Page(body='home')
+
+  def named(request:Request, fields:int, self:str, *, _value:Literal['a','b']) -> Response:
+    return Response(body=f'{fields}:{self}:{_value}')
+
+  cases:list[tuple[Callable[...,Response],dict[str,str|int|list[str]],bytes]] = [
+    (home, {}, b'home'), (named, dict(fields=3, self='s', _value='b'), b'3:s:b')]
+  for fn, query, expected in cases:
+    router = Router({'/': get_endpoint(fn)})
+    req = _make_request(query)
+    handler = router.resolve_handler(req)
+    handler.prepare(req)
+    utest_val(expected, handler.handle_request(req).body)
+
+
+@utest_run
+def _() -> None:
+  'A function decorated with functools.wraps is adapted using the signature and annotations of the wrapped function.'
+  def traced[**P](fn:Callable[P,Response]) -> Callable[P,Response]:
+    @wraps(fn)
+    def wrapper(*args:P.args, **kwargs:P.kwargs) -> Response:
+      response = fn(*args, **kwargs)
+      response.headers['x-traced'] = '1'
+      return response
+    return wrapper
+
+  @traced
+  def item(request:Request, count:int) -> Response:
+    return Response(body=f'{count}')
+
+  req = _make_request(dict(count=3))
+  handler = Router({'/': get_endpoint(item)}).resolve_handler(req)
+  handler.prepare(req)
+  response = handler.handle_request(req)
+  utest_val(b'3', response.body)
+  utest_val('1', response.headers.get('x-traced'))
+
+
+@utest_run
+def _() -> None:
+  'Reject function declaration errors before serving requests, each with its specific message.'
+  def missing_request() -> Response:
+    return Response()
+  def wrong_request(request:int) -> Response:
+    return Response()
+  def wrong_name(req:Request) -> Response:
+    return Response()
+  def keyword_request(*, request:Request) -> Response:
+    return Response()
+  def variadic(request:Request, *values:int) -> Response:
+    return Response()
+  def unannotated(request:Request, count) -> Response: # type: ignore[no-untyped-def] # Intentionally malformed.
+    return Response()
+  def default(request:Request, count:int=1) -> Response:
+    return Response()
+  def wrong_return(request:Request) -> str:
+    return ''
+  def class_var(request:Request, count:ClassVar[int]) -> Response: # type: ignore[misc] # Intentionally malformed.
+    return Response()
+  def callable_field(request:Request, callback:Callable[[],int]) -> Response:
+    return Response()
+  async def asynchronous(request:Request) -> Response:
+    return Response()
+  def generator(request:Request) -> Response: # type: ignore[misc] # Intentionally malformed.
+    yield Response()
+
+  signature_msg = 'must have signature `(request, ...)` with named field parameters.'
+  cases:list[tuple[Callable[...,Any],str]] = [
+    (missing_request, signature_msg),
+    (wrong_name, signature_msg),
+    (keyword_request, signature_msg),
+    (variadic, signature_msg),
+    (wrong_request, '.request must be annotated as Request.'),
+    (unannotated, '.count must be annotated.'),
+    (default, 'parameters must not have defaults; use optional field types for missing values.'),
+    (wrong_return, 'return must be annotated as Response or a Response subclass.'),
+    (class_var, '.count: function fields cannot be ClassVar.'),
+    (asynchronous, 'must be a synchronous function, not a coroutine or generator function.'),
+    (generator, 'must be a synchronous function, not a coroutine or generator function.'),
+  ]
+  for fn, msg in cases:
+    sep = '' if msg.startswith('.') else ' '
+    utest_exc(TypeError(f'{fn.__qualname__}{sep}{msg}'), get_endpoint, fn)
+
+  # Field type errors come from the Endpoint machinery when the class is generated.
+  utest_exc(TypeError(f'unsupported field type: {Callable[[],int]!r}; callable types cannot be constructed from request params.'),
+    get_endpoint, callable_field)
+  utest_exc(TypeError('expected a plain function; received int: 3.'), get_endpoint, 3)
