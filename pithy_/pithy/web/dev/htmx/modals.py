@@ -84,65 +84,54 @@ def user_detail() -> Div:
     ])
 
 
-class DevHtmxModals(Endpoint):
+def dev_htmx_modals(request:Request) -> HtmlResponse:
   'Demonstrates a shared edit modal updating independent views.'
-
-  def get(self, request:Request, fields:None) -> HtmlResponse:
-    return dev_page(title='HTMX Modals',
-      breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX'), ('/htmx/modals', 'Modals')],
-      main=Main(H1('HTMX Modals'),
-        P('Edit the account owner from either section. Both views update as you change any field.'),
-        P('Changes are shared by visitors and reset when the demo server restarts.'),
-        Div(cl='controls-demo-layout', _=[users_table(), user_detail()]), Div(id='edit-modal')))
+  return dev_page(title='HTMX Modals',
+    breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX'), ('/htmx/modals', 'Modals')],
+    main=Main(H1('HTMX Modals'),
+      P('Edit the account owner from either section. Both views update as you change any field.'),
+      P('Changes are shared by visitors and reset when the demo server restarts.'),
+      Div(cl='controls-demo-layout', _=[users_table(), user_detail()]), Div(id='edit-modal')))
 
 
-class UsersTableHtmx(Endpoint):
-
-  def get(self, request:Request, fields:None) -> HtmxResponse:
-    return HtmxResponse(users_table())
+def users_table_htmx(request:Request) -> HtmxResponse:
+  return HtmxResponse(users_table())
 
 
-class UserDetailHtmx(Endpoint):
-
-  def get(self, request:Request, fields:None) -> HtmxResponse:
-    return HtmxResponse(user_detail())
+def user_detail_htmx(request:Request) -> HtmxResponse:
+  return HtmxResponse(user_detail())
 
 
-class EditModalHtmx(Endpoint):
-
-  class Get:
-    user_id:int
-
-  def get(self, request:Request, fields:Get) -> HtmxResponse:
-    user = get_user(fields.user_id)
-    url = f'/htmx/modals/users/{user.id}/update.htmx'
-    modal = Dialog.modal(
-      H2('Edit user', id='edit-user-title'),
-      P('Changes save automatically. Click outside this dialog when done.'),
-      Div(cl='form_grid', _=[
-        Label('Name', for_='edit-user-name'),
-        Input(id='edit-user-name', name='name', value=user.name, required=True, maxlength=100,
-          hx_post=url, hx_trigger='change', hx_swap='none'),
-        Label('Role', for_='edit-user-role'),
-        Select(id='edit-user-role', name='role', hx_post=url, hx_trigger='change', hx_swap='none')
-          .options(roles, value=user.role),
-        Label('VIP', for_='edit-user-vip'),
-        # A bool checkbox always sends 'true' or 'false'; see `Input.bool_checkbox` and pithy.js.
-        Input.bool_checkbox(id='edit-user-vip', name='vip', is_checked=user.vip, hx_post=url, hx_trigger='change',
-          hx_swap='none'),
-        Label('Privileges'),
-        # The span is the htmx source, so every member of the set is sent; an empty set sends the NUL marker.
-        Span(cl='input-labels-inline', hx_post=url, hx_trigger='change', hx_swap='none').labeled_checkboxes('privileges',
-          require_one=False, choices=privilege_labels, checked=user.privileges),
-        Label('UI'),
-        Span(cl='input-labels-inline', _=[
-          Label(Input(type='radio', name='ui', value=mode, checked=Present(mode == user.ui),
-            hx_post=url, hx_trigger='change', hx_swap='none'), ui_text(mode))
-          for mode in ui_modes]),
-      ]),
-    )
-    modal['aria-labelledby'] = 'edit-user-title'
-    return HtmxResponse(modal)
+def edit_modal_htmx(request:Request, user_id:int) -> HtmxResponse:
+  user = get_user(user_id)
+  url = f'/htmx/modals/users/{user.id}/update.htmx'
+  modal = Dialog.modal(
+    H2('Edit user', id='edit-user-title'),
+    P('Changes save automatically. Click outside this dialog when done.'),
+    Div(cl='form_grid', _=[
+      Label('Name', for_='edit-user-name'),
+      Input(id='edit-user-name', name='name', value=user.name, required=True, maxlength=100,
+        hx_post=url, hx_trigger='change', hx_swap='none'),
+      Label('Role', for_='edit-user-role'),
+      Select(id='edit-user-role', name='role', hx_post=url, hx_trigger='change', hx_swap='none')
+        .options(roles, value=user.role),
+      Label('VIP', for_='edit-user-vip'),
+      # A bool checkbox always sends 'true' or 'false'; see `Input.bool_checkbox` and pithy.js.
+      Input.bool_checkbox(id='edit-user-vip', name='vip', is_checked=user.vip, hx_post=url, hx_trigger='change',
+        hx_swap='none'),
+      Label('Privileges'),
+      # The span is the htmx source, so every member of the set is sent; an empty set sends the NUL marker.
+      Span(cl='input-labels-inline', hx_post=url, hx_trigger='change', hx_swap='none').labeled_checkboxes('privileges',
+        require_one=False, choices=privilege_labels, checked=user.privileges),
+      Label('UI'),
+      Span(cl='input-labels-inline', _=[
+        Label(Input(type='radio', name='ui', value=mode, checked=Present(mode == user.ui),
+          hx_post=url, hx_trigger='change', hx_swap='none'), ui_text(mode))
+        for mode in ui_modes]),
+    ]),
+  )
+  modal['aria-labelledby'] = 'edit-user-title'
+  return HtmxResponse(modal)
 
 
 class UpdateUserHtmx(Endpoint):

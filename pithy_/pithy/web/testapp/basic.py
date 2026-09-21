@@ -5,31 +5,19 @@ from ..request import Request
 from ..response import TextResponse
 
 
-class Hello(Endpoint):
+def hello(request:Request) -> TextResponse:
   'Returns a plain text greeting.'
-
-  def get(self, request:Request, fields:None) -> TextResponse:
-    return TextResponse(body='hello')
+  return TextResponse(body='hello')
 
 
-class EchoId(Endpoint):
+def echo_id(request:Request, id:int) -> TextResponse:
   'Returns the matched integer id as plain text.'
-
-  class Get:
-    id:int
-
-  def get(self, request:Request, fields:Get) -> TextResponse:
-    return TextResponse(body=f'id={fields.id}')
+  return TextResponse(body=f'id={id}')
 
 
-class EchoName(Endpoint):
+def echo_name(request:Request, name:str) -> TextResponse:
   'Returns the matched string name as plain text.'
-
-  class Get:
-    name:str
-
-  def get(self, request:Request, fields:Get) -> TextResponse:
-    return TextResponse(body=f'name={fields.name}')
+  return TextResponse(body=f'name={name}')
 
 
 class EchoBody(Endpoint):

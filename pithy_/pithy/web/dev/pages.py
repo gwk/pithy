@@ -4,7 +4,6 @@ from typing import Iterable, Sequence
 
 from ...html import A, Footer, H1, Header, Html, Main, Nav, P, Script
 from ...path import path_dir, path_join
-from ..endpoint import Endpoint
 from ..env import is_web_dbg
 from ..files import FilesHandler
 from ..request import Request
@@ -65,14 +64,12 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
   return HtmlResponse(body=html)
 
 
-class IndexHtml(Endpoint):
+def index_html(request:Request) -> HtmlResponse:
   'The pithy.web.dev index page.'
-
-  def get(self, request:Request, fields:None) -> HtmlResponse:
-    main = Main(
-      H1(site_name),
-      P('A reference demo of the pithy.web stack.'))
-    return dev_page(title='Home', main=main)
+  main = Main(
+    H1(site_name),
+    P('A reference demo of the pithy.web stack.'))
+  return dev_page(title='Home', main=main)
 
 
 class PithyStaticFiles(FilesHandler):

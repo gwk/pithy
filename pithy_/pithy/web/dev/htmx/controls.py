@@ -13,18 +13,16 @@ from ...response import HtmlResponse, Response
 from ..pages import dev_page
 
 
-class DevControlsHtmx(Endpoint):
+def dev_controls_htmx(request:Request) -> Response:
   'Demonstrates HTMX controls.'
-
-  def get(self, request:Request, fields:None) -> Response:
-    main = Main(
-      H1('HTMX Controls'),
-      Div(cl='controls-demo-layout', _=[
-        controls_htmx(),
-        posted_values_div(),
-      ]))
-    return dev_page(title='HTMX Controls', main=main,
-      breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX'), ('/htmx/controls', 'Controls')])
+  main = Main(
+    H1('HTMX Controls'),
+    Div(cl='controls-demo-layout', _=[
+      controls_htmx(),
+      posted_values_div(),
+    ]))
+  return dev_page(title='HTMX Controls', main=main,
+    breadcrumbs=[('/', 'Home'), ('/htmx', 'HTMX'), ('/htmx/controls', 'Controls')])
 
 
 def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:

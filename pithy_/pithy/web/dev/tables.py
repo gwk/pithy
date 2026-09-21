@@ -4,7 +4,6 @@
 
 from ...date import Date, DateTime, dt_IMp, dt_Ymd_IMp, Time
 from ...html import Code, Div, H1, H2, Main, P, Section, Table, Td, Th, Tr
-from ..endpoint import Endpoint
 from ..request import Request
 from ..response import HtmlResponse
 from .pages import dev_page
@@ -42,55 +41,53 @@ def _table(wide:bool=False) -> Table:
   return table
 
 
-class DevTables(Endpoint):
+def dev_tables(request:Request) -> HtmlResponse:
   'Baseline styling of tables.'
+  plain = _table().caption('Animals')
 
-  def get(self, request:Request, fields:None) -> HtmlResponse:
-    plain = _table().caption('Animals')
+  collapsible = _table().caption('Animals')
+  collapsible.append_class('collapsible')
 
-    collapsible = _table().caption('Animals')
-    collapsible.append_class('collapsible')
+  main = Main(
+    H1('Tables'),
+    P('A table shrinks to fit its content and takes no margin of its own;'
+      ' the vertical spacing comes from the flow rule on its container.'),
 
-    main = Main(
-      H1('Tables'),
-      P('A table shrinks to fit its content and takes no margin of its own;'
-        ' the vertical spacing comes from the flow rule on its container.'),
+    Section(_=[
+      H2('Plain'),
+      Div(cl='overflow-x-auto', _=plain),
+      P(cl='muted', _=['Rows alternate shading. Cells marked ', Code('num'),
+        ' are right-aligned; cells marked ', Code('isodate'), ' do not wrap.']),
+    ]),
 
-      Section(_=[
-        H2('Plain'),
-        Div(cl='overflow-x-auto', _=plain),
-        P(cl='muted', _=['Rows alternate shading. Cells marked ', Code('num'),
-          ' are right-aligned; cells marked ', Code('isodate'), ' do not wrap.']),
-      ]),
+    Section(_=[
+      H2('Collapsible'),
+      P('A ', Code('collapsible'), ' table hides its body when the caption is clicked. This is wired up by ',
+        Code('pithy.js'), '.'),
+      Div(cl='overflow-x-auto', _=collapsible),
+    ]),
 
-      Section(_=[
-        H2('Collapsible'),
-        P('A ', Code('collapsible'), ' table hides its body when the caption is clicked. This is wired up by ',
-          Code('pithy.js'), '.'),
-        Div(cl='overflow-x-auto', _=collapsible),
-      ]),
+    Section(_=[
+      H2('Full width'),
+      P('The ', Code('w100'), ' utility makes a table fill the page column.'),
+      Div(cl='overflow-x-auto', _=_table().caption('Animals, full width').append_class('w100')),
+    ]),
 
-      Section(_=[
-        H2('Full width'),
-        P('The ', Code('w100'), ' utility makes a table fill the page column.'),
-        Div(cl='overflow-x-auto', _=_table().caption('Animals, full width').append_class('w100')),
-      ]),
+    Section(_=[
+      H2('Too wide to fit'),
+      P('A table that cannot be made narrower would otherwise widen the whole page. Wrapping it in a ',
+        Code('overflow-x-auto'), ' div confines the overflow to the table.'),
+      Div(cl='overflow-x-auto', _=_table(wide=True).caption('Animals, with descriptions')),
+    ]),
 
-      Section(_=[
-        H2('Too wide to fit'),
-        P('A table that cannot be made narrower would otherwise widen the whole page. Wrapping it in a ',
-          Code('overflow-x-auto'), ' div confines the overflow to the table.'),
-        Div(cl='overflow-x-auto', _=_table(wide=True).caption('Animals, with descriptions')),
-      ]),
+    Section(_=[
+      H2('Full bleed'),
+      P('A ', Code('bleed'), ' div escapes the page column and spans the window, which gives a wide table more'
+        ' room before it has to scroll. Combining it with ', Code('overflow-x-auto'),
+        ' gives a table that uses the whole window and scrolls only when even that is not enough.'),
+      Div(cl='bleed overflow-x-auto', _=_table(wide=True).caption('Animals, full bleed')),
+    ]),
 
-      Section(_=[
-        H2('Full bleed'),
-        P('A ', Code('bleed'), ' div escapes the page column and spans the window, which gives a wide table more'
-          ' room before it has to scroll. Combining it with ', Code('overflow-x-auto'),
-          ' gives a table that uses the whole window and scrolls only when even that is not enough.'),
-        Div(cl='bleed overflow-x-auto', _=_table(wide=True).caption('Animals, full bleed')),
-      ]),
-
-    )
-    return dev_page(title='Tables', main=main,
-      breadcrumbs=[('/', 'Home'), ('/tables', 'Tables')])
+  )
+  return dev_page(title='Tables', main=main,
+    breadcrumbs=[('/', 'Home'), ('/tables', 'Tables')])

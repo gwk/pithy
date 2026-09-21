@@ -2,11 +2,10 @@
 
 import pithy
 
-from ..handler import RoutableHandler
 from ..reload import DevServerCmd
-from ..router import RouterApp
+from ..router import RouterApp, RouteTarget
 from ..server import ServerConfig, WebServer
-from .basic import EchoBody, EchoId, EchoName, Hello
+from .basic import echo_id, echo_name, EchoBody, hello
 
 
 '''
@@ -31,10 +30,10 @@ class TestApp(RouterApp):
     super().__init__(routes=routes)
 
 
-routes:dict[str,type[RoutableHandler]] = {
-  '/': Hello,
-  '/items/{id:nat}': EchoId,
-  '/users/{name}': EchoName,
+routes:dict[str,RouteTarget] = {
+  '/': hello,
+  '/items/{id:nat}': echo_id,
+  '/users/{name}': echo_name,
   '/echo': EchoBody,
 }
 
