@@ -13,3 +13,4 @@ class Ctx(NamedTuple):
   proj_dir: str
   show_times: bool
   top_paths: tuple[str, ...]
+  path_width: int = 0

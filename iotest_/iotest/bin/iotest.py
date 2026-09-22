@@ -99,6 +99,7 @@ def main() -> None:
     collect_cases(ctx, cases_dict, proto, dir_path, specified_name_prefix)
 
   cases = sorted(cases_dict.values())
+  ctx = ctx._replace(path_width=max((len(case.stem) for case in cases), default=0) + 2)
   coverage_cases: list[Case] = []
 
   # check that there are no overlapping logical stems.
@@ -118,9 +119,9 @@ def main() -> None:
   for case in cases:
     if case.skip:
       skipped_count += 1
-      outL(f'{case.stem:{bar_width}} SKIPPED.')
+      outL(f'{case.stem:{ctx.path_width}}SKIPPED.')
     elif args.retest and not case.test_failed_previously:
-      if args.dbg: outL(f'{case.stem:{bar_width}} PREVIOUSLY PASSED.')
+      if args.dbg: outL(f'{case.stem:{ctx.path_width}}PREVIOUSLY PASSED.')
       skipped_count += 1
     else:
       ok = try_case(ctx, coverage_cases, case)
@@ -137,7 +138,8 @@ def main() -> None:
     code = 0
   total_time = time.time() - start_time
   if ctx.show_times:
-    outL(f'{msg:{bar_width}} {total_time:.2f} sec.')
+    summary_width = max(ctx.path_width, len(msg) + 2)
+    outL(f'{msg:{summary_width}}{total_time:.2f} sec.')
   else:
     outL(msg)
   if args.coverage and not args.no_coverage_report:
@@ -353,8 +355,8 @@ def try_case(ctx:Ctx, coverage_cases:list[Case], case:Case) -> bool:
 
 def run_case(ctx:Ctx, coverage_cases:list[Case], case:Case) -> bool:
   if ctx.dbg: errL()
-  _bar_width = (bar_width if ctx.show_times else 1)
-  outZ(f'{case.stem:{_bar_width}}', flush=True)
+  path_width = ctx.path_width if ctx.show_times else 0
+  outZ(f'{case.stem:{path_width}}', flush=True)
   if ctx.dbg:
     outL() # terminate previous line.
     case.describe(stderr)
@@ -441,7 +443,7 @@ def run_case(ctx:Ctx, coverage_cases:list[Case], case:Case) -> bool:
 
   if ctx.show_times:
     compile_time_msg = f'; compile: {compile_time:.2f}' if compile_time else ''
-    outL(f' {test_time:.2f} sec{compile_time_msg}.')
+    outL(f'{test_time:.2f} sec{compile_time_msg}.')
   else:
     outL()
 
