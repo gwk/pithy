@@ -2,6 +2,9 @@
 
 'use strict';
 
+// Opt in before the first paint; initTheme connects the selector when the document is ready.
+initTheme();
+
 addEventListener('DOMContentLoaded', () => {
   const currentPath = window.location.pathname;
   const currentLink = [...document.querySelectorAll('body > nav a')]

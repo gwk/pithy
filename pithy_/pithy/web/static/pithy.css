@@ -54,7 +54,7 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
 
 /* Root vars. Applications can override these to restyle. */
 :root {
-  color-scheme: light; /* Opt out of automatic dark form controls; the palette below is light-only. */
+  color-scheme: light dark; /* Auto follows the system preference, including native form controls. */
   accent-color: var(--accent);
 
   /* Type. */
@@ -70,29 +70,42 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   --page-padding: 0.5rem;
 
   /* Color. */
-  --fg: #1A1A1A;
-  --fg-muted: #666;
-  --fg-error: #800;
-  --bg: #FFF;
-  --bg-sunken: #F2F2F2; /* Chrome for the page: header, nav, footer. */
-  --bg-raised: #FFF; /* Surfaces that sit on the page: inputs, cards, dialogs. */
-  --border: #CCC;
-  --border-strong: #AAA;
-  --accent: #06C;
+  --fg: light-dark(#1A1A1A, #EEE);
+  --fg-muted: light-dark(#666, #AAA);
+  --fg-error: light-dark(#800, #FF9999);
+  --bg: light-dark(#FFF, #000);
+  --bg-sunken: light-dark(#F2F2F2, #0D0D0D); /* Chrome for the page: header, nav, footer. */
+  --bg-raised: light-dark(#FFF, #242424); /* Surfaces that sit on the page: inputs, cards, dialogs. */
+  --border: light-dark(#CCC, #444);
+  --border-strong: light-dark(#AAA, #666);
+  --accent: light-dark(#06C, #80BFFF);
 
-  --tr-subheading-background-color: #DDD;
-  --tr-even-background-color: #FFF;
-  --tr-odd-background-color: #EEE;
+  --tr-subheading-background-color: light-dark(#DDD, #383838);
+  --tr-even-background-color: light-dark(#FFF, #1A1A1A);
+  --tr-odd-background-color: light-dark(#EEE, #242424);
 }
+
+
+/* Theme selection. Auto is the default: the palette follows the system preference.
+A site that supports only one scheme sets data-theme="light" or "dark" on the root html element; pithy.js is not required.
+Sites that offer a choice call initTheme() in pithy.js, which sets the attribute from the saved preference. */
+:root:where([data-theme='light']) { color-scheme: light; }
+:root:where([data-theme='dark']) { color-scheme: dark; }
 
 
 /* Base typography.
 Only the root sets a font; everything else inherits, including form controls (see "Forms"). */
 
+html {
+  /* The root paints the canvas. The body box is only viewport height on long pages (see "height: 100%" above),
+  and neither Chromium nor WebKit propagate the body background to the canvas here, so a body background alone leaves the
+  overflow area in the browser default color, which is visible in dark mode. */
+  background-color: var(--bg);
+}
+
 body {
   font-family: var(--font);
   color: var(--fg);
-  background-color: var(--bg);
 }
 
 h1 { font-size: 1.75rem; }
@@ -759,7 +772,7 @@ dialog.modal {
     padding: 1em;
     background-color: var(--bg-raised);
     &.error {
-      border: 2px solid #880000;
+      border: 2px solid var(--fg-error);
     }
   }
 }

@@ -15,6 +15,53 @@ const assert = console.assert;
 const log = console.log;
 
 /**
+ * Opt in to a saved theme. Call in the head before the body is rendered to avoid a theme flash.
+ * The optional select contains auto/light/dark values; it is connected once the document is ready.
+ * Preferences use localStorage key `pithy.web.theme`, shared only within the same origin.
+ * For a fixed theme, omit this call and set <html data-theme="light"> (or "dark").
+ * Merely loading pithy.js does not change the theme.
+ * @param {string} selectId
+ */
+function initTheme(selectId = 'theme-mode') {
+  let mode = 'auto';
+  try {
+    const saved = localStorage.getItem('pithy.web.theme');
+    if (saved === 'light' || saved === 'dark') mode = saved;
+  } catch {
+    // Storage can be unavailable; theme selection still works for this page.
+  }
+  document.documentElement.dataset.theme = mode;
+
+  function connectSelect() {
+    const select = document.getElementById(selectId);
+    if (!(select instanceof HTMLSelectElement)) return;
+    select.value = document.documentElement.dataset.theme || 'auto';
+    select.addEventListener('change', () => setTheme(select.value));
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', connectSelect, {once: true});
+  } else {
+    connectSelect();
+  }
+}
+
+
+/**
+ * Apply and save a theme choice. Custom theme controls can call this directly.
+ * @param {string} mode
+ */
+function setTheme(mode) {
+  if (mode !== 'auto' && mode !== 'light' && mode !== 'dark') throw new Error(`Invalid theme: ${mode}`);
+  document.documentElement.dataset.theme = mode;
+  try {
+    localStorage.setItem('pithy.web.theme', mode);
+  } catch {
+    // Keep the selected theme even when it cannot be saved.
+  }
+}
+
+
+/**
  * Set up the browser environment.
  */
 function _configurePithy() {

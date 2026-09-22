@@ -2,7 +2,7 @@
 
 from typing import Iterable, Sequence
 
-from ...html import A, Footer, H1, Header, Html, Main, Nav, P, Script
+from ...html import A, Footer, H1, Header, Html, Label, Main, Nav, P, Script, Select, Span
 from ...path import path_dir, path_join
 from ..env import is_web_dbg
 from ..files import FilesHandler
@@ -47,6 +47,7 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
     head.add_stylesheet(href=css_path)
   # pithy.js must not be deferred: it defines `once()`, which inline script elements call as they are parsed.
   head.append(Script(src='/static/pithy/pithy.js'))
+  # Apply the saved theme before the body is rendered.
   head.append(Script(src='/static/dev/dev.js'))
   head.add_js(src='/static/pithy/htmx/htmx4.js' if is_web_dbg() else '/static/pithy/htmx/htmx4.min.js')
   for js_path in js_paths:
@@ -54,7 +55,12 @@ def dev_page(*, title:str, main:Main, breadcrumbs:Iterable[tuple[str,str]]=(), c
 
   body = html.body
   body.append(Header(site_name))
-  body.append(Nav(cl='navbar', _=[A(href=p, _=label) for p, label in nav_links]))
+  body.append(Nav(cl='navbar', _=[
+    *(A(href=p, _=label) for p, label in nav_links),
+    Label(Span('◐', cl='icon', aria_hidden='true'), ' ',
+      Select(id='theme-mode', aria_label='Theme').options({'auto': 'Auto', 'light': 'Light', 'dark': 'Dark'}, value='auto'),
+      cl='nav-end', for_='theme-mode', title='Theme'),
+  ]))
   if trail := list(breadcrumbs):
     *ancestors, (_, current) = trail
     main.prepend(Nav.breadcrumbs(ancestors, current=current))
