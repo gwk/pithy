@@ -3,6 +3,7 @@
 
 from argparse import ArgumentParser
 from os import environ, getcwd
+from time import perf_counter
 
 from pithy.fs import make_dirs, path_rel_to_dir, walk_files
 from pithy.task import runC
@@ -13,6 +14,7 @@ def main() -> None:
   arg_parser.add_argument('paths', nargs='*', default=['test'])
   args = arg_parser.parse_args()
   paths = list(walk_files(*args.paths, file_exts='.ut.py'))
+  path_width = max(map(len, paths), default=0) + 2
 
   env = dict(environ)
   env.setdefault('UTEST_WORK_DIR', getcwd())
@@ -22,9 +24,11 @@ def main() -> None:
   ok = True
 
   for path in paths:
-    print(path)
     exe_path = path_rel_to_dir(path, utest_cwd)
+    start_time = perf_counter()
     c = runC(['python3', '-P', exe_path], cwd=utest_cwd, env=env)
+    elapsed = perf_counter() - start_time
+    print(f'{path:{path_width}}{elapsed:.2f} sec.', flush=True)
     if c != 0:
       ok = False
       print()
