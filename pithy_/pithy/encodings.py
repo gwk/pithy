@@ -3,7 +3,7 @@
 from base64 import (b16decode, b16encode, b32decode, b32encode, b85decode, b85encode, standard_b64decode, standard_b64encode,
   urlsafe_b64decode, urlsafe_b64encode)
 from collections.abc import Buffer
-from typing import Iterable, Sequence, Sized
+from typing import Sequence, Sized
 from unicodedata import normalize
 
 
@@ -63,7 +63,10 @@ def lep_int_from_bytes(val:Sequence[int]) -> int:
 
 
 def lep_encode(val:Sequence[int], alphabet:bytes) -> bytes:
-  'Encode a byte string using the specified base alphabet using the "little endian punctuated" scheme.'
+  '''
+  Encode a byte string using the specified base alphabet using the "little endian punctuated" scheme.
+  This is quadratic in the input length for alphabets whose size is not a power of two.
+  '''
   m = len(alphabet)
   res = bytearray()
   n = lep_int_from_bytes(val)
@@ -73,39 +76,35 @@ def lep_encode(val:Sequence[int], alphabet:bytes) -> bytes:
   return bytes(res)
 
 
-def lep_decode(encoded:Iterable[int], alphabet:bytes, alphabet_inverse:bytes) -> bytes:
+def lep_decode(encoded:Sequence[int], alphabet:bytes, alphabet_inverse:bytes) -> bytes:
   '''
   Decode a byte string using the specified base alphabet and its inverse lookup table using the "little-endian punctuated"
   scheme.
   Decoding is strict: the input must be exactly what `lep_encode` produces.
   In particular a trailing `alphabet[0]` character is rejected, because the terminator bit makes the final digit nonzero.
-  WARNING: the (m**i) step is disastrously slow for large values of i, so this function is not suitable for large inputs.
+  Like `lep_encode`, this is quadratic in the input length for alphabets whose size is not a power of two.
   '''
   m = len(alphabet)
+  last_i = len(encoded) - 1
+  if last_i < 0 or alphabet_inverse[encoded[last_i]] == 0:
+    raise ValueError(f'non-canonical encoding (empty or trailing zero digit): {encoded!r}')
   n = 0
-  a = 0
-  for i, char in enumerate(encoded):
-    a = alphabet_inverse[char]
+  for i in range(last_i, -1, -1): # Horner's rule, from the most significant digit down.
+    a = alphabet_inverse[encoded[i]]
     if a >= m: raise ValueError(f'invalid character at index {i}: {encoded!r}')
-    n += (m**i) * a
-  if a == 0: raise ValueError(f'non-canonical encoding (empty or trailing zero digit): {encoded!r}')
-  res = bytearray()
-  while n > 1:
-    n, r = divmod(n, 0x100)
-    res.append(r)
-  if n != 1: raise ValueError(f'terminator bit is not byte-aligned: {encoded!r}')
-  return bytes(res)
+    n = n*m + a
+  bit_count = n.bit_length() - 1 # Position of the terminator bit.
+  if bit_count % 8: raise ValueError(f'terminator bit is not byte-aligned: {encoded!r}')
+  n ^= 1 << bit_count # Clear the terminator bit.
+  return n.to_bytes(bit_count // 8, byteorder='little')
 
 
 def enc_lep62(val:Sequence[int]) -> bytes:
-  '''
-  Encode a byte string using the little endian punctuated base62 alphabet.
-  WARNING: this is currently very slow for large inputs.
-  '''
+  'Encode a byte string using the little endian punctuated base62 alphabet. This is quadratic in the input length.'
   return lep_encode(val, alphabet=base62_alphabet)
 
-def dec_lep62(val:Iterable[int]) -> bytes:
-  'Decode a byte string using the little endian punctuated base62 alphabet.'
+def dec_lep62(val:Sequence[int]) -> bytes:
+  'Decode a byte string using the little endian punctuated base62 alphabet. This is quadratic in the input length.'
   return lep_decode(val, alphabet=base62_alphabet, alphabet_inverse=base62_alphabet_inverse)
 
 
