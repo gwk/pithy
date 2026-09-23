@@ -4,6 +4,7 @@ from base64 import (b16decode, b16encode, b32decode, b32encode, b85decode, b85en
   urlsafe_b64decode, urlsafe_b64encode)
 from collections.abc import Buffer
 from typing import Iterable, Sequence, Sized
+from unicodedata import normalize
 
 
 _convenience_exports = (b16decode, b16encode, b32decode, b32encode, b85decode, b85encode)
@@ -35,6 +36,14 @@ assert len(base62_alphabet) == 62
 # but in macOS applications only the ten ASCII digits will double-click as a block.
 # Older versions of macOS had problems outputting the 'ÿ' on the command line, but this appears to be fixed as of 2024-10.
 # I believe this was a bug in editline/libedit.
+# Unlike base58, this alphabet includes visually confusable characters.
+# Storage cost: each character carries 7 bits, so the encoded length is 8/7 (1.14x) the input length in characters.
+# As latin1 that is also the byte cost, better than base64's 4/3 (1.33x).
+# As UTF-8, the 65 non-ASCII characters take two bytes each, so random input costs 8/7 * 193/128 = 1.72x its length in bytes.
+# Caveats for using encoded values as filenames:
+# * 56 of the characters have their case pair in the alphabet, so distinct values can collide on case-insensitive filesystems.
+# * 53 of the characters decompose under NFD normalization;
+# the string decoders apply NFC normalization before decoding to recover from this.
 base128_alphabet = (
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyzª'
   'µºÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ').encode('latin1')
@@ -151,8 +160,13 @@ def enc_lep128_to_str(val:Sequence[int]) -> str:
 
 
 def dec_lep128_from_str(val:str) -> bytes:
-  'Decode a string using the little endian punctuated base128 alphabet.'
-  return dec_lep128(val.encode('latin1'))
+  '''
+  Decode a string using the little endian punctuated base128 alphabet.
+  The string is first normalized to NFC, because every character of the alphabet is NFC-stable,
+  but many of them decompose under NFD (e.g. when passed through an HFS+ filename).
+  '''
+  try: return dec_lep128(normalize('NFC', val).encode('latin1'))
+  except UnicodeEncodeError as e: raise ValueError(val) from e
 
 
 def enc_lep128_to_utf8(val:Sequence[int]) -> bytes:
@@ -163,7 +177,7 @@ def enc_lep128_to_utf8(val:Sequence[int]) -> bytes:
 def dec_lep128_from_utf8(val:Sequence[int]) -> bytes:
   'Decode a UTF-8 byte string using the little endian punctuated base128 alphabet.'
   if not isinstance(val, (bytes, bytearray)): val = bytes(val) # memoryview does not have the decode() method.
-  return dec_lep128(val.decode('utf8').encode('latin1'))
+  return dec_lep128_from_str(val.decode('utf8'))
 
 
 def enc_b64url(val:str|Buffer, pad:bool=False) -> bytes:
