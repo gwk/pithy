@@ -35,12 +35,19 @@ We also link both .claude/skills and .agents/skills to context/skills, so the sa
 # Context Keywords
 
 Modules can advertise topics with a top-level literal assignment:
-```python
-_context_keywords_:list[str] = ['file locking', 'flock', 'process coordination']
+```
+_context_keywords_ = ['file locking', 'flock', 'process coordination']
 ```
 The value must be a sorted list of unique strings, using Python's case-sensitive string ordering and equality.
 Each keyword must contain at least one word character; blank or punctuation-only keywords are errors.
-These keywords are read with ast.literal_eval; modules are never imported or executed.
+A keyword is a short phrase of at most three words separated by whitespace.
+
+Modules can also declare a free-form status, which queries display next to results:
+```
+_context_status_ = 'obsolete'
+```
+The status must be a printable single-line string containing at least one word character.
+Both variables are read with ast.literal_eval; modules are never imported or executed.
 
 `craft-context index [paths...]` refreshes `context/index.json`.
 `context/index.lock` is an advisory lock to prevent concurrent updates. Both files are build products and should be gitignored.
@@ -56,13 +63,15 @@ Dependency symlinks are followed and duplicate project roots are searched once. 
 
 Results are ranked together across all indexes.
 Matching uses case-insensitive whole words, splitting punctuation and underscores into word boundaries.
+The words of each module name also match, as if they were keywords (`__init__` and `__main__` modules use the package name).
+Only modules that declare keywords or a status appear in results.
 Quoted phrases and separate words behave identically.
 Any matching word includes a module in the results; more distinct matching query words rank first.
 '''
 
 import json
 import re
-from ast import AnnAssign, Assign, literal_eval, Module, Name, parse as parse_ast
+from ast import AnnAssign, Assign, expr, literal_eval, Module, Name, parse as parse_ast
 from hashlib import sha256
 from os import replace
 from tempfile import TemporaryDirectory
@@ -74,7 +83,7 @@ from pithy.filestatus import file_stat, is_dir, is_file, is_link, path_exists
 from pithy.fs import list_dir, make_dirs, make_link, real_path
 from pithy.io import errL, outL
 from pithy.lex import Lexer
-from pithy.path import expand_home_dir, is_path_abs, norm_path, path_dir_or_dot, path_join, path_name, rel_path
+from pithy.path import expand_home_dir, is_path_abs, norm_path, path_dir, path_dir_or_dot, path_join, path_name, rel_path
 from pithy.python.package import walk_module_paths
 from tolkien import Source, Token
 
@@ -185,8 +194,10 @@ class Query(Cmd):
       results = query_context_modules(modules, self.words)
     except (OSError, ValueError) as e:
       exit(f'craft-context query: {e}')
-    for _, path, keywords in results:
-      outL(f'{path}: {", ".join(keywords)}')
+    for _, path, status, keywords in results:
+      status_text = f' ({status})' if status else ''
+      keywords_text = f': {", ".join(keywords)}' if keywords else ''
+      outL(f'{path}{status_text}{keywords_text}')
     if not results: outL('No matching modules.')
 
 
@@ -194,6 +205,7 @@ class Query(Cmd):
 class ContextModule(TypedDict):
   path:str
   keywords:list[str]
+  status:str
 
 
 class FileRecord(TypedDict):
@@ -201,6 +213,7 @@ class FileRecord(TypedDict):
   mtime_ns:int
   sha256:str
   keywords:list[str]
+  status:str
 
 
 class ContextIndex(TypedDict):
@@ -208,14 +221,14 @@ class ContextIndex(TypedDict):
   files:dict[str,FileRecord]
 
 
-index_version = 1
+index_version = 2
 scan_exclude_dirs = ('_build', '_misc', 'deps', 'dist', 'node_modules')
 
 
 def scan_context_files(root:str, paths:list[str], *, command:str, prior:dict[str,FileRecord], built_ns:int
  ) -> tuple[dict[str,FileRecord],int,bool]:
   '''
-  Fingerprint and extract keywords from the Python files under `paths`, keyed by path relative to `root`.
+  Fingerprint and extract keywords and status from the Python files under `paths`, keyed by path relative to `root`.
   A prior record is reused without reading the file when its size and mtime match and the mtime precedes `built_ns`;
   otherwise the file is hashed, and reparsed only if the hash changed.
   Return the records, the number of source errors (reported to stderr), and whether any file was read.
@@ -235,14 +248,14 @@ def scan_context_files(root:str, paths:list[str], *, command:str, prior:dict[str
     with open(path, 'rb') as f: data = f.read()
     digest = sha256(data).hexdigest()
     if record and record['sha256'] == digest:
-      keywords = record['keywords']
+      keywords, status = record['keywords'], record['status']
     else:
-      try: keywords = extract_context_keywords(parse_ast(data, filename=path))
+      try: keywords, status = extract_context_meta(parse_ast(data, filename=path))
       except (SyntaxError, UnicodeError, ValueError) as e:
         errL(f'craft-context {command}: {path}: {e}')
         errors += 1
         continue
-    records[rel] = FileRecord(size=size, mtime_ns=mtime_ns, sha256=digest, keywords=keywords)
+    records[rel] = FileRecord(size=size, mtime_ns=mtime_ns, sha256=digest, keywords=keywords, status=status)
   return records, errors, read_any
 
 
@@ -251,7 +264,7 @@ def refresh_context_index(root:str, paths:list[str], *, command:str) -> tuple[li
   Refresh the records under `paths` in the index at `root` while holding an exclusive lock on context/index.lock.
   Prior records outside of `paths` are preserved; records under `paths` for files that no longer exist are dropped.
   Missing or invalid indexes are rebuilt. Source errors exit without writing.
-  Return the modules with keywords, relative to `root`, and whether the index was written.
+  Return the modules with keywords or status, relative to `root`, and whether the index was written.
   '''
   dest = path_join(root, index_path)
   paths = [norm_path(path if is_path_abs(path) else path_join(root, path)) for path in paths]
@@ -270,7 +283,8 @@ def refresh_context_index(root:str, paths:list[str], *, command:str) -> tuple[li
     files = dict(sorted(files.items()))
     written = read_any or files != prior
     if written: write_context_index(dest, ContextIndex(version=index_version, files=files))
-  modules = [ContextModule(path=rel, keywords=record['keywords']) for rel, record in files.items() if record['keywords']]
+  modules = [ContextModule(path=rel, keywords=record['keywords'], status=record['status'])
+    for rel, record in files.items() if record['keywords'] or record['status']]
   return modules, written
 
 
@@ -317,10 +331,10 @@ def load_project_context(root:str) -> list[ContextModule]:
       errL(f'craft-context query: {src}: no index; run craft-context index at the project root.')
       continue
     except (UnicodeError, ValueError) as e:
-      raise ValueError(f'{src}: {e}') from e
+      raise ValueError(f'{src}: {e} Run craft-context index at the project root.') from e
     found = True
-    modules.extend(ContextModule(path=norm_path(path_join(project, rel)), keywords=record['keywords'])
-      for rel, record in index['files'].items() if record['keywords'])
+    modules.extend(ContextModule(path=norm_path(path_join(project, rel)), keywords=record['keywords'], status=record['status'])
+      for rel, record in index['files'].items() if record['keywords'] or record['status'])
   if not found:
     raise ValueError(f'no indexes found in {root!r} or its deps/ directories; use source search instead.')
   return modules
@@ -341,7 +355,8 @@ def load_context_index(path:str) -> tuple[ContextIndex,int]:
     if (not rel or is_path_abs(rel) or not isinstance(record, dict)
      or type(record.get('size')) is not int or type(record.get('mtime_ns')) is not int
      or not isinstance(record.get('sha256'), str)
-     or not isinstance(record.get('keywords'), list) or not all(isinstance(k, str) for k in record['keywords'])):
+     or not isinstance(record.get('keywords'), list) or not all(isinstance(k, str) for k in record['keywords'])
+     or not isinstance(record.get('status'), str)):
       raise ValueError(f'invalid record for {rel!r}.')
   return ContextIndex(version=index_version, files=files), stat.st_mtime_ns
 
@@ -351,51 +366,94 @@ def context_words(text:str) -> set[str]:
   return set(re.findall(r'[^\W_]+', text.casefold()))
 
 
-def query_context_modules(modules:list[ContextModule], words:list[str]) -> list[tuple[int,str,list[str]]]:
-  'Scan keyword records, returning scores, paths and matching phrases in descending score order.'
+def module_name_words(path:str) -> set[str]:
+  "Return the words of the module name of `path`; `__init__` or `__main__` module use the parent package name."
+  name = path_name(path).partition('.')[0]
+  if name in ('__init__', '__main__'): name = path_name(path_dir(path))
+  return context_words(name)
+
+
+def query_context_modules(modules:list[ContextModule], words:list[str]) -> list[tuple[int,str,str,list[str]]]:
+  '''
+  Scan keyword records and module names.
+  Return scores, paths, statuses and matching keyword phrases in descending score order.
+  '''
   query_words = context_words(' '.join(words))
   if not query_words: raise ValueError('expected at least one query word.')
-  results:list[tuple[int,str,list[str]]] = []
+  results:list[tuple[int,str,str,list[str]]] = []
   for module in modules:
-    matched_words:set[str] = set()
+    matched_words = query_words & module_name_words(module['path'])
     keywords:list[str] = []
     for keyword in module['keywords']:
       if matches := query_words & context_words(keyword):
         matched_words.update(matches)
         keywords.append(keyword)
-    if matched_words: results.append((len(matched_words), module['path'], keywords))
+    if matched_words: results.append((len(matched_words), module['path'], module['status'], keywords))
   results.sort(key=lambda result: (-result[0], result[1]))
   return results
 
 
+context_keywords_name = '_context_keywords_'
+context_status_name = '_context_status_'
+context_meta_names = (context_keywords_name, context_status_name)
+max_keyword_words = 3
 
-def extract_context_keywords(tree:Module) -> list[str]:
-  'Extract the optional top-level _context_keywords_ literal list, raising ValueError for invalid or repeated declarations.'
+
+def extract_context_meta(tree:Module) -> tuple[list[str],str]:
+  '''
+  Extract the optional top-level _context_keywords_ and _context_status_ literals.
+  Return the keywords (empty if undeclared) and status (empty if undeclared).
+  Raise ValueError for invalid or repeated declarations.
+  '''
   keywords:list[str]|None = None
+  status:str|None = None
   for node in tree.body:
     if isinstance(node, Assign):
-      if not any(isinstance(target, Name) and target.id == '_context_keywords_' for target in node.targets): continue
-    elif isinstance(node, AnnAssign):
-      if not node.simple or not isinstance(node.target, Name) or node.target.id != '_context_keywords_': continue
+      names = [target.id for target in node.targets if isinstance(target, Name) and target.id in context_meta_names]
+    elif isinstance(node, AnnAssign) and node.simple and isinstance(node.target, Name):
+      names = [node.target.id] if node.target.id in context_meta_names else []
     else:
       continue
     value_node = node.value
     if value_node is None: continue # An annotation alone does not assign a value.
-    label = f'_context_keywords_ at line {node.lineno}'
-    if keywords is not None: raise ValueError(f'{label}: repeated declaration.')
-    try: value = literal_eval(value_node)
-    except (ValueError, TypeError, SyntaxError):
-      raise ValueError(f'{label}: expected a literal list of strings.') from None
-    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
-      raise ValueError(f'{label}: expected a literal list of strings.')
-    seen:set[str] = set()
-    for keyword in value:
-      if not context_words(keyword): raise ValueError(f'{label}: keyword has no matchable words: {keyword!r}.')
-      if keyword in seen: raise ValueError(f'{label}: duplicate keyword: {keyword!r}.')
-      seen.add(keyword)
-    if value != sorted(value): raise ValueError(f'{label}: keywords must be in sorted order.')
-    keywords = value
-  return keywords if keywords is not None else []
+    for name in names:
+      label = f'{name} at line {node.lineno}'
+      if name == context_keywords_name:
+        if keywords is not None: raise ValueError(f'{label}: repeated declaration.')
+        keywords = validate_context_keywords(label, value_node)
+      else:
+        if status is not None: raise ValueError(f'{label}: repeated declaration.')
+        status = validate_context_status(label, value_node)
+  return (keywords or []), (status or '')
+
+
+def validate_context_keywords(label:str, value_node:expr) -> list[str]:
+  'Evaluate and validate a _context_keywords_ literal.'
+  try: value = literal_eval(value_node)
+  except (ValueError, TypeError, SyntaxError):
+    raise ValueError(f'{label}: expected a literal list of strings.') from None
+  if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+    raise ValueError(f'{label}: expected a literal list of strings.')
+  seen:set[str] = set()
+  for keyword in value:
+    if not context_words(keyword): raise ValueError(f'{label}: keyword has no matchable words: {keyword!r}.')
+    if len(keyword.split()) > max_keyword_words:
+      raise ValueError(f'{label}: keyword has more than {max_keyword_words} words: {keyword!r}.')
+    if keyword in seen: raise ValueError(f'{label}: duplicate keyword: {keyword!r}.')
+    seen.add(keyword)
+  if value != (expected := sorted(value)): raise ValueError(f'{label}: keywords must be in sorted order: {expected!r}.')
+  return value
+
+
+def validate_context_status(label:str, value_node:expr) -> str:
+  'Evaluate and validate a _context_status_ literal.'
+  try: value = literal_eval(value_node)
+  except (ValueError, TypeError, SyntaxError):
+    raise ValueError(f'{label}: expected a literal string.') from None
+  if not isinstance(value, str): raise ValueError(f'{label}: expected a literal string.')
+  if not value.isprintable(): raise ValueError(f'{label}: status must be a printable single-line string: {value!r}.')
+  if not context_words(value): raise ValueError(f'{label}: status has no matchable words: {value!r}.')
+  return value
 
 
 def find_src_paths(paths:list[str]) -> list[str]:

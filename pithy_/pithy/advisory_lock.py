@@ -10,7 +10,7 @@ from threading import Lock
 from pithy.logs import logI
 
 
-_context_keywords_:list[str] = ['advisory lock', 'file', 'flock', 'mutex', 'mutual exclusion', 'process coordination']
+_context_keywords_ = ['advisory lock', 'file', 'flock', 'mutex', 'mutual exclusion', 'process coordination']
 
 
 class AdvisoryLockError(Exception):

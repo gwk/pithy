@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from time import time_ns
 from unittest.mock import patch
 
-from crafts.bin.craft_context import (ContextModule, CraftContext, extract_context_keywords, FileRecord, find_src_paths,
+from crafts.bin.craft_context import (ContextModule, CraftContext, extract_context_meta, FileRecord, find_src_paths,
   generated_warning, Index, load_context_index, load_project_context, process_path, Query, query_context_modules,
   refresh_context_index, Validate)
 from pithy.filestatus import is_dir
@@ -18,52 +18,81 @@ from utest import utest, utest_exc, utest_val
 
 
 # Nested assignments must not override module metadata, and a standalone annotation is not a value assignment.
-utest(['file locking', 'flock'], extract_context_keywords, parse_ast('''
+utest((['file locking', 'flock'], 'experimental'), extract_context_meta, parse_ast('''
 _context_keywords_:list[str]
 _context_keywords_:list[str] = ['file locking', 'flock']
+_context_status_:str
+_context_status_:str = 'experimental'
 class Example:
   _context_keywords_ = ['class']
+  _context_status_ = 'class'
 def example():
   _context_keywords_ = ['function']
 if True:
   _context_keywords_ = ['conditional']
 '''))
+utest(([], ''), extract_context_meta, parse_ast('"No metadata."'))
+utest(([], 'obsolete; use pithy.fs'), extract_context_meta, parse_ast('_context_status_ = "obsolete; use pithy.fs"'))
 
 # An empty declaration still counts when rejecting reassignment.
-utest_exc(ValueError, extract_context_keywords, parse_ast('_context_keywords_ = []\n_context_keywords_ = ["second"]'))
+utest_exc(ValueError, extract_context_meta, parse_ast('_context_keywords_ = []\n_context_keywords_ = ["second"]'))
+utest_exc(ValueError('_context_status_ at line 2: repeated declaration.'), extract_context_meta,
+  parse_ast('_context_status_ = "a"\n_context_status_ = "b"'))
 
 # Reject computed expressions without evaluating them, and reject literals with the wrong shape.
 for expression in ('print("Must not execute")', '["a"] + ["b"]', '("a", "b")', '["a", 1]'):
-  utest_exc(ValueError, extract_context_keywords, parse_ast(f'_context_keywords_ = {expression}'))
+  utest_exc(ValueError, extract_context_meta, parse_ast(f'_context_keywords_ = {expression}'))
+for expression in ('print("Must not execute")', '"a" + "b"', '["a"]', '1'):
+  utest_exc(ValueError('_context_status_ at line 1: expected a literal string.'), extract_context_meta,
+    parse_ast(f'_context_status_ = {expression}'))
+for status in ('""', '"-"', '"a\\nb"', '"a\\tb"'):
+  utest_exc(ValueError, extract_context_meta, parse_ast(f'_context_status_ = {status}'))
 
-utest_exc(ValueError("_context_keywords_ at line 1: duplicate keyword: 'flock'."), extract_context_keywords,
+utest_exc(ValueError("_context_keywords_ at line 1: duplicate keyword: 'flock'."), extract_context_meta,
   parse_ast('_context_keywords_ = ["flock", "file locking", "flock"]'))
-utest_exc(ValueError('_context_keywords_ at line 1: keywords must be in sorted order.'), extract_context_keywords,
-  parse_ast('_context_keywords_ = ["flock", "file locking"]'))
+utest_exc(ValueError("_context_keywords_ at line 1: keywords must be in sorted order: ['file locking', 'flock']."),
+  extract_context_meta, parse_ast('_context_keywords_ = ["flock", "file locking"]'))
+utest_exc(ValueError("_context_keywords_ at line 1: keywords must be in sorted order: ['HTTP', 'api']."), extract_context_meta,
+  parse_ast('_context_keywords_ = ["api", "HTTP"]'))
 for blank in ('""', '" "', '"---"', '"_"'):
   utest_exc(ValueError(f'_context_keywords_ at line 1: keyword has no matchable words: {blank[1:-1]!r}.'),
-    extract_context_keywords, parse_ast(f'_context_keywords_ = [{blank}]'))
-utest(['A', 'a'], extract_context_keywords, parse_ast('_context_keywords_ = ["A", "a"]'))
+    extract_context_meta, parse_ast(f'_context_keywords_ = [{blank}]'))
+utest((['A', 'a'], ''), extract_context_meta, parse_ast('_context_keywords_ = ["A", "a"]'))
+utest((['fcntl.flock', 'three word phrase'], ''), extract_context_meta,
+  parse_ast('_context_keywords_ = ["fcntl.flock", "three word phrase"]'))
+utest_exc(ValueError("_context_keywords_ at line 1: keyword has more than 3 words: 'a four word phrase'."),
+  extract_context_meta, parse_ast('_context_keywords_ = ["a four word phrase"]'))
 utest(CraftContext(cmd=Validate(paths=['pkg'], root='library')), CraftContext.parse,
   ['validate', '-root', 'library', 'pkg'])
 
 
 modules = [
-  ContextModule(path='locking.py', keywords=['locking']),
-  ContextModule(path='advisory_lock.py', keywords=['file locking', 'flock', 'advisory lock']),
-  ContextModule(path='files.py', keywords=['file', 'file format']),
+  ContextModule(path='locking.py', keywords=['locking'], status=''),
+  ContextModule(path='advisory_lock.py', keywords=['file locking', 'flock', 'advisory lock'], status=''),
+  ContextModule(path='files.py', keywords=['file', 'file format'], status='obsolete'),
 ]
 expected_matches = [
-  (2, 'advisory_lock.py', ['file locking']),
-  (1, 'files.py', ['file', 'file format']),
-  (1, 'locking.py', ['locking']),
+  (2, 'advisory_lock.py', '', ['file locking']),
+  (1, 'files.py', 'obsolete', ['file', 'file format']),
+  (1, 'locking.py', '', ['locking']),
 ]
 utest(expected_matches, query_context_modules, modules, ['FILE locking'])
 utest(expected_matches, query_context_modules, modules, ['file', 'locking', 'file'])
 utest(expected_matches, query_context_modules, modules, ['file_locking'])
-utest([(1, 'advisory_lock.py', ['flock'])], query_context_modules, modules, ['flock', 'unknown'])
-utest([(1, 'advisory_lock.py', ['advisory lock'])], query_context_modules, modules, ['lock'])
+utest([(1, 'advisory_lock.py', '', ['flock'])], query_context_modules, modules, ['flock', 'unknown'])
+utest([(1, 'advisory_lock.py', '', ['advisory lock'])], query_context_modules, modules, ['lock'])
+utest([(1, 'files.py', 'obsolete', [])], query_context_modules, modules, ['files'])
 utest([], query_context_modules, modules, ['floc'])
+
+# Module name words match as keywords; package modules take the package name, and compound suffixes are dropped.
+name_modules = [
+  ContextModule(path='pkg/web_server/__init__.py', keywords=['http'], status=''),
+  ContextModule(path='pkg/tool/__main__.py', keywords=['cli'], status=''),
+  ContextModule(path='pkg/pool.ut.py', keywords=['tests'], status=''),
+]
+utest([(2, 'pkg/web_server/__init__.py', '', ['http'])], query_context_modules, name_modules, ['server', 'http', 'init'])
+utest([(1, 'pkg/tool/__main__.py', '', [])], query_context_modules, name_modules, ['tool', 'main'])
+utest([(1, 'pkg/pool.ut.py', '', [])], query_context_modules, name_modules, ['pool', 'ut'])
 utest_exc(ValueError, query_context_modules, modules, ['---'])
 utest_exc(ValueError, query_context_modules, modules, [])
 utest(CraftContext(cmd=Query(words=['file locking'], root='library')), CraftContext.parse,
@@ -76,7 +105,7 @@ with TemporaryDirectory() as tmp:
   dependency = workspace / 'library'
   (project / 'deps').mkdir(parents=True)
   (project / 'context').mkdir()
-  (project / 'file.py').write_text('_context_keywords_ = ["file"]\n')
+  (project / 'file.py').write_text('_context_keywords_ = ["file"]\n_context_status_ = "unmaintained"\n')
   (dependency / 'context').mkdir(parents=True)
   (dependency / 'lock.py').write_text('_context_keywords_ = ["fcntl.flock", "file locking"]\n')
   (project / 'deps/library').symlink_to(dependency, target_is_directory=True)
@@ -84,8 +113,8 @@ with TemporaryDirectory() as tmp:
   (project / 'deps/self').symlink_to(project, target_is_directory=True)
   (project / 'deps/unindexed').mkdir()
   dep_index = dependency / 'context/index.json'
-  expected_local = ContextModule(path=f'{project}/file.py', keywords=['file'])
-  expected_dep = ContextModule(path=f'{project}/deps/library/lock.py', keywords=['fcntl.flock', 'file locking'])
+  expected_local = ContextModule(path=f'{project}/file.py', keywords=['file'], status='unmaintained')
+  expected_dep = ContextModule(path=f'{project}/deps/library/lock.py', keywords=['fcntl.flock', 'file locking'], status='')
 
   # Indexing the project does not create or refresh dependency indexes.
   with patch('crafts.bin.craft_context.outL'):
@@ -110,7 +139,7 @@ with TemporaryDirectory() as tmp:
    patch('crafts.bin.craft_context.errL') as errors, patch('crafts.bin.craft_context.outL') as output:
     utest([expected_local, expected_dep], load_project_context, str(project))
     Query(root=str(project), words=['file locking']).run()
-    utest([((f'{project}/deps/library/lock.py: file locking',), {}), ((f'{project}/file.py: file',), {})],
+    utest([((f'{project}/deps/library/lock.py: file locking',), {}), ((f'{project}/file.py (unmaintained): file',), {})],
       lambda: output.call_args_list)
     utest(2, lambda: errors.call_count)
   for path, data, mtime_ns in snapshots:
@@ -162,12 +191,13 @@ with TemporaryDirectory() as tmp:
     Index(root=tmp).run()
     utest([((f'craft-context: wrote {tmp}/context/index.json',), {})], lambda: output.call_args_list)
   lock_record = FileRecord(size=len(lock_source), mtime_ns=old_time_ns, sha256=sha256(lock_source.encode()).hexdigest(),
-    keywords=['file locking', 'flock'])
-  utest({'version': 1, 'files': {
-    'empty.py': FileRecord(size=24, mtime_ns=old_time_ns, sha256=sha256(b'_context_keywords_ = []\n').hexdigest(), keywords=[]),
+    keywords=['file locking', 'flock'], status='')
+  utest({'version': 2, 'files': {
+    'empty.py': FileRecord(size=24, mtime_ns=old_time_ns, sha256=sha256(b'_context_keywords_ = []\n').hexdigest(), keywords=[],
+      status=''),
     'lock.py': lock_record,
     'undocumented.py': FileRecord(size=20, mtime_ns=old_time_ns, sha256=sha256(b'"Only a docstring."\n').hexdigest(),
-      keywords=[])}}, loads, index.read_text())
+      keywords=[], status='')}}, loads, index.read_text())
   utest((loads(index.read_text()), index.stat().st_mtime_ns), load_context_index, str(index))
   first_build = index.read_bytes()
   index_mtime_ns = index.stat().st_mtime_ns
@@ -209,7 +239,7 @@ with TemporaryDirectory() as tmp:
   # Reject malformed sources and metadata without publishing a partial index.
   bad_source = root / 'bad.py'
   for source in ('_context_keywords_ = [42]', '_context_keywords_ = ["flock", "flock"]', '_context_keywords_ = [" "]',
-   '_context_keywords_ = ["flock", "file locking"]', 'def broken('):
+   '_context_keywords_ = ["flock", "file locking"]', '_context_status_ = ""', 'def broken('):
     write_source(bad_source, source)
     with patch('crafts.bin.craft_context.errL'), patch('crafts.bin.craft_context.outL') as output:
       utest_exc(SystemExit('craft-context index: 1 source errors; index not written.'), Index(root=tmp).run)
@@ -263,13 +293,22 @@ with TemporaryDirectory() as tmp:
   with patch('crafts.bin.craft_context.outL'):
     utest(([], True), refresh_context_index, str(moved_root), ['.'], command='index')
 
+  # A status alone is enough for a module to be returned.
+  write_source(moved_root / 'lock.py', '_context_status_ = "obsolete"\n')
+  with patch('crafts.bin.craft_context.outL'):
+    utest(([ContextModule(path='lock.py', keywords=[], status='obsolete')], True), refresh_context_index, str(moved_root), ['.'],
+      command='index')
+  write_source(moved_root / 'lock.py', '"No keywords."\n')
+
   # Loading raises without logging or modifying the index; refresh handles invalid indexes by rebuilding.
   utest_exc(FileNotFoundError, load_context_index, str(moved_root / 'missing.json'))
   for invalid in (dumps({'version': 0, 'modules': []}), 'invalid JSON',
-   dumps({'version': 1, 'files': []}), dumps({'version': 1, 'files': {'': {}}}),
-   dumps({'version': 1, 'files': {'/absolute.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': []}}}),
-   dumps({'version': 1, 'files': {'bad.py': {'size': 1.0, 'mtime_ns': 1, 'sha256': '', 'keywords': []}}}),
-   dumps({'version': 1, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': [1]}}})):
+   dumps({'version': 1, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': []}}}),
+   dumps({'version': 2, 'files': []}), dumps({'version': 2, 'files': {'': {}}}),
+   dumps({'version': 2, 'files': {'/absolute.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': [], 'status': ''}}}),
+   dumps({'version': 2, 'files': {'bad.py': {'size': 1.0, 'mtime_ns': 1, 'sha256': '', 'keywords': [], 'status': ''}}}),
+   dumps({'version': 2, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': [1], 'status': ''}}}),
+   dumps({'version': 2, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': []}}})):
     index.write_text(invalid)
     with patch('crafts.bin.craft_context.errL') as errors:
       utest_exc(ValueError, load_context_index, str(index))

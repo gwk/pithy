@@ -22,8 +22,14 @@ Modules advertise keywords via the special `_context_keywords_` documentation va
 Therefore when agents make queries they should include such terms.
 Example: For a file concurrency problem; `craft-context query locking concurrency mutex advisory fcntl.flock`
 
+Keywords can be single words or short phrases of up to three words.
+The words of the module name match automatically, so keywords need not repeat them.
+
 Queries match individual words without regard to case; any matching word can return a module.
 Quoted phrases and separate words behave identically.
+
+A module can also declare a free-form `_context_status_` string, such as 'experimental' or 'obsolete'.
+Queries show the status in parentheses after the module path; take it into account when assessing candidates.
 
 Read relevant returned source files before deciding whether new code is necessary.
 An empty result does not establish that functionality is absent: keywords are curated and may be incomplete.
@@ -32,7 +38,7 @@ The context query exists primarily to aid agents so they must report failures an
 
 Providers build their index with `craft-context index` (included in `craft-context all`).
 Queries only read existing indexes. Each project maintains its own index through build recipes or precommit hooks; indexing does not refresh dependencies.
-Keyword lists must contain unique, nonempty strings in Python's sorted order.
+Keyword lists must contain unique, nonempty strings in Python's sorted order. A status must be a nonblank single-line string.
 Run `craft-context validate` to check source metadata without generating files; Pithy's `just check` includes this validation.
 
 # Git State
