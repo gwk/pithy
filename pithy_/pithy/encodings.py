@@ -77,19 +77,23 @@ def lep_decode(encoded:Iterable[int], alphabet:bytes, alphabet_inverse:bytes) ->
   '''
   Decode a byte string using the specified base alphabet and its inverse lookup table using the "little-endian punctuated"
   scheme.
+  Decoding is strict: the input must be exactly what `lep_encode` produces.
+  In particular a trailing `alphabet[0]` character is rejected, because the terminator bit makes the final digit nonzero.
   WARNING: the (m**i) step is disastrously slow for large values of i, so this function is not suitable for large inputs.
   '''
   m = len(alphabet)
   n = 0
+  a = 0
   for i, char in enumerate(encoded):
     a = alphabet_inverse[char]
-    if a >= m: raise ValueError(encoded)
+    if a >= m: raise ValueError(f'invalid character at index {i}: {encoded!r}')
     n += (m**i) * a
+  if a == 0: raise ValueError(f'non-canonical encoding (empty or trailing zero digit): {encoded!r}')
   res = bytearray()
   while n > 1:
     n, r = divmod(n, 0x100)
     res.append(r)
-  if n != 1: raise ValueError(encoded)
+  if n != 1: raise ValueError(f'terminator bit is not byte-aligned: {encoded!r}')
   return bytes(res)
 
 
@@ -131,26 +135,29 @@ def enc_lep128(val:Sequence[int]) -> bytes:
 
 
 def dec_lep128(encoded:Sequence[int]) -> bytes:
-  'Decode a byte string using the little endian punctuated base128 alphabet.'
+  '''
+  Decode a byte string using the little endian punctuated base128 alphabet.
+  Decoding is strict: the input must be exactly what `enc_lep128` produces.
+  In particular a trailing `base128_alphabet[0]` character is rejected, because the terminator bit makes the final digit nonzero.
+  '''
   res = bytearray()
-  i = -1
   n = 0
+  v = 0
   last_i = len(encoded) - 1
   for i, c in enumerate(encoded):
     j = i % 8
-    c = encoded[i]
     v = base128_alphabet_inverse[c]
-    if v >= 128: raise ValueError(encoded)
+    if v >= 128: raise ValueError(f'invalid character at index {i}: {encoded!r}')
     n += v << (7*j)
     if j == 7 and i < last_i:
       res.extend(n.to_bytes(7, byteorder='little'))
       n = 0
-  # Handle the final chunk specially, since it is has the terminating bit.
-  j = i % 8
+  if v == 0: raise ValueError(f'non-canonical encoding (empty or trailing zero digit): {encoded!r}')
+  # Handle the final chunk specially, since it has the terminating bit.
   while n > 1:
     n, r = divmod(n, 0x100)
     res.append(r)
-  if n != 1: raise ValueError(encoded)
+  if n != 1: raise ValueError(f'terminator bit is not byte-aligned: {encoded!r}')
   return bytes(res)
 
 
@@ -166,7 +173,7 @@ def dec_lep128_from_str(val:str) -> bytes:
   but many of them decompose under NFD (e.g. when passed through an HFS+ filename).
   '''
   try: return dec_lep128(normalize('NFC', val).encode('latin1'))
-  except UnicodeEncodeError as e: raise ValueError(val) from e
+  except UnicodeEncodeError as e: raise ValueError(f'invalid character: {val!r}') from e
 
 
 def enc_lep128_to_utf8(val:Sequence[int]) -> bytes:
