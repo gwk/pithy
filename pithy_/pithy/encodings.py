@@ -3,7 +3,7 @@
 from base64 import (b16decode, b16encode, b32decode, b32encode, b85decode, b85encode, standard_b64decode, standard_b64encode,
   urlsafe_b64decode, urlsafe_b64encode)
 from collections.abc import Buffer
-from typing import Sequence, Sized
+from typing import Sized
 from unicodedata import normalize
 
 
@@ -13,6 +13,22 @@ _convenience_exports = (b16decode, b16encode, b32decode, b32encode, b85decode, b
 def _byte_index(alphabet:bytes, char:int) -> int:
   try: return alphabet.index(char)
   except ValueError: return 0xff
+
+
+def _bytes_to_encode(val:str|Buffer) -> bytes:
+  'Normalize encoder input: a str is encoded as UTF-8; any other buffer is copied to bytes.'
+  if isinstance(val, str): return val.encode()
+  if isinstance(val, bytes): return val
+  return bytes(val)
+
+
+def _bytes_to_decode(val:str|Buffer) -> bytes:
+  'Normalize decoder input: a str is encoded as latin1 (the encoded alphabets are latin1); any other buffer is copied to bytes.'
+  if isinstance(val, str):
+    try: return val.encode('latin1')
+    except UnicodeEncodeError as e: raise ValueError(f'invalid character: {val!r}') from e
+  if isinstance(val, bytes): return val
+  return bytes(val)
 
 # The base36LC alphabet consists of all ASCII numbers and lowercase letters.
 base36LC_alphabet = b'0123456789abcdefghijklmnopqrstuvwxyz'
@@ -52,7 +68,7 @@ base128_alphabet_inverse = bytes(_byte_index(base128_alphabet, c) for c in range
 assert len(base128_alphabet) == 128
 
 
-def lep_int_from_bytes(val:Sequence[int]) -> int:
+def lep_int_from_bytes(val:bytes) -> int:
   '''
   Create a (possibly very big) integer from the little endian interpretation of the bytes,
   and then add the equivalent of a final (most significant) 1 bit, which acts as a terminator when decoding.
@@ -62,28 +78,30 @@ def lep_int_from_bytes(val:Sequence[int]) -> int:
   return n + (1<<bit_count)
 
 
-def lep_encode(val:Sequence[int], alphabet:bytes) -> bytes:
+def lep_encode(val:str|Buffer, alphabet:bytes) -> bytes:
   '''
-  Encode a byte string using the specified base alphabet using the "little endian punctuated" scheme.
+  Encode a string or bytes using the specified base alphabet using the "little endian punctuated" scheme.
+  A str is encoded as UTF-8 first.
   This is quadratic in the input length for alphabets whose size is not a power of two.
   '''
   m = len(alphabet)
   res = bytearray()
-  n = lep_int_from_bytes(val)
+  n = lep_int_from_bytes(_bytes_to_encode(val))
   while n:
     n, r = divmod(n, m)
     res.append(alphabet[r])
   return bytes(res)
 
 
-def lep_decode(encoded:Sequence[int], alphabet:bytes, alphabet_inverse:bytes) -> bytes:
+def lep_decode(val:str|Buffer, alphabet:bytes, alphabet_inverse:bytes) -> bytes:
   '''
-  Decode a byte string using the specified base alphabet and its inverse lookup table using the "little-endian punctuated"
+  Decode a string or bytes using the specified base alphabet and its inverse lookup table using the "little-endian punctuated"
   scheme.
   Decoding is strict: the input must be exactly what `lep_encode` produces.
   In particular a trailing `alphabet[0]` character is rejected, because the terminator bit makes the final digit nonzero.
   Like `lep_encode`, this is quadratic in the input length for alphabets whose size is not a power of two.
   '''
+  encoded = _bytes_to_decode(val)
   m = len(alphabet)
   last_i = len(encoded) - 1
   if last_i < 0 or alphabet_inverse[encoded[last_i]] == 0:
@@ -99,17 +117,18 @@ def lep_decode(encoded:Sequence[int], alphabet:bytes, alphabet_inverse:bytes) ->
   return n.to_bytes(bit_count // 8, byteorder='little')
 
 
-def enc_lep62(val:Sequence[int]) -> bytes:
-  'Encode a byte string using the little endian punctuated base62 alphabet. This is quadratic in the input length.'
+def enc_lep62(val:str|Buffer) -> bytes:
+  'Encode a string or bytes using the little endian punctuated base62 alphabet. This is quadratic in the input length.'
   return lep_encode(val, alphabet=base62_alphabet)
 
-def dec_lep62(val:Sequence[int]) -> bytes:
-  'Decode a byte string using the little endian punctuated base62 alphabet. This is quadratic in the input length.'
+def dec_lep62(val:str|Buffer) -> bytes:
+  'Decode a string or bytes using the little endian punctuated base62 alphabet. This is quadratic in the input length.'
   return lep_decode(val, alphabet=base62_alphabet, alphabet_inverse=base62_alphabet_inverse)
 
 
-def enc_lep128(val:Sequence[int]) -> bytes:
-  'Encode a byte string using the little endian punctuated base128 alphabet.'
+def enc_lep128(val:str|Buffer) -> bytes:
+  'Encode a string or bytes using the little endian punctuated base128 alphabet. A str is encoded as UTF-8 first.'
+  val = _bytes_to_encode(val)
   a = base128_alphabet # Local alias for brevity.
   res = bytearray()
   i = -7
@@ -133,12 +152,15 @@ def enc_lep128(val:Sequence[int]) -> bytes:
   return bytes(res)
 
 
-def dec_lep128(encoded:Sequence[int]) -> bytes:
+def dec_lep128(val:str|Buffer) -> bytes:
   '''
-  Decode a byte string using the little endian punctuated base128 alphabet.
+  Decode a string or bytes using the little endian punctuated base128 alphabet.
+  A str is passed through `dec_lep128_from_str`, which normalizes it to NFC first.
   Decoding is strict: the input must be exactly what `enc_lep128` produces.
   In particular a trailing `base128_alphabet[0]` character is rejected, because the terminator bit makes the final digit nonzero.
   '''
+  if isinstance(val, str): return dec_lep128_from_str(val)
+  encoded = _bytes_to_decode(val)
   res = bytearray()
   n = 0
   v = 0
@@ -160,7 +182,7 @@ def dec_lep128(encoded:Sequence[int]) -> bytes:
   return bytes(res)
 
 
-def enc_lep128_to_str(val:Sequence[int]) -> str:
+def enc_lep128_to_str(val:str|Buffer) -> str:
   'Encode a byte string using the little endian punctuated base128 alphabet, returning a string.'
   return enc_lep128(val).decode('latin1')
 
@@ -171,19 +193,18 @@ def dec_lep128_from_str(val:str) -> bytes:
   The string is first normalized to NFC, because every character of the alphabet is NFC-stable,
   but many of them decompose under NFD (e.g. when passed through an HFS+ filename).
   '''
-  try: return dec_lep128(normalize('NFC', val).encode('latin1'))
-  except UnicodeEncodeError as e: raise ValueError(f'invalid character: {val!r}') from e
+  return dec_lep128(_bytes_to_decode(normalize('NFC', val)))
 
 
-def enc_lep128_to_utf8(val:Sequence[int]) -> bytes:
+def enc_lep128_to_utf8(val:str|Buffer) -> bytes:
   'Encode a byte string using the little endian punctuated base128 alphabet, returning a UTF-8 byte string.'
   return enc_lep128(val).decode('latin1').encode('utf8')
 
 
-def dec_lep128_from_utf8(val:Sequence[int]) -> bytes:
+def dec_lep128_from_utf8(val:Buffer) -> bytes:
   'Decode a UTF-8 byte string using the little endian punctuated base128 alphabet.'
-  if not isinstance(val, (bytes, bytearray)): val = bytes(val) # memoryview does not have the decode() method.
-  return dec_lep128_from_str(val.decode('utf8'))
+  try: return dec_lep128_from_str(bytes(val).decode('utf8'))
+  except UnicodeDecodeError as e: raise ValueError(f'invalid UTF-8: {val!r}') from e
 
 
 def enc_b64url(val:str|Buffer, pad:bool=False) -> bytes:

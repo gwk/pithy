@@ -20,6 +20,15 @@ utest(b'94', enc_lep62, b'\x01')
 
 utest(b'', dec_lep62, enc_lep62(b''))
 
+# Encoders accept str (as UTF-8) and any buffer; decoders accept str (as latin1) and any buffer.
+utest(b'94', enc_lep62, memoryview(b'\x01'))
+utest(b'\x01', dec_lep62, '94')
+utest(b'\x01', dec_lep62, memoryview(b'94'))
+utest(enc_lep62(b'\xc3\xa9'), enc_lep62, 'é')
+utest(b'\x01', dec_lep128, '12')
+utest(b'\x01', dec_lep128, memoryview(b'12'))
+utest_exc(ValueError("invalid character: 'é\u0301'"), dec_lep62, 'é\u0301')
+
 # Decoding is strict: empty input, invalid characters, trailing zero digits and misaligned terminators are rejected.
 utest_exc(ValueError('non-canonical encoding (empty or trailing zero digit): b\'\''), dec_lep62, b'')
 utest_exc(ValueError('invalid character at index 1: b\'8-\''), dec_lep62, b'8-')
