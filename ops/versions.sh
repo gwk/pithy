@@ -6,6 +6,7 @@
 # SQLite also needs its release year in the archive path. Checksums are for the downloaded archives.
 
 py_point_version="3.14.7"
+py_sha256='3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81'
 
 sqlite_version='3.53.3'
 sqlite_zip_remote_path='2026/sqlite-src-3530300.zip'
