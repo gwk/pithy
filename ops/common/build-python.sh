@@ -20,7 +20,7 @@
 
 set -euo pipefail
 
-py_point_version="3.14.7" # Pinned CPython version. Update this as necessary.
+source "$(dirname "$0")/../versions.sh"
 
 py_version="${py_point_version%.*}"
 
