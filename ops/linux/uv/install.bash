@@ -8,7 +8,7 @@ function fail() { echo "$1" >&2; exit 1; }
 src_dir=$(dirname $0)
 cd "$src_dir"
 
-source ./version.sh
+source ../../versions.sh
 
 machine_arch=$(uname -m)
 

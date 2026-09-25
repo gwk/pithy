@@ -20,7 +20,7 @@
 
 set -euo pipefail
 
-py_point_version="3.14.7" # Pinned CPython version. Update this as necessary.
+source "$(dirname "$0")/../versions.sh"
 
 py_version="${py_point_version%.*}"
 
@@ -94,7 +94,12 @@ else
 
   # Download source.
 
-  [[ -f "$python_xz" ]] || exe curl -O "$python_src_url"
+  [[ -f "$python_xz" ]] || exe curl -fLO "$python_src_url"
+  if [[ $platform == mac ]]; then
+    echo "$py_sha256  $python_xz" | shasum -a 256 -c -
+  else
+    echo "$py_sha256  $python_xz" | sha256sum -c -
+  fi
 
   # No sudo needed for cleanup: because we never install as root, the source tree is never littered with root-owned files.
   exe rm -rf "$python_src_dir"
