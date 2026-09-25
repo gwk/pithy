@@ -5,7 +5,9 @@ set -euo pipefail
 
 fail() { echo "Error: $@" 1>&2; exit 1; }
 
-cd "$(dirname $0)/../.." # Repo root.
+source "$(dirname "$0")/../versions.sh"
+
+cd "$(dirname "$0")/../.." # Repo root.
 mkdir -p _build
 cd _build
 
@@ -15,19 +17,7 @@ which sha3sum gmake || {
   exit 1
 }
 
-download_html=$(curl -sS https://www.sqlite.org/download.html)
-
-
-sqlite_latest_product_csv=$(echo "$download_html" | grep --max-count=1 --regexp='^PRODUCT,.*/sqlite-src-.*\.zip')
-
-echo "$sqlite_latest_product_csv"
-
 set -x
-
-sqlite_version=$(echo "$sqlite_latest_product_csv" | cut -d, -f2)
-sqlite_zip_remote_path=$(echo "$sqlite_latest_product_csv" | cut -d, -f3)
-sqlite_size=$(echo "$sqlite_latest_product_csv" | cut -d, -f4)
-sqlite_sha3=$(echo "$sqlite_latest_product_csv" | cut -d, -f5)
 
 sqlite_src_zip=$(basename "$sqlite_zip_remote_path")
 sqlite_src_url="https://www.sqlite.org/$sqlite_zip_remote_path"
@@ -45,6 +35,8 @@ rm -rf "$sqlite_src_dir"
 unzip -q "$sqlite_src_zip"
 
 [[ -d "$sqlite_src_dir" ]] || fail "Missing SQLite source directory: '$sqlite_src_dir'."
+
+[[ "$(cat "$sqlite_src_dir/VERSION")" == "$sqlite_version" ]] || fail "SQLite archive version does not match $sqlite_version."
 
 cd "$sqlite_src_dir"
 mkdir _build
