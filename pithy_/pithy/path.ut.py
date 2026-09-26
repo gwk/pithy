@@ -3,7 +3,7 @@
 from random import choice as rand_choice, seed as rand_seed
 
 from pithy.path import (insert_path_stem_suffix, is_norm_path, is_path_abs, is_sub_path, norm_path, path_descendants,
-  PathIsNotDescendentError, split_stem_ext, split_stem_multi_ext)
+  PathIsNotDescendantError, split_stem_ext, split_stem_multi_ext)
 from utest import utest, utest_exc
 
 
@@ -106,7 +106,7 @@ for i in range(1<<10):
 
 
 # path_descendants.
-utest_exc(PathIsNotDescendentError, path_descendants, 'a', 'b')
+utest_exc(PathIsNotDescendantError, path_descendants, 'a', 'b')
 
 utest(('a',), path_descendants, 'a', 'a')
 utest(('a',), path_descendants, 'a', 'a', include_start=False)

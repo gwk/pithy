@@ -15,7 +15,7 @@ from typing import Any, Callable, cast, Iterable, Iterator, TextIO
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
   file_status, is_dir, is_file, is_file_executable_by_owner, is_link, is_link_to_dir, is_link_to_file, is_mount, path_exists)
 from .path import (is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, path_descendants, path_dir, path_ext, path_join,
-  path_name, path_rel_to_ancestor, path_split, Pathish, PathishOrFd, PathIsNotDescendentError, rel_path, split_dir_name,
+  path_name, path_rel_to_ancestor, path_split, Pathish, PathishOrFd, PathIsNotDescendantError, rel_path, split_dir_name,
   str_path)
 from .util import memoize
 
@@ -93,7 +93,7 @@ def _abs_start_and_top(start_dir:Pathish, top:Pathish) -> tuple[str,str]:
   top = abs_path(top)
   top_comps = path_split(top)
   if path_split(start_dir)[:len(top_comps)] != top_comps:
-    raise PathIsNotDescendentError(start_dir, top)
+    raise PathIsNotDescendantError(start_dir, top)
   return start_dir, top
 
 
@@ -298,7 +298,7 @@ def path_rel_to_ancestor_or_abs(path:Pathish, ancestor:str, dot:bool=False) -> s
   aa = abs_path(ancestor)
   try:
     return path_rel_to_ancestor(ap, aa, dot=dot)
-  except PathIsNotDescendentError:
+  except PathIsNotDescendantError:
     return ap
 
 

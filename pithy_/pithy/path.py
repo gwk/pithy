@@ -18,7 +18,7 @@ type PathishOrFd = Pathish|int
 class AbsolutePathError(Exception): pass
 class MixedAbsoluteAndRelativePathsError(Exception): pass
 class NotAPathError(Exception): pass
-class PathIsNotDescendentError(Exception): pass
+class PathIsNotDescendantError(Exception): pass
 
 
 def executable_dir() -> str:
@@ -127,7 +127,7 @@ def path_descendants(start_path:Pathish, end_path:Pathish, *, include_start:bool
   if prefix == comps:
     return (str_path(start_path),) if include_start or include_end else ()
   if prefix != comps[:len(prefix)]:
-    raise PathIsNotDescendentError(end_path, start_path)
+    raise PathIsNotDescendantError(end_path, start_path)
   start_i = len(prefix) + (0 if include_start else 1)
   end_i = len(comps) + (1 if include_end else 0)
   return tuple(path_join(*comps[:i]) for i in range(start_i, end_i))
@@ -196,10 +196,10 @@ def path_rel_to_ancestor(path:Pathish, ancestor:str, dot:bool=False) -> str:
   prefix = path_split(ancestor)
   if comps == prefix:
     if dot: return '.'
-    raise PathIsNotDescendentError(path, ancestor)
+    raise PathIsNotDescendantError(path, ancestor)
   if prefix == comps[:len(prefix)]:
     return path_join(*comps[len(prefix):])
-  raise PathIsNotDescendentError(path, ancestor)
+  raise PathIsNotDescendantError(path, ancestor)
 
 
 def path_split(path:Pathish) -> list[str]:

@@ -2,7 +2,7 @@
 
 from pithy.fs import (_abs_start_and_top, abs_or_norm_path, abs_path, name_has_any_ext, path_rel_to_dir, PathHasNoDirError,
   walk_dirs_up)
-from pithy.path import MixedAbsoluteAndRelativePathsError, PathIsNotDescendentError
+from pithy.path import MixedAbsoluteAndRelativePathsError, PathIsNotDescendantError
 from utest import utest, utest_exc, utest_seq
 
 
@@ -50,7 +50,7 @@ utest_seq(['a'], walk_dirs_up, 'a/file.txt', 'a', include_top=False)
 
 utest_exc(MixedAbsoluteAndRelativePathsError(('/a/b', 'a')), walk_dirs_up, '/a/b', 'a')
 utest_exc(PathHasNoDirError('file.txt'), walk_dirs_up, 'file.txt', 'a')
-utest_exc(PathIsNotDescendentError('x', 'a'), walk_dirs_up, 'x/file.txt', 'a')
+utest_exc(PathIsNotDescendantError('x', 'a'), walk_dirs_up, 'x/file.txt', 'a')
 
 
 # _abs_start_and_top, the shared bounds check for find_file_up and find_project_dir.
@@ -61,5 +61,5 @@ utest(('/a/b', '/a'), _abs_start_and_top, '/a/b', '/a')
 utest(('/a', '/a'), _abs_start_and_top, '/a', '/a')
 utest(('/a/b', '/a'), _abs_start_and_top, '/a//b/', '/a/') # Both paths are normalized.
 
-utest_exc(PathIsNotDescendentError('/b', '/a'), _abs_start_and_top, '/b', '/a')
-utest_exc(PathIsNotDescendentError('/ab', '/a'), _abs_start_and_top, '/ab', '/a') # Compares components, not string prefixes.
+utest_exc(PathIsNotDescendantError('/b', '/a'), _abs_start_and_top, '/b', '/a')
+utest_exc(PathIsNotDescendantError('/ab', '/a'), _abs_start_and_top, '/ab', '/a') # Compares components, not string prefixes.
