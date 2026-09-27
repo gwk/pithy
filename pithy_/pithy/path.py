@@ -11,6 +11,10 @@ The path module defines those operations on paths that are pure string operation
 For path operations that require systems calls, see pithy.filestatus and pithy.fs.
 '''
 
+_context_keywords_ = ['PathLike', 'PurePath', 'ancestor', 'basename', 'components', 'directory', 'dirname', 'extension', 'join',
+  'lexical', 'normalize', 'os.path', 'pathlib', 'relative path', 'splitext', 'stem', 'suffix']
+
+
 type Pathish = str|PathLike
 type PathishOrFd = Pathish|int
 

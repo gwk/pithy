@@ -2,13 +2,13 @@
 
 import os as _os
 import re as _re
+import shutil as _shutil
 import stat as _stat
 import time as _time
 from itertools import zip_longest
 from os import (DirEntry, fspath as _fspath, get_exec_path as _get_exec_path, getcwd as _getcwd, mkdir as _mkdir,
   scandir as _scandir)
 from os.path import abspath as _abspath, expanduser as _expanduser, realpath as _realpath
-from pathlib import Path as _Path
 from sys import argv
 from typing import Any, Callable, cast, Iterable, Iterator, TextIO
 
@@ -62,11 +62,36 @@ def clone_or_symlink(src:Pathish, dst:Pathish, *, follow:bool, preserve_meta:boo
 
 
 def copy_path(src:Pathish, dst:Pathish, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) -> None:
+  '''
+  Recursively copy the file, symlink or directory tree at `src` to `dst`.
+  With `follow`, symlinks are dereferenced and their targets are copied; otherwise symlinks are recreated.
+  Without `preserve_meta`, only data is copied; with it, permissions, times, flags and extended attributes are also copied.
+  Raise ValueError if `dst` is lexically equal to or within `src`.
+  '''
+  src_str = str_path(src)
+  dst_str = str_path(dst)
+  if Path(abs_path(dst_str)).has_ancestor(Path(abs_path(src_str))):
+    raise ValueError(f'copy_path: destination is the source or within it: {src_str!r} -> {dst_str!r}')
   if overwrite and path_exists(dst, follow=False):
     remove_path(dst)
   if create_dirs:
     make_parent_dirs(dst)
-  _Path(src).copy(dst, follow_symlinks=follow, preserve_metadata=preserve_meta)
+  _copy_path_rec(src_str, dst_str, follow=follow, preserve_meta=preserve_meta)
+
+
+def _copy_path_rec(src:str, dst:str, follow:bool, preserve_meta:bool) -> None:
+  if not follow and is_link(src):
+    _os.symlink(_os.readlink(src), dst)
+    if preserve_meta: _shutil.copystat(src, dst, follow_symlinks=False)
+  elif is_dir(src, follow=True):
+    names = list_dir(src, hidden=True)
+    _mkdir(dst)
+    for name in names:
+      _copy_path_rec(path_join(src, name), path_join(dst, name), follow=follow, preserve_meta=preserve_meta)
+    if preserve_meta: _shutil.copystat(src, dst)
+  else:
+    _shutil.copyfile(src, dst)
+    if preserve_meta: _shutil.copystat(src, dst)
 
 
 def copy_to_dir(src:Pathish, dst:Pathish, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) \

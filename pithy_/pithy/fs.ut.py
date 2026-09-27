@@ -1,11 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pathlib import Path as FilePath
+import os as _os
+from pathlib import PurePosixPath
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from pithy.fs import (_abs_start_and_top, abs_or_norm_path, abs_path, copy_to_dir, name_has_any_ext, path_rel_to_dir,
-  PathHasNoDirError, walk_dirs_up)
+from pithy.filestatus import file_permissions, is_link
+from pithy.fs import (_abs_start_and_top, abs_or_norm_path, abs_path, copy_path, copy_to_dir, list_dir, make_dir, make_dirs,
+  make_link, name_has_any_ext, path_rel_to_dir, PathHasNoDirError, walk_dirs_up)
+from pithy.io import read_from_path, write_to_path
 from pithy.path import MixedAbsoluteAndRelativePathsError, Path, PathIsNotDescendantError
 from utest import utest, utest_exc, utest_run, utest_seq
 
@@ -13,27 +16,62 @@ from utest import utest, utest_exc, utest_run, utest_seq
 @utest_run
 def test_copy_to_dir() -> None:
   for suffix in ('', '/', '//', '/.'):
-    for path_type in (str, Path, FilePath):
+    for path_type in (str, Path, PurePosixPath): # PurePosixPath verifies that a foreign PathLike is accepted.
       with TemporaryDirectory() as tmp:
-        root = FilePath(tmp)
+        root = Path(tmp)
         src = root / 'src'
         dst = root / 'dst'
-        src.mkdir()
-        dst.mkdir()
-        (src / 'new.txt').write_text('new')
-        (dst / 'keep.txt').write_text('keep')
+        make_dir(src)
+        make_dir(dst)
+        write_to_path(src / 'new.txt', 'new')
+        write_to_path(dst / 'keep.txt', 'keep')
         copy_to_dir(path_type(str(src) + suffix), dst, follow=False)
-        utest('keep', (dst / 'keep.txt').read_text)
-        utest('new', (dst / 'src' / 'new.txt').read_text)
-        utest(['keep.txt', 'src'], lambda: sorted(p.name for p in dst.iterdir()))
+        utest('keep', read_from_path, dst / 'keep.txt')
+        utest('new', read_from_path, dst / 'src' / 'new.txt')
+        utest(['keep.txt', 'src'], list_dir, dst)
 
   with TemporaryDirectory() as tmp:
-    root = FilePath(tmp)
+    root = Path(tmp)
     src = root / 'file.txt'
     dst = root / 'dst'
-    src.write_text('file')
-    copy_to_dir(Path(src), Path(dst), follow=False, create_dirs=True)
-    utest('file', (dst / 'file.txt').read_text)
+    write_to_path(src, 'file')
+    copy_to_dir(src, dst, follow=False, create_dirs=True)
+    utest('file', read_from_path, dst / 'file.txt')
+
+
+@utest_run
+def test_copy_path() -> None:
+  with TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    src = root / 'src'
+    make_dirs(src / 'sub')
+    write_to_path(src / 'sub' / 'a.txt', 'a')
+    write_to_path(src / '.hidden', 'h')
+    make_link(src / 'sub' / 'a.txt', link=src / 'link') # Relative link: `sub/a.txt`.
+    _os.chmod(src / 'sub' / 'a.txt', 0o600)
+    # Symlinks are recreated when not following.
+    dst = root / 'dst'
+    copy_path(src, dst, follow=False)
+    utest(['.hidden', 'link', 'sub'], list_dir, dst, hidden=True)
+    utest(True, is_link, dst / 'link')
+    utest('a', read_from_path, dst / 'link')
+    umask = _os.umask(0)
+    _os.umask(umask)
+    utest(0o666 & ~umask, lambda: file_permissions(dst / 'sub' / 'a.txt', follow=True) & 0o777) # Data only; default mode applies.
+    # Symlinks are dereferenced when following, and metadata is preserved on request.
+    dst2 = root / 'dst2'
+    copy_path(src, dst2, follow=True, preserve_meta=True)
+    utest(False, is_link, dst2 / 'link')
+    utest('a', read_from_path, dst2 / 'link')
+    utest(0o600, lambda: file_permissions(dst2 / 'sub' / 'a.txt', follow=True) & 0o777)
+    # Overwrite replaces an existing destination; without it an existing directory cannot be created.
+    write_to_path(root / 'f', 'f')
+    copy_path(root / 'f', dst / 'sub', follow=False, overwrite=True)
+    utest('f', read_from_path, dst / 'sub')
+    utest_exc(FileExistsError, copy_path, src / 'sub', dst2 / 'sub', follow=False, overwrite=False)
+    # A destination inside the source is rejected before any change.
+    utest_exc(ValueError, copy_path, src, src, follow=False)
+    utest_exc(ValueError, copy_path, src, src / 'sub' / 'x', follow=False)
 
 
 @utest_run
