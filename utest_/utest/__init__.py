@@ -51,10 +51,9 @@ utest_val(0, len(''), desc='length of empty string') # Check a value without a f
 __version__ = '0.0.5'
 
 import atexit as _atexit
-import pathlib as _pathlib
 import re as _re
 from os import environ as _environ, getcwd as _getcwd
-from os.path import relpath as _rel_path
+from os.path import expanduser as _expanduser, relpath as _rel_path
 from sys import _getframe as _getframe, stderr as _stderr
 from traceback import format_exception as _format_exception
 from typing import Any, Callable, Iterable
@@ -447,7 +446,7 @@ def _print_exception(exc:BaseException) -> Any:
 
 
 
-_home_dir = str(_pathlib.Path.home())
+_home_dir = _expanduser('~')
 _home_dir_slash = _home_dir + ('' if _home_dir.endswith('/') else '/')
 
 _work_dir = _environ.get('UTEST_WORK_DIR', '') or _getcwd()
