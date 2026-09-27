@@ -137,7 +137,8 @@ class Instructions(Cmd):
   Put agent instructions in CTX.md; AGENTS.md expands its imports and CLAUDE.md links to it.
   Put cross-platform skills in context/skills; this directory will be symlinked to both .agents/skills and .claude/skills.
   '''
-  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')], doc=f'Input {ctx_name} files, or directories to search for them.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')],
+    doc=f'Input {ctx_name} files, or directories to search for them.')
 
 
   def run(self) -> None:
@@ -157,8 +158,9 @@ class Index(Cmd):
   Scan files and directories;
   skips hidden names, symlinks, virtual environments, `__pycache__`, `_build`, `_misc`, `deps`, `dist` and `node_modules` directories.
   '''
-  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')], doc='Python files or directories, relative to the project root.')
-  root:Path = opt(default=Path('.'), doc='Project root; contains context/index.json.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')],
+    doc='Python files or directories, relative to the project root.')
+  root:Path = opt(default=Path('.'), complete='dirs', doc='Project root; contains context/index.json.')
 
 
   def run(self) -> None:
@@ -171,8 +173,9 @@ class Index(Cmd):
 
 class Validate(Cmd):
   'Validate Python sources and keyword metadata using the same scan as index, without reading or writing the index.'
-  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')], doc='Python files or directories, relative to the project root.')
-  root:Path = opt(default=Path('.'), doc='Project root to validate.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')],
+    doc='Python files or directories, relative to the project root.')
+  root:Path = opt(default=Path('.'), complete='dirs', doc='Project root to validate.')
 
 
   def run(self) -> None:
@@ -185,7 +188,8 @@ class Validate(Cmd):
 class Query(Cmd):
   'Search the project and immediate deps/ keyword indexes, ranking modules by distinct matching words.'
   words:list[str] = cmd_pos(doc='Topic words or phrases; any matching word includes a result.')
-  root:Path = opt(default=Path('.'), doc='Project root; searches its context/index.json and deps/*/context/index.json.')
+  root:Path = opt(default=Path('.'), complete='dirs',
+    doc='Project root; searches its context/index.json and deps/*/context/index.json.')
 
 
   def run(self) -> None:
@@ -332,7 +336,8 @@ def load_project_context(root:Path) -> list[ContextModule]:
     except (UnicodeError, ValueError) as e:
       raise ValueError(f'{src}: {e} Run craft-context index at the project root.') from e
     found = True
-    modules.extend(ContextModule(path=str((project / rel).collapse_dotdot()), keywords=record['keywords'], status=record['status'])
+    modules.extend(
+      ContextModule(path=str((project / rel).collapse_dotdot()), keywords=record['keywords'], status=record['status'])
       for rel, record in index['files'].items() if record['keywords'] or record['status'])
   if not found:
     raise ValueError(f'no indexes found in {root!s} or its deps/ directories; use source search instead.')
