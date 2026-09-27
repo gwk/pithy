@@ -1,9 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from pithy.io import write_to_path
+from pithy.path import Path
 from taptools.bin.crawl import Crawler
 from utest import utest_run, utest_val
 
@@ -13,7 +14,7 @@ def _() -> None:
   'Extract links without requiring a tree, then resolve and filter the URLs.'
   with TemporaryDirectory() as dir:
     path = Path(dir) / 'index.html'
-    path.write_text('''
+    write_to_path(path, '''
       <link href="/style.css"/>
       <ul><li><A HREF=one>One<li><a href="two?a=1&amp;b=2#fragment">Two</ul>
       <a href="first" href="ignored">Duplicate attribute</a>
@@ -35,6 +36,6 @@ def _() -> None:
     }, crawler.remaining)
     utest_val({'https://other.example/out'}, crawler.skipped)
     crawler.remaining.clear()
-    path.write_text('')
+    write_to_path(path, '')
     crawler.try_scrape('https://example.com/docs/index.html', str(path))
     utest_val(set(), crawler.remaining)

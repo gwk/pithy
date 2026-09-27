@@ -8,15 +8,17 @@ import subprocess
 import sys
 import termios
 import time
-from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from pithy.fs import real_path
+from pithy.io import write_to_path
+from pithy.path import Path
 from taptools.bin.keybindings import (Binding, decode_key, Keybindings, keystrokes, mode_bindings, parse_bindings, table_rows,
   ZshState)
 from utest import utest, utest_run, utest_val
 
 
-program = Path(__file__).resolve().with_name('keybindings.py')
+program = Path(real_path(__file__)).replace_name('keybindings.py')
 
 
 def skip_without_pty(test_name:str) -> bool:
@@ -72,7 +74,7 @@ def test_startup_and_terminal_restoration() -> None:
   if skip_without_pty('test_startup_and_terminal_restoration'): return
   with TemporaryDirectory() as directory:
     root = Path(directory)
-    (root / '.zshrc').write_text('''\
+    write_to_path(root / '.zshrc', '''\
 print 'Startup message.'
 bindkey '^S' configured-widget
 stty -ixon
@@ -95,7 +97,7 @@ stty -ixon
       assert 'Enabled outside ZLE' not in output
       assert 'Startup message.' not in output
       # An early exit in a startup file must also restore the terminal and report a useful error.
-      (root / '.zshrc').write_text('stty -ixon\nexit 7\n')
+      write_to_path(root / '.zshrc', 'stty -ixon\nexit 7\n')
       result = subprocess.run([sys.executable, str(program)], stdin=slave, capture_output=True,
         text=True, start_new_session=True, env={**os.environ, 'ZDOTDIR': directory})
       utest_val(1, result.returncode)
@@ -110,7 +112,7 @@ stty -ixon
 def test_invalid_snapshot() -> None:
   with TemporaryDirectory() as directory:
     snapshot = Path(directory) / 'snapshot'
-    snapshot.write_text('invalid')
+    write_to_path(snapshot, 'invalid')
     result = subprocess.run([sys.executable, str(program), '-zsh-state', str(snapshot)], capture_output=True, text=True,
       start_new_session=True)
     utest_val(1, result.returncode)
@@ -123,7 +125,7 @@ def test_controlling_terminal() -> None:
   'An interactive collector must not take foreground ownership from the reporting process.'
   if skip_without_pty('test_controlling_terminal'): return
   with TemporaryDirectory() as directory:
-    (Path(directory) / '.zshrc').write_text("bindkey '^S' controlling-terminal-widget\nstty -ixon\n")
+    write_to_path(Path(directory) / '.zshrc', "bindkey '^S' controlling-terminal-widget\nstty -ixon\n")
     probe = '''\
 import os, subprocess, sys, termios
 before_group = os.tcgetpgrp(0)

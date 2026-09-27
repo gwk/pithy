@@ -16,10 +16,11 @@ import subprocess
 import sys
 import termios
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal
 
 from pithy.cmdparse import Cmd, flag, opt
+from pithy.fs import real_path
+from pithy.io import read_from_path
 from pithy.strings import fmt_rows
 
 
@@ -60,7 +61,7 @@ def main() -> None:
   try:
     attrs = termios.tcgetattr(fd) if fd is not None else None
     if args.zsh_state:
-      data = Path(args.zsh_state).read_text()
+      data = read_from_path(args.zsh_state)
     else:
       data = collect_zsh_state(attrs)
     print_bindings(parse_zsh_state(data), args.mode, fd, attrs)
@@ -97,7 +98,7 @@ def parse_zsh_state(data:str) -> ZshState:
 
 def shell_init() -> str:
   'Generate a wrapper with the executable path quoted for zsh.'
-  executable = shlex.quote(str(Path(__file__).resolve()))
+  executable = shlex.quote(real_path(__file__))
   return f'''keybindings() {{
   command {executable} -zsh-state <({zsh_collector}) "$@"
 }}'''
