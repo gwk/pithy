@@ -14,9 +14,9 @@ from typing import Any, Callable, cast, Iterable, Iterator, TextIO
 
 from .filestatus import (file_ctime, file_inode, file_mtime, file_mtime_or_zero, file_permissions, file_size, file_stat,
   file_status, is_dir, is_file, is_file_executable_by_owner, is_link, is_link_to_dir, is_link_to_file, is_mount, path_exists)
-from .path import (is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, path_descendants, path_dir, path_ext, path_join,
-  path_name, path_rel_to_ancestor, path_split, Pathish, PathishOrFd, PathIsNotDescendantError, rel_path, split_dir_name,
-  str_path)
+from .path import (is_path_abs, MixedAbsoluteAndRelativePathsError, norm_path, Path, path_descendants, path_dir, path_ext,
+  path_join, path_name, path_rel_to_ancestor, path_split, Pathish, PathishOrFd, PathIsNotDescendantError, rel_path,
+  split_dir_name, str_path)
 from .util import memoize
 
 
@@ -71,9 +71,11 @@ def copy_path(src:Pathish, dst:Pathish, *, follow:bool, overwrite:bool=True, cre
 
 def copy_to_dir(src:Pathish, dst:Pathish, *, follow:bool, overwrite:bool=True, create_dirs:bool=False, preserve_meta:bool=False) \
  -> None:
+  'Copy src into dst using its final named component. Reject nameless sources before modifying the filesystem.'
+  name = Path(str_path(src)).name
   if create_dirs:
     make_dirs(dst)
-  return copy_path(src=src, dst=path_join(dst, path_name(src)), overwrite=overwrite, create_dirs=False, follow=follow,
+  return copy_path(src=src, dst=path_join(dst, name), overwrite=overwrite, create_dirs=False, follow=follow,
     preserve_meta=preserve_meta)
 
 
