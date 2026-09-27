@@ -1,11 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pathlib import Path
 from subprocess import run
 from sys import executable
 from tempfile import TemporaryDirectory
 
 from pithy.advisory_lock import advisory_lock, AdvisoryLockError
+from pithy.path import Path
 from utest import utest, utest_exc, utest_run
 
 

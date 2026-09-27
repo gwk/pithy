@@ -1,12 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from io import BytesIO, StringIO
-from pathlib import Path
+from os import fsencode
 from tempfile import TemporaryDirectory
 
 from pithy.html import Div, Html, HtmlNode, P, Template
 from pithy.html.loader import load_html
+from pithy.io import write_to_path
 from pithy.loader import load, LoaderException
+from pithy.path import Path
 from pithy.svg import Svg
 from utest import utest_exc, utest_run, utest_val, utest_val_type
 
@@ -44,8 +46,8 @@ def _() -> None:
   utest_val('javascript:alert(3)', raw.find('a').get('href'))
   with TemporaryDirectory() as directory:
     path = Path(directory) / 'sample.html'
-    path.write_text(dirty)
-    for file in (path, str(path), bytes(path)):
+    write_to_path(path, dirty)
+    for file in (path, str(path), fsencode(path)):
       utest_val(clean, Html.parse_file(file, sanitize=True))
       utest_val(raw, Html.parse_file(file, sanitize=False))
     utest_val(clean, load_html(str(path), sanitize=True))

@@ -1,10 +1,12 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from io import BytesIO, StringIO
-from pathlib import Path
+from os import fsencode
 from tempfile import TemporaryDirectory
 from xml.etree.ElementTree import ParseError
 
+from pithy.io import write_to_path
+from pithy.path import Path
 from pithy.svg import Rect, Svg, SvgNode
 from pithy.svg.loader import load_svg
 from utest import utest, utest_exc, utest_run, utest_val, utest_val_type
@@ -28,9 +30,9 @@ def _() -> None:
   'Accept file paths and preserve namespace-qualified element and attribute names.'
   with TemporaryDirectory() as dir:
     path = Path(dir) / 'sample.svg'
-    path.write_text('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+    write_to_path(path, '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
       '<use xlink:href="#shape"/></svg>')
-    for file in (path, str(path), bytes(path)):
+    for file in (path, str(path), fsencode(path)):
       svg = SvgNode.parse_file(file)
       utest_val('{http://www.w3.org/2000/svg}svg', svg.tag)
       use = svg.pick('{http://www.w3.org/2000/svg}use')
