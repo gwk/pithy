@@ -5,7 +5,6 @@ import re as _re
 import shutil as _shutil
 import stat as _stat
 import time as _time
-from itertools import zip_longest
 from os import (DirEntry, fspath as _fspath, get_exec_path as _get_exec_path, getcwd as _getcwd, mkdir as _mkdir,
   scandir as _scandir)
 from os.path import abspath as _abspath, expanduser as _expanduser, realpath as _realpath
@@ -333,16 +332,12 @@ def path_rel_to_current_or_abs(path:Pathish, dot:bool=False) -> str:
   return path_rel_to_ancestor_or_abs(path, current_dir(), dot=dot)
 
 
-def path_rel_to_dir(path:Pathish, dir:Pathish) -> str:
-  comps:list[str] = []
-  parent_comps = 0
-  for p, r in zip_longest(path_split(abs_path(path)), path_split(abs_path(dir))):
-    if not parent_comps and p == r: continue
-    if p is not None: comps.append(p)
-    if r is not None: parent_comps += 1
-  comps = ['..']*parent_comps + comps
-  if not comps: return '.'
-  return path_join(*comps)
+def path_rel_to_dir(path:Pathish, dir:Pathish) -> Path:
+  '''
+  Return the relative path leading from the directory `dir` to `path`, resolving both against the current directory.
+  The result is lexical; see `Path.relative_to` for the symlink caveat.
+  '''
+  return Path(abs_path(path)).relative_to(Path(abs_path(dir)))
 
 
 def product_needs_update(product:PathishOrFd, source:PathishOrFd) -> bool:

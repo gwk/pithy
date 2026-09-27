@@ -106,14 +106,15 @@ utest(False, name_has_any_ext, '.e', frozenset(['.e']))
 utest(False, name_has_any_ext, 'a.e.f', frozenset(['.e']))
 
 # path_rel_to_dir.
-utest('.', path_rel_to_dir, '', '')
-utest('a', path_rel_to_dir, 'a', '')
-utest('a', path_rel_to_dir, 'a', '.')
+utest(Path('.'), path_rel_to_dir, '', '')
+utest(Path('a'), path_rel_to_dir, 'a', '')
+utest(Path('a'), path_rel_to_dir, 'a', '.')
 
-utest('b', path_rel_to_dir, 'a/b', 'a/')
+utest(Path('b'), path_rel_to_dir, 'a/b', 'a/')
 
-utest('b', path_rel_to_dir, '/a/b', '/a/')
-utest('../b', path_rel_to_dir, '/a/b', '/a/c')
+utest(Path('b'), path_rel_to_dir, '/a/b', '/a/')
+utest(Path('../b'), path_rel_to_dir, '/a/b', '/a/c')
+utest(Path('../b'), path_rel_to_dir, '/a/b/', '/a/c')
 
 
 # walk_dirs_up: paths that don't exist on disk fall through to path_dir(), so these tests are filesystem-independent.

@@ -79,7 +79,7 @@ def main_create(args: Namespace) -> None:
   if path_exists(modified, follow=False): exit("pat create error: 'modified' file already exists: " + modified)
   if path_exists(patch, follow=False):    exit("pat create error: 'patch' file already exists: " + patch)
   patch_dir = path_dir(patch)
-  orig_rel = path_rel_to_dir(original, patch_dir)
+  orig_rel = str(path_rel_to_dir(original, patch_dir))
   with open(patch, 'w') as f:
     f.write('pat v' + pat_version + '\n')
     f.write(orig_rel + '\n')
@@ -94,7 +94,7 @@ def main_diff(args:Namespace) -> None:
   min_context = args.min_context
 
   out_dir = path_dir(f_out.name)
-  orig_rel = path_rel_to_dir(original.name, out_dir)
+  orig_rel = str(path_rel_to_dir(original.name, out_dir))
 
   if min_context < 1: exit('min-context value must be positive.')
 

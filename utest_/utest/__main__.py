@@ -24,7 +24,7 @@ def main() -> None:
   ok = True
 
   for path in paths:
-    exe_path = path_rel_to_dir(path, utest_cwd)
+    exe_path = str(path_rel_to_dir(path, utest_cwd))
     start_time = perf_counter()
     c = runC(['python3', '-P', exe_path], cwd=utest_cwd, env=env)
     elapsed = perf_counter() - start_time
