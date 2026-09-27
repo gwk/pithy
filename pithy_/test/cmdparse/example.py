@@ -19,6 +19,7 @@ class Build(Cmd):
 class Deploy(Cmd):
   'Deploy the build.'
   dest:Path = pos(doc='The destination path.')
+  dir:Path|None = opt(default=None, complete='dirs', doc='The output directory.')
 
   def run(self) -> None: print(f'deploy {self.dest}')
 

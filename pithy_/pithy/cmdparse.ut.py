@@ -128,6 +128,16 @@ def test_completion() -> None:
 
   utest_val(CompletionResult(path_prefix=''), ForwardPaths.complete(['cc', 'input.c', '']))
 
+  # `complete='dirs'` completes directories only; parsing is unaffected.
+  class Dirs(Cmd):
+    out:Path = opt(default=Path('.'), complete='dirs')
+    src:Path = pos(complete='files')
+
+  utest(Dirs(out=Path('build'), src=Path('a.c')), Dirs.parse, ['-out', 'build/', 'a.c'])
+  utest_val(CompletionResult(path_prefix='-out=', path_kind='dirs'), Dirs.complete(['-out=']))
+  utest_val(CompletionResult(path_prefix='', path_kind='dirs'), Dirs.complete(['-out', '']))
+  utest_val(('', 'files'), (lambda r: (r.path_prefix, r.path_kind))(Dirs.complete(['-out=x', ''])))
+
 
 @utest_run
 def test_zsh_completion_script() -> None:
@@ -232,6 +242,13 @@ def test_decl_errors() -> None:
     BadLiteralType.parse([])
 
   utest_exc(CmdDeclError('BadLiteralType.value: Literal arguments must contain only strings.'), bad_literal_type)
+
+  def bad_complete() -> None:
+    class BadComplete(Cmd):
+      count:int = opt(complete='dirs')
+    BadComplete.parse([])
+
+  utest_exc(CmdDeclError('BadComplete.count: `complete` requires a Path field.'), bad_complete)
 
   def bad_sub_pos() -> None:
     class BadSubPos(Cmd):

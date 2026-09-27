@@ -112,6 +112,7 @@ class CmdHelp(Exception):
 
 type ArgKind = Literal['pos','remainder','opt','flag','sub','group']
 type CmdMode = Literal['parse','complete']
+type PathCompletion = Literal['files','dirs']
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,7 @@ class ArgSpec:
   parse:Callable[[str],Any]|None = None
   metavar:str = ''
   prefix:str = ''
+  complete:PathCompletion|None = None
 
 
 def _spec_field(spec:ArgSpec, default:Any, default_factory:Any) -> Any:
@@ -133,17 +135,18 @@ def _spec_field(spec:ArgSpec, default:Any, default_factory:Any) -> Any:
 
 
 def pos(*, default:Any=MISSING, default_factory:Any=MISSING, doc:str='', parse:Callable[[str],Any]|None=None,
- metavar:str='') -> Any:
+ metavar:str='', complete:PathCompletion|None=None) -> Any:
   '''
   Declare a positional argument.
   A `list[T]` field is variadic; it consumes all remaining bare tokens and must be declared last.
   A field with no default is required.
-  A field typed `pithy.path.Path` parses a `Path` value and requests path completion.
+  A field typed `pithy.path.Path` parses a `Path` value and requests path completion; see `complete`.
   '''
-  return _spec_field(ArgSpec('pos', doc=doc, parse=parse, metavar=metavar), default, default_factory)
+  return _spec_field(ArgSpec('pos', doc=doc, parse=parse, metavar=metavar, complete=complete), default, default_factory)
 
 
-def remainder(*, default_factory:Any=list, doc:str='', parse:Callable[[str],Any]|None=None, metavar:str='') -> Any:
+def remainder(*, default_factory:Any=list, doc:str='', parse:Callable[[str],Any]|None=None, metavar:str='',
+ complete:PathCompletion|None=None) -> Any:
   '''
   Declare a positional argument that captures every token after it begins, including option-looking tokens and `--`.
   The field must be typed as `list[T]` and must be the last positional argument.
@@ -151,21 +154,23 @@ def remainder(*, default_factory:Any=list, doc:str='', parse:Callable[[str],Any]
   Capture begins at the first token that is not a declared option; If a `--` separator is encountered, it is consumed.
   To pass a literal leading `--` through to the remainder, write it twice.
   An empty remainder defaults to an empty list.
-  A field typed `list[pithy.path.Path]` parses `Path` values and requests path completion.
+  A field typed `list[pithy.path.Path]` parses `Path` values and requests path completion; see `complete`.
   '''
-  return _spec_field(ArgSpec('remainder', doc=doc, parse=parse, metavar=metavar), MISSING, default_factory)
+  return _spec_field(ArgSpec('remainder', doc=doc, parse=parse, metavar=metavar, complete=complete), MISSING, default_factory)
 
 
 def opt(*flags:str, default:Any=MISSING, default_factory:Any=MISSING, doc:str='', parse:Callable[[str],Any]|None=None,
- metavar:str='') -> Any:
+ metavar:str='', complete:PathCompletion|None=None) -> Any:
   '''
   Declare a named option that takes a value.
   `flags` defaults to the single-dash name derived from the field name.
   Pass one or more single-dash names to declare aliases; abbreviated names such as `-f` are never inferred.
   A `list[T]` field accumulates one value per occurrence; otherwise repeating the option is an error.
   A field typed `pithy.path.Path` parses a `Path` value and requests path completion.
+  `complete` selects what the shell offers for a `Path` field: `'files'` (the default) or `'dirs'` for directories only.
   '''
-  return _spec_field(ArgSpec('opt', flags=flags, doc=doc, parse=parse, metavar=metavar), default, default_factory)
+  return _spec_field(ArgSpec('opt', flags=flags, doc=doc, parse=parse, metavar=metavar, complete=complete), default,
+    default_factory)
 
 
 def flag(*flags:str, default:bool=False, doc:str='') -> Any:
@@ -207,6 +212,7 @@ class Entry:
   has_default:bool
   flags:tuple[str,...]
   metavar:str
+  path_completion:PathCompletion|None # Set for Path fields; what the shell offers when completing a value.
 
   @property
   def name(self) -> str: return self.path[-1]
@@ -241,9 +247,13 @@ class Completion:
 
 @dataclass(frozen=True)
 class CompletionResult:
-  'Completion candidates for a partial command line, with an optional request for native path completion.'
+  '''
+  Completion candidates for a partial command line, with an optional request for native path completion.
+  `path_prefix` is the part of the current word preceding the path, such as `-name=`; `path_kind` selects files or directories.
+  '''
   candidates:tuple[Completion,...] = ()
   path_prefix:str|None = None
+  path_kind:PathCompletion = 'files'
 
 
 @dataclass
@@ -323,6 +333,9 @@ def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...]
   literal_values = get_args(elem_T) if get_origin(elem_T) is Literal else ()
   if literal_values and not all(isinstance(value, str) for value in literal_values):
     raise CmdDeclError(f'{cmd.__name__}.{name}: Literal arguments must contain only strings.')
+  if spec.complete is not None and elem_T is not Path:
+    raise CmdDeclError(f'{cmd.__name__}.{name}: `complete` requires a Path field.')
+  path_completion:PathCompletion|None = spec.complete or ('files' if elem_T is Path else None)
   base_convert = spec.parse or (str if literal_values else _converters.get(elem_T))
   convert:Callable[[str],Any]|None
   if literal_values:
@@ -344,7 +357,7 @@ def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...]
   has_default = f.default is not MISSING or f.default_factory is not MISSING or is_optional
   literal_metavar = '{' + ','.join(literal_values) + '}' if literal_values else ''
   return Entry(path=path, spec=spec, T=elem_T, convert=convert, is_list=is_list, has_default=has_default, flags=flags,
-    metavar=spec.metavar or literal_metavar or _default_metavar(name, spec.kind))
+    metavar=spec.metavar or literal_metavar or _default_metavar(name, spec.kind), path_completion=path_completion)
 
 
 def _register_flag(schema:CmdSchema, flag_str:str, entry:Entry, negated:bool) -> None:
@@ -623,7 +636,7 @@ def _entry_completions(entry:Entry, prefix:str, *, value_prefix:str='') -> Compl
   if entry.T is bool:
     return CompletionResult(tuple(
       Completion(value_prefix + value) for value in _bool_words if value.startswith(prefix)))
-  if entry.T is Path: return CompletionResult(path_prefix=value_prefix)
+  if entry.path_completion is not None: return CompletionResult(path_prefix=value_prefix, path_kind=entry.path_completion)
   return CompletionResult()
 
 
@@ -670,19 +683,18 @@ def _complete_cmd(cmd:'type[Cmd]', prior:Sequence[str], current:str, prog:str) -
 
   # A lone `-` is a bare token, as in parse mode, but it is also the prefix of every option, so offer both.
   candidates:list[Completion] = []
-  path_prefix:str|None = None
+  positional = CompletionResult()
   if not state.end_opts and current in ('', '-'):
     candidates.extend(_option_completions(state, current))
 
   if state.pos_idx < len(schema.positionals):
     positional = _entry_completions(schema.positionals[state.pos_idx], current)
     candidates.extend(positional.candidates)
-    path_prefix = positional.path_prefix
   elif schema.sub_cmds:
     candidates.extend(Completion(name, _first_doc_line(sub_cmd), group='commands')
       for name, sub_cmd in schema.sub_cmds.items() if name.startswith(current))
 
-  return CompletionResult(tuple(candidates), path_prefix)
+  return CompletionResult(tuple(candidates), positional.path_prefix, positional.path_kind)
 
 
 def _format_completion_result(result:CompletionResult) -> str:
@@ -692,7 +704,7 @@ def _format_completion_result(result:CompletionResult) -> str:
     value = candidate.value.replace('\t', ' ').replace('\n', ' ')
     doc = candidate.doc.replace('\t', ' ').replace('\n', ' ')
     lines.append(f'candidate\t{candidate.group}\t{value}\t{doc}')
-  if result.path_prefix is not None: lines.append(f'path\t{result.path_prefix}')
+  if result.path_prefix is not None: lines.append(f'path\t{result.path_kind}\t{result.path_prefix}')
   return '\n'.join(lines)
 
 

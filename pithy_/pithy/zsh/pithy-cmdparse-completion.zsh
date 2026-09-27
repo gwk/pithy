@@ -42,7 +42,7 @@ emit-cmdparse-completion() {
 # Candidates arrive tagged with a display group; each group is added through `_description`,
 # so the standard zstyles (`descriptions` format, `group-name`, `tag-order`, tag-scoped `list-colors`) apply.
 _pithy_cmdparse_complete_request() {
-  local line kind group value doc disp path_prefix has_path
+  local line kind group value doc disp path_kind path_prefix has_path
   local -a lines fields expl
   local -a cmd_cands cmd_disps opt_cands opt_disps opt_eq_cands opt_eq_disps val_cands val_disps
   lines=("${(@f)$(PITHY_CMDPARSE_MODE=complete "$cmdparse_invocation[@]" "$cmdparse_args[@]" 2>/dev/null)}")
@@ -73,7 +73,8 @@ _pithy_cmdparse_complete_request() {
       esac
     elif [[ $kind == path ]]; then
       has_path=1
-      path_prefix=$fields[2]
+      path_kind=$fields[2]
+      path_prefix=$fields[3]
     fi
   done
 
@@ -92,6 +93,6 @@ _pithy_cmdparse_complete_request() {
   fi
   if (( has_path )); then
     if [[ -n $path_prefix ]]; then compset -P "$path_prefix"; fi
-    _files
+    if [[ $path_kind == dirs ]]; then _files -/; else _files; fi
   fi
 }

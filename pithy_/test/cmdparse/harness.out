@@ -23,7 +23,13 @@ compadd tag=values heading=(Values) cands=(app) disp=(app)
 == ./example.py build app -jobs 
 == ./example.py deploy 
 compadd tag=options heading=(Options) cands=(-h|-help) disp=(-h : Show this help.|-help : Show this help.)
+compadd tag=options heading=(Options) cands=(-dir=) suffix=() disp=(-dir= : The output directory.)
 _files
+== ./example.py deploy -dir 
+_files -/
+== ./example.py deploy -dir=src
+compset -P -dir=
+_files -/
 == python3 script.py 
 stock-python
 == python3 -m ex

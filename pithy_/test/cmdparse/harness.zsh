@@ -36,7 +36,7 @@ _description() {
 }
 
 compset() { print -r -- "compset $*" }
-_files() { print -r -- "_files" }
+_files() { print -r -- "_files" "$@" }
 compdef() { : }
 autoload() { : }
 _pithy_cmdparse_stock_python() { print -r -- "stock-python" }
@@ -64,6 +64,8 @@ run ./example.py build ''
 run ./example.py build ap
 run ./example.py build app -jobs ''
 run ./example.py deploy ''
+run ./example.py deploy -dir ''
+run ./example.py deploy -dir=src
 
 pithy_cmdparse_module_completion example
 
