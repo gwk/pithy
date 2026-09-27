@@ -4,10 +4,14 @@ import json
 import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from pathlib import Path
+from os import chmod
 from subprocess import CalledProcessError, PIPE, Popen
 from tempfile import TemporaryDirectory
 
+from pithy.filestatus import file_stat, is_dir, is_link, path_exists
+from pithy.fs import list_dir, make_dir, make_link, real_path, remove_empty_dir, remove_file
+from pithy.io import read_from_path, write_to_path
+from pithy.path import Path
 from tap_ops.deploy import DeployError, read_manifest, reconcile, Reconciliation, unit_name, write_manifest
 from utest import utest_exc, utest_run, utest_val
 
@@ -37,8 +41,9 @@ class Systemd:
         self.active[name] = 'failed' if name in self.fail_on_stop else 'inactive'
       case 'reset-failed': self.active[name] = 'inactive'
       case 'disable':
-        if not (self.unit_dir / name).exists(): raise CalledProcessError(1, ['systemctl', *args])
-      case 'daemon-reload': self.reload_files = {p.name: p.read_text() for p in self.unit_dir.iterdir()}
+        if not path_exists(self.unit_dir / name, follow=True): raise CalledProcessError(1, ['systemctl', *args])
+      case 'daemon-reload':
+        self.reload_files = {n: read_from_path(self.unit_dir / n) for n in list_dir(self.unit_dir, hidden=True)}
       case _: raise ValueError(args)
     return ''
 
@@ -52,52 +57,52 @@ class Systemd:
 def fixture() -> Iterator[tuple[Path,Path,Path,Systemd]]:
   'Yield a source directory, manifest path, unit directory and fake systemctl.'
   with TemporaryDirectory() as tmp:
-    root = Path(tmp).resolve()
+    root = Path(real_path(tmp))
     source = root / 'source'
     units = root / 'units'
-    source.mkdir()
-    units.mkdir()
+    make_dir(source)
+    make_dir(units)
     yield source, root / 'state' / 'manifest.json', units, Systemd(units)
 
 
 @utest_run
 def test_install_update_unchanged() -> None:
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('V1.')
-    (source / 'notes.txt').write_text('Ignored.')
-    (units / 'unrelated.service').write_text('Unmanaged.')
+    write_to_path(source / 'web.service', 'V1.')
+    write_to_path(source / 'notes.txt', 'Ignored.')
+    write_to_path(units / 'unrelated.service', 'Unmanaged.')
     result = reconcile(source, manifest, units, control=control)
     utest_val(Reconciliation(installed=['web.service'], changed=[], unchanged=[], removed=[]), result)
     utest_val({'web.service'}, read_manifest(manifest, units))
-    utest_val(0o644, (units / 'web.service').stat().st_mode & 0o777)
-    utest_val(0o600, manifest.stat().st_mode & 0o777)
+    utest_val(0o644, file_stat(units / 'web.service', follow=True).st_mode & 0o777)
+    utest_val(0o600, file_stat(manifest, follow=True).st_mode & 0o777)
     utest_val({'web.service': 'V1.', 'unrelated.service': 'Unmanaged.'}, control.reload_files, 'files present at reload')
-    utest_val(False, (units / 'notes.txt').exists())
+    utest_val(False, path_exists(units / 'notes.txt', follow=True))
 
     # An unchanged unit is not rewritten, but systemd is still reloaded in case a prior run failed before its reload.
-    inode = (units / 'web.service').stat().st_ino
+    inode = file_stat(units / 'web.service', follow=True).st_ino
     control.take_calls()
     result = reconcile(source, manifest, units, control=control)
     utest_val(Reconciliation(installed=[], changed=[], unchanged=['web.service'], removed=[]), result)
-    utest_val(inode, (units / 'web.service').stat().st_ino)
+    utest_val(inode, file_stat(units / 'web.service', follow=True).st_ino)
     utest_val([['daemon-reload']], control.take_calls())
 
-    (source / 'web.service').write_text('V2.')
+    write_to_path(source / 'web.service', 'V2.')
     utest_val(['web.service'], reconcile(source, manifest, units, control=control).changed)
-    utest_val('V2.', (units / 'web.service').read_text())
-    (units / 'web.service').chmod(0o600)
+    utest_val('V2.', read_from_path(units / 'web.service'))
+    chmod(units / 'web.service', 0o600)
     utest_val(['web.service'], reconcile(source, manifest, units, control=control).changed, 'mode repair')
-    utest_val(0o644, (units / 'web.service').stat().st_mode & 0o777)
-    utest_val('Unmanaged.', (units / 'unrelated.service').read_text())
+    utest_val(0o644, file_stat(units / 'web.service', follow=True).st_mode & 0o777)
+    utest_val('Unmanaged.', read_from_path(units / 'unrelated.service'))
 
 
 @utest_run
 def test_remove_obsolete_and_retry() -> None:
   'A deployment that installed a service and its timer is followed by one that removes both; the reload fails once.'
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('Web.')
-    for name in ('web.service', 'jobs.service', 'jobs.timer'): (units / name).write_text('Old.')
-    manifest.parent.mkdir()
+    write_to_path(source / 'web.service', 'Web.')
+    for name in ('web.service', 'jobs.service', 'jobs.timer'): write_to_path(units / name, 'Old.')
+    make_dir(manifest.parent)
     write_manifest(manifest, units, {'web.service', 'jobs.service', 'jobs.timer'})
     control.active = {'jobs.service': 'active', 'jobs.timer': 'active'}
     control.fail = 'daemon-reload'
@@ -106,7 +111,7 @@ def test_remove_obsolete_and_retry() -> None:
     # The fake rejects a disable that follows deletion, so this sequence also establishes that ordering.
     utest_val([['stop', 'jobs.timer'], ['disable', '--no-reload', 'jobs.timer'], ['stop', 'jobs.service'],
       ['disable', '--no-reload', 'jobs.service'], ['daemon-reload']], control.take_calls())
-    utest_val(['web.service'], sorted(p.name for p in units.iterdir()))
+    utest_val(['web.service'], list_dir(units, hidden=True))
 
     # Retry after systemd has forgotten the deleted units.
     control.fail = ''
@@ -119,11 +124,11 @@ def test_remove_obsolete_and_retry() -> None:
 @utest_run
 def test_obsolete_unit_states() -> None:
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('Web.')
+    write_to_path(source / 'web.service', 'Web.')
     # `gone` has no file and is inactive, as when another unit still references a deleted unit; it must not be stopped.
     names = ['broken.service', 'crashy.service', 'gone.service', 'idle.service']
     for name in names:
-      if name != 'gone.service': (units / name).write_text('Old.')
+      if name != 'gone.service': write_to_path(units / name, 'Old.')
     control.active = {'broken.service': 'failed', 'crashy.service': 'active'}
     control.fail_on_stop = {'crashy.service'}
     reconcile(source, manifest, units, adopt=names, control=control)
@@ -132,7 +137,7 @@ def test_obsolete_unit_states() -> None:
       ['stop', 'crashy.service'], ['reset-failed', 'crashy.service'], ['disable', '--no-reload', 'crashy.service'],
       ['disable', '--no-reload', 'idle.service'],
       ['daemon-reload']], control.take_calls())
-    utest_val(['web.service'], sorted(p.name for p in units.iterdir()))
+    utest_val(['web.service'], list_dir(units, hidden=True))
 
     # Repeating the adoption of removed names is harmless.
     reconcile(source, manifest, units, adopt=names, control=control)
@@ -142,8 +147,8 @@ def test_obsolete_unit_states() -> None:
 @utest_run
 def test_stop_failure_retains_ownership() -> None:
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('Web.')
-    (units / 'jobs.service').write_text('Retired.')
+    write_to_path(source / 'web.service', 'Web.')
+    write_to_path(units / 'jobs.service', 'Retired.')
     control.active = {'jobs.service': 'active'}
     control.fail = 'stop'
     plans:list[Reconciliation] = []
@@ -151,79 +156,79 @@ def test_stop_failure_retains_ownership() -> None:
       on_plan=plans.append)
     utest_val([Reconciliation(installed=['web.service'], changed=[], unchanged=[], removed=['jobs.service'])], plans,
       'plan delivered before the failure')
-    utest_val(True, (units / 'jobs.service').exists())
+    utest_val(True, path_exists(units / 'jobs.service', follow=True))
     utest_val({'web.service', 'jobs.service'}, read_manifest(manifest, units))
 
 
 @utest_run
 def test_adoption_and_dry_run() -> None:
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('New.')
-    (units / 'web.service').write_text('Old.')
+    write_to_path(source / 'web.service', 'New.')
+    write_to_path(units / 'web.service', 'Old.')
     dest = units / 'web.service'
     utest_exc(DeployError(f'Unmanaged unit exists: {dest}; use -adopt web.service to claim it.'),
       reconcile, source, manifest, units, control=control)
-    utest_val(False, manifest.exists())
+    utest_val(False, path_exists(manifest, follow=True))
 
-    (units / 'jobs.service').write_text('Retired.')
+    write_to_path(units / 'jobs.service', 'Retired.')
     plan = reconcile(source, manifest, units, adopt_existing=True, adopt=['jobs.service'], dry_run=True, control=control)
     utest_val(Reconciliation(installed=[], changed=['web.service'], unchanged=[], removed=['jobs.service']), plan)
     utest_val(['Remove: jobs.service', 'Update: web.service'], plan.lines())
     utest_val([], control.calls)
-    utest_val(False, manifest.exists())
-    utest_val('Old.', dest.read_text())
+    utest_val(False, path_exists(manifest, follow=True))
+    utest_val('Old.', read_from_path(dest))
 
     result = reconcile(source, manifest, units, adopt_existing=True, adopt=['jobs.service'], control=control)
     utest_val(plan, result)
-    utest_val(False, (units / 'jobs.service').exists())
-    utest_val('New.', dest.read_text())
+    utest_val(False, path_exists(units / 'jobs.service', follow=True))
+    utest_val('New.', read_from_path(dest))
 
 
 @utest_run
 def test_empty_source() -> None:
   with fixture() as (source, manifest, units, control):
-    (units / 'web.service').write_text('Web.')
-    (units / 'unrelated.service').write_text('Unmanaged.')
-    manifest.parent.mkdir()
+    write_to_path(units / 'web.service', 'Web.')
+    write_to_path(units / 'unrelated.service', 'Unmanaged.')
+    make_dir(manifest.parent)
     write_manifest(manifest, units, {'web.service'})
     utest_exc(DeployError, reconcile, source, manifest, units, control=control)
-    utest_val(True, (units / 'web.service').exists())
+    utest_val(True, path_exists(units / 'web.service', follow=True))
     reconcile(source, manifest, units, allow_empty=True, control=control)
     utest_val(set(), read_manifest(manifest, units))
-    utest_val(['unrelated.service'], sorted(p.name for p in units.iterdir()))
+    utest_val(['unrelated.service'], list_dir(units, hidden=True))
 
 
 @utest_run
 def test_source_validation() -> None:
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('Web.')
+    write_to_path(source / 'web.service', 'Web.')
 
     def check(path:Path, exc:DeployError) -> None:
       utest_exc(exc, reconcile, source, manifest, units, control=control)
-      if path.is_dir() and not path.is_symlink(): path.rmdir()
-      else: path.unlink()
+      if is_dir(path, follow=True) and not is_link(path): remove_empty_dir(path)
+      else: remove_file(path)
 
     path = source / 'jobs.socket'
-    path.write_text('Socket.')
+    write_to_path(path, 'Socket.')
     check(path, DeployError(f'Unsupported unit type: {path}.'))
     path = source / 'web.service.d'
-    path.mkdir()
+    make_dir(path)
     check(path, DeployError(f'Drop-in directories are not supported: {path}.'))
     path = source / 'jobs@.service'
-    path.write_text('Template.')
+    write_to_path(path, 'Template.')
     check(path, DeployError("Invalid unit name: 'jobs@.service'."))
     path = source / 'link.service'
-    path.symlink_to(source / 'web.service')
+    make_link(source / 'web.service', link=path)
     check(path, DeployError(f'Expected a regular source file: {path}.'))
     utest_val([], control.calls)
-    utest_val(False, manifest.parent.exists())
+    utest_val(False, path_exists(manifest.parent, follow=True))
 
 
 @utest_run
 def test_manifest_and_destination_validation() -> None:
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('Web.')
-    manifest.parent.mkdir()
+    write_to_path(source / 'web.service', 'Web.')
+    make_dir(manifest.parent)
     valid = {'version': 1, 'unit_dir': str(units), 'units': []}
     cases:list[tuple[object,str]] = [
       ([], f'Manifest is not a JSON object: {manifest}.'),
@@ -238,13 +243,13 @@ def test_manifest_and_destination_validation() -> None:
       ({**valid, 'units': ['web.service', 'web.service']}, f'Duplicate unit names in manifest: {manifest}.'),
     ]
     for data, message in cases:
-      manifest.write_text(json.dumps(data))
+      write_to_path(manifest, json.dumps(data))
       utest_exc(DeployError(message), reconcile, source, manifest, units, control=control, _utest_label=message)
-    manifest.write_text('{broken')
+    write_to_path(manifest, '{broken')
     utest_exc(DeployError, reconcile, source, manifest, units, control=control)
-    manifest.unlink()
+    remove_file(manifest)
 
-    (units / 'web.service').symlink_to(source / 'web.service')
+    make_link(source / 'web.service', link=units / 'web.service')
     utest_exc(DeployError(f'Expected a regular installed file: {units / 'web.service'}.'),
       reconcile, source, manifest, units, adopt_existing=True, control=control)
     utest_val([], control.calls)
@@ -253,8 +258,8 @@ def test_manifest_and_destination_validation() -> None:
 @utest_run
 def test_lock_held_by_another_process() -> None:
   with fixture() as (source, manifest, units, control):
-    (source / 'web.service').write_text('Web.')
-    manifest.parent.mkdir()
+    write_to_path(source / 'web.service', 'Web.')
+    make_dir(manifest.parent)
     lock_path = str(manifest) + '.lock'
     holder_src = ('import fcntl, sys; f = open(sys.argv[1], "w"); fcntl.flock(f, fcntl.LOCK_EX); print(flush=True);'
       ' sys.stdin.read()')
@@ -263,10 +268,10 @@ def test_lock_held_by_another_process() -> None:
       holder.stdout.readline() # Wait for the holder to acquire the lock.
       utest_exc(DeployError(f'Another reconciliation holds the lock: {lock_path}.'),
         reconcile, source, manifest, units, control=control)
-      utest_val(False, (units / 'web.service').exists())
+      utest_val(False, path_exists(units / 'web.service', follow=True))
       holder.communicate() # Close stdin so that the holder exits and releases the lock.
     reconcile(source, manifest, units, control=control)
-    utest_val(True, (units / 'web.service').exists())
+    utest_val(True, path_exists(units / 'web.service', follow=True))
 
 
 for name in ('../jobs.service', '-jobs.service', '*.service', 'jobs.socket', 'jobs@.service', 'jobs@worker.service',

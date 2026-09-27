@@ -11,12 +11,15 @@ import re
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
-from pathlib import Path
 from subprocess import CalledProcessError, PIPE, run
 from tempfile import NamedTemporaryFile
 
 from pithy.advisory_lock import acquire_advisory_lock, AdvisoryLockBusy, release_advisory_lock
 from pithy.cmdparse import Cmd, flag, opt, pos
+from pithy.filestatus import file_stat, is_dir, is_file, is_link, path_exists
+from pithy.fs import abs_path, list_dir, make_dirs, real_path, remove_file, remove_file_if_exists
+from pithy.io import read_bytes_from_path, read_from_path
+from pithy.path import Path
 
 
 _context_keywords_ = ['deploy', 'deployment', 'manifest', 'service', 'systemctl', 'systemd', 'timer', 'unit']
@@ -83,20 +86,21 @@ def unit_name(value:object) -> str:
 def read_source(source:Path) -> dict[str,bytes]:
   'Read the desired units. Files unrelated to systemd are ignored; unit types and drop-ins that are not managed are errors.'
   desired:dict[str,bytes] = {}
-  for path in sorted(source.iterdir()):
-    suffix = path.suffix
-    if suffix == '.d' and Path(path.stem).suffix in ('.service', '.timer', *unsupported_suffixes):
+  for name in list_dir(source, hidden=True):
+    path = source / name
+    ext = path.ext
+    if ext == '.d' and Path(path.name_stem).ext in ('.service', '.timer', *unsupported_suffixes):
       raise DeployError(f'Drop-in directories are not supported: {path}.')
-    if suffix in unsupported_suffixes: raise DeployError(f'Unsupported unit type: {path}.')
-    if suffix not in ('.service', '.timer'): continue
-    name = unit_name(path.name)
-    if path.is_symlink() or not path.is_file(): raise DeployError(f'Expected a regular source file: {path}.')
-    desired[name] = path.read_bytes()
+    if ext in unsupported_suffixes: raise DeployError(f'Unsupported unit type: {path}.')
+    if ext not in ('.service', '.timer'): continue
+    name = unit_name(name)
+    if is_link(path) or not is_file(path, follow=True): raise DeployError(f'Expected a regular source file: {path}.')
+    desired[name] = read_bytes_from_path(path)
   return desired
 
 
 def read_manifest(path:Path, unit_dir:Path) -> set[str]:
-  try: data = json.loads(path.read_text())
+  try: data = json.loads(read_from_path(path))
   except FileNotFoundError: return set()
   except (ValueError, UnicodeError) as exc: raise DeployError(f'Invalid manifest: {path}: {exc}') from exc
   if not isinstance(data, dict): raise DeployError(f'Manifest is not a JSON object: {path}.')
@@ -125,7 +129,7 @@ def atomic_write(path:Path, content:bytes, mode:int) -> None:
       try: os.fsync(fd)
       finally: os.close(fd)
     finally:
-      temp.unlink(missing_ok=True)
+      remove_file_if_exists(temp)
 
 
 def write_manifest(path:Path, unit_dir:Path, names:set[str]) -> None:
@@ -138,13 +142,14 @@ def systemctl(args:Sequence[str]) -> str:
 
 
 def is_installed(dest:Path, content:bytes) -> bool:
-  return dest.exists() and dest.stat().st_mode & 0o777 == unit_mode and dest.read_bytes() == content
+  return path_exists(dest, follow=True) and file_stat(dest, follow=True).st_mode & 0o777 == unit_mode \
+    and read_bytes_from_path(dest) == content
 
 
 @contextmanager
 def reconcile_lock(manifest:Path) -> Iterator[None]:
   'Hold the nonblocking reconciliation lock beside the manifest, creating its directory if necessary.'
-  manifest.parent.mkdir(parents=True, exist_ok=True)
+  make_dirs(manifest.parent)
   lock_path = str(manifest) + '.lock'
   try: fd = acquire_advisory_lock(lock_path, exclusive=True, blocking=False)
   except AdvisoryLockBusy as exc: raise DeployError(f'Another reconciliation holds the lock: {lock_path}.') from exc
@@ -162,10 +167,11 @@ def reconcile(source:Path, manifest:Path, unit_dir:Path, *, adopt:Sequence[str]=
   Dry runs do not acquire a lock and are advisory snapshots.
   `on_plan` receives the result after validation and before any mutation, so that a run failing partway has logged its intent.
   '''
-  source = source.resolve(strict=True)
-  unit_dir = unit_dir.resolve(strict=True)
-  manifest = manifest.absolute()
-  if not source.is_dir() or not unit_dir.is_dir(): raise DeployError('Source and unit directory must be directories.')
+  source = Path(real_path(source))
+  unit_dir = Path(real_path(unit_dir))
+  manifest = Path(abs_path(manifest))
+  if not is_dir(source, follow=True) or not is_dir(unit_dir, follow=True):
+    raise DeployError('Source and unit directory must be directories.')
   if source == unit_dir: raise DeployError('Source must differ from the unit installation directory.')
   desired = read_source(source)
   if not desired and not allow_empty: raise DeployError('No source units found; use -allow-empty for deliberate removal.')
@@ -177,19 +183,19 @@ def reconcile(source:Path, manifest:Path, unit_dir:Path, *, adopt:Sequence[str]=
     return control(['show', '--property=ActiveState', '--value', '--', name]).strip()
 
   with nullcontext() if dry_run else reconcile_lock(manifest):
-    if manifest.is_symlink(): raise DeployError(f'Manifest must not be a symlink: {manifest}.')
+    if is_link(manifest): raise DeployError(f'Manifest must not be a symlink: {manifest}.')
     previous = read_manifest(manifest, unit_dir) | claimed
     names = set(desired)
     for name in previous | names:
       dest = unit_dir / name
-      if dest.is_symlink() or (dest.exists() and not dest.is_file()):
+      if is_link(dest) or (path_exists(dest, follow=True) and not is_file(dest, follow=True)):
         raise DeployError(f'Expected a regular installed file: {dest}.')
-      if name not in previous and dest.exists():
+      if name not in previous and path_exists(dest, follow=True):
         raise DeployError(f'Unmanaged unit exists: {dest}; use -adopt {name} to claim it.')
     unchanged = [n for n in sorted(names) if is_installed(unit_dir / n, desired[n])]
     result = Reconciliation(
-      installed=[n for n in sorted(names) if not (unit_dir / n).exists()],
-      changed=[n for n in sorted(names) if (unit_dir / n).exists() and n not in unchanged],
+      installed=[n for n in sorted(names) if not path_exists(unit_dir / n, follow=True)],
+      changed=[n for n in sorted(names) if path_exists(unit_dir / n, follow=True) and n not in unchanged],
       unchanged=unchanged,
       removed=sorted(previous - names, key=lambda n: (not n.endswith('.timer'), n)))
     if on_plan: on_plan(result)
@@ -204,9 +210,9 @@ def reconcile(source:Path, manifest:Path, unit_dir:Path, *, adopt:Sequence[str]=
       if active_state(name) not in ('inactive', 'failed'): control(['stop', name])
       # Stopping can leave a unit failed; systemd retains failed units after their files are removed.
       if active_state(name) == 'failed': control(['reset-failed', name])
-      if dest.exists():
+      if path_exists(dest, follow=True):
         control(['disable', '--no-reload', name])
-        dest.unlink()
+        remove_file(dest)
     for name in result.installed + result.changed:
       atomic_write(unit_dir / name, desired[name], unit_mode)
     # Always reload: a prior run can have written every file and then failed before its reload.
