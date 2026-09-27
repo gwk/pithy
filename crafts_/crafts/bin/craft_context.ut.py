@@ -3,8 +3,7 @@
 from ast import parse as parse_ast
 from hashlib import sha256
 from json import dumps, loads
-from os import utime
-from pathlib import Path
+from os import remove, replace, symlink, utime
 from tempfile import TemporaryDirectory
 from time import time_ns
 from unittest.mock import patch
@@ -12,8 +11,10 @@ from unittest.mock import patch
 from crafts.bin.craft_context import (ContextModule, CraftContext, extract_context_meta, FileRecord, find_src_paths,
   generated_warning, Index, load_context_index, load_project_context, process_path, Query, query_context_modules,
   refresh_context_index, Validate)
-from pithy.filestatus import is_dir
-from pithy.fs import list_dir
+from pithy.filestatus import file_stat, is_dir, is_link, path_exists
+from pithy.fs import list_dir, make_dir, make_dirs, remove_empty_dir
+from pithy.io import read_bytes_from_path, read_from_path, write_to_path
+from pithy.path import Path
 from utest import utest, utest_exc, utest_val
 
 
@@ -103,15 +104,15 @@ with TemporaryDirectory() as tmp:
   workspace = Path(tmp)
   project = workspace / 'project'
   dependency = workspace / 'library'
-  (project / 'deps').mkdir(parents=True)
-  (project / 'context').mkdir()
-  (project / 'file.py').write_text('_context_keywords_ = ["file"]\n_context_status_ = "unmaintained"\n')
-  (dependency / 'context').mkdir(parents=True)
-  (dependency / 'lock.py').write_text('_context_keywords_ = ["fcntl.flock", "file locking"]\n')
-  (project / 'deps/library').symlink_to(dependency, target_is_directory=True)
-  (project / 'deps/library-alias').symlink_to(dependency, target_is_directory=True)
-  (project / 'deps/self').symlink_to(project, target_is_directory=True)
-  (project / 'deps/unindexed').mkdir()
+  make_dirs(project / 'deps')
+  make_dir(project / 'context')
+  write_to_path(project / 'file.py', '_context_keywords_ = ["file"]\n_context_status_ = "unmaintained"\n')
+  make_dirs(dependency / 'context')
+  write_to_path(dependency / 'lock.py', '_context_keywords_ = ["fcntl.flock", "file locking"]\n')
+  symlink(dependency, project / 'deps/library')
+  symlink(dependency, project / 'deps/library-alias')
+  symlink(project, project / 'deps/self')
+  make_dir(project / 'deps/unindexed')
   dep_index = dependency / 'context/index.json'
   expected_local = ContextModule(path=f'{project}/file.py', keywords=['file'], status='unmaintained')
   expected_dep = ContextModule(path=f'{project}/deps/library/lock.py', keywords=['fcntl.flock', 'file locking'], status='')
@@ -119,21 +120,21 @@ with TemporaryDirectory() as tmp:
   # Indexing the project does not create or refresh dependency indexes.
   with patch('crafts.bin.craft_context.outL'):
     Index(root=str(project)).run()
-  utest(False, dep_index.exists)
+  utest(False, path_exists, dep_index, follow=True)
   with patch('crafts.bin.craft_context.errL') as errors:
     utest([expected_local], load_project_context, str(project))
     utest(2, lambda: errors.call_count)
-  utest(False, dep_index.exists)
+  utest(False, path_exists, dep_index, follow=True)
   with patch('crafts.bin.craft_context.outL'):
     Index(root=str(dependency)).run()
 
   # Queries use stored keywords even after sources change, without scanning or acquiring a writer lock.
-  (dependency / 'lock.py').write_text('def broken(\n')
-  (project / 'file.py').unlink()
-  (project / 'context/index.lock').unlink()
-  (dependency / 'context/index.lock').unlink()
+  write_to_path(dependency / 'lock.py', 'def broken(\n')
+  remove(project / 'file.py')
+  remove(project / 'context/index.lock')
+  remove(dependency / 'context/index.lock')
   project_index = project / 'context/index.json'
-  snapshots = [(path, path.read_bytes(), path.stat().st_mtime_ns) for path in (project_index, dep_index)]
+  snapshots = [(path, read_bytes_from_path(path), file_stat(path, follow=True).st_mtime_ns) for path in (project_index, dep_index)]
   with patch('crafts.bin.craft_context.scan_context_files', side_effect=AssertionError('Query scanned sources')), \
    patch('crafts.bin.craft_context.advisory_lock', side_effect=AssertionError('Query acquired a lock')), \
    patch('crafts.bin.craft_context.errL') as errors, patch('crafts.bin.craft_context.outL') as output:
@@ -143,22 +144,22 @@ with TemporaryDirectory() as tmp:
       lambda: output.call_args_list)
     utest(2, lambda: errors.call_count)
   for path, data, mtime_ns in snapshots:
-    utest(data, path.read_bytes)
-    utest(mtime_ns, lambda: path.stat().st_mtime_ns)
+    utest(data, read_bytes_from_path, path)
+    utest(mtime_ns, lambda: file_stat(path, follow=True).st_mtime_ns)
     utest(['index.json'], list_dir, str(path.parent))
-  utest(False, (project / 'deps/unindexed/context').exists)
+  utest(False, path_exists, project / 'deps/unindexed/context', follow=True)
 
   # Do not recurse into dependencies' own dependency trees.
-  (dependency / 'deps/transitive/context').mkdir(parents=True)
-  (dependency / 'deps/transitive/context/index.json').write_text('invalid JSON')
+  make_dirs(dependency / 'deps/transitive/context')
+  write_to_path(dependency / 'deps/transitive/context/index.json', 'invalid JSON')
   with patch('crafts.bin.craft_context.errL'):
     utest([expected_local, expected_dep], load_project_context, str(project))
 
   # Invalid or outdated indexes fail without being rewritten.
   for invalid in ('invalid JSON', dumps({'version': 0, 'modules': []})):
-    dep_index.write_text(invalid)
+    write_to_path(dep_index, invalid)
     utest_exc(ValueError, load_project_context, str(project))
-    utest(invalid, dep_index.read_text)
+    utest(invalid, read_from_path, dep_index)
   with patch('crafts.bin.craft_context.load_context_index', side_effect=PermissionError('Cannot read')):
     utest_exc(PermissionError, load_project_context, str(project))
   with patch('crafts.bin.craft_context.errL'):
@@ -170,7 +171,7 @@ old_time_ns = 1_000_000_000_000_000_000 # An mtime well before any index build.
 
 def write_source(path:Path, text:str, mtime_ns:int=old_time_ns) -> None:
   'Write a source file with a fixed mtime so that stat comparisons are deterministic.'
-  path.write_text(text)
+  write_to_path(path, text)
   utime(path, ns=(mtime_ns, mtime_ns))
 
 
@@ -182,11 +183,11 @@ with TemporaryDirectory() as tmp:
   write_source(root / 'undocumented.py', '"Only a docstring."\n')
   write_source(root / 'empty.py', '_context_keywords_ = []\n')
   # A real dependency checkout is indexed at its own root, not by the dependent project.
-  (root / 'deps/library').mkdir(parents=True)
+  make_dirs(root / 'deps/library')
   write_source(root / 'deps/library/lock.py', '_context_keywords_ = ["dependency"]\n')
   index = root / 'context/index.json'
   Validate(root=tmp).run()
-  utest(False, index.parent.exists)
+  utest(False, path_exists, index.parent, follow=True)
   with patch('crafts.bin.craft_context.outL') as output:
     Index(root=tmp).run()
     utest([((f'craft-context: wrote {tmp}/context/index.json',), {})], lambda: output.call_args_list)
@@ -197,32 +198,32 @@ with TemporaryDirectory() as tmp:
       status=''),
     'lock.py': lock_record,
     'undocumented.py': FileRecord(size=20, mtime_ns=old_time_ns, sha256=sha256(b'"Only a docstring."\n').hexdigest(),
-      keywords=[], status='')}}, loads, index.read_text())
-  utest((loads(index.read_text()), index.stat().st_mtime_ns), load_context_index, str(index))
-  first_build = index.read_bytes()
-  index_mtime_ns = index.stat().st_mtime_ns
+      keywords=[], status='')}}, loads, read_from_path(index))
+  utest((loads(read_from_path(index)), file_stat(index, follow=True).st_mtime_ns), load_context_index, str(index))
+  first_build = read_bytes_from_path(index)
+  index_mtime_ns = file_stat(index, follow=True).st_mtime_ns
   Validate(root=tmp).run()
-  utest(index_mtime_ns, lambda: index.stat().st_mtime_ns)
+  utest(index_mtime_ns, lambda: file_stat(index, follow=True).st_mtime_ns)
 
   # Unchanged files are skipped by stat without hashing or writing; overlapping paths are visited once.
   with patch('crafts.bin.craft_context.outL') as output, patch('crafts.bin.craft_context.sha256') as digest:
     Index(root=tmp, paths=[str(root / 'lock.py'), 'lock.py']).run()
     utest([((f'craft-context: up to date: {tmp}/context/index.json',), {})], lambda: output.call_args_list)
     utest(0, lambda: digest.call_count)
-  utest(index_mtime_ns, lambda: index.stat().st_mtime_ns)
+  utest(index_mtime_ns, lambda: file_stat(index, follow=True).st_mtime_ns)
 
   # A bumped mtime with identical content is confirmed by digest without parsing, and the stat is recorded.
   utime(root / 'lock.py', ns=(old_time_ns + 1, old_time_ns + 1))
   with patch('crafts.bin.craft_context.outL'), patch('crafts.bin.craft_context.parse_ast') as parse:
     Index(root=tmp).run()
     utest(0, lambda: parse.call_count)
-  utest({**lock_record, 'mtime_ns': old_time_ns + 1}, lambda: loads(index.read_text())['files']['lock.py'])
+  utest({**lock_record, 'mtime_ns': old_time_ns + 1}, lambda: loads(read_from_path(index))['files']['lock.py'])
 
   # Changed content is reparsed.
   write_source(root / 'lock.py', '_context_keywords_ = ["changed"]\n')
   with patch('crafts.bin.craft_context.outL'):
     Index(root=tmp).run()
-  utest(['changed'], lambda: loads(index.read_text())['files']['lock.py']['keywords'])
+  utest(['changed'], lambda: loads(read_from_path(index))['files']['lock.py']['keywords'])
 
   # A file whose mtime is not older than the index is digested on every run, guarding against racy writes.
   future_ns = time_ns() + 10**12
@@ -234,7 +235,7 @@ with TemporaryDirectory() as tmp:
   write_source(root / 'lock.py', lock_source)
   with patch('crafts.bin.craft_context.outL'):
     Index(root=tmp).run()
-  utest(first_build, index.read_bytes)
+  utest(first_build, read_bytes_from_path, index)
 
   # Reject malformed sources and metadata without publishing a partial index.
   bad_source = root / 'bad.py'
@@ -245,48 +246,48 @@ with TemporaryDirectory() as tmp:
       utest_exc(SystemExit('craft-context index: 1 source errors; index not written.'), Index(root=tmp).run)
       utest_exc(SystemExit('craft-context validate: 1 source errors.'), Validate(root=tmp).run)
       utest([], lambda: output.call_args_list)
-    utest(first_build, index.read_bytes)
-  bad_source.unlink()
+    utest(first_build, read_bytes_from_path, index)
+  remove(bad_source)
 
   # Scanning a subset refreshes only records under the given paths; a full scan drops the rest.
-  (root / 'sub').mkdir()
+  make_dir(root / 'sub')
   write_source(root / 'sub/a.py', '_context_keywords_ = ["a"]\n')
   write_source(root / 'sub/b.py', '_context_keywords_ = ["b"]\n')
   with patch('crafts.bin.craft_context.outL'):
     Index(root=tmp).run()
-  (root / 'sub/b.py').unlink()
-  (root / 'undocumented.py').unlink()
+  remove(root / 'sub/b.py')
+  remove(root / 'undocumented.py')
   with patch('crafts.bin.craft_context.outL'):
     Index(root=tmp, paths=['sub']).run()
-  utest(['empty.py', 'lock.py', 'sub/a.py', 'undocumented.py'], lambda: list(loads(index.read_text())['files']))
+  utest(['empty.py', 'lock.py', 'sub/a.py', 'undocumented.py'], lambda: list(loads(read_from_path(index))['files']))
   with patch('crafts.bin.craft_context.outL'):
     Index(root=tmp).run()
-  utest(['empty.py', 'lock.py', 'sub/a.py'], lambda: list(loads(index.read_text())['files']))
-  (root / 'sub/a.py').unlink()
-  (root / 'sub').rmdir()
+  utest(['empty.py', 'lock.py', 'sub/a.py'], lambda: list(loads(read_from_path(index))['files']))
+  remove(root / 'sub/a.py')
+  remove_empty_dir(root / 'sub')
   write_source(root / 'undocumented.py', '"Only a docstring."\n')
   with patch('crafts.bin.craft_context.outL'):
     Index(root=tmp).run()
-  utest(first_build, index.read_bytes)
+  utest(first_build, read_bytes_from_path, index)
 
   # Relative paths still locate the source after moving the project; querying leaves cached records intact.
   moved_root = root / 'moved'
-  moved_root.mkdir()
-  (root / 'context').rename(moved_root / 'context')
-  (root / 'lock.py').rename(moved_root / 'lock.py')
+  make_dir(moved_root)
+  replace(root / 'context', moved_root / 'context')
+  replace(root / 'lock.py', moved_root / 'lock.py')
   index = moved_root / 'context/index.json'
   with patch('crafts.bin.craft_context.outL') as output, patch('crafts.bin.craft_context.parse_ast') as parse:
     Query(root=str(moved_root), words=['locking']).run()
     utest([((f'{moved_root}/lock.py: file locking',), {})], lambda: output.call_args_list)
     utest(0, lambda: parse.call_count)
-  utest(['empty.py', 'lock.py', 'undocumented.py'], lambda: list(loads(index.read_text())['files']))
-  moved_build = index.read_bytes()
+  utest(['empty.py', 'lock.py', 'undocumented.py'], lambda: list(loads(read_from_path(index))['files']))
+  moved_build = read_bytes_from_path(index)
 
   # A failed replacement leaves the old index intact and cleans up the temporary directory.
   write_source(moved_root / 'lock.py', '"No keywords."\n')
   with patch('crafts.bin.craft_context.replace', side_effect=OSError('Cannot replace')):
     utest_exc(OSError, Index(root=str(moved_root)).run)
-  utest(moved_build, index.read_bytes)
+  utest(moved_build, read_bytes_from_path, index)
   utest(['index.json', 'index.lock'], list_dir, str(index.parent))
 
   # Rebuilding drops keywords whose source no longer advertises them.
@@ -309,11 +310,11 @@ with TemporaryDirectory() as tmp:
    dumps({'version': 2, 'files': {'bad.py': {'size': 1.0, 'mtime_ns': 1, 'sha256': '', 'keywords': [], 'status': ''}}}),
    dumps({'version': 2, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': [1], 'status': ''}}}),
    dumps({'version': 2, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': []}}})):
-    index.write_text(invalid)
+    write_to_path(index, invalid)
     with patch('crafts.bin.craft_context.errL') as errors:
       utest_exc(ValueError, load_context_index, str(index))
       utest(0, lambda: errors.call_count)
-      utest(invalid, index.read_text)
+      utest(invalid, read_from_path, index)
       utest(([], True), refresh_context_index, str(moved_root), ['.'], command='index')
       utest(1, lambda: errors.call_count)
     utest(['lock.py'], lambda: list(load_context_index(str(index))[0]['files']))
@@ -324,19 +325,19 @@ with TemporaryDirectory() as tmp:
 with TemporaryDirectory() as tmp:
   root = Path(tmp)
   src = root / 'CTX.md'
-  src.write_text('Root context.\n')
+  write_to_path(src, 'Root context.\n')
   nested = root / 'nested'
-  nested.mkdir()
+  make_dir(nested)
   nested_src = nested / 'CTX.md'
-  nested_src.write_text('Nested context.\n')
+  write_to_path(nested_src, 'Nested context.\n')
   private = root / 'private'
-  private.mkdir()
-  (private / 'CTX.md').write_text('Private context.\n')
+  make_dir(private)
+  write_to_path(private / 'CTX.md', 'Private context.\n')
   link = root / '_plan.md'
-  link.symlink_to(private / 'plan.md')
+  symlink(private / 'plan.md', link)
   hidden = root / '.hidden'
-  hidden.mkdir()
-  (hidden / 'CTX.md').write_text('Hidden context.\n')
+  make_dir(hidden)
+  write_to_path(hidden / 'CTX.md', 'Hidden context.\n')
 
   # Model both sandbox EPERM while following a symlink and EACCES while listing a directory.
   # Mock the failures so the tests also exercise them when run by a privileged user.
@@ -357,13 +358,13 @@ with TemporaryDirectory() as tmp:
 
   # Accessible directory symlinks retain nested context discovery.
   alias = root / 'alias'
-  alias.symlink_to(nested, target_is_directory=True)
+  symlink(nested, alias)
   utest([str(alias / 'CTX.md')], find_src_paths, [str(alias)])
 
   # Source and import reads must fail rather than silently producing incomplete instructions.
   with patch('builtins.open', side_effect=PermissionError(13, 'Permission denied')):
     utest_exc(PermissionError, process_path, str(src))
-  src.write_text('@nested/CTX.md\n')
+  write_to_path(src, '@nested/CTX.md\n')
   with patch('crafts.bin.craft_context.read_src', side_effect=['@nested/CTX.md', PermissionError(13, 'Permission denied')]):
     utest_exc(PermissionError, process_path, str(src))
 
@@ -373,32 +374,32 @@ with TemporaryDirectory() as tmp:
 with TemporaryDirectory() as tmp:
   root = Path(tmp)
   src = root / 'CTX.md'
-  src.write_text('Root.\n@sub/a.md and `@literal`.\n* @sub/b.md\n')
+  write_to_path(src, 'Root.\n@sub/a.md and `@literal`.\n* @sub/b.md\n')
   sub_dir = root / 'sub'
-  sub_dir.mkdir()
-  (sub_dir / 'a.md').write_text('A.\n@./b.md\n')
-  (sub_dir / 'b.md').write_text('B.\n')
+  make_dir(sub_dir)
+  write_to_path(sub_dir / 'a.md', 'A.\n@./b.md\n')
+  write_to_path(sub_dir / 'b.md', 'B.\n')
   with patch('crafts.bin.craft_context.outL'): process_path(str(src))
   utest('\n\n'.join([
     generated_warning,
     'Root.\n`@sub/a.md` and `@literal`.\n* `@sub/b.md`',
     'Contents of sub/a.md:\n\nA.\n`@./b.md`',
     'Contents of sub/b.md:\n\nB.']) + '\n',
-    (root / 'AGENTS.md').read_text)
-  utest(True, (root / 'CLAUDE.md').is_symlink)
+    read_from_path, root / 'AGENTS.md')
+  utest(True, is_link, root / 'CLAUDE.md')
 
 
 # A chain of four import hops is the deepest that Claude Code loads; a fifth hop is an error rather than a silent omission.
 with TemporaryDirectory() as tmp:
   root = Path(tmp)
   src = root / 'CTX.md'
-  src.write_text('@1.md\n')
-  for i in range(1, 4): (root / f'{i}.md').write_text(f'@{i+1}.md\n')
-  (root / '4.md').write_text('Four.\n')
+  write_to_path(src, '@1.md\n')
+  for i in range(1, 4): write_to_path(root / f'{i}.md', f'@{i+1}.md\n')
+  write_to_path(root / '4.md', 'Four.\n')
   with patch('crafts.bin.craft_context.outL'): process_path(str(src))
-  utest_val(True, (root / 'AGENTS.md').read_text().endswith('Contents of 4.md:\n\nFour.\n'), 'four hops are expanded')
-  (root / '4.md').write_text('@5.md\n')
-  (root / '5.md').write_text('Five.\n')
+  utest_val(True, read_from_path(root / 'AGENTS.md').endswith('Contents of 4.md:\n\nFour.\n'), 'four hops are expanded')
+  write_to_path(root / '4.md', '@5.md\n')
+  write_to_path(root / '5.md', 'Five.\n')
 
   def depth_error() -> bool:
     try: process_path(str(src))

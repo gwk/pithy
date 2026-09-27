@@ -3,8 +3,7 @@
 from contextlib import redirect_stdout
 from inspect import Parameter
 from io import StringIO
-from os import utime
-from pathlib import Path
+from os import remove, replace, utime
 from tempfile import TemporaryDirectory
 from time import time
 from typing import Any
@@ -12,6 +11,10 @@ from typing import Any
 from crafts.bin.craft_py_rust_ext import (discover_extensions, find_orphaned_outputs, find_orphaned_shims, Func, gen_extension,
   gen_func, gen_module, Interface, interface_name_errors, module_name_for_path, Par, parse_interface, rust_default,
   rust_function_signatures, rust_type, RustType, UnsupportedType)
+from pithy.filestatus import file_mtime, path_exists
+from pithy.fs import make_dir
+from pithy.io import read_bytes_from_path, read_from_path, write_to_path
+from pithy.path import Path
 from utest import utest, utest_exc, utest_run
 
 
@@ -189,7 +192,7 @@ def interface_error(*lines:str) -> list[str]:
   'Parse `lines` as an interface and return the lines of the diagnostic that it exits with, with the temporary path elided.'
   with TemporaryDirectory() as temp:
     path = str(Path(temp) / 'm.pyi')
-    Path(path).write_text(''.join(f'{line}\n' for line in lines))
+    write_to_path(path, ''.join(f'{line}\n' for line in lines))
     try: parse_interface(path=path, name='m', impl_mod='crate::m')
     except SystemExit as e: return str(e.code).replace(path, 'm.pyi').split('\n')
   return []
@@ -227,39 +230,39 @@ utest([
 def regeneration() -> None:
   with TemporaryDirectory() as temp, redirect_stdout(StringIO()):
     package = Path(temp) / 'pkg'
-    package.mkdir()
+    make_dir(package)
     root = package / '_pkg.pyi'
     extra = package / 'extra.pyi'
-    root.write_text('def root() -> int: ...\n')
-    extra.write_text('def extra() -> int: ...\n')
-    output = root.with_suffix('.gen.rs')
+    write_to_path(root, 'def root() -> int: ...\n')
+    write_to_path(extra, 'def extra() -> int: ...\n')
+    output = root.replace_ext('.gen.rs')
 
     def generate(check:bool=False) -> list[list[str]]:
       return [gen_extension(root_path=root_path, merged_paths=merged_paths, indent='  ', check=check)
         for root_path, merged_paths in discover_extensions([str(package)])]
 
     # Check mode reports an output that is out of date, here because it does not exist yet, and writes nothing.
-    utest([[str(output), str(extra.with_suffix('.py')), str(root.with_suffix('.rs')), str(extra.with_suffix('.rs'))]],
+    utest([[str(output), str(extra.replace_ext('.py')), str(root.replace_ext('.rs')), str(extra.replace_ext('.rs'))]],
       generate, check=True)
-    utest(False, output.exists)
+    utest(False, path_exists, output, follow=True)
 
     generate()
-    utest(True, lambda: 'extra__extra' in output.read_text())
+    utest(True, lambda: 'extra__extra' in read_from_path(output))
 
     # A no-op regeneration must not touch the output, or build systems keyed on modification times rebuild the crate.
     utime(output, (1, 1))
     utest([[]], generate)
     utest([[]], generate, check=True)
-    utest(1, lambda: int(output.stat().st_mtime))
+    utest(1, lambda: int(file_mtime(output, follow=True)))
 
     # A deleted interface must not leave stale wrappers behind, even when the output is newer than every remaining input.
     utime(root, (1, 1))
     utime(output, (time() + 60, time() + 60))
-    extra.unlink()
+    remove(extra)
     utest([[str(output)]], generate, check=True)
-    utest(True, lambda: 'extra' in output.read_text()) # Check mode left the stale output alone.
+    utest(True, lambda: 'extra' in read_from_path(output)) # Check mode left the stale output alone.
     utest([[str(output)]], generate)
-    utest(False, lambda: 'extra' in output.read_text())
+    utest(False, lambda: 'extra' in read_from_path(output))
 
 
 # Orphaned outputs.
@@ -269,19 +272,19 @@ def orphaned_outputs() -> None:
   for change in ('unchanged', 'delete-root', 'rename-root', 'rename-dir'):
     with TemporaryDirectory() as temp, redirect_stdout(StringIO()):
       package = Path(temp) / 'pkg'
-      package.mkdir()
+      make_dir(package)
       root = package / '_pkg.pyi'
-      root.write_text('def root() -> int: ...\n')
-      (package / 'other.gen.rs').write_text('// The output of some other generator.\n') # Never reported.
+      write_to_path(root, 'def root() -> int: ...\n')
+      write_to_path(package / 'other.gen.rs', '// The output of some other generator.\n') # Never reported.
       for root_path, merged_paths in discover_extensions([temp]):
         gen_extension(root_path=root_path, merged_paths=merged_paths, indent='  ')
 
       expected = [str(package / '_pkg.gen.rs')]
       if change == 'unchanged': expected = []
-      elif change == 'delete-root': root.unlink()
-      elif change == 'rename-root': root.rename(package / '_renamed.pyi')
+      elif change == 'delete-root': remove(root)
+      elif change == 'rename-root': replace(root, package / '_renamed.pyi')
       elif change == 'rename-dir': # The root no longer matches its directory, so the whole extension goes undiscovered.
-        package.rename(Path(temp) / 'renamed')
+        replace(package, Path(temp) / 'renamed')
         expected = [str(Path(temp) / 'renamed' / '_pkg.gen.rs')]
 
       utest(expected, lambda: find_orphaned_outputs([temp], root_paths=[r for r, _ in discover_extensions([temp])]),
@@ -294,13 +297,13 @@ def orphaned_outputs() -> None:
 def scaffolding() -> None:
   with TemporaryDirectory() as temp, redirect_stdout(StringIO()) as log:
     package = Path(temp) / 'pkg'
-    package.mkdir()
+    make_dir(package)
     root = package / '_pkg.pyi'
-    root.write_text('def root() -> int: ...\n')
+    write_to_path(root, 'def root() -> int: ...\n')
     sub = package / 'sub'
-    sub.mkdir()
+    make_dir(sub)
     interface = sub / '__init__.pyi'
-    interface.write_text('def f(data:bytes, n:int) -> int: ...\n')
+    write_to_path(interface, 'def f(data:bytes, n:int) -> int: ...\n')
     rust = sub / 'mod.rs'
     shim = sub / '__init__.py'
 
@@ -308,40 +311,40 @@ def scaffolding() -> None:
       return gen_extension(str(root), [str(interface)], indent='  ', check=check)
 
     utest(4, lambda: len(generate(check=True)))
-    utest(False, rust.exists)
-    utest(False, shim.exists)
+    utest(False, path_exists, rust, follow=True)
+    utest(False, path_exists, shim, follow=True)
     generate()
-    utest(True, lambda: 'from .._pkg import sub__f as f' in shim.read_text())
-    utest(True, lambda: 'pub fn f(data: &[u8], n: i64) -> PyResult<i64> {\n  todo!()\n}' in rust.read_text())
-    utest(False, lambda: 'Generated' in rust.read_text())
-    utest(True, lambda: '#[path = "_pkg.gen.rs"]' in root.with_suffix('.rs').read_text())
+    utest(True, lambda: 'from .._pkg import sub__f as f' in read_from_path(shim))
+    utest(True, lambda: 'pub fn f(data: &[u8], n: i64) -> PyResult<i64> {\n  todo!()\n}' in read_from_path(rust))
+    utest(False, lambda: 'Generated' in read_from_path(rust))
+    utest(True, lambda: '#[path = "_pkg.gen.rs"]' in read_from_path(root.replace_ext('.rs')))
 
-    rust.write_text('use pyo3::prelude::*;\npub fn f(data: &[u8], n: i64) -> PyResult<i64> { Ok(n) }\n')
-    original = rust.read_bytes()
+    write_to_path(rust, 'use pyo3::prelude::*;\npub fn f(data: &[u8], n: i64) -> PyResult<i64> { Ok(n) }\n')
+    original = read_bytes_from_path(rust)
     utime(rust, (1, 1))
     utime(shim, (1, 1))
     log.seek(0)
     log.truncate()
     utest([], generate)
     utest('', log.getvalue)
-    utest(1, lambda: int(shim.stat().st_mtime))
+    utest(1, lambda: int(file_mtime(shim, follow=True)))
 
-    interface.write_text('def f(data:bytes) -> str: ...\ndef g() -> int: ...\n')
+    write_to_path(interface, 'def f(data:bytes) -> str: ...\ndef g() -> int: ...\n')
     generate(check=True)
     utest(True, lambda: 'Review the signature of `f`' in log.getvalue())
     utest(True, lambda: 'pub fn f(data: &[u8]) -> PyResult<String>' in log.getvalue())
     utest(True, lambda: 'Add or expose `g`' in log.getvalue())
-    utest(False, lambda: 'sub__g' in shim.read_text())
+    utest(False, lambda: 'sub__g' in read_from_path(shim))
     generate()
-    utest(True, lambda: 'sub__g as g' in shim.read_text())
-    utest(original, rust.read_bytes)
-    utest(1, lambda: int(rust.stat().st_mtime))
+    utest(True, lambda: 'sub__g as g' in read_from_path(shim))
+    utest(original, read_bytes_from_path, rust)
+    utest(1, lambda: int(file_mtime(rust, follow=True)))
 
-    interface.write_text('def g() -> int: ...\n')
+    write_to_path(interface, 'def g() -> int: ...\n')
     generate()
     utest(True, lambda: '`f` is no longer declared' in log.getvalue())
-    utest(False, lambda: 'sub__f' in shim.read_text())
-    utest(original, rust.read_bytes)
+    utest(False, lambda: 'sub__f' in read_from_path(shim))
+    utest(original, read_bytes_from_path, rust)
 
 
 utest({'f': 'fnf(n:i64)->PyResult<(i64,i64)>'}, rust_function_signatures, '''// fn fake() -> PyResult<()> {}
@@ -362,13 +365,13 @@ pub fn f(
 def orphaned_shims() -> None:
   with TemporaryDirectory() as temp, redirect_stdout(StringIO()):
     package = Path(temp) / 'pkg'
-    package.mkdir()
+    make_dir(package)
     root = package / '_pkg.pyi'
-    root.write_text('def root() -> int: ...\n')
+    write_to_path(root, 'def root() -> int: ...\n')
     extra = package / 'extra.pyi'
-    extra.write_text('def f() -> int: ...\n')
+    write_to_path(extra, 'def f() -> int: ...\n')
     gen_extension(str(root), [str(extra)], indent='  ')
-    (package / 'ordinary.py').write_text('# Hand-written.\n')
+    write_to_path(package / 'ordinary.py', '# Hand-written.\n')
     utest([], find_orphaned_shims, discover_extensions([temp]))
-    extra.unlink()
-    utest([str(extra.with_suffix('.py'))], find_orphaned_shims, discover_extensions([temp]))
+    remove(extra)
+    utest([str(extra.replace_ext('.py'))], find_orphaned_shims, discover_extensions([temp]))
