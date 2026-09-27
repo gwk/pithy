@@ -14,12 +14,14 @@ Commands compose in two ways:
   and the parsed subcommand instance is stored in the field.
 
 The grammar is deliberately rigid, so that dispatch to subcommands is never ambiguous:
-* A token beginning with `-` is always an option; `--` ends option parsing for the current command.
+* A lone `-` is a regular token, following the convention of naming stdin or stdout.
+  Any other token beginning with `-` is always an option; `--` ends option parsing for the current command.
 * Option names are declared with a single dash. Multi-character names also accept a double-dash spelling automatically.
   Names are otherwise matched exactly; they are never abbreviated or guessed.
 * Every command provides `-h` and `-help`; these names are reserved and may not be declared as options.
 * An option that takes a value is written `-name=value` or `-name value`;
-  in the latter form the value may not itself begin with `-`.
+  in the latter form the value may not itself be an option token, so a value beginning with `-` other than a lone `-`
+  requires the `=` form.
 * Bare tokens fill the declared positionals in declaration order.
 * A command that declares subcommands may only declare required, non-variadic positionals.
   The next bare token after those positionals selects a subcommand,
@@ -450,7 +452,9 @@ def _build_schema(cmd:'type[Cmd]') -> CmdSchema:
   return schema
 
 
-def _is_option_token(token:str) -> bool: return len(token) > 1 and token[0] == '-'
+def _is_option_token(token:str) -> bool:
+  'A lone `-` is a regular token; any other token beginning with `-` is an option, including `--`.'
+  return len(token) > 1 and token[0] == '-'
 
 
 def _convert(entry:Entry, label:str, s:str, cmd:'type[Cmd]', prog:str) -> Any:
@@ -664,9 +668,10 @@ def _complete_cmd(cmd:'type[Cmd]', prior:Sequence[str], current:str, prog:str) -
       return _entry_completions(entry, value_prefix, value_prefix=name + '=')
     return CompletionResult(_option_completions(state, current))
 
+  # A lone `-` is a bare token, as in parse mode, but it is also the prefix of every option, so offer both.
   candidates:list[Completion] = []
   path_prefix:str|None = None
-  if not state.end_opts and not current:
+  if not state.end_opts and current in ('', '-'):
     candidates.extend(_option_completions(state, current))
 
   if state.pos_idx < len(schema.positionals):

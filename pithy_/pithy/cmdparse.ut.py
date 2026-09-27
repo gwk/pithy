@@ -98,6 +98,14 @@ def test_completion() -> None:
   utest_val(CompletionResult((Completion('build'),)), CompletePositional.complete(['bu']))
   utest_val('', CompletePositional.complete(['build', '']).path_prefix)
 
+  # A lone `-` is a bare token, so it completes as the positional, and it is also the prefix of every option.
+  dash = CompletePositional.complete(['build', '-'])
+  utest_val('', dash.path_prefix)
+  utest_val({'-h', '-help'}, {c.value for c in dash.candidates})
+  utest_val({'-verbose', '-v', '-no-verbose', '-color', '-no-color', '-jobs=', '-j=', '-D=', '-h', '-help'},
+    {c.value for c in Build.complete(['-']).candidates})
+  utest_val((), Build.complete(['--', '-']).candidates)
+
   # Path fields request path completion.
   utest_val('', AddUser.complete(['--home', '']).path_prefix)
   utest_val(CompletionResult(path_prefix='--home='), AddUser.complete(['--home=src']))
