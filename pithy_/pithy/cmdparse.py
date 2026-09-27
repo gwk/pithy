@@ -67,11 +67,12 @@ from os.path import basename
 from sys import argv as sys_argv, exit as sys_exit, stderr
 from textwrap import dedent
 from types import NoneType, UnionType
-from typing import (Annotated, Any, Callable, cast, ClassVar, dataclass_transform, get_args, get_origin, get_type_hints,
-  Literal, Self, Sequence, Union)
+from typing import (Any, Callable, cast, ClassVar, dataclass_transform, get_args, get_origin, get_type_hints, Literal, Self,
+  Sequence, Union)
 
 from . import ansi
-from .type_utils import normalize_type_form, unwrap_type_alias
+from .path import Path
+from .type_utils import normalize_type_form
 
 
 _arg_key = 'pithy.cmdparse' # Key under which an ArgSpec is stored in dataclass field metadata.
@@ -111,12 +112,6 @@ type ArgKind = Literal['pos','remainder','opt','flag','sub','group']
 type CmdMode = Literal['parse','complete']
 
 
-class _PathCompletion: pass
-
-
-type Path = Annotated[str, _PathCompletion]
-
-
 @dataclass(frozen=True)
 class ArgSpec:
   'The declaration attached to a command field by one of the field specifier functions.'
@@ -141,7 +136,7 @@ def pos(*, default:Any=MISSING, default_factory:Any=MISSING, doc:str='', parse:C
   Declare a positional argument.
   A `list[T]` field is variadic; it consumes all remaining bare tokens and must be declared last.
   A field with no default is required.
-  Use the `Path` annotation for path completion while retaining a parsed `str` value.
+  A field typed `pithy.path.Path` parses a `Path` value and requests path completion.
   '''
   return _spec_field(ArgSpec('pos', doc=doc, parse=parse, metavar=metavar), default, default_factory)
 
@@ -154,7 +149,7 @@ def remainder(*, default_factory:Any=list, doc:str='', parse:Callable[[str],Any]
   Capture begins at the first token that is not a declared option; If a `--` separator is encountered, it is consumed.
   To pass a literal leading `--` through to the remainder, write it twice.
   An empty remainder defaults to an empty list.
-  Use the `Path` annotation for path completion while retaining parsed `str` values.
+  A field typed `list[pithy.path.Path]` parses `Path` values and requests path completion.
   '''
   return _spec_field(ArgSpec('remainder', doc=doc, parse=parse, metavar=metavar), MISSING, default_factory)
 
@@ -166,7 +161,7 @@ def opt(*flags:str, default:Any=MISSING, default_factory:Any=MISSING, doc:str=''
   `flags` defaults to the single-dash name derived from the field name.
   Pass one or more single-dash names to declare aliases; abbreviated names such as `-f` are never inferred.
   A `list[T]` field accumulates one value per occurrence; otherwise repeating the option is an error.
-  Use the `Path` annotation for path completion while retaining a parsed `str` value.
+  A field typed `pithy.path.Path` parses a `Path` value and requests path completion.
   '''
   return _spec_field(ArgSpec('opt', flags=flags, doc=doc, parse=parse, metavar=metavar), default, default_factory)
 
@@ -210,7 +205,6 @@ class Entry:
   has_default:bool
   flags:tuple[str,...]
   metavar:str
-  is_path:bool
 
   @property
   def name(self) -> str: return self.path[-1]
@@ -273,18 +267,7 @@ def _parse_bool(s:str) -> bool:
   except KeyError: raise ValueError(f'expected one of {sorted(_bool_words)}') from None
 
 
-_converters:dict[Any,Callable[[str],Any]] = {str:str, int:int, float:float, bool:_parse_bool}
-
-
-def _has_path_annotation(T:Any) -> bool:
-  T = unwrap_type_alias(T)
-  origin = get_origin(T)
-  if origin is Annotated:
-    args = get_args(T)
-    return _PathCompletion in args[1:] or _has_path_annotation(args[0])
-  if origin is list or isinstance(T, UnionType) or origin is Union:
-    return any(_has_path_annotation(arg) for arg in get_args(T) if arg is not NoneType)
-  return False
+_converters:dict[Any,Callable[[str],Any]] = {str:str, int:int, float:float, bool:_parse_bool, Path:Path}
 
 
 def _analyze_type(T:Any) -> tuple[Any,bool,bool]:
@@ -332,7 +315,6 @@ def _flag_spellings(flag_str:str) -> tuple[str,...]:
 
 def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...], prefixes:tuple[str,...]) -> Entry:
   name = f.name
-  is_path = _has_path_annotation(T)
   elem_T, is_list, is_optional = _analyze_type(T)
   if spec.kind == 'flag' and (elem_T is not bool or is_list):
     raise CmdDeclError(f'{cmd.__name__}.{name}: a flag field must be typed `bool`.')
@@ -360,7 +342,7 @@ def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...]
   has_default = f.default is not MISSING or f.default_factory is not MISSING or is_optional
   literal_metavar = '{' + ','.join(literal_values) + '}' if literal_values else ''
   return Entry(path=path, spec=spec, T=elem_T, convert=convert, is_list=is_list, has_default=has_default, flags=flags,
-    metavar=spec.metavar or literal_metavar or _default_metavar(name, spec.kind), is_path=is_path)
+    metavar=spec.metavar or literal_metavar or _default_metavar(name, spec.kind))
 
 
 def _register_flag(schema:CmdSchema, flag_str:str, entry:Entry, negated:bool) -> None:
@@ -637,7 +619,7 @@ def _entry_completions(entry:Entry, prefix:str, *, value_prefix:str='') -> Compl
   if entry.T is bool:
     return CompletionResult(tuple(
       Completion(value_prefix + value) for value in _bool_words if value.startswith(prefix)))
-  if entry.is_path: return CompletionResult(path_prefix=value_prefix)
+  if entry.T is Path: return CompletionResult(path_prefix=value_prefix)
   return CompletionResult()
 
 

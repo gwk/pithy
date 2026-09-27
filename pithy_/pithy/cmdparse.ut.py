@@ -4,7 +4,8 @@ from typing import Literal
 
 from pithy import ansi
 from pithy.cmdparse import (Cmd, CmdDeclError, CmdError, CmdHelp, Completion, CompletionResult, flag, format_help, format_usage,
-  format_zsh_completion, group, opt, Path, pos, remainder, sub)
+  format_zsh_completion, group, opt, pos, remainder, sub)
+from pithy.path import Path
 from utest import utest, utest_exc, utest_run, utest_val
 
 
@@ -54,7 +55,7 @@ utest(Build(common=Common(verbose=False, color=True), target='-weird', jobs=1, d
   Build.parse, ['--', '-weird'])
 
 # Variadic positionals and typed options.
-utest(AddUser(names=['a', 'b'], home='/home'), AddUser.parse, ['a', '--home=/home', 'b'])
+utest(AddUser(names=['a', 'b'], home=Path('/home')), AddUser.parse, ['a', '--home=/home', 'b'])
 
 
 @utest_run
@@ -97,7 +98,7 @@ def test_completion() -> None:
   utest_val(CompletionResult((Completion('build'),)), CompletePositional.complete(['bu']))
   utest_val('', CompletePositional.complete(['build', '']).path_prefix)
 
-  # Path annotations retain string values while requesting path completion.
+  # Path fields request path completion.
   utest_val('', AddUser.complete(['--home', '']).path_prefix)
   utest_val(CompletionResult(path_prefix='--home='), AddUser.complete(['--home=src']))
 

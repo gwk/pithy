@@ -3,7 +3,8 @@
 
 from typing import Literal
 
-from pithy.cmdparse import Cmd, flag, opt, Path, pos, sub
+from pithy.cmdparse import Cmd, flag, opt, pos, sub
+from pithy.path import Path
 
 
 class Build(Cmd):
@@ -24,7 +25,7 @@ class Deploy(Cmd):
 
 class Example(Cmd):
   'Example command for completion tests.'
-  home:Path = opt(default='', doc='The home path.')
+  home:Path|None = opt(default=None, doc='The home path.')
   cmd:Build|Deploy = sub(doc='The command to run.')
 
 
