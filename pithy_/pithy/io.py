@@ -8,6 +8,7 @@ from sys import stderr, stdin, stdout
 from typing import Any, Callable, cast, ContextManager, Iterable, Iterator, Sized, TextIO, TypeVar
 
 from .desc import errD, outD, writeD
+from .path import Pathish
 from .reprs import repr_ml
 from .strings import ConvFn, fmt_rows
 from .typing_utils import OptBaseExc, OptTraceback, OptTypeBaseExc
@@ -337,7 +338,7 @@ def err_progress(iterable:Iterable[_T], label:str|None='progress', *, suffix:str
 # convenience read/write.
 
 
-def read_bytes_from_path(path:str, default:bytes|None=None) -> bytes:
+def read_bytes_from_path(path:Pathish, default:bytes|None=None) -> bytes:
   'Read all text from file at `path`.'
   try:
     with open(path, 'rb') as f:
@@ -347,7 +348,7 @@ def read_bytes_from_path(path:str, default:bytes|None=None) -> bytes:
     return default
 
 
-def read_from_path(path:str, default:str|None=None) -> str:
+def read_from_path(path:Pathish, default:str|None=None) -> str:
   'Read all text from file at `path`.'
   try:
     with open(path) as f:
@@ -357,7 +358,7 @@ def read_from_path(path:str, default:str|None=None) -> str:
     return default
 
 
-def read_line_from_path(path:str, line_index:int=0, keep_end:bool=False, default:str|None=None) -> str:
+def read_line_from_path(path:Pathish, line_index:int=0, keep_end:bool=False, default:str|None=None) -> str:
   'Read a single line of text from file at `path`.'
   try:
     with open(path) as f:
@@ -371,7 +372,7 @@ def read_line_from_path(path:str, line_index:int=0, keep_end:bool=False, default
     return default
 
 
-def write_to_path(path:str, text:str|bytes|bytearray) -> None:
+def write_to_path(path:Pathish, text:str|bytes|bytearray) -> None:
   'Writes `string` to file at `path`.'
   if isinstance(text, str):
     with open(path, 'w') as f: f.write(text)
