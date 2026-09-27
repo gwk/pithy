@@ -83,8 +83,7 @@ from pithy.filestatus import file_stat, is_dir, is_file, is_link, path_exists
 from pithy.fs import list_dir, make_dirs, make_link, real_path
 from pithy.io import errL, outL
 from pithy.lex import Lexer
-from pithy.path import (expand_home_dir, is_path_abs, norm_path, Path, path_dir, path_dir_or_dot, path_join, path_name,
-  rel_path, str_path)
+from pithy.path import expand_home_dir, is_path_abs, Path, rel_path
 from pithy.python.package import walk_module_paths
 from tolkien import Source, Token
 
@@ -142,9 +141,8 @@ class Instructions(Cmd):
 
 
   def run(self) -> None:
-    paths = [str_path(path) for path in self.paths]
-    src_paths = find_src_paths(paths)
-    roots = {path if is_dir(path, follow=True) else path_dir_or_dot(path) for path in paths}
+    src_paths = find_src_paths(self.paths)
+    roots = {path if is_dir(path, follow=True) else path.parent for path in self.paths}
     for root in sorted(roots):
       update_skills_links(root)
     for src in src_paths:
@@ -164,9 +162,9 @@ class Index(Cmd):
 
 
   def run(self) -> None:
-    dest = path_join(self.root, index_path)
-    make_dirs(path_dir_or_dot(dest))
-    _, written = refresh_context_index(str_path(self.root), [str_path(path) for path in self.paths], command='index')
+    dest = self.root / index_path
+    make_dirs(dest.parent)
+    _, written = refresh_context_index(self.root, self.paths, command='index')
     outL(f'craft-context: {"wrote" if written else "up to date:"} {dest}')
 
 
@@ -178,8 +176,8 @@ class Validate(Cmd):
 
 
   def run(self) -> None:
-    paths = [str_path(path) if is_path_abs(path) else path_join(self.root, path) for path in self.paths]
-    _, errors, _ = scan_context_files(str_path(self.root), paths, command='validate', prior={}, built_ns=0)
+    paths = [path if path.is_abs else self.root / path for path in self.paths]
+    _, errors, _ = scan_context_files(self.root, paths, command='validate', prior={}, built_ns=0)
     if errors: exit(f'craft-context validate: {errors} source errors.')
 
 
@@ -192,7 +190,7 @@ class Query(Cmd):
 
   def run(self) -> None:
     try:
-      modules = load_project_context(str_path(self.root))
+      modules = load_project_context(self.root)
       results = query_context_modules(modules, self.words)
     except (OSError, ValueError) as e:
       exit(f'craft-context query: {e}')
@@ -227,7 +225,7 @@ index_version = 2
 scan_exclude_dirs = ('_build', '_misc', 'deps', 'dist', 'node_modules')
 
 
-def scan_context_files(root:str, paths:list[str], *, command:str, prior:dict[str,FileRecord], built_ns:int
+def scan_context_files(root:Path, paths:list[Path], *, command:str, prior:dict[str,FileRecord], built_ns:int
  ) -> tuple[dict[str,FileRecord],int,bool]:
   '''
   Fingerprint and extract keywords and status from the Python files under `paths`, keyed by path relative to `root`.
@@ -238,7 +236,8 @@ def scan_context_files(root:str, paths:list[str], *, command:str, prior:dict[str
   records:dict[str,FileRecord] = {}
   errors = 0
   read_any = False
-  for path in walk_module_paths(*paths, exclude_dirs=scan_exclude_dirs):
+  for path_str in walk_module_paths(*map(str, paths), exclude_dirs=scan_exclude_dirs):
+    path = Path(path_str)
     rel = rel_path(path, root)
     stat = file_stat(path, follow=True)
     size, mtime_ns = stat.st_size, stat.st_mtime_ns
@@ -252,7 +251,7 @@ def scan_context_files(root:str, paths:list[str], *, command:str, prior:dict[str
     if record and record['sha256'] == digest:
       keywords, status = record['keywords'], record['status']
     else:
-      try: keywords, status = extract_context_meta(parse_ast(data, filename=path))
+      try: keywords, status = extract_context_meta(parse_ast(data, filename=path_str))
       except (SyntaxError, UnicodeError, ValueError) as e:
         errL(f'craft-context {command}: {path}: {e}')
         errors += 1
@@ -261,16 +260,16 @@ def scan_context_files(root:str, paths:list[str], *, command:str, prior:dict[str
   return records, errors, read_any
 
 
-def refresh_context_index(root:str, paths:list[str], *, command:str) -> tuple[list[ContextModule],bool]:
+def refresh_context_index(root:Path, paths:list[Path], *, command:str) -> tuple[list[ContextModule],bool]:
   '''
   Refresh the records under `paths` in the index at `root` while holding an exclusive lock on context/index.lock.
   Prior records outside of `paths` are preserved; records under `paths` for files that no longer exist are dropped.
   Missing or invalid indexes are rebuilt. Source errors exit without writing.
   Return the modules with keywords or status, relative to `root`, and whether the index was written.
   '''
-  dest = path_join(root, index_path)
-  paths = [norm_path(path if is_path_abs(path) else path_join(root, path)) for path in paths]
-  with advisory_lock(path_join(root, index_lock_path), exclusive=True):
+  dest = root / index_path
+  paths = [(path if path.is_abs else root / path).collapse_dotdot() for path in paths]
+  with advisory_lock(str(root / index_lock_path), exclusive=True):
     try: index, built_ns = load_context_index(dest)
     except FileNotFoundError:
       index, built_ns = ContextIndex(version=index_version, files={}), 0
@@ -290,7 +289,7 @@ def refresh_context_index(root:str, paths:list[str], *, command:str) -> tuple[li
   return modules, written
 
 
-def is_scanned_path(rel:str, root:str, paths:list[str]) -> bool:
+def is_scanned_path(rel:str, root:Path, paths:list[Path]) -> bool:
   'Return whether the root-relative path `rel` is one of the scanned `paths` or lies under a scanned directory.'
   for path in paths:
     scanned = rel_path(path, root)
@@ -298,28 +297,26 @@ def is_scanned_path(rel:str, root:str, paths:list[str]) -> bool:
   return False
 
 
-def write_context_index(dest:str, index:ContextIndex) -> None:
+def write_context_index(dest:Path, index:ContextIndex) -> None:
   'Write the index atomically via a temporary file in the destination directory.'
-  dest_dir = path_dir_or_dot(dest)
-  with TemporaryDirectory(prefix='.index-', dir=dest_dir) as tmp:
-    src = path_join(tmp, 'index.json')
+  with TemporaryDirectory(prefix='.index-', dir=dest.parent) as tmp:
+    src = Path(tmp) / 'index.json'
     with open(src, 'w', encoding='utf-8') as f:
       json.dump(index, f, ensure_ascii=False, indent=2)
       f.write('\n')
     replace(src, dest)
 
 
-def load_project_context(root:str) -> list[ContextModule]:
+def load_project_context(root:Path) -> list[ContextModule]:
   '''
   Load existing indexes of the project and its immediate dependencies, resolving module paths for the caller.
   Reports missing indexes to stderr and skips them. Raises for invalid or unreadable indexes, or if no indexes are found.
   '''
-  if not is_dir(root, follow=True): raise ValueError(f'not a project directory: {root!r}')
+  if not is_dir(root, follow=True): raise ValueError(f'not a project directory: {root!s}')
   roots = [root]
-  deps_dir = path_join(root, 'deps')
+  deps_dir = root / 'deps'
   if is_dir(deps_dir, follow=True):
-    roots.extend(path_join(deps_dir, name) for name in list_dir(deps_dir)
-      if is_dir(path_join(deps_dir, name), follow=True))
+    roots.extend(deps_dir / name for name in list_dir(deps_dir) if is_dir(deps_dir / name, follow=True))
   seen:set[str] = set()
   modules:list[ContextModule] = []
   found = False
@@ -327,7 +324,7 @@ def load_project_context(root:str) -> list[ContextModule]:
     real = real_path(project)
     if real in seen: continue
     seen.add(real)
-    src = path_join(project, index_path)
+    src = project / index_path
     try: index, _ = load_context_index(src)
     except FileNotFoundError:
       errL(f'craft-context query: {src}: no index; run craft-context index at the project root.')
@@ -335,14 +332,14 @@ def load_project_context(root:str) -> list[ContextModule]:
     except (UnicodeError, ValueError) as e:
       raise ValueError(f'{src}: {e} Run craft-context index at the project root.') from e
     found = True
-    modules.extend(ContextModule(path=norm_path(path_join(project, rel)), keywords=record['keywords'], status=record['status'])
+    modules.extend(ContextModule(path=str((project / rel).collapse_dotdot()), keywords=record['keywords'], status=record['status'])
       for rel, record in index['files'].items() if record['keywords'] or record['status'])
   if not found:
-    raise ValueError(f'no indexes found in {root!r} or its deps/ directories; use source search instead.')
+    raise ValueError(f'no indexes found in {root!s} or its deps/ directories; use source search instead.')
   return modules
 
 
-def load_context_index(path:str) -> tuple[ContextIndex,int]:
+def load_context_index(path:Path) -> tuple[ContextIndex,int]:
   '''
   Load the index and return it along with the mtime of the index file.
   Raises for missing, unreadable, invalid or prior version indexes.
@@ -370,8 +367,11 @@ def context_words(text:str) -> set[str]:
 
 def module_name_words(path:str) -> set[str]:
   "Return the words of the module name of `path`; `__init__` or `__main__` module use the parent package name."
-  name = path_name(path).partition('.')[0]
-  if name in ('__init__', '__main__'): name = path_name(path_dir(path))
+  module_path = Path(path)
+  name = module_path.name.partition('.')[0]
+  if name in ('__init__', '__main__'):
+    parent = module_path.parent
+    name = parent.name if parent.has_name else ''
   return context_words(name)
 
 
@@ -458,22 +458,22 @@ def validate_context_status(label:str, value_node:expr) -> str:
   return value
 
 
-def find_src_paths(paths:list[str]) -> list[str]:
+def find_src_paths(paths:list[Path]) -> list[Path]:
   'Expand the input paths into a list of CTX.md source paths.'
-  srcs:list[str] = []
+  srcs:list[Path] = []
   for path in paths:
     if is_dir(path, follow=True):
       srcs.extend(sorted(discover_src_paths(path)))
     elif not path_exists(path, follow=True):
       exit(f'craft-context error: input path does not exist: {path}')
-    elif path_name(path) != ctx_name:
+    elif not path.has_name or path.name != ctx_name:
       exit(f'craft-context error: input file is not named {ctx_name}: {path}')
     else:
       srcs.append(path)
   return srcs
 
 
-def discover_src_paths(dir_path:str) -> Iterator[str]:
+def discover_src_paths(dir_path:Path) -> Iterator[Path]:
   '''
   Discover CTX.md files recursively, skipping inaccessible entries and hidden names.
   Follow accessible directory symlinks, as for the general filesystem walker.
@@ -481,7 +481,7 @@ def discover_src_paths(dir_path:str) -> Iterator[str]:
   Reading source files and their imports happens separately and remains strict.
   '''
   for name in list_dir(dir_path):
-    path = path_join(dir_path, name)
+    path = dir_path / name
     try:
       if is_dir(path, follow=True):
         yield from discover_src_paths(path)
@@ -491,38 +491,38 @@ def discover_src_paths(dir_path:str) -> Iterator[str]:
       continue
 
 
-def process_path(src:str) -> None:
+def process_path(src:Path) -> None:
   'Generate the AGENTS.md file and the CLAUDE.md symlink for the CTX.md file at `src`.'
-  dir = path_dir_or_dot(src)
+  dir = src.parent
   blocks = [generated_warning]
   emitted = {real_path(src)}
   expand_imports(src, text=read_src(src), header='', out_dir=dir, blocks=blocks, emitted=emitted, depth=0)
 
-  out_path = path_join(dir, agents_name)
+  out_path = dir / agents_name
   if update_file(out_path, '\n\n'.join(blocks) + '\n'):
     outL(f'craft-context: wrote {out_path}')
 
-  link_path = path_join(dir, claude_name)
+  link_path = dir / claude_name
   if update_link(orig=src, link=link_path):
-    outL(f'craft-context: linked {link_path} -> {path_name(src)}')
+    outL(f'craft-context: linked {link_path} -> {src.name}')
 
 
-def update_skills_links(root:str) -> None:
+def update_skills_links(root:Path) -> None:
   'Create cross-platform skills links under a command-line input root.'
-  skills_orig = path_join(root, skills_dir)
-  skills_links = [path_join(root, link_dir, 'skills') for link_dir in skills_link_dirs]
+  skills_orig = root / skills_dir
+  skills_links = [root / link_dir / 'skills' for link_dir in skills_link_dirs]
   for link in skills_links:
     validate_link(orig=skills_orig, link=link)
   make_dirs(skills_orig)
   for link_dir, link in zip(skills_link_dirs, skills_links, strict=True):
-    make_dirs(path_join(root, link_dir))
+    make_dirs(root / link_dir)
     if update_link(orig=skills_orig, link=link):
       outL(f'craft-context: linked {link} -> ../{skills_dir}')
 
 
-def expand_imports(src:str, text:str, *, header:str, out_dir:str, blocks:list[str], emitted:set[str], depth:int) -> None:
+def expand_imports(src:Path, text:str, *, header:str, out_dir:Path, blocks:list[str], emitted:set[str], depth:int) -> None:
   'Append a block for `src` with its imports quoted, then a block for each file that it imports, recursively, in depth-first order.'
-  source = Source(name=src, text=text)
+  source = Source(name=str(src), text=text)
   imports = list(scan_imports(source))
   blocks.append(header + quote_imports(text, [token for token, _ in imports]))
   for token, import_path in imports:
@@ -552,11 +552,11 @@ def quote_imports(text:str, tokens:list[Token]) -> str:
   return ''.join(parts)
 
 
-def resolve_import(source:Source[str], token:Token, import_path:str) -> str:
+def resolve_import(source:Source[str], token:Token, import_path:str) -> Path:
   'Resolve an import path against the directory of the importing file.'
-  path = expand_home_dir(import_path)
-  if not is_path_abs(path): path = path_join(path_dir_or_dot(source.name), path)
-  path = norm_path(path)
+  path = Path(expand_home_dir(import_path))
+  if not path.is_abs: path = Path(source.name).parent / path
+  path = path.collapse_dotdot()
   if not is_file(path, follow=True):
     source.fail((token, f'import path does not exist: {path}'))
   return path
@@ -651,13 +651,13 @@ def validate_import(source:Source[str], token:Token) -> str:
 
 # File output.
 
-def read_src(path:str) -> str:
+def read_src(path:Path) -> str:
   'Read a source file, trimmed of surrounding whitespace.'
   with open(path) as f:
     return f.read().strip()
 
 
-def update_file(path:str, text:str) -> bool:
+def update_file(path:Path, text:str) -> bool:
   'Write `text` to `path` if it differs from the current contents. Return True if the file was written.'
   try:
     with open(path) as f:
@@ -668,13 +668,13 @@ def update_file(path:str, text:str) -> bool:
   return True
 
 
-def validate_link(orig:str, link:str) -> None:
+def validate_link(orig:Path, link:Path) -> None:
   'Exit with an error if `link` exists but does not point to `orig`.'
   if path_exists(link, follow=False) and (not is_link(link) or real_path(link) != real_path(orig)):
     exit(f'craft-context error: cannot create symlink to {orig}; path already exists: {link}')
 
 
-def update_link(orig:str, link:str) -> bool:
+def update_link(orig:Path, link:Path) -> bool:
   'Create a symlink at `link` pointing to `orig` if it is not already present. Return True if the link was created.'
   validate_link(orig=orig, link=link)
   if path_exists(link, follow=False): return False

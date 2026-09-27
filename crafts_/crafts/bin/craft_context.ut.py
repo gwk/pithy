@@ -122,7 +122,7 @@ with TemporaryDirectory() as tmp:
     Index(root=project).run()
   utest(False, path_exists, dep_index, follow=True)
   with patch('crafts.bin.craft_context.errL') as errors:
-    utest([expected_local], load_project_context, str(project))
+    utest([expected_local], load_project_context, project)
     utest(2, lambda: errors.call_count)
   utest(False, path_exists, dep_index, follow=True)
   with patch('crafts.bin.craft_context.outL'):
@@ -138,7 +138,7 @@ with TemporaryDirectory() as tmp:
   with patch('crafts.bin.craft_context.scan_context_files', side_effect=AssertionError('Query scanned sources')), \
    patch('crafts.bin.craft_context.advisory_lock', side_effect=AssertionError('Query acquired a lock')), \
    patch('crafts.bin.craft_context.errL') as errors, patch('crafts.bin.craft_context.outL') as output:
-    utest([expected_local, expected_dep], load_project_context, str(project))
+    utest([expected_local, expected_dep], load_project_context, project)
     Query(root=project, words=['file locking']).run()
     utest([((f'{project}/deps/library/lock.py: file locking',), {}), ((f'{project}/file.py (unmaintained): file',), {})],
       lambda: output.call_args_list)
@@ -153,18 +153,18 @@ with TemporaryDirectory() as tmp:
   make_dirs(dependency / 'deps/transitive/context')
   write_to_path(dependency / 'deps/transitive/context/index.json', 'invalid JSON')
   with patch('crafts.bin.craft_context.errL'):
-    utest([expected_local, expected_dep], load_project_context, str(project))
+    utest([expected_local, expected_dep], load_project_context, project)
 
   # Invalid or outdated indexes fail without being rewritten.
   for invalid in ('invalid JSON', dumps({'version': 0, 'modules': []})):
     write_to_path(dep_index, invalid)
-    utest_exc(ValueError, load_project_context, str(project))
+    utest_exc(ValueError, load_project_context, project)
     utest(invalid, read_from_path, dep_index)
   with patch('crafts.bin.craft_context.load_context_index', side_effect=PermissionError('Cannot read')):
-    utest_exc(PermissionError, load_project_context, str(project))
+    utest_exc(PermissionError, load_project_context, project)
   with patch('crafts.bin.craft_context.errL'):
-    utest_exc(ValueError, load_project_context, str(project / 'deps/unindexed'))
-  utest_exc(ValueError, load_project_context, str(workspace / 'missing'))
+    utest_exc(ValueError, load_project_context, project / 'deps/unindexed')
+  utest_exc(ValueError, load_project_context, workspace / 'missing')
 
 
 old_time_ns = 1_000_000_000_000_000_000 # An mtime well before any index build.
@@ -199,7 +199,7 @@ with TemporaryDirectory() as tmp:
     'lock.py': lock_record,
     'undocumented.py': FileRecord(size=20, mtime_ns=old_time_ns, sha256=sha256(b'"Only a docstring."\n').hexdigest(),
       keywords=[], status='')}}, loads, read_from_path(index))
-  utest((loads(read_from_path(index)), file_stat(index, follow=True).st_mtime_ns), load_context_index, str(index))
+  utest((loads(read_from_path(index)), file_stat(index, follow=True).st_mtime_ns), load_context_index, index)
   first_build = read_bytes_from_path(index)
   index_mtime_ns = file_stat(index, follow=True).st_mtime_ns
   Validate(root=root).run()
@@ -292,17 +292,17 @@ with TemporaryDirectory() as tmp:
 
   # Rebuilding drops keywords whose source no longer advertises them.
   with patch('crafts.bin.craft_context.outL'):
-    utest(([], True), refresh_context_index, str(moved_root), ['.'], command='index')
+    utest(([], True), refresh_context_index, moved_root, [Path('.')], command='index')
 
   # A status alone is enough for a module to be returned.
   write_source(moved_root / 'lock.py', '_context_status_ = "obsolete"\n')
   with patch('crafts.bin.craft_context.outL'):
-    utest(([ContextModule(path='lock.py', keywords=[], status='obsolete')], True), refresh_context_index, str(moved_root), ['.'],
+    utest(([ContextModule(path='lock.py', keywords=[], status='obsolete')], True), refresh_context_index, moved_root, [Path('.')],
       command='index')
   write_source(moved_root / 'lock.py', '"No keywords."\n')
 
   # Loading raises without logging or modifying the index; refresh handles invalid indexes by rebuilding.
-  utest_exc(FileNotFoundError, load_context_index, str(moved_root / 'missing.json'))
+  utest_exc(FileNotFoundError, load_context_index, moved_root / 'missing.json')
   for invalid in (dumps({'version': 0, 'modules': []}), 'invalid JSON',
    dumps({'version': 1, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': []}}}),
    dumps({'version': 2, 'files': []}), dumps({'version': 2, 'files': {'': {}}}),
@@ -312,14 +312,14 @@ with TemporaryDirectory() as tmp:
    dumps({'version': 2, 'files': {'bad.py': {'size': 1, 'mtime_ns': 1, 'sha256': '', 'keywords': []}}})):
     write_to_path(index, invalid)
     with patch('crafts.bin.craft_context.errL') as errors:
-      utest_exc(ValueError, load_context_index, str(index))
+      utest_exc(ValueError, load_context_index, index)
       utest(0, lambda: errors.call_count)
       utest(invalid, read_from_path, index)
-      utest(([], True), refresh_context_index, str(moved_root), ['.'], command='index')
+      utest(([], True), refresh_context_index, moved_root, [Path('.')], command='index')
       utest(1, lambda: errors.call_count)
-    utest(['lock.py'], lambda: list(load_context_index(str(index))[0]['files']))
+    utest(['lock.py'], lambda: list(load_context_index(index)[0]['files']))
   with patch('crafts.bin.craft_context.load_context_index', side_effect=PermissionError('Cannot read')):
-    utest_exc(PermissionError, refresh_context_index, str(moved_root), ['.'], command='index')
+    utest_exc(PermissionError, refresh_context_index, moved_root, [Path('.')], command='index')
 
 
 with TemporaryDirectory() as tmp:
@@ -341,32 +341,32 @@ with TemporaryDirectory() as tmp:
 
   # Model both sandbox EPERM while following a symlink and EACCES while listing a directory.
   # Mock the failures so the tests also exercise them when run by a privileged user.
-  def checked_is_dir(path:str, *, follow:bool) -> bool|None:
-    if path == str(link): raise PermissionError(1, 'Operation not permitted', path)
+  def checked_is_dir(path:Path, *, follow:bool) -> bool|None:
+    if path == link: raise PermissionError(1, 'Operation not permitted', str(path))
     return is_dir(path, follow=follow)
 
-  def checked_list_dir(path:str) -> list[str]:
-    if path == str(private): raise PermissionError(13, 'Permission denied', path)
+  def checked_list_dir(path:Path) -> list[str]:
+    if path == private: raise PermissionError(13, 'Permission denied', str(path))
     return list_dir(path)
 
   with patch('crafts.bin.craft_context.is_dir', side_effect=checked_is_dir), \
     patch('crafts.bin.craft_context.list_dir', side_effect=checked_list_dir):
-    utest(sorted([str(src), str(nested_src)]), find_src_paths, [tmp])
-    utest_exc(PermissionError, find_src_paths, [str(link)])
-    utest_exc(PermissionError, find_src_paths, [str(private)])
-    utest([str(src)], find_src_paths, [str(src)])
+    utest(sorted([src, nested_src]), find_src_paths, [root])
+    utest_exc(PermissionError, find_src_paths, [link])
+    utest_exc(PermissionError, find_src_paths, [private])
+    utest([src], find_src_paths, [src])
 
   # Accessible directory symlinks retain nested context discovery.
   alias = root / 'alias'
   symlink(nested, alias)
-  utest([str(alias / 'CTX.md')], find_src_paths, [str(alias)])
+  utest([alias / 'CTX.md'], find_src_paths, [alias])
 
   # Source and import reads must fail rather than silently producing incomplete instructions.
   with patch('builtins.open', side_effect=PermissionError(13, 'Permission denied')):
-    utest_exc(PermissionError, process_path, str(src))
+    utest_exc(PermissionError, process_path, src)
   write_to_path(src, '@nested/CTX.md\n')
   with patch('crafts.bin.craft_context.read_src', side_effect=['@nested/CTX.md', PermissionError(13, 'Permission denied')]):
-    utest_exc(PermissionError, process_path, str(src))
+    utest_exc(PermissionError, process_path, src)
 
 
 # Import tokens are quoted in the generated file so that Claude Code does not import the files a second time.
@@ -379,7 +379,7 @@ with TemporaryDirectory() as tmp:
   make_dir(sub_dir)
   write_to_path(sub_dir / 'a.md', 'A.\n@./b.md\n')
   write_to_path(sub_dir / 'b.md', 'B.\n')
-  with patch('crafts.bin.craft_context.outL'): process_path(str(src))
+  with patch('crafts.bin.craft_context.outL'): process_path(src)
   utest('\n\n'.join([
     generated_warning,
     'Root.\n`@sub/a.md` and `@literal`.\n* `@sub/b.md`',
@@ -396,13 +396,13 @@ with TemporaryDirectory() as tmp:
   write_to_path(src, '@1.md\n')
   for i in range(1, 4): write_to_path(root / f'{i}.md', f'@{i+1}.md\n')
   write_to_path(root / '4.md', 'Four.\n')
-  with patch('crafts.bin.craft_context.outL'): process_path(str(src))
+  with patch('crafts.bin.craft_context.outL'): process_path(src)
   utest_val(True, read_from_path(root / 'AGENTS.md').endswith('Contents of 4.md:\n\nFour.\n'), 'four hops are expanded')
   write_to_path(root / '4.md', '@5.md\n')
   write_to_path(root / '5.md', 'Five.\n')
 
   def depth_error() -> bool:
-    try: process_path(str(src))
+    try: process_path(src)
     except SystemExit as e: return 'import exceeds the maximum depth of 4.' in str(e)
     return False
 
