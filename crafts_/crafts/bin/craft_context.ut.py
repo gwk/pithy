@@ -63,7 +63,7 @@ utest((['fcntl.flock', 'three word phrase'], ''), extract_context_meta,
   parse_ast('_context_keywords_ = ["fcntl.flock", "three word phrase"]'))
 utest_exc(ValueError("_context_keywords_ at line 1: keyword has more than 3 words: 'a four word phrase'."),
   extract_context_meta, parse_ast('_context_keywords_ = ["a four word phrase"]'))
-utest(CraftContext(cmd=Validate(paths=['pkg'], root='library')), CraftContext.parse,
+utest(CraftContext(cmd=Validate(paths=[Path('pkg')], root=Path('library'))), CraftContext.parse,
   ['validate', '-root', 'library', 'pkg'])
 
 
@@ -96,7 +96,7 @@ utest([(1, 'pkg/tool/__main__.py', '', [])], query_context_modules, name_modules
 utest([(1, 'pkg/pool.ut.py', '', [])], query_context_modules, name_modules, ['pool', 'ut'])
 utest_exc(ValueError, query_context_modules, modules, ['---'])
 utest_exc(ValueError, query_context_modules, modules, [])
-utest(CraftContext(cmd=Query(words=['file locking'], root='library')), CraftContext.parse,
+utest(CraftContext(cmd=Query(words=['file locking'], root=Path('library'))), CraftContext.parse,
   ['query', '-root', 'library', 'file locking'])
 
 
@@ -119,14 +119,14 @@ with TemporaryDirectory() as tmp:
 
   # Indexing the project does not create or refresh dependency indexes.
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=str(project)).run()
+    Index(root=project).run()
   utest(False, path_exists, dep_index, follow=True)
   with patch('crafts.bin.craft_context.errL') as errors:
     utest([expected_local], load_project_context, str(project))
     utest(2, lambda: errors.call_count)
   utest(False, path_exists, dep_index, follow=True)
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=str(dependency)).run()
+    Index(root=dependency).run()
 
   # Queries use stored keywords even after sources change, without scanning or acquiring a writer lock.
   write_to_path(dependency / 'lock.py', 'def broken(\n')
@@ -139,7 +139,7 @@ with TemporaryDirectory() as tmp:
    patch('crafts.bin.craft_context.advisory_lock', side_effect=AssertionError('Query acquired a lock')), \
    patch('crafts.bin.craft_context.errL') as errors, patch('crafts.bin.craft_context.outL') as output:
     utest([expected_local, expected_dep], load_project_context, str(project))
-    Query(root=str(project), words=['file locking']).run()
+    Query(root=project, words=['file locking']).run()
     utest([((f'{project}/deps/library/lock.py: file locking',), {}), ((f'{project}/file.py (unmaintained): file',), {})],
       lambda: output.call_args_list)
     utest(2, lambda: errors.call_count)
@@ -186,10 +186,10 @@ with TemporaryDirectory() as tmp:
   make_dirs(root / 'deps/library')
   write_source(root / 'deps/library/lock.py', '_context_keywords_ = ["dependency"]\n')
   index = root / 'context/index.json'
-  Validate(root=tmp).run()
+  Validate(root=root).run()
   utest(False, path_exists, index.parent, follow=True)
   with patch('crafts.bin.craft_context.outL') as output:
-    Index(root=tmp).run()
+    Index(root=root).run()
     utest([((f'craft-context: wrote {tmp}/context/index.json',), {})], lambda: output.call_args_list)
   lock_record = FileRecord(size=len(lock_source), mtime_ns=old_time_ns, sha256=sha256(lock_source.encode()).hexdigest(),
     keywords=['file locking', 'flock'], status='')
@@ -202,12 +202,12 @@ with TemporaryDirectory() as tmp:
   utest((loads(read_from_path(index)), file_stat(index, follow=True).st_mtime_ns), load_context_index, str(index))
   first_build = read_bytes_from_path(index)
   index_mtime_ns = file_stat(index, follow=True).st_mtime_ns
-  Validate(root=tmp).run()
+  Validate(root=root).run()
   utest(index_mtime_ns, lambda: file_stat(index, follow=True).st_mtime_ns)
 
   # Unchanged files are skipped by stat without hashing or writing; overlapping paths are visited once.
   with patch('crafts.bin.craft_context.outL') as output, patch('crafts.bin.craft_context.sha256') as digest:
-    Index(root=tmp, paths=[str(root / 'lock.py'), 'lock.py']).run()
+    Index(root=root, paths=[root / 'lock.py', Path('lock.py')]).run()
     utest([((f'craft-context: up to date: {tmp}/context/index.json',), {})], lambda: output.call_args_list)
     utest(0, lambda: digest.call_count)
   utest(index_mtime_ns, lambda: file_stat(index, follow=True).st_mtime_ns)
@@ -215,14 +215,14 @@ with TemporaryDirectory() as tmp:
   # A bumped mtime with identical content is confirmed by digest without parsing, and the stat is recorded.
   utime(root / 'lock.py', ns=(old_time_ns + 1, old_time_ns + 1))
   with patch('crafts.bin.craft_context.outL'), patch('crafts.bin.craft_context.parse_ast') as parse:
-    Index(root=tmp).run()
+    Index(root=root).run()
     utest(0, lambda: parse.call_count)
   utest({**lock_record, 'mtime_ns': old_time_ns + 1}, lambda: loads(read_from_path(index))['files']['lock.py'])
 
   # Changed content is reparsed.
   write_source(root / 'lock.py', '_context_keywords_ = ["changed"]\n')
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=tmp).run()
+    Index(root=root).run()
   utest(['changed'], lambda: loads(read_from_path(index))['files']['lock.py']['keywords'])
 
   # A file whose mtime is not older than the index is digested on every run, guarding against racy writes.
@@ -230,11 +230,11 @@ with TemporaryDirectory() as tmp:
   utime(root / 'lock.py', ns=(future_ns, future_ns))
   for _ in range(2):
     with patch('crafts.bin.craft_context.outL'), patch('crafts.bin.craft_context.sha256', wraps=sha256) as digest:
-      Index(root=tmp).run()
+      Index(root=root).run()
       utest(1, lambda: digest.call_count)
   write_source(root / 'lock.py', lock_source)
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=tmp).run()
+    Index(root=root).run()
   utest(first_build, read_bytes_from_path, index)
 
   # Reject malformed sources and metadata without publishing a partial index.
@@ -243,8 +243,8 @@ with TemporaryDirectory() as tmp:
    '_context_keywords_ = ["flock", "file locking"]', '_context_status_ = ""', 'def broken('):
     write_source(bad_source, source)
     with patch('crafts.bin.craft_context.errL'), patch('crafts.bin.craft_context.outL') as output:
-      utest_exc(SystemExit('craft-context index: 1 source errors; index not written.'), Index(root=tmp).run)
-      utest_exc(SystemExit('craft-context validate: 1 source errors.'), Validate(root=tmp).run)
+      utest_exc(SystemExit('craft-context index: 1 source errors; index not written.'), Index(root=root).run)
+      utest_exc(SystemExit('craft-context validate: 1 source errors.'), Validate(root=root).run)
       utest([], lambda: output.call_args_list)
     utest(first_build, read_bytes_from_path, index)
   remove(bad_source)
@@ -254,20 +254,20 @@ with TemporaryDirectory() as tmp:
   write_source(root / 'sub/a.py', '_context_keywords_ = ["a"]\n')
   write_source(root / 'sub/b.py', '_context_keywords_ = ["b"]\n')
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=tmp).run()
+    Index(root=root).run()
   remove(root / 'sub/b.py')
   remove(root / 'undocumented.py')
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=tmp, paths=['sub']).run()
+    Index(root=root, paths=[Path('sub')]).run()
   utest(['empty.py', 'lock.py', 'sub/a.py', 'undocumented.py'], lambda: list(loads(read_from_path(index))['files']))
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=tmp).run()
+    Index(root=root).run()
   utest(['empty.py', 'lock.py', 'sub/a.py'], lambda: list(loads(read_from_path(index))['files']))
   remove(root / 'sub/a.py')
   remove_empty_dir(root / 'sub')
   write_source(root / 'undocumented.py', '"Only a docstring."\n')
   with patch('crafts.bin.craft_context.outL'):
-    Index(root=tmp).run()
+    Index(root=root).run()
   utest(first_build, read_bytes_from_path, index)
 
   # Relative paths still locate the source after moving the project; querying leaves cached records intact.
@@ -277,7 +277,7 @@ with TemporaryDirectory() as tmp:
   replace(root / 'lock.py', moved_root / 'lock.py')
   index = moved_root / 'context/index.json'
   with patch('crafts.bin.craft_context.outL') as output, patch('crafts.bin.craft_context.parse_ast') as parse:
-    Query(root=str(moved_root), words=['locking']).run()
+    Query(root=moved_root, words=['locking']).run()
     utest([((f'{moved_root}/lock.py: file locking',), {})], lambda: output.call_args_list)
     utest(0, lambda: parse.call_count)
   utest(['empty.py', 'lock.py', 'undocumented.py'], lambda: list(loads(read_from_path(index))['files']))
@@ -286,7 +286,7 @@ with TemporaryDirectory() as tmp:
   # A failed replacement leaves the old index intact and cleans up the temporary directory.
   write_source(moved_root / 'lock.py', '"No keywords."\n')
   with patch('crafts.bin.craft_context.replace', side_effect=OSError('Cannot replace')):
-    utest_exc(OSError, Index(root=str(moved_root)).run)
+    utest_exc(OSError, Index(root=moved_root).run)
   utest(moved_build, read_bytes_from_path, index)
   utest(['index.json', 'index.lock'], list_dir, str(index.parent))
 

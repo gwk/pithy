@@ -78,12 +78,13 @@ from tempfile import TemporaryDirectory
 from typing import Iterator, TypedDict
 
 from pithy.advisory_lock import advisory_lock
-from pithy.cmdparse import Cmd, opt, Path, pos as cmd_pos, sub
+from pithy.cmdparse import Cmd, opt, pos as cmd_pos, sub
 from pithy.filestatus import file_stat, is_dir, is_file, is_link, path_exists
 from pithy.fs import list_dir, make_dirs, make_link, real_path
 from pithy.io import errL, outL
 from pithy.lex import Lexer
-from pithy.path import expand_home_dir, is_path_abs, norm_path, path_dir, path_dir_or_dot, path_join, path_name, rel_path
+from pithy.path import (expand_home_dir, is_path_abs, norm_path, Path, path_dir, path_dir_or_dot, path_join, path_name,
+  rel_path, str_path)
 from pithy.python.package import walk_module_paths
 from tolkien import Source, Token
 
@@ -120,12 +121,12 @@ class CraftContext(Cmd):
 
 class All(Cmd):
   'Build all project context.'
-  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc=f'Project directories or {ctx_name} files.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')], doc=f'Project directories or {ctx_name} files.')
 
 
   def run(self) -> None:
     Instructions(paths=self.paths).run()
-    roots = {path_dir_or_dot(path) if path_name(path) == ctx_name else path for path in self.paths}
+    roots = {path.parent if path.has_name and path.name == ctx_name else path for path in self.paths}
     for root in sorted(roots): Index(root=root).run()
 
 
@@ -137,12 +138,13 @@ class Instructions(Cmd):
   Put agent instructions in CTX.md; AGENTS.md expands its imports and CLAUDE.md links to it.
   Put cross-platform skills in context/skills; this directory will be symlinked to both .agents/skills and .claude/skills.
   '''
-  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc=f'Input {ctx_name} files, or directories to search for them.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')], doc=f'Input {ctx_name} files, or directories to search for them.')
 
 
   def run(self) -> None:
-    src_paths = find_src_paths(self.paths)
-    roots = {path if is_dir(path, follow=True) else path_dir_or_dot(path) for path in self.paths}
+    paths = [str_path(path) for path in self.paths]
+    src_paths = find_src_paths(paths)
+    roots = {path if is_dir(path, follow=True) else path_dir_or_dot(path) for path in paths}
     for root in sorted(roots):
       update_skills_links(root)
     for src in src_paths:
@@ -157,27 +159,27 @@ class Index(Cmd):
   Scan files and directories;
   skips hidden names, symlinks, virtual environments, `__pycache__`, `_build`, `_misc`, `deps`, `dist` and `node_modules` directories.
   '''
-  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc='Python files or directories, relative to the project root.')
-  root:Path = opt(default='.', doc='Project root; contains context/index.json.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')], doc='Python files or directories, relative to the project root.')
+  root:Path = opt(default=Path('.'), doc='Project root; contains context/index.json.')
 
 
   def run(self) -> None:
     dest = path_join(self.root, index_path)
     make_dirs(path_dir_or_dot(dest))
-    _, written = refresh_context_index(self.root, self.paths, command='index')
+    _, written = refresh_context_index(str_path(self.root), [str_path(path) for path in self.paths], command='index')
     outL(f'craft-context: {"wrote" if written else "up to date:"} {dest}')
 
 
 
 class Validate(Cmd):
   'Validate Python sources and keyword metadata using the same scan as index, without reading or writing the index.'
-  paths:list[Path] = cmd_pos(default_factory=lambda: ['.'], doc='Python files or directories, relative to the project root.')
-  root:Path = opt(default='.', doc='Project root to validate.')
+  paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')], doc='Python files or directories, relative to the project root.')
+  root:Path = opt(default=Path('.'), doc='Project root to validate.')
 
 
   def run(self) -> None:
-    paths = [path if is_path_abs(path) else path_join(self.root, path) for path in self.paths]
-    _, errors, _ = scan_context_files(self.root, paths, command='validate', prior={}, built_ns=0)
+    paths = [str_path(path) if is_path_abs(path) else path_join(self.root, path) for path in self.paths]
+    _, errors, _ = scan_context_files(str_path(self.root), paths, command='validate', prior={}, built_ns=0)
     if errors: exit(f'craft-context validate: {errors} source errors.')
 
 
@@ -185,12 +187,12 @@ class Validate(Cmd):
 class Query(Cmd):
   'Search the project and immediate deps/ keyword indexes, ranking modules by distinct matching words.'
   words:list[str] = cmd_pos(doc='Topic words or phrases; any matching word includes a result.')
-  root:Path = opt(default='.', doc='Project root; searches its context/index.json and deps/*/context/index.json.')
+  root:Path = opt(default=Path('.'), doc='Project root; searches its context/index.json and deps/*/context/index.json.')
 
 
   def run(self) -> None:
     try:
-      modules = load_project_context(self.root)
+      modules = load_project_context(str_path(self.root))
       results = query_context_modules(modules, self.words)
     except (OSError, ValueError) as e:
       exit(f'craft-context query: {e}')
