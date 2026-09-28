@@ -7,9 +7,9 @@ from subprocess import CalledProcessError, CompletedProcess, TimeoutExpired
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from tap_ops.releases import (CheckReleases, Component, components, describe, github_tool, installed_version,
-  parse_python_release, parse_python_sha256, parse_release_digests, parse_sqlite_products, parse_tags, python_versions,
-  read_versions, report, sqlite_product_header, Upstream, version_key)
+from tap_ops.releases import (CheckReleases, Component, components, describe, installed_version, parse_python_release,
+  parse_python_sha256, parse_release_digests, parse_sqlite_products, parse_tags, python_versions, read_versions, report,
+  sqlite_product_header, Upstream, version_key)
 from utest import utest, utest_exc, utest_run, utest_val
 
 
@@ -47,25 +47,25 @@ def test_github_tool() -> None:
   tags = 'abc refs/tags/v0.58.0\nabc refs/tags/v0.59.0\nabc refs/tags/vdev-v0.3.24\n'
   assets = [dict(name=f'vector-0.59.0-{arch}-unknown-linux-gnu.tar.gz', digest=f'sha256:{sha}')
     for arch, sha in (('x86_64', sha_a), ('aarch64', sha_b))]
+  assets.append(dict(name='vector-0.59.0-arm64-apple-darwin.tar.gz', digest=f'sha256:{"c" * 64}'))
   release = dict(tag_name='v0.59.0', draft=False, prerelease=False, assets=assets)
-  args = ('vectordotdev/vector', r'v(\d+\.\d+\.\d+)', 'v{version}', 'vector',
-    'vector-{version}-{arch}-unknown-linux-gnu.tar.gz')
   proc = patch('tap_ops.releases.run', return_value=type('Proc', (), {'stdout': tags})())
   with proc, patch('tap_ops.releases.github_json', return_value=release) as request:
     expected = Upstream({'0.58.0', '0.59.0'},
-      {'vector_version': '0.59.0', 'vector_sha256_linux_x86_64': sha_a, 'vector_sha256_linux_aarch64': sha_b})
-    utest(expected, github_tool, *args, '0.58.0')
+      {'vector_version': '0.59.0', 'vector_sha256_linux_x86_64': sha_a, 'vector_sha256_linux_aarch64': sha_b,
+       'vector_sha256_macos_arm64': 'c' * 64})
+    utest(expected, components[2].lookup, '0.58.0')
     assert request.call_args.args[0].endswith('/releases/tags/v0.59.0')
     # No release fetch when nothing is newer.
-    utest(Upstream({'0.58.0', '0.59.0'}), github_tool, *args, '0.59.0')
+    utest(Upstream({'0.58.0', '0.59.0'}), components[2].lookup, '0.59.0')
     utest_val(1, request.call_count)
   with proc, patch('tap_ops.releases.github_json', return_value=None):
-    upstream = github_tool(*args, '0.58.0')
+    upstream = components[2].lookup('0.58.0')
     utest_val({}, upstream.values)
     assert 'no published release' in upstream.note
     assert 'no published release' in '\n'.join(describe(components[2], {components[2].variable: '0.58.0'}, upstream, '0.58.0'))
   with patch('tap_ops.releases.run', return_value=type('Proc', (), {'stdout': 'abc refs/tags/vdev-v0.3.24\n'})()):
-    utest_exc(ValueError, github_tool, *args, '0.58.0')
+    utest_exc(ValueError, components[2].lookup, '0.58.0')
 
 
 @utest_run

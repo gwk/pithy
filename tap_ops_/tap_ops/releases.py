@@ -30,8 +30,6 @@ from pithy.cmdparse import Cmd, opt
 
 _context_keywords_ = ['github', 'release', 'upgrade', 'version']
 
-archs = ('x86_64', 'aarch64')
-
 
 @dataclass(frozen=True)
 class Upstream:
@@ -154,15 +152,15 @@ def parse_release_digests(data:object, asset_names:dict[str,str]) -> dict[str,st
   return values
 
 
-def github_tool(repo:str, tag_pattern:str, tag_format:str, prefix:str, asset_format:str, approved:str) -> Upstream:
-  'Versions from tags; when newer, per-architecture Linux tarball checksums from the release assets of the latest tag.'
+def github_tool(repo:str, tag_pattern:str, tag_format:str, prefix:str, asset_formats:dict[str,str], approved:str) -> Upstream:
+  'Versions from tags; when newer, platform tarball checksums from the release assets of the latest tag.'
   versions = github_tags(repo, tag_pattern)
   latest = max(versions, key=version_key)
   if version_key(latest) <= version_key(approved): return Upstream(versions)
   tag = tag_format.format(version=latest)
   data = github_json(f'https://api.github.com/repos/{repo}/releases/tags/{tag}')
   if data is None: return Upstream(versions, note=f'Tag {tag} has no published release yet.')
-  asset_names = {f'{prefix}_sha256_linux_{arch}': asset_format.format(version=latest, arch=arch) for arch in archs}
+  asset_names = {f'{prefix}_sha256_{platform}': fmt.format(version=latest) for platform, fmt in asset_formats.items()}
   return Upstream(versions, {f'{prefix}_version': latest, **parse_release_digests(data, asset_names)})
 
 
@@ -237,10 +235,14 @@ components = (
     sqlite_download_url),
   Component('Vector', 'vector_version', 'vector',
     partial(github_tool, 'vectordotdev/vector', r'v(\d+\.\d+\.\d+)', 'v{version}', 'vector',
-      'vector-{version}-{arch}-unknown-linux-gnu.tar.gz'),
+      {'linux_x86_64': 'vector-{version}-x86_64-unknown-linux-gnu.tar.gz',
+       'linux_aarch64': 'vector-{version}-aarch64-unknown-linux-gnu.tar.gz',
+       'macos_arm64': 'vector-{version}-arm64-apple-darwin.tar.gz'}),
     'https://github.com/vectordotdev/vector/releases'),
   Component('uv', 'uv_version', 'uv',
-    partial(github_tool, 'astral-sh/uv', r'(\d+\.\d+\.\d+)', '{version}', 'uv', 'uv-{arch}-unknown-linux-gnu.tar.gz'),
+    partial(github_tool, 'astral-sh/uv', r'(\d+\.\d+\.\d+)', '{version}', 'uv',
+      {'linux_x86_64': 'uv-x86_64-unknown-linux-gnu.tar.gz',
+       'linux_aarch64': 'uv-aarch64-unknown-linux-gnu.tar.gz'}),
     'https://github.com/astral-sh/uv/releases'),
 )
 
