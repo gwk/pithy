@@ -15,10 +15,10 @@ machine_arch=$(uname -m)
 case "${machine_arch}" in
   "x86_64"|"amd64")
     uv_arch="x86_64"
-    uv_sha256="$uv_sha256_x86_64" ;;
+    uv_sha256="$uv_sha256_linux_x86_64" ;;
   "aarch64"|"arm64")
     uv_arch="aarch64"
-    uv_sha256="$uv_sha256_aarch64" ;;
+    uv_sha256="$uv_sha256_linux_aarch64" ;;
   *)
     fail "Unsupported architecture: ${machine_arch}" ;;
 esac

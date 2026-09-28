@@ -15,10 +15,10 @@ machine_arch=$(uname -m)
 case "${machine_arch}" in
   "aarch64"|"arm64")
     vector_arch="aarch64"
-    vector_sha256="$vector_sha256_aarch64" ;;
+    vector_sha256="$vector_sha256_linux_aarch64" ;;
   "x86_64"|"amd64")
     vector_arch="x86_64"
-    vector_sha256="$vector_sha256_x86_64" ;;
+    vector_sha256="$vector_sha256_linux_x86_64" ;;
   *)
     fail "Unsupported architecture: ${machine_arch}" ;;
 esac

@@ -28,13 +28,14 @@ utest_exc(ValueError, parse_tags, 'unexpected response body', py_pattern)
 
 @utest_run
 def test_release_digests() -> None:
-  names = {'uv_sha256_x86_64': 'uv-x86_64-unknown-linux-gnu.tar.gz', 'uv_sha256_aarch64': 'uv-aarch64-unknown-linux-gnu.tar.gz'}
+  names = {'uv_sha256_linux_x86_64': 'uv-x86_64-unknown-linux-gnu.tar.gz',
+    'uv_sha256_linux_aarch64': 'uv-aarch64-unknown-linux-gnu.tar.gz'}
   assets = [
     dict(name='uv-x86_64-unknown-linux-gnu.tar.gz', digest=f'sha256:{sha_a}'),
     dict(name='uv-aarch64-unknown-linux-gnu.tar.gz', digest=f'sha256:{sha_b}'),
     dict(name='uv-x86_64-unknown-linux-gnu.tar.gz.sha256', digest=f'sha256:{"c" * 64}')]
   release = dict(tag_name='0.12.19', draft=False, prerelease=False, assets=assets)
-  utest({'uv_sha256_x86_64': sha_a, 'uv_sha256_aarch64': sha_b}, parse_release_digests, release, names)
+  utest({'uv_sha256_linux_x86_64': sha_a, 'uv_sha256_linux_aarch64': sha_b}, parse_release_digests, release, names)
   utest_exc(ValueError, parse_release_digests, {**release, 'prerelease': True}, names)
   utest_exc(ValueError, parse_release_digests, {**release, 'assets': assets[:1]}, names)
   utest_exc(ValueError, parse_release_digests, {**release, 'assets': [dict(name=assets[0]['name'], digest='md5:abc')]}, names)
@@ -52,7 +53,7 @@ def test_github_tool() -> None:
   proc = patch('tap_ops.releases.run', return_value=type('Proc', (), {'stdout': tags})())
   with proc, patch('tap_ops.releases.github_json', return_value=release) as request:
     expected = Upstream({'0.58.0', '0.59.0'},
-      {'vector_version': '0.59.0', 'vector_sha256_x86_64': sha_a, 'vector_sha256_aarch64': sha_b})
+      {'vector_version': '0.59.0', 'vector_sha256_linux_x86_64': sha_a, 'vector_sha256_linux_aarch64': sha_b})
     utest(expected, github_tool, *args, '0.58.0')
     assert request.call_args.args[0].endswith('/releases/tags/v0.59.0')
     # No release fetch when nothing is newer.

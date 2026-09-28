@@ -162,7 +162,7 @@ def github_tool(repo:str, tag_pattern:str, tag_format:str, prefix:str, asset_for
   tag = tag_format.format(version=latest)
   data = github_json(f'https://api.github.com/repos/{repo}/releases/tags/{tag}')
   if data is None: return Upstream(versions, note=f'Tag {tag} has no published release yet.')
-  asset_names = {f'{prefix}_sha256_{arch}': asset_format.format(version=latest, arch=arch) for arch in archs}
+  asset_names = {f'{prefix}_sha256_linux_{arch}': asset_format.format(version=latest, arch=arch) for arch in archs}
   return Upstream(versions, {f'{prefix}_version': latest, **parse_release_digests(data, asset_names)})
 
 
