@@ -13,7 +13,13 @@
 */
 
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Emoji&display=block');
+@font-face {
+  font-family: 'Noto Emoji';
+  src: url('fonts/NotoEmoji-VariableFont_wght.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: block;
+}
 
 
 /* Reset. */

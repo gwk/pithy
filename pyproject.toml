@@ -31,6 +31,7 @@ dev = [
   "pyflakes >= 3.4.0",
   "pyperf >= 2.10",
   "isort >= 8.0.1",
+  "fonttools >= 4.65", # Imported by tools/ttf-to-woff2.py. Untyped; typechecked against typestubs/fontTools.
   "msgpack-types >= 0.8.0",
   "types-PyYAML >= 6.0.12.20260518",
   "types-docutils >= 0.23.0.20260827",

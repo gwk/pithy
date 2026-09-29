@@ -27,3 +27,5 @@ def _() -> None:
 
   utest_val('text/css;charset=utf-8', _content_type(router, '/static/pithy/pithy.css'), desc='pithy.css served as css')
   utest_val('text/css;charset=utf-8', _content_type(router, '/static/dev/dev.css'), desc='dev.css served as css')
+  utest_val('font/woff2', _content_type(router, '/static/pithy/fonts/NotoEmoji-VariableFont_wght.woff2'),
+    desc='bundled Noto Emoji served as a font without a text charset')

@@ -38,6 +38,7 @@ _repro.wu
 _plan.md
 _prompt.md
 _todo.md
+pithy_/pithy/web/static/fonts/*.ttf
 
 ## Ops script downloads.
 ops/linux/uv/download/
