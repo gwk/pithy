@@ -10,7 +10,7 @@ It should stay nearly empty: anything general enough to be useful here belongs i
 }
 
 body > header {
-  background-color: light-dark(#E2E2E2, #1D1D1D);
+  background-color: var(--bg-distinct);
 }
 
 body > nav a.current-nav-section-link {

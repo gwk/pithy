@@ -1,0 +1,35 @@
+/* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
+
+/* Each block has a fixed surround and fixed muted label colors, independent of the page theme. */
+
+.ramp {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  font-size: 0.875rem;
+}
+
+/* Auto margins center the content vertically without clipping it when it is taller than the screen. */
+.ramp:fullscreen { padding: 3rem; overflow: auto; }
+.ramp:fullscreen > :first-child { margin-top: auto; }
+.ramp:fullscreen > :last-child { margin-bottom: auto; }
+
+.ramp-dark { color: #999; }
+.ramp-light { color: #555; }
+
+.ramp-head { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+.ramp h2 { margin: 0; color: inherit; font-size: 1rem; }
+.ramp p { margin: 0; }
+.ramp code { color: inherit; background: none; border: none; padding: 0; }
+
+.ramp-strip { display: flex; flex-direction: column; gap: 0.5rem; }
+.ramp-swatches { display: flex; flex-wrap: wrap; gap: 1rem; }
+.ramp-swatches.abut { gap: 0; }
+.ramp-swatch { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.75rem; }
+.ramp-box { width: 4.5rem; height: 4rem; }
+.ramp-staircases { display: flex; flex-wrap: wrap; gap: 1.25rem 3rem; }
+
+.ramp-surfaces { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.5rem; }
+.ramp-surface { display: flex; flex-direction: column; gap: 0.75rem; min-width: 10rem; padding: 1rem; font-size: 0.75rem; }

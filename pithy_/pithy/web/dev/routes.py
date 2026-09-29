@@ -1,6 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from ..router import RouteTarget
+from .color_ramps import dev_color_ramps
+from .colors import dev_colors
 from .form import dev_form_index
 from .form.controls import DevControlsForm
 from .form.misc import DevFormMisc
@@ -11,13 +13,17 @@ from .htmx.modals import dev_htmx_modals, edit_modal_htmx, UpdateUserHtmx, user_
 from .markdown import dev_markdown, MarkdownSettingsHtmx, MarkdownValueHtmx
 from .pages import DevStaticFiles, index_html, PithyStaticFiles
 from .tables import dev_tables
+from .tests import dev_tests
 from .typography import dev_typography
 
 
 routes:dict[str,RouteTarget] = {
   '/': index_html,
+  '/colors': dev_colors,
+  '/colors/ramps': dev_color_ramps,
   '/typography': dev_typography,
   '/tables': dev_tables,
+  '/tests': dev_tests,
   '/form': dev_form_index,
   '/form/controls': DevControlsForm,
   '/form/misc': DevFormMisc,

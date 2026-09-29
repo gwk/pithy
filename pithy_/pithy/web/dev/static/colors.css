@@ -1,0 +1,142 @@
+/* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
+
+.color-intro, .color-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.color-intro { gap: 2rem; }
+.color-intro > section { min-width: 0; }
+
+/*
+A theme comparison sits on a neutral 50% gray, so that neither column looks like the page's own mode.
+The heading panel and the themed columns carry their own text colors; nothing reads directly on the gray.
+*/
+.color-section {
+  padding: 1rem;
+  background-color: #808080;
+}
+
+/* Consecutive comparisons share one gray field; the flow margin would show the page canvas as a stripe between them. */
+.color-section + .color-section {
+  margin-block-start: 0;
+  padding-block-start: 0;
+}
+
+.color-comparison { column-gap: 1rem; }
+
+.color-decorations { display: flex; flex-wrap: wrap; gap: 1rem; }
+.color-decoration { flex: 1 1 20rem; min-width: 0; padding: 0.75rem; border: 1px solid var(--tint-border); }
+.color-decoration pre { white-space: pre-wrap; }
+.color-decoration-gray { background-color: #808080; color: white; }
+.color-decoration-colored { background-color: #345064; color: white; }
+
+/*
+Each sample is a themed subtree (data-theme), so pithy.css re-derives the palette inside it.
+It is also a subgrid that spans one row of the comparison grid per child; the span is set inline to the child count.
+Corresponding children of the light and dark columns therefore share a row and stay aligned when their heights differ.
+*/
+.color-scheme {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+  padding: 1rem;
+  background-color: var(--bg);
+  color: var(--fg);
+}
+
+.color-surfaces { display: grid; gap: 1rem; }
+
+.color-surface {
+  padding: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.color-surface[data-surface='bg'] { border: 1px solid var(--border); }
+
+.color-border { border: 1px solid var(--border); padding: 0.25rem 0.5rem; }
+.color-border-strong { border-color: var(--border-strong); }
+
+.color-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Contrast table. */
+
+.color-contrast { font-size: 0.8125rem; }
+.color-contrast td { vertical-align: middle; }
+.color-contrast code { font-size: inherit; }
+.color-contrast .color-unresolved { color: var(--fg-error); cursor: help; }
+.color-contrast tr.pass .color-lc { color: var(--accent); }
+.color-contrast tr.fail .color-lc { color: var(--fg-error); font-weight: 600; }
+.color-contrast .color-metric.pass { color: var(--accent); }
+.color-contrast .color-metric.fail { color: var(--fg-error); font-weight: 600; }
+.color-summary.fail { color: var(--fg-error); }
+
+.color-sample {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 1.75rem;
+  border: 1px solid var(--tint-border);
+  font-weight: 600;
+}
+
+.color-sample-border { border: 3px solid; }
+
+/* Two tones side by side, sharing an edge. */
+.color-sample-split { align-items: stretch; }
+.color-sample-split > span { flex: 1; }
+
+.color-sample-inset {
+  display: block;
+  width: 1.25rem;
+  height: 0.875rem;
+}
+
+/* Palette listing. */
+
+.color-palette {
+  display: grid;
+  gap: 1rem;
+}
+
+.color-token {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.color-token > div { min-width: 0; }
+.color-token code { font-size: 0.875rem; }
+
+.color-token-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 1.5rem;
+  row-gap: 0.25rem;
+}
+
+.color-token-heading > code { min-width: 0; }
+
+.color-chip {
+  flex: 0 0 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--tint-border);
+}
+
+.color-value { color: var(--fg-muted); }
+.color-scheme pre { white-space: pre-wrap; }
+
+/* Each theme needs roughly 40rem for its contrast table and component examples. */
+@media (max-width: 80rem) {
+  .color-intro, .color-comparison { grid-template-columns: minmax(0, 1fr); }
+  .color-scheme + .color-scheme { margin-block-start: 1rem; } /* The columns stack; keep the gray gap between them. */
+}

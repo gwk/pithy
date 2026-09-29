@@ -1,0 +1,15 @@
+/* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
+
+/* A real viewport is needed for layout and scrolling tests. Do not use display:none. */
+.tests-frame {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 800px;
+  height: 600px;
+  border: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#tests-results pre { white-space: pre-wrap; }

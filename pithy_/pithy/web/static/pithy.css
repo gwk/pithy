@@ -61,7 +61,6 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
 /* Root vars. Applications can override these to restyle. */
 :root {
   color-scheme: light dark; /* Auto follows the system preference, including native form controls. */
-  accent-color: var(--accent);
 
   /* Type. */
   --font: system-ui, sans-serif;
@@ -75,28 +74,125 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
   --page-width: 64rem;
   --page-padding: 0.5rem;
 
-  /* Color. */
-  --fg: light-dark(#1A1A1A, #EEE);
-  --fg-muted: light-dark(#666, #AAA);
-  --fg-error: light-dark(#800, #FF9999);
-  --bg: light-dark(#FFF, #000);
-  --bg-sunken: light-dark(#F2F2F2, #0D0D0D); /* Chrome for the page: header, nav, footer. */
-  --bg-raised: light-dark(#FFF, #242424); /* Surfaces that sit on the page: inputs, cards, dialogs. */
-  --border: light-dark(#CCC, #444);
-  --border-strong: light-dark(#AAA, #666);
-  --accent: light-dark(#06C, #80BFFF);
+  /* Color anchors for opaque neutral surfaces and text; see "Palette" below.
+  The schemes are not mirrored: light keeps headroom below white, and dark sits above black to limit halation. */
+  --bg: light-dark(oklch(99% 0 0), oklch(20% 0 0));
+  --fg: light-dark(oklch(20% 0 0), oklch(92% 0 0));
 
-  --tr-subheading-background-color: light-dark(#DDD, #383838);
-  --tr-even-background-color: light-dark(#FFF, #1A1A1A);
-  --tr-odd-background-color: light-dark(#EEE, #242424);
+  /* Chromatic bases hold the hue and chroma of each accent; lightness and chroma gain are mode parameters.
+  Chroma is set per hue so that both modes stay within the sRGB gamut. */
+  --accent-base: oklch(50% 0.15 256);
+  --error-base: oklch(50% 0.16 28);
+
+  /* Local decoration. currentColor resolves on the element using the variable, so these tints compose with any surface.
+  These properties remain unregistered to preserve currentColor until use. Nesting translucent fills accumulates tint. */
+  --tint-subtle: color-mix(in oklab, currentColor 6%, transparent);
+  --tint-distinct: color-mix(in oklab, currentColor 12%, transparent);
+  --tint-active: color-mix(in oklab, currentColor 20%, transparent);
+  --tint-border: color-mix(in oklab, currentColor 25%, transparent);
+  --tint-border-strong: color-mix(in oklab, currentColor 45%, transparent);
+
+  /* Overlays. Dark mode has no shadow; it relies on --bg-distinct sitting above --bg. */
+  --shadow: 0 2px 8px light-dark(rgb(0 0 0 / 0.2), transparent);
 }
 
 
 /* Theme selection. Auto is the default: the palette follows the system preference.
 A site that supports only one scheme sets data-theme="light" or "dark" on the root html element; pithy.js is not required.
-Sites that offer a choice call initTheme() in pithy.js, which sets the attribute from the saved preference. */
-:root:where([data-theme='light']) { color-scheme: light; }
-:root:where([data-theme='dark']) { color-scheme: dark; }
+Sites that offer a choice call initTheme() in pithy.js, which sets the attribute from the saved preference.
+Any element with data-theme is a themed subtree: it selects the scheme for light-dark() and native controls,
+and re-derives the palette below, so that a page can show both schemes side by side. */
+[data-theme='light'] { color-scheme: light; }
+[data-theme='dark'] { color-scheme: dark; }
+
+
+/* Palette.
+
+Opaque palette colors derive from the root anchors. Neutrals are mixes from --bg toward --fg in OKLab, so that they inherit the
+polarity and compression of the anchors in both schemes. Chromatic variables take their hue and chroma from a base color;
+each mode sets the lightness and scales the chroma, because saturated colors read as harsh on dark surfaces.
+Dark mode keeps the error darker and more saturated than the body target would allow, because the sRGB gamut limits
+chroma at high lightness and a light red reads as a skin tone; APCA scores luminance only and undervalues the hue contrast.
+
+The mode parameters are numbers, which light-dark() cannot select, so they are set per data-theme and the root falls back
+to the system preference. They are registered so that an invalid override reverts to the light value.
+The values are tuned so that both schemes clear the same APCA contrast targets, with dark mode leaning on lighter surfaces
+rather than borders for separation. The dev app's Colors page measures declared opaque pairs; nothing depends on it at runtime.
+
+Derived variables are declared on themed elements as well as the root because var() references inside a custom property are
+substituted where the property is declared: a variable derived only on the root would carry the root's mode parameters into a
+themed subtree. The selectors have no specificity, so an application override on :root wins in every mode;
+a per-mode override uses the same selectors as below. */
+
+@property --fg-muted-mix { syntax: '<percentage>'; inherits: true; initial-value: 60%; }
+@property --border-strong-mix { syntax: '<percentage>'; inherits: true; initial-value: 35%; }
+@property --border-mix { syntax: '<percentage>'; inherits: true; initial-value: 23%; }
+@property --bg-distinct-mix { syntax: '<percentage>'; inherits: true; initial-value: 8%; }
+@property --bg-subtle-mix { syntax: '<percentage>'; inherits: true; initial-value: 3%; }
+@property --accent-l { syntax: '<percentage>'; inherits: true; initial-value: 46%; }
+@property --error-l { syntax: '<percentage>'; inherits: true; initial-value: 42%; }
+@property --accent-chroma-gain { syntax: '<number>'; inherits: true; initial-value: 1; }
+@property --error-chroma-gain { syntax: '<number>'; inherits: true; initial-value: 1; }
+
+:where(:root, [data-theme='light']) {
+  --fg-muted-mix: 60%;
+  --border-strong-mix: 35%;
+  --border-mix: 23%;
+  --bg-distinct-mix: 8%;
+  --bg-subtle-mix: 3%;
+  --accent-l: 46%;
+  --error-l: 42%;
+  --accent-chroma-gain: 1;
+  --error-chroma-gain: 1;
+}
+
+/* Dark values, repeated for an unthemed or auto root that follows a dark system preference. */
+:where([data-theme='dark']) {
+  --fg-muted-mix: 82%;
+  --border-strong-mix: 53%;
+  --border-mix: 38%;
+  --bg-distinct-mix: 14%;
+  --bg-subtle-mix: 7%;
+  --accent-l: 87%;
+  --error-l: 71%;
+  --accent-chroma-gain: 0.4;
+  --error-chroma-gain: 1.1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :where(:root:not([data-theme='light'])) {
+    --fg-muted-mix: 82%;
+    --border-strong-mix: 53%;
+    --border-mix: 38%;
+    --bg-distinct-mix: 14%;
+    --bg-subtle-mix: 7%;
+    --accent-l: 87%;
+    --error-l: 71%;
+    --accent-chroma-gain: 0.4;
+    --error-chroma-gain: 1.1;
+  }
+}
+
+:where(:root, [data-theme]) {
+  accent-color: var(--accent);
+  /* Surface emphasis moves from the canvas toward gray in both schemes: subtle for headers, navigation, footers and
+  gentle grouping; distinct for panels and emphasized surfaces. These names describe separation, not elevation. */
+  --bg-subtle: color-mix(in oklab, var(--fg) var(--bg-subtle-mix), var(--bg));
+  --bg-distinct: color-mix(in oklab, var(--fg) var(--bg-distinct-mix), var(--bg));
+  --border: color-mix(in oklab, var(--fg) var(--border-mix), var(--bg));
+  --border-strong: color-mix(in oklab, var(--fg) var(--border-strong-mix), var(--bg));
+  --fg-muted: color-mix(in oklab, var(--fg) var(--fg-muted-mix), var(--bg));
+  --accent: oklch(from var(--accent-base) var(--accent-l) calc(c * var(--accent-chroma-gain)) h);
+  --fg-error: oklch(from var(--error-base) var(--error-l) calc(c * var(--error-chroma-gain)) h);
+
+  /* Compatibility aliases. New styles and theme overrides should use the surface names above. */
+  --bg-sunken: var(--bg-subtle);
+  --bg-raised: var(--bg-distinct);
+
+  --tr-subheading-background-color: var(--tint-distinct);
+  --tr-even-background-color: transparent;
+  --tr-odd-background-color: var(--tint-subtle);
+}
 
 
 /* Base typography.
@@ -124,9 +220,16 @@ h6 { font-weight: 500; }
 
 code, kbd, pre, samp { font-family: var(--font-mono); }
 
+code:not(pre code) {
+  background-color: var(--tint-subtle);
+  border: 1px solid var(--tint-border);
+  border-radius: 3px;
+  padding-inline: 0.2em;
+}
+
 a { color: var(--accent); }
 
-hr { border: none; border-top: 1px solid var(--border); }
+hr { border: none; border-top: 1px solid var(--tint-border); }
 
 .muted { color: var(--fg-muted); }
 
@@ -171,9 +274,8 @@ ul, ol {
 :is(ul, ol) :is(ul, ol) { padding-inline-start: 2ch; }
 
 blockquote {
-  border-left: 2px solid var(--border);
+  border-left: 2px solid var(--tint-border);
   padding-left: 1em;
-  color: var(--fg-muted);
 }
 
 dt { font-weight: 600; }
@@ -181,8 +283,8 @@ dd { margin-inline-start: 2ch; }
 dl > dt + dt, dd + dt { margin-block-start: 0.5em; }
 
 pre {
-  background-color: var(--bg-sunken);
-  border: 1px solid var(--border);
+  background-color: var(--tint-subtle);
+  border: 1px solid var(--tint-border);
   border-radius: 3px;
   padding: 0.5em 0.75em;
   overflow-x: auto;
@@ -271,11 +373,12 @@ so any of the `.body-child-*` classes above still wins when an application wants
 
 :where(body > header, body > nav, body > footer) {
   width: 100%;
-  flex-shrink: 0; /* Preserve chrome padding when a tall main overflows the body's initial viewport height. */
+  flex-shrink: 0; /* Preserve header, nav and footer padding when main overflows the body's initial viewport height. */
   padding-left: var(--page-padding);
   padding-right: var(--page-padding);
-  background-color: var(--bg-sunken);
-  border: 0 solid var(--border); /* Blocks meet `main` at a rule rather than across a gap, so that backgrounds stay flush. */
+  background-color: var(--bg-subtle);
+  color: var(--fg);
+  border: 0 solid var(--tint-border); /* Blocks meet `main` at a rule rather than across a gap. */
 }
 
 :where(body > main) {
@@ -323,7 +426,7 @@ so any of the `.body-child-*` classes above still wins when an application wants
 /* Cancel the first link's padding without shifting or widening the full-width nav itself. */
 .navbar a:first-child { margin-inline-start: -0.5ch; }
 
-.navbar a:hover { background-color: var(--bg-raised); }
+.navbar a:hover { background-color: var(--tint-distinct); }
 
 /* Push a nav item to the inline end and keep it visible when wide body content makes the document scroll horizontally. */
 .nav-end {
@@ -446,8 +549,8 @@ details summary.disclosure-flush::before {
 
 a.button, button, input[type='button'], input[type='reset'], input[type='submit'] {
   appearance: none;
-  background-color: var(--bg-raised);
-  border: 1px solid var(--border-strong);
+  background-color: var(--tint-subtle);
+  border: 1px solid var(--tint-border-strong);
   border-radius: 3px;
   color: inherit;
   display: inline-block;
@@ -458,17 +561,18 @@ a.button, button, input[type='button'], input[type='reset'], input[type='submit'
   vertical-align: baseline;
 }
 
-:is(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):hover {
-  background-color: var(--bg-sunken);
+:is(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):where(:not(:disabled)):hover {
+  background-color: var(--tint-distinct);
 }
 
-:is(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):active {
-  background-color: color-mix(in srgb, var(--bg-sunken) 92%, var(--fg));
+:is(a.button, button, input[type='button'], input[type='reset'], input[type='submit']):where(:not(:disabled)):active {
+  background-color: var(--tint-active);
 }
 
 a.button:visited, a.button:hover, a.button:active { color: inherit; text-decoration: none; }
 
 button.dangerous {
+  /* Keep the red fill and white text in both schemes to preserve the warning treatment. */
   background-color: #cc0000;
   border: 1px solid #880000;
   color: white;
@@ -476,9 +580,9 @@ button.dangerous {
   transition: background-color 0.2s;
 }
 
-button.dangerous:hover { background-color: #bb0000; }
+button.dangerous:where(:not(:disabled)):hover { background-color: #bb0000; }
 
-button.dangerous:active { background-color: #990000; }
+button.dangerous:where(:not(:disabled)):active { background-color: #990000; }
 
 
 /* Forms. */
@@ -550,10 +654,10 @@ input:not([type='button'], [type='checkbox'], [type='color'], [type='file'], [ty
   [type='radio'], [type='range'], [type='reset'], [type='submit']),
 select, textarea {
   appearance: none;
-  background-color: var(--bg-raised);
+  background-color: var(--bg);
   border: 1px solid var(--border);
   border-radius: 3px;
-  color: inherit;
+  color: var(--fg);
   font: inherit;
   padding: 0 0.25em;
   width: min(100%, 24rem);
@@ -567,12 +671,12 @@ select {
 
 textarea { padding: 0.25em; }
 
-:is(button, input, select, textarea):disabled { color: var(--fg-muted); }
+:is(button, input, select, textarea):disabled { color: color-mix(in oklab, currentColor 60%, transparent); }
 
 :is(button, input:not([type='checkbox'], [type='color'], [type='file'], [type='image'], [type='radio'], [type='range']),
   select, textarea):disabled {
-  background-color: var(--bg-sunken);
-  border-color: var(--border);
+  background-color: var(--tint-subtle);
+  border-color: var(--tint-border);
 }
 
 input:is([type='date'], [type='datetime-local'], [type='month'], [type='time'], [type='week']) {
@@ -610,7 +714,7 @@ table {
   /* No margin: vertical spacing is the flow container's job. See "Flow" above. */
   border-style: solid;
   border-width: 1px;
-  border-color: var(--border-strong);
+  border-color: var(--tint-border-strong);
   border-collapse: collapse;
   text-align: left;
 }
@@ -633,7 +737,7 @@ tbody {
 
 th, td {
   padding: 0.25rem 0.5rem;
-  border-color: var(--border-strong);
+  border-color: var(--tint-border-strong);
   border-style: solid;
   border-width: 1px;
 }
@@ -706,7 +810,7 @@ table.collapsible.collapsed :is(tbody, thead, tfoot) {
 }
 
 a.icon, a.icon:active, a.icon:hover, a.icon:visited {
-  color: var(--fg);
+  color: inherit;
   text-decoration: none;
 }
 
@@ -730,23 +834,32 @@ ol.json-array { list-style-type: decimal; }
 /* Panels: a bordered box for content that is set apart from the page, such as a result or a summary. */
 
 .panel {
-  background-color: var(--bg-raised);
+  background-color: var(--bg-distinct);
+  color: var(--fg);
   border: 1px solid var(--border);
   border-radius: 3px;
   padding: 0.5rem 0.75rem;
 }
 
 
+/* Background-only utilities. Declared after .panel so class="panel subtle" overrides its default background. */
+.subtle { background-color: var(--bg-subtle); }
+.distinct { background-color: var(--bg-distinct); }
+
+
 /* Popover panels. Set --popover-width for content that needs a wider view. */
 
 .panel[popover] {
+  position: fixed; /* Keep top-layer panels in the viewport despite the global relative positioning rule. */
   width: min(var(--popover-width, 24rem), calc(100% - 2 * var(--page-padding)));
   max-height: calc(100dvh - 2 * var(--page-padding));
   margin: auto;
   overflow: auto;
+  box-shadow: var(--shadow);
 }
 
 .panel[popover]::backdrop {
+  /* Dim the underlying page in either scheme. */
   background-color: rgb(0 0 0 / 0.15);
   backdrop-filter: blur(3px);
 }
@@ -767,7 +880,9 @@ dialog.modal {
   padding: 0;
   border: 1px solid var(--border-strong);
   border-radius: 0.5em;
-  background-color: var(--bg-sunken);
+  background-color: var(--bg-subtle);
+  color: var(--fg);
+  box-shadow: var(--shadow);
 
   &::backdrop {
     background-color: rgba(128, 128, 128, 0.5);
@@ -776,7 +891,7 @@ dialog.modal {
   & > .pane {
     flex: 1;
     padding: 1em;
-    background-color: var(--bg-raised);
+    background-color: var(--bg-distinct);
     &.error {
       border: 2px solid var(--fg-error);
     }
@@ -791,6 +906,8 @@ nav.breadcrumbs {
   flex-direction: row;
   gap: 0.25rem;
 }
+
+.breadcrumbs a { color: inherit; }
 
 .breadcrumbs span + span::before {
   content: "›";

@@ -57,10 +57,10 @@ Load this alongside pithy.css in applications that use htmx; it depends on pithy
 
 .stripe-indicator.htmx-request {
   background-image: repeating-linear-gradient(135deg,
-    #FFF 0rem,
-    #FFF 0.3535rem,
-    #EEE 0.3535rem,
-    #EEE 0.7071rem
+    transparent 0rem,
+    transparent 0.3535rem,
+    var(--tint-subtle) 0.3535rem,
+    var(--tint-subtle) 0.7071rem
   );
   animation: stripe-indicator 1s infinite linear;
 }

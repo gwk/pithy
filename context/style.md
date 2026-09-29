@@ -12,10 +12,14 @@ Do not use excessive jargon, industry speak, flattery, signposting, performative
 filler, or marketing/casual/feel-good language.
 
 ## Code Style
-* Rust sources are formatted with `just fmt-rust` / rustfmt / rustfmt.toml.
+* Prefer top-down organization within a file:
+  * `main` and top-level entrypoints should come first; internal details below.
+  * private minutiae come last.
+  * Type declarations, aliases and short constants can go at the top; class defs should follow the general top-down principle.
+    However, if a bottom-up ordering creates specific order problems with type declarations, it is fine to reorder;
+    This is less of a problem with modern Python because of deferred annotation evaluation.
 * 2-space indentation (not 4-space).
-* Line length: 128 characters; wrap long function declarations past that length, not per parameter.
-* Do not wrap at shorter lengths; 128 is our page width.
+* Line length: 128 characters; wrap long function declarations past that length, not per parameter. Do not wrap below 128 chars.
 * Double newlines between functions.
 * Double newlines between methods, except for very compact classes where no methods have blank lines.
 * Triple newlines between classes that have double-newline method separation.
@@ -62,3 +66,6 @@ When authoring markdown:
 * Wrap source code at 128 characters like we do everywhere else.
 * Do not use excessive emphasis bold/italics. Only use the asterisk syntax for emphasis, never underscores.
 * Never use tab characters for code blocks.
+
+## Rust Style
+* Rust sources are formatted with `just fmt-rust` / rustfmt / rustfmt.toml.
