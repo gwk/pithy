@@ -851,18 +851,6 @@ ol.json-array { list-style-type: decimal; }
 .distinct { background-color: var(--bg-distinct); }
 
 
-/* Popover panels. Set --popover-width for content that needs a wider view.
-The page stays live behind a popover, so there is no backdrop; the border and shadow provide the separation. */
-
-.panel[popover] {
-  width: min(var(--popover-width, 24rem), calc(100% - 2 * var(--page-padding)));
-  max-height: calc(100dvh - 2 * var(--page-padding));
-  margin: auto;
-  overflow: auto;
-  box-shadow: var(--shadow);
-}
-
-
 /* Modal panes. The page is inert behind a modal; the backdrop dims and blurs it to say so. */
 
 dialog.modal {

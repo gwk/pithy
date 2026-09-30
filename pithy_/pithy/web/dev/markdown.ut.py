@@ -36,7 +36,7 @@ def _() -> None:
   assert isinstance(page, bytes)
   document = JustHTML(page, sanitize=False)
   utest_val(1, len(document.query('form#markdown-settings')))
-  utest_val(1, len(document.query('div[popover] pre#markdown-value')))
+  utest_val(1, len(document.query('div#markdown-source-modal')), desc='Placeholder for the swapped-in source modal')
   for debug, suffix in (('0', '.min'), ('1', '')):
     with patch.dict(environ, WEB_DBG=debug):
       body = router.resolve_handler(req).handle_request(req).body
@@ -61,6 +61,12 @@ def _() -> None:
   utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'unknown', 'markdown': '', **all_false})
   utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'solar', **all_false})
   utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'solar', 'markdown': ''}) # Bool fields are required.
-  response = post('/markdown/value.htmx', {'markdown': '<script>alert(1)</script>\n**hello**'})
-  utest_val(b'&lt;script>alert(1)&lt;/script>\n**hello**', response.body, desc='Markdown is displayed as escaped text')
-  utest_val(b'', post('/markdown/value.htmx', {'markdown': ''}).body)
+  body = post('/markdown/value.htmx', {'markdown': '<script>alert(1)</script>\n**hello**'}).body
+  assert isinstance(body, bytes)
+  modal = JustHTML(body, sanitize=False)
+  utest_val(1, len(modal.query('dialog.modal > div.pane')), desc='Uses the standard dismissible modal')
+  utest_val(True, b"<pre id='markdown-value' aria-label='Markdown source'>&lt;script>alert(1)&lt;/script>\n**hello**</pre>" in body,
+    desc='Markdown is displayed as escaped text')
+  body = post('/markdown/value.htmx', {'markdown': ''}).body
+  assert isinstance(body, bytes)
+  utest_val(True, b"<pre id='markdown-value' aria-label='Markdown source'></pre>" in body)

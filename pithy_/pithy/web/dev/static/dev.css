@@ -38,9 +38,7 @@ body > nav a.current-nav-section-link {
 
 .markdown-settings { margin-bottom: 1em; }
 
-#markdown-source-popover {
-  --popover-width: 48rem;
-}
+#markdown-source-modal .pane { width: min(48rem, 90vw); }
 
 #markdown-value {
   white-space: pre-wrap;

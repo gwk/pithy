@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from ...html import A, Button, Div, Form, H1, H2, HtmlNode, Input, Label, Li, Main, P, Pre, Section, Select, Ul
+from ...html import A, Button, Dialog, Div, Form, H1, H2, HtmlNode, Input, Label, Li, Main, P, Pre, Section, Select, Ul
 from ..endpoint import Endpoint
 from ..env import is_web_dbg
 from ..request import Request
@@ -60,8 +60,7 @@ def dev_markdown(request:Request) -> HtmlResponse:
     main=Main(H1('Markdown Editor'),
       P('Write Markdown and see the preview update as you type. Try different settings with the controls below.'),
       Div(cl='markdown-settings', _=[settings,
-        Button('Show Markdown source', type='button', popovertarget='markdown-source-popover',
-          hx_post='/markdown/value.htmx', hx_target='#markdown-value',
+        Button('Show Markdown source', type='button', hx_post='/markdown/value.htmx', hx_target='#markdown-source-modal',
           hx_swap='innerHTML', hx_vals="js:{markdown: document.getElementById('markdown-editor').getValue()}"),
       ]),
       Div(cl='markdown-layout', _=[
@@ -69,13 +68,7 @@ def dev_markdown(request:Request) -> HtmlResponse:
         Section(H2('Preview', id='markdown-preview-heading'),
           Div(id='markdown-preview', aria_labelledby='markdown-preview-heading')),
       ]),
-      Div(id='markdown-source-popover', cl='panel flow', popover='', role='dialog',
-        aria_labelledby='markdown-source-heading', _=[
-          H2('Markdown source', id='markdown-source-heading'),
-          P('The editor value posted through HTMX and returned by the server as plain text.'),
-          Pre(id='markdown-value', aria_label='Markdown source', aria_live='polite'),
-          Button('Close', type='button', popovertarget='markdown-source-popover', popovertargetaction='hide', autofocus=''),
-        ]),
+      Div(id='markdown-source-modal'), # The source modal is swapped in here; pithy.js shows it and removes it on close.
       Ul(cl='font-small', _=[
         Li('Settings changes may reset undo history and selection.'),
         Li('OverType 2.4.2 has a ', A('known issue', href='https://github.com/panphora/overtype/issues/123'),
@@ -109,4 +102,12 @@ class MarkdownValueHtmx(Endpoint):
     markdown:str
 
   def post(self, request:Request, fields:Post) -> HtmxResponse:
-    return HtmxResponse(fields.markdown)
+    'Return the editor value in a modal; the dialog closes and removes itself on escape or a click outside the pane.'
+    modal = Dialog.modal(cl='flow', _=[
+      H2('Markdown source', id='markdown-source-heading'),
+      P('The editor value posted through HTMX and returned by the server as escaped text.'),
+      Pre(fields.markdown, id='markdown-value', aria_label='Markdown source'),
+      Button('Close', type='button', onclick='closeClosestModal(event)'),
+    ])
+    modal['aria-labelledby'] = 'markdown-source-heading'
+    return HtmxResponse(modal)
