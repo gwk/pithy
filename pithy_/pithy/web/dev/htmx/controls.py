@@ -39,6 +39,7 @@ class ControlsHtmxUpdate(Endpoint):
   max_body_bytes = 4096
 
   class Post:
+    button: str | None
     text: str | None
     email: str | None
     number: str | None
@@ -99,6 +100,8 @@ def controls_htmx() -> Div:
   _row('url', Input(type='url', name='url', placeholder='https://example.com', hx_trigger="change", hx_post=url, **_htmx_tags))
   _row('search', Input(type='search', name='search', placeholder='search', hx_trigger="change", hx_post=url, **_htmx_tags))
   _row('textarea', TextArea(name='textarea', placeholder='Enter text here...', rows='4', hx_trigger="change", hx_post=url, **_htmx_tags))
+
+  _row('button', Input(type='button', name='button', value='Click me', hx_post=url, **_htmx_tags))
 
   _row('checkbox', Span(cl='flex-row gap-1ch',
     _=[Input.bool_checkbox(is_checked=False, name='checkbox', hx_trigger='change', hx_post=url, **_htmx_tags), ftnt(1)]))

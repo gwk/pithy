@@ -2,22 +2,35 @@
 
 'Developer reference page demonstrating all standard HTML form controls using traditional forms.'
 
+from http import HTTPStatus
 from inspect import get_annotations
 from typing import Any
+from urllib.parse import quote, urlencode
 
 from ....default import Default
 from ....html import Div, Form, H1, Input, Label, Main, Select, Span, Strong, TextArea
 from ....markup import MuChild
 from ...endpoint import Endpoint
 from ...request import Request, UploadedFile
-from ...response import Response
+from ...response import RedirectResponse, Response
 from ..pages import dev_page
+
+
+image_button_svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="64" height="32" viewBox="0 0 64 32">
+  <rect width="64" height="32" rx="3" fill="black"/>
+  <path d="M8 16h48M32 4v24" fill="none" stroke="#39ff14" stroke-width="2"/>
+</svg>'''
+image_button_src = f'data:image/svg+xml,{quote(image_button_svg)}'
 
 
 class DevControlsForm(Endpoint):
   'Demonstrates form controls.'
 
   max_body_bytes = 4096
+
+  class Get:
+    x:int|None
+    y:int|None
 
   class Post:
     # Native form submission always sends text-like controls, possibly empty.
@@ -42,11 +55,27 @@ class DevControlsForm(Endpoint):
     select_multiple:list[str]|None # A multiple select with no selection is not sent.
     file:UploadedFile|None # An empty file input is skipped by the multipart parser.
 
-  def get(self, request:Request, fields:None) -> Response:
-    return controls_page({})
+  def get(self, request:Request, fields:Get) -> Response:
+    values:dict[str,str|list[str]] = {}
+    if fields.x is not None and fields.y is not None:
+      values = {'x': str(fields.x), 'y': str(fields.y)}
+    return controls_page(values)
 
   def post(self, request:Request, fields:Post) -> Response:
     return controls_page(posted_items(fields))
+
+
+class DevImageButtonForm(Endpoint):
+  'Handles the image button form separately from the controls form.'
+
+  max_body_bytes = 4096
+
+  class Post:
+    x:int
+    y:int
+
+  def post(self, request:Request, fields:Post) -> Response:
+    return RedirectResponse('/form/controls?' + urlencode({'x': fields.x, 'y': fields.y}), status=HTTPStatus.SEE_OTHER)
 
 
 def posted_items(fields:DevControlsForm.Post) -> dict[str,str|list[str]]:
@@ -67,7 +96,8 @@ def controls_page(values:dict[str,str|list[str]]) -> Response:
     Div(cl='controls-demo-layout', _=[
       controls_form(values),
       posted_values_div(values),
-    ]))
+    ]),
+    image_button_form())
   return dev_page(title='Form Controls', main=main,
     breadcrumbs=[('/', 'Home'), ('/form', 'Form'), ('/form/controls', 'Controls')])
 
@@ -77,7 +107,7 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
 
   vals:dict[str,str|list[str]] = values or {}
   div = Div()
-  form = div.append(Form(cl='grid', method='post', enctype='multipart/form-data'))
+  form = div.append(Form(cl='grid', method='post', action='/form/controls', enctype='multipart/form-data'))
 
   def _row(label_text:str, *controls:MuChild) -> None:
     'Append a label and control(s) to the form grid.'
@@ -132,6 +162,17 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
   _row('submit', Input(type='submit', value='Submit'))
 
   return div
+
+
+def image_button_form() -> Form:
+  'Build a separate form for the image button and its click coordinates.'
+  return Form(cl='grid', method='post', action='/form/controls/image', _=[
+    Label('image'),
+    Span(cl='flex-row gap-1ch align-items-center', _=[
+      Input(type='image', src=image_button_src, alt='Submit with image'),
+      Span(cl='font-small', _='(Submits click coordinates)'),
+    ]),
+  ])
 
 
 def posted_values_div(values:dict[str,str|list[str]]|None=None) -> Div:

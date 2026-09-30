@@ -4,8 +4,7 @@ from ..router import RouteTarget
 from .color_ramps import dev_color_ramps
 from .colors import dev_colors
 from .form import dev_form_index
-from .form.controls import DevControlsForm
-from .form.misc import DevFormMisc
+from .form.controls import DevControlsForm, DevImageButtonForm
 from .form.nonportable import DevFormNonportable
 from .htmx import dev_htmx_index
 from .htmx.controls import ControlsHtmxUpdate, dev_controls_htmx
@@ -26,7 +25,7 @@ routes:dict[str,RouteTarget] = {
   '/tests': dev_tests,
   '/form': dev_form_index,
   '/form/controls': DevControlsForm,
-  '/form/misc': DevFormMisc,
+  '/form/controls/image': DevImageButtonForm,
   '/form/nonportable': DevFormNonportable,
   '/htmx': dev_htmx_index,
   '/htmx/controls': dev_controls_htmx,

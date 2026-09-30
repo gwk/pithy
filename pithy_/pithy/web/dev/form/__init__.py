@@ -11,5 +11,4 @@ def dev_form_index(request:Request) -> HtmlResponse:
   return dev_page(title='Form', breadcrumbs=[('/', 'Home'), ('/form', 'Form')],
     main=Main(H1('Form'), Ul(
       Li(A(href='/form/controls', _='Form Controls'), ': Demonstrates form controls.'),
-      Li(A(href='/form/misc', _='Miscellaneous Buttons'), ': Native popover and image buttons.'),
       Li(A(href='/form/nonportable', _='Nonportable Form Controls'), ': Month and week inputs.'))))
