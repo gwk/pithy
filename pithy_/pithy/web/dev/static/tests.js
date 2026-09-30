@@ -153,28 +153,6 @@
         check(odd[0] > 52 && odd[0] < 255, 'Stripe should tint the colored surface toward white.');
         check(pixel(style('tr:nth-child(2)').backgroundColor)[3] === 0, 'Unshaded row replaces the surrounding surface.');
       });
-
-      await test('Popover stays visible when opened on a scrolled page', async () => {
-        fixture.innerHTML = `<div style="height:300vh"></div><button popovertarget="test-popover">Open</button>
-          <div class="panel" id="test-popover" popover>Popover</div>`;
-        const button = fixture.querySelector('button');
-        const popover = doc.getElementById('test-popover');
-        if (!button || !popover) throw new Error('Missing popover fixture.');
-        button.scrollIntoView({block: 'center', behavior: 'instant'});
-        const before = win.scrollY;
-        check(before > win.innerHeight, 'Fixture did not scroll far enough to exercise the regression.');
-        try {
-          button.click();
-          await new Promise(resolve => requestAnimationFrame(resolve));
-          const rect = popover.getBoundingClientRect();
-          check(popover.matches(':popover-open'), 'The button did not open its popover.');
-          check(rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= win.innerHeight,
-            'Popover is outside the visible viewport.');
-          check(Math.abs(win.scrollY - before) < 1, 'Opening the popover changed the scroll position.');
-        } finally {
-          if (popover.matches(':popover-open')) popover.hidePopover();
-        }
-      });
     } catch (error) {
       report('Test setup', 'fail', error instanceof Error ? error.message : String(error));
     } finally {

@@ -300,9 +300,6 @@ details > :not(summary) { margin-inline-start: 1.5ch; } /* Align disclosed conte
 "full" refers to full width body child elements.
 */
 
-* { position: relative; }
-
-
 /* Keep the vertical scrollbar gutter stable so centered layouts do not shift as the scrollbar comes and goes.
 The inline-size query container lets descendants use `cqw` to measure the root content box, excluding that gutter. */
 html {
@@ -529,10 +526,13 @@ summary { list-style-type: none; cursor: pointer; } /* Chrome. */
 summary::-webkit-details-marker { display: none; } /* Safari. */
 
 /* Use Black Right-pointing Small Triangle, Black Down-pointing Small Triangle. */
+details summary {
+  position: relative; /* The containing block for the flush marker below. */
+}
+
 details summary::before {
   content: "▸";
   display: inline-block;
-  position: relative;
   width: 1.5ch;
 }
 
@@ -855,7 +855,6 @@ ol.json-array { list-style-type: decimal; }
 The page stays live behind a popover, so there is no backdrop; the border and shadow provide the separation. */
 
 .panel[popover] {
-  position: fixed; /* Keep top-layer panels in the viewport despite the global relative positioning rule. */
   width: min(var(--popover-width, 24rem), calc(100% - 2 * var(--page-padding)));
   max-height: calc(100dvh - 2 * var(--page-padding));
   margin: auto;
@@ -867,7 +866,6 @@ The page stays live behind a popover, so there is no backdrop; the border and sh
 /* Modal panes. The page is inert behind a modal; the backdrop dims and blurs it to say so. */
 
 dialog.modal {
-  position: fixed; /* Prevents document from scrolling to top when a modal dialog is opened. */
   margin: auto;
   overflow: auto;
   width: fit-content;
