@@ -122,8 +122,10 @@ class Response():
     body:ResponseBody|None = None
     media_type = ''
     if may_send_body(method, error.status):
+      reason = error.reason or error.status.phrase
+      if not reason.endswith(('.', '!', '?')): reason += '.'
       body = error_html_format.format(code=error.status.value,
-        reason=html_escape(error.reason or error.status.phrase, quote=False))
+        reason=html_escape(reason, quote=False))
       #^ HTML-escape the reason to prevent Cross Site Scripting attacks (see cpython bug #1100201).
       media_type = error_media_type
     return cls(error.status, reason=error.reason, headers=error.headers, body=body, media_type=media_type)
@@ -157,7 +159,7 @@ error_html_format = '''\
   <title>Error: {code}</title>
 </head>
 <body>
-  <p>{code}: {reason}.</p>
+  <p>{code}: {reason}</p>
 </body>
 </html>
 '''
