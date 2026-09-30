@@ -71,7 +71,7 @@ def dev_markdown(request:Request) -> HtmlResponse:
       Div(id='markdown-source-modal'), # The source modal is swapped in here; pithy.js shows it and removes it on close.
       Ul(cl='font-small', _=[
         Li('Settings changes may reset undo history and selection.'),
-        Li('OverType 2.4.2 has a ', A('known issue', href='https://github.com/panphora/overtype/issues/123'),
+        Li('OverType has a ', A('known issue', href='https://github.com/panphora/overtype/issues/123'),
           r': when settings rebuild the editor, it converts literal \n, \r, and \t sequences into newline, '
           'carriage return, and tab characters, which can alter the Markdown.'),
         Li('Preview checkboxes are read-only in this demo. They can be made interactive by updating the corresponding '

@@ -1,4 +1,4 @@
-# OverType 2.4.2
+# OverType 2.5.0
 
 Bundled editor from `overtype.urls`, with its MIT license.
 The dev app uses the unminified bundle when `is_web_dbg()` is true and the minified bundle otherwise.
