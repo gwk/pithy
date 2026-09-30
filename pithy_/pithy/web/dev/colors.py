@@ -101,7 +101,7 @@ def dev_colors(request:Request) -> HtmlResponse:
       P('Striped rows use translucent tints over the canvas; a subheading row groups the rows that follow.')]),
 
     comparison_section('Overlays', columns=overlays_sample, intro=[
-      P('A popover shows a distinct surface over a dimmed, blurred page; a modal shows a distinct pane with a strong border.')]),
+      P('A modal shows a distinct pane with a strong border over a dimmed, blurred page.')]),
 
   ]))
 
@@ -268,17 +268,11 @@ def tables_sample(scheme:Scheme) -> list[HtmlNode]:
 
 
 def overlays_sample(scheme:Scheme) -> list[HtmlNode]:
-  popover_id = f'colors-popover-{scheme}'
   modal_id = f'colors-modal-{scheme}'
   return [
-    Div(_=[ # The overlays share a wrapper with their buttons, so that every child of the section is one grid row.
+    Div(_=[ # The modal shares a wrapper with its button, so that every child of the section is one grid row.
       Div(cl='color-actions', _=[
-        Button('Open popover', type='button', popovertarget=popover_id),
         Button('Open modal', type='button', onclick=f"document.getElementById('{modal_id}').showModal()"),
-      ]),
-      Div(id=popover_id, cl='panel flow', popover='', role='dialog', aria_label=f'{scheme.title()} popover', _=[
-        H3(f'{scheme.title()} popover'), P('Distinct surface over a dimmed, blurred page.'),
-        Button('Close', type='button', popovertarget=popover_id, popovertargetaction='hide'),
       ]),
       Dialog(id=modal_id, cl='modal', aria_label=f'{scheme.title()} modal', _=[
         Div(cl='pane flow', _=[H3(f'{scheme.title()} modal'), P('Distinct pane, strong border and modal backdrop.'),
@@ -292,7 +286,7 @@ def surface_sample(token:str) -> Div:
   description = {
     'bg': 'Page canvas and editable fields. The border here marks the sample boundary.',
     'bg-subtle': 'Gentle separation for headers, navigation, footers and groups of related settings or filters.',
-    'bg-distinct': 'Stronger separation for result panels, summaries, popovers and modal panes.',
+    'bg-distinct': 'Stronger separation for result panels, summaries and modal panes.',
   }[token]
   background_class = token.removeprefix('bg-') if token != 'bg' else ''
   return Div(cl=f'color-surface flow flow-tight {background_class}', data_surface=token,

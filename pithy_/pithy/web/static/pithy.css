@@ -94,6 +94,8 @@ a:not([class]) { text-decoration-skip-ink: auto; } /* A elements that do not hav
 
   /* Overlays. Dark mode has no shadow; it relies on --bg-distinct sitting above --bg. */
   --shadow: 0 2px 8px light-dark(rgb(0 0 0 / 0.2), transparent);
+  /* Modal backdrop. Translucent black darkens either canvas; dark needs more opacity to register above --bg. */
+  --backdrop: light-dark(rgb(0 0 0 / 0.25), rgb(0 0 0 / 0.5));
 }
 
 
@@ -849,7 +851,8 @@ ol.json-array { list-style-type: decimal; }
 .distinct { background-color: var(--bg-distinct); }
 
 
-/* Popover panels. Set --popover-width for content that needs a wider view. */
+/* Popover panels. Set --popover-width for content that needs a wider view.
+The page stays live behind a popover, so there is no backdrop; the border and shadow provide the separation. */
 
 .panel[popover] {
   position: fixed; /* Keep top-layer panels in the viewport despite the global relative positioning rule. */
@@ -860,14 +863,8 @@ ol.json-array { list-style-type: decimal; }
   box-shadow: var(--shadow);
 }
 
-.panel[popover]::backdrop {
-  /* Dim the underlying page in either scheme. */
-  background-color: rgb(0 0 0 / 0.15);
-  backdrop-filter: blur(3px);
-}
 
-
-/* Modal panes. */
+/* Modal panes. The page is inert behind a modal; the backdrop dims and blurs it to say so. */
 
 dialog.modal {
   position: fixed; /* Prevents document from scrolling to top when a modal dialog is opened. */
@@ -887,7 +884,8 @@ dialog.modal {
   box-shadow: var(--shadow);
 
   &::backdrop {
-    background-color: rgba(128, 128, 128, 0.5);
+    background-color: var(--backdrop);
+    backdrop-filter: blur(3px);
   }
 
   & > .pane {
