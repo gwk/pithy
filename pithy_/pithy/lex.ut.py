@@ -3,7 +3,7 @@
 from typing import Any, Iterator
 
 from pithy.lex import Lexer, LexMode, LexTrans, Source
-from utest import utest_exc, utest_seq, utest_seq_exc
+from utest import utest, utest_exc, utest_seq, utest_seq_exc
 
 
 # Lexer.
@@ -31,6 +31,27 @@ utest_seq([('num','0'), ('newline','\n'), ('end_of_text','')],
   run_lexer, num_lexer, '0\n', eot=True)
 
 utest_seq([('num', '1'), ('invalid', 'x'), ('num', '2')], run_lexer, num_lexer, '1 x 2', drop='spaces')
+
+
+# Ranges.
+
+utest_seq([('num', '2'), ('spaces', ' '), ('num', '34')], run_lexer, num_lexer, '12 345', slc=slice(1, 5))
+#^ Tokens do not extend past the end of the range.
+
+utest_seq([('num', '45')], run_lexer, num_lexer, '12 345', slc=slice(-2, None))
+
+utest_seq([('invalid', 'xy')], run_lexer, num_lexer, '1xyz2', slc=slice(1, 3))
+
+utest_seq([], run_lexer, num_lexer, '12 345', slc=slice(4, 2))
+
+utest_seq_exc(ValueError('slice step is not supported: slice(0, 4, 2)'), run_lexer, num_lexer, '12 345', slc=slice(0, 4, 2))
+
+def lex_eot_pos(string:str, slc:slice|None) -> int:
+  'Return the position of the `end_of_text` token.'
+  return list(num_lexer.lex(Source(name='test', text=string), slc, eot=True))[-1].pos
+
+utest(3, lex_eot_pos, '12 345', slice(0, 3))
+utest(6, lex_eot_pos, '12 345', None)
 
 
 word_lexer = Lexer(patterns=dict(
