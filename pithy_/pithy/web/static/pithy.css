@@ -224,7 +224,6 @@ code, kbd, pre, samp { font-family: var(--font-mono); }
 
 code:not(pre code) {
   background-color: var(--tint-subtle);
-  border: 1px solid var(--tint-border);
   border-radius: 3px;
   padding-inline: 0.2em;
 }
@@ -553,7 +552,7 @@ a.button, button, input[type='button'], input[type='reset'], input[type='submit'
   appearance: none;
   background-color: var(--tint-subtle);
   border: 1px solid var(--tint-border-strong);
-  border-radius: 3px;
+  border-radius: 8px;
   color: inherit;
   display: inline-block;
   font: inherit;
@@ -680,7 +679,7 @@ textarea { padding: 0.25em; }
 :is(button, input:not([type='checkbox'], [type='color'], [type='file'], [type='image'], [type='radio'], [type='range']),
   select, textarea):disabled {
   background-color: var(--tint-subtle);
-  border-color: var(--tint-border);
+  border-color: var(--tint-border-strong);
 }
 
 input:is([type='date'], [type='datetime-local'], [type='month'], [type='time'], [type='week']) {
