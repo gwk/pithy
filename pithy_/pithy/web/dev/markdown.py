@@ -1,113 +1,82 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from typing import Literal
-
-from ...html import A, Button, Dialog, Div, Form, H1, H2, HtmlNode, Input, Label, Li, Main, P, Pre, Section, Select, Ul
+from ...html import Code, Form, H1, HtmlNode, Input, Label, Li, Main, P, TextArea, Ul
 from ..endpoint import Endpoint
-from ..env import is_web_dbg
 from ..request import Request
 from ..response import HtmlResponse, HtmxResponse
 from .pages import dev_page
 
 
-type Theme = Literal['solar','cave']
+sample_markdown = r"""# Heading
 
-sample_markdown = '''# Project notes
+A lightweight **Markdown syntax editor**.
 
-A **Markdown editor** for descriptions, notes, and instructions.
+## Subheading
 
-## Next steps
+- Bullet point
+- A [link](https://example.com) or https://example.com/docs
+- [ ] A checkbox
 
-- Review the proposal
-- Share [feedback](https://example.com)
-- [ ] Schedule a meeting
+> Quoted text, with `inline code` and ~~struck~~ words.
+
+<example name="greeting">
+Tags are colored, which helps when drafting prompts.
+</example>
 
 ```python
 print("Hello, world!")
 ```
-'''
+"""
 
 
-def markdown_editor(*, markdown:str, toolbar:bool=True, show_stats:bool=False, auto_resize:bool=False,
- theme:Theme='solar') -> HtmlNode:
-  el = HtmlNode(tag='overtype-editor', id='markdown-editor', theme=theme, height='auto' if auto_resize else '360px', min_height='180px',
-    value=markdown, aria_label='Markdown editor')
-  for name, enabled in (('toolbar', toolbar), ('show-stats', show_stats), ('auto-resize', auto_resize)):
-    if enabled: el[name] = ''
+def markdown_editor(*, markdown:str|None, auto_resize:bool=False) -> HtmlNode:
+  '''
+  The `markdown-editor` element defined by `pithy/web/static/markdown.js`.
+  It wraps an ordinary textarea, which holds the text and submits under the name `markdown`.
+  If `markdown` is None then the textarea is omitted; this form is only suitable as a morph response.
+  '''
+  el = HtmlNode(tag='markdown-editor', id='markdown-editor')
+  # A morph updates the element's attributes and leaves its children alone,
+  # so the browser's textarea keeps its text, selection and undo history.
+  el['hx-morph-skip-children'] = ''
+  if auto_resize: el['auto-resize'] = ''
+  if markdown is not None:
+    el.append(TextArea(markdown, id='markdown-text', name='markdown', aria_label='Markdown editor', spellcheck='false'))
   return el
 
 
 def dev_markdown(request:Request) -> HtmlResponse:
-  'Demonstrates OverType configured by external HTML controls through HTMX.'
+  'Demonstrates the Markdown editor, configured by an external HTML control through HTMX.'
   settings = Form(id='markdown-settings', hx_post='/markdown/settings.htmx',
     hx_trigger='change', hx_target='#markdown-editor', hx_swap='outerMorph', hx_sync='this:drop',
-    hx_disable='#markdown-settings input, #markdown-settings select',
-    hx_vals="js:{markdown: document.getElementById('markdown-editor').getValue()}",
+    hx_disable='#markdown-settings input',
     _=[
-      # Each setting is an independent bool, so each uses a bool checkbox, which always sends 'true' or 'false'.
-      Label(Input.bool_checkbox(name='toolbar', is_checked=True), ' Show toolbar'),
-      Label(Input.bool_checkbox(name='show_stats', is_checked=False), ' Show statistics'),
+      # A bool checkbox always sends 'true' or 'false'.
       Label(Input.bool_checkbox(name='auto_resize', is_checked=False), ' Auto-resize'),
-      Label('Theme', for_='markdown-theme'),
-      Select(id='markdown-theme', name='theme').options({'solar': 'Light', 'cave': 'Dark'}, value='solar'),
     ])
-  # Lock both typing and toolbar actions until the settings response is applied, including error responses.
-  settings['hx-on::before:request'] = "document.getElementById('markdown-editor').inert = true;"
-  settings['hx-on::finally:request'] = "document.getElementById('markdown-editor').inert = false;"
-  overtype_src = f'/static/pithy/overtype/overtype-webcomponent{"" if is_web_dbg() else ".min"}.js'
   return dev_page(title='Markdown Editor', breadcrumbs=[('/', 'Home'), ('/markdown', 'Markdown Editor')],
-    js_paths=[overtype_src, '/static/dev/markdown.js'],
+    css_paths=['/static/pithy/markdown.css'], js_paths=['/static/pithy/markdown.js'],
     main=Main(H1('Markdown Editor'),
-      P('Write Markdown and see the preview update as you type. Try different settings with the controls below.'),
-      Div(cl='markdown-settings', _=[settings,
-        Button('Show Markdown source', type='button', hx_post='/markdown/value.htmx', hx_target='#markdown-source-modal',
-          hx_swap='innerHTML', hx_vals="js:{markdown: document.getElementById('markdown-editor').getValue()}"),
-      ]),
-      Div(cl='markdown-layout', _=[
-        Section(H2('Editor'), markdown_editor(markdown=sample_markdown)),
-        Section(H2('Preview', id='markdown-preview-heading'),
-          Div(id='markdown-preview', aria_labelledby='markdown-preview-heading')),
-      ]),
-      Div(id='markdown-source-modal'), # The source modal is swapped in here; pithy.js shows it and removes it on close.
+      P('A plain textarea with Markdown syntax coloring. The syntax stays visible, '
+        'so the text can be copied to and from issues and agent conversations unchanged.'),
+      settings,
+      markdown_editor(markdown=sample_markdown),
       Ul(cl='font-small', _=[
-        Li('Settings changes may reset undo history and selection.'),
-        Li('OverType has a ', A('known issue', href='https://github.com/panphora/overtype/issues/123'),
-          r': when settings rebuild the editor, it converts literal \n, \r, and \t sequences into newline, '
-          'carriage return, and tab characters, which can alter the Markdown.'),
-        Li('Preview checkboxes are read-only in this demo. They can be made interactive by updating the corresponding '
-          'Markdown task markers when clicked.')])))
+        Li('The settings response morphs only the attributes of the editor element. '
+          'The text, selection and undo history are not affected.'),
+        Li('The editor is a form control: the textarea submits like any other, and no script is needed to read its value.'),
+        Li('Coloring is computed per line. Fenced code blocks are tracked across lines; ',
+          'emphasis and links that span a line break are not colored.'),
+        Li('The script and stylesheet work under a strict Content Security Policy; see ',
+          Code('pithy_/test/web/markdown-editor.html'), '.')])))
 
 
 class MarkdownSettingsHtmx(Endpoint):
-  max_body_bytes = 1024 * 1024
+  max_body_bytes = 1024
 
   class Post:
-    toolbar:bool
-    show_stats:bool
     auto_resize:bool
-    theme:Theme
-    markdown:str
 
   def post(self, request:Request, fields:Post) -> HtmxResponse:
-    editor = markdown_editor(markdown=fields.markdown, toolbar=fields.toolbar, show_stats=fields.show_stats,
-      auto_resize=fields.auto_resize, theme=fields.theme)
-    editor['inert'] = '' # The request's finally handler unlocks the editor after the morph completes.
-    return HtmxResponse(editor)
-
-
-class MarkdownValueHtmx(Endpoint):
-  max_body_bytes = 1024 * 1024
-
-  class Post:
-    markdown:str
-
-  def post(self, request:Request, fields:Post) -> HtmxResponse:
-    'Return the editor value in a modal; the dialog closes and removes itself on escape or a click outside the pane.'
-    modal = Dialog.modal(cl='flow', _=[
-      H2('Markdown source', id='markdown-source-heading'),
-      P('The editor value posted through HTMX and returned by the server as escaped text.'),
-      Pre(fields.markdown, id='markdown-value', aria_label='Markdown source'),
-      Button('Close', type='button', onclick='closeClosestModal(event)'),
-    ])
-    modal['aria-labelledby'] = 'markdown-source-heading'
-    return HtmxResponse(modal)
+    'Return the editor element without its textarea; the morph applies the attributes and keeps the existing children.'
+    return HtmxResponse(markdown_editor(markdown=None, auto_resize=fields.auto_resize))

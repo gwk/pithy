@@ -1,10 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from os import environ
-from unittest.mock import patch
 from urllib.parse import urlencode
 
 from justhtml import JustHTML
+from pithy.web.dev.markdown import markdown_editor
 from pithy.web.dev.routes import routes
 from pithy.web.errors import BadRequestError
 from pithy.web.request import Request
@@ -29,44 +28,39 @@ def post(path:str, fields:dict[str,str]) -> Response:
 
 @utest_run
 def _() -> None:
-  'Settings responses return the submitted Markdown with the requested configuration.'
+  'The page renders the editor around a textarea; settings responses carry attributes only.'
   req = Request(method='GET', scheme='http', host='localhost', port=80, path='/markdown', query_str='',
     headers={}, client_addr=('127.0.0.1', 0), content_length=None)
   page = router.resolve_handler(req).handle_request(req).body
   assert isinstance(page, bytes)
   document = JustHTML(page, sanitize=False)
   utest_val(1, len(document.query('form#markdown-settings')))
-  utest_val(1, len(document.query('div#markdown-source-modal')), desc='Placeholder for the swapped-in source modal')
-  for debug, suffix in (('0', '.min'), ('1', '')):
-    with patch.dict(environ, WEB_DBG=debug):
-      body = router.resolve_handler(req).handle_request(req).body
+  textarea = document.query_one('markdown-editor#markdown-editor > textarea#markdown-text')
+  assert textarea is not None and textarea.attrs is not None
+  utest_val('markdown', textarea.attrs.get('name'), desc='The textarea submits as an ordinary form control')
+  markdown = r'literal \n or \t <script> &amp;'
+  rendered = JustHTML(''.join(markdown_editor(markdown=markdown).render()), sanitize=False)
+  rendered_textarea = rendered.query_one('markdown-editor > textarea#markdown-text')
+  assert rendered_textarea is not None
+  utest_val(markdown, rendered_textarea.to_text(strip=False), desc='The editor preserves textarea content')
+  srcs = [src for el in document.query('script') if (src := (el.attrs or {}).get('src'))]
+  utest_val(True, '/static/pithy/markdown.js' in srcs)
+  hrefs = [(el.attrs or {}).get('href') for el in document.query('link')]
+  utest_val(True, '/static/pithy/markdown.css' in hrefs)
+  # The page's markdown demo must not depend on inline event handlers or evaluated expressions.
+  for el in document.query('main *'):
+    for name, value in (el.attrs or {}).items():
+      utest_val(False, name.startswith('hx-on') or name == 'style', desc=f'No inline handler or style: {name}')
+      utest_val(False, str(value).startswith(('js:', 'javascript:')), desc=f'No evaluated attribute value: {name}')
+  for enabled in (False, True):
+    flag = str(enabled).lower() # Bool checkboxes always send 'true' or 'false'; see `Input.bool_checkbox`.
+    body = post('/markdown/settings.htmx', {'auto_resize': flag}).body
     assert isinstance(body, bytes)
-    scripts = [src for el in JustHTML(body, sanitize=False).query('script') if (src := (el.attrs or {}).get('src'))]
-    for stem in ('htmx/htmx4', 'overtype/overtype-webcomponent'):
-      utest_val([f'/static/pithy/{stem}{suffix}.js'], [src for src in scripts if src.startswith(f'/static/pithy/{stem}')])
-  for markdown in ('', '## My edits\n<script>"hello"</script> & \\n'):
-    for enabled in (False, True):
-      flag = str(enabled).lower() # Bool checkboxes always send 'true' or 'false'; see `Input.bool_checkbox`.
-      settings = {'theme': 'cave', 'markdown': markdown, 'toolbar': flag, 'show_stats': flag, 'auto_resize': flag}
-      body = post('/markdown/settings.htmx', settings).body
-      assert isinstance(body, bytes)
-      el = JustHTML(body, sanitize=False).query_one('overtype-editor')
-      assert el is not None and el.attrs is not None
-      utest_val('cave', el.attrs.get('theme'))
-      for attr in ('toolbar', 'show-stats', 'auto-resize'):
-        utest_val(enabled, attr in el.attrs)
-      utest_val(markdown, el.attrs.get('value'), desc='Python returns the exact submitted Markdown')
-      utest_val(True, 'inert' in el.attrs, desc='Editor stays locked until the request finishes')
-  all_false = {'toolbar': 'false', 'show_stats': 'false', 'auto_resize': 'false'}
-  utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'unknown', 'markdown': '', **all_false})
-  utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'solar', **all_false})
-  utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'theme': 'solar', 'markdown': ''}) # Bool fields are required.
-  body = post('/markdown/value.htmx', {'markdown': '<script>alert(1)</script>\n**hello**'}).body
-  assert isinstance(body, bytes)
-  modal = JustHTML(body, sanitize=False)
-  utest_val(1, len(modal.query('dialog.modal > div.pane')), desc='Uses the standard dismissible modal')
-  utest_val(True, b"<pre id='markdown-value' aria-label='Markdown source'>&lt;script>alert(1)&lt;/script>\n**hello**</pre>" in body,
-    desc='Markdown is displayed as escaped text')
-  body = post('/markdown/value.htmx', {'markdown': ''}).body
-  assert isinstance(body, bytes)
-  utest_val(True, b"<pre id='markdown-value' aria-label='Markdown source'></pre>" in body)
+    response = JustHTML(body, sanitize=False)
+    editor = response.query_one('markdown-editor#markdown-editor')
+    assert editor is not None and editor.attrs is not None
+    utest_val(enabled, 'auto-resize' in editor.attrs)
+    utest_val(True, 'hx-morph-skip-children' in editor.attrs, desc='The morph must keep the existing textarea')
+    utest_val(0, len(response.query('textarea')), desc='Settings responses do not carry the text')
+  utest_exc(BadRequestError, post, '/markdown/settings.htmx', {}) # Bool fields are required.
+  utest_exc(BadRequestError, post, '/markdown/settings.htmx', {'auto_resize': 'true', 'markdown': ''})

@@ -1,0 +1,110 @@
+/* Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. */
+
+/*
+Styles for the `markdown-editor` element defined by markdown.js.
+
+The editor is a textarea with a syntax coloring layer drawn over it.
+The textarea text is transparent; the layer shows the same characters in the same positions.
+Every rule below that affects glyph positions must apply identically to both, so they share one rule.
+Coloring must never change text metrics: tokens differ only in color, decoration and stroke, never in font.
+
+The host is the scroll container and both children grow to the full text height.
+The textarea therefore never scrolls on its own, and no scroll synchronization is needed.
+
+Colors use the pithy.css variables when present.
+*/
+
+markdown-editor {
+  --md-marker: var(--fg-muted, GrayText);
+  --md-heading: var(--accent, LinkText);
+  --md-link: var(--accent, LinkText);
+  --md-code: light-dark(oklch(44% 0.12 150), oklch(82% 0.12 150));
+  --md-em: light-dark(oklch(46% 0.13 55), oklch(82% 0.1 75));
+  --md-tag: light-dark(oklch(45% 0.15 320), oklch(80% 0.11 320));
+
+  display: grid;
+  grid-template: 1fr / minmax(0, 1fr); /* A single cell as tall as the text, and at least as tall as the host. */
+  overflow: auto;
+  height: 24rem;
+  background-color: var(--bg, Canvas);
+  border: 1px solid var(--border, GrayText);
+  border-radius: 3px;
+  color: var(--fg, CanvasText);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  line-height: 1.5;
+}
+
+markdown-editor[auto-resize] {
+  height: auto;
+  min-height: 6rem;
+}
+
+markdown-editor:focus-within {
+  outline: 2px solid var(--accent, Highlight);
+  outline-offset: -1px;
+}
+
+/* Text layout shared by the textarea and the coloring layer. */
+markdown-editor > :is(textarea, .md-highlight) {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  padding: 0.5em;
+  font: inherit;
+  font-kerning: none;
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+  word-spacing: normal;
+  tab-size: 2;
+  text-align: start;
+  text-indent: 0;
+  text-transform: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+markdown-editor > textarea {
+  appearance: none;
+  background-color: transparent;
+  outline: none;
+  overflow: hidden;
+  resize: none;
+}
+
+/* Hide the textarea text only once markdown.js has defined the element, so that it stays readable without the script. */
+markdown-editor:defined > textarea {
+  color: transparent;
+  caret-color: var(--fg, CanvasText);
+}
+
+markdown-editor:defined > textarea::selection {
+  color: transparent;
+  background-color: color-mix(in oklab, var(--accent, Highlight) 35%, transparent);
+}
+
+/* The layer is drawn above the textarea, so the caret and selection show through beneath the colored text. */
+markdown-editor > .md-highlight {
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Bold faces can have different glyph widths, particularly in fallback fonts; a stroke emboldens without affecting layout. */
+.md-highlight :is(.md-heading, .md-strong) { -webkit-text-stroke: 0.035em currentColor; }
+
+.md-highlight .md-heading { color: var(--md-heading); }
+.md-highlight .md-quote { color: var(--md-marker); }
+.md-highlight .md-code { color: var(--md-code); }
+.md-highlight div.md-code { background-color: var(--tint-subtle, transparent); }
+.md-highlight .md-em { color: var(--md-em); }
+.md-highlight .md-strike { text-decoration: line-through; }
+.md-highlight .md-link { color: var(--md-link); }
+.md-highlight .md-url { color: var(--md-marker); text-decoration: underline; }
+.md-highlight .md-tag { color: var(--md-tag); }
+.md-highlight .md-list { color: var(--md-heading); }
+.md-highlight :is(.md-marker, .md-comment) { color: var(--md-marker); }
