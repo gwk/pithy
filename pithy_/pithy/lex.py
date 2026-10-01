@@ -188,7 +188,7 @@ class Lexer:
 
 
   def _lex_one(self, regex:Pattern, source:Source[str], pos:int, end:int, mode:str) -> Token:
-    m = regex.search(source.text, pos)
+    m = regex.search(source.text, pos, end)
     if not m:
       return self._lex_inv(pos=pos, end=end, mode=mode)
     p, e = m.span()
@@ -256,20 +256,18 @@ class Lexer:
       prev_kind = 'dedent' # Hack to allow for transitions on spaces following indent/dedent.
       indent_stack.pop()
     if eot:
-      yield eot_token(source, mode=stack[-1][0].mode)
+      yield eot_token(end, mode=stack[-1][0].mode)
 
 
-  def lex(self, source:Source[str], pos:int=0, end:int|None=None, drop:Container[str]=(), eot:bool=False) -> Iterator[Token]:
+  def lex(self, source:Source[str], slc:slice|None=None, drop:Container[str]=(), eot:bool=False) -> Iterator[Token]:
+    '''
+    Lex `source`, yielding tokens.
+    If `slc` is provided then only that range of the text is lexed; no token extends past its end.
+    The `end_of_text` token is positioned at the end of the range.
+    '''
     if not isinstance(source, Source): raise TypeError(source)
-    text = source.text
-    if pos < 0:
-      pos = len(text) + pos
-    if end is None:
-      end = len(text)
-    elif end < 0:
-      end = len(text) + end
-    _e:int = end # typing hack.
-    return self._lex(stack=[self.root_frame(mode=self.main)], source=source, pos=pos, end=_e, drop=drop, eot=eot)
+    pos, end = _range_for_slc(source, slc)
+    return self._lex(stack=[self.root_frame(mode=self.main)], source=source, pos=pos, end=end, drop=drop, eot=eot)
 
 
   def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot:bool=False
@@ -286,7 +284,7 @@ class Lexer:
         for token in self._lex(stack=stack, source=source, pos=0, end=len(source.text), drop=drop, eot=False):
           yield (source, token)
     if eot:
-      yield (source, eot_token(source, mode=stack[-1][0].mode))
+      yield (source, eot_token(len(source.text), mode=stack[-1][0].mode))
 
 
   def root_frame(self, mode:str) -> tuple[LexTrans,Token]:
@@ -297,10 +295,18 @@ class Lexer:
 class _BreakFromModeSwitching(Exception): pass
 
 
-def eot_token(source:Source[str], mode:str) -> Token:
-  'Create a token representing the end-of-text.'
-  end = len(source.text)
+def eot_token(end:int, mode:str) -> Token:
+  'Create a token representing the end-of-text at position `end`.'
   return Token(pos=end, end=end, mode=mode, kind='end_of_text')
+
+
+def _range_for_slc(source:Source[str], slc:slice|None) -> tuple[int,int]:
+  'Return the (pos, end) range for `slc`, or the whole text if `slc` is None.'
+  length = len(source.text)
+  if slc is None: return (0, length)
+  if slc.step not in (None, 1): raise ValueError(f'slice step is not supported: {slc!r}')
+  pos, end, _ = slc.indices(length)
+  return (pos, max(pos, end))
 
 
 def validate_name(name:str) -> str:

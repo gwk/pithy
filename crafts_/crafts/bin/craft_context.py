@@ -613,8 +613,7 @@ dropped_kinds = frozenset({'newline', 'code_span', 'text'})
 def scan_imports(source:Source[str]) -> Iterator[tuple[Token,str]]:
   'Yield the `@` import tokens of `source`, paired with their path text, ignoring code fences and code spans.'
   for pos, end in scan_prose_spans(source):
-    for token in md_lexer.lex(source, pos=pos, end=end, drop=dropped_kinds):
-      if token.pos >= end: break # Defensive: the lexer patterns should never match past the end of the span.
+    for token in md_lexer.lex(source, slice(pos, end), drop=dropped_kinds):
       if token.kind == 'backtick':
         source.fail((token, 'unmatched backtick; a code span must be closed by an equal length run of backticks.'))
       if token.kind == 'indent':
