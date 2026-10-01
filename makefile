@@ -8,7 +8,7 @@
 .SECONDARY: # Disable deletion of intermediate products.
 .SUFFIXES: # Disable implicit rules.
 
-.PHONY: clean clean-grammars clean-legs-data gen gen-data gen-grammars gen-sqlite-extracted-sql gen-vscode-legs help vscode-links vscode-insider-links
+.PHONY: clean clean-grammars clean-legs-data gen gen-data gen-grammars gen-sqlite-extracted-sql help vscode-links vscode-insider-links
 
 # First target of a makefile is the default.
 _default: help
@@ -36,8 +36,6 @@ gen-grammars: \
 	grammars/ascii.legs \
 	grammars/unicode.legs \
 
-gen-vscode-legs: vscode/legs/syntaxes/legs.json
-
 help: # Summarize the targets of this makefile.
 	@GREP_COLOR="1;32" egrep --color=always '^[a-zA-Z][^ :]+:' makefile | sort
 
@@ -51,6 +49,3 @@ grammars/unicode.legs: tools/gen-charset-grammar.py
 
 legs_/legs/data_%.py: tools/gen-data.py
 	./$^ data/$* > $@
-
-vscode/legs/syntaxes/legs.json: grammars/legs.legs
-	legs $< -syntax-name Legs -syntax-scope legs -syntax-exts legs -langs vscode -output $@

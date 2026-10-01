@@ -17,7 +17,6 @@ from ..parse import parse_legs
 from ..patterns import gen_incomplete_pattern, LegsPattern
 from ..python import output_python, output_python_re
 from ..swift import output_swift
-from ..vscode import output_vscode
 
 
 description = '''
@@ -51,9 +50,6 @@ def main() -> None:
   parser.add_argument('-output', default=None, help='Path to output generated source.')
   parser.add_argument('-patterns', nargs='+', help='Specify legs patterns for quick testing.')
   parser.add_argument('-stats', action='store_true', help='Print statistics about the generated automata.')
-  parser.add_argument('-syntax-exts', nargs='*', help='Extensions list for syntax definitions.')
-  parser.add_argument('-syntax-name', help='Syntax readable name for syntax definitions.')
-  parser.add_argument('-syntax-scope', help='Syntax scope name for textmate-style syntax definitions.')
 
   parser.add_argument('-test', nargs='+',
     help='Generate testing source code for the specified language or else all supported languages;'
@@ -195,12 +191,6 @@ def main() -> None:
       pattern_descs=pattern_descs, license=license, args=args)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
-  if 'vscode' in langs:
-    path = out_stem + '.json'
-    output_vscode(path, dfas=dfas, mode_transitions=mode_transitions,
-      patterns=patterns, incomplete_patterns=incomplete_patterns,
-      pattern_descs=pattern_descs, license=license, args=args)
-
   if args.test:
     run_tests(test_cmds, dbg=args.dbg)
 
@@ -296,7 +286,7 @@ ext_langs = {
   '.swift' : 'swift',
 }
 
-supported_langs = {'dot', 'python', 'python-re', 'swift', 'vscode'}
+supported_langs = {'dot', 'python', 'python-re', 'swift'}
 test_langs = {'python', 'swift'}
 
 
