@@ -182,7 +182,7 @@ class Mu:
     elif _mu_positional_children:
       raise ValueError('Positional children and `_` are mutually exclusive.')
     elif isinstance(_, mu_child_classes_lax): # Single child argument; wrap it in a list.
-      children:MuChildrenLax = [_]
+      children = [_]
     elif isinstance(_, list):
       children = _ # Important: use an existing list ref if provided. This allows subnodes to alias original contents.
     else:
