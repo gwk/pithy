@@ -1377,10 +1377,12 @@ class Parser:
     ctx = ParseCtx(source=source, tokens=tokens)
     pos = 0
     while True:
-      if ctx.tokens[pos].kind == 'end_of_text': return
-      pos, slc, result = rule.parse(ctx=ctx, parent=rule, pos=pos)
+      token = ctx.tokens[pos]
+      if token.kind == 'end_of_text': return
+      next_pos, _slc, result = rule.parse(ctx=ctx, parent=rule, pos=pos)
       #^ Top rule is passed as its own parent.
-      pos = slc.stop
+      if next_pos == pos: raise ParseError(source, token, f'{rule} consumed no tokens.')
+      pos = next_pos
       if skeletonize:
         result = syn_skeleton(result, source=source)
       yield result
