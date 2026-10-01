@@ -1337,8 +1337,8 @@ class Parser:
     return struct_type
 
 
-  def lex_and_preprocess(self, source:Source, dbg_tokens:bool) -> list[Token]:
-    stream:Iterable[Token] = self.lexer.lex(source, drop=self.drop, eot=True)
+  def lex_and_preprocess(self, source:Source, dbg_tokens:bool, slc:slice|None=None) -> list[Token]:
+    stream:Iterable[Token] = self.lexer.lex(source, slc, drop=self.drop, eot=True)
     if self.preprocessor: stream = self.preprocessor(source, stream)
     tokens = list(stream)
     if dbg_tokens:
@@ -1347,10 +1347,11 @@ class Parser:
     return tokens
 
 
-  def parse(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, skeletonize:bool=False, dbg_tokens:bool=False
-   ) -> Any:
+  def parse(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, skeletonize:bool=False, dbg_tokens:bool=False,
+   *, slc:slice|None=None) -> Any:
+    'Parse `source` with the named rule. If `slc` is provided then only that range of the text is parsed.'
     rule = self.rules[rule_name]
-    tokens = self.lex_and_preprocess(source, dbg_tokens)
+    tokens = self.lex_and_preprocess(source, dbg_tokens, slc)
     ctx = ParseCtx(source=source, tokens=tokens)
     pos, _slc, result = rule.parse(ctx=ctx, parent=rule, pos=0) # Top rule is passed as its own parent.
     excess_token = ctx.tokens[pos] # Must exist because end_of_text cannot be consumed by a legal parser.
@@ -1362,16 +1363,17 @@ class Parser:
 
 
   def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, skeletonize:bool=False,
-   dbg_tokens:bool=False) -> Any:
+   dbg_tokens:bool=False, *, slc:slice|None=None) -> Any:
     try:
       return self.parse(rule_name=rule_name, source=source, ignore_excess=ignore_excess, skeletonize=skeletonize,
-        dbg_tokens=dbg_tokens)
+        dbg_tokens=dbg_tokens, slc=slc)
     except ParseError as e: e.fail()
 
 
-  def parse_all(self, rule_name:RuleName, source:Source, skeletonize:bool=False, dbg_tokens:bool=False) -> Iterator[Any]:
+  def parse_all(self, rule_name:RuleName, source:Source, skeletonize:bool=False, dbg_tokens:bool=False, *,
+   slc:slice|None=None) -> Iterator[Any]:
     rule = self.rules[rule_name]
-    tokens = self.lex_and_preprocess(source, dbg_tokens)
+    tokens = self.lex_and_preprocess(source, dbg_tokens, slc)
     ctx = ParseCtx(source=source, tokens=tokens)
     pos = 0
     while True:

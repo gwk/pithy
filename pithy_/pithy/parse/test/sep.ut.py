@@ -2,6 +2,7 @@
 
 from pithy.parse import Atom, atom_text, parse_skel, Parser, ZeroOrMore
 from pithy.python.lex import lexer
+from tolkien import Source
 from utest import utest
 
 
@@ -24,3 +25,6 @@ utest(['a', 'b', 'c'], parse_skel, comma_opt, 'seq', 'a, b, c,')
 utest(['a', 'b', 'c'], parse_skel, comma_req, 'seq', 'a, b, c,')
 utest(['a', 'b', 'c'], parse_skel, comma_rej, 'seq', 'a, b, c')
 # TODO: test failure cases.
+
+# Ranges.
+utest(['b', 'c'], comma_opt.parse, 'seq', Source('seq', 'a, b, c, d'), skeletonize=True, slc=slice(3, 7))
