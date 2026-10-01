@@ -6,8 +6,6 @@
     "node/**",
     "pithy_/pithy/web/static/htmx/**",
     "pkg/**",
-    "vscode/legs/src/extension.ts",
-    "vscode/legs/built/extension.js",
     "wu_/wu/writeup.js",
   ],
   "compilerOptions": {
