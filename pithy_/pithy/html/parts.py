@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 
 from ..json import Json, parse_json
 from ..strings import identifier_or_repr
-from . import A, Div, Li, MuAttrs, Ol, Span, Ul
+from . import A, Div, Label, Li, MuAttrs, Ol, Select, Span, Ul
 
 
 def pagination_control(*, count:int|None, limit:int, offset:int, href:str='', hx_get:str='', params:Mapping[str,Any],
@@ -79,6 +79,17 @@ def pagination_control(*, count:int|None, limit:int, offset:int, href:str='', hx
       last[url_key]  = f'{url}offset={last_offset}'
 
   return div
+
+
+def theme_selector(**label_attrs:Any) -> Label:
+  '''
+  Return a labeled select for choosing the auto, light or dark theme.
+  The page must load pithy.js in the head; it restores the saved choice and connects the select by its id.
+  `label_attrs` are applied to the label, e.g. `cl='nav-end'` to place it at the end of a navbar.
+  '''
+  return Label(Span('◐', cl='icon', aria_hidden='true'), ' ',
+    Select(id='theme-mode', aria_label='Theme').options({'auto': 'Auto', 'light': 'Light', 'dark': 'Dark'}, value='auto'),
+    for_='theme-mode', title='Theme', **label_attrs)
 
 
 def hl_for_json_str(json_str:str) -> Ol|Ul|Span:

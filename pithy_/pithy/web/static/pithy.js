@@ -15,11 +15,12 @@ const assert = console.assert;
 const log = console.log;
 
 /**
- * Opt in to a saved theme. Call in the head before the body is rendered to avoid a theme flash.
+ * Apply the saved theme. Loading pithy.js calls this, unless the root html element sets a fixed data-theme.
+ * Load pithy.js in the head without `defer`, so that the theme is applied before the body is rendered.
  * The optional select contains auto/light/dark values; it is connected once the document is ready.
+ * See `theme_selector` in pithy.html.parts.
  * Preferences use localStorage key `pithy.web.theme`, shared only within the same origin.
- * For a fixed theme, omit this call and set <html data-theme="light"> (or "dark").
- * Merely loading pithy.js does not change the theme.
+ * For a fixed theme, set <html data-theme="light"> (or "dark").
  * @param {string} selectId
  */
 function initTheme(selectId = 'theme-mode') {
@@ -44,6 +45,8 @@ function initTheme(selectId = 'theme-mode') {
     connectSelect();
   }
 }
+
+if (!document.documentElement.dataset.theme) initTheme();
 
 
 /**
