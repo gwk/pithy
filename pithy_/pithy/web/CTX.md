@@ -58,4 +58,5 @@ Serve the repository root over HTTP and open each test page at its corresponding
 The pages load the repository's JavaScript through relative paths, run automatically, and display `PASS` with a check count or `FAIL` with error details.
 
 * `checkbox-inclusion.html`: Checks boolean and set checkbox submission through `hx-include` and prefixed attributes, including inheritance, append behavior, disabled controls, and explicit value overrides. All test requests are canceled before transmission.
+* `markdown-editor.html`: Checks the `markdown-editor` element of `static/markdown.js` under a strict Content Security Policy: syntax coloring, exact text round trips, equal layout of the textarea and its coloring layer, and survival of DOM replacement. Its checks are in `markdown-editor.js`, because the policy forbids inline scripts.
 * `collapsible-tables.html`: Checks collapse toggling, hidden rows, and listener preservation across htmx morphs.

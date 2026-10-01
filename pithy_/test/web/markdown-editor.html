@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. -->
+<meta charset="utf-8">
+<!-- The strictest practical policy: no inline script or style, no evaluation, and no HTML string parsing. -->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; require-trusted-types-for 'script'; trusted-types 'none'">
+<title>Markdown editor regression tests</title>
+<link rel="stylesheet" href="../../pithy/web/static/pithy.css">
+<link rel="stylesheet" href="../../pithy/web/static/markdown.css">
+<script defer src="../../pithy/web/static/markdown.js"></script>
+<script defer src="markdown-editor.js"></script>
+<pre id="results">Running...</pre>
+<form id="form">
+  <markdown-editor id="editor"><textarea id="text" name="markdown"># Initial
+
+Literal \n and \t stay as typed.</textarea></markdown-editor>
+</form>
