@@ -1,8 +1,7 @@
 
 # Git Bare Repositories with Worktrees
 
-This approach to git creates an outer management dir that is not the checked out repo, a "bare" dir that is for git internal data,
-and then multiple worktree directories that can have different branches checked out simultaneously.
+This approach to git creates an outer management dir that is not the checked out repo, a "bare" dir that is for git internal data, and then multiple worktree directories that can have different branches checked out simultaneously.
 
 Some reasons to work this way:
 * We can leave work-in-progress in one worktree without committing or branching, and attend to a different branch.
@@ -10,7 +9,7 @@ Some reasons to work this way:
 * We can put sensitive material, e.g. secrets and data, in the outer dir where it cannot possibly get checked in by accident.
 
 Many guides suggest using `.bare` for the bare dir, but I am using `_git_${PROJECT}`.
-This makes it visible, puts it at the top of a directory listing, and is a unique name for 
+This makes it visible, puts it at the top of a directory listing, and is a unique name for tools that display it (e.g. Zed).
 
 ```
 git clone --bare git@github.com:org/repo.git _bare # Clone git data into _bare without setting it up as a usable repo root.
