@@ -111,8 +111,9 @@ lint: lint-py lint-rust
 lint-py:
   python3 -m pyflakes {{pkg_srcs}} ops tap_backblaze_/test-integration test-diff tools
 
+# Pin the interpreter: otherwise pyo3's build script searches `PATH` and rebuilds whenever `PATH` changes.
 lint-rust: fmt-rust-check
-  cargo clippy --manifest-path pyrrhus_/Cargo.toml -- -D warnings
+  PYO3_PYTHON="$(python3 -c 'import sys; print(sys.executable)')" cargo clippy --manifest-path pyrrhus_/Cargo.toml -- -D warnings
 
 # Rust sources are formatted per `rustfmt.toml`, which matches our Python indent and page width.
 fmt-rust:
