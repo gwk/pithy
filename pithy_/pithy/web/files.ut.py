@@ -23,8 +23,39 @@ def _request(path:str, headers:dict[str,str]|None=None) -> Request:
 def _serve(app:FilesApp, path:str, headers:dict[str,str]|None=None) -> Response:
   'Build a GET request for `path`, serve it through `app`, and return the response with its body closed.'
   response = app.handle_request(_request(path, headers))
-  if isinstance(response.body, BufferedReader): response.body.close()
+  response.close()
   return response
+
+
+@utest_run
+def _() -> None:
+  'FilesApp closes an opened file unless the response takes ownership of it.'
+  with TemporaryDirectory() as tmp:
+    with open(f'{tmp}/a.txt', 'w') as file: file.write('hello')
+    opened:list[BufferedReader] = []
+
+    class ReplacingFiles(FilesApp):
+      def transform_file_from_local_fs(self, request:Request, norm_path:str, local_path:str, file:BufferedReader) -> Response:
+        opened.append(file)
+        return Response(body=b'replacement')
+
+    response = ReplacingFiles(local_dir=tmp).handle_request(_request('/a.txt'))
+    utest_val(b'replacement', response.body)
+    utest_val(True, opened[-1].closed)
+
+    class FailingFiles(FilesApp):
+      def transform_file_from_local_fs(self, request:Request, norm_path:str, local_path:str, file:BufferedReader) -> Response:
+        opened.append(file)
+        raise ValueError('transformation failed')
+
+    utest_exc(ValueError, FailingFiles(local_dir=tmp, prevent_client_caching=True).handle_request, _request('/a.txt'))
+    utest_val(True, opened[-1].closed)
+
+    response = FilesApp(local_dir=tmp).handle_request(_request('/a.txt'))
+    assert isinstance(response.body, BufferedReader)
+    utest_val(False, response.body.closed)
+    response.close()
+    utest_val(True, response.body.closed)
 
 
 @utest_run

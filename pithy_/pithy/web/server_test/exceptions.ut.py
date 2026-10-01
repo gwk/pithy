@@ -1,6 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from http import HTTPStatus
+from io import BufferedReader
 from sys import argv, executable
 
 import requests
@@ -20,6 +21,19 @@ class BrokenResponse(Response):
     raise RuntimeError('broken response')
 
 
+file_bodies:list[BufferedReader] = []
+
+
+def file_response(cls:type[Response]) -> Response:
+  file = open(__file__, 'rb')
+  try: response = cls(body=file)
+  except:
+    file.close()
+    raise
+  file_bodies.append(file)
+  return response
+
+
 
 class ServerExceptionTestApp(WebApp):
 
@@ -34,6 +48,9 @@ class ServerExceptionTestApp(WebApp):
       case '/raise-not-implemented-empty': raise NotImplementedError
       case '/raise-bad-request': raise BadRequestError('bad input')
       case '/broken-response': return BrokenResponse(body='unreachable', media_type='text/plain')
+      case '/file': return file_response(Response)
+      case '/broken-file-response': return file_response(BrokenResponse)
+      case '/file-state': return Response(body=','.join(str(file.closed) for file in file_bodies))
       case _: return Response(body='not found', status=HTTPStatus.NOT_FOUND, media_type='text/plain')
 
 
@@ -81,6 +98,10 @@ def test_server_exceptions() -> None:
     # A broken Response causes _send_response to fail; the server closes the connection without replying.
     utest_exc(requests.exceptions.ConnectionError, get_status_body, base_url, '/broken-response')
     utest((200, 'ok'), get_status_body, base_url, '/ok')
+    utest(200, lambda: requests.head(f'{base_url}/file', timeout=2).status_code)
+    utest((200, 'True'), get_status_body, base_url, '/file-state')
+    utest_exc(requests.exceptions.ConnectionError, get_status_body, base_url, '/broken-file-response')
+    utest((200, 'True,True'), get_status_body, base_url, '/file-state')
 
     _ = server_proc.flush_merged()
 

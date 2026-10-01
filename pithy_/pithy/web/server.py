@@ -336,8 +336,11 @@ class WebServer:
         method = http_method_bytes_to_strs.get(event.method, '')
         try:
           response = self._handle_connection_cycle(conn, event, method)
-          if self.config.prevent_client_caching: response.set_no_cache_headers()
-          self._send_response(conn, response=response, method=method)
+          try:
+            if self.config.prevent_client_caching: response.set_no_cache_headers()
+            self._send_response(conn, response=response, method=method)
+          finally:
+            response.close()
         finally:
           if self.config.log_access: self._log_access(conn, event, start_time)
           conn.request = None # The request is complete; do not let it linger on the connection.
@@ -510,8 +513,7 @@ class WebServer:
     if may_send_body(method, response.status):
       body = response.body
       if isinstance(body, BufferedReader):
-        try: self._send_body_file(h11_conn, socket, body)
-        finally: body.close()
+        self._send_body_file(h11_conn, socket, body)
       elif body:
         socket.sendall(h11_conn.send(h11_Data(data=cast(bytes, body))))
         #^ bytearray is bytes-like; h11.Data is documented to accept any bytes-like object despite the type being `bytes`.

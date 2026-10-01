@@ -93,8 +93,12 @@ class _FilesServing:
   def serve(self, request:Request, raw_path:str='') -> Response:
     'Serve content from the local file system, applying no-cache headers when configured.'
     response = self.serve_content_from_local_fs(request, raw_path=raw_path)
-    if self.prevent_client_caching or request.prevent_client_caching: response.set_no_cache_headers()
-    return response
+    try:
+      if self.prevent_client_caching or request.prevent_client_caching: response.set_no_cache_headers()
+      return response
+    except:
+      response.close()
+      raise
 
 
   def serve_content_from_local_fs(self, request:Request, *, raw_path:str='') -> Response:
@@ -126,22 +130,30 @@ class _FilesServing:
     try: file = open(local_path, 'rb')
     except (FileNotFoundError, PermissionError): raise ResponseError(status=HTTPStatus.NOT_FOUND)
 
-    assert isinstance(file, BufferedReader)
+    transferred = False
+    response:Response|None = None
+    try:
+      assert isinstance(file, BufferedReader)
+      if self.prevent_client_caching or request.prevent_client_caching:
+        # No-store development mode: never emit validators or 304s, so the client always refetches.
+        response = self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
+      else:
+        stat = os_fstat(file.fileno())
+        etag = file_etag(stat)
+        if not is_request_modified(request, etag=etag, mtime=stat.st_mtime):
+          return Response(status=HTTPStatus.NOT_MODIFIED, headers={'etag':etag}, last_modified=stat.st_mtime)
 
-    if self.prevent_client_caching or request.prevent_client_caching:
-      # No-store development mode: never emit validators or 304s, so the client always refetches.
-      return self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
+        response = self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
+        response.headers.setdefault('etag', etag)
+        response.headers.setdefault('last-modified', format_header_date(stat.st_mtime))
 
-    stat = os_fstat(file.fileno())
-    etag = file_etag(stat)
-    if not is_request_modified(request, etag=etag, mtime=stat.st_mtime):
-      file.close()
-      return Response(status=HTTPStatus.NOT_MODIFIED, headers={'etag':etag}, last_modified=stat.st_mtime)
-
-    response = self.transform_file_from_local_fs(request=request, norm_path=norm_path, local_path=local_path, file=file)
-    response.headers.setdefault('etag', etag)
-    response.headers.setdefault('last-modified', format_header_date(stat.st_mtime))
-    return response
+      transferred = response.body is file
+      return response
+    except:
+      if response is not None: response.close()
+      raise
+    finally:
+      if not transferred: file.close()
 
 
   def transform_file_from_local_fs(self, request:Request, norm_path:str, local_path:str, file:BufferedReader) -> Response:

@@ -2,6 +2,7 @@
 
 from collections.abc import Awaitable, Callable
 from http import HTTPStatus
+from io import BufferedReader
 from time import sleep
 from typing import Any, cast, Iterable, Mapping, overload, Sequence
 
@@ -12,13 +13,15 @@ from starlette.convertors import Convertor, register_url_convertor
 from starlette.datastructures import FormData, QueryParams
 from starlette.exceptions import HTTPException
 from starlette.requests import HTTPConnection, Request
-from starlette.responses import HTMLResponse, RedirectResponse, Response
+from starlette.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
+from starlette.types import Receive, Scope, Send
 
 from ..csv import Quoting, render_csv
 from ..date import Date, parse_time_12hmp, Time, TZInfo
 from ..html import HtmlNode
+from ..http import may_send_body
 from ..json import render_json
 from ..markup import MuChildLax
 from ..transtruct import bool_str_vals
@@ -539,15 +542,36 @@ def request_from_starlette(s_request:Request, conn:BytesConn) -> PithyRequest:
   )
 
 
-def convert_response(p_response:PithyResponse) -> Response:
+def convert_response(p_response:PithyResponse, *, method:str='GET') -> Response:
   'Convert a pithy Response into a Starlette Response, preserving the exact status and headers.'
   body = p_response.body
-  content = b'' if body is None else bytes(body)
-  # Note: BufferedReader (file) bodies are not yet supported; current endpoints return in-memory bodies.
-  # When first needed, wrap the reader in a Starlette StreamingResponse.
-  response = Response(content=content, status_code=p_response.status.value)
+  if not may_send_body(method, p_response.status):
+    p_response.close()
+    response = Response(content=b'', status_code=p_response.status.value)
+  elif isinstance(body, BufferedReader):
+    try:
+      response = _FileStreamingResponse(p_response, body)
+      response.raw_headers = p_response.headers_bytes_list()
+    except:
+      p_response.close()
+      raise
+    return response
+  else:
+    response = Response(content=b'' if body is None else bytes(body), status_code=p_response.status.value)
   response.raw_headers = p_response.headers_bytes_list() # Use pithy's exact wire headers (incl. content-length/type).
   return response
+
+
+class _FileStreamingResponse(StreamingResponse):
+
+  def __init__(self, p_response:PithyResponse, file:BufferedReader) -> None:
+    super().__init__(iter(lambda: file.read(64 * 1024), b''), status_code=p_response.status.value)
+    self._p_response = p_response
+
+
+  async def __call__(self, scope:Scope, receive:Receive, send:Send) -> None:
+    try: await super().__call__(scope, receive, send)
+    finally: self._p_response.close()
 
 
 def _run_body(endpoint:Endpoint, request:PithyRequest) -> PithyResponse:
@@ -580,7 +604,7 @@ def endpoint_adapter(endpoint_cls:type[Endpoint], *, privileges:tuple[str,...]) 
       response = PithyResponse.from_error(e, method=request.method)
     except BodyTooLargeError:
       response = PithyResponse(HTTPStatus.CONTENT_TOO_LARGE, body='Content Too Large', media_type='text/plain')
-    return convert_response(response)
+    return convert_response(response, method=request.method)
 
   # Wrap only when privileged: wrapping a public endpoint would give it a `__wrapped__` and break the invariant
   # that wrapped implies privileged.

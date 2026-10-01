@@ -2,15 +2,18 @@
 
 import asyncio
 from collections.abc import Mapping
+from io import BufferedReader
+from tempfile import TemporaryDirectory
 
 from pithy.web.endpoint import Endpoint
 from pithy.web.request import Request as PithyRequest
 from pithy.web.response import Response as PithyResponse
-from pithy.web.starlette import endpoint_adapter, endpoint_route
+from pithy.web.starlette import convert_response, endpoint_adapter, endpoint_route
 from starlette.authentication import AuthCredentials
 from starlette.exceptions import HTTPException
 from starlette.requests import Request as StarletteRequest
-from starlette.responses import Response as StarletteResponse
+from starlette.responses import Response as StarletteResponse, StreamingResponse
+from starlette.types import Message, Scope
 from utest import utest_run, utest_val
 
 
@@ -88,10 +91,72 @@ class PrivilegedEndpoint(Endpoint):
 
 @utest_run
 def _() -> None:
+  'File responses stream in chunks and close the file after sending.'
+  with TemporaryDirectory() as tmp:
+    path = f'{tmp}/body'
+    content = b'x' * (64 * 1024 + 3)
+    with open(path, 'wb') as writer: writer.write(content)
+    file = open(path, 'rb')
+    assert isinstance(file, BufferedReader)
+    response = convert_response(PithyResponse(body=file))
+    utest_val(True, isinstance(response, StreamingResponse))
+    utest_val(False, file.closed)
+    utest_val((b'content-length', str(len(content)).encode()), response.raw_headers[0])
+
+    messages:list[Message] = []
+    async def receive() -> Message: raise AssertionError('receive should not be called')
+    async def send(message:Message) -> None: messages.append(message)
+    scope:Scope = {'type':'http', 'asgi':{'spec_version':'2.4'}}
+    asyncio.run(response(scope, receive, send))
+    utest_val(content, b''.join(message.get('body', b'') for message in messages[1:]))
+    utest_val([64 * 1024, 3, 0], [len(message.get('body', b'')) for message in messages[1:]])
+    utest_val(True, file.closed)
+
+
+@utest_run
+def _() -> None:
+  'HEAD preserves the file length header but closes the file without streaming it.'
+  with TemporaryDirectory() as tmp:
+    path = f'{tmp}/body'
+    with open(path, 'wb') as writer: writer.write(b'abc')
+    file = open(path, 'rb')
+    response = convert_response(PithyResponse(body=file), method='HEAD')
+    utest_val(b'', response.body)
+    utest_val((b'content-length', b'3'), response.raw_headers[0])
+    utest_val(True, file.closed)
+
+
+@utest_run
+def _() -> None:
+  'A send failure closes a streamed file response.'
+  with TemporaryDirectory() as tmp:
+    path = f'{tmp}/body'
+    with open(path, 'wb') as writer: writer.write(b'abc')
+    file = open(path, 'rb')
+    response = convert_response(PithyResponse(body=file))
+    async def receive() -> Message: raise AssertionError('receive should not be called')
+    async def send(message:Message) -> None: raise RuntimeError('send failed')
+    scope:Scope = {'type':'http', 'asgi':{'spec_version':'2.4'}}
+    try: asyncio.run(response(scope, receive, send))
+    except RuntimeError as exc: utest_val('send failed', str(exc))
+    else: raise AssertionError('expected send failure')
+    utest_val(True, file.closed)
+
+
+@utest_run
+def _() -> None:
   'Adapter: GET with a query param fills fields and returns the body.'
   resp = _run(HelloEndpoint, query='name=alice')
   utest_val(200, resp.status_code)
   utest_val(b'hello alice', resp.body)
+
+
+@utest_run
+def _() -> None:
+  'Adapter: HEAD omits the body and preserves its content length.'
+  resp = _run(HelloEndpoint, method='HEAD', query='name=alice')
+  utest_val(b'', resp.body)
+  utest_val('11', resp.headers['content-length'])
 
 
 @utest_run

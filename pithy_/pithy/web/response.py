@@ -31,6 +31,7 @@ class Response():
   * status: The HTTP status code (default: OK).
   * headers: a dictionary of HTTP headers. The dictionary will be copied by the constructor.
   * body: The response body.
+    A `BufferedReader` body is owned by the response and must be closed by the caller after sending or discarding it.
 
   Additionally, there are keyword parameters for some common headers:
   * media_type: The Content-Type header value.
@@ -107,6 +108,11 @@ class Response():
   def headers_bytes_list(self) -> list[tuple[bytes,bytes]]:
     return [(k.encode('ascii'), (', '.join(str(a) for a in v) if isinstance(v, list) else str(v)).encode('latin1'))
       for (k, v) in self.headers.items()]
+
+
+  def close(self) -> None:
+    'Close an owned file body, if present.'
+    if isinstance(self.body, BufferedReader): self.body.close()
 
 
   def set_connection_close(self) -> Self:
