@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from errno import ENOTCONN
 from http import HTTPStatus
 from io import BufferedReader
 from os import _exit as os_exit
@@ -386,7 +387,10 @@ class WebServer:
     socket = conn.socket
     try:
       if conn.h11_conn.their_state is h11_SEND_BODY: # The body was not fully read, so unread data may be buffered.
-        socket.shutdown(SHUT_WR)
+        try: socket.shutdown(SHUT_WR)
+        except OSError as exc:
+          if exc.errno == ENOTCONN: return # The client disconnected; there is nothing left to drain.
+          raise
         socket.settimeout(self.config.drain_timeout)
         if not conn.drain_unread_body(max_bytes=self.config.drain_max_bytes):
           logI('Unread request body was not drained; closing connection abruptly.', client_addr=conn.client_addr)
