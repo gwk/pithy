@@ -7,6 +7,8 @@ pkgs := 'pyrrhus tolkien tomul pithy utest iotest taptools crafts wu legs tap_ba
 
 pkg_srcs := 'pyrrhus_/pyrrhus tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze tap_betterstack_/tap_betterstack tap_ops_/tap_ops'
 
+typecheck_other_srcs := 'ops perf tap_backblaze_/test-integration test-diff tools'
+
 pkg_tests_fast := 'pithy_/test taptools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
 
@@ -134,13 +136,17 @@ test-diff-data:
   rm -rf _build/test-diff/*
   python3 test-diff/collect-diff-examples.py ../pithy ../quilt
 
-typecheck: typecheck-py-packages typecheck-other
+typecheck: check-typecheck-collisions typecheck-py-packages typecheck-other
+
+# Detect modules hidden by same-stem directories in mypy's recursive source discovery.
+check-typecheck-collisions:
+  python3 build/check-typecheck-collisions.py {{pkg_srcs}} {{typecheck_other_srcs}}
 
 typecheck-py-packages:
   python3 -m mypy {{pkg_srcs}}
 
 typecheck-other:
-  python3 -m mypy ops perf tap_backblaze_/test-integration test-diff tools
+  python3 -m mypy {{typecheck_other_srcs}}
 
 typecheck-js:
   tsc
