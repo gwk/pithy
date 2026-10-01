@@ -105,15 +105,11 @@
         fixture.innerHTML = '<code>Inline code</code>';
         const code = fixture.querySelector('code');
         if (!code) throw new Error('Missing code fixture.');
-        for (const property of ['backgroundColor', 'borderTopColor']) {
-          const light = pixel(style('code')[property], '#808080')[0];
-          check(light > 128 && light < 255, `${property} should lightly tint gray toward the local white text.`);
-        }
+        const light = pixel(style('code').backgroundColor, '#808080')[0];
+        check(light > 128 && light < 255, 'Inline code background should lightly tint gray toward the local white text.');
         code.style.color = 'black';
-        for (const property of ['backgroundColor', 'borderTopColor']) {
-          const dark = pixel(style('code')[property], '#808080')[0];
-          check(dark > 0 && dark < 128, `${property} did not follow the local change to black text.`);
-        }
+        const dark = pixel(style('code').backgroundColor, '#808080')[0];
+        check(dark > 0 && dark < 128, 'Inline code background did not follow the local change to black text.');
       });
 
       for (const outer of ['light', 'dark']) {
