@@ -41,15 +41,29 @@ In numbered mode, choose a symbol that is not followed by digits in body text.
 Each section provides two body ranges:
 * `raw_body` is the complete lines between the header line and the next header, for whitespace-sensitive syntaxes.
 * `body` omits leading blank lines and trailing whitespace, but keeps the indentation of the first line and a final newline.
+
+# Entries
+
+`parse_entries` applies the same principle within a section body: it splits a range of lines into entries by line shape alone.
+* A line that begins at column 0 with a comment prefix is skipped.
+* Any other line that begins at column 0 with a non-whitespace character begins an entry.
+* A line that begins with whitespace or a continuation prefix continues the current entry.
+* Blank lines are skipped and do not end an entry.
+
+An error inside one entry therefore cannot affect how the following entries are split.
+Each entry is a contiguous range, so comment lines and blank lines between the lines of an entry lie within it.
+It is up to the entry syntax to ignore them.
 '''
 
 from dataclasses import dataclass
-from typing import Iterator, Literal, overload
+from typing import Iterable, Iterator, Literal, overload
 
 from tolkien import _Text, Source, SyntaxError
 
 
-_context_keywords_ = ['header', 'heading', 'markdown', 'multiple syntaxes', 'nested sections', 'section']
+_context_keywords_ = [
+  'continuation lines', 'entries', 'header', 'heading', 'line framing', 'markdown', 'multiple syntaxes', 'nested sections',
+  'section']
 _context_status_ = 'experimental'
 
 
@@ -166,6 +180,60 @@ def header_level(text:_AnyText, line_slc:slice, symbol:str|bytes, *, numbered:bo
     if not level: return None
   if pos < end and not text[pos:pos+1].isspace(): return None
   return (level, pos)
+
+
+@overload
+def parse_entries(source:Source[_Text], slc:slice|None=None, *, continuations:Iterable[str|bytes]=(),
+ comments:Iterable[str|bytes]=(), raises:Literal[False]=False) -> Iterator[slice|SyntaxError]: ...
+
+@overload
+def parse_entries(source:Source[_Text], slc:slice|None=None, *, continuations:Iterable[str|bytes]=(),
+ comments:Iterable[str|bytes]=(), raises:Literal[True]) -> Iterator[slice]: ...
+
+
+def parse_entries(source:Source, slc:slice|None=None, *, continuations:Iterable[str|bytes]=(),
+ comments:Iterable[str|bytes]=(), raises:bool=False) -> Iterator[slice|SyntaxError]:
+  '''
+  Given a text source and an optional range, yield the range of each entry.
+  `slc` must begin at the start of a line; if it is omitted then the whole text is split.
+  `continuations` are prefixes that mark a line at column 0 as a continuation of the current entry.
+  `comments` are prefixes that mark a line at column 0 as a comment to be skipped.
+  Each entry range begins at column 0 of its first line and ends after the last non-whitespace character of its last line.
+  A continuation line that has no preceding entry is a syntax error.
+  If `raises` is True, SyntaxError exceptions are raised; otherwise they are yielded, interleaved with the entry ranges.
+  '''
+  text = source.text
+  pos, end, step = (slc or slice(None)).indices(len(text))
+  if step != 1: raise ValueError(f'slice step is not supported: {slc!r}')
+  newline = '\n' if isinstance(text, str) else b'\n'
+  if pos > 0 and text[pos-1:pos] != newline: raise ValueError(f'range does not begin at the start of a line: {slc!r}')
+  cont_prefixes = tuple(_coerce_to_text(text, p, 'continuation prefix') for p in continuations)
+  comment_prefixes = tuple(_coerce_to_text(text, p, 'comment prefix') for p in comments)
+
+  entry_pos = -1 # The start of the current entry, or -1 if there is none.
+  entry_end = -1
+  while pos < end:
+    newline_pos = text.find(newline, pos, end)
+    line_end = end if newline_pos == -1 else newline_pos + 1
+    content = _trim(text, pos, line_end)
+    is_indented = (content.start > pos)
+    line_pos = pos
+    pos = line_end
+    if content.start == content.stop: continue # Blank.
+    if not is_indented and text.startswith(comment_prefixes, line_pos, line_end): continue
+    if is_indented or text.startswith(cont_prefixes, line_pos, line_end):
+      if entry_pos == -1:
+        err = SyntaxError(syntax=content, msg='Continuation line has no preceding entry.')
+        if raises: raise err
+        yield err
+      else:
+        entry_end = content.stop
+      continue
+    if entry_pos != -1: yield slice(entry_pos, entry_end)
+    entry_pos = line_pos
+    entry_end = content.stop
+
+  if entry_pos != -1: yield slice(entry_pos, entry_end)
 
 
 _digits = frozenset('0123456789') | frozenset(bytes([d]) for d in b'0123456789')
