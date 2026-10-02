@@ -74,9 +74,3 @@ Legs is a lexer generator. It is currently in an experimental state.
 
 ## Writeup
 A markup language similar to Markdown. This is currently in an experimental state. I have plans to rewrite it but it has been on the back burner for years.
-
-
-# Misc
-
-## UnicodeData
-`unicode-data` holds historical versions of the unicode character database.
