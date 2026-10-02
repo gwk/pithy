@@ -241,8 +241,15 @@ class Source(Generic[_Text]):
     assert pos <= end
     assert line_pos <= pos
 
-    line_str = self.get_line_str(line_pos, line_end)
-    assert end <= line_pos + len(line_str)
+    assert end <= line_end
+
+    # Positions index the text, which may be bytes, whereas the diagnostic is laid out in characters.
+    # Decode the parts separately so that the columns and underline are measured in characters.
+    before_str = self.get_line_str(line_pos, pos)
+    within_str = self.get_line_str(pos, end)
+    line_str = before_str + within_str + self.get_line_str(end, line_end)
+    col = len(before_str)
+    col_end = col + len(within_str)
 
     tab = '\t'
     newline = '\n'
@@ -252,9 +259,8 @@ class Source(Generic[_Text]):
 
     src_line:str
     if line_str and line_str[-1] == newline:
-      last_idx = len(line_str) - 1
       s = line_str[:-1]
-      if pos == line_pos + last_idx or end == line_end:
+      if pos == line_end - 1 or end == line_end:
         src_line = s + "\u23CE" # RETURN SYMBOL.
       else:
         src_line = s
@@ -266,24 +272,20 @@ class Source(Generic[_Text]):
     src_bar = "| " if src_line else "|"
 
     under_chars = []
-    for char in line_str[:(pos - line_pos)]:
+    for char in before_str:
       under_chars.append(tab if char == tab else space)
     if pos >= end:
       under_chars.append(caret)
     else:
-      for _ in range(pos, end):
-        under_chars.append(tilde)
+      under_chars.append(tilde * len(within_str))
     underline = ''.join(under_chars)
 
-    def col_str(pos:int) -> str:
-      return str((pos - line_pos) + 1)
-
     pre = (prefix + ': ') if prefix else ''
-    col = f'{col_str(pos)}-{col_str(end)}' if pos < end else col_str(pos)
+    col_desc = f'{col+1}-{col_end+1}' if pos < end else str(col+1)
 
     msg_space = "" if (not msg or msg.startswith('\n')) else " "
     name_colon = (self.name + ':') if self.name else ''
-    return f'{pre}{name_colon}{line_idx+1}:{col}:{msg_space}{msg}\n{src_bar}{src_line}\n  {underline}\n'
+    return f'{pre}{name_colon}{line_idx+1}:{col_desc}:{msg_space}{msg}\n{src_bar}{src_line}\n  {underline}\n'
 
 
   def bytes_for(self, token:Token, offset:int=0) -> bytes:
