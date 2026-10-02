@@ -288,9 +288,12 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
 
   # Refinement.
   remaining = list(init_sets) # distinguishing sets used to refine the partition.
+  remaining_ids = {id(part) for part in remaining} # Block identity survives mutation; part_ids_to_parts keeps blocks alive.
   while remaining:
+    active_part = remaining.pop()
+    remaining_ids.remove(id(active_part))
     # Refinement can split the active block. Every byte must use the original splitter, not its mutated remainder.
-    s = tuple(remaining.pop())
+    s = tuple(active_part)
     for char in alphabet:
       # Find all nodes `m` that transition via `char` to any node `n` in `s`.
       dsts = set(chain.from_iterable(rev_transitions[node][char] for node in s))
@@ -298,12 +301,11 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       #assert set(dsts_brute) == dsts
       if not dsts: continue # no refinement.
       for a, b in refine(dsts):
-        if len(a) < len(b): # Prefer the smaller set to continue refining with.
-          if a not in remaining: remaining.append(a)
-          elif b not in remaining: remaining.append(b)
-        else:
-          if b not in remaining: remaining.append(b)
-          elif a not in remaining: remaining.append(a)
+        # The intersection a is new; b retains the original block's identity and any existing worklist entry.
+        # If b is queued, queue a too. Otherwise queue only the smaller half, preferring b on ties.
+        next_part = a if id(b) in remaining_ids or len(a) < len(b) else b
+        remaining.append(next_part)
+        remaining_ids.add(id(next_part))
 
   validate_partition()
 
