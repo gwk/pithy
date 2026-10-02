@@ -6,8 +6,6 @@
 # Context.
 AGENTS.md
 CLAUDE.md
-.agents/skills
-.claude/skills
 context/index.json
 context/index.lock
 
