@@ -11,6 +11,11 @@ For each token that the lexer produces:
   if a literal pattern is among those matched, then the kind is that of a literal pattern;
 * if the NFA matches no prefix then the token kind is `invalid` or `incomplete`.
 
+When several patterns match the same text, the lexer chooses the most specific one: the pattern whose language is a strict
+subset of the others. For each such choice that is observed, strings are generated from the chosen pattern,
+and the NFA must match every one of them as the other kind too.
+This can refute a wrong choice but cannot prove a right one, because inclusion is only sampled.
+
 The inputs come from four sources:
 * strings generated to match each pattern, which must lex as a single token;
 * sequences of such strings that follow the mode transitions, so that the text is well nested;
@@ -46,6 +51,7 @@ class PropsStats:
   nested_examples:int = 0
   sequence_examples:int = 0
   coverage_inputs:int = 0
+  overlap_examples:int = 0
 
 
 
@@ -66,6 +72,7 @@ class GrammarChecker:
     if automata is None: automata = list(build_mode_automata(grammar))
     self.automata = {a.mode: a for a in automata}
     self.Lexer = Lexer or build_lexer_class_for_automata('CheckedLexer', grammar, automata)
+    self.overlaps = set[tuple[str,str,str]]() # (mode, chosen kind, other kind) for each choice observed by `check_tokens`.
 
 
   def check_all(self, max_examples:int=100, derandomize:bool=True, coverage_limit:int|None=None) -> PropsStats:
@@ -76,6 +83,7 @@ class GrammarChecker:
     `coverage_limit` caps the number of DFA coverage inputs per mode.
     '''
     stats = PropsStats()
+    self.overlaps.clear()
     hyp_settings = settings(max_examples=max_examples, derandomize=derandomize, database=None, deadline=None)
 
     def run[T](strategy:SearchStrategy[T], check:Callable[[T],None]) -> None:
@@ -97,6 +105,10 @@ class GrammarChecker:
       stats.sequence_examples += 1
       self.check_tokens(text, mode)
 
+    def check_overlap(mode:str, kind:str, other_kind:str, text:str) -> None:
+      stats.overlap_examples += 1
+      self.check_inclusion(text.encode(), mode, kind, other_kind)
+
     text_strategy = grammar_text_strategy(self.grammar)
     for mode, automata in self.automata.items():
       for kind in sorted(self.grammar.modes[mode]):
@@ -108,6 +120,10 @@ class GrammarChecker:
       for text in dfa_coverage_inputs(automata.min_dfa, limit=coverage_limit):
         stats.coverage_inputs += 1
         self.check_tokens(text, mode)
+
+    for mode, kind, other_kind in sorted(self.overlaps): # The overlaps were recorded by the checks above.
+      strategy = pattern_strategy(self.grammar.patterns[kind])
+      if not strategy.is_empty: run(strategy, partial(check_overlap, mode, kind, other_kind))
 
     return stats
 
@@ -125,8 +141,22 @@ class GrammarChecker:
         f'tokens: {[(t.kind, t.pos, t.end) for t in tokens]}.')
 
 
+  def check_inclusion(self, text:bytes, mode:str, kind:str, other_kind:str) -> None:
+    '''
+    Check that `text`, which was generated to match the pattern of `kind`, is also matched as `other_kind`.
+    The lexer chose `kind` over `other_kind` for some text that both match, which is only correct if `kind` is more specific.
+    '''
+    length, kinds = nfa_longest_match(self.automata[mode].nfa, text, 0)
+    if length != len(text) or other_kind not in kinds:
+      raise PropertyError(f'mode {mode!r}: the lexer chose {kind!r} over {other_kind!r} where both match, '
+        f'but {kind!r} is not more specific: {text!r} matches {kind!r} and not {other_kind!r}.')
+
+
   def check_tokens(self, text:bytes, mode:str) -> None:
-    'Check the tokens that the lexer produces for `text`, starting in `mode`.'
+    '''
+    Check the tokens that the lexer produces for `text`, starting in `mode`.
+    Each choice between several matching kinds is recorded in `overlaps`.
+    '''
     stack:list[tuple[str,str|None]] = [(mode, None)] # An independent simulation of the mode stack: (mode, pop_kind).
     pos = 0
     for token in self.Lexer(Source('input', text), mode=mode):
@@ -140,11 +170,12 @@ class GrammarChecker:
       if token.mode != curr_mode: raise fail(f'token mode is {token.mode!r}; expected {curr_mode!r}.')
 
       nfa = self.automata[curr_mode].nfa
-      length, kinds = nfa_longest_match(nfa, text, pos)
-      kinds = (kinds & nfa.lit_pattern_names) or kinds # A literal pattern takes precedence.
+      length, all_kinds = nfa_longest_match(nfa, text, pos)
+      kinds = (all_kinds & nfa.lit_pattern_names) or all_kinds # A literal pattern takes precedence.
       if length:
         if token.end - token.pos != length: raise fail(f'NFA longest match is {length} bytes; kinds: {sorted(kinds)}.')
         if token.kind not in kinds: raise fail(f'NFA matches kinds: {sorted(kinds)}.')
+        self.overlaps.update((curr_mode, token.kind, other_kind) for other_kind in all_kinds if other_kind != token.kind)
       elif token.kind not in ('invalid', 'incomplete'):
         raise fail('NFA matches no prefix; expected `invalid` or `incomplete`.')
 
