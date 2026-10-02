@@ -1,1 +1,0 @@
-error: grammar has no mode named 'main'; specify the start mode with `-mode`. modes: nums, words.
