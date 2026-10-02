@@ -2,7 +2,7 @@
 
 Legs is a lexer generator. It takes as input a `.legs` grammar file consisting of pattern definitions, and outputs lexer source code. The goal of the project is the correct generation of Unicode-aware lexers.
 
-The output languages are selected with `-langs` or by the extension of the `-output` path:
+The output languages are selected with `-langs`, separated by commas, or by the extension of the `-output` path:
 * `python`: a table-driven lexer. This is the reference implementation.
 * `swift`: a lexer compiled to a switch statement.
 * `python-re`: a lexer that uses compiled regular expressions. It is experimental and slower than the table-driven lexer.
@@ -68,7 +68,7 @@ legs-test grammar.legs -mode main 'first input' 'second input'
 Each input is lexed by a reference lexer built in-process, and the tokens are printed.
 The Python and Swift lexers are then generated and run on the same inputs.
 Any difference from the reference tokens is reported and causes a nonzero exit code.
-Use `-langs` to choose the generated lexers, and `-mode` for a grammar that has no `main` mode.
+Use `-langs` to choose the generated lexers, e.g. `-langs python,python-re`, and `-mode` for a grammar that has no `main` mode.
 
 With `-props`, `legs-test` also checks the reference lexer against the NFA of each mode, using inputs generated from the grammar:
 ```

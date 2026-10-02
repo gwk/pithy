@@ -50,8 +50,8 @@ class LegsTestCmd(Cmd):
     doc='A string to lex. Write `--` before inputs that begin with a dash.')
   build_dir:str|None = opt(default=None,
     doc='Directory in which to keep the generated sources; defaults to a temporary directory.')
-  langs:list[str] = opt(default_factory=list, metavar='LANG',
-    doc=f'Language of a generated lexer to test; repeatable. Defaults to {" and ".join(default_langs)}.')
+  langs:list[str] = opt(default_factory=list, metavar='LANG', split=',',
+    doc=f'Languages of the generated lexers to test, separated by commas. Defaults to {",".join(default_langs)}.')
   mode:str = opt(default='main', doc='Mode in which lexing starts.')
   props:bool = flag(doc='Check the properties of the reference lexer using generated inputs.')
   examples:int = opt(default=100, doc='The number of examples to generate per pattern and per mode for `-props`.')
