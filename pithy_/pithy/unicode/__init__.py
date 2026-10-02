@@ -3,6 +3,8 @@
 from itertools import chain
 from typing import Iterable
 
+from .data import blocks
+
 
 # use pairs instead of real range objects because they are sortable, and faster to load in the interpreter.
 CodeRange = tuple[int, int]
@@ -16,56 +18,6 @@ unicode_range = range(0x110000)
 high_surrogates = (0xD800, 0xDC00)
 low_surrogates  = (0xDC00, 0xE000)
 surrogates = (high_surrogates[0], low_surrogates[1])
-
-
-planes:tuple[CodeRanges, ...] = (
-  ( # 0: Basic Multilingual Plane.
-    # Note: the surrogates range is excluded because those code points are not legally encodable.
-    (0x0000, surrogates[0]),
-    (surrogates[1], 0x10000),
-  ),
-  ( # 1: Supplementary Multilingual Plane.
-    (0x10000, 0x15000),
-    (0x16000, 0x19000),
-    (0x1B000, 0x1C000),
-    (0x1D000, 0x20000),
-  ),
-  ( # 2: Supplementary Ideographic Plane.
-    (0x20000, 0x2D000),
-    (0x2F000, 0x30000),
-  ),
-  (), # 3: Unassigned.
-  (), # 4: Unassigned.
-  (), # 5: Unassigned.
-  (), # 6: Unassigned.
-  (), # 7: Unassigned.
-  (), # 8: Unassigned.
-  (), # 9: Unassigned.
-  (), # 10: Unassigned.
-  (), # 11: Unassigned.
-  (), # 12: Unassigned.
-  (), # 13: Unassigned.
-  ( # 14: Supplement­ary Special-purpose Plane.
-    (0xE0000, 0xE1000),
-  ),
-  ( # 15: Supplement­ary Private Use Area Plane A (SPUA-A).
-    (0xF0000, 0x100000),
-  ),
-  ( # 16: Supplement­ary Private Use Area Plane A (SPUA-B).
-    (0x100000, 0x110000),
-  ),
-)
-
-abbreviated_planes:dict[str, CodeRanges]  = {
-  'BMP': planes[0],
-  'SMP': planes[1],
-  'SIP': planes[2],
-  'SSP': planes[14],
-  'SPUA_A': planes[15],
-  'SPUA_B': planes[16],
-}
-
-all_plane_ranges = tuple(chain(*(planes)))
 
 
 def codes_for_ranges(seq:Iterable[CodeRange]) -> Iterable[int]:
@@ -132,3 +84,30 @@ def intersect_sorted_ranges(seq_a:Iterable[CodeRange], seq_b:Iterable[CodeRange]
         yield (s, be)
         a, ae = (be, ae) # if b is empty it will get dropped on next pass, assuming seq_b is coalesced.
   except StopIteration: return
+
+
+def _mk_planes() -> tuple[CodeRanges, ...]:
+  '''
+  The ranges of each plane are the blocks of the current Unicode version, widened to multiples of 0x1000 and coalesced.
+  The surrogates are excluded because those code points are not legally encodable.
+  '''
+  encodable = ((0, surrogates[0]), (surrogates[1], unicode_range.stop))
+  plane_ranges:list[list[CodeRange]] = [[] for _ in range(17)]
+  for low, end in sorted(blocks.values()):
+    plane_ranges[low >> 16].append((low & ~0xFFF, (end + 0xFFF) & ~0xFFF))
+  return tuple(tuple(intersect_sorted_ranges(coalesce_sorted_ranges(ranges), encodable)) for ranges in plane_ranges)
+
+
+planes = _mk_planes()
+
+abbreviated_planes:dict[str, CodeRanges] = {
+  'BMP': planes[0], # Basic Multilingual Plane.
+  'SMP': planes[1], # Supplementary Multilingual Plane.
+  'SIP': planes[2], # Supplementary Ideographic Plane.
+  'TIP': planes[3], # Tertiary Ideographic Plane.
+  'SSP': planes[14], # Supplementary Special-purpose Plane.
+  'SPUA_A': planes[15], # Supplementary Private Use Area A.
+  'SPUA_B': planes[16], # Supplementary Private Use Area B.
+}
+
+all_plane_ranges = tuple(chain(*(planes)))
