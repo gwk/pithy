@@ -8,7 +8,7 @@
 .SECONDARY: # Disable deletion of intermediate products.
 .SUFFIXES: # Disable implicit rules.
 
-.PHONY: clean clean-grammars clean-legs-data gen gen-data gen-grammars gen-sqlite-extracted-sql help vscode-links vscode-insider-links
+.PHONY: clean clean-grammars clean-legs-data gen gen-data gen-grammars gen-sqlite-extracted-sql help
 
 # First target of a makefile is the default.
 _default: help

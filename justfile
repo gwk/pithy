@@ -164,11 +164,5 @@ uninstall:
 update-uv-lock:
   uv lock
 
-vscode-links:
-  ln -fs $$PWD/vscode/* ~/.vscode/extensions
-
-vscode-insider-links:
-  ln -fs $$PWD/vscode/* ~/.vscode-insiders/extensions
-
 utest:
   python3 -m utest {{pkg_srcs}}
