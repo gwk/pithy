@@ -1,5 +1,7 @@
 # License: Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+# Patterns
+
 // The lexer for the contents of legs grammar files.
 
 // A legs grammar file is not lexed as a whole.
@@ -8,8 +10,6 @@
 // * `pattern` for the pattern expression of a patterns entry, following the entry name and colon;
 // * `decl` for a modes or transitions entry.
 // There is no `main` mode because no single mode can lex a whole file.
-
-# Patterns
 
 newline: \n
 spaces: \s+
