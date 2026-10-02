@@ -11,7 +11,7 @@
 # Legs perf tests.
 
 
-.PHONY: _default clean help perf-%
+.PHONY: _default clean help perf-% $(perf_input)
 
 _default: help
 
@@ -30,8 +30,15 @@ legs_srcs := $(legs_dir)/*.py $(legs_dir)/bin/*.py
 runs := 8
 perf-%-py-re: runs := 2
 
-perf-%: _build/% # <grammar>-<lang>
-	time-runs $(runs) $^ ../../unicode-data/11_00/UnicodeData.txt
+# The lexer input is all of the tracked text in the repository, concatenated. It is rebuilt for every run.
+perf_input := _build/repo-text.txt
+
+perf-%: _build/% $(perf_input) # <grammar>-<lang>
+	time-runs $(runs) $< $(perf_input)
+
+$(perf_input):
+	mkdir -p _build
+	cd ../.. && git grep -Ilz '' | xargs -0 cat > perf/legs/$@
 
 _build/%-py-table: _build/%.py main.py
 	echo '#!/usr/bin/env python3' > $@
