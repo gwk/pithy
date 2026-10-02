@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from tolkien import Source, Token
-from utest import utest
+from tolkien import Diagnostic, Source, Token
+from utest import utest, utest_val
 
 
 def token(pos:int, end:int) -> Token: return Token(pos=pos, end=end, mode='main', kind='word')
@@ -69,14 +69,14 @@ test:1:5: MSG
       ^
 ''', bytes_source.diagnostic, (token(5, 5), 'MSG'))
 
-# A multiline token is reported as two diagnostics.
+# A multiline token is reported as two diagnostics. A tab within the token is copied into the marks.
 utest('''\
 test:1:3-8: MSG
 | a © bc\u23ce
     ~~~~~
 test:2:1-4: ending here.
 | d\té f\u23ce\u0353
-  ~~~
+  ~\t~
 ''', bytes_source.diagnostic, (token(2, 12), 'MSG'))
 
 # The prefix precedes the source name.
@@ -202,8 +202,8 @@ test_split('3-4', '  ~', 2, 3) # The first byte alone.
 test_split('3-5', '  ~~', 3, 5) # The start is widened backward.
 test_split('1-4', '~~~', 0, 3) # The end is widened forward.
 test_split('5-6', '    ~', 6, 7) # The middle byte of three.
-test_split('7-8', '      ~', 10, 12) # The middle bytes of four.
-test_split('3-8', '  ~~~~~', 3, 10) # Both ends.
+test_split('7-8', '      ~~', 10, 12) # The middle bytes of four; the character is two columns wide.
+test_split('3-8', '  ~~~~~~', 3, 10) # Both ends.
 test_split('5', '    ^', 6, 6) # A zero-length token moves to the start of the character.
 
 # Malformed text never raises; undecodable bytes are shown as replacement characters.
@@ -258,3 +258,43 @@ test:2:1-2: ending here.
 | b\u23ce\u0353
   ~
 ''', 'a\nb', 0, 9, name='test')
+
+
+# The marks are aligned by terminal column: wide characters occupy two columns; combining marks and format characters none.
+def test_width(exp_cols:str, exp_marks:str, text:str, sub:str) -> None:
+  pos = text.index(sub)
+  exp = f'test:1:{exp_cols}: MSG\n| {text}\n  {exp_marks}\n'
+  utest(exp, Source(name='test', text=text, show_missing_newline=False).diagnostic, (token(pos, pos+len(sub)), 'MSG'),
+    _utest_label=repr(text))
+
+test_width('3-4', '    ~', '\u4e2d\u6587b', 'b') # CJK characters before the token.
+test_width('2-4', ' ~~~~', 'a\u4e2d\u6587b', '\u4e2d\u6587') # CJK characters within the token.
+test_width('4-5', '  ~', 'e\u0301 b', 'b') # A combining mark before the token.
+test_width('1-3', '~', 'e\u0301 b', 'e\u0301') # A combining mark within the token.
+test_width('2-3', ' ~', 'e\u0301 b', '\u0301') # A token of zero-width characters still gets a mark.
+test_width('3-4', ' ~', 'a\u200db', 'b') # A zero-width joiner before the token.
+test_width('2-3', '  ~', '\U0001f600b', 'b') # An emoji before the token.
+test_width('1-4', '~\t~', 'a\tb', 'a\tb') # A tab within the token.
+
+# The caller can supply the width function.
+utest('test:1:3-4: MSG\n| \u4e2d\u6587b\u23ce\u0353\n    ~\n', Source(name='test', text='\u4e2d\u6587b').diagnostic,
+  (token(2, 3), 'MSG'), char_width=lambda char: 1)
+
+
+# The structured pieces.
+utest_val([
+  Diagnostic(prefix='PRE', name='test', line_idx=0, msg='MSG', before='a ', within='\u00a9 bc', after='',
+    newline_symbol='\u23ce', is_newline_within=True),
+  Diagnostic(prefix='PRE', name='test', line_idx=1, msg='ending here.', before='', within='d\t\u00e9', after=' f',
+    newline_symbol='\u23ce\u0353', is_newline_within=False),
+], bytes_source.diagnostics((token(2, 12), 'MSG'), None, prefix='PRE'))
+
+d_range, d_end = bytes_source.diagnostics((token(2, 12), 'MSG'), prefix='PRE')
+utest_val('PRE: test:1:3-8:', d_range.location)
+utest_val((2, 7, False), (d_range.col, d_range.col_end, d_range.is_point))
+
+d_point, = str_source.diagnostics((token(4, 4), 'MSG'))
+utest_val(Diagnostic(prefix='', name='test', line_idx=0, msg='MSG', before='a \u00a9 ', within='', after='bc',
+  newline_symbol='', is_newline_within=False), d_point)
+utest_val('test:1:5:', d_point.location)
+utest_val((4, 4, True), (d_point.col, d_point.col_end, d_point.is_point))
