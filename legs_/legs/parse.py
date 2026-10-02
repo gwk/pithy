@@ -26,7 +26,7 @@ from pithy.parse import Adjacency, Atom, Infix, Left, ParseError, Parser, Preced
 from pithy.sectsyn import parse_entries, parse_sections, SectIndices
 from pithy.unicode import CodeRanges, codes_for_ranges
 from pithy.unicode.charsets import unicode_charsets
-from tolkien import get_syntax_slc, Source, Syntax, SyntaxError, SyntaxMsg, Token
+from tolkien import get_syntax_slc, LexerProtocol, Source, Syntax, SyntaxError, SyntaxMsg, Token
 
 from . import KindModeTransitions, ModeTransitions
 from .patterns import CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern, SeqPattern, StarPattern
@@ -231,11 +231,13 @@ pattern_lexer = Lexer(flags='mx',
     esc     = r'\\[^\n]',
     backslash = r'\\',
     char    = r'[!-~]',
+    charset_char = r'[!-~]',
   ),
   modes=[
     LexMode('pattern', kinds=[*dropped_kinds,
       'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char']),
-    LexMode('charset', kinds=[*dropped_kinds, 'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'char']),
+    LexMode('charset', kinds=[*dropped_kinds,
+      'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'charset_char']),
   ],
   transitions=[
     LexTrans(('pattern', 'charset'), kind='brack_o', mode='charset', pop='brack_c', consume=True),
@@ -243,8 +245,12 @@ pattern_lexer = Lexer(flags='mx',
 )
 
 
-def build_pattern_parser() -> Parser:
-  return Parser(pattern_lexer,
+def build_pattern_parser(lexer:LexerProtocol=pattern_lexer) -> Parser:
+  '''
+  Build the parser for pattern expressions.
+  `lexer` can be any lexer that produces the token kinds of `pattern_lexer`, such as the one built from `grammars/legs.legs`.
+  '''
+  return Parser(lexer,
     drop=dropped_kinds,
     literals=('brack_o', 'brack_c', 'paren_o', 'paren_c'),
     rules=dict(
@@ -282,7 +288,7 @@ def build_pattern_parser() -> Parser:
       ref=Atom('ref',       transform=transform_ref),
 
       # Charset atoms.
-      char_cs=Atom('char',  transform=transform_cs_char),
+      char_cs=Atom('charset_char', transform=transform_cs_char),
       esc_cs=Atom('esc',    transform=transform_cs_esc),
       ref_cs=Atom('ref',    transform=transform_cs_ref),
     ),
