@@ -6,9 +6,12 @@ newline: \n
 spaces: \s+
 comment: / / $Ascii_Readable*
 
-section_label_patterns:     \# \s* [Pp]atterns
-section_label_modes:        \# \s* [Mm]modes
-section_label_transitions:  \# \s* [Tt]ransitions
+// A section header is a `#` at the start of a line, followed by a space and the section name.
+// This flat grammar cannot express line anchoring; see `legs.parse` for the actual framing rules.
+section_label_license:      \# \s License
+section_label_patterns:     \# \s Patterns
+section_label_modes:        \# \s Modes
+section_label_transitions:  \# \s Transitions
 
 sym: $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
 colon: :
