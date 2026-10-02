@@ -20,7 +20,7 @@ from tolkien import Source
 from utest import utest, utest_exc, utest_seq_exc, utest_val
 
 
-repo_dir = dirname(dirname(dirname(__file__)))
+repo_dir = dirname(dirname(dirname(dirname(__file__))))
 grammar_path = f'{repo_dir}/grammars/legs.legs'
 
 with open(grammar_path) as f: LegsLexer = build_lexer_class('LegsLexer', parse_legs(grammar_path, f.read()))
