@@ -1,6 +1,7 @@
 {
+  'cmd': 'python3 -m legs.bin.legs_test $NAME.legs',
   'args': [
-    '-test', 'a b c',
-    '-test', 'abc def',
+    'a b c',
+    'abc def',
   ],
 }

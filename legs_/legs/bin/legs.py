@@ -4,7 +4,7 @@
 from time import perf_counter
 
 from pithy.cmdparse import Cmd, flag, opt, pos
-from pithy.io import errL, errLL, errSL, errZ, outL, outZ
+from pithy.io import errL, errLL, errSL, outL
 from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.strings import pluralize
@@ -42,6 +42,7 @@ class LegsCmd(Cmd):
   lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
 
   Options that accept multiple values are repeated, e.g. `-langs python -langs swift`.
+  Use `legs-test` to run the generated lexers on test inputs and compare them.
   A value that begins with a dash must be written as `-option=VALUE`.
   '''
 
@@ -53,13 +54,10 @@ class LegsCmd(Cmd):
   encoding:str = opt(default='utf-8', doc='Encoding of the input file.')
   langs:list[str] = opt(default_factory=list, metavar='LANG', doc='Target language for which to generate a lexer; repeatable.')
   match:list[str] = opt(default_factory=list, metavar='STRING', doc='Attempt to lex the argument string; repeatable.')
-  mode:str|None = opt(default=None, doc='Mode with which to lex the arguments to `-match` or `-test`; defaults to `main`.')
+  mode:str|None = opt(default=None, doc='Mode with which to lex the arguments to `-match`; defaults to `main`.')
   output:str|None = opt(default=None, doc='Path to output generated source.')
   patterns:list[str] = opt(default_factory=list, metavar='PATTERN', doc='Specify a legs pattern for quick testing; repeatable.')
   stats:bool = flag(doc='Print statistics about the generated automata.')
-  test:list[str] = opt(default_factory=list, metavar='STRING',
-    doc='Generate testing source code for the specified languages or else all testable languages;'
-    ' run each test lexer on the argument string; repeatable.')
   type_prefix:str = opt(default='', doc='Type names prefix for generated source code.')
 
 
@@ -70,15 +68,14 @@ class LegsCmd(Cmd):
 def run_legs(args:LegsCmd) -> None:
   dbg = args.dbg
 
-  if args.mode and not (args.match or args.test):
-    exit('`-mode` option only valid with `-match` or `-test`.')
-  start_mode = args.mode or 'main' # The mode in which `-match` and `-test` start lexing.
+  if args.mode and not args.match:
+    exit('`-mode` option only valid with `-match`.')
+  start_mode = args.mode or 'main' # The mode in which `-match` starts lexing.
 
   if args.match and args.output: exit('`-match` and `-output` are mutually exclusive.')
   if args.match and args.langs: exit('`-match` and `-langs` are mutually exclusive.')
-  if args.match and args.test: exit('`-match` and `-test` are mutually exclusive.')
 
-  langs:set[str] = determine_output_languages(args.langs, is_test=bool(args.test), output_path=args.output)
+  langs:set[str] = determine_output_languages(args.langs, output_path=args.output)
 
   # Get the source string from either the command line or the source file.
   if (args.path is None) and args.patterns:
@@ -98,7 +95,7 @@ def run_legs(args:LegsCmd) -> None:
   mode_pattern_kinds = grammar.modes
   mode_transitions = grammar.transitions
 
-  if (args.match or args.test) and start_mode not in mode_pattern_kinds:
+  if args.match and start_mode not in mode_pattern_kinds:
     hint = '' if args.mode else '; specify the start mode with `-mode`'
     exit(f'error: grammar has no mode named {start_mode!r}{hint}. modes: {", ".join(sorted(mode_pattern_kinds))}.')
 
@@ -167,13 +164,12 @@ def run_legs(args:LegsCmd) -> None:
       if inc_pattern:
         inc_pattern.describe(name=f'{name}.incomplete')
 
-  if not (langs or args.test): exit(0)
+  if not langs: exit(0)
 
   out_path = args.output or args.path
   if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
 
-  test_cmds:list[list[str]] = []
-  output_opts = OutputOpts(patterns_path=args.path, type_prefix=args.type_prefix, test_mode=(start_mode if args.test else None))
+  output_opts = OutputOpts(patterns_path=args.path, type_prefix=args.type_prefix)
 
   out_dir, out_name = split_dir_name(out_path)
   if not out_name:
@@ -190,27 +186,20 @@ def run_legs(args:LegsCmd) -> None:
     path = out_stem + '.py'
     output_python(path, dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
       **output_opts)
-    if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'python-re' in langs:
     path = out_stem + '.re.py'
     output_python_re(path, dfas=dfas, mode_transitions=mode_transitions,
       patterns=patterns, incomplete_patterns=incomplete_patterns,
       pattern_descs=pattern_descs, license=license, **output_opts)
-    if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
     path = out_stem + '.swift'
     output_swift(path, dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
       **output_opts)
-    if args.test: test_cmds.append(['swift', path] + args.test)
-
-  if args.test:
-    run_tests(test_cmds, dbg=args.dbg)
 
 
-
-def determine_output_languages(args_langs:list[str], is_test:bool, output_path:str|None) -> set[str]:
+def determine_output_languages(args_langs:list[str], output_path:str|None) -> set[str]:
   if args_langs:
     if 'all' in args_langs:
       langs = supported_langs
@@ -219,8 +208,6 @@ def determine_output_languages(args_langs:list[str], is_test:bool, output_path:s
         if lang not in supported_langs:
           exit(f'unknown language {lang!r}; supported languages are: {sorted(supported_langs)}.')
       langs = set(args_langs)
-  elif is_test:
-    langs = test_langs
   elif output_path:
     ext = path_ext(output_path)
     try: langs = {ext_langs[ext]}
@@ -234,39 +221,6 @@ def determine_output_languages(args_langs:list[str], is_test:bool, output_path:s
 def mode_name_key(name:str) -> str:
   'Always place main mode first.'
   return '' if name == 'main' else name
-
-
-def run_tests(test_cmds:list[list[str]], dbg:bool) -> None:
-  # For each language, run against the specified match arguments, and capture output.
-  # Print the output from the first test, and then the diff for each subsequent output that differs.
-  from difflib import ndiff
-  from shlex import quote as sh_quote
-
-  from pithy.task import runCO
-
-  def quote(cmd:list[str]) -> str: return ' '.join(sh_quote(arg) for arg in cmd)
-
-  first_cmd:list[str] = []
-  first_out:str = ''
-  status = 0
-  for cmd in test_cmds:
-    if dbg: errSL('\nrunning test:', quote(cmd))
-    code, out = runCO(cmd)
-    if code != 0:
-      errSL('test failed:', quote(cmd))
-      outZ(out)
-      exit(1)
-    if not first_cmd:
-      first_cmd = cmd
-      first_out = out
-      outZ(first_out)
-    elif out != first_out:
-      errL('test outputs differ:')
-      errSL('-$', quote(first_cmd))
-      errSL('+$', quote(cmd))
-      errZ(*ndiff(first_out.splitlines(keepends=True), out.splitlines(keepends=True)))
-      status = 1
-  exit(status)
 
 
 def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -> None:
@@ -301,7 +255,6 @@ ext_langs = {
 }
 
 supported_langs = {'dot', 'python', 'python-re', 'swift'}
-test_langs = {'python', 'swift'}
 
 
 if __name__ == '__main__': main()

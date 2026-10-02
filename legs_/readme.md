@@ -50,6 +50,20 @@ Therefore a mistake in one pattern, such as an unclosed `[`, is reported for tha
 The consequence is that a pattern line cannot begin with `# ` at column 0; indent the line or write `\#`.
 
 
+# Testing
+
+`legs-test` checks the lexers generated from a grammar against each other:
+```
+legs-test grammar.legs -mode main 'first input' 'second input'
+```
+Each input is lexed by a reference lexer built in-process, and the tokens are printed.
+The Python and Swift lexers are then generated and run on the same inputs.
+Any difference from the reference tokens is reported and causes a nonzero exit code.
+Use `-langs` to choose the generated lexers, and `-mode` for a grammar that has no `main` mode.
+
+`legs -match` checks strings against the NFA and both DFAs of a mode, without generating code.
+
+
 # TODO
 
 * Better documentation.

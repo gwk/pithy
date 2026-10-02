@@ -43,6 +43,7 @@ Documentation = "https://github.com/gwk/pithy/tree/main/legs_#readme"
 
 [project.scripts]
 legs = "legs.bin.legs:main"
+legs-test = "legs.bin.legs_test:main"
 
 [tool.uv.sources]
 pithy = { workspace = true }

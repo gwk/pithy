@@ -1,188 +1,72 @@
 
-arg1: 'a (bc def) g'
-arg1:1:1-2: sym
-| a (bc def) g
-  ~
-arg1:1:2-3: spaces
-| a (bc def) g
-   ~
-arg1:1:3-4: `(`
-| a (bc def) g
-    ~
-arg1:1:4-6: sym
-| a (bc def) g
-     ~~
-arg1:1:6-7: spaces
-| a (bc def) g
-       ~
-arg1:1:7-10: sym
-| a (bc def) g
-        ~~~
-arg1:1:10-11: `)`
-| a (bc def) g
-           ~
-arg1:1:11-12: spaces
-| a (bc def) g
-            ~
-arg1:1:12-13: sym
-| a (bc def) g
-             ~
+'a (bc def) g':
+0-1 sym 'a'
+1-2 spaces ' '
+2-3 paren_open '('
+3-5 sym 'bc'
+5-6 spaces ' '
+6-9 sym 'def'
+9-10 paren_close ')'
+10-11 spaces ' '
+11-12 sym 'g'
 
-arg2: '/* comment "contents" () / *. */'
-arg2:1:1-3: `/*`
-| /* comment "contents" () / *. */
-  ~~
-arg2:1:3-26: comment_contents
-| /* comment "contents" () / *. */
-    ~~~~~~~~~~~~~~~~~~~~~~~
-arg2:1:26-27: `/`
-| /* comment "contents" () / *. */
-                           ~
-arg2:1:27-28: comment_contents
-| /* comment "contents" () / *. */
-                            ~
-arg2:1:28-29: `*`
-| /* comment "contents" () / *. */
-                             ~
-arg2:1:29-31: comment_contents
-| /* comment "contents" () / *. */
-                              ~~
-arg2:1:31-33: `*/`
-| /* comment "contents" () / *. */
-                                ~~
+'/* comment "contents" () / *. */':
+0-2 comment_open '/*'
+2-25 comment_contents ' comment "contents" () '
+25-26 comment_slash '/'
+26-27 comment_contents ' '
+27-28 comment_star '*'
+28-30 comment_contents '. '
+30-32 comment_close '*/'
 
-arg3: '\'single quoted.\' "double quoted."'
-arg3:1:1-2: `'`
-| 'single quoted.' "double quoted."
-  ~
-arg3:1:2-16: lit_contents
-| 'single quoted.' "double quoted."
-   ~~~~~~~~~~~~~~
-arg3:1:16-17: `'`
-| 'single quoted.' "double quoted."
-                 ~
-arg3:1:17-18: spaces
-| 'single quoted.' "double quoted."
-                  ~
-arg3:1:18-19: `"`
-| 'single quoted.' "double quoted."
-                   ~
-arg3:1:19-33: lit_contents
-| 'single quoted.' "double quoted."
-                    ~~~~~~~~~~~~~~
-arg3:1:33-34: `"`
-| 'single quoted.' "double quoted."
-                                  ~
+'\'single quoted.\' "double quoted."':
+0-1 sq "'"
+1-15 lit_contents 'single quoted.'
+15-16 sq "'"
+16-17 spaces ' '
+17-18 dq '"'
+18-32 lit_contents 'double quoted.'
+32-33 dq '"'
 
-arg4: '/* nested /* comment. */ */'
-arg4:1:1-3: `/*`
-| /* nested /* comment. */ */
-  ~~
-arg4:1:3-11: comment_contents
-| /* nested /* comment. */ */
-    ~~~~~~~~
-arg4:1:11-13: `/*`
-| /* nested /* comment. */ */
-            ~~
-arg4:1:13-23: comment_contents
-| /* nested /* comment. */ */
-              ~~~~~~~~~~
-arg4:1:23-25: `*/`
-| /* nested /* comment. */ */
-                        ~~
-arg4:1:25-26: comment_contents
-| /* nested /* comment. */ */
-                          ~
-arg4:1:26-28: `*/`
-| /* nested /* comment. */ */
-                           ~~
+'/* nested /* comment. */ */':
+0-2 comment_open '/*'
+2-10 comment_contents ' nested '
+10-12 comment_open '/*'
+12-22 comment_contents ' comment. '
+22-24 comment_close '*/'
+24-25 comment_contents ' '
+25-27 comment_close '*/'
 
-arg5: '\'sq \\(a) interpolated.\''
-arg5:1:1-2: `'`
-| 'sq \(a) interpolated.'
-  ~
-arg5:1:2-5: lit_contents
-| 'sq \(a) interpolated.'
-   ~~~
-arg5:1:5-7: `\\(`
-| 'sq \(a) interpolated.'
-      ~~
-arg5:1:7-8: sym
-| 'sq \(a) interpolated.'
-        ~
-arg5:1:8-9: `)`
-| 'sq \(a) interpolated.'
-         ~
-arg5:1:9-23: lit_contents
-| 'sq \(a) interpolated.'
-          ~~~~~~~~~~~~~~
-arg5:1:23-24: `'`
-| 'sq \(a) interpolated.'
-                        ~
+"'sq \\(a) interpolated.'":
+0-1 sq "'"
+1-4 lit_contents 'sq '
+4-6 lit_interpolate '\\('
+6-7 sym 'a'
+7-8 paren_close ')'
+8-22 lit_contents ' interpolated.'
+22-23 sq "'"
 
-arg6: '"dq \\(a) interpolated."'
-arg6:1:1-2: `"`
-| "dq \(a) interpolated."
-  ~
-arg6:1:2-5: lit_contents
-| "dq \(a) interpolated."
-   ~~~
-arg6:1:5-7: `\\(`
-| "dq \(a) interpolated."
-      ~~
-arg6:1:7-8: sym
-| "dq \(a) interpolated."
-        ~
-arg6:1:8-9: `)`
-| "dq \(a) interpolated."
-         ~
-arg6:1:9-23: lit_contents
-| "dq \(a) interpolated."
-          ~~~~~~~~~~~~~~
-arg6:1:23-24: `"`
-| "dq \(a) interpolated."
-                        ~
+'"dq \\(a) interpolated."':
+0-1 dq '"'
+1-4 lit_contents 'dq '
+4-6 lit_interpolate '\\('
+6-7 sym 'a'
+7-8 paren_close ')'
+8-22 lit_contents ' interpolated.'
+22-23 dq '"'
 
-arg7: '\'sq \\(nested "interpolated \\(a)").\''
-arg7:1:1-2: `'`
-| 'sq \(nested "interpolated \(a)").'
-  ~
-arg7:1:2-5: lit_contents
-| 'sq \(nested "interpolated \(a)").'
-   ~~~
-arg7:1:5-7: `\\(`
-| 'sq \(nested "interpolated \(a)").'
-      ~~
-arg7:1:7-13: sym
-| 'sq \(nested "interpolated \(a)").'
-        ~~~~~~
-arg7:1:13-14: spaces
-| 'sq \(nested "interpolated \(a)").'
-              ~
-arg7:1:14-15: `"`
-| 'sq \(nested "interpolated \(a)").'
-               ~
-arg7:1:15-28: lit_contents
-| 'sq \(nested "interpolated \(a)").'
-                ~~~~~~~~~~~~~
-arg7:1:28-30: `\\(`
-| 'sq \(nested "interpolated \(a)").'
-                             ~~
-arg7:1:30-31: sym
-| 'sq \(nested "interpolated \(a)").'
-                               ~
-arg7:1:31-32: `)`
-| 'sq \(nested "interpolated \(a)").'
-                                ~
-arg7:1:32-33: `"`
-| 'sq \(nested "interpolated \(a)").'
-                                 ~
-arg7:1:33-34: `)`
-| 'sq \(nested "interpolated \(a)").'
-                                  ~
-arg7:1:34-35: lit_contents
-| 'sq \(nested "interpolated \(a)").'
-                                   ~
-arg7:1:35-36: `'`
-| 'sq \(nested "interpolated \(a)").'
-                                    ~
+'\'sq \\(nested "interpolated \\(a)").\'':
+0-1 sq "'"
+1-4 lit_contents 'sq '
+4-6 lit_interpolate '\\('
+6-12 sym 'nested'
+12-13 spaces ' '
+13-14 dq '"'
+14-27 lit_contents 'interpolated '
+27-29 lit_interpolate '\\('
+29-30 sym 'a'
+30-31 paren_close ')'
+31-32 dq '"'
+32-33 paren_close ')'
+33-34 lit_contents '.'
+34-35 sq "'"
