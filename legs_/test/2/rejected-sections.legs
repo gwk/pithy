@@ -1,0 +1,20 @@
+// Each rejected section header is reported once and its body is skipped.
+// References to names that the skipped sections might have defined are not reported as undefined.
+
+# Patterns
+a
+
+## Nested
+b
+
+# Bogus
+skipped: [
+
+# Pattern
+c
+
+# Modes
+main: a b c
+
+# Transitions
+main : a :: other : b

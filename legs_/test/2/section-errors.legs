@@ -19,14 +19,4 @@ a: c
   | d
 9: e
 
-## Nested
-
-# Bogus
-ignored: [
-
-# Pattern
-ignored: [
-
-#Patterns
-
 # Modes: x

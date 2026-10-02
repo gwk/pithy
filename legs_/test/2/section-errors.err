@@ -28,16 +28,7 @@ section-errors.legs:18:1-2: error: pattern already defined: a
 section-errors.legs:20:1-5: error: expected pattern name.
 | 9: e
   ~~~~
-section-errors.legs:22:1-3: error: nested sections are not supported; a section header is a single `#` followed by a space.
-| ## Nested
-  ~~
-section-errors.legs:24:3-8: error: unknown section; expected `License`, `Patterns`, `Modes` or `Transitions`.
-| # Bogus
-    ~~~~~
-section-errors.legs:27:3-10: error: unknown section; did you mean `Patterns`?
-| # Pattern
-    ~~~~~~~
-section-errors.legs:32:10-11: error: unexpected text after section name.
+section-errors.legs:22:10-11: error: unexpected text after section name.
 | # Modes: x
            ~
 
