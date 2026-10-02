@@ -20,9 +20,19 @@ class LexerBase(Iterator[Token]):
   mode_transitions:ModeTransitions
   pattern_descs:dict[str,str]
 
-  def __init__(self, source:Source[bytes]):
+  def __init__(self, source:Source[bytes], slc:slice|None=None, mode:str='main'):
+    '''
+    Create a lexer for `source`.
+    If `slc` is provided then only that range of the text is lexed; no token extends past its end.
+    `mode` is the mode in which lexing starts.
+    Together these allow a parser that frames the text by other means to lex each framed range with the appropriate mode.
+    '''
+    pos, end, step = (slc or slice(None)).indices(len(source.text))
+    if step != 1: raise ValueError(f'slice step is not supported: {slc!r}')
     self.source = source
-    self.pos = 0
+    self.pos = pos
+    self.end = max(pos, end)
+    self.stack:list[tuple[str,str|None]] = [(mode, None)] # [(mode, pop_kind)].
 
   def __iter__(self) -> Iterator[Token]: return self
 
@@ -33,14 +43,10 @@ class DictLexerBase(LexerBase):
 
   mode_data:dict[str,ModeData]
 
-  def __init__(self, source:Source[bytes]):
-    self.stack:list[tuple[str,str|None]] = [('main', None)] # [(mode, pop_kind)].
-    super().__init__(source=source)
-
   def __next__(self) -> Token:
     text = self.source.text
     assert isinstance(text, bytes)
-    len_text = len(text)
+    len_text = self.end
     pos = self.pos
     if pos == len_text: raise StopIteration
     mode, pop_kind = self.stack[-1]
@@ -80,13 +86,9 @@ class RegexLexerBase(LexerBase):
 
   mode_patterns:dict[str,Pattern]
 
-  def __init__(self, source:Source):
-    self.stack:list[tuple[str,str|None]] = [('main', None)] # [(mode, pop_kind)].
-    super().__init__(source=source)
-
   def __next__(self) -> Token:
     text = self.source.text
-    len_text = len(text)
+    len_text = self.end
     pos = self.pos
     if pos == len_text: raise StopIteration
     mode, pop_kind = self.stack[-1]
@@ -95,7 +97,7 @@ class RegexLexerBase(LexerBase):
     # This is not totally accurate because incompletes are supposed to be greedy,
     # whereas this approach emits the shortest possible incomplete token.
     # It is also inefficient.
-    m = pattern.search(text, pos)
+    m = pattern.search(text, pos, len_text)
     assert m is not None
     if not m: # Emit an incomplete token to end.
       self.pos = len_text # type: ignore[unreachable] # Due to assert above.
