@@ -1,0 +1,29 @@
+// Sections are validated together, in any order.
+
+# Modes
+main: a
+other: b zz
+main: b
+
+# Transitions
+main : a :: other : b
+main : a :: other : b
+main : a :: nope : b
+main : b :: other : a
+main : a : other : b
+
+# Patterns
+a
+b
+a: c
+  | d
+9: e
+
+## Nested
+
+# Bogus
+ignored: [
+
+#Patterns
+
+# Modes: x

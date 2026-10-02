@@ -1,0 +1,7 @@
+orphan-continuation.legs:1:3-4: error: continuation line has no preceding entry.
+|   x
+    ~
+orphan-continuation.legs:2:1-4: error: continuation line has no preceding entry.
+| | y
+  ~~~
+

@@ -1,0 +1,4 @@
+midline-header.legs:2:3-4: error: expected `:` following pattern name.
+| b # Modes
+    ~
+

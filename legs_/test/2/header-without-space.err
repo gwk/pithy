@@ -1,0 +1,4 @@
+header-without-space.legs:1:1-10: error: expected pattern name; a section header requires a space after `#`.
+| #Patterns
+  ~~~~~~~~~
+

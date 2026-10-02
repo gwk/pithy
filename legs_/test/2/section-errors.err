@@ -1,0 +1,40 @@
+section-errors.legs:5:10-12: error: undefined pattern name: zz
+| other: b zz
+           ~~
+section-errors.legs:6:1-5: error: mode already defined: main
+| main: b
+  ~~~~
+section-errors.legs:10:8-9: error: transition already defined for mode `main`: a
+| main : a :: other : b
+         ~
+section-errors.legs:11:13-17: error: undefined mode name: nope
+| main : a :: nope : b
+              ~~~~
+section-errors.legs:12:8-9: error: pattern is not a member of mode `main`: b
+| main : b :: other : a
+         ~
+section-errors.legs:12:21-22: error: pattern is not a member of mode `other`: a
+| main : b :: other : a
+                      ~
+section-errors.legs:13:1-5: note: in 'transition' structure:
+| main : a : other : b
+  ~~~~
+section-errors.legs:13:12-17: parse error: 'transition' structure expects colon; received sym.
+| main : a : other : b
+             ~~~~~
+section-errors.legs:18:1-2: error: pattern already defined: a
+| a: c
+  ~
+section-errors.legs:20:1-5: error: expected pattern name.
+| 9: e
+  ~~~~
+section-errors.legs:22:1-3: error: nested sections are not supported.
+| ## Nested
+  ~~
+section-errors.legs:24:3-8: error: unknown section; expected `License`, `Patterns`, `Modes` or `Transitions`.
+| # Bogus
+    ~~~~~
+section-errors.legs:29:10-11: error: unexpected text after section name.
+| # Modes: x
+           ~
+

@@ -1,0 +1,13 @@
+unclosed-delimiters.legs:2:4-5: note: in 'charset' structure:
+| a: [x
+     ~
+unclosed-delimiters.legs:2:6: parse error: 'charset' structure expects brack_c; received end_of_text.
+| a: [x⏎
+       ^
+unclosed-delimiters.legs:4:4-5: note: in 'paren' structure:
+| c: (z
+     ~
+unclosed-delimiters.legs:4:6: parse error: 'paren' structure expects paren_c; received end_of_text.
+| c: (z⏎
+       ^
+
