@@ -52,13 +52,14 @@ class DFA:
   'Deterministic Finite Automaton.'
 
   def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:dict[int,frozenset[str]], lit_pattern_names:set[str],
-   backtracking_order:tuple[str,...]=()) -> None:
+   backtracking_order:tuple[str,...]=(), unorderable_pairs:tuple[tuple[str,str],...]=()) -> None:
     assert name
     self.name = name
     self.transitions = transitions
     self.match_node_kind_sets = match_node_kind_sets
     self.lit_pattern_names = lit_pattern_names
     self.backtracking_order = backtracking_order # The best-effort ordering backtracking regex patterns.
+    self.unorderable_pairs = unorderable_pairs # Pairs of kinds that cannot be correctly ordered for backtracking regex engines.
     self.start_node = min(transitions)
     self.invalid_node = self.start_node + 1
     self.end_node = max(transitions) + 1
@@ -365,19 +366,20 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
 
 
   # Attempt to order the patterns for backtracking regex generation using the full match node sets.
-  backtracking_order = calc_backtrack_order(dfa.name, match_node_kinds, kind_match_nodes, transitions)
+  backtracking_order, unorderable_pairs = calc_backtrack_order(match_node_kinds, kind_match_nodes, transitions)
 
   # Freeze the reduced match sets.
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
   return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
-    lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order)
+    lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order, unorderable_pairs=unorderable_pairs)
 
 
-def calc_backtrack_order(name:str, match_node_kinds:dict[int,set[str]], kind_match_nodes:dict[str,set[int]],
- transitions:DfaTransitions) -> tuple[str,...]:
+def calc_backtrack_order(match_node_kinds:dict[int,set[str]], kind_match_nodes:dict[str,set[int]],
+ transitions:DfaTransitions) -> tuple[tuple[str,...],tuple[tuple[str,str],...]]:
   '''
   Calculate a reasonable order for backtracking regex outputs.
+  Return the order and the pairs of kinds that cannot be correctly ordered.
   It is not always possible to generate a correct order,
   because backtracking regex engines handle ambiguity by ordered choice,
   so ambiguity can only addressed with positive or negative assertions ("\\b" is the most common case).
@@ -423,10 +425,6 @@ def calc_backtrack_order(name:str, match_node_kinds:dict[int,set[str]], kind_mat
       unorderable_kinds.update(p)
       unorderable_pairs.append(p)
 
-  if unorderable_pairs:
-    errL(f'note: `{name}`: patterns cannot be correctly ordered for backtracking regex engines: ',
-      ', '.join(str(p) for p in unorderable_pairs), '.')
-
   def order_key(kind:str) -> tuple:
     '''
     The ordering heuristic attempts to accommodate the following cases:
@@ -441,4 +439,4 @@ def calc_backtrack_order(name:str, match_node_kinds:dict[int,set[str]], kind_mat
 
   ordered_kinds = tuple(sorted(kinds, key=order_key))
 
-  return ordered_kinds
+  return (ordered_kinds, tuple(unorderable_pairs))
