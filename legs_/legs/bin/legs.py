@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from time import perf_counter
-
 from pithy.cmdparse import Cmd, flag, opt, pos
-from pithy.io import errL, errLL, errSL, outL
+from pithy.io import errL, errSL, outL
 from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
 from pithy.strings import pluralize
 
-from ..build import build_dfa, build_nfa
-from ..dfa import DFA, minimize_dfa
+from ..build import build_mode_automata, build_pattern_descs, ModeAutomata, ModeError
+from ..dfa import DFA
 from ..dot import output_dot
 from ..nfa import NFA
 from ..parse import parse_legs
@@ -105,53 +103,29 @@ def run_legs(args:LegsCmd) -> None:
       pattern.describe(name=name)
     errL()
 
-  dfas:list[DFA] = []
-  start_node = 0
-  for mode, pattern_kinds in sorted(mode_pattern_kinds.items(), key=lambda p: mode_name_key(p[0])):
-    if args.match and mode != start_mode: continue
+  mode_automata:dict[str,ModeAutomata] = {}
+  try:
+    for automata in build_mode_automata(grammar, encoding=args.encoding):
+      mode_automata[automata.mode] = automata
+      describe_automata(automata, dbg=dbg, stats=args.stats)
+  except ModeError as e:
+    # Describe the automata that were built before the error was detected.
+    if dbg: e.nfa.describe('NFA')
+    if dbg or args.stats: e.nfa.describe_stats('NFA Stats')
+    if e.fat_dfa:
+      if dbg: e.fat_dfa.describe('Fat DFA')
+      if dbg or args.stats: e.fat_dfa.describe_stats('Fat DFA Stats')
+    exit(str(e))
+  dfas = [automata.min_dfa for automata in mode_automata.values()]
 
-    named_patterns = sorted((kind, patterns[kind]) for kind in pattern_kinds)
-    nfa = build_nfa(name=mode, named_patterns=named_patterns, encoding=args.encoding)
-    if dbg: nfa.describe('NFA')
-    if dbg or args.stats: nfa.describe_stats('NFA Stats')
-    msgs = nfa.validate()
-    if msgs:
-      errLL(*msgs)
-      exit(1)
-
-    fat_dfa = build_dfa(nfa)
-    if dbg: fat_dfa.describe('Fat DFA')
-    if dbg or args.stats: fat_dfa.describe_stats('Fat DFA Stats')
-
-    start_time = perf_counter()
-    min_dfa = minimize_dfa(fat_dfa, start_node=start_node)
-    end_time = perf_counter()
-
-    start_node = min_dfa.end_node
-    if dbg: min_dfa.describe('Min DFA')
-    if dbg or args.stats:
-      min_dfa.describe_stats('Min DFA Stats')
-      print(f'  time: {end_time-start_time:.3f} seconds')
-    dfas.append(min_dfa)
-
-    if dbg: errL('----')
-
-    post_matches = len(min_dfa.post_match_nodes)
-    if post_matches:
-      errL(f'note: `{mode}`: minimized DFA contains ', pluralize(post_matches, "post-match node"), '.')
-
-  # If we are testing patterns on the command line, then find the specified DFA, test each argument, and exit.
+  # If we are testing patterns on the command line, then test each argument against the automata of the start mode, and exit.
   if args.match:
-    for dfa in dfas:
-      if dfa.name != start_mode: continue
-      for text in args.match:
-        text_bytes = text.encode(args.encoding)
-        match_bytes(nfa, fat_dfa, min_dfa, text, text_bytes)
-      exit()
-    exit(f'bad mode: {start_mode!r}')
+    automata = mode_automata[start_mode]
+    for text in args.match:
+      match_bytes(automata.nfa, automata.fat_dfa, automata.min_dfa, text, text.encode(args.encoding))
+    exit()
 
-  pattern_descs = { name : pattern.literal_desc or name for name, pattern in patterns.items() }
-  pattern_descs.update((n, n) for n in ['invalid', 'incomplete'])
+  pattern_descs = build_pattern_descs(grammar)
 
   incomplete_patterns:dict[str,LegsPattern|None] = {
     dfa.name : gen_incomplete_pattern(dfa.backtracking_order, patterns) for dfa in dfas }
@@ -218,9 +192,20 @@ def determine_output_languages(args_langs:list[str], output_path:str|None) -> se
   return langs
 
 
-def mode_name_key(name:str) -> str:
-  'Always place main mode first.'
-  return '' if name == 'main' else name
+def describe_automata(automata:ModeAutomata, dbg:bool, stats:bool) -> None:
+  'Print the debug descriptions and statistics of the automata of a mode, and the note about post-match nodes.'
+  if dbg: automata.nfa.describe('NFA')
+  if dbg or stats: automata.nfa.describe_stats('NFA Stats')
+  if dbg: automata.fat_dfa.describe('Fat DFA')
+  if dbg or stats: automata.fat_dfa.describe_stats('Fat DFA Stats')
+  if dbg: automata.min_dfa.describe('Min DFA')
+  if dbg or stats:
+    automata.min_dfa.describe_stats('Min DFA Stats')
+    print(f'  time: {automata.minimize_time:.3f} seconds')
+  if dbg: errL('----')
+  post_matches = len(automata.min_dfa.post_match_nodes)
+  if post_matches:
+    errL(f'note: `{automata.mode}`: minimized DFA contains ', pluralize(post_matches, "post-match node"), '.')
 
 
 def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -> None:

@@ -213,6 +213,14 @@ class DFA:
     return first_el(s)
 
 
+class AmbiguityError(ValueError):
+  'Raised by `minimize_dfa` when several patterns match the same text.'
+
+  def __init__(self, msgs:list[str]):
+    super().__init__('\n'.join(msgs))
+    self.msgs = msgs
+
+
 def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   '''
   Optimize a DFA by coalescing redundant states.
@@ -353,9 +361,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   # Check for ambiguous patterns. This must happen after the ambiguity reduction above.
   ambiguous_kind_groups = { tuple(sorted(kinds)) for kinds in match_node_kinds.values() if len(kinds) != 1 }
   if ambiguous_kind_groups:
-    for group in sorted(ambiguous_kind_groups):
-      errL('Rules are ambiguous: ', ', '.join(group), '.')
-    exit(1)
+    raise AmbiguityError([f'Rules are ambiguous: {", ".join(group)}.' for group in sorted(ambiguous_kind_groups)])
 
 
   # Attempt to order the patterns for backtracking regex generation using the full match node sets.
