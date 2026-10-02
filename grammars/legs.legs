@@ -1,24 +1,27 @@
 # License: Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+// The lexer for the contents of legs grammar files.
+
+// A legs grammar file is not lexed as a whole.
+// It is first framed into sections and entries by line shape alone; see `legs.parse` and `pithy.sectsyn`.
+// Each framed range is then lexed independently, starting in the mode for its syntax:
+// * `pattern` for the pattern expression of a patterns entry, following the entry name and colon;
+// * `decl` for a modes or transitions entry.
+// There is no `main` mode because no single mode can lex a whole file.
+
 # Patterns
 
 newline: \n
 spaces: \s+
-comment: / / $Ascii_Readable*
+comment: / / [$Ascii $Readable - \n]*
 
-// A section header is a `#` at the start of a line, followed by a space and the section name.
-// This flat grammar cannot express line anchoring; see `legs.parse` for the actual framing rules.
-section_label_license:      \# \s License
-section_label_patterns:     \# \s Patterns
-section_label_modes:        \# \s Modes
-section_label_transitions:  \# \s Transitions
-
-sym: $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
+// Declarations.
+sym: [$Ascii_Letter _] [$Ascii_Letter $Ascii_Number _]*
 colon: :
-brckt_o: \[
-brckt_c: \]
-//brace_o: \{
-//brace_c: \}
+
+// Pattern expressions and charsets.
+brack_o: \[
+brack_c: \]
 paren_o: \(
 paren_c: \)
 bar: \|
@@ -28,6 +31,23 @@ plus: \+
 amp: &
 dash: -
 caret: \^
-ref: \$ $Ascii_Letter [$Ascii_Letter $Ascii_Number _]*
-esc: \\ $Ascii_Visible // TODO: list escapable characters.
-char: [$Ascii_Visible - \# \s $Ascii_Letter]
+ref: \$ [$Ascii_Letter $Ascii_Number _]*
+esc: \\ [$Ascii $Readable - \n]
+backslash: \\ // A dangling backslash, which is not followed by an escapable character.
+char: [$Ascii_Visible - \[ \] \( \) \| \? \* \+ \$ \\]
+charset_char: [$Ascii_Visible - \[ \] \& \- \^ \$ \\]
+
+# Modes
+
+pattern: newline spaces comment
+  brack_o brack_c paren_o paren_c bar qmark star plus ref esc backslash char
+
+charset: newline spaces comment
+  brack_o brack_c amp dash caret ref esc backslash charset_char
+
+decl: newline spaces comment sym colon
+
+# Transitions
+
+pattern : brack_o :: charset : brack_c
+charset : brack_o :: charset : brack_c
