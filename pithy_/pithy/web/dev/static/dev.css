@@ -29,10 +29,21 @@ body > nav a.current-nav-section-link {
 .footnote-ref a { text-decoration: none; }
 .footnote-ref a:hover { text-decoration: underline; }
 
+/* The editor spans the window, so the prose around it does too. */
+.markdown-page { --prose-width: none; }
+
 #markdown-settings {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 1ch;
   margin-bottom: 1em;
+}
+
+.markdown-rendering pre { white-space: pre-wrap; }
+
+.markdown-rendering pre img {
+  display: block;
+  max-width: 100%;
+  margin: 0.5em 0;
 }
