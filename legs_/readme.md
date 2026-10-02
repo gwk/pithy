@@ -1,15 +1,24 @@
 # Legs
 
-Legs is a lexer generator. It takes as input a `.legs` file consisting of pattern definitions, and outputs code. Currently it only outputs Swift code, but I would like to extend it to support other languages. The long-term goal of this project is to support correct generation of Unicode-aware lexers for a variety of targets (outputs), including various programming languages but also their regular expression engines and text editor syntax definitions. No more nightmare TextMate language definitions!
+Legs is a lexer generator. It takes as input a `.legs` grammar file consisting of pattern definitions, and outputs lexer source code. The goal of the project is the correct generation of Unicode-aware lexers.
+
+The output languages are selected with `-langs` or by the extension of the `-output` path:
+* `python`: a table-driven lexer. This is the reference implementation.
+* `swift`: a lexer compiled to a switch statement.
+* `python-re`: a lexer that uses compiled regular expressions. It is experimental and slower than the table-driven lexer.
+* `dot`: Graphviz diagrams of the automata.
+
+Generated Python lexer classes conform to `tolkien.LexerProtocol`, so they can be passed to `pithy.parse.Parser`.
+A lexer can be given a range of the source text and a start mode. This allows a parser that frames the text by other means to lex each framed range in the appropriate mode; `legs.parse` does this for grammar files using `pithy.sectsyn`.
 
 Legs is distinguished by the following features:
 * Parses UTF-8 data directly; it does not require a preceding conversion to the String datatype.
 * The lexer operates as a stream/iterator, and cannot fail. Instead, it will emit tokens marked as invalid or incomplete when it encounters a lexing error and then resumes from the next starting character.
 * The pattern definitions can specify multiple modes, and the resulting lexer will maintain a stack during operation to track modes. This means that in theoretical terms it is not a "deterministic finite automata", but rather a "pushdown automaton". The value of this is that we can parse one language embedded in another, e.g. string formatting syntax within string literals. The emitted result is still a flat stream of tokens though, so the lexer is a hybrid between a traditional lexer and a context free parser.
 * The legs syntax for pattern definitions is similar to traditional regular expression syntax, but with several alterations to accommodate the task of writing modern lexers:
-  * Spaces and comments are ignored (equivalent to the "extended" mode of Pythno regular expression syntax).
+  * Spaces and comments are ignored (equivalent to the "extended" mode of Python regular expression syntax).
   * Traditional backslash-escaped character classes are largely replaced by named character classes, denoting the complete set of Unicode classes and several convenience classes as well, (e.g. ASCII subsets, hex characters, etc).
-  * Simple character set operatons (union, intersection, difference, and symmetric difference).
+  * Simple character set operations (union, intersection, difference, and symmetric difference).
 
 
 # Grammar Files
@@ -66,10 +75,9 @@ Use `-langs` to choose the generated lexers, and `-mode` for a grammar that has 
 
 # TODO
 
-* Better documentation.
-* More testing.
+* Document the named character classes.
+* Generate test inputs from the grammar patterns for `legs-test`.
 * Support UTF-16/UCS2 and UTF-32 representations as well.
-* Performance analysis of generated Swift code.
 
 
 # Incomplete Tokens
