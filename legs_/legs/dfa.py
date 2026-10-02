@@ -32,7 +32,7 @@ thus producing a stream of tokens that seamlessly cover any input string.
 '''
 
 from collections import defaultdict
-from itertools import chain, combinations
+from itertools import combinations
 from typing import Iterable, Iterator
 
 from pithy.graph import visit_nodes
@@ -241,7 +241,7 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   disambiguate by choosing the most specific node if it exists, or else issue errors.
   '''
 
-  alphabet = dfa.alphabet
+  alphabet_order = {char: idx for idx, char in enumerate(dfa.alphabet)}
   # start with a rough partition. Non-match nodes form one set.
   # Match nodes are mostly distinct from each other, but can be coalesced in some cases.
   init_sets = [set(dfa.non_match_nodes), *dfa.partitioned_match_nodes]
@@ -292,15 +292,16 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   while remaining:
     active_part = remaining.pop()
     remaining_ids.remove(id(active_part))
-    # Refinement can split the active block. Every byte must use the original splitter, not its mutated remainder.
-    s = tuple(active_part)
-    for char in alphabet:
-      # Find all nodes `m` that transition via `char` to any node `n` in `s`.
-      dsts = set(chain.from_iterable(rev_transitions[node][char] for node in s))
-      #dsts_brute = [node for node in node_parts if dfa.transitions[node].get(char) in s] # brute force version is slow.
-      #assert set(dsts_brute) == dsts
-      if not dsts: continue # no refinement.
-      for a, b in refine(dsts):
+    # Collect every byte's predecessors before refining: refinement can mutate the active block.
+    predecessors:defaultdict[int,set[int]] = defaultdict(set)
+    for node in active_part:
+      incoming = rev_transitions.get(node)
+      if incoming is None: continue
+      for char, sources in incoming.items():
+        predecessors[char].update(sources)
+    # Preserve alphabet order while skipping bytes with no predecessors.
+    for char in sorted(predecessors, key=alphabet_order.__getitem__):
+      for a, b in refine(predecessors[char]):
         # The intersection a is new; b retains the original block's identity and any existing worklist entry.
         # If b is queued, queue a too. Otherwise queue only the smaller half, preferring b on ties.
         next_part = a if id(b) in remaining_ids or len(a) < len(b) else b

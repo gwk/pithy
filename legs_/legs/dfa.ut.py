@@ -22,3 +22,19 @@ def active_splitter_is_stable() -> None:
   minimized = minimize_dfa(dfa, start_node=0)
   utest_val(transitions, minimized.transitions)
   utest_val(match_node_kind_sets, minimized.match_node_kind_sets)
+
+
+@utest_run
+def sparse_predecessors() -> None:
+  # The start node has no incoming transitions; the match node has no outgoing transitions.
+  # Nodes 2 and 3 are equivalent even though different bytes reach them.
+  dfa = DFA('sparse', {
+    0: {0: 2, 1: 1, 255: 3},
+    1: {1: 1},
+    2: {255: 4},
+    3: {255: 4},
+    4: {},
+  }, {1: frozenset({'invalid'}), 4: frozenset({'match'})}, set())
+  minimized = minimize_dfa(dfa, start_node=0)
+  utest_val({0: {0: 2, 1: 1, 255: 2}, 1: {1: 1}, 2: {255: 3}, 3: {}}, minimized.transitions)
+  utest_val({1: frozenset({'invalid'}), 3: frozenset({'match'})}, minimized.match_node_kind_sets)
