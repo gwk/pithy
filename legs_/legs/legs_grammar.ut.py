@@ -17,7 +17,7 @@ from pithy.lex import Lexer
 from pithy.parse import ParseError
 from pithy.sectsyn import parse_entries, parse_sections
 from tolkien import Source
-from utest import utest, utest_exc, utest_val
+from utest import utest, utest_exc, utest_seq_exc, utest_val
 
 
 repo_dir = dirname(dirname(dirname(__file__)))
@@ -80,6 +80,12 @@ utest([
   ('charset', 'ref', '$B'), ('charset', 'brack_c', ']'), ('charset', 'charset_char', '|'), ('charset', 'brack_c', ']'),
   ('pattern', 'char', '-'), ('pattern', 'esc', '\\#'), ('pattern', 'spaces', ' '), ('pattern', 'comment', '// c')],
   legs_tokens, 'ab+ [a-[$B]|]-\\# // c', 'pattern')
+
+# An unknown start mode is an error. The grammar has no `main` mode, so the start mode must be specified.
+unknown_mode_exc = ValueError("unknown mode: 'main'; modes: ['charset', 'decl', 'pattern']")
+utest_exc(unknown_mode_exc, legs_tokens, 'a', 'main')
+utest_exc(unknown_mode_exc, LegsLexer, Source('test', b'a'))
+utest_seq_exc(unknown_mode_exc, LegsLexer.lex, Source('test', b'a'))
 
 # The range confines the lexer; an unclosed charset does not affect the lexing of a following range.
 utest([('pattern', 'brack_o', '['), ('charset', 'charset_char', 'x')], legs_tokens, 'a: [x\nb: y\n', 'pattern', slice(3, 5))

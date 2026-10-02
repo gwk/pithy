@@ -55,10 +55,16 @@ class LexerBase(Iterator[Token]):
     '''
     pos, end, step = (slc or slice(None)).indices(len(source.text))
     if step != 1: raise ValueError(f'slice step is not supported: {slc!r}')
+    if mode not in self.mode_names(): raise ValueError(f'unknown mode: {mode!r}; modes: {sorted(self.mode_names())}')
     self.source = source
     self.pos = pos
     self.end = max(pos, end)
     self.stack:list[tuple[str,str|None]] = [(mode, None)] # [(mode, pop_kind)].
+
+  @classmethod
+  def mode_names(cls) -> Container[str]:
+    'The names of the modes of the lexer.'
+    raise NotImplementedError
 
   def __iter__(self) -> Iterator[Token]: return self
 
@@ -69,6 +75,9 @@ class DictLexerBase(LexerBase):
 
   mode_data:dict[str,ModeData]
 
+  @classmethod
+  def mode_names(cls) -> dict[str,ModeData]: return cls.mode_data
+
   def __next__(self) -> Token:
     text = self.source.text
     assert isinstance(text, bytes)
@@ -76,7 +85,6 @@ class DictLexerBase(LexerBase):
     pos = self.pos
     if pos == len_text: raise StopIteration
     mode, pop_kind = self.stack[-1]
-    assert mode in self.mode_data, (mode, list(self.mode_data))
     mode_start, transitions, match_node_kinds = self.mode_data[mode]
 
     state = mode_start
@@ -111,6 +119,9 @@ class DictLexerBase(LexerBase):
 class RegexLexerBase(LexerBase):
 
   mode_patterns:dict[str,Pattern]
+
+  @classmethod
+  def mode_names(cls) -> dict[str,Pattern]: return cls.mode_patterns
 
   def __next__(self) -> Token:
     text = self.source.text
