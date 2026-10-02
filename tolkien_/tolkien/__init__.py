@@ -9,7 +9,8 @@ __version__ = '0.0.3'
 
 from bisect import bisect_left
 from dataclasses import dataclass
-from typing import Container, Generic, Iterator, NoReturn, Protocol, runtime_checkable, TypeVar
+from typing import Callable, Container, Generic, Iterator, NoReturn, Protocol, runtime_checkable, TypeVar
+from unicodedata import category, east_asian_width
 
 
 @runtime_checkable
@@ -206,21 +207,40 @@ class Source(Generic[_Text]):
     return f'{self.name}:{self.get_line_index(pos)+1}:'
 
 
-  def diagnostic(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> str:
-    return ''.join(
-      self.diagnostic_for_syntax(sm[0], sm[1], prefix=prefix) for sm in syntax_msgs if sm is not None)
+  def diagnostic(self, *syntax_msgs:SyntaxMsg|None, prefix:str='', char_width:CharWidth|None=None) -> str:
+    '''
+    Return the plain text diagnostic for each syntax and message pair.
+    See `Diagnostic.render` for `char_width`.
+    '''
+    return ''.join(d.render(char_width=char_width) for d in self.diagnostics(*syntax_msgs, prefix=prefix))
 
 
-  def fail(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> NoReturn:
-    exit(self.diagnostic(*syntax_msgs, prefix=prefix))
+  def fail(self, *syntax_msgs:SyntaxMsg|None, prefix:str='', char_width:CharWidth|None=None) -> NoReturn:
+    exit(self.diagnostic(*syntax_msgs, prefix=prefix, char_width=char_width))
+
+
+  def diagnostics(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> list[Diagnostic]:
+    '''
+    Return the diagnostics for each syntax and message pair, as structured pieces that the caller can render in any format.
+    A syntax that spans several lines produces two diagnostics, for its first and last lines.
+    '''
+    diagnostics:list[Diagnostic] = []
+    for sm in syntax_msgs:
+      if sm is None: continue
+      slc = get_syntax_slc(sm[0])
+      diagnostics.extend(self.diagnostics_for_pos(pos=slc.start, end=slc.stop, msg=sm[1], prefix=prefix))
+    return diagnostics
 
 
   def diagnostic_for_syntax(self, syntax:Syntax, msg:str, *, prefix:str='') -> str:
-    slc = get_syntax_slc(syntax)
-    return self.diagnostic_for_pos(pos=slc.start, end=slc.stop, msg=msg, prefix=prefix)
+    return self.diagnostic((syntax, msg), prefix=prefix)
 
 
   def diagnostic_for_pos(self, pos:int, *, end:int, prefix:str='', msg:str = '') -> str:
+    return ''.join(d.render() for d in self.diagnostics_for_pos(pos, end=end, prefix=prefix, msg=msg))
+
+
+  def diagnostics_for_pos(self, pos:int, *, end:int, prefix:str='', msg:str = '') -> list[Diagnostic]:
     length = len(self.text)
     orig_pos, orig_end = pos, end
     pos = min(max(pos, 0), length)
@@ -233,18 +253,18 @@ class Source(Generic[_Text]):
     line_pos = self.get_line_start(pos)
     line_end = self.get_line_end(pos)
     if end <= line_end: # single line.
-      return self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_end=line_end, line_idx=line_idx, prefix=prefix, msg=msg)
+      return [self._diagnostic(pos=pos, end=end, line_pos=line_pos, line_end=line_end, line_idx=line_idx, prefix=prefix, msg=msg)]
     else: # multiline.
       end_line_idx = self.get_line_index(end)
       end_line_pos = self.get_line_start(end)
       end_line_end = self.get_line_end(end)
-      return (
-        self._diagnostic(pos=pos, end=line_end, line_pos=line_pos, line_end=line_end,  line_idx=line_idx, prefix=prefix, msg=msg) +
+      return [
+        self._diagnostic(pos=pos, end=line_end, line_pos=line_pos, line_end=line_end,  line_idx=line_idx, prefix=prefix, msg=msg),
         self._diagnostic(pos=end_line_pos, end=end, line_pos=end_line_pos, line_end=end_line_end, line_idx=end_line_idx,
-          prefix=prefix, msg='ending here.'))
+          prefix=prefix, msg='ending here.')]
 
 
-  def _diagnostic(self, pos:int, end:int, line_pos:int, line_end:int, line_idx:int, *, prefix:str, msg:str) -> str:
+  def _diagnostic(self, pos:int, end:int, line_pos:int, line_end:int, line_idx:int, *, prefix:str, msg:str) -> Diagnostic:
 
     text = self.text
     if not isinstance(text, str):
@@ -256,52 +276,31 @@ class Source(Generic[_Text]):
     assert pos >= 0
     assert pos <= end
     assert line_pos <= pos
-
     assert end <= line_end
 
     # Positions index the text, which may be bytes, whereas the diagnostic is laid out in characters.
-    # Decode the parts separately so that the columns and underline are measured in characters.
-    before_str = self.get_line_str(line_pos, pos)
-    within_str = self.get_line_str(pos, end)
-    line_str = before_str + within_str + self.get_line_str(end, line_end)
-    col = len(before_str)
-    col_end = col + len(within_str)
+    # Decode the parts separately so that each part is measured in characters.
+    before = self.get_line_str(line_pos, pos)
+    within = self.get_line_str(pos, end)
+    after = self.get_line_str(end, line_end)
 
-    tab = '\t'
-    newline = '\n'
-    space = ' '
-    caret = '^'
-    tilde = '~'
-
-    src_line:str
-    if line_str and line_str[-1] == newline:
-      s = line_str[:-1]
-      if pos == line_end - 1 or end == line_end:
-        src_line = s + "\u23CE" # RETURN SYMBOL.
-      else:
-        src_line = s
+    # The newline is removed from the parts and represented by a symbol, which is shown only when the syntax touches it.
+    newline_symbol = ''
+    is_newline_within = False
+    if before.endswith('\n'): # The end of text, following a final newline.
+      before = before[:-1] + '\u23ce' # The position is past the newline, so the symbol is part of the preceding text.
+    elif within.endswith('\n'):
+      within = within[:-1]
+      is_newline_within = True
+      newline_symbol = '\u23ce' # RETURN SYMBOL.
+    elif after.endswith('\n'):
+      after = after[:-1]
+      if not (within or after): newline_symbol = '\u23ce' # The position is that of the newline.
     elif self.show_missing_newline:
-      src_line = line_str + "\u23CE\u0353" # RETURN SYMBOL, COMBINING X BELOW.
-    else:
-      src_line = line_str
+      newline_symbol = '\u23ce\u0353' # RETURN SYMBOL, COMBINING X BELOW.
 
-    src_bar = "| " if src_line else "|"
-
-    under_chars = []
-    for char in before_str:
-      under_chars.append(tab if char == tab else space)
-    if pos >= end:
-      under_chars.append(caret)
-    else:
-      under_chars.append(tilde * len(within_str))
-    underline = ''.join(under_chars)
-
-    pre = (prefix + ': ') if prefix else ''
-    col_desc = f'{col+1}-{col_end+1}' if pos < end else str(col+1)
-
-    msg_space = "" if (not msg or msg.startswith('\n')) else " "
-    name_colon = (self.name + ':') if self.name else ''
-    return f'{pre}{name_colon}{line_idx+1}:{col_desc}:{msg_space}{msg}\n{src_bar}{src_line}\n  {underline}\n'
+    return Diagnostic(prefix=prefix, name=self.name, line_idx=line_idx, msg=msg, before=before, within=within, after=after,
+      newline_symbol=newline_symbol, is_newline_within=is_newline_within)
 
 
   def bytes_for(self, token:Token, offset:int=0) -> bytes:
@@ -400,6 +399,91 @@ def _utf8_char_bounds(text:bytes|bytearray, idx:int) -> tuple[int,int]:
 
 
 def _is_utf8_continuation(byte:int) -> bool: return 0x80 <= byte < 0xc0
+
+
+type CharWidth = Callable[[str],int]
+'A function that returns the number of terminal columns that a character occupies: zero, one or two.'
+
+
+@dataclass(frozen=True)
+class Diagnostic:
+  '''
+  The pieces of a diagnostic for one source line, which can be rendered in any format.
+  The line is split into the text before, within and after the reported syntax; none of these contain the newline.
+  A point diagnostic has no text within: it reports a position between characters.
+  At the end of text following a final newline, the position is past the newline, so `before` ends with the newline symbol.
+  All text is `str`, regardless of the source text type.
+  '''
+
+  prefix:str # Optional prefix of the location, e.g. 'error'.
+  name:str # The source name.
+  line_idx:int # Zero-based line index, including the source `line_idx_start`.
+  msg:str
+  before:str
+  within:str
+  after:str
+  newline_symbol:str # The symbol to show at the end of the line, or empty; distinguishes a present newline from a missing one.
+  is_newline_within:bool # The syntax includes the newline.
+
+
+  @property
+  def is_point(self) -> bool: return not (self.within or self.is_newline_within)
+
+  @property
+  def col(self) -> int:
+    'The zero-based column of the syntax, in characters.'
+    return len(self.before)
+
+  @property
+  def col_end(self) -> int: return self.col + len(self.within) + self.is_newline_within
+
+  @property
+  def location(self) -> str:
+    'The location label, with one-based line and columns, e.g. `error: name:1:2-4:`.'
+    pre = (self.prefix + ': ') if self.prefix else ''
+    name_colon = (self.name + ':') if self.name else ''
+    col_desc = str(self.col+1) if self.is_point else f'{self.col+1}-{self.col_end+1}'
+    return f'{pre}{name_colon}{self.line_idx+1}:{col_desc}:'
+
+
+  def render(self, char_width:CharWidth|None=None) -> str:
+    '''
+    Render the diagnostic as plain text: the location and message, the source line, and a line that marks the syntax.
+    A point is marked with a caret, other syntax with tildes.
+
+    The marks are aligned by terminal column, using `char_width` to measure each character; it defaults to `stdlib_char_width`.
+    This is a best effort: terminals disagree about the widths of some characters, and emoji sequences are overcounted.
+    Tabs are copied into the marks line so that alignment does not depend on the tab width.
+    '''
+    if char_width is None: char_width = stdlib_char_width
+    msg = self.msg
+    msg_space = '' if (not msg or msg.startswith('\n')) else ' '
+    src_line = self.before + self.within + self.after + self.newline_symbol
+    src_bar = '| ' if src_line else '|'
+    indent = _marks(self.before, ' ', char_width)
+    if self.is_point:
+      marks = '^'
+    else:
+      marks = _marks(self.within, '~', char_width) + ('~' if self.is_newline_within else '')
+      if not marks: marks = '~' # The syntax consists of zero-width characters.
+    return f'{self.location}{msg_space}{msg}\n{src_bar}{src_line}\n  {indent}{marks}\n'
+
+
+
+def stdlib_char_width(char:str) -> int:
+  '''
+  The default `CharWidth` function, which uses the Unicode data of the Python standard library.
+  Combining marks and format characters occupy no columns; East Asian wide and fullwidth characters occupy two.
+  '''
+  if char < '\x7f': return 1
+  if category(char) in ('Mn', 'Me', 'Cf'): return 0
+  return 2 if east_asian_width(char) in ('W', 'F') else 1
+
+
+def _marks(text:str, mark:str, char_width:CharWidth) -> str:
+  'Return a string of `mark` characters that occupies the same terminal columns as `text`. Tabs are preserved.'
+  return ''.join('\t' if char == '\t' else mark * char_width(char) for char in text)
+
 
 
 class LexerProtocol(Protocol):
