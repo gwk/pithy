@@ -226,6 +226,8 @@ class AmbiguityError(ValueError):
     self.msgs = msgs
 
 
+type PartIntersections = defaultdict[int, set[int]]
+
 def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   '''
   Optimize a DFA by coalescing redundant states.
@@ -260,7 +262,6 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
         pl = parts[j]
         assert pl.isdisjoint(pr), (pl, pr)
 
-  type PartIntersections = defaultdict[int, set[int]] # Optimization: types in hot functions can waste time.
   def refine(refining_set:set[int]) -> list[tuple[set[int], set[int]]]:
     '''
     Given refining set B, refine each set A in the partition to a pair of sets: A & B and A - B.
