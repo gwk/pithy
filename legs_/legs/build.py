@@ -1,13 +1,16 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from collections import defaultdict
+from dataclasses import dataclass
 from itertools import count
+from time import perf_counter
+from typing import Iterator
 
 from pithy.dict import dict_put
 from pithy.optional import unwrap
 
 from . import DictLexerBase, ModeData
-from .dfa import DFA, minimize_dfa
+from .dfa import AmbiguityError, DFA, minimize_dfa
 from .nfa import NFA, NfaState, NfaTransitions
 from .parse import Grammar
 from .patterns import LegsPattern, NfaMutableTransitions
@@ -20,26 +23,59 @@ def build_lexer_class(name:str, grammar:Grammar, encoding:str='utf-8') -> type[D
   '''
   mode_data:dict[str,ModeData] = {
     dfa.name: (dfa.start_node, dfa.transitions, {node: unwrap(dfa.match_kind(node)) for node in dfa.match_nodes})
-    for dfa in build_min_dfas(grammar, encoding)}
+    for dfa in (automata.min_dfa for automata in build_mode_automata(grammar, encoding))}
   return type(name, (DictLexerBase,), dict(
     pattern_descs=build_pattern_descs(grammar), mode_transitions=grammar.transitions, mode_data=mode_data))
 
 
-def build_min_dfas(grammar:Grammar, encoding:str='utf-8') -> list[DFA]:
+@dataclass
+class ModeAutomata:
+  'The automata built for one mode of a grammar. The earlier stages are kept for debugging, statistics and cross-checking.'
+  mode:str
+  nfa:NFA
+  fat_dfa:DFA # The DFA as derived from the NFA, prior to minimization.
+  min_dfa:DFA # The minimized DFA, from which lexers are generated.
+  minimize_time:float # Seconds taken by minimization.
+
+
+
+class ModeError(ValueError):
   '''
-  Build the minimized DFA for each mode of the grammar, in mode name order.
-  Raise ValueError if the patterns of a mode are invalid, for example ambiguous.
+  Raised when the patterns of a mode are invalid, for example ambiguous.
+  The automata that were built before the error was detected are provided for debugging.
   '''
-  dfas:list[DFA] = []
+
+  def __init__(self, msgs:list[str], nfa:NFA, fat_dfa:DFA|None=None):
+    super().__init__('\n'.join(msgs))
+    self.nfa = nfa
+    self.fat_dfa = fat_dfa
+
+
+
+def build_mode_automata(grammar:Grammar, encoding:str='utf-8') -> Iterator[ModeAutomata]:
+  '''
+  Build the automata for each mode of the grammar, yielding each mode as it is completed.
+  The `main` mode is first, followed by the others in name order.
+  The nodes of the minimized DFAs are numbered consecutively across the modes in this order.
+  Raise ModeError if the patterns of a mode are invalid.
+  '''
   start_node = 0
-  for mode, kinds in sorted(grammar.modes.items()):
+  for mode, kinds in sorted(grammar.modes.items(), key=lambda item: mode_name_key(item[0])):
     nfa = build_nfa(name=mode, named_patterns=sorted((kind, grammar.patterns[kind]) for kind in kinds), encoding=encoding)
     msgs = nfa.validate()
-    if msgs: raise ValueError('\n'.join(msgs))
-    dfa = minimize_dfa(build_dfa(nfa), start_node=start_node)
-    start_node = dfa.end_node
-    dfas.append(dfa)
-  return dfas
+    if msgs: raise ModeError(msgs, nfa)
+    fat_dfa = build_dfa(nfa)
+    start_time = perf_counter()
+    try: min_dfa = minimize_dfa(fat_dfa, start_node=start_node)
+    except AmbiguityError as e: raise ModeError(e.msgs, nfa, fat_dfa) from e
+    minimize_time = perf_counter() - start_time
+    start_node = min_dfa.end_node
+    yield ModeAutomata(mode=mode, nfa=nfa, fat_dfa=fat_dfa, min_dfa=min_dfa, minimize_time=minimize_time)
+
+
+def mode_name_key(name:str) -> str:
+  'Always place main mode first.'
+  return '' if name == 'main' else name
 
 
 def build_pattern_descs(grammar:Grammar) -> dict[str,str]:

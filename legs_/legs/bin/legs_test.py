@@ -12,7 +12,7 @@ from pithy.cmdparse import Cmd, opt, pos
 from pithy.fs import make_dirs
 from tolkien import Source
 
-from ..build import build_lexer_class, build_min_dfas, build_pattern_descs
+from ..build import build_lexer_class, build_mode_automata, build_pattern_descs
 from ..dfa import DFA
 from ..parse import Grammar, parse_legs
 from ..patterns import gen_incomplete_pattern
@@ -61,7 +61,7 @@ class LegsTestCmd(Cmd):
       exit(f'error: grammar has no mode named {self.mode!r}; specify the start mode with `-mode`. '
         f'modes: {", ".join(sorted(grammar.modes))}.')
 
-    try: dfas = build_min_dfas(grammar)
+    try: dfas = [automata.min_dfa for automata in build_mode_automata(grammar)]
     except ValueError as e: exit(str(e))
 
     test = LexerTest(grammar=grammar, dfas=dfas, mode=self.mode, inputs=[s.encode() for s in self.inputs])
