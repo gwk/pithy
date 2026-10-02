@@ -72,6 +72,63 @@ def test_literal_strings() -> None:
   assert '  {build,test}...  Actions to perform.' in format_help(Choose)
   assert '  -color {auto,always,never}\n                            When to use color.' in format_help(Choose)
 
+@utest_run
+def test_split_options() -> None:
+  class Split(Cmd):
+    langs:list[Literal['python','swift']] = opt(default_factory=list, split=',', metavar='LANG', doc='Languages.')
+    match:list[str] = opt(default_factory=list)
+    path:str|None = pos(default=None)
+
+  for args in (['-langs', 'python,swift'], ['-langs=python,swift'], ['-langs', 'python', '-langs', 'swift']):
+    utest(Split(langs=['python', 'swift'], match=[], path='grammar.legs'), Split.parse, [*args, 'grammar.legs'])
+  utest(Split(langs=['python', 'swift', 'python'], match=['a,b', ''], path=None), Split.parse,
+    ['-langs=python,swift', '-langs=python', '-match=a,b', '-match='])
+  utest(Split(langs=[], match=[], path=None), Split.parse, [])
+  for value in ('', ',python', 'python,', 'python,,swift'):
+    utest_exc(CmdError(f'-langs: empty item in split value: {value!r}.'), Split.parse, [f'-langs={value}'])
+  utest_exc(CmdError("-langs: invalid value: 'rust'; expected one of: python, swift"),
+    Split.parse, ['-langs=python,rust'])
+  utest_exc(CmdError('-langs: option requires a value.'), Split.parse, ['-langs'])
+  utest_exc(CmdError('unrecognized option: -unknown'), Split.parse, ['-langs=python', '-unknown'])
+
+  class Values(Cmd):
+    words:list[str] = opt(default_factory=list, split=':')
+    nums:list[int] = opt(default_factory=list, split=',', parse=lambda s: int(s, 16))
+
+  utest(Values(words=['a,b', ' c ', '-d'], nums=[10, 15, -1]), Values.parse,
+    ['-words=a,b: c :-d', '-nums=a,f', '-nums=-1'])
+
+  plain = format_help(Split)
+  assert '-langs LANG[,LANG...]' in plain
+  utest_val(plain, ansi.strip_ctrl_seq(format_help(Split, color=True)))
+  utest_val(CompletionResult((Completion('python,swift'),)), Split.complete(['-langs', 'python,sw']))
+  utest_val(CompletionResult((Completion('-langs=python,swift'),)), Split.complete(['-langs=python,sw']))
+  utest_val(CompletionResult((Completion('python,python'), Completion('python,swift'))),
+    Split.complete(['-langs', 'python,']))
+  utest_val(CompletionResult((Completion('swift'),)), Split.complete(['-langs', 'sw']))
+  assert '-langs=' in {c.value for c in Split.complete(['-langs=python,swift', '']).candidates}
+
+  class Paths(Cmd):
+    dirs:list[Path] = opt(split=':', complete='dirs')
+
+  utest_val(CompletionResult(path_prefix='-dirs=src:', path_kind='dirs'), Paths.complete(['-dirs=src:te']))
+  utest_val(CompletionResult(path_prefix='src:', path_kind='dirs'), Paths.complete(['-dirs', 'src:te']))
+
+
+@utest_run
+def test_split_declarations() -> None:
+  for separator in ('', ',:', ' ', '\t', '\n', '\u00a0'):
+    class BadSeparator(Cmd):
+      values:list[str] = opt(split=separator)
+
+    utest_exc(CmdDeclError('BadSeparator.values: `split` must be one non-whitespace character.'), BadSeparator.validate)
+
+  class Scalar(Cmd):
+    value:str = opt(split=',')
+
+  utest_exc(CmdDeclError('Scalar.value: `split` requires a list option.'), Scalar.validate)
+
+
 # Errors are explicit; nothing is guessed.
 utest_exc(CmdError('unrecognized option: --jobz'), Build.parse, ['--jobz=2', 'all'])
 utest_exc(CmdError('unrecognized option: --v'), Build.parse, ['--v', 'all'])
