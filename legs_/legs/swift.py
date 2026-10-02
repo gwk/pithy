@@ -92,6 +92,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       Name=type_prefix,
       license=license,
       mode_case_defs='\n  '.join(mode_case_defs),
+      mode_default=(' = .main' if 'main' in modes else ''), # A grammar without a `main` mode requires an explicit start mode.
       mode_transitions_dict=swift_repr(mode_transitions_dict, indent=2),
       patterns_path=patterns_path,
       state_cases='\n      '.join(state_cases),
@@ -148,29 +149,41 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
   public let source: Source
 
-  private var stack: [(${Name}LexMode, ${Name}TokenKind?)] = [(.main, nil)]
-  private var pos: Int = 0
+  private var stack: [(${Name}LexMode, ${Name}TokenKind?)]
+  private var pos: Int
+  private let end: Int
+  private var lineIdx: Int // The line index of `pos`.
 
-  public init(source: Source) {
+  // If `range` is provided then only that range of the text is lexed; no token extends past its end.
+  // `mode` is the mode in which lexing starts.
+  // Together these allow a parser that frames the text by other means to lex each framed range with the appropriate mode.
+  public init(source: Source, range: Range<Int>? = nil, mode: ${Name}LexMode${mode_default}) {
+    let range = range ?? 0..<source.text.count
+    precondition(range.lowerBound >= 0 && range.upperBound <= source.text.count, "${Name}Lexer: range is out of bounds: \(range)")
     self.source = source
+    self.stack = [(mode, nil)]
+    self.pos = range.lowerBound
+    self.end = range.upperBound
+    self.lineIdx = source.getLineIndex(pos: range.lowerBound)
   }
 
   public mutating func next() -> Token<${Name}TokenKind>? {
 
-    if self.pos == source.text.count { // Done.
+    if self.pos == end { // Done.
       return nil
     }
 
     let (mode, popKind) = self.stack.last!
-    let linePos = (source.newlinePositions.last ?? -1) + 1
-    let lineIdx = source.newlinePositions.count
+    let newlinePositions = source.newlinePositions
+    let lineIdx = self.lineIdx
+    let linePos = (lineIdx == 0) ? 0 : newlinePositions[lineIdx - 1] + 1
 
     var pos = self.pos
     var state = mode.startState
     var last: Int = -1
     var kind: ${Name}TokenKind = .incomplete
 
-    loop: while pos < source.text.count {
+    loop: while pos < end {
       let byte = source.text[pos]
 
       switch state {
@@ -178,9 +191,6 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
       ${state_cases}
 
       default: fatalError("${Name}Lexer.next: impossible state: \(state)")
-      }
-      if byte == 0x0a {
-        source.newlinePositions.append(pos)
       }
       pos += 1
     }
@@ -195,6 +205,9 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     }
     assert(tokenPos < tokenEnd, "tokenPos: \(tokenPos); tokenEnd: \(tokenEnd)")
     self.pos = tokenEnd
+    while self.lineIdx < newlinePositions.count && newlinePositions[self.lineIdx] < tokenEnd { // Advance past the token's newlines.
+      self.lineIdx += 1
+    }
     if kind == popKind {
       stack.removeLast()
     } else {

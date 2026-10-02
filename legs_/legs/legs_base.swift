@@ -47,11 +47,18 @@ public class Source: CustomStringConvertible {
 
   public let name: String
   public let text: [UInt8]
-  public var newlinePositions: [Int] = []
+  public let newlinePositions: [Int]
+  // The newline positions are computed up front, so that line information does not depend on lexing the text from the start.
+  // This allows a lexer to lex any range of the text, and several lexers to lex ranges of the same source.
 
   public init(name: String, text: [UInt8]) {
     self.name = name
     self.text = text
+    var newlinePositions: [Int] = []
+    for (pos, byte) in text.enumerated() {
+      if byte == 0x0a { newlinePositions.append(pos) }
+    }
+    self.newlinePositions = newlinePositions
   }
 
   public var description: String {
@@ -59,13 +66,18 @@ public class Source: CustomStringConvertible {
   }
 
   public func getLineIndex(pos: Int) -> Int {
-    // TODO: use binary search.
-    for (index, newlinePos) in newlinePositions.enumerated() {
-      if pos <= newlinePos { // newlines are considered to be the last character of a line.
-        return index
+    // Count the newlines that precede `pos` by binary search; a newline is considered to be the last character of its line.
+    var low = 0
+    var high = newlinePositions.count
+    while low < high {
+      let mid = (low + high) / 2
+      if newlinePositions[mid] < pos {
+        low = mid + 1
+      } else {
+        high = mid
       }
     }
-    return newlinePositions.count
+    return low
   }
 
   public func getLineStart(pos: Int) -> Int {
