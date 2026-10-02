@@ -26,8 +26,12 @@ help: # Summarize the targets of this makefile.
 legs_dir := ../../legs_/legs
 legs_srcs := $(legs_dir)/*.py $(legs_dir)/bin/*.py
 
+# The number of timed runs for each target; slower lexers get fewer runs. Override with `make runs=N perf-...`.
+runs := 8
+perf-%-py-re: runs := 2
+
 perf-%: _build/% # <grammar>-<lang>
-	time-runs 8 $^ ../../unicode-data/11_00/UnicodeData.txt
+	time-runs $(runs) $^ ../../unicode-data/11_00/UnicodeData.txt
 
 _build/%-py-table: _build/%.py main.py
 	echo '#!/usr/bin/env python3' > $@
