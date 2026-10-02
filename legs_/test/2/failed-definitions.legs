@@ -1,0 +1,15 @@
+// A definition that has an error is reported once; references to its name are not reported as undefined.
+// Other undefined names are still reported.
+
+# Patterns
+a: [x
+b c
+d
+
+# Modes
+main: a b d e
+other: : d
+
+# Transitions
+main : d :: other : d
+main : d :: nope : d

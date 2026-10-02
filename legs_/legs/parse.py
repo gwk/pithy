@@ -71,6 +71,11 @@ class GrammarBuilder:
     self.patterns:dict[str,LegsPattern] = {}
     self.modes:dict[str,list[Token]] = {} # Mode name to pattern name tokens.
     self.transitions:list[tuple[Token,Token,Token,Token]] = [] # (from_mode, open_kind, push_mode, close_kind).
+    # Definitions that were lost to earlier errors. References to them are not reported as undefined,
+    # because those errors would only be consequences. Each of these is only set when an error has been reported.
+    self.has_rejected_section = False # The rejected section could have defined any pattern or mode.
+    self.failed_patterns = set[str]()
+    self.failed_modes = set[str]()
 
 
   def error(self, syntax:Syntax, msg:str, notes:Iterable[SyntaxMsg]=()) -> None:
@@ -88,6 +93,7 @@ class GrammarBuilder:
       return
     if sect.level > 1:
       self.error(sect.marker, 'error: nested sections are not supported; a section header is a single `#` followed by a space.')
+      self.has_rejected_section = True
       return
 
     name_text, comment_sep, _ = source[sect.name].partition('//')
@@ -106,6 +112,7 @@ class GrammarBuilder:
         if matches: hint = f'did you mean `{matches[0].capitalize()}`?'
         else: hint = 'expected `License`, `Patterns`, `Modes` or `Transitions`.'
         self.error(sect.title, f'error: unknown section; {hint}')
+        self.has_rejected_section = True
 
 
   def parse_patterns(self, body:slice) -> None:
@@ -125,11 +132,13 @@ class GrammarBuilder:
         try: pattern = pattern_parser.parse('pattern_expr', source, slc=rest)
         except ParseError as e:
           self.parse_error(e)
+          self.failed_patterns.add(name)
           continue
       else: # A bare name is a literal pattern.
         excess = next(pattern_lexer.lex(source, rest, drop=dropped_kinds), None)
         if excess is not None:
           self.error(excess, 'error: expected `:` following pattern name.')
+          self.failed_patterns.add(name)
           continue
         pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in name])
       if name in self.patterns:
@@ -144,6 +153,8 @@ class GrammarBuilder:
       try: mode = decl_parser.parse('mode', source, slc=entry)
       except ParseError as e:
         self.parse_error(e)
+        m = pattern_head_re.match(source.text, entry.start, entry.stop)
+        if m: self.failed_modes.add(m['name'])
         continue
       name = source[mode.sym]
       if name in self.modes:
@@ -178,7 +189,9 @@ class GrammarBuilder:
     modes:dict[str,frozenset[str]] = {}
     for name, pattern_syms in self.modes.items():
       for sym in pattern_syms:
-        if source[sym] not in patterns: self.error(sym, f'error: undefined pattern name: {source[sym]}')
+        pattern_name = source[sym]
+        if pattern_name in patterns or pattern_name in self.failed_patterns or self.has_rejected_section: continue
+        self.error(sym, f'error: undefined pattern name: {pattern_name}')
       modes[name] = frozenset(source[sym] for sym in pattern_syms)
     if not modes:
       modes['main'] = frozenset(patterns)
@@ -193,7 +206,8 @@ class GrammarBuilder:
       for mode_tok, mode, kind_tok, kind in [
        (from_mode_tok, from_mode, open_kind_tok, open_kind), (push_mode_tok, push_mode, close_kind_tok, close_kind)]:
         if mode not in modes:
-          self.error(mode_tok, f'error: undefined mode name: {mode}')
+          if not (mode in self.failed_modes or self.has_rejected_section):
+            self.error(mode_tok, f'error: undefined mode name: {mode}')
           is_ok = False
         elif kind not in modes[mode]:
           self.error(kind_tok, f'error: pattern is not a member of mode `{mode}`: {kind}')

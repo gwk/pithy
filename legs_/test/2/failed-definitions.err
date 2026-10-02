@@ -1,0 +1,19 @@
+failed-definitions.legs:5:4-5: note: in 'charset' structure:
+| a: [x
+     ~
+failed-definitions.legs:5:6: parse error: 'charset' structure expects brack_c; received end_of_text.
+| a: [x⏎
+       ^
+failed-definitions.legs:6:3-4: error: expected `:` following pattern name.
+| b c
+    ~
+failed-definitions.legs:10:13-14: error: undefined pattern name: e
+| main: a b d e
+              ~
+failed-definitions.legs:11:8-9: parse error: excess token: main.colon.
+| other: : d
+         ~
+failed-definitions.legs:15:13-17: error: undefined mode name: nope
+| main : d :: nope : d
+              ~~~~
+
