@@ -268,6 +268,8 @@ class Lexer:
     `mode` is the mode in which lexing starts; it defaults to the main mode.
     '''
     if not isinstance(source, Source): raise TypeError(source)
+    if not isinstance(source.text, str):
+      raise TypeError(f'pithy.lex.Lexer requires a source with `str` text; received {type(source.text).__name__}: {source!r}')
     if mode is None: mode = self.main
     elif mode not in self.modes: raise ValueError(f'unknown mode: {mode!r}')
     pos, end = _range_for_slc(source, slc)
