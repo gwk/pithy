@@ -31,6 +31,12 @@ Importing a generated AGENTS.md is an error. Import the CTX.md source or one of 
 # Skills
 
 We also link both .claude/skills and .agents/skills to context/skills, so the same skills are available across platforms.
+An empty context/skills gets a `.gitkeep` placeholder so that git can track the directory.
+
+Commit the directory and both links instead of ignoring them.
+Claude Code denies its sandboxed commands write access to .claude/skills, and to the directory that the link resolves to.
+A sandboxed agent therefore cannot create these paths, for example when a precommit hook runs this tool in a fresh worktree.
+When they are committed, every checkout already has them and this tool has nothing to write.
 
 # Context Keywords
 
@@ -92,6 +98,7 @@ ctx_name = 'CTX.md'
 agents_name = 'AGENTS.md'
 claude_name = 'CLAUDE.md'
 skills_dir = 'context/skills'
+skills_keep_name = '.gitkeep'
 index_path = 'context/index.json'
 index_lock_path = 'context/index.lock'
 skills_link_dirs = ('.claude', '.agents')
@@ -136,6 +143,7 @@ class Instructions(Cmd):
 
   Put agent instructions in CTX.md; AGENTS.md expands its imports and CLAUDE.md links to it.
   Put cross-platform skills in context/skills; this directory will be symlinked to both .agents/skills and .claude/skills.
+  Commit the directory and the links; a sandboxed agent cannot create them.
   '''
   paths:list[Path] = cmd_pos(default_factory=lambda: [Path('.')],
     doc=f'Input {ctx_name} files, or directories to search for them.')
@@ -513,16 +521,30 @@ def process_path(src:Path) -> None:
 
 
 def update_skills_links(root:Path) -> None:
-  'Create cross-platform skills links under a command-line input root.'
+  '''
+  Create the skills directory and the cross-platform links to it under a command-line input root.
+  An empty skills directory gets a placeholder file so that git can track it.
+  Nothing is written when the layout is already in place, so a checkout that contains it works under a sandbox that denies these paths.
+  '''
   skills_orig = root / skills_dir
   skills_links = [root / link_dir / 'skills' for link_dir in skills_link_dirs]
   for link in skills_links:
     validate_link(orig=skills_orig, link=link)
-  make_dirs(skills_orig)
-  for link_dir, link in zip(skills_link_dirs, skills_links, strict=True):
-    make_dirs(root / link_dir)
-    if update_link(orig=skills_orig, link=link):
-      outL(f'craft-context: linked {link} -> ../{skills_dir}')
+  try:
+    make_dirs(skills_orig)
+    keep_path = skills_orig / skills_keep_name
+    if not list_dir(skills_orig, hidden=True):
+      update_file(keep_path, '')
+      outL(f'craft-context: wrote {keep_path}')
+    for link_dir, link in zip(skills_link_dirs, skills_links, strict=True):
+      make_dirs(root / link_dir)
+      if update_link(orig=skills_orig, link=link):
+        outL(f'craft-context: linked {link} -> ../{skills_dir}')
+  except PermissionError as e:
+    # Claude Code denies sandboxed writes to .claude/skills and to its link target; see the module documentation.
+    exit(f'craft-context error: cannot set up the skills directory and links: {e}\n'
+      f'  An agent sandbox may be denying the write. Run `craft-context instructions` outside of the sandbox,\n'
+      f'  then commit {skills_dir} and the links to it, so that checkouts already contain them.')
 
 
 def expand_imports(src:Path, text:str, *, header:str, out_dir:Path, blocks:list[str], emitted:set[str], depth:int) -> None:

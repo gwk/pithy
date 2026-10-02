@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from crafts.bin.craft_context import (ContextModule, CraftContext, extract_context_meta, FileRecord, find_src_paths,
   generated_warning, Index, load_context_index, load_project_context, process_path, Query, query_context_modules,
-  refresh_context_index, Validate)
+  refresh_context_index, update_skills_links, Validate)
 from pithy.filestatus import file_stat, is_dir, is_link, path_exists
 from pithy.fs import list_dir, make_dir, make_dirs, remove_empty_dir
 from pithy.io import read_bytes_from_path, read_from_path, write_to_path
@@ -165,6 +165,40 @@ with TemporaryDirectory() as tmp:
   with patch('crafts.bin.craft_context.errL'):
     utest_exc(ValueError, load_project_context, project / 'deps/unindexed')
   utest_exc(ValueError, load_project_context, workspace / 'missing')
+
+
+with TemporaryDirectory() as tmp:
+  root = Path(tmp)
+  skills = root / 'context/skills'
+  links = [root / '.claude/skills', root / '.agents/skills']
+
+  # The first run creates the directory, its placeholder and both links.
+  with patch('crafts.bin.craft_context.outL') as output:
+    update_skills_links(root)
+    utest(3, lambda: output.call_count)
+  utest(['.gitkeep'], list_dir, str(skills), hidden=True)
+  for link in links:
+    utest(True, is_link, link)
+    utest(True, is_dir, link, follow=True)
+
+  # A complete layout is left untouched, which is what lets a checkout that contains it pass under a sandbox.
+  with patch('crafts.bin.craft_context.outL') as output, \
+   patch('crafts.bin.craft_context.update_file', side_effect=AssertionError('Wrote the placeholder')), \
+   patch('crafts.bin.craft_context.make_link', side_effect=AssertionError('Created a link')):
+    update_skills_links(root)
+    utest(0, lambda: output.call_count)
+
+  # A directory that holds skills does not need the placeholder.
+  remove(skills / '.gitkeep')
+  make_dir(skills / 'example')
+  with patch('crafts.bin.craft_context.outL'):
+    update_skills_links(root)
+  utest(['example'], list_dir, str(skills), hidden=True)
+
+  # A denied write exits with an explanation instead of a traceback.
+  remove(links[0])
+  with patch('crafts.bin.craft_context.make_link', side_effect=PermissionError('denied')):
+    utest_exc(SystemExit, update_skills_links, root)
 
 
 old_time_ns = 1_000_000_000_000_000_000 # An mtime well before any index build.
