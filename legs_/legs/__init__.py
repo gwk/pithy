@@ -2,7 +2,7 @@
 
 __version__ = '0.0.5'
 
-from typing import Iterator, Pattern
+from typing import Any, ClassVar, Container, Iterator, Pattern
 
 from tolkien import Source, Token
 
@@ -16,9 +16,35 @@ ModeTransitions = dict[str,KindModeTransitions]
 
 
 class LexerBase(Iterator[Token]):
+  '''
+  The base class of generated Python lexers.
+  An instance is an iterator of the tokens of a source.
+  A lexer class conforms to `tolkien.LexerProtocol` by means of `kinds` and `lex`, so it can be passed to `pithy.parse.Parser`.
+  '''
 
   mode_transitions:ModeTransitions
   pattern_descs:dict[str,str]
+  kinds:ClassVar[frozenset[str]] = frozenset() # The pattern kinds, excluding `invalid` and `incomplete`.
+
+
+  def __init_subclass__(cls, **kwargs:Any) -> None:
+    super().__init_subclass__(**kwargs)
+    pattern_descs = cls.__dict__.get('pattern_descs')
+    if pattern_descs is not None: cls.kinds = frozenset(pattern_descs) - {'invalid', 'incomplete'}
+
+
+  @classmethod
+  def lex(cls, source:Source[bytes], slc:slice|None=None, *, mode:str|None=None, drop:Container[str]=(), eot:bool=False
+   ) -> Iterator[Token]:
+    '''
+    Lex `source`, yielding tokens. See `tolkien.LexerProtocol`.
+    `mode` defaults to `main`.
+    '''
+    lexer = cls(source, slc, mode=(mode or 'main'))
+    for token in lexer:
+      if token.kind not in drop: yield token
+    if eot: yield Token(pos=lexer.end, end=lexer.end, mode=lexer.stack[-1][0], kind='end_of_text')
+
 
   def __init__(self, source:Source[bytes], slc:slice|None=None, mode:str='main'):
     '''
