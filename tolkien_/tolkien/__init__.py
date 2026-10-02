@@ -238,6 +238,13 @@ class Source(Generic[_Text]):
 
   def _diagnostic(self, pos:int, end:int, line_pos:int, line_end:int, line_idx:int, *, prefix:str, msg:str) -> str:
 
+    text = self.text
+    if not isinstance(text, str):
+      # A position inside a multibyte character is widened to the whole character, so that the line decodes intact.
+      is_empty = (pos == end)
+      pos = _utf8_char_bounds(text, pos)[0]
+      end = pos if is_empty else _utf8_char_bounds(text, end)[1]
+
     assert pos >= 0
     assert pos <= end
     assert line_pos <= pos
@@ -361,6 +368,30 @@ class Source(Generic[_Text]):
       val = val*base + v
     return val
 
+
+
+def _utf8_char_bounds(text:bytes|bytearray, idx:int) -> tuple[int,int]:
+  '''
+  Return the bounds of the UTF-8 character that the byte position `idx` falls inside of, or `(idx, idx)` if it is on a boundary.
+  This never raises for malformed text: a position that does not follow a lead byte reaching past it is treated as a boundary,
+  and a truncated character ends at its last continuation byte.
+  '''
+  length = len(text)
+  if not (0 < idx < length and _is_utf8_continuation(text[idx])): return (idx, idx)
+  start = idx - 1
+  while start > 0 and idx - start < 3 and _is_utf8_continuation(text[start]): start -= 1
+  lead = text[start]
+  if lead >= 0xf0: char_len = 4
+  elif lead >= 0xe0: char_len = 3
+  elif lead >= 0xc0: char_len = 2
+  else: return (idx, idx) # Not a lead byte.
+  if start + char_len <= idx: return (idx, idx) # The preceding character is complete; this is a stray continuation byte.
+  end = idx
+  while end < min(start + char_len, length) and _is_utf8_continuation(text[end]): end += 1
+  return (start, end)
+
+
+def _is_utf8_continuation(byte:int) -> bool: return 0x80 <= byte < 0xc0
 
 
 class LexerProtocol(Protocol):
