@@ -9,7 +9,7 @@ from .form.nonportable import DevFormNonportable
 from .htmx import dev_htmx_index
 from .htmx.controls import ControlsHtmxUpdate, dev_controls_htmx
 from .htmx.modals import dev_htmx_modals, edit_modal_htmx, UpdateUserHtmx, user_detail_htmx, users_table_htmx
-from .markdown import dev_markdown, MarkdownSettingsHtmx
+from .markdown import dev_markdown, MarkdownRender, MarkdownSettingsHtmx
 from .pages import DevStaticFiles, index_html, PithyStaticFiles
 from .tables import dev_tables
 from .tests import dev_tests
@@ -36,6 +36,7 @@ routes:dict[str,RouteTarget] = {
   '/htmx/modals/users/{user_id:int}/edit_modal.htmx': edit_modal_htmx,
   '/htmx/modals/users/{user_id:int}/update.htmx': UpdateUserHtmx,
   '/markdown': dev_markdown,
+  '/markdown/render': MarkdownRender,
   '/markdown/settings.htmx': MarkdownSettingsHtmx,
   '/static/pithy/{subpath:path}': PithyStaticFiles,
   '/static/dev/{subpath:path}': DevStaticFiles,
