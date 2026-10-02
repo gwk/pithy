@@ -72,7 +72,8 @@ utest_exc(ParseError, legs_regex, 'a [b')
 
 
 # The start mode selects the syntax.
-utest([('decl', 'sym', 'ab'), ('decl', 'colon', ':'), ('decl', 'spaces', ' '), ('decl', 'sym', 'c')], legs_tokens, 'ab: c', 'decl')
+utest([('decl', 'sym', 'ab'), ('decl', 'colon', ':'), ('decl', 'spaces', ' '), ('decl', 'sym', 'c')],
+  legs_tokens, 'ab: c', 'decl')
 
 utest([
   ('pattern', 'char', 'a'), ('pattern', 'char', 'b'), ('pattern', 'plus', '+'), ('pattern', 'spaces', ' '),

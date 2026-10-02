@@ -1,11 +1,12 @@
 {
+  'cmd': 'python3 -m legs.bin.legs_test $NAME.legs',
   'args': [
-    '-test', 'a (bc def) g',
-    '-test', '/* comment "contents" () / *. */',
-    '-test', "'single quoted.' \"double quoted.\"",
-    '-test', '/* nested /* comment. */ */',
-    '-test', "'sq \\(a) interpolated.'",
-    '-test', '"dq \\(a) interpolated."',
-    '-test', "'sq \\(nested \"interpolated \\(a)\").'",
+    'a (bc def) g',
+    '/* comment "contents" () / *. */',
+    "'single quoted.' \"double quoted.\"",
+    '/* nested /* comment. */ */',
+    "'sq \\(a) interpolated.'",
+    '"dq \\(a) interpolated."',
+    "'sq \\(nested \"interpolated \\(a)\").'",
   ],
 }

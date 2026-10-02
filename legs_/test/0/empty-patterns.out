@@ -1,10 +1,6 @@
 
-arg1: 'a b c'
-arg1:1:1-6: invalid
-| a b c
-  ~~~~~
+'a b c':
+0-5 invalid 'a b c'
 
-arg2: 'abc def'
-arg2:1:1-8: invalid
-| abc def
-  ~~~~~~~
+'abc def':
+0-7 invalid 'abc def'

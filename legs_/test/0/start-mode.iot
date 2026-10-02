@@ -1,7 +1,8 @@
 {
+  'cmd': 'python3 -m legs.bin.legs_test $NAME.legs',
   'args': [
     '-mode', 'nums',
-    '-test', '12 34',
-    '-test', 'ab 5',
+    '12 34',
+    'ab 5',
   ],
 }

@@ -2,10 +2,8 @@
 
 import re
 from collections import defaultdict
-from importlib.util import find_spec as find_module_spec
-from typing import Any, cast
+from typing import Any, Iterable
 
-from pithy.fs import path_dir, path_join
 from pithy.iterable import closed_int_intervals
 from pithy.strings import render_template
 
@@ -15,17 +13,14 @@ from .python import comment_lines
 
 
 def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
- pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str, test_mode:str|None) -> None:
+ pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
   'Generate and write a swift lexer to a file at `path`.'
 
   # Create safe mode names.
   modes = { dfa.name : swift_safe_sym(dfa.name) for dfa in dfas }
   mode_case_defs = [f'case {modes[dfa.name]} = {dfa.start_node}' for dfa in dfas]
 
-  # Create safe token kind names.
-  kind_syms = { kind : swift_safe_sym(kind) for kind in pattern_descs }
-  kind_syms['incomplete'] = 'incomplete'
-  assert len(kind_syms) == len(set(kind_syms.values()))
+  kind_syms = swift_kind_syms(pattern_descs)
   token_kind_case_defs = [f'case {sym}' for sym in sorted(kind_syms.values())]
 
   # Token kind descriptions.
@@ -101,18 +96,6 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       token_kind_case_descs='\n    '.join(token_kind_case_descs),
     )
     f.write(src)
-    if test_mode is not None:
-      # Append the base source because `swift` will only interpret a single file.
-      spec = find_module_spec('legs')
-      assert spec is not None
-      pkg_dir_path = path_dir(cast(str, spec.origin))
-      legs_base_path = path_join(pkg_dir_path, 'legs_base.swift')
-      legs_base_contents = open(legs_base_path).read()
-      f.write('\n\n')
-      f.write(legs_base_contents)
-      # Write the test main function.
-      test_src = render_template(test_template, Name=type_prefix, mode=modes[test_mode])
-      f.write(test_src)
 
 
 template = r'''${license}
@@ -160,7 +143,8 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   // Together these allow a parser that frames the text by other means to lex each framed range with the appropriate mode.
   public init(source: Source, range: Range<Int>? = nil, mode: ${Name}LexMode${mode_default}) {
     let range = range ?? 0..<source.text.count
-    precondition(range.lowerBound >= 0 && range.upperBound <= source.text.count, "${Name}Lexer: range is out of bounds: \(range)")
+    precondition(range.lowerBound >= 0 && range.upperBound <= source.text.count,
+      "${Name}Lexer: range is out of bounds: \(range)")
     self.source = source
     self.stack = [(mode, nil)]
     self.pos = range.lowerBound
@@ -206,7 +190,8 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
     }
     assert(tokenPos < tokenEnd, "tokenPos: \(tokenPos); tokenEnd: \(tokenEnd)")
     self.pos = tokenEnd
-    while self.lineIdx < newlinePositions.count && newlinePositions[self.lineIdx] < tokenEnd { // Advance past the token's newlines.
+    // Advance past the token's newlines.
+    while self.lineIdx < newlinePositions.count && newlinePositions[self.lineIdx] < tokenEnd {
       self.lineIdx += 1
     }
     if kind == popKind {
@@ -224,47 +209,15 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 '''
 
 
-test_template = r'''
-
-// Legs test main.
-
-func test(index: Int, arg: String) {
-  let name = "arg\(index)"
-  print("\n\(name): \(ployRepr(arg))")
-  let text = Array(arg.utf8)
-  let source = Source(name: name, text: text)
-  for token in ${Name}Lexer(source: source, mode: .${mode}) {
-    var from = 2 // "0_" prefix is the common case.
-    let base: Int?
-    switch token.kind.description {
-    case "num":   base = 10; from = 0
-    case "bin":   base = 2
-    case "quat":  base = 4
-    case "oct":   base = 8
-    case "dec":   base = 10
-    case "hex":   base = 16
-    default:      base = nil
-    }
-    var msg: String = "error"
-    if let base = base {
-      do {
-        let val = try source.parseDigits(token: token, from: from, base: base)
-        msg = "\(token.kind): \(val)"
-      } catch let e {
-        msg = "error: \(e)"
-      }
-    } else {
-      msg = token.kind.description
-    }
-    print(source.diagnostic(token: token, msg: msg, showMissingNewline: false), terminator: "")
-  }
-}
-
-for (i, arg) in CommandLine.arguments.enumerated() {
-  if i == 0 { continue }
-  test(index: i, arg: arg)
-}
-'''
+def swift_kind_syms(kinds:Iterable[str]) -> dict[str,str]:
+  '''
+  Return the Swift enum case name for each token kind.
+  The cases of the generated `TokenKind` enum are declared in sorted order of these names, which determines their raw values.
+  '''
+  kind_syms = { kind : swift_safe_sym(kind) for kind in kinds }
+  kind_syms['incomplete'] = 'incomplete'
+  assert len(kind_syms) == len(set(kind_syms.values()))
+  return kind_syms
 
 
 class SwiftEnum:
