@@ -188,3 +188,31 @@ test:2:1-2: B
 
 utest('', str_source.diagnostic)
 utest('', str_source.diagnostic, None)
+
+
+# A bytes position inside a multibyte character is widened to the whole character.
+split_source = Source(name='test', text='a \u00a9 \u20ac \U0001f600 b'.encode()) # Characters of 2, 3 and 4 bytes, at 2, 5 and 9.
+
+def test_split(exp_cols:str, exp_under:str, pos:int, end:int) -> None:
+  exp = f'test:1:{exp_cols}: MSG\n| a \u00a9 \u20ac \U0001f600 b\u23ce\u0353\n  {exp_under}\n'
+  utest(exp, split_source.diagnostic, (token(pos, end), 'MSG'), _utest_label=f'{pos}:{end}')
+
+test_split('3-4', '  ~', 3, 4) # The second byte alone.
+test_split('3-4', '  ~', 2, 3) # The first byte alone.
+test_split('3-5', '  ~~', 3, 5) # The start is widened backward.
+test_split('1-4', '~~~', 0, 3) # The end is widened forward.
+test_split('5-6', '    ~', 6, 7) # The middle byte of three.
+test_split('7-8', '      ~', 10, 12) # The middle bytes of four.
+test_split('3-8', '  ~~~~~', 3, 10) # Both ends.
+test_split('5', '    ^', 6, 6) # A zero-length token moves to the start of the character.
+
+# Malformed text never raises; undecodable bytes are shown as replacement characters.
+def test_malformed(exp:str, text:bytes, pos:int, end:int) -> None:
+  utest(exp, Source(name='test', text=text, show_missing_newline=False).diagnostic, (token(pos, end), 'MSG'), _utest_label=repr(text))
+
+test_malformed('test:1:2-3: MSG\n| a\ufffdb\n   ~\n', b'a\x80b', 1, 2) # A stray continuation byte.
+test_malformed('test:1:3-4: MSG\n| a\ufffd\ufffdb\n    ~\n', b'a\x80\x80b', 2, 3) # No lead byte precedes the position.
+test_malformed('test:1:3-4: MSG\n| a\u00a9\ufffdb\n    ~\n', b'a\xc2\xa9\x80b', 3, 4) # The preceding character is complete.
+test_malformed('test:1:2-3: MSG\n| a\ufffdb\n   ~\n', b'a\xe2\x82b', 2, 3) # A truncated character is widened to its bytes.
+test_malformed('test:1:2-3: MSG\n| a\ufffd\n   ~\n', b'a\xf0\x9f', 2, 3) # A character truncated by the end of text.
+test_malformed('test:1:2-3: MSG\n| a\ufffdb\n   ~\n', b'a\xffb', 1, 2) # An invalid byte.
