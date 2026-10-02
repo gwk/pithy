@@ -39,7 +39,8 @@ class LegsCmd(Cmd):
   This distinction is important for error reporting;
   lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
 
-  Options that accept multiple values are repeated, e.g. `-langs python -langs swift`.
+  Multiple languages are separated by commas, e.g. `-langs python,swift`.
+  Other options that accept multiple values are repeated, e.g. `-match a -match b`.
   Use `legs-test` to run the generated lexers on test inputs and compare them.
   A value that begins with a dash must be written as `-option=VALUE`.
   '''
@@ -50,7 +51,8 @@ class LegsCmd(Cmd):
   dbg:bool = flag(doc='Verbose debug printing.')
   describe:bool = flag(doc='Print pattern descriptions.')
   encoding:str = opt(default='utf-8', doc='Encoding of the input file.')
-  langs:list[str] = opt(default_factory=list, metavar='LANG', doc='Target language for which to generate a lexer; repeatable.')
+  langs:list[str] = opt(default_factory=list, metavar='LANG', split=',',
+    doc='Target languages for which to generate lexers, separated by commas.')
   match:list[str] = opt(default_factory=list, metavar='STRING', doc='Attempt to lex the argument string; repeatable.')
   mode:str|None = opt(default=None, doc='Mode with which to lex the arguments to `-match`; defaults to `main`.')
   output:str|None = opt(default=None, doc='Path to output generated source.')
