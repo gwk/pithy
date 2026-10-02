@@ -278,7 +278,9 @@ class CharsetPattern(LegsPattern):
     ranges = self.ranges
     if flavor.endswith('.bytes') and any(r[1] >= 0x80 for r in ranges):
       # Some code points exceed ASCII range; need to encode char-by-char.
-      s = '|'.join(''.join(regex_for_code(byte, flavor) for byte in chr(code).encode()) for r in ranges for code in r)
+      # Surrogates are omitted because they cannot be encoded.
+      s = '|'.join(''.join(regex_for_code(byte, flavor) for byte in chr(code).encode())
+        for code in codes_for_ranges(ranges) if not (0xD800 <= code < 0xE000))
       return f'(?:{s})'
     return regex_for_code_ranges(ranges, flavor)
 
