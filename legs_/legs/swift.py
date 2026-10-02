@@ -15,7 +15,7 @@ from .python import comment_lines
 
 
 def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
- pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str, is_test:bool) -> None:
+ pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str, test_mode:str|None) -> None:
   'Generate and write a swift lexer to a file at `path`.'
 
   # Create safe mode names.
@@ -101,7 +101,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       token_kind_case_descs='\n    '.join(token_kind_case_descs),
     )
     f.write(src)
-    if is_test:
+    if test_mode is not None:
       # Append the base source because `swift` will only interpret a single file.
       spec = find_module_spec('legs')
       assert spec is not None
@@ -111,7 +111,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       f.write('\n\n')
       f.write(legs_base_contents)
       # Write the test main function.
-      test_src = render_template(test_template, Name=type_prefix)
+      test_src = render_template(test_template, Name=type_prefix, mode=modes[test_mode])
       f.write(test_src)
 
 
@@ -233,7 +233,7 @@ func test(index: Int, arg: String) {
   print("\n\(name): \(ployRepr(arg))")
   let text = Array(arg.utf8)
   let source = Source(name: name, text: text)
-  for token in Lexer(source: source) {
+  for token in ${Name}Lexer(source: source, mode: .${mode}) {
     var from = 2 // "0_" prefix is the common case.
     let base: Int?
     switch token.kind.description {

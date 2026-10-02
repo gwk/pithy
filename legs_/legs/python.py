@@ -16,11 +16,11 @@ class OutputOpts(TypedDict):
   'The command options shared by the source code output functions.'
   patterns_path:str|None
   type_prefix:str
-  is_test:bool
+  test_mode:str|None # The start mode for the generated test main; None if no test code is generated.
 
 
 def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
-  pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str, is_test:bool) -> None:
+  pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str, test_mode:str|None) -> None:
 
   mode_data:dict[str,ModeData] = {}
 
@@ -42,8 +42,8 @@ def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       patterns_path=patterns_path,
     )
     f.write(src)
-    if is_test:
-      test_src = render_template(test_template, Name=type_prefix)
+    if test_mode is not None:
+      test_src = render_template(test_template, Name=type_prefix, mode=repr(test_mode))
       f.write(test_src)
 
 
@@ -68,7 +68,7 @@ class ${Name}Lexer(DictLexerBase):
 
 def output_python_re(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
   patterns:dict[str,LegsPattern], incomplete_patterns:dict[str,LegsPattern|None],
-  pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str, is_test:bool) -> None:
+  pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str, test_mode:str|None) -> None:
 
   flavor = 'py.re.bytes'
 
@@ -108,8 +108,8 @@ def output_python_re(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       patterns_path=patterns_path,
     )
     f.write(src)
-    if is_test:
-      test_src = render_template(test_template, Name=type_prefix)
+    if test_mode is not None:
+      test_src = render_template(test_template, Name=type_prefix, mode=repr(test_mode))
       f.write(test_src)
 
 
@@ -134,7 +134,7 @@ class ${Name}Lexer(RegexLexerBase):
 test_template = '''
 from legs import test_main
 
-if __name__ == '__main__': test_main(${Name}Lexer)
+if __name__ == '__main__': test_main(${Name}Lexer, mode=${mode})
 '''
 
 

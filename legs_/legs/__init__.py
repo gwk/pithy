@@ -176,14 +176,14 @@ def ploy_repr(string: str) -> str:
 # Legs testing.
 
 
-def test_main(LexerClass:type[LexerBase]) -> None:
+def test_main(LexerClass:type[LexerBase], mode:str='main') -> None:
   from sys import argv
   for index, arg in enumerate(argv):
     if index == 0: continue
     name = f'arg{index}'
     print(f'\n{name}: {ploy_repr(arg)}')
     source = Source(name=name, text=arg.encode('utf8'), show_missing_newline=False)
-    for token in LexerClass(source=source):
+    for token in LexerClass(source=source, mode=mode):
       kind_desc = LexerClass.pattern_descs[token.kind]
       msg = test_desc(source=source, token=token, kind_desc=kind_desc)
       print(source.diagnostic((token, msg)), end='')
