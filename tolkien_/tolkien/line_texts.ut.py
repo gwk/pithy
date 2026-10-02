@@ -15,3 +15,9 @@ utest_seq(['\n'], source.line_texts)
 
 source = Source(name='abcs', text='a\nb\nc\n')
 utest_seq(['a\n', 'b\n', 'c\n'], source.line_texts)
+
+source = Source(name='no final newline', text='a\nb')
+utest_seq(['a\n', 'b'], source.line_texts)
+
+bytes_source = Source(name='bytes', text=b'a\n\nb')
+utest_seq([b'a\n', b'\n', b'b'], bytes_source.line_texts)
