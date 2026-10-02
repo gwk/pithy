@@ -2,7 +2,8 @@
 
 from legs.parse import parse_legs
 from legs.props import dfa_coverage_inputs, GrammarChecker, nfa_longest_match, PropertyError
-from utest import utest, utest_exc, utest_seq, utest_val
+from tolkien import Source
+from utest import utest, utest_exc, utest_seq, utest_seq_exc, utest_val
 
 
 grammar_text = '''
@@ -34,6 +35,11 @@ utest((2, frozenset({'word'})), nfa_longest_match, main_nfa, b'ab 1', 0)
 utest((2, frozenset({'if', 'word'})), nfa_longest_match, main_nfa, b'if', 0)
 utest((1, frozenset({'num'})), nfa_longest_match, main_nfa, b'1.x', 0) # The match is not extended by the incomplete fraction.
 utest((0, frozenset()), nfa_longest_match, main_nfa, b'!', 0)
+
+# A legs lexer requires a bytes source.
+utest_exc(TypeError("legs lexers require a source with `bytes` text; received str: Source('test', text=<str[1]>)"),
+  checker.Lexer, Source('test', 'a'))
+utest_seq_exc(TypeError, checker.Lexer.lex, Source('test', 'a'))
 
 # Individual inputs.
 utest(None, checker.check_tokens, b'if x (1.5 (2) \xc3\xa9) 3.', 'main')

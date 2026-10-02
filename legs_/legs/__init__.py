@@ -53,6 +53,8 @@ class LexerBase(Iterator[Token]):
     `mode` is the mode in which lexing starts.
     Together these allow a parser that frames the text by other means to lex each framed range with the appropriate mode.
     '''
+    if not isinstance(source.text, bytes):
+      raise TypeError(f'legs lexers require a source with `bytes` text; received {type(source.text).__name__}: {source!r}')
     pos, end, step = (slc or slice(None)).indices(len(source.text))
     if step != 1: raise ValueError(f'slice step is not supported: {slc!r}')
     if mode not in self.mode_names(): raise ValueError(f'unknown mode: {mode!r}; modes: {sorted(self.mode_names())}')
@@ -80,7 +82,6 @@ class DictLexerBase(LexerBase):
 
   def __next__(self) -> Token:
     text = self.source.text
-    assert isinstance(text, bytes)
     len_text = self.end
     pos = self.pos
     if pos == len_text: raise StopIteration

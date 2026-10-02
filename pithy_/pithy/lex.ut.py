@@ -103,6 +103,11 @@ utest_seq([
   run_lexer, str_lexer, '"a" "b\\"\\\\"\n')
 
 
+# The source text must be a string.
+utest_seq_exc(TypeError("pithy.lex.Lexer requires a source with `str` text; received bytes: Source('test', text=<bytes[1]>)"),
+  num_lexer.lex, Source(name='test', text=b'1'))
+
+
 # Start mode.
 utest_seq([('chars', 'a b'), ('dq', '"'), ('chars', ' ')], run_lexer, str_lexer, 'a b" ', mode='string')
 #^ The start mode is the root of the mode stack, so it is never popped.
