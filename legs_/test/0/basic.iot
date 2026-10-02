@@ -1,5 +1,5 @@
 {
-  'cmd': 'python3 -m legs.bin.legs_test $NAME.legs',
+  'cmd': 'legs-test $NAME.legs',
   'args': [
     '',
     'a bd bcd eg efg effg h hh ij k l', # similar to test/0/match/basic.iot.

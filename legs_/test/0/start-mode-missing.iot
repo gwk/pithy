@@ -1,5 +1,5 @@
 {
-  'cmd': 'python3 -m legs.bin.legs_test start-mode.legs',
+  'cmd': 'legs-test start-mode.legs',
   'links': { 'legs_/test/0/start-mode.legs' },
   'args': ['a'], # The grammar has no `main` mode and `-mode` is not specified.
   'code': 1,
