@@ -1,13 +1,11 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from argparse import Namespace
-
 from pithy.graphviz import GraphvizAttrs, GraphvizName, GraphvizNodes, write_dot_digraph_adjacency
 
 from .dfa import DFA
 
 
-def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str], license:str, args:Namespace) -> None:
+def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str]) -> None:
 
   for dfa in dfas:
     path = f'{path_stem}-{dfa.name}.dot'

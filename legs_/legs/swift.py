@@ -1,7 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from argparse import Namespace
 from collections import defaultdict
 from importlib.util import find_spec as find_module_spec
 from typing import Any, cast
@@ -15,7 +14,7 @@ from .dfa import DFA
 
 
 def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
- pattern_descs:dict[str,str], license:str, args:Namespace) -> None:
+ pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str, is_test:bool) -> None:
   'Generate and write a swift lexer to a file at `path`.'
 
   # Create safe mode names.
@@ -90,17 +89,17 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
 
   with open(path, 'w', encoding='utf8') as f:
     src = render_template(template,
-      Name=args.type_prefix,
+      Name=type_prefix,
       license=license,
       mode_case_defs='\n  '.join(mode_case_defs),
       mode_transitions_dict=swift_repr(mode_transitions_dict, indent=2),
-      patterns_path=args.path,
+      patterns_path=patterns_path,
       state_cases='\n      '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
       token_kind_case_descs='\n    '.join(token_kind_case_descs),
     )
     f.write(src)
-    if args.test:
+    if is_test:
       # Append the base source because `swift` will only interpret a single file.
       spec = find_module_spec('legs')
       assert spec is not None
@@ -110,7 +109,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       f.write('\n\n')
       f.write(legs_base_contents)
       # Write the test main function.
-      test_src = render_template(test_template, Name=args.type_prefix)
+      test_src = render_template(test_template, Name=type_prefix)
       f.write(test_src)
 
 
