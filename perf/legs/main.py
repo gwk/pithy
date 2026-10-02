@@ -3,7 +3,7 @@
 from collections import Counter
 from sys import argv
 
-from legs import Source
+from tolkien import Source
 
 
 def main() -> None:
