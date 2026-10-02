@@ -7,10 +7,12 @@ pkgs := 'pyrrhus tolkien tomul pithy utest iotest taptools crafts wu legs tap_ba
 
 pkg_srcs := 'pyrrhus_/pyrrhus tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze tap_betterstack_/tap_betterstack tap_ops_/tap_ops'
 
-typecheck_other_srcs := 'ops perf tap_backblaze_/test-integration test-diff tools'
+typecheck_other_srcs := 'legs_/test/ut ops perf tap_backblaze_/test-integration test-diff tools'
 
 pkg_tests_fast := 'pithy_/test taptools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
+
+slow_utests := 'legs_/test/ut'
 
 # Credentials for the tap_backblaze integration suite; the read-only key restores what the read-write key uploads.
 backblaze_test_creds_ro := '../creds/backblaze/tap-backblaze-test-ro.json'
@@ -124,7 +126,7 @@ fmt-rust-check:
 
 test: utest iotest
 
-test-full: utest iotest-full
+test-full: utest utest-slow iotest-full
 
 # Run the tap_backblaze integration suite; requires credentials, see tap_backblaze_/test-integration/readme.md.
 test-backblaze:
@@ -166,3 +168,7 @@ update-uv-lock:
 
 utest:
   python3 -m utest {{pkg_srcs}}
+
+# Unit tests that are too slow for the routine `utest` recipe.
+utest-slow:
+  python3 -m utest {{slow_utests}}
