@@ -1,12 +1,11 @@
 {
   'args': [
-    '-test',
-    'a (bc def) g',
-    '/* comment "contents" () / *. */',
-    "'single quoted.' \"double quoted.\"",
-    '/* nested /* comment. */ */',
-    "'sq \\(a) interpolated.'",
-    '"dq \\(a) interpolated."',
-    "'sq \\(nested \"interpolated \\(a)\").'",
+    '-test', 'a (bc def) g',
+    '-test', '/* comment "contents" () / *. */',
+    '-test', "'single quoted.' \"double quoted.\"",
+    '-test', '/* nested /* comment. */ */',
+    '-test', "'sq \\(a) interpolated.'",
+    '-test', '"dq \\(a) interpolated."',
+    '-test', "'sq \\(nested \"interpolated \\(a)\").'",
   ],
 }

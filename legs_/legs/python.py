@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 import re
-from argparse import Namespace
+from typing import TypedDict
 
 from pithy.optional import unwrap
 from pithy.reprs import repr_ml
@@ -12,8 +12,15 @@ from .dfa import DFA
 from .patterns import LegsPattern, regex_for_codes
 
 
+class OutputOpts(TypedDict):
+  'The command options shared by the source code output functions.'
+  patterns_path:str|None
+  type_prefix:str
+  is_test:bool
+
+
 def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
-  pattern_descs:dict[str, str], license:str, args:Namespace) -> None:
+  pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str, is_test:bool) -> None:
 
   mode_data:dict[str,ModeData] = {}
 
@@ -27,16 +34,16 @@ def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
 
   with open(path, 'w', encoding='utf8') as f:
     src = render_template(template,
-      Name=args.type_prefix,
+      Name=type_prefix,
       license=license,
       mode_data=repr_ml(mode_data, indent=1),
       mode_transitions=repr_ml(mode_transitions, indent=1),
       pattern_descs=repr_ml(pattern_descs, indent=1),
-      patterns_path=args.path,
+      patterns_path=patterns_path,
     )
     f.write(src)
-    if args.test:
-      test_src = render_template(test_template, Name=args.type_prefix)
+    if is_test:
+      test_src = render_template(test_template, Name=type_prefix)
       f.write(test_src)
 
 
@@ -61,7 +68,7 @@ class ${Name}Lexer(DictLexerBase):
 
 def output_python_re(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
   patterns:dict[str,LegsPattern], incomplete_patterns:dict[str,LegsPattern|None],
-  pattern_descs:dict[str, str], license:str, args:Namespace) -> None:
+  pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str, is_test:bool) -> None:
 
   flavor = 'py.re.bytes'
 
@@ -93,16 +100,16 @@ def output_python_re(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
 
   with open(path, 'w', encoding='utf8') as f:
     src = render_template(re_template,
-      Name=args.type_prefix,
+      Name=type_prefix,
       license=license,
       mode_patterns_repr=mode_patterns_repr,
       mode_transitions=repr_ml(mode_transitions, indent=1),
       pattern_descs=repr_ml(pattern_descs, indent=1),
-      patterns_path=args.path,
+      patterns_path=patterns_path,
     )
     f.write(src)
-    if args.test:
-      test_src = render_template(test_template, Name=args.type_prefix)
+    if is_test:
+      test_src = render_template(test_template, Name=type_prefix)
       f.write(test_src)
 
 

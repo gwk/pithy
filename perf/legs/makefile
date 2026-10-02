@@ -41,12 +41,12 @@ _build/%-swift: _build/%.swift ../../legs/legs_base.swift main.swift
 
 _build/%.re.py: ../../grammars/%.legs ../../legs/*.py ../../legs/bin/*.py
 	mkdir -p _build
-	legs $< -langs python python-re swift -output $@
+	legs $< -langs python -langs python-re -langs swift -output $@
 
 _build/%.table.py: ../../grammars/%.legs ../../legs/*.py ../../legs/bin/*.py
 	mkdir -p _build
-	legs $< -langs python python-re swift -output $@
+	legs $< -langs python -langs python-re -langs swift -output $@
 
 _build/%.swift: ../../grammars/%.legs ../../legs/*.py ../../legs/bin/*.py
 	mkdir -p _build
-	legs $< -langs python python-re swift -output $@
+	legs $< -langs python -langs python-re -langs swift -output $@

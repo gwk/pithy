@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from argparse import ArgumentParser
 from time import perf_counter
 
+from pithy.cmdparse import Cmd, flag, opt, pos
 from pithy.io import errL, errLL, errSL, errZ, outL, outZ
 from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
@@ -15,49 +15,59 @@ from ..dot import output_dot
 from ..nfa import NFA
 from ..parse import parse_legs
 from ..patterns import gen_incomplete_pattern, LegsPattern
-from ..python import output_python, output_python_re
+from ..python import output_python, output_python_re, OutputOpts
 from ..swift import output_swift
 
 
-description = '''
-Legs is a lexer generator: it takes as input a `.legs` grammar file,
-and outputs code that tokenizes text, converting a stream of characters into a stream of chunks of text called tokens.
-
-A grammar file defines the kinds of tokens and the patterns of text that they match.
-The patterns are similar to python regular expressions but with several important differences:
-* Character classes are specified using their Unicode names. (TODO: provide documentation)
-* The pattern language is limited to the semantics of formal regular languages.
-* Order does not matter. The pattern compilation process works in terms of sets of patterns,
-  and detects ambiguities in overlapping patterns.
-
-There are two special token kinds:
-* `invalid` indicates a sequence of bytes for which the lexer could not start matching;
-* `incomplete` indicates a token that began to match but did not complete.
-This distinction is important for error reporting;
-lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
-'''
+def main() -> None: LegsCmd.main()
 
 
-def main() -> None:
-  parser = ArgumentParser(prog='legs', description=description)
-  parser.add_argument('path', nargs='?', help='Path to the .legs file.')
-  parser.add_argument('-dbg', action='store_true', help='Verbose debug printing.')
-  parser.add_argument('-describe', action='store_true', help='Print pattern descriptions.')
-  parser.add_argument('-encoding', default='utf-8', help='Encoding of the input file.')
-  parser.add_argument('-langs', nargs='+', default=[], help='Target languages for which to generate lexers.')
-  parser.add_argument('-match', nargs='+', help='Attempt to lex each argument string.')
-  parser.add_argument('-mode', default=None, help='Mode with which to lex the arguments to `-match`.')
-  parser.add_argument('-output', default=None, help='Path to output generated source.')
-  parser.add_argument('-patterns', nargs='+', help='Specify legs patterns for quick testing.')
-  parser.add_argument('-stats', action='store_true', help='Print statistics about the generated automata.')
 
-  parser.add_argument('-test', nargs='+',
-    help='Generate testing source code for the specified language or else all supported languages;'
-    ' run each test lexer on the specified arguments.')
+class LegsCmd(Cmd):
+  '''
+  Legs is a lexer generator: it takes as input a `.legs` grammar file,
+  and outputs code that tokenizes text, converting a stream of characters into a stream of chunks of text called tokens.
 
-  parser.add_argument('-type-prefix', default='', help='Type names prefix for generated source code.')
+  A grammar file defines the kinds of tokens and the patterns of text that they match.
+  The patterns are similar to python regular expressions but with several important differences:
+  * Character classes are specified using their Unicode names. (TODO: provide documentation)
+  * The pattern language is limited to the semantics of formal regular languages.
+  * Order does not matter. The pattern compilation process works in terms of sets of patterns,
+    and detects ambiguities in overlapping patterns.
 
-  args = parser.parse_args()
+  There are two special token kinds:
+  * `invalid` indicates a sequence of bytes for which the lexer could not start matching;
+  * `incomplete` indicates a token that began to match but did not complete.
+  This distinction is important for error reporting;
+  lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
+
+  Options that accept multiple values are repeated, e.g. `-langs python -langs swift`.
+  A value that begins with a dash must be written as `-option=VALUE`.
+  '''
+
+  cmd_name = 'legs'
+
+  path:str|None = pos(default=None, doc='Path to the .legs file.')
+  dbg:bool = flag(doc='Verbose debug printing.')
+  describe:bool = flag(doc='Print pattern descriptions.')
+  encoding:str = opt(default='utf-8', doc='Encoding of the input file.')
+  langs:list[str] = opt(default_factory=list, metavar='LANG', doc='Target language for which to generate a lexer; repeatable.')
+  match:list[str] = opt(default_factory=list, metavar='STRING', doc='Attempt to lex the argument string; repeatable.')
+  mode:str|None = opt(default=None, doc='Mode with which to lex the arguments to `-match`.')
+  output:str|None = opt(default=None, doc='Path to output generated source.')
+  patterns:list[str] = opt(default_factory=list, metavar='PATTERN', doc='Specify a legs pattern for quick testing; repeatable.')
+  stats:bool = flag(doc='Print statistics about the generated automata.')
+  test:list[str] = opt(default_factory=list, metavar='STRING',
+    doc='Generate testing source code for the specified languages or else all testable languages;'
+    ' run each test lexer on the argument string; repeatable.')
+  type_prefix:str = opt(default='', doc='Type names prefix for generated source code.')
+
+
+  def run(self) -> None: run_legs(self)
+
+
+
+def run_legs(args:LegsCmd) -> None:
   dbg = args.dbg
 
   if not args.match and args.mode:
@@ -132,7 +142,7 @@ def main() -> None:
   # If we are testing patterns on the command line, then find the specified DFA, test each argument, and exit.
   if args.match:
     for dfa in dfas:
-      if dfa.name != mode: continue
+      if dfa.name != match_mode: continue
       for text in args.match:
         text_bytes = text.encode(args.encoding)
         match_bytes(nfa, fat_dfa, min_dfa, text, text_bytes)
@@ -159,6 +169,7 @@ def main() -> None:
   if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
 
   test_cmds:list[list[str]] = []
+  output_opts = OutputOpts(patterns_path=args.path, type_prefix=args.type_prefix, is_test=bool(args.test))
 
   out_dir, out_name = split_dir_name(out_path)
   if not out_name:
@@ -169,26 +180,25 @@ def main() -> None:
   out_stem = path_join(out_dir, out_name_stem)
 
   if 'dot' in langs:
-    output_dot(out_stem, dfas=dfas,
-      pattern_descs=pattern_descs, license=license, args=args)
+    output_dot(out_stem, dfas=dfas, pattern_descs=pattern_descs)
 
   if 'python' in langs:
     path = out_stem + '.py'
-    output_python(path, dfas=dfas, mode_transitions=mode_transitions,
-      pattern_descs=pattern_descs, license=license, args=args)
+    output_python(path, dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
+      **output_opts)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'python-re' in langs:
     path = out_stem + '.re.py'
     output_python_re(path, dfas=dfas, mode_transitions=mode_transitions,
       patterns=patterns, incomplete_patterns=incomplete_patterns,
-      pattern_descs=pattern_descs, license=license, args=args)
+      pattern_descs=pattern_descs, license=license, **output_opts)
     if args.test: test_cmds.append(['python3', path] + args.test)
 
   if 'swift' in langs:
     path = out_stem + '.swift'
-    output_swift(path, dfas=dfas, mode_transitions=mode_transitions,
-      pattern_descs=pattern_descs, license=license, args=args)
+    output_swift(path, dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
+      **output_opts)
     if args.test: test_cmds.append(['swift', path] + args.test)
 
   if args.test:
@@ -290,4 +300,4 @@ supported_langs = {'dot', 'python', 'python-re', 'swift'}
 test_langs = {'python', 'swift'}
 
 
-if __name__ == "__main__": main()
+if __name__ == '__main__': main()
