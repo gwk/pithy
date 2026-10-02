@@ -221,6 +221,14 @@ class Source(Generic[_Text]):
 
 
   def diagnostic_for_pos(self, pos:int, *, end:int, prefix:str='', msg:str = '') -> str:
+    length = len(self.text)
+    orig_pos, orig_end = pos, end
+    pos = min(max(pos, 0), length)
+    end = min(max(end, pos), length)
+    if pos != orig_pos or end != orig_end:
+      # The caller passed an invalid position. Raising would lose the message, so report the nearest valid position with a note.
+      note = f'(invalid position {orig_pos}:{orig_end}; text length is {length})'
+      msg = f'{msg} {note}' if msg else note
     line_idx = self.get_line_index(pos)
     line_pos = self.get_line_start(pos)
     line_end = self.get_line_end(pos)

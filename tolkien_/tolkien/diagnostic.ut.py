@@ -216,3 +216,45 @@ test_malformed('test:1:3-4: MSG\n| a\u00a9\ufffdb\n    ~\n', b'a\xc2\xa9\x80b', 
 test_malformed('test:1:2-3: MSG\n| a\ufffdb\n   ~\n', b'a\xe2\x82b', 2, 3) # A truncated character is widened to its bytes.
 test_malformed('test:1:2-3: MSG\n| a\ufffd\n   ~\n', b'a\xf0\x9f', 2, 3) # A character truncated by the end of text.
 test_malformed('test:1:2-3: MSG\n| a\ufffdb\n   ~\n', b'a\xffb', 1, 2) # An invalid byte.
+
+
+# An invalid position never raises: it is clamped to the text and noted in the message.
+test_ascii('''\
+test:1:3-4: MSG (invalid position 2:9; text length is 3)
+| a b\u23ce\u0353
+    ~
+''', 'a b', 2, 9, name='test') # The end is past the text.
+
+test_ascii('''\
+test:1:4: MSG (invalid position 7:9; text length is 3)
+| a b\u23ce\u0353
+     ^
+''', 'a b', 7, 9, name='test') # The whole token is past the text.
+
+test_ascii('''\
+test:1:1-2: MSG (invalid position -1:1; text length is 3)
+| a b\u23ce\u0353
+  ~
+''', 'a b', -1, 1, name='test') # The start is negative.
+
+test_ascii('''\
+test:1:3: MSG (invalid position 2:1; text length is 3)
+| a b\u23ce\u0353
+    ^
+''', 'a b', 2, 1, name='test') # The end precedes the start.
+
+test_ascii('''\
+test:1:3-4: (invalid position 2:9; text length is 3)
+| a b\u23ce\u0353
+    ~
+''', 'a b', 2, 9, msg='', name='test') # An empty message.
+
+# The note appears only on the first part of a multiline diagnostic.
+test_ascii('''\
+test:1:1-3: MSG (invalid position 0:9; text length is 3)
+| a\u23ce
+  ~~
+test:2:1-2: ending here.
+| b\u23ce\u0353
+  ~
+''', 'a\nb', 0, 9, name='test')
