@@ -193,7 +193,7 @@ def determine_output_languages(args_langs:list[str], output_path:str|None) -> se
 
 
 def describe_automata(automata:ModeAutomata, dbg:bool, stats:bool) -> None:
-  'Print the debug descriptions and statistics of the automata of a mode, and the note about post-match nodes.'
+  'Print the debug descriptions and statistics of the automata of a mode, and the notes about its minimized DFA.'
   if dbg: automata.nfa.describe('NFA')
   if dbg or stats: automata.nfa.describe_stats('NFA Stats')
   if dbg: automata.fat_dfa.describe('Fat DFA')
@@ -203,6 +203,10 @@ def describe_automata(automata:ModeAutomata, dbg:bool, stats:bool) -> None:
     automata.min_dfa.describe_stats('Min DFA Stats')
     print(f'  time: {automata.minimize_time:.3f} seconds')
   if dbg: errL('----')
+  unorderable_pairs = automata.min_dfa.unorderable_pairs
+  if unorderable_pairs:
+    errL(f'note: `{automata.mode}`: patterns cannot be correctly ordered for backtracking regex engines: ',
+      ', '.join(str(p) for p in unorderable_pairs), '.')
   post_matches = len(automata.min_dfa.post_match_nodes)
   if post_matches:
     errL(f'note: `{automata.mode}`: minimized DFA contains ', pluralize(post_matches, "post-match node"), '.')
