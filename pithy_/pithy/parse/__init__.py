@@ -29,11 +29,11 @@ from dataclasses import dataclass, fields as dc_fields, is_dataclass
 from keyword import iskeyword, issoftkeyword
 from typing import Any, Callable, cast, Iterable, Iterator, NoReturn, Protocol, TypeVar, Union
 
-from tolkien import get_syntax_slc, Source, Syntax, SyntaxMsg, Token
+from tolkien import get_syntax_slc, LexerProtocol, Source, Syntax, SyntaxMsg, Token
 
 from ..graph import visit_nodes
 from ..io import errL
-from ..lex import Lexer, reserved_names, valid_name_re
+from ..lex import reserved_names, valid_name_re
 from ..meta import caller_module_name
 from ..stack import Stack
 from ..strings import indent_lines, iter_str, pluralize, typecase_from_snakecase
@@ -1189,12 +1189,12 @@ class Parser:
       super().__init__(''.join(str(msg) for msg in msgs))
 
 
-  def __init__(self, lexer:Lexer, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
+  def __init__(self, lexer:LexerProtocol, *, preprocessor:Preprocessor|None=None, drop:Iterable[TokenKind]=(),
    literals:Iterable[TokenKind]=(), rules:dict[RuleName,Rule], atom_transform:AtomTransform|None=None,
    transforms:dict[RuleName,Callable]|None=None):
 
     '''
-    lexer: the lexer to use.
+    lexer: the lexer to use. This can be a `pithy.lex.Lexer` or any other conforming lexer, such as a legs lexer class.
     preprocessor: a function that can modify the input token stream.
 
     drop: a set of token kinds to be dropped from the input token stream.
@@ -1337,8 +1337,8 @@ class Parser:
     return struct_type
 
 
-  def lex_and_preprocess(self, source:Source, dbg_tokens:bool, slc:slice|None=None) -> list[Token]:
-    stream:Iterable[Token] = self.lexer.lex(source, slc, drop=self.drop, eot=True)
+  def lex_and_preprocess(self, source:Source, dbg_tokens:bool, slc:slice|None=None, mode:str|None=None) -> list[Token]:
+    stream:Iterable[Token] = self.lexer.lex(source, slc, mode=mode, drop=self.drop, eot=True)
     if self.preprocessor: stream = self.preprocessor(source, stream)
     tokens = list(stream)
     if dbg_tokens:
@@ -1348,10 +1348,14 @@ class Parser:
 
 
   def parse(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, skeletonize:bool=False, dbg_tokens:bool=False,
-   *, slc:slice|None=None) -> Any:
-    'Parse `source` with the named rule. If `slc` is provided then only that range of the text is parsed.'
+   *, slc:slice|None=None, mode:str|None=None) -> Any:
+    '''
+    Parse `source` with the named rule.
+    If `slc` is provided then only that range of the text is parsed.
+    If `mode` is provided then the lexer starts in that mode.
+    '''
     rule = self.rules[rule_name]
-    tokens = self.lex_and_preprocess(source, dbg_tokens, slc)
+    tokens = self.lex_and_preprocess(source, dbg_tokens, slc, mode)
     ctx = ParseCtx(source=source, tokens=tokens)
     pos, _slc, result = rule.parse(ctx=ctx, parent=rule, pos=0) # Top rule is passed as its own parent.
     excess_token = ctx.tokens[pos] # Must exist because end_of_text cannot be consumed by a legal parser.
@@ -1363,17 +1367,17 @@ class Parser:
 
 
   def parse_or_fail(self, rule_name:RuleName, source:Source, ignore_excess:bool=False, skeletonize:bool=False,
-   dbg_tokens:bool=False, *, slc:slice|None=None) -> Any:
+   dbg_tokens:bool=False, *, slc:slice|None=None, mode:str|None=None) -> Any:
     try:
       return self.parse(rule_name=rule_name, source=source, ignore_excess=ignore_excess, skeletonize=skeletonize,
-        dbg_tokens=dbg_tokens, slc=slc)
+        dbg_tokens=dbg_tokens, slc=slc, mode=mode)
     except ParseError as e: e.fail()
 
 
   def parse_all(self, rule_name:RuleName, source:Source, skeletonize:bool=False, dbg_tokens:bool=False, *,
-   slc:slice|None=None) -> Iterator[Any]:
+   slc:slice|None=None, mode:str|None=None) -> Iterator[Any]:
     rule = self.rules[rule_name]
-    tokens = self.lex_and_preprocess(source, dbg_tokens, slc)
+    tokens = self.lex_and_preprocess(source, dbg_tokens, slc, mode)
     ctx = ParseCtx(source=source, tokens=tokens)
     pos = 0
     while True:

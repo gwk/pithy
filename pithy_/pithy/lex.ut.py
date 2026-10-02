@@ -103,6 +103,12 @@ utest_seq([
   run_lexer, str_lexer, '"a" "b\\"\\\\"\n')
 
 
+# Start mode.
+utest_seq([('chars', 'a b'), ('dq', '"'), ('chars', ' ')], run_lexer, str_lexer, 'a b" ', mode='string')
+#^ The start mode is the root of the mode stack, so it is never popped.
+utest_seq_exc(ValueError("unknown mode: 'nope'"), run_lexer, str_lexer, 'a', mode='nope')
+
+
 word_indent_lexer = Lexer(patterns=dict(
   newline  = r'\n',
   spaces = r' +',

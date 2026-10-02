@@ -259,15 +259,19 @@ class Lexer:
       yield eot_token(end, mode=stack[-1][0].mode)
 
 
-  def lex(self, source:Source[str], slc:slice|None=None, drop:Container[str]=(), eot:bool=False) -> Iterator[Token]:
+  def lex(self, source:Source[str], slc:slice|None=None, drop:Container[str]=(), eot:bool=False, *, mode:str|None=None
+   ) -> Iterator[Token]:
     '''
     Lex `source`, yielding tokens.
     If `slc` is provided then only that range of the text is lexed; no token extends past its end.
     The `end_of_text` token is positioned at the end of the range.
+    `mode` is the mode in which lexing starts; it defaults to the main mode.
     '''
     if not isinstance(source, Source): raise TypeError(source)
+    if mode is None: mode = self.main
+    elif mode not in self.modes: raise ValueError(f'unknown mode: {mode!r}')
     pos, end = _range_for_slc(source, slc)
-    return self._lex(stack=[self.root_frame(mode=self.main)], source=source, pos=pos, end=end, drop=drop, eot=eot)
+    return self._lex(stack=[self.root_frame(mode=mode)], source=source, pos=pos, end=end, drop=drop, eot=eot)
 
 
   def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot:bool=False
