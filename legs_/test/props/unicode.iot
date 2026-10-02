@@ -1,0 +1,5 @@
+{
+  'cmd': 'legs-test $PROJ/grammars/unicode.legs -props',
+  'out-val': 'properties hold for 1 mode.\n',
+  'timeout': 30, # Building the automata takes several seconds.
+}

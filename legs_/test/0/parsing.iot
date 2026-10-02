@@ -1,5 +1,5 @@
 {
-  'cmd': 'python3 -m legs.bin.legs_test $NAME.legs',
+  'cmd': 'legs-test $NAME.legs',
   'args': [
     '10 0b10 0q10 0o10 0d10 0x10',
     '0x__ffff_ffff_ffff_ffff',

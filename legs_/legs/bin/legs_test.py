@@ -8,14 +8,16 @@ from sys import executable as python_path, stderr
 from tempfile import TemporaryDirectory
 from typing import Callable
 
-from pithy.cmdparse import Cmd, opt, pos
+from pithy.cmdparse import Cmd, flag, opt, pos
 from pithy.fs import make_dirs
+from pithy.strings import pluralize
 from tolkien import Source
 
 from ..build import build_lexer_class, build_mode_automata, build_pattern_descs
 from ..dfa import DFA
 from ..parse import Grammar, parse_legs
 from ..patterns import gen_incomplete_pattern
+from ..props import GrammarChecker, PropertyError
 from ..python import output_python, output_python_re
 from ..swift import output_swift, swift_kind_syms, swift_safe_sym
 
@@ -36,20 +38,29 @@ class LegsTestCmd(Cmd):
   Then for each language, the lexer source code is generated and run on the same inputs.
   If the tokens of a generated lexer differ from those of the reference lexer,
   then the differences are reported and the exit code is 1.
+
+  With `-props`, the reference lexer is also checked against the NFA of each mode, using inputs generated from the grammar.
+  See `legs.props` for the properties. If no inputs are given then the lexer sources are not generated.
   '''
 
   cmd_name = 'legs-test'
 
   path:str = pos(doc='Path to the .legs file.')
-  inputs:list[str] = pos(metavar='INPUT', doc='A string to lex. Write `--` before inputs that begin with a dash.')
+  inputs:list[str] = pos(default_factory=list, metavar='INPUT',
+    doc='A string to lex. Write `--` before inputs that begin with a dash.')
   build_dir:str|None = opt(default=None,
     doc='Directory in which to keep the generated sources; defaults to a temporary directory.')
   langs:list[str] = opt(default_factory=list, metavar='LANG',
     doc=f'Language of a generated lexer to test; repeatable. Defaults to {" and ".join(default_langs)}.')
   mode:str = opt(default='main', doc='Mode in which lexing starts.')
+  props:bool = flag(doc='Check the properties of the reference lexer using generated inputs.')
+  examples:int = opt(default=100, doc='The number of examples to generate per pattern and per mode for `-props`.')
+  randomize:bool = flag(doc='Generate different examples on each run of `-props`; by default the examples are repeatable.')
+  stats:bool = flag(doc='Print the number of inputs checked by `-props`.')
 
 
   def run(self) -> None:
+    if not (self.inputs or self.props): exit('error: no inputs; specify input strings or `-props`.')
     langs = self.langs or default_langs
     for lang in langs:
       if lang not in lang_runners: exit(f'error: unknown language {lang!r}; testable languages: {", ".join(lang_runners)}.')
@@ -57,12 +68,20 @@ class LegsTestCmd(Cmd):
     try: f = open(self.path)
     except FileNotFoundError: exit(f'error: no such grammar file: {self.path!r}')
     with f: grammar = parse_legs(self.path, f.read())
-    if self.mode not in grammar.modes:
+    if self.inputs and self.mode not in grammar.modes:
       exit(f'error: grammar has no mode named {self.mode!r}; specify the start mode with `-mode`. '
         f'modes: {", ".join(sorted(grammar.modes))}.')
 
-    try: dfas = [automata.min_dfa for automata in build_mode_automata(grammar)]
+    try: automata = list(build_mode_automata(grammar))
     except ValueError as e: exit(str(e))
+    dfas = [a.min_dfa for a in automata]
+
+    if self.props:
+      try: props_stats = GrammarChecker(grammar, automata).check_all(max_examples=self.examples, derandomize=not self.randomize)
+      except PropertyError as e: exit(f'error: property violated: {e}')
+      print(f'properties hold for {pluralize(len(automata), "mode")}.')
+      if self.stats: print(props_stats)
+    if not self.inputs: return
 
     test = LexerTest(grammar=grammar, dfas=dfas, mode=self.mode, inputs=[s.encode() for s in self.inputs])
     reference = test.reference_tokens()

@@ -1,0 +1,4 @@
+{
+  'cmd': 'legs-test $PROJ/grammars/legs.legs -props',
+  'out-val': 'properties hold for 3 modes.\n',
+}

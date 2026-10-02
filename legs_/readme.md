@@ -70,13 +70,23 @@ The Python and Swift lexers are then generated and run on the same inputs.
 Any difference from the reference tokens is reported and causes a nonzero exit code.
 Use `-langs` to choose the generated lexers, and `-mode` for a grammar that has no `main` mode.
 
+With `-props`, `legs-test` also checks the reference lexer against the NFA of each mode, using inputs generated from the grammar:
+```
+legs-test grammar.legs -props
+```
+The NFA is built directly from the patterns, so this tests DFA construction and minimization.
+Each token must be the longest match at its position, and the tokens must cover the input exactly.
+The inputs are strings generated from the patterns by [Hypothesis](https://hypothesis.readthedocs.io), and a traversal of every DFA transition.
+See `legs.props` for details. The examples are the same on every run unless `-randomize` is given.
+
 `legs -match` checks strings against the NFA and both DFAs of a mode, without generating code.
+
+Tests that are too slow for the routine checks are in `legs_/test`; run them with `just test-full`.
 
 
 # TODO
 
 * Document the named character classes.
-* Generate test inputs from the grammar patterns for `legs-test`.
 * Support UTF-16/UCS2 and UTF-32 representations as well.
 
 
