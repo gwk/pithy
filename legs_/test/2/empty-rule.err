@@ -1,13 +1,4 @@
-empty-rule.legs:1:1-11: note: in 'section_patterns' structure:
-| # Patterns
-  ~~~~~~~~~~
-empty-rule.legs:2:1-2: note: in 'pattern' structure:
-| r:
-  ~
-empty-rule.legs:2:2-3: note: in 'colon_pattern_expr' structure:
-| r:
-   ~
-empty-rule.legs:2:4: parse error: 'colon_pattern_expr' structure expects pattern_expr; received end_of_text.
+empty-rule.legs:2:3: parse error: 'pattern_expr' precedence rule expects pattern_expr; received end_of_text.
 | r:⏎
-     ^
+    ^
 
