@@ -23,3 +23,7 @@ source = Source(name='abcs', text='a\nb\nc\n')
 
 for chr_idx, line_idx in enumerate([0, 0, 1, 1, 2, 2, 2]):
   utest(line_idx, source.get_line_index, chr_idx)
+
+# The results must not depend on how far the newline positions have already been scanned.
+for chr_idx, line_idx in enumerate([0, 0, 1, 1, 2, 2, 2]):
+  utest(line_idx, source.get_line_index, chr_idx, _utest_label='after complete scan')

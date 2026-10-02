@@ -7,7 +7,7 @@ Token and Source classes for implementing lexers and parsers.
 __version__ = '0.0.3'
 
 
-from bisect import bisect_right
+from bisect import bisect_left
 from dataclasses import dataclass
 from typing import Generic, Iterator, NoReturn, Protocol, runtime_checkable, TypeVar
 
@@ -142,7 +142,8 @@ class Source(Generic[_Text]):
       newline_char = '\n' if isinstance(text, str) else b'\n'
       return (newline_count - 1) if (text and text[-1] == newline_char) else newline_count
       #^ Special case so that the EOF position does not get a line index beyond the last line.
-    return self.line_idx_start + bisect_right(self.newline_positions, pos)
+    return self.line_idx_start + bisect_left(self.newline_positions, pos)
+    #^ Count the newlines strictly before `pos`; a newline belongs to the line that it ends.
 
 
   def get_line_start(self, pos:int) -> int:
