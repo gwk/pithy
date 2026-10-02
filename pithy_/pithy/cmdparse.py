@@ -125,6 +125,7 @@ class ArgSpec:
   metavar:str = ''
   prefix:str = ''
   complete:PathCompletion|None = None
+  split:str|None = None
 
 
 def _spec_field(spec:ArgSpec, default:Any, default_factory:Any) -> Any:
@@ -160,16 +161,19 @@ def remainder(*, default_factory:Any=list, doc:str='', parse:Callable[[str],Any]
 
 
 def opt(*flags:str, default:Any=MISSING, default_factory:Any=MISSING, doc:str='', parse:Callable[[str],Any]|None=None,
- metavar:str='', complete:PathCompletion|None=None) -> Any:
+ metavar:str='', complete:PathCompletion|None=None, split:str|None=None) -> Any:
   '''
   Declare a named option that takes a value.
   `flags` defaults to the single-dash name derived from the field name.
   Pass one or more single-dash names to declare aliases; abbreviated names such as `-f` are never inferred.
   A `list[T]` field accumulates one value per occurrence; otherwise repeating the option is an error.
+  For a list field, `split` may be one non-whitespace character, e.g. `split=','` accepts `-langs python,swift`.
+  Each occurrence still consumes one token; its items are converted individually and appended in order, keeping duplicates.
+  Empty items are errors. Whitespace is preserved, and the separator cannot be escaped, even with shell quoting.
   A field typed `pithy.path.Path` parses a `Path` value and requests path completion.
   `complete` selects what the shell offers for a `Path` field: `'files'` (the default) or `'dirs'` for directories only.
   '''
-  return _spec_field(ArgSpec('opt', flags=flags, doc=doc, parse=parse, metavar=metavar, complete=complete), default,
+  return _spec_field(ArgSpec('opt', flags=flags, doc=doc, parse=parse, metavar=metavar, complete=complete, split=split), default,
     default_factory)
 
 
@@ -328,6 +332,11 @@ def _flag_spellings(flag_str:str) -> tuple[str,...]:
 def _make_entry(cmd:'type[Cmd]', f:Any, spec:ArgSpec, T:Any, path:tuple[str,...], prefixes:tuple[str,...]) -> Entry:
   name = f.name
   elem_T, is_list, is_optional = _analyze_type(T)
+  if spec.split is not None:
+    if spec.kind != 'opt' or not is_list:
+      raise CmdDeclError(f'{cmd.__name__}.{name}: `split` requires a list option.')
+    if len(spec.split) != 1 or spec.split.isspace():
+      raise CmdDeclError(f'{cmd.__name__}.{name}: `split` must be one non-whitespace character.')
   if spec.kind == 'flag' and (elem_T is not bool or is_list):
     raise CmdDeclError(f'{cmd.__name__}.{name}: a flag field must be typed `bool`.')
   literal_values = get_args(elem_T) if get_origin(elem_T) is Literal else ()
@@ -484,7 +493,11 @@ def _store(values:dict[tuple[str,...],Any], entry:Entry, label:str, val:Any, cmd
 def _consume_value(state:_WalkState, entry:Entry, label:str, token:str) -> None:
   state.seen.add(entry.path)
   if state.mode == 'parse':
-    _store(state.values, entry, label, _convert(entry, label, token, state.cmd, state.prog), state.cmd, state.prog)
+    items = [token] if entry.spec.split is None else token.split(entry.spec.split)
+    if entry.spec.split is not None and '' in items:
+      raise CmdError(f'{label}: empty item in split value: {token!r}.', state.cmd, state.prog)
+    for item in items:
+      _store(state.values, entry, label, _convert(entry, label, item, state.cmd, state.prog), state.cmd, state.prog)
 
 
 def _consume_tokens(state:_WalkState, tokens:Sequence[str]) -> tuple['type[Cmd]|None',int]:
@@ -630,6 +643,9 @@ def _construct(cmd:'type[Cmd]', path:tuple[str,...], values:dict[tuple[str,...],
 
 
 def _entry_completions(entry:Entry, prefix:str, *, value_prefix:str='') -> CompletionResult:
+  if entry.spec.split is not None:
+    preceding, sep, prefix = prefix.rpartition(entry.spec.split)
+    value_prefix += preceding + sep
   literal_values = get_args(entry.T) if get_origin(entry.T) is Literal else ()
   if literal_values:
     return CompletionResult(tuple(Completion(value_prefix + value) for value in literal_values if value.startswith(prefix)))
@@ -869,7 +885,12 @@ def format_usage(cmd:type[Cmd], prog:str='', *, color:bool=False) -> str:
 
 def _opt_usage(entry:Entry) -> str:
   flags = ', '.join(entry.flags)
-  return flags if entry.spec.kind == 'flag' else f'{flags} {entry.metavar}'
+  return flags if entry.spec.kind == 'flag' else f'{flags} {_opt_metavar(entry)}'
+
+
+def _opt_metavar(entry:Entry) -> str:
+  metavar = entry.metavar
+  return metavar if entry.spec.split is None else f'{metavar}[{entry.spec.split}{metavar}...]'
 
 
 def _format_rows(rows:list[tuple[str,str]], styled_labels:list[str]|None=None) -> list[str]:
@@ -909,7 +930,7 @@ def format_help(cmd:type[Cmd], prog:str='', *, color:bool=False) -> str:
     flags = entry.flags if entry else ('-h', '-help')
     styled_flags = ', '.join(_styled(flag, _option_style(flag, bold=True), color) for flag in flags)
     if entry is not None and entry.spec.kind != 'flag':
-      styled_flags += ' ' + _styled(entry.metavar, ansi.sgr(ansi.cBOLD, ansi.cTXT_Y), color)
+      styled_flags += ' ' + _styled(_opt_metavar(entry), ansi.sgr(ansi.cBOLD, ansi.cTXT_Y), color)
     opt_labels.append(styled_flags)
   lines.extend(_format_rows(opt_rows, opt_labels))
 
