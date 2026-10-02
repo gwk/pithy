@@ -24,6 +24,9 @@ a: c
 # Bogus
 ignored: [
 
+# Pattern
+ignored: [
+
 #Patterns
 
 # Modes: x

@@ -19,6 +19,7 @@ A header requires a space after the `#`. A pattern line cannot begin with `# ` a
 
 import re
 from dataclasses import dataclass
+from difflib import get_close_matches
 from typing import Iterable
 
 from pithy.lex import Lexer, LexMode, LexTrans
@@ -86,7 +87,7 @@ class GrammarBuilder:
       self.parse_patterns(sect.raw_body)
       return
     if sect.level > 1:
-      self.error(sect.marker, 'error: nested sections are not supported.')
+      self.error(sect.marker, 'error: nested sections are not supported; a section header is a single `#` followed by a space.')
       return
 
     name_text, comment_sep, _ = source[sect.name].partition('//')
@@ -100,7 +101,11 @@ class GrammarBuilder:
       case 'patterns': self.parse_patterns(sect.raw_body)
       case 'modes': self.parse_modes(sect.raw_body)
       case 'transitions': self.parse_transitions(sect.raw_body)
-      case _: self.error(sect.title, 'error: unknown section; expected `License`, `Patterns`, `Modes` or `Transitions`.')
+      case _:
+        matches = get_close_matches(name, section_names, n=1)
+        if matches: hint = f'did you mean `{matches[0].capitalize()}`?'
+        else: hint = 'expected `License`, `Patterns`, `Modes` or `Transitions`.'
+        self.error(sect.title, f'error: unknown section; {hint}')
 
 
   def parse_patterns(self, body:slice) -> None:
@@ -203,6 +208,8 @@ class GrammarBuilder:
     return Grammar(license=license, patterns=patterns, modes=modes, transitions=transitions)
 
 
+
+section_names = ('license', 'patterns', 'modes', 'transitions')
 
 pattern_head_re = re.compile(r'(?P<name>[A-Za-z_][0-9A-Za-z_]*)[ \t]*(?P<colon>:)?')
 
