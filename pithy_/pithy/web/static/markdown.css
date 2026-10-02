@@ -11,6 +11,8 @@ Coloring must never change text metrics: tokens differ only in color, decoration
 The host is the scroll container and both children grow to the full text height.
 The textarea therefore never scrolls on its own, and no scroll synchronization is needed.
 
+The attachment strip occupies an implicit second row and sticks to the bottom of the host.
+
 Colors use the pithy.css variables when present.
 */
 
@@ -92,6 +94,34 @@ markdown-editor > .md-highlight {
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* The strip lists the attached images. It is present only while the text refers to an attachment. */
+markdown-editor > .md-attachments {
+  grid-area: 2 / 1;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em 1em;
+  border-top: 1px solid var(--border, GrayText);
+  padding: 0.5em;
+  background-color: var(--bg, Canvas);
+  color: var(--md-marker);
+  font-size: 0.85em;
+}
+
+.md-attachment {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+}
+
+.md-attachment > img {
+  height: 3em;
+  max-width: 8em;
+  object-fit: contain;
 }
 
 /* Bold faces can have different glyph widths, particularly in fallback fonts; a stroke emboldens without affecting layout. */

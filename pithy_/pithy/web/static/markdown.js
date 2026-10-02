@@ -11,6 +11,14 @@
  * The text is never transformed and no syntax is hidden; the editor shows exactly the characters that are submitted.
  * Add the `auto-resize` attribute to grow with the text instead of scrolling at a fixed height.
  *
+ * Add the `attachments` attribute to accept pasted images; its value is the form field name for the image files.
+ * A pasted image is inserted as a reference, e.g. `![Image 1](attachment:image-1.png)`, and shown in a strip below the text.
+ * The text is the source of truth: an image is attached for as long as the text refers to it.
+ * Deleting the reference detaches the image, and undoing the deletion attaches it again.
+ * On submission the referenced images are added to the form data as files named as in their references.
+ * The form must therefore use `method="post"` and `enctype="multipart/form-data"`.
+ * The thumbnails use `blob:` URLs; a Content Security Policy must allow them with `img-src blob:`.
+ *
  * This file is compatible with a strict Content Security Policy, including Trusted Types.
  * It creates no style elements, sets no style attributes, parses no HTML strings, and evaluates no code.
  *
@@ -52,6 +60,14 @@ const mdPunctRe = /[\p{P}\p{S}]/u;
 const mdSpaceRe = /\s/;
 const mdWordRe = /\w/;
 
+// A reference to an attachment, as inserted by a paste.
+const mdAttachmentRe = /\]\(attachment:([\w.-]+)\)/g;
+const mdAttachmentNumRe = /^image-(\d+)\./;
+
+// File name extensions for the common image types; other types use their subtype.
+/** @type {Record<string,string>} */
+const mdImageExts = {'image/gif': 'gif', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp'};
+
 
 class MarkdownEditor extends HTMLElement {
 
@@ -62,6 +78,18 @@ class MarkdownEditor extends HTMLElement {
   /** One key per rendered line; equal keys imply equal rendering.
    * @type {string[]} */
   #keys = [];
+
+  /** Pasted images by attachment name, each with a `blob:` URL for its thumbnail.
+   * Entries outlive their references so that undo can restore them. The URLs are never revoked, for the same reason.
+   * @type {Map<string, {file:File, url:string}>} */
+  #attachments = new Map();
+
+  /** The attachment strip. It is in the document only while the text refers to an attachment.
+   * @type {HTMLDivElement|null} */
+  #strip = null;
+
+  /** The names shown by the strip, joined by newlines. */
+  #stripKey = '';
 
   #observer = new MutationObserver(records => this.#onMutations(records));
 
@@ -74,9 +102,31 @@ class MarkdownEditor extends HTMLElement {
   };
 
 
+  /** @param {ClipboardEvent} event */
+  #onPaste = (event) => {
+    const data = event.clipboardData;
+    if (!this.getAttribute('attachments') || !data || event.target !== this.textarea) return;
+    // A copy from a document can offer both text and a rendering of it; the text is the better paste.
+    if (data.types.includes('text/plain')) return;
+    const images = [...data.files].filter(file => file.type.startsWith('image/'));
+    if (!images.length) return;
+    event.preventDefault();
+    this.attach(images);
+  };
+
+  /** @param {FormDataEvent} event */
+  #onFormData = (event) => {
+    const name = this.getAttribute('attachments');
+    if (!name || event.target !== this.textarea?.form) return;
+    for (const file of this.attachments) event.formData.append(name, file);
+  };
+
+
   connectedCallback() {
     this.addEventListener('input', this.#onInput);
+    this.addEventListener('paste', this.#onPaste);
     document.addEventListener('reset', this.#onReset);
+    document.addEventListener('formdata', this.#onFormData); // The event bubbles, and the textarea's form can change.
     // Observe children so that the editor survives DOM replacement, such as an htmx morph or late parsing of the textarea.
     this.#observer.observe(this, {childList: true, subtree: true, characterData: true});
     this.refresh();
@@ -85,7 +135,9 @@ class MarkdownEditor extends HTMLElement {
 
   disconnectedCallback() {
     this.removeEventListener('input', this.#onInput);
+    this.removeEventListener('paste', this.#onPaste);
     document.removeEventListener('reset', this.#onReset);
+    document.removeEventListener('formdata', this.#onFormData);
     this.#observer.disconnect();
   }
 
@@ -109,6 +161,35 @@ class MarkdownEditor extends HTMLElement {
   }
 
 
+  /** The attached files that the text refers to, in order of first reference. Each is named as in its reference.
+   * @returns {File[]} */
+  get attachments() {
+    return this.#attachmentNames().map(name => mdNonNull(this.#attachments.get(name)).file);
+  }
+
+
+  /**
+   * Attach `files` and insert a reference to each at the selection, as a paste does.
+   * @param {File[]} files
+   */
+  attach(files) {
+    const textarea = this.textarea;
+    if (!textarea) return;
+    // Number from the highest number in use, including references that have no attachment, so that names never collide.
+    const names = [...this.#attachments.keys(), ...Array.from(textarea.value.matchAll(mdAttachmentRe), m => mdNonNull(m[1]))];
+    let num = Math.max(0, ...names.map(name => Number(mdAttachmentNumRe.exec(name)?.[1] ?? 0)));
+    const refs = files.map(file => {
+      num++;
+      const ext = mdImageExts[file.type] ?? (file.type.split('/')[1] ?? '').replace(/\W.*/, '');
+      const name = `image-${num}.${ext || 'bin'}`;
+      const named = new File([file], name, {type: file.type});
+      this.#attachments.set(name, {file: named, url: URL.createObjectURL(named)});
+      return `![Image ${num}](attachment:${name})`;
+    });
+    mdInsertText(textarea, refs.join(' '));
+  }
+
+
   /** Bring the coloring layer up to date with the textarea. Lines that have not changed keep their elements. */
   refresh() {
     const textarea = this.textarea;
@@ -120,6 +201,7 @@ class MarkdownEditor extends HTMLElement {
       layer.setAttribute('aria-hidden', 'true');
     }
     if (layer.parentNode !== this) this.append(layer);
+    this.#refreshStrip();
     if (layer.childNodes.length !== this.#keys.length) { // The layer was altered externally; render it from scratch.
       layer.replaceChildren();
       this.#keys = [];
@@ -147,6 +229,45 @@ class MarkdownEditor extends HTMLElement {
     for (let i = start; i < oldEnd; i++) mdNonNull(layer.childNodes[start]).remove();
     for (let i = start; i < end; i++) layer.insertBefore(mdLineElement(mdNonNull(lines[i]), mdNonNull(fences[i])), following);
     this.#keys = keys;
+  }
+
+
+  /** The names of the attachments that the text refers to, in order of first reference.
+   * @returns {string[]} */
+  #attachmentNames() {
+    const names = Array.from(this.value.matchAll(mdAttachmentRe), m => mdNonNull(m[1]));
+    return [...new Set(names)].filter(name => this.#attachments.has(name));
+  }
+
+
+  /** Bring the attachment strip up to date with the references in the text. */
+  #refreshStrip() {
+    const names = this.#attachmentNames();
+    let strip = this.#strip;
+    if (!names.length) {
+      strip?.remove();
+      return;
+    }
+    if (!strip) {
+      strip = this.#strip = document.createElement('div');
+      strip.className = 'md-attachments';
+      this.#stripKey = '';
+    }
+    const key = names.join('\n');
+    if (key !== this.#stripKey || strip.childNodes.length !== names.length) {
+      strip.replaceChildren(...names.map(name => {
+        const {file, url} = mdNonNull(this.#attachments.get(name));
+        const el = document.createElement('span');
+        el.className = 'md-attachment';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        el.append(img, `${name} (${mdFormatSize(file.size)})`);
+        return el;
+      }));
+      this.#stripKey = key;
+    }
+    if (strip.parentNode !== this) this.append(strip);
   }
 
 
@@ -459,6 +580,31 @@ function mdParenClose(text, from) {
     else if (char === ')' && --depth === 0) return i;
   }
   return -1;
+}
+
+
+/**
+ * Replace the selection of `textarea` with `text`, as if typed.
+ * @param {HTMLTextAreaElement} textarea
+ * @param {string} text
+ */
+function mdInsertText(textarea, text) {
+  textarea.focus();
+  // `execCommand` is deprecated, but it is the only insertion that joins the undo history of the textarea.
+  if (document.execCommand('insertText', false, text)) return;
+  textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
+  textarea.dispatchEvent(new InputEvent('input', {bubbles: true}));
+}
+
+
+/**
+ * @param {number} size - A byte count.
+ * @returns {string}
+ */
+function mdFormatSize(size) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} kB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 
