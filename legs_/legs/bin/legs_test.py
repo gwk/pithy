@@ -77,7 +77,8 @@ class LegsTestCmd(Cmd):
     dfas = [a.min_dfa for a in automata]
 
     if self.props:
-      try: props_stats = GrammarChecker(grammar, automata).check_all(max_examples=self.examples, derandomize=not self.randomize)
+      checker = GrammarChecker(grammar, automata)
+      try: props_stats = checker.check_all(max_examples=self.examples, derandomize=not self.randomize)
       except PropertyError as e: exit(f'error: property violated: {e}')
       print(f'properties hold for {pluralize(len(automata), "mode")}.')
       if self.stats: print(props_stats)
