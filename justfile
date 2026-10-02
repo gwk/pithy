@@ -89,6 +89,11 @@ docs:
 gen: gen-py-rust-exts
   make gen
 
+# Fetch the given Unicode Character Database version, e.g. `18.0.0`, and regenerate `pithy.unicode.data`; requires network.
+[positional-arguments]
+gen-unicode-data version:
+  python3 tools/gen-unicode-data.py "$@"
+
 # Generation must run before rebuilding pyrrhus, using crafts from the caller-selected Python.
 gen-py-rust-exts:
   python3 -m crafts.bin.craft_py_rust_ext
