@@ -277,11 +277,16 @@ class CharsetPattern(LegsPattern):
   def gen_regex(self, flavor:str) -> str:
     ranges = self.ranges
     if flavor.endswith('.bytes') and any(r[1] >= 0x80 for r in ranges):
-      # Some code points exceed ASCII range; need to encode char-by-char.
-      # Surrogates are omitted because they cannot be encoded.
-      s = '|'.join(''.join(regex_for_code(byte, flavor) for byte in chr(code).encode())
-        for code in codes_for_ranges(ranges) if not (0xD800 <= code < 0xE000))
-      return f'(?:{s})'
+      # Some code points exceed the ASCII range; match the UTF-8 byte sequences.
+      # Each code range is split into subranges whose encodings are described by one sequence of byte ranges.
+      single_byte_ranges:list[CodeRange] = []
+      seq_regexes:list[str] = []
+      for r in ranges:
+        for byte_ranges in utf8_byte_range_seqs(*r):
+          if len(byte_ranges) == 1: single_byte_ranges.append(byte_ranges[0])
+          else: seq_regexes.append(''.join(regex_for_code_ranges((byte_range,), flavor) for byte_range in byte_ranges))
+      if single_byte_ranges: seq_regexes.insert(0, regex_for_code_ranges(single_byte_ranges, flavor))
+      return f'(?:{"|".join(seq_regexes)})'
     return regex_for_code_ranges(ranges, flavor)
 
 
@@ -305,6 +310,44 @@ class CharsetPattern(LegsPattern):
   @staticmethod
   def for_codes(codes:set[int]) -> 'CharsetPattern':
     return CharsetPattern(ranges=tuple(ranges_for_codes(sorted(codes))))
+
+
+def utf8_byte_range_seqs(start:int, end:int) -> Iterator[tuple[CodeRange,...]]:
+  '''
+  Given the code point range from `start` up to but not including `end`, yield sequences of byte ranges.
+  Each sequence describes the UTF-8 encodings of a subrange of the code points: one byte range per encoded byte.
+  Together the sequences match exactly the encodings of the code points in the range.
+  Surrogates are omitted because they cannot be encoded.
+  '''
+  last = end - 1 # The remainder of the algorithm uses inclusive ranges.
+  if start > last: return
+  if start < 0xD800 <= last or start < 0xE000 <= last: # Split around the surrogates.
+    yield from utf8_byte_range_seqs(start, min(end, 0xD800))
+    yield from utf8_byte_range_seqs(max(start, 0xE000), end)
+    return
+  if 0xD800 <= start and last < 0xE000: return # Entirely surrogates.
+
+  for max_code in (0x7F, 0x7FF, 0xFFFF): # Split at the boundaries between encoded lengths.
+    if start <= max_code < last:
+      yield from utf8_byte_range_seqs(start, max_code + 1)
+      yield from utf8_byte_range_seqs(max_code + 1, end)
+      return
+
+  # Split until all of the bytes preceding the first differing byte are equal,
+  # and all of the bytes following it span the complete continuation range.
+  for i in range(1, 4):
+    mask = (1 << (6 * i)) - 1 # The code point bits held by the final `i` continuation bytes.
+    if (start & ~mask) != (last & ~mask):
+      if start & mask: # The low bits of `start` are not all zeros.
+        yield from utf8_byte_range_seqs(start, (start | mask) + 1)
+        yield from utf8_byte_range_seqs((start | mask) + 1, end)
+        return
+      if (last & mask) != mask: # The low bits of `last` are not all ones.
+        yield from utf8_byte_range_seqs(start, last & ~mask)
+        yield from utf8_byte_range_seqs(last & ~mask, end)
+        return
+
+  yield tuple((s, l + 1) for s, l in zip(chr(start).encode(), chr(last).encode(), strict=True))
 
 
 def regex_for_code(code:int, flavor:str) -> str:
