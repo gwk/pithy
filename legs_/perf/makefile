@@ -11,7 +11,7 @@
 # Legs perf tests.
 
 
-.PHONY: _default clean help perf-% $(perf_input)
+.PHONY: _default clean help _build/repo-text.txt
 
 _default: help
 
@@ -23,7 +23,7 @@ help: # Summarize the targets of this makefile.
 	@echo "\nGrammars: ascii, unicode"
 	@echo "\nLanguages: swift, py-re, py-table"
 
-legs_dir := ../../legs_/legs
+legs_dir := ../legs
 legs_srcs := $(legs_dir)/*.py $(legs_dir)/bin/*.py
 
 # The number of timed runs for each target; slower lexers get fewer runs. Override with `make runs=N perf-...`.
@@ -38,7 +38,7 @@ perf-%: _build/% $(perf_input) # <grammar>-<lang>
 
 $(perf_input):
 	mkdir -p _build
-	cd ../.. && git grep -Ilz '' | xargs -0 cat > perf/legs/$@
+	cd ../.. && git grep -Ilz '' | xargs -0 cat > legs_/perf/$@
 
 _build/%-py-table: _build/%.py main.py
 	echo '#!/usr/bin/env python3' > $@

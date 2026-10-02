@@ -83,6 +83,8 @@ See `legs.props` for details. The examples are the same on every run unless `-ra
 
 Tests that are too slow for the routine checks are in `legs_/test`; run them with `just test-full`.
 
+Compilation and generated lexer runtime benchmarks are in [perf/](perf/readme.md).
+
 
 # TODO
 

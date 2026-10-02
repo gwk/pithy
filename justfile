@@ -7,7 +7,7 @@ pkgs := 'pyrrhus tolkien tomul pithy utest iotest taptools crafts wu legs tap_ba
 
 pkg_srcs := 'pyrrhus_/pyrrhus tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze tap_betterstack_/tap_betterstack tap_ops_/tap_ops'
 
-typecheck_other_srcs := 'legs_/test/ut ops perf tap_backblaze_/test-integration test-diff tools'
+typecheck_other_srcs := 'legs_/test/ut legs_/perf ops perf tap_backblaze_/test-integration test-diff tools'
 
 pkg_tests_fast := 'pithy_/test taptools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
@@ -69,6 +69,11 @@ cov:
 cov-meta:
   iotest_/test-meta/meta-coverage.sh
 
+# Benchmark Legs compilation stages; accepts grammar paths and compile.py options.
+[positional-arguments]
+perf-legs-compile *args:
+  PYTHONHASHSEED=0 python3 legs_/perf/compile.py "$@"
+
 # Build all project context.
 ctx:
   python3 -m crafts.bin.craft_context all
@@ -96,7 +101,7 @@ gen-py-rust-exts:
   python3 -m crafts.bin.craft_py_rust_ext
 
 isort:
-  python3 -m isort {{pkg_srcs}} ops sh tap_backblaze_/test-integration test-diff tools
+  python3 -m isort {{pkg_srcs}} legs_/perf ops sh tap_backblaze_/test-integration test-diff tools
 
 install:
   sh/install.sh {{pkgs}}
@@ -114,7 +119,7 @@ lint: lint-py lint-rust
 
 # pyflakes cannot exclude paths, so the ops sources are enumerated to prune all _build directories.
 lint-py:
-  python3 -m pyflakes {{pkg_srcs}} $(find ops -type d -name _build -prune -o -name '*.py' -print) tap_backblaze_/test-integration test-diff tools
+  python3 -m pyflakes {{pkg_srcs}} legs_/perf/compile.py legs_/perf/run.py $(find ops -type d -name _build -prune -o -name '*.py' -print) tap_backblaze_/test-integration test-diff tools
 
 # Pin the interpreter: otherwise pyo3's build script searches `PATH` and rebuilds whenever `PATH` changes.
 lint-rust: fmt-rust-check
