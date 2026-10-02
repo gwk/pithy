@@ -218,6 +218,61 @@ async function runMarkdownEditorTests() {
     checkEqual('|{marker:*}{em:reconnected}{marker:*}', describeLayer(layer), 'A reconnected editor works');
     checkEqual(1, editor.querySelectorAll('.md-highlight').length, 'A reconnected editor has one layer');
 
+    // Attachments: a pasted image becomes a reference in the text and a file in the form data.
+    /** Dispatch a paste of `items` at the selection. Return whether the editor handled it.
+     * @param {(File|string)[]} items */
+    function paste(...items) {
+      const data = new DataTransfer();
+      for (const item of items) {
+        if (typeof item === 'string') data.items.add(item, 'text/plain');
+        else data.items.add(item);
+      }
+      return !replacement.dispatchEvent(new ClipboardEvent('paste', {clipboardData: data, bubbles: true, cancelable: true}));
+    }
+    const attachmentCount = () => editor.querySelectorAll('.md-attachments > .md-attachment > img').length;
+    const imageBytes = Uint8Array.from({length: 512}, (_, i) => i % 256); // Every byte value.
+    const png = new File([imageBytes], 'Screenshot.png', {type: 'image/png'});
+    const jpeg = new File(['jpeg'], 'photo.jpeg', {type: 'image/jpeg'});
+    editor.value = 'before  after';
+    replacement.focus();
+    replacement.setSelectionRange(7, 7);
+    check(!paste(png), 'Without the attachments attribute an image paste is not handled');
+    editor.setAttribute('attachments', 'images');
+    check(!paste(png, 'text'), 'A paste that offers text is not handled');
+    check(!paste(new File(['text'], 'notes.txt', {type: 'text/plain'})), 'A paste of a file that is not an image is not handled');
+    checkEqual('before  after', editor.value, 'Unhandled pastes do not change the text');
+    check(paste(png), 'An image paste is handled');
+    checkEqual('before ![Image 1](attachment:image-1.png) after', editor.value, 'An image paste inserts a reference at the selection');
+    checkEqual(replacement.value, layerText(), 'The layer shows the reference');
+    checkEqual(41, replacement.selectionStart, 'The caret follows the reference');
+    await settle();
+    checkEqual(1, attachmentCount(), 'The strip shows the attachment');
+    checkEqual(layer.offsetHeight, replacement.offsetHeight, 'The strip does not disturb the layout of the layer and textarea');
+    const submitted = /** @type {File[]} */ (new FormData(form).getAll('images'));
+    checkEqual(1, submitted.length, 'The form data carries the attachment');
+    const file = mdNonNull(submitted[0]);
+    checkEqual('image-1.png image/png', `${file.name} ${file.type}`, 'The file is named as in its reference');
+    checkEqual(imageBytes.join(), new Uint8Array(await file.arrayBuffer()).join(), 'The file data is unaltered');
+    check(paste(jpeg, png), 'A paste of several images is handled');
+    const three = 'before ![Image 1](attachment:image-1.png)![Image 2](attachment:image-2.jpg) ![Image 3](attachment:image-3.png) after';
+    checkEqual(three, editor.value, 'Each image gets a distinct reference');
+    checkEqual('image-1.png,image-2.jpg,image-3.png', editor.attachments.map(f => f.name).join(), 'Attachments are in reference order');
+    editor.value = three.replace('![Image 1](attachment:image-1.png)', '');
+    checkEqual('image-2.jpg,image-3.png', new FormData(form).getAll('images').map(f => /** @type {File} */ (f).name).join(),
+      'Deleting a reference detaches its image');
+    checkEqual(2, attachmentCount(), 'The strip follows the references');
+    editor.value = three + ' ![Image 1](attachment:image-1.png) ![Other](attachment:image-7.png)';
+    checkEqual('image-1.png,image-2.jpg,image-3.png', editor.attachments.map(f => f.name).join(),
+      'Restoring a reference attaches its image again; repeated and unknown references add nothing');
+    replacement.setSelectionRange(0, 0);
+    paste(png);
+    check(editor.value.startsWith('![Image 8](attachment:image-8.png)'), 'New names do not collide with existing references');
+    editor.value = 'no references';
+    await settle();
+    checkEqual(0, new FormData(form).getAll('images').length, 'Text without references submits no files');
+    check(!editor.querySelector('.md-attachments'), 'The strip is removed when there are no attachments');
+    checkEqual(1, editor.querySelectorAll('.md-highlight').length, 'The strip does not disturb the layer');
+
     const style = getComputedStyle(replacement);
     check(style.color === 'rgba(0, 0, 0, 0)', 'The textarea text is transparent');
     checkEqual(0, document.querySelectorAll('markdown-editor [style], style').length, 'No style attributes or elements are created');

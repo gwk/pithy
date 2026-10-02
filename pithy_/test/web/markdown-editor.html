@@ -1,9 +1,10 @@
 <!doctype html>
 <!-- Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/. -->
 <meta charset="utf-8">
-<!-- The strictest practical policy: no inline script or style, no evaluation, and no HTML string parsing. -->
+<!-- The strictest practical policy: no inline script or style, no evaluation, and no HTML string parsing.
+  Attachment thumbnails require `img-src blob:`. -->
 <meta http-equiv="Content-Security-Policy"
-  content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; require-trusted-types-for 'script'; trusted-types 'none'">
+  content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src blob:; require-trusted-types-for 'script'; trusted-types 'none'">
 <title>Markdown editor regression tests</title>
 <link rel="stylesheet" href="../../pithy/web/static/pithy.css">
 <link rel="stylesheet" href="../../pithy/web/static/markdown.css">
