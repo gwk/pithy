@@ -53,7 +53,7 @@ class LegsCmd(Cmd):
   encoding:str = opt(default='utf-8', doc='Encoding of the input file.')
   langs:list[str] = opt(default_factory=list, metavar='LANG', doc='Target language for which to generate a lexer; repeatable.')
   match:list[str] = opt(default_factory=list, metavar='STRING', doc='Attempt to lex the argument string; repeatable.')
-  mode:str|None = opt(default=None, doc='Mode with which to lex the arguments to `-match`.')
+  mode:str|None = opt(default=None, doc='Mode with which to lex the arguments to `-match` or `-test`; defaults to `main`.')
   output:str|None = opt(default=None, doc='Path to output generated source.')
   patterns:list[str] = opt(default_factory=list, metavar='PATTERN', doc='Specify a legs pattern for quick testing; repeatable.')
   stats:bool = flag(doc='Print statistics about the generated automata.')
@@ -70,9 +70,9 @@ class LegsCmd(Cmd):
 def run_legs(args:LegsCmd) -> None:
   dbg = args.dbg
 
-  if not args.match and args.mode:
-    exit('`-mode` option only valid with `-match`.')
-  match_mode = args.mode or 'main'
+  if args.mode and not (args.match or args.test):
+    exit('`-mode` option only valid with `-match` or `-test`.')
+  start_mode = args.mode or 'main' # The mode in which `-match` and `-test` start lexing.
 
   if args.match and args.output: exit('`-match` and `-output` are mutually exclusive.')
   if args.match and args.langs: exit('`-match` and `-langs` are mutually exclusive.')
@@ -98,6 +98,10 @@ def run_legs(args:LegsCmd) -> None:
   mode_pattern_kinds = grammar.modes
   mode_transitions = grammar.transitions
 
+  if (args.match or args.test) and start_mode not in mode_pattern_kinds:
+    hint = '' if args.mode else '; specify the start mode with `-mode`'
+    exit(f'error: grammar has no mode named {start_mode!r}{hint}. modes: {", ".join(sorted(mode_pattern_kinds))}.')
+
   if dbg:
     errSL('\nPatterns:')
     for name, pattern in patterns.items():
@@ -107,7 +111,7 @@ def run_legs(args:LegsCmd) -> None:
   dfas:list[DFA] = []
   start_node = 0
   for mode, pattern_kinds in sorted(mode_pattern_kinds.items(), key=lambda p: mode_name_key(p[0])):
-    if args.match and mode != match_mode: continue
+    if args.match and mode != start_mode: continue
 
     named_patterns = sorted((kind, patterns[kind]) for kind in pattern_kinds)
     nfa = build_nfa(name=mode, named_patterns=named_patterns, encoding=args.encoding)
@@ -142,12 +146,12 @@ def run_legs(args:LegsCmd) -> None:
   # If we are testing patterns on the command line, then find the specified DFA, test each argument, and exit.
   if args.match:
     for dfa in dfas:
-      if dfa.name != match_mode: continue
+      if dfa.name != start_mode: continue
       for text in args.match:
         text_bytes = text.encode(args.encoding)
         match_bytes(nfa, fat_dfa, min_dfa, text, text_bytes)
       exit()
-    exit(f'bad mode: {match_mode!r}')
+    exit(f'bad mode: {start_mode!r}')
 
   pattern_descs = { name : pattern.literal_desc or name for name, pattern in patterns.items() }
   pattern_descs.update((n, n) for n in ['invalid', 'incomplete'])
@@ -169,7 +173,7 @@ def run_legs(args:LegsCmd) -> None:
   if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
 
   test_cmds:list[list[str]] = []
-  output_opts = OutputOpts(patterns_path=args.path, type_prefix=args.type_prefix, is_test=bool(args.test))
+  output_opts = OutputOpts(patterns_path=args.path, type_prefix=args.type_prefix, test_mode=(start_mode if args.test else None))
 
   out_dir, out_name = split_dir_name(out_path)
   if not out_name:
