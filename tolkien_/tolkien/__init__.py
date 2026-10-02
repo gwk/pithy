@@ -9,7 +9,7 @@ __version__ = '0.0.3'
 
 from bisect import bisect_left
 from dataclasses import dataclass
-from typing import Generic, Iterator, NoReturn, Protocol, runtime_checkable, TypeVar
+from typing import Container, Generic, Iterator, NoReturn, Protocol, runtime_checkable, TypeVar
 
 
 @runtime_checkable
@@ -357,3 +357,25 @@ class Source(Generic[_Text]):
       except ValueError: continue # ignore digit.
       val = val*base + v
     return val
+
+
+
+class LexerProtocol(Protocol):
+  '''
+  The interface that a lexer provides to a parser.
+  Both lexer instances and lexer classes with class-level implementations can conform.
+  '''
+
+  @property
+  def kinds(self) -> Container[str]:
+    'The token kinds that the lexer can produce, excluding `end_of_text` and the kinds for invalid text.'
+
+  def lex(self, source:Source, slc:slice|None=None, *, mode:str|None=None, drop:Container[str]=(), eot:bool=False
+   ) -> Iterator[Token]:
+    '''
+    Lex `source`, yielding tokens.
+    If `slc` is provided then only that range of the text is lexed; no token extends past its end.
+    `mode` is the mode in which lexing starts; if it is None then the lexer uses its default mode.
+    Tokens whose kinds are in `drop` are omitted.
+    If `eot` is true then a final `end_of_text` token is yielded, positioned at the end of the range.
+    '''
