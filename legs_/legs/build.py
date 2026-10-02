@@ -11,7 +11,7 @@ from pithy.optional import unwrap
 
 from . import DictLexerBase, ModeData
 from .dfa import AmbiguityError, DFA, minimize_dfa
-from .nfa import NFA, NfaState, NfaTransitions
+from .nfa import empty_symbol, NFA, NfaState, NfaTransitions
 from .parse import Grammar
 from .patterns import LegsPattern, NfaMutableTransitions
 
@@ -148,14 +148,22 @@ def build_dfa(nfa:NFA) -> DFA:
   invalid_node = nfa_states_to_dfa_nodes[invalid]
 
   transitions = defaultdict[int,dict[int,int]](dict)
-  alphabet = nfa.alphabet
+  alphabet_order = {char: idx for idx, char in enumerate(nfa.alphabet)}
   remaining = {start}
   while remaining:
     state = remaining.pop()
     node = nfa_states_to_dfa_nodes[state]
     d = transitions[node] # unlike NFA, DFA dictionary contains all valid nodes/states as keys.
-    for char in alphabet:
-      dst_state = frozenset(nfa.advance(state, char))
+    # The state is already epsilon-closed. Gather only its consuming transitions, grouped by byte.
+    byte_dsts:defaultdict[int,set[int]] = defaultdict(set)
+    for nfa_node in state:
+      outgoing = nfa.transitions.get(nfa_node)
+      if outgoing is None: continue
+      for char, dsts in outgoing.items():
+        if char != empty_symbol: byte_dsts[char].update(dsts)
+    # Preserve discovery order, and thus DFA node numbering, while skipping unavailable bytes.
+    for char in sorted(byte_dsts, key=alphabet_order.__getitem__):
+      dst_state = nfa.advance_empties(byte_dsts[char])
       if not dst_state: continue # do not add empty sets.
       dst_node = nfa_states_to_dfa_nodes[dst_state]
       d[char] = dst_node
