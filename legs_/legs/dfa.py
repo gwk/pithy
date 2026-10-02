@@ -228,6 +228,7 @@ class AmbiguityError(ValueError):
 
 type PartIntersections = defaultdict[int, set[int]]
 
+
 def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   '''
   Optimize a DFA by coalescing redundant states.
@@ -288,10 +289,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   # Refinement.
   remaining = list(init_sets) # distinguishing sets used to refine the partition.
   while remaining:
-    s = remaining.pop() # a partition.
-    # Note: there seems to be a possible risk of incorrectness here:
-    # `s` is one of the partitions, and can be mutated by refine as we iterate over the alphabet.
-    # Are we sure that this is ok?
+    # Refinement can split the active block. Every byte must use the original splitter, not its mutated remainder.
+    s = tuple(remaining.pop())
     for char in alphabet:
       # Find all nodes `m` that transition via `char` to any node `n` in `s`.
       dsts = set(chain.from_iterable(rev_transitions[node][char] for node in s))
