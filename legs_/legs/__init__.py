@@ -2,7 +2,7 @@
 
 __version__ = '0.0.5'
 
-from typing import Any, ClassVar, Container, Iterator, Pattern
+from typing import Any, ClassVar, Collection, Container, Iterator, Pattern
 
 from tolkien import Source, Token
 
@@ -62,7 +62,7 @@ class LexerBase(Iterator[Token]):
     self.stack:list[tuple[str,str|None]] = [(mode, None)] # [(mode, pop_kind)].
 
   @classmethod
-  def mode_names(cls) -> Container[str]:
+  def mode_names(cls) -> Collection[str]:
     'The names of the modes of the lexer.'
     raise NotImplementedError
 
