@@ -4,26 +4,22 @@ from tolkien import Source
 from utest import utest, utest_exc
 
 
-source = Source(name='empty', text='')
-utest(0, source.get_line_index, 0)
-utest_exc(IndexError(1), source.get_line_index, 1)
-
-source = Source(name='one a', text='a')
-utest(0, source.get_line_index, 0)
-utest(0, source.get_line_index, 1)
-utest_exc(IndexError(2), source.get_line_index, 2)
-
-source = Source(name='one n', text='\n')
-utest(0, source.get_line_index, 0)
-utest(0, source.get_line_index, 1) # EOF after newline is a special case.
-utest_exc(IndexError(2), source.get_line_index, 2)
+def test_line_indices(text:str, line_indices:list[int]) -> None:
+  'Test the line index of every position including the end, for both the str and bytes sources.'
+  sources:list[Source] = [Source(name='str', text=text), Source(name='bytes', text=text.encode())]
+  for source in sources:
+    label = f'{source.name} {text!r}'
+    for pos, line_idx in enumerate(line_indices):
+      utest(line_idx, source.get_line_index, pos, _utest_label=label)
+    utest_exc(IndexError(len(text)+1), source.get_line_index, len(text)+1, _utest_label=label)
+    # The results must not depend on how far the newline positions have already been scanned.
+    for pos, line_idx in enumerate(line_indices):
+      utest(line_idx, source.get_line_index, pos, _utest_label=label + ' after complete scan')
 
 
-source = Source(name='abcs', text='a\nb\nc\n')
-
-for chr_idx, line_idx in enumerate([0, 0, 1, 1, 2, 2, 2]):
-  utest(line_idx, source.get_line_index, chr_idx)
-
-# The results must not depend on how far the newline positions have already been scanned.
-for chr_idx, line_idx in enumerate([0, 0, 1, 1, 2, 2, 2]):
-  utest(line_idx, source.get_line_index, chr_idx, _utest_label='after complete scan')
+test_line_indices('', [0])
+test_line_indices('a', [0, 0])
+test_line_indices('\n', [0, 0]) # The end position after a final newline is a special case: it belongs to the last line.
+test_line_indices('a\nb', [0, 0, 1, 1])
+test_line_indices('a\nb\nc\n', [0, 0, 1, 1, 2, 2, 2])
+test_line_indices('\n\n', [0, 1, 1])

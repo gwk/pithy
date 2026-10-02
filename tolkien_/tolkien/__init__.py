@@ -139,8 +139,9 @@ class Source(Generic[_Text]):
     self.update_newline_positions(pos)
     if pos == length:
       newline_count = self.line_idx_start + len(self.newline_positions)
-      newline_char = '\n' if isinstance(text, str) else b'\n'
-      return (newline_count - 1) if (text and text[-1] == newline_char) else newline_count
+      ends_with_newline = text.endswith('\n') if isinstance(text, str) else text.endswith(b'\n')
+      #^ Do not compare the last element: indexing bytes yields an int.
+      return (newline_count - 1) if ends_with_newline else newline_count
       #^ Special case so that the EOF position does not get a line index beyond the last line.
     return self.line_idx_start + bisect_left(self.newline_positions, pos)
     #^ Count the newlines strictly before `pos`; a newline belongs to the line that it ends.
