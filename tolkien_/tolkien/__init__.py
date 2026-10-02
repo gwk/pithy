@@ -254,7 +254,7 @@ class Source(Generic[_Text]):
     if line_str and line_str[-1] == newline:
       last_idx = len(line_str) - 1
       s = line_str[:-1]
-      if pos == last_idx or end == line_end:
+      if pos == line_pos + last_idx or end == line_end:
         src_line = s + "\u23CE" # RETURN SYMBOL.
       else:
         src_line = s
