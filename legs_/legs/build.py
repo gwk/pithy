@@ -148,6 +148,8 @@ def build_dfa(nfa:NFA) -> DFA:
   invalid_node = nfa_states_to_dfa_nodes[invalid]
 
   transitions = defaultdict[int,dict[int,int]](dict)
+  # Different bytes often reach the same NFA nodes. Cache their closures only for this build.
+  epsilon_closures:dict[NfaState,NfaState] = {}
   alphabet_order = {char: idx for idx, char in enumerate(nfa.alphabet)}
   remaining = {start}
   while remaining:
@@ -163,7 +165,12 @@ def build_dfa(nfa:NFA) -> DFA:
         if char != empty_symbol: byte_dsts[char].update(dsts)
     # Preserve discovery order, and thus DFA node numbering, while skipping unavailable bytes.
     for char in sorted(byte_dsts, key=alphabet_order.__getitem__):
-      dst_state = nfa.advance_empties(byte_dsts[char])
+      raw_dsts = byte_dsts[char]
+      dst_key = frozenset(raw_dsts) # advance_empties consumes its mutable input.
+      dst_state = epsilon_closures.get(dst_key)
+      if dst_state is None:
+        dst_state = nfa.advance_empties(raw_dsts)
+        epsilon_closures[dst_key] = dst_state
       if not dst_state: continue # do not add empty sets.
       dst_node = nfa_states_to_dfa_nodes[dst_state]
       d[char] = dst_node

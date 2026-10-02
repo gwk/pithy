@@ -11,7 +11,7 @@ def consuming_transitions_and_epsilon_closures() -> None:
   # Nodes 8 and 9 have no outgoing transition entries. Node 7 reaches the 'ab' match by an epsilon transition.
   nfa = NFA('closures', 'utf-8', {
     0: {empty_symbol: frozenset({2})},
-    2: {empty_symbol: frozenset({0}), ord('a'): frozenset({3, 4})},
+    2: {empty_symbol: frozenset({0}), ord('a'): frozenset({3, 4}), ord('x'): frozenset({3, 4})},
     3: {empty_symbol: frozenset({5})},
     4: {empty_symbol: frozenset({6})},
     5: {empty_symbol: frozenset({3}), ord('b'): frozenset({7})},
@@ -21,7 +21,16 @@ def consuming_transitions_and_epsilon_closures() -> None:
   dfa = build_dfa(nfa)
   utest(frozenset({'ab'}), dfa.match, b'ab')
   utest(frozenset({'ac'}), dfa.match, b'ac')
+  utest(frozenset({'ab'}), dfa.match, b'xb')
+  utest(frozenset({'ac'}), dfa.match, b'xc')
   for text in (b'', b'a', b'aa', b'ad', b'aba'):
     utest(frozenset(), dfa.match, text)
   utest(frozenset({'invalid'}), dfa.match, b'z')
   utest_val(False, empty_symbol in dfa.alphabet)
+
+  # Rebuilding after changing an epsilon transition must not reuse a closure from the previous build.
+  nfa.transitions[7][empty_symbol] = frozenset({8})
+  rebuilt = build_dfa(nfa)
+  utest(frozenset({'ac'}), rebuilt.match, b'ab')
+  utest(frozenset({'ac'}), rebuilt.match, b'xb')
+  utest(frozenset({'ab'}), dfa.match, b'ab')
