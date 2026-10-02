@@ -6,6 +6,9 @@ from typing import Iterable
 from .data import blocks
 
 
+_context_keywords_ = ['block', 'category', 'charset', 'code point', 'code range', 'plane', 'unicodedata']
+
+
 # use pairs instead of real range objects because they are sortable, and faster to load in the interpreter.
 CodeRange = tuple[int, int]
 CodeRanges = tuple[CodeRange, ...]
