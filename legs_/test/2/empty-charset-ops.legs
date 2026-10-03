@@ -1,0 +1,4 @@
+# Patterns
+a: x [a & b]
+b: [[a b] - [a b]] | y
+c: [a - b]

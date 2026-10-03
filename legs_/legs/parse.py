@@ -143,6 +143,10 @@ class GrammarBuilder:
           self.failed_patterns.add(name)
           continue
         pattern = SeqPattern.from_list([CharsetPattern.for_code(ord(c)) for c in name])
+      if name in reserved_kinds:
+        self.error(name_slc, f'error: pattern name is reserved: {name}')
+        self.failed_patterns.add(name)
+        continue
       if name in self.patterns:
         self.error(name_slc, f'error: pattern already defined: {name}')
         continue
@@ -231,6 +235,8 @@ pattern_head_re = re.compile(r'(?P<name>[A-Za-z_][0-9A-Za-z_]*)[ \t]*(?P<colon>:
 
 dropped_kinds = ('comment', 'newline', 'spaces')
 
+reserved_kinds = ('invalid', 'incomplete', 'end_of_text') # Token kinds that the lexer produces itself.
+
 
 # Pattern expressions.
 
@@ -293,7 +299,7 @@ def build_pattern_parser(lexer:LexerProtocol=pattern_lexer) -> Parser:
       # Charsets.
 
       charset_p=Struct('charset', # Wrapper to transform from set[int] to CharsetPattern.
-        transform=lambda s, t, fields: CharsetPattern.for_codes(fields[0])),
+        transform=transform_charset),
 
       charset=Struct('brack_o', 'charset_expr', 'brack_c'),
 
@@ -349,6 +355,12 @@ def transform_choice(source:Source, slc:slice, token:Token, l:LegsPattern, r:Leg
 
 def transform_adj(source:Source, slc:slice, token:Token, l:LegsPattern, r:LegsPattern) -> SeqPattern:
   return SeqPattern(l, r)
+
+
+def transform_charset(source:Source, slc:slice, fields:list[set[int]]) -> CharsetPattern:
+  codes = fields[0]
+  if not codes: raise ParseError(source, slc, 'character set is empty.')
+  return CharsetPattern.for_codes(codes)
 
 
 # Parser atom transformers.

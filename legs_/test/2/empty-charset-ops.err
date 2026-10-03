@@ -1,0 +1,13 @@
+empty-charset-ops.legs:2:6-7: note: in 'pattern_expr' precedence rule:
+| a: x [a & b]
+       ~
+empty-charset-ops.legs:2:6-13: parse error: character set is empty.
+| a: x [a & b]
+       ~~~~~~~
+empty-charset-ops.legs:3:4-5: note: in 'pattern_expr' precedence rule:
+| b: [[a b] - [a b]] | y
+     ~
+empty-charset-ops.legs:3:4-19: parse error: character set is empty.
+| b: [[a b] - [a b]] | y
+     ~~~~~~~~~~~~~~~
+

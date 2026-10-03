@@ -1,0 +1,10 @@
+reserved-names.legs:2:1-8: error: pattern name is reserved: invalid
+| invalid: x
+  ~~~~~~~
+reserved-names.legs:3:1-11: error: pattern name is reserved: incomplete
+| incomplete
+  ~~~~~~~~~~
+reserved-names.legs:4:1-12: error: pattern name is reserved: end_of_text
+| end_of_text: y
+  ~~~~~~~~~~~
+

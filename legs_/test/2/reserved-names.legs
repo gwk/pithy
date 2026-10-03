@@ -1,0 +1,5 @@
+# Patterns
+invalid: x
+incomplete
+end_of_text: y
+ok: z
