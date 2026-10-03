@@ -27,12 +27,16 @@ ascii_charsets:dict[str,CodeRanges] = {}
 
 def _gen_charsets() -> None:
 
+  def register(name:str, ranges:CodeRanges) -> None:
+    if name in unicode_charsets: raise ValueError(f'duplicate charset name: {name!r}')
+    unicode_charsets[name] = ranges
+
   # categories.
   for cat in unicode_categories:
     if cat.subcategories:
-      unicode_charsets[cat.key] = tuple(sorted(chain(*(category_ranges[k] for k in cat.subcategories))))
+      register(cat.key, tuple(sorted(chain(*(category_ranges[k] for k in cat.subcategories)))))
     else:
-      unicode_charsets[cat.key] = category_ranges[cat.key]
+      register(cat.key, category_ranges[cat.key])
   # add aliases in a second pass to reuse range values by reference.
   for name, cat in unicode_category_aliases.items():
     if name in unicode_charsets: continue
@@ -40,15 +44,15 @@ def _gen_charsets() -> None:
 
   # blocks.
   for k, r in blocks.items():
-    unicode_charsets[k] = (r,)
+    register(k, (r,))
 
   # planes.
   for k, plane in abbreviated_planes.items():
-    unicode_charsets[k] = plane
+    register(k, plane)
 
   def add(name:str, abbr:str, *ranges:CodeRange) -> None:
-    unicode_charsets[name] = tuple(ranges)
-    if abbr: unicode_charsets[abbr] = unicode_charsets[name]
+    register(name, tuple(ranges))
+    if abbr: register(abbr, unicode_charsets[name])
 
   # Ascii.
   add('Ascii', 'A', (0x00, 0x80))
@@ -69,7 +73,7 @@ def _gen_charsets() -> None:
   add('Binary',       'Bin',  (0x30, 0x32))
   add('Quaternary',   'Quat', (0x30, 0x34))
   add('Octal',        'Oct',  (0x30, 0x38))
-  add('Decimal',      'Dec',  (0x30, 0x3A)) # remove as redundant with Ascii_Number?
+  add('Decimal',      'Dec',  (0x30, 0x3A))
   add('Hexadecimal',  'Hex',  (0x30, 0x3A), (0x41, 0x47), (0x61, 0x67))
 
   # Miscellaneous.
