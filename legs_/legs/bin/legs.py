@@ -37,8 +37,8 @@ from ..targets.python import output_python, output_python_re, OutputOpts
 from ..targets.swift import output_swift
 
 
-_context_keywords_ = ['code generation', 'command line', 'grammar compiler', 'lexer generator', 'lexical analysis',
-  'regular expressions', 'tokenization']
+_context_keywords_ = ['code generation', 'command line', 'grammar compiler', 'lexer', 'lexer generator', 'lexical analysis',
+  'regular expressions', 'tokenization', 'tokenizer']
 
 
 def main() -> None: LegsCmd.main()

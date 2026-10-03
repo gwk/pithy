@@ -17,8 +17,8 @@ from pithy.strings import prepend_to_nonempty
 from pithy.unicode.codepoints import codes_desc
 
 
-_context_keywords_ = ['epsilon closure', 'finite automata', 'nondeterministic automata', 'pattern matching',
-  'regular languages', 'state transitions']
+_context_keywords_ = ['NFA', 'automata', 'epsilon closure', 'finite automata', 'finite automaton',
+  'nondeterministic automata', 'pattern matching', 'regular languages', 'state transitions']
 
 
 NfaState = frozenset[int]

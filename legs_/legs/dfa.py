@@ -41,8 +41,9 @@ from pithy.iterable import first_el, frozenset_from, int_tuple_ranges, set_from
 from pithy.unicode.codepoints import codes_desc, codes_range_desc
 
 
-_context_keywords_ = ['ambiguity detection', 'automata minimization', 'backtracking', 'deterministic automata',
-  'finite automata', 'partition refinement', 'pattern matching', 'regular languages']
+_context_keywords_ = ['DFA', 'Hopcroft', 'ambiguity detection', 'automata', 'automata minimization', 'backtracking',
+  'deterministic automata', 'finite automata', 'finite automaton', 'minimization', 'partition refinement',
+  'pattern matching', 'regular languages', 'state machine']
 
 
 DfaState = int

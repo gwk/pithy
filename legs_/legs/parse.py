@@ -34,8 +34,8 @@ from .patterns import (CharsetPattern, ChoicePattern, CommitPattern, LegsPattern
   StarPattern)
 
 
-_context_keywords_ = ['character classes', 'error diagnostics', 'grammar files', 'lexer grammar', 'lexer modes',
-  'pattern expressions', 'unicode charsets']
+_context_keywords_ = ['character classes', 'error diagnostics', 'grammar', 'grammar files', 'lexer grammar', 'lexer modes',
+  'parser', 'pattern expressions', 'regex syntax', 'unicode charsets']
 
 
 @dataclass

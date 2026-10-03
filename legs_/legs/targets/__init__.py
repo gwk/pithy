@@ -4,3 +4,6 @@
 The output targets of `legs`.
 Each module writes the lexer for one output language, given the minimized DFA of each mode.
 '''
+
+
+_context_keywords_ = ['code generation']

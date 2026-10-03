@@ -46,7 +46,7 @@ from .patterns import (CharsetPattern, ChoicePattern, CommitPattern, LegsPattern
 
 
 _context_keywords_ = ['dfa coverage', 'differential testing', 'grammar validation', 'hypothesis', 'input generation',
-  'lexer testing', 'longest match', 'property testing']
+  'lexer testing', 'longest match', 'property testing', 'test generation']
 
 
 @dataclass

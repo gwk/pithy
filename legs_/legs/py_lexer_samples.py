@@ -3,6 +3,9 @@
 'Valid Python 3.14 sources for differential tests and repeatable Unicode benchmarks.'
 
 
+_context_keywords_ = ['python source samples', 'test samples']
+
+
 def python_samples() -> list[str]:
   'Cover the token kinds, string prefixes and interpolation forms of Python.'
   return [

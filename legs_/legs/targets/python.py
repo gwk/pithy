@@ -16,7 +16,7 @@ from ..dfa import DFA
 from ..patterns import LegsPattern, regex_for_codes
 
 
-_context_keywords_ = ['code generation', 'lexer generator', 're.compile', 'regex lexer', 'regular expressions',
+_context_keywords_ = ['code generation', 'lexer generator', 're.compile', 'regex', 'regex lexer', 'regular expressions',
   'source generation', 'table driven lexer']
 
 

@@ -25,8 +25,8 @@ from .parse import Grammar
 from .patterns import LegsPattern, NfaMutableTransitions
 
 
-_context_keywords_ = ['automata construction', 'deterministic automata', 'grammar compiler', 'lexer generation',
-  'nondeterministic automata', 'runtime lexer', 'subset construction']
+_context_keywords_ = ['DFA', 'NFA', 'automata', 'automata construction', 'deterministic automata', 'grammar compiler',
+  'lexer generation', 'nondeterministic automata', 'runtime lexer', 'subset construction']
 
 
 def build_lexer_class(name:str, grammar:Grammar, encoding:str='utf-8') -> type[DictLexerBase]:
