@@ -71,7 +71,7 @@ class LegsTestCmd(Cmd):
     for lang in langs:
       if lang not in lang_runners: exit(f'error: unknown language {lang!r}; testable languages: {", ".join(lang_runners)}.')
 
-    try: f = open(self.path)
+    try: f = open(self.path, encoding='utf-8')
     except FileNotFoundError: exit(f'error: no such grammar file: {self.path!r}')
     with f: grammar = parse_legs(self.path, f.read())
     if 'python-re' in langs and any(p.has_commit for p in grammar.patterns.values()):

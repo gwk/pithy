@@ -1,0 +1,16 @@
+non-printable.legs:2:5-6: note: in 'pattern_expr' precedence rule:
+| a: x y
+      ~
+non-printable.legs:2:5-6: parse error: character is not printable: U+00A0; use a named class.
+| a: x y
+      ~
+non-printable.legs:3:4-5: note: in 'charset' structure:
+| b: [a ‍]
+     ~
+non-printable.legs:3:7-8: note: in 'charset_expr' precedence rule:
+| b: [a ‍]
+        ~
+non-printable.legs:3:7-8: parse error: character is not printable: U+200D; use a named class.
+| b: [a ‍]
+        ~
+

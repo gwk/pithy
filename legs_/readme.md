@@ -62,7 +62,7 @@ Repeat `-patterns` or `-match` for multiple values. Use `legs -help` for all opt
 
 `-encoding` selects the encoding of the text that the lexer consumes; character sets are compiled to byte sequences in that encoding.
 This is a work in progress: only the default `utf-8` is tested, and `legs-test` and the `python-re` output assume it.
-The grammar file itself is read with Python's default encoding.
+The grammar file itself is always read as UTF-8.
 
 
 # Grammar Files

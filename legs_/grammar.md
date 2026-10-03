@@ -50,8 +50,8 @@ Spaces and newlines inside a pattern are ignored. `//` begins a comment that ext
 
 ## Atoms
 
-* A printable ASCII character matches itself, unless it is one of the operators listed here.
-  For example `.`, `{`, `"` and `:` are ordinary characters.
+* A printable character matches itself, unless it is one of the operators listed here.
+  For example `.`, `{`, `"`, `:`, `é` and `→` are ordinary characters.
 * `\` escapes the next character:
   * `\0` is null, `\f` form feed, `\n` newline, `\r` carriage return, `\t` tab and `\s` a single space.
   * `\\ \# \| \$ \? \* \+ \( \) \[ \] \& \- \^ \: \/ \,` match the escaped character.
@@ -61,7 +61,8 @@ Spaces and newlines inside a pattern are ignored. `//` begins a comment that ext
 * `(...)` groups a pattern.
 * `,` is a commitment barrier; see [Incomplete Tokens and Commitment](#incomplete-tokens-and-commitment).
 
-Non-ASCII characters cannot be written in a pattern, and there are no code point escapes. Use a named class to match them.
+Invisible characters, such as a no-break space or a zero width joiner, are errors, and there are no code point escapes.
+Use a named class to match them.
 
 ## Operators
 
@@ -76,6 +77,7 @@ From tightest to loosest:
 A character set matches one character. Inside the brackets:
 
 * A character, an escape or a `$Name` is a set. A nested `[...]` groups a set.
+* A character set that contains no characters is an error.
 * Sets written next to each other form a union: `[$Ascii_Letter $Dec _]`.
 * `a & b` is the intersection, `a - b` the difference and `a ^ b` the symmetric difference.
   These three have equal precedence and apply from left to right. Union binds tighter.
@@ -102,6 +104,7 @@ When two patterns in a mode match the same text, Legs resolves the choice as fol
 * Otherwise the grammar is rejected with the error `Rules are ambiguous`.
 
 A pattern that matches the empty string is also rejected.
+The names `invalid`, `incomplete` and `end_of_text` are reserved for the token kinds that the lexer produces itself.
 
 
 # Modes and Transitions

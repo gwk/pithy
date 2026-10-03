@@ -95,7 +95,7 @@ def run_legs(args:LegsCmd) -> None:
     src = '\n'.join(args.patterns)
   elif (args.path is not None) and not args.patterns:
     path = args.path
-    try: src = open(path).read()
+    try: src = open(path, encoding='utf-8').read()
     except FileNotFoundError:
       exit(f'legs error: no such pattern file: {path!r}')
   else:

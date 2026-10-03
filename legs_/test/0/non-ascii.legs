@@ -1,0 +1,6 @@
+# Patterns
+spaces: \s+
+arrow: →
+greek: [α β γ]+
+word: [$Letter - [α β γ]]+
+emoji: 😀

@@ -1,0 +1,4 @@
+# Patterns
+a: x y
+b: [a ‍]
+c: z

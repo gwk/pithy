@@ -1,0 +1,20 @@
+
+'αβ → γ':
+0-4 greek 'αβ'
+4-5 spaces ' '
+5-8 arrow '→'
+8-9 spaces ' '
+9-11 greek 'γ'
+
+'δα→':
+0-2 word 'δ'
+2-4 greek 'α'
+4-7 arrow '→'
+
+'é😀':
+0-2 word 'é'
+2-6 emoji '😀'
+
+'←':
+0-2 incomplete '�'
+2-3 invalid '�'

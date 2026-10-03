@@ -35,8 +35,8 @@ caret: \^
 ref: \$ [$Ascii_Letter $Ascii_Number _]*
 esc: \\ [$Ascii $Readable - \n]
 backslash: \\ // A dangling backslash, which is not followed by an escapable character.
-char: [$Ascii_Visible - \[ \] \( \) \| \? \* \+ \$ \\ ,]
-charset_char: [$Ascii_Visible - \[ \] \& \- \^ \$ \\]
+char: [$Visible - \[ \] \( \) \| \? \* \+ \$ \\ ,]
+charset_char: [$Visible - \[ \] \& \- \^ \$ \\]
 
 # Modes
 

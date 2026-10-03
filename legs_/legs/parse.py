@@ -260,8 +260,8 @@ pattern_lexer = Lexer(flags='mx',
     ref     = r'\$\w*',
     esc     = r'\\[^\n]',
     backslash = r'\\',
-    char    = r'[!-~]',
-    charset_char = r'[!-~]',
+    char    = r'[^\x00-\x20\x7f]', # Non-ASCII characters are validated by `code_for_char`.
+    charset_char = r'[^\x00-\x20\x7f]',
   ),
   modes=[
     LexMode('pattern', kinds=[*dropped_kinds,
@@ -366,7 +366,7 @@ def transform_charset(source:Source, slc:slice, fields:list[set[int]]) -> Charse
 # Parser atom transformers.
 
 def transform_char(source:Source, token:Token) -> CharsetPattern:
-  return CharsetPattern.for_code(ord(source[token]))
+  return CharsetPattern.for_code(code_for_char(source, token))
 
 def transform_esc(source:Source, token:Token) -> CharsetPattern:
   return CharsetPattern.for_code(code_for_esc(source, token))
@@ -378,7 +378,7 @@ def transform_ref(source:Source, token:Token) -> CharsetPattern:
 # Charset atom transformers.
 
 def transform_cs_char(source:Source, token:Token) -> set[int]:
-  return set((ord(source[token]),))
+  return set((code_for_char(source, token),))
 
 def transform_cs_esc(source:Source, token:Token) -> set[int]:
   return set((code_for_esc(source, token),))
@@ -388,6 +388,12 @@ def transform_cs_ref(source:Source, token:Token) -> set[int]:
 
 
 # Utilities.
+
+def code_for_char(source:Source, token:Token) -> int:
+  'Return the code point of a literal character. An invisible character, such as a no-break space, is an error.'
+  char = source[token]
+  if not char.isprintable(): raise ParseError(source, token, f'character is not printable: U+{ord(char):04X}; use a named class.')
+  return ord(char)
 
 def code_for_esc(source:Source, token:Token) -> int:
   char = source[token][1]
