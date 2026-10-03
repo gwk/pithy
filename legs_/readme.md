@@ -60,6 +60,10 @@ legs -patterns 'number: $Dec+' -match 123 -match abc
 
 Repeat `-patterns` or `-match` for multiple values. Use `legs -help` for all options.
 
+`-encoding` selects the encoding of the text that the lexer consumes; character sets are compiled to byte sequences in that encoding.
+This is a work in progress: only the default `utf-8` is tested, and `legs-test` and the `python-re` output assume it.
+The grammar file itself is read with Python's default encoding.
+
 
 # Grammar Files
 

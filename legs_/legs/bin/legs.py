@@ -58,7 +58,8 @@ class LegsCmd(Cmd):
   path:str|None = pos(default=None, doc='Path to the .legs file.')
   dbg:bool = flag(doc='Verbose debug printing.')
   describe:bool = flag(doc='Print pattern descriptions.')
-  encoding:str = opt(default='utf-8', doc='Encoding of the input file.')
+  encoding:str = opt(default='utf-8',
+    doc='Encoding of the text that the lexer consumes; a work in progress, and only utf-8 is tested.')
   langs:list[str] = opt(default_factory=list, metavar='LANG', split=',',
     doc='Target languages for which to generate lexers, separated by commas.')
   match:list[str] = opt(default_factory=list, metavar='STRING',

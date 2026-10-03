@@ -189,6 +189,8 @@ def build_dfa(nfa:NFA) -> DFA:
   assert invalid_node not in transitions
   start_dict = transitions[start_node]
   invalid_dict = transitions[invalid_node]
+  # The alphabet is bytes for an encoded automaton.
+  # The code point alphabet for an empty encoding is a work in progress: `CharsetPattern.gen_nfa` always encodes.
   whole_alphabet = set(range(2**8 if nfa.encoding else 2**32))
   invalid_start_chars = whole_alphabet.difference(start_dict)
   for c in invalid_start_chars:
