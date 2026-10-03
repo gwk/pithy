@@ -1,0 +1,34 @@
+bad-escapes.legs:2:4-6: note: in 'pattern_expr' precedence rule:
+| a: \x4
+     ~~
+bad-escapes.legs:2:4-6: parse error: code point escape `\x` requires 2 hexadecimal digits.
+| a: \x4
+     ~~
+bad-escapes.legs:3:4-6: note: in 'pattern_expr' precedence rule:
+| b: \u12
+     ~~
+bad-escapes.legs:3:4-6: parse error: code point escape `\u` requires 4 hexadecimal digits.
+| b: \u12
+     ~~
+bad-escapes.legs:4:4-10: note: in 'pattern_expr' precedence rule:
+| c: \uD800
+     ~~~~~~
+bad-escapes.legs:4:4-10: parse error: escape is not a Unicode scalar value: U+D800.
+| c: \uD800
+     ~~~~~~
+bad-escapes.legs:5:4-14: note: in 'pattern_expr' precedence rule:
+| d: \U00110000
+     ~~~~~~~~~~
+bad-escapes.legs:5:4-14: parse error: escape is not a Unicode scalar value: U+110000.
+| d: \U00110000
+     ~~~~~~~~~~
+bad-escapes.legs:6:4-5: note: in 'charset' structure:
+| e: [\U0000004]
+     ~
+bad-escapes.legs:6:5-7: note: in 'charset_expr' precedence rule:
+| e: [\U0000004]
+      ~~
+bad-escapes.legs:6:5-7: parse error: code point escape `\U` requires 8 hexadecimal digits.
+| e: [\U0000004]
+      ~~
+

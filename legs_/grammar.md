@@ -55,14 +55,14 @@ Spaces and newlines inside a pattern are ignored. `//` begins a comment that ext
 * `\` escapes the next character:
   * `\0` is null, `\f` form feed, `\n` newline, `\r` carriage return, `\t` tab and `\s` a single space.
   * `\\ \# \| \$ \? \* \+ \( \) \[ \] \& \- \^ \: \/ \,` match the escaped character.
+  * `\xHH`, `\uHHHH` and `\UHHHHHHHH` match the code point given by the hexadecimal digits `H`. Surrogates are errors.
   * Any other escape is an error.
 * `$Name` matches one character of a named class, e.g. `$Dec` or `$Ascii_Letter`. See [Named Character Classes](character-classes.md).
 * `[...]` is a character set; see below.
 * `(...)` groups a pattern.
 * `,` is a commitment barrier; see [Incomplete Tokens and Commitment](#incomplete-tokens-and-commitment).
 
-Invisible characters, such as a no-break space or a zero width joiner, are errors, and there are no code point escapes.
-Use a named class to match them.
+Invisible characters, such as a no-break space or a zero width joiner, are errors. Write them as code point escapes.
 
 ## Operators
 

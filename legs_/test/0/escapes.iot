@@ -1,0 +1,4 @@
+{
+  'cmd': 'legs-test $NAME.legs',
+  'args': ['A\u00e9b \u00a0\u200d', '\U0001F600 a'],
+}

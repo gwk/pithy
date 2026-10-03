@@ -258,7 +258,7 @@ pattern_lexer = Lexer(flags='mx',
     dash    = '-',
     caret   = r'\^',
     ref     = r'\$\w*',
-    esc     = r'\\[^\n]',
+    esc     = r'\\(?:x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[^\n])',
     backslash = r'\\',
     char    = r'[^\x00-\x20\x7f]', # Non-ASCII characters are validated by `code_for_char`.
     charset_char = r'[^\x00-\x20\x7f]',
@@ -396,9 +396,19 @@ def code_for_char(source:Source, token:Token) -> int:
   return ord(char)
 
 def code_for_esc(source:Source, token:Token) -> int:
-  char = source[token][1]
+  'Return the code point of an escape. A code point escape is `x`, `u` or `U` followed by 2, 4 or 8 hexadecimal digits.'
+  text = source[token]
+  char = text[1]
+  if len(text) > 2: # Code point escape.
+    code = int(text[2:], 16)
+    if code > 0x10FFFF or 0xD800 <= code < 0xE000:
+      raise ParseError(source, token, f'escape is not a Unicode scalar value: U+{code:04X}.')
+    return code
   try: return escape_codes[char]
-  except KeyError: source.fail((token, f'error: invalid escaped character: {char!r}.'))
+  except KeyError: pass
+  if digits := code_escape_digits.get(char):
+    raise ParseError(source, token, f'code point escape `\\{char}` requires {digits} hexadecimal digits.')
+  source.fail((token, f'error: invalid escaped character: {char!r}.'))
 
 def ranges_for_ref(source:Source[str], token:Token) -> CodeRanges:
   name = source[token][1:]
@@ -414,6 +424,8 @@ escape_codes:dict[str, int] = {
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),
 }
+code_escape_digits = {'x': 2, 'u': 4, 'U': 8}
+
 escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/,')
 
 
