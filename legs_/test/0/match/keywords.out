@@ -1,0 +1,4 @@
+match: 'if' -> if
+match: 'iff' -> name
+match: 'i' -> name
+match: '1' -> invalid

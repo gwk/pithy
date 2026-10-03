@@ -234,9 +234,11 @@ def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -
   Test `nfa`, `fat_dfa`, and `min_dfa` against each other by attempting to match `string`.
   This is tricky because each is subtly different:
   * NFA does not have any transitions to `invalid`.
-  * fat DFA does not disambiguate between multiple match states.
+  * NFA and fat DFA report every kind that matches. Only the minimized DFA chooses between overlapping kinds.
   Therefore the minimized DFA is most correct,
   but for now it seems worthwhile to keep the ability to check them against each other.
+  The NFA and fat DFA must report the same kinds. The minimized DFA must report one of them.
+  If a literal pattern is among them then it must be the one chosen.
   '''
   nfa_matches = nfa.match(text_bytes)
   fat_dfa_matches = fat_dfa.match(text_bytes)
@@ -247,6 +249,9 @@ def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -
   if not (fat_dfa_matches >= min_dfa_matches):
     exit(f'match: {text!r}; inconsistent matches: fat DFA: {fat_dfa_matches}; min DFA: {min_dfa_matches}.')
   assert len(min_dfa_matches) <= 1, min_dfa_matches
+  literal_matches = nfa_matches & nfa.lit_pattern_names
+  if literal_matches and not (min_dfa_matches and min_dfa_matches <= literal_matches):
+    exit(f'match: {text!r}; inconsistent matches: literal patterns: {literal_matches}; min DFA: {min_dfa_matches}.')
   if min_dfa_matches:
     outL(f'match: {text!r} -> {first_el(min_dfa_matches)}')
   else:

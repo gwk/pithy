@@ -1,0 +1,14 @@
+{
+  'cmd': 'legs',
+  'code': 0, # The note on stderr is not an error.
+  'links': {}, # The patterns are given as arguments.
+  'args': [
+    '-patterns', 'if',
+    '-patterns', 'name: $Ascii_Letter+',
+    # A keyword and a general pattern both match; the keyword is chosen.
+    '-match', 'if',
+    '-match', 'iff',
+    '-match', 'i',
+    '-match', '1',
+  ],
+}

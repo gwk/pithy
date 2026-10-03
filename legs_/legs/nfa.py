@@ -150,16 +150,14 @@ class NFA:
     return self.advance_empties(nextState)
 
   def match(self, text_bytes:bytes) -> frozenset[str]:
-    'Return the kinds that match the whole of `text_bytes`. If any of them are literal patterns then return only those.'
+    'Return the kinds that match the whole of `text_bytes`.'
     state = self.advance_empties({0})
     #errSL('NFA start:', state)
     for byte in text_bytes:
       state = self.advance(state, byte)
       #errL(f'NFA step: {bytes([byte])} -> {state}')
     s:Iterable[str] = filtermap_with_mapping(state, self.match_node_kinds)
-    all_matches:frozenset[str] = frozenset(s)
-    literal_matches = frozenset(n for n in all_matches if n in self.lit_pattern_names)
-    return literal_matches or all_matches
+    return frozenset(s)
 
   def advance_empties(self, mut_state:set[int]) -> NfaState:
     'Return `mut_state` plus all nodes reachable from it by empty and commit transitions. `mut_state` is emptied.'
