@@ -11,7 +11,7 @@ from legs import DictLexerBase
 from legs.build import build_lexer_class, build_lexer_class_for_automata, build_mode_automata
 from legs.parse import parse_legs
 from legs.props import GrammarChecker
-from legs.python import output_python, output_python_re
+from legs.targets.python import output_python, output_python_re
 from tolkien import Source
 from utest import utest_exc, utest_run, utest_val
 

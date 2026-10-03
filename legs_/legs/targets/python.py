@@ -7,9 +7,9 @@ from pithy.optional import unwrap
 from pithy.reprs import repr_ml
 from pithy.strings import render_template
 
-from . import ModeData, ModeTransitions
-from .dfa import DFA
-from .patterns import LegsPattern, regex_for_codes
+from .. import ModeData, ModeTransitions
+from ..dfa import DFA
+from ..patterns import LegsPattern, regex_for_codes
 
 
 _context_keywords_ = ['code generation', 'lexer generator', 're.compile', 'regex lexer', 'regular expressions',

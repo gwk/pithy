@@ -18,8 +18,8 @@ from ..dfa import DFA
 from ..parse import Grammar, parse_legs
 from ..patterns import gen_incomplete_pattern
 from ..props import GrammarChecker, PropertyError
-from ..python import output_python, output_python_re
-from ..swift import output_swift, swift_kind_syms, swift_safe_sym
+from ..targets.python import output_python, output_python_re
+from ..targets.swift import output_swift, swift_kind_syms, swift_safe_sym
 
 
 _context_keywords_ = ['command line', 'differential testing', 'generated lexers', 'grammar validation', 'lexer testing',
@@ -165,7 +165,7 @@ class LexerTest:
     output_swift(path, dfas=self.dfas, mode_transitions=self.grammar.transitions, pattern_descs=self.pattern_descs,
       license=self.grammar.license, patterns_path=None, type_prefix='')
     # Append the base source and the driver, because `swift` interprets a single file.
-    with open(path_join(dirname(dirname(__file__)), 'legs_base.swift')) as f: base = f.read()
+    with open(path_join(dirname(dirname(__file__)), 'targets/legs_base.swift')) as f: base = f.read()
     with open(path, 'a') as f:
       f.write('\n\n')
       f.write(base)

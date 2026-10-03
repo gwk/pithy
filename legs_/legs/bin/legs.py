@@ -29,12 +29,12 @@ from pithy.strings import pluralize
 
 from ..build import build_mode_automata, build_pattern_descs, ModeAutomata, ModeError
 from ..dfa import DFA
-from ..dot import output_dot
 from ..nfa import NFA
 from ..parse import parse_legs
 from ..patterns import gen_incomplete_pattern, LegsPattern
-from ..python import output_python, output_python_re, OutputOpts
-from ..swift import output_swift
+from ..targets.dot import output_dot
+from ..targets.python import output_python, output_python_re, OutputOpts
+from ..targets.swift import output_swift
 
 
 _context_keywords_ = ['code generation', 'command line', 'grammar compiler', 'lexer generator', 'lexical analysis',

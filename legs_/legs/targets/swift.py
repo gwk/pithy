@@ -7,8 +7,8 @@ from typing import Any, Iterable
 from pithy.iterable import closed_int_intervals
 from pithy.strings import render_template
 
-from . import ModeTransitions
-from .dfa import DFA
+from .. import ModeTransitions
+from ..dfa import DFA
 from .python import comment_lines
 
 

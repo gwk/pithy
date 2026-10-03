@@ -24,7 +24,7 @@ help: # Summarize the targets of this makefile.
 	@echo "\nLanguages: swift, py-re, py-table"
 
 legs_dir := ../legs
-legs_srcs := $(legs_dir)/*.py $(legs_dir)/bin/*.py
+legs_srcs := $(legs_dir)/*.py $(legs_dir)/bin/*.py $(legs_dir)/targets/*.py
 
 # The number of timed runs for each target; slower lexers get fewer runs. Override with `make runs=N perf-...`.
 runs := 8
@@ -50,7 +50,7 @@ _build/%-py-re: _build/%.re.py main.py
 	cat $^ >> $@
 	chmod +x $@
 
-_build/%-swift: _build/%.swift $(legs_dir)/legs_base.swift main.swift
+_build/%-swift: _build/%.swift $(legs_dir)/targets/legs_base.swift main.swift
 	time swiftc -num-threads 8 -O $^ -o $@
 
 # The `.re.py` rule must precede the `.py` rule, because both patterns match and this version of make uses the first.

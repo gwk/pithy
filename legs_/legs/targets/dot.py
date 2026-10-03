@@ -2,7 +2,7 @@
 
 from pithy.graphviz import GraphvizAttrs, GraphvizName, write_dot_digraph_adjacency
 
-from .dfa import DFA
+from ..dfa import DFA
 
 
 _context_keywords_ = ['automata visualization', 'directed graph', 'graphviz', 'state transitions']
