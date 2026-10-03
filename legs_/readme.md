@@ -111,7 +111,7 @@ Each token must be the longest match at its position, and the tokens must cover 
 The inputs are strings generated from the patterns by [Hypothesis](https://hypothesis.readthedocs.io), and a traversal of every DFA transition.
 See `legs.props` for details. The examples are the same on every run unless `-randomize` is given.
 
-`legs -match` checks strings against the NFA and both DFAs of a mode, without generating code.
+`legs -match` checks strings against the NFA, the unminimized DFA and the minimized DFA of a mode, without generating code.
 
 Tests that are too slow for the routine checks are in `legs_/test`; run them with `just test-full`.
 
