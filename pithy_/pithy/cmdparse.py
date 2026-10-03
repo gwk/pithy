@@ -20,8 +20,8 @@ The grammar is deliberately rigid, so that dispatch to subcommands is never ambi
   Names are otherwise matched exactly; they are never abbreviated or guessed.
 * Every command provides `-h` and `-help`; these names are reserved and may not be declared as options.
 * An option that takes a value is written `-name=value` or `-name value`;
-  in the latter form the value may not itself be an option token, so a value beginning with `-` other than a lone `-`
-  requires the `=` form.
+  in the latter form the value may not itself be an option token, so a value beginning with `-` (other than a lone `-`)
+  requires the `=` form, e.g. `-something=-leading-dash`.
 * Bare tokens fill the declared positionals in declaration order.
 * A command that declares subcommands may only declare required, non-variadic positionals.
   The next bare token after those positionals selects a subcommand,
