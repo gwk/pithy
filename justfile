@@ -74,6 +74,11 @@ cov-meta:
 perf-legs-compile *args:
   PYTHONHASHSEED=0 python3 legs_/perf/compile.py "$@"
 
+# Compare Python tokenization with stdlib, then benchmark the repository and Unicode sources.
+[positional-arguments]
+perf-legs-python *args:
+  PYTHONHASHSEED=0 python3 legs_/perf/python.py "$@"
+
 # Build all project context.
 ctx:
   python3 -m crafts.bin.craft_context all
@@ -119,7 +124,7 @@ lint: lint-py lint-rust
 
 # pyflakes cannot exclude paths, so the ops sources are enumerated to prune all _build directories.
 lint-py:
-  python3 -m pyflakes {{pkg_srcs}} legs_/perf/compile.py legs_/perf/run.py $(find ops -type d -name _build -prune -o -name '*.py' -print) tap_backblaze_/test-integration test-diff tools
+  python3 -m pyflakes {{pkg_srcs}} legs_/perf/compile.py legs_/perf/python.py legs_/perf/run.py $(find ops -type d -name _build -prune -o -name '*.py' -print) tap_backblaze_/test-integration test-diff tools
 
 # Pin the interpreter: otherwise pyo3's build script searches `PATH` and rebuilds whenever `PATH` changes.
 lint-rust: fmt-rust-check

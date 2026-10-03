@@ -101,3 +101,8 @@ TODO.
 Column numbers are a common feature of compiler error messages, and text editors. However in the modern world of Unicode columns are surprisingly ill-defined. Swift defines the Character type as an "extended grapheme literal", which is meant to represent a single visual character and can be composed of arbitarily many code points. Many modern languages like Python 3 count unicode scalars (code points), while older ones like JavaScript and Objective-C count 16 bit BMP code points. Further confounding the situation is the fact that some characters are rendered as double-width, so regardless of language the notion of character offset diverges from graphical offset within an editor or an console error message.
 
 I hope that Legs will eventually provide a robust notion of textual distance. It seems that we will need to define several measures of distance: UTF-8/byte distance, UTF-16 distance, character distance, and visual distance. The latter two differ because there are code points that Swift treats as distinct characters but represent zero visual distance (e.g. Zero-width space), and some characters are rendered at double-width. Perhaps the more intelligible metric would be "cursor distance", roughly meaning number of arrow key presses, but this is likely to be application/OS dependent.
+
+# Python lexer
+
+[Detailed Python 3.14 lexing](python.md) uses string and interpolation modes, preserves individual escapes and reports diagnostic byte spans.
+A separate adapter supports differential tests against stdlib `tokenize`, and the performance suite can lex all repository Python sources.

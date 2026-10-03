@@ -19,6 +19,9 @@ def pattern_descs(text:str) -> dict[str,str]:
 
 utest(('', [], {'main': []}, {}), parse, '')
 
+# Control characters needed by source-language grammars.
+utest({'nul': '\\x00', 'ff': '\\x0c', 'cr': '\\x0d'}, pattern_descs, r'nul: \0' + '\n' + r'ff: \f' + '\n' + r'cr: \r')
+
 # Text preceding the first header is treated as patterns.
 utest(('', ['a', 'b'], {'main': ['a', 'b']}, {}), parse, '// Comment.\na\nb: c\n')
 

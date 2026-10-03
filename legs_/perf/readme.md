@@ -55,7 +55,7 @@ Each runtime measurement consumes the token iterator without retaining the token
 Source decoding, grammar compilation and differential checks are excluded from runtime measurements; garbage collection remains enabled.
 The detailed stream includes trivia and string fragments, so its token count differs from the adapted and stdlib streams.
 Use `-runs 0` for differential checks alone.
-See [the Python lexer documentation](../grammars/python.md) for the compatibility contract, diagnostics and development commands.
+See [the Python lexer documentation](../python.md) for the compatibility contract, diagnostics and development commands.
 
 ## Initial Python baseline
 

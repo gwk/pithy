@@ -389,7 +389,10 @@ def ranges_for_ref(source:Source[str], token:Token) -> CodeRanges:
 
 
 escape_codes:dict[str, int] = {
+  '0': 0,
+  'f': ord('\f'),
   'n': ord('\n'),
+  'r': ord('\r'),
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),
 }
