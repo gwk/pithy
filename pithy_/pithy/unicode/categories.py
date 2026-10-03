@@ -65,6 +65,9 @@ unicode_categories:list[UnicodeCategory] = [ # taken directly from: http://www.u
 
 unicode_category_aliases:dict[str,UnicodeCategory] = { cat.key : cat for cat in unicode_categories }
 
+# First words that are not category aliases, because `pithy.unicode.charsets` defines them as convenience classes.
+reserved_first_words = frozenset({'Decimal'}) # `Decimal` is ASCII 0-9, not `Decimal_Number`.
+
 def _add_aliases() -> None:
   unicode_category_aliases.update((cat.name, cat) for cat in unicode_categories)
   # add first-word aliases wherever they are unambiguous.
@@ -72,7 +75,7 @@ def _add_aliases() -> None:
   first_word_categories = {}
   for cat in unicode_categories:
     first = cat.name.partition('_')[0]
-    if first in unicode_category_aliases: continue
+    if first in unicode_category_aliases or first in reserved_first_words: continue
     first_word_counts[first] += 1
     first_word_categories[first] = cat
   unicode_category_aliases.update(p for p in first_word_categories.items() if first_word_counts[p[0]] == 1)
