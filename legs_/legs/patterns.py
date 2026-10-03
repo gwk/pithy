@@ -8,7 +8,7 @@ from pithy.strings import clip_suffix
 from pithy.unicode import CodeRange, codes_for_ranges, ranges_for_codes
 from pithy.unicode.codepoints import codes_desc
 
-from .nfa import empty_symbol
+from .nfa import commit_symbol, empty_symbol
 
 
 _context_keywords_ = ['character classes', 'codepoint ranges', 'finite automata', 'pattern combinators', 're.compile',
@@ -18,6 +18,7 @@ _context_keywords_ = ['character classes', 'codepoint ranges', 'finite automata'
 __all__ = [
   'CharsetPattern',
   'ChoicePattern',
+  'CommitPattern',
   'LegsPattern',
   'NfaMutableTransitions',
   'OptPattern',
@@ -39,6 +40,9 @@ class LegsPattern:
   precedence:int = -1
 
   def describe(self, name:str|None, depth:int=0) -> None: raise NotImplementedError
+
+  @property
+  def has_commit(self) -> bool: return False
 
   @property
   def desc_type(self) -> str: return clip_suffix(type(self).__name__, 'Pattern')
@@ -70,7 +74,36 @@ class LegsPattern:
   def gen_incomplete(self) -> 'LegsPattern|None': raise NotImplementedError(self)
 
 
+class CommitPattern(LegsPattern):
+  'A zero-width boundary below which previous complete matches cannot be used.'
+
+  precedence = 4
+
+  @property
+  def has_commit(self) -> bool: return True
+
+  def describe(self, name:str|None, depth:int=0) -> None:
+    errL('  ' * depth, name + ' ' if name else '', 'Commit: ,')
+
+  @property
+  def is_literal(self) -> bool: return True
+
+  @property
+  def literal_pattern(self) -> str: return ''
+
+  def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+    transitions[start][commit_symbol].add(end)
+
+  def gen_regex(self, flavor:str) -> str:
+    raise ValueError('Commitment is not supported by regular expression output.')
+
+  def gen_incomplete(self) -> LegsPattern|None: return None
+
+
 class StructPattern(LegsPattern):
+
+  @property
+  def has_commit(self) -> bool: return any(sub.has_commit for sub in self)
 
   def __iter__(self) -> Iterator[LegsPattern]: raise NotImplementedError
 

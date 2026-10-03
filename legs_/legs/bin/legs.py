@@ -96,6 +96,8 @@ def run_legs(args:LegsCmd) -> None:
   grammar = parse_legs(path, src)
   license = grammar.license
   patterns = grammar.patterns
+  if 'python-re' in langs and any(p.has_commit for p in patterns.values()):
+    exit('error: commitment is not supported by python-re output; use python or swift.')
   mode_pattern_kinds = grammar.modes
   mode_transitions = grammar.transitions
 

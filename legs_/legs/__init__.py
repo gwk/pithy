@@ -80,6 +80,7 @@ class LexerBase(Iterator[Token]):
 class DictLexerBase(LexerBase):
 
   mode_data:dict[str,ModeData]
+  mode_commit_nodes:ClassVar[dict[str,frozenset[int]]] = {}
 
   @classmethod
   def mode_names(cls) -> dict[str,ModeData]: return cls.mode_data
@@ -92,6 +93,7 @@ class DictLexerBase(LexerBase):
     mode, pop_kind = self.stack[-1]
     mode_start, transitions, match_node_kinds = self.mode_data[mode]
 
+    commit_nodes = self.mode_commit_nodes.get(mode, ())
     state = mode_start
     end = None
     kind = 'incomplete'
@@ -101,6 +103,9 @@ class DictLexerBase(LexerBase):
       except KeyError: break
       else: # advance.
         pos += 1
+        if state in commit_nodes:
+          end = None
+          kind = 'incomplete'
         try: kind = match_node_kinds[state]
         except KeyError: pass
         else: end = pos

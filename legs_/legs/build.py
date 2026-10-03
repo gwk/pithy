@@ -11,7 +11,7 @@ from pithy.optional import unwrap
 
 from . import DictLexerBase, ModeData
 from .dfa import AmbiguityError, DFA, minimize_dfa
-from .nfa import empty_symbol, NFA, NfaState, NfaTransitions
+from .nfa import NFA, NfaState, NfaTransitions
 from .parse import Grammar
 from .patterns import LegsPattern, NfaMutableTransitions
 
@@ -30,11 +30,15 @@ def build_lexer_class(name:str, grammar:Grammar, encoding:str='utf-8') -> type[D
 
 def build_lexer_class_for_automata(name:str, grammar:Grammar, automata:Iterable[ModeAutomata]) -> type[DictLexerBase]:
   'Build a lexer class from the automata that were built for the grammar.'
-  mode_data:dict[str,ModeData] = {
-    dfa.name: (dfa.start_node, dfa.transitions, {node: unwrap(dfa.match_kind(node)) for node in dfa.match_nodes})
-    for dfa in (a.min_dfa for a in automata)}
+  mode_data:dict[str,ModeData] = {}
+  mode_commit_nodes:dict[str,frozenset[int]] = {}
+  for automaton in automata:
+    dfa = automaton.min_dfa
+    mode_data[dfa.name] = (dfa.start_node, dfa.transitions, {node: unwrap(dfa.match_kind(node)) for node in dfa.match_nodes})
+    if dfa.commit_nodes: mode_commit_nodes[dfa.name] = dfa.commit_nodes
   return type(name, (DictLexerBase,), dict(
-    pattern_descs=build_pattern_descs(grammar), mode_transitions=grammar.transitions, mode_data=mode_data))
+    pattern_descs=build_pattern_descs(grammar), mode_transitions=grammar.transitions,
+    mode_data=mode_data, mode_commit_nodes=mode_commit_nodes))
 
 
 @dataclass
@@ -151,10 +155,12 @@ def build_dfa(nfa:NFA) -> DFA:
   # Different bytes often reach the same NFA nodes. Cache their closures only for this build.
   epsilon_closures:dict[NfaState,NfaState] = {}
   alphabet_order = {char: idx for idx, char in enumerate(nfa.alphabet)}
+  commit_nodes:set[int] = set()
   remaining = {start}
   while remaining:
     state = remaining.pop()
     node = nfa_states_to_dfa_nodes[state]
+    if nfa.commit_nodes and not state.isdisjoint(nfa.commit_nodes): commit_nodes.add(node)
     d = transitions[node] # unlike NFA, DFA dictionary contains all valid nodes/states as keys.
     # The state is already epsilon-closed. Gather only its consuming transitions, grouped by byte.
     byte_dsts:defaultdict[int,set[int]] = defaultdict(set)
@@ -162,7 +168,7 @@ def build_dfa(nfa:NFA) -> DFA:
       outgoing = nfa.transitions.get(nfa_node)
       if outgoing is None: continue
       for char, dsts in outgoing.items():
-        if char != empty_symbol: byte_dsts[char].update(dsts)
+        if char >= 0: byte_dsts[char].update(dsts)
     # Preserve discovery order, and thus DFA node numbering, while skipping unavailable bytes.
     for char in sorted(byte_dsts, key=alphabet_order.__getitem__):
       raw_dsts = byte_dsts[char]
@@ -198,4 +204,5 @@ def build_dfa(nfa:NFA) -> DFA:
       node_kinds[dfa_node].add(kind)
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in node_kinds.items() }
 
-  return DFA(name=nfa.name, transitions=dict(transitions), match_node_kind_sets=match_node_kind_sets, lit_pattern_names=nfa.lit_pattern_names)
+  return DFA(name=nfa.name, transitions=dict(transitions), match_node_kind_sets=match_node_kind_sets,
+    lit_pattern_names=nfa.lit_pattern_names, commit_nodes=frozenset(commit_nodes))

@@ -4,8 +4,8 @@
 Nondeterministic Finite Automata.
 See the documentation in dfa.py for more.
 
-`empty_symbol` is a reserved value (-1 is not part of the byte alphabet)
-that represents a nondeterministic jump between NFA nodes.
+`empty_symbol` and `commit_symbol` are reserved negative values representing epsilon transitions.
+A commitment transition also prevents fallback to token matches before its position.
 '''
 
 from collections import defaultdict
@@ -26,7 +26,8 @@ NfaStateTransitions = dict[int, NfaState]
 NfaTransitions = dict[int, NfaStateTransitions]
 
 
-empty_symbol = -1 # not a legitimate byte value.
+empty_symbol = -1 # Not a legitimate byte value.
+commit_symbol = -2 # An epsilon transition that discards earlier token matches.
 
 
 class NFA:
@@ -39,6 +40,7 @@ class NFA:
     self.transitions = transitions
     self.match_node_kinds = match_node_kinds
     self.lit_pattern_names = lit_pattern_names
+    self.commit_nodes = frozenset(node for node, outgoing in transitions.items() if commit_symbol in outgoing)
 
 
   @property
@@ -52,6 +54,7 @@ class NFA:
   def alphabet(self) -> frozenset[int]:
     s = set_from(d.keys() for d in self.all_letter_to_state_dicts)
     s.discard(empty_symbol)
+    s.discard(commit_symbol)
     return frozenset(s)
 
   @property
@@ -160,8 +163,11 @@ class NFA:
     while mut_state:
       node = mut_state.pop()
       expanded.add(node)
-      try: dst_nodes = self.transitions[node][empty_symbol]
-      except KeyError: continue
-      novel = dst_nodes - expanded
-      mut_state.update(novel)
+      outgoing = self.transitions.get(node)
+      if outgoing is None: continue
+      dst_nodes = outgoing.get(empty_symbol)
+      if dst_nodes: mut_state.update(dst_nodes - expanded)
+      if self.commit_nodes:
+        dst_nodes = outgoing.get(commit_symbol)
+        if dst_nodes: mut_state.update(dst_nodes - expanded)
     return frozenset(expanded)

@@ -72,6 +72,8 @@ class LegsTestCmd(Cmd):
     try: f = open(self.path)
     except FileNotFoundError: exit(f'error: no such grammar file: {self.path!r}')
     with f: grammar = parse_legs(self.path, f.read())
+    if 'python-re' in langs and any(p.has_commit for p in grammar.patterns.values()):
+      exit('error: commitment is not supported by python-re output; use python or swift.')
     if self.inputs and self.mode not in grammar.modes:
       exit(f'error: grammar has no mode named {self.mode!r}; specify the start mode with `-mode`. '
         f'modes: {", ".join(sorted(grammar.modes))}.')

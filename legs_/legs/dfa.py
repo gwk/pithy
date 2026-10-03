@@ -56,12 +56,14 @@ class DFA:
   'Deterministic Finite Automaton.'
 
   def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:dict[int,frozenset[str]], lit_pattern_names:set[str],
-   backtracking_order:tuple[str,...]=(), unorderable_pairs:tuple[tuple[str,str],...]=()) -> None:
+   backtracking_order:tuple[str,...]=(), unorderable_pairs:tuple[tuple[str,str],...]=(),
+   commit_nodes:frozenset[int]=frozenset()) -> None:
     assert name
     self.name = name
     self.transitions = transitions
     self.match_node_kind_sets = match_node_kind_sets
     self.lit_pattern_names = lit_pattern_names
+    self.commit_nodes = commit_nodes
     self.backtracking_order = backtracking_order # The best-effort ordering backtracking regex patterns.
     self.unorderable_pairs = unorderable_pairs # Pairs of kinds that cannot be correctly ordered for backtracking regex engines.
     self.start_node = min(transitions)
@@ -246,6 +248,9 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   # Match nodes are mostly distinct from each other, but can be coalesced in some cases.
   init_sets = [set(dfa.non_match_nodes), *dfa.partitioned_match_nodes]
 
+  # Commitment is observable even on non-accepting states, so refinement must preserve it.
+  if dfa.commit_nodes:
+    init_sets = [piece for part in init_sets for piece in (part & dfa.commit_nodes, part - dfa.commit_nodes) if piece]
   part_ids_to_parts = { id(s): s for s in init_sets }
   node_parts = { n: s for s in part_ids_to_parts.values() for n in s }
 
@@ -379,7 +384,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
   return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
-    lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order, unorderable_pairs=unorderable_pairs)
+    lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order, unorderable_pairs=unorderable_pairs,
+    commit_nodes=frozenset(mapping[node] for node in dfa.commit_nodes))
 
 
 def calc_backtrack_order(match_node_kinds:dict[int,set[str]], kind_match_nodes:dict[str,set[int]],

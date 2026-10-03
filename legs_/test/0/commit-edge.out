@@ -1,0 +1,14 @@
+
+'ab!':
+0-2 same 'ab'
+2-3 invalid '!'
+
+'abc!':
+0-2 same 'ab'
+2-4 invalid 'c!'
+
+'abx':
+0-3 other 'abx'
+
+'abcde':
+0-5 long 'abcde'

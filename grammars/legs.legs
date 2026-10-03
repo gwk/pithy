@@ -25,6 +25,7 @@ brack_c: \]
 paren_o: \(
 paren_c: \)
 bar: \|
+commit: \,
 qmark: \?
 star: \*
 plus: \+
@@ -34,13 +35,13 @@ caret: \^
 ref: \$ [$Ascii_Letter $Ascii_Number _]*
 esc: \\ [$Ascii $Readable - \n]
 backslash: \\ // A dangling backslash, which is not followed by an escapable character.
-char: [$Ascii_Visible - \[ \] \( \) \| \? \* \+ \$ \\]
+char: [$Ascii_Visible - \[ \] \( \) \| \? \* \+ \$ \\ ,]
 charset_char: [$Ascii_Visible - \[ \] \& \- \^ \$ \\]
 
 # Modes
 
 pattern: newline spaces comment
-  brack_o brack_c paren_o paren_c bar qmark star plus ref esc backslash char
+  brack_o brack_c paren_o paren_c bar commit qmark star plus ref esc backslash char
 
 charset: newline spaces comment
   brack_o brack_c amp dash caret ref esc backslash charset_char

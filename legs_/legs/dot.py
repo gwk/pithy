@@ -1,6 +1,6 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-from pithy.graphviz import GraphvizAttrs, GraphvizName, GraphvizNodes, write_dot_digraph_adjacency
+from pithy.graphviz import GraphvizAttrs, GraphvizName, write_dot_digraph_adjacency
 
 from .dfa import DFA
 
@@ -17,8 +17,12 @@ def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str]) -> No
     for src, pairs in dfa.transition_descs():
       adjacency[src] = [(dst, dict(label=f'[{ranges_desc}]')) for dst, ranges_desc in pairs]
 
-    nodes:GraphvizNodes = {
+    nodes:dict[GraphvizName,dict[str,str]] = {
       node : dict(label=f'{node}: '+','.join(kind_set)) for node, kind_set in dfa.match_node_kind_sets.items() }
+
+    for node in dfa.commit_nodes:
+      attrs = nodes.setdefault(node, dict(label=str(node)))
+      attrs['label'] = str(attrs['label']) + ' (commit)'
 
     with open(path, 'w') as f:
       write_dot_digraph_adjacency(f, adjacency, nodes=nodes, label=dfa.name)

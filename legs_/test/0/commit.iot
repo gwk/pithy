@@ -1,0 +1,4 @@
+{
+  'cmd': 'legs-test $NAME.legs',
+  'args': ['0x', '0xG', '0x12+', '0x12_', '1e+', '1e+2', '(0x),123abc'],
+}

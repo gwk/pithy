@@ -1,0 +1,28 @@
+
+'0x':
+0-2 incomplete '0x'
+
+'0xG':
+0-2 incomplete '0x'
+2-3 name 'G'
+
+'0x12+':
+0-4 number '0x12'
+4-5 plus '+'
+
+'0x12_':
+0-5 incomplete '0x12_'
+
+'1e+':
+0-3 incomplete '1e+'
+
+'1e+2':
+0-4 number '1e+2'
+
+'(0x),123abc':
+0-1 paren_o '('
+1-3 incomplete '0x'
+3-4 paren_c ')'
+4-5 comma ','
+5-8 number '123'
+8-11 name 'abc'

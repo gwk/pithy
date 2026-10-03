@@ -60,7 +60,8 @@ Unknown escapes remain distinct tokens; this lexer does not reproduce Python's w
 
 This is lexical analysis, not Python syntax validation. It does not validate expressions, conversion names or format-specifier semantics.
 Its error messages and recovery behavior are deliberately independent of CPython's.
-More malformed-input cases remain useful future work, particularly numeric-literal diagnostics and ambiguous tab/space indentation.
+Numeric prefixes, exponents and digit separators use comma commitment barriers to retain malformed or truncated prefixes.
+Token-boundary restrictions such as `123abc`, and ambiguous tab/space indentation checks, remain future work.
 
 # Stdlib comparison
 

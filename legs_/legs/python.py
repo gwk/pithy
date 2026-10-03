@@ -40,6 +40,7 @@ def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       Name=type_prefix,
       license=comment_lines(license, '# '),
       mode_data=repr_ml(mode_data, indent=1),
+      mode_commit_nodes=repr({dfa.name: dfa.commit_nodes for dfa in dfas if dfa.commit_nodes}),
       mode_transitions=repr_ml(mode_transitions, indent=1),
       pattern_descs=repr_ml(pattern_descs, indent=1),
       patterns_path=patterns_path,
@@ -62,6 +63,8 @@ class ${Name}Lexer(DictLexerBase):
 
   mode_data:dict[str,ModeData] = ${mode_data}
 
+  mode_commit_nodes = ${mode_commit_nodes}
+
 '''
 
 
@@ -69,6 +72,9 @@ class ${Name}Lexer(DictLexerBase):
 def output_python_re(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
   patterns:dict[str,LegsPattern], incomplete_patterns:dict[str,LegsPattern|None],
   pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
+
+  if any(pattern.has_commit for pattern in patterns.values()):
+    raise ValueError('Commitment is not supported by python-re output; use python or swift.')
 
   flavor = 'py.re.bytes'
 

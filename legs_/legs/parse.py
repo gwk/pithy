@@ -30,7 +30,8 @@ from pithy.unicode.charsets import unicode_charsets
 from tolkien import get_syntax_slc, LexerProtocol, Source, Syntax, SyntaxError, SyntaxMsg, Token
 
 from . import KindModeTransitions, ModeTransitions
-from .patterns import CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern, SeqPattern, StarPattern
+from .patterns import (CharsetPattern, ChoicePattern, CommitPattern, LegsPattern, OptPattern, PlusPattern, SeqPattern,
+  StarPattern)
 
 
 _context_keywords_ = ['character classes', 'error diagnostics', 'grammar files', 'lexer grammar', 'lexer modes',
@@ -246,6 +247,7 @@ pattern_lexer = Lexer(flags='mx',
     paren_o = r'\(',
     paren_c = r'\)',
     bar     = r'\|',
+    commit  = ',',
     qmark   = r'\?',
     star    = r'\*',
     plus    = r'\+',
@@ -260,7 +262,7 @@ pattern_lexer = Lexer(flags='mx',
   ),
   modes=[
     LexMode('pattern', kinds=[*dropped_kinds,
-      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char']),
+      'brack_o', 'brack_c', 'paren_o', 'paren_c', 'bar', 'commit', 'qmark', 'star', 'plus', 'ref', 'esc', 'backslash', 'char']),
     LexMode('charset', kinds=[*dropped_kinds,
       'brack_o', 'brack_c', 'amp', 'dash', 'caret', 'ref', 'esc', 'backslash', 'charset_char']),
   ],
@@ -280,7 +282,7 @@ def build_pattern_parser(lexer:LexerProtocol=pattern_lexer) -> Parser:
     literals=('brack_o', 'brack_c', 'paren_o', 'paren_c'),
     rules=dict(
       pattern_expr=Precedence(
-        ('char', 'esc', 'ref', 'charset_p', 'paren'),
+        ('char', 'esc', 'ref', 'charset_p', 'paren', 'commit'),
         Right(Infix('bar', transform=transform_choice)),
         Right(Adjacency(transform=transform_adj)),
         Right(
@@ -308,6 +310,7 @@ def build_pattern_parser(lexer:LexerProtocol=pattern_lexer) -> Parser:
         transform=uni_val),
 
       # Pattern atoms.
+      commit=Atom('commit', transform=lambda s, t: CommitPattern()),
       char=Atom('char',     transform=transform_char),
       esc=Atom('esc',       transform=transform_esc),
       ref=Atom('ref',       transform=transform_ref),
@@ -396,7 +399,7 @@ escape_codes:dict[str, int] = {
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),
 }
-escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/')
+escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/,')
 
 
 pattern_parser = build_pattern_parser()

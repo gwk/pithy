@@ -60,3 +60,8 @@ utest({'a': 'x|y|z', 'b': 'w'}, pattern_descs, 'a:\n  x\n| y\n\n// Comment.\n  /
 
 # A header requires a space after the `#` at column 0; otherwise `#` is a pattern character.
 utest({'a': 'x\\x23\\x23', 'b': '\\x23y'}, pattern_descs, 'a: x\n  # #\nb: #y\n')
+
+
+# A comma is literal inside a charset or when escaped outside one.
+utest({'a': '\\x2c'}, pattern_descs, r'a: [,]')
+utest({'a': '\\x2c'}, pattern_descs, r'a: \,')

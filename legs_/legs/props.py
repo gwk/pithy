@@ -7,7 +7,7 @@ The checks compare the table-driven lexer to the NFA of each mode, which is buil
 and is independent of DFA construction and minimization.
 For each token that the lexer produces:
 * the tokens cover the input exactly, in order, with no gaps, overlaps or empty tokens;
-* the token is the longest prefix that the NFA matches at that position, and its kind is one that the NFA matches;
+* the token is the longest prefix eligible after commitment that the NFA matches at that position, and its kind is one that the NFA matches;
   if a literal pattern is among those matched, then the kind is that of a literal pattern;
 * if the NFA matches no prefix then the token kind is `invalid` or `incomplete`.
 
@@ -41,7 +41,8 @@ from .build import build_lexer_class_for_automata, build_mode_automata, ModeAuto
 from .dfa import DFA
 from .nfa import NFA
 from .parse import Grammar
-from .patterns import CharsetPattern, ChoicePattern, LegsPattern, OptPattern, PlusPattern, SeqPattern, StarPattern
+from .patterns import (CharsetPattern, ChoicePattern, CommitPattern, LegsPattern, OptPattern, PlusPattern, SeqPattern,
+  StarPattern)
 
 
 _context_keywords_ = ['dfa coverage', 'differential testing', 'grammar validation', 'hypothesis', 'input generation',
@@ -174,14 +175,21 @@ class GrammarChecker:
       if token.mode != curr_mode: raise fail(f'token mode is {token.mode!r}; expected {curr_mode!r}.')
 
       nfa = self.automata[curr_mode].nfa
-      length, all_kinds = nfa_longest_match(nfa, text, pos)
+      length, all_kinds, scanned = nfa_scan(nfa, text, pos)
       kinds = (all_kinds & nfa.lit_pattern_names) or all_kinds # A literal pattern takes precedence.
       if length:
         if token.end - token.pos != length: raise fail(f'NFA longest match is {length} bytes; kinds: {sorted(kinds)}.')
         if token.kind not in kinds: raise fail(f'NFA matches kinds: {sorted(kinds)}.')
         self.overlaps.update((curr_mode, token.kind, other_kind) for other_kind in all_kinds if other_kind != token.kind)
-      elif token.kind not in ('invalid', 'incomplete'):
-        raise fail('NFA matches no prefix; expected `invalid` or `incomplete`.')
+      elif scanned:
+        if token.kind != 'incomplete' or token.end != pos + scanned:
+          raise fail(f'NFA consumes {scanned} bytes without an eligible match; expected that incomplete span.')
+      else:
+        start = nfa.advance_empties({0})
+        end = pos + 1
+        while end < len(text) and not nfa.advance(start, text[end]): end += 1
+        if token.kind != 'invalid' or token.end != end:
+          raise fail(f'NFA cannot start a token before byte {end}; expected that invalid span.')
 
       if token.kind == pop_kind: stack.pop()
       else:
@@ -197,22 +205,34 @@ def nfa_longest_match(nfa:NFA, text:bytes, pos:int) -> tuple[int,frozenset[str]]
   Return the length of the longest prefix of `text[pos:]` that the NFA matches, and the kinds matched.
   The length is 0 if no prefix matches.
   '''
+  length, kinds, _ = nfa_scan(nfa, text, pos)
+  return length, kinds
+
+
+def nfa_scan(nfa:NFA, text:bytes, pos:int) -> tuple[int,frozenset[str],int]:
+  'Return the eligible match length, match kinds and total consumed prefix, independently of DFA construction.'
   state = nfa.advance_empties({0})
   length = 0
+  scanned = 0
   kinds = frozenset[str]()
   for i in range(pos, len(text)):
     state = nfa.advance(state, text[i])
     if not state: break
+    scanned = i + 1 - pos
+    if not state.isdisjoint(nfa.commit_nodes):
+      length = 0
+      kinds = frozenset()
     state_kinds = frozenset(nfa.match_node_kinds[node] for node in state if node in nfa.match_node_kinds)
     if state_kinds:
       length = i + 1 - pos
       kinds = state_kinds
-  return (length, kinds)
+  return length, kinds, scanned
 
 
 def pattern_strategy(pattern:LegsPattern) -> SearchStrategy[str]:
   'Return a strategy that generates strings matching the pattern.'
   match pattern:
+    case CommitPattern(): return st.just('')
     case CharsetPattern(): return charset_strategy(pattern)
     case SeqPattern(): return st.tuples(*(pattern_strategy(sub) for sub in pattern)).map(''.join)
     case ChoicePattern(): return st.one_of(*(pattern_strategy(sub) for sub in pattern))

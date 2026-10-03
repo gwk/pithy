@@ -61,6 +61,11 @@ def string_fragments() -> None:
 @utest_run
 def invalid_and_incomplete() -> None:
   cases:list[tuple[str|bytes,tuple[str,int,int]]] = [
+    ('0x', ('incomplete', 2, 2)),
+    ('0xG', ('invalid', 2, 3)),
+    ('1e+', ('incomplete', 3, 3)),
+    ('0x12_', ('incomplete', 5, 5)),
+    ('1__2', ('invalid', 2, 3)),
     ("'\\xG1'", ('invalid', 3, 4)),
     ("'\\x4", ('incomplete', 4, 4)),
     ("'abc", ('incomplete', 4, 4)),

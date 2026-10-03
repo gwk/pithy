@@ -52,7 +52,8 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
     return 'case {chars}: state = {dst}{suffix}'.format(
       chars=', '.join(byte_case_patterns(chars)),
       dst=dst,
-      suffix=f'; last = pos; kind = .{sym}' if sym else '')
+      suffix=('; last = -1; kind = .incomplete' if dst in dfa.commit_nodes else '')
+        + (f'; last = pos; kind = .{sym}' if sym else ''))
 
   def byte_cases(dfa:DFA, node:int) -> list[str]:
     dst_chars = defaultdict[int, list[int]](list)

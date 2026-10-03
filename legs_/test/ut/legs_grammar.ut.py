@@ -105,3 +105,9 @@ for path in grammar_paths:
     utest(handwritten_tokens(text, mode, slc), legs_tokens, text, mode, slc, _utest_label=path)
     if mode == 'pattern':
       utest(handwritten_regex(text, slc), legs_regex, text, slc, _utest_label=path)
+
+
+# The generated grammar lexer recognizes commitment only outside character sets.
+utest([('pattern', 'char', 'a'), ('pattern', 'commit', ','), ('pattern', 'char', 'b'),
+  ('pattern', 'brack_o', '['), ('charset', 'charset_char', ','), ('charset', 'brack_c', ']')],
+  legs_tokens, 'a,b[,]', 'pattern')

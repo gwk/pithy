@@ -1,0 +1,22 @@
+# License: Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Patterns
+number: $Dec ($Dec | _, $Dec)* ([e E], [\+ \-]? $Dec+)?
+  | 0 [x X], _? $Hex ($Hex | _, $Hex)*
+name: $Ascii_Letter+
+comma: \,
+spaces: \s+
+plus: \+
+paren_o: \(
+paren_c: \)
+
+same: ab
+long: ab, cde
+other: abx
+
+# Modes
+main: number name comma spaces plus paren_o paren_c
+edge: same long other
+
+# Transitions
+main : paren_o :: main : paren_c

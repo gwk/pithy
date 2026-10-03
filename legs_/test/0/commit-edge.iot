@@ -1,0 +1,5 @@
+{
+  'cmd': 'legs-test $PROJ/legs_/test/0/commit.legs -mode edge',
+  'links': { 'legs_/test/0/commit.legs' },
+  'args': ['ab!', 'abc!', 'abx', 'abcde'],
+}
