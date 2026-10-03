@@ -10,10 +10,7 @@ Names are case-sensitive and begin with `$`: `$Letter`, `$L` and `$Ascii_Letter`
 Each reference matches one character; add `+` to match a run.
 References denote character sets, not other pattern definitions.
 
-Inside brackets, juxtaposition forms a union, `&` an intersection, `-` a difference, and `^` a symmetric difference.
-For example, `[$Ascii_Letter _]` includes ASCII letters and underscore; `[$Letter - $Ascii]` excludes ASCII letters.
-Use nested brackets to make grouping explicit.
-The escape `\s` means a literal ASCII space, not a Unicode whitespace class.
+See the [Grammar Reference](grammar.md#character-sets) for the set operators and the rest of the pattern syntax.
 
 Category aliases include short codes, full names and unambiguous first words.
 `Decimal` is the exception: it is the ASCII convenience class 0-9, not an alias of `Decimal_Number`/`Nd`.
