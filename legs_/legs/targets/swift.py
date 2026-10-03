@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Write Swift lexers: the `swift` target.
+The generated lexer is a switch statement over the DFA nodes and input bytes. It requires `legs_base.swift`.
+'''
+
 import re
 from collections import defaultdict
 from typing import Any, Iterable
@@ -269,6 +274,7 @@ def swift_repr_kv(kv:tuple[Any, Any], indent:int) -> str:
 
 
 def swift_safe_sym(name:str) -> str:
+  'Return `name` changed as necessary to be a valid Swift identifier.'
   name = re.sub(r'[^\w]', '_', name)
   if name[0].isdigit():
     name = '_' + name

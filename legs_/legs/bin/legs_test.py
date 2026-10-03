@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'The `legs-test` command. It compares generated lexers to a reference lexer and checks the properties of the reference lexer.'
+
 from difflib import unified_diff
 from os.path import dirname, join as path_join
 from subprocess import PIPE, run, STDOUT
@@ -197,6 +199,7 @@ class LexerTest:
 
 
 def token_lines(text:bytes, tokens:Tokens) -> list[str]:
+  'Return a line for each token, consisting of the byte range, the kind and the text.'
   return [f'{pos}-{end} {kind} {text[pos:end].decode(errors="replace")!r}' for kind, pos, end in tokens]
 
 

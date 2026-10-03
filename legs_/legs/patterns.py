@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+The pattern tree that the parser produces for each pattern of a grammar.
+Each node of the tree can add itself to an NFA, and can write itself as a regular expression for the `python-re` target.
+'''
+
 from collections import defaultdict
 from typing import Callable, Iterable, Iterator, Sequence
 
@@ -36,25 +41,35 @@ NfaMutableTransitions = defaultdict[int, defaultdict[int, set[int]]]
 
 
 class LegsPattern:
+  'The base class of pattern tree nodes.'
 
-  precedence:int = -1
+  precedence:int = -1 # How tightly the operator binds. Used to add groups to regular expression output.
 
-  def describe(self, name:str|None, depth:int=0) -> None: raise NotImplementedError
+  def describe(self, name:str|None, depth:int=0) -> None:
+    'Print the tree to stderr.'
+    raise NotImplementedError
 
   @property
-  def has_commit(self) -> bool: return False
+  def has_commit(self) -> bool:
+    'Whether the pattern contains a commitment barrier.'
+    return False
 
   @property
   def desc_type(self) -> str: return clip_suffix(type(self).__name__, 'Pattern')
 
   @property
-  def is_literal(self) -> bool: return False
+  def is_literal(self) -> bool:
+    'Whether the pattern matches exactly one string.'
+    return False
 
   @property
-  def literal_pattern(self) -> str: raise AssertionError('not a literal pattern: {}'.format(self))
+  def literal_pattern(self) -> str:
+    'The one string that a literal pattern matches.'
+    raise AssertionError('not a literal pattern: {}'.format(self))
 
   @property
   def literal_desc(self) -> str|None:
+    'The literal string in backquotes, for use in messages. None unless the pattern is a literal of visible ASCII characters.'
     if not self.is_literal: return None
     p = self.literal_pattern
     if not all(0x21 <= ord(char) <= 0x7E for char in p): return None
@@ -62,16 +77,25 @@ class LegsPattern:
     return f'`{s}`'
 
   def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+    'Add transitions so that the pattern leads from node `start` to node `end`. `mk_node` creates a new node.'
     raise NotImplementedError
 
-  def gen_regex(self, flavor:str) -> str: raise NotImplementedError
+  def gen_regex(self, flavor:str) -> str:
+    'Return the regular expression for the pattern. `flavor` names the regex dialect, e.g. `py.re.bytes`.'
+    raise NotImplementedError
 
   def gen_regex_sub(self, flavor:str, precedence:int) -> str:
+    'Return the regular expression for use inside an operator of the given precedence, grouped if necessary.'
     pattern = self.gen_regex(flavor=flavor)
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
 
-  def gen_incomplete(self) -> 'LegsPattern|None': raise NotImplementedError(self)
+  def gen_incomplete(self) -> 'LegsPattern|None':
+    '''
+    Return a pattern that matches text which begins to match this pattern but stops short, or None.
+    The `python-re` target uses it to produce `incomplete` tokens.
+    '''
+    raise NotImplementedError(self)
 
 
 class CommitPattern(LegsPattern):
@@ -101,6 +125,7 @@ class CommitPattern(LegsPattern):
 
 
 class StructPattern(LegsPattern):
+  'The base class of patterns that contain subpatterns.'
 
   @property
   def has_commit(self) -> bool: return any(sub.has_commit for sub in self)
@@ -116,6 +141,7 @@ class StructPattern(LegsPattern):
 
 
 class ChoicePattern(StructPattern):
+  'Matches any one of the subpatterns: `a | b`.'
 
   precedence = 1
 
@@ -157,6 +183,7 @@ class ChoicePattern(StructPattern):
 
 
 class SeqPattern(StructPattern):
+  'Matches the subpatterns in order: `a b`.'
 
   precedence = 2
 
@@ -215,6 +242,7 @@ class SeqPattern(StructPattern):
 
 
 class QuantityPattern(StructPattern):
+  'The base class of the suffix operators.'
 
   precedence = 3
   operator:str = ''
@@ -235,6 +263,7 @@ class QuantityPattern(StructPattern):
 
 
 class OptPattern(QuantityPattern):
+  'Matches the subpattern or nothing: `a?`.'
 
   operator = '?'
 
@@ -247,6 +276,7 @@ class OptPattern(QuantityPattern):
 
 
 class StarPattern(QuantityPattern):
+  'Matches the subpattern zero or more times: `a*`.'
 
   operator = '*'
 
@@ -263,6 +293,7 @@ class StarPattern(QuantityPattern):
 
 
 class PlusPattern(QuantityPattern):
+  'Matches the subpattern one or more times: `a+`.'
 
   operator = '+'
 
@@ -279,6 +310,7 @@ class PlusPattern(QuantityPattern):
 
 
 class CharsetPattern(LegsPattern):
+  'Matches one character from a set of code points. `ranges` holds the set as code point ranges; each range excludes its end.'
 
   precedence = 4
 
@@ -388,6 +420,7 @@ def utf8_byte_range_seqs(start:int, end:int) -> Iterator[tuple[CodeRange,...]]:
 
 
 def regex_for_code(code:int, flavor:str) -> str:
+  'Return the regular expression that matches the code point.'
   if 0x30 <= code <= 0x39 or 0x41 <= code <= 0x5A or 0x61 <= code <= 0x7A or code == 0x5F:
     return chr(code) # ASCII alphanumeric or underscore.
   if code < 0x100: return f'\\x{code:02x}'
@@ -403,6 +436,7 @@ def _regex_range_for_code_range(code_range:CodeRange, flavor:str) -> str:
 
 
 def regex_for_code_ranges(ranges:Sequence[CodeRange], flavor:str) -> str:
+  'Return the regular expression that matches one code point in any of the ranges.'
   if len(ranges) == 1:
     r = ranges[0]
     if r[0] + 1 == r[1]: # single character.
@@ -412,10 +446,12 @@ def regex_for_code_ranges(ranges:Sequence[CodeRange], flavor:str) -> str:
 
 
 def regex_for_codes(codes:Iterable[int], flavor:str) -> str:
+  'Return the regular expression that matches any one of the code points.'
   return regex_for_code_ranges(tuple(ranges_for_codes(codes)), flavor)
 
 
 def gen_incomplete_pattern(backtracking_order:Sequence[str], patterns:dict[str,LegsPattern]) -> LegsPattern|None:
+  'Return the pattern for the `incomplete` tokens of a mode, or None. `backtracking_order` lists the kinds of the mode.'
   incompletes:list[LegsPattern] = []
   for kind in backtracking_order:
     pattern = patterns[kind]

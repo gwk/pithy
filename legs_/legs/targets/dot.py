@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'Write Graphviz diagrams of the minimized DFAs: the `dot` target.'
+
 from pithy.graphviz import GraphvizAttrs, GraphvizName, write_dot_digraph_adjacency
 
 from ..dfa import DFA
@@ -9,6 +11,7 @@ _context_keywords_ = ['automata visualization', 'directed graph', 'graphviz', 's
 
 
 def output_dot(path_stem:str, dfas:list[DFA], pattern_descs:dict[str,str]) -> None:
+  'Write one diagram per mode to `{path_stem}-{mode}.dot`.'
 
   for dfa in dfas:
     path = f'{path_stem}-{dfa.name}.dot'

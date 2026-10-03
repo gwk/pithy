@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'Run a command as a `pyperf` benchmark. Usage: `run.py [CMD...] [PERF FLAGS...]`.'
+
 from sys import argv
 from typing import Any
 

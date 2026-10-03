@@ -31,7 +31,7 @@ commit_symbol = -2 # An epsilon transition that discards earlier token matches.
 
 
 class NFA:
-  'Nondeterministic Finite Automaton.'
+  'Nondeterministic Finite Automaton. Each NFA describes one mode and is named after it.'
 
   def __init__(self, name:str, encoding:str, transitions:NfaTransitions, match_node_kinds:dict[int, str], lit_pattern_names:set[str]):
     assert name
@@ -132,6 +132,7 @@ class NFA:
     return frozenset_from(self.transitions[node].values())
 
   def validate(self) -> list[str]:
+    'Return an error message for each pattern that matches the empty string.'
     start = self.advance_empties({0})
     msgs = []
     for node, kind in sorted(self.match_node_kinds.items()):
@@ -140,6 +141,7 @@ class NFA:
     return msgs
 
   def advance(self, state:frozenset[int], byte:int) -> NfaState:
+    'Return the state that follows `state` after consuming `byte`.'
     nextState:set[int] = set()
     for node in state:
       try: dst_nodes = self.transitions[node][byte]
@@ -148,6 +150,7 @@ class NFA:
     return self.advance_empties(nextState)
 
   def match(self, text_bytes:bytes) -> frozenset[str]:
+    'Return the kinds that match the whole of `text_bytes`. If any of them are literal patterns then return only those.'
     state = self.advance_empties({0})
     #errSL('NFA start:', state)
     for byte in text_bytes:
@@ -159,6 +162,7 @@ class NFA:
     return literal_matches or all_matches
 
   def advance_empties(self, mut_state:set[int]) -> NfaState:
+    'Return `mut_state` plus all nodes reachable from it by empty and commit transitions. `mut_state` is emptied.'
     expanded:set[int] = set()
     while mut_state:
       node = mut_state.pop()

@@ -1,5 +1,10 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Benchmark driver: count the tokens of each kind in the files given as arguments.
+The makefile prepends a generated lexer to this file to make a complete program.
+'''
+
 from collections import Counter
 from sys import argv
 

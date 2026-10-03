@@ -53,7 +53,7 @@ FrozenSetStr0:frozenset[str] = frozenset()
 
 
 class DFA:
-  'Deterministic Finite Automaton.'
+  'Deterministic Finite Automaton. Each DFA describes one mode and is named after it.'
 
   def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:dict[int,frozenset[str]], lit_pattern_names:set[str],
    backtracking_order:tuple[str,...]=(), unorderable_pairs:tuple[tuple[str,str],...]=(),
@@ -112,6 +112,7 @@ class DFA:
 
   @property
   def pre_match_nodes(self) -> frozenset[int]:
+    'The non-match nodes that can be reached from the start node without passing through a match node.'
     if self.is_empty:
       return frozenset() # empty.
     match_nodes = self.match_nodes
@@ -127,6 +128,10 @@ class DFA:
 
   @property
   def post_match_nodes(self) -> frozenset[int]:
+    '''
+    The non-match nodes that can be reached from a match node.
+    At such a node the lexer has passed a match; if no longer match follows, it falls back to that match.
+    '''
     match_nodes = self.match_nodes
     nodes:set[int] = set()
     remaining = set(match_nodes)
@@ -203,6 +208,7 @@ class DFA:
     return self.transitions[state][byte]
 
   def match(self, text_bytes:bytes) -> frozenset[str]:
+    'Return the kinds that match the whole of `text_bytes`.'
     state = self.start_node
     for byte in text_bytes:
       try: state = self.advance(state, byte)
@@ -210,10 +216,12 @@ class DFA:
     return self.match_kinds(state)
 
   def match_kinds(self, node:int) -> frozenset[str]:
+    'Return the kinds that match at `node`; empty if it is not a match node.'
     try: return self.match_node_kind_sets[node]
     except KeyError: return frozenset()
 
   def match_kind(self, node:int) -> str|None:
+    'Return the single kind that matches at `node`, or None. Valid for a minimized DFA only.'
     try: s = self.match_node_kind_sets[node]
     except KeyError: return None
     assert len(s) == 1

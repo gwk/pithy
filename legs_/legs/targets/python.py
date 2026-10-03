@@ -1,5 +1,9 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Write Python lexers: the table-driven `python` target and the regular expression `python-re` target.
+'''
+
 import re
 from typing import TypedDict
 
@@ -24,6 +28,7 @@ class OutputOpts(TypedDict):
 
 def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
   pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
+  'Write a table-driven lexer class to `path`. The class is a subclass of `DictLexerBase` that holds the DFA of each mode.'
 
   mode_data:dict[str,ModeData] = {}
 
@@ -72,6 +77,11 @@ class ${Name}Lexer(DictLexerBase):
 def output_python_re(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
   patterns:dict[str,LegsPattern], incomplete_patterns:dict[str,LegsPattern|None],
   pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
+  '''
+  Write a regular expression lexer class to `path`. The class is a subclass of `RegexLexerBase`.
+  Each mode becomes one regular expression, with a named group per kind in the backtracking order of the DFA.
+  Raise ValueError if a pattern contains a commitment barrier.
+  '''
 
   if any(pattern.has_commit for pattern in patterns.values()):
     raise ValueError('Commitment is not supported by python-re output; use python or swift.')
@@ -140,6 +150,7 @@ def comment_lines(text:str, prefix:str) -> str:
 
 
 def py_safe_sym(name:str) -> str:
+  'Return `name` changed as necessary to be a valid Python identifier.'
   name = re.sub(r'[^\w]', '_', name)
   if name[0].isdigit():
     name = '_' + name

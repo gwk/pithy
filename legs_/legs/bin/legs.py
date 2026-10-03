@@ -77,6 +77,7 @@ class LegsCmd(Cmd):
 
 
 def run_legs(args:LegsCmd) -> None:
+  'Parse the grammar, build the automata of each mode, then match strings or write the outputs as the options request.'
   dbg = args.dbg
 
   if args.mode and not args.match:
@@ -189,6 +190,7 @@ def run_legs(args:LegsCmd) -> None:
 
 
 def determine_output_languages(args_langs:list[str], output_path:str|None) -> set[str]:
+  'Return the languages given by `-langs`. If there are none then return the language of the extension of the output path.'
   if args_langs:
     if 'all' in args_langs:
       langs = supported_langs

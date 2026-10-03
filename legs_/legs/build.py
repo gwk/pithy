@@ -1,5 +1,14 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Build the automata and the lexer class for a grammar.
+
+Each mode is built in three steps:
+* `build_nfa` combines the patterns of the mode into one NFA.
+* `build_dfa` converts the NFA to a DFA. This is called the fat DFA. Its match nodes can name several kinds.
+* `minimize_dfa` merges equivalent nodes and chooses one kind for each match node. The targets generate lexers from this DFA.
+'''
+
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import count

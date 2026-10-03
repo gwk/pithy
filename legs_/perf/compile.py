@@ -1,5 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'Benchmark the compilation stages of grammars. See `readme.md`.'
+
 import gc
 import os
 import platform

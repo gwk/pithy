@@ -4,6 +4,7 @@
 
 
 def python_samples() -> list[str]:
+  'Cover the token kinds, string prefixes and interpolation forms of Python.'
   return [
     '', '\n', '  ', '# comment', 'x', 'x  ', 'x\n  ', '\t# comment\n',
     'if x:\n\tpass\n\n# out\ny = (\n  1 +\n  2\n)\n',

@@ -40,19 +40,16 @@ _context_keywords_ = ['character classes', 'error diagnostics', 'grammar files',
 
 @dataclass
 class Grammar:
-  license:str
-  patterns:dict[str,LegsPattern]
-  modes:dict[str,frozenset[str]]
-  transitions:ModeTransitions
+  'The contents of a grammar file.'
+  license:str # Text to copy into the generated code.
+  patterns:dict[str,LegsPattern] # Kind name to pattern.
+  modes:dict[str,frozenset[str]] # Mode name to the kind names of its patterns.
+  transitions:ModeTransitions # from_mode to open_kind to (push_mode, close_kind).
 
 
 def parse_legs(path:str, text:str) -> Grammar:
   '''
-  Parse the legs source given in `text`, returning a Grammar containing:
-  * the license string;
-  * a dictionary of pattern names to LegsPattern objects;
-  * a dictionary of mode names to pattern names;
-  * a dictionary of mode transitions.
+  Parse the legs source given in `text` and return the Grammar. `path` names the source in error messages.
   If the source contains errors then all of them are reported in source order and the process exits.
   '''
   source = Source(name=path, text=text)
