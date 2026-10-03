@@ -17,24 +17,29 @@ clean:
 	rm -rf _build/*
 
 clean-grammars:
-	rm grammars/{ascii,unicode}.legs
+	rm legs_/character-classes.md legs_/grammars/{ascii,unicode}.legs
 
 gen: gen-grammars
 
 gen-sqlite-extracted-sql:
 	tools/gen-sqlite-test-sql.py -i ~/external/sqlite -o _misc/sqlite-extracted-stmts
 
-gen-grammars: \
-	grammars/ascii.legs \
-	grammars/unicode.legs \
+gen-grammars: legs_/character-classes.md \
+	legs_/grammars/ascii.legs \
+	legs_/grammars/unicode.legs \
 
 help: # Summarize the targets of this makefile.
 	@GREP_COLOR="1;32" egrep --color=always '^[a-zA-Z][^ :]+:' makefile | sort
 
 # Targets.
 
-grammars/ascii.legs: tools/gen-charset-grammar.py
-	./$^ ascii > $@
+unicode_srcs := $(wildcard pithy_/pithy/unicode/*.py)
 
-grammars/unicode.legs: tools/gen-charset-grammar.py
-	./$^ unicode > $@
+legs_/grammars/ascii.legs: tools/gen-charset-grammar.py $(unicode_srcs)
+	./$< ascii > $@
+
+legs_/grammars/unicode.legs: tools/gen-charset-grammar.py $(unicode_srcs)
+	./$< unicode > $@
+
+legs_/character-classes.md: tools/gen-legs-charsets-doc.py $(unicode_srcs)
+	python3 $< > $@

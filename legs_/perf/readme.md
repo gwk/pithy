@@ -8,17 +8,17 @@ From the repository root, run:
 
 ```sh
 just perf-legs-compile
-just perf-legs-compile grammars/unicode.legs -runs 3
+just perf-legs-compile legs_/grammars/unicode.legs -runs 3
 ```
 
-The default is `grammars/legs.legs`, one warmup, and three measured runs.
+The default is `legs_/grammars/legs.legs`, one warmup, and three measured runs.
 The report includes the interpreter, imported Legs path, platform, per-stage median/minimum/maximum times, and automaton sizes.
 It rejects a Legs import from another checkout, so a global editable installation cannot silently benchmark the wrong code.
 
 The recipe forwards grammar paths and options to `compile.py`, including multiple grammars and a warmup count:
 
 ```sh
-just perf-legs-compile grammars/ascii.legs grammars/legs.legs grammars/unicode.legs -runs 5 -warmups 1
+just perf-legs-compile legs_/grammars/ascii.legs legs_/grammars/legs.legs legs_/grammars/unicode.legs -runs 5 -warmups 1
 ```
 
 Each run rebuilds all modes. Parsing, NFA construction and validation, DFA construction, and minimization are timed separately.
@@ -55,7 +55,7 @@ Each runtime measurement consumes the token iterator without retaining the token
 Source decoding, grammar compilation and differential checks are excluded from runtime measurements; garbage collection remains enabled.
 The detailed stream includes trivia and string fragments, so its token count differs from the adapted and stdlib streams.
 Use `-runs 0` for differential checks alone.
-See [the Python lexer documentation](../python.md) for the compatibility contract, diagnostics and development commands.
+See [the Python lexer documentation](../grammars/python.md) for the compatibility contract, diagnostics and development commands.
 
 ## Initial Python baseline
 

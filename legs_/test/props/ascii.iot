@@ -1,4 +1,4 @@
 {
-  'cmd': 'legs-test $PROJ/grammars/ascii.legs -props',
+  'cmd': 'legs-test $PROJ/legs_/grammars/ascii.legs -props',
   'out-val': 'properties hold for 1 mode.\n',
 }

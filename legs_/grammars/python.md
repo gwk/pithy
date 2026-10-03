@@ -1,6 +1,6 @@
 # Detailed Python lexing
 
-`grammars/python.legs` and `legs.py_lexer.PythonLexer` provide an experimental Python 3.14 lexer.
+`legs_/grammars/python.legs` and `legs.py_lexer.PythonLexer` provide an experimental Python 3.14 lexer.
 The grammar is also a compilation benchmark with realistic modes and Unicode character sets.
 
 The primary output is a detailed, lossless stream of `tolkien.Token` objects with UTF-8 byte spans.
@@ -33,7 +33,7 @@ from legs.parse import parse_legs
 from legs.py_lexer import PythonLexer
 from tolkien import Source
 
-path = Path('grammars/python.legs')
+path = Path('legs_/grammars/python.legs')
 fragments = build_lexer_class('PythonFragments', parse_legs(str(path), path.read_text()))
 source = Source('example.py', b"name = 'hello\\n'\n")
 scanner = PythonLexer(source, fragments)
@@ -88,7 +88,7 @@ just perf-legs-python legs_/legs/py_lexer.py -runs 3
 python3 -m utest legs_/test/ut/python_lexer.ut.py
 
 # Compilation stages alone.
-just perf-legs-compile grammars/python.legs -runs 3 -warmups 1
+just perf-legs-compile legs_/grammars/python.legs -runs 3 -warmups 1
 ```
 
 The repository corpus includes tracked and non-ignored untracked `.py` and `.pyi` files.
@@ -97,7 +97,7 @@ The harness also checks exact byte coverage and requires no Legs diagnostics for
 Synthetic cases cover combining identifiers, normalization-sensitive names, supplementary-plane identifiers, UTF-8 boundaries, nested interpolation, raw strings and template strings.
 The unit tests exercise every prefix/quote combination and truncate an interpolated Unicode source at every byte position.
 
-For development, generate tables once with `legs grammars/python.legs -output _build/python_lexer.py -type-prefix Python`, then pass `-lexer _build/python_lexer.py` to the corpus command.
+For development, generate tables once with `legs legs_/grammars/python.legs -output _build/python_lexer.py -type-prefix Python`, then pass `-lexer _build/python_lexer.py` to the corpus command.
 Regenerate that file after grammar or compiler changes; this explicit option does not check freshness.
 
 The reference specifications are [Python 3.14 lexical analysis](https://docs.python.org/3.14/reference/lexical_analysis.html) and the [`tokenize` API](https://docs.python.org/3.14/library/tokenize.html).

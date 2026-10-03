@@ -46,7 +46,7 @@ class PythonBench(Cmd):
       spec.loader.exec_module(module)
       lexer_type = cast(type[DictLexerBase], module.PythonLexer)
     else:
-      path = root / 'grammars/python.legs'
+      path = root / 'legs_/grammars/python.legs'
       lexer_type = build_lexer_class('PythonLexer', parse_legs(str(path), path.read_text()))
     print(f'Python: {sys.version.splitlines()[0]}\nExecutable: {sys.executable}\nLegs: {legs.__file__}\n'
       f'Platform: {platform.platform()}\nPYTHONHASHSEED: {os.environ.get("PYTHONHASHSEED", "random")}\n'

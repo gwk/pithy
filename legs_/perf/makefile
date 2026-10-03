@@ -54,14 +54,14 @@ _build/%-swift: _build/%.swift $(legs_dir)/legs_base.swift main.swift
 	time swiftc -num-threads 8 -O $^ -o $@
 
 # The `.re.py` rule must precede the `.py` rule, because both patterns match and this version of make uses the first.
-_build/%.re.py: ../../grammars/%.legs $(legs_srcs)
+_build/%.re.py: ../grammars/%.legs $(legs_srcs)
 	mkdir -p _build
 	legs $< -langs python-re -output $@
 
-_build/%.py: ../../grammars/%.legs $(legs_srcs)
+_build/%.py: ../grammars/%.legs $(legs_srcs)
 	mkdir -p _build
 	legs $< -langs python -output $@
 
-_build/%.swift: ../../grammars/%.legs $(legs_srcs)
+_build/%.swift: ../grammars/%.legs $(legs_srcs)
 	mkdir -p _build
 	legs $< -langs swift -output $@

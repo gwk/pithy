@@ -1,24 +1,64 @@
 # Legs
 
-Legs is a lexer generator. It takes as input a `.legs` grammar file consisting of pattern definitions, and outputs lexer source code. The goal of the project is the correct generation of Unicode-aware lexers.
+Legs is a lexer generator. It takes as input a `.legs` grammar file consisting of pattern definitions, and outputs lexer source code. The goal of this project is to produce correct Unicode-aware lexers that can be used in a variety of settings, including parsing, reformatting, and syntax coloring.
 
-The output languages are selected with `-langs`, separated by commas, or by the extension of the `-output` path:
+Legs is distinguished by the following features:
+* Parses UTF-8 byte data directly; it does not require a preceding conversion to a unicode string datatype. Unicode errors show up as lexing errors with readable source positions.
+* The lexer operates as a stream/iterator, and cannot fail. Instead, it emits tokens marked as invalid or incomplete when it encounters a lexing error and then resumes from the next starting character.
+* The pattern definitions can specify multiple modes, and the resulting lexer maintains a stack of modes. This means that in theoretical terms it is not strictly a "deterministic finite automaton". The value of this is that we can parse one language embedded in another, e.g. string formatting syntax or escape tokens within string literals. The lexer still emits a flat stream of tokens, each tagged with both mode and kind, so in a sense the lexer is a hybrid between a traditional lexer and a context free parser.
+* The legs syntax for pattern definitions is similar to traditional regular expression syntax, but with several alterations to accommodate the task of writing modern lexers:
+  * Spaces and comments are ignored (equivalent to the "extended" mode of Python regular expression syntax).
+  * Traditional backslash-escaped character classes are largely replaced by named character classes, denoting the complete set of Unicode classes and several convenience classes as well, (e.g. ASCII subsets, hex characters, etc).
+  * Simple character set operations (union, intersection, difference, and symmetric difference).
+
+The output languages currently supported are:
 * `python`: a table-driven lexer. This is the reference implementation.
 * `swift`: a lexer compiled to a switch statement.
 * `python-re`: a lexer that uses compiled regular expressions. It is experimental and slower than the table-driven lexer.
 * `dot`: Graphviz diagrams of the automata.
 
-Generated Python lexer classes conform to `tolkien.LexerProtocol`, so they can be passed to `pithy.parse.Parser`.
-A lexer can be given a range of the source text and a start mode. This allows a parser that frames the text by other means to lex each framed range in the appropriate mode; `legs.parse` does this for grammar files using `pithy.sectsyn`.
 
-Legs is distinguished by the following features:
-* Parses UTF-8 data directly; it does not require a preceding conversion to the String datatype.
-* The lexer operates as a stream/iterator, and cannot fail. Instead, it will emit tokens marked as invalid or incomplete when it encounters a lexing error and then resumes from the next starting character.
-* The pattern definitions can specify multiple modes, and the resulting lexer will maintain a stack during operation to track modes. This means that in theoretical terms it is not a "deterministic finite automata", but rather a "pushdown automaton". The value of this is that we can parse one language embedded in another, e.g. string formatting syntax within string literals. The emitted result is still a flat stream of tokens though, so the lexer is a hybrid between a traditional lexer and a context free parser.
-* The legs syntax for pattern definitions is similar to traditional regular expression syntax, but with several alterations to accommodate the task of writing modern lexers:
-  * Spaces and comments are ignored (equivalent to the "extended" mode of Python regular expression syntax).
-  * Traditional backslash-escaped character classes are largely replaced by named character classes, denoting the complete set of Unicode classes and several convenience classes as well, (e.g. ASCII subsets, hex characters, etc).
-  * Simple character set operations (union, intersection, difference, and symmetric difference).
+# Usage
+
+Run these examples from the repository root with `legs` installed in your Python environment.
+
+Generate a Python lexer from a grammar:
+
+```sh
+legs legs_/grammars/ascii.legs -output ascii_lexer.py -type-prefix Ascii
+```
+
+The generated module defines `AsciiLexer`. Without `-type-prefix`, the class is named `Lexer`.
+Pass a `tolkien.Source` containing UTF-8 bytes to iterate over tokens:
+
+```python
+from ascii_lexer import AsciiLexer
+from tolkien import Source
+
+source = Source('example.txt', b'Hello 123\n')
+for token in AsciiLexer(source):
+  print(token.kind, token.pos, token.end, source.text[token.slc])
+```
+
+Target output languages are selected with `-langs`, separated by commas, or inferred from the extension of the `-output` path.
+For multiple languages, `-output` supplies the shared output stem:
+
+```sh
+legs legs_/grammars/ascii.legs -langs python,swift -output ascii_lexer
+```
+
+This writes `ascii_lexer.py` and `ascii_lexer.swift`.
+With `-langs` but no `-output`, files are written beside the input grammar.
+With neither option, Legs validates and compiles the grammar without writing code.
+
+Use `-stats` to report automaton sizes and compilation times, or `-describe` to print pattern descriptions.
+For a quick pattern check without a file:
+
+```sh
+legs -patterns 'number: $Dec+' -match 123 -match abc
+```
+
+Repeat `-patterns` or `-match` for multiple values. Use `legs -help` for all options.
 
 
 # Grammar Files
@@ -58,6 +98,12 @@ The file is split into sections and entries by these line shapes before any patt
 Therefore a mistake in one pattern, such as an unclosed `[`, is reported for that entry alone.
 The consequence is that a pattern line cannot begin with `# ` at column 0; indent the line or write `\#`.
 
+# Unicode Character Classes
+
+Legs uses the `pithy.unicode` subpackage for up-to-date Unicode data.
+
+See [Named Character Classes](character-classes.md) for the supported `$Name` references, aliases and set operations.
+
 
 # Testing
 
@@ -84,12 +130,6 @@ See `legs.props` for details. The examples are the same on every run unless `-ra
 Tests that are too slow for the routine checks are in `legs_/test`; run them with `just test-full`.
 
 Compilation and generated lexer runtime benchmarks are in [perf/](perf/readme.md).
-
-
-# TODO
-
-* Document the named character classes.
-* Support UTF-16/UCS2 and UTF-32 representations as well.
 
 
 # Incomplete Tokens and Commitment
@@ -136,14 +176,25 @@ The experimental `python-re` backend rejects grammars containing barriers rather
 The NFA property oracle checks commitment independently of DFA construction and minimization.
 
 
+# Python Details
+
+Generated Python lexer classes conform to `tolkien.LexerProtocol`, so they can be passed to `pithy.parse.Parser`.
+
+A lexer can be given a range of the source text and a start mode. This allows a parser that frames the text by other means to lex each framed range in the appropriate mode; `legs.parse` does this for grammar files using `pithy.sectsyn`.
+
+
+# Provided Lexers
+
+The supplied grammars are in [grammars/](grammars/), with documentation beside each grammar:
+
+* [ASCII](grammars/ascii.md): runs of ASCII characters grouped by category; useful for examples and benchmarks.
+* [Unicode](grammars/unicode.md): runs of Unicode characters grouped by general category.
+* [Legs](grammars/legs.md): pattern expressions, character sets and declarations within Legs grammar files.
+* [Python](grammars/python.md): experimental Python 3.14 lexing with string and interpolation modes, individual escapes and diagnostic byte spans. A coordinator handles indentation and nested strings; an adapter supports comparison with stdlib `tokenize`.
+
 
 # Column Pathology
 
 Column numbers are a common feature of compiler error messages, and text editors. However in the modern world of Unicode columns are surprisingly ill-defined. Swift defines the Character type as an "extended grapheme literal", which is meant to represent a single visual character and can be composed of arbitarily many code points. Many modern languages like Python 3 count unicode scalars (code points), while older ones like JavaScript and Objective-C count 16 bit BMP code points. Further confounding the situation is the fact that some characters are rendered as double-width, so regardless of language the notion of character offset diverges from graphical offset within an editor or an console error message.
 
 I hope that Legs will eventually provide a robust notion of textual distance. It seems that we will need to define several measures of distance: UTF-8/byte distance, UTF-16 distance, character distance, and visual distance. The latter two differ because there are code points that Swift treats as distinct characters but represent zero visual distance (e.g. Zero-width space), and some characters are rendered at double-width. Perhaps the more intelligible metric would be "cursor distance", roughly meaning number of arrow key presses, but this is likely to be application/OS dependent.
-
-# Python lexer
-
-[Detailed Python 3.14 lexing](python.md) uses string and interpolation modes, preserves individual escapes and reports diagnostic byte spans.
-A separate adapter supports differential tests against stdlib `tokenize`, and the performance suite can lex all repository Python sources.

@@ -16,7 +16,7 @@ from utest import utest_run, utest_val
 
 
 root = Path(__file__).resolve().parents[3]
-path = root / 'grammars/python.legs'
+path = root / 'legs_/grammars/python.legs'
 lexer_type = build_lexer_class('PythonFragments', parse_legs(str(path), path.read_text()))
 
 

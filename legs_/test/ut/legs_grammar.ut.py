@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-Test `grammars/legs.legs`, the legs lexer for the contents of legs grammar files.
+Test `legs_/grammars/legs.legs`, the legs lexer for the contents of legs grammar files.
 
 This demonstrates the use of a legs lexer within a parser that frames the text by line shape:
 `pithy.sectsyn` splits a grammar file into sections and entries, and each entry is lexed in the mode for its section.
@@ -21,7 +21,7 @@ from utest import utest, utest_exc, utest_seq_exc, utest_val
 
 
 repo_dir = dirname(dirname(dirname(dirname(__file__))))
-grammar_path = f'{repo_dir}/grammars/legs.legs'
+grammar_path = f'{repo_dir}/legs_/grammars/legs.legs'
 
 with open(grammar_path) as f: LegsLexer = build_lexer_class('LegsLexer', parse_legs(grammar_path, f.read()))
 
@@ -94,7 +94,7 @@ utest([('pattern', 'char', 'y')], legs_tokens, 'a: [x\nb: y\n', 'pattern', slice
 
 
 # The legs lexer produces the same tokens as the handwritten lexers for every framed range of every grammar file.
-grammar_paths = [grammar_path, f'{repo_dir}/grammars/ascii.legs', f'{repo_dir}/legs_/test/0/basic.legs',
+grammar_paths = [grammar_path, f'{repo_dir}/legs_/grammars/ascii.legs', f'{repo_dir}/legs_/test/0/basic.legs',
   f'{repo_dir}/legs_/test/0/modes.legs', f'{repo_dir}/legs_/test/0/parsing.legs', f'{repo_dir}/wu_/wu/writeup.legs']
 
 for path in grammar_paths:

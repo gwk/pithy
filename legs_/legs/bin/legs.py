@@ -1,6 +1,26 @@
 #!/usr/bin/env python3
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
+'''
+Legs is a lexer generator: it takes as input a `.legs` grammar file, and outputs code that tokenizes text.
+
+A grammar file defines the kinds of tokens and the patterns of text that they match.
+The patterns are similar to python regular expressions but with several important differences:
+* The pattern language is limited to the semantics of formal regular languages.
+* Order does not matter. The pattern compilation process works in terms of sets of patterns,
+  and detects ambiguities in overlapping patterns.
+* Character classes are specified using their Unicode names.
+
+There are two special token kinds:
+* `invalid` indicates a sequence of bytes for which the lexer could not start matching;
+* `incomplete` indicates a token that began to match but did not complete.
+This distinction is important for error reporting:
+lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
+
+Use `legs-test` to run the generated lexers on test inputs and compare them.
+'''
+
+
 from pithy.cmdparse import Cmd, flag, opt, pos
 from pithy.io import errL, errSL, outL
 from pithy.iterable import first_el
@@ -27,26 +47,10 @@ def main() -> None: LegsCmd.main()
 
 class LegsCmd(Cmd):
   '''
-  Legs is a lexer generator: it takes as input a `.legs` grammar file,
-  and outputs code that tokenizes text, converting a stream of characters into a stream of chunks of text called tokens.
-
-  A grammar file defines the kinds of tokens and the patterns of text that they match.
-  The patterns are similar to python regular expressions but with several important differences:
-  * Character classes are specified using their Unicode names. (TODO: provide documentation)
-  * The pattern language is limited to the semantics of formal regular languages.
-  * Order does not matter. The pattern compilation process works in terms of sets of patterns,
-    and detects ambiguities in overlapping patterns.
-
-  There are two special token kinds:
-  * `invalid` indicates a sequence of bytes for which the lexer could not start matching;
-  * `incomplete` indicates a token that began to match but did not complete.
-  This distinction is important for error reporting;
-  lexical errors are found at the ends of `incomplete` tokens and the starts of `invalid` tokens.
+  Legs is a lexer generator: it takes as input a `.legs` grammar file, and outputs code that tokenizes text.
 
   Multiple languages are separated by commas, e.g. `-langs python,swift`.
   Other options that accept multiple values are repeated, e.g. `-match a -match b`.
-  Use `legs-test` to run the generated lexers on test inputs and compare them.
-  A value that begins with a dash must be written as `-option=VALUE`.
   '''
 
   cmd_name = 'legs'
@@ -57,10 +61,12 @@ class LegsCmd(Cmd):
   encoding:str = opt(default='utf-8', doc='Encoding of the input file.')
   langs:list[str] = opt(default_factory=list, metavar='LANG', split=',',
     doc='Target languages for which to generate lexers, separated by commas.')
-  match:list[str] = opt(default_factory=list, metavar='STRING', doc='Attempt to lex the argument string; repeatable.')
+  match:list[str] = opt(default_factory=list, metavar='STRING',
+    doc="Attempt to lex the argument string; repeatable, e.g. `-match 'a' -match 'b'`.")
   mode:str|None = opt(default=None, doc='Mode with which to lex the arguments to `-match`; defaults to `main`.')
   output:str|None = opt(default=None, doc='Path to output generated source.')
-  patterns:list[str] = opt(default_factory=list, metavar='PATTERN', doc='Specify a legs pattern for quick testing; repeatable.')
+  patterns:list[str] = opt(default_factory=list, metavar='PATTERN',
+    doc="Specify a legs pattern for quick testing; repeatable, e.g. `-patterns 'a: x+' -patterns 'b: y+'`.")
   stats:bool = flag(doc='Print statistics about the generated automata.')
   type_prefix:str = opt(default='', doc='Type names prefix for generated source code.')
 
