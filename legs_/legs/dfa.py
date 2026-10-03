@@ -255,13 +255,13 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
       rev_transitions[dst][char].add(src)
 
   def validate_partition() -> None:
-    for node, part in node_parts.items():
-      assert node in part, (node, part)
-    parts = list(part_ids_to_parts.values())
-    for i, pr in enumerate(parts):
-      for j in range(i):
-        pl = parts[j]
-        assert pl.isdisjoint(pr), (pl, pr)
+    seen:set[int] = set()
+    for part in part_ids_to_parts.values():
+      for node in part:
+        assert node not in seen, (node, part)
+        assert node_parts[node] is part, (node, part)
+        seen.add(node)
+    assert seen == node_parts.keys(), (seen, node_parts.keys())
 
   def refine(refining_set:set[int]) -> list[tuple[set[int], set[int]]]:
     '''
