@@ -67,8 +67,9 @@ The grammar file itself is read with Python's default encoding.
 
 # Grammar Files
 
-A grammar file consists of sections. A section header is a line that begins at column 0 with `# ` and the section name.
-The sections can appear in any order and can be repeated. Text preceding the first header is treated as patterns.
+A grammar file consists of sections: `License`, `Patterns`, `Modes` and `Transitions`.
+See the [Grammar Reference](grammar.md) for the file structure, the pattern syntax, modes, and commitment barriers.
+See [Named Character Classes](character-classes.md) for the supported `$Name` references and aliases. The Unicode data comes from the `pithy.unicode` subpackage.
 
 ```
 # License: Dedicated to the public domain under CC0.
@@ -88,25 +89,6 @@ main: spaces word paren_o paren_c op
 # Transitions
 main : paren_o :: main : paren_c
 ```
-
-* `License` text is copied into the generated code. It consists of the text following the colon and any following lines.
-* `Patterns` entries have the form `name: pattern`. A bare `name` is a literal pattern matching the name itself.
-* `Modes` entries have the form `mode: pattern_name ...`. If there are no modes then all patterns belong to the `main` mode.
-* `Transitions` entries have the form `from_mode : open_kind :: push_mode : close_kind`.
-
-Within a section, a line that begins at column 0 begins an entry.
-An indented line continues the previous entry. In the patterns section a line beginning with `|` does too.
-`//` begins a comment that extends to the end of the line.
-
-The file is split into sections and entries by these line shapes before any pattern is parsed.
-Therefore a mistake in one pattern, such as an unclosed `[`, is reported for that entry alone.
-The consequence is that a pattern line cannot begin with `# ` at column 0; indent the line or write `\#`.
-
-# Unicode Character Classes
-
-Legs uses the `pithy.unicode` subpackage for up-to-date Unicode data.
-
-See [Named Character Classes](character-classes.md) for the supported `$Name` references, aliases and set operations.
 
 
 # Testing
@@ -134,50 +116,6 @@ See `legs.props` for details. The examples are the same on every run unless `-ra
 Tests that are too slow for the routine checks are in `legs_/test`; run them with `just test-full`.
 
 Compilation and generated lexer runtime benchmarks are in [perf/](perf/readme.md).
-
-
-# Incomplete Tokens and Commitment
-
-An `invalid` token contains bytes that cannot start any pattern in the current mode.
-An `incomplete` token contains a prefix that began matching but has no eligible complete match.
-The failure location is the start of an invalid token or the end of an incomplete token.
-Incomplete tokens can end before an offending character or at the end of the input range.
-
-Normally the lexer remembers the longest complete match and falls back to it if a longer attempt fails.
-A comma outside a character set is a zero-width **commitment barrier** that discards complete matches ending before it:
-
-```text
-number: $Dec+ | 0 [x X], $Hex+
-```
-
-For `0xG`, the barrier prevents fallback to decimal `0`.
-The lexer emits `incomplete` for `0x`, leaves `G` unconsumed, and resumes lexing there.
-For `0x` at EOF it emits the same incomplete prefix; `0x12` is a complete number.
-Commitment does not consume input or change the mode stack.
-
-Place another barrier after a separator that requires another digit:
-
-```text
-hex: 0 [x X], _? $Hex ($Hex | _, $Hex)*
-```
-
-Now `0x12_` cannot fall back to `0x12`.
-Whitespace around a commitment comma is optional.
-Use `\,` for a literal comma outside a character set; `[,]` and `[a,b]` contain literal commas.
-Existing grammars with literal unescaped commas outside character sets must escape them.
-
-A barrier applies across all competing patterns in the current token attempt.
-It preserves complete matches at the barrier's position and permits later matches from any rule.
-A later barrier discards those matches if they end before it.
-Barriers in optional or repeated expressions apply whenever any active NFA path reaches them.
-A barrier at the token's start has no earlier match to discard; a grammar that can match an empty token is still rejected.
-
-Commitment is separate from token-boundary validation: `123abc` can still be a number followed by a name, and `0x12Z` can still be a hexadecimal number followed by a name.
-No identifier-adjacency restriction is implied by a barrier.
-
-The table-driven Python and Swift backends support commitment.
-The experimental `python-re` backend rejects grammars containing barriers rather than silently changing their meaning.
-The NFA property oracle checks commitment independently of DFA construction and minimization.
 
 
 # Python Details
