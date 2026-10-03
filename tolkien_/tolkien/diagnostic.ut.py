@@ -275,10 +275,20 @@ test_width('2-3', ' ~', 'e\u0301 b', '\u0301') # A token of zero-width character
 test_width('3-4', ' ~', 'a\u200db', 'b') # A zero-width joiner before the token.
 test_width('2-3', '  ~', '\U0001f600b', 'b') # An emoji before the token.
 test_width('1-4', '~\t~', 'a\tb', 'a\tb') # A tab within the token.
+test_width('6-7', '  ~', '\U0001f468\u200d\U0001f469\u200d\U0001f467b', 'b') # A joined emoji sequence is one glyph.
+test_width('1-6', '~~', '\U0001f468\u200d\U0001f469\u200d\U0001f467b', '\U0001f468\u200d\U0001f469\u200d\U0001f467')
+test_width('5-6', '   ~', 'a\u200db c', 'c') # A joiner between narrow characters does not join them.
+test_width('3-4', '  ~', '\u2764\ufe0fb', 'b') # Variation selector 16 widens a narrow character.
+test_width('3-4', '  ~', '\U0001f600\ufe0fb', 'b') # Variation selector 16 does not widen a wide character.
+test_width('3-4', '  ~', '\U0001f44b\U0001f3fbb', 'b') # A skin tone modifier occupies no columns.
+test_width('3-4', '  ~', '\U0001f1fa\U0001f1f8b', 'b') # A pair of regional indicators forms a flag of two columns.
+test_width('4-5', '    ~', '\U0001f1fa\U0001f1f8\U0001f1fab', 'b') # An unpaired regional indicator is two columns.
+test_width('2-3', ' ~', '\u2764\ufe0fb', '\ufe0f') # The syntax within is measured as a continuation of the text before.
+test_width('1-2', '~', '\u2764\ufe0fb', '\u2764') # A selector after the syntax does not widen the mark.
 
 # The caller can supply the width function.
 utest('test:1:3-4: MSG\n| \u4e2d\u6587b\u23ce\u0353\n    ~\n', Source(name='test', text='\u4e2d\u6587b').diagnostic,
-  (token(2, 3), 'MSG'), char_width=lambda char: 1)
+  (token(2, 3), 'MSG'), text_width=len)
 
 
 # The structured pieces.

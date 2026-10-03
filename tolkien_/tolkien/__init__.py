@@ -207,16 +207,16 @@ class Source(Generic[_Text]):
     return f'{self.name}:{self.get_line_index(pos)+1}:'
 
 
-  def diagnostic(self, *syntax_msgs:SyntaxMsg|None, prefix:str='', char_width:CharWidth|None=None) -> str:
+  def diagnostic(self, *syntax_msgs:SyntaxMsg|None, prefix:str='', text_width:TextWidth|None=None) -> str:
     '''
     Return the plain text diagnostic for each syntax and message pair.
-    See `Diagnostic.render` for `char_width`.
+    See `Diagnostic.render` for `text_width`.
     '''
-    return ''.join(d.render(char_width=char_width) for d in self.diagnostics(*syntax_msgs, prefix=prefix))
+    return ''.join(d.render(text_width=text_width) for d in self.diagnostics(*syntax_msgs, prefix=prefix))
 
 
-  def fail(self, *syntax_msgs:SyntaxMsg|None, prefix:str='', char_width:CharWidth|None=None) -> NoReturn:
-    exit(self.diagnostic(*syntax_msgs, prefix=prefix, char_width=char_width))
+  def fail(self, *syntax_msgs:SyntaxMsg|None, prefix:str='', text_width:TextWidth|None=None) -> NoReturn:
+    exit(self.diagnostic(*syntax_msgs, prefix=prefix, text_width=text_width))
 
 
   def diagnostics(self, *syntax_msgs:SyntaxMsg|None, prefix:str='') -> list[Diagnostic]:
@@ -401,8 +401,12 @@ def _utf8_char_bounds(text:bytes|bytearray, idx:int) -> tuple[int,int]:
 def _is_utf8_continuation(byte:int) -> bool: return 0x80 <= byte < 0xc0
 
 
-type CharWidth = Callable[[str],int]
-'A function that returns the number of terminal columns that a character occupies: zero, one or two.'
+type TextWidth = Callable[[str],int]
+'''
+A function that returns the number of terminal columns that a string occupies.
+It takes a whole string rather than a character so that it can account for sequences such as emoji joined by zero width joiners.
+The string never contains a tab or a newline.
+'''
 
 
 @dataclass(frozen=True)
@@ -446,33 +450,76 @@ class Diagnostic:
     return f'{pre}{name_colon}{self.line_idx+1}:{col_desc}:'
 
 
-  def render(self, char_width:CharWidth|None=None) -> str:
+  def render(self, text_width:TextWidth|None=None) -> str:
     '''
     Render the diagnostic as plain text: the location and message, the source line, and a line that marks the syntax.
     A point is marked with a caret, other syntax with tildes.
 
-    The marks are aligned by terminal column, using `char_width` to measure each character; it defaults to `stdlib_char_width`.
-    This is a best effort: terminals disagree about the widths of some characters, and emoji sequences are overcounted.
+    The marks are aligned by terminal column, using `text_width` to measure the text; it defaults to `stdlib_text_width`.
+    This is a best effort: terminals disagree about the widths of some characters, and ambiguous width characters are counted as one.
+    The text within the syntax is measured as a continuation of the text before it, so that a sequence spanning the two is intact.
     Tabs are copied into the marks line so that alignment does not depend on the tab width.
     '''
-    if char_width is None: char_width = stdlib_char_width
+    if text_width is None: text_width = stdlib_text_width
     msg = self.msg
     msg_space = '' if (not msg or msg.startswith('\n')) else ' '
     src_line = self.before + self.within + self.after + self.newline_symbol
     src_bar = '| ' if src_line else '|'
-    indent = _marks(self.before, ' ', char_width)
+    indent = _marks(self.before, ' ', text_width)
     if self.is_point:
       marks = '^'
     else:
-      marks = _marks(self.within, '~', char_width) + ('~' if self.is_newline_within else '')
+      marks = _marks(self.before + self.within, '~', text_width)[len(indent):] + ('~' if self.is_newline_within else '')
       if not marks: marks = '~' # The syntax consists of zero-width characters.
     return f'{self.location}{msg_space}{msg}\n{src_bar}{src_line}\n  {indent}{marks}\n'
 
 
 
+def stdlib_text_width(text:str) -> int:
+  '''
+  The default `TextWidth` function, which uses the Unicode data of the Python standard library.
+  Each character is measured by `stdlib_char_width`, with rules for the emoji sequences that most modern terminals render as one glyph:
+  * A character joined to a wide character by a zero width joiner occupies no further columns.
+  * Variation selector 16 requests emoji presentation, which widens a narrow character to two columns.
+  * An emoji skin tone modifier occupies no columns.
+  * A pair of regional indicator symbols forms a flag of two columns.
+  Older terminals and those that do not segment text into grapheme clusters render some of these sequences as separate glyphs.
+  '''
+  width = 0
+  base_width = 0 # The width of the most recent character that occupied any columns.
+  is_joined = False # The preceding character is a zero width joiner.
+  is_flag_open = False # The preceding character is an unpaired regional indicator.
+  for char in text:
+    if is_joined:
+      is_joined = False
+      if base_width == 2: continue # The joined character is part of the preceding glyph.
+    if char == '\u200d': # ZERO WIDTH JOINER.
+      is_joined = True
+      continue
+    if char == '\ufe0f': # VARIATION SELECTOR-16.
+      if base_width == 1:
+        width += 1
+        base_width = 2
+      continue
+    if '\U0001f3fb' <= char <= '\U0001f3ff': continue # Emoji modifiers (skin tones).
+    if '\U0001f1e6' <= char <= '\U0001f1ff': # Regional indicator symbols.
+      if is_flag_open:
+        is_flag_open = False
+        continue
+      is_flag_open = True
+      width += 2
+      base_width = 2
+      continue
+    is_flag_open = False
+    char_width = stdlib_char_width(char)
+    width += char_width
+    if char_width: base_width = char_width
+  return width
+
+
 def stdlib_char_width(char:str) -> int:
   '''
-  The default `CharWidth` function, which uses the Unicode data of the Python standard library.
+  The number of terminal columns that a single character occupies, according to the Unicode data of the Python standard library.
   Combining marks and format characters occupy no columns; East Asian wide and fullwidth characters occupy two.
   '''
   if char < '\x7f': return 1
@@ -480,9 +527,9 @@ def stdlib_char_width(char:str) -> int:
   return 2 if east_asian_width(char) in ('W', 'F') else 1
 
 
-def _marks(text:str, mark:str, char_width:CharWidth) -> str:
+def _marks(text:str, mark:str, text_width:TextWidth) -> str:
   'Return a string of `mark` characters that occupies the same terminal columns as `text`. Tabs are preserved.'
-  return ''.join('\t' if char == '\t' else mark * char_width(char) for char in text)
+  return '\t'.join(mark * text_width(segment) for segment in text.split('\t'))
 
 
 
