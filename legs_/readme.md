@@ -51,6 +51,13 @@ This writes `ascii_lexer.py` and `ascii_lexer.swift`.
 With `-langs` but no `-output`, files are written beside the input grammar.
 With neither option, Legs validates and compiles the grammar without writing code.
 
+Each generated file ends with a `legs-hash` comment. The hash covers the grammar, the options and the sources of legs itself.
+With `-if-stale`, legs skips compilation when every output file already records the current hash:
+
+```sh
+legs legs_/grammars/python.legs -output _build/python_fragments.py -type-prefix PythonFragments -if-stale
+```
+
 Use `-stats` to report automaton sizes and compilation times, or `-describe` to print pattern descriptions.
 For a quick pattern check without a file:
 

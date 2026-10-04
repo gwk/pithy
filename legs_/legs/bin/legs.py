@@ -21,10 +21,14 @@ Use `legs-test` to run the generated lexers on test inputs and compare them.
 '''
 
 
+from hashlib import sha256
+from typing import Iterable
+
 from pithy.cmdparse import Cmd, flag, opt, pos
 from pithy.io import errL, errSL, outL
 from pithy.iterable import first_el
 from pithy.path import path_ext, path_join, path_name, split_dir_name
+from pithy.python.source_hash import program_source_hash
 from pithy.strings import pluralize
 
 from ..build import build_mode_automata, build_pattern_descs, ModeAutomata, ModeError
@@ -58,6 +62,8 @@ class LegsCmd(Cmd):
   path:str|None = pos(default=None, doc='Path to the .legs file.')
   dbg:bool = flag(doc='Verbose debug printing.')
   describe:bool = flag(doc='Print pattern descriptions.')
+  if_stale:bool = flag(doc='Skip compilation if every output file records the hash of this grammar, these options and the '
+    'legs sources. Nothing is described or reported for a skipped compilation.')
   encoding:str = opt(default='utf-8',
     doc='Encoding of the text that the lexer consumes; a work in progress, and only utf-8 is tested.')
   langs:list[str] = opt(default_factory=list, metavar='LANG', split=',',
@@ -113,6 +119,17 @@ def run_legs(args:LegsCmd) -> None:
     hint = '' if args.mode else '; specify the start mode with `-mode`'
     exit(f'error: grammar has no mode named {start_mode!r}{hint}. modes: {", ".join(sorted(mode_pattern_kinds))}.')
 
+  # Determine the outputs before compiling, so that argument errors are reported early and current outputs can be skipped.
+  out_paths:dict[str,list[str]] = {} # Language to output paths.
+  gen_hash = ''
+  if langs:
+    out_stem = determine_output_stem(args)
+    out_paths = { lang : lang_output_paths(lang, out_stem, modes=mode_pattern_kinds) for lang in sorted(langs) }
+    gen_hash = generation_hash(args, src)
+    if args.if_stale and all(has_hash_line(p, gen_hash) for paths in out_paths.values() for p in paths):
+      errL('legs: outputs are current: ', ', '.join(p for paths in out_paths.values() for p in paths), '.')
+      exit(0)
+
   if dbg:
     errSL('\nPatterns:')
     for name, pattern in patterns.items():
@@ -156,37 +173,28 @@ def run_legs(args:LegsCmd) -> None:
 
   if not langs: exit(0)
 
-  out_path = args.output or args.path
-  if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
-
   output_opts = OutputOpts(patterns_path=args.path, type_prefix=args.type_prefix)
-
-  out_dir, out_name = split_dir_name(out_path)
-  if not out_name:
-    if not args.path: exit('could not determine output file name.')
-    out_name = path_name(args.path)
-    if not out_name: exit('could not determine output file name from `path`.')
-  out_name_stem = out_name[:out_name.find('.')] if '.' in out_name else out_name # TODO: path_stem should be changed to do this.
-  out_stem = path_join(out_dir, out_name_stem)
 
   if 'dot' in langs:
     output_dot(out_stem, dfas=dfas, pattern_descs=pattern_descs)
 
   if 'python' in langs:
-    path = out_stem + '.py'
-    output_python(path, dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
+    output_python(out_paths['python'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
       **output_opts)
 
   if 'python-re' in langs:
-    path = out_stem + '.re.py'
-    output_python_re(path, dfas=dfas, mode_transitions=mode_transitions,
+    output_python_re(out_paths['python-re'][0], dfas=dfas, mode_transitions=mode_transitions,
       patterns=patterns, incomplete_patterns=incomplete_patterns,
       pattern_descs=pattern_descs, license=license, **output_opts)
 
   if 'swift' in langs:
-    path = out_stem + '.swift'
-    output_swift(path, dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
+    output_swift(out_paths['swift'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
       **output_opts)
+
+  # The hash is the last line, so its presence also shows that the file was written completely.
+  for lang, paths in out_paths.items():
+    for p in paths:
+      with open(p, 'a', encoding='utf8') as f: f.write(f'{lang_comment_prefixes[lang]} {hash_label}: {gen_hash}\n')
 
 
 def determine_output_languages(args_langs:list[str], output_path:str|None) -> set[str]:
@@ -207,6 +215,43 @@ def determine_output_languages(args_langs:list[str], output_path:str|None) -> se
   else:
     langs = set()
   return langs
+
+
+def determine_output_stem(args:LegsCmd) -> str:
+  'Return the output path without its extensions, from `-output` or else the grammar path.'
+  out_path = args.output or args.path
+  if not out_path: exit('`-path` or `-output` most be specified to determine output paths.')
+  out_dir, out_name = split_dir_name(out_path)
+  if not out_name:
+    if not args.path: exit('could not determine output file name.')
+    out_name = path_name(args.path)
+    if not out_name: exit('could not determine output file name from `path`.')
+  out_name_stem = out_name[:out_name.find('.')] if '.' in out_name else out_name # TODO: path_stem should be changed to do this.
+  return path_join(out_dir, out_name_stem)
+
+
+def lang_output_paths(lang:str, out_stem:str, modes:Iterable[str]) -> list[str]:
+  'Return the paths that the output function of `lang` writes. The `dot` target writes one file per mode.'
+  if lang == 'dot': return [f'{out_stem}-{mode}.dot' for mode in modes]
+  return [out_stem + lang_exts[lang]]
+
+
+def generation_hash(args:LegsCmd, src:str) -> str:
+  'Return a hash of everything that determines the outputs: the legs sources, the grammar and the options.'
+  program_hash = program_source_hash('legs', 'pithy', 'tolkien')
+  key = (program_hash, src, args.path, args.encoding, args.type_prefix)
+  return sha256(repr(key).encode()).hexdigest()
+
+
+def has_hash_line(path:str, gen_hash:str) -> bool:
+  'Return whether the file at `path` exists and ends with the line that records `gen_hash`.'
+  try:
+    with open(path, 'rb') as f:
+      size = f.seek(0, 2)
+      f.seek(max(0, size - 256))
+      tail = f.read()
+  except FileNotFoundError: return False
+  return tail.endswith(f' {hash_label}: {gen_hash}\n'.encode())
 
 
 def describe_automata(automata:ModeAutomata, dbg:bool, stats:bool) -> None:
@@ -264,6 +309,17 @@ ext_langs = {
   '.re.py' : 'python-re',
   '.swift' : 'swift',
 }
+
+lang_exts = { lang : ext for ext, lang in ext_langs.items() }
+
+lang_comment_prefixes = {
+  'dot' : '//',
+  'python' : '#',
+  'python-re' : '#',
+  'swift' : '//',
+}
+
+hash_label = 'legs-hash'
 
 supported_langs = {'dot', 'python', 'python-re', 'swift'}
 
