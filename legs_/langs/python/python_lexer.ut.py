@@ -1,23 +1,21 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
-'Python grammar compilation, differential token checks, detailed fragments and error recovery.'
+'Differential token checks, detailed fragments and error recovery for the Python lexer.'
 
 import io
 import tokenize
 from pathlib import Path
 
-from legs.build import build_lexer_class
-from legs.parse import parse_legs
-from legs.py_lexer import PythonLexer
-from legs.py_lexer_samples import python_samples
-from legs.py_tokenize import python_tokens
+from legs.cache import cached_lexer_class
+from legs.langs.python.py_lexer import PythonLexer
+from legs.langs.python.py_lexer_samples import python_samples
+from legs.langs.python.py_tokenize import python_tokens
 from tolkien import Source, Token
 from utest import utest_run, utest_val
 
 
 root = Path(__file__).resolve().parents[3]
-path = root / 'legs_/grammars/python.legs'
-lexer_type = build_lexer_class('PythonFragments', parse_legs(str(path), path.read_text()))
+lexer_type = cached_lexer_class(root / 'legs_/langs/python/python.legs', root / '_build/langs/python.py')
 
 
 def scan(text:str|bytes) -> tuple[PythonLexer,list[Token]]:

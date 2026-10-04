@@ -17,7 +17,7 @@ clean:
 	rm -rf _build/*
 
 clean-grammars:
-	rm legs_/character-classes.md legs_/grammars/{ascii,unicode}.legs
+	rm legs_/character-classes.md legs_/langs/ascii/ascii.legs legs_/langs/unicode/unicode.legs
 
 gen: gen-grammars
 
@@ -25,8 +25,8 @@ gen-sqlite-extracted-sql:
 	tools/gen-sqlite-test-sql.py -i ~/external/sqlite -o _misc/sqlite-extracted-stmts
 
 gen-grammars: legs_/character-classes.md \
-	legs_/grammars/ascii.legs \
-	legs_/grammars/unicode.legs \
+	legs_/langs/ascii/ascii.legs \
+	legs_/langs/unicode/unicode.legs \
 
 help: # Summarize the targets of this makefile.
 	@GREP_COLOR="1;32" egrep --color=always '^[a-zA-Z][^ :]+:' makefile | sort
@@ -35,10 +35,10 @@ help: # Summarize the targets of this makefile.
 
 unicode_srcs := $(wildcard pithy_/pithy/unicode/*.py)
 
-legs_/grammars/ascii.legs: tools/gen-charset-grammar.py $(unicode_srcs)
+legs_/langs/ascii/ascii.legs: tools/gen-charset-grammar.py $(unicode_srcs)
 	./$< ascii > $@
 
-legs_/grammars/unicode.legs: tools/gen-charset-grammar.py $(unicode_srcs)
+legs_/langs/unicode/unicode.legs: tools/gen-charset-grammar.py $(unicode_srcs)
 	./$< unicode > $@
 
 legs_/character-classes.md: tools/gen-legs-charsets-doc.py $(unicode_srcs)

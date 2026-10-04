@@ -2,7 +2,7 @@
 
 # Patterns
 
-// Python 3.14. Mode coordination and indentation live in legs.py_lexer.
+// Python 3.14. Mode coordination and indentation live in legs.langs.python.py_lexer.
 // Non-ASCII name candidates are validated with the running Python Unicode database.
 space: [\s \t \c/]+
 newline: \r \n? | \n

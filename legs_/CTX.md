@@ -14,12 +14,18 @@ The other modules:
 * `__init__.py` is the runtime that generated Python lexers import.
 * `bin/` holds the `legs` and `legs-test` commands.
 * `props.py` implements the property checks of `legs-test -props`.
-* `py_lexer.py`, `py_tokenize.py` and `py_lexer_samples.py` implement the Python language lexer described in `grammars/python.md`.
+* `cache.py` loads a generated Python lexer, compiling it with `legs -if-stale` only when it is stale.
+
+* `langs/` holds the code that a supplied language needs beyond its grammar, one subpackage per language.
+  `langs/python` has `py_lexer.py`, `py_tokenize.py` and `py_lexer_samples.py`, which implement the Python language lexer.
   They use the generator but are not part of it. `targets/python.py` is the module that writes Python lexers.
+
+`legs_/langs` holds the supplied languages, one directory each: the grammar, a readme, tests and benchmarks.
+It is not a package and has no `__init__.py` files; importable code belongs in `legs_/legs/langs`.
 
 # Generated Files
 
-* `grammars/ascii.legs`, `grammars/unicode.legs` and `character-classes.md` are generated. Regenerate them with `make gen-grammars` from the repository root.
+* `langs/ascii/ascii.legs`, `langs/unicode/unicode.legs` and `character-classes.md` are generated. Regenerate them with `make gen-grammars` from the repository root.
 * `wu_/wu/lex.py` is a generated lexer that is committed to the repository. It imports the runtime from `legs`. No recipe regenerates it.
 
 # Tests
@@ -28,10 +34,12 @@ The other modules:
 * `just check` does not run the tests in `legs_/test`. After changing the parser, the automata or a target, run `iotest legs_/test/0 legs_/test/2`.
   These tests need the `swift` command.
 * `just test-full` also runs the property tests and the slow unit tests. See `legs_/test/CTX.md`.
+* Neither runs the tests in `legs_/langs`. Run `just test-legs-langs [names...]` manually after changing a language, the compiler or a target.
 
 # Costs
 
-* `grammars/python.legs` takes far longer to compile than the other grammars.
-  The slow unit tests in `test/ut` and `just perf-legs-python` compile it.
+* `langs/python/python.legs` takes over a minute to compile; the other grammars take seconds.
+* Any edit to the sources of `legs`, `pithy` or `tolkien` makes the generated lexers stale, so the next build recompiles them.
+* The language tests and `just perf-legs-python` load the lexers from `_build/langs` through `legs.cache.cached_lexer_class`.
+  Do not call `build_lexer_class` on a supplied grammar in a test; it compiles on every run.
 * Measure compilation with `just perf-legs-compile`. See `perf/readme.md`.
-* When working on the Python lexer, generate its tables once and reuse them; `grammars/python.md` shows how.

@@ -8,20 +8,17 @@ import os
 import platform
 import sys
 import tokenize
-from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from statistics import median
 from subprocess import check_output
 from time import perf_counter
-from typing import cast
 
 import legs
 from legs import DictLexerBase
-from legs.build import build_lexer_class
-from legs.parse import parse_legs
-from legs.py_lexer import PythonLexer
-from legs.py_lexer_samples import python_samples, unicode_samples
-from legs.py_tokenize import python_tokens
+from legs.cache import cached_lexer_class
+from legs.langs.python.py_lexer import PythonLexer
+from legs.langs.python.py_lexer_samples import python_samples, unicode_samples
+from legs.langs.python.py_tokenize import python_tokens
 from pithy.cmdparse import Cmd, opt, pos
 from tolkien import Source
 
@@ -32,22 +29,13 @@ def main() -> None: PythonBench.main()
 class PythonBench(Cmd):
   paths:list[str] = pos(default_factory=list, doc='Python files; defaults to repository .py and .pyi files.')
   runs:int = opt(default=3, doc='Measured runs; zero performs only differential checks.')
-  lexer:str = opt(default='', doc='Optional generated Python lexer module, for repeated development checks.')
 
 
   def run(self) -> None:
     if self.runs < 0: exit('error: -runs must be nonnegative.')
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[3]
     start = perf_counter()
-    if self.lexer:
-      spec = spec_from_file_location('generated_python_lexer', self.lexer)
-      assert spec and spec.loader
-      module = module_from_spec(spec)
-      spec.loader.exec_module(module)
-      lexer_type = cast(type[DictLexerBase], module.PythonLexer)
-    else:
-      path = root / 'legs_/grammars/python.legs'
-      lexer_type = build_lexer_class('PythonLexer', parse_legs(str(path), path.read_text()))
+    lexer_type = cached_lexer_class(root / 'legs_/langs/python/python.legs', root / '_build/langs/python.py')
     print(f'Python: {sys.version.splitlines()[0]}\nExecutable: {sys.executable}\nLegs: {legs.__file__}\n'
       f'Platform: {platform.platform()}\nPYTHONHASHSEED: {os.environ.get("PYTHONHASHSEED", "random")}\n'
       f'Lexer preparation: {perf_counter() - start:.3f}s', flush=True)

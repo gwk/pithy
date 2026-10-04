@@ -7,7 +7,7 @@ pkgs := 'pyrrhus tolkien tomul pithy utest iotest taptools crafts wu legs tap_ba
 
 pkg_srcs := 'pyrrhus_/pyrrhus tolkien_/tolkien tomul_/tomul pithy_/pithy utest_/utest iotest_/iotest taptools_/taptools crafts_/crafts wu_/wu legs_/legs tap_backblaze_/tap_backblaze tap_betterstack_/tap_betterstack tap_ops_/tap_ops'
 
-typecheck_other_srcs := 'legs_/test/ut legs_/perf ops perf tap_backblaze_/test-integration test-diff tools'
+typecheck_other_srcs := 'legs_/langs legs_/test legs_/perf ops perf tap_backblaze_/test-integration test-diff tools'
 
 pkg_tests_fast := 'pithy_/test taptools_/test utest_/test'
 pkg_tests_full :=  pkg_tests_fast + ' iotest_/test legs_/test wu_/test'
@@ -77,7 +77,29 @@ perf-legs-compile *args:
 # Compare Python tokenization with stdlib, then benchmark the repository and Unicode sources.
 [positional-arguments]
 perf-legs-python *args:
-  PYTHONHASHSEED=0 python3 legs_/perf/python.py "$@"
+  PYTHONHASHSEED=0 python3 legs_/langs/python/py_bench.py "$@"
+
+# Generate the Python lexers of the named `legs_/langs` languages into `_build/langs`; all languages by default.
+# Lexers that are current are skipped. Run manually; compiling a large grammar takes minutes.
+[positional-arguments]
+build-legs-langs *names:
+  #!/bin/sh
+  set -eu
+  [ $# -gt 0 ] || set -- $(basename -s .legs legs_/langs/*/*.legs)
+  mkdir -p _build/langs
+  for name in "$@"; do legs "legs_/langs/$name/$name.legs" -output "_build/langs/$name.py" -if-stale; done
+
+# Build and test the named `legs_/langs` languages; all languages by default. Run manually; `check` and `test-full` omit these.
+[positional-arguments]
+test-legs-langs *names:
+  #!/bin/sh
+  set -eu
+  [ $# -gt 0 ] || set -- $(basename -s .legs legs_/langs/*/*.legs)
+  just build-legs-langs "$@"
+  dirs=''
+  for name in "$@"; do dirs="$dirs legs_/langs/$name"; done
+  python3 -m utest $dirs
+  iotest $dirs
 
 # Build all project context.
 ctx:
@@ -106,7 +128,7 @@ gen-py-rust-exts:
   python3 -m crafts.bin.craft_py_rust_ext
 
 isort:
-  python3 -m isort {{pkg_srcs}} legs_/perf ops sh tap_backblaze_/test-integration test-diff tools
+  python3 -m isort {{pkg_srcs}} legs_/langs legs_/perf ops sh tap_backblaze_/test-integration test-diff tools
 
 install:
   sh/install.sh {{pkgs}}
@@ -124,7 +146,7 @@ lint: lint-py lint-rust
 
 # pyflakes cannot exclude paths, so the ops sources are enumerated to prune all _build directories.
 lint-py:
-  python3 -m pyflakes {{pkg_srcs}} legs_/perf/compile.py legs_/perf/python.py legs_/perf/run.py $(find ops -type d -name _build -prune -o -name '*.py' -print) tap_backblaze_/test-integration test-diff tools
+  python3 -m pyflakes {{pkg_srcs}} legs_/langs legs_/perf/compile.py legs_/perf/run.py $(find ops -type d -name _build -prune -o -name '*.py' -print) tap_backblaze_/test-integration test-diff tools
 
 # Pin the interpreter: otherwise pyo3's build script searches `PATH` and rebuilds whenever `PATH` changes.
 lint-rust: fmt-rust-check

@@ -1,0 +1,4 @@
+{
+  'cmd': 'legs-test $PROJ/legs_/langs/legs/legs.legs -props',
+  'out-val': 'properties hold for 3 modes.\n',
+}

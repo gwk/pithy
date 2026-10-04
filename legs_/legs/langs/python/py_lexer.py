@@ -1,7 +1,7 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 '''
-Detailed Python 3.14 lexing with the modes in `legs_/grammars/python.legs`.
+Detailed Python 3.14 lexing with the modes in `legs_/langs/python/python.legs`.
 
 The generated DFA recognizes fragments; this coordinator selects modes and handles indentation and replacement fields.
 Tokens retain UTF-8 byte offsets and cover the input, including trivia. Structural tokens can have empty spans.
@@ -15,7 +15,7 @@ from unicodedata import lookup
 
 from tolkien import Source, Token
 
-from . import DictLexerBase
+from ... import DictLexerBase
 
 
 _context_keywords_ = ['lexer', 'python', 'tokenize']

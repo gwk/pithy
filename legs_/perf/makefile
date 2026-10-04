@@ -11,7 +11,7 @@
 # Legs perf tests.
 
 
-.PHONY: _default clean help _build/repo-text.txt
+.PHONY: _default clean FORCE help _build/repo-text.txt
 
 _default: help
 
@@ -24,7 +24,6 @@ help: # Summarize the targets of this makefile.
 	@echo "\nLanguages: swift, py-re, py-table"
 
 legs_dir := ../legs
-legs_srcs := $(legs_dir)/*.py $(legs_dir)/bin/*.py $(legs_dir)/targets/*.py
 
 # The number of timed runs for each target; slower lexers get fewer runs. Override with `make runs=N perf-...`.
 runs := 8
@@ -53,15 +52,19 @@ _build/%-py-re: _build/%.re.py main.py
 _build/%-swift: _build/%.swift $(legs_dir)/targets/legs_base.swift main.swift
 	time swiftc -num-threads 8 -O $^ -o $@
 
+# The lexer rules always run. `legs -if-stale` compares the hash recorded in the output with the grammar and the legs sources.
+# It leaves a current output untouched, so the programs that are built from it are not rebuilt.
 # The `.re.py` rule must precede the `.py` rule, because both patterns match and this version of make uses the first.
-_build/%.re.py: ../grammars/%.legs $(legs_srcs)
+_build/%.re.py: FORCE
 	mkdir -p _build
-	legs $< -langs python-re -output $@
+	legs ../langs/$*/$*.legs -langs python-re -output $@ -if-stale
 
-_build/%.py: ../grammars/%.legs $(legs_srcs)
+_build/%.py: FORCE
 	mkdir -p _build
-	legs $< -langs python -output $@
+	legs ../langs/$*/$*.legs -langs python -output $@ -if-stale
 
-_build/%.swift: ../grammars/%.legs $(legs_srcs)
+_build/%.swift: FORCE
 	mkdir -p _build
-	legs $< -langs swift -output $@
+	legs ../langs/$*/$*.legs -langs swift -output $@ -if-stale
+
+FORCE:

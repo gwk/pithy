@@ -23,7 +23,7 @@ def main() -> None: CompileBench.main()
 class CompileBench(Cmd):
   'Measure grammar parsing, NFA construction, DFA construction, and minimization in the current Python process.'
 
-  paths:list[str] = pos(default_factory=list, metavar='GRAMMAR', doc='Grammar paths; defaults to legs_/grammars/legs.legs.')
+  paths:list[str] = pos(default_factory=list, metavar='GRAMMAR', doc='Grammar paths; defaults to legs_/langs/legs/legs.legs.')
   runs:int = opt(default=3, doc='Number of measured runs per grammar.')
   warmups:int = opt(default=1, doc='Number of unmeasured runs per grammar.')
 
@@ -41,7 +41,7 @@ class CompileBench(Cmd):
     print(f'Platform: {platform.platform()} ({platform.machine()})')
     print(f'PYTHONHASHSEED: {os.environ.get("PYTHONHASHSEED", "random")}')
     print(f'Runs: {self.runs}; warmups: {self.warmups}; times in seconds.', flush=True)
-    for path_str in self.paths or [str(root / 'legs_' / 'grammars' / 'legs.legs')]:
+    for path_str in self.paths or [str(root / 'legs_' / 'langs' / 'legs' / 'legs.legs')]:
       path = Path(path_str)
       text = path.read_text()
       samples:list[dict[str,float]] = []

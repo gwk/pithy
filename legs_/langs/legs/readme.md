@@ -14,8 +14,8 @@ Start each framed range in the mode appropriate to its syntax:
 There is no `main` mode. For example, from the repository root:
 
 ```sh
-legs-test legs_/grammars/legs.legs -mode pattern '[$Ascii_Letter _]+'
+legs-test legs_/langs/legs/legs.legs -mode pattern '[$Ascii_Letter _]+'
 ```
 
 The compiler does not use this grammar; `legs.parse` lexes grammar files with a handwritten lexer.
-`legs.legs` exists to document the syntax and to verify consistency: `legs_/test/ut/legs_grammar.ut.py` compares its tokens to those of the handwritten lexer.
+`legs.legs` exists to document the syntax and to verify consistency: [legs_grammar.ut.py](legs_grammar.ut.py) compares its tokens to those of the handwritten lexer.

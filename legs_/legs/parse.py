@@ -279,7 +279,7 @@ pattern_lexer = Lexer(flags='mx',
 def build_pattern_parser(lexer:LexerProtocol=pattern_lexer) -> Parser:
   '''
   Build the parser for pattern expressions.
-  `lexer` can be any lexer that produces the token kinds of `pattern_lexer`, such as the one built from `legs_/grammars/legs.legs`.
+  `lexer` can be any lexer that produces the token kinds of `pattern_lexer`, such as the one built from `legs_/langs/legs/legs.legs`.
   '''
   return Parser(lexer,
     drop=dropped_kinds,

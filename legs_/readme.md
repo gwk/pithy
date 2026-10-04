@@ -25,7 +25,7 @@ Run these examples from the repository root with `legs` installed in your Python
 Generate a Python lexer from a grammar:
 
 ```sh
-legs legs_/grammars/ascii.legs -output ascii_lexer.py -type-prefix Ascii
+legs legs_/langs/ascii/ascii.legs -output ascii_lexer.py -type-prefix Ascii
 ```
 
 The generated module defines `AsciiLexer`. Without `-type-prefix`, the class is named `Lexer`.
@@ -44,7 +44,7 @@ Target output languages are selected with `-langs`, separated by commas, or infe
 For multiple languages, `-output` supplies the shared output stem:
 
 ```sh
-legs legs_/grammars/ascii.legs -langs python,swift -output ascii_lexer
+legs legs_/langs/ascii/ascii.legs -langs python,swift -output ascii_lexer
 ```
 
 This writes `ascii_lexer.py` and `ascii_lexer.swift`.
@@ -55,8 +55,10 @@ Each generated file ends with a `legs-hash` comment. The hash covers the grammar
 With `-if-stale`, legs skips compilation when every output file already records the current hash:
 
 ```sh
-legs legs_/grammars/python.legs -output _build/python_fragments.py -type-prefix PythonFragments -if-stale
+legs legs_/langs/python/python.legs -output _build/langs/python.py -if-stale
 ```
+
+`legs.cache.cached_lexer_class` runs this command and then loads the lexer class from the output.
 
 Use `-stats` to report automaton sizes and compilation times, or `-describe` to print pattern descriptions.
 For a quick pattern check without a file:
@@ -121,6 +123,7 @@ See `legs.props` for details. The examples are the same on every run unless `-ra
 `legs -match` checks strings against the NFA, the unminimized DFA and the minimized DFA of a mode, without generating code.
 
 Tests that are too slow for the routine checks are in `legs_/test`; run them with `just test-full`.
+The tests of the supplied languages are run separately; see [Languages](#languages).
 
 Compilation and generated lexer runtime benchmarks are in [perf/](perf/readme.md).
 
@@ -132,14 +135,29 @@ Generated Python lexer classes conform to `tolkien.LexerProtocol`, so they can b
 A lexer can be given a range of the source text and a start mode. This allows a parser that frames the text by other means to lex each framed range in the appropriate mode; `legs.parse` does this for grammar files using `pithy.sectsyn`.
 
 
-# Provided Lexers
+# Languages
 
-The supplied grammars are in [grammars/](grammars/), with documentation beside each grammar:
+The supplied languages are in [langs/](langs/). Each language has a directory that holds its grammar, documentation and tests:
 
-* [ASCII](grammars/ascii.md): runs of ASCII characters grouped by category; useful for examples and benchmarks.
-* [Unicode](grammars/unicode.md): runs of Unicode characters grouped by general category.
-* [Legs](grammars/legs.md): pattern expressions, character sets and declarations within Legs grammar files.
-* [Python](grammars/python.md): experimental Python 3.14 lexing with string and interpolation modes, individual escapes and diagnostic byte spans. A coordinator handles indentation and nested strings; an adapter supports comparison with stdlib `tokenize`.
+* [ASCII](langs/ascii/readme.md): runs of ASCII characters grouped by category; useful for examples and benchmarks.
+* [Unicode](langs/unicode/readme.md): runs of Unicode characters grouped by general category.
+* [Legs](langs/legs/readme.md): pattern expressions, character sets and declarations within Legs grammar files.
+* [Python](langs/python/readme.md): experimental Python 3.14 lexing with string and interpolation modes, individual escapes and diagnostic byte spans. A coordinator handles indentation and nested strings; an adapter supports comparison with stdlib `tokenize`.
+
+Some of these grammars take minutes to compile, so they are built and tested by separate recipes.
+`just check` and `just test-full` do not run them. Run them manually from the repository root after changing a language, the compiler or a target:
+
+```sh
+just build-legs-langs         # Generate the Python lexer of every language into `_build/langs`.
+just test-legs-langs          # Build, then run the unit tests and IO tests of every language.
+just test-legs-langs python   # Build and test the named languages only.
+```
+
+Both recipes use `-if-stale`, so a lexer is compiled only when its grammar or the legs sources have changed.
+The tests and `just perf-legs-python` load the lexers with `cached_lexer_class`, so they share the files in `_build/langs`.
+The `props.iot` tests are the exception: `legs-test -props` needs the automata, so it compiles the grammar on every run.
+
+Code that a language needs beyond its grammar is in the `legs.langs` package, e.g. `legs.langs.python.py_lexer`.
 
 
 # Column Numbers
