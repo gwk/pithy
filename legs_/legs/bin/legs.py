@@ -179,8 +179,8 @@ def run_legs(args:LegsCmd) -> None:
     output_dot(out_stem, dfas=dfas, pattern_descs=pattern_descs)
 
   if 'python' in langs:
-    output_python(out_paths['python'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
-      **output_opts)
+    output_python(out_paths['python'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs,
+      license=license, **output_opts)
 
   if 'python-re' in langs:
     output_python_re(out_paths['python-re'][0], dfas=dfas, mode_transitions=mode_transitions,
@@ -188,8 +188,8 @@ def run_legs(args:LegsCmd) -> None:
       pattern_descs=pattern_descs, license=license, **output_opts)
 
   if 'swift' in langs:
-    output_swift(out_paths['swift'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs, license=license,
-      **output_opts)
+    output_swift(out_paths['swift'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs,
+      license=license, **output_opts)
 
   # The hash is the last line, so its presence also shows that the file was written completely.
   for lang, paths in out_paths.items():
@@ -237,9 +237,15 @@ def lang_output_paths(lang:str, out_stem:str, modes:Iterable[str]) -> list[str]:
 
 
 def generation_hash(args:LegsCmd, src:str) -> str:
-  'Return a hash of everything that determines the outputs: the legs sources, the grammar and the options.'
+  '''
+  Return a hash of everything that determines the generated lexers: the legs sources, the grammar text and the options.
+  The grammar path is omitted, so that the hash is the same from any working directory. The path appears only in a comment.
+  '''
+  # TODO: split this into a compile key and an output key, with a cache of the minimized DFAs guarded by the compile key.
+  # The compile key would cover the grammar, the encoding and the modules that build the automata.
+  # Then an edit to a target, the runtime or this command would reuse the automata instead of recompiling.
   program_hash = program_source_hash('legs', 'pithy', 'tolkien')
-  key = (program_hash, src, args.path, args.encoding, args.type_prefix)
+  key = (program_hash, src, args.encoding, args.type_prefix)
   return sha256(repr(key).encode()).hexdigest()
 
 
