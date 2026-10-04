@@ -4,12 +4,16 @@ Legs is a lexer generator. It takes as input a `.legs` grammar file consisting o
 
 Legs is distinguished by the following features:
 * Parses UTF-8 byte data directly; it does not require a preceding conversion to a unicode string datatype. Unicode errors show up as lexing errors with readable source positions.
-* The lexer operates as a stream/iterator, and cannot fail. Instead, it emits tokens marked as invalid or incomplete when it encounters a lexing error and then resumes from the next starting character.
+* The lexer operates as a stream/iterator, and cannot fail. Instead, it emits tokens marked as invalid or incomplete when it encounters a lexing error and then resumes from the next starting character. Commitment barriers in a pattern control where an incomplete token ends; see the [Grammar Reference](grammar.md#incomplete-tokens-and-commitment).
+* The tokens tile the input: every byte belongs to exactly one token, in order, with no gaps or overlaps. Text that matches no pattern is covered by invalid and incomplete tokens, so the input can always be reconstructed from the token stream.
+* The order of the patterns does not matter. The lexer takes the longest match; when two patterns match the same text the narrower one wins, and any other overlap is rejected as ambiguous.
 * The pattern definitions can specify multiple modes, and the resulting lexer maintains a stack of modes. This means that in theoretical terms it is not strictly a "deterministic finite automaton". The value of this is that we can parse one language embedded in another, e.g. string formatting syntax or escape tokens within string literals. The lexer still emits a flat stream of tokens, each tagged with both mode and kind, so in a sense the lexer is a hybrid between a traditional lexer and a context free parser.
 * The legs syntax for pattern definitions is similar to traditional regular expression syntax, but with several alterations to accommodate the task of writing modern lexers:
   * Spaces and comments are ignored (equivalent to the "extended" mode of Python regular expression syntax).
   * Traditional backslash-escaped character classes are largely replaced by named character classes, denoting the complete set of Unicode classes and several convenience classes as well, (e.g. ASCII subsets, hex characters, etc).
   * Simple character set operations (union, intersection, difference, and symmetric difference).
+
+Performance is a work in progress. The long term goal is a healthy balance between lexer speed, compile time and system complexity.
 
 The output languages currently supported are:
 * `python`: a table-driven lexer. This is the reference implementation.

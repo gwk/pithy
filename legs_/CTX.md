@@ -2,6 +2,17 @@
 
 @grammar.md
 
+# Invariants
+
+Every target and every optimization must preserve these properties of a generated lexer:
+* The lexer cannot fail. Errors are emitted as `invalid` and `incomplete` tokens.
+* The tokens tile the input range in order, with no gaps, overlaps or empty tokens. The optional final `end_of_text` token is the only empty one.
+* Each token is the longest match in the current mode, subject to commitment barriers.
+* Overlapping patterns resolve as described in `grammar.md`. Pattern order never matters.
+* All targets produce the same tokens for the same input.
+
+`legs-test` compares the targets against the reference lexer. `legs-test -props` checks the reference lexer against the NFA.
+
 # Source Layout
 
 A grammar passes through these modules of `legs_/legs` in order:
@@ -15,7 +26,6 @@ The other modules:
 * `bin/` holds the `legs` and `legs-test` commands.
 * `props.py` implements the property checks of `legs-test -props`.
 * `cache.py` loads a generated Python lexer, compiling it with `legs -if-stale` only when it is stale.
-
 * `langs/` holds the code that a supplied language needs beyond its grammar, one subpackage per language.
   `langs/python` has `py_lexer.py`, `py_tokenize.py` and `py_lexer_samples.py`, which implement the Python language lexer.
   They use the generator but are not part of it. `targets/python.py` is the module that writes Python lexers.
