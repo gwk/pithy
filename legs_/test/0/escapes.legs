@@ -1,6 +1,6 @@
 # Patterns
 spaces: \s+
-nbsp: \xa0
-zwj: \u200D
-emoji: \U0001F600
-word: [\x41 \u00e9 b]+
+nbsp: \a0/
+zwj: \200D/
+emoji: \1F600/
+word: [\41/ \e9/ b]+

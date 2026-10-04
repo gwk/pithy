@@ -4,11 +4,11 @@
 
 // Python 3.14. Mode coordination and indentation live in legs.py_lexer.
 // Non-ASCII name candidates are validated with the running Python Unicode database.
-space: [\s \t \f]+
+space: [\s \t \c/]+
 newline: \r \n? | \n
 continuation: \\ (\r \n? | \n)
-comment: \# [$C $L $M $N $P $S $Z - $Cs \0 - \r \n]*
-name: [$Ascii_Letter _ [$C $L $M $N $P $S $Z - $Cs \0 - $Ascii]] [$Ascii_Letter $Dec _ [$C $L $M $N $P $S $Z - $Cs \0 -
+comment: \# [$C $L $M $N $P $S $Z - $Cs \0/ - \r \n]*
+name: [$Ascii_Letter _ [$C $L $M $N $P $S $Z - $Cs \0/ - $Ascii]] [$Ascii_Letter $Dec _ [$C $L $M $N $P $S $Z - $Cs \0/ -
   $Ascii]]*
 number: 0 [x X], _? $Hex ($Hex | _, $Hex)*
   | 0 [o O], _? $Oct ($Oct | _, $Oct)*
@@ -33,9 +33,9 @@ escape_u: \\ u $Hex $Hex $Hex $Hex
 escape_U: \\ U $Hex $Hex $Hex $Hex $Hex $Hex $Hex $Hex
 escape_named: \\ N { [$Ascii_Letter $Dec \s \-]+ }
 escape_newline: \\ (\r \n? | \n)
-escape_unknown: \\ [$C $L $M $N $P $S $Z - $Cs \0 - \\ ' " a b f n r t v $Oct x u U N \r \n { }]
-escape_bytes_unknown: \\ [$C $L $M $N $P $S $Z - $Cs \0 - \\ ' " a b f n r t v $Oct x \r \n]
-escape_raw: \\ ([$C $L $M $N $P $S $Z - $Cs \0 - \r \n { }] | \r \n? | \n)
+escape_unknown: \\ [$C $L $M $N $P $S $Z - $Cs \0/ - \\ ' " a b f n r t v $Oct x u U N \r \n { }]
+escape_bytes_unknown: \\ [$C $L $M $N $P $S $Z - $Cs \0/ - \\ ' " a b f n r t v $Oct x \r \n]
+escape_raw: \\ ([$C $L $M $N $P $S $Z - $Cs \0/ - \r \n { }] | \r \n? | \n)
 escape_brace: \\ [{ }]
 
 quote_s: '
@@ -47,13 +47,13 @@ f_s_open: [f F] '
 fr_s_open: ([f F] [r R] | [r R] [f F]) '
 t_s_open: [t T] '
 tr_s_open: ([t T] [r R] | [r R] [t T]) '
-str_s_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ \r \n]+
-raw_s_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ \r \n]+
-bytes_s_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ \r \n]+
-f_s_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ \r \n { }]+
-fr_s_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ \r \n { }]+
-fmt_s_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ \r \n { }]+
-fmtr_s_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ \r \n { }]+
+str_s_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ \r \n]+
+raw_s_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ \r \n]+
+bytes_s_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ \r \n]+
+f_s_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ \r \n { }]+
+fr_s_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ \r \n { }]+
+fmt_s_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ \r \n { }]+
+fmtr_s_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ \r \n { }]+
 
 quote_d: "
 str_d_open: [u U]? "
@@ -64,13 +64,13 @@ f_d_open: [f F] "
 fr_d_open: ([f F] [r R] | [r R] [f F]) "
 t_d_open: [t T] "
 tr_d_open: ([t T] [r R] | [r R] [t T]) "
-str_d_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ \r \n]+
-raw_d_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ \r \n]+
-bytes_d_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ \r \n]+
-f_d_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ \r \n { }]+
-fr_d_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ \r \n { }]+
-fmt_d_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ \r \n { }]+
-fmtr_d_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ \r \n { }]+
+str_d_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ \r \n]+
+raw_d_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ \r \n]+
+bytes_d_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ \r \n]+
+f_d_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ \r \n { }]+
+fr_d_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ \r \n { }]+
+fmt_d_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ \r \n { }]+
+fmtr_d_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ \r \n { }]+
 
 quote_sss: '''
 str_sss_open: [u U]? '''
@@ -81,13 +81,13 @@ f_sss_open: [f F] '''
 fr_sss_open: ([f F] [r R] | [r R] [f F]) '''
 t_sss_open: [t T] '''
 tr_sss_open: ([t T] [r R] | [r R] [t T]) '''
-str_sss_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\]+
-raw_sss_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\]+
-bytes_sss_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\]+
-f_sss_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ { }]+
-fr_sss_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ { }]+
-fmt_sss_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ { }]+
-fmtr_sss_text: [$C $L $M $N $P $S $Z - $Cs \0 - ' \\ { }]+
+str_sss_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\]+
+raw_sss_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\]+
+bytes_sss_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\]+
+f_sss_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ { }]+
+fr_sss_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ { }]+
+fmt_sss_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ { }]+
+fmtr_sss_text: [$C $L $M $N $P $S $Z - $Cs \0/ - ' \\ { }]+
 
 quote_ddd: """
 str_ddd_open: [u U]? """
@@ -98,13 +98,13 @@ f_ddd_open: [f F] """
 fr_ddd_open: ([f F] [r R] | [r R] [f F]) """
 t_ddd_open: [t T] """
 tr_ddd_open: ([t T] [r R] | [r R] [t T]) """
-str_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\]+
-raw_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\]+
-bytes_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\]+
-f_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ { }]+
-fr_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ { }]+
-fmt_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ { }]+
-fmtr_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0 - " \\ { }]+
+str_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\]+
+raw_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\]+
+bytes_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\]+
+f_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ { }]+
+fr_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ { }]+
+fmt_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ { }]+
+fmtr_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ { }]+
 
 # Modes
 

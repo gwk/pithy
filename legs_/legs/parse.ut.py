@@ -20,7 +20,10 @@ def pattern_descs(text:str) -> dict[str,str]:
 utest(('', [], {'main': []}, {}), parse, '')
 
 # Control characters needed by source-language grammars.
-utest({'nul': '\\x00', 'ff': '\\x0c', 'cr': '\\x0d'}, pattern_descs, r'nul: \0' + '\n' + r'ff: \f' + '\n' + r'cr: \r')
+utest({'nul': '\\x00', 'ff': '\\x0c', 'cr': '\\x0d'}, pattern_descs, r'nul: \0/' + '\n' + r'ff: \c/' + '\n' + r'cr: \r')
+
+# Code point escapes take 1 to 6 hexadecimal digits.
+utest({'a': '\\x0f', 'b': '\\U0010ffff'}, pattern_descs, r'a: \f/' + '\n' + r'b: \10FFFF/')
 
 # Text preceding the first header is treated as patterns.
 utest(('', ['a', 'b'], {'main': ['a', 'b']}, {}), parse, '// Comment.\na\nb: c\n')

@@ -53,9 +53,11 @@ Spaces and newlines inside a pattern are ignored. `//` begins a comment that ext
 * A printable character matches itself, unless it is one of the operators listed here.
   For example `.`, `{`, `"`, `:`, `é` and `→` are ordinary characters.
 * `\` escapes the next character:
-  * `\0` is null, `\f` form feed, `\n` newline, `\r` carriage return, `\t` tab and `\s` a single space.
+  * `\n` is newline, `\r` carriage return, `\t` tab and `\s` a single space.
   * `\\ \# \| \$ \? \* \+ \( \) \[ \] \& \- \^ \: \/ \,` match the escaped character.
-  * `\xHH`, `\uHHHH` and `\UHHHHHHHH` match the code point given by the hexadecimal digits `H`. Surrogates are errors.
+  * `\H/` matches the code point given by one to six hexadecimal digits `H`, closed by `/`. For example `\e9/`, `\200D/` and `\1F600/`.
+    Surrogates and values above `10FFFF` are errors.
+    There are no `\0` or `\f` escapes; write null as `\0/` and form feed as `\c/`.
   * Any other escape is an error.
 * `$Name` matches one character of a named class, e.g. `$Dec` or `$Ascii_Letter`. See [Named Character Classes](character-classes.md).
 * `[...]` is a character set; see below.

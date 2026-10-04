@@ -72,7 +72,8 @@ utest_exc(ParseError, legs_regex, 'a [b')
 
 
 # Code point escapes lex the same way in both lexers; an incomplete escape lexes as a single character escape.
-utest(handwritten_tokens('\\x41\\u00e9[\\U0001F600\\x4]', 'pattern', None), legs_tokens, '\\x41\\u00e9[\\U0001F600\\x4]', 'pattern')
+code_escapes = '\\41/\\e9/\\f/\\f[\\1F600/\\4\\200D\\1234567/]'
+utest(handwritten_tokens(code_escapes, 'pattern', None), legs_tokens, code_escapes, 'pattern')
 
 # The start mode selects the syntax.
 utest([('decl', 'sym', 'ab'), ('decl', 'colon', ':'), ('decl', 'spaces', ' '), ('decl', 'sym', 'c')],

@@ -20,6 +20,7 @@ A header requires a space after the `#`. A pattern line cannot begin with `# ` a
 import re
 from dataclasses import dataclass
 from difflib import get_close_matches
+from string import hexdigits
 from typing import Iterable
 
 from pithy.lex import Lexer, LexMode, LexTrans
@@ -258,7 +259,7 @@ pattern_lexer = Lexer(flags='mx',
     dash    = '-',
     caret   = r'\^',
     ref     = r'\$\w*',
-    esc     = r'\\(?:x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|[^\n])',
+    esc     = r'\\(?:[0-9A-Fa-f]{1,6}/|[^\n])',
     backslash = r'\\',
     char    = r'[^\x00-\x20\x7f]', # Non-ASCII characters are validated by `code_for_char`.
     charset_char = r'[^\x00-\x20\x7f]',
@@ -396,18 +397,18 @@ def code_for_char(source:Source, token:Token) -> int:
   return ord(char)
 
 def code_for_esc(source:Source, token:Token) -> int:
-  'Return the code point of an escape. A code point escape is `x`, `u` or `U` followed by 2, 4 or 8 hexadecimal digits.'
+  'Return the code point of an escape. A code point escape is 1 to 6 hexadecimal digits followed by `/`.'
   text = source[token]
   char = text[1]
   if len(text) > 2: # Code point escape.
-    code = int(text[2:], 16)
+    code = int(text[1:-1], 16)
     if code > 0x10FFFF or 0xD800 <= code < 0xE000:
       raise ParseError(source, token, f'escape is not a Unicode scalar value: U+{code:04X}.')
     return code
   try: return escape_codes[char]
   except KeyError: pass
-  if digits := code_escape_digits.get(char):
-    raise ParseError(source, token, f'code point escape `\\{char}` requires {digits} hexadecimal digits.')
+  if char in hexdigits:
+    raise ParseError(source, token, 'code point escape requires 1 to 6 hexadecimal digits followed by `/`.')
   source.fail((token, f'error: invalid escaped character: {char!r}.'))
 
 def ranges_for_ref(source:Source[str], token:Token) -> CodeRanges:
@@ -417,15 +418,11 @@ def ranges_for_ref(source:Source[str], token:Token) -> CodeRanges:
 
 
 escape_codes:dict[str, int] = {
-  '0': 0,
-  'f': ord('\f'),
   'n': ord('\n'),
   'r': ord('\r'),
   's': ord(' '), # nonstandard space escape.
   't': ord('\t'),
 }
-code_escape_digits = {'x': 2, 'u': 4, 'U': 8}
-
 escape_codes.update((c, ord(c)) for c in '\\#|$?*+()[]&-^:/,')
 
 

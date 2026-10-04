@@ -33,7 +33,7 @@ amp: &
 dash: -
 caret: \^
 ref: \$ [$Ascii_Letter $Ascii_Number _]*
-esc: \\ (x $Hex $Hex | u $Hex $Hex $Hex $Hex | U $Hex $Hex $Hex $Hex $Hex $Hex $Hex $Hex | [$Ascii $Readable - \n])
+esc: \\ ($Hex $Hex? $Hex? $Hex? $Hex? $Hex? \/ | [$Ascii $Readable - \n])
 backslash: \\ // A dangling backslash, which is not followed by an escapable character.
 char: [$Visible - \[ \] \( \) \| \? \* \+ \$ \\ ,]
 charset_char: [$Visible - \[ \] \& \- \^ \$ \\]
