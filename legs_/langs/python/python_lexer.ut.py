@@ -17,6 +17,9 @@ from utest import utest_run, utest_val
 root = Path(__file__).resolve().parents[3]
 lexer_type = cached_lexer_class(root / 'legs_/langs/python/python.legs', root / '_build/langs/python.py')
 
+type IssueDesc = tuple[str,int,int,int|None] # (kind, pos, end, opening).
+type TokenDesc = tuple[str,str,int,int] # (mode, kind, pos, end).
+
 
 def scan(text:str|bytes) -> tuple[PythonLexer,list[Token]]:
   source = Source('test', text.encode('utf-8') if isinstance(text, str) else text)
@@ -58,41 +61,67 @@ def string_fragments() -> None:
 
 @utest_run
 def invalid_and_incomplete() -> None:
-  cases:list[tuple[str|bytes,tuple[str,int,int]]] = [
-    ('0x', ('incomplete', 2, 2)),
-    ('0xG', ('invalid', 2, 3)),
-    ('1e+', ('incomplete', 3, 3)),
-    ('0x12_', ('incomplete', 5, 5)),
-    ('1__2', ('invalid', 2, 3)),
-    ("'\\xG1'", ('invalid', 3, 4)),
-    ("'\\x4", ('incomplete', 4, 4)),
-    ("'abc", ('incomplete', 4, 4)),
-    ('"α\\u12Z4"', ('invalid', 7, 8)),
-    ("b'α'", ('invalid', 2, 4)),
-    ('x = $\ny=1\n', ('invalid', 4, 5)),
-    ('(x', ('incomplete', 2, 2)),
-    ('x)', ('invalid', 1, 2)),
-    ('f"{x', ('incomplete', 4, 4)),
-    ('f"a}b"', ('invalid', 3, 4)),
-    (b"'\xff'", ('invalid', 1, 2)),
-    (b"'\xc3", ('incomplete', 2, 2)),
-    (b'\xc3', ('incomplete', 1, 1)),
-    ('\\', ('incomplete', 1, 1)),
-    ('\\x', ('invalid', 1, 2)),
+  'Each case gives the text, every issue and every `invalid` or `incomplete` token.'
+  cases:list[tuple[str|bytes,list[IssueDesc],list[TokenDesc]]] = [
+    ('0x', [('incomplete', 2, 2, None)], [('main', 'incomplete', 0, 2)]),
+    ('0xG', [('invalid', 2, 3, None)], [('main', 'incomplete', 0, 2)]),
+    ('1e+', [('incomplete', 3, 3, None)], [('main', 'incomplete', 0, 3)]),
+    ('0x12_', [('incomplete', 5, 5, None)], [('main', 'incomplete', 0, 5)]),
+    ('1__2', [('invalid', 2, 3, None)], [('main', 'incomplete', 0, 2)]),
+    ("'\\xG1'", [('invalid', 3, 4, 0)], [('str_s', 'incomplete', 1, 3)]),
+    # A truncated escape and the unclosed string are reported separately, each with its own token.
+    ("'\\x4", [('incomplete', 4, 4, 0), ('incomplete', 4, 4, 0)],
+      [('str_s', 'incomplete', 1, 4), ('str_s', 'incomplete', 4, 4)]),
+    ("'abc", [('incomplete', 4, 4, 0)], [('str_s', 'incomplete', 4, 4)]),
+    ('"α\\u12Z4"', [('invalid', 7, 8, 0)], [('str_d', 'incomplete', 3, 7)]),
+    # Issues that the coordinator detects in well-formed fragments have no `invalid` or `incomplete` token.
+    ("b'α'", [('invalid', 2, 4, 0)], []),
+    ('x = $\ny=1\n', [('invalid', 4, 5, None)], [('main', 'invalid', 4, 5)]),
+    ('(x', [('incomplete', 2, 2, 0)], []),
+    ('x)', [('invalid', 1, 2, None)], []),
+    # The unclosed field and the unclosed string are both reported; the string yields the token.
+    ('f"{x', [('incomplete', 4, 4, 2), ('incomplete', 4, 4, 0)], [('f_d', 'incomplete', 4, 4)]),
+    ('f"a}b"', [('invalid', 3, 4, 0)], []),
+    (b"'\xff'", [('invalid', 1, 2, 0)], [('str_s', 'invalid', 1, 2)]),
+    (b"'\xc3", [('incomplete', 2, 2, 0), ('incomplete', 2, 2, 0)],
+      [('str_s', 'incomplete', 1, 2), ('str_s', 'incomplete', 2, 2)]),
+    (b'\xc3', [('incomplete', 1, 1, None)], [('main', 'incomplete', 0, 1)]),
+    ('\\', [('incomplete', 1, 1, None)], [('main', 'incomplete', 0, 1)]),
+    ('\\x', [('invalid', 1, 2, None)], [('main', 'incomplete', 0, 1)]),
+    # An unescaped newline ends a single-quoted string; code lexing resumes at the newline.
+    ("'bad\nx = 1\n", [('invalid', 4, 5, 0)], [('str_s', 'incomplete', 4, 4)]),
   ]
-  for text, expected in cases:
+  for text, issues, error_tokens in cases:
     scanner, tokens = scan(text)
-    utest_val(expected, (scanner.issues[0].kind, scanner.issues[0].pos, scanner.issues[0].end), text)
-    if expected[0] == 'incomplete':
-      utest_val(True, any(t.kind == 'incomplete' for t in tokens) or text in ('(x', 'f"{x'))
+    utest_val(issues, [(i.kind, i.pos, i.end, i.opening) for i in scanner.issues], f'issues: {text!r}')
+    utest_val(error_tokens, [(t.mode, t.kind, t.pos, t.end) for t in tokens if t.kind in ('invalid', 'incomplete')],
+      f'error tokens: {text!r}')
   scanner, tokens = scan("'bad\nx = 1\n")
-  utest_val(('invalid', 4, 5), (scanner.issues[0].kind, scanner.issues[0].pos, scanner.issues[0].end))
-  utest_val(True, any(t.kind == 'name' and scanner.source.text[t.slc] == b'x' for t in tokens))
-  utest_val(0, scanner.issues[0].opening)
+  utest_val(True, any(t.kind == 'name' and scanner.source.text[t.slc] == b'x' for t in tokens), 'recovery after newline')
 
 
 @utest_run
-def every_truncation_progresses() -> None:
-  text = 'f"α{{x}}{name!r:>{width}}\\u1234"\n'.encode()
-  for end in range(len(text) + 1):
-    scan(text[:end])
+def every_truncation_recovers() -> None:
+  '''
+  Truncate each sample at every byte position, including within UTF-8 sequences.
+  `scan` checks that the tokens cover each prefix. The issues must be consistent with the tokens.
+  '''
+  texts = [*python_samples(), 'f"α{{x}}{name!r:>{width}}\\u1234"\n']
+  for text in texts:
+    data = text.encode()
+    for end in range(len(data) + 1):
+      prefix = data[:end]
+      scanner, tokens = scan(prefix)
+      issues = scanner.issues
+      problems:list[str] = []
+      if tokens[-1].kind != 'endmarker': problems.append('The last token is not `endmarker`.')
+      if [i.pos for i in issues] != sorted(i.pos for i in issues): problems.append('The issues are not in source order.')
+      for issue in issues:
+        if not (0 <= issue.pos <= issue.end <= end): problems.append(f'Issue span is out of bounds: {issue}.')
+        if issue.opening is not None and not (0 <= issue.opening <= issue.pos):
+          problems.append(f'Issue opening is out of bounds: {issue}.')
+      for token in tokens:
+        if token.kind not in ('invalid', 'incomplete'): continue
+        if not any(i.pos <= token.end and token.pos <= i.end for i in issues): problems.append(f'Token has no issue: {token}.')
+      utest_val([], problems, f'truncation: {prefix!r}')
+    utest_val([], scanner.issues, f'complete sample: {text!r}') # The last prefix is the whole sample.
