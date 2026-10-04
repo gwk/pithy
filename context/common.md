@@ -321,6 +321,9 @@ pithy/ (the git/project root, not the package root)
 So for example when we refer to `pithy.web.server`, it is `pithy_/pithy/web/server.py` relative to the project.
 If we refer to `.web.server`, we probably mean within the pithy package, or whatever package we are discussing.
 
+A directory can have its own `CTX.md` describing that part of the project, e.g. `legs_/CTX.md`.
+Read it before working in that directory if it has not already been loaded into the session.
+
 ## Rust
 
 Rust-based packages keep their rust sources in the package directory, interleaved with the python sources,
