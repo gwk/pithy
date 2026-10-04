@@ -18,9 +18,8 @@ from tolkien import Source
 from ..build import build_lexer_class, build_mode_automata, build_pattern_descs
 from ..dfa import DFA
 from ..parse import Grammar, parse_legs
-from ..patterns import gen_incomplete_pattern
 from ..props import GrammarChecker, PropertyError
-from ..targets.python import output_python, output_python_re
+from ..targets.python import output_python
 from ..targets.swift import output_swift, swift_kind_syms, swift_safe_sym
 
 
@@ -74,8 +73,6 @@ class LegsTestCmd(Cmd):
     try: f = open(self.path, encoding='utf-8')
     except FileNotFoundError: exit(f'error: no such grammar file: {self.path!r}')
     with f: grammar = parse_legs(self.path, f.read())
-    if 'python-re' in langs and any(p.has_commit for p in grammar.patterns.values()):
-      exit('error: commitment is not supported by python-re output; use python or swift.')
     if self.inputs and self.mode not in grammar.modes:
       exit(f'error: grammar has no mode named {self.mode!r}; specify the start mode with `-mode`. '
         f'modes: {", ".join(sorted(grammar.modes))}.')
@@ -147,16 +144,6 @@ class LexerTest:
     return self.run_python_driver(path)
 
 
-  def run_python_re(self, stem:str) -> list[Tokens]:
-    path = stem + '.re.py'
-    patterns = self.grammar.patterns
-    incomplete_patterns = {dfa.name: gen_incomplete_pattern(dfa.backtracking_order, patterns) for dfa in self.dfas}
-    output_python_re(path, dfas=self.dfas, mode_transitions=self.grammar.transitions, patterns=patterns,
-      incomplete_patterns=incomplete_patterns, pattern_descs=self.pattern_descs, license=self.grammar.license,
-      patterns_path=None, type_prefix='')
-    return self.run_python_driver(path)
-
-
   def run_python_driver(self, path:str) -> list[Tokens]:
     with open(path, 'a') as f: f.write(python_driver)
     return self.run_driver([python_path, path, self.mode], kind_for_field=str)
@@ -205,7 +192,6 @@ def token_lines(text:bytes, tokens:Tokens) -> list[str]:
 
 lang_runners:dict[str,Callable[[LexerTest,str],list[Tokens]]] = {
   'python': LexerTest.run_python,
-  'python-re': LexerTest.run_python_re,
   'swift': LexerTest.run_swift,
 }
 

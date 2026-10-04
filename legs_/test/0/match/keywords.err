@@ -1,1 +1,0 @@
-note: `main`: patterns cannot be correctly ordered for backtracking regex engines: ('if', 'name').

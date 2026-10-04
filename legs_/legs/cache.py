@@ -27,7 +27,7 @@ def cached_lexer_class(grammar_path:str|PathLike[str], out_path:str|PathLike[str
   '''
   grammar_path = str(grammar_path)
   out_path = str(out_path)
-  if not out_path.endswith('.py') or out_path.endswith('.re.py'):
+  if not out_path.endswith('.py'):
     raise ValueError(f'expected a `.py` output path: {out_path!r}')
   makedirs(dirname(out_path) or '.', exist_ok=True)
   # Run the command as the console script does, so that it computes the same hash as `legs` run by hand.

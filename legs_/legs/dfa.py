@@ -32,12 +32,10 @@ thus producing a stream of tokens that seamlessly cover any input string.
 '''
 
 from collections import defaultdict
-from itertools import combinations
 from typing import Iterable, Iterator
 
-from pithy.graph import visit_nodes
 from pithy.io import errL, errSL
-from pithy.iterable import first_el, frozenset_from, int_tuple_ranges, set_from
+from pithy.iterable import first_el, frozenset_from, int_tuple_ranges
 from pithy.unicode.codepoints import codes_desc, codes_range_desc
 
 
@@ -57,7 +55,6 @@ class DFA:
   'Deterministic Finite Automaton. Each DFA describes one mode and is named after it.'
 
   def __init__(self, name:str, transitions:DfaTransitions, match_node_kind_sets:dict[int,frozenset[str]], lit_pattern_names:set[str],
-   backtracking_order:tuple[str,...]=(), unorderable_pairs:tuple[tuple[str,str],...]=(),
    commit_nodes:frozenset[int]=frozenset()) -> None:
     assert name
     self.name = name
@@ -65,8 +62,6 @@ class DFA:
     self.match_node_kind_sets = match_node_kind_sets
     self.lit_pattern_names = lit_pattern_names
     self.commit_nodes = commit_nodes
-    self.backtracking_order = backtracking_order # The best-effort ordering backtracking regex patterns.
-    self.unorderable_pairs = unorderable_pairs # Pairs of kinds that cannot be correctly ordered for backtracking regex engines.
     self.start_node = min(transitions)
     self.invalid_node = self.start_node + 1
     self.end_node = max(transitions) + 1
@@ -385,80 +380,8 @@ def minimize_dfa(dfa:DFA, start_node:int) -> DFA:
   if ambiguous_kind_groups:
     raise AmbiguityError([f'Rules are ambiguous: {", ".join(group)}.' for group in sorted(ambiguous_kind_groups)])
 
-
-  # Attempt to order the patterns for backtracking regex generation using the full match node sets.
-  backtracking_order, unorderable_pairs = calc_backtrack_order(match_node_kinds, kind_match_nodes, transitions)
-
   # Freeze the reduced match sets.
   match_node_kind_sets = { node : frozenset(kinds) for node, kinds in match_node_kinds.items() }
 
   return DFA(name=dfa.name, transitions=transitions, match_node_kind_sets=match_node_kind_sets,
-    lit_pattern_names=dfa.lit_pattern_names, backtracking_order=backtracking_order, unorderable_pairs=unorderable_pairs,
-    commit_nodes=frozenset(mapping[node] for node in dfa.commit_nodes))
-
-
-def calc_backtrack_order(match_node_kinds:dict[int,set[str]], kind_match_nodes:dict[str,set[int]],
- transitions:DfaTransitions) -> tuple[tuple[str,...],tuple[tuple[str,str],...]]:
-  '''
-  Calculate a reasonable order for backtracking regex outputs.
-  Return the order and the pairs of kinds that cannot be correctly ordered.
-  It is not always possible to generate a correct order,
-  because backtracking regex engines handle ambiguity by ordered choice,
-  so ambiguity can only addressed with positive or negative assertions ("\\b" is the most common case).
-  For example, a keyword literal 'kw' and a name pattern '$Ascii_Letter+' can be fixed by writing "kw\\b" first.
-  There are pathological examples that get much worse however.
-
-  The goal is to generate TextMate grammars, so we make a best effort that is not guaranteed to be correct.
-  '''
-
-  kind_subset_kinds = defaultdict[str,set[str]](set)
-  #^ For each kind, the set of kinds whose match node sets are subsets.
-
-  kind_reachable_kinds:dict[str,set[str]] = {}
-  #^ For each kind, the set of kinds whose match nodes are reachable from this kind's match nodes.
-
-  for kind, nodes in kind_match_nodes.items():
-    if kind == 'invalid': continue # Omit invalid entirely; it is handled separately.
-    # Compute subsets.
-    other_kinds = set_from(match_node_kinds[node] for node in nodes)
-    assert other_kinds
-    for other_kind in tuple(other_kinds): # Convert to tuple for order stability.
-      if other_kind == kind: continue
-      other_nodes = kind_match_nodes[other_kind]
-      if other_nodes.issubset(nodes):
-        kind_subset_kinds[kind].add(other_kind)
-    # Compute reachability.
-    next_nodes = set_from(transitions[node].values() for node in nodes)
-    reachable_nodes = visit_nodes(start_nodes=next_nodes, visitor=lambda node:transitions[node].values())
-    reachable_kinds:set[str] = set()
-    for node in reachable_nodes:
-      try: node_kinds = match_node_kinds[node]
-      except KeyError: continue
-      reachable_kinds.update(node_kinds)
-    reachable_kinds.discard(kind)
-    kind_reachable_kinds[kind] = reachable_kinds
-
-  kinds = sorted(k for k in kind_match_nodes if k != 'invalid')
-  unorderable_kinds:set[str] = set()
-  unorderable_pairs:list[tuple[str,str]] = []
-  for p in combinations(kinds, 2):
-    l, r = p
-    if l in kind_reachable_kinds[r] and r in kind_reachable_kinds[l]: # Cyclical reachability.
-      unorderable_kinds.update(p)
-      unorderable_pairs.append(p)
-
-  def order_key(kind:str) -> tuple:
-    '''
-    The ordering heuristic attempts to accommodate the following cases:
-    * For cyclical patterns, subset patterns should come first. These require additional assertions. e.g. 'kw' and '\\w+'.
-    * Otherwise, longer (reachable) patterns should come first to utilize the backtracker, e.g. '==' before '='.
-    We choose to place unorderable patterns first because they require attention.
-    '''
-    orderable = kind not in unorderable_kinds # Unordereables first.
-    subsets = sorted(kind_subset_kinds[kind])
-    reachables = sorted(kind_reachable_kinds[kind])
-    return (orderable, subsets, reachables)
-
-  ordered_kinds = tuple(sorted(kinds, key=order_key))
-
-  return (ordered_kinds, tuple(unorderable_pairs))
+    lit_pattern_names=dfa.lit_pattern_names, commit_nodes=frozenset(mapping[node] for node in dfa.commit_nodes))

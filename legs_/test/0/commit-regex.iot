@@ -1,6 +1,0 @@
-{
-  'cmd': 'legs $PROJ/legs_/test/0/commit.legs -langs python-re -output unsupported.py',
-  'links': { 'legs_/test/0/commit.legs' },
-  'code': 1,
-  'err-val': 'error: commitment is not supported by python-re output; use python or swift.\n',
-}

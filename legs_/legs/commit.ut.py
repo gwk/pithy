@@ -11,9 +11,9 @@ from legs import DictLexerBase
 from legs.build import build_lexer_class, build_lexer_class_for_automata, build_mode_automata
 from legs.parse import parse_legs
 from legs.props import GrammarChecker
-from legs.targets.python import output_python, output_python_re
+from legs.targets.python import output_python
 from tolkien import Source
-from utest import utest_exc, utest_run, utest_val
+from utest import utest_run, utest_val
 
 
 def check(grammar_text:str, cases:dict[bytes,list[tuple[str,bytes]]]) -> None:
@@ -30,10 +30,6 @@ def check(grammar_text:str, cases:dict[bytes,list[tuple[str,bytes]]]) -> None:
       for cls in (lexer, generated):
         utest_val(expected, [(t.kind, text[t.slc]) for t in cls(source)], repr(text))
       GrammarChecker(grammar, automata, lexer).check_tokens(text, 'main')
-    utest_exc(ValueError('Commitment is not supported by python-re output; use python or swift.'),
-      output_python_re, str(Path(directory) / 'unsupported.py'), [a.min_dfa for a in automata], grammar.transitions,
-      grammar.patterns, {}, lexer.pattern_descs, grammar.license, patterns_path=None, type_prefix='')
-    utest_val(False, (Path(directory) / 'unsupported.py').exists())
   GrammarChecker(grammar, automata, lexer).check_all(max_examples=20)
 
 

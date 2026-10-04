@@ -35,9 +35,8 @@ from ..build import build_mode_automata, build_pattern_descs, ModeAutomata, Mode
 from ..dfa import DFA
 from ..nfa import NFA
 from ..parse import parse_legs
-from ..patterns import gen_incomplete_pattern, LegsPattern
 from ..targets.dot import output_dot
-from ..targets.python import output_python, output_python_re, OutputOpts
+from ..targets.python import output_python, OutputOpts
 from ..targets.swift import output_swift
 
 
@@ -110,8 +109,6 @@ def run_legs(args:LegsCmd) -> None:
   grammar = parse_legs(path, src)
   license = grammar.license
   patterns = grammar.patterns
-  if 'python-re' in langs and any(p.has_commit for p in patterns.values()):
-    exit('error: commitment is not supported by python-re output; use python or swift.')
   mode_pattern_kinds = grammar.modes
   mode_transitions = grammar.transitions
 
@@ -160,16 +157,10 @@ def run_legs(args:LegsCmd) -> None:
 
   pattern_descs = build_pattern_descs(grammar)
 
-  incomplete_patterns:dict[str,LegsPattern|None] = {
-    dfa.name : gen_incomplete_pattern(dfa.backtracking_order, patterns) for dfa in dfas }
-
   if args.describe:
     errL('Patterns:')
     for name, pattern in patterns.items():
       pattern.describe(name=name)
-    for name, inc_pattern in incomplete_patterns.items():
-      if inc_pattern:
-        inc_pattern.describe(name=f'{name}.incomplete')
 
   if not langs: exit(0)
 
@@ -181,11 +172,6 @@ def run_legs(args:LegsCmd) -> None:
   if 'python' in langs:
     output_python(out_paths['python'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs,
       license=license, **output_opts)
-
-  if 'python-re' in langs:
-    output_python_re(out_paths['python-re'][0], dfas=dfas, mode_transitions=mode_transitions,
-      patterns=patterns, incomplete_patterns=incomplete_patterns,
-      pattern_descs=pattern_descs, license=license, **output_opts)
 
   if 'swift' in langs:
     output_swift(out_paths['swift'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs,
@@ -271,10 +257,6 @@ def describe_automata(automata:ModeAutomata, dbg:bool, stats:bool) -> None:
     automata.min_dfa.describe_stats('Min DFA Stats')
     print(f'  time: {automata.minimize_time:.3f} seconds')
   if dbg: errL('----')
-  unorderable_pairs = automata.min_dfa.unorderable_pairs
-  if unorderable_pairs:
-    errL(f'note: `{automata.mode}`: patterns cannot be correctly ordered for backtracking regex engines: ',
-      ', '.join(str(p) for p in unorderable_pairs), '.')
   post_matches = len(automata.min_dfa.post_match_nodes)
   if post_matches:
     errL(f'note: `{automata.mode}`: minimized DFA contains ', pluralize(post_matches, "post-match node"), '.')
@@ -312,7 +294,6 @@ def match_bytes(nfa:NFA, fat_dfa:DFA, min_dfa:DFA, text:str, text_bytes:bytes) -
 ext_langs = {
   '.dot' : 'dot',
   '.py' : 'python',
-  '.re.py' : 'python-re',
   '.swift' : 'swift',
 }
 
@@ -321,13 +302,12 @@ lang_exts = { lang : ext for ext, lang in ext_langs.items() }
 lang_comment_prefixes = {
   'dot' : '//',
   'python' : '#',
-  'python-re' : '#',
   'swift' : '//',
 }
 
 hash_label = 'legs-hash'
 
-supported_langs = {'dot', 'python', 'python-re', 'swift'}
+supported_langs = {'dot', 'python', 'swift'}
 
 
 if __name__ == '__main__': main()

@@ -2,7 +2,7 @@
 
 '''
 The pattern tree that the parser produces for each pattern of a grammar.
-Each node of the tree can add itself to an NFA, and can write itself as a regular expression for the `python-re` target.
+Each node of the tree can add itself to an NFA, and can write itself as a regular expression.
 '''
 
 from collections import defaultdict
@@ -31,7 +31,6 @@ __all__ = [
   'QuantityPattern',
   'SeqPattern',
   'StarPattern',
-  'regex_for_codes',
 ]
 
 
@@ -81,7 +80,7 @@ class LegsPattern:
     raise NotImplementedError
 
   def gen_regex(self, flavor:str) -> str:
-    'Return the regular expression for the pattern. `flavor` names the regex dialect, e.g. `py.re.bytes`.'
+    'Return the regular expression for the pattern. `flavor` names the regex dialect, e.g. `py.re`.'
     raise NotImplementedError
 
   def gen_regex_sub(self, flavor:str, precedence:int) -> str:
@@ -89,13 +88,6 @@ class LegsPattern:
     pattern = self.gen_regex(flavor=flavor)
     if precedence < self.precedence: return pattern
     return f'(?:{pattern})'
-
-  def gen_incomplete(self) -> 'LegsPattern|None':
-    '''
-    Return a pattern that matches text which begins to match this pattern but stops short, or None.
-    The `python-re` target uses it to produce `incomplete` tokens.
-    '''
-    raise NotImplementedError(self)
 
 
 class CommitPattern(LegsPattern):
@@ -120,8 +112,6 @@ class CommitPattern(LegsPattern):
 
   def gen_regex(self, flavor:str) -> str:
     raise ValueError('Commitment is not supported by regular expression output.')
-
-  def gen_incomplete(self) -> LegsPattern|None: return None
 
 
 class StructPattern(LegsPattern):
@@ -163,23 +153,8 @@ class ChoicePattern(StructPattern):
       sub.gen_nfa(mk_node, encoding, transitions, start, end)
 
   def gen_regex(self, flavor:str) -> str:
-    # TODO: must take into account ordering.
     sub_patterns = [sub.gen_regex_sub(flavor=flavor, precedence=self.precedence) for sub in self]
     return '|'.join(sub_patterns)
-
-  def gen_incomplete(self) -> LegsPattern|None:
-    hd = self.hd.gen_incomplete()
-    tl = self.tl.gen_incomplete()
-    if not tl: return hd
-    if not hd: return tl
-    return ChoicePattern(hd, tl)
-
-  @staticmethod
-  def from_opts(subs:Iterable[LegsPattern|None]) -> LegsPattern|None:
-    l = [s for s in subs if s]
-    if not l: return None
-    if len(l) == 1: return l[0]
-    return ChoicePattern(*l)
 
 
 class SeqPattern(StructPattern):
@@ -209,20 +184,6 @@ class SeqPattern(StructPattern):
     sub_patterns = [sub.gen_regex_sub(flavor=flavor, precedence=self.precedence) for sub in self]
     return ''.join(sub_patterns)
 
-  def gen_incomplete(self) -> LegsPattern|None:
-    els = list(self)
-    incs:list[LegsPattern] = []
-    for i in range(len(els)):
-      inc_els = list(els[:i])
-      inc_tail = els[i].gen_incomplete()
-      if inc_tail is not None:
-        inc_els.append(inc_tail)
-      inc = SeqPattern.from_opts(inc_els)
-      if inc: incs.append(inc)
-    # TODO: any non-tail element in the sequence must be expanded out.
-    # Reverse so that the most complete match is preferred.
-    return ChoicePattern.from_opts(reversed(incs))
-
   @property
   def is_literal(self) -> bool: return all(sub.is_literal for sub in self)
 
@@ -233,12 +194,6 @@ class SeqPattern(StructPattern):
   def from_list(els:list[LegsPattern]) -> LegsPattern:
     if len(els) == 1: return els[0]
     return SeqPattern(*els)
-
-  @staticmethod
-  def from_opts(els:Iterable[LegsPattern|None]) -> LegsPattern|None:
-    filtered:list[LegsPattern] = list(filter(None, els))
-    if not filtered: return None
-    return SeqPattern.from_list(filtered)
 
 
 class QuantityPattern(StructPattern):
@@ -271,9 +226,6 @@ class OptPattern(QuantityPattern):
     transitions[start][empty_symbol].add(end)
     self.sub.gen_nfa(mk_node, encoding, transitions, start, end)
 
-  def gen_incomplete(self) -> LegsPattern|None:
-    return self.sub.gen_incomplete()
-
 
 class StarPattern(QuantityPattern):
   'Matches the subpattern zero or more times: `a*`.'
@@ -285,11 +237,6 @@ class StarPattern(QuantityPattern):
     transitions[start][empty_symbol].add(branch)
     transitions[branch][empty_symbol].add(end)
     self.sub.gen_nfa(mk_node, encoding, transitions, branch, branch)
-
-  def gen_incomplete(self) -> LegsPattern|None:
-    sub_inc = self.sub.gen_incomplete()
-    if sub_inc is None: return None
-    return SeqPattern.from_opts((self, sub_inc))
 
 
 class PlusPattern(QuantityPattern):
@@ -304,9 +251,6 @@ class PlusPattern(QuantityPattern):
     transitions[post][empty_symbol].add(end)
     transitions[post][empty_symbol].add(pre)
     self.sub.gen_nfa(mk_node, encoding, transitions, pre, post)
-
-  def gen_incomplete(self) -> LegsPattern|None:
-    return StarPattern(self.sub).gen_incomplete()
 
 
 class CharsetPattern(LegsPattern):
@@ -344,23 +288,7 @@ class CharsetPattern(LegsPattern):
 
 
   def gen_regex(self, flavor:str) -> str:
-    ranges = self.ranges
-    if flavor.endswith('.bytes') and any(r[1] >= 0x80 for r in ranges):
-      # Some code points exceed the ASCII range; match the UTF-8 byte sequences.
-      # Each code range is split into subranges whose encodings are described by one sequence of byte ranges.
-      single_byte_ranges:list[CodeRange] = []
-      seq_regexes:list[str] = []
-      for r in ranges:
-        for byte_ranges in utf8_byte_range_seqs(*r):
-          if len(byte_ranges) == 1: single_byte_ranges.append(byte_ranges[0])
-          else: seq_regexes.append(''.join(regex_for_code_ranges((byte_range,), flavor) for byte_range in byte_ranges))
-      if single_byte_ranges: seq_regexes.insert(0, regex_for_code_ranges(single_byte_ranges, flavor))
-      return f'(?:{"|".join(seq_regexes)})'
-    return regex_for_code_ranges(ranges, flavor)
-
-
-  def gen_incomplete(self) -> LegsPattern|None:
-    return None
+    return regex_for_code_ranges(self.ranges, flavor)
 
 
   @property
@@ -387,6 +315,8 @@ def utf8_byte_range_seqs(start:int, end:int) -> Iterator[tuple[CodeRange,...]]:
   Each sequence describes the UTF-8 encodings of a subrange of the code points: one byte range per encoded byte.
   Together the sequences match exactly the encodings of the code points in the range.
   Surrogates are omitted because they cannot be encoded.
+  This is currently unused. It could be used to build the NFA of a charset from byte ranges,
+  instead of encoding every code point as `CharsetPattern.gen_nfa` does.
   '''
   last = end - 1 # The remainder of the algorithm uses inclusive ranges.
   if start > last: return
@@ -443,18 +373,3 @@ def regex_for_code_ranges(ranges:Sequence[CodeRange], flavor:str) -> str:
       return regex_for_code(r[0], flavor)
   p = ''.join(_regex_range_for_code_range(r, flavor) for r in ranges)
   return f'[{p}]'
-
-
-def regex_for_codes(codes:Iterable[int], flavor:str) -> str:
-  'Return the regular expression that matches any one of the code points.'
-  return regex_for_code_ranges(tuple(ranges_for_codes(codes)), flavor)
-
-
-def gen_incomplete_pattern(backtracking_order:Sequence[str], patterns:dict[str,LegsPattern]) -> LegsPattern|None:
-  'Return the pattern for the `incomplete` tokens of a mode, or None. `backtracking_order` lists the kinds of the mode.'
-  incompletes:list[LegsPattern] = []
-  for kind in backtracking_order:
-    pattern = patterns[kind]
-    incomplete = pattern.gen_incomplete()
-    if incomplete: incompletes.append(incomplete)
-  return ChoicePattern.from_opts(incompletes)

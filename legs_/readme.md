@@ -18,7 +18,6 @@ Performance is a work in progress. The long term goal is a healthy balance betwe
 The output languages currently supported are:
 * `python`: a table-driven lexer. This is the reference implementation.
 * `swift`: a lexer compiled to a switch statement.
-* `python-re`: a lexer that uses compiled regular expressions. It is experimental and slower than the table-driven lexer.
 * `dot`: Graphviz diagrams of the automata.
 
 
@@ -74,7 +73,7 @@ legs -patterns 'number: $Dec+' -match 123 -match abc
 Repeat `-patterns` or `-match` for multiple values. Use `legs -help` for all options.
 
 `-encoding` selects the encoding of the text that the lexer consumes; character sets are compiled to byte sequences in that encoding.
-This is a work in progress: only the default `utf-8` is tested, and `legs-test` and the `python-re` output assume it.
+This is a work in progress: only the default `utf-8` is tested, and `legs-test` assumes it.
 The grammar file itself is always read as UTF-8.
 
 
@@ -113,7 +112,7 @@ legs-test grammar.legs -mode main 'first input' 'second input'
 Each input is lexed by a reference lexer built in-process, and the tokens are printed.
 The Python and Swift lexers are then generated and run on the same inputs.
 Any difference from the reference tokens is reported and causes a nonzero exit code.
-Use `-langs` to choose the generated lexers, e.g. `-langs python,python-re`, and `-mode` for a grammar that has no `main` mode.
+Use `-langs` to choose the generated lexers, e.g. `-langs python`, and `-mode` for a grammar that has no `main` mode.
 
 With `-props`, `legs-test` also checks the reference lexer against the NFA of each mode, using inputs generated from the grammar:
 ```

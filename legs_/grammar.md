@@ -161,5 +161,4 @@ Commitment is separate from token-boundary validation: `123abc` can still be a n
 No identifier-adjacency restriction is implied by a barrier.
 
 The table-driven Python and Swift backends support commitment.
-The experimental `python-re` backend rejects grammars containing barriers rather than silently changing their meaning.
 The NFA property oracle checks commitment independently of DFA construction and minimization.
