@@ -290,6 +290,36 @@ utest_exc(Lexer.DefinitionError("conflicting transitions:\n"
     LexTrans(('sub', 'main'), kind=('b', 'a'), mode='main', pop='a', consume=False)])
 
 
+# Line-aware modes.
+
+line_lexer = Lexer(patterns=dict(newline=r'\n', spaces=r' +', word=r'\w+', paren_o=r'\(', paren_c=r'\)'),
+  modes=[
+    LexMode('main', ['newline', 'spaces', 'word', 'paren_o'], line_break_kind='newline'),
+    LexMode('group', ['newline', 'spaces', 'word', 'paren_c'])],
+  transitions=[
+    LexTrans('main', kind='paren_o', mode='group', pop='paren_c', consume=True)])
+
+# An empty `end_of_line` precedes the line break of each line that holds another token, and ends an unterminated last line.
+utest_seq([('word', 'a'), ('end_of_line', ''), ('newline', '\n'), ('newline', '\n'), ('word', 'b'), ('end_of_line', '')],
+  run_lexer, line_lexer, 'a\n\nb')
+
+# Without a declared ignore set, a line of only spaces counts.
+utest_seq([('spaces', ' '), ('end_of_line', ''), ('newline', '\n')], run_lexer, line_lexer, ' \n')
+
+# A pushed mode that is not line-aware suspends the rule; the line ends at the next line break in the line-aware mode.
+utest_seq(['main:a', 'main:(', 'group:b', 'group:\n', 'group:c', 'group:)', 'main:', 'main:\n', 'main:d', 'main:'],
+  run_modes, line_lexer, 'a(b\nc)\nd')
+
+# The synthesized token honors `drop`, and the line break can be dropped independently.
+utest_seq([('word', 'a'), ('newline', '\n')], run_lexer, line_lexer, 'a\n', drop={'end_of_line'})
+utest_seq([('word', 'a'), ('end_of_line', '')], run_lexer, line_lexer, 'a\n', drop={'newline'})
+
+utest_exc(Lexer.DefinitionError("mode 'main' line_break_kind is not a pattern of the mode: 'nl'"),
+  Lexer, patterns=dict(a='a'), modes=[LexMode('main', ['a'], line_break_kind='nl')])
+
+utest_exc(Lexer.DefinitionError("name is reserved: 'end_of_line'"), Lexer, patterns=dict(end_of_line='a'))
+
+
 # Indents.
 
 indent_patterns = dict(

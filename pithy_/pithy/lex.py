@@ -17,15 +17,23 @@ _context_keywords_ = ['dedent', 'indentation', 'lexer', 'lexical analysis', 'mod
 
 
 class LexMode:
-  def __init__(self, name:str, kinds:Iterable[str], *, indents:bool=False):
+  '''
+  A named set of patterns.
+  `line_break_kind` makes the mode line-aware: the lexer emits an empty `end_of_line` token before each line break token
+  that ends a line holding at least one other token, and at the end of the text if the last line holds one.
+  '''
+
+  def __init__(self, name:str, kinds:Iterable[str], *, indents:bool=False, line_break_kind:str|None=None):
     self.name = name
     self.kinds = list(iter_str(kinds))
     self.indents = indents
+    self.line_break_kind = line_break_kind
     self.kind_set:frozenset[str] = frozenset() # Filled in by Lexer.
     self.regex:Pattern = cast(Pattern, None) # Filled in by Lexer.
 
   def __repr__(self) -> str:
-    return f'{type(self).__name__}({self.name!r}, kinds={self.kinds}, kind_set={self.kind_set}, indents={self.indents})'
+    return (f'{type(self).__name__}({self.name!r}, kinds={self.kinds}, kind_set={self.kind_set}, indents={self.indents}, '
+      f'line_break_kind={self.line_break_kind!r})')
 
 
 class LexTrans:
@@ -118,6 +126,8 @@ class Lexer:
             raise Lexer.DefinitionError(f'mode {mode.name!r} wildcard pattern regex does not match any patterns: {kind}')
           kind_set.update(matching)
       if not kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} has no patterns')
+      if mode.line_break_kind is not None and mode.line_break_kind not in kind_set:
+        raise Lexer.DefinitionError(f'mode {mode.name!r} line_break_kind is not a pattern of the mode: {mode.line_break_kind!r}')
       if mode.indents:
         for kind in ('newline', 'spaces'):
           if kind not in kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} has indents but lacks the {kind!r} pattern')
@@ -136,6 +146,8 @@ class Lexer:
     kinds = list(self.patterns)
     if any(mode.indents for mode in modes):
       kinds.extend(['indent', 'dedent'])
+    if any(mode.line_break_kind is not None for mode in modes):
+      kinds.append('end_of_line')
     self.kinds = frozenset(kinds)
 
     # Validate transitions.
@@ -181,6 +193,7 @@ class Lexer:
     # The root frame is never popped because its transition has no pop kinds.
     stack = [LexTrans(base=(), kind=(), mode=mode, pop=(), consume=False)]
     is_line_start = True
+    line_counts = False # The current line holds a token other than its line break, in a line-aware mode.
     indent_stack:list[int] = []
     while pos < end:
       # Get the current frame and mode.
@@ -201,6 +214,12 @@ class Lexer:
           if indent_len and (not indent_stack or indent_stack[-1] < indent_len):
             yield token.pos_token(kind='indent')
             indent_stack.append(indent_len)
+      # Check if the line is complete.
+      if lex_mode.line_break_kind is not None:
+        if kind == lex_mode.line_break_kind:
+          if line_counts and 'end_of_line' not in drop: yield token.pos_token(kind='end_of_line')
+          line_counts = False
+        else: line_counts = True
       # Yield the current token.
       if kind not in drop:
         yield token
@@ -215,6 +234,7 @@ class Lexer:
         except KeyError: pass
       is_line_start = (kind == 'newline')
     top_mode = stack[-1].mode
+    if line_counts and 'end_of_line' not in drop: yield Token(pos=end, end=end, mode=top_mode, kind='end_of_line')
     for _ in indent_stack:
       yield Token(pos=end, end=end, mode=top_mode, kind='dedent')
     if eot:
@@ -262,7 +282,7 @@ def validate_name(name:str) -> str:
 
 valid_name_re = re.compile(r'[A-Za-z_]\w*')
 
-reserved_names = frozenset({'end_of_text'})
+reserved_names = frozenset({'end_of_line', 'end_of_text'})
 
 
 whitespace_patterns = dict(
