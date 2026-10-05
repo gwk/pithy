@@ -28,25 +28,25 @@ def request(path:str, data:dict[str,str]|None=None, *, query:str='') -> Response
 @utest_run
 def _() -> None:
   'Submitting the image shows its coordinates on a page where both forms still work.'
-  image = request('/form/controls/image', {'x': '5', 'y': '8'})
+  image = request('/html/controls/image', {'x': '5', 'y': '8'})
   utest_val(HTTPStatus.SEE_OTHER, image.status)
   url = urlsplit(str(image.headers['location']))
-  utest_val('/form/controls', url.path)
+  utest_val('/html/controls', url.path)
   utest_val('x=5&y=8', url.query)
 
   page = request(url.path, query=url.query)
   assert isinstance(page.body, bytes)
   html = page.body.decode()
   utest_val(2, html.count('<form'))
-  utest_val(True, "method='post' action='/form/controls'" in html)
-  utest_val(True, "method='post' action='/form/controls/image'" in html)
+  utest_val(True, "method='post' action='/html/controls'" in html)
+  utest_val(True, "method='post' action='/html/controls/image'" in html)
   utest_val(True, '<strong>x</strong>: 5' in html)
   utest_val(True, '<strong>y</strong>: 8' in html)
 
-  again = request('/form/controls/image', {'x': '1', 'y': '2'})
+  again = request('/html/controls/image', {'x': '1', 'y': '2'})
   utest_val(HTTPStatus.SEE_OTHER, again.status)
   fields = {name: '' for name in ('text', 'email', 'number', 'password', 'tel', 'url', 'search', 'textarea',
     'date', 'time', 'datetime_local', 'color', 'range')}
   fields.update(hidden='hidden-value', checkbox='false', checkbox_set='\x00')
-  main = request('/form/controls', fields)
+  main = request('/html/controls', fields)
   utest_val(HTTPStatus.OK, main.status)

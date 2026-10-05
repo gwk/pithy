@@ -3,9 +3,9 @@
 from ..router import RouteTarget
 from .color_ramps import dev_color_ramps
 from .colors import dev_colors
-from .form import dev_form_index
-from .form.controls import DevControlsForm, DevImageButtonForm
-from .form.nonportable import DevFormNonportable
+from .html import dev_html_index
+from .html.controls import DevControlsForm, DevImageButtonForm
+from .html.nonportable import DevFormNonportable
 from .htmx import dev_htmx_index
 from .htmx.controls import ControlsHtmxUpdate, dev_controls_htmx
 from .htmx.modals import dev_htmx_modals, edit_modal_htmx, UpdateUserHtmx, user_detail_htmx, users_table_htmx
@@ -23,10 +23,10 @@ routes:dict[str,RouteTarget] = {
   '/typography': dev_typography,
   '/tables': dev_tables,
   '/tests': dev_tests,
-  '/form': dev_form_index,
-  '/form/controls': DevControlsForm,
-  '/form/controls/image': DevImageButtonForm,
-  '/form/nonportable': DevFormNonportable,
+  '/html': dev_html_index,
+  '/html/controls': DevControlsForm,
+  '/html/controls/image': DevImageButtonForm,
+  '/html/nonportable': DevFormNonportable,
   '/htmx': dev_htmx_index,
   '/htmx/controls': dev_controls_htmx,
   '/htmx/controls/update.htmx': ControlsHtmxUpdate,

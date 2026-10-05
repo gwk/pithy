@@ -23,11 +23,11 @@ common_css_paths = (
 # The site navigation bar. Each entry is a (path, label) pair.
 nav_links = (
   ('/', 'Home'),
+  ('/html', 'HTML'),
+  ('/htmx', 'HTMX'),
   ('/colors', 'Colors'),
   ('/typography', 'Typography'),
   ('/tables', 'Tables'),
-  ('/form', 'Form'),
-  ('/htmx', 'HTMX'),
   ('/markdown', 'Markdown'),
   ('/tests', 'Tests'),
 )

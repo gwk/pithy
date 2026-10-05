@@ -75,7 +75,7 @@ class DevImageButtonForm(Endpoint):
     y:int
 
   def post(self, request:Request, fields:Post) -> Response:
-    return RedirectResponse('/form/controls?' + urlencode({'x': fields.x, 'y': fields.y}), status=HTTPStatus.SEE_OTHER)
+    return RedirectResponse('/html/controls?' + urlencode({'x': fields.x, 'y': fields.y}), status=HTTPStatus.SEE_OTHER)
 
 
 def posted_items(fields:DevControlsForm.Post) -> dict[str,str|list[str]]:
@@ -99,7 +99,7 @@ def controls_page(values:dict[str,str|list[str]]) -> Response:
     ]),
     image_button_form())
   return dev_page(title='Form Controls', main=main,
-    breadcrumbs=[('/', 'Home'), ('/form', 'Form'), ('/form/controls', 'Controls')])
+    breadcrumbs=[('/', 'Home'), ('/html', 'HTML'), ('/html/controls', 'Controls')])
 
 
 def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
@@ -107,7 +107,7 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
 
   vals:dict[str,str|list[str]] = values or {}
   div = Div()
-  form = div.append(Form(cl='grid', method='post', action='/form/controls', enctype='multipart/form-data'))
+  form = div.append(Form(cl='grid', method='post', action='/html/controls', enctype='multipart/form-data'))
 
   def _row(label_text:str, *controls:MuChild) -> None:
     'Append a label and control(s) to the form grid.'
@@ -166,7 +166,7 @@ def controls_form(values:dict[str,str|list[str]]|None=None) -> Div:
 
 def image_button_form() -> Form:
   'Build a separate form for the image button and its click coordinates.'
-  return Form(cl='grid', method='post', action='/form/controls/image', _=[
+  return Form(cl='grid', method='post', action='/html/controls/image', _=[
     Label('image'),
     Span(cl='flex-row gap-1ch align-items-center', _=[
       Input(type='image', src=image_button_src, alt='Submit with image'),
