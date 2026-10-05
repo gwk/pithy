@@ -5,6 +5,7 @@ The pattern tree that the parser produces for each pattern of a grammar.
 Each node of the tree can add itself to an NFA, and can write itself as a regular expression.
 '''
 
+from codecs import lookup as lookup_codec
 from collections import defaultdict
 from typing import Callable, Iterable, Iterator, Sequence
 
@@ -270,6 +271,34 @@ class CharsetPattern(LegsPattern):
 
 
   def gen_nfa(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+    if lookup_codec(encoding).name == 'utf-8': self.gen_nfa_utf8(mk_node, transitions, start, end)
+    else: self.gen_nfa_encoded(mk_node, encoding, transitions, start, end)
+
+
+  def gen_nfa_utf8(self, mk_node:MkNode, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+    '''
+    Add the UTF-8 encodings of the set as sequences of byte ranges.
+    Sequences that end with the same byte ranges share the nodes of that suffix.
+    The size of the result depends on the number of ranges, not on the number of code points.
+    '''
+    suffix_nodes:dict[tuple[CodeRange,...],int] = {(): end}
+
+    def add_seq(node:int, seq:tuple[CodeRange,...]) -> None:
+      suffix = seq[1:]
+      try: dst = suffix_nodes[suffix]
+      except KeyError:
+        dst = mk_node()
+        suffix_nodes[suffix] = dst
+        add_seq(dst, suffix)
+      byte_dsts = transitions[node]
+      for byte in range(*seq[0]): byte_dsts[byte].add(dst)
+
+    for code_range in self.ranges:
+      for seq in utf8_byte_range_seqs(*code_range): add_seq(start, seq)
+
+
+  def gen_nfa_encoded(self, mk_node:MkNode, encoding:str, transitions:NfaMutableTransitions, start:int, end:int) -> None:
+    'Add the encoding of each code point of the set. Code points share the nodes of their leading bytes.'
     node_byte_nodes = defaultdict[int,dict[int,int]](dict)
     for code in codes_for_ranges(self.ranges):
       node = start
@@ -315,8 +344,6 @@ def utf8_byte_range_seqs(start:int, end:int) -> Iterator[tuple[CodeRange,...]]:
   Each sequence describes the UTF-8 encodings of a subrange of the code points: one byte range per encoded byte.
   Together the sequences match exactly the encodings of the code points in the range.
   Surrogates are omitted because they cannot be encoded.
-  This is currently unused. It could be used to build the NFA of a charset from byte ranges,
-  instead of encoding every code point as `CharsetPattern.gen_nfa` does.
   '''
   last = end - 1 # The remainder of the algorithm uses inclusive ranges.
   if start > last: return
