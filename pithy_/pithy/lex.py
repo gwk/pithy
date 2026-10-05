@@ -22,21 +22,29 @@ class LexMode:
   `line_break_kind` makes the mode line-aware: the lexer emits an empty `end_of_line` token before each line break token
   that ends a line holding at least one other token, and at the end of the text if the last line holds one.
   Tokens of the `line_ignore_kinds` do not count; a line holding only those, such as a comment line, produces no `end_of_line`.
+
+  `indent_space_kind` makes a line-aware mode indent-aware. It names the kind whose token at the start of a line is the indentation.
+  The lexer compares the text of that token with the open levels: a line that extends the innermost level begins with an empty
+  `indent` token, and a line that returns to an enclosing level has an empty `dedent` token per level closed, before its first
+  counting token. A line whose indentation neither equals nor extends an open level closes the levels that are not prefixes of
+  it and opens a new one, so `dedent` tokens are followed by an `indent`. Lines that do not count have no effect.
+  The levels are closed at the end of the text.
   '''
 
-  def __init__(self, name:str, kinds:Iterable[str], *, indents:bool=False, line_break_kind:str|None=None,
-   line_ignore_kinds:Iterable[str]=()):
+  def __init__(self, name:str, kinds:Iterable[str], *, line_break_kind:str|None=None, line_ignore_kinds:Iterable[str]=(),
+   indent_space_kind:str|None=None):
     self.name = name
     self.kinds = list(iter_str(kinds))
-    self.indents = indents
     self.line_break_kind = line_break_kind
     self.line_ignore_kinds = frozenset(iter_str(line_ignore_kinds))
+    self.indent_space_kind = indent_space_kind
     self.kind_set:frozenset[str] = frozenset() # Filled in by Lexer.
     self.regex:Pattern = cast(Pattern, None) # Filled in by Lexer.
 
   def __repr__(self) -> str:
-    return (f'{type(self).__name__}({self.name!r}, kinds={self.kinds}, kind_set={self.kind_set}, indents={self.indents}, '
-      f'line_break_kind={self.line_break_kind!r}, line_ignore_kinds={sorted(self.line_ignore_kinds)})')
+    return (f'{type(self).__name__}({self.name!r}, kinds={self.kinds}, kind_set={self.kind_set}, '
+      f'line_break_kind={self.line_break_kind!r}, line_ignore_kinds={sorted(self.line_ignore_kinds)}, '
+      f'indent_space_kind={self.indent_space_kind!r})')
 
 
 class LexTrans:
@@ -135,10 +143,12 @@ class Lexer:
         raise Lexer.DefinitionError(f'mode {mode.name!r} has line_ignore_kinds but no line_break_kind')
       for kind in sorted(mode.line_ignore_kinds):
         if kind not in kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} line_ignore_kinds is not a pattern of the mode: {kind!r}')
-      if mode.indents:
-        for kind in ('newline', 'spaces'):
-          if kind not in kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} has indents but lacks the {kind!r} pattern')
-        for kind in ('indent', 'dedent'):
+      if mode.indent_space_kind is not None:
+        if mode.line_break_kind is None:
+          raise Lexer.DefinitionError(f'mode {mode.name!r} has indent_space_kind but no line_break_kind')
+        if mode.indent_space_kind not in kind_set:
+          raise Lexer.DefinitionError(f'mode {mode.name!r} indent_space_kind is not a pattern of the mode: {mode.indent_space_kind!r}')
+        for kind in ('indent', 'dedent'): # Reserved only for lexers that synthesize these tokens.
           if kind in patterns: raise Lexer.DefinitionError(f'{kind!r} pattern name collides with the {kind} token name')
       self.modes[mode.name] = mode
       mode.kind_set = frozenset(kind_set)
@@ -151,10 +161,10 @@ class Lexer:
       #^ note: iterate over self.patterns.items (not pattern_names) because the dict preserves the original pattern order.
 
     kinds = list(self.patterns)
-    if any(mode.indents for mode in modes):
-      kinds.extend(['indent', 'dedent'])
     if any(mode.line_break_kind is not None for mode in modes):
       kinds.append('end_of_line')
+    if any(mode.indent_space_kind is not None for mode in modes):
+      kinds.extend(['indent', 'dedent'])
     self.kinds = frozenset(kinds)
 
     # Validate transitions.
@@ -200,8 +210,18 @@ class Lexer:
     # The root frame is never popped because its transition has no pop kinds.
     stack = [LexTrans(base=(), kind=(), mode=mode, pop=(), consume=False)]
     is_line_start = True
-    line_counts = False # The current line holds a token other than its line break, in a line-aware mode.
-    indent_stack:list[int] = []
+    line_counts = False # The current line holds a counting token, in a line-aware mode.
+    pending:list[Token] = [] # The leading tokens of a line in an indent-aware mode, held until the line is known to count.
+    levels = [''] # The indentation text of each open level.
+
+    def synth(at:int, kind:str, mode:str) -> Iterator[Token]:
+      if kind not in drop: yield Token(pos=at, end=at, mode=mode, kind=kind)
+
+    def flush() -> Iterator[Token]:
+      for t in pending:
+        if t.kind not in drop: yield t
+      pending.clear()
+
     while pos < end:
       # Get the current frame and mode.
       frame = stack[-1]
@@ -210,26 +230,6 @@ class Lexer:
       token = self._lex_one(lex_mode.regex, source, pos=pos, end=end, mode=lex_mode.name)
       kind = token.kind
       pos = token.end
-      # Check if we should synthesize indent or dedent tokens.
-      if lex_mode.indents and is_line_start and kind != 'newline': # Empty lines do not affect the indent stack.
-        indent_len = len(source[token]) if kind == 'spaces' else 0
-        is_blank = (kind == 'spaces' and (pos == end or self._lex_one(lex_mode.regex, source, pos, end, '').kind == 'newline'))
-        if not is_blank: # Lines of only spaces do not affect the indent stack either.
-          while indent_stack and indent_stack[-1] > indent_len:
-            yield token.pos_token(kind='dedent')
-            indent_stack.pop()
-          if indent_len and (not indent_stack or indent_stack[-1] < indent_len):
-            yield token.pos_token(kind='indent')
-            indent_stack.append(indent_len)
-      # Check if the line is complete.
-      if lex_mode.line_break_kind is not None:
-        if kind == lex_mode.line_break_kind:
-          if line_counts and 'end_of_line' not in drop: yield token.pos_token(kind='end_of_line')
-          line_counts = False
-        elif kind not in lex_mode.line_ignore_kinds: line_counts = True
-      # Yield the current token.
-      if kind not in drop:
-        yield token
       # Perform mode transitions. First pop each frame that this token closes, until one consumes the token.
       consumed = False
       while kind in frame.pops and not consumed:
@@ -239,11 +239,45 @@ class Lexer:
       if not consumed: # Check if we should push a child mode.
         try: stack.append(self.transitions[(frame.mode, kind)])
         except KeyError: pass
-      is_line_start = (kind == 'newline')
+      # Line structure.
+      line_break_kind = lex_mode.line_break_kind
+      if line_break_kind is None: # The mode is not line-aware.
+        if kind not in drop: yield token
+      elif kind == line_break_kind:
+        yield from flush()
+        if line_counts: yield from synth(token.pos, 'end_of_line', lex_mode.name)
+        if kind not in drop: yield token
+        line_counts = False
+        is_line_start = True
+      elif kind in lex_mode.line_ignore_kinds:
+        if is_line_start and lex_mode.indent_space_kind is not None: pending.append(token) # The line may not count.
+        elif kind not in drop: yield token
+      else: # The token counts.
+        if is_line_start and lex_mode.indent_space_kind is not None:
+          space_token = pending[0] if pending and pending[0].kind == lex_mode.indent_space_kind else None
+          space = source[space_token] if space_token else ''
+          if space != levels[-1]:
+            count_dedents = 0
+            while not space.startswith(levels[-1]):
+              levels.pop()
+              count_dedents += 1
+            if len(space) > len(levels[-1]): # Deeper than the innermost remaining level.
+              assert space_token is not None
+              levels.append(space)
+              for _ in range(count_dedents): yield from synth(space_token.pos, 'dedent', lex_mode.name)
+              yield from synth(space_token.pos, 'indent', lex_mode.name)
+              yield from flush()
+            else:
+              yield from flush()
+              for _ in range(count_dedents): yield from synth(token.pos, 'dedent', lex_mode.name)
+        yield from flush()
+        if kind not in drop: yield token
+        line_counts = True
+        is_line_start = False
+    yield from flush()
     top_mode = stack[-1].mode
-    if line_counts and 'end_of_line' not in drop: yield Token(pos=end, end=end, mode=top_mode, kind='end_of_line')
-    for _ in indent_stack:
-      yield Token(pos=end, end=end, mode=top_mode, kind='dedent')
+    if line_counts: yield from synth(end, 'end_of_line', top_mode)
+    for _ in levels[1:]: yield from synth(end, 'dedent', top_mode)
     if eot:
       yield eot_token(end, mode=top_mode)
 

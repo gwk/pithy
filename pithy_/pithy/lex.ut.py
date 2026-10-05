@@ -128,9 +128,9 @@ utest(frozenset({'str_d', 'str_s', 'a'}),
   lambda: Lexer(patterns=dict(str_s="'", str_d='"', a='a', b='b'), modes=[LexMode('main', ['str_.*', 'a'])]).modes['main'].kind_set)
 
 # The modes can be any iterable, including a generator.
-utest(frozenset({'newline', 'spaces', 'indent', 'dedent'}),
+utest(frozenset({'newline', 'spaces', 'end_of_line', 'indent', 'dedent'}),
   lambda: Lexer(patterns=dict(newline='\n', spaces=' +'),
-    modes=(mode for mode in [LexMode('main', ['newline', 'spaces'], indents=True)])).kinds)
+    modes=(mode for mode in [LexMode('main', ['newline', 'spaces'], line_break_kind='newline', indent_space_kind='spaces')])).kinds)
 
 utest_exc(Lexer.DefinitionError("mode 'main' includes nonexistent pattern: 'c'"),
   Lexer, patterns=ab_patterns, modes=[LexMode('main', ['a', 'c'])])
@@ -331,11 +331,11 @@ utest_exc(Lexer.DefinitionError("mode 'main' line_ignore_kinds is not a pattern 
 utest_exc(Lexer.DefinitionError("name is reserved: 'end_of_line'"), Lexer, patterns=dict(end_of_line='a'))
 
 
-# Indents.
+# Indent-aware modes.
 
 indent_patterns = dict(
   newline = r'\n',
-  spaces = r' +',
+  spaces = r'[ \t]+',
   word = r'\w+',
   comment = r'\#[^\n]*',
   paren_o = r'\(',
@@ -343,75 +343,96 @@ indent_patterns = dict(
 
 indent_lexer = Lexer(patterns=indent_patterns,
   modes=[
-    LexMode('main', ['newline', 'spaces', 'word', 'comment', 'paren_o'], indents=True),
+    LexMode('main', ['newline', 'spaces', 'word', 'comment', 'paren_o'],
+      line_break_kind='newline', line_ignore_kinds=['spaces', 'comment'], indent_space_kind='spaces'),
     LexMode('group', ['newline', 'spaces', 'word', 'paren_c'])],
   transitions=[
     LexTrans('main', kind='paren_o', mode='group', pop='paren_c', consume=True)])
 
 
 def run_indents(string:str, **kwargs:Any) -> Iterator[str]:
-  'Run `indent_lexer` on `string`, yielding the text of each word and the kind of each other token. Spaces are dropped.'
+  '''
+  Run `indent_lexer` on `string`, yielding the text of each word and the kind of each other token.
+  Spaces, newlines and comments are dropped, as a parser would, leaving the words and the empty tokens.
+  '''
   source = Source(name='test', text=string)
-  for token in indent_lexer.lex(source, drop={'spaces'}, **kwargs):
+  for token in indent_lexer.lex(source, drop={'spaces', 'newline', 'comment'}, **kwargs):
     yield source[token] if token.kind == 'word' else token.kind
 
 
-utest_seq(['a', 'newline', 'indent', 'b', 'newline', 'indent', 'c', 'newline', 'dedent', 'd', 'newline', 'dedent', 'e', 'newline'],
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'indent', 'c', 'end_of_line', 'dedent', 'd', 'end_of_line', 'dedent', 'e', 'end_of_line'],
   run_indents, 'a\n  b\n    c\n  d\ne\n')
 
 # A dedent can close several levels.
-utest_seq(['a', 'newline', 'indent', 'b', 'newline', 'indent', 'c', 'newline', 'dedent', 'dedent', 'd'],
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'indent', 'c', 'end_of_line', 'dedent', 'dedent', 'd', 'end_of_line'],
   run_indents, 'a\n  b\n    c\nd')
 
 # The start of the range is the start of a line.
-utest_seq(['indent', 'a', 'newline', 'dedent', 'b'], run_indents, '  a\nb')
+utest_seq(['indent', 'a', 'end_of_line', 'dedent', 'b', 'end_of_line'], run_indents, '  a\nb')
 
-# Empty lines and lines of only spaces do not affect the indentation.
-utest_seq(['a', 'newline', 'indent', 'b', 'newline', 'newline', 'newline', 'c', 'newline', 'newline', 'dedent', 'd'],
-  run_indents, 'a\n  b\n\n \n  c\n      \nd')
+# Lines that do not count have no effect: empty lines, lines of only spaces, and comment lines at any indentation.
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'c', 'end_of_line', 'dedent', 'd', 'end_of_line'],
+  run_indents, 'a\n  b\n\n \n# x\n      # y\n  c\n      \nd')
 
-# Open levels are closed at the end, after trailing spaces.
-utest_seq(['a', 'newline', 'indent', 'b', 'dedent'], run_indents, 'a\n  b')
-utest_seq(['a', 'newline', 'indent', 'b', 'newline', 'dedent', 'end_of_text'], run_indents, 'a\n  b\n    ', eot=True)
+# Open levels are closed at the end, after the final `end_of_line`.
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'dedent'], run_indents, 'a\n  b')
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'dedent', 'end_of_text'], run_indents, 'a\n  b\n    ', eot=True)
 
-# A pushed mode that lacks `indents` suspends the indentation rules, but its newlines still begin lines for the parent.
-utest_seq(['a', 'newline', 'indent', 'paren_o', 'b', 'newline', 'c', 'newline', 'paren_c', 'newline', 'd', 'newline', 'dedent', 'e'],
+# A pushed mode that is not line-aware suspends the rules; the line ends at the next line break in the indent-aware mode.
+utest_seq(['a', 'end_of_line', 'indent', 'paren_o', 'b', 'c', 'paren_c', 'end_of_line', 'd', 'end_of_line', 'dedent', 'e', 'end_of_line'],
   run_indents, 'a\n  (b\n      c\n)\n  d\ne')
 #^ The `paren_c` at column 0 is in the `group` mode, so it does not dedent.
 
-# Limitation: a line that holds only a comment affects the indentation like any other line.
-utest_seq(['a', 'newline', 'indent', 'b', 'newline', 'dedent', 'comment', 'newline', 'indent', 'c', 'dedent'],
-  run_indents, 'a\n  b\n# x\n  c')
+# Indentation is compared as text. A tab does not equal two spaces, and neither extends the other:
+# the level is closed and a new one opened, so a `dedent` is followed by an `indent`.
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'dedent', 'indent', 'c', 'end_of_line', 'dedent'],
+  run_indents, 'a\n  b\n\tc')
 
-# Limitation: a dedent to a width that is not an open level closes the deeper levels and opens a new one, without an error.
-utest_seq(['a', 'newline', 'indent', 'b', 'newline', 'dedent', 'indent', 'c', 'dedent'], run_indents, 'a\n    b\n  c')
+# A dedent to an indentation that is not an open level likewise closes the deeper level and opens a new one.
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'dedent', 'indent', 'c', 'end_of_line', 'dedent'], run_indents, 'a\n    b\n  c')
+
+# A tab followed by spaces extends a tab.
+utest_seq(['a', 'end_of_line', 'indent', 'b', 'end_of_line', 'indent', 'c', 'end_of_line', 'dedent', 'dedent'],
+  run_indents, 'a\n\tb\n\t  c')
 
 
 def indent_positions(string:str) -> list[tuple[str,int,int]]:
-  'Return (kind, pos, end) for each `indent` and `dedent` token.'
+  'Return (kind, pos, end) for each empty token.'
   tokens = indent_lexer.lex(Source(name='test', text=string))
-  return [(t.kind, t.pos, t.end) for t in tokens if t.kind in ('indent', 'dedent')]
+  return [(t.kind, t.pos, t.end) for t in tokens if t.pos == t.end]
 
-# The synthesized tokens are empty. An `indent` precedes the spaces of its line; a `dedent` precedes the first token of its line.
-utest([('indent', 2, 2), ('dedent', 6, 6), ('indent', 8, 8), ('dedent', 12, 12)], indent_positions, 'a\n  b\nc\n  d\n')
-#^ The final `dedent` is at the end of the text.
+# An `indent` precedes the spaces of its line; a `dedent` precedes the first counting token of its line; the final `dedent` is at the end.
+utest([('end_of_line', 1, 1), ('indent', 2, 2), ('end_of_line', 5, 5), ('dedent', 6, 6), ('end_of_line', 7, 7), ('indent', 8, 8),
+  ('end_of_line', 11, 11), ('dedent', 12, 12)], indent_positions, 'a\n  b\nc\n  d\n')
 
-# The `spaces` token follows its `indent`, and precedes a `dedent` to a nonzero level.
-utest_seq([('word', 'a'), ('newline', '\n'), ('indent', ''), ('spaces', '  '), ('word', 'b'), ('newline', '\n'),
-  ('indent', ''), ('spaces', '    '), ('word', 'c'), ('newline', '\n'), ('dedent', ''), ('spaces', '  '), ('word', 'd'), ('dedent', '')],
+# When a line closes levels and opens a new one, all of its empty tokens precede its spaces.
+utest([('end_of_line', 1, 1), ('indent', 2, 2), ('end_of_line', 7, 7), ('dedent', 8, 8), ('indent', 8, 8), ('end_of_line', 11, 11),
+  ('dedent', 11, 11)], indent_positions, 'a\n    b\n  c')
+
+# The empty tokens are interleaved with the tokens they precede.
+utest_seq([('word', 'a'), ('end_of_line', ''), ('newline', '\n'), ('indent', ''), ('spaces', '  '), ('word', 'b'), ('end_of_line', ''),
+  ('newline', '\n'), ('indent', ''), ('spaces', '    '), ('word', 'c'), ('end_of_line', ''), ('newline', '\n'), ('spaces', '  '),
+  ('dedent', ''), ('word', 'd'), ('end_of_line', ''), ('dedent', '')],
   run_lexer, indent_lexer, 'a\n  b\n    c\n  d')
+
+# The empty tokens honor `drop`.
+utest_seq([('word', 'a'), ('word', 'b')], run_lexer, indent_lexer, 'a\n  b', drop={'spaces', 'newline', 'end_of_line', 'indent', 'dedent'})
 
 
 # Indent definition errors.
 
-utest_exc(Lexer.DefinitionError("mode 'main' has indents but lacks the 'newline' pattern"),
-  Lexer, patterns=ab_patterns, modes=[LexMode('main', ['a'], indents=True)])
+utest_exc(Lexer.DefinitionError("mode 'main' has indent_space_kind but no line_break_kind"),
+  Lexer, patterns=ab_patterns, modes=[LexMode('main', ['a'], indent_space_kind='a')])
+
+utest_exc(Lexer.DefinitionError("mode 'main' indent_space_kind is not a pattern of the mode: 'b'"),
+  Lexer, patterns=ab_patterns, modes=[LexMode('main', ['a'], line_break_kind='a', indent_space_kind='b')])
 
 utest_exc(Lexer.DefinitionError("'indent' pattern name collides with the indent token name"),
-  Lexer, patterns=dict(newline='\n', spaces=' +', indent='>'), modes=[LexMode('main', ['newline', 'spaces', 'indent'], indents=True)])
+  Lexer, patterns=dict(newline='\n', spaces=' +', indent='>'),
+  modes=[LexMode('main', ['newline', 'spaces', 'indent'], line_break_kind='newline', indent_space_kind='spaces')])
 
 # The synthesized tokens do not take part in transitions.
 utest_exc(Lexer.DefinitionError("unknown mode push pattern: 'indent'"),
   Lexer, patterns=dict(newline='\n', spaces=' +'),
-  modes=[LexMode('main', ['newline', 'spaces'], indents=True), LexMode('sub', ['newline'])],
+  modes=[LexMode('main', ['newline', 'spaces'], line_break_kind='newline', indent_space_kind='spaces'), LexMode('sub', ['newline'])],
   transitions=[LexTrans('main', kind='indent', mode='sub', pop='newline', consume=True)])
