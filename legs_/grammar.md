@@ -36,7 +36,7 @@ main : paren_o :: main : paren_c
 * `Patterns` entries have the form `name: pattern`. A bare `name` is a literal pattern matching the name itself.
 * `Modes` holds one `## name` subsection per mode. The entries of a mode have the form `key: value ...`.
   The `kinds` entry is required; it lists the patterns that belong to the mode, by name.
-  The other keys are described under [Line-Aware Modes](#line-aware-modes).
+  The other keys are described under [Line-Aware Modes](#line-aware-modes) and [Indent-Aware Modes](#indent-aware-modes).
   If there are no modes then all patterns belong to the `main` mode.
 * `Transitions` entries have the form `from_mode : open_kind :: push_mode : close_kind`.
 
@@ -146,7 +146,35 @@ A parser can therefore drop whitespace, comments and line breaks and use `end_of
 The rule applies only while the mode on top of the stack is line-aware. A pushed mode that is not suspends it:
 a line that begins in the line-aware mode and continues through brackets or a string ends at the next line break in the line-aware mode.
 
-`end_of_line` is a reserved kind, like `invalid`, `incomplete` and `end_of_text`. It is the only empty token apart from `end_of_text`.
+`end_of_line` is a reserved kind, like `invalid`, `incomplete` and `end_of_text`.
+
+
+# Indent-Aware Modes
+
+A line-aware mode with an `indent_space_kind` entry is indent-aware. The entry names the kind whose token at the start of a line is the line's indentation.
+The pattern must match the whole run of indentation characters as one token, for example `[\s \t]+`.
+
+```
+## main
+kinds: spaces newline word comment paren_o
+line_break_kind: newline
+line_ignore_kinds: spaces comment
+indent_space_kind: spaces
+```
+
+The lexer keeps a stack of open levels, each the indentation text of the line that opened it. Only lines that count take part; see above.
+At the first counting token of a line, the line's indentation is compared with the levels as text:
+* If it equals the innermost level, the line is in the same block.
+* If it extends the innermost level, a level is opened: an empty `indent` token precedes the indentation token.
+* Otherwise the levels that are not prefixes of it are closed, with an empty `dedent` token each, placed before the first counting token.
+  If the indentation is then longer than the innermost remaining level, a new level is opened as well: the `dedent` tokens and the `indent` all precede the indentation token.
+  A `dedent` followed by an `indent` therefore marks indentation that is inconsistent with the open levels.
+
+The levels that remain open at the end of the text are closed there, after the final `end_of_line`.
+No tab width is involved: a tab is a character of the indentation text, so a line indented with a tab neither equals nor extends one indented with spaces.
+A pushed mode that is not indent-aware suspends the rules, as for line awareness.
+
+`indent` and `dedent` are reserved kinds. They, `end_of_line` and `end_of_text` are the only empty tokens.
 
 
 # Incomplete Tokens and Commitment

@@ -34,7 +34,7 @@ from typing import Callable, Iterator
 
 from hypothesis import given, settings, strategies as st
 from hypothesis.strategies import SearchStrategy
-from tolkien import Source
+from tolkien import Source, Token
 
 from . import DictLexerBase
 from .build import build_lexer_class_for_automata, build_mode_automata, ModeAutomata
@@ -161,33 +161,26 @@ class GrammarChecker:
     '''
     Check the tokens that the lexer produces for `text`, starting in `mode`.
     Each choice between several matching kinds is recorded in `overlaps`.
+    The tokens that cover text are checked against the NFA; then the whole stream, with its empty tokens, is checked against
+    an independent simulation of the line structure.
     '''
+    tokens = list(self.Lexer(Source('input', text), mode=mode))
     stack:list[tuple[str,str|None]] = [(mode, None)] # An independent simulation of the mode stack: (mode, pop_kind).
     pos = 0
-    line_counts = False # An independent simulation of the line state.
-    is_prev_end_of_line = False
-    for token in self.Lexer(Source('input', text), mode=mode):
+    real_tokens:list[Token] = []
+    for token in tokens:
       def fail(msg:str) -> PropertyError:
         return PropertyError(f'mode {mode!r}: input {text!r}: token {token.kind}:{token.pos}-{token.end}: {msg}')
 
       if token.pos != pos: raise fail(f'token does not begin at the end of the previous token: {pos}.')
       curr_mode, pop_kind = stack[-1]
       if token.mode != curr_mode: raise fail(f'token mode is {token.mode!r}; expected {curr_mode!r}.')
-      if token.kind == 'end_of_line':
-        if token.end != token.pos: raise fail('end_of_line token is not empty.')
-        if is_prev_end_of_line: raise fail('end_of_line token follows another.')
-        is_prev_end_of_line = True
+      if token.kind in synthesized_kinds:
+        if token.end != token.pos: raise fail(f'{token.kind} token is not empty.')
         continue
       if token.end <= token.pos: raise fail('token is empty.')
       if token.end > len(text): raise fail('token extends past the end of the input.')
-      line_break = self.grammar.mode_line_breaks.get(curr_mode)
-      if line_break is not None and token.kind == line_break:
-        if line_counts != is_prev_end_of_line:
-          raise fail('line break ends a line that holds a token.' if line_counts else 'end_of_line precedes an empty line.')
-        line_counts = False
-      elif is_prev_end_of_line: raise fail('end_of_line does not precede a line break.')
-      elif line_break is not None and token.kind not in self.grammar.mode_line_ignores.get(curr_mode, ()): line_counts = True
-      is_prev_end_of_line = False
+      real_tokens.append(token)
 
       nfa = self.automata[curr_mode].nfa
       length, all_kinds, scanned = nfa_scan(nfa, text, pos)
@@ -212,10 +205,72 @@ class GrammarChecker:
         except KeyError: pass
       pos = token.end
     if pos != len(text): raise PropertyError(f'mode {mode!r}: input {text!r}: tokens end at {pos}; expected {len(text)}.')
-    if line_counts != is_prev_end_of_line:
-      raise PropertyError(f'mode {mode!r}: input {text!r}: '
-        + ('the last line holds a token but no end_of_line ends it.' if line_counts else 'end_of_line ends an empty last line.'))
 
+    expected = [(t.kind, t.pos, t.end) for t in line_structure(self.grammar, text, real_tokens)]
+    actual = [(t.kind, t.pos, t.end) for t in tokens]
+    if expected != actual:
+      raise PropertyError(f'mode {mode!r}: input {text!r}: line structure differs from the simulation.\n'
+        f'  expected: {expected}\n  actual:   {actual}')
+
+
+synthesized_kinds = frozenset({'end_of_line', 'indent', 'dedent'})
+
+
+def line_structure(grammar:Grammar, text:bytes, real_tokens:list[Token]) -> Iterator[Token]:
+  '''
+  Yield the tokens that cover text with the empty tokens that the line-aware and indent-aware modes of the grammar add.
+  This is a simulation independent of the lexer runtimes.
+  '''
+  held:list[Token] = []
+  line_counts = False
+  is_line_start = True
+  levels = [b'']
+  end = len(text)
+  for token in real_tokens:
+    mode = token.mode
+    line_break = grammar.mode_line_breaks.get(mode)
+    if line_break is None:
+      yield token
+      continue
+    indent_space = grammar.mode_indent_spaces.get(mode)
+    if token.kind == line_break:
+      yield from held
+      held.clear()
+      if line_counts: yield Token(pos=token.pos, end=token.pos, mode=mode, kind='end_of_line')
+      yield token
+      line_counts = False
+      is_line_start = True
+    elif token.kind in grammar.mode_line_ignores.get(mode, ()):
+      if is_line_start and indent_space is not None: held.append(token)
+      else: yield token
+    else:
+      if is_line_start and indent_space is not None:
+        space_token = held[0] if held and held[0].kind == indent_space else None
+        space = text[space_token.slc] if space_token else b''
+        if space != levels[-1]:
+          count_dedents = 0
+          while not space.startswith(levels[-1]):
+            levels.pop()
+            count_dedents += 1
+          if len(space) > len(levels[-1]):
+            assert space_token is not None
+            levels.append(space)
+            for _ in range(count_dedents): yield Token(pos=space_token.pos, end=space_token.pos, mode=mode, kind='dedent')
+            yield Token(pos=space_token.pos, end=space_token.pos, mode=mode, kind='indent')
+            yield from held
+          else:
+            yield from held
+            for _ in range(count_dedents): yield Token(pos=token.pos, end=token.pos, mode=mode, kind='dedent')
+          held.clear()
+      yield from held
+      held.clear()
+      yield token
+      line_counts = True
+      is_line_start = False
+  yield from held
+  mode = real_tokens[-1].mode if real_tokens else 'main'
+  if line_counts: yield Token(pos=end, end=end, mode=mode, kind='end_of_line')
+  for _ in levels[1:]: yield Token(pos=end, end=end, mode=mode, kind='dedent')
 
 
 def nfa_longest_match(nfa:NFA, text:bytes, pos:int) -> tuple[int,frozenset[str]]:

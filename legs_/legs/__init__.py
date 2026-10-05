@@ -7,6 +7,7 @@ A generated lexer is a subclass of `DictLexerBase` that holds the tables for one
 
 __version__ = '0.0.5'
 
+from collections import deque
 from typing import Any, ClassVar, Collection, Container, Iterator
 
 from tolkien import Source, Token
@@ -34,6 +35,7 @@ class LexerBase(Iterator[Token]):
   mode_transitions:ModeTransitions
   mode_line_breaks:ClassVar[dict[str,str]] = {} # The line break kind of each line-aware mode.
   mode_line_ignores:ClassVar[dict[str,frozenset[str]]] = {} # The kinds that do not make a line count, per line-aware mode.
+  mode_indent_spaces:ClassVar[dict[str,str]] = {} # The kind whose token at the start of a line is the indentation, per indent-aware mode.
   pattern_descs:dict[str,str]
   kinds:ClassVar[frozenset[str]] = frozenset() # The token kinds, excluding `invalid` and `incomplete`.
 
@@ -73,8 +75,11 @@ class LexerBase(Iterator[Token]):
     self.pos = pos
     self.end = max(pos, end)
     self.stack:list[tuple[str,str|None]] = [(mode, None)] # [(mode, pop_kind)].
-    self.pending:list[Token] = [] # Tokens to return before lexing further, in reverse order.
-    self.line_counts = False # The current line holds a token other than its line break, in a line-aware mode.
+    self.pending = deque[Token]() # Tokens to return before lexing further.
+    self.held:list[Token] = [] # The leading tokens of a line in an indent-aware mode, held until the line is known to count.
+    self.line_counts = False # The current line holds a counting token, in a line-aware mode.
+    self.is_line_start = True
+    self.levels = [b''] # The indentation text of each open level.
 
   @classmethod
   def mode_names(cls) -> Collection[str]:
@@ -94,6 +99,8 @@ class DictLexerBase(LexerBase):
   Each token is the longest match. On reaching a commit node, the lexer forgets the matches found so far in the token.
   In a line-aware mode, an empty `end_of_line` token precedes the line break of each line that holds another token,
   and ends an unterminated last line. Tokens of the mode's line ignore kinds do not count.
+  In an indent-aware mode, empty `indent` and `dedent` tokens mark the changes of indentation between counting lines.
+  Indentation is compared as text; see `LexMode` in `pithy.lex` for the rule, which is the same.
   '''
 
   mode_data:dict[str,ModeData]
@@ -103,15 +110,29 @@ class DictLexerBase(LexerBase):
   def mode_names(cls) -> dict[str,ModeData]: return cls.mode_data
 
   def __next__(self) -> Token:
-    if self.pending: return self.pending.pop()
+    while not self.pending:
+      if self.pos == self.end: # Done; flush the line structure.
+        mode = self.stack[-1][0]
+        if self.held:
+          self.pending.extend(self.held)
+          self.held.clear()
+        elif self.line_counts:
+          self.line_counts = False
+          self.pending.append(Token(pos=self.end, end=self.end, mode=mode, kind='end_of_line'))
+        elif len(self.levels) > 1:
+          self.levels.pop()
+          self.pending.append(Token(pos=self.end, end=self.end, mode=mode, kind='dedent'))
+        else: raise StopIteration
+      else:
+        self._lex_token()
+    return self.pending.popleft()
+
+
+  def _lex_token(self) -> None:
+    'Lex one token and add it to `pending`, with any empty tokens that the line structure requires, or hold it.'
     text = self.source.text
     len_text = self.end
     pos = self.pos
-    if pos == len_text:
-      if self.line_counts:
-        self.line_counts = False
-        return Token(pos=pos, end=pos, mode=self.stack[-1][0], kind='end_of_line')
-      raise StopIteration
     mode, pop_kind = self.stack[-1]
     mode_start, transitions, match_node_kinds = self.mode_data[mode]
 
@@ -146,12 +167,44 @@ class DictLexerBase(LexerBase):
       except KeyError: pass
       else: self.stack.append(child_frame)
     token = Token(pos=token_pos, end=end, mode=mode, kind=kind)
+    pending = self.pending
     line_break = self.mode_line_breaks.get(mode)
-    if line_break is not None:
-      if kind == line_break:
-        if self.line_counts:
-          self.line_counts = False
-          self.pending.append(token)
-          return Token(pos=token_pos, end=token_pos, mode=mode, kind='end_of_line')
-      elif kind not in self.mode_line_ignores.get(mode, ()): self.line_counts = True
-    return token
+    if line_break is None: # The mode is not line-aware.
+      pending.append(token)
+    elif kind == line_break:
+      pending.extend(self.held)
+      self.held.clear()
+      if self.line_counts: pending.append(Token(pos=token_pos, end=token_pos, mode=mode, kind='end_of_line'))
+      pending.append(token)
+      self.line_counts = False
+      self.is_line_start = True
+    elif kind in self.mode_line_ignores.get(mode, ()):
+      if self.is_line_start and mode in self.mode_indent_spaces: self.held.append(token) # The line may not count.
+      else: pending.append(token)
+    else: # The token counts.
+      if self.is_line_start and mode in self.mode_indent_spaces:
+        held = self.held
+        space_token = held[0] if held and held[0].kind == self.mode_indent_spaces[mode] else None
+        space = text[space_token.slc] if space_token else b''
+        levels = self.levels
+        if space != levels[-1]:
+          count_dedents = 0
+          while not space.startswith(levels[-1]):
+            levels.pop()
+            count_dedents += 1
+          if len(space) > len(levels[-1]): # Deeper than the innermost remaining level.
+            assert space_token is not None
+            levels.append(space)
+            at = space_token.pos
+            pending.extend(Token(pos=at, end=at, mode=mode, kind='dedent') for _ in range(count_dedents))
+            pending.append(Token(pos=at, end=at, mode=mode, kind='indent'))
+            pending.extend(held)
+          else:
+            pending.extend(held)
+            pending.extend(Token(pos=token_pos, end=token_pos, mode=mode, kind='dedent') for _ in range(count_dedents))
+          held.clear()
+      pending.extend(self.held)
+      self.held.clear()
+      pending.append(token)
+      self.line_counts = True
+      self.is_line_start = False

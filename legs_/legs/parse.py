@@ -15,7 +15,8 @@ All errors are reported together.
 The sections are `License`, `Patterns`, `Modes` and `Transitions`. They can appear in any order and can be repeated.
 Text preceding the first header is treated as patterns, so a simple grammar needs no headers.
 Each mode is a `## name` subsection of `Modes`. Its entries have the form `key: value ...`.
-The `kinds` entry is required. `line_break_kind` makes the mode line-aware; `line_ignore_kinds` lists the kinds that do not make a line count.
+The `kinds` entry is required. `line_break_kind` makes the mode line-aware; `line_ignore_kinds` lists the kinds that do not make a line count;
+`indent_space_kind` makes a line-aware mode indent-aware.
 A header requires a space after the `#`. A pattern line cannot begin with `# ` at column 0; indent it or write `\\#`.
 '''
 
@@ -49,6 +50,7 @@ class Grammar:
   modes:dict[str,frozenset[str]] # Mode name to the kind names of its patterns.
   mode_line_breaks:dict[str,str] # Mode name to the kind that ends a line, for each line-aware mode.
   mode_line_ignores:dict[str,frozenset[str]] # Mode name to the kinds that do not make a line count, for line-aware modes that declare them.
+  mode_indent_spaces:dict[str,str] # Mode name to the kind whose token at the start of a line is the indentation, for each indent-aware mode.
   transitions:ModeTransitions # from_mode to open_kind to (push_mode, close_kind).
 
 
@@ -79,6 +81,7 @@ class GrammarBuilder:
     self.modes:dict[str,list[Token]] = {} # Mode name to pattern name tokens.
     self.mode_line_breaks:dict[str,Token] = {} # Mode name to its line break kind token.
     self.mode_line_ignores:dict[str,list[Token]] = {} # Mode name to its line ignore kind tokens.
+    self.mode_indent_spaces:dict[str,Token] = {} # Mode name to its indent space kind token.
     self.transitions:list[tuple[Token,Token,Token,Token]] = [] # (from_mode, open_kind, push_mode, close_kind).
     self.sect_names:dict[int,str] = {} # Section index to lowercase name, for top-level sections; empty if rejected.
     # Definitions that were lost to earlier errors. References to them are not reported as undefined,
@@ -219,9 +222,12 @@ class GrammarBuilder:
     if 'kinds' in entries:
       self.modes[name] = entries['kinds']
       if 'line_break_kind' in entries: self.mode_line_breaks[name] = entries['line_break_kind'][0]
-      if 'line_ignore_kinds' in entries:
-        if 'line_break_kind' in entries: self.mode_line_ignores[name] = entries['line_ignore_kinds']
-        elif is_ok: self.error(name_slc, f'error: mode has `line_ignore_kinds` but no `line_break_kind`: {name}')
+      for key in ('line_ignore_kinds', 'indent_space_kind'):
+        if key not in entries: continue
+        if 'line_break_kind' not in entries:
+          if is_ok: self.error(name_slc, f'error: mode has `{key}` but no `line_break_kind`: {name}')
+        elif key == 'line_ignore_kinds': self.mode_line_ignores[name] = entries[key]
+        else: self.mode_indent_spaces[name] = entries[key][0]
     else:
       if is_ok: self.error(name_slc, f'error: mode has no `kinds` entry: {name}')
       self.failed_modes.add(name)
@@ -279,6 +285,15 @@ class GrammarBuilder:
           self.error(kind_tok, f'error: pattern is not a member of mode `{name}`: {kind}')
       mode_line_ignores[name] = frozenset(kinds)
 
+    mode_indent_spaces:dict[str,str] = {}
+    for name, kind_tok in self.mode_indent_spaces.items():
+      kind = source[kind_tok]
+      if kind not in modes[name]:
+        if not (kind in self.failed_patterns or self.has_rejected_section):
+          self.error(kind_tok, f'error: pattern is not a member of mode `{name}`: {kind}')
+        continue
+      mode_indent_spaces[name] = kind
+
     transitions:dict[str,KindModeTransitions] = {}
     for from_mode_tok, open_kind_tok, push_mode_tok, close_kind_tok in self.transitions:
       from_mode = source[from_mode_tok]
@@ -303,15 +318,15 @@ class GrammarBuilder:
       kind_transitions[open_kind] = (push_mode, close_kind)
 
     return Grammar(license=license, patterns=patterns, modes=modes, mode_line_breaks=mode_line_breaks,
-      mode_line_ignores=mode_line_ignores, transitions=transitions)
+      mode_line_ignores=mode_line_ignores, mode_indent_spaces=mode_indent_spaces, transitions=transitions)
 
 
 
 section_names = ('license', 'patterns', 'modes', 'transitions')
 
-mode_keys = ('kinds', 'line_break_kind', 'line_ignore_kinds')
+mode_keys = ('kinds', 'line_break_kind', 'line_ignore_kinds', 'indent_space_kind')
 
-single_kind_mode_keys = ('line_break_kind',)
+single_kind_mode_keys = ('line_break_kind', 'indent_space_kind')
 
 mode_name_re = re.compile(r'[A-Za-z_][0-9A-Za-z_]*')
 
@@ -319,7 +334,7 @@ pattern_head_re = re.compile(r'(?P<name>[A-Za-z_][0-9A-Za-z_]*)[ \t]*(?P<colon>:
 
 dropped_kinds = ('comment', 'newline', 'spaces')
 
-reserved_kinds = ('invalid', 'incomplete', 'end_of_line', 'end_of_text') # Token kinds that the lexer produces itself.
+reserved_kinds = ('invalid', 'incomplete', 'end_of_line', 'end_of_text', 'indent', 'dedent') # Token kinds that the lexer produces itself.
 
 
 # Pattern expressions.

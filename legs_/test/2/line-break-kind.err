@@ -13,4 +13,7 @@ line-break-kind.legs:18:4-11: error: mode has `line_ignore_kinds` but no `line_b
 line-break-kind.legs:24:1-18: error: mode key `line_ignore_kinds` requires at least one kind.
 | line_ignore_kinds:
   ~~~~~~~~~~~~~~~~~
+line-break-kind.legs:29:20-26: error: pattern is not a member of mode `indents`: spaces
+| indent_space_kind: spaces
+                     ~~~~~~
 

@@ -1,0 +1,17 @@
+# An indent-aware mode emits empty `indent` and `dedent` tokens. Indentation is compared as text:
+# a line that neither equals nor extends an open level closes the levels that are not its prefixes and opens a new one.
+# Lines that do not count have no effect. A pushed mode that is not line-aware suspends the rules.
+{
+  'cmd': 'legs-test $NAME.legs',
+  'args': [
+    'a\n  b\n    c\n  d\ne\n',
+    'a\n  b\n    c\nd',
+    '  a\nb',
+    'a\n  b\n\n \n# x\n      # y\n  c\n      \nd',
+    'a\n  b',
+    'a\n  (b\n      c\n)\n  d\ne',
+    'a\n  b\n\tc',
+    'a\n    b\n  c',
+    'a\n\tb\n\t  c',
+  ],
+}

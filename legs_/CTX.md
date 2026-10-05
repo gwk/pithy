@@ -7,7 +7,7 @@
 Every target and every optimization must preserve these properties of a generated lexer:
 * The lexer cannot fail. Errors are emitted as `invalid` and `incomplete` tokens.
 * The tokens that cover text tile the input range in order, with no gaps or overlaps.
-  Empty tokens come only from declared mechanisms, each with a reserved kind: `end_of_line` in a line-aware mode, and the optional final `end_of_text`.
+  Empty tokens come only from declared mechanisms, each with a reserved kind: `end_of_line` in a line-aware mode, `indent` and `dedent` in an indent-aware mode, and the optional final `end_of_text`.
 * Each token is the longest match in the current mode, subject to commitment barriers.
 * Overlapping patterns resolve as described in `grammar.md`. Pattern order never matters.
 * All targets produce the same tokens for the same input.

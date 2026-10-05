@@ -21,7 +21,7 @@ _context_keywords_ = ['code generation', 'lexer generator', 'source generation',
 
 
 def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mode_line_breaks:dict[str,str],
-  mode_line_ignores:dict[str,frozenset[str]],
+  mode_line_ignores:dict[str,frozenset[str]], mode_indent_spaces:dict[str,str],
  pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
   'Generate and write a swift lexer to a file at `path`.'
 
@@ -45,6 +45,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mod
   mode_transitions_dict = {SwiftEnum(modes[name]):mode_trans_dict(d) for name, d in mode_transitions.items()}
   mode_line_breaks_dict = {SwiftEnum(modes[name]):SwiftEnum(kind) for name, kind in mode_line_breaks.items()}
   mode_line_ignores_dict = {SwiftEnum(modes[name]):[SwiftEnum(kind) for kind in sorted(kinds)] for name, kinds in mode_line_ignores.items()}
+  mode_indent_spaces_dict = {SwiftEnum(modes[name]):SwiftEnum(kind) for name, kind in mode_indent_spaces.items()}
 
   # State cases.
 
@@ -104,6 +105,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mod
       mode_transitions_dict=swift_repr(mode_transitions_dict, indent=2),
       mode_line_breaks_dict=swift_repr(mode_line_breaks_dict, indent=2),
       mode_line_ignores_dict=swift_repr(mode_line_ignores_dict, indent=2),
+      mode_indent_spaces_dict=swift_repr(mode_indent_spaces_dict, indent=2),
       patterns_path=patterns_path,
       state_cases='\n      '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
@@ -151,8 +153,12 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   private var pos: Int
   private let end: Int
   private var lineIdx: Int // The line index of `pos`.
-  private var pending: Token<${Name}TokenKind>? = nil // A token to return before lexing further.
-  private var lineCounts = false // The current line holds a token other than its line break, in a line-aware mode.
+  private var pending: [Token<${Name}TokenKind>] = [] // Tokens to return before lexing further, in order.
+  private var pendingIdx = 0 // The index of the next pending token.
+  private var held: [Token<${Name}TokenKind>] = [] // The leading tokens of a line in an indent-aware mode, held until the line is known to count.
+  private var lineCounts = false // The current line holds a counting token, in a line-aware mode.
+  private var isLineStart = true
+  private var levels: [Range<Int>] = [0..<0] // The range of the indentation text of each open level.
 
   // If `range` is provided then only that range of the text is lexed; no token extends past its end.
   // `mode` is the mode in which lexing starts.
@@ -169,24 +175,39 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   }
 
   public mutating func next() -> Token<${Name}TokenKind>? {
-
-    if let token = pending {
-      pending = nil
-      return token
+    while pendingIdx == pending.count {
+      pending.removeAll(keepingCapacity: true)
+      pendingIdx = 0
+      if self.pos == end { // Done; flush the line structure.
+        let lineIdx = self.lineIdx
+        let linePos = (lineIdx == 0) ? 0 : source.newlinePositions[lineIdx - 1] + 1
+        if !held.isEmpty {
+          pending.append(contentsOf: held)
+          held.removeAll()
+        } else if lineCounts {
+          lineCounts = false
+          pending.append(Token(pos: end, end: end, linePos: linePos, lineIdx: lineIdx, kind: .end_of_line))
+        } else if levels.count > 1 {
+          levels.removeLast()
+          pending.append(Token(pos: end, end: end, linePos: linePos, lineIdx: lineIdx, kind: .dedent))
+        } else {
+          return nil
+        }
+      } else {
+        lexToken()
+      }
     }
+    let token = pending[pendingIdx]
+    pendingIdx += 1
+    return token
+  }
 
+  // Lex one token and append it to `pending`, with any empty tokens that the line structure requires, or hold it.
+  private mutating func lexToken() {
     let (mode, popKind) = self.stack.last!
     let newlinePositions = source.newlinePositions
     let lineIdx = self.lineIdx
     let linePos = (lineIdx == 0) ? 0 : newlinePositions[lineIdx - 1] + 1
-
-    if self.pos == end { // Done.
-      if lineCounts {
-        lineCounts = false
-        return Token(pos: end, end: end, linePos: linePos, lineIdx: lineIdx, kind: .end_of_line)
-      }
-      return nil
-    }
 
     var pos = self.pos
     var state = mode.startState
@@ -227,18 +248,57 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
       }
     }
     let token = Token(pos: tokenPos, end: tokenEnd, linePos: linePos, lineIdx: lineIdx, kind: kind)
-    if let lineBreak = ${Name}Lexer.modeLineBreaks[mode] {
-      if kind == lineBreak {
-        if lineCounts {
-          lineCounts = false
-          pending = token
-          return Token(pos: tokenPos, end: tokenPos, linePos: linePos, lineIdx: lineIdx, kind: .end_of_line)
-        }
-      } else if !(${Name}Lexer.modeLineIgnores[mode]?.contains(kind) ?? false) {
-        lineCounts = true
-      }
+    func empty(_ at: Int, _ kind: ${Name}TokenKind) -> Token<${Name}TokenKind> {
+      return Token(pos: at, end: at, linePos: linePos, lineIdx: lineIdx, kind: kind)
     }
-    return token
+    guard let lineBreak = ${Name}Lexer.modeLineBreaks[mode] else { // The mode is not line-aware.
+      pending.append(token)
+      return
+    }
+    let indentSpace = ${Name}Lexer.modeIndentSpaces[mode]
+    if kind == lineBreak {
+      pending.append(contentsOf: held)
+      held.removeAll()
+      if lineCounts { pending.append(empty(tokenPos, .end_of_line)) }
+      pending.append(token)
+      lineCounts = false
+      isLineStart = true
+    } else if ${Name}Lexer.modeLineIgnores[mode]?.contains(kind) ?? false {
+      if isLineStart && indentSpace != nil {
+        held.append(token) // The line may not count.
+      } else {
+        pending.append(token)
+      }
+    } else { // The token counts.
+      if isLineStart, let indentSpace = indentSpace {
+        let spaceToken: Token<${Name}TokenKind>? = (held.first?.kind == indentSpace) ? held.first : nil
+        let space: Range<Int> = spaceToken.map { t in t.pos..<t.end } ?? 0..<0
+        let text = source.text
+        if text[space] != text[levels.last!] {
+          var countDedents = 0
+          while !text[space].starts(with: text[levels.last!]) {
+            levels.removeLast()
+            countDedents += 1
+          }
+          if space.count > levels.last!.count { // Deeper than the innermost remaining level.
+            levels.append(space)
+            let at = spaceToken!.pos
+            for _ in 0..<countDedents { pending.append(empty(at, .dedent)) }
+            pending.append(empty(at, .indent))
+            pending.append(contentsOf: held)
+          } else {
+            pending.append(contentsOf: held)
+            for _ in 0..<countDedents { pending.append(empty(tokenPos, .dedent)) }
+          }
+          held.removeAll()
+        }
+      }
+      pending.append(contentsOf: held)
+      held.removeAll()
+      pending.append(token)
+      lineCounts = true
+      isLineStart = false
+    }
   }
 
   private static let modeTransitions: Dictionary<${Name}LexMode, Dictionary<TokenKind, (${Name}LexMode, TokenKind?)>> = ${mode_transitions_dict}
@@ -246,6 +306,8 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   private static let modeLineBreaks: Dictionary<${Name}LexMode, TokenKind> = ${mode_line_breaks_dict}
 
   private static let modeLineIgnores: Dictionary<${Name}LexMode, Set<TokenKind>> = ${mode_line_ignores_dict}
+
+  private static let modeIndentSpaces: Dictionary<${Name}LexMode, TokenKind> = ${mode_indent_spaces_dict}
 }
 '''
 

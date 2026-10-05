@@ -22,3 +22,8 @@ line_ignore_kinds: word
 ## empty
 kinds: word
 line_ignore_kinds:
+
+## indents
+kinds: newline word
+line_break_kind: newline
+indent_space_kind: spaces
