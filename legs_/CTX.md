@@ -48,7 +48,7 @@ It is not a package and has no `__init__.py` files; importable code belongs in `
 
 # Costs
 
-* `langs/python/python.legs` takes over a minute to compile; the other grammars take seconds.
+* Every supplied grammar compiles in about a second, most of which is startup and parsing.
 * Any edit to the sources of `legs`, `pithy` or `tolkien` makes the generated lexers stale, so the next build recompiles them.
 * The language tests and `just perf-legs-python` load the lexers from `_build/langs` through `legs.cache.cached_lexer_class`.
   Do not call `build_lexer_class` on a supplied grammar in a test; it compiles on every run.

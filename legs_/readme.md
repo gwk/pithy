@@ -147,8 +147,7 @@ The supplied languages are in [langs/](langs/). Each language has a directory th
 * [Legs](langs/legs/readme.md): pattern expressions, character sets and declarations within Legs grammar files.
 * [Python](langs/python/readme.md): experimental Python 3.14 lexing with string and interpolation modes, individual escapes and diagnostic byte spans. A coordinator handles indentation and nested strings; an adapter supports comparison with stdlib `tokenize`.
 
-Some of these grammars take minutes to compile, so they are built and tested by separate recipes.
-`just check` and `just test-full` do not run them. Run them manually from the repository root after changing a language, the compiler or a target:
+The languages are built and tested by separate recipes; `just check` and `just test-full` do not run them. Run them manually from the repository root after changing a language, the compiler or a target:
 
 ```sh
 just build-legs-langs         # Generate the Python lexer of every language into `_build/langs`.

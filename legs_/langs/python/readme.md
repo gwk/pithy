@@ -41,7 +41,7 @@ for issue in scanner.issues:
   print(issue.kind, issue.pos, issue.end, issue.message)
 ```
 
-The grammar takes over a minute to compile. `cached_lexer_class` compiles it only when the generated file is stale.
+`cached_lexer_class` compiles it only when the generated file is stale.
 Load the fragment lexer once and reuse it across sources. `PythonLexer` instances are single-use.
 The grammar is a repository resource; callers supply its path when building a lexer.
 

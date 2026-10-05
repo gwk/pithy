@@ -3,7 +3,7 @@
 '''
 Load generated Python lexers, compiling them only when they are stale.
 
-Compiling a large grammar can take minutes. `cached_lexer_class` runs `legs -if-stale`,
+`cached_lexer_class` runs `legs -if-stale`,
 which skips compilation when the output file records the current hash of the grammar, the options and the legs sources.
 '''
 

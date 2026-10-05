@@ -80,7 +80,7 @@ perf-legs-python *args:
   PYTHONHASHSEED=0 python3 legs_/langs/python/py_bench.py "$@"
 
 # Generate the Python lexers of the named `legs_/langs` languages into `_build/langs`; all languages by default.
-# Lexers that are current are skipped. Run manually; compiling a large grammar takes minutes.
+# Lexers that are current are skipped. Run manually; `check` and `test-full` omit these.
 [positional-arguments]
 build-legs-langs *names:
   #!/bin/sh
