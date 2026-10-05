@@ -92,6 +92,7 @@ class Lexer:
       self.patterns[n] = pattern
 
     # Validate and compile modes.
+    modes = list(modes) # The modes are traversed more than once.
     if not modes:
       modes = [LexMode('main', kinds=self.patterns)]
     self.modes: dict[str,LexMode] = {}
@@ -116,6 +117,12 @@ class Lexer:
           if not matching:
             raise Lexer.DefinitionError(f'mode {mode.name!r} wildcard pattern regex does not match any patterns: {kind}')
           kind_set.update(matching)
+      if not kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} has no patterns')
+      if mode.indents:
+        for kind in ('newline', 'spaces'):
+          if kind not in kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} has indents but lacks the {kind!r} pattern')
+        for kind in ('indent', 'dedent'):
+          if kind in patterns: raise Lexer.DefinitionError(f'{kind!r} pattern name collides with the {kind} token name')
       self.modes[mode.name] = mode
       mode.kind_set = frozenset(kind_set)
       choice_sep = '\n| ' if is_verbose else '|'
@@ -142,7 +149,8 @@ class Lexer:
       if trans.mode not in self.modes: raise Lexer.DefinitionError(f'unknown child mode: {trans.mode!r}')
       for label, trans_kinds in [('push', trans.kinds), ('pop', sorted(trans.pops))]:
         for kind in trans_kinds:
-          if kind not in self.kinds: raise Lexer.DefinitionError(f'unknown mode {label} pattern: {kind!r}')
+          # The synthesized `indent` and `dedent` tokens do not take part in transitions.
+          if kind not in self.patterns: raise Lexer.DefinitionError(f'unknown mode {label} pattern: {kind!r}')
       for base in trans.bases:
         for kind in trans.kinds:
           key = (base, kind)
@@ -172,7 +180,7 @@ class Lexer:
   def _lex(self, source:Source[str], pos:int, end:int, mode:str, drop:Container[str], eot:bool) -> Iterator[Token]:
     # The root frame is never popped because its transition has no pop kinds.
     stack = [LexTrans(base=(), kind=(), mode=mode, pop=(), consume=False)]
-    prev_kind = ''
+    is_line_start = True
     indent_stack:list[int] = []
     while pos < end:
       # Get the current frame and mode.
@@ -183,19 +191,16 @@ class Lexer:
       kind = token.kind
       pos = token.end
       # Check if we should synthesize indent or dedent tokens.
-      if lex_mode.indents and prev_kind == 'newline':
-        if kind == 'spaces': # Generate indent or dedent tokens.
-          indent_len = len(source[token])
+      if lex_mode.indents and is_line_start and kind != 'newline': # Empty lines do not affect the indent stack.
+        indent_len = len(source[token]) if kind == 'spaces' else 0
+        is_blank = (kind == 'spaces' and (pos == end or self._lex_one(lex_mode.regex, source, pos, end, '').kind == 'newline'))
+        if not is_blank: # Lines of only spaces do not affect the indent stack either.
           while indent_stack and indent_stack[-1] > indent_len:
             yield token.pos_token(kind='dedent')
             indent_stack.pop()
-          if not indent_stack or indent_stack[-1] < indent_len:
+          if indent_len and (not indent_stack or indent_stack[-1] < indent_len):
             yield token.pos_token(kind='indent')
             indent_stack.append(indent_len)
-        elif kind != 'newline': # Empty lines do not affect indent stack. All others pop the entire indent stack.
-          while indent_stack:
-            yield token.pos_token(kind='dedent')
-            indent_stack.pop()
       # Yield the current token.
       if kind not in drop:
         yield token
@@ -208,12 +213,12 @@ class Lexer:
       if not consumed: # Check if we should push a child mode.
         try: stack.append(self.transitions[(frame.mode, kind)])
         except KeyError: pass
-      prev_kind = kind
-    while indent_stack:
-      yield token.pos_token(kind='dedent')
-      indent_stack.pop()
+      is_line_start = (kind == 'newline')
+    top_mode = stack[-1].mode
+    for _ in indent_stack:
+      yield Token(pos=end, end=end, mode=top_mode, kind='dedent')
     if eot:
-      yield eot_token(end, mode=stack[-1].mode)
+      yield eot_token(end, mode=top_mode)
 
 
   def lex(self, source:Source[str], slc:slice|None=None, drop:Container[str]=(), eot:bool=False, *, mode:str|None=None
