@@ -22,7 +22,7 @@ from . import DictLexerBase, ModeData
 from .dfa import AmbiguityError, DFA, minimize_dfa
 from .nfa import NFA, NfaState, NfaTransitions
 from .parse import Grammar
-from .patterns import LegsPattern, NfaMutableTransitions
+from .patterns import EncodingError, LegsPattern, NfaMutableTransitions, validate_encoding
 
 
 _context_keywords_ = ['DFA', 'NFA', 'automata', 'automata construction', 'deterministic automata', 'grammar compiler',
@@ -80,7 +80,9 @@ def build_mode_automata(grammar:Grammar, encoding:str='utf-8') -> Iterator[ModeA
   The `main` mode is first, followed by the others in name order.
   The nodes of the minimized DFAs are numbered consecutively across the modes in this order.
   Raise ModeError if the patterns of a mode are invalid.
+  Raise EncodingError if the encoding is not supported or cannot represent a character of a pattern.
   '''
+  validate_encoding(encoding)
   start_node = 0
   for mode, kinds in sorted(grammar.modes.items(), key=lambda item: mode_name_key(item[0])):
     nfa = build_nfa(name=mode, named_patterns=sorted((kind, grammar.patterns[kind]) for kind in kinds), encoding=encoding)
@@ -126,7 +128,8 @@ def build_nfa(name:str, named_patterns:list[tuple[str, LegsPattern]], encoding:s
   transitions_dd:NfaMutableTransitions = defaultdict(lambda: defaultdict(set))
   for kind, pattern in named_patterns:
     match_node = mk_node()
-    pattern.gen_nfa(mk_node, encoding, transitions_dd, start, match_node)
+    try: pattern.gen_nfa(mk_node, encoding, transitions_dd, start, match_node)
+    except EncodingError as e: raise EncodingError(f'error: pattern `{kind}`: {e}') from e
     dict_put(match_node_kinds, match_node, kind)
   lit_pattern_names = { n for n, pattern in named_patterns if pattern.is_literal }
 

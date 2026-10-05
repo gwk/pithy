@@ -35,6 +35,7 @@ from ..build import build_mode_automata, build_pattern_descs, ModeAutomata, Mode
 from ..dfa import DFA
 from ..nfa import NFA
 from ..parse import parse_legs
+from ..patterns import EncodingError
 from ..targets.dot import output_dot
 from ..targets.python import output_python, OutputOpts
 from ..targets.swift import output_swift
@@ -146,13 +147,16 @@ def run_legs(args:LegsCmd) -> None:
       if dbg: e.fat_dfa.describe('Fat DFA')
       if dbg or args.stats: e.fat_dfa.describe_stats('Fat DFA Stats')
     exit(str(e))
+  except EncodingError as e: exit(str(e))
   dfas = [automata.min_dfa for automata in mode_automata.values()]
 
   # If we are testing patterns on the command line, then test each argument against the automata of the start mode, and exit.
   if args.match:
     automata = mode_automata[start_mode]
     for text in args.match:
-      match_bytes(automata.nfa, automata.fat_dfa, automata.min_dfa, text, text.encode(args.encoding))
+      try: text_bytes = text.encode(args.encoding)
+      except UnicodeEncodeError: exit(f'error: encoding {args.encoding!r} cannot represent `-match` string: {text!r}.')
+      match_bytes(automata.nfa, automata.fat_dfa, automata.min_dfa, text, text_bytes)
     exit()
 
   pattern_descs = build_pattern_descs(grammar)

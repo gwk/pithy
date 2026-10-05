@@ -1,8 +1,8 @@
 # Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
 
 from legs.build import build_nfa
-from legs.patterns import CharsetPattern, utf8_byte_range_seqs
-from utest import utest, utest_seq
+from legs.patterns import CharsetPattern, EncodingError, utf8_byte_range_seqs, validate_encoding
+from utest import utest, utest_exc, utest_seq
 
 
 # A charset is emitted as a character class; each range excludes its end.
@@ -38,3 +38,17 @@ def charset_nfa_matches_bytes(ranges:list[tuple[int,int]], texts:list[bytes]) ->
 utest([False, False, False, False, True], charset_nfa_matches_bytes, [(0, 0x110000)],
   [b'\xe3\x81', b'\xc0\x80', b'\xed\xa0\x80', b'\xf4\x90\x80\x80', b'\xf4\x8f\xbf\xbf'])
 
+
+# Encodings.
+
+utest(None, validate_encoding, 'utf-8')
+utest(None, validate_encoding, 'latin-1')
+utest(None, validate_encoding, 'utf-16-le')
+utest_exc(EncodingError("error: unknown encoding: ''."), validate_encoding, '')
+utest_exc(EncodingError("error: unknown encoding: 'nonexistent'."), validate_encoding, 'nonexistent')
+utest_exc(EncodingError("error: encoding 'utf-16' is not supported because it adds a byte order mark; "
+  'use an encoding without one, e.g. `utf-16-le`.'), validate_encoding, 'utf-16')
+
+# A character that the encoding cannot represent is an error that names the pattern.
+utest_exc(EncodingError("error: pattern `k`: encoding 'latin-1' cannot represent U+2192; character set: \\2192/."),
+  build_nfa, 'main', [('k', CharsetPattern([(0x2192, 0x2193)]))], encoding='latin-1')

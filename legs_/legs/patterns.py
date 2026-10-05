@@ -25,6 +25,7 @@ __all__ = [
   'CharsetPattern',
   'ChoicePattern',
   'CommitPattern',
+  'EncodingError',
   'LegsPattern',
   'NfaMutableTransitions',
   'OptPattern',
@@ -32,12 +33,26 @@ __all__ = [
   'QuantityPattern',
   'SeqPattern',
   'StarPattern',
+  'validate_encoding',
 ]
 
 
 MkNode = Callable[[], int]
 
 NfaMutableTransitions = defaultdict[int, defaultdict[int, set[int]]]
+
+
+class EncodingError(ValueError):
+  'Raised when the encoding is not supported, or cannot represent a character of a pattern.'
+
+
+def validate_encoding(encoding:str) -> None:
+  'Raise EncodingError if automata cannot be built for the encoding.'
+  try: lookup_codec(encoding)
+  except LookupError as e: raise EncodingError(f'error: unknown encoding: {encoding!r}.') from e
+  if ''.encode(encoding):
+    raise EncodingError(f'error: encoding {encoding!r} is not supported because it adds a byte order mark; '
+      'use an encoding without one, e.g. `utf-16-le`.')
 
 
 class LegsPattern:
@@ -302,7 +317,9 @@ class CharsetPattern(LegsPattern):
     node_byte_nodes = defaultdict[int,dict[int,int]](dict)
     for code in codes_for_ranges(self.ranges):
       node = start
-      enc_bytes = chr(code).encode(encoding)
+      try: enc_bytes = chr(code).encode(encoding)
+      except UnicodeEncodeError as e:
+        raise EncodingError(f'encoding {encoding!r} cannot represent U+{code:04X}; character set: {codes_desc(self.ranges)}.') from e
       for i, byte in enumerate(enc_bytes, 1-len(enc_bytes)):
         if i: # Not the final byte.
           byte_nodes = node_byte_nodes[node]
