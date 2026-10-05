@@ -5,7 +5,7 @@
 import re
 from decimal import Decimal
 from string import Template
-from typing import Any, Callable, cast, Iterable, Iterator, Sequence, TypeVar
+from typing import Any, Callable, cast, Final, Iterable, Iterator, Sequence, TypeVar
 
 from ..defaultlist import DefaultList
 
@@ -281,7 +281,7 @@ def append_to_nonempty(string:str, suffix:str) -> str:
   return '' if (string == '') else (string + suffix)
 
 
-_byte_count_dec_magnitudes = [
+_byte_count_dec_magnitudes:Final = (
   ('B',  'byte'),
   ('kB', 'kilobyte'),
   ('MB', 'megabyte'),
@@ -291,7 +291,7 @@ _byte_count_dec_magnitudes = [
   ('EB', 'exabyte'),
   ('ZB', 'zettabyte'),
   ('YB', 'yottabyte'),
-]
+)
 
 def format_byte_count(count:int, prec:int=3, abbr:bool=True) -> str:
   "Format a string for the given number of bytes, using the largest appropriate prefix (e.g. 'kB')"
@@ -300,6 +300,7 @@ def format_byte_count(count:int, prec:int=3, abbr:bool=True) -> str:
     if abbr: return '{:d} B'.format(count)
     else: return pluralize(count, 'byte')
   c = Decimal(count)
+  abbrev, full = _byte_count_dec_magnitudes[0]
   for abbrev, full in _byte_count_dec_magnitudes:
     if c < 999: break
     if c < 1000: # must make sure that c will not round up.
