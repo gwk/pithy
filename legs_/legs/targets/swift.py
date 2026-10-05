@@ -21,6 +21,7 @@ _context_keywords_ = ['code generation', 'lexer generator', 'source generation',
 
 
 def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mode_line_breaks:dict[str,str],
+  mode_line_ignores:dict[str,frozenset[str]],
  pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
   'Generate and write a swift lexer to a file at `path`.'
 
@@ -43,6 +44,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mod
 
   mode_transitions_dict = {SwiftEnum(modes[name]):mode_trans_dict(d) for name, d in mode_transitions.items()}
   mode_line_breaks_dict = {SwiftEnum(modes[name]):SwiftEnum(kind) for name, kind in mode_line_breaks.items()}
+  mode_line_ignores_dict = {SwiftEnum(modes[name]):[SwiftEnum(kind) for kind in sorted(kinds)] for name, kinds in mode_line_ignores.items()}
 
   # State cases.
 
@@ -101,6 +103,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mod
       mode_default=(' = .main' if 'main' in modes else ''), # A grammar without a `main` mode requires an explicit start mode.
       mode_transitions_dict=swift_repr(mode_transitions_dict, indent=2),
       mode_line_breaks_dict=swift_repr(mode_line_breaks_dict, indent=2),
+      mode_line_ignores_dict=swift_repr(mode_line_ignores_dict, indent=2),
       patterns_path=patterns_path,
       state_cases='\n      '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
@@ -231,7 +234,7 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
           pending = token
           return Token(pos: tokenPos, end: tokenPos, linePos: linePos, lineIdx: lineIdx, kind: .end_of_line)
         }
-      } else {
+      } else if !(${Name}Lexer.modeLineIgnores[mode]?.contains(kind) ?? false) {
         lineCounts = true
       }
     }
@@ -241,6 +244,8 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   private static let modeTransitions: Dictionary<${Name}LexMode, Dictionary<TokenKind, (${Name}LexMode, TokenKind?)>> = ${mode_transitions_dict}
 
   private static let modeLineBreaks: Dictionary<${Name}LexMode, TokenKind> = ${mode_line_breaks_dict}
+
+  private static let modeLineIgnores: Dictionary<${Name}LexMode, Set<TokenKind>> = ${mode_line_ignores_dict}
 }
 '''
 
@@ -289,6 +294,7 @@ def swift_repr(obj:Any, indent:int=0) -> str:
   if isinstance(obj, str): return f'"{swift_esc_str(obj)}"'
   if isinstance(obj, SwiftEnum): return obj.swift_repr
   if isinstance(obj, tuple): return f'({",".join(swift_repr(el) for el in obj)})'
+  if isinstance(obj, list): return f'[{", ".join(swift_repr(el) for el in obj)}]' # An array literal, which also initializes a Set.
   if isinstance(obj, dict):
     items = ''.join(swift_repr_kv(kv, indent=indent+2) for kv in obj.items())
     ind = ' ' * indent

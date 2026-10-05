@@ -1,10 +1,12 @@
 # A line-aware mode emits an empty `end_of_line` before the line break of each line that holds another token,
 # and at the end of an unterminated last line. A pushed mode that is not line-aware suspends the rule.
+# A line holding only ignored kinds does not count.
 {
   'cmd': 'legs-test $NAME.legs',
   'args': [
     'a\n\nb',
     ' \n',
+    ' # c\na # d\n',
     'a(b\nc)\nd',
     '\n',
     '',

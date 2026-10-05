@@ -1,7 +1,16 @@
 line-break-kind.legs:11:18-25: error: pattern is not a member of mode `main`: newline
 | line_break_kind: newline
                    ~~~~~~~
+line-break-kind.legs:13:4-9: error: mode has `line_ignore_kinds` but no `line_break_kind`: other
+| ## other
+     ~~~~~
 line-break-kind.legs:15:1-16: error: mode key `line_break_kind` requires exactly one kind.
 | line_break_kind: newline word
   ~~~~~~~~~~~~~~~
+line-break-kind.legs:18:4-11: error: mode has `line_ignore_kinds` but no `line_break_kind`: another
+| ## another
+     ~~~~~~~
+line-break-kind.legs:24:1-18: error: mode key `line_ignore_kinds` requires at least one kind.
+| line_ignore_kinds:
+  ~~~~~~~~~~~~~~~~~
 

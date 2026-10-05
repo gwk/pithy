@@ -1,4 +1,4 @@
-// `line_break_kind` names one kind of the mode.
+// `line_break_kind` names one kind of the mode. `line_ignore_kinds` names kinds of the mode and requires `line_break_kind`.
 
 # Patterns
 newline: \n
@@ -13,3 +13,12 @@ line_break_kind: newline
 ## other
 kinds: newline word
 line_break_kind: newline word
+line_ignore_kinds: word nope
+
+## another
+kinds: word
+line_ignore_kinds: word
+
+## empty
+kinds: word
+line_ignore_kinds:

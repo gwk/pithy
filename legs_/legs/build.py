@@ -47,7 +47,7 @@ def build_lexer_class_for_automata(name:str, grammar:Grammar, automata:Iterable[
     if dfa.commit_nodes: mode_commit_nodes[dfa.name] = dfa.commit_nodes
   return type(name, (DictLexerBase,), dict(
     pattern_descs=build_pattern_descs(grammar), mode_transitions=grammar.transitions, mode_line_breaks=grammar.mode_line_breaks,
-    mode_data=mode_data, mode_commit_nodes=mode_commit_nodes))
+    mode_line_ignores=grammar.mode_line_ignores, mode_data=mode_data, mode_commit_nodes=mode_commit_nodes))
 
 
 @dataclass

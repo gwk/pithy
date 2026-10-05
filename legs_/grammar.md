@@ -133,13 +133,15 @@ A mode with a `line_break_kind` entry is line-aware. The entry names the kind th
 
 ```
 ## main
-kinds: spaces newline word paren_o
+kinds: spaces newline word comment paren_o
 line_break_kind: newline
+line_ignore_kinds: spaces comment
 ```
 
 In a line-aware mode the lexer emits an empty `end_of_line` token before the line break of each line that holds another token.
 If the last line holds a token and has no line break, the token is emitted at the end of the text.
-A line that holds only its line break produces nothing. A parser can therefore drop the line break tokens and use `end_of_line` as a terminator.
+Tokens of the `line_ignore_kinds` do not count, so a line that holds only its line break, or only spaces and a comment, produces nothing.
+A parser can therefore drop whitespace, comments and line breaks and use `end_of_line` as a terminator.
 
 The rule applies only while the mode on top of the stack is line-aware. A pushed mode that is not suspends it:
 a line that begins in the line-aware mode and continues through brackets or a string ends at the next line break in the line-aware mode.

@@ -186,7 +186,7 @@ class GrammarChecker:
           raise fail('line break ends a line that holds a token.' if line_counts else 'end_of_line precedes an empty line.')
         line_counts = False
       elif is_prev_end_of_line: raise fail('end_of_line does not precede a line break.')
-      elif line_break is not None: line_counts = True
+      elif line_break is not None and token.kind not in self.grammar.mode_line_ignores.get(curr_mode, ()): line_counts = True
       is_prev_end_of_line = False
 
       nfa = self.automata[curr_mode].nfa

@@ -4,14 +4,16 @@
 newline: \n
 spaces: \s+
 word: $Ascii_Letter+
+comment: \# [$Ascii - \n]*
 paren_o: \(
 paren_c: \)
 
 # Modes
 
 ## main
-kinds: newline spaces word paren_o
+kinds: newline spaces word comment paren_o
 line_break_kind: newline
+line_ignore_kinds: spaces comment
 
 ## group
 kinds: newline spaces word paren_c

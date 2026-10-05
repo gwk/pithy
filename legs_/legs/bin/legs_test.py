@@ -140,7 +140,7 @@ class LexerTest:
   def run_python(self, stem:str) -> list[Tokens]:
     path = stem + '.py'
     output_python(path, dfas=self.dfas, mode_transitions=self.grammar.transitions, mode_line_breaks=self.grammar.mode_line_breaks,
-      pattern_descs=self.pattern_descs,
+      mode_line_ignores=self.grammar.mode_line_ignores, pattern_descs=self.pattern_descs,
       license=self.grammar.license, patterns_path=None, type_prefix='')
     return self.run_python_driver(path)
 
@@ -153,7 +153,7 @@ class LexerTest:
   def run_swift(self, stem:str) -> list[Tokens]:
     path = stem + '.swift'
     output_swift(path, dfas=self.dfas, mode_transitions=self.grammar.transitions, mode_line_breaks=self.grammar.mode_line_breaks,
-      pattern_descs=self.pattern_descs,
+      mode_line_ignores=self.grammar.mode_line_ignores, pattern_descs=self.pattern_descs,
       license=self.grammar.license, patterns_path=None, type_prefix='')
     # Append the base source and the driver, because `swift` interprets a single file.
     with open(path_join(dirname(dirname(__file__)), 'targets/legs_base.swift')) as f: base = f.read()

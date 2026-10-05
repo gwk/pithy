@@ -33,6 +33,7 @@ class LexerBase(Iterator[Token]):
 
   mode_transitions:ModeTransitions
   mode_line_breaks:ClassVar[dict[str,str]] = {} # The line break kind of each line-aware mode.
+  mode_line_ignores:ClassVar[dict[str,frozenset[str]]] = {} # The kinds that do not make a line count, per line-aware mode.
   pattern_descs:dict[str,str]
   kinds:ClassVar[frozenset[str]] = frozenset() # The token kinds, excluding `invalid` and `incomplete`.
 
@@ -92,7 +93,7 @@ class DictLexerBase(LexerBase):
   `mode_commit_nodes` holds the nodes of each mode that follow a commitment barrier.
   Each token is the longest match. On reaching a commit node, the lexer forgets the matches found so far in the token.
   In a line-aware mode, an empty `end_of_line` token precedes the line break of each line that holds another token,
-  and ends an unterminated last line.
+  and ends an unterminated last line. Tokens of the mode's line ignore kinds do not count.
   '''
 
   mode_data:dict[str,ModeData]
@@ -152,5 +153,5 @@ class DictLexerBase(LexerBase):
           self.line_counts = False
           self.pending.append(token)
           return Token(pos=token_pos, end=token_pos, mode=mode, kind='end_of_line')
-      else: self.line_counts = True
+      elif kind not in self.mode_line_ignores.get(mode, ()): self.line_counts = True
     return token

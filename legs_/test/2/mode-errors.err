@@ -7,7 +7,7 @@ mode-errors.legs:10:1-9: error: expected a mode header; a mode is declared as a 
 mode-errors.legs:14:1-6: error: mode key already defined: kinds
 | kinds: b
   ~~~~~
-mode-errors.legs:15:1-9: error: unknown mode key: patterns; expected one of: kinds, line_break_kind.
+mode-errors.legs:15:1-9: error: unknown mode key: patterns; expected one of: kinds, line_break_kind, line_ignore_kinds.
 | patterns: a
   ~~~~~~~~
 mode-errors.legs:17:4-9: error: mode has no `kinds` entry: empty
