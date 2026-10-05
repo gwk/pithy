@@ -43,7 +43,7 @@ It is not a package and has no `__init__.py` files; importable code belongs in `
 * Unit tests for a module sit beside it in `legs_/legs`. `just check` runs these.
 * `just check` does not run the tests in `legs_/test`. After changing the parser, the automata or a target, run `iotest legs_/test/0 legs_/test/2`.
   These tests need the `swift` command.
-* `just test-full` also runs the property tests and the slow unit tests. See `legs_/test/CTX.md`.
+* `just test-full` also runs the tests in `legs_/test`, including the property tests. See `legs_/test/CTX.md`.
 * Neither runs the tests in `legs_/langs`. Run `just test-legs-langs [names...]` manually after changing a language, the compiler or a target.
 
 # Costs

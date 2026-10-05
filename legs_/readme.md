@@ -125,7 +125,7 @@ See `legs.props` for details. The examples are the same on every run unless `-ra
 
 `legs -match` checks strings against the NFA, the unminimized DFA and the minimized DFA of a mode, without generating code.
 
-Tests that are too slow for the routine checks are in `legs_/test`; run them with `just test-full`.
+The tests in `legs_/test` run the commands on whole grammars, and some need the `swift` command; run them with `just test-full`.
 The tests of the supplied languages are run separately; see [Languages](#languages).
 
 Compilation and generated lexer runtime benchmarks are in [perf/](perf/readme.md).

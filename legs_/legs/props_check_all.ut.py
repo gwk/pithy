@@ -2,7 +2,6 @@
 
 '''
 Run the property checks of `legs.props` with generated inputs, and test that they detect faulty lexers.
-These tests are kept out of the package source tree because they are too slow for the routine unit tests.
 '''
 
 from legs.build import build_lexer_class, build_mode_automata
