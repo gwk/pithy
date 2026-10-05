@@ -20,6 +20,7 @@ from legs.langs.python.py_lexer import PythonLexer
 from legs.langs.python.py_lexer_samples import python_samples, unicode_samples
 from legs.langs.python.py_tokenize import python_tokens
 from pithy.cmdparse import Cmd, opt, pos
+from pithy.strings import fmt_rows, format_byte_count
 from tolkien import Source
 
 
@@ -70,6 +71,7 @@ class PythonBench(Cmd):
       decoded = [source.text.decode('utf-8') for source in corpus]
       count_bytes = sum(len(source.text) for source in corpus)
       print(f'{name}: {len(corpus)} sources; {count_bytes:,} UTF-8 bytes; one warmup; {self.runs} measured runs.', flush=True)
+      rows:list[tuple[str,...]] = []
       for label in ('detailed', 'adapted', 'stdlib'):
         times = []
         counts = []
@@ -88,8 +90,10 @@ class PythonBench(Cmd):
           if run:
             times.append(elapsed)
             counts.append(count)
-        print(f'  {label}: median={median(times):.3f}s min={min(times):.3f}s max={max(times):.3f}s; '
-          f'{counts[0]:,} tokens', flush=True)
+        rows.append((label, f'{median(times):.3f}s', f'{min(times):.3f}s', f'{max(times):.3f}s', f'{counts[0]:,}',
+          format_byte_count(round(count_bytes / median(times))) + '/s'))
+      head = ('', 'median', 'min', 'max', 'tokens', 'throughput')
+      for line in fmt_rows(rows, head=head, rjust=(False, True)): print(f'  {line.rstrip()}', flush=True)
 
 
 def compare(source:Source[bytes], lexer_type:type[DictLexerBase], expected:list[tokenize.TokenInfo]) -> int:
