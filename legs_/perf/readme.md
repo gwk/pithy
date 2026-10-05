@@ -55,21 +55,6 @@ It measures the detailed Legs stream, the stdlib-compatible adapter, and stdlib 
 Each runtime measurement consumes the token iterator without retaining the tokens, with one warmup and three measured runs by default.
 Source decoding, grammar compilation and differential checks are excluded from runtime measurements; garbage collection remains enabled.
 The detailed stream includes trivia and string fragments, so its token count differs from the adapted and stdlib streams.
+The Legs measurements include Python coordination and allocation, while stdlib uses its native tokenizer.
 Use `-runs 0` for differential checks alone.
 See [the Python lexer documentation](../langs/python/readme.md) for the compatibility contract, diagnostics and development commands.
-
-## Initial Python baseline
-
-Measured on 2026-10-02 with Python 3.14.7, macOS arm64, `PYTHONHASHSEED=0`, one warmup and three measured runtime runs.
-Command: `just perf-legs-python`.
-Fresh grammar construction took 83.5 seconds; it is excluded from the runtime table.
-All 568 repository files and 43 synthetic examples matched stdlib token kinds, spelling, positions and `exact_type`, with no coverage gaps, Legs diagnostics or stdlib rejections.
-
-| Corpus | UTF-8 bytes | Detailed Legs median | Adapted Legs median | Stdlib median |
-|---|---:|---:|---:|---:|
-| Repository | 3,029,220 | 0.755 s | 1.283 s | 0.126 s |
-| Synthetic Unicode | 67,100 | 0.024 s | 0.040 s | 0.004 s |
-
-The repository produced 864,005 detailed tokens versus 624,607 adapted/stdlib tokens.
-The Unicode workload produced 21,401 detailed tokens versus 16,501 adapted/stdlib tokens.
-These establish a workload baseline, not an optimization result; the two Legs measurements include Python coordination and allocation, while stdlib uses its native tokenizer.
