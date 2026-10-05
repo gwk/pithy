@@ -140,7 +140,7 @@ def _() -> None:
   utest_val('lambda', lam.kind, desc='lambda scope kind')
   utest_val('generator', gen.kind, desc='generator scope kind')
   assert lam.table is not None and gen.table is not None
-  utest_val('genexpr', gen.table.get_name(), desc='generator table name')
+  utest_val('genexpr', gen.table.get_name().strip('<>'), desc='generator table name') # TODO: expect `<genexpr>` once we require 3.15.
   utest_val('free', gen.free_kind('a'), desc='lambda param is free in generator scope')
 
 

@@ -610,6 +610,7 @@ class SemImport(SemNode, Sem_stmt):
   ast_import: Import
 
   names: list[SemAlias]
+  is_lazy: int|None # PEP 810 (Python 3.15).
 
 
 class SemImportFrom(SemNode, Sem_stmt):
@@ -619,6 +620,7 @@ class SemImportFrom(SemNode, Sem_stmt):
   module: str|None
   names: list[SemAlias]
   level: int|None
+  is_lazy: int|None # PEP 810 (Python 3.15).
 
 
 class SemGlobal(SemLeaf, Sem_stmt):
@@ -751,7 +753,7 @@ class SemDictComp(SemScope, Sem_expr):
   ast_dict_comp: DictComp
 
   key: SemExpr
-  value: SemExpr
+  value: SemExpr|None # None for a dict unpacking comprehension, e.g. `{**d for d in ds}` (PEP 798, Python 3.15).
   generators: list[SemComprehension]
 
 

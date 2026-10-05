@@ -2,7 +2,7 @@
 
 '''
 Compare installed, approved and upstream versions, with ready-to-paste checksums for newer releases.
-Python, Vector and uv use final-looking git tags listed with `git ls-remote`, which transfers a few tens of kilobytes.
+Python, Vector and uv use git tags listed with `git ls-remote`, which transfers a few tens of kilobytes.
 When a newer tag exists, the tool fetches that one release's checksums: the python.org downloads API for Python,
 or the asset digests of the GitHub release for Vector and uv. A tag whose download is not yet published is reported as such.
 SQLite uses the PRODUCT table that sqlite.org embeds in its download page for scripts to read.
@@ -64,10 +64,11 @@ def installed_version(component:Component) -> str|None:
 
 
 def version_key(version:str) -> tuple[int,...]:
-  if not re.fullmatch(r'\d+\.\d+\.\d+(?:\.\d+)?', version):
+  if not (m := re.fullmatch(r'(\d+\.\d+\.\d+(?:\.\d+)?)(?:(a|b|rc)(\d+))?', version)):
     raise ValueError(f'Invalid version: {version!r}')
-  parts = tuple(map(int, version.split('.')))
-  return parts + (0,) * (4 - len(parts))
+  parts = tuple(map(int, m[1].split('.')))
+  stage = {'a': 0, 'b': 1, 'rc': 2, None: 3}[m[2]]
+  return parts + (0,) * (4 - len(parts)) + (stage, int(m[3] or 0))
 
 
 def read_versions(path:Path) -> dict[str,str]:
@@ -128,7 +129,7 @@ def github_tags(repo:str, pattern:str) -> set[str]:
   proc = run(['git', 'ls-remote', '--tags', '--refs', f'https://github.com/{repo}.git'],
     capture_output=True, text=True, timeout=30, check=True)
   versions = parse_tags(proc.stdout, pattern)
-  if not versions: raise ValueError('No matching final version tags found.')
+  if not versions: raise ValueError('No matching version tags found.')
   return versions
 
 
@@ -168,11 +169,12 @@ python_api_url = 'https://www.python.org/api/v2/downloads'
 
 
 def parse_python_release(data:object, version:str) -> int|None:
-  'Return the python.org release id for a version, or None if the release is not published as final.'
+  'Return the python.org release id for a version, or None if the release is not published.'
   if not isinstance(data, list): raise ValueError('python.org release response is not a list.')
   for release in data:
     if not isinstance(release, dict) or release.get('name') != f'Python {version}': continue
-    if not release.get('is_published') or release.get('pre_release'): return None
+    if not release.get('is_published'): return None
+    if release.get('pre_release') and not re.search(r'(a|b|rc)\d+$', version): return None
     if not (m := re.fullmatch(r'.*/release/(\d+)/?', str(release.get('resource_uri')))):
       raise ValueError('python.org release has no resource_uri.')
     return int(m[1])
@@ -193,10 +195,14 @@ def python_versions(approved:str) -> Upstream:
   Versions from cpython tags. Only a newer patch in the approved minor series gets a checksum;
   a new series requires a separate upgrade decision. The checksum comes from the python.org downloads API.
   '''
-  versions = github_tags('python/cpython', r'v(\d+\.\d+\.\d+)')
+  # An approved prerelease opts its own minor series into prerelease updates.
   series = version_key(approved)[:2]
+  prerelease = bool(re.search(r'(a|b|rc)\d+$', approved))
+  tags = github_tags('python/cpython', r'v(\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?)')
+  versions = {v for v in tags if not re.search(r'(a|b|rc)\d+$', v)
+    or (prerelease and version_key(v)[:2] == series)}
   patches = [v for v in versions if version_key(v)[:2] == series]
-  if not patches: raise ValueError(f'No final Python tags found for approved series {approved.rsplit(".", 1)[0]}.')
+  if not patches: raise ValueError(f'No eligible Python tags found for approved series {approved.rsplit(".", 1)[0]}.')
   patch = max(patches, key=version_key)
   if version_key(patch) <= version_key(approved): return Upstream(versions)
   release_id = parse_python_release(fetch_json(f'{python_api_url}/release/?name=Python%20{patch}', {}), patch)
@@ -255,7 +261,7 @@ class CheckReleases(Cmd):
 def describe(component:Component, values:dict[str,str], upstream:Upstream, installed:str|None) -> list[str]:
   approved = values[component.variable]
   versions = upstream.versions
-  if not versions: raise ValueError('No matching stable release versions found.')
+  if not versions: raise ValueError('No matching release versions found.')
   latest = max(versions, key=version_key)
   newer = version_key(latest) > version_key(approved)
   actions:list[str] = []

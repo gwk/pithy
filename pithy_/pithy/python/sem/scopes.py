@@ -226,6 +226,9 @@ def build_scope_info(module:SemModule, name:str='<module>', source:Source|None=N
 # We therefore match tables to scopes by (type, name, lineno) over a flattened index,
 # using per-key FIFO order to disambiguate collisions (e.g. two lambdas on one line);
 # both trees enumerate in source order under depth-first traversal.
+# Python 3.15 renamed the implicit tables from `lambda`/`genexpr` to `<lambda>`/`<genexpr>`;
+# the index strips angle brackets so that both spellings match the fixed names below.
+# TODO: remove the bracket stripping and use the bracketed names once we require 3.15.
 
 type _TableIndex = dict[tuple[str,str,int],deque[SymbolTable]]
 
@@ -240,7 +243,7 @@ _scope_table_names:dict[ScopeKind,tuple[str,str|None]] = { # ScopeKind -> (table
 
 def _index_tables(table:SymbolTable, index:_TableIndex) -> None:
   for child in table.get_children():
-    key = (str(child.get_type()), child.get_name(), child.get_lineno())
+    key = (str(child.get_type()), child.get_name().strip('<>'), child.get_lineno()) # TODO: stop stripping once we require 3.15.
     index.setdefault(key, deque()).append(child)
     _index_tables(child, index)
 
@@ -466,7 +469,7 @@ def _visit_comp(node:SemListComp|SemSetComp|SemDictComp|SemGeneratorExp, outer:S
   # The elt/key/value expressions belong in the inner scope.
   if isinstance(node, SemDictComp):
     _visit(node.key, inner)
-    _visit(node.value, inner)
+    if node.value is not None: _visit(node.value, inner)
   else:
     _visit(node.elt, inner)
 

@@ -5,8 +5,9 @@
 # Update each release's version and archive checksums together after review and testing.
 # SQLite also needs its release year in the archive path. Checksums are for the downloaded archives.
 
-py_point_version="3.14.7"
-py_sha256='3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81'
+# Python versions omit the git tag prefix v; prerelease suffixes aN, bN and rcN are supported.
+py_point_version="3.15.0rc3"
+py_sha256='506630aa66d5441188f34df22c0760bfe87fc92212630493ebc9ff3b3a7a1d49'
 
 sqlite_version='3.53.4'
 sqlite_zip_remote_path='2026/sqlite-src-3530400.zip'

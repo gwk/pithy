@@ -17,6 +17,9 @@ The service setup script remains Linux-only at `linux/vector/setup.bash`.
 
 `versions.sh` holds the approved Python, SQLite, Vector and uv versions and download checksums used by their installers.
 Update the version and associated download details together when approving a release.
+Python versions omit the git tag prefix `v` and may include `aN`, `bN` or `rcN` suffixes.
+An approved prerelease enables prerelease update checks within that minor series; final versions consider only final releases.
+Ordering is numeric, with alpha before beta before release candidate before final.
 
 ## Check for updates
 

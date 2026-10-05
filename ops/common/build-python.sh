@@ -81,7 +81,9 @@ mkdir -p _build
 cd _build
 
 python_xz="Python-$py_point_version.tar.xz"
-python_src_url="https://www.python.org/ftp/python/$py_point_version/$python_xz"
+# Prerelease archives share the final release directory, e.g. 3.15.0/Python-3.15.0rc3.tar.xz.
+py_release_version="${py_point_version%%[a-z]*}"
+python_src_url="https://www.python.org/ftp/python/$py_release_version/$python_xz"
 python_src_dir="Python-$py_point_version"
 
 if [[ $reuse_build == 1 ]]; then

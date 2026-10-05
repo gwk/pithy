@@ -19,7 +19,11 @@ sha_b = 'b' * 64
 
 utest(True, lambda: version_key('0.100.0') > version_key('0.99.9'))
 utest(True, lambda: version_key('3.53.3.1') > version_key('3.53.3'))
-utest_exc(ValueError, version_key, '3.15.0rc1')
+ordered_python_versions = ['3.14.9', '3.15.0a2', '3.15.0a10', '3.15.0b1', '3.15.0rc2',
+  '3.15.0rc3', '3.15.0rc10', '3.15.0', '3.15.1']
+utest(ordered_python_versions, sorted, reversed(ordered_python_versions), key=version_key)
+for invalid in ('v3.15.0rc3', '3.15.0rc', '3.15.0dev1'):
+  utest_exc(ValueError, version_key, invalid)
 utest({'3.14.7', '3.15.0'}, parse_tags,
   'abc refs/tags/v3.14.7\nabc refs/tags/v3.14.7^{}\nabc refs/tags/v3.15.0rc1\nabc refs/tags/v3.15.0\n', py_pattern)
 utest({'0.58.0'}, parse_tags, 'abc refs/tags/v0.58.0\nabc refs/tags/vdev-v0.3.24\nabc refs/tags/v0.59.0-rc.1\n', py_pattern)
@@ -138,6 +142,8 @@ def test_literal_versions() -> None:
     path = Path(temp) / 'versions.sh'
     path.write_text(base)
     utest_val('3.14.7', read_versions(path)['py_point_version'])
+    path.write_text(base.replace('3.14.7', '3.15.0rc3'))
+    utest_val('3.15.0rc3', read_versions(path)['py_point_version'])
     for extra in ['uv_version="0.11.32"\n', 'other=$(touch marker)\n', 'source other.sh\n']:
       path.write_text(base + extra)
       utest_exc(ValueError, read_versions, path)
@@ -221,3 +227,29 @@ def test_actions_and_changed_assignments() -> None:
   assert '; install 0.58.0.' in lines[0]
   lines = describe(components[3], {'uv_version': '0.11.31'}, Upstream({'0.12.19'}), '0.12.19')
   assert lines[0].endswith('; review and approve 0.12.19.')
+
+
+@utest_run
+def test_python_prereleases() -> None:
+  tags = ''.join(f'abc refs/tags/v{v}\n' for v in ('3.14.7', '3.15.0rc2', '3.15.0rc3', '3.16.0a1'))
+  release = [dict(name='Python 3.15.0rc3', is_published=True, pre_release=True,
+    resource_uri='https://www.python.org/api/v2/downloads/release/1234/')]
+  files = [dict(url='https://www.python.org/ftp/python/3.15.0/Python-3.15.0rc3.tar.xz', sha256_sum=sha_a)]
+  utest(1234, parse_python_release, release, '3.15.0rc3')
+  with patch('tap_ops.releases.run', return_value=CompletedProcess([], 0, stdout=tags)):
+    with patch('tap_ops.releases.fetch_json', side_effect=[release, files]):
+      upstream = python_versions('3.15.0rc2')
+      utest_val({'3.14.7', '3.15.0rc2', '3.15.0rc3'}, upstream.versions)
+      utest_val({'py_point_version': '3.15.0rc3', 'py_sha256': sha_a}, upstream.values)
+    with patch('tap_ops.releases.fetch_json') as request:
+      utest(Upstream({'3.14.7'}), python_versions, '3.14.7')
+      utest_val({}, python_versions('3.15.0rc3').values)
+      request.assert_not_called()
+  release = [{**release[0], 'name': 'Python 3.15.0', 'pre_release': False}]
+  files = [{**files[0], 'url': 'https://www.python.org/ftp/python/3.15.0/Python-3.15.0.tar.xz'}]
+  with patch('tap_ops.releases.run', return_value=CompletedProcess([], 0, stdout=tags + 'abc refs/tags/v3.15.0\n')):
+    with patch('tap_ops.releases.fetch_json', side_effect=[release, files]):
+      upstream = python_versions('3.15.0rc3')
+      utest_val('3.15.0', upstream.values['py_point_version'])
+      lines = describe(components[0], {'py_point_version': '3.15.0rc3'}, upstream, '3.15.0rc3')
+      assert 'review and approve 3.15.0;' in lines[0]
