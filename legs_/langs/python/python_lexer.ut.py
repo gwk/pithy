@@ -5,10 +5,12 @@
 import io
 import tokenize
 from pathlib import Path
+from typing import NamedTuple
 
 from legs.cache import cached_lexer_class
 from legs.langs.python.py_lexer import PythonLexer
 from legs.langs.python.py_lexer_samples import python_samples
+from legs.langs.python.py_preprocess import LexIssue, PythonPreprocessor
 from legs.langs.python.py_tokenize import python_tokens
 from tolkien import Source, Token
 from utest import utest_run, utest_val
@@ -21,10 +23,17 @@ type IssueDesc = tuple[str,int,int,int|None] # (kind, pos, end, opening).
 type TokenDesc = tuple[str,str,int,int] # (mode, kind, pos, end).
 
 
-def scan(text:str|bytes) -> tuple[PythonLexer,list[Token]]:
+class Scan(NamedTuple):
+  source:Source[bytes]
+  issues:list[LexIssue]
+
+
+def scan(text:str|bytes) -> tuple[Scan,list[Token]]:
+  'Lex `text` and run the preprocessor over the tokens.'
   source = Source('test', text.encode('utf-8') if isinstance(text, str) else text)
-  scanner = PythonLexer(source, lexer_type)
-  tokens = list(scanner)
+  preprocessor = PythonPreprocessor()
+  tokens = list(preprocessor(source, PythonLexer(source, lexer_type)))
+  scanner = Scan(source, preprocessor.issues)
   pos = 0
   for token in tokens:
     utest_val(pos, token.pos, 'contiguous byte coverage')

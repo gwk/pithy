@@ -27,7 +27,7 @@ The other modules:
 * `props.py` implements the property checks of `legs-test -props`.
 * `cache.py` loads a generated Python lexer, compiling it with `legs -if-stale` only when it is stale.
 * `langs/` holds the code that a supplied language needs beyond its grammar, one subpackage per language.
-  `langs/python` has `py_lexer.py`, `py_tokenize.py` and `py_lexer_samples.py`, which implement the Python language lexer.
+  `langs/python` has `py_lexer.py`, `py_preprocess.py`, `py_tokenize.py` and `py_lexer_samples.py`, which implement the Python language lexer.
   They use the generator but are not part of it. `targets/python.py` is the module that writes Python lexers.
 
 `legs_/langs` holds the supplied languages, one directory each: the grammar, a readme, tests and benchmarks.

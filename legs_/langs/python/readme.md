@@ -1,6 +1,7 @@
 # Detailed Python lexing
 
 [python.legs](python.legs) and `legs.langs.python.py_lexer.PythonLexer` provide an experimental Python 3.14 lexer.
+`legs.langs.python.py_preprocess.PythonPreprocessor` checks the token stream and records diagnostics.
 The grammar is also a compilation benchmark with realistic modes and Unicode character sets.
 
 The primary output is a detailed, lossless stream of `tolkien.Token` objects with UTF-8 byte spans.
@@ -22,11 +23,13 @@ There are separate single and triple quote modes for ordinary, raw, bytes and in
 Template strings use the same interior DFAs as f-strings while retaining distinct opening and closing token kinds.
 Raw bytes use raw string modes with additional ASCII validation.
 
-The Python coordinator selects the DFA mode for each fragment.
+The Python driver, `PythonLexer`, selects the DFA mode for each fragment.
 It handles indentation, nested delimiters, replacement expressions, conversions and format specifications.
-This is why the grammar has no static `Transitions` section: quote reuse and replacement-field colons require context from the coordinator.
+This is why the grammar has no static `Transitions` section: quote reuse and replacement-field colons require context from the driver.
 Running the grammar's generated lexer alone in `main` mode does not tokenize complete Python strings.
 
+The preprocessor has the `pithy.parse.Preprocessor` signature: it takes the source and the token stream, yields the tokens unchanged and accumulates issues.
+It derives every diagnostic from the stream, so it can also follow a parser's `drop` filter.
 Non-ASCII name candidates are checked with Python's `str.isidentifier`, using the running interpreter's Unicode database.
 The spelling is preserved, including combining characters and identifiers whose NFKC normalization differs.
 String contents support Unicode scalar values, including unassigned and private-use characters.
@@ -36,37 +39,39 @@ from pathlib import Path
 
 from legs.cache import cached_lexer_class
 from legs.langs.python.py_lexer import PythonLexer
+from legs.langs.python.py_preprocess import PythonPreprocessor
 from tolkien import Source
 
 fragments = cached_lexer_class(Path('legs_/langs/python/python.legs'), Path('_build/langs/python.py'))
 source = Source('example.py', b"name = 'hello\\n'\n")
-scanner = PythonLexer(source, fragments)
-for token in scanner:
+preprocessor = PythonPreprocessor()
+for token in preprocessor(source, PythonLexer(source, fragments)):
   print(token.mode, token.kind, source.text[token.slc])
-for issue in scanner.issues:
+for issue in preprocessor.issues:
   print(issue.kind, issue.pos, issue.end, issue.message)
 ```
 
 `cached_lexer_class` compiles it only when the generated file is stale.
-Load the fragment lexer once and reuse it across sources. `PythonLexer` instances are single-use.
+Load the fragment lexer once and reuse it across sources. `PythonLexer` and `PythonPreprocessor` instances are single-use.
 The grammar is a repository resource; callers supply its path when building a lexer.
 
 # Diagnostics and recovery
 
-The scanner retains Legs' `invalid` and `incomplete` fragment tokens.
-It also accumulates `LexIssue` diagnostics with byte spans and, where applicable, the opening delimiter's position.
+The stream retains Legs' `invalid` and `incomplete` fragment tokens.
+The preprocessor accumulates `LexIssue` diagnostics with byte spans and, where applicable, the opening delimiter's position.
 For a malformed escape such as `'\xG1'`, the incomplete prefix is retained and the diagnostic points at `G`.
 For a truncated escape such as `'\x4`, the incomplete fragment is retained and the diagnostic points at EOF.
 An unclosed string also emits an empty `incomplete` token at EOF.
 An unescaped newline in a single-quoted string ends that string and resumes code lexing at the newline.
 
-Additional checks identify non-ASCII bytes-literal characters, invalid identifier characters, unmatched delimiters, inconsistent dedents, unknown Unicode character names and out-of-range Unicode escapes.
+Additional checks identify non-ASCII bytes-literal characters, invalid identifier characters, unmatched delimiters, inconsistent indentation, unknown Unicode character names and out-of-range Unicode escapes.
+Indentation is compared as text, not by a tab width: a line's leading space must equal an open level or extend the innermost one. Otherwise the stream holds a `dedent` followed by an `indent`, which the preprocessor reports. CPython accepts a few mixtures of tabs and spaces that this rejects, and rejects none that this accepts.
 Unknown escapes remain distinct tokens; this lexer does not reproduce Python's warning machinery.
 
 This is lexical analysis, not Python syntax validation. It does not validate expressions, conversion names or format-specifier semantics.
 Its error messages and recovery behavior are deliberately independent of CPython's.
 Numeric prefixes, exponents and digit separators use comma commitment barriers to retain malformed or truncated prefixes.
-Token-boundary restrictions such as `123abc`, and ambiguous tab/space indentation checks, remain future work.
+Token-boundary restrictions such as `123abc` remain future work.
 
 # Stdlib comparison
 

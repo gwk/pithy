@@ -18,6 +18,7 @@ from legs import DictLexerBase
 from legs.cache import cached_lexer_class
 from legs.langs.python.py_lexer import PythonLexer
 from legs.langs.python.py_lexer_samples import python_samples, unicode_samples
+from legs.langs.python.py_preprocess import PythonPreprocessor
 from legs.langs.python.py_tokenize import python_tokens
 from pithy.cmdparse import Cmd, opt, pos
 from pithy.strings import fmt_rows, format_byte_count
@@ -97,8 +98,8 @@ class PythonBench(Cmd):
 
 
 def compare(source:Source[bytes], lexer_type:type[DictLexerBase], expected:list[tokenize.TokenInfo]) -> int:
-  scanner = PythonLexer(source, lexer_type)
-  detailed = list(scanner)
+  preprocessor = PythonPreprocessor()
+  detailed = list(preprocessor(source, PythonLexer(source, lexer_type)))
   actual = list(python_tokens(source, detailed))
   pos = 0
   for token in detailed:
@@ -109,8 +110,8 @@ def compare(source:Source[bytes], lexer_type:type[DictLexerBase], expected:list[
   if pos != len(source.text):
     print(f'{source.name}: missing source suffix at {pos}')
     return 1
-  if scanner.issues:
-    print(f'{source.name}: {scanner.issues[:3]}')
+  if preprocessor.issues:
+    print(f'{source.name}: {preprocessor.issues[:3]}')
     return 1
   for idx in range(max(len(expected), len(actual))):
     exp = expected[idx] if idx < len(expected) else None

@@ -147,7 +147,7 @@ The supplied languages are in [langs/](langs/). Each language has a directory th
 * [ASCII](langs/ascii/readme.md): runs of ASCII characters grouped by category; useful for examples and benchmarks.
 * [Unicode](langs/unicode/readme.md): runs of Unicode characters grouped by general category.
 * [Legs](langs/legs/readme.md): pattern expressions, character sets and declarations within Legs grammar files.
-* [Python](langs/python/readme.md): experimental Python 3.14 lexing with string and interpolation modes, individual escapes and diagnostic byte spans. A coordinator handles indentation and nested strings; an adapter supports comparison with stdlib `tokenize`.
+* [Python](langs/python/readme.md): experimental Python 3.14 lexing with string and interpolation modes, individual escapes and diagnostic byte spans. A driver handles indentation and nested strings, a preprocessor records diagnostics, and an adapter supports comparison with stdlib `tokenize`.
 
 The languages are built and tested by separate recipes; `just check` and `just test-full` do not run them. Run them manually from the repository root after changing a language, the compiler or a target:
 
