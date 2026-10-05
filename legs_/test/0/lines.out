@@ -1,0 +1,30 @@
+
+'a\n\nb':
+0-1 word 'a'
+1-1 end_of_line ''
+1-2 newline '\n'
+2-3 newline '\n'
+3-4 word 'b'
+4-4 end_of_line ''
+
+' \n':
+0-1 spaces ' '
+1-1 end_of_line ''
+1-2 newline '\n'
+
+'a(b\nc)\nd':
+0-1 word 'a'
+1-2 paren_o '('
+2-3 word 'b'
+3-4 newline '\n'
+4-5 word 'c'
+5-6 paren_c ')'
+6-6 end_of_line ''
+6-7 newline '\n'
+7-8 word 'd'
+8-8 end_of_line ''
+
+'\n':
+0-1 newline '\n'
+
+'':

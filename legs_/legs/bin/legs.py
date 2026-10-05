@@ -174,12 +174,12 @@ def run_legs(args:LegsCmd) -> None:
     output_dot(out_stem, dfas=dfas, pattern_descs=pattern_descs)
 
   if 'python' in langs:
-    output_python(out_paths['python'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs,
-      license=license, **output_opts)
+    output_python(out_paths['python'][0], dfas=dfas, mode_transitions=mode_transitions, mode_line_breaks=grammar.mode_line_breaks,
+      pattern_descs=pattern_descs, license=license, **output_opts)
 
   if 'swift' in langs:
-    output_swift(out_paths['swift'][0], dfas=dfas, mode_transitions=mode_transitions, pattern_descs=pattern_descs,
-      license=license, **output_opts)
+    output_swift(out_paths['swift'][0], dfas=dfas, mode_transitions=mode_transitions, mode_line_breaks=grammar.mode_line_breaks,
+      pattern_descs=pattern_descs, license=license, **output_opts)
 
   # The hash is the last line, so its presence also shows that the file was written completely.
   for lang, paths in out_paths.items():

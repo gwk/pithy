@@ -1,0 +1,20 @@
+# License: Dedicated to the public domain under CC0: https://creativecommons.org/publicdomain/zero/1.0/.
+
+# Patterns
+newline: \n
+spaces: \s+
+word: $Ascii_Letter+
+paren_o: \(
+paren_c: \)
+
+# Modes
+
+## main
+kinds: newline spaces word paren_o
+line_break_kind: newline
+
+## group
+kinds: newline spaces word paren_c
+
+# Transitions
+main : paren_o :: group : paren_c

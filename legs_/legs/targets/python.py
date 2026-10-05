@@ -24,7 +24,7 @@ class OutputOpts(TypedDict):
   type_prefix:str
 
 
-def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
+def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mode_line_breaks:dict[str,str],
   pattern_descs:dict[str, str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
   'Write a table-driven lexer class to `path`. The class is a subclass of `DictLexerBase` that holds the DFA of each mode.'
 
@@ -45,6 +45,7 @@ def output_python(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       mode_data=repr_ml(mode_data, indent=1),
       mode_commit_nodes=repr({dfa.name: dfa.commit_nodes for dfa in dfas if dfa.commit_nodes}),
       mode_transitions=repr_ml(mode_transitions, indent=1),
+      mode_line_breaks=repr(mode_line_breaks),
       pattern_descs=repr_ml(pattern_descs, indent=1),
       patterns_path=patterns_path,
     )
@@ -62,6 +63,8 @@ class ${Name}Lexer(DictLexerBase):
   pattern_descs:dict[str,str] = ${pattern_descs}
 
   mode_transitions:ModeTransitions = ${mode_transitions}
+
+  mode_line_breaks = ${mode_line_breaks}
 
   mode_data:dict[str,ModeData] = ${mode_data}
 

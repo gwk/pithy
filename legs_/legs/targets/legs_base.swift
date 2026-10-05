@@ -17,7 +17,7 @@ public struct Token<Kind>: CustomStringConvertible {
 
   public init(pos: Int, end: Int, linePos: Int, lineIdx: Int, kind: Kind) {
     assert(pos >= 0, "bad token pos: \(pos); kind: \(kind)")
-    assert(pos < end, "bad token range: \(pos):\(end); kind: \(kind)")
+    assert(pos <= end, "bad token range: \(pos):\(end); kind: \(kind)") // Only the tokens that the lexer synthesizes are empty.
     self.pos = pos
     self.end = end
     self.linePos = linePos

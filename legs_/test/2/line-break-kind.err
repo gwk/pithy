@@ -1,0 +1,7 @@
+line-break-kind.legs:11:18-25: error: pattern is not a member of mode `main`: newline
+| line_break_kind: newline
+                   ~~~~~~~
+line-break-kind.legs:15:1-16: error: mode key `line_break_kind` requires exactly one kind.
+| line_break_kind: newline word
+  ~~~~~~~~~~~~~~~
+

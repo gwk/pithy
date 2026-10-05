@@ -14,7 +14,8 @@ All errors are reported together.
 
 The sections are `License`, `Patterns`, `Modes` and `Transitions`. They can appear in any order and can be repeated.
 Text preceding the first header is treated as patterns, so a simple grammar needs no headers.
-Each mode is a `## name` subsection of `Modes`. Its entries have the form `key: value ...`; the only key is `kinds`.
+Each mode is a `## name` subsection of `Modes`. Its entries have the form `key: value ...`.
+The `kinds` entry is required. `line_break_kind` makes the mode line-aware.
 A header requires a space after the `#`. A pattern line cannot begin with `# ` at column 0; indent it or write `\\#`.
 '''
 
@@ -46,6 +47,7 @@ class Grammar:
   license:str # Text to copy into the generated code.
   patterns:dict[str,LegsPattern] # Kind name to pattern.
   modes:dict[str,frozenset[str]] # Mode name to the kind names of its patterns.
+  mode_line_breaks:dict[str,str] # Mode name to the kind that ends a line, for each line-aware mode.
   transitions:ModeTransitions # from_mode to open_kind to (push_mode, close_kind).
 
 
@@ -74,6 +76,7 @@ class GrammarBuilder:
     self.licenses:list[str] = []
     self.patterns:dict[str,LegsPattern] = {}
     self.modes:dict[str,list[Token]] = {} # Mode name to pattern name tokens.
+    self.mode_line_breaks:dict[str,Token] = {} # Mode name to its line break kind token.
     self.transitions:list[tuple[Token,Token,Token,Token]] = [] # (from_mode, open_kind, push_mode, close_kind).
     self.sect_names:dict[int,str] = {} # Section index to lowercase name, for top-level sections; empty if rejected.
     # Definitions that were lost to earlier errors. References to them are not reported as undefined,
@@ -201,14 +204,17 @@ class GrammarBuilder:
         continue
       key = source[mode_entry.sym]
       if key not in mode_keys:
-        self.error(mode_entry.sym, f'error: unknown mode key: {key}; expected `kinds`.')
+        self.error(mode_entry.sym, f'error: unknown mode key: {key}; expected one of: {", ".join(mode_keys)}.')
         is_ok = False
       elif key in entries:
         self.error(mode_entry.sym, f'error: mode key already defined: {key}')
+      elif key != 'kinds' and len(mode_entry.vals) != 1:
+        self.error(mode_entry.sym, f'error: mode key `{key}` requires exactly one kind.')
       else:
         entries[key] = mode_entry.vals
     if 'kinds' in entries:
       self.modes[name] = entries['kinds']
+      if 'line_break_kind' in entries: self.mode_line_breaks[name] = entries['line_break_kind'][0]
     else:
       if is_ok: self.error(name_slc, f'error: mode has no `kinds` entry: {name}')
       self.failed_modes.add(name)
@@ -247,6 +253,15 @@ class GrammarBuilder:
     if not modes:
       modes['main'] = frozenset(patterns)
 
+    mode_line_breaks:dict[str,str] = {}
+    for name, kind_tok in self.mode_line_breaks.items():
+      kind = source[kind_tok]
+      if kind not in modes[name]:
+        if not (kind in self.failed_patterns or self.has_rejected_section):
+          self.error(kind_tok, f'error: pattern is not a member of mode `{name}`: {kind}')
+        continue
+      mode_line_breaks[name] = kind
+
     transitions:dict[str,KindModeTransitions] = {}
     for from_mode_tok, open_kind_tok, push_mode_tok, close_kind_tok in self.transitions:
       from_mode = source[from_mode_tok]
@@ -270,13 +285,13 @@ class GrammarBuilder:
         continue
       kind_transitions[open_kind] = (push_mode, close_kind)
 
-    return Grammar(license=license, patterns=patterns, modes=modes, transitions=transitions)
+    return Grammar(license=license, patterns=patterns, modes=modes, mode_line_breaks=mode_line_breaks, transitions=transitions)
 
 
 
 section_names = ('license', 'patterns', 'modes', 'transitions')
 
-mode_keys = ('kinds',)
+mode_keys = ('kinds', 'line_break_kind')
 
 mode_name_re = re.compile(r'[A-Za-z_][0-9A-Za-z_]*')
 
@@ -284,7 +299,7 @@ pattern_head_re = re.compile(r'(?P<name>[A-Za-z_][0-9A-Za-z_]*)[ \t]*(?P<colon>:
 
 dropped_kinds = ('comment', 'newline', 'spaces')
 
-reserved_kinds = ('invalid', 'incomplete', 'end_of_text') # Token kinds that the lexer produces itself.
+reserved_kinds = ('invalid', 'incomplete', 'end_of_line', 'end_of_text') # Token kinds that the lexer produces itself.
 
 
 # Pattern expressions.

@@ -140,7 +140,7 @@ class GrammarChecker:
     if length != len(text) or kind not in kinds:
       raise PropertyError(f'mode {mode!r}: text generated for pattern {kind!r} is not matched by the NFA as that kind: '
         f'{text!r}; NFA longest match: {length} bytes; kinds: {sorted(kinds)}.')
-    tokens = list(self.Lexer(Source('input', text), mode=mode))
+    tokens = [t for t in self.Lexer(Source('input', text), mode=mode) if t.end > t.pos] # Omit the synthesized empty tokens.
     if len(tokens) != 1:
       raise PropertyError(f'mode {mode!r}: text generated for pattern {kind!r} does not lex as a single token: {text!r}; '
         f'tokens: {[(t.kind, t.pos, t.end) for t in tokens]}.')
@@ -164,15 +164,30 @@ class GrammarChecker:
     '''
     stack:list[tuple[str,str|None]] = [(mode, None)] # An independent simulation of the mode stack: (mode, pop_kind).
     pos = 0
+    line_counts = False # An independent simulation of the line state.
+    is_prev_end_of_line = False
     for token in self.Lexer(Source('input', text), mode=mode):
       def fail(msg:str) -> PropertyError:
         return PropertyError(f'mode {mode!r}: input {text!r}: token {token.kind}:{token.pos}-{token.end}: {msg}')
 
       if token.pos != pos: raise fail(f'token does not begin at the end of the previous token: {pos}.')
-      if token.end <= token.pos: raise fail('token is empty.')
-      if token.end > len(text): raise fail('token extends past the end of the input.')
       curr_mode, pop_kind = stack[-1]
       if token.mode != curr_mode: raise fail(f'token mode is {token.mode!r}; expected {curr_mode!r}.')
+      if token.kind == 'end_of_line':
+        if token.end != token.pos: raise fail('end_of_line token is not empty.')
+        if is_prev_end_of_line: raise fail('end_of_line token follows another.')
+        is_prev_end_of_line = True
+        continue
+      if token.end <= token.pos: raise fail('token is empty.')
+      if token.end > len(text): raise fail('token extends past the end of the input.')
+      line_break = self.grammar.mode_line_breaks.get(curr_mode)
+      if line_break is not None and token.kind == line_break:
+        if line_counts != is_prev_end_of_line:
+          raise fail('line break ends a line that holds a token.' if line_counts else 'end_of_line precedes an empty line.')
+        line_counts = False
+      elif is_prev_end_of_line: raise fail('end_of_line does not precede a line break.')
+      elif line_break is not None: line_counts = True
+      is_prev_end_of_line = False
 
       nfa = self.automata[curr_mode].nfa
       length, all_kinds, scanned = nfa_scan(nfa, text, pos)
@@ -197,6 +212,9 @@ class GrammarChecker:
         except KeyError: pass
       pos = token.end
     if pos != len(text): raise PropertyError(f'mode {mode!r}: input {text!r}: tokens end at {pos}; expected {len(text)}.')
+    if line_counts != is_prev_end_of_line:
+      raise PropertyError(f'mode {mode!r}: input {text!r}: '
+        + ('the last line holds a token but no end_of_line ends it.' if line_counts else 'end_of_line ends an empty last line.'))
 
 
 

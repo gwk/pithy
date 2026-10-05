@@ -20,7 +20,7 @@ from .python import comment_lines
 _context_keywords_ = ['code generation', 'lexer generator', 'source generation', 'string escaping', 'swift literals']
 
 
-def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
+def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions, mode_line_breaks:dict[str,str],
  pattern_descs:dict[str,str], license:str, *, patterns_path:str|None, type_prefix:str) -> None:
   'Generate and write a swift lexer to a file at `path`.'
 
@@ -42,6 +42,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       for parent_kind, (child_mode, child_kind) in d.items()}
 
   mode_transitions_dict = {SwiftEnum(modes[name]):mode_trans_dict(d) for name, d in mode_transitions.items()}
+  mode_line_breaks_dict = {SwiftEnum(modes[name]):SwiftEnum(kind) for name, kind in mode_line_breaks.items()}
 
   # State cases.
 
@@ -99,6 +100,7 @@ def output_swift(path:str, dfas:list[DFA], mode_transitions:ModeTransitions,
       mode_case_defs='\n  '.join(mode_case_defs),
       mode_default=(' = .main' if 'main' in modes else ''), # A grammar without a `main` mode requires an explicit start mode.
       mode_transitions_dict=swift_repr(mode_transitions_dict, indent=2),
+      mode_line_breaks_dict=swift_repr(mode_line_breaks_dict, indent=2),
       patterns_path=patterns_path,
       state_cases='\n      '.join(state_cases),
       token_kind_case_defs='\n  '.join(token_kind_case_defs),
@@ -146,6 +148,8 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
   private var pos: Int
   private let end: Int
   private var lineIdx: Int // The line index of `pos`.
+  private var pending: Token<${Name}TokenKind>? = nil // A token to return before lexing further.
+  private var lineCounts = false // The current line holds a token other than its line break, in a line-aware mode.
 
   // If `range` is provided then only that range of the text is lexed; no token extends past its end.
   // `mode` is the mode in which lexing starts.
@@ -163,14 +167,23 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
 
   public mutating func next() -> Token<${Name}TokenKind>? {
 
-    if self.pos == end { // Done.
-      return nil
+    if let token = pending {
+      pending = nil
+      return token
     }
 
     let (mode, popKind) = self.stack.last!
     let newlinePositions = source.newlinePositions
     let lineIdx = self.lineIdx
     let linePos = (lineIdx == 0) ? 0 : newlinePositions[lineIdx - 1] + 1
+
+    if self.pos == end { // Done.
+      if lineCounts {
+        lineCounts = false
+        return Token(pos: end, end: end, linePos: linePos, lineIdx: lineIdx, kind: .end_of_line)
+      }
+      return nil
+    }
 
     var pos = self.pos
     var state = mode.startState
@@ -210,10 +223,24 @@ public struct ${Name}Lexer: Sequence, IteratorProtocol {
         stack.append(childPair)
       }
     }
-    return Token(pos: tokenPos, end: tokenEnd, linePos: linePos, lineIdx: lineIdx, kind: kind)
+    let token = Token(pos: tokenPos, end: tokenEnd, linePos: linePos, lineIdx: lineIdx, kind: kind)
+    if let lineBreak = ${Name}Lexer.modeLineBreaks[mode] {
+      if kind == lineBreak {
+        if lineCounts {
+          lineCounts = false
+          pending = token
+          return Token(pos: tokenPos, end: tokenPos, linePos: linePos, lineIdx: lineIdx, kind: .end_of_line)
+        }
+      } else {
+        lineCounts = true
+      }
+    }
+    return token
   }
 
   private static let modeTransitions: Dictionary<${Name}LexMode, Dictionary<TokenKind, (${Name}LexMode, TokenKind?)>> = ${mode_transitions_dict}
+
+  private static let modeLineBreaks: Dictionary<${Name}LexMode, TokenKind> = ${mode_line_breaks_dict}
 }
 '''
 

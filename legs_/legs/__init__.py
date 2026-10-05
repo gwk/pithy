@@ -32,8 +32,9 @@ class LexerBase(Iterator[Token]):
   '''
 
   mode_transitions:ModeTransitions
+  mode_line_breaks:ClassVar[dict[str,str]] = {} # The line break kind of each line-aware mode.
   pattern_descs:dict[str,str]
-  kinds:ClassVar[frozenset[str]] = frozenset() # The pattern kinds, excluding `invalid` and `incomplete`.
+  kinds:ClassVar[frozenset[str]] = frozenset() # The token kinds, excluding `invalid` and `incomplete`.
 
 
   def __init_subclass__(cls, **kwargs:Any) -> None:
@@ -71,6 +72,8 @@ class LexerBase(Iterator[Token]):
     self.pos = pos
     self.end = max(pos, end)
     self.stack:list[tuple[str,str|None]] = [(mode, None)] # [(mode, pop_kind)].
+    self.pending:list[Token] = [] # Tokens to return before lexing further, in reverse order.
+    self.line_counts = False # The current line holds a token other than its line break, in a line-aware mode.
 
   @classmethod
   def mode_names(cls) -> Collection[str]:
@@ -88,6 +91,8 @@ class DictLexerBase(LexerBase):
   `mode_data` holds the DFA of each mode.
   `mode_commit_nodes` holds the nodes of each mode that follow a commitment barrier.
   Each token is the longest match. On reaching a commit node, the lexer forgets the matches found so far in the token.
+  In a line-aware mode, an empty `end_of_line` token precedes the line break of each line that holds another token,
+  and ends an unterminated last line.
   '''
 
   mode_data:dict[str,ModeData]
@@ -97,10 +102,15 @@ class DictLexerBase(LexerBase):
   def mode_names(cls) -> dict[str,ModeData]: return cls.mode_data
 
   def __next__(self) -> Token:
+    if self.pending: return self.pending.pop()
     text = self.source.text
     len_text = self.end
     pos = self.pos
-    if pos == len_text: raise StopIteration
+    if pos == len_text:
+      if self.line_counts:
+        self.line_counts = False
+        return Token(pos=pos, end=pos, mode=self.stack[-1][0], kind='end_of_line')
+      raise StopIteration
     mode, pop_kind = self.stack[-1]
     mode_start, transitions, match_node_kinds = self.mode_data[mode]
 
@@ -134,4 +144,13 @@ class DictLexerBase(LexerBase):
       try: child_frame = self.mode_transitions[mode][kind]
       except KeyError: pass
       else: self.stack.append(child_frame)
-    return Token(pos=token_pos, end=end, mode=mode, kind=kind)
+    token = Token(pos=token_pos, end=end, mode=mode, kind=kind)
+    line_break = self.mode_line_breaks.get(mode)
+    if line_break is not None:
+      if kind == line_break:
+        if self.line_counts:
+          self.line_counts = False
+          self.pending.append(token)
+          return Token(pos=token_pos, end=token_pos, mode=mode, kind='end_of_line')
+      else: self.line_counts = True
+    return token

@@ -35,7 +35,8 @@ main : paren_o :: main : paren_c
 * `License` text is copied into the generated code. It consists of the text following the colon and any following lines.
 * `Patterns` entries have the form `name: pattern`. A bare `name` is a literal pattern matching the name itself.
 * `Modes` holds one `## name` subsection per mode. The entries of a mode have the form `key: value ...`.
-  The `kinds` entry is required; it lists the patterns that belong to the mode, by name. It is the only key.
+  The `kinds` entry is required; it lists the patterns that belong to the mode, by name.
+  The other keys are described under [Line-Aware Modes](#line-aware-modes).
   If there are no modes then all patterns belong to the `main` mode.
 * `Transitions` entries have the form `from_mode : open_kind :: push_mode : close_kind`.
 
@@ -124,6 +125,26 @@ A transition `from_mode : open_kind :: push_mode : close_kind` has two effects:
 
 The `close_kind` pops only the mode that this transition pushed. The same kind in another context is an ordinary token.
 Each token records the mode in which it was matched.
+
+
+# Line-Aware Modes
+
+A mode with a `line_break_kind` entry is line-aware. The entry names the kind that ends a line, typically a newline pattern.
+
+```
+## main
+kinds: spaces newline word paren_o
+line_break_kind: newline
+```
+
+In a line-aware mode the lexer emits an empty `end_of_line` token before the line break of each line that holds another token.
+If the last line holds a token and has no line break, the token is emitted at the end of the text.
+A line that holds only its line break produces nothing. A parser can therefore drop the line break tokens and use `end_of_line` as a terminator.
+
+The rule applies only while the mode on top of the stack is line-aware. A pushed mode that is not suspends it:
+a line that begins in the line-aware mode and continues through brackets or a string ends at the next line break in the line-aware mode.
+
+`end_of_line` is a reserved kind, like `invalid`, `incomplete` and `end_of_text`. It is the only empty token apart from `end_of_text`.
 
 
 # Incomplete Tokens and Commitment

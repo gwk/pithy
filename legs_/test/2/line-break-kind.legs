@@ -1,0 +1,15 @@
+// `line_break_kind` names one kind of the mode.
+
+# Patterns
+newline: \n
+word: $Ascii_Letter+
+
+# Modes
+
+## main
+kinds: word
+line_break_kind: newline
+
+## other
+kinds: newline word
+line_break_kind: newline word

@@ -46,7 +46,7 @@ def build_lexer_class_for_automata(name:str, grammar:Grammar, automata:Iterable[
     mode_data[dfa.name] = (dfa.start_node, dfa.transitions, {node: unwrap(dfa.match_kind(node)) for node in dfa.match_nodes})
     if dfa.commit_nodes: mode_commit_nodes[dfa.name] = dfa.commit_nodes
   return type(name, (DictLexerBase,), dict(
-    pattern_descs=build_pattern_descs(grammar), mode_transitions=grammar.transitions,
+    pattern_descs=build_pattern_descs(grammar), mode_transitions=grammar.transitions, mode_line_breaks=grammar.mode_line_breaks,
     mode_data=mode_data, mode_commit_nodes=mode_commit_nodes))
 
 
@@ -103,9 +103,9 @@ def mode_name_key(name:str) -> str:
 
 
 def build_pattern_descs(grammar:Grammar) -> dict[str,str]:
-  'Return the description of each token kind, including `invalid` and `incomplete`.'
+  'Return the description of each token kind, including the reserved kinds that the lexer produces itself.'
   pattern_descs = {kind: pattern.literal_desc or kind for kind, pattern in grammar.patterns.items()}
-  pattern_descs.update((kind, kind) for kind in ['invalid', 'incomplete'])
+  pattern_descs.update((kind, kind) for kind in ['invalid', 'incomplete', 'end_of_line'])
   return pattern_descs
 
 

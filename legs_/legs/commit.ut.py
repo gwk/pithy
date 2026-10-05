@@ -22,7 +22,7 @@ def check(grammar_text:str, cases:dict[bytes,list[tuple[str,bytes]]]) -> None:
   lexer = build_lexer_class_for_automata('CommitLexer', grammar, iter(automata))
   with TemporaryDirectory() as directory:
     path = str(Path(directory) / 'lexer.py')
-    output_python(path, [a.min_dfa for a in automata], grammar.transitions, lexer.pattern_descs,
+    output_python(path, [a.min_dfa for a in automata], grammar.transitions, grammar.mode_line_breaks, lexer.pattern_descs,
       grammar.license, patterns_path=None, type_prefix='Commit')
     generated = cast(type[DictLexerBase], run_path(path)['CommitLexer'])
     for text, expected in cases.items():
