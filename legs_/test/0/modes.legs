@@ -22,9 +22,14 @@ lit_interpolate: \\ \(
 
 # Modes
 
-main: spaces sym comment_open sq dq paren_open paren_close
-comment: comment_open comment_close comment_contents comment_star comment_slash
-lit: sq dq backslash lit_contents lit_escape lit_interpolate
+## main
+kinds: spaces sym comment_open sq dq paren_open paren_close
+
+## comment
+kinds: comment_open comment_close comment_contents comment_star comment_slash
+
+## lit
+kinds: sq dq backslash lit_contents lit_escape lit_interpolate
 
 # Transitions
 

@@ -30,8 +30,10 @@ type Tokens = list[tuple[str,str,str]] # (mode, kind, text).
 
 def framed_ranges(source:Source[str]) -> Iterator[tuple[str,slice]]:
   'Yield the start mode and range of each lexable part of a legs grammar file.'
+  name = 'patterns' # Text preceding the first header is treated as patterns.
   for sect in parse_sections(source, symbol='#', numbered=False, title_sep=':', raises=True):
-    name = source[sect.name].partition('//')[0].strip().lower() if sect.level else 'patterns'
+    if sect.level == 1: name = source[sect.name].partition('//')[0].strip().lower()
+    elif sect.level == 2: assert name == 'modes' # A mode subsection; its entries are lexed like those of its parent.
     if name == 'patterns':
       for entry in parse_entries(source, sect.raw_body, continuations=['|'], comments=['//'], raises=True):
         m = pattern_head_re.match(source.text, entry.start, entry.stop)

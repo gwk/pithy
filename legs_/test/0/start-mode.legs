@@ -6,5 +6,9 @@ word: $Ascii_Letter+
 num: $Ascii_Number+
 
 # Modes
-words: spaces word
-nums: spaces num
+
+## words
+kinds: spaces word
+
+## nums
+kinds: spaces num

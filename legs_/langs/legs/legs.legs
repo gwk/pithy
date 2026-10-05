@@ -40,13 +40,16 @@ charset_char: [$Visible - \[ \] \& \- \^ \$ \\]
 
 # Modes
 
-pattern: newline spaces comment
+## pattern
+kinds: newline spaces comment
   brack_o brack_c paren_o paren_c bar commit qmark star plus ref esc backslash char
 
-charset: newline spaces comment
+## charset
+kinds: newline spaces comment
   brack_o brack_c amp dash caret ref esc backslash charset_char
 
-decl: newline spaces comment sym colon
+## decl
+kinds: newline spaces comment sym colon
 
 # Transitions
 

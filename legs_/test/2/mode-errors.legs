@@ -1,0 +1,35 @@
+// A mode is declared as a `## name` subsection of `Modes`, with a `kinds` entry.
+
+# Patterns
+a
+b
+
+## stray
+
+# Modes
+old: a b
+
+## main
+kinds: a
+kinds: b
+patterns: a
+
+## empty
+
+## bad name
+
+##
+
+## inline: x
+kinds: a
+
+## other
+kinds
+  a
+
+### deep
+
+# Transitions
+main : a :: old : a
+main : a :: empty : a
+main : a :: other : a

@@ -90,8 +90,12 @@ close: \)
 comma: \,
 num: $Dec+ | 0x, $Hex+
 # Modes
-main: open comma
-inner: close num comma
+
+## main
+kinds: open comma
+
+## inner
+kinds: close num comma
 # Transitions
 main : open :: inner : close
 ''')

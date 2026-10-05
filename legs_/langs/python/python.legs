@@ -108,52 +108,108 @@ fmtr_ddd_text: [$C $L $M $N $P $S $Z - $Cs \0/ - " \\ { }]+
 
 # Modes
 
-main: space newline continuation comment name number op paren_o paren_c brack_o brack_c brace_o brace_c
+## main
+kinds: space newline continuation comment name number op paren_o paren_c brack_o brack_c brace_o brace_c
   str_s_open raw_s_open bytes_s_open rawbytes_s_open f_s_open fr_s_open t_s_open tr_s_open str_d_open raw_d_open bytes_d_open
   rawbytes_d_open f_d_open fr_d_open t_d_open tr_d_open str_sss_open raw_sss_open bytes_sss_open rawbytes_sss_open f_sss_open
   fr_sss_open t_sss_open tr_sss_open str_ddd_open raw_ddd_open bytes_ddd_open rawbytes_ddd_open f_ddd_open fr_ddd_open
   t_ddd_open tr_ddd_open
 
-str_s: str_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+## str_s
+kinds: str_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown escape_brace
-raw_s: raw_s_text quote_s newline escape_raw escape_brace
-bytes_s: bytes_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
-f_s: f_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## raw_s
+kinds: raw_s_text quote_s newline escape_raw escape_brace
+
+## bytes_s
+kinds: bytes_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
+
+## f_s
+kinds: f_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c brace_escape_o brace_escape_c
-fr_s: fr_s_text quote_s newline escape_raw brace_o brace_c brace_escape_o brace_escape_c
-fmt_s: fmt_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## fr_s
+kinds: fr_s_text quote_s newline escape_raw brace_o brace_c brace_escape_o brace_escape_c
+
+## fmt_s
+kinds: fmt_s_text quote_s newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c
-fmtr_s: fmtr_s_text quote_s newline escape_raw brace_o brace_c
-str_d: str_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## fmtr_s
+kinds: fmtr_s_text quote_s newline escape_raw brace_o brace_c
+
+## str_d
+kinds: str_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown escape_brace
-raw_d: raw_d_text quote_d newline escape_raw escape_brace
-bytes_d: bytes_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
-f_d: f_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## raw_d
+kinds: raw_d_text quote_d newline escape_raw escape_brace
+
+## bytes_d
+kinds: bytes_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
+
+## f_d
+kinds: f_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c brace_escape_o brace_escape_c
-fr_d: fr_d_text quote_d newline escape_raw brace_o brace_c brace_escape_o brace_escape_c
-fmt_d: fmt_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## fr_d
+kinds: fr_d_text quote_d newline escape_raw brace_o brace_c brace_escape_o brace_escape_c
+
+## fmt_d
+kinds: fmt_d_text quote_d newline escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c
-fmtr_d: fmtr_d_text quote_d newline escape_raw brace_o brace_c
-str_sss: str_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## fmtr_d
+kinds: fmtr_d_text quote_d newline escape_raw brace_o brace_c
+
+## str_sss
+kinds: str_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown escape_brace
-raw_sss: raw_sss_text quote_sss quote_s escape_raw escape_brace
-bytes_sss: bytes_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
-f_sss: f_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## raw_sss
+kinds: raw_sss_text quote_sss quote_s escape_raw escape_brace
+
+## bytes_sss
+kinds: bytes_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
+
+## f_sss
+kinds: f_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c brace_escape_o brace_escape_c
-fr_sss: fr_sss_text quote_sss quote_s escape_raw brace_o brace_c brace_escape_o brace_escape_c
-fmt_sss: fmt_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## fr_sss
+kinds: fr_sss_text quote_sss quote_s escape_raw brace_o brace_c brace_escape_o brace_escape_c
+
+## fmt_sss
+kinds: fmt_sss_text quote_sss quote_s escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c
-fmtr_sss: fmtr_sss_text quote_sss quote_s escape_raw brace_o brace_c
-str_ddd: str_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## fmtr_sss
+kinds: fmtr_sss_text quote_sss quote_s escape_raw brace_o brace_c
+
+## str_ddd
+kinds: str_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown escape_brace
-raw_ddd: raw_ddd_text quote_ddd quote_d escape_raw escape_brace
-bytes_ddd: bytes_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
-f_ddd: f_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## raw_ddd
+kinds: raw_ddd_text quote_ddd quote_d escape_raw escape_brace
+
+## bytes_ddd
+kinds: bytes_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_bytes_unknown
+
+## f_ddd
+kinds: f_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c brace_escape_o brace_escape_c
-fr_ddd: fr_ddd_text quote_ddd quote_d escape_raw brace_o brace_c brace_escape_o brace_escape_c
-fmt_ddd: fmt_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
+
+## fr_ddd
+kinds: fr_ddd_text quote_ddd quote_d escape_raw brace_o brace_c brace_escape_o brace_escape_c
+
+## fmt_ddd
+kinds: fmt_ddd_text quote_ddd quote_d escape_simple escape_octal escape_hex escape_newline escape_u escape_U escape_named
   escape_unknown brace_o brace_c
-fmtr_ddd: fmtr_ddd_text quote_ddd quote_d escape_raw brace_o brace_c
+
+## fmtr_ddd
+kinds: fmtr_ddd_text quote_ddd quote_d escape_raw brace_o brace_c
 
 // The Python coordinator manages these modes, including replacement fields and format specifications.
 // No static transition can express all of Python's context-dependent mode changes.

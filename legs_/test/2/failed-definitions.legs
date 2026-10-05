@@ -7,8 +7,12 @@ b c
 d
 
 # Modes
-main: a b d e
-other: : d
+
+## main
+kinds: a b d e
+
+## other
+kinds: : d
 
 # Transitions
 main : d :: other : d

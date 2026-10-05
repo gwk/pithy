@@ -1,34 +1,34 @@
-section-errors.legs:5:10-12: error: undefined pattern name: zz
-| other: b zz
+section-errors.legs:9:10-12: error: undefined pattern name: zz
+| kinds: b zz
            ~~
-section-errors.legs:6:1-5: error: mode already defined: main
-| main: b
-  ~~~~
-section-errors.legs:10:8-9: error: transition already defined for mode `main`: a
+section-errors.legs:11:4-8: error: mode already defined: main
+| ## main
+     ~~~~
+section-errors.legs:16:8-9: error: transition already defined for mode `main`: a
 | main : a :: other : b
          ~
-section-errors.legs:11:13-17: error: undefined mode name: nope
+section-errors.legs:17:13-17: error: undefined mode name: nope
 | main : a :: nope : b
               ~~~~
-section-errors.legs:12:8-9: error: pattern is not a member of mode `main`: b
+section-errors.legs:18:8-9: error: pattern is not a member of mode `main`: b
 | main : b :: other : a
          ~
-section-errors.legs:12:21-22: error: pattern is not a member of mode `other`: a
+section-errors.legs:18:21-22: error: pattern is not a member of mode `other`: a
 | main : b :: other : a
                       ~
-section-errors.legs:13:1-5: note: in 'transition' structure:
+section-errors.legs:19:1-5: note: in 'transition' structure:
 | main : a : other : b
   ~~~~
-section-errors.legs:13:12-17: parse error: 'transition' structure expects colon; received sym.
+section-errors.legs:19:12-17: parse error: 'transition' structure expects colon; received sym.
 | main : a : other : b
              ~~~~~
-section-errors.legs:18:1-2: error: pattern already defined: a
+section-errors.legs:24:1-2: error: pattern already defined: a
 | a: c
   ~
-section-errors.legs:20:1-5: error: expected pattern name.
+section-errors.legs:26:1-5: error: expected pattern name.
 | 9: e
   ~~~~
-section-errors.legs:22:10-11: error: unexpected text after section name.
+section-errors.legs:28:10-11: error: unexpected text after section name.
 | # Modes: x
            ~
 

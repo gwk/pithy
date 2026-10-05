@@ -96,7 +96,9 @@ op:
 | \*
 
 # Modes
-main: spaces word paren_o paren_c op
+
+## main
+kinds: spaces word paren_o paren_c op
 
 # Transitions
 main : paren_o :: main : paren_c

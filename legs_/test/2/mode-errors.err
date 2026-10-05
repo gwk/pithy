@@ -1,0 +1,34 @@
+mode-errors.legs:7:1-3: error: subsections are supported only in the `Modes` section, where each declares a mode.
+| ## stray
+  ~~
+mode-errors.legs:10:1-9: error: expected a mode header; a mode is declared as a `## name` subsection with a `kinds` entry.
+| old: a b
+  ~~~~~~~~
+mode-errors.legs:14:1-6: error: mode key already defined: kinds
+| kinds: b
+  ~~~~~
+mode-errors.legs:15:1-9: error: unknown mode key: patterns; expected `kinds`.
+| patterns: a
+  ~~~~~~~~
+mode-errors.legs:17:4-9: error: mode has no `kinds` entry: empty
+| ## empty
+     ~~~~~
+mode-errors.legs:19:4-12: error: expected mode name.
+| ## bad name
+     ~~~~~~~~
+mode-errors.legs:21:1-3: error: expected mode name.
+| ##
+  ~~
+mode-errors.legs:23:12-13: error: unexpected text after mode name.
+| ## inline: x
+             ~
+mode-errors.legs:27:1-6: note: in 'mode_entry' structure:
+| kinds
+  ~~~~~
+mode-errors.legs:28:3-4: parse error: 'mode_entry' structure expects colon; received sym.
+|   a
+    ~
+mode-errors.legs:30:1-4: error: sections nest at most two levels; a mode header is `##` followed by a space.
+| ### deep
+  ~~~
+

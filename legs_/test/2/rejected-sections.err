@@ -1,4 +1,4 @@
-rejected-sections.legs:7:1-3: error: nested sections are not supported; a section header is a single `#` followed by a space.
+rejected-sections.legs:7:1-3: error: subsections are supported only in the `Modes` section, where each declares a mode.
 | ## Nested
   ~~
 rejected-sections.legs:10:3-8: error: unknown section; expected `License`, `Patterns`, `Modes` or `Transitions`.

@@ -4,7 +4,7 @@
 Parser for legs grammar files.
 
 A grammar file is framed by line shape before any tokenization, in two layers:
-* `pithy.sectsyn.parse_sections` splits the file into sections at `# Name` header lines.
+* `pithy.sectsyn.parse_sections` splits the file into sections at `# Name` header lines, and into subsections at `## name` lines.
 * `pithy.sectsyn.parse_entries` splits each section into entries.
   A line beginning at column 0 begins an entry; an indented line or one beginning with `|` continues it.
 
@@ -14,6 +14,7 @@ All errors are reported together.
 
 The sections are `License`, `Patterns`, `Modes` and `Transitions`. They can appear in any order and can be repeated.
 Text preceding the first header is treated as patterns, so a simple grammar needs no headers.
+Each mode is a `## name` subsection of `Modes`. Its entries have the form `key: value ...`; the only key is `kinds`.
 A header requires a space after the `#`. A pattern line cannot begin with `# ` at column 0; indent it or write `\\#`.
 '''
 
@@ -74,6 +75,7 @@ class GrammarBuilder:
     self.patterns:dict[str,LegsPattern] = {}
     self.modes:dict[str,list[Token]] = {} # Mode name to pattern name tokens.
     self.transitions:list[tuple[Token,Token,Token,Token]] = [] # (from_mode, open_kind, push_mode, close_kind).
+    self.sect_names:dict[int,str] = {} # Section index to lowercase name, for top-level sections; empty if rejected.
     # Definitions that were lost to earlier errors. References to them are not reported as undefined,
     # because those errors would only be consequences. Each of these is only set when an error has been reported.
     self.has_rejected_section = False # The rejected section could have defined any pattern or mode.
@@ -94,13 +96,22 @@ class GrammarBuilder:
     if sect.level == 0: # The root section; text preceding the first header is treated as patterns.
       self.parse_patterns(sect.raw_body)
       return
-    if sect.level > 1:
-      self.error(sect.marker, 'error: nested sections are not supported; a section header is a single `#` followed by a space.')
+    if sect.level > 2:
+      self.error(sect.marker, 'error: sections nest at most two levels; a mode header is `##` followed by a space.')
       self.has_rejected_section = True
+      return
+    if sect.level == 2:
+      match self.sect_names.get(sect.parent_idx):
+        case 'modes': self.parse_mode(sect)
+        case '': pass # The parent section was rejected.
+        case _:
+          self.error(sect.marker, 'error: subsections are supported only in the `Modes` section, where each declares a mode.')
+          self.has_rejected_section = True
       return
 
     name_text, comment_sep, _ = source[sect.name].partition('//')
     name = name_text.strip().lower()
+    self.sect_names[sect.idx] = name if name in section_names else ''
     if name == 'license':
       self.licenses.extend((source[sect.inline], source[sect.body]))
       return
@@ -155,19 +166,52 @@ class GrammarBuilder:
 
 
   def parse_modes(self, body:slice) -> None:
+    'The body of the `Modes` section that precedes its first subsection. Modes are declared by the subsections.'
     source = self.source
     for entry in self.entries(body):
-      try: mode = decl_parser.parse('mode', source, slc=entry)
+      line = slice(entry.start, min(entry.stop, source.get_line_end(entry.start)))
+      self.error(line, 'error: expected a mode header; a mode is declared as a `## name` subsection with a `kinds` entry.')
+      m = pattern_head_re.match(source.text, entry.start, entry.stop)
+      if m: self.failed_modes.add(m['name'])
+      else: self.has_rejected_section = True
+
+
+  def parse_mode(self, sect:SectIndices) -> None:
+    'A `## name` subsection of `Modes`.'
+    source = self.source
+    name_text, comment_sep, _ = source[sect.name].partition('//')
+    name = name_text.strip()
+    if not mode_name_re.fullmatch(name):
+      self.error(sect.title if name else sect.marker, 'error: expected mode name.')
+      self.has_rejected_section = True
+      return
+    name_slc = slice(sect.name.start, sect.name.start + len(name))
+    if sect.inline.start < sect.inline.stop and not comment_sep and not source[sect.inline].startswith('//'):
+      self.error(sect.inline, 'error: unexpected text after mode name.')
+    if name in self.modes:
+      self.error(name_slc, f'error: mode already defined: {name}')
+      return
+    entries:dict[str,list[Token]] = {}
+    is_ok = True
+    for entry in self.entries(sect.raw_body):
+      try: mode_entry = decl_parser.parse('mode_entry', source, slc=entry)
       except ParseError as e:
         self.parse_error(e)
-        m = pattern_head_re.match(source.text, entry.start, entry.stop)
-        if m: self.failed_modes.add(m['name'])
+        is_ok = False
         continue
-      name = source[mode.sym]
-      if name in self.modes:
-        self.error(mode.sym, f'error: mode already defined: {name}')
-        continue
-      self.modes[name] = mode.mode_pattern_syms
+      key = source[mode_entry.sym]
+      if key not in mode_keys:
+        self.error(mode_entry.sym, f'error: unknown mode key: {key}; expected `kinds`.')
+        is_ok = False
+      elif key in entries:
+        self.error(mode_entry.sym, f'error: mode key already defined: {key}')
+      else:
+        entries[key] = mode_entry.vals
+    if 'kinds' in entries:
+      self.modes[name] = entries['kinds']
+    else:
+      if is_ok: self.error(name_slc, f'error: mode has no `kinds` entry: {name}')
+      self.failed_modes.add(name)
 
 
   def parse_transitions(self, body:slice) -> None:
@@ -231,6 +275,10 @@ class GrammarBuilder:
 
 
 section_names = ('license', 'patterns', 'modes', 'transitions')
+
+mode_keys = ('kinds',)
+
+mode_name_re = re.compile(r'[A-Za-z_][0-9A-Za-z_]*')
 
 pattern_head_re = re.compile(r'(?P<name>[A-Za-z_][0-9A-Za-z_]*)[ \t]*(?P<colon>:)?')
 
@@ -343,7 +391,7 @@ decl_parser = Parser(decl_lexer,
   drop=dropped_kinds,
   literals=('colon',),
   rules=dict(
-    mode=Struct('sym', 'colon', ZeroOrMore('sym', field='mode_pattern_syms')),
+    mode_entry=Struct('sym', 'colon', ZeroOrMore('sym', field='vals')),
     transition=Struct('sym', 'colon', 'sym', 'colon', 'colon', 'sym', 'colon', 'sym'),
   ),
 )

@@ -17,8 +17,12 @@ paren_c: \\)
 lower: $Ll+
 
 # Modes
-main: spaces word if num paren_o paren_c
-inner: spaces num paren_o paren_c lower
+
+## main
+kinds: spaces word if num paren_o paren_c
+
+## inner
+kinds: spaces num paren_o paren_c lower
 
 # Transitions
 main : paren_o :: inner : paren_c

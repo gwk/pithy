@@ -33,7 +33,7 @@ utest(('CC0.', [], {'main': []}, {}), parse, '# License: CC0.\n')
 utest(('CC0: https://x.\nMore.', ['a'], {'main': ['a']}, {}), parse, '# License: CC0: https://x.\nMore.\n\n# Patterns\na\n')
 
 # Section names are not case sensitive; headers can have trailing comments.
-utest(('', ['a'], {'m': ['a']}, {}), parse, '# patterns // Comment.\na\n# MODES // Comment: with colon.\nm: a\n')
+utest(('', ['a'], {'m': ['a']}, {}), parse, '# patterns // Comment.\na\n# MODES // Comment: with colon.\n## m // Comment: with colon.\nkinds: a\n')
 
 # Sections can appear in any order and can be repeated.
 utest(('', ['a', 'b', 'c'], {'m': ['a', 'b'], 'n': ['c']}, {'m': {'a': ('n', 'c')}}), parse, '''
@@ -41,22 +41,30 @@ utest(('', ['a', 'b', 'c'], {'m': ['a', 'b'], 'n': ['c']}, {'m': {'a': ('n', 'c'
 m : a :: n : c
 
 # Modes
-m: a b // Comment.
+
+## m
+kinds: a b // Comment.
 
 # Patterns
 a
 b
 
 # Modes
-n:
+
+## n
+// Comment.
+kinds:
   c
 
 # Patterns
 c
 ''')
 
+# A mode header ends the preceding entry too. Mode names are case sensitive.
+utest(('', ['a', 'b'], {'M': ['a'], 'm': ['b']}, {}), parse, 'a\nb\n# Modes\n## M\nkinds:\n  a\n## m\nkinds: b\n')
+
 # A header ends the preceding entry, regardless of its indented continuation lines.
-utest({'a': 'x|y'}, pattern_descs, '# Patterns\na:\n  x\n  | y\n# Modes\nmain: a\n')
+utest({'a': 'x|y'}, pattern_descs, '# Patterns\na:\n  x\n  | y\n# Modes\n## main\nkinds: a\n')
 
 # Continuation lines are either indented or begin with `|`. Blank lines and comments do not end an entry.
 utest({'a': 'x|y|z', 'b': 'w'}, pattern_descs, 'a:\n  x\n| y\n\n// Comment.\n  // Comment.\n  | z\nb: w\n')

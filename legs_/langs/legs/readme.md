@@ -9,7 +9,7 @@ Start each framed range in the mode appropriate to its syntax:
 
 * `pattern`: a pattern expression after the entry name and colon.
 * `charset`: the contents of a character set; bracket transitions enter and leave this mode automatically.
-* `decl`: a modes or transitions entry.
+* `decl`: an entry of a mode subsection or of the transitions section.
 
 There is no `main` mode. For example, from the repository root:
 

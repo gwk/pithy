@@ -15,8 +15,12 @@ long: ab, cde
 other: abx
 
 # Modes
-main: number name comma spaces plus paren_o paren_c
-edge: same long other
+
+## main
+kinds: number name comma spaces plus paren_o paren_c
+
+## edge
+kinds: same long other
 
 # Transitions
 main : paren_o :: main : paren_c

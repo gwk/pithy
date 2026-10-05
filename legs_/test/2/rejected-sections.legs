@@ -14,7 +14,9 @@ skipped: [
 c
 
 # Modes
-main: a b c
+
+## main
+kinds: a b c
 
 # Transitions
 main : a :: other : b

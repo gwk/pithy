@@ -9,6 +9,7 @@ A grammar file defines named patterns. It can also define modes, which are sets 
 
 A grammar file consists of sections. A section header is a line that begins at column 0 with `# ` and the section name.
 The sections can appear in any order and can be repeated. Text preceding the first header is treated as patterns.
+Within the `Modes` section, a line that begins at column 0 with `## ` and a name is a mode header.
 
 ```
 # License: Dedicated to the public domain under CC0.
@@ -23,7 +24,9 @@ op:
 | \*
 
 # Modes
-main: spaces word paren_o paren_c op
+
+## main
+kinds: spaces word paren_o paren_c op
 
 # Transitions
 main : paren_o :: main : paren_c
@@ -31,7 +34,9 @@ main : paren_o :: main : paren_c
 
 * `License` text is copied into the generated code. It consists of the text following the colon and any following lines.
 * `Patterns` entries have the form `name: pattern`. A bare `name` is a literal pattern matching the name itself.
-* `Modes` entries have the form `mode: pattern_name ...`. If there are no modes then all patterns belong to the `main` mode.
+* `Modes` holds one `## name` subsection per mode. The entries of a mode have the form `key: value ...`.
+  The `kinds` entry is required; it lists the patterns that belong to the mode, by name. It is the only key.
+  If there are no modes then all patterns belong to the `main` mode.
 * `Transitions` entries have the form `from_mode : open_kind :: push_mode : close_kind`.
 
 Within a section, a line that begins at column 0 begins an entry.
@@ -40,7 +45,7 @@ An indented line continues the previous entry. In the patterns section a line be
 
 The file is split into sections and entries by these line shapes before any pattern is parsed.
 Therefore a mistake in one pattern, such as an unclosed `[`, is reported for that entry alone.
-The consequence is that a pattern line cannot begin with `# ` at column 0; indent the line or write `\#`.
+The consequence is that a pattern line cannot begin with `# ` or `## ` at column 0; indent the line or write `\#`.
 
 
 # Patterns

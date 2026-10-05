@@ -1,9 +1,15 @@
 // Sections are validated together, in any order.
 
 # Modes
-main: a
-other: b zz
-main: b
+
+## main
+kinds: a
+
+## other
+kinds: b zz
+
+## main
+kinds: b
 
 # Transitions
 main : a :: other : b
