@@ -6,6 +6,8 @@ exclude-newer = "14 days"
 
 # Per-package cooldown exceptions.
 [tool.uv.exclude-newer-package]
+librt = "2026-10-02T00:00:00Z"
+mypy = "2026-10-02T00:00:00Z"
 uvicorn = "2026-09-15T00:00:00Z"
 
 [tool.uv.workspace]
@@ -27,7 +29,7 @@ members = [
 
 [dependency-groups]
 dev = [
-  "mypy >= 2.3.1",
+  "mypy >= 2.4.0",
   "pyflakes >= 3.4.0",
   "pyperf >= 2.10",
   "isort >= 8.0.1",
