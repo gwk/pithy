@@ -54,9 +54,27 @@ def string_fragments() -> None:
   utest_val([
     ('main', 'name', b'x'), ('main', 'space', b' '), ('main', 'op', b'='), ('main', 'space', b' '),
     ('main', 'string_start', b"'"), ('str_s', 'text', 'α'.encode()), ('str_s', 'escape_simple', b'\\n'),
-    ('str_s', 'escape_hex', b'\\x41'), ('str_s', 'string_end', b"'"), ('main', 'newline', b'\n'),
-    ('main', 'endmarker', b''),
+    ('str_s', 'escape_hex', b'\\x41'), ('str_s', 'string_end', b"'"), ('main', 'end_of_line', b''), ('main', 'newline', b'\n'),
   ], [(t.mode, t.kind, scanner.source.text[t.slc]) for t in tokens])
+
+
+@utest_run
+def line_structure() -> None:
+  'Line structure is conveyed by the empty `end_of_line`, `indent` and `dedent` tokens; the tokens that cover text keep their kinds.'
+  scanner, tokens = scan('if x:\n  # c\n  (a,\n b)\n\ny')
+  utest_val([], scanner.issues)
+  utest_val([
+    ('name', b'if'), ('space', b' '), ('name', b'x'), ('op', b':'), ('end_of_line', b''), ('newline', b'\n'),
+    ('space', b'  '), ('comment', b'# c'), ('newline', b'\n'), # A comment line has no indent and ends no logical line.
+    ('indent', b''), ('space', b'  '), ('paren_o', b'('), ('name', b'a'), ('op', b','), ('newline', b'\n'), # Within brackets.
+    ('space', b' '), ('name', b'b'), ('paren_c', b')'), ('end_of_line', b''), ('newline', b'\n'),
+    ('newline', b'\n'), # A blank line.
+    ('dedent', b''), ('name', b'y'), ('end_of_line', b''), # The last line has no line break.
+  ], [(t.kind, scanner.source.text[t.slc]) for t in tokens])
+
+  # The end of a format specification is visible from the mode of the closing token.
+  scanner, tokens = scan("f'{a}{b:>3}'")
+  utest_val([('main', b'}'), ('fmt_s', b'}')], [(t.mode, scanner.source.text[t.slc]) for t in tokens if t.kind == 'field_close'])
 
 
 @utest_run
@@ -114,7 +132,6 @@ def every_truncation_recovers() -> None:
       scanner, tokens = scan(prefix)
       issues = scanner.issues
       problems:list[str] = []
-      if tokens[-1].kind != 'endmarker': problems.append('The last token is not `endmarker`.')
       if [i.pos for i in issues] != sorted(i.pos for i in issues): problems.append('The issues are not in source order.')
       for issue in issues:
         if not (0 <= issue.pos <= issue.end <= end): problems.append(f'Issue span is out of bounds: {issue}.')

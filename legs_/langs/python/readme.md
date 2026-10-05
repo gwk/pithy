@@ -4,7 +4,13 @@
 The grammar is also a compilation benchmark with realistic modes and Unicode character sets.
 
 The primary output is a detailed, lossless stream of `tolkien.Token` objects with UTF-8 byte spans.
-Spaces and comments remain in the stream. Indentation and end markers are included; structural tokens can have empty spans.
+Spaces, comments and line breaks remain in the stream, with the kinds of their patterns.
+Line structure is conveyed by empty tokens, which cover no text:
+* `end_of_line` precedes the line break that ends a logical line, or the end of the text. A line break without one is a blank line, a comment line, or within brackets or a replacement field.
+* `indent` precedes the leading space of the first line of a deeper block.
+* `dedent` precedes the first token of a line that closes a block, or the end of the text.
+
+A parser can therefore drop every space, comment and line break token and keep the empty ones.
 Ordinary strings retain opening delimiters, text runs, individual escapes and closing delimiters.
 For example, `'α\n\x41'` produces `string_start`, `text`, `escape_simple`, `escape_hex` and `string_end`.
 The interior tokens carry mode `str_s`, so a consumer can interpret their context without reconstructing it from the spelling.
@@ -66,6 +72,8 @@ Token-boundary restrictions such as `123abc`, and ambiguous tab/space indentatio
 
 `legs.langs.python.py_tokenize.python_tokens` adapts the detailed stream to Python 3.14 `tokenize.TokenInfo` objects.
 Only this adapter aggregates ordinary string fragments into `STRING` tokens.
+The detailed stream contains no token for the adapter's sake. The adapter derives `NEWLINE`, `NL`, `INDENT` and `ENDMARKER` from the tokens above, and the end of a format specification from the mode of the closing brace.
+If the adapter could not derive something, that would show that the detailed stream had lost information.
 It preserves the f-string and template-string token structure, including CPython's doubled-brace middle-token boundaries.
 It does not call the stdlib tokenizer for recognition.
 

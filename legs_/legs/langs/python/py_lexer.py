@@ -4,8 +4,18 @@
 Detailed Python 3.14 lexing with the modes in `legs_/langs/python/python.legs`.
 
 The generated DFA recognizes fragments; this coordinator selects modes and handles indentation and replacement fields.
-Tokens retain UTF-8 byte offsets and cover the input, including trivia. Structural tokens can have empty spans.
-String delimiters, text runs and escapes remain separate. `python_tokens` is a separate stdlib compatibility adapter.
+Tokens retain UTF-8 byte offsets and cover the input, including trivia.
+String delimiters, text runs and escapes remain separate.
+
+The tokens that cover text keep the kinds of their patterns, apart from the string and field delimiters.
+Line structure is conveyed by empty tokens:
+* `end_of_line` precedes the line break that ends a logical line, or the end of the text.
+  A line break without one is a blank line, a comment line, or within brackets or a replacement field.
+* `indent` precedes the leading space of the first line of a deeper block.
+* `dedent` precedes the first token of a line that closes a block, or the end of the text.
+An abandoned string is marked by an empty `incomplete` token.
+
+`python_tokens` is a separate stdlib compatibility adapter. No token exists solely for its benefit; it derives what it needs.
 Build the grammar once and pass the resulting lexer class to each scanner. No stdlib tokenizer is used for recognition.
 '''
 
@@ -67,7 +77,8 @@ class PythonLexer:
           if width > indents[-1]:
             indents.append(width)
             if whitespace:
-              yield self._as(whitespace, 'indent')
+              yield Token(whitespace.pos, whitespace.pos, kind='indent')
+              yield whitespace
               whitespace = None
           else:
             if whitespace:
@@ -87,7 +98,8 @@ class PythonLexer:
         if self.raw.pos == self.raw.end: self._eof('Expected a continued line.', token.pos)
         continue
       if kind == 'newline':
-        yield self._as(token, 'nl' if brackets or field_mode or not logical else 'newline')
+        if logical and not brackets and not field_mode: yield Token(token.pos, token.pos, kind='end_of_line')
+        yield token
         if not brackets and not field_mode:
           logical = False
           line_start = True
@@ -138,12 +150,8 @@ class PythonLexer:
     if field_mode:
       self._eof('Unclosed replacement field.', opening)
       return
-    if logical:
-      yield Token(self.raw.end, self.raw.end, kind='newline')
-    elif self.raw.end and self.source.text[-1:] not in (b'\n', b'\r'):
-      yield Token(self.raw.end, self.raw.end, kind='nl')
+    if logical: yield Token(self.raw.end, self.raw.end, kind='end_of_line')
     for _ in indents[1:]: yield Token(self.raw.end, self.raw.end, kind='dedent')
-    yield Token(self.raw.end, self.raw.end, kind='endmarker')
 
 
   def _string(self, token:Token) -> Iterator[Token]:
@@ -180,8 +188,7 @@ class PythonLexer:
     while self.raw.pos < self.raw.end:
       part = self._read(mode)
       if part.kind == 'brace_c':
-        yield Token(part.pos, part.pos, mode=mode, kind='format_end')
-        yield self._as(part, 'field_close')
+        yield self._as(part, 'field_close') # The token retains the format mode, which distinguishes the end of a specification.
         return
       if part.kind == 'brace_o':
         yield self._as(part, 'field_open')
