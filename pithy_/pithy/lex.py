@@ -261,9 +261,7 @@ reserved_names = frozenset({'end_of_text'})
 
 
 whitespace_patterns = dict(
-  indents   = r'(?m:^\ +)',
   spaces    = r'\ +',
-  ind_tabs  = r'(?m:^\ +)',
   tabs      = r'\t+',
   newline   = r'\n',
 )
