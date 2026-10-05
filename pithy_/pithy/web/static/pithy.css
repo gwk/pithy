@@ -834,6 +834,13 @@ a.icon:is([href], [hx-delete], [hx-get], [hx-patch], [hx-post], [hx-put]) {
 
 ol.json-array { list-style-type: decimal; }
 
+/* Align a nested collection's first line with its array index. */
+ol.json-array > li > :is(ul, ol) {
+  display: inline-block;
+  vertical-align: top;
+  padding-inline-start: 0.5ch; /* Leave a small gap after the array index. */
+}
+
 /* Panels: a bordered box for content that is set apart from the page, such as a result or a summary. */
 
 .panel {
