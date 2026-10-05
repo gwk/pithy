@@ -21,19 +21,22 @@ class LexMode:
   A named set of patterns.
   `line_break_kind` makes the mode line-aware: the lexer emits an empty `end_of_line` token before each line break token
   that ends a line holding at least one other token, and at the end of the text if the last line holds one.
+  Tokens of the `line_ignore_kinds` do not count; a line holding only those, such as a comment line, produces no `end_of_line`.
   '''
 
-  def __init__(self, name:str, kinds:Iterable[str], *, indents:bool=False, line_break_kind:str|None=None):
+  def __init__(self, name:str, kinds:Iterable[str], *, indents:bool=False, line_break_kind:str|None=None,
+   line_ignore_kinds:Iterable[str]=()):
     self.name = name
     self.kinds = list(iter_str(kinds))
     self.indents = indents
     self.line_break_kind = line_break_kind
+    self.line_ignore_kinds = frozenset(iter_str(line_ignore_kinds))
     self.kind_set:frozenset[str] = frozenset() # Filled in by Lexer.
     self.regex:Pattern = cast(Pattern, None) # Filled in by Lexer.
 
   def __repr__(self) -> str:
     return (f'{type(self).__name__}({self.name!r}, kinds={self.kinds}, kind_set={self.kind_set}, indents={self.indents}, '
-      f'line_break_kind={self.line_break_kind!r})')
+      f'line_break_kind={self.line_break_kind!r}, line_ignore_kinds={sorted(self.line_ignore_kinds)})')
 
 
 class LexTrans:
@@ -128,6 +131,10 @@ class Lexer:
       if not kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} has no patterns')
       if mode.line_break_kind is not None and mode.line_break_kind not in kind_set:
         raise Lexer.DefinitionError(f'mode {mode.name!r} line_break_kind is not a pattern of the mode: {mode.line_break_kind!r}')
+      if mode.line_ignore_kinds and mode.line_break_kind is None:
+        raise Lexer.DefinitionError(f'mode {mode.name!r} has line_ignore_kinds but no line_break_kind')
+      for kind in sorted(mode.line_ignore_kinds):
+        if kind not in kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} line_ignore_kinds is not a pattern of the mode: {kind!r}')
       if mode.indents:
         for kind in ('newline', 'spaces'):
           if kind not in kind_set: raise Lexer.DefinitionError(f'mode {mode.name!r} has indents but lacks the {kind!r} pattern')
@@ -219,7 +226,7 @@ class Lexer:
         if kind == lex_mode.line_break_kind:
           if line_counts and 'end_of_line' not in drop: yield token.pos_token(kind='end_of_line')
           line_counts = False
-        else: line_counts = True
+        elif kind not in lex_mode.line_ignore_kinds: line_counts = True
       # Yield the current token.
       if kind not in drop:
         yield token

@@ -292,9 +292,9 @@ utest_exc(Lexer.DefinitionError("conflicting transitions:\n"
 
 # Line-aware modes.
 
-line_lexer = Lexer(patterns=dict(newline=r'\n', spaces=r' +', word=r'\w+', paren_o=r'\(', paren_c=r'\)'),
+line_lexer = Lexer(patterns=dict(newline=r'\n', spaces=r' +', word=r'\w+', comment=r'#[^\n]*', paren_o=r'\(', paren_c=r'\)'),
   modes=[
-    LexMode('main', ['newline', 'spaces', 'word', 'paren_o'], line_break_kind='newline'),
+    LexMode('main', ['newline', 'spaces', 'word', 'comment', 'paren_o'], line_break_kind='newline', line_ignore_kinds=['spaces', 'comment']),
     LexMode('group', ['newline', 'spaces', 'word', 'paren_c'])],
   transitions=[
     LexTrans('main', kind='paren_o', mode='group', pop='paren_c', consume=True)])
@@ -303,8 +303,13 @@ line_lexer = Lexer(patterns=dict(newline=r'\n', spaces=r' +', word=r'\w+', paren
 utest_seq([('word', 'a'), ('end_of_line', ''), ('newline', '\n'), ('newline', '\n'), ('word', 'b'), ('end_of_line', '')],
   run_lexer, line_lexer, 'a\n\nb')
 
+# A line holding only ignored kinds does not count; ignored kinds at the end of a counting line do not matter.
+utest_seq([('spaces', ' '), ('comment', '# c'), ('newline', '\n'), ('word', 'a'), ('spaces', ' '), ('comment', '# d'), ('end_of_line', ''), ('newline', '\n')],
+  run_lexer, line_lexer, ' # c\na # d\n')
+
 # Without a declared ignore set, a line of only spaces counts.
-utest_seq([('spaces', ' '), ('end_of_line', ''), ('newline', '\n')], run_lexer, line_lexer, ' \n')
+utest_seq([('spaces', ' '), ('end_of_line', ''), ('newline', '\n')],
+  run_lexer, Lexer(patterns=dict(newline=r'\n', spaces=r' +'), modes=[LexMode('main', ['newline', 'spaces'], line_break_kind='newline')]), ' \n')
 
 # A pushed mode that is not line-aware suspends the rule; the line ends at the next line break in the line-aware mode.
 utest_seq(['main:a', 'main:(', 'group:b', 'group:\n', 'group:c', 'group:)', 'main:', 'main:\n', 'main:d', 'main:'],
@@ -316,6 +321,12 @@ utest_seq([('word', 'a'), ('end_of_line', '')], run_lexer, line_lexer, 'a\n', dr
 
 utest_exc(Lexer.DefinitionError("mode 'main' line_break_kind is not a pattern of the mode: 'nl'"),
   Lexer, patterns=dict(a='a'), modes=[LexMode('main', ['a'], line_break_kind='nl')])
+
+utest_exc(Lexer.DefinitionError("mode 'main' has line_ignore_kinds but no line_break_kind"),
+  Lexer, patterns=dict(a='a'), modes=[LexMode('main', ['a'], line_ignore_kinds=['a'])])
+
+utest_exc(Lexer.DefinitionError("mode 'main' line_ignore_kinds is not a pattern of the mode: 'b'"),
+  Lexer, patterns=dict(a='a', b='b'), modes=[LexMode('main', ['a'], line_break_kind='a', line_ignore_kinds=['b'])])
 
 utest_exc(Lexer.DefinitionError("name is reserved: 'end_of_line'"), Lexer, patterns=dict(end_of_line='a'))
 
