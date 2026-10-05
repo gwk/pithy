@@ -16,9 +16,6 @@ _context_keywords_ = ['dedent', 'indentation', 'lexer', 'lexical analysis', 'mod
   'regular expressions', 'scanner', 'tokenization', 'tokens']
 
 
-class LexError(Exception): pass
-
-
 class LexMode:
   def __init__(self, name:str, kinds:Iterable[str], *, indents:bool=False):
     self.name = name
@@ -172,21 +169,21 @@ class Lexer:
     return Token(pos=p, end=e, mode=mode, kind=kind)
 
 
-  def _lex(self, stack:list[tuple[LexTrans,Token]], source:Source[str], pos:int, end:int, drop:Container[str], eot:bool
-   ) -> Iterator[Token]:
-    assert isinstance(source, Source)
+  def _lex(self, source:Source[str], pos:int, end:int, mode:str, drop:Container[str], eot:bool) -> Iterator[Token]:
+    # The root frame is never popped because its transition has no pop kinds.
+    stack = [LexTrans(base=(), kind=(), mode=mode, pop=(), consume=False)]
     prev_kind = ''
     indent_stack:list[int] = []
     while pos < end:
       # Get the current frame and mode.
-      frame_trans, frame_token = stack[-1]
-      mode = self.modes[frame_trans.mode]
+      frame = stack[-1]
+      lex_mode = self.modes[frame.mode]
       # Lex one token.
-      token = self._lex_one(mode.regex, source, pos=pos, end=end, mode=mode.name)
+      token = self._lex_one(lex_mode.regex, source, pos=pos, end=end, mode=lex_mode.name)
       kind = token.kind
       pos = token.end
       # Check if we should synthesize indent or dedent tokens.
-      if mode.indents and prev_kind == 'newline':
+      if lex_mode.indents and prev_kind == 'newline':
         if kind == 'spaces': # Generate indent or dedent tokens.
           indent_len = len(source[token])
           while indent_stack and indent_stack[-1] > indent_len:
@@ -202,25 +199,21 @@ class Lexer:
       # Yield the current token.
       if kind not in drop:
         yield token
-      # Perform mode transitions.
-      try:
-        # Check if we should pop one or more modes.
-        while kind in frame_trans.pops:
-          stack.pop()
-          if frame_trans.consume:
-            raise _BreakFromModeSwitching # This frame "consumes" the token.
-          frame_trans, frame_token = stack[-1]
-        # Check if we should push a child mode.
-        try: push_trans = self.transitions[(frame_trans.mode, kind)]
+      # Perform mode transitions. First pop each frame that this token closes, until one consumes the token.
+      consumed = False
+      while kind in frame.pops and not consumed:
+        stack.pop()
+        consumed = frame.consume
+        frame = stack[-1]
+      if not consumed: # Check if we should push a child mode.
+        try: stack.append(self.transitions[(frame.mode, kind)])
         except KeyError: pass
-        else: stack.append((push_trans, token))
-      except _BreakFromModeSwitching: pass
       prev_kind = kind
     while indent_stack:
       yield token.pos_token(kind='dedent')
       indent_stack.pop()
     if eot:
-      yield eot_token(end, mode=stack[-1][0].mode)
+      yield eot_token(end, mode=stack[-1].mode)
 
 
   def lex(self, source:Source[str], slc:slice|None=None, drop:Container[str]=(), eot:bool=False, *, mode:str|None=None
@@ -237,32 +230,7 @@ class Lexer:
     if mode is None: mode = self.main
     elif mode not in self.modes: raise ValueError(f'unknown mode: {mode!r}')
     pos, end = _range_for_slc(source, slc)
-    return self._lex(stack=[self.root_frame(mode=mode)], source=source, pos=pos, end=end, drop=drop, eot=eot)
-
-
-  def lex_stream(self, *, name:str, stream:Iterable[str], drop:Container[str]=(), eot:bool=False
-   ) -> Iterator[tuple[Source[str], Token]]:
-    '''
-    Note: the yielded Token objects have positions relative to input string that each was lexed from.
-    TODO: fix the line numbers.
-    '''
-    stack = [self.root_frame(mode=self.main)]
-    source = Source(name=name, text='')
-    for text in stream:
-      if text:
-        source = Source(name=name, text=text)
-        for token in self._lex(stack=stack, source=source, pos=0, end=len(source.text), drop=drop, eot=False):
-          yield (source, token)
-    if eot:
-      yield (source, eot_token(len(source.text), mode=stack[-1][0].mode))
-
-
-  def root_frame(self, mode:str) -> tuple[LexTrans,Token]:
-    'The root frame is degenerate; because it has an empty pops set it will never get popped; base and kind are never accessed.'
-    return (LexTrans(base=(), kind=(), mode=mode, pop=(), consume=False), Token(0, 0, mode='', kind=''))
-
-
-class _BreakFromModeSwitching(Exception): pass
+    return self._lex(source=source, pos=pos, end=end, mode=mode, drop=drop, eot=eot)
 
 
 def eot_token(end:int, mode:str) -> Token:
