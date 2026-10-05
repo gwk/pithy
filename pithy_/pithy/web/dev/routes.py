@@ -5,6 +5,7 @@ from .color_ramps import dev_color_ramps
 from .colors import dev_colors
 from .html import dev_html_index
 from .html.controls import DevControlsForm, DevImageButtonForm
+from .html.html_to_json import dev_html_to_json
 from .html.nonportable import DevFormNonportable
 from .htmx import dev_htmx_index
 from .htmx.controls import ControlsHtmxUpdate, dev_controls_htmx
@@ -24,6 +25,7 @@ routes:dict[str,RouteTarget] = {
   '/tables': dev_tables,
   '/tests': dev_tests,
   '/html': dev_html_index,
+  '/html/html-to-json': dev_html_to_json,
   '/html/controls': DevControlsForm,
   '/html/controls/image': DevImageButtonForm,
   '/html/nonportable': DevFormNonportable,

@@ -11,4 +11,5 @@ def dev_html_index(request:Request) -> HtmlResponse:
   return dev_page(title='HTML', breadcrumbs=[('/', 'Home'), ('/html', 'HTML')],
     main=Main(H1('HTML'), Ul(
       Li(A(href='/html/controls', _='Form Controls'), ': Demonstrates form controls.'),
+      Li(A(href='/html/html-to-json', _='HTML to JSON'), ': JSON rendered as nested HTML lists.'),
       Li(A(href='/html/nonportable', _='Nonportable Form Controls'), ': Month and week inputs.'))))
