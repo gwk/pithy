@@ -86,6 +86,25 @@ utest("<input type='checkbox' name='vip' data-pithy-checkbox='bool'/>",
   _render, Input.bool_checkbox(name='vip', is_checked=False))
 utest("<input type='checkbox' name='vip'/>", _render, Input(type='checkbox', name='vip'))
 
+
+# Text entry helpers.
+
+utest("<input name='code' autocapitalize='none' autocorrect='off' spellcheck='false'/>",
+  _render, Input(name='code').set_auto(caps='none', correct='off', spell='false'))
+utest("<input name='name' autocapitalize='words' autocorrect='off' spellcheck='false'/>",
+  _render, Input(name='name').set_auto(caps='words', correct='off', spell='false'))
+
+utest("<input name='name' autocomplete='shipping name'/>",
+  _render, Input(name='name').set_auto(complete='shipping name'))
+utest("<input autocorrect='off' spellcheck='false'/>",
+  _render, Input(autocorrect='off', spellcheck='false').set_auto())
+utest("<input autocorrect='on' spellcheck='false'/>",
+  _render, Input(autocorrect='off', spellcheck='false').set_auto(correct='on', spell=None))
+utest("<input autocapitalize='sentences' autocomplete='on' autocorrect='on' spellcheck='true'/>",
+  _render, Input().set_auto(caps=True, complete=True, correct=True, spell=True))
+utest("<input autocapitalize='none' autocomplete='off' autocorrect='off' spellcheck='false'/>",
+  _render, Input().set_auto(caps=False, complete=False, correct=False, spell=False))
+
 utest(
   "<span>"
   "<label><input type='checkbox' name='tags' value='a' data-pithy-checkbox='set'/>A</label>"

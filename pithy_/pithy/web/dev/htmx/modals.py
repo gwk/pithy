@@ -111,7 +111,7 @@ def edit_modal_htmx(request:Request, user_id:int) -> HtmxResponse:
     Div(cl='form_grid', _=[
       Label('Name', for_='edit-user-name'),
       Input(id='edit-user-name', name='name', value=user.name, required=True, maxlength=100,
-        hx_post=url, hx_trigger='change', hx_swap='none'),
+        hx_post=url, hx_trigger='change', hx_swap='none').set_auto(caps='words', correct='off', spell='false'),
       Label('Role', for_='edit-user-role'),
       Select(id='edit-user-role', name='role', hx_post=url, hx_trigger='change', hx_swap='none')
         .options(roles, value=user.role),

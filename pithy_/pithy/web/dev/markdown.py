@@ -58,7 +58,8 @@ def markdown_editor(*, markdown:str|None, auto_resize:bool=False) -> HtmlNode:
   el['attachments'] = attachments_field
   if auto_resize: el['auto-resize'] = ''
   if markdown is not None:
-    el.append(TextArea(markdown, id='markdown-text', name='markdown', aria_label='Markdown editor', spellcheck='false'))
+    el.append(TextArea(markdown, id='markdown-text', name='markdown', aria_label='Markdown editor')
+      .set_auto(caps='none', correct='off', spell='false'))
   return el
 
 

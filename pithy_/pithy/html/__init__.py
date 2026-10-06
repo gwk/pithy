@@ -27,6 +27,10 @@ _HtmlFileReadSource = _HtmlFilePath | BinaryIO | TextIO
 
 DtDdPair = tuple[list['Dt'],list['Dd']]
 
+type AutocapitalizeOpt = Literal['none','sentences','words','characters','off','on']
+type AutocorrectOpt = Literal['on','off']
+type SpellcheckOpt = Literal['true','false','']
+
 class HtmlNode(Mu):
   'Abstract HTML node; root class of the hierarchy. For the HTML tag, use `Html`.'
 
@@ -92,6 +96,41 @@ class HtmlNode(Mu):
     This is overridden for Select elements, which set the value of the selected option.
     '''
     self['value'] = value
+
+
+  def set_auto(self, *, caps:AutocapitalizeOpt|bool|None=None, complete:str|bool|None=None,
+   correct:AutocorrectOpt|bool|None=None, spell:SpellcheckOpt|bool|None=None) -> Self:
+    '''
+    Set browser text entry assistance attributes and return this element.
+    Omitted or `None` arguments leave existing attributes unchanged; a call with no arguments does nothing.
+    The keyword parameters map to HTML attributes as follows:
+    * `caps`: `autocapitalize`. Capitalization hints for input methods such as virtual keyboards.
+    * `complete`: `autocomplete`. Autofill hints, including 'on', 'off', or a field token list such as 'shipping name'.
+    * `correct`: `autocorrect`. Automatic spelling correction while typing.
+    * `spell`: `spellcheck`. Spelling and grammar checking; '' is equivalent to 'true'.
+
+    Boolean values are converted to the appropriate HTML strings:
+    * `caps`: True becomes 'sentences'; False becomes 'none'.
+    * `complete` and `correct`: True becomes 'on'; False becomes 'off'.
+    * `spell`: True becomes 'true'; False becomes 'false'.
+
+    Capitalization and correction apply to text inputs, textareas and `contenteditable` editing hosts.
+    Form controls can inherit capitalization, correction and autocomplete defaults from their associated form.
+    Autocomplete applies to input, textarea, select and form elements, not arbitrary `contenteditable` elements.
+    Spellcheck is inherited through the element tree. An ordinary container does not provide all four defaults.
+
+    For code or markup, use `set_auto(caps=False, correct=False, spell=False)`.
+    Use `caps='words'` for proper names. Set `complete=False` to request disabling autofill.
+    '''
+    if isinstance(caps, bool): caps = 'sentences' if caps else 'none'
+    if isinstance(complete, bool): complete = 'on' if complete else 'off'
+    if isinstance(correct, bool): correct = 'on' if correct else 'off'
+    if isinstance(spell, bool): spell = 'true' if spell else 'false'
+    if caps is not None: self['autocapitalize'] = caps
+    if complete is not None: self['autocomplete'] = complete
+    if correct is not None: self['autocorrect'] = correct
+    if spell is not None: self['spellcheck'] = spell
+    return self
 
 
 HtmlNode.generic_tag_type = HtmlNode # Note: this creates a circular reference.
