@@ -22,7 +22,7 @@ Please note that the packages published to PyPI frequently lag behind the state 
 ## Quick Start
 * Installation: `just install` for all packages; `sh/install.sh {package} ...` for specific packages. Invokes `uv pip install` against the interpreter selected by `python3`.
 * Development (global python): `just develop-global` for all packages; `sh/develop-global.sh {package} ...` for specific packages. Installs editable packages and the root development dependency group with `uv pip install` against the global python (`/opt/py/bin/python3`, or `$GLOBAL_PYTHON` if set).
-* Development (workspace venv): `just develop-venv`; invokes `uv sync --all-packages` to install all packages editable into the local `.venv` (or `UV_PROJECT_ENVIRONMENT`). Then run the activation command it prints.
+* Development (workspace venv): `just develop-venv`; invokes `uv sync --all-packages` to install all packages editable into the local `.venv`. Then run the activation command it prints.
 
 For these commands, the justfile invokes the shell scripts with all package names.
 
